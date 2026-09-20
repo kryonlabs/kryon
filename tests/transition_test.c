@@ -6,6 +6,18 @@
 static int failures = 0;
 
 void
+PushInspectSource(const char *path, int line)
+{
+    (void)path;
+    (void)line;
+}
+
+void
+PopInspectSource(void)
+{
+}
+
+void
 DrawRectangle(int posX, int posY, int width, int height, Color color)
 {
     (void)posX;

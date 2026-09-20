@@ -1,12 +1,15 @@
 #include "ui_text_layout.h"
 #include "../src/ui/ui_internal.h"
+#include "runtime/paint.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* A deterministic measurement/paint host for the actual C layout adapter. */
+/* A deterministic measurement/paint host for the native Kry layout adapter. */
+void PushInspectSource(const char *source, int line) { (void)source; (void)line; }
+void PopInspectSource(void) {}
 int
 TextWidth(const char *text, int font)
 {
@@ -53,16 +56,10 @@ RenderText(const char *text, int x, int y, int font, Color color)
         assert(x == 30 + paint_width - width);
 }
 
-void
-DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
-               Vector2 origin, float rotation, Color color)
+void ui_draw(Drawing command) { (void)command; }
+int ColorToInt(Color color)
 {
-    (void)texture;
-    (void)source;
-    (void)dest;
-    (void)origin;
-    (void)rotation;
-    (void)color;
+    return (color.r << 24) | (color.g << 16) | (color.b << 8) | color.a;
 }
 
 void

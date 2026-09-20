@@ -656,8 +656,25 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
         }
     }
     if(k2c_in_array_init) {
-        /* initializer items: bare expressions, no inspect wrapper */
+        /* Initializer items are expressions with their own separators. */
         fprintf(c, "    %s\n", rw);
+        return;
+    }
+    if(!m->inspect_calls) {
+        fprintf(c, "    %s;\n", rw);
+        return;
+    }
+    int defines_push = 0;
+    int defines_pop = 0;
+    for(int i = 0; i < m->function_count; i++) {
+        if(strcmp(m->functions[i].name, "PushInspectSource") == 0)
+            defines_push = 1;
+        if(strcmp(m->functions[i].name, "PopInspectSource") == 0)
+            defines_pop = 1;
+    }
+    if(defines_push && defines_pop) {
+        /* Instrumenting the hook implementation would call itself forever. */
+        fprintf(c, "    %s;\n", rw);
         return;
     }
     {
@@ -1581,6 +1598,18 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         fprintf(h, "extern %s %s%s;\n", base, g->name, suffix);
         emit_guard_close(h, g->guard);
     }
+    /* A public extern declaration is part of the generated Kry interface.
+     * This lets .kry define an API without a parallel handwritten header. */
+    for(i = 0; i < m->import_count; i++) {
+        const KirImport *imp = &m->imports[i];
+
+        if(imp->kind != KIR_IMPORT_EXTERN || !imp->is_public ||
+           imp->signature[0] == '\0')
+            continue;
+        emit_guard_open(h, imp->guard);
+        emit_extern_prototype(h, m, imp);
+        emit_guard_close(h, imp->guard);
+    }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
         if(fn->is_closure)
@@ -1637,6 +1666,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
      * actually calls a hook. */
     if(module_uses_host_hooks(m)) {
         fputs("#include \"ui_tree.h\"\n", c);
+        fputs("#include \"ui_canvas_props.generated.h\"\n", c);
+        fputs("#include \"ui_popup_props.generated.h\"\n", c);
         emit_ui_host_hook_prototypes(c);
     }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");

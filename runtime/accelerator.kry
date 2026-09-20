@@ -1,0 +1,13 @@
+#module "accelerator"
+#import "kryon_compat.generated.h"
+
+Accelerator :: struct {
+    key: i32
+    ctrl: i32
+    shift: i32
+    alt: i32
+    id: i32
+}
+
+AcceleratorPressed :: (accelerator: Accelerator) -> i32 #extern #export
+DispatchAccelerators :: (accelerators: const Accelerator*, count: i32) -> i32 #extern #export

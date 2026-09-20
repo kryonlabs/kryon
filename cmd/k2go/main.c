@@ -4,13 +4,14 @@
  * (k2go_lower.c) that calls the native Go Kryon runtime. One frontend, three
  * backends.
  *
- * usage: k2go [--strict] [--no-main] [--runtime-implementation] [--pkg NAME] --root DIR -o DIR file.kry ...
+ * usage: k2go [--strict] [--no-main] [--runtime-implementation] [--minify] [--pkg NAME] --root DIR -o DIR file.kry ...
  */
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_check.h"
 #include "kir_laws.h"
 #include "kir_diagnostic.h"
+#include "kir_emit.h"
 #include "k2go_lower.h"
 
 #include <stdio.h>
@@ -21,7 +22,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2go [--strict] [--no-main] [--runtime-implementation] [--pkg NAME] "
+            "usage: k2go [--strict] [--no-main] [--runtime-implementation] [--minify] [--pkg NAME] "
             "[--diagnostics=text|json] --root DIR -o DIR file.kry ...\n");
 }
 
@@ -33,6 +34,7 @@ main(int argc, char **argv)
     const char *pkg = "krygen";
     int no_main = 0;
     int strict = 0;
+    int minify = 0;
     int check_ok;
     int laws_ok;
     int runtime_implementation = 0;
@@ -61,6 +63,8 @@ main(int argc, char **argv)
             strict = 0;
         } else if(strcmp(argv[i], "--runtime-implementation") == 0) {
             runtime_implementation = 1;
+        } else if(strcmp(argv[i], "--minify") == 0) {
+            minify = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -77,6 +81,7 @@ main(int argc, char **argv)
         fprintf(stderr, "k2go: --runtime-implementation requires --no-main\n");
         return 1;
     }
+    KirEmitUseMinifiedOutput(minify);
 
     file_count = argc - first_file;
     progs = calloc((size_t)file_count, sizeof(*progs));

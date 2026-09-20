@@ -1,0 +1,253 @@
+#module "text_context_host"
+#import "ui_internal.h"
+#import "ui/text_selection.h"
+#import "ui/text_editor.h"
+#import "runtime/text_input.h"
+#import "string.h"
+
+TextContextKind :: enum {
+    TEXT_CONTEXT_NONE = 0
+    TEXT_CONTEXT_FIELD = 1
+    TEXT_CONTEXT_AREA = 2
+}
+
+TextContextCommand :: enum {
+    TEXT_CONTEXT_CUT = 9101
+    TEXT_CONTEXT_COPY = 9102
+    TEXT_CONTEXT_PASTE = 9103
+    TEXT_CONTEXT_SELECT_ALL = 9104
+}
+
+g_ui_text_context_open :: i32 #global #export
+g_ui_text_context_kind :: i32 #global #export
+g_ui_text_context_id :: i32 #global #export
+g_ui_text_context_owner :: *i32 #global #export
+g_ui_text_context_x :: i32 #global #export
+g_ui_text_context_y :: i32 #global #export
+g_ui_text_context_target_frame :: unsigned long #global #export
+g_ui_text_context_text :: *char #global #export
+g_ui_text_context_text_size :: size_t #global #export
+g_ui_text_context_cursor :: *i32 #global #export
+g_ui_text_context_max_codepoints :: i32 #global #export
+g_ui_text_context_filter :: TextInputFilter #global #export
+g_ui_text_context_filter_user_data :: *void #global #export
+g_ui_text_context_selection :: *TextSelection #global #export
+g_ui_text_context_selection_start :: i32 #global #export
+g_ui_text_context_selection_end :: i32 #global #export
+g_ui_text_context_allow_newlines :: i32 #global #export
+g_ui_text_context_copy_all_when_empty :: i32 #global #export
+g_ui_text_context_read_only :: i32 #global #export
+g_ui_text_context_changed :: i32 #global #export
+g_ui_text_context_changed_kind :: i32 #global #export
+g_ui_text_context_changed_id :: i32 #global #export
+g_ui_text_context_changed_owner :: *i32 #global #export
+
+ui_text_context_menu_supported :: () -> i32 #extern
+
+TextContextCommandKind :: (command: i32) -> i32 {
+    if command == TEXT_CONTEXT_CUT { return TextContextCommandCut() }
+    if command == TEXT_CONTEXT_COPY { return TextContextCommandCopy() }
+    if command == TEXT_CONTEXT_PASTE { return TextContextCommandPaste() }
+    if command == TEXT_CONTEXT_SELECT_ALL {
+        return TextContextCommandSelectAll()
+    }
+    return 0
+}
+
+ui_text_context_matches :: (kind: i32, id: i32,
+owner: *i32) -> i32 #export {
+    return g_ui_text_context_open &&
+    g_ui_text_context_kind == kind &&
+    g_ui_text_context_owner == owner &&
+    (id <= 0 || g_ui_text_context_id == id)
+}
+
+ui_text_context_close :: () #export {
+    g_ui_text_context_open = 0
+    g_ui_text_context_kind = TEXT_CONTEXT_NONE
+    g_ui_text_context_id = 0
+    g_ui_text_context_owner = nil
+    g_ui_text_context_target_frame = 0
+}
+
+ui_text_context_clear_target :: () {
+    g_ui_text_context_text = nil
+    g_ui_text_context_text_size = 0
+    g_ui_text_context_cursor = nil
+    g_ui_text_context_max_codepoints = 0
+    g_ui_text_context_filter = nil
+    g_ui_text_context_filter_user_data = nil
+    g_ui_text_context_selection = nil
+    g_ui_text_context_selection_start = 0
+    g_ui_text_context_selection_end = 0
+    g_ui_text_context_allow_newlines = 0
+    g_ui_text_context_copy_all_when_empty = 0
+    g_ui_text_context_read_only = 0
+    g_ui_text_context_target_frame = 0
+}
+
+ui_text_context_open_for :: (kind: i32, id: i32, owner: *i32,
+bounds: Rectangle, mouse: Vector2,
+captured: i32) -> i32 #export {
+    if !ui_text_context_menu_supported() ||
+    !CheckCollisionPointRec(mouse, bounds) || captured ||
+    !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) { return 0 }
+    g_ui_text_context_open = 1
+    g_ui_text_context_kind = kind
+    g_ui_text_context_id = id
+    g_ui_text_context_owner = owner
+    g_ui_text_context_x = (int)mouse.x
+    g_ui_text_context_y = (int)mouse.y
+    return 1
+}
+
+ui_text_context_take_changed :: (kind: i32, id: i32,
+owner: *i32) -> i32 #export {
+    if !g_ui_text_context_changed ||
+    g_ui_text_context_changed_kind != kind ||
+    g_ui_text_context_changed_owner != owner ||
+    (id > 0 && g_ui_text_context_changed_id != id) { return 0 }
+    g_ui_text_context_changed = 0
+    g_ui_text_context_changed_kind = TEXT_CONTEXT_NONE
+    g_ui_text_context_changed_id = 0
+    g_ui_text_context_changed_owner = nil
+    return 1
+}
+
+ui_text_context_register_target :: (kind: i32, id: i32,
+owner: *i32, text: *char, text_size: size_t,
+cursor_position: *i32, max_codepoints: i32,
+filter: TextInputFilter, filter_user_data: *void,
+selection: *TextSelection, selection_start: i32,
+selection_end: i32, allow_newlines: i32,
+copy_all_when_empty: i32, read_only: i32) #export {
+    if !ui_text_context_matches(kind, id, owner) { return }
+    g_ui_text_context_text = text
+    g_ui_text_context_text_size = text_size
+    g_ui_text_context_cursor = cursor_position
+    g_ui_text_context_max_codepoints = max_codepoints
+    g_ui_text_context_filter = filter
+    g_ui_text_context_filter_user_data = filter_user_data
+    g_ui_text_context_selection = selection
+    g_ui_text_context_selection_start = selection_start
+    g_ui_text_context_selection_end = selection_end
+    g_ui_text_context_allow_newlines = allow_newlines
+    g_ui_text_context_copy_all_when_empty = copy_all_when_empty
+    g_ui_text_context_read_only = read_only
+    g_ui_text_context_target_frame = g_ui_frame_serial
+}
+
+TextApplyContextCommand :: (command: i32, edit: TextEdit,
+selection: *TextSelection, selection_id: i32,
+selection_owner: *i32, selection_start: i32,
+selection_end: i32, allow_newlines: i32,
+copy_all_when_empty: i32, read_only: i32) -> i32 {
+    if edit.text == nil || edit.text_size == 0 ||
+    edit.cursor_position == nil || selection == nil { return 0 }
+    length: i32 = (int)strlen(edit.text)
+    range: TextSelectionRange = TextSelectionRangeForLength(
+    selection_start, selection_end, length)
+    selection_start = range.start
+    selection_end = range.end
+    has_selection: i32 = selection_end > selection_start
+    decision: TextContextCommandDecision =
+    TextContextCommandDecisionFor(TextContextCommandKind(command),
+    has_selection, copy_all_when_empty != 0,
+    length > 0, read_only != 0)
+    changed: i32 = 0
+    copied_selection: i32 = 0
+    if decision.copy_selection {
+        copied_selection = ui_text_copy_range(edit.text,
+        selection_start, selection_end)
+    }
+    if decision.copy_all { SetClipboardTextValue(edit.text) }
+    if decision.delete_selection &&
+    (!decision.copy_selection || copied_selection) &&
+    ui_text_delete_range(edit.text, edit.text_size,
+    edit.cursor_position, selection_start, selection_end) {
+        changed |= !decision.paste
+    }
+    if decision.clear_all {
+        edit.text[0] = '\0'
+        *edit.cursor_position = 0
+        changed = 1
+    }
+    if decision.paste &&
+    ui_text_paste_clipboard(edit, allow_newlines) { changed = 1 }
+    if decision.select_all {
+        ui_text_selection_set(selection, selection_id,
+        selection_owner, 0, length, 0)
+        *edit.cursor_position = length
+    }
+    if decision.collapse_selection {
+        ui_text_selection_set(selection, selection_id,
+        selection_owner, *edit.cursor_position,
+        *edit.cursor_position, 0)
+    }
+    return changed
+}
+
+ui_text_draw_context_overlay :: () -> i32 #export {
+    if !ui_text_context_menu_supported() ||
+    !g_ui_text_context_open { return 0 }
+    if g_ui_text_context_target_frame != g_ui_frame_serial ||
+    g_ui_text_context_text == nil ||
+    g_ui_text_context_cursor == nil ||
+    g_ui_text_context_selection == nil {
+        ui_text_context_close()
+        ui_text_context_clear_target()
+        return 0
+    }
+    has_text: i32 = g_ui_text_context_text[0] != '\0'
+    has_selection: i32 = g_ui_text_context_selection_end >
+    g_ui_text_context_selection_start
+    menu_state: TextContextMenuState = TextContextMenuStateFor(
+    has_selection, g_ui_text_context_copy_all_when_empty != 0,
+    has_text, g_ui_text_context_read_only != 0,
+    ui_clipboard_has_text() != 0)
+    items: [4]MenuItem
+    items[0] = (MenuItem){MenuCommand, "Cut", "Ctrl+X",
+        TEXT_CONTEXT_CUT, !menu_state.cut_enabled, 0, nil, 0}
+    items[1] = (MenuItem){MenuCommand, "Copy", "Ctrl+C",
+        TEXT_CONTEXT_COPY, !menu_state.copy_enabled, 0, nil, 0}
+    items[2] = (MenuItem){MenuCommand, "Paste", "Ctrl+V",
+        TEXT_CONTEXT_PASTE, !menu_state.paste_enabled, 0, nil, 0}
+    items[3] = (MenuItem){MenuCommand, "Select All", "Ctrl+A",
+        TEXT_CONTEXT_SELECT_ALL, !menu_state.select_all_enabled, 0, nil, 0}
+    menu: MenuProps = (MenuProps){0}
+    menu.id = 8500 + g_ui_text_context_kind
+    menu.mode = MenuModeContext
+    menu.trigger = (Rectangle){-10000.0, -10000.0, 1.0, 1.0}
+    menu.items = items
+    menu.item_count = 4
+    menu.open = &g_ui_text_context_open
+    menu.x = &g_ui_text_context_x
+    menu.y = &g_ui_text_context_y
+    command: i32 = RenderMenu(menu).activated_id
+    if command != 0 {
+        edit: TextEdit = (TextEdit){0}
+        edit.text = g_ui_text_context_text
+        edit.text_size = g_ui_text_context_text_size
+        edit.cursor_position = g_ui_text_context_cursor
+        edit.max_codepoints = g_ui_text_context_max_codepoints
+        edit.filter = g_ui_text_context_filter
+        edit.filter_user_data = g_ui_text_context_filter_user_data
+        changed: i32 = TextApplyContextCommand(command, edit,
+        g_ui_text_context_selection, g_ui_text_context_id,
+        g_ui_text_context_owner,
+        g_ui_text_context_selection_start,
+        g_ui_text_context_selection_end,
+        g_ui_text_context_allow_newlines,
+        g_ui_text_context_copy_all_when_empty,
+        g_ui_text_context_read_only)
+        if changed {
+            g_ui_text_context_changed = 1
+            g_ui_text_context_changed_kind = g_ui_text_context_kind
+            g_ui_text_context_changed_id = g_ui_text_context_id
+            g_ui_text_context_changed_owner = g_ui_text_context_owner
+        }
+        ui_text_context_close()
+        ui_text_context_clear_target()
+    }
+    return command
+}

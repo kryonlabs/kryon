@@ -28,92 +28,54 @@ type SelectableToggleResult struct {
 }
 
 func Selectable_SelectableLabelInset(scale float32, face StyleFrame) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = face.Value.PaddingX
-	var inset float32 = value_4
-	var value_5 uint32 = face.Value.Fields
-	var value_6 int32 = int32(StylePaddingX)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 float32 = inset
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
+	var inset float32 = face.Value.PaddingX
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(face.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_1 bool = (value_0 == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	if !value_1 {
+		value_1 = (inset < 0.0)
 	}
-	if value_12 {
-		var value_16 float32 = 8.0
-		inset = value_16
+	if value_1 {
+		inset = 8.0
 	}
-	var value_17 float32 = inset
-	var value_18 float32 = scale
-	var value_19 float32 = value_17 * value_18
-	return value_19
+	return (inset * scale)
 }
 
 func Selectable_SelectablePaintFor(spec SelectableSpec) SelectablePaint {
 	var paint SelectablePaint = SelectablePaint{}
-	var value_0 Rectangle = spec.Bounds
-	paint.Bounds = value_0
-	var value_1 float32 = spec.Bounds.X
-	var value_2 float32 = spec.LabelInset
-	var value_3 float32 = value_1 + value_2
-	paint.LabelX = value_3
-	var value_4 uint32 = spec.Face.Value.Foreground
-	paint.TextColor = value_4
-	var value_5 bool = spec.Disabled
-	var value_6 bool = !value_5
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = spec.Selected
-		var value_9 bool = value_8
-		if !value_9 {
-			var value_10 bool = spec.Hovered
-			value_9 = value_10
+	paint.Bounds = spec.Bounds
+	paint.LabelX = (spec.Bounds.X + spec.LabelInset)
+	paint.TextColor = spec.Face.Value.Foreground
+	var value_0 bool = !spec.Disabled
+	if value_0 {
+		var value_1 bool = spec.Selected
+		if !value_1 {
+			value_1 = spec.Hovered
 		}
-		var value_11 bool = value_9
-		if !value_11 {
-			var value_12 bool = spec.Pressed
-			value_11 = value_12
+		var value_2 bool = value_1
+		if !value_2 {
+			value_2 = spec.Pressed
 		}
-		value_7 = value_11
+		value_0 = value_2
 	}
-	paint.DrawFill = value_7
-	var value_13 uint32 = spec.Face.Value.Background
-	paint.FillColor = value_13
-	var value_14 SelectablePaint = paint
-	return value_14
+	paint.DrawFill = value_0
+	paint.FillColor = spec.Face.Value.Background
+	return paint
 }
 
 func Selectable_SelectableToggleFor(selected bool, activated bool, has_value bool) SelectableToggleResult {
 	var result SelectableToggleResult = SelectableToggleResult{}
-	var value_0 bool = selected
-	result.Selected = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 bool = activated
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = has_value
-		value_3 = value_4
+	result.Selected = selected
+	result.Changed = false
+	var value_0 bool = activated
+	if value_0 {
+		value_0 = has_value
 	}
-	if value_3 {
-		var value_5 bool = selected
-		var value_6 bool = !value_5
-		result.Selected = value_6
-		var value_7 bool = true
-		result.Changed = value_7
+	if value_0 {
+		result.Selected = !selected
+		result.Changed = true
 	}
-	var value_8 SelectableToggleResult = result
-	return value_8
+	return result
 }

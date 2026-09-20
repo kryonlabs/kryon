@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute the C text-row adapter against the same fixtures as native Go."""
+"""Execute the Kry text-row host against the same fixtures as native Go."""
 import json
 import os
 from pathlib import Path
@@ -14,8 +14,8 @@ output = build / "tests/text_rows_test"
 output.parent.mkdir(parents=True, exist_ok=True)
 subprocess.run([
     *shlex.split(os.environ.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
-    "-I" + str(build / "generated/include"), "-I" + str(generated), "-Iinclude",
-    "tests/text_rows_test.c", "src/ui/ui_text_rows.c", "src/ui/ui_grapheme.c",
+    "-I" + str(build / "generated/include"), "-I" + str(generated), "-Iinclude", "-Isrc/ui", "-Ivendor/utf8proc", "-DUTF8PROC_STATIC",
+    "tests/text_rows_test.c", str(generated / "ui/text_rows.c"), str(generated / "ui/grapheme.c"), "src/backend/kry_unicode.c",
     str(generated / "runtime/text_rows.c"), "-lm", "-o", str(output),
 ], cwd=root, check=True)
 cases = json.loads((root / "tests/fixtures/text_rows.json").read_text())

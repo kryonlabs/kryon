@@ -74,5 +74,6 @@ typedef struct MenuProps {
     int32_t* x;
     int32_t* y;
 } MenuProps;
+MenuResult Menu(MenuProps menu);
 
 #endif /* K_RUNTIME_MENU_PROPS_H */

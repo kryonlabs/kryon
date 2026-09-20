@@ -33,559 +33,295 @@ type ListBoxItemPaint struct {
 }
 
 func ListBox_ListBoxMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_10 bool = value_6
-	if !value_10 {
-		var value_11 bool = allow_zero
-		var value_12 bool = !value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 float32 = value
-			var value_15 float32 = 0.0
-			var value_16 bool = value_14 <= value_15
-			value_13 = value_16
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_10 = value_13
+		value_2 = value_3
 	}
-	if value_10 {
-		var value_17 float32 = fallback
-		value = value_17
+	if value_2 {
+		value = fallback
 	}
-	var value_18 float32 = value
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-	return value_21
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func ListBox_ListBoxRowHeight(row_height int32, scale float32, item StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 float32 = 30.0
-		var fallback float32 = value_7
-		var value_8 uint32 = item.Value.Fields
-		var value_9 int32 = int32(StyleIconSize)
-		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-		var value_11 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_10), 32, false, 8))
-		var value_12 int32 = 0
-		var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-		var value_14 bool = value_11 != value_13
-		var value_15 bool = value_14
-		if value_15 {
-			var value_16 float32 = item.Value.IconSize
-			var value_17 float32 = 0.0
-			var value_18 bool = value_16 > value_17
-			value_15 = value_18
+	if row_height <= 0 {
+		var fallback float32 = 30.0
+		var value_0 uint32 = uint32(number_runtime_bits(uint64(item.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))), 32, false, 8))
+		var value_1 bool = (value_0 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+		if value_1 {
+			value_1 = (item.Value.IconSize > 0.0)
 		}
-		if value_15 {
-			var value_19 float32 = item.Value.IconSize
-			fallback = value_19
+		if value_1 {
+			fallback = item.Value.IconSize
 		}
-		var value_20 uint32 = item.Value.Fields
-		var value_21 int32 = int32(StyleContentOffset)
-		var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-		var value_23 float32 = item.Value.OffsetY
-		var value_24 float32 = fallback
-		var value_25 float32 = scale
-		var value_26 bool = false
-		var value_27 int32 = ListBox_ListBoxMetric(value_20, value_22, value_23, value_24, value_25, value_26)
-		return value_27
+		var value_2 uint32 = item.Value.Fields
+		var value_3 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_4 float32 = item.Value.OffsetY
+		var value_5 int32 = ListBox_ListBoxMetric(value_2, value_3, value_4, fallback, scale, false)
+		return value_5
 	}
-	var value_28 int32 = row_height
-	return value_28
+	return row_height
 }
 
 func ListBox_ListBoxContentHeight(item_count int32, row_height int32, content_height int32, scale float32, item StyleFrame) int32 {
-	var value_0 int32 = content_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = content_height
-		return value_3
+	if content_height > 0 {
+		return content_height
 	}
-	var value_4 int32 = item_count
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if item_count <= 0 {
+		return 0
 	}
-	var value_8 int32 = row_height
-	var value_9 float32 = scale
-	var value_10 StyleFrame = item
-	var value_11 int32 = ListBox_ListBoxRowHeight(value_8, value_9, value_10)
-	row_height = value_11
-	var value_12 int32 = item_count
-	var value_13 int64 = int64(number_runtime_bits(uint64(value_12), uint64(0), 64, true, 0))
-	var value_14 int32 = row_height
-	var value_15 int64 = int64(number_runtime_bits(uint64(value_14), uint64(0), 64, true, 0))
-	var value_16 int64 = int64(number_runtime_bits(uint64(value_13), uint64(value_15), 64, true, 3))
-	var height int64 = value_16
-	var value_17 int64 = height
-	var value_18 int64 = 2147483647
-	var value_19 bool = value_17 > value_18
-	if value_19 {
-		var value_20 int32 = 2147483647
-		return value_20
+	var value_0 int32 = ListBox_ListBoxRowHeight(row_height, scale, item)
+	row_height = value_0
+	var value_1 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(item_count), uint64(0), 64, true, 0))), uint64(int64(number_runtime_bits(uint64(row_height), uint64(0), 64, true, 0))), 64, true, 3))
+	var height int64 = value_1
+	if height > 2147483647 {
+		return 2147483647
 	}
-	var value_21 int64 = height
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_21), uint64(0), 32, true, 0))
-	return value_22
+	return int32(number_runtime_bits(uint64(height), uint64(0), 32, true, 0))
 }
 
 func ListBox_ListBoxMaxScroll(bounds_height float32, item_count int32, row_height int32, content_height int32, scale float32, item StyleFrame) int32 {
-	var value_0 int32 = item_count
-	var value_1 int32 = row_height
-	var value_2 int32 = content_height
-	var value_3 float32 = scale
-	var value_4 StyleFrame = item
-	var value_5 int32 = ListBox_ListBoxContentHeight(value_0, value_1, value_2, value_3, value_4)
-	var height int32 = value_5
-	var value_6 int32 = height
-	var value_7 float32 = bounds_height
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_8), 32, true, 2))
-	var max_scroll int32 = value_9
-	var value_10 int32 = max_scroll
-	var value_11 int32 = 0
-	var value_12 bool = value_10 < value_11
-	if value_12 {
-		var value_13 int32 = 0
-		return value_13
+	var value_0 int32 = ListBox_ListBoxContentHeight(item_count, row_height, content_height, scale, item)
+	var height int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+	var max_scroll int32 = (int32(number_runtime_bits(uint64(height), uint64(value_1), 32, true, 2)))
+	if max_scroll < 0 {
+		return 0
 	}
-	var value_14 int32 = max_scroll
-	return value_14
+	return max_scroll
 }
 
 func ListBox_ListBoxClampScroll(scroll int32, max_scroll int32) int32 {
-	var value_0 int32 = scroll
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if scroll < 0 {
+		return 0
 	}
-	var value_4 int32 = scroll
-	var value_5 int32 = max_scroll
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = max_scroll
-		return value_7
+	if scroll > max_scroll {
+		return max_scroll
 	}
-	var value_8 int32 = scroll
-	return value_8
+	return scroll
 }
 
 func ListBox_ListBoxRevealScroll(selected int32, scroll int32, row_height int32, viewport_height float32, max_scroll int32, scale float32, item StyleFrame) int32 {
-	var value_0 int32 = selected
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = scroll
-		var value_4 int32 = max_scroll
-		var value_5 int32 = ListBox_ListBoxClampScroll(value_3, value_4)
-		return value_5
+	if selected < 0 {
+		var value_0 int32 = ListBox_ListBoxClampScroll(scroll, max_scroll)
+		return value_0
 	}
-	var value_6 int32 = row_height
-	var value_7 float32 = scale
-	var value_8 StyleFrame = item
-	var value_9 int32 = ListBox_ListBoxRowHeight(value_6, value_7, value_8)
-	row_height = value_9
-	var value_10 int32 = selected
-	var value_11 int32 = row_height
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 3))
-	var top int32 = value_12
-	var value_13 int32 = top
-	var value_14 int32 = row_height
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
-	var bottom int32 = value_15
-	var value_16 float32 = viewport_height
-	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
-	var viewport int32 = value_17
-	var value_18 int32 = top
-	var value_19 int32 = scroll
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 int32 = top
-		scroll = value_21
+	var value_1 int32 = ListBox_ListBoxRowHeight(row_height, scale, item)
+	row_height = value_1
+	var top int32 = (int32(number_runtime_bits(uint64(selected), uint64(row_height), 32, true, 3)))
+	var bottom int32 = (int32(number_runtime_bits(uint64(top), uint64(row_height), 32, true, 1)))
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(viewport_height), 32, true)), uint64(0), 32, true, 0))
+	var viewport int32 = value_2
+	if top < scroll {
+		scroll = top
 	} else {
-		var value_22 int32 = bottom
-		var value_23 int32 = scroll
-		var value_24 int32 = viewport
-		var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
-		var value_26 bool = value_22 > value_25
-		if value_26 {
-			var value_27 int32 = bottom
-			var value_28 int32 = viewport
-			var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
-			scroll = value_29
+		if bottom > (int32(number_runtime_bits(uint64(scroll), uint64(viewport), 32, true, 1))) {
+			scroll = (int32(number_runtime_bits(uint64(bottom), uint64(viewport), 32, true, 2)))
 		}
 	}
-	var value_30 int32 = scroll
-	var value_31 int32 = max_scroll
-	var value_32 int32 = ListBox_ListBoxClampScroll(value_30, value_31)
-	return value_32
+	var value_3 int32 = ListBox_ListBoxClampScroll(scroll, max_scroll)
+	return value_3
 }
 
 func ListBox_ListBoxKeyNone() int32 {
-	var value_0 int32 = 0
-	return value_0
+	return 0
 }
 
 func ListBox_ListBoxKeyHome() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func ListBox_ListBoxKeyEnd() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func ListBox_ListBoxKeyUp() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func ListBox_ListBoxKeyDown() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func ListBox_ListBoxKeyFor(home bool, end bool, up bool, down bool) int32 {
-	var value_0 bool = home
-	if value_0 {
-		var value_1 int32 = ListBox_ListBoxKeyHome()
+	if home {
+		var value_0 int32 = ListBox_ListBoxKeyHome()
+		return value_0
+	}
+	if end {
+		var value_1 int32 = ListBox_ListBoxKeyEnd()
 		return value_1
 	}
-	var value_2 bool = end
-	if value_2 {
-		var value_3 int32 = ListBox_ListBoxKeyEnd()
+	if up {
+		var value_2 int32 = ListBox_ListBoxKeyUp()
+		return value_2
+	}
+	if down {
+		var value_3 int32 = ListBox_ListBoxKeyDown()
 		return value_3
 	}
-	var value_4 bool = up
-	if value_4 {
-		var value_5 int32 = ListBox_ListBoxKeyUp()
-		return value_5
-	}
-	var value_6 bool = down
-	if value_6 {
-		var value_7 int32 = ListBox_ListBoxKeyDown()
-		return value_7
-	}
-	var value_8 int32 = ListBox_ListBoxKeyNone()
-	return value_8
+	var value_4 int32 = ListBox_ListBoxKeyNone()
+	return value_4
 }
 
 func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll int32, row_height int32, viewport_height float32, max_scroll int32, scale float32, item StyleFrame) ListBoxNavigation {
 	var nav ListBoxNavigation = ListBoxNavigation{}
-	var value_0 int32 = selected
-	nav.Selected = value_0
-	var value_1 int32 = scroll
-	var value_2 int32 = max_scroll
-	var value_3 int32 = ListBox_ListBoxClampScroll(value_1, value_2)
-	nav.Scroll = value_3
-	var value_4 int32 = item_count
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 int32 = key
-		var value_9 int32 = ListBox_ListBoxKeyNone()
-		var value_10 bool = value_8 == value_9
-		value_7 = value_10
+	nav.Selected = selected
+	var value_0 int32 = ListBox_ListBoxClampScroll(scroll, max_scroll)
+	nav.Scroll = value_0
+	var value_1 bool = (item_count <= 0)
+	if !value_1 {
+		var value_2 int32 = ListBox_ListBoxKeyNone()
+		value_1 = (key == value_2)
 	}
-	if value_7 {
-		var value_11 ListBoxNavigation = nav
-		return value_11
+	if value_1 {
+		return nav
 	}
-	var value_12 int32 = selected
-	var next int32 = value_12
-	var value_13 int32 = key
-	var value_14 int32 = ListBox_ListBoxKeyHome()
-	var value_15 bool = value_13 == value_14
-	if value_15 {
-		var value_16 int32 = 0
-		next = value_16
+	var next int32 = selected
+	var value_3 int32 = ListBox_ListBoxKeyHome()
+	if key == value_3 {
+		next = 0
 	} else {
-		var value_17 int32 = key
-		var value_18 int32 = ListBox_ListBoxKeyEnd()
-		var value_19 bool = value_17 == value_18
-		if value_19 {
-			var value_20 int32 = item_count
-			var value_21 int32 = 1
-			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
-			next = value_22
+		var value_4 int32 = ListBox_ListBoxKeyEnd()
+		if key == value_4 {
+			next = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
 		} else {
-			var value_23 int32 = key
-			var value_24 int32 = ListBox_ListBoxKeyUp()
-			var value_25 bool = value_23 == value_24
-			if value_25 {
-				var value_26 int32 = selected
-				var value_27 int32 = 0
-				var value_28 bool = value_26 < value_27
-				if value_28 {
-					var value_29 int32 = item_count
-					var value_30 int32 = 1
-					var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 2))
-					next = value_31
+			var value_5 int32 = ListBox_ListBoxKeyUp()
+			if key == value_5 {
+				if selected < 0 {
+					next = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
 				} else {
-					var value_32 int32 = selected
-					var value_33 int32 = 1
-					var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 2))
-					next = value_34
+					next = (int32(number_runtime_bits(uint64(selected), uint64(1), 32, true, 2)))
 				}
 			} else {
-				var value_35 int32 = key
-				var value_36 int32 = ListBox_ListBoxKeyDown()
-				var value_37 bool = value_35 == value_36
-				if value_37 {
-					var value_38 int32 = selected
-					var value_39 int32 = 0
-					var value_40 bool = value_38 < value_39
-					if value_40 {
-						var value_41 int32 = 0
-						next = value_41
+				var value_6 int32 = ListBox_ListBoxKeyDown()
+				if key == value_6 {
+					if selected < 0 {
+						next = 0
 					} else {
-						var value_42 int32 = selected
-						var value_43 int32 = 1
-						var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 1))
-						next = value_44
+						next = (int32(number_runtime_bits(uint64(selected), uint64(1), 32, true, 1)))
 					}
 				} else {
-					var value_45 ListBoxNavigation = nav
-					return value_45
+					return nav
 				}
 			}
 		}
 	}
-	var value_46 int32 = next
-	var value_47 int32 = 0
-	var value_48 bool = value_46 < value_47
-	if value_48 {
-		var value_49 int32 = 0
-		next = value_49
+	if next < 0 {
+		next = 0
 	}
-	var value_50 int32 = next
-	var value_51 int32 = item_count
-	var value_52 bool = value_50 >= value_51
-	if value_52 {
-		var value_53 int32 = item_count
-		var value_54 int32 = 1
-		var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 2))
-		next = value_55
+	if next >= item_count {
+		next = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
 	}
-	var value_56 int32 = next
-	var value_57 int32 = selected
-	var value_58 bool = value_56 != value_57
-	nav.Changed = value_58
-	var value_59 int32 = next
-	nav.Selected = value_59
-	var value_60 int32 = next
-	var value_61 int32 = nav.Scroll
-	var value_62 int32 = row_height
-	var value_63 float32 = viewport_height
-	var value_64 int32 = max_scroll
-	var value_65 float32 = scale
-	var value_66 StyleFrame = item
-	var value_67 int32 = ListBox_ListBoxRevealScroll(value_60, value_61, value_62, value_63, value_64, value_65, value_66)
-	nav.Scroll = value_67
-	var value_68 ListBoxNavigation = nav
-	return value_68
+	nav.Changed = (next != selected)
+	nav.Selected = next
+	var value_7 int32 = nav.Scroll
+	var value_8 int32 = ListBox_ListBoxRevealScroll(next, value_7, row_height, viewport_height, max_scroll, scale, item)
+	nav.Scroll = value_8
+	return nav
 }
 
 func ListBox_ListBoxRowDecisionFor(hot bool, released bool, has_selection bool, current_selected int32, row int32) ListBoxRowDecision {
 	var decision ListBoxRowDecision = ListBoxRowDecision{}
-	var value_0 int32 = current_selected
-	decision.Selected = value_0
-	var value_1 bool = hot
-	var value_2 bool = !value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 bool = released
-		var value_5 bool = !value_4
-		value_3 = value_5
+	decision.Selected = current_selected
+	var value_0 bool = !hot
+	if !value_0 {
+		value_0 = !released
 	}
-	var value_6 bool = value_3
-	if !value_6 {
-		var value_7 bool = has_selection
-		var value_8 bool = !value_7
-		value_6 = value_8
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = !has_selection
 	}
-	if value_6 {
-		var value_9 ListBoxRowDecision = decision
-		return value_9
+	if value_1 {
+		return decision
 	}
-	var value_10 bool = true
-	decision.ConsumeRelease = value_10
-	var value_11 bool = true
-	decision.Select = value_11
-	var value_12 int32 = row
-	decision.Selected = value_12
-	var value_13 int32 = row
-	var value_14 int32 = current_selected
-	var value_15 bool = value_13 != value_14
-	decision.Changed = value_15
-	var value_16 ListBoxRowDecision = decision
-	return value_16
+	decision.ConsumeRelease = true
+	decision.Select = true
+	decision.Selected = row
+	decision.Changed = (row != current_selected)
+	return decision
 }
 
 func ListBox_ListBoxLayoutFor(bounds Rectangle, item_count int32, row_height int32, content_height int32, scroll int32, scale float32, item StyleFrame) ListBoxLayout {
 	var layout ListBoxLayout = ListBoxLayout{}
-	var value_0 int32 = row_height
-	var value_1 float32 = scale
-	var value_2 StyleFrame = item
-	var value_3 int32 = ListBox_ListBoxRowHeight(value_0, value_1, value_2)
-	layout.RowHeight = value_3
-	var value_4 int32 = item_count
-	var value_5 int32 = layout.RowHeight
-	var value_6 int32 = content_height
-	var value_7 float32 = scale
-	var value_8 StyleFrame = item
-	var value_9 int32 = ListBox_ListBoxContentHeight(value_4, value_5, value_6, value_7, value_8)
-	layout.ContentHeight = value_9
-	var value_10 float32 = bounds.Height
-	var value_11 int32 = item_count
-	var value_12 int32 = layout.RowHeight
-	var value_13 int32 = content_height
-	var value_14 float32 = scale
-	var value_15 StyleFrame = item
-	var value_16 int32 = ListBox_ListBoxMaxScroll(value_10, value_11, value_12, value_13, value_14, value_15)
-	layout.MaxScroll = value_16
-	var value_17 int32 = scroll
-	var value_18 int32 = layout.MaxScroll
-	var value_19 int32 = ListBox_ListBoxClampScroll(value_17, value_18)
-	layout.Scroll = value_19
-	var value_20 int32 = layout.RowHeight
-	var value_21 int32 = 0
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 int32 = layout.Scroll
-		var value_24 int32 = layout.RowHeight
-		var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 4))
-		layout.FirstRow = value_25
-		var value_26 int32 = layout.Scroll
-		var value_27 int32 = layout.RowHeight
-		var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 5))
-		layout.YOffset = value_28
-		var value_29 float32 = bounds.Height
-		var value_30 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_29), 32, true)), uint64(0), 32, true, 0))
-		var value_31 int32 = layout.RowHeight
-		var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 4))
-		layout.VisibleRows = value_32
+	var value_0 int32 = ListBox_ListBoxRowHeight(row_height, scale, item)
+	layout.RowHeight = value_0
+	var value_1 int32 = layout.RowHeight
+	var value_2 int32 = ListBox_ListBoxContentHeight(item_count, value_1, content_height, scale, item)
+	layout.ContentHeight = value_2
+	var value_3 float32 = bounds.Height
+	var value_4 int32 = layout.RowHeight
+	var value_5 int32 = ListBox_ListBoxMaxScroll(value_3, item_count, value_4, content_height, scale, item)
+	layout.MaxScroll = value_5
+	var value_6 int32 = layout.MaxScroll
+	var value_7 int32 = ListBox_ListBoxClampScroll(scroll, value_6)
+	layout.Scroll = value_7
+	if layout.RowHeight > 0 {
+		layout.FirstRow = (int32(number_runtime_bits(uint64(layout.Scroll), uint64(layout.RowHeight), 32, true, 4)))
+		layout.YOffset = (int32(number_runtime_bits(uint64(layout.Scroll), uint64(layout.RowHeight), 32, true, 5)))
+		var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+		layout.VisibleRows = (int32(number_runtime_bits(uint64(value_8), uint64(layout.RowHeight), 32, true, 4)))
 	}
-	var value_33 ListBoxLayout = layout
-	return value_33
+	return layout
 }
 
 func ListBox_ListBoxRowBounds(bounds Rectangle, row_index int32, layout ListBoxLayout) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	row.X = value_0
-	var value_1 float32 = bounds.Y
-	var value_2 int32 = row_index
-	var value_3 int32 = layout.RowHeight
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
-	var value_5 int32 = layout.YOffset
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 2))
-	var value_7 float32 = float32(value_6)
-	var value_8 float32 = value_1 + value_7
-	row.Y = value_8
-	var value_9 float32 = bounds.Width
-	row.Width = value_9
-	var value_10 int32 = layout.RowHeight
-	var value_11 float32 = float32(value_10)
-	row.Height = value_11
-	var value_12 Rectangle = row
-	return value_12
+	row.X = bounds.X
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_index), uint64(layout.RowHeight), 32, true, 3)))), uint64(layout.YOffset), 32, true, 2))
+	row.Y = (bounds.Y + float32(value_0))
+	row.Width = bounds.Width
+	row.Height = float32(layout.RowHeight)
+	return row
 }
 
 func ListBox_ListBoxItemPaintFor(row Rectangle, label_inset int32, text_line_height int32) ListBoxItemPaint {
 	var paint ListBoxItemPaint = ListBoxItemPaint{}
-	var value_0 float32 = row.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = label_inset
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	paint.TextX = value_3
-	var value_4 float32 = row.Y
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var value_6 float32 = row.Height
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var value_8 int32 = text_line_height
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
-	var value_10 int32 = 2
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 4))
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_11), 32, true, 1))
-	paint.TextY = value_12
-	var value_13 ListBoxItemPaint = paint
-	return value_13
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.X), 32, true)), uint64(0), 32, true, 0))
+	paint.TextX = (int32(number_runtime_bits(uint64(value_0), uint64(label_inset), 32, true, 1)))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_2), uint64(text_line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.TextY = (int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 1)))
+	return paint
 }
 
 func ListBox_ListBoxItemLabelInset(scale float32, item StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = item.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = item.Value.PaddingX
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = ListBox_ListBoxMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
+	var value_0 uint32 = item.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = item.Value.PaddingX
+	var value_3 float32 = 8.0
+	var value_4 int32 = ListBox_ListBoxMetric(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func ListBox_ListBoxScrollbarBoundsFor(bounds Rectangle, scale float32, list StyleFrame) Rectangle {
 	var bar Rectangle = Rectangle{}
 	var value_0 uint32 = list.Value.Fields
-	var value_1 int32 = int32(StyleContentOffset)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = list.Value.OffsetY
-	var value_4 float32 = 8.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 int32 = ListBox_ListBoxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	var scrollbar_width int32 = value_7
-	var value_8 float32 = bounds.X
-	var value_9 float32 = bounds.Width
-	var value_10 float32 = value_8 + value_9
-	var value_11 int32 = scrollbar_width
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = value_10 - value_12
-	bar.X = value_13
-	var value_14 float32 = bounds.Y
-	bar.Y = value_14
-	var value_15 int32 = scrollbar_width
-	var value_16 float32 = float32(value_15)
-	bar.Width = value_16
-	var value_17 float32 = bounds.Height
-	bar.Height = value_17
-	var value_18 Rectangle = bar
-	return value_18
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = list.Value.OffsetY
+	var value_3 float32 = 8.0
+	var value_4 int32 = ListBox_ListBoxMetric(value_0, value_1, value_2, value_3, scale, true)
+	var scrollbar_width int32 = value_4
+	bar.X = ((bounds.X + bounds.Width) - float32(scrollbar_width))
+	bar.Y = bounds.Y
+	bar.Width = float32(scrollbar_width)
+	bar.Height = bounds.Height
+	return bar
 }

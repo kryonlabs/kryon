@@ -79,876 +79,462 @@ type SpinboxRowLayout struct {
 }
 
 func Rows_RowsMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_14 = value_17
+		value_2 = value_3
 	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
-	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-	return value_25
-}
-
-func Rows_RowsRequestedMetric(requested int32, fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 int32 = requested
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
 	if value_2 {
-		var value_3 int32 = requested
-		return value_3
+		value = fallback
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 float32 = value
-	var value_7 float32 = fallback
-	var value_8 float32 = scale
-	var value_9 bool = allow_zero
-	var value_10 int32 = Rows_RowsMetric(value_4, value_5, value_6, value_7, value_8, value_9)
-	return value_10
-}
-
-func Rows_RowsMutedAlpha(alpha uint8) uint8 {
-	var value_0 uint8 = alpha
-	var value_1 float32 = float32(value_0)
-	var value_2 float32 = 0.72
-	var value_3 float32 = value_1 * value_2
-	var value_4 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 8, false)), uint64(0), 8, false, 0))
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
 	return value_4
 }
 
-func Rows_InfoRowsTextRole() int32 {
-	var value_0 int32 = 0
+func Rows_RowsRequestedMetric(requested int32, fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
+	if requested > 0 {
+		return requested
+	}
+	var value_0 int32 = Rows_RowsMetric(fields, field, value, fallback, scale, allow_zero)
 	return value_0
+}
+
+func Rows_RowsMutedAlpha(alpha uint8) uint8 {
+	var value_0 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64((float32(alpha)*0.72)), 8, false)), uint64(0), 8, false, 0))
+	return value_0
+}
+
+func Rows_InfoRowsTextRole() int32 {
+	return 0
 }
 
 func Rows_LabelTextFieldLabelRole() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func Rows_LabelTextFieldFieldRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func Rows_SectionLabelRole() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func Rows_CheckboxRowRole() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func Rows_ButtonRowPrimaryRole() int32 {
-	var value_0 int32 = 5
-	return value_0
+	return 5
 }
 
 func Rows_ButtonRowSecondaryRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Rows_SpinboxRowLabelRole() int32 {
-	var value_0 int32 = 7
-	return value_0
+	return 7
 }
 
 func Rows_SpinboxRowControlRole() int32 {
-	var value_0 int32 = 8
-	return value_0
+	return 8
 }
 
 func Rows_InfoRowsMetricsFor(row_height int32, padding_x int32, scale float32, row StyleFrame) InfoRowsMetrics {
 	var metrics InfoRowsMetrics = InfoRowsMetrics{}
-	var value_0 int32 = row_height
-	var value_1 uint32 = row.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = row.Value.OffsetY
-	var value_5 float32 = 32.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.RowHeight = value_8
-	var value_9 int32 = padding_x
-	var value_10 uint32 = row.Value.Fields
-	var value_11 int32 = int32(StylePaddingX)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 float32 = row.Value.PaddingX
-	var value_14 float32 = 10.0
-	var value_15 float32 = scale
-	var value_16 bool = true
-	var value_17 int32 = Rows_RowsRequestedMetric(value_9, value_10, value_12, value_13, value_14, value_15, value_16)
-	metrics.PaddingX = value_17
-	var value_18 InfoRowsMetrics = metrics
-	return value_18
+	var value_0 uint32 = row.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = row.Value.OffsetY
+	var value_3 float32 = 32.0
+	var value_4 int32 = Rows_RowsRequestedMetric(row_height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.RowHeight = value_4
+	var value_5 uint32 = row.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_7 float32 = row.Value.PaddingX
+	var value_8 float32 = 10.0
+	var value_9 int32 = Rows_RowsRequestedMetric(padding_x, value_5, value_6, value_7, value_8, scale, true)
+	metrics.PaddingX = value_9
+	return metrics
 }
 
 func Rows_InfoRowsLayoutFor(x int32, y int32, width int32, row_count int32, metrics InfoRowsMetrics) InfoRowsLayout {
 	var layout InfoRowsLayout = InfoRowsLayout{}
-	var value_0 int32 = row_count
-	var value_1 int32 = metrics.RowHeight
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 3))
-	var h int32 = value_2
-	var value_3 int32 = width
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 0
-		width = value_6
+	var h int32 = (int32(number_runtime_bits(uint64(row_count), uint64(metrics.RowHeight), 32, true, 3)))
+	if width < 0 {
+		width = 0
 	}
-	var value_7 int32 = h
-	var value_8 int32 = 0
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 int32 = 0
-		h = value_10
+	if h < 0 {
+		h = 0
 	}
-	var value_11 int32 = x
-	var value_12 float32 = float32(value_11)
-	layout.Background.X = value_12
-	var value_13 int32 = y
-	var value_14 float32 = float32(value_13)
-	layout.Background.Y = value_14
-	var value_15 int32 = width
-	var value_16 float32 = float32(value_15)
-	layout.Background.Width = value_16
-	var value_17 int32 = h
-	var value_18 float32 = float32(value_17)
-	layout.Background.Height = value_18
-	var value_19 InfoRowsLayout = layout
-	return value_19
+	layout.Background.X = float32(x)
+	layout.Background.Y = float32(y)
+	layout.Background.Width = float32(width)
+	layout.Background.Height = float32(h)
+	return layout
 }
 
 func Rows_InfoRowLayoutFor(x int32, y int32, width int32, row_index int32, metrics InfoRowsMetrics) InfoRowLayout {
 	var layout InfoRowLayout = InfoRowLayout{}
-	var value_0 int32 = row_index
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		row_index = value_3
+	if row_index < 0 {
+		row_index = 0
 	}
-	var value_4 int32 = y
-	var value_5 int32 = row_index
-	var value_6 int32 = metrics.RowHeight
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
-	var row_y int32 = value_8
-	var value_9 int32 = width
-	var value_10 int32 = metrics.PaddingX
-	var value_11 int32 = 2
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 3))
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_12), 32, true, 2))
-	var text_width int32 = value_13
-	var value_14 int32 = text_width
-	var value_15 int32 = 0
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 int32 = 0
-		text_width = value_17
+	var value_0 int32 = int32(number_runtime_bits(uint64(y), uint64((int32(number_runtime_bits(uint64(row_index), uint64(metrics.RowHeight), 32, true, 3)))), 32, true, 1))
+	var row_y int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(width), uint64((int32(number_runtime_bits(uint64(metrics.PaddingX), uint64(2), 32, true, 3)))), 32, true, 2))
+	var text_width int32 = value_1
+	if text_width < 0 {
+		text_width = 0
 	}
-	var value_18 int32 = x
-	var value_19 int32 = metrics.PaddingX
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-	var value_21 float32 = float32(value_20)
-	layout.TextBounds.X = value_21
-	var value_22 int32 = row_y
-	var value_23 float32 = float32(value_22)
-	layout.TextBounds.Y = value_23
-	var value_24 int32 = text_width
-	var value_25 float32 = float32(value_24)
-	layout.TextBounds.Width = value_25
-	var value_26 int32 = metrics.RowHeight
-	var value_27 float32 = float32(value_26)
-	layout.TextBounds.Height = value_27
-	var value_28 int32 = row_y
-	layout.SeparatorY = value_28
-	var value_29 InfoRowLayout = layout
-	return value_29
+	layout.TextBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(metrics.PaddingX), 32, true, 1))))
+	layout.TextBounds.Y = float32(row_y)
+	layout.TextBounds.Width = float32(text_width)
+	layout.TextBounds.Height = float32(metrics.RowHeight)
+	layout.SeparatorY = row_y
+	return layout
 }
 
 func Rows_LabelTextFieldMetricsFor(label_height int32, field_height int32, gap int32, bottom_gap int32, scale float32, label StyleFrame, field StyleFrame) LabelTextFieldMetrics {
 	var metrics LabelTextFieldMetrics = LabelTextFieldMetrics{}
-	var value_0 int32 = label_height
-	var value_1 uint32 = label.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = label.Value.OffsetY
-	var value_5 float32 = 22.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.LabelHeight = value_8
-	var value_9 int32 = field_height
-	var value_10 uint32 = field.Value.Fields
-	var value_11 int32 = int32(StyleContentOffset)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 float32 = field.Value.OffsetY
-	var value_14 float32 = 40.0
-	var value_15 float32 = scale
-	var value_16 bool = false
-	var value_17 int32 = Rows_RowsRequestedMetric(value_9, value_10, value_12, value_13, value_14, value_15, value_16)
-	metrics.FieldHeight = value_17
-	var value_18 int32 = gap
-	var value_19 int32 = 0
-	var value_20 bool = value_18 > value_19
-	if value_20 {
-		var value_21 int32 = gap
-		metrics.Gap = value_21
+	var value_0 uint32 = label.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.OffsetY
+	var value_3 float32 = 22.0
+	var value_4 int32 = Rows_RowsRequestedMetric(label_height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.LabelHeight = value_4
+	var value_5 uint32 = field.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_7 float32 = field.Value.OffsetY
+	var value_8 float32 = 40.0
+	var value_9 int32 = Rows_RowsRequestedMetric(field_height, value_5, value_6, value_7, value_8, scale, false)
+	metrics.FieldHeight = value_9
+	if gap > 0 {
+		metrics.Gap = gap
 	} else {
-		var value_22 uint32 = label.Value.Fields
-		var value_23 int32 = int32(StyleGap)
-		var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
-		var value_25 float32 = label.Value.Gap
-		var value_26 float32 = 0.0
-		var value_27 float32 = scale
-		var value_28 bool = true
-		var value_29 int32 = Rows_RowsMetric(value_22, value_24, value_25, value_26, value_27, value_28)
-		metrics.Gap = value_29
+		var value_10 uint32 = label.Value.Fields
+		var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+		var value_12 float32 = label.Value.Gap
+		var value_13 float32 = 0.0
+		var value_14 int32 = Rows_RowsMetric(value_10, value_11, value_12, value_13, scale, true)
+		metrics.Gap = value_14
 	}
-	var value_30 int32 = bottom_gap
-	var value_31 uint32 = field.Value.Fields
-	var value_32 int32 = int32(StyleGap)
-	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 float32 = field.Value.Gap
-	var value_35 float32 = 24.0
-	var value_36 float32 = scale
-	var value_37 bool = true
-	var value_38 int32 = Rows_RowsRequestedMetric(value_30, value_31, value_33, value_34, value_35, value_36, value_37)
-	metrics.BottomGap = value_38
-	var value_39 LabelTextFieldMetrics = metrics
-	return value_39
+	var value_15 uint32 = field.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_17 float32 = field.Value.Gap
+	var value_18 float32 = 24.0
+	var value_19 int32 = Rows_RowsRequestedMetric(bottom_gap, value_15, value_16, value_17, value_18, scale, true)
+	metrics.BottomGap = value_19
+	return metrics
 }
 
 func Rows_LabelTextFieldLayoutFor(x int32, y int32, width int32, requested_bounds Rectangle, metrics LabelTextFieldMetrics) LabelTextFieldLayout {
 	var layout LabelTextFieldLayout = LabelTextFieldLayout{}
-	var value_0 int32 = x
-	var value_1 float32 = float32(value_0)
-	layout.LabelBounds.X = value_1
-	var value_2 int32 = y
-	var value_3 float32 = float32(value_2)
-	layout.LabelBounds.Y = value_3
-	var value_4 int32 = width
-	var value_5 float32 = float32(value_4)
-	layout.LabelBounds.Width = value_5
-	var value_6 int32 = metrics.LabelHeight
-	var value_7 float32 = float32(value_6)
-	layout.LabelBounds.Height = value_7
-	var value_8 float32 = requested_bounds.Width
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 > value_9
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 float32 = requested_bounds.Height
-		var value_13 float32 = 0.0
-		var value_14 bool = value_12 > value_13
-		value_11 = value_14
+	layout.LabelBounds.X = float32(x)
+	layout.LabelBounds.Y = float32(y)
+	layout.LabelBounds.Width = float32(width)
+	layout.LabelBounds.Height = float32(metrics.LabelHeight)
+	var value_0 bool = (requested_bounds.Width > 0.0)
+	if value_0 {
+		value_0 = (requested_bounds.Height > 0.0)
 	}
-	if value_11 {
-		var value_15 Rectangle = requested_bounds
-		layout.FieldBounds = value_15
-		var value_16 LabelTextFieldLayout = layout
-		return value_16
+	if value_0 {
+		layout.FieldBounds = requested_bounds
+		return layout
 	}
-	var value_17 int32 = x
-	var value_18 float32 = float32(value_17)
-	layout.FieldBounds.X = value_18
-	var value_19 int32 = y
-	var value_20 int32 = metrics.LabelHeight
-	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 1))
-	var value_22 int32 = metrics.Gap
-	var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
-	var value_24 float32 = float32(value_23)
-	layout.FieldBounds.Y = value_24
-	var value_25 int32 = width
-	var value_26 float32 = float32(value_25)
-	layout.FieldBounds.Width = value_26
-	var value_27 int32 = metrics.FieldHeight
-	var value_28 float32 = float32(value_27)
-	layout.FieldBounds.Height = value_28
-	var value_29 LabelTextFieldLayout = layout
-	return value_29
+	layout.FieldBounds.X = float32(x)
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(y), uint64(metrics.LabelHeight), 32, true, 1)))), uint64(metrics.Gap), 32, true, 1))
+	layout.FieldBounds.Y = float32(value_1)
+	layout.FieldBounds.Width = float32(width)
+	layout.FieldBounds.Height = float32(metrics.FieldHeight)
+	return layout
 }
 
 func Rows_SectionLabelMetricsFor(height int32, icon_diameter int32, scale float32, label StyleFrame) SectionLabelMetrics {
 	var metrics SectionLabelMetrics = SectionLabelMetrics{}
-	var value_0 int32 = height
-	var value_1 uint32 = label.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = label.Value.OffsetY
-	var value_5 float32 = 24.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.Height = value_8
-	var value_9 int32 = icon_diameter
+	var value_0 uint32 = label.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.OffsetY
+	var value_3 float32 = 24.0
+	var value_4 int32 = Rows_RowsRequestedMetric(height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.Height = value_4
+	var value_5 uint32 = label.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_7 float32 = label.Value.IconSize
+	var value_8 float32 = 18.0
+	var value_9 int32 = Rows_RowsRequestedMetric(icon_diameter, value_5, value_6, value_7, value_8, scale, false)
+	metrics.IconDiameter = value_9
 	var value_10 uint32 = label.Value.Fields
-	var value_11 int32 = int32(StyleIconSize)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 float32 = label.Value.IconSize
-	var value_14 float32 = 18.0
-	var value_15 float32 = scale
-	var value_16 bool = false
-	var value_17 int32 = Rows_RowsRequestedMetric(value_9, value_10, value_12, value_13, value_14, value_15, value_16)
-	metrics.IconDiameter = value_17
-	var value_18 uint32 = label.Value.Fields
-	var value_19 int32 = int32(StylePaddingX)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = label.Value.PaddingX
-	var value_22 float32 = 16.0
-	var value_23 float32 = scale
-	var value_24 bool = true
-	var value_25 int32 = Rows_RowsMetric(value_18, value_20, value_21, value_22, value_23, value_24)
-	metrics.InfoGap = value_25
-	var value_26 uint32 = label.Value.Fields
-	var value_27 int32 = int32(StylePaddingY)
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-	var value_29 float32 = label.Value.PaddingY
-	var value_30 float32 = 1.0
-	var value_31 float32 = scale
-	var value_32 bool = true
-	var value_33 int32 = Rows_RowsMetric(value_26, value_28, value_29, value_30, value_31, value_32)
-	metrics.InfoYOffset = value_33
-	var value_34 SectionLabelMetrics = metrics
-	return value_34
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_12 float32 = label.Value.PaddingX
+	var value_13 float32 = 16.0
+	var value_14 int32 = Rows_RowsMetric(value_10, value_11, value_12, value_13, scale, true)
+	metrics.InfoGap = value_14
+	var value_15 uint32 = label.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_17 float32 = label.Value.PaddingY
+	var value_18 float32 = 1.0
+	var value_19 int32 = Rows_RowsMetric(value_15, value_16, value_17, value_18, scale, true)
+	metrics.InfoYOffset = value_19
+	return metrics
 }
 
 func Rows_CheckboxRowMetricsFor(height int32, scale float32, row StyleFrame) CheckboxRowMetrics {
 	var metrics CheckboxRowMetrics = CheckboxRowMetrics{}
-	var value_0 int32 = height
-	var value_1 uint32 = row.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = row.Value.OffsetY
-	var value_5 float32 = 42.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.Height = value_8
-	var value_9 CheckboxRowMetrics = metrics
-	return value_9
+	var value_0 uint32 = row.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = row.Value.OffsetY
+	var value_3 float32 = 42.0
+	var value_4 int32 = Rows_RowsRequestedMetric(height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.Height = value_4
+	return metrics
 }
 
 func Rows_ButtonRowMetricsFor(height int32, gap int32, scale float32, row StyleFrame, item StyleFrame) ButtonRowMetrics {
 	var metrics ButtonRowMetrics = ButtonRowMetrics{}
-	var value_0 int32 = height
-	var value_1 uint32 = row.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = row.Value.OffsetY
-	var value_5 float32 = 30.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.Height = value_8
-	var value_9 int32 = gap
-	var value_10 int32 = 0
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 int32 = gap
-		metrics.Gap = value_12
+	var value_0 uint32 = row.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = row.Value.OffsetY
+	var value_3 float32 = 30.0
+	var value_4 int32 = Rows_RowsRequestedMetric(height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.Height = value_4
+	if gap > 0 {
+		metrics.Gap = gap
 	} else {
-		var value_13 uint32 = row.Value.Fields
-		var value_14 int32 = int32(StyleGap)
-		var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
-		var value_16 float32 = row.Value.Gap
-		var value_17 float32 = 6.0
-		var value_18 float32 = scale
-		var value_19 bool = true
-		var value_20 int32 = Rows_RowsMetric(value_13, value_15, value_16, value_17, value_18, value_19)
-		metrics.Gap = value_20
+		var value_5 uint32 = row.Value.Fields
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+		var value_7 float32 = row.Value.Gap
+		var value_8 float32 = 6.0
+		var value_9 int32 = Rows_RowsMetric(value_5, value_6, value_7, value_8, scale, true)
+		metrics.Gap = value_9
 	}
-	var value_21 uint32 = item.Value.Fields
-	var value_22 int32 = int32(StylePaddingX)
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 float32 = item.Value.PaddingX
-	var value_25 float32 = 10.0
-	var value_26 float32 = scale
-	var value_27 bool = true
-	var value_28 int32 = Rows_RowsMetric(value_21, value_23, value_24, value_25, value_26, value_27)
-	metrics.ItemPaddingX = value_28
-	var value_29 uint32 = item.Value.Fields
-	var value_30 int32 = int32(StyleContentOffset)
-	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-	var value_32 float32 = item.Value.OffsetX
-	var value_33 float32 = 76.0
-	var value_34 float32 = scale
-	var value_35 bool = false
-	var value_36 int32 = Rows_RowsMetric(value_29, value_31, value_32, value_33, value_34, value_35)
-	metrics.MinWidth = value_36
-	var value_37 uint32 = item.Value.Fields
-	var value_38 int32 = int32(StyleIconSize)
-	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
-	var value_40 float32 = item.Value.IconSize
-	var value_41 float32 = 144.0
-	var value_42 float32 = scale
-	var value_43 bool = false
-	var value_44 int32 = Rows_RowsMetric(value_37, value_39, value_40, value_41, value_42, value_43)
-	metrics.MaxWidth = value_44
-	var value_45 int32 = metrics.MaxWidth
-	var value_46 int32 = metrics.MinWidth
-	var value_47 bool = value_45 < value_46
-	if value_47 {
-		var value_48 int32 = metrics.MinWidth
-		metrics.MaxWidth = value_48
+	var value_10 uint32 = item.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_12 float32 = item.Value.PaddingX
+	var value_13 float32 = 10.0
+	var value_14 int32 = Rows_RowsMetric(value_10, value_11, value_12, value_13, scale, true)
+	metrics.ItemPaddingX = value_14
+	var value_15 uint32 = item.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_17 float32 = item.Value.OffsetX
+	var value_18 float32 = 76.0
+	var value_19 int32 = Rows_RowsMetric(value_15, value_16, value_17, value_18, scale, false)
+	metrics.MinWidth = value_19
+	var value_20 uint32 = item.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_22 float32 = item.Value.IconSize
+	var value_23 float32 = 144.0
+	var value_24 int32 = Rows_RowsMetric(value_20, value_21, value_22, value_23, scale, false)
+	metrics.MaxWidth = value_24
+	if metrics.MaxWidth < metrics.MinWidth {
+		metrics.MaxWidth = metrics.MinWidth
 	}
-	var value_49 ButtonRowMetrics = metrics
-	return value_49
+	return metrics
 }
 
 func Rows_ButtonRowItemWidth(label_width int32, metrics ButtonRowMetrics) int32 {
-	var value_0 int32 = label_width
-	var value_1 int32 = metrics.ItemPaddingX
-	var value_2 int32 = 2
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
-	var width int32 = value_4
-	var value_5 int32 = width
-	var value_6 int32 = metrics.MinWidth
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = metrics.MinWidth
-		width = value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(label_width), uint64((int32(number_runtime_bits(uint64(metrics.ItemPaddingX), uint64(2), 32, true, 3)))), 32, true, 1))
+	var width int32 = value_0
+	if width < metrics.MinWidth {
+		width = metrics.MinWidth
 	}
-	var value_9 int32 = width
-	var value_10 int32 = metrics.MaxWidth
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 int32 = metrics.MaxWidth
-		width = value_12
+	if width > metrics.MaxWidth {
+		width = metrics.MaxWidth
 	}
-	var value_13 int32 = width
-	return value_13
+	return width
 }
 
 func Rows_ButtonRowWrapFor(row_width int32, item_width int32, total_width int32, gap int32) ButtonRowWrapDecision {
 	var decision ButtonRowWrapDecision = ButtonRowWrapDecision{}
-	var value_0 int32 = item_width
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
+	if item_width < 0 {
+		item_width = 0
+	}
+	if gap < 0 {
+		gap = 0
+	}
+	var next_width int32 = item_width
+	if row_width > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_width), uint64(gap), 32, true, 1)))), uint64(item_width), 32, true, 1))
+		next_width = value_0
+	}
+	var value_1 bool = (row_width > 0)
+	if value_1 {
+		value_1 = (total_width > 0)
+	}
+	var value_2 bool = value_1
 	if value_2 {
-		var value_3 int32 = 0
-		item_width = value_3
+		value_2 = (next_width > total_width)
 	}
-	var value_4 int32 = gap
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		gap = value_7
+	if value_2 {
+		decision.Wraps = true
+		decision.RowWidth = item_width
+		return decision
 	}
-	var value_8 int32 = item_width
-	var next_width int32 = value_8
-	var value_9 int32 = row_width
-	var value_10 int32 = 0
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 int32 = row_width
-		var value_13 int32 = gap
-		var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-		var value_15 int32 = item_width
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-		next_width = value_16
-	}
-	var value_17 int32 = row_width
-	var value_18 int32 = 0
-	var value_19 bool = value_17 > value_18
-	var value_20 bool = value_19
-	if value_20 {
-		var value_21 int32 = total_width
-		var value_22 int32 = 0
-		var value_23 bool = value_21 > value_22
-		value_20 = value_23
-	}
-	var value_24 bool = value_20
-	if value_24 {
-		var value_25 int32 = next_width
-		var value_26 int32 = total_width
-		var value_27 bool = value_25 > value_26
-		value_24 = value_27
-	}
-	if value_24 {
-		var value_28 bool = true
-		decision.Wraps = value_28
-		var value_29 int32 = item_width
-		decision.RowWidth = value_29
-		var value_30 ButtonRowWrapDecision = decision
-		return value_30
-	}
-	var value_31 int32 = next_width
-	decision.RowWidth = value_31
-	var value_32 ButtonRowWrapDecision = decision
-	return value_32
+	decision.RowWidth = next_width
+	return decision
 }
 
 func Rows_ButtonRowPlacementFor(x int32, width int32, row_count int32, gap int32) ButtonRowPlacement {
 	var placement ButtonRowPlacement = ButtonRowPlacement{}
-	var value_0 int32 = row_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = width
-		var value_5 int32 = 0
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
+	var value_0 bool = (row_count <= 0)
+	if !value_0 {
+		value_0 = (width <= 0)
 	}
-	if value_3 {
-		var value_7 int32 = x
-		placement.StartX = value_7
-		var value_8 ButtonRowPlacement = placement
-		return value_8
+	if value_0 {
+		placement.StartX = x
+		return placement
 	}
-	var value_9 int32 = width
-	var value_10 int32 = gap
-	var value_11 int32 = row_count
-	var value_12 int32 = 1
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 3))
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_14), 32, true, 2))
-	var usable int32 = value_15
-	var value_16 int32 = usable
-	var value_17 int32 = row_count
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 4))
-	placement.ButtonWidth = value_18
-	var value_19 int32 = placement.ButtonWidth
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = 0
-		placement.ButtonWidth = value_22
+	var value_1 int32 = int32(number_runtime_bits(uint64(gap), uint64((int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))), 32, true, 3))
+	var usable int32 = (int32(number_runtime_bits(uint64(width), uint64(value_1), 32, true, 2)))
+	placement.ButtonWidth = (int32(number_runtime_bits(uint64(usable), uint64(row_count), 32, true, 4)))
+	if placement.ButtonWidth < 0 {
+		placement.ButtonWidth = 0
 	}
-	var value_23 int32 = placement.ButtonWidth
-	var value_24 int32 = row_count
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
-	var value_26 int32 = gap
-	var value_27 int32 = row_count
-	var value_28 int32 = 1
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
-	var value_30 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_29), 32, true, 3))
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_30), 32, true, 1))
-	placement.TotalWidth = value_31
-	var value_32 int32 = x
-	var value_33 int32 = width
-	var value_34 int32 = placement.TotalWidth
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-	var value_36 int32 = 2
-	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 4))
-	var value_38 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_37), 32, true, 1))
-	placement.StartX = value_38
-	var value_39 ButtonRowPlacement = placement
-	return value_39
+	var value_2 int32 = int32(number_runtime_bits(uint64(gap), uint64((int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))), 32, true, 3))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(placement.ButtonWidth), uint64(row_count), 32, true, 3)))), uint64(value_2), 32, true, 1))
+	placement.TotalWidth = value_3
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(width), uint64(placement.TotalWidth), 32, true, 2)))), uint64(2), 32, true, 4))
+	placement.StartX = (int32(number_runtime_bits(uint64(x), uint64(value_4), 32, true, 1)))
+	return placement
 }
 
 func Rows_ButtonRowTotalHeight(row_count int32, row_height int32, gap int32) int32 {
-	var value_0 int32 = row_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if row_count <= 0 {
+		return 0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		row_height = value_7
+	if row_height < 0 {
+		row_height = 0
 	}
-	var value_8 int32 = gap
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		gap = value_11
+	if gap < 0 {
+		gap = 0
 	}
-	var value_12 int32 = row_count
-	var value_13 int32 = row_height
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 3))
-	var value_15 int32 = row_count
-	var value_16 int32 = 1
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 2))
-	var value_18 int32 = gap
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 3))
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_19), 32, true, 1))
-	return value_20
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))), uint64(gap), 32, true, 3))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_count), uint64(row_height), 32, true, 3)))), uint64(value_0), 32, true, 1))
+	return value_1
 }
 
 func Rows_ButtonRowNextY(y int32, row_height int32, gap int32) int32 {
-	var value_0 int32 = row_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		row_height = value_3
+	if row_height < 0 {
+		row_height = 0
 	}
-	var value_4 int32 = gap
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		gap = value_7
+	if gap < 0 {
+		gap = 0
 	}
-	var value_8 int32 = y
-	var value_9 int32 = row_height
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var value_11 int32 = gap
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(y), uint64(row_height), 32, true, 1)))), uint64(gap), 32, true, 1))
+	return value_0
 }
 
 func Rows_SpinboxRowMetricsFor(row_height int32, control_width int32, scale float32, row StyleFrame, control StyleFrame) SpinboxRowMetrics {
 	var metrics SpinboxRowMetrics = SpinboxRowMetrics{}
-	var value_0 int32 = row_height
-	var value_1 uint32 = row.Value.Fields
-	var value_2 int32 = int32(StyleContentOffset)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 float32 = row.Value.OffsetY
-	var value_5 float32 = 54.0
-	var value_6 float32 = scale
-	var value_7 bool = false
-	var value_8 int32 = Rows_RowsRequestedMetric(value_0, value_1, value_3, value_4, value_5, value_6, value_7)
-	metrics.RowHeight = value_8
-	var value_9 int32 = control_width
-	var value_10 uint32 = control.Value.Fields
-	var value_11 int32 = int32(StyleContentOffset)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 float32 = control.Value.OffsetX
-	var value_14 float32 = 156.0
-	var value_15 float32 = scale
-	var value_16 bool = false
-	var value_17 int32 = Rows_RowsRequestedMetric(value_9, value_10, value_12, value_13, value_14, value_15, value_16)
-	metrics.ControlWidth = value_17
-	var value_18 uint32 = row.Value.Fields
-	var value_19 int32 = int32(StyleGap)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = row.Value.Gap
-	var value_22 float32 = 12.0
-	var value_23 float32 = scale
-	var value_24 bool = true
-	var value_25 int32 = Rows_RowsMetric(value_18, value_20, value_21, value_22, value_23, value_24)
-	metrics.LabelGap = value_25
-	var value_26 uint32 = control.Value.Fields
-	var value_27 int32 = int32(StylePaddingY)
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-	var value_29 float32 = control.Value.PaddingY
-	var value_30 float32 = 14.0
-	var value_31 float32 = scale
-	var value_32 bool = true
-	var value_33 int32 = Rows_RowsMetric(value_26, value_28, value_29, value_30, value_31, value_32)
-	metrics.ControlHeightInset = value_33
-	var value_34 SpinboxRowMetrics = metrics
-	return value_34
+	var value_0 uint32 = row.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = row.Value.OffsetY
+	var value_3 float32 = 54.0
+	var value_4 int32 = Rows_RowsRequestedMetric(row_height, value_0, value_1, value_2, value_3, scale, false)
+	metrics.RowHeight = value_4
+	var value_5 uint32 = control.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_7 float32 = control.Value.OffsetX
+	var value_8 float32 = 156.0
+	var value_9 int32 = Rows_RowsRequestedMetric(control_width, value_5, value_6, value_7, value_8, scale, false)
+	metrics.ControlWidth = value_9
+	var value_10 uint32 = row.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_12 float32 = row.Value.Gap
+	var value_13 float32 = 12.0
+	var value_14 int32 = Rows_RowsMetric(value_10, value_11, value_12, value_13, scale, true)
+	metrics.LabelGap = value_14
+	var value_15 uint32 = control.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_17 float32 = control.Value.PaddingY
+	var value_18 float32 = 14.0
+	var value_19 int32 = Rows_RowsMetric(value_15, value_16, value_17, value_18, scale, true)
+	metrics.ControlHeightInset = value_19
+	return metrics
 }
 
 func Rows_FormAdvanceY(cursor_y int32, height int32, gap int32) int32 {
-	var value_0 int32 = cursor_y
-	var next_y int32 = value_0
-	var value_1 int32 = height
-	var value_2 int32 = 0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 int32 = next_y
-		var value_5 int32 = height
-		next_y = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	var next_y int32 = cursor_y
+	if height > 0 {
+		var value_0 int32 = next_y
+		next_y = int32(number_runtime_bits(uint64(value_0), uint64(height), 32, true, 1))
 	}
-	var value_6 int32 = gap
-	var value_7 int32 = 0
-	var value_8 bool = value_6 > value_7
-	if value_8 {
-		var value_9 int32 = next_y
-		var value_10 int32 = gap
-		next_y = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 1))
+	if gap > 0 {
+		var value_1 int32 = next_y
+		next_y = int32(number_runtime_bits(uint64(value_1), uint64(gap), 32, true, 1))
 	}
-	var value_11 int32 = next_y
-	return value_11
+	return next_y
 }
 
 func Rows_FormRectFor(x int32, cursor_y int32, width int32, height int32, gap int32) FormRectResult {
 	var result FormRectResult = FormRectResult{}
-	var value_0 int32 = height
-	var rect_h int32 = value_0
-	var value_1 int32 = rect_h
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		rect_h = value_4
+	var rect_h int32 = height
+	if rect_h < 0 {
+		rect_h = 0
 	}
-	var value_5 int32 = x
-	var value_6 float32 = float32(value_5)
-	result.Bounds.X = value_6
-	var value_7 int32 = cursor_y
-	var value_8 float32 = float32(value_7)
-	result.Bounds.Y = value_8
-	var value_9 int32 = width
-	var value_10 float32 = float32(value_9)
-	result.Bounds.Width = value_10
-	var value_11 int32 = rect_h
-	var value_12 float32 = float32(value_11)
-	result.Bounds.Height = value_12
-	var value_13 int32 = cursor_y
-	var value_14 int32 = height
-	var value_15 int32 = gap
-	var value_16 int32 = Rows_FormAdvanceY(value_13, value_14, value_15)
-	result.NextCursorY = value_16
-	var value_17 FormRectResult = result
-	return value_17
+	result.Bounds.X = float32(x)
+	result.Bounds.Y = float32(cursor_y)
+	result.Bounds.Width = float32(width)
+	result.Bounds.Height = float32(rect_h)
+	var value_0 int32 = Rows_FormAdvanceY(cursor_y, height, gap)
+	result.NextCursorY = value_0
+	return result
 }
 
 func Rows_SpinboxRowLayoutFor(x int32, y int32, width int32, label_width int32, requested_bounds Rectangle, metrics SpinboxRowMetrics) SpinboxRowLayout {
 	var layout SpinboxRowLayout = SpinboxRowLayout{}
-	var value_0 int32 = metrics.RowHeight
-	var height int32 = value_0
-	var value_1 int32 = metrics.ControlWidth
-	var control_w int32 = value_1
-	var value_2 int32 = control_w
-	var value_3 int32 = width
-	var value_4 bool = value_2 > value_3
-	if value_4 {
-		var value_5 int32 = width
-		control_w = value_5
+	var height int32 = metrics.RowHeight
+	var control_w int32 = metrics.ControlWidth
+	if control_w > width {
+		control_w = width
 	}
-	var value_6 int32 = control_w
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = 0
-		control_w = value_9
+	if control_w < 0 {
+		control_w = 0
 	}
-	var value_10 int32 = label_width
-	var label_w int32 = value_10
-	var value_11 int32 = label_w
-	var value_12 int32 = 0
-	var value_13 bool = value_11 <= value_12
-	if value_13 {
-		var value_14 int32 = width
-		var value_15 int32 = control_w
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
-		var value_17 int32 = metrics.LabelGap
-		var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 2))
-		label_w = value_18
+	var label_w int32 = label_width
+	if label_w <= 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(width), uint64(control_w), 32, true, 2)))), uint64(metrics.LabelGap), 32, true, 2))
+		label_w = value_0
 	}
-	var value_19 int32 = label_w
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = 0
-		label_w = value_22
+	if label_w < 0 {
+		label_w = 0
 	}
-	var value_23 float32 = requested_bounds.Width
-	var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-	var spinbox_w int32 = value_24
-	var value_25 float32 = requested_bounds.Height
-	var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
-	var spinbox_h int32 = value_26
-	var value_27 int32 = spinbox_w
-	var value_28 int32 = 0
-	var value_29 bool = value_27 <= value_28
-	if value_29 {
-		var value_30 int32 = control_w
-		spinbox_w = value_30
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(requested_bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var spinbox_w int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(requested_bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var spinbox_h int32 = value_2
+	if spinbox_w <= 0 {
+		spinbox_w = control_w
 	}
-	var value_31 int32 = spinbox_h
-	var value_32 int32 = 0
-	var value_33 bool = value_31 <= value_32
-	if value_33 {
-		var value_34 int32 = height
-		var value_35 int32 = metrics.ControlHeightInset
-		var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 2))
-		spinbox_h = value_36
+	if spinbox_h <= 0 {
+		spinbox_h = (int32(number_runtime_bits(uint64(height), uint64(metrics.ControlHeightInset), 32, true, 2)))
 	}
-	var value_37 int32 = spinbox_w
-	var value_38 int32 = 0
-	var value_39 bool = value_37 < value_38
-	if value_39 {
-		var value_40 int32 = 0
-		spinbox_w = value_40
+	if spinbox_w < 0 {
+		spinbox_w = 0
 	}
-	var value_41 int32 = spinbox_h
-	var value_42 int32 = 0
-	var value_43 bool = value_41 < value_42
-	if value_43 {
-		var value_44 int32 = 0
-		spinbox_h = value_44
+	if spinbox_h < 0 {
+		spinbox_h = 0
 	}
-	var value_45 int32 = x
-	var value_46 float32 = float32(value_45)
-	layout.LabelBounds.X = value_46
-	var value_47 int32 = y
-	var value_48 float32 = float32(value_47)
-	layout.LabelBounds.Y = value_48
-	var value_49 int32 = label_w
-	var value_50 float32 = float32(value_49)
-	layout.LabelBounds.Width = value_50
-	var value_51 int32 = height
-	var value_52 float32 = float32(value_51)
-	layout.LabelBounds.Height = value_52
-	var value_53 int32 = x
-	var value_54 int32 = width
-	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 1))
-	var value_56 int32 = spinbox_w
-	var value_57 int32 = int32(number_runtime_bits(uint64(value_55), uint64(value_56), 32, true, 2))
-	var value_58 float32 = float32(value_57)
-	layout.SpinboxBounds.X = value_58
-	var value_59 int32 = y
-	var value_60 int32 = height
-	var value_61 int32 = spinbox_h
-	var value_62 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, true, 2))
-	var value_63 int32 = 2
-	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 4))
-	var value_65 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_64), 32, true, 1))
-	var value_66 float32 = float32(value_65)
-	layout.SpinboxBounds.Y = value_66
-	var value_67 int32 = spinbox_w
-	var value_68 float32 = float32(value_67)
-	layout.SpinboxBounds.Width = value_68
-	var value_69 int32 = spinbox_h
-	var value_70 float32 = float32(value_69)
-	layout.SpinboxBounds.Height = value_70
-	var value_71 int32 = control_w
-	layout.ControlWidth = value_71
-	var value_72 int32 = label_w
-	layout.LabelWidth = value_72
-	var value_73 SpinboxRowLayout = layout
-	return value_73
+	layout.LabelBounds.X = float32(x)
+	layout.LabelBounds.Y = float32(y)
+	layout.LabelBounds.Width = float32(label_w)
+	layout.LabelBounds.Height = float32(height)
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(x), uint64(width), 32, true, 1)))), uint64(spinbox_w), 32, true, 2))
+	layout.SpinboxBounds.X = float32(value_3)
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(height), uint64(spinbox_h), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.SpinboxBounds.Y = float32((int32(number_runtime_bits(uint64(y), uint64(value_4), 32, true, 1))))
+	layout.SpinboxBounds.Width = float32(spinbox_w)
+	layout.SpinboxBounds.Height = float32(spinbox_h)
+	layout.ControlWidth = control_w
+	layout.LabelWidth = label_w
+	return layout
 }

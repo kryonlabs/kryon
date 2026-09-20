@@ -3,6 +3,7 @@ package kryon
 
 // #import ui_control_props.generated.h
 // #import ui_menu_props.generated.h
+// #import ui_image_props.generated.h
 type ArrowDirection int32
 
 const (
@@ -13,42 +14,37 @@ const (
 )
 
 type ButtonProps struct {
-	Bounds         Rectangle
-	Label          string
-	ID             int32
-	ClassName      int32
-	Tone           ButtonTone
-	Emphasis       ButtonEmphasis
-	Size           ControlSize
-	Disabled       bool
-	Loading        bool
-	Selected       bool
-	Invisible      bool
-	FullWidth      bool
-	Pill           bool
-	Circle         bool
-	Icon           Texture2D
-	IconType       int32
-	IconPlacement  IconPlacement
-	IconOnly       bool
-	Square         bool
-	ImageAssetPath string
-	ImageBounds    Rectangle
-	ImageSource    Rectangle
-	ImageOrigin    Vector2
-	ImageRotation  float32
-	ImageFit       int32
-	Swatch         bool
-	SwatchColor    Color
-	MenuID         int32
-	Items          []MenuItem
-	ItemCount      int32
-	Open           *int32
-	ActivatedID    *int32
-	Menu           bool
-	Split          bool
-	Arrow          bool
-	Info           bool
-	Direction      ArrowDirection
-	State          ButtonState
+	Bounds        Rectangle
+	Label         string
+	ID            int32
+	ClassName     int32
+	Tone          ButtonTone
+	Emphasis      ButtonEmphasis
+	Size          ControlSize
+	Disabled      bool
+	Loading       bool
+	Selected      bool
+	Invisible     bool
+	FullWidth     bool
+	Pill          bool
+	Circle        bool
+	Icon          Texture2D
+	IconType      int32
+	IconPlacement IconPlacement
+	IconOnly      bool
+	Square        bool
+	Image         ImageProps
+	Swatch        bool
+	SwatchColor   Color
+	MenuID        int32
+	Items         []MenuItem
+	ItemCount     int32
+	Open          *int32
+	ActivatedID   *int32
+	Menu          bool
+	Split         bool
+	Arrow         bool
+	Info          bool
+	Direction     ArrowDirection
+	State         ButtonState
 }

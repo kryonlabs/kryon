@@ -1,0 +1,93 @@
+#module "toast_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/style.h"
+#import "runtime/toast.h"
+
+toast_message :: [256]char #global
+toast_class_name :: i32 #global
+toast_until :: double #global
+
+ClearToast :: () {
+    toast_message[0] = '\0'
+    toast_class_name = 0
+    toast_until = 0.0
+}
+
+ToastDisplayText :: (out: *char, message: const char*,
+truncation: ToastTruncation) {
+    if !truncation.ellipsis {
+        snprintf(out, 256, "%s", message)
+        return
+    }
+    prefix: i32 = truncation.prefix_len
+    if prefix < 0 { prefix = 0 }
+    snprintf(out, 256, "%.*s...", prefix, message)
+}
+
+Toast :: (props: ToastProps) #export {
+    metrics: ToastMetrics = ToastMetricsFor(1.0, (StyleFrame){0})
+    has_message: bool = props.message != nil && props.message[0] != '\0'
+    decision: ToastRequestDecision = ToastRequestDecisionFor(has_message,
+    (float)props.seconds, metrics)
+    if decision.clear {
+        ClearToast()
+        return
+    }
+    if !decision.show { return }
+    snprintf(&toast_message[0], 256, "%s", props.message)
+    toast_class_name = props.class_name
+    toast_until = (double)ToastDeadlineFor((float)GetTime(),
+    decision.seconds)
+}
+
+RenderToast :: () #export {
+    decision: ToastRenderDecision = ToastRenderDecisionFor(
+    toast_message[0] != '\0', (float)GetTime(), (float)toast_until)
+    if decision.clear {
+        ClearToast()
+        return
+    }
+    if !decision.render { return }
+
+    scale: float = (float)Scale(1000) / 1000.0
+    base: StyleData
+    surface_frame: StyleFrame
+    surface_frame.value = ResolveActiveStyle(base,
+    ToastSurfaceFactsFor(toast_class_name), ButtonStateNormal)
+    label_frame: StyleFrame
+    label_frame.value = ResolveActiveStyle(base,
+    ToastLabelFactsFor(toast_class_name), ButtonStateNormal)
+    surface: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(surface_frame).value)
+    label_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(label_frame).value)
+    metrics: ToastMetrics = ToastMetricsFor(scale, surface_frame)
+    font: i32 = ResolveFont(0,
+    StyleFontValue(label_style.fields, label_style.font_size),
+    GetSmallFontSize())
+    font_token: i32 = PushTextFont(label_style.typeface)
+    content_width: i32 = ToastContentWidth(ui_view_width, metrics)
+    display: [256]char
+    snprintf(&display[0], 256, "%s", &toast_message[0])
+    truncation: ToastTruncation = ToastTruncationFor(
+    (int)strlen(&toast_message[0]),
+    TextWidth(&display[0], font) <= content_width)
+    ToastDisplayText(&display[0], &toast_message[0], truncation)
+    while truncation.ellipsis && truncation.prefix_len > 0 &&
+    TextWidth(&display[0], font) > content_width {
+        truncation = ToastTruncationNext(truncation, false)
+        ToastDisplayText(&display[0], &toast_message[0], truncation)
+    }
+
+    layout: ToastLayout = ToastLayoutFor(ui_view_width, ui_view_height,
+    TextWidth(&display[0], font), TextLineHeight(font), metrics)
+    ui_draw_material(layout.bounds, (Rectangle){0}, surface.background,
+    surface.border, surface.border, surface.radius,
+    surface.border_width, 0.0, 0.0, 0, surface.focus, 0.0,
+    surface.opacity, ui_style_fill(surface), surface.material)
+    RenderText(&display[0], (int)layout.text_bounds.x,
+    (int)layout.text_bounds.y, font,
+    Fade(label_style.foreground, label_style.opacity))
+    PopTextFont(font_token)
+}

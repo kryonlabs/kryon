@@ -5,32 +5,6 @@ import (
 	"unicode/utf8"
 )
 
-// AccessibilityNode is a semantic projection of a completed frame. Secure
-// editor values are omitted; other editor values exclude uncommitted preedit.
-type AccessibilityNode struct {
-	Bounds          Rectangle
-	Role            string
-	Label           string
-	Focused         bool
-	Disabled        bool
-	Checked         bool
-	FocusID         int32
-	Value           string
-	ReadOnly        bool
-	Secure          bool
-	Multiline       bool
-	Generation      uint64
-	Actions         uint32
-	SelectionAnchor int32
-	SelectionCursor int32
-	Key             uint64
-	Parent          uint32
-	Selected        bool
-	MultiSelect     bool
-	ItemIndex       int32
-	Offscreen       bool
-}
-
 type AccessibilitySink func([]AccessibilityNode)
 
 type accessibilityRequest struct {

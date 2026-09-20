@@ -24,578 +24,305 @@ type TextSelectionCopyDecision struct {
 }
 
 func Text_TextContentColorFor(fields uint32, field uint32, color uint32, fallback uint32) uint32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 uint32 = color
-		var value_8 int32 = 255
-		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 8))
-		var value_11 int32 = 0
-		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-		var value_13 bool = value_10 != value_12
-		value_6 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 uint32 = uint32(number_runtime_bits(uint64(color), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 8))
+		value_1 = (value_2 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
 	}
-	if value_6 {
-		var value_14 uint32 = color
-		return value_14
+	if value_1 {
+		return color
 	}
-	var value_15 uint32 = fallback
-	return value_15
+	return fallback
 }
 
 func Text_TextSelectionColorFor(color uint32) uint32 {
-	var value_0 uint32 = color
-	var value_1 int32 = 255
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
-	var value_4 uint8 = Text_TextSelectionDefaultAlpha()
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, false, 3))
-	var value_7 int32 = 255
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_8), 32, false, 4))
-	var alpha uint32 = value_9
-	var value_10 uint32 = color
-	var value_11 int32 = 255
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(^uint64(0)), 32, false, 10))
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, false, 8))
-	var value_15 uint32 = alpha
-	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, false, 9))
-	return value_16
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(color), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_1 uint8 = Text_TextSelectionDefaultAlpha()
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))), 32, false, 3))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 4))
+	var alpha uint32 = value_3
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), uint64(^uint64(0)), 32, false, 10))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64((uint32(number_runtime_bits(uint64(color), uint64(value_4), 32, false, 8)))), uint64(alpha), 32, false, 9))
+	return value_5
 }
 
 func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, fallback_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
 	var style TextAppearance = TextAppearance{}
-	var value_0 int32 = font
-	var value_1 int32 = inherited_font
-	var value_2 int32 = default_font
-	var value_3 int32 = Style_ResolveFont(value_0, value_1, value_2)
-	style.Font = value_3
-	var value_4 uint32 = color
-	style.Color = value_4
-	var value_5 bool = color_set
-	var value_6 bool = !value_5
-	if value_6 {
-		var value_7 uint32 = fallback_color
-		style.Color = value_7
-		var value_8 bool = inherited_color_set
-		if value_8 {
-			var value_9 uint32 = inherited_color
-			style.Color = value_9
+	var value_0 int32 = Style_ResolveFont(font, inherited_font, default_font)
+	style.Font = value_0
+	style.Color = color
+	if !color_set {
+		style.Color = fallback_color
+		if inherited_color_set {
+			style.Color = inherited_color
 		}
 	}
-	var value_10 bool = disabled
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 bool = inherited_disabled
-		value_11 = value_12
+	var value_1 bool = disabled
+	if !value_1 {
+		value_1 = inherited_disabled
 	}
-	var value_13 bool = value_11
-	if value_13 {
-		var value_14 bool = color_set
-		var value_15 bool = value_14
-		if !value_15 {
-			var value_16 bool = inherited_color_set
-			var value_17 bool = !value_16
-			value_15 = value_17
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = color_set
+		if !value_3 {
+			value_3 = !inherited_color_set
 		}
-		var value_18 bool = value_15
-		if !value_18 {
-			var value_19 bool = inherited_disabled
-			var value_20 bool = !value_19
-			value_18 = value_20
+		var value_4 bool = value_3
+		if !value_4 {
+			value_4 = !inherited_disabled
 		}
-		value_13 = value_18
+		value_2 = value_4
 	}
-	if value_13 {
-		var value_21 uint32 = style.Color
-		var value_22 int32 = 255
-		var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-		var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 8))
-		var value_25 float32 = float32(value_24)
-		var value_26 float32 = 0.45
-		var value_27 float32 = value_25 * value_26
-		var value_28 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, false)), uint64(0), 32, false, 0))
-		var alpha uint32 = value_28
-		var value_29 uint32 = style.Color
-		var value_30 int32 = 8
-		var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 7))
-		var value_33 int32 = 8
-		var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-		var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 6))
-		var value_36 uint32 = alpha
-		var value_37 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, false, 9))
-		style.Color = value_37
+	if value_2 {
+		var value_5 uint32 = uint32(number_runtime_bits(uint64(style.Color), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 8))
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64((float32(value_5)*0.45)), 32, false)), uint64(0), 32, false, 0))
+		var alpha uint32 = value_6
+		var value_7 uint32 = uint32(number_runtime_bits(uint64(style.Color), uint64(uint32(number_runtime_bits(uint64(8), uint64(0), 32, false, 0))), 32, false, 7))
+		var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(uint32(number_runtime_bits(uint64(8), uint64(0), 32, false, 0))), 32, false, 6))
+		style.Color = (uint32(number_runtime_bits(uint64(value_8), uint64(alpha), 32, false, 9)))
 	}
-	var value_38 int32 = letter_spacing
-	style.LetterSpacing = value_38
-	var value_39 int32 = style.LetterSpacing
-	var value_40 int32 = 0
-	var value_41 bool = value_39 < value_40
-	if value_41 {
-		var value_42 int32 = 0
-		style.LetterSpacing = value_42
+	style.LetterSpacing = letter_spacing
+	if style.LetterSpacing < 0 {
+		style.LetterSpacing = 0
 	}
-	var value_43 TextAppearance = style
-	return value_43
+	return style
 }
 
 func Text_TextExtent(requested float32, measured float32) float32 {
-	var value_0 float32 = requested
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 float32 = requested
-		return value_3
+	if requested > 0.0 {
+		return requested
 	}
-	var value_4 float32 = measured
-	return value_4
+	return measured
 }
 
 func Text_TextWrapPolicy(width float32, requested int32) int32 {
-	var value_0 float32 = width
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 1
-		return value_3
+	if width <= 0.0 {
+		return 1
 	}
-	var value_4 int32 = requested
-	return value_4
+	return requested
 }
 
 func Text_TextDoubleClickSlopFor(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 6.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
-}
-
-func Text_TextDoubleClickShouldSelectLine(same_target bool, same_line bool, last_time float32, now float32, dx float32, dy float32, scale float32) bool {
-	var value_0 float32 = scale
-	var value_1 int32 = Text_TextDoubleClickSlopFor(value_0)
-	var slop int32 = value_1
-	var value_2 bool = same_target
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 bool = same_line
-		var value_6 bool = !value_5
-		value_4 = value_6
-	}
-	var value_7 bool = value_4
-	if !value_7 {
-		var value_8 float32 = last_time
-		var value_9 float32 = 0.0
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
-	}
-	if value_7 {
-		var value_11 bool = false
-		return value_11
-	}
-	var value_12 float32 = now
-	var value_13 float32 = last_time
-	var value_14 float32 = value_12 - value_13
-	var value_15 float32 = 0.40
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 bool = false
-		return value_17
-	}
-	var value_18 float32 = dx
-	var value_19 int32 = slop
-	var value_20 int32 = int32(number_runtime_bits(uint64(0), uint64(value_19), 32, true, 2))
-	var value_21 float32 = float32(value_20)
-	var value_22 bool = value_18 < value_21
-	var value_23 bool = value_22
-	if !value_23 {
-		var value_24 float32 = dx
-		var value_25 int32 = slop
-		var value_26 float32 = float32(value_25)
-		var value_27 bool = value_24 > value_26
-		value_23 = value_27
-	}
-	if value_23 {
-		var value_28 bool = false
-		return value_28
-	}
-	var value_29 float32 = dy
-	var value_30 int32 = slop
-	var value_31 int32 = int32(number_runtime_bits(uint64(0), uint64(value_30), 32, true, 2))
-	var value_32 float32 = float32(value_31)
-	var value_33 bool = value_29 < value_32
-	var value_34 bool = value_33
-	if !value_34 {
-		var value_35 float32 = dy
-		var value_36 int32 = slop
-		var value_37 float32 = float32(value_36)
-		var value_38 bool = value_35 > value_37
-		value_34 = value_38
-	}
-	if value_34 {
-		var value_39 bool = false
-		return value_39
-	}
-	var value_40 bool = true
-	return value_40
-}
-
-func Text_TextControlBaselineSample() string {
-	var value_0 string = "Hg"
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((6.0*scale)), 32, true)), uint64(0), 32, true, 0))
 	return value_0
 }
 
-func Text_TextControlClipGuardFor(scale float32) int32 {
-	var value_0 int32 = 1
-	var pad int32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
+func Text_TextDoubleClickShouldSelectLine(same_target bool, same_line bool, last_time float32, now float32, dx float32, dy float32, scale float32) bool {
+	var value_0 int32 = Text_TextDoubleClickSlopFor(scale)
+	var slop int32 = value_0
+	var value_1 bool = !same_target
+	if !value_1 {
+		value_1 = !same_line
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (last_time < 0.0)
+	}
+	if value_2 {
+		return false
+	}
+	if (now - last_time) > 0.40 {
+		return false
+	}
+	var value_3 bool = (dx < float32(int32(number_runtime_bits(uint64(0), uint64(slop), 32, true, 2))))
+	if !value_3 {
+		value_3 = (dx > float32(slop))
+	}
 	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+		return false
 	}
-	var value_5 float32 = 1.0
-	var value_6 float32 = scale
-	var value_7 float32 = value_5 * value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	pad = value_8
-	var value_9 int32 = pad
-	var value_10 int32 = 1
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 1
-		pad = value_12
+	var value_4 bool = (dy < float32(int32(number_runtime_bits(uint64(0), uint64(slop), 32, true, 2))))
+	if !value_4 {
+		value_4 = (dy > float32(slop))
 	}
-	var value_13 int32 = pad
-	return value_13
+	if value_4 {
+		return false
+	}
+	return true
+}
+
+func Text_TextControlBaselineSample() string {
+	return "Hg"
+}
+
+func Text_TextControlClipGuardFor(scale float32) int32 {
+	var pad int32 = 1
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((1.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	pad = value_0
+	if pad < 1 {
+		pad = 1
+	}
+	return pad
 }
 
 func Text_TextControlClipBounds(bounds Rectangle, scale float32) Rectangle {
-	var value_0 float32 = scale
-	var value_1 int32 = Text_TextControlClipGuardFor(value_0)
-	var pad int32 = value_1
-	var value_2 Rectangle = bounds
-	var clip Rectangle = value_2
-	var value_3 float32 = clip.Y
-	var value_4 int32 = pad
-	var value_5 float32 = float32(value_4)
-	clip.Y = value_3 - value_5
-	var value_6 float32 = clip.Height
-	var value_7 int32 = pad
-	var value_8 int32 = 2
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 3))
-	var value_10 float32 = float32(value_9)
-	clip.Height = value_6 + value_10
-	var value_11 Rectangle = clip
-	return value_11
+	var value_0 int32 = Text_TextControlClipGuardFor(scale)
+	var pad int32 = value_0
+	var clip Rectangle = bounds
+	var value_1 float32 = clip.Y
+	clip.Y = value_1 - float32(pad)
+	var value_2 float32 = clip.Height
+	clip.Height = value_2 + float32((int32(number_runtime_bits(uint64(pad), uint64(2), 32, true, 3))))
+	return clip
 }
 
 func Text_TextCenteredY(bounds Rectangle, line_height int32) int32 {
-	var value_0 float32 = bounds.Y
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 float32 = bounds.Height
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 int32 = line_height
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 4))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_7), 32, true, 1))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_1), uint64(line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, true, 1)))
 }
 
 func Text_TextCenteredX(bounds Rectangle, text_width int32) int32 {
-	var value_0 float32 = bounds.X
-	var value_1 float32 = bounds.Width
-	var value_2 int32 = text_width
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 - value_3
-	var value_5 float32 = 0.5
-	var value_6 float32 = value_4 * value_5
-	var value_7 float32 = value_0 + value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.X+((bounds.Width-float32(text_width))*0.5))), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Text_TextBaselineYFor(box_y int32, box_h int32, fallback_height int32, has_glyphs bool, min_top float32, max_bottom float32) int32 {
-	var value_0 bool = has_glyphs
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 int32 = box_y
-		var value_3 int32 = box_h
-		var value_4 float32 = float32(value_3)
-		var value_5 int32 = fallback_height
-		var value_6 float32 = float32(value_5)
-		var value_7 float32 = value_4 - value_6
-		var value_8 float32 = 0.5
-		var value_9 float32 = value_7 * value_8
-		var value_10 float32 = 0.5
-		var value_11 float32 = value_9 + value_10
-		var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_12), 32, true, 1))
-		return value_13
+	if !has_glyphs {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((((float32(box_h)-float32(fallback_height))*0.5)+0.5)), 32, true)), uint64(0), 32, true, 0))
+		return (int32(number_runtime_bits(uint64(box_y), uint64(value_0), 32, true, 1)))
 	}
-	var value_14 float32 = max_bottom
-	var value_15 float32 = min_top
-	var value_16 float32 = value_14 - value_15
-	var glyph_height float32 = value_16
-	var value_17 int32 = box_y
-	var value_18 int32 = box_h
-	var value_19 float32 = float32(value_18)
-	var value_20 float32 = glyph_height
-	var value_21 float32 = value_19 - value_20
-	var value_22 float32 = 0.5
-	var value_23 float32 = value_21 * value_22
-	var value_24 float32 = min_top
-	var value_25 float32 = value_23 - value_24
-	var value_26 float32 = 0.5
-	var value_27 float32 = value_25 + value_26
-	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_28), 32, true, 1))
-	return value_29
+	var glyph_height float32 = (max_bottom - min_top)
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((((float32(box_h)-glyph_height)*0.5)-min_top)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(box_y), uint64(value_1), 32, true, 1)))
 }
 
 func Text_TextHeightFor(fallback_height int32, has_glyphs bool, min_top float32, max_bottom float32) int32 {
-	var value_0 bool = has_glyphs
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 int32 = fallback_height
-		return value_2
+	if !has_glyphs {
+		return fallback_height
 	}
-	var value_3 float32 = max_bottom
-	var value_4 float32 = min_top
-	var value_5 float32 = value_3 - value_4
-	var value_6 float32 = 0.5
-	var value_7 float32 = value_5 + value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((max_bottom-min_top)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Text_TextLineHeightFor(font_base_size int32, fallback_base_size int32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = font_base_size
-	var base int32 = value_4
-	var value_5 int32 = base
-	var value_6 int32 = 0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 int32 = fallback_base_size
-		base = value_8
+	var base int32 = font_base_size
+	if base <= 0 {
+		base = fallback_base_size
 	}
-	var value_9 int32 = base
-	var value_10 float32 = float32(value_9)
-	var value_11 float32 = scale
-	var value_12 float32 = value_10 * value_11
-	var value_13 float32 = 0.5
-	var value_14 float32 = value_12 + value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	return value_15
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((float32(base)*scale)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Text_TextSelectionLineEndPaddingFor(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 6.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((6.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Text_TextSelectionMinWidthFor(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 4.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((4.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Text_TextSelectionDefaultAlpha() uint8 {
-	var value_0 int32 = 88
-	var value_1 uint8 = uint8(number_runtime_bits(uint64(value_0), uint64(0), 8, false, 0))
-	return value_1
+	return uint8(number_runtime_bits(uint64(88), uint64(0), 8, false, 0))
 }
 
 func Text_TextSelectionHighlightEndX(start_x int32, end_x int32, continues_past_line bool, scale float32) int32 {
-	var value_0 bool = continues_past_line
-	if value_0 {
-		var value_1 int32 = end_x
-		var value_2 float32 = scale
-		var value_3 int32 = Text_TextSelectionLineEndPaddingFor(value_2)
-		end_x = int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 1))
+	if continues_past_line {
+		var value_0 int32 = end_x
+		var value_1 int32 = Text_TextSelectionLineEndPaddingFor(scale)
+		end_x = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
 	}
-	var value_4 int32 = end_x
-	var value_5 int32 = start_x
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = start_x
-		var value_8 float32 = scale
-		var value_9 int32 = Text_TextSelectionMinWidthFor(value_8)
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, true, 1))
-		return value_10
+	if end_x <= start_x {
+		var value_2 int32 = Text_TextSelectionMinWidthFor(scale)
+		return (int32(number_runtime_bits(uint64(start_x), uint64(value_2), 32, true, 1)))
 	}
-	var value_11 int32 = end_x
-	return value_11
+	return end_x
 }
 
 func Text_TextSelectionPointerDecisionFor(inside bool, captured bool, pressed bool) TextSelectionPointerDecision {
 	var out TextSelectionPointerDecision = TextSelectionPointerDecision{}
 	var value_0 bool = inside
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = !captured
+	}
+	out.Hover = value_0
+	var value_1 bool = out.Hover
 	if value_1 {
-		var value_2 bool = captured
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = pressed
 	}
-	out.Hover = value_1
-	var value_4 bool = out.Hover
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = pressed
-		value_5 = value_6
-	}
-	out.Begin = value_5
-	var value_7 TextSelectionPointerDecision = out
-	return value_7
+	out.Begin = value_1
+	return out
 }
 
 func Text_TextSelectionDragDecisionFor(same_id bool, dragging bool, down bool) TextSelectionDragDecision {
 	var out TextSelectionDragDecision = TextSelectionDragDecision{}
 	var value_0 bool = same_id
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = dragging
+	}
+	out.Active = value_0
+	var value_1 bool = out.Active
 	if value_1 {
-		var value_2 bool = dragging
-		value_1 = value_2
+		value_1 = down
 	}
-	out.Active = value_1
-	var value_3 bool = out.Active
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = down
-		value_4 = value_5
+	out.Update = value_1
+	var value_2 bool = out.Active
+	if value_2 {
+		value_2 = !down
 	}
-	out.Update = value_4
-	var value_6 bool = out.Active
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = down
-		var value_9 bool = !value_8
-		value_7 = value_9
-	}
-	out.Finish = value_7
-	var value_10 TextSelectionDragDecision = out
-	return value_10
+	out.Finish = value_2
+	return out
 }
 
 func Text_TextSelectionCopyDecisionFor(same_id bool, keyboard_enabled bool, modifier_down bool, copy_pressed bool) TextSelectionCopyDecision {
 	var out TextSelectionCopyDecision = TextSelectionCopyDecision{}
 	var value_0 bool = same_id
+	if value_0 {
+		value_0 = keyboard_enabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+		value_1 = modifier_down
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = modifier_down
-		value_3 = value_4
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = copy_pressed
 	}
-	var value_5 bool = value_3
-	if value_5 {
-		var value_6 bool = copy_pressed
-		value_5 = value_6
-	}
-	out.Copy = value_5
-	var value_7 TextSelectionCopyDecision = out
-	return value_7
+	out.Copy = value_2
+	return out
 }
 
 func Text_TextSelectionRangeShouldShow(same_id bool) bool {
-	var value_0 bool = same_id
-	return value_0
+	return same_id
 }
 
 func Text_TextAlignmentOffset(available float32, measured float32, alignment int32) float32 {
-	var value_0 int32 = alignment
-	var value_1 int32 = 1
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 float32 = available
-		var value_4 float32 = measured
-		var value_5 float32 = value_3 - value_4
-		var value_6 float32 = 0.5
-		var value_7 float32 = value_5 * value_6
-		return value_7
+	if alignment == 1 {
+		return ((available - measured) * 0.5)
 	}
-	var value_8 int32 = alignment
-	var value_9 int32 = 2
-	var value_10 bool = value_8 == value_9
-	if value_10 {
-		var value_11 float32 = available
-		var value_12 float32 = measured
-		var value_13 float32 = value_11 - value_12
-		return value_13
+	if alignment == 2 {
+		return (available - measured)
 	}
-	var value_14 float32 = 0.0
-	return value_14
+	return 0.0
 }
 
 func Text_TextStrikethroughBounds(x float32, y float32, width float32, line_height float32, scale float32) Rectangle {
 	var result Rectangle = Rectangle{}
-	var value_0 float32 = scale
-	var value_1 float32 = 1.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale < 1.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = x
-	result.X = value_4
-	var value_5 float32 = y
-	var value_6 float32 = line_height
-	var value_7 float32 = 0.5
-	var value_8 float32 = value_6 * value_7
-	var value_9 float32 = value_5 + value_8
-	result.Y = value_9
-	var value_10 float32 = width
-	result.Width = value_10
-	var value_11 float32 = scale
-	result.Height = value_11
-	var value_12 Rectangle = result
-	return value_12
+	result.X = x
+	result.Y = (y + (line_height * 0.5))
+	result.Width = width
+	result.Height = scale
+	return result
 }

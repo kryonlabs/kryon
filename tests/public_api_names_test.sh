@@ -73,7 +73,7 @@ fi
 
 registry_group_prefix_matches="$(
     rg -n 'UI/' \
-        src/ui/ui_node_registry.c \
+        src/ui/node_registry.kry \
         docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
@@ -130,7 +130,7 @@ fi
 
 multi_select_style_matches="$(
     rg -n '\b(MultiSelectList|MultiSelectItem|StyleKindMultiSelectList|StyleKindMultiSelectItem)\b' \
-        runtime/style_sheet.kry styles/kryon src/ui/kss_parser.c go/kryon/kss_parser.go go/kryon/style_sheet.go go/kryon/style_builtins.go tests/kss_parser_test.c tests/style_builtin_packs_test.c go/kryon/style_sheet_test.go \
+        runtime/style_sheet.kry styles/kryon src/ui/kss_parser.kry go/kryon/kss_parser.go go/kryon/style_sheet.go go/kryon/style_builtins.go tests/kss_parser_test.c tests/style_builtin_packs_test.c go/kryon/style_sheet_test.go \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
@@ -170,7 +170,7 @@ fi
 
 internal_overlay_registry_matches="$(
     rg -n '"(FocusDebugOverlay|TransitionFade)"|^\| `(FocusDebugOverlay|TransitionFade)` \|' \
-        src/ui/ui_node_registry.c docs/CANONICAL_WIDGET_SURFACE.md \
+        src/ui/node_registry.kry docs/CANONICAL_WIDGET_SURFACE.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -183,7 +183,7 @@ fi
 
 node_registry_prefix_matches="$(
     rg -n '\b(KryonNodeType|KRYON_NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NodeTypeFlags)\b' \
-        include/ui_node_registry.h src/ui/ui_node_registry.c docs/PUBLIC_API_SNAPSHOT.txt \
+        include/ui_node_registry.h src/ui/node_registry.kry docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -236,7 +236,7 @@ fi
 
 form_matches="$(
     rg -n '\b(UIForm[A-Za-z0-9_]*|GetUI(LabelTextField|ButtonRow|SpinboxRow)Height|UIButtonRowNode|UIListBoxNode|UIScroll[A-Za-z0-9_]*|UIScreenScaffold[A-Za-z0-9_]*|BeginUIScrollContainer|EndUIScrollContainer|MeasureUIScrollContainer|EnsureUIScrollRectVisible|BeginUIScrollPage|EndUIScrollPage|BeginUIScreenScaffold|EndUIScreenScaffold|GetUIScrollbar[A-Za-z0-9_]*)\b' \
-        include/ui_scroll.h src/ui/rows.c src/ui/scroll.c \
+        include/ui_scroll.h src/ui/rows.kry src/ui/scroll.kry \
         docs/API.md docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html tests/ui_tree_api_test.c || true
 )"
@@ -275,7 +275,7 @@ fi
 
 generated_matches="$(
     rg -n '\b(TextInputControl|GenericButton|TextButton|IconButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UISeparatorNode|UIMenuBarNode|UIPopupMenuNode|UIFieldsetNode|UICanvasGridNode|UIMessageDialogNode|UIConfirmDialogNode|UIPromptDialogNode|UIColorPickerNode|UIFocusNode|UIFocusDebugOverlayNode|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITitleBarDropdown|UISubtab|UITab|UITreeItem|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfileImagePickerModal|UIProfileImagePickerResult)\b' \
-        go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
+        go/kryon include/ui_controls.h include/ui_tree.h include/ui_menu_props.generated.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.kry src/ui/node_registry.kry cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
@@ -504,7 +504,7 @@ fi
 
 retained_rect_kind_matches="$(
     rg -n '\bWIDGET_RECT\b' \
-        include/ui_tree.h src/ui/ui_tree.c docs/CANONICAL_WIDGET_SURFACE.md docs/PUBLIC_API_SNAPSHOT.txt \
+        include/ui_tree.h src/ui/tree_layout.kry docs/CANONICAL_WIDGET_SURFACE.md docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -579,7 +579,7 @@ fi
 manual_widget_props_matches="$(
     rg -n 'typedef struct \{[^}]*\} (Canvas|CanvasResult|CheckboxProps|SelectableProps|ToggleProps|SeparatorProps|RadioProps|ProgressProps|SpinboxProps|FieldsetProps|ScrollProps|PlotProps|ColorPickerProps|PanedViewProps|CollapsibleProps|DragProps|SliderProps|InputProps|ToastProps|TextProps|PopupProps|ImageProps|LinkProps|PageProps|SectionProps|HeadingProps|ParagraphTextProps|ColumnProps|DragDropProps|DropdownProps|MenuProps|ModalAction|ModalProps|IconRowItem|BottomIconRowProps|IconRowResult|ToolbarAction|ToolbarProps|ToolbarResult|SegmentedControlProps|ListBoxProps|TreeViewProps|TitleBarProps|TabBarProps|NavigationBarProps|TableRow|TableViewProps)|type (Canvas|CanvasResult|CheckboxProps|SelectableProps|ToggleProps|SeparatorProps|RadioProps|ProgressProps|SpinboxProps|FieldsetProps|ScrollProps|PlotProps|ColorPickerProps|PanedViewProps|CollapsibleProps|DragProps|SliderProps|InputProps|ToastProps|TextProps|PopupProps|ImageProps|LinkProps|PageProps|SectionProps|HeadingProps|ParagraphTextProps|ColumnProps|DragDropProps|DropdownProps|MenuProps|ModalAction|ModalProps|IconRowItem|BottomIconRowProps|IconRowResult|ToolbarAction|ToolbarProps|ToolbarResult|SegmentedControlProps|ListBoxProps|TreeViewProps|TitleBarProps|TabBarProps|NavigationBarProps|TableRow|TableViewProps) struct' \
         include/ui_tree.h \
-        include/ui_tk.h \
+        include/ui_tree.h \
         go/kryon/runtime.go \
         go/kryon/*_host.go \
         --glob '!vendor/**' \
@@ -714,7 +714,7 @@ fi
 public_stale_input='Queue''UITextInput'
 public_stale_matches="$(
     rg -n "${public_stale_input}[A-Za-z0-9_]*" \
-        include/ui_controls.h src/ui/ui.c docs/API.md \
+        include/ui_controls.h src/ui/text_editor.kry docs/API.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -744,7 +744,7 @@ public_composite_draw_matches="$(
         include/ui_toast.h \
         include/ui_modal.h \
         include/ui_nav.h \
-        include/ui_tk.h \
+        include/ui_tree.h \
         go/kryon \
         tests/k2go_syntax_test.sh \
         docs/FEATURE_MATRIX.md \
@@ -863,7 +863,7 @@ fi
 split_tooltip_widget_matches="$(
     rg -n '\bTooltipProps\b|\bTooltip\s*\(' \
         include/ui_tree.h \
-        include/ui_tk.h \
+        include/ui_menu_props.generated.h \
         go/kryon \
         cmd/k2go \
         cmd/kir \
@@ -883,7 +883,7 @@ fi
 split_context_popup_matches="$(
     rg -n '\b(BeginPopupContext|EndPopupContext|ContextPopupProps)\b' \
         include/ui_tree.h \
-        include/ui_tk.h \
+        include/ui_popup_props.generated.h \
         go/kryon \
         cmd/k2go \
         cmd/kir \
@@ -907,7 +907,7 @@ registry_doc_misses="$(
 from pathlib import Path
 import re
 
-registry = Path("src/ui/ui_node_registry.c").read_text()
+registry = Path("src/ui/node_registry.kry").read_text()
 doc = Path("docs/CANONICAL_WIDGET_SURFACE.md").read_text()
 names = re.findall(r'\{"([^"]+)"\s*,', registry)
 for name in names:
@@ -927,7 +927,7 @@ registry_game2d_misses="$(
 from pathlib import Path
 import re
 
-registry = Path("src/ui/ui_node_registry.c").read_text()
+registry = Path("src/ui/node_registry.kry").read_text()
 scene = Path("runtime/scene_tree_props.kry").read_text()
 entries = re.findall(r'\{"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"', registry)
 kinds = set(re.findall(r'\bNodeKind[A-Za-z0-9]+\b', scene))
@@ -962,7 +962,7 @@ registry_snippet_misses="$(
     python3 - <<'PY'
 from pathlib import Path
 
-registry = Path("src/ui/ui_node_registry.c").read_text()
+registry = Path("src/ui/node_registry.kry").read_text()
 required = {
     "Text": "Text((TextProps){",
     "Checkbox": "Checkbox((CheckboxProps){",
@@ -1043,8 +1043,9 @@ public_text_input_matches="$(
         include/ui_controls.h \
         docs/API.md \
         examples \
-        src/ui/ui.c \
-        src/ui/ui_node_registry.c \
+        src/ui/text_field.kry \
+        src/ui/text_area.kry \
+        src/ui/node_registry.kry \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -1077,10 +1078,12 @@ fi
 
 internal_text_input_matches="$(
     rg -n '\b(RenderTextInputControl|RenderTextField|RenderTextArea|UITextFieldState|UITextSelection|UITextAreaHeightCacheEntry)\b' \
-        src/ui/ui.c \
-        src/ui/ui_tree.c \
-        src/ui/rows.c \
-        src/ui/ui_tk.c \
+        src/ui/text_field.kry \
+        src/ui/text_area.kry \
+        src/ui/tree_input.kry \
+        src/ui/rows.kry \
+        src/ui/menu_host.kry \
+        src/ui/numeric_edit.kry \
         src/ui/ui_internal.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -1092,14 +1095,20 @@ if [ -n "$internal_text_input_matches" ]; then
     exit 1
 fi
 
+if [ -e src/ui/button.c ] || [ -e src/ui/segmented_control.c ]; then
+    echo "Button and SegmentedControl must be authored in .kry, not src/ui/*.c"
+    exit 1
+fi
+
 internal_button_matches="$(
     rg -n '\b(RenderButton|RenderTextButton|RenderGenericButton)\b' \
-        src/ui/button.c \
-        src/ui/rows.c \
-        src/ui/navigation_bar.c \
-        src/ui/modal.c \
-        src/ui/ui_tk.c \
-        src/ui/ui_tree.c \
+        src/ui/button.kry \
+        src/ui/rows.kry \
+        src/ui/navigation_bar.kry \
+        src/ui/modal.kry \
+        src/ui/menu_host.kry \
+        src/ui/numeric_edit.kry \
+        src/ui/button.kry \
         src/ui/ui_internal.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -1144,6 +1153,7 @@ kry_source_draw_matches="$(
     rg -n '\bDraw[A-Z][A-Za-z0-9_]*\s*\(|\bRenderToggleSwitch\b|\bRender[A-Z][A-Za-z0-9_]*\s*\(' \
         examples runtime tests src \
         --glob '*.kry' \
+        --glob '!src/ui/*.kry' \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"

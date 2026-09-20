@@ -1,0 +1,11 @@
+#module "tree_disabled"
+#import "ui_internal.h"
+#import "ui/tree_paint.h"
+
+TreePaintWithDisabled :: (node: *TreeNode, index: i32,
+disabled: bool) #export {
+    Disabled {
+        when = disabled
+        TreePaintContent(node, index)
+    }
+}

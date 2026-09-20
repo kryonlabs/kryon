@@ -1,6 +1,7 @@
 #module "button_props"
 #import "ui_control_props.generated.h"
 #import "ui_menu_props.generated.h"
+#import "ui_image_props.generated.h"
 
 ArrowDirection :: enum {
     ArrowLeft = 0
@@ -30,12 +31,7 @@ ButtonProps :: struct {
     icon_placement: IconPlacement
     icon_only: bool
     square: bool
-    image_asset_path: const char*
-    image_bounds: Rectangle
-    image_source: Rectangle
-    image_origin: Vector2
-    image_rotation: float
-    image_fit: i32
+    image: ImageProps
     swatch: bool
     swatch_color: Color
     menu_id: i32

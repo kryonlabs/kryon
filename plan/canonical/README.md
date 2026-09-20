@@ -67,8 +67,8 @@ make go-runtime-test
 python3 tests/canonical_widget_surface_doc_test.py
 sh tests/public_api_names_test.sh
 sh tests/canonical_surface_test.sh
-make build/linux-x86_64/tests/ui_tk_test
-xvfb-run -a build/linux-x86_64/tests/ui_tk_test
+make build/linux-x86_64/tests/widget_surface_test
+xvfb-run -a build/linux-x86_64/tests/widget_surface_test
 git diff --check
 ```
 
@@ -90,7 +90,7 @@ proves the replacement. No compatibility alias is an acceptable fix.
 Passed at the time of the earlier canonical migration: runtime generation;
 fast/public-surface/header checks; menu, Collapsible, text-input, reorder,
 paragraph, text, image and icon policy tests; Go runtime tests; retained
-`ui_tk_test` under Xvfb; and generated C syntax for the updated button example.
+`widget_surface_test` under Xvfb; and generated C syntax for the updated button example.
 Historical JS/web checks are no longer current completion evidence because the
 old JS target is paused.
 Initial failures in obsolete button styling, leaked web end-scope statements,

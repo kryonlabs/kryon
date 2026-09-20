@@ -81,14 +81,17 @@ paths are supplied at build time.
 
 ## Releases
 
-Every successful CI run on `master` automatically advances the patch version,
-commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
-The workflow validates the version, creates an annotated tag, builds and tests
-Kryon, and publishes both the static SDK and a checksummed native tools bundle.
-The tools bundle contains `k2c`, `k2cpp`, `k2go`, `k2kir`, `k2b`, `kt`, `kryon`,
-`kryon-preview`, `krb-run`, and `krb-sdl`. The JavaScript/web tooling is paused
-and is not shipped as a current release target; see `docs/WEB_JS_ROADMAP.md` for
-the future web-native direction.
+Patch releases are batched: at most one per day, and only when maintainers have
+written user-facing notes under the `## Unreleased` heading in `CHANGELOG.md`.
+The scheduled `Automatic Release Version` workflow checks for curated notes,
+advances the patch version in `include/kryon_version.h`, and starts the
+tag-driven `Release` workflow. That workflow validates the version, promotes the
+`## Unreleased` notes into a dated entry, creates an annotated tag, builds and
+tests Kryon, and publishes both the static SDK and a checksummed native tools
+bundle. The tools bundle contains `k2c`, `k2cpp`, `k2go`, `k2kir`, `k2b`, `kt`,
+`kryon`, `kryon-preview`, `krb-run`, and `krb-sdl`. The JavaScript/web tooling
+is paused and is not shipped as a current release target; see
+`docs/WEB_JS_ROADMAP.md` for the future web-native direction.
 
 Maintainers can still run `Release` manually for the checked-in version. Use
 `scripts/bump-version.sh minor` / `major` before pushing when a non-patch bump is
@@ -200,11 +203,10 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 
 ## Toolkit Direction
 
-The `ui_tk.h` layer is Kryon's pragmatic Tk replacement surface. It stays in the
-raylib style: one direct struct-and-call path per widget, caller-owned state,
-immediate-mode drawing, and no builder objects or scripting runtime. The numbered
-examples `09_geometry` through `18_accessibility` demonstrate each toolkit
-feature family.
+Kryon defines widgets and their properties in `.kry` modules under `runtime/`
+and `src/ui/`. Generated headers expose the native API. Each widget accepts
+plain properties and renders in the immediate-mode frame. The numbered examples
+`09_geometry` through `18_accessibility` demonstrate each feature family.
 
 ## Kry Language
 

@@ -1,0 +1,701 @@
+#module "scroll_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "ui_scroll_internal.h"
+#import "ui_popup_input_internal.h"
+#import "runtime/scroll.h"
+#import "theme.h"
+
+kry_android_frame_drag :: (start: *Vector2,
+current: *Vector2) -> i32 #extern
+kry_android_consume_frame_drag :: () #extern
+kry_android_gesture_dragging :: () -> i32 #extern
+kry_android_gesture_delta_y :: () -> i32 #extern
+
+scroll_scope_depth :: i32 #global #export
+scroll_scope_wheel_frame :: unsigned long #global #private
+scroll_scope_drag_offset :: *i32 #global #private
+scroll_scope_drag_grab :: float #global #private
+scroll_scope_drag_owner :: PopupInputOwner #global #private
+scroll_scope_content_active :: i32 #global #private
+scroll_scope_content_dragging :: i32 #global #private
+scroll_scope_content_start_y :: i32 #global #private
+scroll_scope_content_start_scroll :: i32 #global #private
+scroll_scope_android_drag_active :: i32 #global #private
+scroll_scope_android_start_scroll :: i32 #global #private
+
+ScrollScopeMetrics :: () -> ScrollMetrics {
+    track: StyleFrame = (StyleFrame){0}
+    thumb: StyleFrame = (StyleFrame){0}
+    return ScrollMetricsFor((float)GetScale(), track, thumb)
+}
+
+ScrollScopePaintBar :: (frame: ScrollScopeFrame) {
+    if !IsWindowReady() { return }
+    track_props: ButtonProps = (ButtonProps){0}
+    track_props.tone = ButtonToneNeutral
+    track_props.emphasis = ButtonEmphasisSoft
+    track_props.size = ControlSizeSmall
+    track_frame: StyleFrame = ui_control_style_frame_kind(
+    track_props, ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindScroll())
+    track_style: Style = ui_unpack_style(track_frame.value)
+    thumb_props: ButtonProps = (ButtonProps){0}
+    thumb_props.tone = ButtonToneAccent
+    thumb_props.emphasis = ButtonEmphasisFilled
+    thumb_props.size = ControlSizeSmall
+    thumb_props.pill = 1
+    thumb_frame: StyleFrame = ui_control_style_frame_kind(
+    thumb_props, frame.thumb_state, 0, 0.0, 0.0, 0.0,
+    StyleKindScrollThumb())
+    thumb_style: Style = ui_unpack_style(thumb_frame.value)
+    track_opacity: float = 0.42
+    track_border_opacity: float = 0.60
+    thumb_opacity: float = thumb_style.opacity
+    track_background: Color = GetThemeBorder()
+    track_border: Color = GetThemeBorder()
+    thumb_background: Color = thumb_style.background
+    thumb_border: Color = thumb_style.border
+    track_bounds: Rectangle = frame.paint.track_bounds
+    thumb_bounds: Rectangle = frame.paint.thumb_bounds
+    indicator_width: float = (float)Scale(6)
+    if indicator_width > frame.paint.track_bounds.width {
+        indicator_width = frame.paint.track_bounds.width
+    }
+    if indicator_width < 3.0 {
+        indicator_width = frame.paint.track_bounds.width
+    }
+    track_bounds.width = indicator_width
+    track_bounds.x = frame.paint.track_bounds.x +
+    (frame.paint.track_bounds.width - indicator_width) * 0.5
+    thumb_bounds.width = indicator_width
+    thumb_bounds.x = track_bounds.x
+    if thumb_opacity < 0.96 { thumb_opacity = 0.96 }
+    if frame.thumb_state == ButtonStateNormal {
+        thumb_background = GetThemeButton()
+        thumb_border = GetThemeButtonHover()
+    }
+    ui_draw_material(track_bounds, (Rectangle){0},
+    Fade(track_background, track_opacity),
+    Fade(track_border, track_border_opacity),
+    Fade(track_border, track_border_opacity),
+    track_style.radius, track_style.border_width,
+    0.0, 0.0, 0, track_style.focus, 0.0,
+    1.0, ui_style_fill(track_style),
+    track_style.material)
+    ui_draw_material(thumb_bounds, (Rectangle){0},
+    Fade(thumb_background, thumb_opacity),
+    Fade(thumb_border, thumb_opacity),
+    Fade(thumb_border, thumb_opacity),
+    thumb_style.radius, thumb_style.border_width,
+    frame.thumb_state == ButtonStateHover ? 1.0 : 0.0,
+    frame.thumb_state == ButtonStatePressed ? 1.0 : 0.0,
+    0, thumb_style.focus, 0.0, 1.0,
+    ui_style_fill(thumb_style), thumb_style.material)
+}
+
+ui_scroll_metrics :: () -> ScrollMetrics #export {
+    track_props: ButtonProps = (ButtonProps){0}
+    track_props.size = ControlSizeSmall
+    track_props.pill = 1
+    track: StyleFrame = ui_control_style_frame_kind(track_props,
+    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindScroll())
+    thumb_props: ButtonProps = (ButtonProps){0}
+    thumb_props.tone = ButtonToneAccent
+    thumb_props.emphasis = ButtonEmphasisFilled
+    thumb_props.size = ControlSizeSmall
+    thumb_props.pill = 1
+    thumb: StyleFrame = ui_control_style_frame_kind(thumb_props,
+    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindScrollThumb())
+    return ScrollMetricsFor((float)GetScale(), track, thumb)
+}
+
+GetScrollbarReservedWidth :: (max_scroll: i32) -> i32 #export {
+    return ScrollReservedWidth(max_scroll, ui_scroll_metrics())
+}
+
+GetScrollbarContentWidth :: (content_width: i32,
+max_scroll: i32) -> i32 #export {
+    return ScrollContentWidth(content_width, max_scroll,
+    ui_scroll_metrics())
+}
+
+GetScrollbarSafeContentWidth :: (content_x: i32,
+content_width: i32, scrollbar_x: i32,
+max_scroll: i32) -> i32 #export {
+    return ScrollSafeContentWidth(content_x, content_width,
+    scrollbar_x, max_scroll, ui_scroll_metrics())
+}
+
+MeasureScrollContainer :: (area: ScrollArea) -> ScrollView #export {
+    scroll: i32 = 0
+    if area.scroll_offset != nil { scroll = *area.scroll_offset }
+    policy: ScrollPolicyView = ScrollMeasure(area.bounds,
+    area.content_height, area.content_x, area.content_width,
+    scroll, area.scrollbar_x, ui_scroll_metrics())
+    view: ScrollView = (ScrollView){0}
+    view.content_x = policy.content_x
+    view.viewport_h = policy.viewport_h
+    view.content_h = policy.content_h
+    view.max_scroll = policy.max_scroll
+    view.content_y = policy.content_y
+    view.content_w = policy.content_w
+    return view
+}
+
+BeginScrollPage :: (spec: ScrollPageSpec) -> ScrollPage #export {
+    page: ScrollPage = (ScrollPage){0}
+    side_padding: i32 = spec.side_padding
+    if side_padding <= 0 { side_padding = GetPageSidePadding() }
+    max_content_width: i32 = ScrollPageContentWidthFor(ui_view_width,
+    spec.max_content_width, spec.min_content_width, side_padding)
+    content_x: i32 = 0
+    content_width: i32 = 0
+    GetCenteredColumn(max_content_width, side_padding,
+    &content_x, &content_width)
+    draw_width: i32 = content_width
+    passes: i32 = spec.measure_passes
+    if passes <= 0 { passes = 3 }
+    area: ScrollArea = (ScrollArea){0}
+    index: i32 = 0
+    while index < passes {
+        content_height: i32 = 0
+        if spec.content_height != nil {
+            content_height = spec.content_height(draw_width,
+            spec.user_data)
+        }
+        area = (ScrollArea){0}
+        area.bounds.x = 0.0
+        area.bounds.y = (float)spec.y
+        area.bounds.width = (float)ui_view_width
+        area.bounds.height = (float)spec.height
+        area.content_height = content_height
+        area.content_x = content_x
+        area.content_width = content_width
+        area.scroll_offset = spec.scroll_offset
+        metrics: ScrollMetrics = ui_scroll_metrics()
+        area.wheel_step = spec.wheel_step
+        if area.wheel_step <= 0 {
+            area.wheel_step = metrics.default_wheel_step
+        }
+        area.scrollbar_x = spec.scrollbar_x
+        if area.scrollbar_x <= 0 {
+            area.scrollbar_x = ui_view_width - metrics.scrollbar_width
+        }
+        measured: ScrollView = MeasureScrollContainer(area)
+        if measured.content_w == draw_width { break }
+        draw_width = measured.content_w
+        index += 1
+    }
+    if spec.content_height != nil {
+        area.content_height = spec.content_height(draw_width,
+        spec.user_data)
+    }
+    page.area = area
+    page.view = BeginScrollContainer(area)
+    page.content_x = page.view.content_x
+    page.content_y = page.view.content_y
+    page.content_w = page.view.content_w
+    page.content_h = area.content_height
+    return page
+}
+
+EndScrollPage :: (page: ScrollPage) #export {
+    EndScrollContainer(page.area, page.view)
+}
+
+BeginScreenScaffold :: (spec: ScreenScaffoldSpec) -> ScreenScaffold #export {
+    scaffold: ScreenScaffold = (ScreenScaffold){0}
+    title_height: i32 = spec.title_height
+    if title_height <= 0 {
+        title_height = GetNodeHeight(NodeTitleBar(0))
+    }
+    scaffold.title_height = title_height
+    if spec.draw_title != nil {
+        title_data: *void = spec.user_data
+        if spec.title_user_data != nil {
+            title_data = spec.title_user_data
+        }
+        scaffold.closed = spec.draw_title(spec.title,
+        title_height, title_data)
+    } else {
+        props: TitleBarProps = (TitleBarProps){0}
+        props.title = spec.title
+        props.height = title_height
+        TitleBar(props)
+    }
+    top_gap: i32 = spec.top_gap
+    if top_gap < 0 { top_gap = 0 }
+    content_y: i32 = title_height + top_gap
+    content_height: i32 = ui_view_height - content_y -
+    spec.bottom_reserved
+    if content_height < 0 { content_height = 0 }
+    scaffold.content_y = content_y
+    scaffold.content_h = content_height
+    page_spec: ScrollPageSpec = (ScrollPageSpec){0}
+    page_spec.y = content_y
+    page_spec.height = content_height
+    page_spec.max_content_width = spec.max_content_width
+    page_spec.min_content_width = spec.min_content_width
+    page_spec.side_padding = spec.side_padding
+    page_spec.scroll_offset = spec.scroll_offset
+    page_spec.wheel_step = spec.wheel_step
+    page_spec.scrollbar_x = spec.scrollbar_x
+    page_spec.measure_passes = spec.measure_passes
+    page_spec.content_height = spec.content_height
+    page_spec.user_data = spec.user_data
+    scaffold.page = BeginScrollPage(page_spec)
+    scaffold.content_x = scaffold.page.content_x
+    scaffold.content_w = scaffold.page.content_w
+    scaffold.y = scaffold.page.content_y
+    return scaffold
+}
+
+EndScreenScaffold :: (scaffold: ScreenScaffold) #export {
+    EndScrollPage(scaffold.page)
+}
+
+scroll_content_drag_active :: i32 #global
+scroll_content_dragging :: i32 #global
+scroll_content_drag_start_y :: i32 #global
+scroll_content_drag_start_scroll :: i32 #global
+android_gesture_scroll_active :: i32 #global
+android_gesture_start_scroll :: i32 #global
+
+BeginScrollContainer :: (area: ScrollArea) -> ScrollView #export {
+    view: ScrollView = MeasureScrollContainer(area)
+    mouse: Vector2 = ui_primary_pointer_world()
+    y: i32 = (int)area.bounds.y
+    metrics: ScrollMetrics = ui_scroll_metrics()
+    wheel_step: i32 = area.wheel_step
+    if wheel_step <= 0 {
+        wheel_step = metrics.default_wheel_step
+    }
+    inside: i32 = CheckCollisionPointRec(mouse, area.bounds)
+    captured: i32 = InputCapturesClick(mouse)
+    scrollbar_x: i32 = area.scrollbar_x
+    if scrollbar_x <= 0 {
+        scrollbar_x = (int)(area.bounds.x + area.bounds.width) -
+        metrics.scrollbar_width
+    }
+    scrollbar_bounds: Rectangle = (Rectangle){
+        (float)scrollbar_x, area.bounds.y,
+        (float)metrics.scrollbar_width, area.bounds.height}
+    on_scrollbar: i32 = view.max_scroll > 0 &&
+    CheckCollisionPointRec(mouse, scrollbar_bounds)
+    capture: Rectangle = (Rectangle){0, 0,
+        (float)ui_view_width, (float)ui_view_height}
+
+    if area.scroll_offset != nil {
+        *area.scroll_offset = ScrollClamp(*area.scroll_offset,
+        view.max_scroll)
+        if view.max_scroll > 0 && inside != 0 && !captured {
+            wheel: float = GetMouseWheelMove()
+            if wheel != 0.0 {
+                *area.scroll_offset = ScrollWheelOffsetFor(
+                *area.scroll_offset, wheel, view.max_scroll,
+                wheel_step)
+            }
+        }
+
+        drag_start_screen: Vector2 = (Vector2){0}
+        drag_current_screen: Vector2 = (Vector2){0}
+        if kry_android_frame_drag(&drag_start_screen,
+        &drag_current_screen) {
+            drag_start_world: Vector2 = GetScreenToWorld2D(
+            drag_start_screen, g_ui_camera)
+            drag_current_world: Vector2 = GetScreenToWorld2D(
+            drag_current_screen, g_ui_camera)
+            drag_delta_y: i32 = (int)drag_current_world.y -
+            (int)drag_start_world.y
+            if view.max_scroll > 0 &&
+            CheckCollisionPointRec(drag_start_world,
+            area.bounds) &&
+            !InputCapturesClick(drag_start_world) &&
+            !CheckCollisionPointRec(drag_start_world,
+            scrollbar_bounds) &&
+            (drag_delta_y > metrics.drag_threshold ||
+            drag_delta_y < -metrics.drag_threshold) {
+                *area.scroll_offset = ScrollDragDeltaOffsetFor(
+                *area.scroll_offset, drag_delta_y,
+                view.max_scroll)
+                kry_android_consume_frame_drag()
+            }
+        }
+
+        gesture_dragging: i32 = kry_android_gesture_dragging()
+        gesture_delta_y: i32 = kry_android_gesture_delta_y()
+        if !gesture_dragging || !ui_primary_pointer_down() {
+            android_gesture_scroll_active = 0
+        }
+        if view.max_scroll > 0 && gesture_dragging &&
+        inside != 0 && !captured && !on_scrollbar &&
+        (gesture_delta_y > metrics.drag_threshold ||
+        gesture_delta_y < -metrics.drag_threshold) {
+            if !android_gesture_scroll_active {
+                android_gesture_scroll_active = 1
+                android_gesture_start_scroll = *area.scroll_offset
+            }
+            *area.scroll_offset = ScrollDragDeltaOffsetFor(
+            android_gesture_start_scroll, gesture_delta_y,
+            view.max_scroll)
+            view.content_y = y - *area.scroll_offset
+            g_ui_pointer_owner = POINTER_OWNER_SCROLL
+        }
+
+        if g_ui_slider_active_id != 0 &&
+        g_ui_pointer_owner == POINTER_OWNER_NONE &&
+        g_ui_pointer_dragging && ui_pointer_drag_is_horizontal() {
+            g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER
+        }
+        blocked_by_other_drag: i32 =
+        g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
+        g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER
+        content_delta_y: i32 = (int)mouse.y -
+        scroll_content_drag_start_y
+        content_drag: ScrollContentDragDecision =
+        ScrollContentDragFor(view.max_scroll,
+        ui_primary_pointer_pressed() != 0,
+        ui_primary_pointer_down() != 0, inside != 0,
+        captured != 0, on_scrollbar != 0,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        g_ui_pointer_owner == POINTER_OWNER_SCROLL,
+        blocked_by_other_drag != 0,
+        scroll_content_drag_active != 0,
+        scroll_content_dragging != 0,
+        *area.scroll_offset, scroll_content_drag_start_scroll,
+        content_delta_y, metrics.drag_threshold)
+        if content_drag.gesture_pending {
+            g_ui_scroll_gesture_pending = 1
+        }
+        if content_drag.start_drag {
+            scroll_content_drag_start_y = (int)mouse.y
+            scroll_content_drag_start_scroll = *area.scroll_offset
+        }
+        scroll_content_drag_active = content_drag.active
+        scroll_content_dragging = content_drag.dragging
+        if content_drag.claim_scroll_owner {
+            g_ui_pointer_owner = POINTER_OWNER_SCROLL
+        }
+        if content_drag.dragging {
+            *area.scroll_offset = content_drag.scroll_offset
+        }
+        if content_drag.capture_input {
+            PushInputCapture(capture, 0)
+        }
+        view.content_y = y - *area.scroll_offset
+    } else {
+        view.content_y = y
+    }
+    screen_bounds: Rectangle = ScrollScreenBoundsFor(area.bounds,
+    g_ui_camera.offset, g_ui_camera.zoom)
+    geometry: ScrollClipGeometry = ScrollClipGeometryFor(
+    area.bounds, GetClipEffective(screen_bounds),
+    metrics.visual_bleed, g_ui_camera.offset, g_ui_camera.zoom,
+    GetScreenWidth(), GetScreenHeight(),
+    ui_view_width, ui_view_height)
+    PushInputClip(geometry.clipped_world_bounds)
+    BeginClip((int)geometry.visual_screen_bounds.x,
+    (int)geometry.visual_screen_bounds.y,
+    (int)geometry.visual_screen_bounds.width,
+    (int)geometry.visual_screen_bounds.height)
+    return view
+}
+
+EndScrollContainer :: (area: ScrollArea,
+view: ScrollView) #export {
+    metrics: ScrollMetrics = ui_scroll_metrics()
+    EndClip()
+    PopInputClip()
+    if area.scroll_offset == nil || view.max_scroll <= 0 { return }
+    scrollbar_x: i32 = area.scrollbar_x
+    if scrollbar_x <= 0 {
+        scrollbar_x = (int)(area.bounds.x + area.bounds.width) -
+        metrics.scrollbar_width
+    }
+    ui_scrollbar(scrollbar_x, (int)area.bounds.y,
+    (int)area.bounds.height, view.content_h,
+    area.scroll_offset, view.max_scroll, 0)
+}
+
+EnsureScrollRectVisible :: (area: ScrollArea,
+rect: Rectangle, margin: i32) #export {
+    if area.scroll_offset == nil { return }
+    view: ScrollView = MeasureScrollContainer(area)
+    if view.max_scroll <= 0 { return }
+    *area.scroll_offset = ScrollRectVisibleOffsetFor(
+    *area.scroll_offset, (int)area.bounds.y,
+    (int)area.bounds.height, (int)rect.y, (int)rect.height,
+    margin, view.max_scroll)
+}
+
+scrollbar_drag_active :: i32 #global
+scrollbar_drag_offset :: *i32 #global
+scrollbar_drag_start_y :: i32 #global
+scrollbar_drag_start_scroll :: i32 #global
+
+ui_scrollbar_cancel :: (scroll_offset: *i32) #export {
+    if scrollbar_drag_offset != scroll_offset { return }
+    if scrollbar_drag_active &&
+    g_ui_pointer_owner == POINTER_OWNER_SCROLL {
+        g_ui_pointer_owner = POINTER_OWNER_NONE
+    }
+    scrollbar_drag_active = 0
+    scrollbar_drag_offset = nil
+}
+
+ui_scrollbar :: (x: i32, y: i32, viewport_height: i32,
+content_height: i32, scroll_offset: *i32,
+max_scroll: i32, overlay: i32) -> i32 #export {
+    if max_scroll <= 0 {
+        ui_scrollbar_cancel(scroll_offset)
+        return 0
+    }
+    if viewport_height <= 0 || content_height <= 0 ||
+    scroll_offset == nil { return 0 }
+    metrics: ScrollMetrics = ui_scroll_metrics()
+    paint: ScrollBarPaint = ScrollBarPaintFor(x, y,
+    viewport_height, content_height, *scroll_offset,
+    max_scroll, metrics)
+    mouse: Vector2 = ui_primary_pointer_world()
+    mouse_y: i32 = (int)mouse.y
+    input_captured: i32 = 0
+    if overlay != 0 {
+        input_captured = ui_base_input_captures_click(mouse, 0)
+    } else {
+        input_captured = ui_input_captures_click_internal(mouse, 0)
+    }
+    thumb_active: i32 = CheckCollisionPointRec(mouse,
+    paint.thumb_bounds) && !input_captured
+    thumb_hover: i32 = thumb_active && HoverEffectsEnabled()
+    owns_drag: i32 = scrollbar_drag_active &&
+    scrollbar_drag_offset == scroll_offset
+    if thumb_active != 0 { MarkClickable() }
+    decision: ScrollBarDragDecision = ScrollBarDragFor(
+    ui_primary_pointer_down() != 0,
+    input_captured != 0, thumb_active != 0,
+    g_ui_pointer_owner == POINTER_OWNER_NONE,
+    scrollbar_drag_active != 0, owns_drag != 0,
+    *scroll_offset, scrollbar_drag_start_scroll,
+    mouse_y - scrollbar_drag_start_y, max_scroll, paint)
+    if decision.start_drag {
+        scrollbar_drag_active = 1
+        scrollbar_drag_offset = scroll_offset
+        g_ui_pointer_owner = POINTER_OWNER_SCROLL
+        scrollbar_drag_start_y = mouse_y
+        scrollbar_drag_start_scroll = *scroll_offset
+    } else if decision.continue_drag {
+        *scroll_offset = decision.scroll_offset
+    } else if decision.cancel_drag {
+        ui_scrollbar_cancel(scroll_offset)
+    }
+
+    thumb_state: ButtonState = ButtonStateNormal
+    if scrollbar_drag_active &&
+    scrollbar_drag_offset == scroll_offset {
+        thumb_state = ButtonStatePressed
+    } else if thumb_hover {
+        thumb_state = ButtonStateHover
+    }
+    track_props: ButtonProps = (ButtonProps){0}
+    track_props.size = ControlSizeSmall
+    track_props.pill = 1
+    track_frame: StyleFrame = ui_control_style_frame_kind(
+    track_props, ButtonStateNormal, 0,
+    0.0, 0.0, 0.0, StyleKindScroll())
+    thumb_props: ButtonProps = (ButtonProps){0}
+    thumb_props.tone = ButtonToneAccent
+    thumb_props.emphasis = ButtonEmphasisFilled
+    thumb_props.size = ControlSizeSmall
+    thumb_props.pill = 1
+    thumb_frame: StyleFrame = ui_control_style_frame_kind(
+    thumb_props, thumb_state, 0,
+    0.0, 0.0, 0.0, StyleKindScrollThumb())
+    track_style: Style = ui_unpack_style(track_frame.value)
+    thumb_style: Style = ui_unpack_style(thumb_frame.value)
+    if IsWindowReady() {
+        paint = ScrollBarPaintFor(x, y, viewport_height,
+        content_height, *scroll_offset, max_scroll, metrics)
+        ui_draw_material(paint.track_bounds, (Rectangle){0},
+        track_style.background, track_style.border, WHITE,
+        track_style.radius, track_style.border_width,
+        0.0, 0.0, 0, track_style.focus, 0.0,
+        track_style.opacity, track_frame.fill,
+        track_style.material)
+        ui_draw_material(paint.thumb_bounds, paint.track_bounds,
+        thumb_style.background, thumb_style.border, WHITE,
+        thumb_style.radius, thumb_style.border_width,
+        thumb_state == ButtonStateHover ? 1.0 : 0.0,
+        thumb_state == ButtonStatePressed ? 1.0 : 0.0,
+        0, thumb_style.focus, 0.0, thumb_style.opacity,
+        thumb_frame.fill, thumb_style.material)
+    }
+    return 1
+}
+
+ScrollScopeOpen :: (bounds: Rectangle, content_height: i32,
+scroll_offset: *i32) -> Rectangle #export {
+    metrics: ScrollMetrics = ScrollScopeMetrics()
+    pointer: Vector2 = ui_primary_pointer_world()
+    input: ScrollScopeInput = (ScrollScopeInput){0}
+    input.bounds = bounds
+    input.content_height = content_height
+    input.has_offset = scroll_offset != nil
+    if scroll_offset != nil { input.offset = *scroll_offset }
+    input.pointer_allowed = CheckCollisionPointRec(pointer, bounds) &&
+    !InputCapturesClick(pointer)
+    input.disabled = ContentDisabled() != 0
+    input.mouse = pointer
+    input.pressed = ui_primary_pointer_pressed() != 0
+    input.down = ui_primary_pointer_down() != 0
+    input.released = ui_primary_pointer_released() != 0
+    if scroll_scope_wheel_frame != g_ui_frame_serial {
+        input.wheel = GetMouseWheelMove()
+    }
+    input.owns_drag = scroll_offset != nil &&
+    scroll_scope_drag_offset == scroll_offset
+    input.owner_captured = scroll_offset != nil &&
+    scroll_scope_drag_offset == scroll_offset &&
+    ui_popup_input_owner_captures(scroll_scope_drag_owner)
+    input.grab = scroll_scope_drag_grab
+    frame: ScrollScopeFrame = ScrollScopeFrameFor(input, metrics)
+
+    if scroll_offset != nil {
+        maximum: i32 = ScrollMax(content_height, (int)bounds.height)
+        inside: i32 = CheckCollisionPointRec(pointer, bounds)
+        captured: i32 = InputCapturesClick(pointer)
+        on_scrollbar: i32 = frame.scrollbar &&
+        CheckCollisionPointRec(pointer, frame.paint.track_bounds)
+        blocked_by_other_drag: i32 =
+        g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
+        g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER
+        content_delta_y: i32 = (int)pointer.y -
+        scroll_scope_content_start_y
+        capture_scroll_input: i32 = 0
+
+        drag_start_screen: Vector2 = (Vector2){0}
+        drag_current_screen: Vector2 = (Vector2){0}
+        if kry_android_frame_drag(&drag_start_screen,
+        &drag_current_screen) {
+            drag_start_world: Vector2 = GetScreenToWorld2D(
+            drag_start_screen, g_ui_camera)
+            drag_current_world: Vector2 = GetScreenToWorld2D(
+            drag_current_screen, g_ui_camera)
+            drag_delta_y: i32 = (int)drag_current_world.y -
+            (int)drag_start_world.y
+            drag_starts_in_scroll: i32 =
+            CheckCollisionPointRec(drag_start_world, bounds) &&
+            !InputCapturesClick(drag_start_world) &&
+            !(frame.scrollbar &&
+            CheckCollisionPointRec(drag_start_world,
+            frame.paint.track_bounds))
+            if maximum > 0 && drag_starts_in_scroll &&
+            (drag_delta_y > metrics.drag_threshold ||
+            drag_delta_y < -metrics.drag_threshold) {
+                if !scroll_scope_android_drag_active {
+                    scroll_scope_android_drag_active = 1
+                    scroll_scope_android_start_scroll = frame.offset
+                }
+                frame.offset = ScrollDragDeltaOffsetFor(
+                scroll_scope_android_start_scroll,
+                drag_delta_y, maximum)
+                capture_scroll_input = 1
+                kry_android_consume_frame_drag()
+                if !ui_primary_pointer_down() {
+                    scroll_scope_android_drag_active = 0
+                }
+            }
+        } else if !ui_primary_pointer_down() {
+            scroll_scope_android_drag_active = 0
+        }
+        content_drag: ScrollContentDragDecision =
+        ScrollContentDragFor(
+        maximum, ui_primary_pointer_pressed() != 0,
+        ui_primary_pointer_down() != 0,
+        inside != 0, captured != 0,
+        on_scrollbar != 0,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        g_ui_pointer_owner == POINTER_OWNER_SCROLL,
+        blocked_by_other_drag != 0,
+        scroll_scope_content_active != 0,
+        scroll_scope_content_dragging != 0,
+        frame.offset, scroll_scope_content_start_scroll,
+        content_delta_y, metrics.drag_threshold)
+        if content_drag.gesture_pending {
+            g_ui_scroll_gesture_pending = 1
+        }
+        if content_drag.start_drag {
+            scroll_scope_content_start_y = (int)pointer.y
+            scroll_scope_content_start_scroll = frame.offset
+        }
+        scroll_scope_content_active = content_drag.active
+        scroll_scope_content_dragging = content_drag.dragging
+        if content_drag.claim_scroll_owner {
+            g_ui_pointer_owner = POINTER_OWNER_SCROLL
+        }
+        if content_drag.capture_input {
+            capture_scroll_input = 1
+        }
+        if content_drag.dragging {
+            frame.offset = content_drag.scroll_offset
+        }
+        if capture_scroll_input {
+            capture: Rectangle = (Rectangle){0.0, 0.0,
+                (float)ui_view_width, (float)ui_view_height}
+            PushInputCapture(capture, 0)
+        }
+        *scroll_offset = frame.offset
+        frame.content.y = frame.clip.y - (float)frame.offset
+        if frame.scrollbar {
+            scrollbar_x: i32 =
+            (int)(bounds.x + bounds.width) -
+            metrics.scrollbar_width
+            frame.paint = ScrollBarPaintFor(scrollbar_x,
+            (int)bounds.y, (int)bounds.height, content_height,
+            frame.offset, maximum, metrics)
+        }
+    }
+    if frame.start_drag {
+        scroll_scope_drag_offset = scroll_offset
+        scroll_scope_drag_grab = frame.grab
+        scroll_scope_drag_owner = ui_popup_input_owner()
+    }
+    if frame.clear_drag {
+        scroll_scope_drag_offset = nil
+    }
+    if frame.consume_release { ConsumeRelease() }
+    if frame.consume_wheel {
+        scroll_scope_wheel_frame = g_ui_frame_serial
+    }
+    if frame.scrollbar {
+        ScrollScopePaintBar(frame)
+    }
+    bounds = frame.clip
+    PushInputClip(bounds)
+    if IsWindowReady() {
+        screen: Rectangle = ScrollScreenBoundsFor(
+        bounds, g_ui_camera.offset, g_ui_camera.zoom)
+        BeginClip((int)screen.x, (int)screen.y,
+        (int)screen.width, (int)screen.height)
+    }
+    scroll_scope_depth += 1
+    return frame.content
+}
+
+ScrollScope :: (bounds: Rectangle, content_height: i32,
+scroll_offset: *i32) -> Rectangle #export {
+    return ScrollScopeOpen(bounds, content_height, scroll_offset)
+}
+
+ScrollScopeClose :: () #export {
+    if scroll_scope_depth <= 0 { return }
+    scroll_scope_depth -= 1
+    if IsWindowReady() { EndClip() }
+    PopInputClip()
+}
+
+ScrollEndScope :: () #export {
+    ScrollScopeClose()
+}

@@ -456,6 +456,21 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
         fprintf(out, "    SetConfigFlags(GetWebWindowFlags());\n");
         fprintf(out, "    GetWebViewportSize(width, height, &width, &height);\n");
         fprintf(out, "#endif\n");
+        if(appmod->app.before_window[0] != '\0') {
+            char hook[KIR_NAME_MAX * 3];
+            int found = 0;
+
+            for(int j = 0; j < appmod->function_count && !found; j++) {
+                if(strcmp(appmod->functions[j].name,
+                          appmod->app.before_window) == 0) {
+                    k2c_function_c_name(appmod, &appmod->functions[j],
+                                        hook, sizeof(hook));
+                    found = 1;
+                }
+            }
+            fprintf(out, "    if(!%s()) return 2;\n",
+                    found ? hook : appmod->app.before_window);
+        }
         fprintf(out, "    InitWindow(width, height, %s);\n", title);
         fprintf(out, "    SetTargetFPS(%d);\n", fps);
         if(appmod->app.font_examples)
@@ -491,7 +506,23 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "        return 1;\n");
             fprintf(out, "    }\n");
         }
-        fprintf(out, "    while(!WindowShouldClose()) {\n");
+        if(appmod->app.should_continue[0] != '\0') {
+            char hook[KIR_NAME_MAX * 3];
+            int found = 0;
+
+            for(int j = 0; j < appmod->function_count && !found; j++) {
+                if(strcmp(appmod->functions[j].name,
+                          appmod->app.should_continue) == 0) {
+                    k2c_function_c_name(appmod, &appmod->functions[j],
+                                        hook, sizeof(hook));
+                    found = 1;
+                }
+            }
+            fprintf(out, "    while(!WindowShouldClose() && %s()) {\n",
+                    found ? hook : appmod->app.should_continue);
+        } else {
+            fprintf(out, "    while(!WindowShouldClose()) {\n");
+        }
         if(appmod->app.frame[0] != '\0') {
             char hook[KIR_NAME_MAX * 3];
             const KirFunction *entry = NULL;
@@ -542,6 +573,21 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "        EndFrame();\n");
         } else {
             fprintf(out, "        ;\n");
+        }
+        if(appmod->app.after_frame[0] != '\0') {
+            char hook[KIR_NAME_MAX * 3];
+            int found = 0;
+
+            for(int j = 0; j < appmod->function_count && !found; j++) {
+                if(strcmp(appmod->functions[j].name,
+                          appmod->app.after_frame) == 0) {
+                    k2c_function_c_name(appmod, &appmod->functions[j],
+                                        hook, sizeof(hook));
+                    found = 1;
+                }
+            }
+            fprintf(out, "        %s();\n",
+                    found ? hook : appmod->app.after_frame);
         }
         fprintf(out, "    }\n");
         if(appmod->app.shutdown[0] != '\0') {

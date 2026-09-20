@@ -3,7 +3,6 @@
 
 #include "ui_controls.h"
 #include "ui_scroll_internal.h"
-#include "ui_tk.h"
 
 typedef struct {
     const char *label;

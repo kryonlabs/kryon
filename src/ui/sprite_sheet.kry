@@ -1,0 +1,87 @@
+#module "sprite_sheet_host"
+#inspect off
+#import "spritesheet.h"
+#import "ui_image_internal.h"
+
+kry_draw_texture_region :: (texture: Texture2D,
+source: Rectangle, bounds: Rectangle, origin: Vector2,
+rotation: float, tint: Color) #extern
+
+SpriteSheetGrid :: (asset_path: const char*, frame_width: i32,
+frame_height: i32, columns: i32, rows: i32) -> SpriteSheet #export {
+    sheet: SpriteSheet = (SpriteSheet){0}
+    sheet.asset_path = asset_path
+    sheet.frame_width = frame_width
+    sheet.frame_height = frame_height
+    sheet.columns = columns
+    sheet.rows = rows
+    sheet.frame_count = columns > 0 && rows > 0 ? columns * rows : 0
+    return sheet
+}
+
+SpriteSheetFrameCount :: (sheet: SpriteSheet) -> i32 #export {
+    return sheet.frame_count
+}
+
+SpriteSheetNormalizeFrame :: (sheet: SpriteSheet,
+frame: i32) -> i32 #export {
+    count: i32 = SpriteSheetFrameCount(sheet)
+    if count <= 0 { return 0 }
+    frame %= count
+    if frame < 0 { frame += count }
+    return frame
+}
+
+SpriteSheetFrameSource :: (sheet: SpriteSheet,
+frame: i32) -> Rectangle #export {
+    if sheet.frame_width <= 0 || sheet.frame_height <= 0 ||
+    sheet.columns <= 0 || sheet.rows <= 0 ||
+    sheet.frame_count <= 0 {
+        return (Rectangle){0, 0, 0, 0}
+    }
+    normalized: i32 = SpriteSheetNormalizeFrame(sheet, frame)
+    col: i32 = normalized % sheet.columns
+    row: i32 = normalized / sheet.columns
+    return (Rectangle){(float)(col * sheet.frame_width),
+        (float)(row * sheet.frame_height),
+        (float)sheet.frame_width, (float)sheet.frame_height}
+}
+
+DrawSpriteSheetFrameEx :: (texture: Texture2D,
+sheet: SpriteSheet, frame: i32, bounds: Rectangle,
+origin: Vector2, rotation: float, tint: Color,
+flip_x: i32, flip_y: i32) #export {
+    source: Rectangle = SpriteSheetFrameSource(sheet, frame)
+    if texture.id == 0 || source.width == 0.0 ||
+    source.height == 0.0 { return }
+    if flip_x { source.width = -source.width }
+    if flip_y { source.height = -source.height }
+    kry_draw_texture_region(texture, source,
+    bounds, origin, rotation, tint)
+}
+
+DrawSpriteSheetFrame :: (texture: Texture2D,
+sheet: SpriteSheet, frame: i32, bounds: Rectangle,
+origin: Vector2, rotation: float, tint: Color) #export {
+    DrawSpriteSheetFrameEx(texture, sheet, frame,
+    bounds, origin, rotation, tint, 0, 0)
+}
+
+DrawSpriteSheetFrameFromPathEx :: (sheet: SpriteSheet,
+frame: i32, bounds: Rectangle, origin: Vector2,
+rotation: float, tint: Color,
+flip_x: i32, flip_y: i32) #export {
+    if sheet.asset_path == nil || sheet.asset_path[0] == '\0' {
+        return
+    }
+    texture: Texture2D = LoadImageTexture(sheet.asset_path)
+    DrawSpriteSheetFrameEx(texture, sheet, frame,
+    bounds, origin, rotation, tint, flip_x, flip_y)
+}
+
+DrawSpriteSheetFrameFromPath :: (sheet: SpriteSheet,
+frame: i32, bounds: Rectangle, origin: Vector2,
+rotation: float, tint: Color) #export {
+    DrawSpriteSheetFrameFromPathEx(sheet, frame,
+    bounds, origin, rotation, tint, 0, 0)
+}

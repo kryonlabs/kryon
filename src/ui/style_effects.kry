@@ -1,0 +1,117 @@
+#module "style_effects_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/style.h"
+#import "math.h"
+
+DefaultRipple :: struct {
+    key: u32
+    origin: Vector2
+    age: float
+    active: i32
+    frame_seen: unsigned long
+}
+
+default_ripples :: [64]DefaultRipple #global
+
+ui_motion_backend_available :: () -> i32 #extern
+
+ui_default_elevation :: (bounds: Rectangle,
+radius: float, level: i32) #export {
+    paint: StyleElevationPaint = StyleElevationPaintFor(level)
+    if !paint.visible {
+        return
+    }
+    shadow: Color = BLACK
+    shadow.a = (unsigned char)paint.far_alpha
+    far_bounds: Rectangle = (Rectangle){bounds.x,
+        bounds.y + (float)Scale(paint.far_offset),
+        bounds.width, bounds.height}
+    DrawRectangleRounded(far_bounds, radius, 12, shadow)
+    shadow.a = (unsigned char)paint.near_alpha
+    near_bounds: Rectangle = (Rectangle){bounds.x,
+        bounds.y + (float)Scale(paint.near_offset),
+        bounds.width, bounds.height}
+    DrawRectangleRounded(near_bounds, radius, 12, shadow)
+}
+
+ui_default_ripple :: (bounds: Rectangle,
+on_color: Color, key: i32, pressed: i32) #export {
+    if !ui_motion_backend_available() || key == 0 ||
+    !FancyEffectsEnabled() { return }
+    hash: u32 = (uint32_t)key * 2654435761u
+    ripple: *DefaultRipple = &default_ripples[hash % 64]
+    if ripple->key != hash ||
+    g_ui_frame_serial - ripple->frame_seen > 20 {
+        *ripple = (DefaultRipple){0}
+        ripple->key = hash
+    }
+    ripple->frame_seen = g_ui_frame_serial
+    mouse: Vector2 = ui_mouse_world()
+    if pressed && !ripple->active {
+        ripple->origin = CheckCollisionPointRec(mouse, bounds)
+        ? mouse : StyleRippleFallbackOrigin(bounds)
+        ripple->age = 0
+        ripple->active = 1
+    }
+    if !ripple->active {
+        return
+    }
+    dt: float = GetFrameTime()
+    if dt <= 0 || dt > 0.1 {
+        dt = 1.0 / 60.0
+    }
+    ripple->age += dt
+    max_radius: float = sqrtf(bounds.width * bounds.width +
+    bounds.height * bounds.height)
+    paint: StyleRipplePaint = StyleRipplePaintFor(
+    ripple->age, pressed != 0, max_radius,
+    (float)Scale(1000) / 1000.0)
+    if !paint.visible {
+        ripple->active = 0
+        return
+    }
+    color: Color = on_color
+    color.a = (unsigned char)paint.alpha
+    DrawCircleV(ripple->origin, paint.radius, color)
+}
+
+ui_draw_control_background :: (bounds: Rectangle,
+background: Color, border: Color,
+classic_radius: float) #export {
+    tokens: ThemeMetrics = GetThemeMetrics()
+    radius: float = tokens.bevel_enabled ? classic_radius
+    : ui_radius_px(bounds, tokens.control_radius)
+    if tokens.bevel_enabled {
+        if classic_radius <= 0 {
+            DrawRectangleRec(bounds, background)
+            DrawRectangleLinesEx(bounds, 1, border)
+        } else {
+            DrawRectangleRounded(bounds, classic_radius, 8, background)
+            DrawRectangleRoundedLines(bounds, classic_radius, 8, border)
+        }
+        return
+    }
+    if classic_radius > 0 {
+        radius = classic_radius
+    }
+    ui_default_elevation(bounds, radius, tokens.shadow_offset_y)
+    if tokens.control_alpha < background.a {
+        background.a = tokens.control_alpha
+    }
+    if tokens.border_alpha < border.a {
+        border.a = tokens.border_alpha
+    }
+    DrawRectangleRounded(bounds, radius, 12, background)
+    if border.a != 0 {
+        DrawRectangleRoundedLines(bounds, radius, 12, border)
+    }
+    shine_paint: StyleShinePaint = StyleShinePaintFor(
+    bounds, radius, tokens.shine_alpha,
+    (float)Scale(1000) / 1000.0)
+    if shine_paint.visible {
+        shine: Color = WHITE
+        shine.a = tokens.shine_alpha
+        DrawRectangleRounded(shine_paint.bounds, radius, 8, shine)
+    }
+}

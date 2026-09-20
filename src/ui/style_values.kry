@@ -1,0 +1,159 @@
+#module "style_values_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/style.h"
+#import "runtime/theme.h"
+#import "string.h"
+
+PackStyle :: (value: Style) -> StyleData {
+    packed: StyleData = (StyleData){0}
+    packed.fields = value.fields
+    packed.material = value.material
+    packed.typeface = StringView(value.typeface,
+    value.typeface != nil ? strlen(value.typeface) : 0)
+    packed.letter_spacing = value.letter_spacing
+    packed.background = ColorToInt(value.background)
+    packed.background_end = ColorToInt(value.background_end)
+    packed.foreground = ColorToInt(value.foreground)
+    packed.border = ColorToInt(value.border)
+    packed.focus = ColorToInt(value.focus)
+    packed.radius = value.radius
+    packed.border_width = value.border_width
+    packed.opacity = value.opacity
+    packed.padding_x = value.padding_x
+    packed.padding_y = value.padding_y
+    packed.gap = value.gap
+    packed.font_size = value.font_size
+    packed.icon_size = value.icon_size
+    packed.offset_x = value.content_offset.x
+    packed.offset_y = value.content_offset.y
+    return packed
+}
+
+ui_style_apply_effects_data :: (
+value: StyleData) -> StyleData #export {
+    return value
+}
+
+ui_style_apply_effects_frame :: (
+frame: StyleFrame) -> StyleFrame #export {
+    frame.value = ui_style_apply_effects_data(frame.value)
+    return frame
+}
+
+ui_style_apply_effects_fill :: (
+fill: FillStates) -> FillStates #export {
+    return fill
+}
+
+ui_app_style :: () -> Style #export {
+    value: StyleData = ResolveActiveStyle((StyleData){0},
+    StyleDefaultFacts(StyleKindApp()), ButtonStateNormal)
+    return ui_style_apply_effects(ui_unpack_style(value))
+}
+
+ui_surface_style :: () -> Style #export {
+    value: StyleData = ResolveActiveStyle((StyleData){0},
+    StyleDefaultFacts(StyleKindSurface()), ButtonStateNormal)
+    return ui_style_apply_effects(ui_unpack_style(value))
+}
+
+ui_unpack_style :: (value: StyleData) -> Style #export {
+    result: Style = (Style){0}
+    result.material = (MaterialKind)value.material
+    result.typeface = value.typeface.data
+    result.letter_spacing = value.letter_spacing
+    result.fields = value.fields
+    result.background = GetColor(value.background)
+    result.background_end = GetColor(value.background_end)
+    result.foreground = GetColor(value.foreground)
+    result.border = GetColor(value.border)
+    result.focus = GetColor(value.focus)
+    result.radius = value.radius
+    result.border_width = value.border_width
+    result.opacity = StyleOpacityValue(value.fields, value.opacity)
+    result.padding_x = value.padding_x
+    result.padding_y = value.padding_y
+    result.gap = value.gap
+    result.font_size = value.font_size
+    result.icon_size = value.icon_size
+    result.content_offset.x = value.offset_x
+    result.content_offset.y = value.offset_y
+    return result
+}
+
+MergeStyle :: (base: Style,
+overrides: Style) -> Style #export {
+    return ui_unpack_style(MergeValues(
+    PackStyle(base), PackStyle(overrides)))
+}
+
+ui_style_transition :: (resolved: Style, normal: Style,
+hover: Style, press: Style, focus: Style,
+h: float, p: float, f: float,
+fill: *FillStates) -> Style #export {
+    frame: StyleFrame = TransitionFrame(PackStyle(resolved),
+    PackStyle(normal), PackStyle(hover), PackStyle(press),
+    PackStyle(focus), h, p, f)
+    frame = ui_style_apply_effects_frame(frame)
+    *fill = frame.fill
+    return ui_unpack_style(frame.value)
+}
+
+ui_style_fill :: (value: Style) -> FillStates #export {
+    return ui_style_apply_effects_fill(FillState(value.fields,
+    ColorToInt(value.background),
+    ColorToInt(value.background_end)))
+}
+
+ui_style_apply_effects :: (value: Style) -> Style #export {
+    return ui_unpack_style(
+    ui_style_apply_effects_data(PackStyle(value)))
+}
+
+ui_pack_style_states :: (
+control: ControlStyle) -> StyleStates #export {
+    states: StyleStates = (StyleStates){0}
+    states.normal = PackStyle(control.normal)
+    states.hover = PackStyle(control.hover)
+    states.pressed = PackStyle(control.pressed)
+    states.focused = PackStyle(control.focused)
+    states.disabled = PackStyle(control.disabled)
+    states.loading = PackStyle(control.loading)
+    states.selected = PackStyle(control.selected)
+    return states
+}
+
+ResolveControlStyle :: (base: Style,
+control: ControlStyle, state: ButtonState) -> Style #export {
+    return ui_unpack_style(ResolveValues(
+    PackStyle(base), ui_pack_style_states(control), state))
+}
+
+ui_radius_px :: (bounds: Rectangle,
+radius_px: float) -> float #export {
+    if radius_px <= 0 {
+        return 0
+    }
+    min_side: float = bounds.height < bounds.width
+    ? bounds.height : bounds.width
+    if min_side <= 0 {
+        return 0
+    }
+    radius: float = (float)Scale(radius_px) / min_side
+    return radius > 0.5 ? 0.5 : radius
+}
+
+ui_control_bevel_enabled :: () -> i32 #export {
+    return GetThemeMetrics().bevel_enabled != 0
+}
+
+ui_touch_target_min :: () -> i32 #export {
+    return Scale(GetThemeMetrics().touch_target_min)
+}
+
+ui_alpha :: (color: Color,
+alpha: u8) -> Color #export {
+    color.a = alpha
+    return color
+}

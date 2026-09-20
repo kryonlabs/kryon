@@ -115,7 +115,7 @@ func TestNoStyleListAndTable(t *testing.T) {
 			ID: 1, Items: []string{"One", "Two", "Three"}, SelectedIndex: &listSelected})
 		r.TableView(TableViewProps{Bounds: Rectangle{X: 10, Y: 78, Width: 200, Height: 60},
 			Columns: []string{"Name", "Value"},
-			Rows: []TableRow{{Cells: []string{"a", "1"}}, {Cells: []string{"b", "2"}}}})
+			Rows:    []TableRow{{Cells: []string{"a", "1"}}, {Cells: []string{"b", "2"}}}})
 	})
 	assertNoStyleChrome(t, "list+table", ops)
 	if countOps(ops, FrameOpText) < 5 {

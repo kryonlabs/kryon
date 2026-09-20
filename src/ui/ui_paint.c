@@ -1,6 +1,18 @@
 #include "ui_internal.h"
 #include "ui_paint_internal.h"
 
+LoadingRingSpec ui_ring_paint_spec(LoadingRingSpec ring);
+
+int
+ui_backend_is_termi(void)
+{
+#if defined(KRYON_BACKEND_TERMI)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 void
 ui_draw_surface_direct(SurfaceDrawing command)
 {
@@ -39,19 +51,6 @@ ui_draw_surface_direct(SurfaceDrawing command)
 }
 
 void
-ui_draw_surface(SurfaceDrawing command)
-{
-    /* Both inward and outward colored blur emit light. Keep the face, sharp
-     * edges, focus outline and black shadows when glow is disabled. */
-    if(!FancyEffectsEnabled() &&
-       (command.layer.blur > 0.0f || command.layer.inner_blur > 0.0f) &&
-       ((command.layer.color | command.layer.end_color) & 0xffffff00u) != 0)
-        return;
-    if(command.visible && !ui_draw_surface_cached(command))
-        ui_draw_surface_direct(command);
-}
-
-void
 ui_draw(Drawing command)
 {
     Rectangle bounds = command.bounds;
@@ -84,9 +83,7 @@ ui_draw(Drawing command)
         }
         break;
     case DrawingRing: {
-        LoadingRingSpec ring = command.ring;
-        if(!FancyEffectsEnabled())
-            ring.glow_blur = 0.0f;
+        LoadingRingSpec ring = ui_ring_paint_spec(command.ring);
         float radius = LoadingPaintRadius(ring);
         for(int y = (int)floorf(ring.y - radius); y < (int)ceilf(ring.y + radius); y++) {
             for(int x = (int)floorf(ring.x - radius); x < (int)ceilf(ring.x + radius); x++) {

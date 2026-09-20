@@ -1,0 +1,213 @@
+#module "reorder_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/reorder.h"
+
+reorder_state :: ReorderState #global
+
+ReorderFindIndex :: (list: ReorderList, item_id: i32) -> i32 {
+    if list.items == nil { return -1 }
+    index: i32 = 0
+    while index < list.item_count {
+        if ReorderItemMatches(list.items[index].id, item_id) {
+            return index
+        }
+        index += 1
+    }
+    return -1
+}
+
+ReorderTargetIndex :: (list: ReorderList, active_index: i32,
+pointer_y: i32) -> i32 {
+    if list.items == nil || list.item_count <= 0 { return -1 }
+    target: i32 = 0
+    index: i32 = 0
+    while index < list.item_count {
+        target = ReorderTargetStep(target, index, active_index,
+        pointer_y, list.items[index].bounds)
+        index += 1
+    }
+    return ReorderTargetIndexFor(target, list.item_count)
+}
+
+ReorderFrame :: (role: i32, state: ButtonState,
+active: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.tone = ButtonToneNeutral
+    if active != 0 { props.tone = ButtonToneAccent }
+    props.emphasis = ButtonEmphasisSoft
+    props.selected = active
+    return ui_control_style_frame_role_kind(props, state, 0,
+    0.0, 0.0, 0.0, StyleKindReorder(), role)
+}
+
+ReorderMetricsForList :: (list: ReorderList) -> ReorderMetrics {
+    return ReorderMetricsFor(GetScale(), list.handle_width,
+    list.drag_threshold, list.auto_scroll_margin,
+    list.auto_scroll_step,
+    ReorderFrame(12, ButtonStateNormal, 0),
+    ReorderFrame(25, ButtonStateFocus, 1))
+}
+
+ReorderCancel :: () {
+    memset(&reorder_state, 0, sizeof(ReorderState))
+    if g_ui_pointer_owner == POINTER_OWNER_REORDER {
+        g_ui_pointer_owner = POINTER_OWNER_NONE
+    }
+}
+
+ReorderCapturePointer :: () {
+    PushInputCapture((Rectangle){0, 0,
+        (float)ui_view_width, (float)ui_view_height}, 0)
+}
+
+UpdateReorderList :: (list: ReorderList) -> ReorderListResult #export {
+    mouse: Vector2 = ui_mouse_world()
+    pointer_y: i32 = (int)mouse.y
+    result: ReorderListResult = ReorderListResultDefault(pointer_y)
+    captured: i32 = ui_input_captures_click_internal(mouse, 0)
+    metrics: ReorderMetrics = ReorderMetricsForList(list)
+    if list.item_count < 0 { list.item_count = 0 }
+
+    foreign: ReorderLifecycleDecision = ReorderForeignActiveListFor(
+    reorder_state.list_id != 0, reorder_state.list_id, list.id,
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0)
+    if foreign.cancel_active { ReorderCancel() }
+    if foreign.ignore_list { return result }
+
+    if reorder_state.list_id == list.id {
+        active_index: i32 = ReorderFindIndex(list,
+        reorder_state.item_id)
+        active_disabled: i32 = 0
+        if active_index >= 0 && active_index < list.item_count &&
+        list.items != nil {
+            active_disabled = list.items[active_index].disabled
+        }
+        lifecycle: ReorderLifecycleDecision =
+        ReorderActiveItemLifecycleFor(active_index,
+        list.item_count, list.items != nil, active_disabled)
+        if lifecycle.cancel_active { ReorderCancel() }
+        if lifecycle.ignore_list { return result }
+
+        dragged_center_y: i32 = ReorderDraggedCenterY(pointer_y,
+        reorder_state.press_offset_y,
+        list.items[active_index].bounds.height)
+        result = ReorderListActiveResultFor(reorder_state.from_index,
+        active_index, ReorderTargetIndex(list, active_index,
+        dragged_center_y), reorder_state.item_id, pointer_y,
+        reorder_state.press_y)
+        if IsMouseButtonDown(MOUSE_BUTTON_LEFT) {
+            scroll_offset: i32 = 0
+            if list.scroll_offset != nil {
+                scroll_offset = *list.scroll_offset
+            }
+            motion: ReorderDragMotion = ReorderDragMotionFor(
+            pointer_y, reorder_state.press_y,
+            reorder_state.dragging, list.bounds,
+            list.viewport_top, list.viewport_bottom,
+            scroll_offset, list.max_scroll, metrics)
+            if !reorder_state.dragging && motion.dragging {
+                reorder_state.dragging = 1
+                g_ui_pointer_owner = POINTER_OWNER_REORDER
+            }
+            if reorder_state.dragging {
+                result.dragging = 1
+                ReorderCapturePointer()
+                if list.scroll_offset != nil {
+                    *list.scroll_offset = motion.scroll_offset
+                }
+            }
+            return result
+        }
+        release: ReorderReleaseDecision = ReorderReleaseFor(
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        reorder_state.dragging != 0)
+        if release.capture_input {
+            ReorderCapturePointer()
+            if release.commit {
+                result = ReorderListCommitResultFor(result,
+                list.item_count)
+            }
+        }
+        if release.cancel_active { ReorderCancel() }
+        return result
+    }
+
+    press: ReorderPressDecision = ReorderPressFor(list.id,
+    list.items != nil, list.item_count,
+    IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0, captured != 0,
+    g_ui_pointer_owner == POINTER_OWNER_NONE,
+    CheckCollisionPointRec(mouse, list.bounds) != 0)
+    if !press.can_press { return result }
+    index: i32 = 0
+    while index < list.item_count {
+        item: ReorderItem = list.items[index]
+        if !item.disabled {
+            handle: Rectangle = ReorderHandleBounds(item.bounds,
+            metrics.handle_width, list.handle_height)
+            if CheckCollisionPointRec(mouse, handle) {
+                reorder_state.list_id = list.id
+                reorder_state.item_id = item.id
+                reorder_state.from_index = index
+                reorder_state.press_y = pointer_y
+                reorder_state.press_offset_y = pointer_y -
+                (int)item.bounds.y
+                reorder_state.scroll_start = 0
+                if list.scroll_offset != nil {
+                    reorder_state.scroll_start = *list.scroll_offset
+                }
+                reorder_state.dragging = 0
+                result = ReorderListPressResultFor(index,
+                item.id, pointer_y)
+                ReorderCapturePointer()
+                return result
+            }
+        }
+        index += 1
+    }
+    return result
+}
+
+RenderReorderHandle :: (x: i32, y: i32, width: i32,
+height: i32, active: i32) #export {
+    if width <= 0 || height <= 0 { return }
+    frame: StyleFrame = ReorderFrame(12,
+    active ? ButtonStateSelected : ButtonStateNormal, active)
+    style: Style = ui_unpack_style(frame.value)
+    MarkClickable()
+    paint: ReorderHandlePaint = ReorderHandlePaintFor(
+    (Rectangle){(float)x, (float)y, (float)width, (float)height},
+    (float)GetScale(), frame)
+    if paint.dot_count <= 0 { return }
+    DrawRectangleRec(paint.dot0, style.foreground)
+    DrawRectangleRec(paint.dot1, style.foreground)
+    DrawRectangleRec(paint.dot2, style.foreground)
+    DrawRectangleRec(paint.dot3, style.foreground)
+    DrawRectangleRec(paint.dot4, style.foreground)
+    DrawRectangleRec(paint.dot5, style.foreground)
+}
+
+RenderReorderPlaceholder :: (bounds: Rectangle) #export {
+    if bounds.width <= 0 || bounds.height <= 0 { return }
+    frame: StyleFrame = ReorderFrame(25, ButtonStateFocus, 1)
+    style: Style = ui_unpack_style(frame.value)
+    color: Color = style.foreground
+    if style.border.a != 0 { color = style.border }
+    paint: ReorderPlaceholderPaint = ReorderPlaceholderPaintFor(
+    bounds, (float)GetScale(), frame)
+    if paint.use_slot {
+        if paint.slot_bounds.width <= 0 ||
+        paint.slot_bounds.height <= 0 { return }
+        DrawRectangleRounded(paint.slot_bounds, paint.radius,
+        paint.segments, Fade(color, paint.fill_alpha))
+        if paint.stroke_width > 0.0 {
+            DrawRectangleRoundedLinesEx(paint.slot_bounds,
+            paint.radius, paint.segments, paint.stroke_width,
+            color)
+        }
+        return
+    }
+    if paint.line_bounds.width <= 0 ||
+    paint.line_bounds.height <= 0 { return }
+    DrawRectangleRec(paint.line_bounds, color)
+}

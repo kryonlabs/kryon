@@ -1,0 +1,894 @@
+#module "table_view_host"
+#import "ui_internal.h"
+#import "runtime/table_view.h"
+#import "ui_style_internal.h"
+#import "ui_popup_input_internal.h"
+#import "ui/widget_store.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+#import "ui/disabled.h"
+#import "ui/scroll.h"
+#import "math.h"
+#import "stdint.h"
+
+ui_table_display_column :: (table: TableViewProps,
+slot: i32) -> i32 #export {
+    if table.column_order == nil {
+        if slot < 0 || slot >= table.column_count { return -1 }
+        if table.column_enabled != nil &&
+        table.column_enabled[slot] == 0 { return -1 }
+        return slot
+    }
+    ordinal: i32 = 0
+    order_slot: i32 = 0
+    while order_slot < table.column_count {
+        column: i32 = table.column_order[order_slot]
+        duplicate: i32 = 0
+        if column >= 0 && column < table.column_count {
+            previous: i32 = 0
+            while previous < order_slot {
+                if table.column_order[previous] == column {
+                    duplicate = 1
+                }
+                previous += 1
+            }
+            if !duplicate && (table.column_enabled == nil ||
+            table.column_enabled[column] != 0) {
+                if ordinal == slot { return column }
+                ordinal += 1
+            }
+        }
+        order_slot += 1
+    }
+    column: i32 = 0
+    while column < table.column_count {
+        requested: i32 = 0
+        order_slot = 0
+        while order_slot < table.column_count {
+            if table.column_order[order_slot] == column {
+                requested = 1
+            }
+            order_slot += 1
+        }
+        if !requested && (table.column_enabled == nil ||
+        table.column_enabled[column] != 0) {
+            if ordinal == slot { return column }
+            ordinal += 1
+        }
+        column += 1
+    }
+    return -1
+}
+
+ui_table_visible_columns :: (table: TableViewProps) -> i32 #export {
+    count: i32 = 0
+    slot: i32 = 0
+    while slot < table.column_count {
+        if ui_table_display_column(table, slot) >= 0 { count += 1 }
+        slot += 1
+    }
+    return count
+}
+
+ui_table_column_width :: (table: TableViewProps,
+column: i32, default_width: i32) -> i32 #export {
+    if table.column_widths != nil &&
+    table.column_widths[column] > 0 {
+        return table.column_widths[column]
+    }
+    return default_width
+}
+
+ui_table_column_x :: (table: TableViewProps, column: i32,
+default_width: i32) -> i32 #export {
+    x: i32 = (int)table.bounds.x
+    slot: i32 = 0
+    while slot < table.column_count {
+        current: i32 = ui_table_display_column(table, slot)
+        if current == column { return x }
+        if current >= 0 {
+            x += ui_table_column_width(table, current,
+            default_width)
+        }
+        slot += 1
+    }
+    return x
+}
+
+ui_table_separator_at_x :: (table: TableViewProps,
+x: i32, tolerance: i32, default_width: i32,
+separator_x: *i32) -> i32 #export {
+    cursor: i32 = (int)table.bounds.x
+    slot: i32 = 0
+    while slot < table.column_count {
+        column: i32 = ui_table_display_column(table, slot)
+        if column >= 0 {
+            cursor += ui_table_column_width(table,
+            column, default_width)
+            if x >= cursor - tolerance && x <= cursor + tolerance {
+                if separator_x != nil { *separator_x = cursor }
+                return column
+            }
+        }
+        slot += 1
+    }
+    return -1
+}
+
+ui_table_header_shift :: (table: TableViewProps,
+y: float) -> float #export {
+    angle: float = TableViewHeaderAngleFor(table.header_angle)
+    if angle == 0 { return 0 }
+    height: float = Scale(table.header_height > 30 ?
+    table.header_height : 30)
+    return -(height - (y - table.bounds.y)) /
+    tanf(angle * 3.14159265358979323846 / 180)
+}
+
+ui_table_mod_key_down :: () -> i32 #export {
+    return IsKeyDown(KEY_LEFT_CONTROL) ||
+    IsKeyDown(KEY_RIGHT_CONTROL) ||
+    IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER)
+}
+
+ui_table_cell_text :: (table: TableViewProps,
+row: i32, column: i32) -> const char* #export {
+    if table.rows == nil || row < 0 || row >= table.row_count ||
+    column < 0 || column >= table.column_count ||
+    table.rows[row].cells == nil ||
+    column >= table.rows[row].cell_count ||
+    table.rows[row].cells[column] == nil { return "" }
+    return table.rows[row].cells[column]
+}
+
+ui_table_clipboard_text :: (table: TableViewProps,
+row: i32, column: i32) -> *char #export {
+    size: size_t = 1
+    count: i32 = 0
+    if table.copy_text != nil {
+        size = strlen(table.copy_text) + 1
+        copy: *char = (char*)malloc(size)
+        if copy == nil { return nil }
+        memcpy(copy, table.copy_text, size)
+        return copy
+    }
+    if row >= 0 && row < table.row_count &&
+    column >= 0 && column < table.column_count {
+        count = 1
+    } else if row >= 0 && row < table.row_count {
+        count = table.column_count
+    } else if column >= 0 && column < table.column_count {
+        count = table.row_count
+    }
+    if count < 1 { return nil }
+    index: i32 = 0
+    while index < count {
+        cell: const char* = ui_table_cell_text(table,
+        row >= 0 ? row : index, column >= 0 ? column : index)
+        length: size_t = strlen(cell)
+        separator: size_t = index > 0 ? 1 : 0
+        if length > SIZE_MAX - size - separator { return nil }
+        size += length + separator
+        index += 1
+    }
+    copy: *char = (char*)malloc(size)
+    if copy == nil { return nil }
+    out: *char = copy
+    index = 0
+    while index < count {
+        cell: const char* = ui_table_cell_text(table,
+        row >= 0 ? row : index, column >= 0 ? column : index)
+        length: size_t = strlen(cell)
+        if index > 0 {
+            *out = row >= 0 ? '\t' : '\n'
+            out += 1
+        }
+        memcpy(out, cell, length)
+        out += length
+        index += 1
+    }
+    *out = '\0'
+    return copy
+}
+
+ui_table_metrics :: (table: TableViewProps) -> TableViewMetrics #export {
+    state: ButtonState = table.disabled != 0 ?
+    ButtonStateDisabled : ButtonStateNormal
+    table_frame: StyleFrame = (StyleFrame){0}
+    header_frame: StyleFrame = (StyleFrame){0}
+    cell_frame: StyleFrame = (StyleFrame){0}
+    divider_frame: StyleFrame = (StyleFrame){0}
+    table_frame.value = ResolveActiveStyle((StyleData){0},
+    TableViewFactsFor(table.class_name, state), state)
+    header_frame.value = ResolveActiveStyle((StyleData){0},
+    TableViewRoleFactsFor(table.class_name,
+    TableViewHeaderRole(), state), state)
+    cell_frame.value = ResolveActiveStyle((StyleData){0},
+    TableViewRoleFactsFor(table.class_name,
+    TableViewCellRole(), state), state)
+    divider_frame.value = ResolveActiveStyle((StyleData){0},
+    TableViewRoleFactsFor(table.class_name,
+    TableViewDividerRole(), state), state)
+    return TableViewMetricsFor((float)GetScale(), table_frame,
+    header_frame, cell_frame, divider_frame)
+}
+
+ui_table_handle_keys :: (table: TableViewProps, row_h: i32,
+header_h: i32, frozen_rows: i32,
+max_scroll: i32) -> i32 #export {
+    visible_columns: i32 = ui_table_visible_columns(table)
+    if table.disabled || table.selected_row == nil ||
+    table.row_count < 1 || visible_columns < 1 ||
+    table.id <= 0 || !IsFocusActive(table.id) ||
+    !IsKeyboardInputEnabled() ||
+    ui_popup_input_focus_captures(table.id) { return 0 }
+
+    row: i32 = *table.selected_row >= 0 ?
+    TableViewSelectedRowFor(*table.selected_row, table.row_count) :
+    TableViewSelectedRowFor(-1, table.row_count)
+    column: i32 = ui_table_display_column(table, 0)
+    column_slot: i32 = 0
+    if table.selected_column != nil {
+        slot: i32 = 0
+        while slot < visible_columns {
+            candidate: i32 = ui_table_display_column(table, slot)
+            if candidate == *table.selected_column {
+                column_slot = slot
+                column = candidate
+                break
+            }
+            slot += 1
+        }
+    }
+
+    intent: TableViewKeyboardIntent = TableViewKeyboardIntentFor(
+    IsKeyPressed(KEY_UP) != 0,
+    IsKeyPressed(KEY_DOWN) != 0,
+    IsKeyPressed(KEY_LEFT) != 0,
+    IsKeyPressed(KEY_RIGHT) != 0,
+    IsKeyPressed(KEY_TAB) != 0,
+    IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT),
+    IsKeyPressed(KEY_ENTER) != 0 ||
+    IsKeyPressed(KEY_KP_ENTER) != 0,
+    IsKeyPressed(KEY_F2) != 0,
+    IsKeyPressed(KEY_ESCAPE) != 0)
+    selection_changed: i32 = 0
+    changed: i32 = 0
+    if intent.move_row != 0 {
+        row = TableViewSelectionMoveRow(row, table.row_count,
+        intent.move_row)
+        selection_changed = 1
+        changed = 1
+    }
+    if intent.move_column != 0 {
+        column_slot = TableViewSelectionMoveColumn(column_slot,
+        visible_columns, intent.move_column)
+        column = ui_table_display_column(table, column_slot)
+        selection_changed = 1
+        changed = 1
+    }
+    if intent.tab {
+        selection: TableViewSelection = TableViewSelectionTab(
+        row, column_slot, table.row_count, visible_columns,
+        intent.tab_backwards)
+        row = selection.row
+        column_slot = selection.column_slot
+        column = ui_table_display_column(table, column_slot)
+        ui_consume_focus_tab()
+        selection_changed = 1
+        changed = 1
+    }
+    clipboard: TableViewClipboardDecision =
+    TableViewClipboardDecisionFor(ui_table_mod_key_down() != 0,
+    IsKeyPressed(KEY_C) != 0, IsKeyPressed(KEY_X) != 0,
+    IsKeyPressed(KEY_V) != 0, table.pasted_text != nil)
+    if clipboard.copy_selection {
+        copy: *char = ui_table_clipboard_text(table,
+        *table.selected_row,
+        table.selected_column != nil ?
+        *table.selected_column : -1)
+        if copy != nil {
+            SetClipboardTextValue(copy)
+            free(copy)
+            changed = 1
+        }
+    }
+    if clipboard.paste {
+        *table.pasted_text = GetClipboardTextValue()
+        if table.pasted_row != nil {
+            *table.pasted_row = *table.selected_row
+        }
+        if table.pasted_column != nil {
+            *table.pasted_column = table.selected_column != nil ?
+            *table.selected_column : -1
+        }
+        changed = 1
+    }
+    if intent.activate {
+        if table.activated_row != nil { *table.activated_row = row }
+        if table.activated_column != nil {
+            *table.activated_column = column
+        }
+        selection_changed = 1
+        changed = 1
+    }
+    if intent.clear_selection {
+        clear: TableViewSelectionClearDecision =
+        TableViewSelectionClearFor(*table.selected_row,
+        table.selected_column != nil ?
+        *table.selected_column : -1)
+        if clear.changed {
+            row = clear.row
+            column = clear.column
+            selection_changed = 1
+            changed = 1
+        }
+    }
+    if selection_changed {
+        *table.selected_row = row
+        if table.selected_column != nil {
+            *table.selected_column = column
+        }
+        if row >= frozen_rows && table.scroll_offset != nil {
+            view_h: i32 = (int)table.bounds.height - header_h -
+            frozen_rows * row_h
+            *table.scroll_offset = TableViewSelectionScrollOffset(
+            row, frozen_rows, row_h, view_h,
+            *table.scroll_offset, max_scroll)
+        }
+    }
+    return changed
+}
+
+TableViewResetOutput :: (table: TableViewProps) {
+    if table.activated_row != nil { *table.activated_row = -1 }
+    if table.activated_column != nil { *table.activated_column = -1 }
+    if table.right_clicked_row != nil {
+        *table.right_clicked_row = -1
+    }
+    if table.right_clicked_column != nil {
+        *table.right_clicked_column = -1
+    }
+    if table.pasted_text != nil { *table.pasted_text = nil }
+    if table.pasted_row != nil { *table.pasted_row = -1 }
+    if table.pasted_column != nil { *table.pasted_column = -1 }
+}
+
+TableViewResize :: (table: TableViewProps,
+toolkit: *ToolkitStore, layout: TableViewLayout,
+metrics: TableViewMetrics, default_col_w: i32) -> i32 {
+    mouse: Vector2 = ui_mouse_world()
+    header: Rectangle = (Rectangle){table.bounds.x,
+        table.bounds.y, table.bounds.width,
+        (float)layout.header_height}
+    pointer_in_header: i32 = ui_contains(header, mouse)
+    separator_x: i32 = 0
+    column: i32 = -1
+    if pointer_in_header {
+        column = ui_table_separator_at_x(table,
+        (int)(mouse.x - ui_table_header_shift(table, mouse.y)),
+        metrics.resize_tolerance, default_col_w, &separator_x)
+    }
+    start: TableViewResizeStartDecision = TableViewResizeStartFor(
+    toolkit->resize_column >= 0, ContentDisabled() != 0,
+    table.disabled != 0, table.resizable != 0,
+    table.column_widths != nil,
+    IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+    pointer_in_header != 0, column)
+    if start.begin {
+        toolkit->resize_table_id = table.id
+        toolkit->resize_column = start.column
+        toolkit->resize_start_x = (int)mouse.x
+        toolkit->resize_start_width = ui_table_column_width(
+        table, start.column, default_col_w)
+        toolkit->resize_owner = ui_popup_input_owner()
+        MarkClickable()
+    }
+    drag: TableViewResizeDragDecision = TableViewResizeDragFor(
+    toolkit->resize_column >= 0,
+    toolkit->resize_table_id == table.id,
+    ContentDisabled() != 0, table.disabled != 0,
+    table.resizable != 0, table.column_widths != nil,
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0)
+    changed: i32 = 0
+    if drag.update {
+        minimum: i32 = TableViewMinimumColumnWidth(
+        table.min_column_width, (float)GetScale(), metrics)
+        width: i32 = TableViewResizeColumnWidthFor(
+        toolkit->resize_start_width, toolkit->resize_start_x,
+        (int)mouse.x, minimum)
+        if table.column_widths[toolkit->resize_column] != width {
+            table.column_widths[toolkit->resize_column] = width
+            changed = 1
+        }
+    }
+    if drag.mark_clickable { MarkClickable() }
+    if drag.consume_release { ConsumeRelease() }
+    if drag.finish {
+        toolkit->resize_table_id = 0
+        toolkit->resize_column = -1
+    }
+    return changed
+}
+
+TableViewColumnAtPointer :: (table: TableViewProps,
+mouse_x: float, default_col_w: i32) -> i32 {
+    slot: i32 = 0
+    while slot < table.column_count {
+        column: i32 = ui_table_display_column(table, slot)
+        if column >= 0 {
+            x: i32 = ui_table_column_x(table, column,
+            default_col_w)
+            width: i32 = ui_table_column_width(table, column,
+            default_col_w)
+            if mouse_x >= (float)x &&
+            mouse_x < (float)(x + width) { return column }
+        }
+        slot += 1
+    }
+    return -1
+}
+
+TableViewPaintHeaders :: (table: TableViewProps,
+metrics: TableViewMetrics, default_col_w: i32,
+header_h: i32, header_font: i32,
+divider_color: Color, paint: i32) -> i32 {
+    changed: i32 = -1
+    slot: i32 = 0
+    while slot < table.column_count {
+        column: i32 = ui_table_display_column(table, slot)
+        if column >= 0 {
+            x: i32 = ui_table_column_x(table, column,
+            default_col_w)
+            col_w: i32 = ui_table_column_width(table, column,
+            default_col_w)
+            head: Rectangle = TableViewHeaderBounds(table.bounds,
+            x, col_w, header_h)
+            mouse: Vector2 = ui_mouse_world()
+            local_mouse: Vector2 = (Vector2){
+                mouse.x - ui_table_header_shift(table, mouse.y), mouse.y}
+            all_headers: Rectangle = (Rectangle){table.bounds.x,
+                table.bounds.y, table.bounds.width, (float)header_h}
+            hot: i32 = TableViewHeaderHotFor(
+            table.disabled != 0,
+            ui_contains(all_headers, mouse) != 0,
+            ui_contains(head, local_mouse) != 0,
+            InputCapturesClick(mouse) != 0)
+            pointer: TableViewHeaderPointerDecision =
+            TableViewHeaderPointerDecisionFor(table.disabled != 0,
+            hot != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            table.sort_column != nil)
+            if paint {
+                selected: i32 = (table.selected_column != nil &&
+                *table.selected_column == column) ||
+                (table.sort_column != nil &&
+                *table.sort_column == column)
+                header_state: ButtonState = table.disabled != 0 ?
+                ButtonStateDisabled : (hot != 0 ? ButtonStateHover :
+                (selected != 0 ? ButtonStateSelected : ButtonStateNormal))
+                frame: StyleFrame = WidgetFrameForClassRole(
+                ButtonToneNeutral, header_state, table.disabled,
+                selected, table.class_name, StyleKindTableView(),
+                TableViewHeaderRole())
+                header_style: Style = ui_unpack_style(
+                ui_style_apply_effects_frame(frame).value)
+                header_color: Color = header_style.background
+                text_color: Color = Fade(header_style.foreground,
+                header_style.opacity)
+                font: i32 = ResolveFont(0, StyleFontValue(
+                header_style.fields, header_style.font_size),
+                header_font)
+                shift: float = ui_table_header_shift(table, head.y)
+                if shift != 0 {
+                    top_left: Vector2 = (Vector2){head.x + shift, head.y}
+                    top_right: Vector2 = (Vector2){
+                        head.x + head.width + shift, head.y}
+                    bottom_right: Vector2 = (Vector2){
+                        head.x + head.width, head.y + head.height}
+                    bottom_left: Vector2 = (Vector2){
+                        head.x, head.y + head.height}
+                    BeginClip((int)table.bounds.x,
+                    (int)table.bounds.y, (int)table.bounds.width,
+                    header_h)
+                    DrawTriangle(top_left, bottom_left, bottom_right,
+                    header_color)
+                    DrawTriangle(top_left, bottom_right, top_right,
+                    header_color)
+                    EndClip()
+                } else {
+                    DrawWidgetFrame(head, table.bounds, frame,
+                    hot, 0, table.disabled, 0)
+                }
+                label: const char* = ""
+                if table.columns != nil &&
+                table.columns[column] != nil {
+                    label = table.columns[column]
+                }
+                angle: float = TableViewHeaderAngleFor(
+                table.header_angle)
+                if angle != 0 {
+                    row: i32 = 0
+                    while row < header_h {
+                        left: float = head.x + ui_table_header_shift(
+                        table, head.y + row + 0.5)
+                        x0: i32 = (int)ceilf(fmaxf(table.bounds.x,
+                        left) - 0.5)
+                        x1: i32 = (int)ceilf(fminf(table.bounds.x +
+                        table.bounds.width, left + head.width) - 0.5)
+                        if x1 > x0 {
+                            BeginClip(x0, (int)head.y + row,
+                            x1 - x0, 1)
+                            text_position: Vector2 = (Vector2){
+                                head.x + (angle > 0 ? shift : 0) +
+                                metrics.header_text_pad_x,
+                                angle < 0 ? head.y + head.height -
+                                metrics.header_text_pad_x : head.y +
+                                metrics.header_text_pad_x}
+                            DrawTextPro(GetTextFont(), label,
+                            text_position, (Vector2){0, 0}, angle,
+                            font, 1, text_color)
+                            EndClip()
+                        }
+                        row += 1
+                    }
+                } else {
+                    RenderText(label, (int)head.x +
+                    metrics.header_text_pad_x,
+                    ui_row_text_y(head, font), font, text_color)
+                }
+                if table.resizable && table.column_widths != nil {
+                    BeginClip((int)table.bounds.x, (int)head.y,
+                    (int)table.bounds.width, header_h)
+                    DrawLine((int)(head.x + head.width + shift) - 1,
+                    (int)head.y, (int)(head.x + head.width) - 1,
+                    (int)(head.y + head.height), divider_color)
+                    EndClip()
+                }
+            }
+            if pointer.sort {
+                direction: i32 = 0
+                if table.sort_direction != nil {
+                    direction = *table.sort_direction
+                }
+                sort: TableViewSortDecision = TableViewSortDecisionFor(
+                column, *table.sort_column, direction)
+                if table.selected_row != nil {
+                    *table.selected_row = sort.selected_row
+                }
+                if table.selected_column != nil {
+                    *table.selected_column = sort.selected_column
+                }
+                *table.sort_column = sort.sort_column
+                if table.sort_direction != nil {
+                    *table.sort_direction = sort.sort_direction
+                }
+                changed = sort.changed
+            }
+        }
+        slot += 1
+    }
+    return changed
+}
+
+TableViewPaintRows :: (table: TableViewProps,
+toolkit: *ToolkitStore, layout: TableViewLayout,
+scroll_layout: TableViewScrollLayout,
+default_col_w: i32, metrics: TableViewMetrics,
+text_style: Style, selection_style: Style,
+cell_font: i32, paint: i32) -> i32 {
+    changed: i32 = -1
+    row_h: i32 = layout.row_height
+    frozen_rows: i32 = layout.frozen_rows
+    if paint {
+        BeginClip((int)table.bounds.x,
+        (int)(table.bounds.y + layout.header_height),
+        (int)table.bounds.width,
+        (int)(table.bounds.height - layout.header_height))
+    }
+    draw_index: i32 = 0
+    while draw_index < frozen_rows + scroll_layout.visible_rows + 1 {
+        scrolling: i32 = draw_index >= frozen_rows
+        if paint && draw_index == frozen_rows {
+            EndClip()
+            BeginClip((int)table.bounds.x,
+            (int)table.bounds.y + layout.header_height +
+            frozen_rows * row_h,
+            (int)table.bounds.width, layout.scroll_body_height)
+        }
+        row_index: i32 = scrolling != 0 ?
+        scroll_layout.first + draw_index - frozen_rows : draw_index
+        if row_index >= 0 && row_index < table.row_count {
+            row: Rectangle = TableViewRowBounds(table.bounds,
+            layout, row_index, draw_index, scroll_layout,
+            scrolling != 0)
+            viewport: Rectangle = TableViewViewport(table.bounds,
+            layout, scrolling != 0)
+            hot: i32 = TableViewRowHotFor(table.disabled != 0,
+            table.custom_cells != 0,
+            ui_contains(viewport, ui_mouse_world()) != 0,
+            ui_hot(row) != 0)
+            pointer: TableViewRowPointerDecision =
+            TableViewRowPointerDecisionFor(table.disabled != 0,
+            hot != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) != 0,
+            table.selected_row != nil,
+            table.right_clicked_row != nil ||
+            table.right_clicked_column != nil)
+            if paint && row_index % 2 == 1 {
+                row_frame: StyleFrame =
+                WidgetFrameForClassRole(
+                ButtonToneNeutral, table.disabled != 0 ?
+                ButtonStateDisabled : ButtonStateNormal,
+                table.disabled, 0, table.class_name,
+                StyleKindTableView(), TableViewRowRole())
+                DrawWidgetFrame(row, table.bounds,
+                row_frame, 0, 0, table.disabled, 0)
+            }
+            selected: i32 = table.selected_row != nil &&
+            *table.selected_row == row_index
+            if paint && (selected || hot) {
+                row_state: ButtonState = hot != 0 ?
+                ButtonStateHover : ButtonStateSelected
+                row_frame: StyleFrame =
+                WidgetFrameForClassRole(
+                ButtonToneAccent, row_state, table.disabled,
+                selected, table.class_name, StyleKindTableView(),
+                TableViewSelectionRole())
+                selection_style = ui_unpack_style(
+                ui_style_apply_effects_frame(row_frame).value)
+                DrawWidgetFrame(row, table.bounds,
+                row_frame, hot, 0, table.disabled, 0)
+            }
+            if pointer.mark_clickable { MarkClickable() }
+            slot: i32 = 0
+            while slot < table.column_count {
+                column: i32 = ui_table_display_column(table, slot)
+                if column >= 0 {
+                    x: i32 = ui_table_column_x(table, column,
+                    default_col_w)
+                    col_w: i32 = ui_table_column_width(table,
+                    column, default_col_w)
+                    value: const char* = ui_table_cell_text(table,
+                    row_index, column)
+                    if paint {
+                        BeginClip(x, (int)row.y, col_w,
+                        (int)row.height)
+                        text_color: Color = text_style.foreground
+                        text_opacity: float = text_style.opacity
+                        font: i32 = cell_font
+                        if selected || hot {
+                            text_color = selection_style.foreground
+                            text_opacity = selection_style.opacity
+                            font = ResolveFont(0, StyleFontValue(
+                            selection_style.fields,
+                            selection_style.font_size), font)
+                        }
+                        RenderText(value,
+                        x + metrics.header_text_pad_x,
+                        ui_row_text_y(row, font), font,
+                        Fade(text_color, text_opacity))
+                        EndClip()
+                    }
+                }
+                slot += 1
+            }
+            if pointer.click {
+                if pointer.consume_release { ConsumeRelease() }
+                mouse: Vector2 = ui_mouse_world()
+                clicked_col: i32 = TableViewColumnAtPointer(
+                table, mouse.x, default_col_w)
+                now: double = GetTime()
+                decision: TableViewRowClickDecision =
+                TableViewRowClickDecisionFor(row_index, clicked_col,
+                toolkit->last_table_id == table.id,
+                toolkit->last_table_row,
+                toolkit->last_table_column,
+                (float)(now - toolkit->last_table_click_time))
+                *table.selected_row = decision.selected_row
+                if clicked_col >= 0 && table.selected_column != nil {
+                    *table.selected_column = decision.selected_column
+                }
+                if decision.activated_row >= 0 {
+                    if table.activated_row != nil {
+                        *table.activated_row = decision.activated_row
+                    }
+                    if table.activated_column != nil {
+                        *table.activated_column =
+                        decision.activated_column
+                    }
+                }
+                toolkit->last_table_id = table.id
+                toolkit->last_table_row = row_index
+                toolkit->last_table_column = clicked_col
+                toolkit->last_table_click_time = now
+                changed = decision.changed
+            }
+            if pointer.context {
+                mouse: Vector2 = ui_mouse_world()
+                clicked_col: i32 = TableViewColumnAtPointer(
+                table, mouse.x, default_col_w)
+                decision: TableViewRowContextDecision =
+                TableViewRowContextDecisionFor(row_index,
+                clicked_col)
+                if table.right_clicked_row != nil {
+                    *table.right_clicked_row = decision.row
+                }
+                if table.right_clicked_column != nil {
+                    *table.right_clicked_column = decision.column
+                }
+                changed = decision.changed
+            }
+        }
+        draw_index += 1
+    }
+    if paint { EndClip() }
+    return changed
+}
+
+RenderTableView :: (table: TableViewProps) -> i32 #export {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    paint: i32 = IsWindowReady()
+    table.disabled = table.disabled || ContentDisabled()
+    metrics: TableViewMetrics = ui_table_metrics(table)
+    default_header_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    table.disabled != 0 ? ButtonStateDisabled : ButtonStateNormal,
+    table.disabled, 0, table.class_name,
+    StyleKindTableView(), TableViewHeaderRole())
+    default_cell_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    table.disabled != 0 ? ButtonStateDisabled : ButtonStateNormal,
+    table.disabled, 0, table.class_name,
+    StyleKindTableView(), TableViewCellRole())
+    header_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(default_header_frame).value)
+    text_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(default_cell_frame).value)
+    header_font: i32 = ResolveFont(0, StyleFontValue(
+    header_style.fields, header_style.font_size), GetSmallFontSize())
+    cell_font: i32 = ResolveFont(0, StyleFontValue(
+    text_style.fields, text_style.font_size), header_font)
+    clear: TableViewResizeClearDecision = TableViewResizeClearFor(
+    toolkit->resize_column >= 0,
+    ui_popup_input_owner_captures(toolkit->resize_owner) != 0,
+    ContentDisabled() != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+    toolkit->resize_table_id == table.id,
+    table.disabled != 0, table.resizable != 0,
+    table.column_widths != nil)
+    if clear.clear {
+        toolkit->resize_table_id = 0
+        toolkit->resize_column = -1
+    }
+    if table.column_count < 1 { return 0 }
+    TableViewResetOutput(table)
+    visible_columns: i32 = ui_table_visible_columns(table)
+    if visible_columns < 1 { return 0 }
+    layout: TableViewLayout = TableViewLayoutFor(table.bounds,
+    table.row_count, table.row_height, table.header_height,
+    table.freeze_rows, (float)GetScale(), metrics)
+    row_h: i32 = layout.row_height
+    header_h: i32 = layout.header_height
+    frozen_rows: i32 = layout.frozen_rows
+    default_col_w: i32 = TableViewDefaultColumnWidth(
+    (int)table.bounds.width, visible_columns)
+    changed: i32 = TableViewResize(table, toolkit, layout,
+    metrics, default_col_w)
+    max_scroll: i32 = ui_update_scroll(
+    TableViewViewport(table.bounds, layout, true),
+    (table.row_count - frozen_rows) * row_h,
+    table.disabled != 0 ? nil : table.scroll_offset, row_h)
+    focused: i32 = !table.disabled && table.id > 0 &&
+    RegisterFocus(table.id, table.bounds)
+    if focused { SetFocusTextInputActive(0) }
+    if !table.custom_cells {
+        changed |= ui_table_handle_keys(table, row_h, header_h,
+        frozen_rows, max_scroll)
+    }
+    scroll_y: i32 = table.scroll_offset != nil ?
+    *table.scroll_offset : 0
+    scroll_layout: TableViewScrollLayout = TableViewScrollFor(
+    scroll_y, frozen_rows, row_h, layout.scroll_body_height)
+    selection_style: Style = (Style){0}
+    divider_style: Style = (Style){0}
+    if paint {
+        surface_frame: StyleFrame =
+        WidgetFrameForClassRole(ButtonToneNeutral,
+        table.disabled != 0 ? ButtonStateDisabled : ButtonStateNormal,
+        table.disabled, 0, table.class_name,
+        StyleKindTableView(), TableViewPanelRole())
+        text_frame: StyleFrame =
+        WidgetFrameForClassRole(ButtonToneNeutral,
+        table.disabled != 0 ? ButtonStateDisabled : ButtonStateNormal,
+        table.disabled, 0, table.class_name,
+        StyleKindTableView(), TableViewCellRole())
+        selection_frame: StyleFrame =
+        WidgetFrameForClassRole(ButtonToneAccent,
+        table.disabled != 0 ? ButtonStateDisabled : ButtonStateSelected,
+        table.disabled, 1, table.class_name,
+        StyleKindTableView(), TableViewSelectionRole())
+        divider_frame: StyleFrame =
+        WidgetFrameForClassRole(ButtonToneNeutral,
+        table.disabled != 0 ? ButtonStateDisabled : ButtonStateNormal,
+        table.disabled, 0, table.class_name,
+        StyleKindTableView(), TableViewDividerRole())
+        text_style = ui_unpack_style(
+        ui_style_apply_effects_frame(text_frame).value)
+        selection_style = ui_unpack_style(
+        ui_style_apply_effects_frame(selection_frame).value)
+        divider_style = ui_unpack_style(
+        ui_style_apply_effects_frame(divider_frame).value)
+        cell_font = ResolveFont(0, StyleFontValue(text_style.fields,
+        text_style.font_size), cell_font)
+        DrawWidgetFrame(table.bounds, (Rectangle){0},
+        surface_frame, 0, 0, table.disabled, focused)
+    }
+    header_changed: i32 = TableViewPaintHeaders(table, metrics,
+    default_col_w, header_h, header_font,
+    divider_style.border, paint)
+    if header_changed >= 0 { changed = header_changed }
+    row_changed: i32 = TableViewPaintRows(table, toolkit,
+    layout, scroll_layout, default_col_w, metrics,
+    text_style, selection_style, cell_font, paint)
+    if row_changed >= 0 { changed = row_changed }
+    if paint && table.scroll_offset != nil && max_scroll > 0 {
+        scrollbar: Rectangle = TableViewScrollbarBoundsFor(
+        table.bounds, layout, metrics.scrollbar_width)
+        ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
+        (int)scrollbar.height,
+        (table.row_count - frozen_rows) * row_h,
+        table.scroll_offset, max_scroll, 0)
+    }
+    if paint && focused { RenderFocus(table.bounds) }
+    return changed
+}
+
+TableCellScope :: (table: TableViewProps,
+row: i32, column: i32) -> Rectangle #export {
+    cell: Rectangle = (Rectangle){0}
+    clip: Rectangle = (Rectangle){0}
+    visible: i32 = ui_table_visible_columns(table)
+    found: i32 = 0
+    slot: i32 = 0
+    while slot < table.column_count {
+        if ui_table_display_column(table, slot) == column {
+            found = 1
+        }
+        slot += 1
+    }
+    if found && visible > 0 && row >= 0 &&
+    row < table.row_count {
+        metrics: TableViewMetrics = ui_table_metrics(table)
+        layout: TableViewLayout = TableViewLayoutFor(
+        table.bounds, table.row_count, table.row_height,
+        table.header_height, table.freeze_rows,
+        (float)GetScale(), metrics)
+        row_h: i32 = layout.row_height
+        frozen: i32 = layout.frozen_rows
+        scroll: i32 = table.scroll_offset != nil ?
+        *table.scroll_offset : 0
+        scroll_layout: TableViewScrollLayout = TableViewScrollFor(
+        scroll, frozen, row_h, layout.scroll_body_height)
+        default_width: i32 = (int)table.bounds.width / visible
+        row_bounds: Rectangle = TableViewRowBounds(table.bounds,
+        layout, row, row < frozen ? row :
+        frozen + row - scroll_layout.first,
+        scroll_layout, row >= frozen)
+        cell = TableViewCellBounds(row_bounds,
+        ui_table_column_x(table, column, default_width),
+        ui_table_column_width(table, column, default_width))
+        viewport: Rectangle = TableViewViewport(table.bounds,
+        layout, row >= frozen)
+        clip = GetCollisionRec(cell, viewport)
+    }
+    ui_disabled_enter(table.disabled)
+    ScrollScopeOpen(clip, (int)clip.height, nil)
+    return cell
+}
+
+TableCellEndScope :: () #export {
+    ScrollScopeClose()
+    ui_disabled_leave()
+}

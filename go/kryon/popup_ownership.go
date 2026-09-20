@@ -32,310 +32,193 @@ type PopupFocusDecision struct {
 }
 
 func PopupOwnership_PopupOrderAdvance(state PopupOrder, has_a bool, has_b bool, same bool, same_parent bool, order_a uint64, order_b uint64) PopupOrder {
-	var value_0 PopupOrder = state
-	var result PopupOrder = value_0
-	var value_1 bool = false
-	result.MoveA = value_1
-	var value_2 bool = false
-	result.MoveB = value_2
-	var value_3 bool = false
-	result.ResetA = value_3
-	var value_4 bool = false
-	result.ResetB = value_4
-	var value_5 bool = state.Done
+	var result PopupOrder = state
+	result.MoveA = false
+	result.MoveB = false
+	result.ResetA = false
+	result.ResetB = false
+	if state.Done {
+		return result
+	}
+	if state.Phase == 0 {
+		if has_a {
+			var value_0 int32 = result.DepthA
+			result.DepthA = int32(number_runtime_bits(uint64(value_0), uint64(1), 32, true, 1))
+			result.MoveA = true
+		} else {
+			result.Phase = 1
+			result.ResetA = true
+		}
+		return result
+	}
+	if state.Phase == 1 {
+		if has_b {
+			var value_1 int32 = result.DepthB
+			result.DepthB = int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1))
+			result.MoveB = true
+		} else {
+			result.Phase = 2
+			result.ResetB = true
+			result.ADeeper = (state.DepthA > state.DepthB)
+		}
+		return result
+	}
+	if state.DepthA > state.DepthB {
+		var value_2 int32 = result.DepthA
+		result.DepthA = int32(number_runtime_bits(uint64(value_2), uint64(1), 32, true, 2))
+		result.MoveA = true
+		return result
+	}
+	if state.DepthB > state.DepthA {
+		var value_3 int32 = result.DepthB
+		result.DepthB = int32(number_runtime_bits(uint64(value_3), uint64(1), 32, true, 2))
+		result.MoveB = true
+		return result
+	}
+	var value_4 bool = same
+	if !value_4 {
+		value_4 = !has_a
+	}
+	var value_5 bool = value_4
+	if !value_5 {
+		value_5 = !has_b
+	}
 	if value_5 {
-		var value_6 PopupOrder = result
-		return value_6
-	}
-	var value_7 int32 = state.Phase
-	var value_8 int32 = 0
-	var value_9 bool = value_7 == value_8
-	if value_9 {
-		var value_10 bool = has_a
-		if value_10 {
-			var value_11 int32 = result.DepthA
-			var value_12 int32 = 1
-			result.DepthA = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
-			var value_13 bool = true
-			result.MoveA = value_13
-		} else {
-			var value_14 int32 = 1
-			result.Phase = value_14
-			var value_15 bool = true
-			result.ResetA = value_15
+		result.Done = true
+		var value_6 bool = same
+		if value_6 {
+			value_6 = has_a
 		}
-		var value_16 PopupOrder = result
-		return value_16
-	}
-	var value_17 int32 = state.Phase
-	var value_18 int32 = 1
-	var value_19 bool = value_17 == value_18
-	if value_19 {
-		var value_20 bool = has_b
-		if value_20 {
-			var value_21 int32 = result.DepthB
-			var value_22 int32 = 1
-			result.DepthB = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
-			var value_23 bool = true
-			result.MoveB = value_23
-		} else {
-			var value_24 int32 = 2
-			result.Phase = value_24
-			var value_25 bool = true
-			result.ResetB = value_25
-			var value_26 int32 = state.DepthA
-			var value_27 int32 = state.DepthB
-			var value_28 bool = value_26 > value_27
-			result.ADeeper = value_28
+		var value_7 bool = value_6
+		if value_7 {
+			value_7 = result.ADeeper
 		}
-		var value_29 PopupOrder = result
-		return value_29
+		result.Above = value_7
+		return result
 	}
-	var value_30 int32 = state.DepthA
-	var value_31 int32 = state.DepthB
-	var value_32 bool = value_30 > value_31
-	if value_32 {
-		var value_33 int32 = result.DepthA
-		var value_34 int32 = 1
-		result.DepthA = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-		var value_35 bool = true
-		result.MoveA = value_35
-		var value_36 PopupOrder = result
-		return value_36
+	if same_parent {
+		result.Done = true
+		result.Above = (order_a > order_b)
+		return result
 	}
-	var value_37 int32 = state.DepthB
-	var value_38 int32 = state.DepthA
-	var value_39 bool = value_37 > value_38
-	if value_39 {
-		var value_40 int32 = result.DepthB
-		var value_41 int32 = 1
-		result.DepthB = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 2))
-		var value_42 bool = true
-		result.MoveB = value_42
-		var value_43 PopupOrder = result
-		return value_43
-	}
-	var value_44 bool = same
-	var value_45 bool = value_44
-	if !value_45 {
-		var value_46 bool = has_a
-		var value_47 bool = !value_46
-		value_45 = value_47
-	}
-	var value_48 bool = value_45
-	if !value_48 {
-		var value_49 bool = has_b
-		var value_50 bool = !value_49
-		value_48 = value_50
-	}
-	if value_48 {
-		var value_51 bool = true
-		result.Done = value_51
-		var value_52 bool = same
-		var value_53 bool = value_52
-		if value_53 {
-			var value_54 bool = has_a
-			value_53 = value_54
-		}
-		var value_55 bool = value_53
-		if value_55 {
-			var value_56 bool = result.ADeeper
-			value_55 = value_56
-		}
-		result.Above = value_55
-		var value_57 PopupOrder = result
-		return value_57
-	}
-	var value_58 bool = same_parent
-	if value_58 {
-		var value_59 bool = true
-		result.Done = value_59
-		var value_60 uint64 = order_a
-		var value_61 uint64 = order_b
-		var value_62 bool = value_60 > value_61
-		result.Above = value_62
-		var value_63 PopupOrder = result
-		return value_63
-	}
-	var value_64 bool = true
-	result.MoveA = value_64
-	var value_65 bool = true
-	result.MoveB = value_65
-	var value_66 int32 = result.DepthA
-	var value_67 int32 = 1
-	result.DepthA = int32(number_runtime_bits(uint64(value_66), uint64(value_67), 32, true, 2))
-	var value_68 int32 = result.DepthB
-	var value_69 int32 = 1
-	result.DepthB = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 2))
-	var value_70 PopupOrder = result
-	return value_70
+	result.MoveA = true
+	result.MoveB = true
+	var value_8 int32 = result.DepthA
+	result.DepthA = int32(number_runtime_bits(uint64(value_8), uint64(1), 32, true, 2))
+	var value_9 int32 = result.DepthB
+	result.DepthB = int32(number_runtime_bits(uint64(value_9), uint64(1), 32, true, 2))
+	return result
 }
 
 func PopupOwnership_PopupAncestryAdvance(has_owner bool, same bool, has_parent bool) PopupAncestry {
 	var result PopupAncestry = PopupAncestry{}
 	var value_0 bool = has_owner
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = same
-		value_1 = value_2
+	if value_0 {
+		value_0 = same
 	}
-	result.Contains = value_1
-	var value_3 bool = has_owner
-	var value_4 bool = !value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 bool = same
-		value_5 = value_6
+	result.Contains = value_0
+	var value_1 bool = !has_owner
+	if !value_1 {
+		value_1 = same
 	}
-	var value_7 bool = value_5
-	if !value_7 {
-		var value_8 bool = has_parent
-		var value_9 bool = !value_8
-		value_7 = value_9
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = !has_parent
 	}
-	result.Done = value_7
-	var value_10 PopupAncestry = result
-	return value_10
+	result.Done = value_2
+	return result
 }
 
 func PopupOwnership_PopupInputCaptured(has_owner bool, alive bool, has_top bool, same_top bool) bool {
 	var value_0 bool = has_owner
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = alive
-		var value_3 bool = !value_2
-		value_1 = value_3
+	if value_0 {
+		value_0 = !alive
 	}
-	if value_1 {
-		var value_4 bool = true
-		return value_4
+	if value_0 {
+		return true
 	}
-	var value_5 bool = has_top
-	var value_6 bool = value_5
-	if value_6 {
-		var value_7 bool = has_owner
-		var value_8 bool = !value_7
-		var value_9 bool = value_8
-		if !value_9 {
-			var value_10 bool = same_top
-			var value_11 bool = !value_10
-			value_9 = value_11
+	var value_1 bool = has_top
+	if value_1 {
+		var value_2 bool = !has_owner
+		if !value_2 {
+			value_2 = !same_top
 		}
-		value_6 = value_9
+		value_1 = value_2
 	}
-	return value_6
+	return value_1
 }
 
 func PopupOwnership_PopupOwnerAlive(has_parent bool, parent_alive bool) bool {
-	var value_0 bool = has_parent
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = parent_alive
-		value_2 = value_3
+	var value_0 bool = !has_parent
+	if !value_0 {
+		value_0 = parent_alive
 	}
-	return value_2
+	return value_0
 }
 
 func PopupOwnership_PopupOwnerRetired(alive bool, seen uint64, frame uint64) bool {
-	var value_0 bool = alive
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 uint64 = seen
-		var value_4 uint64 = frame
-		var value_5 bool = value_3 != value_4
-		value_2 = value_5
+	var value_0 bool = !alive
+	if !value_0 {
+		value_0 = (seen != frame)
 	}
-	return value_2
+	return value_0
 }
 
 func PopupOwnership_PopupFocusInitialize(state PopupFocusState, exists bool, focused int32) PopupFocusState {
-	var value_0 bool = exists
-	if value_0 {
-		var value_1 PopupFocusState = state
-		return value_1
+	if exists {
+		return state
 	}
 	var result PopupFocusState = PopupFocusState{}
-	var value_2 int32 = focused
-	result.RestoreFocus = value_2
-	var value_3 bool = true
-	result.Autofocus = value_3
-	var value_4 PopupFocusState = result
-	return value_4
+	result.RestoreFocus = focused
+	result.Autofocus = true
+	return result
 }
 
 func PopupOwnership_PopupFocusRegister(state PopupFocusState, id int32, focused int32, alive bool, eligible bool, keyboard_captured bool) PopupFocusDecision {
 	var result PopupFocusDecision = PopupFocusDecision{}
-	var value_0 PopupFocusState = state
-	result.State = value_0
-	var value_1 bool = alive
-	var value_2 bool = !value_1
-	var value_3 bool = value_2
+	result.State = state
+	var value_0 bool = !alive
+	if !value_0 {
+		value_0 = (id <= 0)
+	}
+	if value_0 {
+		return result
+	}
+	var value_1 bool = state.Autofocus
+	if value_1 {
+		value_1 = eligible
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !keyboard_captured
+	}
+	result.Acquire = value_2
+	if result.Acquire {
+		result.State.Autofocus = false
+	}
+	var value_3 bool = result.Acquire
 	if !value_3 {
-		var value_4 int32 = id
-		var value_5 int32 = 0
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
+		value_3 = (focused == id)
 	}
 	if value_3 {
-		var value_7 PopupFocusDecision = result
-		return value_7
+		result.State.LastFocus = id
+		result.State.HasLastFocus = true
 	}
-	var value_8 bool = state.Autofocus
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = eligible
-		value_9 = value_10
-	}
-	var value_11 bool = value_9
-	if value_11 {
-		var value_12 bool = keyboard_captured
-		var value_13 bool = !value_12
-		value_11 = value_13
-	}
-	result.Acquire = value_11
-	var value_14 bool = result.Acquire
-	if value_14 {
-		var value_15 bool = false
-		result.State.Autofocus = value_15
-	}
-	var value_16 bool = result.Acquire
-	var value_17 bool = value_16
-	if !value_17 {
-		var value_18 int32 = focused
-		var value_19 int32 = id
-		var value_20 bool = value_18 == value_19
-		value_17 = value_20
-	}
-	if value_17 {
-		var value_21 int32 = id
-		result.State.LastFocus = value_21
-		var value_22 bool = true
-		result.State.HasLastFocus = value_22
-	}
-	var value_23 PopupFocusDecision = result
-	return value_23
+	return result
 }
 
 func PopupOwnership_PopupFocusRestore(state PopupFocusState, focused int32, in_branch bool, registered bool) bool {
 	var value_0 bool = in_branch
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = registered
-		var value_3 bool = value_2
-		if !value_3 {
-			var value_4 bool = state.HasLastFocus
-			var value_5 bool = value_4
-			if value_5 {
-				var value_6 int32 = state.LastFocus
-				var value_7 int32 = focused
-				var value_8 bool = value_6 == value_7
-				value_5 = value_8
+	if value_0 {
+		var value_1 bool = registered
+		if !value_1 {
+			var value_2 bool = state.HasLastFocus
+			if value_2 {
+				value_2 = (state.LastFocus == focused)
 			}
-			value_3 = value_5
+			value_1 = value_2
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	return value_1
+	return value_0
 }

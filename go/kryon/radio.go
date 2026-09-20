@@ -31,355 +31,177 @@ type RadioPaint struct {
 }
 
 func Radio_RadioHas(fields uint32, field uint32) bool {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	return value_5
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	return value_0
 }
 
 func Radio_RadioMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 bool = Radio_RadioHas(value_0, value_1)
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 float32 = value
-		var value_6 float32 = 0.0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	var value_0 bool = Radio_RadioHas(fields, field)
+	var value_1 bool = !value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_8 bool = value_4
-	if !value_8 {
-		var value_9 bool = allow_zero
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = value
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 <= value_13
-			value_11 = value_14
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_8 = value_11
+		value_2 = value_3
 	}
-	if value_8 {
-		var value_15 float32 = fallback
-		value = value_15
+	if value_2 {
+		value = fallback
 	}
-	var value_16 float32 = value
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	return value_19
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func Radio_RadioRingRole() int32 {
-	var value_0 int32 = 11
-	return value_0
+	return 11
 }
 
 func Radio_RadioMarkRole() int32 {
-	var value_0 int32 = 10
-	return value_0
+	return 10
 }
 
 func Radio_RadioLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Radio_RadioSizeForStyle(ring StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = ring.Value.Fields
-	var value_5 int32 = int32(StyleIconSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = ring.Value.IconSize
-	var value_8 float32 = 20.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = Radio_RadioMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
+	var value_0 uint32 = ring.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = ring.Value.IconSize
+	var value_3 float32 = 20.0
+	var value_4 int32 = Radio_RadioMetric(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Radio_RadioTouchSizeForStyle(ring StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = ring.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = ring.Value.PaddingX
-	var value_8 float32 = 40.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = Radio_RadioMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
+	var value_0 uint32 = ring.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = ring.Value.PaddingX
+	var value_3 float32 = 40.0
+	var value_4 int32 = Radio_RadioMetric(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Radio_RadioMarkText(checked bool) string {
-	var value_0 bool = checked
-	if value_0 {
-		var value_1 string = "◉"
-		return value_1
+	if checked {
+		return "◉"
 	}
-	var value_2 string = "○"
-	return value_2
+	return "○"
 }
 
 func Radio_RadioStateLayerAlpha(hovered bool, down bool, press_amount float32) int32 {
-	var value_0 bool = down
-	if value_0 {
-		var value_1 int32 = 31
-		return value_1
+	if down {
+		return 31
 	}
-	var value_2 bool = hovered
-	var value_3 bool = !value_2
-	if value_3 {
-		var value_4 int32 = 0
-		return value_4
+	if !hovered {
+		return 0
 	}
-	var value_5 float32 = press_amount
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 float32 = 0.0
-		press_amount = value_8
+	if press_amount < 0.0 {
+		press_amount = 0.0
 	}
-	var value_9 float32 = press_amount
-	var value_10 float32 = 1.0
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 float32 = 1.0
-		press_amount = value_12
+	if press_amount > 1.0 {
+		press_amount = 1.0
 	}
-	var value_13 float32 = 20.0
-	var value_14 float32 = 11.0
-	var value_15 float32 = press_amount
-	var value_16 float32 = value_14 * value_15
-	var value_17 float32 = value_13 + value_16
-	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
-	return value_18
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((20.0+(11.0*press_amount))), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Radio_RadioActivationFor(id int32, activated bool, disabled bool) int32 {
 	var value_0 bool = activated
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = disabled
-		var value_3 bool = !value_2
-		value_1 = value_3
+	if value_0 {
+		value_0 = !disabled
 	}
-	if value_1 {
-		var value_4 int32 = id
-		return value_4
+	if value_0 {
+		return id
 	}
-	var value_5 int32 = 0
-	return value_5
+	return 0
 }
 
 func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var paint RadioPaint = RadioPaint{}
-	var value_0 float32 = spec.Scale
-	var scale float32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+	var scale float32 = spec.Scale
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_5 StyleFrame = spec.Frame
-	var value_6 float32 = scale
-	var value_7 int32 = Radio_RadioSizeForStyle(value_5, value_6)
-	var value_8 float32 = float32(value_7)
-	var diameter float32 = value_8
-	var value_9 uint32 = spec.Frame.Value.Fields
-	var value_10 int32 = int32(StyleGap)
-	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
-	var value_12 float32 = spec.Frame.Value.Gap
-	var value_13 float32 = 8.0
-	var value_14 float32 = scale
-	var value_15 bool = true
-	var value_16 int32 = Radio_RadioMetric(value_9, value_11, value_12, value_13, value_14, value_15)
-	var value_17 float32 = float32(value_16)
-	var gap float32 = value_17
-	var value_18 StyleFrame = spec.Frame
-	var value_19 float32 = scale
-	var value_20 int32 = Radio_RadioTouchSizeForStyle(value_18, value_19)
-	var value_21 float32 = float32(value_20)
-	var slot_width float32 = value_21
-	var value_22 float32 = slot_width
-	var value_23 float32 = diameter
-	var value_24 bool = value_22 < value_23
-	if value_24 {
-		var value_25 float32 = diameter
-		slot_width = value_25
+	var value_0 StyleFrame = spec.Frame
+	var value_1 int32 = Radio_RadioSizeForStyle(value_0, scale)
+	var diameter float32 = float32(value_1)
+	var value_2 uint32 = spec.Frame.Value.Fields
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_4 float32 = spec.Frame.Value.Gap
+	var value_5 float32 = 8.0
+	var value_6 int32 = Radio_RadioMetric(value_2, value_3, value_4, value_5, scale, true)
+	var gap float32 = float32(value_6)
+	var value_7 StyleFrame = spec.Frame
+	var value_8 int32 = Radio_RadioTouchSizeForStyle(value_7, scale)
+	var slot_width float32 = float32(value_8)
+	if slot_width < diameter {
+		slot_width = diameter
 	}
-	var value_26 Rectangle = spec.Bounds
-	paint.HitBounds = value_26
-	var value_27 float32 = paint.HitBounds.Width
-	var value_28 float32 = slot_width
-	var value_29 bool = value_27 < value_28
-	if value_29 {
-		var value_30 float32 = slot_width
-		paint.HitBounds.Width = value_30
+	paint.HitBounds = spec.Bounds
+	if paint.HitBounds.Width < slot_width {
+		paint.HitBounds.Width = slot_width
 	}
-	var value_31 float32 = diameter
-	paint.Diameter = value_31
-	var value_32 float32 = slot_width
-	paint.Touch = value_32
-	var value_33 float32 = spec.Bounds.X
-	var value_34 float32 = slot_width
-	var value_35 float32 = 0.5
-	var value_36 float32 = value_34 * value_35
-	var value_37 float32 = value_33 + value_36
-	paint.Center.X = value_37
-	var value_38 float32 = spec.Bounds.Y
-	var value_39 float32 = spec.Bounds.Height
-	var value_40 float32 = 0.5
-	var value_41 float32 = value_39 * value_40
-	var value_42 float32 = value_38 + value_41
-	paint.Center.Y = value_42
-	var value_43 float32 = spec.Bounds.X
-	var value_44 float32 = slot_width
-	var value_45 float32 = diameter
-	var value_46 float32 = value_44 - value_45
-	var value_47 float32 = 0.5
-	var value_48 float32 = value_46 * value_47
-	var value_49 float32 = value_43 + value_48
-	paint.MarkBounds.X = value_49
-	var value_50 float32 = spec.Bounds.Y
-	var value_51 float32 = spec.Bounds.Height
-	var value_52 float32 = diameter
-	var value_53 float32 = value_51 - value_52
-	var value_54 float32 = 0.5
-	var value_55 float32 = value_53 * value_54
-	var value_56 float32 = value_50 + value_55
-	paint.MarkBounds.Y = value_56
-	var value_57 float32 = diameter
-	paint.MarkBounds.Width = value_57
-	var value_58 float32 = diameter
-	paint.MarkBounds.Height = value_58
-	var value_59 float32 = spec.Bounds.X
-	var value_60 float32 = slot_width
-	var value_61 float32 = value_59 + value_60
-	var value_62 float32 = gap
-	var value_63 float32 = value_61 + value_62
-	paint.LabelX = value_63
-	var value_64 float32 = paint.LabelX
-	paint.LabelBounds.X = value_64
-	var value_65 float32 = spec.Bounds.Y
-	paint.LabelBounds.Y = value_65
-	var value_66 float32 = spec.Bounds.Width
-	var value_67 float32 = paint.LabelX
-	var value_68 float32 = spec.Bounds.X
-	var value_69 float32 = value_67 - value_68
-	var value_70 float32 = value_66 - value_69
-	paint.LabelBounds.Width = value_70
-	var value_71 float32 = spec.Bounds.Height
-	paint.LabelBounds.Height = value_71
-	var value_72 float32 = paint.LabelBounds.Width
-	var value_73 float32 = 0.0
-	var value_74 bool = value_72 < value_73
-	if value_74 {
-		var value_75 float32 = 0.0
-		paint.LabelBounds.Width = value_75
+	paint.Diameter = diameter
+	paint.Touch = slot_width
+	paint.Center.X = (spec.Bounds.X + (slot_width * 0.5))
+	paint.Center.Y = (spec.Bounds.Y + (spec.Bounds.Height * 0.5))
+	paint.MarkBounds.X = (spec.Bounds.X + ((slot_width - diameter) * 0.5))
+	paint.MarkBounds.Y = (spec.Bounds.Y + ((spec.Bounds.Height - diameter) * 0.5))
+	paint.MarkBounds.Width = diameter
+	paint.MarkBounds.Height = diameter
+	paint.LabelX = ((spec.Bounds.X + slot_width) + gap)
+	paint.LabelBounds.X = paint.LabelX
+	paint.LabelBounds.Y = spec.Bounds.Y
+	paint.LabelBounds.Width = (spec.Bounds.Width - (paint.LabelX - spec.Bounds.X))
+	paint.LabelBounds.Height = spec.Bounds.Height
+	if paint.LabelBounds.Width < 0.0 {
+		paint.LabelBounds.Width = 0.0
 	}
-	var value_76 float32 = spec.SelectedAmount
-	var selected float32 = value_76
-	var value_77 float32 = selected
-	var value_78 float32 = 0.0
-	var value_79 bool = value_77 < value_78
-	if value_79 {
-		var value_80 float32 = 0.0
-		selected = value_80
+	var selected float32 = spec.SelectedAmount
+	if selected < 0.0 {
+		selected = 0.0
 	}
-	var value_81 float32 = selected
-	var value_82 float32 = 1.0
-	var value_83 bool = value_81 > value_82
-	if value_83 {
-		var value_84 float32 = 1.0
-		selected = value_84
+	if selected > 1.0 {
+		selected = 1.0
 	}
-	var value_85 bool = spec.Checked
-	if value_85 {
-		var value_86 float32 = 1.0
-		selected = value_86
+	if spec.Checked {
+		selected = 1.0
 	}
-	var value_87 float32 = diameter
-	var value_88 float32 = 0.5
-	var value_89 float32 = value_87 * value_88
-	paint.OuterRadius = value_89
-	var value_90 float32 = spec.Frame.Value.BorderWidth
-	var value_91 float32 = scale
-	var value_92 float32 = value_90 * value_91
-	paint.StrokeWidth = value_92
-	var value_93 float32 = paint.StrokeWidth
-	var value_94 float32 = 0.0
-	var value_95 bool = value_93 < value_94
-	if value_95 {
-		var value_96 float32 = 0.0
-		paint.StrokeWidth = value_96
+	paint.OuterRadius = (diameter * 0.5)
+	paint.StrokeWidth = (spec.Frame.Value.BorderWidth * scale)
+	if paint.StrokeWidth < 0.0 {
+		paint.StrokeWidth = 0.0
 	}
-	var value_97 float32 = paint.OuterRadius
-	var value_98 float32 = paint.StrokeWidth
-	var value_99 float32 = 1.5
-	var value_100 float32 = value_98 * value_99
-	var value_101 float32 = value_97 - value_100
-	var value_102 float32 = selected
-	var value_103 float32 = value_101 * value_102
-	paint.FillRadius = value_103
-	var value_104 bool = spec.Checked
-	if value_104 {
-		var value_105 float32 = paint.OuterRadius
-		var value_106 float32 = paint.StrokeWidth
-		var value_107 float32 = value_105 - value_106
-		paint.FillRadius = value_107
+	paint.FillRadius = ((paint.OuterRadius - (paint.StrokeWidth * 1.5)) * selected)
+	if spec.Checked {
+		paint.FillRadius = (paint.OuterRadius - paint.StrokeWidth)
 	}
-	var value_108 float32 = paint.FillRadius
-	var value_109 float32 = 0.0
-	var value_110 bool = value_108 < value_109
-	if value_110 {
-		var value_111 float32 = 0.0
-		paint.FillRadius = value_111
+	if paint.FillRadius < 0.0 {
+		paint.FillRadius = 0.0
 	}
-	var value_112 uint32 = spec.Frame.Value.Border
-	paint.RingColor = value_112
-	var value_113 uint32 = spec.Selected.Value.Background
-	paint.FillColor = value_113
-	var value_114 uint32 = spec.Frame.Value.Foreground
-	paint.LabelColor = value_114
-	var value_115 bool = spec.Checked
-	if value_115 {
-		var value_116 uint32 = spec.Selected.Value.Background
-		paint.RingColor = value_116
+	paint.RingColor = spec.Frame.Value.Border
+	paint.FillColor = spec.Selected.Value.Background
+	paint.LabelColor = spec.Frame.Value.Foreground
+	if spec.Checked {
+		paint.RingColor = spec.Selected.Value.Background
 	}
-	var value_117 bool = spec.Checked
-	var value_118 bool = !value_117
-	var value_119 bool = value_118
-	if value_119 {
-		var value_120 float32 = selected
-		var value_121 float32 = 0.0
-		var value_122 bool = value_120 > value_121
-		value_119 = value_122
+	var value_9 bool = !spec.Checked
+	if value_9 {
+		value_9 = (selected > 0.0)
 	}
-	if value_119 {
-		var value_123 uint32 = spec.Selected.Value.Background
-		paint.RingColor = value_123
+	if value_9 {
+		paint.RingColor = spec.Selected.Value.Background
 	}
-	var value_124 RadioPaint = paint
-	return value_124
+	return paint
 }

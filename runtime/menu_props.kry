@@ -53,3 +53,5 @@ MenuProps :: struct {
     x: *i32
     y: *i32
 }
+
+Menu :: (menu: MenuProps) -> MenuResult #extern #export

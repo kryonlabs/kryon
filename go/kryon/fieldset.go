@@ -17,144 +17,72 @@ type FieldsetPaint struct {
 }
 
 func Fieldset_FieldsetMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	return value_13
+	return (value * scale)
 }
 
 func Fieldset_FieldsetPaintFor(bounds Rectangle, title_width float32, has_title bool, scale float32, frame StyleFrame) FieldsetPaint {
 	var paint FieldsetPaint = FieldsetPaint{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = frame.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = frame.Value.PaddingX
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 float32 = Fieldset_FieldsetMetric(value_4, value_6, value_7, value_8, value_9)
-	var pad float32 = value_10
-	var value_11 uint32 = frame.Value.Fields
-	var value_12 int32 = int32(StyleFontSize)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = frame.Value.FontSize
-	var value_15 float32 = 18.0
-	var value_16 float32 = scale
-	var value_17 float32 = Fieldset_FieldsetMetric(value_11, value_13, value_14, value_15, value_16)
-	var title_height float32 = value_17
-	var value_18 float32 = title_height
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 <= value_19
-	if value_20 {
-		var value_21 float32 = 18.0
-		var value_22 float32 = scale
-		var value_23 float32 = value_21 * value_22
-		title_height = value_23
+	var value_0 uint32 = frame.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = frame.Value.PaddingX
+	var value_3 float32 = 8.0
+	var value_4 float32 = Fieldset_FieldsetMetric(value_0, value_1, value_2, value_3, scale)
+	var pad float32 = value_4
+	var value_5 uint32 = frame.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.FontSize
+	var value_8 float32 = 18.0
+	var value_9 float32 = Fieldset_FieldsetMetric(value_5, value_6, value_7, value_8, scale)
+	var title_height float32 = value_9
+	if title_height <= 0.0 {
+		title_height = (18.0 * scale)
 	}
-	var value_24 uint32 = frame.Value.Fields
-	var value_25 int32 = int32(StylePaddingY)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 float32 = frame.Value.PaddingY
-	var value_28 float32 = 8.0
-	var value_29 float32 = scale
-	var value_30 float32 = Fieldset_FieldsetMetric(value_24, value_26, value_27, value_28, value_29)
-	var title_offset_y float32 = value_30
-	var value_31 uint32 = frame.Value.Fields
-	var value_32 int32 = int32(StyleGap)
-	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 float32 = frame.Value.Gap
-	var value_35 float32 = 9.0
-	var value_36 float32 = scale
-	var value_37 float32 = Fieldset_FieldsetMetric(value_31, value_33, value_34, value_35, value_36)
-	var text_offset_y float32 = value_37
-	var value_38 Rectangle = bounds
-	paint.Frame = value_38
-	var value_39 StyleFrame = frame
-	paint.Face = value_39
-	var value_40 uint32 = frame.Value.Border
-	paint.BorderColor = value_40
-	var value_41 uint32 = frame.Value.Background
-	paint.BackgroundColor = value_41
-	var value_42 uint32 = frame.Value.Foreground
-	paint.TextColor = value_42
-	var value_43 float32 = frame.Value.BorderWidth
-	var value_44 float32 = scale
-	var value_45 float32 = value_43 * value_44
-	paint.BorderWidth = value_45
-	var value_46 float32 = paint.BorderWidth
-	var value_47 float32 = 0.0
-	var value_48 bool = value_46 < value_47
-	if value_48 {
-		var value_49 float32 = 0.0
-		paint.BorderWidth = value_49
+	var value_10 uint32 = frame.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_12 float32 = frame.Value.PaddingY
+	var value_13 float32 = 8.0
+	var value_14 float32 = Fieldset_FieldsetMetric(value_10, value_11, value_12, value_13, scale)
+	var title_offset_y float32 = value_14
+	var value_15 uint32 = frame.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_17 float32 = frame.Value.Gap
+	var value_18 float32 = 9.0
+	var value_19 float32 = Fieldset_FieldsetMetric(value_15, value_16, value_17, value_18, scale)
+	var text_offset_y float32 = value_19
+	paint.Frame = bounds
+	paint.Face = frame
+	paint.BorderColor = frame.Value.Border
+	paint.BackgroundColor = frame.Value.Background
+	paint.TextColor = frame.Value.Foreground
+	paint.BorderWidth = (frame.Value.BorderWidth * scale)
+	if paint.BorderWidth < 0.0 {
+		paint.BorderWidth = 0.0
 	}
-	var value_50 bool = has_title
-	paint.ShowTitle = value_50
-	var value_51 float32 = bounds.X
-	var value_52 float32 = pad
-	var value_53 float32 = value_51 + value_52
-	paint.TitleBackground.X = value_53
-	var value_54 float32 = bounds.Y
-	var value_55 float32 = title_offset_y
-	var value_56 float32 = value_54 - value_55
-	paint.TitleBackground.Y = value_56
-	var value_57 float32 = title_width
-	var value_58 float32 = pad
-	var value_59 float32 = 2.0
-	var value_60 float32 = value_58 * value_59
-	var value_61 float32 = value_57 + value_60
-	paint.TitleBackground.Width = value_61
-	var value_62 float32 = title_height
-	paint.TitleBackground.Height = value_62
-	var value_63 float32 = bounds.X
-	var value_64 float32 = pad
-	var value_65 float32 = 2.0
-	var value_66 float32 = value_64 * value_65
-	var value_67 float32 = value_63 + value_66
-	paint.TitleText.X = value_67
-	var value_68 float32 = bounds.Y
-	var value_69 float32 = text_offset_y
-	var value_70 float32 = value_68 - value_69
-	paint.TitleText.Y = value_70
-	var value_71 float32 = title_width
-	paint.TitleText.Width = value_71
-	var value_72 float32 = title_height
-	paint.TitleText.Height = value_72
-	var value_73 bool = has_title
-	var value_74 bool = !value_73
-	if value_74 {
-		var value_75 float32 = 0.0
-		paint.TitleBackground.Width = value_75
-		var value_76 float32 = 0.0
-		paint.TitleBackground.Height = value_76
-		var value_77 float32 = 0.0
-		paint.TitleText.Width = value_77
-		var value_78 float32 = 0.0
-		paint.TitleText.Height = value_78
+	paint.ShowTitle = has_title
+	paint.TitleBackground.X = (bounds.X + pad)
+	paint.TitleBackground.Y = (bounds.Y - title_offset_y)
+	paint.TitleBackground.Width = (title_width + (pad * 2.0))
+	paint.TitleBackground.Height = title_height
+	paint.TitleText.X = (bounds.X + (pad * 2.0))
+	paint.TitleText.Y = (bounds.Y - text_offset_y)
+	paint.TitleText.Width = title_width
+	paint.TitleText.Height = title_height
+	if !has_title {
+		paint.TitleBackground.Width = 0.0
+		paint.TitleBackground.Height = 0.0
+		paint.TitleText.Width = 0.0
+		paint.TitleText.Height = 0.0
 	}
-	var value_79 FieldsetPaint = paint
-	return value_79
+	return paint
 }

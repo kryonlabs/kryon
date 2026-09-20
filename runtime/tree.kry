@@ -1,0 +1,37 @@
+#module "tree"
+#import "widget_kind"
+
+# A retained node keeps its identity only when its key, kind, and parent key
+# match the previous committed tree. The native host supplies stored node
+# fields; this module owns the reconciliation decision.
+TreeIdentityHash :: (parent: u64, key: u64, kind: i32) -> u64 #export {
+    mix_parent: u64 = 0x9e3779b97f4a7c15ULL
+    mix_kind: u64 = 0x9e3779b185ebca87ULL
+    avalanche_a: u64 = 0xbf58476d1ce4e5b9ULL
+    avalanche_b: u64 = 0x94d049bb133111ebULL
+    hash: u64 = key ^ (parent + mix_parent +
+        (key << (u64)6) + (key >> (u64)2))
+    hash = hash ^ ((u64)(u32)kind * mix_kind)
+    hash = hash ^ (hash >> (u64)30)
+    hash = hash * avalanche_a
+    hash = hash ^ (hash >> (u64)27)
+    hash = hash * avalanche_b
+    return hash ^ (hash >> (u64)31)
+}
+
+TreeSameIdentity :: (old_key: u64, old_kind: i32, old_parent_key: u64,
+    new_key: u64, new_kind: i32, new_parent_key: u64) -> bool #export {
+    return old_key == new_key && old_kind == new_kind &&
+        old_parent_key == new_parent_key
+}
+
+TreeButtonLike :: (kind: i32) -> bool #export {
+    return kind == WidgetKindButton || kind == WidgetKindCard
+}
+
+TreeInteractiveButtonLike :: (kind: i32, focus_id: i32,
+    disabled: bool, loading: bool) -> bool #export {
+    if !TreeButtonLike(kind) { return false }
+    if kind == WidgetKindCard && focus_id <= 0 { return false }
+    return !disabled && !loading
+}

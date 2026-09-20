@@ -204,11 +204,7 @@ func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, di
 	}
 	r.record(frame)
 	if image, ok := buttonImageProps(frame.Button.Props); ok {
-		tint := unpackRGBA(frame.Button.Foreground)
-		if tint.A == 0 {
-			tint = White
-		}
-		op := imageOperation(image, tint)
+		op := imageOperation(image, White)
 		op.Disabled = frame.Disabled
 		r.record(op)
 	}
@@ -216,21 +212,14 @@ func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, di
 }
 
 func buttonImageProps(props ButtonProps) (ImageProps, bool) {
-	if props.ImageAssetPath == "" && props.ImageBounds.Width <= 0 && props.ImageBounds.Height <= 0 {
+	image := props.Image
+	if image.AssetPath == "" && image.Bounds.Width <= 0 && image.Bounds.Height <= 0 {
 		return ImageProps{}, false
 	}
-	bounds := props.ImageBounds
-	if bounds.Width <= 0 && bounds.Height <= 0 {
-		bounds = props.Bounds
+	if image.Bounds.Width <= 0 && image.Bounds.Height <= 0 {
+		image.Bounds = props.Bounds
 	}
-	return ImageProps{
-		AssetPath: props.ImageAssetPath,
-		Bounds:    bounds,
-		Source:    props.ImageSource,
-		Origin:    props.ImageOrigin,
-		Rotation:  props.ImageRotation,
-		Fit:       ImageFit(props.ImageFit),
-	}, true
+	return image, true
 }
 
 // Resolve input and animation once. A composed button uses this same frame

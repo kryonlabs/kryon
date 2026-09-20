@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRY = ROOT / "src/ui/ui_node_registry.c"
+REGISTRY = ROOT / "src/ui/node_registry.kry"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
 TREE_API = ROOT / "include/ui_tree.h"
 GO_API = ROOT / "go/kryon/api.go"
@@ -100,7 +100,8 @@ def registry_names() -> list[str]:
 
 
 def runtime_module_paths() -> list[str]:
-    return sorted(path.relative_to(ROOT).as_posix() for path in RUNTIME.glob("*.kry"))
+    paths = sorted(RUNTIME.glob("*.kry")) + sorted((ROOT / "src" / "ui").glob("*.kry"))
+    return sorted(path.relative_to(ROOT).as_posix() for path in paths)
 
 
 def parser_widget_names() -> list[str]:
@@ -228,11 +229,12 @@ def runtime_module_rows() -> dict[str, list[str]]:
     rows: dict[str, list[str]] = {}
     for line in match.group("body").splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
-            module = cells[0].strip("`")
-            if module in rows:
-                raise AssertionError(f"duplicate runtime module row: {module}")
-            rows[module] = cells
+        if len(cells) == 3:
+            modules = re.findall(r"`([^`]+\.kry)`", cells[0])
+            for module in modules:
+                if module in rows:
+                    raise AssertionError(f"duplicate runtime module row: {module}")
+                rows[module] = cells
     return rows
 
 

@@ -1,0 +1,20 @@
+#module "bevel_host"
+#import "ui_internal.h"
+#import "runtime/bevel.h"
+
+RenderBevel :: (x: i32, y: i32, width: i32, height: i32,
+light: Color, dark: Color) #export {
+    lines: BevelLines = BevelLinesFor(x, y, width, height)
+    DrawLine((int)lines.top.x, (int)lines.top.y,
+    (int)(lines.top.x + lines.top.width),
+    (int)(lines.top.y + lines.top.height), light)
+    DrawLine((int)lines.left.x, (int)lines.left.y,
+    (int)(lines.left.x + lines.left.width),
+    (int)(lines.left.y + lines.left.height), light)
+    DrawLine((int)lines.bottom.x, (int)lines.bottom.y,
+    (int)(lines.bottom.x + lines.bottom.width),
+    (int)(lines.bottom.y + lines.bottom.height), dark)
+    DrawLine((int)lines.right.x, (int)lines.right.y,
+    (int)(lines.right.x + lines.right.width),
+    (int)(lines.right.y + lines.right.height), dark)
+}

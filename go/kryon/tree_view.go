@@ -33,453 +33,245 @@ type TreeViewRowDecision struct {
 }
 
 func TreeView_TreeViewHas(fields uint32, field uint32) bool {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	return value_5
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	return value_0
 }
 
 func TreeView_TreeViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 bool = TreeView_TreeViewHas(value_0, value_1)
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 float32 = value
-		var value_6 float32 = 0.0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	var value_0 bool = TreeView_TreeViewHas(fields, field)
+	var value_1 bool = !value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_8 bool = value_4
-	if !value_8 {
-		var value_9 bool = allow_zero
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = value
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 <= value_13
-			value_11 = value_14
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_8 = value_11
+		value_2 = value_3
 	}
-	if value_8 {
-		var value_15 float32 = fallback
-		value = value_15
+	if value_2 {
+		value = fallback
 	}
-	var value_16 float32 = value
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	return value_19
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func TreeView_TreeViewMetricsFor(scale float32, panel StyleFrame, item StyleFrame) TreeViewMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics TreeViewMetrics = TreeViewMetrics{}
-	var value_4 float32 = 28.0
-	var row_height float32 = value_4
-	var value_5 uint32 = item.Value.Fields
-	var value_6 int32 = int32(StyleFontSize)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 bool = TreeView_TreeViewHas(value_5, value_7)
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 uint32 = item.Value.Fields
-		var value_11 int32 = int32(StylePaddingY)
-		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-		var value_13 bool = TreeView_TreeViewHas(value_10, value_12)
-		value_9 = value_13
-	}
-	if value_9 {
-		var value_14 float32 = item.Value.FontSize
-		var value_15 float32 = item.Value.PaddingY
-		var value_16 float32 = 2.0
-		var value_17 float32 = value_15 * value_16
-		var value_18 float32 = value_14 + value_17
-		row_height = value_18
-	}
-	var value_19 uint32 = item.Value.Fields
-	var value_20 int32 = int32(StyleContentOffset)
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 float32 = item.Value.OffsetY
-	var value_23 float32 = row_height
-	var value_24 float32 = scale
-	var value_25 bool = false
-	var value_26 int32 = TreeView_TreeViewMetric(value_19, value_21, value_22, value_23, value_24, value_25)
-	metrics.DefaultRowHeight = value_26
-	var value_27 uint32 = panel.Value.Fields
-	var value_28 int32 = int32(StylePaddingX)
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 float32 = panel.Value.PaddingX
-	var value_31 float32 = 8.0
-	var value_32 float32 = scale
-	var value_33 bool = true
-	var value_34 int32 = TreeView_TreeViewMetric(value_27, value_29, value_30, value_31, value_32, value_33)
-	metrics.IndentX = value_34
-	var value_35 uint32 = item.Value.Fields
-	var value_36 int32 = int32(StyleContentOffset)
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 float32 = item.Value.OffsetX
-	var value_39 float32 = 18.0
-	var value_40 float32 = scale
-	var value_41 bool = false
-	var value_42 int32 = TreeView_TreeViewMetric(value_35, value_37, value_38, value_39, value_40, value_41)
-	metrics.DepthIndent = value_42
-	var value_43 uint32 = item.Value.Fields
-	var value_44 int32 = int32(StyleIconSize)
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	var value_46 float32 = item.Value.IconSize
-	var value_47 float32 = 16.0
-	var value_48 float32 = scale
-	var value_49 bool = false
-	var value_50 int32 = TreeView_TreeViewMetric(value_43, value_45, value_46, value_47, value_48, value_49)
-	metrics.MarkerWidth = value_50
-	var value_51 uint32 = item.Value.Fields
-	var value_52 int32 = int32(StyleGap)
-	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
-	var value_54 float32 = item.Value.Gap
-	var value_55 float32 = 2.0
-	var value_56 float32 = scale
-	var value_57 bool = true
-	var value_58 int32 = TreeView_TreeViewMetric(value_51, value_53, value_54, value_55, value_56, value_57)
-	metrics.TextGap = value_58
-	var value_59 uint32 = panel.Value.Fields
-	var value_60 int32 = int32(StyleIconSize)
-	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-	var value_62 float32 = panel.Value.IconSize
-	var value_63 float32 = 8.0
-	var value_64 float32 = scale
-	var value_65 bool = true
-	var value_66 int32 = TreeView_TreeViewMetric(value_59, value_61, value_62, value_63, value_64, value_65)
-	metrics.ScrollbarWidth = value_66
-	var value_67 TreeViewMetrics = metrics
-	return value_67
-}
-
-func TreeView_TreeViewRowHeight(requested_row_height int32, scale float32, metrics TreeViewMetrics) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 int32 = requested_row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = requested_row_height
-		var value_8 float32 = float32(value_7)
-		var value_9 float32 = scale
-		var value_10 float32 = value_8 * value_9
-		var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-		var height int32 = value_11
-		var value_12 int32 = height
-		var value_13 int32 = 0
-		var value_14 bool = value_12 > value_13
-		if value_14 {
-			var value_15 int32 = height
-			return value_15
-		}
-	}
-	var value_16 int32 = metrics.DefaultRowHeight
-	return value_16
-}
-
-func TreeView_TreeViewContentHeight(item_count int32, row_height int32) int32 {
-	var value_0 int32 = item_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
+	var row_height float32 = 28.0
+	var value_0 uint32 = item.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))
+	var value_2 bool = TreeView_TreeViewHas(value_0, value_1)
 	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = row_height
-		var value_5 int32 = 0
-		var value_6 bool = value_4 <= value_5
+	if value_3 {
+		var value_4 uint32 = item.Value.Fields
+		var value_5 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+		var value_6 bool = TreeView_TreeViewHas(value_4, value_5)
 		value_3 = value_6
 	}
 	if value_3 {
-		var value_7 int32 = 0
-		return value_7
+		row_height = (item.Value.FontSize + (item.Value.PaddingY * 2.0))
 	}
-	var value_8 int32 = item_count
-	var value_9 int32 = row_height
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-	return value_10
+	var value_7 uint32 = item.Value.Fields
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_9 float32 = item.Value.OffsetY
+	var value_10 int32 = TreeView_TreeViewMetric(value_7, value_8, value_9, row_height, scale, false)
+	metrics.DefaultRowHeight = value_10
+	var value_11 uint32 = panel.Value.Fields
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_13 float32 = panel.Value.PaddingX
+	var value_14 float32 = 8.0
+	var value_15 int32 = TreeView_TreeViewMetric(value_11, value_12, value_13, value_14, scale, true)
+	metrics.IndentX = value_15
+	var value_16 uint32 = item.Value.Fields
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_18 float32 = item.Value.OffsetX
+	var value_19 float32 = 18.0
+	var value_20 int32 = TreeView_TreeViewMetric(value_16, value_17, value_18, value_19, scale, false)
+	metrics.DepthIndent = value_20
+	var value_21 uint32 = item.Value.Fields
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_23 float32 = item.Value.IconSize
+	var value_24 float32 = 16.0
+	var value_25 int32 = TreeView_TreeViewMetric(value_21, value_22, value_23, value_24, scale, false)
+	metrics.MarkerWidth = value_25
+	var value_26 uint32 = item.Value.Fields
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_28 float32 = item.Value.Gap
+	var value_29 float32 = 2.0
+	var value_30 int32 = TreeView_TreeViewMetric(value_26, value_27, value_28, value_29, scale, true)
+	metrics.TextGap = value_30
+	var value_31 uint32 = panel.Value.Fields
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_33 float32 = panel.Value.IconSize
+	var value_34 float32 = 8.0
+	var value_35 int32 = TreeView_TreeViewMetric(value_31, value_32, value_33, value_34, scale, true)
+	metrics.ScrollbarWidth = value_35
+	return metrics
+}
+
+func TreeView_TreeViewRowHeight(requested_row_height int32, scale float32, metrics TreeViewMetrics) int32 {
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	if requested_row_height > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(requested_row_height)*scale)), 32, true)), uint64(0), 32, true, 0))
+		var height int32 = value_0
+		if height > 0 {
+			return height
+		}
+	}
+	return metrics.DefaultRowHeight
+}
+
+func TreeView_TreeViewContentHeight(item_count int32, row_height int32) int32 {
+	var value_0 bool = (item_count <= 0)
+	if !value_0 {
+		value_0 = (row_height <= 0)
+	}
+	if value_0 {
+		return 0
+	}
+	return (int32(number_runtime_bits(uint64(item_count), uint64(row_height), 32, true, 3)))
 }
 
 func TreeView_TreeViewMaxScroll(viewport_height int32, content_height int32) int32 {
-	var value_0 int32 = content_height
-	var value_1 int32 = viewport_height
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var max_scroll int32 = value_2
-	var value_3 int32 = max_scroll
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 0
-		return value_6
+	var max_scroll int32 = (int32(number_runtime_bits(uint64(content_height), uint64(viewport_height), 32, true, 2)))
+	if max_scroll < 0 {
+		return 0
 	}
-	var value_7 int32 = max_scroll
-	return value_7
+	return max_scroll
 }
 
 func TreeView_TreeViewScrollFor(scroll_y int32, row_height int32) TreeViewScrollLayout {
 	var layout TreeViewScrollLayout = TreeViewScrollLayout{}
-	var value_0 int32 = scroll_y
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		scroll_y = value_3
+	if scroll_y < 0 {
+		scroll_y = 0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = 1
-		row_height = value_7
+	if row_height <= 0 {
+		row_height = 1
 	}
-	var value_8 int32 = scroll_y
-	var value_9 int32 = row_height
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 4))
-	layout.First = value_10
-	var value_11 int32 = scroll_y
-	var value_12 int32 = row_height
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 5))
-	layout.YOffset = value_13
-	var value_14 TreeViewScrollLayout = layout
-	return value_14
+	layout.First = (int32(number_runtime_bits(uint64(scroll_y), uint64(row_height), 32, true, 4)))
+	layout.YOffset = (int32(number_runtime_bits(uint64(scroll_y), uint64(row_height), 32, true, 5)))
+	return layout
 }
 
 func TreeView_TreeViewVisibleRows(viewport_height int32, row_height int32) int32 {
-	var value_0 int32 = viewport_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if viewport_height <= 0 {
+		return 0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = 1
-		row_height = value_7
+	if row_height <= 0 {
+		row_height = 1
 	}
-	var value_8 int32 = viewport_height
-	var value_9 int32 = row_height
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 4))
-	var value_11 int32 = 1
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(viewport_height), uint64(row_height), 32, true, 4)))), uint64(1), 32, true, 1))
+	return value_0
 }
 
 func TreeView_TreeViewRowBounds(bounds Rectangle, visible_index int32, row_height int32, y_offset int32) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	row.X = value_0
-	var value_1 float32 = bounds.Y
-	var value_2 int32 = visible_index
-	var value_3 int32 = row_height
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
-	var value_5 int32 = y_offset
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 2))
-	var value_7 float32 = float32(value_6)
-	var value_8 float32 = value_1 + value_7
-	row.Y = value_8
-	var value_9 float32 = bounds.Width
-	row.Width = value_9
-	var value_10 int32 = row_height
-	var value_11 float32 = float32(value_10)
-	row.Height = value_11
-	var value_12 Rectangle = row
-	return value_12
+	row.X = bounds.X
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(visible_index), uint64(row_height), 32, true, 3)))), uint64(y_offset), 32, true, 2))
+	row.Y = (bounds.Y + float32(value_0))
+	row.Width = bounds.Width
+	row.Height = float32(row_height)
+	return row
 }
 
 func TreeView_TreeViewIndent(depth int32, metrics TreeViewMetrics) int32 {
-	var value_0 int32 = depth
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		depth = value_3
+	if depth < 0 {
+		depth = 0
 	}
-	var value_4 int32 = metrics.IndentX
-	var value_5 int32 = depth
-	var value_6 int32 = metrics.DepthIndent
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(metrics.IndentX), uint64((int32(number_runtime_bits(uint64(depth), uint64(metrics.DepthIndent), 32, true, 3)))), 32, true, 1))
+	return value_0
 }
 
 func TreeView_TreeViewMarkerBounds(row Rectangle, depth int32, metrics TreeViewMetrics) Rectangle {
 	var marker Rectangle = Rectangle{}
-	var value_0 int32 = depth
-	var value_1 TreeViewMetrics = metrics
-	var value_2 int32 = TreeView_TreeViewIndent(value_0, value_1)
-	var indent int32 = value_2
-	var value_3 float32 = row.X
-	var value_4 int32 = indent
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_3 + value_5
-	marker.X = value_6
-	var value_7 float32 = row.Y
-	marker.Y = value_7
-	var value_8 int32 = metrics.MarkerWidth
-	var value_9 float32 = float32(value_8)
-	marker.Width = value_9
-	var value_10 float32 = row.Height
-	marker.Height = value_10
-	var value_11 Rectangle = marker
-	return value_11
+	var value_0 int32 = TreeView_TreeViewIndent(depth, metrics)
+	var indent int32 = value_0
+	marker.X = (row.X + float32(indent))
+	marker.Y = row.Y
+	marker.Width = float32(metrics.MarkerWidth)
+	marker.Height = row.Height
+	return marker
 }
 
 func TreeView_TreeViewTextBounds(row Rectangle, depth int32, metrics TreeViewMetrics) Rectangle {
 	var text Rectangle = Rectangle{}
-	var value_0 int32 = depth
-	var value_1 TreeViewMetrics = metrics
-	var value_2 int32 = TreeView_TreeViewIndent(value_0, value_1)
-	var indent int32 = value_2
-	var value_3 float32 = row.X
-	var value_4 int32 = indent
-	var value_5 int32 = metrics.MarkerWidth
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-	var value_7 int32 = metrics.TextGap
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-	var value_9 float32 = float32(value_8)
-	var value_10 float32 = value_3 + value_9
-	var x float32 = value_10
-	var value_11 float32 = x
-	text.X = value_11
-	var value_12 float32 = row.Y
-	text.Y = value_12
-	var value_13 float32 = row.Width
-	var value_14 float32 = x
-	var value_15 float32 = row.X
-	var value_16 float32 = value_14 - value_15
-	var value_17 float32 = value_13 - value_16
-	text.Width = value_17
-	var value_18 float32 = text.Width
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 float32 = 0.0
-		text.Width = value_21
+	var value_0 int32 = TreeView_TreeViewIndent(depth, metrics)
+	var indent int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(indent), uint64(metrics.MarkerWidth), 32, true, 1)))), uint64(metrics.TextGap), 32, true, 1))
+	var x float32 = (row.X + float32(value_1))
+	text.X = x
+	text.Y = row.Y
+	text.Width = (row.Width - (x - row.X))
+	if text.Width < 0.0 {
+		text.Width = 0.0
 	}
-	var value_22 float32 = row.Height
-	text.Height = value_22
-	var value_23 Rectangle = text
-	return value_23
+	text.Height = row.Height
+	return text
 }
 
 func TreeView_TreeViewTextPaintFor(marker Rectangle, text Rectangle, text_line_height int32) TreeViewTextPaint {
 	var paint TreeViewTextPaint = TreeViewTextPaint{}
-	var value_0 float32 = marker.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	paint.MarkerX = value_1
-	var value_2 float32 = marker.Y
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 float32 = marker.Height
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var value_6 int32 = text_line_height
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-	var value_8 int32 = 2
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 4))
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_9), 32, true, 1))
-	paint.MarkerY = value_10
-	var value_11 float32 = text.X
-	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-	paint.TextX = value_12
-	var value_13 float32 = text.Y
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	var value_15 float32 = text.Height
-	var value_16 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_15), 32, true)), uint64(0), 32, true, 0))
-	var value_17 int32 = text_line_height
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 2))
-	var value_19 int32 = 2
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 4))
-	var value_21 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_20), 32, true, 1))
-	paint.TextY = value_21
-	var value_22 TreeViewTextPaint = paint
-	return value_22
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(marker.X), 32, true)), uint64(0), 32, true, 0))
+	paint.MarkerX = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(marker.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(marker.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_2), uint64(text_line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.MarkerY = (int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 1)))
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(text.X), 32, true)), uint64(0), 32, true, 0))
+	paint.TextX = value_4
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(text.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(text.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_7 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_6), uint64(text_line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.TextY = (int32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, true, 1)))
+	return paint
 }
 
 func TreeView_TreeViewMarkerText(expanded bool) string {
-	var value_0 bool = expanded
-	if value_0 {
-		var value_1 string = "v"
-		return value_1
+	if expanded {
+		return "v"
 	}
-	var value_2 string = ">"
-	return value_2
+	return ">"
 }
 
 func TreeView_TreeViewRowDecisionFor(hot bool, released bool, selectable bool, has_selection bool, item_id int32) TreeViewRowDecision {
 	var decision TreeViewRowDecision = TreeViewRowDecision{}
-	var value_0 int32 = item_id
-	decision.SelectedID = value_0
-	var value_1 bool = hot
+	decision.SelectedID = item_id
+	var value_0 bool = hot
+	if value_0 {
+		value_0 = released
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = selectable
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = released
-		value_2 = value_3
+		value_2 = has_selection
 	}
-	var value_4 bool = value_2
-	if value_4 {
-		var value_5 bool = selectable
-		value_4 = value_5
+	if value_2 {
+		decision.Select = true
+		decision.ConsumeRelease = true
+		decision.Changed = true
 	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = has_selection
-		value_6 = value_7
-	}
-	if value_6 {
-		var value_8 bool = true
-		decision.Select = value_8
-		var value_9 bool = true
-		decision.ConsumeRelease = value_9
-		var value_10 bool = true
-		decision.Changed = value_10
-	}
-	var value_11 TreeViewRowDecision = decision
-	return value_11
+	return decision
 }
 
 func TreeView_TreeViewScrollbarBoundsFor(bounds Rectangle, scrollbar_width int32) Rectangle {
 	var bar Rectangle = Rectangle{}
-	var value_0 int32 = scrollbar_width
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		scrollbar_width = value_3
+	if scrollbar_width < 0 {
+		scrollbar_width = 0
 	}
-	var value_4 float32 = bounds.X
-	var value_5 float32 = bounds.Width
-	var value_6 float32 = value_4 + value_5
-	var value_7 int32 = scrollbar_width
-	var value_8 float32 = float32(value_7)
-	var value_9 float32 = value_6 - value_8
-	bar.X = value_9
-	var value_10 float32 = bounds.Y
-	bar.Y = value_10
-	var value_11 int32 = scrollbar_width
-	var value_12 float32 = float32(value_11)
-	bar.Width = value_12
-	var value_13 float32 = bounds.Height
-	bar.Height = value_13
-	var value_14 Rectangle = bar
-	return value_14
+	bar.X = ((bounds.X + bounds.Width) - float32(scrollbar_width))
+	bar.Y = bounds.Y
+	bar.Width = float32(scrollbar_width)
+	bar.Height = bounds.Height
+	return bar
 }

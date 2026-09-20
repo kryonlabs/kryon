@@ -1,0 +1,26 @@
+#module "accessibility_node"
+#import "kryon_compat.generated.h"
+
+AccessibilityNode :: struct {
+    bounds: Rectangle
+    role: const char*
+    label: const char*
+    focused: bool
+    disabled: bool
+    checked: bool
+    focus_id: i32
+    value: const char*
+    read_only: bool
+    secure: bool
+    multiline: bool
+    generation: u64
+    actions: unsigned
+    selection_anchor: i32
+    selection_cursor: i32
+    key: u64
+    parent: unsigned
+    selected: bool
+    multi_select: bool
+    item_index: i32
+    offscreen: bool
+}

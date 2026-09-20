@@ -1,0 +1,485 @@
+#module "tree_input"
+#import "ui_internal.h"
+#import "ui/tree_layout.h"
+#import "ui/accessibility.h"
+#import "ui_popup_input_internal.h"
+#import "runtime/button.h"
+#import "runtime/text_input.h"
+
+TreeRouteFocus :: () {
+    index: i32 = 0
+    while index < ui_committed_node_count {
+        node: *TreeNode = &ui_committed_nodes[index]
+        if (node->flags & TreeNodeFlagScopeDisabled) == 0 {
+            focus_id: i32 = 0
+            if node->kind == WidgetKindTextField {
+                focus_id = node->data.text_field.focus_id
+            } else if node->kind == WidgetKindTextArea {
+                focus_id = node->data.text_area.focus_id
+            } else if ui_tree_interactive_button_like(node) {
+                focus_id = node->data.button.props.id
+            }
+            if node->has_input_clip { PushInputClip(node->input_clip) }
+            if FocusFrameOpen() && focus_id > 0 {
+                ui_register_focus_snapshot(focus_id, node->bounds,
+                ui_tree_input_snapshot(node))
+            }
+            if node->has_input_clip { PopInputClip() }
+        }
+        index += 1
+    }
+}
+
+TreeRouteButtons :: (mouse: Vector2, hit: i32) -> i32 {
+    pressed: i32 = IsMouseButtonDown(MOUSE_BUTTON_LEFT)
+    index: i32 = 0
+    while index < ui_committed_node_count {
+        node: *TreeNode = &ui_committed_nodes[index]
+        if ui_tree_interactive_button_like(node) {
+            before: u32 = node->flags
+            node->flags &= ~(TreeNodeFlagHovered | TreeNodeFlagPressed)
+            if (node->flags & TreeNodeFlagScopeDisabled) == 0 &&
+            !ui_tree_input_blocked(node, mouse) &&
+            (!node->has_input_clip ||
+            CheckCollisionPointRec(mouse, node->input_clip)) &&
+            CheckCollisionPointRec(mouse, node->bounds) {
+                node->flags |= TreeNodeFlagHovered
+                if pressed { node->flags |= TreeNodeFlagPressed }
+            }
+            if before != node->flags {
+                ui_tree_invalid |= INVALIDATE_PAINT
+            }
+        }
+        index += 1
+    }
+    target: i32 = -1
+    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT) { target = hit }
+    if target >= 0 &&
+    ui_tree_interactive_button_like(&ui_committed_nodes[target]) {
+        event: Event = (Event){0}
+        event.key = ui_committed_nodes[target].key
+        event.kind = EVENT_CLICK
+        event.timestamp = GetTime()
+        ui_event_push(event)
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+    index = 0
+    while index < ui_committed_node_count {
+        node: *TreeNode = &ui_committed_nodes[index]
+        build_activated: i32 =
+        (node->flags & TreeNodeFlagBuildActivated) != 0
+        eligible: bool = ui_tree_interactive_button_like(node) &&
+        (build_activated ||
+        (FocusFrameOpen() &&
+        IsFocusActivatePressed(node->data.button.props.id))) &&
+        !ui_popup_input_snapshot_keyboard_captures(
+        ui_tree_input_snapshot(node))
+        if eligible {
+            event: Event = (Event){0}
+            event.key = node->key
+            event.kind = EVENT_CLICK
+            event.timestamp = GetTime()
+            ui_event_push(event)
+            node->flags &= ~TreeNodeFlagBuildActivated
+            ui_tree_invalid |= INVALIDATE_PAINT
+        }
+        index += 1
+    }
+    return target
+}
+
+TreeRouteEditor :: (node: *TreeNode, index: i32,
+target: i32, mouse: Vector2,
+backspace_count: *i32, delete_count: *i32) {
+    if (node->kind != WidgetKindTextField &&
+    node->kind != WidgetKindTextArea) || node->state == nil { return }
+    if (node->flags & TreeNodeFlagScopeDisabled) != 0 {
+        id: i32 = node->data.text_field.focus_id
+        if node->kind == WidgetKindTextArea {
+            id = node->data.text_area.focus_id
+        }
+        if id > 0 && IsFocusActive(id) {
+            while GetCharPressed() != 0 {
+            }
+        }
+        if ui_text_composition_cancel(node->state) {
+            ui_text_field_event(node, EVENT_COMPOSITION_CHANGED,
+            GetTime())
+            ui_tree_invalid |= INVALIDATE_PAINT
+        }
+        return
+    }
+    field_storage: TextFieldProps = (TextFieldProps){0}
+    field: *TextFieldProps = nil
+    if node->kind == WidgetKindTextField {
+        field = &node->data.text_field
+    } else {
+        area: *TextAreaProps = &node->data.text_area
+        area->bounds = node->bounds
+        field_storage.bounds = area->bounds
+        field_storage.text = area->text
+        field_storage.text_size = area->text_size
+        field_storage.cursor_position = area->cursor_position
+        field_storage.focused = area->focused
+        field_storage.max_codepoints = area->max_codepoints
+        field_storage.focus_id = area->focus_id
+        field_storage.read_only = area->read_only
+        field_storage.class_name = area->class_name
+        field = &field_storage
+    }
+    state: *TextFieldState = (TextFieldState*)node->state
+    ui_accessibility_apply_text(node, field)
+    if FocusFrameOpen() && field->focus_id > 0 {
+        focused: i32 = IsFocusActive(field->focus_id)
+        if state->focused != focused {
+            state->focused = focused
+            if focused {
+                ui_text_field_event(node, EVENT_FOCUS, GetTime())
+            } else {
+                ui_text_field_event(node, EVENT_BLUR, GetTime())
+            }
+        }
+    }
+    if target >= 0 {
+        focused: i32 = target == index
+        if state->focused != focused {
+            state->focused = focused
+            if focused {
+                ui_text_field_event(node, EVENT_FOCUS, GetTime())
+            } else {
+                ui_text_field_event(node, EVENT_BLUR, GetTime())
+            }
+        }
+        if focused {
+            style_kind: i32 = StyleKindTextField()
+            if node->kind == WidgetKindTextArea {
+                style_kind = StyleKindTextArea()
+            }
+            font: i32 = ui_text_input_default_font(style_kind,
+            field->class_name)
+            style: TextInputAppearance =
+            ui_resolve_text_input_appearance(
+            (TextInputAppearance){0}, StyleKindTextField(),
+            field->class_name)
+            metrics: TextInputMetrics =
+            ui_text_input_metrics_for_appearance(style,
+            StyleKindTextField(), field->class_name, 0)
+            padding: i32 = metrics.padding_x
+            now: f64 = GetTime()
+            click_key: KeyID = node->key
+            if field->focus_id > 0 {
+                click_key = (KeyID)field->focus_id
+            }
+            click_dx: i32 = (int)mouse.x -
+            ui_tree_text_last_click_x
+            click_dy: i32 = (int)mouse.y -
+            ui_tree_text_last_click_y
+            click_slop: i32 = TextInputDoubleClickSlopFor(
+            (float)Scale(1000) / 1000.0f)
+            decision: TextInputDoubleClickDecision =
+            TextInputDoubleClickDecisionFor(1,
+            ui_tree_text_last_click_key == click_key,
+            (float)(now - ui_tree_text_last_click_time),
+            click_dx, click_dy, click_slop)
+            if decision.double_click {
+                length: i32 = 0
+                if field->text != nil {
+                    length = (int)strlen(field->text)
+                }
+                ui_tree_text_select_all(state, length)
+                state->dragging = 0
+            } else {
+                if node->kind == WidgetKindTextArea {
+                    state->cursor = ui_text_area_cursor_at_point(
+                    node->data.text_area, (int)mouse.x,
+                    (int)mouse.y)
+                } else {
+                    state->cursor = ui_text_cursor_at_x(field->text,
+                    font, (int)node->bounds.x + padding,
+                    (int)mouse.x)
+                }
+                ui_tree_text_collapse(state, state->cursor)
+                state->dragging = 1
+            }
+            ui_tree_text_last_click_key = click_key
+            ui_tree_text_last_click_x = (int)mouse.x
+            ui_tree_text_last_click_y = (int)mouse.y
+            ui_tree_text_last_click_time = now
+            ui_text_field_event(node, EVENT_SELECTION_CHANGED,
+            GetTime())
+        } else {
+            state->dragging = 0
+        }
+    }
+    if field->focused != nil { *field->focused = state->focused }
+    keyboard_captured: i32 =
+    ui_popup_input_snapshot_keyboard_captures(
+    ui_tree_input_snapshot(node))
+    composition_input: TextCompositionInputDecision =
+    TextCompositionInputDecisionFor(
+    state->focused && !keyboard_captured, field->read_only)
+    if composition_input.cancel &&
+    ui_text_composition_cancel(state) {
+        ui_text_field_event(node, EVENT_COMPOSITION_CHANGED,
+        GetTime())
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+    if !state->focused || field->text == nil ||
+    field->text_size == 0 || keyboard_captured { return }
+    changed: i32 = 0
+    selection_changed: i32 = 0
+    if state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT) {
+        style_kind: i32 = StyleKindTextField()
+        if node->kind == WidgetKindTextArea {
+            style_kind = StyleKindTextArea()
+        }
+        font: i32 = ui_text_input_default_font(style_kind,
+        field->class_name)
+        style: TextInputAppearance =
+        ui_resolve_text_input_appearance(
+        (TextInputAppearance){0}, StyleKindTextField(),
+        field->class_name)
+        metrics: TextInputMetrics =
+        ui_text_input_metrics_for_appearance(style,
+        StyleKindTextField(), field->class_name, 0)
+        padding: i32 = metrics.padding_x
+        cursor: i32 = 0
+        if node->kind == WidgetKindTextArea {
+            cursor = ui_text_area_cursor_at_point(
+            node->data.text_area, (int)mouse.x, (int)mouse.y)
+        } else {
+            cursor = ui_text_cursor_at_x(field->text, font,
+            (int)node->bounds.x + padding, (int)mouse.x)
+        }
+        if cursor != state->cursor {
+            state->cursor = cursor
+            selection_changed = 1
+        }
+    }
+    if state->dragging && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
+        state->dragging = 0
+    }
+    range: TextSelectionRange = TextSelectionRangeFor(state->anchor,
+    state->cursor)
+    start: i32 = range.start
+    end: i32 = range.end
+    modifier: i32 = IsKeyDown(KEY_LEFT_CONTROL) ||
+    IsKeyDown(KEY_RIGHT_CONTROL) ||
+    IsKeyDown(KEY_LEFT_SUPER) ||
+    IsKeyDown(KEY_RIGHT_SUPER)
+    if modifier && IsKeyPressed(KEY_A) {
+        decision: TextContextCommandDecision =
+        TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+        end > start, 0, 0, field->text[0] != '\0', 1,
+        !field->read_only, !field->read_only)
+        if decision.select_all {
+            ui_tree_text_select_all(state,
+            (int)strlen(field->text))
+            selection_changed = 1
+            start = state->anchor
+            end = state->cursor
+        }
+    }
+    if modifier && IsKeyPressed(KEY_C) && !field->secure {
+        decision: TextContextCommandDecision =
+        TextEditCommandDecisionFor(TextContextCommandCopy(),
+        end > start, 1, 0, field->text[0] != '\0', 1,
+        !field->read_only, !field->read_only)
+        if decision.copy_selection {
+            ui_text_copy_range(field->text, start, end)
+        } else if decision.copy_all {
+            SetClipboardTextValue(field->text)
+        }
+    }
+    if modifier && IsKeyPressed(KEY_X) && !field->secure {
+        decision: TextContextCommandDecision =
+        TextEditCommandDecisionFor(TextContextCommandCut(),
+        end > start, 1, 1, field->text[0] != '\0',
+        !field->read_only, !field->read_only,
+        !field->read_only)
+        copied_selection: i32 = 0
+        if decision.copy_selection {
+            copied_selection = ui_text_copy_range(
+            field->text, start, end)
+        }
+        if decision.delete_selection && copied_selection {
+            changed |= ui_text_delete_range(field->text,
+            field->text_size, &state->cursor, start, end)
+        }
+        if decision.copy_all {
+            SetClipboardTextValue(field->text)
+        }
+        if decision.clear_all {
+            field->text[0] = '\0'
+            state->cursor = 0
+            changed = 1
+        }
+        if decision.collapse_selection {
+            ui_tree_text_collapse(state, state->cursor)
+            selection_changed = 1
+            start = state->cursor
+            end = state->cursor
+        }
+    }
+    if modifier && IsKeyPressed(KEY_V) {
+        decision: TextContextCommandDecision =
+        TextEditCommandDecisionFor(TextContextCommandPaste(),
+        end > start, 0, 0, field->text[0] != '\0', 1,
+        !field->read_only, !field->read_only)
+        if decision.delete_selection {
+            changed |= ui_text_delete_range(field->text,
+            field->text_size, &state->cursor, start, end)
+        }
+        if decision.paste {
+            allow_newlines: i32 = node->kind == WidgetKindTextArea
+            edit: TextEdit = (TextEdit){0}
+            edit.text = field->text
+            edit.text_size = field->text_size
+            edit.cursor_position = &state->cursor
+            edit.max_codepoints = field->max_codepoints
+            changed |= ui_text_paste_clipboard(edit, allow_newlines)
+        }
+        if decision.collapse_selection {
+            ui_tree_text_collapse(state, state->cursor)
+            selection_changed = 1
+            start = state->cursor
+            end = state->cursor
+        }
+    }
+    shift: i32 = IsKeyDown(KEY_LEFT_SHIFT) ||
+    IsKeyDown(KEY_RIGHT_SHIFT)
+    multiline: i32 = node->kind == WidgetKindTextArea
+    navigation_key: i32 = ui_text_navigation_key(multiline)
+    style_kind: i32 = StyleKindTextField()
+    if multiline { style_kind = StyleKindTextArea() }
+    font: i32 = ui_text_input_default_font(style_kind,
+    field->class_name)
+    navigation: TextNavigationInput = (TextNavigationInput){0}
+    navigation.text = field->text
+    if multiline { navigation.area = &node->data.text_area }
+    navigation.font = font
+    navigation.key = navigation_key
+    navigation.shift = shift
+    navigation.modifier = modifier
+    navigation.secure = field->secure
+    if ui_text_navigate(navigation, &state->anchor,
+    &state->cursor) {
+        moved_range: TextSelectionRange = TextSelectionRangeFor(
+        state->anchor, state->cursor)
+        selection_changed = 1
+        start = moved_range.start
+        end = moved_range.end
+    }
+    codepoint: i32 = GetCharPressed()
+    while codepoint > 0 {
+        if !field->read_only {
+            if end > start {
+                changed |= ui_text_delete_range(field->text,
+                field->text_size, &state->cursor, start, end)
+                ui_tree_text_collapse(state, state->cursor)
+                start = state->cursor
+                end = state->cursor
+            }
+            if ui_text_insert_codepoint(field->text,
+            field->text_size, &state->cursor, codepoint,
+            field->max_codepoints) {
+                ui_tree_text_collapse(state, state->cursor)
+                changed = 1
+                selection_changed = 1
+            }
+        }
+        codepoint = GetCharPressed()
+    }
+    edit: TextEdit = (TextEdit){0}
+    edit.text = field->text
+    edit.text_size = field->text_size
+    edit.cursor_position = &state->cursor
+    edit.max_codepoints = field->max_codepoints
+    composition: TextCompositionResult = ui_text_composition_apply(
+    edit, &state->anchor, state, state->focused,
+    field->read_only, multiline)
+    changed |= composition.text_changed
+    selection_changed |= composition.selection_changed
+    if composition.presentation_changed {
+        ui_text_field_event(node, EVENT_COMPOSITION_CHANGED,
+        GetTime())
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+    if *backspace_count > 0 && !field->read_only {
+        while *backspace_count > 0 {
+            *backspace_count -= 1
+            changed |= ui_text_delete_key(field->text,
+            field->text_size, &state->anchor, &state->cursor,
+            TextDeleteBackspace(), modifier, field->secure)
+        }
+        selection_changed = changed
+    } else if *delete_count > 0 && !field->read_only {
+        while *delete_count > 0 {
+            *delete_count -= 1
+            changed |= ui_text_delete_key(field->text,
+            field->text_size, &state->anchor, &state->cursor,
+            TextDeleteForward(), modifier, field->secure)
+        }
+        selection_changed = changed
+    }
+    enter_requested: i32 = IsKeyPressed(KEY_ENTER) ||
+    IsKeyPressed(KEY_KP_ENTER)
+    if multiline {
+        if TextAreaEnterNewlineShouldRun(field->read_only,
+        enter_requested) {
+            if end > start {
+                changed |= ui_text_delete_range(field->text,
+                field->text_size, &state->cursor, start, end)
+            }
+            if ui_text_insert_newline(field->text,
+            field->text_size, &state->cursor,
+            field->max_codepoints) { changed = 1 }
+            ui_tree_text_collapse(state, state->cursor)
+            selection_changed = 1
+        }
+    } else if TextEditCommitShouldRun(enter_requested, 0) {
+        if field->commit_pressed != nil {
+            *field->commit_pressed = 1
+        }
+        ui_text_field_event(node, EVENT_TEXT_COMMIT, GetTime())
+    }
+    if TextEscapeShouldBlur(state->focused,
+    IsKeyboardInputEnabled(), IsKeyPressed(KEY_ESCAPE)) {
+        state->focused = 0
+        state->dragging = 0
+        if field->focused != nil { *field->focused = 0 }
+        ui_text_field_event(node, EVENT_BLUR, GetTime())
+    }
+    if field->cursor_position != nil {
+        *field->cursor_position = state->cursor
+    }
+    if multiline && (changed || selection_changed) {
+        ui_text_area_reveal_cursor(node->data.text_area,
+        state->cursor)
+    }
+    if changed { ui_text_field_event(node,
+        EVENT_TEXT_CHANGED, GetTime()) }
+    if selection_changed { ui_text_field_event(node,
+        EVENT_SELECTION_CHANGED, GetTime()) }
+    if changed || selection_changed {
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+}
+
+RouteInput :: () #export {
+    if ui_committed_node_count <= 0 { return }
+    backspace_count: i32 = ui_tree_key_repeat_count(
+    KEY_BACKSPACE, &ui_tree_backspace_next_repeat_at)
+    delete_count: i32 = ui_tree_key_repeat_count(
+    KEY_DELETE, &ui_tree_delete_next_repeat_at)
+    TreeRouteFocus()
+    mouse: Vector2 = ui_mouse_world()
+    hit: i32 = HitTestNode(mouse)
+    target: i32 = TreeRouteButtons(mouse, hit)
+    index: i32 = 0
+    while index < ui_committed_node_count {
+        TreeRouteEditor(&ui_committed_nodes[index], index,
+        target, mouse, &backspace_count, &delete_count)
+        index += 1
+    }
+}

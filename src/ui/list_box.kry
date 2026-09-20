@@ -1,0 +1,156 @@
+#module "list_box_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/list_box.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+
+RenderListBox :: (list: ListBoxProps) -> i32 #export {
+    accessibility_item: i32 = -1
+    accessibility_changed: i32 = ui_accessibility_apply_list(
+    list, &accessibility_item)
+    paint_enabled: i32 = IsWindowReady()
+    disabled: i32 = list.disabled || ContentDisabled()
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    state: ButtonState = ButtonStateNormal
+    if disabled != 0 { state = ButtonStateDisabled }
+    frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, disabled, 0, list.class_name,
+    StyleKindListBox(), StyleAny())
+    default_item_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral, state,
+    disabled, 0, list.class_name, StyleKindListBoxItem(), StyleAny())
+    default_item_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(default_item_frame).value)
+    font: i32 = ResolveFont(0,
+    StyleFontValue(default_item_style.fields,
+    default_item_style.font_size), GetFontSize())
+    selected: i32 = -1
+    if list.selected_index != nil { selected = *list.selected_index }
+    row_height_value: i32 = 0
+    if list.row_height > 0 {
+        row_height_value = Scale(list.row_height)
+    }
+    row_height: i32 = ListBoxRowHeight(row_height_value,
+    runtime_scale, default_item_frame)
+    scroll_offset: *i32 = list.scroll_offset
+    if disabled != 0 { scroll_offset = nil }
+    max_scroll: i32 = ui_update_scroll(list.bounds,
+    list.item_count * row_height, scroll_offset, row_height)
+    scroll_y: i32 = 0
+    if list.scroll_offset != nil { scroll_y = *list.scroll_offset }
+    layout: ListBoxLayout = ListBoxLayoutFor(list.bounds,
+    list.item_count, row_height, 0, scroll_y, runtime_scale,
+    default_item_frame)
+    layout.max_scroll = max_scroll
+    layout.scroll = ListBoxClampScroll(layout.scroll, max_scroll)
+    if accessibility_item >= 0 {
+        layout.scroll = ListBoxRevealScroll(accessibility_item,
+        layout.scroll, row_height, list.bounds.height, max_scroll,
+        runtime_scale, default_item_frame)
+        if list.scroll_offset != nil {
+            *list.scroll_offset = layout.scroll
+        }
+    }
+    focused: i32 = !disabled && list.id > 0 &&
+    RegisterFocus(list.id, list.bounds)
+    if focused != 0 { SetFocusTextInputActive(0) }
+    changed: i32 = accessibility_changed
+    if focused != 0 && list.selected_index != nil &&
+    list.item_count > 0 && !ui_popup_input_focus_captures(list.id) {
+        key: i32 = ListBoxKeyFor(IsKeyPressed(KEY_HOME) != 0,
+        IsKeyPressed(KEY_END) != 0, IsKeyPressed(KEY_UP) != 0,
+        IsKeyPressed(KEY_DOWN) != 0)
+        if key != ListBoxKeyNone() {
+            nav: ListBoxNavigation = ListBoxNavigate(selected,
+            list.item_count, key, layout.scroll, row_height,
+            list.bounds.height, max_scroll, runtime_scale,
+            default_item_frame)
+            if nav.changed {
+                *list.selected_index = nav.selected
+                selected = nav.selected
+                changed = 1
+            }
+            if list.scroll_offset != nil {
+                *list.scroll_offset = nav.scroll
+                layout.scroll = nav.scroll
+            }
+        }
+    }
+    scroll_y = layout.scroll
+    if list.scroll_offset != nil { scroll_y = *list.scroll_offset }
+    layout = ListBoxLayoutFor(list.bounds, list.item_count,
+    row_height, 0, scroll_y, runtime_scale, default_item_frame)
+    if paint_enabled != 0 {
+        DrawWidgetFrame(list.bounds, (Rectangle){0},
+        frame, 0, 0, disabled, focused)
+        BeginClip((int)list.bounds.x, (int)list.bounds.y,
+        (int)list.bounds.width, (int)list.bounds.height)
+    }
+    visible_index: i32 = 0
+    while visible_index <= layout.visible_rows &&
+    layout.first_row + visible_index < list.item_count {
+        index: i32 = layout.first_row + visible_index
+        row: Rectangle = ListBoxRowBounds(list.bounds,
+        visible_index, layout)
+        hot: i32 = !disabled && ui_hot(row)
+        item_state: ButtonState = ButtonStateNormal
+        if index == selected { item_state = ButtonStateSelected }
+        if hot != 0 { item_state = ButtonStateHover }
+        if disabled != 0 { item_state = ButtonStateDisabled }
+        item_frame: StyleFrame = WidgetFrameForClassRole(
+        ButtonToneNeutral, item_state, disabled, index == selected,
+        list.class_name, StyleKindListBoxItem(), StyleAny())
+        item_style: Style = ui_unpack_style(
+        ui_style_apply_effects_frame(item_frame).value)
+        if paint_enabled != 0 && (index == selected || hot != 0 ||
+        disabled != 0) {
+            DrawWidgetFrame(row, list.bounds, item_frame,
+            hot, 0, disabled, 0)
+        }
+        if hot != 0 { MarkClickable() }
+        if paint_enabled != 0 {
+            item_font: i32 = ResolveFont(0,
+            StyleFontValue(item_style.fields, item_style.font_size), font)
+            label_inset: i32 = ListBoxItemLabelInset(runtime_scale,
+            item_frame)
+            item_paint: ListBoxItemPaint = ListBoxItemPaintFor(row,
+            label_inset, TextLineHeight(item_font))
+            label: const char* = ""
+            if list.items != nil && list.items[index] != nil {
+                label = list.items[index]
+            }
+            RenderText(label, item_paint.text_x, item_paint.text_y,
+            item_font, Fade(item_style.foreground, item_style.opacity))
+        }
+        row_decision: ListBoxRowDecision = ListBoxRowDecisionFor(
+        hot != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        list.selected_index != nil, selected, index)
+        if row_decision.consume_release { ConsumeRelease() }
+        if row_decision.select && list.selected_index != nil {
+            *list.selected_index = row_decision.selected
+            selected = row_decision.selected
+        }
+        if row_decision.changed { changed = 1 }
+        visible_index += 1
+    }
+    if paint_enabled != 0 { EndClip() }
+    if paint_enabled != 0 && list.scroll_offset != nil &&
+    max_scroll > 0 {
+        scrollbar: Rectangle = ListBoxScrollbarBoundsFor(
+        list.bounds, runtime_scale, frame)
+        ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
+        (int)scrollbar.height, list.item_count * row_height,
+        list.scroll_offset, max_scroll, 0)
+    }
+    if paint_enabled != 0 && focused != 0 {
+        RenderFocus(list.bounds)
+    }
+    accessibility_scroll: i32 = scroll_y
+    if list.scroll_offset != nil {
+        accessibility_scroll = *list.scroll_offset
+    }
+    ui_accessibility_list_items(list, row_height,
+    accessibility_scroll)
+    return changed
+}

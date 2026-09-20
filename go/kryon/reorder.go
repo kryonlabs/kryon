@@ -25,921 +25,483 @@ type ReorderReleaseDecision struct {
 }
 
 func Reorder_ReorderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_2
 }
 
 func Reorder_ReorderMetricFloat(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	return value_13
+	return (value * scale)
 }
 
 func Reorder_ReorderMetricsFor(scale float32, handle_width int32, drag_threshold int32, auto_scroll_margin int32, auto_scroll_step int32, handle StyleFrame, placeholder StyleFrame) ReorderMetrics {
 	var metrics ReorderMetrics = ReorderMetrics{}
-	var value_0 int32 = handle_width
-	metrics.HandleWidth = value_0
-	var value_1 int32 = metrics.HandleWidth
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 uint32 = handle.Value.Fields
-		var value_5 int32 = int32(StyleContentOffset)
-		var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-		var value_7 float32 = handle.Value.OffsetX
-		var value_8 float32 = 36.0
-		var value_9 float32 = scale
-		var value_10 int32 = Reorder_ReorderMetric(value_4, value_6, value_7, value_8, value_9)
-		metrics.HandleWidth = value_10
+	metrics.HandleWidth = handle_width
+	if metrics.HandleWidth <= 0 {
+		var value_0 uint32 = handle.Value.Fields
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_2 float32 = handle.Value.OffsetX
+		var value_3 float32 = 36.0
+		var value_4 int32 = Reorder_ReorderMetric(value_0, value_1, value_2, value_3, scale)
+		metrics.HandleWidth = value_4
 	}
-	var value_11 int32 = drag_threshold
-	metrics.DragThreshold = value_11
-	var value_12 int32 = metrics.DragThreshold
-	var value_13 int32 = 0
-	var value_14 bool = value_12 <= value_13
-	if value_14 {
-		var value_15 uint32 = handle.Value.Fields
-		var value_16 int32 = int32(StyleContentOffset)
-		var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
-		var value_18 float32 = handle.Value.OffsetY
-		var value_19 float32 = 5.0
-		var value_20 float32 = scale
-		var value_21 int32 = Reorder_ReorderMetric(value_15, value_17, value_18, value_19, value_20)
-		metrics.DragThreshold = value_21
+	metrics.DragThreshold = drag_threshold
+	if metrics.DragThreshold <= 0 {
+		var value_5 uint32 = handle.Value.Fields
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_7 float32 = handle.Value.OffsetY
+		var value_8 float32 = 5.0
+		var value_9 int32 = Reorder_ReorderMetric(value_5, value_6, value_7, value_8, scale)
+		metrics.DragThreshold = value_9
 	}
-	var value_22 int32 = auto_scroll_margin
-	metrics.AutoScrollMargin = value_22
-	var value_23 int32 = metrics.AutoScrollMargin
-	var value_24 int32 = 0
-	var value_25 bool = value_23 <= value_24
-	if value_25 {
-		var value_26 uint32 = placeholder.Value.Fields
-		var value_27 int32 = int32(StyleContentOffset)
-		var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-		var value_29 float32 = placeholder.Value.OffsetX
-		var value_30 float32 = 34.0
-		var value_31 float32 = scale
-		var value_32 int32 = Reorder_ReorderMetric(value_26, value_28, value_29, value_30, value_31)
-		metrics.AutoScrollMargin = value_32
+	metrics.AutoScrollMargin = auto_scroll_margin
+	if metrics.AutoScrollMargin <= 0 {
+		var value_10 uint32 = placeholder.Value.Fields
+		var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_12 float32 = placeholder.Value.OffsetX
+		var value_13 float32 = 34.0
+		var value_14 int32 = Reorder_ReorderMetric(value_10, value_11, value_12, value_13, scale)
+		metrics.AutoScrollMargin = value_14
 	}
-	var value_33 int32 = auto_scroll_step
-	metrics.AutoScrollStep = value_33
-	var value_34 int32 = metrics.AutoScrollStep
-	var value_35 int32 = 0
-	var value_36 bool = value_34 <= value_35
-	if value_36 {
-		var value_37 uint32 = placeholder.Value.Fields
-		var value_38 int32 = int32(StyleContentOffset)
-		var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
-		var value_40 float32 = placeholder.Value.OffsetY
-		var value_41 float32 = 12.0
-		var value_42 float32 = scale
-		var value_43 int32 = Reorder_ReorderMetric(value_37, value_39, value_40, value_41, value_42)
-		metrics.AutoScrollStep = value_43
+	metrics.AutoScrollStep = auto_scroll_step
+	if metrics.AutoScrollStep <= 0 {
+		var value_15 uint32 = placeholder.Value.Fields
+		var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_17 float32 = placeholder.Value.OffsetY
+		var value_18 float32 = 12.0
+		var value_19 int32 = Reorder_ReorderMetric(value_15, value_16, value_17, value_18, scale)
+		metrics.AutoScrollStep = value_19
 	}
-	var value_44 ReorderMetrics = metrics
-	return value_44
+	return metrics
 }
 
 func Reorder_ReorderHandleBounds(item_bounds Rectangle, handle_width int32, handle_height int32) Rectangle {
-	var value_0 Rectangle = item_bounds
-	var handle Rectangle = value_0
-	var value_1 int32 = handle_width
-	var value_2 float32 = float32(value_1)
-	handle.Width = value_2
-	var value_3 int32 = handle_height
-	var value_4 int32 = 0
-	var value_5 bool = value_3 > value_4
-	if value_5 {
-		var value_6 int32 = handle_height
-		var value_7 float32 = float32(value_6)
-		var limit float32 = value_7
-		var value_8 float32 = handle.Height
-		var value_9 float32 = limit
-		var value_10 bool = value_8 > value_9
-		if value_10 {
-			var value_11 float32 = limit
-			handle.Height = value_11
+	var handle Rectangle = item_bounds
+	handle.Width = float32(handle_width)
+	if handle_height > 0 {
+		var limit float32 = float32(handle_height)
+		if handle.Height > limit {
+			handle.Height = limit
 		}
 	}
-	var value_12 Rectangle = handle
-	return value_12
+	return handle
 }
 
 func Reorder_ReorderHandlePaintFor(bounds Rectangle, scale float32, handle StyleFrame) ReorderHandlePaint {
 	var paint ReorderHandlePaint = ReorderHandlePaint{}
-	var value_0 float32 = bounds.Width
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var w int32 = value_1
-	var value_2 float32 = bounds.Height
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var h int32 = value_3
-	var value_4 int32 = w
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 int32 = h
-		var value_9 int32 = 0
-		var value_10 bool = value_8 <= value_9
-		value_7 = value_10
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var w int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var h int32 = value_1
+	var value_2 bool = (w <= 0)
+	if !value_2 {
+		value_2 = (h <= 0)
 	}
-	if value_7 {
-		var value_11 ReorderHandlePaint = paint
-		return value_11
+	if value_2 {
+		return paint
 	}
-	var value_12 uint32 = handle.Value.Fields
-	var value_13 int32 = int32(StyleIconSize)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 float32 = handle.Value.IconSize
-	var value_16 float32 = 3.0
-	var value_17 float32 = scale
-	var value_18 int32 = Reorder_ReorderMetric(value_12, value_14, value_15, value_16, value_17)
-	var dot int32 = value_18
-	var value_19 uint32 = handle.Value.Fields
-	var value_20 int32 = int32(StyleGap)
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 float32 = handle.Value.Gap
-	var value_23 float32 = 4.0
-	var value_24 float32 = scale
-	var value_25 int32 = Reorder_ReorderMetric(value_19, value_21, value_22, value_23, value_24)
-	var gap int32 = value_25
-	var value_26 uint32 = handle.Value.Fields
-	var value_27 int32 = int32(StylePaddingX)
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-	var value_29 float32 = handle.Value.PaddingX
-	var value_30 float32 = 8.0
-	var value_31 float32 = scale
-	var value_32 int32 = Reorder_ReorderMetric(value_26, value_28, value_29, value_30, value_31)
-	var col_gap int32 = value_32
-	var value_33 int32 = dot
-	var value_34 int32 = 0
-	var value_35 bool = value_33 <= value_34
-	if value_35 {
-		var value_36 ReorderHandlePaint = paint
-		return value_36
+	var value_3 uint32 = handle.Value.Fields
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_5 float32 = handle.Value.IconSize
+	var value_6 float32 = 3.0
+	var value_7 int32 = Reorder_ReorderMetric(value_3, value_4, value_5, value_6, scale)
+	var dot int32 = value_7
+	var value_8 uint32 = handle.Value.Fields
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_10 float32 = handle.Value.Gap
+	var value_11 float32 = 4.0
+	var value_12 int32 = Reorder_ReorderMetric(value_8, value_9, value_10, value_11, scale)
+	var gap int32 = value_12
+	var value_13 uint32 = handle.Value.Fields
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_15 float32 = handle.Value.PaddingX
+	var value_16 float32 = 8.0
+	var value_17 int32 = Reorder_ReorderMetric(value_13, value_14, value_15, value_16, scale)
+	var col_gap int32 = value_17
+	if dot <= 0 {
+		return paint
 	}
-	var value_37 int32 = gap
-	var value_38 int32 = 0
-	var value_39 bool = value_37 < value_38
-	if value_39 {
-		var value_40 int32 = 0
-		gap = value_40
+	if gap < 0 {
+		gap = 0
 	}
-	var value_41 int32 = col_gap
-	var value_42 int32 = 0
-	var value_43 bool = value_41 < value_42
-	if value_43 {
-		var value_44 int32 = 0
-		col_gap = value_44
+	if col_gap < 0 {
+		col_gap = 0
 	}
-	var value_45 int32 = dot
-	var value_46 int32 = 2
-	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 3))
-	var value_48 int32 = col_gap
-	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 1))
-	var total_w int32 = value_49
-	var value_50 int32 = dot
-	var value_51 int32 = 3
-	var value_52 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_51), 32, true, 3))
-	var value_53 int32 = gap
-	var value_54 int32 = 2
-	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 3))
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_55), 32, true, 1))
-	var total_h int32 = value_56
-	var value_57 float32 = bounds.X
-	var value_58 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_57), 32, true)), uint64(0), 32, true, 0))
-	var value_59 int32 = w
-	var value_60 int32 = total_w
-	var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
-	var value_62 int32 = 2
-	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 4))
-	var value_64 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_63), 32, true, 1))
-	var start_x int32 = value_64
-	var value_65 float32 = bounds.Y
-	var value_66 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_65), 32, true)), uint64(0), 32, true, 0))
-	var value_67 int32 = h
-	var value_68 int32 = total_h
-	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 2))
-	var value_70 int32 = 2
-	var value_71 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_70), 32, true, 4))
-	var value_72 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_71), 32, true, 1))
-	var start_y int32 = value_72
-	var value_73 int32 = start_x
-	var value_74 int32 = start_y
-	var value_75 int32 = dot
-	var value_76 Rectangle = Reorder_ReorderDotBounds(value_73, value_74, value_75)
-	paint.Dot0 = value_76
-	var value_77 int32 = start_x
-	var value_78 int32 = dot
-	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 1))
-	var value_80 int32 = col_gap
-	var value_81 int32 = int32(number_runtime_bits(uint64(value_79), uint64(value_80), 32, true, 1))
-	var value_82 int32 = start_y
-	var value_83 int32 = dot
-	var value_84 Rectangle = Reorder_ReorderDotBounds(value_81, value_82, value_83)
-	paint.Dot1 = value_84
-	var value_85 int32 = start_x
-	var value_86 int32 = start_y
-	var value_87 int32 = dot
-	var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 1))
-	var value_89 int32 = gap
-	var value_90 int32 = int32(number_runtime_bits(uint64(value_88), uint64(value_89), 32, true, 1))
-	var value_91 int32 = dot
-	var value_92 Rectangle = Reorder_ReorderDotBounds(value_85, value_90, value_91)
-	paint.Dot2 = value_92
-	var value_93 int32 = start_x
-	var value_94 int32 = dot
-	var value_95 int32 = int32(number_runtime_bits(uint64(value_93), uint64(value_94), 32, true, 1))
-	var value_96 int32 = col_gap
-	var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 1))
-	var value_98 int32 = start_y
-	var value_99 int32 = dot
-	var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 1))
-	var value_101 int32 = gap
-	var value_102 int32 = int32(number_runtime_bits(uint64(value_100), uint64(value_101), 32, true, 1))
-	var value_103 int32 = dot
-	var value_104 Rectangle = Reorder_ReorderDotBounds(value_97, value_102, value_103)
-	paint.Dot3 = value_104
-	var value_105 int32 = start_x
-	var value_106 int32 = start_y
-	var value_107 int32 = dot
-	var value_108 int32 = gap
-	var value_109 int32 = int32(number_runtime_bits(uint64(value_107), uint64(value_108), 32, true, 1))
-	var value_110 int32 = 2
-	var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 3))
-	var value_112 int32 = int32(number_runtime_bits(uint64(value_106), uint64(value_111), 32, true, 1))
-	var value_113 int32 = dot
-	var value_114 Rectangle = Reorder_ReorderDotBounds(value_105, value_112, value_113)
-	paint.Dot4 = value_114
-	var value_115 int32 = start_x
-	var value_116 int32 = dot
-	var value_117 int32 = int32(number_runtime_bits(uint64(value_115), uint64(value_116), 32, true, 1))
-	var value_118 int32 = col_gap
-	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 1))
-	var value_120 int32 = start_y
-	var value_121 int32 = dot
-	var value_122 int32 = gap
-	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 1))
-	var value_124 int32 = 2
-	var value_125 int32 = int32(number_runtime_bits(uint64(value_123), uint64(value_124), 32, true, 3))
-	var value_126 int32 = int32(number_runtime_bits(uint64(value_120), uint64(value_125), 32, true, 1))
-	var value_127 int32 = dot
-	var value_128 Rectangle = Reorder_ReorderDotBounds(value_119, value_126, value_127)
-	paint.Dot5 = value_128
-	var value_129 int32 = 6
-	paint.DotCount = value_129
-	var value_130 ReorderHandlePaint = paint
-	return value_130
+	var value_18 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(dot), uint64(2), 32, true, 3)))), uint64(col_gap), 32, true, 1))
+	var total_w int32 = value_18
+	var value_19 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(dot), uint64(3), 32, true, 3)))), uint64((int32(number_runtime_bits(uint64(gap), uint64(2), 32, true, 3)))), 32, true, 1))
+	var total_h int32 = value_19
+	var value_20 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var value_21 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(w), uint64(total_w), 32, true, 2)))), uint64(2), 32, true, 4))
+	var start_x int32 = (int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1)))
+	var value_22 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_23 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(h), uint64(total_h), 32, true, 2)))), uint64(2), 32, true, 4))
+	var start_y int32 = (int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1)))
+	var value_24 Rectangle = Reorder_ReorderDotBounds(start_x, start_y, dot)
+	paint.Dot0 = value_24
+	var value_25 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_x), uint64(dot), 32, true, 1)))), uint64(col_gap), 32, true, 1))
+	var value_26 Rectangle = Reorder_ReorderDotBounds(value_25, start_y, dot)
+	paint.Dot1 = value_26
+	var value_27 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_y), uint64(dot), 32, true, 1)))), uint64(gap), 32, true, 1))
+	var value_28 Rectangle = Reorder_ReorderDotBounds(start_x, value_27, dot)
+	paint.Dot2 = value_28
+	var value_29 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_x), uint64(dot), 32, true, 1)))), uint64(col_gap), 32, true, 1))
+	var value_30 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_y), uint64(dot), 32, true, 1)))), uint64(gap), 32, true, 1))
+	var value_31 Rectangle = Reorder_ReorderDotBounds(value_29, value_30, dot)
+	paint.Dot3 = value_31
+	var value_32 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(dot), uint64(gap), 32, true, 1)))), uint64(2), 32, true, 3))
+	var value_33 int32 = (int32(number_runtime_bits(uint64(start_y), uint64(value_32), 32, true, 1)))
+	var value_34 Rectangle = Reorder_ReorderDotBounds(start_x, value_33, dot)
+	paint.Dot4 = value_34
+	var value_35 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_x), uint64(dot), 32, true, 1)))), uint64(col_gap), 32, true, 1))
+	var value_36 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(dot), uint64(gap), 32, true, 1)))), uint64(2), 32, true, 3))
+	var value_37 int32 = (int32(number_runtime_bits(uint64(start_y), uint64(value_36), 32, true, 1)))
+	var value_38 Rectangle = Reorder_ReorderDotBounds(value_35, value_37, dot)
+	paint.Dot5 = value_38
+	paint.DotCount = 6
+	return paint
 }
 
 func Reorder_ReorderDotBounds(x int32, y int32, size int32) Rectangle {
 	var bounds Rectangle = Rectangle{}
-	var value_0 int32 = x
-	var value_1 float32 = float32(value_0)
-	bounds.X = value_1
-	var value_2 int32 = y
-	var value_3 float32 = float32(value_2)
-	bounds.Y = value_3
-	var value_4 int32 = size
-	var value_5 float32 = float32(value_4)
-	bounds.Width = value_5
-	var value_6 int32 = size
-	var value_7 float32 = float32(value_6)
-	bounds.Height = value_7
-	var value_8 Rectangle = bounds
-	return value_8
+	bounds.X = float32(x)
+	bounds.Y = float32(y)
+	bounds.Width = float32(size)
+	bounds.Height = float32(size)
+	return bounds
 }
 
 func Reorder_ReorderPlaceholderPaintFor(bounds Rectangle, scale float32, placeholder StyleFrame) ReorderPlaceholderPaint {
 	var paint ReorderPlaceholderPaint = ReorderPlaceholderPaint{}
-	var value_0 float32 = bounds.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var x int32 = value_1
-	var value_2 float32 = bounds.Y
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var y int32 = value_3
-	var value_4 float32 = bounds.Width
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var w int32 = value_5
-	var value_6 float32 = bounds.Height
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var h int32 = value_7
-	var value_8 int32 = w
-	var value_9 int32 = 0
-	var value_10 bool = value_8 <= value_9
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 int32 = h
-		var value_13 int32 = 0
-		var value_14 bool = value_12 <= value_13
-		value_11 = value_14
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var x int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var y int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var w int32 = value_2
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var h int32 = value_3
+	var value_4 bool = (w <= 0)
+	if !value_4 {
+		value_4 = (h <= 0)
 	}
-	if value_11 {
-		var value_15 ReorderPlaceholderPaint = paint
-		return value_15
+	if value_4 {
+		return paint
 	}
-	var value_16 uint32 = placeholder.Value.Fields
-	var value_17 int32 = int32(StyleBorderWidth)
-	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 float32 = placeholder.Value.BorderWidth
-	var value_20 float32 = 2.0
-	var value_21 float32 = scale
-	var value_22 int32 = Reorder_ReorderMetric(value_16, value_18, value_19, value_20, value_21)
-	var line_h int32 = value_22
-	var value_23 int32 = line_h
-	var value_24 int32 = 0
-	var value_25 bool = value_23 < value_24
-	if value_25 {
-		var value_26 int32 = 0
-		line_h = value_26
+	var value_5 uint32 = placeholder.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))
+	var value_7 float32 = placeholder.Value.BorderWidth
+	var value_8 float32 = 2.0
+	var value_9 int32 = Reorder_ReorderMetric(value_5, value_6, value_7, value_8, scale)
+	var line_h int32 = value_9
+	if line_h < 0 {
+		line_h = 0
 	}
-	var value_27 uint32 = placeholder.Value.Fields
-	var value_28 int32 = int32(StyleIconSize)
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 float32 = placeholder.Value.IconSize
-	var value_31 float32 = 32.0
-	var value_32 float32 = scale
-	var value_33 int32 = Reorder_ReorderMetric(value_27, value_29, value_30, value_31, value_32)
-	var threshold int32 = value_33
-	var value_34 int32 = h
-	var value_35 int32 = threshold
-	var value_36 bool = value_34 >= value_35
-	if value_36 {
-		var value_37 uint32 = placeholder.Value.Fields
-		var value_38 int32 = int32(StylePaddingX)
-		var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
-		var value_40 float32 = placeholder.Value.PaddingX
-		var value_41 float32 = 3.0
-		var value_42 float32 = scale
-		var value_43 int32 = Reorder_ReorderMetric(value_37, value_39, value_40, value_41, value_42)
-		var inset int32 = value_43
-		var value_44 int32 = w
-		var value_45 int32 = inset
-		var value_46 int32 = 2
-		var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 3))
-		var value_48 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_47), 32, true, 2))
-		var slot_w int32 = value_48
-		var value_49 int32 = h
-		var value_50 int32 = inset
-		var value_51 int32 = 2
-		var value_52 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_51), 32, true, 3))
-		var value_53 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_52), 32, true, 2))
-		var slot_h int32 = value_53
-		var value_54 int32 = slot_w
-		var value_55 int32 = 0
-		var value_56 bool = value_54 <= value_55
-		var value_57 bool = value_56
-		if !value_57 {
-			var value_58 int32 = slot_h
-			var value_59 int32 = 0
-			var value_60 bool = value_58 <= value_59
-			value_57 = value_60
+	var value_10 uint32 = placeholder.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_12 float32 = placeholder.Value.IconSize
+	var value_13 float32 = 32.0
+	var value_14 int32 = Reorder_ReorderMetric(value_10, value_11, value_12, value_13, scale)
+	var threshold int32 = value_14
+	if h >= threshold {
+		var value_15 uint32 = placeholder.Value.Fields
+		var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+		var value_17 float32 = placeholder.Value.PaddingX
+		var value_18 float32 = 3.0
+		var value_19 int32 = Reorder_ReorderMetric(value_15, value_16, value_17, value_18, scale)
+		var inset int32 = value_19
+		var value_20 int32 = int32(number_runtime_bits(uint64(w), uint64((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))), 32, true, 2))
+		var slot_w int32 = value_20
+		var value_21 int32 = int32(number_runtime_bits(uint64(h), uint64((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))), 32, true, 2))
+		var slot_h int32 = value_21
+		var value_22 bool = (slot_w <= 0)
+		if !value_22 {
+			value_22 = (slot_h <= 0)
 		}
-		if value_57 {
-			var value_61 ReorderPlaceholderPaint = paint
-			return value_61
+		if value_22 {
+			return paint
 		}
-		var value_62 int32 = x
-		var value_63 int32 = inset
-		var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 1))
-		var value_65 float32 = float32(value_64)
-		paint.SlotBounds.X = value_65
-		var value_66 int32 = y
-		var value_67 int32 = inset
-		var value_68 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_67), 32, true, 1))
-		var value_69 float32 = float32(value_68)
-		paint.SlotBounds.Y = value_69
-		var value_70 int32 = slot_w
-		var value_71 float32 = float32(value_70)
-		paint.SlotBounds.Width = value_71
-		var value_72 int32 = slot_h
-		var value_73 float32 = float32(value_72)
-		paint.SlotBounds.Height = value_73
-		var value_74 uint32 = placeholder.Value.Fields
-		var value_75 int32 = int32(StyleBorderWidth)
-		var value_76 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(0), 32, false, 0))
-		var value_77 float32 = placeholder.Value.BorderWidth
-		var value_78 float32 = 2.0
-		var value_79 float32 = scale
-		var value_80 float32 = Reorder_ReorderMetricFloat(value_74, value_76, value_77, value_78, value_79)
-		paint.StrokeWidth = value_80
-		var value_81 float32 = paint.StrokeWidth
-		var value_82 float32 = 0.0
-		var value_83 bool = value_81 < value_82
-		if value_83 {
-			var value_84 float32 = 0.0
-			paint.StrokeWidth = value_84
+		paint.SlotBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(inset), 32, true, 1))))
+		paint.SlotBounds.Y = float32((int32(number_runtime_bits(uint64(y), uint64(inset), 32, true, 1))))
+		paint.SlotBounds.Width = float32(slot_w)
+		paint.SlotBounds.Height = float32(slot_h)
+		var value_23 uint32 = placeholder.Value.Fields
+		var value_24 uint32 = uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))
+		var value_25 float32 = placeholder.Value.BorderWidth
+		var value_26 float32 = 2.0
+		var value_27 float32 = Reorder_ReorderMetricFloat(value_23, value_24, value_25, value_26, scale)
+		paint.StrokeWidth = value_27
+		if paint.StrokeWidth < 0.0 {
+			paint.StrokeWidth = 0.0
 		}
-		var value_85 float32 = 0.12
-		paint.Radius = value_85
-		var value_86 uint32 = placeholder.Value.Fields
-		var value_87 int32 = int32(StyleRadius)
-		var value_88 uint32 = uint32(number_runtime_bits(uint64(value_87), uint64(0), 32, false, 0))
-		var value_89 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(value_88), 32, false, 8))
-		var value_90 int32 = 0
-		var value_91 uint32 = uint32(number_runtime_bits(uint64(value_90), uint64(0), 32, false, 0))
-		var value_92 bool = value_89 != value_91
-		var value_93 bool = value_92
-		if value_93 {
-			var value_94 float32 = placeholder.Value.Radius
-			var value_95 float32 = 0.0
-			var value_96 bool = value_94 >= value_95
-			value_93 = value_96
+		paint.Radius = 0.12
+		var value_28 uint32 = uint32(number_runtime_bits(uint64(placeholder.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleRadius)), uint64(0), 32, false, 0))), 32, false, 8))
+		var value_29 bool = (value_28 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+		if value_29 {
+			value_29 = (placeholder.Value.Radius >= 0.0)
 		}
-		if value_93 {
-			var value_97 float32 = placeholder.Value.Radius
-			paint.Radius = value_97
+		if value_29 {
+			paint.Radius = placeholder.Value.Radius
 		}
-		var value_98 int32 = 10
-		paint.Segments = value_98
-		var value_99 float32 = 0.10
-		paint.FillAlpha = value_99
-		var value_100 uint32 = placeholder.Value.Fields
-		var value_101 int32 = int32(StyleOpacity)
-		var value_102 uint32 = uint32(number_runtime_bits(uint64(value_101), uint64(0), 32, false, 0))
-		var value_103 uint32 = uint32(number_runtime_bits(uint64(value_100), uint64(value_102), 32, false, 8))
-		var value_104 int32 = 0
-		var value_105 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(0), 32, false, 0))
-		var value_106 bool = value_103 != value_105
-		var value_107 bool = value_106
-		if value_107 {
-			var value_108 float32 = placeholder.Value.Opacity
-			var value_109 float32 = 0.0
-			var value_110 bool = value_108 >= value_109
-			value_107 = value_110
+		paint.Segments = 10
+		paint.FillAlpha = 0.10
+		var value_30 uint32 = uint32(number_runtime_bits(uint64(placeholder.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleOpacity)), uint64(0), 32, false, 0))), 32, false, 8))
+		var value_31 bool = (value_30 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+		if value_31 {
+			value_31 = (placeholder.Value.Opacity >= 0.0)
 		}
-		if value_107 {
-			var value_111 float32 = placeholder.Value.Opacity
-			paint.FillAlpha = value_111
+		if value_31 {
+			paint.FillAlpha = placeholder.Value.Opacity
 		}
-		var value_112 int32 = 1
-		paint.UseSlot = value_112
-		var value_113 ReorderPlaceholderPaint = paint
-		return value_113
+		paint.UseSlot = 1
+		return paint
 	}
-	var value_114 int32 = x
-	var value_115 float32 = float32(value_114)
-	paint.LineBounds.X = value_115
-	var value_116 int32 = y
-	var value_117 int32 = h
-	var value_118 int32 = 2
-	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 4))
-	var value_120 int32 = int32(number_runtime_bits(uint64(value_116), uint64(value_119), 32, true, 1))
-	var value_121 int32 = line_h
-	var value_122 int32 = 2
-	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 4))
-	var value_124 int32 = int32(number_runtime_bits(uint64(value_120), uint64(value_123), 32, true, 2))
-	var value_125 float32 = float32(value_124)
-	paint.LineBounds.Y = value_125
-	var value_126 int32 = w
-	var value_127 float32 = float32(value_126)
-	paint.LineBounds.Width = value_127
-	var value_128 int32 = line_h
-	var value_129 float32 = float32(value_128)
-	paint.LineBounds.Height = value_129
-	var value_130 ReorderPlaceholderPaint = paint
-	return value_130
+	paint.LineBounds.X = float32(x)
+	var value_32 int32 = int32(number_runtime_bits(uint64(y), uint64((int32(number_runtime_bits(uint64(h), uint64(2), 32, true, 4)))), 32, true, 1))
+	var value_33 int32 = int32(number_runtime_bits(uint64(value_32), uint64((int32(number_runtime_bits(uint64(line_h), uint64(2), 32, true, 4)))), 32, true, 2))
+	paint.LineBounds.Y = float32(value_33)
+	paint.LineBounds.Width = float32(w)
+	paint.LineBounds.Height = float32(line_h)
+	return paint
 }
 
 func Reorder_ReorderDraggedCenterY(pointer_y int32, press_offset_y int32, item_height float32) int32 {
-	var value_0 int32 = pointer_y
-	var value_1 int32 = press_offset_y
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var value_3 float32 = item_height
-	var value_4 float32 = 2.0
-	var value_5 float32 = value_3 / value_4
-	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 32, true)), uint64(0), 32, true, 0))
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_6), 32, true, 1))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((item_height/2.0)), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(pointer_y), uint64(press_offset_y), 32, true, 2)))), uint64(value_0), 32, true, 1))
+	return value_1
 }
 
 func Reorder_ReorderItemMatches(candidate_id int32, item_id int32) bool {
-	var value_0 int32 = candidate_id
-	var value_1 int32 = item_id
-	var value_2 bool = value_0 == value_1
-	return value_2
+	return (candidate_id == item_id)
 }
 
 func Reorder_ReorderTargetIncludesItem(pointer_y int32, item_bounds Rectangle) bool {
-	var value_0 float32 = item_bounds.Y
-	var value_1 float32 = item_bounds.Height
-	var value_2 float32 = 2.0
-	var value_3 float32 = value_1 / value_2
-	var value_4 float32 = value_0 + value_3
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var center_y int32 = value_5
-	var value_6 int32 = pointer_y
-	var value_7 int32 = center_y
-	var value_8 bool = value_6 > value_7
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((item_bounds.Y+(item_bounds.Height/2.0))), 32, true)), uint64(0), 32, true, 0))
+	var center_y int32 = value_0
+	return (pointer_y > center_y)
 }
 
 func Reorder_ReorderTargetStep(target int32, index int32, active_index int32, pointer_y int32, item_bounds Rectangle) int32 {
-	var value_0 int32 = index
-	var value_1 int32 = active_index
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 int32 = target
-		return value_3
+	if index == active_index {
+		return target
 	}
-	var value_4 int32 = pointer_y
-	var value_5 Rectangle = item_bounds
-	var value_6 bool = Reorder_ReorderTargetIncludesItem(value_4, value_5)
-	if value_6 {
-		var value_7 int32 = target
-		var value_8 int32 = 1
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-		return value_9
+	var value_0 bool = Reorder_ReorderTargetIncludesItem(pointer_y, item_bounds)
+	if value_0 {
+		return (int32(number_runtime_bits(uint64(target), uint64(1), 32, true, 1)))
 	}
-	var value_10 int32 = target
-	return value_10
+	return target
 }
 
 func Reorder_ReorderTargetIndexFor(target int32, item_count int32) int32 {
-	var value_0 int32 = item_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if item_count <= 0 {
+		return -1
 	}
-	var value_4 int32 = target
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if target < 0 {
+		return 0
 	}
-	var value_8 int32 = item_count
-	var value_9 int32 = 1
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
-	var limit int32 = value_10
-	var value_11 int32 = target
-	var value_12 int32 = limit
-	var value_13 bool = value_11 > value_12
-	if value_13 {
-		var value_14 int32 = limit
-		return value_14
+	var limit int32 = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
+	if target > limit {
+		return limit
 	}
-	var value_15 int32 = target
-	return value_15
+	return target
 }
 
 func Reorder_ReorderListResultDefault(pointer_y int32) ReorderListResult {
 	var result ReorderListResult = ReorderListResult{}
-	var value_0 int32 = -1
-	result.FromIndex = value_0
-	var value_1 int32 = -1
-	result.ToIndex = value_1
-	var value_2 int32 = -1
-	result.ActiveIndex = value_2
-	var value_3 int32 = -1
-	result.TargetIndex = value_3
-	var value_4 int32 = pointer_y
-	result.PointerY = value_4
-	var value_5 ReorderListResult = result
-	return value_5
+	result.FromIndex = -1
+	result.ToIndex = -1
+	result.ActiveIndex = -1
+	result.TargetIndex = -1
+	result.PointerY = pointer_y
+	return result
 }
 
 func Reorder_ReorderListPressResultFor(index int32, item_id int32, pointer_y int32) ReorderListResult {
-	var value_0 int32 = pointer_y
-	var value_1 ReorderListResult = Reorder_ReorderListResultDefault(value_0)
-	var result ReorderListResult = value_1
-	var value_2 int32 = 1
-	result.Active = value_2
-	var value_3 int32 = index
-	result.FromIndex = value_3
-	var value_4 int32 = index
-	result.ToIndex = value_4
-	var value_5 int32 = index
-	result.ActiveIndex = value_5
-	var value_6 int32 = index
-	result.TargetIndex = value_6
-	var value_7 int32 = item_id
-	result.ActiveId = value_7
-	var value_8 ReorderListResult = result
-	return value_8
+	var value_0 ReorderListResult = Reorder_ReorderListResultDefault(pointer_y)
+	var result ReorderListResult = value_0
+	result.Active = 1
+	result.FromIndex = index
+	result.ToIndex = index
+	result.ActiveIndex = index
+	result.TargetIndex = index
+	result.ActiveId = item_id
+	return result
 }
 
 func Reorder_ReorderListActiveResultFor(from_index int32, active_index int32, target_index int32, active_id int32, pointer_y int32, press_y int32) ReorderListResult {
-	var value_0 int32 = pointer_y
-	var value_1 ReorderListResult = Reorder_ReorderListResultDefault(value_0)
-	var result ReorderListResult = value_1
-	var value_2 int32 = 1
-	result.Active = value_2
-	var value_3 int32 = from_index
-	result.FromIndex = value_3
-	var value_4 int32 = target_index
-	result.ToIndex = value_4
-	var value_5 int32 = active_index
-	result.ActiveIndex = value_5
-	var value_6 int32 = target_index
-	result.TargetIndex = value_6
-	var value_7 int32 = active_id
-	result.ActiveId = value_7
-	var value_8 int32 = pointer_y
-	var value_9 int32 = press_y
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
-	result.DragDeltaY = value_10
-	var value_11 ReorderListResult = result
-	return value_11
+	var value_0 ReorderListResult = Reorder_ReorderListResultDefault(pointer_y)
+	var result ReorderListResult = value_0
+	result.Active = 1
+	result.FromIndex = from_index
+	result.ToIndex = target_index
+	result.ActiveIndex = active_index
+	result.TargetIndex = target_index
+	result.ActiveId = active_id
+	result.DragDeltaY = (int32(number_runtime_bits(uint64(pointer_y), uint64(press_y), 32, true, 2)))
+	return result
 }
 
 func Reorder_ReorderListCommitResultFor(active ReorderListResult, item_count int32) ReorderListResult {
-	var value_0 ReorderListResult = active
-	var result ReorderListResult = value_0
-	var value_1 int32 = 0
-	result.Dragging = value_1
-	var value_2 int32 = active.ActiveIndex
-	result.FromIndex = value_2
-	var value_3 int32 = 0
-	result.Committed = value_3
-	var value_4 int32 = result.TargetIndex
-	var value_5 int32 = 0
-	var value_6 bool = value_4 >= value_5
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 int32 = result.TargetIndex
-		var value_9 int32 = item_count
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
+	var result ReorderListResult = active
+	result.Dragging = 0
+	result.FromIndex = active.ActiveIndex
+	result.Committed = 0
+	var value_0 bool = (result.TargetIndex >= 0)
+	if value_0 {
+		value_0 = (result.TargetIndex < item_count)
 	}
-	var value_11 bool = value_7
-	if value_11 {
-		var value_12 int32 = result.TargetIndex
-		var value_13 int32 = active.ActiveIndex
-		var value_14 bool = value_12 != value_13
-		value_11 = value_14
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (result.TargetIndex != active.ActiveIndex)
 	}
-	if value_11 {
-		var value_15 int32 = 1
-		result.Committed = value_15
+	if value_1 {
+		result.Committed = 1
 	}
-	var value_16 ReorderListResult = result
-	return value_16
+	return result
 }
 
 func Reorder_ReorderForeignActiveListFor(has_active_list bool, active_list_id int32, list_id int32, mouse_down bool) ReorderLifecycleDecision {
 	var decision ReorderLifecycleDecision = ReorderLifecycleDecision{}
 	var value_0 bool = has_active_list
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 int32 = active_list_id
-		var value_3 int32 = list_id
-		var value_4 bool = value_2 != value_3
-		value_1 = value_4
+	if value_0 {
+		value_0 = (active_list_id != list_id)
 	}
-	if value_1 {
-		var value_5 bool = true
-		decision.IgnoreList = value_5
-		var value_6 bool = mouse_down
-		var value_7 bool = !value_6
-		if value_7 {
-			var value_8 bool = true
-			decision.CancelActive = value_8
+	if value_0 {
+		decision.IgnoreList = true
+		if !mouse_down {
+			decision.CancelActive = true
 		}
 	}
-	var value_9 ReorderLifecycleDecision = decision
-	return value_9
+	return decision
 }
 
 func Reorder_ReorderActiveItemLifecycleFor(active_index int32, item_count int32, has_items bool, active_item_disabled bool) ReorderLifecycleDecision {
 	var decision ReorderLifecycleDecision = ReorderLifecycleDecision{}
-	var value_0 int32 = active_index
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = active_index
-		var value_5 int32 = item_count
-		var value_6 bool = value_4 >= value_5
-		value_3 = value_6
+	var value_0 bool = (active_index < 0)
+	if !value_0 {
+		value_0 = (active_index >= item_count)
 	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 bool = has_items
-		var value_9 bool = !value_8
-		value_7 = value_9
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = !has_items
 	}
-	var value_10 bool = value_7
-	if !value_10 {
-		var value_11 bool = active_item_disabled
-		value_10 = value_11
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = active_item_disabled
 	}
-	if value_10 {
-		var value_12 bool = true
-		decision.CancelActive = value_12
-		var value_13 bool = true
-		decision.IgnoreList = value_13
+	if value_2 {
+		decision.CancelActive = true
+		decision.IgnoreList = true
 	}
-	var value_14 ReorderLifecycleDecision = decision
-	return value_14
+	return decision
 }
 
 func Reorder_ReorderPressFor(list_id int32, has_items bool, item_count int32, mouse_pressed bool, captured bool, pointer_owner_none bool, inside_bounds bool) ReorderPressDecision {
 	var decision ReorderPressDecision = ReorderPressDecision{}
-	var value_0 int32 = list_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 != value_1
+	var value_0 bool = (list_id != 0)
+	if value_0 {
+		value_0 = has_items
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (item_count > 0)
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = mouse_pressed
+	}
 	var value_3 bool = value_2
 	if value_3 {
-		var value_4 bool = has_items
-		value_3 = value_4
+		value_3 = !captured
 	}
-	var value_5 bool = value_3
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = pointer_owner_none
+	}
+	var value_5 bool = value_4
 	if value_5 {
-		var value_6 int32 = item_count
-		var value_7 int32 = 0
-		var value_8 bool = value_6 > value_7
-		value_5 = value_8
+		value_5 = inside_bounds
 	}
-	var value_9 bool = value_5
-	if value_9 {
-		var value_10 bool = mouse_pressed
-		value_9 = value_10
-	}
-	var value_11 bool = value_9
-	if value_11 {
-		var value_12 bool = captured
-		var value_13 bool = !value_12
-		value_11 = value_13
-	}
-	var value_14 bool = value_11
-	if value_14 {
-		var value_15 bool = pointer_owner_none
-		value_14 = value_15
-	}
-	var value_16 bool = value_14
-	if value_16 {
-		var value_17 bool = inside_bounds
-		value_16 = value_17
-	}
-	decision.CanPress = value_16
-	var value_18 ReorderPressDecision = decision
-	return value_18
+	decision.CanPress = value_5
+	return decision
 }
 
 func Reorder_ReorderReleaseFor(mouse_released bool, was_dragging bool) ReorderReleaseDecision {
 	var decision ReorderReleaseDecision = ReorderReleaseDecision{}
+	decision.CaptureInput = mouse_released
 	var value_0 bool = mouse_released
-	decision.CaptureInput = value_0
-	var value_1 bool = mouse_released
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = was_dragging
-		value_2 = value_3
+	if value_0 {
+		value_0 = was_dragging
 	}
-	decision.Commit = value_2
-	var value_4 bool = true
-	decision.CancelActive = value_4
-	var value_5 ReorderReleaseDecision = decision
-	return value_5
+	decision.Commit = value_0
+	decision.CancelActive = true
+	return decision
 }
 
 func Reorder_ReorderDragMotionFor(pointer_y int32, press_y int32, was_dragging int32, bounds Rectangle, viewport_top int32, viewport_bottom int32, scroll_offset int32, max_scroll int32, metrics ReorderMetrics) ReorderDragMotion {
 	var motion ReorderDragMotion = ReorderDragMotion{}
-	var value_0 int32 = pointer_y
-	var value_1 int32 = press_y
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var dy int32 = value_2
-	var value_3 int32 = dy
-	var abs_dy int32 = value_3
-	var value_4 int32 = abs_dy
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = abs_dy
-		var value_8 int32 = int32(number_runtime_bits(uint64(0), uint64(value_7), 32, true, 2))
-		abs_dy = value_8
+	var dy int32 = (int32(number_runtime_bits(uint64(pointer_y), uint64(press_y), 32, true, 2)))
+	var abs_dy int32 = dy
+	if abs_dy < 0 {
+		abs_dy = int32(number_runtime_bits(uint64(0), uint64(abs_dy), 32, true, 2))
 	}
-	var value_9 int32 = was_dragging
-	motion.Dragging = value_9
-	var value_10 int32 = motion.Dragging
-	var value_11 int32 = 0
-	var value_12 bool = value_10 == value_11
-	var value_13 bool = value_12
-	if value_13 {
-		var value_14 int32 = abs_dy
-		var value_15 int32 = metrics.DragThreshold
-		var value_16 bool = value_14 >= value_15
-		value_13 = value_16
+	motion.Dragging = was_dragging
+	var value_0 bool = (motion.Dragging == 0)
+	if value_0 {
+		value_0 = (abs_dy >= metrics.DragThreshold)
 	}
-	if value_13 {
-		var value_17 int32 = 1
-		motion.Dragging = value_17
+	if value_0 {
+		motion.Dragging = 1
 	}
-	var value_18 int32 = scroll_offset
-	motion.ScrollOffset = value_18
-	var value_19 int32 = motion.Dragging
-	var value_20 int32 = 0
-	var value_21 bool = value_19 == value_20
-	var value_22 bool = value_21
-	if !value_22 {
-		var value_23 int32 = max_scroll
-		var value_24 int32 = 0
-		var value_25 bool = value_23 <= value_24
-		value_22 = value_25
+	motion.ScrollOffset = scroll_offset
+	var value_1 bool = (motion.Dragging == 0)
+	if !value_1 {
+		value_1 = (max_scroll <= 0)
 	}
-	if value_22 {
-		var value_26 ReorderDragMotion = motion
-		return value_26
+	if value_1 {
+		return motion
 	}
-	var value_27 int32 = viewport_top
-	var view_top int32 = value_27
-	var value_28 int32 = view_top
-	var value_29 int32 = 0
-	var value_30 bool = value_28 <= value_29
-	if value_30 {
-		var value_31 float32 = bounds.Y
-		var value_32 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_31), 32, true)), uint64(0), 32, true, 0))
-		view_top = value_32
+	var view_top int32 = viewport_top
+	if view_top <= 0 {
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+		view_top = value_2
 	}
-	var value_33 int32 = viewport_bottom
-	var view_bottom int32 = value_33
-	var value_34 int32 = view_bottom
-	var value_35 int32 = 0
-	var value_36 bool = value_34 <= value_35
-	if value_36 {
-		var value_37 float32 = bounds.Y
-		var value_38 float32 = bounds.Height
-		var value_39 float32 = value_37 + value_38
-		var value_40 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_39), 32, true)), uint64(0), 32, true, 0))
-		view_bottom = value_40
+	var view_bottom int32 = viewport_bottom
+	if view_bottom <= 0 {
+		var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.Y+bounds.Height)), 32, true)), uint64(0), 32, true, 0))
+		view_bottom = value_3
 	}
-	var value_41 int32 = pointer_y
-	var value_42 int32 = view_top
-	var value_43 int32 = metrics.AutoScrollMargin
-	var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 1))
-	var value_45 bool = value_41 < value_44
-	if value_45 {
-		var value_46 int32 = motion.ScrollOffset
-		var value_47 int32 = metrics.AutoScrollStep
-		motion.ScrollOffset = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 2))
+	var value_4 bool = pointer_y < (int32(number_runtime_bits(uint64(view_top), uint64(metrics.AutoScrollMargin), 32, true, 1)))
+	if value_4 {
+		var value_5 int32 = motion.ScrollOffset
+		motion.ScrollOffset = int32(number_runtime_bits(uint64(value_5), uint64(metrics.AutoScrollStep), 32, true, 2))
 	} else {
-		var value_48 int32 = pointer_y
-		var value_49 int32 = view_bottom
-		var value_50 int32 = metrics.AutoScrollMargin
-		var value_51 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 2))
-		var value_52 bool = value_48 > value_51
-		if value_52 {
-			var value_53 int32 = motion.ScrollOffset
-			var value_54 int32 = metrics.AutoScrollStep
-			motion.ScrollOffset = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 1))
+		var value_6 bool = pointer_y > (int32(number_runtime_bits(uint64(view_bottom), uint64(metrics.AutoScrollMargin), 32, true, 2)))
+		if value_6 {
+			var value_7 int32 = motion.ScrollOffset
+			motion.ScrollOffset = int32(number_runtime_bits(uint64(value_7), uint64(metrics.AutoScrollStep), 32, true, 1))
 		}
 	}
-	var value_55 int32 = motion.ScrollOffset
-	var value_56 int32 = 0
-	var value_57 bool = value_55 < value_56
-	if value_57 {
-		var value_58 int32 = 0
-		motion.ScrollOffset = value_58
+	if motion.ScrollOffset < 0 {
+		motion.ScrollOffset = 0
 	}
-	var value_59 int32 = motion.ScrollOffset
-	var value_60 int32 = max_scroll
-	var value_61 bool = value_59 > value_60
-	if value_61 {
-		var value_62 int32 = max_scroll
-		motion.ScrollOffset = value_62
+	if motion.ScrollOffset > max_scroll {
+		motion.ScrollOffset = max_scroll
 	}
-	var value_63 ReorderDragMotion = motion
-	return value_63
+	return motion
 }

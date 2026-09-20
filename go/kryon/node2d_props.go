@@ -126,42 +126,26 @@ type AudioSourceProps struct {
 
 func Node2dProps_ScenePropsDefault() SceneProps {
 	var props SceneProps = SceneProps{}
-	var value_0 float32 = 1.0
-	props.TimeScale = value_0
-	var value_1 int32 = 0
-	props.PhysicsEnabled = value_1
-	var value_2 float32 = 0.0
-	props.Gravity.X = value_2
-	var value_3 float32 = 9.8
-	props.Gravity.Y = value_3
-	var value_4 SceneProps = props
-	return value_4
+	props.TimeScale = 1.0
+	props.PhysicsEnabled = 0
+	props.Gravity.X = 0.0
+	props.Gravity.Y = 9.8
+	return props
 }
 
 func Node2dProps_SceneTimeScaleFor(time_scale float32) float32 {
-	var value_0 float32 = time_scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		return value_3
+	if time_scale <= 0.0 {
+		return 1.0
 	}
-	var value_4 float32 = time_scale
-	return value_4
+	return time_scale
 }
 
 func Node2dProps_Node2DPropsDefault() Node2DProps {
 	var props Node2DProps = Node2DProps{}
-	var value_0 float32 = 0.0
-	props.Position.X = value_0
-	var value_1 float32 = 0.0
-	props.Position.Y = value_1
-	var value_2 float32 = 0.0
-	props.Rotation = value_2
-	var value_3 float32 = 1.0
-	props.Scale.X = value_3
-	var value_4 float32 = 1.0
-	props.Scale.Y = value_4
-	var value_5 Node2DProps = props
-	return value_5
+	props.Position.X = 0.0
+	props.Position.Y = 0.0
+	props.Rotation = 0.0
+	props.Scale.X = 1.0
+	props.Scale.Y = 1.0
+	return props
 }

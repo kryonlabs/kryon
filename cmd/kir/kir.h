@@ -96,6 +96,7 @@ typedef struct KirStateField {
 typedef struct KirImport {
     KirImportKind kind;
     KirExternKind extern_kind;
+    int is_public;
     char name[KIR_NAME_MAX];
     char target[KIR_PATH_MAX];
     char extern_symbol[KIR_NAME_MAX];
@@ -354,7 +355,10 @@ typedef struct KirAppMeta {
     int dark_mode;
     int font_examples;
     char frame[KIR_NAME_MAX];
+    char before_window[KIR_NAME_MAX];
     char init[KIR_NAME_MAX];
+    char after_frame[KIR_NAME_MAX];
+    char should_continue[KIR_NAME_MAX];
     char scene[KIR_NAME_MAX];
     char shutdown[KIR_NAME_MAX];
 } KirAppMeta;
@@ -372,6 +376,7 @@ typedef struct KirRoute {
 typedef struct KirModule {
     char name[KIR_NAME_MAX];
     char source_path[KIR_PATH_MAX];
+    int inspect_calls;
     KirSourceSpan span;
     KirAppMeta app;
     KirGlobal *globals;

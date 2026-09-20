@@ -7,6 +7,8 @@
 extern const SurfacePainter ui_surface_painter;
 extern const Painter ui_painter;
 
+int ui_backend_is_termi(void);
+
 void ui_draw(Drawing command);
 void ui_draw_surface(SurfaceDrawing command);
 void ui_draw_surface_direct(SurfaceDrawing command);

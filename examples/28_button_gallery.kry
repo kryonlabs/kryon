@@ -1,0 +1,497 @@
+#import "kryon.h"
+#import "kry_inject.h"
+#import "stdio.h"
+#import "stdlib.h"
+#import "string.h"
+
+app "Kryon Button Gallery" {
+    size 1160 760
+    fps 60
+    font examples
+    before_window GalleryBeforeWindow
+    init GalleryInit
+    after_frame GalleryAfterFrame
+    should_continue GalleryContinue
+}
+
+state {
+    gallery_page: int = 0
+    gallery_theme_page: int = -1
+    gallery_activations: int = 0
+    gallery_menu_open: int = 0
+    gallery_menu_activated: int = 0
+    gallery_style_pack: int = -1
+    gallery_capture_dir: const char*
+    gallery_capture_frame: int = 0
+    gallery_benchmark_path: const char*
+    gallery_benchmark_file: FILE*
+    gallery_benchmark_frame: int = 0
+    gallery_benchmark_emphasis: int = 0
+    gallery_benchmark_start: double = 0
+    gallery_benchmark_button_us: [35] double = {0}
+}
+
+GalleryBeforeWindow :: () -> bool {
+    private_display: const char* = getenv("KRYON_PRIVATE_DISPLAY")
+    display: const char* = getenv("DISPLAY")
+    if private_display == nil || display == nil {
+        puts("Button gallery requires a private X display")
+        return false
+    }
+    if strcmp(private_display, "1") != 0 || strncmp(display, ":0", 2) == 0 {
+        puts("Button gallery requires a private X display")
+        return false
+    }
+    gallery_capture_dir = getenv("KRYON_BUTTON_CAPTURE_DIR")
+    gallery_benchmark_path = getenv("KRYON_BUTTON_BENCHMARK_CSV")
+    if gallery_capture_dir != nil && gallery_benchmark_path != nil {
+        puts("Choose capture or benchmark, not both")
+        return false
+    }
+    if gallery_capture_dir != nil || gallery_benchmark_path != nil {
+        SetConfigFlags(FLAG_WINDOW_HIDDEN)
+    }
+    return true
+}
+
+GalleryInit :: () {
+    SetFancyEffectsEnabled(0)
+    if gallery_benchmark_path != nil {
+        gallery_benchmark_file = fopen(gallery_benchmark_path, "w")
+        if gallery_benchmark_file == nil {
+            puts("Could not open button benchmark CSV")
+            exit(1)
+        }
+        fprintf(gallery_benchmark_file,
+            "page,style,mode,glow,tone,emphasis,state,sample,button_call_us,frame_us\n")
+        SetTargetFPS(0)
+    }
+    if gallery_capture_dir != nil {
+        if kry_fs_mkdir_p(gallery_capture_dir) != 0 {
+            puts("Could not create gallery capture directory")
+            exit(1)
+        }
+    }
+}
+
+GalleryContinue :: () -> bool {
+    if gallery_benchmark_path != nil { return gallery_page < 24 }
+    if gallery_capture_dir == nil { return true }
+    return gallery_page < 24
+}
+
+GalleryPack :: (page: int) -> int {
+    if page < 5 || page == 20 { return 0 }
+    if page < 10 || page == 21 { return 1 }
+    return 2
+}
+
+GalleryIsDark :: (page: int) -> bool {
+    return !(page >= 5 && page < 10 || page == 21)
+}
+
+GalleryHasGlow :: (page: int) -> bool {
+    return page >= 15 && page < 20 || page == 23
+}
+
+GalleryStyleName :: (page: int) -> const char* {
+    pack: int = GalleryPack(page)
+    if pack == 0 { return "Material" }
+    if pack == 1 { return "Classic" }
+    if pack == 2 {
+        if GalleryHasGlow(page) { return "Lightfield-glow" }
+        return "Lightfield-flat"
+    }
+    return "Unknown"
+}
+
+GalleryPageName :: (page: int) -> const char* {
+    tone_names: [5] const char* = {
+        "neutral", "accent", "danger", "success", "warning"
+    }
+    style_name: const char* = GalleryStyleName(page)
+    mode_name: const char* = GalleryIsDark(page) ? "dark" : "light"
+    if page >= 20 {
+        return TextFormat("%s-%s-variants", style_name, mode_name)
+    }
+    return TextFormat("%s-%s-%s", style_name, mode_name,
+        tone_names[page % 5])
+}
+
+GalleryAfterFrame :: () {
+    if gallery_benchmark_file != nil {
+        if gallery_benchmark_frame >= 20 {
+            frame_us: double = (GetTime() - gallery_benchmark_start) * 1000000.0
+            if gallery_page < 20 {
+                emphasis_names: [5] const char* = {
+                    "Filled", "Soft", "Outline", "Ghost", "Link"
+                }
+                tone_names: [5] const char* = {
+                    "Neutral", "Accent", "Danger", "Success", "Warning"
+                }
+                state_names: [7] const char* = {
+                    "Normal", "Hover", "Pressed", "Focus", "Disabled",
+                    "Selected", "Loading"
+                }
+                column: int = gallery_benchmark_emphasis
+                for int row = 0; row < 7; row++ {
+                    fprintf(gallery_benchmark_file,
+                        "%d,%s,%s,%d,%s,%s,%s,%d,%.3f,%.3f\n",
+                        gallery_page, GalleryStyleName(gallery_page),
+                        GalleryIsDark(gallery_page) ? "dark" : "light",
+                        GalleryHasGlow(gallery_page),
+                        tone_names[gallery_page % 5],
+                        emphasis_names[column], state_names[row],
+                        gallery_benchmark_frame - 20,
+                        gallery_benchmark_button_us[row * 5 + column],
+                        frame_us)
+                }
+            } else {
+                fprintf(gallery_benchmark_file,
+                    "%d,%s,%s,%d,variants,all,all,%d,0,%.3f\n",
+                    gallery_page, GalleryStyleName(gallery_page),
+                    GalleryIsDark(gallery_page) ? "dark" : "light",
+                    GalleryHasGlow(gallery_page),
+                    gallery_benchmark_frame - 20, frame_us)
+            }
+        }
+        gallery_benchmark_frame += 1
+        if gallery_benchmark_frame == 120 {
+            gallery_benchmark_frame = 0
+            if gallery_page < 20 {
+                gallery_benchmark_emphasis += 1
+                if gallery_benchmark_emphasis == 5 {
+                    gallery_benchmark_emphasis = 0
+                    gallery_page += 1
+                }
+            } else {
+                gallery_page += 1
+            }
+            if gallery_page == 24 {
+                if fclose(gallery_benchmark_file) != 0 {
+                    puts("Button benchmark CSV close failed")
+                    exit(1)
+                }
+                gallery_benchmark_file = nil
+                puts("Button benchmark CSV complete")
+            }
+        }
+        return
+    }
+    if gallery_capture_dir == nil { return }
+    if gallery_capture_frame < 2 {
+        gallery_capture_frame += 1
+        return
+    }
+    shot: Image = LoadImageFromScreen()
+    if shot.data == nil {
+        puts("Button gallery could not capture the completed frame")
+        exit(1)
+    }
+    path: [1200] char = {0}
+    snprintf(path, sizeof(path), "%s/%s.png", gallery_capture_dir,
+        GalleryPageName(gallery_page))
+    if !ExportImage(shot, path) {
+        puts("Button gallery could not save a PNG")
+        UnloadImage(shot)
+        exit(1)
+    }
+    puts(path)
+    UnloadImage(shot)
+    gallery_capture_frame = 0
+    gallery_page += 1
+}
+
+GalleryLabel :: (value: const char*, x: float, y: float, width: float) {
+    Text((TextProps){.bounds = {x, y, width, 30}, .text = value,
+        .wrap = TextWrapNone})
+}
+
+GallerySpec :: (bounds: Rectangle, id: int, tone: ButtonTone,
+    emphasis: ButtonEmphasis, state: ButtonState) -> ButtonProps {
+    props: ButtonProps = {0}
+    props.bounds = bounds
+    props.label = "Button"
+    props.id = id
+    props.tone = tone
+    props.emphasis = emphasis
+    props.state = state
+    props.disabled = state == ButtonStateDisabled
+    props.loading = state == ButtonStateLoading
+    props.selected = state == ButtonStateSelected
+    return props
+}
+
+GalleryTheme :: (page: int) {
+    if gallery_theme_page == page { return }
+    SetFancyEffectsEnabled(GalleryHasGlow(page))
+    pack: int = GalleryPack(page)
+    if pack != gallery_style_pack {
+        if !EnsureBuiltInStylePacks() {
+            puts("Could not load built-in style packs")
+            exit(1)
+        }
+        pack_name: const char* = pack == 0 ? "material" :
+            (pack == 1 ? "classic" : "lightfield")
+        if !SetActiveStylePack(pack_name) {
+            puts("Could not select gallery style pack")
+            exit(1)
+        }
+        gallery_style_pack = pack
+    }
+    family: ThemeFamily
+    family.name = "Button gallery"
+    family.light = ThemeDefaultLight()
+    family.dark = ThemeDefaultDark()
+    SetThemeFamily(family)
+    SetThemeSource(THEME_SOURCE_APP)
+    if GalleryIsDark(page) {
+        SetThemeMode(THEME_MODE_DARK)
+    } else {
+        SetThemeMode(THEME_MODE_LIGHT)
+    }
+    ApplyCurrentTheme()
+    gallery_theme_page = page
+}
+
+GalleryMatrix :: (page: int) {
+    tones: [5] ButtonTone = {
+        ButtonToneNeutral, ButtonToneAccent, ButtonToneDanger,
+        ButtonToneSuccess, ButtonToneWarning
+    }
+    tone_names: [5] const char* = {
+        "Neutral", "Accent", "Danger", "Success", "Warning"
+    }
+    emphases: [5] ButtonEmphasis = {
+        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
+        ButtonEmphasisGhost, ButtonEmphasisLink
+    }
+    emphasis_names: [5] const char* = {
+        "Filled", "Soft", "Outline", "Ghost", "Link"
+    }
+    states: [7] ButtonState = {
+        ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
+        ButtonStateFocus, ButtonStateDisabled, ButtonStateSelected,
+        ButtonStateLoading
+    }
+    state_names: [7] const char* = {
+        "Normal", "Hover", "Pressed", "Focused", "Disabled",
+        "Selected", "Loading"
+    }
+    tone_index: int = page % 5
+    mode_name: const char* = GalleryIsDark(page) ? "dark" : "light"
+    GalleryLabel(TextFormat("%s | %s | %s tone", GalleryStyleName(page),
+        mode_name, tone_names[tone_index]), 32, 32, 720)
+    GalleryLabel("Each cell is painted by Button(ButtonProps)", 32, 72, 700)
+    for int column = 0; column < 5; column++ {
+        GalleryLabel(emphasis_names[column], (float)(190 + column * 188),
+            120, 174)
+    }
+    start_row: int = 0
+    if gallery_benchmark_file != nil {
+        # Rotate the first-painted state per frame so the per-frame first-call
+        # cost is not pinned to a single state in the benchmark.
+        start_row = gallery_benchmark_frame % 7
+    }
+    for int i = 0; i < 7; i++ {
+        row: int = (start_row + i) % 7
+        GalleryLabel(state_names[row], 32, (float)(178 + row * 72), 145)
+        for int column = 0; column < 5; column++ {
+            if gallery_benchmark_file != nil &&
+                column != gallery_benchmark_emphasis { continue }
+            props: ButtonProps = GallerySpec(
+                (Rectangle){(float)(190 + column * 188),
+                    (float)(166 + row * 72), 170, 46},
+                1000 + page * 100 + row * 5 + column,
+                tones[tone_index], emphases[column], states[row])
+            if gallery_benchmark_file != nil {
+                start: double = GetTime()
+                Button(props)
+                gallery_benchmark_button_us[row * 5 + column] +=
+                    (GetTime() - start) * 1000000.0
+            } else {
+                Button(props)
+            }
+        }
+    }
+}
+
+GalleryVariant :: (caption: const char*, props: ButtonProps) {
+    GalleryLabel(caption, props.bounds.x, props.bounds.y - 28,
+        props.bounds.width + 30)
+    Button(props)
+}
+
+GalleryVariants :: (page: int) {
+    sizes: [3] ControlSize = {
+        ControlSizeSmall, ControlSizeMedium, ControlSizeLarge
+    }
+    size_names: [3] const char* = {"Small", "Medium", "Large"}
+    emphases: [5] ButtonEmphasis = {
+        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
+        ButtonEmphasisGhost, ButtonEmphasisLink
+    }
+    menu_items: [2] MenuItem = {
+        {MenuCommand, "First", "", 1, 0, 0, nil, 0},
+        {MenuCommand, "Second", "", 2, 0, 0, nil, 0}
+    }
+    mode_name: const char* = GalleryIsDark(page) ? "dark" : "light"
+    GalleryLabel(TextFormat("%s | %s | sizes and variants",
+        GalleryStyleName(page), mode_name), 32, 28, 700)
+    for int row = 0; row < 3; row++ {
+        GalleryLabel(size_names[row], 32, (float)(115 + row * 72), 135)
+        for int column = 0; column < 5; column++ {
+            props: ButtonProps = GallerySpec(
+                (Rectangle){(float)(190 + column * 188),
+                    (float)(105 + row * 72), 170, 48},
+                3000 + page * 100 + row * 5 + column,
+                ButtonToneAccent, emphases[column], ButtonStateNormal)
+            props.size = sizes[row]
+            Button(props)
+        }
+    }
+
+    GalleryLabel("Content and shape variants", 32, 342, 700)
+    props: ButtonProps = GallerySpec((Rectangle){32, 408, 174, 48},
+        4000 + page * 100, ButtonToneAccent, ButtonEmphasisFilled,
+        ButtonStateNormal)
+    GalleryVariant("Text", props)
+
+    props.bounds.x = 222
+    props.id += 1
+    props.icon_type = ICON_PLAY
+    GalleryVariant("Leading icon", props)
+
+    props.bounds.x = 412
+    props.id += 1
+    props.icon_placement = IconPlacementTrailing
+    GalleryVariant("Trailing icon", props)
+
+    props.bounds = (Rectangle){602, 408, 60, 48}
+    props.id += 1
+    props.icon_only = true
+    GalleryVariant("Icon only", props)
+
+    props.bounds = (Rectangle){682, 408, 174, 48}
+    props.id += 1
+    props.icon_only = false
+    props.icon_type = 0
+    props.pill = true
+    GalleryVariant("Pill", props)
+
+    props.bounds = (Rectangle){876, 408, 56, 56}
+    props.id += 1
+    props.label = ""
+    props.icon_type = ICON_PLUS
+    props.icon_only = true
+    props.size = ControlSizeLarge
+    props.pill = false
+    props.square = true
+    GalleryVariant("Square", props)
+
+    props.bounds.x = 968
+    props.id += 1
+    props.square = false
+    props.circle = true
+    GalleryVariant("Circle", props)
+
+    props = GallerySpec((Rectangle){32, 500, 350, 48},
+        4007 + page * 100, ButtonToneAccent, ButtonEmphasisFilled,
+        ButtonStateNormal)
+    props.full_width = true
+    GalleryVariant("Full width", props)
+
+    props.bounds = (Rectangle){412, 500, 240, 48}
+    props.id += 1
+    props.full_width = false
+    props.label = "Split action"
+    props.split = true
+    props.items = menu_items
+    props.item_count = 2
+    props.open = &gallery_menu_open
+    props.activated_id = &gallery_menu_activated
+    GalleryVariant("Split", props)
+
+    props.bounds = (Rectangle){682, 500, 230, 48}
+    props.id += 1
+    props.label = "Menu"
+    props.split = false
+    props.menu = true
+    GalleryVariant("Menu", props)
+
+    props.bounds = (Rectangle){942, 500, 60, 48}
+    props.id += 1
+    props.label = ""
+    props.menu = false
+    props.arrow = true
+    props.direction = ArrowRight
+    GalleryVariant("Arrow", props)
+
+    props.bounds = (Rectangle){1050, 510, 36, 36}
+    props.id += 1
+    props.arrow = false
+    props.info = true
+    GalleryLabel("Info", 1040, 472, 56)
+    Button(props)
+
+    props = GallerySpec((Rectangle){32, 600, 56, 56},
+        4012 + page * 100, ButtonToneAccent, ButtonEmphasisSoft,
+        ButtonStateNormal)
+    props.label = ""
+    props.swatch = true
+    props.swatch_color = (Color){134, 86, 218, 255}
+    GalleryVariant("Swatch", props)
+
+    props = GallerySpec((Rectangle){120, 600, 230, 56},
+        4013 + page * 100, ButtonToneAccent, ButtonEmphasisSoft,
+        ButtonStateNormal)
+    props.label = "Moon image"
+    props.image.asset_path = "icons/source/pfp/moon.png"
+    props.image.bounds = (Rectangle){130, 607, 42, 42}
+    props.image.fit = ImageFitContain
+    GalleryVariant("Asset image", props)
+
+    GalleryLabel("Live input: mouse, Tab, Enter, Space", 32, 670, 820)
+    props = GallerySpec((Rectangle){32, 702, 300, 48}, 4900,
+        ButtonToneAccent, ButtonEmphasisFilled, ButtonStateAuto)
+    props.label = "Activate me"
+    if Button(props) { gallery_activations += 1 }
+    GalleryLabel(TextFormat("Activations: %d", gallery_activations),
+        360, 710, 230)
+}
+
+ButtonGallery :: (viewport: Rectangle) #ui {
+    if gallery_benchmark_file != nil {
+        gallery_benchmark_start = GetTime()
+        for int cell = 0; cell < 35; cell++ {
+            gallery_benchmark_button_us[cell] = 0
+        }
+    }
+    if gallery_capture_dir == nil {
+        if IsKeyPressed(KEY_RIGHT) {
+            gallery_page = (gallery_page + 1) % 24
+        }
+        if IsKeyPressed(KEY_LEFT) {
+            gallery_page = (gallery_page + 23) % 24
+        }
+    }
+    GalleryTheme(gallery_page)
+    Screen root: {
+        bounds = viewport
+        app_style: StyleData = ResolveActiveStyle((StyleData){0},
+            StyleDefaultFacts(StyleKindApp()), ButtonStateNormal)
+        if app_style.background != 0 {
+            Background(GetColor(app_style.background))
+        } else {
+            Background(GetThemeBackground())
+        }
+        if gallery_page < 20 {
+            GalleryMatrix(gallery_page)
+        } else {
+            GalleryVariants(gallery_page)
+        }
+        if gallery_capture_dir == nil {
+            GalleryLabel("Left / Right: page", 818, 28, 310)
+        }
+    }
+}

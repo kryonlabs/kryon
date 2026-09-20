@@ -20,7 +20,7 @@
 #include "ui_widget_internal.h"
 #include "ui_rows_internal.h"
 #include "ui_text_layout.h"
-#include "ui_grapheme.h"
+#include "ui/grapheme.h"
 #include "runtime/text_input.h"
 
 #include <math.h>
@@ -35,8 +35,6 @@
 extern Color c_text, c_bg, c_surface, c_circle, c_button;
 extern Camera2D g_ui_camera;
 void ui_begin_world_clip(Rectangle rect);
-int ui_text_fits_bounds(const char *text, int x, int y, int font_size,
-                        Rectangle bounds);
 extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
 extern unsigned long g_ui_frame_serial;
@@ -115,20 +113,6 @@ typedef struct {
     int changed;
     int step;
 } GuideResult;
-
-typedef struct {
-    int valid;
-    int step;
-    int count;
-    int paragraph_height;
-    int text_clip_height;
-    int text_clipped;
-    Rectangle tip;
-    Rectangle text;
-    Rectangle close_button;
-    Rectangle back_button;
-    Rectangle next_button;
-} GuideOverlayDebug;
 
 typedef struct {
     const char *text;
@@ -312,7 +296,6 @@ void dropdown_close(int id);
 void ui_dropdown_overlays(void);
 void ui_draw_menu_overlays(void);
 void ui_tab_bar_finish_frame(void);
-void ui_tab_scope_finish_frame(void);
 int *ui_tab_bar_owned_scroll(int id, int *fallback);
 void PushInputClip(Rectangle bounds);
 void PopInputClip(void);
@@ -335,6 +318,8 @@ int ui_caret_blink_visible(void);
 /* Navigate to a URL: in-browser redirect on web, platform opener otherwise.
  * A no-op for a NULL/empty url. */
 void ui_open_url(const char *url);
+void ui_page_semantic_box(SemanticKind kind, Rectangle bounds,
+                          const char *label);
 void ui_page_semantic_next(SemanticKind kind, const char *label,
                            const char *href, const char *role, int level,
                            int tab_index);
@@ -398,8 +383,6 @@ void ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y,
 void ui_draw_paragraph_aligned_color(ParagraphSpec paragraph, int x, int *y,
                                      int align, Color color);
 void RenderBevel(int x, int y, int w, int h, Color light, Color dark);
-void RenderTextLines(const char **lines, int count, int x, int *y, int font,
-                     int line_h, Color color);
 void ui_paint_text_box(const char *text, Rectangle bounds, int font,
                        Color color, int wrap, int align, int vertical_align,
                        int font_token, int letter_spacing);
@@ -469,7 +452,8 @@ void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
                                     int composition_start,
                                     int composition_end);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
-int RenderButtonInfoIndicator(int center_x, int center_y, int diameter);
+int RenderButtonInfoIndicator(ButtonProps props, int center_x, int center_y,
+                              int diameter);
 int ui_text_button_render(int x, int y, const char *label, int *hover);
 int ui_render_slider(int id, int x, int y, int w, const char *label, int min,
                      int max, int *value, const char *suffix,
@@ -546,10 +530,6 @@ int RenderPanedView(PanedViewProps panes);
 int RenderCollapsible(CollapsibleProps section);
 void RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count);
 GuideResult RenderGuideOverlay(GuideOverlayProps guide);
-void RenderTutorialImagePlaceholder(const char *label, int x, int y,
-                                    int w, int h);
-void RenderTutorialImage(Texture2D texture, const char *fallback,
-                         int x, int y, int w, int h);
 void RenderImage(ImageProps image);
 int RenderActionModal(ModalProps modal);
 int RenderTitleBar(TitleBarProps title_bar);
@@ -597,7 +577,7 @@ void ui_tree_submit_text_input(Rectangle bounds, const char *text,
 void ui_paint_text_input(Rectangle bounds, const char *text,
                          TextInputPaint paint);
 
-/* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
+/* UTF-8 codec and text-buffer helpers (authored in text_edit.kry). */
 int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
 typedef struct TextCompositionView {
@@ -635,7 +615,7 @@ void ui_draw_text_input_selection(Rectangle bounds, const char *text,
                                   TextInputAppearance style,
                                   int selection_start, int selection_end);
 int ui_utf8_codepoint_count(const char *text);
-int ui_utf8_encode(int codepoint, char out[5]);
+int ui_utf8_encode(int codepoint, char *out);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
 int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,

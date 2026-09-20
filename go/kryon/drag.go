@@ -33,530 +33,285 @@ type DragTextPaint struct {
 }
 
 func Drag_DragTextInsetFor(scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 6.0
-	var value_2 float32 = value_0 * value_1
-	return value_2
+	return (scale * 6.0)
 }
 
 func Drag_DragLabelGapFor(scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 2.0
-	var value_2 float32 = value_0 * value_1
-	return value_2
+	return (scale * 2.0)
 }
 
 func Drag_DragComponentTokenFor(control_id int32, component int32) int32 {
-	var value_0 int32 = control_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = component
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+	var value_0 bool = (control_id <= 0)
+	if !value_0 {
+		value_0 = (component < 0)
 	}
-	if value_3 {
-		var value_7 int32 = 0
-		return value_7
+	if value_0 {
+		return 0
 	}
-	var value_8 int32 = control_id
-	var value_9 int32 = 16
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-	var value_11 int32 = component
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = 1
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-	return value_14
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(control_id), uint64(16), 32, true, 3)))), uint64(component), 32, true, 1))
+	return (int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1)))
 }
 
 func Drag_DragCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) DragTextPaint {
 	var paint DragTextPaint = DragTextPaint{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = inset
-	var value_2 float32 = value_0 + value_1
-	paint.TextX = value_2
-	var value_3 float32 = bounds.Y
-	var value_4 float32 = bounds.Height
-	var value_5 float32 = text_line_height
-	var value_6 float32 = value_4 - value_5
-	var value_7 float32 = 2.0
-	var value_8 float32 = value_6 / value_7
-	var value_9 float32 = value_3 + value_8
-	paint.TextY = value_9
-	var value_10 DragTextPaint = paint
-	return value_10
+	paint.TextX = (bounds.X + inset)
+	paint.TextY = (bounds.Y + ((bounds.Height - text_line_height) / 2.0))
+	return paint
 }
 
 func Drag_DragLabelTextPaintFor(bounds Rectangle, inset float32, font_size int32, gap float32) DragTextPaint {
 	var paint DragTextPaint = DragTextPaint{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = inset
-	var value_2 float32 = value_0 + value_1
-	paint.TextX = value_2
-	var value_3 float32 = bounds.Y
-	var value_4 int32 = font_size
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_3 - value_5
-	var value_7 float32 = gap
-	var value_8 float32 = value_6 - value_7
-	paint.TextY = value_8
-	var value_9 DragTextPaint = paint
-	return value_9
+	paint.TextX = (bounds.X + inset)
+	paint.TextY = ((bounds.Y - float32(font_size)) - gap)
+	return paint
 }
 
 func Drag_DragCellBoundsFor(bounds Rectangle, count int32, index int32) Rectangle {
 	var cell Rectangle = Rectangle{}
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 Rectangle = cell
-		return value_3
+	if count <= 0 {
+		return cell
 	}
-	var value_4 int32 = index
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		index = value_7
+	if index < 0 {
+		index = 0
 	}
-	var value_8 int32 = index
-	var value_9 int32 = count
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		index = value_13
+	if index >= count {
+		index = (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 	}
-	var value_14 float32 = bounds.X
-	var value_15 float32 = bounds.Width
-	var value_16 int32 = index
-	var value_17 float32 = float32(value_16)
-	var value_18 float32 = value_15 * value_17
-	var value_19 int32 = count
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 / value_20
-	var value_22 float32 = value_14 + value_21
-	cell.X = value_22
-	var value_23 float32 = bounds.Y
-	cell.Y = value_23
-	var value_24 float32 = bounds.Width
-	var value_25 int32 = count
-	var value_26 float32 = float32(value_25)
-	var value_27 float32 = value_24 / value_26
-	cell.Width = value_27
-	var value_28 float32 = bounds.Height
-	cell.Height = value_28
-	var value_29 Rectangle = cell
-	return value_29
+	cell.X = (bounds.X + ((bounds.Width * float32(index)) / float32(count)))
+	cell.Y = bounds.Y
+	cell.Width = (bounds.Width / float32(count))
+	cell.Height = bounds.Height
+	return cell
 }
 
 func Drag_DragPointerDecisionFor(any_active bool, active bool, hot bool, disabled bool, owner_captured bool, pressed bool, down bool, released bool) DragPointerDecision {
 	var decision DragPointerDecision = DragPointerDecision{}
 	var value_0 bool = any_active
+	if value_0 {
+		value_0 = owner_captured
+	}
 	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = owner_captured
+	if !value_1 {
+		var value_2 bool = active
+		if value_2 {
+			value_2 = disabled
+		}
 		value_1 = value_2
 	}
-	var value_3 bool = value_1
-	if !value_3 {
-		var value_4 bool = active
-		var value_5 bool = value_4
-		if value_5 {
-			var value_6 bool = disabled
-			value_5 = value_6
-		}
-		value_3 = value_5
+	decision.ClearActive = value_1
+	var value_3 bool = hot
+	if value_3 {
+		value_3 = pressed
 	}
-	decision.ClearActive = value_3
-	var value_7 bool = hot
-	var value_8 bool = value_7
+	decision.StartActive = value_3
+	var value_4 bool = active
+	if value_4 {
+		value_4 = !decision.ClearActive
+	}
+	var value_5 bool = value_4
+	if !value_5 {
+		value_5 = decision.StartActive
+	}
+	var effective_active bool = value_5
+	var value_6 bool = effective_active
+	if value_6 {
+		value_6 = !disabled
+	}
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = down
+	}
+	decision.UpdateDelta = value_7
+	var value_8 bool = effective_active
 	if value_8 {
-		var value_9 bool = pressed
-		value_8 = value_9
+		value_8 = released
 	}
-	decision.StartActive = value_8
-	var value_10 bool = active
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = decision.ClearActive
-		var value_13 bool = !value_12
-		value_11 = value_13
-	}
-	var value_14 bool = value_11
-	if !value_14 {
-		var value_15 bool = decision.StartActive
-		value_14 = value_15
-	}
-	var effective_active bool = value_14
-	var value_16 bool = effective_active
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = disabled
-		var value_19 bool = !value_18
-		value_17 = value_19
-	}
-	var value_20 bool = value_17
-	if value_20 {
-		var value_21 bool = down
-		value_20 = value_21
-	}
-	decision.UpdateDelta = value_20
-	var value_22 bool = effective_active
-	var value_23 bool = value_22
-	if value_23 {
-		var value_24 bool = released
-		value_23 = value_24
-	}
-	decision.FinishActive = value_23
-	var value_25 DragPointerDecision = decision
-	return value_25
+	decision.FinishActive = value_8
+	return decision
 }
 
 func Drag_DragEffectiveSpeed(speed float32) float32 {
-	var value_0 float32 = speed
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		return value_3
+	if speed == 0.0 {
+		return 1.0
 	}
-	var value_4 float32 = speed
-	return value_4
+	return speed
 }
 
 func Drag_DragClamp(value float32, minimum float32, maximum float32) float32 {
-	var value_0 float32 = minimum
-	var value_1 float32 = maximum
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = value
-		var value_4 float32 = minimum
-		var value_5 bool = value_3 < value_4
-		if value_5 {
-			var value_6 float32 = minimum
-			return value_6
+	if minimum < maximum {
+		if value < minimum {
+			return minimum
 		}
-		var value_7 float32 = value
-		var value_8 float32 = maximum
-		var value_9 bool = value_7 > value_8
-		if value_9 {
-			var value_10 float32 = maximum
-			return value_10
+		if value > maximum {
+			return maximum
 		}
 	}
-	var value_11 float32 = value
-	return value_11
+	return value
 }
 
 func Drag_DragDiscreteClamp(value int32, minimum int32, maximum int32) int32 {
-	var value_0 int32 = minimum
-	var value_1 int32 = maximum
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = value
-		var value_4 int32 = minimum
-		var value_5 bool = value_3 < value_4
-		if value_5 {
-			var value_6 int32 = minimum
-			return value_6
+	if minimum < maximum {
+		if value < minimum {
+			return minimum
 		}
-		var value_7 int32 = value
-		var value_8 int32 = maximum
-		var value_9 bool = value_7 > value_8
-		if value_9 {
-			var value_10 int32 = maximum
-			return value_10
+		if value > maximum {
+			return maximum
 		}
 	}
-	var value_11 int32 = value
-	return value_11
+	return value
 }
 
 func Drag_DragDiscreteRoundedDelta(scaled float32, force_minimum_step bool) int32 {
-	var value_0 float32 = scaled
-	var value_1 float32 = scaled
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 < value_2
-	var value_4 float32 = 0
-	if value_3 {
-		var value_5 float32 = 0.5
-		var value_6 float32 = -value_5
-		value_4 = value_6
+	var value_0 float32 = 0
+	if scaled < 0.0 {
+		value_0 = -0.5
 	} else {
-		var value_7 float32 = 0.5
-		value_4 = value_7
+		value_0 = 0.5
 	}
-	var value_8 float32 = value_0 + value_4
-	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
-	var step int32 = value_9
-	var value_10 bool = force_minimum_step
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 int32 = step
-		var value_13 int32 = 0
-		var value_14 bool = value_12 == value_13
-		value_11 = value_14
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((scaled+value_0)), 32, true)), uint64(0), 32, true, 0))
+	var step int32 = value_1
+	var value_2 bool = force_minimum_step
+	if value_2 {
+		value_2 = (step == 0)
 	}
-	if value_11 {
-		var value_15 float32 = scaled
-		var value_16 float32 = 0.0
-		var value_17 bool = value_15 < value_16
-		if value_17 {
-			var value_18 int32 = -1
-			return value_18
+	if value_2 {
+		if scaled < 0.0 {
+			return -1
 		}
-		var value_19 int32 = 1
-		return value_19
+		return 1
 	}
-	var value_20 int32 = step
-	return value_20
+	return step
 }
 
 func Drag_DragKeyboardShouldRun(focus_active bool, keyboard_enabled bool, popup_captures bool) bool {
 	var value_0 bool = focus_active
+	if value_0 {
+		value_0 = keyboard_enabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+		value_1 = !popup_captures
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = popup_captures
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	return value_3
+	return value_1
 }
 
 func Drag_DragKeyboardDirectionFor(right bool, left bool) int32 {
-	var value_0 bool = right
-	if value_0 {
-		var value_1 int32 = 1
-		return value_1
+	if right {
+		return 1
 	}
-	var value_2 bool = left
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if left {
+		return -1
 	}
-	var value_4 int32 = 0
-	return value_4
+	return 0
 }
 
 func Drag_DragKeyboardInputFor(direction int32, home bool, end bool, alt bool, shift bool) DragKeyboardInput {
 	var input DragKeyboardInput = DragKeyboardInput{}
-	var value_0 int32 = direction
-	input.Direction = value_0
-	var value_1 bool = home
-	input.Home = value_1
-	var value_2 bool = end
-	input.End = value_2
-	var value_3 bool = alt
-	input.Alt = value_3
-	var value_4 bool = shift
-	input.Shift = value_4
-	var value_5 DragKeyboardInput = input
-	return value_5
+	input.Direction = direction
+	input.Home = home
+	input.End = end
+	input.Alt = alt
+	input.Shift = shift
+	return input
 }
 
 func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maximum float32, input DragKeyboardInput) DragStep {
 	var result DragStep = DragStep{}
-	var value_0 float32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 float32 = value
-	var next float32 = value_2
-	var value_3 bool = input.Home
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 float32 = minimum
-		var value_6 float32 = maximum
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	result.Value = value
+	result.Changed = false
+	var next float32 = value
+	var value_0 bool = input.Home
+	if value_0 {
+		value_0 = (minimum < maximum)
 	}
-	if value_4 {
-		var value_8 float32 = minimum
-		next = value_8
+	if value_0 {
+		next = minimum
 	} else {
-		var value_9 bool = input.End
-		var value_10 bool = value_9
-		if value_10 {
-			var value_11 float32 = minimum
-			var value_12 float32 = maximum
-			var value_13 bool = value_11 < value_12
-			value_10 = value_13
+		var value_1 bool = input.End
+		if value_1 {
+			value_1 = (minimum < maximum)
 		}
-		if value_10 {
-			var value_14 float32 = maximum
-			next = value_14
+		if value_1 {
+			next = maximum
 		} else {
-			var value_15 int32 = input.Direction
-			var value_16 int32 = 0
-			var value_17 bool = value_15 != value_16
-			if value_17 {
-				var value_18 float32 = speed
-				var value_19 float32 = Drag_DragEffectiveSpeed(value_18)
-				var step float32 = value_19
-				var value_20 bool = input.Alt
-				if value_20 {
-					var value_21 float32 = step
-					var value_22 float32 = 0.1
-					var value_23 float32 = value_21 * value_22
-					step = value_23
+			if input.Direction != 0 {
+				var value_2 float32 = Drag_DragEffectiveSpeed(speed)
+				var step float32 = value_2
+				if input.Alt {
+					step = (step * 0.1)
 				}
-				var value_24 bool = input.Shift
-				if value_24 {
-					var value_25 float32 = step
-					var value_26 float32 = 10.0
-					var value_27 float32 = value_25 * value_26
-					step = value_27
+				if input.Shift {
+					step = (step * 10.0)
 				}
-				var value_28 float32 = next
-				var value_29 int32 = input.Direction
-				var value_30 float32 = float32(value_29)
-				var value_31 float32 = step
-				var value_32 float32 = value_30 * value_31
-				var value_33 float32 = value_28 + value_32
-				var value_34 float32 = minimum
-				var value_35 float32 = maximum
-				var value_36 float32 = Drag_DragClamp(value_33, value_34, value_35)
-				next = value_36
+				var value_3 float32 = (next + (float32(input.Direction) * step))
+				var value_4 float32 = Drag_DragClamp(value_3, minimum, maximum)
+				next = value_4
 			}
 		}
 	}
-	var value_37 float32 = next
-	result.Value = value_37
-	var value_38 float32 = next
-	var value_39 float32 = value
-	var value_40 bool = value_38 != value_39
-	result.Changed = value_40
-	var value_41 DragStep = result
-	return value_41
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, maximum int32, input DragKeyboardInput) DragDiscreteStep {
 	var result DragDiscreteStep = DragDiscreteStep{}
-	var value_0 int32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 int32 = value
-	var next int32 = value_2
-	var value_3 bool = input.Home
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 int32 = minimum
-		var value_6 int32 = maximum
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	result.Value = value
+	result.Changed = false
+	var next int32 = value
+	var value_0 bool = input.Home
+	if value_0 {
+		value_0 = (minimum < maximum)
 	}
-	if value_4 {
-		var value_8 int32 = minimum
-		next = value_8
+	if value_0 {
+		next = minimum
 	} else {
-		var value_9 bool = input.End
-		var value_10 bool = value_9
-		if value_10 {
-			var value_11 int32 = minimum
-			var value_12 int32 = maximum
-			var value_13 bool = value_11 < value_12
-			value_10 = value_13
+		var value_1 bool = input.End
+		if value_1 {
+			value_1 = (minimum < maximum)
 		}
-		if value_10 {
-			var value_14 int32 = maximum
-			next = value_14
+		if value_1 {
+			next = maximum
 		} else {
-			var value_15 int32 = input.Direction
-			var value_16 int32 = 0
-			var value_17 bool = value_15 != value_16
-			if value_17 {
-				var value_18 float32 = speed
-				var value_19 float32 = Drag_DragEffectiveSpeed(value_18)
-				var scaled float32 = value_19
-				var value_20 bool = input.Alt
-				if value_20 {
-					var value_21 float32 = scaled
-					var value_22 float32 = 0.1
-					var value_23 float32 = value_21 * value_22
-					scaled = value_23
+			if input.Direction != 0 {
+				var value_2 float32 = Drag_DragEffectiveSpeed(speed)
+				var scaled float32 = value_2
+				if input.Alt {
+					scaled = (scaled * 0.1)
 				}
-				var value_24 bool = input.Shift
-				if value_24 {
-					var value_25 float32 = scaled
-					var value_26 float32 = 10.0
-					var value_27 float32 = value_25 * value_26
-					scaled = value_27
+				if input.Shift {
+					scaled = (scaled * 10.0)
 				}
-				var value_28 int32 = next
-				var value_29 int32 = input.Direction
-				var value_30 float32 = scaled
-				var value_31 bool = true
-				var value_32 int32 = Drag_DragDiscreteRoundedDelta(value_30, value_31)
-				var value_33 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_32), 32, true, 3))
-				var value_34 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_33), 32, true, 1))
-				var value_35 int32 = minimum
-				var value_36 int32 = maximum
-				var value_37 int32 = Drag_DragDiscreteClamp(value_34, value_35, value_36)
-				next = value_37
+				var value_3 int32 = Drag_DragDiscreteRoundedDelta(scaled, true)
+				var value_4 int32 = int32(number_runtime_bits(uint64(next), uint64((int32(number_runtime_bits(uint64(input.Direction), uint64(value_3), 32, true, 3)))), 32, true, 1))
+				var value_5 int32 = Drag_DragDiscreteClamp(value_4, minimum, maximum)
+				next = value_5
 			}
 		}
 	}
-	var value_38 int32 = next
-	result.Value = value_38
-	var value_39 int32 = next
-	var value_40 int32 = value
-	var value_41 bool = value_39 != value_40
-	result.Changed = value_41
-	var value_42 DragDiscreteStep = result
-	return value_42
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Drag_DragDeltaValue(value float32, delta float32, speed float32, minimum float32, maximum float32) DragStep {
 	var result DragStep = DragStep{}
-	var value_0 float32 = value
-	var value_1 float32 = delta
-	var value_2 float32 = speed
-	var value_3 float32 = Drag_DragEffectiveSpeed(value_2)
-	var value_4 float32 = value_1 * value_3
-	var value_5 float32 = value_0 + value_4
-	var value_6 float32 = minimum
-	var value_7 float32 = maximum
-	var value_8 float32 = Drag_DragClamp(value_5, value_6, value_7)
-	result.Value = value_8
-	var value_9 float32 = result.Value
-	var value_10 float32 = value
-	var value_11 bool = value_9 != value_10
-	result.Changed = value_11
-	var value_12 DragStep = result
-	return value_12
+	var value_0 float32 = Drag_DragEffectiveSpeed(speed)
+	var value_1 float32 = (value + (delta * value_0))
+	var value_2 float32 = Drag_DragClamp(value_1, minimum, maximum)
+	result.Value = value_2
+	result.Changed = (result.Value != value)
+	return result
 }
 
 func Drag_DragDiscreteDeltaValue(value int32, delta float32, speed float32, minimum int32, maximum int32) DragDiscreteStep {
 	var result DragDiscreteStep = DragDiscreteStep{}
-	var value_0 float32 = delta
-	var value_1 float32 = speed
-	var value_2 float32 = Drag_DragEffectiveSpeed(value_1)
-	var value_3 float32 = value_0 * value_2
-	var scaled float32 = value_3
-	var value_4 int32 = value
-	var value_5 float32 = scaled
-	var value_6 bool = false
-	var value_7 int32 = Drag_DragDiscreteRoundedDelta(value_5, value_6)
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
-	var value_9 int32 = minimum
-	var value_10 int32 = maximum
-	var value_11 int32 = Drag_DragDiscreteClamp(value_8, value_9, value_10)
-	result.Value = value_11
-	var value_12 int32 = result.Value
-	var value_13 int32 = value
-	var value_14 bool = value_12 != value_13
-	result.Changed = value_14
-	var value_15 DragDiscreteStep = result
-	return value_15
+	var value_0 float32 = Drag_DragEffectiveSpeed(speed)
+	var scaled float32 = (delta * value_0)
+	var value_1 int32 = Drag_DragDiscreteRoundedDelta(scaled, false)
+	var value_2 int32 = (int32(number_runtime_bits(uint64(value), uint64(value_1), 32, true, 1)))
+	var value_3 int32 = Drag_DragDiscreteClamp(value_2, minimum, maximum)
+	result.Value = value_3
+	result.Changed = (result.Value != value)
+	return result
 }

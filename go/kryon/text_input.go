@@ -233,3688 +233,2098 @@ type TextBackspaceRepeat struct {
 }
 
 func TextInput_TextInputFactsFor(style_kind int32, class_name int32) StyleFacts {
-	var value_0 int32 = style_kind
-	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = int32(ButtonToneNeutral)
-	var value_4 int32 = int32(ButtonEmphasisSoft)
-	var value_5 int32 = int32(ControlSizeMedium)
-	var value_6 int32 = int32(ButtonStateNormal)
-	var value_7 StyleFacts = StyleSheet_StyleControlFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_0 int32 = 0
+	var value_1 int32 = int32(ButtonToneNeutral)
+	var value_2 int32 = int32(ButtonEmphasisSoft)
+	var value_3 int32 = int32(ControlSizeMedium)
+	var value_4 int32 = int32(ButtonStateNormal)
+	var value_5 StyleFacts = StyleSheet_StyleControlFacts(style_kind, value_0, class_name, value_1, value_2, value_3, value_4)
+	return value_5
 }
 
 func TextInput_TextFocusClaimDecisionFor(has_target bool, has_previous_owner bool, same_owner bool) TextFocusClaimDecision {
 	var decision TextFocusClaimDecision = TextFocusClaimDecision{}
-	var value_0 bool = has_target
-	decision.Claim = value_0
-	var value_1 bool = has_target
-	var value_2 bool = !value_1
-	if value_2 {
-		var value_3 TextFocusClaimDecision = decision
-		return value_3
+	decision.Claim = has_target
+	if !has_target {
+		return decision
 	}
-	var value_4 bool = has_previous_owner
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = same_owner
-		var value_7 bool = !value_6
-		value_5 = value_7
+	var value_0 bool = has_previous_owner
+	if value_0 {
+		value_0 = !same_owner
 	}
-	decision.DisplacePrevious = value_5
-	var value_8 bool = same_owner
-	var value_9 bool = !value_8
-	decision.CancelPrevious = value_9
-	var value_10 bool = same_owner
-	var value_11 bool = !value_10
-	decision.CloseContext = value_11
-	var value_12 bool = same_owner
-	var value_13 bool = !value_12
-	decision.ClearPeerSelection = value_13
-	var value_14 TextFocusClaimDecision = decision
-	return value_14
+	decision.DisplacePrevious = value_0
+	decision.CancelPrevious = !same_owner
+	decision.CloseContext = !same_owner
+	decision.ClearPeerSelection = !same_owner
+	return decision
 }
 
 func TextInput_TextFocusOwnerDecisionFor(has_target bool, owns_focus bool, has_frame_owner bool, target_flag bool, has_focus_owner bool) TextFocusOwnerDecision {
 	var decision TextFocusOwnerDecision = TextFocusOwnerDecision{}
-	var value_0 bool = has_target
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 TextFocusOwnerDecision = decision
-		return value_2
+	if !has_target {
+		return decision
 	}
-	var value_3 bool = owns_focus
-	if value_3 {
-		var value_4 bool = true
-		decision.Focused = value_4
-		var value_5 bool = true
-		decision.MarkFrameOwner = value_5
-		var value_6 TextFocusOwnerDecision = decision
-		return value_6
+	if owns_focus {
+		decision.Focused = true
+		decision.MarkFrameOwner = true
+		return decision
 	}
-	var value_7 bool = has_frame_owner
-	if value_7 {
-		var value_8 bool = true
-		decision.ClearTarget = value_8
-		var value_9 TextFocusOwnerDecision = decision
-		return value_9
+	if has_frame_owner {
+		decision.ClearTarget = true
+		return decision
 	}
-	var value_10 bool = target_flag
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = has_focus_owner
-		var value_13 bool = !value_12
-		value_11 = value_13
+	var value_0 bool = target_flag
+	if value_0 {
+		value_0 = !has_focus_owner
 	}
-	if value_11 {
-		var value_14 bool = true
-		decision.Focused = value_14
-		var value_15 bool = true
-		decision.AdoptOwner = value_15
-		var value_16 bool = true
-		decision.MarkFrameOwner = value_16
-		var value_17 TextFocusOwnerDecision = decision
-		return value_17
+	if value_0 {
+		decision.Focused = true
+		decision.AdoptOwner = true
+		decision.MarkFrameOwner = true
+		return decision
 	}
-	var value_18 bool = true
-	decision.ClearTarget = value_18
-	var value_19 TextFocusOwnerDecision = decision
-	return value_19
+	decision.ClearTarget = true
+	return decision
 }
 
 func TextInput_TextFocusOwnerIsStale(has_owner bool, owner_frame int64, current_frame int64) bool {
 	var value_0 bool = has_owner
+	if value_0 {
+		value_0 = (owner_frame != (int64(number_runtime_bits(uint64(current_frame), uint64(1), 64, true, 2))))
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 int64 = owner_frame
-		var value_3 int64 = current_frame
-		var value_4 int64 = 1
-		var value_5 int64 = int64(number_runtime_bits(uint64(value_3), uint64(value_4), 64, true, 2))
-		var value_6 bool = value_2 != value_5
-		value_1 = value_6
-	}
-	var value_7 bool = value_1
-	if value_7 {
-		var value_8 int64 = owner_frame
-		var value_9 int64 = current_frame
-		var value_10 bool = value_8 != value_9
-		value_7 = value_10
-	}
-	return value_7
-}
-
-func TextInput_TextPlatformInputActiveFor(requested bool, has_owner bool, owner_rendered_this_frame bool) bool {
-	var value_0 bool = requested
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = has_owner
-		var value_3 bool = value_2
-		if value_3 {
-			var value_4 bool = owner_rendered_this_frame
-			value_3 = value_4
-		}
-		value_1 = value_3
+		value_1 = (owner_frame != current_frame)
 	}
 	return value_1
 }
 
+func TextInput_TextPlatformInputActiveFor(requested bool, has_owner bool, owner_rendered_this_frame bool) bool {
+	var value_0 bool = requested
+	if !value_0 {
+		var value_1 bool = has_owner
+		if value_1 {
+			value_1 = owner_rendered_this_frame
+		}
+		value_0 = value_1
+	}
+	return value_0
+}
+
 func TextInput_TextPlatformInputSyncDecisionFor(show_requested bool, has_callback bool, platform_active bool, text_input_active bool) TextPlatformInputSyncDecision {
 	var decision TextPlatformInputSyncDecision = TextPlatformInputSyncDecision{}
-	var value_0 bool = true
-	decision.ClearShowRequest = value_0
-	var value_1 bool = show_requested
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = has_callback
-		value_2 = value_3
+	decision.ClearShowRequest = true
+	var value_0 bool = show_requested
+	if value_0 {
+		value_0 = has_callback
 	}
-	if value_2 {
-		var value_4 bool = true
-		decision.Active = value_4
-		var value_5 bool = true
-		decision.CallCallback = value_5
-		var value_6 bool = true
-		decision.CallbackActive = value_6
-		var value_7 TextPlatformInputSyncDecision = decision
-		return value_7
+	if value_0 {
+		decision.Active = true
+		decision.CallCallback = true
+		decision.CallbackActive = true
+		return decision
 	}
-	var value_8 bool = text_input_active
-	decision.Active = value_8
-	var value_9 bool = platform_active
-	var value_10 bool = text_input_active
-	var value_11 bool = value_9 != value_10
-	if value_11 {
-		var value_12 bool = has_callback
-		decision.CallCallback = value_12
-		var value_13 bool = text_input_active
-		decision.CallbackActive = value_13
+	decision.Active = text_input_active
+	if platform_active != text_input_active {
+		decision.CallCallback = has_callback
+		decision.CallbackActive = text_input_active
 	}
-	var value_14 TextPlatformInputSyncDecision = decision
-	return value_14
+	return decision
 }
 
 func TextInput_TextFocusReleaseDecisionFor(has_target bool, owns_focus bool, owns_frame_focus bool, active_focus_matches bool, owns_field_drag bool, owns_area_drag bool) TextFocusReleaseDecision {
 	var decision TextFocusReleaseDecision = TextFocusReleaseDecision{}
-	var value_0 bool = has_target
-	decision.Release = value_0
-	var value_1 bool = has_target
-	var value_2 bool = !value_1
-	if value_2 {
-		var value_3 TextFocusReleaseDecision = decision
-		return value_3
+	decision.Release = has_target
+	if !has_target {
+		return decision
 	}
-	var value_4 bool = owns_focus
-	decision.CancelSelf = value_4
-	var value_5 bool = owns_focus
-	decision.ClearOwner = value_5
-	var value_6 bool = owns_frame_focus
-	decision.ClearFrameOwner = value_6
-	var value_7 bool = active_focus_matches
-	decision.ClearActiveFocus = value_7
-	var value_8 bool = true
-	decision.CloseContext = value_8
-	var value_9 bool = owns_field_drag
-	decision.ClearFieldDrag = value_9
-	var value_10 bool = owns_area_drag
-	decision.ClearAreaDrag = value_10
-	var value_11 TextFocusReleaseDecision = decision
-	return value_11
+	decision.CancelSelf = owns_focus
+	decision.ClearOwner = owns_focus
+	decision.ClearFrameOwner = owns_frame_focus
+	decision.ClearActiveFocus = active_focus_matches
+	decision.CloseContext = true
+	decision.ClearFieldDrag = owns_field_drag
+	decision.ClearAreaDrag = owns_area_drag
+	return decision
 }
 
 func TextInput_TextCompositionInputDecisionFor(focused bool, read_only bool) TextCompositionInputDecision {
 	var decision TextCompositionInputDecision = TextCompositionInputDecision{}
 	var value_0 bool = focused
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = !read_only
+	}
+	decision.AcceptEvents = value_0
+	decision.Cancel = !decision.AcceptEvents
+	var value_1 bool = focused
 	if value_1 {
-		var value_2 bool = read_only
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = read_only
 	}
-	decision.AcceptEvents = value_1
-	var value_4 bool = decision.AcceptEvents
-	var value_5 bool = !value_4
-	decision.Cancel = value_5
-	var value_6 bool = focused
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = read_only
-		value_7 = value_8
-	}
-	decision.DrainEvents = value_7
-	var value_9 TextCompositionInputDecision = decision
-	return value_9
+	decision.DrainEvents = value_1
+	return decision
 }
 
 func TextInput_TextCompositionCancelDecisionFor(has_owner bool, scoped bool, same_owner bool) TextCompositionSessionDecision {
 	var decision TextCompositionSessionDecision = TextCompositionSessionDecision{}
 	var value_0 bool = has_owner
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = scoped
-		var value_3 bool = !value_2
-		var value_4 bool = value_3
-		if !value_4 {
-			var value_5 bool = same_owner
-			value_4 = value_5
+	if value_0 {
+		var value_1 bool = !scoped
+		if !value_1 {
+			value_1 = same_owner
 		}
-		value_1 = value_4
+		value_0 = value_1
 	}
-	decision.Cancel = value_1
-	var value_6 TextCompositionSessionDecision = decision
-	return value_6
+	decision.Cancel = value_0
+	return decision
 }
 
 func TextInput_TextCompositionGetDecisionFor(has_owner bool, same_owner bool, has_text bool) TextCompositionSessionDecision {
 	var decision TextCompositionSessionDecision = TextCompositionSessionDecision{}
 	var value_0 bool = has_owner
+	if value_0 {
+		value_0 = same_owner
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = same_owner
-		value_1 = value_2
+		value_1 = has_text
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = has_text
-		value_3 = value_4
-	}
-	decision.Visible = value_3
-	var value_5 TextCompositionSessionDecision = decision
-	return value_5
+	decision.Visible = value_1
+	return decision
 }
 
 func TextInput_TextCompositionPhaseDecisionFor(phase int32) TextCompositionPhaseDecision {
 	var decision TextCompositionPhaseDecision = TextCompositionPhaseDecision{}
-	var value_0 int32 = phase
-	var value_1 int32 = 1
-	var value_2 bool = value_0 == value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = phase
-		var value_5 int32 = 2
-		var value_6 bool = value_4 == value_5
-		value_3 = value_6
+	var value_0 bool = (phase == 1)
+	if !value_0 {
+		value_0 = (phase == 2)
 	}
-	decision.StorePreedit = value_3
-	var value_7 int32 = phase
-	var value_8 int32 = 3
-	var value_9 bool = value_7 == value_8
-	decision.Commit = value_9
-	var value_10 int32 = phase
-	var value_11 int32 = 4
-	var value_12 bool = value_10 == value_11
-	decision.Cancel = value_12
-	var value_13 TextCompositionPhaseDecision = decision
-	return value_13
+	decision.StorePreedit = value_0
+	decision.Commit = (phase == 3)
+	decision.Cancel = (phase == 4)
+	return decision
 }
 
 func TextInput_TextCompositionApplyDecisionFor(phase int32, text_changed bool) TextCompositionApplyDecision {
-	var value_0 int32 = phase
-	var value_1 TextCompositionPhaseDecision = TextInput_TextCompositionPhaseDecisionFor(value_0)
-	var event TextCompositionPhaseDecision = value_1
+	var value_0 TextCompositionPhaseDecision = TextInput_TextCompositionPhaseDecisionFor(phase)
+	var event TextCompositionPhaseDecision = value_0
 	var decision TextCompositionApplyDecision = TextCompositionApplyDecision{}
-	var value_2 bool = event.StorePreedit
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 bool = event.Cancel
-		value_3 = value_4
+	var value_1 bool = event.StorePreedit
+	if !value_1 {
+		value_1 = event.Cancel
 	}
-	if value_3 {
-		var value_5 bool = true
-		decision.PresentationChanged = value_5
-		var value_6 TextCompositionApplyDecision = decision
-		return value_6
+	if value_1 {
+		decision.PresentationChanged = true
+		return decision
 	}
-	var value_7 bool = event.Commit
-	if value_7 {
-		var value_8 bool = text_changed
-		decision.TextChanged = value_8
-		var value_9 bool = true
-		decision.PresentationChanged = value_9
-		var value_10 bool = true
-		decision.SelectionChanged = value_10
+	if event.Commit {
+		decision.TextChanged = text_changed
+		decision.PresentationChanged = true
+		decision.SelectionChanged = true
 	}
-	var value_11 TextCompositionApplyDecision = decision
-	return value_11
+	return decision
 }
 
 func TextInput_TextCompositionSelectionLength(preedit_len int32, cursor int32, selection_length int32) int32 {
-	var value_0 int32 = preedit_len
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		preedit_len = value_3
+	if preedit_len < 0 {
+		preedit_len = 0
 	}
-	var value_4 int32 = cursor
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		cursor = value_7
+	if cursor < 0 {
+		cursor = 0
 	}
-	var value_8 int32 = cursor
-	var value_9 int32 = preedit_len
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = preedit_len
-		cursor = value_11
+	if cursor > preedit_len {
+		cursor = preedit_len
 	}
-	var value_12 int32 = selection_length
-	var value_13 int32 = 0
-	var value_14 bool = value_12 < value_13
-	if value_14 {
-		var value_15 int32 = 0
-		selection_length = value_15
+	if selection_length < 0 {
+		selection_length = 0
 	}
-	var value_16 int32 = preedit_len
-	var value_17 int32 = cursor
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 2))
-	var max_length int32 = value_18
-	var value_19 int32 = selection_length
-	var value_20 int32 = max_length
-	var value_21 bool = value_19 > value_20
-	if value_21 {
-		var value_22 int32 = max_length
-		return value_22
+	var max_length int32 = (int32(number_runtime_bits(uint64(preedit_len), uint64(cursor), 32, true, 2)))
+	if selection_length > max_length {
+		return max_length
 	}
-	var value_23 int32 = selection_length
-	return value_23
+	return selection_length
 }
 
 func TextInput_TextCompositionViewRangeFor(selection_start int32, selection_end int32, preedit_len int32, preedit_cursor int32, preedit_selection_end int32) TextCompositionViewRange {
 	var view_range TextCompositionViewRange = TextCompositionViewRange{}
-	var value_0 int32 = selection_start
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		selection_start = value_3
+	if selection_start < 0 {
+		selection_start = 0
 	}
-	var value_4 int32 = selection_end
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		selection_end = value_7
+	if selection_end < 0 {
+		selection_end = 0
 	}
-	var value_8 int32 = selection_start
-	var value_9 int32 = selection_end
-	var value_10 bool = value_8 <= value_9
-	if value_10 {
-		var value_11 int32 = selection_start
-		view_range.ReplaceStart = value_11
-		var value_12 int32 = selection_end
-		view_range.ReplaceEnd = value_12
+	if selection_start <= selection_end {
+		view_range.ReplaceStart = selection_start
+		view_range.ReplaceEnd = selection_end
 	} else {
-		var value_13 int32 = selection_end
-		view_range.ReplaceStart = value_13
-		var value_14 int32 = selection_start
-		view_range.ReplaceEnd = value_14
+		view_range.ReplaceStart = selection_end
+		view_range.ReplaceEnd = selection_start
 	}
-	var value_15 int32 = preedit_len
-	var value_16 int32 = 0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 int32 = 0
-		preedit_len = value_18
+	if preedit_len < 0 {
+		preedit_len = 0
 	}
-	var value_19 int32 = preedit_cursor
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = 0
-		preedit_cursor = value_22
+	if preedit_cursor < 0 {
+		preedit_cursor = 0
 	}
-	var value_23 int32 = preedit_cursor
-	var value_24 int32 = preedit_len
-	var value_25 bool = value_23 > value_24
-	if value_25 {
-		var value_26 int32 = preedit_len
-		preedit_cursor = value_26
+	if preedit_cursor > preedit_len {
+		preedit_cursor = preedit_len
 	}
-	var value_27 int32 = preedit_selection_end
-	var value_28 int32 = preedit_cursor
-	var value_29 bool = value_27 < value_28
-	if value_29 {
-		var value_30 int32 = preedit_cursor
-		preedit_selection_end = value_30
+	if preedit_selection_end < preedit_cursor {
+		preedit_selection_end = preedit_cursor
 	}
-	var value_31 int32 = preedit_selection_end
-	var value_32 int32 = preedit_len
-	var value_33 bool = value_31 > value_32
-	if value_33 {
-		var value_34 int32 = preedit_len
-		preedit_selection_end = value_34
+	if preedit_selection_end > preedit_len {
+		preedit_selection_end = preedit_len
 	}
-	var value_35 int32 = view_range.ReplaceStart
-	var value_36 int32 = preedit_cursor
-	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 1))
-	view_range.Cursor = value_37
-	var value_38 int32 = view_range.Cursor
-	view_range.SelectionStart = value_38
-	var value_39 int32 = view_range.ReplaceStart
-	var value_40 int32 = preedit_selection_end
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
-	view_range.SelectionEnd = value_41
-	var value_42 int32 = view_range.ReplaceStart
-	view_range.CompositionStart = value_42
-	var value_43 int32 = view_range.ReplaceStart
-	var value_44 int32 = preedit_len
-	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 1))
-	view_range.CompositionEnd = value_45
-	var value_46 TextCompositionViewRange = view_range
-	return value_46
+	view_range.Cursor = (int32(number_runtime_bits(uint64(view_range.ReplaceStart), uint64(preedit_cursor), 32, true, 1)))
+	view_range.SelectionStart = view_range.Cursor
+	var value_0 int32 = int32(number_runtime_bits(uint64(view_range.ReplaceStart), uint64(preedit_selection_end), 32, true, 1))
+	view_range.SelectionEnd = value_0
+	view_range.CompositionStart = view_range.ReplaceStart
+	view_range.CompositionEnd = (int32(number_runtime_bits(uint64(view_range.ReplaceStart), uint64(preedit_len), 32, true, 1)))
+	return view_range
 }
 
 func TextInput_TextCompositionPaintSpanForText(composition_start int32, composition_end int32, text_len int32) TextCompositionPaintSpan {
 	var span TextCompositionPaintSpan = TextCompositionPaintSpan{}
-	var value_0 int32 = text_len
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		text_len = value_3
+	if text_len < 0 {
+		text_len = 0
 	}
-	var value_4 int32 = composition_start
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		composition_start = value_7
+	if composition_start < 0 {
+		composition_start = 0
 	}
-	var value_8 int32 = composition_end
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		composition_end = value_11
+	if composition_end < 0 {
+		composition_end = 0
 	}
-	var value_12 int32 = composition_start
-	var value_13 int32 = text_len
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = text_len
-		composition_start = value_15
+	if composition_start > text_len {
+		composition_start = text_len
 	}
-	var value_16 int32 = composition_end
-	var value_17 int32 = text_len
-	var value_18 bool = value_16 > value_17
-	if value_18 {
-		var value_19 int32 = text_len
-		composition_end = value_19
+	if composition_end > text_len {
+		composition_end = text_len
 	}
-	var value_20 int32 = composition_end
-	var value_21 int32 = composition_start
-	var value_22 bool = value_20 <= value_21
-	if value_22 {
-		var value_23 TextCompositionPaintSpan = span
-		return value_23
+	if composition_end <= composition_start {
+		return span
 	}
-	var value_24 bool = true
-	span.Visible = value_24
-	var value_25 int32 = composition_start
-	span.Start = value_25
-	var value_26 int32 = composition_end
-	span.End = value_26
-	var value_27 TextCompositionPaintSpan = span
-	return value_27
+	span.Visible = true
+	span.Start = composition_start
+	span.End = composition_end
+	return span
 }
 
 func TextInput_TextCompositionPaintSpanForLine(composition_start int32, composition_end int32, line_start int32, line_end int32) TextCompositionPaintSpan {
 	var span TextCompositionPaintSpan = TextCompositionPaintSpan{}
-	var value_0 int32 = composition_end
-	var value_1 int32 = composition_start
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 TextCompositionPaintSpan = span
-		return value_3
+	if composition_end <= composition_start {
+		return span
 	}
-	var value_4 int32 = line_end
-	var value_5 int32 = line_start
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = line_start
-		line_end = value_7
+	if line_end < line_start {
+		line_end = line_start
 	}
-	var value_8 int32 = composition_start
-	span.Start = value_8
-	var value_9 int32 = span.Start
-	var value_10 int32 = line_start
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = line_start
-		span.Start = value_12
+	span.Start = composition_start
+	if span.Start < line_start {
+		span.Start = line_start
 	}
-	var value_13 int32 = composition_end
-	span.End = value_13
-	var value_14 int32 = span.End
-	var value_15 int32 = line_end
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 int32 = line_end
-		span.End = value_17
+	span.End = composition_end
+	if span.End > line_end {
+		span.End = line_end
 	}
-	var value_18 int32 = span.End
-	var value_19 int32 = span.Start
-	var value_20 bool = value_18 <= value_19
-	if value_20 {
-		var value_21 TextCompositionPaintSpan = span
-		return value_21
+	if span.End <= span.Start {
+		return span
 	}
-	var value_22 bool = true
-	span.Visible = value_22
-	var value_23 TextCompositionPaintSpan = span
-	return value_23
+	span.Visible = true
+	return span
 }
 
 func TextInput_TextCompositionUnderlineEndX(start_x int32, end_x int32, stroke_width int32) int32 {
-	var value_0 int32 = stroke_width
-	var value_1 int32 = 1
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 1
-		stroke_width = value_3
+	if stroke_width < 1 {
+		stroke_width = 1
 	}
-	var value_4 int32 = end_x
-	var value_5 int32 = start_x
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = start_x
-		var value_8 int32 = stroke_width
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-		return value_9
+	if end_x <= start_x {
+		return (int32(number_runtime_bits(uint64(start_x), uint64(stroke_width), 32, true, 1)))
 	}
-	var value_10 int32 = end_x
-	return value_10
+	return end_x
 }
 
 func TextInput_TextCompositionUnderlineY(text_y int32, line_height int32, stroke_width int32) int32 {
-	var value_0 int32 = stroke_width
-	var value_1 int32 = 1
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 1
-		stroke_width = value_3
+	if stroke_width < 1 {
+		stroke_width = 1
 	}
-	var value_4 int32 = text_y
-	var value_5 int32 = line_height
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-	var value_7 int32 = stroke_width
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(text_y), uint64(line_height), 32, true, 1)))), uint64(stroke_width), 32, true, 2))
+	return value_0
 }
 
 func TextInput_TextSelectionPaintSpanForLine(selection_start int32, selection_end int32, line_start int32, line_end int32) TextSelectionPaintSpan {
 	var span TextSelectionPaintSpan = TextSelectionPaintSpan{}
-	var value_0 int32 = selection_end
-	var value_1 int32 = selection_start
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 TextSelectionPaintSpan = span
-		return value_3
+	if selection_end <= selection_start {
+		return span
 	}
-	var value_4 int32 = line_end
-	var value_5 int32 = line_start
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = line_start
-		line_end = value_7
+	if line_end < line_start {
+		line_end = line_start
 	}
-	var value_8 int32 = selection_start
-	span.Start = value_8
-	var value_9 int32 = span.Start
-	var value_10 int32 = line_start
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = line_start
-		span.Start = value_12
+	span.Start = selection_start
+	if span.Start < line_start {
+		span.Start = line_start
 	}
-	var value_13 int32 = selection_end
-	span.End = value_13
-	var value_14 int32 = span.End
-	var value_15 int32 = line_end
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 int32 = line_end
-		span.End = value_17
+	span.End = selection_end
+	if span.End > line_end {
+		span.End = line_end
 	}
-	var value_18 int32 = selection_start
-	var value_19 int32 = line_start
-	var value_20 bool = value_18 <= value_19
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 int32 = selection_end
-		var value_23 int32 = line_end
-		var value_24 bool = value_22 > value_23
-		value_21 = value_24
+	var value_0 bool = (selection_start <= line_start)
+	if value_0 {
+		value_0 = (selection_end > line_end)
 	}
-	span.ContinuesPastLine = value_21
-	var value_25 int32 = span.End
-	var value_26 int32 = span.Start
-	var value_27 bool = value_25 < value_26
-	if value_27 {
-		var value_28 TextSelectionPaintSpan = span
-		return value_28
+	span.ContinuesPastLine = value_0
+	if span.End < span.Start {
+		return span
 	}
-	var value_29 int32 = span.End
-	var value_30 int32 = span.Start
-	var value_31 bool = value_29 == value_30
-	var value_32 bool = value_31
-	if value_32 {
-		var value_33 bool = span.ContinuesPastLine
-		var value_34 bool = !value_33
-		value_32 = value_34
+	var value_1 bool = (span.End == span.Start)
+	if value_1 {
+		value_1 = !span.ContinuesPastLine
 	}
-	if value_32 {
-		var value_35 TextSelectionPaintSpan = span
-		return value_35
+	if value_1 {
+		return span
 	}
-	var value_36 bool = true
-	span.Visible = value_36
-	var value_37 TextSelectionPaintSpan = span
-	return value_37
+	span.Visible = true
+	return span
 }
 
 func TextInput_TextSelectionPaintSpanForText(selection_start int32, selection_end int32, text_len int32) TextSelectionPaintSpan {
 	var span TextSelectionPaintSpan = TextSelectionPaintSpan{}
-	var value_0 int32 = text_len
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		text_len = value_3
+	if text_len < 0 {
+		text_len = 0
 	}
-	var value_4 int32 = selection_start
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		selection_start = value_7
+	if selection_start < 0 {
+		selection_start = 0
 	}
-	var value_8 int32 = selection_end
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		selection_end = value_11
+	if selection_end < 0 {
+		selection_end = 0
 	}
-	var value_12 int32 = selection_start
-	var value_13 int32 = text_len
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = text_len
-		selection_start = value_15
+	if selection_start > text_len {
+		selection_start = text_len
 	}
-	var value_16 int32 = selection_end
-	var value_17 int32 = text_len
-	var value_18 bool = value_16 > value_17
-	if value_18 {
-		var value_19 int32 = text_len
-		selection_end = value_19
+	if selection_end > text_len {
+		selection_end = text_len
 	}
-	var value_20 int32 = selection_end
-	var value_21 int32 = selection_start
-	var value_22 bool = value_20 <= value_21
-	if value_22 {
-		var value_23 TextSelectionPaintSpan = span
-		return value_23
+	if selection_end <= selection_start {
+		return span
 	}
-	var value_24 bool = true
-	span.Visible = value_24
-	var value_25 int32 = selection_start
-	span.Start = value_25
-	var value_26 int32 = selection_end
-	span.End = value_26
-	var value_27 bool = false
-	span.ContinuesPastLine = value_27
-	var value_28 TextSelectionPaintSpan = span
-	return value_28
+	span.Visible = true
+	span.Start = selection_start
+	span.End = selection_end
+	span.ContinuesPastLine = false
+	return span
 }
 
 func TextInput_TextSelectionOwnerMatches(has_owner bool, same_owner bool, selection_id int32, requested_id int32) bool {
 	var value_0 bool = has_owner
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = same_owner
+	}
+	if value_0 {
+		return true
+	}
+	var value_1 bool = (requested_id > 0)
 	if value_1 {
-		var value_2 bool = same_owner
-		value_1 = value_2
+		value_1 = (selection_id == requested_id)
 	}
-	if value_1 {
-		var value_3 bool = true
-		return value_3
-	}
-	var value_4 int32 = requested_id
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 int32 = selection_id
-		var value_9 int32 = requested_id
-		var value_10 bool = value_8 == value_9
-		value_7 = value_10
-	}
-	return value_7
+	return value_1
 }
 
 func TextInput_TextContextMenuStateFor(has_selection bool, copy_all_when_empty bool, has_text bool, read_only bool, clipboard_has_text bool) TextContextMenuState {
 	var state TextContextMenuState = TextContextMenuState{}
 	var value_0 bool = has_selection
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = copy_all_when_empty
-		var value_3 bool = value_2
-		if value_3 {
-			var value_4 bool = has_text
-			value_3 = value_4
+	if !value_0 {
+		var value_1 bool = copy_all_when_empty
+		if value_1 {
+			value_1 = has_text
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	var can_copy_content bool = value_1
-	var value_5 bool = can_copy_content
-	var value_6 bool = value_5
-	if value_6 {
-		var value_7 bool = read_only
-		var value_8 bool = !value_7
-		value_6 = value_8
+	var can_copy_content bool = value_0
+	var value_2 bool = can_copy_content
+	if value_2 {
+		value_2 = !read_only
 	}
-	state.CutEnabled = value_6
-	var value_9 bool = can_copy_content
-	state.CopyEnabled = value_9
-	var value_10 bool = clipboard_has_text
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = read_only
-		var value_13 bool = !value_12
-		value_11 = value_13
+	state.CutEnabled = value_2
+	state.CopyEnabled = can_copy_content
+	var value_3 bool = clipboard_has_text
+	if value_3 {
+		value_3 = !read_only
 	}
-	state.PasteEnabled = value_11
-	var value_14 bool = has_text
-	state.SelectAllEnabled = value_14
-	var value_15 TextContextMenuState = state
-	return value_15
+	state.PasteEnabled = value_3
+	state.SelectAllEnabled = has_text
+	return state
 }
 
 func TextInput_TextContextCommandCut() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func TextInput_TextContextCommandCopy() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func TextInput_TextContextCommandPaste() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func TextInput_TextContextCommandSelectAll() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func TextInput_TextEditCommandDecisionFor(command int32, has_selection bool, copy_all_when_empty bool, clear_all_when_empty bool, has_text bool, allow_copy bool, allow_delete bool, allow_paste bool) TextContextCommandDecision {
 	var decision TextContextCommandDecision = TextContextCommandDecision{}
-	var value_0 int32 = command
-	var value_1 int32 = TextInput_TextContextCommandCut()
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 bool = has_selection
-		if value_3 {
-			var value_4 bool = allow_copy
-			decision.CopySelection = value_4
-			var value_5 bool = allow_copy
-			var value_6 bool = value_5
-			if value_6 {
-				var value_7 bool = allow_delete
-				value_6 = value_7
+	var value_0 int32 = TextInput_TextContextCommandCut()
+	if command == value_0 {
+		if has_selection {
+			decision.CopySelection = allow_copy
+			var value_1 bool = allow_copy
+			if value_1 {
+				value_1 = allow_delete
 			}
-			decision.DeleteSelection = value_6
+			decision.DeleteSelection = value_1
 		} else {
-			var value_8 bool = copy_all_when_empty
-			var value_9 bool = value_8
-			if value_9 {
-				var value_10 bool = has_text
-				value_9 = value_10
+			var value_2 bool = copy_all_when_empty
+			if value_2 {
+				value_2 = has_text
 			}
-			if value_9 {
-				var value_11 bool = allow_copy
-				decision.CopyAll = value_11
-				var value_12 bool = allow_copy
-				var value_13 bool = value_12
-				if value_13 {
-					var value_14 bool = allow_delete
-					value_13 = value_14
+			if value_2 {
+				decision.CopyAll = allow_copy
+				var value_3 bool = allow_copy
+				if value_3 {
+					value_3 = allow_delete
 				}
-				var value_15 bool = value_13
-				if value_15 {
-					var value_16 bool = clear_all_when_empty
-					value_15 = value_16
+				var value_4 bool = value_3
+				if value_4 {
+					value_4 = clear_all_when_empty
 				}
-				decision.ClearAll = value_15
+				decision.ClearAll = value_4
 			}
 		}
-		var value_17 bool = decision.CopySelection
-		var value_18 bool = value_17
-		if !value_18 {
-			var value_19 bool = decision.CopyAll
-			value_18 = value_19
+		var value_5 bool = decision.CopySelection
+		if !value_5 {
+			value_5 = decision.CopyAll
 		}
-		var value_20 bool = value_18
-		if !value_20 {
-			var value_21 bool = decision.DeleteSelection
-			value_20 = value_21
+		var value_6 bool = value_5
+		if !value_6 {
+			value_6 = decision.DeleteSelection
 		}
-		var value_22 bool = value_20
-		if !value_22 {
-			var value_23 bool = decision.ClearAll
-			value_22 = value_23
+		var value_7 bool = value_6
+		if !value_7 {
+			value_7 = decision.ClearAll
 		}
-		decision.CollapseSelection = value_22
-		var value_24 TextContextCommandDecision = decision
-		return value_24
+		decision.CollapseSelection = value_7
+		return decision
 	}
-	var value_25 int32 = command
-	var value_26 int32 = TextInput_TextContextCommandCopy()
-	var value_27 bool = value_25 == value_26
-	if value_27 {
-		var value_28 bool = has_selection
-		if value_28 {
-			var value_29 bool = allow_copy
-			decision.CopySelection = value_29
+	var value_8 int32 = TextInput_TextContextCommandCopy()
+	if command == value_8 {
+		if has_selection {
+			decision.CopySelection = allow_copy
 		} else {
-			var value_30 bool = allow_copy
-			var value_31 bool = value_30
-			if value_31 {
-				var value_32 bool = copy_all_when_empty
-				value_31 = value_32
+			var value_9 bool = allow_copy
+			if value_9 {
+				value_9 = copy_all_when_empty
 			}
-			var value_33 bool = value_31
-			if value_33 {
-				var value_34 bool = has_text
-				value_33 = value_34
+			var value_10 bool = value_9
+			if value_10 {
+				value_10 = has_text
 			}
-			if value_33 {
-				var value_35 bool = true
-				decision.CopyAll = value_35
+			if value_10 {
+				decision.CopyAll = true
 			}
 		}
-		var value_36 TextContextCommandDecision = decision
-		return value_36
+		return decision
 	}
-	var value_37 int32 = command
-	var value_38 int32 = TextInput_TextContextCommandPaste()
-	var value_39 bool = value_37 == value_38
-	if value_39 {
-		var value_40 bool = allow_paste
-		if value_40 {
-			var value_41 bool = allow_delete
-			var value_42 bool = value_41
-			if value_42 {
-				var value_43 bool = has_selection
-				value_42 = value_43
+	var value_11 int32 = TextInput_TextContextCommandPaste()
+	if command == value_11 {
+		if allow_paste {
+			var value_12 bool = allow_delete
+			if value_12 {
+				value_12 = has_selection
 			}
-			decision.DeleteSelection = value_42
-			var value_44 bool = true
-			decision.Paste = value_44
-			var value_45 bool = true
-			decision.CollapseSelection = value_45
+			decision.DeleteSelection = value_12
+			decision.Paste = true
+			decision.CollapseSelection = true
 		}
-		var value_46 TextContextCommandDecision = decision
-		return value_46
+		return decision
 	}
-	var value_47 int32 = command
-	var value_48 int32 = TextInput_TextContextCommandSelectAll()
-	var value_49 bool = value_47 == value_48
-	if value_49 {
-		var value_50 bool = true
-		decision.SelectAll = value_50
-		var value_51 TextContextCommandDecision = decision
-		return value_51
+	var value_13 int32 = TextInput_TextContextCommandSelectAll()
+	if command == value_13 {
+		decision.SelectAll = true
+		return decision
 	}
-	var value_52 TextContextCommandDecision = decision
-	return value_52
+	return decision
 }
 
 func TextInput_TextContextCommandDecisionFor(command int32, has_selection bool, copy_all_when_empty bool, has_text bool, read_only bool) TextContextCommandDecision {
-	var value_0 int32 = command
-	var value_1 bool = has_selection
-	var value_2 bool = copy_all_when_empty
-	var value_3 bool = copy_all_when_empty
-	var value_4 bool = has_text
-	var value_5 bool = true
-	var value_6 bool = read_only
-	var value_7 bool = !value_6
-	var value_8 bool = read_only
-	var value_9 bool = !value_8
-	var value_10 TextContextCommandDecision = TextInput_TextEditCommandDecisionFor(value_0, value_1, value_2, value_3, value_4, value_5, value_7, value_9)
-	return value_10
+	var value_0 bool = !read_only
+	var value_1 bool = !read_only
+	var value_2 TextContextCommandDecision = TextInput_TextEditCommandDecisionFor(command, has_selection, copy_all_when_empty, copy_all_when_empty, has_text, true, value_0, value_1)
+	return value_2
 }
 
 func TextInput_TextShortcutInputFor(modifier bool, select_all bool, copy bool, cut bool, paste bool) TextShortcutInput {
 	var input TextShortcutInput = TextShortcutInput{}
 	var value_0 bool = modifier
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = select_all
+	}
+	input.SelectAll = value_0
+	var value_1 bool = modifier
 	if value_1 {
-		var value_2 bool = select_all
-		value_1 = value_2
+		value_1 = copy
 	}
-	input.SelectAll = value_1
+	input.Copy = value_1
+	var value_2 bool = modifier
+	if value_2 {
+		value_2 = cut
+	}
+	input.Cut = value_2
 	var value_3 bool = modifier
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = copy
-		value_4 = value_5
+	if value_3 {
+		value_3 = paste
 	}
-	input.Copy = value_4
-	var value_6 bool = modifier
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = cut
-		value_7 = value_8
-	}
-	input.Cut = value_7
-	var value_9 bool = modifier
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 bool = paste
-		value_10 = value_11
-	}
-	input.Paste = value_10
-	var value_12 TextShortcutInput = input
-	return value_12
+	input.Paste = value_3
+	return input
 }
 
 func TextInput_TextShortcutShouldClaimSelectionFocus(has_selection bool, focused bool, keyboard_enabled bool, modifier bool, copy_pressed bool, cut_pressed bool, paste_pressed bool) bool {
 	var value_0 bool = has_selection
+	if value_0 {
+		value_0 = !focused
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = focused
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = keyboard_enabled
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = keyboard_enabled
-		value_4 = value_5
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = modifier
 	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = modifier
-		value_6 = value_7
-	}
-	var value_8 bool = value_6
-	if value_8 {
-		var value_9 bool = copy_pressed
-		var value_10 bool = value_9
-		if !value_10 {
-			var value_11 bool = cut_pressed
-			value_10 = value_11
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = copy_pressed
+		if !value_4 {
+			value_4 = cut_pressed
 		}
-		var value_12 bool = value_10
-		if !value_12 {
-			var value_13 bool = paste_pressed
-			value_12 = value_13
+		var value_5 bool = value_4
+		if !value_5 {
+			value_5 = paste_pressed
 		}
-		value_8 = value_12
+		value_3 = value_5
 	}
-	return value_8
+	return value_3
 }
 
 func TextInput_TextDeleteShortcutShouldRun(read_only bool, backspace_pressed bool, delete_pressed bool, queued_backspace_count int32) bool {
-	var value_0 bool = read_only
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = backspace_pressed
-		var value_4 bool = value_3
-		if !value_4 {
-			var value_5 bool = delete_pressed
-			value_4 = value_5
+	var value_0 bool = !read_only
+	if value_0 {
+		var value_1 bool = backspace_pressed
+		if !value_1 {
+			value_1 = delete_pressed
 		}
-		var value_6 bool = value_4
-		if !value_6 {
-			var value_7 int32 = queued_backspace_count
-			var value_8 int32 = 0
-			var value_9 bool = value_7 > value_8
-			value_6 = value_9
+		var value_2 bool = value_1
+		if !value_2 {
+			value_2 = (queued_backspace_count > 0)
 		}
-		value_2 = value_6
+		value_0 = value_2
 	}
-	return value_2
+	return value_0
 }
 
 func TextInput_TextSelectionReplacementShouldRun(read_only bool, handled bool, has_selection bool, modifier bool) bool {
-	var value_0 bool = read_only
-	var value_1 bool = !value_0
+	var value_0 bool = !read_only
+	if value_0 {
+		value_0 = !handled
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = has_selection
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = handled
-		var value_4 bool = !value_3
-		value_2 = value_4
+		value_2 = !modifier
 	}
-	var value_5 bool = value_2
-	if value_5 {
-		var value_6 bool = has_selection
-		value_5 = value_6
-	}
-	var value_7 bool = value_5
-	if value_7 {
-		var value_8 bool = modifier
-		var value_9 bool = !value_8
-		value_7 = value_9
-	}
-	return value_7
+	return value_2
 }
 
 func TextInput_TextNativeEditShouldRun(read_only bool, handled bool) bool {
-	var value_0 bool = read_only
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = handled
-		var value_4 bool = !value_3
-		value_2 = value_4
+	var value_0 bool = !read_only
+	if value_0 {
+		value_0 = !handled
 	}
-	return value_2
+	return value_0
 }
 
 func TextInput_TextCommitAfterHandledShouldRun(read_only bool, handled bool, enter_requested bool) bool {
-	var value_0 bool = read_only
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = handled
-		value_2 = value_3
+	var value_0 bool = !read_only
+	if value_0 {
+		value_0 = handled
 	}
-	var value_4 bool = value_2
-	if value_4 {
-		var value_5 bool = enter_requested
-		value_4 = value_5
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = enter_requested
 	}
-	return value_4
-}
-
-func TextInput_TextNavigationShouldRun(handled bool) bool {
-	var value_0 bool = handled
-	var value_1 bool = !value_0
 	return value_1
 }
 
+func TextInput_TextNavigationShouldRun(handled bool) bool {
+	return !handled
+}
+
 func TextInput_TextAreaEnterNewlineShouldRun(read_only bool, enter_requested bool) bool {
-	var value_0 bool = read_only
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = enter_requested
-		value_2 = value_3
+	var value_0 bool = !read_only
+	if value_0 {
+		value_0 = enter_requested
 	}
-	return value_2
+	return value_0
 }
 
 func TextInput_TextAreaChangedShouldCollapseSelection(changed bool, handled bool) bool {
 	var value_0 bool = changed
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = handled
-		var value_3 bool = !value_2
-		value_1 = value_3
+	if value_0 {
+		value_0 = !handled
 	}
-	return value_1
+	return value_0
 }
 
 func TextInput_TextFieldChangedShouldCollapseSelection(changed bool, left_pressed bool, right_pressed bool, home_pressed bool, end_pressed bool) bool {
 	var value_0 bool = changed
+	if !value_0 {
+		value_0 = left_pressed
+	}
 	var value_1 bool = value_0
 	if !value_1 {
-		var value_2 bool = left_pressed
-		value_1 = value_2
+		value_1 = right_pressed
 	}
-	var value_3 bool = value_1
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = home_pressed
+	}
+	var value_3 bool = value_2
 	if !value_3 {
-		var value_4 bool = right_pressed
-		value_3 = value_4
+		value_3 = end_pressed
 	}
-	var value_5 bool = value_3
-	if !value_5 {
-		var value_6 bool = home_pressed
-		value_5 = value_6
-	}
-	var value_7 bool = value_5
-	if !value_7 {
-		var value_8 bool = end_pressed
-		value_7 = value_8
-	}
-	return value_7
+	return value_3
 }
 
 func TextInput_TextKeyboardShouldRun(focused bool, keyboard_enabled bool) bool {
 	var value_0 bool = focused
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+	if value_0 {
+		value_0 = keyboard_enabled
 	}
-	return value_1
+	return value_0
 }
 
 func TextInput_TextEscapeShouldBlur(focused bool, keyboard_enabled bool, escape_pressed bool) bool {
 	var value_0 bool = focused
+	if value_0 {
+		value_0 = keyboard_enabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+		value_1 = escape_pressed
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = escape_pressed
-		value_3 = value_4
-	}
-	return value_3
+	return value_1
 }
 
 func TextInput_TextOutsideClickShouldBlur(focused bool, context_active bool, scroll_gesture_pending bool) bool {
 	var value_0 bool = focused
+	if value_0 {
+		value_0 = !context_active
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = context_active
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !scroll_gesture_pending
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = scroll_gesture_pending
-		var value_6 bool = !value_5
-		value_4 = value_6
-	}
-	return value_4
+	return value_1
 }
 
 func TextInput_TextSelectionRangeShouldResolve(focused bool, context_active bool, has_selection bool) bool {
 	var value_0 bool = focused
+	if !value_0 {
+		value_0 = context_active
+	}
 	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = context_active
-		value_1 = value_2
+	if value_1 {
+		value_1 = has_selection
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = has_selection
-		value_3 = value_4
-	}
-	return value_3
+	return value_1
 }
 
 func TextInput_TextCompositionDisplayShouldRun(secure bool) bool {
-	var value_0 bool = secure
-	var value_1 bool = !value_0
-	return value_1
+	return !secure
 }
 
 func TextInput_TextEditCommitShouldRun(enter_pressed bool, queued_enter_count int32) bool {
 	var value_0 bool = enter_pressed
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 int32 = queued_enter_count
-		var value_3 int32 = 0
-		var value_4 bool = value_2 > value_3
-		value_1 = value_4
+	if !value_0 {
+		value_0 = (queued_enter_count > 0)
 	}
-	return value_1
+	return value_0
 }
 
 func TextInput_TextAreaScrollbarShouldShow(has_scroll_storage bool, max_scroll int32) bool {
 	var value_0 bool = has_scroll_storage
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 int32 = max_scroll
-		var value_3 int32 = 0
-		var value_4 bool = value_2 > value_3
-		value_1 = value_4
+	if value_0 {
+		value_0 = (max_scroll > 0)
 	}
-	return value_1
+	return value_0
 }
 
 func TextInput_TextAreaWheelShouldScroll(mouse_inside bool, captured bool, modifier bool) bool {
 	var value_0 bool = mouse_inside
+	if value_0 {
+		value_0 = !captured
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = captured
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !modifier
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = modifier
-		var value_6 bool = !value_5
-		value_4 = value_6
-	}
-	return value_4
+	return value_1
 }
 
 func TextInput_TextAreaRevealCursorShouldRun(focused bool, changed bool, navigation_pressed bool) bool {
 	var value_0 bool = focused
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = changed
-		var value_3 bool = value_2
-		if !value_3 {
-			var value_4 bool = navigation_pressed
-			value_3 = value_4
+	if value_0 {
+		var value_1 bool = changed
+		if !value_1 {
+			value_1 = navigation_pressed
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	return value_1
+	return value_0
 }
 
 func TextInput_TextAreaRevealScroll(scroll int32, cursor_y int32, cursor_height int32, viewport_height int32) int32 {
-	var value_0 int32 = cursor_y
-	var value_1 int32 = scroll
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = cursor_y
-		return value_3
+	if cursor_y < scroll {
+		return cursor_y
 	}
-	var value_4 int32 = cursor_y
-	var value_5 int32 = cursor_height
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-	var value_7 int32 = scroll
-	var value_8 int32 = viewport_height
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-	var value_10 bool = value_6 > value_9
-	if value_10 {
-		var value_11 int32 = cursor_y
-		var value_12 int32 = cursor_height
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
-		var value_14 int32 = viewport_height
-		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-		return value_15
+	var value_0 bool = (int32(number_runtime_bits(uint64(cursor_y), uint64(cursor_height), 32, true, 1))) > (int32(number_runtime_bits(uint64(scroll), uint64(viewport_height), 32, true, 1)))
+	if value_0 {
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(cursor_y), uint64(cursor_height), 32, true, 1)))), uint64(viewport_height), 32, true, 2))
+		return value_1
 	}
-	var value_16 int32 = scroll
-	return value_16
+	return scroll
 }
 
 func TextInput_TextAreaScrollFor(scroll int32, max_scroll int32) int32 {
-	var value_0 int32 = max_scroll
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		max_scroll = value_3
+	if max_scroll < 0 {
+		max_scroll = 0
 	}
-	var value_4 int32 = scroll
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if scroll < 0 {
+		return 0
 	}
-	var value_8 int32 = scroll
-	var value_9 int32 = max_scroll
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = max_scroll
-		return value_11
+	if scroll > max_scroll {
+		return max_scroll
 	}
-	var value_12 int32 = scroll
-	return value_12
+	return scroll
 }
 
 func TextInput_TextFieldRevealCursorShouldRun(focused bool) bool {
-	var value_0 bool = focused
-	return value_0
+	return focused
 }
 
 func TextInput_TextFieldContextShouldRegister(secure bool) bool {
-	var value_0 bool = secure
-	var value_1 bool = !value_0
-	return value_1
+	return !secure
 }
 
 func TextInput_TextNavNone() int32 {
-	var value_0 int32 = 0
-	return value_0
+	return 0
 }
 
 func TextInput_TextNavLeft() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func TextInput_TextNavRight() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func TextInput_TextNavHome() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func TextInput_TextNavEnd() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func TextInput_TextNavUp() int32 {
-	var value_0 int32 = 5
-	return value_0
+	return 5
 }
 
 func TextInput_TextNavDown() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func TextInput_TextNavPageUp() int32 {
-	var value_0 int32 = 7
-	return value_0
+	return 7
 }
 
 func TextInput_TextNavPageDown() int32 {
-	var value_0 int32 = 8
-	return value_0
+	return 8
 }
 
 func TextInput_TextNavigationKeyFor(multiline bool, left bool, right bool, home bool, end bool, up bool, down bool, page_up bool, page_down bool) int32 {
-	var value_0 bool = left
-	if value_0 {
-		var value_1 int32 = TextInput_TextNavLeft()
+	if left {
+		var value_0 int32 = TextInput_TextNavLeft()
+		return value_0
+	}
+	if right {
+		var value_1 int32 = TextInput_TextNavRight()
 		return value_1
 	}
-	var value_2 bool = right
-	if value_2 {
-		var value_3 int32 = TextInput_TextNavRight()
+	if home {
+		var value_2 int32 = TextInput_TextNavHome()
+		return value_2
+	}
+	if end {
+		var value_3 int32 = TextInput_TextNavEnd()
 		return value_3
 	}
-	var value_4 bool = home
+	var value_4 bool = multiline
 	if value_4 {
-		var value_5 int32 = TextInput_TextNavHome()
+		value_4 = up
+	}
+	if value_4 {
+		var value_5 int32 = TextInput_TextNavUp()
 		return value_5
 	}
-	var value_6 bool = end
+	var value_6 bool = multiline
 	if value_6 {
-		var value_7 int32 = TextInput_TextNavEnd()
+		value_6 = down
+	}
+	if value_6 {
+		var value_7 int32 = TextInput_TextNavDown()
 		return value_7
 	}
 	var value_8 bool = multiline
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = up
-		value_9 = value_10
+	if value_8 {
+		value_8 = page_up
 	}
-	if value_9 {
-		var value_11 int32 = TextInput_TextNavUp()
+	if value_8 {
+		var value_9 int32 = TextInput_TextNavPageUp()
+		return value_9
+	}
+	var value_10 bool = multiline
+	if value_10 {
+		value_10 = page_down
+	}
+	if value_10 {
+		var value_11 int32 = TextInput_TextNavPageDown()
 		return value_11
 	}
-	var value_12 bool = multiline
-	var value_13 bool = value_12
-	if value_13 {
-		var value_14 bool = down
-		value_13 = value_14
-	}
-	if value_13 {
-		var value_15 int32 = TextInput_TextNavDown()
-		return value_15
-	}
-	var value_16 bool = multiline
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = page_up
-		value_17 = value_18
-	}
-	if value_17 {
-		var value_19 int32 = TextInput_TextNavPageUp()
-		return value_19
-	}
-	var value_20 bool = multiline
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 bool = page_down
-		value_21 = value_22
-	}
-	if value_21 {
-		var value_23 int32 = TextInput_TextNavPageDown()
-		return value_23
-	}
-	var value_24 int32 = TextInput_TextNavNone()
-	return value_24
+	var value_12 int32 = TextInput_TextNavNone()
+	return value_12
 }
 
 func TextInput_TextBackspaceRepeatFor(pressed bool, down bool, now float64, next_repeat_at float64) TextBackspaceRepeat {
 	var result TextBackspaceRepeat = TextBackspaceRepeat{}
-	var value_0 bool = pressed
-	if value_0 {
-		var value_1 int32 = 1
-		result.Count = value_1
-		var value_2 float64 = now
-		var value_3 float64 = 0.34
-		var value_4 float64 = value_2 + value_3
-		result.NextRepeatAt = value_4
-		var value_5 TextBackspaceRepeat = result
-		return value_5
+	if pressed {
+		result.Count = 1
+		result.NextRepeatAt = (now + 0.34)
+		return result
 	}
-	var value_6 bool = down
-	var value_7 bool = !value_6
-	if value_7 {
-		var value_8 float64 = 0.0
-		result.NextRepeatAt = value_8
-		var value_9 TextBackspaceRepeat = result
-		return value_9
+	if !down {
+		result.NextRepeatAt = 0.0
+		return result
 	}
-	var value_10 float64 = next_repeat_at
-	var value_11 float64 = 0.0
-	var value_12 bool = value_10 <= value_11
-	if value_12 {
-		var value_13 float64 = now
-		var value_14 float64 = 0.34
-		var value_15 float64 = value_13 + value_14
-		result.NextRepeatAt = value_15
-		var value_16 TextBackspaceRepeat = result
-		return value_16
+	if next_repeat_at <= 0.0 {
+		result.NextRepeatAt = (now + 0.34)
+		return result
 	}
-	var value_17 int32 = 0
-	var count int32 = value_17
-	var value_18 float64 = next_repeat_at
-	var cursor float64 = value_18
+	var count int32 = 0
+	var cursor float64 = next_repeat_at
 	for {
-		var value_19 float64 = now
-		var value_20 float64 = cursor
-		var value_21 bool = value_19 >= value_20
-		var value_22 bool = value_21
-		if value_22 {
-			var value_23 int32 = count
-			var value_24 int32 = 8
-			var value_25 bool = value_23 < value_24
-			value_22 = value_25
+		var value_0 bool = (now >= cursor)
+		if value_0 {
+			value_0 = (count < 8)
 		}
-		if !value_22 {
+		if !value_0 {
 			break
 		}
-		var value_26 int32 = count
-		var value_27 int32 = 1
-		count = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
-		var value_28 float64 = cursor
-		var value_29 float64 = 0.045
-		cursor = value_28 + value_29
+		var value_1 int32 = count
+		count = int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1))
+		var value_2 float64 = cursor
+		cursor = value_2 + 0.045
 	}
-	var value_30 int32 = count
-	result.Count = value_30
-	var value_31 float64 = cursor
-	result.NextRepeatAt = value_31
-	var value_32 TextBackspaceRepeat = result
-	return value_32
+	result.Count = count
+	result.NextRepeatAt = cursor
+	return result
 }
 
 func TextInput_TextDeleteNone() int32 {
-	var value_0 int32 = 0
-	return value_0
+	return 0
 }
 
 func TextInput_TextDeleteBackspace() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func TextInput_TextDeleteForward() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func TextInput_TextInputMetric(fields uint32, field uint32, value int32, fallback int32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 int32 = value
-		var value_8 int32 = 0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0)
 	}
-	if value_6 {
-		var value_10 int32 = fallback
-		return value_10
+	if value_1 {
+		return fallback
 	}
-	var value_11 int32 = value
-	return value_11
+	return value
 }
 
 func TextInput_TextInputScaledMetric(value float32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var metric int32 = value_7
-	var value_8 int32 = metric
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		return value_11
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_0
+	if metric < 0 {
+		return 0
 	}
-	var value_12 int32 = metric
-	return value_12
+	return metric
 }
 
 func TextInput_TextInputRoundScaledMetric(value float32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = 0.5
-	var value_6 float32 = value_4 + value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var value_8 float32 = float32(value_7)
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 float32 = 0.5
-	var value_12 float32 = value_10 + value_11
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	var metric int32 = value_13
-	var value_14 int32 = metric
-	var value_15 int32 = 0
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 int32 = 0
-		return value_17
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value+0.5)), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((float32(value_0)*scale)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_1
+	if metric < 0 {
+		return 0
 	}
-	var value_18 int32 = metric
-	return value_18
+	return metric
 }
 
 func TextInput_TextInputRequestedFieldsFor(fields uint32, padding_x int32, padding_y int32, line_gap int32) uint32 {
-	var value_0 uint32 = fields
-	var requested uint32 = value_0
-	var value_1 int32 = padding_x
-	var value_2 int32 = 0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 uint32 = requested
-		var value_5 int32 = int32(StylePaddingX)
-		var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-		var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 9))
-		requested = value_7
+	var requested uint32 = fields
+	if padding_x > 0 {
+		var value_0 uint32 = uint32(number_runtime_bits(uint64(requested), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))), 32, false, 9))
+		requested = value_0
 	}
-	var value_8 int32 = padding_y
-	var value_9 int32 = 0
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 uint32 = requested
-		var value_12 int32 = int32(StylePaddingY)
-		var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-		var value_14 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_13), 32, false, 9))
-		requested = value_14
+	if padding_y > 0 {
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(requested), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))), 32, false, 9))
+		requested = value_1
 	}
-	var value_15 int32 = line_gap
-	var value_16 int32 = 0
-	var value_17 bool = value_15 >= value_16
-	if value_17 {
-		var value_18 uint32 = requested
-		var value_19 int32 = int32(StyleGap)
-		var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-		var value_21 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(value_20), 32, false, 9))
-		requested = value_21
+	if line_gap >= 0 {
+		var value_2 uint32 = uint32(number_runtime_bits(uint64(requested), uint64(uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))), 32, false, 9))
+		requested = value_2
 	}
-	var value_22 uint32 = requested
-	return value_22
+	return requested
 }
 
 func TextInput_TextInputResolvedMetric(requested_fields uint32, field uint32, requested_value int32, resolved_fields uint32, resolved_value float32, scale float32, unset_value int32) int32 {
-	var value_0 uint32 = requested_fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	if value_5 {
-		var value_6 int32 = requested_value
-		var value_7 int32 = 0
-		var value_8 bool = value_6 < value_7
-		if value_8 {
-			var value_9 int32 = 0
-			return value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(requested_fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	if value_0 {
+		if requested_value < 0 {
+			return 0
 		}
-		var value_10 int32 = requested_value
-		return value_10
+		return requested_value
 	}
-	var value_11 uint32 = resolved_fields
-	var value_12 uint32 = field
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, false, 8))
-	var value_14 int32 = 0
-	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
-	var value_16 bool = value_13 != value_15
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 float32 = resolved_value
-		var value_19 float32 = 0.0
-		var value_20 bool = value_18 >= value_19
-		value_17 = value_20
+	var value_1 bool = (uint32(number_runtime_bits(uint64(resolved_fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = (resolved_value >= 0.0)
 	}
-	if value_17 {
-		var value_21 float32 = resolved_value
-		var value_22 float32 = scale
-		var value_23 int32 = TextInput_TextInputRoundScaledMetric(value_21, value_22)
-		return value_23
+	if value_2 {
+		var value_3 int32 = TextInput_TextInputRoundScaledMetric(resolved_value, scale)
+		return value_3
 	}
-	var value_24 int32 = unset_value
-	return value_24
+	return unset_value
 }
 
 func TextInput_TextInputResolvedStyleFor(fields uint32, padding_x int32, padding_y int32, line_gap int32, radius float32, resolved_fields uint32, resolved_padding_x float32, resolved_padding_y float32, resolved_gap float32, resolved_radius float32, scale float32) TextInputResolvedStyle {
 	var style TextInputResolvedStyle = TextInputResolvedStyle{}
-	var value_0 uint32 = fields
-	var value_1 int32 = padding_x
-	var value_2 int32 = padding_y
-	var value_3 int32 = line_gap
-	var value_4 uint32 = TextInput_TextInputRequestedFieldsFor(value_0, value_1, value_2, value_3)
-	var requested_fields uint32 = value_4
-	var value_5 uint32 = requested_fields
-	var value_6 uint32 = resolved_fields
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, false, 9))
-	style.Fields = value_7
-	var value_8 uint32 = requested_fields
-	var value_9 int32 = int32(StylePaddingX)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 int32 = padding_x
-	var value_12 uint32 = resolved_fields
-	var value_13 float32 = resolved_padding_x
-	var value_14 float32 = scale
-	var value_15 int32 = padding_x
-	var value_16 int32 = TextInput_TextInputResolvedMetric(value_8, value_10, value_11, value_12, value_13, value_14, value_15)
-	style.PaddingX = value_16
-	var value_17 uint32 = requested_fields
-	var value_18 int32 = int32(StylePaddingY)
-	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
-	var value_20 int32 = padding_y
-	var value_21 uint32 = resolved_fields
-	var value_22 float32 = resolved_padding_y
-	var value_23 float32 = scale
-	var value_24 int32 = padding_y
-	var value_25 int32 = TextInput_TextInputResolvedMetric(value_17, value_19, value_20, value_21, value_22, value_23, value_24)
-	style.PaddingY = value_25
-	var value_26 uint32 = requested_fields
-	var value_27 int32 = int32(StyleGap)
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-	var value_29 int32 = line_gap
-	var value_30 uint32 = resolved_fields
-	var value_31 float32 = resolved_gap
-	var value_32 float32 = scale
-	var value_33 int32 = -1
-	var value_34 int32 = TextInput_TextInputResolvedMetric(value_26, value_28, value_29, value_30, value_31, value_32, value_33)
-	style.LineGap = value_34
-	var value_35 float32 = radius
-	style.Radius = value_35
-	var value_36 uint32 = fields
-	var value_37 int32 = int32(StyleRadius)
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
-	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(value_38), 32, false, 8))
-	var value_40 int32 = 0
-	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 bool = value_39 == value_41
-	var value_43 bool = value_42
-	if !value_43 {
-		var value_44 float32 = radius
-		var value_45 float32 = 0.0
-		var value_46 bool = value_44 < value_45
-		value_43 = value_46
+	var value_0 uint32 = TextInput_TextInputRequestedFieldsFor(fields, padding_x, padding_y, line_gap)
+	var requested_fields uint32 = value_0
+	style.Fields = (uint32(number_runtime_bits(uint64(requested_fields), uint64(resolved_fields), 32, false, 9)))
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 int32 = TextInput_TextInputResolvedMetric(requested_fields, value_1, padding_x, resolved_fields, resolved_padding_x, scale, padding_x)
+	style.PaddingX = value_2
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_4 int32 = TextInput_TextInputResolvedMetric(requested_fields, value_3, padding_y, resolved_fields, resolved_padding_y, scale, padding_y)
+	style.PaddingY = value_4
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_6 int32 = -1
+	var value_7 int32 = TextInput_TextInputResolvedMetric(requested_fields, value_5, line_gap, resolved_fields, resolved_gap, scale, value_6)
+	style.LineGap = value_7
+	style.Radius = radius
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleRadius)), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_9 bool = (value_8 == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	if !value_9 {
+		value_9 = (radius < 0.0)
 	}
-	if value_43 {
-		var value_47 float32 = resolved_radius
-		style.Radius = value_47
+	if value_9 {
+		style.Radius = resolved_radius
 	}
-	var value_48 TextInputResolvedStyle = style
-	return value_48
+	return style
 }
 
 func TextInput_TextInputDefaultPaddingX(scale float32) int32 {
 	var value_0 float32 = 10.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextInputDefaultPaddingY(scale float32) int32 {
 	var value_0 float32 = 8.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextAreaMinWrapWidth(scale float32) int32 {
 	var value_0 float32 = 24.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextAreaScrollbarWidthFor(scale float32) int32 {
 	var value_0 float32 = 12.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextAreaMaxScrollFor(content_height int32, bounds_height float32, padding_y int32) int32 {
-	var value_0 float32 = bounds_height
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = padding_y
-	var value_3 int32 = 2
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_4), 32, true, 2))
-	var viewport_height int32 = value_5
-	var value_6 int32 = content_height
-	var value_7 int32 = viewport_height
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-	var max_scroll int32 = value_8
-	var value_9 int32 = max_scroll
-	var value_10 int32 = 0
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 0
-		return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(padding_y), uint64(2), 32, true, 3)))), 32, true, 2))
+	var viewport_height int32 = value_1
+	var max_scroll int32 = (int32(number_runtime_bits(uint64(content_height), uint64(viewport_height), 32, true, 2)))
+	if max_scroll < 0 {
+		return 0
 	}
-	var value_13 int32 = max_scroll
-	return value_13
+	return max_scroll
 }
 
 func TextInput_TextAreaWheelScrollFor(scroll int32, wheel float32, line_height int32) int32 {
-	var value_0 int32 = scroll
-	var value_1 float32 = wheel
-	var value_2 int32 = line_height
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 * value_3
-	var value_5 float32 = 3.0
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_7), 32, true, 2))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((wheel*float32(line_height))*3.0)), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(scroll), uint64(value_0), 32, true, 2)))
 }
 
 func TextInput_TextAreaDragScrollFor(scroll int32, mouse_y int32, bounds_y float32, bounds_height float32, padding_y int32, line_height int32) int32 {
-	var value_0 int32 = scroll
-	var next int32 = value_0
-	var value_1 int32 = mouse_y
-	var value_2 float32 = bounds_y
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 int32 = padding_y
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
-	var value_6 bool = value_1 < value_5
-	if value_6 {
-		var value_7 int32 = next
-		var value_8 int32 = line_height
-		next = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
+	var next int32 = scroll
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_y), 32, true)), uint64(0), 32, true, 0))
+	if mouse_y < (int32(number_runtime_bits(uint64(value_0), uint64(padding_y), 32, true, 1))) {
+		var value_1 int32 = next
+		next = int32(number_runtime_bits(uint64(value_1), uint64(line_height), 32, true, 2))
 	}
-	var value_9 int32 = mouse_y
-	var value_10 float32 = bounds_y
-	var value_11 float32 = bounds_height
-	var value_12 float32 = value_10 + value_11
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	var value_14 int32 = padding_y
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-	var value_16 bool = value_9 > value_15
-	if value_16 {
-		var value_17 int32 = next
-		var value_18 int32 = line_height
-		next = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1))
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds_y+bounds_height)), 32, true)), uint64(0), 32, true, 0))
+	if mouse_y > (int32(number_runtime_bits(uint64(value_2), uint64(padding_y), 32, true, 2))) {
+		var value_3 int32 = next
+		next = int32(number_runtime_bits(uint64(value_3), uint64(line_height), 32, true, 1))
 	}
-	var value_19 int32 = next
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = 0
-		return value_22
+	if next < 0 {
+		return 0
 	}
-	var value_23 int32 = next
-	return value_23
+	return next
 }
 
 func TextInput_TextAreaGutterMetricsFor(scale float32) TextAreaGutterMetrics {
 	var metrics TextAreaGutterMetrics = TextAreaGutterMetrics{}
 	var value_0 float32 = 10.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	metrics.TopInset = value_2
-	var value_3 float32 = 2.0
-	var value_4 float32 = scale
-	var value_5 int32 = TextInput_TextInputScaledMetric(value_3, value_4)
-	metrics.ActiveYInset = value_5
-	var value_6 float32 = 6.0
-	var value_7 float32 = scale
-	var value_8 int32 = TextInput_TextInputScaledMetric(value_6, value_7)
-	metrics.LabelXInset = value_8
-	var value_9 float32 = 10.0
-	var value_10 float32 = scale
-	var value_11 int32 = TextInput_TextInputScaledMetric(value_9, value_10)
-	metrics.LabelFont = value_11
-	var value_12 int32 = 3
-	metrics.ExtraRows = value_12
-	var value_13 TextAreaGutterMetrics = metrics
-	return value_13
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	metrics.TopInset = value_1
+	var value_2 float32 = 2.0
+	var value_3 int32 = TextInput_TextInputScaledMetric(value_2, scale)
+	metrics.ActiveYInset = value_3
+	var value_4 float32 = 6.0
+	var value_5 int32 = TextInput_TextInputScaledMetric(value_4, scale)
+	metrics.LabelXInset = value_5
+	var value_6 float32 = 10.0
+	var value_7 int32 = TextInput_TextInputScaledMetric(value_6, scale)
+	metrics.LabelFont = value_7
+	metrics.ExtraRows = 3
+	return metrics
 }
 
 func TextInput_TextAreaGutterRowsFor(bounds_height float32, line_height int32, metrics TextAreaGutterMetrics) int32 {
-	var value_0 int32 = line_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if line_height <= 0 {
+		return 0
 	}
-	var value_4 float32 = bounds_height
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var value_6 int32 = line_height
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 4))
-	var value_8 int32 = metrics.ExtraRows
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-	var rows int32 = value_9
-	var value_10 int32 = rows
-	var value_11 int32 = 0
-	var value_12 bool = value_10 < value_11
-	if value_12 {
-		var value_13 int32 = 0
-		return value_13
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_0), uint64(line_height), 32, true, 4)))), uint64(metrics.ExtraRows), 32, true, 1))
+	var rows int32 = value_1
+	if rows < 0 {
+		return 0
 	}
-	var value_14 int32 = rows
-	return value_14
+	return rows
 }
 
 func TextInput_TextAreaGutterFirstY(gutter_y float32, scroll_y int32, line_height int32, metrics TextAreaGutterMetrics) int32 {
-	var value_0 int32 = line_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = gutter_y
-		var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-		var value_5 int32 = metrics.TopInset
-		var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-		return value_6
+	if line_height <= 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(gutter_y), 32, true)), uint64(0), 32, true, 0))
+		return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.TopInset), 32, true, 1)))
 	}
-	var value_7 float32 = gutter_y
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	var value_9 int32 = metrics.TopInset
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var value_11 int32 = scroll_y
-	var value_12 int32 = line_height
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 5))
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 2))
-	return value_14
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(gutter_y), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_1), uint64(metrics.TopInset), 32, true, 1)))), uint64((int32(number_runtime_bits(uint64(scroll_y), uint64(line_height), 32, true, 5)))), 32, true, 2))
+	return value_2
 }
 
 func TextInput_TextAreaGutterInactiveAlpha(alpha uint8) uint8 {
-	var value_0 uint8 = alpha
-	var value_1 float32 = float32(value_0)
-	var value_2 float32 = 0.62
-	var value_3 float32 = value_1 * value_2
-	var value_4 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 8, false)), uint64(0), 8, false, 0))
-	return value_4
+	var value_0 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64((float32(alpha)*0.62)), 8, false)), uint64(0), 8, false, 0))
+	return value_0
 }
 
 func TextInput_TextFieldRevealMargin(scale float32) int32 {
 	var value_0 float32 = 8.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextInputDoubleClickSlopFor(scale float32) int32 {
 	var value_0 float32 = 6.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextInputDoubleClickMaxSeconds() float32 {
-	var value_0 float32 = 0.45
-	return value_0
+	return 0.45
 }
 
 func TextInput_TextInputDoubleClickDecisionFor(same_owner bool, same_id bool, elapsed_seconds float32, dx int32, dy int32, slop int32) TextInputDoubleClickDecision {
 	var decision TextInputDoubleClickDecision = TextInputDoubleClickDecision{}
-	var value_0 int32 = slop
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		slop = value_3
+	if slop < 0 {
+		slop = 0
 	}
-	var value_4 int32 = dx
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = dx
-		var value_8 int32 = int32(number_runtime_bits(uint64(0), uint64(value_7), 32, true, 2))
-		dx = value_8
+	if dx < 0 {
+		dx = int32(number_runtime_bits(uint64(0), uint64(dx), 32, true, 2))
 	}
-	var value_9 int32 = dy
-	var value_10 int32 = 0
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = dy
-		var value_13 int32 = int32(number_runtime_bits(uint64(0), uint64(value_12), 32, true, 2))
-		dy = value_13
+	if dy < 0 {
+		dy = int32(number_runtime_bits(uint64(0), uint64(dy), 32, true, 2))
 	}
-	var value_14 bool = same_owner
-	var value_15 bool = value_14
-	if value_15 {
-		var value_16 bool = same_id
-		value_15 = value_16
+	var value_0 bool = same_owner
+	if value_0 {
+		value_0 = same_id
 	}
-	var value_17 bool = value_15
-	if value_17 {
-		var value_18 float32 = elapsed_seconds
-		var value_19 float32 = TextInput_TextInputDoubleClickMaxSeconds()
-		var value_20 bool = value_18 <= value_19
-		value_17 = value_20
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 float32 = TextInput_TextInputDoubleClickMaxSeconds()
+		value_1 = (elapsed_seconds <= value_2)
 	}
-	var value_21 bool = value_17
-	if value_21 {
-		var value_22 int32 = dx
-		var value_23 int32 = slop
-		var value_24 bool = value_22 <= value_23
-		value_21 = value_24
+	var value_3 bool = value_1
+	if value_3 {
+		value_3 = (dx <= slop)
 	}
-	var value_25 bool = value_21
-	if value_25 {
-		var value_26 int32 = dy
-		var value_27 int32 = slop
-		var value_28 bool = value_26 <= value_27
-		value_25 = value_28
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = (dy <= slop)
 	}
-	decision.DoubleClick = value_25
-	var value_29 TextInputDoubleClickDecision = decision
-	return value_29
+	decision.DoubleClick = value_4
+	return decision
 }
 
 func TextInput_TextFieldPanDragThresholdFor(scale float32) int32 {
 	var value_0 float32 = 5.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextFieldPanDecisionFor(already_panning bool, dx int32, dy int32, threshold int32) TextFieldPanDecision {
 	var decision TextFieldPanDecision = TextFieldPanDecision{}
-	var value_0 int32 = threshold
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		threshold = value_3
+	if threshold < 0 {
+		threshold = 0
 	}
-	var value_4 int32 = dx
-	var abs_dx int32 = value_4
-	var value_5 int32 = dy
-	var abs_dy int32 = value_5
-	var value_6 int32 = abs_dx
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = abs_dx
-		var value_10 int32 = int32(number_runtime_bits(uint64(0), uint64(value_9), 32, true, 2))
-		abs_dx = value_10
+	var abs_dx int32 = dx
+	var abs_dy int32 = dy
+	if abs_dx < 0 {
+		abs_dx = int32(number_runtime_bits(uint64(0), uint64(abs_dx), 32, true, 2))
 	}
-	var value_11 int32 = abs_dy
-	var value_12 int32 = 0
-	var value_13 bool = value_11 < value_12
-	if value_13 {
-		var value_14 int32 = abs_dy
-		var value_15 int32 = int32(number_runtime_bits(uint64(0), uint64(value_14), 32, true, 2))
-		abs_dy = value_15
+	if abs_dy < 0 {
+		abs_dy = int32(number_runtime_bits(uint64(0), uint64(abs_dy), 32, true, 2))
 	}
-	var value_16 bool = already_panning
-	var value_17 bool = value_16
-	if !value_17 {
-		var value_18 int32 = abs_dx
-		var value_19 int32 = threshold
-		var value_20 bool = value_18 > value_19
-		var value_21 bool = value_20
-		if value_21 {
-			var value_22 int32 = abs_dx
-			var value_23 int32 = abs_dy
-			var value_24 bool = value_22 >= value_23
-			value_21 = value_24
+	var value_0 bool = already_panning
+	if !value_0 {
+		var value_1 bool = (abs_dx > threshold)
+		if value_1 {
+			value_1 = (abs_dx >= abs_dy)
 		}
-		value_17 = value_21
+		value_0 = value_1
 	}
-	decision.Pan = value_17
-	var value_25 TextFieldPanDecision = decision
-	return value_25
+	decision.Pan = value_0
+	return decision
 }
 
 func TextInput_TextFieldMinCursorHeight(scale float32) int32 {
 	var value_0 float32 = 8.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextFieldCursorVerticalPadding(scale float32) int32 {
 	var value_0 float32 = 8.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func TextInput_TextFieldClipGuard(scale float32) int32 {
 	var value_0 float32 = 1.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	var clip_guard int32 = value_2
-	var value_3 int32 = clip_guard
-	var value_4 int32 = 1
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 1
-		return value_6
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	var clip_guard int32 = value_1
+	if clip_guard < 1 {
+		return 1
 	}
-	var value_7 int32 = clip_guard
-	return value_7
+	return clip_guard
 }
 
 func TextInput_TextInputStrokeWidth(scale float32) int32 {
 	var value_0 float32 = 2.0
-	var value_1 float32 = scale
-	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
-	var width int32 = value_2
-	var value_3 int32 = width
-	var value_4 int32 = 1
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 1
-		return value_6
+	var value_1 int32 = TextInput_TextInputScaledMetric(value_0, scale)
+	var width int32 = value_1
+	if width < 1 {
+		return 1
 	}
-	var value_7 int32 = width
-	return value_7
+	return width
 }
 
 func TextInput_TextInputMetricsFor(fields uint32, font int32, padding_x int32, padding_y int32, line_gap int32, default_font int32, default_padding_x int32, default_padding_y int32, default_line_gap int32) TextInputMetrics {
 	var metrics TextInputMetrics = TextInputMetrics{}
-	var value_0 int32 = font
-	metrics.Font = value_0
-	var value_1 int32 = metrics.Font
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = default_font
-		metrics.Font = value_4
+	metrics.Font = font
+	if metrics.Font <= 0 {
+		metrics.Font = default_font
 	}
-	var value_5 uint32 = fields
-	var value_6 int32 = int32(StylePaddingX)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 int32 = padding_x
-	var value_9 int32 = default_padding_x
-	var value_10 int32 = TextInput_TextInputMetric(value_5, value_7, value_8, value_9)
-	metrics.PaddingX = value_10
-	var value_11 uint32 = fields
-	var value_12 int32 = int32(StylePaddingY)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 int32 = padding_y
-	var value_15 int32 = default_padding_y
-	var value_16 int32 = TextInput_TextInputMetric(value_11, value_13, value_14, value_15)
-	metrics.PaddingY = value_16
-	var value_17 uint32 = fields
-	var value_18 int32 = int32(StyleGap)
-	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
-	var value_20 int32 = line_gap
-	var value_21 int32 = default_line_gap
-	var value_22 int32 = TextInput_TextInputMetric(value_17, value_19, value_20, value_21)
-	metrics.LineGap = value_22
-	var value_23 int32 = metrics.Font
-	var value_24 int32 = metrics.LineGap
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
-	metrics.LineHeight = value_25
-	var value_26 int32 = metrics.LineHeight
-	var value_27 int32 = 0
-	var value_28 bool = value_26 <= value_27
-	if value_28 {
-		var value_29 int32 = 1
-		metrics.LineHeight = value_29
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_1 int32 = TextInput_TextInputMetric(fields, value_0, padding_x, default_padding_x)
+	metrics.PaddingX = value_1
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_3 int32 = TextInput_TextInputMetric(fields, value_2, padding_y, default_padding_y)
+	metrics.PaddingY = value_3
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_5 int32 = TextInput_TextInputMetric(fields, value_4, line_gap, default_line_gap)
+	metrics.LineGap = value_5
+	metrics.LineHeight = (int32(number_runtime_bits(uint64(metrics.Font), uint64(metrics.LineGap), 32, true, 1)))
+	if metrics.LineHeight <= 0 {
+		metrics.LineHeight = 1
 	}
-	var value_30 TextInputMetrics = metrics
-	return value_30
+	return metrics
 }
 
 func TextInput_TextInputContentWidth(bounds_width float32, padding_x int32) int32 {
-	var value_0 float32 = bounds_width
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = padding_x
-	var value_3 int32 = 2
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_4), 32, true, 2))
-	var width int32 = value_5
-	var value_6 int32 = width
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = 0
-		return value_9
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_width), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(padding_x), uint64(2), 32, true, 3)))), 32, true, 2))
+	var width int32 = value_1
+	if width < 0 {
+		return 0
 	}
-	var value_10 int32 = width
-	return value_10
+	return width
 }
 
 func TextInput_TextAreaPageRows(bounds_height float32, font int32, line_gap int32, padding_y int32) int32 {
-	var value_0 int32 = font
-	var value_1 int32 = line_gap
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var line_height int32 = value_2
-	var value_3 float32 = bounds_height
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	var value_5 int32 = padding_y
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 2))
-	var visible_height int32 = value_8
-	var value_9 int32 = line_height
-	var value_10 int32 = 0
-	var value_11 bool = value_9 <= value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 int32 = visible_height
-		var value_14 int32 = line_height
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
+	var line_height int32 = (int32(number_runtime_bits(uint64(font), uint64(line_gap), 32, true, 1)))
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(padding_y), uint64(2), 32, true, 3)))), 32, true, 2))
+	var visible_height int32 = value_1
+	var value_2 bool = (line_height <= 0)
+	if !value_2 {
+		value_2 = (visible_height < line_height)
 	}
-	if value_12 {
-		var value_16 int32 = 1
-		return value_16
+	if value_2 {
+		return 1
 	}
-	var value_17 int32 = visible_height
-	var value_18 int32 = line_height
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 4))
-	var rows int32 = value_19
-	var value_20 int32 = rows
-	var value_21 int32 = 1
-	var value_22 bool = value_20 < value_21
-	if value_22 {
-		var value_23 int32 = 1
-		return value_23
+	var rows int32 = (int32(number_runtime_bits(uint64(visible_height), uint64(line_height), 32, true, 4)))
+	if rows < 1 {
+		return 1
 	}
-	var value_24 int32 = rows
-	var value_25 int32 = 2
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 int32 = 2
-		return value_27
+	if rows < 2 {
+		return 2
 	}
-	var value_28 int32 = rows
-	return value_28
+	return rows
 }
 
 func TextInput_TextAreaWrapWidthFor(bounds_width float32, padding_x int32, wrap bool, min_wrap_width int32) int32 {
-	var value_0 bool = wrap
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 int32 = 0
-		return value_2
+	if !wrap {
+		return 0
 	}
-	var value_3 float32 = bounds_width
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	var value_5 int32 = padding_x
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 2))
-	var width int32 = value_8
-	var value_9 int32 = width
-	var value_10 int32 = min_wrap_width
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 0
-		return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_width), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(padding_x), uint64(2), 32, true, 3)))), 32, true, 2))
+	var width int32 = value_1
+	if width < min_wrap_width {
+		return 0
 	}
-	var value_13 int32 = width
-	return value_13
+	return width
 }
 
 func TextInput_TextAreaPaintFor(bounds Rectangle, font int32, line_gap int32, padding_x int32, padding_y int32, wrap bool, content_height int32, scroll_y int32, text_line_height int32, min_wrap_width int32) TextAreaPaint {
 	var paint TextAreaPaint = TextAreaPaint{}
-	var value_0 int32 = font
-	var value_1 int32 = line_gap
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var line_height int32 = value_2
-	var value_3 float32 = bounds.Height
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	var value_5 int32 = padding_y
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 2))
-	paint.ViewportHeight = value_8
-	var value_9 int32 = paint.ViewportHeight
-	var value_10 int32 = 0
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 0
-		paint.ViewportHeight = value_12
+	var line_height int32 = (int32(number_runtime_bits(uint64(font), uint64(line_gap), 32, true, 1)))
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(padding_y), uint64(2), 32, true, 3)))), 32, true, 2))
+	paint.ViewportHeight = value_1
+	if paint.ViewportHeight < 0 {
+		paint.ViewportHeight = 0
 	}
-	var value_13 int32 = content_height
-	var value_14 float32 = bounds.Height
-	var value_15 int32 = padding_y
-	var value_16 int32 = TextInput_TextAreaMaxScrollFor(value_13, value_14, value_15)
-	paint.MaxScroll = value_16
-	var value_17 int32 = scroll_y
-	var value_18 int32 = paint.MaxScroll
-	var value_19 int32 = TextInput_TextAreaScrollFor(value_17, value_18)
-	paint.ScrollY = value_19
-	var value_20 float32 = bounds.Width
-	var value_21 int32 = padding_x
-	var value_22 bool = wrap
-	var value_23 int32 = min_wrap_width
-	var value_24 int32 = TextInput_TextAreaWrapWidthFor(value_20, value_21, value_22, value_23)
-	paint.WrapWidth = value_24
-	var value_25 float32 = bounds.X
-	var value_26 int32 = padding_x
-	var value_27 float32 = float32(value_26)
-	var value_28 float32 = value_25 + value_27
-	paint.ClipBounds.X = value_28
-	var value_29 float32 = bounds.Y
-	var value_30 int32 = padding_y
-	var value_31 float32 = float32(value_30)
-	var value_32 float32 = value_29 + value_31
-	paint.ClipBounds.Y = value_32
-	var value_33 float32 = bounds.Width
-	var value_34 int32 = padding_x
-	var value_35 int32 = 2
-	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 3))
-	var value_37 float32 = float32(value_36)
-	var value_38 float32 = value_33 - value_37
-	paint.ClipBounds.Width = value_38
-	var value_39 float32 = bounds.Height
-	var value_40 int32 = padding_y
-	var value_41 int32 = 2
-	var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 3))
-	var value_43 float32 = float32(value_42)
-	var value_44 float32 = value_39 - value_43
-	paint.ClipBounds.Height = value_44
-	var value_45 float32 = paint.ClipBounds.Width
-	var value_46 float32 = 0.0
-	var value_47 bool = value_45 < value_46
-	if value_47 {
-		var value_48 float32 = 0.0
-		paint.ClipBounds.Width = value_48
+	var value_2 float32 = bounds.Height
+	var value_3 int32 = TextInput_TextAreaMaxScrollFor(content_height, value_2, padding_y)
+	paint.MaxScroll = value_3
+	var value_4 int32 = paint.MaxScroll
+	var value_5 int32 = TextInput_TextAreaScrollFor(scroll_y, value_4)
+	paint.ScrollY = value_5
+	var value_6 float32 = bounds.Width
+	var value_7 int32 = TextInput_TextAreaWrapWidthFor(value_6, padding_x, wrap, min_wrap_width)
+	paint.WrapWidth = value_7
+	paint.ClipBounds.X = (bounds.X + float32(padding_x))
+	paint.ClipBounds.Y = (bounds.Y + float32(padding_y))
+	paint.ClipBounds.Width = (bounds.Width - float32((int32(number_runtime_bits(uint64(padding_x), uint64(2), 32, true, 3)))))
+	paint.ClipBounds.Height = (bounds.Height - float32((int32(number_runtime_bits(uint64(padding_y), uint64(2), 32, true, 3)))))
+	if paint.ClipBounds.Width < 0.0 {
+		paint.ClipBounds.Width = 0.0
 	}
-	var value_49 float32 = paint.ClipBounds.Height
-	var value_50 float32 = 0.0
-	var value_51 bool = value_49 < value_50
-	if value_51 {
-		var value_52 float32 = 0.0
-		paint.ClipBounds.Height = value_52
+	if paint.ClipBounds.Height < 0.0 {
+		paint.ClipBounds.Height = 0.0
 	}
-	var value_53 float32 = bounds.X
-	var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
-	var value_55 int32 = padding_x
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 1))
-	paint.PlaceholderX = value_56
-	var value_57 float32 = bounds.Y
-	var value_58 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_57), 32, true)), uint64(0), 32, true, 0))
-	var value_59 int32 = padding_y
-	var value_60 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_59), 32, true, 1))
-	var value_61 int32 = line_height
-	var value_62 int32 = text_line_height
-	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 2))
-	var value_64 int32 = 2
-	var value_65 int32 = int32(number_runtime_bits(uint64(value_63), uint64(value_64), 32, true, 4))
-	var value_66 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_65), 32, true, 1))
-	paint.PlaceholderY = value_66
-	var value_67 TextAreaPaint = paint
-	return value_67
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	paint.PlaceholderX = (int32(number_runtime_bits(uint64(value_8), uint64(padding_x), 32, true, 1)))
+	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_10 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(line_height), uint64(text_line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	var value_11 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_9), uint64(padding_y), 32, true, 1)))), uint64(value_10), 32, true, 1))
+	paint.PlaceholderY = value_11
+	return paint
 }
 
 func TextInput_TextInputBufferLimit(text_size int32, max_codepoints int32) int32 {
-	var value_0 int32 = text_size
-	var value_1 int32 = 1
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var limit int32 = value_2
-	var value_3 int32 = max_codepoints
-	var value_4 int32 = 0
-	var value_5 bool = value_3 > value_4
-	var value_6 bool = value_5
-	if value_6 {
-		var value_7 int32 = max_codepoints
-		var value_8 int32 = limit
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var limit int32 = (int32(number_runtime_bits(uint64(text_size), uint64(1), 32, true, 2)))
+	var value_0 bool = (max_codepoints > 0)
+	if value_0 {
+		value_0 = (max_codepoints < limit)
 	}
-	if value_6 {
-		var value_10 int32 = max_codepoints
-		limit = value_10
+	if value_0 {
+		limit = max_codepoints
 	}
-	var value_11 int32 = limit
-	var value_12 int32 = 0
-	var value_13 bool = value_11 < value_12
-	if value_13 {
-		var value_14 int32 = 0
-		return value_14
+	if limit < 0 {
+		return 0
 	}
-	var value_15 int32 = limit
-	return value_15
+	return limit
 }
 
 func TextInput_TextFieldScrollFor(bounds_x float32, bounds_width float32, padding_x int32, text_width int32, scroll int32) TextFieldScroll {
 	var result TextFieldScroll = TextFieldScroll{}
-	var value_0 float32 = bounds_width
-	var value_1 int32 = padding_x
-	var value_2 int32 = TextInput_TextInputContentWidth(value_0, value_1)
-	result.ClipWidth = value_2
-	var value_3 int32 = text_width
-	var value_4 int32 = result.ClipWidth
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	result.MaxScroll = value_5
-	var value_6 int32 = result.MaxScroll
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = 0
-		result.MaxScroll = value_9
+	var value_0 int32 = TextInput_TextInputContentWidth(bounds_width, padding_x)
+	result.ClipWidth = value_0
+	result.MaxScroll = (int32(number_runtime_bits(uint64(text_width), uint64(result.ClipWidth), 32, true, 2)))
+	if result.MaxScroll < 0 {
+		result.MaxScroll = 0
 	}
-	var value_10 int32 = scroll
-	var value_11 int32 = 0
-	var value_12 bool = value_10 < value_11
-	if value_12 {
-		var value_13 int32 = 0
-		result.Scroll = value_13
+	if scroll < 0 {
+		result.Scroll = 0
 	} else {
-		var value_14 int32 = scroll
-		var value_15 int32 = result.MaxScroll
-		var value_16 bool = value_14 > value_15
-		if value_16 {
-			var value_17 int32 = result.MaxScroll
-			result.Scroll = value_17
+		if scroll > result.MaxScroll {
+			result.Scroll = result.MaxScroll
 		} else {
-			var value_18 int32 = scroll
-			result.Scroll = value_18
+			result.Scroll = scroll
 		}
 	}
-	var value_19 float32 = bounds_x
-	var value_20 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_19), 32, true)), uint64(0), 32, true, 0))
-	var value_21 int32 = padding_x
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
-	var value_23 int32 = result.Scroll
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 2))
-	result.TextOriginX = value_24
-	var value_25 TextFieldScroll = result
-	return value_25
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_x), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_1), uint64(padding_x), 32, true, 1)))), uint64(result.Scroll), 32, true, 2))
+	result.TextOriginX = value_2
+	return result
 }
 
 func TextInput_TextFieldRevealScroll(scroll int32, max_scroll int32, clip_width int32, cursor_text_x int32, margin int32) int32 {
-	var value_0 int32 = margin
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		margin = value_3
+	if margin < 0 {
+		margin = 0
 	}
-	var value_4 int32 = cursor_text_x
-	var value_5 int32 = scroll
-	var value_6 int32 = margin
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 1))
-	var value_8 bool = value_4 < value_7
-	if value_8 {
-		var value_9 int32 = cursor_text_x
-		var value_10 int32 = margin
-		var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
-		scroll = value_11
+	if cursor_text_x < (int32(number_runtime_bits(uint64(scroll), uint64(margin), 32, true, 1))) {
+		scroll = (int32(number_runtime_bits(uint64(cursor_text_x), uint64(margin), 32, true, 2)))
 	}
-	var value_12 int32 = cursor_text_x
-	var value_13 int32 = scroll
-	var value_14 int32 = clip_width
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
-	var value_16 int32 = margin
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 2))
-	var value_18 bool = value_12 > value_17
-	if value_18 {
-		var value_19 int32 = cursor_text_x
-		var value_20 int32 = clip_width
-		var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 2))
-		var value_22 int32 = margin
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
-		scroll = value_23
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(scroll), uint64(clip_width), 32, true, 1)))), uint64(margin), 32, true, 2))
+	if cursor_text_x > value_0 {
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(cursor_text_x), uint64(clip_width), 32, true, 2)))), uint64(margin), 32, true, 1))
+		scroll = value_1
 	}
-	var value_24 int32 = scroll
-	var value_25 int32 = 0
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 int32 = 0
-		return value_27
+	if scroll < 0 {
+		return 0
 	}
-	var value_28 int32 = scroll
-	var value_29 int32 = max_scroll
-	var value_30 bool = value_28 > value_29
-	if value_30 {
-		var value_31 int32 = max_scroll
-		return value_31
+	if scroll > max_scroll {
+		return max_scroll
 	}
-	var value_32 int32 = scroll
-	return value_32
+	return scroll
 }
 
 func TextInput_TextFieldCursorHeightFor(font int32, bounds_height float32, text_line_height int32, min_height int32, vertical_padding int32) int32 {
-	var value_0 int32 = text_line_height
-	var height int32 = value_0
-	var value_1 float32 = bounds_height
-	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_1), 32, true)), uint64(0), 32, true, 0))
-	var value_3 int32 = vertical_padding
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 2))
-	var max_height int32 = value_4
-	var value_5 int32 = height
-	var value_6 int32 = font
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = font
-		height = value_8
+	var height int32 = text_line_height
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+	var max_height int32 = (int32(number_runtime_bits(uint64(value_0), uint64(vertical_padding), 32, true, 2)))
+	if height < font {
+		height = font
 	}
-	var value_9 int32 = max_height
-	var value_10 int32 = min_height
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 float32 = bounds_height
-		var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-		max_height = value_13
+	if max_height < min_height {
+		var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_height), 32, true)), uint64(0), 32, true, 0))
+		max_height = value_1
 	}
-	var value_14 int32 = height
-	var value_15 int32 = max_height
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 int32 = max_height
-		height = value_17
+	if height > max_height {
+		height = max_height
 	}
-	var value_18 int32 = height
-	var value_19 int32 = min_height
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 int32 = min_height
-		height = value_21
+	if height < min_height {
+		height = min_height
 	}
-	var value_22 int32 = height
-	return value_22
+	return height
 }
 
 func TextInput_TextFieldPaintFor(bounds Rectangle, padding_x int32, scroll_x int32, font int32, text_line_height int32, min_cursor_height int32, cursor_vertical_padding int32, clip_guard int32) TextFieldPaint {
 	var paint TextFieldPaint = TextFieldPaint{}
 	var value_0 float32 = bounds.Width
-	var value_1 int32 = padding_x
-	var value_2 int32 = TextInput_TextInputContentWidth(value_0, value_1)
-	var clip_width int32 = value_2
-	var value_3 float32 = bounds.X
-	var value_4 int32 = padding_x
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_3 + value_5
-	paint.ClipBounds.X = value_6
-	var value_7 float32 = bounds.Y
-	var value_8 int32 = clip_guard
-	var value_9 float32 = float32(value_8)
-	var value_10 float32 = value_7 - value_9
-	paint.ClipBounds.Y = value_10
-	var value_11 int32 = clip_width
-	var value_12 float32 = float32(value_11)
-	paint.ClipBounds.Width = value_12
-	var value_13 float32 = bounds.Height
-	var value_14 int32 = clip_guard
-	var value_15 int32 = 2
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 3))
-	var value_17 float32 = float32(value_16)
-	var value_18 float32 = value_13 + value_17
-	paint.ClipBounds.Height = value_18
-	var value_19 float32 = paint.ClipBounds.Height
-	var value_20 float32 = 0.0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 float32 = 0.0
-		paint.ClipBounds.Height = value_22
+	var value_1 int32 = TextInput_TextInputContentWidth(value_0, padding_x)
+	var clip_width int32 = value_1
+	paint.ClipBounds.X = (bounds.X + float32(padding_x))
+	paint.ClipBounds.Y = (bounds.Y - float32(clip_guard))
+	paint.ClipBounds.Width = float32(clip_width)
+	paint.ClipBounds.Height = (bounds.Height + float32((int32(number_runtime_bits(uint64(clip_guard), uint64(2), 32, true, 3)))))
+	if paint.ClipBounds.Height < 0.0 {
+		paint.ClipBounds.Height = 0.0
 	}
-	var value_23 float32 = bounds.X
-	var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-	var value_25 int32 = padding_x
-	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 1))
-	var value_27 int32 = scroll_x
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
-	paint.TextX = value_28
-	var value_29 int32 = font
-	var value_30 float32 = bounds.Height
-	var value_31 int32 = text_line_height
-	var value_32 int32 = min_cursor_height
-	var value_33 int32 = cursor_vertical_padding
-	var value_34 int32 = TextInput_TextFieldCursorHeightFor(value_29, value_30, value_31, value_32, value_33)
-	paint.CursorHeight = value_34
-	var value_35 float32 = bounds.Y
-	var value_36 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_35), 32, true)), uint64(0), 32, true, 0))
-	var value_37 float32 = bounds.Height
-	var value_38 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_37), 32, true)), uint64(0), 32, true, 0))
-	var value_39 int32 = paint.CursorHeight
-	var value_40 int32 = int32(number_runtime_bits(uint64(value_38), uint64(value_39), 32, true, 2))
-	var value_41 int32 = 2
-	var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 4))
-	var value_43 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_42), 32, true, 1))
-	paint.CursorY = value_43
-	var value_44 TextFieldPaint = paint
-	return value_44
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_2), uint64(padding_x), 32, true, 1)))), uint64(scroll_x), 32, true, 2))
+	paint.TextX = value_3
+	var value_4 float32 = bounds.Height
+	var value_5 int32 = TextInput_TextFieldCursorHeightFor(font, value_4, text_line_height, min_cursor_height, cursor_vertical_padding)
+	paint.CursorHeight = value_5
+	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_7), uint64(paint.CursorHeight), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.CursorY = (int32(number_runtime_bits(uint64(value_6), uint64(value_8), 32, true, 1)))
+	return paint
 }
 
 func TextInput_TextSelectionRangeFor(anchor int32, cursor int32) TextSelectionRange {
 	var out TextSelectionRange = TextSelectionRange{}
-	var value_0 int32 = anchor
-	var value_1 int32 = cursor
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = anchor
-		out.Start = value_3
-		var value_4 int32 = cursor
-		out.End = value_4
+	if anchor < cursor {
+		out.Start = anchor
+		out.End = cursor
 	} else {
-		var value_5 int32 = cursor
-		out.Start = value_5
-		var value_6 int32 = anchor
-		out.End = value_6
+		out.Start = cursor
+		out.End = anchor
 	}
-	var value_7 int32 = out.Start
-	var value_8 int32 = out.End
-	var value_9 bool = value_7 != value_8
-	out.HasSelection = value_9
-	var value_10 TextSelectionRange = out
-	return value_10
+	out.HasSelection = (out.Start != out.End)
+	return out
 }
 
 func TextInput_TextSelectionRangeForLength(anchor int32, cursor int32, length int32) TextSelectionRange {
-	var value_0 int32 = anchor
-	var value_1 int32 = cursor
-	var value_2 TextSelectionRange = TextInput_TextSelectionRangeFor(value_0, value_1)
-	var out TextSelectionRange = value_2
-	var value_3 int32 = length
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 0
-		length = value_6
+	var value_0 TextSelectionRange = TextInput_TextSelectionRangeFor(anchor, cursor)
+	var out TextSelectionRange = value_0
+	if length < 0 {
+		length = 0
 	}
-	var value_7 int32 = out.Start
-	var value_8 int32 = 0
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 int32 = 0
-		out.Start = value_10
+	if out.Start < 0 {
+		out.Start = 0
 	}
-	var value_11 int32 = out.End
-	var value_12 int32 = 0
-	var value_13 bool = value_11 < value_12
-	if value_13 {
-		var value_14 int32 = 0
-		out.End = value_14
+	if out.End < 0 {
+		out.End = 0
 	}
-	var value_15 int32 = out.Start
-	var value_16 int32 = length
-	var value_17 bool = value_15 > value_16
-	if value_17 {
-		var value_18 int32 = length
-		out.Start = value_18
+	if out.Start > length {
+		out.Start = length
 	}
-	var value_19 int32 = out.End
-	var value_20 int32 = length
-	var value_21 bool = value_19 > value_20
-	if value_21 {
-		var value_22 int32 = length
-		out.End = value_22
+	if out.End > length {
+		out.End = length
 	}
-	var value_23 int32 = out.Start
-	var value_24 int32 = out.End
-	var value_25 bool = value_23 != value_24
-	out.HasSelection = value_25
-	var value_26 TextSelectionRange = out
-	return value_26
+	out.HasSelection = (out.Start != out.End)
+	return out
 }
 
 func TextInput_TextCursorForLength(cursor int32, length int32) int32 {
-	var value_0 int32 = length
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		length = value_3
+	if length < 0 {
+		length = 0
 	}
-	var value_4 int32 = cursor
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if cursor < 0 {
+		return 0
 	}
-	var value_8 int32 = cursor
-	var value_9 int32 = length
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = length
-		return value_11
+	if cursor > length {
+		return length
 	}
-	var value_12 int32 = cursor
-	return value_12
+	return cursor
 }
 
 func TextInput_TextSelectionAfterMove(anchor int32, cursor int32, target int32, extend bool) TextSelectionState {
 	var out TextSelectionState = TextSelectionState{}
-	var value_0 bool = extend
-	if value_0 {
-		var value_1 int32 = anchor
-		var value_2 int32 = cursor
-		var value_3 bool = value_1 == value_2
-		if value_3 {
-			var value_4 int32 = cursor
-			out.Anchor = value_4
+	if extend {
+		if anchor == cursor {
+			out.Anchor = cursor
 		} else {
-			var value_5 int32 = anchor
-			out.Anchor = value_5
+			out.Anchor = anchor
 		}
-		var value_6 int32 = target
-		out.Cursor = value_6
+		out.Cursor = target
 	} else {
-		var value_7 int32 = target
-		out.Anchor = value_7
-		var value_8 int32 = target
-		out.Cursor = value_8
+		out.Anchor = target
+		out.Cursor = target
 	}
-	var value_9 int32 = out.Anchor
-	var value_10 int32 = out.Cursor
-	var value_11 bool = value_9 != value_10
-	out.HasSelection = value_11
-	var value_12 TextSelectionState = out
-	return value_12
+	out.HasSelection = (out.Anchor != out.Cursor)
+	return out
 }
 
 func TextInput_TextSelectionCollapsed(cursor int32) TextSelectionState {
 	var out TextSelectionState = TextSelectionState{}
-	var value_0 int32 = cursor
-	out.Anchor = value_0
-	var value_1 int32 = cursor
-	out.Cursor = value_1
-	var value_2 bool = false
-	out.HasSelection = value_2
-	var value_3 TextSelectionState = out
-	return value_3
+	out.Anchor = cursor
+	out.Cursor = cursor
+	out.HasSelection = false
+	return out
 }
 
 func TextInput_TextSelectionAll(length int32) TextSelectionState {
 	var out TextSelectionState = TextSelectionState{}
-	var value_0 int32 = length
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		length = value_3
+	if length < 0 {
+		length = 0
 	}
-	var value_4 int32 = 0
-	out.Anchor = value_4
-	var value_5 int32 = length
-	out.Cursor = value_5
-	var value_6 int32 = length
-	var value_7 int32 = 0
-	var value_8 bool = value_6 > value_7
-	out.HasSelection = value_8
-	var value_9 TextSelectionState = out
-	return value_9
+	out.Anchor = 0
+	out.Cursor = length
+	out.HasSelection = (length > 0)
+	return out
 }
 
 func TextInput_TextBufferLineStartCursor(cursor int32) int32 {
-	var value_0 int32 = cursor
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if cursor < 0 {
+		return 0
 	}
-	var value_4 int32 = cursor
-	return value_4
+	return cursor
 }
 
 func TextInput_TextBufferInsertDecisionFor(text_size int32, used int32, at int32, insert_len int32) TextBufferInsertDecision {
 	var decision TextBufferInsertDecision = TextBufferInsertDecision{}
-	var value_0 int32 = text_size
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
+	var value_0 bool = (text_size <= 0)
+	if !value_0 {
+		value_0 = (used < 0)
+	}
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (at < 0)
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (at > used)
+	}
 	var value_3 bool = value_2
 	if !value_3 {
-		var value_4 int32 = used
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+		value_3 = (insert_len <= 0)
 	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 int32 = at
-		var value_9 int32 = 0
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
+	if value_3 {
+		return decision
 	}
-	var value_11 bool = value_7
-	if !value_11 {
-		var value_12 int32 = at
-		var value_13 int32 = used
-		var value_14 bool = value_12 > value_13
-		value_11 = value_14
+	if (int32(number_runtime_bits(uint64(used), uint64(insert_len), 32, true, 1))) >= text_size {
+		return decision
 	}
-	var value_15 bool = value_11
-	if !value_15 {
-		var value_16 int32 = insert_len
-		var value_17 int32 = 0
-		var value_18 bool = value_16 <= value_17
-		value_15 = value_18
-	}
-	if value_15 {
-		var value_19 TextBufferInsertDecision = decision
-		return value_19
-	}
-	var value_20 int32 = used
-	var value_21 int32 = insert_len
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
-	var value_23 int32 = text_size
-	var value_24 bool = value_22 >= value_23
-	if value_24 {
-		var value_25 TextBufferInsertDecision = decision
-		return value_25
-	}
-	var value_26 bool = true
-	decision.CanInsert = value_26
-	var value_27 int32 = used
-	var value_28 int32 = at
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
-	var value_30 int32 = 1
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
-	decision.TailCount = value_31
-	var value_32 TextBufferInsertDecision = decision
-	return value_32
+	decision.CanInsert = true
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(used), uint64(at), 32, true, 2)))), uint64(1), 32, true, 1))
+	decision.TailCount = value_4
+	return decision
 }
 
 func TextInput_TextBufferDeleteDecisionFor(used int32, at int32, delete_len int32) TextBufferDeleteDecision {
 	var decision TextBufferDeleteDecision = TextBufferDeleteDecision{}
-	var value_0 int32 = used
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = at
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+	var value_0 bool = (used < 0)
+	if !value_0 {
+		value_0 = (at < 0)
 	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 int32 = delete_len
-		var value_9 int32 = 0
-		var value_10 bool = value_8 <= value_9
-		value_7 = value_10
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (delete_len <= 0)
 	}
-	var value_11 bool = value_7
-	if !value_11 {
-		var value_12 int32 = at
-		var value_13 int32 = delete_len
-		var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-		var value_15 int32 = used
-		var value_16 bool = value_14 > value_15
-		value_11 = value_16
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = ((int32(number_runtime_bits(uint64(at), uint64(delete_len), 32, true, 1))) > used)
 	}
-	if value_11 {
-		var value_17 TextBufferDeleteDecision = decision
-		return value_17
+	if value_2 {
+		return decision
 	}
-	var value_18 bool = true
-	decision.CanDelete = value_18
-	var value_19 int32 = used
-	var value_20 int32 = at
-	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 2))
-	var value_22 int32 = delete_len
-	var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
-	var value_24 int32 = 1
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
-	decision.TailCount = value_25
-	var value_26 TextBufferDeleteDecision = decision
-	return value_26
+	decision.CanDelete = true
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(used), uint64(at), 32, true, 2)))), uint64(delete_len), 32, true, 2))
+	decision.TailCount = (int32(number_runtime_bits(uint64(value_3), uint64(1), 32, true, 1)))
+	return decision
 }
 
 func TextInput_TextBufferDeleteRangeDecisionFor(used int32, start int32, end int32) TextBufferDeleteRangeDecision {
 	var decision TextBufferDeleteRangeDecision = TextBufferDeleteRangeDecision{}
-	var value_0 int32 = used
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 TextBufferDeleteRangeDecision = decision
-		return value_3
+	if used < 0 {
+		return decision
 	}
-	var value_4 int32 = start
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		start = value_7
+	if start < 0 {
+		start = 0
 	}
-	var value_8 int32 = end
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		end = value_11
+	if end < 0 {
+		end = 0
 	}
-	var value_12 int32 = start
-	var value_13 int32 = used
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = used
-		start = value_15
+	if start > used {
+		start = used
 	}
-	var value_16 int32 = end
-	var value_17 int32 = used
-	var value_18 bool = value_16 > value_17
-	if value_18 {
-		var value_19 int32 = used
-		end = value_19
+	if end > used {
+		end = used
 	}
-	var value_20 int32 = end
-	var value_21 int32 = start
-	var value_22 bool = value_20 <= value_21
-	if value_22 {
-		var value_23 TextBufferDeleteRangeDecision = decision
-		return value_23
+	if end <= start {
+		return decision
 	}
-	var value_24 bool = true
-	decision.CanDelete = value_24
-	var value_25 int32 = start
-	decision.Start = value_25
-	var value_26 int32 = end
-	decision.End = value_26
-	var value_27 int32 = start
-	decision.Cursor = value_27
-	var value_28 int32 = used
-	var value_29 int32 = end
-	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 2))
-	var value_31 int32 = 1
-	var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 1))
-	decision.TailCount = value_32
-	var value_33 TextBufferDeleteRangeDecision = decision
-	return value_33
+	decision.CanDelete = true
+	decision.Start = start
+	decision.End = end
+	decision.Cursor = start
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(used), uint64(end), 32, true, 2)))), uint64(1), 32, true, 1))
+	decision.TailCount = value_0
+	return decision
 }
 
 func TextInput_TextBufferCursorAfterInsert(cursor int32, at int32, insert_len int32) int32 {
-	var value_0 int32 = cursor
-	var value_1 int32 = at
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 int32 = cursor
-		var value_4 int32 = insert_len
-		var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
-		return value_5
+	if cursor >= at {
+		return (int32(number_runtime_bits(uint64(cursor), uint64(insert_len), 32, true, 1)))
 	}
-	var value_6 int32 = cursor
-	return value_6
+	return cursor
 }
 
 func TextInput_TextBufferCursorAfterDelete(cursor int32, at int32, delete_len int32) int32 {
-	var value_0 int32 = cursor
-	var value_1 int32 = at
-	var value_2 int32 = delete_len
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	var value_4 bool = value_0 >= value_3
-	if value_4 {
-		var value_5 int32 = cursor
-		var value_6 int32 = delete_len
-		var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-		return value_7
+	if cursor >= (int32(number_runtime_bits(uint64(at), uint64(delete_len), 32, true, 1))) {
+		return (int32(number_runtime_bits(uint64(cursor), uint64(delete_len), 32, true, 2)))
 	}
-	var value_8 int32 = cursor
-	var value_9 int32 = at
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = at
-		return value_11
+	if cursor > at {
+		return at
 	}
-	var value_12 int32 = cursor
-	return value_12
+	return cursor
 }
 
 func TextInput_TextBufferBracketCursorFor(cursor int32, length int32) int32 {
-	var value_0 int32 = length
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if length <= 0 {
+		return -1
 	}
-	var value_4 int32 = cursor
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if cursor < 0 {
+		return 0
 	}
-	var value_8 int32 = cursor
-	var value_9 int32 = length
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = length
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		return value_13
+	if cursor >= length {
+		return (int32(number_runtime_bits(uint64(length), uint64(1), 32, true, 2)))
 	}
-	var value_14 int32 = cursor
-	return value_14
+	return cursor
 }
 
 func TextInput_TextBufferBracketCandidatePos(cursor int32, current_is_bracket bool) int32 {
-	var value_0 int32 = cursor
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = current_is_bracket
-		var value_5 bool = !value_4
-		value_3 = value_5
+	var value_0 bool = (cursor > 0)
+	if value_0 {
+		value_0 = !current_is_bracket
 	}
-	if value_3 {
-		var value_6 int32 = cursor
-		var value_7 int32 = 1
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-		return value_8
+	if value_0 {
+		return (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 2)))
 	}
-	var value_9 int32 = cursor
-	return value_9
+	return cursor
 }
 
 func TextInput_TextBufferBracketDecisionFor(pos int32, bracket_code int32) TextBufferBracketDecision {
 	var decision TextBufferBracketDecision = TextBufferBracketDecision{}
-	var value_0 int32 = pos
-	decision.Pos = value_0
-	var value_1 int32 = bracket_code
-	var value_2 int32 = 40
-	var value_3 bool = value_1 == value_2
-	if value_3 {
-		var value_4 bool = true
-		decision.Valid = value_4
-		var value_5 int32 = 40
-		decision.Open = value_5
-		var value_6 int32 = 41
-		decision.Close = value_6
-		var value_7 int32 = 1
-		decision.Direction = value_7
-		var value_8 TextBufferBracketDecision = decision
-		return value_8
+	decision.Pos = pos
+	if bracket_code == 40 {
+		decision.Valid = true
+		decision.Open = 40
+		decision.Close = 41
+		decision.Direction = 1
+		return decision
 	}
-	var value_9 int32 = bracket_code
-	var value_10 int32 = 91
-	var value_11 bool = value_9 == value_10
-	if value_11 {
-		var value_12 bool = true
-		decision.Valid = value_12
-		var value_13 int32 = 91
-		decision.Open = value_13
-		var value_14 int32 = 93
-		decision.Close = value_14
-		var value_15 int32 = 1
-		decision.Direction = value_15
-		var value_16 TextBufferBracketDecision = decision
-		return value_16
+	if bracket_code == 91 {
+		decision.Valid = true
+		decision.Open = 91
+		decision.Close = 93
+		decision.Direction = 1
+		return decision
 	}
-	var value_17 int32 = bracket_code
-	var value_18 int32 = 123
-	var value_19 bool = value_17 == value_18
-	if value_19 {
-		var value_20 bool = true
-		decision.Valid = value_20
-		var value_21 int32 = 123
-		decision.Open = value_21
-		var value_22 int32 = 125
-		decision.Close = value_22
-		var value_23 int32 = 1
-		decision.Direction = value_23
-		var value_24 TextBufferBracketDecision = decision
-		return value_24
+	if bracket_code == 123 {
+		decision.Valid = true
+		decision.Open = 123
+		decision.Close = 125
+		decision.Direction = 1
+		return decision
 	}
-	var value_25 int32 = bracket_code
-	var value_26 int32 = 41
-	var value_27 bool = value_25 == value_26
-	if value_27 {
-		var value_28 bool = true
-		decision.Valid = value_28
-		var value_29 int32 = 40
-		decision.Open = value_29
-		var value_30 int32 = 41
-		decision.Close = value_30
-		var value_31 int32 = -1
-		decision.Direction = value_31
-		var value_32 TextBufferBracketDecision = decision
-		return value_32
+	if bracket_code == 41 {
+		decision.Valid = true
+		decision.Open = 40
+		decision.Close = 41
+		decision.Direction = -1
+		return decision
 	}
-	var value_33 int32 = bracket_code
-	var value_34 int32 = 93
-	var value_35 bool = value_33 == value_34
-	if value_35 {
-		var value_36 bool = true
-		decision.Valid = value_36
-		var value_37 int32 = 91
-		decision.Open = value_37
-		var value_38 int32 = 93
-		decision.Close = value_38
-		var value_39 int32 = -1
-		decision.Direction = value_39
-		var value_40 TextBufferBracketDecision = decision
-		return value_40
+	if bracket_code == 93 {
+		decision.Valid = true
+		decision.Open = 91
+		decision.Close = 93
+		decision.Direction = -1
+		return decision
 	}
-	var value_41 int32 = bracket_code
-	var value_42 int32 = 125
-	var value_43 bool = value_41 == value_42
-	if value_43 {
-		var value_44 bool = true
-		decision.Valid = value_44
-		var value_45 int32 = 123
-		decision.Open = value_45
-		var value_46 int32 = 125
-		decision.Close = value_46
-		var value_47 int32 = -1
-		decision.Direction = value_47
-		var value_48 TextBufferBracketDecision = decision
-		return value_48
+	if bracket_code == 125 {
+		decision.Valid = true
+		decision.Open = 123
+		decision.Close = 125
+		decision.Direction = -1
+		return decision
 	}
-	var value_49 TextBufferBracketDecision = decision
-	return value_49
+	return decision
 }
 
 func TextInput_TextNavigationDecisionFor(key int32, multiline bool, shift bool, modifier bool, secure bool, has_selection bool) TextNavigationDecision {
 	var decision TextNavigationDecision = TextNavigationDecision{}
-	var value_0 bool = shift
-	decision.ExtendSelection = value_0
-	var value_1 int32 = key
-	var value_2 int32 = TextInput_TextNavLeft()
-	var value_3 bool = value_1 == value_2
-	if value_3 {
-		var value_4 bool = true
-		decision.Consumed = value_4
-		var value_5 bool = shift
-		var value_6 bool = !value_5
-		var value_7 bool = value_6
-		if value_7 {
-			var value_8 bool = has_selection
-			value_7 = value_8
+	decision.ExtendSelection = shift
+	var value_0 int32 = TextInput_TextNavLeft()
+	if key == value_0 {
+		decision.Consumed = true
+		var value_1 bool = !shift
+		if value_1 {
+			value_1 = has_selection
 		}
-		if value_7 {
-			var value_9 bool = true
-			decision.CollapseSelectionStart = value_9
+		if value_1 {
+			decision.CollapseSelectionStart = true
 		} else {
-			var value_10 bool = modifier
-			var value_11 bool = value_10
-			if value_11 {
-				var value_12 bool = secure
-				value_11 = value_12
+			var value_2 bool = modifier
+			if value_2 {
+				value_2 = secure
 			}
-			if value_11 {
-				var value_13 int32 = -1
-				decision.DocumentEdge = value_13
+			if value_2 {
+				decision.DocumentEdge = -1
 			} else {
-				var value_14 bool = modifier
-				if value_14 {
-					var value_15 int32 = -1
-					decision.WordDirection = value_15
+				if modifier {
+					decision.WordDirection = -1
 				} else {
-					var value_16 int32 = -1
-					decision.CharDirection = value_16
+					decision.CharDirection = -1
 				}
 			}
 		}
-		var value_17 TextNavigationDecision = decision
-		return value_17
+		return decision
 	}
-	var value_18 int32 = key
-	var value_19 int32 = TextInput_TextNavRight()
-	var value_20 bool = value_18 == value_19
-	if value_20 {
-		var value_21 bool = true
-		decision.Consumed = value_21
-		var value_22 bool = shift
-		var value_23 bool = !value_22
-		var value_24 bool = value_23
-		if value_24 {
-			var value_25 bool = has_selection
-			value_24 = value_25
+	var value_3 int32 = TextInput_TextNavRight()
+	if key == value_3 {
+		decision.Consumed = true
+		var value_4 bool = !shift
+		if value_4 {
+			value_4 = has_selection
 		}
-		if value_24 {
-			var value_26 bool = true
-			decision.CollapseSelectionEnd = value_26
+		if value_4 {
+			decision.CollapseSelectionEnd = true
 		} else {
-			var value_27 bool = modifier
-			var value_28 bool = value_27
-			if value_28 {
-				var value_29 bool = secure
-				value_28 = value_29
+			var value_5 bool = modifier
+			if value_5 {
+				value_5 = secure
 			}
-			if value_28 {
-				var value_30 int32 = 1
-				decision.DocumentEdge = value_30
+			if value_5 {
+				decision.DocumentEdge = 1
 			} else {
-				var value_31 bool = modifier
-				if value_31 {
-					var value_32 int32 = 1
-					decision.WordDirection = value_32
+				if modifier {
+					decision.WordDirection = 1
 				} else {
-					var value_33 int32 = 1
-					decision.CharDirection = value_33
+					decision.CharDirection = 1
 				}
 			}
 		}
-		var value_34 TextNavigationDecision = decision
-		return value_34
+		return decision
 	}
-	var value_35 int32 = key
-	var value_36 int32 = TextInput_TextNavHome()
-	var value_37 bool = value_35 == value_36
-	if value_37 {
-		var value_38 bool = true
-		decision.Consumed = value_38
-		var value_39 bool = multiline
-		var value_40 bool = value_39
-		if value_40 {
-			var value_41 bool = modifier
-			var value_42 bool = !value_41
-			value_40 = value_42
+	var value_6 int32 = TextInput_TextNavHome()
+	if key == value_6 {
+		decision.Consumed = true
+		var value_7 bool = multiline
+		if value_7 {
+			value_7 = !modifier
 		}
-		if value_40 {
-			var value_43 int32 = -1
-			decision.LineEdge = value_43
+		if value_7 {
+			decision.LineEdge = -1
 		} else {
-			var value_44 int32 = -1
-			decision.DocumentEdge = value_44
+			decision.DocumentEdge = -1
 		}
-		var value_45 TextNavigationDecision = decision
-		return value_45
+		return decision
 	}
-	var value_46 int32 = key
-	var value_47 int32 = TextInput_TextNavEnd()
-	var value_48 bool = value_46 == value_47
-	if value_48 {
-		var value_49 bool = true
-		decision.Consumed = value_49
-		var value_50 bool = multiline
-		var value_51 bool = value_50
-		if value_51 {
-			var value_52 bool = modifier
-			var value_53 bool = !value_52
-			value_51 = value_53
+	var value_8 int32 = TextInput_TextNavEnd()
+	if key == value_8 {
+		decision.Consumed = true
+		var value_9 bool = multiline
+		if value_9 {
+			value_9 = !modifier
 		}
-		if value_51 {
-			var value_54 int32 = 1
-			decision.LineEdge = value_54
+		if value_9 {
+			decision.LineEdge = 1
 		} else {
-			var value_55 int32 = 1
-			decision.DocumentEdge = value_55
+			decision.DocumentEdge = 1
 		}
-		var value_56 TextNavigationDecision = decision
-		return value_56
+		return decision
 	}
-	var value_57 int32 = key
-	var value_58 int32 = TextInput_TextNavUp()
-	var value_59 bool = value_57 == value_58
-	var value_60 bool = value_59
-	if value_60 {
-		var value_61 bool = multiline
-		value_60 = value_61
+	var value_10 int32 = TextInput_TextNavUp()
+	var value_11 bool = (key == value_10)
+	if value_11 {
+		value_11 = multiline
 	}
-	if value_60 {
-		var value_62 bool = true
-		decision.Consumed = value_62
-		var value_63 int32 = -1
-		decision.VerticalDirection = value_63
-		var value_64 TextNavigationDecision = decision
-		return value_64
+	if value_11 {
+		decision.Consumed = true
+		decision.VerticalDirection = -1
+		return decision
 	}
-	var value_65 int32 = key
-	var value_66 int32 = TextInput_TextNavDown()
-	var value_67 bool = value_65 == value_66
-	var value_68 bool = value_67
-	if value_68 {
-		var value_69 bool = multiline
-		value_68 = value_69
+	var value_12 int32 = TextInput_TextNavDown()
+	var value_13 bool = (key == value_12)
+	if value_13 {
+		value_13 = multiline
 	}
-	if value_68 {
-		var value_70 bool = true
-		decision.Consumed = value_70
-		var value_71 int32 = 1
-		decision.VerticalDirection = value_71
-		var value_72 TextNavigationDecision = decision
-		return value_72
+	if value_13 {
+		decision.Consumed = true
+		decision.VerticalDirection = 1
+		return decision
 	}
-	var value_73 int32 = key
-	var value_74 int32 = TextInput_TextNavPageUp()
-	var value_75 bool = value_73 == value_74
-	var value_76 bool = value_75
-	if value_76 {
-		var value_77 bool = multiline
-		value_76 = value_77
+	var value_14 int32 = TextInput_TextNavPageUp()
+	var value_15 bool = (key == value_14)
+	if value_15 {
+		value_15 = multiline
 	}
-	if value_76 {
-		var value_78 bool = true
-		decision.Consumed = value_78
-		var value_79 int32 = -1
-		decision.PageDirection = value_79
-		var value_80 TextNavigationDecision = decision
-		return value_80
+	if value_15 {
+		decision.Consumed = true
+		decision.PageDirection = -1
+		return decision
 	}
-	var value_81 int32 = key
-	var value_82 int32 = TextInput_TextNavPageDown()
-	var value_83 bool = value_81 == value_82
-	var value_84 bool = value_83
-	if value_84 {
-		var value_85 bool = multiline
-		value_84 = value_85
+	var value_16 int32 = TextInput_TextNavPageDown()
+	var value_17 bool = (key == value_16)
+	if value_17 {
+		value_17 = multiline
 	}
-	if value_84 {
-		var value_86 bool = true
-		decision.Consumed = value_86
-		var value_87 int32 = 1
-		decision.PageDirection = value_87
-		var value_88 TextNavigationDecision = decision
-		return value_88
+	if value_17 {
+		decision.Consumed = true
+		decision.PageDirection = 1
+		return decision
 	}
-	var value_89 TextNavigationDecision = decision
-	return value_89
+	return decision
 }
 
 func TextInput_TextDeleteDecisionFor(action int32, modifier bool, secure bool, has_selection bool) TextDeleteDecision {
 	var decision TextDeleteDecision = TextDeleteDecision{}
-	var value_0 int32 = action
-	var value_1 int32 = TextInput_TextDeleteBackspace()
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 bool = true
-		decision.Consumed = value_3
-		var value_4 bool = has_selection
-		if value_4 {
-			var value_5 TextDeleteDecision = decision
-			return value_5
+	var value_0 int32 = TextInput_TextDeleteBackspace()
+	if action == value_0 {
+		decision.Consumed = true
+		if has_selection {
+			return decision
 		}
-		var value_6 bool = modifier
-		var value_7 bool = value_6
-		if value_7 {
-			var value_8 bool = secure
-			value_7 = value_8
+		var value_1 bool = modifier
+		if value_1 {
+			value_1 = secure
 		}
-		if value_7 {
-			var value_9 int32 = -1
-			decision.DocumentEdge = value_9
+		if value_1 {
+			decision.DocumentEdge = -1
 		} else {
-			var value_10 bool = modifier
-			if value_10 {
-				var value_11 int32 = -1
-				decision.WordDirection = value_11
+			if modifier {
+				decision.WordDirection = -1
 			} else {
-				var value_12 int32 = -1
-				decision.CharDirection = value_12
+				decision.CharDirection = -1
 			}
 		}
-		var value_13 TextDeleteDecision = decision
-		return value_13
+		return decision
 	}
-	var value_14 int32 = action
-	var value_15 int32 = TextInput_TextDeleteForward()
-	var value_16 bool = value_14 == value_15
-	if value_16 {
-		var value_17 bool = true
-		decision.Consumed = value_17
-		var value_18 bool = has_selection
-		if value_18 {
-			var value_19 TextDeleteDecision = decision
-			return value_19
+	var value_2 int32 = TextInput_TextDeleteForward()
+	if action == value_2 {
+		decision.Consumed = true
+		if has_selection {
+			return decision
 		}
-		var value_20 bool = modifier
-		var value_21 bool = value_20
-		if value_21 {
-			var value_22 bool = secure
-			value_21 = value_22
+		var value_3 bool = modifier
+		if value_3 {
+			value_3 = secure
 		}
-		if value_21 {
-			var value_23 int32 = 1
-			decision.DocumentEdge = value_23
+		if value_3 {
+			decision.DocumentEdge = 1
 		} else {
-			var value_24 bool = modifier
-			if value_24 {
-				var value_25 int32 = 1
-				decision.WordDirection = value_25
+			if modifier {
+				decision.WordDirection = 1
 			} else {
-				var value_26 int32 = 1
-				decision.CharDirection = value_26
+				decision.CharDirection = 1
 			}
 		}
-		var value_27 TextDeleteDecision = decision
-		return value_27
+		return decision
 	}
-	var value_28 TextDeleteDecision = decision
-	return value_28
+	return decision
 }
 
 func TextInput_TextInsertDecisionFor(codepoint int32, encoded_len int32, text_len int32, text_size int32, current_codepoints int32, inserted_codepoints int32, max_codepoints int32, allow_newlines bool) TextInsertDecision {
 	var decision TextInsertDecision = TextInsertDecision{}
-	var value_0 int32 = codepoint
-	var value_1 int32 = 13
-	var value_2 bool = value_0 == value_1
+	if codepoint == 13 {
+		decision.Skip = true
+		return decision
+	}
+	var value_0 bool = (codepoint == 10)
+	if value_0 {
+		value_0 = !allow_newlines
+	}
+	if value_0 {
+		decision.Skip = true
+		return decision
+	}
+	var value_1 bool = (codepoint < 32)
+	if value_1 {
+		value_1 = (codepoint != 10)
+	}
+	if value_1 {
+		decision.Skip = true
+		return decision
+	}
+	if encoded_len <= 0 {
+		decision.Skip = true
+		return decision
+	}
+	var value_2 bool = (text_size <= 0)
+	if !value_2 {
+		var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(text_len), uint64(encoded_len), 32, true, 1)))), uint64(1), 32, true, 1))
+		value_2 = (value_3 > text_size)
+	}
 	if value_2 {
-		var value_3 bool = true
-		decision.Skip = value_3
-		var value_4 TextInsertDecision = decision
-		return value_4
+		decision.Stop = true
+		return decision
 	}
-	var value_5 int32 = codepoint
-	var value_6 int32 = 10
-	var value_7 bool = value_5 == value_6
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = allow_newlines
-		var value_10 bool = !value_9
-		value_8 = value_10
+	var value_4 bool = (max_codepoints > 0)
+	if value_4 {
+		var value_5 bool = (int32(number_runtime_bits(uint64(current_codepoints), uint64(inserted_codepoints), 32, true, 1))) >= max_codepoints
+		value_4 = value_5
 	}
-	if value_8 {
-		var value_11 bool = true
-		decision.Skip = value_11
-		var value_12 TextInsertDecision = decision
-		return value_12
+	if value_4 {
+		decision.Stop = true
+		return decision
 	}
-	var value_13 int32 = codepoint
-	var value_14 int32 = 32
-	var value_15 bool = value_13 < value_14
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 int32 = codepoint
-		var value_18 int32 = 10
-		var value_19 bool = value_17 != value_18
-		value_16 = value_19
-	}
-	if value_16 {
-		var value_20 bool = true
-		decision.Skip = value_20
-		var value_21 TextInsertDecision = decision
-		return value_21
-	}
-	var value_22 int32 = encoded_len
-	var value_23 int32 = 0
-	var value_24 bool = value_22 <= value_23
-	if value_24 {
-		var value_25 bool = true
-		decision.Skip = value_25
-		var value_26 TextInsertDecision = decision
-		return value_26
-	}
-	var value_27 int32 = text_size
-	var value_28 int32 = 0
-	var value_29 bool = value_27 <= value_28
-	var value_30 bool = value_29
-	if !value_30 {
-		var value_31 int32 = text_len
-		var value_32 int32 = encoded_len
-		var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
-		var value_34 int32 = 1
-		var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-		var value_36 int32 = text_size
-		var value_37 bool = value_35 > value_36
-		value_30 = value_37
-	}
-	if value_30 {
-		var value_38 bool = true
-		decision.Stop = value_38
-		var value_39 TextInsertDecision = decision
-		return value_39
-	}
-	var value_40 int32 = max_codepoints
-	var value_41 int32 = 0
-	var value_42 bool = value_40 > value_41
-	var value_43 bool = value_42
-	if value_43 {
-		var value_44 int32 = current_codepoints
-		var value_45 int32 = inserted_codepoints
-		var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 1))
-		var value_47 int32 = max_codepoints
-		var value_48 bool = value_46 >= value_47
-		value_43 = value_48
-	}
-	if value_43 {
-		var value_49 bool = true
-		decision.Stop = value_49
-		var value_50 TextInsertDecision = decision
-		return value_50
-	}
-	var value_51 bool = true
-	decision.Accept = value_51
-	var value_52 TextInsertDecision = decision
-	return value_52
+	decision.Accept = true
+	return decision
 }
 
 func TextInput_TextWordBlank(codepoint int32) bool {
-	var value_0 int32 = codepoint
-	var value_1 int32 = 32
-	var value_2 bool = value_0 == value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = codepoint
-		var value_5 int32 = 9
-		var value_6 bool = value_4 == value_5
-		value_3 = value_6
+	var value_0 bool = (codepoint == 32)
+	if !value_0 {
+		value_0 = (codepoint == 9)
 	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 int32 = codepoint
-		var value_9 int32 = 12288
-		var value_10 bool = value_8 == value_9
-		value_7 = value_10
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (codepoint == 12288)
 	}
-	return value_7
+	return value_1
 }
 
 func TextInput_TextWordSeparator(codepoint int32) bool {
-	var value_0 int32 = codepoint
-	var value_1 int32 = 44
-	var value_2 bool = value_0 == value_1
+	var value_0 bool = (codepoint == 44)
+	if !value_0 {
+		value_0 = (codepoint == 12289)
+	}
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (codepoint == 46)
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (codepoint == 12290)
+	}
 	var value_3 bool = value_2
 	if !value_3 {
-		var value_4 int32 = codepoint
-		var value_5 int32 = 12289
-		var value_6 bool = value_4 == value_5
-		value_3 = value_6
+		value_3 = (codepoint == 59)
 	}
-	var value_7 bool = value_3
+	var value_4 bool = value_3
+	if !value_4 {
+		value_4 = (codepoint == 65307)
+	}
+	var value_5 bool = value_4
+	if !value_5 {
+		value_5 = (codepoint == 40)
+	}
+	var value_6 bool = value_5
+	if !value_6 {
+		value_6 = (codepoint == 65288)
+	}
+	var value_7 bool = value_6
 	if !value_7 {
-		var value_8 int32 = codepoint
-		var value_9 int32 = 46
-		var value_10 bool = value_8 == value_9
-		value_7 = value_10
+		value_7 = (codepoint == 41)
 	}
-	var value_11 bool = value_7
+	var value_8 bool = value_7
+	if !value_8 {
+		value_8 = (codepoint == 65289)
+	}
+	var value_9 bool = value_8
+	if !value_9 {
+		value_9 = (codepoint == 123)
+	}
+	var value_10 bool = value_9
+	if !value_10 {
+		value_10 = (codepoint == 65371)
+	}
+	var value_11 bool = value_10
 	if !value_11 {
-		var value_12 int32 = codepoint
-		var value_13 int32 = 12290
-		var value_14 bool = value_12 == value_13
-		value_11 = value_14
+		value_11 = (codepoint == 125)
 	}
-	var value_15 bool = value_11
+	var value_12 bool = value_11
+	if !value_12 {
+		value_12 = (codepoint == 65373)
+	}
+	var value_13 bool = value_12
+	if !value_13 {
+		value_13 = (codepoint == 91)
+	}
+	var value_14 bool = value_13
+	if !value_14 {
+		value_14 = (codepoint == 12300)
+	}
+	var value_15 bool = value_14
 	if !value_15 {
-		var value_16 int32 = codepoint
-		var value_17 int32 = 59
-		var value_18 bool = value_16 == value_17
-		value_15 = value_18
+		value_15 = (codepoint == 93)
 	}
-	var value_19 bool = value_15
+	var value_16 bool = value_15
+	if !value_16 {
+		value_16 = (codepoint == 12301)
+	}
+	var value_17 bool = value_16
+	if !value_17 {
+		value_17 = (codepoint == 124)
+	}
+	var value_18 bool = value_17
+	if !value_18 {
+		value_18 = (codepoint == 65372)
+	}
+	var value_19 bool = value_18
 	if !value_19 {
-		var value_20 int32 = codepoint
-		var value_21 int32 = 65307
-		var value_22 bool = value_20 == value_21
-		value_19 = value_22
+		value_19 = (codepoint == 33)
 	}
-	var value_23 bool = value_19
+	var value_20 bool = value_19
+	if !value_20 {
+		value_20 = (codepoint == 65281)
+	}
+	var value_21 bool = value_20
+	if !value_21 {
+		value_21 = (codepoint == 92)
+	}
+	var value_22 bool = value_21
+	if !value_22 {
+		value_22 = (codepoint == 65509)
+	}
+	var value_23 bool = value_22
 	if !value_23 {
-		var value_24 int32 = codepoint
-		var value_25 int32 = 40
-		var value_26 bool = value_24 == value_25
-		value_23 = value_26
+		value_23 = (codepoint == 47)
 	}
-	var value_27 bool = value_23
+	var value_24 bool = value_23
+	if !value_24 {
+		value_24 = (codepoint == 12539)
+	}
+	var value_25 bool = value_24
+	if !value_25 {
+		value_25 = (codepoint == 65295)
+	}
+	var value_26 bool = value_25
+	if !value_26 {
+		value_26 = (codepoint == 10)
+	}
+	var value_27 bool = value_26
 	if !value_27 {
-		var value_28 int32 = codepoint
-		var value_29 int32 = 65288
-		var value_30 bool = value_28 == value_29
-		value_27 = value_30
+		value_27 = (codepoint == 13)
 	}
-	var value_31 bool = value_27
-	if !value_31 {
-		var value_32 int32 = codepoint
-		var value_33 int32 = 41
-		var value_34 bool = value_32 == value_33
-		value_31 = value_34
-	}
-	var value_35 bool = value_31
-	if !value_35 {
-		var value_36 int32 = codepoint
-		var value_37 int32 = 65289
-		var value_38 bool = value_36 == value_37
-		value_35 = value_38
-	}
-	var value_39 bool = value_35
-	if !value_39 {
-		var value_40 int32 = codepoint
-		var value_41 int32 = 123
-		var value_42 bool = value_40 == value_41
-		value_39 = value_42
-	}
-	var value_43 bool = value_39
-	if !value_43 {
-		var value_44 int32 = codepoint
-		var value_45 int32 = 65371
-		var value_46 bool = value_44 == value_45
-		value_43 = value_46
-	}
-	var value_47 bool = value_43
-	if !value_47 {
-		var value_48 int32 = codepoint
-		var value_49 int32 = 125
-		var value_50 bool = value_48 == value_49
-		value_47 = value_50
-	}
-	var value_51 bool = value_47
-	if !value_51 {
-		var value_52 int32 = codepoint
-		var value_53 int32 = 65373
-		var value_54 bool = value_52 == value_53
-		value_51 = value_54
-	}
-	var value_55 bool = value_51
-	if !value_55 {
-		var value_56 int32 = codepoint
-		var value_57 int32 = 91
-		var value_58 bool = value_56 == value_57
-		value_55 = value_58
-	}
-	var value_59 bool = value_55
-	if !value_59 {
-		var value_60 int32 = codepoint
-		var value_61 int32 = 12300
-		var value_62 bool = value_60 == value_61
-		value_59 = value_62
-	}
-	var value_63 bool = value_59
-	if !value_63 {
-		var value_64 int32 = codepoint
-		var value_65 int32 = 93
-		var value_66 bool = value_64 == value_65
-		value_63 = value_66
-	}
-	var value_67 bool = value_63
-	if !value_67 {
-		var value_68 int32 = codepoint
-		var value_69 int32 = 12301
-		var value_70 bool = value_68 == value_69
-		value_67 = value_70
-	}
-	var value_71 bool = value_67
-	if !value_71 {
-		var value_72 int32 = codepoint
-		var value_73 int32 = 124
-		var value_74 bool = value_72 == value_73
-		value_71 = value_74
-	}
-	var value_75 bool = value_71
-	if !value_75 {
-		var value_76 int32 = codepoint
-		var value_77 int32 = 65372
-		var value_78 bool = value_76 == value_77
-		value_75 = value_78
-	}
-	var value_79 bool = value_75
-	if !value_79 {
-		var value_80 int32 = codepoint
-		var value_81 int32 = 33
-		var value_82 bool = value_80 == value_81
-		value_79 = value_82
-	}
-	var value_83 bool = value_79
-	if !value_83 {
-		var value_84 int32 = codepoint
-		var value_85 int32 = 65281
-		var value_86 bool = value_84 == value_85
-		value_83 = value_86
-	}
-	var value_87 bool = value_83
-	if !value_87 {
-		var value_88 int32 = codepoint
-		var value_89 int32 = 92
-		var value_90 bool = value_88 == value_89
-		value_87 = value_90
-	}
-	var value_91 bool = value_87
-	if !value_91 {
-		var value_92 int32 = codepoint
-		var value_93 int32 = 65509
-		var value_94 bool = value_92 == value_93
-		value_91 = value_94
-	}
-	var value_95 bool = value_91
-	if !value_95 {
-		var value_96 int32 = codepoint
-		var value_97 int32 = 47
-		var value_98 bool = value_96 == value_97
-		value_95 = value_98
-	}
-	var value_99 bool = value_95
-	if !value_99 {
-		var value_100 int32 = codepoint
-		var value_101 int32 = 12539
-		var value_102 bool = value_100 == value_101
-		value_99 = value_102
-	}
-	var value_103 bool = value_99
-	if !value_103 {
-		var value_104 int32 = codepoint
-		var value_105 int32 = 65295
-		var value_106 bool = value_104 == value_105
-		value_103 = value_106
-	}
-	var value_107 bool = value_103
-	if !value_107 {
-		var value_108 int32 = codepoint
-		var value_109 int32 = 10
-		var value_110 bool = value_108 == value_109
-		value_107 = value_110
-	}
-	var value_111 bool = value_107
-	if !value_111 {
-		var value_112 int32 = codepoint
-		var value_113 int32 = 13
-		var value_114 bool = value_112 == value_113
-		value_111 = value_114
-	}
-	return value_111
+	return value_27
 }
 
 func TextInput_TextWordBoundaryFor(previous int32, current int32) bool {
-	var value_0 int32 = previous
-	var value_1 bool = TextInput_TextWordBlank(value_0)
-	var previous_blank bool = value_1
-	var value_2 int32 = previous
-	var value_3 bool = TextInput_TextWordSeparator(value_2)
-	var previous_separator bool = value_3
-	var value_4 int32 = current
-	var value_5 bool = TextInput_TextWordBlank(value_4)
-	var current_blank bool = value_5
-	var value_6 int32 = current
-	var value_7 bool = TextInput_TextWordSeparator(value_6)
-	var current_separator bool = value_7
-	var value_8 bool = previous_blank
-	var value_9 bool = value_8
-	if !value_9 {
-		var value_10 bool = previous_separator
-		value_9 = value_10
+	var value_0 bool = TextInput_TextWordBlank(previous)
+	var previous_blank bool = value_0
+	var value_1 bool = TextInput_TextWordSeparator(previous)
+	var previous_separator bool = value_1
+	var value_2 bool = TextInput_TextWordBlank(current)
+	var current_blank bool = value_2
+	var value_3 bool = TextInput_TextWordSeparator(current)
+	var current_separator bool = value_3
+	var value_4 bool = previous_blank
+	if !value_4 {
+		value_4 = previous_separator
 	}
-	var value_11 bool = value_9
-	if value_11 {
-		var value_12 bool = current_separator
-		var value_13 bool = value_12
-		if !value_13 {
-			var value_14 bool = current_blank
-			value_13 = value_14
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = current_separator
+		if !value_6 {
+			value_6 = current_blank
 		}
-		var value_15 bool = !value_13
-		value_11 = value_15
+		value_5 = !value_6
 	}
-	var value_16 bool = value_11
-	if !value_16 {
-		var value_17 bool = current_separator
-		var value_18 bool = value_17
-		if value_18 {
-			var value_19 bool = previous_separator
-			var value_20 bool = !value_19
-			value_18 = value_20
+	var value_7 bool = value_5
+	if !value_7 {
+		var value_8 bool = current_separator
+		if value_8 {
+			value_8 = !previous_separator
 		}
-		value_16 = value_18
+		value_7 = value_8
 	}
-	return value_16
+	return value_7
 }

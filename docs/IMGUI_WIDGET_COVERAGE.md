@@ -152,8 +152,8 @@ auxiliary windows also retain their own active focus ID
 and restore the caller's focus on exit. A real-window regression reopens one
 across frames and checks both directions of focus isolation. The same toolkit
 owner now contains radio animation, numeric editor storage, table interaction,
-paned-view dragging, canvas scope depth, and tree navigation; `ui_tk.c` has no
-remaining process-global widget state. Text editing outside numeric controls is
+paned-view dragging, canvas scope depth, and tree navigation. The former
+widget paths now compile from `.kry`. Text editing outside numeric controls is
 still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real

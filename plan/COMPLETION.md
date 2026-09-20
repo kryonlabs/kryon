@@ -95,8 +95,11 @@ below has authoritative evidence at the delivered revision.
 - [ ] Create one behavior inventory shared by canonical and style work. Each
   row records requirement, source symbol, `.kry` owner or specific host-service
   justification, affected backends, test, result, and remaining action.
-- [ ] Cover `src/ui/ui.c`, `ui_tk.c`, `ui_text.c`, `ui_text_layout.c`,
-  `ui_tree.c`, `ui_page.c`, `ui_node_registry.c`, Go runtime/render/style hosts,
+- [ ] Cover `src/ui/frame.kry`, `text_field.kry`, `text_area.kry`, `ui_text.c`, and the `.kry` replacements for
+  `ui_tk.c` (`menu_host.kry`, `table_view.kry`, `slider.kry`, `drag.kry`),
+  `text_layout.kry`,
+  `ui_tree.c`, `ui_page.c` (now `src/ui/tree_*.kry` and `src/ui/page.kry`),
+  `ui_node_registry.c`, Go runtime/render/style hosts,
   and the web runtime. Inventory branches and defaults, not just public APIs.
 - [ ] Record generated-fixture coverage separately for generation, execution,
   state comparison, and rendered-output verification.
@@ -304,8 +307,8 @@ make kss-parser-test kss-matched-test kss-formatter-test
 make style-policy-test style-sheet-policy-test style-pack-registry-test
 make style-pack-source-test style-release-table-repro-test style-release-table-emitter-test style-release-table-import-emitter-test style-release-startup-test style-assets-test style-builtins-test style-picker-test
 make style-widget-policy-test app-background-style-test
-make build/linux-x86_64/tests/ui_tk_test
-xvfb-run -a build/linux-x86_64/tests/ui_tk_test
+make build/linux-x86_64/tests/widget_surface_test
+xvfb-run -a build/linux-x86_64/tests/widget_surface_test
 make sdl-pointer-test
 make test
 git diff --check

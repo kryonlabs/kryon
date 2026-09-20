@@ -1,0 +1,140 @@
+#module "style_metrics_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "ui_paint_internal.h"
+#import "ui/tree_layout.h"
+#import "runtime/style.h"
+#import "runtime/theme.h"
+#import "runtime/surface.h"
+
+style_override :: ThemeMetrics #global
+style_override_enabled :: i32 #global
+fancy_effects_enabled :: i32 = 1 #global
+
+ui_draw_material :: (bounds: Rectangle,
+surface_bounds: Rectangle, background: Color,
+border: Color, light: Color, radius: float,
+border_width: float, hover: float, press: float,
+disabled: i32, focus: Color, focused: float,
+opacity: float, fill_states: FillStates,
+material: MaterialKind) -> Rectangle #export {
+    paint: MaterialPaint = (MaterialPaint){0}
+    paint.bounds = bounds
+    paint.surface = surface_bounds
+    paint.value.background = ColorToInt(background)
+    paint.value.border = ColorToInt(border)
+    paint.value.focus = ColorToInt(focus)
+    paint.value.radius = radius
+    paint.value.border_width = border_width
+    paint.value.opacity = opacity
+    paint.value.material = material
+    paint.light = ColorToInt(light)
+    paint.ambient = ColorToInt(ui_app_style().background)
+    paint.hover = hover
+    paint.press = press
+    paint.focus = focused
+    paint.disabled = disabled
+    paint.fill = fill_states
+    paint.fill_valid = 1
+    paint.scale = (float)Scale(1000) / 1000.0
+    paint = PrepareMaterial(paint)
+    i: i32 = 0
+    while i < MaterialLayerCount(paint.value.material) {
+        ui_draw_surface(PaintMaterialLayer(paint, i))
+        i += 1
+    }
+    return MaterialContentBounds(paint)
+}
+
+SetFancyEffectsEnabled :: (enabled: i32) #export {
+    next: i32 = enabled != 0
+    if fancy_effects_enabled == next {
+        return
+    }
+    fancy_effects_enabled = next
+    InvalidateTree(INVALIDATE_PAINT)
+}
+
+FancyEffectsEnabled :: () -> i32 #export {
+    return fancy_effects_enabled != 0
+}
+
+ApplyEffectsMetrics :: (tokens: ThemeMetrics) -> ThemeMetrics {
+    if fancy_effects_enabled {
+        return tokens
+    }
+    tokens.shadow_blur = 0
+    tokens.shadow_alpha = 0
+    tokens.shine_alpha = 0
+    tokens.shadow_offset_y = 0
+    return tokens
+}
+
+GetDefaultThemeMetrics :: () -> ThemeMetrics #export {
+    tokens: ThemeMetrics = (ThemeMetrics){0}
+    defaults: Metrics = DefaultMetrics()
+    tokens.radius_small = defaults.radius_small
+    tokens.radius_medium = defaults.radius_medium
+    tokens.radius_large = defaults.radius_large
+    tokens.radius_pill = defaults.radius_pill
+    tokens.border_width = defaults.border_width
+    tokens.focus_width = defaults.focus_width
+    tokens.focus_gap = defaults.focus_gap
+    tokens.space_1 = defaults.space_1
+    tokens.space_2 = defaults.space_2
+    tokens.space_3 = defaults.space_3
+    tokens.space_4 = defaults.space_4
+    tokens.space_5 = defaults.space_5
+    tokens.space_6 = defaults.space_6
+    tokens.control_height_small = defaults.control_height_small
+    tokens.control_height_medium = defaults.control_height_medium
+    tokens.control_height_large = defaults.control_height_large
+    tokens.control_padding_small = defaults.control_padding_small
+    tokens.control_padding_medium = defaults.control_padding_medium
+    tokens.control_padding_large = defaults.control_padding_large
+    tokens.control_gap = defaults.control_gap
+    tokens.font_size_small = defaults.font_size_small
+    tokens.font_size_medium = defaults.font_size_medium
+    tokens.font_size_large = defaults.font_size_large
+    tokens.icon_size_small = defaults.icon_size_small
+    tokens.icon_size_medium = defaults.icon_size_medium
+    tokens.icon_size_large = defaults.icon_size_large
+    tokens.shadow_offset_y = defaults.shadow_offset_y
+    tokens.shadow_blur = defaults.shadow_blur
+    tokens.disabled_opacity = defaults.disabled_opacity
+    tokens.transition_fast_ms = defaults.transition_fast_ms
+    tokens.transition_normal_ms = defaults.transition_normal_ms
+    tokens.bevel_enabled = 0
+    tokens.control_radius = 4
+    tokens.panel_radius = 8
+    tokens.control_alpha = 222
+    tokens.panel_alpha = 235
+    tokens.title_bar_alpha = 222
+    tokens.border_alpha = 118
+    tokens.shadow_alpha = 28
+    tokens.shine_alpha = 0
+    tokens.touch_target_min = 48
+    tokens.shadow_offset_y = 2
+    return tokens
+}
+
+GetThemeMetrics :: () -> ThemeMetrics #export {
+    if style_override_enabled {
+        return ApplyEffectsMetrics(style_override)
+    }
+    return ApplyEffectsMetrics(GetDefaultThemeMetrics())
+}
+
+SetThemeMetrics :: (tokens: ThemeMetrics) #export {
+    style_override = tokens
+    style_override_enabled = 1
+}
+
+ClearThemeMetricsOverride :: () #export {
+    style_override = (ThemeMetrics){0}
+    style_override_enabled = 0
+}
+
+ui_classic_style :: () -> i32 #export {
+    return GetThemeMetrics().bevel_enabled != 0
+}

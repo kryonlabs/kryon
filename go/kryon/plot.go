@@ -24,375 +24,157 @@ type PlotTextPaint struct {
 }
 
 func Plot_PlotMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	return value_13
+	return (value * scale)
 }
 
 func Plot_PlotOffset(count int32, offset int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if count <= 0 {
+		return 0
 	}
-	var value_4 int32 = offset
-	var value_5 int32 = count
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 5))
-	var wrapped int32 = value_6
-	var value_7 int32 = wrapped
-	var value_8 int32 = 0
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 int32 = wrapped
-		var value_11 int32 = count
-		var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-		wrapped = value_12
+	var wrapped int32 = (int32(number_runtime_bits(uint64(offset), uint64(count), 32, true, 5)))
+	if wrapped < 0 {
+		wrapped = (int32(number_runtime_bits(uint64(wrapped), uint64(count), 32, true, 1)))
 	}
-	var value_13 int32 = wrapped
-	return value_13
+	return wrapped
 }
 
 func Plot_PlotRangeFor(scale_min float32, scale_max float32, observed_min float32, observed_max float32) PlotRange {
 	var result PlotRange = PlotRange{}
-	var value_0 float32 = scale_min
-	result.MinValue = value_0
-	var value_1 float32 = scale_max
-	result.MaxValue = value_1
-	var value_2 float32 = result.MinValue
-	var value_3 float32 = result.MaxValue
-	var value_4 bool = value_2 >= value_3
-	if value_4 {
-		var value_5 float32 = observed_min
-		result.MinValue = value_5
-		var value_6 float32 = observed_max
-		result.MaxValue = value_6
+	result.MinValue = scale_min
+	result.MaxValue = scale_max
+	if result.MinValue >= result.MaxValue {
+		result.MinValue = observed_min
+		result.MaxValue = observed_max
 	}
-	var value_7 float32 = result.MinValue
-	var value_8 float32 = result.MaxValue
-	var value_9 bool = value_7 == value_8
-	if value_9 {
-		var value_10 float32 = result.MinValue
-		var value_11 float32 = 0.5
-		var value_12 float32 = value_10 - value_11
-		result.MinValue = value_12
-		var value_13 float32 = result.MaxValue
-		var value_14 float32 = 0.5
-		var value_15 float32 = value_13 + value_14
-		result.MaxValue = value_15
+	if result.MinValue == result.MaxValue {
+		result.MinValue = (result.MinValue - 0.5)
+		result.MaxValue = (result.MaxValue + 0.5)
 	}
-	var value_16 float32 = result.MaxValue
-	var value_17 float32 = result.MinValue
-	var value_18 float32 = value_16 - value_17
-	result.Range = value_18
-	var value_19 float32 = result.Range
-	var value_20 float32 = 0.0
-	var value_21 bool = value_19 <= value_20
-	if value_21 {
-		var value_22 float32 = 1.0
-		result.Range = value_22
+	result.Range = (result.MaxValue - result.MinValue)
+	if result.Range <= 0.0 {
+		result.Range = 1.0
 	}
-	var value_23 PlotRange = result
-	return value_23
+	return result
 }
 
 func Plot_PlotNormalize(value float32, plot_range PlotRange) float32 {
-	var value_0 float32 = value
-	var value_1 float32 = plot_range.MinValue
-	var value_2 float32 = value_0 - value_1
-	var value_3 float32 = plot_range.Range
-	var value_4 float32 = value_2 / value_3
-	var t float32 = value_4
-	var value_5 float32 = t
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 float32 = 0.0
-		return value_8
+	var t float32 = ((value - plot_range.MinValue) / plot_range.Range)
+	if t < 0.0 {
+		return 0.0
 	}
-	var value_9 float32 = t
-	var value_10 float32 = 1.0
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 float32 = 1.0
-		return value_12
+	if t > 1.0 {
+		return 1.0
 	}
-	var value_13 float32 = t
-	return value_13
+	return t
 }
 
 func Plot_PlotHistogramBar(bounds Rectangle, index int32, count int32, value float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 uint32 = mark_frame.Value.Background
-		mark.Color = value_3
-		var value_4 PlotMark = mark
-		return value_4
+	if count <= 0 {
+		mark.Color = mark_frame.Value.Background
+		return mark
 	}
-	var value_5 float32 = bounds.Width
-	var value_6 int32 = count
-	var value_7 float32 = float32(value_6)
-	var value_8 float32 = value_5 / value_7
-	var step float32 = value_8
-	var value_9 float32 = value
-	var value_10 PlotRange = plot_range
-	var value_11 float32 = Plot_PlotNormalize(value_9, value_10)
-	var value_12 float32 = bounds.Height
-	var value_13 float32 = value_11 * value_12
-	var height float32 = value_13
-	var value_14 float32 = step
-	var value_15 float32 = 2.0
-	var value_16 float32 = value_14 - value_15
-	var width float32 = value_16
-	var value_17 float32 = width
-	var value_18 float32 = 1.0
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 float32 = step
-		width = value_20
+	var step float32 = (bounds.Width / float32(count))
+	var value_0 float32 = Plot_PlotNormalize(value, plot_range)
+	var height float32 = (value_0 * bounds.Height)
+	var width float32 = (step - 2.0)
+	if width < 1.0 {
+		width = step
 	}
-	var value_21 float32 = bounds.X
-	var value_22 int32 = index
-	var value_23 float32 = float32(value_22)
-	var value_24 float32 = step
-	var value_25 float32 = value_23 * value_24
-	var value_26 float32 = value_21 + value_25
-	var value_27 float32 = 1.0
-	var value_28 float32 = value_26 + value_27
-	mark.Bounds.X = value_28
-	var value_29 float32 = bounds.Y
-	var value_30 float32 = bounds.Height
-	var value_31 float32 = value_29 + value_30
-	var value_32 float32 = height
-	var value_33 float32 = value_31 - value_32
-	mark.Bounds.Y = value_33
-	var value_34 float32 = width
-	mark.Bounds.Width = value_34
-	var value_35 float32 = height
-	mark.Bounds.Height = value_35
-	var value_36 uint32 = mark_frame.Value.Background
-	mark.Color = value_36
-	var value_37 PlotMark = mark
-	return value_37
+	mark.Bounds.X = ((bounds.X + (float32(index) * step)) + 1.0)
+	mark.Bounds.Y = ((bounds.Y + bounds.Height) - height)
+	mark.Bounds.Width = width
+	mark.Bounds.Height = height
+	mark.Color = mark_frame.Value.Background
+	return mark
 }
 
 func Plot_PlotSingleLine(bounds Rectangle, value float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
-	var value_0 float32 = bounds.Y
-	var value_1 float32 = 1.0
-	var value_2 float32 = value
-	var value_3 PlotRange = plot_range
-	var value_4 float32 = Plot_PlotNormalize(value_2, value_3)
-	var value_5 float32 = value_1 - value_4
-	var value_6 float32 = bounds.Height
-	var value_7 float32 = value_5 * value_6
-	var value_8 float32 = value_0 + value_7
-	var y float32 = value_8
-	var value_9 float32 = bounds.X
-	mark.Bounds.X = value_9
-	var value_10 float32 = y
-	mark.Bounds.Y = value_10
-	var value_11 float32 = bounds.Width
-	mark.Bounds.Width = value_11
-	var value_12 float32 = 0.0
-	mark.Bounds.Height = value_12
-	var value_13 uint32 = mark_frame.Value.Background
-	mark.Color = value_13
-	var value_14 PlotMark = mark
-	return value_14
+	var value_0 float32 = Plot_PlotNormalize(value, plot_range)
+	var y float32 = (bounds.Y + ((1.0 - value_0) * bounds.Height))
+	mark.Bounds.X = bounds.X
+	mark.Bounds.Y = y
+	mark.Bounds.Width = bounds.Width
+	mark.Bounds.Height = 0.0
+	mark.Color = mark_frame.Value.Background
+	return mark
 }
 
 func Plot_PlotLineSegment(bounds Rectangle, index int32, count int32, a float32, b float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
-	var value_0 int32 = count
-	var value_1 int32 = 1
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 Rectangle = bounds
-		var value_4 float32 = b
-		var value_5 PlotRange = plot_range
-		var value_6 StyleFrame = mark_frame
-		var value_7 PlotMark = Plot_PlotSingleLine(value_3, value_4, value_5, value_6)
-		return value_7
+	if count <= 1 {
+		var value_0 PlotMark = Plot_PlotSingleLine(bounds, b, plot_range, mark_frame)
+		return value_0
 	}
-	var value_8 float32 = bounds.X
-	var value_9 int32 = index
-	var value_10 int32 = 1
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = bounds.Width
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = count
-	var value_16 int32 = 1
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 2))
-	var value_18 float32 = float32(value_17)
-	var value_19 float32 = value_14 / value_18
-	var value_20 float32 = value_8 + value_19
-	var x1 float32 = value_20
-	var value_21 float32 = bounds.X
-	var value_22 int32 = index
-	var value_23 float32 = float32(value_22)
-	var value_24 float32 = bounds.Width
-	var value_25 float32 = value_23 * value_24
-	var value_26 int32 = count
-	var value_27 int32 = 1
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
-	var value_29 float32 = float32(value_28)
-	var value_30 float32 = value_25 / value_29
-	var value_31 float32 = value_21 + value_30
-	var x2 float32 = value_31
-	var value_32 float32 = bounds.Y
-	var value_33 float32 = 1.0
-	var value_34 float32 = a
-	var value_35 PlotRange = plot_range
-	var value_36 float32 = Plot_PlotNormalize(value_34, value_35)
-	var value_37 float32 = value_33 - value_36
-	var value_38 float32 = bounds.Height
-	var value_39 float32 = value_37 * value_38
-	var value_40 float32 = value_32 + value_39
-	var y1 float32 = value_40
-	var value_41 float32 = bounds.Y
-	var value_42 float32 = 1.0
-	var value_43 float32 = b
-	var value_44 PlotRange = plot_range
-	var value_45 float32 = Plot_PlotNormalize(value_43, value_44)
-	var value_46 float32 = value_42 - value_45
-	var value_47 float32 = bounds.Height
-	var value_48 float32 = value_46 * value_47
-	var value_49 float32 = value_41 + value_48
-	var y2 float32 = value_49
-	var value_50 float32 = x1
-	mark.Bounds.X = value_50
-	var value_51 float32 = y1
-	mark.Bounds.Y = value_51
-	var value_52 float32 = x2
-	var value_53 float32 = x1
-	var value_54 float32 = value_52 - value_53
-	mark.Bounds.Width = value_54
-	var value_55 float32 = y2
-	var value_56 float32 = y1
-	var value_57 float32 = value_55 - value_56
-	mark.Bounds.Height = value_57
-	var value_58 uint32 = mark_frame.Value.Background
-	mark.Color = value_58
-	var value_59 PlotMark = mark
-	return value_59
+	var value_1 float32 = (float32((int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 2)))) * bounds.Width) / float32((int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2))))
+	var x1 float32 = (bounds.X + value_1)
+	var value_2 float32 = (float32(index) * bounds.Width) / float32((int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2))))
+	var x2 float32 = (bounds.X + value_2)
+	var value_3 float32 = Plot_PlotNormalize(a, plot_range)
+	var y1 float32 = (bounds.Y + ((1.0 - value_3) * bounds.Height))
+	var value_4 float32 = Plot_PlotNormalize(b, plot_range)
+	var y2 float32 = (bounds.Y + ((1.0 - value_4) * bounds.Height))
+	mark.Bounds.X = x1
+	mark.Bounds.Y = y1
+	mark.Bounds.Width = (x2 - x1)
+	mark.Bounds.Height = (y2 - y1)
+	mark.Color = mark_frame.Value.Background
+	return mark
 }
 
 func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width float32, scale float32, frame StyleFrame, show_label bool, show_overlay bool) PlotTextPaint {
 	var paint PlotTextPaint = PlotTextPaint{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = frame.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = frame.Value.PaddingX
-	var value_8 float32 = 6.0
-	var value_9 float32 = scale
-	var value_10 float32 = Plot_PlotMetric(value_4, value_6, value_7, value_8, value_9)
-	var pad_x float32 = value_10
-	var value_11 uint32 = frame.Value.Fields
-	var value_12 int32 = int32(StylePaddingY)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = frame.Value.PaddingY
-	var value_15 float32 = 4.0
-	var value_16 float32 = scale
-	var value_17 float32 = Plot_PlotMetric(value_11, value_13, value_14, value_15, value_16)
-	var pad_y float32 = value_17
-	var value_18 uint32 = frame.Value.Fields
-	var value_19 int32 = int32(StyleFontSize)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = frame.Value.FontSize
-	var value_22 float32 = 18.0
-	var value_23 float32 = scale
-	var value_24 float32 = Plot_PlotMetric(value_18, value_20, value_21, value_22, value_23)
-	var text_height float32 = value_24
-	var value_25 float32 = text_height
-	var value_26 float32 = 0.0
-	var value_27 bool = value_25 <= value_26
-	if value_27 {
-		var value_28 float32 = 18.0
-		var value_29 float32 = scale
-		var value_30 float32 = value_28 * value_29
-		text_height = value_30
+	var value_0 uint32 = frame.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = frame.Value.PaddingX
+	var value_3 float32 = 6.0
+	var value_4 float32 = Plot_PlotMetric(value_0, value_1, value_2, value_3, scale)
+	var pad_x float32 = value_4
+	var value_5 uint32 = frame.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.PaddingY
+	var value_8 float32 = 4.0
+	var value_9 float32 = Plot_PlotMetric(value_5, value_6, value_7, value_8, scale)
+	var pad_y float32 = value_9
+	var value_10 uint32 = frame.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))
+	var value_12 float32 = frame.Value.FontSize
+	var value_13 float32 = 18.0
+	var value_14 float32 = Plot_PlotMetric(value_10, value_11, value_12, value_13, scale)
+	var text_height float32 = value_14
+	if text_height <= 0.0 {
+		text_height = (18.0 * scale)
 	}
-	var value_31 uint32 = frame.Value.Foreground
-	paint.TextColor = value_31
-	var value_32 bool = show_label
-	paint.ShowLabel = value_32
-	var value_33 bool = show_overlay
-	paint.ShowOverlay = value_33
-	var value_34 float32 = bounds.X
-	var value_35 float32 = pad_x
-	var value_36 float32 = value_34 + value_35
-	paint.LabelBounds.X = value_36
-	var value_37 float32 = bounds.Y
-	var value_38 float32 = pad_y
-	var value_39 float32 = value_37 + value_38
-	paint.LabelBounds.Y = value_39
-	var value_40 float32 = label_width
-	paint.LabelBounds.Width = value_40
-	var value_41 float32 = text_height
-	paint.LabelBounds.Height = value_41
-	var value_42 float32 = bounds.X
-	var value_43 float32 = bounds.Width
-	var value_44 float32 = value_42 + value_43
-	var value_45 float32 = overlay_width
-	var value_46 float32 = value_44 - value_45
-	var value_47 float32 = pad_x
-	var value_48 float32 = value_46 - value_47
-	paint.OverlayBounds.X = value_48
-	var value_49 float32 = bounds.Y
-	var value_50 float32 = pad_y
-	var value_51 float32 = value_49 + value_50
-	paint.OverlayBounds.Y = value_51
-	var value_52 float32 = overlay_width
-	paint.OverlayBounds.Width = value_52
-	var value_53 float32 = text_height
-	paint.OverlayBounds.Height = value_53
-	var value_54 bool = show_label
-	var value_55 bool = !value_54
-	if value_55 {
-		var value_56 float32 = 0.0
-		paint.LabelBounds.Width = value_56
-		var value_57 float32 = 0.0
-		paint.LabelBounds.Height = value_57
+	paint.TextColor = frame.Value.Foreground
+	paint.ShowLabel = show_label
+	paint.ShowOverlay = show_overlay
+	paint.LabelBounds.X = (bounds.X + pad_x)
+	paint.LabelBounds.Y = (bounds.Y + pad_y)
+	paint.LabelBounds.Width = label_width
+	paint.LabelBounds.Height = text_height
+	paint.OverlayBounds.X = (((bounds.X + bounds.Width) - overlay_width) - pad_x)
+	paint.OverlayBounds.Y = (bounds.Y + pad_y)
+	paint.OverlayBounds.Width = overlay_width
+	paint.OverlayBounds.Height = text_height
+	if !show_label {
+		paint.LabelBounds.Width = 0.0
+		paint.LabelBounds.Height = 0.0
 	}
-	var value_58 bool = show_overlay
-	var value_59 bool = !value_58
-	if value_59 {
-		var value_60 float32 = 0.0
-		paint.OverlayBounds.Width = value_60
-		var value_61 float32 = 0.0
-		paint.OverlayBounds.Height = value_61
+	if !show_overlay {
+		paint.OverlayBounds.Width = 0.0
+		paint.OverlayBounds.Height = 0.0
 	}
-	var value_62 PlotTextPaint = paint
-	return value_62
+	return paint
 }

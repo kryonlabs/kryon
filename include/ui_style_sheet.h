@@ -3,7 +3,6 @@
 
 #include "runtime/style_sheet.h"
 #include "ui_style_picker_props.generated.h"
-#include "ui_tk.h"
 #include <stdbool.h>
 #include <stdint.h>
 

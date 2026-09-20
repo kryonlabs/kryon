@@ -31,10 +31,9 @@ EXPECTED = {
     "go/kryon/style_parse.go",
     "include/ui_style_sheet.h",
     "scripts/generate-go-style-builtins.py",
-    "src/ui/kss_parser.c",
-    "src/ui/kss_parser.h",
-    "src/ui/style_pack_source.c",
-    "src/ui/style_sheet.c",
+    "src/ui/kss_parser.kry",
+    "src/ui/style_pack_source.kry",
+    "src/ui/style_sheet.kry",
     "web/kryon-runtime.d.ts",
 }
 
@@ -46,13 +45,16 @@ OWNER_ROWS = {
 
 
 def git_files():
-    out = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files", *SCAN_ROOTS],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    return [line for line in out.splitlines() if line]
+    files = set()
+    for extra in ([], ["--others", "--exclude-standard"]):
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", *extra, *SCAN_ROOTS],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        files.update(line for line in out.splitlines() if line)
+    return sorted(files)
 
 
 def should_skip(path):
@@ -72,6 +74,8 @@ def main():
         if should_skip(path):
             continue
         full = ROOT / path
+        if not full.is_file():
+            continue
         if CALLSITE.search(full.read_text(errors="replace")):
             found.add(path)
 

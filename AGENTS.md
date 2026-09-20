@@ -47,6 +47,16 @@ Do not expand it, duplicate it under another alias, or use it from generated
 output. Remove compatibility code once no maintained app or fixture depends on
 it.
 
+## Kry UI Source Rule
+
+All widget behavior, layout, interaction, styling decisions, and UI tree
+construction must be authored in `.kry`. KSS defines theme values. C is only
+permitted for platform and raster backend services called by `.kry`; it must
+not define a widget, compose a UI tree, or choose a widget's visual state.
+Migrate existing `src/ui/*.c` implementations rather than renaming or copying
+their bodies into generated C. This rule applies to every widget, including
+Button and SegmentedControl, and to `ui.c` and `ui_tree.c`.
+
 ## Canonical Widget Rule
 
 One widget concept has one public implementation. Variations such as wrapping,
@@ -88,3 +98,11 @@ Write conventional, fully readable code. Do not compress multiple statements,
 branches, or error checks onto one line. Handlers and protocol code must use
 descriptive names, explicit control flow, and focused helpers. Run the language
 formatter and inspect the resulting diff before considering a change complete.
+
+## Bend
+
+When using Bend:
+- run `bend guide` to learn it
+- use `LAWS.bend` to keep important rules
+- run `bend PROOF.bend` before committing
+- parallelize the code whenever possible

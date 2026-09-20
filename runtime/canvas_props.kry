@@ -15,3 +15,7 @@ CanvasResult :: struct {
     selected_index: i32
     world: Vector2
 }
+
+CanvasHitTest :: (point: Vector2, items: *Rectangle, item_count: i32) -> i32 #extern #export
+CanvasToScreen :: (canvas: Canvas, point: Vector2) -> Vector2 #extern #export
+CanvasRectToScreen :: (canvas: Canvas, rect: Rectangle) -> Rectangle #extern #export

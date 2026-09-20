@@ -110,1346 +110,670 @@ type NavigationBarConfigCounts struct {
 }
 
 func NavigationBar_NavigationBarPanelRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func NavigationBar_NavigationBarRowRole() int32 {
-	var value_0 int32 = 21
-	return value_0
+	return 21
 }
 
 func NavigationBar_NavigationBarActionRole() int32 {
-	var value_0 int32 = 17
-	return value_0
+	return 17
 }
 
 func NavigationBar_NavigationBarRouteRole() int32 {
-	var value_0 int32 = 18
-	return value_0
+	return 18
 }
 
 func NavigationBar_NavigationBarFactsFor(class_name int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindNavigationBar()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = StyleSheet_StyleAny()
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = StyleSheet_StyleAny()
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, value_3, value_4, value_5, state)
+	return value_6
 }
 
 func NavigationBar_NavigationBarRoleFactsFor(class_name int32, role int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindNavigationBar()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = role
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = int32(ButtonToneNeutral)
+	var value_3 int32 = int32(ButtonEmphasisSoft)
+	var value_4 int32 = int32(ControlSizeMedium)
+	var value_5 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, role, value_2, value_3, value_4, state)
+	return value_5
 }
 
 func NavigationBar_NavigationBarItemFactsFor(class_name int32, tone int32, emphasis int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindNavigationBarItem()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = StyleSheet_StyleAny()
-	var value_4 int32 = tone
-	var value_5 int32 = emphasis
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
-}
-
-func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = 86.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
-}
-
-func NavigationBar_NavigationBarDefaultHeightFor(classic bool, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 bool = classic
-	if value_4 {
-		var value_5 float32 = 40.0
-		var value_6 float32 = scale
-		var value_7 float32 = value_5 * value_6
-		var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-		return value_8
-	}
-	var value_9 float32 = scale
-	var value_10 int32 = NavigationBar_NavigationBarDefaultHeight(value_9)
-	return value_10
-}
-
-func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) int32 {
-	var value_0 int32 = style_font
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = style_font
-		return value_3
-	}
-	var value_4 int32 = default_font
+	var value_2 int32 = StyleSheet_StyleAny()
+	var value_3 int32 = int32(ControlSizeMedium)
+	var value_4 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, tone, emphasis, value_3, state)
 	return value_4
 }
 
+func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((86.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
+}
+
+func NavigationBar_NavigationBarDefaultHeightFor(classic bool, scale float32) int32 {
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	if classic {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((40.0*scale)), 32, true)), uint64(0), 32, true, 0))
+		return value_0
+	}
+	var value_1 int32 = NavigationBar_NavigationBarDefaultHeight(scale)
+	return value_1
+}
+
+func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) int32 {
+	if style_font > 0 {
+		return style_font
+	}
+	return default_font
+}
+
 func NavigationBar_NavigationBarTintAlpha(color_alpha uint8, tint_alpha uint8) uint8 {
-	var value_0 uint8 = color_alpha
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 uint8 = tint_alpha
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 3))
-	var value_5 int32 = 255
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 4))
-	var value_7 uint8 = uint8(number_runtime_bits(uint64(value_6), uint64(0), 8, false, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(int32(number_runtime_bits(uint64(color_alpha), uint64(0), 32, true, 0))), uint64(int32(number_runtime_bits(uint64(tint_alpha), uint64(0), 32, true, 0))), 32, true, 3))
+	var value_1 uint8 = uint8(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_0), uint64(255), 32, true, 4)))), uint64(0), 8, false, 0))
+	return value_1
 }
 
 func NavigationBar_NavigationBarItemStateFor(active bool, disabled bool, hovered bool) ButtonState {
-	var value_0 bool = disabled
-	if value_0 {
-		var value_1 int32 = int32(ButtonStateDisabled)
-		var value_2 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
-		return value_2
+	if disabled {
+		return ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateDisabled)), uint64(0), 32, true, 0)))
 	}
-	var value_3 bool = active
-	if value_3 {
-		var value_4 int32 = int32(ButtonStateSelected)
-		var value_5 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_4), uint64(0), 32, true, 0)))
-		return value_5
+	if active {
+		return ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateSelected)), uint64(0), 32, true, 0)))
 	}
-	var value_6 bool = hovered
-	if value_6 {
-		var value_7 int32 = int32(ButtonStateHover)
-		var value_8 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_7), uint64(0), 32, true, 0)))
-		return value_8
+	if hovered {
+		return ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateHover)), uint64(0), 32, true, 0)))
 	}
-	var value_9 int32 = int32(ButtonStateNormal)
-	var value_10 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_9), uint64(0), 32, true, 0)))
-	return value_10
+	return ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateNormal)), uint64(0), 32, true, 0)))
 }
 
 func NavigationBar_NavigationBarItemInteractionFor(disabled bool, pointer_inside bool, captured bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool, selected bool) NavigationBarItemInteraction {
 	var interaction NavigationBarItemInteraction = NavigationBarItemInteraction{}
 	var value_0 bool = pointer_inside
+	if value_0 {
+		value_0 = !disabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = disabled
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !captured
 	}
-	var value_4 bool = value_1
+	interaction.Active = value_1
+	var value_2 bool = interaction.Active
+	if value_2 {
+		value_2 = hover_effects
+	}
+	interaction.Hovered = value_2
+	var value_3 bool = pointer_inside
+	if value_3 {
+		value_3 = disabled
+	}
+	var value_4 bool = value_3
 	if value_4 {
-		var value_5 bool = captured
-		var value_6 bool = !value_5
-		value_4 = value_6
+		value_4 = !captured
 	}
-	interaction.Active = value_4
-	var value_7 bool = interaction.Active
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = hover_effects
-		value_8 = value_9
+	interaction.DisabledMarker = value_4
+	var value_5 bool = interaction.Active
+	if value_5 {
+		value_5 = released
 	}
-	interaction.Hovered = value_8
-	var value_10 bool = pointer_inside
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = disabled
-		value_11 = value_12
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = !release_consumed
 	}
-	var value_13 bool = value_11
-	if value_13 {
-		var value_14 bool = captured
-		var value_15 bool = !value_14
-		value_13 = value_15
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = press_started_inside
 	}
-	interaction.DisabledMarker = value_13
-	var value_16 bool = interaction.Active
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = released
-		value_17 = value_18
-	}
-	var value_19 bool = value_17
-	if value_19 {
-		var value_20 bool = release_consumed
-		var value_21 bool = !value_20
-		value_19 = value_21
-	}
-	var value_22 bool = value_19
-	if value_22 {
-		var value_23 bool = press_started_inside
-		value_22 = value_23
-	}
-	interaction.Activated = value_22
-	var value_24 bool = interaction.Activated
-	interaction.ConsumeRelease = value_24
-	var value_25 bool = selected
-	var value_26 bool = disabled
-	var value_27 bool = interaction.Hovered
-	var value_28 ButtonState = ButtonState(NavigationBar_NavigationBarItemStateFor(value_25, value_26, value_27))
-	interaction.State = value_28
-	var value_29 NavigationBarItemInteraction = interaction
-	return value_29
+	interaction.Activated = value_7
+	interaction.ConsumeRelease = interaction.Activated
+	var value_8 bool = interaction.Hovered
+	var value_9 ButtonState = ButtonState(NavigationBar_NavigationBarItemStateFor(selected, disabled, value_8))
+	interaction.State = value_9
+	return interaction
 }
 
 func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_count int32, option_count int32, slot_limit int32) NavigationBarConfigCounts {
 	var counts NavigationBarConfigCounts = NavigationBarConfigCounts{}
-	var value_0 int32 = slot_limit
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 16
-		slot_limit = value_3
+	if slot_limit <= 0 {
+		slot_limit = 16
 	}
-	var value_4 int32 = max_route_count
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = route_count
-		max_route_count = value_7
+	if max_route_count <= 0 {
+		max_route_count = route_count
 	}
-	var value_8 int32 = max_route_count
-	var value_9 int32 = slot_limit
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = slot_limit
-		max_route_count = value_11
+	if max_route_count > slot_limit {
+		max_route_count = slot_limit
 	}
-	var value_12 int32 = max_route_count
-	var value_13 int32 = 0
-	var value_14 bool = value_12 < value_13
-	if value_14 {
-		var value_15 int32 = 0
-		max_route_count = value_15
+	if max_route_count < 0 {
+		max_route_count = 0
 	}
-	var value_16 int32 = route_count
-	var value_17 int32 = 0
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 int32 = 0
-		route_count = value_19
+	if route_count < 0 {
+		route_count = 0
 	}
-	var value_20 int32 = route_count
-	var value_21 int32 = max_route_count
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 int32 = max_route_count
-		route_count = value_23
+	if route_count > max_route_count {
+		route_count = max_route_count
 	}
-	var value_24 int32 = option_count
-	var value_25 int32 = 0
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 int32 = 0
-		option_count = value_27
+	if option_count < 0 {
+		option_count = 0
 	}
-	var value_28 int32 = option_count
-	var value_29 int32 = slot_limit
-	var value_30 bool = value_28 > value_29
-	if value_30 {
-		var value_31 int32 = slot_limit
-		option_count = value_31
+	if option_count > slot_limit {
+		option_count = slot_limit
 	}
-	var value_32 int32 = route_count
-	counts.RouteCount = value_32
-	var value_33 int32 = max_route_count
-	counts.MaxRouteCount = value_33
-	var value_34 int32 = option_count
-	counts.OptionCount = value_34
-	var value_35 NavigationBarConfigCounts = counts
-	return value_35
+	counts.RouteCount = route_count
+	counts.MaxRouteCount = max_route_count
+	counts.OptionCount = option_count
+	return counts
 }
 
 func NavigationBar_NavigationBarConfigNextRowY(row_y int32, metrics NavigationBarConfigMetrics) int32 {
-	var value_0 int32 = metrics.RowHeight
-	var row_height int32 = value_0
-	var value_1 int32 = row_height
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		row_height = value_4
+	var row_height int32 = metrics.RowHeight
+	if row_height < 0 {
+		row_height = 0
 	}
-	var value_5 int32 = row_y
-	var value_6 int32 = row_height
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 1))
-	return value_7
+	return (int32(number_runtime_bits(uint64(row_y), uint64(row_height), 32, true, 1)))
 }
 
 func NavigationBar_NavigationBarConfigDefaultRoute(option_count int32, first_route int32) int32 {
-	var value_0 int32 = option_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = first_route
-		return value_3
+	if option_count > 0 {
+		return first_route
 	}
-	var value_4 int32 = 0
-	return value_4
+	return 0
 }
 
 func NavigationBar_NavigationBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_10 bool = value_6
-	if !value_10 {
-		var value_11 bool = allow_zero
-		var value_12 bool = !value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 float32 = value
-			var value_15 float32 = 0.0
-			var value_16 bool = value_14 <= value_15
-			value_13 = value_16
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_10 = value_13
+		value_2 = value_3
 	}
-	if value_10 {
-		var value_17 float32 = fallback
-		value = value_17
+	if value_2 {
+		value = fallback
 	}
-	var value_18 float32 = value
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-	return value_21
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func NavigationBar_NavigationBarConfigMetricsFor(scale float32, panel StyleFrame, row StyleFrame, action StyleFrame, route StyleFrame) NavigationBarConfigMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics NavigationBarConfigMetrics = NavigationBarConfigMetrics{}
-	var value_4 uint32 = panel.Value.Fields
-	var value_5 int32 = int32(StyleContentOffset)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = panel.Value.OffsetX
-	var value_8 float32 = 340.0
-	var value_9 float32 = scale
-	var value_10 bool = false
-	var value_11 int32 = NavigationBar_NavigationBarMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.FrameWidth = value_11
-	var value_12 uint32 = panel.Value.Fields
-	var value_13 int32 = int32(StyleIconSize)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 float32 = panel.Value.IconSize
-	var value_16 float32 = 128.0
-	var value_17 float32 = scale
-	var value_18 bool = false
-	var value_19 int32 = NavigationBar_NavigationBarMetric(value_12, value_14, value_15, value_16, value_17, value_18)
-	metrics.FrameBaseHeight = value_19
-	var value_20 uint32 = panel.Value.Fields
-	var value_21 int32 = int32(StylePaddingY)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 float32 = panel.Value.PaddingY
-	var value_24 float32 = 58.0
-	var value_25 float32 = scale
-	var value_26 bool = true
-	var value_27 int32 = NavigationBar_NavigationBarMetric(value_20, value_22, value_23, value_24, value_25, value_26)
-	metrics.FrameBottomExtra = value_27
-	var value_28 uint32 = row.Value.Fields
-	var value_29 int32 = int32(StyleIconSize)
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 float32 = row.Value.IconSize
-	var value_32 float32 = 58.0
-	var value_33 float32 = scale
-	var value_34 bool = false
-	var value_35 int32 = NavigationBar_NavigationBarMetric(value_28, value_30, value_31, value_32, value_33, value_34)
-	metrics.RowHeight = value_35
-	var value_36 uint32 = row.Value.Fields
-	var value_37 int32 = int32(StyleContentOffset)
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
-	var value_39 float32 = row.Value.OffsetY
-	var value_40 float32 = 22.0
-	var value_41 float32 = scale
-	var value_42 bool = true
-	var value_43 int32 = NavigationBar_NavigationBarMetric(value_36, value_38, value_39, value_40, value_41, value_42)
-	metrics.RowControlY = value_43
-	var value_44 uint32 = row.Value.Fields
-	var value_45 int32 = int32(StylePaddingY)
-	var value_46 uint32 = uint32(number_runtime_bits(uint64(value_45), uint64(0), 32, false, 0))
-	var value_47 float32 = row.Value.PaddingY
+	var value_0 uint32 = panel.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = panel.Value.OffsetX
+	var value_3 float32 = 340.0
+	var value_4 int32 = NavigationBar_NavigationBarMetric(value_0, value_1, value_2, value_3, scale, false)
+	metrics.FrameWidth = value_4
+	var value_5 uint32 = panel.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_7 float32 = panel.Value.IconSize
+	var value_8 float32 = 128.0
+	var value_9 int32 = NavigationBar_NavigationBarMetric(value_5, value_6, value_7, value_8, scale, false)
+	metrics.FrameBaseHeight = value_9
+	var value_10 uint32 = panel.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_12 float32 = panel.Value.PaddingY
+	var value_13 float32 = 58.0
+	var value_14 int32 = NavigationBar_NavigationBarMetric(value_10, value_11, value_12, value_13, scale, true)
+	metrics.FrameBottomExtra = value_14
+	var value_15 uint32 = row.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_17 float32 = row.Value.IconSize
+	var value_18 float32 = 58.0
+	var value_19 int32 = NavigationBar_NavigationBarMetric(value_15, value_16, value_17, value_18, scale, false)
+	metrics.RowHeight = value_19
+	var value_20 uint32 = row.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_22 float32 = row.Value.OffsetY
+	var value_23 float32 = 22.0
+	var value_24 int32 = NavigationBar_NavigationBarMetric(value_20, value_21, value_22, value_23, scale, true)
+	metrics.RowControlY = value_24
+	var value_25 uint32 = row.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_27 float32 = row.Value.PaddingY
+	var value_28 float32 = 36.0
+	var value_29 int32 = NavigationBar_NavigationBarMetric(value_25, value_26, value_27, value_28, scale, false)
+	metrics.DropdownHeight = value_29
+	var value_30 uint32 = row.Value.Fields
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_32 float32 = row.Value.PaddingX
+	var value_33 float32 = 36.0
+	var value_34 int32 = NavigationBar_NavigationBarMetric(value_30, value_31, value_32, value_33, scale, true)
+	metrics.RemoveWidth = value_34
+	var value_35 uint32 = action.Value.Fields
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_37 float32 = action.Value.IconSize
+	var value_38 float32 = 34.0
+	var value_39 int32 = NavigationBar_NavigationBarMetric(value_35, value_36, value_37, value_38, scale, false)
+	metrics.AddHeight = value_39
+	var value_40 uint32 = action.Value.Fields
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_42 float32 = action.Value.OffsetX
+	var value_43 float32 = 180.0
+	var value_44 int32 = NavigationBar_NavigationBarMetric(value_40, value_41, value_42, value_43, scale, false)
+	metrics.AddMaxWidth = value_44
+	var value_45 uint32 = action.Value.Fields
+	var value_46 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_47 float32 = action.Value.PaddingY
 	var value_48 float32 = 36.0
-	var value_49 float32 = scale
-	var value_50 bool = false
-	var value_51 int32 = NavigationBar_NavigationBarMetric(value_44, value_46, value_47, value_48, value_49, value_50)
-	metrics.DropdownHeight = value_51
-	var value_52 uint32 = row.Value.Fields
-	var value_53 int32 = int32(StylePaddingX)
-	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
-	var value_55 float32 = row.Value.PaddingX
-	var value_56 float32 = 36.0
-	var value_57 float32 = scale
-	var value_58 bool = true
-	var value_59 int32 = NavigationBar_NavigationBarMetric(value_52, value_54, value_55, value_56, value_57, value_58)
-	metrics.RemoveWidth = value_59
+	var value_49 int32 = NavigationBar_NavigationBarMetric(value_45, value_46, value_47, value_48, scale, false)
+	metrics.ButtonHeight = value_49
+	var value_50 uint32 = action.Value.Fields
+	var value_51 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_52 float32 = action.Value.Gap
+	var value_53 float32 = 8.0
+	var value_54 int32 = NavigationBar_NavigationBarMetric(value_50, value_51, value_52, value_53, scale, true)
+	metrics.ButtonGap = value_54
+	var value_55 uint32 = action.Value.Fields
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_57 float32 = action.Value.PaddingX
+	var value_58 float32 = 92.0
+	var value_59 int32 = NavigationBar_NavigationBarMetric(value_55, value_56, value_57, value_58, scale, false)
+	metrics.ButtonMaxWidth = value_59
 	var value_60 uint32 = action.Value.Fields
-	var value_61 int32 = int32(StyleIconSize)
-	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
-	var value_63 float32 = action.Value.IconSize
-	var value_64 float32 = 34.0
-	var value_65 float32 = scale
-	var value_66 bool = false
-	var value_67 int32 = NavigationBar_NavigationBarMetric(value_60, value_62, value_63, value_64, value_65, value_66)
-	metrics.AddHeight = value_67
-	var value_68 uint32 = action.Value.Fields
-	var value_69 int32 = int32(StyleContentOffset)
-	var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
-	var value_71 float32 = action.Value.OffsetX
-	var value_72 float32 = 180.0
-	var value_73 float32 = scale
-	var value_74 bool = false
-	var value_75 int32 = NavigationBar_NavigationBarMetric(value_68, value_70, value_71, value_72, value_73, value_74)
-	metrics.AddMaxWidth = value_75
-	var value_76 uint32 = action.Value.Fields
-	var value_77 int32 = int32(StylePaddingY)
-	var value_78 uint32 = uint32(number_runtime_bits(uint64(value_77), uint64(0), 32, false, 0))
-	var value_79 float32 = action.Value.PaddingY
-	var value_80 float32 = 36.0
-	var value_81 float32 = scale
-	var value_82 bool = false
-	var value_83 int32 = NavigationBar_NavigationBarMetric(value_76, value_78, value_79, value_80, value_81, value_82)
-	metrics.ButtonHeight = value_83
-	var value_84 uint32 = action.Value.Fields
-	var value_85 int32 = int32(StyleGap)
-	var value_86 uint32 = uint32(number_runtime_bits(uint64(value_85), uint64(0), 32, false, 0))
-	var value_87 float32 = action.Value.Gap
-	var value_88 float32 = 8.0
-	var value_89 float32 = scale
-	var value_90 bool = true
-	var value_91 int32 = NavigationBar_NavigationBarMetric(value_84, value_86, value_87, value_88, value_89, value_90)
-	metrics.ButtonGap = value_91
-	var value_92 uint32 = action.Value.Fields
-	var value_93 int32 = int32(StylePaddingX)
-	var value_94 uint32 = uint32(number_runtime_bits(uint64(value_93), uint64(0), 32, false, 0))
-	var value_95 float32 = action.Value.PaddingX
-	var value_96 float32 = 92.0
-	var value_97 float32 = scale
-	var value_98 bool = false
-	var value_99 int32 = NavigationBar_NavigationBarMetric(value_92, value_94, value_95, value_96, value_97, value_98)
-	metrics.ButtonMaxWidth = value_99
-	var value_100 uint32 = action.Value.Fields
-	var value_101 int32 = int32(StyleContentOffset)
-	var value_102 uint32 = uint32(number_runtime_bits(uint64(value_101), uint64(0), 32, false, 0))
-	var value_103 float32 = action.Value.OffsetY
-	var value_104 float32 = 16.0
-	var value_105 float32 = scale
-	var value_106 bool = true
-	var value_107 int32 = NavigationBar_NavigationBarMetric(value_100, value_102, value_103, value_104, value_105, value_106)
-	metrics.ButtonBottomGap = value_107
-	var value_108 uint32 = route.Value.Fields
-	var value_109 int32 = int32(StylePaddingY)
-	var value_110 uint32 = uint32(number_runtime_bits(uint64(value_109), uint64(0), 32, false, 0))
-	var value_111 float32 = route.Value.PaddingY
-	var value_112 float32 = 12.0
-	var value_113 float32 = scale
-	var value_114 bool = true
-	var value_115 int32 = NavigationBar_NavigationBarMetric(value_108, value_110, value_111, value_112, value_113, value_114)
-	metrics.RouteTopGap = value_115
-	var value_116 uint32 = route.Value.Fields
-	var value_117 int32 = int32(StyleGap)
-	var value_118 uint32 = uint32(number_runtime_bits(uint64(value_117), uint64(0), 32, false, 0))
-	var value_119 float32 = route.Value.Gap
-	var value_120 float32 = 8.0
-	var value_121 float32 = scale
-	var value_122 bool = true
-	var value_123 int32 = NavigationBar_NavigationBarMetric(value_116, value_118, value_119, value_120, value_121, value_122)
-	metrics.RouteBottomGap = value_123
-	var value_124 uint32 = route.Value.Fields
-	var value_125 int32 = int32(StyleIconSize)
-	var value_126 uint32 = uint32(number_runtime_bits(uint64(value_125), uint64(0), 32, false, 0))
-	var value_127 float32 = route.Value.IconSize
-	var value_128 float32 = 48.0
-	var value_129 float32 = scale
-	var value_130 bool = false
-	var value_131 int32 = NavigationBar_NavigationBarMetric(value_124, value_126, value_127, value_128, value_129, value_130)
-	metrics.RouteMinHeight = value_131
-	var value_132 uint32 = route.Value.Fields
-	var value_133 int32 = int32(StyleContentOffset)
-	var value_134 uint32 = uint32(number_runtime_bits(uint64(value_133), uint64(0), 32, false, 0))
-	var value_135 float32 = route.Value.OffsetY
-	var value_136 float32 = 8.0
-	var value_137 float32 = scale
-	var value_138 bool = true
-	var value_139 int32 = NavigationBar_NavigationBarMetric(value_132, value_134, value_135, value_136, value_137, value_138)
-	metrics.ScrollbarWidth = value_139
-	var value_140 NavigationBarConfigMetrics = metrics
-	return value_140
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_62 float32 = action.Value.OffsetY
+	var value_63 float32 = 16.0
+	var value_64 int32 = NavigationBar_NavigationBarMetric(value_60, value_61, value_62, value_63, scale, true)
+	metrics.ButtonBottomGap = value_64
+	var value_65 uint32 = route.Value.Fields
+	var value_66 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_67 float32 = route.Value.PaddingY
+	var value_68 float32 = 12.0
+	var value_69 int32 = NavigationBar_NavigationBarMetric(value_65, value_66, value_67, value_68, scale, true)
+	metrics.RouteTopGap = value_69
+	var value_70 uint32 = route.Value.Fields
+	var value_71 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_72 float32 = route.Value.Gap
+	var value_73 float32 = 8.0
+	var value_74 int32 = NavigationBar_NavigationBarMetric(value_70, value_71, value_72, value_73, scale, true)
+	metrics.RouteBottomGap = value_74
+	var value_75 uint32 = route.Value.Fields
+	var value_76 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_77 float32 = route.Value.IconSize
+	var value_78 float32 = 48.0
+	var value_79 int32 = NavigationBar_NavigationBarMetric(value_75, value_76, value_77, value_78, scale, false)
+	metrics.RouteMinHeight = value_79
+	var value_80 uint32 = route.Value.Fields
+	var value_81 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_82 float32 = route.Value.OffsetY
+	var value_83 float32 = 8.0
+	var value_84 int32 = NavigationBar_NavigationBarMetric(value_80, value_81, value_82, value_83, scale, true)
+	metrics.ScrollbarWidth = value_84
+	return metrics
 }
 
 func NavigationBar_NavigationBarConfigFrameHeight(route_count int32, metrics NavigationBarConfigMetrics) int32 {
-	var value_0 int32 = route_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		route_count = value_3
+	if route_count < 0 {
+		route_count = 0
 	}
-	var value_4 int32 = metrics.FrameBaseHeight
-	var value_5 int32 = metrics.RowHeight
-	var value_6 int32 = route_count
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
-	var value_9 int32 = metrics.AddHeight
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var value_11 int32 = metrics.FrameBottomExtra
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(metrics.FrameBaseHeight), uint64((int32(number_runtime_bits(uint64(metrics.RowHeight), uint64(route_count), 32, true, 3)))), 32, true, 1))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_0), uint64(metrics.AddHeight), 32, true, 1)))), uint64(metrics.FrameBottomExtra), 32, true, 1))
+	return value_1
 }
 
 func NavigationBar_NavigationBarConfigLayoutFor(frame Rectangle, content Rectangle, route_count int32, metrics NavigationBarConfigMetrics) NavigationBarConfigLayout {
 	var layout NavigationBarConfigLayout = NavigationBarConfigLayout{}
-	var value_0 int32 = route_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		route_count = value_3
+	if route_count < 0 {
+		route_count = 0
 	}
-	var value_4 float32 = content.Width
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var value_6 int32 = metrics.ButtonGap
-	var value_7 int32 = 2
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 3))
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_8), 32, true, 2))
-	var value_10 int32 = 3
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 4))
-	var button_w int32 = value_11
-	var value_12 int32 = button_w
-	var value_13 int32 = metrics.ButtonMaxWidth
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = metrics.ButtonMaxWidth
-		button_w = value_15
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Width), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(metrics.ButtonGap), uint64(2), 32, true, 3)))), 32, true, 2))
+	var button_w int32 = (int32(number_runtime_bits(uint64(value_1), uint64(3), 32, true, 4)))
+	if button_w > metrics.ButtonMaxWidth {
+		button_w = metrics.ButtonMaxWidth
 	}
-	var value_16 int32 = button_w
-	var value_17 int32 = 1
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 int32 = 1
-		button_w = value_19
+	if button_w < 1 {
+		button_w = 1
 	}
-	var value_20 int32 = button_w
-	var value_21 int32 = 3
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 3))
-	var value_23 int32 = metrics.ButtonGap
-	var value_24 int32 = 2
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
-	var value_26 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_25), 32, true, 1))
-	var total_button_w int32 = value_26
-	var value_27 float32 = frame.Y
-	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
-	var value_29 float32 = frame.Height
-	var value_30 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_29), 32, true)), uint64(0), 32, true, 0))
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_30), 32, true, 1))
-	var value_32 int32 = metrics.ButtonHeight
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 2))
-	var value_34 int32 = metrics.ButtonBottomGap
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-	var button_y int32 = value_35
-	var value_36 float32 = frame.X
-	var value_37 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_36), 32, true)), uint64(0), 32, true, 0))
-	var value_38 float32 = frame.Width
-	var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
-	var value_40 int32 = total_button_w
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 2))
-	var value_42 int32 = 2
-	var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 4))
-	var value_44 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_43), 32, true, 1))
-	var button_x int32 = value_44
-	var value_45 int32 = button_y
-	var value_46 int32 = metrics.ButtonGap
-	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 2))
-	var value_48 int32 = metrics.AddHeight
-	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 2))
-	var add_y int32 = value_49
-	var value_50 int32 = add_y
-	var value_51 float32 = content.Y
-	var value_52 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_51), 32, true)), uint64(0), 32, true, 0))
-	var value_53 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_52), 32, true, 2))
-	var value_54 int32 = metrics.RouteTopGap
-	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 2))
-	var route_h int32 = value_55
-	var value_56 int32 = route_h
-	var value_57 int32 = metrics.RowHeight
-	var value_58 bool = value_56 < value_57
-	if value_58 {
-		var value_59 int32 = metrics.RowHeight
-		route_h = value_59
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(button_w), uint64(3), 32, true, 3)))), uint64((int32(number_runtime_bits(uint64(metrics.ButtonGap), uint64(2), 32, true, 3)))), 32, true, 1))
+	var total_button_w int32 = value_2
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(frame.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(frame.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_5 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1)))), uint64(metrics.ButtonHeight), 32, true, 2))
+	var button_y int32 = (int32(number_runtime_bits(uint64(value_5), uint64(metrics.ButtonBottomGap), 32, true, 2)))
+	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(frame.X), 32, true)), uint64(0), 32, true, 0))
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(frame.Width), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_7), uint64(total_button_w), 32, true, 2)))), uint64(2), 32, true, 4))
+	var button_x int32 = (int32(number_runtime_bits(uint64(value_6), uint64(value_8), 32, true, 1)))
+	var value_9 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(button_y), uint64(metrics.ButtonGap), 32, true, 2)))), uint64(metrics.AddHeight), 32, true, 2))
+	var add_y int32 = value_9
+	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_11 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(add_y), uint64(value_10), 32, true, 2)))), uint64(metrics.RouteTopGap), 32, true, 2))
+	var route_h int32 = value_11
+	if route_h < metrics.RowHeight {
+		route_h = metrics.RowHeight
 	}
-	var value_60 float32 = content.Y
-	var value_61 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_60), 32, true)), uint64(0), 32, true, 0))
-	var value_62 int32 = route_h
-	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 1))
-	var value_64 int32 = add_y
-	var value_65 int32 = metrics.RouteBottomGap
-	var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 2))
-	var value_67 bool = value_63 > value_66
-	if value_67 {
-		var value_68 int32 = add_y
-		var value_69 float32 = content.Y
-		var value_70 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_69), 32, true)), uint64(0), 32, true, 0))
-		var value_71 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_70), 32, true, 2))
-		var value_72 int32 = metrics.RouteBottomGap
-		var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 2))
-		route_h = value_73
+	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_13 bool = (int32(number_runtime_bits(uint64(value_12), uint64(route_h), 32, true, 1))) > (int32(number_runtime_bits(uint64(add_y), uint64(metrics.RouteBottomGap), 32, true, 2)))
+	if value_13 {
+		var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Y), 32, true)), uint64(0), 32, true, 0))
+		var value_15 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(add_y), uint64(value_14), 32, true, 2)))), uint64(metrics.RouteBottomGap), 32, true, 2))
+		route_h = value_15
 	}
-	var value_74 int32 = route_h
-	var value_75 int32 = metrics.RouteMinHeight
-	var value_76 bool = value_74 < value_75
-	if value_76 {
-		var value_77 int32 = metrics.RouteMinHeight
-		route_h = value_77
+	if route_h < metrics.RouteMinHeight {
+		route_h = metrics.RouteMinHeight
 	}
-	var value_78 float32 = content.Width
-	var value_79 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_78), 32, true)), uint64(0), 32, true, 0))
-	var add_w int32 = value_79
-	var value_80 int32 = add_w
-	var value_81 int32 = metrics.AddMaxWidth
-	var value_82 bool = value_80 > value_81
-	if value_82 {
-		var value_83 int32 = metrics.AddMaxWidth
-		add_w = value_83
+	var value_16 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Width), 32, true)), uint64(0), 32, true, 0))
+	var add_w int32 = value_16
+	if add_w > metrics.AddMaxWidth {
+		add_w = metrics.AddMaxWidth
 	}
-	var value_84 int32 = add_w
-	var value_85 int32 = 1
-	var value_86 bool = value_84 < value_85
-	if value_86 {
-		var value_87 int32 = 1
-		add_w = value_87
+	if add_w < 1 {
+		add_w = 1
 	}
-	var value_88 float32 = content.X
-	layout.RouteBounds.X = value_88
-	var value_89 float32 = content.Y
-	layout.RouteBounds.Y = value_89
-	var value_90 float32 = content.Width
-	layout.RouteBounds.Width = value_90
-	var value_91 int32 = route_h
-	var value_92 float32 = float32(value_91)
-	layout.RouteBounds.Height = value_92
-	var value_93 int32 = metrics.RowHeight
-	var value_94 int32 = route_count
-	var value_95 int32 = int32(number_runtime_bits(uint64(value_93), uint64(value_94), 32, true, 3))
-	layout.RouteContentHeight = value_95
-	var value_96 int32 = metrics.RowHeight
-	layout.WheelStep = value_96
-	var value_97 float32 = content.X
-	var value_98 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_97), 32, true)), uint64(0), 32, true, 0))
-	var value_99 float32 = content.Width
-	var value_100 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_99), 32, true)), uint64(0), 32, true, 0))
-	var value_101 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_100), 32, true, 1))
-	var value_102 int32 = metrics.ScrollbarWidth
-	var value_103 int32 = int32(number_runtime_bits(uint64(value_101), uint64(value_102), 32, true, 2))
-	layout.ScrollbarX = value_103
-	var value_104 float32 = content.X
-	var value_105 float32 = content.Width
-	var value_106 int32 = add_w
-	var value_107 float32 = float32(value_106)
-	var value_108 float32 = value_105 - value_107
-	var value_109 float32 = 2.0
-	var value_110 float32 = value_108 / value_109
-	var value_111 float32 = value_104 + value_110
-	layout.AddBounds.X = value_111
-	var value_112 int32 = add_y
-	var value_113 float32 = float32(value_112)
-	layout.AddBounds.Y = value_113
-	var value_114 int32 = add_w
-	var value_115 float32 = float32(value_114)
-	layout.AddBounds.Width = value_115
-	var value_116 int32 = metrics.AddHeight
-	var value_117 float32 = float32(value_116)
-	layout.AddBounds.Height = value_117
-	var value_118 int32 = button_x
-	var value_119 float32 = float32(value_118)
-	layout.ResetBounds.X = value_119
-	var value_120 int32 = button_y
-	var value_121 float32 = float32(value_120)
-	layout.ResetBounds.Y = value_121
-	var value_122 int32 = button_w
-	var value_123 float32 = float32(value_122)
-	layout.ResetBounds.Width = value_123
-	var value_124 int32 = metrics.ButtonHeight
-	var value_125 float32 = float32(value_124)
-	layout.ResetBounds.Height = value_125
-	var value_126 Rectangle = layout.ResetBounds
-	layout.CancelBounds = value_126
-	var value_127 float32 = layout.CancelBounds.X
-	var value_128 int32 = button_w
-	var value_129 int32 = metrics.ButtonGap
-	var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 1))
-	var value_131 float32 = float32(value_130)
-	layout.CancelBounds.X = value_127 + value_131
-	var value_132 Rectangle = layout.CancelBounds
-	layout.SaveBounds = value_132
-	var value_133 float32 = layout.SaveBounds.X
-	var value_134 int32 = button_w
-	var value_135 int32 = metrics.ButtonGap
-	var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 1))
-	var value_137 float32 = float32(value_136)
-	layout.SaveBounds.X = value_133 + value_137
-	var value_138 float32 = content.Y
-	var value_139 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_138), 32, true)), uint64(0), 32, true, 0))
-	layout.ClipY = value_139
-	var value_140 int32 = add_y
-	var value_141 int32 = metrics.RouteBottomGap
-	var value_142 int32 = int32(number_runtime_bits(uint64(value_140), uint64(value_141), 32, true, 2))
-	layout.ClipHeight = value_142
-	var value_143 NavigationBarConfigLayout = layout
-	return value_143
+	layout.RouteBounds.X = content.X
+	layout.RouteBounds.Y = content.Y
+	layout.RouteBounds.Width = content.Width
+	layout.RouteBounds.Height = float32(route_h)
+	layout.RouteContentHeight = (int32(number_runtime_bits(uint64(metrics.RowHeight), uint64(route_count), 32, true, 3)))
+	layout.WheelStep = metrics.RowHeight
+	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.X), 32, true)), uint64(0), 32, true, 0))
+	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Width), 32, true)), uint64(0), 32, true, 0))
+	var value_19 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1)))), uint64(metrics.ScrollbarWidth), 32, true, 2))
+	layout.ScrollbarX = value_19
+	layout.AddBounds.X = (content.X + ((content.Width - float32(add_w)) / 2.0))
+	layout.AddBounds.Y = float32(add_y)
+	layout.AddBounds.Width = float32(add_w)
+	layout.AddBounds.Height = float32(metrics.AddHeight)
+	layout.ResetBounds.X = float32(button_x)
+	layout.ResetBounds.Y = float32(button_y)
+	layout.ResetBounds.Width = float32(button_w)
+	layout.ResetBounds.Height = float32(metrics.ButtonHeight)
+	layout.CancelBounds = layout.ResetBounds
+	var value_20 float32 = layout.CancelBounds.X
+	layout.CancelBounds.X = value_20 + float32((int32(number_runtime_bits(uint64(button_w), uint64(metrics.ButtonGap), 32, true, 1))))
+	layout.SaveBounds = layout.CancelBounds
+	var value_21 float32 = layout.SaveBounds.X
+	layout.SaveBounds.X = value_21 + float32((int32(number_runtime_bits(uint64(button_w), uint64(metrics.ButtonGap), 32, true, 1))))
+	var value_22 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(content.Y), 32, true)), uint64(0), 32, true, 0))
+	layout.ClipY = value_22
+	layout.ClipHeight = (int32(number_runtime_bits(uint64(add_y), uint64(metrics.RouteBottomGap), 32, true, 2)))
+	return layout
 }
 
 func NavigationBar_NavigationBarConfigRowLayoutFor(content Rectangle, row_y int32, label_height int32, metrics NavigationBarConfigMetrics) NavigationBarConfigRowLayout {
 	var row NavigationBarConfigRowLayout = NavigationBarConfigRowLayout{}
-	var value_0 int32 = row_y
-	var value_1 int32 = metrics.RowControlY
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var control_y int32 = value_2
-	var value_3 float32 = content.X
-	row.LabelBounds.X = value_3
-	var value_4 int32 = row_y
-	var value_5 float32 = float32(value_4)
-	row.LabelBounds.Y = value_5
-	var value_6 float32 = content.Width
-	row.LabelBounds.Width = value_6
-	var value_7 int32 = label_height
-	var value_8 float32 = float32(value_7)
-	row.LabelBounds.Height = value_8
-	var value_9 float32 = content.X
-	row.DropdownBounds.X = value_9
-	var value_10 int32 = control_y
-	var value_11 float32 = float32(value_10)
-	row.DropdownBounds.Y = value_11
-	var value_12 float32 = content.Width
-	var value_13 int32 = metrics.RemoveWidth
-	var value_14 int32 = metrics.ButtonGap
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
-	var value_16 float32 = float32(value_15)
-	var value_17 float32 = value_12 - value_16
-	row.DropdownBounds.Width = value_17
-	var value_18 float32 = row.DropdownBounds.Width
-	var value_19 float32 = 1.0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 float32 = 1.0
-		row.DropdownBounds.Width = value_21
+	var control_y int32 = (int32(number_runtime_bits(uint64(row_y), uint64(metrics.RowControlY), 32, true, 1)))
+	row.LabelBounds.X = content.X
+	row.LabelBounds.Y = float32(row_y)
+	row.LabelBounds.Width = content.Width
+	row.LabelBounds.Height = float32(label_height)
+	row.DropdownBounds.X = content.X
+	row.DropdownBounds.Y = float32(control_y)
+	var value_0 float32 = float32((int32(number_runtime_bits(uint64(metrics.RemoveWidth), uint64(metrics.ButtonGap), 32, true, 1))))
+	row.DropdownBounds.Width = (content.Width - value_0)
+	if row.DropdownBounds.Width < 1.0 {
+		row.DropdownBounds.Width = 1.0
 	}
-	var value_22 int32 = metrics.DropdownHeight
-	var value_23 float32 = float32(value_22)
-	row.DropdownBounds.Height = value_23
-	var value_24 float32 = content.X
-	var value_25 float32 = content.Width
-	var value_26 float32 = value_24 + value_25
-	var value_27 int32 = metrics.RemoveWidth
-	var value_28 float32 = float32(value_27)
-	var value_29 float32 = value_26 - value_28
-	row.RemoveBounds.X = value_29
-	var value_30 int32 = control_y
-	var value_31 float32 = float32(value_30)
-	row.RemoveBounds.Y = value_31
-	var value_32 int32 = metrics.RemoveWidth
-	var value_33 float32 = float32(value_32)
-	row.RemoveBounds.Width = value_33
-	var value_34 int32 = metrics.RemoveWidth
-	var value_35 float32 = float32(value_34)
-	row.RemoveBounds.Height = value_35
-	var value_36 NavigationBarConfigRowLayout = row
-	return value_36
+	row.DropdownBounds.Height = float32(metrics.DropdownHeight)
+	row.RemoveBounds.X = ((content.X + content.Width) - float32(metrics.RemoveWidth))
+	row.RemoveBounds.Y = float32(control_y)
+	row.RemoveBounds.Width = float32(metrics.RemoveWidth)
+	row.RemoveBounds.Height = float32(metrics.RemoveWidth)
+	return row
 }
 
 func NavigationBar_NavigationBarPaintFor(spec NavigationBarSpec) NavigationBarPaint {
 	var paint NavigationBarPaint = NavigationBarPaint{}
-	var value_0 float32 = spec.Scale
-	var scale float32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+	var scale float32 = spec.Scale
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_5 int32 = spec.Count
-	var count int32 = value_5
-	var value_6 int32 = count
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = 0
-		count = value_9
+	var count int32 = spec.Count
+	if count < 0 {
+		count = 0
 	}
-	var value_10 int32 = count
-	var value_11 int32 = 8
-	var value_12 bool = value_10 > value_11
-	if value_12 {
-		var value_13 int32 = 8
-		count = value_13
+	if count > 8 {
+		count = 8
 	}
-	var value_14 int32 = spec.Height
-	var height int32 = value_14
-	var value_15 int32 = height
-	var value_16 int32 = 0
-	var value_17 bool = value_15 <= value_16
-	if value_17 {
-		var value_18 uint32 = spec.Bar.Value.Fields
-		var value_19 int32 = int32(StyleIconSize)
-		var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-		var value_21 float32 = spec.Bar.Value.IconSize
-		var value_22 float32 = 86.0
-		var value_23 float32 = scale
-		var value_24 bool = false
-		var value_25 int32 = NavigationBar_NavigationBarMetric(value_18, value_20, value_21, value_22, value_23, value_24)
-		height = value_25
+	var height int32 = spec.Height
+	if height <= 0 {
+		var value_0 uint32 = spec.Bar.Value.Fields
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+		var value_2 float32 = spec.Bar.Value.IconSize
+		var value_3 float32 = 86.0
+		var value_4 int32 = NavigationBar_NavigationBarMetric(value_0, value_1, value_2, value_3, scale, false)
+		height = value_4
 	}
-	var value_26 int32 = spec.BottomMargin
-	var bottom_margin int32 = value_26
-	var value_27 int32 = bottom_margin
-	var value_28 int32 = 0
-	var value_29 bool = value_27 < value_28
-	if value_29 {
-		var value_30 uint32 = spec.Bar.Value.Fields
-		var value_31 int32 = int32(StylePaddingY)
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
-		var value_33 float32 = spec.Bar.Value.PaddingY
-		var value_34 float32 = 0.0
-		var value_35 float32 = scale
-		var value_36 bool = true
-		var value_37 int32 = NavigationBar_NavigationBarMetric(value_30, value_32, value_33, value_34, value_35, value_36)
-		bottom_margin = value_37
+	var bottom_margin int32 = spec.BottomMargin
+	if bottom_margin < 0 {
+		var value_5 uint32 = spec.Bar.Value.Fields
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+		var value_7 float32 = spec.Bar.Value.PaddingY
+		var value_8 float32 = 0.0
+		var value_9 int32 = NavigationBar_NavigationBarMetric(value_5, value_6, value_7, value_8, scale, true)
+		bottom_margin = value_9
 	}
-	var value_38 int32 = spec.SideMargin
-	var side_margin int32 = value_38
-	var value_39 int32 = side_margin
-	var value_40 int32 = 0
-	var value_41 bool = value_39 < value_40
-	if value_41 {
-		var value_42 uint32 = spec.Bar.Value.Fields
-		var value_43 int32 = int32(StylePaddingX)
-		var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
-		var value_45 float32 = spec.Bar.Value.PaddingX
-		var value_46 float32 = 0.0
-		var value_47 float32 = scale
-		var value_48 bool = true
-		var value_49 int32 = NavigationBar_NavigationBarMetric(value_42, value_44, value_45, value_46, value_47, value_48)
-		side_margin = value_49
+	var side_margin int32 = spec.SideMargin
+	if side_margin < 0 {
+		var value_10 uint32 = spec.Bar.Value.Fields
+		var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+		var value_12 float32 = spec.Bar.Value.PaddingX
+		var value_13 float32 = 0.0
+		var value_14 int32 = NavigationBar_NavigationBarMetric(value_10, value_11, value_12, value_13, scale, true)
+		side_margin = value_14
 	}
-	var value_50 int32 = spec.IconSize
-	var icon_size int32 = value_50
-	var value_51 int32 = icon_size
-	var value_52 int32 = 0
-	var value_53 bool = value_51 < value_52
-	if value_53 {
-		var value_54 uint32 = spec.Item.Value.Fields
-		var value_55 int32 = int32(StyleIconSize)
-		var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
-		var value_57 float32 = spec.Item.Value.IconSize
-		var value_58 float32 = 32.0
-		var value_59 float32 = scale
-		var value_60 bool = true
-		var value_61 int32 = NavigationBar_NavigationBarMetric(value_54, value_56, value_57, value_58, value_59, value_60)
-		icon_size = value_61
+	var icon_size int32 = spec.IconSize
+	if icon_size < 0 {
+		var value_15 uint32 = spec.Item.Value.Fields
+		var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+		var value_17 float32 = spec.Item.Value.IconSize
+		var value_18 float32 = 32.0
+		var value_19 int32 = NavigationBar_NavigationBarMetric(value_15, value_16, value_17, value_18, scale, true)
+		icon_size = value_19
 	}
-	var value_62 int32 = spec.ViewHeight
-	var value_63 int32 = bottom_margin
-	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 2))
-	var value_65 int32 = height
-	var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 2))
-	var y int32 = value_66
-	var value_67 int32 = spec.ViewWidth
-	var value_68 int32 = side_margin
-	var value_69 int32 = 2
-	var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 3))
-	var value_71 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_70), 32, true, 2))
-	var available_w int32 = value_71
-	var value_72 uint32 = spec.Bar.Value.Fields
-	var value_73 int32 = int32(StyleContentOffset)
-	var value_74 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(0), 32, false, 0))
-	var value_75 float32 = spec.Bar.Value.OffsetX
-	var value_76 float32 = 96.0
-	var value_77 float32 = scale
-	var value_78 bool = false
-	var value_79 int32 = NavigationBar_NavigationBarMetric(value_72, value_74, value_75, value_76, value_77, value_78)
-	var min_available int32 = value_79
-	var value_80 int32 = available_w
-	var value_81 int32 = min_available
-	var value_82 bool = value_80 < value_81
-	if value_82 {
-		var value_83 int32 = min_available
-		available_w = value_83
+	var value_20 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(spec.ViewHeight), uint64(bottom_margin), 32, true, 2)))), uint64(height), 32, true, 2))
+	var y int32 = value_20
+	var value_21 int32 = int32(number_runtime_bits(uint64(spec.ViewWidth), uint64((int32(number_runtime_bits(uint64(side_margin), uint64(2), 32, true, 3)))), 32, true, 2))
+	var available_w int32 = value_21
+	var value_22 uint32 = spec.Bar.Value.Fields
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_24 float32 = spec.Bar.Value.OffsetX
+	var value_25 float32 = 96.0
+	var value_26 int32 = NavigationBar_NavigationBarMetric(value_22, value_23, value_24, value_25, scale, false)
+	var min_available int32 = value_26
+	if available_w < min_available {
+		available_w = min_available
 	}
-	var value_84 int32 = available_w
-	var tab_w int32 = value_84
-	var value_85 int32 = count
-	var value_86 int32 = 0
-	var value_87 bool = value_85 > value_86
-	if value_87 {
-		var value_88 int32 = available_w
-		var value_89 int32 = count
-		var value_90 int32 = int32(number_runtime_bits(uint64(value_88), uint64(value_89), 32, true, 4))
-		tab_w = value_90
+	var tab_w int32 = available_w
+	if count > 0 {
+		tab_w = (int32(number_runtime_bits(uint64(available_w), uint64(count), 32, true, 4)))
 	}
-	var value_91 uint32 = spec.Bar.Value.Fields
-	var value_92 int32 = int32(StyleContentOffset)
-	var value_93 uint32 = uint32(number_runtime_bits(uint64(value_92), uint64(0), 32, false, 0))
-	var value_94 float32 = spec.Bar.Value.OffsetY
-	var value_95 float32 = 56.0
-	var value_96 float32 = scale
-	var value_97 bool = false
-	var value_98 int32 = NavigationBar_NavigationBarMetric(value_91, value_93, value_94, value_95, value_96, value_97)
-	var min_tab int32 = value_98
-	var value_99 int32 = tab_w
-	var value_100 int32 = min_tab
-	var value_101 bool = value_99 < value_100
-	if value_101 {
-		var value_102 int32 = min_tab
-		tab_w = value_102
+	var value_27 uint32 = spec.Bar.Value.Fields
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_29 float32 = spec.Bar.Value.OffsetY
+	var value_30 float32 = 56.0
+	var value_31 int32 = NavigationBar_NavigationBarMetric(value_27, value_28, value_29, value_30, scale, false)
+	var min_tab int32 = value_31
+	if tab_w < min_tab {
+		tab_w = min_tab
 	}
-	var value_103 int32 = tab_w
-	var value_104 int32 = count
-	var value_105 int32 = int32(number_runtime_bits(uint64(value_103), uint64(value_104), 32, true, 3))
-	var group_w int32 = value_105
-	var value_106 int32 = group_w
-	var value_107 int32 = available_w
-	var value_108 bool = value_106 > value_107
-	if value_108 {
-		var value_109 int32 = available_w
-		group_w = value_109
+	var group_w int32 = (int32(number_runtime_bits(uint64(tab_w), uint64(count), 32, true, 3)))
+	if group_w > available_w {
+		group_w = available_w
 	}
-	var value_110 int32 = count
-	var value_111 int32 = 0
-	var value_112 bool = value_110 > value_111
-	if value_112 {
-		var value_113 int32 = group_w
-		var value_114 int32 = count
-		var value_115 int32 = int32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, true, 4))
-		tab_w = value_115
+	if count > 0 {
+		tab_w = (int32(number_runtime_bits(uint64(group_w), uint64(count), 32, true, 4)))
 	}
-	var value_116 float32 = 0.0
-	paint.Bounds.X = value_116
-	var value_117 int32 = y
-	var value_118 float32 = float32(value_117)
-	paint.Bounds.Y = value_118
-	var value_119 int32 = spec.ViewWidth
-	var value_120 float32 = float32(value_119)
-	paint.Bounds.Width = value_120
-	var value_121 int32 = height
-	var value_122 float32 = float32(value_121)
-	paint.Bounds.Height = value_122
-	var value_123 uint32 = spec.Bar.Value.Fields
-	var value_124 int32 = int32(StyleBorderWidth)
-	var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
-	var value_126 float32 = spec.Bar.Value.BorderWidth
-	var value_127 float32 = 1.0
-	var value_128 float32 = scale
-	var value_129 bool = true
-	var value_130 int32 = NavigationBar_NavigationBarMetric(value_123, value_125, value_126, value_127, value_128, value_129)
-	var inset int32 = value_130
-	var value_131 int32 = side_margin
-	var value_132 int32 = inset
-	var value_133 int32 = int32(number_runtime_bits(uint64(value_131), uint64(value_132), 32, true, 1))
-	var value_134 float32 = float32(value_133)
-	paint.BarBounds.X = value_134
-	var value_135 int32 = y
-	var value_136 int32 = inset
-	var value_137 int32 = int32(number_runtime_bits(uint64(value_135), uint64(value_136), 32, true, 1))
-	var value_138 float32 = float32(value_137)
-	paint.BarBounds.Y = value_138
-	var value_139 int32 = available_w
-	var value_140 int32 = inset
-	var value_141 int32 = 2
-	var value_142 int32 = int32(number_runtime_bits(uint64(value_140), uint64(value_141), 32, true, 3))
-	var value_143 int32 = int32(number_runtime_bits(uint64(value_139), uint64(value_142), 32, true, 2))
-	var value_144 float32 = float32(value_143)
-	paint.BarBounds.Width = value_144
-	var value_145 int32 = height
-	var value_146 int32 = inset
-	var value_147 int32 = 2
-	var value_148 int32 = int32(number_runtime_bits(uint64(value_146), uint64(value_147), 32, true, 3))
-	var value_149 int32 = int32(number_runtime_bits(uint64(value_145), uint64(value_148), 32, true, 2))
-	var value_150 float32 = float32(value_149)
-	paint.BarBounds.Height = value_150
-	var value_151 int32 = side_margin
-	var value_152 int32 = available_w
-	var value_153 int32 = group_w
-	var value_154 int32 = int32(number_runtime_bits(uint64(value_152), uint64(value_153), 32, true, 2))
-	var value_155 int32 = 2
-	var value_156 int32 = int32(number_runtime_bits(uint64(value_154), uint64(value_155), 32, true, 4))
-	var value_157 int32 = int32(number_runtime_bits(uint64(value_151), uint64(value_156), 32, true, 1))
-	paint.StartX = value_157
-	var value_158 int32 = tab_w
-	paint.TabWidth = value_158
-	var value_159 int32 = group_w
-	paint.GroupWidth = value_159
-	var value_160 int32 = count
-	paint.Count = value_160
-	var value_161 int32 = icon_size
-	paint.IconSize = value_161
-	var value_162 int32 = height
-	paint.Height = value_162
-	var value_163 int32 = y
-	paint.Y = value_163
-	var value_164 StyleFrame = spec.Bar
-	paint.Bar = value_164
-	var value_165 NavigationBarPaint = paint
-	return value_165
+	paint.Bounds.X = 0.0
+	paint.Bounds.Y = float32(y)
+	paint.Bounds.Width = float32(spec.ViewWidth)
+	paint.Bounds.Height = float32(height)
+	var value_32 uint32 = spec.Bar.Value.Fields
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))
+	var value_34 float32 = spec.Bar.Value.BorderWidth
+	var value_35 float32 = 1.0
+	var value_36 int32 = NavigationBar_NavigationBarMetric(value_32, value_33, value_34, value_35, scale, true)
+	var inset int32 = value_36
+	paint.BarBounds.X = float32((int32(number_runtime_bits(uint64(side_margin), uint64(inset), 32, true, 1))))
+	paint.BarBounds.Y = float32((int32(number_runtime_bits(uint64(y), uint64(inset), 32, true, 1))))
+	var value_37 int32 = int32(number_runtime_bits(uint64(available_w), uint64((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))), 32, true, 2))
+	paint.BarBounds.Width = float32(value_37)
+	var value_38 int32 = int32(number_runtime_bits(uint64(height), uint64((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))), 32, true, 2))
+	paint.BarBounds.Height = float32(value_38)
+	var value_39 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(available_w), uint64(group_w), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.StartX = (int32(number_runtime_bits(uint64(side_margin), uint64(value_39), 32, true, 1)))
+	paint.TabWidth = tab_w
+	paint.GroupWidth = group_w
+	paint.Count = count
+	paint.IconSize = icon_size
+	paint.Height = height
+	paint.Y = y
+	paint.Bar = spec.Bar
+	return paint
 }
 
 func NavigationBar_NavigationBarItemPaintFor(spec NavigationBarItemSpec) NavigationBarItemPaint {
 	var paint NavigationBarItemPaint = NavigationBarItemPaint{}
-	var value_0 float32 = 1.0
-	var scale float32 = value_0
-	var value_1 int32 = spec.Bar.Height
-	var value_2 int32 = 0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 int32 = spec.Bar.Height
-		var value_5 float32 = float32(value_4)
-		var value_6 float32 = 86.0
-		var value_7 float32 = value_5 / value_6
-		scale = value_7
+	var scale float32 = 1.0
+	if spec.Bar.Height > 0 {
+		scale = (float32(spec.Bar.Height) / 86.0)
 	}
-	var value_8 int32 = spec.Index
-	var index int32 = value_8
-	var value_9 int32 = index
-	var value_10 int32 = 0
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 0
-		index = value_12
+	var index int32 = spec.Index
+	if index < 0 {
+		index = 0
 	}
-	var value_13 int32 = spec.Bar.StartX
-	var value_14 int32 = index
-	var value_15 int32 = spec.Bar.TabWidth
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 3))
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_16), 32, true, 1))
-	var x int32 = value_17
-	var value_18 int32 = spec.Bar.TabWidth
-	var w int32 = value_18
-	var value_19 int32 = index
-	var value_20 int32 = spec.Bar.Count
-	var value_21 int32 = 1
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
-	var value_23 bool = value_19 == value_22
-	if value_23 {
-		var value_24 int32 = spec.Bar.StartX
-		var value_25 int32 = spec.Bar.GroupWidth
-		var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 1))
-		var value_27 int32 = x
-		var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
-		w = value_28
+	var value_0 int32 = int32(number_runtime_bits(uint64(spec.Bar.StartX), uint64((int32(number_runtime_bits(uint64(index), uint64(spec.Bar.TabWidth), 32, true, 3)))), 32, true, 1))
+	var x int32 = value_0
+	var w int32 = spec.Bar.TabWidth
+	if index == (int32(number_runtime_bits(uint64(spec.Bar.Count), uint64(1), 32, true, 2))) {
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(spec.Bar.StartX), uint64(spec.Bar.GroupWidth), 32, true, 1)))), uint64(x), 32, true, 2))
+		w = value_1
 	}
-	var value_29 int32 = w
-	var value_30 int32 = 0
-	var value_31 bool = value_29 < value_30
-	if value_31 {
-		var value_32 int32 = 0
-		w = value_32
+	if w < 0 {
+		w = 0
 	}
-	var value_33 uint32 = spec.Face.Value.Fields
-	var value_34 int32 = int32(StylePaddingX)
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
-	var value_36 float32 = spec.Face.Value.PaddingX
-	var value_37 float32 = 58.0
-	var value_38 float32 = scale
-	var value_39 bool = true
-	var value_40 int32 = NavigationBar_NavigationBarMetric(value_33, value_35, value_36, value_37, value_38, value_39)
-	var state_w int32 = value_40
-	var value_41 uint32 = spec.Face.Value.Fields
-	var value_42 int32 = int32(StylePaddingY)
-	var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
-	var value_44 float32 = spec.Face.Value.PaddingY
-	var value_45 float32 = 58.0
-	var value_46 float32 = scale
-	var value_47 bool = true
-	var value_48 int32 = NavigationBar_NavigationBarMetric(value_41, value_43, value_44, value_45, value_46, value_47)
-	var state_h int32 = value_48
-	var value_49 uint32 = spec.Face.Value.Fields
-	var value_50 int32 = int32(StyleContentOffset)
-	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
-	var value_52 float32 = spec.Face.Value.OffsetX
-	var value_53 float32 = 16.0
-	var value_54 float32 = scale
-	var value_55 bool = true
-	var value_56 int32 = NavigationBar_NavigationBarMetric(value_49, value_51, value_52, value_53, value_54, value_55)
-	var icon_breathing int32 = value_56
-	var value_57 int32 = state_w
-	var value_58 int32 = spec.Bar.IconSize
-	var value_59 int32 = icon_breathing
-	var value_60 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_59), 32, true, 1))
-	var value_61 bool = value_57 < value_60
-	if value_61 {
-		var value_62 int32 = spec.Bar.IconSize
-		var value_63 int32 = icon_breathing
-		var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 1))
-		state_w = value_64
+	var value_2 uint32 = spec.Face.Value.Fields
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_4 float32 = spec.Face.Value.PaddingX
+	var value_5 float32 = 58.0
+	var value_6 int32 = NavigationBar_NavigationBarMetric(value_2, value_3, value_4, value_5, scale, true)
+	var state_w int32 = value_6
+	var value_7 uint32 = spec.Face.Value.Fields
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_9 float32 = spec.Face.Value.PaddingY
+	var value_10 float32 = 58.0
+	var value_11 int32 = NavigationBar_NavigationBarMetric(value_7, value_8, value_9, value_10, scale, true)
+	var state_h int32 = value_11
+	var value_12 uint32 = spec.Face.Value.Fields
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_14 float32 = spec.Face.Value.OffsetX
+	var value_15 float32 = 16.0
+	var value_16 int32 = NavigationBar_NavigationBarMetric(value_12, value_13, value_14, value_15, scale, true)
+	var icon_breathing int32 = value_16
+	var value_17 bool = state_w < (int32(number_runtime_bits(uint64(spec.Bar.IconSize), uint64(icon_breathing), 32, true, 1)))
+	if value_17 {
+		state_w = (int32(number_runtime_bits(uint64(spec.Bar.IconSize), uint64(icon_breathing), 32, true, 1)))
 	}
-	var value_65 int32 = state_h
-	var value_66 int32 = spec.Bar.IconSize
-	var value_67 int32 = icon_breathing
-	var value_68 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_67), 32, true, 1))
-	var value_69 bool = value_65 < value_68
-	if value_69 {
-		var value_70 int32 = spec.Bar.IconSize
-		var value_71 int32 = icon_breathing
-		var value_72 int32 = int32(number_runtime_bits(uint64(value_70), uint64(value_71), 32, true, 1))
-		state_h = value_72
+	var value_18 bool = state_h < (int32(number_runtime_bits(uint64(spec.Bar.IconSize), uint64(icon_breathing), 32, true, 1)))
+	if value_18 {
+		state_h = (int32(number_runtime_bits(uint64(spec.Bar.IconSize), uint64(icon_breathing), 32, true, 1)))
 	}
-	var value_73 uint32 = spec.Base.Value.Fields
-	var value_74 int32 = int32(StyleGap)
-	var value_75 uint32 = uint32(number_runtime_bits(uint64(value_74), uint64(0), 32, false, 0))
-	var value_76 float32 = spec.Base.Value.Gap
-	var value_77 float32 = 4.0
-	var value_78 float32 = scale
-	var value_79 bool = true
-	var value_80 int32 = NavigationBar_NavigationBarMetric(value_73, value_75, value_76, value_77, value_78, value_79)
-	var label_gap int32 = value_80
-	var value_81 uint32 = spec.Base.Value.Fields
-	var value_82 int32 = int32(StylePaddingY)
-	var value_83 uint32 = uint32(number_runtime_bits(uint64(value_82), uint64(0), 32, false, 0))
-	var value_84 float32 = spec.Base.Value.PaddingY
-	var value_85 float32 = 2.0
-	var value_86 float32 = scale
-	var value_87 bool = true
-	var value_88 int32 = NavigationBar_NavigationBarMetric(value_81, value_83, value_84, value_85, value_86, value_87)
-	var edge_inset int32 = value_88
-	var value_89 int32 = spec.LabelHeight
-	var value_90 float32 = 8.0
-	var value_91 float32 = scale
-	var value_92 float32 = value_90 * value_91
-	var value_93 float32 = 0.5
-	var value_94 float32 = value_92 + value_93
-	var value_95 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_94), 32, true)), uint64(0), 32, true, 0))
-	var value_96 int32 = int32(number_runtime_bits(uint64(value_89), uint64(value_95), 32, true, 1))
-	var label_paint_h int32 = value_96
-	var value_97 int32 = state_h
-	var value_98 int32 = label_gap
-	var value_99 int32 = int32(number_runtime_bits(uint64(value_97), uint64(value_98), 32, true, 1))
-	var value_100 int32 = label_paint_h
-	var value_101 int32 = int32(number_runtime_bits(uint64(value_99), uint64(value_100), 32, true, 1))
-	var stack_h int32 = value_101
-	var value_102 int32 = spec.Bar.Y
-	var value_103 int32 = spec.Bar.Height
-	var value_104 int32 = stack_h
-	var value_105 int32 = int32(number_runtime_bits(uint64(value_103), uint64(value_104), 32, true, 2))
-	var value_106 int32 = 2
-	var value_107 int32 = int32(number_runtime_bits(uint64(value_105), uint64(value_106), 32, true, 4))
-	var value_108 int32 = int32(number_runtime_bits(uint64(value_102), uint64(value_107), 32, true, 1))
-	var state_y int32 = value_108
-	var value_109 int32 = state_y
-	var value_110 int32 = spec.Bar.Y
-	var value_111 int32 = edge_inset
-	var value_112 int32 = int32(number_runtime_bits(uint64(value_110), uint64(value_111), 32, true, 1))
-	var value_113 bool = value_109 < value_112
-	if value_113 {
-		var value_114 int32 = spec.Bar.Y
-		var value_115 int32 = edge_inset
-		var value_116 int32 = int32(number_runtime_bits(uint64(value_114), uint64(value_115), 32, true, 1))
-		state_y = value_116
+	var value_19 uint32 = spec.Base.Value.Fields
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_21 float32 = spec.Base.Value.Gap
+	var value_22 float32 = 4.0
+	var value_23 int32 = NavigationBar_NavigationBarMetric(value_19, value_20, value_21, value_22, scale, true)
+	var label_gap int32 = value_23
+	var value_24 uint32 = spec.Base.Value.Fields
+	var value_25 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_26 float32 = spec.Base.Value.PaddingY
+	var value_27 float32 = 2.0
+	var value_28 int32 = NavigationBar_NavigationBarMetric(value_24, value_25, value_26, value_27, scale, true)
+	var edge_inset int32 = value_28
+	var value_29 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((8.0*scale)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	var label_paint_h int32 = (int32(number_runtime_bits(uint64(spec.LabelHeight), uint64(value_29), 32, true, 1)))
+	var value_30 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(state_h), uint64(label_gap), 32, true, 1)))), uint64(label_paint_h), 32, true, 1))
+	var stack_h int32 = value_30
+	var value_31 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(spec.Bar.Height), uint64(stack_h), 32, true, 2)))), uint64(2), 32, true, 4))
+	var state_y int32 = (int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(value_31), 32, true, 1)))
+	if state_y < (int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(edge_inset), 32, true, 1))) {
+		state_y = (int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(edge_inset), 32, true, 1)))
 	}
-	var value_117 int32 = state_y
-	var value_118 int32 = state_h
-	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 1))
-	var value_120 int32 = label_gap
-	var value_121 int32 = int32(number_runtime_bits(uint64(value_119), uint64(value_120), 32, true, 1))
-	var label_y int32 = value_121
-	var value_122 int32 = label_y
-	var value_123 int32 = label_paint_h
-	var value_124 int32 = int32(number_runtime_bits(uint64(value_122), uint64(value_123), 32, true, 1))
-	var value_125 int32 = spec.Bar.Y
-	var value_126 int32 = spec.Bar.Height
-	var value_127 int32 = int32(number_runtime_bits(uint64(value_125), uint64(value_126), 32, true, 1))
-	var value_128 int32 = edge_inset
-	var value_129 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_128), 32, true, 2))
-	var value_130 bool = value_124 > value_129
-	if value_130 {
-		var value_131 int32 = spec.Bar.Y
-		var value_132 int32 = spec.Bar.Height
-		var value_133 int32 = int32(number_runtime_bits(uint64(value_131), uint64(value_132), 32, true, 1))
-		var value_134 int32 = label_paint_h
-		var value_135 int32 = int32(number_runtime_bits(uint64(value_133), uint64(value_134), 32, true, 2))
-		var value_136 int32 = edge_inset
-		var value_137 int32 = int32(number_runtime_bits(uint64(value_135), uint64(value_136), 32, true, 2))
-		label_y = value_137
-		var value_138 int32 = label_y
-		var value_139 int32 = label_gap
-		var value_140 int32 = int32(number_runtime_bits(uint64(value_138), uint64(value_139), 32, true, 2))
-		var value_141 int32 = state_h
-		var value_142 int32 = int32(number_runtime_bits(uint64(value_140), uint64(value_141), 32, true, 2))
-		state_y = value_142
-		var value_143 int32 = state_y
-		var value_144 int32 = spec.Bar.Y
-		var value_145 int32 = edge_inset
-		var value_146 int32 = int32(number_runtime_bits(uint64(value_144), uint64(value_145), 32, true, 1))
-		var value_147 bool = value_143 < value_146
-		if value_147 {
-			var value_148 int32 = spec.Bar.Y
-			var value_149 int32 = edge_inset
-			var value_150 int32 = int32(number_runtime_bits(uint64(value_148), uint64(value_149), 32, true, 1))
-			state_y = value_150
+	var value_32 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(state_y), uint64(state_h), 32, true, 1)))), uint64(label_gap), 32, true, 1))
+	var label_y int32 = value_32
+	var value_33 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(spec.Bar.Height), 32, true, 1)))), uint64(edge_inset), 32, true, 2))
+	if (int32(number_runtime_bits(uint64(label_y), uint64(label_paint_h), 32, true, 1))) > value_33 {
+		var value_34 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(spec.Bar.Height), 32, true, 1)))), uint64(label_paint_h), 32, true, 2))
+		label_y = (int32(number_runtime_bits(uint64(value_34), uint64(edge_inset), 32, true, 2)))
+		var value_35 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(label_y), uint64(label_gap), 32, true, 2)))), uint64(state_h), 32, true, 2))
+		state_y = value_35
+		if state_y < (int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(edge_inset), 32, true, 1))) {
+			state_y = (int32(number_runtime_bits(uint64(spec.Bar.Y), uint64(edge_inset), 32, true, 1)))
 		}
 	}
-	var value_151 int32 = state_y
-	var value_152 int32 = state_h
-	var value_153 int32 = spec.Bar.IconSize
-	var value_154 int32 = int32(number_runtime_bits(uint64(value_152), uint64(value_153), 32, true, 2))
-	var value_155 int32 = 2
-	var value_156 int32 = int32(number_runtime_bits(uint64(value_154), uint64(value_155), 32, true, 4))
-	var value_157 int32 = int32(number_runtime_bits(uint64(value_151), uint64(value_156), 32, true, 1))
-	var icon_y int32 = value_157
-	var value_158 int32 = x
-	var value_159 float32 = float32(value_158)
-	paint.Bounds.X = value_159
-	var value_160 int32 = spec.Bar.Y
-	var value_161 float32 = float32(value_160)
-	paint.Bounds.Y = value_161
-	var value_162 int32 = w
-	var value_163 float32 = float32(value_162)
-	paint.Bounds.Width = value_163
-	var value_164 int32 = spec.Bar.Height
-	var value_165 float32 = float32(value_164)
-	paint.Bounds.Height = value_165
-	var value_166 int32 = x
-	var value_167 int32 = w
-	var value_168 int32 = state_w
-	var value_169 int32 = int32(number_runtime_bits(uint64(value_167), uint64(value_168), 32, true, 2))
-	var value_170 int32 = 2
-	var value_171 int32 = int32(number_runtime_bits(uint64(value_169), uint64(value_170), 32, true, 4))
-	var value_172 int32 = int32(number_runtime_bits(uint64(value_166), uint64(value_171), 32, true, 1))
-	var value_173 float32 = float32(value_172)
-	paint.StateBounds.X = value_173
-	var value_174 int32 = state_y
-	var value_175 float32 = float32(value_174)
-	paint.StateBounds.Y = value_175
-	var value_176 int32 = state_w
-	var value_177 float32 = float32(value_176)
-	paint.StateBounds.Width = value_177
-	var value_178 int32 = state_h
-	var value_179 float32 = float32(value_178)
-	paint.StateBounds.Height = value_179
-	var value_180 int32 = x
-	var value_181 int32 = w
-	var value_182 int32 = spec.Bar.IconSize
-	var value_183 int32 = int32(number_runtime_bits(uint64(value_181), uint64(value_182), 32, true, 2))
-	var value_184 int32 = 2
-	var value_185 int32 = int32(number_runtime_bits(uint64(value_183), uint64(value_184), 32, true, 4))
-	var value_186 int32 = int32(number_runtime_bits(uint64(value_180), uint64(value_185), 32, true, 1))
-	var value_187 float32 = float32(value_186)
-	paint.IconBounds.X = value_187
-	var value_188 int32 = icon_y
-	var value_189 float32 = float32(value_188)
-	paint.IconBounds.Y = value_189
-	var value_190 int32 = spec.Bar.IconSize
-	var value_191 float32 = float32(value_190)
-	paint.IconBounds.Width = value_191
-	var value_192 int32 = spec.Bar.IconSize
-	var value_193 float32 = float32(value_192)
-	paint.IconBounds.Height = value_193
-	var value_194 uint32 = spec.Base.Value.Fields
-	var value_195 int32 = int32(StylePaddingX)
-	var value_196 uint32 = uint32(number_runtime_bits(uint64(value_195), uint64(0), 32, false, 0))
-	var value_197 float32 = spec.Base.Value.PaddingX
-	var value_198 float32 = 3.0
-	var value_199 float32 = scale
-	var value_200 bool = true
-	var value_201 int32 = NavigationBar_NavigationBarMetric(value_194, value_196, value_197, value_198, value_199, value_200)
-	var label_inset int32 = value_201
-	var value_202 int32 = x
-	var value_203 int32 = label_inset
-	var value_204 int32 = int32(number_runtime_bits(uint64(value_202), uint64(value_203), 32, true, 1))
-	var value_205 float32 = float32(value_204)
-	paint.LabelBounds.X = value_205
-	var value_206 int32 = label_y
-	var value_207 float32 = float32(value_206)
-	paint.LabelBounds.Y = value_207
-	var value_208 int32 = w
-	var value_209 int32 = label_inset
-	var value_210 int32 = 2
-	var value_211 int32 = int32(number_runtime_bits(uint64(value_209), uint64(value_210), 32, true, 3))
-	var value_212 int32 = int32(number_runtime_bits(uint64(value_208), uint64(value_211), 32, true, 2))
-	var value_213 float32 = float32(value_212)
-	paint.LabelBounds.Width = value_213
-	var value_214 float32 = paint.LabelBounds.Width
-	var value_215 float32 = 0.0
-	var value_216 bool = value_214 < value_215
-	if value_216 {
-		var value_217 float32 = 0.0
-		paint.LabelBounds.Width = value_217
+	var value_36 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(state_h), uint64(spec.Bar.IconSize), 32, true, 2)))), uint64(2), 32, true, 4))
+	var icon_y int32 = (int32(number_runtime_bits(uint64(state_y), uint64(value_36), 32, true, 1)))
+	paint.Bounds.X = float32(x)
+	paint.Bounds.Y = float32(spec.Bar.Y)
+	paint.Bounds.Width = float32(w)
+	paint.Bounds.Height = float32(spec.Bar.Height)
+	var value_37 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(w), uint64(state_w), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.StateBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(value_37), 32, true, 1))))
+	paint.StateBounds.Y = float32(state_y)
+	paint.StateBounds.Width = float32(state_w)
+	paint.StateBounds.Height = float32(state_h)
+	var value_38 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(w), uint64(spec.Bar.IconSize), 32, true, 2)))), uint64(2), 32, true, 4))
+	paint.IconBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(value_38), 32, true, 1))))
+	paint.IconBounds.Y = float32(icon_y)
+	paint.IconBounds.Width = float32(spec.Bar.IconSize)
+	paint.IconBounds.Height = float32(spec.Bar.IconSize)
+	var value_39 uint32 = spec.Base.Value.Fields
+	var value_40 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_41 float32 = spec.Base.Value.PaddingX
+	var value_42 float32 = 3.0
+	var value_43 int32 = NavigationBar_NavigationBarMetric(value_39, value_40, value_41, value_42, scale, true)
+	var label_inset int32 = value_43
+	paint.LabelBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(label_inset), 32, true, 1))))
+	paint.LabelBounds.Y = float32(label_y)
+	var value_44 int32 = int32(number_runtime_bits(uint64(w), uint64((int32(number_runtime_bits(uint64(label_inset), uint64(2), 32, true, 3)))), 32, true, 2))
+	paint.LabelBounds.Width = float32(value_44)
+	if paint.LabelBounds.Width < 0.0 {
+		paint.LabelBounds.Width = 0.0
 	}
-	var value_218 int32 = label_paint_h
-	var value_219 float32 = float32(value_218)
-	paint.LabelBounds.Height = value_219
-	var value_220 StyleFrame = spec.Face
-	paint.Face = value_220
-	var value_221 bool = spec.Active
-	var value_222 bool = value_221
-	if !value_222 {
-		var value_223 bool = spec.Hovered
-		value_222 = value_223
+	paint.LabelBounds.Height = float32(label_paint_h)
+	paint.Face = spec.Face
+	var value_45 bool = spec.Active
+	if !value_45 {
+		value_45 = spec.Hovered
 	}
-	paint.DrawFace = value_222
-	var value_224 uint32 = spec.Base.Value.Foreground
-	paint.IconColor = value_224
-	var value_225 uint32 = spec.Base.Value.Foreground
-	paint.TextColor = value_225
-	var value_226 bool = spec.Active
-	if value_226 {
-		var value_227 uint32 = paint.Face.Value.Foreground
-		paint.IconColor = value_227
+	paint.DrawFace = value_45
+	paint.IconColor = spec.Base.Value.Foreground
+	paint.TextColor = spec.Base.Value.Foreground
+	if spec.Active {
+		paint.IconColor = paint.Face.Value.Foreground
 	}
-	var value_228 bool = spec.Active
-	var value_229 bool = !value_228
-	if value_229 {
-		var value_230 float32 = 0.45
-		paint.Face.Value.Opacity = value_230
+	if !spec.Active {
+		paint.Face.Value.Opacity = 0.45
 	}
-	var value_231 bool = spec.Disabled
-	var value_232 int32 = 0
-	if value_231 {
-		var value_233 int32 = 150
-		value_232 = value_233
+	var value_46 int32 = 0
+	if spec.Disabled {
+		value_46 = 150
 	} else {
-		var value_234 int32 = 255
-		value_232 = value_234
+		value_46 = 255
 	}
-	paint.IconAlpha = value_232
-	var value_235 NavigationBarItemPaint = paint
-	return value_235
+	paint.IconAlpha = value_46
+	return paint
 }

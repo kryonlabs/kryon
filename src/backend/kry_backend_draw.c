@@ -173,6 +173,14 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
                    tint_color);
 }
 
+void
+kry_draw_texture_region(Texture2D texture, Rectangle source,
+                        Rectangle bounds, Vector2 origin,
+                        float rotation, Color tint)
+{
+    DrawTexturePro(texture, source, bounds, origin, rotation, tint);
+}
+
 static unsigned
 draw_text_key(void)
 {

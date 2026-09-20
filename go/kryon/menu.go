@@ -102,1299 +102,749 @@ type MenuContextOpenResult struct {
 }
 
 func Menu_MenuBarRole() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func Menu_MenuPopupRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func Menu_MenuContextRole() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func Menu_MenuHas(fields uint32, field uint32) bool {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	return value_5
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	return value_0
 }
 
 func Menu_MenuKindSeparator() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func Menu_MenuKindSubmenu() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func Menu_MenuMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 bool = Menu_MenuHas(value_0, value_1)
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 float32 = value
-		var value_6 float32 = 0.0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
-	}
-	var value_8 bool = value_4
-	if !value_8 {
-		var value_9 bool = allow_zero
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = value
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 <= value_13
-			value_11 = value_14
-		}
-		value_8 = value_11
-	}
-	if value_8 {
-		var value_15 float32 = fallback
-		value = value_15
-	}
-	var value_16 float32 = value
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	return value_19
-}
-
-func Menu_MenuWrappedItemIndex(start int32, direction int32, item_count int32) int32 {
-	var value_0 int32 = item_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
-	}
-	var value_4 int32 = direction
-	var value_5 int32 = 0
-	var value_6 bool = value_4 == value_5
-	if value_6 {
-		var value_7 int32 = 1
-		direction = value_7
-	}
-	var value_8 int32 = start
-	var value_9 int32 = direction
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var value_11 int32 = item_count
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = item_count
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 5))
-	return value_14
-}
-
-func Menu_MenuItemSelectable(kind int32, disabled bool) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSeparator()
-	var value_2 bool = value_0 != value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = disabled
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	return value_3
-}
-
-func Menu_MenuItemIsSeparator(kind int32) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSeparator()
-	var value_2 bool = value_0 == value_1
-	return value_2
-}
-
-func Menu_MenuItemShowsSubmenu(kind int32) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSubmenu()
-	var value_2 bool = value_0 == value_1
-	return value_2
-}
-
-func Menu_MenuItemCanOpenSubmenu(kind int32, disabled bool, has_submenu bool, submenu_count int32, depth int32, max_depth int32) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSubmenu()
-	var value_2 bool = value_0 != value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 bool = disabled
-		value_3 = value_4
-	}
-	if value_3 {
-		var value_5 bool = false
-		return value_5
-	}
-	var value_6 bool = has_submenu
-	var value_7 bool = !value_6
-	var value_8 bool = value_7
-	if !value_8 {
-		var value_9 int32 = submenu_count
-		var value_10 int32 = 0
-		var value_11 bool = value_9 <= value_10
-		value_8 = value_11
-	}
-	if value_8 {
-		var value_12 bool = false
-		return value_12
-	}
-	var value_13 int32 = depth
-	var value_14 int32 = 1
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
-	var value_16 int32 = max_depth
-	var value_17 bool = value_15 < value_16
-	return value_17
-}
-
-func Menu_MenuItemKeyboardActivates(kind int32, disabled bool, opens_submenu bool) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSeparator()
-	var value_2 bool = value_0 != value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = disabled
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	var value_6 bool = value_3
-	if value_6 {
-		var value_7 bool = opens_submenu
-		var value_8 bool = !value_7
-		value_6 = value_8
-	}
-	return value_6
-}
-
-func Menu_MenuKeyboardInputFor(up bool, down bool, home bool, end bool, left bool, right bool, enter bool, space bool, escape bool) MenuKeyboardInput {
-	var input MenuKeyboardInput = MenuKeyboardInput{}
-	var value_0 bool = up
-	input.Up = value_0
-	var value_1 bool = down
-	input.Down = value_1
-	var value_2 bool = home
-	input.Home = value_2
-	var value_3 bool = end
-	input.End = value_3
-	var value_4 bool = left
-	input.Left = value_4
-	var value_5 bool = right
-	input.Right = value_5
-	var value_6 bool = enter
-	input.Enter = value_6
-	var value_7 bool = space
-	input.Space = value_7
-	var value_8 bool = escape
-	input.Escape = value_8
-	var value_9 MenuKeyboardInput = input
-	return value_9
-}
-
-func Menu_MenuKeyboardDecisionFor(input MenuKeyboardInput, depth int32, selected int32) MenuKeyboardDecision {
-	var decision MenuKeyboardDecision = MenuKeyboardDecision{}
-	var value_0 int32 = selected
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 MenuKeyboardDecision = decision
-		return value_3
-	}
-	var value_4 bool = input.Up
-	if value_4 {
-		var value_5 bool = true
-		decision.KeyHandled = value_5
-		var value_6 int32 = -1
-		decision.MoveDelta = value_6
-		var value_7 MenuKeyboardDecision = decision
-		return value_7
-	}
-	var value_8 bool = input.Down
-	if value_8 {
-		var value_9 bool = true
-		decision.KeyHandled = value_9
-		var value_10 int32 = 1
-		decision.MoveDelta = value_10
-		var value_11 MenuKeyboardDecision = decision
-		return value_11
-	}
-	var value_12 bool = input.Home
-	if value_12 {
-		var value_13 bool = true
-		decision.KeyHandled = value_13
-		var value_14 bool = true
-		decision.First = value_14
-		var value_15 MenuKeyboardDecision = decision
-		return value_15
-	}
-	var value_16 bool = input.End
-	if value_16 {
-		var value_17 bool = true
-		decision.KeyHandled = value_17
-		var value_18 bool = true
-		decision.Last = value_18
-		var value_19 MenuKeyboardDecision = decision
-		return value_19
-	}
-	var value_20 bool = input.Left
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 int32 = depth
-		var value_23 int32 = 0
-		var value_24 bool = value_22 > value_23
-		value_21 = value_24
-	}
-	if value_21 {
-		var value_25 bool = true
-		decision.KeyHandled = value_25
-		var value_26 bool = true
-		decision.CloseParent = value_26
-		var value_27 MenuKeyboardDecision = decision
-		return value_27
-	}
-	var value_28 bool = input.Right
-	var value_29 bool = value_28
-	if !value_29 {
-		var value_30 bool = input.Enter
-		value_29 = value_30
-	}
-	var value_31 bool = value_29
-	if !value_31 {
-		var value_32 bool = input.Space
-		value_31 = value_32
-	}
-	if value_31 {
-		var value_33 bool = true
-		decision.KeyHandled = value_33
-		var value_34 bool = true
-		decision.OpenOrActivate = value_34
-	}
-	var value_35 MenuKeyboardDecision = decision
-	return value_35
-}
-
-func Menu_MenuBarKeyboardDecisionFor(input MenuKeyboardInput, open bool, depth int32) MenuBarKeyboardDecision {
-	var decision MenuBarKeyboardDecision = MenuBarKeyboardDecision{}
-	var value_0 bool = open
+	var value_0 bool = Menu_MenuHas(fields, field)
 	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 bool = input.Left
-		if value_2 {
-			var value_3 int32 = -1
-			decision.MoveTopDelta = value_3
-			var value_4 MenuBarKeyboardDecision = decision
-			return value_4
+	if !value_1 {
+		value_1 = (value < 0.0)
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		var value_5 bool = input.Right
-		if value_5 {
-			var value_6 int32 = 1
-			decision.MoveTopDelta = value_6
-			var value_7 MenuBarKeyboardDecision = decision
-			return value_7
-		}
-		var value_8 bool = input.Home
-		if value_8 {
-			var value_9 bool = true
-			decision.FirstTop = value_9
-			var value_10 MenuBarKeyboardDecision = decision
-			return value_10
-		}
-		var value_11 bool = input.End
-		if value_11 {
-			var value_12 bool = true
-			decision.LastTop = value_12
-			var value_13 MenuBarKeyboardDecision = decision
-			return value_13
-		}
-		var value_14 bool = input.Enter
-		var value_15 bool = value_14
-		if !value_15 {
-			var value_16 bool = input.Space
-			value_15 = value_16
-		}
-		var value_17 bool = value_15
-		if !value_17 {
-			var value_18 bool = input.Down
-			value_17 = value_18
-		}
-		if value_17 {
-			var value_19 bool = true
-			decision.OpenTop = value_19
-		}
-		var value_20 MenuBarKeyboardDecision = decision
-		return value_20
+		value_2 = value_3
 	}
-	var value_21 bool = input.Escape
-	if value_21 {
-		var value_22 bool = true
-		decision.CloseOpen = value_22
-		var value_23 MenuBarKeyboardDecision = decision
-		return value_23
-	}
-	var value_24 int32 = depth
-	var value_25 int32 = 0
-	var value_26 bool = value_24 == value_25
-	var value_27 bool = value_26
-	if value_27 {
-		var value_28 bool = input.Left
-		value_27 = value_28
-	}
-	if value_27 {
-		var value_29 int32 = -1
-		decision.MoveOpenDelta = value_29
-		var value_30 MenuBarKeyboardDecision = decision
-		return value_30
-	}
-	var value_31 int32 = depth
-	var value_32 int32 = 0
-	var value_33 bool = value_31 == value_32
-	var value_34 bool = value_33
-	if value_34 {
-		var value_35 bool = input.Right
-		value_34 = value_35
-	}
-	if value_34 {
-		var value_36 int32 = 1
-		decision.MoveOpenIfNoSubmenuDelta = value_36
-	}
-	var value_37 MenuBarKeyboardDecision = decision
-	return value_37
-}
-
-func Menu_MenuItemPointerActivates(kind int32, disabled bool) bool {
-	var value_0 int32 = kind
-	var value_1 int32 = Menu_MenuKindSeparator()
-	var value_2 bool = value_0 != value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 int32 = kind
-		var value_5 int32 = Menu_MenuKindSubmenu()
-		var value_6 bool = value_4 != value_5
-		value_3 = value_6
-	}
-	var value_7 bool = value_3
-	if value_7 {
-		var value_8 bool = disabled
-		var value_9 bool = !value_8
-		value_7 = value_9
-	}
-	return value_7
-}
-
-func Menu_MenuBarCountFor(count int32, limit int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
 	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+		value = fallback
 	}
-	var value_4 int32 = limit
-	var value_5 int32 = 0
-	var value_6 bool = value_4 >= value_5
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 int32 = count
-		var value_9 int32 = limit
-		var value_10 bool = value_8 > value_9
-		value_7 = value_10
-	}
-	if value_7 {
-		var value_11 int32 = limit
-		return value_11
-	}
-	var value_12 int32 = count
-	return value_12
-}
-
-func Menu_MenuBarOpenIndexFor(bar_id int32, open_id int32, menu_count int32) int32 {
-	var value_0 int32 = bar_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = menu_count
-		var value_5 int32 = 0
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
-	}
-	if value_3 {
-		var value_7 int32 = -1
-		return value_7
-	}
-	var value_8 int32 = open_id
-	var value_9 int32 = bar_id
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
-	var value_11 int32 = 1
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
-	var index int32 = value_12
-	var value_13 int32 = index
-	var value_14 int32 = 0
-	var value_15 bool = value_13 < value_14
-	var value_16 bool = value_15
-	if !value_16 {
-		var value_17 int32 = index
-		var value_18 int32 = menu_count
-		var value_19 bool = value_17 >= value_18
-		value_16 = value_19
-	}
-	if value_16 {
-		var value_20 int32 = -1
-		return value_20
-	}
-	var value_21 int32 = index
-	return value_21
-}
-
-func Menu_MenuBarOpenIdFor(bar_id int32, index int32, menu_count int32) int32 {
-	var value_0 int32 = bar_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = index
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
-	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 int32 = index
-		var value_9 int32 = menu_count
-		var value_10 bool = value_8 >= value_9
-		value_7 = value_10
-	}
-	if value_7 {
-		var value_11 int32 = 0
-		return value_11
-	}
-	var value_12 int32 = bar_id
-	var value_13 int32 = 1
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-	var value_15 int32 = index
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-	return value_16
-}
-
-func Menu_MenuBarTopIndexFor(top int32, menu_count int32) int32 {
-	var value_0 int32 = menu_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
-	}
-	var value_4 int32 = top
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 int32 = top
-		var value_9 int32 = menu_count
-		var value_10 bool = value_8 >= value_9
-		value_7 = value_10
-	}
-	if value_7 {
-		var value_11 int32 = 0
-		return value_11
-	}
-	var value_12 int32 = top
-	return value_12
-}
-
-func Menu_MenuBarMoveTopIndex(top int32, menu_count int32, direction int32) int32 {
-	var value_0 int32 = menu_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
-	}
-	var value_4 int32 = top
-	var value_5 int32 = menu_count
-	var value_6 int32 = Menu_MenuBarTopIndexFor(value_4, value_5)
-	top = value_6
-	var value_7 int32 = direction
-	var value_8 int32 = 0
-	var value_9 bool = value_7 == value_8
-	if value_9 {
-		var value_10 int32 = top
-		return value_10
-	}
-	var value_11 int32 = top
-	var value_12 int32 = direction
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
-	var value_14 int32 = menu_count
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
-	var value_16 int32 = menu_count
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 5))
-	return value_17
-}
-
-func Menu_MenuGroupPointerDecisionFor(menu_id int32, index int32, open_id int32, hot bool, mouse_released bool) MenuGroupPointerDecision {
-	var decision MenuGroupPointerDecision = MenuGroupPointerDecision{}
-	var value_0 int32 = open_id
-	decision.NextOpenId = value_0
-	var value_1 int32 = index
-	decision.NavigationTop = value_1
-	var value_2 int32 = open_id
-	var value_3 int32 = menu_id
-	var value_4 bool = value_2 == value_3
-	var open bool = value_4
-	var value_5 bool = hot
-	var value_6 bool = value_5
-	if value_6 {
-		var value_7 bool = mouse_released
-		value_6 = value_7
-	}
-	if value_6 {
-		var value_8 bool = true
-		decision.ConsumeRelease = value_8
-		var value_9 bool = true
-		decision.SetFocus = value_9
-		var value_10 bool = true
-		decision.ChangedOpen = value_10
-		var value_11 bool = open
-		if value_11 {
-			var value_12 int32 = 0
-			decision.NextOpenId = value_12
-			var value_13 bool = true
-			decision.ClearSubmenu = value_13
-		} else {
-			var value_14 int32 = menu_id
-			decision.NextOpenId = value_14
-			var value_15 bool = true
-			decision.ResetNavigation = value_15
-		}
-		var value_16 MenuGroupPointerDecision = decision
-		return value_16
-	}
-	var value_17 bool = hot
-	var value_18 bool = value_17
-	if value_18 {
-		var value_19 int32 = open_id
-		var value_20 int32 = 0
-		var value_21 bool = value_19 != value_20
-		value_18 = value_21
-	}
-	var value_22 bool = value_18
-	if value_22 {
-		var value_23 bool = open
-		var value_24 bool = !value_23
-		value_22 = value_24
-	}
-	if value_22 {
-		var value_25 bool = true
-		decision.ChangedOpen = value_25
-		var value_26 int32 = menu_id
-		decision.NextOpenId = value_26
-		var value_27 bool = true
-		decision.ClearSubmenu = value_27
-	}
-	var value_28 MenuGroupPointerDecision = decision
-	return value_28
-}
-
-func Menu_MenuItemPointerDecisionFor(hot bool, mouse_released bool, same_focus bool, kind int32, disabled bool, item_id int32, index int32, depth int32, max_depth int32) MenuItemPointerDecision {
-	var decision MenuItemPointerDecision = MenuItemPointerDecision{}
-	var value_0 int32 = depth
-	decision.NavigationDepth = value_0
-	var value_1 int32 = index
-	decision.NavigationIndex = value_1
-	var value_2 bool = hot
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 bool = mouse_released
-		var value_6 bool = !value_5
-		value_4 = value_6
-	}
-	if value_4 {
-		var value_7 MenuItemPointerDecision = decision
-		return value_7
-	}
-	var value_8 bool = true
-	decision.ConsumeRelease = value_8
-	var value_9 bool = true
-	decision.SetFocus = value_9
-	var value_10 bool = same_focus
-	var value_11 bool = !value_10
-	decision.ResetNavigation = value_11
-	var value_12 int32 = depth
-	var value_13 int32 = max_depth
-	var value_14 bool = value_12 < value_13
-	if value_14 {
-		var value_15 bool = true
-		decision.SetNavigationPath = value_15
-		var value_16 bool = true
-		decision.ClearChildNavigation = value_16
-	}
-	var value_17 int32 = kind
-	var value_18 bool = Menu_MenuItemShowsSubmenu(value_17)
-	if value_18 {
-		var value_19 bool = true
-		decision.SetSubmenu = value_19
-		var value_20 int32 = item_id
-		decision.SubmenuId = value_20
-	} else {
-		var value_21 int32 = kind
-		var value_22 bool = disabled
-		var value_23 bool = Menu_MenuItemPointerActivates(value_21, value_22)
-		if value_23 {
-			var value_24 bool = true
-			decision.Activate = value_24
-			var value_25 int32 = item_id
-			decision.ActivatedID = value_25
-			var value_26 bool = true
-			decision.CloseOpen = value_26
-		}
-	}
-	var value_27 MenuItemPointerDecision = decision
-	return value_27
-}
-
-func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contains_bar bool, panel_valid bool, contains_panel bool) MenuOutsideCloseDecision {
-	var decision MenuOutsideCloseDecision = MenuOutsideCloseDecision{}
-	var value_0 int32 = -1
-	decision.OpenIndex = value_0
-	var value_1 int32 = open_id
-	var value_2 int32 = 0
-	var value_3 bool = value_1 != value_2
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = mouse_released
-		value_4 = value_5
-	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = contains_bar
-		var value_8 bool = !value_7
-		value_6 = value_8
-	}
-	var value_9 bool = value_6
-	if value_9 {
-		var value_10 bool = panel_valid
-		var value_11 bool = !value_10
-		var value_12 bool = value_11
-		if !value_12 {
-			var value_13 bool = contains_panel
-			var value_14 bool = !value_13
-			value_12 = value_14
-		}
-		value_9 = value_12
-	}
-	if value_9 {
-		var value_15 bool = true
-		decision.CloseOpen = value_15
-		var value_16 bool = true
-		decision.ClearSubmenu = value_16
-		var value_17 bool = true
-		decision.ConsumeRelease = value_17
-	}
-	var value_18 MenuOutsideCloseDecision = decision
-	return value_18
-}
-
-func Menu_MenuContextOutsideCloseDecisionFor(open_id int32, menu_id int32, suppress_close bool, mouse_released bool, panel_valid bool, contains_panel bool) MenuContextOutsideCloseDecision {
-	var decision MenuContextOutsideCloseDecision = MenuContextOutsideCloseDecision{}
-	var value_0 int32 = open_id
-	var value_1 int32 = menu_id
-	var value_2 bool = value_0 == value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = suppress_close
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	var value_6 bool = value_3
-	if value_6 {
-		var value_7 bool = mouse_released
-		value_6 = value_7
-	}
-	var value_8 bool = value_6
-	if value_8 {
-		var value_9 bool = panel_valid
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if !value_11 {
-			var value_12 bool = contains_panel
-			var value_13 bool = !value_12
-			value_11 = value_13
-		}
-		value_8 = value_11
-	}
-	if value_8 {
-		var value_14 bool = true
-		decision.CloseOpen = value_14
-		var value_15 bool = true
-		decision.ConsumeRelease = value_15
-	}
-	var value_16 MenuContextOutsideCloseDecision = decision
-	return value_16
-}
-
-func Menu_MenuContextOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) MenuContextOpenResult {
-	var result MenuContextOpenResult = MenuContextOpenResult{}
-	var value_0 bool = open
-	result.Open = value_0
-	var value_1 bool = has_open
-	var value_2 bool = !value_1
-	if value_2 {
-		var value_3 MenuContextOpenResult = result
-		return value_3
-	}
-	var value_4 bool = open_requested
-	if value_4 {
-		var value_5 bool = true
-		result.Open = value_5
-	}
-	var value_6 bool = close_requested
-	if value_6 {
-		var value_7 bool = false
-		result.Open = value_7
-	}
-	var value_8 bool = result.Open
-	var value_9 bool = open
-	var value_10 bool = value_8 != value_9
-	result.Changed = value_10
-	var value_11 MenuContextOpenResult = result
-	return value_11
-}
-
-func Menu_MenuEscapeShouldClose(focused bool, focus_captured bool, escape_pressed bool) bool {
-	var value_0 bool = focused
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = focus_captured
-		var value_3 bool = !value_2
-		value_1 = value_3
-	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = escape_pressed
-		value_4 = value_5
-	}
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
 	return value_4
 }
 
-func Menu_MenuContextShouldSuppressClose(opened bool, contains_trigger bool, mouse_released bool) bool {
-	var value_0 bool = opened
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = contains_trigger
-		var value_3 bool = value_2
-		if value_3 {
-			var value_4 bool = mouse_released
-			value_3 = value_4
-		}
-		value_1 = value_3
+func Menu_MenuWrappedItemIndex(start int32, direction int32, item_count int32) int32 {
+	if item_count <= 0 {
+		return -1
+	}
+	if direction == 0 {
+		direction = 1
+	}
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start), uint64(direction), 32, true, 1)))), uint64(item_count), 32, true, 1))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(item_count), 32, true, 5)))
+}
+
+func Menu_MenuItemSelectable(kind int32, disabled bool) bool {
+	var value_0 int32 = Menu_MenuKindSeparator()
+	var value_1 bool = (kind != value_0)
+	if value_1 {
+		value_1 = !disabled
 	}
 	return value_1
 }
 
-func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
+func Menu_MenuItemIsSeparator(kind int32) bool {
+	var value_0 int32 = Menu_MenuKindSeparator()
+	return (kind == value_0)
+}
+
+func Menu_MenuItemShowsSubmenu(kind int32) bool {
+	var value_0 int32 = Menu_MenuKindSubmenu()
+	return (kind == value_0)
+}
+
+func Menu_MenuItemCanOpenSubmenu(kind int32, disabled bool, has_submenu bool, submenu_count int32, depth int32, max_depth int32) bool {
+	var value_0 int32 = Menu_MenuKindSubmenu()
+	var value_1 bool = (kind != value_0)
+	if !value_1 {
+		value_1 = disabled
+	}
+	if value_1 {
+		return false
+	}
+	var value_2 bool = !has_submenu
+	if !value_2 {
+		value_2 = (submenu_count <= 0)
+	}
 	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+		return false
+	}
+	return ((int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 1))) < max_depth)
+}
+
+func Menu_MenuItemKeyboardActivates(kind int32, disabled bool, opens_submenu bool) bool {
+	var value_0 int32 = Menu_MenuKindSeparator()
+	var value_1 bool = (kind != value_0)
+	if value_1 {
+		value_1 = !disabled
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !opens_submenu
+	}
+	return value_2
+}
+
+func Menu_MenuKeyboardInputFor(up bool, down bool, home bool, end bool, left bool, right bool, enter bool, space bool, escape bool) MenuKeyboardInput {
+	var input MenuKeyboardInput = MenuKeyboardInput{}
+	input.Up = up
+	input.Down = down
+	input.Home = home
+	input.End = end
+	input.Left = left
+	input.Right = right
+	input.Enter = enter
+	input.Space = space
+	input.Escape = escape
+	return input
+}
+
+func Menu_MenuKeyboardDecisionFor(input MenuKeyboardInput, depth int32, selected int32) MenuKeyboardDecision {
+	var decision MenuKeyboardDecision = MenuKeyboardDecision{}
+	if selected < 0 {
+		return decision
+	}
+	if input.Up {
+		decision.KeyHandled = true
+		decision.MoveDelta = -1
+		return decision
+	}
+	if input.Down {
+		decision.KeyHandled = true
+		decision.MoveDelta = 1
+		return decision
+	}
+	if input.Home {
+		decision.KeyHandled = true
+		decision.First = true
+		return decision
+	}
+	if input.End {
+		decision.KeyHandled = true
+		decision.Last = true
+		return decision
+	}
+	var value_0 bool = input.Left
+	if value_0 {
+		value_0 = (depth > 0)
+	}
+	if value_0 {
+		decision.KeyHandled = true
+		decision.CloseParent = true
+		return decision
+	}
+	var value_1 bool = input.Right
+	if !value_1 {
+		value_1 = input.Enter
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = input.Space
+	}
+	if value_2 {
+		decision.KeyHandled = true
+		decision.OpenOrActivate = true
+	}
+	return decision
+}
+
+func Menu_MenuBarKeyboardDecisionFor(input MenuKeyboardInput, open bool, depth int32) MenuBarKeyboardDecision {
+	var decision MenuBarKeyboardDecision = MenuBarKeyboardDecision{}
+	if !open {
+		if input.Left {
+			decision.MoveTopDelta = -1
+			return decision
+		}
+		if input.Right {
+			decision.MoveTopDelta = 1
+			return decision
+		}
+		if input.Home {
+			decision.FirstTop = true
+			return decision
+		}
+		if input.End {
+			decision.LastTop = true
+			return decision
+		}
+		var value_0 bool = input.Enter
+		if !value_0 {
+			value_0 = input.Space
+		}
+		var value_1 bool = value_0
+		if !value_1 {
+			value_1 = input.Down
+		}
+		if value_1 {
+			decision.OpenTop = true
+		}
+		return decision
+	}
+	if input.Escape {
+		decision.CloseOpen = true
+		return decision
+	}
+	var value_2 bool = (depth == 0)
+	if value_2 {
+		value_2 = input.Left
+	}
+	if value_2 {
+		decision.MoveOpenDelta = -1
+		return decision
+	}
+	var value_3 bool = (depth == 0)
+	if value_3 {
+		value_3 = input.Right
+	}
+	if value_3 {
+		decision.MoveOpenIfNoSubmenuDelta = 1
+	}
+	return decision
+}
+
+func Menu_MenuItemPointerActivates(kind int32, disabled bool) bool {
+	var value_0 int32 = Menu_MenuKindSeparator()
+	var value_1 bool = (kind != value_0)
+	if value_1 {
+		var value_2 int32 = Menu_MenuKindSubmenu()
+		value_1 = (kind != value_2)
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		value_3 = !disabled
+	}
+	return value_3
+}
+
+func Menu_MenuBarCountFor(count int32, limit int32) int32 {
+	if count < 0 {
+		return 0
+	}
+	var value_0 bool = (limit >= 0)
+	if value_0 {
+		value_0 = (count > limit)
+	}
+	if value_0 {
+		return limit
+	}
+	return count
+}
+
+func Menu_MenuBarOpenIndexFor(bar_id int32, open_id int32, menu_count int32) int32 {
+	var value_0 bool = (bar_id <= 0)
+	if !value_0 {
+		value_0 = (menu_count <= 0)
+	}
+	if value_0 {
+		return -1
+	}
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(open_id), uint64(bar_id), 32, true, 2)))), uint64(1), 32, true, 2))
+	var index int32 = value_1
+	var value_2 bool = (index < 0)
+	if !value_2 {
+		value_2 = (index >= menu_count)
+	}
+	if value_2 {
+		return -1
+	}
+	return index
+}
+
+func Menu_MenuBarOpenIdFor(bar_id int32, index int32, menu_count int32) int32 {
+	var value_0 bool = (bar_id <= 0)
+	if !value_0 {
+		value_0 = (index < 0)
+	}
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (index >= menu_count)
+	}
+	if value_1 {
+		return 0
+	}
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(bar_id), uint64(1), 32, true, 1)))), uint64(index), 32, true, 1))
+	return value_2
+}
+
+func Menu_MenuBarTopIndexFor(top int32, menu_count int32) int32 {
+	if menu_count <= 0 {
+		return -1
+	}
+	var value_0 bool = (top < 0)
+	if !value_0 {
+		value_0 = (top >= menu_count)
+	}
+	if value_0 {
+		return 0
+	}
+	return top
+}
+
+func Menu_MenuBarMoveTopIndex(top int32, menu_count int32, direction int32) int32 {
+	if menu_count <= 0 {
+		return -1
+	}
+	var value_0 int32 = Menu_MenuBarTopIndexFor(top, menu_count)
+	top = value_0
+	if direction == 0 {
+		return top
+	}
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(top), uint64(direction), 32, true, 1)))), uint64(menu_count), 32, true, 1))
+	return (int32(number_runtime_bits(uint64(value_1), uint64(menu_count), 32, true, 5)))
+}
+
+func Menu_MenuGroupPointerDecisionFor(menu_id int32, index int32, open_id int32, hot bool, mouse_released bool) MenuGroupPointerDecision {
+	var decision MenuGroupPointerDecision = MenuGroupPointerDecision{}
+	decision.NextOpenId = open_id
+	decision.NavigationTop = index
+	var open bool = (open_id == menu_id)
+	var value_0 bool = hot
+	if value_0 {
+		value_0 = mouse_released
+	}
+	if value_0 {
+		decision.ConsumeRelease = true
+		decision.SetFocus = true
+		decision.ChangedOpen = true
+		if open {
+			decision.NextOpenId = 0
+			decision.ClearSubmenu = true
+		} else {
+			decision.NextOpenId = menu_id
+			decision.ResetNavigation = true
+		}
+		return decision
+	}
+	var value_1 bool = hot
+	if value_1 {
+		value_1 = (open_id != 0)
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !open
+	}
+	if value_2 {
+		decision.ChangedOpen = true
+		decision.NextOpenId = menu_id
+		decision.ClearSubmenu = true
+	}
+	return decision
+}
+
+func Menu_MenuItemPointerDecisionFor(hot bool, mouse_released bool, same_focus bool, kind int32, disabled bool, item_id int32, index int32, depth int32, max_depth int32) MenuItemPointerDecision {
+	var decision MenuItemPointerDecision = MenuItemPointerDecision{}
+	decision.NavigationDepth = depth
+	decision.NavigationIndex = index
+	var value_0 bool = !hot
+	if !value_0 {
+		value_0 = !mouse_released
+	}
+	if value_0 {
+		return decision
+	}
+	decision.ConsumeRelease = true
+	decision.SetFocus = true
+	decision.ResetNavigation = !same_focus
+	if depth < max_depth {
+		decision.SetNavigationPath = true
+		decision.ClearChildNavigation = true
+	}
+	var value_1 bool = Menu_MenuItemShowsSubmenu(kind)
+	if value_1 {
+		decision.SetSubmenu = true
+		decision.SubmenuId = item_id
+	} else {
+		var value_2 bool = Menu_MenuItemPointerActivates(kind, disabled)
+		if value_2 {
+			decision.Activate = true
+			decision.ActivatedID = item_id
+			decision.CloseOpen = true
+		}
+	}
+	return decision
+}
+
+func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contains_bar bool, panel_valid bool, contains_panel bool) MenuOutsideCloseDecision {
+	var decision MenuOutsideCloseDecision = MenuOutsideCloseDecision{}
+	decision.OpenIndex = -1
+	var value_0 bool = (open_id != 0)
+	if value_0 {
+		value_0 = mouse_released
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = !contains_bar
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = !panel_valid
+		if !value_3 {
+			value_3 = !contains_panel
+		}
+		value_2 = value_3
+	}
+	if value_2 {
+		decision.CloseOpen = true
+		decision.ClearSubmenu = true
+		decision.ConsumeRelease = true
+	}
+	return decision
+}
+
+func Menu_MenuContextOutsideCloseDecisionFor(open_id int32, menu_id int32, suppress_close bool, mouse_released bool, panel_valid bool, contains_panel bool) MenuContextOutsideCloseDecision {
+	var decision MenuContextOutsideCloseDecision = MenuContextOutsideCloseDecision{}
+	var value_0 bool = (open_id == menu_id)
+	if value_0 {
+		value_0 = !suppress_close
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = mouse_released
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = !panel_valid
+		if !value_3 {
+			value_3 = !contains_panel
+		}
+		value_2 = value_3
+	}
+	if value_2 {
+		decision.CloseOpen = true
+		decision.ConsumeRelease = true
+	}
+	return decision
+}
+
+func Menu_MenuContextOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) MenuContextOpenResult {
+	var result MenuContextOpenResult = MenuContextOpenResult{}
+	result.Open = open
+	if !has_open {
+		return result
+	}
+	if open_requested {
+		result.Open = true
+	}
+	if close_requested {
+		result.Open = false
+	}
+	result.Changed = (result.Open != open)
+	return result
+}
+
+func Menu_MenuEscapeShouldClose(focused bool, focus_captured bool, escape_pressed bool) bool {
+	var value_0 bool = focused
+	if value_0 {
+		value_0 = !focus_captured
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = escape_pressed
+	}
+	return value_1
+}
+
+func Menu_MenuContextShouldSuppressClose(opened bool, contains_trigger bool, mouse_released bool) bool {
+	var value_0 bool = opened
+	if !value_0 {
+		var value_1 bool = contains_trigger
+		if value_1 {
+			value_1 = mouse_released
+		}
+		value_0 = value_1
+	}
+	return value_0
+}
+
+func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics MenuMetrics = MenuMetrics{}
-	var value_4 float32 = 30.0
-	var row_height float32 = value_4
-	var value_5 uint32 = item.Value.Fields
-	var value_6 int32 = int32(StyleFontSize)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 bool = Menu_MenuHas(value_5, value_7)
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 uint32 = item.Value.Fields
-		var value_11 int32 = int32(StylePaddingY)
-		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-		var value_13 bool = Menu_MenuHas(value_10, value_12)
-		value_9 = value_13
+	var row_height float32 = 30.0
+	var value_0 uint32 = item.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))
+	var value_2 bool = Menu_MenuHas(value_0, value_1)
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 uint32 = item.Value.Fields
+		var value_5 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+		var value_6 bool = Menu_MenuHas(value_4, value_5)
+		value_3 = value_6
 	}
-	if value_9 {
-		var value_14 float32 = item.Value.FontSize
-		var value_15 float32 = item.Value.PaddingY
-		var value_16 float32 = 2.0
-		var value_17 float32 = value_15 * value_16
-		var value_18 float32 = value_14 + value_17
-		row_height = value_18
+	if value_3 {
+		row_height = (item.Value.FontSize + (item.Value.PaddingY * 2.0))
 	}
-	var value_19 uint32 = item.Value.Fields
-	var value_20 int32 = int32(StyleContentOffset)
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 float32 = item.Value.OffsetY
-	var value_23 float32 = row_height
-	var value_24 float32 = scale
-	var value_25 bool = false
-	var value_26 int32 = Menu_MenuMetric(value_19, value_21, value_22, value_23, value_24, value_25)
-	metrics.RowHeight = value_26
-	var value_27 uint32 = panel.Value.Fields
-	var value_28 int32 = int32(StyleContentOffset)
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 float32 = panel.Value.OffsetX
-	var value_31 float32 = 180.0
-	var value_32 float32 = scale
-	var value_33 bool = false
-	var value_34 int32 = Menu_MenuMetric(value_27, value_29, value_30, value_31, value_32, value_33)
-	metrics.PanelMinWidth = value_34
-	var value_35 uint32 = panel.Value.Fields
-	var value_36 int32 = int32(StylePaddingX)
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 float32 = panel.Value.PaddingX
-	var value_39 float32 = 12.0
-	var value_40 float32 = scale
-	var value_41 bool = true
-	var value_42 int32 = Menu_MenuMetric(value_35, value_37, value_38, value_39, value_40, value_41)
-	metrics.PanelPadding = value_42
-	var value_43 uint32 = panel.Value.Fields
-	var value_44 int32 = int32(StyleGap)
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	var value_46 float32 = panel.Value.Gap
-	var value_47 float32 = 4.0
-	var value_48 float32 = scale
-	var value_49 bool = true
-	var value_50 int32 = Menu_MenuMetric(value_43, value_45, value_46, value_47, value_48, value_49)
-	metrics.PanelMargin = value_50
-	var value_51 uint32 = item.Value.Fields
-	var value_52 int32 = int32(StyleContentOffset)
-	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
-	var value_54 float32 = item.Value.OffsetX
-	var value_55 float32 = 88.0
-	var value_56 float32 = scale
-	var value_57 bool = true
-	var value_58 int32 = Menu_MenuMetric(value_51, value_53, value_54, value_55, value_56, value_57)
-	metrics.AcceleratorGap = value_58
-	var value_59 uint32 = item.Value.Fields
-	var value_60 int32 = int32(StylePaddingX)
-	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-	var value_62 float32 = item.Value.PaddingX
-	var value_63 float32 = 8.0
-	var value_64 float32 = scale
-	var value_65 bool = true
-	var value_66 int32 = Menu_MenuMetric(value_59, value_61, value_62, value_63, value_64, value_65)
-	metrics.SeparatorInset = value_66
-	var value_67 int32 = metrics.SeparatorInset
-	metrics.CheckedMarkInset = value_67
-	var value_68 uint32 = item.Value.Fields
-	var value_69 int32 = int32(StyleIconSize)
-	var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
-	var value_71 float32 = item.Value.IconSize
-	var value_72 float32 = 28.0
-	var value_73 float32 = scale
-	var value_74 bool = true
-	var value_75 int32 = Menu_MenuMetric(value_68, value_70, value_71, value_72, value_73, value_74)
-	metrics.LabelInset = value_75
-	var value_76 uint32 = item.Value.Fields
-	var value_77 int32 = int32(StylePaddingY)
-	var value_78 uint32 = uint32(number_runtime_bits(uint64(value_77), uint64(0), 32, false, 0))
-	var value_79 float32 = item.Value.PaddingY
-	var value_80 float32 = 18.0
-	var value_81 float32 = scale
-	var value_82 bool = true
-	var value_83 int32 = Menu_MenuMetric(value_76, value_78, value_79, value_80, value_81, value_82)
-	metrics.SubmenuIndicatorInset = value_83
-	var value_84 int32 = 0
-	metrics.BarItemMinWidth = value_84
-	var value_85 uint32 = bar.Value.Fields
-	var value_86 int32 = int32(StylePaddingX)
-	var value_87 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(0), 32, false, 0))
-	var value_88 float32 = bar.Value.PaddingX
-	var value_89 float32 = 2.0
-	var value_90 float32 = value_88 * value_89
-	var value_91 float32 = 24.0
-	var value_92 float32 = scale
-	var value_93 bool = true
-	var value_94 int32 = Menu_MenuMetric(value_85, value_87, value_90, value_91, value_92, value_93)
-	metrics.BarItemPadding = value_94
-	var value_95 uint32 = bar.Value.Fields
-	var value_96 int32 = int32(StyleGap)
-	var value_97 uint32 = uint32(number_runtime_bits(uint64(value_96), uint64(0), 32, false, 0))
-	var value_98 float32 = bar.Value.Gap
-	var value_99 float32 = 2.0
-	var value_100 float32 = scale
-	var value_101 bool = true
-	var value_102 int32 = Menu_MenuMetric(value_95, value_97, value_98, value_99, value_100, value_101)
-	metrics.BarItemGap = value_102
-	var value_103 uint32 = bar.Value.Fields
-	var value_104 int32 = int32(StylePaddingY)
-	var value_105 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(0), 32, false, 0))
-	var value_106 float32 = bar.Value.PaddingY
-	var value_107 float32 = 3.0
-	var value_108 float32 = scale
-	var value_109 bool = true
-	var value_110 int32 = Menu_MenuMetric(value_103, value_105, value_106, value_107, value_108, value_109)
-	metrics.BarItemYPadding = value_110
-	var value_111 uint32 = bar.Value.Fields
-	var value_112 int32 = int32(StyleIconSize)
-	var value_113 uint32 = uint32(number_runtime_bits(uint64(value_112), uint64(0), 32, false, 0))
-	var value_114 float32 = bar.Value.IconSize
-	var value_115 float32 = 12.0
-	var value_116 float32 = scale
-	var value_117 bool = true
-	var value_118 int32 = Menu_MenuMetric(value_111, value_113, value_114, value_115, value_116, value_117)
-	metrics.BarLabelInset = value_118
-	var value_119 MenuMetrics = metrics
-	return value_119
+	var value_7 uint32 = item.Value.Fields
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_9 float32 = item.Value.OffsetY
+	var value_10 int32 = Menu_MenuMetric(value_7, value_8, value_9, row_height, scale, false)
+	metrics.RowHeight = value_10
+	var value_11 uint32 = panel.Value.Fields
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_13 float32 = panel.Value.OffsetX
+	var value_14 float32 = 180.0
+	var value_15 int32 = Menu_MenuMetric(value_11, value_12, value_13, value_14, scale, false)
+	metrics.PanelMinWidth = value_15
+	var value_16 uint32 = panel.Value.Fields
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_18 float32 = panel.Value.PaddingX
+	var value_19 float32 = 12.0
+	var value_20 int32 = Menu_MenuMetric(value_16, value_17, value_18, value_19, scale, true)
+	metrics.PanelPadding = value_20
+	var value_21 uint32 = panel.Value.Fields
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_23 float32 = panel.Value.Gap
+	var value_24 float32 = 4.0
+	var value_25 int32 = Menu_MenuMetric(value_21, value_22, value_23, value_24, scale, true)
+	metrics.PanelMargin = value_25
+	var value_26 uint32 = item.Value.Fields
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_28 float32 = item.Value.OffsetX
+	var value_29 float32 = 88.0
+	var value_30 int32 = Menu_MenuMetric(value_26, value_27, value_28, value_29, scale, true)
+	metrics.AcceleratorGap = value_30
+	var value_31 uint32 = item.Value.Fields
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_33 float32 = item.Value.PaddingX
+	var value_34 float32 = 8.0
+	var value_35 int32 = Menu_MenuMetric(value_31, value_32, value_33, value_34, scale, true)
+	metrics.SeparatorInset = value_35
+	metrics.CheckedMarkInset = metrics.SeparatorInset
+	var value_36 uint32 = item.Value.Fields
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_38 float32 = item.Value.IconSize
+	var value_39 float32 = 28.0
+	var value_40 int32 = Menu_MenuMetric(value_36, value_37, value_38, value_39, scale, true)
+	metrics.LabelInset = value_40
+	var value_41 uint32 = item.Value.Fields
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_43 float32 = item.Value.PaddingY
+	var value_44 float32 = 18.0
+	var value_45 int32 = Menu_MenuMetric(value_41, value_42, value_43, value_44, scale, true)
+	metrics.SubmenuIndicatorInset = value_45
+	metrics.BarItemMinWidth = 0
+	var value_46 uint32 = bar.Value.Fields
+	var value_47 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_48 float32 = (bar.Value.PaddingX * 2.0)
+	var value_49 float32 = 24.0
+	var value_50 int32 = Menu_MenuMetric(value_46, value_47, value_48, value_49, scale, true)
+	metrics.BarItemPadding = value_50
+	var value_51 uint32 = bar.Value.Fields
+	var value_52 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_53 float32 = bar.Value.Gap
+	var value_54 float32 = 2.0
+	var value_55 int32 = Menu_MenuMetric(value_51, value_52, value_53, value_54, scale, true)
+	metrics.BarItemGap = value_55
+	var value_56 uint32 = bar.Value.Fields
+	var value_57 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_58 float32 = bar.Value.PaddingY
+	var value_59 float32 = 3.0
+	var value_60 int32 = Menu_MenuMetric(value_56, value_57, value_58, value_59, scale, true)
+	metrics.BarItemYPadding = value_60
+	var value_61 uint32 = bar.Value.Fields
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_63 float32 = bar.Value.IconSize
+	var value_64 float32 = 12.0
+	var value_65 int32 = Menu_MenuMetric(value_61, value_62, value_63, value_64, scale, true)
+	metrics.BarLabelInset = value_65
+	return metrics
 }
 
 func Menu_MenuGroupItemWidth(label_width int32, metrics MenuMetrics) int32 {
-	var value_0 int32 = label_width
-	var value_1 int32 = metrics.BarItemPadding
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var width int32 = value_2
-	var value_3 int32 = width
-	var value_4 int32 = metrics.BarItemMinWidth
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = metrics.BarItemMinWidth
-		width = value_6
+	var width int32 = (int32(number_runtime_bits(uint64(label_width), uint64(metrics.BarItemPadding), 32, true, 1)))
+	if width < metrics.BarItemMinWidth {
+		width = metrics.BarItemMinWidth
 	}
-	var value_7 int32 = width
-	return value_7
+	return width
 }
 
 func Menu_MenuPanelWidthStep(current_width int32, label_width int32, accelerator_width int32, has_accelerator bool, metrics MenuMetrics) int32 {
-	var value_0 int32 = current_width
-	var width int32 = value_0
-	var value_1 int32 = width
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = metrics.PanelMinWidth
-		width = value_4
+	var width int32 = current_width
+	if width <= 0 {
+		width = metrics.PanelMinWidth
 	}
-	var value_5 int32 = 0
-	var accel int32 = value_5
-	var value_6 bool = has_accelerator
-	if value_6 {
-		var value_7 int32 = accelerator_width
-		var value_8 int32 = metrics.AcceleratorGap
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-		accel = value_9
+	var accel int32 = 0
+	if has_accelerator {
+		accel = (int32(number_runtime_bits(uint64(accelerator_width), uint64(metrics.AcceleratorGap), 32, true, 1)))
 	}
-	var value_10 int32 = label_width
-	var value_11 int32 = accel
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = metrics.PanelPadding
-	var value_14 int32 = 2
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 1))
-	var candidate int32 = value_16
-	var value_17 int32 = candidate
-	var value_18 int32 = width
-	var value_19 bool = value_17 > value_18
-	if value_19 {
-		var value_20 int32 = candidate
-		width = value_20
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(label_width), uint64(accel), 32, true, 1)))), uint64((int32(number_runtime_bits(uint64(metrics.PanelPadding), uint64(2), 32, true, 3)))), 32, true, 1))
+	var candidate int32 = value_0
+	if candidate > width {
+		width = candidate
 	}
-	var value_21 int32 = width
-	return value_21
+	return width
 }
 
 func Menu_MenuPanelBounds(x int32, y int32, width int32, item_count int32, metrics MenuMetrics) Rectangle {
 	var bounds Rectangle = Rectangle{}
-	var value_0 int32 = item_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		item_count = value_3
+	if item_count < 0 {
+		item_count = 0
 	}
-	var value_4 int32 = width
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		width = value_7
+	if width < 0 {
+		width = 0
 	}
-	var value_8 int32 = x
-	var value_9 float32 = float32(value_8)
-	bounds.X = value_9
-	var value_10 int32 = y
-	var value_11 float32 = float32(value_10)
-	bounds.Y = value_11
-	var value_12 int32 = width
-	var value_13 float32 = float32(value_12)
-	bounds.Width = value_13
-	var value_14 int32 = metrics.RowHeight
-	var value_15 int32 = item_count
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 3))
-	var value_17 int32 = metrics.PanelMargin
-	var value_18 int32 = 2
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 3))
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_19), 32, true, 1))
-	var value_21 float32 = float32(value_20)
-	bounds.Height = value_21
-	var value_22 Rectangle = bounds
-	return value_22
+	bounds.X = float32(x)
+	bounds.Y = float32(y)
+	bounds.Width = float32(width)
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(metrics.RowHeight), uint64(item_count), 32, true, 3)))), uint64((int32(number_runtime_bits(uint64(metrics.PanelMargin), uint64(2), 32, true, 3)))), 32, true, 1))
+	bounds.Height = float32(value_0)
+	return bounds
 }
 
 func Menu_MenuRowBounds(panel Rectangle, index int32, metrics MenuMetrics) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 int32 = index
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		index = value_3
+	if index < 0 {
+		index = 0
 	}
-	var value_4 float32 = panel.X
-	var value_5 int32 = metrics.PanelMargin
-	var value_6 float32 = float32(value_5)
-	var value_7 float32 = value_4 + value_6
-	row.X = value_7
-	var value_8 float32 = panel.Y
-	var value_9 int32 = metrics.PanelMargin
-	var value_10 int32 = index
-	var value_11 int32 = metrics.RowHeight
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 3))
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_12), 32, true, 1))
-	var value_14 float32 = float32(value_13)
-	var value_15 float32 = value_8 + value_14
-	row.Y = value_15
-	var value_16 float32 = panel.Width
-	var value_17 int32 = metrics.PanelMargin
-	var value_18 int32 = 2
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 3))
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_16 - value_20
-	row.Width = value_21
-	var value_22 int32 = metrics.RowHeight
-	var value_23 float32 = float32(value_22)
-	row.Height = value_23
-	var value_24 float32 = row.Width
-	var value_25 float32 = 0.0
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 float32 = 0.0
-		row.Width = value_27
+	row.X = (panel.X + float32(metrics.PanelMargin))
+	var value_0 int32 = int32(number_runtime_bits(uint64(metrics.PanelMargin), uint64((int32(number_runtime_bits(uint64(index), uint64(metrics.RowHeight), 32, true, 3)))), 32, true, 1))
+	row.Y = (panel.Y + float32(value_0))
+	var value_1 float32 = panel.Width - float32((int32(number_runtime_bits(uint64(metrics.PanelMargin), uint64(2), 32, true, 3))))
+	row.Width = value_1
+	row.Height = float32(metrics.RowHeight)
+	if row.Width < 0.0 {
+		row.Width = 0.0
 	}
-	var value_28 Rectangle = row
-	return value_28
+	return row
 }
 
 func Menu_MenuSubmenuX(row Rectangle) int32 {
-	var value_0 float32 = row.X
-	var value_1 float32 = row.Width
-	var value_2 float32 = value_0 + value_1
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	return value_3
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((row.X+row.Width)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Menu_MenuSubmenuOrigin(row Rectangle) Vector2 {
 	var origin Vector2 = Vector2{}
-	var value_0 float32 = row.X
-	var value_1 float32 = row.Width
-	var value_2 float32 = value_0 + value_1
-	origin.X = value_2
-	var value_3 float32 = row.Y
-	origin.Y = value_3
-	var value_4 Vector2 = origin
-	return value_4
+	origin.X = (row.X + row.Width)
+	origin.Y = row.Y
+	return origin
 }
 
 func Menu_MenuSeparatorLineFor(row Rectangle, metrics MenuMetrics) MenuLine {
 	var line MenuLine = MenuLine{}
-	var value_0 float32 = row.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = metrics.SeparatorInset
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	line.X1 = value_3
-	var value_4 float32 = row.Y
-	var value_5 float32 = row.Height
-	var value_6 float32 = 2.0
-	var value_7 float32 = value_5 / value_6
-	var value_8 float32 = value_4 + value_7
-	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
-	line.Y1 = value_9
-	var value_10 float32 = row.X
-	var value_11 float32 = row.Width
-	var value_12 float32 = value_10 + value_11
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	var value_14 int32 = metrics.SeparatorInset
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-	line.X2 = value_15
-	var value_16 int32 = line.Y1
-	line.Y2 = value_16
-	var value_17 int32 = line.X2
-	var value_18 int32 = line.X1
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 int32 = line.X1
-		line.X2 = value_20
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.X), 32, true)), uint64(0), 32, true, 0))
+	line.X1 = (int32(number_runtime_bits(uint64(value_0), uint64(metrics.SeparatorInset), 32, true, 1)))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((row.Y+(row.Height/2.0))), 32, true)), uint64(0), 32, true, 0))
+	line.Y1 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((row.X+row.Width)), 32, true)), uint64(0), 32, true, 0))
+	line.X2 = (int32(number_runtime_bits(uint64(value_2), uint64(metrics.SeparatorInset), 32, true, 2)))
+	line.Y2 = line.Y1
+	if line.X2 < line.X1 {
+		line.X2 = line.X1
 	}
-	var value_21 MenuLine = line
-	return value_21
+	return line
 }
 
 func Menu_MenuTextY(row Rectangle, line_height int32) int32 {
-	var value_0 float32 = row.Y
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 float32 = row.Height
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 int32 = line_height
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 4))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_7), 32, true, 1))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_1), uint64(line_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, true, 1)))
 }
 
 func Menu_MenuCheckedMarkX(row Rectangle, metrics MenuMetrics) int32 {
-	var value_0 float32 = row.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = metrics.CheckedMarkInset
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	return value_3
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.X), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.CheckedMarkInset), 32, true, 1)))
 }
 
 func Menu_MenuLabelX(row Rectangle, metrics MenuMetrics) int32 {
-	var value_0 float32 = row.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = metrics.LabelInset
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	return value_3
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(row.X), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.LabelInset), 32, true, 1)))
 }
 
 func Menu_MenuAcceleratorX(row Rectangle, text_width int32, metrics MenuMetrics) int32 {
-	var value_0 float32 = row.X
-	var value_1 float32 = row.Width
-	var value_2 float32 = value_0 + value_1
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 int32 = text_width
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	var value_6 int32 = metrics.PanelPadding
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((row.X+row.Width)), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_0), uint64(text_width), 32, true, 2)))), uint64(metrics.PanelPadding), 32, true, 2))
+	return value_1
 }
 
 func Menu_MenuAcceleratorShouldFire(keyboard_enabled bool, ctrl_required bool, ctrl_down bool, shift_required bool, shift_down bool, alt_required bool, alt_down bool, key_pressed bool) bool {
-	var value_0 bool = keyboard_enabled
-	var value_1 bool = !value_0
+	if !keyboard_enabled {
+		return false
+	}
+	var value_0 bool = ctrl_required
+	if value_0 {
+		value_0 = !ctrl_down
+	}
+	if value_0 {
+		return false
+	}
+	var value_1 bool = shift_required
 	if value_1 {
-		var value_2 bool = false
-		return value_2
+		value_1 = !shift_down
 	}
-	var value_3 bool = ctrl_required
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = ctrl_down
-		var value_6 bool = !value_5
-		value_4 = value_6
+	if value_1 {
+		return false
 	}
-	if value_4 {
-		var value_7 bool = false
-		return value_7
+	var value_2 bool = alt_required
+	if value_2 {
+		value_2 = !alt_down
 	}
-	var value_8 bool = shift_required
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = shift_down
-		var value_11 bool = !value_10
-		value_9 = value_11
+	if value_2 {
+		return false
 	}
-	if value_9 {
-		var value_12 bool = false
-		return value_12
-	}
-	var value_13 bool = alt_required
-	var value_14 bool = value_13
-	if value_14 {
-		var value_15 bool = alt_down
-		var value_16 bool = !value_15
-		value_14 = value_16
-	}
-	if value_14 {
-		var value_17 bool = false
-		return value_17
-	}
-	var value_18 bool = key_pressed
-	return value_18
+	return key_pressed
 }
 
 func Menu_MenuSubmenuIndicatorX(row Rectangle, metrics MenuMetrics) int32 {
-	var value_0 float32 = row.X
-	var value_1 float32 = row.Width
-	var value_2 float32 = value_0 + value_1
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var value_4 int32 = metrics.SubmenuIndicatorInset
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	return value_5
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((row.X+row.Width)), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.SubmenuIndicatorInset), 32, true, 2)))
 }
 
 func Menu_MenuBarFirstItemX(bar Rectangle, metrics MenuMetrics) int32 {
-	var value_0 float32 = bar.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = metrics.PanelMargin
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	return value_3
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bar.X), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.PanelMargin), 32, true, 1)))
 }
 
 func Menu_MenuBarNextItemX(x int32, width int32, metrics MenuMetrics) int32 {
-	var value_0 int32 = x
-	var value_1 int32 = width
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var value_3 int32 = metrics.BarItemGap
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 1))
-	return value_4
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(x), uint64(width), 32, true, 1)))), uint64(metrics.BarItemGap), 32, true, 1))
+	return value_0
 }
 
 func Menu_MenuBarLabelX(item Rectangle, metrics MenuMetrics) int32 {
-	var value_0 float32 = item.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var value_2 int32 = metrics.BarLabelInset
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	return value_3
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(item.X), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(metrics.BarLabelInset), 32, true, 1)))
 }
 
 func Menu_MenuBarLabelY(item Rectangle, line_height int32) int32 {
-	var value_0 Rectangle = item
-	var value_1 int32 = line_height
-	var value_2 int32 = Menu_MenuTextY(value_0, value_1)
-	return value_2
+	var value_0 int32 = Menu_MenuTextY(item, line_height)
+	return value_0
 }
 
 func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
 	var item Rectangle = Rectangle{}
-	var value_0 int32 = x
-	var value_1 float32 = float32(value_0)
-	item.X = value_1
-	var value_2 float32 = bar.Y
-	var value_3 int32 = metrics.BarItemYPadding
-	var value_4 float32 = float32(value_3)
-	var value_5 float32 = value_2 + value_4
-	item.Y = value_5
-	var value_6 int32 = width
-	var value_7 float32 = float32(value_6)
-	item.Width = value_7
-	var value_8 float32 = bar.Height
-	var value_9 int32 = metrics.BarItemYPadding
-	var value_10 int32 = 2
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 3))
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = value_8 - value_12
-	item.Height = value_13
-	var value_14 float32 = item.Height
-	var value_15 float32 = 0.0
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 float32 = 0.0
-		item.Height = value_17
+	item.X = float32(x)
+	item.Y = (bar.Y + float32(metrics.BarItemYPadding))
+	item.Width = float32(width)
+	var value_0 float32 = bar.Height - float32((int32(number_runtime_bits(uint64(metrics.BarItemYPadding), uint64(2), 32, true, 3))))
+	item.Height = value_0
+	if item.Height < 0.0 {
+		item.Height = 0.0
 	}
-	var value_18 Rectangle = item
-	return value_18
+	return item
 }

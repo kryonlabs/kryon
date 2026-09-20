@@ -29,6 +29,15 @@ needs_all_headers=0
 needs_changed_headers=0
 needs_image=0
 needs_link=0
+needs_page=0
+needs_separator=0
+needs_progress=0
+needs_plot=0
+needs_color_picker=0
+needs_selectable=0
+needs_fieldset=0
+needs_input=0
+needs_checkbox=0
 needs_collapsible=0
 needs_paned_view=0
 needs_title_bar=0
@@ -40,6 +49,7 @@ needs_modal=0
 needs_menu=0
 needs_tree_view=0
 needs_table_view=0
+needs_list_box=0
 needs_primitive=0
 needs_layout=0
 needs_group=0
@@ -47,11 +57,14 @@ needs_grid=0
 needs_toast=0
 needs_canvas=0
 needs_drag_drop=0
+needs_reorder=0
+needs_rows=0
+needs_popup=0
+needs_navigation_bar=0
 needs_guide=0
 needs_guide_pager=0
 needs_scroll=0
 needs_focus=0
-needs_terminal_pane=0
 needs_profile_header=0
 needs_inspect=0
 needs_surface=0
@@ -117,7 +130,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        include/ui_text*.h|src/ui/ui_text*.c|runtime/text*.kry|runtime/style.kry|runtime/surface.kry|examples/*.kry|tests/*text*|scripts/check-clean-text-api.py)
+        include/ui_text*.h|src/ui/ui_text*.c|src/ui/text_rows.kry|src/ui/grapheme.kry|src/ui/text_composition.kry|src/backend/kry_unicode.c|runtime/text*.kry|runtime/style.kry|runtime/surface.kry|examples/*.kry|tests/*text*|scripts/check-clean-text-api.py)
             needs_text=1
             interesting=1
             ;;
@@ -132,28 +145,21 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/focus.kry|src/ui/ui.c|src/ui/ui_tree.c|go/kryon/focus.go|tests/focus_policy_test.c|include/ui_tree.h)
+        runtime/focus.kry|src/ui/frame.kry|src/ui/text_focus.kry|src/ui/tree_input.kry|src/ui/tree_layout.kry|go/kryon/focus.go|tests/focus_policy_test.c|include/ui_tree.h)
             needs_focus=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/terminal_pane.kry|src/ui/terminal_pane.c|tests/terminal_pane_policy_test.c|include/terminal_pane.h)
-            needs_terminal_pane=1
-            interesting=1
-            ;;
-    esac
-
-    case "$path" in
-        runtime/profile_header.kry|src/ui/profile_header.c|tests/profile_header_policy_test.c|src/ui/ui_internal.h|include/ui_profile.h)
+        runtime/profile_header.kry|src/ui/profile_header.kry|tests/profile_header_policy_test.c|src/ui/ui_internal.h|include/ui_profile.h)
             needs_profile_header=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/inspect.kry|src/ui/ui_inspect.c|include/ui_inspect.h|tests/inspect_policy_test.c)
+        runtime/inspect.kry|src/ui/inspect_state.kry|src/ui/inspect_overlay.kry|include/ui_inspect.h|tests/inspect_policy_test.c)
             needs_inspect=1
             interesting=1
             ;;
@@ -167,7 +173,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/layout.kry|src/ui/ui_tree.c|go/kryon/layout.go|tests/layout_policy_test.c|include/ui_tree.h)
+        runtime/layout.kry|src/ui/tree_layout.kry|go/kryon/layout.go|tests/layout_policy_test.c|include/ui_tree.h)
             needs_layout=1
             interesting=1
             ;;
@@ -181,112 +187,147 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/primitive.kry|src/ui/ui_tree.c|go/kryon/primitive.go|tests/primitive_policy_test.c|include/ui_tree.h)
+        runtime/primitive.kry|src/ui/tree_layout.kry|src/ui/tree_paint.kry|go/kryon/primitive.go|tests/primitive_policy_test.c|include/ui_tree.h)
             needs_primitive=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/table_view.kry|go/kryon/table_view.go|tests/table_view_policy_test.c|include/ui_tk.h)
+        runtime/table_view.kry|go/kryon/table_view.go|tests/table_view_policy_test.c|runtime/table_view_props.kry)
             needs_table_view=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/tree_view.kry|go/kryon/tree_view.go|tests/tree_view_policy_test.c|include/ui_tk.h)
+        runtime/tree_view.kry|src/ui/tree_view.kry|go/kryon/tree_view.go|tests/tree_view_policy_test.c|runtime/tree_view_props.kry)
             needs_tree_view=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/modal.kry|src/ui/modal.c|go/kryon/modal.go|tests/modal_policy_test.c|include/ui_modal.h)
+        runtime/list_box.kry|runtime/list_box_multi.kry|src/ui/list_box.kry|src/ui/list_box_multi.kry|go/kryon/list_box.go|tests/list_box_policy_test.c)
+            needs_list_box=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/modal.kry|src/ui/modal.kry|go/kryon/modal.go|tests/modal_policy_test.c|include/ui_modal.h)
             needs_modal=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/transition_fade.kry|runtime/transition_props.kry|src/ui/ui_transition.c|include/ui_transition.h|include/ui_transition_props.generated.h|tests/transition_fade_policy_test.c|tests/transition_test.c)
+        runtime/transition_fade.kry|runtime/transition_props.kry|src/ui/ui_transition.kry|include/ui_transition.h|include/ui_transition_props.generated.h|tests/transition_fade_policy_test.c|tests/transition_test.c)
             needs_transition_fade=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/toast.kry|src/ui/toast.c|go/kryon/toast.go|tests/toast_policy_test.c|include/ui_toast.h)
+        runtime/toast.kry|src/ui/toast.kry|go/kryon/toast.go|tests/toast_policy_test.c|include/ui_toast.h)
             needs_toast=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/canvas.kry|go/kryon/canvas.go|tests/canvas_policy_test.c|include/ui_tk.h)
+        runtime/canvas.kry|runtime/canvas_grid.kry|src/ui/canvas.kry|go/kryon/canvas.go|tests/canvas_policy_test.c|runtime/canvas_props.kry)
             needs_canvas=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/drag_drop.kry|go/kryon/drag_drop.go|tests/drag_drop_policy_test.c|include/ui_tk.h)
+        runtime/drag_drop.kry|src/ui/drag_drop.kry|go/kryon/drag_drop.go|tests/drag_drop_policy_test.c|runtime/drag_drop_props.kry)
             needs_drag_drop=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/guide_pager.kry|src/ui/pager.c|src/ui/ui_pager_internal.h|go/kryon/guide_pager.go|tests/guide_pager_policy_test.c)
+        runtime/reorder.kry|runtime/reorder_props.kry|src/ui/reorder.kry|tests/reorder_policy_test.c)
+            needs_reorder=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/rows.kry|src/ui/rows.kry|tests/rows_policy_test.c|src/ui/ui_rows_internal.h)
+            needs_rows=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/popup_policy.kry|runtime/popup_ownership.kry|src/ui/popup.kry|src/ui/popup_input_store.kry|tests/popup_policy_test.c)
+            needs_popup=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/navigation_bar.kry|src/ui/navigation_bar.kry|tests/navigation_bar_policy_test.c)
+            needs_navigation_bar=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/guide_pager.kry|src/ui/pager.kry|src/ui/ui_pager_internal.h|go/kryon/guide_pager.go|tests/guide_pager_policy_test.c)
             needs_guide_pager=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/guide.kry|src/ui/guide.c|go/kryon/guide.go|tests/guide_policy_test.c)
+        runtime/guide.kry|src/ui/guide.kry|go/kryon/guide.go|tests/guide_policy_test.c)
             needs_guide=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/icon.kry|src/ui/ui_tree.c|go/kryon/icon.go|tests/icon_policy_test.c)
+        runtime/icon.kry|src/ui/tree_layout.kry|go/kryon/icon.go|tests/icon_policy_test.c)
             needs_icon=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/bevel.kry|src/ui/ui.c|go/kryon/bevel.go|tests/bevel_policy_test.c)
+        runtime/bevel.kry|src/ui/bevel.kry|go/kryon/bevel.go|tests/bevel_policy_test.c)
             needs_bevel=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/paragraph.kry|src/ui/ui.c|go/kryon/paragraph.go|tests/paragraph_policy_test.c)
+        runtime/paragraph.kry|src/ui/text.kry|src/ui/selectable_text.kry|go/kryon/paragraph.go|tests/paragraph_policy_test.c)
             needs_paragraph=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/title_bar.kry|src/ui/ui_titlebar.c|go/kryon/title_bar.go|tests/title_bar_policy_test.c)
+        runtime/title_bar.kry|src/ui/title_bar.kry|go/kryon/title_bar.go|tests/title_bar_policy_test.c)
             needs_title_bar=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/paned_view.kry|src/ui/tab_bar.c|go/kryon/paned_view.go|tests/paned_view_policy_test.c)
+        runtime/paned_view.kry|src/ui/paned_view.kry|src/ui/tab_bar.kry|go/kryon/paned_view.go|tests/paned_view_policy_test.c)
             needs_paned_view=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/collapsible.kry|go/kryon/collapsible.go|tests/collapsible_policy_test.c)
+        runtime/collapsible.kry|src/ui/collapsible.kry|go/kryon/collapsible.go|tests/collapsible_policy_test.c)
             needs_collapsible=1
             interesting=1
             ;;
@@ -300,14 +341,86 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/link.kry|src/ui/ui.c|include/ui_page.h|tests/link_policy_test.c)
+        runtime/link.kry|src/ui/link.kry|src/ui/page.kry|include/ui_page.h|tests/link_policy_test.c)
             needs_link=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/scroll.kry|src/ui/scroll.c|go/kryon/scroll.go|tests/scroll_policy_test.c|include/ui_scroll.h)
+        runtime/page.kry|src/ui/page.kry|src/platform/page_metadata.c|tests/page_policy_test.c)
+            needs_page=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/separator.kry|src/ui/separator.kry|src/ui/paint_command.kry|tests/separator_policy_test.c)
+            needs_separator=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/progress.kry|src/ui/progress.kry|tests/progress_policy_test.c)
+            needs_progress=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/plot.kry|src/ui/plot.kry|tests/plot_policy_test.c)
+            needs_plot=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/color_picker.kry|src/ui/color_picker.kry|tests/color_picker_policy_test.c)
+            needs_color_picker=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/selectable.kry|src/ui/selectable.kry|tests/selectable_policy_test.c)
+            needs_selectable=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/fieldset.kry|src/ui/fieldset.kry|tests/fieldset_policy_test.c)
+            needs_fieldset=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/input.kry|src/ui/widget_input.kry|tests/input_policy_test.c)
+            needs_input=1
+            needs_focus=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        src/ui/focus_debug.kry)
+            needs_focus=1
+            needs_menu=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/checkbox.kry|src/ui/checkbox.kry|tests/checkbox_policy_test.c)
+            needs_checkbox=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/scroll.kry|src/ui/scroll.kry|go/kryon/scroll.go|tests/scroll_policy_test.c|include/ui_scroll.h)
             needs_scroll=1
             interesting=1
             ;;
@@ -328,28 +441,37 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/style_sheet.kry|include/ui_style_sheet.h|src/ui/style_sheet.c|src/ui/style_picker.c|tests/style_sheet_policy_test.c|tests/style_pack_registry_test.c|tests/style_picker_test.c)
+        runtime/style_sheet.kry|include/ui_style_sheet.h|src/ui/style_sheet.kry|src/ui/style_picker.kry|tests/style_sheet_policy_test.c|tests/style_pack_registry_test.c|tests/style_picker_test.c)
             needs_style_sheet=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/radio.kry|go/kryon/radio.go|tests/radio_policy_test.c)
+        runtime/radio.kry|src/ui/radio.kry|go/kryon/radio.go|tests/radio_policy_test.c)
             needs_radio=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/spinbox.kry|go/kryon/spinbox.go|go/kryon/runtime.go|go/kryon/toolkit_host.go|src/ui/ui_tk.c|tests/spinbox_policy_test.c)
+        src/ui/widget_store.kry)
+            needs_radio=1
+            needs_canvas=1
+            needs_focus=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/spinbox.kry|src/ui/spinbox.kry|src/ui/numeric_edit.kry|src/ui/slider.kry|go/kryon/spinbox.go|go/kryon/runtime.go|go/kryon/toolkit_host.go|tests/spinbox_policy_test.c)
             needs_spinbox=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/tab_bar.kry|src/ui/tab_bar.c|go/kryon/tab_bar.go|go/kryon/runtime.go|go/kryon/choice_host.go|tests/tab_bar_policy_test.c)
+        runtime/tab_bar.kry|src/ui/tab_bar.kry|src/ui/tab_store.kry|go/kryon/tab_bar.go|go/kryon/runtime.go|go/kryon/choice_host.go|tests/tab_bar_policy_test.c)
             needs_tab_bar=1
             interesting=1
             ;;
@@ -363,14 +485,14 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/menu.kry|tests/menu_policy_test.c)
+        runtime/menu.kry|src/ui/menu_host.kry|tests/menu_policy_test.c)
             needs_menu=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/text_input.kry|src/ui/ui.c|tests/text_input_policy_test.c)
+        runtime/text_input.kry|src/ui/text_field.kry|src/ui/text_area.kry|src/ui/text_editor.kry|tests/text_input_policy_test.c)
             needs_text_input_policy=1
             interesting=1
             ;;
@@ -441,38 +563,38 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        src/ui/ui_tk.c)
+        src/ui/menu_host.kry|src/ui/table_view.kry|src/ui/drag.kry|src/ui/slider.kry|src/ui/numeric_edit.kry)
             interesting=1
-            matched_ui_tk=0
+            matched_widget=0
             if diff_matches "$path" 'Collapsible|collapsible'; then
                 needs_collapsible=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'Paned|paned'; then
                 needs_paned_view=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'TreeView|tree_view'; then
                 needs_tree_view=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'TableView|table_view'; then
                 needs_table_view=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'Canvas|canvas'; then
                 needs_canvas=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'Drag|Drop|drag_drop'; then
                 needs_drag_drop=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
             if diff_matches "$path" 'FocusDebugOverlay|focus'; then
                 needs_focus=1
-                matched_ui_tk=1
+                matched_widget=1
             fi
-            if [ "$matched_ui_tk" -eq 0 ]; then
+            if [ "$matched_widget" -eq 0 ]; then
                 needs_collapsible=1
                 needs_paned_view=1
                 needs_tree_view=1
@@ -544,6 +666,9 @@ fi
 if [ "$needs_table_view" -eq 1 ]; then
     targets="$targets table-view-policy-test"
 fi
+if [ "$needs_list_box" -eq 1 ]; then
+    targets="$targets list-box-policy-test"
+fi
 if [ "$needs_primitive" -eq 1 ]; then
     targets="$targets primitive-policy-test"
 fi
@@ -565,6 +690,18 @@ fi
 if [ "$needs_drag_drop" -eq 1 ]; then
     targets="$targets drag-drop-policy-test"
 fi
+if [ "$needs_reorder" -eq 1 ]; then
+    targets="$targets reorder-policy-test"
+fi
+if [ "$needs_rows" -eq 1 ]; then
+    targets="$targets rows-policy-test"
+fi
+if [ "$needs_popup" -eq 1 ]; then
+    targets="$targets popup-policy-test"
+fi
+if [ "$needs_navigation_bar" -eq 1 ]; then
+    targets="$targets navigation-bar-policy-test"
+fi
 if [ "$needs_guide" -eq 1 ]; then
     targets="$targets guide-policy-test"
 fi
@@ -577,9 +714,6 @@ fi
 if [ "$needs_focus" -eq 1 ]; then
     targets="$targets focus-policy-test"
 fi
-if [ "$needs_terminal_pane" -eq 1 ]; then
-    targets="$targets terminal-pane-policy-test"
-fi
 if [ "$needs_profile_header" -eq 1 ]; then
     targets="$targets profile-header-policy-test"
 fi
@@ -588,6 +722,33 @@ if [ "$needs_inspect" -eq 1 ]; then
 fi
 if [ "$needs_link" -eq 1 ]; then
     targets="$targets link-policy-test"
+fi
+if [ "$needs_page" -eq 1 ]; then
+    targets="$targets page-policy-test"
+fi
+if [ "$needs_separator" -eq 1 ]; then
+    targets="$targets separator-policy-test"
+fi
+if [ "$needs_progress" -eq 1 ]; then
+    targets="$targets progress-policy-test"
+fi
+if [ "$needs_plot" -eq 1 ]; then
+    targets="$targets plot-policy-test"
+fi
+if [ "$needs_color_picker" -eq 1 ]; then
+    targets="$targets color-picker-policy-test"
+fi
+if [ "$needs_selectable" -eq 1 ]; then
+    targets="$targets selectable-policy-test"
+fi
+if [ "$needs_fieldset" -eq 1 ]; then
+    targets="$targets fieldset-policy-test"
+fi
+if [ "$needs_input" -eq 1 ]; then
+    targets="$targets input-policy-test"
+fi
+if [ "$needs_checkbox" -eq 1 ]; then
+    targets="$targets checkbox-policy-test"
 fi
 if [ "$needs_surface" -eq 1 ]; then
     targets="$targets surface-policy-test"

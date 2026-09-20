@@ -32,9 +32,9 @@ pass. Baseline logs are in `/tmp/kryon-completion/baseline.log` for this run.
 | Requirement | Maintained owner / host role | Evidence and next action |
 |---|---|---|
 | KSS environment names | `runtime/kss_parser.kry:KssEnvironmentWithNames`; C/Go/JS supply strings and platform defaults | Removed native theme-name interpretation and web axis/name construction. Shared `tests/fixtures/kss/environments.txt` drives generated C/Go/JS tests, including defaults, all platforms, case matching, and variants. |
-| KSS grammar/overlays | `runtime/kss_parser.kry`; `src/ui/kss_parser.c`, `go/kryon/style_parse.go`, web host handle strings/import storage | Matched fixture covers actual parsed/resolved values. Full residual host semantic inventory still open. |
+| KSS grammar/overlays | `runtime/kss_parser.kry`; `src/ui/kss_parser.kry` handles native imports, diagnostics, and source spans; Go and web hosts handle their own input strings | Native parser and formatter now build from Kry. Run the KSS fixtures after explicit test approval. |
 | Go theme switch | Generated KSS owns parse/overlay decisions; `go/kryon/style_pack.go` owns retained source and published sheet storage | `style_theme_test.go` covers repeated themes, active declared variant, built-in retention, fixed palette retention, late registration, typed replacement, failed imports and recovery. |
-| Native theme switch | Generated KSS owns parse/overlay decisions; `src/ui/style_pack_source.c` owns retained source storage | Existing theme source test passes, but code audit finds borrowed theme pointer, non-atomic publication, explicit-palette replay without overrides, and retained sources surviving `ClearStylePacks`. Built-in replay also registers absent packs. Reconcile lifecycle with Go and add matched failure/reset tests before closing. |
+| Native theme switch | `src/ui/style_pack_source.kry` owns retained source storage and theme replay; `src/ui/style_builtin_packs.kry` owns built-in selection | The migrated sources build. Theme pointer lifetime, atomic publication, fixed-palette replay, and reset behavior still need approved behavioral verification and reconciliation with Go. |
 | Web executable fixtures | KIR/k2js lowering plus generated runtime policies | Baseline parity excludes menus, scroll_content, drag_drop, composed_popup from JS and labels composition partial. Pointer/wheel lifecycle driver and expression placeholder removal remain open. |
 | Mounted DOM content | `web/kryon-runtime.js` DOM element/text emission | Existing Ruby regression fails; fix content coexistence with children and verify real-browser update behavior. |
 | Widget/text/visual policy | `runtime/*.kry`; C/Go/JS storage, measurement and painting hosts | Detailed branch-level inventory across files listed in P0 remains open. |
@@ -267,10 +267,10 @@ compound selectors inside `:is`, and malformed input. This does not close
 compound-selector Boolean semantics, functional-pseudo dispatch, CSS export
 mapping, fact normalization/presence, traversal, or backend conformance.
 
-The C++ syntax gate exposed a pre-existing linkage conflict: `ui_tk.h` declared
-C functions with C++ linkage, conflicting with `Menu` in `ui_tree.h`. The header
-now declares its C API with `extern "C"`. The C++ test also compiles the public
-headers with the generated KSS header, catching both linkage conflicts and
+The C++ syntax gate exposed a pre-existing linkage conflict in a former combined
+UI header, conflicting with `Menu` in `ui_tree.h`. Domain-specific `.kry`
+declarations now generate the public headers. The C++ test also compiles the public
+headers with the generated KSS header, catching linkage conflicts and
 C++-reserved field names. The new selector atom uses `operation`, not the C++
 keyword `operator`; the existing attribute predicate's parameter was renamed
 accordingly without changing its call contract.

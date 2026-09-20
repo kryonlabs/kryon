@@ -1,0 +1,65 @@
+#module "focus_debug_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/focus.h"
+#import "runtime/menu.h"
+
+AcceleratorPressed :: (accelerator: Accelerator) -> i32 #export {
+    if !MenuAcceleratorShouldFire(IsKeyboardInputEnabled() != 0,
+    accelerator.ctrl != 0,
+    IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL),
+    accelerator.shift != 0,
+    IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT),
+    accelerator.alt != 0,
+    IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+    IsKeyPressed(accelerator.key) != 0) {
+        return 0
+    }
+    return accelerator.id
+}
+
+DispatchAccelerators :: (accelerators: const Accelerator*,
+count: i32) -> i32 #export {
+    if accelerators == nil { return 0 }
+    index: i32 = 0
+    while index < count {
+        id: i32 = AcceleratorPressed(accelerators[index])
+        if id != 0 { return id }
+        index += 1
+    }
+    return 0
+}
+
+RenderFocusDebugOverlay :: (nodes: const AccessibilityNode*,
+count: i32) #export {
+    if nodes == nil { return }
+    index: i32 = 0
+    while index < count {
+        node: AccessibilityNode = nodes[index]
+        state: ButtonState = ButtonStateNormal
+        focus_amount: float = 0.0
+        if node.focused {
+            state = ButtonStateFocus
+            focus_amount = 1.0
+        }
+        props: ButtonProps
+        box: Style = ui_unpack_style(ui_control_style_frame_role_kind(
+        props, state, 0, 0.0, 0.0, focus_amount,
+        StyleKindFocus(), FocusBoxRole()).value)
+        label: Style = ui_unpack_style(ui_control_style_frame_role_kind(
+        props, state, 0, 0.0, 0.0, focus_amount,
+        StyleKindFocus(), FocusLabelRole()).value)
+        font: i32 = ResolveFont(0, StyleFontValue(label.fields,
+        label.font_size), GetSmallFontSize())
+        paint: FocusDebugOverlayPaint = FocusDebugOverlayPaintFor(
+        node.bounds, TextLineHeight(font), node.label != nil)
+        DrawRectangleLinesEx(paint.outline, (float)paint.stroke_width,
+        Fade(box.border, box.opacity))
+        if paint.label_visible {
+            RenderText(node.label, (int)paint.label_position.x,
+            (int)paint.label_position.y, font,
+            Fade(label.foreground, label.opacity))
+        }
+        index += 1
+    }
+}

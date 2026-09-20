@@ -9,169 +9,74 @@ type ImagePlaceholderLayout struct {
 }
 
 func Image_ImageLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Image_ImageFitBounds(bounds Rectangle, source Rectangle, texture_width int32, texture_height int32, fit int32) Rectangle {
-	var value_0 Rectangle = bounds
-	var dst Rectangle = value_0
-	var value_1 float32 = source.Width
-	var src_w float32 = value_1
-	var value_2 float32 = source.Height
-	var src_h float32 = value_2
-	var value_3 float32 = src_w
-	var value_4 float32 = 0.0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 float32 = src_w
-		var value_7 float32 = -value_6
-		src_w = value_7
+	var dst Rectangle = bounds
+	var src_w float32 = source.Width
+	var src_h float32 = source.Height
+	if src_w < 0.0 {
+		src_w = -src_w
 	}
-	var value_8 float32 = src_h
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 float32 = src_h
-		var value_12 float32 = -value_11
-		src_h = value_12
+	if src_h < 0.0 {
+		src_h = -src_h
 	}
-	var value_13 float32 = src_w
-	var value_14 float32 = 0.0
-	var value_15 bool = value_13 == value_14
-	if value_15 {
-		var value_16 int32 = texture_width
-		var value_17 float32 = float32(value_16)
-		src_w = value_17
+	if src_w == 0.0 {
+		src_w = float32(texture_width)
 	}
-	var value_18 float32 = src_h
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 == value_19
-	if value_20 {
-		var value_21 int32 = texture_height
-		var value_22 float32 = float32(value_21)
-		src_h = value_22
+	if src_h == 0.0 {
+		src_h = float32(texture_height)
 	}
-	var value_23 int32 = fit
-	var value_24 int32 = 1
-	var value_25 bool = value_23 == value_24
-	var value_26 bool = value_25
-	if !value_26 {
-		var value_27 int32 = fit
-		var value_28 int32 = 2
-		var value_29 bool = value_27 == value_28
-		value_26 = value_29
+	var value_0 bool = (fit == 1)
+	if !value_0 {
+		value_0 = (fit == 2)
 	}
-	if value_26 {
-		var value_30 float32 = src_w
-		var value_31 float32 = 0.0
-		var value_32 bool = value_30 == value_31
-		var value_33 bool = value_32
-		if !value_33 {
-			var value_34 float32 = src_h
-			var value_35 float32 = 0.0
-			var value_36 bool = value_34 == value_35
-			value_33 = value_36
+	if value_0 {
+		var value_1 bool = (src_w == 0.0)
+		if !value_1 {
+			value_1 = (src_h == 0.0)
 		}
-		if value_33 {
-			var value_37 Rectangle = dst
-			return value_37
+		if value_1 {
+			return dst
 		}
-		var value_38 float32 = bounds.Width
-		var value_39 float32 = src_w
-		var value_40 float32 = value_38 / value_39
-		var sx float32 = value_40
-		var value_41 float32 = bounds.Height
-		var value_42 float32 = src_h
-		var value_43 float32 = value_41 / value_42
-		var sy float32 = value_43
-		var value_44 float32 = sx
-		var scale float32 = value_44
-		var value_45 int32 = fit
-		var value_46 int32 = 2
-		var value_47 bool = value_45 == value_46
-		if value_47 {
-			var value_48 float32 = sy
-			var value_49 float32 = scale
-			var value_50 bool = value_48 > value_49
-			if value_50 {
-				var value_51 float32 = sy
-				scale = value_51
+		var sx float32 = (bounds.Width / src_w)
+		var sy float32 = (bounds.Height / src_h)
+		var scale float32 = sx
+		if fit == 2 {
+			if sy > scale {
+				scale = sy
 			}
 		} else {
-			var value_52 float32 = sy
-			var value_53 float32 = scale
-			var value_54 bool = value_52 < value_53
-			if value_54 {
-				var value_55 float32 = sy
-				scale = value_55
+			if sy < scale {
+				scale = sy
 			}
 		}
-		var value_56 float32 = src_w
-		var value_57 float32 = scale
-		var value_58 float32 = value_56 * value_57
-		dst.Width = value_58
-		var value_59 float32 = src_h
-		var value_60 float32 = scale
-		var value_61 float32 = value_59 * value_60
-		dst.Height = value_61
-		var value_62 float32 = bounds.X
-		var value_63 float32 = bounds.Width
-		var value_64 float32 = dst.Width
-		var value_65 float32 = value_63 - value_64
-		var value_66 float32 = 0.5
-		var value_67 float32 = value_65 * value_66
-		var value_68 float32 = value_62 + value_67
-		dst.X = value_68
-		var value_69 float32 = bounds.Y
-		var value_70 float32 = bounds.Height
-		var value_71 float32 = dst.Height
-		var value_72 float32 = value_70 - value_71
-		var value_73 float32 = 0.5
-		var value_74 float32 = value_72 * value_73
-		var value_75 float32 = value_69 + value_74
-		dst.Y = value_75
+		dst.Width = (src_w * scale)
+		dst.Height = (src_h * scale)
+		dst.X = (bounds.X + ((bounds.Width - dst.Width) * 0.5))
+		dst.Y = (bounds.Y + ((bounds.Height - dst.Height) * 0.5))
 	}
-	var value_76 Rectangle = dst
-	return value_76
+	return dst
 }
 
 func Image_ImagePlaceholderLayoutFor(bounds Rectangle, text_width int32, font_height int32) ImagePlaceholderLayout {
 	var layout ImagePlaceholderLayout = ImagePlaceholderLayout{}
-	var value_0 Rectangle = bounds
-	layout.Bounds = value_0
-	var value_1 float32 = bounds.X
-	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_1), 32, true)), uint64(0), 32, true, 0))
-	var value_3 float32 = bounds.Width
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	var value_5 int32 = text_width
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 2))
-	var value_7 int32 = 2
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 4))
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_8), 32, true, 1))
-	layout.LabelX = value_9
-	var value_10 float32 = bounds.Y
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	var value_12 float32 = bounds.Height
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	var value_14 int32 = font_height
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-	var value_16 int32 = 2
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 4))
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_17), 32, true, 1))
-	layout.LabelY = value_18
-	var value_19 ImagePlaceholderLayout = layout
-	return value_19
+	layout.Bounds = bounds
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_1), uint64(text_width), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.LabelX = (int32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, true, 1)))
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_5 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_4), uint64(font_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.LabelY = (int32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, true, 1)))
+	return layout
 }
 
 func Image_ImagePlaceholderFontFor(default_font int32, style_font int32) int32 {
-	var value_0 int32 = style_font
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = style_font
-		return value_3
+	if style_font > 0 {
+		return style_font
 	}
-	var value_4 int32 = default_font
-	return value_4
+	return default_font
 }

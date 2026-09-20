@@ -1,0 +1,69 @@
+#module "separator_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/separator.h"
+#import "ui/paint_command.h"
+
+PaintSeparatorLine :: (bounds: Rectangle, vertical: i32,
+class_name: i32) {
+    if !IsWindowReady() { return }
+    frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+    StyleKindSeparator(), SeparatorLineRole())
+    paint: SeparatorLine = SeparatorLineFor(bounds, vertical != 0, frame)
+    if vertical != 0 {
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+        (int)paint.line.x, (int)(paint.line.y + paint.line.height),
+        GetColor(paint.color))
+    } else {
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+        (int)(paint.line.x + paint.line.width), (int)paint.line.y,
+        GetColor(paint.color))
+    }
+}
+
+RenderSeparator :: (separator: SeparatorProps) #export {
+    label: const char* = separator.label
+    if label == nil { label = "" }
+    state: ButtonState = ButtonStateNormal
+    if separator.disabled { state = ButtonStateDisabled }
+    frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, separator.disabled, 0, separator.class_name,
+    StyleKindSeparator(), SeparatorLabelRole())
+    label_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(frame).value)
+    font: i32 = ResolveFont(0, StyleFontValue(label_style.fields,
+    label_style.font_size), GetSmallFontSize())
+    text_width: i32 = TextWidth(label, font)
+    line_frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, separator.disabled, 0, separator.class_name,
+    StyleKindSeparator(), SeparatorLineRole())
+    paint: SeparatorLabelPaint = SeparatorLabelPaintFor(separator.bounds,
+    (float)text_width, label[0] != 0, font,
+    (float)Scale(1000) / 1000.0, frame)
+    paint.line_color = line_frame.value.background
+
+    if label[0] == 0 {
+        PaintSeparatorLine(separator.bounds, separator.vertical,
+        separator.class_name)
+        return
+    }
+    if !IsWindowReady() { return }
+    if paint.show_text {
+        RenderText(label, (int)paint.text.x, (int)paint.text.y, font,
+        Fade(GetColor(paint.text_color), label_style.opacity))
+    }
+    if paint.show_line {
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+        (int)(paint.line.x + paint.line.width), (int)paint.line.y,
+        GetColor(paint.line_color))
+    }
+}
+
+RenderBullet :: (bounds: Rectangle) #export {
+    frame: StyleFrame = WidgetFrameForRole(ButtonToneNeutral,
+    ButtonStateNormal, 0, 0, StyleKindSeparator(), SeparatorBulletRole())
+    if !IsWindowReady() { return }
+    paint: BulletPaint = BulletPaintFor(bounds, frame)
+    DrawCircleV(paint.center, paint.radius, GetColor(paint.color))
+}

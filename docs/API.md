@@ -155,6 +155,27 @@ void EndInterfaceFrame(void);
 
 ## Canonical App API
 
+### App lifecycle hooks in `.kry`
+
+An `app` block can name functions declared in the same `.kry` module:
+
+```kry
+app "Example" {
+    before_window CheckDisplay
+    init Setup
+    after_frame CaptureFrame
+    should_continue KeepRunning
+}
+```
+
+`before_window` returns `bool`. It runs before `InitWindow` and may reject a
+launch by returning `false` (process exit status 2). `init` runs after window
+and interface initialization. `after_frame` runs after the completed frame,
+which lets `.kry` code read it with `LoadImageFromScreen`. `should_continue`
+returns `bool` and is checked along with the window close request before each
+frame. The generated app loop calls these functions; their behavior is authored
+in `.kry`. Capture programs must start on a private display.
+
 ### Disabled content blocks in `.kry`
 
 Use a lexical block to disable ordinary child controls without manually pairing
@@ -1430,6 +1451,7 @@ typedef struct {
     int full_width;
     int pill;
     int circle;
+    ImageProps image;
     ButtonState state;
 } ButtonProps;
 ```
@@ -1443,6 +1465,10 @@ int Button(ButtonProps button);
 ```
 
 Native Go uses the same props-only contract: `Button(ButtonProps) bool`.
+Pass an optional asset image through `ButtonProps.image`, using the same
+`ImageProps` record accepted by `Image(ImageProps)`. The Button supplies its
+own bounds when `image.bounds` is empty. The image keeps its original colors;
+the Button's foreground color applies to text and icons.
 The Rectangle, Vector2, Color, and Texture2D field contracts come from
 `runtime/drawing_props.kry`. These records support typed field access and value
 copies in shared `.kry` functions. Their C/C++ definitions remain supplied by
@@ -2404,11 +2430,11 @@ typedef enum {
 
 ---
 
-## Pragmatic Tk Toolkit
+## Kryon Widgets
 
-`ui_tk.h` adds Kryon's Tk-replacement layer. The rule is one simple way to use
-each widget: prepare a plain struct, keep state in caller variables, and call the
-matching immediate-mode function each frame.
+Widget properties and implementations live in `.kry` modules. The generated
+native headers expose them to C callers. Prepare a plain struct, keep state in
+caller variables, and call the matching function each frame.
 
 ```c
 int selected = 0;
@@ -2690,11 +2716,12 @@ text and resolve imports; they never reimplement parsing:
   `@variant` overlays and programmatic variant color substitution; scoped
   rules always resolve against the final table.
 
-C hosts include `runtime/kss_parser.h` and drive `KssBegin`/`KssStep`
+C hosts include the generated `runtime/kss_parser.h` and drive `KssBegin`/`KssStep`
 (`KssStatusRule` yields a rule, `KssStatusNeedImport` expects
 `KssProvideImport` or `KssFailImport`); `kss_parse_string`,
-`kss_parse_variant`, and `kss_parse_with_variant` remain as shims over that
-loop, and `KssParseResult` reports the pack id, rule count, and declared
+`kss_parse_variant`, and `kss_parse_with_variant` are authored in
+`src/ui/kss_parser.kry` over that loop; its generated header defines
+`KssParseResult`, which reports the pack id, rule count, and declared
 variant names with labels. Go hosts call
 `ParseStyleSheet`, and `runtime/kss_parser.kry`'s generated module is the
 single grammar implementation for every backend.

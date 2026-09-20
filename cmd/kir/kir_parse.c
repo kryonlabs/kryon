@@ -704,6 +704,9 @@ typedef struct WidgetBlock {
     int has_key;
     char *scope_args[3];
     unsigned scope_fields;
+    /* Count of web/dom property assignments seen for this block; zero lets
+     * widget_block_apply_web_metadata skip the dom_* statement copies. */
+    int web_prop_count;
 } WidgetBlock;
 
 typedef struct SlotParseFrame {
@@ -937,6 +940,10 @@ widget_block_append_extra_attr(WidgetBlock *block, const char *attr, const char 
 static int
 widget_block_set_web_prop(WidgetBlock *block, const char *field, const char *value)
 {
+    /* Count every attempt: over-counting only disables the empty-copy skip,
+     * while a missed count would drop real web metadata. */
+    if(block != NULL)
+        block->web_prop_count++;
     if(block != NULL && is_web_native_block_widget(block->widget)) {
         if(strcmp(field, "src") == 0 || strcmp(field, "dom_src") == 0 ||
            strcmp(field, "html_src") == 0)
@@ -1611,6 +1618,11 @@ widget_block_apply_web_metadata(KirStmt *statement, const WidgetBlock *block)
              block->path);
     snprintf(statement->node_parent_path, sizeof(statement->node_parent_path),
              "%s", block->parent_path);
+    /* Statements are zero-initialized; copying an unset web surface would
+     * only write empty strings. Native C/Go builds never set web props, so
+     * they skip the ~100 field copies below entirely. */
+    if(block->web_prop_count == 0)
+        return;
     snprintf(statement->dom_tag, sizeof(statement->dom_tag), "%s",
              block->dom_tag);
     snprintf(statement->dom_ref, sizeof(statement->dom_ref), "%s",
@@ -2536,6 +2548,7 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
                              KirSpan(path, line_no, 1));
     if(imp != NULL) {
         char parsed_name[KIR_NAME_MAX];
+        imp->is_public = strstr(line, "#export") != NULL;
         parse_function_header(parsed_name, sizeof(parsed_name), imp->args,
                               sizeof(imp->args), imp->return_type,
                               sizeof(imp->return_type), line);
@@ -3758,10 +3771,15 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                   strncmp(t, "#defined", 8) != 0 &&
                   strncmp(t, "#enum", 5) != 0 &&
                   strncmp(t, "#module", 7) != 0 &&
+                  strncmp(t, "#inspect", 8) != 0 &&
                   strncmp(t, "#import", 7) != 0 &&
                   strncmp(t, "#style", 6) != 0) {
             /* plain # comment at top level — never a header; real
              * directives (#module/#import/#if...) fall through below */
+        } else if(mode == TOP && strcmp(t, "#inspect off") == 0) {
+            module->inspect_calls = 0;
+        } else if(mode == TOP && strcmp(t, "#inspect on") == 0) {
+            module->inspect_calls = 1;
         } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
@@ -3846,8 +3864,14 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 module->app.font_examples = 1;
             } else if(starts_word(t, "frame")) {
                 die_at(KirSpan(rel, line_no, 1), "app frame property is not supported; declare a #ui function");
+            } else if(starts_word(t, "before_window")) {
+                sscanf(t, "before_window %127s", module->app.before_window);
             } else if(starts_word(t, "init")) {
                 sscanf(t, "init %127s", module->app.init);
+            } else if(starts_word(t, "after_frame")) {
+                sscanf(t, "after_frame %127s", module->app.after_frame);
+            } else if(starts_word(t, "should_continue")) {
+                sscanf(t, "should_continue %127s", module->app.should_continue);
             } else if(starts_word(t, "scene")) {
                 sscanf(t, "scene %127s", module->app.scene);
             } else if(starts_word(t, "shutdown")) {
@@ -4536,6 +4560,44 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         die_at(KirSpan(rel, line_no, 1), "unterminated slot body");
     if(in != NULL)
         fclose(in);
+    for(int mi = 0; mi < program->module_count; mi++) {
+        KirModule *app_module = &program->modules[mi];
+        struct {
+            const char *property;
+            const char *function;
+            const char *return_type;
+        } hooks[] = {
+            {"before_window", app_module->app.before_window, "bool"},
+            {"after_frame", app_module->app.after_frame, "void"},
+            {"should_continue", app_module->app.should_continue, "bool"},
+        };
+
+        if(!app_module->app.has_app)
+            continue;
+        for(size_t hi = 0; hi < sizeof(hooks) / sizeof(hooks[0]); hi++) {
+            const KirFunction *hook = NULL;
+
+            if(hooks[hi].function[0] == '\0')
+                continue;
+            for(int fi = 0; fi < app_module->function_count; fi++) {
+                if(strcmp(app_module->functions[fi].name,
+                          hooks[hi].function) == 0) {
+                    hook = &app_module->functions[fi];
+                    break;
+                }
+            }
+            if(hook == NULL || hook->is_extern || hook->is_ui ||
+               hook->args[0] != '\0' ||
+               strcmp(hook->return_type, hooks[hi].return_type) != 0) {
+                char message[256];
+
+                snprintf(message, sizeof(message),
+                         "app %s requires a same-module () -> %s function",
+                         hooks[hi].property, hooks[hi].return_type);
+                die_at(KirSpan(rel, line_no, 1), message);
+            }
+        }
+    }
     for(int mi = 0; mi < program->module_count; mi++)
         for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
             if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {

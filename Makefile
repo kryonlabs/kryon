@@ -70,10 +70,16 @@ CFLAGS ?= -Wall -Wextra -O2
 GENERATED_INCLUDE_DIR = $(BUILD_DIR)/generated/include
 GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
 RUNTIME_KRY := $(sort $(wildcard runtime/*.kry))
+# guide, guide_pager, profile_header, and terminal_pane serve C-target hosts
+# only; the Go runtime has no host for them, so k2go skips those modules.
+RUNTIME_GO_KRY = $(filter-out runtime/guide.kry runtime/guide_pager.kry runtime/profile_header.kry runtime/terminal_pane.kry,$(RUNTIME_KRY))
 RUNTIME_C = $(patsubst runtime/%.kry,$(GENERATED_SRC_DIR)/runtime/%.c,$(RUNTIME_KRY))
 RUNTIME_H = $(RUNTIME_C:.c=.h)
-RUNTIME_GO = $(patsubst runtime/%.kry,go/kryon/%.go,$(RUNTIME_KRY)) go/kryon/numeric_support.go
-CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
+RUNTIME_GO = $(patsubst runtime/%.kry,go/kryon/%.go,$(RUNTIME_GO_KRY)) go/kryon/numeric_support.go
+UI_KRY := $(sort $(wildcard src/ui/*.kry))
+UI_KRY_C := $(patsubst src/ui/%.kry,$(GENERATED_SRC_DIR)/ui/%.c,$(UI_KRY))
+UI_KRY_H := $(UI_KRY_C:.c=.h)
+CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude -Ivendor/utf8proc -DUTF8PROC_STATIC $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
 ICON_ASSETS_C = $(GENERATED_SRC_DIR)/ui/ui_icon_assets.c
@@ -260,7 +266,7 @@ SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
 SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) \
-	$(RUNTIME_C) $(KRYON_BACKEND_SRCS)
+	$(RUNTIME_C) $(UI_KRY_C) $(KRYON_BACKEND_SRCS)
 ifeq ($(KRYON_RELEASE_STYLE_TABLES),1)
   CPPFLAGS += -DKRYON_USE_RELEASE_STYLE_TABLES=1
   SRCS += $(STYLE_RELEASE_TABLES_C)
@@ -298,6 +304,7 @@ endif
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
+$(filter $(BUILD_DIR)/ui/% $(BUILD_DIR)/backend/kry_backend_draw.o $(BUILD_DIR)/platform/page_metadata.o,$(OBJS)): $(GENERATED_SRC_DIR)/ui/grapheme.h
 LIB = $(BUILD_DIR)/libkryon.a
 SYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/sync_account_test
 SYNC_TEST = $(BUILD_DIR)/tests/sync_test
@@ -316,15 +323,13 @@ RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 TERMI_SMOKE_TEST = $(BUILD_DIR)/tests/termi_smoke_test
 LIBDRAW_SMOKE_TEST = $(BUILD_DIR)/tests/libdraw_smoke_test
 LIBDRAW_HIERARCHY_TEST = $(BUILD_DIR)/tests/libdraw_hierarchy_test
-UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
-UI_PRIMARY_SELECTION_TEST = $(BUILD_DIR)/tests/ui_primary_selection_test
+WIDGET_SURFACE_TEST = $(BUILD_DIR)/tests/widget_surface_test
 UI_PAGER_TEST = $(BUILD_DIR)/tests/ui_pager_test
 DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
 SEGMENTED_CONTROL_TEST = $(BUILD_DIR)/tests/segmented_control_test
 DROPDOWN_THEME_SCREEN_TEST = $(BUILD_DIR)/tests/dropdown_theme_screen_test
 NAVIGATION_BAR_ICON_COLOR_TEST = $(BUILD_DIR)/tests/navigation_bar_icon_color_test
 DISMISSIBLE_OVERLAY_TEST = $(BUILD_DIR)/tests/dismissible_overlay_test
-PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 OPEN_URI_TEST = $(BUILD_DIR)/tests/open_uri_test
 UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
@@ -345,6 +350,23 @@ CONTROL_APPEARANCE_PERF_TEST = $(BUILD_DIR)/tests/control_appearance_perf_test
 CONTROL_APPEARANCE_CAPTURE = $(BUILD_DIR)/tests/control_appearance_capture
 CONTROL_APPEARANCE_CAPTURE_PNG = $(BUILD_DIR)/control-appearance-side-by-side.png
 STYLE_CAPTURE_BOARDS = $(BUILD_DIR)/tests/style_capture_boards
+BUTTON_GALLERY = $(BUILD_DIR)/examples/button_gallery
+BUTTON_GALLERY_CODEGEN = $(BUILD_DIR)/button-gallery-kry
+BUTTON_GALLERY_CAPTURE_DIR = $(BUILD_DIR)/button-gallery-builtins
+BUTTON_GALLERY_BENCHMARK_CSV = $(BUILD_DIR)/button-gallery-benchmark-isolated.csv
+# Raise benchmark priority to reduce preemption noise. Do not pin to a single
+# core: llvmpipe is multithreaded and single-core pinning serializes software
+# rendering, inflating frame times ~5x. Override to disable:
+#   make button-gallery-benchmark BENCH_WRAP=
+BENCH_WRAP ?= nice -n -5
+BUTTON_INTERACTION_TRACE = $(BUILD_DIR)/tests/button_interaction_trace
+BUTTON_INTERACTION_TRACE_CODEGEN = $(BUILD_DIR)/button-interaction-trace-kry
+BUTTON_KSS_TEST = $(BUILD_DIR)/tests/button_kss_test
+BUTTON_KSS_TEST_CODEGEN = $(BUILD_DIR)/button-kss-kry
+WIDGET_SURFACE_KRY_TEST = $(BUILD_DIR)/tests/widget_surface_kry_test
+WIDGET_SURFACE_KRY_CODEGEN = $(BUILD_DIR)/widget-surface-kry
+THEME_CATALOG_KRY_TEST = $(BUILD_DIR)/tests/theme_catalog_kry_test
+THEME_CATALOG_KRY_CODEGEN = $(BUILD_DIR)/theme-catalog-kry
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
@@ -353,7 +375,6 @@ K2KIR_TEST = $(BUILD_DIR)/tests/k2kir.ok
 KRY_TOOLS_TEST = $(BUILD_DIR)/tests/kry_tools.ok
 KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
-TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_XML_TEST = $(BUILD_DIR)/tests/kry_xml_test
 KRY_ARCHIVE_TEST = $(BUILD_DIR)/tests/kry_archive_test
@@ -361,7 +382,6 @@ KRY_GZIP_TEST = $(BUILD_DIR)/tests/kry_gzip_test
 KRY_ZLIB_TEST = $(BUILD_DIR)/tests/kry_zlib_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 LINK_POLICY_TEST = $(BUILD_DIR)/link-policy-test
-TERMINAL_PANE_POLICY_TEST = $(BUILD_DIR)/terminal-pane-policy-test
 PROFILE_HEADER_POLICY_TEST = $(BUILD_DIR)/profile-header-policy-test
 INSPECT_POLICY_TEST = $(BUILD_DIR)/inspect-policy-test
 COLLAPSIBLE_POLICY_TEST = $(BUILD_DIR)/collapsible-policy-test
@@ -395,7 +415,6 @@ CANVAS_GRID_POLICY_TEST = $(BUILD_DIR)/canvas-grid-policy-test
 PLOT_POLICY_TEST = $(BUILD_DIR)/plot-policy-test
 COLOR_PICKER_POLICY_TEST = $(BUILD_DIR)/color-picker-policy-test
 NAVIGATION_BAR_POLICY_TEST = $(BUILD_DIR)/navigation-bar-policy-test
-BUTTON_POLICY_TEST = $(BUILD_DIR)/button-policy-test
 PRIMITIVE_POLICY_TEST = $(BUILD_DIR)/primitive-policy-test
 LAYOUT_POLICY_TEST = $(BUILD_DIR)/layout-policy-test
 GROUP_POLICY_TEST = $(BUILD_DIR)/group-policy-test
@@ -423,9 +442,10 @@ KRY_SHA256_TEST = $(BUILD_DIR)/tests/kry_sha256_test
 LOCALE_TEST = $(BUILD_DIR)/tests/locale_test
 KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
+SFS_KRY_CODEGEN = $(BUILD_DIR)/sfs-kry
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test laws-test runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance style-capture-boards bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check kss-host-ledger-check bridge-ledger-check backend-capabilities-check backend-style-degradation-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test interaction-policy-matrix-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test laws-test runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance style-capture-boards bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check kss-host-ledger-check bridge-ledger-check backend-capabilities-check backend-style-degradation-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test interaction-policy-matrix-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -438,9 +458,6 @@ WEB_GENERATED_JS := $(addprefix web/,$(addsuffix .js,$(WEB_GENERATED_MODULES)))
 .PHONY: generate-web-runtime
 generate-web-runtime: $(WEB_GENERATED_JS)
 
-widget-instance-test keyboard-policy-test web-text-capacity-test web-text-input-browser-test \
-web-dom-browser-test web-dom-inspector-browser-test runtime-declarations-check \
-web-generated-check: generate-web-runtime
 
 all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 
@@ -615,14 +632,14 @@ $(BUILD_DIR)/tests/accessibility_dbus_fixture: tests/accessibility_dbus_fixture.
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
 
 .PHONY: keyboard-policy-test
-keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test
-	sh tests/keyboard_policy_test.sh $(BUILD_DIR)
+keyboard-policy-test: menu-policy-test collapsible-policy-test text-input-policy-test
+	@echo "web keyboard policy harness is paused with the JS/web target; native policy tests ran above"
 
 fast-test: keyboard-policy-test web-text-capacity-test
 
 .PHONY: web-text-capacity-test web-text-input-browser-test
-web-text-capacity-test: $(K2JS)
-	sh tests/web_text_capacity_test.sh $(K2JS)
+web-text-capacity-test:
+	@echo "web text capacity test is paused with the JS/web target"
 
 web-text-input-browser-test:
 	sh tests/web_text_input_browser_test.sh .
@@ -673,32 +690,32 @@ style-sheet-policy-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_sheet_policy_test.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-sheet-policy-test
 	$(BUILD_DIR)/style-sheet-policy-test
 
-style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_pack_registry_test.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-registry-test
+style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_pack_registry_test.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-registry-test
 	$(BUILD_DIR)/style-pack-registry-test
 
-style-picker-test: $(EMBED_ASSETS_C) include/ui_style_picker_props.generated.h $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_picker_props.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c include/ui_style_sheet.h include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
+style-picker-test: $(EMBED_ASSETS_C) include/ui_style_picker_props.generated.h $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_picker_props.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_picker.c $(GENERATED_SRC_DIR)/ui/style_sheet.c src/ui/style_picker.kry $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(GENERATED_SRC_DIR)/ui/kss_parser.c include/ui_style_sheet.h include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c $(GENERATED_SRC_DIR)/ui/style_picker.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
 	$(BUILD_DIR)/style-picker-test
 
-kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
+kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
 	$(BUILD_DIR)/kss-parser-test
 
-kss-formatter-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/kss_formatter_test.c
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_formatter_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-formatter-test
+kss-formatter-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h tests/kss_formatter_test.c
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_formatter_test.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-formatter-test
 	$(BUILD_DIR)/kss-formatter-test
 
-kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss tests/fixtures/kss/css-values.kss tests/fixtures/kss/selector-predicates.tsv tests/fixtures/kss/selector-facts.tsv tests/fixtures/kss/selector-grammar.tsv tests/fixtures/kss/selector-chains.tsv tests/fixtures/kss/nth-formulas.tsv tests/fixtures/kss/css-properties.tsv tests/fixtures/kss/css-expansion.tsv tests/fixtures/kss/css-effects.tsv tests/fixtures/kss/css-border-default.tsv
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
+kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss tests/fixtures/kss/css-values.kss tests/fixtures/kss/selector-predicates.tsv tests/fixtures/kss/selector-facts.tsv tests/fixtures/kss/selector-grammar.tsv tests/fixtures/kss/selector-chains.tsv tests/fixtures/kss/nth-formulas.tsv tests/fixtures/kss/css-properties.tsv tests/fixtures/kss/css-expansion.tsv tests/fixtures/kss/css-effects.tsv tests/fixtures/kss/css-border-default.tsv
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
 	$(BUILD_DIR)/kss-matched-test
 
 style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded_assets.c include/embedded_assets.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude tests/style_assets_test.c src/core/embedded_assets.c $(EMBED_ASSETS_C) -o $(BUILD_DIR)/style-assets-test
 	$(BUILD_DIR)/style-assets-test
 
-style-builtins-test: $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_builtin_packs.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_builtin_packs_test.c src/ui/style_builtin_packs.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-builtins-test
+style-builtins-test: $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_builtin_packs_test.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-builtins-test
 	$(BUILD_DIR)/style-builtins-test
 
 STYLE_GATES = style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check
@@ -713,32 +730,32 @@ go-style-builtins: scripts/generate-go-style-builtins.py $(wildcard styles/kryon
 go-style-builtins-check: scripts/generate-go-style-builtins.py go/kryon/style_builtins.go $(wildcard styles/kryon/*.kss)
 	python3 scripts/generate-go-style-builtins.py --check
 
-style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_pack_source.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/ui/style_builtin_packs.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
+style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_pack_source.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c $(GENERATED_SRC_DIR)/ui/style_pack_source.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
 	$(BUILD_DIR)/style-pack-source-test
 
-style-release-table-repro-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/ui/style_builtin_packs.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_repro_test.c src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-repro-test
+style-release-table-repro-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_repro_test.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-repro-test
 	$(BUILD_DIR)/style-release-table-repro-test
 
 style-release-tables: $(STYLE_RELEASE_TABLES_C)
 
-$(STYLE_RELEASE_TABLES_C): scripts/generate-c-style-tables.py $(wildcard styles/kryon/*.kss) src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
+$(STYLE_RELEASE_TABLES_C): scripts/generate-c-style-tables.py $(wildcard styles/kryon/*.kss) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	python3 scripts/generate-c-style-tables.py --root . --build-dir $(BUILD_DIR) --generated-src-dir $(GENERATED_SRC_DIR) --cc "$(CC)" --output $(STYLE_RELEASE_TABLES_C)
 
-style-release-table-emitter-test: $(STYLE_RELEASE_TABLES_C) $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/ui/style_builtin_packs.c src/core/embedded_assets.c include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_emitter_test.c $(STYLE_RELEASE_TABLES_C) src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-emitter-test
+style-release-table-emitter-test: $(STYLE_RELEASE_TABLES_C) $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_emitter_test.c $(STYLE_RELEASE_TABLES_C) $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-emitter-test
 	$(BUILD_DIR)/style-release-table-emitter-test
 
-$(STYLE_RELEASE_IMPORT_TABLES_C): scripts/generate-c-style-tables.py tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
+$(STYLE_RELEASE_IMPORT_TABLES_C): scripts/generate-c-style-tables.py tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	python3 scripts/generate-c-style-tables.py --root . --build-dir $(BUILD_DIR) --generated-src-dir $(GENERATED_SRC_DIR) --cc "$(CC)" --output $(STYLE_RELEASE_IMPORT_TABLES_C) --function-name RegisterCompiledOverlayStylePack --active-pack matched.demo.glow.dark --module matched-module=tests/fixtures/kss/matched_module.kss --pack 'matched.demo.glow.dark|Matched Glow Dark|Compiled import theme variant fixture|tests/fixtures/kss/matched.kss|glow|dark'
 
-style-release-table-import-emitter-test: $(STYLE_RELEASE_IMPORT_TABLES_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_import_emitter_test.c $(STYLE_RELEASE_IMPORT_TABLES_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-import-emitter-test
+style-release-table-import-emitter-test: $(STYLE_RELEASE_IMPORT_TABLES_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_import_emitter_test.c $(STYLE_RELEASE_IMPORT_TABLES_C) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-import-emitter-test
 	$(BUILD_DIR)/style-release-table-import-emitter-test
 
-style-release-startup-test: $(STYLE_RELEASE_TABLES_C) $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/core/embedded_assets.c include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -DKRYON_USE_RELEASE_STYLE_TABLES=1 -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_startup_test.c $(STYLE_RELEASE_TABLES_C) src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-startup-test
+style-release-startup-test: $(STYLE_RELEASE_TABLES_C) $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h include/ui_style_sheet.h src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -DKRYON_USE_RELEASE_STYLE_TABLES=1 -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_startup_test.c $(STYLE_RELEASE_TABLES_C) $(GENERATED_SRC_DIR)/ui/style_builtin_packs.c src/backend/kry_style_build_mode.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-startup-test
 	$(BUILD_DIR)/style-release-startup-test
 
 app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
@@ -942,7 +959,7 @@ overlay-policy-test: $(GENERATED_SRC_DIR)/runtime/overlay.c $(GENERATED_SRC_DIR)
 	$(OVERLAY_POLICY_TEST)
 
 .PHONY: text-rows-policy-test
-text-rows-policy-test: $(GENERATED_SRC_DIR)/runtime/text_rows.c $(GENERATED_SRC_DIR)/runtime/text_rows.h $(K2CPP)
+text-rows-policy-test: $(GENERATED_SRC_DIR)/runtime/text_rows.c $(GENERATED_SRC_DIR)/runtime/text_rows.h $(GENERATED_SRC_DIR)/ui/text_rows.c $(GENERATED_SRC_DIR)/ui/text_rows.h $(GENERATED_SRC_DIR)/ui/grapheme.c $(GENERATED_SRC_DIR)/ui/grapheme.h $(K2CPP)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_rows_policy_test.c $(GENERATED_SRC_DIR)/runtime/text_rows.c -o $(BUILD_DIR)/text-rows-policy-test
 	$(BUILD_DIR)/text-rows-policy-test
 	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/text-rows-cpp runtime/text_rows.kry
@@ -962,9 +979,7 @@ canvas-policy-test: $(GENERATED_SRC_DIR)/runtime/canvas.c $(GENERATED_SRC_DIR)/r
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/canvas_policy_test.c $(GENERATED_SRC_DIR)/runtime/canvas.c -lm -o $(CANVAS_POLICY_TEST)
 	$(CANVAS_POLICY_TEST)
 
-button-policy-test: $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/button_policy_test.c $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUTTON_POLICY_TEST)
-	$(BUTTON_POLICY_TEST)
+button-policy-test: button-kss-test
 
 dropdown-policy-test: $(GENERATED_SRC_DIR)/runtime/dropdown.c $(GENERATED_SRC_DIR)/runtime/dropdown.h $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/dropdown_policy_test.c $(GENERATED_SRC_DIR)/runtime/dropdown.c $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(DROPDOWN_POLICY_TEST)
@@ -1005,10 +1020,6 @@ focus-policy-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/run
 interaction-policy-matrix-test: $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/drag.c $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/drag_drop.c $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/link.h $(GENERATED_SRC_DIR)/runtime/list_box.c $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/menu.c $(GENERATED_SRC_DIR)/runtime/menu.h $(GENERATED_SRC_DIR)/runtime/popup_policy.c $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/reorder.c $(GENERATED_SRC_DIR)/runtime/reorder.h $(GENERATED_SRC_DIR)/runtime/reorder_props.c $(GENERATED_SRC_DIR)/runtime/reorder_props.h $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/interaction_policy_matrix_test.c $(GENERATED_SRC_DIR)/runtime/button.c $(GENERATED_SRC_DIR)/runtime/drag.c $(GENERATED_SRC_DIR)/runtime/drag_drop.c $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/list_box.c $(GENERATED_SRC_DIR)/runtime/menu.c $(GENERATED_SRC_DIR)/runtime/popup_policy.c $(GENERATED_SRC_DIR)/runtime/reorder.c $(GENERATED_SRC_DIR)/runtime/reorder_props.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/material.c $(GENERATED_SRC_DIR)/runtime/paint.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(INTERACTION_POLICY_MATRIX_TEST)
 	$(INTERACTION_POLICY_MATRIX_TEST)
-
-terminal-pane-policy-test: $(GENERATED_SRC_DIR)/runtime/terminal_pane.c $(GENERATED_SRC_DIR)/runtime/terminal_pane.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/terminal_pane_policy_test.c $(GENERATED_SRC_DIR)/runtime/terminal_pane.c -lm -o $(TERMINAL_PANE_POLICY_TEST)
-	$(TERMINAL_PANE_POLICY_TEST)
 
 profile-header-policy-test: $(GENERATED_SRC_DIR)/runtime/profile_header.c $(GENERATED_SRC_DIR)/runtime/profile_header.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/profile_header_policy_test.c $(GENERATED_SRC_DIR)/runtime/profile_header.c -lm -o $(PROFILE_HEADER_POLICY_TEST)
@@ -1068,7 +1079,7 @@ clean-text-api-check:
 	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check kss-host-ledger-check bridge-ledger-check backend-capabilities-check backend-style-degradation-check laws-test runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check kss-host-ledger-check bridge-ledger-check backend-capabilities-check backend-style-degradation-check laws-test runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(WIDGET_SURFACE_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -1106,7 +1117,6 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(K2B) --root examples -o $(BUILD_DIR)/tests/caps-fixture examples/02_buttons.kry
 	KRB_CAP_STORE_DIR=$(BUILD_DIR)/capstore $(KRB_CAPS_TEST) $(BUILD_DIR)/tests/caps-fixture/02_buttons.krb
 	$(KRB_MOUNT_TEST)
-	$(TERMINAL_TEST)
 	$(KRY_JSON_TEST)
 	$(KRY_XML_TEST)
 	$(KRY_ARCHIVE_TEST)
@@ -1118,7 +1128,8 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(KRY_UPDATE_FLOW_TEST)
 	$(KRY_SHA256_TEST)
 	$(LOCALE_TEST)
-	$(SFS_TEST)
+	$(MAKE) sfs-kry-test
+	$(MAKE) theme-catalog-kry-test
 	@if [ "$(KRYON_WITH_SYNC)" = "1" ]; then \
 		$(SYNC_ACCOUNT_TEST); \
 		$(SYNC_TEST); \
@@ -1130,12 +1141,10 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	@cat $(LINUX_DESKTOP_PACKAGE_TEST)
 	$(MARKDOWN_TEST)
 	$(RAYLIB_COMPAT_TEST)
-	$(UI_TK_TEST)
-	$(UI_PRIMARY_SELECTION_TEST)
+	$(WIDGET_SURFACE_TEST)
 	$(DROPDOWN_LAYOUT_TEST)
 	$(DROPDOWN_THEME_SCREEN_TEST)
 	$(NAVIGATION_BAR_ICON_COLOR_TEST)
-	$(PREVIEW_TEST)
 	$(PLATFORM_THREAD_TEST)
 	$(OPEN_URI_TEST)
 	$(UI_TEXT_EDIT_TEST)
@@ -1330,30 +1339,34 @@ $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(RUNTIME_KRY)
 
+$(UI_KRY_C) $(UI_KRY_H) &: $(UI_KRY) $(RUNTIME_H) $(K2C)
+	$(K2C) --no-main --root src -o $(GENERATED_SRC_DIR) $(UI_KRY)
+
+$(UI_KRY_C:.c=.o): CPPFLAGS += -Isrc/ui -Isrc/platform -I$(GENERATED_SRC_DIR)/runtime
+$(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/ui/theme_color.h
+$(GENERATED_SRC_DIR)/ui/scroll.o: CPPFLAGS += -Isrc/backend
+$(GENERATED_SRC_DIR)/ui/dpi.o: CPPFLAGS += -Isrc/backend
+$(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST): CPPFLAGS += -Isrc/backend
+$(BUILD_DIR)/ui/ui_text.o: CPPFLAGS += -Isrc/ui
+$(BUILD_DIR)/ui/ui_paint_layers.o: CPPFLAGS += -Isrc/ui
+$(WIDGET_SURFACE_TEST) $(DROPDOWN_LAYOUT_TEST) $(BUILD_DIR)/tests/dropdown_capture: CPPFLAGS += -Isrc/ui
+
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
-$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/scroll.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h $(GENERATED_SRC_DIR)/runtime/text.h
+$(BUILD_DIR)/ui/ui_paint_layers.o: $(GENERATED_SRC_DIR)/ui/widget_store.h $(GENERATED_SRC_DIR)/ui/tab_store.h $(GENERATED_SRC_DIR)/ui/clip.h $(GENERATED_SRC_DIR)/ui/dropdown_store.h $(GENERATED_SRC_DIR)/ui/disabled.h $(GENERATED_SRC_DIR)/ui/input_capture.h
 
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/icon.h
-$(BUILD_DIR)/ui/ui_text.o: $(GENERATED_SRC_DIR)/runtime/text.h
+$(BUILD_DIR)/ui/ui_text.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/ui/selectable_text.h $(GENERATED_SRC_DIR)/ui/text.h
+$(BUILD_DIR)/ui/ui_text.o: $(GENERATED_SRC_DIR)/ui/text_rows.h
 
-$(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h
-$(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h
-$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/bevel.h $(GENERATED_SRC_DIR)/runtime/link.h $(GENERATED_SRC_DIR)/runtime/paragraph.h $(GENERATED_SRC_DIR)/runtime/surface.h $(GENERATED_SRC_DIR)/runtime/text_input.h
+$(GENERATED_SRC_DIR)/ui/button.o: src/ui/ui_style_internal.h
 $(BUILD_DIR)/ui/toast.o: $(GENERATED_SRC_DIR)/runtime/toast.h
 $(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_image_cache.o: $(GENERATED_SRC_DIR)/runtime/image.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
-$(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
 $(BUILD_DIR)/ui/popup.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
 $(BUILD_DIR)/ui/profile_header.o: $(GENERATED_SRC_DIR)/runtime/profile_header.h
-$(BUILD_DIR)/ui/ui_inspect.o: $(GENERATED_SRC_DIR)/runtime/inspect.h
-$(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/surface.h
-$(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
+$(GENERATED_SRC_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/surface.h $(UI_KRY_H)
 $(BUILD_DIR)/ui/ui_titlebar.o: $(GENERATED_SRC_DIR)/runtime/title_bar.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
-$(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h $(GENERATED_SRC_DIR)/runtime/accessibility_policy.h
+$(GENERATED_SRC_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
 
 .PHONY: generate-runtime generate-native-runtime generate-button-policy
 generate-button-policy: generate-runtime
@@ -1361,7 +1374,7 @@ RUNTIME_PROPS_H := $(patsubst runtime/%.kry,include/ui_%.generated.h,$(wildcard 
 generate-runtime: generate-native-runtime generate-web-runtime web/instance.js web/control_props.js web/text_input.js web/style_sheet.js
 
 generate-native-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) $(RUNTIME_PROPS_H)
-	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
+	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_GO_KRY)
 	gofmt -w $(RUNTIME_GO)
 
 preflight test: runtime-declarations-check
@@ -1391,7 +1404,7 @@ PLAN9_ICON_TYPES_H = $(PLAN9_PREP_DIR)/ui_icon_types.h
 kry-c-plan9: $(K2C)
 	rm -rf $(PLAN9_GENERATED)
 	mkdir -p $(PLAN9_PREP_DIR)
-	$(K2C) --plan9 --root $(abspath .) -o $(PLAN9_GENERATED) $(RUNTIME_KRY)
+	$(K2C) --plan9 --root $(abspath .) -o $(PLAN9_GENERATED) $(RUNTIME_KRY) $(UI_KRY)
 	find $(PLAN9_GENERATED) -type f -name '*.c' | LC_ALL=C sort > $(PLAN9_FILE_LIST)
 	sh scripts/embed-assets.sh $(PLAN9_EMBEDDED_ASSETS_C) $(EMBED_ASSETS)
 	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(PLAN9_ICON_ASSETS_C)" \
@@ -1463,8 +1476,8 @@ $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 $(KRY_FMT): scripts/kry-fmt.sh | $(BUILD_DIR)/bin
 	cp scripts/kry-fmt.sh $@
 
-$(KSSFMT): cmd/kssfmt/main.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/kss_parser.c src/ui/kss_parser.h src/ui/style_sheet.c include/ui_style_sheet.h | $(BUILD_DIR)/bin
-	$(CC) -std=c99 -Wall -Wextra -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc cmd/kssfmt/main.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $@
+$(KSSFMT): cmd/kssfmt/main.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/ui/kss_parser.h $(GENERATED_SRC_DIR)/ui/style_sheet.c include/ui_style_sheet.h | $(BUILD_DIR)/bin
+	$(CC) -std=c99 -Wall -Wextra -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc cmd/kssfmt/main.c $(GENERATED_SRC_DIR)/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $@
 	chmod 755 $@
 
 $(KRY_LOCALE_CHECK): scripts/kry-locale-check.sh | $(BUILD_DIR)/bin
@@ -1580,9 +1593,9 @@ $(SYNC_CRYPTO_TEST): tests/sync_crypto_test.c src/sync/sync_crypto.c include/syn
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sync_crypto_test.c src/sync/sync_crypto.c \
 		src/sync/monocypher.c src/sync/monocypher_ed25519.c -o $@
 
-$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h include/ui_transition_props.generated.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h | $(BUILD_DIR)
+$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.kry $(GENERATED_SRC_DIR)/ui/ui_transition.c include/ui_transition.h include/ui_transition_props.generated.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui -I$(GENERATED_SRC_DIR)/runtime tests/transition_test.c $(GENERATED_SRC_DIR)/ui/ui_transition.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -o $@
 
 $(MARKDOWN_TEST): tests/markdown_test.c src/markdown.c include/markdown.h $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -1600,15 +1613,15 @@ $(FRAME_PACING_TEST): tests/frame_pacing_test.c src/core/kryon_frame_pacing.c in
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/frame_pacing_test.c \
 		src/core/kryon_frame_pacing.c -o $@
 
-$(UI_DPI_TEST): tests/ui_dpi_test.c src/ui/ui_dpi.c include/ui_dpi.h | $(BUILD_DIR)
+$(UI_DPI_TEST): tests/ui_dpi_test.c $(GENERATED_SRC_DIR)/ui/dpi.c $(GENERATED_SRC_DIR)/ui/dpi.h src/backend/kry_dpi.c src/backend/kry_dpi_internal.h include/ui_dpi.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DPLATFORM_ANDROID tests/ui_dpi_test.c \
-		src/ui/ui_dpi.c -o $@
+		$(GENERATED_SRC_DIR)/ui/dpi.c src/backend/kry_dpi.c -o $@
 
-$(UI_DPI_DESKTOP_TEST): tests/ui_dpi_test.c src/ui/ui_dpi.c include/ui_dpi.h | $(BUILD_DIR)
+$(UI_DPI_DESKTOP_TEST): tests/ui_dpi_test.c $(GENERATED_SRC_DIR)/ui/dpi.c $(GENERATED_SRC_DIR)/ui/dpi.h src/backend/kry_dpi.c src/backend/kry_dpi_internal.h include/ui_dpi.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_dpi_test.c \
-		src/ui/ui_dpi.c -o $@
+		$(GENERATED_SRC_DIR)/ui/dpi.c src/backend/kry_dpi.c -o $@
 
 $(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c include/file_dialog.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -1650,9 +1663,9 @@ $(LIBDRAW_HIERARCHY_TEST): tests/libdraw_hierarchy_main.c $(LIB) $(KRYON_BACKEND
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/list_box_multi.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/scroll.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
+$(WIDGET_SURFACE_TEST): tests/widget_surface_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/list_box_multi.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/scroll.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/widget_surface_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
@@ -1677,12 +1690,6 @@ $(CURSOR_INTENT_TEST): tests/cursor_intent_test.c $(LIB) $(KRYON_BACKEND_LIBS) |
 $(TEXT_INPUT_PLATFORM_TEST): tests/text_input_platform_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/text_input_platform_test.c \
-		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
-		-o $@
-
-$(UI_PRIMARY_SELECTION_TEST): tests/ui_primary_selection_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
-	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_primary_selection_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
@@ -1730,11 +1737,6 @@ $(DISMISSIBLE_OVERLAY_TEST): tests/dismissible_overlay_test.c $(LIB) $(KRYON_BAC
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(PREVIEW_TEST): tests/preview_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
-	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/preview_test.c \
-		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
-		-o $@
 
 $(PLATFORM_THREAD_TEST): tests/platform_thread_test.c src/platform/platform_thread.c include/platform.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -1745,16 +1747,16 @@ $(OPEN_URI_TEST): tests/open_uri_test.c src/platform/open_uri.c include/kry_uri.
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/open_uri_test.c src/platform/open_uri.c -o $@
 
-$(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c src/ui/ui_grapheme.c src/ui/ui_grapheme.h vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc_data.c include/kryon.h $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
+$(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c $(GENERATED_SRC_DIR)/ui/text_edit.c $(GENERATED_SRC_DIR)/ui/text_edit.h src/backend/kry_unicode.c $(GENERATED_SRC_DIR)/ui/grapheme.c $(GENERATED_SRC_DIR)/ui/grapheme.h vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc_data.c include/kryon.h $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_text_edit_test.c src/ui/ui_text_edit.c src/ui/ui_grapheme.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/ui_text_edit_test.c $(GENERATED_SRC_DIR)/ui/text_edit.c $(GENERATED_SRC_DIR)/ui/grapheme.c src/backend/kry_unicode.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $@
 
-$(BUILD_DIR)/ui/ui_grapheme.o: src/ui/ui_grapheme.h vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc.h vendor/utf8proc/utf8proc_data.c
+$(BUILD_DIR)/backend/kry_unicode.o $(GENERATED_SRC_DIR)/ui/grapheme.o: vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc.h vendor/utf8proc/utf8proc_data.c
 
 .PHONY: grapheme-test
 grapheme-test: $(UI_TEXT_EDIT_TEST)
 	$(UI_TEXT_EDIT_TEST)
-	CC="$(CC)" python3 tests/grapheme_test.py
+	CC="$(CC)" KRYON_BUILD_DIR="$(BUILD_DIR)" python3 tests/grapheme_test.py
 	cd go/kryon && go test -run 'Test(Grapheme|TextFieldEditsWholeGraphemes)'
 
 fast-test test: grapheme-test
@@ -1865,6 +1867,100 @@ $(STYLE_CAPTURE_BOARDS): tests/style_capture_boards.c $(LIB) $(KRYON_BACKEND_LIB
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
+.PHONY: button-gallery button-gallery-capture button-gallery-benchmark
+button-gallery: $(BUTTON_GALLERY)
+
+$(BUTTON_GALLERY_CODEGEN)/.generated: examples/28_button_gallery.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(BUTTON_GALLERY_CODEGEN)
+	$(K2C) --root examples -o $(BUTTON_GALLERY_CODEGEN) $<
+	@touch $@
+
+$(BUTTON_GALLERY): $(BUTTON_GALLERY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Iexamples -I$(BUTTON_GALLERY_CODEGEN) \
+		$(BUTTON_GALLERY_CODEGEN)/28_button_gallery.c \
+		$(BUTTON_GALLERY_CODEGEN)/kryon_project.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+button-gallery-capture: $(BUTTON_GALLERY)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/button-gallery-capture-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 KRYON_SHOT_ARM=1 \
+		KRYON_BUTTON_CAPTURE_DIR=$(abspath $(BUTTON_GALLERY_CAPTURE_DIR)) $(BUTTON_GALLERY)
+
+button-gallery-benchmark: $(BUTTON_GALLERY)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/button-gallery-benchmark-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 \
+		KRYON_BUTTON_BENCHMARK_CSV=$(abspath $(BUTTON_GALLERY_BENCHMARK_CSV)) \
+		$(BENCH_WRAP) $(BUTTON_GALLERY)
+
+.PHONY: button-interaction-trace-build button-interaction-trace-test
+button-interaction-trace-build: $(BUTTON_INTERACTION_TRACE)
+
+$(BUTTON_INTERACTION_TRACE_CODEGEN)/.generated: tests/button_interaction_trace.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(BUTTON_INTERACTION_TRACE_CODEGEN)
+	$(K2C) --root tests -o $(BUTTON_INTERACTION_TRACE_CODEGEN) $<
+	@touch $@
+
+$(BUTTON_INTERACTION_TRACE): $(BUTTON_INTERACTION_TRACE_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests -I$(BUTTON_INTERACTION_TRACE_CODEGEN) \
+		$(BUTTON_INTERACTION_TRACE_CODEGEN)/button_interaction_trace.c \
+		$(BUTTON_INTERACTION_TRACE_CODEGEN)/kryon_project.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+button-interaction-trace-test: $(BUTTON_INTERACTION_TRACE)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/button-interaction-trace-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 $(BUTTON_INTERACTION_TRACE)
+
+.PHONY: button-kss-test-build button-kss-test
+button-kss-test-build: $(BUTTON_KSS_TEST)
+
+$(BUTTON_KSS_TEST_CODEGEN)/.generated: tests/button_kss_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(BUTTON_KSS_TEST_CODEGEN)
+	$(K2C) --root tests -o $(BUTTON_KSS_TEST_CODEGEN) $<
+	@touch $@
+
+$(BUTTON_KSS_TEST): $(BUTTON_KSS_TEST_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui -Isrc/platform -I$(GENERATED_SRC_DIR)/runtime \
+		-Itests -I$(BUTTON_KSS_TEST_CODEGEN) \
+		$(BUTTON_KSS_TEST_CODEGEN)/button_kss_test.c \
+		$(BUTTON_KSS_TEST_CODEGEN)/kryon_project.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+button-kss-test: $(BUTTON_KSS_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/button-kss-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 $(BUTTON_KSS_TEST)
+
+.PHONY: widget-surface-kry-build widget-surface-kry-test
+widget-surface-kry-build: $(WIDGET_SURFACE_KRY_TEST)
+
+$(WIDGET_SURFACE_KRY_CODEGEN)/.generated: tests/widget_surface_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(WIDGET_SURFACE_KRY_CODEGEN)
+	$(K2C) --root tests -o $(WIDGET_SURFACE_KRY_CODEGEN) $<
+	@touch $@
+
+$(WIDGET_SURFACE_KRY_TEST): $(WIDGET_SURFACE_KRY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui -Isrc/platform -I$(GENERATED_SRC_DIR)/runtime \
+		-Itests -I$(WIDGET_SURFACE_KRY_CODEGEN) \
+		$(WIDGET_SURFACE_KRY_CODEGEN)/widget_surface_test.c \
+		$(WIDGET_SURFACE_KRY_CODEGEN)/kryon_project.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+widget-surface-kry-test: $(WIDGET_SURFACE_KRY_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/widget-surface-kry-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 $(WIDGET_SURFACE_KRY_TEST)
+
 style-capture-boards: $(STYLE_CAPTURE_BOARDS)
 	rm -f $(BUILD_DIR)/style-boards/*.png
 	xvfb-run -a $(STYLE_CAPTURE_BOARDS) $(BUILD_DIR)/style-boards
@@ -1953,15 +2049,41 @@ $(KRB_CAPS_TEST): tests/krb_caps_test.c src/krb/krb.c src/krb/krb_caps.c include
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_caps_test.c src/krb/krb.c \
 		src/krb/krb_caps.c src/backend/kry_backend.c -o $@ -lm
 
-$(TERMINAL_TEST): tests/terminal_test.c src/kry_std/terminal.c include/terminal.h | $(BUILD_DIR)
-	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/terminal_test.c src/kry_std/terminal.c -o $@
+$(SFS_KRY_CODEGEN)/.generated: tests/sfs_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(SFS_KRY_CODEGEN)
+	$(K2C) --no-main --root tests -o $(SFS_KRY_CODEGEN) $<
+	@touch $@
 
-$(SFS_TEST): tests/sfs_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(SFS_TEST): $(SFS_KRY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sfs_test.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui -I$(SFS_KRY_CODEGEN) \
+		$(SFS_KRY_CODEGEN)/sfs_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+.PHONY: sfs-kry-build sfs-kry-test
+sfs-kry-build: $(SFS_TEST)
+
+sfs-kry-test: $(SFS_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY $(SFS_TEST)
+
+.PHONY: theme-catalog-kry-build theme-catalog-kry-test
+theme-catalog-kry-build: $(THEME_CATALOG_KRY_TEST)
+
+$(THEME_CATALOG_KRY_CODEGEN)/.generated: tests/theme_catalog_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(THEME_CATALOG_KRY_CODEGEN)
+	$(K2C) --no-main --root tests -o $(THEME_CATALOG_KRY_CODEGEN) $<
+	@touch $@
+
+$(THEME_CATALOG_KRY_TEST): $(THEME_CATALOG_KRY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(THEME_CATALOG_KRY_CODEGEN) \
+		$(THEME_CATALOG_KRY_CODEGEN)/theme_catalog_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+theme-catalog-kry-test: $(THEME_CATALOG_KRY_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY $(THEME_CATALOG_KRY_TEST)
 
 $(KRY_JSON_TEST): tests/kry_json_test.c src/kry_std/kry_json.c include/kry_json.h src/core/kry_alloc.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

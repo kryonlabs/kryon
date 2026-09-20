@@ -84,9 +84,9 @@ an exhaustive test of every possible input sequence.
 Durable runtime regressions:
 
 ```sh
-make build/linux-x86_64/tests/ui_tree_api_test build/linux-x86_64/tests/ui_tk_test
+make build/linux-x86_64/tests/ui_tree_api_test build/linux-x86_64/tests/widget_surface_test
 build/linux-x86_64/tests/ui_tree_api_test
-build/linux-x86_64/tests/ui_tk_test
+build/linux-x86_64/tests/widget_surface_test
 make overlay-paint-test
 make generated-runtime-parity-test
 (cd go/kryon && go test .)

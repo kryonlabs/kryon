@@ -22,6 +22,7 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "ui_control_props.generated.h"
 #include "ui_menu_props.generated.h"
+#include "ui_image_props.generated.h"
 
 typedef enum ArrowDirection {
     ArrowLeft = 0,
@@ -50,12 +51,7 @@ typedef struct ButtonProps {
     IconPlacement icon_placement;
     bool icon_only;
     bool square;
-    const char* image_asset_path;
-    Rectangle image_bounds;
-    Rectangle image_source;
-    Vector2 image_origin;
-    float image_rotation;
-    int32_t image_fit;
+    ImageProps image;
     bool swatch;
     Color swatch_color;
     int32_t menu_id;

@@ -1,0 +1,77 @@
+#module "theme_identity_host"
+#import "theme_meta.h"
+#import "locale.h"
+#import "string.h"
+
+theme_entries :: [THEME_COUNT]ThemeMeta #global
+theme_entries_ready :: bool #global
+
+InitThemeEntries :: () {
+    if theme_entries_ready { return }
+    theme_entries[THEME_SKY] =
+    (ThemeMeta){"Sky", "sky_light", "sky_dark"}
+    theme_entries[THEME_OCEAN] =
+    (ThemeMeta){"Ocean", "ocean_light", "ocean_dark"}
+    theme_entries[THEME_FOREST] =
+    (ThemeMeta){"Forest", "forest_light", "forest_dark"}
+    theme_entries[THEME_SUNSET] =
+    (ThemeMeta){"Sunset", "sunset_light", "sunset_dark"}
+    theme_entries[THEME_LAVENDER] =
+    (ThemeMeta){"Lavender", "lavender_light", "lavender_dark"}
+    theme_entries[THEME_CHERRY] =
+    (ThemeMeta){"Cherry", "cherry_light", "cherry_dark"}
+    theme_entries[THEME_DAWN] =
+    (ThemeMeta){"Dawn", "dawn_light", "dawn_dark"}
+    theme_entries[THEME_SAGE] =
+    (ThemeMeta){"Sage", "sage_light", "sage_dark"}
+    theme_entries[THEME_INK] =
+    (ThemeMeta){"Sepia", "ink_light", "ink_dark"}
+    theme_entries[THEME_MONO] =
+    (ThemeMeta){"Default", "default_light", "default_dark"}
+    theme_entries[THEME_MINT] =
+    (ThemeMeta){"Mint", "mint_light", "mint_dark"}
+    theme_entries[THEME_COBALT] =
+    (ThemeMeta){"Cobalt", "cobalt_light", "cobalt_dark"}
+    theme_entries[THEME_SWEET] =
+    (ThemeMeta){"Sweet", "sweet_light", "sweet_dark"}
+    theme_entries_ready = true
+}
+
+NormalizeTheme :: (theme: i32) -> ThemeId #export {
+    if theme < 0 || theme >= THEME_COUNT { return THEME_MONO }
+    return (ThemeId)theme
+}
+
+GetThemeMeta :: (theme: ThemeId) -> const ThemeMeta* #export {
+    InitThemeEntries()
+    return &theme_entries[(int)NormalizeTheme((int)theme)]
+}
+
+ThemeLocaleKey :: (theme: ThemeId) -> const char* {
+    id: ThemeId = NormalizeTheme((int)theme)
+    if id == THEME_SKY { return "theme_sky" }
+    if id == THEME_OCEAN { return "theme_ocean" }
+    if id == THEME_FOREST { return "theme_forest" }
+    if id == THEME_SUNSET { return "theme_sunset" }
+    if id == THEME_LAVENDER { return "theme_lavender" }
+    if id == THEME_CHERRY { return "theme_cherry" }
+    if id == THEME_DAWN { return "theme_dawn" }
+    if id == THEME_SAGE { return "theme_sage" }
+    if id == THEME_INK { return "theme_sepia" }
+    if id == THEME_MONO { return "theme_mono" }
+    if id == THEME_MINT { return "theme_mint" }
+    if id == THEME_COBALT { return "theme_cobalt" }
+    if id == THEME_SWEET { return "theme_sweet" }
+    return nil
+}
+
+GetThemeLabel :: (theme: ThemeId) -> const char* #export {
+    key: const char* = ThemeLocaleKey(theme)
+    if key == nil { return GetThemeMeta(theme)->name }
+    label: const char* = GetLocaleText(key)
+    if label == nil || label[0] == '\0' ||
+    strcmp(label, key) == 0 {
+        return GetThemeMeta(theme)->name
+    }
+    return label
+}

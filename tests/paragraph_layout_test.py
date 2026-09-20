@@ -17,7 +17,8 @@ output.parent.mkdir(parents=True, exist_ok=True)
 subprocess.run([
     *shlex.split(os.environ.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
     "-I" + str(BUILD / "generated/include"), "-I" + str(generated), "-Iinclude",
-    "tests/paragraph_layout_test.c", "src/ui/ui_text_layout.c",
+    "-Isrc/ui", "-Ivendor/utf8proc", "tests/paragraph_layout_test.c",
+    str(generated / "ui/text_layout.c"),
     str(generated / "runtime/paragraph.c"), "-lm", "-o", str(output),
 ], cwd=ROOT, check=True)
 cases = json.loads((ROOT / "tests/fixtures/paragraph_layout.json").read_text())

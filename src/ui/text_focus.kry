@@ -1,0 +1,129 @@
+#module "text_focus_host"
+#import "ui_internal.h"
+#import "ui/focus.h"
+#import "ui/text_selection.h"
+#import "ui/text_context.h"
+#import "runtime/text_input.h"
+
+g_ui_text_area_drag_id :: i32 #global #export
+g_ui_text_area_drag_owner :: *i32 #global #export
+g_ui_text_field_drag_id :: i32 #global #export
+g_ui_text_field_drag_owner :: *i32 #global #export
+g_ui_text_field_pan_id :: i32 #global #export
+g_ui_text_field_pan_owner :: *i32 #global #export
+g_ui_text_field_pan_start_x :: i32 #global #export
+g_ui_text_field_pan_start_y :: i32 #global #export
+g_ui_text_field_pan_start_scroll :: i32 #global #export
+g_ui_text_field_panning :: i32 #global #export
+
+ui_clear_text_field_selection :: () #export {
+    ui_text_selection_clear(&g_ui_text_field_selection)
+    g_ui_text_field_drag_id = 0
+    g_ui_text_field_drag_owner = nil
+    g_ui_text_field_pan_id = 0
+    g_ui_text_field_pan_owner = nil
+    g_ui_text_field_panning = 0
+}
+
+ui_clear_text_area_selection :: () #export {
+    ui_text_selection_clear(&g_ui_text_area_selection)
+    g_ui_text_area_drag_id = 0
+    g_ui_text_area_drag_owner = nil
+}
+
+ClaimTextFocus :: (focused: *i32) #export {
+    decision: TextFocusClaimDecision = TextFocusClaimDecisionFor(
+    focused != nil, g_ui_text_focus_owner != nil,
+    g_ui_text_focus_owner == focused)
+    if !decision.claim { return }
+    if decision.displace_previous { *g_ui_text_focus_owner = 0 }
+    if decision.cancel_previous {
+        ui_text_composition_cancel(g_ui_text_focus_owner)
+    }
+    if decision.close_context { ui_text_context_close() }
+    g_ui_text_focus_owner = focused
+    g_ui_text_focus_owner_this_frame = focused
+    g_ui_text_focus_owner_frame = g_ui_text_focus_frame
+    *focused = 1
+}
+
+ClaimTextFieldFocus :: (focused: *i32) #export {
+    previous: *i32 = g_ui_text_focus_owner
+    decision: TextFocusClaimDecision = TextFocusClaimDecisionFor(
+    focused != nil, previous != nil, previous == focused)
+    ClaimTextFocus(focused)
+    if g_ui_text_focus_owner == focused &&
+    decision.clear_peer_selection {
+        ui_clear_text_area_selection()
+    }
+}
+
+ClaimTextAreaFocus :: (focused: *i32) #export {
+    previous: *i32 = g_ui_text_focus_owner
+    decision: TextFocusClaimDecision = TextFocusClaimDecisionFor(
+    focused != nil, previous != nil, previous == focused)
+    ClaimTextFocus(focused)
+    if g_ui_text_focus_owner == focused &&
+    decision.clear_peer_selection {
+        ui_clear_text_field_selection()
+    }
+}
+
+ReleaseTextFocus :: (focused: *i32, focus_id: i32) #export {
+    decision: TextFocusReleaseDecision = TextFocusReleaseDecisionFor(
+    focused != nil, g_ui_text_focus_owner == focused,
+    g_ui_text_focus_owner_this_frame == focused,
+    focus_id > 0 && g_ui_focus_active_id == focus_id,
+    g_ui_text_field_drag_owner == focused,
+    g_ui_text_area_drag_owner == focused)
+    if !decision.release { return }
+    if decision.cancel_self { ui_text_composition_cancel(focused) }
+    if decision.clear_owner { g_ui_text_focus_owner = nil }
+    if decision.clear_frame_owner {
+        g_ui_text_focus_owner_this_frame = nil
+    }
+    if decision.clear_active_focus { g_ui_focus_active_id = 0 }
+    *focused = 0
+    if decision.close_context { ui_text_context_close() }
+    if decision.clear_field_drag {
+        g_ui_text_field_drag_id = 0
+        g_ui_text_field_drag_owner = nil
+        g_ui_text_field_selection.dragging = 0
+    }
+    if decision.clear_area_drag {
+        g_ui_text_area_drag_id = 0
+        g_ui_text_area_drag_owner = nil
+        g_ui_text_area_selection.dragging = 0
+    }
+}
+
+ClearTextInputFocus :: () #export {
+    if g_ui_text_focus_owner != nil { *g_ui_text_focus_owner = 0 }
+    g_ui_text_focus_owner = nil
+    g_ui_text_focus_owner_this_frame = nil
+    g_ui_text_focus_owner_frame = 0
+    g_ui_focus_text_input_active = 0
+    g_ui_text_input_requested = 0
+    g_ui_text_input_show_requested = 0
+    ui_text_composition_cancel(nil)
+    ClearTextComposition()
+    ui_text_context_close()
+    ui_clear_text_field_selection()
+    ui_clear_text_area_selection()
+}
+
+IsTextFocusOwner :: (focused: *i32) -> i32 #export {
+    decision: TextFocusOwnerDecision = TextFocusOwnerDecisionFor(
+    focused != nil, g_ui_text_focus_owner == focused,
+    g_ui_text_focus_owner_this_frame != nil,
+    focused != nil && *focused != 0,
+    g_ui_text_focus_owner != nil)
+    if focused == nil { return 0 }
+    if decision.mark_frame_owner {
+        if decision.adopt_owner { g_ui_text_focus_owner = focused }
+        g_ui_text_focus_owner_this_frame = focused
+        g_ui_text_focus_owner_frame = g_ui_text_focus_frame
+    }
+    if decision.clear_target { *focused = 0 }
+    return decision.focused
+}

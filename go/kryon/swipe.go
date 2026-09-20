@@ -28,88 +28,49 @@ type SwipeReleaseLifecycle struct {
 }
 
 func Swipe_SwipeAbs(value float32) float32 {
-	var value_0 float32 = value
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = value
-		var value_4 float32 = -value_3
-		return value_4
+	if value < 0.0 {
+		return -value
 	}
-	var value_5 float32 = value
-	return value_5
+	return value
 }
 
 func Swipe_SwipeDirectionsFor(directions uint32) uint32 {
-	var value_0 uint32 = directions
-	var value_1 int32 = 0
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 bool = value_0 != value_2
-	if value_3 {
-		var value_4 uint32 = directions
-		return value_4
+	if directions != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		return directions
 	}
-	var value_5 int32 = int32(SwipeAll)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	return value_6
+	return uint32(number_runtime_bits(uint64(int32(SwipeAll)), uint64(0), 32, false, 0))
 }
 
 func Swipe_SwipeMinDistanceFor(scale float32, min_distance float32) float32 {
-	var value_0 float32 = min_distance
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 float32 = min_distance
-		return value_3
+	if min_distance > 0.0 {
+		return min_distance
 	}
-	var value_4 float32 = 48.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	return value_6
+	return (48.0 * scale)
 }
 
 func Swipe_SwipeAxisBiasFor(axis_bias float32) float32 {
-	var value_0 float32 = axis_bias
-	var value_1 float32 = 1.0
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 float32 = axis_bias
-		return value_3
+	if axis_bias >= 1.0 {
+		return axis_bias
 	}
-	var value_4 float32 = 1.25
-	return value_4
+	return 1.25
 }
 
 func Swipe_SwipeDecisionDistanceFor(scale float32) float32 {
-	var value_0 float32 = 8.0
-	var value_1 float32 = scale
-	var value_2 float32 = value_0 * value_1
-	return value_2
+	return (8.0 * scale)
 }
 
 func Swipe_SwipeCanBegin(bounds Rectangle, pointer_inside bool, input_clear bool) bool {
-	var value_0 float32 = bounds.Width
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 float32 = bounds.Height
-		var value_5 float32 = 0.0
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
+	var value_0 bool = (bounds.Width <= 0.0)
+	if !value_0 {
+		value_0 = (bounds.Height <= 0.0)
 	}
-	if value_3 {
-		var value_7 bool = false
-		return value_7
+	if value_0 {
+		return false
 	}
-	var value_8 bool = pointer_inside
-	var value_9 bool = !value_8
-	if value_9 {
-		var value_10 bool = false
-		return value_10
+	if !pointer_inside {
+		return false
 	}
-	var value_11 bool = input_clear
-	return value_11
+	return input_clear
 }
 
 func Swipe_SwipeDirectionFor(delta Vector2, directions uint32, axis_bias float32) SwipeDirection {
@@ -119,89 +80,46 @@ func Swipe_SwipeDirectionFor(delta Vector2, directions uint32, axis_bias float32
 	var value_2 float32 = delta.Y
 	var value_3 float32 = Swipe_SwipeAbs(value_2)
 	var dy float32 = value_3
-	var value_4 int32 = int32(SwipeNone)
-	var value_5 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_4), uint64(0), 32, true, 0)))
-	var direction SwipeDirection = SwipeDirection(value_5)
-	var value_6 float32 = dx
-	var value_7 float32 = dy
-	var value_8 float32 = axis_bias
-	var value_9 float32 = value_7 * value_8
-	var value_10 bool = value_6 >= value_9
-	if value_10 {
-		var value_11 float32 = delta.X
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		if value_13 {
-			var value_14 int32 = int32(SwipeLeft)
-			var value_15 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_14), uint64(0), 32, true, 0)))
-			direction = value_15
+	var direction SwipeDirection = SwipeDirection(SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeNone)), uint64(0), 32, true, 0))))
+	if dx >= (dy * axis_bias) {
+		if delta.X < 0.0 {
+			direction = SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeLeft)), uint64(0), 32, true, 0)))
 		} else {
-			var value_16 int32 = int32(SwipeRight)
-			var value_17 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0)))
-			direction = value_17
+			direction = SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeRight)), uint64(0), 32, true, 0)))
 		}
 	} else {
-		var value_18 float32 = dy
-		var value_19 float32 = dx
-		var value_20 float32 = axis_bias
-		var value_21 float32 = value_19 * value_20
-		var value_22 bool = value_18 >= value_21
-		if value_22 {
-			var value_23 float32 = delta.Y
-			var value_24 float32 = 0.0
-			var value_25 bool = value_23 < value_24
-			if value_25 {
-				var value_26 int32 = int32(SwipeUp)
-				var value_27 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_26), uint64(0), 32, true, 0)))
-				direction = value_27
+		if dy >= (dx * axis_bias) {
+			if delta.Y < 0.0 {
+				direction = SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeUp)), uint64(0), 32, true, 0)))
 			} else {
-				var value_28 int32 = int32(SwipeDown)
-				var value_29 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_28), uint64(0), 32, true, 0)))
-				direction = value_29
+				direction = SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeDown)), uint64(0), 32, true, 0)))
 			}
 		} else {
-			var value_30 int32 = int32(SwipeNone)
-			var value_31 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0)))
-			return value_31
+			return SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeNone)), uint64(0), 32, true, 0)))
 		}
 	}
-	var value_32 uint32 = directions
-	var value_33 SwipeDirection = SwipeDirection(direction)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 8))
-	var value_36 int32 = 0
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 bool = value_35 != value_37
-	if value_38 {
-		var value_39 SwipeDirection = SwipeDirection(direction)
-		return value_39
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(directions), uint64(uint32(number_runtime_bits(uint64(direction), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_4 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		return direction
 	}
-	var value_40 int32 = int32(SwipeNone)
-	var value_41 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_40), uint64(0), 32, true, 0)))
-	return value_41
+	return SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeNone)), uint64(0), 32, true, 0)))
 }
 
 func Swipe_SwipePrimaryDistanceFor(delta Vector2, direction SwipeDirection) float32 {
-	var value_0 SwipeDirection = SwipeDirection(direction)
-	var value_1 int32 = int32(SwipeLeft)
-	var value_2 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
-	var value_3 bool = value_0 == value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 SwipeDirection = SwipeDirection(direction)
-		var value_6 int32 = int32(SwipeRight)
-		var value_7 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
-		var value_8 bool = value_5 == value_7
-		value_4 = value_8
+	var value_0 bool = direction == SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeLeft)), uint64(0), 32, true, 0)))
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = direction == SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeRight)), uint64(0), 32, true, 0)))
+		value_1 = value_2
 	}
-	if value_4 {
-		var value_9 float32 = delta.X
-		var value_10 float32 = Swipe_SwipeAbs(value_9)
-		return value_10
+	if value_1 {
+		var value_3 float32 = delta.X
+		var value_4 float32 = Swipe_SwipeAbs(value_3)
+		return value_4
 	}
-	var value_11 float32 = delta.Y
-	var value_12 float32 = Swipe_SwipeAbs(value_11)
-	return value_12
+	var value_5 float32 = delta.Y
+	var value_6 float32 = Swipe_SwipeAbs(value_5)
+	return value_6
 }
 
 func Swipe_SwipeMaxDistanceFor(delta Vector2) float32 {
@@ -211,45 +129,24 @@ func Swipe_SwipeMaxDistanceFor(delta Vector2) float32 {
 	var value_2 float32 = delta.Y
 	var value_3 float32 = Swipe_SwipeAbs(value_2)
 	var dy float32 = value_3
-	var value_4 float32 = dx
-	var value_5 float32 = dy
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 float32 = dx
-		return value_7
+	if dx > dy {
+		return dx
 	}
-	var value_8 float32 = dy
-	return value_8
+	return dy
 }
 
 func Swipe_SwipeProgressFor(primary float32, min_distance float32) float32 {
-	var value_0 float32 = min_distance
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if min_distance <= 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = primary
-	var value_5 float32 = min_distance
-	var value_6 float32 = value_4 / value_5
-	var progress float32 = value_6
-	var value_7 float32 = progress
-	var value_8 float32 = 1.0
-	var value_9 bool = value_7 > value_8
-	if value_9 {
-		var value_10 float32 = 1.0
-		return value_10
+	var progress float32 = (primary / min_distance)
+	if progress > 1.0 {
+		return 1.0
 	}
-	var value_11 float32 = progress
-	var value_12 float32 = 0.0
-	var value_13 bool = value_11 < value_12
-	if value_13 {
-		var value_14 float32 = 0.0
-		return value_14
+	if progress < 0.0 {
+		return 0.0
 	}
-	var value_15 float32 = progress
-	return value_15
+	return progress
 }
 
 func Swipe_SwipeShouldCancelForAxis(delta Vector2, directions uint32, axis_bias float32) bool {
@@ -259,210 +156,117 @@ func Swipe_SwipeShouldCancelForAxis(delta Vector2, directions uint32, axis_bias 
 	var value_2 float32 = delta.Y
 	var value_3 float32 = Swipe_SwipeAbs(value_2)
 	var dy float32 = value_3
-	var value_4 uint32 = directions
-	var value_5 int32 = int32(SwipeHorizontal)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 8))
-	var value_8 int32 = 0
-	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 bool = value_7 != value_9
-	var horizontal_allowed bool = value_10
-	var value_11 uint32 = directions
-	var value_12 int32 = int32(SwipeVertical)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_13), 32, false, 8))
-	var value_15 int32 = 0
-	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
-	var value_17 bool = value_14 != value_16
-	var vertical_allowed bool = value_17
-	var value_18 bool = horizontal_allowed
-	var value_19 bool = value_18
-	if value_19 {
-		var value_20 bool = vertical_allowed
-		var value_21 bool = !value_20
-		value_19 = value_21
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(directions), uint64(uint32(number_runtime_bits(uint64(int32(SwipeHorizontal)), uint64(0), 32, false, 0))), 32, false, 8))
+	var horizontal_allowed bool = (value_4 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(directions), uint64(uint32(number_runtime_bits(uint64(int32(SwipeVertical)), uint64(0), 32, false, 0))), 32, false, 8))
+	var vertical_allowed bool = (value_5 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	var value_6 bool = horizontal_allowed
+	if value_6 {
+		value_6 = !vertical_allowed
 	}
-	var value_22 bool = value_19
-	if value_22 {
-		var value_23 float32 = dy
-		var value_24 float32 = dx
-		var value_25 float32 = axis_bias
-		var value_26 float32 = value_24 * value_25
-		var value_27 bool = value_23 >= value_26
-		value_22 = value_27
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = (dy >= (dx * axis_bias))
 	}
-	if value_22 {
-		var value_28 bool = true
-		return value_28
+	if value_7 {
+		return true
 	}
-	var value_29 bool = vertical_allowed
-	var value_30 bool = value_29
-	if value_30 {
-		var value_31 bool = horizontal_allowed
-		var value_32 bool = !value_31
-		value_30 = value_32
+	var value_8 bool = vertical_allowed
+	if value_8 {
+		value_8 = !horizontal_allowed
 	}
-	var value_33 bool = value_30
-	if value_33 {
-		var value_34 float32 = dx
-		var value_35 float32 = dy
-		var value_36 float32 = axis_bias
-		var value_37 float32 = value_35 * value_36
-		var value_38 bool = value_34 >= value_37
-		value_33 = value_38
+	var value_9 bool = value_8
+	if value_9 {
+		value_9 = (dx >= (dy * axis_bias))
 	}
-	if value_33 {
-		var value_39 bool = true
-		return value_39
+	if value_9 {
+		return true
 	}
-	var value_40 bool = false
-	return value_40
+	return false
 }
 
 func Swipe_SwipeDragStateFor(delta Vector2, directions uint32, axis_bias float32, decision_distance float32, min_distance float32, was_dragging bool) SwipeDragState {
 	var state SwipeDragState = SwipeDragState{}
-	var value_0 bool = was_dragging
-	state.Dragging = value_0
-	var value_1 Vector2 = delta
-	var value_2 uint32 = directions
-	var value_3 float32 = axis_bias
-	var value_4 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(value_1, value_2, value_3))
-	var direction SwipeDirection = SwipeDirection(value_4)
-	var value_5 Vector2 = delta
-	var value_6 SwipeDirection = SwipeDirection(direction)
-	var value_7 float32 = Swipe_SwipePrimaryDistanceFor(value_5, value_6)
-	var primary float32 = value_7
-	var value_8 Vector2 = delta
-	var value_9 float32 = Swipe_SwipeMaxDistanceFor(value_8)
-	var distance float32 = value_9
-	var value_10 bool = state.Dragging
-	var value_11 bool = !value_10
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 float32 = distance
-		var value_14 float32 = decision_distance
-		var value_15 bool = value_13 >= value_14
-		value_12 = value_15
+	state.Dragging = was_dragging
+	var value_0 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(delta, directions, axis_bias))
+	var direction SwipeDirection = SwipeDirection(value_0)
+	var value_1 float32 = Swipe_SwipePrimaryDistanceFor(delta, direction)
+	var primary float32 = value_1
+	var value_2 float32 = Swipe_SwipeMaxDistanceFor(delta)
+	var distance float32 = value_2
+	var value_3 bool = !state.Dragging
+	if value_3 {
+		value_3 = (distance >= decision_distance)
 	}
-	if value_12 {
-		var value_16 SwipeDirection = SwipeDirection(direction)
-		var value_17 int32 = int32(SwipeNone)
-		var value_18 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_17), uint64(0), 32, true, 0)))
-		var value_19 bool = value_16 == value_18
-		if value_19 {
-			var value_20 Vector2 = delta
-			var value_21 uint32 = directions
-			var value_22 float32 = axis_bias
-			var value_23 bool = Swipe_SwipeShouldCancelForAxis(value_20, value_21, value_22)
-			state.Cancelled = value_23
-			var value_24 SwipeDragState = state
-			return value_24
+	if value_3 {
+		var value_4 bool = direction == SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeNone)), uint64(0), 32, true, 0)))
+		if value_4 {
+			var value_5 bool = Swipe_SwipeShouldCancelForAxis(delta, directions, axis_bias)
+			state.Cancelled = value_5
+			return state
 		}
-		var value_25 bool = true
-		state.Dragging = value_25
+		state.Dragging = true
 	}
-	var value_26 SwipeDirection = SwipeDirection(direction)
-	state.Direction = value_26
-	var value_27 bool = state.Dragging
-	if value_27 {
-		var value_28 float32 = primary
-		var value_29 float32 = min_distance
-		var value_30 float32 = Swipe_SwipeProgressFor(value_28, value_29)
-		state.Progress = value_30
+	state.Direction = direction
+	if state.Dragging {
+		var value_6 float32 = Swipe_SwipeProgressFor(primary, min_distance)
+		state.Progress = value_6
 	}
-	var value_31 SwipeDragState = state
-	return value_31
+	return state
 }
 
 func Swipe_SwipeDragLifecycleFor(pointer_owner_clear bool, drag_cancelled bool, was_dragging bool, next_dragging bool) SwipeDragLifecycle {
 	var lifecycle SwipeDragLifecycle = SwipeDragLifecycle{}
-	var value_0 bool = pointer_owner_clear
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = drag_cancelled
-		value_2 = value_3
+	var value_0 bool = !pointer_owner_clear
+	if !value_0 {
+		value_0 = drag_cancelled
 	}
-	if value_2 {
-		var value_4 bool = true
-		lifecycle.CancelActive = value_4
-		var value_5 SwipeDragLifecycle = lifecycle
-		return value_5
+	if value_0 {
+		lifecycle.CancelActive = true
+		return lifecycle
 	}
-	var value_6 bool = next_dragging
-	lifecycle.Dragging = value_6
-	var value_7 bool = was_dragging
-	var value_8 bool = !value_7
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = next_dragging
-		value_9 = value_10
+	lifecycle.Dragging = next_dragging
+	var value_1 bool = !was_dragging
+	if value_1 {
+		value_1 = next_dragging
 	}
-	lifecycle.ClaimPointerOwner = value_9
-	var value_11 bool = next_dragging
-	lifecycle.CaptureInput = value_11
-	var value_12 SwipeDragLifecycle = lifecycle
-	return value_12
+	lifecycle.ClaimPointerOwner = value_1
+	lifecycle.CaptureInput = next_dragging
+	return lifecycle
 }
 
 func Swipe_SwipeReleaseStateFor(delta Vector2, directions uint32, axis_bias float32, min_distance float32, elapsed float64, max_duration float32, was_dragging bool) SwipeReleaseState {
 	var state SwipeReleaseState = SwipeReleaseState{}
-	var value_0 Vector2 = delta
-	var value_1 uint32 = directions
-	var value_2 float32 = axis_bias
-	var value_3 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(value_0, value_1, value_2))
-	state.Direction = value_3
-	var value_4 Vector2 = delta
-	var value_5 SwipeDirection = SwipeDirection(state.Direction)
-	var value_6 float32 = Swipe_SwipePrimaryDistanceFor(value_4, value_5)
-	var primary float32 = value_6
-	var value_7 float32 = max_duration
-	var value_8 float32 = 0.0
-	var value_9 bool = value_7 <= value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float64 = elapsed
-		var value_12 float32 = max_duration
-		var value_13 float64 = float64(value_12)
-		var value_14 bool = value_11 <= value_13
-		value_10 = value_14
+	var value_0 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(delta, directions, axis_bias))
+	state.Direction = value_0
+	var value_1 SwipeDirection = SwipeDirection(SwipeDirection(state.Direction))
+	var value_2 float32 = Swipe_SwipePrimaryDistanceFor(delta, value_1)
+	var primary float32 = value_2
+	var value_3 bool = (max_duration <= 0.0)
+	if !value_3 {
+		value_3 = (elapsed <= float64(max_duration))
 	}
-	var within_time bool = value_10
-	var value_15 float32 = primary
-	var value_16 float32 = min_distance
-	var value_17 float32 = Swipe_SwipeProgressFor(value_15, value_16)
-	state.Progress = value_17
-	var value_18 bool = was_dragging
-	var value_19 bool = value_18
-	if value_19 {
-		var value_20 bool = within_time
-		value_19 = value_20
+	var within_time bool = value_3
+	var value_4 float32 = Swipe_SwipeProgressFor(primary, min_distance)
+	state.Progress = value_4
+	var value_5 bool = was_dragging
+	if value_5 {
+		value_5 = within_time
 	}
-	var value_21 bool = value_19
-	if value_21 {
-		var value_22 float32 = primary
-		var value_23 float32 = min_distance
-		var value_24 bool = value_22 >= value_23
-		value_21 = value_24
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = (primary >= min_distance)
 	}
-	state.Committed = value_21
-	var value_25 bool = state.Committed
-	var value_26 bool = !value_25
-	if value_26 {
-		var value_27 int32 = int32(SwipeNone)
-		var value_28 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0)))
-		state.Direction = value_28
+	state.Committed = value_6
+	if !state.Committed {
+		state.Direction = SwipeDirection(int32(number_runtime_bits(uint64(int32(SwipeNone)), uint64(0), 32, true, 0)))
 	}
-	var value_29 SwipeReleaseState = state
-	return value_29
+	return state
 }
 
 func Swipe_SwipeReleaseLifecycleFor(was_dragging bool) SwipeReleaseLifecycle {
 	var lifecycle SwipeReleaseLifecycle = SwipeReleaseLifecycle{}
-	var value_0 bool = was_dragging
-	lifecycle.ConsumeRelease = value_0
-	var value_1 bool = was_dragging
-	lifecycle.CaptureInput = value_1
-	var value_2 SwipeReleaseLifecycle = lifecycle
-	return value_2
+	lifecycle.ConsumeRelease = was_dragging
+	lifecycle.CaptureInput = was_dragging
+	return lifecycle
 }

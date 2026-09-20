@@ -1,0 +1,312 @@
+#module "clipboard_protocol_host"
+#inspect off
+#import "ui_internal.h"
+
+ClipboardTargetIncludes :: (target: const char*, wanted: char) -> i32 #export {
+    if target == nil || target[0] == '\0' { return wanted == 'c' }
+    index: i32 = 0
+    while target[index] != '\0' && target[index] != ';' &&
+    target[index] != '\a' && target[index] != 0x1b {
+        if target[index] == wanted { return 1 }
+        index += 1
+    }
+    return 0
+}
+
+ClipboardTargetUsesPrimary :: (target: const char*) -> i32 #export {
+    return ClipboardTargetIncludes(target, 'p') &&
+    !ClipboardTargetIncludes(target, 'c') &&
+    !ClipboardTargetIncludes(target, 's')
+}
+
+GetClipboardTargetText :: (clipboard: const ClipboardBuffer*,
+target: const char*) -> const char* #export {
+    if ClipboardTargetUsesPrimary(target) {
+        return GetPrimarySelectionTextValue()
+    }
+    return GetClipboardBufferText(clipboard)
+}
+
+RequestClipboardTargetWrite :: (clipboard: *ClipboardBuffer,
+target: const char*, text: const char*) -> i32 #export {
+    changed: i32 = 0
+    wrote: i32 = 0
+    if ClipboardTargetIncludes(target, 'p') {
+        changed |= SetPrimarySelectionTextValue(text)
+        wrote = 1
+    }
+    if ClipboardTargetIncludes(target, 'c') ||
+    ClipboardTargetIncludes(target, 's') || !wrote {
+        changed |= RequestClipboardBufferWrite(clipboard, text)
+    }
+    return changed
+}
+
+ClipboardBase64Value :: (ch: i32) -> i32 {
+    if ch >= 'A' && ch <= 'Z' { return ch - 'A' }
+    if ch >= 'a' && ch <= 'z' { return 26 + ch - 'a' }
+    if ch >= '0' && ch <= '9' { return 52 + ch - '0' }
+    if ch == '+' { return 62 }
+    if ch == '/' { return 63 }
+    return -1
+}
+
+ClipboardDecodeBase64 :: (out: *char, out_size: i32,
+text: const char*) -> i32 {
+    if out == nil || out_size <= 0 || text == nil { return 0 }
+    out[0] = '\0'
+    value: u32 = 0
+    bits: i32 = 0
+    used: i32 = 0
+    cursor: const char* = text
+    while cursor[0] != '\0' {
+        ch: i32 = (unsigned char)cursor[0]
+        cursor += 1
+        if ch == '=' { break }
+        if ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' {
+            continue
+        }
+        digit: i32 = ClipboardBase64Value(ch)
+        if digit < 0 { return 0 }
+        value = (value << 6) | (unsigned int)digit
+        bits += 6
+        if bits >= 8 {
+            bits -= 8
+            if used >= out_size - 1 { break }
+            out[used] = (char)((value >> bits) & 0xff)
+            used += 1
+        }
+    }
+    out[used] = '\0'
+    return used
+}
+
+ClipboardEncodeBase64 :: (out: *char, out_size: i32,
+text: const char*, size: i32) -> i32 {
+    if out == nil || out_size <= 0 || text == nil || size < 0 {
+        return 0
+    }
+    alphabet: const char* =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    out[0] = '\0'
+    used: i32 = 0
+    index: i32 = 0
+    while index < size {
+        a: u32 = (unsigned char)text[index]
+        b: u32 = index + 1 < size ? (unsigned char)text[index + 1] : 0
+        c: u32 = index + 2 < size ? (unsigned char)text[index + 2] : 0
+        if used + 4 >= out_size { return 0 }
+        out[used] = alphabet[(a >> 2) & 0x3f]
+        used += 1
+        out[used] = alphabet[((a & 0x03) << 4) | ((b >> 4) & 0x0f)]
+        used += 1
+        out[used] = index + 1 < size ?
+        alphabet[((b & 0x0f) << 2) | ((c >> 6) & 0x03)] : '='
+        used += 1
+        out[used] = index + 2 < size ? alphabet[c & 0x3f] : '='
+        used += 1
+        index += 3
+    }
+    out[used] = '\0'
+    return used
+}
+
+ClipboardSendOSC52Response :: (clipboard: *ClipboardBuffer,
+target: const char*, userdata: *void) -> i32 {
+    if clipboard == nil { return 0 }
+    encoded: [5464]char
+    response: [5520]char
+    text: const char* = GetClipboardTargetText(clipboard, target)
+    size: i32 = (int)strlen(text)
+    encoded_size: i32 = ClipboardEncodeBase64(&encoded[0],
+    sizeof(encoded), text, size)
+    if size > 0 && encoded_size <= 0 { return 0 }
+    snprintf(&response[0], sizeof(response),
+    "\x1b]52;%s;%s\a", target, &encoded[0])
+    return ClipboardOSC52Write(userdata, &response[0])
+}
+
+HandleClipboardOSC52 :: (clipboard: *ClipboardBuffer,
+payload: const char*, userdata: *void) -> i32 #export {
+    if clipboard == nil || payload == nil { return 0 }
+    target: [32]char
+    used: i32 = 0
+    while payload[used] != '\0' && payload[used] != ';' &&
+    payload[used] != '\a' && payload[used] != 0x1b &&
+    used < (int)sizeof(target) - 1 {
+        target[used] = payload[used]
+        used += 1
+    }
+    target[used] = '\0'
+    if payload[used] != ';' { return 0 }
+    if used == 0 {
+        target[0] = 'c'
+        target[1] = '\0'
+    }
+    text_payload: const char* = payload + used + 1
+    if text_payload[0] == '?' {
+        return ClipboardSendOSC52Response(clipboard, &target[0],
+        userdata)
+    }
+    if text_payload[0] == '\0' {
+        return RequestClipboardTargetWrite(clipboard, &target[0], "")
+    }
+    decoded: [4096]char
+    if ClipboardDecodeBase64(&decoded[0], sizeof(decoded),
+    text_payload) > 0 {
+        return RequestClipboardTargetWrite(clipboard, &target[0],
+        &decoded[0])
+    }
+    return 0
+}
+
+ClipboardUtf8PayloadBytes :: (text: const char*) -> i32 {
+    if text == nil { return 0 }
+    ch: i32 = (unsigned char)text[0]
+    length: i32 = 0
+    if ch >= 0xc2 && ch <= 0xdf {
+        length = 2
+    } else if ch >= 0xe0 && ch <= 0xef {
+        length = 3
+    } else if ch >= 0xf0 && ch <= 0xf4 {
+        length = 4
+    } else {
+        return 0
+    }
+    index: i32 = 1
+    while index < length {
+        if ((unsigned char)text[index] & 0xc0) != 0x80 {
+            return 0
+        }
+        index += 1
+    }
+    return length
+}
+
+ClipboardSkipPasteControlString :: (cursor: const char*) -> const char* {
+    if cursor == nil || cursor[0] == '\0' { return cursor }
+    ch: i32 = (unsigned char)cursor[0]
+    seq: const char* = nil
+    bel_terminated: i32 = 0
+    if ch == 0x1b {
+        next: i32 = (unsigned char)cursor[1]
+        if next == '[' {
+            seq = cursor + 2
+            while seq[0] != '\0' &&
+            !((unsigned char)seq[0] >= 0x40 &&
+            (unsigned char)seq[0] <= 0x7e) {
+                seq += 1
+            }
+            return seq[0] != '\0' ? seq + 1 : seq
+        }
+        if next == ']' {
+            bel_terminated = 1
+        } else if next != 'P' && next != 'X' &&
+        next != '^' && next != '_' {
+            return cursor + (cursor[1] != '\0' ? 2 : 1)
+        }
+        seq = cursor + 2
+    } else if ch == 0x9b {
+        seq = cursor + 1
+        while seq[0] != '\0' &&
+        !((unsigned char)seq[0] >= 0x40 &&
+        (unsigned char)seq[0] <= 0x7e) {
+            seq += 1
+        }
+        return seq[0] != '\0' ? seq + 1 : seq
+    } else if ch == 0x9d {
+        bel_terminated = 1
+        seq = cursor + 1
+    } else if ch == 0x90 || ch == 0x98 ||
+    ch == 0x9e || ch == 0x9f {
+        seq = cursor + 1
+    } else {
+        return nil
+    }
+    while seq[0] != '\0' {
+        code: i32 = (unsigned char)seq[0]
+        if (bel_terminated && code == 0x07) || code == 0x9c {
+            return seq + 1
+        }
+        if code == 0x1b && seq[1] == '\\' { return seq + 2 }
+        seq += 1
+    }
+    return seq
+}
+
+ClipboardWritePasteChunk :: (userdata: *void,
+text: const char*, size: i32) -> i32 {
+    if text == nil || size <= 0 { return 0 }
+    return ClipboardPasteWrite(userdata, text, size)
+}
+
+WriteClipboardPaste :: (text: const char*, bracketed: i32,
+userdata: *void) -> i32 #export {
+    if text == nil || text[0] == '\0' {
+        return 0
+    }
+    if !bracketed {
+        return ClipboardWritePasteChunk(userdata,
+        text, (int)strlen(text))
+    }
+    written: i32 = ClipboardWritePasteChunk(userdata,
+    "\x1b[200~", 6)
+    cursor: const char* = text
+    chunk: const char* = cursor
+    while cursor[0] != '\0' {
+        ch: i32 = (unsigned char)cursor[0]
+        if ch >= 0x80 {
+            utf8_len: i32 = ClipboardUtf8PayloadBytes(cursor)
+            if utf8_len > 0 {
+                cursor += utf8_len
+                continue
+            }
+        }
+        if ch == 0x1b || ch == 0x9b || ch == 0x90 ||
+        ch == 0x98 || ch == 0x9d || ch == 0x9e || ch == 0x9f {
+            next: const char* = ClipboardSkipPasteControlString(cursor)
+            if cursor > chunk {
+                written += ClipboardWritePasteChunk(userdata,
+                chunk, (int)(cursor - chunk))
+            }
+            cursor = next != nil ? next : cursor + 1
+            chunk = cursor
+            continue
+        }
+        if (ch < 0x20 && ch != '\t' &&
+        ch != '\r' && ch != '\n') ||
+        ch == 0x7f || (ch >= 0x80 && ch < 0xa0) {
+            if cursor > chunk {
+                written += ClipboardWritePasteChunk(userdata,
+                chunk, (int)(cursor - chunk))
+            }
+            cursor += 1
+            chunk = cursor
+            continue
+        }
+        cursor += 1
+    }
+    if cursor > chunk {
+        written += ClipboardWritePasteChunk(userdata,
+        chunk, (int)(cursor - chunk))
+    }
+    written += ClipboardWritePasteChunk(userdata,
+    "\x1b[201~", 6)
+    return written
+}
+
+WriteClipboardTextPaste :: (clipboard: *ClipboardBuffer,
+text: const char*, bracketed: i32,
+userdata: *void) -> i32 #export {
+    if text == nil || text[0] == '\0' { return 0 }
+    SetClipboardBufferText(clipboard, text)
+    return WriteClipboardPaste(text, bracketed, userdata)
+}
+
+WriteClipboardSourcePaste :: (clipboard: *ClipboardBuffer,
+source: ClipboardSource, bracketed: i32,
+userdata: *void) -> i32 #export {
+    text: const char* = GetClipboardSourceText(clipboard, source)
+    return WriteClipboardTextPaste(clipboard, text,
+    bracketed, userdata)
+}

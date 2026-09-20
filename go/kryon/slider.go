@@ -94,1816 +94,914 @@ type SliderLayout struct {
 
 func Slider_SliderLayoutFor(bounds Rectangle, line_height float32, label_height float32, value_width float32, scale float32, multiple bool, vertical bool, step_buttons bool, show_limits bool) SliderLayout {
 	var layout SliderLayout = SliderLayout{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	var gap float32 = (12.0 * scale)
+	var target float32 = (48.0 * scale)
+	var label_width float32 = ((bounds.Width - value_width) - gap)
+	if label_width < 1.0 {
+		label_width = 1.0
+	}
+	var header float32 = line_height
+	if label_height > header {
+		header = label_height
+	}
+	layout.Label.X = bounds.X
+	layout.Label.Y = bounds.Y
+	layout.Label.Width = label_width
+	layout.Label.Height = label_height
+	layout.Value.X = ((bounds.X + bounds.Width) - value_width)
+	layout.Value.Y = bounds.Y
+	layout.Value.Width = value_width
+	layout.Value.Height = line_height
+	var value_0 bool = multiple
+	if value_0 {
+		value_0 = (label_height > 0.0)
+	}
+	if value_0 {
+		layout.Label.Width = bounds.Width
+		var value_1 float32 = layout.Value.Y
+		layout.Value.Y = value_1 + (label_height + gap)
+		header = ((label_height + gap) + line_height)
+	}
+	var footer float32 = 0.0
+	if show_limits {
+		footer = (line_height + (4.0 * scale))
+	}
+	var extra float32 = 0.0
+	var value_2 bool = !vertical
 	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+		value_2 = step_buttons
 	}
-	var value_4 float32 = 12.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var gap float32 = value_6
-	var value_7 float32 = 48.0
-	var value_8 float32 = scale
-	var value_9 float32 = value_7 * value_8
-	var target float32 = value_9
-	var value_10 float32 = bounds.Width
-	var value_11 float32 = value_width
-	var value_12 float32 = value_10 - value_11
-	var value_13 float32 = gap
-	var value_14 float32 = value_12 - value_13
-	var label_width float32 = value_14
-	var value_15 float32 = label_width
-	var value_16 float32 = 1.0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 float32 = 1.0
-		label_width = value_18
+	var value_3 bool = value_2
+	if value_3 {
+		value_3 = (bounds.Width < ((target * 3.0) + (gap * 2.0)))
 	}
-	var value_19 float32 = line_height
-	var header float32 = value_19
-	var value_20 float32 = label_height
-	var value_21 float32 = header
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 float32 = label_height
-		header = value_23
+	if value_3 {
+		extra = (target + gap)
 	}
-	var value_24 float32 = bounds.X
-	layout.Label.X = value_24
-	var value_25 float32 = bounds.Y
-	layout.Label.Y = value_25
-	var value_26 float32 = label_width
-	layout.Label.Width = value_26
-	var value_27 float32 = label_height
-	layout.Label.Height = value_27
-	var value_28 float32 = bounds.X
-	var value_29 float32 = bounds.Width
-	var value_30 float32 = value_28 + value_29
-	var value_31 float32 = value_width
-	var value_32 float32 = value_30 - value_31
-	layout.Value.X = value_32
-	var value_33 float32 = bounds.Y
-	layout.Value.Y = value_33
-	var value_34 float32 = value_width
-	layout.Value.Width = value_34
-	var value_35 float32 = line_height
-	layout.Value.Height = value_35
-	var value_36 bool = multiple
-	var value_37 bool = value_36
-	if value_37 {
-		var value_38 float32 = label_height
-		var value_39 float32 = 0.0
-		var value_40 bool = value_38 > value_39
-		value_37 = value_40
+	var minimum float32 = ((((header + gap) + target) + footer) + extra)
+	if bounds.Height < minimum {
+		bounds.Height = minimum
 	}
-	if value_37 {
-		var value_41 float32 = bounds.Width
-		layout.Label.Width = value_41
-		var value_42 float32 = layout.Value.Y
-		var value_43 float32 = label_height
-		var value_44 float32 = gap
-		var value_45 float32 = value_43 + value_44
-		layout.Value.Y = value_42 + value_45
-		var value_46 float32 = label_height
-		var value_47 float32 = gap
-		var value_48 float32 = value_46 + value_47
-		var value_49 float32 = line_height
-		var value_50 float32 = value_48 + value_49
-		header = value_50
+	layout.Bounds = bounds
+	layout.Track.X = bounds.X
+	layout.Track.Y = ((bounds.Y + header) + gap)
+	layout.Track.Width = bounds.Width
+	layout.Track.Height = ((((bounds.Height - header) - gap) - footer) - extra)
+	var value_4 bool = !vertical
+	if value_4 {
+		value_4 = step_buttons
 	}
-	var value_51 float32 = 0.0
-	var footer float32 = value_51
-	var value_52 bool = show_limits
-	if value_52 {
-		var value_53 float32 = line_height
-		var value_54 float32 = 4.0
-		var value_55 float32 = scale
-		var value_56 float32 = value_54 * value_55
-		var value_57 float32 = value_53 + value_56
-		footer = value_57
-	}
-	var value_58 float32 = 0.0
-	var extra float32 = value_58
-	var value_59 bool = vertical
-	var value_60 bool = !value_59
-	var value_61 bool = value_60
-	if value_61 {
-		var value_62 bool = step_buttons
-		value_61 = value_62
-	}
-	var value_63 bool = value_61
-	if value_63 {
-		var value_64 float32 = bounds.Width
-		var value_65 float32 = target
-		var value_66 float32 = 3.0
-		var value_67 float32 = value_65 * value_66
-		var value_68 float32 = gap
-		var value_69 float32 = 2.0
-		var value_70 float32 = value_68 * value_69
-		var value_71 float32 = value_67 + value_70
-		var value_72 bool = value_64 < value_71
-		value_63 = value_72
-	}
-	if value_63 {
-		var value_73 float32 = target
-		var value_74 float32 = gap
-		var value_75 float32 = value_73 + value_74
-		extra = value_75
-	}
-	var value_76 float32 = header
-	var value_77 float32 = gap
-	var value_78 float32 = value_76 + value_77
-	var value_79 float32 = target
-	var value_80 float32 = value_78 + value_79
-	var value_81 float32 = footer
-	var value_82 float32 = value_80 + value_81
-	var value_83 float32 = extra
-	var value_84 float32 = value_82 + value_83
-	var minimum float32 = value_84
-	var value_85 float32 = bounds.Height
-	var value_86 float32 = minimum
-	var value_87 bool = value_85 < value_86
-	if value_87 {
-		var value_88 float32 = minimum
-		bounds.Height = value_88
-	}
-	var value_89 Rectangle = bounds
-	layout.Bounds = value_89
-	var value_90 float32 = bounds.X
-	layout.Track.X = value_90
-	var value_91 float32 = bounds.Y
-	var value_92 float32 = header
-	var value_93 float32 = value_91 + value_92
-	var value_94 float32 = gap
-	var value_95 float32 = value_93 + value_94
-	layout.Track.Y = value_95
-	var value_96 float32 = bounds.Width
-	layout.Track.Width = value_96
-	var value_97 float32 = bounds.Height
-	var value_98 float32 = header
-	var value_99 float32 = value_97 - value_98
-	var value_100 float32 = gap
-	var value_101 float32 = value_99 - value_100
-	var value_102 float32 = footer
-	var value_103 float32 = value_101 - value_102
-	var value_104 float32 = extra
-	var value_105 float32 = value_103 - value_104
-	layout.Track.Height = value_105
-	var value_106 bool = vertical
-	var value_107 bool = !value_106
-	var value_108 bool = value_107
-	if value_108 {
-		var value_109 bool = step_buttons
-		value_108 = value_109
-	}
-	if value_108 {
-		var value_110 float32 = bounds.Width
-		var value_111 float32 = target
-		var value_112 float32 = 3.0
-		var value_113 float32 = value_111 * value_112
-		var value_114 float32 = gap
-		var value_115 float32 = 2.0
-		var value_116 float32 = value_114 * value_115
-		var value_117 float32 = value_113 + value_116
-		var value_118 bool = value_110 < value_117
-		if value_118 {
-			var value_119 float32 = bounds.X
-			layout.Decrement.X = value_119
-			var value_120 float32 = layout.Track.Y
-			layout.Decrement.Y = value_120
-			var value_121 float32 = target
-			layout.Decrement.Width = value_121
-			var value_122 float32 = target
-			layout.Decrement.Height = value_122
-			var value_123 float32 = bounds.X
-			var value_124 float32 = bounds.Width
-			var value_125 float32 = value_123 + value_124
-			var value_126 float32 = target
-			var value_127 float32 = value_125 - value_126
-			layout.Increment.X = value_127
-			var value_128 float32 = layout.Track.Y
-			layout.Increment.Y = value_128
-			var value_129 float32 = target
-			layout.Increment.Width = value_129
-			var value_130 float32 = target
-			layout.Increment.Height = value_130
-			var value_131 float32 = layout.Track.Y
-			var value_132 float32 = target
-			var value_133 float32 = gap
-			var value_134 float32 = value_132 + value_133
-			layout.Track.Y = value_131 + value_134
+	if value_4 {
+		if bounds.Width < ((target * 3.0) + (gap * 2.0)) {
+			layout.Decrement.X = bounds.X
+			layout.Decrement.Y = layout.Track.Y
+			layout.Decrement.Width = target
+			layout.Decrement.Height = target
+			layout.Increment.X = ((bounds.X + bounds.Width) - target)
+			layout.Increment.Y = layout.Track.Y
+			layout.Increment.Width = target
+			layout.Increment.Height = target
+			var value_5 float32 = layout.Track.Y
+			layout.Track.Y = value_5 + (target + gap)
 		} else {
-			var value_135 float32 = bounds.X
-			layout.Decrement.X = value_135
-			var value_136 float32 = layout.Track.Y
-			layout.Decrement.Y = value_136
-			var value_137 float32 = target
-			layout.Decrement.Width = value_137
-			var value_138 float32 = target
-			layout.Decrement.Height = value_138
-			var value_139 float32 = bounds.X
-			var value_140 float32 = bounds.Width
-			var value_141 float32 = value_139 + value_140
-			var value_142 float32 = target
-			var value_143 float32 = value_141 - value_142
-			layout.Increment.X = value_143
-			var value_144 float32 = layout.Track.Y
-			layout.Increment.Y = value_144
-			var value_145 float32 = target
-			layout.Increment.Width = value_145
-			var value_146 float32 = target
-			layout.Increment.Height = value_146
-			var value_147 float32 = layout.Track.X
-			var value_148 float32 = target
-			var value_149 float32 = gap
-			var value_150 float32 = value_148 + value_149
-			layout.Track.X = value_147 + value_150
-			var value_151 float32 = layout.Track.Width
-			var value_152 float32 = target
-			var value_153 float32 = gap
-			var value_154 float32 = value_152 + value_153
-			var value_155 float32 = 2.0
-			var value_156 float32 = value_154 * value_155
-			layout.Track.Width = value_151 - value_156
+			layout.Decrement.X = bounds.X
+			layout.Decrement.Y = layout.Track.Y
+			layout.Decrement.Width = target
+			layout.Decrement.Height = target
+			layout.Increment.X = ((bounds.X + bounds.Width) - target)
+			layout.Increment.Y = layout.Track.Y
+			layout.Increment.Width = target
+			layout.Increment.Height = target
+			var value_6 float32 = layout.Track.X
+			layout.Track.X = value_6 + (target + gap)
+			var value_7 float32 = layout.Track.Width
+			layout.Track.Width = value_7 - ((target + gap) * 2.0)
 		}
 	}
-	var value_157 float32 = layout.Track.X
-	layout.Limits.X = value_157
-	var value_158 float32 = layout.Track.Y
-	var value_159 float32 = layout.Track.Height
-	var value_160 float32 = value_158 + value_159
-	var value_161 float32 = 4.0
-	var value_162 float32 = scale
-	var value_163 float32 = value_161 * value_162
-	var value_164 float32 = value_160 + value_163
-	layout.Limits.Y = value_164
-	var value_165 float32 = layout.Track.Width
-	layout.Limits.Width = value_165
-	var value_166 float32 = line_height
-	layout.Limits.Height = value_166
-	var value_167 SliderLayout = layout
-	return value_167
+	layout.Limits.X = layout.Track.X
+	layout.Limits.Y = ((layout.Track.Y + layout.Track.Height) + (4.0 * scale))
+	layout.Limits.Width = layout.Track.Width
+	layout.Limits.Height = line_height
+	return layout
 }
 
 func Slider_SliderCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) SliderTextPaint {
 	var paint SliderTextPaint = SliderTextPaint{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = inset
-	var value_2 float32 = value_0 + value_1
-	paint.TextX = value_2
-	var value_3 float32 = bounds.Y
-	var value_4 float32 = bounds.Height
-	var value_5 float32 = text_line_height
-	var value_6 float32 = value_4 - value_5
-	var value_7 float32 = 2.0
-	var value_8 float32 = value_6 / value_7
-	var value_9 float32 = value_3 + value_8
-	paint.TextY = value_9
-	var value_10 SliderTextPaint = paint
-	return value_10
+	paint.TextX = (bounds.X + inset)
+	paint.TextY = (bounds.Y + ((bounds.Height - text_line_height) / 2.0))
+	return paint
 }
 
 func Slider_SliderLabelTextPaintFor(bounds Rectangle, inset float32, font_size int32, gap float32) SliderTextPaint {
 	var paint SliderTextPaint = SliderTextPaint{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = inset
-	var value_2 float32 = value_0 + value_1
-	paint.TextX = value_2
-	var value_3 float32 = bounds.Y
-	var value_4 int32 = font_size
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_3 - value_5
-	var value_7 float32 = gap
-	var value_8 float32 = value_6 - value_7
-	paint.TextY = value_8
-	var value_9 SliderTextPaint = paint
-	return value_9
+	paint.TextX = (bounds.X + inset)
+	paint.TextY = ((bounds.Y - float32(font_size)) - gap)
+	return paint
 }
 
 func Slider_SliderEditorCenterX(bounds Rectangle) int32 {
-	var value_0 float32 = bounds.X
-	var value_1 float32 = bounds.Width
-	var value_2 float32 = 0.5
-	var value_3 float32 = value_1 * value_2
-	var value_4 float32 = value_0 + value_3
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	return value_5
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.X+(bounds.Width*0.5))), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Slider_SliderLabelInsetForStyle(label StyleFrame, scale float32) float32 {
 	var value_0 uint32 = label.Value.Fields
-	var value_1 int32 = int32(StylePaddingX)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = label.Value.PaddingX
-	var value_4 float32 = 6.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.PaddingX
+	var value_3 float32 = 6.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderLabelGapForStyle(label StyleFrame, scale float32) float32 {
 	var value_0 uint32 = label.Value.Fields
-	var value_1 int32 = int32(StyleGap)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = label.Value.Gap
-	var value_4 float32 = 2.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.Gap
+	var value_3 float32 = 2.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderComponentTokenFor(control_id int32, component int32) int32 {
-	var value_0 int32 = control_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = component
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+	var value_0 bool = (control_id <= 0)
+	if !value_0 {
+		value_0 = (component < 0)
 	}
-	if value_3 {
-		var value_7 int32 = 0
-		return value_7
+	if value_0 {
+		return 0
 	}
-	var value_8 int32 = control_id
-	var value_9 int32 = 16
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-	var value_11 int32 = component
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = 1
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-	return value_14
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(control_id), uint64(16), 32, true, 3)))), uint64(component), 32, true, 1))
+	return (int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1)))
 }
 
 func Slider_SliderFocusIdFor(control_id int32, component int32, integer bool) int32 {
-	var value_0 int32 = control_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if control_id <= 0 {
+		return 0
 	}
-	var value_4 int32 = component
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = control_id
-		return value_7
+	if component <= 0 {
+		return control_id
 	}
-	var value_8 int32 = 1073741824
-	var prefix int32 = value_8
-	var value_9 bool = integer
-	if value_9 {
-		var value_10 int32 = 1342177280
-		prefix = value_10
+	var prefix int32 = 1073741824
+	if integer {
+		prefix = 1342177280
 	}
-	var value_11 int32 = prefix
-	var value_12 int32 = control_id
-	var value_13 int32 = component
-	var value_14 int32 = Slider_SliderComponentTokenFor(value_12, value_13)
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_14), 32, true, 10))
-	var token int32 = value_15
-	var value_16 int32 = token
-	var value_17 int32 = 2147483647
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 8))
-	return value_18
+	var value_0 int32 = Slider_SliderComponentTokenFor(control_id, component)
+	var token int32 = (int32(number_runtime_bits(uint64(prefix), uint64(value_0), 32, true, 10)))
+	return (int32(number_runtime_bits(uint64(token), uint64(2147483647), 32, true, 8)))
 }
 
 func Slider_SliderTrackRole() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func Slider_SliderFillRole() int32 {
-	var value_0 int32 = 5
-	return value_0
+	return 5
 }
 
 func Slider_SliderLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Slider_SliderCenteredHitBounds(x int32, y int32, width int32, height int32, min_width int32, min_height int32) Rectangle {
 	var hit Rectangle = Rectangle{}
-	var value_0 int32 = width
-	var hit_width int32 = value_0
-	var value_1 int32 = height
-	var hit_height int32 = value_1
-	var value_2 int32 = hit_width
-	var value_3 int32 = min_width
-	var value_4 bool = value_2 < value_3
-	if value_4 {
-		var value_5 int32 = min_width
-		hit_width = value_5
+	var hit_width int32 = width
+	var hit_height int32 = height
+	if hit_width < min_width {
+		hit_width = min_width
 	}
-	var value_6 int32 = hit_height
-	var value_7 int32 = min_height
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 int32 = min_height
-		hit_height = value_9
+	if hit_height < min_height {
+		hit_height = min_height
 	}
-	var value_10 int32 = x
-	var value_11 int32 = width
-	var value_12 int32 = 2
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 4))
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 1))
-	var value_15 int32 = hit_width
-	var value_16 int32 = 2
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 4))
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_17), 32, true, 2))
-	var value_19 float32 = float32(value_18)
-	hit.X = value_19
-	var value_20 int32 = y
-	var value_21 int32 = height
-	var value_22 int32 = 2
-	var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 4))
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_23), 32, true, 1))
-	var value_25 int32 = hit_height
-	var value_26 int32 = 2
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 4))
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_27), 32, true, 2))
-	var value_29 float32 = float32(value_28)
-	hit.Y = value_29
-	var value_30 int32 = hit_width
-	var value_31 float32 = float32(value_30)
-	hit.Width = value_31
-	var value_32 int32 = hit_height
-	var value_33 float32 = float32(value_32)
-	hit.Height = value_33
-	var value_34 Rectangle = hit
-	return value_34
+	var value_0 int32 = int32(number_runtime_bits(uint64(x), uint64((int32(number_runtime_bits(uint64(width), uint64(2), 32, true, 4)))), 32, true, 1))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(hit_width), uint64(2), 32, true, 4)))), 32, true, 2))
+	hit.X = float32(value_1)
+	var value_2 int32 = int32(number_runtime_bits(uint64(y), uint64((int32(number_runtime_bits(uint64(height), uint64(2), 32, true, 4)))), 32, true, 1))
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64((int32(number_runtime_bits(uint64(hit_height), uint64(2), 32, true, 4)))), 32, true, 2))
+	hit.Y = float32(value_3)
+	hit.Width = float32(hit_width)
+	hit.Height = float32(hit_height)
+	return hit
 }
 
 func Slider_SliderHorizontalEditorLayoutFor(x int32, y int32, width int32, min_touch_height int32, scale float32, track StyleFrame, thumb StyleFrame) SliderEditorLayout {
 	var layout SliderEditorLayout = SliderEditorLayout{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = width
-	var value_5 StyleFrame = track
-	var value_6 float32 = scale
-	var value_7 int32 = Slider_SliderMinimumLengthForStyle(value_5, value_6)
-	var value_8 bool = value_4 < value_7
-	if value_8 {
-		var value_9 StyleFrame = track
-		var value_10 float32 = scale
-		var value_11 int32 = Slider_SliderMinimumLengthForStyle(value_9, value_10)
-		width = value_11
+	var value_0 int32 = Slider_SliderMinimumLengthForStyle(track, scale)
+	if width < value_0 {
+		var value_1 int32 = Slider_SliderMinimumLengthForStyle(track, scale)
+		width = value_1
 	}
-	var value_12 StyleFrame = track
-	var value_13 float32 = scale
-	var value_14 int32 = Slider_SliderTrackCenterOffsetForStyle(value_12, value_13)
-	var center_offset int32 = value_14
-	var value_15 int32 = center_offset
-	var value_16 int32 = 2
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 3))
-	var editor_height int32 = value_17
-	var value_18 int32 = y
-	var value_19 int32 = center_offset
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-	var track_y int32 = value_20
-	var value_21 StyleFrame = thumb
-	var value_22 float32 = scale
-	var value_23 int32 = Slider_SliderThumbSizeForStyle(value_21, value_22)
-	var thumb_height int32 = value_23
-	var value_24 bool = false
-	var value_25 StyleFrame = track
-	var value_26 float32 = scale
-	var value_27 int32 = Slider_SliderTrackSizeForStyle(value_24, value_25, value_26)
-	var track_height int32 = value_27
-	var value_28 int32 = track_y
-	var value_29 int32 = thumb_height
-	var value_30 int32 = track_height
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 2))
-	var value_32 int32 = 2
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 4))
-	var value_34 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_33), 32, true, 2))
-	var thumb_y int32 = value_34
-	var value_35 int32 = x
-	var value_36 float32 = float32(value_35)
-	layout.EditorBounds.X = value_36
-	var value_37 int32 = y
-	var value_38 float32 = float32(value_37)
-	layout.EditorBounds.Y = value_38
-	var value_39 int32 = width
-	var value_40 float32 = float32(value_39)
-	layout.EditorBounds.Width = value_40
-	var value_41 int32 = editor_height
-	var value_42 float32 = float32(value_41)
-	layout.EditorBounds.Height = value_42
-	var value_43 int32 = x
-	var value_44 int32 = thumb_y
-	var value_45 int32 = width
-	var value_46 int32 = thumb_height
-	var value_47 int32 = width
-	var value_48 int32 = min_touch_height
-	var value_49 Rectangle = Slider_SliderCenteredHitBounds(value_43, value_44, value_45, value_46, value_47, value_48)
-	layout.HitBounds = value_49
-	var value_50 int32 = x
-	var value_51 float32 = float32(value_50)
-	layout.PaintBounds.X = value_51
-	var value_52 int32 = thumb_y
-	var value_53 float32 = float32(value_52)
-	layout.PaintBounds.Y = value_53
-	var value_54 int32 = width
-	var value_55 float32 = float32(value_54)
-	layout.PaintBounds.Width = value_55
-	var value_56 int32 = thumb_height
-	var value_57 float32 = float32(value_56)
-	layout.PaintBounds.Height = value_57
-	var value_58 SliderEditorLayout = layout
-	return value_58
+	var value_2 int32 = Slider_SliderTrackCenterOffsetForStyle(track, scale)
+	var center_offset int32 = value_2
+	var editor_height int32 = (int32(number_runtime_bits(uint64(center_offset), uint64(2), 32, true, 3)))
+	var track_y int32 = (int32(number_runtime_bits(uint64(y), uint64(center_offset), 32, true, 1)))
+	var value_3 int32 = Slider_SliderThumbSizeForStyle(thumb, scale)
+	var thumb_height int32 = value_3
+	var value_4 int32 = Slider_SliderTrackSizeForStyle(false, track, scale)
+	var track_height int32 = value_4
+	var value_5 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(thumb_height), uint64(track_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	var thumb_y int32 = (int32(number_runtime_bits(uint64(track_y), uint64(value_5), 32, true, 2)))
+	layout.EditorBounds.X = float32(x)
+	layout.EditorBounds.Y = float32(y)
+	layout.EditorBounds.Width = float32(width)
+	layout.EditorBounds.Height = float32(editor_height)
+	var value_6 Rectangle = Slider_SliderCenteredHitBounds(x, thumb_y, width, thumb_height, width, min_touch_height)
+	layout.HitBounds = value_6
+	layout.PaintBounds.X = float32(x)
+	layout.PaintBounds.Y = float32(thumb_y)
+	layout.PaintBounds.Width = float32(width)
+	layout.PaintBounds.Height = float32(thumb_height)
+	return layout
 }
 
 func Slider_SliderVerticalEditorLayoutFor(center_x int32, y int32, height int32, min_touch_width int32, scale float32, track StyleFrame, thumb StyleFrame) SliderEditorLayout {
 	var layout SliderEditorLayout = SliderEditorLayout{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = height
-	var value_5 StyleFrame = track
-	var value_6 float32 = scale
-	var value_7 int32 = Slider_SliderMinimumLengthForStyle(value_5, value_6)
-	var value_8 bool = value_4 < value_7
-	if value_8 {
-		var value_9 StyleFrame = track
-		var value_10 float32 = scale
-		var value_11 int32 = Slider_SliderMinimumLengthForStyle(value_9, value_10)
-		height = value_11
+	var value_0 int32 = Slider_SliderMinimumLengthForStyle(track, scale)
+	if height < value_0 {
+		var value_1 int32 = Slider_SliderMinimumLengthForStyle(track, scale)
+		height = value_1
 	}
-	var value_12 StyleFrame = track
-	var value_13 StyleFrame = thumb
-	var value_14 float32 = scale
-	var value_15 int32 = Slider_SliderVerticalEditorWidthForStyle(value_12, value_13, value_14)
-	var editor_width int32 = value_15
-	var value_16 bool = true
-	var value_17 StyleFrame = track
-	var value_18 float32 = scale
-	var value_19 int32 = Slider_SliderTrackSizeForStyle(value_16, value_17, value_18)
-	var track_width int32 = value_19
-	var value_20 StyleFrame = thumb
-	var value_21 float32 = scale
-	var value_22 int32 = Slider_SliderThumbSizeForStyle(value_20, value_21)
-	var thumb_width int32 = value_22
-	var value_23 int32 = center_x
-	var value_24 int32 = track_width
-	var value_25 int32 = 2
-	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 4))
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_26), 32, true, 2))
-	var track_x int32 = value_27
-	var value_28 int32 = center_x
-	var value_29 int32 = editor_width
-	var value_30 int32 = 2
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 4))
-	var value_32 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_31), 32, true, 2))
-	var value_33 float32 = float32(value_32)
-	layout.EditorBounds.X = value_33
-	var value_34 int32 = y
-	var value_35 float32 = float32(value_34)
-	layout.EditorBounds.Y = value_35
-	var value_36 int32 = editor_width
-	var value_37 float32 = float32(value_36)
-	layout.EditorBounds.Width = value_37
-	var value_38 int32 = height
-	var value_39 float32 = float32(value_38)
-	layout.EditorBounds.Height = value_39
-	var value_40 int32 = track_x
-	var value_41 int32 = y
-	var value_42 int32 = track_width
-	var value_43 int32 = height
-	var value_44 int32 = min_touch_width
-	var value_45 int32 = height
-	var value_46 Rectangle = Slider_SliderCenteredHitBounds(value_40, value_41, value_42, value_43, value_44, value_45)
-	layout.HitBounds = value_46
-	var value_47 int32 = center_x
-	var value_48 int32 = thumb_width
-	var value_49 int32 = 2
-	var value_50 int32 = int32(number_runtime_bits(uint64(value_48), uint64(value_49), 32, true, 4))
-	var value_51 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_50), 32, true, 2))
-	var value_52 float32 = float32(value_51)
-	layout.PaintBounds.X = value_52
-	var value_53 int32 = y
-	var value_54 float32 = float32(value_53)
-	layout.PaintBounds.Y = value_54
-	var value_55 int32 = thumb_width
-	var value_56 float32 = float32(value_55)
-	layout.PaintBounds.Width = value_56
-	var value_57 int32 = height
-	var value_58 float32 = float32(value_57)
-	layout.PaintBounds.Height = value_58
-	var value_59 SliderEditorLayout = layout
-	return value_59
+	var value_2 int32 = Slider_SliderVerticalEditorWidthForStyle(track, thumb, scale)
+	var editor_width int32 = value_2
+	var value_3 int32 = Slider_SliderTrackSizeForStyle(true, track, scale)
+	var track_width int32 = value_3
+	var value_4 int32 = Slider_SliderThumbSizeForStyle(thumb, scale)
+	var thumb_width int32 = value_4
+	var value_5 int32 = int32(number_runtime_bits(uint64(center_x), uint64((int32(number_runtime_bits(uint64(track_width), uint64(2), 32, true, 4)))), 32, true, 2))
+	var track_x int32 = value_5
+	var value_6 int32 = int32(number_runtime_bits(uint64(center_x), uint64((int32(number_runtime_bits(uint64(editor_width), uint64(2), 32, true, 4)))), 32, true, 2))
+	layout.EditorBounds.X = float32(value_6)
+	layout.EditorBounds.Y = float32(y)
+	layout.EditorBounds.Width = float32(editor_width)
+	layout.EditorBounds.Height = float32(height)
+	var value_7 Rectangle = Slider_SliderCenteredHitBounds(track_x, y, track_width, height, min_touch_width, height)
+	layout.HitBounds = value_7
+	var value_8 int32 = int32(number_runtime_bits(uint64(center_x), uint64((int32(number_runtime_bits(uint64(thumb_width), uint64(2), 32, true, 4)))), 32, true, 2))
+	layout.PaintBounds.X = float32(value_8)
+	layout.PaintBounds.Y = float32(y)
+	layout.PaintBounds.Width = float32(thumb_width)
+	layout.PaintBounds.Height = float32(height)
+	return layout
 }
 
 func Slider_SliderCellBoundsFor(bounds Rectangle, count int32, index int32) Rectangle {
 	var cell Rectangle = Rectangle{}
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 Rectangle = cell
-		return value_3
+	if count <= 0 {
+		return cell
 	}
-	var value_4 int32 = index
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		index = value_7
+	if index < 0 {
+		index = 0
 	}
-	var value_8 int32 = index
-	var value_9 int32 = count
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		index = value_13
+	if index >= count {
+		index = (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 	}
-	var value_14 float32 = bounds.X
-	var value_15 float32 = bounds.Width
-	var value_16 int32 = index
-	var value_17 float32 = float32(value_16)
-	var value_18 float32 = value_15 * value_17
-	var value_19 int32 = count
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 / value_20
-	var value_22 float32 = value_14 + value_21
-	cell.X = value_22
-	var value_23 float32 = bounds.Y
-	cell.Y = value_23
-	var value_24 float32 = bounds.Width
-	var value_25 int32 = count
-	var value_26 float32 = float32(value_25)
-	var value_27 float32 = value_24 / value_26
-	cell.Width = value_27
-	var value_28 float32 = bounds.Height
-	cell.Height = value_28
-	var value_29 Rectangle = cell
-	return value_29
+	cell.X = (bounds.X + ((bounds.Width * float32(index)) / float32(count)))
+	cell.Y = bounds.Y
+	cell.Width = (bounds.Width / float32(count))
+	cell.Height = bounds.Height
+	return cell
 }
 
 func Slider_SliderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_14 = value_17
+		value_2 = value_3
 	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
+	if value_2 {
+		value = fallback
 	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-	return value_25
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func Slider_SliderMetricFloat(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_14 = value_17
+		value_2 = value_3
 	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
+	if value_2 {
+		value = fallback
 	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	return value_24
+	return (value * scale)
 }
 
 func Slider_SliderMinimumLengthForStyle(track StyleFrame, scale float32) int32 {
 	var value_0 uint32 = track.Value.Fields
-	var value_1 int32 = int32(StylePaddingX)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = track.Value.PaddingX
-	var value_4 float32 = 32.0
-	var value_5 float32 = scale
-	var value_6 bool = false
-	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = track.Value.PaddingX
+	var value_3 float32 = 32.0
+	var value_4 int32 = Slider_SliderMetric(value_0, value_1, value_2, value_3, scale, false)
+	return value_4
 }
 
 func Slider_SliderThumbSizeForStyle(thumb StyleFrame, scale float32) int32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StyleIconSize)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.IconSize
-	var value_4 float32 = 22.0
-	var value_5 float32 = scale
-	var value_6 bool = false
-	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.IconSize
+	var value_3 float32 = 22.0
+	var value_4 int32 = Slider_SliderMetric(value_0, value_1, value_2, value_3, scale, false)
+	return value_4
 }
 
 func Slider_SliderTrackSizeForStyle(vertical bool, track StyleFrame, scale float32) int32 {
-	var value_0 bool = vertical
-	if value_0 {
-		var value_1 uint32 = track.Value.Fields
-		var value_2 int32 = int32(StyleIconSize)
-		var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-		var value_4 float32 = track.Value.IconSize
-		var value_5 float32 = 8.0
-		var value_6 float32 = scale
-		var value_7 bool = false
-		var value_8 int32 = Slider_SliderMetric(value_1, value_3, value_4, value_5, value_6, value_7)
-		return value_8
+	if vertical {
+		var value_0 uint32 = track.Value.Fields
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+		var value_2 float32 = track.Value.IconSize
+		var value_3 float32 = 8.0
+		var value_4 int32 = Slider_SliderMetric(value_0, value_1, value_2, value_3, scale, false)
+		return value_4
 	}
-	var value_9 uint32 = track.Value.Fields
-	var value_10 int32 = int32(StylePaddingY)
-	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
-	var value_12 float32 = track.Value.PaddingY
-	var value_13 float32 = 6.0
-	var value_14 float32 = scale
-	var value_15 bool = false
-	var value_16 int32 = Slider_SliderMetric(value_9, value_11, value_12, value_13, value_14, value_15)
-	return value_16
+	var value_5 uint32 = track.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_7 float32 = track.Value.PaddingY
+	var value_8 float32 = 6.0
+	var value_9 int32 = Slider_SliderMetric(value_5, value_6, value_7, value_8, scale, false)
+	return value_9
 }
 
 func Slider_SliderTrackCenterOffsetForStyle(track StyleFrame, scale float32) int32 {
 	var value_0 uint32 = track.Value.Fields
-	var value_1 int32 = int32(StyleContentOffset)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = track.Value.OffsetY
-	var value_4 float32 = 28.0
-	var value_5 float32 = scale
-	var value_6 bool = false
-	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = track.Value.OffsetY
+	var value_3 float32 = 28.0
+	var value_4 int32 = Slider_SliderMetric(value_0, value_1, value_2, value_3, scale, false)
+	return value_4
 }
 
 func Slider_SliderVerticalEditorWidthForStyle(track StyleFrame, thumb StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = track.Value.OffsetX
-	var width float32 = value_4
+	var width float32 = track.Value.OffsetX
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(track.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_1 bool = (value_0 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	if value_1 {
+		value_1 = (width >= 0.0)
+	}
+	if value_1 {
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((width*scale)), 32, true)), uint64(0), 32, true, 0))
+		return value_2
+	}
+	var value_3 int32 = Slider_SliderThumbSizeForStyle(thumb, scale)
+	var thumb_size int32 = value_3
+	var value_4 int32 = Slider_SliderTrackSizeForStyle(true, track, scale)
+	var track_size int32 = value_4
+	var content int32 = thumb_size
+	if track_size > content {
+		content = track_size
+	}
 	var value_5 uint32 = track.Value.Fields
-	var value_6 int32 = int32(StyleContentOffset)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 != value_10
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 float32 = width
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 >= value_14
-		value_12 = value_15
-	}
-	if value_12 {
-		var value_16 float32 = width
-		var value_17 float32 = scale
-		var value_18 float32 = value_16 * value_17
-		var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-		return value_19
-	}
-	var value_20 StyleFrame = thumb
-	var value_21 float32 = scale
-	var value_22 int32 = Slider_SliderThumbSizeForStyle(value_20, value_21)
-	var thumb_size int32 = value_22
-	var value_23 bool = true
-	var value_24 StyleFrame = track
-	var value_25 float32 = scale
-	var value_26 int32 = Slider_SliderTrackSizeForStyle(value_23, value_24, value_25)
-	var track_size int32 = value_26
-	var value_27 int32 = thumb_size
-	var content int32 = value_27
-	var value_28 int32 = track_size
-	var value_29 int32 = content
-	var value_30 bool = value_28 > value_29
-	if value_30 {
-		var value_31 int32 = track_size
-		content = value_31
-	}
-	var value_32 int32 = content
-	var value_33 uint32 = track.Value.Fields
-	var value_34 int32 = int32(StyleGap)
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
-	var value_36 float32 = track.Value.Gap
-	var value_37 float32 = 14.0
-	var value_38 float32 = scale
-	var value_39 bool = true
-	var value_40 int32 = Slider_SliderMetric(value_33, value_35, value_36, value_37, value_38, value_39)
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_40), 32, true, 1))
-	return value_41
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_7 float32 = track.Value.Gap
+	var value_8 float32 = 14.0
+	var value_9 int32 = Slider_SliderMetric(value_5, value_6, value_7, value_8, scale, true)
+	return (int32(number_runtime_bits(uint64(content), uint64(value_9), 32, true, 1)))
 }
 
 func Slider_SliderGlowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StyleGap)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.Gap
-	var value_4 float32 = 8.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.Gap
+	var value_3 float32 = 8.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderThumbShadowOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StyleContentOffset)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.OffsetX
-	var value_4 float32 = 0.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.OffsetX
+	var value_3 float32 = 0.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderThumbShadowOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StyleContentOffset)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.OffsetY
-	var value_4 float32 = 2.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.OffsetY
+	var value_3 float32 = 2.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderThumbShadowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StyleBorderWidth)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.BorderWidth
-	var value_4 float32 = 1.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
-	return value_7
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.BorderWidth
+	var value_3 float32 = 1.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderThumbHighlightOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StylePaddingX)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.PaddingX
-	var value_4 float32 = 3.0
-	var value_5 float32 = -value_4
-	var value_6 float32 = scale
-	var value_7 bool = true
-	var value_8 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_5, value_6, value_7)
-	return value_8
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.PaddingX
+	var value_3 float32 = -3.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderThumbHighlightOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
 	var value_0 uint32 = thumb.Value.Fields
-	var value_1 int32 = int32(StylePaddingY)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = thumb.Value.PaddingY
-	var value_4 float32 = 4.0
-	var value_5 float32 = -value_4
-	var value_6 float32 = scale
-	var value_7 bool = true
-	var value_8 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_5, value_6, value_7)
-	return value_8
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_2 float32 = thumb.Value.PaddingY
+	var value_3 float32 = -4.0
+	var value_4 float32 = Slider_SliderMetricFloat(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func Slider_SliderClampRatio(ratio float32) float32 {
-	var value_0 float32 = ratio
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if ratio < 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = ratio
-	var value_5 float32 = 1.0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		return value_7
+	if ratio > 1.0 {
+		return 1.0
 	}
-	var value_8 float32 = ratio
-	return value_8
+	return ratio
 }
 
 func Slider_SliderPointerRatio(pointer float32, origin float32, length float32, inverted bool) float32 {
-	var value_0 float32 = length
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if length <= 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = pointer
-	var value_5 float32 = origin
-	var value_6 float32 = value_4 - value_5
-	var value_7 float32 = length
-	var value_8 float32 = value_6 / value_7
-	var ratio float32 = value_8
-	var value_9 bool = inverted
-	if value_9 {
-		var value_10 float32 = 1.0
-		var value_11 float32 = ratio
-		var value_12 float32 = value_10 - value_11
-		ratio = value_12
+	var ratio float32 = ((pointer - origin) / length)
+	if inverted {
+		ratio = (1.0 - ratio)
 	}
-	var value_13 float32 = ratio
-	var value_14 float32 = Slider_SliderClampRatio(value_13)
-	return value_14
+	var value_0 float32 = Slider_SliderClampRatio(ratio)
+	return value_0
 }
 
 func Slider_SliderRatio(value float32, minimum float32, maximum float32) float32 {
-	var value_0 float32 = maximum
-	var value_1 float32 = minimum
-	var value_2 float32 = value_0 - value_1
-	var span float32 = value_2
-	var value_3 float32 = span
-	var value_4 float32 = 0.0
-	var value_5 bool = value_3 <= value_4
-	if value_5 {
-		var value_6 float32 = 0.0
-		return value_6
+	var span float32 = (maximum - minimum)
+	if span <= 0.0 {
+		return 0.0
 	}
-	var value_7 float32 = value
-	var value_8 float32 = minimum
-	var value_9 float32 = value_7 - value_8
-	var value_10 float32 = span
-	var value_11 float32 = value_9 / value_10
-	var value_12 float32 = Slider_SliderClampRatio(value_11)
-	return value_12
+	var value_0 float32 = ((value - minimum) / span)
+	var value_1 float32 = Slider_SliderClampRatio(value_0)
+	return value_1
 }
 
 func Slider_SliderValue(minimum float32, maximum float32, ratio float32) float32 {
-	var value_0 float32 = maximum
-	var value_1 float32 = minimum
-	var value_2 float32 = value_0 - value_1
-	var span float32 = value_2
-	var value_3 float32 = span
-	var value_4 float32 = 0.0
-	var value_5 bool = value_3 <= value_4
-	if value_5 {
-		var value_6 float32 = minimum
-		return value_6
+	var span float32 = (maximum - minimum)
+	if span <= 0.0 {
+		return minimum
 	}
-	var value_7 float32 = minimum
-	var value_8 float32 = ratio
-	var value_9 float32 = Slider_SliderClampRatio(value_8)
-	var value_10 float32 = span
-	var value_11 float32 = value_9 * value_10
-	var value_12 float32 = value_7 + value_11
-	return value_12
+	var value_0 float32 = Slider_SliderClampRatio(ratio)
+	return (minimum + (value_0 * span))
 }
 
 func Slider_SliderKeyboardShouldRun(focus_active bool, keyboard_enabled bool, popup_captures bool) bool {
 	var value_0 bool = focus_active
+	if value_0 {
+		value_0 = keyboard_enabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+		value_1 = !popup_captures
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = popup_captures
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	return value_3
+	return value_1
 }
 
 func Slider_SliderKeyboardDirectionFor(vertical bool, up bool, down bool, right bool, left bool) int32 {
-	var value_0 bool = vertical
-	if value_0 {
-		var value_1 bool = up
-		if value_1 {
-			var value_2 int32 = 1
-			return value_2
+	if vertical {
+		if up {
+			return 1
 		}
-		var value_3 bool = down
-		if value_3 {
-			var value_4 int32 = -1
-			return value_4
+		if down {
+			return -1
 		}
 	} else {
-		var value_5 bool = right
-		if value_5 {
-			var value_6 int32 = 1
-			return value_6
+		if right {
+			return 1
 		}
-		var value_7 bool = left
-		if value_7 {
-			var value_8 int32 = -1
-			return value_8
+		if left {
+			return -1
 		}
 	}
-	var value_9 int32 = 0
-	return value_9
+	return 0
 }
 
 func Slider_SliderKeyboardValue(value float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) SliderStep {
 	var result SliderStep = SliderStep{}
-	var value_0 float32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 float32 = maximum
-	var value_3 float32 = minimum
-	var value_4 float32 = value_2 - value_3
-	var span float32 = value_4
-	var value_5 float32 = span
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 SliderStep = result
-		return value_8
+	result.Value = value
+	result.Changed = false
+	var span float32 = (maximum - minimum)
+	if span <= 0.0 {
+		return result
 	}
-	var value_9 float32 = value
-	var next float32 = value_9
-	var value_10 bool = home
-	if value_10 {
-		var value_11 float32 = minimum
-		next = value_11
+	var next float32 = value
+	if home {
+		next = minimum
 	} else {
-		var value_12 bool = end
-		if value_12 {
-			var value_13 float32 = maximum
-			next = value_13
+		if end {
+			next = maximum
 		} else {
-			var value_14 int32 = direction
-			var value_15 int32 = 0
-			var value_16 bool = value_14 != value_15
-			if value_16 {
-				var value_17 float32 = span
-				var value_18 float32 = 0.01
-				var value_19 float32 = value_17 * value_18
-				var step float32 = value_19
-				var value_20 bool = alt
-				if value_20 {
-					var value_21 float32 = step
-					var value_22 float32 = 0.1
-					var value_23 float32 = value_21 * value_22
-					step = value_23
+			if direction != 0 {
+				var step float32 = (span * 0.01)
+				if alt {
+					step = (step * 0.1)
 				}
-				var value_24 bool = shift
-				if value_24 {
-					var value_25 float32 = step
-					var value_26 float32 = 10.0
-					var value_27 float32 = value_25 * value_26
-					step = value_27
+				if shift {
+					step = (step * 10.0)
 				}
-				var value_28 float32 = next
-				var value_29 int32 = direction
-				var value_30 float32 = float32(value_29)
-				var value_31 float32 = step
-				var value_32 float32 = value_30 * value_31
-				var value_33 float32 = value_28 + value_32
-				next = value_33
-				var value_34 float32 = next
-				var value_35 float32 = minimum
-				var value_36 bool = value_34 < value_35
-				if value_36 {
-					var value_37 float32 = minimum
-					next = value_37
+				next = (next + (float32(direction) * step))
+				if next < minimum {
+					next = minimum
 				}
-				var value_38 float32 = next
-				var value_39 float32 = maximum
-				var value_40 bool = value_38 > value_39
-				if value_40 {
-					var value_41 float32 = maximum
-					next = value_41
+				if next > maximum {
+					next = maximum
 				}
 			}
 		}
 	}
-	var value_42 float32 = next
-	result.Value = value_42
-	var value_43 float32 = next
-	var value_44 float32 = value
-	var value_45 bool = value_43 != value_44
-	result.Changed = value_45
-	var value_46 SliderStep = result
-	return value_46
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Slider_SliderDiscreteRatio(value int32, minimum int32, maximum int32) float32 {
-	var value_0 int32 = maximum
-	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
-	var value_2 int32 = minimum
-	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
-	var value_4 int64 = int64(number_runtime_bits(uint64(value_1), uint64(value_3), 64, true, 2))
-	var span int64 = value_4
-	var value_5 int64 = span
-	var value_6 int64 = 0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 0.0
-		return value_8
+	var value_0 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0))), uint64(int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))), 64, true, 2))
+	var span int64 = value_0
+	if span <= 0 {
+		return 0.0
 	}
-	var value_9 int32 = value
-	var value_10 int64 = int64(number_runtime_bits(uint64(value_9), uint64(0), 64, true, 0))
-	var value_11 int32 = minimum
-	var value_12 int64 = int64(number_runtime_bits(uint64(value_11), uint64(0), 64, true, 0))
-	var value_13 int64 = int64(number_runtime_bits(uint64(value_10), uint64(value_12), 64, true, 2))
-	var value_14 float32 = float32(value_13)
-	var value_15 int64 = span
-	var value_16 float32 = float32(value_15)
-	var value_17 float32 = value_14 / value_16
-	var value_18 float32 = Slider_SliderClampRatio(value_17)
-	return value_18
+	var value_1 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(value), uint64(0), 64, true, 0))), uint64(int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))), 64, true, 2))
+	var value_2 float32 = (float32(value_1) / float32(span))
+	var value_3 float32 = Slider_SliderClampRatio(value_2)
+	return value_3
 }
 
 func Slider_SliderDiscreteValue(minimum int32, maximum int32, ratio float32) int32 {
-	var value_0 int32 = maximum
-	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
-	var value_2 int32 = minimum
-	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
-	var value_4 int64 = int64(number_runtime_bits(uint64(value_1), uint64(value_3), 64, true, 2))
-	var span int64 = value_4
-	var value_5 int64 = span
-	var value_6 int64 = 0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 int32 = minimum
-		return value_8
+	var value_0 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0))), uint64(int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))), 64, true, 2))
+	var span int64 = value_0
+	if span <= 0 {
+		return minimum
 	}
-	var value_9 int32 = minimum
-	var value_10 int64 = int64(number_runtime_bits(uint64(value_9), uint64(0), 64, true, 0))
-	var value_11 float32 = ratio
-	var value_12 float32 = Slider_SliderClampRatio(value_11)
-	var value_13 int64 = span
-	var value_14 float32 = float32(value_13)
-	var value_15 float32 = value_12 * value_14
-	var value_16 float32 = 0.5
-	var value_17 float32 = value_15 + value_16
-	var value_18 int64 = int64(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 64, true)), uint64(0), 64, true, 0))
-	var value_19 int64 = int64(number_runtime_bits(uint64(value_10), uint64(value_18), 64, true, 1))
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_19), uint64(0), 32, true, 0))
-	return value_20
+	var value_1 float32 = Slider_SliderClampRatio(ratio)
+	var value_2 int64 = int64(number_runtime_bits(uint64(number_runtime_float(float64(((value_1*float32(span))+0.5)), 64, true)), uint64(0), 64, true, 0))
+	var value_3 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))), uint64(value_2), 64, true, 1))
+	return int32(number_runtime_bits(uint64(value_3), uint64(0), 32, true, 0))
 }
 
 func Slider_SliderDiscretePointerValue(pointer float32, origin float32, length float32, minimum int32, maximum int32, inverted bool) int32 {
-	var value_0 int32 = minimum
-	var value_1 int32 = maximum
-	var value_2 float32 = pointer
-	var value_3 float32 = origin
-	var value_4 float32 = length
-	var value_5 bool = inverted
-	var value_6 float32 = Slider_SliderPointerRatio(value_2, value_3, value_4, value_5)
-	var value_7 int32 = Slider_SliderDiscreteValue(value_0, value_1, value_6)
-	return value_7
+	var value_0 float32 = Slider_SliderPointerRatio(pointer, origin, length, inverted)
+	var value_1 int32 = Slider_SliderDiscreteValue(minimum, maximum, value_0)
+	return value_1
 }
 
 func Slider_SliderPointerDecisionFor(active bool, inside bool, captured bool, internal_captured bool, pressed bool, down bool, released bool, vertical bool, pointer_owner_none bool, pointer_owner_matches bool, dragging bool, drag_horizontal bool) SliderPointerDecision {
 	var decision SliderPointerDecision = SliderPointerDecision{}
 	var value_0 bool = inside
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = !captured
+	}
+	decision.Hovered = value_0
+	var value_1 bool = active
 	if value_1 {
-		var value_2 bool = captured
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !down
 	}
-	decision.Hovered = value_1
-	var value_4 bool = active
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = down
-		var value_7 bool = !value_6
-		value_5 = value_7
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !released
 	}
-	var value_8 bool = value_5
+	decision.ClearActive = value_2
+	var value_3 bool = decision.Hovered
+	if value_3 {
+		value_3 = pressed
+	}
+	decision.StartActive = value_3
+	var value_4 bool = decision.StartActive
+	if value_4 {
+		value_4 = vertical
+	}
+	decision.SetPointerOwner = value_4
+	var value_5 bool = active
+	if !value_5 {
+		value_5 = decision.StartActive
+	}
+	var effective_active bool = value_5
+	var value_6 bool = effective_active
+	if value_6 {
+		value_6 = !vertical
+	}
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = pointer_owner_none
+	}
+	var value_8 bool = value_7
 	if value_8 {
-		var value_9 bool = released
-		var value_10 bool = !value_9
-		value_8 = value_10
+		value_8 = dragging
 	}
-	decision.ClearActive = value_8
-	var value_11 bool = decision.Hovered
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 bool = pressed
-		value_12 = value_13
-	}
-	decision.StartActive = value_12
-	var value_14 bool = decision.StartActive
-	var value_15 bool = value_14
-	if value_15 {
-		var value_16 bool = vertical
-		value_15 = value_16
-	}
-	decision.SetPointerOwner = value_15
-	var value_17 bool = active
-	var value_18 bool = value_17
-	if !value_18 {
-		var value_19 bool = decision.StartActive
-		value_18 = value_19
-	}
-	var effective_active bool = value_18
-	var value_20 bool = effective_active
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 bool = vertical
-		var value_23 bool = !value_22
-		value_21 = value_23
-	}
-	var value_24 bool = value_21
-	if value_24 {
-		var value_25 bool = pointer_owner_none
-		value_24 = value_25
-	}
-	var value_26 bool = value_24
-	if value_26 {
-		var value_27 bool = dragging
-		value_26 = value_27
-	}
-	if value_26 {
-		var value_28 bool = drag_horizontal
-		if value_28 {
-			var value_29 bool = true
-			decision.TakeHorizontalOwner = value_29
+	if value_8 {
+		if drag_horizontal {
+			decision.TakeHorizontalOwner = true
 		} else {
-			var value_30 bool = true
-			decision.CancelActive = value_30
+			decision.CancelActive = true
 		}
 	}
-	var value_31 bool = effective_active
-	var value_32 bool = value_31
-	if value_32 {
-		var value_33 bool = internal_captured
-		var value_34 bool = !value_33
-		value_32 = value_34
+	var value_9 bool = effective_active
+	if value_9 {
+		value_9 = !internal_captured
 	}
-	var can_update bool = value_32
-	var value_35 bool = vertical
-	if value_35 {
-		var value_36 bool = can_update
-		var value_37 bool = value_36
-		if value_37 {
-			var value_38 bool = down
-			var value_39 bool = value_38
-			if !value_39 {
-				var value_40 bool = released
-				value_39 = value_40
+	var can_update bool = value_9
+	if vertical {
+		var value_10 bool = can_update
+		if value_10 {
+			var value_11 bool = down
+			if !value_11 {
+				value_11 = released
 			}
-			value_37 = value_39
+			value_10 = value_11
 		}
-		decision.UpdateValue = value_37
+		decision.UpdateValue = value_10
 	} else {
-		var value_41 bool = pointer_owner_matches
-		var value_42 bool = value_41
-		if !value_42 {
-			var value_43 bool = decision.TakeHorizontalOwner
-			value_42 = value_43
+		var value_12 bool = pointer_owner_matches
+		if !value_12 {
+			value_12 = decision.TakeHorizontalOwner
 		}
-		var effective_owner_matches bool = value_42
-		var value_44 bool = can_update
-		var value_45 bool = value_44
-		if value_45 {
-			var value_46 bool = down
-			var value_47 bool = value_46
-			if value_47 {
-				var value_48 bool = effective_owner_matches
-				value_47 = value_48
+		var effective_owner_matches bool = value_12
+		var value_13 bool = can_update
+		if value_13 {
+			var value_14 bool = down
+			if value_14 {
+				value_14 = effective_owner_matches
 			}
-			var value_49 bool = value_47
-			if !value_49 {
-				var value_50 bool = released
-				value_49 = value_50
+			var value_15 bool = value_14
+			if !value_15 {
+				value_15 = released
 			}
-			value_45 = value_49
+			value_13 = value_15
 		}
-		decision.UpdateValue = value_45
+		decision.UpdateValue = value_13
 	}
-	var value_51 bool = effective_active
-	var value_52 bool = value_51
-	if value_52 {
-		var value_53 bool = released
-		value_52 = value_53
+	var value_16 bool = effective_active
+	if value_16 {
+		value_16 = released
 	}
-	decision.FinishActive = value_52
-	var value_54 SliderPointerDecision = decision
-	return value_54
+	decision.FinishActive = value_16
+	return decision
 }
 
 func Slider_SliderRatioDecisionFor(any_active bool, active bool, hot bool, disabled bool, owner_captured bool, pressed bool, down bool, released bool) SliderRatioDecision {
 	var decision SliderRatioDecision = SliderRatioDecision{}
 	var value_0 bool = any_active
+	if value_0 {
+		value_0 = owner_captured
+	}
 	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = owner_captured
+	if !value_1 {
+		var value_2 bool = active
+		if value_2 {
+			value_2 = disabled
+		}
 		value_1 = value_2
 	}
-	var value_3 bool = value_1
-	if !value_3 {
-		var value_4 bool = active
-		var value_5 bool = value_4
-		if value_5 {
-			var value_6 bool = disabled
-			value_5 = value_6
+	decision.ClearActive = value_1
+	var value_3 bool = hot
+	if value_3 {
+		value_3 = pressed
+	}
+	decision.StartActive = value_3
+	var value_4 bool = active
+	if value_4 {
+		value_4 = !decision.ClearActive
+	}
+	var value_5 bool = value_4
+	if !value_5 {
+		value_5 = decision.StartActive
+	}
+	var effective_active bool = value_5
+	var value_6 bool = effective_active
+	if value_6 {
+		value_6 = !disabled
+	}
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = pressed
+		if !value_8 {
+			value_8 = down
 		}
-		value_3 = value_5
+		value_7 = value_8
 	}
-	decision.ClearActive = value_3
-	var value_7 bool = hot
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = pressed
-		value_8 = value_9
+	decision.UpdateRatio = value_7
+	var value_9 bool = effective_active
+	if value_9 {
+		value_9 = released
 	}
-	decision.StartActive = value_8
-	var value_10 bool = active
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = decision.ClearActive
-		var value_13 bool = !value_12
-		value_11 = value_13
-	}
-	var value_14 bool = value_11
-	if !value_14 {
-		var value_15 bool = decision.StartActive
-		value_14 = value_15
-	}
-	var effective_active bool = value_14
-	var value_16 bool = effective_active
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = disabled
-		var value_19 bool = !value_18
-		value_17 = value_19
-	}
-	var value_20 bool = value_17
-	if value_20 {
-		var value_21 bool = pressed
-		var value_22 bool = value_21
-		if !value_22 {
-			var value_23 bool = down
-			value_22 = value_23
-		}
-		value_20 = value_22
-	}
-	decision.UpdateRatio = value_20
-	var value_24 bool = effective_active
-	var value_25 bool = value_24
-	if value_25 {
-		var value_26 bool = released
-		value_25 = value_26
-	}
-	decision.FinishActive = value_25
-	var value_27 SliderRatioDecision = decision
-	return value_27
+	decision.FinishActive = value_9
+	return decision
 }
 
 func Slider_SliderDiscreteKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderDiscreteStep {
 	var result SliderDiscreteStep = SliderDiscreteStep{}
-	var value_0 int32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 int32 = maximum
-	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
-	var value_4 int32 = minimum
-	var value_5 int64 = int64(number_runtime_bits(uint64(value_4), uint64(0), 64, true, 0))
-	var value_6 int64 = int64(number_runtime_bits(uint64(value_3), uint64(value_5), 64, true, 2))
-	var span int64 = value_6
-	var value_7 int64 = span
-	var value_8 int64 = 0
-	var value_9 bool = value_7 <= value_8
-	if value_9 {
-		var value_10 SliderDiscreteStep = result
-		return value_10
+	result.Value = value
+	result.Changed = false
+	var value_0 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0))), uint64(int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))), 64, true, 2))
+	var span int64 = value_0
+	if span <= 0 {
+		return result
 	}
-	var value_11 int32 = value
-	var value_12 int64 = int64(number_runtime_bits(uint64(value_11), uint64(0), 64, true, 0))
-	var next int64 = value_12
-	var value_13 bool = home
-	if value_13 {
-		var value_14 int32 = minimum
-		var value_15 int64 = int64(number_runtime_bits(uint64(value_14), uint64(0), 64, true, 0))
-		next = value_15
+	var next int64 = int64(number_runtime_bits(uint64(value), uint64(0), 64, true, 0))
+	if home {
+		next = int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))
 	} else {
-		var value_16 bool = end
-		if value_16 {
-			var value_17 int32 = maximum
-			var value_18 int64 = int64(number_runtime_bits(uint64(value_17), uint64(0), 64, true, 0))
-			next = value_18
+		if end {
+			next = int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0))
 		} else {
-			var value_19 int32 = direction
-			var value_20 int32 = 0
-			var value_21 bool = value_19 != value_20
-			if value_21 {
-				var value_22 int64 = 1
-				var step int64 = value_22
-				var value_23 int64 = span
-				var value_24 int64 = 100
-				var value_25 bool = value_23 > value_24
-				if value_25 {
-					var value_26 int64 = span
-					var value_27 int64 = 50
-					var value_28 int64 = int64(number_runtime_bits(uint64(value_26), uint64(value_27), 64, true, 1))
-					var value_29 int64 = 100
-					var value_30 int64 = int64(number_runtime_bits(uint64(value_28), uint64(value_29), 64, true, 4))
-					step = value_30
+			if direction != 0 {
+				var step int64 = 1
+				if span > 100 {
+					var value_1 int64 = int64(number_runtime_bits(uint64((int64(number_runtime_bits(uint64(span), uint64(50), 64, true, 1)))), uint64(100), 64, true, 4))
+					step = value_1
 				}
-				var value_31 bool = alt
-				if value_31 {
-					var value_32 int64 = step
-					var value_33 int64 = 10
-					var value_34 int64 = int64(number_runtime_bits(uint64(value_32), uint64(value_33), 64, true, 4))
-					step = value_34
-					var value_35 int64 = step
-					var value_36 int64 = 1
-					var value_37 bool = value_35 < value_36
-					if value_37 {
-						var value_38 int64 = 1
-						step = value_38
+				if alt {
+					step = (int64(number_runtime_bits(uint64(step), uint64(10), 64, true, 4)))
+					if step < 1 {
+						step = 1
 					}
 				}
-				var value_39 bool = shift
-				if value_39 {
-					var value_40 int64 = step
-					var value_41 int64 = 10
-					var value_42 int64 = int64(number_runtime_bits(uint64(value_40), uint64(value_41), 64, true, 3))
-					step = value_42
+				if shift {
+					step = (int64(number_runtime_bits(uint64(step), uint64(10), 64, true, 3)))
 				}
-				var value_43 int64 = next
-				var value_44 int32 = direction
-				var value_45 int64 = int64(number_runtime_bits(uint64(value_44), uint64(0), 64, true, 0))
-				var value_46 int64 = step
-				var value_47 int64 = int64(number_runtime_bits(uint64(value_45), uint64(value_46), 64, true, 3))
-				var value_48 int64 = int64(number_runtime_bits(uint64(value_43), uint64(value_47), 64, true, 1))
-				next = value_48
-				var value_49 int64 = next
-				var value_50 int32 = minimum
-				var value_51 int64 = int64(number_runtime_bits(uint64(value_50), uint64(0), 64, true, 0))
-				var value_52 bool = value_49 < value_51
-				if value_52 {
-					var value_53 int32 = minimum
-					var value_54 int64 = int64(number_runtime_bits(uint64(value_53), uint64(0), 64, true, 0))
-					next = value_54
+				var value_2 int64 = int64(number_runtime_bits(uint64(int64(number_runtime_bits(uint64(direction), uint64(0), 64, true, 0))), uint64(step), 64, true, 3))
+				next = (int64(number_runtime_bits(uint64(next), uint64(value_2), 64, true, 1)))
+				if next < int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0)) {
+					next = int64(number_runtime_bits(uint64(minimum), uint64(0), 64, true, 0))
 				}
-				var value_55 int64 = next
-				var value_56 int32 = maximum
-				var value_57 int64 = int64(number_runtime_bits(uint64(value_56), uint64(0), 64, true, 0))
-				var value_58 bool = value_55 > value_57
-				if value_58 {
-					var value_59 int32 = maximum
-					var value_60 int64 = int64(number_runtime_bits(uint64(value_59), uint64(0), 64, true, 0))
-					next = value_60
+				if next > int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0)) {
+					next = int64(number_runtime_bits(uint64(maximum), uint64(0), 64, true, 0))
 				}
 			}
 		}
 	}
-	var value_61 int64 = next
-	var value_62 int32 = int32(number_runtime_bits(uint64(value_61), uint64(0), 32, true, 0))
-	result.Value = value_62
-	var value_63 int32 = result.Value
-	var value_64 int32 = value
-	var value_65 bool = value_63 != value_64
-	result.Changed = value_65
-	var value_66 SliderDiscreteStep = result
-	return value_66
+	result.Value = int32(number_runtime_bits(uint64(next), uint64(0), 32, true, 0))
+	result.Changed = (result.Value != value)
+	return result
 }
 
 func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 	var paint SliderPaint = SliderPaint{}
-	var value_0 float32 = spec.Scale
-	var scale float32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+	var scale float32 = spec.Scale
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_5 float32 = spec.Ratio
-	var value_6 float32 = Slider_SliderClampRatio(value_5)
-	var ratio float32 = value_6
-	var value_7 Rectangle = spec.Bounds
-	var bounds Rectangle = value_7
-	var value_8 StyleFrame = spec.Track
-	var value_9 float32 = scale
-	var value_10 int32 = Slider_SliderMinimumLengthForStyle(value_8, value_9)
-	var value_11 float32 = float32(value_10)
-	var min_length float32 = value_11
-	var value_12 StyleFrame = spec.Thumb
-	var value_13 float32 = scale
-	var value_14 int32 = Slider_SliderThumbSizeForStyle(value_12, value_13)
-	var value_15 float32 = float32(value_14)
-	var thumb_size float32 = value_15
-	var value_16 bool = spec.Vertical
-	var value_17 StyleFrame = spec.Track
-	var value_18 float32 = scale
-	var value_19 int32 = Slider_SliderTrackSizeForStyle(value_16, value_17, value_18)
-	var value_20 float32 = float32(value_19)
-	var track_size float32 = value_20
-	var value_21 bool = spec.Vertical
-	if value_21 {
-		var value_22 float32 = bounds.Height
-		var value_23 float32 = min_length
-		var value_24 bool = value_22 < value_23
-		if value_24 {
-			var value_25 float32 = min_length
-			bounds.Height = value_25
+	var value_0 float32 = spec.Ratio
+	var value_1 float32 = Slider_SliderClampRatio(value_0)
+	var ratio float32 = value_1
+	var bounds Rectangle = spec.Bounds
+	var value_2 StyleFrame = spec.Track
+	var value_3 int32 = Slider_SliderMinimumLengthForStyle(value_2, scale)
+	var min_length float32 = float32(value_3)
+	var value_4 StyleFrame = spec.Thumb
+	var value_5 int32 = Slider_SliderThumbSizeForStyle(value_4, scale)
+	var thumb_size float32 = float32(value_5)
+	var value_6 bool = spec.Vertical
+	var value_7 StyleFrame = spec.Track
+	var value_8 int32 = Slider_SliderTrackSizeForStyle(value_6, value_7, scale)
+	var track_size float32 = float32(value_8)
+	if spec.Vertical {
+		if bounds.Height < min_length {
+			bounds.Height = min_length
 		}
-		var value_26 float32 = bounds.Width
-		var value_27 float32 = thumb_size
-		var value_28 bool = value_26 < value_27
-		if value_28 {
-			var value_29 float32 = thumb_size
-			bounds.Width = value_29
+		if bounds.Width < thumb_size {
+			bounds.Width = thumb_size
 		}
-		var value_30 float32 = bounds.X
-		var value_31 float32 = bounds.Width
-		var value_32 float32 = track_size
-		var value_33 float32 = value_31 - value_32
-		var value_34 float32 = 0.5
-		var value_35 float32 = value_33 * value_34
-		var value_36 float32 = value_30 + value_35
-		paint.TrackBounds.X = value_36
-		var value_37 float32 = bounds.Y
-		paint.TrackBounds.Y = value_37
-		var value_38 float32 = track_size
-		paint.TrackBounds.Width = value_38
-		var value_39 float32 = bounds.Height
-		paint.TrackBounds.Height = value_39
-		var value_40 float32 = paint.TrackBounds.Y
-		var value_41 float32 = paint.TrackBounds.Height
-		var value_42 float32 = 1.0
-		var value_43 float32 = ratio
-		var value_44 float32 = value_42 - value_43
-		var value_45 float32 = value_41 * value_44
-		var value_46 float32 = value_40 + value_45
-		var position_y float32 = value_46
-		var value_47 float32 = paint.TrackBounds.X
-		paint.ActiveBounds.X = value_47
-		var value_48 float32 = position_y
-		paint.ActiveBounds.Y = value_48
-		var value_49 float32 = paint.TrackBounds.Width
-		paint.ActiveBounds.Width = value_49
-		var value_50 float32 = paint.TrackBounds.Y
-		var value_51 float32 = paint.TrackBounds.Height
-		var value_52 float32 = value_50 + value_51
-		var value_53 float32 = position_y
-		var value_54 float32 = value_52 - value_53
-		paint.ActiveBounds.Height = value_54
-		var value_55 float32 = paint.TrackBounds.X
-		var value_56 float32 = paint.TrackBounds.Width
-		var value_57 float32 = 0.5
-		var value_58 float32 = value_56 * value_57
-		var value_59 float32 = value_55 + value_58
-		paint.ThumbX = value_59
-		var value_60 float32 = position_y
-		paint.ThumbY = value_60
+		paint.TrackBounds.X = (bounds.X + ((bounds.Width - track_size) * 0.5))
+		paint.TrackBounds.Y = bounds.Y
+		paint.TrackBounds.Width = track_size
+		paint.TrackBounds.Height = bounds.Height
+		var position_y float32 = (paint.TrackBounds.Y + (paint.TrackBounds.Height * (1.0 - ratio)))
+		paint.ActiveBounds.X = paint.TrackBounds.X
+		paint.ActiveBounds.Y = position_y
+		paint.ActiveBounds.Width = paint.TrackBounds.Width
+		paint.ActiveBounds.Height = ((paint.TrackBounds.Y + paint.TrackBounds.Height) - position_y)
+		paint.ThumbX = (paint.TrackBounds.X + (paint.TrackBounds.Width * 0.5))
+		paint.ThumbY = position_y
 	} else {
-		var value_61 float32 = bounds.Width
-		var value_62 float32 = min_length
-		var value_63 bool = value_61 < value_62
-		if value_63 {
-			var value_64 float32 = min_length
-			bounds.Width = value_64
+		if bounds.Width < min_length {
+			bounds.Width = min_length
 		}
-		var value_65 float32 = bounds.Height
-		var value_66 float32 = thumb_size
-		var value_67 bool = value_65 < value_66
-		if value_67 {
-			var value_68 float32 = thumb_size
-			bounds.Height = value_68
+		if bounds.Height < thumb_size {
+			bounds.Height = thumb_size
 		}
-		var value_69 float32 = bounds.X
-		paint.TrackBounds.X = value_69
-		var value_70 float32 = bounds.Y
-		var value_71 float32 = bounds.Height
-		var value_72 float32 = track_size
-		var value_73 float32 = value_71 - value_72
-		var value_74 float32 = 0.5
-		var value_75 float32 = value_73 * value_74
-		var value_76 float32 = value_70 + value_75
-		paint.TrackBounds.Y = value_76
-		var value_77 float32 = bounds.Width
-		paint.TrackBounds.Width = value_77
-		var value_78 float32 = track_size
-		paint.TrackBounds.Height = value_78
-		var value_79 float32 = paint.TrackBounds.X
-		paint.ActiveBounds.X = value_79
-		var value_80 float32 = paint.TrackBounds.Y
-		paint.ActiveBounds.Y = value_80
-		var value_81 float32 = paint.TrackBounds.Width
-		var value_82 float32 = ratio
-		var value_83 float32 = value_81 * value_82
-		paint.ActiveBounds.Width = value_83
-		var value_84 float32 = paint.TrackBounds.Height
-		paint.ActiveBounds.Height = value_84
-		var value_85 float32 = paint.TrackBounds.X
-		var value_86 float32 = paint.TrackBounds.Width
-		var value_87 float32 = ratio
-		var value_88 float32 = value_86 * value_87
-		var value_89 float32 = value_85 + value_88
-		paint.ThumbX = value_89
-		var value_90 float32 = paint.TrackBounds.Y
-		var value_91 float32 = paint.TrackBounds.Height
-		var value_92 float32 = 0.5
-		var value_93 float32 = value_91 * value_92
-		var value_94 float32 = value_90 + value_93
-		paint.ThumbY = value_94
+		paint.TrackBounds.X = bounds.X
+		paint.TrackBounds.Y = (bounds.Y + ((bounds.Height - track_size) * 0.5))
+		paint.TrackBounds.Width = bounds.Width
+		paint.TrackBounds.Height = track_size
+		paint.ActiveBounds.X = paint.TrackBounds.X
+		paint.ActiveBounds.Y = paint.TrackBounds.Y
+		paint.ActiveBounds.Width = (paint.TrackBounds.Width * ratio)
+		paint.ActiveBounds.Height = paint.TrackBounds.Height
+		paint.ThumbX = (paint.TrackBounds.X + (paint.TrackBounds.Width * ratio))
+		paint.ThumbY = (paint.TrackBounds.Y + (paint.TrackBounds.Height * 0.5))
 	}
-	var value_95 Rectangle = bounds
-	paint.Bounds = value_95
-	var value_96 float32 = thumb_size
-	var value_97 float32 = 0.5
-	var value_98 float32 = value_96 * value_97
-	paint.ThumbRadius = value_98
-	var value_99 float32 = paint.ThumbRadius
-	var value_100 StyleFrame = spec.Thumb
-	var value_101 float32 = scale
-	var value_102 float32 = Slider_SliderGlowExpansionForStyle(value_100, value_101)
-	var value_103 float32 = value_99 + value_102
-	paint.GlowRadius = value_103
-	var value_104 float32 = paint.ThumbX
-	var value_105 StyleFrame = spec.Thumb
-	var value_106 float32 = scale
-	var value_107 float32 = Slider_SliderThumbShadowOffsetXForStyle(value_105, value_106)
-	var value_108 float32 = value_104 + value_107
-	paint.ThumbShadowX = value_108
-	var value_109 float32 = paint.ThumbY
-	var value_110 StyleFrame = spec.Thumb
-	var value_111 float32 = scale
-	var value_112 float32 = Slider_SliderThumbShadowOffsetYForStyle(value_110, value_111)
-	var value_113 float32 = value_109 + value_112
-	paint.ThumbShadowY = value_113
-	var value_114 float32 = paint.ThumbRadius
-	var value_115 StyleFrame = spec.Thumb
-	var value_116 float32 = scale
-	var value_117 float32 = Slider_SliderThumbShadowExpansionForStyle(value_115, value_116)
-	var value_118 float32 = value_114 + value_117
-	paint.ThumbShadowRadius = value_118
-	var value_119 float32 = paint.ThumbX
-	var value_120 StyleFrame = spec.Thumb
-	var value_121 float32 = scale
-	var value_122 float32 = Slider_SliderThumbHighlightOffsetXForStyle(value_120, value_121)
-	var value_123 float32 = value_119 + value_122
-	paint.ThumbHighlightX = value_123
-	var value_124 float32 = paint.ThumbY
-	var value_125 StyleFrame = spec.Thumb
-	var value_126 float32 = scale
-	var value_127 float32 = Slider_SliderThumbHighlightOffsetYForStyle(value_125, value_126)
-	var value_128 float32 = value_124 + value_127
-	paint.ThumbHighlightY = value_128
-	var value_129 float32 = paint.ThumbRadius
-	var value_130 float32 = 0.45
-	var value_131 float32 = value_129 * value_130
-	paint.ThumbHighlightRadius = value_131
-	var value_132 StyleFrame = spec.Track
-	paint.Track = value_132
-	var value_133 StyleFrame = spec.ActiveTrack
-	paint.ActiveTrack = value_133
-	var value_134 StyleFrame = spec.Thumb
-	paint.Thumb = value_134
-	var value_135 float32 = paint.Thumb.Value.Opacity
-	var thumb_opacity float32 = value_135
-	var value_136 uint32 = paint.Thumb.Value.Background
-	var value_137 float32 = thumb_opacity
-	var value_138 uint32 = Surface_Opacity(value_136, value_137)
-	paint.ThumbFillColor = value_138
-	var value_139 uint32 = paint.Thumb.Value.Border
-	var value_140 float32 = thumb_opacity
-	var value_141 uint32 = Surface_Opacity(value_139, value_140)
-	paint.ThumbEdgeColor = value_141
-	var value_142 uint32 = paint.Thumb.Value.Focus
-	var value_143 bool = spec.Disabled
-	var value_144 float32 = 0
-	if value_143 {
-		var value_145 float32 = 0.18
-		value_144 = value_145
+	paint.Bounds = bounds
+	paint.ThumbRadius = (thumb_size * 0.5)
+	var value_9 StyleFrame = spec.Thumb
+	var value_10 float32 = Slider_SliderGlowExpansionForStyle(value_9, scale)
+	paint.GlowRadius = (paint.ThumbRadius + value_10)
+	var value_11 StyleFrame = spec.Thumb
+	var value_12 float32 = Slider_SliderThumbShadowOffsetXForStyle(value_11, scale)
+	paint.ThumbShadowX = (paint.ThumbX + value_12)
+	var value_13 StyleFrame = spec.Thumb
+	var value_14 float32 = Slider_SliderThumbShadowOffsetYForStyle(value_13, scale)
+	paint.ThumbShadowY = (paint.ThumbY + value_14)
+	var value_15 StyleFrame = spec.Thumb
+	var value_16 float32 = Slider_SliderThumbShadowExpansionForStyle(value_15, scale)
+	paint.ThumbShadowRadius = (paint.ThumbRadius + value_16)
+	var value_17 StyleFrame = spec.Thumb
+	var value_18 float32 = Slider_SliderThumbHighlightOffsetXForStyle(value_17, scale)
+	paint.ThumbHighlightX = (paint.ThumbX + value_18)
+	var value_19 StyleFrame = spec.Thumb
+	var value_20 float32 = Slider_SliderThumbHighlightOffsetYForStyle(value_19, scale)
+	paint.ThumbHighlightY = (paint.ThumbY + value_20)
+	paint.ThumbHighlightRadius = (paint.ThumbRadius * 0.45)
+	paint.Track = spec.Track
+	paint.ActiveTrack = spec.ActiveTrack
+	paint.Thumb = spec.Thumb
+	var thumb_opacity float32 = paint.Thumb.Value.Opacity
+	var value_21 uint32 = paint.Thumb.Value.Background
+	var value_22 uint32 = Surface_Opacity(value_21, thumb_opacity)
+	paint.ThumbFillColor = value_22
+	var value_23 uint32 = paint.Thumb.Value.Border
+	var value_24 uint32 = Surface_Opacity(value_23, thumb_opacity)
+	paint.ThumbEdgeColor = value_24
+	var value_25 uint32 = paint.Thumb.Value.Focus
+	var value_26 float32 = 0
+	if spec.Disabled {
+		value_26 = 0.18
 	} else {
-		var value_146 float32 = 0.36
-		value_144 = value_146
+		value_26 = 0.36
 	}
-	var value_147 float32 = thumb_opacity
-	var value_148 float32 = value_144 * value_147
-	var value_149 uint32 = Surface_Opacity(value_142, value_148)
-	paint.ThumbShadowColor = value_149
-	var value_150 uint32 = paint.Thumb.Value.Foreground
-	var value_151 bool = spec.Disabled
-	var value_152 float32 = 0
-	if value_151 {
-		var value_153 float32 = 0.08
-		value_152 = value_153
+	var value_27 float32 = (value_26 * thumb_opacity)
+	var value_28 uint32 = Surface_Opacity(value_25, value_27)
+	paint.ThumbShadowColor = value_28
+	var value_29 uint32 = paint.Thumb.Value.Foreground
+	var value_30 float32 = 0
+	if spec.Disabled {
+		value_30 = 0.08
 	} else {
-		var value_154 float32 = 0.20
-		value_152 = value_154
+		value_30 = 0.20
 	}
-	var value_155 float32 = thumb_opacity
-	var value_156 float32 = value_152 * value_155
-	var value_157 uint32 = Surface_Opacity(value_150, value_156)
-	paint.ThumbHighlightColor = value_157
-	var value_158 MaterialKind = MaterialKind(paint.Thumb.Value.Material)
-	var value_159 int32 = int32(MaterialFlat)
-	var value_160 MaterialKind = MaterialKind(int32(number_runtime_bits(uint64(value_159), uint64(0), 32, true, 0)))
-	var value_161 bool = value_158 == value_160
-	if value_161 {
-		var value_162 uint32 = 0
-		paint.ThumbShadowColor = value_162
-		var value_163 uint32 = 0
-		paint.ThumbHighlightColor = value_163
+	var value_31 float32 = (value_30 * thumb_opacity)
+	var value_32 uint32 = Surface_Opacity(value_29, value_31)
+	paint.ThumbHighlightColor = value_32
+	var value_33 bool = MaterialKind(paint.Thumb.Value.Material) == MaterialKind(int32(number_runtime_bits(uint64(int32(MaterialFlat)), uint64(0), 32, true, 0)))
+	if value_33 {
+		paint.ThumbShadowColor = 0
+		paint.ThumbHighlightColor = 0
 	}
-	var value_164 uint32 = paint.Thumb.Value.Focus
-	var value_165 bool = spec.Active
-	var value_166 float32 = 0
-	if value_165 {
-		var value_167 float32 = 0.32
-		value_166 = value_167
+	var value_34 uint32 = paint.Thumb.Value.Focus
+	var value_35 float32 = 0
+	if spec.Active {
+		value_35 = 0.32
 	} else {
-		var value_168 bool = spec.Hovered
-		var value_169 float32 = 0
-		if value_168 {
-			var value_170 float32 = 0.18
-			value_169 = value_170
+		var value_36 float32 = 0
+		if spec.Hovered {
+			value_36 = 0.18
 		} else {
-			var value_171 float32 = 0.0
-			value_169 = value_171
+			value_36 = 0.0
 		}
-		value_166 = value_169
+		value_35 = value_36
 	}
-	var value_172 float32 = thumb_opacity
-	var value_173 float32 = value_166 * value_172
-	var value_174 uint32 = Surface_Opacity(value_164, value_173)
-	paint.GlowColor = value_174
-	var value_175 SliderPaint = paint
-	return value_175
+	var value_37 float32 = (value_35 * thumb_opacity)
+	var value_38 uint32 = Surface_Opacity(value_34, value_37)
+	paint.GlowColor = value_38
+	return paint
 }

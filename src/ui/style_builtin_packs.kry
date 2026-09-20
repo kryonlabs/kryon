@@ -1,0 +1,166 @@
+#module "style_builtin_host"
+#inspect off
+#import "ui_style_sheet.h"
+#import "ui/kss_parser.h"
+#import "embedded_assets.h"
+#import "stdio.h"
+#import "stdlib.h"
+#import "string.h"
+
+BuiltinStylePack :: struct {
+    id: const char*
+    label: const char*
+    description: const char*
+    path: const char*
+    rules: [320]StyleRule
+    sheet: StyleSheet
+}
+
+builtin_style_packs :: [3]BuiltinStylePack #global
+builtin_style_packs_ready :: i32 #global
+builtin_style_theme :: const char* = "" #global
+
+kry_builtin_style_tables_enabled :: () -> i32 #extern
+kry_register_compiled_builtin_style_packs :: () -> i32 #extern
+InitBuiltInStylePacks :: () {
+    if builtin_style_packs_ready { return }
+    builtin_style_packs[0].id = "material"
+    builtin_style_packs[0].label = "Material"
+    builtin_style_packs[0].description =
+    "Clean Material-like controls with flat paint"
+    builtin_style_packs[0].path = "styles/kryon/material.kss"
+    builtin_style_packs[1].id = "classic"
+    builtin_style_packs[1].label = "Classic"
+    builtin_style_packs[1].description =
+    "Dense toolkit controls for desktop utilities"
+    builtin_style_packs[1].path = "styles/kryon/classic.kss"
+    builtin_style_packs[2].id = "lightfield"
+    builtin_style_packs[2].label = "Lightfield"
+    builtin_style_packs[2].description =
+    "Premium translucent controls with glow-capable treatment"
+    builtin_style_packs[2].path = "styles/kryon/lightfield.kss"
+    builtin_style_packs_ready = 1
+}
+
+RegisterBuiltInPack :: (pack: *BuiltinStylePack) -> bool {
+    source: *char = LoadEmbeddedAssetText(pack->path)
+    if source == nil {
+        return false
+    }
+    index: i32 = 0
+    while index < 320 {
+        pack->rules[index] = (StyleRule){0}
+        index += 1
+    }
+    result: KssParseResult = (KssParseResult){0}
+    diagnostic: [256]char
+    parsed: bool = kss_parse_with_environment(source,
+    nil, builtin_style_theme, pack->rules, 320,
+    &result, diagnostic, sizeof(diagnostic))
+    free(source)
+    if !parsed || strcmp(result.pack_id, pack->id) != 0 ||
+    result.rule_count <= 0 {
+        return false
+    }
+    pack->sheet.rules = pack->rules
+    pack->sheet.rule_count = result.rule_count
+    value: StylePack = (StylePack){
+        .id = pack->id,
+        .label = pack->label,
+        .description = pack->description,
+        .sheet = &pack->sheet}
+    return RegisterStylePack(value)
+}
+
+CopyActiveBuiltInId :: (out: *char, capacity: i32) {
+    out[0] = '\0'
+    active: const char* = GetActiveStylePackId()
+    if active != nil && active[0] != '\0' {
+        if snprintf(out, (size_t)capacity, "%s", active) < 0 {
+            out[0] = '\0'
+        }
+    }
+}
+
+RegisterBuiltInStylePacks :: () -> bool #export {
+    InitBuiltInStylePacks()
+    if kry_builtin_style_tables_enabled() {
+        builtin_style_theme = ""
+        return kry_register_compiled_builtin_style_packs() != 0
+    }
+    index: i32 = 0
+    while index < 3 {
+        if !RegisterBuiltInPack(&builtin_style_packs[index]) {
+            return false
+        }
+        index += 1
+    }
+    return SetActiveStylePack("material")
+}
+
+ReapplyBuiltInStyleTheme :: (theme: const char*) -> bool #export {
+    InitBuiltInStylePacks()
+    builtin_style_theme = theme != nil ? theme : ""
+    if kry_builtin_style_tables_enabled() &&
+    builtin_style_theme[0] == '\0' {
+        active_id: [64]char
+        CopyActiveBuiltInId(active_id, 64)
+        if !kry_register_compiled_builtin_style_packs() {
+            return false
+        }
+        if active_id[0] != '\0' {
+            return SetActiveStylePack(active_id)
+        }
+        return true
+    }
+    index: i32 = 0
+    while index < 3 {
+        if !RegisterBuiltInPack(&builtin_style_packs[index]) {
+            return false
+        }
+        index += 1
+    }
+    return true
+}
+
+EnsureBuiltInStylePacks :: () -> bool #export {
+    InitBuiltInStylePacks()
+    active_id: [64]char
+    CopyActiveBuiltInId(active_id, 64)
+    if kry_builtin_style_tables_enabled() &&
+    builtin_style_theme[0] == '\0' {
+        missing: bool = GetActiveStylePack() == nil
+        index: i32 = 0
+        while index < 3 {
+            if FindStylePack(builtin_style_packs[index].id) == nil {
+                missing = true
+            }
+            index += 1
+        }
+        if missing && !kry_register_compiled_builtin_style_packs() {
+            return false
+        }
+        if active_id[0] != '\0' {
+            return SetActiveStylePack(active_id)
+        }
+        if GetActiveStylePack() != nil {
+            return true
+        }
+        return SetActiveStylePack("material")
+    }
+    index: i32 = 0
+    while index < 3 {
+        if FindStylePack(builtin_style_packs[index].id) == nil &&
+        !RegisterBuiltInPack(&builtin_style_packs[index]) {
+            return false
+        }
+        index += 1
+    }
+    if active_id[0] != '\0' {
+        return SetActiveStylePack(active_id)
+    }
+    if GetActiveStylePack() != nil {
+        return true
+    }
+    return SetActiveStylePack("material")
+}

@@ -31,4 +31,7 @@ void KirEmitSlotType(FILE *out, const KirType *slot, KirTarget target,
 int KirEmitBody(FILE *out, const KirModule *module, const KirFunction *fn,
                 KirTarget target, KirResolveTarget resolve, void *context,
                 const char *instance_host, const char *number_support);
+/* Dense-output switch for the Go target: remove the inlined-expression length
+ * bound so single-use temporaries fold without a readability cap. Default off. */
+void KirEmitUseMinifiedOutput(int enabled);
 #endif

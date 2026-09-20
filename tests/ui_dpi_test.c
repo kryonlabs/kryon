@@ -2,6 +2,14 @@
 
 #include <stdio.h>
 
+void PushInspectSource(const char *path, int line)
+{
+    (void)path;
+    (void)line;
+}
+
+void PopInspectSource(void) {}
+
 #if !defined(PLATFORM_ANDROID) && !defined(__ANDROID__) && !defined(PLATFORM_WEB)
 Vector2
 GetWindowScaleDPI(void)

@@ -83,1153 +83,589 @@ type TabBarCloseLabelPaint struct {
 }
 
 func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, scale float32) TabBarPaint {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var paint TabBarPaint = TabBarPaint{}
-	var value_4 StyleFrame = bar
-	paint.Bar = value_4
-	var value_5 StyleFrame = tab
-	paint.Tab = value_5
-	var value_6 StyleFrame = close
-	paint.Close = value_6
-	var value_7 uint32 = bar.Value.Background
-	paint.BarColor = value_7
-	var value_8 uint32 = bar.Value.Border
-	paint.BarBorderColor = value_8
-	var value_9 uint32 = tab.Value.Background
-	paint.TabColor = value_9
-	var value_10 uint32 = tab.Value.Border
-	paint.TabBorderColor = value_10
-	var value_11 uint32 = tab.Value.Foreground
-	paint.TextColor = value_11
-	var value_12 uint32 = tab.Value.Foreground
-	paint.IconColor = value_12
-	var value_13 uint32 = close.Value.Foreground
-	paint.CloseColor = value_13
-	var value_14 uint32 = tab.Value.Focus
-	paint.FocusColor = value_14
-	var value_15 float32 = tab.Value.Radius
-	paint.Radius = value_15
-	var value_16 float32 = tab.Value.BorderWidth
-	paint.BorderWidth = value_16
-	var value_17 float32 = tab.Value.Opacity
-	paint.Opacity = value_17
-	var value_18 uint32 = tab.Value.Fields
-	var value_19 int32 = int32(StylePaddingX)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = tab.Value.PaddingX
-	var value_22 float32 = 8.0
-	var value_23 float32 = scale
-	var value_24 bool = true
-	var value_25 int32 = TabBar_TabBarMetric(value_18, value_20, value_21, value_22, value_23, value_24)
-	paint.TextPadding = value_25
-	var value_26 uint32 = tab.Value.Fields
-	var value_27 int32 = int32(StyleIconSize)
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
-	var value_29 float32 = tab.Value.IconSize
-	var value_30 float32 = 16.0
-	var value_31 float32 = scale
-	var value_32 bool = true
-	var value_33 int32 = TabBar_TabBarMetric(value_26, value_28, value_29, value_30, value_31, value_32)
-	paint.IconSize = value_33
-	var value_34 uint32 = tab.Value.Fields
-	var value_35 int32 = int32(StyleGap)
-	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
-	var value_37 float32 = tab.Value.Gap
-	var value_38 float32 = 4.0
-	var value_39 float32 = scale
-	var value_40 bool = true
-	var value_41 int32 = TabBar_TabBarMetric(value_34, value_36, value_37, value_38, value_39, value_40)
-	paint.IconGap = value_41
-	var value_42 uint32 = tab.Value.Fields
-	var value_43 int32 = int32(StylePaddingY)
-	var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
-	var value_45 float32 = tab.Value.PaddingY
-	var value_46 float32 = 8.0
-	var value_47 float32 = scale
-	var value_48 bool = true
-	var value_49 int32 = TabBar_TabBarMetric(value_42, value_44, value_45, value_46, value_47, value_48)
-	paint.ContentInsetY = value_49
-	var value_50 uint32 = close.Value.Fields
-	var value_51 int32 = int32(StyleIconSize)
-	var value_52 uint32 = uint32(number_runtime_bits(uint64(value_51), uint64(0), 32, false, 0))
-	var value_53 float32 = close.Value.IconSize
-	var value_54 float32 = 18.0
-	var value_55 float32 = scale
-	var value_56 bool = true
-	var value_57 int32 = TabBar_TabBarMetric(value_50, value_52, value_53, value_54, value_55, value_56)
-	paint.CloseSize = value_57
-	var value_58 uint32 = close.Value.Fields
-	var value_59 int32 = int32(StyleGap)
-	var value_60 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(0), 32, false, 0))
-	var value_61 float32 = close.Value.Gap
-	var value_62 float32 = 6.0
-	var value_63 float32 = scale
-	var value_64 bool = true
-	var value_65 int32 = TabBar_TabBarMetric(value_58, value_60, value_61, value_62, value_63, value_64)
-	paint.CloseGap = value_65
-	var value_66 uint32 = bar.Value.Fields
-	var value_67 int32 = int32(StylePaddingY)
-	var value_68 uint32 = uint32(number_runtime_bits(uint64(value_67), uint64(0), 32, false, 0))
-	var value_69 float32 = bar.Value.PaddingY
-	var value_70 float32 = 6.0
-	var value_71 float32 = scale
-	var value_72 bool = false
-	var value_73 int32 = TabBar_TabBarMetric(value_66, value_68, value_69, value_70, value_71, value_72)
-	paint.ReorderDragThreshold = value_73
-	var value_74 TabBarPaint = paint
-	return value_74
+	paint.Bar = bar
+	paint.Tab = tab
+	paint.Close = close
+	paint.BarColor = bar.Value.Background
+	paint.BarBorderColor = bar.Value.Border
+	paint.TabColor = tab.Value.Background
+	paint.TabBorderColor = tab.Value.Border
+	paint.TextColor = tab.Value.Foreground
+	paint.IconColor = tab.Value.Foreground
+	paint.CloseColor = close.Value.Foreground
+	paint.FocusColor = tab.Value.Focus
+	paint.Radius = tab.Value.Radius
+	paint.BorderWidth = tab.Value.BorderWidth
+	paint.Opacity = tab.Value.Opacity
+	var value_0 uint32 = tab.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = tab.Value.PaddingX
+	var value_3 float32 = 8.0
+	var value_4 int32 = TabBar_TabBarMetric(value_0, value_1, value_2, value_3, scale, true)
+	paint.TextPadding = value_4
+	var value_5 uint32 = tab.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_7 float32 = tab.Value.IconSize
+	var value_8 float32 = 16.0
+	var value_9 int32 = TabBar_TabBarMetric(value_5, value_6, value_7, value_8, scale, true)
+	paint.IconSize = value_9
+	var value_10 uint32 = tab.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_12 float32 = tab.Value.Gap
+	var value_13 float32 = 4.0
+	var value_14 int32 = TabBar_TabBarMetric(value_10, value_11, value_12, value_13, scale, true)
+	paint.IconGap = value_14
+	var value_15 uint32 = tab.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_17 float32 = tab.Value.PaddingY
+	var value_18 float32 = 8.0
+	var value_19 int32 = TabBar_TabBarMetric(value_15, value_16, value_17, value_18, scale, true)
+	paint.ContentInsetY = value_19
+	var value_20 uint32 = close.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_22 float32 = close.Value.IconSize
+	var value_23 float32 = 18.0
+	var value_24 int32 = TabBar_TabBarMetric(value_20, value_21, value_22, value_23, scale, true)
+	paint.CloseSize = value_24
+	var value_25 uint32 = close.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_27 float32 = close.Value.Gap
+	var value_28 float32 = 6.0
+	var value_29 int32 = TabBar_TabBarMetric(value_25, value_26, value_27, value_28, scale, true)
+	paint.CloseGap = value_29
+	var value_30 uint32 = bar.Value.Fields
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_32 float32 = bar.Value.PaddingY
+	var value_33 float32 = 6.0
+	var value_34 int32 = TabBar_TabBarMetric(value_30, value_31, value_32, value_33, scale, false)
+	paint.ReorderDragThreshold = value_34
+	return paint
 }
 
 func TabBar_TabBarHas(fields uint32, field uint32) bool {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	return value_5
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	return value_0
 }
 
 func TabBar_TabBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 bool = TabBar_TabBarHas(value_0, value_1)
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 float32 = value
-		var value_6 float32 = 0.0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
-	}
-	var value_8 bool = value_4
-	if !value_8 {
-		var value_9 bool = allow_zero
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = value
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 <= value_13
-			value_11 = value_14
-		}
-		value_8 = value_11
-	}
-	if value_8 {
-		var value_15 float32 = fallback
-		value = value_15
-	}
-	var value_16 float32 = value
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	return value_19
-}
-
-func TabBar_TabBarPolicyHeight(scale float32, bar StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 uint32 = bar.Value.Fields
-	var value_5 int32 = int32(StyleIconSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = bar.Value.IconSize
-	var value_8 float32 = 32.0
-	var value_9 float32 = scale
-	var value_10 bool = false
-	var value_11 int32 = TabBar_TabBarMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
-}
-
-func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32, bar StyleFrame, tab StyleFrame, close StyleFrame) TabBarMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var metrics TabBarMetrics = TabBarMetrics{}
-	var value_4 int32 = min_width
-	metrics.MinWidth = value_4
-	var value_5 int32 = metrics.MinWidth
-	var value_6 int32 = 0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 uint32 = bar.Value.Fields
-		var value_9 int32 = int32(StylePaddingX)
-		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-		var value_11 float32 = bar.Value.PaddingX
-		var value_12 float32 = 120.0
-		var value_13 float32 = scale
-		var value_14 bool = false
-		var value_15 int32 = TabBar_TabBarMetric(value_8, value_10, value_11, value_12, value_13, value_14)
-		metrics.MinWidth = value_15
-	}
-	var value_16 int32 = max_width
-	metrics.MaxWidth = value_16
-	var value_17 int32 = metrics.MaxWidth
-	var value_18 int32 = 0
-	var value_19 bool = value_17 <= value_18
-	if value_19 {
-		var value_20 uint32 = bar.Value.Fields
-		var value_21 int32 = int32(StyleContentOffset)
-		var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-		var value_23 float32 = bar.Value.OffsetX
-		var value_24 int32 = metrics.MinWidth
-		var value_25 float32 = float32(value_24)
-		var value_26 float32 = scale
-		var value_27 float32 = value_25 / value_26
-		var value_28 float32 = scale
-		var value_29 bool = false
-		var value_30 int32 = TabBar_TabBarMetric(value_20, value_22, value_23, value_27, value_28, value_29)
-		metrics.MaxWidth = value_30
-	}
-	var value_31 int32 = metrics.MaxWidth
-	var value_32 int32 = metrics.MinWidth
-	var value_33 bool = value_31 < value_32
-	if value_33 {
-		var value_34 int32 = metrics.MinWidth
-		metrics.MaxWidth = value_34
-	}
-	var value_35 uint32 = tab.Value.Fields
-	var value_36 int32 = int32(StyleIconSize)
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 float32 = tab.Value.IconSize
-	var value_39 float32 = 44.0
-	var value_40 float32 = scale
-	var value_41 bool = true
-	var value_42 int32 = TabBar_TabBarMetric(value_35, value_37, value_38, value_39, value_40, value_41)
-	metrics.IconWidth = value_42
-	var value_43 uint32 = bar.Value.Fields
-	var value_44 int32 = int32(StyleGap)
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	var value_46 float32 = bar.Value.Gap
-	var value_47 float32 = 0.0
-	var value_48 float32 = scale
-	var value_49 bool = true
-	var value_50 int32 = TabBar_TabBarMetric(value_43, value_45, value_46, value_47, value_48, value_49)
-	metrics.Gap = value_50
-	var value_51 uint32 = close.Value.Fields
-	var value_52 int32 = int32(StyleIconSize)
-	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
-	var value_54 float32 = close.Value.IconSize
-	var value_55 float32 = 24.0
-	var value_56 float32 = scale
-	var value_57 bool = true
-	var value_58 int32 = TabBar_TabBarMetric(value_51, value_53, value_54, value_55, value_56, value_57)
-	metrics.CloseWidth = value_58
-	var value_59 uint32 = tab.Value.Fields
-	var value_60 int32 = int32(StylePaddingX)
-	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-	var value_62 float32 = tab.Value.PaddingX
-	var value_63 float32 = 2.0
-	var value_64 float32 = value_62 * value_63
-	var value_65 float32 = 16.0
-	var value_66 float32 = scale
-	var value_67 bool = true
-	var value_68 int32 = TabBar_TabBarMetric(value_59, value_61, value_64, value_65, value_66, value_67)
-	metrics.LabelPadding = value_68
-	var value_69 TabBarMetrics = metrics
-	return value_69
-}
-
-func TabBar_TabBarTabWidth(label_width int32, has_label bool, has_icon bool, closeable bool, metrics TabBarMetrics) int32 {
-	var value_0 bool = has_label
+	var value_0 bool = TabBar_TabBarHas(fields, field)
 	var value_1 bool = !value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
+	}
 	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = has_icon
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
+		}
 		value_2 = value_3
 	}
 	if value_2 {
-		var value_4 int32 = metrics.IconWidth
-		return value_4
+		value = fallback
 	}
-	var value_5 bool = has_label
-	var value_6 bool = !value_5
-	if value_6 {
-		var value_7 int32 = metrics.MinWidth
-		return value_7
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
+}
+
+func TabBar_TabBarPolicyHeight(scale float32, bar StyleFrame) int32 {
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_8 int32 = label_width
-	var value_9 int32 = metrics.LabelPadding
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var width int32 = value_10
-	var value_11 bool = closeable
-	if value_11 {
-		var value_12 int32 = width
-		var value_13 int32 = metrics.CloseWidth
-		width = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	var value_0 uint32 = bar.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = bar.Value.IconSize
+	var value_3 float32 = 32.0
+	var value_4 int32 = TabBar_TabBarMetric(value_0, value_1, value_2, value_3, scale, false)
+	return value_4
+}
+
+func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32, bar StyleFrame, tab StyleFrame, close StyleFrame) TabBarMetrics {
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_14 int32 = width
-	var value_15 int32 = metrics.MinWidth
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 int32 = metrics.MinWidth
-		width = value_17
+	var metrics TabBarMetrics = TabBarMetrics{}
+	metrics.MinWidth = min_width
+	if metrics.MinWidth <= 0 {
+		var value_0 uint32 = bar.Value.Fields
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+		var value_2 float32 = bar.Value.PaddingX
+		var value_3 float32 = 120.0
+		var value_4 int32 = TabBar_TabBarMetric(value_0, value_1, value_2, value_3, scale, false)
+		metrics.MinWidth = value_4
 	}
-	var value_18 int32 = width
-	var value_19 int32 = metrics.MaxWidth
-	var value_20 bool = value_18 > value_19
-	if value_20 {
-		var value_21 int32 = metrics.MaxWidth
-		width = value_21
+	metrics.MaxWidth = max_width
+	if metrics.MaxWidth <= 0 {
+		var value_5 uint32 = bar.Value.Fields
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+		var value_7 float32 = bar.Value.OffsetX
+		var value_8 float32 = (float32(metrics.MinWidth) / scale)
+		var value_9 int32 = TabBar_TabBarMetric(value_5, value_6, value_7, value_8, scale, false)
+		metrics.MaxWidth = value_9
 	}
-	var value_22 int32 = width
-	return value_22
+	if metrics.MaxWidth < metrics.MinWidth {
+		metrics.MaxWidth = metrics.MinWidth
+	}
+	var value_10 uint32 = tab.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_12 float32 = tab.Value.IconSize
+	var value_13 float32 = 44.0
+	var value_14 int32 = TabBar_TabBarMetric(value_10, value_11, value_12, value_13, scale, true)
+	metrics.IconWidth = value_14
+	var value_15 uint32 = bar.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_17 float32 = bar.Value.Gap
+	var value_18 float32 = 0.0
+	var value_19 int32 = TabBar_TabBarMetric(value_15, value_16, value_17, value_18, scale, true)
+	metrics.Gap = value_19
+	var value_20 uint32 = close.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_22 float32 = close.Value.IconSize
+	var value_23 float32 = 24.0
+	var value_24 int32 = TabBar_TabBarMetric(value_20, value_21, value_22, value_23, scale, true)
+	metrics.CloseWidth = value_24
+	var value_25 uint32 = tab.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_27 float32 = (tab.Value.PaddingX * 2.0)
+	var value_28 float32 = 16.0
+	var value_29 int32 = TabBar_TabBarMetric(value_25, value_26, value_27, value_28, scale, true)
+	metrics.LabelPadding = value_29
+	return metrics
+}
+
+func TabBar_TabBarTabWidth(label_width int32, has_label bool, has_icon bool, closeable bool, metrics TabBarMetrics) int32 {
+	var value_0 bool = !has_label
+	if value_0 {
+		value_0 = has_icon
+	}
+	if value_0 {
+		return metrics.IconWidth
+	}
+	if !has_label {
+		return metrics.MinWidth
+	}
+	var width int32 = (int32(number_runtime_bits(uint64(label_width), uint64(metrics.LabelPadding), 32, true, 1)))
+	if closeable {
+		var value_1 int32 = width
+		width = int32(number_runtime_bits(uint64(value_1), uint64(metrics.CloseWidth), 32, true, 1))
+	}
+	if width < metrics.MinWidth {
+		width = metrics.MinWidth
+	}
+	if width > metrics.MaxWidth {
+		width = metrics.MaxWidth
+	}
+	return width
 }
 
 func TabBar_TabBarContentLayoutFor(tab_bounds Rectangle, label_width int32, has_label bool, has_icon bool, closeable bool, paint TabBarPaint) TabBarContentLayout {
 	var layout TabBarContentLayout = TabBarContentLayout{}
-	var value_0 float32 = tab_bounds.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var tab_x int32 = value_1
-	var value_2 float32 = tab_bounds.Y
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var tab_y int32 = value_3
-	var value_4 float32 = tab_bounds.Width
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var tab_w int32 = value_5
-	var value_6 float32 = tab_bounds.Height
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var tab_h int32 = value_7
-	var value_8 int32 = paint.TextPadding
-	var text_pad int32 = value_8
-	var value_9 int32 = paint.IconSize
-	var icon_size int32 = value_9
-	var value_10 int32 = paint.CloseSize
-	var close_size int32 = value_10
-	var value_11 int32 = paint.CloseGap
-	var close_gap int32 = value_11
-	var value_12 int32 = tab_h
-	var value_13 int32 = paint.ContentInsetY
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 2))
-	var content_h int32 = value_14
-	var value_15 int32 = content_h
-	var value_16 int32 = 0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 int32 = 0
-		content_h = value_18
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(tab_bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var tab_x int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(tab_bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var tab_y int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(tab_bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var tab_w int32 = value_2
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(tab_bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var tab_h int32 = value_3
+	var text_pad int32 = paint.TextPadding
+	var icon_size int32 = paint.IconSize
+	var close_size int32 = paint.CloseSize
+	var close_gap int32 = paint.CloseGap
+	var content_h int32 = (int32(number_runtime_bits(uint64(tab_h), uint64(paint.ContentInsetY), 32, true, 2)))
+	if content_h < 0 {
+		content_h = 0
 	}
-	var value_19 int32 = tab_y
-	var value_20 int32 = tab_h
-	var value_21 int32 = content_h
-	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
-	var value_23 int32 = 2
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 4))
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_24), 32, true, 1))
-	var content_y int32 = value_25
-	var value_26 int32 = tab_x
-	var value_27 int32 = text_pad
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
-	var icon_x int32 = value_28
-	var value_29 int32 = icon_x
-	var value_30 int32 = icon_size
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
-	var value_32 int32 = paint.IconGap
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
-	var text_x int32 = value_33
-	var value_34 int32 = tab_x
-	var value_35 int32 = tab_w
-	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
-	var value_37 int32 = text_pad
-	var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
-	var value_39 int32 = close_size
-	var value_40 int32 = int32(number_runtime_bits(uint64(value_38), uint64(value_39), 32, true, 2))
-	var value_41 float32 = float32(value_40)
-	layout.CloseBounds.X = value_41
-	var value_42 int32 = tab_y
-	var value_43 int32 = tab_h
-	var value_44 int32 = close_size
-	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 2))
-	var value_46 int32 = 2
-	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 4))
-	var value_48 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_47), 32, true, 1))
-	var value_49 float32 = float32(value_48)
-	layout.CloseBounds.Y = value_49
-	var value_50 int32 = close_size
-	var value_51 float32 = float32(value_50)
-	layout.CloseBounds.Width = value_51
-	var value_52 int32 = close_size
-	var value_53 float32 = float32(value_52)
-	layout.CloseBounds.Height = value_53
-	var value_54 bool = has_icon
-	var value_55 bool = value_54
-	if value_55 {
-		var value_56 int32 = icon_size
-		var value_57 int32 = 0
-		var value_58 bool = value_56 > value_57
-		value_55 = value_58
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_h), uint64(content_h), 32, true, 2)))), uint64(2), 32, true, 4))
+	var content_y int32 = (int32(number_runtime_bits(uint64(tab_y), uint64(value_4), 32, true, 1)))
+	var icon_x int32 = (int32(number_runtime_bits(uint64(tab_x), uint64(text_pad), 32, true, 1)))
+	var value_5 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(icon_x), uint64(icon_size), 32, true, 1)))), uint64(paint.IconGap), 32, true, 1))
+	var text_x int32 = value_5
+	var value_6 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_x), uint64(tab_w), 32, true, 1)))), uint64(text_pad), 32, true, 2))
+	layout.CloseBounds.X = float32((int32(number_runtime_bits(uint64(value_6), uint64(close_size), 32, true, 2))))
+	var value_7 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_h), uint64(close_size), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.CloseBounds.Y = float32((int32(number_runtime_bits(uint64(tab_y), uint64(value_7), 32, true, 1))))
+	layout.CloseBounds.Width = float32(close_size)
+	layout.CloseBounds.Height = float32(close_size)
+	var value_8 bool = has_icon
+	if value_8 {
+		value_8 = (icon_size > 0)
 	}
-	if value_55 {
-		var value_59 bool = has_label
-		var value_60 bool = !value_59
-		if value_60 {
-			var value_61 int32 = tab_x
-			var value_62 int32 = tab_w
-			var value_63 int32 = icon_size
-			var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 2))
-			var value_65 int32 = 2
-			var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 4))
-			var value_67 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_66), 32, true, 1))
-			icon_x = value_67
+	if value_8 {
+		if !has_label {
+			var value_9 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_w), uint64(icon_size), 32, true, 2)))), uint64(2), 32, true, 4))
+			icon_x = (int32(number_runtime_bits(uint64(tab_x), uint64(value_9), 32, true, 1)))
 		} else {
-			var value_68 int32 = paint.IconGap
-			var gap int32 = value_68
-			var value_69 int32 = icon_size
-			var value_70 int32 = gap
-			var value_71 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_70), 32, true, 1))
-			var value_72 int32 = label_width
-			var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 1))
-			var content_w int32 = value_73
-			var value_74 int32 = tab_w
-			var value_75 int32 = text_pad
-			var value_76 int32 = 2
-			var value_77 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_76), 32, true, 3))
-			var value_78 int32 = int32(number_runtime_bits(uint64(value_74), uint64(value_77), 32, true, 2))
-			var available_w int32 = value_78
-			var value_79 int32 = content_w
-			var value_80 int32 = available_w
-			var value_81 bool = value_79 > value_80
-			if value_81 {
-				var value_82 int32 = available_w
-				content_w = value_82
+			var gap int32 = paint.IconGap
+			var value_10 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(icon_size), uint64(gap), 32, true, 1)))), uint64(label_width), 32, true, 1))
+			var content_w int32 = value_10
+			var value_11 int32 = int32(number_runtime_bits(uint64(tab_w), uint64((int32(number_runtime_bits(uint64(text_pad), uint64(2), 32, true, 3)))), 32, true, 2))
+			var available_w int32 = value_11
+			if content_w > available_w {
+				content_w = available_w
 			}
-			var value_83 int32 = tab_x
-			var value_84 int32 = tab_w
-			var value_85 int32 = content_w
-			var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 2))
-			var value_87 int32 = 2
-			var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 4))
-			var value_89 int32 = int32(number_runtime_bits(uint64(value_83), uint64(value_88), 32, true, 1))
-			icon_x = value_89
-			var value_90 int32 = icon_x
-			var value_91 int32 = icon_size
-			var value_92 int32 = int32(number_runtime_bits(uint64(value_90), uint64(value_91), 32, true, 1))
-			var value_93 int32 = gap
-			var value_94 int32 = int32(number_runtime_bits(uint64(value_92), uint64(value_93), 32, true, 1))
-			text_x = value_94
+			var value_12 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_w), uint64(content_w), 32, true, 2)))), uint64(2), 32, true, 4))
+			icon_x = (int32(number_runtime_bits(uint64(tab_x), uint64(value_12), 32, true, 1)))
+			var value_13 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(icon_x), uint64(icon_size), 32, true, 1)))), uint64(gap), 32, true, 1))
+			text_x = value_13
 		}
-		var value_95 int32 = icon_x
-		var value_96 float32 = float32(value_95)
-		layout.IconBounds.X = value_96
-		var value_97 int32 = tab_y
-		var value_98 int32 = tab_h
-		var value_99 int32 = icon_size
-		var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 2))
-		var value_101 int32 = 2
-		var value_102 int32 = int32(number_runtime_bits(uint64(value_100), uint64(value_101), 32, true, 4))
-		var value_103 int32 = int32(number_runtime_bits(uint64(value_97), uint64(value_102), 32, true, 1))
-		var value_104 float32 = float32(value_103)
-		layout.IconBounds.Y = value_104
-		var value_105 int32 = icon_size
-		var value_106 float32 = float32(value_105)
-		layout.IconBounds.Width = value_106
-		var value_107 int32 = icon_size
-		var value_108 float32 = float32(value_107)
-		layout.IconBounds.Height = value_108
-		var value_109 int32 = icon_x
-		var value_110 int32 = icon_size
-		var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 1))
-		var value_112 int32 = paint.IconGap
-		var value_113 int32 = int32(number_runtime_bits(uint64(value_111), uint64(value_112), 32, true, 1))
-		text_x = value_113
+		layout.IconBounds.X = float32(icon_x)
+		var value_14 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_h), uint64(icon_size), 32, true, 2)))), uint64(2), 32, true, 4))
+		layout.IconBounds.Y = float32((int32(number_runtime_bits(uint64(tab_y), uint64(value_14), 32, true, 1))))
+		layout.IconBounds.Width = float32(icon_size)
+		layout.IconBounds.Height = float32(icon_size)
+		var value_15 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(icon_x), uint64(icon_size), 32, true, 1)))), uint64(paint.IconGap), 32, true, 1))
+		text_x = value_15
 	} else {
-		var value_114 int32 = tab_x
-		var value_115 int32 = text_pad
-		var value_116 int32 = int32(number_runtime_bits(uint64(value_114), uint64(value_115), 32, true, 1))
-		text_x = value_116
+		text_x = (int32(number_runtime_bits(uint64(tab_x), uint64(text_pad), 32, true, 1)))
 	}
-	var value_117 int32 = text_x
-	var value_118 float32 = float32(value_117)
-	layout.TextBounds.X = value_118
-	var value_119 int32 = content_y
-	var value_120 float32 = float32(value_119)
-	layout.TextBounds.Y = value_120
-	var value_121 int32 = tab_x
-	var value_122 int32 = tab_w
-	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 1))
-	var value_124 int32 = text_pad
-	var value_125 int32 = int32(number_runtime_bits(uint64(value_123), uint64(value_124), 32, true, 2))
-	var value_126 int32 = text_x
-	var value_127 int32 = int32(number_runtime_bits(uint64(value_125), uint64(value_126), 32, true, 2))
-	var value_128 bool = closeable
-	var value_129 int32 = 0
-	if value_128 {
-		var value_130 int32 = close_size
-		var value_131 int32 = close_gap
-		var value_132 int32 = int32(number_runtime_bits(uint64(value_130), uint64(value_131), 32, true, 1))
-		value_129 = value_132
+	layout.TextBounds.X = float32(text_x)
+	layout.TextBounds.Y = float32(content_y)
+	var value_16 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(tab_x), uint64(tab_w), 32, true, 1)))), uint64(text_pad), 32, true, 2))
+	var value_17 int32 = 0
+	if closeable {
+		value_17 = (int32(number_runtime_bits(uint64(close_size), uint64(close_gap), 32, true, 1)))
 	} else {
-		var value_133 int32 = 0
-		value_129 = value_133
+		value_17 = 0
 	}
-	var value_134 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_129), 32, true, 2))
-	var value_135 float32 = float32(value_134)
-	layout.TextBounds.Width = value_135
-	var value_136 int32 = content_h
-	var value_137 float32 = float32(value_136)
-	layout.TextBounds.Height = value_137
-	var value_138 TabBarContentLayout = layout
-	return value_138
+	var value_18 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_16), uint64(text_x), 32, true, 2)))), uint64(value_17), 32, true, 2))
+	layout.TextBounds.Width = float32(value_18)
+	layout.TextBounds.Height = float32(content_h)
+	return layout
 }
 
 func TabBar_TabBarCloseLabelPaintFor(close_bounds Rectangle, label_width int32, label_line_height int32) TabBarCloseLabelPaint {
 	var paint TabBarCloseLabelPaint = TabBarCloseLabelPaint{}
-	var value_0 float32 = close_bounds.X
-	var value_1 float32 = close_bounds.Width
-	var value_2 int32 = label_width
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 - value_3
-	var value_5 float32 = 0.5
-	var value_6 float32 = value_4 * value_5
-	var value_7 float32 = value_0 + value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	paint.X = value_8
-	var value_9 float32 = close_bounds.Y
-	var value_10 float32 = close_bounds.Height
-	var value_11 int32 = label_line_height
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = value_10 - value_12
-	var value_14 float32 = 0.5
-	var value_15 float32 = value_13 * value_14
-	var value_16 float32 = value_9 + value_15
-	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
-	paint.Y = value_17
-	var value_18 TabBarCloseLabelPaint = paint
-	return value_18
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((close_bounds.X+((close_bounds.Width-float32(label_width))*0.5))), 32, true)), uint64(0), 32, true, 0))
+	paint.X = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((close_bounds.Y+((close_bounds.Height-float32(label_line_height))*0.5))), 32, true)), uint64(0), 32, true, 0))
+	paint.Y = value_1
+	return paint
 }
 
 func TabBar_TabBarTotalWidth(tab_width_sum int32, count int32, gap int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if count <= 0 {
+		return 0
 	}
-	var value_4 int32 = tab_width_sum
-	var value_5 int32 = gap
-	var value_6 int32 = count
-	var value_7 int32 = 1
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_8), 32, true, 3))
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_9), 32, true, 1))
-	var total int32 = value_10
-	var value_11 int32 = total
-	var value_12 int32 = 0
-	var value_13 bool = value_11 < value_12
-	if value_13 {
-		var value_14 int32 = 0
-		return value_14
+	var value_0 int32 = int32(number_runtime_bits(uint64(gap), uint64((int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))), 32, true, 3))
+	var total int32 = (int32(number_runtime_bits(uint64(tab_width_sum), uint64(value_0), 32, true, 1)))
+	if total < 0 {
+		return 0
 	}
-	var value_15 int32 = total
-	return value_15
+	return total
 }
 
 func TabBar_TabBarSelectedIndexFor(selected int32, count int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if count <= 0 {
+		return -1
 	}
-	var value_4 int32 = selected
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 int32 = selected
-		var value_9 int32 = count
-		var value_10 bool = value_8 >= value_9
-		value_7 = value_10
+	var value_0 bool = (selected < 0)
+	if !value_0 {
+		value_0 = (selected >= count)
 	}
-	if value_7 {
-		var value_11 int32 = 0
-		return value_11
+	if value_0 {
+		return 0
 	}
-	var value_12 int32 = selected
-	return value_12
+	return selected
 }
 
 func TabBar_TabBarClampedIndexFor(index int32, count int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if count <= 0 {
+		return -1
 	}
-	var value_4 int32 = index
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if index < 0 {
+		return 0
 	}
-	var value_8 int32 = index
-	var value_9 int32 = count
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		return value_13
+	if index >= count {
+		return (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 	}
-	var value_14 int32 = index
-	return value_14
+	return index
 }
 
 func TabBar_TabBarWrappedIndex(from int32, direction int32, step int32, count int32) int32 {
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if count <= 0 {
+		return -1
 	}
-	var value_4 int32 = direction
-	var value_5 int32 = 0
-	var value_6 bool = value_4 == value_5
-	if value_6 {
-		var value_7 int32 = 1
-		direction = value_7
+	if direction == 0 {
+		direction = 1
 	}
-	var value_8 int32 = step
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		step = value_11
+	if step < 0 {
+		step = 0
 	}
-	var value_12 int32 = from
-	var value_13 int32 = direction
-	var value_14 int32 = step
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 1))
-	var value_17 int32 = count
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 5))
-	var index int32 = value_18
-	var value_19 int32 = index
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = index
-		var value_23 int32 = count
-		index = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
+	var value_0 int32 = int32(number_runtime_bits(uint64(from), uint64((int32(number_runtime_bits(uint64(direction), uint64(step), 32, true, 3)))), 32, true, 1))
+	var index int32 = (int32(number_runtime_bits(uint64(value_0), uint64(count), 32, true, 5)))
+	if index < 0 {
+		var value_1 int32 = index
+		index = int32(number_runtime_bits(uint64(value_1), uint64(count), 32, true, 1))
 	}
-	var value_24 int32 = index
-	return value_24
+	return index
 }
 
 func TabBar_TabBarKeyboardInputFor(selected int32, count int32, left_pressed bool, right_pressed bool, up_pressed bool, down_pressed bool, home_pressed bool, end_pressed bool, delete_pressed bool, backspace_pressed bool) TabBarKeyboardInput {
 	var input TabBarKeyboardInput = TabBarKeyboardInput{}
-	var value_0 int32 = selected
-	var value_1 int32 = count
-	var value_2 int32 = TabBar_TabBarSelectedIndexFor(value_0, value_1)
-	selected = value_2
-	var value_3 int32 = selected
-	input.FromIndex = value_3
-	var value_4 int32 = selected
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 TabBarKeyboardInput = input
-		return value_7
+	var value_0 int32 = TabBar_TabBarSelectedIndexFor(selected, count)
+	selected = value_0
+	input.FromIndex = selected
+	if selected < 0 {
+		return input
 	}
-	var value_8 bool = left_pressed
-	var value_9 bool = value_8
-	if !value_9 {
-		var value_10 bool = up_pressed
-		value_9 = value_10
+	var value_1 bool = left_pressed
+	if !value_1 {
+		value_1 = up_pressed
 	}
-	if value_9 {
-		var value_11 int32 = -1
-		input.Direction = value_11
+	if value_1 {
+		input.Direction = -1
 	} else {
-		var value_12 bool = right_pressed
-		var value_13 bool = value_12
-		if !value_13 {
-			var value_14 bool = down_pressed
-			value_13 = value_14
+		var value_2 bool = right_pressed
+		if !value_2 {
+			value_2 = down_pressed
 		}
-		if value_13 {
-			var value_15 int32 = 1
-			input.Direction = value_15
+		if value_2 {
+			input.Direction = 1
 		} else {
-			var value_16 bool = home_pressed
-			if value_16 {
-				var value_17 int32 = 1
-				input.Direction = value_17
-				var value_18 int32 = -1
-				input.FromIndex = value_18
+			if home_pressed {
+				input.Direction = 1
+				input.FromIndex = -1
 			} else {
-				var value_19 bool = end_pressed
-				if value_19 {
-					var value_20 int32 = -1
-					input.Direction = value_20
-					var value_21 int32 = 0
-					input.FromIndex = value_21
+				if end_pressed {
+					input.Direction = -1
+					input.FromIndex = 0
 				}
 			}
 		}
 	}
-	var value_22 bool = delete_pressed
-	var value_23 bool = value_22
-	if !value_23 {
-		var value_24 bool = backspace_pressed
-		value_23 = value_24
+	var value_3 bool = delete_pressed
+	if !value_3 {
+		value_3 = backspace_pressed
 	}
-	input.CloseRequested = value_23
-	var value_25 TabBarKeyboardInput = input
-	return value_25
+	input.CloseRequested = value_3
+	return input
 }
 
 func TabBar_TabBarDoubleClickShouldRun(same_bar bool, last_index int32, index int32, last_time float32, now float32) bool {
-	var value_0 bool = same_bar
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 bool = false
-		return value_2
+	if !same_bar {
+		return false
 	}
-	var value_3 int32 = last_index
-	var value_4 int32 = index
-	var value_5 bool = value_3 != value_4
-	if value_5 {
-		var value_6 bool = false
-		return value_6
+	if last_index != index {
+		return false
 	}
-	var value_7 float32 = last_time
-	var value_8 float32 = 0.0
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 bool = false
-		return value_10
+	if last_time < 0.0 {
+		return false
 	}
-	var value_11 float32 = now
-	var value_12 float32 = last_time
-	var value_13 float32 = value_11 - value_12
-	var value_14 float32 = 0.45
-	var value_15 bool = value_13 > value_14
-	if value_15 {
-		var value_16 bool = false
-		return value_16
+	if (now - last_time) > 0.45 {
+		return false
 	}
-	var value_17 bool = true
-	return value_17
+	return true
 }
 
 func TabBar_TabBarScrollFor(bounds_width float32, total_width int32, scroll int32) TabBarScroll {
 	var result TabBarScroll = TabBarScroll{}
-	var value_0 int32 = total_width
-	var value_1 float32 = float32(value_0)
-	var value_2 float32 = bounds_width
-	var value_3 bool = value_1 <= value_2
-	result.EqualTabs = value_3
-	var value_4 int32 = total_width
-	var value_5 float32 = bounds_width
-	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 32, true)), uint64(0), 32, true, 0))
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, true, 2))
-	result.MaxScroll = value_7
-	var value_8 int32 = result.MaxScroll
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 bool = result.EqualTabs
-		value_11 = value_12
+	result.EqualTabs = (float32(total_width) <= bounds_width)
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds_width), 32, true)), uint64(0), 32, true, 0))
+	result.MaxScroll = (int32(number_runtime_bits(uint64(total_width), uint64(value_0), 32, true, 2)))
+	var value_1 bool = (result.MaxScroll < 0)
+	if !value_1 {
+		value_1 = result.EqualTabs
 	}
-	if value_11 {
-		var value_13 int32 = 0
-		result.MaxScroll = value_13
+	if value_1 {
+		result.MaxScroll = 0
 	}
-	var value_14 bool = result.EqualTabs
-	if value_14 {
-		var value_15 int32 = 0
-		result.Scroll = value_15
+	if result.EqualTabs {
+		result.Scroll = 0
 	} else {
-		var value_16 int32 = scroll
-		var value_17 int32 = 0
-		var value_18 bool = value_16 < value_17
-		if value_18 {
-			var value_19 int32 = 0
-			result.Scroll = value_19
+		if scroll < 0 {
+			result.Scroll = 0
 		} else {
-			var value_20 int32 = scroll
-			var value_21 int32 = result.MaxScroll
-			var value_22 bool = value_20 > value_21
-			if value_22 {
-				var value_23 int32 = result.MaxScroll
-				result.Scroll = value_23
+			if scroll > result.MaxScroll {
+				result.Scroll = result.MaxScroll
 			} else {
-				var value_24 int32 = scroll
-				result.Scroll = value_24
+				result.Scroll = scroll
 			}
 		}
 	}
-	var value_25 TabBarScroll = result
-	return value_25
+	return result
 }
 
 func TabBar_TabBarRevealScroll(tab_x float32, tab_width float32, bounds Rectangle, scroll int32, max_scroll int32) int32 {
-	var value_0 float32 = tab_x
-	var value_1 float32 = bounds.X
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = scroll
-		var value_4 float32 = bounds.X
-		var value_5 float32 = tab_x
-		var value_6 float32 = value_4 - value_5
-		var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_7), 32, true, 2))
-		scroll = value_8
+	if tab_x < bounds.X {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.X-tab_x)), 32, true)), uint64(0), 32, true, 0))
+		scroll = (int32(number_runtime_bits(uint64(scroll), uint64(value_0), 32, true, 2)))
 	} else {
-		var value_9 float32 = tab_x
-		var value_10 float32 = tab_width
-		var value_11 float32 = value_9 + value_10
-		var value_12 float32 = bounds.X
-		var value_13 float32 = bounds.Width
-		var value_14 float32 = value_12 + value_13
-		var value_15 bool = value_11 > value_14
-		if value_15 {
-			var value_16 int32 = scroll
-			var value_17 float32 = tab_x
-			var value_18 float32 = tab_width
-			var value_19 float32 = value_17 + value_18
-			var value_20 float32 = bounds.X
-			var value_21 float32 = bounds.Width
-			var value_22 float32 = value_20 + value_21
-			var value_23 float32 = value_19 - value_22
-			var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-			var value_25 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_24), 32, true, 1))
-			scroll = value_25
+		if (tab_x + tab_width) > (bounds.X + bounds.Width) {
+			var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((tab_x+tab_width)-(bounds.X+bounds.Width))), 32, true)), uint64(0), 32, true, 0))
+			scroll = (int32(number_runtime_bits(uint64(scroll), uint64(value_1), 32, true, 1)))
 		}
 	}
-	var value_26 int32 = scroll
-	var value_27 int32 = 0
-	var value_28 bool = value_26 < value_27
-	if value_28 {
-		var value_29 int32 = 0
-		return value_29
+	if scroll < 0 {
+		return 0
 	}
-	var value_30 int32 = scroll
-	var value_31 int32 = max_scroll
-	var value_32 bool = value_30 > value_31
-	if value_32 {
-		var value_33 int32 = max_scroll
-		return value_33
+	if scroll > max_scroll {
+		return max_scroll
 	}
-	var value_34 int32 = scroll
-	return value_34
+	return scroll
 }
 
 func TabBar_TabBarDragMarkerBounds(tab_x int32, tab_width int32, bar_y int32, bar_height int32, after_tab bool, scale float32) Rectangle {
 	var marker Rectangle = Rectangle{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = tab_x
-	var marker_x int32 = value_4
-	var value_5 bool = after_tab
-	if value_5 {
-		var value_6 int32 = tab_x
-		var value_7 int32 = tab_width
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-		marker_x = value_8
+	var marker_x int32 = tab_x
+	if after_tab {
+		marker_x = (int32(number_runtime_bits(uint64(tab_x), uint64(tab_width), 32, true, 1)))
 	}
-	var value_9 int32 = marker_x
-	var value_10 float32 = float32(value_9)
-	var value_11 float32 = scale
-	var value_12 float32 = value_10 - value_11
-	marker.X = value_12
-	var value_13 int32 = bar_y
-	var value_14 float32 = float32(value_13)
-	var value_15 float32 = 4.0
-	var value_16 float32 = scale
-	var value_17 float32 = value_15 * value_16
-	var value_18 float32 = value_14 + value_17
-	marker.Y = value_18
-	var value_19 float32 = 2.0
-	var value_20 float32 = scale
-	var value_21 float32 = value_19 * value_20
-	marker.Width = value_21
-	var value_22 int32 = bar_height
-	var value_23 float32 = float32(value_22)
-	var value_24 float32 = 8.0
-	var value_25 float32 = scale
-	var value_26 float32 = value_24 * value_25
-	var value_27 float32 = value_23 - value_26
-	marker.Height = value_27
-	var value_28 float32 = marker.Height
-	var value_29 float32 = 0.0
-	var value_30 bool = value_28 < value_29
-	if value_30 {
-		var value_31 float32 = 0.0
-		marker.Height = value_31
+	marker.X = (float32(marker_x) - scale)
+	marker.Y = (float32(bar_y) + (4.0 * scale))
+	marker.Width = (2.0 * scale)
+	marker.Height = (float32(bar_height) - (8.0 * scale))
+	if marker.Height < 0.0 {
+		marker.Height = 0.0
 	}
-	var value_32 Rectangle = marker
-	return value_32
+	return marker
 }
 
 func TabBar_TabBarReorderDragDecisionFor(disabled bool, reorder_enabled bool, owns_press bool, press_index int32, count int32, pointer_down bool, drag_active bool, dx int32, dy int32, threshold int32) TabBarReorderDragDecision {
 	var decision TabBarReorderDragDecision = TabBarReorderDragDecision{}
 	var value_0 bool = disabled
+	if !value_0 {
+		value_0 = !reorder_enabled
+	}
 	var value_1 bool = value_0
 	if !value_1 {
-		var value_2 bool = reorder_enabled
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !owns_press
 	}
-	var value_4 bool = value_1
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (press_index < 0)
+	}
+	var value_3 bool = value_2
+	if !value_3 {
+		value_3 = (press_index >= count)
+	}
+	var value_4 bool = value_3
 	if !value_4 {
-		var value_5 bool = owns_press
-		var value_6 bool = !value_5
-		value_4 = value_6
+		value_4 = !pointer_down
 	}
-	var value_7 bool = value_4
+	if value_4 {
+		return decision
+	}
+	var abs_dx int32 = dx
+	var abs_dy int32 = dy
+	if abs_dx < 0 {
+		abs_dx = int32(number_runtime_bits(uint64(0), uint64(abs_dx), 32, true, 2))
+	}
+	if abs_dy < 0 {
+		abs_dy = int32(number_runtime_bits(uint64(0), uint64(abs_dy), 32, true, 2))
+	}
+	var value_5 bool = !drag_active
+	if value_5 {
+		value_5 = (abs_dx >= threshold)
+	}
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = (abs_dx >= abs_dy)
+	}
+	decision.StartDrag = value_6
+	var value_7 bool = drag_active
 	if !value_7 {
-		var value_8 int32 = press_index
-		var value_9 int32 = 0
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
+		value_7 = decision.StartDrag
 	}
-	var value_11 bool = value_7
-	if !value_11 {
-		var value_12 int32 = press_index
-		var value_13 int32 = count
-		var value_14 bool = value_12 >= value_13
-		value_11 = value_14
-	}
-	var value_15 bool = value_11
-	if !value_15 {
-		var value_16 bool = pointer_down
-		var value_17 bool = !value_16
-		value_15 = value_17
-	}
-	if value_15 {
-		var value_18 TabBarReorderDragDecision = decision
-		return value_18
-	}
-	var value_19 int32 = dx
-	var abs_dx int32 = value_19
-	var value_20 int32 = dy
-	var abs_dy int32 = value_20
-	var value_21 int32 = abs_dx
-	var value_22 int32 = 0
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 int32 = abs_dx
-		var value_25 int32 = int32(number_runtime_bits(uint64(0), uint64(value_24), 32, true, 2))
-		abs_dx = value_25
-	}
-	var value_26 int32 = abs_dy
-	var value_27 int32 = 0
-	var value_28 bool = value_26 < value_27
-	if value_28 {
-		var value_29 int32 = abs_dy
-		var value_30 int32 = int32(number_runtime_bits(uint64(0), uint64(value_29), 32, true, 2))
-		abs_dy = value_30
-	}
-	var value_31 bool = drag_active
-	var value_32 bool = !value_31
-	var value_33 bool = value_32
-	if value_33 {
-		var value_34 int32 = abs_dx
-		var value_35 int32 = threshold
-		var value_36 bool = value_34 >= value_35
-		value_33 = value_36
-	}
-	var value_37 bool = value_33
-	if value_37 {
-		var value_38 int32 = abs_dx
-		var value_39 int32 = abs_dy
-		var value_40 bool = value_38 >= value_39
-		value_37 = value_40
-	}
-	decision.StartDrag = value_37
-	var value_41 bool = drag_active
-	var value_42 bool = value_41
-	if !value_42 {
-		var value_43 bool = decision.StartDrag
-		value_42 = value_43
-	}
-	decision.Dragging = value_42
-	var value_44 bool = decision.Dragging
-	decision.CaptureInput = value_44
-	var value_45 TabBarReorderDragDecision = decision
-	return value_45
+	decision.Dragging = value_7
+	decision.CaptureInput = decision.Dragging
+	return decision
 }
 
 func TabBar_TabBarReorderReleaseDecisionFor(disabled bool, reorder_enabled bool, owns_drag bool, released bool, press_index int32, count int32) TabBarReorderReleaseDecision {
 	var decision TabBarReorderReleaseDecision = TabBarReorderReleaseDecision{}
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = reorder_enabled
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = owns_drag
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = reorder_enabled
-		value_2 = value_3
+		value_2 = released
 	}
-	var value_4 bool = value_2
+	var value_3 bool = value_2
+	if value_3 {
+		value_3 = (press_index >= 0)
+	}
+	var value_4 bool = value_3
 	if value_4 {
-		var value_5 bool = owns_drag
-		value_4 = value_5
+		value_4 = (press_index < count)
 	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = released
-		value_6 = value_7
-	}
-	var value_8 bool = value_6
-	if value_8 {
-		var value_9 int32 = press_index
-		var value_10 int32 = 0
-		var value_11 bool = value_9 >= value_10
-		value_8 = value_11
-	}
-	var value_12 bool = value_8
-	if value_12 {
-		var value_13 int32 = press_index
-		var value_14 int32 = count
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
-	}
-	decision.Finish = value_12
-	var value_16 bool = decision.Finish
-	decision.ConsumeRelease = value_16
-	var value_17 TabBarReorderReleaseDecision = decision
-	return value_17
+	decision.Finish = value_4
+	decision.ConsumeRelease = decision.Finish
+	return decision
 }
 
 func TabBar_TabBarTabPointerDecisionFor(close_active bool, released bool, owns_drag bool, press_matches bool) TabBarTabPointerDecision {
 	var decision TabBarTabPointerDecision = TabBarTabPointerDecision{}
-	var value_0 bool = released
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = owns_drag
-		value_2 = value_3
+	var value_0 bool = !released
+	if !value_0 {
+		value_0 = owns_drag
 	}
-	if value_2 {
-		var value_4 TabBarTabPointerDecision = decision
-		return value_4
+	if value_0 {
+		return decision
 	}
-	var value_5 bool = close_active
-	if value_5 {
-		var value_6 bool = true
-		decision.Close = value_6
-		var value_7 bool = true
-		decision.ConsumeRelease = value_7
-		var value_8 TabBarTabPointerDecision = decision
-		return value_8
+	if close_active {
+		decision.Close = true
+		decision.ConsumeRelease = true
+		return decision
 	}
-	var value_9 bool = press_matches
-	if value_9 {
-		var value_10 bool = true
-		decision.Activate = value_10
-		var value_11 bool = true
-		decision.ConsumeRelease = value_11
+	if press_matches {
+		decision.Activate = true
+		decision.ConsumeRelease = true
 	}
-	var value_12 TabBarTabPointerDecision = decision
-	return value_12
+	return decision
 }
 
 func TabBar_TabBarPressCleanupDecisionFor(released bool, pointer_down bool, owns_press bool, pointer_owner_is_reorder bool) TabBarPressCleanupDecision {
 	var decision TabBarPressCleanupDecision = TabBarPressCleanupDecision{}
 	var value_0 bool = owns_press
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = released
-		var value_3 bool = value_2
-		if !value_3 {
-			var value_4 bool = pointer_down
-			var value_5 bool = !value_4
-			value_3 = value_5
+	if value_0 {
+		var value_1 bool = released
+		if !value_1 {
+			value_1 = !pointer_down
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	decision.ClearPress = value_1
-	var value_6 bool = decision.ClearPress
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = pointer_owner_is_reorder
-		value_7 = value_8
+	decision.ClearPress = value_0
+	var value_2 bool = decision.ClearPress
+	if value_2 {
+		value_2 = pointer_owner_is_reorder
 	}
-	decision.ClearPointerOwner = value_7
-	var value_9 TabBarPressCleanupDecision = decision
-	return value_9
+	decision.ClearPointerOwner = value_2
+	return decision
 }
 
 func TabBar_TabBarEqualTabBounds(bounds Rectangle, count int32, index int32) Rectangle {
 	var rect Rectangle = Rectangle{}
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = index
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+	var value_0 bool = (count <= 0)
+	if !value_0 {
+		value_0 = (index < 0)
 	}
-	var value_7 bool = value_3
-	if !value_7 {
-		var value_8 int32 = index
-		var value_9 int32 = count
-		var value_10 bool = value_8 >= value_9
-		value_7 = value_10
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (index >= count)
 	}
-	if value_7 {
-		var value_11 Rectangle = rect
-		return value_11
+	if value_1 {
+		return rect
 	}
-	var value_12 float32 = bounds.Width
-	var value_13 int32 = count
-	var value_14 float32 = float32(value_13)
-	var value_15 float32 = value_12 / value_14
-	var width float32 = value_15
-	var value_16 float32 = bounds.X
-	var value_17 float32 = width
-	var value_18 int32 = index
-	var value_19 float32 = float32(value_18)
-	var value_20 float32 = value_17 * value_19
-	var value_21 float32 = value_16 + value_20
-	rect.X = value_21
-	var value_22 float32 = bounds.Y
-	rect.Y = value_22
-	var value_23 float32 = width
-	rect.Width = value_23
-	var value_24 float32 = bounds.Height
-	rect.Height = value_24
-	var value_25 int32 = index
-	var value_26 int32 = count
-	var value_27 int32 = 1
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
-	var value_29 bool = value_25 == value_28
-	if value_29 {
-		var value_30 float32 = bounds.X
-		var value_31 float32 = bounds.Width
-		var value_32 float32 = value_30 + value_31
-		var value_33 float32 = rect.X
-		var value_34 float32 = value_32 - value_33
-		rect.Width = value_34
+	var width float32 = (bounds.Width / float32(count))
+	rect.X = (bounds.X + (width * float32(index)))
+	rect.Y = bounds.Y
+	rect.Width = width
+	rect.Height = bounds.Height
+	if index == (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2))) {
+		rect.Width = ((bounds.X + bounds.Width) - rect.X)
 	}
-	var value_35 Rectangle = rect
-	return value_35
+	return rect
 }

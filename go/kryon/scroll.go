@@ -94,1471 +94,764 @@ type ScrollScopeFrame struct {
 }
 
 func Scroll_ScrollMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 != value_8
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 >= value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (value >= 0.0)
 	}
-	if value_10 {
-		var value_14 float32 = value
-		var value_15 float32 = scale
-		var value_16 float32 = value_14 * value_15
-		var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
-		return value_17
+	if value_1 {
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+		return value_2
 	}
-	var value_18 float32 = fallback
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-	return value_21
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((fallback*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_3
 }
 
 func Scroll_ScrollMetricsFor(scale float32, track StyleFrame, thumb StyleFrame) ScrollMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics ScrollMetrics = ScrollMetrics{}
-	var value_4 uint32 = track.Value.Fields
-	var value_5 int32 = int32(StyleIconSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = track.Value.IconSize
-	var value_8 float32 = 10.0
-	var value_9 float32 = scale
-	var value_10 int32 = Scroll_ScrollMetric(value_4, value_6, value_7, value_8, value_9)
-	metrics.ScrollbarWidth = value_10
-	var value_11 uint32 = track.Value.Fields
-	var value_12 int32 = int32(StylePaddingX)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = track.Value.PaddingX
-	var value_15 float32 = 16.0
-	var value_16 float32 = scale
-	var value_17 int32 = Scroll_ScrollMetric(value_11, value_13, value_14, value_15, value_16)
-	metrics.ReservedWidth = value_17
-	var value_18 uint32 = track.Value.Fields
-	var value_19 int32 = int32(StyleGap)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = track.Value.Gap
-	var value_22 float32 = 20.0
-	var value_23 float32 = scale
-	var value_24 int32 = Scroll_ScrollMetric(value_18, value_20, value_21, value_22, value_23)
-	metrics.SafeGap = value_24
+	var value_0 uint32 = track.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = track.Value.IconSize
+	var value_3 float32 = 10.0
+	var value_4 int32 = Scroll_ScrollMetric(value_0, value_1, value_2, value_3, scale)
+	metrics.ScrollbarWidth = value_4
+	var value_5 uint32 = track.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_7 float32 = track.Value.PaddingX
+	var value_8 float32 = 16.0
+	var value_9 int32 = Scroll_ScrollMetric(value_5, value_6, value_7, value_8, scale)
+	metrics.ReservedWidth = value_9
+	var value_10 uint32 = track.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_12 float32 = track.Value.Gap
+	var value_13 float32 = 20.0
+	var value_14 int32 = Scroll_ScrollMetric(value_10, value_11, value_12, value_13, scale)
+	metrics.SafeGap = value_14
+	var value_15 uint32 = track.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_17 float32 = track.Value.OffsetY
+	var value_18 float32 = 42.0
+	var value_19 int32 = Scroll_ScrollMetric(value_15, value_16, value_17, value_18, scale)
+	metrics.DefaultWheelStep = value_19
+	var value_20 uint32 = track.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_22 float32 = track.Value.OffsetX
+	var value_23 float32 = 5.0
+	var value_24 int32 = Scroll_ScrollMetric(value_20, value_21, value_22, value_23, scale)
+	metrics.DragThreshold = value_24
 	var value_25 uint32 = track.Value.Fields
-	var value_26 int32 = int32(StyleContentOffset)
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 float32 = track.Value.OffsetY
-	var value_29 float32 = 42.0
-	var value_30 float32 = scale
-	var value_31 int32 = Scroll_ScrollMetric(value_25, value_27, value_28, value_29, value_30)
-	metrics.DefaultWheelStep = value_31
-	var value_32 uint32 = track.Value.Fields
-	var value_33 int32 = int32(StyleContentOffset)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 float32 = track.Value.OffsetX
-	var value_36 float32 = 5.0
-	var value_37 float32 = scale
-	var value_38 int32 = Scroll_ScrollMetric(value_32, value_34, value_35, value_36, value_37)
-	metrics.DragThreshold = value_38
-	var value_39 uint32 = track.Value.Fields
-	var value_40 int32 = int32(StylePaddingY)
-	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 float32 = track.Value.PaddingY
-	var value_43 float32 = 8.0
-	var value_44 float32 = scale
-	var value_45 int32 = Scroll_ScrollMetric(value_39, value_41, value_42, value_43, value_44)
-	metrics.VisualBleed = value_45
-	var value_46 uint32 = thumb.Value.Fields
-	var value_47 int32 = int32(StyleIconSize)
-	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
-	var value_49 float32 = thumb.Value.IconSize
-	var value_50 float32 = 16.0
-	var value_51 float32 = scale
-	var value_52 int32 = Scroll_ScrollMetric(value_46, value_48, value_49, value_50, value_51)
-	metrics.ThumbMinHeight = value_52
-	var value_53 uint32 = thumb.Value.Fields
-	var value_54 int32 = int32(StylePaddingX)
-	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
-	var value_56 float32 = thumb.Value.PaddingX
-	var value_57 float32 = 2.0
-	var value_58 float32 = scale
-	var value_59 int32 = Scroll_ScrollMetric(value_53, value_55, value_56, value_57, value_58)
-	metrics.ThumbInset = value_59
-	var value_60 ScrollMetrics = metrics
-	return value_60
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_27 float32 = track.Value.PaddingY
+	var value_28 float32 = 8.0
+	var value_29 int32 = Scroll_ScrollMetric(value_25, value_26, value_27, value_28, scale)
+	metrics.VisualBleed = value_29
+	var value_30 uint32 = thumb.Value.Fields
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_32 float32 = thumb.Value.IconSize
+	var value_33 float32 = 16.0
+	var value_34 int32 = Scroll_ScrollMetric(value_30, value_31, value_32, value_33, scale)
+	metrics.ThumbMinHeight = value_34
+	var value_35 uint32 = thumb.Value.Fields
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_37 float32 = thumb.Value.PaddingX
+	var value_38 float32 = 2.0
+	var value_39 int32 = Scroll_ScrollMetric(value_35, value_36, value_37, value_38, scale)
+	metrics.ThumbInset = value_39
+	return metrics
 }
 
 func Scroll_ScrollClamp(value int32, maximum int32) int32 {
-	var value_0 int32 = value
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if value < 0 {
+		return 0
 	}
-	var value_4 int32 = value
-	var value_5 int32 = maximum
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = maximum
-		return value_7
+	if value > maximum {
+		return maximum
 	}
-	var value_8 int32 = value
-	return value_8
+	return value
 }
 
 func Scroll_ScrollMax(content_height int32, viewport_height int32) int32 {
-	var value_0 int32 = content_height
-	var value_1 int32 = viewport_height
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var maximum int32 = value_2
-	var value_3 int32 = maximum
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 0
-		maximum = value_6
+	var maximum int32 = (int32(number_runtime_bits(uint64(content_height), uint64(viewport_height), 32, true, 2)))
+	if maximum < 0 {
+		maximum = 0
 	}
-	var value_7 int32 = maximum
-	return value_7
+	return maximum
 }
 
 func Scroll_ScrollReservedWidth(max_scroll int32, metrics ScrollMetrics) int32 {
-	var value_0 int32 = max_scroll
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = metrics.ReservedWidth
-		return value_3
+	if max_scroll > 0 {
+		return metrics.ReservedWidth
 	}
-	var value_4 int32 = 0
-	return value_4
+	return 0
 }
 
 func Scroll_ScrollContentWidth(content_width int32, max_scroll int32, metrics ScrollMetrics) int32 {
-	var value_0 int32 = max_scroll
-	var value_1 ScrollMetrics = metrics
-	var value_2 int32 = Scroll_ScrollReservedWidth(value_0, value_1)
-	var reserved int32 = value_2
-	var value_3 int32 = reserved
-	var value_4 int32 = 0
-	var value_5 bool = value_3 <= value_4
-	if value_5 {
-		var value_6 int32 = content_width
-		return value_6
+	var value_0 int32 = Scroll_ScrollReservedWidth(max_scroll, metrics)
+	var reserved int32 = value_0
+	if reserved <= 0 {
+		return content_width
 	}
-	var value_7 int32 = content_width
-	var value_8 int32 = reserved
-	var value_9 bool = value_7 <= value_8
-	if value_9 {
-		var value_10 int32 = 0
-		return value_10
+	if content_width <= reserved {
+		return 0
 	}
-	var value_11 int32 = content_width
-	var value_12 int32 = reserved
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-	return value_13
+	return (int32(number_runtime_bits(uint64(content_width), uint64(reserved), 32, true, 2)))
 }
 
 func Scroll_ScrollPageContentWidthFor(view_width int32, max_content_width int32, min_content_width int32, side_padding int32) int32 {
-	var value_0 int32 = max_content_width
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = view_width
-		max_content_width = value_3
+	if max_content_width <= 0 {
+		max_content_width = view_width
 	}
-	var value_4 int32 = view_width
-	var value_5 int32 = side_padding
-	var value_6 int32 = 2
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 2))
-	var available int32 = value_8
-	var value_9 int32 = max_content_width
-	var value_10 int32 = available
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 int32 = available
-		max_content_width = value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(view_width), uint64((int32(number_runtime_bits(uint64(side_padding), uint64(2), 32, true, 3)))), 32, true, 2))
+	var available int32 = value_0
+	if max_content_width > available {
+		max_content_width = available
 	}
-	var value_13 int32 = min_content_width
-	var value_14 int32 = 0
-	var value_15 bool = value_13 > value_14
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 int32 = max_content_width
-		var value_18 int32 = min_content_width
-		var value_19 bool = value_17 < value_18
-		value_16 = value_19
+	var value_1 bool = (min_content_width > 0)
+	if value_1 {
+		value_1 = (max_content_width < min_content_width)
 	}
-	if value_16 {
-		var value_20 int32 = min_content_width
-		max_content_width = value_20
+	if value_1 {
+		max_content_width = min_content_width
 	}
-	var value_21 int32 = max_content_width
-	var value_22 int32 = 0
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 int32 = 0
-		max_content_width = value_24
+	if max_content_width < 0 {
+		max_content_width = 0
 	}
-	var value_25 int32 = max_content_width
-	return value_25
+	return max_content_width
 }
 
 func Scroll_ScrollSafeContentWidth(content_x int32, content_width int32, scrollbar_x int32, max_scroll int32, metrics ScrollMetrics) int32 {
-	var value_0 int32 = content_width
-	var safe_width int32 = value_0
-	var value_1 int32 = max_scroll
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 int32 = scrollbar_x
-		var value_6 int32 = 0
-		var value_7 bool = value_5 <= value_6
-		value_4 = value_7
+	var safe_width int32 = content_width
+	var value_0 bool = (max_scroll <= 0)
+	if !value_0 {
+		value_0 = (scrollbar_x <= 0)
 	}
-	if value_4 {
-		var value_8 int32 = content_width
-		return value_8
+	if value_0 {
+		return content_width
 	}
-	var value_9 int32 = scrollbar_x
-	var value_10 int32 = content_x
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
-	var value_12 int32 = metrics.SafeGap
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-	safe_width = value_13
-	var value_14 int32 = safe_width
-	var value_15 int32 = content_width
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 int32 = content_width
-		return value_17
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(scrollbar_x), uint64(content_x), 32, true, 2)))), uint64(metrics.SafeGap), 32, true, 2))
+	safe_width = value_1
+	if safe_width > content_width {
+		return content_width
 	}
-	var value_18 int32 = safe_width
-	var value_19 int32 = 0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 int32 = 0
-		return value_21
+	if safe_width < 0 {
+		return 0
 	}
-	var value_22 int32 = safe_width
-	return value_22
+	return safe_width
 }
 
 func Scroll_ScrollScopeContentBounds(bounds Rectangle, has_scroll bool, metrics ScrollMetrics) Rectangle {
-	var value_0 Rectangle = bounds
-	var content Rectangle = value_0
-	var value_1 bool = has_scroll
-	if value_1 {
-		var value_2 float32 = bounds.Width
-		var value_3 int32 = metrics.ScrollbarWidth
-		var value_4 float32 = float32(value_3)
-		var value_5 float32 = value_2 - value_4
-		content.Width = value_5
-		var value_6 float32 = content.Width
-		var value_7 float32 = 0.0
-		var value_8 bool = value_6 < value_7
-		if value_8 {
-			var value_9 float32 = 0.0
-			content.Width = value_9
+	var content Rectangle = bounds
+	if has_scroll {
+		content.Width = (bounds.Width - float32(metrics.ScrollbarWidth))
+		if content.Width < 0.0 {
+			content.Width = 0.0
 		}
 	}
-	var value_10 Rectangle = content
-	return value_10
+	return content
 }
 
 func Scroll_ScrollScreenBoundsFor(bounds Rectangle, camera_offset Vector2, zoom float32) Rectangle {
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		zoom = value_3
+	if zoom <= 0.0 {
+		zoom = 1.0
 	}
 	var screen Rectangle = Rectangle{}
-	var value_4 float32 = camera_offset.X
-	var value_5 float32 = bounds.X
-	var value_6 float32 = zoom
-	var value_7 float32 = value_5 * value_6
-	var value_8 float32 = value_4 + value_7
-	screen.X = value_8
-	var value_9 float32 = camera_offset.Y
-	var value_10 float32 = bounds.Y
-	var value_11 float32 = zoom
-	var value_12 float32 = value_10 * value_11
-	var value_13 float32 = value_9 + value_12
-	screen.Y = value_13
-	var value_14 float32 = bounds.Width
-	var value_15 float32 = zoom
-	var value_16 float32 = value_14 * value_15
-	screen.Width = value_16
-	var value_17 float32 = bounds.Height
-	var value_18 float32 = zoom
-	var value_19 float32 = value_17 * value_18
-	screen.Height = value_19
-	var value_20 Rectangle = screen
-	return value_20
+	screen.X = (camera_offset.X + (bounds.X * zoom))
+	screen.Y = (camera_offset.Y + (bounds.Y * zoom))
+	screen.Width = (bounds.Width * zoom)
+	screen.Height = (bounds.Height * zoom)
+	return screen
 }
 
 func Scroll_ScrollWorldBoundsFor(screen_bounds Rectangle, camera_offset Vector2, zoom float32) Rectangle {
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		zoom = value_3
+	if zoom <= 0.0 {
+		zoom = 1.0
 	}
 	var world Rectangle = Rectangle{}
-	var value_4 float32 = screen_bounds.X
-	var value_5 float32 = camera_offset.X
-	var value_6 float32 = value_4 - value_5
-	var value_7 float32 = zoom
-	var value_8 float32 = value_6 / value_7
-	world.X = value_8
-	var value_9 float32 = screen_bounds.Y
-	var value_10 float32 = camera_offset.Y
-	var value_11 float32 = value_9 - value_10
-	var value_12 float32 = zoom
-	var value_13 float32 = value_11 / value_12
-	world.Y = value_13
-	var value_14 float32 = screen_bounds.Width
-	var value_15 float32 = zoom
-	var value_16 float32 = value_14 / value_15
-	world.Width = value_16
-	var value_17 float32 = screen_bounds.Height
-	var value_18 float32 = zoom
-	var value_19 float32 = value_17 / value_18
-	world.Height = value_19
-	var value_20 Rectangle = world
-	return value_20
+	world.X = ((screen_bounds.X - camera_offset.X) / zoom)
+	world.Y = ((screen_bounds.Y - camera_offset.Y) / zoom)
+	world.Width = (screen_bounds.Width / zoom)
+	world.Height = (screen_bounds.Height / zoom)
+	return world
 }
 
 func Scroll_ScrollVisualBoundsFor(screen_bounds Rectangle, visual_bleed int32, zoom float32, screen_width int32, screen_height int32, view_width int32, view_height int32, camera_offset Vector2) Rectangle {
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		zoom = value_3
+	if zoom <= 0.0 {
+		zoom = 1.0
 	}
-	var value_4 int32 = visual_bleed
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = zoom
-	var value_7 float32 = value_5 * value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	var bleed int32 = value_8
-	var value_9 int32 = bleed
-	var value_10 int32 = 1
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 1
-		bleed = value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(visual_bleed)*zoom)), 32, true)), uint64(0), 32, true, 0))
+	var bleed int32 = value_0
+	if bleed < 1 {
+		bleed = 1
 	}
 	var visual Rectangle = Rectangle{}
-	var value_13 float32 = screen_bounds.X
-	var value_14 int32 = bleed
-	var value_15 float32 = float32(value_14)
-	var value_16 float32 = value_13 - value_15
-	visual.X = value_16
-	var value_17 float32 = screen_bounds.Y
-	var value_18 int32 = bleed
-	var value_19 float32 = float32(value_18)
-	var value_20 float32 = value_17 - value_19
-	visual.Y = value_20
-	var value_21 float32 = screen_bounds.Width
-	var value_22 int32 = bleed
-	var value_23 int32 = 2
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 3))
-	var value_25 float32 = float32(value_24)
-	var value_26 float32 = value_21 + value_25
-	visual.Width = value_26
-	var value_27 float32 = screen_bounds.Height
-	var value_28 int32 = bleed
-	var value_29 int32 = 2
-	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 3))
-	var value_31 float32 = float32(value_30)
-	var value_32 float32 = value_27 + value_31
-	visual.Height = value_32
-	var value_33 float32 = visual.X
-	var value_34 float32 = 0.0
-	var value_35 bool = value_33 < value_34
-	if value_35 {
-		var value_36 float32 = visual.Width
-		var value_37 float32 = visual.X
-		visual.Width = value_36 + value_37
-		var value_38 float32 = 0.0
-		visual.X = value_38
+	visual.X = (screen_bounds.X - float32(bleed))
+	visual.Y = (screen_bounds.Y - float32(bleed))
+	visual.Width = (screen_bounds.Width + float32((int32(number_runtime_bits(uint64(bleed), uint64(2), 32, true, 3)))))
+	visual.Height = (screen_bounds.Height + float32((int32(number_runtime_bits(uint64(bleed), uint64(2), 32, true, 3)))))
+	if visual.X < 0.0 {
+		var value_1 float32 = visual.Width
+		visual.Width = value_1 + visual.X
+		visual.X = 0.0
 	}
-	var value_39 float32 = visual.Y
-	var value_40 float32 = 0.0
-	var value_41 bool = value_39 < value_40
-	if value_41 {
-		var value_42 float32 = visual.Height
-		var value_43 float32 = visual.Y
-		visual.Height = value_42 + value_43
-		var value_44 float32 = 0.0
-		visual.Y = value_44
+	if visual.Y < 0.0 {
+		var value_2 float32 = visual.Height
+		visual.Height = value_2 + visual.Y
+		visual.Y = 0.0
 	}
-	var value_45 int32 = screen_width
-	var value_46 int32 = 0
-	var value_47 bool = value_45 <= value_46
-	if value_47 {
-		var value_48 float32 = camera_offset.X
-		var value_49 int32 = view_width
-		var value_50 float32 = float32(value_49)
-		var value_51 float32 = zoom
-		var value_52 float32 = value_50 * value_51
-		var value_53 float32 = value_48 + value_52
-		var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
-		screen_width = value_54
+	if screen_width <= 0 {
+		var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((camera_offset.X+(float32(view_width)*zoom))), 32, true)), uint64(0), 32, true, 0))
+		screen_width = value_3
 	}
-	var value_55 int32 = screen_height
-	var value_56 int32 = 0
-	var value_57 bool = value_55 <= value_56
-	if value_57 {
-		var value_58 float32 = camera_offset.Y
-		var value_59 int32 = view_height
-		var value_60 float32 = float32(value_59)
-		var value_61 float32 = zoom
-		var value_62 float32 = value_60 * value_61
-		var value_63 float32 = value_58 + value_62
-		var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
-		screen_height = value_64
+	if screen_height <= 0 {
+		var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((camera_offset.Y+(float32(view_height)*zoom))), 32, true)), uint64(0), 32, true, 0))
+		screen_height = value_4
 	}
-	var value_65 float32 = visual.X
-	var value_66 float32 = visual.Width
-	var value_67 float32 = value_65 + value_66
-	var value_68 int32 = screen_width
-	var value_69 float32 = float32(value_68)
-	var value_70 bool = value_67 > value_69
-	if value_70 {
-		var value_71 int32 = screen_width
-		var value_72 float32 = float32(value_71)
-		var value_73 float32 = visual.X
-		var value_74 float32 = value_72 - value_73
-		visual.Width = value_74
+	if (visual.X + visual.Width) > float32(screen_width) {
+		visual.Width = (float32(screen_width) - visual.X)
 	}
-	var value_75 float32 = visual.Y
-	var value_76 float32 = visual.Height
-	var value_77 float32 = value_75 + value_76
-	var value_78 int32 = screen_height
-	var value_79 float32 = float32(value_78)
-	var value_80 bool = value_77 > value_79
-	if value_80 {
-		var value_81 int32 = screen_height
-		var value_82 float32 = float32(value_81)
-		var value_83 float32 = visual.Y
-		var value_84 float32 = value_82 - value_83
-		visual.Height = value_84
+	if (visual.Y + visual.Height) > float32(screen_height) {
+		visual.Height = (float32(screen_height) - visual.Y)
 	}
-	var value_85 float32 = visual.Width
-	var value_86 float32 = 0.0
-	var value_87 bool = value_85 < value_86
-	if value_87 {
-		var value_88 float32 = 0.0
-		visual.Width = value_88
+	if visual.Width < 0.0 {
+		visual.Width = 0.0
 	}
-	var value_89 float32 = visual.Height
-	var value_90 float32 = 0.0
-	var value_91 bool = value_89 < value_90
-	if value_91 {
-		var value_92 float32 = 0.0
-		visual.Height = value_92
+	if visual.Height < 0.0 {
+		visual.Height = 0.0
 	}
-	var value_93 Rectangle = visual
-	return value_93
+	return visual
 }
 
 func Scroll_ScrollClipGeometryFor(bounds Rectangle, clipped_screen_bounds Rectangle, visual_bleed int32, camera_offset Vector2, zoom float32, screen_width int32, screen_height int32, view_width int32, view_height int32) ScrollClipGeometry {
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		zoom = value_3
+	if zoom <= 0.0 {
+		zoom = 1.0
 	}
 	var geometry ScrollClipGeometry = ScrollClipGeometry{}
-	var value_4 Rectangle = bounds
-	var value_5 Vector2 = camera_offset
-	var value_6 float32 = zoom
-	var value_7 Rectangle = Scroll_ScrollScreenBoundsFor(value_4, value_5, value_6)
-	geometry.ScreenBounds = value_7
-	var value_8 Rectangle = clipped_screen_bounds
-	var value_9 Vector2 = camera_offset
-	var value_10 float32 = zoom
-	var value_11 Rectangle = Scroll_ScrollWorldBoundsFor(value_8, value_9, value_10)
-	geometry.ClippedWorldBounds = value_11
-	var value_12 Rectangle = geometry.ScreenBounds
-	var value_13 int32 = visual_bleed
-	var value_14 float32 = zoom
-	var value_15 int32 = screen_width
-	var value_16 int32 = screen_height
-	var value_17 int32 = view_width
-	var value_18 int32 = view_height
-	var value_19 Vector2 = camera_offset
-	var value_20 Rectangle = Scroll_ScrollVisualBoundsFor(value_12, value_13, value_14, value_15, value_16, value_17, value_18, value_19)
-	geometry.VisualScreenBounds = value_20
-	var value_21 int32 = visual_bleed
-	var value_22 float32 = float32(value_21)
-	var value_23 float32 = zoom
-	var value_24 float32 = value_22 * value_23
-	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-	geometry.VisualBleed = value_25
-	var value_26 int32 = geometry.VisualBleed
-	var value_27 int32 = 1
-	var value_28 bool = value_26 < value_27
-	if value_28 {
-		var value_29 int32 = 1
-		geometry.VisualBleed = value_29
+	var value_0 Rectangle = Scroll_ScrollScreenBoundsFor(bounds, camera_offset, zoom)
+	geometry.ScreenBounds = value_0
+	var value_1 Rectangle = Scroll_ScrollWorldBoundsFor(clipped_screen_bounds, camera_offset, zoom)
+	geometry.ClippedWorldBounds = value_1
+	var value_2 Rectangle = geometry.ScreenBounds
+	var value_3 Rectangle = Scroll_ScrollVisualBoundsFor(value_2, visual_bleed, zoom, screen_width, screen_height, view_width, view_height, camera_offset)
+	geometry.VisualScreenBounds = value_3
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(visual_bleed)*zoom)), 32, true)), uint64(0), 32, true, 0))
+	geometry.VisualBleed = value_4
+	if geometry.VisualBleed < 1 {
+		geometry.VisualBleed = 1
 	}
-	var value_30 ScrollClipGeometry = geometry
-	return value_30
+	return geometry
 }
 
 func Scroll_ScrollWheelOffsetFor(scroll_offset int32, wheel_move float32, max_scroll int32, wheel_step int32) int32 {
-	var value_0 float32 = wheel_move
-	var value_1 int32 = wheel_step
-	var value_2 float32 = float32(value_1)
-	var value_3 float32 = value_0 * value_2
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	var delta int32 = value_4
-	var value_5 int32 = scroll_offset
-	var value_6 int32 = delta
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-	var value_8 int32 = max_scroll
-	var value_9 int32 = Scroll_ScrollClamp(value_7, value_8)
-	return value_9
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((wheel_move*float32(wheel_step))), 32, true)), uint64(0), 32, true, 0))
+	var delta int32 = value_0
+	var value_1 int32 = (int32(number_runtime_bits(uint64(scroll_offset), uint64(delta), 32, true, 2)))
+	var value_2 int32 = Scroll_ScrollClamp(value_1, max_scroll)
+	return value_2
 }
 
 func Scroll_ScrollRowWheelStepFor(row_height int32, scale float32) int32 {
-	var value_0 int32 = row_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = row_height
-		var value_4 int32 = 3
-		var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 3))
-		return value_5
+	if row_height > 0 {
+		return (int32(number_runtime_bits(uint64(row_height), uint64(3), 32, true, 3)))
 	}
-	var value_6 float32 = scale
-	var value_7 float32 = 0.0
-	var value_8 bool = value_6 <= value_7
-	if value_8 {
-		var value_9 float32 = 1.0
-		scale = value_9
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_10 float32 = 90.0
-	var value_11 float32 = scale
-	var value_12 float32 = value_10 * value_11
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	return value_13
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((90.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Scroll_ScrollDragOffsetFor(mouse_y float32, track_y float32, grab_y float32, max_scroll int32, paint ScrollBarPaint) int32 {
-	var value_0 float32 = paint.ScrollPerPixel
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		var value_4 int32 = max_scroll
-		var value_5 int32 = Scroll_ScrollClamp(value_3, value_4)
-		return value_5
+	if paint.ScrollPerPixel <= 0.0 {
+		var value_0 int32 = 0
+		var value_1 int32 = Scroll_ScrollClamp(value_0, max_scroll)
+		return value_1
 	}
-	var value_6 float32 = mouse_y
-	var value_7 float32 = track_y
-	var value_8 float32 = value_6 - value_7
-	var value_9 float32 = grab_y
-	var value_10 float32 = value_8 - value_9
-	var value_11 float32 = paint.ScrollPerPixel
-	var value_12 float32 = value_10 * value_11
-	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-	var offset int32 = value_13
-	var value_14 int32 = offset
-	var value_15 int32 = max_scroll
-	var value_16 int32 = Scroll_ScrollClamp(value_14, value_15)
-	return value_16
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((((mouse_y-track_y)-grab_y)*paint.ScrollPerPixel)), 32, true)), uint64(0), 32, true, 0))
+	var offset int32 = value_2
+	var value_3 int32 = Scroll_ScrollClamp(offset, max_scroll)
+	return value_3
 }
 
 func Scroll_ScrollDragDeltaOffsetFor(start_scroll int32, delta_y int32, max_scroll int32) int32 {
-	var value_0 int32 = start_scroll
-	var value_1 int32 = delta_y
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var value_3 int32 = max_scroll
-	var value_4 int32 = Scroll_ScrollClamp(value_2, value_3)
-	return value_4
+	var value_0 int32 = (int32(number_runtime_bits(uint64(start_scroll), uint64(delta_y), 32, true, 2)))
+	var value_1 int32 = Scroll_ScrollClamp(value_0, max_scroll)
+	return value_1
 }
 
 func Scroll_ScrollThumbDragDeltaOffsetFor(start_scroll int32, delta_y int32, max_scroll int32, paint ScrollBarPaint) int32 {
-	var value_0 int32 = start_scroll
-	var offset int32 = value_0
-	var value_1 float32 = paint.ScrollPerPixel
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 int32 = offset
-		var value_5 int32 = delta_y
-		var value_6 float32 = float32(value_5)
-		var value_7 float32 = paint.ScrollPerPixel
-		var value_8 float32 = value_6 * value_7
-		var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
-		offset = int32(number_runtime_bits(uint64(value_4), uint64(value_9), 32, true, 1))
+	var offset int32 = start_scroll
+	if paint.ScrollPerPixel > 0.0 {
+		var value_0 int32 = offset
+		var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(delta_y)*paint.ScrollPerPixel)), 32, true)), uint64(0), 32, true, 0))
+		offset = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
 	}
-	var value_10 int32 = offset
-	var value_11 int32 = max_scroll
-	var value_12 int32 = Scroll_ScrollClamp(value_10, value_11)
-	return value_12
+	var value_2 int32 = Scroll_ScrollClamp(offset, max_scroll)
+	return value_2
 }
 
 func Scroll_ScrollBarDragFor(mouse_down bool, input_captured bool, thumb_active bool, pointer_owner_none bool, drag_active bool, owns_drag bool, current_scroll int32, start_scroll int32, delta_y int32, max_scroll int32, paint ScrollBarPaint) ScrollBarDragDecision {
 	var decision ScrollBarDragDecision = ScrollBarDragDecision{}
-	var value_0 int32 = current_scroll
-	var value_1 int32 = max_scroll
-	var value_2 int32 = Scroll_ScrollClamp(value_0, value_1)
-	decision.ScrollOffset = value_2
-	var value_3 bool = mouse_down
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = input_captured
-		var value_6 bool = !value_5
-		var value_7 bool = value_6
-		if !value_7 {
-			var value_8 bool = owns_drag
-			value_7 = value_8
+	var value_0 int32 = Scroll_ScrollClamp(current_scroll, max_scroll)
+	decision.ScrollOffset = value_0
+	var value_1 bool = mouse_down
+	if value_1 {
+		var value_2 bool = !input_captured
+		if !value_2 {
+			value_2 = owns_drag
 		}
-		value_4 = value_7
+		value_1 = value_2
 	}
-	if value_4 {
-		var value_9 bool = drag_active
-		var value_10 bool = !value_9
-		if value_10 {
-			var value_11 bool = thumb_active
-			var value_12 bool = value_11
-			if value_12 {
-				var value_13 bool = pointer_owner_none
-				value_12 = value_13
+	if value_1 {
+		if !drag_active {
+			var value_3 bool = thumb_active
+			if value_3 {
+				value_3 = pointer_owner_none
 			}
-			if value_12 {
-				var value_14 bool = true
-				decision.StartDrag = value_14
-				var value_15 bool = true
-				decision.ClaimScrollOwner = value_15
+			if value_3 {
+				decision.StartDrag = true
+				decision.ClaimScrollOwner = true
 			}
-			var value_16 ScrollBarDragDecision = decision
-			return value_16
+			return decision
 		}
-		var value_17 bool = owns_drag
-		if value_17 {
-			var value_18 bool = true
-			decision.ContinueDrag = value_18
-			var value_19 bool = true
-			decision.ClaimScrollOwner = value_19
-			var value_20 int32 = start_scroll
-			var value_21 int32 = delta_y
-			var value_22 int32 = max_scroll
-			var value_23 ScrollBarPaint = paint
-			var value_24 int32 = Scroll_ScrollThumbDragDeltaOffsetFor(value_20, value_21, value_22, value_23)
-			decision.ScrollOffset = value_24
+		if owns_drag {
+			decision.ContinueDrag = true
+			decision.ClaimScrollOwner = true
+			var value_4 int32 = Scroll_ScrollThumbDragDeltaOffsetFor(start_scroll, delta_y, max_scroll, paint)
+			decision.ScrollOffset = value_4
 		}
-		var value_25 ScrollBarDragDecision = decision
-		return value_25
+		return decision
 	}
-	var value_26 bool = owns_drag
-	if value_26 {
-		var value_27 bool = true
-		decision.CancelDrag = value_27
+	if owns_drag {
+		decision.CancelDrag = true
 	}
-	var value_28 ScrollBarDragDecision = decision
-	return value_28
+	return decision
 }
 
 func Scroll_ScrollBarDragReleaseFor(drag_active bool, mouse_released bool, content_disabled bool) ScrollBarDragReleaseDecision {
 	var decision ScrollBarDragReleaseDecision = ScrollBarDragReleaseDecision{}
 	var value_0 bool = drag_active
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = mouse_released
-		var value_3 bool = value_2
-		if !value_3 {
-			var value_4 bool = content_disabled
-			value_3 = value_4
+	if value_0 {
+		var value_1 bool = mouse_released
+		if !value_1 {
+			value_1 = content_disabled
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	decision.ClearDrag = value_1
-	var value_5 bool = drag_active
-	var value_6 bool = value_5
-	if value_6 {
-		var value_7 bool = mouse_released
-		value_6 = value_7
+	decision.ClearDrag = value_0
+	var value_2 bool = drag_active
+	if value_2 {
+		value_2 = mouse_released
 	}
-	decision.ConsumeRelease = value_6
-	var value_8 ScrollBarDragReleaseDecision = decision
-	return value_8
+	decision.ConsumeRelease = value_2
+	return decision
 }
 
 func Scroll_ScrollContentDragFor(max_scroll int32, mouse_pressed bool, mouse_down bool, inside bool, input_captured bool, on_scrollbar bool, pointer_owner_none bool, pointer_owner_scroll bool, blocked_by_other_drag bool, active bool, dragging bool, current_scroll int32, start_scroll int32, delta_y int32, drag_threshold int32) ScrollContentDragDecision {
 	var decision ScrollContentDragDecision = ScrollContentDragDecision{}
-	var value_0 int32 = current_scroll
-	var value_1 int32 = max_scroll
-	var value_2 int32 = Scroll_ScrollClamp(value_0, value_1)
-	decision.ScrollOffset = value_2
-	var value_3 bool = blocked_by_other_drag
+	var value_0 int32 = Scroll_ScrollClamp(current_scroll, max_scroll)
+	decision.ScrollOffset = value_0
+	if blocked_by_other_drag {
+		return decision
+	}
+	var value_1 bool = (max_scroll > 0)
+	if value_1 {
+		value_1 = pointer_owner_none
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = mouse_pressed
+	}
+	var value_3 bool = value_2
 	if value_3 {
-		var value_4 ScrollContentDragDecision = decision
-		return value_4
+		value_3 = inside
 	}
-	var value_5 int32 = max_scroll
-	var value_6 int32 = 0
-	var value_7 bool = value_5 > value_6
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = pointer_owner_none
-		value_8 = value_9
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = !input_captured
 	}
-	var value_10 bool = value_8
-	if value_10 {
-		var value_11 bool = mouse_pressed
-		value_10 = value_11
+	var value_5 bool = value_4
+	if value_5 {
+		value_5 = !on_scrollbar
 	}
-	var value_12 bool = value_10
+	if value_5 {
+		decision.StartDrag = true
+		decision.Active = true
+		decision.GesturePending = true
+		return decision
+	}
+	var value_6 bool = active
+	if value_6 {
+		value_6 = mouse_down
+	}
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = pointer_owner_none
+		if !value_8 {
+			value_8 = pointer_owner_scroll
+		}
+		value_7 = value_8
+	}
+	if value_7 {
+		decision.Active = true
+		var value_9 bool = dragging
+		if !value_9 {
+			value_9 = (delta_y > drag_threshold)
+		}
+		var value_10 bool = value_9
+		if !value_10 {
+			value_10 = (delta_y < int32(number_runtime_bits(uint64(0), uint64(drag_threshold), 32, true, 2)))
+		}
+		if value_10 {
+			decision.Dragging = true
+			decision.ClaimScrollOwner = true
+			decision.CaptureInput = true
+			var value_11 int32 = Scroll_ScrollDragDeltaOffsetFor(start_scroll, delta_y, max_scroll)
+			decision.ScrollOffset = value_11
+		}
+		return decision
+	}
+	var value_12 bool = active
 	if value_12 {
-		var value_13 bool = inside
-		value_12 = value_13
+		value_12 = dragging
 	}
-	var value_14 bool = value_12
-	if value_14 {
-		var value_15 bool = input_captured
-		var value_16 bool = !value_15
-		value_14 = value_16
+	if value_12 {
+		decision.CaptureInput = true
 	}
-	var value_17 bool = value_14
-	if value_17 {
-		var value_18 bool = on_scrollbar
-		var value_19 bool = !value_18
-		value_17 = value_19
-	}
-	if value_17 {
-		var value_20 bool = true
-		decision.StartDrag = value_20
-		var value_21 bool = true
-		decision.Active = value_21
-		var value_22 bool = true
-		decision.GesturePending = value_22
-		var value_23 ScrollContentDragDecision = decision
-		return value_23
-	}
-	var value_24 bool = active
-	var value_25 bool = value_24
-	if value_25 {
-		var value_26 bool = mouse_down
-		value_25 = value_26
-	}
-	var value_27 bool = value_25
-	if value_27 {
-		var value_28 bool = pointer_owner_none
-		var value_29 bool = value_28
-		if !value_29 {
-			var value_30 bool = pointer_owner_scroll
-			value_29 = value_30
-		}
-		value_27 = value_29
-	}
-	if value_27 {
-		var value_31 bool = true
-		decision.Active = value_31
-		var value_32 bool = dragging
-		var value_33 bool = value_32
-		if !value_33 {
-			var value_34 int32 = delta_y
-			var value_35 int32 = drag_threshold
-			var value_36 bool = value_34 > value_35
-			value_33 = value_36
-		}
-		var value_37 bool = value_33
-		if !value_37 {
-			var value_38 int32 = delta_y
-			var value_39 int32 = drag_threshold
-			var value_40 int32 = int32(number_runtime_bits(uint64(0), uint64(value_39), 32, true, 2))
-			var value_41 bool = value_38 < value_40
-			value_37 = value_41
-		}
-		if value_37 {
-			var value_42 bool = true
-			decision.Dragging = value_42
-			var value_43 bool = true
-			decision.ClaimScrollOwner = value_43
-			var value_44 bool = true
-			decision.CaptureInput = value_44
-			var value_45 int32 = start_scroll
-			var value_46 int32 = delta_y
-			var value_47 int32 = max_scroll
-			var value_48 int32 = Scroll_ScrollDragDeltaOffsetFor(value_45, value_46, value_47)
-			decision.ScrollOffset = value_48
-		}
-		var value_49 ScrollContentDragDecision = decision
-		return value_49
-	}
-	var value_50 bool = active
-	var value_51 bool = value_50
-	if value_51 {
-		var value_52 bool = dragging
-		value_51 = value_52
-	}
-	if value_51 {
-		var value_53 bool = true
-		decision.CaptureInput = value_53
-	}
-	var value_54 ScrollContentDragDecision = decision
-	return value_54
+	return decision
 }
 
 func Scroll_ScrollRectVisibleOffsetFor(scroll_offset int32, viewport_y int32, viewport_height int32, rect_y int32, rect_height int32, margin int32, max_scroll int32) int32 {
-	var value_0 int32 = margin
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		margin = value_3
+	if margin < 0 {
+		margin = 0
 	}
-	var value_4 int32 = scroll_offset
-	var value_5 int32 = max_scroll
-	var value_6 int32 = Scroll_ScrollClamp(value_4, value_5)
-	var next_scroll int32 = value_6
-	var value_7 int32 = viewport_y
-	var value_8 int32 = margin
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-	var viewport_top int32 = value_9
-	var value_10 int32 = viewport_y
-	var value_11 int32 = viewport_height
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = margin
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 2))
-	var viewport_bottom int32 = value_14
-	var value_15 int32 = rect_y
-	var rect_top int32 = value_15
-	var value_16 int32 = rect_y
-	var value_17 int32 = rect_height
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
-	var rect_bottom int32 = value_18
-	var value_19 int32 = viewport_bottom
-	var value_20 int32 = viewport_top
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = viewport_top
-		viewport_bottom = value_22
+	var value_0 int32 = Scroll_ScrollClamp(scroll_offset, max_scroll)
+	var next_scroll int32 = value_0
+	var viewport_top int32 = (int32(number_runtime_bits(uint64(viewport_y), uint64(margin), 32, true, 1)))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(viewport_y), uint64(viewport_height), 32, true, 1)))), uint64(margin), 32, true, 2))
+	var viewport_bottom int32 = value_1
+	var rect_top int32 = rect_y
+	var rect_bottom int32 = (int32(number_runtime_bits(uint64(rect_y), uint64(rect_height), 32, true, 1)))
+	if viewport_bottom < viewport_top {
+		viewport_bottom = viewport_top
 	}
-	var value_23 int32 = rect_bottom
-	var value_24 int32 = viewport_bottom
-	var value_25 bool = value_23 > value_24
-	if value_25 {
-		var value_26 int32 = next_scroll
-		var value_27 int32 = rect_bottom
-		var value_28 int32 = viewport_bottom
-		var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
-		next_scroll = int32(number_runtime_bits(uint64(value_26), uint64(value_29), 32, true, 1))
+	if rect_bottom > viewport_bottom {
+		var value_2 int32 = next_scroll
+		next_scroll = int32(number_runtime_bits(uint64(value_2), uint64((int32(number_runtime_bits(uint64(rect_bottom), uint64(viewport_bottom), 32, true, 2)))), 32, true, 1))
 	}
-	var value_30 int32 = rect_top
-	var value_31 int32 = viewport_top
-	var value_32 bool = value_30 < value_31
-	if value_32 {
-		var value_33 int32 = next_scroll
-		var value_34 int32 = viewport_top
-		var value_35 int32 = rect_top
-		var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 2))
-		next_scroll = int32(number_runtime_bits(uint64(value_33), uint64(value_36), 32, true, 2))
+	if rect_top < viewport_top {
+		var value_3 int32 = next_scroll
+		next_scroll = int32(number_runtime_bits(uint64(value_3), uint64((int32(number_runtime_bits(uint64(viewport_top), uint64(rect_top), 32, true, 2)))), 32, true, 2))
 	}
-	var value_37 int32 = next_scroll
-	var value_38 int32 = max_scroll
-	var value_39 int32 = Scroll_ScrollClamp(value_37, value_38)
-	return value_39
+	var value_4 int32 = Scroll_ScrollClamp(next_scroll, max_scroll)
+	return value_4
 }
 
 func Scroll_ScrollMeasure(bounds Rectangle, content_height int32, content_x int32, content_width int32, scroll_offset int32, scrollbar_x int32, metrics ScrollMetrics) ScrollPolicyView {
 	var view ScrollPolicyView = ScrollPolicyView{}
-	var value_0 float32 = bounds.X
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var x int32 = value_1
-	var value_2 float32 = bounds.Y
-	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
-	var y int32 = value_3
-	var value_4 float32 = bounds.Width
-	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-	var w int32 = value_5
-	var value_6 float32 = bounds.Height
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var h int32 = value_7
-	var value_8 int32 = content_height
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		content_height = value_11
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.X), 32, true)), uint64(0), 32, true, 0))
+	var x int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Y), 32, true)), uint64(0), 32, true, 0))
+	var y int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+	var w int32 = value_2
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var h int32 = value_3
+	if content_height < 0 {
+		content_height = 0
 	}
-	var value_12 int32 = content_x
-	var value_13 int32 = 0
-	var value_14 bool = value_12 <= value_13
-	if value_14 {
-		var value_15 int32 = x
-		content_x = value_15
+	if content_x <= 0 {
+		content_x = x
 	}
-	var value_16 int32 = content_width
-	var value_17 int32 = 0
-	var value_18 bool = value_16 <= value_17
-	if value_18 {
-		var value_19 int32 = w
-		content_width = value_19
+	if content_width <= 0 {
+		content_width = w
 	}
-	var value_20 int32 = scrollbar_x
-	var value_21 int32 = 0
-	var value_22 bool = value_20 <= value_21
-	if value_22 {
-		var value_23 int32 = x
-		var value_24 int32 = w
-		var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
-		var value_26 int32 = metrics.ScrollbarWidth
-		var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 2))
-		scrollbar_x = value_27
+	if scrollbar_x <= 0 {
+		var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(x), uint64(w), 32, true, 1)))), uint64(metrics.ScrollbarWidth), 32, true, 2))
+		scrollbar_x = value_4
 	}
-	var value_28 int32 = content_x
-	view.ContentX = value_28
-	var value_29 int32 = h
-	view.ViewportH = value_29
-	var value_30 int32 = content_height
-	view.ContentH = value_30
-	var value_31 int32 = content_height
-	var value_32 int32 = h
-	var value_33 int32 = Scroll_ScrollMax(value_31, value_32)
-	view.MaxScroll = value_33
-	var value_34 int32 = scroll_offset
-	var value_35 int32 = view.MaxScroll
-	var value_36 int32 = Scroll_ScrollClamp(value_34, value_35)
-	scroll_offset = value_36
-	var value_37 int32 = y
-	var value_38 int32 = scroll_offset
-	var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 2))
-	view.ContentY = value_39
-	var value_40 int32 = scrollbar_x
-	view.ScrollbarX = value_40
-	var value_41 int32 = content_x
-	var value_42 int32 = content_width
-	var value_43 int32 = scrollbar_x
-	var value_44 int32 = view.MaxScroll
-	var value_45 ScrollMetrics = metrics
-	var value_46 int32 = Scroll_ScrollSafeContentWidth(value_41, value_42, value_43, value_44, value_45)
-	view.ContentW = value_46
-	var value_47 ScrollPolicyView = view
-	return value_47
+	view.ContentX = content_x
+	view.ViewportH = h
+	view.ContentH = content_height
+	var value_5 int32 = Scroll_ScrollMax(content_height, h)
+	view.MaxScroll = value_5
+	var value_6 int32 = view.MaxScroll
+	var value_7 int32 = Scroll_ScrollClamp(scroll_offset, value_6)
+	scroll_offset = value_7
+	view.ContentY = (int32(number_runtime_bits(uint64(y), uint64(scroll_offset), 32, true, 2)))
+	view.ScrollbarX = scrollbar_x
+	var value_8 int32 = view.MaxScroll
+	var value_9 int32 = Scroll_ScrollSafeContentWidth(content_x, content_width, scrollbar_x, value_8, metrics)
+	view.ContentW = value_9
+	return view
 }
 
 func Scroll_ScrollBarPaintFor(x int32, y int32, viewport_h int32, content_h int32, scroll_offset int32, max_scroll int32, metrics ScrollMetrics) ScrollBarPaint {
 	var paint ScrollBarPaint = ScrollBarPaint{}
-	var value_0 int32 = metrics.ScrollbarWidth
-	var scrollbar_w int32 = value_0
-	var value_1 int32 = scrollbar_w
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		scrollbar_w = value_4
+	var scrollbar_w int32 = metrics.ScrollbarWidth
+	if scrollbar_w < 0 {
+		scrollbar_w = 0
 	}
-	var value_5 int32 = viewport_h
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 0
-		viewport_h = value_8
+	if viewport_h < 0 {
+		viewport_h = 0
 	}
-	var value_9 int32 = content_h
-	var value_10 int32 = 0
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = 0
-		content_h = value_12
+	if content_h < 0 {
+		content_h = 0
 	}
-	var value_13 int32 = viewport_h
-	var thumb_h int32 = value_13
-	var value_14 int32 = content_h
-	var value_15 int32 = 0
-	var value_16 bool = value_14 > value_15
-	if value_16 {
-		var value_17 int32 = viewport_h
-		var value_18 float32 = float32(value_17)
-		var value_19 int32 = viewport_h
-		var value_20 float32 = float32(value_19)
-		var value_21 int32 = content_h
-		var value_22 float32 = float32(value_21)
-		var value_23 float32 = value_20 / value_22
-		var value_24 float32 = value_18 * value_23
-		var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-		thumb_h = value_25
+	var thumb_h int32 = viewport_h
+	if content_h > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(viewport_h)*(float32(viewport_h)/float32(content_h)))), 32, true)), uint64(0), 32, true, 0))
+		thumb_h = value_0
 	}
-	var value_26 int32 = thumb_h
-	var value_27 int32 = metrics.ThumbMinHeight
-	var value_28 bool = value_26 < value_27
-	if value_28 {
-		var value_29 int32 = metrics.ThumbMinHeight
-		thumb_h = value_29
+	if thumb_h < metrics.ThumbMinHeight {
+		thumb_h = metrics.ThumbMinHeight
 	}
-	var value_30 int32 = thumb_h
-	var value_31 int32 = viewport_h
-	var value_32 bool = value_30 > value_31
-	if value_32 {
-		var value_33 int32 = viewport_h
-		thumb_h = value_33
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(viewport_h)*0.28)), 32, true)), uint64(0), 32, true, 0))
+	var max_thumb_h int32 = value_1
+	if max_thumb_h < metrics.ThumbMinHeight {
+		max_thumb_h = metrics.ThumbMinHeight
 	}
-	var value_34 int32 = thumb_h
-	var value_35 int32 = 0
-	var value_36 bool = value_34 < value_35
-	if value_36 {
-		var value_37 int32 = 0
-		thumb_h = value_37
+	if thumb_h > max_thumb_h {
+		thumb_h = max_thumb_h
 	}
-	var value_38 int32 = scroll_offset
-	var value_39 int32 = max_scroll
-	var value_40 int32 = Scroll_ScrollClamp(value_38, value_39)
-	var clamped_scroll int32 = value_40
-	var value_41 int32 = max_scroll
-	var value_42 int32 = 0
-	var value_43 bool = value_41 > value_42
-	var value_44 float32 = 0
-	if value_43 {
-		var value_45 int32 = clamped_scroll
-		var value_46 float32 = float32(value_45)
-		var value_47 int32 = max_scroll
-		var value_48 float32 = float32(value_47)
-		var value_49 float32 = value_46 / value_48
-		value_44 = value_49
+	if thumb_h > viewport_h {
+		thumb_h = viewport_h
+	}
+	if thumb_h < 0 {
+		thumb_h = 0
+	}
+	var value_2 int32 = Scroll_ScrollClamp(scroll_offset, max_scroll)
+	var clamped_scroll int32 = value_2
+	var value_3 float32 = 0
+	if max_scroll > 0 {
+		value_3 = (float32(clamped_scroll) / float32(max_scroll))
 	} else {
-		var value_50 float32 = 0.0
-		value_44 = value_50
+		value_3 = 0.0
 	}
-	var scroll_ratio float32 = value_44
-	var value_51 float32 = scroll_ratio
-	var value_52 float32 = 0.0
-	var value_53 bool = value_51 < value_52
-	if value_53 {
-		var value_54 float32 = 0.0
-		scroll_ratio = value_54
+	var scroll_ratio float32 = value_3
+	if scroll_ratio < 0.0 {
+		scroll_ratio = 0.0
 	}
-	var value_55 float32 = scroll_ratio
-	var value_56 float32 = 1.0
-	var value_57 bool = value_55 > value_56
-	if value_57 {
-		var value_58 float32 = 1.0
-		scroll_ratio = value_58
+	if scroll_ratio > 1.0 {
+		scroll_ratio = 1.0
 	}
-	var value_59 int32 = viewport_h
-	var value_60 int32 = thumb_h
-	var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
-	var track_span int32 = value_61
-	var value_62 int32 = track_span
-	var value_63 int32 = 0
-	var value_64 bool = value_62 < value_63
-	if value_64 {
-		var value_65 int32 = 0
-		track_span = value_65
+	var track_span int32 = (int32(number_runtime_bits(uint64(viewport_h), uint64(thumb_h), 32, true, 2)))
+	if track_span < 0 {
+		track_span = 0
 	}
-	var value_66 int32 = y
-	var value_67 float32 = scroll_ratio
-	var value_68 int32 = track_span
-	var value_69 float32 = float32(value_68)
-	var value_70 float32 = value_67 * value_69
-	var value_71 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_70), 32, true)), uint64(0), 32, true, 0))
-	var value_72 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_71), 32, true, 1))
-	var thumb_y int32 = value_72
-	var value_73 int32 = thumb_y
-	var value_74 int32 = y
-	var value_75 bool = value_73 < value_74
-	if value_75 {
-		var value_76 int32 = y
-		thumb_y = value_76
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((scroll_ratio*float32(track_span))), 32, true)), uint64(0), 32, true, 0))
+	var thumb_y int32 = (int32(number_runtime_bits(uint64(y), uint64(value_4), 32, true, 1)))
+	if thumb_y < y {
+		thumb_y = y
 	}
-	var value_77 int32 = thumb_y
-	var value_78 int32 = thumb_h
-	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 1))
-	var value_80 int32 = y
-	var value_81 int32 = viewport_h
-	var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 1))
-	var value_83 bool = value_79 > value_82
-	if value_83 {
-		var value_84 int32 = y
-		var value_85 int32 = viewport_h
-		var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 1))
-		var value_87 int32 = thumb_h
-		var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 2))
-		thumb_y = value_88
+	var value_5 bool = (int32(number_runtime_bits(uint64(thumb_y), uint64(thumb_h), 32, true, 1))) > (int32(number_runtime_bits(uint64(y), uint64(viewport_h), 32, true, 1)))
+	if value_5 {
+		var value_6 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(y), uint64(viewport_h), 32, true, 1)))), uint64(thumb_h), 32, true, 2))
+		thumb_y = value_6
 	}
-	var value_89 int32 = metrics.ThumbInset
-	var inset int32 = value_89
-	var value_90 int32 = inset
-	var value_91 int32 = 0
-	var value_92 bool = value_90 < value_91
-	if value_92 {
-		var value_93 int32 = 0
-		inset = value_93
+	var inset int32 = metrics.ThumbInset
+	if inset < 0 {
+		inset = 0
 	}
-	var value_94 int32 = scrollbar_w
-	var value_95 int32 = inset
-	var value_96 int32 = 2
-	var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 3))
-	var value_98 int32 = int32(number_runtime_bits(uint64(value_94), uint64(value_97), 32, true, 2))
-	var thumb_w int32 = value_98
-	var value_99 int32 = thumb_w
-	var value_100 int32 = 0
-	var value_101 bool = value_99 < value_100
-	if value_101 {
-		var value_102 int32 = 0
-		thumb_w = value_102
+	var value_7 int32 = int32(number_runtime_bits(uint64(scrollbar_w), uint64((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))), 32, true, 2))
+	var thumb_w int32 = value_7
+	if thumb_w < 0 {
+		thumb_w = 0
 	}
-	var value_103 int32 = x
-	var value_104 float32 = float32(value_103)
-	paint.TrackBounds.X = value_104
-	var value_105 int32 = y
-	var value_106 float32 = float32(value_105)
-	paint.TrackBounds.Y = value_106
-	var value_107 int32 = scrollbar_w
-	var value_108 float32 = float32(value_107)
-	paint.TrackBounds.Width = value_108
-	var value_109 int32 = viewport_h
-	var value_110 float32 = float32(value_109)
-	paint.TrackBounds.Height = value_110
-	var value_111 int32 = x
-	var value_112 int32 = inset
-	var value_113 int32 = int32(number_runtime_bits(uint64(value_111), uint64(value_112), 32, true, 1))
-	var value_114 float32 = float32(value_113)
-	paint.ThumbBounds.X = value_114
-	var value_115 int32 = thumb_y
-	var value_116 float32 = float32(value_115)
-	paint.ThumbBounds.Y = value_116
-	var value_117 int32 = thumb_w
-	var value_118 float32 = float32(value_117)
-	paint.ThumbBounds.Width = value_118
-	var value_119 int32 = thumb_h
-	var value_120 float32 = float32(value_119)
-	paint.ThumbBounds.Height = value_120
-	var value_121 int32 = track_span
-	paint.TrackSpan = value_121
-	var value_122 int32 = track_span
-	var value_123 int32 = 0
-	var value_124 bool = value_122 > value_123
-	var value_125 float32 = 0
-	if value_124 {
-		var value_126 int32 = max_scroll
-		var value_127 float32 = float32(value_126)
-		var value_128 int32 = track_span
-		var value_129 float32 = float32(value_128)
-		var value_130 float32 = value_127 / value_129
-		value_125 = value_130
+	paint.TrackBounds.X = float32(x)
+	paint.TrackBounds.Y = float32(y)
+	paint.TrackBounds.Width = float32(scrollbar_w)
+	paint.TrackBounds.Height = float32(viewport_h)
+	paint.ThumbBounds.X = float32((int32(number_runtime_bits(uint64(x), uint64(inset), 32, true, 1))))
+	paint.ThumbBounds.Y = float32(thumb_y)
+	paint.ThumbBounds.Width = float32(thumb_w)
+	paint.ThumbBounds.Height = float32(thumb_h)
+	paint.TrackSpan = track_span
+	var value_8 float32 = 0
+	if track_span > 0 {
+		value_8 = (float32(max_scroll) / float32(track_span))
 	} else {
-		var value_131 float32 = 0.0
-		value_125 = value_131
+		value_8 = 0.0
 	}
-	paint.ScrollPerPixel = value_125
-	var value_132 ScrollBarPaint = paint
-	return value_132
+	paint.ScrollPerPixel = value_8
+	return paint
 }
 
 func Scroll_ScrollPointInside(point Vector2, bounds Rectangle) bool {
-	var value_0 float32 = point.X
-	var value_1 float32 = bounds.X
-	var value_2 bool = value_0 >= value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 float32 = point.Y
-		var value_5 float32 = bounds.Y
-		var value_6 bool = value_4 >= value_5
-		value_3 = value_6
+	var value_0 bool = (point.X >= bounds.X)
+	if value_0 {
+		value_0 = (point.Y >= bounds.Y)
 	}
-	var value_7 bool = value_3
-	if value_7 {
-		var value_8 float32 = point.X
-		var value_9 float32 = bounds.X
-		var value_10 float32 = bounds.Width
-		var value_11 float32 = value_9 + value_10
-		var value_12 bool = value_8 < value_11
-		value_7 = value_12
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (point.X < (bounds.X + bounds.Width))
 	}
-	var value_13 bool = value_7
-	if value_13 {
-		var value_14 float32 = point.Y
-		var value_15 float32 = bounds.Y
-		var value_16 float32 = bounds.Height
-		var value_17 float32 = value_15 + value_16
-		var value_18 bool = value_14 < value_17
-		value_13 = value_18
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = (point.Y < (bounds.Y + bounds.Height))
 	}
-	return value_13
+	return value_2
 }
 
 func Scroll_ScrollScopeFrameFor(input ScrollScopeInput, metrics ScrollMetrics) ScrollScopeFrame {
 	var frame ScrollScopeFrame = ScrollScopeFrame{}
-	var value_0 Rectangle = input.Bounds
-	frame.Clip = value_0
-	var value_1 float32 = input.Grab
-	frame.Grab = value_1
-	var value_2 int32 = int32(ButtonStateNormal)
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
-	frame.ThumbState = value_3
-	var value_4 int32 = input.ContentHeight
-	var value_5 float32 = input.Bounds.Height
-	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 32, true)), uint64(0), 32, true, 0))
-	var value_7 int32 = Scroll_ScrollMax(value_4, value_6)
-	var maximum int32 = value_7
-	var value_8 bool = input.OwnsDrag
-	var active bool = value_8
-	var value_9 bool = input.HasOffset
-	if value_9 {
-		var value_10 int32 = input.Offset
-		var value_11 int32 = maximum
-		var value_12 int32 = Scroll_ScrollClamp(value_10, value_11)
-		frame.Offset = value_12
-		var value_13 bool = input.PointerAllowed
-		var value_14 bool = value_13
-		if value_14 {
-			var value_15 bool = input.Disabled
-			var value_16 bool = !value_15
-			value_14 = value_16
+	frame.Clip = input.Bounds
+	frame.Grab = input.Grab
+	frame.ThumbState = int32(number_runtime_bits(uint64(int32(ButtonStateNormal)), uint64(0), 32, true, 0))
+	var value_0 int32 = input.ContentHeight
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(input.Bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = Scroll_ScrollMax(value_0, value_1)
+	var maximum int32 = value_2
+	var active bool = input.OwnsDrag
+	if input.HasOffset {
+		var value_3 int32 = input.Offset
+		var value_4 int32 = Scroll_ScrollClamp(value_3, maximum)
+		frame.Offset = value_4
+		var value_5 bool = input.PointerAllowed
+		if value_5 {
+			value_5 = !input.Disabled
 		}
-		var value_17 bool = value_14
-		if value_17 {
-			var value_18 float32 = input.Wheel
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 != value_19
-			value_17 = value_20
+		var value_6 bool = value_5
+		if value_6 {
+			value_6 = (input.Wheel != 0.0)
 		}
-		if value_17 {
-			var value_21 int32 = frame.Offset
-			var value_22 float32 = input.Wheel
-			var value_23 int32 = maximum
-			var value_24 int32 = metrics.DefaultWheelStep
-			var value_25 int32 = Scroll_ScrollWheelOffsetFor(value_21, value_22, value_23, value_24)
-			frame.Offset = value_25
-			var value_26 bool = true
-			frame.ConsumeWheel = value_26
+		if value_6 {
+			var value_7 int32 = frame.Offset
+			var value_8 float32 = input.Wheel
+			var value_9 int32 = metrics.DefaultWheelStep
+			var value_10 int32 = Scroll_ScrollWheelOffsetFor(value_7, value_8, maximum, value_9)
+			frame.Offset = value_10
+			frame.ConsumeWheel = true
 		}
-		var value_27 int32 = maximum
-		var value_28 int32 = 0
-		var value_29 bool = value_27 > value_28
-		var value_30 bool = value_29
-		if value_30 {
-			var value_31 float32 = input.Bounds.Width
-			var value_32 int32 = metrics.ScrollbarWidth
-			var value_33 float32 = float32(value_32)
-			var value_34 bool = value_31 > value_33
-			value_30 = value_34
+		var value_11 bool = (maximum > 0)
+		if value_11 {
+			value_11 = (input.Bounds.Width > float32(metrics.ScrollbarWidth))
 		}
-		var value_35 bool = value_30
-		if value_35 {
-			var value_36 float32 = input.Bounds.Height
-			var value_37 float32 = 0.0
-			var value_38 bool = value_36 > value_37
-			value_35 = value_38
+		var value_12 bool = value_11
+		if value_12 {
+			value_12 = (input.Bounds.Height > 0.0)
 		}
-		frame.Scrollbar = value_35
+		frame.Scrollbar = value_12
 	}
-	var value_39 bool = frame.Scrollbar
-	var value_40 bool = !value_39
-	var value_41 bool = value_40
-	if !value_41 {
-		var value_42 bool = input.Disabled
-		value_41 = value_42
+	var value_13 bool = !frame.Scrollbar
+	if !value_13 {
+		value_13 = input.Disabled
 	}
-	var value_43 bool = value_41
-	if !value_43 {
-		var value_44 bool = input.OwnerCaptured
-		value_43 = value_44
+	var value_14 bool = value_13
+	if !value_14 {
+		value_14 = input.OwnerCaptured
 	}
-	if value_43 {
-		var value_45 bool = active
-		frame.ClearDrag = value_45
-		var value_46 bool = active
-		var value_47 bool = value_46
-		if value_47 {
-			var value_48 bool = input.Released
-			value_47 = value_48
+	if value_14 {
+		frame.ClearDrag = active
+		var value_15 bool = active
+		if value_15 {
+			value_15 = input.Released
 		}
-		frame.ConsumeRelease = value_47
-		var value_49 bool = false
-		active = value_49
+		frame.ConsumeRelease = value_15
+		active = false
 	}
-	var value_50 bool = frame.Scrollbar
-	if value_50 {
-		var value_51 float32 = input.Bounds.X
-		var value_52 float32 = input.Bounds.Width
-		var value_53 float32 = value_51 + value_52
-		var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
-		var value_55 int32 = metrics.ScrollbarWidth
-		var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 2))
-		var x int32 = value_56
-		var value_57 int32 = x
-		var value_58 float32 = input.Bounds.Y
-		var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
-		var value_60 float32 = input.Bounds.Height
-		var value_61 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_60), 32, true)), uint64(0), 32, true, 0))
-		var value_62 int32 = input.ContentHeight
-		var value_63 int32 = frame.Offset
-		var value_64 int32 = maximum
-		var value_65 ScrollMetrics = metrics
-		var value_66 ScrollBarPaint = Scroll_ScrollBarPaintFor(value_57, value_59, value_61, value_62, value_63, value_64, value_65)
-		frame.Paint = value_66
-		var value_67 bool = input.Disabled
-		var value_68 bool = !value_67
-		var value_69 bool = value_68
-		if value_69 {
-			var value_70 bool = input.OwnerCaptured
-			var value_71 bool = !value_70
-			value_69 = value_71
+	if frame.Scrollbar {
+		var value_16 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((input.Bounds.X+input.Bounds.Width)), 32, true)), uint64(0), 32, true, 0))
+		var x int32 = (int32(number_runtime_bits(uint64(value_16), uint64(metrics.ScrollbarWidth), 32, true, 2)))
+		var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(input.Bounds.Y), 32, true)), uint64(0), 32, true, 0))
+		var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(input.Bounds.Height), 32, true)), uint64(0), 32, true, 0))
+		var value_19 int32 = input.ContentHeight
+		var value_20 int32 = frame.Offset
+		var value_21 ScrollBarPaint = Scroll_ScrollBarPaintFor(x, value_17, value_18, value_19, value_20, maximum, metrics)
+		frame.Paint = value_21
+		var value_22 bool = !input.Disabled
+		if value_22 {
+			value_22 = !input.OwnerCaptured
 		}
-		var value_72 bool = value_69
-		if value_72 {
-			var value_73 bool = input.PointerAllowed
-			value_72 = value_73
+		var value_23 bool = value_22
+		if value_23 {
+			value_23 = input.PointerAllowed
 		}
-		var value_74 bool = value_72
-		if value_74 {
-			var value_75 bool = input.Pressed
-			value_74 = value_75
+		var value_24 bool = value_23
+		if value_24 {
+			value_24 = input.Pressed
 		}
-		var value_76 bool = value_74
-		if value_76 {
-			var value_77 Vector2 = input.Mouse
-			var value_78 Rectangle = frame.Paint.TrackBounds
-			var value_79 bool = Scroll_ScrollPointInside(value_77, value_78)
-			value_76 = value_79
+		var value_25 bool = value_24
+		if value_25 {
+			var value_26 Vector2 = input.Mouse
+			var value_27 Rectangle = frame.Paint.TrackBounds
+			var value_28 bool = Scroll_ScrollPointInside(value_26, value_27)
+			value_25 = value_28
 		}
-		if value_76 {
-			var value_80 bool = true
-			frame.StartDrag = value_80
-			var value_81 bool = false
-			frame.ClearDrag = value_81
-			var value_82 bool = true
-			active = value_82
-			var value_83 float32 = frame.Paint.ThumbBounds.Height
-			var value_84 float32 = 2.0
-			var value_85 float32 = value_83 / value_84
-			frame.Grab = value_85
-			var value_86 Vector2 = input.Mouse
-			var value_87 Rectangle = frame.Paint.ThumbBounds
-			var value_88 bool = Scroll_ScrollPointInside(value_86, value_87)
-			if value_88 {
-				var value_89 float32 = input.Mouse.Y
-				var value_90 float32 = frame.Paint.ThumbBounds.Y
-				var value_91 float32 = value_89 - value_90
-				frame.Grab = value_91
+		if value_25 {
+			frame.StartDrag = true
+			frame.ClearDrag = false
+			active = true
+			frame.Grab = (frame.Paint.ThumbBounds.Height / 2.0)
+			var value_29 Vector2 = input.Mouse
+			var value_30 Rectangle = frame.Paint.ThumbBounds
+			var value_31 bool = Scroll_ScrollPointInside(value_29, value_30)
+			if value_31 {
+				frame.Grab = (input.Mouse.Y - frame.Paint.ThumbBounds.Y)
 			}
 		}
-		var value_92 bool = active
-		if value_92 {
-			var value_93 int32 = frame.Paint.TrackSpan
-			var value_94 int32 = 0
-			var value_95 bool = value_93 > value_94
-			var value_96 bool = value_95
-			if value_96 {
-				var value_97 bool = input.Down
-				var value_98 bool = value_97
-				if !value_98 {
-					var value_99 bool = input.Pressed
-					value_98 = value_99
+		if active {
+			var value_32 bool = (frame.Paint.TrackSpan > 0)
+			if value_32 {
+				var value_33 bool = input.Down
+				if !value_33 {
+					value_33 = input.Pressed
 				}
-				value_96 = value_98
+				value_32 = value_33
 			}
-			if value_96 {
-				var value_100 float32 = input.Mouse.Y
-				var value_101 float32 = frame.Paint.TrackBounds.Y
-				var value_102 float32 = frame.Grab
-				var value_103 int32 = maximum
-				var value_104 ScrollBarPaint = frame.Paint
-				var value_105 int32 = Scroll_ScrollDragOffsetFor(value_100, value_101, value_102, value_103, value_104)
-				frame.Offset = value_105
+			if value_32 {
+				var value_34 float32 = input.Mouse.Y
+				var value_35 float32 = frame.Paint.TrackBounds.Y
+				var value_36 float32 = frame.Grab
+				var value_37 ScrollBarPaint = frame.Paint
+				var value_38 int32 = Scroll_ScrollDragOffsetFor(value_34, value_35, value_36, maximum, value_37)
+				frame.Offset = value_38
 			}
-			var value_106 bool = input.Released
-			if value_106 {
-				var value_107 bool = true
-				frame.ConsumeRelease = value_107
-				var value_108 bool = true
-				frame.ClearDrag = value_108
-				var value_109 bool = false
-				active = value_109
+			if input.Released {
+				frame.ConsumeRelease = true
+				frame.ClearDrag = true
+				active = false
 			}
 		}
-		var value_110 int32 = x
-		var value_111 float32 = input.Bounds.Y
-		var value_112 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_111), 32, true)), uint64(0), 32, true, 0))
-		var value_113 float32 = input.Bounds.Height
-		var value_114 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_113), 32, true)), uint64(0), 32, true, 0))
-		var value_115 int32 = input.ContentHeight
-		var value_116 int32 = frame.Offset
-		var value_117 int32 = maximum
-		var value_118 ScrollMetrics = metrics
-		var value_119 ScrollBarPaint = Scroll_ScrollBarPaintFor(value_110, value_112, value_114, value_115, value_116, value_117, value_118)
-		frame.Paint = value_119
-		var value_120 bool = active
-		if value_120 {
-			var value_121 int32 = int32(ButtonStatePressed)
-			var value_122 int32 = int32(number_runtime_bits(uint64(value_121), uint64(0), 32, true, 0))
-			frame.ThumbState = value_122
+		var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(input.Bounds.Y), 32, true)), uint64(0), 32, true, 0))
+		var value_40 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(input.Bounds.Height), 32, true)), uint64(0), 32, true, 0))
+		var value_41 int32 = input.ContentHeight
+		var value_42 int32 = frame.Offset
+		var value_43 ScrollBarPaint = Scroll_ScrollBarPaintFor(x, value_39, value_40, value_41, value_42, maximum, metrics)
+		frame.Paint = value_43
+		if active {
+			frame.ThumbState = int32(number_runtime_bits(uint64(int32(ButtonStatePressed)), uint64(0), 32, true, 0))
 		} else {
-			var value_123 bool = input.Disabled
-			var value_124 bool = !value_123
-			var value_125 bool = value_124
-			if value_125 {
-				var value_126 bool = input.PointerAllowed
-				value_125 = value_126
+			var value_44 bool = !input.Disabled
+			if value_44 {
+				value_44 = input.PointerAllowed
 			}
-			var value_127 bool = value_125
-			if value_127 {
-				var value_128 Vector2 = input.Mouse
-				var value_129 Rectangle = frame.Paint.ThumbBounds
-				var value_130 bool = Scroll_ScrollPointInside(value_128, value_129)
-				value_127 = value_130
+			var value_45 bool = value_44
+			if value_45 {
+				var value_46 Vector2 = input.Mouse
+				var value_47 Rectangle = frame.Paint.ThumbBounds
+				var value_48 bool = Scroll_ScrollPointInside(value_46, value_47)
+				value_45 = value_48
 			}
-			if value_127 {
-				var value_131 int32 = int32(ButtonStateHover)
-				var value_132 int32 = int32(number_runtime_bits(uint64(value_131), uint64(0), 32, true, 0))
-				frame.ThumbState = value_132
+			if value_45 {
+				frame.ThumbState = int32(number_runtime_bits(uint64(int32(ButtonStateHover)), uint64(0), 32, true, 0))
 			}
 		}
-		var value_133 Rectangle = input.Bounds
-		var value_134 bool = true
-		var value_135 ScrollMetrics = metrics
-		var value_136 Rectangle = Scroll_ScrollScopeContentBounds(value_133, value_134, value_135)
-		frame.Clip = value_136
+		var value_49 Rectangle = input.Bounds
+		var value_50 Rectangle = Scroll_ScrollScopeContentBounds(value_49, true, metrics)
+		frame.Clip = value_50
 	}
-	var value_137 Rectangle = frame.Clip
-	frame.Content = value_137
-	var value_138 float32 = frame.Content.Y
-	var value_139 int32 = frame.Offset
-	var value_140 float32 = float32(value_139)
-	frame.Content.Y = value_138 - value_140
-	var value_141 int32 = input.ContentHeight
-	var value_142 float32 = float32(value_141)
-	frame.Content.Height = value_142
-	var value_143 float32 = frame.Content.Height
-	var value_144 float32 = 0.0
-	var value_145 bool = value_143 < value_144
-	if value_145 {
-		var value_146 float32 = 0.0
-		frame.Content.Height = value_146
+	frame.Content = frame.Clip
+	var value_51 float32 = frame.Content.Y
+	frame.Content.Y = value_51 - float32(frame.Offset)
+	frame.Content.Height = float32(input.ContentHeight)
+	if frame.Content.Height < 0.0 {
+		frame.Content.Height = 0.0
 	}
-	var value_147 ScrollScopeFrame = frame
-	return value_147
+	return frame
 }

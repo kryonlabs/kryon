@@ -9,57 +9,35 @@ type DismissibleOverlayPolicy struct {
 }
 
 func Overlay_OverlayViewExtent(requested int32, fallback int32) int32 {
-	var value_0 int32 = requested
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = requested
-		return value_3
+	if requested > 0 {
+		return requested
 	}
-	var value_4 int32 = fallback
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = fallback
-		return value_7
+	if fallback > 0 {
+		return fallback
 	}
-	var value_8 int32 = 0
-	return value_8
+	return 0
 }
 
 func Overlay_DismissibleOverlayPolicyFor(released bool, release_consumed bool, dismiss_disabled bool, pointer_inside bool) DismissibleOverlayPolicy {
 	var policy DismissibleOverlayPolicy = DismissibleOverlayPolicy{}
 	var value_0 bool = released
+	if value_0 {
+		value_0 = !release_consumed
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = release_consumed
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !dismiss_disabled
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = dismiss_disabled
-		var value_6 bool = !value_5
-		value_4 = value_6
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !pointer_inside
 	}
-	var value_7 bool = value_4
-	if value_7 {
-		var value_8 bool = pointer_inside
-		var value_9 bool = !value_8
-		value_7 = value_9
+	if value_2 {
+		policy.Closed = true
+		policy.OutsideReleased = true
+		policy.ReleaseConsumed = true
+		return policy
 	}
-	if value_7 {
-		var value_10 bool = true
-		policy.Closed = value_10
-		var value_11 bool = true
-		policy.OutsideReleased = value_11
-		var value_12 bool = true
-		policy.ReleaseConsumed = value_12
-		var value_13 DismissibleOverlayPolicy = policy
-		return value_13
-	}
-	var value_14 bool = release_consumed
-	policy.ReleaseConsumed = value_14
-	var value_15 DismissibleOverlayPolicy = policy
-	return value_15
+	policy.ReleaseConsumed = release_consumed
+	return policy
 }

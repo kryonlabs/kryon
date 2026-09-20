@@ -6,24 +6,14 @@ package kryon
 // #import control_props
 func Card_CardButtonProps(card CardProps) ButtonProps {
 	var button ButtonProps = ButtonProps{}
-	var value_0 Rectangle = card.Bounds
-	button.Bounds = value_0
-	var value_1 bool = card.Clickable
-	if value_1 {
-		var value_2 int32 = card.ID
-		button.ID = value_2
+	button.Bounds = card.Bounds
+	if card.Clickable {
+		button.ID = card.ID
 	}
-	var value_3 int32 = card.ClassName
-	button.ClassName = value_3
-	var value_4 int32 = int32(ControlSizeLarge)
-	var value_5 ControlSize = ControlSize(int32(number_runtime_bits(uint64(value_4), uint64(0), 32, true, 0)))
-	button.Size = value_5
-	var value_6 bool = card.Disabled
-	button.Disabled = value_6
-	var value_7 bool = card.Selected
-	button.Selected = value_7
-	var value_8 ButtonState = ButtonState(card.State)
-	button.State = value_8
-	var value_9 ButtonProps = button
-	return value_9
+	button.ClassName = card.ClassName
+	button.Size = ControlSize(int32(number_runtime_bits(uint64(int32(ControlSizeLarge)), uint64(0), 32, true, 0)))
+	button.Disabled = card.Disabled
+	button.Selected = card.Selected
+	button.State = ButtonState(card.State)
+	return button
 }

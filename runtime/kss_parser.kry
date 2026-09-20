@@ -70,6 +70,7 @@ KssTheme :: enum {
 KssDefaultEnvironment :: () -> KssEnvironment #export {
     env: KssEnvironment
     env.theme = (i32)KssThemeNone
+    env.theme_name = KssMakeName("")
     env.contrast = (i32)KssContrastNormal
     env.density = (i32)KssDensityComfortable
     env.pointer = (i32)KssPointerMouse
@@ -82,6 +83,7 @@ KssEnvironmentWithNames :: (env: KssEnvironment, theme: string,
     contrast: string, density: string, pointer: string, platform: string,
     variant: string) -> KssEnvironment #export {
     env.theme = (i32)KssThemeNone
+    env.theme_name = KssMakeName(theme)
     if KssNameEquals(KssMakeName(theme), "light") {
         env.theme = (i32)KssThemeLight
     } else if KssNameEquals(KssMakeName(theme), "dark") {
@@ -133,6 +135,7 @@ KssName :: struct {
 
 KssEnvironment :: struct {
     theme: i32
+    theme_name: KssName
     contrast: i32
     density: i32
     pointer: i32
@@ -959,6 +962,24 @@ KssOverlayToken :: (p: KssParser, name: KssName, kind: i32, color: u32,
 
 KssFindColorToken :: (p: KssParser, name: KssName) -> i32 {
     return KssFindToken(p, name, (i32)KssTokenColor)
+}
+
+KssColorTokenResult :: struct {
+    found: bool
+    color: u32
+}
+
+KssColorTokenValue :: (parser: KssParser,
+name: string) -> KssColorTokenResult #export {
+    result: KssColorTokenResult
+    result.found = false
+    result.color = 0
+    index: i32 = KssFindColorToken(parser, KssMakeName(name))
+    if index >= 0 {
+        result.found = true
+        result.color = parser.tokens[index].color
+    }
+    return result
 }
 
 KssFindNumberToken :: (p: KssParser, name: KssName) -> i32 {
@@ -2325,6 +2346,10 @@ KssEnvMatches :: (p: KssParser, axis: KssName, value: KssName) -> bool {
 }
 
 KssThemeActive :: (p: KssParser, name: KssName) -> bool {
+    if p.env.theme_name.length > 0 &&
+    KssNameEqualsName(p.env.theme_name, name) {
+        return true
+    }
     if KssNameEquals(name, "light") {
         return p.env.theme == (i32)KssThemeLight
     }

@@ -9,157 +9,89 @@ type IconLayout struct {
 }
 
 func Icon_IconScaledPx(px int32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = px
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = scale
-	var value_7 float32 = value_5 * value_6
-	var value_8 float32 = 0.5
-	var value_9 float32 = value_7 + value_8
-	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_9), 32, true)), uint64(0), 32, true, 0))
-	return value_10
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((float32(px)*scale)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Icon_IconClampPx(px int32, min_px int32, max_px int32, scale float32) int32 {
-	var value_0 int32 = px
-	var value_1 float32 = scale
-	var value_2 int32 = Icon_IconScaledPx(value_0, value_1)
-	var value int32 = value_2
-	var value_3 int32 = min_px
-	var value_4 float32 = scale
-	var value_5 int32 = Icon_IconScaledPx(value_3, value_4)
-	var min_value int32 = value_5
-	var value_6 int32 = max_px
-	var value_7 float32 = scale
-	var value_8 int32 = Icon_IconScaledPx(value_6, value_7)
-	var max_value int32 = value_8
-	var value_9 int32 = value
-	var value_10 int32 = min_value
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 int32 = min_value
-		value = value_12
+	var value_0 int32 = Icon_IconScaledPx(px, scale)
+	var value int32 = value_0
+	var value_1 int32 = Icon_IconScaledPx(min_px, scale)
+	var min_value int32 = value_1
+	var value_2 int32 = Icon_IconScaledPx(max_px, scale)
+	var max_value int32 = value_2
+	if value < min_value {
+		value = min_value
 	}
-	var value_13 int32 = value
-	var value_14 int32 = max_value
-	var value_15 bool = value_13 > value_14
-	if value_15 {
-		var value_16 int32 = max_value
-		value = value_16
+	if value > max_value {
+		value = max_value
 	}
-	var value_17 int32 = value
-	return value_17
+	return value
 }
 
 func Icon_IconButtonSizeFor(kind int32, scale float32) int32 {
-	var value_0 int32 = kind
-	var value_1 int32 = 0
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 int32 = 12
-		var value_4 int32 = 10
-		var value_5 int32 = 18
-		var value_6 float32 = scale
-		var value_7 int32 = Icon_IconClampPx(value_3, value_4, value_5, value_6)
+	if kind == 0 {
+		var value_0 int32 = 12
+		var value_1 int32 = 10
+		var value_2 int32 = 18
+		var value_3 int32 = Icon_IconClampPx(value_0, value_1, value_2, scale)
+		return value_3
+	}
+	if kind == 2 {
+		var value_4 int32 = 16
+		var value_5 int32 = 14
+		var value_6 int32 = 24
+		var value_7 int32 = Icon_IconClampPx(value_4, value_5, value_6, scale)
 		return value_7
 	}
-	var value_8 int32 = kind
-	var value_9 int32 = 2
-	var value_10 bool = value_8 == value_9
-	if value_10 {
-		var value_11 int32 = 16
-		var value_12 int32 = 14
-		var value_13 int32 = 24
-		var value_14 float32 = scale
-		var value_15 int32 = Icon_IconClampPx(value_11, value_12, value_13, value_14)
-		return value_15
+	if kind == 3 {
+		var value_8 int32 = 20
+		var value_9 int32 = 18
+		var value_10 int32 = 28
+		var value_11 int32 = Icon_IconClampPx(value_8, value_9, value_10, scale)
+		return value_11
 	}
-	var value_16 int32 = kind
-	var value_17 int32 = 3
-	var value_18 bool = value_16 == value_17
-	if value_18 {
-		var value_19 int32 = 20
-		var value_20 int32 = 18
-		var value_21 int32 = 28
-		var value_22 float32 = scale
-		var value_23 int32 = Icon_IconClampPx(value_19, value_20, value_21, value_22)
-		return value_23
-	}
-	var value_24 int32 = 14
-	var value_25 int32 = 12
-	var value_26 int32 = 20
-	var value_27 float32 = scale
-	var value_28 int32 = Icon_IconClampPx(value_24, value_25, value_26, value_27)
-	return value_28
+	var value_12 int32 = 14
+	var value_13 int32 = 12
+	var value_14 int32 = 20
+	var value_15 int32 = Icon_IconClampPx(value_12, value_13, value_14, scale)
+	return value_15
 }
 
 func Icon_IconButtonPaddingFor(kind int32, scale float32) int32 {
-	var value_0 int32 = kind
-	var value_1 int32 = 0
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 int32 = 4
-		var value_4 float32 = scale
-		var value_5 int32 = Icon_IconScaledPx(value_3, value_4)
+	if kind == 0 {
+		var value_0 int32 = 4
+		var value_1 int32 = Icon_IconScaledPx(value_0, scale)
+		return value_1
+	}
+	if kind == 2 {
+		var value_2 int32 = 6
+		var value_3 int32 = Icon_IconScaledPx(value_2, scale)
+		return value_3
+	}
+	if kind == 3 {
+		var value_4 int32 = 7
+		var value_5 int32 = Icon_IconScaledPx(value_4, scale)
 		return value_5
 	}
-	var value_6 int32 = kind
-	var value_7 int32 = 2
-	var value_8 bool = value_6 == value_7
-	if value_8 {
-		var value_9 int32 = 6
-		var value_10 float32 = scale
-		var value_11 int32 = Icon_IconScaledPx(value_9, value_10)
-		return value_11
-	}
-	var value_12 int32 = kind
-	var value_13 int32 = 3
-	var value_14 bool = value_12 == value_13
-	if value_14 {
-		var value_15 int32 = 7
-		var value_16 float32 = scale
-		var value_17 int32 = Icon_IconScaledPx(value_15, value_16)
-		return value_17
-	}
-	var value_18 int32 = 5
-	var value_19 float32 = scale
-	var value_20 int32 = Icon_IconScaledPx(value_18, value_19)
-	return value_20
+	var value_6 int32 = 5
+	var value_7 int32 = Icon_IconScaledPx(value_6, scale)
+	return value_7
 }
 
 func Icon_IconLayoutFor(x int32, y int32, size int32) IconLayout {
 	var layout IconLayout = IconLayout{}
-	var value_0 int32 = size
-	layout.Size = value_0
-	var value_1 int32 = layout.Size
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		layout.Size = value_4
+	layout.Size = size
+	if layout.Size < 0 {
+		layout.Size = 0
 	}
-	var value_5 int32 = x
-	var value_6 float32 = float32(value_5)
-	layout.Bounds.X = value_6
-	var value_7 int32 = y
-	var value_8 float32 = float32(value_7)
-	layout.Bounds.Y = value_8
-	var value_9 int32 = layout.Size
-	var value_10 float32 = float32(value_9)
-	layout.Bounds.Width = value_10
-	var value_11 int32 = layout.Size
-	var value_12 float32 = float32(value_11)
-	layout.Bounds.Height = value_12
-	var value_13 int32 = layout.Size
-	var value_14 int32 = 0
-	var value_15 bool = value_13 > value_14
-	layout.Drawable = value_15
-	var value_16 IconLayout = layout
-	return value_16
+	layout.Bounds.X = float32(x)
+	layout.Bounds.Y = float32(y)
+	layout.Bounds.Width = float32(layout.Size)
+	layout.Bounds.Height = float32(layout.Size)
+	layout.Drawable = (layout.Size > 0)
+	return layout
 }

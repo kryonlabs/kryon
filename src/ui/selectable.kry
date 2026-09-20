@@ -1,0 +1,65 @@
+#module "selectable_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/selectable.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+
+RenderSelectable :: (selectable: SelectableProps) -> i32 #export {
+    mouse: Vector2 = ui_mouse_world()
+    selected: i32 = selectable.selected != nil && *selectable.selected != 0
+    disabled: i32 = selectable.disabled || ContentDisabled()
+    focused: i32 = 0
+    pressed: i32 = ui_focusable_pressed(selectable.bounds,
+    selectable.id, selectable.disabled, &focused)
+    hot: i32 = !disabled && ui_contains(selectable.bounds, mouse) &&
+    !InputCapturesClick(mouse)
+    state: ButtonState = ButtonStateNormal
+    if disabled != 0 {
+        state = ButtonStateDisabled
+    } else if pressed != 0 {
+        state = ButtonStatePressed
+    } else if hot != 0 {
+        state = ButtonStateHover
+    } else if selected != 0 {
+        state = ButtonStateSelected
+    }
+    face: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, disabled, selected, selectable.class_name,
+    StyleKindSelectable(), StyleAny())
+    label_inset: float = SelectableLabelInset(
+    (float)Scale(1000) / 1000.0, face)
+    font: i32 = ResolveFont(0, StyleFontValue(face.value.fields,
+    face.value.font_size), GetFontSize())
+    spec: SelectableSpec
+    spec.bounds = selectable.bounds
+    spec.selected = selected != 0
+    spec.hovered = hot != 0
+    spec.pressed = pressed != 0
+    spec.disabled = disabled != 0
+    spec.face = face
+    spec.label_inset = label_inset
+    paint: SelectablePaint = SelectablePaintFor(spec)
+
+    if IsWindowReady() && paint.draw_fill {
+        DrawRectangleRec(paint.bounds,
+        GetColor(Opacity(paint.fill_color, face.value.opacity)))
+    }
+    if IsWindowReady() {
+        label: const char* = selectable.label
+        if label == nil { label = "" }
+        RenderText(label, (int)paint.label_x,
+        ui_row_text_y(selectable.bounds, font), font,
+        GetColor(Opacity(paint.text_color, face.value.opacity)))
+    }
+    if focused != 0 && IsWindowReady() {
+        RenderFocus(selectable.bounds)
+    }
+    toggle: SelectableToggleResult = SelectableToggleFor(selected != 0,
+    pressed != 0, selectable.selected != nil)
+    if toggle.changed && selectable.selected != nil {
+        *selectable.selected = toggle.selected
+    }
+    if toggle.changed { return 1 }
+    return 0
+}

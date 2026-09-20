@@ -1,0 +1,120 @@
+#module "dpi_host"
+#import "ui_dpi.h"
+#import "kry_dpi_internal.h"
+
+dpi_state :: DPIState #global #export
+device_density :: float #global
+
+InitDPI :: () #export {
+    FixDPIFramebufferColor()
+    dpi_state.physical_width = DPI_BASE_WIDTH
+    dpi_state.physical_height = DPI_BASE_HEIGHT
+    dpi_state.view_width = DPI_BASE_WIDTH
+    dpi_state.view_height = DPI_BASE_HEIGHT
+    dpi_state.layout_width = DPI_BASE_WIDTH
+    dpi_state.layout_height = DPI_BASE_HEIGHT
+    dpi_state.ui_scale = 1.0
+    dpi_state.ui_scale_clamped = 1.0
+    dpi_state.render_scale = 1.0
+    dpi_state.camera_zoom = 1.0
+    dpi_state.base_width = DPI_BASE_WIDTH
+    dpi_state.base_height = DPI_BASE_HEIGHT
+    dpi_state.needs_update = 0
+}
+
+InvalidateDPI :: () #export {
+    dpi_state.physical_width = -1
+    dpi_state.physical_height = -1
+    dpi_state.view_width = -1
+    dpi_state.view_height = -1
+    dpi_state.layout_width = -1
+    dpi_state.layout_height = -1
+    dpi_state.needs_update = 1
+}
+
+SetDeviceDensity :: (density: float) #export {
+    if density <= 0.0 { return }
+    device_density = density
+    dpi_state.physical_width = -1
+    dpi_state.physical_height = -1
+    dpi_state.view_width = -1
+    dpi_state.view_height = -1
+}
+
+UpdateDPI :: (view_width: i32, view_height: i32) #export {
+    previous_width: i32 = dpi_state.physical_width
+    previous_height: i32 = dpi_state.physical_height
+    if dpi_state.base_height <= 0 { InitDPI() }
+    base_height: i32 = DPI_BASE_HEIGHT
+    if dpi_state.base_height > 0 {
+        base_height = dpi_state.base_height
+    }
+    if previous_width == view_width &&
+    previous_height == view_height {
+        dpi_state.needs_update = 0
+        return
+    }
+    dpi_state.physical_width = view_width
+    dpi_state.physical_height = view_height
+    viewport_scale: float = 1.0
+    if view_height > 0 {
+        viewport_scale = (float)view_height / (float)base_height
+    }
+    real_dpi: float = 1.0
+    platform: i32 = kry_dpi_platform_kind()
+    if platform == 1 {
+        real_dpi = viewport_scale
+        if device_density > 0.0 { real_dpi = device_density }
+    } else if platform == 2 {
+        real_dpi = viewport_scale
+    } else {
+        if device_density > real_dpi { real_dpi = device_density }
+        dpi_scale: Vector2 = kry_dpi_window_scale()
+        window_dpi: float = dpi_scale.y
+        if dpi_scale.x > 1.0 { window_dpi = dpi_scale.x }
+        if window_dpi > real_dpi { real_dpi = window_dpi }
+    }
+    dpi_state.ui_scale = real_dpi
+    if !(dpi_state.ui_scale > 0.0) ||
+    dpi_state.ui_scale > 8.0 { dpi_state.ui_scale = 1.0 }
+    dpi_state.ui_scale_clamped = dpi_state.ui_scale
+    if dpi_state.ui_scale_clamped < 1.0 {
+        dpi_state.ui_scale_clamped = 1.0
+    }
+    dpi_state.render_scale = dpi_state.ui_scale_clamped
+    layout_width: i32 = view_width
+    layout_height: i32 = view_height
+    if dpi_state.render_scale > 1.0 {
+        layout_width = (int)((float)view_width /
+        dpi_state.render_scale + 0.5)
+        layout_height = (int)((float)view_height /
+        dpi_state.render_scale + 0.5)
+    }
+    if layout_width < 1 { layout_width = 1 }
+    if layout_height < 1 { layout_height = 1 }
+    dpi_state.layout_width = layout_width
+    dpi_state.layout_height = layout_height
+    dpi_state.view_width = layout_width
+    dpi_state.view_height = layout_height
+    dpi_state.camera_zoom = dpi_state.render_scale
+    dpi_state.needs_update = 1
+}
+
+IsDPIDirty :: () -> i32 #export {
+    return dpi_state.needs_update
+}
+
+GetLayoutWidth :: () -> i32 #export {
+    if dpi_state.layout_width > 0 { return dpi_state.layout_width }
+    return dpi_state.view_width
+}
+
+GetLayoutHeight :: () -> i32 #export {
+    if dpi_state.layout_height > 0 { return dpi_state.layout_height }
+    return dpi_state.view_height
+}
+
+GetRenderScale :: () -> float #export {
+    if dpi_state.render_scale > 0.0 { return dpi_state.render_scale }
+    return dpi_state.ui_scale_clamped
+}

@@ -11,33 +11,19 @@ type GroupPolicy struct {
 }
 
 func Group_GroupPolicyFor(bounds Rectangle, gap int32, padding int32) GroupPolicy {
-	var value_0 Rectangle = bounds
-	var value_1 int32 = gap
-	var value_2 int32 = padding
-	var value_3 LayoutMetrics = Layout_LayoutMetricsFor(value_0, value_1, value_2)
-	var metrics LayoutMetrics = value_3
+	var value_0 LayoutMetrics = Layout_LayoutMetricsFor(bounds, gap, padding)
+	var metrics LayoutMetrics = value_0
 	var policy GroupPolicy = GroupPolicy{}
-	var value_4 Rectangle = bounds
-	policy.Bounds = value_4
-	var value_5 Rectangle = metrics.Content
-	policy.Content = value_5
-	var value_6 int32 = metrics.Gap
-	policy.Gap = value_6
-	var value_7 int32 = metrics.Padding
-	policy.Padding = value_7
-	var value_8 GroupPolicy = policy
-	return value_8
+	policy.Bounds = bounds
+	policy.Content = metrics.Content
+	policy.Gap = metrics.Gap
+	policy.Padding = metrics.Padding
+	return policy
 }
 
 func Group_ScreenGroupPolicyFor(bounds Rectangle, fallback_width int32, fallback_height int32, gap int32, padding int32) GroupPolicy {
-	var value_0 Rectangle = bounds
-	var value_1 int32 = fallback_width
-	var value_2 int32 = fallback_height
-	var value_3 Rectangle = Layout_LayoutScopeBounds(value_0, value_1, value_2)
-	var scoped Rectangle = value_3
-	var value_4 Rectangle = scoped
-	var value_5 int32 = gap
-	var value_6 int32 = padding
-	var value_7 GroupPolicy = Group_GroupPolicyFor(value_4, value_5, value_6)
-	return value_7
+	var value_0 Rectangle = Layout_LayoutScopeBounds(bounds, fallback_width, fallback_height)
+	var scoped Rectangle = value_0
+	var value_1 GroupPolicy = Group_GroupPolicyFor(scoped, gap, padding)
+	return value_1
 }

@@ -1,0 +1,114 @@
+#module "image_widget"
+#import "ui_internal.h"
+#import "ui/tree_layout.h"
+#import "ui_style_internal.h"
+#import "ui_image_internal.h"
+#import "runtime/image.h"
+#import "runtime/button.h"
+
+ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle #export {
+    return ImageFitBounds(image.bounds, image.source,
+    texture.width, texture.height, (int)image.fit)
+}
+
+ImageWidgetStyle :: (class_name: i32) -> Style {
+    props: ButtonProps = (ButtonProps){
+        .tone = ButtonToneNeutral,
+        .emphasis = ButtonEmphasisSoft,
+        .class_name = class_name}
+    return ui_unpack_style(ui_control_style_frame_kind(props,
+    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindImage()).value)
+}
+
+ImageWidgetTint :: (class_name: i32) -> Color {
+    facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
+    facts.class_name = class_name
+    style: Style = ui_unpack_style(ResolveActiveStyle(
+    (StyleData){0}, facts, ButtonStateNormal))
+    tint: Color = (style.fields & StyleForeground)
+    ? style.foreground : WHITE
+    if (style.fields & StyleOpacity) && style.opacity < 1.0 {
+        tint = Fade(tint, style.opacity)
+    }
+    return tint
+}
+
+ImageTexture :: (texture: Texture2D, image: ImageProps) #export {
+    ImageTextureTinted(texture, image,
+    ImageWidgetTint(image.class_name))
+}
+
+ImageTextureTinted :: (texture: Texture2D, image: ImageProps,
+tint: Color) #export {
+    if texture.id == 0 || texture.width <= 0 ||
+    texture.height <= 0 || image.bounds.width <= 0.0 ||
+    image.bounds.height <= 0.0 {
+        return
+    }
+    source: Rectangle = image.source
+    if source.width == 0.0 || source.height == 0.0 {
+        source = (Rectangle){0.0, 0.0,
+            (float)texture.width, (float)texture.height}
+    }
+    dst: Rectangle = ImageFitRect(image, texture)
+    if tint.a == 0 {
+        tint = WHITE
+    }
+    style: Style = ImageWidgetStyle(image.class_name)
+    if style.background.a > 0 || style.border.a > 0 ||
+    style.material != MaterialFlat || style.opacity < 1.0 ||
+    style.radius > 0.0 || style.border_width > 0.0 {
+        ui_draw_material(image.bounds, (Rectangle){0},
+        style.background, style.border, style.border,
+        style.radius, style.border_width, 0.0, 0.0, 0,
+        style.focus, 0.0, style.opacity,
+        ui_style_fill(style), style.material)
+    }
+    if style.radius <= 0.0 {
+        ui_image_draw_clipped_texture(texture, source, dst,
+        image.bounds, image.origin, image.rotation, tint)
+        return
+    }
+    ui_image_draw_rounded_texture(texture, source, dst,
+    image.bounds, style.radius, tint)
+}
+
+RenderImage :: (image: ImageProps) #export {
+    if image.alt_text != nil && image.alt_text[0] != '\0' {
+        ui_page_semantic_next(SemanticImage, image.alt_text,
+        nil, "img", 0, -1)
+    }
+    ui_tree_add(0, WidgetKindImage, image.bounds,
+    image.asset_path)
+    texture: Texture2D = LoadImageTexture(image.asset_path)
+    if texture.id == 0 {
+        missing_label: const char* = "Missing image"
+        style_props: ButtonProps = (ButtonProps){
+            .tone = ButtonToneNeutral,
+            .emphasis = ButtonEmphasisSoft,
+            .class_name = image.class_name}
+        image_style: Style = ui_unpack_style(
+        ui_control_style_frame_kind(style_props,
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindImage()).value)
+        label_style: Style = ui_unpack_style(
+        ui_control_style_frame_role_kind(style_props,
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindImage(), ImageLabelRole()).value)
+        label_font: i32 = ResolveFont(0,
+        StyleFontValue(label_style.fields, label_style.font_size),
+        GetSmallFontSize())
+        placeholder: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(
+        image.bounds, TextWidth(missing_label, label_font),
+        TextLineHeight(label_font))
+        DrawRectangleRec(image.bounds, image_style.background)
+        DrawRectangleLinesEx(image.bounds, image_style.border_width,
+        image_style.border)
+        RenderText(missing_label, placeholder.label_x,
+        placeholder.label_y, label_font,
+        Fade(label_style.foreground, label_style.opacity))
+        return
+    }
+    ImageTexture(texture, image)
+}

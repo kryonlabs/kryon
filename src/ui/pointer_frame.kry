@@ -1,0 +1,95 @@
+#module "pointer_frame_host"
+#import "ui_internal.h"
+#import "ui/frame.h"
+#import "../backend/kry_input_internal.h"
+
+g_ui_slider_active_id :: i32 #global #export
+g_ui_pointer_dragging :: i32 #global #export
+g_ui_pointer_owner :: i32 #global #export
+g_ui_scroll_gesture_pending :: i32 #global #export
+
+primary_pointer_screen :: Vector2 #global
+primary_pointer_press_screen :: Vector2 #global
+primary_pointer_pressed :: i32 #global
+primary_pointer_down :: i32 #global
+primary_pointer_released :: i32 #global
+primary_touch_was_down :: i32 #global
+primary_last_touch_screen :: Vector2 #global
+
+PointerWorldAt :: (screen: Vector2) -> Vector2 {
+    if g_ui_mouse_world_override_enabled {
+        return g_ui_mouse_world_override
+    }
+    return GetScreenToWorld2D(screen, g_ui_camera)
+}
+
+ui_mouse_world :: () -> Vector2 #export {
+    return PointerWorldAt(GetMousePosition())
+}
+
+ui_pointer_world_at :: (screen: Vector2) -> Vector2 #export {
+    return PointerWorldAt(screen)
+}
+
+ui_primary_pointer_press_screen :: () -> Vector2 #export {
+    return primary_pointer_press_screen
+}
+
+ui_primary_pointer_screen :: () -> Vector2 #export {
+    return primary_pointer_screen
+}
+
+ui_primary_pointer_world :: () -> Vector2 #export {
+    return PointerWorldAt(primary_pointer_screen)
+}
+
+ui_primary_pointer_pressed :: () -> i32 #export {
+    return primary_pointer_pressed
+}
+
+ui_primary_pointer_down :: () -> i32 #export {
+    return primary_pointer_down
+}
+
+ui_primary_pointer_released :: () -> i32 #export {
+    return primary_pointer_released
+}
+
+ui_update_primary_pointer_input :: () #export {
+    touch_down: i32 = GetTouchPointCount() > 0
+    position: Vector2 = GetMousePosition()
+    tracked_touch: i32 = kry_android_touch_down()
+    if tracked_touch {
+        touch_down = 1
+        position = kry_android_touch_position()
+    }
+    touch_active: i32 = touch_down || primary_touch_was_down
+    if touch_down {
+        if !tracked_touch {
+            position = GetTouchPosition(0)
+        }
+        primary_last_touch_screen = position
+    } else if primary_touch_was_down {
+        position = primary_last_touch_screen
+    }
+    primary_pointer_pressed = touch_active
+    ? (touch_down && !primary_touch_was_down)
+    : (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0)
+    primary_pointer_down = touch_active ? touch_down
+    : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0)
+    primary_pointer_released = touch_active
+    ? (!touch_down && primary_touch_was_down)
+    : (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0)
+    primary_pointer_screen = position
+    if primary_pointer_pressed {
+        primary_pointer_press_screen = touch_active
+        ? position : kry_mouse_press_position(position)
+    }
+    primary_touch_was_down = touch_down
+}
+
+SetMouseWorldOverride :: (enabled: i32,
+position: Vector2) #export {
+    g_ui_mouse_world_override_enabled = enabled ? 1 : 0
+    g_ui_mouse_world_override = position
+}

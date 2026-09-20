@@ -9,7 +9,6 @@ ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "plan" / "STYLE_BRIDGE_LEDGER.md"
 
 CHROME_GETTERS = re.compile(r"\bGetTheme(Button|ButtonHover|Surface|Background|Text|Border|Selection|Circle|Icon|Link)\s*\(")
-BASE_PAT = re.compile(r"StyleData base = \{(?!0\})|ResolveActiveStyle\(\s*\(StyleData\)\{\s*\.fields")
 GO_BASE_PAT = re.compile(r"StyleData\{Fields:|packStyle\(Style\{Fields:")
 VISUAL_PROP = re.compile(r"^\s*(background|foreground|border|radius|opacity|color)[a-z_]*:", re.I)
 
@@ -36,14 +35,13 @@ def require(condition, message, failures):
 def main():
     ledger = text(LEDGER)
     failures = []
-    required_ids = [f"B-{i:03d}" for i in (1, 2, 4, 5, 6, 7, 8)]
+    required_ids = [f"B-{i:03d}" for i in (1, 2, 5, 6, 7, 8)]
     for bridge_id in required_ids:
         require(f"| {bridge_id} |" in ledger, f"missing ledger row {bridge_id}", failures)
 
     checks = {
-        "B-001": line_hits(ROOT / "src/ui/ui.c", CHROME_GETTERS),
-        "B-002": line_hits(ROOT / "src/ui/ui_tree.c", CHROME_GETTERS),
-        "B-004": line_hits(ROOT / "src/ui/ui_page.c", BASE_PAT),
+        "B-001": line_hits(ROOT / "src/ui/frame.kry", CHROME_GETTERS),
+        "B-002": line_hits(ROOT / "src/ui/tree_layout.kry", CHROME_GETTERS),
         "B-005": line_hits(ROOT / "go/kryon/control_style_host.go", GO_BASE_PAT),
     }
     for bridge_id, hits in checks.items():
@@ -66,7 +64,7 @@ def main():
         for failure in failures:
             print(f"bridge-ledger-check: {failure}", file=sys.stderr)
         return 1
-    print("bridge-ledger-check: ok (7 bridge rows, 10 visual props)")
+    print("bridge-ledger-check: ok (6 bridge rows, 10 visual props)")
     return 0
 
 

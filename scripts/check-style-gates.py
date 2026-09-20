@@ -72,10 +72,6 @@ GETTER_ALLOWLIST = {
     # theme API; removal is tracked by plan/style/09-legacy-removal.md.
     # Classified: legacy bridge, not new-code product chrome.
     "src/ui/ui.c": 5,
-    # System bridge: when no pack resolves the App rule the app background
-    # falls back to the platform theme color. Classified: documented
-    # degradation, not product decoration.
-    "src/ui/ui_tree.c": 1,
 }
 
 
@@ -90,10 +86,7 @@ def paint_style_leak_check():
     violations("paint-style-leak-check", hits)
 
 
-BASE_ALLOWLIST = {
-    # Documented structural allowances (metrics contract in docs/API.md).
-    "src/ui/ui_page.c": 2,
-}
+BASE_ALLOWLIST = {}
 GO_BASE_ALLOWLIST = {
     # Caller-supplied font size/opacity and gap/padding metrics used as style
     # bases. Classified: content metrics per the documented metrics contract,

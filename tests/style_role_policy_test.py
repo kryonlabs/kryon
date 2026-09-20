@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CALLS = {
     "StyleControlRoleFacts": 3,
     "StyleSheet_StyleControlRoleFacts": 3,
-    "ui_tk_simple_style_frame_class_role": 6,
+    "WidgetFrameForClassRole": 6,
     "simpleStyleFrameWithClassRole": 6,
     "ui_control_style_frame_role_kind": 7,
     "resolveMinimalControlRoleFrame": 7,
@@ -33,6 +33,7 @@ def source_files() -> list[Path]:
             files.append(path)
         else:
             files.extend(sorted(path.glob("*.c")))
+            files.extend(sorted(path.glob("*.kry")))
     return files
 
 

@@ -18,6 +18,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "#module \"button_props\"\n"
         "#import \"ui_control_props.generated.h\"\n"
         "#import \"ui_menu_props.generated.h\"\n"
+        "#import \"ui_image_props.generated.h\"\n"
         "\n"
         "ArrowDirection :: enum {\n"
         "    ArrowLeft = 0\n"
@@ -47,12 +48,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    icon_placement: IconPlacement\n"
         "    icon_only: bool\n"
         "    square: bool\n"
-        "    image_asset_path: const char*\n"
-        "    image_bounds: Rectangle\n"
-        "    image_source: Rectangle\n"
-        "    image_origin: Vector2\n"
-        "    image_rotation: float\n"
-        "    image_fit: i32\n"
+        "    image: ImageProps\n"
         "    swatch: bool\n"
         "    swatch_color: Color\n"
         "    menu_id: i32\n"
@@ -86,6 +82,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    selected_index: i32\n"
         "    world: Vector2\n"
         "}\n"
+        "\n"
+        "CanvasHitTest :: (point: Vector2, items: *Rectangle, item_count: i32) -> i32 #extern #export\n"
+        "CanvasToScreen :: (canvas: Canvas, point: Vector2) -> Vector2 #extern #export\n"
+        "CanvasRectToScreen :: (canvas: Canvas, rect: Rectangle) -> Rectangle #extern #export\n"
     },
     {"runtime/card_props.kry",
         "#module \"card_props\"\n"
@@ -608,6 +608,8 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    x: *i32\n"
         "    y: *i32\n"
         "}\n"
+        "\n"
+        "Menu :: (menu: MenuProps) -> MenuResult #extern #export\n"
     },
     {"runtime/modal_props.kry",
         "#module \"modal_props\"\n"

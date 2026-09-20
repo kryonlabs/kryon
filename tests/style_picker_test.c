@@ -7,6 +7,18 @@ static int dropdown_changed;
 static int dropdown_next_index;
 static DropdownProps captured_dropdown;
 
+void
+PushInspectSource(const char *path, int line)
+{
+    (void)path;
+    (void)line;
+}
+
+void
+PopInspectSource(void)
+{
+}
+
 int
 Dropdown(DropdownProps dropdown)
 {

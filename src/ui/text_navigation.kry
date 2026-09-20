@@ -1,0 +1,222 @@
+#module "text_navigation_host"
+#import "ui_internal.h"
+#import "ui/text_edit.h"
+#import "runtime/text_input.h"
+#import "stdlib.h"
+#import "string.h"
+
+ui_text_range_width :: (text: const char*, start: i32,
+end: i32, font: i32) -> i32 {
+    length: i32 = end - start
+    if length <= 0 { return 0 }
+    local: [1024]char
+    prefix: *char = local
+    if length >= (int)sizeof(local) {
+        prefix = (char*)malloc((size_t)length + 1)
+    }
+    if prefix == nil { return 0 }
+    memcpy(prefix, text + start, (size_t)length)
+    prefix[length] = '\0'
+    width: i32 = TextWidth(prefix, font)
+    if prefix != local { free(prefix) }
+    return width
+}
+
+ui_text_cursor_from_x :: (text: const char*, font: i32,
+text_x: i32, mouse_x: i32) -> i32 #export {
+    if text == nil { return 0 }
+    length: i32 = (int)strlen(text)
+    if mouse_x <= text_x { return 0 }
+    index: i32 = ui_grapheme_next_boundary(text, length, 0)
+    while index <= length && index > 0 {
+        if text_x + ui_text_range_width(text, 0, index,
+        font) >= mouse_x { return index }
+        if index == length { break }
+        index = ui_grapheme_next_boundary(text, length, index)
+    }
+    return length
+}
+
+ui_text_width_before_cursor :: (text: const char*,
+font: i32, cursor_position: i32) -> i32 #export {
+    if text == nil { return 0 }
+    length: i32 = (int)strlen(text)
+    copy_len: i32 = TextCursorForLength(cursor_position, length)
+    return ui_text_range_width(text, 0, copy_len, font)
+}
+
+ui_text_cursor_at_x :: (text: const char*, font: i32,
+text_x: i32, mouse_x: i32) -> i32 #export {
+    return ui_text_cursor_from_x(text, font, text_x, mouse_x)
+}
+
+ui_text_line_start :: (text: const char*,
+cursor: i32) -> i32 #export {
+    if text == nil { return 0 }
+    length: i32 = (int)strlen(text)
+    cursor = TextCursorForLength(cursor, length)
+    if cursor <= 0 { return 0 }
+    index: i32 = cursor - 1
+    while index >= 0 {
+        if text[index] == '\n' { return index + 1 }
+        index -= 1
+    }
+    return 0
+}
+
+ui_text_line_end :: (text: const char*,
+cursor: i32) -> i32 #export {
+    if text == nil { return 0 }
+    length: i32 = (int)strlen(text)
+    cursor = TextCursorForLength(cursor, length)
+    index: i32 = cursor
+    while index < length {
+        if text[index] == '\n' {
+            return ui_grapheme_floor_offset(text, index)
+        }
+        index += 1
+    }
+    return length
+}
+
+ui_text_column_x :: (text: const char*, start: i32,
+cursor: i32, font: i32) -> i32 #export {
+    if text == nil || cursor <= start { return 0 }
+    return ui_text_range_width(text, start, cursor, font)
+}
+
+ui_text_cursor_from_line_x :: (text: const char*,
+start: i32, end: i32, font: i32, target_x: i32) -> i32 #export {
+    if target_x <= 0 { return start }
+    index: i32 = ui_grapheme_next_boundary(text, end, start)
+    while index <= end && index > start {
+        if ui_text_range_width(text, start, index,
+        font) >= target_x { return index }
+        if index == end { break }
+        index = ui_grapheme_next_boundary(text, end, index)
+    }
+    return ui_grapheme_floor_offset(text, end)
+}
+
+ui_text_cursor_from_line_column :: (text: const char*,
+start: i32, end: i32, column: i32) -> i32 {
+    cursor: i32 = start
+    while column > 0 && cursor < end {
+        next: i32 = ui_grapheme_next_boundary(text, end, cursor)
+        if next <= cursor { break }
+        cursor = next
+        column -= 1
+    }
+    return cursor
+}
+
+ui_text_move_vertical :: (text: const char*, cursor: i32,
+font: i32, direction: i32) -> i32 #export {
+    if text == nil { return 0 }
+    start: i32 = ui_text_line_start(text, cursor)
+    end: i32 = ui_text_line_end(text, cursor)
+    target_x: i32 = ui_text_column_x(text, start, cursor, font)
+    other_start: i32 = 0
+    other_end: i32 = 0
+    if direction < 0 {
+        if start == 0 { return cursor }
+        other_end = ui_grapheme_prev_offset(text, start)
+        other_start = ui_text_line_start(text, other_end)
+    } else {
+        length: i32 = (int)strlen(text)
+        if end >= length { return cursor }
+        other_start = ui_grapheme_next_offset(text, end)
+        other_end = ui_text_line_end(text, other_start)
+    }
+    if target_x <= 0 && cursor > start {
+        column: i32 = 0
+        column_cursor: i32 = start
+        while column_cursor < cursor {
+            next: i32 = ui_grapheme_next_offset(text, column_cursor)
+            if next <= column_cursor { break }
+            column_cursor = next
+            column += 1
+        }
+        return ui_text_cursor_from_line_column(text,
+        other_start, other_end, column)
+    }
+    return ui_text_cursor_from_line_x(text, other_start,
+    other_end, font, target_x)
+}
+
+ui_text_area_move_page :: (area: TextAreaProps, cursor: i32,
+direction: i32) -> i32 #export {
+    style: TextInputAppearance = ui_resolve_text_input_appearance(
+    (TextInputAppearance){0}, StyleKindTextArea(), area.class_name)
+    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
+    style, StyleKindTextArea(), area.class_name, 0)
+    page_rows: i32 = TextAreaPageRows(area.bounds.height,
+    metrics.font, metrics.line_gap, metrics.padding_y)
+    row: i32 = 0
+    while row < page_rows {
+        cursor = ui_text_move_vertical(area.text, cursor,
+        metrics.font, direction)
+        row += 1
+    }
+    return cursor
+}
+
+ui_text_navigation_key :: (multiline: i32) -> i32 #export {
+    return TextNavigationKeyFor(multiline != 0,
+    IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+    IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+    IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+    IsKeyPressed(KEY_PAGE_UP) != 0,
+    IsKeyPressed(KEY_PAGE_DOWN) != 0)
+}
+
+ui_text_navigate :: (input: TextNavigationInput,
+anchor: *i32, cursor: *i32) -> i32 #export {
+    if input.text == nil || anchor == nil || cursor == nil { return 0 }
+    *anchor = ui_grapheme_floor_offset(input.text, *anchor)
+    *cursor = ui_grapheme_floor_offset(input.text, *cursor)
+    range: TextSelectionRange = TextSelectionRangeFor(*anchor, *cursor)
+    start: i32 = range.start
+    end: i32 = range.end
+    target: i32 = *cursor
+    decision: TextNavigationDecision = TextNavigationDecisionFor(
+    input.key, input.area != nil, input.shift != 0,
+    input.modifier != 0, input.secure != 0, end > start)
+    if !decision.consumed { return 0 }
+    if decision.collapse_selection_start {
+        target = start
+    } else if decision.collapse_selection_end {
+        target = end
+    } else if decision.document_edge < 0 {
+        target = 0
+    } else if decision.document_edge > 0 {
+        target = (int)strlen(input.text)
+    } else if decision.line_edge < 0 {
+        target = ui_text_line_start(input.text, target)
+    } else if decision.line_edge > 0 {
+        target = ui_text_line_end(input.text, target)
+    } else if decision.word_direction < 0 {
+        target = ui_text_word_left(input.text, target)
+    } else if decision.word_direction > 0 {
+        target = ui_text_word_right(input.text, target)
+    } else if decision.char_direction < 0 {
+        target = ui_grapheme_prev_offset(input.text, target)
+    } else if decision.char_direction > 0 {
+        target = ui_grapheme_next_offset(input.text, target)
+    } else if decision.vertical_direction != 0 {
+        if input.area == nil { return 0 }
+        target = ui_text_move_vertical(input.text, target,
+        input.font, decision.vertical_direction)
+    } else if decision.page_direction != 0 {
+        if input.area == nil { return 0 }
+        target = ui_text_area_move_page(*input.area, target,
+        decision.page_direction)
+    } else {
+        return 0
+    }
+    next: TextSelectionState = TextSelectionAfterMove(
+    *anchor, *cursor, target, decision.extend_selection)
+    *anchor = next.anchor
+    *cursor = next.cursor
+    return 1
+}

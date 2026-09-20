@@ -1,0 +1,69 @@
+#module "paned_view_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/paned_view.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+#import "ui/widget_store.h"
+
+RenderPanedView :: (panes: PanedViewProps) -> i32 #export {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    normal_frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, ButtonStateNormal, 0, 0, panes.class_name,
+    StyleKindPanedView(), PanedViewHandleRole())
+    metrics: PanedViewMetrics = PanedViewMetricsFor((float)GetScale(),
+    normal_frame)
+    current_split: i32 = 0
+    if panes.split != nil { current_split = *panes.split }
+    layout: PanedViewLayout = PanedViewLayoutFor(panes.bounds,
+    panes.vertical != 0, current_split, panes.split != nil,
+    panes.min_first, panes.min_second, metrics)
+    split: i32 = layout.split
+    handle: Rectangle = layout.handle
+    handle_hot: i32 = !ContentDisabled() && ui_hot(handle)
+    owner_captured: bool = toolkit->active_split != nil &&
+    ui_popup_input_owner_captures(toolkit->active_split_owner)
+    drag: PanedViewDragDecision = PanedViewDragFor(
+    toolkit->active_split != nil,
+    toolkit->active_split == panes.split, owner_captured,
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+    ContentDisabled() != 0, panes.split != nil, handle_hot != 0,
+    IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0)
+    if drag.clear_active { toolkit->active_split = nil }
+    if handle_hot != 0 {
+        MarkClickable()
+        if drag.start_drag {
+            toolkit->active_split = panes.split
+            toolkit->active_split_owner = ui_popup_input_owner()
+        }
+    }
+    if drag.drag_active {
+        mouse: Vector2 = ui_mouse_world()
+        split = PanedViewPointerSplitFor(panes.bounds,
+        panes.vertical != 0, mouse.x, mouse.y,
+        panes.min_first, panes.min_second)
+    }
+    changed: i32 = 0
+    if PanedViewChanged(current_split, split, panes.split != nil) {
+        *panes.split = split
+        changed = 1
+    }
+    handle = PanedViewHandleFor(panes.bounds,
+    panes.vertical != 0, split, metrics)
+    if IsWindowReady() {
+        DrawWidgetFrame(handle, (Rectangle){0},
+        normal_frame, 0, 0, 0, 0)
+    }
+    return changed
+}
+
+GetPaneDropZone :: (bounds: Rectangle,
+mouse: Vector2) -> DropZone #export {
+    frame: StyleFrame = (StyleFrame){0}
+    frame.value = ResolveActiveStyle((StyleData){0},
+    PanedViewHandleFactsFor(0, ButtonStateNormal),
+    ButtonStateNormal)
+    metrics: PanedViewMetrics = PanedViewMetricsFor(
+    (float)GetScale(), frame)
+    return (DropZone)PanedViewDropZoneFor(bounds, mouse, metrics)
+}

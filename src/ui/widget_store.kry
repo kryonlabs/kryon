@@ -1,0 +1,315 @@
+#module "widget_store_host"
+#import "ui_internal.h"
+#import "ui_popup_input_internal.h"
+#import "runtime/instance.h"
+#import "limits.h"
+
+WidgetLimit :: enum {
+    MENU_MAX = 8
+    MENU_DEPTH_MAX = 8
+    CONTEXT_MENU_MAX_ITEMS = 64
+    RADIO_ANIM_MAX = 128
+    INSTANCE_BUCKETS = 512
+    DRAG_DROP_DATA_MAX = 1024
+    NUMERIC_INPUT_BUCKETS = 128
+}
+
+NumericClickState :: struct {
+    valid: i32
+    kind: i32
+    widget_id: i32
+    component: i32
+    position: Vector2
+    time: double
+}
+
+NumericInputState :: struct {
+    token: i32
+    kind: i32
+    widget_id: i32
+    component: i32
+    text: [64]char
+    cursor: i32
+    focused: i32
+    next: *NumericInputState
+}
+
+DragDropState :: struct {
+    active: i32
+    source_id: i32
+    type: [32]char
+    data: [1024]u8
+    data_size: i32
+}
+
+MenuOverlayState :: struct {
+    active: i32
+    bar_id: i32
+    menu_id: i32
+    class_name: i32
+    x: i32
+    y: i32
+    item_count: i32
+    items: [64]MenuItem
+}
+
+ContextMenuOverlayState :: struct {
+    active: i32
+    id: i32
+    class_name: i32
+    x: i32
+    y: i32
+    item_count: i32
+    suppress_close: i32
+    items: [64]MenuItem
+}
+
+MenuNavigationState :: struct {
+    focus_id: i32
+    top: i32
+    depth: i32
+    path: [8]i32
+    key_handled: i32
+    key_frame: unsigned long
+}
+
+RadioAnimState :: struct {
+    key: u32
+    selected: float
+    press: float
+    frame_seen: unsigned long
+}
+
+TreeHeaderNavState :: struct {
+    id: i32
+    depth: i32
+}
+
+InstanceEntry :: struct {
+    key: u64
+    type: const char*
+    size: size_t
+    value: *void
+    frame_seen: unsigned long
+    next: *InstanceEntry
+}
+
+CanvasScopeState :: struct {
+    projection: Matrix
+    modelview: Matrix
+    paint: i32
+    transform: i32
+}
+
+ToolkitStore :: struct {
+    drag_active: i32
+    drag_last_x: float
+    drag_owner: PopupInputOwner
+    slider_active: i32
+    slider_owner: PopupInputOwner
+    numeric_click: NumericClickState
+    drag_drop: DragDropState
+    canvas_depth: i32
+    canvas_capacity: i32
+    canvases: *CanvasScopeState
+    radio_anim: [128]RadioAnimState
+    instances: [512]*InstanceEntry
+    instance_frame: unsigned long
+    last_table_id: i32
+    last_table_row: i32
+    last_table_column: i32
+    last_table_click_time: double
+    resize_table_id: i32
+    resize_column: i32
+    resize_start_x: i32
+    resize_start_width: i32
+    resize_owner: PopupInputOwner
+    active_split: *i32
+    active_split_owner: PopupInputOwner
+    numeric_inputs: [128]*NumericInputState
+    numeric_next_token: i32
+    tree_headers: *TreeHeaderNavState
+    tree_previous: *TreeHeaderNavState
+    tree_header_count: i32
+    tree_previous_count: i32
+    tree_header_capacity: i32
+    tree_previous_capacity: i32
+    tree_header_frame: unsigned long
+    tree_key_frame: unsigned long
+    open_id: i32
+    submenu_id: i32
+    panel_bounds: Rectangle
+    panel_valid: i32
+    overlay: MenuOverlayState
+    context_overlay: ContextMenuOverlayState
+    pending_bar_id: i32
+    pending_activated: i32
+    pending_closed_bar_id: i32
+    context_open_id: i32
+    context_pending_id: i32
+    context_pending_activated: i32
+    context_pending_closed_id: i32
+    navigation: MenuNavigationState
+}
+
+fallback_toolkit_store :: ToolkitStore #global
+current_toolkit_store :: *ToolkitStore #global
+fallback_toolkit_ready :: i32 #global
+
+ToolkitFallback :: () -> *ToolkitStore {
+    if fallback_toolkit_ready == 0 {
+        fallback_toolkit_store.last_table_row = -1
+        fallback_toolkit_store.last_table_column = -1
+        fallback_toolkit_store.resize_column = -1
+        fallback_toolkit_store.numeric_next_token = 0x60000000
+        fallback_toolkit_ready = 1
+    }
+    return &fallback_toolkit_store
+}
+
+toolkit_store_current :: () -> *ToolkitStore #export {
+    if current_toolkit_store == nil {
+        current_toolkit_store = ToolkitFallback()
+    }
+    return current_toolkit_store
+}
+
+NumericInputBucket :: (kind: i32, widget_id: i32,
+component: i32) -> unsigned {
+    return ((unsigned)widget_id * 31u +
+    (unsigned)component * 17u + (unsigned)kind) %
+    NUMERIC_INPUT_BUCKETS
+}
+
+ui_numeric_input_find :: (kind: i32, widget_id: i32,
+component: i32) -> *NumericInputState #export {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    bucket: unsigned = NumericInputBucket(kind, widget_id, component)
+    state: *NumericInputState = toolkit->numeric_inputs[bucket]
+    while state != nil {
+        if state->kind == kind && state->widget_id == widget_id &&
+        state->component == component {
+            return state
+        }
+        state = state->next
+    }
+    return nil
+}
+
+ui_numeric_input_state :: (kind: i32, widget_id: i32,
+component: i32) -> *NumericInputState #export {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    bucket: unsigned = NumericInputBucket(kind, widget_id, component)
+    existing: *NumericInputState = ui_numeric_input_find(kind,
+    widget_id, component)
+    if existing != nil { return existing }
+
+    state: *NumericInputState = (NumericInputState*)calloc(1,
+    sizeof(NumericInputState))
+    if state == nil { abort() }
+    if toolkit->numeric_next_token > INT_MAX - 3 { abort() }
+    state->token = toolkit->numeric_next_token
+    toolkit->numeric_next_token += 3
+    state->kind = kind
+    state->widget_id = widget_id
+    state->component = component
+    state->next = toolkit->numeric_inputs[bucket]
+    toolkit->numeric_inputs[bucket] = state
+    return state
+}
+
+toolkit_store_new :: () -> *ToolkitStore #export {
+    store: *ToolkitStore = (ToolkitStore*)calloc(1, sizeof(ToolkitStore))
+    if store == nil { abort() }
+    store->last_table_row = -1
+    store->last_table_column = -1
+    store->resize_column = -1
+    store->numeric_next_token = 0x60000000
+    return store
+}
+
+toolkit_store_free :: (store: *ToolkitStore) #export {
+    if store == nil { return }
+    if store == toolkit_store_current() || store == ToolkitFallback() {
+        abort()
+    }
+    index: i32 = 0
+    while index < INSTANCE_BUCKETS {
+        entry: *InstanceEntry = store->instances[index]
+        while entry != nil {
+            next: *InstanceEntry = entry->next
+            free(entry->value)
+            free(entry)
+            entry = next
+        }
+        index += 1
+    }
+    index = 0
+    while index < NUMERIC_INPUT_BUCKETS {
+        state: *NumericInputState = store->numeric_inputs[index]
+        while state != nil {
+            next: *NumericInputState = state->next
+            free(state)
+            state = next
+        }
+        index += 1
+    }
+    free(store->canvases)
+    free(store->tree_headers)
+    free(store->tree_previous)
+    free(store)
+}
+
+toolkit_store_swap :: (store: *ToolkitStore) -> *ToolkitStore #export {
+    previous: *ToolkitStore = toolkit_store_current()
+    current_toolkit_store = store
+    if store == nil { current_toolkit_store = ToolkitFallback() }
+    return previous
+}
+
+toolkit_store_frame :: (store: *ToolkitStore) #export {
+    if store == nil { return }
+    store->instance_frame += 1
+    frame: unsigned long = store->instance_frame
+    index: i32 = 0
+    while index < INSTANCE_BUCKETS {
+        link: **InstanceEntry = &store->instances[index]
+        while *link != nil {
+            entry: *InstanceEntry = *link
+            if InstanceExpired((int64_t)(frame - entry->frame_seen)) {
+                *link = entry->next
+                free(entry->value)
+                free(entry)
+            } else {
+                link = &entry->next
+            }
+        }
+        index += 1
+    }
+}
+
+InstanceState :: (type: const char*, key: u64,
+size: size_t) -> *void #export {
+    store: *ToolkitStore = toolkit_store_current()
+    bucket: u32 = (uint32_t)(key % INSTANCE_BUCKETS)
+    entry: *InstanceEntry = store->instances[bucket]
+    while entry != nil {
+        if entry->key == key && strcmp(entry->type, type) == 0 {
+            if entry->size != size { abort() }
+            entry->frame_seen = store->instance_frame
+            return entry->value
+        }
+        entry = entry->next
+    }
+    entry = (InstanceEntry*)calloc(1, sizeof(InstanceEntry))
+    if entry == nil { abort() }
+    entry->value = calloc(1, size)
+    if entry->value == nil { abort() }
+    entry->key = key
+    entry->type = type
+    entry->size = size
+    entry->frame_seen = store->instance_frame
+    entry->next = store->instances[bucket]
+    store->instances[bucket] = entry
+    return entry->value
+}

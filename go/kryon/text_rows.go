@@ -17,331 +17,179 @@ type TextRowBreak struct {
 
 func TextRows_TextLogicalLineFor(text string, offset int32) TextLogicalLine {
 	var line TextLogicalLine = TextLogicalLine{}
-	var value_0 int32 = offset
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		offset = value_3
+	if offset < 0 {
+		offset = 0
 	}
-	var value_4 int32 = offset
-	var value_5 int32 = int32(len(text))
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 TextLogicalLine = line
-		return value_7
+	if offset > int32(len(text)) {
+		return line
 	}
-	var value_8 bool = true
-	line.Valid = value_8
-	var value_9 int32 = offset
-	line.Start = value_9
+	line.Valid = true
+	line.Start = offset
 	for {
-		var value_10 int32 = offset
-		var value_11 int32 = int32(len(text))
-		var value_12 bool = value_10 < value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 int32 = offset
-			var value_15 uint8 = text[value_14]
-			var value_16 int32 = 10
-			var value_17 uint8 = uint8(number_runtime_bits(uint64(value_16), uint64(0), 8, false, 0))
-			var value_18 bool = value_15 != value_17
-			value_13 = value_18
+		var value_0 bool = (offset < int32(len(text)))
+		if value_0 {
+			value_0 = (text[offset] != uint8(number_runtime_bits(uint64(10), uint64(0), 8, false, 0)))
 		}
-		if !value_13 {
+		if !value_0 {
 			break
 		}
-		var value_19 int32 = offset
-		var value_20 int32 = 1
-		offset = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 1))
+		var value_1 int32 = offset
+		offset = int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1))
 	}
-	var value_21 int32 = offset
-	line.End = value_21
-	var value_22 int32 = offset
-	var value_23 int32 = 1
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
-	line.Next = value_24
-	var value_25 int32 = offset
-	var value_26 int32 = int32(len(text))
-	var value_27 bool = value_25 < value_26
-	var value_28 bool = value_27
-	if value_28 {
-		var value_29 int32 = offset
-		var value_30 int32 = line.Start
-		var value_31 bool = value_29 > value_30
-		value_28 = value_31
+	line.End = offset
+	line.Next = (int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 1)))
+	var value_2 bool = (offset < int32(len(text)))
+	if value_2 {
+		value_2 = (offset > line.Start)
 	}
-	var value_32 bool = value_28
-	if value_32 {
-		var value_33 int32 = offset
-		var value_34 int32 = 1
-		var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-		var value_36 uint8 = text[value_35]
-		var value_37 int32 = 13
-		var value_38 uint8 = uint8(number_runtime_bits(uint64(value_37), uint64(0), 8, false, 0))
-		var value_39 bool = value_36 == value_38
-		value_32 = value_39
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = text[(int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 2)))] == uint8(number_runtime_bits(uint64(13), uint64(0), 8, false, 0))
+		value_3 = value_4
 	}
-	if value_32 {
-		var value_40 int32 = line.End
-		var value_41 int32 = 1
-		line.End = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 2))
+	if value_3 {
+		var value_5 int32 = line.End
+		line.End = int32(number_runtime_bits(uint64(value_5), uint64(1), 32, true, 2))
 	}
-	var value_42 TextLogicalLine = line
-	return value_42
+	return line
 }
 
 func TextRows_TextRowFontFor(text string, start int32, end int32, base_font int32, headings bool) int32 {
-	var value_0 bool = headings
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 int32 = base_font
-		var value_4 int32 = 24
-		var value_5 bool = value_3 >= value_4
-		value_2 = value_5
+	var value_0 bool = !headings
+	if !value_0 {
+		value_0 = (base_font >= 24)
 	}
-	if value_2 {
-		var value_6 int32 = base_font
-		return value_6
+	if value_0 {
+		return base_font
 	}
-	var value_7 int32 = 0
-	var hashes int32 = value_7
+	var hashes int32 = 0
 	for {
-		var value_8 int32 = start
-		var value_9 int32 = hashes
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-		var value_11 int32 = end
-		var value_12 bool = value_10 < value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 int32 = hashes
-			var value_15 int32 = 3
-			var value_16 bool = value_14 < value_15
-			value_13 = value_16
+		var value_1 bool = ((int32(number_runtime_bits(uint64(start), uint64(hashes), 32, true, 1))) < end)
+		if value_1 {
+			value_1 = (hashes < 3)
 		}
-		var value_17 bool = value_13
-		if value_17 {
-			var value_18 int32 = start
-			var value_19 int32 = hashes
-			var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-			var value_21 uint8 = text[value_20]
-			var value_22 int32 = 35
-			var value_23 uint8 = uint8(number_runtime_bits(uint64(value_22), uint64(0), 8, false, 0))
-			var value_24 bool = value_21 == value_23
-			value_17 = value_24
+		var value_2 bool = value_1
+		if value_2 {
+			var value_3 bool = text[(int32(number_runtime_bits(uint64(start), uint64(hashes), 32, true, 1)))] == uint8(number_runtime_bits(uint64(35), uint64(0), 8, false, 0))
+			value_2 = value_3
 		}
-		if !value_17 {
+		if !value_2 {
 			break
 		}
-		var value_25 int32 = hashes
-		var value_26 int32 = 1
-		hashes = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
+		var value_4 int32 = hashes
+		hashes = int32(number_runtime_bits(uint64(value_4), uint64(1), 32, true, 1))
 	}
-	var value_27 int32 = hashes
-	var value_28 int32 = 0
-	var value_29 bool = value_27 > value_28
-	var value_30 bool = value_29
-	if value_30 {
-		var value_31 int32 = hashes
-		var value_32 int32 = 2
-		var value_33 bool = value_31 <= value_32
-		value_30 = value_33
+	var value_5 bool = (hashes > 0)
+	if value_5 {
+		value_5 = (hashes <= 2)
 	}
-	var value_34 bool = value_30
-	if value_34 {
-		var value_35 int32 = start
-		var value_36 int32 = hashes
-		var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 1))
-		var value_38 int32 = end
-		var value_39 bool = value_37 < value_38
-		value_34 = value_39
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = ((int32(number_runtime_bits(uint64(start), uint64(hashes), 32, true, 1))) < end)
 	}
-	var value_40 bool = value_34
-	if value_40 {
-		var value_41 int32 = start
-		var value_42 int32 = hashes
-		var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
-		var value_44 uint8 = text[value_43]
-		var value_45 int32 = 32
-		var value_46 uint8 = uint8(number_runtime_bits(uint64(value_45), uint64(0), 8, false, 0))
-		var value_47 bool = value_44 == value_46
-		value_40 = value_47
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = text[(int32(number_runtime_bits(uint64(start), uint64(hashes), 32, true, 1)))] == uint8(number_runtime_bits(uint64(32), uint64(0), 8, false, 0))
+		value_7 = value_8
 	}
-	if value_40 {
-		var value_48 int32 = 24
-		return value_48
+	if value_7 {
+		return 24
 	}
-	var value_49 int32 = base_font
-	return value_49
+	return base_font
 }
 
 func TextRows_TextRowAdvance(state TextRowBreak, start int32, next int32, line_end int32, space bool, measured float32, max_width float32, words bool) TextRowBreak {
-	var value_0 bool = state.Done
+	if state.Done {
+		return state
+	}
+	if next > line_end {
+		next = line_end
+	}
+	var value_0 bool = (max_width > 0.0)
 	if value_0 {
-		var value_1 TextRowBreak = state
-		return value_1
+		value_0 = (measured > max_width)
 	}
-	var value_2 int32 = next
-	var value_3 int32 = line_end
-	var value_4 bool = value_2 > value_3
-	if value_4 {
-		var value_5 int32 = line_end
-		next = value_5
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (state.End > start)
 	}
-	var value_6 float32 = max_width
-	var value_7 float32 = 0.0
-	var value_8 bool = value_6 > value_7
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 float32 = measured
-		var value_11 float32 = max_width
-		var value_12 bool = value_10 > value_11
-		value_9 = value_12
-	}
-	var value_13 bool = value_9
-	if value_13 {
-		var value_14 int32 = state.End
-		var value_15 int32 = start
-		var value_16 bool = value_14 > value_15
-		value_13 = value_16
-	}
-	if value_13 {
-		var value_17 bool = words
-		var value_18 bool = value_17
-		if value_18 {
-			var value_19 bool = state.HasSpace
-			value_18 = value_19
+	if value_1 {
+		var value_2 bool = words
+		if value_2 {
+			value_2 = state.HasSpace
 		}
-		var value_20 bool = value_18
-		if value_20 {
-			var value_21 int32 = state.Space
-			var value_22 int32 = start
-			var value_23 bool = value_21 > value_22
-			value_20 = value_23
+		var value_3 bool = value_2
+		if value_3 {
+			value_3 = (state.Space > start)
 		}
-		if value_20 {
-			var value_24 int32 = state.Space
-			state.End = value_24
+		if value_3 {
+			state.End = state.Space
 		}
-		var value_25 bool = true
-		state.Done = value_25
-		var value_26 TextRowBreak = state
-		return value_26
+		state.Done = true
+		return state
 	}
-	var value_27 bool = space
-	if value_27 {
-		var value_28 int32 = state.End
-		state.Space = value_28
-		var value_29 bool = true
-		state.HasSpace = value_29
+	if space {
+		state.Space = state.End
+		state.HasSpace = true
 	}
-	var value_30 int32 = next
-	var value_31 int32 = state.End
-	var value_32 bool = value_30 <= value_31
-	var value_33 bool = value_32
-	if !value_33 {
-		var value_34 int32 = next
-		var value_35 int32 = line_end
-		var value_36 bool = value_34 >= value_35
-		value_33 = value_36
+	var value_4 bool = (next <= state.End)
+	if !value_4 {
+		value_4 = (next >= line_end)
 	}
-	var value_37 bool = value_33
-	if !value_37 {
-		var value_38 float32 = max_width
-		var value_39 float32 = 0.0
-		var value_40 bool = value_38 > value_39
-		var value_41 bool = value_40
-		if value_41 {
-			var value_42 float32 = measured
-			var value_43 float32 = max_width
-			var value_44 bool = value_42 > value_43
-			value_41 = value_44
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 bool = (max_width > 0.0)
+		if value_6 {
+			value_6 = (measured > max_width)
 		}
-		value_37 = value_41
+		value_5 = value_6
 	}
-	state.Done = value_37
-	var value_45 int32 = next
-	state.End = value_45
-	var value_46 TextRowBreak = state
-	return value_46
+	state.Done = value_5
+	state.End = next
+	return state
 }
 
 func TextRows_TextRowNextStart(text string, offset int32, end int32, words bool) int32 {
-	var value_0 bool = words
-	if value_0 {
+	if words {
 		for {
-			var value_1 int32 = offset
-			var value_2 int32 = end
-			var value_3 bool = value_1 < value_2
-			var value_4 bool = value_3
-			if value_4 {
-				var value_5 int32 = offset
-				var value_6 uint8 = text[value_5]
-				var value_7 int32 = 32
-				var value_8 uint8 = uint8(number_runtime_bits(uint64(value_7), uint64(0), 8, false, 0))
-				var value_9 bool = value_6 == value_8
-				var value_10 bool = value_9
-				if !value_10 {
-					var value_11 int32 = offset
-					var value_12 uint8 = text[value_11]
-					var value_13 int32 = 9
-					var value_14 uint8 = uint8(number_runtime_bits(uint64(value_13), uint64(0), 8, false, 0))
-					var value_15 bool = value_12 == value_14
-					value_10 = value_15
+			var value_0 bool = (offset < end)
+			if value_0 {
+				var value_1 bool = (text[offset] == uint8(number_runtime_bits(uint64(32), uint64(0), 8, false, 0)))
+				if !value_1 {
+					value_1 = (text[offset] == uint8(number_runtime_bits(uint64(9), uint64(0), 8, false, 0)))
 				}
-				value_4 = value_10
+				value_0 = value_1
 			}
-			if !value_4 {
+			if !value_0 {
 				break
 			}
-			var value_16 int32 = offset
-			var value_17 int32 = 1
-			offset = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
+			var value_2 int32 = offset
+			offset = int32(number_runtime_bits(uint64(value_2), uint64(1), 32, true, 1))
 		}
 	}
-	var value_18 int32 = offset
-	return value_18
+	return offset
 }
 
 func TextRows_TextRowHasCursor(start int32, end int32, line_end int32, cursor int32) bool {
-	var value_0 int32 = cursor
-	var value_1 int32 = start
-	var value_2 bool = value_0 >= value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 int32 = cursor
-		var value_5 int32 = end
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
+	var value_0 bool = (cursor >= start)
+	if value_0 {
+		value_0 = (cursor <= end)
 	}
-	var value_7 bool = value_3
-	if value_7 {
-		var value_8 int32 = cursor
-		var value_9 int32 = end
-		var value_10 bool = value_8 < value_9
-		var value_11 bool = value_10
-		if !value_11 {
-			var value_12 int32 = end
-			var value_13 int32 = line_end
-			var value_14 bool = value_12 == value_13
-			value_11 = value_14
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = (cursor < end)
+		if !value_2 {
+			value_2 = (end == line_end)
 		}
-		value_7 = value_11
+		value_1 = value_2
 	}
-	return value_7
+	return value_1
 }
 
 func TextRows_TextRowAtY(y int32, height int32, target int32, last bool) bool {
-	var value_0 int32 = target
-	var value_1 int32 = y
-	var value_2 int32 = height
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-	var value_4 bool = value_0 < value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 bool = last
-		value_5 = value_6
+	var value_0 bool = (target < (int32(number_runtime_bits(uint64(y), uint64(height), 32, true, 1))))
+	if !value_0 {
+		value_0 = last
 	}
-	return value_5
+	return value_0
 }

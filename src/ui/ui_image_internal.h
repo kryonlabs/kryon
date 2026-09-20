@@ -7,5 +7,13 @@ Texture2D LoadImageTexture(const char *path);
 Rectangle ImageFitRect(ImageProps image, Texture2D texture);
 void ImageTexture(Texture2D texture, ImageProps image);
 void ImageTextureTinted(Texture2D texture, ImageProps image, Color tint);
+void ImageTextureTintedRaw(Texture2D texture, Rectangle bounds, Color tint);
+void ui_image_draw_clipped_texture(Texture2D texture, Rectangle source,
+                                   Rectangle dst, Rectangle bounds,
+                                   Vector2 origin, float rotation,
+                                   Color tint);
+void ui_image_draw_rounded_texture(Texture2D texture, Rectangle source,
+                                   Rectangle dst, Rectangle bounds,
+                                   float radius, Color tint);
 
 #endif

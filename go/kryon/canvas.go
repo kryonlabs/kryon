@@ -15,288 +15,136 @@ type CanvasTransform struct {
 }
 
 func Canvas_CanvasZoom(zoom float32) float32 {
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.01
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		return value_3
+	if zoom <= 0.01 {
+		return 1.0
 	}
-	var value_4 float32 = zoom
-	return value_4
+	return zoom
 }
 
 func Canvas_CanvasContains(bounds Rectangle, point Vector2) bool {
-	var value_0 float32 = point.X
-	var value_1 float32 = bounds.X
-	var value_2 bool = value_0 >= value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 float32 = point.Y
-		var value_5 float32 = bounds.Y
-		var value_6 bool = value_4 >= value_5
-		value_3 = value_6
+	var value_0 bool = (point.X >= bounds.X)
+	if value_0 {
+		value_0 = (point.Y >= bounds.Y)
 	}
-	var value_7 bool = value_3
-	if value_7 {
-		var value_8 float32 = point.X
-		var value_9 float32 = bounds.X
-		var value_10 float32 = bounds.Width
-		var value_11 float32 = value_9 + value_10
-		var value_12 bool = value_8 <= value_11
-		value_7 = value_12
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = (point.X <= (bounds.X + bounds.Width))
 	}
-	var value_13 bool = value_7
-	if value_13 {
-		var value_14 float32 = point.Y
-		var value_15 float32 = bounds.Y
-		var value_16 float32 = bounds.Height
-		var value_17 float32 = value_15 + value_16
-		var value_18 bool = value_14 <= value_17
-		value_13 = value_18
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = (point.Y <= (bounds.Y + bounds.Height))
 	}
-	return value_13
+	return value_2
 }
 
 func Canvas_CanvasPointToScreen(bounds Rectangle, point Vector2, scroll_x int32, scroll_y int32, zoom float32) Vector2 {
-	var value_0 Vector2 = point
-	var out Vector2 = value_0
-	var value_1 float32 = zoom
-	var value_2 float32 = Canvas_CanvasZoom(value_1)
-	var z float32 = value_2
-	var value_3 float32 = out.X
-	var value_4 int32 = scroll_x
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_3 - value_5
-	out.X = value_6
-	var value_7 float32 = out.Y
-	var value_8 int32 = scroll_y
-	var value_9 float32 = float32(value_8)
-	var value_10 float32 = value_7 - value_9
-	out.Y = value_10
-	var value_11 float32 = bounds.X
-	var value_12 float32 = out.X
-	var value_13 float32 = bounds.X
-	var value_14 float32 = value_12 - value_13
-	var value_15 float32 = z
-	var value_16 float32 = value_14 * value_15
-	var value_17 float32 = value_11 + value_16
-	out.X = value_17
-	var value_18 float32 = bounds.Y
-	var value_19 float32 = out.Y
-	var value_20 float32 = bounds.Y
-	var value_21 float32 = value_19 - value_20
-	var value_22 float32 = z
-	var value_23 float32 = value_21 * value_22
-	var value_24 float32 = value_18 + value_23
-	out.Y = value_24
-	var value_25 Vector2 = out
-	return value_25
+	var out Vector2 = point
+	var value_0 float32 = Canvas_CanvasZoom(zoom)
+	var z float32 = value_0
+	out.X = (out.X - float32(scroll_x))
+	out.Y = (out.Y - float32(scroll_y))
+	out.X = (bounds.X + ((out.X - bounds.X) * z))
+	out.Y = (bounds.Y + ((out.Y - bounds.Y) * z))
+	return out
 }
 
 func Canvas_CanvasPointFromScreen(bounds Rectangle, point Vector2, scroll_x int32, scroll_y int32, zoom float32) Vector2 {
-	var value_0 Vector2 = point
-	var out Vector2 = value_0
-	var value_1 float32 = zoom
-	var value_2 float32 = Canvas_CanvasZoom(value_1)
-	var z float32 = value_2
-	var value_3 float32 = bounds.X
-	var value_4 float32 = out.X
-	var value_5 float32 = bounds.X
-	var value_6 float32 = value_4 - value_5
-	var value_7 float32 = z
-	var value_8 float32 = value_6 / value_7
-	var value_9 float32 = value_3 + value_8
-	var value_10 int32 = scroll_x
-	var value_11 float32 = float32(value_10)
-	var value_12 float32 = value_9 + value_11
-	out.X = value_12
-	var value_13 float32 = bounds.Y
-	var value_14 float32 = out.Y
-	var value_15 float32 = bounds.Y
-	var value_16 float32 = value_14 - value_15
-	var value_17 float32 = z
-	var value_18 float32 = value_16 / value_17
-	var value_19 float32 = value_13 + value_18
-	var value_20 int32 = scroll_y
-	var value_21 float32 = float32(value_20)
-	var value_22 float32 = value_19 + value_21
-	out.Y = value_22
-	var value_23 Vector2 = out
-	return value_23
+	var out Vector2 = point
+	var value_0 float32 = Canvas_CanvasZoom(zoom)
+	var z float32 = value_0
+	out.X = ((bounds.X + ((out.X - bounds.X) / z)) + float32(scroll_x))
+	out.Y = ((bounds.Y + ((out.Y - bounds.Y) / z)) + float32(scroll_y))
+	return out
 }
 
 func Canvas_CanvasRectToScreenBounds(bounds Rectangle, rect Rectangle, scroll_x int32, scroll_y int32, zoom float32) Rectangle {
-	var value_0 Rectangle = rect
-	var out Rectangle = value_0
-	var value_1 float32 = zoom
-	var value_2 float32 = Canvas_CanvasZoom(value_1)
-	var z float32 = value_2
-	var value_3 Rectangle = bounds
-	var value_4 Vector2 = Vector2{}
-	var value_5 float32 = rect.X
-	value_4.X = value_5
-	var value_6 float32 = rect.Y
-	value_4.Y = value_6
-	var value_7 int32 = scroll_x
-	var value_8 int32 = scroll_y
-	var value_9 float32 = z
-	var value_10 Vector2 = Canvas_CanvasPointToScreen(value_3, value_4, value_7, value_8, value_9)
-	var point Vector2 = value_10
-	var value_11 float32 = point.X
-	out.X = value_11
-	var value_12 float32 = point.Y
-	out.Y = value_12
-	var value_13 float32 = rect.Width
-	var value_14 float32 = z
-	var value_15 float32 = value_13 * value_14
-	out.Width = value_15
-	var value_16 float32 = rect.Height
-	var value_17 float32 = z
-	var value_18 float32 = value_16 * value_17
-	out.Height = value_18
-	var value_19 Rectangle = out
-	return value_19
+	var out Rectangle = rect
+	var value_0 float32 = Canvas_CanvasZoom(zoom)
+	var z float32 = value_0
+	var value_1 Vector2 = Vector2{}
+	value_1.X = rect.X
+	value_1.Y = rect.Y
+	var value_2 Vector2 = Canvas_CanvasPointToScreen(bounds, value_1, scroll_x, scroll_y, z)
+	var point Vector2 = value_2
+	out.X = point.X
+	out.Y = point.Y
+	out.Width = (rect.Width * z)
+	out.Height = (rect.Height * z)
+	return out
 }
 
 func Canvas_CanvasBeginResultFor(bounds Rectangle, mouse Vector2, scroll_x int32, scroll_y int32, zoom float32, mouse_down bool) CanvasPolicyResult {
 	var result CanvasPolicyResult = CanvasPolicyResult{}
-	var value_0 Rectangle = bounds
-	var value_1 Vector2 = mouse
-	var value_2 bool = Canvas_CanvasContains(value_0, value_1)
-	result.Active = value_2
-	var value_3 bool = result.Active
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 bool = mouse_down
-		value_4 = value_5
+	var value_0 bool = Canvas_CanvasContains(bounds, mouse)
+	result.Active = value_0
+	var value_1 bool = result.Active
+	if value_1 {
+		value_1 = mouse_down
 	}
-	result.Dragging = value_4
-	var value_6 Rectangle = bounds
-	var value_7 Vector2 = mouse
-	var value_8 int32 = scroll_x
-	var value_9 int32 = scroll_y
-	var value_10 float32 = zoom
-	var value_11 Vector2 = Canvas_CanvasPointFromScreen(value_6, value_7, value_8, value_9, value_10)
-	result.World = value_11
-	var value_12 CanvasPolicyResult = result
-	return value_12
+	result.Dragging = value_1
+	var value_2 Vector2 = Canvas_CanvasPointFromScreen(bounds, mouse, scroll_x, scroll_y, zoom)
+	result.World = value_2
+	return result
 }
 
 func Canvas_CanvasHitTestStep(point Vector2, item Rectangle, item_index int32, current_index int32) int32 {
-	var value_0 int32 = current_index
-	var value_1 int32 = 0
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 int32 = current_index
-		return value_3
+	if current_index >= 0 {
+		return current_index
 	}
-	var value_4 Rectangle = item
-	var value_5 Vector2 = point
-	var value_6 bool = Canvas_CanvasContains(value_4, value_5)
-	if value_6 {
-		var value_7 int32 = item_index
-		return value_7
+	var value_0 bool = Canvas_CanvasContains(item, point)
+	if value_0 {
+		return item_index
 	}
-	var value_8 int32 = -1
-	return value_8
+	return -1
 }
 
 func Canvas_CanvasHasTransform(has_scroll_x bool, has_scroll_y bool, has_zoom bool, zoom float32) bool {
 	var value_0 bool = has_scroll_x
+	if !value_0 {
+		value_0 = has_scroll_y
+	}
 	var value_1 bool = value_0
 	if !value_1 {
-		var value_2 bool = has_scroll_y
-		value_1 = value_2
-	}
-	var value_3 bool = value_1
-	if !value_3 {
-		var value_4 bool = has_zoom
-		var value_5 bool = value_4
-		if value_5 {
-			var value_6 float32 = zoom
-			var value_7 float32 = 0.01
-			var value_8 bool = value_6 > value_7
-			value_5 = value_8
+		var value_2 bool = has_zoom
+		if value_2 {
+			value_2 = (zoom > 0.01)
 		}
-		var value_9 bool = value_5
-		if value_9 {
-			var value_10 float32 = zoom
-			var value_11 float32 = 1.0
-			var value_12 bool = value_10 != value_11
-			value_9 = value_12
+		var value_3 bool = value_2
+		if value_3 {
+			value_3 = (zoom != 1.0)
 		}
-		value_3 = value_9
+		value_1 = value_3
 	}
-	return value_3
+	return value_1
 }
 
 func Canvas_CanvasTransformFor(bounds Rectangle, scroll_x int32, scroll_y int32, zoom float32) CanvasTransform {
-	var value_0 float32 = zoom
-	var value_1 float32 = Canvas_CanvasZoom(value_0)
-	var scale float32 = value_1
-	var value_2 CanvasTransform = CanvasTransform{}
-	var value_3 float32 = scale
-	value_2.Scale = value_3
-	var value_4 float32 = bounds.X
-	var value_5 float32 = bounds.X
-	var value_6 int32 = scroll_x
-	var value_7 float32 = float32(value_6)
-	var value_8 float32 = value_5 + value_7
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 float32 = value_4 - value_10
-	value_2.X = value_11
-	var value_12 float32 = bounds.Y
-	var value_13 float32 = bounds.Y
-	var value_14 int32 = scroll_y
-	var value_15 float32 = float32(value_14)
-	var value_16 float32 = value_13 + value_15
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 float32 = value_12 - value_18
-	value_2.Y = value_19
-	return value_2
+	var value_0 float32 = Canvas_CanvasZoom(zoom)
+	var scale float32 = value_0
+	var value_1 CanvasTransform = CanvasTransform{}
+	value_1.Scale = scale
+	value_1.X = (bounds.X - ((bounds.X + float32(scroll_x)) * scale))
+	value_1.Y = (bounds.Y - ((bounds.Y + float32(scroll_y)) * scale))
+	return value_1
 }
 
 func Canvas_CanvasTransformPoint(transform CanvasTransform, point Vector2) Vector2 {
 	var value_0 Vector2 = Vector2{}
-	var value_1 float32 = point.X
-	var value_2 float32 = transform.Scale
-	var value_3 float32 = value_1 * value_2
-	var value_4 float32 = transform.X
-	var value_5 float32 = value_3 + value_4
-	value_0.X = value_5
-	var value_6 float32 = point.Y
-	var value_7 float32 = transform.Scale
-	var value_8 float32 = value_6 * value_7
-	var value_9 float32 = transform.Y
-	var value_10 float32 = value_8 + value_9
-	value_0.Y = value_10
+	value_0.X = ((point.X * transform.Scale) + transform.X)
+	value_0.Y = ((point.Y * transform.Scale) + transform.Y)
 	return value_0
 }
 
 func Canvas_CanvasTransformRect(transform CanvasTransform, bounds Rectangle) Rectangle {
-	var value_0 CanvasTransform = transform
-	var value_1 Vector2 = Vector2{}
-	var value_2 float32 = bounds.X
-	value_1.X = value_2
-	var value_3 float32 = bounds.Y
-	value_1.Y = value_3
-	var value_4 Vector2 = Canvas_CanvasTransformPoint(value_0, value_1)
-	var point Vector2 = value_4
-	var value_5 Rectangle = Rectangle{}
-	var value_6 float32 = point.X
-	value_5.X = value_6
-	var value_7 float32 = point.Y
-	value_5.Y = value_7
-	var value_8 float32 = bounds.Width
-	var value_9 float32 = transform.Scale
-	var value_10 float32 = value_8 * value_9
-	value_5.Width = value_10
-	var value_11 float32 = bounds.Height
-	var value_12 float32 = transform.Scale
-	var value_13 float32 = value_11 * value_12
-	value_5.Height = value_13
-	return value_5
+	var value_0 Vector2 = Vector2{}
+	value_0.X = bounds.X
+	value_0.Y = bounds.Y
+	var value_1 Vector2 = Canvas_CanvasTransformPoint(transform, value_0)
+	var point Vector2 = value_1
+	var value_2 Rectangle = Rectangle{}
+	value_2.X = point.X
+	value_2.Y = point.Y
+	value_2.Width = (bounds.Width * transform.Scale)
+	value_2.Height = (bounds.Height * transform.Scale)
+	return value_2
 }

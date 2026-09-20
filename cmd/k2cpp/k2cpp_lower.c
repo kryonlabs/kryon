@@ -727,8 +727,24 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cppModuleSyms *restab,
 
     rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
     if(k2cpp_in_array_init) {
-        /* initializer items: bare expressions, no inspect wrapper */
+        /* Initializer items are expressions with their own separators. */
         fprintf(c, "    %s\n", rw);
+        return;
+    }
+    if(!m->inspect_calls) {
+        fprintf(c, "    %s;\n", rw);
+        return;
+    }
+    int defines_push = 0;
+    int defines_pop = 0;
+    for(int i = 0; i < m->function_count; i++) {
+        if(strcmp(m->functions[i].name, "PushInspectSource") == 0)
+            defines_push = 1;
+        if(strcmp(m->functions[i].name, "PopInspectSource") == 0)
+            defines_pop = 1;
+    }
+    if(defines_push && defines_pop) {
+        fprintf(c, "    %s;\n", rw);
         return;
     }
     {

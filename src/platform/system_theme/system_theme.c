@@ -1235,7 +1235,7 @@ plan9_system_theme_refresh(void)
     (void)style;
 
     for(i = 0; i < THEME_COUNT; i++) {
-        if(strcmp(themes[i].name, name) == 0) {
+        if(strcmp(GetThemeMeta((ThemeId)i)->name, name) == 0) {
             theme_id = i;
             break;
         }

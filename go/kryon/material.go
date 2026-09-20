@@ -31,188 +31,98 @@ type SurfaceDrawing struct {
 }
 
 func Material_PrepareMaterial(paint MaterialPaint) MaterialPaint {
-	var value_0 float32 = paint.Scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		paint.Scale = value_3
+	if paint.Scale <= 0.0 {
+		paint.Scale = 1.0
 	}
-	var value_4 float32 = paint.Surface.Width
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 <= value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 float32 = paint.Surface.Height
-		var value_9 float32 = 0.0
-		var value_10 bool = value_8 <= value_9
-		value_7 = value_10
+	var value_0 bool = (paint.Surface.Width <= 0.0)
+	if !value_0 {
+		value_0 = (paint.Surface.Height <= 0.0)
 	}
-	if value_7 {
-		var value_11 Rectangle = paint.Bounds
-		paint.Surface = value_11
+	if value_0 {
+		paint.Surface = paint.Bounds
 	}
-	var value_12 MaterialPaint = paint
-	return value_12
+	return paint
 }
 
 func Material_MaterialContentBounds(paint MaterialPaint) Rectangle {
-	var value_0 Rectangle = paint.Bounds
-	var result Rectangle = value_0
-	var value_1 float32 = result.Y
-	var value_2 MaterialKind = MaterialKind(paint.Value.Material)
-	var value_3 float32 = paint.Hover
-	var value_4 float32 = paint.Press
-	var value_5 bool = paint.Disabled
-	var value_6 float32 = Surface_MaterialOffset(value_2, value_3, value_4, value_5)
-	var value_7 float32 = paint.Scale
-	var value_8 float32 = value_6 * value_7
-	result.Y = value_1 + value_8
-	var value_9 Rectangle = result
-	return value_9
+	var result Rectangle = paint.Bounds
+	var value_0 float32 = result.Y
+	var value_1 MaterialKind = MaterialKind(MaterialKind(paint.Value.Material))
+	var value_2 float32 = paint.Hover
+	var value_3 float32 = paint.Press
+	var value_4 bool = paint.Disabled
+	var value_5 float32 = Surface_MaterialOffset(value_1, value_2, value_3, value_4)
+	result.Y = value_0 + (value_5 * paint.Scale)
+	return result
 }
 
 func Material_PaintMaterialLayer(paint MaterialPaint, index int32) SurfaceDrawing {
 	var result SurfaceDrawing = SurfaceDrawing{}
-	var value_0 StyleData = paint.Value
-	var value StyleData = value_0
-	var value_1 MaterialKind = MaterialKind(value.Material)
-	var value_2 int32 = index
-	var value_3 float32 = paint.Surface.Width
-	var value_4 float32 = paint.Scale
-	var value_5 float32 = value_3 / value_4
-	var value_6 float32 = paint.Surface.Height
-	var value_7 float32 = paint.Scale
-	var value_8 float32 = value_6 / value_7
-	var value_9 float32 = value.Radius
-	var value_10 float32 = value.BorderWidth
-	var value_11 uint32 = value.Background
-	var value_12 uint32 = value.Border
-	var value_13 uint32 = paint.Light
-	var value_14 uint32 = value.Focus
-	var value_15 float32 = paint.Hover
-	var value_16 float32 = paint.Press
-	var value_17 float32 = paint.Focus
-	var value_18 bool = paint.Disabled
-	var value_19 float32 = value.Opacity
-	var value_20 uint32 = paint.Ambient
-	var value_21 SurfaceLayer = Surface_MaterialLayer(value_1, value_2, value_5, value_8, value_9, value_10, value_11, value_12, value_13, value_14, value_15, value_16, value_17, value_18, value_19, value_20)
-	var layer SurfaceLayer = value_21
-	var value_22 bool = layer.IsFace
-	if value_22 {
-		var value_23 bool = paint.FillValid
-		if value_23 {
-			var value_24 SurfaceLayer = layer
-			var value_25 FillStates = paint.Fill
-			var value_26 float32 = value.Opacity
-			var value_27 SurfaceLayer = Surface_ApplyFillStates(value_24, value_25, value_26)
-			layer = value_27
+	var value StyleData = paint.Value
+	var value_0 MaterialKind = MaterialKind(MaterialKind(value.Material))
+	var value_1 float32 = (paint.Surface.Width / paint.Scale)
+	var value_2 float32 = (paint.Surface.Height / paint.Scale)
+	var value_3 float32 = value.Radius
+	var value_4 float32 = value.BorderWidth
+	var value_5 uint32 = value.Background
+	var value_6 uint32 = value.Border
+	var value_7 uint32 = paint.Light
+	var value_8 uint32 = value.Focus
+	var value_9 float32 = paint.Hover
+	var value_10 float32 = paint.Press
+	var value_11 float32 = paint.Focus
+	var value_12 bool = paint.Disabled
+	var value_13 float32 = value.Opacity
+	var value_14 uint32 = paint.Ambient
+	var value_15 SurfaceLayer = Surface_MaterialLayer(value_0, index, value_1, value_2, value_3, value_4, value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12, value_13, value_14)
+	var layer SurfaceLayer = value_15
+	if layer.IsFace {
+		if paint.FillValid {
+			var value_16 FillStates = paint.Fill
+			var value_17 float32 = value.Opacity
+			var value_18 SurfaceLayer = Surface_ApplyFillStates(layer, value_16, value_17)
+			layer = value_18
 		} else {
-			var value_28 SurfaceLayer = layer
-			var value_29 uint32 = value.Fields
-			var value_30 int32 = int32(StyleBackgroundEnd)
-			var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-			var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 8))
-			var value_33 int32 = 0
-			var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-			var value_35 bool = value_32 != value_34
-			var value_36 uint32 = value.Background
-			var value_37 uint32 = value.BackgroundEnd
-			var value_38 float32 = value.Opacity
-			var value_39 SurfaceLayer = Surface_FillGradient(value_28, value_35, value_36, value_37, value_38)
-			layer = value_39
+			var value_19 uint32 = uint32(number_runtime_bits(uint64(value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleBackgroundEnd)), uint64(0), 32, false, 0))), 32, false, 8))
+			var value_20 bool = (value_19 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+			var value_21 uint32 = value.Background
+			var value_22 uint32 = value.BackgroundEnd
+			var value_23 float32 = value.Opacity
+			var value_24 SurfaceLayer = Surface_FillGradient(layer, value_20, value_21, value_22, value_23)
+			layer = value_24
 		}
 	}
-	var value_40 SurfaceLayer = layer
-	result.Layer = value_40
-	var value_41 float32 = paint.Surface.X
-	var value_42 float32 = layer.X
-	var value_43 float32 = paint.Scale
-	var value_44 float32 = value_42 * value_43
-	var value_45 float32 = value_41 + value_44
-	result.Bounds.X = value_45
-	var value_46 float32 = paint.Surface.Y
-	var value_47 float32 = layer.Y
-	var value_48 float32 = paint.Scale
-	var value_49 float32 = value_47 * value_48
-	var value_50 float32 = value_46 + value_49
-	result.Bounds.Y = value_50
-	var value_51 float32 = layer.Width
-	var value_52 float32 = paint.Scale
-	var value_53 float32 = value_51 * value_52
-	result.Bounds.Width = value_53
-	var value_54 float32 = layer.Height
-	var value_55 float32 = paint.Scale
-	var value_56 float32 = value_54 * value_55
-	result.Bounds.Height = value_56
-	var value_57 float32 = layer.Blur
-	var value_58 float32 = paint.Scale
-	var value_59 float32 = value_57 * value_58
-	var blur float32 = value_59
-	var value_60 float32 = result.Bounds.X
-	var value_61 float32 = blur
-	var value_62 float32 = value_60 - value_61
-	result.Area.X = value_62
-	var value_63 float32 = result.Bounds.Y
-	var value_64 float32 = blur
-	var value_65 float32 = value_63 - value_64
-	result.Area.Y = value_65
-	var value_66 float32 = result.Bounds.Width
-	var value_67 float32 = 2.0
-	var value_68 float32 = blur
-	var value_69 float32 = value_67 * value_68
-	var value_70 float32 = value_66 + value_69
-	result.Area.Width = value_70
-	var value_71 float32 = result.Bounds.Height
-	var value_72 float32 = 2.0
-	var value_73 float32 = blur
-	var value_74 float32 = value_72 * value_73
-	var value_75 float32 = value_71 + value_74
-	result.Area.Height = value_75
-	var value_76 float32 = result.Bounds.Width
-	var value_77 float32 = 0.0
-	var value_78 bool = value_76 > value_77
-	var value_79 bool = value_78
-	if value_79 {
-		var value_80 float32 = result.Bounds.Height
-		var value_81 float32 = 0.0
-		var value_82 bool = value_80 > value_81
-		value_79 = value_82
+	result.Layer = layer
+	result.Bounds.X = (paint.Surface.X + (layer.X * paint.Scale))
+	result.Bounds.Y = (paint.Surface.Y + (layer.Y * paint.Scale))
+	result.Bounds.Width = (layer.Width * paint.Scale)
+	result.Bounds.Height = (layer.Height * paint.Scale)
+	var blur float32 = (layer.Blur * paint.Scale)
+	result.Area.X = (result.Bounds.X - blur)
+	result.Area.Y = (result.Bounds.Y - blur)
+	result.Area.Width = (result.Bounds.Width + (2.0 * blur))
+	result.Area.Height = (result.Bounds.Height + (2.0 * blur))
+	var value_25 bool = (result.Bounds.Width > 0.0)
+	if value_25 {
+		value_25 = (result.Bounds.Height > 0.0)
 	}
-	var value_83 bool = value_79
-	if value_83 {
-		var value_84 uint32 = layer.Color
-		var value_85 int32 = 255
-		var value_86 uint32 = uint32(number_runtime_bits(uint64(value_85), uint64(0), 32, false, 0))
-		var value_87 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(value_86), 32, false, 8))
-		var value_88 int32 = 0
-		var value_89 uint32 = uint32(number_runtime_bits(uint64(value_88), uint64(0), 32, false, 0))
-		var value_90 bool = value_87 != value_89
-		var value_91 bool = value_90
-		if !value_91 {
-			var value_92 bool = layer.Gradient
-			var value_93 bool = value_92
-			if value_93 {
-				var value_94 uint32 = layer.EndColor
-				var value_95 int32 = 255
-				var value_96 uint32 = uint32(number_runtime_bits(uint64(value_95), uint64(0), 32, false, 0))
-				var value_97 uint32 = uint32(number_runtime_bits(uint64(value_94), uint64(value_96), 32, false, 8))
-				var value_98 int32 = 0
-				var value_99 uint32 = uint32(number_runtime_bits(uint64(value_98), uint64(0), 32, false, 0))
-				var value_100 bool = value_97 != value_99
-				value_93 = value_100
+	var value_26 bool = value_25
+	if value_26 {
+		var value_27 uint32 = uint32(number_runtime_bits(uint64(layer.Color), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 8))
+		var value_28 bool = (value_27 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+		if !value_28 {
+			var value_29 bool = layer.Gradient
+			if value_29 {
+				var value_30 uint32 = uint32(number_runtime_bits(uint64(layer.EndColor), uint64(uint32(number_runtime_bits(uint64(255), uint64(0), 32, false, 0))), 32, false, 8))
+				value_29 = (value_30 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
 			}
-			value_91 = value_93
+			value_28 = value_29
 		}
-		value_83 = value_91
+		value_26 = value_28
 	}
-	result.Visible = value_83
-	var value_101 float32 = paint.Scale
-	result.Scale = value_101
-	var value_102 Rectangle = paint.Surface
-	result.Surface = value_102
-	var value_103 Rectangle = paint.Bounds
-	result.Segment = value_103
-	var value_104 SurfaceDrawing = result
-	return value_104
+	result.Visible = value_26
+	result.Scale = paint.Scale
+	result.Surface = paint.Surface
+	result.Segment = paint.Bounds
+	return result
 }

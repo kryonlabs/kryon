@@ -92,7 +92,7 @@ RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX. It
 routes retained interaction for BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE,
 and CHECKBOX;
 every other kind renders through its immediate-mode call during the
-declaration pass (`src/ui/ui_tree.c`).
+declaration pass (`src/ui/tree_layout.kry`).
 
 ### Display
 

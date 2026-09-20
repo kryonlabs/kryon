@@ -41,423 +41,221 @@ type TitleBarState struct {
 }
 
 func TitleBar_TitleBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_2
 }
 
 func TitleBar_TitleBarBarRole() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func TitleBar_TitleBarTitleRole() int32 {
-	var value_0 int32 = 16
-	return value_0
+	return 16
 }
 
 func TitleBar_TitleBarActionRole() int32 {
-	var value_0 int32 = 17
-	return value_0
+	return 17
 }
 
 func TitleBar_TitleBarActionRadius() float32 {
-	var value_0 float32 = 0.50
-	return value_0
+	return 0.50
 }
 
 func TitleBar_TitleBarMetricsFor(scale float32, bar StyleFrame, title StyleFrame, action StyleFrame) TitleBarMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics TitleBarMetrics = TitleBarMetrics{}
-	var value_4 uint32 = bar.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = bar.Value.PaddingX
-	var value_8 float32 = 12.0
-	var value_9 float32 = scale
-	var value_10 int32 = TitleBar_TitleBarMetric(value_4, value_6, value_7, value_8, value_9)
-	metrics.SideMargin = value_10
-	var value_11 uint32 = bar.Value.Fields
-	var value_12 int32 = int32(StyleContentOffset)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = bar.Value.OffsetX
-	var value_15 float32 = 60.0
-	var value_16 float32 = scale
-	var value_17 int32 = TitleBar_TitleBarMetric(value_11, value_13, value_14, value_15, value_16)
-	metrics.LeadingReserved = value_17
-	var value_18 uint32 = action.Value.Fields
-	var value_19 int32 = int32(StyleIconSize)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = action.Value.IconSize
-	var value_22 float32 = 20.0
-	var value_23 float32 = scale
-	var value_24 int32 = TitleBar_TitleBarMetric(value_18, value_20, value_21, value_22, value_23)
-	metrics.LeadingIconSize = value_24
-	var value_25 uint32 = action.Value.Fields
-	var value_26 int32 = int32(StylePaddingX)
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 float32 = action.Value.PaddingX
-	var value_29 float32 = 10.0
-	var value_30 float32 = scale
-	var value_31 int32 = TitleBar_TitleBarMetric(value_25, value_27, value_28, value_29, value_30)
-	metrics.LeadingPadding = value_31
-	var value_32 int32 = metrics.SideMargin
-	metrics.LeadingX = value_32
-	var value_33 uint32 = bar.Value.Fields
-	var value_34 int32 = int32(StyleGap)
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
-	var value_36 float32 = bar.Value.Gap
-	var value_37 float32 = 4.0
-	var value_38 float32 = scale
-	var value_39 int32 = TitleBar_TitleBarMetric(value_33, value_35, value_36, value_37, value_38)
-	metrics.DropdownGap = value_39
-	var value_40 uint32 = bar.Value.Fields
-	var value_41 int32 = int32(StyleIconSize)
-	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
-	var value_43 float32 = bar.Value.IconSize
-	var value_44 float32 = 32.0
-	var value_45 float32 = scale
-	var value_46 int32 = TitleBar_TitleBarMetric(value_40, value_42, value_43, value_44, value_45)
-	metrics.DropdownDefaultHeight = value_46
-	var value_47 uint32 = title.Value.Fields
-	var value_48 int32 = int32(StyleIconSize)
-	var value_49 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(0), 32, false, 0))
-	var value_50 float32 = title.Value.IconSize
-	var value_51 float32 = 48.0
-	var value_52 float32 = scale
-	var value_53 int32 = TitleBar_TitleBarMetric(value_47, value_49, value_50, value_51, value_52)
-	metrics.TitleMinWidth = value_53
-	var value_54 uint32 = title.Value.Fields
-	var value_55 int32 = int32(StylePaddingX)
-	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
-	var value_57 float32 = title.Value.PaddingX
-	var value_58 float32 = 16.0
-	var value_59 float32 = scale
-	var value_60 int32 = TitleBar_TitleBarMetric(value_54, value_56, value_57, value_58, value_59)
-	metrics.TitleHorizontalPadding = value_60
-	var value_61 TitleBarMetrics = metrics
-	return value_61
+	var value_0 uint32 = bar.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = bar.Value.PaddingX
+	var value_3 float32 = 12.0
+	var value_4 int32 = TitleBar_TitleBarMetric(value_0, value_1, value_2, value_3, scale)
+	metrics.SideMargin = value_4
+	var value_5 uint32 = bar.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_7 float32 = bar.Value.OffsetX
+	var value_8 float32 = 60.0
+	var value_9 int32 = TitleBar_TitleBarMetric(value_5, value_6, value_7, value_8, scale)
+	metrics.LeadingReserved = value_9
+	var value_10 uint32 = action.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_12 float32 = action.Value.IconSize
+	var value_13 float32 = 20.0
+	var value_14 int32 = TitleBar_TitleBarMetric(value_10, value_11, value_12, value_13, scale)
+	metrics.LeadingIconSize = value_14
+	var value_15 uint32 = action.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_17 float32 = action.Value.PaddingX
+	var value_18 float32 = 10.0
+	var value_19 int32 = TitleBar_TitleBarMetric(value_15, value_16, value_17, value_18, scale)
+	metrics.LeadingPadding = value_19
+	metrics.LeadingX = metrics.SideMargin
+	var value_20 uint32 = bar.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_22 float32 = bar.Value.Gap
+	var value_23 float32 = 4.0
+	var value_24 int32 = TitleBar_TitleBarMetric(value_20, value_21, value_22, value_23, scale)
+	metrics.DropdownGap = value_24
+	var value_25 uint32 = bar.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_27 float32 = bar.Value.IconSize
+	var value_28 float32 = 32.0
+	var value_29 int32 = TitleBar_TitleBarMetric(value_25, value_26, value_27, value_28, scale)
+	metrics.DropdownDefaultHeight = value_29
+	var value_30 uint32 = title.Value.Fields
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_32 float32 = title.Value.IconSize
+	var value_33 float32 = 48.0
+	var value_34 int32 = TitleBar_TitleBarMetric(value_30, value_31, value_32, value_33, scale)
+	metrics.TitleMinWidth = value_34
+	var value_35 uint32 = title.Value.Fields
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_37 float32 = title.Value.PaddingX
+	var value_38 float32 = 16.0
+	var value_39 int32 = TitleBar_TitleBarMetric(value_35, value_36, value_37, value_38, scale)
+	metrics.TitleHorizontalPadding = value_39
+	return metrics
 }
 
 func TitleBar_TitleBarDefaultHeightFor(scale float32, bar StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = bar.Value.Fields
-	var value_5 int32 = int32(StyleIconSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = bar.Value.IconSize
-	var value_8 float32 = 32.0
-	var value_9 float32 = scale
-	var value_10 int32 = TitleBar_TitleBarMetric(value_4, value_6, value_7, value_8, value_9)
-	return value_10
+	var value_0 uint32 = bar.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = bar.Value.IconSize
+	var value_3 float32 = 32.0
+	var value_4 int32 = TitleBar_TitleBarMetric(value_0, value_1, value_2, value_3, scale)
+	return value_4
 }
 
 func TitleBar_TitleBarStateFor(requested_height int32, fallback_height int32, has_leading bool, has_dropdown bool) TitleBarState {
 	var state TitleBarState = TitleBarState{}
-	var value_0 int32 = requested_height
-	state.Height = value_0
-	var value_1 int32 = state.Height
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = fallback_height
-		state.Height = value_4
+	state.Height = requested_height
+	if state.Height <= 0 {
+		state.Height = fallback_height
 	}
-	var value_5 int32 = state.Height
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 0
-		state.Height = value_8
+	if state.Height < 0 {
+		state.Height = 0
 	}
-	var value_9 bool = has_leading
-	state.HasLeading = value_9
-	var value_10 bool = has_dropdown
-	state.HasDropdown = value_10
-	var value_11 TitleBarState = state
-	return value_11
+	state.HasLeading = has_leading
+	state.HasDropdown = has_dropdown
+	return state
 }
 
 func TitleBar_TitleBarLayoutFor(view_width int32, height int32, has_leading bool, has_dropdown bool, dropdown_height int32, dropdown_min_width int32, metrics TitleBarMetrics) TitleBarLayout {
 	var layout TitleBarLayout = TitleBarLayout{}
-	var value_0 int32 = view_width
-	var value_1 float32 = float32(value_0)
-	layout.Bounds.Width = value_1
-	var value_2 int32 = height
-	var value_3 float32 = float32(value_2)
-	layout.Bounds.Height = value_3
-	var value_4 int32 = metrics.SideMargin
-	layout.SideReserved = value_4
-	var value_5 bool = has_leading
-	if value_5 {
-		var value_6 int32 = metrics.LeadingIconSize
-		var value_7 int32 = metrics.LeadingPadding
-		var value_8 int32 = 2
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 3))
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_9), 32, true, 1))
-		var button_size int32 = value_10
-		var value_11 int32 = height
-		var value_12 int32 = button_size
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		var value_14 int32 = 2
-		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 4))
-		var y int32 = value_15
-		var value_16 int32 = y
-		var value_17 int32 = 0
-		var value_18 bool = value_16 < value_17
-		if value_18 {
-			var value_19 int32 = 0
-			y = value_19
+	layout.Bounds.Width = float32(view_width)
+	layout.Bounds.Height = float32(height)
+	layout.SideReserved = metrics.SideMargin
+	if has_leading {
+		var value_0 int32 = int32(number_runtime_bits(uint64(metrics.LeadingIconSize), uint64((int32(number_runtime_bits(uint64(metrics.LeadingPadding), uint64(2), 32, true, 3)))), 32, true, 1))
+		var button_size int32 = value_0
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(height), uint64(button_size), 32, true, 2)))), uint64(2), 32, true, 4))
+		var y int32 = value_1
+		if y < 0 {
+			y = 0
 		}
-		var value_20 int32 = metrics.LeadingX
-		var value_21 float32 = float32(value_20)
-		layout.LeadingBounds.X = value_21
-		var value_22 int32 = y
-		var value_23 float32 = float32(value_22)
-		layout.LeadingBounds.Y = value_23
-		var value_24 int32 = button_size
-		var value_25 float32 = float32(value_24)
-		layout.LeadingBounds.Width = value_25
-		var value_26 int32 = button_size
-		var value_27 float32 = float32(value_26)
-		layout.LeadingBounds.Height = value_27
-		var value_28 int32 = metrics.LeadingReserved
-		layout.SideReserved = value_28
+		layout.LeadingBounds.X = float32(metrics.LeadingX)
+		layout.LeadingBounds.Y = float32(y)
+		layout.LeadingBounds.Width = float32(button_size)
+		layout.LeadingBounds.Height = float32(button_size)
+		layout.SideReserved = metrics.LeadingReserved
 	}
-	var value_29 int32 = view_width
-	var value_30 int32 = layout.SideReserved
-	var value_31 int32 = 2
-	var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 3))
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_32), 32, true, 2))
-	var max_width int32 = value_33
-	var value_34 int32 = max_width
-	var value_35 int32 = metrics.TitleMinWidth
-	var value_36 bool = value_34 < value_35
-	if value_36 {
-		var value_37 int32 = view_width
-		var value_38 int32 = metrics.TitleHorizontalPadding
-		var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 2))
-		max_width = value_39
+	var value_2 int32 = int32(number_runtime_bits(uint64(view_width), uint64((int32(number_runtime_bits(uint64(layout.SideReserved), uint64(2), 32, true, 3)))), 32, true, 2))
+	var max_width int32 = value_2
+	if max_width < metrics.TitleMinWidth {
+		max_width = (int32(number_runtime_bits(uint64(view_width), uint64(metrics.TitleHorizontalPadding), 32, true, 2)))
 	}
-	var value_40 int32 = max_width
-	var value_41 int32 = 1
-	var value_42 bool = value_40 < value_41
-	if value_42 {
-		var value_43 int32 = 1
-		max_width = value_43
+	if max_width < 1 {
+		max_width = 1
 	}
-	var value_44 int32 = view_width
-	var value_45 int32 = max_width
-	var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 2))
-	var value_47 int32 = 2
-	var value_48 int32 = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 4))
-	var value_49 float32 = float32(value_48)
-	layout.TitleBounds.X = value_49
-	var value_50 float32 = 0.0
-	layout.TitleBounds.Y = value_50
-	var value_51 int32 = max_width
-	var value_52 float32 = float32(value_51)
-	layout.TitleBounds.Width = value_52
-	var value_53 int32 = height
-	var value_54 float32 = float32(value_53)
-	layout.TitleBounds.Height = value_54
-	var value_55 bool = has_dropdown
-	if value_55 {
-		var value_56 int32 = metrics.SideMargin
-		var dropdown_x int32 = value_56
-		var value_57 bool = has_leading
-		if value_57 {
-			var value_58 int32 = dropdown_x
-			var value_59 int32 = metrics.LeadingIconSize
-			var value_60 int32 = metrics.LeadingPadding
-			var value_61 int32 = 2
-			var value_62 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, true, 3))
-			var value_63 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_62), 32, true, 1))
-			var value_64 int32 = metrics.DropdownGap
-			var value_65 int32 = int32(number_runtime_bits(uint64(value_63), uint64(value_64), 32, true, 1))
-			dropdown_x = int32(number_runtime_bits(uint64(value_58), uint64(value_65), 32, true, 1))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_width), uint64(max_width), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.TitleBounds.X = float32(value_3)
+	layout.TitleBounds.Y = 0.0
+	layout.TitleBounds.Width = float32(max_width)
+	layout.TitleBounds.Height = float32(height)
+	if has_dropdown {
+		var dropdown_x int32 = metrics.SideMargin
+		if has_leading {
+			var value_4 int32 = dropdown_x
+			var value_5 int32 = int32(number_runtime_bits(uint64(metrics.LeadingIconSize), uint64((int32(number_runtime_bits(uint64(metrics.LeadingPadding), uint64(2), 32, true, 3)))), 32, true, 1))
+			dropdown_x = int32(number_runtime_bits(uint64(value_4), uint64((int32(number_runtime_bits(uint64(value_5), uint64(metrics.DropdownGap), 32, true, 1)))), 32, true, 1))
 		}
-		var value_66 int32 = dropdown_height
-		var dropdown_h int32 = value_66
-		var value_67 int32 = dropdown_h
-		var value_68 int32 = 0
-		var value_69 bool = value_67 <= value_68
-		if value_69 {
-			var value_70 int32 = metrics.DropdownDefaultHeight
-			dropdown_h = value_70
+		var dropdown_h int32 = dropdown_height
+		if dropdown_h <= 0 {
+			dropdown_h = metrics.DropdownDefaultHeight
 		}
-		var value_71 int32 = height
-		var value_72 int32 = dropdown_h
-		var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 2))
-		var value_74 int32 = 2
-		var value_75 int32 = int32(number_runtime_bits(uint64(value_73), uint64(value_74), 32, true, 4))
-		var dropdown_y int32 = value_75
-		var value_76 int32 = dropdown_y
-		var value_77 int32 = 0
-		var value_78 bool = value_76 < value_77
-		if value_78 {
-			var value_79 int32 = 0
-			dropdown_y = value_79
+		var value_6 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(height), uint64(dropdown_h), 32, true, 2)))), uint64(2), 32, true, 4))
+		var dropdown_y int32 = value_6
+		if dropdown_y < 0 {
+			dropdown_y = 0
 		}
-		var value_80 int32 = view_width
-		var value_81 int32 = dropdown_x
-		var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 2))
-		var value_83 int32 = metrics.SideMargin
-		var value_84 int32 = int32(number_runtime_bits(uint64(value_82), uint64(value_83), 32, true, 2))
-		var dropdown_w int32 = value_84
-		var value_85 int32 = dropdown_min_width
-		var value_86 int32 = 0
-		var value_87 bool = value_85 > value_86
-		var value_88 bool = value_87
-		if value_88 {
-			var value_89 int32 = dropdown_w
-			var value_90 int32 = dropdown_min_width
-			var value_91 bool = value_89 < value_90
-			value_88 = value_91
+		var value_7 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_width), uint64(dropdown_x), 32, true, 2)))), uint64(metrics.SideMargin), 32, true, 2))
+		var dropdown_w int32 = value_7
+		var value_8 bool = (dropdown_min_width > 0)
+		if value_8 {
+			value_8 = (dropdown_w < dropdown_min_width)
 		}
-		if value_88 {
-			var value_92 int32 = view_width
-			var value_93 int32 = dropdown_x
-			var value_94 int32 = int32(number_runtime_bits(uint64(value_92), uint64(value_93), 32, true, 2))
-			dropdown_w = value_94
+		if value_8 {
+			dropdown_w = (int32(number_runtime_bits(uint64(view_width), uint64(dropdown_x), 32, true, 2)))
 		}
-		var value_95 int32 = dropdown_w
-		var value_96 int32 = 1
-		var value_97 bool = value_95 < value_96
-		if value_97 {
-			var value_98 int32 = 1
-			dropdown_w = value_98
+		if dropdown_w < 1 {
+			dropdown_w = 1
 		}
-		var value_99 int32 = dropdown_x
-		var value_100 float32 = float32(value_99)
-		layout.DropdownBounds.X = value_100
-		var value_101 int32 = dropdown_y
-		var value_102 float32 = float32(value_101)
-		layout.DropdownBounds.Y = value_102
-		var value_103 int32 = dropdown_w
-		var value_104 float32 = float32(value_103)
-		layout.DropdownBounds.Width = value_104
-		var value_105 int32 = dropdown_h
-		var value_106 float32 = float32(value_105)
-		layout.DropdownBounds.Height = value_106
+		layout.DropdownBounds.X = float32(dropdown_x)
+		layout.DropdownBounds.Y = float32(dropdown_y)
+		layout.DropdownBounds.Width = float32(dropdown_w)
+		layout.DropdownBounds.Height = float32(dropdown_h)
 	}
-	var value_107 TitleBarLayout = layout
-	return value_107
+	return layout
 }
 
 func TitleBar_TitleBarReservedHasLeading(side_reserved int32, metrics TitleBarMetrics) bool {
-	var value_0 int32 = side_reserved
-	var value_1 int32 = metrics.SideMargin
-	var value_2 bool = value_0 > value_1
-	return value_2
+	return (side_reserved > metrics.SideMargin)
 }
 
 func TitleBar_TitleBarPaintFor(view_width int32, height int32) TitleBarPaint {
 	var paint TitleBarPaint = TitleBarPaint{}
-	var value_0 int32 = view_width
-	var value_1 float32 = float32(value_0)
-	paint.Bounds.Width = value_1
-	var value_2 int32 = height
-	var value_3 float32 = float32(value_2)
-	paint.Bounds.Height = value_3
-	var value_4 float32 = 0.0
-	paint.Divider.X = value_4
-	var value_5 int32 = height
-	var value_6 int32 = 1
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-	var value_8 float32 = float32(value_7)
-	paint.Divider.Y = value_8
-	var value_9 int32 = view_width
-	var value_10 float32 = float32(value_9)
-	paint.Divider.Width = value_10
-	var value_11 float32 = 1.0
-	paint.Divider.Height = value_11
-	var value_12 TitleBarPaint = paint
-	return value_12
+	paint.Bounds.Width = float32(view_width)
+	paint.Bounds.Height = float32(height)
+	paint.Divider.X = 0.0
+	paint.Divider.Y = float32((int32(number_runtime_bits(uint64(height), uint64(1), 32, true, 2))))
+	paint.Divider.Width = float32(view_width)
+	paint.Divider.Height = 1.0
+	return paint
 }
 
 func TitleBar_TitleBarTitlePaintFor(layout TitleBarLayout, title_width int32, title_line_height int32) TitleBarTitlePaint {
 	var paint TitleBarTitlePaint = TitleBarTitlePaint{}
-	var value_0 float32 = layout.TitleBounds.X
-	var value_1 float32 = layout.TitleBounds.Width
-	var value_2 int32 = title_width
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 - value_3
-	var value_5 float32 = 2.0
-	var value_6 float32 = value_4 / value_5
-	var value_7 float32 = value_0 + value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	paint.X = value_8
-	var value_9 float32 = layout.TitleBounds.Y
-	var value_10 float32 = layout.TitleBounds.Height
-	var value_11 int32 = title_line_height
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = value_10 - value_12
-	var value_14 float32 = 2.0
-	var value_15 float32 = value_13 / value_14
-	var value_16 float32 = value_9 + value_15
-	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
-	paint.Y = value_17
-	var value_18 TitleBarTitlePaint = paint
-	return value_18
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((layout.TitleBounds.X+((layout.TitleBounds.Width-float32(title_width))/2.0))), 32, true)), uint64(0), 32, true, 0))
+	paint.X = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((layout.TitleBounds.Y+((layout.TitleBounds.Height-float32(title_line_height))/2.0))), 32, true)), uint64(0), 32, true, 0))
+	paint.Y = value_1
+	return paint
 }
 
 func TitleBar_TitleBarShouldShrinkTitleFont(title_width int32, max_width int32, font int32, min_font int32) bool {
-	var value_0 int32 = font
-	var value_1 int32 = min_font
-	var value_2 bool = value_0 > value_1
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 int32 = title_width
-		var value_5 int32 = max_width
-		var value_6 bool = value_4 > value_5
-		value_3 = value_6
+	var value_0 bool = (font > min_font)
+	if value_0 {
+		value_0 = (title_width > max_width)
 	}
-	return value_3
+	return value_0
 }
 
 func TitleBar_TitleBarShrinkTitleFontStep(title_width int32, max_width int32, font int32, min_font int32) int32 {
-	var value_0 int32 = title_width
-	var value_1 int32 = max_width
-	var value_2 int32 = font
-	var value_3 int32 = min_font
-	var value_4 bool = TitleBar_TitleBarShouldShrinkTitleFont(value_0, value_1, value_2, value_3)
-	if value_4 {
-		var value_5 int32 = font
-		var value_6 int32 = 1
-		var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
-		return value_7
+	var value_0 bool = TitleBar_TitleBarShouldShrinkTitleFont(title_width, max_width, font, min_font)
+	if value_0 {
+		return (int32(number_runtime_bits(uint64(font), uint64(1), 32, true, 2)))
 	}
-	var value_8 int32 = font
-	return value_8
+	return font
 }

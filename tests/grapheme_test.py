@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the native adapter against the pinned Unicode 17 conformance data."""
+"""Exercise the Kry grapheme host against pinned Unicode 17 conformance data."""
 
 import ctypes
 import os
@@ -10,12 +10,20 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "tests/fixtures/GraphemeBreakTest-17.0.0.txt"
+BUILD = Path(os.environ.get("KRYON_BUILD_DIR", "build/linux-x86_64"))
+if not BUILD.is_absolute():
+    BUILD = ROOT / BUILD
+GENERATED = BUILD / "generated/src"
 
 with tempfile.TemporaryDirectory(prefix="kryon-grapheme.") as temporary:
     library = Path(temporary) / "grapheme.so"
     subprocess.run(shlex.split(os.environ.get("CC", "cc")) + [
         "-shared", "-fPIC", "-std=c99", "-Wall", "-Wextra", "-Werror", "-O2",
-        str(ROOT / "src/ui/ui_grapheme.c"), "-o", str(library)], check=True)
+        "-I" + str(GENERATED), "-I" + str(BUILD / "generated/include"),
+        "-I" + str(ROOT / "include"), "-I" + str(ROOT / "vendor/utf8proc"),
+        "-DUTF8PROC_STATIC", str(GENERATED / "ui/grapheme.c"),
+        str(ROOT / "src/backend/kry_unicode.c"),
+        "-o", str(library)], check=True)
     native = ctypes.CDLL(str(library))
     next_boundary = native.ui_grapheme_next_boundary
     next_boundary.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
@@ -49,4 +57,4 @@ with tempfile.TemporaryDirectory(prefix="kryon-grapheme.") as temporary:
                 assert previous(text, offset) == max([i for i in expected if i < offset] or [0]), number
                 assert following(text, offset) == min([i for i in expected if i > offset] or [len(text)]), number
         count += 1
-    print(f"C grapheme adapter: {count} Unicode 17 conformance cases passed")
+    print(f"Kry grapheme host: {count} Unicode 17 conformance cases passed")

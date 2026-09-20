@@ -1,0 +1,430 @@
+#module "popup_input_store"
+#import "ui_popup_input_internal.h"
+#import "runtime/popup_ownership.h"
+#import "stdlib.h"
+#import "limits.h"
+
+PopupPanel :: struct {
+    next: *PopupPanel
+    parent: *PopupPanel
+    bounds: Rectangle
+    seen: unsigned long
+    order: unsigned long
+    owner: i32
+    alive: i32
+    focus: PopupFocusState
+}
+
+PopupFocus :: struct {
+    next: *PopupFocus
+    token: PopupInputToken
+    id: i32
+}
+
+PopupInput :: struct {
+    next: *PopupInput
+    panels: *PopupPanel
+    active: *PopupPanel
+    focus: *PopupFocus
+    frame: unsigned long
+    order: unsigned long
+    finished: i32
+    keyboard_captured: i32
+}
+
+bound_context :: *PopupInput #global
+contexts :: *PopupInput #global
+generation :: unsigned long #global
+
+PopupClearFocus :: (context: *PopupInput) #export {
+    while context->focus != nil {
+        entry: *PopupFocus = context->focus
+        context->focus = entry->next
+        free(entry)
+    }
+}
+
+PopupDescends :: (panel: *PopupPanel,
+ancestor: *PopupPanel) -> i32 #export {
+    state: PopupAncestry = (PopupAncestry){0}
+    while !state.done {
+        state = PopupAncestryAdvance(panel != nil,
+        panel != nil && panel == ancestor,
+        panel != nil && panel->parent != nil)
+        if panel != nil { panel = panel->parent }
+    }
+    return state.contains
+}
+
+PopupAbove :: (a: *PopupPanel, b: *PopupPanel) -> i32 #export {
+    origin_a: *PopupPanel = a
+    origin_b: *PopupPanel = b
+    state: PopupOrder = (PopupOrder){0}
+    while !state.done {
+        state = PopupOrderAdvance(state, a != nil, b != nil,
+        a == b, a != nil && b != nil && a->parent == b->parent,
+        a != nil ? a->order : 0,
+        b != nil ? b->order : 0)
+        if state.reset_a { a = origin_a }
+        else if state.move_a { a = a->parent }
+        if state.reset_b { b = origin_b }
+        else if state.move_b { b = b->parent }
+    }
+    return state.above
+}
+
+PopupTopPanel :: (context: *PopupInput) -> *PopupPanel #export {
+    if context == nil { return nil }
+    top: *PopupPanel = nil
+    panel: *PopupPanel = context->panels
+    while panel != nil {
+        if panel->alive &&
+        (top == nil || PopupAbove(panel, top)) {
+            top = panel
+        }
+        panel = panel->next
+    }
+    return top
+}
+
+ui_popup_input_create :: () -> *PopupInput #export {
+    context: *PopupInput = (PopupInput*)calloc(1, sizeof(PopupInput))
+    if context == nil { abort() }
+    context->finished = 1
+    context->next = contexts
+    contexts = context
+    return context
+}
+
+ui_popup_input_bind :: (context: *PopupInput) -> *PopupInput #export {
+    previous: *PopupInput = (PopupInput*)bound_context
+    bound_context = (PopupInput*)context
+    return previous
+}
+
+ui_popup_input_bound :: () -> *PopupInput #export {
+    return (PopupInput*)bound_context
+}
+
+ui_popup_input_destroy :: (context: *PopupInput) #export {
+    if context == nil { return }
+    if context->active != nil { abort() }
+    PopupClearFocus(context)
+    if bound_context == context { bound_context = nil }
+    link: **PopupInput = &contexts
+    while *link != nil && *link != context {
+        link = &(*link)->next
+    }
+    if *link != nil { *link = context->next }
+    while context->panels != nil {
+        panel: *PopupPanel = context->panels
+        context->panels = panel->next
+        free(panel)
+    }
+    free(context)
+}
+
+ui_popup_input_frame :: (context: *PopupInput) #export {
+    if context == nil || context->active != nil ||
+    !context->finished || generation == ULONG_MAX { abort() }
+    generation += 1
+    context->frame = generation
+    PopupClearFocus(context)
+    context->finished = 0
+    context->keyboard_captured = 0
+}
+
+ui_popup_input_begin :: (context: *PopupInput, owner: i32,
+bounds: Rectangle) -> PopupInputToken #export {
+    if context == nil || context->finished ||
+    context->order == ULONG_MAX { abort() }
+    panel: *PopupPanel = context->panels
+    while panel != nil && panel->owner != owner {
+        panel = panel->next
+    }
+    if panel != nil && PopupDescends(context->active, panel) {
+        abort()
+    }
+    if panel == nil {
+        panel = (PopupPanel*)calloc(1, sizeof(PopupPanel))
+        if panel == nil { abort() }
+        panel->next = context->panels
+        context->panels = panel
+        panel->owner = owner
+        panel->focus = PopupFocusInitialize(panel->focus,
+        false, GetFocus())
+    }
+    panel->parent = context->active
+    panel->bounds = bounds
+    panel->seen = context->frame
+    context->order += 1
+    panel->order = context->order
+    panel->alive = PopupOwnerAlive(panel->parent != nil,
+    panel->parent != nil && panel->parent->alive)
+    context->active = panel
+    return (PopupInputToken){context, context->frame,
+        panel->order, owner}
+}
+
+ui_popup_input_end :: (token: PopupInputToken) #export {
+    context: *PopupInput = token.context
+    if context == nil || context->frame != token.generation ||
+    context->active == nil ||
+    context->active->owner != token.owner ||
+    context->active->order != token.order { abort() }
+    context->active = context->active->parent
+}
+
+ui_popup_input_close :: (context: *PopupInput,
+owner: i32) #export {
+    if context == nil { abort() }
+    panel: *PopupPanel = context->panels
+    while panel != nil {
+        if panel->owner == owner {
+            focused: i32 = GetFocus()
+            restore: i32 = 0
+            entry: *PopupFocus = context->focus
+            while entry != nil {
+                if entry->id == focused && entry->token.order != 0 {
+                    child: *PopupPanel = context->panels
+                    while child != nil {
+                        if child->owner == entry->token.owner &&
+                        child->order == entry->token.order &&
+                        PopupDescends(child, panel) { restore = 1 }
+                        child = child->next
+                    }
+                }
+                entry = entry->next
+            }
+            child: *PopupPanel = context->panels
+            while child != nil {
+                if PopupDescends(child, panel) {
+                    if PopupFocusRestore(child->focus,
+                    focused, true, false) { restore = 1 }
+                    child->alive = 0
+                }
+                child = child->next
+            }
+            if restore != 0 { SetFocus(panel->focus.restore_focus) }
+            return
+        }
+        panel = panel->next
+    }
+}
+
+ui_popup_input_retire_missing :: (context: *PopupInput) #export {
+    if context == nil || context->finished { return }
+    panel: *PopupPanel = context->panels
+    while panel != nil {
+        if PopupOwnerRetired(panel->alive != 0,
+        panel->seen, context->frame) {
+            ui_popup_input_close(context, panel->owner)
+        }
+        panel = panel->next
+    }
+}
+
+ui_popup_input_finish :: (context: *PopupInput) #export {
+    if context == nil || context->active != nil ||
+    context->finished { abort() }
+    ui_popup_input_retire_missing(context)
+    link: **PopupPanel = &context->panels
+    while *link != nil {
+        panel: *PopupPanel = *link
+        if !panel->alive {
+            *link = panel->next
+            free(panel)
+        } else {
+            link = &panel->next
+        }
+    }
+    context->finished = 1
+}
+
+PopupCaptures :: (context: *PopupInput,
+active: *PopupPanel, point: Vector2) -> i32 {
+    if context == nil { return 0 }
+    top: *PopupPanel = nil
+    panel: *PopupPanel = context->panels
+    while panel != nil {
+        if panel->alive &&
+        CheckCollisionPointRec(point, panel->bounds) &&
+        (top == nil || PopupAbove(panel, top)) {
+            top = panel
+        }
+        panel = panel->next
+    }
+    return PopupInputCaptured(active != nil,
+    active != nil && active->alive,
+    top != nil, top == active)
+}
+
+ui_popup_input_captures :: (context: *PopupInput,
+point: Vector2) -> i32 #export {
+    active: *PopupPanel = nil
+    if context != nil { active = context->active }
+    return PopupCaptures(context, active, point)
+}
+
+ui_popup_input_snapshot :: () -> PopupInputToken #export {
+    context: *PopupInput = bound_context
+    if context == nil {
+        return (PopupInputToken){0}
+    }
+    panel: *PopupPanel = context->active
+    order: unsigned long = 0
+    owner: i32 = 0
+    if panel != nil {
+        order = panel->order
+        owner = panel->owner
+    }
+    return (PopupInputToken){context, context->frame,
+        order, owner}
+}
+
+PopupSnapshotOwner :: (token: PopupInputToken,
+host: **PopupInput, owner: **PopupPanel) -> i32 {
+    *owner = nil
+    if token.context == nil {
+        *host = bound_context
+        return 1
+    }
+    context: *PopupInput = contexts
+    while context != nil && context != token.context {
+        context = context->next
+    }
+    if context == nil || context->frame != token.generation {
+        return 0
+    }
+    panel: *PopupPanel = nil
+    if token.order != 0 {
+        panel = context->panels
+        while panel != nil {
+            if panel->owner == token.owner &&
+            panel->order == token.order { break }
+            panel = panel->next
+        }
+        if panel == nil || !panel->alive { return 0 }
+    }
+    *host = context
+    *owner = panel
+    return 1
+}
+
+ui_popup_input_snapshot_captures :: (token: PopupInputToken,
+point: Vector2) -> i32 #export {
+    context: *PopupInput = nil
+    panel: *PopupPanel = nil
+    if !PopupSnapshotOwner(token, &context, &panel) { return 1 }
+    return PopupCaptures(context, panel, point)
+}
+
+ui_popup_input_current_captures :: (point: Vector2) -> i32 #export {
+    return ui_popup_input_captures((PopupInput*)bound_context, point)
+}
+
+ui_popup_input_snapshot_keyboard_captures :: (token: PopupInputToken) -> i32 #export {
+    context: *PopupInput = nil
+    active: *PopupPanel = nil
+    if !PopupSnapshotOwner(token, &context, &active) {
+        if bound_context != nil {
+            bound_context->keyboard_captured = 1
+        }
+        return 1
+    }
+    if context == nil { return 0 }
+    top: *PopupPanel = PopupTopPanel(context)
+    captured: i32 = PopupInputCaptured(active != nil,
+    active != nil && active->alive, top != nil, top == active)
+    if captured != 0 { context->keyboard_captured = 1 }
+    return captured
+}
+
+ui_popup_input_keyboard_captures :: () -> i32 #export {
+    return ui_popup_input_snapshot_keyboard_captures(
+    ui_popup_input_snapshot())
+}
+
+ui_popup_input_keyboard_was_captured :: () -> i32 #export {
+    return bound_context != nil && bound_context->keyboard_captured
+}
+
+ui_popup_input_owner :: () -> PopupInputOwner #export {
+    owner: PopupInputOwner = (PopupInputOwner){bound_context, 0, 0}
+    if bound_context != nil && bound_context->active != nil {
+        owner.owner = bound_context->active->owner
+        owner.has_owner = 1
+    }
+    return owner
+}
+
+ui_popup_input_owner_captures :: (owner: PopupInputOwner) -> i32 #export {
+    if owner.context == nil { return bound_context != nil }
+    context: *PopupInput = contexts
+    while context != nil && context != owner.context {
+        context = context->next
+    }
+    if context == nil || bound_context != context { return 1 }
+    current: *PopupPanel = context->active
+    if owner.has_owner != 0 {
+        if current == nil || current->owner != owner.owner ||
+        !current->alive { return 1 }
+    } else if current != nil {
+        return 1
+    }
+    top: *PopupPanel = PopupTopPanel(context)
+    return PopupInputCaptured(owner.has_owner != 0,
+    current != nil && current->alive,
+    top != nil, top == current)
+}
+
+ui_popup_input_register_focus :: (id: i32,
+token: PopupInputToken, eligible: i32) #export {
+    context: *PopupInput = bound_context
+    if token.context != nil { context = token.context }
+    if context == nil || id <= 0 { return }
+    live: *PopupInput = contexts
+    while live != nil && live != context { live = live->next }
+    if live == nil { return }
+    if token.context == nil {
+        token = (PopupInputToken){context, context->frame, 0, 0}
+    }
+    entry: *PopupFocus = context->focus
+    while entry != nil && entry->id != id { entry = entry->next }
+    if entry == nil {
+        entry = (PopupFocus*)calloc(1, sizeof(PopupFocus))
+        if entry == nil { abort() }
+        entry->next = context->focus
+        context->focus = entry
+        entry->id = id
+    }
+    entry->token = token
+    if token.order != 0 {
+        panel: *PopupPanel = context->panels
+        while panel != nil && (panel->owner != token.owner ||
+        panel->order != token.order) { panel = panel->next }
+        if panel != nil {
+            decision: PopupFocusDecision = PopupFocusRegister(
+            panel->focus, id, GetFocus(), panel->alive != 0,
+            eligible != 0,
+            ui_popup_input_snapshot_keyboard_captures(token) != 0)
+            panel->focus = decision.state
+            if decision.acquire { SetFocus(id) }
+        }
+    }
+}
+
+ui_popup_input_focus_captures :: (id: i32) -> i32 #export {
+    context: *PopupInput = bound_context
+    if context == nil { return 0 }
+    entry: *PopupFocus = context->focus
+    while entry != nil {
+        if entry->id == id {
+            return ui_popup_input_snapshot_keyboard_captures(
+            entry->token)
+        }
+        entry = entry->next
+    }
+    return ui_popup_input_snapshot_keyboard_captures(
+    (PopupInputToken){context, context->frame, 0, 0})
+}

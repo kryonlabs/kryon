@@ -1,0 +1,1920 @@
+#module "tree_layout_host"
+#import "ui_internal.h"
+#import "runtime/accessibility_policy.h"
+#import "runtime/button.h"
+#import "runtime/grid.h"
+#import "runtime/group.h"
+#import "runtime/icon.h"
+#import "runtime/layout.h"
+#import "runtime/primitive.h"
+#import "runtime/style.h"
+#import "runtime/surface.h"
+#import "runtime/toggle.h"
+#import "runtime/tree.h"
+#import "ui/clip.h"
+#import "ui_blend_internal.h"
+#import "ui_popup_input_internal.h"
+#import "ui_tree_layout_internal.h"
+#import "ui_style_internal.h"
+
+PaintCapture :: struct {
+    target: RenderTexture2D
+    projection: Matrix
+    modelview: Matrix
+    clip: Rectangle
+    has_clip: i32
+    blend: BlendState
+}
+
+TextFieldState :: struct {
+    cursor: i32
+    anchor: i32
+    focused: i32
+    dragging: i32
+}
+
+AccessibilityRequest :: struct {
+    id: i32
+    kind: i32
+    action: AccessibilityAction
+    value: *char
+    length: i32
+    codepoints: i32
+    anchor: i32
+    cursor: i32
+    item_key: u64
+}
+
+ui_tree_nodes :: *TreeNode #global #export
+ui_tree_node_count :: i32 #global #export
+ui_tree_node_capacity :: i32 #global #export
+ui_committed_nodes :: *TreeNode #global #export
+ui_committed_node_count :: i32 #global #export
+ui_committed_node_capacity :: i32 #global #export
+ui_reconcile_old_nodes :: *TreeNode #global #export
+ui_reconcile_old_node_capacity :: i32 #global #export
+ui_reconcile_slots :: *i32 #global #export
+ui_reconcile_slot_capacity :: i32 #global #export
+ui_reconcile_matched_old :: *i32 #global #export
+ui_reconcile_matched_old_capacity :: i32 #global #export
+ui_tree_generation :: u32 #global #export
+ui_tree_building :: i32 #global #export
+ui_tree_stack :: [128]NodeId #global #export
+ui_tree_stack_depth :: i32 #global #export
+ui_tree_paint_target :: RenderTexture2D #global #export
+ui_tree_paint_captures :: *PaintCapture #global #export
+ui_tree_paint_capture_count :: u32 #global #export
+ui_tree_paint_capture_capacity :: u32 #global #export
+ui_tree_input_captures :: *PopupInputToken #global #export
+ui_tree_input_capture_count :: u32 #global #export
+ui_tree_input_capture_capacity :: u32 #global #export
+ui_committed_input_captures :: *PopupInputToken #global #export
+ui_committed_input_capture_capacity :: u32 #global #export
+ui_tree_invalid :: u32 = INVALIDATE_TREE | INVALIDATE_LAYOUT |
+INVALIDATE_PAINT #global #export
+ui_tree_build_activation :: i32 #global #export
+ui_tree_declaration :: unsigned long #global #export
+ui_tree_screen_key :: KeyID #global #export
+ui_tree_screen_id :: i32 #global #export
+ui_accessibility_pending :: [32]AccessibilityRequest #global #export
+ui_accessibility_active :: [32]AccessibilityRequest #global #export
+ui_accessibility_pending_count :: i32 #global #export
+ui_accessibility_active_count :: i32 #global #export
+ui_accessibility_activation :: i32 #global #export
+ui_accessibility_building :: i32 #global #export
+
+ui_accessibility_request_clear :: (
+request: *AccessibilityRequest) #export {
+    if request->value != nil {
+        value: volatile char* = (volatile char*)request->value
+        index: i32 = 0
+        while index < request->length {
+            value[index] = 0
+            index += 1
+        }
+        free(request->value)
+    }
+    memset(request, 0, sizeof(AccessibilityRequest))
+}
+ui_event_queue :: *Event #global #export
+ui_event_capacity :: i32 #global #export
+ui_event_head :: i32 #global #export
+ui_event_count :: i32 #global #export
+ui_tree_text_last_click_key :: KeyID #global #export
+ui_tree_text_last_click_x :: i32 #global #export
+ui_tree_text_last_click_y :: i32 #global #export
+ui_tree_text_last_click_time :: f64 #global #export
+ui_tree_backspace_next_repeat_at :: f64 #global #export
+ui_tree_delete_next_repeat_at :: f64 #global #export
+
+ui_tree_key_repeat_count :: (key: i32,
+next_repeat_at: *f64) -> i32 #export {
+    if IsKeyPressed(key) {
+        *next_repeat_at = GetTime() + 0.34
+        return 1
+    }
+    if !IsKeyDown(key) {
+        *next_repeat_at = 0.0
+        return 0
+    }
+    now: f64 = GetTime()
+    if *next_repeat_at <= 0.0 {
+        *next_repeat_at = now + 0.34
+        return 0
+    }
+    count: i32 = 0
+    while now >= *next_repeat_at && count < 8 {
+        count += 1
+        *next_repeat_at += 0.045
+    }
+    return count
+}
+
+ui_event_push :: (event: Event) #export {
+    if ui_event_count >= ui_event_capacity {
+        next: i32 = 64
+        if ui_event_capacity > 0 { next = ui_event_capacity * 2 }
+        grown: *Event = (Event*)malloc((size_t)next * sizeof(Event))
+        if grown == nil { return }
+        index: i32 = 0
+        while index < ui_event_count {
+            grown[index] = ui_event_queue[(ui_event_head + index) %
+            ui_event_capacity]
+            index += 1
+        }
+        free(ui_event_queue)
+        ui_event_queue = grown
+        ui_event_capacity = next
+        ui_event_head = 0
+    }
+    tail: i32 = (ui_event_head + ui_event_count) % ui_event_capacity
+    ui_event_queue[tail] = event
+    ui_event_count += 1
+}
+
+ui_text_field_event :: (node: *TreeNode, kind: EventKind,
+timestamp: f64) #export {
+    if node == nil { return }
+    event: Event = (Event){0}
+    state: *TextFieldState = (TextFieldState*)node->state
+    event.key = node->key
+    event.kind = kind
+    event.timestamp = timestamp
+    if kind == EVENT_SELECTION_CHANGED && state != nil {
+        range: TextSelectionRange = TextSelectionRangeFor(
+        state->anchor, state->cursor)
+        event.data.selection.start = range.start
+        event.data.selection.end = range.end
+    } else if kind == EVENT_TEXT_CHANGED &&
+    node->data.text_field.text != nil {
+        event.data.text.bytes = (int)strlen(node->data.text_field.text)
+    }
+    ui_event_push(event)
+}
+
+ui_tree_button_like_kind :: (kind: i32) -> i32 #export {
+    return TreeButtonLike(kind)
+}
+
+ui_tree_interactive_button_like :: (
+node: const TreeNode*) -> i32 #export {
+    if node == nil || !ui_tree_button_like_kind(node->kind) { return 0 }
+    return TreeInteractiveButtonLike(node->kind,
+    node->data.button.props.id, node->data.button.props.disabled,
+    node->data.button.props.loading)
+}
+
+ui_tree_store_text_input_paint :: (node: *TreeNode,
+paint: TextInputPaint) #export {
+    if sizeof(paint) > sizeof(node->data.internal.words) { abort() }
+    memcpy(node->data.internal.words, &paint, sizeof(paint))
+}
+
+ui_tree_load_text_input_paint :: (
+node: const TreeNode*) -> TextInputPaint #export {
+    paint: TextInputPaint
+    if sizeof(paint) > sizeof(node->data.internal.words) { abort() }
+    memcpy(&paint, node->data.internal.words, sizeof(paint))
+    return paint
+}
+
+NextEvent :: (event: *Event) -> i32 #export {
+    if event == nil || ui_event_count <= 0 { return 0 }
+    *event = ui_event_queue[ui_event_head]
+    ui_event_head = (ui_event_head + 1) % ui_event_capacity
+    ui_event_count -= 1
+    return 1
+}
+
+SetSelection :: (key: KeyID, anchor: i32,
+cursor: i32) -> i32 #export {
+    index: i32 = 0
+    while index < ui_committed_node_count {
+        node: *TreeNode = &ui_committed_nodes[index]
+        if node->key == key &&
+        (node->kind == WidgetKindTextField ||
+        node->kind == WidgetKindTextArea) {
+            state: *TextFieldState = (TextFieldState*)node->state
+            if state == nil { return 0 }
+            length: i32 = 0
+            if node->kind == WidgetKindTextField {
+                if node->data.text_field.text == nil { return 0 }
+                length = (int)strlen(node->data.text_field.text)
+            } else {
+                if node->data.text_area.text == nil { return 0 }
+                length = (int)strlen(node->data.text_area.text)
+            }
+            state->anchor = TextCursorForLength(anchor, length)
+            state->cursor = TextCursorForLength(cursor, length)
+            if node->kind == WidgetKindTextField {
+                if node->data.text_field.cursor_position != nil {
+                    *node->data.text_field.cursor_position = state->cursor
+                }
+            } else if node->data.text_area.cursor_position != nil {
+                *node->data.text_area.cursor_position = state->cursor
+            }
+            ui_text_field_event(node, EVENT_SELECTION_CHANGED, GetTime())
+            ui_tree_invalid |= INVALIDATE_PAINT
+            return 1
+        }
+        index += 1
+    }
+    return 0
+}
+
+ui_tree_input_snapshot :: (node: const TreeNode*) -> PopupInputToken #export {
+    captures: *PopupInputToken = ui_tree_input_captures
+    if ui_committed_node_count > 0 {
+        captures = ui_committed_input_captures
+    }
+    if node->popup_input_capture == 0 {
+        return (PopupInputToken){0}
+    }
+    return captures[node->popup_input_capture - 1]
+}
+
+ui_tree_input_blocked :: (node: const TreeNode*,
+point: Vector2) -> i32 #export {
+    return ui_input_captures_snapshot(point, ui_tree_input_snapshot(node))
+}
+
+UpdateTree :: () #export {
+    if ui_committed_node_count <= 0 { return }
+    root: *TreeNode = &ui_committed_nodes[0]
+    if root->bounds.width != ui_view_width ||
+    root->bounds.height != ui_view_height {
+        root->bounds.width = (float)ui_view_width
+        root->bounds.height = (float)ui_view_height
+        ui_tree_invalid |= INVALIDATE_LAYOUT | INVALIDATE_PAINT
+    }
+}
+
+GetTreeNodes :: (count: *i32) -> const TreeNode* #export {
+    if ui_committed_node_count > 0 {
+        if count != nil { *count = ui_committed_node_count }
+        return ui_committed_nodes
+    }
+    if count != nil { *count = ui_tree_node_count }
+    return ui_tree_nodes
+}
+
+GetNode :: (id: NodeId) -> const TreeNode* #export {
+    if ui_committed_node_count > 0 {
+        if id < 0 || id >= ui_committed_node_count { return nil }
+        return &ui_committed_nodes[id]
+    }
+    return ui_tree_node(id)
+}
+
+GetNodeId :: (node: const TreeNode*) -> i32 #export {
+    if node == nil { return 0 }
+    return node->id
+}
+
+GetNodeKind :: (node: const TreeNode*) -> i32 #export {
+    if node == nil { return -1 }
+    return node->kind
+}
+
+GetNodeKindName :: (kind: i32) -> const char* #export {
+    if kind == WidgetKindScreen { return "Screen" }
+    if kind == WidgetKindBackground { return "Background" }
+    if kind == WidgetKindText { return "Text" }
+    if kind == WidgetKindBox { return "Box" }
+    if kind == WidgetKindCircle { return "Circle" }
+    if kind == WidgetKindRing { return "Ring" }
+    if kind == WidgetKindLine { return "Line" }
+    if kind == WidgetKindTriangle { return "Triangle" }
+    if kind == WidgetKindButton { return "Button" }
+    if kind == WidgetKindTextField { return "TextField" }
+    if kind == WidgetKindTextArea { return "TextArea" }
+    if kind == WidgetKindDropdown { return "Dropdown" }
+    if kind == WidgetKindSlider { return "Slider" }
+    if kind == WidgetKindToggle { return "Toggle" }
+    if kind == WidgetKindCheckbox { return "Checkbox" }
+    if kind == WidgetKindParagraph { return "Paragraph" }
+    if kind == WidgetKindNavigationBar { return "NavigationBar" }
+    if kind == WidgetKindTabBar { return "TabBar" }
+    if kind == WidgetKindTitleBar { return "TitleBar" }
+    if kind == WidgetKindGroup { return "Group" }
+    if kind == WidgetKindColumn { return "Column" }
+    if kind == WidgetKindRow { return "Row" }
+    if kind == WidgetKindStack { return "Stack" }
+    if kind == WidgetKindGrid { return "Grid" }
+    if kind == WidgetKindImage { return "Image" }
+    if kind == WidgetKindCustom { return "Custom" }
+    if kind == WidgetKindDrag { return "Drag" }
+    if kind == WidgetKindRouter { return "Router" }
+    if kind == WidgetKindCard { return "Card" }
+    if kind == WidgetKindIcon { return "Icon" }
+    if kind == WidgetKindInput { return "Input" }
+    if kind == WidgetKindSeparator { return "Separator" }
+    if kind == WidgetKindDragDrop { return "DragDrop" }
+    if kind == WidgetKindRadio { return "Radio" }
+    if kind == WidgetKindProgress { return "Progress" }
+    if kind == WidgetKindPlot { return "Plot" }
+    if kind == WidgetKindFocus { return "Focus" }
+    if kind == WidgetKindSpinbox { return "Spinbox" }
+    if kind == WidgetKindFieldset { return "Fieldset" }
+    if kind == WidgetKindListBox { return "ListBox" }
+    if kind == WidgetKindTreeView { return "TreeView" }
+    if kind == WidgetKindTableView { return "TableView" }
+    if kind == WidgetKindCanvasGrid { return "CanvasGrid" }
+    if kind == WidgetKindPanedView { return "PanedView" }
+    if kind == WidgetKindCollapsible { return "Collapsible" }
+    if kind == WidgetKindColorPicker { return "ColorPicker" }
+    if kind == WidgetKindModal { return "Modal" }
+    if kind == WidgetKindToolbar { return "Toolbar" }
+    if kind == WidgetKindMenu { return "Menu" }
+    if kind == WidgetKindSelectable { return "Selectable" }
+    if kind == WidgetKindBullet { return "Bullet" }
+    return ""
+}
+
+GetNodeBounds :: (node: const TreeNode*) -> Rectangle #export {
+    if node == nil {
+        return (Rectangle){0}
+    }
+    return node->bounds
+}
+
+GetNodeParent :: (node: const TreeNode*) -> i32 #export {
+    if node == nil { return -1 }
+    return node->parent
+}
+
+GetNodeFirstChild :: (node: const TreeNode*) -> i32 #export {
+    if node == nil { return -1 }
+    return node->first_child
+}
+
+GetNodeNextSibling :: (node: const TreeNode*) -> i32 #export {
+    if node == nil { return -1 }
+    return node->next_sibling
+}
+
+HitTestNode :: (point: Vector2) -> NodeId #export {
+    nodes: *TreeNode = ui_tree_nodes
+    count: i32 = ui_tree_node_count
+    if ui_committed_node_count > 0 {
+        nodes = ui_committed_nodes
+        count = ui_committed_node_count
+    }
+    index: i32 = count - 1
+    while index >= 0 {
+        node: *TreeNode = &nodes[index]
+        if (node->flags & TreeNodeFlagScopeDisabled) == 0 &&
+        !ui_tree_input_blocked(node, point) &&
+        node->bounds.width > 0 && node->bounds.height > 0 &&
+        (!node->has_input_clip ||
+        CheckCollisionPointRec(point, node->input_clip)) &&
+        CheckCollisionPointRec(point, node->bounds) {
+            return index
+        }
+        index -= 1
+    }
+    return -1
+}
+
+BeginTree :: (screen_key: KeyID) #export {
+    ui_tree_declaration += 1
+    memcpy(ui_accessibility_active, ui_accessibility_pending,
+    (size_t)ui_accessibility_pending_count *
+    sizeof(AccessibilityRequest))
+    ui_accessibility_active_count = ui_accessibility_pending_count
+    memset(ui_accessibility_pending, 0,
+    sizeof(ui_accessibility_pending))
+    ui_accessibility_pending_count = 0
+    ui_accessibility_activation = 0
+    ui_accessibility_building = 1
+
+    ui_camera_ensure_sane()
+    if IsWindowReady() { ui_tree_invalid |= INVALIDATE_PAINT }
+    ui_tree_clear_pending()
+    ui_tree_screen_key = screen_key
+    if ui_tree_screen_key == 0 { ui_tree_screen_key = 1 }
+    ui_tree_screen_id = (int)(ui_tree_screen_key & 0x7fffffffU)
+    ui_tree_node_count = 0
+    ui_tree_paint_target = (RenderTexture2D){0}
+    ui_tree_paint_capture_count = 0
+    ui_tree_input_capture_count = 0
+    ui_tree_building = 1
+    ui_tree_build_activation = 0
+    ui_tree_stack_depth = 0
+    root: NodeId = ui_tree_add(ui_tree_screen_id, WidgetKindScreen,
+    LayoutScopeBounds((Rectangle){0}, ui_view_width, ui_view_height), nil)
+    if root >= 0 {
+        ui_tree_nodes[root].key = ui_tree_screen_key
+        ui_tree_stack[ui_tree_stack_depth] = root
+        ui_tree_stack_depth += 1
+    }
+}
+
+Key :: (source: const char*) -> KeyID #export {
+    if source == nil { return 0 }
+    hash: KeyID = 1469598103934665603ULL
+    text: const char* = source
+    while text[0] != '\0' {
+        hash ^= (unsigned char)text[0]
+        hash *= 1099511628211ULL
+        text += 1
+    }
+    if hash == 0 { return 1 }
+    return hash
+}
+
+End :: () #export {
+    if ui_tree_stack_depth > 1 { ui_tree_stack_depth -= 1 }
+}
+
+InvalidateTree :: (invalidation: Invalidation) #export {
+    ui_tree_invalid |= (unsigned)invalidation
+}
+
+ui_tree_layout_suspend :: () -> TreeLayoutScopeState #export {
+    scope: TreeLayoutScopeState
+    if ui_tree_building && ui_tree_stack_depth < 1 { abort() }
+    scope.depth = ui_tree_stack_depth
+    scope.building = ui_tree_building
+    scope.declaration = ui_tree_declaration
+    memcpy(scope.stack, ui_tree_stack,
+    (size_t)scope.depth * sizeof(NodeId))
+    if ui_tree_building { ui_tree_stack_depth = 1 }
+    else { ui_tree_stack_depth = 0 }
+    return scope
+}
+
+ui_tree_layout_resume :: (scope: TreeLayoutScopeState) #export {
+    expected_depth: i32 = 0
+    if scope.building { expected_depth = 1 }
+    if scope.depth < 0 || scope.depth > TREE_LAYOUT_DEPTH ||
+    scope.declaration != ui_tree_declaration ||
+    scope.building != ui_tree_building ||
+    ui_tree_stack_depth != expected_depth { abort() }
+    memcpy(ui_tree_stack, scope.stack,
+    (size_t)scope.depth * sizeof(NodeId))
+    ui_tree_stack_depth = scope.depth
+}
+
+ui_tree_text_collapse :: (state: *TextFieldState,
+cursor: i32) #export {
+    if state == nil { return }
+    collapsed: TextSelectionState = TextSelectionCollapsed(cursor)
+    state->anchor = collapsed.anchor
+    state->cursor = collapsed.cursor
+}
+
+ui_tree_text_select_all :: (state: *TextFieldState,
+length: i32) #export {
+    if state == nil { return }
+    selection: TextSelectionState = TextSelectionAll(length)
+    state->anchor = selection.anchor
+    state->cursor = selection.cursor
+}
+
+TreeReserveInts :: (items: **i32, capacity: *i32,
+needed: i32) -> bool #export {
+    if needed <= *capacity { return true }
+    next: i32 = 64
+    if *capacity > 0 { next = *capacity }
+    while next < needed {
+        if next > 0x3fffffff { return false }
+        next *= 2
+    }
+    grown: *i32 = (int*)realloc(*items, (size_t)next * sizeof(int))
+    if grown == nil { return false }
+    *items = grown
+    *capacity = next
+    return true
+}
+
+ui_tree_strdup :: (source: const char*) -> *char #export {
+    text: const char* = source
+    if text == nil { text = "" }
+    size: size_t = strlen(text) + 1
+    copy: *char = (char*)malloc(size)
+    if copy != nil { memcpy(copy, text, size) }
+    return copy
+}
+
+ui_tree_clear_pending :: () #export {
+    index: i32 = 0
+    while index < ui_tree_node_count {
+        free(ui_tree_nodes[index].owned_text)
+        ui_tree_nodes[index].owned_text = nil
+        index += 1
+    }
+}
+
+ui_tree_store_node :: (id: NodeId, src: TreeNode) #export {
+    dst: *TreeNode = ui_tree_node(id)
+    if dst == nil { return }
+    src.parent = dst->parent
+    src.first_child = dst->first_child
+    src.last_child = dst->last_child
+    src.next_sibling = dst->next_sibling
+    src.declared_bounds = dst->declared_bounds
+    src.input_clip = dst->input_clip
+    src.has_input_clip = dst->has_input_clip
+    src.paint_capture = dst->paint_capture
+    src.popup_input_capture = dst->popup_input_capture
+    src.flags |= dst->flags & TreeNodeFlagScopeDisabled
+    *dst = src
+}
+
+ui_tree_mark_painted_immediate :: (id: NodeId) #export {
+    if !ui_tree_building { return }
+    node: *TreeNode = ui_tree_node(id)
+    if node != nil { node->flags |= TreeNodeFlagPaintedImmediate }
+}
+
+ui_tree_note_build_activation :: (activated: i32) #export {
+    if ui_tree_building && activated { ui_tree_build_activation = 1 }
+}
+
+ui_tree_mark_build_activation :: (id: NodeId,
+activated: i32) #export {
+    if ui_tree_building && activated && id >= 0 {
+        ui_tree_nodes[id].flags |= TreeNodeFlagBuildActivated
+    }
+    ui_tree_note_build_activation(activated)
+}
+
+ui_tree_capture_input :: () -> u32 #export {
+    token: PopupInputToken = ui_popup_input_snapshot()
+    if token.context == nil { return 0 }
+    if ui_tree_input_capture_count > 0 {
+        last: PopupInputToken = ui_tree_input_captures[
+        ui_tree_input_capture_count - 1]
+        if last.context == token.context &&
+        last.generation == token.generation &&
+        last.order == token.order && last.owner == token.owner {
+            return ui_tree_input_capture_count
+        }
+    }
+    if ui_tree_input_capture_count == ui_tree_input_capture_capacity {
+        capacity: u32 = 8
+        if ui_tree_input_capture_capacity > 0 {
+            capacity = ui_tree_input_capture_capacity * 2
+        }
+        bytes: size_t = (size_t)capacity * sizeof(PopupInputToken)
+        if capacity < ui_tree_input_capture_capacity ||
+        bytes / sizeof(PopupInputToken) != capacity { abort() }
+        items: *PopupInputToken = (PopupInputToken*)realloc(
+        ui_tree_input_captures, bytes)
+        if items == nil { abort() }
+        ui_tree_input_captures = items
+        ui_tree_input_capture_capacity = capacity
+    }
+    ui_tree_input_captures[ui_tree_input_capture_count] = token
+    ui_tree_input_capture_count += 1
+    return ui_tree_input_capture_count
+}
+
+ui_tree_capture_paint :: () -> u32 #export {
+    if ui_tree_paint_target.id == 0 || !IsWindowReady() { return 0 }
+    capture: PaintCapture
+    capture.target = ui_tree_paint_target
+    capture.projection = rlGetMatrixProjection()
+    capture.modelview = rlGetMatrixModelview()
+    capture.has_clip = ui_clip_current(&capture.clip)
+    capture.blend = ui_blend_save()
+    if ui_tree_paint_capture_count > 0 {
+        last: *PaintCapture = &ui_tree_paint_captures[
+        ui_tree_paint_capture_count - 1]
+        if last->target.id == capture.target.id &&
+        last->target.texture.width == capture.target.texture.width &&
+        last->target.texture.height == capture.target.texture.height &&
+        last->has_clip == capture.has_clip &&
+        memcmp(&last->blend, &capture.blend, sizeof(BlendState)) == 0 &&
+        (!capture.has_clip || memcmp(&last->clip, &capture.clip,
+        sizeof(Rectangle)) == 0) &&
+        memcmp(&last->projection, &capture.projection,
+        sizeof(Matrix)) == 0 &&
+        memcmp(&last->modelview, &capture.modelview,
+        sizeof(Matrix)) == 0 {
+            return ui_tree_paint_capture_count
+        }
+    }
+    if ui_tree_paint_capture_count == ui_tree_paint_capture_capacity {
+        capacity: u32 = 8
+        if ui_tree_paint_capture_capacity > 0 {
+            capacity = ui_tree_paint_capture_capacity * 2
+        }
+        bytes: size_t = (size_t)capacity * sizeof(PaintCapture)
+        if capacity < ui_tree_paint_capture_capacity ||
+        bytes / sizeof(PaintCapture) != capacity { abort() }
+        captures: *PaintCapture = (PaintCapture*)realloc(
+        ui_tree_paint_captures, bytes)
+        if captures == nil { abort() }
+        ui_tree_paint_captures = captures
+        ui_tree_paint_capture_capacity = capacity
+    }
+    ui_tree_paint_captures[ui_tree_paint_capture_count] = capture
+    ui_tree_paint_capture_count += 1
+    return ui_tree_paint_capture_count
+}
+
+ui_tree_set_paint_target :: (target: RenderTexture2D) -> RenderTexture2D #export {
+    previous: RenderTexture2D = ui_tree_paint_target
+    ui_tree_paint_target = target
+    ui_tree_invalid |= INVALIDATE_PAINT
+    return previous
+}
+
+ui_tree_node :: (id: NodeId) -> *TreeNode #export {
+    if id < 0 || id >= ui_tree_node_count { return nil }
+    return &ui_tree_nodes[id]
+}
+
+ui_tree_add :: (id: i32, kind: i32, bounds: Rectangle,
+props: const void*) -> NodeId #export {
+    if !ui_tree_building { return -1 }
+    if !TreeReserveNodes(&ui_tree_nodes, &ui_tree_node_capacity,
+    ui_tree_node_count + 1) { return -1 }
+
+    index: NodeId = ui_tree_node_count
+    ui_tree_node_count += 1
+    node: *TreeNode = &ui_tree_nodes[index]
+    *node = TreeNodeFor(id, kind, bounds)
+    node->key = (KeyID)(unsigned)id
+    node->has_input_clip = ui_current_input_clip(&node->input_clip)
+    node->paint_capture = ui_tree_capture_paint()
+    node->popup_input_capture = ui_tree_capture_input()
+    node->font_token = ui_active_font_token()
+    if ContentDisabled() { node->flags |= TreeNodeFlagScopeDisabled }
+    node->props = props
+
+    if ui_tree_stack_depth > 0 {
+        parent_id: NodeId = ui_tree_stack[ui_tree_stack_depth - 1]
+        parent: *TreeNode = ui_tree_node(parent_id)
+        if parent != nil {
+            node->parent = parent_id
+            if parent->first_child < 0 {
+                parent->first_child = index
+            } else {
+                ui_tree_nodes[parent->last_child].next_sibling = index
+            }
+            parent->last_child = index
+        }
+    }
+    TreePlaceChild(ui_tree_nodes, index)
+    return index
+}
+
+TreeReserveNodes :: (nodes: **TreeNode,
+capacity: *i32, needed: i32) -> bool #export {
+    if needed <= *capacity { return true }
+    next: i32 = 64
+    if *capacity > 0 { next = *capacity }
+    while next < needed {
+        if next > 0x3fffffff { return false }
+        next *= 2
+    }
+    grown: *TreeNode = (TreeNode*)realloc(*nodes,
+    (size_t)next * sizeof(TreeNode))
+    if grown == nil { return false }
+    *nodes = grown
+    *capacity = next
+    return true
+}
+
+TreeNodeFor :: (id: i32, kind: i32,
+bounds: Rectangle) -> TreeNode #export {
+    node: TreeNode
+    node.id = id
+    node.kind = kind
+    node.bounds = bounds
+    node.declared_bounds = bounds
+    node.parent = -1
+    node.first_child = -1
+    node.last_child = -1
+    node.next_sibling = -1
+    return node
+}
+
+NodeParagraph :: (paragraph: ParagraphSpec,
+x: i32, y: i32) -> TreeNode #export {
+    node: TreeNode = TreeNodeFor(0, WidgetKindParagraph,
+    (Rectangle){(float)x, (float)y, (float)paragraph.width, 0.0})
+    node.data.paragraph = paragraph
+    return node
+}
+
+NodeNavigationBar :: (nav: NavigationBarProps) -> TreeNode #export {
+    height: i32 = nav.height
+    if height < 0 { height = 0 }
+    return TreeNodeFor(0, WidgetKindNavigationBar,
+    (Rectangle){0.0, 0.0, (float)nav.view_width, (float)height})
+}
+
+NodeTabBar :: (bar: TabBarProps) -> TreeNode #export {
+    return TreeNodeFor(0, WidgetKindTabBar, bar.bounds)
+}
+
+NodeTitleBar :: (height: i32) -> TreeNode #export {
+    return TreeNodeFor(0, WidgetKindTitleBar,
+    (Rectangle){0.0, 0.0, (float)ui_view_width, (float)height})
+}
+
+TreeNodeUsesRetainedLayout :: (nodes: const TreeNode*, count: i32,
+id: NodeId) -> bool #export {
+    if nodes == nil || id < 0 || id >= count { return false }
+    parent_id: NodeId = nodes[id].parent
+    if parent_id < 0 || parent_id >= count { return false }
+    kind: i32 = nodes[parent_id].kind
+    return kind == WidgetKindColumn || kind == WidgetKindRow ||
+    kind == WidgetKindGrid || kind == WidgetKindStack ||
+    kind == WidgetKindRouter || TreeButtonLike(kind)
+}
+
+TreeReconcileSameIdentity :: (old_nodes: const TreeNode*, old_index: i32,
+new_nodes: const TreeNode*, new_index: i32) -> bool #export {
+    old_node: const TreeNode* = &old_nodes[old_index]
+    new_node: const TreeNode* = &new_nodes[new_index]
+    old_parent: KeyID = 0
+    new_parent: KeyID = 0
+    if old_node->parent >= 0 {
+        old_parent = old_nodes[old_node->parent].key
+    }
+    if new_node->parent >= 0 {
+        new_parent = new_nodes[new_node->parent].key
+    }
+    return TreeSameIdentity(old_node->key, old_node->kind, old_parent,
+    new_node->key, new_node->kind, new_parent)
+}
+
+TreeOwnedTextSize :: (node: const TreeNode*) -> size_t #export {
+    if node == nil || node->owned_text == nil { return 0 }
+    offset: size_t = 0
+    if node->kind == WidgetKindSlider {
+        offset = node->data.slider.format_offset
+    }
+    if node->kind == WidgetKindDrag {
+        offset = node->data.drag.format_offset
+    }
+    return offset + strlen(node->owned_text + offset) + 1
+}
+
+TreeReconcileNodeChanged :: (old_node: const TreeNode*,
+new_node: const TreeNode*) -> bool #export {
+    if old_node == nil || new_node == nil { return true }
+    if old_node->paint_capture != new_node->paint_capture ||
+    old_node->font_token != new_node->font_token { return true }
+    if old_node->id != new_node->id || old_node->key != new_node->key ||
+    old_node->kind != new_node->kind ||
+    old_node->parent != new_node->parent ||
+    old_node->first_child != new_node->first_child ||
+    old_node->next_sibling != new_node->next_sibling { return true }
+    if memcmp(&old_node->declared_bounds, &new_node->declared_bounds,
+    sizeof(Rectangle)) != 0 { return true }
+
+    if (old_node->flags & TreeNodeFlagScopeDisabled) !=
+    (new_node->flags & TreeNodeFlagScopeDisabled) { return true }
+    text_flags: unsigned int = TreeNodeFlagInheritForeground |
+    TreeNodeFlagTextDisabled
+    if (old_node->flags & text_flags) !=
+    (new_node->flags & text_flags) { return true }
+    if old_node->has_input_clip != new_node->has_input_clip {
+        return true
+    }
+    if new_node->has_input_clip &&
+    memcmp(&old_node->input_clip, &new_node->input_clip,
+    sizeof(Rectangle)) != 0 { return true }
+
+    old_data: WidgetData = old_node->data
+    new_data: WidgetData = new_node->data
+    if TreeButtonLike(old_node->kind) {
+        old_data.button.props.label = nil
+        new_data.button.props.label = nil
+    }
+    if memcmp(&old_data, &new_data, sizeof(WidgetData)) != 0 {
+        return true
+    }
+    old_size: size_t = TreeOwnedTextSize(old_node)
+    new_size: size_t = TreeOwnedTextSize(new_node)
+    return old_size != new_size || (new_size > 0 &&
+    memcmp(old_node->owned_text, new_node->owned_text, new_size) != 0)
+}
+
+GetNodeHeight :: (node: TreeNode) -> i32 #export {
+    if node.kind == WidgetKindParagraph {
+        if node.props != nil {
+            return ui_paragraph_height(*(const ParagraphSpec*)node.props)
+        }
+        return ui_paragraph_height(node.data.paragraph)
+    }
+    if node.bounds.height > 0.0 {
+        return (int)ceilf(node.bounds.height)
+    }
+    if node.kind == WidgetKindNavigationBar {
+        return ui_navigation_bar_height()
+    }
+    if node.kind == WidgetKindTabBar { return ui_tab_bar_height() }
+    if node.kind == WidgetKindTitleBar { return ui_title_bar_height() }
+    return (int)ceilf(node.bounds.height)
+}
+
+TreeLayoutGridChildren :: (nodes: *TreeNode,
+parent: *TreeNode) #export {
+    props: GridProps
+    props.bounds = parent->bounds
+    props.columns = parent->data.layout.columns
+    props.min_item_width = parent->data.layout.min_item_width
+    props.max_columns = parent->data.layout.max_columns
+    props.gap = parent->data.layout.gap
+    props.padding = parent->data.layout.padding
+    cursor: GridCursor = BeginGridCursor(props)
+
+    child: NodeId = parent->first_child
+    while child >= 0 {
+        node: *TreeNode = &nodes[child]
+        if node->declared_bounds.x == 0 && node->declared_bounds.y == 0 {
+            height: i32 = (int)ceilf(node->bounds.height)
+            if height <= 0 { height = GetNodeHeight(*node) }
+            cursor = GridStep(cursor, height, 1)
+            node->bounds = cursor.item
+        }
+        child = node->next_sibling
+    }
+}
+
+TreePlaceChild :: (nodes: *TreeNode, index: NodeId) #export {
+    node: *TreeNode = &nodes[index]
+    if node->parent < 0 || node->declared_bounds.x != 0 ||
+    node->declared_bounds.y != 0 { return }
+    parent: *TreeNode = &nodes[node->parent]
+    if parent->kind == WidgetKindGrid {
+        TreeLayoutGridChildren(nodes, parent)
+        return
+    }
+    horizontal: bool = parent->kind == WidgetKindRow
+    if !horizontal && parent->kind != WidgetKindColumn { return }
+
+    sibling_count: i32 = 0
+    previous_extent_sum: float = 0.0
+    metrics: LayoutMetrics = LayoutMetricsFor(parent->bounds,
+    parent->data.layout.gap, parent->data.layout.padding)
+    sibling: NodeId = parent->first_child
+    while sibling >= 0 && sibling != index {
+        previous: *TreeNode = &nodes[sibling]
+        if previous->declared_bounds.x == 0 &&
+        previous->declared_bounds.y == 0 {
+            if horizontal { previous_extent_sum += previous->bounds.width }
+            else { previous_extent_sum += previous->bounds.height }
+            sibling_count += 1
+        }
+        sibling = previous->next_sibling
+    }
+    cursor: float = LayoutCursorForChild(metrics, horizontal,
+    sibling_count, previous_extent_sum)
+    node->bounds = LayoutChildBounds(node->declared_bounds, node->bounds,
+    metrics, horizontal, cursor)
+}
+
+LayoutTree :: () #export {
+    if (ui_tree_invalid & INVALIDATE_LAYOUT) == 0 { return }
+    index: i32 = ui_committed_node_count - 1
+    while index >= 0 {
+        node: *TreeNode = &ui_committed_nodes[index]
+        if node->bounds.height <= 0.0 {
+            node->bounds.height = (float)GetNodeHeight(*node)
+        }
+        index -= 1
+    }
+
+    index = 0
+    while index < ui_committed_node_count {
+        parent: *TreeNode = &ui_committed_nodes[index]
+        kind: i32 = parent->kind
+        if kind != WidgetKindColumn && kind != WidgetKindRow &&
+        kind != WidgetKindStack && kind != WidgetKindGrid &&
+        !TreeButtonLike(kind) {
+            index += 1
+            continue
+        }
+
+        metrics: LayoutMetrics
+        content: Rectangle
+        if TreeButtonLike(kind) {
+            button: *ButtonSpec = &parent->data.button
+            scale: float = (float)Scale(1000) / 1000.0
+            style: Style
+            style.padding_x = 8.0
+            style.padding_y = 8.0
+            if button->style_resolved {
+                style = ResolveButtonStyle(button->props,
+                button->props.state)
+            }
+            content = InsetBounds(parent->bounds, style.padding_x,
+            style.padding_y, scale)
+        } else {
+            metrics = LayoutMetricsFor(parent->bounds,
+            parent->data.layout.gap, parent->data.layout.padding)
+            content = metrics.content
+        }
+        if content.width < 0.0 { content.width = 0.0 }
+        if content.height < 0.0 { content.height = 0.0 }
+        cursor: float = content.y
+        if kind == WidgetKindRow { cursor = content.x }
+        if kind == WidgetKindGrid {
+            TreeLayoutGridChildren(ui_committed_nodes, parent)
+            index += 1
+            continue
+        }
+
+        child: NodeId = parent->first_child
+        while child >= 0 {
+            node: *TreeNode = &ui_committed_nodes[child]
+            if TreeButtonLike(kind) {
+                node->bounds = CenterChild(node->declared_bounds,
+                node->bounds, content)
+            } else if node->declared_bounds.x == 0.0 &&
+            node->declared_bounds.y == 0.0 {
+                if kind == WidgetKindColumn {
+                    node->bounds = LayoutChildBounds(
+                    node->declared_bounds, node->bounds, metrics,
+                    false, cursor)
+                    cursor += node->bounds.height + metrics.gap
+                } else if kind == WidgetKindRow {
+                    node->bounds = LayoutChildBounds(
+                    node->declared_bounds, node->bounds, metrics,
+                    true, cursor)
+                    cursor += node->bounds.width + metrics.gap
+                } else {
+                    node->bounds = StackChildBounds(
+                    node->declared_bounds, node->bounds, metrics)
+                }
+            }
+            child = node->next_sibling
+        }
+        index += 1
+    }
+    ui_tree_invalid &= ~INVALIDATE_LAYOUT
+}
+
+ReconcileTree :: () #export {
+    old_count: i32 = ui_committed_node_count
+    slot_count: i32 = 1
+    changed: bool = old_count != ui_tree_node_count
+    invalid_before: u32 = ui_tree_invalid
+    ui_tree_build_activation = 0
+
+    if !TreeReserveNodes(&ui_committed_nodes,
+    &ui_committed_node_capacity, ui_tree_node_count) { return }
+    old_nodes: *TreeNode = nil
+    if old_count > 0 {
+        if !TreeReserveNodes(&ui_reconcile_old_nodes,
+        &ui_reconcile_old_node_capacity, old_count) { return }
+        old_nodes = ui_reconcile_old_nodes
+        memcpy(old_nodes, ui_committed_nodes,
+        (size_t)old_count * sizeof(TreeNode))
+    }
+    while slot_count < old_count * 2 + 1 { slot_count *= 2 }
+    if !TreeReserveInts(&ui_reconcile_slots, &ui_reconcile_slot_capacity,
+    slot_count) { return }
+    slots: *i32 = ui_reconcile_slots
+    matched_old: *i32 = nil
+    if ui_tree_node_count > 0 {
+        if !TreeReserveInts(&ui_reconcile_matched_old,
+        &ui_reconcile_matched_old_capacity,
+        ui_tree_node_count) { return }
+        matched_old = ui_reconcile_matched_old
+        index: i32 = 0
+        while index < ui_tree_node_count {
+            matched_old[index] = -1
+            index += 1
+        }
+    }
+    index: i32 = 0
+    while index < slot_count {
+        slots[index] = -1
+        index += 1
+    }
+    index = 0
+    while index < old_count {
+        old: *TreeNode = &old_nodes[index]
+        parent: KeyID = 0
+        if old->parent >= 0 { parent = old_nodes[old->parent].key }
+        slot: u32 = (unsigned)(TreeIdentityHash(parent, old->key,
+        old->kind) & (unsigned long long)(slot_count - 1))
+        while slots[slot] >= 0 {
+            slot = (slot + 1u) & (unsigned)(slot_count - 1)
+        }
+        slots[slot] = index
+        index += 1
+    }
+
+    ui_tree_generation += 1
+    index = 0
+    while index < ui_tree_node_count {
+        next: TreeNode = ui_tree_nodes[index]
+        parent: KeyID = 0
+        if next.parent >= 0 {
+            parent = ui_tree_nodes[next.parent].key
+        }
+        slot: u32 = (unsigned)(TreeIdentityHash(parent, next.key,
+        next.kind) & (unsigned long long)(slot_count - 1))
+        next.generation = ui_tree_generation
+        next.state = nil
+        while slots[slot] >= 0 {
+            old_index: i32 = slots[slot]
+            if TreeReconcileSameIdentity(old_nodes, old_index,
+            ui_tree_nodes, index) {
+                next.state = old_nodes[old_index].state
+                next.flags |= old_nodes[old_index].flags &
+                (TreeNodeFlagOwnsState | TreeNodeFlagHovered |
+                TreeNodeFlagPressed)
+                matched_old[index] = old_index
+                if TreeReconcileNodeChanged(&old_nodes[old_index],
+                &next) { changed = true }
+                old_nodes[old_index].flags &= ~TreeNodeFlagOwnsState
+                break
+            }
+            slot = (slot + 1u) & (unsigned)(slot_count - 1)
+        }
+        if matched_old[index] < 0 { changed = true }
+        ui_committed_nodes[index] = next
+        ui_tree_nodes[index].owned_text = nil
+        index += 1
+    }
+    if !changed && (invalid_before & INVALIDATE_LAYOUT) == 0 {
+        index = 0
+        while index < ui_tree_node_count {
+            old_index: i32 = -1
+            if matched_old != nil { old_index = matched_old[index] }
+            if old_index >= 0 {
+                ui_committed_nodes[index].bounds =
+                old_nodes[old_index].bounds
+            }
+            index += 1
+        }
+    }
+    index = 0
+    while index < old_count {
+        free(old_nodes[index].owned_text)
+        if (old_nodes[index].flags & TreeNodeFlagOwnsState) != 0 {
+            free(old_nodes[index].state)
+        }
+        index += 1
+    }
+
+    index = 0
+    while index < ui_tree_node_count {
+        node: *TreeNode = &ui_committed_nodes[index]
+        if (node->kind == WidgetKindTextField ||
+        node->kind == WidgetKindTextArea) && node->state == nil {
+            state: *TextFieldState = (TextFieldState*)calloc(1,
+            sizeof(TextFieldState))
+            if state != nil {
+                text: *char = nil
+                cursor_position: *i32 = nil
+                focused: *i32 = nil
+                if node->kind == WidgetKindTextField {
+                    text = node->data.text_field.text
+                    cursor_position = node->data.text_field.cursor_position
+                    focused = node->data.text_field.focused
+                } else {
+                    text = node->data.text_area.text
+                    cursor_position = node->data.text_area.cursor_position
+                    focused = node->data.text_area.focused
+                }
+                length: i32 = 0
+                if text != nil { length = (int)strlen(text) }
+                cursor: i32 = length
+                if cursor_position != nil { cursor = *cursor_position }
+                ui_tree_text_collapse(state, cursor)
+                if focused != nil { state->focused = *focused != 0 }
+                node->state = state
+                node->flags |= TreeNodeFlagOwnsState
+            }
+        }
+        index += 1
+    }
+
+    if ui_committed_input_capture_capacity <
+    ui_tree_input_capture_count {
+        captures: *PopupInputToken = (PopupInputToken*)realloc(
+        ui_committed_input_captures,
+        (size_t)ui_tree_input_capture_count * sizeof(PopupInputToken))
+        if captures == nil { abort() }
+        ui_committed_input_captures = captures
+        ui_committed_input_capture_capacity = ui_tree_input_capture_count
+    }
+    if ui_tree_input_capture_count > 0 {
+        memcpy(ui_committed_input_captures, ui_tree_input_captures,
+        (size_t)ui_tree_input_capture_count * sizeof(PopupInputToken))
+    }
+    ui_committed_node_count = ui_tree_node_count
+    if changed { ui_tree_invalid |= INVALIDATE_LAYOUT | INVALIDATE_PAINT }
+}
+
+RouterFindRoute :: (routes: const RouterRoute*, route_count: i32,
+route_id: i32) -> const RouterRoute* #export {
+    if routes == nil || route_count <= 0 { return nil }
+    index: i32 = 0
+    while index < route_count {
+        if routes[index].id == route_id { return &routes[index] }
+        index += 1
+    }
+    return nil
+}
+
+RouterStateInit :: (state: *RouterState,
+initial_route: i32) #export {
+    if state == nil { return }
+    state->initialized = 1
+    state->current_route = initial_route
+    state->previous_route = initial_route
+    state->requested_route = ROUTER_NO_ROUTE
+    state->changed = 0
+    state->route_version = GetRouteVersion()
+    state->generation = 0
+}
+
+RouterNavigate :: (state: *RouterState, route_id: i32) #export {
+    if state == nil { return }
+    state->requested_route = route_id
+    InvalidateTree(INVALIDATE_PAINT)
+}
+
+router_copy_hash_id :: (dst: *char, dst_size: size_t,
+hash: const char*) {
+    if dst == nil || dst_size == 0 { return }
+    dst[0] = '\0'
+    if hash == nil { return }
+    while *hash == ' ' || *hash == '\t' || *hash == '#' {
+        hash += 1
+    }
+    if *hash == '/' { hash += 1 }
+    index: size_t = 0
+    while hash[index] != '\0' && hash[index] != '/' &&
+    hash[index] != '?' && hash[index] != '&' &&
+    index + 1 < dst_size {
+        dst[index] = hash[index]
+        index += 1
+    }
+    dst[index] = '\0'
+}
+
+router_route_for_hash :: (props: RouterProps) -> i32 {
+    id: [128]char
+    router_copy_hash_id(id, sizeof(id), GetRouteHash())
+    if id[0] == '\0' { return ROUTER_NO_ROUTE }
+    index: i32 = 0
+    while index < props.route_count {
+        path: const char* = props.routes[index].path
+        if path != nil {
+            while *path == '#' { path += 1 }
+            if *path == '/' { path += 1 }
+            if strcmp(path, id) == 0 { return props.routes[index].id }
+        }
+        index += 1
+    }
+    return ROUTER_NO_ROUTE
+}
+
+router_write_url :: (props: RouterProps, route_id: i32,
+push: i32) {
+    if !props.sync_url { return }
+    route: const RouterRoute* = RouterFindRoute(props.routes,
+    props.route_count, route_id)
+    if route == nil || route->path == nil || route->path[0] == '\0' {
+        return
+    }
+    base: const char* = GetRoutePath()
+    if base == nil || base[0] == '\0' { base = "/" }
+    path: const char* = route->path
+    while *path == '#' { path += 1 }
+    if *path == '/' { path += 1 }
+    url: [320]char
+    snprintf(url, sizeof(url), "%s#/%s", base, path)
+    if push { PushRoute(url) }
+    else { ReplaceRoute(url) }
+    if props.state != nil {
+        props.state->route_version = GetRouteVersion()
+    }
+}
+
+RouterSetRoute :: (props: RouterProps, route_id: i32,
+push: i32) -> i32 #export {
+    state: *RouterState = props.state
+    if state == nil || RouterFindRoute(props.routes,
+    props.route_count, route_id) == nil { return 0 }
+    if !state->initialized { RouterStateInit(state, props.initial_route) }
+    state->changed = state->current_route != route_id
+    state->previous_route = state->current_route
+    state->current_route = route_id
+    state->requested_route = ROUTER_NO_ROUTE
+    if state->changed { state->generation += 1 }
+    router_write_url(props, route_id, push)
+    return state->changed
+}
+
+Router :: (props: RouterProps) -> RouterResult #export {
+    result: RouterResult = (RouterResult){0}
+    state: *RouterState = props.state
+    if state == nil { return result }
+    next: i32 = ROUTER_NO_ROUTE
+    push: i32 = 0
+    if !state->initialized {
+        initial: i32 = props.initial_route
+        from_hash: i32 = ROUTER_NO_ROUTE
+        if props.sync_url { from_hash = router_route_for_hash(props) }
+        if from_hash != ROUTER_NO_ROUTE { initial = from_hash }
+        RouterStateInit(state, initial)
+        if props.sync_url && from_hash == ROUTER_NO_ROUTE &&
+        props.replace_on_init { router_write_url(props, initial, 0) }
+    }
+    state->changed = 0
+    state->previous_route = state->current_route
+    if props.sync_url {
+        version: i32 = GetRouteVersion()
+        if version != state->route_version {
+            from_hash: i32 = router_route_for_hash(props)
+            state->route_version = version
+            if from_hash != ROUTER_NO_ROUTE { next = from_hash }
+        }
+    }
+    if state->requested_route != ROUTER_NO_ROUTE {
+        next = state->requested_route
+        push = 1
+        state->requested_route = ROUTER_NO_ROUTE
+    }
+    if next != ROUTER_NO_ROUTE &&
+    RouterFindRoute(props.routes, props.route_count, next) != nil &&
+    next != state->current_route {
+        state->previous_route = state->current_route
+        state->current_route = next
+        state->changed = 1
+        state->generation += 1
+        router_write_url(props, next, push)
+        InvalidateTree(INVALIDATE_PAINT)
+    }
+    key: KeyID = props.key
+    if key == 0 { key = Key("Router") }
+    node: NodeId = ui_tree_add((int)(key & 0x7fffffffU),
+    WidgetKindRouter, props.bounds, nil)
+    if node >= 0 { ui_tree_nodes[node].key = key }
+    result.route = state->current_route
+    result.previous_route = state->previous_route
+    result.requested_route = state->requested_route
+    result.changed = state->changed
+    result.route_info = RouterFindRoute(props.routes, props.route_count,
+    state->current_route)
+    return result
+}
+
+ui_begin_layout_node :: (kind: i32, key: KeyID,
+bounds: Rectangle, gap: i32, padding: i32) -> NodeId {
+    if key == 0 { key = (KeyID)(unsigned)(ui_tree_node_count + 1) }
+    metrics: LayoutMetrics = LayoutMetricsFor(bounds, gap, padding)
+    node: NodeId = ui_tree_add((int)(key & 0x7fffffffU),
+    kind, bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].key = key
+        ui_tree_nodes[node].data.layout.gap = metrics.gap
+        ui_tree_nodes[node].data.layout.padding = metrics.padding
+        ui_tree_nodes[node].data.layout.columns = 1
+        if ui_tree_stack_depth < TREE_LAYOUT_DEPTH {
+            ui_tree_stack[ui_tree_stack_depth] = node
+            ui_tree_stack_depth += 1
+        }
+    }
+    return node
+}
+
+Column :: (props: ColumnProps) -> NodeId #export {
+    return ui_begin_layout_node(WidgetKindColumn, props.key,
+    props.bounds, props.gap, props.padding)
+}
+
+Row :: (props: RowProps) -> NodeId #export {
+    return ui_begin_layout_node(WidgetKindRow, props.key,
+    props.bounds, props.gap, props.padding)
+}
+
+Grid :: (props: GridProps) -> NodeId #export {
+    node: NodeId = ui_begin_layout_node(WidgetKindGrid,
+    props.key, props.bounds, props.gap, props.padding)
+    if node >= 0 {
+        ui_tree_nodes[node].data.layout.columns = props.columns
+        ui_tree_nodes[node].data.layout.min_item_width = props.min_item_width
+        ui_tree_nodes[node].data.layout.max_columns = props.max_columns
+    }
+    return node
+}
+
+Stack :: (props: ColumnProps) -> NodeId #export {
+    return ui_begin_layout_node(WidgetKindStack, props.key,
+    props.bounds, props.gap, props.padding)
+}
+
+Group :: (props: ColumnProps) -> NodeId #export {
+    policy: GroupPolicy = GroupPolicyFor(props.bounds,
+    props.gap, props.padding)
+    return ui_begin_layout_node(WidgetKindGroup, props.key,
+    policy.bounds, policy.gap, policy.padding)
+}
+
+Screen :: (props: ColumnProps) -> NodeId #export {
+    policy: GroupPolicy = ScreenGroupPolicyFor(props.bounds,
+    ui_view_width, ui_view_height, props.gap, props.padding)
+    return ui_begin_layout_node(WidgetKindGroup, props.key,
+    policy.bounds, policy.gap, policy.padding)
+}
+
+GetNodeHeightById :: (id: i32) -> i32 #export {
+    index: i32 = ui_tree_node_count - 1
+    while index >= 0 {
+        if ui_tree_nodes[index].id == id {
+            return GetNodeHeight(ui_tree_nodes[index])
+        }
+        index -= 1
+    }
+    return 0
+}
+
+AppBackground :: () #export {
+    app: Style = ui_unpack_style(ResolveActiveStyle(
+    (StyleData){0}, StyleDefaultFacts(StyleKindApp()),
+    ButtonStateNormal))
+    Background(PrimitiveAppBackgroundColor(app.background,
+    GetThemeBackground()))
+}
+
+Background :: (color: Color) #export {
+    bounds: Rectangle = PrimitiveBackgroundBounds(ui_view_width,
+    ui_view_height)
+    node: NodeId = ui_tree_add(0, WidgetKindBackground, bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.color = color
+    }
+    if ui_tree_building { ui_tree_mark_painted_immediate(node) }
+    DrawRectangleRec(PrimitiveBackgroundBounds(GetViewWidth(),
+    GetViewHeight()), color)
+}
+
+ui_paint_surface :: (bounds: Rectangle, style: Style) #export {
+    ui_draw_material(bounds, (Rectangle){0},
+    style.background, style.border, style.border,
+    style.radius, style.border_width, 0, 0, 0,
+    style.focus, 0, style.opacity,
+    ui_style_fill(style), style.material)
+}
+
+Paragraph :: (paragraph: ParagraphSpec, x: i32,
+y: *i32) #export {
+    start_y: i32 = 0
+    if y != nil { start_y = *y }
+    id: NodeId = ui_tree_add(0, WidgetKindParagraph,
+    (Rectangle){x, start_y, paragraph.width, 0}, nil)
+    node: TreeNode = NodeParagraph(paragraph, x, start_y)
+    ui_tree_store_node(id, node)
+    ui_draw_paragraph(paragraph, x, y)
+}
+
+Surface :: (bounds: Rectangle, style: Style) #export {
+    defaults: Style = ui_surface_style()
+    style = MergeStyle(defaults, style)
+    node: NodeId = ui_tree_add(0, WidgetKindBox,
+    bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.styled = 1
+        ui_tree_nodes[node].data.primitive.style = style
+    }
+    if !ui_tree_building { ui_paint_surface(bounds, style) }
+}
+
+Box :: (bounds: Rectangle, fill: Color,
+border: Color) #export {
+    rect: Rectangle = PrimitiveRectBounds((int)bounds.x,
+    (int)bounds.y, (int)bounds.width, (int)bounds.height)
+    node: NodeId = ui_tree_add(0, WidgetKindBox, rect, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.color = fill
+        ui_tree_nodes[node].data.primitive.border = border
+    }
+    if ui_tree_building { return }
+    DrawRectangleRec(rect, fill)
+    if border.a != 0 { DrawRectangleLinesEx(rect, 1, border) }
+}
+
+Circle :: (center_x: i32, center_y: i32,
+radius: i32, color: Color) #export {
+    bounds: Rectangle = PrimitiveCircleBounds(center_x,
+    center_y, radius)
+    node: NodeId = ui_tree_add(0, WidgetKindCircle, bounds, nil)
+    if node >= 0 { ui_tree_nodes[node].data.primitive.color = color }
+    if ui_tree_building { return }
+    DrawCircle(center_x, center_y, (float)radius, color)
+}
+
+Ring :: (center_x: i32, center_y: i32,
+inner_radius: i32, outer_radius: i32,
+color: Color) #export {
+    bounds: Rectangle = PrimitiveRingBounds(center_x,
+    center_y, outer_radius)
+    node: NodeId = ui_tree_add(0, WidgetKindRing, bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.x1 = inner_radius
+        ui_tree_nodes[node].data.primitive.color = color
+    }
+    if ui_tree_building { return }
+    DrawRing((Vector2){(float)center_x, (float)center_y},
+    (float)inner_radius, (float)outer_radius,
+    0.0f, 360.0f, 0, color)
+}
+
+Line :: (x1: i32, y1: i32, x2: i32, y2: i32,
+color: Color) #export {
+    line: LinePrimitive = PrimitiveLineFor(x1, y1, x2, y2)
+    node: NodeId = ui_tree_add(0, WidgetKindLine,
+    line.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.x1 = line.x1
+        ui_tree_nodes[node].data.primitive.y1 = line.y1
+        ui_tree_nodes[node].data.primitive.x2 = line.x2
+        ui_tree_nodes[node].data.primitive.y2 = line.y2
+        ui_tree_nodes[node].data.primitive.color = color
+    }
+    if ui_tree_building { return }
+    DrawLine(x1, y1, x2, y2, color)
+}
+
+Triangle :: (x1: i32, y1: i32, x2: i32, y2: i32,
+x3: i32, y3: i32, color: Color) #export {
+    triangle: TrianglePrimitive = PrimitiveTriangleFor(
+    x1, y1, x2, y2, x3, y3)
+    node: NodeId = ui_tree_add(0, WidgetKindTriangle,
+    triangle.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.primitive.x1 = triangle.x1
+        ui_tree_nodes[node].data.primitive.y1 = triangle.y1
+        ui_tree_nodes[node].data.primitive.x2 = triangle.x2
+        ui_tree_nodes[node].data.primitive.y2 = triangle.y2
+        ui_tree_nodes[node].data.primitive.x3 = triangle.x3
+        ui_tree_nodes[node].data.primitive.y3 = triangle.y3
+        ui_tree_nodes[node].data.primitive.color = color
+    }
+    if ui_tree_building { return }
+    DrawTriangle((Vector2){(float)x1, (float)y1},
+    (Vector2){(float)x2, (float)y2},
+    (Vector2){(float)x3, (float)y3}, color)
+}
+
+Bevel :: (x: i32, y: i32, w: i32, h: i32,
+light: Color, dark: Color) #export {
+    ui_tree_add(0, WidgetKindBox,
+    (Rectangle){x, y, w, h}, nil)
+    RenderBevel(x, y, w, h, light, dark)
+}
+
+ui_accessibility_prepare :: (id: i32, kind: i32,
+enabled: i32) #export {
+    if ui_accessibility_active_count == 0 { return }
+    actions: u32 = AccessibilityActionsFor(kind, id,
+    !enabled || ContentDisabled(),
+    ui_popup_input_keyboard_captures(), false)
+    index: i32 = 0
+    while index < ui_accessibility_active_count {
+        request: AccessibilityRequest = ui_accessibility_active[index]
+        if request.id == id && id > 0 &&
+        (request.kind != kind ||
+        request.action == AccessibilityActionFocus ||
+        request.action == AccessibilityActionActivate) {
+            ui_accessibility_active[index].id = 0
+            if request.kind == kind &&
+            AccessibilityActionAllowed(actions, request.action) {
+                SetFocus(id)
+                if request.action == AccessibilityActionActivate {
+                    ui_accessibility_activation = id
+                }
+            }
+        }
+        index += 1
+    }
+}
+
+ui_accessibility_take_activation :: (id: i32) -> i32 #export {
+    if id <= 0 || ui_accessibility_activation != id { return 0 }
+    ui_accessibility_activation = 0
+    if ui_tree_building {
+        index: i32 = ui_tree_node_count - 1
+        while index >= 0 {
+            if ui_tree_nodes[index].id == id &&
+            ui_tree_button_like_kind(ui_tree_nodes[index].kind) {
+                ui_tree_mark_build_activation(index, 1)
+                break
+            }
+            index -= 1
+        }
+    }
+    return 1
+}
+
+ButtonNode :: (button: ButtonSpec) -> i32 #export {
+    node: NodeId = ui_tree_add(button.props.id, WidgetKindButton,
+    button.props.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(button.props.label)
+        ui_tree_nodes[node].data.button = button
+        ui_tree_nodes[node].data.button.props.label =
+        ui_tree_nodes[node].owned_text
+    }
+    clicked: i32 = 0
+    if ui_tree_building { clicked = HandleButton(button) }
+    else { clicked = ui_button_render(button) }
+    ui_tree_mark_build_activation(node, clicked)
+    return clicked
+}
+
+ui_tree_submit_text_input :: (bounds: Rectangle,
+value: const char*, paint: TextInputPaint,
+focus_id: i32) #export {
+    if !ui_tree_building {
+        ui_paint_text_input(bounds, value, paint)
+        return
+    }
+    id: NodeId = ui_tree_add(focus_id, WidgetKindCustom,
+    bounds, nil)
+    if id >= 0 {
+        ui_tree_nodes[id].flags |= TreeNodeFlagTextInputPaint
+        ui_tree_nodes[id].owned_text = ui_tree_strdup(value)
+        ui_tree_store_text_input_paint(&ui_tree_nodes[id], paint)
+        InvalidateTree(INVALIDATE_PAINT)
+    }
+}
+
+TextField :: (field: TextFieldProps) -> i32 #export {
+    ui_accessibility_prepare(field.focus_id,
+    WidgetKindTextField, 1)
+    node: NodeId = ui_tree_add(field.focus_id,
+    WidgetKindTextField, field.bounds, nil)
+    if field.commit_pressed != nil { *field.commit_pressed = 0 }
+    if node >= 0 {
+        ui_tree_nodes[node].key = (KeyID)(unsigned)field.focus_id
+        ui_tree_nodes[node].data.text_field = field
+    }
+    if ui_tree_building { return 0 }
+    return ui_text_field_render(field)
+}
+
+Icon :: (id: i32, x: i32, y: i32, size: i32,
+icon: IconType, tint: Color) #export {
+    layout: IconLayout = IconLayoutFor(x, y, size)
+    ui_tree_add(id, WidgetKindIcon, layout.bounds, nil)
+    if layout.drawable { DrawIcon(icon, layout.bounds, tint) }
+}
+
+Dropdown :: (dropdown: DropdownProps) -> i32 #export {
+    ui_tree_add(dropdown.id, WidgetKindDropdown,
+    dropdown.bounds, dropdown.selected_index)
+    return ui_dropdown(dropdown)
+}
+
+Separator :: (separator: SeparatorProps) #export {
+    ui_tree_add(0, WidgetKindSeparator,
+    separator.bounds, &separator)
+    RenderSeparator(separator)
+}
+
+DragDrop :: (drag_drop: DragDropProps) -> i32 #export {
+    ui_tree_add(drag_drop.id, WidgetKindDragDrop,
+    drag_drop.bounds, &drag_drop)
+    return RenderDragDrop(drag_drop)
+}
+
+Radio :: (radio: RadioProps) -> i32 #export {
+    ui_accessibility_prepare(radio.id, WidgetKindRadio,
+    !radio.disabled)
+    node: NodeId = ui_tree_add(radio.id, WidgetKindRadio,
+    radio.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.radio = radio
+        label: const char* = radio.label
+        if label == nil { label = "" }
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(label)
+        if radio.disabled {
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled
+        }
+    }
+    return RenderRadio(radio)
+}
+
+Progress :: (progress: ProgressProps) #export {
+    ui_tree_add(0, WidgetKindProgress,
+    progress.bounds, &progress)
+    RenderProgress(progress)
+}
+
+Plot :: (plot: PlotProps) #export {
+    ui_tree_add(0, WidgetKindPlot, plot.bounds, &plot)
+    if plot.mode == PlotBars { RenderPlotHistogram(plot) }
+    else { RenderPlotLines(plot) }
+}
+
+Spinbox :: (spinbox: SpinboxProps) -> i32 #export {
+    ui_tree_add(spinbox.id, WidgetKindSpinbox,
+    spinbox.bounds, &spinbox)
+    return RenderSpinbox(spinbox)
+}
+
+Fieldset :: (frame: FieldsetProps) #export {
+    ui_tree_add(0, WidgetKindFieldset, frame.bounds, &frame)
+    RenderFieldset(frame)
+}
+
+TreeView :: (tree: TreeViewProps) -> i32 #export {
+    ui_tree_add(tree.id, WidgetKindTreeView, tree.bounds, &tree)
+    return RenderTreeView(tree)
+}
+
+TableView :: (table: TableViewProps) -> i32 #export {
+    ui_tree_add(table.id, WidgetKindTableView, table.bounds, &table)
+    return RenderTableView(table)
+}
+
+TextArea :: (area: TextAreaProps) -> i32 #export {
+    ui_accessibility_prepare(area.focus_id,
+    WidgetKindTextArea, 1)
+    node: NodeId = ui_tree_add(area.focus_id,
+    WidgetKindTextArea, area.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].key = (KeyID)(unsigned)area.focus_id
+        ui_tree_nodes[node].data.text_area = area
+    }
+    ui_tree_invalid |= INVALIDATE_PAINT
+    if ui_tree_building { return 0 }
+    return ui_text_area_render(area)
+}
+
+CanvasGrid :: (bounds: Rectangle, step: i32,
+color: Color) #export {
+    ui_tree_add(0, WidgetKindCanvasGrid, bounds, nil)
+    RenderCanvasGrid(bounds, step, color)
+}
+
+PanedView :: (panes: PanedViewProps) -> i32 #export {
+    ui_tree_add(panes.id, WidgetKindPanedView,
+    panes.bounds, &panes)
+    return RenderPanedView(panes)
+}
+
+Collapsible :: (section: CollapsibleProps) -> i32 #export {
+    ui_tree_add(section.id, WidgetKindCollapsible,
+    section.bounds, &section)
+    return RenderCollapsible(section)
+}
+
+ColorPicker :: (picker: ColorPickerProps) -> i32 #export {
+    ui_tree_add(picker.id, WidgetKindColorPicker,
+    picker.bounds, &picker)
+    return RenderColorPicker(picker)
+}
+
+Selectable :: (selectable: SelectableProps) -> i32 #export {
+    ui_tree_add(selectable.id, WidgetKindSelectable,
+    selectable.bounds, &selectable)
+    return RenderSelectable(selectable)
+}
+
+Bullet :: (bounds: Rectangle) #export {
+    ui_tree_add(0, WidgetKindBullet, bounds, nil)
+    RenderBullet(bounds)
+}
+
+Toggle :: (toggle: ToggleProps) -> i32 #export {
+    ui_accessibility_prepare(toggle.id, WidgetKindToggle,
+    !toggle.disabled && toggle.value != nil)
+    focused: i32 = 0
+    value: *i32 = toggle.value
+    bounds: Rectangle = toggle.bounds
+    node: NodeId = ui_tree_add(toggle.id,
+    WidgetKindToggle, bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.toggle.value = value
+        ui_tree_nodes[node].data.toggle.class_name = toggle.class_name
+        ui_tree_nodes[node].data.toggle.off_label = toggle.off_label
+        ui_tree_nodes[node].data.toggle.on_label = toggle.on_label
+        if toggle.disabled || value == nil {
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled
+        }
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+    focus_bounds: Rectangle = bounds
+    if node >= 0 { focus_bounds = ui_tree_nodes[node].bounds }
+    activated: i32 = ui_focusable_pressed(focus_bounds, toggle.id,
+    value == nil || toggle.disabled, &focused)
+    current: bool = false
+    if value != nil { current = *value != 0 }
+    toggle_value: ToggleValueResult = ToggleValueFor(current,
+    activated != 0, !toggle.disabled, value != nil)
+    changed: i32 = 0
+    if toggle_value.changed {
+        changed = 1
+        if value != nil { *value = toggle_value.value }
+    }
+    if changed && node >= 0 {
+        event: Event = (Event){0}
+        event.key = ui_tree_nodes[node].key
+        event.kind = EVENT_VALUE_CHANGED
+        event.timestamp = GetTime()
+        event.data.value = *value
+        ui_event_push(event)
+    }
+    if ui_tree_building { return changed }
+    paint_value: i32 = 0
+    paint_pointer: *i32 = nil
+    if value != nil {
+        paint_value = *value
+        if !toggle.disabled { paint_pointer = &paint_value }
+    }
+    ToggleSwitch((int)bounds.x, (int)bounds.y,
+    (int)bounds.width, (int)bounds.height,
+    paint_pointer, toggle.class_name,
+    toggle.off_label, toggle.on_label, focused)
+    return changed
+}
+
+Checkbox :: (checkbox: CheckboxProps) -> i32 #export {
+    ui_accessibility_prepare(checkbox.id, WidgetKindCheckbox,
+    !checkbox.disabled &&
+    (checkbox.value != nil || checkbox.flags != nil))
+    node: NodeId = ui_tree_add(checkbox.id,
+    WidgetKindCheckbox, checkbox.bounds, nil)
+    if node >= 0 {
+        ui_tree_nodes[node].data.checkbox.value = checkbox.value
+        ui_tree_nodes[node].data.checkbox.label = checkbox.label
+        ui_tree_nodes[node].data.checkbox.flags = checkbox.flags
+        ui_tree_nodes[node].data.checkbox.flags_value = checkbox.flags_value
+        if checkbox.disabled ||
+        (checkbox.value == nil && checkbox.flags == nil) {
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled
+        }
+        ui_tree_invalid |= INVALIDATE_PAINT
+    }
+    changed: i32 = RenderCheckbox(checkbox)
+    if changed && node >= 0 {
+        event: Event = (Event){0}
+        event.key = ui_tree_nodes[node].key
+        event.kind = EVENT_VALUE_CHANGED
+        event.timestamp = GetTime()
+        if checkbox.value != nil {
+            event.data.value = *checkbox.value
+        } else if checkbox.flags != nil {
+            event.data.value = *checkbox.flags
+        }
+        ui_event_push(event)
+    }
+    return changed
+}
+
+ListBox :: (list: ListBoxProps) -> i32 #export {
+    ui_accessibility_prepare(list.id, WidgetKindListBox,
+    !list.disabled)
+    node: NodeId = ui_tree_add(list.id, WidgetKindListBox,
+    list.bounds, nil)
+    scope: bool = node >= 0 &&
+    ui_tree_stack_depth < TREE_LAYOUT_DEPTH
+    if node >= 0 {
+        ui_tree_nodes[node].data.list = list
+        if list.disabled {
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled
+        }
+    }
+    if scope {
+        ui_tree_stack[ui_tree_stack_depth] = node
+        ui_tree_stack_depth += 1
+    }
+    changed: i32 = 0
+    if list.selected != nil { changed = RenderListBoxMulti(list) }
+    else { changed = RenderListBox(list) }
+    if scope { ui_tree_stack_depth -= 1 }
+    return changed
+}
+
+Focus :: (bounds: Rectangle) #export {
+    ui_tree_add(0, WidgetKindFocus, bounds, nil)
+    RenderFocus(bounds)
+}
+
+NavigationBar :: (nav: NavigationBarProps) -> NavigationBarResult #export {
+    ui_tree_add(0, WidgetKindNavigationBar,
+    (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav)
+    return RenderNavigationBar(nav)
+}
+
+Toolbar :: (toolbar: ToolbarProps) -> ToolbarResult #export {
+    ui_tree_add(toolbar.id, WidgetKindToolbar,
+    (Rectangle){toolbar.x, toolbar.y,
+        toolbar.width, toolbar.height}, &toolbar)
+    return RenderToolbar(toolbar)
+}
+
+TabBar :: (bar: TabBarProps) -> i32 #export {
+    ui_tree_add(0, WidgetKindTabBar, bar.bounds, &bar)
+    clicked: i32 = RenderTabBar(bar)
+    ui_tree_note_build_activation(clicked >= 0)
+    return clicked
+}
+
+TitleBar :: (title_bar: TitleBarProps) -> i32 #export {
+    id: i32 = 0
+    if title_bar.has_dropdown { id = title_bar.dropdown.id }
+    height: i32 = title_bar.height
+    if height <= 0 { height = ui_title_bar_height() }
+    ui_tree_add(id, WidgetKindTitleBar,
+    (Rectangle){0, 0, ui_view_width, height}, &title_bar)
+    return RenderTitleBar(title_bar)
+}
+
+Overlays :: () #export {
+    if !IsWindowReady() { return }
+    RenderFrameOverlays()
+}
+
+ui_accessibility_role :: (kind: i32) -> const char* #export {
+    if kind == WidgetKindScreen { return "main" }
+    if kind == WidgetKindText || kind == WidgetKindParagraph {
+        return "text"
+    }
+    if kind == WidgetKindButton { return "button" }
+    if kind == WidgetKindCard { return "group" }
+    if kind == WidgetKindTextField || kind == WidgetKindTextArea {
+        return "textbox"
+    }
+    if kind == WidgetKindDropdown { return "combobox" }
+    if kind == WidgetKindSpinbox || kind == WidgetKindInput ||
+    kind == WidgetKindSlider { return "slider" }
+    if kind == WidgetKindRadio { return "radio" }
+    if kind == WidgetKindToggle || kind == WidgetKindCheckbox {
+        return "checkbox"
+    }
+    if kind == WidgetKindProgress { return "progressbar" }
+    if kind == WidgetKindMenu { return "menu" }
+    if kind == WidgetKindTabBar { return "tablist" }
+    if kind == WidgetKindToolbar { return "toolbar" }
+    if kind == WidgetKindListBox { return "listbox" }
+    if kind == WidgetKindTreeView { return "tree" }
+    if kind == WidgetKindTableView { return "table" }
+    if kind == WidgetKindModal { return "dialog" }
+    if kind == WidgetKindColumn || kind == WidgetKindRow ||
+    kind == WidgetKindStack || kind == WidgetKindGrid ||
+    kind == WidgetKindRouter || kind == WidgetKindFieldset ||
+    kind == WidgetKindPanedView || kind == WidgetKindCollapsible ||
+    kind == WidgetKindGroup { return "group" }
+    if kind == WidgetKindIcon || kind == WidgetKindImage {
+        return "img"
+    }
+    return nil
+}
+
+ui_tree_first_text :: (nodes: const TreeNode*, count: i32,
+parent: i32) -> const char* #export {
+    if parent < 0 || parent >= count { return nil }
+    child: i32 = nodes[parent].first_child
+    while child >= 0 && child < count {
+        if nodes[child].kind == WidgetKindText &&
+        nodes[child].owned_text != nil &&
+        nodes[child].owned_text[0] != '\0' {
+            return nodes[child].owned_text
+        }
+        nested: const char* = ui_tree_first_text(nodes, count, child)
+        if nested != nil { return nested }
+        child = nodes[child].next_sibling
+    }
+    return nil
+}
+
+ui_accessibility_node_disabled :: (
+node: const TreeNode*) -> i32 #export {
+    disabled: i32 = (node->flags & TreeNodeFlagScopeDisabled) != 0
+    if ui_tree_button_like_kind(node->kind) {
+        props: ButtonProps = node->data.button.props
+        flags: StateFlags = ResolveFlags((int)props.state,
+        props.disabled, props.loading, props.selected)
+        disabled |= !CanActivate(flags.disabled, flags.loading)
+    }
+    return disabled
+}

@@ -111,6 +111,18 @@ kry_android_consume_frame_drag(void)
     android_frame_drag_valid = 0;
 }
 
+int
+kry_android_gesture_dragging(void)
+{
+    return (GetGestureDetected() & GESTURE_DRAG) != 0;
+}
+
+int
+kry_android_gesture_delta_y(void)
+{
+    return (int)(GetGestureDragVector().y * (float)GetScreenHeight());
+}
+
 void
 kry_android_prepare_input_poll(void)
 {
@@ -124,6 +136,43 @@ kry_android_prepare_input_poll(void)
     android_frame_release = 0;
     android_frame_cancel = 0;
     android_frame_drag_valid = 0;
+}
+#else
+int
+kry_android_touch_down(void)
+{
+    return 0;
+}
+
+Vector2
+kry_android_touch_position(void)
+{
+    return (Vector2){0};
+}
+
+int
+kry_android_frame_drag(Vector2 *start, Vector2 *current)
+{
+    (void)start;
+    (void)current;
+    return 0;
+}
+
+void
+kry_android_consume_frame_drag(void)
+{
+}
+
+int
+kry_android_gesture_dragging(void)
+{
+    return 0;
+}
+
+int
+kry_android_gesture_delta_y(void)
+{
+    return 0;
 }
 #endif
 

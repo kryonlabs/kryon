@@ -1,6 +1,14 @@
 #include "../src/ui/ui_internal.h"
-#include "../src/ui/ui_text_rows.h"
+#include "ui/text_rows.h"
 #include <assert.h>
+
+void PushInspectSource(const char *path, int line)
+{
+    (void)path;
+    (void)line;
+}
+
+void PopInspectSource(void) {}
 
 int TextWidth(const char *text, int font)
 {

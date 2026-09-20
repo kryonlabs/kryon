@@ -330,17 +330,6 @@ type RowProps = ColumnProps
 
 type FlowProps = ColumnProps
 
-// Accelerator describes one keyboard chord and the command returned when it
-// is pressed. Modifier fields mirror the native C runtime's clean shortcut
-// surface.
-type Accelerator struct {
-	Key   int32
-	Ctrl  int32
-	Shift int32
-	Alt   int32
-	ID    int32
-}
-
 type Runtime interface {
 	GetAccessibilitySnapshot() []AccessibilityNode
 	SetAccessibilitySink(AccessibilitySink)

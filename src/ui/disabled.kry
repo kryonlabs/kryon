@@ -1,0 +1,66 @@
+#module "disabled_host"
+#import "ui_internal.h"
+#import "stdlib.h"
+
+DisabledScopeState :: struct {
+    depth: i32
+    start: i32
+    floor: i32
+}
+
+disabled_depth :: i32 #global
+disabled_start :: i32 #global
+disabled_floor :: i32 #global
+
+ContentDisabled :: () -> i32 #export {
+    return disabled_start > 0
+}
+
+ui_disabled_enter :: (disabled: i32) #export {
+    disabled_depth += 1
+    if !disabled || disabled_start > 0 { return }
+    disabled_start = disabled_depth
+    g_theme_content_alpha = 0.45
+    ApplyCurrentTheme()
+}
+
+ui_disabled_leave :: () #export {
+    if disabled_depth <= disabled_floor { return }
+    previous: i32 = disabled_depth
+    disabled_depth -= 1
+    if previous != disabled_start { return }
+    disabled_start = 0
+    g_theme_content_alpha = 1.0
+    ApplyCurrentTheme()
+}
+
+ui_reset_disabled_scope :: () #export {
+    disabled_floor = 0
+    while disabled_depth > 0 { ui_disabled_leave() }
+    disabled_start = 0
+}
+
+ui_disabled_suspend :: () -> DisabledScopeState #export {
+    scope: DisabledScopeState = (DisabledScopeState){
+        disabled_depth, disabled_start, disabled_floor}
+    disabled_depth = 1
+    disabled_floor = 1
+    disabled_start = scope.start > 0 ? 1 : 0
+    return scope
+}
+
+ui_disabled_resume :: (scope: DisabledScopeState) #export {
+    if disabled_depth != 1 || disabled_floor != 1 ||
+    disabled_start != (scope.start > 0 ? 1 : 0) { abort() }
+    disabled_depth = scope.depth
+    disabled_start = scope.start
+    disabled_floor = scope.floor
+}
+
+DisabledScope :: (disabled: i32) #export {
+    ui_disabled_enter(disabled)
+}
+
+DisabledEndScope :: () #export {
+    ui_disabled_leave()
+}

@@ -1,0 +1,373 @@
+#module "numeric_widgets"
+#import "ui_internal.h"
+#import "ui/tree_layout.h"
+#import "ui_tree_layout_internal.h"
+#import "runtime/drag.h"
+#import "runtime/input.h"
+
+ui_tree_numeric_text :: (label: const char*,
+format: const char*, offset: *size_t) -> *char {
+    if label == nil { label = "" }
+    *offset = strlen(label) + 1
+    format_size: size_t = strlen(format) + 1
+    value: *char = (char*)malloc(*offset + format_size)
+    if value != nil {
+        memcpy(value, label, *offset)
+        memcpy(value + *offset, format, format_size)
+    }
+    return value
+}
+
+ui_tree_drag_continuous :: (
+drag: DragContinuousProps) -> i32 #export {
+    id: NodeId = ui_tree_add(drag.id, WidgetKindDrag,
+    drag.bounds, nil)
+    if id >= 0 {
+        InvalidateTree(INVALIDATE_PAINT)
+        node: *TreeNode = &ui_tree_nodes[id]
+        drag.bounds = node->bounds
+        props: DragProps = (DragProps){0}
+        props.bounds = drag.bounds
+        props.id = drag.id
+        props.class_name = drag.class_name
+        props.kind = NumericFloat
+        props.float_values = drag.values
+        props.value_count = drag.value_count
+        props.speed = drag.speed
+        props.min = drag.min
+        props.max = drag.max
+        props.disabled = drag.disabled
+        node->data.drag.props = props
+        format: const char* = drag.format
+        if format == nil { format = InputDefaultFormat(NumericFloat) }
+        node->owned_text = ui_tree_numeric_text(drag.label,
+        format, &node->data.drag.format_offset)
+    }
+    changed: i32 = ui_update_drag_continuous(drag)
+    if !ui_tree_building { ui_paint_drag_continuous(drag) }
+    return changed
+}
+
+ui_tree_drag_discrete :: (
+drag: DragDiscreteProps) -> i32 #export {
+    id: NodeId = ui_tree_add(drag.id, WidgetKindDrag,
+    drag.bounds, nil)
+    if id >= 0 {
+        InvalidateTree(INVALIDATE_PAINT)
+        node: *TreeNode = &ui_tree_nodes[id]
+        drag.bounds = node->bounds
+        props: DragProps = (DragProps){0}
+        props.bounds = drag.bounds
+        props.id = drag.id
+        props.class_name = drag.class_name
+        props.kind = NumericInt
+        props.int_values = drag.values
+        props.value_count = drag.value_count
+        props.speed = drag.speed
+        props.min = drag.min
+        props.max = drag.max
+        props.disabled = drag.disabled
+        node->data.drag.props = props
+        format: const char* = drag.format
+        if format == nil { format = InputDefaultFormat(NumericInt) }
+        node->owned_text = ui_tree_numeric_text(drag.label,
+        format, &node->data.drag.format_offset)
+    }
+    changed: i32 = ui_update_drag_discrete(drag)
+    if !ui_tree_building { ui_paint_drag_discrete(drag) }
+    return changed
+}
+
+ui_tree_drag_range_begin :: (bounds: Rectangle,
+id: i32) -> Rectangle {
+    row_props: RowProps = (RowProps){0}
+    row_props.bounds = bounds
+    row: NodeId = Row(row_props)
+    if row >= 0 {
+        node: *TreeNode = &ui_tree_nodes[row]
+        node->id = id
+        node->key = (KeyID)(unsigned)id
+        bounds = node->bounds
+    }
+    return bounds
+}
+
+ui_tree_drag_range_end :: (bounds: Rectangle,
+label: const char*) {
+    End()
+    if label == nil || (!ui_tree_building && !IsWindowReady()) {
+        return
+    }
+    font: i32 = GetSmallFontSize()
+    scale: f32 = (float)Scale(1000) / 1000.0f
+    paint: DragTextPaint = DragLabelTextPaintFor(bounds,
+    DragTextInsetFor(scale), font, DragLabelGapFor(scale))
+    text_props: TextProps = (TextProps){0}
+    text_props.bounds = (Rectangle){(int)paint.text_x,
+        (int)paint.text_y, 0, 0}
+    text_props.text = label
+    text_props.wrap = TextWrapNone
+    Text(text_props)
+}
+
+ui_tree_drag_continuous_range :: (
+drag: DragContinuousRangeProps) -> i32 #export {
+    if drag.current_min == nil || drag.current_max == nil { return 0 }
+    bounds: Rectangle = ui_tree_drag_range_begin(drag.bounds, drag.id)
+    low: Rectangle = bounds
+    high: Rectangle = bounds
+    low.width *= 0.5f
+    high.x += low.width
+    high.width -= low.width
+    old_min: f32 = *drag.current_min
+    low_drag: DragContinuousProps = (DragContinuousProps){0}
+    low_drag.bounds = low
+    low_drag.id = drag.id
+    low_drag.class_name = drag.class_name
+    low_drag.values = drag.current_min
+    low_drag.value_count = 1
+    low_drag.speed = drag.speed
+    low_drag.min = drag.min
+    low_drag.max = *drag.current_max
+    low_drag.format = drag.format
+    low_drag.disabled = drag.disabled
+    changed: i32 = ui_tree_drag_continuous(low_drag)
+    high_drag: DragContinuousProps = low_drag
+    high_drag.bounds = high
+    high_drag.id = ui_numeric_focus_id(drag.id, 1, 0)
+    high_drag.values = drag.current_max
+    high_drag.min = old_min
+    high_drag.max = drag.max
+    if drag.format_max != nil { high_drag.format = drag.format_max }
+    changed |= ui_tree_drag_continuous(high_drag)
+    if *drag.current_min > *drag.current_max {
+        *drag.current_min = *drag.current_max
+    }
+    ui_tree_drag_range_end(bounds, drag.label)
+    return changed
+}
+
+ui_tree_drag_discrete_range :: (
+drag: DragDiscreteRangeProps) -> i32 #export {
+    if drag.current_min == nil || drag.current_max == nil { return 0 }
+    bounds: Rectangle = ui_tree_drag_range_begin(drag.bounds, drag.id)
+    low: Rectangle = bounds
+    high: Rectangle = bounds
+    low.width *= 0.5f
+    high.x += low.width
+    high.width -= low.width
+    old_min: i32 = *drag.current_min
+    low_drag: DragDiscreteProps = (DragDiscreteProps){0}
+    low_drag.bounds = low
+    low_drag.id = drag.id
+    low_drag.class_name = drag.class_name
+    low_drag.values = drag.current_min
+    low_drag.value_count = 1
+    low_drag.speed = drag.speed
+    low_drag.min = drag.min
+    low_drag.max = *drag.current_max
+    low_drag.format = drag.format
+    low_drag.disabled = drag.disabled
+    changed: i32 = ui_tree_drag_discrete(low_drag)
+    high_drag: DragDiscreteProps = low_drag
+    high_drag.bounds = high
+    high_drag.id = ui_numeric_focus_id(drag.id, 1, 1)
+    high_drag.values = drag.current_max
+    high_drag.min = old_min
+    high_drag.max = drag.max
+    if drag.format_max != nil { high_drag.format = drag.format_max }
+    changed |= ui_tree_drag_discrete(high_drag)
+    if *drag.current_min > *drag.current_max {
+        *drag.current_min = *drag.current_max
+    }
+    ui_tree_drag_range_end(bounds, drag.label)
+    return changed
+}
+
+Drag :: (drag: DragProps) -> i32 #export {
+    if drag.mode == DragRange {
+        if InputKindIsInt(drag.kind) {
+            range: DragDiscreteRangeProps =
+            (DragDiscreteRangeProps){0}
+            range.bounds = drag.bounds
+            range.id = drag.id
+            range.class_name = drag.class_name
+            range.label = drag.label
+            range.current_min = drag.int_min
+            range.current_max = drag.int_max
+            range.speed = drag.speed
+            range.min = (int)drag.min
+            range.max = (int)drag.max
+            range.format = drag.format
+            range.format_max = drag.format_max
+            range.disabled = drag.disabled
+            return ui_tree_drag_discrete_range(range)
+        }
+        range: DragContinuousRangeProps =
+        (DragContinuousRangeProps){0}
+        range.bounds = drag.bounds
+        range.id = drag.id
+        range.class_name = drag.class_name
+        range.label = drag.label
+        range.current_min = drag.float_min
+        range.current_max = drag.float_max
+        range.speed = drag.speed
+        range.min = (float)drag.min
+        range.max = (float)drag.max
+        range.format = drag.format
+        range.format_max = drag.format_max
+        range.disabled = drag.disabled
+        return ui_tree_drag_continuous_range(range)
+    }
+    count: i32 = drag.value_count
+    if count <= 0 { count = 1 }
+    if InputKindIsInt(drag.kind) {
+        value: DragDiscreteProps = (DragDiscreteProps){0}
+        value.bounds = drag.bounds
+        value.id = drag.id
+        value.class_name = drag.class_name
+        value.label = drag.label
+        value.values = drag.int_values
+        value.value_count = count
+        value.speed = drag.speed
+        value.min = (int)drag.min
+        value.max = (int)drag.max
+        value.format = drag.format
+        value.disabled = drag.disabled
+        return ui_tree_drag_discrete(value)
+    }
+    value: DragContinuousProps = (DragContinuousProps){0}
+    value.bounds = drag.bounds
+    value.id = drag.id
+    value.class_name = drag.class_name
+    value.label = drag.label
+    value.values = drag.float_values
+    value.value_count = count
+    value.speed = drag.speed
+    value.min = (float)drag.min
+    value.max = (float)drag.max
+    value.format = drag.format
+    value.disabled = drag.disabled
+    return ui_tree_drag_continuous(value)
+}
+
+Slider :: (slider: SliderProps) -> i32 #export {
+    if slider.value_count <= 0 { slider.value_count = 1 }
+    slider.disabled |= ContentDisabled()
+    slider.bounds = ui_slider_bounds(slider)
+    id: NodeId = ui_tree_add(slider.id, WidgetKindSlider,
+    slider.bounds, nil)
+    if id >= 0 {
+        InvalidateTree(INVALIDATE_PAINT)
+        node: *TreeNode = &ui_tree_nodes[id]
+        slider.bounds = node->bounds
+        node->data.slider.props = slider
+        label: const char* = slider.label
+        if label == nil { label = "" }
+        format: const char* = slider.format
+        if format == nil { format = InputDefaultFormat(slider.kind) }
+        value_format: const char* = slider.value_format
+        if value_format == nil { value_format = "" }
+        label_size: size_t = strlen(label) + 1
+        format_size: size_t = strlen(format) + 1
+        value_size: size_t = strlen(value_format) + 1
+        node->owned_text = (char*)malloc(label_size +
+        format_size + value_size)
+        if node->owned_text != nil {
+            memcpy(node->owned_text, label, label_size)
+            memcpy(node->owned_text + label_size,
+            format, format_size)
+            memcpy(node->owned_text + label_size + format_size,
+            value_format, value_size)
+        }
+        node->data.slider.format_offset = label_size
+        node->data.slider.props.label = nil
+        node->data.slider.props.format = nil
+        node->data.slider.props.value_format = nil
+        node->data.slider.props.measured_height = nil
+    }
+    if slider.measured_height != nil {
+        *slider.measured_height = slider.bounds.height
+    }
+    changed: i32 = ui_update_slider(slider)
+    if !ui_tree_building { ui_paint_slider(slider) }
+    if changed { InvalidateTree(INVALIDATE_PAINT) }
+    return changed
+}
+
+ui_numeric_input_begin :: (id: i32,
+bounds: *Rectangle) -> i32 {
+    depth: i32 = ui_tree_stack_depth
+    node: NodeId = ui_tree_add(id, WidgetKindInput,
+    *bounds, nil)
+    if node >= 0 {
+        *bounds = ui_tree_nodes[node].bounds
+        if ui_tree_stack_depth >= TREE_LAYOUT_DEPTH { abort() }
+        ui_tree_stack[ui_tree_stack_depth] = node
+        ui_tree_stack_depth += 1
+    }
+    return depth
+}
+
+ui_tree_input_scalar :: (input: InputContinuousProps) -> i32 #export {
+    depth: i32 = ui_numeric_input_begin(input.id, &input.bounds)
+    changed: i32 = RenderInputContinuous(input)
+    ui_tree_stack_depth = depth
+    return changed
+}
+
+ui_tree_input_whole :: (input: InputDiscreteProps) -> i32 #export {
+    depth: i32 = ui_numeric_input_begin(input.id, &input.bounds)
+    changed: i32 = RenderInputDiscrete(input)
+    ui_tree_stack_depth = depth
+    return changed
+}
+
+ui_tree_input_precise :: (input: InputPreciseProps) -> i32 #export {
+    depth: i32 = ui_numeric_input_begin(input.id, &input.bounds)
+    changed: i32 = RenderInputPrecise(input)
+    ui_tree_stack_depth = depth
+    return changed
+}
+
+Input :: (input: InputProps) -> i32 #export {
+    count: i32 = input.value_count
+    if count <= 0 { count = 1 }
+    if InputKindIsInt(input.kind) {
+        whole: InputDiscreteProps = (InputDiscreteProps){0}
+        whole.bounds = input.bounds
+        whole.id = input.id
+        whole.label = input.label
+        whole.values = input.int_values
+        whole.value_count = count
+        whole.step = (int)input.step
+        whole.step_fast = (int)input.step_fast
+        whole.format = input.format
+        whole.disabled = input.disabled
+        return ui_tree_input_whole(whole)
+    }
+    if InputKindIsDouble(input.kind) {
+        precise: InputPreciseProps = (InputPreciseProps){0}
+        precise.bounds = input.bounds
+        precise.id = input.id
+        precise.label = input.label
+        precise.values = input.double_values
+        precise.value_count = count
+        precise.step = input.step
+        precise.step_fast = input.step_fast
+        precise.format = input.format
+        precise.disabled = input.disabled
+        return ui_tree_input_precise(precise)
+    }
+    scalar: InputContinuousProps = (InputContinuousProps){0}
+    scalar.bounds = input.bounds
+    scalar.id = input.id
+    scalar.label = input.label
+    scalar.values = input.float_values
+    scalar.value_count = count
+    scalar.step = (float)input.step
+    scalar.step_fast = (float)input.step_fast
+    scalar.format = input.format
+    scalar.disabled = input.disabled
+    return ui_tree_input_scalar(scalar)
+}

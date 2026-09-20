@@ -1,0 +1,152 @@
+#module "inspect_overlay_host"
+#import "ui_internal.h"
+#import "ui/inspect_state.h"
+#import "runtime/inspect.h"
+
+InspectResizeHit :: (bounds: Rectangle,
+point: Vector2) -> i32 {
+    scale: float = (float)Scale(1000) / 1000.0
+    handle: Rectangle = InspectResizeHandleBounds(
+    bounds, InspectResizeHitHandleSize(scale))
+    return CheckCollisionPointRec(point, handle)
+}
+
+ui_inspect_select_at :: (mouse: Vector2) #export {
+    g_ui_inspect.selected = -1
+    i: i32 = g_ui_inspect.widget_count - 1
+    while i >= 0 {
+        if CheckCollisionPointRec(mouse,
+        g_ui_inspect.widgets[i].screen_bounds) {
+            g_ui_inspect.selected = i
+            return
+        }
+        i -= 1
+    }
+}
+
+InspectCommitSelected :: (bounds: Rectangle) {
+    if g_ui_inspect.selected < 0 ||
+    g_ui_inspect.selected >= g_ui_inspect.widget_count { return }
+    widget: *InspectWidget =
+    &g_ui_inspect.widgets[g_ui_inspect.selected]
+    if !ui_inspect_persistent_id(widget->id) {
+        return
+    }
+    override: *InspectOverride = ui_inspect_get_override(widget->id)
+    if override == nil {
+        return
+    }
+    bounds = InspectClampBounds(bounds, 4.0)
+    override->bounds = bounds
+    override->enabled = 1
+    widget->bounds = bounds
+    g_ui_inspect.dirty = 1
+}
+
+InspectUpdateInteraction :: () {
+    screen_mouse: Vector2 = GetMousePosition()
+    if g_ui_inspect.canvas_active &&
+    !CheckCollisionPointRec(screen_mouse,
+    g_ui_inspect.canvas_bounds) &&
+    !g_ui_inspect.dragging && !g_ui_inspect.resizing { return }
+    if ui_inspect_bypass_down() {
+        return
+    }
+    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT) {
+        ui_inspect_select_at(screen_mouse)
+        if g_ui_inspect.selected >= 0 {
+            selected: *InspectWidget =
+            &g_ui_inspect.widgets[g_ui_inspect.selected]
+            can_move: i32 = (selected->flags & WidgetFlagMovable) != 0
+            can_resize: i32 =
+            (selected->flags & WidgetFlagResizable) != 0
+            g_ui_inspect.drag_start = screen_mouse
+            g_ui_inspect.edit_start = selected->bounds
+            g_ui_inspect.resizing = can_resize &&
+            InspectResizeHit(selected->screen_bounds, screen_mouse)
+            g_ui_inspect.dragging = can_move &&
+            !g_ui_inspect.resizing
+        }
+    }
+    if IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+    (g_ui_inspect.dragging || g_ui_inspect.resizing) &&
+    g_ui_inspect.selected >= 0 {
+        selected: *InspectWidget =
+        &g_ui_inspect.widgets[g_ui_inspect.selected]
+        dx: float = screen_mouse.x - g_ui_inspect.drag_start.x
+        dy: float = screen_mouse.y - g_ui_inspect.drag_start.y
+        zoom: float = selected->screen_zoom > 0
+        ? selected->screen_zoom : 1
+        edit: InspectEdit = InspectEditForDelta(
+        g_ui_inspect.edit_start, selected->screen_bounds,
+        dx, dy, zoom, g_ui_inspect.resizing != 0, 4.0)
+        InspectCommitSelected(edit.bounds)
+        selected->screen_bounds = edit.screen_bounds
+    }
+    release: InspectReleaseDecision = InspectReleaseDecisionFor(
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+    g_ui_inspect.dragging != 0, g_ui_inspect.resizing != 0)
+    if release.end_edit {
+        g_ui_inspect.dragging = 0
+        g_ui_inspect.resizing = 0
+    }
+    if release.consume_release {
+        ConsumeRelease()
+    }
+    if g_ui_inspect.selected >= 0 &&
+    g_ui_inspect.selected < g_ui_inspect.widget_count {
+        step: float = InspectKeyboardStep(
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+        selected: *InspectWidget =
+        &g_ui_inspect.widgets[g_ui_inspect.selected]
+        bounds: Rectangle = selected->bounds
+        if IsKeyPressed(KEY_LEFT) {
+            bounds.x -= step
+            InspectCommitSelected(bounds)
+        }
+        if IsKeyPressed(KEY_RIGHT) {
+            bounds.x += step
+            InspectCommitSelected(bounds)
+        }
+        if IsKeyPressed(KEY_UP) {
+            bounds.y -= step
+            InspectCommitSelected(bounds)
+        }
+        if IsKeyPressed(KEY_DOWN) {
+            bounds.y += step
+            InspectCommitSelected(bounds)
+        }
+    }
+}
+
+RenderInspectOverlay :: () #export {
+    ui_inspect_init_from_env()
+    if !g_ui_inspect.enabled || !g_ui_inspect.visible {
+        return
+    }
+    outline: Color = (Color){40, 180, 255, 170}
+    selected_color: Color = (Color){255, 204, 64, 230}
+    handle_color: Color = (Color){255, 204, 64, 255}
+    InspectUpdateInteraction()
+    i: i32 = 0
+    while i < g_ui_inspect.widget_count {
+        widget: *InspectWidget = &g_ui_inspect.widgets[i]
+        screen_bounds: Rectangle = widget->screen_bounds
+        color: Color = i == g_ui_inspect.selected
+        ? selected_color : outline
+        DrawRectangleLinesEx(screen_bounds,
+        i == g_ui_inspect.selected ? 2 : 1, color)
+        if i == g_ui_inspect.selected &&
+        (widget->flags & WidgetFlagResizable) != 0 {
+            scale: float = (float)Scale(1000) / 1000.0
+            size: i32 = InspectResizePaintHandleSize(scale)
+            handle_bounds: Rectangle = InspectResizeHandleBounds(
+            screen_bounds, size)
+            DrawRectangle((int)handle_bounds.x,
+            (int)handle_bounds.y,
+            (int)handle_bounds.width,
+            (int)handle_bounds.height, handle_color)
+        }
+        i += 1
+    }
+}

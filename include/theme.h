@@ -73,7 +73,6 @@ const Theme *GetThemeRef(void);
 
 void ResetTheme(void);
 Color GetThemeColor(const char *scope, const char *key);
-void DrawThemeTKBorder(Rectangle rec, int borderWidth, bool raised);
 
 void SetThemeSource(ThemeSource source);
 ThemeSource GetThemeSource(void);

@@ -1,0 +1,197 @@
+#module "paint_frame_host"
+#import "ui_internal.h"
+#import "ui_paint_layers_internal.h"
+#import "ui_popup_input_internal.h"
+#import "ui/dropdown_store.h"
+#import "ui/tab_store.h"
+#import "ui/widget_store.h"
+#import "stdlib.h"
+
+main_layers :: *PaintLayers #global
+main_frame_open :: i32 #global
+frame_layer_stack :: [8]*PaintLayers #global
+nested_frame_layers :: [8]*PaintLayers #global
+frame_layer_stack_depth :: i32 #global
+headless_input :: *PopupInput #global
+headless_previous_input :: *PopupInput #global
+headless_dropdowns :: *DropdownStore #global
+headless_previous_dropdowns :: *DropdownStore #global
+headless_tab_bars :: *TabBarStore #global
+headless_previous_tab_bars :: *TabBarStore #global
+headless_toolkit :: *ToolkitStore #global
+headless_previous_toolkit :: *ToolkitStore #global
+headless_input_open :: i32 #global
+
+ui_paint_layers_dropdowns :: (layers: *PaintLayers) -> *DropdownStore #extern
+ui_paint_layers_tab_bars :: (layers: *PaintLayers) -> *TabBarStore #extern
+ui_paint_layers_toolkit :: (layers: *PaintLayers) -> *ToolkitStore #extern
+ui_paint_layers_needs_composite :: (layers: *PaintLayers) -> i32 #extern
+
+ui_frame_layers_begin :: () #export {
+    if ui_window_frame_active() {
+        return
+    }
+    if main_frame_open && IsWindowReady() {
+        level: i32 = frame_layer_stack_depth
+        if level >= 8 {
+            abort()
+        }
+        frame_layer_stack[level] = main_layers
+        main_layers = nested_frame_layers[level]
+        nested_frame_layers[level] = nil
+        frame_layer_stack_depth += 1
+        main_frame_open = 0
+    }
+    if IsWindowReady() {
+        if main_layers == nil {
+            main_layers = ui_paint_layers_create()
+        }
+        ui_paint_layers_frame(main_layers,
+        ui_view_width, ui_view_height)
+    } else if ui_popup_input_bound() == nil {
+        if headless_input == nil {
+            headless_input = ui_popup_input_create()
+        }
+        if headless_dropdowns == nil {
+            headless_dropdowns = dropdown_store_new()
+        }
+        if headless_tab_bars == nil {
+            headless_tab_bars = tab_bar_store_new()
+        }
+        if headless_toolkit == nil {
+            headless_toolkit = toolkit_store_new()
+        }
+        toolkit_store_frame(headless_toolkit)
+        ui_popup_input_frame(headless_input)
+        headless_previous_input = ui_popup_input_bind(headless_input)
+        headless_previous_dropdowns =
+        dropdown_store_swap(headless_dropdowns)
+        headless_previous_tab_bars =
+        tab_bar_store_swap(headless_tab_bars)
+        headless_previous_toolkit =
+        toolkit_store_swap(headless_toolkit)
+        headless_input_open = 1
+    }
+    main_frame_open = 1
+}
+
+ui_frame_paint_layers :: () -> *PaintLayers #export {
+    if ui_window_frame_active() {
+        return ui_window_paint_layers()
+    }
+    if !main_frame_open || !IsWindowReady() {
+        return nil
+    }
+    if main_layers == nil {
+        main_layers = ui_paint_layers_create()
+        ui_paint_layers_frame(main_layers,
+        ui_view_width, ui_view_height)
+    }
+    return main_layers
+}
+
+ui_frame_layers_end :: () #export {
+    if ui_window_frame_active() || !main_frame_open {
+        return
+    }
+    if main_layers != nil {
+        ui_paint_layers_composite(main_layers)
+        dropdown_store_swap(ui_paint_layers_dropdowns(main_layers))
+        tab_bar_store_swap(ui_paint_layers_tab_bars(main_layers))
+        toolkit_store_swap(ui_paint_layers_toolkit(main_layers))
+    }
+    if headless_input_open {
+        ui_popup_input_finish(headless_input)
+        ui_popup_input_bind(headless_previous_input)
+        dropdown_store_swap(headless_previous_dropdowns)
+        tab_bar_store_swap(headless_previous_tab_bars)
+        toolkit_store_swap(headless_previous_toolkit)
+        headless_previous_input = nil
+        headless_previous_dropdowns = nil
+        headless_previous_tab_bars = nil
+        headless_previous_toolkit = nil
+        headless_input_open = 0
+        dropdown_store_swap(headless_dropdowns)
+        tab_bar_store_swap(headless_tab_bars)
+        toolkit_store_swap(headless_toolkit)
+    }
+    main_frame_open = 0
+    if frame_layer_stack_depth > 0 {
+        level: i32 = frame_layer_stack_depth - 1
+        nested_frame_layers[level] = main_layers
+        main_layers = frame_layer_stack[level]
+        frame_layer_stack[level] = nil
+        frame_layer_stack_depth = level
+        main_frame_open = 1
+    }
+}
+
+ui_paint_layers_shutdown :: () #export {
+    if main_layers != nil {
+        if ui_paint_layers_needs_composite(main_layers) {
+            ui_paint_layers_composite(main_layers)
+        }
+        if dropdown_store_current() ==
+        ui_paint_layers_dropdowns(main_layers) {
+            dropdown_store_swap(nil)
+        }
+        if tab_bar_store_current() ==
+        ui_paint_layers_tab_bars(main_layers) {
+            tab_bar_store_swap(nil)
+        }
+        if toolkit_store_current() ==
+        ui_paint_layers_toolkit(main_layers) {
+            toolkit_store_swap(nil)
+        }
+        ui_paint_layers_destroy(main_layers)
+        main_layers = nil
+    }
+    i: i32 = 0
+    while i < 8 {
+        if nested_frame_layers[i] != nil {
+            ui_paint_layers_destroy(nested_frame_layers[i])
+            nested_frame_layers[i] = nil
+        }
+        frame_layer_stack[i] = nil
+        i += 1
+    }
+    frame_layer_stack_depth = 0
+    if headless_input != nil {
+        if headless_input_open {
+            ui_popup_input_finish(headless_input)
+            ui_popup_input_bind(headless_previous_input)
+            dropdown_store_swap(headless_previous_dropdowns)
+            tab_bar_store_swap(headless_previous_tab_bars)
+            toolkit_store_swap(headless_previous_toolkit)
+            headless_input_open = 0
+        }
+        ui_popup_input_destroy(headless_input)
+        headless_input = nil
+        headless_previous_input = nil
+        headless_previous_dropdowns = nil
+        headless_previous_tab_bars = nil
+        headless_previous_toolkit = nil
+    }
+    if headless_dropdowns != nil {
+        if dropdown_store_current() == headless_dropdowns {
+            dropdown_store_swap(nil)
+        }
+        dropdown_store_free(headless_dropdowns)
+        headless_dropdowns = nil
+    }
+    if headless_tab_bars != nil {
+        if tab_bar_store_current() == headless_tab_bars {
+            tab_bar_store_swap(nil)
+        }
+        tab_bar_store_free(headless_tab_bars)
+        headless_tab_bars = nil
+    }
+    if headless_toolkit != nil {
+        if toolkit_store_current() == headless_toolkit {
+            toolkit_store_swap(nil)
+        }
+        toolkit_store_free(headless_toolkit)
+        headless_toolkit = nil
+    }
+    main_frame_open = 0
+}

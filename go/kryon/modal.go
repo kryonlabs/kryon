@@ -76,1057 +76,559 @@ type ModalPromptInput struct {
 }
 
 func Modal_ModalPanelRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func Modal_ModalTitleRole() int32 {
-	var value_0 int32 = 16
-	return value_0
+	return 16
 }
 
 func Modal_ModalActionRole() int32 {
-	var value_0 int32 = 17
-	return value_0
+	return 17
 }
 
 func Modal_ModalScrimRole() int32 {
-	var value_0 int32 = 19
-	return value_0
+	return 19
 }
 
 func Modal_ModalMessageRole() int32 {
-	var value_0 int32 = 20
-	return value_0
+	return 20
 }
 
 func Modal_ModalCloseRole() int32 {
-	var value_0 int32 = 15
-	return value_0
+	return 15
 }
 
 func Modal_ModalHas(fields uint32, field uint32) bool {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 != value_4
-	return value_5
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	return value_0
 }
 
 func Modal_ModalMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 bool = Modal_ModalHas(value_0, value_1)
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 float32 = value
-		var value_6 float32 = 0.0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	var value_0 bool = Modal_ModalHas(fields, field)
+	var value_1 bool = !value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_8 bool = value_4
-	if !value_8 {
-		var value_9 bool = allow_zero
-		var value_10 bool = !value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = value
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 <= value_13
-			value_11 = value_14
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_8 = value_11
+		value_2 = value_3
 	}
-	if value_8 {
-		var value_15 float32 = fallback
-		value = value_15
+	if value_2 {
+		value = fallback
 	}
-	var value_16 float32 = value
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	return value_19
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func Modal_ModalActionButtonFrame(action StyleFrame) StyleFrame {
-	var value_0 float32 = 0.0
-	action.Value.OffsetX = value_0
-	var value_1 float32 = 0.0
-	action.Value.OffsetY = value_1
-	var value_2 StyleFrame = action
-	return value_2
+	action.Value.OffsetX = 0.0
+	action.Value.OffsetY = 0.0
+	return action
 }
 
 func Modal_ModalMetricsFor(scale float32, panel StyleFrame, title StyleFrame, message StyleFrame, action StyleFrame, close StyleFrame) ModalMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics ModalMetrics = ModalMetrics{}
-	var value_4 uint32 = panel.Value.Fields
-	var value_5 int32 = int32(StyleGap)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = panel.Value.Gap
-	var value_8 float32 = 24.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = Modal_ModalMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.ScreenPad = value_11
-	var value_12 uint32 = panel.Value.Fields
-	var value_13 int32 = int32(StyleIconSize)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 float32 = panel.Value.IconSize
-	var value_16 float32 = 280.0
-	var value_17 float32 = scale
-	var value_18 bool = false
-	var value_19 int32 = Modal_ModalMetric(value_12, value_14, value_15, value_16, value_17, value_18)
-	metrics.MinWidth = value_19
-	var value_20 uint32 = panel.Value.Fields
-	var value_21 int32 = int32(StyleContentOffset)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 float32 = panel.Value.OffsetX
-	var value_24 float32 = 420.0
-	var value_25 float32 = scale
-	var value_26 bool = false
-	var value_27 int32 = Modal_ModalMetric(value_20, value_22, value_23, value_24, value_25, value_26)
-	metrics.DefaultMaxWidth = value_27
-	var value_28 uint32 = panel.Value.Fields
-	var value_29 int32 = int32(StylePaddingY)
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 float32 = panel.Value.PaddingY
-	var value_32 float32 = 8.0
-	var value_33 float32 = scale
-	var value_34 bool = true
-	var value_35 int32 = Modal_ModalMetric(value_28, value_30, value_31, value_32, value_33, value_34)
-	metrics.EdgePad = value_35
-	var value_36 uint32 = title.Value.Fields
-	var value_37 int32 = int32(StyleIconSize)
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
-	var value_39 float32 = title.Value.IconSize
-	var value_40 float32 = 48.0
-	var value_41 float32 = scale
-	var value_42 bool = true
-	var value_43 int32 = Modal_ModalMetric(value_36, value_38, value_39, value_40, value_41, value_42)
-	metrics.TitleHeight = value_43
-	var value_44 uint32 = panel.Value.Fields
-	var value_45 int32 = int32(StylePaddingX)
-	var value_46 uint32 = uint32(number_runtime_bits(uint64(value_45), uint64(0), 32, false, 0))
-	var value_47 float32 = panel.Value.PaddingX
+	var value_0 uint32 = panel.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_2 float32 = panel.Value.Gap
+	var value_3 float32 = 24.0
+	var value_4 int32 = Modal_ModalMetric(value_0, value_1, value_2, value_3, scale, true)
+	metrics.ScreenPad = value_4
+	var value_5 uint32 = panel.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_7 float32 = panel.Value.IconSize
+	var value_8 float32 = 280.0
+	var value_9 int32 = Modal_ModalMetric(value_5, value_6, value_7, value_8, scale, false)
+	metrics.MinWidth = value_9
+	var value_10 uint32 = panel.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_12 float32 = panel.Value.OffsetX
+	var value_13 float32 = 420.0
+	var value_14 int32 = Modal_ModalMetric(value_10, value_11, value_12, value_13, scale, false)
+	metrics.DefaultMaxWidth = value_14
+	var value_15 uint32 = panel.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_17 float32 = panel.Value.PaddingY
+	var value_18 float32 = 8.0
+	var value_19 int32 = Modal_ModalMetric(value_15, value_16, value_17, value_18, scale, true)
+	metrics.EdgePad = value_19
+	var value_20 uint32 = title.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_22 float32 = title.Value.IconSize
+	var value_23 float32 = 48.0
+	var value_24 int32 = Modal_ModalMetric(value_20, value_21, value_22, value_23, scale, true)
+	metrics.TitleHeight = value_24
+	var value_25 uint32 = panel.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_27 float32 = panel.Value.PaddingX
+	var value_28 float32 = 18.0
+	var value_29 int32 = Modal_ModalMetric(value_25, value_26, value_27, value_28, scale, true)
+	metrics.PaddingX = value_29
+	var value_30 uint32 = title.Value.Fields
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_32 float32 = title.Value.PaddingY
+	var value_33 float32 = 18.0
+	var value_34 int32 = Modal_ModalMetric(value_30, value_31, value_32, value_33, scale, true)
+	metrics.PaddingBottom = value_34
+	var value_35 uint32 = message.Value.Fields
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_37 float32 = message.Value.Gap
+	var value_38 float32 = 18.0
+	var value_39 int32 = Modal_ModalMetric(value_35, value_36, value_37, value_38, scale, true)
+	metrics.MessageGap = value_39
+	var value_40 uint32 = message.Value.Fields
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_42 float32 = message.Value.IconSize
+	var value_43 float32 = 38.0
+	var value_44 int32 = Modal_ModalMetric(value_40, value_41, value_42, value_43, scale, true)
+	metrics.PromptHeight = value_44
+	var value_45 uint32 = message.Value.Fields
+	var value_46 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_47 float32 = message.Value.OffsetY
 	var value_48 float32 = 18.0
-	var value_49 float32 = scale
-	var value_50 bool = true
-	var value_51 int32 = Modal_ModalMetric(value_44, value_46, value_47, value_48, value_49, value_50)
-	metrics.PaddingX = value_51
-	var value_52 uint32 = title.Value.Fields
-	var value_53 int32 = int32(StylePaddingY)
-	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
-	var value_55 float32 = title.Value.PaddingY
-	var value_56 float32 = 18.0
-	var value_57 float32 = scale
-	var value_58 bool = true
-	var value_59 int32 = Modal_ModalMetric(value_52, value_54, value_55, value_56, value_57, value_58)
-	metrics.PaddingBottom = value_59
-	var value_60 uint32 = message.Value.Fields
-	var value_61 int32 = int32(StyleGap)
-	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
-	var value_63 float32 = message.Value.Gap
-	var value_64 float32 = 18.0
-	var value_65 float32 = scale
-	var value_66 bool = true
-	var value_67 int32 = Modal_ModalMetric(value_60, value_62, value_63, value_64, value_65, value_66)
-	metrics.MessageGap = value_67
-	var value_68 uint32 = message.Value.Fields
-	var value_69 int32 = int32(StyleIconSize)
-	var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
-	var value_71 float32 = message.Value.IconSize
-	var value_72 float32 = 38.0
-	var value_73 float32 = scale
-	var value_74 bool = true
-	var value_75 int32 = Modal_ModalMetric(value_68, value_70, value_71, value_72, value_73, value_74)
-	metrics.PromptHeight = value_75
-	var value_76 uint32 = message.Value.Fields
-	var value_77 int32 = int32(StyleContentOffset)
-	var value_78 uint32 = uint32(number_runtime_bits(uint64(value_77), uint64(0), 32, false, 0))
-	var value_79 float32 = message.Value.OffsetY
-	var value_80 float32 = 18.0
-	var value_81 float32 = scale
-	var value_82 bool = true
-	var value_83 int32 = Modal_ModalMetric(value_76, value_78, value_79, value_80, value_81, value_82)
-	metrics.PromptGap = value_83
-	var value_84 uint32 = action.Value.Fields
-	var value_85 int32 = int32(StyleIconSize)
-	var value_86 uint32 = uint32(number_runtime_bits(uint64(value_85), uint64(0), 32, false, 0))
-	var value_87 float32 = action.Value.IconSize
-	var value_88 float32 = 44.0
-	var value_89 float32 = scale
-	var value_90 bool = false
-	var value_91 int32 = Modal_ModalMetric(value_84, value_86, value_87, value_88, value_89, value_90)
-	metrics.ButtonHeight = value_91
-	var value_92 uint32 = action.Value.Fields
-	var value_93 int32 = int32(StyleGap)
-	var value_94 uint32 = uint32(number_runtime_bits(uint64(value_93), uint64(0), 32, false, 0))
-	var value_95 float32 = action.Value.Gap
-	var value_96 float32 = 8.0
-	var value_97 float32 = scale
-	var value_98 bool = true
-	var value_99 int32 = Modal_ModalMetric(value_92, value_94, value_95, value_96, value_97, value_98)
-	metrics.ButtonGap = value_99
-	var value_100 uint32 = action.Value.Fields
-	var value_101 int32 = int32(StylePaddingX)
-	var value_102 uint32 = uint32(number_runtime_bits(uint64(value_101), uint64(0), 32, false, 0))
-	var value_103 float32 = action.Value.PaddingX
-	var value_104 float32 = 24.0
-	var value_105 float32 = scale
-	var value_106 bool = true
-	var value_107 int32 = Modal_ModalMetric(value_100, value_102, value_103, value_104, value_105, value_106)
-	metrics.ActionPaddingX = value_107
-	var value_108 uint32 = action.Value.Fields
-	var value_109 int32 = int32(StyleContentOffset)
-	var value_110 uint32 = uint32(number_runtime_bits(uint64(value_109), uint64(0), 32, false, 0))
-	var value_111 float32 = action.Value.OffsetX
-	var value_112 float32 = 88.0
-	var value_113 float32 = scale
-	var value_114 bool = false
-	var value_115 int32 = Modal_ModalMetric(value_108, value_110, value_111, value_112, value_113, value_114)
-	metrics.ActionMinWidth = value_115
-	var value_116 uint32 = action.Value.Fields
-	var value_117 int32 = int32(StyleContentOffset)
-	var value_118 uint32 = uint32(number_runtime_bits(uint64(value_117), uint64(0), 32, false, 0))
-	var value_119 float32 = action.Value.OffsetY
-	var value_120 float32 = 150.0
-	var value_121 float32 = scale
-	var value_122 bool = false
-	var value_123 int32 = Modal_ModalMetric(value_116, value_118, value_119, value_120, value_121, value_122)
-	metrics.ActionMaxWidth = value_123
-	var value_124 uint32 = message.Value.Fields
-	var value_125 int32 = int32(StylePaddingX)
-	var value_126 uint32 = uint32(number_runtime_bits(uint64(value_125), uint64(0), 32, false, 0))
-	var value_127 float32 = message.Value.PaddingX
-	var value_128 float32 = 120.0
-	var value_129 float32 = scale
-	var value_130 bool = false
-	var value_131 int32 = Modal_ModalMetric(value_124, value_126, value_127, value_128, value_129, value_130)
-	metrics.ContentMinWidth = value_131
-	var value_132 uint32 = message.Value.Fields
-	var value_133 int32 = int32(StylePaddingY)
-	var value_134 uint32 = uint32(number_runtime_bits(uint64(value_133), uint64(0), 32, false, 0))
-	var value_135 float32 = message.Value.PaddingY
-	var value_136 float32 = 160.0
-	var value_137 float32 = scale
-	var value_138 bool = false
-	var value_139 int32 = Modal_ModalMetric(value_132, value_134, value_135, value_136, value_137, value_138)
-	metrics.MinHeight = value_139
-	var value_140 uint32 = close.Value.Fields
-	var value_141 int32 = int32(StyleContentOffset)
-	var value_142 uint32 = uint32(number_runtime_bits(uint64(value_141), uint64(0), 32, false, 0))
-	var value_143 float32 = close.Value.OffsetX
-	var value_144 float32 = 120.0
-	var value_145 float32 = scale
-	var value_146 bool = false
-	var value_147 int32 = Modal_ModalMetric(value_140, value_142, value_143, value_144, value_145, value_146)
-	metrics.FrameMinWidth = value_147
-	var value_148 uint32 = close.Value.Fields
-	var value_149 int32 = int32(StyleContentOffset)
-	var value_150 uint32 = uint32(number_runtime_bits(uint64(value_149), uint64(0), 32, false, 0))
-	var value_151 float32 = close.Value.OffsetY
-	var value_152 float32 = 96.0
-	var value_153 float32 = scale
-	var value_154 bool = false
-	var value_155 int32 = Modal_ModalMetric(value_148, value_150, value_151, value_152, value_153, value_154)
-	metrics.FrameMinHeight = value_155
-	var value_156 uint32 = title.Value.Fields
-	var value_157 int32 = int32(StyleContentOffset)
-	var value_158 uint32 = uint32(number_runtime_bits(uint64(value_157), uint64(0), 32, false, 0))
-	var value_159 float32 = title.Value.OffsetY
-	var value_160 float32 = 14.0
-	var value_161 float32 = scale
-	var value_162 bool = true
-	var value_163 int32 = Modal_ModalMetric(value_156, value_158, value_159, value_160, value_161, value_162)
-	metrics.FrameTitleY = value_163
-	var value_164 uint32 = panel.Value.Fields
-	var value_165 int32 = int32(StyleContentOffset)
-	var value_166 uint32 = uint32(number_runtime_bits(uint64(value_165), uint64(0), 32, false, 0))
-	var value_167 float32 = panel.Value.OffsetY
-	var value_168 float32 = 58.0
-	var value_169 float32 = scale
-	var value_170 bool = true
-	var value_171 int32 = Modal_ModalMetric(value_164, value_166, value_167, value_168, value_169, value_170)
-	metrics.FrameContentY = value_171
-	var value_172 uint32 = close.Value.Fields
-	var value_173 int32 = int32(StylePaddingY)
-	var value_174 uint32 = uint32(number_runtime_bits(uint64(value_173), uint64(0), 32, false, 0))
-	var value_175 float32 = close.Value.PaddingY
-	var value_176 float32 = 16.0
-	var value_177 float32 = scale
-	var value_178 bool = true
-	var value_179 int32 = Modal_ModalMetric(value_172, value_174, value_175, value_176, value_177, value_178)
-	metrics.FrameContentBottomPad = value_179
-	var value_180 uint32 = close.Value.Fields
-	var value_181 int32 = int32(StyleIconSize)
-	var value_182 uint32 = uint32(number_runtime_bits(uint64(value_181), uint64(0), 32, false, 0))
-	var value_183 float32 = close.Value.IconSize
-	var value_184 float32 = 20.0
-	var value_185 float32 = scale
-	var value_186 bool = true
-	var value_187 int32 = Modal_ModalMetric(value_180, value_182, value_183, value_184, value_185, value_186)
-	metrics.FrameIconSize = value_187
-	var value_188 uint32 = close.Value.Fields
-	var value_189 int32 = int32(StylePaddingX)
-	var value_190 uint32 = uint32(number_runtime_bits(uint64(value_189), uint64(0), 32, false, 0))
-	var value_191 float32 = close.Value.PaddingX
-	var value_192 float32 = 8.0
-	var value_193 float32 = scale
-	var value_194 bool = true
-	var value_195 int32 = Modal_ModalMetric(value_188, value_190, value_191, value_192, value_193, value_194)
-	metrics.FrameIconPadding = value_195
-	var value_196 uint32 = close.Value.Fields
-	var value_197 int32 = int32(StyleGap)
-	var value_198 uint32 = uint32(number_runtime_bits(uint64(value_197), uint64(0), 32, false, 0))
-	var value_199 float32 = close.Value.Gap
-	var value_200 float32 = 6.0
-	var value_201 float32 = scale
-	var value_202 bool = true
-	var value_203 int32 = Modal_ModalMetric(value_196, value_198, value_199, value_200, value_201, value_202)
-	metrics.FrameIconEdgeGap = value_203
-	var value_204 uint32 = title.Value.Fields
-	var value_205 int32 = int32(StylePaddingX)
-	var value_206 uint32 = uint32(number_runtime_bits(uint64(value_205), uint64(0), 32, false, 0))
-	var value_207 float32 = title.Value.PaddingX
-	var value_208 float32 = 24.0
-	var value_209 float32 = scale
-	var value_210 bool = true
-	var value_211 int32 = Modal_ModalMetric(value_204, value_206, value_207, value_208, value_209, value_210)
-	metrics.FrameTitleSidePadding = value_211
-	var value_212 ModalMetrics = metrics
-	return value_212
+	var value_49 int32 = Modal_ModalMetric(value_45, value_46, value_47, value_48, scale, true)
+	metrics.PromptGap = value_49
+	var value_50 uint32 = action.Value.Fields
+	var value_51 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_52 float32 = action.Value.IconSize
+	var value_53 float32 = 44.0
+	var value_54 int32 = Modal_ModalMetric(value_50, value_51, value_52, value_53, scale, false)
+	metrics.ButtonHeight = value_54
+	var value_55 uint32 = action.Value.Fields
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_57 float32 = action.Value.Gap
+	var value_58 float32 = 8.0
+	var value_59 int32 = Modal_ModalMetric(value_55, value_56, value_57, value_58, scale, true)
+	metrics.ButtonGap = value_59
+	var value_60 uint32 = action.Value.Fields
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_62 float32 = action.Value.PaddingX
+	var value_63 float32 = 24.0
+	var value_64 int32 = Modal_ModalMetric(value_60, value_61, value_62, value_63, scale, true)
+	metrics.ActionPaddingX = value_64
+	var value_65 uint32 = action.Value.Fields
+	var value_66 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_67 float32 = action.Value.OffsetX
+	var value_68 float32 = 88.0
+	var value_69 int32 = Modal_ModalMetric(value_65, value_66, value_67, value_68, scale, false)
+	metrics.ActionMinWidth = value_69
+	var value_70 uint32 = action.Value.Fields
+	var value_71 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_72 float32 = action.Value.OffsetY
+	var value_73 float32 = 150.0
+	var value_74 int32 = Modal_ModalMetric(value_70, value_71, value_72, value_73, scale, false)
+	metrics.ActionMaxWidth = value_74
+	var value_75 uint32 = message.Value.Fields
+	var value_76 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_77 float32 = message.Value.PaddingX
+	var value_78 float32 = 120.0
+	var value_79 int32 = Modal_ModalMetric(value_75, value_76, value_77, value_78, scale, false)
+	metrics.ContentMinWidth = value_79
+	var value_80 uint32 = message.Value.Fields
+	var value_81 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_82 float32 = message.Value.PaddingY
+	var value_83 float32 = 160.0
+	var value_84 int32 = Modal_ModalMetric(value_80, value_81, value_82, value_83, scale, false)
+	metrics.MinHeight = value_84
+	var value_85 uint32 = close.Value.Fields
+	var value_86 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_87 float32 = close.Value.OffsetX
+	var value_88 float32 = 120.0
+	var value_89 int32 = Modal_ModalMetric(value_85, value_86, value_87, value_88, scale, false)
+	metrics.FrameMinWidth = value_89
+	var value_90 uint32 = close.Value.Fields
+	var value_91 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_92 float32 = close.Value.OffsetY
+	var value_93 float32 = 96.0
+	var value_94 int32 = Modal_ModalMetric(value_90, value_91, value_92, value_93, scale, false)
+	metrics.FrameMinHeight = value_94
+	var value_95 uint32 = title.Value.Fields
+	var value_96 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_97 float32 = title.Value.OffsetY
+	var value_98 float32 = 14.0
+	var value_99 int32 = Modal_ModalMetric(value_95, value_96, value_97, value_98, scale, true)
+	metrics.FrameTitleY = value_99
+	var value_100 uint32 = panel.Value.Fields
+	var value_101 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_102 float32 = panel.Value.OffsetY
+	var value_103 float32 = 58.0
+	var value_104 int32 = Modal_ModalMetric(value_100, value_101, value_102, value_103, scale, true)
+	metrics.FrameContentY = value_104
+	var value_105 uint32 = close.Value.Fields
+	var value_106 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_107 float32 = close.Value.PaddingY
+	var value_108 float32 = 16.0
+	var value_109 int32 = Modal_ModalMetric(value_105, value_106, value_107, value_108, scale, true)
+	metrics.FrameContentBottomPad = value_109
+	var value_110 uint32 = close.Value.Fields
+	var value_111 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_112 float32 = close.Value.IconSize
+	var value_113 float32 = 20.0
+	var value_114 int32 = Modal_ModalMetric(value_110, value_111, value_112, value_113, scale, true)
+	metrics.FrameIconSize = value_114
+	var value_115 uint32 = close.Value.Fields
+	var value_116 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_117 float32 = close.Value.PaddingX
+	var value_118 float32 = 8.0
+	var value_119 int32 = Modal_ModalMetric(value_115, value_116, value_117, value_118, scale, true)
+	metrics.FrameIconPadding = value_119
+	var value_120 uint32 = close.Value.Fields
+	var value_121 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_122 float32 = close.Value.Gap
+	var value_123 float32 = 6.0
+	var value_124 int32 = Modal_ModalMetric(value_120, value_121, value_122, value_123, scale, true)
+	metrics.FrameIconEdgeGap = value_124
+	var value_125 uint32 = title.Value.Fields
+	var value_126 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_127 float32 = title.Value.PaddingX
+	var value_128 float32 = 24.0
+	var value_129 int32 = Modal_ModalMetric(value_125, value_126, value_127, value_128, scale, true)
+	metrics.FrameTitleSidePadding = value_129
+	return metrics
 }
 
 func Modal_ModalClampWidth(view_width int32, requested_max_width int32, metrics ModalMetrics) int32 {
-	var value_0 int32 = requested_max_width
-	var width int32 = value_0
-	var value_1 int32 = width
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = metrics.DefaultMaxWidth
-		width = value_4
+	var width int32 = requested_max_width
+	if width <= 0 {
+		width = metrics.DefaultMaxWidth
 	}
-	var value_5 int32 = width
-	var value_6 int32 = view_width
-	var value_7 int32 = metrics.ScreenPad
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-	var value_9 bool = value_5 > value_8
-	if value_9 {
-		var value_10 int32 = view_width
-		var value_11 int32 = metrics.ScreenPad
-		var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
-		width = value_12
+	if width > (int32(number_runtime_bits(uint64(view_width), uint64(metrics.ScreenPad), 32, true, 2))) {
+		width = (int32(number_runtime_bits(uint64(view_width), uint64(metrics.ScreenPad), 32, true, 2)))
 	}
-	var value_13 int32 = width
-	var value_14 int32 = metrics.MinWidth
-	var value_15 bool = value_13 < value_14
-	if value_15 {
-		var value_16 int32 = metrics.MinWidth
-		width = value_16
+	if width < metrics.MinWidth {
+		width = metrics.MinWidth
 	}
-	var value_17 int32 = width
-	var value_18 int32 = view_width
-	var value_19 int32 = metrics.EdgePad
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 2))
-	var value_21 bool = value_17 > value_20
-	if value_21 {
-		var value_22 int32 = view_width
-		var value_23 int32 = metrics.EdgePad
-		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 2))
-		width = value_24
+	if width > (int32(number_runtime_bits(uint64(view_width), uint64(metrics.EdgePad), 32, true, 2))) {
+		width = (int32(number_runtime_bits(uint64(view_width), uint64(metrics.EdgePad), 32, true, 2)))
 	}
-	var value_25 int32 = width
-	var value_26 int32 = 1
-	var value_27 bool = value_25 < value_26
-	if value_27 {
-		var value_28 int32 = 1
-		width = value_28
+	if width < 1 {
+		width = 1
 	}
-	var value_29 int32 = width
-	return value_29
+	return width
 }
 
 func Modal_ModalContentWidth(modal_width int32, metrics ModalMetrics) int32 {
-	var value_0 int32 = modal_width
-	var value_1 int32 = metrics.PaddingX
-	var value_2 int32 = 2
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 2))
-	var width int32 = value_4
-	var value_5 int32 = width
-	var value_6 int32 = metrics.ContentMinWidth
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = metrics.ContentMinWidth
-		width = value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(modal_width), uint64((int32(number_runtime_bits(uint64(metrics.PaddingX), uint64(2), 32, true, 3)))), 32, true, 2))
+	var width int32 = value_0
+	if width < metrics.ContentMinWidth {
+		width = metrics.ContentMinWidth
 	}
-	var value_9 int32 = width
-	return value_9
+	return width
 }
 
 func Modal_ModalActionWidth(label_width int32, metrics ModalMetrics) int32 {
-	var value_0 int32 = label_width
-	var value_1 int32 = metrics.ActionPaddingX
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var width int32 = value_2
-	var value_3 int32 = width
-	var value_4 int32 = metrics.ActionMinWidth
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = metrics.ActionMinWidth
-		width = value_6
+	var width int32 = (int32(number_runtime_bits(uint64(label_width), uint64(metrics.ActionPaddingX), 32, true, 1)))
+	if width < metrics.ActionMinWidth {
+		width = metrics.ActionMinWidth
 	}
-	var value_7 int32 = width
-	return value_7
+	return width
 }
 
 func Modal_ModalActionRowsStep(row_width int32, rows int32, action_width int32, content_width int32, gap int32) int32 {
-	var value_0 int32 = action_width
-	var next_width int32 = value_0
-	var value_1 int32 = row_width
-	var value_2 int32 = 0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 int32 = row_width
-		var value_5 int32 = gap
-		var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-		var value_7 int32 = action_width
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-		next_width = value_8
+	var next_width int32 = action_width
+	if row_width > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_width), uint64(gap), 32, true, 1)))), uint64(action_width), 32, true, 1))
+		next_width = value_0
 	}
-	var value_9 int32 = row_width
-	var value_10 int32 = 0
-	var value_11 bool = value_9 > value_10
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 int32 = next_width
-		var value_14 int32 = content_width
-		var value_15 bool = value_13 > value_14
-		value_12 = value_15
+	var value_1 bool = (row_width > 0)
+	if value_1 {
+		value_1 = (next_width > content_width)
 	}
-	if value_12 {
-		var value_16 int32 = rows
-		var value_17 int32 = 1
-		var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
-		return value_18
+	if value_1 {
+		return (int32(number_runtime_bits(uint64(rows), uint64(1), 32, true, 1)))
 	}
-	var value_19 int32 = rows
-	return value_19
+	return rows
 }
 
 func Modal_ModalActionRowWidthStep(row_width int32, action_width int32, content_width int32, gap int32) int32 {
-	var value_0 int32 = action_width
-	var next_width int32 = value_0
-	var value_1 int32 = row_width
-	var value_2 int32 = 0
-	var value_3 bool = value_1 > value_2
-	if value_3 {
-		var value_4 int32 = row_width
-		var value_5 int32 = gap
-		var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-		var value_7 int32 = action_width
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-		next_width = value_8
+	var next_width int32 = action_width
+	if row_width > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row_width), uint64(gap), 32, true, 1)))), uint64(action_width), 32, true, 1))
+		next_width = value_0
 	}
-	var value_9 int32 = row_width
-	var value_10 int32 = 0
-	var value_11 bool = value_9 > value_10
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 int32 = next_width
-		var value_14 int32 = content_width
-		var value_15 bool = value_13 > value_14
-		value_12 = value_15
+	var value_1 bool = (row_width > 0)
+	if value_1 {
+		value_1 = (next_width > content_width)
 	}
-	if value_12 {
-		var value_16 int32 = action_width
-		return value_16
+	if value_1 {
+		return action_width
 	}
-	var value_17 int32 = next_width
-	return value_17
+	return next_width
 }
 
 func Modal_ModalActionPlacementFor(x int32, content_width int32, row_count int32, gap int32) ModalActionPlacement {
 	var placement ModalActionPlacement = ModalActionPlacement{}
-	var value_0 int32 = row_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = content_width
-		var value_5 int32 = 0
-		var value_6 bool = value_4 <= value_5
-		value_3 = value_6
+	var value_0 bool = (row_count <= 0)
+	if !value_0 {
+		value_0 = (content_width <= 0)
 	}
-	if value_3 {
-		var value_7 int32 = x
-		placement.StartX = value_7
-		var value_8 ModalActionPlacement = placement
-		return value_8
+	if value_0 {
+		placement.StartX = x
+		return placement
 	}
-	var value_9 int32 = content_width
-	var value_10 int32 = gap
-	var value_11 int32 = row_count
-	var value_12 int32 = 1
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 3))
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_14), 32, true, 2))
-	var usable int32 = value_15
-	var value_16 int32 = usable
-	var value_17 int32 = row_count
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 4))
-	placement.ActionWidth = value_18
-	var value_19 int32 = placement.ActionWidth
-	var value_20 int32 = 0
-	var value_21 bool = value_19 < value_20
-	if value_21 {
-		var value_22 int32 = 0
-		placement.ActionWidth = value_22
+	var value_1 int32 = int32(number_runtime_bits(uint64(gap), uint64((int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))), 32, true, 3))
+	var usable int32 = (int32(number_runtime_bits(uint64(content_width), uint64(value_1), 32, true, 2)))
+	placement.ActionWidth = (int32(number_runtime_bits(uint64(usable), uint64(row_count), 32, true, 4)))
+	if placement.ActionWidth < 0 {
+		placement.ActionWidth = 0
 	}
-	var value_23 int32 = placement.ActionWidth
-	var value_24 int32 = row_count
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
-	var value_26 int32 = gap
-	var value_27 int32 = row_count
-	var value_28 int32 = 1
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
-	var value_30 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_29), 32, true, 3))
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_30), 32, true, 1))
-	placement.TotalWidth = value_31
-	var value_32 int32 = x
-	var value_33 int32 = content_width
-	var value_34 int32 = placement.TotalWidth
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-	var value_36 int32 = 2
-	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 4))
-	var value_38 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_37), 32, true, 1))
-	placement.StartX = value_38
-	var value_39 ModalActionPlacement = placement
-	return value_39
+	var value_2 int32 = int32(number_runtime_bits(uint64(gap), uint64((int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))), 32, true, 3))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(placement.ActionWidth), uint64(row_count), 32, true, 3)))), uint64(value_2), 32, true, 1))
+	placement.TotalWidth = value_3
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(content_width), uint64(placement.TotalWidth), 32, true, 2)))), uint64(2), 32, true, 4))
+	placement.StartX = (int32(number_runtime_bits(uint64(x), uint64(value_4), 32, true, 1)))
+	return placement
 }
 
 func Modal_ModalButtonsHeight(rows int32, metrics ModalMetrics) int32 {
-	var value_0 int32 = rows
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if rows <= 0 {
+		return 0
 	}
-	var value_4 int32 = rows
-	var value_5 int32 = metrics.ButtonHeight
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var value_7 int32 = rows
-	var value_8 int32 = 1
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
-	var value_10 int32 = metrics.ButtonGap
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 3))
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_11), 32, true, 1))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(rows), uint64(1), 32, true, 2)))), uint64(metrics.ButtonGap), 32, true, 3))
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(rows), uint64(metrics.ButtonHeight), 32, true, 3)))), uint64(value_0), 32, true, 1))
+	return value_1
 }
 
 func Modal_ModalActionNextY(y int32, button_height int32, gap int32) int32 {
-	var value_0 int32 = button_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		button_height = value_3
+	if button_height < 0 {
+		button_height = 0
 	}
-	var value_4 int32 = gap
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		gap = value_7
+	if gap < 0 {
+		gap = 0
 	}
-	var value_8 int32 = y
-	var value_9 int32 = button_height
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
-	var value_11 int32 = gap
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(y), uint64(button_height), 32, true, 1)))), uint64(gap), 32, true, 1))
+	return value_0
 }
 
 func Modal_ModalFontFor(default_font int32, style_font int32) int32 {
-	var value_0 int32 = style_font
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = style_font
-		return value_3
+	if style_font > 0 {
+		return style_font
 	}
-	var value_4 int32 = default_font
-	return value_4
+	return default_font
 }
 
 func Modal_ModalMessageLineGap(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 4.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((4.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Modal_ModalHasPromptFor(has_text bool, text_size int32, has_cursor bool, has_focus bool) bool {
 	var value_0 bool = has_text
+	if value_0 {
+		value_0 = (text_size > 0)
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 int32 = text_size
-		var value_3 int32 = 0
-		var value_4 bool = value_2 > value_3
-		value_1 = value_4
+		value_1 = has_cursor
 	}
-	var value_5 bool = value_1
-	if value_5 {
-		var value_6 bool = has_cursor
-		value_5 = value_6
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = has_focus
 	}
-	var value_7 bool = value_5
-	if value_7 {
-		var value_8 bool = has_focus
-		value_7 = value_8
-	}
-	return value_7
+	return value_2
 }
 
 func Modal_ModalPromptFallbackFocusId() int32 {
-	var value_0 int32 = 7301
-	return value_0
+	return 7301
 }
 
 func Modal_ModalPromptFocusIdFor(requested_focus_id int32) int32 {
-	var value_0 int32 = requested_focus_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = requested_focus_id
-		return value_3
+	if requested_focus_id > 0 {
+		return requested_focus_id
 	}
-	var value_4 int32 = Modal_ModalPromptFallbackFocusId()
-	return value_4
+	var value_0 int32 = Modal_ModalPromptFallbackFocusId()
+	return value_0
 }
 
 func Modal_ModalPromptCommitResult(action_count int32) int32 {
-	var value_0 int32 = action_count
-	var value_1 int32 = 1
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = 2
-		return value_3
+	if action_count > 1 {
+		return 2
 	}
-	var value_4 int32 = 1
-	return value_4
+	return 1
 }
 
 func Modal_ModalPromptInputFor(commit_pressed bool, escape_pressed bool) ModalPromptInput {
 	var input ModalPromptInput = ModalPromptInput{}
-	var value_0 bool = commit_pressed
-	input.Commit = value_0
-	var value_1 bool = escape_pressed
-	input.Escape = value_1
-	var value_2 ModalPromptInput = input
-	return value_2
+	input.Commit = commit_pressed
+	input.Escape = escape_pressed
+	return input
 }
 
 func Modal_ModalPromptResultFor(current_result int32, has_prompt bool, commit_pressed bool, escape_pressed bool, action_count int32) ModalResultDecision {
 	var decision ModalResultDecision = ModalResultDecision{}
-	var value_0 int32 = current_result
-	decision.Result = value_0
-	var value_1 int32 = current_result
-	var value_2 int32 = 0
-	var value_3 bool = value_1 != value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 bool = has_prompt
-		var value_6 bool = !value_5
-		value_4 = value_6
+	decision.Result = current_result
+	var value_0 bool = (current_result != 0)
+	if !value_0 {
+		value_0 = !has_prompt
 	}
-	if value_4 {
-		var value_7 ModalResultDecision = decision
-		return value_7
+	if value_0 {
+		return decision
 	}
-	var value_8 bool = commit_pressed
-	if value_8 {
-		var value_9 int32 = action_count
-		var value_10 int32 = Modal_ModalPromptCommitResult(value_9)
-		decision.Result = value_10
-		var value_11 ModalResultDecision = decision
-		return value_11
+	if commit_pressed {
+		var value_1 int32 = Modal_ModalPromptCommitResult(action_count)
+		decision.Result = value_1
+		return decision
 	}
-	var value_12 bool = escape_pressed
-	if value_12 {
-		var value_13 int32 = 1
-		decision.Result = value_13
+	if escape_pressed {
+		decision.Result = 1
 	}
-	var value_14 ModalResultDecision = decision
-	return value_14
+	return decision
 }
 
 func Modal_ModalPromptResultDecisionFor(current_result int32, has_prompt bool, input ModalPromptInput, action_count int32) ModalResultDecision {
-	var value_0 int32 = current_result
-	var value_1 bool = has_prompt
-	var value_2 bool = input.Commit
-	var value_3 bool = input.Escape
-	var value_4 int32 = action_count
-	var value_5 ModalResultDecision = Modal_ModalPromptResultFor(value_0, value_1, value_2, value_3, value_4)
-	return value_5
+	var value_0 bool = input.Commit
+	var value_1 bool = input.Escape
+	var value_2 ModalResultDecision = Modal_ModalPromptResultFor(current_result, has_prompt, value_0, value_1, action_count)
+	return value_2
 }
 
 func Modal_ModalOutsideDismissalFor(released bool, release_consumed bool, pointer_inside bool) ModalDismissal {
 	var dismissal ModalDismissal = ModalDismissal{}
 	var value_0 bool = released
+	if value_0 {
+		value_0 = !release_consumed
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = release_consumed
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !pointer_inside
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = pointer_inside
-		var value_6 bool = !value_5
-		value_4 = value_6
+	if value_1 {
+		dismissal.Dismissed = true
+		dismissal.ReleaseConsumed = true
+		return dismissal
 	}
-	if value_4 {
-		var value_7 bool = true
-		dismissal.Dismissed = value_7
-		var value_8 bool = true
-		dismissal.ReleaseConsumed = value_8
-		var value_9 ModalDismissal = dismissal
-		return value_9
-	}
-	var value_10 bool = release_consumed
-	dismissal.ReleaseConsumed = value_10
-	var value_11 ModalDismissal = dismissal
-	return value_11
+	dismissal.ReleaseConsumed = release_consumed
+	return dismissal
 }
 
 func Modal_ModalLayoutFor(view_width int32, view_height int32, max_width int32, message_height int32, button_rows int32, has_prompt bool, metrics ModalMetrics) ModalLayout {
 	var layout ModalLayout = ModalLayout{}
-	var value_0 int32 = view_width
-	var value_1 int32 = max_width
-	var value_2 ModalMetrics = metrics
-	var value_3 int32 = Modal_ModalClampWidth(value_0, value_1, value_2)
-	var modal_width int32 = value_3
-	var value_4 int32 = modal_width
-	var value_5 ModalMetrics = metrics
-	var value_6 int32 = Modal_ModalContentWidth(value_4, value_5)
-	var content_width int32 = value_6
-	var value_7 int32 = button_rows
-	var value_8 ModalMetrics = metrics
-	var value_9 int32 = Modal_ModalButtonsHeight(value_7, value_8)
-	var buttons_height int32 = value_9
-	var value_10 int32 = 0
-	var prompt_height int32 = value_10
-	var value_11 int32 = 0
-	var prompt_gap int32 = value_11
-	var value_12 bool = has_prompt
-	if value_12 {
-		var value_13 int32 = metrics.PromptHeight
-		prompt_height = value_13
-		var value_14 int32 = metrics.PromptGap
-		prompt_gap = value_14
+	var value_0 int32 = Modal_ModalClampWidth(view_width, max_width, metrics)
+	var modal_width int32 = value_0
+	var value_1 int32 = Modal_ModalContentWidth(modal_width, metrics)
+	var content_width int32 = value_1
+	var value_2 int32 = Modal_ModalButtonsHeight(button_rows, metrics)
+	var buttons_height int32 = value_2
+	var prompt_height int32 = 0
+	var prompt_gap int32 = 0
+	if has_prompt {
+		prompt_height = metrics.PromptHeight
+		prompt_gap = metrics.PromptGap
 	}
-	var value_15 int32 = metrics.TitleHeight
-	var value_16 int32 = message_height
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 1))
-	var value_18 int32 = prompt_gap
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1))
-	var value_20 int32 = prompt_height
-	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 1))
-	var modal_height int32 = value_21
-	var value_22 int32 = buttons_height
-	var value_23 int32 = 0
-	var value_24 bool = value_22 > value_23
-	if value_24 {
-		var value_25 int32 = modal_height
-		var value_26 int32 = metrics.MessageGap
-		var value_27 int32 = buttons_height
-		var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
-		modal_height = int32(number_runtime_bits(uint64(value_25), uint64(value_28), 32, true, 1))
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(metrics.TitleHeight), uint64(message_height), 32, true, 1)))), uint64(prompt_gap), 32, true, 1))
+	var modal_height int32 = (int32(number_runtime_bits(uint64(value_3), uint64(prompt_height), 32, true, 1)))
+	if buttons_height > 0 {
+		var value_4 int32 = modal_height
+		modal_height = int32(number_runtime_bits(uint64(value_4), uint64((int32(number_runtime_bits(uint64(metrics.MessageGap), uint64(buttons_height), 32, true, 1)))), 32, true, 1))
 	}
-	var value_29 int32 = modal_height
-	var value_30 int32 = metrics.PaddingBottom
-	modal_height = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
-	var value_31 int32 = modal_height
-	var value_32 int32 = metrics.MinHeight
-	var value_33 bool = value_31 < value_32
-	if value_33 {
-		var value_34 int32 = metrics.MinHeight
-		modal_height = value_34
+	var value_5 int32 = modal_height
+	modal_height = int32(number_runtime_bits(uint64(value_5), uint64(metrics.PaddingBottom), 32, true, 1))
+	if modal_height < metrics.MinHeight {
+		modal_height = metrics.MinHeight
 	}
-	var value_35 int32 = view_height
-	var value_36 int32 = metrics.ScreenPad
-	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 2))
-	var max_height int32 = value_37
-	var value_38 int32 = modal_height
-	var value_39 int32 = max_height
-	var value_40 bool = value_38 > value_39
-	if value_40 {
-		var value_41 int32 = max_height
-		modal_height = value_41
+	var max_height int32 = (int32(number_runtime_bits(uint64(view_height), uint64(metrics.ScreenPad), 32, true, 2)))
+	if modal_height > max_height {
+		modal_height = max_height
 	}
-	var value_42 int32 = modal_height
-	var value_43 int32 = 1
-	var value_44 bool = value_42 < value_43
-	if value_44 {
-		var value_45 int32 = 1
-		modal_height = value_45
+	if modal_height < 1 {
+		modal_height = 1
 	}
-	var value_46 int32 = view_width
-	var value_47 int32 = modal_width
-	var value_48 int32 = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 2))
-	var value_49 int32 = 2
-	var value_50 int32 = int32(number_runtime_bits(uint64(value_48), uint64(value_49), 32, true, 4))
-	var value_51 float32 = float32(value_50)
-	layout.Panel.X = value_51
-	var value_52 int32 = view_height
-	var value_53 int32 = modal_height
-	var value_54 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_53), 32, true, 2))
-	var value_55 int32 = 2
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 4))
-	var value_57 float32 = float32(value_56)
-	layout.Panel.Y = value_57
-	var value_58 int32 = modal_width
-	var value_59 float32 = float32(value_58)
-	layout.Panel.Width = value_59
-	var value_60 int32 = modal_height
-	var value_61 float32 = float32(value_60)
-	layout.Panel.Height = value_61
-	var value_62 int32 = content_width
-	layout.ContentWidth = value_62
-	var value_63 float32 = layout.Panel.X
-	var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
-	var value_65 int32 = metrics.PaddingX
-	var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 1))
-	layout.MessageX = value_66
-	var value_67 float32 = layout.Panel.Y
-	var value_68 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_67), 32, true)), uint64(0), 32, true, 0))
-	var value_69 int32 = metrics.TitleHeight
-	var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 1))
-	layout.MessageY = value_70
-	var value_71 int32 = buttons_height
-	layout.ButtonsHeight = value_71
-	var value_72 float32 = layout.Panel.Y
-	var value_73 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_72), 32, true)), uint64(0), 32, true, 0))
-	var value_74 int32 = modal_height
-	var value_75 int32 = int32(number_runtime_bits(uint64(value_73), uint64(value_74), 32, true, 1))
-	var value_76 int32 = buttons_height
-	var value_77 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_76), 32, true, 2))
-	var value_78 int32 = metrics.PaddingBottom
-	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 2))
-	layout.ButtonY = value_79
-	var value_80 int32 = layout.MessageY
-	var value_81 int32 = message_height
-	var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 1))
-	var value_83 int32 = prompt_gap
-	var value_84 int32 = int32(number_runtime_bits(uint64(value_82), uint64(value_83), 32, true, 1))
-	layout.PromptY = value_84
-	var value_85 int32 = prompt_height
-	layout.PromptHeight = value_85
-	var value_86 ModalLayout = layout
-	return value_86
+	var value_6 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_width), uint64(modal_width), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.Panel.X = float32(value_6)
+	var value_7 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_height), uint64(modal_height), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.Panel.Y = float32(value_7)
+	layout.Panel.Width = float32(modal_width)
+	layout.Panel.Height = float32(modal_height)
+	layout.ContentWidth = content_width
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(layout.Panel.X), 32, true)), uint64(0), 32, true, 0))
+	layout.MessageX = (int32(number_runtime_bits(uint64(value_8), uint64(metrics.PaddingX), 32, true, 1)))
+	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(layout.Panel.Y), 32, true)), uint64(0), 32, true, 0))
+	layout.MessageY = (int32(number_runtime_bits(uint64(value_9), uint64(metrics.TitleHeight), 32, true, 1)))
+	layout.ButtonsHeight = buttons_height
+	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(layout.Panel.Y), 32, true)), uint64(0), 32, true, 0))
+	var value_11 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(value_10), uint64(modal_height), 32, true, 1)))), uint64(buttons_height), 32, true, 2))
+	layout.ButtonY = (int32(number_runtime_bits(uint64(value_11), uint64(metrics.PaddingBottom), 32, true, 2)))
+	var value_12 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(layout.MessageY), uint64(message_height), 32, true, 1)))), uint64(prompt_gap), 32, true, 1))
+	layout.PromptY = value_12
+	layout.PromptHeight = prompt_height
+	return layout
 }
 
 func Modal_ModalFramePanelFor(view_width int32, view_height int32, width int32, height int32, metrics ModalMetrics) Rectangle {
 	var panel Rectangle = Rectangle{}
-	var value_0 int32 = view_width
-	var value_1 int32 = metrics.ScreenPad
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var max_width int32 = value_2
-	var value_3 int32 = view_height
-	var value_4 int32 = metrics.ScreenPad
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
-	var max_height int32 = value_5
-	var value_6 int32 = width
-	var value_7 int32 = max_width
-	var value_8 bool = value_6 > value_7
-	if value_8 {
-		var value_9 int32 = max_width
-		width = value_9
+	var max_width int32 = (int32(number_runtime_bits(uint64(view_width), uint64(metrics.ScreenPad), 32, true, 2)))
+	var max_height int32 = (int32(number_runtime_bits(uint64(view_height), uint64(metrics.ScreenPad), 32, true, 2)))
+	if width > max_width {
+		width = max_width
 	}
-	var value_10 int32 = height
-	var value_11 int32 = max_height
-	var value_12 bool = value_10 > value_11
-	if value_12 {
-		var value_13 int32 = max_height
-		height = value_13
+	if height > max_height {
+		height = max_height
 	}
-	var value_14 int32 = width
-	var value_15 int32 = 1
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 int32 = 1
-		width = value_17
+	if width < 1 {
+		width = 1
 	}
-	var value_18 int32 = height
-	var value_19 int32 = 1
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 int32 = 1
-		height = value_21
+	if height < 1 {
+		height = 1
 	}
-	var value_22 int32 = view_width
-	var value_23 int32 = width
-	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 2))
-	var value_25 int32 = 2
-	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 4))
-	var value_27 float32 = float32(value_26)
-	panel.X = value_27
-	var value_28 int32 = view_height
-	var value_29 int32 = height
-	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 2))
-	var value_31 int32 = 2
-	var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 4))
-	var value_33 float32 = float32(value_32)
-	panel.Y = value_33
-	var value_34 int32 = width
-	var value_35 float32 = float32(value_34)
-	panel.Width = value_35
-	var value_36 int32 = height
-	var value_37 float32 = float32(value_36)
-	panel.Height = value_37
-	var value_38 Rectangle = panel
-	return value_38
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_width), uint64(width), 32, true, 2)))), uint64(2), 32, true, 4))
+	panel.X = float32(value_0)
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_height), uint64(height), 32, true, 2)))), uint64(2), 32, true, 4))
+	panel.Y = float32(value_1)
+	panel.Width = float32(width)
+	panel.Height = float32(height)
+	return panel
 }
 
 func Modal_ModalFrameLayoutFor(panel Rectangle, metrics ModalMetrics) ModalFrameLayout {
 	var layout ModalFrameLayout = ModalFrameLayout{}
-	var value_0 float32 = panel.Width
-	var value_1 int32 = metrics.FrameMinWidth
-	var value_2 float32 = float32(value_1)
-	var value_3 bool = value_0 < value_2
-	if value_3 {
-		var value_4 int32 = metrics.FrameMinWidth
-		var value_5 float32 = float32(value_4)
-		panel.Width = value_5
+	if panel.Width < float32(metrics.FrameMinWidth) {
+		panel.Width = float32(metrics.FrameMinWidth)
 	}
-	var value_6 float32 = panel.Height
-	var value_7 int32 = metrics.FrameMinHeight
-	var value_8 float32 = float32(value_7)
-	var value_9 bool = value_6 < value_8
-	if value_9 {
-		var value_10 int32 = metrics.FrameMinHeight
-		var value_11 float32 = float32(value_10)
-		panel.Height = value_11
+	if panel.Height < float32(metrics.FrameMinHeight) {
+		panel.Height = float32(metrics.FrameMinHeight)
 	}
-	var value_12 int32 = metrics.FrameIconSize
-	var value_13 int32 = metrics.FrameIconPadding
-	var value_14 int32 = 2
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 1))
-	var icon_w int32 = value_16
-	var value_17 Rectangle = panel
-	layout.Panel = value_17
-	var value_18 float32 = panel.X
-	var value_19 int32 = metrics.PaddingX
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 + value_20
-	layout.Content.X = value_21
-	var value_22 float32 = panel.Y
-	var value_23 int32 = metrics.FrameContentY
-	var value_24 float32 = float32(value_23)
-	var value_25 float32 = value_22 + value_24
-	layout.Content.Y = value_25
-	var value_26 float32 = panel.Width
-	var value_27 int32 = metrics.PaddingX
-	var value_28 int32 = 2
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 3))
-	var value_30 float32 = float32(value_29)
-	var value_31 float32 = value_26 - value_30
-	layout.Content.Width = value_31
-	var value_32 float32 = panel.Height
-	var value_33 int32 = metrics.FrameContentY
-	var value_34 int32 = metrics.FrameContentBottomPad
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-	var value_36 float32 = float32(value_35)
-	var value_37 float32 = value_32 - value_36
-	layout.Content.Height = value_37
-	var value_38 float32 = layout.Content.Width
-	var value_39 float32 = 1.0
-	var value_40 bool = value_38 < value_39
-	if value_40 {
-		var value_41 float32 = 1.0
-		layout.Content.Width = value_41
+	var value_0 int32 = int32(number_runtime_bits(uint64(metrics.FrameIconSize), uint64((int32(number_runtime_bits(uint64(metrics.FrameIconPadding), uint64(2), 32, true, 3)))), 32, true, 1))
+	var icon_w int32 = value_0
+	layout.Panel = panel
+	layout.Content.X = (panel.X + float32(metrics.PaddingX))
+	layout.Content.Y = (panel.Y + float32(metrics.FrameContentY))
+	var value_1 float32 = panel.Width - float32((int32(number_runtime_bits(uint64(metrics.PaddingX), uint64(2), 32, true, 3))))
+	layout.Content.Width = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(metrics.FrameContentY), uint64(metrics.FrameContentBottomPad), 32, true, 1))
+	layout.Content.Height = (panel.Height - float32(value_2))
+	if layout.Content.Width < 1.0 {
+		layout.Content.Width = 1.0
 	}
-	var value_42 float32 = layout.Content.Height
-	var value_43 float32 = 1.0
-	var value_44 bool = value_42 < value_43
-	if value_44 {
-		var value_45 float32 = 1.0
-		layout.Content.Height = value_45
+	if layout.Content.Height < 1.0 {
+		layout.Content.Height = 1.0
 	}
-	var value_46 float32 = panel.X
-	var value_47 int32 = metrics.FrameIconEdgeGap
-	var value_48 float32 = float32(value_47)
-	var value_49 float32 = value_46 + value_48
-	layout.LeftButton.X = value_49
-	var value_50 float32 = panel.Y
-	var value_51 int32 = metrics.FrameIconEdgeGap
-	var value_52 float32 = float32(value_51)
-	var value_53 float32 = value_50 + value_52
-	layout.LeftButton.Y = value_53
-	var value_54 int32 = icon_w
-	var value_55 float32 = float32(value_54)
-	layout.LeftButton.Width = value_55
-	var value_56 int32 = icon_w
-	var value_57 float32 = float32(value_56)
-	layout.LeftButton.Height = value_57
-	var value_58 Rectangle = layout.LeftButton
-	layout.RightButton = value_58
-	var value_59 float32 = panel.X
-	var value_60 float32 = panel.Width
-	var value_61 float32 = value_59 + value_60
-	var value_62 int32 = icon_w
-	var value_63 int32 = metrics.FrameIconEdgeGap
-	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 1))
-	var value_65 float32 = float32(value_64)
-	var value_66 float32 = value_61 - value_65
-	layout.RightButton.X = value_66
-	var value_67 float32 = panel.Y
-	var value_68 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_67), 32, true)), uint64(0), 32, true, 0))
-	var value_69 int32 = metrics.FrameTitleY
-	var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 1))
-	layout.TitleY = value_70
-	var value_71 float32 = panel.Width
-	var value_72 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_71), 32, true)), uint64(0), 32, true, 0))
-	var value_73 int32 = icon_w
-	var value_74 int32 = 2
-	var value_75 int32 = int32(number_runtime_bits(uint64(value_73), uint64(value_74), 32, true, 3))
-	var value_76 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_75), 32, true, 2))
-	var value_77 int32 = metrics.FrameTitleSidePadding
-	var value_78 int32 = int32(number_runtime_bits(uint64(value_76), uint64(value_77), 32, true, 2))
-	layout.TitleMaxWidth = value_78
-	var value_79 int32 = layout.TitleMaxWidth
-	var value_80 int32 = 1
-	var value_81 bool = value_79 < value_80
-	if value_81 {
-		var value_82 int32 = 1
-		layout.TitleMaxWidth = value_82
+	layout.LeftButton.X = (panel.X + float32(metrics.FrameIconEdgeGap))
+	layout.LeftButton.Y = (panel.Y + float32(metrics.FrameIconEdgeGap))
+	layout.LeftButton.Width = float32(icon_w)
+	layout.LeftButton.Height = float32(icon_w)
+	layout.RightButton = layout.LeftButton
+	var value_3 float32 = (panel.X + panel.Width) - float32((int32(number_runtime_bits(uint64(icon_w), uint64(metrics.FrameIconEdgeGap), 32, true, 1))))
+	layout.RightButton.X = value_3
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(panel.Y), 32, true)), uint64(0), 32, true, 0))
+	layout.TitleY = (int32(number_runtime_bits(uint64(value_4), uint64(metrics.FrameTitleY), 32, true, 1)))
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(panel.Width), 32, true)), uint64(0), 32, true, 0))
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_5), uint64((int32(number_runtime_bits(uint64(icon_w), uint64(2), 32, true, 3)))), 32, true, 2))
+	layout.TitleMaxWidth = (int32(number_runtime_bits(uint64(value_6), uint64(metrics.FrameTitleSidePadding), 32, true, 2)))
+	if layout.TitleMaxWidth < 1 {
+		layout.TitleMaxWidth = 1
 	}
-	var value_83 int32 = metrics.FrameIconSize
-	layout.IconSize = value_83
-	var value_84 int32 = metrics.FrameIconPadding
-	layout.IconPadding = value_84
-	var value_85 ModalFrameLayout = layout
-	return value_85
+	layout.IconSize = metrics.FrameIconSize
+	layout.IconPadding = metrics.FrameIconPadding
+	return layout
 }

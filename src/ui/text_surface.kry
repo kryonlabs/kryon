@@ -1,0 +1,115 @@
+#module "text_surface_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/button.h"
+#import "runtime/style.h"
+#import "runtime/text_input.h"
+#import "string.h"
+
+TextInputStyleKind :: (kind: const char*) -> i32 {
+    if kind != nil && strcmp(kind, "TextArea") == 0 {
+        return StyleKindTextArea()
+    }
+    return StyleKindTextField()
+}
+
+TextInputMotionKey :: (bounds: Rectangle, focus_id: i32,
+kind: const char*) -> u64 {
+    key: u64 = 1469598103934665603
+    index: i32 = 0
+    while kind != nil && kind[index] != '\0' {
+        key ^= (uint64_t)(unsigned char)kind[index]
+        key *= 1099511628211
+        index += 1
+    }
+    key ^= (uint64_t)(uint32_t)focus_id
+    key *= 1099511628211
+    key ^= (uint64_t)(int)bounds.x
+    key *= 1099511628211
+    key ^= (uint64_t)(int)bounds.y
+    key *= 1099511628211
+    key ^= (uint64_t)(int)bounds.width
+    key *= 1099511628211
+    key ^= (uint64_t)(int)bounds.height
+    key *= 1099511628211
+    if key == 0 { return 1 }
+    return key
+}
+
+ui_text_input_surface :: (bounds: Rectangle,
+style: TextInputAppearance, focused: i32, editable: i32,
+focus_id: i32, kind: const char*,
+requested: TextInputAppearance,
+class_name: i32) -> Rectangle #export {
+    disabled: i32 = ContentDisabled()
+    style_kind: i32 = TextInputStyleKind(kind)
+    metrics: ThemeMetrics = GetThemeMetrics()
+    props: ButtonProps = (ButtonProps){0}
+    props.bounds = bounds
+    props.id = focus_id
+    props.tone = ButtonToneNeutral
+    props.emphasis = ButtonEmphasisSoft
+    props.disabled = disabled
+    props.class_name = class_name
+    state: ButtonState = ButtonStateNormal
+    if disabled {
+        state = ButtonStateDisabled
+    } else if focused {
+        state = ButtonStateFocus
+    }
+    paint: Style = ui_resolve_button_style_kind(props,
+    state, style_kind)
+    mouse: Vector2 = ui_mouse_world()
+    border: Color = focused ? style.focus_border : style.border
+    if requested.background.a != 0 {
+        paint.background = style.background
+    }
+    if requested.border.a != 0 ||
+    (focused && requested.focus_border.a != 0) {
+        paint.border = border
+    }
+    if requested.focus_border.a != 0 {
+        paint.focus = style.focus_border
+    }
+    if requested.text.a != 0 { paint.foreground = style.text }
+    hovered: i32 = editable &&
+    CheckCollisionPointRec(mouse, bounds) &&
+    !InputCapturesClick(mouse) && HoverEffectsEnabled()
+    sample: Activation = (Activation){0}
+    sample.hovered = hovered
+    sample.focused = focused
+    input: ButtonInput = ResolveButtonInput((int)props.state,
+    props.disabled, props.loading, props.selected, sample)
+    motion: InteractionMotion = AdvanceButtonMotion(
+    TextInputMotionKey(bounds, focus_id, kind),
+    (int)props.state, input, TransitionCuesEnabled(),
+    GetFrameTime() * 1000.0,
+    metrics.transition_normal_ms, metrics.transition_fast_ms)
+    if motion.active { InvalidateTree(INVALIDATE_PAINT) }
+    fill_states: FillStates = (FillStates){0}
+    paint = ui_style_transition(paint,
+    ui_resolve_button_style_kind(props, ButtonStateNormal, style_kind),
+    ui_resolve_button_style_kind(props, ButtonStateHover, style_kind),
+    ui_resolve_button_style_kind(props, ButtonStatePressed, style_kind),
+    ui_resolve_button_style_kind(props, ButtonStateFocus, style_kind),
+    motion.hover.value, motion.press.value, motion.focus.value,
+    &fill_states)
+    if requested.background.a != 0 {
+        paint.background = style.background
+    }
+    if requested.border.a != 0 ||
+    (focused && requested.focus_border.a != 0) {
+        paint.border = border
+    }
+    if requested.focus_border.a != 0 {
+        paint.focus = style.focus_border
+    }
+    if requested.text.a != 0 { paint.foreground = style.text }
+    fill_states = ui_style_fill(paint)
+    return ui_draw_material(bounds, (Rectangle){0},
+    paint.background, paint.border, paint.border,
+    paint.radius, paint.border_width,
+    motion.hover.value, motion.press.value,
+    disabled, paint.focus, motion.focus.value,
+    paint.opacity, fill_states, paint.material)
+}

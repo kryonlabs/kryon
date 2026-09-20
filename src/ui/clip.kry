@@ -1,0 +1,110 @@
+#module "clip_host"
+#import "ui_clip.h"
+
+ClipState :: struct {
+    bounds: [16]Rectangle
+    count: i32
+}
+
+clip_stack :: [16]Rectangle #global
+clip_stack_count :: i32 #global
+
+ClipSameScissor :: (a: Rectangle, b: Rectangle) -> i32 {
+    return (int)a.x == (int)b.x && (int)a.y == (int)b.y &&
+    (int)a.width == (int)b.width &&
+    (int)a.height == (int)b.height
+}
+
+ui_clip_save :: () -> ClipState #export {
+    state: ClipState = (ClipState){0}
+    state.count = clip_stack_count
+    index: i32 = 0
+    while index < state.count {
+        state.bounds[index] = clip_stack[index]
+        index += 1
+    }
+    return state
+}
+
+ui_clip_current :: (bounds: *Rectangle) -> i32 #export {
+    if clip_stack_count == 0 { return 0 }
+    *bounds = clip_stack[clip_stack_count - 1]
+    return 1
+}
+
+ui_clip_restore :: (state: ClipState) #export {
+    ResetClip()
+    clip_stack_count = state.count
+    index: i32 = 0
+    while index < state.count {
+        clip_stack[index] = state.bounds[index]
+        index += 1
+    }
+    if state.count > 0 {
+        bounds: Rectangle = state.bounds[state.count - 1]
+        BeginScissorMode((int)bounds.x, (int)bounds.y,
+        (int)bounds.width, (int)bounds.height)
+    }
+}
+
+GetClipIntersection :: (a: Rectangle,
+b: Rectangle) -> Rectangle #export {
+    x1: float = a.x > b.x ? a.x : b.x
+    y1: float = a.y > b.y ? a.y : b.y
+    x2: float = a.x + a.width < b.x + b.width ?
+    a.x + a.width : b.x + b.width
+    y2: float = a.y + a.height < b.y + b.height ?
+    a.y + a.height : b.y + b.height
+    if x2 < x1 { x2 = x1 }
+    if y2 < y1 { y2 = y1 }
+    return (Rectangle){x1, y1, x2 - x1, y2 - y1}
+}
+
+GetClipEffective :: (bounds: Rectangle) -> Rectangle #export {
+    if clip_stack_count > 0 {
+        bounds = GetClipIntersection(clip_stack[clip_stack_count - 1],
+        bounds)
+    }
+    return bounds
+}
+
+BeginClip :: (x: i32, y: i32, w: i32, h: i32) #export {
+    bounds: Rectangle = (Rectangle){(float)x, (float)y,
+        (float)w, (float)h}
+    if w < 0 { bounds.width = 0 }
+    if h < 0 { bounds.height = 0 }
+    bounds = GetClipEffective(bounds)
+    unchanged: i32 = clip_stack_count > 0 &&
+    ClipSameScissor(clip_stack[clip_stack_count - 1], bounds)
+    if clip_stack_count < 16 {
+        clip_stack[clip_stack_count] = bounds
+        clip_stack_count += 1
+    }
+    if !unchanged {
+        BeginScissorMode((int)bounds.x, (int)bounds.y,
+        (int)bounds.width, (int)bounds.height)
+    }
+}
+
+EndClip :: () #export {
+    if clip_stack_count == 0 {
+        EndScissorMode()
+        return
+    }
+    clip_stack_count -= 1
+    previous: Rectangle = clip_stack[clip_stack_count]
+    if clip_stack_count > 0 {
+        bounds: Rectangle = clip_stack[clip_stack_count - 1]
+        if !ClipSameScissor(previous, bounds) {
+            BeginScissorMode((int)bounds.x, (int)bounds.y,
+            (int)bounds.width, (int)bounds.height)
+        }
+    } else {
+        EndScissorMode()
+    }
+}
+
+ResetClip :: () #export {
+    if IsWindowReady() { EndScissorMode() }
+    clip_stack_count = 0
+}

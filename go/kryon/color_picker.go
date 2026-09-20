@@ -17,290 +17,148 @@ type ColorPickerSwatchPaint struct {
 
 func ColorPicker_ColorPickerSwatchPaintFor(bounds Rectangle, label_inset float32, text_line_height float32) ColorPickerSwatchPaint {
 	var paint ColorPickerSwatchPaint = ColorPickerSwatchPaint{}
-	var value_0 Rectangle = bounds
-	paint.Bounds = value_0
-	var value_1 float32 = bounds.X
-	var value_2 float32 = label_inset
-	var value_3 float32 = value_1 + value_2
-	paint.LabelX = value_3
-	var value_4 float32 = bounds.Y
-	var value_5 float32 = bounds.Height
-	var value_6 float32 = text_line_height
-	var value_7 float32 = value_5 - value_6
-	var value_8 float32 = 2.0
-	var value_9 float32 = value_7 / value_8
-	var value_10 float32 = value_4 + value_9
-	paint.LabelY = value_10
-	var value_11 ColorPickerSwatchPaint = paint
-	return value_11
+	paint.Bounds = bounds
+	paint.LabelX = (bounds.X + label_inset)
+	paint.LabelY = (bounds.Y + ((bounds.Height - text_line_height) / 2.0))
+	return paint
 }
 
 func ColorPicker_ColorPickerSwatchLabelInset(scale float32, swatch StyleFrame) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = swatch.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = swatch.Value.PaddingX
-	var value_8 float32 = 6.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 float32 = ColorPicker_ColorPickerMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
+	var value_0 uint32 = swatch.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = swatch.Value.PaddingX
+	var value_3 float32 = 6.0
+	var value_4 float32 = ColorPicker_ColorPickerMetric(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func ColorPicker_ColorPickerMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 bool = allow_zero
-	var value_12 bool = !value_11
-	var value_13 bool = value_12
-	if value_13 {
-		var value_14 float32 = value
-		var value_15 float32 = 0.0
-		var value_16 bool = value_14 <= value_15
-		value_13 = value_16
+	var value_2 bool = !allow_zero
+	if value_2 {
+		value_2 = (value <= 0.0)
 	}
-	if value_13 {
-		var value_17 float32 = fallback
-		value = value_17
+	if value_2 {
+		value = fallback
 	}
-	var value_18 float32 = value
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	return value_20
+	return (value * scale)
 }
 
 func ColorPicker_ColorPickerChannelIdFor(picker_id int32, index int32) int32 {
-	var value_0 int32 = picker_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = index
-		var value_5 int32 = 0
-		var value_6 bool = value_4 < value_5
-		value_3 = value_6
+	var value_0 bool = (picker_id <= 0)
+	if !value_0 {
+		value_0 = (index < 0)
 	}
-	if value_3 {
-		var value_7 int32 = 0
-		return value_7
+	if value_0 {
+		return 0
 	}
-	var value_8 int32 = picker_id
-	var value_9 int32 = 8
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-	var value_11 int32 = index
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-	var value_13 int32 = 1
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
-	return value_14
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(picker_id), uint64(8), 32, true, 3)))), uint64(index), 32, true, 1))
+	return (int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 1)))
 }
 
 func ColorPicker_ColorPickerChannelBounds(bounds Rectangle, index int32, channels int32, scale float32, metrics StyleFrame) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 Rectangle = bounds
-	var value_1 int32 = channels
-	var value_2 float32 = scale
-	var value_3 StyleFrame = metrics
-	var value_4 ColorPickerLayout = ColorPicker_ColorPickerLayoutFor(value_0, value_1, value_2, value_3)
-	var layout ColorPickerLayout = value_4
-	var value_5 uint32 = metrics.Value.Fields
-	var value_6 int32 = int32(StylePaddingY)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 float32 = metrics.Value.PaddingY
-	var value_9 float32 = 2.0
-	var value_10 float32 = scale
-	var value_11 bool = true
-	var value_12 float32 = ColorPicker_ColorPickerMetric(value_5, value_7, value_8, value_9, value_10, value_11)
-	var inset float32 = value_12
-	var value_13 float32 = bounds.X
-	row.X = value_13
-	var value_14 float32 = bounds.Y
-	var value_15 float32 = layout.RowHeight
-	var value_16 int32 = index
-	var value_17 float32 = float32(value_16)
-	var value_18 float32 = value_15 * value_17
-	var value_19 float32 = value_14 + value_18
-	row.Y = value_19
-	var value_20 float32 = bounds.Width
-	row.Width = value_20
-	var value_21 float32 = layout.RowHeight
-	var value_22 float32 = inset
-	var value_23 float32 = value_21 - value_22
-	row.Height = value_23
-	var value_24 float32 = row.Height
-	var value_25 float32 = 0.0
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 float32 = 0.0
-		row.Height = value_27
+	var value_0 ColorPickerLayout = ColorPicker_ColorPickerLayoutFor(bounds, channels, scale, metrics)
+	var layout ColorPickerLayout = value_0
+	var value_1 uint32 = metrics.Value.Fields
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_3 float32 = metrics.Value.PaddingY
+	var value_4 float32 = 2.0
+	var value_5 float32 = ColorPicker_ColorPickerMetric(value_1, value_2, value_3, value_4, scale, true)
+	var inset float32 = value_5
+	row.X = bounds.X
+	row.Y = (bounds.Y + (layout.RowHeight * float32(index)))
+	row.Width = bounds.Width
+	row.Height = (layout.RowHeight - inset)
+	if row.Height < 0.0 {
+		row.Height = 0.0
 	}
-	var value_28 Rectangle = row
-	return value_28
+	return row
 }
 
 func ColorPicker_ColorPickerLayoutFor(bounds Rectangle, channels int32, scale float32, metrics StyleFrame) ColorPickerLayout {
 	var layout ColorPickerLayout = ColorPickerLayout{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = channels
-	var value_5 int32 = 1
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 1
-		channels = value_7
+	if channels < 1 {
+		channels = 1
 	}
-	var value_8 uint32 = metrics.Value.Fields
-	var value_9 int32 = int32(StyleIconSize)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 float32 = metrics.Value.IconSize
-	var value_12 float32 = 36.0
-	var value_13 float32 = scale
-	var value_14 bool = true
-	var value_15 float32 = ColorPicker_ColorPickerMetric(value_8, value_10, value_11, value_12, value_13, value_14)
-	var swatch_height float32 = value_15
-	var value_16 uint32 = metrics.Value.Fields
-	var value_17 int32 = int32(StyleGap)
-	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 float32 = metrics.Value.Gap
-	var value_20 float32 = 4.0
-	var value_21 float32 = scale
-	var value_22 bool = true
-	var value_23 float32 = ColorPicker_ColorPickerMetric(value_16, value_18, value_19, value_20, value_21, value_22)
-	var gap float32 = value_23
-	var value_24 uint32 = metrics.Value.Fields
-	var value_25 int32 = int32(StyleContentOffset)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 float32 = metrics.Value.OffsetY
-	var value_28 float32 = 28.0
-	var value_29 float32 = scale
-	var value_30 bool = false
-	var value_31 float32 = ColorPicker_ColorPickerMetric(value_24, value_26, value_27, value_28, value_29, value_30)
-	var minimum_row float32 = value_31
-	var value_32 uint32 = metrics.Value.Fields
-	var value_33 int32 = int32(StyleContentOffset)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 float32 = metrics.Value.OffsetX
-	var value_36 float32 = 20.0
-	var value_37 float32 = scale
-	var value_38 bool = false
-	var value_39 float32 = ColorPicker_ColorPickerMetric(value_32, value_34, value_35, value_36, value_37, value_38)
-	var compact_threshold float32 = value_39
-	var value_40 float32 = bounds.Height
-	var value_41 float32 = swatch_height
-	var value_42 float32 = value_40 - value_41
-	var value_43 float32 = gap
-	var value_44 float32 = value_42 - value_43
-	var value_45 int32 = channels
-	var value_46 float32 = float32(value_45)
-	var value_47 float32 = value_44 / value_46
-	var row_height float32 = value_47
-	var value_48 float32 = row_height
-	var value_49 float32 = compact_threshold
-	var value_50 bool = value_48 < value_49
-	if value_50 {
-		var value_51 float32 = minimum_row
-		row_height = value_51
+	var value_0 uint32 = metrics.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = metrics.Value.IconSize
+	var value_3 float32 = 36.0
+	var value_4 float32 = ColorPicker_ColorPickerMetric(value_0, value_1, value_2, value_3, scale, true)
+	var swatch_height float32 = value_4
+	var value_5 uint32 = metrics.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_7 float32 = metrics.Value.Gap
+	var value_8 float32 = 4.0
+	var value_9 float32 = ColorPicker_ColorPickerMetric(value_5, value_6, value_7, value_8, scale, true)
+	var gap float32 = value_9
+	var value_10 uint32 = metrics.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_12 float32 = metrics.Value.OffsetY
+	var value_13 float32 = 28.0
+	var value_14 float32 = ColorPicker_ColorPickerMetric(value_10, value_11, value_12, value_13, scale, false)
+	var minimum_row float32 = value_14
+	var value_15 uint32 = metrics.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_17 float32 = metrics.Value.OffsetX
+	var value_18 float32 = 20.0
+	var value_19 float32 = ColorPicker_ColorPickerMetric(value_15, value_16, value_17, value_18, scale, false)
+	var compact_threshold float32 = value_19
+	var row_height float32 = (((bounds.Height - swatch_height) - gap) / float32(channels))
+	if row_height < compact_threshold {
+		row_height = minimum_row
 	}
-	var value_52 float32 = row_height
-	layout.RowHeight = value_52
-	var value_53 float32 = bounds.X
-	layout.SwatchBounds.X = value_53
-	var value_54 float32 = bounds.Y
-	var value_55 float32 = row_height
-	var value_56 int32 = channels
-	var value_57 float32 = float32(value_56)
-	var value_58 float32 = value_55 * value_57
-	var value_59 float32 = value_54 + value_58
-	var value_60 float32 = gap
-	var value_61 float32 = value_59 + value_60
-	layout.SwatchBounds.Y = value_61
-	var value_62 float32 = bounds.Width
-	layout.SwatchBounds.Width = value_62
-	var value_63 float32 = swatch_height
-	layout.SwatchBounds.Height = value_63
-	var value_64 ColorPickerLayout = layout
-	return value_64
+	layout.RowHeight = row_height
+	layout.SwatchBounds.X = bounds.X
+	layout.SwatchBounds.Y = ((bounds.Y + (row_height * float32(channels))) + gap)
+	layout.SwatchBounds.Width = bounds.Width
+	layout.SwatchBounds.Height = swatch_height
+	return layout
 }
 
 func ColorPicker_ColorPickerClampChannel(value float32) float32 {
-	var value_0 float32 = value
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if value < 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = 1.0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		return value_7
+	if value > 1.0 {
+		return 1.0
 	}
-	var value_8 float32 = value
-	return value_8
+	return value
 }
 
 func ColorPicker_ColorPickerChannelByte(value float32) uint8 {
-	var value_0 float32 = value
-	var value_1 float32 = ColorPicker_ColorPickerClampChannel(value_0)
-	var value_2 float32 = 255.0
-	var value_3 float32 = value_1 * value_2
-	var value_4 float32 = 0.5
-	var value_5 float32 = value_3 + value_4
-	var value_6 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 8, false)), uint64(0), 8, false, 0))
-	return value_6
+	var value_0 float32 = ColorPicker_ColorPickerClampChannel(value)
+	var value_1 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(((value_0*255.0)+0.5)), 8, false)), uint64(0), 8, false, 0))
+	return value_1
 }
 
 func ColorPicker_ColorPickerColorFor(red float32, green float32, blue float32, alpha float32, channels int32) Color {
 	var color Color = Color{}
-	var value_0 float32 = red
-	var value_1 uint8 = ColorPicker_ColorPickerChannelByte(value_0)
-	color.R = value_1
-	var value_2 float32 = green
-	var value_3 uint8 = ColorPicker_ColorPickerChannelByte(value_2)
-	color.G = value_3
-	var value_4 float32 = blue
-	var value_5 uint8 = ColorPicker_ColorPickerChannelByte(value_4)
-	color.B = value_5
-	var value_6 int32 = channels
-	var value_7 int32 = 4
-	var value_8 bool = value_6 >= value_7
-	if value_8 {
-		var value_9 float32 = alpha
-		var value_10 uint8 = ColorPicker_ColorPickerChannelByte(value_9)
-		color.A = value_10
+	var value_0 uint8 = ColorPicker_ColorPickerChannelByte(red)
+	color.R = value_0
+	var value_1 uint8 = ColorPicker_ColorPickerChannelByte(green)
+	color.G = value_1
+	var value_2 uint8 = ColorPicker_ColorPickerChannelByte(blue)
+	color.B = value_2
+	if channels >= 4 {
+		var value_3 uint8 = ColorPicker_ColorPickerChannelByte(alpha)
+		color.A = value_3
 	} else {
-		var value_11 int32 = 255
-		var value_12 uint8 = uint8(number_runtime_bits(uint64(value_11), uint64(0), 8, false, 0))
-		color.A = value_12
+		color.A = uint8(number_runtime_bits(uint64(255), uint64(0), 8, false, 0))
 	}
-	var value_13 Color = color
-	return value_13
+	return color
 }

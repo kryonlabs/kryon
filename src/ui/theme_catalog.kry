@@ -1,0 +1,116 @@
+#module "theme_catalog_host"
+#import "theme_meta.h"
+#import "runtime/kss_parser.h"
+#import "embedded_assets.h"
+#import "stdlib.h"
+#import "string.h"
+
+ThemeCatalogPalette :: struct {
+    values: [8]Color
+    loaded: bool
+    valid: bool
+}
+
+theme_catalog_palettes :: [26]ThemeCatalogPalette #global
+
+ThemeCatalogKey :: (index: i32) -> const char* {
+    if index == 0 { return "background" }
+    if index == 1 { return "surface" }
+    if index == 2 { return "text" }
+    if index == 3 { return "circle" }
+    if index == 4 { return "button" }
+    if index == 5 { return "button_hover" }
+    if index == 6 { return "icon" }
+    if index == 7 { return "link" }
+    return nil
+}
+
+ThemeCatalogKeyIndex :: (key: const char*) -> i32 {
+    if key == nil { return -1 }
+    index: i32 = 0
+    while index < 8 {
+        if strcmp(key, ThemeCatalogKey(index)) == 0 {
+            return index
+        }
+        index += 1
+    }
+    return -1
+}
+
+ThemeCatalogLoad :: (theme: ThemeId, dark: bool) -> bool {
+    id: ThemeId = NormalizeTheme((int)theme)
+    slot: i32 = (int)id
+    if dark { slot += THEME_COUNT }
+    palette: *ThemeCatalogPalette = &theme_catalog_palettes[slot]
+    if palette->loaded { return palette->valid }
+    palette->loaded = true
+
+    path: const char* = "themes/catalog_light.kss"
+    scope: const char* = GetThemeMeta(id)->light_scope
+    if dark {
+        path = "themes/catalog_dark.kss"
+        scope = GetThemeMeta(id)->dark_scope
+    }
+    source: *char = LoadEmbeddedAssetText(path)
+    if source == nil { return false }
+    empty: String = StringView(nil, 0)
+    environment: KssEnvironment = KssEnvironmentWithNames(
+    KssDefaultEnvironment(), StringView(scope, strlen(scope)),
+    empty, empty, empty, empty, empty)
+    parser: KssParser = KssBegin(StringView(source, strlen(source)),
+    StringView(path, strlen(path)), environment)
+    while parser.status == KssStatusContinue {
+        parser = KssStep(parser)
+        if parser.status == KssStatusRule {
+            parser.status = KssStatusContinue
+        }
+    }
+    if parser.status == KssStatusDone {
+        index: i32 = 0
+        palette->valid = true
+        while index < 8 {
+            key: const char* = ThemeCatalogKey(index)
+            token: KssColorTokenResult = KssColorTokenValue(
+            parser, StringView(key, strlen(key)))
+            if !token.found {
+                palette->valid = false
+                break
+            }
+            palette->values[index] = GetColor(token.color)
+            index += 1
+        }
+    }
+    free(source)
+    return palette->valid
+}
+
+GetThemeCatalogColor :: (theme: ThemeId, dark_mode: bool,
+key: const char*, color: *Color) -> bool #export {
+    index: i32 = ThemeCatalogKeyIndex(key)
+    if index < 0 || color == nil { return false }
+    id: ThemeId = NormalizeTheme((int)theme)
+    if !ThemeCatalogLoad(id, dark_mode) { return false }
+    slot: i32 = (int)id
+    if dark_mode { slot += THEME_COUNT }
+    *color = theme_catalog_palettes[slot].values[index]
+    return true
+}
+
+GetThemeCatalogScopeColor :: (scope: const char*,
+key: const char*, color: *Color) -> bool #export {
+    if scope == nil { return false }
+    index: i32 = 0
+    while index < THEME_COUNT {
+        meta: const ThemeMeta* = GetThemeMeta((ThemeId)index)
+        if strcmp(scope, meta->light_scope) == 0 {
+            return GetThemeCatalogColor((ThemeId)index,
+            false, key, color)
+        }
+        if strcmp(scope, meta->dark_scope) == 0 {
+            return GetThemeCatalogColor((ThemeId)index,
+            true, key, color)
+        }
+        index += 1
+    }
+    return false
+}

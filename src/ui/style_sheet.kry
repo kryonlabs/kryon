@@ -1,0 +1,203 @@
+#module "style_pack_host"
+#import "ui_style_sheet.h"
+#import "string.h"
+
+StyleCacheEntry :: struct {
+    version: u64
+    valid: i32
+    active_state: i32
+    facts: StyleFacts
+    value: StyleData
+}
+
+style_packs :: [STYLE_PACK_MAX]StylePack #global
+style_pack_count :: i32 #global
+active_style_pack :: i32 = -1 #global
+style_pack_version :: u64 #global
+active_style_cache :: [256]StyleCacheEntry #global
+
+StyleCacheSlot :: (facts: StyleFacts, active_state: i32) -> u32 {
+    values: [12]u32 = {
+        facts.kind, facts.name, facts.class_name, facts.role,
+        facts.tone, facts.emphasis, facts.size, facts.state,
+        facts.validation, facts.orientation, facts.placement,
+        (uint32_t)active_state}
+    hash: u32 = 2166136261u
+    index: u32 = 0
+    while index < 12 {
+        hash = (hash ^ values[index]) * 16777619u
+        index += 1
+    }
+    return hash % 256
+}
+
+StylePackIndex :: (id: const char*) -> i32 {
+    if id == nil || id[0] == '\0' {
+        return -1
+    }
+    index: i32 = 0
+    while index < style_pack_count {
+        if style_packs[index].id != nil &&
+        strcmp(style_packs[index].id, id) == 0 {
+            return index
+        }
+        index += 1
+    }
+    return -1
+}
+
+RegisterStylePack :: (pack: StylePack) -> bool #export {
+    if pack.id == nil || pack.id[0] == '\0' || pack.sheet == nil {
+        return false
+    }
+    index: i32 = StylePackIndex(pack.id)
+    if index < 0 {
+        if style_pack_count >= STYLE_PACK_MAX {
+            return false
+        }
+        index = style_pack_count
+        style_pack_count += 1
+    }
+    style_packs[index] = pack
+    if active_style_pack < 0 {
+        active_style_pack = index
+    }
+    style_pack_version += 1
+    return true
+}
+
+ClearStylePacks :: () #export {
+    index: i32 = 0
+    while index < STYLE_PACK_MAX {
+        style_packs[index] = (StylePack){0}
+        index += 1
+    }
+    style_pack_count = 0
+    active_style_pack = -1
+    style_pack_version += 1
+}
+
+GetStylePackCount :: () -> i32 #export {
+    return style_pack_count
+}
+
+GetStylePackAt :: (index: i32) -> const StylePack* #export {
+    if index < 0 || index >= style_pack_count {
+        return nil
+    }
+    return &style_packs[index]
+}
+
+FindStylePack :: (id: const char*) -> const StylePack* #export {
+    index: i32 = StylePackIndex(id)
+    if index < 0 {
+        return nil
+    }
+    return &style_packs[index]
+}
+
+SetActiveStylePack :: (id: const char*) -> bool #export {
+    index: i32 = StylePackIndex(id)
+    if index < 0 {
+        return false
+    }
+    if active_style_pack != index {
+        active_style_pack = index
+        style_pack_version += 1
+    }
+    return true
+}
+
+GetActiveStylePack :: () -> const StylePack* #export {
+    if active_style_pack < 0 || active_style_pack >= style_pack_count {
+        return nil
+    }
+    return &style_packs[active_style_pack]
+}
+
+GetActiveStylePackId :: () -> const char* #export {
+    pack: const StylePack* = GetActiveStylePack()
+    if pack == nil {
+        return nil
+    }
+    return pack->id
+}
+
+GetStylePackOptions :: (options: *StylePackOption,
+capacity: i32) -> i32 #export {
+    count: i32 = style_pack_count
+    if options == nil || capacity <= 0 {
+        return count
+    }
+    if count > capacity {
+        count = capacity
+    }
+    index: i32 = 0
+    while index < count {
+        options[index].id = style_packs[index].id
+        options[index].label = style_packs[index].label
+        options[index].description = style_packs[index].description
+        options[index].active = index == active_style_pack
+        index += 1
+    }
+    return style_pack_count
+}
+
+StylePackVersion :: () -> u64 #export {
+    return style_pack_version
+}
+
+StyleClassId :: (class_name: const char*) -> i32 #export {
+    if class_name == nil || class_name[0] == '\0' {
+        return 0
+    }
+    hash: u32 = 2166136261u
+    while *class_name != '\0' {
+        hash ^= (uint8_t)*class_name
+        hash *= 16777619u
+        class_name += 1
+    }
+    hash &= 0x7fffffffu
+    if hash == 0 {
+        return 1
+    }
+    return (int32_t)hash
+}
+
+ResolveStyle :: (sheet: const StyleSheet*, base: StyleData,
+facts: StyleFacts, active_state: i32) -> StyleData #export {
+    if sheet == nil || sheet->rules == nil || sheet->rule_count <= 0 {
+        return base
+    }
+    cascade: StyleCascade = BeginStyleCascade(base)
+    index: i32 = 0
+    while index < sheet->rule_count {
+        if StyleRuleMatches(sheet->rules[index], facts, active_state) {
+            cascade = ApplyStyleRule(cascade, sheet->rules[index],
+            facts, active_state)
+        }
+        index += 1
+    }
+    return FinishStyleCascade(cascade)
+}
+
+ResolveActiveStyle :: (base: StyleData, facts: StyleFacts,
+active_state: i32) -> StyleData #export {
+    pack: const StylePack* = GetActiveStylePack()
+    if pack == nil {
+        return base
+    }
+    entry: *StyleCacheEntry = &active_style_cache[
+    StyleCacheSlot(facts, active_state)]
+    if !entry->valid || entry->version != style_pack_version ||
+    entry->active_state != active_state ||
+    memcmp(&entry->facts, &facts, sizeof(facts)) != 0 {
+        entry->value = ResolveStyle(pack->sheet, (StyleData){0},
+        facts, active_state)
+        entry->facts = facts
+        entry->active_state = active_state
+        entry->version = style_pack_version
+        entry->valid = 1
+    }
+    return MergeValues(base, entry->value)
+}

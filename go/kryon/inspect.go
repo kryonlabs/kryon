@@ -13,176 +13,96 @@ type InspectReleaseDecision struct {
 }
 
 func Inspect_InspectClampBounds(bounds Rectangle, min_size float32) Rectangle {
-	var value_0 float32 = min_size
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 4.0
-		min_size = value_3
+	if min_size <= 0.0 {
+		min_size = 4.0
 	}
-	var value_4 float32 = bounds.Width
-	var value_5 float32 = min_size
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 float32 = min_size
-		bounds.Width = value_7
+	if bounds.Width < min_size {
+		bounds.Width = min_size
 	}
-	var value_8 float32 = bounds.Height
-	var value_9 float32 = min_size
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 float32 = min_size
-		bounds.Height = value_11
+	if bounds.Height < min_size {
+		bounds.Height = min_size
 	}
-	var value_12 Rectangle = bounds
-	return value_12
+	return bounds
 }
 
 func Inspect_InspectResizeHandleBounds(bounds Rectangle, handle_size int32) Rectangle {
-	var value_0 int32 = handle_size
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 12
-		handle_size = value_3
+	if handle_size <= 0 {
+		handle_size = 12
 	}
-	var value_4 Rectangle = Rectangle{}
-	var value_5 float32 = bounds.X
-	var value_6 float32 = bounds.Width
-	var value_7 float32 = value_5 + value_6
-	var value_8 int32 = handle_size
-	var value_9 float32 = float32(value_8)
-	var value_10 float32 = value_7 - value_9
-	value_4.X = value_10
-	var value_11 float32 = bounds.Y
-	var value_12 float32 = bounds.Height
-	var value_13 float32 = value_11 + value_12
-	var value_14 int32 = handle_size
-	var value_15 float32 = float32(value_14)
-	var value_16 float32 = value_13 - value_15
-	value_4.Y = value_16
-	var value_17 int32 = handle_size
-	var value_18 float32 = float32(value_17)
-	value_4.Width = value_18
-	var value_19 int32 = handle_size
-	var value_20 float32 = float32(value_19)
-	value_4.Height = value_20
-	return value_4
+	var value_0 Rectangle = Rectangle{}
+	value_0.X = ((bounds.X + bounds.Width) - float32(handle_size))
+	value_0.Y = ((bounds.Y + bounds.Height) - float32(handle_size))
+	value_0.Width = float32(handle_size)
+	value_0.Height = float32(handle_size)
+	return value_0
 }
 
 func Inspect_InspectResizeHitHandleSize(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 12.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((12.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Inspect_InspectResizePaintHandleSize(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 10.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((10.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Inspect_InspectEditForDelta(start Rectangle, screen_start Rectangle, dx float32, dy float32, zoom float32, resizing bool, min_size float32) InspectEdit {
 	var edit InspectEdit = InspectEdit{}
-	var value_0 float32 = zoom
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		zoom = value_3
+	if zoom <= 0.0 {
+		zoom = 1.0
 	}
-	var value_4 Rectangle = start
-	edit.Bounds = value_4
-	var value_5 Rectangle = screen_start
-	edit.ScreenBounds = value_5
-	var value_6 bool = resizing
-	if value_6 {
-		var value_7 float32 = edit.Bounds.Width
-		var value_8 float32 = dx
-		var value_9 float32 = zoom
-		var value_10 float32 = value_8 / value_9
-		edit.Bounds.Width = value_7 + value_10
-		var value_11 float32 = edit.Bounds.Height
-		var value_12 float32 = dy
-		var value_13 float32 = zoom
-		var value_14 float32 = value_12 / value_13
-		edit.Bounds.Height = value_11 + value_14
-		var value_15 float32 = edit.ScreenBounds.Width
-		var value_16 float32 = dx
-		edit.ScreenBounds.Width = value_15 + value_16
-		var value_17 float32 = edit.ScreenBounds.Height
-		var value_18 float32 = dy
-		edit.ScreenBounds.Height = value_17 + value_18
+	edit.Bounds = start
+	edit.ScreenBounds = screen_start
+	if resizing {
+		var value_0 float32 = edit.Bounds.Width
+		edit.Bounds.Width = value_0 + (dx / zoom)
+		var value_1 float32 = edit.Bounds.Height
+		edit.Bounds.Height = value_1 + (dy / zoom)
+		var value_2 float32 = edit.ScreenBounds.Width
+		edit.ScreenBounds.Width = value_2 + dx
+		var value_3 float32 = edit.ScreenBounds.Height
+		edit.ScreenBounds.Height = value_3 + dy
 	} else {
-		var value_19 float32 = edit.Bounds.X
-		var value_20 float32 = dx
-		var value_21 float32 = zoom
-		var value_22 float32 = value_20 / value_21
-		edit.Bounds.X = value_19 + value_22
-		var value_23 float32 = edit.Bounds.Y
-		var value_24 float32 = dy
-		var value_25 float32 = zoom
-		var value_26 float32 = value_24 / value_25
-		edit.Bounds.Y = value_23 + value_26
-		var value_27 float32 = edit.ScreenBounds.X
-		var value_28 float32 = dx
-		edit.ScreenBounds.X = value_27 + value_28
-		var value_29 float32 = edit.ScreenBounds.Y
-		var value_30 float32 = dy
-		edit.ScreenBounds.Y = value_29 + value_30
+		var value_4 float32 = edit.Bounds.X
+		edit.Bounds.X = value_4 + (dx / zoom)
+		var value_5 float32 = edit.Bounds.Y
+		edit.Bounds.Y = value_5 + (dy / zoom)
+		var value_6 float32 = edit.ScreenBounds.X
+		edit.ScreenBounds.X = value_6 + dx
+		var value_7 float32 = edit.ScreenBounds.Y
+		edit.ScreenBounds.Y = value_7 + dy
 	}
-	var value_31 Rectangle = edit.Bounds
-	var value_32 float32 = min_size
-	var value_33 Rectangle = Inspect_InspectClampBounds(value_31, value_32)
-	edit.Bounds = value_33
-	var value_34 InspectEdit = edit
-	return value_34
+	var value_8 Rectangle = edit.Bounds
+	var value_9 Rectangle = Inspect_InspectClampBounds(value_8, min_size)
+	edit.Bounds = value_9
+	return edit
 }
 
 func Inspect_InspectReleaseDecisionFor(released bool, dragging bool, resizing bool) InspectReleaseDecision {
 	var decision InspectReleaseDecision = InspectReleaseDecision{}
 	var value_0 bool = released
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = dragging
-		var value_3 bool = value_2
-		if !value_3 {
-			var value_4 bool = resizing
-			value_3 = value_4
+	if value_0 {
+		var value_1 bool = dragging
+		if !value_1 {
+			value_1 = resizing
 		}
-		value_1 = value_3
+		value_0 = value_1
 	}
-	decision.EndEdit = value_1
-	var value_5 bool = decision.EndEdit
-	decision.ConsumeRelease = value_5
-	var value_6 InspectReleaseDecision = decision
-	return value_6
+	decision.EndEdit = value_0
+	decision.ConsumeRelease = decision.EndEdit
+	return decision
 }
 
 func Inspect_InspectKeyboardStep(shift bool) float32 {
-	var value_0 bool = shift
-	if value_0 {
-		var value_1 float32 = 8.0
-		return value_1
+	if shift {
+		return 8.0
 	}
-	var value_2 float32 = 1.0
-	return value_2
+	return 1.0
 }

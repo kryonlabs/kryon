@@ -54,579 +54,352 @@ type PopupLifecycle struct {
 }
 
 func PopupPolicy_PopupPanelRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func PopupPolicy_PopupDecisionFor(flags uint32, disabled bool) PopupDecision {
 	var decision PopupDecision = PopupDecision{}
-	var value_0 int32 = 1
-	var value_1 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(0), 32, false, 0))
-	var tooltip_flag uint32 = value_1
-	var value_2 int32 = 2
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var modal_flag uint32 = value_3
-	var value_4 int32 = 4
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var context_flag uint32 = value_5
-	var value_6 uint32 = tooltip_flag
-	var value_7 uint32 = modal_flag
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, false, 9))
-	var value_9 uint32 = context_flag
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, false, 9))
-	var known uint32 = value_10
-	var value_11 uint32 = flags
-	var value_12 uint32 = known
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(^uint64(0)), 32, false, 10))
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_13), 32, false, 8))
-	var value_15 int32 = 0
-	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
-	var value_17 bool = value_14 != value_16
-	if value_17 {
-		var value_18 PopupDecision = decision
-		return value_18
+	var tooltip_flag uint32 = uint32(number_runtime_bits(uint64(1), uint64(0), 32, false, 0))
+	var modal_flag uint32 = uint32(number_runtime_bits(uint64(2), uint64(0), 32, false, 0))
+	var context_flag uint32 = uint32(number_runtime_bits(uint64(4), uint64(0), 32, false, 0))
+	var value_0 uint32 = uint32(number_runtime_bits(uint64((uint32(number_runtime_bits(uint64(tooltip_flag), uint64(modal_flag), 32, false, 9)))), uint64(context_flag), 32, false, 9))
+	var known uint32 = value_0
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(flags), uint64(uint32(number_runtime_bits(uint64(known), uint64(^uint64(0)), 32, false, 10))), 32, false, 8))
+	if value_1 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		return decision
 	}
-	var value_19 uint32 = flags
-	var value_20 uint32 = tooltip_flag
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, false, 8))
-	var value_22 int32 = 0
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 bool = value_21 != value_23
-	decision.Tooltip = value_24
-	var value_25 uint32 = flags
-	var value_26 uint32 = modal_flag
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, false, 8))
-	var value_28 int32 = 0
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 bool = value_27 != value_29
-	decision.Modal = value_30
-	var value_31 uint32 = flags
-	var value_32 uint32 = context_flag
-	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, false, 8))
-	var value_34 int32 = 0
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
-	var value_36 bool = value_33 != value_35
-	decision.Context = value_36
-	var value_37 int32 = 0
-	var selected int32 = value_37
-	var value_38 bool = decision.Tooltip
-	if value_38 {
-		var value_39 int32 = selected
-		var value_40 int32 = 1
-		selected = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
+	var value_2 bool = (uint32(number_runtime_bits(uint64(flags), uint64(tooltip_flag), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	decision.Tooltip = value_2
+	var value_3 bool = (uint32(number_runtime_bits(uint64(flags), uint64(modal_flag), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	decision.Modal = value_3
+	var value_4 bool = (uint32(number_runtime_bits(uint64(flags), uint64(context_flag), 32, false, 8))) != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	decision.Context = value_4
+	var selected int32 = 0
+	if decision.Tooltip {
+		var value_5 int32 = selected
+		selected = int32(number_runtime_bits(uint64(value_5), uint64(1), 32, true, 1))
 	}
-	var value_41 bool = decision.Modal
-	if value_41 {
-		var value_42 int32 = selected
-		var value_43 int32 = 1
-		selected = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 1))
+	if decision.Modal {
+		var value_6 int32 = selected
+		selected = int32(number_runtime_bits(uint64(value_6), uint64(1), 32, true, 1))
 	}
-	var value_44 bool = decision.Context
-	if value_44 {
-		var value_45 int32 = selected
-		var value_46 int32 = 1
-		selected = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 1))
+	if decision.Context {
+		var value_7 int32 = selected
+		selected = int32(number_runtime_bits(uint64(value_7), uint64(1), 32, true, 1))
 	}
-	var value_47 int32 = selected
-	var value_48 int32 = 1
-	var value_49 bool = value_47 > value_48
-	if value_49 {
-		var value_50 PopupDecision = decision
-		return value_50
+	if selected > 1 {
+		return decision
 	}
-	var value_51 bool = true
-	decision.Valid = value_51
-	var value_52 bool = decision.Tooltip
-	var value_53 bool = !value_52
-	decision.CapturesInput = value_53
-	var value_54 bool = decision.Tooltip
-	var value_55 bool = !value_54
-	decision.RequiresOpen = value_55
-	var value_56 bool = decision.Tooltip
-	var value_57 bool = value_56
-	if !value_57 {
-		var value_58 bool = decision.Context
-		value_57 = value_58
+	decision.Valid = true
+	decision.CapturesInput = !decision.Tooltip
+	decision.RequiresOpen = !decision.Tooltip
+	var value_8 bool = decision.Tooltip
+	if !value_8 {
+		value_8 = decision.Context
 	}
-	decision.RequiresTrigger = value_57
-	var value_59 bool = disabled
-	var value_60 bool = value_59
-	if value_60 {
-		var value_61 bool = decision.Tooltip
-		var value_62 bool = !value_61
-		value_60 = value_62
+	decision.RequiresTrigger = value_8
+	var value_9 bool = disabled
+	if value_9 {
+		value_9 = !decision.Tooltip
 	}
-	if value_60 {
-		var value_63 bool = false
-		decision.CapturesInput = value_63
+	if value_9 {
+		decision.CapturesInput = false
 	}
-	var value_64 PopupDecision = decision
-	return value_64
+	return decision
 }
 
 func PopupPolicy_PopupCanBegin(decision PopupDecision, id int32, bounds Rectangle, trigger Rectangle, has_open bool) bool {
-	var value_0 bool = decision.Valid
-	var value_1 bool = !value_0
+	var value_0 bool = !decision.Valid
+	if !value_0 {
+		value_0 = (id <= 0)
+	}
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (bounds.Width <= 0.0)
+	}
 	var value_2 bool = value_1
 	if !value_2 {
-		var value_3 int32 = id
-		var value_4 int32 = 0
-		var value_5 bool = value_3 <= value_4
-		value_2 = value_5
+		value_2 = (bounds.Height <= 0.0)
 	}
-	var value_6 bool = value_2
-	if !value_6 {
-		var value_7 float32 = bounds.Width
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 <= value_8
-		value_6 = value_9
+	if value_2 {
+		return false
 	}
-	var value_10 bool = value_6
-	if !value_10 {
-		var value_11 float32 = bounds.Height
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 <= value_12
-		value_10 = value_13
+	var value_3 bool = decision.RequiresOpen
+	if value_3 {
+		value_3 = !has_open
 	}
-	if value_10 {
-		var value_14 bool = false
-		return value_14
+	if value_3 {
+		return false
 	}
-	var value_15 bool = decision.RequiresOpen
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 bool = has_open
-		var value_18 bool = !value_17
-		value_16 = value_18
-	}
-	if value_16 {
-		var value_19 bool = false
-		return value_19
-	}
-	var value_20 bool = decision.RequiresTrigger
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 float32 = trigger.Width
-		var value_23 float32 = 0.0
-		var value_24 bool = value_22 <= value_23
-		var value_25 bool = value_24
-		if !value_25 {
-			var value_26 float32 = trigger.Height
-			var value_27 float32 = 0.0
-			var value_28 bool = value_26 <= value_27
-			value_25 = value_28
+	var value_4 bool = decision.RequiresTrigger
+	if value_4 {
+		var value_5 bool = (trigger.Width <= 0.0)
+		if !value_5 {
+			value_5 = (trigger.Height <= 0.0)
 		}
-		value_21 = value_25
+		value_4 = value_5
 	}
-	if value_21 {
-		var value_29 bool = false
-		return value_29
+	if value_4 {
+		return false
 	}
-	var value_30 bool = true
-	return value_30
+	return true
 }
 
 func PopupPolicy_PopupOpenAfterDisabled(decision PopupDecision, open bool, disabled bool) bool {
 	var value_0 bool = disabled
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = decision.Tooltip
-		var value_3 bool = !value_2
-		value_1 = value_3
+	if value_0 {
+		value_0 = !decision.Tooltip
 	}
-	if value_1 {
-		var value_4 bool = false
-		return value_4
+	if value_0 {
+		return false
 	}
-	var value_5 bool = open
-	return value_5
+	return open
 }
 
 func PopupPolicy_PopupTooltipVisible(decision PopupDecision, disabled bool, pointer_inside_trigger bool) bool {
-	var value_0 bool = decision.Tooltip
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 bool = false
-		return value_2
+	if !decision.Tooltip {
+		return false
 	}
-	var value_3 bool = disabled
-	var value_4 bool = !value_3
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = pointer_inside_trigger
-		value_5 = value_6
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = pointer_inside_trigger
 	}
-	return value_5
+	return value_0
 }
 
 func PopupPolicy_PopupOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) PopupOpenResult {
 	var result PopupOpenResult = PopupOpenResult{}
-	var value_0 bool = open
-	result.Open = value_0
-	var value_1 bool = has_open
-	var value_2 bool = !value_1
-	if value_2 {
-		var value_3 PopupOpenResult = result
-		return value_3
+	result.Open = open
+	if !has_open {
+		return result
 	}
-	var value_4 bool = open_requested
-	if value_4 {
-		var value_5 bool = true
-		result.Open = value_5
+	if open_requested {
+		result.Open = true
 	}
-	var value_6 bool = close_requested
-	if value_6 {
-		var value_7 bool = false
-		result.Open = value_7
+	if close_requested {
+		result.Open = false
 	}
-	var value_8 bool = result.Open
-	var value_9 bool = open
-	var value_10 bool = value_8 != value_9
-	result.Changed = value_10
-	var value_11 PopupOpenResult = result
-	return value_11
+	result.Changed = (result.Open != open)
+	return result
 }
 
 func PopupPolicy_PopupInputBounds(decision PopupDecision, bounds Rectangle, view_width float32, view_height float32) Rectangle {
-	var value_0 Rectangle = bounds
-	var input Rectangle = value_0
-	var value_1 bool = decision.Modal
-	if value_1 {
-		var value_2 float32 = 0.0
-		input.X = value_2
-		var value_3 float32 = 0.0
-		input.Y = value_3
-		var value_4 float32 = view_width
-		input.Width = value_4
-		var value_5 float32 = view_height
-		input.Height = value_5
+	var input Rectangle = bounds
+	if decision.Modal {
+		input.X = 0.0
+		input.Y = 0.0
+		input.Width = view_width
+		input.Height = view_height
 	}
-	var value_6 Rectangle = input
-	return value_6
+	return input
 }
 
 func PopupPolicy_PopupMenuBarOrigin(item Rectangle, bar Rectangle) Vector2 {
 	var origin Vector2 = Vector2{}
-	var value_0 float32 = item.X
-	origin.X = value_0
-	var value_1 float32 = bar.Y
-	var value_2 float32 = bar.Height
-	var value_3 float32 = value_1 + value_2
-	origin.Y = value_3
-	var value_4 Vector2 = origin
-	return value_4
+	origin.X = item.X
+	origin.Y = (bar.Y + bar.Height)
+	return origin
 }
 
 func PopupPolicy_PopupContextOrigin(mouse Vector2) Vector2 {
-	var value_0 Vector2 = mouse
-	return value_0
+	return mouse
 }
 
 func PopupPolicy_PopupContextActivationFor(decision PopupDecision, trigger Rectangle, mouse Vector2, disabled bool, click_captured bool, right_released bool) PopupContextActivation {
 	var activation PopupContextActivation = PopupContextActivation{}
-	var value_0 Vector2 = mouse
-	var value_1 Vector2 = PopupPolicy_PopupContextOrigin(value_0)
-	activation.Origin = value_1
-	var value_2 bool = decision.Context
-	var value_3 bool = !value_2
-	var value_4 bool = value_3
+	var value_0 Vector2 = PopupPolicy_PopupContextOrigin(mouse)
+	activation.Origin = value_0
+	var value_1 bool = !decision.Context
+	if !value_1 {
+		value_1 = disabled
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = click_captured
+	}
+	var value_3 bool = value_2
+	if !value_3 {
+		value_3 = !right_released
+	}
+	if value_3 {
+		return activation
+	}
+	var value_4 bool = (mouse.X < trigger.X)
 	if !value_4 {
-		var value_5 bool = disabled
-		value_4 = value_5
+		value_4 = (mouse.Y < trigger.Y)
 	}
-	var value_6 bool = value_4
+	var value_5 bool = value_4
+	if !value_5 {
+		value_5 = (mouse.X >= (trigger.X + trigger.Width))
+	}
+	var value_6 bool = value_5
 	if !value_6 {
-		var value_7 bool = click_captured
-		value_6 = value_7
+		value_6 = (mouse.Y >= (trigger.Y + trigger.Height))
 	}
-	var value_8 bool = value_6
-	if !value_8 {
-		var value_9 bool = right_released
-		var value_10 bool = !value_9
-		value_8 = value_10
+	if value_6 {
+		return activation
 	}
-	if value_8 {
-		var value_11 PopupContextActivation = activation
-		return value_11
-	}
-	var value_12 float32 = mouse.X
-	var value_13 float32 = trigger.X
-	var value_14 bool = value_12 < value_13
-	var value_15 bool = value_14
-	if !value_15 {
-		var value_16 float32 = mouse.Y
-		var value_17 float32 = trigger.Y
-		var value_18 bool = value_16 < value_17
-		value_15 = value_18
-	}
-	var value_19 bool = value_15
-	if !value_19 {
-		var value_20 float32 = mouse.X
-		var value_21 float32 = trigger.X
-		var value_22 float32 = trigger.Width
-		var value_23 float32 = value_21 + value_22
-		var value_24 bool = value_20 >= value_23
-		value_19 = value_24
-	}
-	var value_25 bool = value_19
-	if !value_25 {
-		var value_26 float32 = mouse.Y
-		var value_27 float32 = trigger.Y
-		var value_28 float32 = trigger.Height
-		var value_29 float32 = value_27 + value_28
-		var value_30 bool = value_26 >= value_29
-		value_25 = value_30
-	}
-	if value_25 {
-		var value_31 PopupContextActivation = activation
-		return value_31
-	}
-	var value_32 bool = true
-	activation.Open = value_32
-	var value_33 PopupContextActivation = activation
-	return value_33
+	activation.Open = true
+	return activation
 }
 
 func PopupPolicy_PopupDismissDecisionFor(decision PopupDecision, left_released bool, release_consumed bool, pointer_inside_popup bool) PopupDismissDecision {
 	var dismiss PopupDismissDecision = PopupDismissDecision{}
 	var value_0 bool = decision.Tooltip
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = decision.Modal
-		value_1 = value_2
+	if !value_0 {
+		value_0 = decision.Modal
 	}
+	if value_0 {
+		return dismiss
+	}
+	var value_1 bool = left_released
 	if value_1 {
-		var value_3 PopupDismissDecision = dismiss
-		return value_3
+		value_1 = !release_consumed
 	}
-	var value_4 bool = left_released
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = release_consumed
-		var value_7 bool = !value_6
-		value_5 = value_7
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !pointer_inside_popup
 	}
-	var value_8 bool = value_5
-	if value_8 {
-		var value_9 bool = pointer_inside_popup
-		var value_10 bool = !value_9
-		value_8 = value_10
+	if value_2 {
+		dismiss.Close = true
+		dismiss.ConsumeRelease = true
 	}
-	if value_8 {
-		var value_11 bool = true
-		dismiss.Close = value_11
-		var value_12 bool = true
-		dismiss.ConsumeRelease = value_12
-	}
-	var value_13 PopupDismissDecision = dismiss
-	return value_13
+	return dismiss
 }
 
 func PopupPolicy_PopupBackdropAlpha(decision PopupDecision) int32 {
-	var value_0 bool = decision.Modal
-	if value_0 {
-		var value_1 int32 = 180
-		return value_1
+	if decision.Modal {
+		return 180
 	}
-	var value_2 int32 = 0
-	return value_2
+	return 0
 }
 
 func PopupPolicy_PopupLifecycleBegin(flags uint32, input PopupFrameInput) PopupLifecycle {
 	var state PopupLifecycle = PopupLifecycle{}
-	var value_0 uint32 = flags
-	var value_1 bool = input.Disabled
-	var value_2 PopupDecision = PopupPolicy_PopupDecisionFor(value_0, value_1)
-	state.Decision = value_2
-	var value_3 bool = input.Open
-	state.Open = value_3
-	var value_4 PopupDecision = state.Decision
-	var value_5 int32 = input.ID
-	var value_6 Rectangle = input.Bounds
-	var value_7 Rectangle = input.Trigger
-	var value_8 bool = input.HasOpen
-	var value_9 bool = PopupPolicy_PopupCanBegin(value_4, value_5, value_6, value_7, value_8)
-	state.Eligible = value_9
-	var value_10 bool = state.Eligible
-	var value_11 bool = !value_10
-	if value_11 {
-		var value_12 PopupLifecycle = state
-		return value_12
+	var value_0 bool = input.Disabled
+	var value_1 PopupDecision = PopupPolicy_PopupDecisionFor(flags, value_0)
+	state.Decision = value_1
+	state.Open = input.Open
+	var value_2 PopupDecision = state.Decision
+	var value_3 int32 = input.ID
+	var value_4 Rectangle = input.Bounds
+	var value_5 Rectangle = input.Trigger
+	var value_6 bool = input.HasOpen
+	var value_7 bool = PopupPolicy_PopupCanBegin(value_2, value_3, value_4, value_5, value_6)
+	state.Eligible = value_7
+	if !state.Eligible {
+		return state
 	}
-	var value_13 PopupDecision = state.Decision
-	var value_14 Rectangle = input.Trigger
-	var value_15 Vector2 = input.Mouse
-	var value_16 bool = input.Disabled
-	var value_17 bool = input.TriggerBlocked
-	var value_18 bool = input.RightReleased
-	var value_19 PopupContextActivation = PopupPolicy_PopupContextActivationFor(value_13, value_14, value_15, value_16, value_17, value_18)
-	var activation PopupContextActivation = value_19
-	var value_20 bool = activation.Open
-	state.ContextOpened = value_20
-	var value_21 bool = state.Decision.Tooltip
-	if value_21 {
-		var value_22 float32 = input.Mouse.X
-		var value_23 float32 = input.Trigger.X
-		var value_24 bool = value_22 >= value_23
-		var value_25 bool = value_24
-		if value_25 {
-			var value_26 float32 = input.Mouse.Y
-			var value_27 float32 = input.Trigger.Y
-			var value_28 bool = value_26 >= value_27
-			value_25 = value_28
+	var value_8 PopupDecision = state.Decision
+	var value_9 Rectangle = input.Trigger
+	var value_10 Vector2 = input.Mouse
+	var value_11 bool = input.Disabled
+	var value_12 bool = input.TriggerBlocked
+	var value_13 bool = input.RightReleased
+	var value_14 PopupContextActivation = PopupPolicy_PopupContextActivationFor(value_8, value_9, value_10, value_11, value_12, value_13)
+	var activation PopupContextActivation = value_14
+	state.ContextOpened = activation.Open
+	if state.Decision.Tooltip {
+		var value_15 bool = (input.Mouse.X >= input.Trigger.X)
+		if value_15 {
+			value_15 = (input.Mouse.Y >= input.Trigger.Y)
 		}
-		var value_29 bool = value_25
-		if value_29 {
-			var value_30 float32 = input.Mouse.X
-			var value_31 float32 = input.Trigger.X
-			var value_32 float32 = input.Trigger.Width
-			var value_33 float32 = value_31 + value_32
-			var value_34 bool = value_30 < value_33
-			value_29 = value_34
+		var value_16 bool = value_15
+		if value_16 {
+			value_16 = (input.Mouse.X < (input.Trigger.X + input.Trigger.Width))
 		}
-		var value_35 bool = value_29
-		if value_35 {
-			var value_36 float32 = input.Mouse.Y
-			var value_37 float32 = input.Trigger.Y
-			var value_38 float32 = input.Trigger.Height
-			var value_39 float32 = value_37 + value_38
-			var value_40 bool = value_36 < value_39
-			value_35 = value_40
+		var value_17 bool = value_16
+		if value_17 {
+			value_17 = (input.Mouse.Y < (input.Trigger.Y + input.Trigger.Height))
 		}
-		var inside bool = value_35
-		var value_41 PopupDecision = state.Decision
-		var value_42 bool = input.Disabled
-		var value_43 bool = value_42
-		if !value_43 {
-			var value_44 bool = input.TriggerBlocked
-			value_43 = value_44
+		var inside bool = value_17
+		var value_18 PopupDecision = state.Decision
+		var value_19 bool = input.Disabled
+		if !value_19 {
+			value_19 = input.TriggerBlocked
 		}
-		var value_45 bool = inside
-		var value_46 bool = PopupPolicy_PopupTooltipVisible(value_41, value_43, value_45)
-		state.Open = value_46
+		var value_20 bool = PopupPolicy_PopupTooltipVisible(value_18, value_19, inside)
+		state.Open = value_20
 	} else {
-		var value_47 PopupDecision = state.Decision
-		var value_48 bool = input.Open
-		var value_49 bool = value_48
-		if !value_49 {
-			var value_50 bool = activation.Open
-			value_49 = value_50
+		var value_21 PopupDecision = state.Decision
+		var value_22 bool = input.Open
+		if !value_22 {
+			value_22 = activation.Open
 		}
-		var value_51 bool = input.Disabled
-		var value_52 bool = PopupPolicy_PopupOpenAfterDisabled(value_47, value_49, value_51)
-		state.Open = value_52
-		var value_53 bool = state.Open
-		var value_54 bool = !value_53
-		state.CloseInput = value_54
+		var value_23 bool = input.Disabled
+		var value_24 bool = PopupPolicy_PopupOpenAfterDisabled(value_21, value_22, value_23)
+		state.Open = value_24
+		state.CloseInput = !state.Open
 	}
-	var value_55 bool = state.Open
-	state.Visible = value_55
-	var value_56 PopupDecision = state.Decision
-	var value_57 Rectangle = input.Bounds
-	var value_58 float32 = input.ViewWidth
-	var value_59 float32 = input.ViewHeight
-	var value_60 Rectangle = PopupPolicy_PopupInputBounds(value_56, value_57, value_58, value_59)
-	state.InputBounds = value_60
-	var value_61 PopupDecision = state.Decision
-	var value_62 int32 = PopupPolicy_PopupBackdropAlpha(value_61)
-	state.BackdropAlpha = value_62
-	var value_63 PopupLifecycle = state
-	return value_63
+	state.Visible = state.Open
+	var value_25 PopupDecision = state.Decision
+	var value_26 Rectangle = input.Bounds
+	var value_27 float32 = input.ViewWidth
+	var value_28 float32 = input.ViewHeight
+	var value_29 Rectangle = PopupPolicy_PopupInputBounds(value_25, value_26, value_27, value_28)
+	state.InputBounds = value_29
+	var value_30 PopupDecision = state.Decision
+	var value_31 int32 = PopupPolicy_PopupBackdropAlpha(value_30)
+	state.BackdropAlpha = value_31
+	return state
 }
 
 func PopupPolicy_PopupLifecycleFinish(state PopupLifecycle, open bool, close_requested bool) PopupLifecycle {
-	var value_0 PopupLifecycle = state
-	var result PopupLifecycle = value_0
-	var value_1 bool = state.Eligible
-	var value_2 bool = !value_1
+	var result PopupLifecycle = state
+	if !state.Eligible {
+		return result
+	}
+	var value_0 bool = open
+	if value_0 {
+		value_0 = !close_requested
+	}
+	result.Open = value_0
+	var value_1 bool = state.Visible
+	if value_1 {
+		value_1 = result.Open
+	}
+	result.Visible = value_1
+	var value_2 bool = !result.Visible
 	if value_2 {
-		var value_3 PopupLifecycle = result
-		return value_3
+		value_2 = !state.Decision.Tooltip
 	}
-	var value_4 bool = open
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = close_requested
-		var value_7 bool = !value_6
-		value_5 = value_7
-	}
-	result.Open = value_5
-	var value_8 bool = state.Visible
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = result.Open
-		value_9 = value_10
-	}
-	result.Visible = value_9
-	var value_11 bool = result.Visible
-	var value_12 bool = !value_11
-	var value_13 bool = value_12
-	if value_13 {
-		var value_14 bool = state.Decision.Tooltip
-		var value_15 bool = !value_14
-		value_13 = value_15
-	}
-	result.CloseInput = value_13
-	var value_16 PopupLifecycle = result
-	return value_16
+	result.CloseInput = value_2
+	return result
 }
 
 func PopupPolicy_PopupLifecycleRelease(state PopupLifecycle, released bool, consumed bool, inside bool) PopupLifecycle {
-	var value_0 PopupLifecycle = state
-	var result PopupLifecycle = value_0
-	var value_1 bool = false
-	result.ConsumeRelease = value_1
-	var value_2 bool = state.Visible
-	var value_3 bool = !value_2
-	if value_3 {
-		var value_4 PopupLifecycle = result
-		return value_4
+	var result PopupLifecycle = state
+	result.ConsumeRelease = false
+	if !state.Visible {
+		return result
 	}
-	var value_5 PopupDecision = state.Decision
-	var value_6 bool = released
-	var value_7 bool = consumed
-	var value_8 bool = inside
-	var value_9 PopupDismissDecision = PopupPolicy_PopupDismissDecisionFor(value_5, value_6, value_7, value_8)
-	var dismiss PopupDismissDecision = value_9
-	var value_10 bool = dismiss.Close
-	if value_10 {
-		var value_11 PopupLifecycle = result
-		var value_12 bool = false
-		var value_13 bool = true
-		var value_14 PopupLifecycle = PopupPolicy_PopupLifecycleFinish(value_11, value_12, value_13)
-		result = value_14
-		var value_15 bool = dismiss.ConsumeRelease
-		result.ConsumeRelease = value_15
+	var value_0 PopupDecision = state.Decision
+	var value_1 PopupDismissDecision = PopupPolicy_PopupDismissDecisionFor(value_0, released, consumed, inside)
+	var dismiss PopupDismissDecision = value_1
+	if dismiss.Close {
+		var value_2 PopupLifecycle = PopupPolicy_PopupLifecycleFinish(result, false, true)
+		result = value_2
+		result.ConsumeRelease = dismiss.ConsumeRelease
 	}
-	var value_16 PopupLifecycle = result
-	return value_16
+	return result
 }
 
 func PopupPolicy_PopupLifecycleKeyboard(state PopupLifecycle, escape bool, keyboard_captured bool) PopupLifecycle {
 	var value_0 bool = state.Visible
+	if value_0 {
+		value_0 = state.Decision.CapturesInput
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = state.Decision.CapturesInput
-		value_1 = value_2
+		value_1 = escape
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = escape
-		value_3 = value_4
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !keyboard_captured
 	}
-	var value_5 bool = value_3
-	if value_5 {
-		var value_6 bool = keyboard_captured
-		var value_7 bool = !value_6
-		value_5 = value_7
+	if value_2 {
+		var value_3 PopupLifecycle = PopupPolicy_PopupLifecycleFinish(state, false, true)
+		return value_3
 	}
-	if value_5 {
-		var value_8 PopupLifecycle = state
-		var value_9 bool = false
-		var value_10 bool = true
-		var value_11 PopupLifecycle = PopupPolicy_PopupLifecycleFinish(value_8, value_9, value_10)
-		return value_11
-	}
-	var value_12 PopupLifecycle = state
-	return value_12
+	return state
 }

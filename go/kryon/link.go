@@ -26,167 +26,99 @@ type LinkInteraction struct {
 }
 
 func Link_LinkBoundsFor(bounds Rectangle, text_width int32, text_height int32, font int32) Rectangle {
-	var value_0 Rectangle = bounds
-	var result Rectangle = value_0
-	var value_1 float32 = result.Width
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = text_width
-		var value_5 float32 = float32(value_4)
-		result.Width = value_5
+	var result Rectangle = bounds
+	if result.Width <= 0.0 {
+		result.Width = float32(text_width)
 	}
-	var value_6 float32 = result.Height
-	var value_7 float32 = 0.0
-	var value_8 bool = value_6 <= value_7
-	if value_8 {
-		var value_9 int32 = text_height
-		var value_10 float32 = float32(value_9)
-		result.Height = value_10
+	if result.Height <= 0.0 {
+		result.Height = float32(text_height)
 	}
-	var value_11 float32 = result.Height
-	var value_12 float32 = 0.0
-	var value_13 bool = value_11 <= value_12
-	if value_13 {
-		var value_14 int32 = font
-		var value_15 float32 = float32(value_14)
-		result.Height = value_15
+	if result.Height <= 0.0 {
+		result.Height = float32(font)
 	}
-	var value_16 Rectangle = result
-	return value_16
+	return result
 }
 
 func Link_LinkUnderlineYFor(bounds Rectangle, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = bounds.Y
-	var value_5 float32 = bounds.Height
-	var value_6 float32 = value_4 + value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var value_8 float32 = 2.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_11), 32, true, 2))
-	return value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.Y+bounds.Height)), 32, true)), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((2.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return (int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2)))
 }
 
 func Link_LinkInteractionFor(disabled bool, captured bool, mouse_inside bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool) LinkInteraction {
 	var interaction LinkInteraction = LinkInteraction{}
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !captured
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = mouse_inside
+	}
+	interaction.Active = value_1
+	var value_2 bool = interaction.Active
 	if value_2 {
-		var value_3 bool = captured
-		var value_4 bool = !value_3
-		value_2 = value_4
+		value_2 = hover_effects
 	}
-	var value_5 bool = value_2
+	interaction.Hovered = value_2
+	var value_3 bool = disabled
+	if value_3 {
+		value_3 = !captured
+	}
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = mouse_inside
+	}
+	interaction.DisabledMarker = value_4
+	var value_5 bool = interaction.Active
 	if value_5 {
-		var value_6 bool = mouse_inside
-		value_5 = value_6
+		value_5 = released
 	}
-	interaction.Active = value_5
-	var value_7 bool = interaction.Active
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = hover_effects
-		value_8 = value_9
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = !release_consumed
 	}
-	interaction.Hovered = value_8
-	var value_10 bool = disabled
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = captured
-		var value_13 bool = !value_12
-		value_11 = value_13
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = press_started_inside
 	}
-	var value_14 bool = value_11
-	if value_14 {
-		var value_15 bool = mouse_inside
-		value_14 = value_15
+	interaction.Activated = value_7
+	interaction.ConsumeRelease = interaction.Activated
+	interaction.State = ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateNormal)), uint64(0), 32, true, 0)))
+	if interaction.Hovered {
+		interaction.State = ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateHover)), uint64(0), 32, true, 0)))
 	}
-	interaction.DisabledMarker = value_14
-	var value_16 bool = interaction.Active
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = released
-		value_17 = value_18
+	if disabled {
+		interaction.State = ButtonState(int32(number_runtime_bits(uint64(int32(ButtonStateDisabled)), uint64(0), 32, true, 0)))
 	}
-	var value_19 bool = value_17
-	if value_19 {
-		var value_20 bool = release_consumed
-		var value_21 bool = !value_20
-		value_19 = value_21
-	}
-	var value_22 bool = value_19
-	if value_22 {
-		var value_23 bool = press_started_inside
-		value_22 = value_23
-	}
-	interaction.Activated = value_22
-	var value_24 bool = interaction.Activated
-	interaction.ConsumeRelease = value_24
-	var value_25 int32 = int32(ButtonStateNormal)
-	var value_26 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_25), uint64(0), 32, true, 0)))
-	interaction.State = value_26
-	var value_27 bool = interaction.Hovered
-	if value_27 {
-		var value_28 int32 = int32(ButtonStateHover)
-		var value_29 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_28), uint64(0), 32, true, 0)))
-		interaction.State = value_29
-	}
-	var value_30 bool = disabled
-	if value_30 {
-		var value_31 int32 = int32(ButtonStateDisabled)
-		var value_32 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_31), uint64(0), 32, true, 0)))
-		interaction.State = value_32
-	}
-	var value_33 LinkInteraction = interaction
-	return value_33
+	return interaction
 }
 
 func Link_LinkActivated(disabled bool, clicked bool, focus_activate bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = clicked
-		var value_4 bool = value_3
-		if !value_4 {
-			var value_5 bool = focus_activate
-			value_4 = value_5
+	var value_0 bool = !disabled
+	if value_0 {
+		var value_1 bool = clicked
+		if !value_1 {
+			value_1 = focus_activate
 		}
-		value_2 = value_4
+		value_0 = value_1
 	}
-	return value_2
+	return value_0
 }
 
 func Link_ResolveLinkAppearance(frame StyleFrame, hovered bool, disabled bool) LinkAppearance {
-	var value_0 int32 = LinkVisualStateLinkStateNormal
-	var state int32 = value_0
-	var value_1 bool = hovered
-	if value_1 {
-		var value_2 int32 = LinkVisualStateLinkStateHover
-		state = value_2
+	var state int32 = LinkVisualStateLinkStateNormal
+	if hovered {
+		state = LinkVisualStateLinkStateHover
 	}
-	var value_3 bool = disabled
-	if value_3 {
-		var value_4 int32 = LinkVisualStateLinkStateDisabled
-		state = value_4
+	if disabled {
+		state = LinkVisualStateLinkStateDisabled
 	}
 	var appearance LinkAppearance = LinkAppearance{}
-	var value_5 uint32 = frame.Value.Foreground
-	appearance.Color = value_5
-	var value_6 int32 = state
-	var value_7 int32 = LinkVisualStateLinkStateHover
-	var value_8 bool = value_6 == value_7
-	appearance.Underline = value_8
-	var value_9 LinkAppearance = appearance
-	return value_9
+	appearance.Color = frame.Value.Foreground
+	appearance.Underline = (state == LinkVisualStateLinkStateHover)
+	return appearance
 }

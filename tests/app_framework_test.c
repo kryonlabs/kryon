@@ -64,8 +64,6 @@ main(void)
     Rectangle content;
     RouteFixture route_fixture;
     AppHost route_host;
-    int volume = 500;
-    int enabled = 42;
 
     KryRouteStackInit(&stack, routes, 4, 10);
     check_int("route stack root count", stack.count, 1);
@@ -157,26 +155,6 @@ main(void)
     check_int("safe rect y", (int)content.y, 34);
     check_int("safe rect width", (int)content.width, 362);
     check_int("safe rect height", (int)content.height, 566);
-
-    check_int("clamp swaps range", KryClampInt(5, 10, 0), 5);
-    check_int("clamp low", KryClampInt(-2, 0, 10), 0);
-    check_int("clamp high", KryClampInt(42, 0, 10), 10);
-    check_int("normalize int",
-              KryNormalizeIntSetting((KryIntSetting){
-                  .key = "volume",
-                  .value = &volume,
-                  .default_value = 80,
-                  .min_value = 0,
-                  .max_value = 100
-              }), 100);
-    check_int("normalize int writes", volume, 100);
-    check_int("normalize bool",
-              KryNormalizeBoolSetting((KryBoolSetting){
-                  .key = "enabled",
-                  .value = &enabled,
-                  .default_value = 0
-              }), 1);
-    check_int("normalize bool writes", enabled, 1);
 
     return failures == 0 ? 0 : 1;
 }

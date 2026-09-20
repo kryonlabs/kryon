@@ -17,273 +17,168 @@ type DragDropTargetDecision struct {
 
 func DragDrop_DragDropShouldClearSource(active bool, active_source_id int32, source_id int32, mouse_down bool, mouse_released bool) bool {
 	var value_0 bool = active
+	if value_0 {
+		value_0 = (active_source_id == source_id)
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 int32 = active_source_id
-		var value_3 int32 = source_id
-		var value_4 bool = value_2 == value_3
-		value_1 = value_4
+		value_1 = !mouse_down
 	}
-	var value_5 bool = value_1
-	if value_5 {
-		var value_6 bool = mouse_down
-		var value_7 bool = !value_6
-		value_5 = value_7
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !mouse_released
 	}
-	var value_8 bool = value_5
-	if value_8 {
-		var value_9 bool = mouse_released
-		var value_10 bool = !value_9
-		value_8 = value_10
-	}
-	return value_8
+	return value_2
 }
 
 func DragDrop_DragDropSourceValid(disabled bool, content_disabled bool, has_type bool, data_size int32, max_size int32, has_data bool) bool {
 	var value_0 bool = disabled
+	if !value_0 {
+		value_0 = content_disabled
+	}
 	var value_1 bool = value_0
 	if !value_1 {
-		var value_2 bool = content_disabled
-		value_1 = value_2
+		value_1 = !has_type
 	}
-	var value_3 bool = value_1
-	if !value_3 {
-		var value_4 bool = has_type
-		var value_5 bool = !value_4
-		value_3 = value_5
+	if value_1 {
+		return false
+	}
+	var value_2 bool = (max_size >= 0)
+	if value_2 {
+		value_2 = (data_size > max_size)
+	}
+	if value_2 {
+		return false
+	}
+	if data_size < 0 {
+		return false
+	}
+	var value_3 bool = (data_size > 0)
+	if value_3 {
+		value_3 = !has_data
 	}
 	if value_3 {
-		var value_6 bool = false
-		return value_6
+		return false
 	}
-	var value_7 int32 = max_size
-	var value_8 int32 = 0
-	var value_9 bool = value_7 >= value_8
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 int32 = data_size
-		var value_12 int32 = max_size
-		var value_13 bool = value_11 > value_12
-		value_10 = value_13
-	}
-	if value_10 {
-		var value_14 bool = false
-		return value_14
-	}
-	var value_15 int32 = data_size
-	var value_16 int32 = 0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 bool = false
-		return value_18
-	}
-	var value_19 int32 = data_size
-	var value_20 int32 = 0
-	var value_21 bool = value_19 > value_20
-	var value_22 bool = value_21
-	if value_22 {
-		var value_23 bool = has_data
-		var value_24 bool = !value_23
-		value_22 = value_24
-	}
-	if value_22 {
-		var value_25 bool = false
-		return value_25
-	}
-	var value_26 bool = true
-	return value_26
+	return true
 }
 
 func DragDrop_DragDropSourceStarts(valid bool, hot bool, mouse_pressed bool) bool {
 	var value_0 bool = valid
+	if value_0 {
+		value_0 = hot
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = hot
-		value_1 = value_2
+		value_1 = mouse_pressed
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = mouse_pressed
-		value_3 = value_4
-	}
-	return value_3
+	return value_1
 }
 
 func DragDrop_DragDropSourceReturnsActive(active bool, active_source_id int32, source_id int32, mouse_down bool, mouse_released bool) bool {
 	var value_0 bool = active
+	if value_0 {
+		value_0 = (active_source_id == source_id)
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 int32 = active_source_id
-		var value_3 int32 = source_id
-		var value_4 bool = value_2 == value_3
-		value_1 = value_4
-	}
-	var value_5 bool = value_1
-	if value_5 {
-		var value_6 bool = mouse_down
-		var value_7 bool = value_6
-		if !value_7 {
-			var value_8 bool = mouse_released
-			value_7 = value_8
+		var value_2 bool = mouse_down
+		if !value_2 {
+			value_2 = mouse_released
 		}
-		value_5 = value_7
+		value_1 = value_2
 	}
-	return value_5
+	return value_1
 }
 
 func DragDrop_DragDropTargetMatches(active bool, has_type bool, same_type bool) bool {
 	var value_0 bool = active
+	if value_0 {
+		value_0 = has_type
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = has_type
-		value_1 = value_2
+		value_1 = same_type
 	}
-	var value_3 bool = value_1
+	return value_1
+}
+
+func DragDrop_DragDropTargetHot(disabled bool, content_disabled bool, pointer_hot bool) bool {
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !content_disabled
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = pointer_hot
+	}
+	return value_1
+}
+
+func DragDrop_DragDropTargetAccepts(disabled bool, content_disabled bool, matches bool, hot bool, mouse_released bool) bool {
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !content_disabled
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = matches
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = hot
+	}
+	var value_3 bool = value_2
 	if value_3 {
-		var value_4 bool = same_type
-		value_3 = value_4
+		value_3 = mouse_released
 	}
 	return value_3
 }
 
-func DragDrop_DragDropTargetHot(disabled bool, content_disabled bool, pointer_hot bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = content_disabled
-		var value_4 bool = !value_3
-		value_2 = value_4
-	}
-	var value_5 bool = value_2
-	if value_5 {
-		var value_6 bool = pointer_hot
-		value_5 = value_6
-	}
-	return value_5
-}
-
-func DragDrop_DragDropTargetAccepts(disabled bool, content_disabled bool, matches bool, hot bool, mouse_released bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = content_disabled
-		var value_4 bool = !value_3
-		value_2 = value_4
-	}
-	var value_5 bool = value_2
-	if value_5 {
-		var value_6 bool = matches
-		value_5 = value_6
-	}
-	var value_7 bool = value_5
-	if value_7 {
-		var value_8 bool = hot
-		value_7 = value_8
-	}
-	var value_9 bool = value_7
-	if value_9 {
-		var value_10 bool = mouse_released
-		value_9 = value_10
-	}
-	return value_9
-}
-
 func DragDrop_DragDropCopySize(data_size int32, output_size int32) int32 {
-	var value_0 int32 = data_size
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		data_size = value_3
+	if data_size < 0 {
+		data_size = 0
 	}
-	var value_4 int32 = output_size
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		output_size = value_7
+	if output_size < 0 {
+		output_size = 0
 	}
-	var value_8 int32 = data_size
-	var value_9 int32 = output_size
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = data_size
-		return value_11
+	if data_size < output_size {
+		return data_size
 	}
-	var value_12 int32 = output_size
-	return value_12
+	return output_size
 }
 
 func DragDrop_DragDropSourceDecisionFor(active bool, active_source_id int32, source_id int32, disabled bool, content_disabled bool, has_type bool, data_size int32, max_size int32, has_data bool, hot bool, mouse_pressed bool, mouse_down bool, mouse_released bool) DragDropSourceDecision {
 	var decision DragDropSourceDecision = DragDropSourceDecision{}
-	var value_0 bool = active
-	var value_1 int32 = active_source_id
-	var value_2 int32 = source_id
-	var value_3 bool = mouse_down
-	var value_4 bool = mouse_released
-	var value_5 bool = DragDrop_DragDropShouldClearSource(value_0, value_1, value_2, value_3, value_4)
-	decision.ClearSource = value_5
-	var value_6 bool = disabled
-	var value_7 bool = content_disabled
-	var value_8 bool = has_type
-	var value_9 int32 = data_size
-	var value_10 int32 = max_size
-	var value_11 bool = has_data
-	var value_12 bool = DragDrop_DragDropSourceValid(value_6, value_7, value_8, value_9, value_10, value_11)
-	decision.Valid = value_12
-	var value_13 bool = decision.Valid
-	var value_14 bool = hot
-	var value_15 bool = mouse_pressed
-	var value_16 bool = DragDrop_DragDropSourceStarts(value_13, value_14, value_15)
-	decision.StartSource = value_16
-	var value_17 bool = active
-	var value_18 int32 = active_source_id
-	var value_19 int32 = source_id
-	var value_20 bool = mouse_down
-	var value_21 bool = mouse_released
-	var value_22 bool = DragDrop_DragDropSourceReturnsActive(value_17, value_18, value_19, value_20, value_21)
-	var value_23 bool = value_22
-	if !value_23 {
-		var value_24 bool = decision.StartSource
-		var value_25 int32 = source_id
-		var value_26 int32 = source_id
-		var value_27 bool = mouse_down
-		var value_28 bool = mouse_released
-		var value_29 bool = DragDrop_DragDropSourceReturnsActive(value_24, value_25, value_26, value_27, value_28)
-		value_23 = value_29
+	var value_0 bool = DragDrop_DragDropShouldClearSource(active, active_source_id, source_id, mouse_down, mouse_released)
+	decision.ClearSource = value_0
+	var value_1 bool = DragDrop_DragDropSourceValid(disabled, content_disabled, has_type, data_size, max_size, has_data)
+	decision.Valid = value_1
+	var value_2 bool = decision.Valid
+	var value_3 bool = DragDrop_DragDropSourceStarts(value_2, hot, mouse_pressed)
+	decision.StartSource = value_3
+	var value_4 bool = DragDrop_DragDropSourceReturnsActive(active, active_source_id, source_id, mouse_down, mouse_released)
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 bool = decision.StartSource
+		var value_7 bool = DragDrop_DragDropSourceReturnsActive(value_6, source_id, source_id, mouse_down, mouse_released)
+		value_5 = value_7
 	}
-	decision.ReturnsActive = value_23
-	var value_30 DragDropSourceDecision = decision
-	return value_30
+	decision.ReturnsActive = value_5
+	return decision
 }
 
 func DragDrop_DragDropTargetDecisionFor(disabled bool, content_disabled bool, active bool, has_type bool, same_type bool, hot bool, mouse_released bool, data_size int32, output_size int32) DragDropTargetDecision {
 	var decision DragDropTargetDecision = DragDropTargetDecision{}
-	var value_0 bool = active
-	var value_1 bool = has_type
-	var value_2 bool = same_type
-	var value_3 bool = DragDrop_DragDropTargetMatches(value_0, value_1, value_2)
-	var matches bool = value_3
-	var value_4 bool = disabled
-	var value_5 bool = content_disabled
-	var value_6 bool = matches
-	var value_7 bool = hot
-	var value_8 bool = mouse_released
-	var value_9 bool = DragDrop_DragDropTargetAccepts(value_4, value_5, value_6, value_7, value_8)
-	decision.Accepted = value_9
-	var value_10 bool = decision.Accepted
-	if value_10 {
-		var value_11 int32 = data_size
-		var value_12 int32 = output_size
-		var value_13 int32 = DragDrop_DragDropCopySize(value_11, value_12)
-		decision.CopySize = value_13
-		var value_14 bool = true
-		decision.ClearSource = value_14
-		var value_15 bool = true
-		decision.ConsumeRelease = value_15
+	var value_0 bool = DragDrop_DragDropTargetMatches(active, has_type, same_type)
+	var matches bool = value_0
+	var value_1 bool = DragDrop_DragDropTargetAccepts(disabled, content_disabled, matches, hot, mouse_released)
+	decision.Accepted = value_1
+	if decision.Accepted {
+		var value_2 int32 = DragDrop_DragDropCopySize(data_size, output_size)
+		decision.CopySize = value_2
+		decision.ClearSource = true
+		decision.ConsumeRelease = true
 	}
-	var value_16 DragDropTargetDecision = decision
-	return value_16
+	return decision
 }

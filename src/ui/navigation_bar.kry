@@ -1,0 +1,375 @@
+#module "navigation_bar_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "ui_image_internal.h"
+#import "ui/dropdown_store.h"
+#import "runtime/navigation_bar.h"
+#import "runtime/style.h"
+
+navigation_route_scroll_offset :: i32 #global
+
+ui_navigation_bar_height :: () -> i32 #export {
+    return NavigationBarDefaultHeightFor(ui_classic_style(),
+    (float)Scale(1000) / 1000.0)
+}
+
+NavigationBarHit :: (bounds: Rectangle, disabled: i32,
+hovered: *i32) -> i32 {
+    mouse: Vector2 = ui_mouse_world()
+    interaction: NavigationBarItemInteraction =
+    NavigationBarItemInteractionFor(disabled != 0,
+    CheckCollisionPointRec(mouse, bounds) != 0,
+    InputCapturesClick(mouse) != 0,
+    HoverEffectsEnabled() != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+    ReleaseConsumed() != 0,
+    press_started_inside(bounds) != 0, false)
+    if hovered != nil { *hovered = interaction.hovered }
+    if interaction.disabled_marker {
+        MarkDisabled()
+    } else if interaction.active {
+        MarkClickable()
+    }
+    if interaction.consume_release { ConsumeRelease() }
+    return interaction.activated
+}
+
+NavigationBarDrawIcon :: (icon: Texture2D, icon_type: IconType,
+bounds: Rectangle, tint: Color, alpha: u8) {
+    tint.a = NavigationBarTintAlpha(tint.a, alpha)
+    if icon_type != ICON_NONE {
+        DrawIcon(icon_type, bounds, tint)
+        return
+    }
+    if icon.id == 0 { return }
+    if tint.a == 0 { tint = WHITE }
+    ImageTextureTintedRaw(icon, bounds, tint)
+}
+
+NavigationBarSurfaceFrame :: (class_name: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.class_name = class_name
+    props.tone = ButtonToneNeutral
+    props.emphasis = ButtonEmphasisSoft
+    props.size = ControlSizeLarge
+    props.pill = 1
+    return ui_control_style_frame_kind(props,
+    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindNavigationBar())
+}
+
+NavigationBarItemFrame :: (active: i32, disabled: i32,
+hovered: i32, class_name: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.class_name = class_name
+    props.tone = ButtonToneNeutral
+    props.emphasis = ButtonEmphasisGhost
+    if active != 0 {
+        props.tone = ButtonToneAccent
+        props.emphasis = ButtonEmphasisFilled
+    }
+    props.size = ControlSizeMedium
+    props.pill = 1
+    props.disabled = disabled
+    props.selected = active
+    state: ButtonState = NavigationBarItemStateFor(active != 0,
+    disabled != 0, hovered != 0)
+    return ui_control_style_frame_kind(props, state,
+    0, 0.0, 0.0, 0.0, StyleKindNavigationBarItem())
+}
+
+NavigationBarItemPaintForState :: (bar: NavigationBarPaint,
+index: i32, item: NavigationBarItem, hovered: i32,
+label_height: i32, base: StyleFrame,
+face: StyleFrame) -> NavigationBarItemPaint {
+    spec: NavigationBarItemSpec = (NavigationBarItemSpec){0}
+    spec.bar = bar
+    spec.index = index
+    spec.active = item.active
+    spec.disabled = item.disabled
+    spec.hovered = hovered
+    spec.label_height = label_height
+    spec.base = base
+    spec.face = face
+    return NavigationBarItemPaintFor(spec)
+}
+
+RenderNavigationBar :: (nav: NavigationBarProps) -> NavigationBarResult #export {
+    result: NavigationBarResult = (NavigationBarResult){0}
+    result.clicked_index = -1
+    result.clicked_route = -1
+    if nav.items == nil || nav.count <= 0 ||
+    nav.view_width <= 0 || nav.view_height <= 0 { return result }
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    height: i32 = nav.height
+    if height <= 0 { height = ui_navigation_bar_height() }
+    spec: NavigationBarSpec = (NavigationBarSpec){0}
+    spec.view_width = nav.view_width
+    spec.view_height = nav.view_height
+    spec.count = nav.count
+    spec.height = height
+    spec.side_margin = -1
+    spec.bottom_margin = -1
+    spec.icon_size = -1
+    spec.scale = runtime_scale
+    spec.bar = NavigationBarSurfaceFrame(nav.class_name)
+    spec.item = NavigationBarItemFrame(0, 0, 0, nav.class_name)
+    paint: NavigationBarPaint = NavigationBarPaintFor(spec)
+    result.y = paint.y
+    result.height = paint.height
+    widget: Widget = BeginWidget("NavigationBar",
+    "tmp:NavigationBar", paint.bounds, WidgetFlagReadOnly)
+    WidgetSetAction(&widget, "RenderNavigationBar")
+    bar_frame: StyleFrame = ui_style_apply_effects_frame(paint.bar)
+    bar_style: Style = ui_unpack_style(bar_frame.value)
+    ui_draw_material(paint.bar_bounds, (Rectangle){0},
+    bar_style.background, bar_style.border, bar_style.border,
+    bar_style.radius, bar_style.border_width, 0.0, 0.0, 0,
+    bar_style.focus, 0.0, bar_style.opacity,
+    ui_style_apply_effects_fill(bar_frame.fill),
+    bar_style.material)
+
+    index: i32 = 0
+    while index < paint.count {
+        item: NavigationBarItem = nav.items[index]
+        base_frame: StyleFrame = NavigationBarItemFrame(0,
+        item.disabled, 0, nav.class_name)
+        base_style: Style = ui_unpack_style(base_frame.value)
+        face_frame: StyleFrame = NavigationBarItemFrame(item.active,
+        item.disabled, 0, nav.class_name)
+        text_style: Style = base_style
+        label_font: i32 = NavigationBarFontFor(GetSmallFontSize(),
+        StyleFontValue(base_style.fields, base_style.font_size))
+        label_height: i32 = TextLineHeight(label_font)
+        item_paint: NavigationBarItemPaint =
+        NavigationBarItemPaintForState(paint, index, item, 0,
+        label_height, base_frame, face_frame)
+        hover: i32 = 0
+        if NavigationBarHit(item_paint.bounds,
+        item.disabled, &hover) {
+            result.clicked_index = index
+            result.clicked_route = item.route
+        }
+        if hover != 0 {
+            face_frame = NavigationBarItemFrame(item.active,
+            item.disabled, hover, nav.class_name)
+            item_paint = NavigationBarItemPaintForState(paint,
+            index, item, hover, label_height,
+            base_frame, face_frame)
+        }
+        if item_paint.draw_face {
+            effect_frame: StyleFrame = ui_style_apply_effects_frame(
+            item_paint.face)
+            face_style: Style = ui_unpack_style(effect_frame.value)
+            text_style = face_style
+            label_font = NavigationBarFontFor(label_font,
+            StyleFontValue(face_style.fields, face_style.font_size))
+            ui_draw_material(item_paint.state_bounds,
+            (Rectangle){0}, face_style.background,
+            face_style.border, face_style.border,
+            face_style.radius, face_style.border_width,
+            hover ? 1.0 : 0.0, 0.0, item.disabled,
+            face_style.focus, 0.0, face_style.opacity,
+            ui_style_apply_effects_fill(effect_frame.fill),
+            face_style.material)
+        }
+        NavigationBarDrawIcon(item.icon, item.icon_type,
+        item_paint.icon_bounds, GetColor(item_paint.icon_color),
+        (unsigned char)item_paint.icon_alpha)
+        if item.label != nil && item.label[0] != '\0' {
+            DrawFittedTextInRect(item.label,
+            item_paint.label_bounds, label_font, Text8,
+            Fade(GetColor(item_paint.text_color),
+            text_style.opacity))
+        }
+        index += 1
+    }
+    EndWidget(&widget)
+    return result
+}
+
+NavigationBarOptionIndex :: (options: const NavigationBarOption*,
+option_count: i32, route: i32) -> i32 {
+    if options == nil || option_count <= 0 { return 0 }
+    index: i32 = 0
+    while index < option_count {
+        if options[index].route == route { return index }
+        index += 1
+    }
+    return 0
+}
+
+NavigationBarMetricFrame :: (class_name: i32,
+role: i32) -> StyleFrame {
+    frame: StyleFrame = (StyleFrame){0}
+    frame.value = ResolveActiveStyle((StyleData){0},
+    NavigationBarRoleFactsFor(class_name, role,
+    ButtonStateNormal), ButtonStateNormal)
+    return frame
+}
+
+NavigationBarConfigMetricsForClass :: (class_name: i32,
+scale: float) -> NavigationBarConfigMetrics {
+    return NavigationBarConfigMetricsFor(scale,
+    NavigationBarMetricFrame(class_name, NavigationBarPanelRole()),
+    NavigationBarMetricFrame(class_name, NavigationBarRowRole()),
+    NavigationBarMetricFrame(class_name, NavigationBarActionRole()),
+    NavigationBarMetricFrame(class_name, NavigationBarRouteRole()))
+}
+
+RenderNavigationBarConfigModal :: (modal: NavigationBarConfigProps) -> NavigationBarConfigResult #export {
+    result: NavigationBarConfigResult = (NavigationBarConfigResult){0}
+    option_labels: [16]const char*
+    selected: [16]i32 = {0}
+    route_count: i32 = 0
+    if modal.route_count != nil { route_count = *modal.route_count }
+    counts: NavigationBarConfigCounts = NavigationBarConfigCountsFor(
+    route_count, modal.max_route_count, modal.option_count, 16)
+    route_count = counts.route_count
+    max_route_count: i32 = counts.max_route_count
+    option_count: i32 = counts.option_count
+    index: i32 = 0
+    while index < option_count {
+        option_labels[index] = modal.options[index].label
+        index += 1
+    }
+    metrics: NavigationBarConfigMetrics =
+    NavigationBarConfigMetricsForClass(0,
+    (float)Scale(1000) / 1000.0)
+    label_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(
+    ui_control_style_frame_kind((ButtonProps){0},
+    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
+    StyleKindNavigationBarItem())).value)
+    label_font: i32 = NavigationBarFontFor(GetSmallFontSize(),
+    StyleFontValue(label_style.fields, label_style.font_size))
+    index = 0
+    while index < route_count {
+        route: i32 = 0
+        if modal.routes != nil { route = modal.routes[index] }
+        selected[index] = NavigationBarOptionIndex(modal.options,
+        option_count, route)
+        index += 1
+    }
+    frame: PanelFrame = RenderModalFrame(metrics.frame_width,
+    NavigationBarConfigFrameHeight(route_count, metrics),
+    modal.title, (Texture2D){0}, modal.close_icon)
+    if frame.right_clicked {
+        result.action = 1
+        return result
+    }
+    layout: NavigationBarConfigLayout = NavigationBarConfigLayoutFor(
+    (Rectangle){(float)frame.x, (float)frame.y,
+        (float)frame.w, (float)frame.h},
+    (Rectangle){(float)frame.content_x, (float)frame.content_y,
+        (float)frame.content_w, (float)frame.content_h},
+    route_count, metrics)
+    route_area: ScrollArea = (ScrollArea){0}
+    route_area.bounds = layout.route_bounds
+    route_area.content_height = layout.route_content_height
+    route_area.content_x = frame.content_x
+    route_area.content_width = frame.content_w
+    route_area.scroll_offset = &navigation_route_scroll_offset
+    route_area.wheel_step = layout.wheel_step
+    route_area.scrollbar_x = layout.scrollbar_x
+    route_view: ScrollView = BeginScrollContainer(route_area)
+    y: i32 = route_view.content_y
+    index = 0
+    while index < route_count {
+        row: NavigationBarConfigRowLayout =
+        NavigationBarConfigRowLayoutFor(
+        (Rectangle){(float)frame.content_x,
+            (float)frame.content_y, (float)frame.content_w,
+            (float)frame.content_h}, y,
+        TextLineHeight(label_font), metrics)
+        slot_label: const char* = ""
+        if modal.slot_labels != nil &&
+        modal.slot_labels[index] != nil {
+            slot_label = modal.slot_labels[index]
+        }
+        text_style: TextStyle = (TextStyle){0}
+        text_style.font_size = label_font
+        text_style.color = Fade(label_style.foreground,
+        label_style.opacity)
+        text_style.italic = 1
+        RenderTextStyled(slot_label, (int)row.label_bounds.x,
+        (int)row.label_bounds.y, text_style)
+        dropdown: DropdownProps = (DropdownProps){0}
+        dropdown.id = modal.id + index
+        dropdown.bounds = row.dropdown_bounds
+        dropdown.options = &option_labels[0]
+        dropdown.option_count = option_count
+        dropdown.selected_index = &selected[index]
+        if Dropdown(dropdown) && modal.routes != nil &&
+        selected[index] >= 0 && selected[index] < option_count {
+            modal.routes[index] = modal.options[selected[index]].route
+            result.changed = 1
+        }
+        remove: ButtonProps = (ButtonProps){0}
+        remove.bounds = row.remove_bounds
+        remove.icon = modal.close_icon
+        remove.icon_only = true
+        remove.tone = ButtonToneNeutral
+        remove.emphasis = ButtonEmphasisSoft
+        if Button(remove) {
+            next: i32 = index
+            while next < route_count - 1 {
+                modal.routes[next] = modal.routes[next + 1]
+                next += 1
+            }
+            route_count -= 1
+            if modal.route_count != nil {
+                *modal.route_count = route_count
+            }
+            result.changed = 1
+            break
+        }
+        y = NavigationBarConfigNextRowY(y, metrics)
+        index += 1
+    }
+    EndScrollContainer(route_area, route_view)
+    dropdown_store_clip(layout.clip_y, layout.clip_height)
+    dropdown_blocks_buttons: i32 = dropdown_captures(ui_mouse_world())
+    if route_count < max_route_count && modal.routes != nil {
+        add: ButtonProps = (ButtonProps){0}
+        add.bounds = layout.add_bounds
+        add.label = modal.add_label
+        add.tone = ButtonToneNeutral
+        add.emphasis = ButtonEmphasisSoft
+        add.disabled = dropdown_blocks_buttons
+        if Button(add) {
+            default_route: i32 = 0
+            if option_count > 0 {
+                default_route = modal.options[0].route
+            }
+            modal.routes[route_count] = NavigationBarConfigDefaultRoute(
+            option_count, default_route)
+            route_count += 1
+            if modal.route_count != nil {
+                *modal.route_count = route_count
+            }
+            result.changed = 1
+        }
+    }
+    reset: ButtonProps = (ButtonProps){0}
+    reset.bounds = layout.reset_bounds
+    reset.label = modal.reset_label
+    reset.tone = ButtonToneNeutral
+    reset.emphasis = ButtonEmphasisSoft
+    reset.disabled = dropdown_blocks_buttons
+    if Button(reset) { result.action = 3 }
+    cancel: ButtonProps = (ButtonProps){0}
+    cancel.bounds = layout.cancel_bounds
+    cancel.label = modal.cancel_label
+    cancel.tone = ButtonToneNeutral
+    cancel.emphasis = ButtonEmphasisSoft
+    cancel.disabled = dropdown_blocks_buttons
+    if Button(cancel) { result.action = 1 }
+    save: ButtonProps = (ButtonProps){0}
+    save.bounds = layout.save_bounds
+    save.label = modal.save_label
+    save.disabled = dropdown_blocks_buttons
+    if Button(save) { result.action = 2 }
+    dropdown_store_clip(0, 0)
+    return result
+}

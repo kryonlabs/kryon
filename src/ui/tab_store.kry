@@ -1,0 +1,116 @@
+#module "tab_store_host"
+#import "ui_internal.h"
+
+TabBarState :: struct {
+    next: *TabBarState
+    id: i32
+    scroll: i32
+    frame_seen: unsigned long
+}
+
+TabBarStore :: struct {
+    states: *TabBarState
+    last_drag_position: Vector2
+    dragging_scroll: i32
+    scroll_drag_bar_id: i32
+    scroll_drag_bar_bounds: Rectangle
+    last_clicked_tab: i32
+    last_clicked_bar_id: i32
+    last_clicked_bar_bounds: Rectangle
+    last_click_time: double
+    press_position: Vector2
+    press_index: i32
+    press_bar_id: i32
+    press_bar_bounds: Rectangle
+    reorder_drag_active: i32
+    pane_press_position: Vector2
+    pane_press_index: i32
+    pane_drag_reported: i32
+}
+
+fallback_tab_store :: TabBarStore #global
+current_tab_store :: *TabBarStore #global
+fallback_tab_store_ready :: i32 #global
+
+TabStoreFallback :: () -> *TabBarStore {
+    if fallback_tab_store_ready == 0 {
+        fallback_tab_store.last_clicked_tab = -1
+        fallback_tab_store.press_index = -1
+        fallback_tab_store.pane_press_index = -1
+        fallback_tab_store_ready = 1
+    }
+    return &fallback_tab_store
+}
+
+tab_bar_store_current :: () -> *TabBarStore #export {
+    if current_tab_store == nil {
+        current_tab_store = TabStoreFallback()
+    }
+    return current_tab_store
+}
+
+tab_bar_store_new :: () -> *TabBarStore #export {
+    store: *TabBarStore = (TabBarStore*)calloc(1, sizeof(TabBarStore))
+    if store == nil { abort() }
+    store->last_clicked_tab = -1
+    store->press_index = -1
+    store->pane_press_index = -1
+    return store
+}
+
+tab_bar_store_free :: (store: *TabBarStore) #export {
+    if store == nil { return }
+    if store == tab_bar_store_current() ||
+    store == TabStoreFallback() { abort() }
+    state: *TabBarState = store->states
+    while state != nil {
+        next: *TabBarState = state->next
+        free(state)
+        state = next
+    }
+    free(store)
+}
+
+tab_bar_store_swap :: (store: *TabBarStore) -> *TabBarStore #export {
+    previous: *TabBarStore = tab_bar_store_current()
+    current_tab_store = store
+    if current_tab_store == nil {
+        current_tab_store = TabStoreFallback()
+    }
+    return previous
+}
+
+ui_tab_bar_owned_scroll :: (id: i32,
+fallback: *i32) -> *i32 #export {
+    if id <= 0 { return fallback }
+    store: *TabBarStore = tab_bar_store_current()
+    state: *TabBarState = store->states
+    while state != nil {
+        if state->id == id {
+            state->frame_seen = g_ui_frame_serial
+            return &state->scroll
+        }
+        state = state->next
+    }
+    state = (TabBarState*)calloc(1, sizeof(TabBarState))
+    if state == nil { abort() }
+    state->id = id
+    state->frame_seen = g_ui_frame_serial
+    state->next = store->states
+    store->states = state
+    return &state->scroll
+}
+
+ui_tab_bar_finish_frame :: () #export {
+    store: *TabBarStore = tab_bar_store_current()
+    link: **TabBarState = &store->states
+    while *link != nil {
+        state: *TabBarState = *link
+        if state->frame_seen != g_ui_frame_serial {
+            *link = state->next
+            free(state)
+        } else {
+            link = &state->next
+        }
+    }
+}

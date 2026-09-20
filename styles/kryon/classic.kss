@@ -2,30 +2,59 @@
 
 tokens {
   color {
-    canvas: #eceff3;
-    text: #15171b;
-    muted: #777d86;
-    surface: #f7f8fa;
-    card: #ffffff;
-    button: #f8f9fb;
-    button-hover: #ffffff;
-    button-pressed: #dfe4eb;
-    button-disabled: #edf0f4;
-    border: #9da5b1;
-    border-soft: #b8bec8;
-    border-hover: #7f8998;
-    border-disabled: #c8ced6;
-    accent: #2f6bff;
-    accent-border: #1d55d8;
+    canvas: #d4d0c8;
+    text: #171717;
+    muted: #666666;
+    surface: #e6e3dc;
+    card: #f0eee8;
+    button: #d4d0c8;
+    button-hover: #e4e1d9;
+    button-pressed: #bab7b0;
+    button-disabled: #d4d0c8;
+    border: #66645f;
+    border-soft: #9b9993;
+    border-hover: #383838;
+    border-disabled: #aaa8a2;
+    focus-ring: #242424;
+    accent: #3b609b;
+    accent-hover: #4c70a8;
+    accent-pressed: #2c5088;
+    accent-border: #254779;
     accent-ink: #ffffff;
-    outline-border: #8c95a3;
-    row: #f3f5f8;
-    accent-end: #5589ff;
+    accent-soft: #d6dfed;
+    accent-soft-hover: #c9d5e7;
+    accent-soft-pressed: #b8c8de;
+    danger: #a44848;
+    danger-hover: #b25757;
+    danger-pressed: #913b3b;
+    danger-ink: #ffffff;
+    danger-soft: #eddddd;
+    danger-soft-hover: #e8d1d1;
+    danger-soft-pressed: #dec0c0;
+    success: #2c7654;
+    success-hover: #398561;
+    success-pressed: #206547;
+    success-ink: #ffffff;
+    success-soft: #daeadf;
+    success-soft-hover: #cce2d3;
+    success-soft-pressed: #b9d5c3;
+    warning: #956f10;
+    warning-hover: #a58020;
+    warning-pressed: #805e08;
+    warning-ink: #ffffff;
+    warning-soft: #f0e7ca;
+    warning-soft-hover: #eaddb7;
+    warning-soft-pressed: #dfcea2;
+    outline-border: #575650;
+    row: #e2dfd8;
+    row-hover: #eceae5;
+    row-pressed: #d3d0c9;
+    accent-end: #3b609b;
     thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
-    radius: 3;
+    radius: 0;
     border: 1;
     border.none: 0;
     gap: 6;
@@ -107,7 +136,7 @@ Image {
   font-size: font;
   icon-size: icon;
   background: card;
-  foreground: text;
+  foreground: #ffffff;
   border: border-soft;
   focus: accent;
   radius: radius;
@@ -1519,10 +1548,10 @@ Progress[role=Label] {
 
 Button {
   background: button;
-  background-end: card;
+  background-end: button;
   foreground: text;
   border: border;
-  focus: accent;
+  focus: focus-ring;
   radius: radius;
   border-width: border;
   padding-x: space.3;
@@ -1536,30 +1565,30 @@ Button {
 
 Button:hover {
   background: button-hover;
-  background-end: card;
+  background-end: button-hover;
   border: border-hover;
 }
 
 Button:pressed {
   background: button-pressed;
-  background-end: button;
+  background-end: button-pressed;
 }
 
 Button:selected {
-  border: accent;
+  border: focus-ring;
   border-width: 2;
 }
 
 Button:focus {
-  border: accent;
+  border: focus-ring;
 }
 
 Button:disabled {
   foreground: muted;
   background: button-disabled;
-  background-end: card;
+  background-end: button-disabled;
   border: border-disabled;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 Button:loading {
@@ -1568,7 +1597,7 @@ Button:loading {
 
 Button[tone=Accent] {
   background: accent;
-  background-end: accent-end;
+  background-end: accent;
   foreground: accent-ink;
   border: accent-border;
 }
@@ -1577,17 +1606,203 @@ Button[tone=Accent]:loading {
   foreground: accent;
 }
 
+Button[tone=Danger] {
+  background: danger;
+  background-end: danger;
+  foreground: danger-ink;
+  border: danger;
+}
+
+Button[tone=Success] {
+  background: success;
+  background-end: success;
+  foreground: success-ink;
+  border: success;
+}
+
+Button[tone=Warning] {
+  background: warning;
+  background-end: warning;
+  foreground: warning-ink;
+  border: warning;
+}
+
+Button[emphasis=Soft] {
+  background: row;
+  background-end: row;
+  foreground: text;
+  border: border-soft;
+}
+
+Button[emphasis=Soft]:hover {
+  background: row-hover;
+  background-end: row-hover;
+}
+
+Button[emphasis=Soft]:pressed {
+  background: row-pressed;
+  background-end: row-pressed;
+}
+
+Button[tone=Accent][emphasis=Soft] {
+  background: accent-soft;
+  background-end: accent-soft;
+  foreground: accent;
+  border: accent-soft;
+}
+
+Button[tone=Danger][emphasis=Soft] {
+  background: danger-soft;
+  background-end: danger-soft;
+  foreground: danger;
+  border: danger-soft;
+}
+
+Button[tone=Success][emphasis=Soft] {
+  background: success-soft;
+  background-end: success-soft;
+  foreground: success;
+  border: success-soft;
+}
+
+Button[tone=Warning][emphasis=Soft] {
+  background: warning-soft;
+  background-end: warning-soft;
+  foreground: warning;
+  border: warning-soft;
+}
+
 Button[emphasis=Outline] {
-  background: button-hover;
+  background: canvas;
+  background-end: canvas;
   foreground: text;
   border: outline-border;
 }
 
+Button[emphasis=Outline]:hover {
+  background: button-hover;
+  background-end: button-hover;
+}
+
+Button[emphasis=Outline]:pressed {
+  background: button-pressed;
+  background-end: button-pressed;
+}
+
 Button[emphasis=Ghost] {
   background: transparent;
+  background-end: transparent;
   border: transparent;
   border-width: border.none;
 }
+
+Button[tone=Accent][emphasis=Outline] { foreground: accent; }
+Button[tone=Danger][emphasis=Outline] { foreground: danger; }
+Button[tone=Success][emphasis=Outline] { foreground: success; }
+Button[tone=Warning][emphasis=Outline] { foreground: warning; }
+
+Button[tone=Accent][emphasis=Ghost] { foreground: accent; }
+Button[tone=Danger][emphasis=Ghost] { foreground: danger; }
+Button[tone=Success][emphasis=Ghost] { foreground: success; }
+Button[tone=Warning][emphasis=Ghost] { foreground: warning; }
+
+Button[emphasis=Ghost]:hover {
+  background: row-hover;
+  background-end: row-hover;
+}
+Button[emphasis=Ghost]:pressed {
+  background: button-pressed;
+  background-end: button-pressed;
+}
+
+Button[tone=Accent][emphasis=Filled]:loading {
+  foreground: accent-ink;
+}
+
+Button[emphasis=Link] {
+  background: transparent;
+  background-end: transparent;
+  foreground: accent;
+  border: transparent;
+  border-width: border.none;
+}
+
+Button[tone=Danger][emphasis=Link] { foreground: danger; }
+Button[tone=Success][emphasis=Link] { foreground: success; }
+Button[tone=Warning][emphasis=Link] { foreground: warning; }
+
+Button[emphasis=Link]:hover { foreground: accent-border; }
+
+Button[tone=Accent][emphasis=Filled]:hover {
+  background: accent-hover;
+  background-end: accent-hover;
+}
+Button[tone=Accent][emphasis=Filled]:pressed {
+  background: accent-pressed;
+  background-end: accent-pressed;
+}
+Button[tone=Danger][emphasis=Filled]:hover {
+  background: danger-hover;
+  background-end: danger-hover;
+}
+Button[tone=Danger][emphasis=Filled]:pressed {
+  background: danger-pressed;
+  background-end: danger-pressed;
+}
+Button[tone=Success][emphasis=Filled]:hover {
+  background: success-hover;
+  background-end: success-hover;
+}
+Button[tone=Success][emphasis=Filled]:pressed {
+  background: success-pressed;
+  background-end: success-pressed;
+}
+Button[tone=Warning][emphasis=Filled]:hover {
+  background: warning-hover;
+  background-end: warning-hover;
+}
+Button[tone=Warning][emphasis=Filled]:pressed {
+  background: warning-pressed;
+  background-end: warning-pressed;
+}
+
+Button[tone=Accent][emphasis=Soft]:hover {
+  background: accent-soft-hover;
+  background-end: accent-soft-hover;
+}
+Button[tone=Accent][emphasis=Soft]:pressed {
+  background: accent-soft-pressed;
+  background-end: accent-soft-pressed;
+}
+Button[tone=Danger][emphasis=Soft]:hover {
+  background: danger-soft-hover;
+  background-end: danger-soft-hover;
+}
+Button[tone=Danger][emphasis=Soft]:pressed {
+  background: danger-soft-pressed;
+  background-end: danger-soft-pressed;
+}
+Button[tone=Success][emphasis=Soft]:hover {
+  background: success-soft-hover;
+  background-end: success-soft-hover;
+}
+Button[tone=Success][emphasis=Soft]:pressed {
+  background: success-soft-pressed;
+  background-end: success-soft-pressed;
+}
+Button[tone=Warning][emphasis=Soft]:hover {
+  background: warning-soft-hover;
+  background-end: warning-soft-hover;
+}
+Button[tone=Warning][emphasis=Soft]:pressed {
+  background: warning-soft-pressed;
+  background-end: warning-soft-pressed;
+}
+
+Button[tone=Accent][emphasis=Link]:hover { foreground: accent-hover; }
+Button[tone=Danger][emphasis=Link]:hover { foreground: danger-hover; }
+Button[tone=Success][emphasis=Link]:hover { foreground: success-hover; }
+Button[tone=Warning][emphasis=Link]:hover { foreground: warning-hover; }
 
 Dropdown {
   icon-size: icon;

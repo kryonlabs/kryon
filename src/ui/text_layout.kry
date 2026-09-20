@@ -1,0 +1,340 @@
+#module "text_layout_host"
+#import "ui_text_layout.h"
+#import "ui_internal.h"
+#import "ui_paint_internal.h"
+#import "ui_icons.h"
+#import "ui_scaling.h"
+#import "runtime/paragraph.h"
+#import "runtime/paint.h"
+#import "stdlib.h"
+#import "string.h"
+#import "limits.h"
+
+ParseTextLayout :: (input: const char*, icon: Texture2D,
+icon_type: IconType, icon_size: i32) -> TextLayout #export {
+    layout: TextLayout = (TextLayout){0}
+    if input == nil { return layout }
+    input_length: size_t = strlen(input)
+    if input_length >= INT_MAX { return layout }
+    source: String = StringView(input, input_length)
+    icons: bool = icon.id != 0 || icon_type != ICON_NONE
+    element_count: i32 = 0
+    token: ParagraphToken = ParagraphTokenNext(source, 0, icons)
+    while token.valid {
+        element_count += 1
+        token = ParagraphTokenNext(source, token.next, icons)
+    }
+    layout.elements = (TextElement*)calloc(
+    (size_t)element_count + 1, sizeof(TextElement))
+    if layout.elements == nil { return layout }
+    token = ParagraphTokenNext(source, 0, icons)
+    while token.valid {
+        element: *TextElement = &layout.elements[layout.element_count]
+        if token.icon {
+            element->type = TEXT_ELEMENT_ICON
+            element->icon = icon
+            element->icon_type = icon_type
+            element->icon_size = icon_size
+        } else if token.line_break {
+            element->type = TEXT_ELEMENT_LINE_BREAK
+        } else {
+            length: size_t = (size_t)(token.end - token.start)
+            copy: *char = (char*)malloc(length + 1)
+            if copy == nil {
+                FreeTextLayout(&layout)
+                return layout
+            }
+            memcpy(copy, input + token.start, length)
+            copy[length] = '\0'
+            element->type = TEXT_ELEMENT_TEXT
+            element->text = copy
+        }
+        layout.element_count += 1
+        token = ParagraphTokenNext(source, token.next, icons)
+    }
+    return layout
+}
+
+ReflowTextLayout :: (layout: *TextLayout, max_width: i32,
+font_size: i32, line_height: i32) #export {
+    if layout == nil || layout->elements == nil { return }
+    text_capacity: size_t = (size_t)layout->element_count + 1
+    i: i32 = 0
+    while i < layout->element_count {
+        element: *TextElement = &layout->elements[i]
+        if element->type == TEXT_ELEMENT_TEXT && element->text != nil {
+            text_capacity += strlen(element->text)
+        }
+        i += 1
+    }
+    candidate: *char = (char*)malloc(text_capacity)
+    line_breaks: *i32 = (int*)calloc(
+    (size_t)layout->element_count + 1, sizeof(int))
+    line_widths: *i32 = (int*)calloc(
+    (size_t)layout->element_count + 1, sizeof(int))
+    if candidate == nil || line_breaks == nil || line_widths == nil {
+        free(candidate)
+        free(line_breaks)
+        free(line_widths)
+        return
+    }
+    free(layout->line_breaks)
+    free(layout->line_widths)
+    layout->line_breaks = line_breaks
+    layout->line_widths = line_widths
+    i = 0
+    while i < layout->element_count {
+        element: *TextElement = &layout->elements[i]
+        if element->type == TEXT_ELEMENT_TEXT && element->text != nil {
+            element->text_width = TextWidth(element->text, font_size)
+        }
+        i += 1
+    }
+    scale: float = (float)Scale(1000) / 1000.0f
+    policy: ParagraphLayoutPolicy = ParagraphLayoutPolicyFor(
+    TextWidth(" ", font_size), ui_get_text_letter_spacing(),
+    line_height, ParagraphDefaultLineGap(scale), scale)
+    layout->line_count = 0
+    line: ParagraphLine = (ParagraphLine){0}
+    candidate_length: size_t = 0
+    has_icon: bool = false
+    i = 0
+    while i <= layout->element_count {
+        end: bool = i == layout->element_count
+        element: *TextElement = nil
+        if !end { element = &layout->elements[i] }
+        line_break: bool = !end && element->type == TEXT_ELEMENT_LINE_BREAK
+        icon_element: bool = !end && element->type == TEXT_ELEMENT_ICON
+        item_text: const char* = ""
+        if !end && element->type == TEXT_ELEMENT_TEXT &&
+        element->text != nil {
+            item_text = element->text
+        }
+        length: size_t = strlen(item_text)
+        element_width: i32 = 0
+        candidate_width: float = 0
+        if !end && !line_break {
+            if icon_element {
+                element_width = element->icon_size
+            } else {
+                element_width = element->text_width
+            }
+            if !icon_element && !has_icon {
+                separator: String = ParagraphTextSeparator(line)
+                if separator.length > 0 {
+                    memcpy(candidate + candidate_length,
+                    separator.data, separator.length)
+                }
+                candidate_length += separator.length
+                memcpy(candidate + candidate_length, item_text, length + 1)
+                candidate_length += length
+                candidate_width = (float)TextWidth(candidate, font_size)
+            } else {
+                candidate_width = line.width + (float)(
+                element_width + ParagraphElementSpacing(
+                line.has_content, icon_element, policy))
+            }
+        }
+        decision: ParagraphLineDecision = ParagraphLineAdvance(
+        line, i, line_break, end, (float)element_width,
+        candidate_width, (float)max_width)
+        if decision.emit {
+            layout->line_breaks[layout->line_count] = decision.line.start
+            layout->line_widths[layout->line_count] =
+            (int)decision.line.width
+            layout->line_count += 1
+            candidate_length = 0
+            has_icon = false
+            if decision.next.has_content && !icon_element {
+                memcpy(candidate, item_text, length + 1)
+                candidate_length = length
+            }
+        }
+        line = decision.next
+        has_icon = has_icon || icon_element
+        i += 1
+    }
+    free(candidate)
+    drawn_line_height: i32 = TextLineHeight(font_size)
+    layout->total_height = ParagraphLayoutTotalHeight(
+    layout->line_count, drawn_line_height, policy.line_gap)
+    layout->line_height = policy.line_gap
+}
+
+GetTextLayoutHeight :: (layout: *TextLayout) -> i32 #export {
+    if layout == nil { return 0 }
+    return layout->total_height
+}
+
+FreeTextLayout :: (layout: *TextLayout) #export {
+    if layout == nil { return }
+    if layout->elements != nil {
+        i: i32 = 0
+        while i < layout->element_count {
+            element: *TextElement = &layout->elements[i]
+            if element->type == TEXT_ELEMENT_TEXT && element->text != nil {
+                free((void*)element->text)
+            }
+            i += 1
+        }
+        free(layout->elements)
+    }
+    free(layout->line_breaks)
+    free(layout->line_widths)
+    memset(layout, 0, sizeof(*layout))
+}
+
+TextLayoutLineTextLength :: (layout: *TextLayout,
+start: i32, end: i32) -> i32 {
+    length: i32 = 0
+    text_count: i32 = 0
+    i: i32 = start
+    while i < end {
+        element: *TextElement = &layout->elements[i]
+        if element->type == TEXT_ELEMENT_LINE_BREAK {
+            i += 1
+            continue
+        }
+        if element->type != TEXT_ELEMENT_TEXT { return -1 }
+        if element->text == nil || element->text[0] == '\0' {
+            i += 1
+            continue
+        }
+        if text_count > 0 { length += 1 }
+        length += (int)strlen(element->text)
+        text_count += 1
+        i += 1
+    }
+    return length
+}
+
+TextLayoutDrawTextLine :: (layout: *TextLayout, start: i32, end: i32,
+x: i32, y: i32, font_size: i32, color: Color) {
+    length: i32 = TextLayoutLineTextLength(layout, start, end)
+    if length <= 0 { return }
+    line: *char = (char*)malloc((size_t)length + 1)
+    if line == nil { return }
+    offset: i32 = 0
+    text_count: i32 = 0
+    i: i32 = start
+    while i < end {
+        element: *TextElement = &layout->elements[i]
+        if element->type != TEXT_ELEMENT_TEXT || element->text == nil ||
+        element->text[0] == '\0' {
+            i += 1
+            continue
+        }
+        if text_count > 0 {
+            line[offset] = ' '
+            offset += 1
+        }
+        element_length: i32 = (int)strlen(element->text)
+        memcpy(line + offset, element->text, (size_t)element_length)
+        offset += element_length
+        text_count += 1
+        i += 1
+    }
+    line[offset] = '\0'
+    RenderText(line, x, y, font_size, color)
+    free(line)
+}
+
+TextLayoutDrawMixedLine :: (layout: *TextLayout, start: i32, end: i32,
+x: i32, y: i32, font_size: i32, color: Color,
+space_width: i32, icon_spacing: i32) {
+    current_x: i32 = x
+    i: i32 = start
+    while i < end {
+        element: *TextElement = &layout->elements[i]
+        if element->type == TEXT_ELEMENT_LINE_BREAK {
+            i += 1
+            continue
+        }
+        policy: ParagraphLayoutPolicy = (ParagraphLayoutPolicy){
+            space_width, icon_spacing, 0}
+        current_x += ParagraphElementSpacing(
+        i > start, element->type == TEXT_ELEMENT_ICON, policy)
+        if element->type == TEXT_ELEMENT_TEXT {
+            if element->text != nil && element->text[0] != '\0' {
+                RenderText(element->text, current_x, y, font_size, color)
+                current_x += element->text_width
+            }
+        } else {
+            icon: Texture2D = element->icon
+            icon_size: i32 = element->icon_size
+            bounds: Rectangle = (Rectangle){
+                (float)current_x, (float)y,
+                (float)icon_size, (float)icon_size}
+            if icon.id != 0 {
+                draw: Drawing = (Drawing){0}
+                draw.kind = DrawingTexture
+                draw.bounds = bounds
+                draw.color = ColorToInt(color)
+                draw.texture = icon
+                ui_draw(draw)
+            } else if element->icon_type != ICON_NONE {
+                DrawIcon(element->icon_type, bounds, color)
+            }
+            current_x += icon_size
+        }
+        i += 1
+    }
+}
+
+TextLayoutDrawAligned :: (layout: *TextLayout, x: i32, y: *i32,
+font_size: i32, color: Color, width: i32, align: i32) {
+    if layout == nil || layout->elements == nil { return }
+    current_y: i32 = *y
+    scale: float = (float)Scale(1000) / 1000.0f
+    policy: ParagraphLayoutPolicy = ParagraphLayoutPolicyFor(
+    TextWidth(" ", font_size), ui_get_text_letter_spacing(),
+    layout->line_height, ParagraphDefaultLineGap(scale), scale)
+    drawn_line_height: i32 = TextLineHeight(font_size)
+    line_count: i32 = 1
+    if layout->line_count > 0 { line_count = layout->line_count }
+    line_index: i32 = 0
+    while line_index < line_count {
+        line_x: i32 = x
+        start: i32 = 0
+        if layout->line_breaks != nil &&
+        layout->line_breaks[line_index] >= 0 {
+            start = layout->line_breaks[line_index]
+        }
+        end: i32 = layout->element_count
+        if layout->line_breaks != nil &&
+        line_index + 1 < line_count &&
+        layout->line_breaks[line_index + 1] >= 0 {
+            end = layout->line_breaks[line_index + 1]
+        }
+        if start < 0 { start = 0 }
+        if end < start { end = start }
+        if end > layout->element_count { end = layout->element_count }
+        if width > 0 && layout->line_widths != nil {
+            line_x = ParagraphLineXFor(x, width,
+            layout->line_widths[line_index], (TextAlign)align)
+        }
+        if TextLayoutLineTextLength(layout, start, end) >= 0 {
+            TextLayoutDrawTextLine(layout, start, end,
+            line_x, current_y, font_size, color)
+        } else {
+            TextLayoutDrawMixedLine(layout, start, end,
+            line_x, current_y, font_size, color,
+            policy.space_width, policy.icon_spacing)
+        }
+        current_y = ParagraphNextLineY(current_y,
+        drawn_line_height, policy.line_gap,
+        line_index + 1 < line_count)
+        line_index += 1
+    }
+    *y = current_y
+}
+
+DrawTextLayoutAligned :: (layout: *TextLayout, x: i32, y: *i32,
+font_size: i32, color: Color, width: i32, align: i32) #export {
+    TextLayoutDrawAligned(layout, x, y, font_size, color, width, align)
+}
+
+DrawTextLayout :: (layout: *TextLayout, x: i32, y: *i32,
+font_size: i32, color: Color) #export {
+    TextLayoutDrawAligned(layout, x, y, font_size, color, 0, 0)
+}

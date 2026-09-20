@@ -1,0 +1,228 @@
+#module "collapsible_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/collapsible.h"
+#import "runtime/focus.h"
+#import "runtime/tab_bar.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+#import "ui/widget_store.h"
+
+TreeHeaderRegister :: (section: CollapsibleProps, enabled: i32) {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    if toolkit->tree_header_frame != g_ui_frame_serial {
+        previous: *TreeHeaderNavState = toolkit->tree_previous
+        capacity: i32 = toolkit->tree_previous_capacity
+        toolkit->tree_previous = toolkit->tree_headers
+        toolkit->tree_previous_count = 0
+        if toolkit->tree_header_frame + 1 == g_ui_frame_serial {
+            toolkit->tree_previous_count = toolkit->tree_header_count
+        }
+        toolkit->tree_previous_capacity = toolkit->tree_header_capacity
+        toolkit->tree_headers = previous
+        toolkit->tree_header_capacity = capacity
+        toolkit->tree_header_count = 0
+        toolkit->tree_header_frame = g_ui_frame_serial
+    }
+    if enabled == 0 || section.tree == 0 || section.id <= 0 {
+        return
+    }
+    if toolkit->tree_header_count == toolkit->tree_header_capacity {
+        capacity: i32 = 32
+        if toolkit->tree_header_capacity > 0 {
+            capacity = toolkit->tree_header_capacity * 2
+        }
+        headers: *TreeHeaderNavState = (TreeHeaderNavState*)realloc(
+        toolkit->tree_headers,
+        (size_t)capacity * sizeof(TreeHeaderNavState))
+        if headers == nil { return }
+        toolkit->tree_headers = headers
+        toolkit->tree_header_capacity = capacity
+    }
+    depth: i32 = section.depth
+    if depth < 0 { depth = 0 }
+    toolkit->tree_headers[toolkit->tree_header_count] =
+    (TreeHeaderNavState){.id = section.id, .depth = depth}
+    toolkit->tree_header_count += 1
+}
+
+TreeHeaderTarget :: (id: i32, key: i32) -> i32 {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    index: i32 = 0
+    while index < toolkit->tree_previous_count {
+        if toolkit->tree_previous[index].id == id {
+            scan: TreeFocusScan = TreeFocusBegin(index,
+            toolkit->tree_previous_count,
+            toolkit->tree_previous[index].depth, key == KEY_DOWN,
+            key == KEY_UP, key == KEY_RIGHT, key == KEY_LEFT)
+            while !scan.done {
+                scan = TreeFocusAdvance(scan,
+                toolkit->tree_previous[scan.index].depth)
+            }
+            return toolkit->tree_previous[scan.index].id
+        }
+        index += 1
+    }
+    return id
+}
+
+CollapsibleFocusKey :: (key: i32) -> i32 {
+    if key == CollapsibleKeyDown() { return KEY_DOWN }
+    if key == CollapsibleKeyUp() { return KEY_UP }
+    if key == CollapsibleKeyRight() { return KEY_RIGHT }
+    if key == CollapsibleKeyLeft() { return KEY_LEFT }
+    return 0
+}
+
+RenderCollapsible :: (section: CollapsibleProps) -> i32 #export {
+    if section.visible != nil && !*section.visible { return 0 }
+    toolkit: *ToolkitStore = toolkit_store_current()
+    enabled: i32 = !section.disabled && !ContentDisabled()
+    default_state: ButtonState = ButtonStateNormal
+    if section.selected != 0 { default_state = ButtonStateSelected }
+    if enabled == 0 { default_state = ButtonStateDisabled }
+    default_item_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    default_state, !enabled, section.selected,
+    section.class_name, StyleKindCollapsible(),
+    CollapsibleHeaderRoleFor(section.tree != 0))
+    default_item_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(default_item_frame).value)
+    font: i32 = ResolveFont(0,
+    StyleFontValue(default_item_style.fields,
+    default_item_style.font_size), GetFontSize())
+    tree_item_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    default_state, !enabled, section.selected, section.class_name,
+    StyleKindCollapsible(), CollapsibleTreeHeaderRole())
+    close_default_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    ButtonStateNormal, !enabled, 0, section.class_name,
+    StyleKindCollapsible(), CollapsibleCloseRole())
+    metrics: CollapsibleMetrics = CollapsibleMetricsFor((float)GetScale(),
+    default_item_frame, tree_item_frame, close_default_frame)
+    layout: CollapsibleLayout = CollapsibleLayoutFor(section.bounds,
+    section.tree != 0, section.depth, section.visible != nil, metrics)
+    header: Rectangle = layout.header
+    body: Rectangle = layout.body
+    close_bounds: Rectangle = layout.close_bounds
+    TreeHeaderRegister(section, enabled)
+    focused: i32 = enabled && section.id > 0 &&
+    RegisterFocus(section.id, header)
+    if focused != 0 { SetFocusTextInputActive(0) }
+
+    close_hover: i32 = 0
+    close_clicked: i32 = 0
+    if section.visible != nil {
+        close_clicked = HandleClick(close_bounds, !enabled,
+        &close_hover)
+    }
+    close_decision: CollapsibleCloseDecision =
+    CollapsibleCloseDecisionFor(enabled != 0,
+    section.visible != nil, close_clicked != 0)
+    closed: i32 = 0
+    changed: i32 = 0
+    if close_decision.hide && section.visible != nil {
+        *section.visible = false
+        closed = 1
+        changed = close_decision.changed
+    }
+    pointer: CollapsiblePointerDecision =
+    CollapsiblePointerDecisionFor(enabled != 0, closed != 0,
+    ui_hot(body) != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+    section.leaf != 0, section.open != nil)
+    if pointer.mark_clickable { MarkClickable() }
+    if pointer.consume_release { ConsumeRelease() }
+    if pointer.focus && section.id > 0 { SetFocus(section.id) }
+    if pointer.toggle_open && section.open != nil {
+        open_result: CollapsibleOpenResult = CollapsibleOpenApply(
+        *section.open != 0, pointer.toggle_open != 0,
+        false, false, true)
+        *section.open = open_result.open
+        if open_result.changed { changed = 1 }
+    }
+
+    key: i32 = CollapsibleKeyFor(IsKeyPressed(KEY_DOWN) != 0,
+    IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+    IsKeyPressed(KEY_LEFT) != 0)
+    open: i32 = section.open != nil && *section.open
+    keyboard: CollapsibleKeyboardDecision =
+    CollapsibleKeyboardDecisionFor(focused != 0,
+    ui_popup_input_focus_captures(section.id) != 0,
+    toolkit->tree_key_frame == g_ui_frame_serial,
+    section.tree != 0, key, open != 0, section.leaf != 0,
+    section.open != nil, IsFocusActivatePressed(section.id) != 0)
+    if keyboard.move_focus {
+        SetFocus(TreeHeaderTarget(section.id,
+        CollapsibleFocusKey(keyboard.focus_key)))
+    } else if section.open != nil {
+        open_result: CollapsibleOpenResult = CollapsibleOpenApply(
+        *section.open != 0, keyboard.toggle_open != 0,
+        keyboard.set_open != 0, keyboard.open != 0, true)
+        *section.open = open_result.open
+        if open_result.changed { changed = 1 }
+    }
+    if keyboard.handled {
+        toolkit->tree_key_frame = g_ui_frame_serial
+    }
+
+    focused = enabled && section.id > 0 && IsFocusActive(section.id)
+    if IsWindowReady() {
+        state: ButtonState = ButtonStateNormal
+        if section.selected != 0 { state = ButtonStateSelected }
+        if focused != 0 { state = ButtonStateFocus }
+        if enabled == 0 { state = ButtonStateDisabled }
+        item_frame: StyleFrame = WidgetFrameForClassRole(
+        ButtonToneNeutral, state, !enabled, section.selected,
+        section.class_name, StyleKindCollapsible(),
+        CollapsibleHeaderRoleFor(section.tree != 0))
+        item_style: Style = ui_unpack_style(
+        ui_style_apply_effects_frame(item_frame).value)
+        font = ResolveFont(0, StyleFontValue(item_style.fields,
+        item_style.font_size), font)
+        close_state: ButtonState = ButtonStateNormal
+        if close_hover != 0 { close_state = ButtonStateHover }
+        link_frame: StyleFrame = WidgetFrameForClassRole(
+        ButtonToneNeutral, close_state, !enabled, 0,
+        section.class_name, StyleKindCollapsible(),
+        CollapsibleCloseRole())
+        link_style: Style = ui_unpack_style(
+        ui_style_apply_effects_frame(link_frame).value)
+        close_font: i32 = ResolveFont(0,
+        StyleFontValue(link_style.fields, link_style.font_size), font)
+        text_color: Color = Fade(item_style.foreground,
+        item_style.opacity)
+        close_text: Color = Fade(link_style.foreground,
+        link_style.opacity)
+        marker: i32 = CollapsibleMarkerFor(section.open != nil &&
+        *section.open, section.leaf != 0)
+        if section.tree == 0 || section.selected != 0 {
+            DrawWidgetFrame(header, header, item_frame,
+            0, 0, !enabled, focused)
+        }
+        if section.tree == 0 && item_style.border.a != 0 {
+            DrawRectangleLinesEx(header, 1.0, item_style.border)
+        }
+        RenderText(CollapsibleMarkerText(marker),
+        (int)header.x + metrics.icon_offset,
+        ui_row_text_y(header, font), font, text_color)
+        BeginClip((int)header.x + metrics.text_offset, (int)header.y,
+        (int)fmaxf(0.0, body.width - (float)metrics.text_offset),
+        (int)header.height)
+        label: const char* = section.label
+        if label == nil { label = "" }
+        RenderText(label, (int)header.x + metrics.text_offset,
+        ui_row_text_y(header, font), font, text_color)
+        EndClip()
+        if section.visible != nil {
+            close_label: TabBarCloseLabelPaint =
+            TabBarCloseLabelPaintFor(close_bounds,
+            TextWidth("x", close_font), TextLineHeight(close_font))
+            RenderText("x", close_label.x, close_label.y,
+            close_font, close_text)
+        }
+        if focused != 0 { RenderFocus(header) }
+    }
+    return changed
+}

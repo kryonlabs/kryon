@@ -41,647 +41,327 @@ type ParagraphLineDecision struct {
 }
 
 func Paragraph_ParagraphIsSpace(value uint8) bool {
-	var value_0 uint8 = value
-	var value_1 int32 = 32
-	var value_2 uint8 = uint8(number_runtime_bits(uint64(value_1), uint64(0), 8, false, 0))
-	var value_3 bool = value_0 == value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 uint8 = value
-		var value_6 int32 = 9
-		var value_7 uint8 = uint8(number_runtime_bits(uint64(value_6), uint64(0), 8, false, 0))
-		var value_8 bool = value_5 == value_7
-		value_4 = value_8
+	var value_0 bool = (value == uint8(number_runtime_bits(uint64(32), uint64(0), 8, false, 0)))
+	if !value_0 {
+		value_0 = (value == uint8(number_runtime_bits(uint64(9), uint64(0), 8, false, 0)))
 	}
-	var value_9 bool = value_4
-	if !value_9 {
-		var value_10 uint8 = value
-		var value_11 int32 = 11
-		var value_12 uint8 = uint8(number_runtime_bits(uint64(value_11), uint64(0), 8, false, 0))
-		var value_13 bool = value_10 == value_12
-		value_9 = value_13
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value == uint8(number_runtime_bits(uint64(11), uint64(0), 8, false, 0)))
 	}
-	var value_14 bool = value_9
-	if !value_14 {
-		var value_15 uint8 = value
-		var value_16 int32 = 12
-		var value_17 uint8 = uint8(number_runtime_bits(uint64(value_16), uint64(0), 8, false, 0))
-		var value_18 bool = value_15 == value_17
-		value_14 = value_18
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (value == uint8(number_runtime_bits(uint64(12), uint64(0), 8, false, 0)))
 	}
-	return value_14
+	return value_2
 }
 
 func Paragraph_ParagraphTokenNext(text string, offset int32, icons bool) ParagraphToken {
 	var token ParagraphToken = ParagraphToken{}
-	var value_0 int32 = offset
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		offset = value_3
+	if offset < 0 {
+		offset = 0
 	}
 	for {
-		var value_4 int32 = offset
-		var value_5 int32 = int32(len(text))
-		var value_6 bool = value_4 < value_5
-		var value_7 bool = value_6
-		if value_7 {
-			var value_8 int32 = offset
-			var value_9 uint8 = text[value_8]
-			var value_10 bool = Paragraph_ParagraphIsSpace(value_9)
-			value_7 = value_10
+		var value_0 bool = (offset < int32(len(text)))
+		if value_0 {
+			var value_1 uint8 = text[offset]
+			var value_2 bool = Paragraph_ParagraphIsSpace(value_1)
+			value_0 = value_2
 		}
-		if !value_7 {
+		if !value_0 {
 			break
 		}
-		var value_11 int32 = offset
-		var value_12 int32 = 1
-		offset = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
+		var value_3 int32 = offset
+		offset = int32(number_runtime_bits(uint64(value_3), uint64(1), 32, true, 1))
 	}
-	var value_13 int32 = offset
-	token.Start = value_13
-	var value_14 int32 = offset
-	token.End = value_14
-	var value_15 int32 = offset
-	token.Next = value_15
-	var value_16 int32 = offset
-	var value_17 int32 = int32(len(text))
-	var value_18 bool = value_16 >= value_17
-	if value_18 {
-		var value_19 ParagraphToken = token
-		return value_19
+	token.Start = offset
+	token.End = offset
+	token.Next = offset
+	if offset >= int32(len(text)) {
+		return token
 	}
-	var value_20 bool = true
-	token.Valid = value_20
-	var value_21 int32 = offset
-	var value_22 uint8 = text[value_21]
-	var value uint8 = value_22
-	var value_23 uint8 = value
-	var value_24 int32 = 10
-	var value_25 uint8 = uint8(number_runtime_bits(uint64(value_24), uint64(0), 8, false, 0))
-	var value_26 bool = value_23 == value_25
-	var value_27 bool = value_26
-	if !value_27 {
-		var value_28 uint8 = value
-		var value_29 int32 = 13
-		var value_30 uint8 = uint8(number_runtime_bits(uint64(value_29), uint64(0), 8, false, 0))
-		var value_31 bool = value_28 == value_30
-		value_27 = value_31
+	token.Valid = true
+	var value uint8 = text[offset]
+	var value_4 bool = (value == uint8(number_runtime_bits(uint64(10), uint64(0), 8, false, 0)))
+	if !value_4 {
+		value_4 = (value == uint8(number_runtime_bits(uint64(13), uint64(0), 8, false, 0)))
 	}
-	if value_27 {
-		var value_32 bool = true
-		token.LineBreak = value_32
-		var value_33 int32 = offset
-		var value_34 int32 = 1
-		offset = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-		var value_35 uint8 = value
-		var value_36 int32 = 13
-		var value_37 uint8 = uint8(number_runtime_bits(uint64(value_36), uint64(0), 8, false, 0))
-		var value_38 bool = value_35 == value_37
-		var value_39 bool = value_38
-		if value_39 {
-			var value_40 int32 = offset
-			var value_41 int32 = int32(len(text))
-			var value_42 bool = value_40 < value_41
-			value_39 = value_42
+	if value_4 {
+		token.LineBreak = true
+		var value_5 int32 = offset
+		offset = int32(number_runtime_bits(uint64(value_5), uint64(1), 32, true, 1))
+		var value_6 bool = (value == uint8(number_runtime_bits(uint64(13), uint64(0), 8, false, 0)))
+		if value_6 {
+			value_6 = (offset < int32(len(text)))
 		}
-		var value_43 bool = value_39
-		if value_43 {
-			var value_44 int32 = offset
-			var value_45 uint8 = text[value_44]
-			var value_46 int32 = 10
-			var value_47 uint8 = uint8(number_runtime_bits(uint64(value_46), uint64(0), 8, false, 0))
-			var value_48 bool = value_45 == value_47
-			value_43 = value_48
+		var value_7 bool = value_6
+		if value_7 {
+			value_7 = (text[offset] == uint8(number_runtime_bits(uint64(10), uint64(0), 8, false, 0)))
 		}
-		if value_43 {
-			var value_49 int32 = offset
-			var value_50 int32 = 1
-			offset = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 1))
+		if value_7 {
+			var value_8 int32 = offset
+			offset = int32(number_runtime_bits(uint64(value_8), uint64(1), 32, true, 1))
 		}
 	} else {
-		var value_51 bool = icons
-		var value_52 bool = value_51
-		if value_52 {
-			var value_53 uint8 = value
-			var value_54 int32 = 37
-			var value_55 uint8 = uint8(number_runtime_bits(uint64(value_54), uint64(0), 8, false, 0))
-			var value_56 bool = value_53 == value_55
-			value_52 = value_56
+		var value_9 bool = icons
+		if value_9 {
+			value_9 = (value == uint8(number_runtime_bits(uint64(37), uint64(0), 8, false, 0)))
 		}
-		var value_57 bool = value_52
-		if value_57 {
-			var value_58 int32 = offset
-			var value_59 int32 = 1
-			var value_60 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_59), 32, true, 1))
-			var value_61 int32 = int32(len(text))
-			var value_62 bool = value_60 < value_61
-			value_57 = value_62
+		var value_10 bool = value_9
+		if value_10 {
+			value_10 = ((int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 1))) < int32(len(text)))
 		}
-		var value_63 bool = value_57
-		if value_63 {
-			var value_64 int32 = offset
-			var value_65 int32 = 1
-			var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 1))
-			var value_67 uint8 = text[value_66]
-			var value_68 int32 = 105
-			var value_69 uint8 = uint8(number_runtime_bits(uint64(value_68), uint64(0), 8, false, 0))
-			var value_70 bool = value_67 == value_69
-			value_63 = value_70
+		var value_11 bool = value_10
+		if value_11 {
+			var value_12 bool = text[(int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 1)))] == uint8(number_runtime_bits(uint64(105), uint64(0), 8, false, 0))
+			value_11 = value_12
 		}
-		if value_63 {
-			var value_71 bool = true
-			token.Icon = value_71
-			var value_72 int32 = offset
-			var value_73 int32 = 2
-			offset = int32(number_runtime_bits(uint64(value_72), uint64(value_73), 32, true, 1))
+		if value_11 {
+			token.Icon = true
+			var value_13 int32 = offset
+			offset = int32(number_runtime_bits(uint64(value_13), uint64(2), 32, true, 1))
 		} else {
 			for {
-				var value_74 int32 = offset
-				var value_75 int32 = int32(len(text))
-				var value_76 bool = value_74 < value_75
-				if !value_76 {
+				if !(offset < int32(len(text))) {
 					break
 				}
-				var value_77 int32 = offset
-				var value_78 uint8 = text[value_77]
-				value = value_78
-				var value_79 uint8 = value
-				var value_80 bool = Paragraph_ParagraphIsSpace(value_79)
-				var value_81 bool = value_80
-				if !value_81 {
-					var value_82 uint8 = value
-					var value_83 int32 = 10
-					var value_84 uint8 = uint8(number_runtime_bits(uint64(value_83), uint64(0), 8, false, 0))
-					var value_85 bool = value_82 == value_84
-					value_81 = value_85
+				value = text[offset]
+				var value_14 bool = Paragraph_ParagraphIsSpace(value)
+				var value_15 bool = value_14
+				if !value_15 {
+					value_15 = (value == uint8(number_runtime_bits(uint64(10), uint64(0), 8, false, 0)))
 				}
-				var value_86 bool = value_81
-				if !value_86 {
-					var value_87 uint8 = value
-					var value_88 int32 = 13
-					var value_89 uint8 = uint8(number_runtime_bits(uint64(value_88), uint64(0), 8, false, 0))
-					var value_90 bool = value_87 == value_89
-					value_86 = value_90
+				var value_16 bool = value_15
+				if !value_16 {
+					value_16 = (value == uint8(number_runtime_bits(uint64(13), uint64(0), 8, false, 0)))
 				}
-				if value_86 {
+				if value_16 {
 					break
 				}
-				var value_91 bool = icons
-				var value_92 bool = value_91
-				if value_92 {
-					var value_93 uint8 = value
-					var value_94 int32 = 37
-					var value_95 uint8 = uint8(number_runtime_bits(uint64(value_94), uint64(0), 8, false, 0))
-					var value_96 bool = value_93 == value_95
-					value_92 = value_96
+				var value_17 bool = icons
+				if value_17 {
+					value_17 = (value == uint8(number_runtime_bits(uint64(37), uint64(0), 8, false, 0)))
 				}
-				var value_97 bool = value_92
-				if value_97 {
-					var value_98 int32 = offset
-					var value_99 int32 = 1
-					var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 1))
-					var value_101 int32 = int32(len(text))
-					var value_102 bool = value_100 < value_101
-					value_97 = value_102
+				var value_18 bool = value_17
+				if value_18 {
+					value_18 = ((int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 1))) < int32(len(text)))
 				}
-				var value_103 bool = value_97
-				if value_103 {
-					var value_104 int32 = offset
-					var value_105 int32 = 1
-					var value_106 int32 = int32(number_runtime_bits(uint64(value_104), uint64(value_105), 32, true, 1))
-					var value_107 uint8 = text[value_106]
-					var value_108 int32 = 105
-					var value_109 uint8 = uint8(number_runtime_bits(uint64(value_108), uint64(0), 8, false, 0))
-					var value_110 bool = value_107 == value_109
-					value_103 = value_110
+				var value_19 bool = value_18
+				if value_19 {
+					var value_20 bool = text[(int32(number_runtime_bits(uint64(offset), uint64(1), 32, true, 1)))] == uint8(number_runtime_bits(uint64(105), uint64(0), 8, false, 0))
+					value_19 = value_20
 				}
-				if value_103 {
+				if value_19 {
 					break
 				}
-				var value_111 int32 = offset
-				var value_112 int32 = 1
-				offset = int32(number_runtime_bits(uint64(value_111), uint64(value_112), 32, true, 1))
+				var value_21 int32 = offset
+				offset = int32(number_runtime_bits(uint64(value_21), uint64(1), 32, true, 1))
 			}
 		}
 	}
-	var value_113 int32 = offset
-	token.End = value_113
-	var value_114 int32 = offset
-	token.Next = value_114
-	var value_115 ParagraphToken = token
-	return value_115
+	token.End = offset
+	token.Next = offset
+	return token
 }
 
 func Paragraph_ParagraphTextSeparator(line ParagraphLine) string {
-	var value_0 bool = line.HasContent
-	if value_0 {
-		var value_1 string = " "
-		return value_1
+	if line.HasContent {
+		return " "
 	}
-	var value_2 string = ""
-	return value_2
+	return ""
 }
 
 func Paragraph_ParagraphLineAdvance(line ParagraphLine, index int32, line_break bool, end bool, element_width float32, candidate_width float32, max_width float32) ParagraphLineDecision {
 	var decision ParagraphLineDecision = ParagraphLineDecision{}
-	var value_0 ParagraphLine = line
-	decision.Next = value_0
-	var value_1 bool = line_break
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = end
-		value_2 = value_3
+	decision.Next = line
+	var value_0 bool = line_break
+	if !value_0 {
+		value_0 = end
 	}
+	if value_0 {
+		decision.Emit = true
+		decision.Line = line
+		var value_1 ParagraphLine = ParagraphLine{}
+		value_1.Start = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
+		value_1.End = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
+		decision.Next = value_1
+		return decision
+	}
+	if element_width < 0.0 {
+		element_width = 0.0
+	}
+	if candidate_width < 0.0 {
+		candidate_width = 0.0
+	}
+	var value_2 bool = line.HasContent
 	if value_2 {
-		var value_4 bool = true
-		decision.Emit = value_4
-		var value_5 ParagraphLine = line
-		decision.Line = value_5
-		var value_6 ParagraphLine = ParagraphLine{}
-		var value_7 int32 = index
-		var value_8 int32 = 1
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-		value_6.Start = value_9
-		var value_10 int32 = index
-		var value_11 int32 = 1
-		var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-		value_6.End = value_12
-		decision.Next = value_6
-		var value_13 ParagraphLineDecision = decision
-		return value_13
+		value_2 = (max_width > 0.0)
 	}
-	var value_14 float32 = element_width
-	var value_15 float32 = 0.0
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 float32 = 0.0
-		element_width = value_17
+	var value_3 bool = value_2
+	if value_3 {
+		value_3 = (candidate_width > max_width)
 	}
-	var value_18 float32 = candidate_width
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 float32 = 0.0
-		candidate_width = value_21
+	if value_3 {
+		decision.Emit = true
+		decision.Line = line
+		var value_4 ParagraphLine = ParagraphLine{}
+		value_4.Start = index
+		decision.Next = value_4
 	}
-	var value_22 bool = line.HasContent
-	var value_23 bool = value_22
-	if value_23 {
-		var value_24 float32 = max_width
-		var value_25 float32 = 0.0
-		var value_26 bool = value_24 > value_25
-		value_23 = value_26
+	decision.Next.Width = candidate_width
+	if !decision.Next.HasContent {
+		decision.Next.Width = element_width
 	}
-	var value_27 bool = value_23
-	if value_27 {
-		var value_28 float32 = candidate_width
-		var value_29 float32 = max_width
-		var value_30 bool = value_28 > value_29
-		value_27 = value_30
-	}
-	if value_27 {
-		var value_31 bool = true
-		decision.Emit = value_31
-		var value_32 ParagraphLine = line
-		decision.Line = value_32
-		var value_33 ParagraphLine = ParagraphLine{}
-		var value_34 int32 = index
-		value_33.Start = value_34
-		decision.Next = value_33
-	}
-	var value_35 float32 = candidate_width
-	decision.Next.Width = value_35
-	var value_36 bool = decision.Next.HasContent
-	var value_37 bool = !value_36
-	if value_37 {
-		var value_38 float32 = element_width
-		decision.Next.Width = value_38
-	}
-	var value_39 int32 = index
-	var value_40 int32 = 1
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
-	decision.Next.End = value_41
-	var value_42 bool = true
-	decision.Next.HasContent = value_42
-	var value_43 ParagraphLineDecision = decision
-	return value_43
+	decision.Next.End = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
+	decision.Next.HasContent = true
+	return decision
 }
 
 func Paragraph_ParagraphElementSpacing(has_content bool, icon bool, policy ParagraphLayoutPolicy) int32 {
-	var value_0 bool = has_content
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 int32 = 0
-		return value_2
+	if !has_content {
+		return 0
 	}
-	var value_3 bool = icon
-	if value_3 {
-		var value_4 int32 = policy.IconSpacing
-		return value_4
+	if icon {
+		return policy.IconSpacing
 	}
-	var value_5 int32 = policy.SpaceWidth
-	return value_5
+	return policy.SpaceWidth
 }
 
 func Paragraph_ParagraphResolveMetrics(requested_font int32, default_font int32, requested_line_gap int32, default_line_gap int32, requested_icon_size int32, requested_width int32, fallback_width int32, measured_height int32, current_y int32) ParagraphMetrics {
 	var metrics ParagraphMetrics = ParagraphMetrics{}
-	var value_0 int32 = requested_font
-	metrics.Font = value_0
-	var value_1 int32 = metrics.Font
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = default_font
-		metrics.Font = value_4
+	metrics.Font = requested_font
+	if metrics.Font <= 0 {
+		metrics.Font = default_font
 	}
-	var value_5 int32 = requested_line_gap
-	metrics.LineGap = value_5
-	var value_6 int32 = metrics.LineGap
-	var value_7 int32 = 0
-	var value_8 bool = value_6 <= value_7
-	if value_8 {
-		var value_9 int32 = default_line_gap
-		metrics.LineGap = value_9
+	metrics.LineGap = requested_line_gap
+	if metrics.LineGap <= 0 {
+		metrics.LineGap = default_line_gap
 	}
-	var value_10 int32 = requested_icon_size
-	metrics.IconSize = value_10
-	var value_11 int32 = metrics.IconSize
-	var value_12 int32 = 0
-	var value_13 bool = value_11 <= value_12
-	if value_13 {
-		var value_14 int32 = metrics.Font
-		metrics.IconSize = value_14
+	metrics.IconSize = requested_icon_size
+	if metrics.IconSize <= 0 {
+		metrics.IconSize = metrics.Font
 	}
-	var value_15 int32 = requested_width
-	metrics.Width = value_15
-	var value_16 int32 = metrics.Width
-	var value_17 int32 = 0
-	var value_18 bool = value_16 <= value_17
-	if value_18 {
-		var value_19 int32 = fallback_width
-		metrics.Width = value_19
+	metrics.Width = requested_width
+	if metrics.Width <= 0 {
+		metrics.Width = fallback_width
 	}
-	var value_20 int32 = metrics.Width
-	var value_21 int32 = 0
-	var value_22 bool = value_20 < value_21
-	if value_22 {
-		var value_23 int32 = 0
-		metrics.Width = value_23
+	if metrics.Width < 0 {
+		metrics.Width = 0
 	}
-	var value_24 int32 = measured_height
-	metrics.Height = value_24
-	var value_25 int32 = metrics.Height
-	var value_26 int32 = 0
-	var value_27 bool = value_25 <= value_26
-	if value_27 {
-		var value_28 int32 = metrics.Font
-		var value_29 int32 = metrics.LineGap
-		var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 1))
-		metrics.Height = value_30
+	metrics.Height = measured_height
+	if metrics.Height <= 0 {
+		metrics.Height = (int32(number_runtime_bits(uint64(metrics.Font), uint64(metrics.LineGap), 32, true, 1)))
 	}
-	var value_31 int32 = current_y
-	var value_32 int32 = metrics.Height
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
-	metrics.NextY = value_33
-	var value_34 ParagraphMetrics = metrics
-	return value_34
+	metrics.NextY = (int32(number_runtime_bits(uint64(current_y), uint64(metrics.Height), 32, true, 1)))
+	return metrics
 }
 
 func Paragraph_ParagraphCanLayout(width int32) bool {
-	var value_0 int32 = width
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	return value_2
+	return (width > 0)
 }
 
 func Paragraph_ParagraphDefaultLineGap(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 4.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((4.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Paragraph_ParagraphLayoutPolicyFor(space_text_width int32, letter_spacing int32, requested_line_gap int32, default_line_gap int32, scale float32) ParagraphLayoutPolicy {
 	var policy ParagraphLayoutPolicy = ParagraphLayoutPolicy{}
-	var value_0 int32 = space_text_width
-	var value_1 int32 = 2
-	var value_2 int32 = letter_spacing
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
-	policy.SpaceWidth = value_4
-	var value_5 int32 = policy.SpaceWidth
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 0
-		policy.SpaceWidth = value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(space_text_width), uint64((int32(number_runtime_bits(uint64(2), uint64(letter_spacing), 32, true, 3)))), 32, true, 1))
+	policy.SpaceWidth = value_0
+	if policy.SpaceWidth < 0 {
+		policy.SpaceWidth = 0
 	}
-	var value_9 float32 = 4.0
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	var value_12 float32 = 0.5
-	var value_13 float32 = value_11 + value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	policy.IconSpacing = value_14
-	var value_15 int32 = requested_line_gap
-	policy.LineGap = value_15
-	var value_16 int32 = policy.LineGap
-	var value_17 int32 = 0
-	var value_18 bool = value_16 <= value_17
-	if value_18 {
-		var value_19 int32 = default_line_gap
-		policy.LineGap = value_19
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(((4.0*scale)+0.5)), 32, true)), uint64(0), 32, true, 0))
+	policy.IconSpacing = value_1
+	policy.LineGap = requested_line_gap
+	if policy.LineGap <= 0 {
+		policy.LineGap = default_line_gap
 	}
-	var value_20 ParagraphLayoutPolicy = policy
-	return value_20
+	return policy
 }
 
 func Paragraph_ParagraphLayoutTotalHeight(line_count int32, drawn_line_height int32, line_gap int32) int32 {
-	var value_0 int32 = line_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if line_count <= 0 {
+		return 0
 	}
-	var value_4 int32 = line_count
-	var value_5 int32 = drawn_line_height
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var height int32 = value_6
-	var value_7 int32 = line_count
-	var value_8 int32 = 1
-	var value_9 bool = value_7 > value_8
-	if value_9 {
-		var value_10 int32 = height
-		var value_11 int32 = line_count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		var value_14 int32 = line_gap
-		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
-		height = int32(number_runtime_bits(uint64(value_10), uint64(value_15), 32, true, 1))
+	var height int32 = (int32(number_runtime_bits(uint64(line_count), uint64(drawn_line_height), 32, true, 3)))
+	if line_count > 1 {
+		var value_0 int32 = height
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(line_count), uint64(1), 32, true, 2)))), uint64(line_gap), 32, true, 3))
+		height = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
 	}
-	var value_16 int32 = height
-	var value_17 int32 = 0
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 int32 = 0
-		return value_19
+	if height < 0 {
+		return 0
 	}
-	var value_20 int32 = height
-	return value_20
+	return height
 }
 
 func Paragraph_ParagraphLineXFor(x int32, width int32, line_width int32, align int32) int32 {
-	var value_0 int32 = width
-	var value_1 int32 = line_width
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var spare int32 = value_2
-	var value_3 int32 = align
-	var value_4 int32 = int32(TextAlignCenter)
-	var value_5 bool = value_3 == value_4
-	if value_5 {
-		var value_6 int32 = x
-		var value_7 int32 = spare
-		var value_8 int32 = 2
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 4))
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_9), 32, true, 1))
-		return value_10
+	var spare int32 = (int32(number_runtime_bits(uint64(width), uint64(line_width), 32, true, 2)))
+	if align == int32(TextAlignCenter) {
+		var value_0 int32 = int32(number_runtime_bits(uint64(x), uint64((int32(number_runtime_bits(uint64(spare), uint64(2), 32, true, 4)))), 32, true, 1))
+		return value_0
 	}
-	var value_11 int32 = align
-	var value_12 int32 = int32(TextAlignEnd)
-	var value_13 bool = value_11 == value_12
-	if value_13 {
-		var value_14 int32 = x
-		var value_15 int32 = spare
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-		return value_16
+	if align == int32(TextAlignEnd) {
+		return (int32(number_runtime_bits(uint64(x), uint64(spare), 32, true, 1)))
 	}
-	var value_17 int32 = x
-	return value_17
+	return x
 }
 
 func Paragraph_ParagraphNextLineY(current_y int32, drawn_line_height int32, line_gap int32, has_next_line bool) int32 {
-	var value_0 int32 = current_y
-	var value_1 int32 = drawn_line_height
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var next int32 = value_2
-	var value_3 bool = has_next_line
-	if value_3 {
-		var value_4 int32 = next
-		var value_5 int32 = line_gap
-		next = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	var next int32 = (int32(number_runtime_bits(uint64(current_y), uint64(drawn_line_height), 32, true, 1)))
+	if has_next_line {
+		var value_0 int32 = next
+		next = int32(number_runtime_bits(uint64(value_0), uint64(line_gap), 32, true, 1))
 	}
-	var value_6 int32 = next
-	return value_6
+	return next
 }
 
 func Paragraph_ParagraphLineStride(drawn_line_height int32, line_gap int32) int32 {
-	var value_0 int32 = drawn_line_height
-	var value_1 int32 = line_gap
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var stride int32 = value_2
-	var value_3 int32 = stride
-	var value_4 int32 = 1
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 1
-		return value_6
+	var stride int32 = (int32(number_runtime_bits(uint64(drawn_line_height), uint64(line_gap), 32, true, 1)))
+	if stride < 1 {
+		return 1
 	}
-	var value_7 int32 = stride
-	return value_7
+	return stride
 }
 
 func Paragraph_ParagraphLineIndexFor(mouse_y float32, bounds_y float32, line_stride int32, line_count int32) int32 {
-	var value_0 int32 = line_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if line_count <= 0 {
+		return -1
 	}
-	var value_4 int32 = line_stride
-	var value_5 int32 = 1
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 1
-		line_stride = value_7
+	if line_stride < 1 {
+		line_stride = 1
 	}
-	var value_8 float32 = mouse_y
-	var value_9 float32 = bounds_y
-	var value_10 float32 = value_8 - value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	var value_12 int32 = line_stride
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 4))
-	var index int32 = value_13
-	var value_14 int32 = index
-	var value_15 int32 = 0
-	var value_16 bool = value_14 < value_15
-	if value_16 {
-		var value_17 int32 = 0
-		return value_17
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((mouse_y-bounds_y)), 32, true)), uint64(0), 32, true, 0))
+	var index int32 = (int32(number_runtime_bits(uint64(value_0), uint64(line_stride), 32, true, 4)))
+	if index < 0 {
+		return 0
 	}
-	var value_18 int32 = index
-	var value_19 int32 = line_count
-	var value_20 bool = value_18 >= value_19
-	if value_20 {
-		var value_21 int32 = line_count
-		var value_22 int32 = 1
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
-		return value_23
+	if index >= line_count {
+		return (int32(number_runtime_bits(uint64(line_count), uint64(1), 32, true, 2)))
 	}
-	var value_24 int32 = index
-	return value_24
+	return index
 }
 
 func Paragraph_ParagraphSelectionLocalOffsetFor(mouse_y float32, bounds_y float32, block_height int32, line_length int32, measured_offset int32) int32 {
-	var value_0 int32 = line_length
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		line_length = value_3
+	if line_length < 0 {
+		line_length = 0
 	}
-	var value_4 float32 = mouse_y
-	var value_5 float32 = bounds_y
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if mouse_y < bounds_y {
+		return 0
 	}
-	var value_8 float32 = mouse_y
-	var value_9 float32 = bounds_y
-	var value_10 int32 = block_height
-	var value_11 float32 = float32(value_10)
-	var value_12 float32 = value_9 + value_11
-	var value_13 bool = value_8 > value_12
-	if value_13 {
-		var value_14 int32 = line_length
-		return value_14
+	if mouse_y > (bounds_y + float32(block_height)) {
+		return line_length
 	}
-	var value_15 int32 = measured_offset
-	var value_16 int32 = 0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 int32 = 0
-		return value_18
+	if measured_offset < 0 {
+		return 0
 	}
-	var value_19 int32 = measured_offset
-	var value_20 int32 = line_length
-	var value_21 bool = value_19 > value_20
-	if value_21 {
-		var value_22 int32 = line_length
-		return value_22
+	if measured_offset > line_length {
+		return line_length
 	}
-	var value_23 int32 = measured_offset
-	return value_23
+	return measured_offset
 }

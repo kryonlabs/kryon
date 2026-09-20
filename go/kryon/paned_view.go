@@ -25,463 +25,259 @@ type PanedViewDragDecision struct {
 }
 
 func PanedView_PanedViewHandleRole() int32 {
-	var value_0 int32 = 12
-	return value_0
+	return 12
 }
 
 func PanedView_PanedViewHandleFactsFor(class_name int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindPanedView()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = PanedView_PanedViewHandleRole()
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = PanedView_PanedViewHandleRole()
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, value_3, value_4, value_5, state)
+	return value_6
 }
 
 func PanedView_PanedViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
-}
-
-func PanedView_PanedViewMetricsFor(scale float32, handle StyleFrame) PanedViewMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var metrics PanedViewMetrics = PanedViewMetrics{}
-	var value_4 uint32 = handle.Value.Fields
-	var value_5 int32 = int32(StyleIconSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = handle.Value.IconSize
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 int32 = PanedView_PanedViewMetric(value_4, value_6, value_7, value_8, value_9)
-	metrics.Grip = value_10
-	var value_11 uint32 = handle.Value.Fields
-	var value_12 int32 = int32(StylePaddingX)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = handle.Value.PaddingX
-	var value_15 float32 = 46.0
-	var value_16 float32 = scale
-	var value_17 int32 = PanedView_PanedViewMetric(value_11, value_13, value_14, value_15, value_16)
-	metrics.DropEdge = value_17
-	var value_18 PanedViewMetrics = metrics
-	return value_18
-}
-
-func PanedView_PanedViewSize(bounds Rectangle, vertical bool) int32 {
-	var value_0 bool = vertical
-	if value_0 {
-		var value_1 float32 = bounds.Width
-		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_1), 32, true)), uint64(0), 32, true, 0))
-		return value_2
-	}
-	var value_3 float32 = bounds.Height
-	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-	return value_4
-}
-
-func PanedView_PanedViewLimit(size int32, min_first int32, min_second int32) int32 {
-	var value_0 int32 = size
-	var value_1 int32 = min_second
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var limit int32 = value_2
-	var value_3 int32 = limit
-	var value_4 int32 = min_first
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = min_first
-		limit = value_6
-	}
-	var value_7 int32 = limit
-	return value_7
-}
-
-func PanedView_PanedViewClampSplit(split int32, min_first int32, limit int32) int32 {
-	var value_0 int32 = split
-	var value_1 int32 = min_first
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = min_first
-		return value_3
-	}
-	var value_4 int32 = split
-	var value_5 int32 = limit
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = limit
-		return value_7
-	}
-	var value_8 int32 = split
-	return value_8
-}
-
-func PanedView_PanedViewDefaultSplit(limit int32) int32 {
-	var value_0 int32 = limit
-	var value_1 int32 = 2
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 4))
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
 	return value_2
 }
 
-func PanedView_PanedViewSplitFor(current_split int32, has_split bool, size int32, min_first int32, min_second int32) int32 {
-	var value_0 int32 = size
-	var value_1 int32 = min_first
-	var value_2 int32 = min_second
-	var value_3 int32 = PanedView_PanedViewLimit(value_0, value_1, value_2)
-	var limit int32 = value_3
-	var value_4 int32 = current_split
-	var split int32 = value_4
-	var value_5 bool = has_split
-	var value_6 bool = !value_5
-	if value_6 {
-		var value_7 int32 = limit
-		var value_8 int32 = PanedView_PanedViewDefaultSplit(value_7)
-		split = value_8
+func PanedView_PanedViewMetricsFor(scale float32, handle StyleFrame) PanedViewMetrics {
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_9 int32 = split
-	var value_10 int32 = min_first
-	var value_11 int32 = limit
-	var value_12 int32 = PanedView_PanedViewClampSplit(value_9, value_10, value_11)
-	return value_12
+	var metrics PanedViewMetrics = PanedViewMetrics{}
+	var value_0 uint32 = handle.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = handle.Value.IconSize
+	var value_3 float32 = 8.0
+	var value_4 int32 = PanedView_PanedViewMetric(value_0, value_1, value_2, value_3, scale)
+	metrics.Grip = value_4
+	var value_5 uint32 = handle.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_7 float32 = handle.Value.PaddingX
+	var value_8 float32 = 46.0
+	var value_9 int32 = PanedView_PanedViewMetric(value_5, value_6, value_7, value_8, scale)
+	metrics.DropEdge = value_9
+	return metrics
+}
+
+func PanedView_PanedViewSize(bounds Rectangle, vertical bool) int32 {
+	if vertical {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+		return value_0
+	}
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+	return value_1
+}
+
+func PanedView_PanedViewLimit(size int32, min_first int32, min_second int32) int32 {
+	var limit int32 = (int32(number_runtime_bits(uint64(size), uint64(min_second), 32, true, 2)))
+	if limit < min_first {
+		limit = min_first
+	}
+	return limit
+}
+
+func PanedView_PanedViewClampSplit(split int32, min_first int32, limit int32) int32 {
+	if split < min_first {
+		return min_first
+	}
+	if split > limit {
+		return limit
+	}
+	return split
+}
+
+func PanedView_PanedViewDefaultSplit(limit int32) int32 {
+	return (int32(number_runtime_bits(uint64(limit), uint64(2), 32, true, 4)))
+}
+
+func PanedView_PanedViewSplitFor(current_split int32, has_split bool, size int32, min_first int32, min_second int32) int32 {
+	var value_0 int32 = PanedView_PanedViewLimit(size, min_first, min_second)
+	var limit int32 = value_0
+	var split int32 = current_split
+	if !has_split {
+		var value_1 int32 = PanedView_PanedViewDefaultSplit(limit)
+		split = value_1
+	}
+	var value_2 int32 = PanedView_PanedViewClampSplit(split, min_first, limit)
+	return value_2
 }
 
 func PanedView_PanedViewPointerSplit(bounds Rectangle, vertical bool, pointer_x float32, pointer_y float32) int32 {
-	var value_0 bool = vertical
-	if value_0 {
-		var value_1 float32 = pointer_x
-		var value_2 float32 = bounds.X
-		var value_3 float32 = value_1 - value_2
-		var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
-		return value_4
+	if vertical {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((pointer_x-bounds.X)), 32, true)), uint64(0), 32, true, 0))
+		return value_0
 	}
-	var value_5 float32 = pointer_y
-	var value_6 float32 = bounds.Y
-	var value_7 float32 = value_5 - value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	return value_8
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((pointer_y-bounds.Y)), 32, true)), uint64(0), 32, true, 0))
+	return value_1
 }
 
 func PanedView_PanedViewPointerSplitFor(bounds Rectangle, vertical bool, pointer_x float32, pointer_y float32, min_first int32, min_second int32) int32 {
-	var value_0 Rectangle = bounds
-	var value_1 bool = vertical
-	var value_2 int32 = PanedView_PanedViewSize(value_0, value_1)
-	var size int32 = value_2
-	var value_3 int32 = size
-	var value_4 int32 = min_first
-	var value_5 int32 = min_second
-	var value_6 int32 = PanedView_PanedViewLimit(value_3, value_4, value_5)
-	var limit int32 = value_6
-	var value_7 Rectangle = bounds
-	var value_8 bool = vertical
-	var value_9 float32 = pointer_x
-	var value_10 float32 = pointer_y
-	var value_11 int32 = PanedView_PanedViewPointerSplit(value_7, value_8, value_9, value_10)
-	var split int32 = value_11
-	var value_12 int32 = split
-	var value_13 int32 = min_first
-	var value_14 int32 = limit
-	var value_15 int32 = PanedView_PanedViewClampSplit(value_12, value_13, value_14)
-	return value_15
+	var value_0 int32 = PanedView_PanedViewSize(bounds, vertical)
+	var size int32 = value_0
+	var value_1 int32 = PanedView_PanedViewLimit(size, min_first, min_second)
+	var limit int32 = value_1
+	var value_2 int32 = PanedView_PanedViewPointerSplit(bounds, vertical, pointer_x, pointer_y)
+	var split int32 = value_2
+	var value_3 int32 = PanedView_PanedViewClampSplit(split, min_first, limit)
+	return value_3
 }
 
 func PanedView_PanedViewHandleFor(bounds Rectangle, vertical bool, split int32, metrics PanedViewMetrics) Rectangle {
 	var handle Rectangle = Rectangle{}
-	var value_0 int32 = metrics.Grip
-	var value_1 float32 = float32(value_0)
-	var value_2 float32 = 0.5
-	var value_3 float32 = value_1 * value_2
-	var half float32 = value_3
-	var value_4 bool = vertical
-	if value_4 {
-		var value_5 float32 = bounds.X
-		var value_6 int32 = split
-		var value_7 float32 = float32(value_6)
-		var value_8 float32 = value_5 + value_7
-		var value_9 float32 = half
-		var value_10 float32 = value_8 - value_9
-		handle.X = value_10
-		var value_11 float32 = bounds.Y
-		handle.Y = value_11
-		var value_12 int32 = metrics.Grip
-		var value_13 float32 = float32(value_12)
-		handle.Width = value_13
-		var value_14 float32 = bounds.Height
-		handle.Height = value_14
+	var half float32 = (float32(metrics.Grip) * 0.5)
+	if vertical {
+		handle.X = ((bounds.X + float32(split)) - half)
+		handle.Y = bounds.Y
+		handle.Width = float32(metrics.Grip)
+		handle.Height = bounds.Height
 	} else {
-		var value_15 float32 = bounds.X
-		handle.X = value_15
-		var value_16 float32 = bounds.Y
-		var value_17 int32 = split
-		var value_18 float32 = float32(value_17)
-		var value_19 float32 = value_16 + value_18
-		var value_20 float32 = half
-		var value_21 float32 = value_19 - value_20
-		handle.Y = value_21
-		var value_22 float32 = bounds.Width
-		handle.Width = value_22
-		var value_23 int32 = metrics.Grip
-		var value_24 float32 = float32(value_23)
-		handle.Height = value_24
+		handle.X = bounds.X
+		handle.Y = ((bounds.Y + float32(split)) - half)
+		handle.Width = bounds.Width
+		handle.Height = float32(metrics.Grip)
 	}
-	var value_25 Rectangle = handle
-	return value_25
+	return handle
 }
 
 func PanedView_PanedViewLayoutFor(bounds Rectangle, vertical bool, current_split int32, has_split bool, min_first int32, min_second int32, metrics PanedViewMetrics) PanedViewLayout {
 	var layout PanedViewLayout = PanedViewLayout{}
-	var value_0 Rectangle = bounds
-	var value_1 bool = vertical
-	var value_2 int32 = PanedView_PanedViewSize(value_0, value_1)
-	layout.Size = value_2
-	var value_3 int32 = layout.Size
-	var value_4 int32 = min_first
-	var value_5 int32 = min_second
-	var value_6 int32 = PanedView_PanedViewLimit(value_3, value_4, value_5)
-	layout.Limit = value_6
-	var value_7 int32 = current_split
-	layout.Split = value_7
-	var value_8 bool = has_split
-	var value_9 bool = !value_8
-	if value_9 {
-		var value_10 int32 = layout.Limit
-		var value_11 int32 = PanedView_PanedViewDefaultSplit(value_10)
-		layout.Split = value_11
+	var value_0 int32 = PanedView_PanedViewSize(bounds, vertical)
+	layout.Size = value_0
+	var value_1 int32 = layout.Size
+	var value_2 int32 = PanedView_PanedViewLimit(value_1, min_first, min_second)
+	layout.Limit = value_2
+	layout.Split = current_split
+	if !has_split {
+		var value_3 int32 = layout.Limit
+		var value_4 int32 = PanedView_PanedViewDefaultSplit(value_3)
+		layout.Split = value_4
 	}
-	var value_12 int32 = layout.Split
-	var value_13 int32 = min_first
-	var value_14 int32 = layout.Limit
-	var value_15 int32 = PanedView_PanedViewClampSplit(value_12, value_13, value_14)
-	layout.Split = value_15
-	var value_16 Rectangle = bounds
-	var value_17 bool = vertical
-	var value_18 int32 = layout.Split
-	var value_19 PanedViewMetrics = metrics
-	var value_20 Rectangle = PanedView_PanedViewHandleFor(value_16, value_17, value_18, value_19)
-	layout.Handle = value_20
-	var value_21 PanedViewLayout = layout
-	return value_21
+	var value_5 int32 = layout.Split
+	var value_6 int32 = layout.Limit
+	var value_7 int32 = PanedView_PanedViewClampSplit(value_5, min_first, value_6)
+	layout.Split = value_7
+	var value_8 int32 = layout.Split
+	var value_9 Rectangle = PanedView_PanedViewHandleFor(bounds, vertical, value_8, metrics)
+	layout.Handle = value_9
+	return layout
 }
 
 func PanedView_PanedViewChanged(previous_split int32, next_split int32, has_split bool) bool {
-	var value_0 bool = has_split
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 bool = false
-		return value_2
+	if !has_split {
+		return false
 	}
-	var value_3 int32 = previous_split
-	var value_4 int32 = next_split
-	var value_5 bool = value_3 != value_4
-	return value_5
+	return (previous_split != next_split)
 }
 
 func PanedView_PanedViewDragFor(has_active bool, active_is_current bool, owner_captured bool, mouse_down bool, disabled bool, has_split bool, handle_hot bool, mouse_pressed bool) PanedViewDragDecision {
 	var decision PanedViewDragDecision = PanedViewDragDecision{}
 	var value_0 bool = has_active
-	var value_1 bool = value_0
+	if value_0 {
+		value_0 = owner_captured
+	}
+	if value_0 {
+		decision.ClearActive = true
+	}
+	var value_1 bool = has_active
 	if value_1 {
-		var value_2 bool = owner_captured
-		value_1 = value_2
+		value_1 = !mouse_down
 	}
 	if value_1 {
-		var value_3 bool = true
-		decision.ClearActive = value_3
+		decision.ClearActive = true
 	}
-	var value_4 bool = has_active
-	var value_5 bool = value_4
+	var value_2 bool = disabled
+	if value_2 {
+		value_2 = active_is_current
+	}
+	if value_2 {
+		decision.ClearActive = true
+	}
+	var value_3 bool = has_active
+	if value_3 {
+		value_3 = !decision.ClearActive
+	}
+	has_active = value_3
+	var value_4 bool = active_is_current
+	if value_4 {
+		value_4 = !decision.ClearActive
+	}
+	active_is_current = value_4
+	var value_5 bool = !decision.ClearActive
 	if value_5 {
-		var value_6 bool = mouse_down
-		var value_7 bool = !value_6
-		value_5 = value_7
+		value_5 = !disabled
 	}
-	if value_5 {
-		var value_8 bool = true
-		decision.ClearActive = value_8
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = has_split
 	}
-	var value_9 bool = disabled
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 bool = active_is_current
-		value_10 = value_11
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = handle_hot
 	}
-	if value_10 {
-		var value_12 bool = true
-		decision.ClearActive = value_12
+	var value_8 bool = value_7
+	if value_8 {
+		value_8 = mouse_down
 	}
-	var value_13 bool = has_active
-	var value_14 bool = value_13
-	if value_14 {
-		var value_15 bool = decision.ClearActive
-		var value_16 bool = !value_15
-		value_14 = value_16
+	var value_9 bool = value_8
+	if value_9 {
+		value_9 = mouse_pressed
 	}
-	has_active = value_14
-	var value_17 bool = active_is_current
-	var value_18 bool = value_17
-	if value_18 {
-		var value_19 bool = decision.ClearActive
-		var value_20 bool = !value_19
-		value_18 = value_20
+	if value_9 {
+		decision.StartDrag = true
+		active_is_current = true
 	}
-	active_is_current = value_18
-	var value_21 bool = decision.ClearActive
-	var value_22 bool = !value_21
-	var value_23 bool = value_22
-	if value_23 {
-		var value_24 bool = disabled
-		var value_25 bool = !value_24
-		value_23 = value_25
+	var value_10 bool = active_is_current
+	if !value_10 {
+		value_10 = decision.StartDrag
 	}
-	var value_26 bool = value_23
-	if value_26 {
-		var value_27 bool = has_split
-		value_26 = value_27
-	}
-	var value_28 bool = value_26
-	if value_28 {
-		var value_29 bool = handle_hot
-		value_28 = value_29
-	}
-	var value_30 bool = value_28
-	if value_30 {
-		var value_31 bool = mouse_down
-		value_30 = value_31
-	}
-	var value_32 bool = value_30
-	if value_32 {
-		var value_33 bool = mouse_pressed
-		value_32 = value_33
-	}
-	if value_32 {
-		var value_34 bool = true
-		decision.StartDrag = value_34
-		var value_35 bool = true
-		active_is_current = value_35
-	}
-	var value_36 bool = active_is_current
-	var value_37 bool = value_36
-	if !value_37 {
-		var value_38 bool = decision.StartDrag
-		value_37 = value_38
-	}
-	decision.DragActive = value_37
-	var value_39 PanedViewDragDecision = decision
-	return value_39
+	decision.DragActive = value_10
+	return decision
 }
 
 func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics PanedViewMetrics) int32 {
-	var value_0 float32 = mouse.X
-	var value_1 float32 = bounds.X
-	var value_2 bool = value_0 < value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 float32 = mouse.X
-		var value_5 float32 = bounds.X
-		var value_6 float32 = bounds.Width
-		var value_7 float32 = value_5 + value_6
-		var value_8 bool = value_4 > value_7
-		value_3 = value_8
+	var value_0 bool = (mouse.X < bounds.X)
+	if !value_0 {
+		value_0 = (mouse.X > (bounds.X + bounds.Width))
 	}
-	var value_9 bool = value_3
-	if !value_9 {
-		var value_10 float32 = mouse.Y
-		var value_11 float32 = bounds.Y
-		var value_12 bool = value_10 < value_11
-		value_9 = value_12
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (mouse.Y < bounds.Y)
 	}
-	var value_13 bool = value_9
-	if !value_13 {
-		var value_14 float32 = mouse.Y
-		var value_15 float32 = bounds.Y
-		var value_16 float32 = bounds.Height
-		var value_17 float32 = value_15 + value_16
-		var value_18 bool = value_14 > value_17
-		value_13 = value_18
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (mouse.Y > (bounds.Y + bounds.Height))
 	}
-	if value_13 {
-		var value_19 int32 = int32(DropNone)
-		return value_19
+	if value_2 {
+		return int32(DropNone)
 	}
-	var value_20 int32 = metrics.DropEdge
-	var edge int32 = value_20
-	var value_21 int32 = edge
-	var value_22 int32 = 0
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 int32 = 0
-		edge = value_24
+	var edge int32 = metrics.DropEdge
+	if edge < 0 {
+		edge = 0
 	}
-	var value_25 float32 = mouse.X
-	var value_26 float32 = bounds.X
-	var value_27 int32 = edge
-	var value_28 float32 = float32(value_27)
-	var value_29 float32 = value_26 + value_28
-	var value_30 bool = value_25 < value_29
-	if value_30 {
-		var value_31 int32 = int32(DropLeft)
-		return value_31
+	if mouse.X < (bounds.X + float32(edge)) {
+		return int32(DropLeft)
 	}
-	var value_32 float32 = mouse.X
-	var value_33 float32 = bounds.X
-	var value_34 float32 = bounds.Width
-	var value_35 float32 = value_33 + value_34
-	var value_36 int32 = edge
-	var value_37 float32 = float32(value_36)
-	var value_38 float32 = value_35 - value_37
-	var value_39 bool = value_32 > value_38
-	if value_39 {
-		var value_40 int32 = int32(DropRight)
-		return value_40
+	if mouse.X > ((bounds.X + bounds.Width) - float32(edge)) {
+		return int32(DropRight)
 	}
-	var value_41 float32 = mouse.Y
-	var value_42 float32 = bounds.Y
-	var value_43 int32 = edge
-	var value_44 float32 = float32(value_43)
-	var value_45 float32 = value_42 + value_44
-	var value_46 bool = value_41 < value_45
-	if value_46 {
-		var value_47 int32 = int32(DropTop)
-		return value_47
+	if mouse.Y < (bounds.Y + float32(edge)) {
+		return int32(DropTop)
 	}
-	var value_48 float32 = mouse.Y
-	var value_49 float32 = bounds.Y
-	var value_50 float32 = bounds.Height
-	var value_51 float32 = value_49 + value_50
-	var value_52 int32 = edge
-	var value_53 float32 = float32(value_52)
-	var value_54 float32 = value_51 - value_53
-	var value_55 bool = value_48 > value_54
-	if value_55 {
-		var value_56 int32 = int32(DropBottom)
-		return value_56
+	if mouse.Y > ((bounds.Y + bounds.Height) - float32(edge)) {
+		return int32(DropBottom)
 	}
-	var value_57 int32 = int32(DropCenter)
-	return value_57
+	return int32(DropCenter)
 }

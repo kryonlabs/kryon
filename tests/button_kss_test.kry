@@ -1,0 +1,213 @@
+#import "kryon.h"
+#import "ui/button.h"
+#import "runtime/button.h"
+#import "stdio.h"
+#import "stdlib.h"
+#import "string.h"
+
+app "Kryon Button KSS Test" {
+    size 320 180
+    fps 0
+    before_window TestBeforeWindow
+    init TestStyles
+    should_continue TestContinue
+}
+
+state {
+    test_done: bool = false
+}
+
+TestBeforeWindow :: () -> bool {
+    private_display: const char* = getenv("KRYON_PRIVATE_DISPLAY")
+    display: const char* = getenv("DISPLAY")
+    if private_display == nil || display == nil ||
+    strcmp(private_display, "1") != 0 ||
+    strncmp(display, ":0", 2) == 0 {
+        puts("Button KSS test requires a private X display")
+        return false
+    }
+    SetConfigFlags(FLAG_WINDOW_HIDDEN)
+    return true
+}
+
+TestContinue :: () -> bool {
+    return !test_done
+}
+
+TestRequire :: (condition: bool, message: const char*) {
+    if !condition {
+        fprintf(stderr, "Button policy failed: %s\n", message)
+        exit(1)
+    }
+}
+
+TestPolicy :: () {
+    facts: StyleFacts = ButtonRoleFactsFor(0, 11, 22, StyleAny(),
+    ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+    ButtonStateNormal)
+    TestRequire(facts.kind == StyleKindButton(), "default kind")
+    TestRequire(facts.name == 11, "name")
+    TestRequire(facts.class_name == 22, "class")
+    TestRequire(facts.role == StyleAny(), "role")
+    TestRequire(facts.tone == ButtonToneNeutral, "neutral tone")
+    TestRequire(facts.emphasis == ButtonEmphasisSoft, "soft emphasis")
+    TestRequire(facts.size == ControlSizeMedium, "medium size")
+    TestRequire(facts.state == ButtonStateNormal, "normal state")
+
+    facts = ButtonRoleFactsFor(StyleKindDropdown(), 0, 33, StyleAny(),
+    ButtonToneAccent, ButtonEmphasisFilled, ControlSizeLarge,
+    ButtonStateHover)
+    TestRequire(facts.kind == StyleKindDropdown(), "override kind")
+    TestRequire(facts.class_name == 33, "override class")
+    TestRequire(facts.tone == ButtonToneAccent, "accent tone")
+    TestRequire(facts.emphasis == ButtonEmphasisFilled, "filled emphasis")
+    TestRequire(facts.size == ControlSizeLarge, "large size")
+    TestRequire(facts.state == ButtonStateHover, "hover state")
+
+    TestRequire(!ButtonActionEnabled(true, false), "disabled action")
+    TestRequire(ButtonActionEnabled(false, false), "enabled action")
+    TestRequire(!ButtonActionEnabled(false, true), "disabled content")
+    TestRequire(ButtonArrowGlyph(ArrowRight) == 62, "right arrow")
+    TestRequire(ButtonArrowGlyph(ArrowUp) == 94, "up arrow")
+    TestRequire(ButtonArrowGlyph(ArrowDown) == 118, "down arrow")
+    TestRequire(ButtonArrowGlyph(ArrowLeft) == 60, "left arrow")
+
+    appearance: StyleFrame = {0}
+    appearance.value.radius = 8.0
+    props: ButtonProps = {0}
+    props.bounds = (Rectangle){0, 0, 96, 96}
+    props.circle = true
+    circle: ButtonFrame = BuildFrame(props, (ButtonInput){0}, appearance,
+    (InteractionMotion){0}, (Rectangle){0}, 0, 2.0, 16, 16)
+    TestRequire(circle.material.value.radius == 24.0, "circle material radius")
+    TestRequire(circle.appearance.value.radius == 24.0, "circle appearance radius")
+}
+
+TestButtonMetrics :: () {
+    frame: StyleFrame = {0}
+    icon: IconActionMetrics = IconActionMetricsFor(
+    (Rectangle){0, 0, 40, 32}, 0, 0, 1.0, frame)
+    TestRequire(icon.padding == 3, "icon fallback padding")
+    TestRequire(icon.icon_size == 26, "icon fallback size")
+
+    icon = IconActionMetricsFor((Rectangle){0, 0, 40, 32},
+    12, 5, 2.0, frame)
+    TestRequire(icon.padding == 5, "icon requested padding")
+    TestRequire(icon.icon_size == 12, "icon requested size")
+    frame.value.fields = StylePaddingX
+    frame.value.padding_x = 0.0
+    icon = IconActionMetricsFor((Rectangle){0, 0, 20, 20},
+    0, 0, 1.0, frame)
+    TestRequire(icon.padding == 0, "icon zero padding")
+    TestRequire(icon.icon_size == 20, "icon zero size")
+    TestRequire(IconActionStyleIconSize(24, 2.0) == 12.0,
+    "icon style size")
+    TestRequire(IconActionStyleIconSize(-24, 2.0) == 0.0,
+    "icon negative size")
+    TestRequire(IconActionStyleRadius(0.5,
+    (Rectangle){0, 0, 40, 20}, 2.0) == 2.5, "icon radius")
+    TestRequire(IconActionStyleRadius(0.5,
+    (Rectangle){0, 0, -40, 20}, 2.0) == 0.0,
+    "icon empty radius")
+
+    frame = (StyleFrame){0}
+    text_metrics: TextButtonMetrics = TextButtonMetricsFor(1.0, frame)
+    TestRequire(text_metrics.padding_x == 8, "text fallback padding x")
+    TestRequire(text_metrics.padding_y == 4, "text fallback padding y")
+    TestRequire(text_metrics.min_width == 34, "text fallback min width")
+    TestRequire(text_metrics.min_height == 34, "text fallback min height")
+    frame.value.fields = StylePaddingX | StylePaddingY |
+    StyleContentOffset | StyleIconSize
+    frame.value.padding_x = 2.0
+    frame.value.padding_y = 3.0
+    frame.value.offset_x = 18.0
+    frame.value.icon_size = 21.0
+    text_metrics = TextButtonMetricsFor(2.0, frame)
+    TestRequire(text_metrics.padding_x == 4, "text styled padding x")
+    TestRequire(text_metrics.padding_y == 6, "text styled padding y")
+    TestRequire(text_metrics.min_width == 36, "text styled min width")
+    TestRequire(text_metrics.min_height == 42, "text styled min height")
+    frame.value.offset_x = 0.0
+    frame.value.icon_size = 0.0
+    text_metrics = TextButtonMetricsFor(1.0, frame)
+    TestRequire(text_metrics.min_width == 34, "text zero min width")
+    TestRequire(text_metrics.min_height == 34, "text zero min height")
+
+    frame = (StyleFrame){0}
+    info: InfoIndicatorMetrics = InfoIndicatorMetricsFor(0, 1.0, frame)
+    TestRequire(info.min_touch == 32, "info fallback touch")
+    TestRequire(info.diameter == 18, "info fallback diameter")
+    frame.value.fields = StyleContentOffset | StyleIconSize
+    frame.value.offset_x = 28.0
+    frame.value.icon_size = 14.0
+    info = InfoIndicatorMetricsFor(20, 2.0, frame)
+    TestRequire(info.min_touch == 56, "info styled touch")
+    TestRequire(info.diameter == 20, "info requested diameter")
+    info = InfoIndicatorMetricsFor(0, 2.0, frame)
+    TestRequire(info.diameter == 28, "info styled diameter")
+
+    bounds: ButtonInfoBounds = ButtonInfoBoundsFor(
+    (Rectangle){10, 20, 0, 0}, 1.0, frame)
+    TestRequire(bounds.bounds.width == 14.0, "info fallback width")
+    TestRequire(bounds.bounds.height == 14.0, "info fallback height")
+    TestRequire(bounds.diameter == 14, "info fallback bounds diameter")
+    bounds = ButtonInfoBoundsFor((Rectangle){10, 20, 24, 18}, 1.0, frame)
+    TestRequire(bounds.bounds.width == 24.0, "info declared width")
+    TestRequire(bounds.bounds.height == 18.0, "info declared height")
+    TestRequire(bounds.diameter == 18, "info declared diameter")
+    bounds = ButtonInfoBoundsFor((Rectangle){10, 20, 24, 0}, 1.0, frame)
+    TestRequire(bounds.bounds.height == 24.0, "info missing height")
+}
+
+TestStyles :: () {
+    TestPolicy()
+    TestButtonMetrics()
+    packs: [3] const char* = {"material", "classic", "lightfield"}
+    if !EnsureBuiltInStylePacks() {
+        puts("Could not load built-in KSS packs")
+        exit(1)
+    }
+    count: i32 = 0
+    for int pack = 0; pack < 3; pack++ {
+        if !SetActiveStylePack(packs[pack]) {
+            fprintf(stderr, "Could not select KSS pack %s\n", packs[pack])
+            exit(1)
+        }
+        modes: i32 = pack == 2 ? 2 : 1
+        for int glow = 0; glow < modes; glow++ {
+            SetFancyEffectsEnabled(glow)
+            for int tone = 0; tone < 5; tone++ {
+                for int emphasis = 0; emphasis < 5; emphasis++ {
+                    for int state = 1; state <= 7; state++ {
+                        props: ButtonProps = {0}
+                        props.bounds = (Rectangle){0, 0, 120, 40}
+                        props.tone = (ButtonTone)tone
+                        props.emphasis = (ButtonEmphasis)emphasis
+                        props.state = (ButtonState)state
+                        props.disabled = state == ButtonStateDisabled
+                        props.loading = state == ButtonStateLoading
+                        props.selected = state == ButtonStateSelected
+                        frame: Style = ResolveButtonStyle(props, props.state)
+                        if frame.foreground.a == 0 ||
+                        frame.opacity <= 0.0 || frame.opacity > 1.0 {
+                            fprintf(stderr,
+                            "Invalid KSS button frame: pack=%s glow=%d tone=%d emphasis=%d state=%d\n",
+                            packs[pack], glow, tone, emphasis, state)
+                            exit(1)
+                        }
+                        count += 1
+                    }
+                }
+            }
+        }
+    }
+    fprintf(stdout, "Button KSS test passed %d state resolutions\n", count)
+    test_done = true
+}
+
+ButtonKssScreen :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+    }
+}

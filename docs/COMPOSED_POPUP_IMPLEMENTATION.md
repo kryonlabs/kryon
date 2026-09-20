@@ -24,9 +24,9 @@ popup must not submit children.
 
 ## Verified architectural constraints
 
-- `src/ui/ui.c:RenderFrameOverlays` runs dropdown, menu and text-context overlays
+- `src/ui/frame.kry:RenderFrameOverlays` runs dropdown, menu and text-context overlays
   after ordinary UI content and resets the drawing clip first.
-- `src/ui/ui_tree.c:EndTree` performs layout, input and painting after the app's
+- `src/ui/tree_frame.kry:EndTree` performs layout, input and painting after the app's
   widget calls. A content scope must therefore survive beyond its lexical end
   for retained painting and hit testing, without retaining borrowed props.
 - Native controls also paint immediately. Reordering retained nodes alone is
@@ -136,9 +136,9 @@ This implementation covers the OpenGL 3.3/GLES2 paths, with real pixel evidence
 for GLES2. The future owned layer still needs scope-level blend restoration and
 automatic composition, plus the remaining resource/window ownership work.
 
-## Implemented prerequisite: private C owned paint layers
+## Implemented prerequisite: private Kry owned paint layers
 
-`src/ui/ui_paint_layers.c` owns render textures in an explicit host context.
+`src/ui/paint_layers.kry` owns render textures in an explicit host context.
 Opening a layer reserves its order and captures immediate drawing plus retained
 submissions into the same texture. Nested layers composite above the parent's
 later drawing. The context reuses textures, replaces them when dimensions change,
@@ -146,7 +146,7 @@ and releases unused entries after the frame is composited. Hiding a parent
 suppresses its descendants; a frame without an owner emits none of its old paint.
 
 Capture establishes separate source-over alpha factors. End restores the prior
-target, clip and blend state; composition uses premultiplied alpha and restores
+target, clip and blend state; composition uses straight alpha and restores
 the caller's matrices, clip and blend configuration. Resource allocation and
 destruction also preserve the active framebuffer, since the backend's texture
 helpers bind and unbind framebuffers internally. The host must finish retained
@@ -182,7 +182,7 @@ verify mixed popup content escaping a 1x1 scrolling owner; invalid-scope tests
 reject an unclosed child scroll. Complete shortcut routing and shader isolation
 remain work.
 
-The private C `ui_popup_input.c` registry now tracks persistent popup bounds,
+The Kry module `src/ui/popup_input_store.kry` tracks persistent popup bounds,
 parentage and branch ordering in explicit contexts. The shared input-capture
 path consults its bound context, allowing ordinary controls to participate.
 Records preserve capture before the next frame's owner declaration; closing a

@@ -6,8 +6,6 @@
 #include "ui_internal.h"
 #include "ui_image.h"
 #include "ui_image_internal.h"
-#include "ui_style_internal.h"
-#include "runtime/image.h"
 #include "embedded_assets.h"
 #include <math.h>
 #include <stdio.h>
@@ -20,38 +18,6 @@ typedef struct ImageCacheEntry {
 } ImageCacheEntry;
 
 static ImageCacheEntry image_cache[KRY_IMAGE_CACHE_MAX];
-
-static Style
-image_widget_style(int class_name)
-{
-    return ui_unpack_style(ui_control_style_frame_kind(
-        (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .class_name = class_name},
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindImage()).value);
-}
-
-static Style
-image_widget_tint_style(int class_name)
-{
-    StyleFacts facts = StyleDefaultFacts(StyleKindImage());
-
-    facts.class_name = class_name;
-    return ui_unpack_style(ResolveActiveStyle((StyleData){0}, facts,
-                                              ButtonStateNormal));
-}
-
-static Color
-image_widget_tint(int class_name)
-{
-    Style style = image_widget_tint_style(class_name);
-    Color tint = (style.fields & StyleForeground) ? style.foreground : WHITE;
-
-    if((style.fields & StyleOpacity) && style.opacity < 1.0f)
-        tint = Fade(tint, style.opacity);
-    return tint;
-}
 
 static Rectangle
 image_world_rect_to_screen(Rectangle rect)
@@ -123,13 +89,6 @@ LoadImageTexture(const char *path)
     return texture;
 }
 
-Rectangle
-ImageFitRect(ImageProps image, Texture2D texture)
-{
-    return ImageFitBounds(image.bounds, image.source, texture.width,
-                          texture.height, (int)image.fit);
-}
-
 static float
 image_row_inset(Rectangle bounds, float radius, float sample_y)
 {
@@ -154,15 +113,6 @@ image_row_inset(Rectangle bounds, float radius, float sample_y)
 
     inside = radius * radius - dy * dy;
     return radius - sqrtf(inside > 0.0f ? inside : 0.0f);
-}
-
-static Rectangle
-image_default_source(Texture2D texture, Rectangle source)
-{
-    if(source.width == 0.0f || source.height == 0.0f)
-        return (Rectangle){0.0f, 0.0f, (float)texture.width,
-                           (float)texture.height};
-    return source;
 }
 
 static Rectangle
@@ -192,8 +142,8 @@ image_draw_texture_strip(Texture2D texture, Rectangle source_base,
                    tint);
 }
 
-static void
-image_draw_rounded_texture(Texture2D texture, Rectangle source,
+void
+ui_image_draw_rounded_texture(Texture2D texture, Rectangle source,
                              Rectangle dst, Rectangle bounds, float radius,
                              Color tint)
 {
@@ -225,45 +175,22 @@ image_draw_rounded_texture(Texture2D texture, Rectangle source,
 }
 
 void
-ImageTexture(Texture2D texture, ImageProps image)
+ImageTextureTintedRaw(Texture2D texture, Rectangle bounds, Color tint)
 {
-    ImageTextureTinted(texture, image, image_widget_tint(image.class_name));
+    if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
+       bounds.width <= 0.0f || bounds.height <= 0.0f)
+        return;
+    DrawTexturePro(texture,
+                   (Rectangle){0, 0, (float)texture.width, (float)texture.height},
+                   bounds, (Vector2){0}, 0.0f, tint);
 }
 
 void
-ImageTextureTinted(Texture2D texture, ImageProps image, Color tint)
+ui_image_draw_clipped_texture(Texture2D texture, Rectangle source,
+                              Rectangle dst, Rectangle bounds,
+                              Vector2 origin, float rotation, Color tint)
 {
-    Rectangle source;
-    Rectangle dst;
-    Style style;
-
-    if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
-       image.bounds.width <= 0.0f || image.bounds.height <= 0.0f)
-        return;
-
-    source = image_default_source(texture, image.source);
-    dst = ImageFitRect(image, texture);
-    tint = tint.a == 0 ? WHITE : tint;
-    style = image_widget_style(image.class_name);
-
-    if(style.background.a > 0 || style.border.a > 0 ||
-       style.material != MaterialFlat || style.opacity < 1.0f ||
-       style.radius > 0.0f || style.border_width > 0.0f) {
-        ui_draw_material(image.bounds, (Rectangle){0}, style.background,
-                         style.border, style.border, style.radius,
-                         style.border_width, 0.0f, 0.0f, 0, style.focus,
-                         0.0f, style.opacity, ui_style_fill(style),
-                         style.material);
-    }
-
-    if(style.radius <= 0.0f) {
-        image_begin_bounds_clip(image.bounds);
-        DrawTexturePro(texture, source, dst, image.origin, image.rotation,
-                       tint);
-        EndClip();
-        return;
-    }
-
-    image_draw_rounded_texture(texture, source, dst, image.bounds, style.radius,
-                                 tint);
+    image_begin_bounds_clip(bounds);
+    DrawTexturePro(texture, source, dst, origin, rotation, tint);
+    EndClip();
 }

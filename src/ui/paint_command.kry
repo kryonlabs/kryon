@@ -1,0 +1,65 @@
+#module "paint_command_host"
+#import "ui_internal.h"
+#import "ui_paint_internal.h"
+#import "ui_style_internal.h"
+
+WidgetFrameForRole :: (tone: ButtonTone, state: ButtonState,
+disabled: i32, selected: i32, style_kind: i32,
+role: i32) -> StyleFrame #export {
+    props: ButtonProps = (ButtonProps){0}
+    props.tone = tone
+    props.disabled = disabled
+    props.selected = selected
+    return ui_control_style_frame_role_kind(props, state, 0,
+    0.0, 0.0, 0.0, style_kind, role)
+}
+
+WidgetFrameForClassRole :: (tone: ButtonTone,
+state: ButtonState, disabled: i32, selected: i32,
+class_name: i32, style_kind: i32, role: i32) -> StyleFrame #export {
+    props: ButtonProps = (ButtonProps){0}
+    props.class_name = class_name
+    props.tone = tone
+    props.disabled = disabled
+    props.selected = selected
+    return ui_control_style_frame_role_kind(props, state, 0,
+    0.0, 0.0, 0.0, style_kind, role)
+}
+
+DrawWidgetFrame :: (bounds: Rectangle,
+surface_bounds: Rectangle, frame: StyleFrame, hovered: i32,
+pressed: i32, disabled: i32, focused: i32) #export {
+    styled: StyleFrame = ui_style_apply_effects_frame(frame)
+    style: Style = ui_unpack_style(styled.value)
+    hover_amount: float = 0.0
+    press_amount: float = 0.0
+    focus_amount: float = 0.0
+    if hovered != 0 { hover_amount = 1.0 }
+    if pressed != 0 { press_amount = 1.0 }
+    if focused != 0 { focus_amount = 1.0 }
+    ui_draw_material(bounds, surface_bounds,
+    style.background, style.border, style.border,
+    style.radius, style.border_width, hover_amount, press_amount,
+    disabled, style.focus, focus_amount, style.opacity,
+    ui_style_apply_effects_fill(styled.fill), style.material)
+}
+
+ui_draw_surface :: (command: SurfaceDrawing) #export {
+    if !FancyEffectsEnabled() &&
+    (command.layer.blur > 0.0 ||
+    command.layer.inner_blur > 0.0) &&
+    ((command.layer.color | command.layer.end_color)
+    & 0xffffff00u) != 0 {
+        return
+    }
+    if command.visible && !ui_draw_surface_cached(command) {
+        ui_draw_surface_direct(command)
+    }
+}
+
+ui_ring_paint_spec :: (ring: LoadingRingSpec) -> LoadingRingSpec #export {
+    if !FancyEffectsEnabled() {
+        ring.glow_blur = 0.0
+    }
+    return ring
+}

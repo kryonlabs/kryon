@@ -5,6 +5,11 @@ generic examples, generic test fixtures, and documentation for integrating the
 runtime into downstream applications. It must not contain product behavior,
 branding, copy, assets, or fixtures from a downstream application.
 
+The retained UI tree is authored in `.kry` for composition, state, layout,
+interaction, style, and capture decisions. Handwritten C provides platform,
+memory, and renderer effects called by generated code. Generated C is build
+output. Other C widget implementations still need migration.
+
 Linux libdraw key releases, modifier samples and focus events are backend host
 translation. The private X11 observer listens only to the runtime's own window;
 it does not implement desktop commands, selection policy or file operations.
@@ -13,7 +18,9 @@ Those remain application behavior. See [libdraw input](libdraw-input.md).
 KSS grammar, environment-name interpretation, overlay decisions, cascade policy,
 and formatting belong to maintained `runtime/*.kry` modules. CSS declaration
 classification, scalar parsing, token lookup, and color overrides now run there
-as well. Specificity weights and priority comparisons are shared with web
+as well. Native import storage, parse driving, pack registration, theme replay,
+and built-in pack selection live in `src/ui/*.kry`; generated C is a build
+artifact. Specificity weights and priority comparisons are shared with web
 resolution and inspector traces. Attribute operators and nth-position formulas
 also run in `.kry`, as do state predicates and basic structural pseudo rules;
 hosts provide values, sibling lists, and relationship/content/focus facts.
@@ -128,8 +135,8 @@ examples. The manifest is the stable inventory for example metadata and curated
 render-exact fixtures.
 
 Widget props contracts belong in the declaration source. Button's C header and
-native Go props type are generated from `runtime/button_props.kry`; handwritten
-host code consumes these types. The C retained ButtonSpec embeds ButtonProps
+native Go props type are generated from `runtime/button_props.kry`; native
+`.kry` widget code consumes these types. The C retained ButtonSpec embeds ButtonProps
 and the generated Style directly; it must not maintain another field schema or
 reconstruct props from paint metadata. Geometry and texture fields are declared in
 `runtime/drawing_props.kry`. Its `struct #extern` contracts reuse C/C++ host
@@ -139,6 +146,10 @@ Button's measurement consumes these actual props and style records directly;
 hosts supply font measurements and available space, while `.kry` owns bounds
 and shape decisions. Borrowed label/typeface fields retain host-owned storage;
 shared code does not turn length-aware string views into C pointers.
+Button's image field is the canonical `ImageProps` record. The native Button
+and SegmentedControl implementations are `.kry` sources compiled into C;
+remaining `src/ui` widget C sources are migration work, not an
+alternative place for new UI behavior.
 Runtime-generated Go binds host services to the owning runtime receiver.
 Its arithmetic support belongs to the compiler and is emitted once per runtime
 package in `numeric_support.go`. Widgets must not duplicate those helpers or
@@ -168,8 +179,9 @@ polling the host again. Its retained motion consumes that same resolved input.
 Button content selection and placement also belong to `.kry`. The paint module
 defines Drawing commands for text, icons, textures, rings, and chevrons. Native
 hosts rasterize commands; they do not choose which content a Button displays.
-Font measurement, font resource lookup, clipping, and pixel blending remain
-device services. C supports texture commands; the Go frame stream still lacks
+Font measurement and resource lookup remain device services. `src/ui/text.kry`
+decides whether glyph bounds need a clip; hosts apply clip commands and blend
+pixels. C supports texture commands; the Go frame stream still lacks
 texture resource rendering.
 Material painting follows the same boundary. `runtime/material.kry` assembles
 SurfaceDrawing commands from resolved styles, retained fills, and interaction
@@ -183,9 +195,11 @@ without converting it back to public Style solely for drawing.
 
 The native theme APIs derive their color roles through `runtime/theme.kry`.
 Hosts supply the current palette, dark-mode state and shared disabled alpha,
-then unpack `SchemeFor` results. Contrast selection and tone arithmetic must
-not be reimplemented in the host adapters. OS palette discovery and cache
-storage remain native services.
+then unpack `SchemeFor` results. The native color helpers for contrast,
+mixing, and derived UI roles live in `src/ui/theme_color.kry`. OS palette
+discovery and active theme state remain native services. The shipped color
+catalog is authored in `themes/catalog_*.kss`; `src/ui/theme_catalog.kry`
+parses and caches its 26 palettes.
 
 Inset scaling and child centering also belong to the shared declaration code.
 Tree traversal and layout-scope storage remain host responsibilities, while
@@ -247,8 +261,8 @@ Button frames and materials; they must not add independent dropdown theme paths.
 Composed popup transitions belong to `runtime/popup_policy.kry`.
 `PopupLifecycleBegin`, `PopupLifecycleRelease`, `PopupLifecycleKeyboard`, and
 `PopupLifecycleFinish` own admission, hover visibility, context activation,
-open state, dismissal, input bounds and backdrop policy. C `popup.c` and Go
-`popup.go` apply those results. Hosts retain paint/input tokens, event queues,
+open state, dismissal, input bounds and backdrop policy. Native `src/ui/popup.kry`
+and Go `popup.go` apply those results. Hosts retain paint/input tokens, event queues,
 open-pointer storage and scope restoration. Keyboard ownership is sampled
 **after** beginning the popup input scope; moving that query earlier changes
 nested Escape behavior. `runtime/popup_ownership.kry` owns ancestry traversal, branch ordering, capture,
@@ -264,14 +278,14 @@ the scrollbar disappears. Hosts retain clip/paint stacks and drag identities.
 Read-only text tokenization and line assembly belong to `runtime/paragraph.kry`.
 `ParagraphTokenNext` yields borrowed UTF-8 byte ranges; `ParagraphLineAdvance`
 owns hard breaks, overflow, empty lines, and the completed line ranges. Native
-`ui_text_layout.c` and Go `text_layout.go` retain strings/arrays and supply font
+`text_layout.kry` and Go `text_layout.go` retain strings/arrays and supply font
 measurements, including the shaped joined candidate. They do not contain a
 second whitespace grammar or wrapping algorithm. `paragraph_host.go` applies the same token, spacing and wrap decisions to Go
 Paragraph inline icons. Built-in icons paint through the native icon renderer;
 raw texture upload remains a host capability.
 `runtime/text_rows.kry` owns source-preserving logical lines, visual row breaks,
-heading font choice, caret affinity and point-to-row selection. C
-`ui_text_rows.c` and Go `text_rows_host.go` provide borrowed strings, grapheme
+heading font choice, caret affinity and point-to-row selection.
+`src/ui/text_rows.kry` and Go `text_rows_host.go` provide borrowed strings, grapheme
 boundaries, measured prefixes and row storage. Native TextArea measurement,
 painting and hit testing share that iterator; selectable blocks request its
 word-break mode. Cross-line selection/composition paint ranges remain owned by

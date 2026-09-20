@@ -65,554 +65,283 @@ type CheckboxValueResult struct {
 }
 
 func Checkbox_CheckboxMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_14 = value_17
+		value_2 = value_3
 	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
+	if value_2 {
+		value = fallback
 	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	return value_24
+	return (value * scale)
 }
 
 func Checkbox_CheckboxSlotSize(scale float32, box StyleFrame) int32 {
 	var value_0 uint32 = box.Value.Fields
-	var value_1 int32 = int32(StylePaddingX)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = box.Value.PaddingX
-	var value_4 float32 = 22.0
-	var value_5 float32 = scale
-	var value_6 bool = false
-	var value_7 float32 = Checkbox_CheckboxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	return value_8
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = box.Value.PaddingX
+	var value_3 float32 = 22.0
+	var value_4 float32 = Checkbox_CheckboxMetric(value_0, value_1, value_2, value_3, scale, false)
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	return value_5
 }
 
 func Checkbox_CheckboxBoxSize(scale float32, box StyleFrame) int32 {
 	var value_0 uint32 = box.Value.Fields
-	var value_1 int32 = int32(StyleIconSize)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = box.Value.IconSize
-	var value_4 float32 = 20.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Checkbox_CheckboxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	return value_8
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = box.Value.IconSize
+	var value_3 float32 = 20.0
+	var value_4 float32 = Checkbox_CheckboxMetric(value_0, value_1, value_2, value_3, scale, true)
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	return value_5
 }
 
 func Checkbox_CheckboxLabelXFor(slot_bounds Rectangle, scale float32, label StyleFrame) float32 {
 	var value_0 uint32 = label.Value.Fields
-	var value_1 int32 = int32(StyleGap)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 float32 = label.Value.Gap
-	var value_4 float32 = 10.0
-	var value_5 float32 = scale
-	var value_6 bool = true
-	var value_7 float32 = Checkbox_CheckboxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
-	var gap float32 = value_7
-	var value_8 float32 = slot_bounds.X
-	var value_9 float32 = slot_bounds.Width
-	var value_10 float32 = value_8 + value_9
-	var value_11 float32 = gap
-	var value_12 float32 = value_10 + value_11
-	return value_12
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.Gap
+	var value_3 float32 = 10.0
+	var value_4 float32 = Checkbox_CheckboxMetric(value_0, value_1, value_2, value_3, scale, true)
+	var gap float32 = value_4
+	return ((slot_bounds.X + slot_bounds.Width) + gap)
 }
 
 func Checkbox_CheckboxLabelYFor(bounds Rectangle, text_line_height float32) float32 {
-	var value_0 float32 = bounds.Y
-	var value_1 float32 = bounds.Height
-	var value_2 float32 = text_line_height
-	var value_3 float32 = value_1 - value_2
-	var value_4 float32 = 2.0
-	var value_5 float32 = value_3 / value_4
-	var value_6 float32 = value_0 + value_5
-	return value_6
+	return (bounds.Y + ((bounds.Height - text_line_height) / 2.0))
 }
 
 func Checkbox_CheckboxLayoutForText(x float32, y float32, label_width float32, text_line_height float32, scale float32, box StyleFrame, label StyleFrame) CheckboxLayout {
 	var layout CheckboxLayout = CheckboxLayout{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = scale
-	var value_5 StyleFrame = box
-	var value_6 int32 = Checkbox_CheckboxSlotSize(value_4, value_5)
-	var value_7 float32 = float32(value_6)
-	var slot_size float32 = value_7
-	var value_8 uint32 = label.Value.Fields
-	var value_9 int32 = int32(StyleGap)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 float32 = label.Value.Gap
-	var value_12 float32 = 10.0
-	var value_13 float32 = scale
-	var value_14 bool = true
-	var value_15 float32 = Checkbox_CheckboxMetric(value_8, value_10, value_11, value_12, value_13, value_14)
-	var gap float32 = value_15
-	var value_16 float32 = x
-	layout.Bounds.X = value_16
-	var value_17 float32 = y
-	layout.Bounds.Y = value_17
-	var value_18 float32 = slot_size
-	var value_19 float32 = gap
-	var value_20 float32 = value_18 + value_19
-	var value_21 float32 = label_width
-	var value_22 float32 = value_20 + value_21
-	layout.Bounds.Width = value_22
-	var value_23 float32 = slot_size
-	layout.Bounds.Height = value_23
-	var value_24 float32 = layout.Bounds.Height
-	var value_25 float32 = text_line_height
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 float32 = text_line_height
-		layout.Bounds.Height = value_27
+	var value_0 int32 = Checkbox_CheckboxSlotSize(scale, box)
+	var slot_size float32 = float32(value_0)
+	var value_1 uint32 = label.Value.Fields
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_3 float32 = label.Value.Gap
+	var value_4 float32 = 10.0
+	var value_5 float32 = Checkbox_CheckboxMetric(value_1, value_2, value_3, value_4, scale, true)
+	var gap float32 = value_5
+	layout.Bounds.X = x
+	layout.Bounds.Y = y
+	layout.Bounds.Width = ((slot_size + gap) + label_width)
+	layout.Bounds.Height = slot_size
+	if layout.Bounds.Height < text_line_height {
+		layout.Bounds.Height = text_line_height
 	}
-	var value_28 Rectangle = layout.Bounds
-	layout.SlotBounds = value_28
-	var value_29 float32 = slot_size
-	layout.SlotBounds.Width = value_29
-	var value_30 Rectangle = layout.SlotBounds
-	var value_31 float32 = scale
-	var value_32 StyleFrame = label
-	var value_33 float32 = Checkbox_CheckboxLabelXFor(value_30, value_31, value_32)
-	layout.LabelX = value_33
-	var value_34 Rectangle = layout.Bounds
-	var value_35 float32 = text_line_height
-	var value_36 float32 = Checkbox_CheckboxLabelYFor(value_34, value_35)
-	layout.LabelY = value_36
-	var value_37 CheckboxLayout = layout
-	return value_37
+	layout.SlotBounds = layout.Bounds
+	layout.SlotBounds.Width = slot_size
+	var value_6 Rectangle = layout.SlotBounds
+	var value_7 float32 = Checkbox_CheckboxLabelXFor(value_6, scale, label)
+	layout.LabelX = value_7
+	var value_8 Rectangle = layout.Bounds
+	var value_9 float32 = Checkbox_CheckboxLabelYFor(value_8, text_line_height)
+	layout.LabelY = value_9
+	return layout
 }
 
 func Checkbox_CheckboxLayoutFor(x float32, y float32, label_width float32, scale float32, box StyleFrame, label StyleFrame) CheckboxLayout {
-	var value_0 float32 = x
-	var value_1 float32 = y
-	var value_2 float32 = label_width
-	var value_3 float32 = scale
-	var value_4 StyleFrame = box
-	var value_5 int32 = Checkbox_CheckboxSlotSize(value_3, value_4)
-	var value_6 float32 = float32(value_5)
-	var value_7 float32 = scale
-	var value_8 StyleFrame = box
-	var value_9 StyleFrame = label
-	var value_10 CheckboxLayout = Checkbox_CheckboxLayoutForText(value_0, value_1, value_2, value_6, value_7, value_8, value_9)
-	return value_10
+	var value_0 int32 = Checkbox_CheckboxSlotSize(scale, box)
+	var value_1 float32 = float32(value_0)
+	var value_2 CheckboxLayout = Checkbox_CheckboxLayoutForText(x, y, label_width, value_1, scale, box, label)
+	return value_2
 }
 
 func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) CheckboxFlagResult {
 	var result CheckboxFlagResult = CheckboxFlagResult{}
-	var value_0 uint32 = flags
-	result.Flags = value_0
-	var value_1 uint32 = flags
-	var value_2 uint32 = flag_value
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, false, 8))
-	var value_4 uint32 = flag_value
-	var value_5 bool = value_3 == value_4
-	result.Checked = value_5
-	var value_6 bool = false
-	result.Changed = value_6
-	var value_7 bool = pressed
-	if value_7 {
-		var value_8 bool = result.Checked
-		if value_8 {
-			var value_9 uint32 = flags
-			var value_10 uint32 = flag_value
-			var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(^uint64(0)), 32, false, 10))
-			var value_12 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(value_11), 32, false, 8))
-			result.Flags = value_12
+	result.Flags = flags
+	result.Checked = ((uint32(number_runtime_bits(uint64(flags), uint64(flag_value), 32, false, 8))) == flag_value)
+	result.Changed = false
+	if pressed {
+		if result.Checked {
+			var value_0 uint32 = uint32(number_runtime_bits(uint64(flags), uint64(uint32(number_runtime_bits(uint64(flag_value), uint64(^uint64(0)), 32, false, 10))), 32, false, 8))
+			result.Flags = value_0
 		} else {
-			var value_13 uint32 = flags
-			var value_14 uint32 = flag_value
-			var value_15 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, false, 9))
-			result.Flags = value_15
+			result.Flags = (uint32(number_runtime_bits(uint64(flags), uint64(flag_value), 32, false, 9)))
 		}
-		var value_16 bool = result.Checked
-		var value_17 bool = !value_16
-		result.Checked = value_17
-		var value_18 bool = true
-		result.Changed = value_18
+		result.Checked = !result.Checked
+		result.Changed = true
 	}
-	var value_19 CheckboxFlagResult = result
-	return value_19
+	return result
 }
 
 func Checkbox_CheckboxValueApply(checked bool, pressed bool, has_value bool) CheckboxValueResult {
 	var result CheckboxValueResult = CheckboxValueResult{}
-	var value_0 bool = checked
-	result.Checked = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 bool = pressed
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 bool = has_value
-		value_3 = value_4
+	result.Checked = checked
+	result.Changed = false
+	var value_0 bool = pressed
+	if value_0 {
+		value_0 = has_value
 	}
-	if value_3 {
-		var value_5 bool = checked
-		var value_6 bool = !value_5
-		result.Checked = value_6
-		var value_7 bool = true
-		result.Changed = value_7
+	if value_0 {
+		result.Checked = !checked
+		result.Changed = true
 	}
-	var value_8 CheckboxValueResult = result
-	return value_8
+	return result
 }
 
 func Checkbox_CheckboxBoxRoleForTone(tone ButtonTone) int32 {
-	var value_0 ButtonTone = ButtonTone(tone)
-	var value_1 int32 = int32(ButtonToneAccent)
-	var value_2 ButtonTone = ButtonTone(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
-	var value_3 bool = value_0 == value_2
-	if value_3 {
-		var value_4 int32 = 10
-		return value_4
+	var value_0 bool = tone == ButtonTone(int32(number_runtime_bits(uint64(int32(ButtonToneAccent)), uint64(0), 32, true, 0)))
+	if value_0 {
+		return 10
 	}
-	var value_5 int32 = 9
-	return value_5
+	return 9
 }
 
 func Checkbox_CheckboxLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {
 	var paint CheckboxPaint = CheckboxPaint{}
-	var value_0 float32 = spec.Scale
-	var scale float32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+	var scale float32 = spec.Scale
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_5 float32 = scale
-	var value_6 StyleFrame = spec.Box
-	var value_7 int32 = Checkbox_CheckboxSlotSize(value_5, value_6)
-	var value_8 float32 = float32(value_7)
-	var slot_size float32 = value_8
-	var value_9 float32 = scale
-	var value_10 StyleFrame = spec.Box
-	var value_11 int32 = Checkbox_CheckboxBoxSize(value_9, value_10)
-	var value_12 float32 = float32(value_11)
-	var box_size float32 = value_12
-	var value_13 uint32 = spec.Box.Value.Fields
-	var value_14 int32 = int32(StyleGap)
-	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
-	var value_16 float32 = spec.Box.Value.Gap
-	var value_17 float32 = 4.0
-	var value_18 float32 = scale
-	var value_19 bool = true
-	var value_20 float32 = Checkbox_CheckboxMetric(value_13, value_15, value_16, value_17, value_18, value_19)
-	var state_outset float32 = value_20
-	var value_21 uint32 = spec.Box.Value.Fields
-	var value_22 int32 = int32(StylePaddingY)
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 float32 = spec.Box.Value.PaddingY
-	var value_25 float32 = 3.0
-	var value_26 float32 = scale
-	var value_27 bool = true
-	var value_28 float32 = Checkbox_CheckboxMetric(value_21, value_23, value_24, value_25, value_26, value_27)
-	var focus_outset float32 = value_28
-	var value_29 uint32 = spec.Active.Value.Fields
-	var value_30 int32 = int32(StylePaddingX)
-	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-	var value_32 float32 = spec.Active.Value.PaddingX
-	var value_33 float32 = 5.0
-	var value_34 float32 = scale
-	var value_35 bool = true
-	var value_36 float32 = Checkbox_CheckboxMetric(value_29, value_31, value_32, value_33, value_34, value_35)
-	var mark_inset float32 = value_36
-	var value_37 uint32 = spec.Active.Value.Fields
-	var value_38 int32 = int32(StyleIconSize)
-	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
-	var value_40 float32 = spec.Active.Value.IconSize
-	var value_41 float32 = 2.4
-	var value_42 float32 = scale
-	var value_43 bool = true
-	var value_44 float32 = Checkbox_CheckboxMetric(value_37, value_39, value_40, value_41, value_42, value_43)
-	var mark_width float32 = value_44
-	var value_45 float32 = spec.Box.Value.BorderWidth
-	var value_46 float32 = scale
-	var value_47 float32 = value_45 * value_46
-	var border_width float32 = value_47
-	var value_48 Rectangle = spec.Bounds
-	paint.Bounds = value_48
-	var value_49 float32 = spec.Bounds.X
-	paint.SlotBounds.X = value_49
-	var value_50 float32 = spec.Bounds.Y
-	var value_51 float32 = spec.Bounds.Height
-	var value_52 float32 = slot_size
-	var value_53 float32 = value_51 - value_52
-	var value_54 float32 = 0.5
-	var value_55 float32 = value_53 * value_54
-	var value_56 float32 = value_50 + value_55
-	paint.SlotBounds.Y = value_56
-	var value_57 float32 = slot_size
-	paint.SlotBounds.Width = value_57
-	var value_58 float32 = slot_size
-	paint.SlotBounds.Height = value_58
-	var value_59 float32 = paint.SlotBounds.X
-	var value_60 float32 = slot_size
-	var value_61 float32 = box_size
-	var value_62 float32 = value_60 - value_61
-	var value_63 float32 = 0.5
-	var value_64 float32 = value_62 * value_63
-	var value_65 float32 = value_59 + value_64
-	paint.BoxBounds.X = value_65
-	var value_66 float32 = paint.SlotBounds.Y
-	var value_67 float32 = slot_size
-	var value_68 float32 = box_size
-	var value_69 float32 = value_67 - value_68
-	var value_70 float32 = 0.5
-	var value_71 float32 = value_69 * value_70
-	var value_72 float32 = value_66 + value_71
-	paint.BoxBounds.Y = value_72
-	var value_73 float32 = box_size
-	paint.BoxBounds.Width = value_73
-	var value_74 float32 = box_size
-	paint.BoxBounds.Height = value_74
-	var value_75 float32 = paint.BoxBounds.X
-	var value_76 float32 = state_outset
-	var value_77 float32 = value_75 - value_76
-	paint.StateBounds.X = value_77
-	var value_78 float32 = paint.BoxBounds.Y
-	var value_79 float32 = state_outset
-	var value_80 float32 = value_78 - value_79
-	paint.StateBounds.Y = value_80
-	var value_81 float32 = paint.BoxBounds.Width
-	var value_82 float32 = state_outset
-	var value_83 float32 = 2.0
-	var value_84 float32 = value_82 * value_83
-	var value_85 float32 = value_81 + value_84
-	paint.StateBounds.Width = value_85
-	var value_86 float32 = paint.BoxBounds.Height
-	var value_87 float32 = state_outset
-	var value_88 float32 = 2.0
-	var value_89 float32 = value_87 * value_88
-	var value_90 float32 = value_86 + value_89
-	paint.StateBounds.Height = value_90
-	var value_91 float32 = paint.BoxBounds.X
-	var value_92 float32 = focus_outset
-	var value_93 float32 = value_91 - value_92
-	paint.FocusBounds.X = value_93
-	var value_94 float32 = paint.BoxBounds.Y
-	var value_95 float32 = focus_outset
-	var value_96 float32 = value_94 - value_95
-	paint.FocusBounds.Y = value_96
-	var value_97 float32 = paint.BoxBounds.Width
-	var value_98 float32 = focus_outset
-	var value_99 float32 = 2.0
-	var value_100 float32 = value_98 * value_99
-	var value_101 float32 = value_97 + value_100
-	paint.FocusBounds.Width = value_101
-	var value_102 float32 = paint.BoxBounds.Height
-	var value_103 float32 = focus_outset
-	var value_104 float32 = 2.0
-	var value_105 float32 = value_103 * value_104
-	var value_106 float32 = value_102 + value_105
-	paint.FocusBounds.Height = value_106
-	var value_107 float32 = paint.BoxBounds.X
-	var value_108 float32 = mark_inset
-	var value_109 float32 = value_107 + value_108
-	paint.CheckStart.X = value_109
-	var value_110 float32 = paint.BoxBounds.Y
-	var value_111 float32 = paint.BoxBounds.Height
-	var value_112 float32 = 0.53
-	var value_113 float32 = value_111 * value_112
-	var value_114 float32 = value_110 + value_113
-	paint.CheckStart.Y = value_114
-	var value_115 float32 = paint.BoxBounds.X
-	var value_116 float32 = paint.BoxBounds.Width
-	var value_117 float32 = 0.42
-	var value_118 float32 = value_116 * value_117
-	var value_119 float32 = value_115 + value_118
-	paint.CheckMiddle.X = value_119
-	var value_120 float32 = paint.BoxBounds.Y
-	var value_121 float32 = paint.BoxBounds.Height
-	var value_122 float32 = value_120 + value_121
-	var value_123 float32 = mark_inset
-	var value_124 float32 = value_122 - value_123
-	paint.CheckMiddle.Y = value_124
-	var value_125 float32 = paint.BoxBounds.X
-	var value_126 float32 = paint.BoxBounds.Width
-	var value_127 float32 = value_125 + value_126
-	var value_128 float32 = mark_inset
-	var value_129 float32 = value_127 - value_128
-	paint.CheckEnd.X = value_129
-	var value_130 float32 = paint.BoxBounds.Y
-	var value_131 float32 = mark_inset
-	var value_132 float32 = value_130 + value_131
-	paint.CheckEnd.Y = value_132
-	var value_133 StyleFrame = spec.Box
-	paint.Box = value_133
-	var value_134 StyleFrame = spec.Active
-	paint.Active = value_134
-	var value_135 bool = spec.Checked
-	var value_136 uint32 = 0
-	if value_135 {
-		var value_137 uint32 = spec.Active.Value.Background
-		value_136 = value_137
+	var value_0 StyleFrame = spec.Box
+	var value_1 int32 = Checkbox_CheckboxSlotSize(scale, value_0)
+	var slot_size float32 = float32(value_1)
+	var value_2 StyleFrame = spec.Box
+	var value_3 int32 = Checkbox_CheckboxBoxSize(scale, value_2)
+	var box_size float32 = float32(value_3)
+	var value_4 uint32 = spec.Box.Value.Fields
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_6 float32 = spec.Box.Value.Gap
+	var value_7 float32 = 4.0
+	var value_8 float32 = Checkbox_CheckboxMetric(value_4, value_5, value_6, value_7, scale, true)
+	var state_outset float32 = value_8
+	var value_9 uint32 = spec.Box.Value.Fields
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_11 float32 = spec.Box.Value.PaddingY
+	var value_12 float32 = 3.0
+	var value_13 float32 = Checkbox_CheckboxMetric(value_9, value_10, value_11, value_12, scale, true)
+	var focus_outset float32 = value_13
+	var value_14 uint32 = spec.Active.Value.Fields
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_16 float32 = spec.Active.Value.PaddingX
+	var value_17 float32 = 5.0
+	var value_18 float32 = Checkbox_CheckboxMetric(value_14, value_15, value_16, value_17, scale, true)
+	var mark_inset float32 = value_18
+	var value_19 uint32 = spec.Active.Value.Fields
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_21 float32 = spec.Active.Value.IconSize
+	var value_22 float32 = 2.4
+	var value_23 float32 = Checkbox_CheckboxMetric(value_19, value_20, value_21, value_22, scale, true)
+	var mark_width float32 = value_23
+	var border_width float32 = (spec.Box.Value.BorderWidth * scale)
+	paint.Bounds = spec.Bounds
+	paint.SlotBounds.X = spec.Bounds.X
+	paint.SlotBounds.Y = (spec.Bounds.Y + ((spec.Bounds.Height - slot_size) * 0.5))
+	paint.SlotBounds.Width = slot_size
+	paint.SlotBounds.Height = slot_size
+	paint.BoxBounds.X = (paint.SlotBounds.X + ((slot_size - box_size) * 0.5))
+	paint.BoxBounds.Y = (paint.SlotBounds.Y + ((slot_size - box_size) * 0.5))
+	paint.BoxBounds.Width = box_size
+	paint.BoxBounds.Height = box_size
+	paint.StateBounds.X = (paint.BoxBounds.X - state_outset)
+	paint.StateBounds.Y = (paint.BoxBounds.Y - state_outset)
+	paint.StateBounds.Width = (paint.BoxBounds.Width + (state_outset * 2.0))
+	paint.StateBounds.Height = (paint.BoxBounds.Height + (state_outset * 2.0))
+	paint.FocusBounds.X = (paint.BoxBounds.X - focus_outset)
+	paint.FocusBounds.Y = (paint.BoxBounds.Y - focus_outset)
+	paint.FocusBounds.Width = (paint.BoxBounds.Width + (focus_outset * 2.0))
+	paint.FocusBounds.Height = (paint.BoxBounds.Height + (focus_outset * 2.0))
+	paint.CheckStart.X = (paint.BoxBounds.X + mark_inset)
+	paint.CheckStart.Y = (paint.BoxBounds.Y + (paint.BoxBounds.Height * 0.53))
+	paint.CheckMiddle.X = (paint.BoxBounds.X + (paint.BoxBounds.Width * 0.42))
+	paint.CheckMiddle.Y = ((paint.BoxBounds.Y + paint.BoxBounds.Height) - mark_inset)
+	paint.CheckEnd.X = ((paint.BoxBounds.X + paint.BoxBounds.Width) - mark_inset)
+	paint.CheckEnd.Y = (paint.BoxBounds.Y + mark_inset)
+	paint.Box = spec.Box
+	paint.Active = spec.Active
+	var value_24 uint32 = 0
+	if spec.Checked {
+		value_24 = spec.Active.Value.Background
 	} else {
-		var value_138 uint32 = spec.Box.Value.Background
-		value_136 = value_138
+		value_24 = spec.Box.Value.Background
 	}
-	paint.FillColor = value_136
-	var value_139 bool = spec.Checked
-	var value_140 uint32 = 0
-	if value_139 {
-		var value_141 uint32 = spec.Active.Value.Border
-		value_140 = value_141
+	paint.FillColor = value_24
+	var value_25 uint32 = 0
+	if spec.Checked {
+		value_25 = spec.Active.Value.Border
 	} else {
-		var value_142 uint32 = spec.Box.Value.Border
-		value_140 = value_142
+		value_25 = spec.Box.Value.Border
 	}
-	paint.BorderColor = value_140
-	var value_143 uint32 = spec.Active.Value.Foreground
-	paint.MarkColor = value_143
-	var value_144 bool = spec.Checked
-	var value_145 uint32 = 0
-	if value_144 {
-		var value_146 uint32 = spec.Active.Value.Background
-		value_145 = value_146
+	paint.BorderColor = value_25
+	paint.MarkColor = spec.Active.Value.Foreground
+	var value_26 uint32 = 0
+	if spec.Checked {
+		value_26 = spec.Active.Value.Background
 	} else {
-		var value_147 uint32 = spec.Box.Value.Foreground
-		value_145 = value_147
+		value_26 = spec.Box.Value.Foreground
 	}
-	var value_148 bool = spec.Pressed
-	var value_149 float32 = 0
-	if value_148 {
-		var value_150 float32 = 0.14
-		value_149 = value_150
+	var value_27 float32 = 0
+	if spec.Pressed {
+		value_27 = 0.14
 	} else {
-		var value_151 bool = spec.Hovered
-		var value_152 float32 = 0
-		if value_151 {
-			var value_153 float32 = 0.08
-			value_152 = value_153
+		var value_28 float32 = 0
+		if spec.Hovered {
+			value_28 = 0.08
 		} else {
-			var value_154 float32 = 0.10
-			value_152 = value_154
+			value_28 = 0.10
 		}
-		value_149 = value_152
+		value_27 = value_28
 	}
-	var value_155 uint32 = Surface_Opacity(value_145, value_149)
-	paint.StateColor = value_155
-	var value_156 uint32 = spec.Box.Value.Focus
-	paint.FocusColor = value_156
-	var value_157 uint32 = spec.Box.Value.Foreground
-	paint.LabelColor = value_157
-	var value_158 uint32 = spec.Label.Value.Fields
-	var value_159 int32 = int32(StyleForeground)
-	var value_160 uint32 = uint32(number_runtime_bits(uint64(value_159), uint64(0), 32, false, 0))
-	var value_161 uint32 = uint32(number_runtime_bits(uint64(value_158), uint64(value_160), 32, false, 8))
-	var value_162 int32 = 0
-	var value_163 uint32 = uint32(number_runtime_bits(uint64(value_162), uint64(0), 32, false, 0))
-	var value_164 bool = value_161 != value_163
-	if value_164 {
-		var value_165 uint32 = spec.Label.Value.Foreground
-		paint.LabelColor = value_165
+	var value_29 uint32 = Surface_Opacity(value_26, value_27)
+	paint.StateColor = value_29
+	paint.FocusColor = spec.Box.Value.Focus
+	paint.LabelColor = spec.Box.Value.Foreground
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(spec.Label.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleForeground)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_30 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		paint.LabelColor = spec.Label.Value.Foreground
 	}
-	var value_166 float32 = 0.18
-	paint.Radius = value_166
-	var value_167 float32 = 0.28
-	paint.StateRadius = value_167
-	var value_168 float32 = 0.26
-	paint.FocusRadius = value_168
-	var value_169 float32 = border_width
-	paint.BorderWidth = value_169
-	var value_170 float32 = paint.BorderWidth
-	var value_171 float32 = 0.0
-	var value_172 bool = value_170 < value_171
-	if value_172 {
-		var value_173 float32 = 0.0
-		paint.BorderWidth = value_173
+	paint.Radius = 0.18
+	paint.StateRadius = 0.28
+	paint.FocusRadius = 0.26
+	paint.BorderWidth = border_width
+	if paint.BorderWidth < 0.0 {
+		paint.BorderWidth = 0.0
 	}
-	var value_174 float32 = mark_width
-	paint.MarkWidth = value_174
-	var value_175 bool = spec.Checked
-	paint.ShowFill = value_175
-	var value_176 bool = spec.Checked
-	var value_177 bool = value_176
-	if value_177 {
-		var value_178 float32 = paint.MarkWidth
-		var value_179 float32 = 0.0
-		var value_180 bool = value_178 > value_179
-		value_177 = value_180
+	paint.MarkWidth = mark_width
+	paint.ShowFill = spec.Checked
+	var value_31 bool = spec.Checked
+	if value_31 {
+		value_31 = (paint.MarkWidth > 0.0)
 	}
-	paint.ShowMark = value_177
-	var value_181 bool = spec.Enabled
-	var value_182 bool = value_181
-	if value_182 {
-		var value_183 bool = spec.Hovered
-		var value_184 bool = value_183
-		if !value_184 {
-			var value_185 bool = spec.Pressed
-			value_184 = value_185
+	paint.ShowMark = value_31
+	var value_32 bool = spec.Enabled
+	if value_32 {
+		var value_33 bool = spec.Hovered
+		if !value_33 {
+			value_33 = spec.Pressed
 		}
-		var value_186 bool = value_184
-		if !value_186 {
-			var value_187 bool = spec.Focused
-			value_186 = value_187
+		var value_34 bool = value_33
+		if !value_34 {
+			value_34 = spec.Focused
 		}
-		value_182 = value_186
+		value_32 = value_34
 	}
-	paint.ShowState = value_182
-	var value_188 bool = spec.Enabled
-	var value_189 bool = value_188
-	if value_189 {
-		var value_190 bool = spec.Focused
-		value_189 = value_190
+	paint.ShowState = value_32
+	var value_35 bool = spec.Enabled
+	if value_35 {
+		value_35 = spec.Focused
 	}
-	paint.ShowFocus = value_189
-	var value_191 bool = spec.Enabled
-	var value_192 bool = !value_191
-	if value_192 {
-		var value_193 bool = false
-		paint.ShowState = value_193
-		var value_194 bool = false
-		paint.ShowFocus = value_194
+	paint.ShowFocus = value_35
+	if !spec.Enabled {
+		paint.ShowState = false
+		paint.ShowFocus = false
 	}
-	var value_195 CheckboxPaint = paint
-	return value_195
+	return paint
 }

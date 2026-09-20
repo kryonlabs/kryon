@@ -27,309 +27,142 @@ type ProgressPaint struct {
 }
 
 func Progress_ProgressTrackRole() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func Progress_ProgressFillRole() int32 {
-	var value_0 int32 = 5
-	return value_0
+	return 5
 }
 
 func Progress_ProgressLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Progress_ProgressMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	return value_13
+	return (value * scale)
 }
 
 func Progress_ProgressRatio(min int32, max int32, value int32) float32 {
-	var value_0 int32 = max
-	var value_1 int32 = min
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = min
-		var value_4 int32 = 1
-		var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
-		max = value_5
+	if max <= min {
+		max = (int32(number_runtime_bits(uint64(min), uint64(1), 32, true, 1)))
 	}
-	var value_6 int32 = value
-	var value_7 int32 = min
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-	var value_9 float32 = float32(value_8)
-	var value_10 int32 = max
-	var value_11 int32 = min
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
-	var value_13 float32 = float32(value_12)
-	var value_14 float32 = value_9 / value_13
-	var ratio float32 = value_14
-	var value_15 float32 = ratio
-	var value_16 float32 = 0.0
-	var value_17 bool = value_15 < value_16
-	if value_17 {
-		var value_18 float32 = 0.0
-		return value_18
+	var value_0 float32 = float32((int32(number_runtime_bits(uint64(value), uint64(min), 32, true, 2)))) / float32((int32(number_runtime_bits(uint64(max), uint64(min), 32, true, 2))))
+	var ratio float32 = value_0
+	if ratio < 0.0 {
+		return 0.0
 	}
-	var value_19 float32 = ratio
-	var value_20 float32 = 1.0
-	var value_21 bool = value_19 > value_20
-	if value_21 {
-		var value_22 float32 = 1.0
-		return value_22
+	if ratio > 1.0 {
+		return 1.0
 	}
-	var value_23 float32 = ratio
-	return value_23
+	return ratio
 }
 
 func Progress_ProgressFillBounds(bounds Rectangle, ratio float32) Rectangle {
-	var value_0 Rectangle = bounds
-	var fill Rectangle = value_0
-	var value_1 float32 = ratio
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 float32 = 0.0
-		ratio = value_4
+	var fill Rectangle = bounds
+	if ratio < 0.0 {
+		ratio = 0.0
 	}
-	var value_5 float32 = ratio
-	var value_6 float32 = 1.0
-	var value_7 bool = value_5 > value_6
-	if value_7 {
-		var value_8 float32 = 1.0
-		ratio = value_8
+	if ratio > 1.0 {
+		ratio = 1.0
 	}
-	var value_9 float32 = bounds.Width
-	var value_10 float32 = ratio
-	var value_11 float32 = value_9 * value_10
-	fill.Width = value_11
-	var value_12 Rectangle = fill
-	return value_12
+	fill.Width = (bounds.Width * ratio)
+	return fill
 }
 
 func Progress_ProgressDrawRadius(bounds Rectangle, radius float32) float32 {
-	var value_0 float32 = bounds.Height
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if bounds.Height <= 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = radius
-	var value_5 float32 = bounds.Height
-	var value_6 float32 = value_4 / value_5
-	radius = value_6
-	var value_7 float32 = radius
-	var value_8 float32 = 0.0
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 float32 = 0.0
-		return value_10
+	radius = (radius / bounds.Height)
+	if radius < 0.0 {
+		return 0.0
 	}
-	var value_11 float32 = radius
-	var value_12 float32 = 1.0
-	var value_13 bool = value_11 > value_12
-	if value_13 {
-		var value_14 float32 = 1.0
-		return value_14
+	if radius > 1.0 {
+		return 1.0
 	}
-	var value_15 float32 = radius
-	return value_15
+	return radius
 }
 
 func Progress_ProgressLabelX(bounds Rectangle, fill_width float32, label_width float32, padding float32) float32 {
-	var value_0 float32 = bounds.X
-	var value_1 float32 = bounds.Width
-	var value_2 float32 = label_width
-	var value_3 float32 = value_1 - value_2
-	var value_4 float32 = 0.5
-	var value_5 float32 = value_3 * value_4
-	var value_6 float32 = value_0 + value_5
-	var x float32 = value_6
-	var value_7 float32 = bounds.X
-	var value_8 float32 = fill_width
-	var value_9 float32 = value_7 + value_8
-	var fill_end float32 = value_9
-	var value_10 float32 = bounds.Width
-	var value_11 float32 = fill_width
-	var value_12 float32 = value_10 - value_11
-	var empty_width float32 = value_12
-	var value_13 float32 = empty_width
-	var value_14 float32 = label_width
-	var value_15 float32 = padding
-	var value_16 float32 = 2.0
-	var value_17 float32 = value_15 * value_16
-	var value_18 float32 = value_14 + value_17
-	var value_19 bool = value_13 >= value_18
-	if value_19 {
-		var value_20 float32 = fill_end
-		var value_21 float32 = padding
-		var value_22 float32 = value_20 + value_21
-		return value_22
+	var x float32 = (bounds.X + ((bounds.Width - label_width) * 0.5))
+	var fill_end float32 = (bounds.X + fill_width)
+	var empty_width float32 = (bounds.Width - fill_width)
+	if empty_width >= (label_width + (padding * 2.0)) {
+		return (fill_end + padding)
 	}
-	var value_23 float32 = fill_width
-	var value_24 float32 = label_width
-	var value_25 float32 = padding
-	var value_26 float32 = 2.0
-	var value_27 float32 = value_25 * value_26
-	var value_28 float32 = value_24 + value_27
-	var value_29 bool = value_23 >= value_28
-	if value_29 {
-		var value_30 float32 = fill_end
-		var value_31 float32 = label_width
-		var value_32 float32 = value_30 - value_31
-		var value_33 float32 = padding
-		var value_34 float32 = value_32 - value_33
-		return value_34
+	if fill_width >= (label_width + (padding * 2.0)) {
+		return ((fill_end - label_width) - padding)
 	}
-	var value_35 float32 = x
-	return value_35
+	return x
 }
 
 func Progress_ProgressLabelY(bounds Rectangle, label_line_height float32) float32 {
-	var value_0 float32 = bounds.Y
-	var value_1 float32 = bounds.Height
-	var value_2 float32 = label_line_height
-	var value_3 float32 = value_1 - value_2
-	var value_4 float32 = 0.5
-	var value_5 float32 = value_3 * value_4
-	var value_6 float32 = value_0 + value_5
-	return value_6
+	return (bounds.Y + ((bounds.Height - label_line_height) * 0.5))
 }
 
 func Progress_ProgressLabelOnFill(fill_width float32, label_width float32, padding float32) bool {
-	var value_0 float32 = fill_width
-	var value_1 float32 = label_width
-	var value_2 float32 = padding
-	var value_3 float32 = 2.0
-	var value_4 float32 = value_2 * value_3
-	var value_5 float32 = value_1 + value_4
-	var value_6 bool = value_0 >= value_5
-	return value_6
+	return (fill_width >= (label_width + (padding * 2.0)))
 }
 
 func Progress_ProgressLayoutFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, label_line_height float32, padding float32) ProgressLayout {
 	var layout ProgressLayout = ProgressLayout{}
-	var value_0 int32 = min
-	var value_1 int32 = max
-	var value_2 int32 = value
-	var value_3 float32 = Progress_ProgressRatio(value_0, value_1, value_2)
-	layout.Ratio = value_3
-	var value_4 Rectangle = bounds
-	var value_5 float32 = layout.Ratio
-	var value_6 Rectangle = Progress_ProgressFillBounds(value_4, value_5)
-	layout.FillBounds = value_6
-	var value_7 Rectangle = bounds
-	var value_8 float32 = layout.FillBounds.Width
-	var value_9 float32 = label_width
-	var value_10 float32 = padding
-	var value_11 float32 = Progress_ProgressLabelX(value_7, value_8, value_9, value_10)
-	layout.LabelX = value_11
-	var value_12 Rectangle = bounds
-	var value_13 float32 = label_line_height
-	var value_14 float32 = Progress_ProgressLabelY(value_12, value_13)
-	layout.LabelY = value_14
-	var value_15 float32 = layout.FillBounds.Width
-	var value_16 float32 = label_width
-	var value_17 float32 = padding
-	var value_18 bool = Progress_ProgressLabelOnFill(value_15, value_16, value_17)
-	layout.LabelOnFill = value_18
-	var value_19 ProgressLayout = layout
-	return value_19
+	var value_0 float32 = Progress_ProgressRatio(min, max, value)
+	layout.Ratio = value_0
+	var value_1 float32 = layout.Ratio
+	var value_2 Rectangle = Progress_ProgressFillBounds(bounds, value_1)
+	layout.FillBounds = value_2
+	var value_3 float32 = layout.FillBounds.Width
+	var value_4 float32 = Progress_ProgressLabelX(bounds, value_3, label_width, padding)
+	layout.LabelX = value_4
+	var value_5 float32 = Progress_ProgressLabelY(bounds, label_line_height)
+	layout.LabelY = value_5
+	var value_6 float32 = layout.FillBounds.Width
+	var value_7 bool = Progress_ProgressLabelOnFill(value_6, label_width, padding)
+	layout.LabelOnFill = value_7
+	return layout
 }
 
 func Progress_ProgressLabelPaddingForStyle(label StyleFrame, scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = label.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = label.Value.PaddingX
-	var value_8 float32 = 6.0
-	var value_9 float32 = scale
-	var value_10 float32 = Progress_ProgressMetric(value_4, value_6, value_7, value_8, value_9)
-	return value_10
+	var value_0 uint32 = label.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = label.Value.PaddingX
+	var value_3 float32 = 6.0
+	var value_4 float32 = Progress_ProgressMetric(value_0, value_1, value_2, value_3, scale)
+	return value_4
 }
 
 func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, label_line_height float32, scale float32, track StyleFrame, fill StyleFrame, label StyleFrame) ProgressPaint {
 	var paint ProgressPaint = ProgressPaint{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 StyleFrame = label
-	var value_5 float32 = scale
-	var value_6 float32 = Progress_ProgressLabelPaddingForStyle(value_4, value_5)
-	var padding float32 = value_6
-	var value_7 Rectangle = bounds
-	var value_8 int32 = min
-	var value_9 int32 = max
-	var value_10 int32 = value
-	var value_11 float32 = label_width
-	var value_12 float32 = label_line_height
-	var value_13 float32 = padding
-	var value_14 ProgressLayout = Progress_ProgressLayoutFor(value_7, value_8, value_9, value_10, value_11, value_12, value_13)
-	paint.Layout = value_14
-	var value_15 StyleFrame = track
-	paint.Track = value_15
-	var value_16 StyleFrame = fill
-	paint.Fill = value_16
-	var value_17 StyleFrame = label
-	paint.Label = value_17
-	var value_18 uint32 = track.Value.Background
-	paint.TrackColor = value_18
-	var value_19 uint32 = fill.Value.Background
-	paint.FillColor = value_19
-	var value_20 uint32 = track.Value.Border
-	paint.BorderColor = value_20
-	var value_21 uint32 = label.Value.Foreground
-	paint.LabelColor = value_21
-	var value_22 uint32 = fill.Value.Foreground
-	paint.FilledLabelColor = value_22
-	var value_23 float32 = track.Value.Radius
-	var value_24 float32 = scale
-	var value_25 float32 = value_23 * value_24
-	paint.Radius = value_25
-	var value_26 float32 = track.Value.BorderWidth
-	var value_27 float32 = scale
-	var value_28 float32 = value_26 * value_27
-	paint.BorderWidth = value_28
-	var value_29 float32 = paint.BorderWidth
-	var value_30 float32 = 0.0
-	var value_31 bool = value_29 < value_30
-	if value_31 {
-		var value_32 float32 = 0.0
-		paint.BorderWidth = value_32
+	var value_0 float32 = Progress_ProgressLabelPaddingForStyle(label, scale)
+	var padding float32 = value_0
+	var value_1 ProgressLayout = Progress_ProgressLayoutFor(bounds, min, max, value, label_width, label_line_height, padding)
+	paint.Layout = value_1
+	paint.Track = track
+	paint.Fill = fill
+	paint.Label = label
+	paint.TrackColor = track.Value.Background
+	paint.FillColor = fill.Value.Background
+	paint.BorderColor = track.Value.Border
+	paint.LabelColor = label.Value.Foreground
+	paint.FilledLabelColor = fill.Value.Foreground
+	paint.Radius = (track.Value.Radius * scale)
+	paint.BorderWidth = (track.Value.BorderWidth * scale)
+	if paint.BorderWidth < 0.0 {
+		paint.BorderWidth = 0.0
 	}
-	var value_33 ProgressPaint = paint
-	return value_33
+	return paint
 }

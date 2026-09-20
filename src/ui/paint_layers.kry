@@ -1,0 +1,263 @@
+#module "paint_layers_host"
+#inspect off
+#import "ui_internal.h"
+#import "ui_blend_internal.h"
+#import "ui/clip.h"
+#import "ui_paint_layers_internal.h"
+#import "ui_tree_layout_internal.h"
+#import "ui/disabled.h"
+#import "ui/dropdown_store.h"
+#import "ui/tab_store.h"
+#import "ui/widget_store.h"
+#import "ui/input_capture.h"
+#import "stdlib.h"
+#import "limits.h"
+
+kry_layer_texture_replace :: (old: RenderTexture2D,
+width: i32, height: i32) -> RenderTexture2D #extern
+kry_draw_texture_region :: (texture: Texture2D, source: Rectangle,
+bounds: Rectangle, origin: Vector2, rotation: float,
+tint: Color) #extern
+
+PaintLayer :: struct {
+    texture: RenderTexture2D
+    previous_target: RenderTexture2D
+    previous_blend: BlendState
+    previous_clip: ClipState
+    previous_scope: PaintLayerToken
+    previous_layout: TreeLayoutScopeState
+    previous_disabled: DisabledScopeState
+    previous_input_clip: InputClipScopeState
+    owner: i32
+    parent: i32
+    visible: i32
+}
+
+PaintLayers :: struct {
+    items: *PaintLayer
+    count: i32
+    allocated: i32
+    capacity: i32
+    active: i32
+    width: i32
+    height: i32
+    finished: i32
+    frame: unsigned long
+    projection: Matrix
+    modelview: Matrix
+    input: *PopupInput
+    previous_input: *PopupInput
+    dropdowns: *DropdownStore
+    previous_dropdowns: *DropdownStore
+    tab_bars: *TabBarStore
+    previous_tab_bars: *TabBarStore
+    toolkit: *ToolkitStore
+    previous_toolkit: *ToolkitStore
+}
+
+active_scope :: PaintLayerToken #global
+scope_generation :: unsigned long #global
+
+ui_paint_layers_dropdowns :: (layers: *PaintLayers) -> *DropdownStore #export {
+    return layers != nil ? layers->dropdowns : nil
+}
+
+ui_paint_layers_tab_bars :: (layers: *PaintLayers) -> *TabBarStore #export {
+    return layers != nil ? layers->tab_bars : nil
+}
+
+ui_paint_layers_toolkit :: (layers: *PaintLayers) -> *ToolkitStore #export {
+    return layers != nil ? layers->toolkit : nil
+}
+
+ui_paint_layers_needs_composite :: (layers: *PaintLayers) -> i32 #export {
+    return layers != nil && !layers->finished && layers->active == -1
+}
+
+ui_paint_layers_create :: () -> *PaintLayers #export {
+    layers: *PaintLayers = calloc(1, sizeof(PaintLayers))
+    if layers == nil { abort() }
+    layers->active = -1
+    layers->finished = 1
+    layers->input = ui_popup_input_create()
+    layers->dropdowns = dropdown_store_new()
+    layers->tab_bars = tab_bar_store_new()
+    layers->toolkit = toolkit_store_new()
+    return layers
+}
+
+ui_paint_layers_input :: (layers: *PaintLayers) -> *PopupInput #export {
+    return layers != nil ? layers->input : nil
+}
+
+ui_paint_layers_destroy :: (layers: *PaintLayers) #export {
+    if layers == nil { return }
+    if layers->active != -1 || !layers->finished { abort() }
+    i: i32 = 0
+    while i < layers->allocated {
+        kry_layer_texture_replace(layers->items[i].texture, 0, 0)
+        i += 1
+    }
+    ui_popup_input_destroy(layers->input)
+    dropdown_store_free(layers->dropdowns)
+    tab_bar_store_free(layers->tab_bars)
+    toolkit_store_free(layers->toolkit)
+    free(layers->items)
+    free(layers)
+}
+
+ui_paint_layers_frame :: (layers: *PaintLayers,
+width: i32, height: i32) #export {
+    if layers == nil || layers->active != -1 ||
+    !layers->finished || width <= 0 || height <= 0 { abort() }
+    layers->count = 0
+    layers->width = width
+    layers->height = height
+    layers->finished = 0
+    if scope_generation == ULONG_MAX { abort() }
+    scope_generation += 1
+    layers->frame = scope_generation
+    ui_popup_input_frame(layers->input)
+    layers->previous_input = ui_popup_input_bind(layers->input)
+    layers->previous_dropdowns = dropdown_store_swap(layers->dropdowns)
+    layers->previous_tab_bars = tab_bar_store_swap(layers->tab_bars)
+    layers->previous_toolkit = toolkit_store_swap(layers->toolkit)
+    toolkit_store_frame(layers->toolkit)
+}
+
+ui_paint_layer_begin :: (layers: *PaintLayers,
+owner: i32) -> PaintLayerToken #export {
+    if layers == nil || layers->finished || !IsWindowReady() { abort() }
+    i: i32 = 0
+    while i < layers->count {
+        if layers->items[i].owner == owner { abort() }
+        i += 1
+    }
+    if layers->count == layers->capacity {
+        if layers->capacity > INT_MAX / 2 { abort() }
+        capacity: i32 = layers->capacity != 0 ? layers->capacity * 2 : 4
+        if (size_t)capacity > SIZE_MAX / sizeof(PaintLayer) { abort() }
+        items: *PaintLayer = realloc(layers->items,
+        (size_t)capacity * sizeof(PaintLayer))
+        if items == nil { abort() }
+        layers->items = items
+        layers->capacity = capacity
+    }
+    index: i32 = layers->count
+    layers->count += 1
+    layer: *PaintLayer = &layers->items[index]
+    if index >= layers->allocated {
+        *layer = (PaintLayer){0}
+        layers->allocated += 1
+    }
+    if layer->texture.id &&
+    (layer->texture.texture.width != layers->width ||
+    layer->texture.texture.height != layers->height) {
+        layer->texture = kry_layer_texture_replace(layer->texture,
+        layers->width, layers->height)
+    }
+    if !layer->texture.id {
+        layer->texture = kry_layer_texture_replace(layer->texture,
+        layers->width, layers->height)
+    }
+    if !layer->texture.id { abort() }
+    layer->owner = owner
+    layer->parent = layers->active
+    layer->visible = 1
+    layer->previous_clip = ui_clip_save()
+    layer->previous_blend = ui_blend_save()
+    layer->previous_scope = active_scope
+    layer->previous_layout = ui_tree_layout_suspend()
+    layer->previous_disabled = ui_disabled_suspend()
+    layer->previous_input_clip = ui_input_clip_suspend()
+    BeginTextureMode(layer->texture)
+    layers->projection = rlGetMatrixProjection()
+    layers->modelview = rlGetMatrixModelview()
+    ResetClip()
+    ClearBackground(BLANK)
+    ui_blend_capture()
+    layer->previous_target = ui_tree_set_paint_target(layer->texture)
+    layers->active = index
+    active_scope = (PaintLayerToken){layers, layers->frame, index}
+    return active_scope
+}
+
+ui_paint_layer_end :: (token: PaintLayerToken) #export {
+    layers: *PaintLayers = token.owner
+    if layers == nil || token.owner != active_scope.owner ||
+    token.frame != active_scope.frame ||
+    token.index != active_scope.index { abort() }
+    if token.frame != layers->frame || layers->active != token.index ||
+    token.index < 0 { abort() }
+    layer: *PaintLayer = &layers->items[token.index]
+    ui_input_clip_resume(layer->previous_input_clip)
+    ui_disabled_resume(layer->previous_disabled)
+    ui_tree_layout_resume(layer->previous_layout)
+    ui_tree_set_paint_target(layer->previous_target)
+    EndTextureMode()
+    ui_blend_restore(layer->previous_blend)
+    ui_clip_restore(layer->previous_clip)
+    layers->active = layer->parent
+    active_scope = layer->previous_scope
+}
+
+ui_paint_layers_hide :: (layers: *PaintLayers, owner: i32) #export {
+    if layers == nil || layers->finished { abort() }
+    ui_popup_input_close(layers->input, owner)
+    i: i32 = 0
+    while i < layers->count {
+        if layers->items[i].owner == owner {
+            layers->items[i].visible = 0
+        }
+        i += 1
+    }
+}
+
+ui_paint_layers_composite :: (layers: *PaintLayers) #export {
+    if layers == nil || layers->active != -1 || layers->finished { abort() }
+    if ui_popup_input_bound() != layers->input { abort() }
+    ui_popup_input_finish(layers->input)
+    blend: BlendState = ui_blend_save()
+    clip: ClipState = ui_clip_save()
+    projection: Matrix = rlGetMatrixProjection()
+    modelview: Matrix = rlGetMatrixModelview()
+    ui_blend_restore(blend)
+    if layers->count != 0 {
+        rlSetMatrixProjection(layers->projection)
+        rlSetMatrixModelview(layers->modelview)
+    }
+    ResetClip()
+    BeginBlendMode(BLEND_ALPHA)
+    i: i32 = 0
+    while i < layers->count {
+        layer: *PaintLayer = &layers->items[i]
+        if layer->parent >= 0 &&
+        !layers->items[layer->parent].visible {
+            layer->visible = 0
+        }
+        if layer->visible {
+            source: Rectangle = (Rectangle){0, 0,
+                (float)layers->width, -(float)layers->height}
+            bounds: Rectangle = (Rectangle){0, 0,
+                (float)layers->width, (float)layers->height}
+            kry_draw_texture_region(layer->texture.texture, source,
+            bounds, (Vector2){0}, 0.0, WHITE)
+        }
+        i += 1
+    }
+    ui_blend_restore(blend)
+    rlSetMatrixProjection(projection)
+    rlSetMatrixModelview(modelview)
+    ui_clip_restore(clip)
+    i = layers->count
+    while i < layers->allocated {
+        kry_layer_texture_replace(layers->items[i].texture, 0, 0)
+        i += 1
+    }
+    layers->allocated = layers->count
+    layers->finished = 1
+    ui_popup_input_bind(layers->previous_input)
+    dropdown_store_swap(layers->previous_dropdowns)
+    tab_bar_store_swap(layers->previous_tab_bars)
+    toolkit_store_swap(layers->previous_toolkit)
+}

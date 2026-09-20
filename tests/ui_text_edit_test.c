@@ -1,5 +1,5 @@
 /* Unit tests for the pure UTF-8 codec and text-buffer helpers in
- * ui_text_edit.c. Like transition_test.c, this compiles the implementation
+ * text_edit.kry. Like transition_test.c, this compiles the generated implementation
  * directly (no GUI/raylib link): GetCodepointNext is provided here as a
  * faithful stub. */
 
@@ -7,6 +7,14 @@
 #include <string.h>
 
 #include "runtime/text_input.h"
+
+void PushInspectSource(const char *source, int line)
+{
+    (void)source;
+    (void)line;
+}
+
+void PopInspectSource(void) {}
 
 /* Declarations under test (declared in ui_internal.h, but we avoid pulling in
  * the whole UI header chain here; these are the only symbols we exercise). */

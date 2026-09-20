@@ -36,5 +36,8 @@ typedef struct CanvasResult {
     int32_t selected_index;
     Vector2 world;
 } CanvasResult;
+int32_t CanvasHitTest(Vector2 point, Rectangle*  items, int32_t  item_count);
+Vector2 CanvasToScreen(Canvas canvas, Vector2  point);
+Rectangle CanvasRectToScreen(Canvas canvas, Rectangle  rect);
 
 #endif /* K_RUNTIME_CANVAS_PROPS_H */

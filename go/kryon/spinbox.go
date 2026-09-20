@@ -15,274 +15,141 @@ type SpinboxStepResult struct {
 }
 
 func Spinbox_SpinboxEffectiveStep(step int32) int32 {
-	var value_0 int32 = step
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 1
-		return value_3
+	if step <= 0 {
+		return 1
 	}
-	var value_4 int32 = step
-	return value_4
+	return step
 }
 
 func Spinbox_SpinboxClampValue(value int32, min_value int32, max_value int32) int32 {
-	var value_0 int32 = value
-	var value_1 int32 = min_value
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = min_value
-		return value_3
+	if value < min_value {
+		return min_value
 	}
-	var value_4 int32 = value
-	var value_5 int32 = max_value
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = max_value
-		return value_7
+	if value > max_value {
+		return max_value
 	}
-	var value_8 int32 = value
-	return value_8
+	return value
 }
 
 func Spinbox_SpinboxScaledMetric(value float32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var metric int32 = value_7
-	var value_8 int32 = metric
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		return value_11
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_0
+	if metric < 0 {
+		return 0
 	}
-	var value_12 int32 = metric
-	return value_12
+	return metric
 }
 
 func Spinbox_SpinboxDefaultButtonWidth(scale float32) int32 {
 	var value_0 float32 = 28.0
-	var value_1 float32 = scale
-	var value_2 int32 = Spinbox_SpinboxScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = Spinbox_SpinboxScaledMetric(value_0, scale)
+	return value_1
 }
 
 func Spinbox_SpinboxDecrementIdFor(control_id int32) int32 {
-	var value_0 int32 = control_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if control_id <= 0 {
+		return 0
 	}
-	var value_4 int32 = control_id
-	var value_5 int32 = 10
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var value_7 int32 = 1
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(control_id), uint64(10), 32, true, 3)))), uint64(1), 32, true, 1))
+	return value_0
 }
 
 func Spinbox_SpinboxIncrementIdFor(control_id int32) int32 {
-	var value_0 int32 = control_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if control_id <= 0 {
+		return 0
 	}
-	var value_4 int32 = control_id
-	var value_5 int32 = 10
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var value_7 int32 = 2
-	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
-	return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(control_id), uint64(10), 32, true, 3)))), uint64(2), 32, true, 1))
+	return value_0
 }
 
 func Spinbox_SpinboxLayoutFor(bounds Rectangle, requested_button_width int32) SpinboxLayout {
 	var layout SpinboxLayout = SpinboxLayout{}
-	var value_0 int32 = requested_button_width
-	layout.ButtonWidth = value_0
-	var value_1 int32 = layout.ButtonWidth
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		layout.ButtonWidth = value_4
+	layout.ButtonWidth = requested_button_width
+	if layout.ButtonWidth < 0 {
+		layout.ButtonWidth = 0
 	}
-	var value_5 float32 = bounds.Width
-	var value_6 float32 = 2.0
-	var value_7 float32 = value_5 / value_6
-	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-	var max_button int32 = value_8
-	var value_9 int32 = layout.ButtonWidth
-	var value_10 int32 = max_button
-	var value_11 bool = value_9 > value_10
-	if value_11 {
-		var value_12 int32 = max_button
-		layout.ButtonWidth = value_12
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((bounds.Width/2.0)), 32, true)), uint64(0), 32, true, 0))
+	var max_button int32 = value_0
+	if layout.ButtonWidth > max_button {
+		layout.ButtonWidth = max_button
 	}
-	var value_13 Rectangle = bounds
-	layout.Left = value_13
-	var value_14 int32 = layout.ButtonWidth
-	var value_15 float32 = float32(value_14)
-	layout.Left.Width = value_15
-	var value_16 Rectangle = bounds
-	layout.Right = value_16
-	var value_17 float32 = bounds.X
-	var value_18 float32 = bounds.Width
-	var value_19 float32 = value_17 + value_18
-	var value_20 int32 = layout.ButtonWidth
-	var value_21 float32 = float32(value_20)
-	var value_22 float32 = value_19 - value_21
-	layout.Right.X = value_22
-	var value_23 int32 = layout.ButtonWidth
-	var value_24 float32 = float32(value_23)
-	layout.Right.Width = value_24
-	var value_25 Rectangle = bounds
-	layout.Text = value_25
-	var value_26 float32 = bounds.X
-	var value_27 int32 = layout.ButtonWidth
-	var value_28 float32 = float32(value_27)
-	var value_29 float32 = value_26 + value_28
-	layout.Text.X = value_29
-	var value_30 float32 = bounds.Width
-	var value_31 int32 = layout.ButtonWidth
-	var value_32 int32 = 2
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 3))
-	var value_34 float32 = float32(value_33)
-	var value_35 float32 = value_30 - value_34
-	layout.Text.Width = value_35
-	var value_36 float32 = layout.Text.Width
-	var value_37 float32 = 0.0
-	var value_38 bool = value_36 < value_37
-	if value_38 {
-		var value_39 float32 = 0.0
-		layout.Text.Width = value_39
+	layout.Left = bounds
+	layout.Left.Width = float32(layout.ButtonWidth)
+	layout.Right = bounds
+	layout.Right.X = ((bounds.X + bounds.Width) - float32(layout.ButtonWidth))
+	layout.Right.Width = float32(layout.ButtonWidth)
+	layout.Text = bounds
+	layout.Text.X = (bounds.X + float32(layout.ButtonWidth))
+	var value_1 float32 = bounds.Width - float32((int32(number_runtime_bits(uint64(layout.ButtonWidth), uint64(2), 32, true, 3))))
+	layout.Text.Width = value_1
+	if layout.Text.Width < 0.0 {
+		layout.Text.Width = 0.0
 	}
-	var value_40 SpinboxLayout = layout
-	return value_40
+	return layout
 }
 
 func Spinbox_SpinboxStepValue(value int32, min_value int32, max_value int32, step int32, direction int32, wrap bool) SpinboxStepResult {
 	var result SpinboxStepResult = SpinboxStepResult{}
-	var value_0 int32 = value
-	result.Value = value_0
-	var value_1 int32 = step
-	var value_2 int32 = Spinbox_SpinboxEffectiveStep(value_1)
-	step = value_2
-	var value_3 int32 = direction
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = value
-		var value_7 int32 = min_value
-		var value_8 bool = value_6 > value_7
-		if value_8 {
-			var value_9 int32 = value
-			var value_10 int32 = step
-			var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
-			result.Value = value_11
+	result.Value = value
+	var value_0 int32 = Spinbox_SpinboxEffectiveStep(step)
+	step = value_0
+	if direction < 0 {
+		if value > min_value {
+			result.Value = (int32(number_runtime_bits(uint64(value), uint64(step), 32, true, 2)))
 		} else {
-			var value_12 bool = wrap
-			var value_13 bool = value_12
-			if value_13 {
-				var value_14 int32 = value
-				var value_15 int32 = min_value
-				var value_16 bool = value_14 <= value_15
-				value_13 = value_16
+			var value_1 bool = wrap
+			if value_1 {
+				value_1 = (value <= min_value)
 			}
-			if value_13 {
-				var value_17 int32 = max_value
-				result.Value = value_17
+			if value_1 {
+				result.Value = max_value
 			}
 		}
 	} else {
-		var value_18 int32 = direction
-		var value_19 int32 = 0
-		var value_20 bool = value_18 > value_19
-		if value_20 {
-			var value_21 int32 = value
-			var value_22 int32 = max_value
-			var value_23 bool = value_21 < value_22
-			if value_23 {
-				var value_24 int32 = value
-				var value_25 int32 = step
-				var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 1))
-				result.Value = value_26
+		if direction > 0 {
+			if value < max_value {
+				result.Value = (int32(number_runtime_bits(uint64(value), uint64(step), 32, true, 1)))
 			} else {
-				var value_27 bool = wrap
-				var value_28 bool = value_27
-				if value_28 {
-					var value_29 int32 = value
-					var value_30 int32 = max_value
-					var value_31 bool = value_29 >= value_30
-					value_28 = value_31
+				var value_2 bool = wrap
+				if value_2 {
+					value_2 = (value >= max_value)
 				}
-				if value_28 {
-					var value_32 int32 = min_value
-					result.Value = value_32
+				if value_2 {
+					result.Value = min_value
 				}
 			}
 		}
 	}
-	var value_33 int32 = result.Value
-	var value_34 int32 = min_value
-	var value_35 int32 = max_value
-	var value_36 int32 = Spinbox_SpinboxClampValue(value_33, value_34, value_35)
-	result.Value = value_36
-	var value_37 int32 = result.Value
-	var value_38 int32 = value
-	var value_39 bool = value_37 != value_38
-	result.Changed = value_39
-	var value_40 SpinboxStepResult = result
-	return value_40
+	var value_3 int32 = result.Value
+	var value_4 int32 = Spinbox_SpinboxClampValue(value_3, min_value, max_value)
+	result.Value = value_4
+	result.Changed = (result.Value != value)
+	return result
 }
 
 func Spinbox_SpinboxStepButtonsValue(value int32, min_value int32, max_value int32, step int32, decrement bool, increment bool, wrap bool) SpinboxStepResult {
 	var result SpinboxStepResult = SpinboxStepResult{}
-	var value_0 int32 = value
-	result.Value = value_0
-	var value_1 bool = decrement
-	if value_1 {
-		var value_2 int32 = result.Value
-		var value_3 int32 = min_value
-		var value_4 int32 = max_value
-		var value_5 int32 = step
-		var value_6 int32 = -1
-		var value_7 bool = wrap
-		var value_8 SpinboxStepResult = Spinbox_SpinboxStepValue(value_2, value_3, value_4, value_5, value_6, value_7)
-		result = value_8
+	result.Value = value
+	if decrement {
+		var value_0 int32 = result.Value
+		var value_1 int32 = -1
+		var value_2 SpinboxStepResult = Spinbox_SpinboxStepValue(value_0, min_value, max_value, step, value_1, wrap)
+		result = value_2
 	}
-	var value_9 bool = increment
-	if value_9 {
-		var value_10 int32 = result.Value
-		var value_11 int32 = min_value
-		var value_12 int32 = max_value
-		var value_13 int32 = step
-		var value_14 int32 = 1
-		var value_15 bool = wrap
-		var value_16 SpinboxStepResult = Spinbox_SpinboxStepValue(value_10, value_11, value_12, value_13, value_14, value_15)
-		var next SpinboxStepResult = value_16
-		var value_17 bool = result.Changed
-		var value_18 bool = value_17
-		if !value_18 {
-			var value_19 bool = next.Changed
-			value_18 = value_19
+	if increment {
+		var value_3 int32 = result.Value
+		var value_4 int32 = 1
+		var value_5 SpinboxStepResult = Spinbox_SpinboxStepValue(value_3, min_value, max_value, step, value_4, wrap)
+		var next SpinboxStepResult = value_5
+		var value_6 bool = result.Changed
+		if !value_6 {
+			value_6 = next.Changed
 		}
-		result.Changed = value_18
-		var value_20 int32 = next.Value
-		result.Value = value_20
+		result.Changed = value_6
+		result.Value = next.Value
 	}
-	var value_21 SpinboxStepResult = result
-	return value_21
+	return result
 }

@@ -28,500 +28,272 @@ type ListBoxMultiRowDecision struct {
 }
 
 func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_10 bool = value_6
-	if !value_10 {
-		var value_11 bool = allow_zero
-		var value_12 bool = !value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 float32 = value
-			var value_15 float32 = 0.0
-			var value_16 bool = value_14 <= value_15
-			value_13 = value_16
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_10 = value_13
+		value_2 = value_3
 	}
-	if value_10 {
-		var value_17 float32 = fallback
-		value = value_17
+	if value_2 {
+		value = fallback
 	}
-	var value_18 float32 = value
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-	return value_21
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32, item StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = row_height
-		return value_7
+	if row_height > 0 {
+		return row_height
 	}
-	var value_8 float32 = 28.0
-	var fallback float32 = value_8
-	var value_9 uint32 = item.Value.Fields
-	var value_10 int32 = int32(StyleIconSize)
-	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(value_11), 32, false, 8))
-	var value_13 int32 = 0
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 bool = value_12 != value_14
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 float32 = item.Value.IconSize
-		var value_18 float32 = 0.0
-		var value_19 bool = value_17 > value_18
-		value_16 = value_19
+	var fallback float32 = 28.0
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(item.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_1 bool = (value_0 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	if value_1 {
+		value_1 = (item.Value.IconSize > 0.0)
 	}
-	if value_16 {
-		var value_20 float32 = item.Value.IconSize
-		fallback = value_20
+	if value_1 {
+		fallback = item.Value.IconSize
 	}
-	var value_21 uint32 = item.Value.Fields
-	var value_22 int32 = int32(StyleContentOffset)
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 float32 = item.Value.OffsetY
-	var value_25 float32 = fallback
-	var value_26 float32 = scale
-	var value_27 bool = false
-	var value_28 int32 = ListBoxMulti_ListBoxMultiMetric(value_21, value_23, value_24, value_25, value_26, value_27)
-	return value_28
+	var value_2 uint32 = item.Value.Fields
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_4 float32 = item.Value.OffsetY
+	var value_5 int32 = ListBoxMulti_ListBoxMultiMetric(value_2, value_3, value_4, fallback, scale, false)
+	return value_5
 }
 
 func ListBoxMulti_ListBoxMultiRowBounds(bounds Rectangle, index int32, row_height int32) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	row.X = value_0
-	var value_1 float32 = bounds.Y
-	var value_2 int32 = index
-	var value_3 int32 = row_height
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
-	var value_5 float32 = float32(value_4)
-	var value_6 float32 = value_1 + value_5
-	row.Y = value_6
-	var value_7 float32 = bounds.Width
-	row.Width = value_7
-	var value_8 int32 = row_height
-	var value_9 float32 = float32(value_8)
-	row.Height = value_9
-	var value_10 Rectangle = row
-	return value_10
+	row.X = bounds.X
+	row.Y = (bounds.Y + float32((int32(number_runtime_bits(uint64(index), uint64(row_height), 32, true, 3)))))
+	row.Width = bounds.Width
+	row.Height = float32(row_height)
+	return row
 }
 
 func ListBoxMulti_ListBoxMultiItemLabelInset(scale float32, item StyleFrame) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = item.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = item.Value.PaddingX
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = ListBoxMulti_ListBoxMultiMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	return value_11
+	var value_0 uint32 = item.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = item.Value.PaddingX
+	var value_3 float32 = 8.0
+	var value_4 int32 = ListBoxMulti_ListBoxMultiMetric(value_0, value_1, value_2, value_3, scale, true)
+	return value_4
 }
 
 func ListBoxMulti_ListBoxMultiFocusedRow(anchor int32, selected_first int32, item_count int32) int32 {
-	var value_0 int32 = item_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if item_count <= 0 {
+		return -1
 	}
-	var value_4 int32 = anchor
-	var value_5 int32 = 0
-	var value_6 bool = value_4 >= value_5
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 int32 = anchor
-		var value_9 int32 = item_count
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
+	var value_0 bool = (anchor >= 0)
+	if value_0 {
+		value_0 = (anchor < item_count)
 	}
-	if value_7 {
-		var value_11 int32 = anchor
-		return value_11
+	if value_0 {
+		return anchor
 	}
-	var value_12 int32 = selected_first
-	var value_13 int32 = 0
-	var value_14 bool = value_12 >= value_13
-	var value_15 bool = value_14
-	if value_15 {
-		var value_16 int32 = selected_first
-		var value_17 int32 = item_count
-		var value_18 bool = value_16 < value_17
-		value_15 = value_18
+	var value_1 bool = (selected_first >= 0)
+	if value_1 {
+		value_1 = (selected_first < item_count)
 	}
-	if value_15 {
-		var value_19 int32 = selected_first
-		return value_19
+	if value_1 {
+		return selected_first
 	}
-	var value_20 int32 = 0
-	return value_20
+	return 0
 }
 
 func ListBoxMulti_ListBoxMultiInputFor(home bool, end bool, up bool, down bool, space bool, enter bool) ListBoxMultiInput {
 	var input ListBoxMultiInput = ListBoxMultiInput{}
-	var value_0 bool = home
-	input.Home = value_0
-	var value_1 bool = end
-	input.End = value_1
-	var value_2 bool = up
-	input.Up = value_2
-	var value_3 bool = down
-	input.Down = value_3
-	var value_4 bool = space
-	input.Space = value_4
-	var value_5 bool = enter
-	input.Enter = value_5
-	var value_6 ListBoxMultiInput = input
-	return value_6
+	input.Home = home
+	input.End = end
+	input.Up = up
+	input.Down = down
+	input.Space = space
+	input.Enter = enter
+	return input
 }
 
 func ListBoxMulti_ListBoxMultiRowDecisionFor(hot bool, disabled bool, released bool) ListBoxMultiRowDecision {
 	var decision ListBoxMultiRowDecision = ListBoxMultiRowDecision{}
 	var value_0 bool = hot
+	if value_0 {
+		value_0 = !disabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = disabled
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = released
 	}
-	var value_4 bool = value_1
-	if value_4 {
-		var value_5 bool = released
-		value_4 = value_5
+	if value_1 {
+		decision.Activate = true
+		decision.ConsumeRelease = true
 	}
-	if value_4 {
-		var value_6 bool = true
-		decision.Activate = value_6
-		var value_7 bool = true
-		decision.ConsumeRelease = value_7
-	}
-	var value_8 ListBoxMultiRowDecision = decision
-	return value_8
+	return decision
 }
 
 func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control bool, shift bool, input ListBoxMultiInput) ListBoxMultiNavResult {
 	var result ListBoxMultiNavResult = ListBoxMultiNavResult{}
-	var value_0 int32 = -1
-	result.Clicked = value_0
-	var value_1 int32 = cursor
-	result.Anchor = value_1
-	var value_2 bool = false
-	result.AnchorChanged = value_2
-	var value_3 bool = control
-	result.Control = value_3
-	var value_4 bool = shift
-	result.Shift = value_4
-	var value_5 int32 = -1
-	result.RangeAnchor = value_5
-	var value_6 int32 = item_count
-	var value_7 int32 = 0
-	var value_8 bool = value_6 <= value_7
-	if value_8 {
-		var value_9 ListBoxMultiNavResult = result
-		return value_9
+	result.Clicked = -1
+	result.Anchor = cursor
+	result.AnchorChanged = false
+	result.Control = control
+	result.Shift = shift
+	result.RangeAnchor = -1
+	if item_count <= 0 {
+		return result
 	}
-	var value_10 int32 = cursor
-	var value_11 int32 = 0
-	var value_12 bool = value_10 < value_11
-	if value_12 {
-		var value_13 int32 = 0
-		cursor = value_13
+	if cursor < 0 {
+		cursor = 0
 	}
-	var value_14 int32 = cursor
-	var value_15 int32 = item_count
-	var value_16 bool = value_14 >= value_15
-	if value_16 {
-		var value_17 int32 = item_count
-		var value_18 int32 = 1
-		var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 2))
-		cursor = value_19
+	if cursor >= item_count {
+		cursor = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
 	}
-	var value_20 int32 = cursor
-	var next int32 = value_20
-	var value_21 bool = true
-	var navigate bool = value_21
-	var value_22 bool = input.Home
-	if value_22 {
-		var value_23 int32 = 0
-		next = value_23
+	var next int32 = cursor
+	var navigate bool = true
+	if input.Home {
+		next = 0
 	} else {
-		var value_24 bool = input.End
-		if value_24 {
-			var value_25 int32 = item_count
-			var value_26 int32 = 1
-			var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 2))
-			next = value_27
+		if input.End {
+			next = (int32(number_runtime_bits(uint64(item_count), uint64(1), 32, true, 2)))
 		} else {
-			var value_28 bool = input.Up
-			if value_28 {
-				var value_29 int32 = next
-				var value_30 int32 = 0
-				var value_31 bool = value_29 > value_30
-				if value_31 {
-					var value_32 int32 = next
-					var value_33 int32 = 1
-					var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 2))
-					next = value_34
+			if input.Up {
+				if next > 0 {
+					next = (int32(number_runtime_bits(uint64(next), uint64(1), 32, true, 2)))
 				}
 			} else {
-				var value_35 bool = input.Down
-				if value_35 {
-					var value_36 int32 = next
-					var value_37 int32 = 1
-					var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 1))
-					var value_39 int32 = item_count
-					var value_40 bool = value_38 < value_39
-					if value_40 {
-						var value_41 int32 = next
-						var value_42 int32 = 1
-						var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
-						next = value_43
+				if input.Down {
+					if (int32(number_runtime_bits(uint64(next), uint64(1), 32, true, 1))) < item_count {
+						next = (int32(number_runtime_bits(uint64(next), uint64(1), 32, true, 1)))
 					}
 				} else {
-					var value_44 bool = input.Space
-					if value_44 {
-						var value_45 int32 = cursor
-						result.Clicked = value_45
-						var value_46 bool = true
-						result.Control = value_46
-						var value_47 bool = false
-						result.Shift = value_47
-						var value_48 bool = false
-						navigate = value_48
+					if input.Space {
+						result.Clicked = cursor
+						result.Control = true
+						result.Shift = false
+						navigate = false
 					} else {
-						var value_49 bool = input.Enter
-						if value_49 {
-							var value_50 int32 = cursor
-							result.Clicked = value_50
-							var value_51 bool = false
-							result.Control = value_51
-							var value_52 bool = false
-							result.Shift = value_52
-							var value_53 bool = false
-							navigate = value_53
+						if input.Enter {
+							result.Clicked = cursor
+							result.Control = false
+							result.Shift = false
+							navigate = false
 						} else {
-							var value_54 bool = false
-							navigate = value_54
+							navigate = false
 						}
 					}
 				}
 			}
 		}
 	}
-	var value_55 bool = navigate
-	if value_55 {
-		var value_56 bool = shift
-		if value_56 {
-			var value_57 int32 = cursor
-			result.RangeAnchor = value_57
-			var value_58 bool = true
-			result.Control = value_58
+	if navigate {
+		if shift {
+			result.RangeAnchor = cursor
+			result.Control = true
 		}
-		var value_59 int32 = next
-		result.Anchor = value_59
-		var value_60 bool = true
-		result.AnchorChanged = value_60
-		var value_61 bool = result.Control
-		var value_62 bool = !value_61
-		var value_63 bool = value_62
-		if !value_63 {
-			var value_64 bool = shift
-			value_63 = value_64
+		result.Anchor = next
+		result.AnchorChanged = true
+		var value_0 bool = !result.Control
+		if !value_0 {
+			value_0 = shift
 		}
-		if value_63 {
-			var value_65 int32 = next
-			result.Clicked = value_65
+		if value_0 {
+			result.Clicked = next
 		}
 	}
-	var value_66 ListBoxMultiNavResult = result
-	return value_66
+	return result
 }
 
 func ListBoxMulti_ListBoxMultiActionAnchor(current_anchor int32, range_anchor int32) int32 {
-	var value_0 int32 = range_anchor
-	var value_1 int32 = 0
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 int32 = range_anchor
-		return value_3
+	if range_anchor >= 0 {
+		return range_anchor
 	}
-	var value_4 int32 = current_anchor
-	return value_4
+	return current_anchor
 }
 
 func ListBoxMulti_ListBoxMultiSelectionForRow(row int32, was_selected bool, clicked int32, item_count int32, current_anchor int32, control bool, shift bool, range_anchor int32) bool {
-	var value_0 int32 = clicked
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
+	var value_0 bool = (clicked < 0)
+	if !value_0 {
+		value_0 = (clicked >= item_count)
+	}
+	if value_0 {
+		return was_selected
+	}
+	var value_1 int32 = ListBoxMulti_ListBoxMultiActionAnchor(current_anchor, range_anchor)
+	var anchor int32 = value_1
+	var value_2 bool = shift
+	if value_2 {
+		value_2 = (anchor >= 0)
+	}
 	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int32 = clicked
-		var value_5 int32 = item_count
-		var value_6 bool = value_4 >= value_5
-		value_3 = value_6
+	if value_3 {
+		value_3 = (anchor < item_count)
 	}
 	if value_3 {
-		var value_7 bool = was_selected
-		return value_7
-	}
-	var value_8 int32 = current_anchor
-	var value_9 int32 = range_anchor
-	var value_10 int32 = ListBoxMulti_ListBoxMultiActionAnchor(value_8, value_9)
-	var anchor int32 = value_10
-	var value_11 bool = shift
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 int32 = anchor
-		var value_14 int32 = 0
-		var value_15 bool = value_13 >= value_14
-		value_12 = value_15
-	}
-	var value_16 bool = value_12
-	if value_16 {
-		var value_17 int32 = anchor
-		var value_18 int32 = item_count
-		var value_19 bool = value_17 < value_18
-		value_16 = value_19
-	}
-	if value_16 {
-		var value_20 int32 = anchor
-		var first int32 = value_20
-		var value_21 int32 = clicked
-		var last int32 = value_21
-		var value_22 int32 = first
-		var value_23 int32 = last
-		var value_24 bool = value_22 > value_23
-		if value_24 {
-			var value_25 int32 = first
-			var temp int32 = value_25
-			var value_26 int32 = last
-			first = value_26
-			var value_27 int32 = temp
-			last = value_27
+		var first int32 = anchor
+		var last int32 = clicked
+		if first > last {
+			var temp int32 = first
+			first = last
+			last = temp
 		}
-		var value_28 int32 = row
-		var value_29 int32 = first
-		var value_30 bool = value_28 >= value_29
-		var value_31 bool = value_30
-		if value_31 {
-			var value_32 int32 = row
-			var value_33 int32 = last
-			var value_34 bool = value_32 <= value_33
-			value_31 = value_34
+		var value_4 bool = (row >= first)
+		if value_4 {
+			value_4 = (row <= last)
 		}
-		if value_31 {
-			var value_35 bool = true
-			return value_35
+		if value_4 {
+			return true
 		}
-		var value_36 bool = control
-		if value_36 {
-			var value_37 bool = was_selected
-			return value_37
+		if control {
+			return was_selected
 		}
-		var value_38 bool = false
-		return value_38
+		return false
 	}
-	var value_39 bool = control
-	if value_39 {
-		var value_40 int32 = row
-		var value_41 int32 = clicked
-		var value_42 bool = value_40 == value_41
-		if value_42 {
-			var value_43 bool = was_selected
-			var value_44 bool = !value_43
-			return value_44
+	if control {
+		if row == clicked {
+			return !was_selected
 		}
-		var value_45 bool = was_selected
-		return value_45
+		return was_selected
 	}
-	var value_46 int32 = row
-	var value_47 int32 = clicked
-	var value_48 bool = value_46 == value_47
-	return value_48
+	return (row == clicked)
 }
 
 func ListBoxMulti_ListBoxMultiAnchorAfterClick(current_anchor int32, clicked int32, item_count int32, control bool, shift bool, range_anchor int32) int32 {
-	var value_0 int32 = current_anchor
-	var value_1 int32 = range_anchor
-	var value_2 int32 = ListBoxMulti_ListBoxMultiActionAnchor(value_0, value_1)
-	var anchor int32 = value_2
-	var value_3 int32 = clicked
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 int32 = clicked
-		var value_8 int32 = item_count
-		var value_9 bool = value_7 >= value_8
-		value_6 = value_9
+	var value_0 int32 = ListBoxMulti_ListBoxMultiActionAnchor(current_anchor, range_anchor)
+	var anchor int32 = value_0
+	var value_1 bool = (clicked < 0)
+	if !value_1 {
+		value_1 = (clicked >= item_count)
 	}
-	if value_6 {
-		var value_10 int32 = current_anchor
-		return value_10
+	if value_1 {
+		return current_anchor
 	}
-	var value_11 bool = shift
-	var value_12 bool = value_11
-	if value_12 {
-		var value_13 int32 = anchor
-		var value_14 int32 = 0
-		var value_15 bool = value_13 >= value_14
-		value_12 = value_15
+	var value_2 bool = shift
+	if value_2 {
+		value_2 = (anchor >= 0)
 	}
-	var value_16 bool = value_12
-	if value_16 {
-		var value_17 int32 = anchor
-		var value_18 int32 = item_count
-		var value_19 bool = value_17 < value_18
-		value_16 = value_19
+	var value_3 bool = value_2
+	if value_3 {
+		value_3 = (anchor < item_count)
 	}
-	if value_16 {
-		var value_20 int32 = current_anchor
-		return value_20
+	if value_3 {
+		return current_anchor
 	}
-	var value_21 bool = control
-	var value_22 bool = value_21
-	if !value_22 {
-		var value_23 bool = shift
-		var value_24 bool = !value_23
-		value_22 = value_24
+	var value_4 bool = control
+	if !value_4 {
+		value_4 = !shift
 	}
-	if value_22 {
-		var value_25 int32 = clicked
-		return value_25
+	if value_4 {
+		return clicked
 	}
-	var value_26 int32 = current_anchor
-	return value_26
+	return current_anchor
 }

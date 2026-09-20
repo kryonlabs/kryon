@@ -1,0 +1,47 @@
+#module "style_picker_host"
+#import "ui_style_sheet.h"
+#import "ui_draw.h"
+#import "ui_tree.h"
+
+StylePicker :: (props: StylePickerProps) -> bool #export {
+    labels: [32]const char*
+    selected: i32 = -1
+    count: i32 = GetStylePackCount()
+    if count <= 0 && EnsureBuiltInStylePacks() {
+        count = GetStylePackCount()
+    }
+    state: StylePickerState = StylePickerStateFor(count, selected,
+    STYLE_PACK_MAX)
+    count = state.option_count
+    if !state.has_options { return false }
+
+    index: i32 = 0
+    while index < count {
+        pack: const StylePack* = GetStylePackAt(index)
+        if pack == nil { return false }
+        if pack->label != nil && pack->label[0] != '\0' {
+            labels[index] = pack->label
+        } else {
+            labels[index] = pack->id
+        }
+        if pack == GetActiveStylePack() { selected = index }
+        index += 1
+    }
+
+    state = StylePickerStateFor(count, selected, STYLE_PACK_MAX)
+    selected = state.selected_index
+    dropdown: DropdownProps
+    dropdown.bounds = props.bounds
+    dropdown.id = props.id
+    dropdown.options = labels
+    dropdown.option_count = count
+    dropdown.selected_index = &selected
+    dropdown.class_name = props.class_name
+    dropdown.disabled = props.disabled
+    changed: bool = Dropdown(dropdown)
+    if changed && selected >= 0 && selected < count {
+        pack: const StylePack* = GetStylePackAt(selected)
+        return pack != nil && SetActiveStylePack(pack->id)
+    }
+    return false
+}

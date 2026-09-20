@@ -1,0 +1,203 @@
+#module "node_registry_host"
+#import "ui_node_registry.h"
+#import "string.h"
+#import "stdio.h"
+
+node_types :: [50]NodeType #global
+catalog_ready :: i32 #global
+
+NodeCatalogInit :: () {
+    if catalog_ready != 0 { return }
+    editable: NodeTypeFlag = NodeTypeFlagSelectable | NodeTypeFlagMovable | NodeTypeFlagResizable
+    insert_editable: NodeTypeFlag = NodeTypeFlagInsertable | editable
+    movable_text: NodeTypeFlag = NodeTypeFlagInsertable | NodeTypeFlagSelectable | NodeTypeFlagMovable
+    node_types[0] = (NodeType){"Background", "Background", "Display", "Control", "Fill", NodeTypeFlagInsertable | NodeTypeFlagSelectable}
+    node_types[1] = (NodeType){"Text", "Text", "Display", "Control", "Label", movable_text}
+    node_types[2] = (NodeType){"Paragraph", "Paragraph", "Display", "Control", "Rich text", NodeTypeFlagSelectable}
+    node_types[3] = (NodeType){"Box", "Box", "Display", "Control", "Shape", insert_editable}
+    node_types[4] = (NodeType){"Line", "Line", "Display", "Control", "Stroke", insert_editable}
+    node_types[5] = (NodeType){"Bevel", "Bevel", "Display", "Control", "Relief", editable}
+    node_types[6] = (NodeType){"Icon", "Icon", "Display", "Control", "Icon", editable}
+    node_types[7] = (NodeType){"Image", "Image", "Display", "Control", "Image", insert_editable}
+    node_types[8] = (NodeType){"Card", "Card", "Input", "Control", "Surface action", insert_editable}
+    node_types[9] = (NodeType){"Button", "Button", "Input", "Control", "Action", insert_editable}
+    node_types[10] = (NodeType){"Link", "Link", "Input", "Control", "Link", editable}
+    node_types[11] = (NodeType){"TextField", "Text Field", "Input", "Control", "Input", insert_editable}
+    node_types[12] = (NodeType){"Dropdown", "Dropdown", "Input", "Control", "Selection", insert_editable}
+    node_types[13] = (NodeType){"Slider", "Slider", "Input", "Control", "Value", insert_editable}
+    node_types[14] = (NodeType){"Toggle", "Toggle", "Input", "Control", "On/off", insert_editable}
+    node_types[15] = (NodeType){"Checkbox", "Checkbox", "Input", "Control", "Boolean", insert_editable}
+    node_types[16] = (NodeType){"Radio", "Radio", "Input", "Control", "Choice", editable}
+    node_types[17] = (NodeType){"Progress", "Progress", "Input", "Control", "Progress", editable}
+    node_types[18] = (NodeType){"Spinbox", "Spinbox", "Input", "Control", "Number", editable}
+    node_types[19] = (NodeType){"ColorPicker", "Color Picker", "Input", "Control", "Color", editable}
+    node_types[20] = (NodeType){"SegmentedControl", "Segmented Control", "Input", "Control", "Segments", editable}
+    node_types[21] = (NodeType){"Group", "Group", "Layout", "Control", "Container", insert_editable}
+    node_types[22] = (NodeType){"Separator", "Separator", "Layout", "Control", "Divider", editable}
+    node_types[23] = (NodeType){"Fieldset", "Fieldset", "Layout", "Control", "Frame", editable}
+    node_types[24] = (NodeType){"PanedView", "Paned View", "Layout", "Control", "Split panes", editable}
+    node_types[25] = (NodeType){"Collapsible", "Collapsible", "Layout", "Control", "Section", editable}
+    node_types[26] = (NodeType){"ListBox", "List Box", "Collections", "Control", "List", editable}
+    node_types[27] = (NodeType){"TreeView", "Tree View", "Collections", "Control", "Tree", editable}
+    node_types[28] = (NodeType){"TableView", "Table View", "Collections", "Control", "Table", editable}
+    node_types[29] = (NodeType){"TextArea", "Text Area", "Collections", "Control", "Text area", editable}
+    node_types[30] = (NodeType){"CanvasGrid", "Canvas Grid", "Collections", "Control", "Grid", editable}
+    node_types[31] = (NodeType){"Menu", "Menu", "Navigation", "Control", "Menu", editable}
+    node_types[32] = (NodeType){"NavigationBar", "Navigation Bar", "Navigation", "Control", "Tabs", editable}
+    node_types[33] = (NodeType){"Toolbar", "Toolbar", "Navigation", "Control", "Tools", editable}
+    node_types[34] = (NodeType){"TabBar", "Tab Bar", "Navigation", "Control", "Tabs", editable}
+    node_types[35] = (NodeType){"TitleBar", "Title Bar", "Navigation", "Control", "Title", editable}
+    node_types[36] = (NodeType){"Focus", "Focus", "Overlays", "Control", "Focus", editable}
+    node_types[37] = (NodeType){"Modal", "Modal", "Overlays", "Control", "Dialog", editable}
+    node_types[38] = (NodeType){"Scene", "Scene", "Game2D/Core", "Node", "Scene root", 0}
+    node_types[39] = (NodeType){"Node2D", "Node2D", "Game2D/Core", "Node", "Transform", 0}
+    node_types[40] = (NodeType){"Camera2D", "Camera2D", "Game2D/Core", "Node2D", "Camera", 0}
+    node_types[41] = (NodeType){"Sprite2D", "Sprite2D", "Game2D/Rendering", "Node2D", "Image", 0}
+    node_types[42] = (NodeType){"AnimatedSprite2D", "AnimatedSprite2D", "Game2D/Rendering", "Node2D", "Animation", 0}
+    node_types[43] = (NodeType){"TileMap", "TileMap", "Game2D/Rendering", "Node2D", "Tiles", 0}
+    node_types[44] = (NodeType){"CollisionShape2D", "Collision Shape 2D", "Game2D/Physics", "Node2D", "Collider", 0}
+    node_types[45] = (NodeType){"Area2D", "Area2D", "Game2D/Physics", "Node2D", "Trigger", 0}
+    node_types[46] = (NodeType){"Body2D", "Body2D", "Game2D/Physics", "Node2D", "Body", 0}
+    node_types[47] = (NodeType){"AnimationPlayer", "Animation Player", "Game2D/Runtime", "Node", "Animation", 0}
+    node_types[48] = (NodeType){"AudioSource", "Audio Source", "Game2D/Audio", "Node2D", "Sound", 0}
+    node_types[49] = (NodeType){"Light2D", "Light2D", "Game2D/Rendering", "Node2D", "Point light", 0}
+    catalog_ready = 1
+}
+
+NodeTypeCount :: () -> i32 #export {
+    return 50
+}
+
+NodeTypeChecked :: (index: i32) -> const NodeType* {
+    if index < 0 || index >= NodeTypeCount() { return nil }
+    NodeCatalogInit()
+    return &node_types[index]
+}
+
+NodeTypeAt :: (index: i32) -> const NodeType* #export {
+    return NodeTypeChecked(index)
+}
+
+NodeTypeName :: (index: i32) -> const char* #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return "" }
+    return entry->name
+}
+
+NodeTypeLabel :: (index: i32) -> const char* #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return "" }
+    return entry->label
+}
+
+NodeTypeGroup :: (index: i32) -> const char* #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return "" }
+    return entry->group
+}
+
+NodeTypeBase :: (index: i32) -> const char* #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return "" }
+    return entry->base
+}
+
+NodeTypeDetail :: (index: i32) -> const char* #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return "" }
+    return entry->detail
+}
+
+NodeTypeFlagsAt :: (index: i32) -> NodeTypeFlag #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil { return (NodeTypeFlag)0 }
+    return entry->flags
+}
+
+NodeTypeHasSnippet :: (name: const char*) -> i32 {
+    if name == nil { return 0 }
+    return strcmp(name, "Background") == 0 ||
+    strcmp(name, "Text") == 0 ||
+    strcmp(name, "Box") == 0 ||
+    strcmp(name, "Line") == 0 ||
+    strcmp(name, "Image") == 0 ||
+    strcmp(name, "Card") == 0 ||
+    strcmp(name, "Button") == 0 ||
+    strcmp(name, "TextField") == 0 ||
+    strcmp(name, "Toggle") == 0 ||
+    strcmp(name, "Slider") == 0 ||
+    strcmp(name, "Checkbox") == 0 ||
+    strcmp(name, "Dropdown") == 0 ||
+    strcmp(name, "Group") == 0
+}
+
+NodeTypeInsertable :: (index: i32) -> i32 #export {
+    entry: const NodeType* = NodeTypeChecked(index)
+    return entry != nil &&
+    (entry->flags & NodeTypeFlagInsertable) != 0 &&
+    NodeTypeHasSnippet(entry->name)
+}
+
+NodeTypeSnippet :: (index: i32, x: i32, y: i32,
+dst: *char, cap: i32) -> i32 #export {
+    if dst == nil || cap <= 0 { return 0 }
+    dst[0] = '\0'
+    entry: const NodeType* = NodeTypeChecked(index)
+    if entry == nil || !NodeTypeInsertable(index) { return 0 }
+    id: i32 = (x * 31 + y * 17 + index * 101) & 0x7fffffff
+    if strcmp(entry->name, "Background") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Surface((Rectangle){0, 0, (float)GetViewWidth(), (float)GetViewHeight()}, (Style){0})\n")
+    } else if strcmp(entry->name, "Text") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Text((TextProps){\n        .bounds = {Scale(%d), Scale(%d), 0, 0},\n        .text = \"Text\",\n        .wrap = TextWrapNone,\n    })\n",
+        x, y)
+    } else if strcmp(entry->name, "Box") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Surface((Rectangle){Scale(%d), Scale(%d), Scale(160), Scale(90)}, (Style){0})\n",
+        x, y)
+    } else if strcmp(entry->name, "Line") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Separator((SeparatorProps){.bounds = {Scale(%d), Scale(%d), Scale(160), Scale(24)}})\n",
+        x, y)
+    } else if strcmp(entry->name, "Image") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Image((ImageProps){\n        .asset_path = \"assets/image.png\",\n        .alt_text = \"\",\n        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n        .fit = ImageFitContain,\n    })\n",
+        x, y)
+    } else if strcmp(entry->name, "Card") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    if Card((CardProps){\n        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(96)},\n        .clickable = true,\n        .id = %d,\n    }) {\n    }\n",
+        x, y, 5200 + (id % 1000))
+    } else if strcmp(entry->name, "Button") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    if Button((ButtonProps){\n        .bounds = {Scale(%d), Scale(%d), Scale(140), Scale(36)},\n        .label = \"Button\",\n        \n        .id = %d,\n    }) {\n    }\n",
+        x, y, 4200 + (id % 1000))
+    } else if strcmp(entry->name, "TextField") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    field_%d: [128] char\n    field_cursor_%d: int = 0\n    field_focused_%d: int = 0\n    TextField((TextFieldProps){\n        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(34)},\n        .text = field_%d,\n        .text_size = sizeof(field_%d),\n        .cursor_position = &field_cursor_%d,\n        .focused = &field_focused_%d,\n        .max_codepoints = 128,\n        .focus_id = %d,\n    })\n",
+        id, id, id, x, y, id, id, id, id, 5200 + (id % 1000))
+    } else if strcmp(entry->name, "Toggle") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    toggle_%d: int = 0\n    Toggle((ToggleProps){.bounds = {Scale(%d), Scale(%d), Scale(120), Scale(34)}, .id = %d, .value = &toggle_%d, .off_label = \"Off\", .on_label = \"On\"})\n",
+        id, x, y, 6200 + (id % 1000), id)
+    } else if strcmp(entry->name, "Slider") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    slider_%d: [1] int = {50}\n    Slider((SliderProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(56)}, .id = %d, .label = \"Value\", .kind = NumericInt, .int_values = slider_%d, .value_count = 1, .min = 0.0, .max = 100.0})\n",
+        id, x, y, 7200 + (id % 1000), id)
+    } else if strcmp(entry->name, "Checkbox") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    check_%d: int = 0\n    Checkbox((CheckboxProps){.bounds = {Scale(%d), Scale(%d), Scale(140), Scale(34)}, .id = %d, .label = \"Checkbox\", .value = &check_%d})\n",
+        id, x, y, 8200 + (id % 1000), id)
+    } else if strcmp(entry->name, "Dropdown") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    options_%d: [3] const char* = {\"One\", \"Two\", \"Three\"}\n    selected_%d: int = 0\n    Dropdown((DropdownProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(34)}, .id = %d, .options = options_%d, .option_count = 3, .selected_index = &selected_%d})\n",
+        id, id, x, y, 9200 + (id % 1000), id, id)
+    } else if strcmp(entry->name, "Group") == 0 {
+        snprintf(dst, (size_t)cap,
+        "\n    Group((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n    Surface((Rectangle){Scale(%d), Scale(%d), Scale(180), Scale(110)}, (Style){0})\n    End()\n",
+        x, y, 10200 + (id % 1000), x, y)
+    } else {
+        return 0
+    }
+    return dst[0] != '\0'
+}

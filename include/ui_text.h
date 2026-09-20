@@ -46,6 +46,7 @@ void ClearTextFonts(void);
 void TextFontMemoryReport(const char *tag);
 int MeasureTextWidth(const char *text, int font_size, const char *typeface);
 Font GetTextFontForCodepoint(int codepoint, int font_size);
+Font GetTextFontForSize(int font_size);
 float GetTextFontScale(Font font, int font_size);
 /* Draw one glyph from the active text font stack at a fixed cell position,
  * using the same font resolution and atlas path as RenderTextEx. Returns 1

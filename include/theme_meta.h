@@ -29,8 +29,6 @@ typedef struct {
     const char *dark_scope;
 } ThemeMeta;
 
-extern const ThemeMeta themes[THEME_COUNT];
-
 const ThemeMeta *GetThemeMeta(ThemeId theme);
 ThemeId NormalizeTheme(int theme);
 const char *GetThemeLabel(ThemeId theme);

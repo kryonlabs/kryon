@@ -1,0 +1,79 @@
+#module "cursor_host"
+#import "ui_internal.h"
+
+CursorPriority :: enum {
+    CURSOR_PRIORITY_DEFAULT = 0
+    CURSOR_PRIORITY_DISABLED = 1
+    CURSOR_PRIORITY_TEXT = 2
+    CURSOR_PRIORITY_CLICKABLE = 3
+    CURSOR_PRIORITY_RESIZE = 4
+}
+
+g_ui_cursor_clickable :: *i32 #global #export
+g_ui_cursor_disabled :: *i32 #global #export
+g_ui_cursor_priority :: i32 #global #export
+g_ui_cursor_current :: i32 #global #export
+g_ui_cursor_had_intent :: i32 #global #export
+
+ui_set_cursor_intent :: (cursor: i32, priority: i32) {
+    if priority < g_ui_cursor_priority { return }
+    g_ui_cursor_priority = priority
+    g_ui_cursor_had_intent = 1
+    if g_ui_cursor_current == cursor { return }
+    g_ui_cursor_current = cursor
+    SetMouseCursor(cursor)
+}
+
+SetCursorClickable :: (cursor_clickable: *i32) #export {
+    g_ui_cursor_clickable = cursor_clickable
+}
+
+SetCursorDisabled :: (cursor_disabled: *i32) #export {
+    g_ui_cursor_disabled = cursor_disabled
+}
+
+MarkClickable :: () #export {
+    if g_ui_cursor_clickable != nil { *g_ui_cursor_clickable = 1 }
+    ui_set_cursor_intent(MOUSE_CURSOR_POINTING_HAND,
+    CURSOR_PRIORITY_CLICKABLE)
+}
+
+MarkCursor :: (cursor: i32) #export {
+    priority: i32 = CURSOR_PRIORITY_CLICKABLE
+    if cursor == MOUSE_CURSOR_NOT_ALLOWED {
+        priority = CURSOR_PRIORITY_DISABLED
+    } else if cursor == MOUSE_CURSOR_IBEAM {
+        priority = CURSOR_PRIORITY_TEXT
+    } else if cursor == MOUSE_CURSOR_RESIZE_EW ||
+    cursor == MOUSE_CURSOR_RESIZE_NS ||
+    cursor == MOUSE_CURSOR_RESIZE_NWSE ||
+    cursor == MOUSE_CURSOR_RESIZE_NESW ||
+    cursor == MOUSE_CURSOR_RESIZE_ALL {
+        priority = CURSOR_PRIORITY_RESIZE
+    }
+    ui_set_cursor_intent(cursor, priority)
+}
+
+MarkDisabled :: () #export {
+    if g_ui_cursor_disabled != nil { *g_ui_cursor_disabled = 1 }
+    ui_set_cursor_intent(MOUSE_CURSOR_NOT_ALLOWED,
+    CURSOR_PRIORITY_DISABLED)
+}
+
+GetMouseCursorIntent :: () -> i32 #export {
+    return g_ui_cursor_current
+}
+
+MarkTextCursor :: () #export {
+    ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, CURSOR_PRIORITY_TEXT)
+}
+
+ui_reset_cursor_intent_for_frame :: () #export {
+    if !g_ui_cursor_had_intent &&
+    g_ui_cursor_current != MOUSE_CURSOR_DEFAULT {
+        g_ui_cursor_current = MOUSE_CURSOR_DEFAULT
+        SetMouseCursor(MOUSE_CURSOR_DEFAULT)
+    }
+    g_ui_cursor_priority = CURSOR_PRIORITY_DEFAULT
+    g_ui_cursor_had_intent = 0
+}

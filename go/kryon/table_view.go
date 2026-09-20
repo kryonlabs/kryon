@@ -104,1497 +104,834 @@ type TableViewKeyboardIntent struct {
 }
 
 func TableView_TableViewPanelRole() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func TableView_TableViewHeaderRole() int32 {
-	var value_0 int32 = 13
-	return value_0
+	return 13
 }
 
 func TableView_TableViewDividerRole() int32 {
-	var value_0 int32 = 18
-	return value_0
+	return 18
 }
 
 func TableView_TableViewRowRole() int32 {
-	var value_0 int32 = 21
-	return value_0
+	return 21
 }
 
 func TableView_TableViewCellRole() int32 {
-	var value_0 int32 = 22
-	return value_0
+	return 22
 }
 
 func TableView_TableViewSelectionRole() int32 {
-	var value_0 int32 = 23
-	return value_0
+	return 23
 }
 
 func TableView_TableViewFactsFor(class_name int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindTableView()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = StyleSheet_StyleAny()
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = StyleSheet_StyleAny()
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, value_3, value_4, value_5, state)
+	return value_6
 }
 
 func TableView_TableViewRoleFactsFor(class_name int32, role int32, state int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindTableView()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = role
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = state
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = int32(ButtonToneNeutral)
+	var value_3 int32 = int32(ButtonEmphasisSoft)
+	var value_4 int32 = int32(ControlSizeMedium)
+	var value_5 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, role, value_2, value_3, value_4, state)
+	return value_5
 }
 
 func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_10 bool = value_6
-	if !value_10 {
-		var value_11 bool = allow_zero
-		var value_12 bool = !value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 float32 = value
-			var value_15 float32 = 0.0
-			var value_16 bool = value_14 <= value_15
-			value_13 = value_16
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_10 = value_13
+		value_2 = value_3
 	}
-	if value_10 {
-		var value_17 float32 = fallback
-		value = value_17
+	if value_2 {
+		value = fallback
 	}
-	var value_18 float32 = value
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-	return value_21
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func TableView_TableViewMetricsFor(scale float32, table StyleFrame, header StyleFrame, cell StyleFrame, divider StyleFrame) TableViewMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics TableViewMetrics = TableViewMetrics{}
-	var value_4 uint32 = table.Value.Fields
-	var value_5 int32 = int32(StyleContentOffset)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = table.Value.OffsetY
-	var value_8 float32 = 28.0
-	var value_9 float32 = scale
-	var value_10 bool = false
-	var value_11 int32 = TableView_TableViewMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.DefaultRowHeight = value_11
-	var value_12 uint32 = header.Value.Fields
-	var value_13 int32 = int32(StyleContentOffset)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 float32 = header.Value.OffsetY
-	var value_16 float32 = 30.0
-	var value_17 float32 = scale
-	var value_18 bool = false
-	var value_19 int32 = TableView_TableViewMetric(value_12, value_14, value_15, value_16, value_17, value_18)
-	metrics.MinHeaderHeight = value_19
-	var value_20 uint32 = cell.Value.Fields
-	var value_21 int32 = int32(StyleContentOffset)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 float32 = cell.Value.OffsetX
-	var value_24 float32 = 32.0
-	var value_25 float32 = scale
-	var value_26 bool = false
-	var value_27 int32 = TableView_TableViewMetric(value_20, value_22, value_23, value_24, value_25, value_26)
-	metrics.DefaultMinColumnWidth = value_27
-	var value_28 uint32 = header.Value.Fields
-	var value_29 int32 = int32(StylePaddingX)
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 float32 = header.Value.PaddingX
-	var value_32 float32 = 6.0
-	var value_33 float32 = scale
-	var value_34 bool = true
-	var value_35 int32 = TableView_TableViewMetric(value_28, value_30, value_31, value_32, value_33, value_34)
-	metrics.HeaderTextPadX = value_35
-	var value_36 uint32 = divider.Value.Fields
-	var value_37 int32 = int32(StylePaddingX)
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
-	var value_39 float32 = divider.Value.PaddingX
-	var value_40 float32 = 5.0
-	var value_41 float32 = scale
-	var value_42 bool = true
-	var value_43 int32 = TableView_TableViewMetric(value_36, value_38, value_39, value_40, value_41, value_42)
-	metrics.ResizeTolerance = value_43
-	var value_44 uint32 = divider.Value.Fields
-	var value_45 int32 = int32(StyleContentOffset)
-	var value_46 uint32 = uint32(number_runtime_bits(uint64(value_45), uint64(0), 32, false, 0))
-	var value_47 float32 = divider.Value.OffsetY
-	var value_48 float32 = 8.0
-	var value_49 float32 = scale
-	var value_50 bool = true
-	var value_51 int32 = TableView_TableViewMetric(value_44, value_46, value_47, value_48, value_49, value_50)
-	metrics.ScrollbarWidth = value_51
-	var value_52 TableViewMetrics = metrics
-	return value_52
+	var value_0 uint32 = table.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = table.Value.OffsetY
+	var value_3 float32 = 28.0
+	var value_4 int32 = TableView_TableViewMetric(value_0, value_1, value_2, value_3, scale, false)
+	metrics.DefaultRowHeight = value_4
+	var value_5 uint32 = header.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_7 float32 = header.Value.OffsetY
+	var value_8 float32 = 30.0
+	var value_9 int32 = TableView_TableViewMetric(value_5, value_6, value_7, value_8, scale, false)
+	metrics.MinHeaderHeight = value_9
+	var value_10 uint32 = cell.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_12 float32 = cell.Value.OffsetX
+	var value_13 float32 = 32.0
+	var value_14 int32 = TableView_TableViewMetric(value_10, value_11, value_12, value_13, scale, false)
+	metrics.DefaultMinColumnWidth = value_14
+	var value_15 uint32 = header.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_17 float32 = header.Value.PaddingX
+	var value_18 float32 = 6.0
+	var value_19 int32 = TableView_TableViewMetric(value_15, value_16, value_17, value_18, scale, true)
+	metrics.HeaderTextPadX = value_19
+	var value_20 uint32 = divider.Value.Fields
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_22 float32 = divider.Value.PaddingX
+	var value_23 float32 = 5.0
+	var value_24 int32 = TableView_TableViewMetric(value_20, value_21, value_22, value_23, scale, true)
+	metrics.ResizeTolerance = value_24
+	var value_25 uint32 = divider.Value.Fields
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_27 float32 = divider.Value.OffsetY
+	var value_28 float32 = 8.0
+	var value_29 int32 = TableView_TableViewMetric(value_25, value_26, value_27, value_28, scale, true)
+	metrics.ScrollbarWidth = value_29
+	return metrics
 }
 
 func TableView_TableViewRowHeight(requested_row_height int32, scale float32, metrics TableViewMetrics) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = requested_row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = requested_row_height
-		var value_8 float32 = float32(value_7)
-		var value_9 float32 = scale
-		var value_10 float32 = value_8 * value_9
-		var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-		var height int32 = value_11
-		var value_12 int32 = height
-		var value_13 int32 = 0
-		var value_14 bool = value_12 > value_13
-		if value_14 {
-			var value_15 int32 = height
-			return value_15
+	if requested_row_height > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(requested_row_height)*scale)), 32, true)), uint64(0), 32, true, 0))
+		var height int32 = value_0
+		if height > 0 {
+			return height
 		}
 	}
-	var value_16 int32 = metrics.DefaultRowHeight
-	return value_16
+	return metrics.DefaultRowHeight
 }
 
 func TableView_TableViewHeaderHeight(requested_header_height int32, scale float32, metrics TableViewMetrics) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = metrics.MinHeaderHeight
-	var height int32 = value_4
-	var value_5 int32 = requested_header_height
-	var value_6 int32 = 0
-	var value_7 bool = value_5 > value_6
-	if value_7 {
-		var value_8 int32 = requested_header_height
-		var value_9 float32 = float32(value_8)
-		var value_10 float32 = scale
-		var value_11 float32 = value_9 * value_10
-		var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-		height = value_12
+	var height int32 = metrics.MinHeaderHeight
+	if requested_header_height > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(requested_header_height)*scale)), 32, true)), uint64(0), 32, true, 0))
+		height = value_0
 	}
-	var value_13 int32 = height
-	var value_14 int32 = metrics.MinHeaderHeight
-	var value_15 bool = value_13 < value_14
-	if value_15 {
-		var value_16 int32 = metrics.MinHeaderHeight
-		height = value_16
+	if height < metrics.MinHeaderHeight {
+		height = metrics.MinHeaderHeight
 	}
-	var value_17 int32 = height
-	return value_17
+	return height
 }
 
 func TableView_TableViewBodyBounds(bounds Rectangle, header_height int32) Rectangle {
 	var body Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	body.X = value_0
-	var value_1 float32 = bounds.Y
-	var value_2 int32 = header_height
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 + value_3
-	body.Y = value_4
-	var value_5 float32 = bounds.Width
-	body.Width = value_5
-	var value_6 float32 = bounds.Height
-	var value_7 int32 = header_height
-	var value_8 float32 = float32(value_7)
-	var value_9 float32 = value_6 - value_8
-	body.Height = value_9
-	var value_10 float32 = body.Height
-	var value_11 float32 = 0.0
-	var value_12 bool = value_10 < value_11
-	if value_12 {
-		var value_13 float32 = 0.0
-		body.Height = value_13
+	body.X = bounds.X
+	body.Y = (bounds.Y + float32(header_height))
+	body.Width = bounds.Width
+	body.Height = (bounds.Height - float32(header_height))
+	if body.Height < 0.0 {
+		body.Height = 0.0
 	}
-	var value_14 Rectangle = body
-	return value_14
+	return body
 }
 
 func TableView_TableViewFrozenRows(requested int32, row_count int32, body_height int32, row_height int32) int32 {
-	var value_0 int32 = requested
-	var frozen int32 = value_0
-	var value_1 int32 = frozen
-	var value_2 int32 = 0
-	var value_3 bool = value_1 < value_2
-	if value_3 {
-		var value_4 int32 = 0
-		frozen = value_4
+	var frozen int32 = requested
+	if frozen < 0 {
+		frozen = 0
 	}
-	var value_5 int32 = frozen
-	var value_6 int32 = row_count
-	var value_7 bool = value_5 > value_6
-	if value_7 {
-		var value_8 int32 = row_count
-		frozen = value_8
+	if frozen > row_count {
+		frozen = row_count
 	}
-	var value_9 int32 = row_height
-	var value_10 int32 = 0
-	var value_11 bool = value_9 <= value_10
-	if value_11 {
-		var value_12 int32 = 1
-		row_height = value_12
+	if row_height <= 0 {
+		row_height = 1
 	}
-	var value_13 int32 = body_height
-	var value_14 int32 = row_height
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 4))
-	var max_frozen int32 = value_15
-	var value_16 int32 = max_frozen
-	var value_17 int32 = 0
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 int32 = 0
-		max_frozen = value_19
+	var max_frozen int32 = (int32(number_runtime_bits(uint64(body_height), uint64(row_height), 32, true, 4)))
+	if max_frozen < 0 {
+		max_frozen = 0
 	}
-	var value_20 int32 = frozen
-	var value_21 int32 = max_frozen
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 int32 = max_frozen
-		frozen = value_23
+	if frozen > max_frozen {
+		frozen = max_frozen
 	}
-	var value_24 int32 = frozen
-	return value_24
+	return frozen
 }
 
 func TableView_TableViewScrollBodyHeight(body_height int32, frozen_rows int32, row_height int32) int32 {
-	var value_0 int32 = body_height
-	var value_1 int32 = frozen_rows
-	var value_2 int32 = row_height
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 2))
-	var height int32 = value_4
-	var value_5 int32 = height
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 0
-		return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(body_height), uint64((int32(number_runtime_bits(uint64(frozen_rows), uint64(row_height), 32, true, 3)))), 32, true, 2))
+	var height int32 = value_0
+	if height < 0 {
+		return 0
 	}
-	var value_9 int32 = height
-	return value_9
+	return height
 }
 
 func TableView_TableViewMaxScroll(row_count int32, frozen_rows int32, row_height int32, scroll_body_height int32) int32 {
-	var value_0 int32 = row_count
-	var value_1 int32 = frozen_rows
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var rows int32 = value_2
-	var value_3 int32 = rows
-	var value_4 int32 = 0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 int32 = 0
-		rows = value_6
+	var rows int32 = (int32(number_runtime_bits(uint64(row_count), uint64(frozen_rows), 32, true, 2)))
+	if rows < 0 {
+		rows = 0
 	}
-	var value_7 int32 = rows
-	var value_8 int32 = row_height
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 3))
-	var value_10 int32 = scroll_body_height
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
-	var max_scroll int32 = value_11
-	var value_12 int32 = max_scroll
-	var value_13 int32 = 0
-	var value_14 bool = value_12 < value_13
-	if value_14 {
-		var value_15 int32 = 0
-		return value_15
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(rows), uint64(row_height), 32, true, 3)))), uint64(scroll_body_height), 32, true, 2))
+	var max_scroll int32 = value_0
+	if max_scroll < 0 {
+		return 0
 	}
-	var value_16 int32 = max_scroll
-	return value_16
+	return max_scroll
 }
 
 func TableView_TableViewLayoutFor(bounds Rectangle, row_count int32, requested_row_height int32, requested_header_height int32, requested_frozen_rows int32, scale float32, metrics TableViewMetrics) TableViewLayout {
 	var layout TableViewLayout = TableViewLayout{}
-	var value_0 int32 = requested_row_height
-	var value_1 float32 = scale
-	var value_2 TableViewMetrics = metrics
-	var value_3 int32 = TableView_TableViewRowHeight(value_0, value_1, value_2)
-	layout.RowHeight = value_3
-	var value_4 int32 = requested_header_height
-	var value_5 float32 = scale
-	var value_6 TableViewMetrics = metrics
-	var value_7 int32 = TableView_TableViewHeaderHeight(value_4, value_5, value_6)
-	layout.HeaderHeight = value_7
-	var value_8 Rectangle = bounds
-	var value_9 int32 = layout.HeaderHeight
-	var value_10 Rectangle = TableView_TableViewBodyBounds(value_8, value_9)
-	layout.Body = value_10
-	var value_11 int32 = requested_frozen_rows
-	var value_12 int32 = row_count
-	var value_13 float32 = layout.Body.Height
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	var value_15 int32 = layout.RowHeight
-	var value_16 int32 = TableView_TableViewFrozenRows(value_11, value_12, value_14, value_15)
-	layout.FrozenRows = value_16
-	var value_17 float32 = layout.Body.Height
-	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
-	var value_19 int32 = layout.FrozenRows
-	var value_20 int32 = layout.RowHeight
-	var value_21 int32 = TableView_TableViewScrollBodyHeight(value_18, value_19, value_20)
-	layout.ScrollBodyHeight = value_21
-	var value_22 int32 = row_count
-	var value_23 int32 = layout.FrozenRows
-	var value_24 int32 = layout.RowHeight
-	var value_25 int32 = layout.ScrollBodyHeight
-	var value_26 int32 = TableView_TableViewMaxScroll(value_22, value_23, value_24, value_25)
-	layout.MaxScroll = value_26
-	var value_27 TableViewLayout = layout
-	return value_27
+	var value_0 int32 = TableView_TableViewRowHeight(requested_row_height, scale, metrics)
+	layout.RowHeight = value_0
+	var value_1 int32 = TableView_TableViewHeaderHeight(requested_header_height, scale, metrics)
+	layout.HeaderHeight = value_1
+	var value_2 int32 = layout.HeaderHeight
+	var value_3 Rectangle = TableView_TableViewBodyBounds(bounds, value_2)
+	layout.Body = value_3
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(layout.Body.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_5 int32 = layout.RowHeight
+	var value_6 int32 = TableView_TableViewFrozenRows(requested_frozen_rows, row_count, value_4, value_5)
+	layout.FrozenRows = value_6
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(layout.Body.Height), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = layout.FrozenRows
+	var value_9 int32 = layout.RowHeight
+	var value_10 int32 = TableView_TableViewScrollBodyHeight(value_7, value_8, value_9)
+	layout.ScrollBodyHeight = value_10
+	var value_11 int32 = layout.FrozenRows
+	var value_12 int32 = layout.RowHeight
+	var value_13 int32 = layout.ScrollBodyHeight
+	var value_14 int32 = TableView_TableViewMaxScroll(row_count, value_11, value_12, value_13)
+	layout.MaxScroll = value_14
+	return layout
 }
 
 func TableView_TableViewScrollFor(scroll_y int32, frozen_rows int32, row_height int32, scroll_body_height int32) TableViewScrollLayout {
 	var layout TableViewScrollLayout = TableViewScrollLayout{}
-	var value_0 int32 = scroll_y
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		scroll_y = value_3
+	if scroll_y < 0 {
+		scroll_y = 0
 	}
-	var value_4 int32 = row_height
-	var value_5 int32 = 0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 int32 = 1
-		row_height = value_7
+	if row_height <= 0 {
+		row_height = 1
 	}
-	var value_8 int32 = frozen_rows
-	var value_9 int32 = scroll_y
-	var value_10 int32 = row_height
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 4))
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_11), 32, true, 1))
-	layout.First = value_12
-	var value_13 int32 = scroll_y
-	var value_14 int32 = row_height
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 5))
-	layout.YOffset = value_15
-	var value_16 int32 = scroll_body_height
-	var value_17 int32 = 0
-	var value_18 bool = value_16 <= value_17
-	if value_18 {
-		var value_19 int32 = 0
-		layout.VisibleRows = value_19
+	var value_0 int32 = int32(number_runtime_bits(uint64(frozen_rows), uint64((int32(number_runtime_bits(uint64(scroll_y), uint64(row_height), 32, true, 4)))), 32, true, 1))
+	layout.First = value_0
+	layout.YOffset = (int32(number_runtime_bits(uint64(scroll_y), uint64(row_height), 32, true, 5)))
+	if scroll_body_height <= 0 {
+		layout.VisibleRows = 0
 	} else {
-		var value_20 int32 = scroll_body_height
-		var value_21 int32 = row_height
-		var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 4))
-		var value_23 int32 = 1
-		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
-		layout.VisibleRows = value_24
+		var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(scroll_body_height), uint64(row_height), 32, true, 4)))), uint64(1), 32, true, 1))
+		layout.VisibleRows = value_1
 	}
-	var value_25 TableViewScrollLayout = layout
-	return value_25
+	return layout
 }
 
 func TableView_TableViewDefaultColumnWidth(bounds_width int32, visible_columns int32) int32 {
-	var value_0 int32 = visible_columns
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = 0
-		return value_3
+	if visible_columns <= 0 {
+		return 0
 	}
-	var value_4 int32 = bounds_width
-	var value_5 int32 = visible_columns
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 4))
-	return value_6
+	return (int32(number_runtime_bits(uint64(bounds_width), uint64(visible_columns), 32, true, 4)))
 }
 
 func TableView_TableViewColumnWidth(requested_width int32, default_width int32) int32 {
-	var value_0 int32 = requested_width
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = requested_width
-		return value_3
+	if requested_width > 0 {
+		return requested_width
 	}
-	var value_4 int32 = default_width
-	return value_4
+	return default_width
 }
 
 func TableView_TableViewHeaderBounds(bounds Rectangle, column_x int32, column_width int32, header_height int32) Rectangle {
 	var header Rectangle = Rectangle{}
-	var value_0 int32 = column_x
-	var value_1 float32 = float32(value_0)
-	header.X = value_1
-	var value_2 float32 = bounds.Y
-	header.Y = value_2
-	var value_3 int32 = column_width
-	var value_4 float32 = float32(value_3)
-	header.Width = value_4
-	var value_5 int32 = header_height
-	var value_6 float32 = float32(value_5)
-	header.Height = value_6
-	var value_7 Rectangle = header
-	return value_7
+	header.X = float32(column_x)
+	header.Y = bounds.Y
+	header.Width = float32(column_width)
+	header.Height = float32(header_height)
+	return header
 }
 
 func TableView_TableViewRowBounds(bounds Rectangle, layout TableViewLayout, row_index int32, draw_index int32, scroll TableViewScrollLayout, scrolling bool) Rectangle {
 	var row Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	row.X = value_0
-	var value_1 bool = scrolling
-	if value_1 {
-		var value_2 int32 = draw_index
-		var value_3 int32 = layout.FrozenRows
-		var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 2))
-		var local int32 = value_4
-		var value_5 float32 = bounds.Y
-		var value_6 int32 = layout.HeaderHeight
-		var value_7 int32 = layout.FrozenRows
-		var value_8 int32 = layout.RowHeight
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 3))
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_9), 32, true, 1))
-		var value_11 int32 = local
-		var value_12 int32 = layout.RowHeight
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 3))
-		var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 1))
-		var value_15 int32 = scroll.YOffset
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
-		var value_17 float32 = float32(value_16)
-		var value_18 float32 = value_5 + value_17
-		row.Y = value_18
+	row.X = bounds.X
+	if scrolling {
+		var local int32 = (int32(number_runtime_bits(uint64(draw_index), uint64(layout.FrozenRows), 32, true, 2)))
+		var value_0 int32 = int32(number_runtime_bits(uint64(layout.HeaderHeight), uint64((int32(number_runtime_bits(uint64(layout.FrozenRows), uint64(layout.RowHeight), 32, true, 3)))), 32, true, 1))
+		var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(local), uint64(layout.RowHeight), 32, true, 3)))), 32, true, 1))
+		var value_2 float32 = bounds.Y + float32((int32(number_runtime_bits(uint64(value_1), uint64(scroll.YOffset), 32, true, 2))))
+		row.Y = value_2
 	} else {
-		var value_19 float32 = bounds.Y
-		var value_20 int32 = layout.HeaderHeight
-		var value_21 int32 = row_index
-		var value_22 int32 = layout.RowHeight
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 3))
-		var value_24 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_23), 32, true, 1))
-		var value_25 float32 = float32(value_24)
-		var value_26 float32 = value_19 + value_25
-		row.Y = value_26
+		var value_3 int32 = int32(number_runtime_bits(uint64(layout.HeaderHeight), uint64((int32(number_runtime_bits(uint64(row_index), uint64(layout.RowHeight), 32, true, 3)))), 32, true, 1))
+		row.Y = (bounds.Y + float32(value_3))
 	}
-	var value_27 float32 = bounds.Width
-	row.Width = value_27
-	var value_28 int32 = layout.RowHeight
-	var value_29 float32 = float32(value_28)
-	row.Height = value_29
-	var value_30 Rectangle = row
-	return value_30
+	row.Width = bounds.Width
+	row.Height = float32(layout.RowHeight)
+	return row
 }
 
 func TableView_TableViewCellBounds(row Rectangle, column_x int32, column_width int32) Rectangle {
 	var cell Rectangle = Rectangle{}
-	var value_0 int32 = column_x
-	var value_1 float32 = float32(value_0)
-	cell.X = value_1
-	var value_2 float32 = row.Y
-	cell.Y = value_2
-	var value_3 int32 = column_width
-	var value_4 float32 = float32(value_3)
-	cell.Width = value_4
-	var value_5 float32 = row.Height
-	cell.Height = value_5
-	var value_6 Rectangle = cell
-	return value_6
+	cell.X = float32(column_x)
+	cell.Y = row.Y
+	cell.Width = float32(column_width)
+	cell.Height = row.Height
+	return cell
 }
 
 func TableView_TableViewViewport(bounds Rectangle, layout TableViewLayout, scrolling bool) Rectangle {
 	var viewport Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	viewport.X = value_0
-	var value_1 float32 = bounds.Y
-	var value_2 int32 = layout.HeaderHeight
-	var value_3 float32 = float32(value_2)
-	var value_4 float32 = value_1 + value_3
-	viewport.Y = value_4
-	var value_5 float32 = bounds.Width
-	viewport.Width = value_5
-	var value_6 bool = scrolling
-	if value_6 {
-		var value_7 float32 = viewport.Y
-		var value_8 int32 = layout.FrozenRows
-		var value_9 int32 = layout.RowHeight
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-		var value_11 float32 = float32(value_10)
-		viewport.Y = value_7 + value_11
-		var value_12 int32 = layout.ScrollBodyHeight
-		var value_13 float32 = float32(value_12)
-		viewport.Height = value_13
+	viewport.X = bounds.X
+	viewport.Y = (bounds.Y + float32(layout.HeaderHeight))
+	viewport.Width = bounds.Width
+	if scrolling {
+		var value_0 float32 = viewport.Y
+		var value_1 float32 = float32((int32(number_runtime_bits(uint64(layout.FrozenRows), uint64(layout.RowHeight), 32, true, 3))))
+		viewport.Y = value_0 + value_1
+		viewport.Height = float32(layout.ScrollBodyHeight)
 	} else {
-		var value_14 int32 = layout.FrozenRows
-		var value_15 int32 = layout.RowHeight
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 3))
-		var value_17 float32 = float32(value_16)
-		viewport.Height = value_17
+		var value_2 float32 = float32((int32(number_runtime_bits(uint64(layout.FrozenRows), uint64(layout.RowHeight), 32, true, 3))))
+		viewport.Height = value_2
 	}
-	var value_18 float32 = viewport.Height
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 float32 = 0.0
-		viewport.Height = value_21
+	if viewport.Height < 0.0 {
+		viewport.Height = 0.0
 	}
-	var value_22 Rectangle = viewport
-	return value_22
+	return viewport
 }
 
 func TableView_TableViewScrollbarBoundsFor(bounds Rectangle, layout TableViewLayout, scrollbar_width int32) Rectangle {
 	var scrollbar Rectangle = Rectangle{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = bounds.Width
-	var value_2 float32 = value_0 + value_1
-	var value_3 int32 = scrollbar_width
-	var value_4 float32 = float32(value_3)
-	var value_5 float32 = value_2 - value_4
-	scrollbar.X = value_5
-	var value_6 float32 = bounds.Y
-	var value_7 int32 = layout.HeaderHeight
-	var value_8 int32 = layout.FrozenRows
-	var value_9 int32 = layout.RowHeight
-	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_10), 32, true, 1))
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = value_6 + value_12
-	scrollbar.Y = value_13
-	var value_14 int32 = scrollbar_width
-	var value_15 float32 = float32(value_14)
-	scrollbar.Width = value_15
-	var value_16 int32 = layout.ScrollBodyHeight
-	var value_17 float32 = float32(value_16)
-	scrollbar.Height = value_17
-	var value_18 float32 = scrollbar.Width
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 < value_19
-	if value_20 {
-		var value_21 float32 = 0.0
-		scrollbar.Width = value_21
+	scrollbar.X = ((bounds.X + bounds.Width) - float32(scrollbar_width))
+	var value_0 int32 = int32(number_runtime_bits(uint64(layout.HeaderHeight), uint64((int32(number_runtime_bits(uint64(layout.FrozenRows), uint64(layout.RowHeight), 32, true, 3)))), 32, true, 1))
+	scrollbar.Y = (bounds.Y + float32(value_0))
+	scrollbar.Width = float32(scrollbar_width)
+	scrollbar.Height = float32(layout.ScrollBodyHeight)
+	if scrollbar.Width < 0.0 {
+		scrollbar.Width = 0.0
 	}
-	var value_22 float32 = scrollbar.Height
-	var value_23 float32 = 0.0
-	var value_24 bool = value_22 < value_23
-	if value_24 {
-		var value_25 float32 = 0.0
-		scrollbar.Height = value_25
+	if scrollbar.Height < 0.0 {
+		scrollbar.Height = 0.0
 	}
-	var value_26 Rectangle = scrollbar
-	return value_26
+	return scrollbar
 }
 
 func TableView_TableViewMinimumColumnWidth(requested_min_width int32, scale float32, metrics TableViewMetrics) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 int32 = requested_min_width
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = requested_min_width
-		var value_8 float32 = float32(value_7)
-		var value_9 float32 = scale
-		var value_10 float32 = value_8 * value_9
-		var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-		var width int32 = value_11
-		var value_12 int32 = width
-		var value_13 int32 = 0
-		var value_14 bool = value_12 > value_13
-		if value_14 {
-			var value_15 int32 = width
-			return value_15
+	if requested_min_width > 0 {
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(requested_min_width)*scale)), 32, true)), uint64(0), 32, true, 0))
+		var width int32 = value_0
+		if width > 0 {
+			return width
 		}
 	}
-	var value_16 int32 = metrics.DefaultMinColumnWidth
-	return value_16
+	return metrics.DefaultMinColumnWidth
 }
 
 func TableView_TableViewHeaderAngleFor(requested_angle float32) float32 {
-	var value_0 float32 = requested_angle
-	var value_1 float32 = requested_angle
-	var value_2 bool = value_0 != value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if requested_angle != requested_angle {
+		return 0.0
 	}
-	var value_4 float32 = requested_angle
-	var value_5 float32 = 89.0
-	var value_6 float32 = -value_5
-	var value_7 bool = value_4 < value_6
-	if value_7 {
-		var value_8 float32 = 89.0
-		var value_9 float32 = -value_8
-		return value_9
+	if requested_angle < -89.0 {
+		return -89.0
 	}
-	var value_10 float32 = requested_angle
-	var value_11 float32 = 89.0
-	var value_12 bool = value_10 > value_11
-	if value_12 {
-		var value_13 float32 = 89.0
-		return value_13
+	if requested_angle > 89.0 {
+		return 89.0
 	}
-	var value_14 float32 = requested_angle
-	return value_14
+	return requested_angle
 }
 
 func TableView_TableViewResizeColumnWidthFor(start_width int32, start_x int32, pointer_x int32, minimum_width int32) int32 {
-	var value_0 int32 = start_width
-	var value_1 int32 = pointer_x
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
-	var value_3 int32 = start_x
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 2))
-	var width int32 = value_4
-	var value_5 int32 = width
-	var value_6 int32 = minimum_width
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = minimum_width
-		return value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(start_width), uint64(pointer_x), 32, true, 1)))), uint64(start_x), 32, true, 2))
+	var width int32 = value_0
+	if width < minimum_width {
+		return minimum_width
 	}
-	var value_9 int32 = width
-	return value_9
+	return width
 }
 
 func TableView_TableViewResizeStartFor(active bool, content_disabled bool, table_disabled bool, resizable bool, has_column_widths bool, pressed bool, pointer_in_header bool, column int32) TableViewResizeStartDecision {
 	var decision TableViewResizeStartDecision = TableViewResizeStartDecision{}
-	var value_0 int32 = column
-	decision.Column = value_0
-	var value_1 bool = active
-	var value_2 bool = !value_1
+	decision.Column = column
+	var value_0 bool = !active
+	if value_0 {
+		value_0 = !content_disabled
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = !table_disabled
+	}
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = resizable
+	}
 	var value_3 bool = value_2
 	if value_3 {
-		var value_4 bool = content_disabled
-		var value_5 bool = !value_4
-		value_3 = value_5
+		value_3 = has_column_widths
 	}
-	var value_6 bool = value_3
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = pressed
+	}
+	var value_5 bool = value_4
+	if value_5 {
+		value_5 = pointer_in_header
+	}
+	var value_6 bool = value_5
 	if value_6 {
-		var value_7 bool = table_disabled
-		var value_8 bool = !value_7
-		value_6 = value_8
+		value_6 = (column >= 0)
 	}
-	var value_9 bool = value_6
-	if value_9 {
-		var value_10 bool = resizable
-		value_9 = value_10
-	}
-	var value_11 bool = value_9
-	if value_11 {
-		var value_12 bool = has_column_widths
-		value_11 = value_12
-	}
-	var value_13 bool = value_11
-	if value_13 {
-		var value_14 bool = pressed
-		value_13 = value_14
-	}
-	var value_15 bool = value_13
-	if value_15 {
-		var value_16 bool = pointer_in_header
-		value_15 = value_16
-	}
-	var value_17 bool = value_15
-	if value_17 {
-		var value_18 int32 = column
-		var value_19 int32 = 0
-		var value_20 bool = value_18 >= value_19
-		value_17 = value_20
-	}
-	decision.Begin = value_17
-	var value_21 TableViewResizeStartDecision = decision
-	return value_21
+	decision.Begin = value_6
+	return decision
 }
 
 func TableView_TableViewResizeDragFor(active bool, same_table bool, content_disabled bool, table_disabled bool, resizable bool, has_column_widths bool, down bool, released bool) TableViewResizeDragDecision {
 	var decision TableViewResizeDragDecision = TableViewResizeDragDecision{}
-	var value_0 bool = active
-	var value_1 bool = !value_0
+	var value_0 bool = !active
+	if !value_0 {
+		value_0 = !same_table
+	}
+	if value_0 {
+		return decision
+	}
+	var value_1 bool = !content_disabled
+	if value_1 {
+		value_1 = !table_disabled
+	}
 	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = same_table
-		var value_4 bool = !value_3
-		value_2 = value_4
-	}
 	if value_2 {
-		var value_5 TableViewResizeDragDecision = decision
-		return value_5
+		value_2 = resizable
 	}
-	var value_6 bool = content_disabled
-	var value_7 bool = !value_6
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = table_disabled
-		var value_10 bool = !value_9
-		value_8 = value_10
+	var value_3 bool = value_2
+	if value_3 {
+		value_3 = has_column_widths
 	}
-	var value_11 bool = value_8
-	if value_11 {
-		var value_12 bool = resizable
-		value_11 = value_12
+	var can_update bool = value_3
+	var value_4 bool = can_update
+	if value_4 {
+		value_4 = down
 	}
-	var value_13 bool = value_11
-	if value_13 {
-		var value_14 bool = has_column_widths
-		value_13 = value_14
+	decision.Update = value_4
+	decision.Finish = released
+	decision.ConsumeRelease = released
+	var value_5 bool = can_update
+	if value_5 {
+		value_5 = down
 	}
-	var can_update bool = value_13
-	var value_15 bool = can_update
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 bool = down
-		value_16 = value_17
-	}
-	decision.Update = value_16
-	var value_18 bool = released
-	decision.Finish = value_18
-	var value_19 bool = released
-	decision.ConsumeRelease = value_19
-	var value_20 bool = can_update
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 bool = down
-		value_21 = value_22
-	}
-	decision.MarkClickable = value_21
-	var value_23 TableViewResizeDragDecision = decision
-	return value_23
+	decision.MarkClickable = value_5
+	return decision
 }
 
 func TableView_TableViewResizeClearFor(active bool, owner_captured bool, content_disabled bool, released bool, same_table bool, table_disabled bool, resizable bool, has_column_widths bool) TableViewResizeClearDecision {
 	var decision TableViewResizeClearDecision = TableViewResizeClearDecision{}
-	var value_0 bool = active
-	var value_1 bool = !value_0
+	if !active {
+		return decision
+	}
+	if owner_captured {
+		decision.Clear = true
+		return decision
+	}
+	var value_0 bool = content_disabled
+	if !value_0 {
+		value_0 = released
+	}
+	var value_1 bool = value_0
 	if value_1 {
-		var value_2 TableViewResizeClearDecision = decision
-		return value_2
-	}
-	var value_3 bool = owner_captured
-	if value_3 {
-		var value_4 bool = true
-		decision.Clear = value_4
-		var value_5 TableViewResizeClearDecision = decision
-		return value_5
-	}
-	var value_6 bool = content_disabled
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 bool = released
-		value_7 = value_8
-	}
-	var value_9 bool = value_7
-	if value_9 {
-		var value_10 bool = content_disabled
-		var value_11 bool = value_10
-		if !value_11 {
-			var value_12 bool = same_table
-			var value_13 bool = !value_12
-			value_11 = value_13
+		var value_2 bool = content_disabled
+		if !value_2 {
+			value_2 = !same_table
 		}
-		var value_14 bool = value_11
-		if !value_14 {
-			var value_15 bool = table_disabled
-			value_14 = value_15
+		var value_3 bool = value_2
+		if !value_3 {
+			value_3 = table_disabled
 		}
-		var value_16 bool = value_14
-		if !value_16 {
-			var value_17 bool = resizable
-			var value_18 bool = !value_17
-			value_16 = value_18
+		var value_4 bool = value_3
+		if !value_4 {
+			value_4 = !resizable
 		}
-		var value_19 bool = value_16
-		if !value_19 {
-			var value_20 bool = has_column_widths
-			var value_21 bool = !value_20
-			value_19 = value_21
+		var value_5 bool = value_4
+		if !value_5 {
+			value_5 = !has_column_widths
 		}
-		value_9 = value_19
+		value_1 = value_5
 	}
-	if value_9 {
-		var value_22 bool = true
-		decision.Clear = value_22
+	if value_1 {
+		decision.Clear = true
 	}
-	var value_23 TableViewResizeClearDecision = decision
-	return value_23
+	return decision
 }
 
 func TableView_TableViewHeaderHotFor(disabled bool, pointer_in_headers bool, pointer_in_header bool, captured bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = pointer_in_headers
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = pointer_in_header
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = pointer_in_headers
-		value_2 = value_3
+		value_2 = !captured
 	}
-	var value_4 bool = value_2
-	if value_4 {
-		var value_5 bool = pointer_in_header
-		value_4 = value_5
-	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = captured
-		var value_8 bool = !value_7
-		value_6 = value_8
-	}
-	return value_6
+	return value_2
 }
 
 func TableView_TableViewRowHotFor(disabled bool, custom_cells bool, pointer_in_viewport bool, row_hot bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !custom_cells
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = pointer_in_viewport
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = custom_cells
-		var value_4 bool = !value_3
-		value_2 = value_4
+		value_2 = row_hot
 	}
-	var value_5 bool = value_2
-	if value_5 {
-		var value_6 bool = pointer_in_viewport
-		value_5 = value_6
-	}
-	var value_7 bool = value_5
-	if value_7 {
-		var value_8 bool = row_hot
-		value_7 = value_8
-	}
-	return value_7
+	return value_2
 }
 
 func TableView_TableViewSelectedRowFor(selected_row int32, row_count int32) int32 {
-	var value_0 int32 = row_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if row_count <= 0 {
+		return -1
 	}
-	var value_4 int32 = selected_row
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if selected_row < 0 {
+		return 0
 	}
-	var value_8 int32 = selected_row
-	var value_9 int32 = row_count
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = row_count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		return value_13
+	if selected_row >= row_count {
+		return (int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2)))
 	}
-	var value_14 int32 = selected_row
-	return value_14
+	return selected_row
 }
 
 func TableView_TableViewSelectionMoveRow(row int32, row_count int32, direction int32) int32 {
-	var value_0 int32 = row_count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if row_count <= 0 {
+		return -1
 	}
-	var value_4 int32 = row
-	var value_5 int32 = row_count
-	var value_6 int32 = TableView_TableViewSelectedRowFor(value_4, value_5)
-	row = value_6
-	var value_7 int32 = direction
-	var value_8 int32 = 0
-	var value_9 bool = value_7 < value_8
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 int32 = row
-		var value_12 int32 = 0
-		var value_13 bool = value_11 > value_12
-		value_10 = value_13
+	var value_0 int32 = TableView_TableViewSelectedRowFor(row, row_count)
+	row = value_0
+	var value_1 bool = (direction < 0)
+	if value_1 {
+		value_1 = (row > 0)
 	}
-	if value_10 {
-		var value_14 int32 = row
-		var value_15 int32 = 1
-		row = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+	if value_1 {
+		var value_2 int32 = row
+		row = int32(number_runtime_bits(uint64(value_2), uint64(1), 32, true, 2))
 	}
-	var value_16 int32 = direction
-	var value_17 int32 = 0
-	var value_18 bool = value_16 > value_17
-	var value_19 bool = value_18
-	if value_19 {
-		var value_20 int32 = row
-		var value_21 int32 = row_count
-		var value_22 int32 = 1
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
-		var value_24 bool = value_20 < value_23
-		value_19 = value_24
+	var value_3 bool = (direction > 0)
+	if value_3 {
+		value_3 = (row < (int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2))))
 	}
-	if value_19 {
-		var value_25 int32 = row
-		var value_26 int32 = 1
-		row = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
+	if value_3 {
+		var value_4 int32 = row
+		row = int32(number_runtime_bits(uint64(value_4), uint64(1), 32, true, 1))
 	}
-	var value_27 int32 = row
-	return value_27
+	return row
 }
 
 func TableView_TableViewColumnSlotFor(slot int32, visible_columns int32) int32 {
-	var value_0 int32 = visible_columns
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if visible_columns <= 0 {
+		return -1
 	}
-	var value_4 int32 = slot
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	if slot < 0 {
+		return 0
 	}
-	var value_8 int32 = slot
-	var value_9 int32 = visible_columns
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = visible_columns
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		return value_13
+	if slot >= visible_columns {
+		return (int32(number_runtime_bits(uint64(visible_columns), uint64(1), 32, true, 2)))
 	}
-	var value_14 int32 = slot
-	return value_14
+	return slot
 }
 
 func TableView_TableViewSelectionMoveColumn(slot int32, visible_columns int32, direction int32) int32 {
-	var value_0 int32 = visible_columns
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 int32 = -1
-		return value_3
+	if visible_columns <= 0 {
+		return -1
 	}
-	var value_4 int32 = slot
-	var value_5 int32 = visible_columns
-	var value_6 int32 = TableView_TableViewColumnSlotFor(value_4, value_5)
-	slot = value_6
-	var value_7 int32 = direction
-	var value_8 int32 = 0
-	var value_9 bool = value_7 < value_8
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 int32 = slot
-		var value_12 int32 = 0
-		var value_13 bool = value_11 > value_12
-		value_10 = value_13
+	var value_0 int32 = TableView_TableViewColumnSlotFor(slot, visible_columns)
+	slot = value_0
+	var value_1 bool = (direction < 0)
+	if value_1 {
+		value_1 = (slot > 0)
 	}
-	if value_10 {
-		var value_14 int32 = slot
-		var value_15 int32 = 1
-		slot = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+	if value_1 {
+		var value_2 int32 = slot
+		slot = int32(number_runtime_bits(uint64(value_2), uint64(1), 32, true, 2))
 	}
-	var value_16 int32 = direction
-	var value_17 int32 = 0
-	var value_18 bool = value_16 > value_17
-	var value_19 bool = value_18
-	if value_19 {
-		var value_20 int32 = slot
-		var value_21 int32 = visible_columns
-		var value_22 int32 = 1
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
-		var value_24 bool = value_20 < value_23
-		value_19 = value_24
+	var value_3 bool = (direction > 0)
+	if value_3 {
+		value_3 = (slot < (int32(number_runtime_bits(uint64(visible_columns), uint64(1), 32, true, 2))))
 	}
-	if value_19 {
-		var value_25 int32 = slot
-		var value_26 int32 = 1
-		slot = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
+	if value_3 {
+		var value_4 int32 = slot
+		slot = int32(number_runtime_bits(uint64(value_4), uint64(1), 32, true, 1))
 	}
-	var value_27 int32 = slot
-	return value_27
+	return slot
 }
 
 func TableView_TableViewSelectionTab(row int32, column_slot int32, row_count int32, visible_columns int32, backwards bool) TableViewSelection {
 	var selection TableViewSelection = TableViewSelection{}
-	var value_0 int32 = row
-	var value_1 int32 = row_count
-	var value_2 int32 = TableView_TableViewSelectedRowFor(value_0, value_1)
-	selection.Row = value_2
-	var value_3 int32 = column_slot
-	var value_4 int32 = visible_columns
-	var value_5 int32 = TableView_TableViewColumnSlotFor(value_3, value_4)
-	selection.ColumnSlot = value_5
-	var value_6 int32 = selection.Row
-	var value_7 int32 = 0
-	var value_8 bool = value_6 < value_7
-	var value_9 bool = value_8
-	if !value_9 {
-		var value_10 int32 = selection.ColumnSlot
-		var value_11 int32 = 0
-		var value_12 bool = value_10 < value_11
-		value_9 = value_12
+	var value_0 int32 = TableView_TableViewSelectedRowFor(row, row_count)
+	selection.Row = value_0
+	var value_1 int32 = TableView_TableViewColumnSlotFor(column_slot, visible_columns)
+	selection.ColumnSlot = value_1
+	var value_2 bool = (selection.Row < 0)
+	if !value_2 {
+		value_2 = (selection.ColumnSlot < 0)
 	}
-	if value_9 {
-		var value_13 TableViewSelection = selection
-		return value_13
+	if value_2 {
+		return selection
 	}
-	var value_14 bool = backwards
-	if value_14 {
-		var value_15 int32 = selection.ColumnSlot
-		var value_16 int32 = 0
-		var value_17 bool = value_15 > value_16
-		if value_17 {
-			var value_18 int32 = selection.ColumnSlot
-			var value_19 int32 = 1
-			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 2))
+	if backwards {
+		if selection.ColumnSlot > 0 {
+			var value_3 int32 = selection.ColumnSlot
+			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_3), uint64(1), 32, true, 2))
 		} else {
-			var value_20 int32 = visible_columns
-			var value_21 int32 = 1
-			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
-			selection.ColumnSlot = value_22
-			var value_23 int32 = selection.Row
-			var value_24 int32 = 0
-			var value_25 bool = value_23 > value_24
-			if value_25 {
-				var value_26 int32 = selection.Row
-				var value_27 int32 = 1
-				selection.Row = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
+			selection.ColumnSlot = (int32(number_runtime_bits(uint64(visible_columns), uint64(1), 32, true, 2)))
+			if selection.Row > 0 {
+				var value_4 int32 = selection.Row
+				selection.Row = int32(number_runtime_bits(uint64(value_4), uint64(1), 32, true, 2))
 			}
 		}
 	} else {
-		var value_28 int32 = selection.ColumnSlot
-		var value_29 int32 = visible_columns
-		var value_30 int32 = 1
-		var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 2))
-		var value_32 bool = value_28 < value_31
-		if value_32 {
-			var value_33 int32 = selection.ColumnSlot
-			var value_34 int32 = 1
-			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
+		if selection.ColumnSlot < (int32(number_runtime_bits(uint64(visible_columns), uint64(1), 32, true, 2))) {
+			var value_5 int32 = selection.ColumnSlot
+			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_5), uint64(1), 32, true, 1))
 		} else {
-			var value_35 int32 = 0
-			selection.ColumnSlot = value_35
-			var value_36 int32 = selection.Row
-			var value_37 int32 = row_count
-			var value_38 int32 = 1
-			var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 2))
-			var value_40 bool = value_36 < value_39
-			if value_40 {
-				var value_41 int32 = selection.Row
-				var value_42 int32 = 1
-				selection.Row = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
+			selection.ColumnSlot = 0
+			if selection.Row < (int32(number_runtime_bits(uint64(row_count), uint64(1), 32, true, 2))) {
+				var value_6 int32 = selection.Row
+				selection.Row = int32(number_runtime_bits(uint64(value_6), uint64(1), 32, true, 1))
 			}
 		}
 	}
-	var value_43 TableViewSelection = selection
-	return value_43
+	return selection
 }
 
 func TableView_TableViewSelectionClearFor(selected_row int32, selected_column int32) TableViewSelectionClearDecision {
 	var decision TableViewSelectionClearDecision = TableViewSelectionClearDecision{}
-	var value_0 int32 = selected_row
-	decision.Row = value_0
-	var value_1 int32 = selected_column
-	decision.Column = value_1
-	var value_2 int32 = selected_row
-	var value_3 int32 = 0
-	var value_4 bool = value_2 >= value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 int32 = selected_column
-		var value_7 int32 = 0
-		var value_8 bool = value_6 >= value_7
-		value_5 = value_8
+	decision.Row = selected_row
+	decision.Column = selected_column
+	var value_0 bool = (selected_row >= 0)
+	if !value_0 {
+		value_0 = (selected_column >= 0)
 	}
-	if value_5 {
-		var value_9 int32 = -1
-		decision.Row = value_9
-		var value_10 int32 = -1
-		decision.Column = value_10
-		var value_11 bool = true
-		decision.Changed = value_11
+	if value_0 {
+		decision.Row = -1
+		decision.Column = -1
+		decision.Changed = true
 	}
-	var value_12 TableViewSelectionClearDecision = decision
-	return value_12
+	return decision
 }
 
 func TableView_TableViewKeyboardIntentFor(up bool, down bool, left bool, right bool, tab bool, tab_backwards bool, enter bool, f2 bool, escape bool) TableViewKeyboardIntent {
 	var intent TableViewKeyboardIntent = TableViewKeyboardIntent{}
-	var value_0 bool = up
-	if value_0 {
-		var value_1 int32 = -1
-		intent.MoveRow = value_1
+	if up {
+		intent.MoveRow = -1
 	}
-	var value_2 bool = down
-	if value_2 {
-		var value_3 int32 = 1
-		intent.MoveRow = value_3
+	if down {
+		intent.MoveRow = 1
 	}
-	var value_4 bool = left
-	if value_4 {
-		var value_5 int32 = -1
-		intent.MoveColumn = value_5
+	if left {
+		intent.MoveColumn = -1
 	}
-	var value_6 bool = right
-	if value_6 {
-		var value_7 int32 = 1
-		intent.MoveColumn = value_7
+	if right {
+		intent.MoveColumn = 1
 	}
-	var value_8 bool = tab
-	intent.Tab = value_8
-	var value_9 bool = tab_backwards
-	intent.TabBackwards = value_9
-	var value_10 bool = enter
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 bool = f2
-		value_11 = value_12
+	intent.Tab = tab
+	intent.TabBackwards = tab_backwards
+	var value_0 bool = enter
+	if !value_0 {
+		value_0 = f2
 	}
-	intent.Activate = value_11
-	var value_13 bool = escape
-	intent.ClearSelection = value_13
-	var value_14 TableViewKeyboardIntent = intent
-	return value_14
+	intent.Activate = value_0
+	intent.ClearSelection = escape
+	return intent
 }
 
 func TableView_TableViewHeaderPointerDecisionFor(disabled bool, header_hot bool, released bool, has_sort_column bool) TableViewHeaderPointerDecision {
 	var decision TableViewHeaderPointerDecision = TableViewHeaderPointerDecision{}
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = header_hot
+	}
+	var value_1 bool = value_0
+	if value_1 {
+		value_1 = released
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = header_hot
-		value_2 = value_3
+		value_2 = has_sort_column
 	}
-	var value_4 bool = value_2
-	if value_4 {
-		var value_5 bool = released
-		value_4 = value_5
-	}
-	var value_6 bool = value_4
-	if value_6 {
-		var value_7 bool = has_sort_column
-		value_6 = value_7
-	}
-	decision.Sort = value_6
-	var value_8 TableViewHeaderPointerDecision = decision
-	return value_8
+	decision.Sort = value_2
+	return decision
 }
 
 func TableView_TableViewSortDecisionFor(column int32, previous_sort_column int32, previous_sort_direction int32) TableViewSortDecision {
 	var decision TableViewSortDecision = TableViewSortDecision{}
-	var value_0 int32 = -1
-	decision.SelectedRow = value_0
-	var value_1 int32 = column
-	decision.SelectedColumn = value_1
-	var value_2 int32 = column
-	decision.SortColumn = value_2
-	var value_3 int32 = previous_sort_direction
-	decision.SortDirection = value_3
-	var value_4 int32 = column
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = -1
-		decision.SelectedColumn = value_7
-		var value_8 int32 = previous_sort_column
-		decision.SortColumn = value_8
-		var value_9 TableViewSortDecision = decision
-		return value_9
+	decision.SelectedRow = -1
+	decision.SelectedColumn = column
+	decision.SortColumn = column
+	decision.SortDirection = previous_sort_direction
+	if column < 0 {
+		decision.SelectedColumn = -1
+		decision.SortColumn = previous_sort_column
+		return decision
 	}
-	var value_10 int32 = previous_sort_column
-	var value_11 int32 = column
-	var value_12 bool = value_10 != value_11
-	var value_13 bool = value_12
-	if !value_13 {
-		var value_14 int32 = previous_sort_direction
-		var value_15 int32 = 0
-		var value_16 bool = value_14 == value_15
-		value_13 = value_16
+	var value_0 bool = (previous_sort_column != column)
+	if !value_0 {
+		value_0 = (previous_sort_direction == 0)
 	}
-	if value_13 {
-		var value_17 int32 = 1
-		decision.SortDirection = value_17
+	if value_0 {
+		decision.SortDirection = 1
 	} else {
-		var value_18 int32 = previous_sort_direction
-		var value_19 int32 = 0
-		var value_20 bool = value_18 > value_19
-		if value_20 {
-			var value_21 int32 = -1
-			decision.SortDirection = value_21
+		if previous_sort_direction > 0 {
+			decision.SortDirection = -1
 		} else {
-			var value_22 int32 = 0
-			decision.SortDirection = value_22
+			decision.SortDirection = 0
 		}
 	}
-	var value_23 bool = true
-	decision.Changed = value_23
-	var value_24 TableViewSortDecision = decision
-	return value_24
+	decision.Changed = true
+	return decision
 }
 
 func TableView_TableViewRowPointerDecisionFor(disabled bool, hot bool, left_released bool, right_released bool, has_selection bool, has_context bool) TableViewRowPointerDecision {
 	var decision TableViewRowPointerDecision = TableViewRowPointerDecision{}
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = hot
+	}
+	decision.MarkClickable = value_0
+	var value_1 bool = decision.MarkClickable
+	if value_1 {
+		value_1 = left_released
+	}
 	var value_2 bool = value_1
 	if value_2 {
-		var value_3 bool = hot
-		value_2 = value_3
+		value_2 = has_selection
 	}
-	decision.MarkClickable = value_2
-	var value_4 bool = decision.MarkClickable
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 bool = left_released
-		value_5 = value_6
+	decision.Click = value_2
+	var value_3 bool = decision.MarkClickable
+	if value_3 {
+		value_3 = right_released
 	}
-	var value_7 bool = value_5
-	if value_7 {
-		var value_8 bool = has_selection
-		value_7 = value_8
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = has_context
 	}
-	decision.Click = value_7
-	var value_9 bool = decision.MarkClickable
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 bool = right_released
-		value_10 = value_11
-	}
-	var value_12 bool = value_10
-	if value_12 {
-		var value_13 bool = has_context
-		value_12 = value_13
-	}
-	decision.Context = value_12
-	var value_14 bool = decision.Click
-	decision.ConsumeRelease = value_14
-	var value_15 TableViewRowPointerDecision = decision
-	return value_15
+	decision.Context = value_4
+	decision.ConsumeRelease = decision.Click
+	return decision
 }
 
 func TableView_TableViewClipboardDecisionFor(modifier_down bool, copy_pressed bool, cut_pressed bool, paste_pressed bool, has_paste_target bool) TableViewClipboardDecision {
 	var decision TableViewClipboardDecision = TableViewClipboardDecision{}
-	var value_0 bool = modifier_down
-	var value_1 bool = !value_0
+	if !modifier_down {
+		return decision
+	}
+	var value_0 bool = copy_pressed
+	if !value_0 {
+		value_0 = cut_pressed
+	}
+	decision.CopySelection = value_0
+	var value_1 bool = paste_pressed
 	if value_1 {
-		var value_2 TableViewClipboardDecision = decision
-		return value_2
+		value_1 = has_paste_target
 	}
-	var value_3 bool = copy_pressed
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 bool = cut_pressed
-		value_4 = value_5
-	}
-	decision.CopySelection = value_4
-	var value_6 bool = paste_pressed
-	var value_7 bool = value_6
-	if value_7 {
-		var value_8 bool = has_paste_target
-		value_7 = value_8
-	}
-	decision.Paste = value_7
-	var value_9 TableViewClipboardDecision = decision
-	return value_9
+	decision.Paste = value_1
+	return decision
 }
 
 func TableView_TableViewActivationShouldRun(clicked_column int32, same_table bool, last_row int32, row int32, last_column int32, elapsed_seconds float32) bool {
-	var value_0 int32 = clicked_column
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 bool = false
-		return value_3
+	if clicked_column < 0 {
+		return false
 	}
-	var value_4 bool = same_table
-	var value_5 bool = !value_4
-	if value_5 {
-		var value_6 bool = false
-		return value_6
+	if !same_table {
+		return false
 	}
-	var value_7 int32 = last_row
-	var value_8 int32 = row
-	var value_9 bool = value_7 != value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 int32 = last_column
-		var value_12 int32 = clicked_column
-		var value_13 bool = value_11 != value_12
-		value_10 = value_13
+	var value_0 bool = (last_row != row)
+	if !value_0 {
+		value_0 = (last_column != clicked_column)
 	}
-	if value_10 {
-		var value_14 bool = false
-		return value_14
+	if value_0 {
+		return false
 	}
-	var value_15 float32 = elapsed_seconds
-	var value_16 float32 = 0.45
-	var value_17 bool = value_15 <= value_16
-	return value_17
+	return (elapsed_seconds <= 0.45)
 }
 
 func TableView_TableViewRowClickDecisionFor(row int32, clicked_column int32, same_table bool, last_row int32, last_column int32, elapsed_seconds float32) TableViewRowClickDecision {
 	var decision TableViewRowClickDecision = TableViewRowClickDecision{}
-	var value_0 int32 = row
-	decision.SelectedRow = value_0
-	var value_1 int32 = clicked_column
-	decision.SelectedColumn = value_1
-	var value_2 int32 = -1
-	decision.ActivatedRow = value_2
-	var value_3 int32 = -1
-	decision.ActivatedColumn = value_3
-	var value_4 int32 = clicked_column
-	var value_5 bool = same_table
-	var value_6 int32 = last_row
-	var value_7 int32 = row
-	var value_8 int32 = last_column
-	var value_9 float32 = elapsed_seconds
-	var value_10 bool = TableView_TableViewActivationShouldRun(value_4, value_5, value_6, value_7, value_8, value_9)
-	if value_10 {
-		var value_11 int32 = row
-		decision.ActivatedRow = value_11
-		var value_12 int32 = clicked_column
-		decision.ActivatedColumn = value_12
+	decision.SelectedRow = row
+	decision.SelectedColumn = clicked_column
+	decision.ActivatedRow = -1
+	decision.ActivatedColumn = -1
+	var value_0 bool = TableView_TableViewActivationShouldRun(clicked_column, same_table, last_row, row, last_column, elapsed_seconds)
+	if value_0 {
+		decision.ActivatedRow = row
+		decision.ActivatedColumn = clicked_column
 	}
-	var value_13 bool = true
-	decision.Changed = value_13
-	var value_14 TableViewRowClickDecision = decision
-	return value_14
+	decision.Changed = true
+	return decision
 }
 
 func TableView_TableViewRowContextDecisionFor(row int32, clicked_column int32) TableViewRowContextDecision {
 	var decision TableViewRowContextDecision = TableViewRowContextDecision{}
-	var value_0 int32 = row
-	decision.Row = value_0
-	var value_1 int32 = clicked_column
-	decision.Column = value_1
-	var value_2 bool = true
-	decision.Changed = value_2
-	var value_3 TableViewRowContextDecision = decision
-	return value_3
+	decision.Row = row
+	decision.Column = clicked_column
+	decision.Changed = true
+	return decision
 }
 
 func TableView_TableViewSelectionScrollOffset(row int32, frozen_rows int32, row_height int32, view_height int32, scroll_offset int32, max_scroll int32) int32 {
-	var value_0 int32 = scroll_offset
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		scroll_offset = value_3
+	if scroll_offset < 0 {
+		scroll_offset = 0
 	}
-	var value_4 int32 = max_scroll
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		max_scroll = value_7
+	if max_scroll < 0 {
+		max_scroll = 0
 	}
-	var value_8 int32 = row
-	var value_9 int32 = frozen_rows
-	var value_10 bool = value_8 < value_9
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 int32 = view_height
-		var value_13 int32 = 0
-		var value_14 bool = value_12 <= value_13
-		value_11 = value_14
+	var value_0 bool = (row < frozen_rows)
+	if !value_0 {
+		value_0 = (view_height <= 0)
 	}
-	if value_11 {
-		var value_15 int32 = scroll_offset
-		var value_16 int32 = max_scroll
-		var value_17 bool = value_15 > value_16
-		if value_17 {
-			var value_18 int32 = max_scroll
-			return value_18
+	if value_0 {
+		if scroll_offset > max_scroll {
+			return max_scroll
 		}
-		var value_19 int32 = scroll_offset
-		return value_19
+		return scroll_offset
 	}
-	var value_20 int32 = row_height
-	var value_21 int32 = 0
-	var value_22 bool = value_20 <= value_21
-	if value_22 {
-		var value_23 int32 = 1
-		row_height = value_23
+	if row_height <= 0 {
+		row_height = 1
 	}
-	var value_24 int32 = row
-	var value_25 int32 = frozen_rows
-	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 2))
-	var value_27 int32 = row_height
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 3))
-	var top int32 = value_28
-	var value_29 int32 = top
-	var value_30 int32 = row_height
-	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
-	var bottom int32 = value_31
-	var value_32 int32 = top
-	var value_33 int32 = scroll_offset
-	var value_34 bool = value_32 < value_33
-	if value_34 {
-		var value_35 int32 = top
-		scroll_offset = value_35
+	var value_1 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(row), uint64(frozen_rows), 32, true, 2)))), uint64(row_height), 32, true, 3))
+	var top int32 = value_1
+	var bottom int32 = (int32(number_runtime_bits(uint64(top), uint64(row_height), 32, true, 1)))
+	if top < scroll_offset {
+		scroll_offset = top
 	} else {
-		var value_36 int32 = bottom
-		var value_37 int32 = scroll_offset
-		var value_38 int32 = view_height
-		var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 1))
-		var value_40 bool = value_36 > value_39
-		if value_40 {
-			var value_41 int32 = bottom
-			var value_42 int32 = view_height
-			var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 2))
-			scroll_offset = value_43
+		if bottom > (int32(number_runtime_bits(uint64(scroll_offset), uint64(view_height), 32, true, 1))) {
+			scroll_offset = (int32(number_runtime_bits(uint64(bottom), uint64(view_height), 32, true, 2)))
 		}
 	}
-	var value_44 int32 = scroll_offset
-	var value_45 int32 = 0
-	var value_46 bool = value_44 < value_45
-	if value_46 {
-		var value_47 int32 = 0
-		scroll_offset = value_47
+	if scroll_offset < 0 {
+		scroll_offset = 0
 	}
-	var value_48 int32 = scroll_offset
-	var value_49 int32 = max_scroll
-	var value_50 bool = value_48 > value_49
-	if value_50 {
-		var value_51 int32 = max_scroll
-		scroll_offset = value_51
+	if scroll_offset > max_scroll {
+		scroll_offset = max_scroll
 	}
-	var value_52 int32 = scroll_offset
-	return value_52
+	return scroll_offset
 }

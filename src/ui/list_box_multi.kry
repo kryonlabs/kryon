@@ -1,0 +1,188 @@
+#module "list_box_multi_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/list_box.h"
+#import "runtime/list_box_multi.h"
+#import "ui/widget_input.h"
+#import "ui/paint_command.h"
+
+ListBoxMultiApply :: (list: ListBoxProps, index: i32,
+control: i32, shift: i32, range_anchor: i32) {
+    anchor: i32 = -1
+    if list.anchor != nil { anchor = *list.anchor }
+    row: i32 = 0
+    while row < list.item_count {
+        selected: bool = ListBoxMultiSelectionForRow(row,
+        list.selected[row] != 0, index, list.item_count, anchor,
+        control != 0, shift != 0, range_anchor)
+        list.selected[row] = 0
+        if selected { list.selected[row] = 1 }
+        row += 1
+    }
+    if list.anchor != nil {
+        *list.anchor = ListBoxMultiAnchorAfterClick(anchor, index,
+        list.item_count, control != 0, shift != 0, range_anchor)
+    }
+}
+
+RenderListBoxMulti :: (list: ListBoxProps) -> i32 #export {
+    mouse: Vector2 = ui_mouse_world()
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    paint_enabled: i32 = IsWindowReady()
+    clicked: i32 = -1
+    disabled: i32 = list.disabled || ContentDisabled()
+    state: ButtonState = ButtonStateNormal
+    if disabled != 0 { state = ButtonStateDisabled }
+    default_item_frame: StyleFrame =
+    WidgetFrameForClassRole(ButtonToneNeutral,
+    state, disabled, 0, list.class_name,
+    StyleKindListBoxMultiItem(), StyleAny())
+    row_height: i32 = ListBoxMultiRowHeight(list.row_height,
+    runtime_scale, default_item_frame)
+    default_item_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(default_item_frame).value)
+    default_item_font: i32 = ResolveFont(0,
+    StyleFontValue(default_item_style.fields,
+    default_item_style.font_size), GetSmallFontSize())
+    control: i32 = IsKeyDown(KEY_LEFT_CONTROL) ||
+    IsKeyDown(KEY_RIGHT_CONTROL)
+    shift: i32 = IsKeyDown(KEY_LEFT_SHIFT) ||
+    IsKeyDown(KEY_RIGHT_SHIFT)
+    range_anchor: i32 = -1
+
+    if list.items == nil || list.selected == nil ||
+    list.item_count <= 0 {
+        return -1
+    }
+    accessibility_item: i32 = -1
+    accessibility_changed: i32 = ui_accessibility_apply_list(
+    list, &accessibility_item)
+    scroll: i32 = 0
+    if list.scroll_offset != nil { scroll = *list.scroll_offset }
+    max_scroll: i32 = ListBoxMaxScroll(list.bounds.height,
+    list.item_count, row_height, 0, runtime_scale, default_item_frame)
+    scroll = ListBoxClampScroll(scroll, max_scroll)
+    if accessibility_item >= 0 {
+        scroll = ListBoxRevealScroll(accessibility_item, scroll,
+        row_height, list.bounds.height, max_scroll, runtime_scale,
+        default_item_frame)
+    }
+    if list.scroll_offset != nil { *list.scroll_offset = scroll }
+    focused: i32 = !disabled && list.id > 0 &&
+    RegisterFocus(list.id, list.bounds) &&
+    !ui_popup_input_focus_captures(list.id)
+    if focused != 0 { SetFocusTextInputActive(0) }
+    if focused != 0 {
+        cursor: i32 = -1
+        selected_first: i32 = -1
+        if list.anchor != nil && *list.anchor >= 0 &&
+        *list.anchor < list.item_count {
+            cursor = *list.anchor
+        } else {
+            index: i32 = 0
+            while index < list.item_count {
+                if list.selected[index] != 0 {
+                    selected_first = index
+                    break
+                }
+                index += 1
+            }
+        }
+        cursor = ListBoxMultiFocusedRow(cursor, selected_first,
+        list.item_count)
+        keyboard_input: ListBoxMultiInput = ListBoxMultiInputFor(
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+        IsKeyPressed(KEY_SPACE) != 0,
+        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
+        nav: ListBoxMultiNavResult = ListBoxMultiNavigate(
+        list.item_count, cursor, control != 0, shift != 0,
+        keyboard_input)
+        clicked = nav.clicked
+        control = nav.control
+        shift = nav.shift
+        range_anchor = nav.range_anchor
+        if nav.anchor_changed && list.anchor != nil {
+            *list.anchor = nav.anchor
+        }
+    }
+    if clicked >= 0 {
+        ListBoxMultiApply(list, clicked, control, shift, range_anchor)
+    }
+    if paint_enabled != 0 {
+        frame: StyleFrame = WidgetFrameForClassRole(
+        ButtonToneNeutral, state, disabled, 0, list.class_name,
+        StyleKindListBoxMulti(), StyleAny())
+        DrawWidgetFrame(list.bounds, (Rectangle){0},
+        frame, 0, 0, disabled, focused)
+        BeginClip((int)list.bounds.x, (int)list.bounds.y,
+        (int)list.bounds.width, (int)list.bounds.height)
+    }
+    index: i32 = 0
+    while index < list.item_count {
+        row: Rectangle = ListBoxMultiRowBounds(list.bounds,
+        index, row_height)
+        row.y -= scroll
+        hot: i32 = CheckCollisionPointRec(mouse, row) &&
+        CheckCollisionPointRec(mouse, list.bounds) &&
+        !InputCapturesClick(mouse)
+        selected: i32 = list.selected[index] != 0
+        item_state: ButtonState = ButtonStateNormal
+        if selected != 0 { item_state = ButtonStateSelected }
+        if hot != 0 { item_state = ButtonStateHover }
+        if disabled != 0 { item_state = ButtonStateDisabled }
+        item_frame: StyleFrame = WidgetFrameForClassRole(
+        ButtonToneNeutral, item_state, disabled, selected,
+        list.class_name, StyleKindListBoxMultiItem(), StyleAny())
+        item_style: Style = ui_unpack_style(
+        ui_style_apply_effects_frame(item_frame).value)
+        if paint_enabled != 0 {
+            font: i32 = ResolveFont(0, StyleFontValue(item_style.fields,
+            item_style.font_size), default_item_font)
+            label_inset: i32 = ListBoxMultiItemLabelInset(
+            runtime_scale, item_frame)
+            if selected != 0 || hot != 0 || disabled != 0 {
+                DrawWidgetFrame(row, list.bounds, item_frame,
+                hot, 0, disabled, 0)
+            }
+            label: const char* = list.items[index]
+            if label == nil { label = "" }
+            RenderText(label, (int)row.x + label_inset,
+            ui_row_text_y(row, font), font,
+            Fade(item_style.foreground, item_style.opacity))
+        }
+        if hot != 0 {
+            if disabled != 0 { MarkDisabled() }
+            else { MarkClickable() }
+        }
+        row_decision: ListBoxMultiRowDecision =
+        ListBoxMultiRowDecisionFor(hot != 0, disabled != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0)
+        if row_decision.consume_release { ConsumeRelease() }
+        if row_decision.activate {
+            if list.id > 0 {
+                SetFocus(list.id)
+                focused = 1
+            }
+            clicked = index
+            ListBoxMultiApply(list, clicked, control, shift, -1)
+        }
+        index += 1
+    }
+    if paint_enabled != 0 { EndClip() }
+    if paint_enabled != 0 && focused != 0 { RenderFocus(list.bounds) }
+    if list.selected_count != nil {
+        count: i32 = 0
+        index = 0
+        while index < list.item_count {
+            if list.selected[index] != 0 { count += 1 }
+            index += 1
+        }
+        *list.selected_count = count
+    }
+    ui_accessibility_list_items(list, row_height, scroll)
+    if clicked < 0 && accessibility_changed != 0 {
+        return accessibility_item
+    }
+    return clicked
+}

@@ -55,513 +55,328 @@ type CollapsibleOpenResult struct {
 }
 
 func Collapsible_CollapsibleKeyNone() int32 {
-	var value_0 int32 = 0
-	return value_0
+	return 0
 }
 
 func Collapsible_CollapsibleKeyLeft() int32 {
-	var value_0 int32 = 1
-	return value_0
+	return 1
 }
 
 func Collapsible_CollapsibleKeyRight() int32 {
-	var value_0 int32 = 2
-	return value_0
+	return 2
 }
 
 func Collapsible_CollapsibleKeyUp() int32 {
-	var value_0 int32 = 3
-	return value_0
+	return 3
 }
 
 func Collapsible_CollapsibleKeyDown() int32 {
-	var value_0 int32 = 4
-	return value_0
+	return 4
 }
 
 func Collapsible_CollapsibleHeaderRole() int32 {
-	var value_0 int32 = 13
-	return value_0
+	return 13
 }
 
 func Collapsible_CollapsibleTreeHeaderRole() int32 {
-	var value_0 int32 = 14
-	return value_0
+	return 14
 }
 
 func Collapsible_CollapsibleCloseRole() int32 {
-	var value_0 int32 = 15
-	return value_0
+	return 15
 }
 
 func Collapsible_CollapsibleHeaderRoleFor(tree bool) int32 {
-	var value_0 bool = tree
-	if value_0 {
-		var value_1 int32 = Collapsible_CollapsibleTreeHeaderRole()
-		return value_1
+	if tree {
+		var value_0 int32 = Collapsible_CollapsibleTreeHeaderRole()
+		return value_0
 	}
-	var value_2 int32 = Collapsible_CollapsibleHeaderRole()
-	return value_2
+	var value_1 int32 = Collapsible_CollapsibleHeaderRole()
+	return value_1
 }
 
 func Collapsible_CollapsibleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	return value_13
+	return (value * scale)
 }
 
 func Collapsible_CollapsibleMetricsFor(scale float32, header StyleFrame, tree_header StyleFrame, close StyleFrame) CollapsibleMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics CollapsibleMetrics = CollapsibleMetrics{}
-	var value_4 uint32 = header.Value.Fields
-	var value_5 int32 = int32(StyleFontSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = header.Value.FontSize
-	var value_8 float32 = 16.0
-	var value_9 float32 = scale
-	var value_10 float32 = Collapsible_CollapsibleMetric(value_4, value_6, value_7, value_8, value_9)
-	var font_size float32 = value_10
-	var value_11 uint32 = header.Value.Fields
-	var value_12 int32 = int32(StylePaddingY)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = header.Value.PaddingY
-	var value_15 float32 = 8.0
-	var value_16 float32 = scale
-	var value_17 float32 = Collapsible_CollapsibleMetric(value_11, value_13, value_14, value_15, value_16)
-	var header_padding_y float32 = value_17
-	var value_18 float32 = font_size
-	var value_19 float32 = header_padding_y
-	var value_20 float32 = 2.0
-	var value_21 float32 = value_19 * value_20
-	var value_22 float32 = value_18 + value_21
-	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
-	metrics.HeaderHeight = value_23
-	var value_24 uint32 = tree_header.Value.Fields
-	var value_25 int32 = int32(StylePaddingX)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 float32 = tree_header.Value.PaddingX
-	var value_28 float32 = 20.0
-	var value_29 float32 = scale
-	var value_30 float32 = Collapsible_CollapsibleMetric(value_24, value_26, value_27, value_28, value_29)
-	var value_31 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_30), 32, true)), uint64(0), 32, true, 0))
-	metrics.DepthIndent = value_31
-	var value_32 uint32 = close.Value.Fields
-	var value_33 int32 = int32(StyleIconSize)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 float32 = close.Value.IconSize
-	var value_36 float32 = 28.0
-	var value_37 float32 = scale
-	var value_38 float32 = Collapsible_CollapsibleMetric(value_32, value_34, value_35, value_36, value_37)
-	var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
-	metrics.CloseWidth = value_39
-	var value_40 uint32 = header.Value.Fields
-	var value_41 int32 = int32(StylePaddingX)
-	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
-	var value_43 float32 = header.Value.PaddingX
-	var value_44 float32 = 8.0
-	var value_45 float32 = scale
-	var value_46 float32 = Collapsible_CollapsibleMetric(value_40, value_42, value_43, value_44, value_45)
-	var icon_offset float32 = value_46
-	var value_47 float32 = icon_offset
-	var value_48 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_47), 32, true)), uint64(0), 32, true, 0))
-	metrics.IconOffset = value_48
-	var value_49 uint32 = header.Value.Fields
-	var value_50 int32 = int32(StyleIconSize)
-	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
-	var value_52 float32 = header.Value.IconSize
-	var value_53 float32 = 20.0
-	var value_54 float32 = scale
-	var value_55 float32 = Collapsible_CollapsibleMetric(value_49, value_51, value_52, value_53, value_54)
-	var icon_size float32 = value_55
-	var value_56 float32 = icon_offset
-	var value_57 float32 = icon_size
-	var value_58 float32 = value_56 + value_57
-	var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
-	metrics.TextOffset = value_59
-	var value_60 CollapsibleMetrics = metrics
-	return value_60
+	var value_0 uint32 = header.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))
+	var value_2 float32 = header.Value.FontSize
+	var value_3 float32 = 16.0
+	var value_4 float32 = Collapsible_CollapsibleMetric(value_0, value_1, value_2, value_3, scale)
+	var font_size float32 = value_4
+	var value_5 uint32 = header.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_7 float32 = header.Value.PaddingY
+	var value_8 float32 = 8.0
+	var value_9 float32 = Collapsible_CollapsibleMetric(value_5, value_6, value_7, value_8, scale)
+	var header_padding_y float32 = value_9
+	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((font_size+(header_padding_y*2.0))), 32, true)), uint64(0), 32, true, 0))
+	metrics.HeaderHeight = value_10
+	var value_11 uint32 = tree_header.Value.Fields
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_13 float32 = tree_header.Value.PaddingX
+	var value_14 float32 = 20.0
+	var value_15 float32 = Collapsible_CollapsibleMetric(value_11, value_12, value_13, value_14, scale)
+	var value_16 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_15), 32, true)), uint64(0), 32, true, 0))
+	metrics.DepthIndent = value_16
+	var value_17 uint32 = close.Value.Fields
+	var value_18 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_19 float32 = close.Value.IconSize
+	var value_20 float32 = 28.0
+	var value_21 float32 = Collapsible_CollapsibleMetric(value_17, value_18, value_19, value_20, scale)
+	var value_22 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_21), 32, true)), uint64(0), 32, true, 0))
+	metrics.CloseWidth = value_22
+	var value_23 uint32 = header.Value.Fields
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_25 float32 = header.Value.PaddingX
+	var value_26 float32 = 8.0
+	var value_27 float32 = Collapsible_CollapsibleMetric(value_23, value_24, value_25, value_26, scale)
+	var icon_offset float32 = value_27
+	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(icon_offset), 32, true)), uint64(0), 32, true, 0))
+	metrics.IconOffset = value_28
+	var value_29 uint32 = header.Value.Fields
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_31 float32 = header.Value.IconSize
+	var value_32 float32 = 20.0
+	var value_33 float32 = Collapsible_CollapsibleMetric(value_29, value_30, value_31, value_32, scale)
+	var icon_size float32 = value_33
+	var value_34 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((icon_offset+icon_size)), 32, true)), uint64(0), 32, true, 0))
+	metrics.TextOffset = value_34
+	return metrics
 }
 
 func Collapsible_CollapsibleMarkerFor(open bool, leaf bool) int32 {
-	var value_0 bool = leaf
-	if value_0 {
-		var value_1 int32 = CollapsibleMarkerKindCollapsibleMarkerLeaf
-		return value_1
+	if leaf {
+		return CollapsibleMarkerKindCollapsibleMarkerLeaf
 	}
-	var value_2 bool = open
-	if value_2 {
-		var value_3 int32 = CollapsibleMarkerKindCollapsibleMarkerOpen
-		return value_3
+	if open {
+		return CollapsibleMarkerKindCollapsibleMarkerOpen
 	}
-	var value_4 int32 = CollapsibleMarkerKindCollapsibleMarkerClosed
-	return value_4
+	return CollapsibleMarkerKindCollapsibleMarkerClosed
 }
 
 func Collapsible_CollapsibleMarkerText(marker int32) string {
-	var value_0 int32 = marker
-	var value_1 int32 = CollapsibleMarkerKindCollapsibleMarkerLeaf
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 string = "•"
-		return value_3
+	if marker == CollapsibleMarkerKindCollapsibleMarkerLeaf {
+		return "•"
 	}
-	var value_4 int32 = marker
-	var value_5 int32 = CollapsibleMarkerKindCollapsibleMarkerOpen
-	var value_6 bool = value_4 == value_5
-	if value_6 {
-		var value_7 string = "v"
-		return value_7
+	if marker == CollapsibleMarkerKindCollapsibleMarkerOpen {
+		return "v"
 	}
-	var value_8 string = ">"
-	return value_8
+	return ">"
 }
 
 func Collapsible_CollapsibleLayoutFor(bounds Rectangle, tree bool, depth int32, has_close bool, metrics CollapsibleMetrics) CollapsibleLayout {
 	var layout CollapsibleLayout = CollapsibleLayout{}
-	var value_0 Rectangle = bounds
-	var header Rectangle = value_0
-	var value_1 int32 = metrics.HeaderHeight
-	var value_2 float32 = float32(value_1)
-	header.Height = value_2
-	var value_3 bool = tree
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 int32 = depth
-		var value_6 int32 = 0
-		var value_7 bool = value_5 > value_6
-		value_4 = value_7
+	var header Rectangle = bounds
+	header.Height = float32(metrics.HeaderHeight)
+	var value_0 bool = tree
+	if value_0 {
+		value_0 = (depth > 0)
 	}
-	if value_4 {
-		var value_8 int32 = depth
-		var value_9 int32 = metrics.DepthIndent
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
-		var value_11 float32 = float32(value_10)
-		var indent float32 = value_11
-		var value_12 float32 = indent
-		var value_13 float32 = header.Width
-		var value_14 bool = value_12 > value_13
-		if value_14 {
-			var value_15 float32 = header.Width
-			indent = value_15
+	if value_0 {
+		var indent float32 = float32((int32(number_runtime_bits(uint64(depth), uint64(metrics.DepthIndent), 32, true, 3))))
+		if indent > header.Width {
+			indent = header.Width
 		}
-		var value_16 float32 = header.X
-		var value_17 float32 = indent
-		header.X = value_16 + value_17
-		var value_18 float32 = header.Width
-		var value_19 float32 = indent
-		header.Width = value_18 - value_19
+		var value_1 float32 = header.X
+		header.X = value_1 + indent
+		var value_2 float32 = header.Width
+		header.Width = value_2 - indent
 	}
-	var value_20 Rectangle = header
-	layout.Header = value_20
-	var value_21 Rectangle = header
-	layout.Body = value_21
-	var value_22 bool = has_close
-	layout.HasClose = value_22
-	var value_23 bool = has_close
-	if value_23 {
-		var value_24 int32 = metrics.CloseWidth
-		var value_25 float32 = float32(value_24)
-		var close_width float32 = value_25
-		var value_26 float32 = close_width
-		var value_27 float32 = header.Width
-		var value_28 bool = value_26 > value_27
-		if value_28 {
-			var value_29 float32 = header.Width
-			close_width = value_29
+	layout.Header = header
+	layout.Body = header
+	layout.HasClose = has_close
+	if has_close {
+		var close_width float32 = float32(metrics.CloseWidth)
+		if close_width > header.Width {
+			close_width = header.Width
 		}
-		var value_30 float32 = header.X
-		var value_31 float32 = header.Width
-		var value_32 float32 = value_30 + value_31
-		var value_33 float32 = close_width
-		var value_34 float32 = value_32 - value_33
-		layout.CloseBounds.X = value_34
-		var value_35 float32 = header.Y
-		layout.CloseBounds.Y = value_35
-		var value_36 float32 = close_width
-		layout.CloseBounds.Width = value_36
-		var value_37 float32 = header.Height
-		layout.CloseBounds.Height = value_37
-		var value_38 float32 = header.Width
-		var value_39 float32 = close_width
-		var value_40 float32 = value_38 - value_39
-		layout.Body.Width = value_40
-		var value_41 float32 = layout.Body.Width
-		var value_42 float32 = 0.0
-		var value_43 bool = value_41 < value_42
-		if value_43 {
-			var value_44 float32 = 0.0
-			layout.Body.Width = value_44
+		layout.CloseBounds.X = ((header.X + header.Width) - close_width)
+		layout.CloseBounds.Y = header.Y
+		layout.CloseBounds.Width = close_width
+		layout.CloseBounds.Height = header.Height
+		layout.Body.Width = (header.Width - close_width)
+		if layout.Body.Width < 0.0 {
+			layout.Body.Width = 0.0
 		}
 	}
-	var value_45 CollapsibleLayout = layout
-	return value_45
+	return layout
 }
 
 func Collapsible_CollapsiblePointerDecisionFor(enabled bool, closed bool, hot_body bool, released bool, leaf bool, has_open bool) CollapsiblePointerDecision {
 	var decision CollapsiblePointerDecision = CollapsiblePointerDecision{}
-	var value_0 bool = enabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = closed
-		value_2 = value_3
+	var value_0 bool = !enabled
+	if !value_0 {
+		value_0 = closed
 	}
-	var value_4 bool = value_2
-	if !value_4 {
-		var value_5 bool = hot_body
-		var value_6 bool = !value_5
-		value_4 = value_6
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = !hot_body
 	}
-	if value_4 {
-		var value_7 CollapsiblePointerDecision = decision
-		return value_7
+	if value_1 {
+		return decision
 	}
-	var value_8 bool = true
-	decision.MarkClickable = value_8
-	var value_9 bool = released
-	var value_10 bool = !value_9
-	if value_10 {
-		var value_11 CollapsiblePointerDecision = decision
-		return value_11
+	decision.MarkClickable = true
+	if !released {
+		return decision
 	}
-	var value_12 bool = true
-	decision.Focus = value_12
-	var value_13 bool = true
-	decision.ConsumeRelease = value_13
-	var value_14 bool = leaf
-	var value_15 bool = !value_14
-	var value_16 bool = value_15
-	if value_16 {
-		var value_17 bool = has_open
-		value_16 = value_17
+	decision.Focus = true
+	decision.ConsumeRelease = true
+	var value_2 bool = !leaf
+	if value_2 {
+		value_2 = has_open
 	}
-	decision.ToggleOpen = value_16
-	var value_18 bool = decision.ToggleOpen
-	decision.Changed = value_18
-	var value_19 CollapsiblePointerDecision = decision
-	return value_19
+	decision.ToggleOpen = value_2
+	decision.Changed = decision.ToggleOpen
+	return decision
 }
 
 func Collapsible_CollapsibleCloseDecisionFor(enabled bool, has_visible bool, clicked bool) CollapsibleCloseDecision {
 	var decision CollapsibleCloseDecision = CollapsibleCloseDecision{}
 	var value_0 bool = enabled
+	if value_0 {
+		value_0 = has_visible
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = has_visible
-		value_1 = value_2
+		value_1 = clicked
 	}
-	var value_3 bool = value_1
-	if value_3 {
-		var value_4 bool = clicked
-		value_3 = value_4
-	}
-	decision.Hide = value_3
-	var value_5 bool = decision.Hide
-	decision.Changed = value_5
-	var value_6 CollapsibleCloseDecision = decision
-	return value_6
+	decision.Hide = value_1
+	decision.Changed = decision.Hide
+	return decision
 }
 
 func Collapsible_CollapsibleKeyFor(down bool, up bool, right bool, left bool) int32 {
-	var value_0 bool = down
-	if value_0 {
-		var value_1 int32 = Collapsible_CollapsibleKeyDown()
+	if down {
+		var value_0 int32 = Collapsible_CollapsibleKeyDown()
+		return value_0
+	}
+	if up {
+		var value_1 int32 = Collapsible_CollapsibleKeyUp()
 		return value_1
 	}
-	var value_2 bool = up
-	if value_2 {
-		var value_3 int32 = Collapsible_CollapsibleKeyUp()
+	if right {
+		var value_2 int32 = Collapsible_CollapsibleKeyRight()
+		return value_2
+	}
+	if left {
+		var value_3 int32 = Collapsible_CollapsibleKeyLeft()
 		return value_3
 	}
-	var value_4 bool = right
-	if value_4 {
-		var value_5 int32 = Collapsible_CollapsibleKeyRight()
-		return value_5
-	}
-	var value_6 bool = left
-	if value_6 {
-		var value_7 int32 = Collapsible_CollapsibleKeyLeft()
-		return value_7
-	}
-	var value_8 int32 = Collapsible_CollapsibleKeyNone()
-	return value_8
+	var value_4 int32 = Collapsible_CollapsibleKeyNone()
+	return value_4
 }
 
 func Collapsible_CollapsibleKeyboardDecisionFor(focused bool, focus_captured bool, key_already_handled bool, tree bool, key int32, open bool, leaf bool, has_open bool, activate bool) CollapsibleKeyboardDecision {
 	var decision CollapsibleKeyboardDecision = CollapsibleKeyboardDecision{}
-	var value_0 bool = focused
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 bool = focus_captured
-		value_2 = value_3
+	var value_0 bool = !focused
+	if !value_0 {
+		value_0 = focus_captured
 	}
-	var value_4 bool = value_2
-	if !value_4 {
-		var value_5 bool = key_already_handled
-		value_4 = value_5
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = key_already_handled
 	}
-	if value_4 {
-		var value_6 CollapsibleKeyboardDecision = decision
-		return value_6
+	if value_1 {
+		return decision
 	}
-	var value_7 bool = tree
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 int32 = key
-		var value_10 int32 = Collapsible_CollapsibleKeyDown()
-		var value_11 bool = value_9 == value_10
-		var value_12 bool = value_11
-		if !value_12 {
-			var value_13 int32 = key
-			var value_14 int32 = Collapsible_CollapsibleKeyUp()
-			var value_15 bool = value_13 == value_14
-			value_12 = value_15
+	var value_2 bool = tree
+	if value_2 {
+		var value_3 int32 = Collapsible_CollapsibleKeyDown()
+		var value_4 bool = (key == value_3)
+		if !value_4 {
+			var value_5 int32 = Collapsible_CollapsibleKeyUp()
+			value_4 = (key == value_5)
 		}
-		var value_16 bool = value_12
-		if !value_16 {
-			var value_17 int32 = key
-			var value_18 int32 = Collapsible_CollapsibleKeyRight()
-			var value_19 bool = value_17 == value_18
-			var value_20 bool = value_19
-			if value_20 {
-				var value_21 bool = open
-				value_20 = value_21
+		var value_6 bool = value_4
+		if !value_6 {
+			var value_7 int32 = Collapsible_CollapsibleKeyRight()
+			var value_8 bool = (key == value_7)
+			if value_8 {
+				value_8 = open
 			}
-			var value_22 bool = value_20
-			if value_22 {
-				var value_23 bool = leaf
-				var value_24 bool = !value_23
-				value_22 = value_24
+			var value_9 bool = value_8
+			if value_9 {
+				value_9 = !leaf
 			}
-			value_16 = value_22
+			value_6 = value_9
 		}
-		var value_25 bool = value_16
-		if !value_25 {
-			var value_26 int32 = key
-			var value_27 int32 = Collapsible_CollapsibleKeyLeft()
-			var value_28 bool = value_26 == value_27
-			var value_29 bool = value_28
-			if value_29 {
-				var value_30 bool = open
-				var value_31 bool = !value_30
-				var value_32 bool = value_31
-				if !value_32 {
-					var value_33 bool = leaf
-					value_32 = value_33
+		var value_10 bool = value_6
+		if !value_10 {
+			var value_11 int32 = Collapsible_CollapsibleKeyLeft()
+			var value_12 bool = (key == value_11)
+			if value_12 {
+				var value_13 bool = !open
+				if !value_13 {
+					value_13 = leaf
 				}
-				value_29 = value_32
+				value_12 = value_13
 			}
-			value_25 = value_29
+			value_10 = value_12
 		}
-		value_8 = value_25
+		value_2 = value_10
 	}
-	if value_8 {
-		var value_34 bool = true
-		decision.MoveFocus = value_34
-		var value_35 int32 = key
-		decision.FocusKey = value_35
-		var value_36 bool = true
-		decision.Handled = value_36
-		var value_37 CollapsibleKeyboardDecision = decision
-		return value_37
+	if value_2 {
+		decision.MoveFocus = true
+		decision.FocusKey = key
+		decision.Handled = true
+		return decision
 	}
-	var value_38 bool = leaf
-	var value_39 bool = !value_38
-	var value_40 bool = value_39
-	if value_40 {
-		var value_41 bool = has_open
-		value_40 = value_41
+	var value_14 bool = !leaf
+	if value_14 {
+		value_14 = has_open
 	}
-	if value_40 {
-		var value_42 int32 = key
-		var value_43 int32 = Collapsible_CollapsibleKeyRight()
-		var value_44 bool = value_42 == value_43
-		if value_44 {
-			var value_45 bool = true
-			decision.SetOpen = value_45
-			var value_46 bool = true
-			decision.Open = value_46
+	if value_14 {
+		var value_15 int32 = Collapsible_CollapsibleKeyRight()
+		if key == value_15 {
+			decision.SetOpen = true
+			decision.Open = true
 		}
-		var value_47 int32 = key
-		var value_48 int32 = Collapsible_CollapsibleKeyLeft()
-		var value_49 bool = value_47 == value_48
-		if value_49 {
-			var value_50 bool = true
-			decision.SetOpen = value_50
-			var value_51 bool = false
-			decision.Open = value_51
+		var value_16 int32 = Collapsible_CollapsibleKeyLeft()
+		if key == value_16 {
+			decision.SetOpen = true
+			decision.Open = false
 		}
-		var value_52 bool = activate
-		if value_52 {
-			var value_53 bool = true
-			decision.ToggleOpen = value_53
+		if activate {
+			decision.ToggleOpen = true
 		}
-		var value_54 int32 = key
-		var value_55 int32 = Collapsible_CollapsibleKeyNone()
-		var value_56 bool = value_54 != value_55
-		var value_57 bool = value_56
-		if !value_57 {
-			var value_58 bool = activate
-			value_57 = value_58
+		var value_17 int32 = Collapsible_CollapsibleKeyNone()
+		var value_18 bool = (key != value_17)
+		if !value_18 {
+			value_18 = activate
 		}
-		decision.Handled = value_57
+		decision.Handled = value_18
 	}
-	var value_59 CollapsibleKeyboardDecision = decision
-	return value_59
+	return decision
 }
 
 func Collapsible_CollapsibleOpenApply(open bool, toggle_open bool, set_open bool, next_open bool, has_open bool) CollapsibleOpenResult {
 	var result CollapsibleOpenResult = CollapsibleOpenResult{}
-	var value_0 bool = open
-	result.Open = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 bool = has_open
-	var value_3 bool = !value_2
-	if value_3 {
-		var value_4 CollapsibleOpenResult = result
-		return value_4
+	result.Open = open
+	result.Changed = false
+	if !has_open {
+		return result
 	}
-	var value_5 bool = set_open
-	if value_5 {
-		var value_6 bool = next_open
-		result.Open = value_6
+	if set_open {
+		result.Open = next_open
 	}
-	var value_7 bool = toggle_open
-	if value_7 {
-		var value_8 bool = result.Open
-		var value_9 bool = !value_8
-		result.Open = value_9
+	if toggle_open {
+		result.Open = !result.Open
 	}
-	var value_10 bool = result.Open
-	var value_11 bool = open
-	var value_12 bool = value_10 != value_11
-	result.Changed = value_12
-	var value_13 CollapsibleOpenResult = result
-	return value_13
+	result.Changed = (result.Open != open)
+	return result
 }

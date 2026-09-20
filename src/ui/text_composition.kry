@@ -1,0 +1,107 @@
+#module "text_composition_host"
+#import "ui_internal.h"
+#import "runtime/text_input.h"
+#import "string.h"
+
+TextCompositionSession :: struct {
+    owner: const void*
+    cursor: i32
+    selection_length: i32
+    text: [KRY_TEXT_COMPOSITION_MAX]char
+}
+
+text_composition :: TextCompositionSession #global
+
+ui_text_composition_cancel :: (owner: const void*) -> i32 #export {
+    decision: TextCompositionSessionDecision =
+    TextCompositionCancelDecisionFor(text_composition.owner != nil,
+    owner != nil, text_composition.owner == owner)
+    if !decision.cancel { return 0 }
+    memset(&text_composition, 0, sizeof(text_composition))
+    return 1
+}
+
+ui_text_composition_get :: (owner: const void*,
+text: **const char, cursor: *i32,
+selection_length: *i32) -> i32 #export {
+    decision: TextCompositionSessionDecision =
+    TextCompositionGetDecisionFor(text_composition.owner != nil,
+    owner != nil && text_composition.owner == owner,
+    text_composition.text[0] != '\0')
+    if !decision.visible { return 0 }
+    if text != nil { *text = text_composition.text }
+    if cursor != nil { *cursor = text_composition.cursor }
+    if selection_length != nil {
+        *selection_length = text_composition.selection_length
+    }
+    return 1
+}
+
+ui_text_composition_apply :: (edit: TextEdit, anchor: *i32,
+owner: const void*, focused: i32, read_only: i32,
+allow_newlines: i32) -> TextCompositionResult #export {
+    result: TextCompositionResult = (TextCompositionResult){0}
+    if owner == nil || edit.text == nil || edit.text_size == 0 ||
+    edit.cursor_position == nil || anchor == nil { return result }
+    decision: TextCompositionInputDecision =
+    TextCompositionInputDecisionFor(focused != 0, read_only != 0)
+    event: KryTextCompositionEvent = (KryTextCompositionEvent){0}
+    if !decision.accept_events {
+        result.presentation_changed = ui_text_composition_cancel(owner)
+        if decision.drain_events {
+            while PollTextComposition(&event) {
+                continue
+            }
+        }
+        return result
+    }
+    while PollTextComposition(&event) {
+        phase: TextCompositionPhaseDecision =
+        TextCompositionPhaseDecisionFor((int)event.phase)
+        apply: TextCompositionApplyDecision =
+        (TextCompositionApplyDecision){0}
+        if phase.store_preedit {
+            text_composition.owner = owner
+            length: size_t = 0
+            while length + 1 < sizeof(text_composition.text) &&
+            event.text[length] != '\0' {
+                length += 1
+            }
+            memcpy(text_composition.text, event.text, length)
+            text_composition.text[length] = '\0'
+            text_composition.cursor = event.cursor
+            text_composition.selection_length = event.selection_length
+            apply = TextCompositionApplyDecisionFor((int)event.phase, 0)
+            result.presentation_changed |= apply.presentation_changed
+        } else if phase.commit {
+            range: TextSelectionRange = TextSelectionRangeFor(
+            *anchor, *edit.cursor_position)
+            text_changed: i32 = 0
+            start: i32 = range.start
+            end: i32 = range.end
+            if end > start {
+                text_changed |= ui_text_delete_range(edit.text,
+                edit.text_size, edit.cursor_position, start, end)
+            }
+            text_changed |= ui_text_insert_text(edit.text,
+            edit.text_size, edit.cursor_position, event.text,
+            allow_newlines, edit.filter, edit.filter_user_data,
+            edit.max_codepoints)
+            collapsed: TextSelectionState =
+            TextSelectionCollapsed(*edit.cursor_position)
+            *anchor = collapsed.anchor
+            *edit.cursor_position = collapsed.cursor
+            ui_text_composition_cancel(nil)
+            apply = TextCompositionApplyDecisionFor((int)event.phase,
+            text_changed != 0)
+            result.text_changed |= apply.text_changed
+            result.presentation_changed |= apply.presentation_changed
+            result.selection_changed |= apply.selection_changed
+        } else if phase.cancel {
+            ui_text_composition_cancel(nil)
+            apply = TextCompositionApplyDecisionFor((int)event.phase, 0)
+            result.presentation_changed |= apply.presentation_changed
+        }
+    }
+    return result
+}

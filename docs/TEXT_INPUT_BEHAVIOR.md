@@ -1,19 +1,19 @@
 # Text input ownership and verification
 
-Editing decisions live in `runtime/text_input.kry`. The active C and Go hosts
+Editing decisions live in `runtime/text_input.kry`. The active Kry and Go hosts
 apply generated decisions and store the resulting text and selection. The old
 JavaScript/web host path is paused and kept only as future-roadmap reference
 material.
 
 | Path | Selection and focus ownership | Platform services |
 | --- | --- | --- |
-| Immediate C (`src/ui/ui.c`) | `TextSelectionOwnerMatches`, `TextFocusOwnerDecisionFor`, generated selection ranges and navigation | Caller-buffer/pointer identity, input collection, font measurement, clipboard |
-| Retained C (`src/ui/ui_tree.c`) | Node-owned state; generated collapse/select-all/navigation, composition input gates and edit-command decisions | Node lifetime, focus registration, buffer movement, paint invalidation |
+| Immediate Kry (`src/ui/text_field.kry`, `text_area.kry`) | `TextSelectionOwnerMatches`, `TextFocusOwnerDecisionFor`, generated selection ranges and navigation | Caller-buffer/pointer identity, input collection, font measurement, clipboard |
+| Retained Kry (`src/ui/tree_input.kry`) | Node-owned state; generated collapse/select-all/navigation, composition input gates and edit-command decisions | Node lifetime, focus registration, buffer movement, paint invalidation |
 | Go (`go/kryon/runtime.go`, `composition.go`) | Focus-ID keyed state; generated selection, navigation, deletion and composition decisions | UTF-8 traversal, field registration, event queues, font measurement |
 | Web (`web/text_edit.js`, `text_dom.js`) | Runtime focus ID and DOM-node binding; generated editing/navigation/composition decisions | UTF-16/UTF-8 conversion, native visual-row geometry, pointer hit testing, clipboard transport and IME presentation |
 
-The retained C composition cancellation gate now uses the same generated
-`TextCompositionInputDecisionFor` as Go and web. Numeric editors in `ui_tk.c`
+The retained Kry composition cancellation gate now uses the same generated
+`TextCompositionInputDecisionFor` as Go and web. Numeric editors in `numeric_edit.kry`
 retain numeric-control activation and storage; they are not an alternate
 TextField implementation. Their separate numeric policy remains in `input.kry`.
 
@@ -39,7 +39,7 @@ an eight-byte buffer, an emoji replacement, and a preserved Unicode suffix.
   native browser preedit, redraw, single commit, and screenshots.
 - JavaScript generated-runtime parity is paused with the broader JS/web target.
   Keep native C/Go text behavior covered through active runtime and policy gates.
-- `make go-runtime-test` and the retained `ui_tk_test`: native ownership,
+- `make go-runtime-test` and the retained `widget_surface_test`: native ownership,
   navigation, focus, composition and retained-control regressions.
 
 The browser tests use Chromium's native composition API. They do not automate

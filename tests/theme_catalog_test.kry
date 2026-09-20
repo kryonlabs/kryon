@@ -1,0 +1,76 @@
+#module "theme_catalog_test"
+#import "theme_meta.h"
+#import "stdio.h"
+#import "stdlib.h"
+
+CatalogRequire :: (condition: bool, message: const char*) {
+    if condition { return }
+    fprintf(stderr, "theme catalog failed: %s\n", message)
+    exit(1)
+}
+
+CatalogKey :: (index: i32) -> const char* {
+    if index == 0 { return "background" }
+    if index == 1 { return "surface" }
+    if index == 2 { return "text" }
+    if index == 3 { return "circle" }
+    if index == 4 { return "button" }
+    if index == 5 { return "button_hover" }
+    if index == 6 { return "icon" }
+    if index == 7 { return "link" }
+    return nil
+}
+
+CatalogSame :: (left: Color, right: Color) -> bool {
+    return left.r == right.r && left.g == right.g &&
+    left.b == right.b && left.a == right.a
+}
+
+CatalogHashByte :: (hash: u32, value: u32) -> u32 {
+    return (hash ^ value) * 16777619u
+}
+
+main :: () -> i32 #export {
+    hash: u32 = 2166136261u
+    dark: i32 = 0
+    while dark < 2 {
+        theme: i32 = 0
+        while theme < THEME_COUNT {
+            meta: const ThemeMeta* = GetThemeMeta((ThemeId)theme)
+            scope: const char* = meta->light_scope
+            if dark != 0 { scope = meta->dark_scope }
+            key_index: i32 = 0
+            while key_index < 8 {
+                key: const char* = CatalogKey(key_index)
+                color: Color = {0}
+                by_scope: Color = {0}
+                CatalogRequire(GetThemeCatalogColor((ThemeId)theme,
+                dark != 0, key, &color), "catalog lookup")
+                CatalogRequire(GetThemeCatalogScopeColor(scope, key,
+                &by_scope), "scope lookup")
+                CatalogRequire(CatalogSame(color, by_scope),
+                "scope matches theme")
+                hash = CatalogHashByte(hash, (uint32_t)color.r)
+                hash = CatalogHashByte(hash, (uint32_t)color.g)
+                hash = CatalogHashByte(hash, (uint32_t)color.b)
+                hash = CatalogHashByte(hash, (uint32_t)color.a)
+                key_index += 1
+            }
+            theme += 1
+        }
+        dark += 1
+    }
+    CatalogRequire(hash == 0x9414671Eu,
+    "palette values changed from the accepted catalog")
+    color: Color = {0}
+    CatalogRequire(!GetThemeCatalogColor(THEME_MONO, false,
+    "missing", &color), "unknown key")
+    CatalogRequire(!GetThemeCatalogScopeColor("missing",
+    "background", &color), "unknown scope")
+    CatalogRequire(GetThemeCatalogColor((ThemeId)999, false,
+    "background", &color), "out-of-range theme fallback")
+    CatalogRequire(CatalogSame(color, (Color){0xC0, 0xC0, 0xC0, 0xFF}),
+    "default light background")
+    puts("theme catalog Kry checks passed: 26 palettes, 208 colors")
+    return 0
+}

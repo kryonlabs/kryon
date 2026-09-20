@@ -35,352 +35,194 @@ type ToastRenderDecision struct {
 }
 
 func Toast_ToastLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Toast_ToastSurfaceFactsFor(class_name int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindToast()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = StyleSheet_StyleAny()
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = int32(ButtonStateNormal)
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = StyleSheet_StyleAny()
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 int32 = int32(ButtonStateNormal)
+	var value_7 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Toast_ToastLabelFactsFor(class_name int32) StyleFacts {
 	var value_0 int32 = StyleSheet_StyleKindToast()
 	var value_1 int32 = 0
-	var value_2 int32 = class_name
-	var value_3 int32 = Toast_ToastLabelRole()
-	var value_4 int32 = int32(ButtonToneNeutral)
-	var value_5 int32 = int32(ButtonEmphasisSoft)
-	var value_6 int32 = int32(ControlSizeMedium)
-	var value_7 int32 = int32(ButtonStateNormal)
-	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	return value_8
+	var value_2 int32 = Toast_ToastLabelRole()
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 int32 = int32(ButtonStateNormal)
+	var value_7 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, class_name, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Toast_ToastMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_2
 }
 
 func Toast_ToastMetricsFor(scale float32, frame StyleFrame) ToastMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics ToastMetrics = ToastMetrics{}
-	var value_4 uint32 = frame.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = frame.Value.PaddingX
-	var value_8 float32 = 14.0
-	var value_9 float32 = scale
-	var value_10 int32 = Toast_ToastMetric(value_4, value_6, value_7, value_8, value_9)
-	metrics.PadX = value_10
-	var value_11 uint32 = frame.Value.Fields
-	var value_12 int32 = int32(StylePaddingY)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = frame.Value.PaddingY
-	var value_15 float32 = 10.0
-	var value_16 float32 = scale
-	var value_17 int32 = Toast_ToastMetric(value_11, value_13, value_14, value_15, value_16)
-	metrics.PadY = value_17
-	var value_18 uint32 = frame.Value.Fields
-	var value_19 int32 = int32(StyleGap)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 float32 = frame.Value.Gap
-	var value_22 float32 = 18.0
-	var value_23 float32 = scale
-	var value_24 int32 = Toast_ToastMetric(value_18, value_20, value_21, value_22, value_23)
-	metrics.Margin = value_24
-	var value_25 float32 = 3.0
-	metrics.DefaultSeconds = value_25
-	var value_26 ToastMetrics = metrics
-	return value_26
+	var value_0 uint32 = frame.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = frame.Value.PaddingX
+	var value_3 float32 = 14.0
+	var value_4 int32 = Toast_ToastMetric(value_0, value_1, value_2, value_3, scale)
+	metrics.PadX = value_4
+	var value_5 uint32 = frame.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.PaddingY
+	var value_8 float32 = 10.0
+	var value_9 int32 = Toast_ToastMetric(value_5, value_6, value_7, value_8, scale)
+	metrics.PadY = value_9
+	var value_10 uint32 = frame.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))
+	var value_12 float32 = frame.Value.Gap
+	var value_13 float32 = 18.0
+	var value_14 int32 = Toast_ToastMetric(value_10, value_11, value_12, value_13, scale)
+	metrics.Margin = value_14
+	metrics.DefaultSeconds = 3.0
+	return metrics
 }
 
 func Toast_ToastDuration(seconds float32, metrics ToastMetrics) float32 {
-	var value_0 float32 = seconds
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = metrics.DefaultSeconds
-		return value_3
+	if seconds <= 0.0 {
+		return metrics.DefaultSeconds
 	}
-	var value_4 float32 = seconds
-	return value_4
+	return seconds
 }
 
 func Toast_ToastDeadlineFor(now_seconds float32, duration_seconds float32) float32 {
-	var value_0 float32 = now_seconds
-	var value_1 float32 = duration_seconds
-	var value_2 float32 = value_0 + value_1
-	return value_2
+	return (now_seconds + duration_seconds)
 }
 
 func Toast_ToastRequestDecisionFor(has_message bool, seconds float32, metrics ToastMetrics) ToastRequestDecision {
 	var decision ToastRequestDecision = ToastRequestDecision{}
-	var value_0 bool = has_message
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 bool = true
-		decision.Clear = value_2
-		var value_3 ToastRequestDecision = decision
-		return value_3
+	if !has_message {
+		decision.Clear = true
+		return decision
 	}
-	var value_4 bool = true
-	decision.Show = value_4
-	var value_5 float32 = seconds
-	var value_6 ToastMetrics = metrics
-	var value_7 float32 = Toast_ToastDuration(value_5, value_6)
-	decision.Seconds = value_7
-	var value_8 ToastRequestDecision = decision
-	return value_8
+	decision.Show = true
+	var value_0 float32 = Toast_ToastDuration(seconds, metrics)
+	decision.Seconds = value_0
+	return decision
 }
 
 func Toast_ToastRenderDecisionFor(has_message bool, now_seconds float32, until_seconds float32) ToastRenderDecision {
 	var decision ToastRenderDecision = ToastRenderDecision{}
-	var value_0 bool = has_message
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 float32 = now_seconds
-		var value_4 float32 = until_seconds
-		var value_5 bool = value_3 >= value_4
-		value_2 = value_5
+	var value_0 bool = !has_message
+	if !value_0 {
+		value_0 = (now_seconds >= until_seconds)
 	}
-	if value_2 {
-		var value_6 bool = true
-		decision.Clear = value_6
-		var value_7 ToastRenderDecision = decision
-		return value_7
+	if value_0 {
+		decision.Clear = true
+		return decision
 	}
-	var value_8 bool = true
-	decision.Render = value_8
-	var value_9 ToastRenderDecision = decision
-	return value_9
+	decision.Render = true
+	return decision
 }
 
 func Toast_ToastTruncationFor(text_len int32, fits bool) ToastTruncation {
 	var truncation ToastTruncation = ToastTruncation{}
-	var value_0 int32 = text_len
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		text_len = value_3
+	if text_len < 0 {
+		text_len = 0
 	}
-	var value_4 int32 = text_len
-	truncation.PrefixLen = value_4
-	var value_5 bool = fits
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 int32 = text_len
-		var value_8 int32 = 3
-		var value_9 bool = value_7 <= value_8
-		value_6 = value_9
+	truncation.PrefixLen = text_len
+	var value_0 bool = fits
+	if !value_0 {
+		value_0 = (text_len <= 3)
 	}
-	if value_6 {
-		var value_10 ToastTruncation = truncation
-		return value_10
+	if value_0 {
+		return truncation
 	}
-	var value_11 int32 = text_len
-	var value_12 int32 = 3
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-	truncation.PrefixLen = value_13
-	var value_14 bool = true
-	truncation.Ellipsis = value_14
-	var value_15 ToastTruncation = truncation
-	return value_15
+	truncation.PrefixLen = (int32(number_runtime_bits(uint64(text_len), uint64(3), 32, true, 2)))
+	truncation.Ellipsis = true
+	return truncation
 }
 
 func Toast_ToastTruncationNext(truncation ToastTruncation, fits bool) ToastTruncation {
 	var value_0 bool = fits
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = truncation.Ellipsis
-		var value_3 bool = !value_2
-		value_1 = value_3
+	if !value_0 {
+		value_0 = !truncation.Ellipsis
 	}
-	if value_1 {
-		var value_4 ToastTruncation = truncation
-		return value_4
+	if value_0 {
+		return truncation
 	}
-	var value_5 int32 = truncation.PrefixLen
-	var value_6 int32 = 0
-	var value_7 bool = value_5 > value_6
-	if value_7 {
-		var value_8 int32 = truncation.PrefixLen
-		var value_9 int32 = 1
-		var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
-		truncation.PrefixLen = value_10
+	if truncation.PrefixLen > 0 {
+		truncation.PrefixLen = (int32(number_runtime_bits(uint64(truncation.PrefixLen), uint64(1), 32, true, 2)))
 	}
-	var value_11 ToastTruncation = truncation
-	return value_11
+	return truncation
 }
 
 func Toast_ToastMaxWidth(view_width int32, metrics ToastMetrics) int32 {
-	var value_0 int32 = view_width
-	var value_1 int32 = metrics.Margin
-	var value_2 int32 = 2
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 2))
-	var width int32 = value_4
-	var value_5 int32 = width
-	var value_6 int32 = 1
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 1
-		width = value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(view_width), uint64((int32(number_runtime_bits(uint64(metrics.Margin), uint64(2), 32, true, 3)))), 32, true, 2))
+	var width int32 = value_0
+	if width < 1 {
+		width = 1
 	}
-	var value_9 int32 = width
-	return value_9
+	return width
 }
 
 func Toast_ToastContentWidth(view_width int32, metrics ToastMetrics) int32 {
-	var value_0 int32 = view_width
-	var value_1 ToastMetrics = metrics
-	var value_2 int32 = Toast_ToastMaxWidth(value_0, value_1)
-	var value_3 int32 = metrics.PadX
-	var value_4 int32 = 2
-	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 3))
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_5), 32, true, 2))
-	var width int32 = value_6
-	var value_7 int32 = width
-	var value_8 int32 = 1
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 int32 = 1
-		width = value_10
+	var value_0 int32 = Toast_ToastMaxWidth(view_width, metrics)
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64((int32(number_runtime_bits(uint64(metrics.PadX), uint64(2), 32, true, 3)))), 32, true, 2))
+	var width int32 = value_1
+	if width < 1 {
+		width = 1
 	}
-	var value_11 int32 = width
-	return value_11
+	return width
 }
 
 func Toast_ToastLayoutFor(view_width int32, view_height int32, text_width int32, line_height int32, metrics ToastMetrics) ToastLayout {
 	var layout ToastLayout = ToastLayout{}
-	var value_0 int32 = view_width
-	var value_1 ToastMetrics = metrics
-	var value_2 int32 = Toast_ToastMaxWidth(value_0, value_1)
-	var max_width int32 = value_2
-	var value_3 int32 = text_width
-	var value_4 int32 = metrics.PadX
-	var value_5 int32 = 2
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_6), 32, true, 1))
-	var width int32 = value_7
-	var value_8 int32 = line_height
-	var value_9 int32 = metrics.PadY
-	var value_10 int32 = 2
-	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 3))
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_11), 32, true, 1))
-	var height int32 = value_12
-	var value_13 int32 = width
-	var value_14 int32 = max_width
-	var value_15 bool = value_13 > value_14
-	if value_15 {
-		var value_16 int32 = max_width
-		width = value_16
+	var value_0 int32 = Toast_ToastMaxWidth(view_width, metrics)
+	var max_width int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(text_width), uint64((int32(number_runtime_bits(uint64(metrics.PadX), uint64(2), 32, true, 3)))), 32, true, 1))
+	var width int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(line_height), uint64((int32(number_runtime_bits(uint64(metrics.PadY), uint64(2), 32, true, 3)))), 32, true, 1))
+	var height int32 = value_2
+	if width > max_width {
+		width = max_width
 	}
-	var value_17 int32 = width
-	var value_18 int32 = 1
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 int32 = 1
-		width = value_20
+	if width < 1 {
+		width = 1
 	}
-	var value_21 int32 = height
-	var value_22 int32 = 1
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 int32 = 1
-		height = value_24
+	if height < 1 {
+		height = 1
 	}
-	var value_25 int32 = view_width
-	var value_26 int32 = width
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 2))
-	var value_28 int32 = 2
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 4))
-	var value_30 float32 = float32(value_29)
-	layout.Bounds.X = value_30
-	var value_31 int32 = view_height
-	var value_32 int32 = height
-	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 2))
-	var value_34 int32 = metrics.Margin
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
-	var value_36 float32 = float32(value_35)
-	layout.Bounds.Y = value_36
-	var value_37 int32 = width
-	var value_38 float32 = float32(value_37)
-	layout.Bounds.Width = value_38
-	var value_39 int32 = height
-	var value_40 float32 = float32(value_39)
-	layout.Bounds.Height = value_40
-	var value_41 float32 = layout.Bounds.X
-	var value_42 int32 = width
-	var value_43 int32 = text_width
-	var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 2))
-	var value_45 int32 = 2
-	var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 4))
-	var value_47 float32 = float32(value_46)
-	var value_48 float32 = value_41 + value_47
-	layout.TextBounds.X = value_48
-	var value_49 float32 = layout.Bounds.Y
-	var value_50 int32 = metrics.PadY
-	var value_51 float32 = float32(value_50)
-	var value_52 float32 = value_49 + value_51
-	layout.TextBounds.Y = value_52
-	var value_53 int32 = width
-	var value_54 int32 = metrics.PadX
-	var value_55 int32 = 2
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 3))
-	var value_57 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_56), 32, true, 2))
-	var value_58 float32 = float32(value_57)
-	layout.TextBounds.Width = value_58
-	var value_59 int32 = line_height
-	var value_60 float32 = float32(value_59)
-	layout.TextBounds.Height = value_60
-	var value_61 float32 = layout.TextBounds.Width
-	var value_62 float32 = 0.0
-	var value_63 bool = value_61 < value_62
-	if value_63 {
-		var value_64 float32 = 0.0
-		layout.TextBounds.Width = value_64
+	var value_3 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_width), uint64(width), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.Bounds.X = float32(value_3)
+	var value_4 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(view_height), uint64(height), 32, true, 2)))), uint64(metrics.Margin), 32, true, 2))
+	layout.Bounds.Y = float32(value_4)
+	layout.Bounds.Width = float32(width)
+	layout.Bounds.Height = float32(height)
+	var value_5 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(width), uint64(text_width), 32, true, 2)))), uint64(2), 32, true, 4))
+	layout.TextBounds.X = (layout.Bounds.X + float32(value_5))
+	layout.TextBounds.Y = (layout.Bounds.Y + float32(metrics.PadY))
+	var value_6 int32 = int32(number_runtime_bits(uint64(width), uint64((int32(number_runtime_bits(uint64(metrics.PadX), uint64(2), 32, true, 3)))), 32, true, 2))
+	layout.TextBounds.Width = float32(value_6)
+	layout.TextBounds.Height = float32(line_height)
+	if layout.TextBounds.Width < 0.0 {
+		layout.TextBounds.Width = 0.0
 	}
-	var value_65 int32 = view_width
-	var value_66 ToastMetrics = metrics
-	var value_67 int32 = Toast_ToastContentWidth(value_65, value_66)
-	layout.ContentWidth = value_67
-	var value_68 ToastLayout = layout
-	return value_68
+	var value_7 int32 = Toast_ToastContentWidth(view_width, metrics)
+	layout.ContentWidth = value_7
+	return layout
 }

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../src/ui/ui_internal.h"
-#include "../src/ui/ui_clip_internal.h"
+#include "ui/clip.h"
 #include "../src/ui/ui_blend_internal.h"
 #include "../src/ui/ui_paint_layers_internal.h"
 #if defined(__unix__)

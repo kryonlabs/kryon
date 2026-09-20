@@ -1,9 +1,11 @@
 name: Automatic Release Version
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  schedule:
+    # Batched patch release: at most one per day, and only when maintainers
+    # have written user-facing notes under "## Unreleased".
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,15 +17,10 @@ concurrency:
 
 jobs:
   bump-and-release:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Skip an already released commit
@@ -35,8 +32,20 @@ jobs:
             echo 'release=true' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Resolve next version
+      - name: Require curated release notes
         if: steps.guard.outputs.release == 'true'
+        id: notes
+        run: |
+          if scripts/release-notes.sh --check CHANGELOG.md; then
+            echo 'release=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+            echo 'Skipping: no curated notes under "## Unreleased".' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Resolve next version
+        if: steps.guard.outputs.release == 'true' && steps.notes.outputs.release == 'true'
         id: version
         run: |
           current=$(make -s version)
@@ -48,7 +57,7 @@ jobs:
           echo "tag=$version" >> "$GITHUB_OUTPUT"
 
       - name: Commit version
-        if: steps.guard.outputs.release == 'true'
+        if: steps.guard.outputs.release == 'true' && steps.notes.outputs.release == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -59,7 +68,7 @@ jobs:
           fi
 
       - name: Start release workflow
-        if: steps.guard.outputs.release == 'true'
+        if: steps.guard.outputs.release == 'true' && steps.notes.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-

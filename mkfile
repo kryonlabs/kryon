@@ -31,7 +31,7 @@ RAYEXT=$ROOT/vendor/raylib/src/external
 GEN=$ROOT/build/plan9
 genlist=$GEN/generated-c-files.txt
 
-CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN -I$GEN/generated -I$RAYEXT \
+CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN -I$GEN/generated -I$GEN/generated/src -I$GEN/generated/runtime -I$ROOT/vendor/utf8proc -DUTF8PROC_STATIC -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
 	-DKRYON_EMBEDDED_ONLY=0
 
@@ -64,83 +64,17 @@ OFILES=\
 	src/core/kryon_frame_pacing.$O\
 	src/core/kryon_mem.$O\
 	src/core/kryon_node.$O\
-	src/core/kry_settings.$O\
 	src/core/locale.$O\
 	src/core/theme.$O\
 	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
 	src/kry_std/kry_xml.$O\
 	src/sync/sync_crypto.$O\
-	src/ui/button.$O\
-	src/ui/dropdown.$O\
-	src/ui/guide.$O\
-	src/ui/icon_controls.$O\
-	src/ui/kss_parser.$O\
-	src/ui/modal.$O\
-	src/ui/navigation_bar.$O\
-	src/ui/overlay.$O\
-	src/ui/pager.$O\
-	src/ui/popup.$O\
-	src/ui/profile_header.$O\
-	src/ui/reorder.$O\
-	src/ui/rows.$O\
-	src/ui/scroll.$O\
-	src/ui/spritesheet.$O\
-	src/ui/style_builtin_packs.$O\
-	src/ui/style_pack_source.$O\
-	src/ui/style_picker.$O\
-	src/ui/style_sheet.$O\
-	src/ui/swipe.$O\
-	src/ui/tab_bar.$O\
-	src/ui/tab_scope.$O\
-	src/ui/terminal_pane.$O\
-	src/ui/terminal_pane_clipboard.$O\
-	src/ui/terminal_pane_csi.$O\
-	src/ui/terminal_pane_dcs.$O\
-	src/ui/terminal_pane_keys.$O\
-	src/ui/terminal_pane_modes.$O\
-	src/ui/terminal_pane_mouse.$O\
-	src/ui/terminal_pane_osc.$O\
-	src/ui/terminal_pane_profile.$O\
-	src/ui/terminal_pane_reflow.$O\
-	src/ui/terminal_pane_render.$O\
-	src/ui/terminal_pane_selection.$O\
-	src/ui/terminal_pane_session.$O\
-	src/ui/terminal_pane_sgr.$O\
-	src/ui/terminal_pane_sixel.$O\
-	src/ui/terminal_pane_text.$O\
-	src/ui/toast.$O\
-	src/ui/toolbar.$O\
-	src/ui/tutorial.$O\
-	src/ui/ui.$O\
-	src/ui/ui_clip.$O\
-	src/ui/ui_clipboard.$O\
-	src/ui/ui_color.$O\
-	src/ui/ui_dpi.$O\
-	src/ui/ui_grapheme.$O\
-	src/ui/ui_icons.$O\
-	src/ui/ui_inspect.$O\
-	src/ui/ui_layout.$O\
-	src/ui/ui_page.$O\
-	src/ui/ui_node_registry.$O\
 	src/ui/ui_image_cache.$O\
 	src/ui/ui_paint.$O\
-	src/ui/ui_paint_layers.$O\
-	src/ui/ui_popup_input.$O\
-	src/ui/ui_scaling.$O\
-	src/ui/ui_slider.$O\
-	src/ui/ui_style.$O\
 	src/ui/ui_surface_cache.$O\
 	src/ui/ui_text.$O\
 	src/ui/ui_text_backend.$O\
-	src/ui/ui_text_composition.$O\
-	src/ui/ui_text_edit.$O\
-	src/ui/ui_text_layout.$O\
-	src/ui/ui_text_rows.$O\
-	src/ui/ui_titlebar.$O\
-	src/ui/ui_tk.$O\
-	src/ui/ui_transition.$O\
-	src/ui/ui_tree.$O\
 	src/ui/ui_window.$O\
 	src/kry_std/kry_archive.$O\
 	src/kry_std/kry_filesystem.$O\
@@ -165,7 +99,7 @@ iconobj=$GEN/ui_icon_assets.$O $GEN/ui_icon_names.$O
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/sync/*.$O src/platform/*/*.$O \
 	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i \
-	$GEN/generated/runtime/*.$O $GEN/*.$O
+	$GEN/generated/runtime/*.$O $GEN/generated/src/ui/*.$O $GEN/*.$O
 
 all:V: check $LIB
 
@@ -223,6 +157,9 @@ src/markdown.$O: src/markdown.c
 
 $GEN/generated/runtime/%.$O: $GEN/generated/runtime/%.c
 	cd $GEN/generated/runtime && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+$GEN/generated/src/ui/%.$O: $GEN/generated/src/ui/%.c
+	cd $GEN/generated/src/ui && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 
 $GEN/embedded_asset_data.$O: $GEN/embedded_asset_data.c
 	cd $GEN && cpp -+ $CPPFLAGS embedded_asset_data.c > embedded_asset_data.i && $CC $CFLAGS -c embedded_asset_data.i && mv embedded_asset_data.i.$O embedded_asset_data.$O && rm -f embedded_asset_data.i

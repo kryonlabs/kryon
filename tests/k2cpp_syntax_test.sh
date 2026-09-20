@@ -472,7 +472,9 @@ c++ -fsyntax-only -std=c++17 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$
 # conflicting linkage and C++ keywords in generated KSS record fields.
 cat > "$work/public_headers.cpp" <<'EOF'
 #include "kryon.h"
-#include "ui_tk.h"
+#include "ui_clipboard.generated.h"
+#include "ui_accelerator.generated.h"
+#include "ui_canvas_props.generated.h"
 #include "ui_tree.h"
 #include "runtime/kss_parser.h"
 EOF

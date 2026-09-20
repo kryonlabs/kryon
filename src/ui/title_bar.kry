@@ -1,0 +1,126 @@
+#module "title_bar_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/style.h"
+#import "runtime/title_bar.h"
+
+TitleBarFrame :: (class_name: i32, role: i32,
+state: ButtonState, icon_only: bool) -> StyleFrame {
+    props: ButtonProps
+    props.tone = ButtonToneNeutral
+    props.emphasis = ButtonEmphasisSoft
+    if !icon_only { props.size = ControlSizeMedium }
+    props.icon_only = icon_only
+    props.class_name = class_name
+    return ui_control_style_frame_role_kind(props, state, 0,
+    0.0, 0.0, 0.0, StyleKindTitleBar(), role)
+}
+
+TitleBarBackground :: (height: i32, class_name: i32) {
+    paint: TitleBarPaint = TitleBarPaintFor(ui_view_width, height)
+    frame: StyleFrame = TitleBarFrame(class_name, TitleBarBarRole(),
+    ButtonStateNormal, false)
+    bar: Style = ui_unpack_style(frame.value)
+
+    ui_draw_material(paint.bounds, (Rectangle){0}, bar.background, bar.border,
+    bar.border, bar.radius, bar.border_width, 0.0, 0.0,
+    0, bar.focus, 0.0, bar.opacity, ui_style_fill(bar), bar.material)
+    DrawLine((int)paint.divider.x, (int)paint.divider.y,
+    (int)(paint.divider.x + paint.divider.width),
+    (int)paint.divider.y, bar.border)
+}
+
+TitleBarMetricsForClass :: (class_name: i32) -> TitleBarMetrics {
+    bar: StyleFrame = TitleBarFrame(class_name, TitleBarBarRole(),
+    ButtonStateNormal, false)
+    title: StyleFrame = TitleBarFrame(class_name, TitleBarTitleRole(),
+    ButtonStateNormal, false)
+    action: StyleFrame = TitleBarFrame(class_name, TitleBarActionRole(),
+    ButtonStateNormal, true)
+    return TitleBarMetricsFor((float)GetScale(), bar, title, action)
+}
+
+TitleBarReturnButton :: (return_icon: Texture2D, bounds: Rectangle,
+metrics: TitleBarMetrics, class_name: i32) -> i32 {
+    button: IconActionSpec
+    button.bounds = bounds
+    button.icon = return_icon
+    button.icon_type = ICON_LEFT
+    if return_icon.id != 0 { button.icon_type = ICON_NONE }
+    button.icon_size = metrics.leading_icon_size
+    button.icon_padding = metrics.leading_padding
+    normal: Style = ui_unpack_style(TitleBarFrame(class_name,
+    TitleBarActionRole(), ButtonStateNormal, true).value)
+    hover: Style = ui_unpack_style(TitleBarFrame(class_name,
+    TitleBarActionRole(), ButtonStateHover, true).value)
+    button.icon_color = normal.foreground
+    button.hover_background = hover.background
+    button.radius = TitleBarActionRadius()
+    return RenderIconAction(button)
+}
+
+TitleBarCenteredTitle :: (title: const char*, height: i32,
+side_reserved: i32, class_name: i32) {
+    metrics: TitleBarMetrics = TitleBarMetricsForClass(class_name)
+    has_leading: bool = TitleBarReservedHasLeading(side_reserved, metrics)
+    layout: TitleBarLayout = TitleBarLayoutFor(ui_view_width, height,
+    has_leading, false, 0, 0, metrics)
+    max_width: i32 = (int)layout.title_bounds.width
+    text: Style = ui_unpack_style(TitleBarFrame(class_name,
+    TitleBarTitleRole(), ButtonStateNormal, false).value)
+
+    if title == nil { title = "" }
+    font: i32 = ResolveFont(0, StyleFontValue(text.fields, text.font_size),
+    GetTitleFontSize(title, max_width))
+    title_width: i32 = TextWidth(title, font)
+    while TitleBarShouldShrinkTitleFont(title_width, max_width, font, Text12) {
+        font = TitleBarShrinkTitleFontStep(title_width, max_width, font, Text12)
+        title_width = TextWidth(title, font)
+    }
+    paint: TitleBarTitlePaint = TitleBarTitlePaintFor(layout,
+    title_width, TextLineHeight(font))
+    RenderText(title, paint.x, paint.y, font,
+    Fade(text.foreground, text.opacity))
+}
+
+ui_title_bar_height :: () -> i32 #export {
+    bar: StyleFrame = TitleBarFrame(0, TitleBarBarRole(),
+    ButtonStateNormal, false)
+    return TitleBarDefaultHeightFor((float)GetScale(), bar)
+}
+
+RenderTitleBar :: (title_bar: TitleBarProps) -> i32 #export {
+    clicked: i32 = 0
+    state: TitleBarState = TitleBarStateFor(title_bar.height,
+    ui_title_bar_height(), title_bar.has_leading_action != 0,
+    title_bar.has_dropdown != 0)
+    height: i32 = state.height
+    metrics: TitleBarMetrics = TitleBarMetricsForClass(title_bar.class_name)
+    side_reserved: i32 = metrics.side_margin
+    layout: TitleBarLayout = TitleBarLayoutFor(ui_view_width, height,
+    state.has_leading, state.has_dropdown, title_bar.dropdown.height,
+    title_bar.dropdown.min_width, metrics)
+
+    TitleBarBackground(height, title_bar.class_name)
+    if state.has_leading {
+        clicked = TitleBarReturnButton(title_bar.leading_icon,
+        layout.leading_bounds, metrics, title_bar.class_name)
+        side_reserved = layout.side_reserved
+    }
+    if state.has_dropdown {
+        dropdown: TitleBarDropdown = title_bar.dropdown
+        if !dropdown.disabled {
+            props: DropdownProps
+            props.id = dropdown.id
+            props.bounds = layout.dropdown_bounds
+            props.options = dropdown.options
+            props.option_count = dropdown.option_count
+            props.selected_index = dropdown.selected_index
+            Dropdown(props)
+        }
+        return clicked
+    }
+    TitleBarCenteredTitle(title_bar.title, height, side_reserved,
+    title_bar.class_name)
+    return clicked
+}

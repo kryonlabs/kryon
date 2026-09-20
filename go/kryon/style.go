@@ -76,812 +76,377 @@ type StyleStates struct {
 func Style_ResolveFlags(state int32, disabled bool, loading bool, selected bool) StateFlags {
 	var flags StateFlags = StateFlags{}
 	var value_0 bool = disabled
-	var value_1 bool = value_0
+	if !value_0 {
+		value_0 = (state == int32(ButtonStateDisabled))
+	}
+	flags.Disabled = value_0
+	var value_1 bool = loading
 	if !value_1 {
-		var value_2 int32 = state
-		var value_3 int32 = int32(ButtonStateDisabled)
-		var value_4 bool = value_2 == value_3
-		value_1 = value_4
+		value_1 = (state == int32(ButtonStateLoading))
 	}
-	flags.Disabled = value_1
-	var value_5 bool = loading
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 int32 = state
-		var value_8 int32 = int32(ButtonStateLoading)
-		var value_9 bool = value_7 == value_8
-		value_6 = value_9
+	flags.Loading = value_1
+	var value_2 bool = selected
+	if !value_2 {
+		value_2 = (state == int32(ButtonStateSelected))
 	}
-	flags.Loading = value_6
-	var value_10 bool = selected
-	var value_11 bool = value_10
-	if !value_11 {
-		var value_12 int32 = state
-		var value_13 int32 = int32(ButtonStateSelected)
-		var value_14 bool = value_12 == value_13
-		value_11 = value_14
-	}
-	flags.Selected = value_11
-	var value_15 StateFlags = flags
-	return value_15
+	flags.Selected = value_2
+	return flags
 }
 
 func Style_ResolveState(explicit_state int32, disabled bool, loading bool, pressed bool, hovered bool, focused bool, selected bool) int32 {
-	var value_0 bool = disabled
-	if value_0 {
-		var value_1 int32 = int32(ButtonStateDisabled)
-		return value_1
+	if disabled {
+		return int32(ButtonStateDisabled)
 	}
-	var value_2 bool = loading
-	if value_2 {
-		var value_3 int32 = int32(ButtonStateLoading)
-		return value_3
+	if loading {
+		return int32(ButtonStateLoading)
 	}
-	var value_4 int32 = explicit_state
-	var value_5 int32 = int32(ButtonStateAuto)
-	var value_6 bool = value_4 != value_5
-	if value_6 {
-		var value_7 int32 = explicit_state
-		return value_7
+	if explicit_state != int32(ButtonStateAuto) {
+		return explicit_state
 	}
-	var value_8 bool = pressed
-	if value_8 {
-		var value_9 int32 = int32(ButtonStatePressed)
-		return value_9
+	if pressed {
+		return int32(ButtonStatePressed)
 	}
-	var value_10 bool = hovered
-	if value_10 {
-		var value_11 int32 = int32(ButtonStateHover)
-		return value_11
+	if hovered {
+		return int32(ButtonStateHover)
 	}
-	var value_12 bool = focused
-	if value_12 {
-		var value_13 int32 = int32(ButtonStateFocus)
-		return value_13
+	if focused {
+		return int32(ButtonStateFocus)
 	}
-	var value_14 bool = selected
-	if value_14 {
-		var value_15 int32 = int32(ButtonStateSelected)
-		return value_15
+	if selected {
+		return int32(ButtonStateSelected)
 	}
-	var value_16 int32 = int32(ButtonStateNormal)
-	return value_16
+	return int32(ButtonStateNormal)
 }
 
 func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool, pressed bool, hovered bool, focused bool, selected bool) InteractionState {
-	var value_0 int32 = explicit_state
-	var value_1 bool = disabled
-	var value_2 bool = loading
-	var value_3 bool = pressed
-	var value_4 bool = hovered
-	var value_5 bool = focused
-	var value_6 bool = selected
-	var value_7 int32 = Style_ResolveState(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
-	var state int32 = value_7
-	var value_8 InteractionState = InteractionState{}
-	var value_9 int32 = state
-	value_8.State = value_9
-	var value_10 bool = hovered
-	value_8.Hovered = value_10
-	var value_11 bool = pressed
-	value_8.Pressed = value_11
-	var value_12 bool = focused
-	value_8.Focused = value_12
-	var interaction InteractionState = value_8
-	var value_13 int32 = explicit_state
-	var value_14 int32 = int32(ButtonStateAuto)
-	var value_15 bool = value_13 != value_14
-	if value_15 {
-		var value_16 int32 = state
-		var value_17 int32 = int32(ButtonStateHover)
-		var value_18 bool = value_16 == value_17
-		interaction.Hovered = value_18
-		var value_19 int32 = state
-		var value_20 int32 = int32(ButtonStatePressed)
-		var value_21 bool = value_19 == value_20
-		interaction.Pressed = value_21
-		var value_22 int32 = state
-		var value_23 int32 = int32(ButtonStateFocus)
-		var value_24 bool = value_22 == value_23
-		interaction.Focused = value_24
+	var value_0 int32 = Style_ResolveState(explicit_state, disabled, loading, pressed, hovered, focused, selected)
+	var state int32 = value_0
+	var value_1 InteractionState = InteractionState{}
+	value_1.State = state
+	value_1.Hovered = hovered
+	value_1.Pressed = pressed
+	value_1.Focused = focused
+	var interaction InteractionState = value_1
+	if explicit_state != int32(ButtonStateAuto) {
+		interaction.Hovered = (state == int32(ButtonStateHover))
+		interaction.Pressed = (state == int32(ButtonStatePressed))
+		interaction.Focused = (state == int32(ButtonStateFocus))
 	}
-	var value_25 InteractionState = interaction
-	return value_25
+	return interaction
 }
 
 func Style_ControlStyleNone() ControlStyle {
 	var blank Style = Style{}
-	var value_0 uint32 = uint32(StyleBackground)
-	var value_1 uint32 = uint32(StyleBorder)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 9))
-	var value_3 uint32 = uint32(StyleFocus)
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, false, 9))
-	var value_5 uint32 = uint32(StyleRadius)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 9))
-	var value_7 uint32 = uint32(StyleBorderWidth)
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, false, 9))
-	var value_9 uint32 = uint32(StylePaddingX)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, false, 9))
-	var value_11 uint32 = uint32(StylePaddingY)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, false, 9))
-	var value_13 uint32 = uint32(StyleOpacity)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, false, 9))
-	blank.Fields = value_14
-	var value_15 Color = Color{}
-	var value_16 uint8 = 0
-	value_15.R = value_16
-	var value_17 uint8 = 0
-	value_15.G = value_17
-	var value_18 uint8 = 0
-	value_15.B = value_18
-	var value_19 uint8 = 0
-	value_15.A = value_19
-	blank.Background = value_15
-	var value_20 Color = Color{}
-	var value_21 uint8 = 0
-	value_20.R = value_21
-	var value_22 uint8 = 0
-	value_20.G = value_22
-	var value_23 uint8 = 0
-	value_20.B = value_23
-	var value_24 uint8 = 0
-	value_20.A = value_24
-	blank.Border = value_20
-	var value_25 Color = Color{}
-	var value_26 uint8 = 0
-	value_25.R = value_26
-	var value_27 uint8 = 0
-	value_25.G = value_27
-	var value_28 uint8 = 0
-	value_25.B = value_28
-	var value_29 uint8 = 0
-	value_25.A = value_29
-	blank.Focus = value_25
-	var value_30 float32 = 0.0
-	blank.Radius = value_30
-	var value_31 float32 = 0.0
-	blank.BorderWidth = value_31
-	var value_32 float32 = 0.0
-	blank.PaddingX = value_32
-	var value_33 float32 = 0.0
-	blank.PaddingY = value_33
-	var value_34 float32 = 1.0
-	blank.Opacity = value_34
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(uint32(StyleBackground)), uint64(uint32(StyleBorder)), 32, false, 9))
+	var value_1 uint32 = uint32(number_runtime_bits(uint64((uint32(number_runtime_bits(uint64(value_0), uint64(uint32(StyleFocus)), 32, false, 9)))), uint64(uint32(StyleRadius)), 32, false, 9))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64((uint32(number_runtime_bits(uint64(value_1), uint64(uint32(StyleBorderWidth)), 32, false, 9)))), uint64(uint32(StylePaddingX)), 32, false, 9))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64((uint32(number_runtime_bits(uint64(value_2), uint64(uint32(StylePaddingY)), 32, false, 9)))), uint64(uint32(StyleOpacity)), 32, false, 9))
+	blank.Fields = value_3
+	var value_4 Color = Color{}
+	value_4.R = 0
+	value_4.G = 0
+	value_4.B = 0
+	value_4.A = 0
+	blank.Background = value_4
+	var value_5 Color = Color{}
+	value_5.R = 0
+	value_5.G = 0
+	value_5.B = 0
+	value_5.A = 0
+	blank.Border = value_5
+	var value_6 Color = Color{}
+	value_6.R = 0
+	value_6.G = 0
+	value_6.B = 0
+	value_6.A = 0
+	blank.Focus = value_6
+	blank.Radius = 0.0
+	blank.BorderWidth = 0.0
+	blank.PaddingX = 0.0
+	blank.PaddingY = 0.0
+	blank.Opacity = 1.0
 	var style ControlStyle = ControlStyle{}
-	var value_35 Style = blank
-	style.Normal = value_35
-	var value_36 Style = blank
-	style.Hover = value_36
-	var value_37 Style = blank
-	style.Pressed = value_37
-	var value_38 Style = blank
-	style.Focused = value_38
-	var value_39 Style = blank
-	style.Disabled = value_39
-	var value_40 Style = blank
-	style.Loading = value_40
-	var value_41 Style = blank
-	style.Selected = value_41
-	var value_42 ControlStyle = style
-	return value_42
+	style.Normal = blank
+	style.Hover = blank
+	style.Pressed = blank
+	style.Focused = blank
+	style.Disabled = blank
+	style.Loading = blank
+	style.Selected = blank
+	return style
 }
 
 func Style_DefaultFields() uint32 {
-	var value_0 int32 = int32(StyleBackground)
-	var value_1 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(0), 32, false, 0))
-	var value_2 int32 = int32(StyleForeground)
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, false, 9))
-	var value_5 int32 = int32(StyleBorder)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 9))
-	var value_8 int32 = int32(StyleFocus)
-	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 9))
-	var value_11 int32 = int32(StyleRadius)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 9))
-	var value_14 int32 = int32(StyleBorderWidth)
-	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
-	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(value_15), 32, false, 9))
-	var value_17 int32 = int32(StyleOpacity)
-	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(value_18), 32, false, 9))
-	var value_20 int32 = int32(StylePaddingX)
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 9))
-	var value_23 int32 = int32(StylePaddingY)
-	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
-	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(value_24), 32, false, 9))
-	var value_26 int32 = int32(StyleGap)
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 9))
-	var value_29 int32 = int32(StyleFontSize)
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(value_30), 32, false, 9))
-	var value_32 int32 = int32(StyleIconSize)
-	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(value_33), 32, false, 9))
-	var value_35 int32 = int32(StyleContentOffset)
-	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(value_36), 32, false, 9))
-	var value_38 int32 = int32(StyleMaterial)
-	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
-	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(value_39), 32, false, 9))
-	return value_40
-}
-
-func Style_SizeValue(size int32, small float32, medium float32, large float32) float32 {
-	var value_0 int32 = size
-	var value_1 int32 = int32(ControlSizeSmall)
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 float32 = small
-		return value_3
-	}
-	var value_4 int32 = size
-	var value_5 int32 = int32(ControlSizeLarge)
-	var value_6 bool = value_4 == value_5
-	if value_6 {
-		var value_7 float32 = large
-		return value_7
-	}
-	var value_8 float32 = medium
-	return value_8
-}
-
-func Style_ResolveFont(requested int32, inherited int32, fallback int32) int32 {
-	var value_0 int32 = requested
-	var value_1 int32 = 0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 int32 = requested
-		return value_3
-	}
-	var value_4 int32 = inherited
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = inherited
-		return value_7
-	}
-	var value_8 int32 = fallback
-	var value_9 int32 = 0
-	var value_10 bool = value_8 > value_9
-	if value_10 {
-		var value_11 int32 = fallback
-		return value_11
-	}
-	var value_12 int32 = 16
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(uint32(number_runtime_bits(uint64(int32(StyleBackground)), uint64(0), 32, false, 0))), uint64(uint32(number_runtime_bits(uint64(int32(StyleForeground)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(uint32(number_runtime_bits(uint64(int32(StyleBorder)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(uint32(number_runtime_bits(uint64(int32(StyleFocus)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(uint32(number_runtime_bits(uint64(int32(StyleRadius)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(uint32(number_runtime_bits(uint64(int32(StyleOpacity)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))), 32, false, 9))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(uint32(number_runtime_bits(uint64(int32(StyleMaterial)), uint64(0), 32, false, 0))), 32, false, 9))
 	return value_12
 }
 
+func Style_SizeValue(size int32, small float32, medium float32, large float32) float32 {
+	if size == int32(ControlSizeSmall) {
+		return small
+	}
+	if size == int32(ControlSizeLarge) {
+		return large
+	}
+	return medium
+}
+
+func Style_ResolveFont(requested int32, inherited int32, fallback int32) int32 {
+	if requested > 0 {
+		return requested
+	}
+	if inherited > 0 {
+		return inherited
+	}
+	if fallback > 0 {
+		return fallback
+	}
+	return 16
+}
+
 func Style_StyleFontValue(fields uint32, font_size float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 int32 = int32(StyleFontSize)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
-	var value_4 int32 = 0
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 bool = value_3 == value_5
-	if value_6 {
-		var value_7 int32 = 0
-		return value_7
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_0 == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		return 0
 	}
-	var value_8 float32 = font_size
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 <= value_9
-	if value_10 {
-		var value_11 int32 = 0
-		return value_11
+	if font_size <= 0.0 {
+		return 0
 	}
-	var value_12 float32 = font_size
-	var value_13 float32 = 0.5
-	var value_14 float32 = value_12 + value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	return value_15
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((font_size+0.5)), 32, true)), uint64(0), 32, true, 0))
+	return value_1
 }
 
 func Style_StyleOpacityValue(fields uint32, opacity float32) float32 {
-	var value_0 uint32 = fields
-	var value_1 int32 = int32(StyleOpacity)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
-	var value_4 int32 = 0
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 bool = value_3 == value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		return value_7
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleOpacity)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_0 == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		return 1.0
 	}
-	var value_8 float32 = opacity
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 float32 = 0.0
-		return value_11
+	if opacity < 0.0 {
+		return 0.0
 	}
-	var value_12 float32 = opacity
-	var value_13 float32 = 1.0
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 float32 = 1.0
-		return value_15
+	if opacity > 1.0 {
+		return 1.0
 	}
-	var value_16 float32 = opacity
-	return value_16
+	return opacity
 }
 
 func Style_FitHeight(requested float32, minimum float32, content float32, padding float32) float32 {
-	var value_0 float32 = requested
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 > value_1
-	if value_2 {
-		var value_3 float32 = requested
-		return value_3
+	if requested > 0.0 {
+		return requested
 	}
-	var value_4 float32 = padding
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 float32 = 0.0
-		padding = value_7
+	if padding < 0.0 {
+		padding = 0.0
 	}
-	var value_8 float32 = content
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 float32 = 0.0
-		content = value_11
+	if content < 0.0 {
+		content = 0.0
 	}
-	var value_12 float32 = content
-	var value_13 float32 = 2.0
-	var value_14 float32 = padding
-	var value_15 float32 = value_13 * value_14
-	var value_16 float32 = value_12 + value_15
-	var height float32 = value_16
-	var value_17 float32 = height
-	var value_18 float32 = minimum
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 float32 = minimum
-		height = value_20
+	var height float32 = (content + (2.0 * padding))
+	if height < minimum {
+		height = minimum
 	}
-	var value_21 float32 = height
-	return value_21
+	return height
 }
 
 func Style_ContentBounds(width float32, height float32, padding_x float32, padding_y float32) Rectangle {
 	var box Rectangle = Rectangle{}
-	var value_0 float32 = padding_x
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		padding_x = value_3
+	if padding_x < 0.0 {
+		padding_x = 0.0
 	}
-	var value_4 float32 = padding_y
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 float32 = 0.0
-		padding_y = value_7
+	if padding_y < 0.0 {
+		padding_y = 0.0
 	}
-	var value_8 float32 = padding_x
-	box.X = value_8
-	var value_9 float32 = padding_y
-	box.Y = value_9
-	var value_10 float32 = width
-	var value_11 float32 = 2.0
-	var value_12 float32 = padding_x
-	var value_13 float32 = value_11 * value_12
-	var value_14 float32 = value_10 - value_13
-	box.Width = value_14
-	var value_15 float32 = height
-	var value_16 float32 = 2.0
-	var value_17 float32 = padding_y
-	var value_18 float32 = value_16 * value_17
-	var value_19 float32 = value_15 - value_18
-	box.Height = value_19
-	var value_20 float32 = box.Width
-	var value_21 float32 = 0.0
-	var value_22 bool = value_20 < value_21
-	if value_22 {
-		var value_23 float32 = 0.0
-		box.Width = value_23
+	box.X = padding_x
+	box.Y = padding_y
+	box.Width = (width - (2.0 * padding_x))
+	box.Height = (height - (2.0 * padding_y))
+	if box.Width < 0.0 {
+		box.Width = 0.0
 	}
-	var value_24 float32 = box.Height
-	var value_25 float32 = 0.0
-	var value_26 bool = value_24 < value_25
-	if value_26 {
-		var value_27 float32 = 0.0
-		box.Height = value_27
+	if box.Height < 0.0 {
+		box.Height = 0.0
 	}
-	var value_28 Rectangle = box
-	return value_28
+	return box
 }
 
 func Style_InsetBounds(bounds Rectangle, padding_x float32, padding_y float32, scale float32) Rectangle {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = bounds.Width
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 / value_5
-	var value_7 float32 = bounds.Height
-	var value_8 float32 = scale
-	var value_9 float32 = value_7 / value_8
-	var value_10 float32 = padding_x
-	var value_11 float32 = padding_y
-	var value_12 Rectangle = Style_ContentBounds(value_6, value_9, value_10, value_11)
-	var content Rectangle = value_12
+	var value_0 float32 = (bounds.Width / scale)
+	var value_1 float32 = (bounds.Height / scale)
+	var value_2 Rectangle = Style_ContentBounds(value_0, value_1, padding_x, padding_y)
+	var content Rectangle = value_2
 	var result Rectangle = Rectangle{}
-	var value_13 float32 = bounds.X
-	var value_14 float32 = content.X
-	var value_15 float32 = scale
-	var value_16 float32 = value_14 * value_15
-	var value_17 float32 = value_13 + value_16
-	result.X = value_17
-	var value_18 float32 = bounds.Y
-	var value_19 float32 = content.Y
-	var value_20 float32 = scale
-	var value_21 float32 = value_19 * value_20
-	var value_22 float32 = value_18 + value_21
-	result.Y = value_22
-	var value_23 float32 = content.Width
-	var value_24 float32 = scale
-	var value_25 float32 = value_23 * value_24
-	result.Width = value_25
-	var value_26 float32 = content.Height
-	var value_27 float32 = scale
-	var value_28 float32 = value_26 * value_27
-	result.Height = value_28
-	var value_29 Rectangle = result
-	return value_29
+	result.X = (bounds.X + (content.X * scale))
+	result.Y = (bounds.Y + (content.Y * scale))
+	result.Width = (content.Width * scale)
+	result.Height = (content.Height * scale)
+	return result
 }
 
 func Style_CenterChild(declared Rectangle, measured Rectangle, content Rectangle) Rectangle {
-	var value_0 float32 = declared.X
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 != value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 float32 = declared.Y
-		var value_5 float32 = 0.0
-		var value_6 bool = value_4 != value_5
-		value_3 = value_6
+	var value_0 bool = (declared.X != 0.0)
+	if !value_0 {
+		value_0 = (declared.Y != 0.0)
 	}
-	if value_3 {
-		var value_7 Rectangle = measured
-		return value_7
+	if value_0 {
+		return measured
 	}
-	var value_8 float32 = measured.Width
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 <= value_9
-	if value_10 {
-		var value_11 float32 = content.Width
-		measured.Width = value_11
+	if measured.Width <= 0.0 {
+		measured.Width = content.Width
 	}
-	var value_12 float32 = measured.Height
-	var value_13 float32 = 0.0
-	var value_14 bool = value_12 <= value_13
-	if value_14 {
-		var value_15 float32 = content.Height
-		measured.Height = value_15
+	if measured.Height <= 0.0 {
+		measured.Height = content.Height
 	}
-	var value_16 float32 = content.X
-	var value_17 float32 = content.Width
-	var value_18 float32 = measured.Width
-	var value_19 float32 = value_17 - value_18
-	var value_20 float32 = 0.5
-	var value_21 float32 = value_19 * value_20
-	var value_22 float32 = value_16 + value_21
-	measured.X = value_22
-	var value_23 float32 = content.Y
-	var value_24 float32 = content.Height
-	var value_25 float32 = measured.Height
-	var value_26 float32 = value_24 - value_25
-	var value_27 float32 = 0.5
-	var value_28 float32 = value_26 * value_27
-	var value_29 float32 = value_23 + value_28
-	measured.Y = value_29
-	var value_30 Rectangle = measured
-	return value_30
+	measured.X = (content.X + ((content.Width - measured.Width) * 0.5))
+	measured.Y = (content.Y + ((content.Height - measured.Height) * 0.5))
+	return measured
 }
 
 func Style_StyleShinePaintFor(bounds Rectangle, radius float32, shine_alpha int32, scale float32) StyleShinePaint {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 2.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var inset int32 = value_7
-	var value_8 float32 = 1.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	var y_offset int32 = value_11
-	var value_12 float32 = 3.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	var height int32 = value_15
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((2.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	var inset int32 = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((1.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	var y_offset int32 = value_1
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((3.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	var height int32 = value_2
 	var paint StyleShinePaint = StyleShinePaint{}
-	var value_16 int32 = shine_alpha
-	var value_17 int32 = 0
-	var value_18 bool = value_16 <= value_17
-	var value_19 bool = value_18
-	if !value_19 {
-		var value_20 float32 = radius
-		var value_21 float32 = 0.45
-		var value_22 bool = value_20 >= value_21
-		value_19 = value_22
+	var value_3 bool = (shine_alpha <= 0)
+	if !value_3 {
+		value_3 = (radius >= 0.45)
 	}
-	if value_19 {
-		var value_23 StyleShinePaint = paint
-		return value_23
+	if value_3 {
+		return paint
 	}
-	var value_24 float32 = bounds.Width
-	var value_25 int32 = inset
-	var value_26 int32 = 2
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 3))
-	var value_28 float32 = float32(value_27)
-	var value_29 bool = value_24 <= value_28
-	var value_30 bool = value_29
-	if !value_30 {
-		var value_31 float32 = bounds.Height
-		var value_32 int32 = height
-		var value_33 int32 = inset
-		var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 1))
-		var value_35 float32 = float32(value_34)
-		var value_36 bool = value_31 <= value_35
-		value_30 = value_36
+	var value_4 bool = (bounds.Width <= float32((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))))
+	if !value_4 {
+		value_4 = (bounds.Height <= float32((int32(number_runtime_bits(uint64(height), uint64(inset), 32, true, 1)))))
 	}
-	if value_30 {
-		var value_37 StyleShinePaint = paint
-		return value_37
+	if value_4 {
+		return paint
 	}
-	var value_38 float32 = bounds.X
-	var value_39 int32 = inset
-	var value_40 float32 = float32(value_39)
-	var value_41 float32 = value_38 + value_40
-	paint.Bounds.X = value_41
-	var value_42 float32 = bounds.Y
-	var value_43 int32 = y_offset
-	var value_44 float32 = float32(value_43)
-	var value_45 float32 = value_42 + value_44
-	paint.Bounds.Y = value_45
-	var value_46 float32 = bounds.Width
-	var value_47 int32 = inset
-	var value_48 int32 = 2
-	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 3))
-	var value_50 float32 = float32(value_49)
-	var value_51 float32 = value_46 - value_50
-	paint.Bounds.Width = value_51
-	var value_52 int32 = height
-	var value_53 float32 = float32(value_52)
-	paint.Bounds.Height = value_53
-	var value_54 bool = true
-	paint.Visible = value_54
-	var value_55 StyleShinePaint = paint
-	return value_55
+	paint.Bounds.X = (bounds.X + float32(inset))
+	paint.Bounds.Y = (bounds.Y + float32(y_offset))
+	paint.Bounds.Width = (bounds.Width - float32((int32(number_runtime_bits(uint64(inset), uint64(2), 32, true, 3)))))
+	paint.Bounds.Height = float32(height)
+	paint.Visible = true
+	return paint
 }
 
 func Style_StyleStateLayerAlpha(pressed bool, focused bool, hovered bool) int32 {
-	var value_0 bool = pressed
-	if value_0 {
-		var value_1 int32 = 31
-		return value_1
+	if pressed {
+		return 31
 	}
-	var value_2 bool = focused
-	if value_2 {
-		var value_3 int32 = 31
-		return value_3
+	if focused {
+		return 31
 	}
-	var value_4 bool = hovered
-	if value_4 {
-		var value_5 int32 = 20
-		return value_5
+	if hovered {
+		return 20
 	}
-	var value_6 int32 = 0
-	return value_6
+	return 0
 }
 
 func Style_StyleDisabledAlpha() uint8 {
-	var value_0 int32 = 96
-	var value_1 uint8 = uint8(number_runtime_bits(uint64(value_0), uint64(0), 8, false, 0))
-	return value_1
+	return uint8(number_runtime_bits(uint64(96), uint64(0), 8, false, 0))
 }
 
 func Style_StyleDefaultFocusOutlineAlpha() uint8 {
-	var value_0 int32 = 220
-	var value_1 uint8 = uint8(number_runtime_bits(uint64(value_0), uint64(0), 8, false, 0))
-	return value_1
+	return uint8(number_runtime_bits(uint64(220), uint64(0), 8, false, 0))
 }
 
 func Style_StyleLegacyBoxRadius(requested float32) float32 {
-	var value_0 float32 = requested
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 float32 = requested
-		return value_3
+	if requested >= 0.0 {
+		return requested
 	}
-	var value_4 float32 = 0.12
-	return value_4
+	return 0.12
 }
 
 func Style_StyleElevationPaintFor(level int32) StyleElevationPaint {
 	var paint StyleElevationPaint = StyleElevationPaint{}
-	var value_0 int32 = level
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 StyleElevationPaint = paint
-		return value_3
+	if level <= 0 {
+		return paint
 	}
-	var value_4 int32 = level
-	var value_5 int32 = 4
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = 4
-		level = value_7
+	if level > 4 {
+		level = 4
 	}
-	var value_8 int32 = level
-	paint.Level = value_8
-	var value_9 int32 = 18
-	var value_10 int32 = level
-	var value_11 int32 = 6
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 3))
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_12), 32, true, 1))
-	paint.FarAlpha = value_13
-	var value_14 int32 = 10
-	var value_15 int32 = level
-	var value_16 int32 = 4
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 3))
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_17), 32, true, 1))
-	paint.NearAlpha = value_18
-	var value_19 int32 = level
-	var value_20 int32 = 2
-	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 3))
-	paint.FarOffset = value_21
-	var value_22 int32 = level
-	paint.NearOffset = value_22
-	var value_23 bool = true
-	paint.Visible = value_23
-	var value_24 StyleElevationPaint = paint
-	return value_24
+	paint.Level = level
+	var value_0 int32 = int32(number_runtime_bits(uint64(18), uint64((int32(number_runtime_bits(uint64(level), uint64(6), 32, true, 3)))), 32, true, 1))
+	paint.FarAlpha = value_0
+	var value_1 int32 = int32(number_runtime_bits(uint64(10), uint64((int32(number_runtime_bits(uint64(level), uint64(4), 32, true, 3)))), 32, true, 1))
+	paint.NearAlpha = value_1
+	paint.FarOffset = (int32(number_runtime_bits(uint64(level), uint64(2), 32, true, 3)))
+	paint.NearOffset = level
+	paint.Visible = true
+	return paint
 }
 
 func Style_StyleRippleFallbackOrigin(bounds Rectangle) Vector2 {
 	var origin Vector2 = Vector2{}
-	var value_0 float32 = bounds.X
-	var value_1 float32 = bounds.Width
-	var value_2 float32 = 0.5
-	var value_3 float32 = value_1 * value_2
-	var value_4 float32 = value_0 + value_3
-	origin.X = value_4
-	var value_5 float32 = bounds.Y
-	var value_6 float32 = bounds.Height
-	var value_7 float32 = 0.5
-	var value_8 float32 = value_6 * value_7
-	var value_9 float32 = value_5 + value_8
-	origin.Y = value_9
-	var value_10 Vector2 = origin
-	return value_10
+	origin.X = (bounds.X + (bounds.Width * 0.5))
+	origin.Y = (bounds.Y + (bounds.Height * 0.5))
+	return origin
 }
 
 func Style_StyleRippleRadius(radius float32, max_radius float32, scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 8.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var min_radius float32 = value_6
-	var value_7 float32 = radius
-	var value_8 float32 = min_radius
-	var value_9 bool = value_7 < value_8
-	if value_9 {
-		var value_10 float32 = min_radius
-		radius = value_10
+	var min_radius float32 = (8.0 * scale)
+	if radius < min_radius {
+		radius = min_radius
 	}
-	var value_11 float32 = radius
-	var value_12 float32 = max_radius
-	var value_13 bool = value_11 > value_12
-	if value_13 {
-		var value_14 float32 = max_radius
-		radius = value_14
+	if radius > max_radius {
+		radius = max_radius
 	}
-	var value_15 float32 = radius
-	return value_15
+	return radius
 }
 
 func Style_StyleRipplePaintFor(age float32, pressed bool, max_radius float32, scale float32) StyleRipplePaint {
 	var paint StyleRipplePaint = StyleRipplePaint{}
-	var value_0 float32 = 0.32
-	var duration float32 = value_0
-	var value_1 int32 = 28
-	var base_alpha int32 = value_1
-	var value_2 float32 = age
-	var value_3 float32 = 0.0
-	var value_4 bool = value_2 < value_3
-	if value_4 {
-		var value_5 float32 = 0.0
-		age = value_5
+	var duration float32 = 0.32
+	var base_alpha int32 = 28
+	if age < 0.0 {
+		age = 0.0
 	}
-	var value_6 bool = pressed
-	var value_7 bool = !value_6
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 float32 = age
-		var value_10 float32 = duration
-		var value_11 bool = value_9 > value_10
-		value_8 = value_11
+	var value_0 bool = !pressed
+	if value_0 {
+		value_0 = (age > duration)
 	}
-	if value_8 {
-		var value_12 StyleRipplePaint = paint
-		return value_12
+	if value_0 {
+		return paint
 	}
-	var value_13 float32 = age
-	var value_14 float32 = duration
-	var value_15 float32 = value_13 / value_14
-	var progress float32 = value_15
-	var value_16 float32 = progress
-	var value_17 float32 = 0.0
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 float32 = 0.0
-		progress = value_19
+	var progress float32 = (age / duration)
+	if progress < 0.0 {
+		progress = 0.0
 	}
-	var value_20 float32 = progress
-	var value_21 float32 = 1.0
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 float32 = 1.0
-		progress = value_23
+	if progress > 1.0 {
+		progress = 1.0
 	}
-	var value_24 float32 = max_radius
-	var value_25 float32 = progress
-	var value_26 float32 = value_24 * value_25
-	var value_27 float32 = max_radius
-	var value_28 float32 = scale
-	var value_29 float32 = Style_StyleRippleRadius(value_26, value_27, value_28)
-	paint.Radius = value_29
-	var value_30 int32 = base_alpha
-	paint.Alpha = value_30
-	var value_31 bool = pressed
-	var value_32 bool = !value_31
-	if value_32 {
-		var value_33 int32 = base_alpha
-		var value_34 float32 = float32(value_33)
-		var value_35 float32 = 1.0
-		var value_36 float32 = progress
-		var value_37 float32 = value_35 - value_36
-		var value_38 float32 = value_34 * value_37
-		var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
-		paint.Alpha = value_39
+	var value_1 float32 = (max_radius * progress)
+	var value_2 float32 = Style_StyleRippleRadius(value_1, max_radius, scale)
+	paint.Radius = value_2
+	paint.Alpha = base_alpha
+	if !pressed {
+		var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((float32(base_alpha)*(1.0-progress))), 32, true)), uint64(0), 32, true, 0))
+		paint.Alpha = value_3
 	}
-	var value_40 int32 = paint.Alpha
-	var value_41 int32 = 0
-	var value_42 bool = value_40 > value_41
-	paint.Visible = value_42
-	var value_43 StyleRipplePaint = paint
-	return value_43
+	paint.Visible = (paint.Alpha > 0)
+	return paint
 }
 
 func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleData {
@@ -889,390 +454,194 @@ func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleDat
 	var value_1 uint32 = hover.Background
 	var value_2 uint32 = press.Background
 	var value_3 uint32 = focus.Background
-	var value_4 float32 = h
-	var value_5 float32 = p
-	var value_6 float32 = f
-	var value_7 uint32 = Surface_InteractionColor(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
-	resolved.Background = value_7
-	var value_8 uint32 = normal.Foreground
-	var value_9 uint32 = hover.Foreground
-	var value_10 uint32 = press.Foreground
-	var value_11 uint32 = focus.Foreground
-	var value_12 float32 = h
-	var value_13 float32 = p
-	var value_14 float32 = f
-	var value_15 uint32 = Surface_InteractionColor(value_8, value_9, value_10, value_11, value_12, value_13, value_14)
-	resolved.Foreground = value_15
-	var value_16 uint32 = normal.Border
-	var value_17 uint32 = hover.Border
-	var value_18 uint32 = press.Border
-	var value_19 uint32 = focus.Border
-	var value_20 float32 = h
-	var value_21 float32 = p
-	var value_22 float32 = f
-	var value_23 uint32 = Surface_InteractionColor(value_16, value_17, value_18, value_19, value_20, value_21, value_22)
-	resolved.Border = value_23
-	var value_24 uint32 = normal.Focus
-	var value_25 uint32 = hover.Focus
-	var value_26 uint32 = press.Focus
-	var value_27 uint32 = focus.Focus
-	var value_28 float32 = h
-	var value_29 float32 = p
-	var value_30 float32 = f
-	var value_31 uint32 = Surface_InteractionColor(value_24, value_25, value_26, value_27, value_28, value_29, value_30)
-	resolved.Focus = value_31
-	var value_32 float32 = normal.Radius
-	var value_33 float32 = hover.Radius
-	var value_34 float32 = press.Radius
-	var value_35 float32 = focus.Radius
-	var value_36 float32 = h
-	var value_37 float32 = p
-	var value_38 float32 = f
-	var value_39 float32 = Surface_InteractionValue(value_32, value_33, value_34, value_35, value_36, value_37, value_38)
-	resolved.Radius = value_39
-	var value_40 float32 = normal.BorderWidth
-	var value_41 float32 = hover.BorderWidth
-	var value_42 float32 = press.BorderWidth
-	var value_43 float32 = focus.BorderWidth
-	var value_44 float32 = h
-	var value_45 float32 = p
-	var value_46 float32 = f
-	var value_47 float32 = Surface_InteractionValue(value_40, value_41, value_42, value_43, value_44, value_45, value_46)
-	resolved.BorderWidth = value_47
-	var value_48 float32 = normal.Opacity
-	var value_49 float32 = hover.Opacity
-	var value_50 float32 = press.Opacity
-	var value_51 float32 = focus.Opacity
-	var value_52 float32 = h
-	var value_53 float32 = p
-	var value_54 float32 = f
-	var value_55 float32 = Surface_InteractionValue(value_48, value_49, value_50, value_51, value_52, value_53, value_54)
-	resolved.Opacity = value_55
-	var value_56 float32 = normal.OffsetX
-	var value_57 float32 = hover.OffsetX
-	var value_58 float32 = press.OffsetX
-	var value_59 float32 = focus.OffsetX
-	var value_60 float32 = h
-	var value_61 float32 = p
-	var value_62 float32 = f
-	var value_63 float32 = Surface_InteractionValue(value_56, value_57, value_58, value_59, value_60, value_61, value_62)
-	resolved.OffsetX = value_63
-	var value_64 float32 = normal.OffsetY
-	var value_65 float32 = hover.OffsetY
-	var value_66 float32 = press.OffsetY
-	var value_67 float32 = focus.OffsetY
-	var value_68 float32 = h
-	var value_69 float32 = p
-	var value_70 float32 = f
-	var value_71 float32 = Surface_InteractionValue(value_64, value_65, value_66, value_67, value_68, value_69, value_70)
-	resolved.OffsetY = value_71
-	var value_72 StyleData = resolved
-	return value_72
+	var value_4 uint32 = Surface_InteractionColor(value_0, value_1, value_2, value_3, h, p, f)
+	resolved.Background = value_4
+	var value_5 uint32 = normal.Foreground
+	var value_6 uint32 = hover.Foreground
+	var value_7 uint32 = press.Foreground
+	var value_8 uint32 = focus.Foreground
+	var value_9 uint32 = Surface_InteractionColor(value_5, value_6, value_7, value_8, h, p, f)
+	resolved.Foreground = value_9
+	var value_10 uint32 = normal.Border
+	var value_11 uint32 = hover.Border
+	var value_12 uint32 = press.Border
+	var value_13 uint32 = focus.Border
+	var value_14 uint32 = Surface_InteractionColor(value_10, value_11, value_12, value_13, h, p, f)
+	resolved.Border = value_14
+	var value_15 uint32 = normal.Focus
+	var value_16 uint32 = hover.Focus
+	var value_17 uint32 = press.Focus
+	var value_18 uint32 = focus.Focus
+	var value_19 uint32 = Surface_InteractionColor(value_15, value_16, value_17, value_18, h, p, f)
+	resolved.Focus = value_19
+	var value_20 float32 = normal.Radius
+	var value_21 float32 = hover.Radius
+	var value_22 float32 = press.Radius
+	var value_23 float32 = focus.Radius
+	var value_24 float32 = Surface_InteractionValue(value_20, value_21, value_22, value_23, h, p, f)
+	resolved.Radius = value_24
+	var value_25 float32 = normal.BorderWidth
+	var value_26 float32 = hover.BorderWidth
+	var value_27 float32 = press.BorderWidth
+	var value_28 float32 = focus.BorderWidth
+	var value_29 float32 = Surface_InteractionValue(value_25, value_26, value_27, value_28, h, p, f)
+	resolved.BorderWidth = value_29
+	var value_30 float32 = normal.Opacity
+	var value_31 float32 = hover.Opacity
+	var value_32 float32 = press.Opacity
+	var value_33 float32 = focus.Opacity
+	var value_34 float32 = Surface_InteractionValue(value_30, value_31, value_32, value_33, h, p, f)
+	resolved.Opacity = value_34
+	var value_35 float32 = normal.OffsetX
+	var value_36 float32 = hover.OffsetX
+	var value_37 float32 = press.OffsetX
+	var value_38 float32 = focus.OffsetX
+	var value_39 float32 = Surface_InteractionValue(value_35, value_36, value_37, value_38, h, p, f)
+	resolved.OffsetX = value_39
+	var value_40 float32 = normal.OffsetY
+	var value_41 float32 = hover.OffsetY
+	var value_42 float32 = press.OffsetY
+	var value_43 float32 = focus.OffsetY
+	var value_44 float32 = Surface_InteractionValue(value_40, value_41, value_42, value_43, h, p, f)
+	resolved.OffsetY = value_44
+	return resolved
 }
 
 func Style_TransitionFrame(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleFrame {
 	var result StyleFrame = StyleFrame{}
-	var value_0 StyleData = resolved
-	var value_1 StyleData = normal
-	var value_2 StyleData = hover
-	var value_3 StyleData = press
-	var value_4 StyleData = focus
-	var value_5 float32 = h
-	var value_6 float32 = p
-	var value_7 float32 = f
-	var value_8 StyleData = Style_TransitionValues(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
-	result.Value = value_8
-	var value_9 uint32 = normal.Fields
-	var value_10 uint32 = normal.Background
-	var value_11 uint32 = normal.BackgroundEnd
+	var value_0 StyleData = Style_TransitionValues(resolved, normal, hover, press, focus, h, p, f)
+	result.Value = value_0
+	var value_1 uint32 = normal.Fields
+	var value_2 uint32 = normal.Background
+	var value_3 uint32 = normal.BackgroundEnd
+	var value_4 FillStates = Surface_FillState(value_1, value_2, value_3)
+	var value_5 uint32 = hover.Fields
+	var value_6 uint32 = hover.Background
+	var value_7 uint32 = hover.BackgroundEnd
+	var value_8 FillStates = Surface_FillState(value_5, value_6, value_7)
+	var value_9 uint32 = press.Fields
+	var value_10 uint32 = press.Background
+	var value_11 uint32 = press.BackgroundEnd
 	var value_12 FillStates = Surface_FillState(value_9, value_10, value_11)
-	var value_13 uint32 = hover.Fields
-	var value_14 uint32 = hover.Background
-	var value_15 uint32 = hover.BackgroundEnd
+	var value_13 uint32 = focus.Fields
+	var value_14 uint32 = focus.Background
+	var value_15 uint32 = focus.BackgroundEnd
 	var value_16 FillStates = Surface_FillState(value_13, value_14, value_15)
-	var value_17 uint32 = press.Fields
-	var value_18 uint32 = press.Background
-	var value_19 uint32 = press.BackgroundEnd
-	var value_20 FillStates = Surface_FillState(value_17, value_18, value_19)
-	var value_21 uint32 = focus.Fields
-	var value_22 uint32 = focus.Background
-	var value_23 uint32 = focus.BackgroundEnd
-	var value_24 FillStates = Surface_FillState(value_21, value_22, value_23)
-	var value_25 float32 = h
-	var value_26 float32 = p
-	var value_27 float32 = f
-	var value_28 FillStates = Surface_FillTransition(value_12, value_16, value_20, value_24, value_25, value_26, value_27)
-	result.Fill = value_28
-	var value_29 StyleFrame = result
-	return value_29
+	var value_17 FillStates = Surface_FillTransition(value_4, value_8, value_12, value_16, h, p, f)
+	result.Fill = value_17
+	return result
 }
 
 func Style_MergeValues(base StyleData, override StyleData) StyleData {
-	var value_0 uint32 = override.Fields
-	var value_1 int32 = int32(StyleBackground)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
-	var value_4 int32 = 0
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 bool = value_3 != value_5
-	if value_6 {
-		var value_7 uint32 = override.Background
-		base.Background = value_7
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleBackground)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_0 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Background = override.Background
 	}
-	var value_8 uint32 = override.Fields
-	var value_9 int32 = int32(StyleForeground)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_10), 32, false, 8))
-	var value_12 int32 = 0
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 bool = value_11 != value_13
-	if value_14 {
-		var value_15 uint32 = override.Foreground
-		base.Foreground = value_15
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleForeground)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_1 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Foreground = override.Foreground
 	}
-	var value_16 uint32 = override.Fields
-	var value_17 int32 = int32(StyleBorder)
-	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(value_18), 32, false, 8))
-	var value_20 int32 = 0
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 bool = value_19 != value_21
-	if value_22 {
-		var value_23 uint32 = override.Border
-		base.Border = value_23
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleBorder)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_2 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Border = override.Border
 	}
-	var value_24 uint32 = override.Fields
-	var value_25 int32 = int32(StyleFocus)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_26), 32, false, 8))
-	var value_28 int32 = 0
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 bool = value_27 != value_29
-	if value_30 {
-		var value_31 uint32 = override.Focus
-		base.Focus = value_31
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleFocus)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_3 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Focus = override.Focus
 	}
-	var value_32 uint32 = override.Fields
-	var value_33 int32 = int32(StyleRadius)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 8))
-	var value_36 int32 = 0
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 bool = value_35 != value_37
-	if value_38 {
-		var value_39 float32 = override.Radius
-		base.Radius = value_39
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleRadius)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_4 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Radius = override.Radius
 	}
-	var value_40 uint32 = override.Fields
-	var value_41 int32 = int32(StyleBorderWidth)
-	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
-	var value_43 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(value_42), 32, false, 8))
-	var value_44 int32 = 0
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	var value_46 bool = value_43 != value_45
-	if value_46 {
-		var value_47 float32 = override.BorderWidth
-		base.BorderWidth = value_47
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_5 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.BorderWidth = override.BorderWidth
 	}
-	var value_48 uint32 = override.Fields
-	var value_49 int32 = int32(StyleOpacity)
-	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
-	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(value_50), 32, false, 8))
-	var value_52 int32 = 0
-	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
-	var value_54 bool = value_51 != value_53
-	if value_54 {
-		var value_55 float32 = override.Opacity
-		base.Opacity = value_55
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleOpacity)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_6 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Opacity = override.Opacity
 	}
-	var value_56 uint32 = override.Fields
-	var value_57 int32 = int32(StylePaddingX)
-	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
-	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_56), uint64(value_58), 32, false, 8))
-	var value_60 int32 = 0
-	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-	var value_62 bool = value_59 != value_61
-	if value_62 {
-		var value_63 float32 = override.PaddingX
-		base.PaddingX = value_63
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_7 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.PaddingX = override.PaddingX
 	}
-	var value_64 uint32 = override.Fields
-	var value_65 int32 = int32(StylePaddingY)
-	var value_66 uint32 = uint32(number_runtime_bits(uint64(value_65), uint64(0), 32, false, 0))
-	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(value_66), 32, false, 8))
-	var value_68 int32 = 0
-	var value_69 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(0), 32, false, 0))
-	var value_70 bool = value_67 != value_69
-	if value_70 {
-		var value_71 float32 = override.PaddingY
-		base.PaddingY = value_71
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_8 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.PaddingY = override.PaddingY
 	}
-	var value_72 uint32 = override.Fields
-	var value_73 int32 = int32(StyleGap)
-	var value_74 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(0), 32, false, 0))
-	var value_75 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(value_74), 32, false, 8))
-	var value_76 int32 = 0
-	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
-	var value_78 bool = value_75 != value_77
-	if value_78 {
-		var value_79 float32 = override.Gap
-		base.Gap = value_79
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleGap)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_9 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Gap = override.Gap
 	}
-	var value_80 uint32 = override.Fields
-	var value_81 int32 = int32(StyleFontSize)
-	var value_82 uint32 = uint32(number_runtime_bits(uint64(value_81), uint64(0), 32, false, 0))
-	var value_83 uint32 = uint32(number_runtime_bits(uint64(value_80), uint64(value_82), 32, false, 8))
-	var value_84 int32 = 0
-	var value_85 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(0), 32, false, 0))
-	var value_86 bool = value_83 != value_85
-	if value_86 {
-		var value_87 float32 = override.FontSize
-		base.FontSize = value_87
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleFontSize)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_10 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.FontSize = override.FontSize
 	}
-	var value_88 uint32 = override.Fields
-	var value_89 int32 = int32(StyleIconSize)
-	var value_90 uint32 = uint32(number_runtime_bits(uint64(value_89), uint64(0), 32, false, 0))
-	var value_91 uint32 = uint32(number_runtime_bits(uint64(value_88), uint64(value_90), 32, false, 8))
-	var value_92 int32 = 0
-	var value_93 uint32 = uint32(number_runtime_bits(uint64(value_92), uint64(0), 32, false, 0))
-	var value_94 bool = value_91 != value_93
-	if value_94 {
-		var value_95 float32 = override.IconSize
-		base.IconSize = value_95
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_11 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.IconSize = override.IconSize
 	}
-	var value_96 uint32 = override.Fields
-	var value_97 int32 = int32(StyleContentOffset)
-	var value_98 uint32 = uint32(number_runtime_bits(uint64(value_97), uint64(0), 32, false, 0))
-	var value_99 uint32 = uint32(number_runtime_bits(uint64(value_96), uint64(value_98), 32, false, 8))
-	var value_100 int32 = 0
-	var value_101 uint32 = uint32(number_runtime_bits(uint64(value_100), uint64(0), 32, false, 0))
-	var value_102 bool = value_99 != value_101
-	if value_102 {
-		var value_103 float32 = override.OffsetX
-		base.OffsetX = value_103
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_12 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.OffsetX = override.OffsetX
 	}
-	var value_104 uint32 = override.Fields
-	var value_105 int32 = int32(StyleContentOffset)
-	var value_106 uint32 = uint32(number_runtime_bits(uint64(value_105), uint64(0), 32, false, 0))
-	var value_107 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(value_106), 32, false, 8))
-	var value_108 int32 = 0
-	var value_109 uint32 = uint32(number_runtime_bits(uint64(value_108), uint64(0), 32, false, 0))
-	var value_110 bool = value_107 != value_109
-	if value_110 {
-		var value_111 float32 = override.OffsetY
-		base.OffsetY = value_111
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_13 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.OffsetY = override.OffsetY
 	}
-	var value_112 uint32 = override.Fields
-	var value_113 int32 = int32(StyleBackgroundEnd)
-	var value_114 uint32 = uint32(number_runtime_bits(uint64(value_113), uint64(0), 32, false, 0))
-	var value_115 uint32 = uint32(number_runtime_bits(uint64(value_112), uint64(value_114), 32, false, 8))
-	var value_116 int32 = 0
-	var value_117 uint32 = uint32(number_runtime_bits(uint64(value_116), uint64(0), 32, false, 0))
-	var value_118 bool = value_115 != value_117
-	if value_118 {
-		var value_119 uint32 = override.BackgroundEnd
-		base.BackgroundEnd = value_119
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleBackgroundEnd)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_14 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.BackgroundEnd = override.BackgroundEnd
 	}
-	var value_120 uint32 = override.Fields
-	var value_121 int32 = int32(StyleMaterial)
-	var value_122 uint32 = uint32(number_runtime_bits(uint64(value_121), uint64(0), 32, false, 0))
-	var value_123 uint32 = uint32(number_runtime_bits(uint64(value_120), uint64(value_122), 32, false, 8))
-	var value_124 int32 = 0
-	var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
-	var value_126 bool = value_123 != value_125
-	if value_126 {
-		var value_127 MaterialKind = MaterialKind(override.Material)
-		base.Material = value_127
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleMaterial)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_15 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Material = MaterialKind(override.Material)
 	}
-	var value_128 uint32 = override.Fields
-	var value_129 int32 = int32(StyleTypeface)
-	var value_130 uint32 = uint32(number_runtime_bits(uint64(value_129), uint64(0), 32, false, 0))
-	var value_131 uint32 = uint32(number_runtime_bits(uint64(value_128), uint64(value_130), 32, false, 8))
-	var value_132 int32 = 0
-	var value_133 uint32 = uint32(number_runtime_bits(uint64(value_132), uint64(0), 32, false, 0))
-	var value_134 bool = value_131 != value_133
-	if value_134 {
-		var value_135 string = override.Typeface
-		base.Typeface = value_135
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleTypeface)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_16 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.Typeface = override.Typeface
 	}
-	var value_136 uint32 = override.Fields
-	var value_137 int32 = int32(StyleLetterSpacing)
-	var value_138 uint32 = uint32(number_runtime_bits(uint64(value_137), uint64(0), 32, false, 0))
-	var value_139 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(value_138), 32, false, 8))
-	var value_140 int32 = 0
-	var value_141 uint32 = uint32(number_runtime_bits(uint64(value_140), uint64(0), 32, false, 0))
-	var value_142 bool = value_139 != value_141
-	if value_142 {
-		var value_143 float32 = override.LetterSpacing
-		base.LetterSpacing = value_143
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(override.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StyleLetterSpacing)), uint64(0), 32, false, 0))), 32, false, 8))
+	if value_17 != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+		base.LetterSpacing = override.LetterSpacing
 	}
-	var value_144 uint32 = base.Fields
-	var value_145 uint32 = override.Fields
-	var value_146 uint32 = uint32(number_runtime_bits(uint64(value_144), uint64(value_145), 32, false, 9))
-	base.Fields = value_146
-	var value_147 StyleData = base
-	return value_147
+	base.Fields = (uint32(number_runtime_bits(uint64(base.Fields), uint64(override.Fields), 32, false, 9)))
+	return base
 }
 
 func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleData {
-	var value_0 StyleData = base
-	var value_1 StyleData = states.Normal
-	var value_2 StyleData = Style_MergeValues(value_0, value_1)
-	base = value_2
-	var value_3 int32 = state
-	var value_4 int32 = int32(ButtonStateHover)
-	var value_5 bool = value_3 == value_4
-	if value_5 {
-		var value_6 StyleData = base
-		var value_7 StyleData = states.Hover
-		var value_8 StyleData = Style_MergeValues(value_6, value_7)
-		return value_8
+	var value_0 StyleData = states.Normal
+	var value_1 StyleData = Style_MergeValues(base, value_0)
+	base = value_1
+	if state == int32(ButtonStateHover) {
+		var value_2 StyleData = states.Hover
+		var value_3 StyleData = Style_MergeValues(base, value_2)
+		return value_3
 	}
-	var value_9 int32 = state
-	var value_10 int32 = int32(ButtonStatePressed)
-	var value_11 bool = value_9 == value_10
-	if value_11 {
-		var value_12 StyleData = base
-		var value_13 StyleData = states.Pressed
-		var value_14 StyleData = Style_MergeValues(value_12, value_13)
-		return value_14
+	if state == int32(ButtonStatePressed) {
+		var value_4 StyleData = states.Pressed
+		var value_5 StyleData = Style_MergeValues(base, value_4)
+		return value_5
 	}
-	var value_15 int32 = state
-	var value_16 int32 = int32(ButtonStateFocus)
-	var value_17 bool = value_15 == value_16
-	if value_17 {
-		var value_18 StyleData = base
-		var value_19 StyleData = states.Focused
-		var value_20 StyleData = Style_MergeValues(value_18, value_19)
-		return value_20
+	if state == int32(ButtonStateFocus) {
+		var value_6 StyleData = states.Focused
+		var value_7 StyleData = Style_MergeValues(base, value_6)
+		return value_7
 	}
-	var value_21 int32 = state
-	var value_22 int32 = int32(ButtonStateDisabled)
-	var value_23 bool = value_21 == value_22
-	if value_23 {
-		var value_24 StyleData = base
-		var value_25 StyleData = states.Disabled
-		var value_26 StyleData = Style_MergeValues(value_24, value_25)
-		return value_26
+	if state == int32(ButtonStateDisabled) {
+		var value_8 StyleData = states.Disabled
+		var value_9 StyleData = Style_MergeValues(base, value_8)
+		return value_9
 	}
-	var value_27 int32 = state
-	var value_28 int32 = int32(ButtonStateLoading)
-	var value_29 bool = value_27 == value_28
-	if value_29 {
-		var value_30 StyleData = base
-		var value_31 StyleData = states.Loading
-		var value_32 StyleData = Style_MergeValues(value_30, value_31)
-		return value_32
+	if state == int32(ButtonStateLoading) {
+		var value_10 StyleData = states.Loading
+		var value_11 StyleData = Style_MergeValues(base, value_10)
+		return value_11
 	}
-	var value_33 int32 = state
-	var value_34 int32 = int32(ButtonStateSelected)
-	var value_35 bool = value_33 == value_34
-	if value_35 {
-		var value_36 StyleData = base
-		var value_37 StyleData = states.Selected
-		var value_38 StyleData = Style_MergeValues(value_36, value_37)
-		return value_38
+	if state == int32(ButtonStateSelected) {
+		var value_12 StyleData = states.Selected
+		var value_13 StyleData = Style_MergeValues(base, value_12)
+		return value_13
 	}
-	var value_39 StyleData = base
-	return value_39
+	return base
 }

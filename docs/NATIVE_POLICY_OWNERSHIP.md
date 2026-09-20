@@ -51,8 +51,8 @@ make popup-policy-test focus-policy-test scroll-policy-test canvas-policy-test
 make text-rows-policy-test paragraph-policy-test canvas-scope-test
 make generated-runtime-parity-test runtime-parity-check
 make canonical-surface-test public-api-names-check public-api-snapshot-check generated-provenance-check
-make build/linux-x86_64/tests/ui_tk_test build/linux-x86_64/tests/ui_text_edit_test
-xvfb-run -a build/linux-x86_64/tests/ui_tk_test
+make build/linux-x86_64/tests/widget_surface_test build/linux-x86_64/tests/ui_text_edit_test
+xvfb-run -a build/linux-x86_64/tests/widget_surface_test
 xvfb-run -a build/linux-x86_64/tests/ui_text_edit_test
 go -C go/kryon test ./...
 ```

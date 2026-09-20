@@ -186,7 +186,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={right,y + Scale(340),0,0}, .text=TextFormat("UInt: %u", 42), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right,y + Scale(380),0,0}, .text=TextFormat("Float: %.2f", 0.5f), .wrap=TextWrapNone})
         Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .fit = ImageFitContain})
-        if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_asset_path = image_path, .image_source = {0,0,64,64}, .image_bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_fit = ImageFitContain, .id = 210}) {
+        if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image = (ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .fit = ImageFitContain}, .id = 210}) {
             action_count += 1
             Toast((ToastProps){.message = "Image button clicked"})
         }

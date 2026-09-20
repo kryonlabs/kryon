@@ -424,6 +424,7 @@ KirProgramAddModule(KirProgram *program, const char *name,
     memset(m, 0, sizeof(*m));
     kir_copy(m->name, sizeof(m->name), name);
     kir_copy(m->source_path, sizeof(m->source_path), source_path);
+    m->inspect_calls = 1;
     m->span = span;
     return m;
 }
@@ -841,14 +842,18 @@ KirProgramDump(const KirProgram *program, FILE *out)
         fprintf(out, "\n");
         if(m->app.has_app) {
             fprintf(out, "  app title %s size %dx%d fps %d theme %s "
-                    "dark %d font_examples %d frame %s init %s scene %s "
+                    "dark %d font_examples %d frame %s before_window %s "
+                    "init %s after_frame %s should_continue %s scene %s "
                     "shutdown %s\n",
                     m->app.title[0] ? m->app.title : "\"\"",
                     m->app.width, m->app.height, m->app.fps,
                     m->app.theme[0] ? m->app.theme : "",
                     m->app.dark_mode, m->app.font_examples,
                     m->app.frame[0] ? m->app.frame : "",
+                    m->app.before_window[0] ? m->app.before_window : "",
                     m->app.init[0] ? m->app.init : "",
+                    m->app.after_frame[0] ? m->app.after_frame : "",
+                    m->app.should_continue[0] ? m->app.should_continue : "",
                     m->app.scene[0] ? m->app.scene : "",
                     m->app.shutdown[0] ? m->app.shutdown : "");
         }

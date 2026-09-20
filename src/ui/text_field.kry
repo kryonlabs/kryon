@@ -1,0 +1,701 @@
+#module "text_field_host"
+#import "ui_internal.h"
+#import "ui/text_state.h"
+#import "ui/text_selection.h"
+#import "ui/text_surface.h"
+#import "ui/focus.h"
+#import "ui/cursor.h"
+#import "ui/text_focus.h"
+#import "ui/text_context.h"
+#import "ui/text_editor.h"
+#import "ui/text_navigation.h"
+#import "runtime/text_input.h"
+#import "stdlib.h"
+#import "string.h"
+
+TextFieldFallbackFocus :: struct {
+    key: u32
+    focused: i32
+}
+
+text_field_fallback_focus :: [128]TextFieldFallbackFocus #global
+text_field_last_click_id :: i32 #global
+text_field_last_click_owner :: *i32 #global
+text_field_last_click_x :: i32 #global
+text_field_last_click_y :: i32 #global
+text_field_last_click_time :: f64 #global
+
+TextFieldFallbackFocusFor :: (field: TextFieldProps) -> *i32 {
+    key: u32 = (uint32_t)field.focus_id
+    if key == 0 {
+        key = 2166136261u
+        key = (key ^ (uint32_t)(int)field.bounds.x) * 16777619u
+        key = (key ^ (uint32_t)(int)field.bounds.y) * 16777619u
+        key = (key ^ (uint32_t)(int)field.bounds.width) * 16777619u
+        key = (key ^ (uint32_t)(int)field.bounds.height) * 16777619u
+    }
+    if key == 0 {
+        key = 1
+    }
+    slot: i32 = -1
+    empty_slot: i32 = -1
+    i: i32 = 0
+    while i < 128 {
+        if text_field_fallback_focus[i].key == key {
+            slot = i
+            break
+        }
+        if text_field_fallback_focus[i].key == 0 && empty_slot < 0 {
+            empty_slot = i
+        }
+        i += 1
+    }
+    if slot < 0 {
+        slot = empty_slot >= 0 ? empty_slot : (int)(key % 128)
+        text_field_fallback_focus[slot].key = key
+        text_field_fallback_focus[slot].focused = 0
+    }
+    return &text_field_fallback_focus[slot].focused
+}
+
+ui_text_field_render_filtered :: (field: TextFieldProps,
+filter: TextInputFilter, filter_user_data: void*) -> i32 #export {
+    editor_id: [96]char
+    widget: Widget
+    changed: i32 = 0
+    focused: i32
+    font: i32
+    padding_x: i32
+    commit_pressed: i32 = 0
+    selection_start: i32 = 0
+    selection_end: i32 = 0
+    selection_handled: i32 = 0
+    mouse_world: Vector2
+    mouse_inside: i32
+    captured: i32
+    context_active: i32 = 0
+    display_text: const char*
+    masked_text: *char = nil
+    field_edit: TextEdit
+    scroll_x_ptr: *i32
+    clip_w: i32
+    text_w: i32
+    max_scroll_x: i32
+    text_origin_x: i32
+    panning_field: i32 = 0
+    composition: TextCompositionView = (TextCompositionView){0}
+    paint_cursor: i32
+    composition_start: i32 = 0
+    composition_end: i32 = 0
+    committed_selection_start: i32
+    committed_selection_end: i32
+    metrics: TextInputMetrics
+    scroll_policy: TextFieldScroll
+    layout_style: TextInputAppearance
+    if (field.commit_pressed != nil) {
+        *field.commit_pressed = 0
+    }
+    if (field.text == nil || field.text_size == 0 ||
+    field.cursor_position == nil) {
+        return 0
+    }
+    if field.focused == nil {
+        field.focused = TextFieldFallbackFocusFor(field)
+    }
+    field_edit = (TextEdit){0}
+    field_edit.text = field.text
+    field_edit.text_size = field.text_size
+    field_edit.cursor_position = field.cursor_position
+    field_edit.max_codepoints = field.max_codepoints
+    field_edit.filter = filter
+    field_edit.filter_user_data = filter_user_data
+    field_edit.commit_pressed = field.commit_pressed != nil
+    ? field.commit_pressed
+    : &commit_pressed
+
+    display_text = field.text
+    if (field.secure) {
+        len: size_t = strlen(field.text)
+
+        display_text = ""
+        masked_text = malloc(len + 1)
+        if (masked_text != nil) {
+            memset(masked_text, '*', len)
+            masked_text[len] = '\0'
+            display_text = masked_text
+        }
+    }
+
+    widget = BeginWidget("TextField",
+    ui_inspect_control_id(editor_id, sizeof(editor_id),
+    "TextField",
+    field.focus_id, nil),
+    field.bounds,
+    WidgetFlagMovable |
+    WidgetFlagResizable)
+    field.bounds = widget.bounds
+
+    layout_style = ui_resolve_text_input_appearance((TextInputAppearance){0},
+    StyleKindTextField(),
+    field.class_name)
+    metrics = ui_text_input_metrics_for_appearance(layout_style, StyleKindTextField(),
+    field.class_name, 0)
+    font = metrics.font
+    padding_x = metrics.padding_x
+    focused = *field.focused != 0
+    focused = IsTextFocusOwner(field.focused) ? focused : 0
+    scroll_x_ptr = ui_text_field_scroll_for(field.focus_id, field.focused)
+    text_w = TextWidth(display_text, font)
+    scroll_policy = TextFieldScrollFor(field.bounds.x, field.bounds.width,
+    padding_x, text_w, *scroll_x_ptr)
+    clip_w = scroll_policy.clip_width
+    max_scroll_x = scroll_policy.max_scroll
+    *scroll_x_ptr = scroll_policy.scroll
+    text_origin_x = scroll_policy.text_origin_x
+
+    if (field.focus_id > 0 && RegisterFocus(field.focus_id, field.bounds)) {
+        focused = 1
+        ClaimTextFieldFocus(field.focused)
+    }
+
+    mouse_world = ui_mouse_world()
+    mouse_inside = CheckCollisionPointRec(mouse_world, field.bounds)
+    captured = InputCapturesClick(mouse_world)
+    if (mouse_inside && !captured) {
+        MarkTextCursor()
+    }
+    changed |= ui_text_context_take_changed(TEXT_CONTEXT_FIELD,
+    field.focus_id, field.focused)
+    context_active = ui_text_context_matches(TEXT_CONTEXT_FIELD,
+    field.focus_id, field.focused)
+    if (context_active) {
+        focused = 1
+        ClaimTextFieldFocus(field.focused)
+    }
+
+    if (!field.secure &&
+    ui_text_context_open_for(TEXT_CONTEXT_FIELD, field.focus_id,
+    field.focused, field.bounds, mouse_world,
+    captured)) {
+        clicked_cursor: i32
+        current_start: i32 = 0
+        current_end: i32 = 0
+
+        focused = 1
+        ClaimTextFieldFocus(field.focused)
+        clicked_cursor = ui_text_cursor_from_x(
+        display_text, font, text_origin_x, (int)mouse_world.x)
+        if (ui_text_selection_matches(g_ui_text_field_selection,
+        field.focus_id, field.focused)) {
+            ui_selection_range(g_ui_text_field_selection, field.text,
+            &current_start, &current_end)
+        }
+        if (clicked_cursor < current_start || clicked_cursor > current_end ||
+        current_end <= current_start) {
+            *field.cursor_position = clicked_cursor
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+            field.focused, clicked_cursor,
+            clicked_cursor, 0)
+        }
+    }
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (mouse_inside && !captured) {
+            now: f64 = GetTime()
+            click_dx: i32 = (int)mouse_world.x - text_field_last_click_x
+            click_dy: i32 = (int)mouse_world.y - text_field_last_click_y
+            scale: float = (float)Scale(1000) / 1000.0
+            double_click_slop: i32 = TextInputDoubleClickSlopFor(scale)
+            click_decision: TextInputDoubleClickDecision =
+            TextInputDoubleClickDecisionFor(
+            text_field_last_click_owner == field.focused,
+            text_field_last_click_id == field.focus_id,
+            (float)(now - text_field_last_click_time),
+            click_dx, click_dy, double_click_slop)
+            g_ui_focus_pointer_claimed = 1
+            focused = 1
+            ClaimTextFieldFocus(field.focused)
+            g_ui_text_input_show_requested = 1
+            if (max_scroll_x > 0) {
+                g_ui_text_field_pan_id = field.focus_id
+                g_ui_text_field_pan_owner = field.focused
+                g_ui_text_field_pan_start_x = (int)mouse_world.x
+                g_ui_text_field_pan_start_y = (int)mouse_world.y
+                g_ui_text_field_pan_start_scroll = *scroll_x_ptr
+                g_ui_text_field_panning = 0
+            }
+            if (click_decision.double_click) {
+                len: i32 = (int)strlen(field.text)
+                *field.cursor_position = len
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                field.focused, 0, len, 0)
+                g_ui_text_field_drag_id = 0
+                g_ui_text_field_drag_owner = nil
+            } else {
+                *field.cursor_position = ui_text_cursor_from_x(
+                display_text, font, text_origin_x, (int)mouse_world.x)
+                g_ui_text_field_drag_id = field.focus_id
+                g_ui_text_field_drag_owner = field.focused
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                field.focused, *field.cursor_position,
+                *field.cursor_position, 1)
+            }
+            text_field_last_click_id = field.focus_id
+            text_field_last_click_owner = field.focused
+            text_field_last_click_x = (int)mouse_world.x
+            text_field_last_click_y = (int)mouse_world.y
+            text_field_last_click_time = now
+        } else if (TextOutsideClickShouldBlur(focused, context_active,
+        g_ui_scroll_gesture_pending)) {
+            focused = 0
+            ReleaseTextFocus(field.focused, field.focus_id)
+        }
+    }
+    if (g_ui_text_field_pan_owner == field.focused &&
+    (field.focus_id <= 0 || g_ui_text_field_pan_id == field.focus_id) &&
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+    (g_ui_pointer_owner == POINTER_OWNER_NONE ||
+    g_ui_pointer_owner == POINTER_OWNER_TEXT_FIELD_PAN)) {
+        dx: i32 = (int)mouse_world.x - g_ui_text_field_pan_start_x
+        dy: i32 = (int)mouse_world.y - g_ui_text_field_pan_start_y
+        scale: float = (float)Scale(1000) / 1000.0
+        drag_threshold: i32 = TextFieldPanDragThresholdFor(scale)
+        pan_decision: TextFieldPanDecision = TextFieldPanDecisionFor(
+        g_ui_text_field_panning != 0, dx, dy, drag_threshold)
+
+        if (pan_decision.pan) {
+            capture: Rectangle = (Rectangle){
+                0.0,
+                0.0,
+                (float)ui_view_width,
+                (float)ui_view_height
+            }
+
+            g_ui_pointer_owner = POINTER_OWNER_TEXT_FIELD_PAN
+            g_ui_text_field_panning = 1
+            *scroll_x_ptr = g_ui_text_field_pan_start_scroll - dx
+            scroll_policy = TextFieldScrollFor(field.bounds.x,
+            field.bounds.width, padding_x,
+            text_w, *scroll_x_ptr)
+            clip_w = scroll_policy.clip_width
+            max_scroll_x = scroll_policy.max_scroll
+            *scroll_x_ptr = scroll_policy.scroll
+            text_origin_x = scroll_policy.text_origin_x
+            g_ui_text_field_drag_id = 0
+            g_ui_text_field_drag_owner = nil
+            g_ui_text_field_selection.dragging = 0
+            PushInputCapture(capture, 0)
+        }
+    }
+    panning_field = g_ui_text_field_pan_owner == field.focused &&
+    (field.focus_id <= 0 ||
+    g_ui_text_field_pan_id == field.focus_id) &&
+    g_ui_text_field_panning
+    if (g_ui_text_field_drag_owner == field.focused &&
+    !panning_field &&
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        focused = 1
+        ClaimTextFieldFocus(field.focused)
+        *field.cursor_position = ui_text_cursor_from_x(
+        display_text, font, text_origin_x, (int)mouse_world.x)
+        g_ui_text_field_selection.cursor = *field.cursor_position
+        g_ui_text_field_selection.dragging = 1
+    }
+    if (g_ui_text_field_drag_owner == field.focused &&
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        g_ui_text_field_drag_id = 0
+        g_ui_text_field_drag_owner = nil
+        g_ui_text_field_selection.dragging = 0
+    }
+    if (g_ui_text_field_pan_owner == field.focused &&
+    (field.focus_id <= 0 || g_ui_text_field_pan_id == field.focus_id) &&
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        g_ui_text_field_pan_id = 0
+        g_ui_text_field_pan_owner = nil
+        g_ui_text_field_panning = 0
+    }
+
+    *field.focused = focused
+    SetFocusTextInputActive(focused && !field.read_only)
+    if (TextEscapeShouldBlur(focused, IsKeyboardInputEnabled(),
+    IsKeyPressed(KEY_ESCAPE))) {
+        focused = 0
+        ReleaseTextFocus(field.focused, field.focus_id)
+        *field.focused = 0
+        SetFocusTextInputActive(0)
+    }
+    if (TextSelectionRangeShouldResolve(focused, context_active,
+    ui_text_selection_matches(g_ui_text_field_selection,
+    field.focus_id, field.focused))) {
+        ui_selection_range(g_ui_text_field_selection, field.text,
+        &selection_start, &selection_end)
+
+    }
+    {
+        anchor: i32 = ui_text_selection_matches(
+        g_ui_text_field_selection, field.focus_id, field.focused)
+        ? g_ui_text_field_selection.anchor : *field.cursor_position
+        composition_result: TextCompositionResult = ui_text_composition_apply(
+        field_edit, &anchor, field.focused, focused,
+        field.read_only || !IsKeyboardInputEnabled(), 0)
+
+        changed |= composition_result.text_changed
+        if (composition_result.selection_changed) {
+            collapsed: TextSelectionState = ui_text_selection_collapsed(
+            *field.cursor_position)
+            ui_text_selection_set(&g_ui_text_field_selection,
+            field.focus_id, field.focused, anchor,
+            *field.cursor_position, 0)
+            selection_start = collapsed.anchor
+            selection_end = collapsed.cursor
+        }
+    }
+
+    if (TextKeyboardShouldRun(focused, IsKeyboardInputEnabled())) {
+        shortcuts: TextShortcutInput = TextShortcutInputFor(
+        ui_mod_key_down(), IsKeyPressed(KEY_A), IsKeyPressed(KEY_C),
+        IsKeyPressed(KEY_X), IsKeyPressed(KEY_V))
+        if (shortcuts.select_all) {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+            selection_end > selection_start, 0, 0,
+            field.text[0] != '\0', !field.secure,
+            !field.read_only, !field.read_only)
+            if (decision.select_all) {
+                all: TextSelectionState = TextSelectionAll((int)strlen(field.text))
+
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                field.focused, all.anchor, all.cursor, 0)
+                *field.cursor_position = all.cursor
+                selection_start = all.anchor
+                selection_end = all.cursor
+            }
+            selection_handled = 1
+        }
+        if (shortcuts.copy) {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandCopy(),
+            selection_end > selection_start, 1, 0,
+            1, !field.secure,
+            !field.read_only, !field.read_only)
+            if (decision.copy_selection) {
+                ui_text_copy_range(field.text, selection_start, selection_end)
+            }
+            if (decision.copy_all) {
+                SetClipboardTextValue(field.text)
+            }
+            selection_handled |= decision.copy_selection || decision.copy_all
+        }
+        if (shortcuts.cut) {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandCut(),
+            selection_end > selection_start, 1, 1,
+            1, !field.secure,
+            !field.read_only && !field.secure, !field.read_only)
+            copied_selection: i32 = 0
+            if (decision.copy_selection) {
+                copied_selection = ui_text_copy_range(field.text,
+                selection_start,
+                selection_end)
+            }
+            if (decision.copy_all) {
+                SetClipboardTextValue(field.text)
+            }
+            if (decision.delete_selection && copied_selection &&
+            ui_text_delete_range(field.text, field.text_size,
+            field.cursor_position,
+            selection_start, selection_end)) {
+                changed = 1
+            }
+            if (decision.clear_all) {
+                field.text[0] = '\0'
+                *field.cursor_position = 0
+                changed = 1
+            }
+            if (decision.collapse_selection) {
+                collapsed: TextSelectionState = ui_text_selection_collapsed(
+                *field.cursor_position)
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                *field.cursor_position, 0)
+                selection_start = collapsed.anchor
+                selection_end = collapsed.cursor
+            }
+            selection_handled |= decision.copy_selection ||
+            decision.copy_all ||
+            decision.delete_selection ||
+            decision.clear_all ||
+            decision.collapse_selection
+        }
+        if (shortcuts.paste) {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandPaste(),
+            selection_end > selection_start, 0, 0,
+            field.text[0] != '\0', 1, !field.read_only,
+            !field.read_only)
+            if (decision.delete_selection) {
+                ui_text_delete_range(field.text, field.text_size,
+                field.cursor_position, selection_start,
+                selection_end)
+            }
+            if (decision.paste && ui_text_paste_clipboard(field_edit, 0)) {
+                changed = 1
+            }
+            if (decision.collapse_selection) {
+                collapsed: TextSelectionState = ui_text_selection_collapsed(
+                *field.cursor_position)
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                *field.cursor_position, 0)
+                selection_start = collapsed.anchor
+                selection_end = collapsed.cursor
+            }
+            selection_handled |= decision.delete_selection ||
+            decision.paste ||
+            decision.collapse_selection
+        }
+        if (TextDeleteShortcutShouldRun(field.read_only,
+        IsKeyPressed(KEY_BACKSPACE), IsKeyPressed(KEY_DELETE),
+        g_ui_text_input_backspace_count)) {
+            anchor: i32 = ui_text_selection_matches(
+            g_ui_text_field_selection, field.focus_id, field.focused)
+            ? g_ui_text_field_selection.anchor : *field.cursor_position
+            backspace_count: i32 = g_ui_text_input_backspace_count +
+            ui_backspace_repeat_count()
+            delete_count: i32 = IsKeyPressed(KEY_DELETE) ? 1 : 0
+
+            while backspace_count > 0 {
+                backspace_count -= 1
+                changed |= ui_text_delete_key(
+                field.text, field.text_size, &anchor,
+                field.cursor_position, TextDeleteBackspace(),
+                ui_mod_key_down(), field.secure)
+            }
+            while delete_count > 0 {
+                delete_count -= 1
+                changed |= ui_text_delete_key(
+                field.text, field.text_size, &anchor,
+                field.cursor_position, TextDeleteForward(),
+                ui_mod_key_down(), field.secure)
+            }
+            g_ui_text_input_backspace_count = 0
+            {
+                collapsed: TextSelectionState = ui_text_selection_collapsed(
+                *field.cursor_position)
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                *field.cursor_position, 0)
+                selection_start = collapsed.anchor
+                selection_end = collapsed.cursor
+            }
+            selection_handled = 1
+        }
+        if (TextNavigationShouldRun(selection_handled)) {
+            shift: i32 = IsKeyDown(KEY_LEFT_SHIFT) ||
+            IsKeyDown(KEY_RIGHT_SHIFT)
+            cursor: i32 = *field.cursor_position
+            anchor: i32 = cursor
+            navigation: TextNavigationInput = (TextNavigationInput){
+                .text = field.text,
+                .key = ui_text_navigation_key(0),
+                .shift = shift,
+                .modifier = ui_mod_key_down(),
+                .secure = field.secure
+            }
+
+            if (ui_text_selection_matches(g_ui_text_field_selection,
+            field.focus_id, field.focused)) {
+                anchor = g_ui_text_field_selection.anchor
+            }
+            if (ui_text_navigate(navigation, &anchor, &cursor)) {
+                range: TextSelectionRange = TextSelectionRangeForLength(
+                anchor, cursor, (int)strlen(field.text))
+                *field.cursor_position = cursor
+                ui_text_selection_set(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                anchor, cursor, 0)
+                selection_start = range.start
+                selection_end = range.end
+                selection_handled = 1
+            }
+        }
+        if (TextSelectionReplacementShouldRun(field.read_only,
+        selection_handled, selection_end > selection_start,
+        ui_mod_key_down())) {
+            inserted: i32 = 0
+            deleted_selection: i32 = 0
+            codepoint: i32 = GetCharPressed()
+
+            while (codepoint > 0) {
+                if (!deleted_selection) {
+                    ui_text_delete_range(field.text, field.text_size,
+                    field.cursor_position,
+                    selection_start, selection_end)
+                    deleted_selection = 1
+                }
+                if ((filter == nil ||
+                filter(codepoint, filter_user_data)) &&
+                ui_text_insert_codepoint(field.text, field.text_size,
+                field.cursor_position, codepoint,
+                field.max_codepoints)) {
+                    changed = 1
+                }
+                inserted = 1
+                codepoint = GetCharPressed()
+            }
+            i: i32 = 0
+            while i < g_ui_text_input_codepoint_count {
+                codepoint = g_ui_text_input_codepoints[i]
+                if (!deleted_selection) {
+                    ui_text_delete_range(field.text, field.text_size,
+                    field.cursor_position,
+                    selection_start, selection_end)
+                    deleted_selection = 1
+                }
+                if ((filter == nil ||
+                filter(codepoint, filter_user_data)) &&
+                ui_text_insert_codepoint(field.text, field.text_size,
+                field.cursor_position, codepoint,
+                field.max_codepoints)) {
+                    changed = 1
+                }
+                inserted = 1
+                i += 1
+            }
+            if (g_ui_text_input_codepoint_count > 0) {
+                g_ui_text_input_codepoint_count = 0
+            }
+            if (inserted) {
+                collapsed: TextSelectionState = ui_text_selection_collapsed(
+                *field.cursor_position)
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                *field.cursor_position, 0)
+                selection_start = collapsed.anchor
+                selection_end = collapsed.cursor
+                selection_handled = 1
+            }
+        }
+        if (TextNativeEditShouldRun(field.read_only, selection_handled)) {
+            changed |= EditText(field_edit)
+        }
+        if (TextCommitAfterHandledShouldRun(field.read_only, selection_handled,
+        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+        g_ui_text_input_enter_count > 0)) {
+            if (field.commit_pressed != nil) {
+                *field.commit_pressed = 1
+            }
+            g_ui_text_input_enter_count = 0
+        }
+        if (TextFieldChangedShouldCollapseSelection(changed,
+        IsKeyPressed(KEY_LEFT), IsKeyPressed(KEY_RIGHT),
+        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END))) {
+            if (!g_ui_text_field_selection.dragging) {
+                collapsed: TextSelectionState = ui_text_selection_collapsed(
+                *field.cursor_position)
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                field.focus_id, field.focused,
+                *field.cursor_position, 0)
+                selection_start = collapsed.anchor
+                selection_end = collapsed.cursor
+            }
+        }
+    } else {
+        len: i32 = (int)strlen(field.text)
+        *field.cursor_position = TextCursorForLength(*field.cursor_position,
+        len)
+    }
+
+    if (ui_text_selection_matches(g_ui_text_field_selection,
+    field.focus_id, field.focused)) {
+        ui_selection_range(g_ui_text_field_selection, field.text,
+        &selection_start, &selection_end)
+    } else {
+        collapsed: TextSelectionState = ui_text_selection_collapsed(
+        *field.cursor_position)
+        selection_start = collapsed.anchor
+        selection_end = collapsed.cursor
+    }
+
+    committed_selection_start = selection_start
+    committed_selection_end = selection_end
+
+    display_text = field.text
+    paint_cursor = *field.cursor_position
+    if (TextCompositionDisplayShouldRun(field.secure)) {
+        preedit: const char* = nil
+        preedit_cursor: i32 = 0
+        preedit_selection_length: i32 = 0
+
+        if (ui_text_composition_get(field.focused, &preedit, &preedit_cursor,
+        &preedit_selection_length) &&
+        ui_text_composition_view(
+        field.text, selection_start, selection_end, preedit,
+        preedit_cursor, preedit_selection_length, &composition)) {
+            display_text = composition.text
+            paint_cursor = composition.cursor
+            selection_start = composition.selection_start
+            selection_end = composition.selection_end
+            composition_start = composition.composition_start
+            composition_end = composition.composition_end
+        }
+    }
+
+    if (field.secure) {
+        len: size_t = strlen(field.text)
+
+        free(masked_text)
+        masked_text = nil
+        display_text = ""
+        masked_text = malloc(len + 1)
+        if (masked_text != nil) {
+            memset(masked_text, '*', len)
+            masked_text[len] = '\0'
+            display_text = masked_text
+        }
+    }
+
+    text_w = TextWidth(display_text, font)
+    scroll_policy = TextFieldScrollFor(field.bounds.x, field.bounds.width,
+    padding_x, text_w, *scroll_x_ptr)
+    clip_w = scroll_policy.clip_width
+    max_scroll_x = scroll_policy.max_scroll
+    *scroll_x_ptr = scroll_policy.scroll
+    if (TextFieldRevealCursorShouldRun(focused)) {
+        cursor_text_x: i32 = ui_text_width_before_cursor(
+        display_text, font, paint_cursor)
+        margin: i32 = TextFieldRevealMargin((float)Scale(1000) / 1000.0)
+
+        *scroll_x_ptr = TextFieldRevealScroll(*scroll_x_ptr, max_scroll_x,
+        clip_w, cursor_text_x, margin)
+    }
+
+    if (TextFieldContextShouldRegister(field.secure)) {
+        ui_text_context_register_target(TEXT_CONTEXT_FIELD, field.focus_id,
+        field.focused, field.text,
+        field.text_size, field.cursor_position,
+        field.max_codepoints, filter,
+        filter_user_data,
+        &g_ui_text_field_selection,
+        committed_selection_start,
+        committed_selection_end, 0, 1,
+        field.read_only)
+
+    }
+    paint: TextInputPaint = (TextInputPaint){
+        .appearance = (TextInputAppearance){0}, .cursor = paint_cursor, .focused = focused,
+        .class_name = field.class_name,
+        .editable = !field.read_only,
+        .caret = focused && !field.read_only && ui_caret_blink_visible(),
+        .font = font, .font_token = ui_active_font_token(),
+        .selection_start = selection_start, .selection_end = selection_end,
+        .composition_start = composition_start,
+        .composition_end = composition_end,
+        .scroll_x = *scroll_x_ptr
+    }
+    ui_tree_submit_text_input(field.bounds, display_text, paint, field.focus_id)
+    ui_text_composition_view_free(&composition)
+    free(masked_text)
+    EndWidget(&widget)
+    return changed
+}

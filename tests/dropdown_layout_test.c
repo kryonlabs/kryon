@@ -1,7 +1,7 @@
 #include "kryon.h"
 #include "kry_inject.h"
-#include "kryon_test.h"
-#include "../src/ui/dropdown_store.h"
+#include "ui/kryon_test.h"
+#include "ui/dropdown_store.h"
 
 #include <stdio.h>
 #include <stdlib.h>

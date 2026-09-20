@@ -121,7 +121,7 @@ check_absent "typed numeric helper legacy names" \
 
 check_absent "raw widget component identity formulas" \
     'props\.ID\s*\*\s*(8|16)|id\s*\*\s*16\s*\+\s*component|picker\.id\s*\*\s*8|slider\.id\s*<<\s*4|drag\.id\s*<<\s*4|toolbar\.id\s*\*\s*100|spinbox\.id\s*\*\s*10|[0-9]+\s*\*\s*10\s*\+\s*1' \
-    src/ui go/kryon tests/ui_tk_test.c tests/*.go \
+    src/ui go/kryon tests/widget_surface_test.c tests/*.go \
     --glob '!go/kryon/drag.go' \
     --glob '!go/kryon/slider.go' \
     --glob '!go/kryon/spinbox.go' \

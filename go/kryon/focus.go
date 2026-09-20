@@ -32,449 +32,236 @@ type TreeFocusScan struct {
 }
 
 func Focus_FocusBoxRole() int32 {
-	var value_0 int32 = 9
-	return value_0
+	return 9
 }
 
 func Focus_FocusLabelRole() int32 {
-	var value_0 int32 = 6
-	return value_0
+	return 6
 }
 
 func Focus_FocusMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
-	var value_0 uint32 = fields
-	var value_1 uint32 = field
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
-	var value_3 int32 = 0
-	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
-	var value_5 bool = value_2 == value_4
-	var value_6 bool = value_5
-	if !value_6 {
-		var value_7 float32 = value
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 < value_8
-		value_6 = value_9
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	if value_1 {
+		value = fallback
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_2
 }
 
 func Focus_FocusStrokeWidthFor(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 2.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((2.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Focus_FocusActivationFor(active bool, keyboard_enabled bool, content_disabled bool, captured bool, enter_pressed bool, space_pressed bool, text_input_active bool) bool {
 	var value_0 bool = active
+	if value_0 {
+		value_0 = keyboard_enabled
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = keyboard_enabled
-		value_1 = value_2
+		value_1 = !content_disabled
 	}
-	var value_3 bool = value_1
+	var value_2 bool = value_1
+	if value_2 {
+		value_2 = !captured
+	}
+	var value_3 bool = value_2
 	if value_3 {
-		var value_4 bool = content_disabled
-		var value_5 bool = !value_4
-		value_3 = value_5
-	}
-	var value_6 bool = value_3
-	if value_6 {
-		var value_7 bool = captured
-		var value_8 bool = !value_7
-		value_6 = value_8
-	}
-	var value_9 bool = value_6
-	if value_9 {
-		var value_10 bool = enter_pressed
-		var value_11 bool = value_10
-		if !value_11 {
-			var value_12 bool = text_input_active
-			var value_13 bool = !value_12
-			var value_14 bool = value_13
-			if value_14 {
-				var value_15 bool = space_pressed
-				value_14 = value_15
+		var value_4 bool = enter_pressed
+		if !value_4 {
+			var value_5 bool = !text_input_active
+			if value_5 {
+				value_5 = space_pressed
 			}
-			value_11 = value_14
+			value_4 = value_5
 		}
-		value_9 = value_11
+		value_3 = value_4
 	}
-	return value_9
+	return value_3
 }
 
 func Focus_FocusTabDirectionFor(tab_pressed bool, shift_down bool) int32 {
-	var value_0 bool = tab_pressed
-	var value_1 bool = !value_0
-	if value_1 {
-		var value_2 int32 = 0
-		return value_2
+	if !tab_pressed {
+		return 0
 	}
-	var value_3 bool = shift_down
-	if value_3 {
-		var value_4 int32 = -1
-		return value_4
+	if shift_down {
+		return -1
 	}
-	var value_5 int32 = 1
-	return value_5
+	return 1
 }
 
 func Focus_FocusDefaultOutlineBounds(bounds Rectangle, scale float32) Rectangle {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = 2.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var pad int32 = value_7
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((2.0*scale)), 32, true)), uint64(0), 32, true, 0))
+	var pad int32 = value_0
 	var out Rectangle = Rectangle{}
-	var value_8 float32 = bounds.X
-	var value_9 int32 = pad
-	var value_10 float32 = float32(value_9)
-	var value_11 float32 = value_8 - value_10
-	out.X = value_11
-	var value_12 float32 = bounds.Y
-	var value_13 int32 = pad
-	var value_14 float32 = float32(value_13)
-	var value_15 float32 = value_12 - value_14
-	out.Y = value_15
-	var value_16 float32 = bounds.Width
-	var value_17 int32 = pad
-	var value_18 int32 = 2
-	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 3))
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_16 + value_20
-	out.Width = value_21
-	var value_22 float32 = bounds.Height
-	var value_23 int32 = pad
-	var value_24 int32 = 2
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
-	var value_26 float32 = float32(value_25)
-	var value_27 float32 = value_22 + value_26
-	out.Height = value_27
-	var value_28 Rectangle = out
-	return value_28
+	out.X = (bounds.X - float32(pad))
+	out.Y = (bounds.Y - float32(pad))
+	out.Width = (bounds.Width + float32((int32(number_runtime_bits(uint64(pad), uint64(2), 32, true, 3)))))
+	out.Height = (bounds.Height + float32((int32(number_runtime_bits(uint64(pad), uint64(2), 32, true, 3)))))
+	return out
 }
 
 func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) FocusPaint {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = frame.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = frame.Value.PaddingX
-	var value_8 float32 = 3.0
-	var value_9 float32 = scale
-	var value_10 int32 = Focus_FocusMetric(value_4, value_6, value_7, value_8, value_9)
-	var pad int32 = value_10
-	var value_11 uint32 = frame.Value.Fields
-	var value_12 int32 = int32(StyleBorderWidth)
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 float32 = frame.Value.BorderWidth
-	var value_15 float32 = 2.0
-	var value_16 float32 = scale
-	var value_17 int32 = Focus_FocusMetric(value_11, value_13, value_14, value_15, value_16)
-	var stroke int32 = value_17
+	var value_0 uint32 = frame.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = frame.Value.PaddingX
+	var value_3 float32 = 3.0
+	var value_4 int32 = Focus_FocusMetric(value_0, value_1, value_2, value_3, scale)
+	var pad int32 = value_4
+	var value_5 uint32 = frame.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleBorderWidth)), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.BorderWidth
+	var value_8 float32 = 2.0
+	var value_9 int32 = Focus_FocusMetric(value_5, value_6, value_7, value_8, scale)
+	var stroke int32 = value_9
 	var paint FocusPaint = FocusPaint{}
-	var value_18 float32 = bounds.X
-	var value_19 int32 = pad
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 - value_20
-	paint.Bounds.X = value_21
-	var value_22 float32 = bounds.Y
-	var value_23 int32 = pad
-	var value_24 float32 = float32(value_23)
-	var value_25 float32 = value_22 - value_24
-	paint.Bounds.Y = value_25
-	var value_26 float32 = bounds.Width
-	var value_27 int32 = pad
-	var value_28 int32 = 2
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 3))
-	var value_30 float32 = float32(value_29)
-	var value_31 float32 = value_26 + value_30
-	paint.Bounds.Width = value_31
-	var value_32 float32 = bounds.Height
-	var value_33 int32 = pad
-	var value_34 int32 = 2
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 3))
-	var value_36 float32 = float32(value_35)
-	var value_37 float32 = value_32 + value_36
-	paint.Bounds.Height = value_37
-	var value_38 int32 = stroke
-	paint.StrokeWidth = value_38
-	var value_39 FocusPaint = paint
-	return value_39
+	paint.Bounds.X = (bounds.X - float32(pad))
+	paint.Bounds.Y = (bounds.Y - float32(pad))
+	paint.Bounds.Width = (bounds.Width + float32((int32(number_runtime_bits(uint64(pad), uint64(2), 32, true, 3)))))
+	paint.Bounds.Height = (bounds.Height + float32((int32(number_runtime_bits(uint64(pad), uint64(2), 32, true, 3)))))
+	paint.StrokeWidth = stroke
+	return paint
 }
 
 func Focus_FocusDebugOverlayPaintFor(bounds Rectangle, font_height int32, has_label bool) FocusDebugOverlayPaint {
-	var value_0 int32 = font_height
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		font_height = value_3
+	if font_height < 0 {
+		font_height = 0
 	}
 	var paint FocusDebugOverlayPaint = FocusDebugOverlayPaint{}
-	var value_4 Rectangle = bounds
-	paint.Outline = value_4
-	var value_5 float32 = bounds.X
-	paint.LabelPosition.X = value_5
-	var value_6 float32 = bounds.Y
-	var value_7 int32 = font_height
-	var value_8 float32 = float32(value_7)
-	var value_9 float32 = value_6 - value_8
-	paint.LabelPosition.Y = value_9
-	var value_10 int32 = 1
-	paint.StrokeWidth = value_10
-	var value_11 bool = has_label
-	paint.LabelVisible = value_11
-	var value_12 FocusDebugOverlayPaint = paint
-	return value_12
+	paint.Outline = bounds
+	paint.LabelPosition.X = bounds.X
+	paint.LabelPosition.Y = (bounds.Y - float32(font_height))
+	paint.StrokeWidth = 1
+	paint.LabelVisible = has_label
+	return paint
 }
 
 func Focus_FocusTraversalFor(current int32, count int32, direction int32) FocusTraversal {
 	var result FocusTraversal = FocusTraversal{}
-	var value_0 int32 = current
-	result.Index = value_0
-	var value_1 int32 = count
-	var value_2 int32 = 0
-	var value_3 bool = value_1 <= value_2
-	if value_3 {
-		var value_4 int32 = -1
-		result.Index = value_4
-		var value_5 bool = true
-		result.Clear = value_5
-		var value_6 FocusTraversal = result
-		return value_6
+	result.Index = current
+	if count <= 0 {
+		result.Index = -1
+		result.Clear = true
+		return result
 	}
-	var value_7 int32 = direction
-	var value_8 int32 = 0
-	var value_9 bool = value_7 == value_8
-	if value_9 {
-		var value_10 FocusTraversal = result
-		return value_10
+	if direction == 0 {
+		return result
 	}
-	var value_11 bool = true
-	result.Move = value_11
-	var value_12 int32 = current
-	var value_13 int32 = 0
-	var value_14 bool = value_12 < value_13
-	var value_15 bool = value_14
-	if !value_15 {
-		var value_16 int32 = current
-		var value_17 int32 = count
-		var value_18 bool = value_16 >= value_17
-		value_15 = value_18
+	result.Move = true
+	var value_0 bool = (current < 0)
+	if !value_0 {
+		value_0 = (current >= count)
 	}
-	if value_15 {
-		var value_19 int32 = 0
-		result.Index = value_19
-		var value_20 int32 = direction
-		var value_21 int32 = 0
-		var value_22 bool = value_20 < value_21
-		if value_22 {
-			var value_23 int32 = count
-			var value_24 int32 = 1
-			var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 2))
-			result.Index = value_25
+	if value_0 {
+		result.Index = 0
+		if direction < 0 {
+			result.Index = (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 		}
-		var value_26 FocusTraversal = result
-		return value_26
+		return result
 	}
-	var value_27 int32 = direction
-	var value_28 int32 = 0
-	var value_29 bool = value_27 < value_28
-	if value_29 {
-		var value_30 int32 = current
-		var value_31 int32 = 1
-		var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 2))
-		result.Index = value_32
-		var value_33 int32 = result.Index
-		var value_34 int32 = 0
-		var value_35 bool = value_33 < value_34
-		if value_35 {
-			var value_36 int32 = count
-			var value_37 int32 = 1
-			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
-			result.Index = value_38
+	if direction < 0 {
+		result.Index = (int32(number_runtime_bits(uint64(current), uint64(1), 32, true, 2)))
+		if result.Index < 0 {
+			result.Index = (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 		}
 	} else {
-		var value_39 int32 = current
-		var value_40 int32 = 1
-		var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
-		result.Index = value_41
-		var value_42 int32 = result.Index
-		var value_43 int32 = count
-		var value_44 bool = value_42 == value_43
-		if value_44 {
-			var value_45 int32 = 0
-			result.Index = value_45
+		result.Index = (int32(number_runtime_bits(uint64(current), uint64(1), 32, true, 1)))
+		if result.Index == count {
+			result.Index = 0
 		}
 	}
-	var value_46 FocusTraversal = result
-	return value_46
+	return result
 }
 
 func Focus_TreeFocusBegin(current int32, count int32, depth int32, down bool, up bool, right bool, left bool) TreeFocusScan {
 	var value_0 TreeFocusScan = TreeFocusScan{}
-	var value_1 int32 = current
-	value_0.Index = value_1
-	var value_2 int32 = current
-	value_0.Origin = value_2
-	var value_3 int32 = depth
-	value_0.Depth = value_3
-	var value_4 bool = true
-	value_0.Done = value_4
+	value_0.Index = current
+	value_0.Origin = current
+	value_0.Depth = depth
+	value_0.Done = true
 	var scan TreeFocusScan = value_0
-	var value_5 int32 = current
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	var value_8 bool = value_7
-	if !value_8 {
-		var value_9 int32 = current
-		var value_10 int32 = count
-		var value_11 bool = value_9 >= value_10
-		value_8 = value_11
+	var value_1 bool = (current < 0)
+	if !value_1 {
+		value_1 = (current >= count)
 	}
-	if value_8 {
-		var value_12 TreeFocusScan = scan
-		return value_12
+	if value_1 {
+		return scan
 	}
-	var value_13 bool = down
-	var value_14 bool = value_13
-	if !value_14 {
-		var value_15 bool = right
-		value_14 = value_15
+	var value_2 bool = down
+	if !value_2 {
+		value_2 = right
 	}
-	if value_14 {
-		var value_16 int32 = current
-		var value_17 int32 = 1
-		var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
-		var value_19 int32 = count
-		var value_20 bool = value_18 >= value_19
-		if value_20 {
-			var value_21 TreeFocusScan = scan
-			return value_21
+	if value_2 {
+		if (int32(number_runtime_bits(uint64(current), uint64(1), 32, true, 1))) >= count {
+			return scan
 		}
-		var value_22 int32 = current
-		var value_23 int32 = 1
-		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
-		scan.Index = value_24
-		var value_25 bool = down
-		var value_26 bool = !value_25
-		var value_27 bool = value_26
-		if value_27 {
-			var value_28 bool = right
-			value_27 = value_28
+		scan.Index = (int32(number_runtime_bits(uint64(current), uint64(1), 32, true, 1)))
+		var value_3 bool = !down
+		if value_3 {
+			value_3 = right
 		}
-		scan.Child = value_27
+		scan.Child = value_3
 	} else {
-		var value_29 bool = up
-		var value_30 bool = value_29
-		if !value_30 {
-			var value_31 bool = left
-			value_30 = value_31
+		var value_4 bool = up
+		if !value_4 {
+			value_4 = left
 		}
-		if value_30 {
-			var value_32 int32 = current
-			var value_33 int32 = 0
-			var value_34 bool = value_32 <= value_33
-			if value_34 {
-				var value_35 TreeFocusScan = scan
-				return value_35
+		if value_4 {
+			if current <= 0 {
+				return scan
 			}
-			var value_36 int32 = current
-			var value_37 int32 = 1
-			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
-			scan.Index = value_38
-			var value_39 bool = up
-			var value_40 bool = !value_39
-			var value_41 bool = value_40
-			if value_41 {
-				var value_42 bool = left
-				value_41 = value_42
+			scan.Index = (int32(number_runtime_bits(uint64(current), uint64(1), 32, true, 2)))
+			var value_5 bool = !up
+			if value_5 {
+				value_5 = left
 			}
-			scan.Parent = value_41
+			scan.Parent = value_5
 		} else {
-			var value_43 TreeFocusScan = scan
-			return value_43
+			return scan
 		}
 	}
-	var value_44 bool = false
-	scan.Done = value_44
-	var value_45 TreeFocusScan = scan
-	return value_45
+	scan.Done = false
+	return scan
 }
 
 func Focus_TreeFocusAdvance(scan TreeFocusScan, candidate_depth int32) TreeFocusScan {
-	var value_0 bool = scan.Done
+	if scan.Done {
+		return scan
+	}
+	var value_0 bool = scan.Parent
 	if value_0 {
-		var value_1 TreeFocusScan = scan
-		return value_1
+		value_0 = (candidate_depth >= scan.Depth)
 	}
-	var value_2 bool = scan.Parent
-	var value_3 bool = value_2
-	if value_3 {
-		var value_4 int32 = candidate_depth
-		var value_5 int32 = scan.Depth
-		var value_6 bool = value_4 >= value_5
-		value_3 = value_6
-	}
-	if value_3 {
-		var value_7 int32 = scan.Index
-		var value_8 int32 = 0
-		var value_9 bool = value_7 > value_8
-		if value_9 {
-			var value_10 int32 = scan.Index
-			var value_11 int32 = 1
-			scan.Index = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
-			var value_12 TreeFocusScan = scan
-			return value_12
+	if value_0 {
+		if scan.Index > 0 {
+			var value_1 int32 = scan.Index
+			scan.Index = int32(number_runtime_bits(uint64(value_1), uint64(1), 32, true, 2))
+			return scan
 		}
-		var value_13 int32 = scan.Origin
-		scan.Index = value_13
+		scan.Index = scan.Origin
 	} else {
-		var value_14 bool = scan.Child
-		var value_15 bool = value_14
-		if value_15 {
-			var value_16 int32 = candidate_depth
-			var value_17 int32 = scan.Depth
-			var value_18 bool = value_16 <= value_17
-			value_15 = value_18
+		var value_2 bool = scan.Child
+		if value_2 {
+			value_2 = (candidate_depth <= scan.Depth)
 		}
-		if value_15 {
-			var value_19 int32 = scan.Origin
-			scan.Index = value_19
+		if value_2 {
+			scan.Index = scan.Origin
 		}
 	}
-	var value_20 bool = true
-	scan.Done = value_20
-	var value_21 TreeFocusScan = scan
-	return value_21
+	scan.Done = true
+	return scan
 }

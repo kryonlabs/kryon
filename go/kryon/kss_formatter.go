@@ -31,181 +31,87 @@ type KssFormatState struct {
 }
 
 func KssFormatter_KssFormatFail(state KssFormatState, text string) KssFormatState {
-	var value_0 int32 = 0
-	var index int32 = value_0
-	var value_1 bool = false
-	state.Result.Ok = value_1
-	var value_2 int32 = 0
-	state.Result.DiagnosticLength = value_2
-	var value_3 int32 = 0
-	index = value_3
+	var index int32 = 0
+	state.Result.Ok = false
+	state.Result.DiagnosticLength = 0
+	index = 0
 	for {
-		var value_4 int32 = index
-		var value_5 int32 = 128
-		var value_6 bool = value_4 < value_5
-		var value_7 bool = value_6
-		if value_7 {
-			var value_8 int32 = index
-			var value_9 int32 = int32(len(text))
-			var value_10 bool = value_8 < value_9
-			value_7 = value_10
+		var value_0 bool = (index < 128)
+		if value_0 {
+			value_0 = (index < int32(len(text)))
 		}
-		if !value_7 {
+		if !value_0 {
 			break
 		}
-		var value_11 int32 = index
-		var value_12 int32 = index
-		var value_13 uint8 = text[value_12]
-		state.Result.Diagnostic[value_11] = value_13
-		var value_14 int32 = index
-		var value_15 int32 = 1
-		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-		state.Result.DiagnosticLength = value_16
-		var value_17 int32 = index
-		var value_18 int32 = 1
-		var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1))
-		index = value_19
+		state.Result.Diagnostic[index] = text[index]
+		state.Result.DiagnosticLength = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_20 KssFormatState = state
-	return value_20
+	return state
 }
 
 func KssFormatter_KssFormatEmitCopy(state KssFormatState, start int32, length int32) KssFormatState {
-	var value_0 int32 = length
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 KssFormatState = state
-		return value_3
+	if length <= 0 {
+		return state
 	}
-	var value_4 int32 = state.Result.Count
-	var value_5 int32 = 1024
-	var value_6 bool = value_4 >= value_5
-	if value_6 {
-		var value_7 KssFormatState = state
-		var value_8 string = "format segment capacity exceeded"
-		var value_9 KssFormatState = KssFormatter_KssFormatFail(value_7, value_8)
-		return value_9
+	if state.Result.Count >= 1024 {
+		var value_0 string = "format segment capacity exceeded"
+		var value_1 KssFormatState = KssFormatter_KssFormatFail(state, value_0)
+		return value_1
 	}
-	var value_10 int32 = state.Result.Count
-	var value_11 int32 = 0
-	state.Result.Segments[value_10].Kind = value_11
-	var value_12 int32 = state.Result.Count
-	var value_13 int32 = start
-	state.Result.Segments[value_12].Start = value_13
-	var value_14 int32 = state.Result.Count
-	var value_15 int32 = length
-	state.Result.Segments[value_14].Length = value_15
-	var value_16 int32 = state.Result.Count
-	var value_17 uint8 = 0
-	state.Result.Segments[value_16].Atom = value_17
-	var value_18 int32 = state.Result.Count
-	var value_19 int32 = 1
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-	state.Result.Count = value_20
-	var value_21 KssFormatState = state
-	return value_21
+	state.Result.Segments[state.Result.Count].Kind = 0
+	state.Result.Segments[state.Result.Count].Start = start
+	state.Result.Segments[state.Result.Count].Length = length
+	state.Result.Segments[state.Result.Count].Atom = 0
+	state.Result.Count = (int32(number_runtime_bits(uint64(state.Result.Count), uint64(1), 32, true, 1)))
+	return state
 }
 
 func KssFormatter_KssFormatEmitAtom(state KssFormatState, atom uint8) KssFormatState {
-	var value_0 int32 = state.Result.Count
-	var value_1 int32 = 1024
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 KssFormatState = state
-		var value_4 string = "format segment capacity exceeded"
-		var value_5 KssFormatState = KssFormatter_KssFormatFail(value_3, value_4)
-		return value_5
+	if state.Result.Count >= 1024 {
+		var value_0 string = "format segment capacity exceeded"
+		var value_1 KssFormatState = KssFormatter_KssFormatFail(state, value_0)
+		return value_1
 	}
-	var value_6 int32 = state.Result.Count
-	var value_7 int32 = 1
-	state.Result.Segments[value_6].Kind = value_7
-	var value_8 int32 = state.Result.Count
-	var value_9 int32 = 0
-	state.Result.Segments[value_8].Start = value_9
-	var value_10 int32 = state.Result.Count
-	var value_11 int32 = 0
-	state.Result.Segments[value_10].Length = value_11
-	var value_12 int32 = state.Result.Count
-	var value_13 uint8 = atom
-	state.Result.Segments[value_12].Atom = value_13
-	var value_14 int32 = state.Result.Count
-	var value_15 int32 = 1
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-	state.Result.Count = value_16
-	var value_17 KssFormatState = state
-	return value_17
+	state.Result.Segments[state.Result.Count].Kind = 1
+	state.Result.Segments[state.Result.Count].Start = 0
+	state.Result.Segments[state.Result.Count].Length = 0
+	state.Result.Segments[state.Result.Count].Atom = atom
+	state.Result.Count = (int32(number_runtime_bits(uint64(state.Result.Count), uint64(1), 32, true, 1)))
+	return state
 }
 
 func KssFormatter_KssFormatEmitIndent(state KssFormatState, spaces int32) KssFormatState {
-	var value_0 int32 = state.Result.Count
-	var value_1 int32 = 1024
-	var value_2 bool = value_0 >= value_1
-	if value_2 {
-		var value_3 KssFormatState = state
-		var value_4 string = "format segment capacity exceeded"
-		var value_5 KssFormatState = KssFormatter_KssFormatFail(value_3, value_4)
-		return value_5
+	if state.Result.Count >= 1024 {
+		var value_0 string = "format segment capacity exceeded"
+		var value_1 KssFormatState = KssFormatter_KssFormatFail(state, value_0)
+		return value_1
 	}
-	var value_6 int32 = spaces
-	var value_7 int32 = 128
-	var value_8 bool = value_6 > value_7
-	if value_8 {
-		var value_9 int32 = 128
-		spaces = value_9
+	if spaces > 128 {
+		spaces = 128
 	}
-	var value_10 int32 = state.Result.Count
-	var value_11 int32 = 2
-	state.Result.Segments[value_10].Kind = value_11
-	var value_12 int32 = state.Result.Count
-	var value_13 int32 = 0
-	state.Result.Segments[value_12].Start = value_13
-	var value_14 int32 = state.Result.Count
-	var value_15 int32 = spaces
-	state.Result.Segments[value_14].Length = value_15
-	var value_16 int32 = state.Result.Count
-	var value_17 uint8 = 0
-	state.Result.Segments[value_16].Atom = value_17
-	var value_18 int32 = state.Result.Count
-	var value_19 int32 = 1
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-	state.Result.Count = value_20
-	var value_21 KssFormatState = state
-	return value_21
+	state.Result.Segments[state.Result.Count].Kind = 2
+	state.Result.Segments[state.Result.Count].Start = 0
+	state.Result.Segments[state.Result.Count].Length = spaces
+	state.Result.Segments[state.Result.Count].Atom = 0
+	state.Result.Count = (int32(number_runtime_bits(uint64(state.Result.Count), uint64(1), 32, true, 1)))
+	return state
 }
 
 func KssFormatter_KssFormatAddConstruct(state KssFormatState, kind int32, start int32, end int32) KssFormatState {
-	var value_0 int32 = end
-	var value_1 int32 = start
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 KssFormatState = state
-		return value_3
+	if end <= start {
+		return state
 	}
-	var value_4 int32 = state.ConstructCount
-	var value_5 int32 = 192
-	var value_6 bool = value_4 >= value_5
-	if value_6 {
-		var value_7 KssFormatState = state
-		var value_8 string = "format construct capacity exceeded"
-		var value_9 KssFormatState = KssFormatter_KssFormatFail(value_7, value_8)
-		return value_9
+	if state.ConstructCount >= 192 {
+		var value_0 string = "format construct capacity exceeded"
+		var value_1 KssFormatState = KssFormatter_KssFormatFail(state, value_0)
+		return value_1
 	}
-	var value_10 int32 = state.ConstructCount
-	var value_11 int32 = kind
-	state.Constructs[value_10].Kind = value_11
-	var value_12 int32 = state.ConstructCount
-	var value_13 int32 = start
-	state.Constructs[value_12].Start = value_13
-	var value_14 int32 = state.ConstructCount
-	var value_15 int32 = end
-	state.Constructs[value_14].End = value_15
-	var value_16 int32 = state.ConstructCount
-	var value_17 int32 = 1
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
-	state.ConstructCount = value_18
-	var value_19 KssFormatState = state
-	return value_19
+	state.Constructs[state.ConstructCount].Kind = kind
+	state.Constructs[state.ConstructCount].Start = start
+	state.Constructs[state.ConstructCount].End = end
+	state.ConstructCount = (int32(number_runtime_bits(uint64(state.ConstructCount), uint64(1), 32, true, 1)))
+	return state
 }
 
 func (instance_host_0 *runtime) KssFormatter_KssFormatCollect(state KssFormatState) KssFormatState {
@@ -213,1206 +119,596 @@ func (instance_host_0 *runtime) KssFormatter_KssFormatCollect(state KssFormatSta
 	var env KssEnvironment = value_0
 	var value_1 string = state.Source
 	var value_2 string = ""
-	var value_3 KssEnvironment = env
-	var value_4 KssParser = KssParser_KssBeginDeclarative(value_1, value_2, value_3)
-	var p KssParser = value_4
-	var value_5 bool = true
-	var running bool = value_5
+	var value_3 KssParser = KssParser_KssBeginDeclarative(value_1, value_2, env)
+	var p KssParser = value_3
+	var running bool = true
 	for {
-		var value_6 bool = running
-		if !value_6 {
+		if !running {
 			break
 		}
-		var value_7 int32 = p.Status
-		var value_8 int32 = KssStatusRule
-		var value_9 int32 = int32(number_runtime_bits(uint64(value_8), uint64(0), 32, true, 0))
-		var value_10 bool = value_7 == value_9
-		if value_10 {
-			var value_11 int32 = p.RuleSpan.End
-			var end int32 = value_11
-			var value_12 int32 = end
-			var value_13 int32 = p.RuleSpan.SelectorStart
-			var value_14 bool = value_12 <= value_13
-			if value_14 {
-				var value_15 int32 = p.RuleSpan.BodyStart
-				var value_16 int32 = p.RuleSpan.BodyLength
-				var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 1))
-				end = value_17
+		if p.Status == int32(number_runtime_bits(uint64(KssStatusRule), uint64(0), 32, true, 0)) {
+			var end int32 = p.RuleSpan.End
+			if end <= p.RuleSpan.SelectorStart {
+				end = (int32(number_runtime_bits(uint64(p.RuleSpan.BodyStart), uint64(p.RuleSpan.BodyLength), 32, true, 1)))
 			}
-			var value_18 KssFormatState = state
-			var value_19 int32 = 6
-			var value_20 int32 = p.RuleSpan.SelectorStart
-			var value_21 int32 = end
-			var value_22 KssFormatState = KssFormatter_KssFormatAddConstruct(value_18, value_19, value_20, value_21)
-			state = value_22
-			var value_23 int32 = KssStatusContinue
-			var value_24 int32 = int32(number_runtime_bits(uint64(value_23), uint64(0), 32, true, 0))
-			p.Status = value_24
+			var value_4 int32 = 6
+			var value_5 int32 = p.RuleSpan.SelectorStart
+			var value_6 KssFormatState = KssFormatter_KssFormatAddConstruct(state, value_4, value_5, end)
+			state = value_6
+			p.Status = int32(number_runtime_bits(uint64(KssStatusContinue), uint64(0), 32, true, 0))
 			continue
 		}
-		var value_25 int32 = p.Status
-		var value_26 int32 = KssStatusContinue
-		var value_27 int32 = int32(number_runtime_bits(uint64(value_26), uint64(0), 32, true, 0))
-		var value_28 bool = value_25 != value_27
-		if value_28 {
+		if p.Status != int32(number_runtime_bits(uint64(KssStatusContinue), uint64(0), 32, true, 0)) {
 			break
 		}
-		var value_29 KssParser = p
-		var value_30 KssParser = instance_host_0.KssParser_KssStep(value_29)
-		p = value_30
-		var value_31 int32 = p.Status
-		var value_32 int32 = KssStatusNeedImport
-		var value_33 int32 = int32(number_runtime_bits(uint64(value_32), uint64(0), 32, true, 0))
-		var value_34 bool = value_31 == value_33
-		if value_34 {
-			var value_35 KssParser = p
-			var value_36 string = ""
-			var value_37 string = "import"
-			var value_38 KssParser = KssParser_KssProvideImport(value_35, value_36, value_37)
-			p = value_38
+		var value_7 KssParser = instance_host_0.KssParser_KssStep(p)
+		p = value_7
+		if p.Status == int32(number_runtime_bits(uint64(KssStatusNeedImport), uint64(0), 32, true, 0)) {
+			var value_8 string = ""
+			var value_9 string = "import"
+			var value_10 KssParser = KssParser_KssProvideImport(p, value_8, value_9)
+			p = value_10
 		}
 	}
-	var value_39 int32 = p.Status
-	var value_40 int32 = KssStatusDone
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_40), uint64(0), 32, true, 0))
-	var value_42 bool = value_39 != value_41
-	if value_42 {
-		var value_43 KssFormatState = state
-		var value_44 string = "style sheet did not parse"
-		var value_45 KssFormatState = KssFormatter_KssFormatFail(value_43, value_44)
-		return value_45
+	if p.Status != int32(number_runtime_bits(uint64(KssStatusDone), uint64(0), 32, true, 0)) {
+		var value_11 string = "style sheet did not parse"
+		var value_12 KssFormatState = KssFormatter_KssFormatFail(state, value_11)
+		return value_12
 	}
-	var value_46 int32 = 0
-	var index int32 = value_46
+	var index int32 = 0
 	for {
-		var value_47 int32 = index
-		var value_48 int32 = p.BlockCount
-		var value_49 bool = value_47 < value_48
-		if !value_49 {
+		if !(index < p.BlockCount) {
 			break
 		}
-		var value_50 KssFormatState = state
-		var value_51 int32 = index
-		var value_52 KssBlockSpan = p.Blocks[value_51]
-		var value_53 int32 = value_52.Kind
-		var value_54 int32 = index
-		var value_55 KssBlockSpan = p.Blocks[value_54]
-		var value_56 int32 = value_55.Start
-		var value_57 int32 = index
-		var value_58 KssBlockSpan = p.Blocks[value_57]
-		var value_59 int32 = value_58.Start
-		var value_60 int32 = index
-		var value_61 KssBlockSpan = p.Blocks[value_60]
-		var value_62 int32 = value_61.Length
-		var value_63 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_62), 32, true, 1))
-		var value_64 KssFormatState = KssFormatter_KssFormatAddConstruct(value_50, value_53, value_56, value_63)
-		state = value_64
-		var value_65 int32 = index
-		var value_66 int32 = 1
-		var value_67 int32 = int32(number_runtime_bits(uint64(value_65), uint64(value_66), 32, true, 1))
-		index = value_67
+		var value_13 int32 = p.Blocks[index].Kind
+		var value_14 int32 = p.Blocks[index].Start
+		var value_15 int32 = int32(number_runtime_bits(uint64(p.Blocks[index].Start), uint64(p.Blocks[index].Length), 32, true, 1))
+		var value_16 KssFormatState = KssFormatter_KssFormatAddConstruct(state, value_13, value_14, value_15)
+		state = value_16
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_68 int32 = 0
-	index = value_68
+	index = 0
 	for {
-		var value_69 int32 = index
-		var value_70 int32 = p.ForeignCount
-		var value_71 bool = value_69 < value_70
-		if !value_71 {
+		if !(index < p.ForeignCount) {
 			break
 		}
-		var value_72 int32 = index
-		var value_73 KssForeignBlock = p.Foreign[value_72]
-		var value_74 int32 = value_73.BodyStart
-		var value_75 int32 = index
-		var value_76 KssForeignBlock = p.Foreign[value_75]
-		var value_77 int32 = value_76.BodyLength
-		var value_78 int32 = int32(number_runtime_bits(uint64(value_74), uint64(value_77), 32, true, 1))
-		var end int32 = value_78
-		var value_79 KssFormatState = state
-		var value_80 int32 = 7
-		var value_81 int32 = index
-		var value_82 KssForeignBlock = p.Foreign[value_81]
-		var value_83 int32 = value_82.QueryStart
-		var value_84 int32 = end
-		var value_85 KssFormatState = KssFormatter_KssFormatAddConstruct(value_79, value_80, value_83, value_84)
-		state = value_85
-		var value_86 int32 = index
-		var value_87 int32 = 1
-		var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 1))
-		index = value_88
+		var value_17 int32 = int32(number_runtime_bits(uint64(p.Foreign[index].BodyStart), uint64(p.Foreign[index].BodyLength), 32, true, 1))
+		var end int32 = value_17
+		var value_18 int32 = 7
+		var value_19 int32 = p.Foreign[index].QueryStart
+		var value_20 KssFormatState = KssFormatter_KssFormatAddConstruct(state, value_18, value_19, end)
+		state = value_20
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_89 KssFormatState = state
-	return value_89
+	return state
 }
 
 func KssFormatter_KssFormatScanGaps(state KssFormatState) KssFormatState {
-	var value_0 int32 = 0
-	var cursor int32 = value_0
-	var value_1 int32 = 0
-	var index int32 = value_1
+	var cursor int32 = 0
+	var index int32 = 0
 	for {
-		var value_2 int32 = index
-		var value_3 int32 = state.ConstructCount
-		var value_4 bool = value_2 < value_3
-		if !value_4 {
+		if !(index < state.ConstructCount) {
 			break
 		}
-		var value_5 int32 = index
-		var value_6 KssFormatConstruct = state.Constructs[value_5]
-		var value_7 int32 = value_6.Start
-		var start int32 = value_7
-		var value_8 KssFormatState = state
-		var value_9 int32 = cursor
-		var value_10 int32 = start
-		var value_11 KssFormatState = KssFormatter_KssFormatScanRange(value_8, value_9, value_10)
-		state = value_11
-		var value_12 int32 = index
-		var value_13 KssFormatConstruct = state.Constructs[value_12]
-		var value_14 int32 = value_13.End
-		cursor = value_14
-		var value_15 int32 = index
-		var value_16 int32 = 1
-		var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 1))
-		index = value_17
+		var start int32 = state.Constructs[index].Start
+		var value_0 KssFormatState = KssFormatter_KssFormatScanRange(state, cursor, start)
+		state = value_0
+		cursor = state.Constructs[index].End
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_18 KssFormatState = state
-	var value_19 int32 = cursor
-	var value_20 int32 = int32(len(state.Source))
-	var value_21 KssFormatState = KssFormatter_KssFormatScanRange(value_18, value_19, value_20)
-	state = value_21
-	var value_22 KssFormatState = state
-	return value_22
+	var value_1 int32 = int32(len(state.Source))
+	var value_2 KssFormatState = KssFormatter_KssFormatScanRange(state, cursor, value_1)
+	state = value_2
+	return state
 }
 
 func KssFormatter_KssFormatScanRange(state KssFormatState, from int32, to int32) KssFormatState {
-	var value_0 int32 = from
-	var cursor int32 = value_0
+	var cursor int32 = from
 	for {
-		var value_1 int32 = cursor
-		var value_2 int32 = to
-		var value_3 bool = value_1 < value_2
-		if !value_3 {
+		if !(cursor < to) {
 			break
 		}
-		var value_4 uint8 = 0
-		var byte uint8 = value_4
-		var value_5 int32 = cursor
-		var value_6 int32 = int32(len(state.Source))
-		var value_7 bool = value_5 < value_6
-		if value_7 {
-			var value_8 int32 = cursor
-			var value_9 uint8 = state.Source[value_8]
-			byte = value_9
+		var byte uint8 = 0
+		if cursor < int32(len(state.Source)) {
+			byte = state.Source[cursor]
 		}
-		var value_10 uint8 = byte
-		var value_11 uint8 = 47
-		var value_12 bool = value_10 == value_11
-		var value_13 bool = value_12
-		if value_13 {
-			var value_14 int32 = cursor
-			var value_15 int32 = 1
-			var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-			var value_17 int32 = to
-			var value_18 bool = value_16 < value_17
-			value_13 = value_18
+		var value_0 bool = (byte == 47)
+		if value_0 {
+			value_0 = ((int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1))) < to)
 		}
-		var value_19 bool = value_13
-		if value_19 {
-			var value_20 int32 = cursor
-			var value_21 int32 = 1
-			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
-			var value_23 int32 = int32(len(state.Source))
-			var value_24 bool = value_22 < value_23
-			value_19 = value_24
+		var value_1 bool = value_0
+		if value_1 {
+			value_1 = ((int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1))) < int32(len(state.Source)))
 		}
-		if value_19 {
-			var value_25 int32 = cursor
-			var value_26 int32 = 1
-			var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
-			var value_28 uint8 = state.Source[value_27]
-			var next uint8 = value_28
-			var value_29 uint8 = next
-			var value_30 uint8 = 47
-			var value_31 bool = value_29 == value_30
-			if value_31 {
-				var value_32 int32 = cursor
-				var end int32 = value_32
+		if value_1 {
+			var next uint8 = state.Source[(int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))]
+			if next == 47 {
+				var end int32 = cursor
 				for {
-					var value_33 int32 = end
-					var value_34 int32 = int32(len(state.Source))
-					var value_35 bool = value_33 < value_34
-					var value_36 bool = value_35
-					if value_36 {
-						var value_37 int32 = end
-						var value_38 uint8 = state.Source[value_37]
-						var value_39 uint8 = 10
-						var value_40 bool = value_38 != value_39
-						value_36 = value_40
+					var value_2 bool = (end < int32(len(state.Source)))
+					if value_2 {
+						value_2 = (state.Source[end] != 10)
 					}
-					if !value_36 {
+					if !value_2 {
 						break
 					}
-					var value_41 int32 = end
-					var value_42 int32 = 1
-					var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
-					end = value_43
+					end = (int32(number_runtime_bits(uint64(end), uint64(1), 32, true, 1)))
 				}
-				var value_44 KssFormatState = state
-				var value_45 int32 = 8
-				var value_46 int32 = cursor
-				var value_47 int32 = end
-				var value_48 KssFormatState = KssFormatter_KssFormatAddConstruct(value_44, value_45, value_46, value_47)
-				state = value_48
-				var value_49 int32 = end
-				cursor = value_49
+				var value_3 int32 = 8
+				var value_4 KssFormatState = KssFormatter_KssFormatAddConstruct(state, value_3, cursor, end)
+				state = value_4
+				cursor = end
 				continue
 			}
-			var value_50 uint8 = next
-			var value_51 uint8 = 42
-			var value_52 bool = value_50 == value_51
-			if value_52 {
-				var value_53 int32 = cursor
-				var value_54 int32 = 2
-				var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 1))
-				var end int32 = value_55
+			if next == 42 {
+				var end int32 = (int32(number_runtime_bits(uint64(cursor), uint64(2), 32, true, 1)))
 				for {
-					var value_56 int32 = end
-					var value_57 int32 = 1
-					var value_58 int32 = int32(number_runtime_bits(uint64(value_56), uint64(value_57), 32, true, 1))
-					var value_59 int32 = int32(len(state.Source))
-					var value_60 bool = value_58 < value_59
-					if !value_60 {
+					if !((int32(number_runtime_bits(uint64(end), uint64(1), 32, true, 1))) < int32(len(state.Source))) {
 						break
 					}
-					var value_61 int32 = end
-					var value_62 uint8 = state.Source[value_61]
-					var value_63 uint8 = 42
-					var value_64 bool = value_62 == value_63
-					var value_65 bool = value_64
-					if value_65 {
-						var value_66 int32 = end
-						var value_67 int32 = 1
-						var value_68 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_67), 32, true, 1))
-						var value_69 uint8 = state.Source[value_68]
-						var value_70 uint8 = 47
-						var value_71 bool = value_69 == value_70
-						value_65 = value_71
+					var value_5 bool = (state.Source[end] == 42)
+					if value_5 {
+						value_5 = (state.Source[(int32(number_runtime_bits(uint64(end), uint64(1), 32, true, 1)))] == 47)
 					}
-					if value_65 {
-						var value_72 int32 = end
-						var value_73 int32 = 2
-						var value_74 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_73), 32, true, 1))
-						end = value_74
+					if value_5 {
+						end = (int32(number_runtime_bits(uint64(end), uint64(2), 32, true, 1)))
 						break
 					}
-					var value_75 int32 = end
-					var value_76 int32 = 1
-					var value_77 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_76), 32, true, 1))
-					end = value_77
+					end = (int32(number_runtime_bits(uint64(end), uint64(1), 32, true, 1)))
 				}
-				var value_78 KssFormatState = state
-				var value_79 int32 = 8
-				var value_80 int32 = cursor
-				var value_81 int32 = end
-				var value_82 KssFormatState = KssFormatter_KssFormatAddConstruct(value_78, value_79, value_80, value_81)
-				state = value_82
-				var value_83 int32 = end
-				cursor = value_83
+				var value_6 int32 = 8
+				var value_7 KssFormatState = KssFormatter_KssFormatAddConstruct(state, value_6, cursor, end)
+				state = value_7
+				cursor = end
 				continue
 			}
 		}
-		var value_84 int32 = cursor
-		var value_85 int32 = 1
-		var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 1))
-		cursor = value_86
+		cursor = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
 	}
-	var value_87 KssFormatState = state
-	return value_87
+	return state
 }
 
 func KssFormatter_KssFormatSortConstructs(state KssFormatState) KssFormatState {
-	var value_0 int32 = 1
-	var index int32 = value_0
+	var index int32 = 1
 	for {
-		var value_1 int32 = index
-		var value_2 int32 = state.ConstructCount
-		var value_3 bool = value_1 < value_2
-		if !value_3 {
+		if !(index < state.ConstructCount) {
 			break
 		}
-		var value_4 int32 = index
-		var value_5 KssFormatConstruct = state.Constructs[value_4]
-		var candidate KssFormatConstruct = value_5
-		var value_6 int32 = index
-		var value_7 int32 = 1
-		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
-		var scan int32 = value_8
+		var candidate KssFormatConstruct = state.Constructs[index]
+		var scan int32 = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 2)))
 		for {
-			var value_9 int32 = scan
-			var value_10 int32 = 0
-			var value_11 bool = value_9 >= value_10
-			var value_12 bool = value_11
-			if value_12 {
-				var value_13 int32 = scan
-				var value_14 KssFormatConstruct = state.Constructs[value_13]
-				var value_15 int32 = value_14.Start
-				var value_16 int32 = candidate.Start
-				var value_17 bool = value_15 > value_16
-				value_12 = value_17
+			var value_0 bool = (scan >= 0)
+			if value_0 {
+				value_0 = (state.Constructs[scan].Start > candidate.Start)
 			}
-			if !value_12 {
+			if !value_0 {
 				break
 			}
-			var value_18 int32 = scan
-			var value_19 int32 = 1
-			var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-			var value_21 int32 = scan
-			var value_22 KssFormatConstruct = state.Constructs[value_21]
-			state.Constructs[value_20] = value_22
-			var value_23 int32 = scan
-			var value_24 int32 = 1
-			var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 2))
-			scan = value_25
+			state.Constructs[(int32(number_runtime_bits(uint64(scan), uint64(1), 32, true, 1)))] = state.Constructs[scan]
+			scan = (int32(number_runtime_bits(uint64(scan), uint64(1), 32, true, 2)))
 		}
-		var value_26 int32 = scan
-		var value_27 int32 = 1
-		var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
-		var value_29 KssFormatConstruct = candidate
-		state.Constructs[value_28] = value_29
-		var value_30 int32 = index
-		var value_31 int32 = 1
-		var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 1))
-		index = value_32
+		state.Constructs[(int32(number_runtime_bits(uint64(scan), uint64(1), 32, true, 1)))] = candidate
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_33 KssFormatState = state
-	return value_33
+	return state
 }
 
 func KssFormatter_KssFormatDropNested(state KssFormatState) KssFormatState {
-	var value_0 int32 = 0
-	var kept int32 = value_0
-	var value_1 int32 = 0
-	var index int32 = value_1
+	var kept int32 = 0
+	var index int32 = 0
 	for {
-		var value_2 int32 = index
-		var value_3 int32 = state.ConstructCount
-		var value_4 bool = value_2 < value_3
-		if !value_4 {
+		if !(index < state.ConstructCount) {
 			break
 		}
-		var value_5 int32 = index
-		var value_6 KssFormatConstruct = state.Constructs[value_5]
-		var candidate KssFormatConstruct = value_6
-		var value_7 bool = false
-		var nested bool = value_7
-		var value_8 int32 = 0
-		var scan int32 = value_8
+		var candidate KssFormatConstruct = state.Constructs[index]
+		var nested bool = false
+		var scan int32 = 0
 		for {
-			var value_9 int32 = scan
-			var value_10 int32 = state.ConstructCount
-			var value_11 bool = value_9 < value_10
-			if !value_11 {
+			if !(scan < state.ConstructCount) {
 				break
 			}
-			var value_12 int32 = scan
-			var value_13 KssFormatConstruct = state.Constructs[value_12]
-			var other KssFormatConstruct = value_13
-			var value_14 int32 = scan
-			var value_15 int32 = index
-			var value_16 bool = value_14 != value_15
-			var value_17 bool = value_16
-			if value_17 {
-				var value_18 int32 = other.Kind
-				var value_19 int32 = 6
-				var value_20 bool = value_18 != value_19
-				value_17 = value_20
+			var other KssFormatConstruct = state.Constructs[scan]
+			var value_0 bool = (scan != index)
+			if value_0 {
+				value_0 = (other.Kind != 6)
 			}
-			var value_21 bool = value_17
-			if value_21 {
-				var value_22 int32 = other.Kind
-				var value_23 int32 = 8
-				var value_24 bool = value_22 != value_23
-				value_21 = value_24
+			var value_1 bool = value_0
+			if value_1 {
+				value_1 = (other.Kind != 8)
 			}
-			if value_21 {
-				var value_25 int32 = candidate.Start
-				var value_26 int32 = other.Start
-				var value_27 bool = value_25 >= value_26
-				var value_28 bool = value_27
-				if value_28 {
-					var value_29 int32 = candidate.End
-					var value_30 int32 = other.End
-					var value_31 bool = value_29 <= value_30
-					value_28 = value_31
+			if value_1 {
+				var value_2 bool = (candidate.Start >= other.Start)
+				if value_2 {
+					value_2 = (candidate.End <= other.End)
 				}
-				if value_28 {
-					var value_32 bool = true
-					nested = value_32
+				if value_2 {
+					nested = true
 					break
 				}
 			}
-			var value_33 int32 = scan
-			var value_34 int32 = 1
-			var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-			scan = value_35
+			scan = (int32(number_runtime_bits(uint64(scan), uint64(1), 32, true, 1)))
 		}
-		var value_36 bool = nested
-		var value_37 bool = !value_36
-		if value_37 {
-			var value_38 int32 = kept
-			var value_39 KssFormatConstruct = candidate
-			state.Constructs[value_38] = value_39
-			var value_40 int32 = kept
-			var value_41 int32 = 1
-			var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 1))
-			kept = value_42
+		if !nested {
+			state.Constructs[kept] = candidate
+			kept = (int32(number_runtime_bits(uint64(kept), uint64(1), 32, true, 1)))
 		}
-		var value_43 int32 = index
-		var value_44 int32 = 1
-		var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 1))
-		index = value_45
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_46 int32 = kept
-	state.ConstructCount = value_46
-	var value_47 KssFormatState = state
-	return value_47
+	state.ConstructCount = kept
+	return state
 }
 
 func KssFormatter_KssFormatTrimStart(state KssFormatState, start int32, end int32) int32 {
-	var value_0 int32 = start
-	var pos int32 = value_0
+	var pos int32 = start
 	for {
-		var value_1 int32 = pos
-		var value_2 int32 = end
-		var value_3 bool = value_1 < value_2
-		if !value_3 {
+		if !(pos < end) {
 			break
 		}
-		var value_4 int32 = pos
-		var value_5 uint8 = state.Source[value_4]
-		var byte uint8 = value_5
-		var value_6 uint8 = byte
-		var value_7 uint8 = 32
-		var value_8 bool = value_6 == value_7
-		var value_9 bool = value_8
-		if !value_9 {
-			var value_10 uint8 = byte
-			var value_11 uint8 = 9
-			var value_12 bool = value_10 == value_11
-			value_9 = value_12
+		var byte uint8 = state.Source[pos]
+		var value_0 bool = (byte == 32)
+		if !value_0 {
+			value_0 = (byte == 9)
 		}
-		var value_13 bool = value_9
-		if !value_13 {
-			var value_14 uint8 = byte
-			var value_15 uint8 = 13
-			var value_16 bool = value_14 == value_15
-			value_13 = value_16
+		var value_1 bool = value_0
+		if !value_1 {
+			value_1 = (byte == 13)
 		}
-		if value_13 {
-			var value_17 int32 = pos
-			var value_18 int32 = 1
-			var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1))
-			pos = value_19
+		if value_1 {
+			pos = (int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 1)))
 		} else {
 			break
 		}
 	}
-	var value_20 int32 = pos
-	return value_20
+	return pos
 }
 
 func KssFormatter_KssFormatTrimEnd(state KssFormatState, start int32, end int32) int32 {
-	var value_0 int32 = end
-	var pos int32 = value_0
+	var pos int32 = end
 	for {
-		var value_1 int32 = pos
-		var value_2 int32 = start
-		var value_3 bool = value_1 > value_2
-		if !value_3 {
+		if !(pos > start) {
 			break
 		}
-		var value_4 int32 = pos
-		var value_5 int32 = 1
-		var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 2))
-		var value_7 uint8 = state.Source[value_6]
-		var byte uint8 = value_7
-		var value_8 uint8 = byte
-		var value_9 uint8 = 32
-		var value_10 bool = value_8 == value_9
-		var value_11 bool = value_10
-		if !value_11 {
-			var value_12 uint8 = byte
-			var value_13 uint8 = 9
-			var value_14 bool = value_12 == value_13
-			value_11 = value_14
+		var byte uint8 = state.Source[(int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 2)))]
+		var value_0 bool = (byte == 32)
+		if !value_0 {
+			value_0 = (byte == 9)
 		}
-		var value_15 bool = value_11
-		if !value_15 {
-			var value_16 uint8 = byte
-			var value_17 uint8 = 13
-			var value_18 bool = value_16 == value_17
-			value_15 = value_18
+		var value_1 bool = value_0
+		if !value_1 {
+			value_1 = (byte == 13)
 		}
-		if value_15 {
-			var value_19 int32 = pos
-			var value_20 int32 = 1
-			var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 2))
-			pos = value_21
+		if value_1 {
+			pos = (int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 2)))
 		} else {
 			break
 		}
 	}
-	var value_22 int32 = pos
-	return value_22
+	return pos
 }
 
 func KssFormatter_KssFormatLineHasComments(state KssFormatState, start int32, end int32) bool {
-	var value_0 int32 = start
-	var pos int32 = value_0
+	var pos int32 = start
 	for {
-		var value_1 int32 = pos
-		var value_2 int32 = 1
-		var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
-		var value_4 int32 = end
-		var value_5 bool = value_3 < value_4
-		if !value_5 {
+		if !((int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 1))) < end) {
 			break
 		}
-		var value_6 int32 = pos
-		var value_7 uint8 = state.Source[value_6]
-		var value_8 uint8 = 47
-		var value_9 bool = value_7 == value_8
-		if value_9 {
-			var value_10 int32 = pos
-			var value_11 int32 = 1
-			var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
-			var value_13 uint8 = state.Source[value_12]
-			var next uint8 = value_13
-			var value_14 uint8 = next
-			var value_15 uint8 = 47
-			var value_16 bool = value_14 == value_15
-			var value_17 bool = value_16
-			if !value_17 {
-				var value_18 uint8 = next
-				var value_19 uint8 = 42
-				var value_20 bool = value_18 == value_19
-				value_17 = value_20
+		if state.Source[pos] == 47 {
+			var next uint8 = state.Source[(int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 1)))]
+			var value_0 bool = (next == 47)
+			if !value_0 {
+				value_0 = (next == 42)
 			}
-			if value_17 {
-				var value_21 bool = true
-				return value_21
+			if value_0 {
+				return true
 			}
 		}
-		var value_22 int32 = pos
-		var value_23 int32 = 1
-		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
-		pos = value_24
+		pos = (int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 1)))
 	}
-	var value_25 bool = false
-	return value_25
+	return false
 }
 
 func KssFormatter_KssFormatLineCanReflow(state KssFormatState, start int32, end int32) bool {
-	var value_0 KssFormatState = state
-	var value_1 int32 = start
-	var value_2 int32 = end
-	var value_3 bool = KssFormatter_KssFormatLineHasComments(value_0, value_1, value_2)
-	if value_3 {
-		var value_4 bool = false
-		return value_4
+	var value_0 bool = KssFormatter_KssFormatLineHasComments(state, start, end)
+	if value_0 {
+		return false
 	}
-	var value_5 bool = false
-	var open_seen bool = value_5
-	var value_6 bool = false
-	var semicolon_seen bool = value_6
-	var value_7 bool = false
-	var close_seen bool = value_7
-	var value_8 int32 = start
-	var pos int32 = value_8
+	var open_seen bool = false
+	var semicolon_seen bool = false
+	var close_seen bool = false
+	var pos int32 = start
 	for {
-		var value_9 int32 = pos
-		var value_10 int32 = end
-		var value_11 bool = value_9 < value_10
-		if !value_11 {
+		if !(pos < end) {
 			break
 		}
-		var value_12 int32 = pos
-		var value_13 uint8 = state.Source[value_12]
-		var byte uint8 = value_13
-		var value_14 uint8 = byte
-		var value_15 uint8 = 123
-		var value_16 bool = value_14 == value_15
-		if value_16 {
-			var value_17 bool = true
-			open_seen = value_17
+		var byte uint8 = state.Source[pos]
+		if byte == 123 {
+			open_seen = true
 		} else {
-			var value_18 uint8 = byte
-			var value_19 uint8 = 59
-			var value_20 bool = value_18 == value_19
-			var value_21 bool = value_20
-			if value_21 {
-				var value_22 bool = open_seen
-				value_21 = value_22
+			var value_1 bool = (byte == 59)
+			if value_1 {
+				value_1 = open_seen
 			}
-			if value_21 {
-				var value_23 bool = true
-				semicolon_seen = value_23
+			if value_1 {
+				semicolon_seen = true
 			} else {
-				var value_24 uint8 = byte
-				var value_25 uint8 = 125
-				var value_26 bool = value_24 == value_25
-				var value_27 bool = value_26
-				if value_27 {
-					var value_28 bool = semicolon_seen
-					value_27 = value_28
+				var value_2 bool = (byte == 125)
+				if value_2 {
+					value_2 = semicolon_seen
 				}
-				if value_27 {
-					var value_29 bool = true
-					close_seen = value_29
+				if value_2 {
+					close_seen = true
 				}
 			}
 		}
-		var value_30 int32 = pos
-		var value_31 int32 = 1
-		var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 1))
-		pos = value_32
+		pos = (int32(number_runtime_bits(uint64(pos), uint64(1), 32, true, 1)))
 	}
-	var value_33 bool = open_seen
-	var value_34 bool = value_33
-	if value_34 {
-		var value_35 bool = semicolon_seen
-		value_34 = value_35
+	var value_3 bool = open_seen
+	if value_3 {
+		value_3 = semicolon_seen
 	}
-	var value_36 bool = value_34
-	if value_36 {
-		var value_37 bool = close_seen
-		value_36 = value_37
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = close_seen
 	}
-	return value_36
+	return value_4
 }
 
 func KssFormatter_KssFormatEmitLineStart(state KssFormatState, leading_break bool, first_line bool, spaces int32) KssFormatState {
 	var value_0 bool = leading_break
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 bool = first_line
-		value_1 = value_2
+	if value_0 {
+		value_0 = first_line
 	}
-	if value_1 {
-		var value_3 KssFormatState = state
-		var value_4 int32 = 0
-		var value_5 KssFormatState = KssFormatter_KssFormatEmitIndent(value_3, value_4)
-		state = value_5
-		var value_6 KssFormatState = state
-		var value_7 int32 = 0
-		var value_8 KssFormatState = KssFormatter_KssFormatEmitIndent(value_6, value_7)
-		state = value_8
+	if value_0 {
+		var value_1 int32 = 0
+		var value_2 KssFormatState = KssFormatter_KssFormatEmitIndent(state, value_1)
+		state = value_2
+		var value_3 int32 = 0
+		var value_4 KssFormatState = KssFormatter_KssFormatEmitIndent(state, value_3)
+		state = value_4
 	} else {
-		var value_9 bool = first_line
-		var value_10 bool = !value_9
-		if value_10 {
-			var value_11 KssFormatState = state
-			var value_12 int32 = spaces
-			var value_13 KssFormatState = KssFormatter_KssFormatEmitIndent(value_11, value_12)
-			state = value_13
+		if !first_line {
+			var value_5 KssFormatState = KssFormatter_KssFormatEmitIndent(state, spaces)
+			state = value_5
 		}
 	}
-	var value_14 KssFormatState = state
-	return value_14
+	return state
 }
 
 func KssFormatter_KssFormatEmitTrimmedRange(state KssFormatState, start int32, end int32) KssFormatState {
-	var value_0 KssFormatState = state
-	var value_1 int32 = start
-	var value_2 int32 = end
-	var value_3 int32 = KssFormatter_KssFormatTrimStart(value_0, value_1, value_2)
-	var trimmed_start int32 = value_3
-	var value_4 KssFormatState = state
-	var value_5 int32 = trimmed_start
-	var value_6 int32 = end
-	var value_7 int32 = KssFormatter_KssFormatTrimEnd(value_4, value_5, value_6)
-	var trimmed_end int32 = value_7
-	var value_8 int32 = trimmed_start
-	var value_9 int32 = trimmed_end
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 KssFormatState = state
-		var value_12 int32 = trimmed_start
-		var value_13 int32 = trimmed_end
-		var value_14 int32 = trimmed_start
-		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-		var value_16 KssFormatState = KssFormatter_KssFormatEmitCopy(value_11, value_12, value_15)
-		state = value_16
+	var value_0 int32 = KssFormatter_KssFormatTrimStart(state, start, end)
+	var trimmed_start int32 = value_0
+	var value_1 int32 = KssFormatter_KssFormatTrimEnd(state, trimmed_start, end)
+	var trimmed_end int32 = value_1
+	if trimmed_start < trimmed_end {
+		var value_2 int32 = (int32(number_runtime_bits(uint64(trimmed_end), uint64(trimmed_start), 32, true, 2)))
+		var value_3 KssFormatState = KssFormatter_KssFormatEmitCopy(state, trimmed_start, value_2)
+		state = value_3
 	}
-	var value_17 KssFormatState = state
-	return value_17
+	return state
 }
 
 func KssFormatter_KssFormatEmitReflowLine(state KssFormatState, start int32, end int32, base_depth int32, leading_break bool, first_line bool) KssFormatState {
-	var value_0 int32 = start
-	var cursor int32 = value_0
-	var value_1 int32 = start
-	var token_start int32 = value_1
-	var value_2 int32 = base_depth
-	var depth int32 = value_2
-	var value_3 bool = false
-	var emitted bool = value_3
+	var cursor int32 = start
+	var token_start int32 = start
+	var depth int32 = base_depth
+	var emitted bool = false
 	for {
-		var value_4 int32 = cursor
-		var value_5 int32 = end
-		var value_6 bool = value_4 < value_5
-		if !value_6 {
+		if !(cursor < end) {
 			break
 		}
-		var value_7 int32 = cursor
-		var value_8 uint8 = state.Source[value_7]
-		var byte uint8 = value_8
-		var value_9 uint8 = byte
-		var value_10 uint8 = 123
-		var value_11 bool = value_9 == value_10
-		if value_11 {
-			var value_12 KssFormatState = state
-			var value_13 bool = leading_break
-			var value_14 bool = first_line
-			var value_15 bool = value_14
-			if value_15 {
-				var value_16 bool = emitted
-				var value_17 bool = !value_16
-				value_15 = value_17
+		var byte uint8 = state.Source[cursor]
+		if byte == 123 {
+			var value_0 bool = first_line
+			if value_0 {
+				value_0 = !emitted
 			}
-			var value_18 int32 = depth
-			var value_19 int32 = 4
-			var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 3))
-			var value_21 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_12, value_13, value_15, value_20)
-			state = value_21
-			var value_22 KssFormatState = state
-			var value_23 int32 = token_start
-			var value_24 int32 = cursor
-			var value_25 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(value_22, value_23, value_24)
-			state = value_25
-			var value_26 KssFormatState = state
-			var value_27 uint8 = 32
-			var value_28 KssFormatState = KssFormatter_KssFormatEmitAtom(value_26, value_27)
-			state = value_28
-			var value_29 KssFormatState = state
-			var value_30 uint8 = 123
-			var value_31 KssFormatState = KssFormatter_KssFormatEmitAtom(value_29, value_30)
-			state = value_31
-			var value_32 bool = true
-			emitted = value_32
-			var value_33 int32 = depth
-			var value_34 int32 = 1
-			var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-			depth = value_35
-			var value_36 int32 = cursor
-			var value_37 int32 = 1
-			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 1))
-			token_start = value_38
+			var value_1 int32 = (int32(number_runtime_bits(uint64(depth), uint64(4), 32, true, 3)))
+			var value_2 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, value_0, value_1)
+			state = value_2
+			var value_3 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(state, token_start, cursor)
+			state = value_3
+			var value_4 uint8 = 32
+			var value_5 KssFormatState = KssFormatter_KssFormatEmitAtom(state, value_4)
+			state = value_5
+			var value_6 uint8 = 123
+			var value_7 KssFormatState = KssFormatter_KssFormatEmitAtom(state, value_6)
+			state = value_7
+			emitted = true
+			depth = (int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 1)))
+			token_start = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
 		} else {
-			var value_39 uint8 = byte
-			var value_40 uint8 = 59
-			var value_41 bool = value_39 == value_40
-			if value_41 {
-				var value_42 KssFormatState = state
-				var value_43 bool = leading_break
-				var value_44 bool = first_line
-				var value_45 bool = value_44
-				if value_45 {
-					var value_46 bool = emitted
-					var value_47 bool = !value_46
-					value_45 = value_47
+			if byte == 59 {
+				var value_8 bool = first_line
+				if value_8 {
+					value_8 = !emitted
 				}
-				var value_48 int32 = depth
-				var value_49 int32 = 4
-				var value_50 int32 = int32(number_runtime_bits(uint64(value_48), uint64(value_49), 32, true, 3))
-				var value_51 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_42, value_43, value_45, value_50)
-				state = value_51
-				var value_52 KssFormatState = state
-				var value_53 int32 = token_start
-				var value_54 int32 = cursor
-				var value_55 int32 = 1
-				var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 1))
-				var value_57 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(value_52, value_53, value_56)
-				state = value_57
-				var value_58 bool = true
-				emitted = value_58
-				var value_59 int32 = cursor
-				var value_60 int32 = 1
-				var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 1))
-				token_start = value_61
+				var value_9 int32 = (int32(number_runtime_bits(uint64(depth), uint64(4), 32, true, 3)))
+				var value_10 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, value_8, value_9)
+				state = value_10
+				var value_11 int32 = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
+				var value_12 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(state, token_start, value_11)
+				state = value_12
+				emitted = true
+				token_start = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
 			} else {
-				var value_62 uint8 = byte
-				var value_63 uint8 = 125
-				var value_64 bool = value_62 == value_63
-				if value_64 {
-					var value_65 KssFormatState = state
-					var value_66 int32 = token_start
-					var value_67 int32 = cursor
-					var value_68 int32 = KssFormatter_KssFormatTrimStart(value_65, value_66, value_67)
-					var value_69 KssFormatState = state
-					var value_70 int32 = token_start
-					var value_71 int32 = cursor
-					var value_72 int32 = KssFormatter_KssFormatTrimEnd(value_69, value_70, value_71)
-					var value_73 bool = value_68 < value_72
-					if value_73 {
-						var value_74 KssFormatState = state
-						var value_75 bool = leading_break
-						var value_76 bool = first_line
-						var value_77 bool = value_76
-						if value_77 {
-							var value_78 bool = emitted
-							var value_79 bool = !value_78
-							value_77 = value_79
+				if byte == 125 {
+					var value_13 int32 = KssFormatter_KssFormatTrimStart(state, token_start, cursor)
+					var value_14 int32 = KssFormatter_KssFormatTrimEnd(state, token_start, cursor)
+					if value_13 < value_14 {
+						var value_15 bool = first_line
+						if value_15 {
+							value_15 = !emitted
 						}
-						var value_80 int32 = depth
-						var value_81 int32 = 4
-						var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 3))
-						var value_83 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_74, value_75, value_77, value_82)
-						state = value_83
-						var value_84 KssFormatState = state
-						var value_85 int32 = token_start
-						var value_86 int32 = cursor
-						var value_87 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(value_84, value_85, value_86)
-						state = value_87
-						var value_88 bool = true
-						emitted = value_88
+						var value_16 int32 = (int32(number_runtime_bits(uint64(depth), uint64(4), 32, true, 3)))
+						var value_17 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, value_15, value_16)
+						state = value_17
+						var value_18 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(state, token_start, cursor)
+						state = value_18
+						emitted = true
 					}
-					var value_89 int32 = depth
-					var value_90 int32 = 0
-					var value_91 bool = value_89 > value_90
-					if value_91 {
-						var value_92 int32 = depth
-						var value_93 int32 = 1
-						var value_94 int32 = int32(number_runtime_bits(uint64(value_92), uint64(value_93), 32, true, 2))
-						depth = value_94
+					if depth > 0 {
+						depth = (int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 2)))
 					}
-					var value_95 KssFormatState = state
-					var value_96 bool = leading_break
-					var value_97 bool = first_line
-					var value_98 bool = value_97
-					if value_98 {
-						var value_99 bool = emitted
-						var value_100 bool = !value_99
-						value_98 = value_100
+					var value_19 bool = first_line
+					if value_19 {
+						value_19 = !emitted
 					}
-					var value_101 int32 = depth
-					var value_102 int32 = 4
-					var value_103 int32 = int32(number_runtime_bits(uint64(value_101), uint64(value_102), 32, true, 3))
-					var value_104 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_95, value_96, value_98, value_103)
-					state = value_104
-					var value_105 KssFormatState = state
-					var value_106 uint8 = 125
-					var value_107 KssFormatState = KssFormatter_KssFormatEmitAtom(value_105, value_106)
-					state = value_107
-					var value_108 bool = true
-					emitted = value_108
-					var value_109 int32 = cursor
-					var value_110 int32 = 1
-					var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 1))
-					token_start = value_111
+					var value_20 int32 = (int32(number_runtime_bits(uint64(depth), uint64(4), 32, true, 3)))
+					var value_21 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, value_19, value_20)
+					state = value_21
+					var value_22 uint8 = 125
+					var value_23 KssFormatState = KssFormatter_KssFormatEmitAtom(state, value_22)
+					state = value_23
+					emitted = true
+					token_start = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
 				}
 			}
 		}
-		var value_112 int32 = cursor
-		var value_113 int32 = 1
-		var value_114 int32 = int32(number_runtime_bits(uint64(value_112), uint64(value_113), 32, true, 1))
-		cursor = value_114
+		cursor = (int32(number_runtime_bits(uint64(cursor), uint64(1), 32, true, 1)))
 	}
-	var value_115 KssFormatState = state
-	var value_116 int32 = token_start
-	var value_117 int32 = end
-	var value_118 int32 = KssFormatter_KssFormatTrimStart(value_115, value_116, value_117)
-	var value_119 KssFormatState = state
-	var value_120 int32 = token_start
-	var value_121 int32 = end
-	var value_122 int32 = KssFormatter_KssFormatTrimEnd(value_119, value_120, value_121)
-	var value_123 bool = value_118 < value_122
-	if value_123 {
-		var value_124 KssFormatState = state
-		var value_125 bool = leading_break
-		var value_126 bool = first_line
-		var value_127 bool = value_126
-		if value_127 {
-			var value_128 bool = emitted
-			var value_129 bool = !value_128
-			value_127 = value_129
+	var value_24 int32 = KssFormatter_KssFormatTrimStart(state, token_start, end)
+	var value_25 int32 = KssFormatter_KssFormatTrimEnd(state, token_start, end)
+	if value_24 < value_25 {
+		var value_26 bool = first_line
+		if value_26 {
+			value_26 = !emitted
 		}
-		var value_130 int32 = depth
-		var value_131 int32 = 4
-		var value_132 int32 = int32(number_runtime_bits(uint64(value_130), uint64(value_131), 32, true, 3))
-		var value_133 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_124, value_125, value_127, value_132)
-		state = value_133
-		var value_134 KssFormatState = state
-		var value_135 int32 = token_start
-		var value_136 int32 = end
-		var value_137 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(value_134, value_135, value_136)
-		state = value_137
+		var value_27 int32 = (int32(number_runtime_bits(uint64(depth), uint64(4), 32, true, 3)))
+		var value_28 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, value_26, value_27)
+		state = value_28
+		var value_29 KssFormatState = KssFormatter_KssFormatEmitTrimmedRange(state, token_start, end)
+		state = value_29
 	}
-	var value_138 KssFormatState = state
-	return value_138
+	return state
 }
 
 func KssFormatter_KssFormatEmitConstruct(state KssFormatState, construct KssFormatConstruct, leading_break bool) KssFormatState {
-	var value_0 int32 = 0
-	var depth int32 = value_0
-	var value_1 int32 = construct.Start
-	var pos int32 = value_1
-	var value_2 bool = true
-	var first bool = value_2
+	var depth int32 = 0
+	var pos int32 = construct.Start
+	var first bool = true
 	for {
-		var value_3 int32 = pos
-		var value_4 int32 = construct.End
-		var value_5 bool = value_3 < value_4
-		if !value_5 {
+		if !(pos < construct.End) {
 			break
 		}
-		var value_6 int32 = pos
-		var line_end int32 = value_6
+		var line_end int32 = pos
 		for {
-			var value_7 int32 = line_end
-			var value_8 int32 = construct.End
-			var value_9 bool = value_7 < value_8
-			var value_10 bool = value_9
-			if value_10 {
-				var value_11 int32 = line_end
-				var value_12 int32 = int32(len(state.Source))
-				var value_13 bool = value_11 < value_12
-				value_10 = value_13
+			var value_0 bool = (line_end < construct.End)
+			if value_0 {
+				value_0 = (line_end < int32(len(state.Source)))
 			}
-			if !value_10 {
+			if !value_0 {
 				break
 			}
-			var value_14 int32 = line_end
-			var value_15 uint8 = state.Source[value_14]
-			var value_16 uint8 = 10
-			var value_17 bool = value_15 == value_16
-			if value_17 {
+			if state.Source[line_end] == 10 {
 				break
 			}
-			var value_18 int32 = line_end
-			var value_19 int32 = 1
-			var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
-			line_end = value_20
+			line_end = (int32(number_runtime_bits(uint64(line_end), uint64(1), 32, true, 1)))
 		}
-		var value_21 int32 = pos
-		var trimmed int32 = value_21
+		var trimmed int32 = pos
 		for {
-			var value_22 int32 = trimmed
-			var value_23 int32 = line_end
-			var value_24 bool = value_22 < value_23
-			if !value_24 {
+			if !(trimmed < line_end) {
 				break
 			}
-			var value_25 int32 = trimmed
-			var value_26 uint8 = state.Source[value_25]
-			var byte uint8 = value_26
-			var value_27 uint8 = byte
-			var value_28 uint8 = 32
-			var value_29 bool = value_27 == value_28
-			var value_30 bool = value_29
-			if !value_30 {
-				var value_31 uint8 = byte
-				var value_32 uint8 = 9
-				var value_33 bool = value_31 == value_32
-				value_30 = value_33
+			var byte uint8 = state.Source[trimmed]
+			var value_1 bool = (byte == 32)
+			if !value_1 {
+				value_1 = (byte == 9)
 			}
-			var value_34 bool = value_30
-			if !value_34 {
-				var value_35 uint8 = byte
-				var value_36 uint8 = 13
-				var value_37 bool = value_35 == value_36
-				value_34 = value_37
+			var value_2 bool = value_1
+			if !value_2 {
+				value_2 = (byte == 13)
 			}
-			if value_34 {
-				var value_38 int32 = trimmed
-				var value_39 int32 = 1
-				var value_40 int32 = int32(number_runtime_bits(uint64(value_38), uint64(value_39), 32, true, 1))
-				trimmed = value_40
+			if value_2 {
+				trimmed = (int32(number_runtime_bits(uint64(trimmed), uint64(1), 32, true, 1)))
 			} else {
 				break
 			}
 		}
-		var value_41 int32 = trimmed
-		var value_42 int32 = line_end
-		var value_43 bool = value_41 < value_42
-		if value_43 {
-			var value_44 int32 = depth
-			var indent int32 = value_44
-			var value_45 int32 = trimmed
-			var value_46 uint8 = state.Source[value_45]
-			var value_47 uint8 = 125
-			var value_48 bool = value_46 == value_47
-			var value_49 bool = value_48
-			if value_49 {
-				var value_50 int32 = depth
-				var value_51 int32 = 0
-				var value_52 bool = value_50 > value_51
-				value_49 = value_52
+		if trimmed < line_end {
+			var indent int32 = depth
+			var value_3 bool = (state.Source[trimmed] == 125)
+			if value_3 {
+				value_3 = (depth > 0)
 			}
-			if value_49 {
-				var value_53 int32 = depth
-				var value_54 int32 = 1
-				var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 2))
-				indent = value_55
+			if value_3 {
+				indent = (int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 2)))
 			}
-			var value_56 KssFormatState = state
-			var value_57 int32 = trimmed
-			var value_58 int32 = line_end
-			var value_59 bool = KssFormatter_KssFormatLineCanReflow(value_56, value_57, value_58)
-			if value_59 {
-				var value_60 KssFormatState = state
-				var value_61 int32 = trimmed
-				var value_62 int32 = line_end
-				var value_63 int32 = indent
-				var value_64 bool = leading_break
-				var value_65 bool = first
-				var value_66 KssFormatState = KssFormatter_KssFormatEmitReflowLine(value_60, value_61, value_62, value_63, value_64, value_65)
-				state = value_66
+			var value_4 bool = KssFormatter_KssFormatLineCanReflow(state, trimmed, line_end)
+			if value_4 {
+				var value_5 KssFormatState = KssFormatter_KssFormatEmitReflowLine(state, trimmed, line_end, indent, leading_break, first)
+				state = value_5
 			} else {
-				var value_67 KssFormatState = state
-				var value_68 bool = leading_break
-				var value_69 bool = first
-				var value_70 int32 = indent
-				var value_71 int32 = 4
-				var value_72 int32 = int32(number_runtime_bits(uint64(value_70), uint64(value_71), 32, true, 3))
-				var value_73 KssFormatState = KssFormatter_KssFormatEmitLineStart(value_67, value_68, value_69, value_72)
-				state = value_73
-				var value_74 KssFormatState = state
-				var value_75 int32 = trimmed
-				var value_76 int32 = line_end
-				var value_77 int32 = trimmed
-				var value_78 int32 = int32(number_runtime_bits(uint64(value_76), uint64(value_77), 32, true, 2))
-				var value_79 KssFormatState = KssFormatter_KssFormatEmitCopy(value_74, value_75, value_78)
-				state = value_79
+				var value_6 int32 = (int32(number_runtime_bits(uint64(indent), uint64(4), 32, true, 3)))
+				var value_7 KssFormatState = KssFormatter_KssFormatEmitLineStart(state, leading_break, first, value_6)
+				state = value_7
+				var value_8 int32 = (int32(number_runtime_bits(uint64(line_end), uint64(trimmed), 32, true, 2)))
+				var value_9 KssFormatState = KssFormatter_KssFormatEmitCopy(state, trimmed, value_8)
+				state = value_9
 			}
-			var value_80 int32 = trimmed
-			var scan int32 = value_80
+			var scan int32 = trimmed
 			for {
-				var value_81 int32 = scan
-				var value_82 int32 = line_end
-				var value_83 bool = value_81 < value_82
-				if !value_83 {
+				if !(scan < line_end) {
 					break
 				}
-				var value_84 int32 = scan
-				var value_85 uint8 = state.Source[value_84]
-				var byte uint8 = value_85
-				var value_86 uint8 = byte
-				var value_87 uint8 = 123
-				var value_88 bool = value_86 == value_87
-				if value_88 {
-					var value_89 int32 = depth
-					var value_90 int32 = 1
-					var value_91 int32 = int32(number_runtime_bits(uint64(value_89), uint64(value_90), 32, true, 1))
-					depth = value_91
+				var byte uint8 = state.Source[scan]
+				if byte == 123 {
+					depth = (int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 1)))
 				} else {
-					var value_92 uint8 = byte
-					var value_93 uint8 = 125
-					var value_94 bool = value_92 == value_93
-					var value_95 bool = value_94
-					if value_95 {
-						var value_96 int32 = depth
-						var value_97 int32 = 0
-						var value_98 bool = value_96 > value_97
-						value_95 = value_98
+					var value_10 bool = (byte == 125)
+					if value_10 {
+						value_10 = (depth > 0)
 					}
-					if value_95 {
-						var value_99 int32 = depth
-						var value_100 int32 = 1
-						var value_101 int32 = int32(number_runtime_bits(uint64(value_99), uint64(value_100), 32, true, 2))
-						depth = value_101
+					if value_10 {
+						depth = (int32(number_runtime_bits(uint64(depth), uint64(1), 32, true, 2)))
 					}
 				}
-				var value_102 int32 = scan
-				var value_103 int32 = 1
-				var value_104 int32 = int32(number_runtime_bits(uint64(value_102), uint64(value_103), 32, true, 1))
-				scan = value_104
+				scan = (int32(number_runtime_bits(uint64(scan), uint64(1), 32, true, 1)))
 			}
-			var value_105 bool = false
-			first = value_105
+			first = false
 		}
-		var value_106 int32 = line_end
-		var value_107 int32 = 1
-		var value_108 int32 = int32(number_runtime_bits(uint64(value_106), uint64(value_107), 32, true, 1))
-		pos = value_108
+		pos = (int32(number_runtime_bits(uint64(line_end), uint64(1), 32, true, 1)))
 	}
-	var value_109 KssFormatState = state
-	return value_109
+	return state
 }
 
 func (instance_host_0 *runtime) KssFormatter_KssFormat(source string) KssFormatResult {
 	var state KssFormatState = KssFormatState{}
-	var value_0 string = source
-	state.Source = value_0
-	var value_1 bool = true
-	state.Result.Ok = value_1
-	var value_2 int32 = 0
-	state.Result.Count = value_2
-	var value_3 int32 = 0
-	state.Result.DiagnosticLength = value_3
-	var value_4 int32 = 0
-	state.ConstructCount = value_4
-	var value_5 KssFormatState = state
-	var value_6 KssFormatState = instance_host_0.KssFormatter_KssFormatCollect(value_5)
-	state = value_6
-	var value_7 bool = state.Result.Ok
-	var value_8 bool = !value_7
-	if value_8 {
-		var value_9 KssFormatResult = state.Result
-		return value_9
+	state.Source = source
+	state.Result.Ok = true
+	state.Result.Count = 0
+	state.Result.DiagnosticLength = 0
+	state.ConstructCount = 0
+	var value_0 KssFormatState = instance_host_0.KssFormatter_KssFormatCollect(state)
+	state = value_0
+	if !state.Result.Ok {
+		return state.Result
 	}
-	var value_10 KssFormatState = state
-	var value_11 KssFormatState = KssFormatter_KssFormatDropNested(value_10)
-	state = value_11
-	var value_12 KssFormatState = state
-	var value_13 KssFormatState = KssFormatter_KssFormatSortConstructs(value_12)
-	state = value_13
-	var value_14 KssFormatState = state
-	var value_15 KssFormatState = KssFormatter_KssFormatScanGaps(value_14)
-	state = value_15
-	var value_16 KssFormatState = state
-	var value_17 KssFormatState = KssFormatter_KssFormatSortConstructs(value_16)
-	state = value_17
-	var value_18 int32 = 0
-	var index int32 = value_18
+	var value_1 KssFormatState = KssFormatter_KssFormatDropNested(state)
+	state = value_1
+	var value_2 KssFormatState = KssFormatter_KssFormatSortConstructs(state)
+	state = value_2
+	var value_3 KssFormatState = KssFormatter_KssFormatScanGaps(state)
+	state = value_3
+	var value_4 KssFormatState = KssFormatter_KssFormatSortConstructs(state)
+	state = value_4
+	var index int32 = 0
 	for {
-		var value_19 int32 = index
-		var value_20 int32 = state.ConstructCount
-		var value_21 bool = value_19 < value_20
-		if !value_21 {
+		if !(index < state.ConstructCount) {
 			break
 		}
-		var value_22 bool = state.Result.Ok
-		var value_23 bool = !value_22
-		if value_23 {
-			var value_24 KssFormatResult = state.Result
-			return value_24
+		if !state.Result.Ok {
+			return state.Result
 		}
-		var value_25 int32 = index
-		var value_26 int32 = 0
-		var value_27 bool = value_25 > value_26
-		var leading bool = value_27
-		var value_28 KssFormatState = state
-		var value_29 int32 = index
-		var value_30 KssFormatConstruct = state.Constructs[value_29]
-		var value_31 bool = leading
-		var value_32 KssFormatState = KssFormatter_KssFormatEmitConstruct(value_28, value_30, value_31)
-		state = value_32
-		var value_33 int32 = index
-		var value_34 int32 = 1
-		var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
-		index = value_35
+		var leading bool = (index > 0)
+		var value_5 KssFormatConstruct = state.Constructs[index]
+		var value_6 KssFormatState = KssFormatter_KssFormatEmitConstruct(state, value_5, leading)
+		state = value_6
+		index = (int32(number_runtime_bits(uint64(index), uint64(1), 32, true, 1)))
 	}
-	var value_36 int32 = state.Result.Count
-	var value_37 int32 = 0
-	var value_38 bool = value_36 > value_37
-	if value_38 {
-		var value_39 KssFormatState = state
-		var value_40 uint8 = 10
-		var value_41 KssFormatState = KssFormatter_KssFormatEmitAtom(value_39, value_40)
-		state = value_41
+	if state.Result.Count > 0 {
+		var value_7 uint8 = 10
+		var value_8 KssFormatState = KssFormatter_KssFormatEmitAtom(state, value_7)
+		state = value_8
 	}
-	var value_42 KssFormatResult = state.Result
-	return value_42
+	return state.Result
 }

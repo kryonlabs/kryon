@@ -45,25 +45,19 @@ type InfoIndicatorMetrics struct {
 	Diameter int32
 }
 
+type InfoIndicatorPaint struct {
+	Bounds Rectangle
+	Hit    Rectangle
+	Radius int32
+	Fill   uint32
+	Stroke uint32
+	Text   uint32
+	Font   int32
+}
+
 type ButtonInfoBounds struct {
 	Bounds   Rectangle
 	Diameter int32
-}
-
-type ButtonFallbackPolicy struct {
-	Radius                  float32
-	DisabledBackgroundAlpha uint8
-	DisabledForegroundAlpha uint8
-	FallbackBorderLighten   int32
-	HoverBorderLighten      int32
-	PressedBackgroundDarken int32
-	HoverBackgroundLighten  int32
-	TermiBorderLighten      int32
-	TermiHoverBorderLighten int32
-	OutlineWidth            float32
-	OutlineAlpha            uint8
-	OutlineAdjust           int32
-	OutlineWhite            bool
 }
 
 type ButtonSplitLayout struct {
@@ -99,6 +93,7 @@ type SwatchPaint struct {
 	TextColor        uint32
 	LabelX           float32
 	Radius           float32
+	SwatchRoundness  float32
 	BorderWidth      float32
 	FocusWidth       float32
 	ShowFocus        bool
@@ -130,1406 +125,773 @@ type ButtonFrame struct {
 }
 
 func Button_ButtonActionEnabled(disabled bool, content_disabled bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = content_disabled
-		var value_4 bool = !value_3
-		value_2 = value_4
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !content_disabled
 	}
-	return value_2
+	return value_0
 }
 
 func Button_ButtonArrowGlyph(direction ArrowDirection) int32 {
-	var value_0 ArrowDirection = ArrowDirection(direction)
-	var value_1 int32 = int32(ArrowRight)
-	var value_2 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
-	var value_3 bool = value_0 == value_2
-	if value_3 {
-		var value_4 int32 = 62
-		return value_4
+	var value_0 bool = direction == ArrowDirection(int32(number_runtime_bits(uint64(int32(ArrowRight)), uint64(0), 32, true, 0)))
+	if value_0 {
+		return 62
 	}
-	var value_5 ArrowDirection = ArrowDirection(direction)
-	var value_6 int32 = int32(ArrowUp)
-	var value_7 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
-	var value_8 bool = value_5 == value_7
-	if value_8 {
-		var value_9 int32 = 94
-		return value_9
+	var value_1 bool = direction == ArrowDirection(int32(number_runtime_bits(uint64(int32(ArrowUp)), uint64(0), 32, true, 0)))
+	if value_1 {
+		return 94
 	}
-	var value_10 ArrowDirection = ArrowDirection(direction)
-	var value_11 int32 = int32(ArrowDown)
-	var value_12 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0)))
-	var value_13 bool = value_10 == value_12
-	if value_13 {
-		var value_14 int32 = 118
-		return value_14
+	var value_2 bool = direction == ArrowDirection(int32(number_runtime_bits(uint64(int32(ArrowDown)), uint64(0), 32, true, 0)))
+	if value_2 {
+		return 118
 	}
-	var value_15 int32 = 60
-	return value_15
+	return 60
 }
 
 func Button_ResolveButtonInput(state int32, disabled bool, loading bool, selected bool, sample Activation) ButtonInput {
 	var result ButtonInput = ButtonInput{}
-	var value_0 int32 = state
-	var value_1 bool = disabled
-	var value_2 bool = loading
-	var value_3 bool = selected
-	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
-	result.Flags = value_4
+	var value_0 StateFlags = Style_ResolveFlags(state, disabled, loading, selected)
+	result.Flags = value_0
+	var value_1 bool = result.Flags.Disabled
+	var value_2 bool = result.Flags.Loading
+	var value_3 bool = Button_CanActivate(value_1, value_2)
+	var enabled bool = value_3
+	var value_4 bool = enabled
+	if value_4 {
+		value_4 = sample.Activated
+	}
+	result.Activated = value_4
 	var value_5 bool = result.Flags.Disabled
 	var value_6 bool = result.Flags.Loading
-	var value_7 bool = Button_CanActivate(value_5, value_6)
-	var enabled bool = value_7
+	var value_7 bool = enabled
+	if value_7 {
+		value_7 = sample.Pressed
+	}
 	var value_8 bool = enabled
-	var value_9 bool = value_8
+	if value_8 {
+		value_8 = sample.Hovered
+	}
+	var value_9 bool = enabled
 	if value_9 {
-		var value_10 bool = sample.Activated
-		value_9 = value_10
+		value_9 = sample.Focused
 	}
-	result.Activated = value_9
-	var value_11 int32 = state
-	var value_12 bool = result.Flags.Disabled
-	var value_13 bool = result.Flags.Loading
-	var value_14 bool = enabled
-	var value_15 bool = value_14
-	if value_15 {
-		var value_16 bool = sample.Pressed
-		value_15 = value_16
-	}
-	var value_17 bool = enabled
-	var value_18 bool = value_17
-	if value_18 {
-		var value_19 bool = sample.Hovered
-		value_18 = value_19
-	}
-	var value_20 bool = enabled
-	var value_21 bool = value_20
-	if value_21 {
-		var value_22 bool = sample.Focused
-		value_21 = value_22
-	}
-	var value_23 bool = result.Flags.Selected
-	var value_24 InteractionState = Style_ResolveInteraction(value_11, value_12, value_13, value_15, value_18, value_21, value_23)
-	result.Interaction = value_24
-	var value_25 ButtonInput = result
-	return value_25
+	var value_10 bool = result.Flags.Selected
+	var value_11 InteractionState = Style_ResolveInteraction(state, value_5, value_6, value_7, value_8, value_9, value_10)
+	result.Interaction = value_11
+	return result
 }
 
 func (instance_host_0 *runtime) Button_ReadButtonInput(bounds Rectangle, id int32, state int32, disabled bool, loading bool, selected bool) ButtonInput {
-	var value_0 int32 = state
-	var value_1 bool = disabled
-	var value_2 bool = loading
-	var value_3 bool = selected
-	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
-	var flags StateFlags = value_4
-	var value_5 Rectangle = bounds
-	var value_6 int32 = id
-	var value_7 bool = flags.Disabled
-	var value_8 bool = flags.Loading
-	var value_9 bool = Button_CanActivate(value_7, value_8)
-	var value_10 Activation = instance_host_0.ReadActivation(value_5, value_6, value_9)
-	var sample Activation = value_10
-	var value_11 int32 = state
-	var value_12 bool = disabled
-	var value_13 bool = loading
-	var value_14 bool = selected
-	var value_15 Activation = sample
-	var value_16 ButtonInput = Button_ResolveButtonInput(value_11, value_12, value_13, value_14, value_15)
-	return value_16
+	var value_0 StateFlags = Style_ResolveFlags(state, disabled, loading, selected)
+	var flags StateFlags = value_0
+	var value_1 bool = flags.Disabled
+	var value_2 bool = flags.Loading
+	var value_3 bool = Button_CanActivate(value_1, value_2)
+	var value_4 Activation = instance_host_0.ReadActivation(bounds, id, value_3)
+	var sample Activation = value_4
+	var value_5 ButtonInput = Button_ResolveButtonInput(state, disabled, loading, selected, sample)
+	return value_5
 }
 
 func Button_ButtonRoleFactsFor(style_kind int32, name int32, class_name int32, role int32, tone int32, emphasis int32, size int32, state int32) StyleFacts {
-	var value_0 int32 = style_kind
-	var kind int32 = value_0
-	var value_1 int32 = kind
-	var value_2 int32 = 0
-	var value_3 bool = value_1 == value_2
-	if value_3 {
-		var value_4 int32 = StyleSheet_StyleKindButton()
-		kind = value_4
+	var kind int32 = style_kind
+	if kind == 0 {
+		var value_0 int32 = StyleSheet_StyleKindButton()
+		kind = value_0
 	}
-	var value_5 int32 = kind
-	var value_6 int32 = name
-	var value_7 int32 = class_name
-	var value_8 int32 = role
-	var value_9 int32 = tone
-	var value_10 int32 = emphasis
-	var value_11 int32 = size
-	var value_12 int32 = state
-	var value_13 StyleFacts = StyleSheet_StyleControlRoleFacts(value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12)
-	return value_13
+	var value_1 StyleFacts = StyleSheet_StyleControlRoleFacts(kind, name, class_name, role, tone, emphasis, size, state)
+	return value_1
 }
 
 func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, state int32, input ButtonInput, enabled bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
-	var value_0 uint64 = key
-	retained := instanceState[ButtonInstance](instance_host_0, uint64(value_0))
-	var value_1 InteractionMotion = (*retained).Motion
-	var value_2 bool = input.Interaction.Hovered
-	var value_3 bool = input.Interaction.Pressed
-	var value_4 bool = input.Interaction.Focused
-	var value_5 bool = enabled
-	var value_6 int32 = state
-	var value_7 int32 = int32(ButtonStateAuto)
-	var value_8 bool = value_6 != value_7
-	var value_9 bool = input.Flags.Disabled
-	var value_10 bool = input.Flags.Loading
-	var value_11 float32 = delta_ms
-	var value_12 float32 = normal_ms
-	var value_13 float32 = fast_ms
-	var value_14 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_8, value_9, value_10, value_11, value_12, value_13)
-	(*retained).Motion = value_14
-	var value_15 InteractionMotion = (*retained).Motion
-	return value_15
+	retained := instanceState[ButtonInstance](instance_host_0, uint64(key))
+	var value_0 InteractionMotion = (*retained).Motion
+	var value_1 bool = input.Interaction.Hovered
+	var value_2 bool = input.Interaction.Pressed
+	var value_3 bool = input.Interaction.Focused
+	var value_4 bool = (state != int32(ButtonStateAuto))
+	var value_5 bool = input.Flags.Disabled
+	var value_6 bool = input.Flags.Loading
+	var value_7 InteractionMotion = Surface_AdvanceInteractionMotion(value_0, value_1, value_2, value_3, enabled, value_4, value_5, value_6, delta_ms, normal_ms, fast_ms)
+	(*retained).Motion = value_7
+	return (*retained).Motion
 }
 
 func Button_CanActivate(disabled bool, loading bool) bool {
-	var value_0 bool = disabled
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = loading
-		var value_4 bool = !value_3
-		value_2 = value_4
+	var value_0 bool = !disabled
+	if value_0 {
+		value_0 = !loading
 	}
-	return value_2
+	return value_0
 }
 
 func Button_ButtonResolveSplitLayout(width float32, height float32) ButtonSplitLayout {
 	var layout ButtonSplitLayout = ButtonSplitLayout{}
-	var value_0 float32 = width
-	layout.Width = value_0
-	var value_1 float32 = layout.Width
-	var value_2 float32 = height
-	var value_3 float32 = 2.0
-	var value_4 float32 = value_2 * value_3
-	var value_5 bool = value_1 < value_4
-	if value_5 {
-		var value_6 float32 = height
-		var value_7 float32 = 2.0
-		var value_8 float32 = value_6 * value_7
-		layout.Width = value_8
+	layout.Width = width
+	if layout.Width < (height * 2.0) {
+		layout.Width = (height * 2.0)
 	}
-	var value_9 float32 = layout.Width
-	var value_10 float32 = height
-	var value_11 float32 = value_9 - value_10
-	layout.ActionWidth = value_11
-	var value_12 float32 = layout.ActionWidth
-	layout.MenuOffset = value_12
-	var value_13 float32 = height
-	layout.MenuWidth = value_13
-	var value_14 float32 = 8.0
-	layout.DividerInset = value_14
-	var value_15 ButtonSplitLayout = layout
-	return value_15
+	layout.ActionWidth = (layout.Width - height)
+	layout.MenuOffset = layout.ActionWidth
+	layout.MenuWidth = height
+	layout.DividerInset = 8.0
+	return layout
 }
 
 func Button_ButtonMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
+	var value_0 bool = (uint32(number_runtime_bits(uint64(fields), uint64(field), 32, false, 8))) == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0))
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (value < 0.0)
 	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = !allow_zero
+		if value_3 {
+			value_3 = (value <= 0.0)
 		}
-		value_14 = value_17
+		value_2 = value_3
 	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
+	if value_2 {
+		value = fallback
 	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-	return value_25
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	return value_4
 }
 
 func Button_IconActionMetricsFor(bounds Rectangle, requested_icon_size int32, requested_padding int32, scale float32, face StyleFrame) IconActionMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics IconActionMetrics = IconActionMetrics{}
-	var value_4 int32 = requested_padding
-	var value_5 int32 = 0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = requested_padding
-		metrics.Padding = value_7
+	if requested_padding > 0 {
+		metrics.Padding = requested_padding
 	} else {
-		var value_8 uint32 = face.Value.Fields
-		var value_9 int32 = int32(StylePaddingX)
-		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-		var value_11 float32 = face.Value.PaddingX
-		var value_12 float32 = 3.0
-		var value_13 float32 = scale
-		var value_14 bool = true
-		var value_15 int32 = Button_ButtonMetric(value_8, value_10, value_11, value_12, value_13, value_14)
-		metrics.Padding = value_15
+		var value_0 uint32 = face.Value.Fields
+		var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+		var value_2 float32 = face.Value.PaddingX
+		var value_3 float32 = 3.0
+		var value_4 int32 = Button_ButtonMetric(value_0, value_1, value_2, value_3, scale, true)
+		metrics.Padding = value_4
 	}
-	var value_16 int32 = requested_icon_size
-	metrics.IconSize = value_16
-	var value_17 int32 = metrics.IconSize
-	var value_18 int32 = 0
-	var value_19 bool = value_17 <= value_18
-	if value_19 {
-		var value_20 float32 = bounds.Width
-		var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
-		var available int32 = value_21
-		var value_22 float32 = bounds.Height
-		var value_23 float32 = bounds.Width
-		var value_24 bool = value_22 < value_23
-		if value_24 {
-			var value_25 float32 = bounds.Height
-			var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
-			available = value_26
+	metrics.IconSize = requested_icon_size
+	if metrics.IconSize <= 0 {
+		var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Width), 32, true)), uint64(0), 32, true, 0))
+		var available int32 = value_5
+		if bounds.Height < bounds.Width {
+			var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(bounds.Height), 32, true)), uint64(0), 32, true, 0))
+			available = value_6
 		}
-		var value_27 int32 = available
-		var value_28 int32 = metrics.Padding
-		var value_29 int32 = 2
-		var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 3))
-		var value_31 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_30), 32, true, 2))
-		metrics.IconSize = value_31
+		var value_7 int32 = int32(number_runtime_bits(uint64(available), uint64((int32(number_runtime_bits(uint64(metrics.Padding), uint64(2), 32, true, 3)))), 32, true, 2))
+		metrics.IconSize = value_7
 	}
-	var value_32 int32 = metrics.IconSize
-	var value_33 int32 = 1
-	var value_34 bool = value_32 < value_33
-	if value_34 {
-		var value_35 int32 = 1
-		metrics.IconSize = value_35
+	if metrics.IconSize < 1 {
+		metrics.IconSize = 1
 	}
-	var value_36 IconActionMetrics = metrics
-	return value_36
+	return metrics
 }
 
 func Button_IconActionStyleIconSize(icon_size int32, scale float32) float32 {
-	var value_0 int32 = icon_size
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		icon_size = value_3
+	if icon_size < 0 {
+		icon_size = 0
 	}
-	var value_4 float32 = scale
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		scale = value_7
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_8 int32 = icon_size
-	var value_9 float32 = float32(value_8)
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 / value_10
-	return value_11
+	return (float32(icon_size) / scale)
 }
 
 func Button_IconActionStyleRadius(radius float32, bounds Rectangle, scale float32) float32 {
-	var value_0 float32 = radius
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if radius <= 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = scale
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 <= value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		scale = value_7
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_8 float32 = bounds.Width
-	var side float32 = value_8
-	var value_9 float32 = bounds.Height
-	var value_10 float32 = side
-	var value_11 bool = value_9 < value_10
-	if value_11 {
-		var value_12 float32 = bounds.Height
-		side = value_12
+	var side float32 = bounds.Width
+	if bounds.Height < side {
+		side = bounds.Height
 	}
-	var value_13 float32 = side
-	var value_14 float32 = 0.0
-	var value_15 bool = value_13 < value_14
-	if value_15 {
-		var value_16 float32 = 0.0
-		side = value_16
+	if side < 0.0 {
+		side = 0.0
 	}
-	var value_17 float32 = radius
-	var value_18 float32 = side
-	var value_19 float32 = value_17 * value_18
-	var value_20 float32 = 2.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var value_23 float32 = value_19 / value_22
-	return value_23
+	return ((radius * side) / (2.0 * scale))
 }
 
 func Button_TextButtonMetricsFor(scale float32, face StyleFrame) TextButtonMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics TextButtonMetrics = TextButtonMetrics{}
-	var value_4 uint32 = face.Value.Fields
-	var value_5 int32 = int32(StylePaddingX)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = face.Value.PaddingX
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = Button_ButtonMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.PaddingX = value_11
-	var value_12 uint32 = face.Value.Fields
-	var value_13 int32 = int32(StylePaddingY)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 float32 = face.Value.PaddingY
-	var value_16 float32 = 4.0
-	var value_17 float32 = scale
-	var value_18 bool = true
-	var value_19 int32 = Button_ButtonMetric(value_12, value_14, value_15, value_16, value_17, value_18)
-	metrics.PaddingY = value_19
-	var value_20 uint32 = face.Value.Fields
-	var value_21 int32 = int32(StyleContentOffset)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 float32 = face.Value.OffsetX
-	var value_24 float32 = 34.0
-	var value_25 float32 = scale
-	var value_26 bool = false
-	var value_27 int32 = Button_ButtonMetric(value_20, value_22, value_23, value_24, value_25, value_26)
-	metrics.MinWidth = value_27
-	var value_28 uint32 = face.Value.Fields
-	var value_29 int32 = int32(StyleIconSize)
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 float32 = face.Value.IconSize
-	var value_32 float32 = 34.0
-	var value_33 float32 = scale
-	var value_34 bool = false
-	var value_35 int32 = Button_ButtonMetric(value_28, value_30, value_31, value_32, value_33, value_34)
-	metrics.MinHeight = value_35
-	var value_36 TextButtonMetrics = metrics
-	return value_36
+	var value_0 uint32 = face.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))
+	var value_2 float32 = face.Value.PaddingX
+	var value_3 float32 = 8.0
+	var value_4 int32 = Button_ButtonMetric(value_0, value_1, value_2, value_3, scale, true)
+	metrics.PaddingX = value_4
+	var value_5 uint32 = face.Value.Fields
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StylePaddingY)), uint64(0), 32, false, 0))
+	var value_7 float32 = face.Value.PaddingY
+	var value_8 float32 = 4.0
+	var value_9 int32 = Button_ButtonMetric(value_5, value_6, value_7, value_8, scale, true)
+	metrics.PaddingY = value_9
+	var value_10 uint32 = face.Value.Fields
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_12 float32 = face.Value.OffsetX
+	var value_13 float32 = 34.0
+	var value_14 int32 = Button_ButtonMetric(value_10, value_11, value_12, value_13, scale, false)
+	metrics.MinWidth = value_14
+	var value_15 uint32 = face.Value.Fields
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+	var value_17 float32 = face.Value.IconSize
+	var value_18 float32 = 34.0
+	var value_19 int32 = Button_ButtonMetric(value_15, value_16, value_17, value_18, scale, false)
+	metrics.MinHeight = value_19
+	return metrics
 }
 
 func Button_InfoIndicatorMetricsFor(requested_diameter int32, scale float32, face StyleFrame) InfoIndicatorMetrics {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
 	var metrics InfoIndicatorMetrics = InfoIndicatorMetrics{}
-	var value_4 uint32 = face.Value.Fields
-	var value_5 int32 = int32(StyleContentOffset)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = face.Value.OffsetX
-	var value_8 float32 = 32.0
-	var value_9 float32 = scale
-	var value_10 bool = false
-	var value_11 int32 = Button_ButtonMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.MinTouch = value_11
-	var value_12 int32 = requested_diameter
-	var value_13 int32 = 0
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = requested_diameter
-		metrics.Diameter = value_15
+	var value_0 uint32 = face.Value.Fields
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(int32(StyleContentOffset)), uint64(0), 32, false, 0))
+	var value_2 float32 = face.Value.OffsetX
+	var value_3 float32 = 32.0
+	var value_4 int32 = Button_ButtonMetric(value_0, value_1, value_2, value_3, scale, false)
+	metrics.MinTouch = value_4
+	if requested_diameter > 0 {
+		metrics.Diameter = requested_diameter
 	} else {
-		var value_16 uint32 = face.Value.Fields
-		var value_17 int32 = int32(StyleIconSize)
-		var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-		var value_19 float32 = face.Value.IconSize
-		var value_20 float32 = 18.0
-		var value_21 float32 = scale
-		var value_22 bool = false
-		var value_23 int32 = Button_ButtonMetric(value_16, value_18, value_19, value_20, value_21, value_22)
-		metrics.Diameter = value_23
+		var value_5 uint32 = face.Value.Fields
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(int32(StyleIconSize)), uint64(0), 32, false, 0))
+		var value_7 float32 = face.Value.IconSize
+		var value_8 float32 = 18.0
+		var value_9 int32 = Button_ButtonMetric(value_5, value_6, value_7, value_8, scale, false)
+		metrics.Diameter = value_9
 	}
-	var value_24 InfoIndicatorMetrics = metrics
-	return value_24
+	return metrics
+}
+
+func Button_InfoGlyphSizeFor(diameter int32, styled_size int32) int32 {
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(diameter), uint64(3), 32, true, 3)))), uint64(5), 32, true, 4))
+	var minimum int32 = value_0
+	if styled_size < minimum {
+		return minimum
+	}
+	return styled_size
+}
+
+func Button_InfoIndicatorPaintFor(center_x int32, center_y int32, metrics InfoIndicatorMetrics, face StyleFrame, fallback_font int32) InfoIndicatorPaint {
+	var paint InfoIndicatorPaint = InfoIndicatorPaint{}
+	var diameter int32 = metrics.Diameter
+	paint.Radius = (int32(number_runtime_bits(uint64(diameter), uint64(2), 32, true, 4)))
+	paint.Bounds.X = float32((int32(number_runtime_bits(uint64(center_x), uint64(paint.Radius), 32, true, 2))))
+	paint.Bounds.Y = float32((int32(number_runtime_bits(uint64(center_y), uint64(paint.Radius), 32, true, 2))))
+	paint.Bounds.Width = float32(diameter)
+	paint.Bounds.Height = float32(diameter)
+	var hit_diameter int32 = diameter
+	if hit_diameter < metrics.MinTouch {
+		hit_diameter = metrics.MinTouch
+	}
+	var value_0 int32 = int32(number_runtime_bits(uint64(center_x), uint64((int32(number_runtime_bits(uint64(hit_diameter), uint64(2), 32, true, 4)))), 32, true, 2))
+	paint.Hit.X = float32(value_0)
+	var value_1 int32 = int32(number_runtime_bits(uint64(center_y), uint64((int32(number_runtime_bits(uint64(hit_diameter), uint64(2), 32, true, 4)))), 32, true, 2))
+	paint.Hit.Y = float32(value_1)
+	paint.Hit.Width = float32(hit_diameter)
+	paint.Hit.Height = float32(hit_diameter)
+	paint.Fill = face.Value.Background
+	paint.Stroke = face.Value.Border
+	paint.Text = face.Value.Foreground
+	var value_2 int32 = 0
+	var value_3 uint32 = face.Value.Fields
+	var value_4 float32 = face.Value.FontSize
+	var value_5 int32 = Style_StyleFontValue(value_3, value_4)
+	var value_6 int32 = Style_ResolveFont(value_2, value_5, fallback_font)
+	var styled_font int32 = value_6
+	var value_7 int32 = Button_InfoGlyphSizeFor(diameter, styled_font)
+	paint.Font = value_7
+	return paint
 }
 
 func Button_ButtonInfoBoundsFor(declared Rectangle, scale float32, face StyleFrame) ButtonInfoBounds {
 	var result ButtonInfoBounds = ButtonInfoBounds{}
-	var value_0 float32 = declared.Width
-	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
-	var requested int32 = value_1
-	var value_2 float32 = declared.Height
-	var value_3 float32 = 0.0
-	var value_4 bool = value_2 > value_3
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 float32 = declared.Height
-		var value_7 float32 = declared.Width
-		var value_8 bool = value_6 < value_7
-		value_5 = value_8
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(declared.Width), 32, true)), uint64(0), 32, true, 0))
+	var requested int32 = value_0
+	var value_1 bool = (declared.Height > 0.0)
+	if value_1 {
+		value_1 = (declared.Height < declared.Width)
 	}
-	if value_5 {
-		var value_9 float32 = declared.Height
-		var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_9), 32, true)), uint64(0), 32, true, 0))
-		requested = value_10
+	if value_1 {
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(declared.Height), 32, true)), uint64(0), 32, true, 0))
+		requested = value_2
 	}
-	var value_11 int32 = requested
-	var value_12 float32 = scale
-	var value_13 StyleFrame = face
-	var value_14 InfoIndicatorMetrics = Button_InfoIndicatorMetricsFor(value_11, value_12, value_13)
-	var metrics InfoIndicatorMetrics = value_14
-	var value_15 Rectangle = declared
-	result.Bounds = value_15
-	var value_16 int32 = metrics.Diameter
-	result.Diameter = value_16
-	var value_17 float32 = result.Bounds.Width
-	var value_18 float32 = 0.0
-	var value_19 bool = value_17 <= value_18
-	if value_19 {
-		var value_20 int32 = result.Diameter
-		var value_21 float32 = float32(value_20)
-		result.Bounds.Width = value_21
+	var value_3 InfoIndicatorMetrics = Button_InfoIndicatorMetricsFor(requested, scale, face)
+	var metrics InfoIndicatorMetrics = value_3
+	result.Bounds = declared
+	result.Diameter = metrics.Diameter
+	if result.Bounds.Width <= 0.0 {
+		result.Bounds.Width = float32(result.Diameter)
 	}
-	var value_22 float32 = result.Bounds.Height
-	var value_23 float32 = 0.0
-	var value_24 bool = value_22 <= value_23
-	if value_24 {
-		var value_25 int32 = result.Diameter
-		var value_26 float32 = float32(value_25)
-		result.Bounds.Height = value_26
+	if result.Bounds.Height <= 0.0 {
+		result.Bounds.Height = float32(result.Diameter)
 	}
-	var value_27 ButtonInfoBounds = result
-	return value_27
-}
-
-func Button_ButtonFallbackPolicyFor(hovered bool, pressed bool, disabled bool, cues bool, termi bool) ButtonFallbackPolicy {
-	var policy ButtonFallbackPolicy = ButtonFallbackPolicy{}
-	var value_0 float32 = 0.06
-	policy.Radius = value_0
-	var value_1 int32 = 120
-	var value_2 uint8 = uint8(number_runtime_bits(uint64(value_1), uint64(0), 8, false, 0))
-	policy.DisabledBackgroundAlpha = value_2
-	var value_3 int32 = 150
-	var value_4 uint8 = uint8(number_runtime_bits(uint64(value_3), uint64(0), 8, false, 0))
-	policy.DisabledForegroundAlpha = value_4
-	var value_5 int32 = 32
-	policy.FallbackBorderLighten = value_5
-	var value_6 bool = cues
-	var value_7 int32 = 0
-	if value_6 {
-		var value_8 int32 = 54
-		value_7 = value_8
-	} else {
-		var value_9 int32 = 40
-		value_7 = value_9
-	}
-	policy.HoverBorderLighten = value_7
-	var value_10 int32 = 18
-	policy.PressedBackgroundDarken = value_10
-	var value_11 int32 = 6
-	policy.HoverBackgroundLighten = value_11
-	var value_12 int32 = 58
-	policy.TermiBorderLighten = value_12
-	var value_13 int32 = 78
-	policy.TermiHoverBorderLighten = value_13
-	var value_14 bool = hovered
-	var value_15 bool = value_14
-	if !value_15 {
-		var value_16 bool = pressed
-		value_15 = value_16
-	}
-	var value_17 float32 = 0
-	if value_15 {
-		var value_18 float32 = 2.0
-		value_17 = value_18
-	} else {
-		var value_19 float32 = 1.0
-		value_17 = value_19
-	}
-	policy.OutlineWidth = value_17
-	var value_20 int32 = 255
-	var value_21 uint8 = uint8(number_runtime_bits(uint64(value_20), uint64(0), 8, false, 0))
-	policy.OutlineAlpha = value_21
-	var value_22 int32 = 36
-	policy.OutlineAdjust = value_22
-	var value_23 bool = disabled
-	if value_23 {
-		var value_24 int32 = -45
-		policy.OutlineAdjust = value_24
-	} else {
-		var value_25 bool = pressed
-		if value_25 {
-			var value_26 int32 = 0
-			policy.OutlineAdjust = value_26
-			var value_27 bool = true
-			policy.OutlineWhite = value_27
-		} else {
-			var value_28 bool = hovered
-			if value_28 {
-				var value_29 int32 = 72
-				policy.OutlineAdjust = value_29
-			}
-		}
-	}
-	var value_30 ButtonFallbackPolicy = policy
-	return value_30
-}
-
-func Button_ButtonDrawRadiusFor(fields uint32, radius float32, fallback ButtonFallbackPolicy) float32 {
-	var value_0 uint32 = fields
-	var value_1 int32 = int32(StyleRadius)
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
-	var value_4 int32 = 0
-	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 bool = value_3 == value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 float32 = radius
-		var value_9 float32 = 0.0
-		var value_10 bool = value_8 < value_9
-		value_7 = value_10
-	}
-	if value_7 {
-		var value_11 float32 = fallback.Radius
-		return value_11
-	}
-	var value_12 float32 = radius
-	return value_12
+	return result
 }
 
 func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {
-	var value_0 bool = clicked
-	if value_0 {
-		var value_1 bool = open
-		var value_2 bool = !value_1
-		return value_2
+	if clicked {
+		return !open
 	}
-	var value_3 bool = open
-	return value_3
+	return open
 }
 
 func Button_ButtonCloseMenuAfterActivation(open bool, activated_id int32) bool {
-	var value_0 int32 = activated_id
-	var value_1 int32 = 0
-	var value_2 bool = value_0 != value_1
-	if value_2 {
-		var value_3 bool = false
-		return value_3
+	if activated_id != 0 {
+		return false
 	}
-	var value_4 bool = open
-	return value_4
+	return open
 }
 
 func Button_SwatchPaintFor(spec SwatchSpec) SwatchPaint {
 	var paint SwatchPaint = SwatchPaint{}
-	var value_0 float32 = spec.Scale
-	var scale float32 = value_0
-	var value_1 float32 = scale
-	var value_2 float32 = 0.0
-	var value_3 bool = value_1 <= value_2
+	var scale float32 = spec.Scale
+	if scale <= 0.0 {
+		scale = 1.0
+	}
+	var swatch_inset float32 = (5.0 * scale)
+	var max_inset float32 = (spec.Bounds.Width / 6.0)
+	if (spec.Bounds.Height / 6.0) < max_inset {
+		max_inset = (spec.Bounds.Height / 6.0)
+	}
+	if max_inset < 0.0 {
+		max_inset = 0.0
+	}
+	if swatch_inset > max_inset {
+		swatch_inset = max_inset
+	}
+	var inner Rectangle = Rectangle{}
+	inner.X = (spec.Bounds.X + swatch_inset)
+	inner.Y = (spec.Bounds.Y + swatch_inset)
+	inner.Width = (spec.Bounds.Width - (2.0 * swatch_inset))
+	inner.Height = (spec.Bounds.Height - (2.0 * swatch_inset))
+	var half_w float32 = (inner.Width * 0.5)
+	var half_h float32 = (inner.Height * 0.5)
+	var inset float32 = spec.Face.Value.PaddingX
+	var value_0 uint32 = uint32(number_runtime_bits(uint64(spec.Face.Value.Fields), uint64(uint32(number_runtime_bits(uint64(int32(StylePaddingX)), uint64(0), 32, false, 0))), 32, false, 8))
+	var value_1 bool = (value_0 == uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
+	if !value_1 {
+		value_1 = (inset < 0.0)
+	}
+	if value_1 {
+		inset = 6.0
+	}
+	var value_2 float32 = inset
+	inset = value_2 * scale
+	var border_width float32 = spec.Face.Value.BorderWidth
+	var focus_width float32 = spec.Face.Value.BorderWidth
+	paint.Bounds = spec.Bounds
+	paint.CheckerBase = inner
+	paint.CheckerA.X = inner.X
+	paint.CheckerA.Y = inner.Y
+	paint.CheckerA.Width = half_w
+	paint.CheckerA.Height = half_h
+	paint.CheckerB.X = (inner.X + half_w)
+	paint.CheckerB.Y = (inner.Y + half_h)
+	paint.CheckerB.Width = half_w
+	paint.CheckerB.Height = half_h
+	paint.Swatch = inner
+	paint.FocusBounds = spec.Bounds
+	paint.SwatchColor = spec.Color
+	paint.LabelX = (spec.Bounds.X + inset)
+	paint.Radius = spec.Face.Value.Radius
+	var swatch_diameter float32 = inner.Width
+	if inner.Height < swatch_diameter {
+		swatch_diameter = inner.Height
+	}
+	if swatch_diameter > 0.0 {
+		var swatch_radius float32 = (paint.Radius * scale)
+		if swatch_radius < 0.0 {
+			swatch_radius = 0.0
+		}
+		var max_swatch_radius float32 = (swatch_diameter * 0.08)
+		if swatch_radius > max_swatch_radius {
+			swatch_radius = max_swatch_radius
+		}
+		paint.SwatchRoundness = ((2.0 * swatch_radius) / swatch_diameter)
+	}
+	paint.BorderWidth = border_width
+	paint.FocusWidth = focus_width
+	paint.CheckerBaseColor = spec.Face.Value.Background
+	paint.CheckerAltColor = spec.Face.Value.BackgroundEnd
+	paint.BorderColor = spec.Face.Value.Border
+	paint.FocusColor = spec.Face.Value.Focus
+	paint.TextColor = spec.Face.Value.Foreground
+	var value_3 bool = !spec.Disabled
 	if value_3 {
-		var value_4 float32 = 1.0
-		scale = value_4
+		value_3 = spec.Focused
 	}
-	var value_5 float32 = spec.Bounds.Width
-	var value_6 float32 = 0.5
-	var value_7 float32 = value_5 * value_6
-	var half_w float32 = value_7
-	var value_8 float32 = spec.Bounds.Height
-	var value_9 float32 = 0.5
-	var value_10 float32 = value_8 * value_9
-	var half_h float32 = value_10
-	var value_11 float32 = spec.Face.Value.PaddingX
-	var inset float32 = value_11
-	var value_12 uint32 = spec.Face.Value.Fields
-	var value_13 int32 = int32(StylePaddingX)
-	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_14), 32, false, 8))
-	var value_16 int32 = 0
-	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
-	var value_18 bool = value_15 == value_17
-	var value_19 bool = value_18
-	if !value_19 {
-		var value_20 float32 = inset
-		var value_21 float32 = 0.0
-		var value_22 bool = value_20 < value_21
-		value_19 = value_22
+	paint.ShowFocus = value_3
+	if spec.Disabled {
+		paint.SwatchColor.A = uint8(number_runtime_bits(uint64(128), uint64(0), 8, false, 0))
 	}
-	if value_19 {
-		var value_23 float32 = 6.0
-		inset = value_23
-	}
-	var value_24 float32 = inset
-	var value_25 float32 = scale
-	inset = value_24 * value_25
-	var value_26 float32 = spec.Face.Value.BorderWidth
-	var border_width float32 = value_26
-	var value_27 float32 = spec.Face.Value.BorderWidth
-	var focus_width float32 = value_27
-	var value_28 Rectangle = spec.Bounds
-	paint.Bounds = value_28
-	var value_29 Rectangle = spec.Bounds
-	paint.CheckerBase = value_29
-	var value_30 float32 = spec.Bounds.X
-	paint.CheckerA.X = value_30
-	var value_31 float32 = spec.Bounds.Y
-	paint.CheckerA.Y = value_31
-	var value_32 float32 = half_w
-	paint.CheckerA.Width = value_32
-	var value_33 float32 = half_h
-	paint.CheckerA.Height = value_33
-	var value_34 float32 = spec.Bounds.X
-	var value_35 float32 = half_w
-	var value_36 float32 = value_34 + value_35
-	paint.CheckerB.X = value_36
-	var value_37 float32 = spec.Bounds.Y
-	var value_38 float32 = half_h
-	var value_39 float32 = value_37 + value_38
-	paint.CheckerB.Y = value_39
-	var value_40 float32 = half_w
-	paint.CheckerB.Width = value_40
-	var value_41 float32 = half_h
-	paint.CheckerB.Height = value_41
-	var value_42 Rectangle = spec.Bounds
-	paint.Swatch = value_42
-	var value_43 Rectangle = spec.Bounds
-	paint.FocusBounds = value_43
-	var value_44 Color = spec.Color
-	paint.SwatchColor = value_44
-	var value_45 float32 = spec.Bounds.X
-	var value_46 float32 = inset
-	var value_47 float32 = value_45 + value_46
-	paint.LabelX = value_47
-	var value_48 float32 = spec.Face.Value.Radius
-	paint.Radius = value_48
-	var value_49 float32 = border_width
-	paint.BorderWidth = value_49
-	var value_50 float32 = focus_width
-	paint.FocusWidth = value_50
-	var value_51 uint32 = spec.Face.Value.Background
-	paint.CheckerBaseColor = value_51
-	var value_52 uint32 = spec.Face.Value.BackgroundEnd
-	paint.CheckerAltColor = value_52
-	var value_53 uint32 = spec.Face.Value.Border
-	paint.BorderColor = value_53
-	var value_54 uint32 = spec.Face.Value.Focus
-	paint.FocusColor = value_54
-	var value_55 uint32 = spec.Face.Value.Foreground
-	paint.TextColor = value_55
-	var value_56 bool = spec.Disabled
-	var value_57 bool = !value_56
-	var value_58 bool = value_57
-	if value_58 {
-		var value_59 bool = spec.Focused
-		value_58 = value_59
-	}
-	paint.ShowFocus = value_58
-	var value_60 bool = spec.Disabled
-	if value_60 {
-		var value_61 int32 = 128
-		var value_62 uint8 = uint8(number_runtime_bits(uint64(value_61), uint64(0), 8, false, 0))
-		paint.SwatchColor.A = value_62
-	}
-	var value_63 SwatchPaint = paint
-	return value_63
+	return paint
 }
 
 func (instance_host_0 *runtime) Button_MeasureButton(props ButtonProps, paint Style, minimum_height float32, font int32, available_width float32, scale float32, disclosure bool) Rectangle {
 	var value_0 string = props.Label
-	var value_1 int32 = font
-	var value_2 string = paint.Typeface
-	var value_3 int32 = instance_host_0.MeasureTextWidth(value_0, value_1, value_2)
-	var value_4 float32 = float32(value_3)
-	var label_width float32 = value_4
-	var value_5 ButtonProps = props
-	var value_6 Style = paint
-	var value_7 float32 = minimum_height
-	var value_8 int32 = font
-	var value_9 float32 = label_width
-	var value_10 float32 = available_width
-	var value_11 float32 = scale
-	var value_12 bool = disclosure
-	var value_13 Rectangle = Button_MeasureBounds(value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12)
-	return value_13
+	var value_1 string = paint.Typeface
+	var value_2 int32 = instance_host_0.MeasureTextWidth(value_0, font, value_1)
+	var label_width float32 = float32(value_2)
+	var value_3 Rectangle = Button_MeasureBounds(props, paint, minimum_height, font, label_width, available_width, scale, disclosure)
+	return value_3
 }
 
 func Button_MeasureBounds(props ButtonProps, paint Style, minimum_height float32, font int32, label_width float32, available_width float32, scale float32, disclosure bool) Rectangle {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 Rectangle = props.Bounds
-	var bounds Rectangle = value_4
-	var value_5 float32 = 0.0
-	var text_height float32 = value_5
-	var value_6 string = props.Label
-	var value_7 string = ""
-	var value_8 bool = value_6 != value_7
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = props.IconOnly
-		var value_11 bool = !value_10
-		value_9 = value_11
+	var bounds Rectangle = props.Bounds
+	var text_height float32 = 0.0
+	var value_0 bool = (props.Label != "")
+	if value_0 {
+		value_0 = !props.IconOnly
 	}
-	if value_9 {
-		var value_12 int32 = font
-		var value_13 float32 = float32(value_12)
-		var value_14 float32 = scale
-		var value_15 float32 = value_13 / value_14
-		text_height = value_15
+	if value_0 {
+		text_height = (float32(font) / scale)
 	}
-	var value_16 float32 = bounds.Height
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 / value_17
-	var value_19 float32 = minimum_height
-	var value_20 float32 = scale
-	var value_21 float32 = value_19 / value_20
-	var value_22 float32 = text_height
-	var value_23 float32 = paint.PaddingY
-	var value_24 float32 = Style_FitHeight(value_18, value_21, value_22, value_23)
-	var height float32 = value_24
-	var value_25 bool = disclosure
-	var value_26 bool = value_25
-	if !value_26 {
-		var value_27 uint32 = props.Icon.ID
-		var value_28 int32 = 0
-		var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-		var value_30 bool = value_27 != value_29
-		value_26 = value_30
+	var value_1 float32 = (bounds.Height / scale)
+	var value_2 float32 = (minimum_height / scale)
+	var value_3 float32 = paint.PaddingY
+	var value_4 float32 = Style_FitHeight(value_1, value_2, text_height, value_3)
+	var height float32 = value_4
+	var value_5 bool = disclosure
+	if !value_5 {
+		value_5 = (props.Icon.ID != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
 	}
-	var value_31 bool = value_26
-	if !value_31 {
-		var value_32 int32 = props.IconType
-		var value_33 int32 = 0
-		var value_34 bool = value_32 != value_33
-		value_31 = value_34
+	var value_6 bool = value_5
+	if !value_6 {
+		value_6 = (props.IconType != 0)
 	}
-	var has_icon bool = value_31
-	var value_35 float32 = height
-	var value_36 float32 = label_width
-	var value_37 float32 = scale
-	var value_38 float32 = value_36 / value_37
-	var value_39 float32 = paint.IconSize
-	var value_40 float32 = paint.Gap
-	var value_41 float32 = paint.PaddingX
-	var value_42 bool = has_icon
-	var value_43 bool = props.IconOnly
-	var value_44 ContentSize = Button_MeasureContent(value_35, value_38, value_39, value_40, value_41, value_42, value_43)
-	var content ContentSize = value_44
-	var value_45 float32 = bounds.Width
-	var value_46 float32 = scale
-	var value_47 float32 = value_45 / value_46
-	var value_48 float32 = height
-	var value_49 float32 = content.Width
-	var value_50 float32 = available_width
-	var value_51 float32 = scale
-	var value_52 float32 = value_50 / value_51
-	var value_53 bool = props.FullWidth
-	var value_54 bool = props.Square
-	var value_55 bool = value_54
-	if !value_55 {
-		var value_56 bool = props.IconOnly
-		value_55 = value_56
+	var has_icon bool = value_6
+	var value_7 float32 = (label_width / scale)
+	var value_8 float32 = paint.IconSize
+	var value_9 float32 = paint.Gap
+	var value_10 float32 = paint.PaddingX
+	var value_11 bool = props.IconOnly
+	var value_12 ContentSize = Button_MeasureContent(height, value_7, value_8, value_9, value_10, has_icon, value_11)
+	var content ContentSize = value_12
+	var value_13 float32 = (bounds.Width / scale)
+	var value_14 float32 = content.Width
+	var value_15 float32 = (available_width / scale)
+	var value_16 bool = props.FullWidth
+	var value_17 bool = props.Square
+	if !value_17 {
+		value_17 = props.IconOnly
 	}
-	var value_57 bool = props.Circle
-	var value_58 float32 = Button_ShapeWidth(value_47, value_48, value_49, value_52, value_53, value_55, value_57)
-	var width float32 = value_58
-	var value_59 float32 = bounds.Height
-	var value_60 float32 = 0.0
-	var value_61 bool = value_59 <= value_60
-	if value_61 {
-		var value_62 float32 = height
-		var value_63 float32 = scale
-		var value_64 float32 = value_62 * value_63
-		bounds.Height = value_64
+	var value_18 bool = props.Circle
+	var value_19 float32 = Button_ShapeWidth(value_13, height, value_14, value_15, value_16, value_17, value_18)
+	var width float32 = value_19
+	if bounds.Height <= 0.0 {
+		bounds.Height = (height * scale)
 	}
-	var value_65 bool = props.Square
-	var value_66 bool = value_65
-	if !value_66 {
-		var value_67 bool = props.Circle
-		value_66 = value_67
+	var value_20 bool = props.Square
+	if !value_20 {
+		value_20 = props.Circle
 	}
-	var value_68 bool = value_66
-	if !value_68 {
-		var value_69 bool = props.IconOnly
-		value_68 = value_69
+	var value_21 bool = value_20
+	if !value_21 {
+		value_21 = props.IconOnly
 	}
-	if value_68 {
-		var value_70 float32 = bounds.Height
-		bounds.Width = value_70
+	if value_21 {
+		bounds.Width = bounds.Height
 	} else {
-		var value_71 float32 = bounds.Width
-		var value_72 float32 = 0.0
-		var value_73 bool = value_71 <= value_72
-		if value_73 {
-			var value_74 float32 = width
-			var value_75 float32 = scale
-			var value_76 float32 = value_74 * value_75
-			bounds.Width = value_76
+		if bounds.Width <= 0.0 {
+			bounds.Width = (width * scale)
 		}
 	}
-	var value_77 Rectangle = bounds
-	return value_77
+	return bounds
 }
 
 func Button_MeasureContent(height float32, label_width float32, requested_icon_size float32, gap float32, padding_x float32, has_icon bool, icon_only bool) ContentSize {
 	var result ContentSize = ContentSize{}
-	var value_0 float32 = padding_x
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
+	if padding_x < 0.0 {
+		padding_x = 0.0
+	}
+	var icon_size float32 = requested_icon_size
+	if icon_size > (height - 12.0) {
+		icon_size = (height - 12.0)
+	}
+	if icon_size < 0.0 {
+		icon_size = 0.0
+	}
+	if icon_only {
+		label_width = 0.0
+	}
+	var value_0 bool = !has_icon
+	if !value_0 {
+		value_0 = (icon_size == 0.0)
+	}
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = icon_only
+	}
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (label_width <= 0.0)
+	}
 	if value_2 {
-		var value_3 float32 = 0.0
-		padding_x = value_3
+		gap = 0.0
 	}
-	var value_4 float32 = requested_icon_size
-	var icon_size float32 = value_4
-	var value_5 float32 = icon_size
-	var value_6 float32 = height
-	var value_7 float32 = 12.0
-	var value_8 float32 = value_6 - value_7
-	var value_9 bool = value_5 > value_8
-	if value_9 {
-		var value_10 float32 = height
-		var value_11 float32 = 12.0
-		var value_12 float32 = value_10 - value_11
-		icon_size = value_12
+	result.TextWidth = label_width
+	result.IconSize = icon_size
+	result.Gap = gap
+	result.Width = ((label_width + gap) + (2.0 * padding_x))
+	if has_icon {
+		var value_3 float32 = result.Width
+		result.Width = value_3 + icon_size
 	}
-	var value_13 float32 = icon_size
-	var value_14 float32 = 0.0
-	var value_15 bool = value_13 < value_14
-	if value_15 {
-		var value_16 float32 = 0.0
-		icon_size = value_16
-	}
-	var value_17 bool = icon_only
-	if value_17 {
-		var value_18 float32 = 0.0
-		label_width = value_18
-	}
-	var value_19 bool = has_icon
-	var value_20 bool = !value_19
-	var value_21 bool = value_20
-	if !value_21 {
-		var value_22 float32 = icon_size
-		var value_23 float32 = 0.0
-		var value_24 bool = value_22 == value_23
-		value_21 = value_24
-	}
-	var value_25 bool = value_21
-	if !value_25 {
-		var value_26 bool = icon_only
-		value_25 = value_26
-	}
-	var value_27 bool = value_25
-	if !value_27 {
-		var value_28 float32 = label_width
-		var value_29 float32 = 0.0
-		var value_30 bool = value_28 <= value_29
-		value_27 = value_30
-	}
-	if value_27 {
-		var value_31 float32 = 0.0
-		gap = value_31
-	}
-	var value_32 float32 = label_width
-	result.TextWidth = value_32
-	var value_33 float32 = icon_size
-	result.IconSize = value_33
-	var value_34 float32 = gap
-	result.Gap = value_34
-	var value_35 float32 = label_width
-	var value_36 float32 = gap
-	var value_37 float32 = value_35 + value_36
-	var value_38 float32 = 2.0
-	var value_39 float32 = padding_x
-	var value_40 float32 = value_38 * value_39
-	var value_41 float32 = value_37 + value_40
-	result.Width = value_41
-	var value_42 bool = has_icon
-	if value_42 {
-		var value_43 float32 = result.Width
-		var value_44 float32 = icon_size
-		result.Width = value_43 + value_44
-	}
-	var value_45 ContentSize = result
-	return value_45
+	return result
 }
 
 func Button_ContentLayout(width float32, height float32, label_width float32, requested_icon_size float32, gap float32, has_icon bool, icon_only bool, trailing bool, offset_x float32, offset_y float32) ButtonContent {
 	var result ButtonContent = ButtonContent{}
-	var value_0 float32 = height
-	var value_1 float32 = label_width
-	var value_2 float32 = requested_icon_size
-	var value_3 float32 = gap
-	var value_4 float32 = 0.0
-	var value_5 bool = has_icon
-	var value_6 bool = icon_only
-	var value_7 ContentSize = Button_MeasureContent(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
-	var measured ContentSize = value_7
-	var value_8 float32 = measured.IconSize
-	var icon_size float32 = value_8
-	var value_9 float32 = measured.TextWidth
-	label_width = value_9
-	var value_10 float32 = measured.Gap
-	gap = value_10
-	var value_11 float32 = width
-	var value_12 float32 = measured.Width
-	var value_13 float32 = value_11 - value_12
-	var value_14 float32 = 0.5
-	var value_15 float32 = value_13 * value_14
-	var value_16 float32 = offset_x
-	var value_17 float32 = value_15 + value_16
-	var x float32 = value_17
-	var value_18 float32 = x
-	result.IconX = value_18
-	var value_19 float32 = height
-	var value_20 float32 = icon_size
-	var value_21 float32 = value_19 - value_20
-	var value_22 float32 = 0.5
-	var value_23 float32 = value_21 * value_22
-	var value_24 float32 = offset_y
-	var value_25 float32 = value_23 + value_24
-	result.IconY = value_25
-	var value_26 float32 = icon_size
-	result.IconSize = value_26
-	var value_27 float32 = x
-	result.TextX = value_27
-	var value_28 float32 = offset_y
-	result.TextY = value_28
-	var value_29 float32 = label_width
-	result.TextWidth = value_29
-	var value_30 float32 = height
-	result.TextHeight = value_30
-	var value_31 bool = has_icon
-	if value_31 {
-		var value_32 bool = trailing
-		if value_32 {
-			var value_33 float32 = result.IconX
-			var value_34 float32 = label_width
-			var value_35 float32 = gap
-			var value_36 float32 = value_34 + value_35
-			result.IconX = value_33 + value_36
+	var value_0 float32 = 0.0
+	var value_1 ContentSize = Button_MeasureContent(height, label_width, requested_icon_size, gap, value_0, has_icon, icon_only)
+	var measured ContentSize = value_1
+	var icon_size float32 = measured.IconSize
+	label_width = measured.TextWidth
+	gap = measured.Gap
+	var x float32 = (((width - measured.Width) * 0.5) + offset_x)
+	result.IconX = x
+	result.IconY = (((height - icon_size) * 0.5) + offset_y)
+	result.IconSize = icon_size
+	result.TextX = x
+	result.TextY = offset_y
+	result.TextWidth = label_width
+	result.TextHeight = height
+	if has_icon {
+		if trailing {
+			var value_2 float32 = result.IconX
+			result.IconX = value_2 + (label_width + gap)
 		} else {
-			var value_37 float32 = result.TextX
-			var value_38 float32 = icon_size
-			var value_39 float32 = gap
-			var value_40 float32 = value_38 + value_39
-			result.TextX = value_37 + value_40
+			var value_3 float32 = result.TextX
+			result.TextX = value_3 + (icon_size + gap)
 		}
 	}
-	var value_41 ButtonContent = result
-	return value_41
+	return result
 }
 
 func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, font int32, label_width float32, foreground uint32, ambient uint32, scale float32, elapsed_ms float64, disclosure bool) ContentDrawing {
 	var result ContentDrawing = ContentDrawing{}
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 bool = disclosure
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 uint32 = props.Icon.ID
-		var value_7 int32 = 0
-		var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-		var value_9 bool = value_6 != value_8
-		value_5 = value_9
+	var value_0 bool = disclosure
+	if !value_0 {
+		value_0 = (props.Icon.ID != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)))
 	}
-	var value_10 bool = value_5
-	if !value_10 {
-		var value_11 int32 = props.IconType
-		var value_12 int32 = 0
-		var value_13 bool = value_11 != value_12
-		value_10 = value_13
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (props.IconType != 0)
 	}
-	var has_icon bool = value_10
-	var value_14 float32 = bounds.Width
-	var value_15 float32 = scale
-	var value_16 float32 = value_14 / value_15
-	var value_17 float32 = bounds.Height
-	var value_18 float32 = scale
-	var value_19 float32 = value_17 / value_18
-	var value_20 float32 = label_width
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 / value_21
-	var value_23 float32 = paint.IconSize
-	var value_24 float32 = paint.Gap
-	var value_25 bool = has_icon
-	var value_26 bool = props.IconOnly
-	var value_27 IconPlacement = IconPlacement(props.IconPlacement)
-	var value_28 int32 = int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0))
-	var value_29 int32 = int32(IconPlacementTrailing)
-	var value_30 bool = value_28 == value_29
-	var value_31 float32 = paint.OffsetX
-	var value_32 float32 = paint.OffsetY
-	var value_33 ButtonContent = Button_ContentLayout(value_16, value_19, value_22, value_23, value_24, value_25, value_26, value_30, value_31, value_32)
-	var content ButtonContent = value_33
-	var value_34 uint32 = foreground
-	result.Mark.Color = value_34
-	var value_35 bool = props.Loading
-	if value_35 {
-		var value_36 int32 = DrawingKindDrawingRing
-		result.Mark.Kind = value_36
-		var value_37 float32 = bounds.Width
-		var value_38 float32 = scale
-		var value_39 float32 = value_37 / value_38
-		var value_40 float32 = bounds.Height
-		var value_41 float32 = scale
-		var value_42 float32 = value_40 / value_41
-		var value_43 float32 = content.IconSize
-		var value_44 float64 = elapsed_ms
-		var value_45 uint32 = foreground
-		var value_46 uint32 = ambient
-		var value_47 LoadingRingSpec = Surface_LoadingRing(value_39, value_42, value_43, value_44, value_45, value_46)
-		var ring LoadingRingSpec = value_47
-		var value_48 float32 = bounds.X
-		var value_49 float32 = ring.X
-		var value_50 float32 = scale
-		var value_51 float32 = value_49 * value_50
-		var value_52 float32 = value_48 + value_51
-		ring.X = value_52
-		var value_53 float32 = bounds.Y
-		var value_54 float32 = ring.Y
-		var value_55 float32 = scale
-		var value_56 float32 = value_54 * value_55
-		var value_57 float32 = value_53 + value_56
-		ring.Y = value_57
-		var value_58 float32 = ring.InnerRadius
-		var value_59 float32 = scale
-		ring.InnerRadius = value_58 * value_59
-		var value_60 float32 = ring.OuterRadius
-		var value_61 float32 = scale
-		ring.OuterRadius = value_60 * value_61
-		var value_62 float32 = ring.GlowBlur
-		var value_63 float32 = scale
-		ring.GlowBlur = value_62 * value_63
-		var value_64 LoadingRingSpec = ring
-		result.Mark.Ring = value_64
-		var value_65 ContentDrawing = result
-		return value_65
+	var has_icon bool = value_1
+	var value_2 float32 = (bounds.Width / scale)
+	var value_3 float32 = (bounds.Height / scale)
+	var value_4 float32 = (label_width / scale)
+	var value_5 float32 = paint.IconSize
+	var value_6 float32 = paint.Gap
+	var value_7 bool = props.IconOnly
+	var value_8 bool = int32(number_runtime_bits(uint64(IconPlacement(props.IconPlacement)), uint64(0), 32, true, 0)) == int32(IconPlacementTrailing)
+	var value_9 float32 = paint.OffsetX
+	var value_10 float32 = paint.OffsetY
+	var value_11 ButtonContent = Button_ContentLayout(value_2, value_3, value_4, value_5, value_6, has_icon, value_7, value_8, value_9, value_10)
+	var content ButtonContent = value_11
+	result.Mark.Color = foreground
+	if props.Loading {
+		result.Mark.Kind = DrawingKindDrawingRing
+		var value_12 float32 = (bounds.Width / scale)
+		var value_13 float32 = (bounds.Height / scale)
+		var value_14 float32 = content.IconSize
+		var value_15 LoadingRingSpec = Surface_LoadingRing(value_12, value_13, value_14, elapsed_ms, foreground, ambient)
+		var ring LoadingRingSpec = value_15
+		ring.X = (bounds.X + (ring.X * scale))
+		ring.Y = (bounds.Y + (ring.Y * scale))
+		var value_16 float32 = ring.InnerRadius
+		ring.InnerRadius = value_16 * scale
+		var value_17 float32 = ring.OuterRadius
+		ring.OuterRadius = value_17 * scale
+		var value_18 float32 = ring.GlowBlur
+		ring.GlowBlur = value_18 * scale
+		result.Mark.Ring = ring
+		return result
 	}
-	var value_66 bool = has_icon
-	if value_66 {
-		var value_67 float32 = bounds.X
-		var value_68 float32 = content.IconX
-		var value_69 float32 = scale
-		var value_70 float32 = value_68 * value_69
-		var value_71 float32 = value_67 + value_70
-		result.Mark.Bounds.X = value_71
-		var value_72 float32 = bounds.Y
-		var value_73 float32 = content.IconY
-		var value_74 float32 = scale
-		var value_75 float32 = value_73 * value_74
-		var value_76 float32 = value_72 + value_75
-		result.Mark.Bounds.Y = value_76
-		var value_77 float32 = content.IconSize
-		var value_78 float32 = scale
-		var value_79 float32 = value_77 * value_78
-		result.Mark.Bounds.Width = value_79
-		var value_80 float32 = content.IconSize
-		var value_81 float32 = scale
-		var value_82 float32 = value_80 * value_81
-		result.Mark.Bounds.Height = value_82
-		var value_83 bool = disclosure
-		if value_83 {
-			var value_84 int32 = DrawingKindDrawingChevron
-			result.Mark.Kind = value_84
+	if has_icon {
+		result.Mark.Bounds.X = (bounds.X + (content.IconX * scale))
+		result.Mark.Bounds.Y = (bounds.Y + (content.IconY * scale))
+		result.Mark.Bounds.Width = (content.IconSize * scale)
+		result.Mark.Bounds.Height = (content.IconSize * scale)
+		if disclosure {
+			result.Mark.Kind = DrawingKindDrawingChevron
 		} else {
-			var value_85 uint32 = props.Icon.ID
-			var value_86 int32 = 0
-			var value_87 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(0), 32, false, 0))
-			var value_88 bool = value_85 != value_87
-			if value_88 {
-				var value_89 int32 = DrawingKindDrawingTexture
-				result.Mark.Kind = value_89
-				var value_90 Texture2D = props.Icon
-				result.Mark.Texture = value_90
+			if props.Icon.ID != uint32(number_runtime_bits(uint64(0), uint64(0), 32, false, 0)) {
+				result.Mark.Kind = DrawingKindDrawingTexture
+				result.Mark.Texture = props.Icon
 			} else {
-				var value_91 int32 = DrawingKindDrawingIcon
-				result.Mark.Kind = value_91
-				var value_92 int32 = props.IconType
-				result.Mark.Icon = value_92
+				result.Mark.Kind = DrawingKindDrawingIcon
+				result.Mark.Icon = props.IconType
 			}
 		}
 	}
-	var value_93 bool = props.IconOnly
-	var value_94 bool = !value_93
-	var value_95 bool = value_94
-	if value_95 {
-		var value_96 string = props.Label
-		var value_97 string = ""
-		var value_98 bool = value_96 != value_97
-		value_95 = value_98
+	var value_19 bool = !props.IconOnly
+	if value_19 {
+		value_19 = (props.Label != "")
 	}
-	if value_95 {
-		var value_99 int32 = DrawingKindDrawingText
-		result.Label.Kind = value_99
-		var value_100 float32 = bounds.X
-		var value_101 float32 = content.TextX
-		var value_102 float32 = scale
-		var value_103 float32 = value_101 * value_102
-		var value_104 float32 = value_100 + value_103
-		result.Label.Bounds.X = value_104
-		var value_105 float32 = bounds.Y
-		var value_106 float32 = content.TextY
-		var value_107 float32 = scale
-		var value_108 float32 = value_106 * value_107
-		var value_109 float32 = value_105 + value_108
-		result.Label.Bounds.Y = value_109
-		var value_110 float32 = content.TextWidth
-		var value_111 float32 = scale
-		var value_112 float32 = value_110 * value_111
-		result.Label.Bounds.Width = value_112
-		var value_113 float32 = content.TextHeight
-		var value_114 float32 = scale
-		var value_115 float32 = value_113 * value_114
-		result.Label.Bounds.Height = value_115
-		var value_116 string = props.Label
-		result.Label.Text = value_116
-		var value_117 int32 = font
-		result.Label.Font = value_117
-		var value_118 uint32 = foreground
-		result.Label.Color = value_118
+	if value_19 {
+		result.Label.Kind = DrawingKindDrawingText
+		result.Label.Bounds.X = (bounds.X + (content.TextX * scale))
+		result.Label.Bounds.Y = (bounds.Y + (content.TextY * scale))
+		result.Label.Bounds.Width = (content.TextWidth * scale)
+		result.Label.Bounds.Height = (content.TextHeight * scale)
+		result.Label.Text = props.Label
+		result.Label.Font = font
+		result.Label.Color = foreground
 	}
-	var value_119 ContentDrawing = result
-	return value_119
+	return result
 }
 
 func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFrame, motion InteractionMotion, surface Rectangle, ambient uint32, scale float32, style_font int32, fallback_font int32) ButtonFrame {
 	var result ButtonFrame = ButtonFrame{}
-	var value_0 bool = input.Flags.Disabled
-	props.Disabled = value_0
-	var value_1 bool = input.Flags.Loading
-	props.Loading = value_1
-	var value_2 bool = input.Flags.Selected
-	props.Selected = value_2
-	var value_3 bool = props.Pill
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 bool = props.Circle
-		value_4 = value_5
+	props.Disabled = input.Flags.Disabled
+	props.Loading = input.Flags.Loading
+	props.Selected = input.Flags.Selected
+	var value_0 bool = props.Pill
+	if !value_0 {
+		value_0 = props.Circle
 	}
-	props.Pill = value_4
-	var value_6 bool = props.Loading
-	if value_6 {
-		var value_7 string = ""
-		props.Label = value_7
+	props.Pill = value_0
+	if props.Loading {
+		props.Label = ""
 	}
-	var value_8 bool = props.Circle
-	if value_8 {
-		var value_9 float32 = scale
-		var shape_scale float32 = value_9
-		var value_10 float32 = shape_scale
-		var value_11 float32 = 0.0
-		var value_12 bool = value_10 <= value_11
-		if value_12 {
-			var value_13 float32 = 1.0
-			shape_scale = value_13
+	if props.Circle {
+		var shape_scale float32 = scale
+		if shape_scale <= 0.0 {
+			shape_scale = 1.0
 		}
-		var value_14 float32 = props.Bounds.Height
-		var value_15 float32 = 0.5
-		var value_16 float32 = value_14 * value_15
-		var value_17 float32 = shape_scale
-		var value_18 float32 = value_16 / value_17
-		appearance.Value.Radius = value_18
-		var value_19 uint32 = appearance.Value.Fields
-		var value_20 int32 = int32(StyleRadius)
-		var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-		appearance.Value.Fields = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 9))
+		appearance.Value.Radius = ((props.Bounds.Height * 0.5) / shape_scale)
+		var value_1 uint32 = appearance.Value.Fields
+		appearance.Value.Fields = uint32(number_runtime_bits(uint64(value_1), uint64(uint32(number_runtime_bits(uint64(int32(StyleRadius)), uint64(0), 32, false, 0))), 32, false, 9))
 	}
-	var value_22 ButtonProps = props
-	result.Props = value_22
-	var value_23 StyleFrame = appearance
-	result.Appearance = value_23
-	var value_24 Rectangle = props.Bounds
-	result.Material.Bounds = value_24
-	var value_25 Rectangle = surface
-	result.Material.Surface = value_25
-	var value_26 StyleData = appearance.Value
-	result.Material.Value = value_26
-	var value_27 uint32 = appearance.Value.Border
-	result.Material.Light = value_27
-	var value_28 uint32 = ambient
-	result.Material.Ambient = value_28
-	var value_29 float32 = motion.Hover.Value
-	result.Material.Hover = value_29
-	var value_30 float32 = motion.Press.Value
-	result.Material.Press = value_30
-	var value_31 float32 = motion.Focus.Value
-	result.Material.Focus = value_31
-	var value_32 bool = props.Disabled
-	result.Material.Disabled = value_32
-	var value_33 FillStates = appearance.Fill
-	result.Material.Fill = value_33
-	var value_34 bool = true
-	result.Material.FillValid = value_34
-	var value_35 float32 = scale
-	result.Material.Scale = value_35
-	var value_36 MaterialPaint = result.Material
-	var value_37 MaterialPaint = Material_PrepareMaterial(value_36)
-	result.Material = value_37
-	var value_38 Rectangle = props.Bounds
-	var value_39 float32 = appearance.Value.PaddingX
-	var value_40 float32 = appearance.Value.PaddingY
-	var value_41 float32 = result.Material.Scale
-	var value_42 Rectangle = Style_InsetBounds(value_38, value_39, value_40, value_41)
-	result.ContentBounds = value_42
-	var value_43 int32 = 0
-	var value_44 int32 = style_font
-	var value_45 int32 = fallback_font
-	var value_46 int32 = Style_ResolveFont(value_43, value_44, value_45)
-	result.Font = value_46
-	var value_47 uint32 = appearance.Value.Foreground
-	var value_48 float32 = appearance.Value.Opacity
-	var value_49 uint32 = Surface_Opacity(value_47, value_48)
-	result.Foreground = value_49
-	var value_50 bool = motion.Active
-	var value_51 bool = value_50
-	if !value_51 {
-		var value_52 bool = props.Loading
-		var value_53 bool = value_52
-		if value_53 {
-			var value_54 bool = props.Disabled
-			var value_55 bool = !value_54
-			value_53 = value_55
+	result.Props = props
+	result.Appearance = appearance
+	result.Material.Bounds = props.Bounds
+	result.Material.Surface = surface
+	result.Material.Value = appearance.Value
+	result.Material.Light = appearance.Value.Border
+	result.Material.Ambient = ambient
+	result.Material.Hover = motion.Hover.Value
+	result.Material.Press = motion.Press.Value
+	result.Material.Focus = motion.Focus.Value
+	result.Material.Disabled = props.Disabled
+	result.Material.Fill = appearance.Fill
+	result.Material.FillValid = true
+	result.Material.Scale = scale
+	var value_2 MaterialPaint = result.Material
+	var value_3 MaterialPaint = Material_PrepareMaterial(value_2)
+	result.Material = value_3
+	var value_4 Rectangle = props.Bounds
+	var value_5 float32 = appearance.Value.PaddingX
+	var value_6 float32 = appearance.Value.PaddingY
+	var value_7 float32 = result.Material.Scale
+	var value_8 Rectangle = Style_InsetBounds(value_4, value_5, value_6, value_7)
+	result.ContentBounds = value_8
+	var value_9 int32 = 0
+	var value_10 int32 = Style_ResolveFont(value_9, style_font, fallback_font)
+	result.Font = value_10
+	var value_11 uint32 = appearance.Value.Foreground
+	var value_12 float32 = appearance.Value.Opacity
+	var value_13 uint32 = Surface_Opacity(value_11, value_12)
+	result.Foreground = value_13
+	var value_14 bool = motion.Active
+	if !value_14 {
+		var value_15 bool = props.Loading
+		if value_15 {
+			value_15 = !props.Disabled
 		}
-		value_51 = value_53
+		value_14 = value_15
 	}
-	result.Repaint = value_51
-	var value_56 ButtonFrame = result
-	return value_56
+	result.Repaint = value_14
+	return result
 }
 
 func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float64, disclosure bool, surface SurfacePainter, draw Painter) {
-	var value_0 int32 = 0
-	var layer int32 = value_0
+	var layer int32 = 0
 	for {
-		var value_1 int32 = layer
-		var value_2 MaterialKind = MaterialKind(frame.Material.Value.Material)
-		var value_3 int32 = Surface_MaterialLayerCount(value_2)
-		var value_4 bool = value_1 < value_3
-		if !value_4 {
+		var value_0 MaterialKind = MaterialKind(MaterialKind(frame.Material.Value.Material))
+		var value_1 int32 = Surface_MaterialLayerCount(value_0)
+		if !(layer < value_1) {
 			break
 		}
-		var value_5 SurfacePainter = surface
-		var value_6 MaterialPaint = frame.Material
-		var value_7 int32 = layer
-		var value_8 SurfaceDrawing = Material_PaintMaterialLayer(value_6, value_7)
-		value_5(value_8)
-		var value_9 int32 = layer
-		var value_10 int32 = 1
-		layer = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 1))
+		var value_2 SurfacePainter = surface
+		var value_3 MaterialPaint = frame.Material
+		var value_4 SurfaceDrawing = Material_PaintMaterialLayer(value_3, layer)
+		value_2(value_4)
+		var value_5 int32 = layer
+		layer = int32(number_runtime_bits(uint64(value_5), uint64(1), 32, true, 1))
 	}
-	var value_11 ButtonProps = frame.Props
-	var value_12 MaterialPaint = frame.Material
-	var value_13 Rectangle = Material_MaterialContentBounds(value_12)
-	var value_14 StyleData = frame.Appearance.Value
-	var value_15 int32 = frame.Font
-	var value_16 float32 = label_width
-	var value_17 uint32 = frame.Foreground
-	var value_18 uint32 = frame.Material.Ambient
-	var value_19 float32 = frame.Material.Scale
-	var value_20 float64 = elapsed_ms
-	var value_21 bool = disclosure
-	var value_22 ContentDrawing = Button_PaintContent(value_11, value_13, value_14, value_15, value_16, value_17, value_18, value_19, value_20, value_21)
-	var content ContentDrawing = value_22
-	var value_23 Painter = draw
-	var value_24 Drawing = content.Mark
-	value_23(value_24)
-	var value_25 Painter = draw
-	var value_26 Drawing = content.Label
-	value_25(value_26)
+	var value_6 ButtonProps = frame.Props
+	var value_7 MaterialPaint = frame.Material
+	var value_8 Rectangle = Material_MaterialContentBounds(value_7)
+	var value_9 StyleData = frame.Appearance.Value
+	var value_10 int32 = frame.Font
+	var value_11 uint32 = frame.Foreground
+	var value_12 uint32 = frame.Material.Ambient
+	var value_13 float32 = frame.Material.Scale
+	var value_14 ContentDrawing = Button_PaintContent(value_6, value_8, value_9, value_10, label_width, value_11, value_12, value_13, elapsed_ms, disclosure)
+	var content ContentDrawing = value_14
+	var value_15 Painter = draw
+	var value_16 Drawing = content.Mark
+	value_15(value_16)
+	var value_17 Painter = draw
+	var value_18 Drawing = content.Label
+	value_17(value_18)
 }
 
 func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {
 	var value_0 bool = square
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = circle
-		value_1 = value_2
+	if !value_0 {
+		value_0 = circle
+	}
+	if value_0 {
+		return height
+	}
+	var value_1 bool = full_width
+	if value_1 {
+		value_1 = (width <= 0.0)
 	}
 	if value_1 {
-		var value_3 float32 = height
-		return value_3
-	}
-	var value_4 bool = full_width
-	var value_5 bool = value_4
-	if value_5 {
-		var value_6 float32 = width
-		var value_7 float32 = 0.0
-		var value_8 bool = value_6 <= value_7
-		value_5 = value_8
-	}
-	if value_5 {
-		var value_9 float32 = available_width
-		var value_10 float32 = height
-		var value_11 bool = value_9 < value_10
-		if value_11 {
-			var value_12 float32 = height
-			return value_12
+		if available_width < height {
+			return height
 		}
-		var value_13 float32 = available_width
-		return value_13
+		return available_width
 	}
-	var value_14 float32 = width
-	var value_15 float32 = 0.0
-	var value_16 bool = value_14 <= value_15
-	if value_16 {
-		var value_17 float32 = measured_width
-		return value_17
+	if width <= 0.0 {
+		return measured_width
 	}
-	var value_18 float32 = width
-	return value_18
+	return width
 }
 
 func Button_ShapeRadius(normal_radius float32, pill_radius float32, pill bool, circle bool) float32 {
 	var value_0 bool = pill
-	var value_1 bool = value_0
-	if !value_1 {
-		var value_2 bool = circle
-		value_1 = value_2
+	if !value_0 {
+		value_0 = circle
 	}
-	if value_1 {
-		var value_3 float32 = pill_radius
-		return value_3
+	if value_0 {
+		return pill_radius
 	}
-	var value_4 float32 = normal_radius
-	return value_4
+	return normal_radius
 }

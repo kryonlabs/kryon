@@ -1,0 +1,247 @@
+#module "toggle_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/input.h"
+#import "runtime/focus.h"
+#import "runtime/style.h"
+#import "runtime/toggle.h"
+
+ToggleStyleFrame :: (tone: ButtonTone, state: ButtonState,
+disabled: i32, class_name: i32, role: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.class_name = class_name
+    props.tone = tone
+    props.emphasis = ButtonEmphasisSoft
+    if tone == ButtonToneAccent { props.emphasis = ButtonEmphasisFilled }
+    props.size = ControlSizeMedium
+    props.pill = 1
+    props.disabled = disabled
+    return ui_control_style_frame_role_kind(props, state,
+    0, 0.0, 0.0, 0.0, StyleKindToggle(), role)
+}
+
+ToggleThumbFrame :: (tone: ButtonTone, state: ButtonState,
+disabled: i32, selected: i32, class_name: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.class_name = class_name
+    props.tone = tone
+    props.emphasis = ButtonEmphasisSoft
+    if selected != 0 { props.emphasis = ButtonEmphasisFilled }
+    props.size = ControlSizeMedium
+    props.pill = 1
+    props.disabled = disabled
+    props.selected = selected
+    return ui_control_style_frame_kind(props, state,
+    0, 0.0, 0.0, 0.0, StyleKindToggleThumb())
+}
+
+ToggleSwitch :: (x: i32, y: i32, w: i32, h: i32, value: *i32,
+class_name: i32, off_label: const char*, on_label: const char*,
+focused: i32) -> i32 #export {
+    editor_id: [96]char
+    editor_bounds: Rectangle = (Rectangle){
+        (float)x, (float)y, (float)w, (float)h}
+    mouse_world: Vector2 = ui_mouse_world()
+    min_touch: i32 = ui_touch_target_min()
+    font: i32 = GetFontSize()
+    can_draw: i32 = IsWindowReady()
+    off_text: const char* = ""
+    on_text: const char* = ""
+    if off_label != nil { off_text = off_label }
+    if on_label != nil { on_text = on_label }
+    has_labels: i32 = off_text[0] != '\0' || on_text[0] != '\0'
+    enabled: i32 = value != nil && !ContentDisabled()
+    label_frame: StyleFrame = ToggleStyleFrame(ButtonToneNeutral,
+    ButtonStateNormal, !enabled, class_name, ToggleLabelRole())
+    label_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(label_frame).value)
+    checked_for_metrics: i32 = value != nil && *value != 0
+    metric_track_tone: ButtonTone = ButtonToneNeutral
+    if checked_for_metrics != 0 && has_labels == 0 {
+        metric_track_tone = ButtonToneAccent
+    }
+    metric_track_role: i32 = ToggleTrackRoleFor(
+    checked_for_metrics, has_labels)
+    metric_track_frame: StyleFrame = ToggleStyleFrame(
+    metric_track_tone, ButtonStateNormal, !enabled,
+    class_name, metric_track_role)
+    metric_active_frame: StyleFrame = ToggleStyleFrame(
+    ButtonToneAccent, ButtonStateNormal, !enabled,
+    class_name, ToggleFillRole())
+    metric_thumb_frame: StyleFrame = ToggleThumbFrame(
+    metric_track_tone, ButtonStateNormal, !enabled,
+    checked_for_metrics, class_name)
+    font = ResolveFont(0,
+    StyleFontValue(label_style.fields, label_style.font_size), font)
+    off_width: i32 = 0
+    on_width: i32 = 0
+    if has_labels != 0 {
+        off_width = TextWidth(off_text, font)
+        on_width = TextWidth(on_text, font)
+    }
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    min_width: i32 = ToggleMinimumWidthForStyle(
+    has_labels, off_width, on_width, runtime_scale,
+    metric_track_frame, metric_active_frame, label_frame)
+    min_height: i32 = ToggleMinimumHeightForStyle(
+    runtime_scale, metric_track_frame, metric_thumb_frame)
+    if w < min_width { w = min_width }
+    if h < min_height { h = min_height }
+
+    editor_bounds = (Rectangle){
+        (float)x, (float)y, (float)w, (float)h}
+    widget: Widget = BeginWidget("Toggle",
+    ui_inspect_control_id(editor_id, sizeof(editor_id),
+    "Toggle", 0, off_text),
+    editor_bounds, WidgetFlagMovable | WidgetFlagResizable)
+    editor_bounds = widget.bounds
+    x = (int)editor_bounds.x
+    y = (int)editor_bounds.y
+    w = (int)editor_bounds.width
+    h = (int)editor_bounds.height
+    if w < min_width { w = min_width }
+    if h < min_height { h = min_height }
+    editor_bounds = (Rectangle){
+        (float)x, (float)y, (float)w, (float)h}
+    WidgetSetBounds(&widget, editor_bounds)
+
+    bounds: Rectangle = ui_centered_min_hit_rect(
+    x, y, w, h, min_touch, min_touch)
+    interaction: InputPointerInteraction = InputPointerInteractionFor(
+    CheckCollisionPointRec(mouse_world, bounds) != 0,
+    InputCapturesClick(mouse_world) != 0, !enabled,
+    HoverEffectsEnabled() != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true)
+    hovered: i32 = interaction.active
+    down: i32 = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT)
+    if interaction.active { MarkClickable() }
+    if interaction.disabled_marker { MarkDisabled() }
+    toggle: ToggleValueResult = ToggleValueFor(
+    value != nil && *value != 0, interaction.activated != 0,
+    enabled != 0, value != nil)
+    pressed: i32 = toggle.changed
+    if toggle.changed && value != nil {
+        *value = toggle.value
+    }
+    if pressed != 0 && interaction.consume_release {
+        ConsumeRelease()
+    }
+    if !can_draw {
+        EndWidget(&widget)
+        return pressed
+    }
+
+    state: ButtonState = ButtonStateNormal
+    if down != 0 {
+        state = ButtonStatePressed
+    } else if hovered != 0 {
+        state = ButtonStateHover
+    }
+    checked: i32 = value != nil && *value != 0
+    track_tone: ButtonTone = ButtonToneNeutral
+    if checked != 0 && has_labels == 0 {
+        track_tone = ButtonToneAccent
+    }
+    track_role: i32 = ToggleTrackRoleFor(checked, has_labels)
+    spec: ToggleSpec = (ToggleSpec){0}
+    spec.bounds = editor_bounds
+    spec.checked = checked != 0
+    spec.enabled = enabled != 0
+    spec.hovered = hovered != 0
+    spec.pressed = down != 0
+    spec.focused = focused != 0
+    spec.has_labels = has_labels != 0
+    spec.off_width = off_width
+    spec.on_width = on_width
+    spec.font = font
+    spec.scale = runtime_scale
+    spec.track = ToggleStyleFrame(track_tone, state,
+    !enabled, class_name, track_role)
+    spec.active = ToggleStyleFrame(ButtonToneAccent, state,
+    !enabled, class_name, ToggleFillRole())
+    spec.label = ToggleStyleFrame(ButtonToneNeutral, state,
+    !enabled, class_name, ToggleLabelRole())
+    spec.thumb = ToggleThumbFrame(track_tone, state,
+    !enabled, checked, class_name)
+    paint: TogglePaint = TogglePaintFor(spec)
+    label_frame = ToggleStyleFrame(ButtonToneNeutral,
+    state, !enabled, class_name, ToggleLabelRole())
+    label_style = ui_unpack_style(
+    ui_style_apply_effects_frame(label_frame).value)
+    if paint.has_labels {
+        label_color: u32 = Opacity(
+        ColorToInt(label_style.foreground), label_style.opacity)
+        if checked != 0 {
+            paint.off_label_color = label_color
+        } else {
+            paint.on_label_color = label_color
+        }
+    }
+    track_frame: StyleFrame = ui_style_apply_effects_frame(paint.track)
+    track_style: Style = ui_unpack_style(track_frame.value)
+    if paint.show_focus {
+        scale: float = (float)Scale(1000) / 1000.0
+        focus: Color = GetColor(track_frame.value.focus)
+        glow: Color = GetColor(Opacity(track_frame.value.focus, 0.24))
+        DrawRectangleRounded(paint.focus_bounds, 0.5, 16, glow)
+        DrawRectangleRoundedLinesEx(paint.focus_bounds, 0.5, 16,
+        (float)FocusStrokeWidthFor(scale), focus)
+    }
+    ui_draw_material(paint.track_bounds, (Rectangle){0},
+    track_style.background, track_style.border,
+    track_style.border, track_style.radius,
+    track_style.border_width,
+    hovered != 0 ? 1.0 : 0.0, down != 0 ? 1.0 : 0.0,
+    !enabled, track_style.focus, 0.0,
+    track_style.opacity,
+    ui_style_apply_effects_fill(track_frame.fill),
+    track_style.material)
+    if paint.has_labels {
+        active_frame: StyleFrame = ui_style_apply_effects_frame(paint.active)
+        active_style: Style = ui_unpack_style(active_frame.value)
+        ui_draw_material(paint.active_bounds, (Rectangle){0},
+        active_style.background, active_style.border,
+        active_style.border, active_style.radius,
+        active_style.border_width,
+        hovered != 0 ? 1.0 : 0.0, down != 0 ? 1.0 : 0.0,
+        !enabled, active_style.focus, 0.0,
+        active_style.opacity,
+        ui_style_apply_effects_fill(active_frame.fill),
+        active_style.material)
+        RenderNonSelectableText(off_text,
+        (int)paint.off_label_bounds.x,
+        (int)paint.off_label_bounds.y, font,
+        GetColor(paint.off_label_color))
+        RenderNonSelectableText(on_text,
+        (int)paint.on_label_bounds.x,
+        (int)paint.on_label_bounds.y, font,
+        GetColor(paint.on_label_color))
+    } else {
+        thumb_x: i32 = (int)paint.thumb_x
+        thumb_y: i32 = (int)paint.thumb_y
+        thumb_radius: i32 = (int)paint.thumb_radius
+        if FancyEffectsEnabled() && hovered != 0 && enabled != 0 {
+            DrawCircle(thumb_x, thumb_y,
+            paint.thumb_glow_radius,
+            GetColor(paint.thumb_glow_color))
+        }
+        if FancyEffectsEnabled() {
+            DrawCircle((int)paint.thumb_shadow_x,
+            (int)paint.thumb_shadow_y,
+            paint.thumb_shadow_radius,
+            GetColor(paint.thumb_shadow_color))
+        }
+        DrawCircle(thumb_x, thumb_y, paint.thumb_radius,
+        GetColor(paint.thumb_fill_color))
+        if FancyEffectsEnabled() {
+            DrawCircle((int)paint.thumb_highlight_x,
+            (int)paint.thumb_highlight_y,
+            paint.thumb_highlight_radius,
+            GetColor(paint.thumb_highlight_color))
+        }
+        DrawCircleLines(thumb_x, thumb_y,
+        (float)thumb_radius, GetColor(paint.thumb_edge_color))
+    }
+    EndWidget(&widget)
+    return pressed
+}

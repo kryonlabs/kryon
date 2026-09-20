@@ -1,0 +1,67 @@
+#module "text_selection_host"
+#import "ui_internal.h"
+#import "runtime/text_input.h"
+#import "string.h"
+
+TextSelection :: struct {
+    id: i32
+    owner: *i32
+    anchor: i32
+    cursor: i32
+    dragging: i32
+}
+
+g_ui_text_area_selection :: TextSelection #global #export
+g_ui_text_field_selection :: TextSelection #global #export
+
+ui_text_selection_clear :: (selection: *TextSelection) #export {
+    if selection == nil { return }
+    selection->id = 0
+    selection->owner = nil
+    selection->anchor = 0
+    selection->cursor = 0
+    selection->dragging = 0
+}
+
+ui_text_selection_matches :: (selection: TextSelection,
+id: i32, owner: *i32) -> i32 #export {
+    return TextSelectionOwnerMatches(owner != nil,
+    selection.owner == owner, selection.id, id)
+}
+
+ui_text_selection_set :: (selection: *TextSelection,
+id: i32, owner: *i32, anchor: i32,
+cursor: i32, dragging: i32) #export {
+    if selection == nil { return }
+    selection->id = id
+    selection->owner = owner
+    selection->anchor = anchor
+    selection->cursor = cursor
+    selection->dragging = dragging
+}
+
+ui_text_selection_collapsed :: (cursor: i32) -> TextSelectionState #export {
+    return TextSelectionCollapsed(cursor)
+}
+
+ui_text_selection_set_collapsed :: (selection: *TextSelection,
+id: i32, owner: *i32, cursor: i32,
+dragging: i32) #export {
+    collapsed: TextSelectionState = ui_text_selection_collapsed(cursor)
+    ui_text_selection_set(selection, id, owner,
+    collapsed.anchor, collapsed.cursor, dragging)
+}
+
+ui_selection_range :: (selection: TextSelection,
+text: const char*, start: *i32, end: *i32) #export {
+    length: i32 = 0
+    if text != nil { length = (int)strlen(text) }
+    range: TextSelectionRange = TextSelectionRangeForLength(
+    selection.anchor, selection.cursor, length)
+    if start != nil {
+        *start = ui_grapheme_floor_offset(text, range.start)
+    }
+    if end != nil {
+        *end = ui_grapheme_floor_offset(text, range.end)
+    }
+}

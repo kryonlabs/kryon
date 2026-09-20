@@ -34,647 +34,341 @@ type InputCellLayout struct {
 }
 
 func Input_InputScaledMetric(value float32, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	if scale <= 0.0 {
+		scale = 1.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var metric int32 = value_7
-	var value_8 int32 = metric
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		return value_11
+	var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value*scale)), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_0
+	if metric < 0 {
+		return 0
 	}
-	var value_12 int32 = metric
-	return value_12
+	return metric
 }
 
 func Input_InputDefaultStepButtonWidth(scale float32) int32 {
 	var value_0 float32 = 24.0
-	var value_1 float32 = scale
-	var value_2 int32 = Input_InputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = Input_InputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func Input_InputDoubleClickSlopFor(scale float32) int32 {
 	var value_0 float32 = 6.0
-	var value_1 float32 = scale
-	var value_2 int32 = Input_InputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = Input_InputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func Input_InputPointerDragThresholdFor(scale float32) int32 {
 	var value_0 float32 = 5.0
-	var value_1 float32 = scale
-	var value_2 int32 = Input_InputScaledMetric(value_0, value_1)
-	return value_2
+	var value_1 int32 = Input_InputScaledMetric(value_0, scale)
+	return value_1
 }
 
 func Input_InputPointerDragShouldStart(dx int32, dy int32, threshold int32) bool {
-	var value_0 int32 = threshold
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		threshold = value_3
+	if threshold < 0 {
+		threshold = 0
 	}
-	var value_4 int32 = dx
-	var value_5 int32 = threshold
-	var value_6 bool = value_4 > value_5
-	var value_7 bool = value_6
-	if !value_7 {
-		var value_8 int32 = dx
-		var value_9 int32 = threshold
-		var value_10 int32 = int32(number_runtime_bits(uint64(0), uint64(value_9), 32, true, 2))
-		var value_11 bool = value_8 < value_10
-		value_7 = value_11
+	var value_0 bool = (dx > threshold)
+	if !value_0 {
+		value_0 = (dx < int32(number_runtime_bits(uint64(0), uint64(threshold), 32, true, 2)))
 	}
-	var value_12 bool = value_7
-	if !value_12 {
-		var value_13 int32 = dy
-		var value_14 int32 = threshold
-		var value_15 bool = value_13 > value_14
-		value_12 = value_15
+	var value_1 bool = value_0
+	if !value_1 {
+		value_1 = (dy > threshold)
 	}
-	var value_16 bool = value_12
-	if !value_16 {
-		var value_17 int32 = dy
-		var value_18 int32 = threshold
-		var value_19 int32 = int32(number_runtime_bits(uint64(0), uint64(value_18), 32, true, 2))
-		var value_20 bool = value_17 < value_19
-		value_16 = value_20
+	var value_2 bool = value_1
+	if !value_2 {
+		value_2 = (dy < int32(number_runtime_bits(uint64(0), uint64(threshold), 32, true, 2)))
 	}
-	return value_16
+	return value_2
 }
 
 func Input_InputPointerDragIsHorizontal(dx int32, dy int32) bool {
-	var value_0 int32 = dx
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = dx
-		var value_4 int32 = int32(number_runtime_bits(uint64(0), uint64(value_3), 32, true, 2))
-		dx = value_4
+	if dx < 0 {
+		dx = int32(number_runtime_bits(uint64(0), uint64(dx), 32, true, 2))
 	}
-	var value_5 int32 = dy
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = dy
-		var value_9 int32 = int32(number_runtime_bits(uint64(0), uint64(value_8), 32, true, 2))
-		dy = value_9
+	if dy < 0 {
+		dy = int32(number_runtime_bits(uint64(0), uint64(dy), 32, true, 2))
 	}
-	var value_10 int32 = dx
-	var value_11 int32 = dy
-	var value_12 bool = value_10 >= value_11
-	return value_12
+	return (dx >= dy)
 }
 
 func Input_InputPointerInteractionFor(inside bool, captured bool, disabled bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool) InputPointerInteraction {
 	var interaction InputPointerInteraction = InputPointerInteraction{}
 	var value_0 bool = inside
+	if value_0 {
+		value_0 = !captured
+	}
 	var value_1 bool = value_0
 	if value_1 {
-		var value_2 bool = captured
-		var value_3 bool = !value_2
-		value_1 = value_3
+		value_1 = !disabled
 	}
-	var value_4 bool = value_1
+	interaction.Active = value_1
+	var value_2 bool = interaction.Active
+	if value_2 {
+		value_2 = hover_effects
+	}
+	interaction.Hovered = value_2
+	var value_3 bool = inside
+	if value_3 {
+		value_3 = !captured
+	}
+	var value_4 bool = value_3
 	if value_4 {
-		var value_5 bool = disabled
-		var value_6 bool = !value_5
-		value_4 = value_6
+		value_4 = disabled
 	}
-	interaction.Active = value_4
-	var value_7 bool = interaction.Active
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 bool = hover_effects
-		value_8 = value_9
+	interaction.DisabledMarker = value_4
+	var value_5 bool = interaction.Active
+	if value_5 {
+		value_5 = released
 	}
-	interaction.Hovered = value_8
-	var value_10 bool = inside
-	var value_11 bool = value_10
-	if value_11 {
-		var value_12 bool = captured
-		var value_13 bool = !value_12
-		value_11 = value_13
+	var value_6 bool = value_5
+	if value_6 {
+		value_6 = !release_consumed
 	}
-	var value_14 bool = value_11
-	if value_14 {
-		var value_15 bool = disabled
-		value_14 = value_15
+	var value_7 bool = value_6
+	if value_7 {
+		value_7 = press_started_inside
 	}
-	interaction.DisabledMarker = value_14
-	var value_16 bool = interaction.Active
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = released
-		value_17 = value_18
-	}
-	var value_19 bool = value_17
-	if value_19 {
-		var value_20 bool = release_consumed
-		var value_21 bool = !value_20
-		value_19 = value_21
-	}
-	var value_22 bool = value_19
-	if value_22 {
-		var value_23 bool = press_started_inside
-		value_22 = value_23
-	}
-	interaction.Activated = value_22
-	var value_24 bool = interaction.Activated
-	interaction.ConsumeRelease = value_24
-	var value_25 InputPointerInteraction = interaction
-	return value_25
+	interaction.Activated = value_7
+	interaction.ConsumeRelease = interaction.Activated
+	return interaction
 }
 
 func Input_InputTempEditActivationFor(pressed bool, control bool, same_kind bool, same_widget bool, same_component bool, elapsed_seconds float32, dx float32, dy float32, slop int32) bool {
-	var value_0 bool = pressed
-	var value_1 bool = !value_0
+	if !pressed {
+		return false
+	}
+	if control {
+		return true
+	}
+	if slop < 0 {
+		slop = 0
+	}
+	var value_0 bool = (dx < float32(int32(number_runtime_bits(uint64(0), uint64(slop), 32, true, 2))))
+	if !value_0 {
+		value_0 = (dx > float32(slop))
+	}
+	if value_0 {
+		return false
+	}
+	var value_1 bool = (dy < float32(int32(number_runtime_bits(uint64(0), uint64(slop), 32, true, 2))))
+	if !value_1 {
+		value_1 = (dy > float32(slop))
+	}
 	if value_1 {
-		var value_2 bool = false
-		return value_2
+		return false
 	}
-	var value_3 bool = control
+	var value_2 bool = same_kind
+	if value_2 {
+		value_2 = same_widget
+	}
+	var value_3 bool = value_2
 	if value_3 {
-		var value_4 bool = true
-		return value_4
+		value_3 = same_component
 	}
-	var value_5 int32 = slop
-	var value_6 int32 = 0
-	var value_7 bool = value_5 < value_6
-	if value_7 {
-		var value_8 int32 = 0
-		slop = value_8
+	var value_4 bool = value_3
+	if value_4 {
+		value_4 = (elapsed_seconds <= 0.30)
 	}
-	var value_9 float32 = dx
-	var value_10 int32 = slop
-	var value_11 int32 = int32(number_runtime_bits(uint64(0), uint64(value_10), 32, true, 2))
-	var value_12 float32 = float32(value_11)
-	var value_13 bool = value_9 < value_12
-	var value_14 bool = value_13
-	if !value_14 {
-		var value_15 float32 = dx
-		var value_16 int32 = slop
-		var value_17 float32 = float32(value_16)
-		var value_18 bool = value_15 > value_17
-		value_14 = value_18
-	}
-	if value_14 {
-		var value_19 bool = false
-		return value_19
-	}
-	var value_20 float32 = dy
-	var value_21 int32 = slop
-	var value_22 int32 = int32(number_runtime_bits(uint64(0), uint64(value_21), 32, true, 2))
-	var value_23 float32 = float32(value_22)
-	var value_24 bool = value_20 < value_23
-	var value_25 bool = value_24
-	if !value_25 {
-		var value_26 float32 = dy
-		var value_27 int32 = slop
-		var value_28 float32 = float32(value_27)
-		var value_29 bool = value_26 > value_28
-		value_25 = value_29
-	}
-	if value_25 {
-		var value_30 bool = false
-		return value_30
-	}
-	var value_31 bool = same_kind
-	var value_32 bool = value_31
-	if value_32 {
-		var value_33 bool = same_widget
-		value_32 = value_33
-	}
-	var value_34 bool = value_32
-	if value_34 {
-		var value_35 bool = same_component
-		value_34 = value_35
-	}
-	var value_36 bool = value_34
-	if value_36 {
-		var value_37 float32 = elapsed_seconds
-		var value_38 float32 = 0.30
-		var value_39 bool = value_37 <= value_38
-		value_36 = value_39
-	}
-	return value_36
+	return value_4
 }
 
 func Input_InputCellLayoutFor(bounds Rectangle, count int32, index int32, requested_button_width int32, has_step bool) InputCellLayout {
 	var layout InputCellLayout = InputCellLayout{}
-	var value_0 int32 = count
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 InputCellLayout = layout
-		return value_3
+	if count <= 0 {
+		return layout
 	}
-	var value_4 int32 = index
-	var value_5 int32 = 0
-	var value_6 bool = value_4 < value_5
-	if value_6 {
-		var value_7 int32 = 0
-		index = value_7
+	if index < 0 {
+		index = 0
 	}
-	var value_8 int32 = index
-	var value_9 int32 = count
-	var value_10 bool = value_8 >= value_9
-	if value_10 {
-		var value_11 int32 = count
-		var value_12 int32 = 1
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
-		index = value_13
+	if index >= count {
+		index = (int32(number_runtime_bits(uint64(count), uint64(1), 32, true, 2)))
 	}
-	var value_14 float32 = bounds.X
-	var value_15 float32 = bounds.Width
-	var value_16 int32 = index
-	var value_17 float32 = float32(value_16)
-	var value_18 float32 = value_15 * value_17
-	var value_19 int32 = count
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 / value_20
-	var value_22 float32 = value_14 + value_21
-	layout.Cell.X = value_22
-	var value_23 float32 = bounds.Y
-	layout.Cell.Y = value_23
-	var value_24 float32 = bounds.Width
-	var value_25 int32 = count
-	var value_26 float32 = float32(value_25)
-	var value_27 float32 = value_24 / value_26
-	layout.Cell.Width = value_27
-	var value_28 float32 = bounds.Height
-	layout.Cell.Height = value_28
-	var value_29 Rectangle = layout.Cell
-	layout.Field = value_29
-	var value_30 Rectangle = layout.Cell
-	layout.Minus = value_30
-	var value_31 Rectangle = layout.Cell
-	layout.Plus = value_31
-	var value_32 bool = has_step
-	if value_32 {
-		var value_33 int32 = requested_button_width
-		var button_width int32 = value_33
-		var value_34 int32 = button_width
-		var value_35 int32 = 0
-		var value_36 bool = value_34 < value_35
-		if value_36 {
-			var value_37 int32 = 0
-			button_width = value_37
+	layout.Cell.X = (bounds.X + ((bounds.Width * float32(index)) / float32(count)))
+	layout.Cell.Y = bounds.Y
+	layout.Cell.Width = (bounds.Width / float32(count))
+	layout.Cell.Height = bounds.Height
+	layout.Field = layout.Cell
+	layout.Minus = layout.Cell
+	layout.Plus = layout.Cell
+	if has_step {
+		var button_width int32 = requested_button_width
+		if button_width < 0 {
+			button_width = 0
 		}
-		var value_38 float32 = layout.Cell.Width
-		var value_39 float32 = 2.0
-		var value_40 float32 = value_38 / value_39
-		var value_41 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_40), 32, true)), uint64(0), 32, true, 0))
-		var max_button int32 = value_41
-		var value_42 int32 = button_width
-		var value_43 int32 = max_button
-		var value_44 bool = value_42 > value_43
-		if value_44 {
-			var value_45 int32 = max_button
-			button_width = value_45
+		var value_0 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((layout.Cell.Width/2.0)), 32, true)), uint64(0), 32, true, 0))
+		var max_button int32 = value_0
+		if button_width > max_button {
+			button_width = max_button
 		}
-		var value_46 float32 = layout.Field.Width
-		var value_47 int32 = button_width
-		var value_48 int32 = 2
-		var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 3))
-		var value_50 float32 = float32(value_49)
-		var value_51 float32 = value_46 - value_50
-		layout.Field.Width = value_51
-		var value_52 float32 = layout.Field.Width
-		var value_53 float32 = 0.0
-		var value_54 bool = value_52 < value_53
-		if value_54 {
-			var value_55 float32 = 0.0
-			layout.Field.Width = value_55
+		var value_1 float32 = layout.Field.Width - float32((int32(number_runtime_bits(uint64(button_width), uint64(2), 32, true, 3))))
+		layout.Field.Width = value_1
+		if layout.Field.Width < 0.0 {
+			layout.Field.Width = 0.0
 		}
-		var value_56 float32 = layout.Field.X
-		var value_57 float32 = layout.Field.Width
-		var value_58 float32 = value_56 + value_57
-		layout.Minus.X = value_58
-		var value_59 int32 = button_width
-		var value_60 float32 = float32(value_59)
-		layout.Minus.Width = value_60
-		var value_61 float32 = layout.Minus.X
-		var value_62 float32 = layout.Minus.Width
-		var value_63 float32 = value_61 + value_62
-		layout.Plus.X = value_63
-		var value_64 int32 = button_width
-		var value_65 float32 = float32(value_64)
-		layout.Plus.Width = value_65
-		var value_66 int32 = button_width
-		var value_67 int32 = 0
-		var value_68 bool = value_66 > value_67
-		layout.HasStepButtons = value_68
+		layout.Minus.X = (layout.Field.X + layout.Field.Width)
+		layout.Minus.Width = float32(button_width)
+		layout.Plus.X = (layout.Minus.X + layout.Minus.Width)
+		layout.Plus.Width = float32(button_width)
+		layout.HasStepButtons = (button_width > 0)
 	}
-	var value_69 InputCellLayout = layout
-	return value_69
+	return layout
 }
 
 func Input_InputContinuousEffectiveStep(step float32, step_fast float32, fast bool) float32 {
 	var value_0 bool = fast
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 float32 = step_fast
-		var value_3 float32 = 0.0
-		var value_4 bool = value_2 != value_3
-		value_1 = value_4
+	if value_0 {
+		value_0 = (step_fast != 0.0)
 	}
-	if value_1 {
-		var value_5 float32 = step_fast
-		return value_5
+	if value_0 {
+		return step_fast
 	}
-	var value_6 float32 = step
-	return value_6
+	return step
 }
 
 func Input_InputDiscreteEffectiveStep(step int32, step_fast int32, fast bool) int32 {
 	var value_0 bool = fast
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 int32 = step_fast
-		var value_3 int32 = 0
-		var value_4 bool = value_2 != value_3
-		value_1 = value_4
+	if value_0 {
+		value_0 = (step_fast != 0)
 	}
-	if value_1 {
-		var value_5 int32 = step_fast
-		return value_5
+	if value_0 {
+		return step_fast
 	}
-	var value_6 int32 = step
-	return value_6
+	return step
 }
 
 func Input_InputEffectiveStep(step float64, step_fast float64, fast bool) float64 {
 	var value_0 bool = fast
-	var value_1 bool = value_0
-	if value_1 {
-		var value_2 float64 = step_fast
-		var value_3 float64 = 0.0
-		var value_4 bool = value_2 != value_3
-		value_1 = value_4
+	if value_0 {
+		value_0 = (step_fast != 0.0)
 	}
-	if value_1 {
-		var value_5 float64 = step_fast
-		return value_5
+	if value_0 {
+		return step_fast
 	}
-	var value_6 float64 = step
-	return value_6
+	return step
 }
 
 func Input_InputKindIsFloat(kind NumericValueKind) bool {
-	var value_0 NumericValueKind = NumericValueKind(kind)
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 int32 = int32(NumericFloat)
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
-	var value_4 bool = value_1 == value_3
-	return value_4
+	var value_0 bool = int32(number_runtime_bits(uint64(kind), uint64(0), 32, true, 0)) == int32(number_runtime_bits(uint64(int32(NumericFloat)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Input_InputKindIsInt(kind NumericValueKind) bool {
-	var value_0 NumericValueKind = NumericValueKind(kind)
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 int32 = int32(NumericInt)
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
-	var value_4 bool = value_1 == value_3
-	return value_4
+	var value_0 bool = int32(number_runtime_bits(uint64(kind), uint64(0), 32, true, 0)) == int32(number_runtime_bits(uint64(int32(NumericInt)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Input_InputKindIsDouble(kind NumericValueKind) bool {
-	var value_0 NumericValueKind = NumericValueKind(kind)
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 int32 = int32(NumericDouble)
-	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
-	var value_4 bool = value_1 == value_3
-	return value_4
+	var value_0 bool = int32(number_runtime_bits(uint64(kind), uint64(0), 32, true, 0)) == int32(number_runtime_bits(uint64(int32(NumericDouble)), uint64(0), 32, true, 0))
+	return value_0
 }
 
 func Input_InputDefaultFormat(kind NumericValueKind) string {
-	var value_0 NumericValueKind = NumericValueKind(kind)
-	var value_1 bool = Input_InputKindIsInt(value_0)
+	var value_0 bool = Input_InputKindIsInt(kind)
+	if value_0 {
+		return "%d"
+	}
+	var value_1 bool = Input_InputKindIsDouble(kind)
 	if value_1 {
-		var value_2 string = "%d"
-		return value_2
+		return "%.6f"
 	}
-	var value_3 NumericValueKind = NumericValueKind(kind)
-	var value_4 bool = Input_InputKindIsDouble(value_3)
-	if value_4 {
-		var value_5 string = "%.6f"
-		return value_5
-	}
-	var value_6 string = "%.3f"
-	return value_6
+	return "%.3f"
 }
 
 func Input_InputRoundValueForKind(kind NumericValueKind, value float64) float64 {
-	var value_0 NumericValueKind = NumericValueKind(kind)
-	var value_1 bool = Input_InputKindIsInt(value_0)
-	if value_1 {
-		var value_2 float64 = value
-		var value_3 float64 = 0.0
-		var value_4 bool = value_2 < value_3
-		if value_4 {
-			var value_5 float64 = value
-			var value_6 float64 = 0.5
-			var value_7 float64 = value_5 - value_6
-			var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
-			var value_9 float64 = float64(value_8)
-			return value_9
+	var value_0 bool = Input_InputKindIsInt(kind)
+	if value_0 {
+		if value < 0.0 {
+			var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value-0.5)), 32, true)), uint64(0), 32, true, 0))
+			return float64(value_1)
 		}
-		var value_10 float64 = value
-		var value_11 float64 = 0.5
-		var value_12 float64 = value_10 + value_11
-		var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
-		var value_14 float64 = float64(value_13)
-		return value_14
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value+0.5)), 32, true)), uint64(0), 32, true, 0))
+		return float64(value_2)
 	}
-	var value_15 float64 = value
-	return value_15
+	return value
 }
 
 func Input_InputContinuousStepValue(value float32, step float32, step_fast float32, direction int32, fast bool) InputContinuousStep {
 	var result InputContinuousStep = InputContinuousStep{}
-	var value_0 float32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 int32 = direction
-	var value_3 int32 = 0
-	var value_4 bool = value_2 == value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 float32 = step
-		var value_7 float32 = 0.0
-		var value_8 bool = value_6 == value_7
-		value_5 = value_8
+	result.Value = value
+	result.Changed = false
+	var value_0 bool = (direction == 0)
+	if !value_0 {
+		value_0 = (step == 0.0)
 	}
-	if value_5 {
-		var value_9 InputContinuousStep = result
-		return value_9
+	if value_0 {
+		return result
 	}
-	var value_10 float32 = value
-	var value_11 int32 = direction
-	var value_12 float32 = float32(value_11)
-	var value_13 float32 = step
-	var value_14 float32 = step_fast
-	var value_15 bool = fast
-	var value_16 float32 = Input_InputContinuousEffectiveStep(value_13, value_14, value_15)
-	var value_17 float32 = value_12 * value_16
-	var value_18 float32 = value_10 + value_17
-	var next float32 = value_18
-	var value_19 float32 = next
-	result.Value = value_19
-	var value_20 float32 = next
-	var value_21 float32 = value
-	var value_22 bool = value_20 != value_21
-	result.Changed = value_22
-	var value_23 InputContinuousStep = result
-	return value_23
+	var value_1 float32 = Input_InputContinuousEffectiveStep(step, step_fast, fast)
+	var next float32 = (value + (float32(direction) * value_1))
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Input_InputDiscreteStepValue(value int32, step int32, step_fast int32, direction int32, fast bool) InputDiscreteStep {
 	var result InputDiscreteStep = InputDiscreteStep{}
-	var value_0 int32 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 int32 = direction
-	var value_3 int32 = 0
-	var value_4 bool = value_2 == value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 int32 = step
-		var value_7 int32 = 0
-		var value_8 bool = value_6 == value_7
-		value_5 = value_8
+	result.Value = value
+	result.Changed = false
+	var value_0 bool = (direction == 0)
+	if !value_0 {
+		value_0 = (step == 0)
 	}
-	if value_5 {
-		var value_9 InputDiscreteStep = result
-		return value_9
+	if value_0 {
+		return result
 	}
-	var value_10 int32 = value
-	var value_11 int32 = direction
-	var value_12 int32 = step
-	var value_13 int32 = step_fast
-	var value_14 bool = fast
-	var value_15 int32 = Input_InputDiscreteEffectiveStep(value_12, value_13, value_14)
-	var value_16 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_15), 32, true, 3))
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_16), 32, true, 1))
-	var next int32 = value_17
-	var value_18 int32 = next
-	result.Value = value_18
-	var value_19 int32 = next
-	var value_20 int32 = value
-	var value_21 bool = value_19 != value_20
-	result.Changed = value_21
-	var value_22 InputDiscreteStep = result
-	return value_22
+	var value_1 int32 = Input_InputDiscreteEffectiveStep(step, step_fast, fast)
+	var value_2 int32 = int32(number_runtime_bits(uint64(value), uint64((int32(number_runtime_bits(uint64(direction), uint64(value_1), 32, true, 3)))), 32, true, 1))
+	var next int32 = value_2
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Input_InputStepValue(value float64, step float64, step_fast float64, direction int32, fast bool) InputStep {
 	var result InputStep = InputStep{}
-	var value_0 float64 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 int32 = direction
-	var value_3 int32 = 0
-	var value_4 bool = value_2 == value_3
-	var value_5 bool = value_4
-	if !value_5 {
-		var value_6 float64 = step
-		var value_7 float64 = 0.0
-		var value_8 bool = value_6 == value_7
-		value_5 = value_8
+	result.Value = value
+	result.Changed = false
+	var value_0 bool = (direction == 0)
+	if !value_0 {
+		value_0 = (step == 0.0)
 	}
-	if value_5 {
-		var value_9 InputStep = result
-		return value_9
+	if value_0 {
+		return result
 	}
-	var value_10 float64 = value
-	var value_11 int32 = direction
-	var value_12 float64 = float64(value_11)
-	var value_13 float64 = step
-	var value_14 float64 = step_fast
-	var value_15 bool = fast
-	var value_16 float64 = Input_InputEffectiveStep(value_13, value_14, value_15)
-	var value_17 float64 = value_12 * value_16
-	var value_18 float64 = value_10 + value_17
-	var next float64 = value_18
-	var value_19 float64 = next
-	result.Value = value_19
-	var value_20 float64 = next
-	var value_21 float64 = value
-	var value_22 bool = value_20 != value_21
-	result.Changed = value_22
-	var value_23 InputStep = result
-	return value_23
+	var value_1 float64 = Input_InputEffectiveStep(step, step_fast, fast)
+	var next float64 = (value + (float64(direction) * value_1))
+	result.Value = next
+	result.Changed = (next != value)
+	return result
 }
 
 func Input_InputStepValueForKind(kind NumericValueKind, value float64, step float64, step_fast float64, direction int32, fast bool) InputStep {
 	var result InputStep = InputStep{}
-	var value_0 float64 = value
-	result.Value = value_0
-	var value_1 bool = false
-	result.Changed = value_1
-	var value_2 NumericValueKind = NumericValueKind(kind)
-	var value_3 bool = Input_InputKindIsInt(value_2)
-	if value_3 {
-		var value_4 float64 = value
-		var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
-		var value_6 float64 = step
-		var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-		var value_8 float64 = step_fast
-		var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
-		var value_10 int32 = direction
-		var value_11 bool = fast
-		var value_12 InputDiscreteStep = Input_InputDiscreteStepValue(value_5, value_7, value_9, value_10, value_11)
-		var stepped InputDiscreteStep = value_12
-		var value_13 int32 = stepped.Value
-		var value_14 float64 = float64(value_13)
-		result.Value = value_14
-		var value_15 bool = stepped.Changed
-		result.Changed = value_15
-		var value_16 InputStep = result
-		return value_16
+	result.Value = value
+	result.Changed = false
+	var value_0 bool = Input_InputKindIsInt(kind)
+	if value_0 {
+		var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value), 32, true)), uint64(0), 32, true, 0))
+		var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(step), 32, true)), uint64(0), 32, true, 0))
+		var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(step_fast), 32, true)), uint64(0), 32, true, 0))
+		var value_4 InputDiscreteStep = Input_InputDiscreteStepValue(value_1, value_2, value_3, direction, fast)
+		var stepped InputDiscreteStep = value_4
+		result.Value = float64(stepped.Value)
+		result.Changed = stepped.Changed
+		return result
 	}
-	var value_17 NumericValueKind = NumericValueKind(kind)
-	var value_18 bool = Input_InputKindIsFloat(value_17)
-	if value_18 {
-		var value_19 float64 = value
-		var value_20 float32 = float32(value_19)
-		var value_21 float64 = step
-		var value_22 float32 = float32(value_21)
-		var value_23 float64 = step_fast
-		var value_24 float32 = float32(value_23)
-		var value_25 int32 = direction
-		var value_26 bool = fast
-		var value_27 InputContinuousStep = Input_InputContinuousStepValue(value_20, value_22, value_24, value_25, value_26)
-		var continuous InputContinuousStep = value_27
-		var value_28 float32 = continuous.Value
-		var value_29 float64 = float64(value_28)
-		result.Value = value_29
-		var value_30 bool = continuous.Changed
-		result.Changed = value_30
-		var value_31 InputStep = result
-		return value_31
+	var value_5 bool = Input_InputKindIsFloat(kind)
+	if value_5 {
+		var value_6 float32 = float32(value)
+		var value_7 float32 = float32(step)
+		var value_8 float32 = float32(step_fast)
+		var value_9 InputContinuousStep = Input_InputContinuousStepValue(value_6, value_7, value_8, direction, fast)
+		var continuous InputContinuousStep = value_9
+		result.Value = float64(continuous.Value)
+		result.Changed = continuous.Changed
+		return result
 	}
-	var value_32 float64 = value
-	var value_33 float64 = step
-	var value_34 float64 = step_fast
-	var value_35 int32 = direction
-	var value_36 bool = fast
-	var value_37 InputStep = Input_InputStepValue(value_32, value_33, value_34, value_35, value_36)
-	return value_37
+	var value_10 InputStep = Input_InputStepValue(value, step, step_fast, direction, fast)
+	return value_10
 }

@@ -1,0 +1,210 @@
+#import "kryon.h"
+#import "SDL.h"
+#import "stdio.h"
+#import "stdlib.h"
+#import "string.h"
+
+app "Kryon Button Interaction Trace" {
+    size 480 260
+    fps 120
+    before_window TraceBeforeWindow
+    init TraceInit
+    after_frame TraceAfterFrame
+    should_continue TraceContinue
+    shutdown TraceShutdown
+}
+
+state {
+    trace_case: i32 = 0
+    trace_wait: i32 = 0
+    trace_done: bool = false
+    trace_normal: i32 = 0
+    trace_disabled: i32 = 0
+    trace_loading: i32 = 0
+    trace_key_release: i32 = 0
+}
+
+TraceBeforeWindow :: () -> bool {
+    private_display: const char* = getenv("KRYON_PRIVATE_DISPLAY")
+    display: const char* = getenv("DISPLAY")
+    if private_display == nil || display == nil ||
+    strcmp(private_display, "1") != 0 ||
+    strncmp(display, ":0", 2) == 0 {
+        puts("Button interaction trace requires a private X display")
+        return false
+    }
+    SetConfigFlags(FLAG_WINDOW_HIDDEN)
+    return true
+}
+
+TraceInit :: () {
+    SetTargetFPS(0)
+}
+
+TraceContinue :: () -> bool {
+    return !trace_done
+}
+
+TraceShutdown :: () {
+    if !trace_done {
+        puts("Button interaction trace ended before all cases completed")
+        exit(1)
+    }
+}
+
+TraceWindowID :: () -> u32 {
+    window: SDL_Window* = SDL_GL_GetCurrentWindow()
+    if window == nil {
+        puts("Interaction trace could not find its SDL window")
+        exit(1)
+    }
+    id: u32 = SDL_GetWindowID(window)
+    if id == 0 {
+        puts("Interaction trace could not identify its SDL window")
+        exit(1)
+    }
+    return id
+}
+
+TraceMotion :: (x: i32, y: i32) -> bool {
+    event: SDL_Event = {0}
+    event.type = SDL_MOUSEMOTION
+    event.motion.windowID = TraceWindowID()
+    event.motion.x = x
+    event.motion.y = y
+    return SDL_PushEvent(&event) == 1
+}
+
+TraceButtonEdge :: (pressed: bool, x: i32, y: i32) -> bool {
+    event: SDL_Event = {0}
+    event.type = pressed ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP
+    event.button.windowID = TraceWindowID()
+    event.button.button = SDL_BUTTON_LEFT
+    event.button.state = pressed ? SDL_PRESSED : SDL_RELEASED
+    event.button.x = x
+    event.button.y = y
+    return SDL_PushEvent(&event) == 1
+}
+
+TraceKeyEdge :: (pressed: bool, scancode: i32) -> bool {
+    event: SDL_Event = {0}
+    event.type = pressed ? SDL_KEYDOWN : SDL_KEYUP
+    event.key.windowID = TraceWindowID()
+    event.key.state = pressed ? SDL_PRESSED : SDL_RELEASED
+    event.key.keysym.scancode = (SDL_Scancode)scancode
+    event.key.keysym.sym = SDL_GetKeyFromScancode((SDL_Scancode)scancode)
+    return SDL_PushEvent(&event) == 1
+}
+
+TraceKeyTap :: (scancode: i32) -> bool {
+    if !TraceKeyEdge(true, scancode) { return false }
+    trace_key_release = scancode
+    return true
+}
+
+TraceClick :: (x: i32, y: i32) -> bool {
+    return TraceMotion(x, y) && TraceButtonEdge(true, x, y) &&
+    TraceButtonEdge(false, x, y)
+}
+
+TraceInject :: (test_case: i32) -> bool {
+    if test_case == 0 { return TraceClick(100, 100) }
+    if test_case == 1 {
+        return TraceMotion(100, 100) && TraceButtonEdge(true, 100, 100) &&
+        TraceMotion(430, 230) && TraceButtonEdge(false, 430, 230)
+    }
+    if test_case == 2 {
+        return TraceMotion(430, 230) && TraceButtonEdge(true, 430, 230) &&
+        TraceMotion(100, 100) && TraceButtonEdge(false, 100, 100)
+    }
+    if test_case == 3 { return TraceClick(300, 100) }
+    if test_case == 4 { return TraceClick(100, 180) }
+    if test_case == 5 {
+        ClearFocus()
+        return TraceKeyTap(SDL_SCANCODE_TAB)
+    }
+    if test_case == 6 { return TraceKeyTap(SDL_SCANCODE_RETURN) }
+    if test_case == 7 { return TraceKeyTap(SDL_SCANCODE_SPACE) }
+    if test_case == 8 {
+        SetFocus(102)
+        return TraceKeyTap(SDL_SCANCODE_RETURN)
+    }
+    if test_case == 9 {
+        SetFocus(103)
+        return TraceKeyTap(SDL_SCANCODE_SPACE)
+    }
+    return false
+}
+
+TraceCheck :: (test_case: i32) -> bool {
+    expected_normal: i32 = 1
+    if test_case >= 6 { expected_normal = 2 }
+    if test_case >= 7 { expected_normal = 3 }
+    if trace_normal != expected_normal || trace_disabled != 0 ||
+    trace_loading != 0 {
+        fprintf(stderr,
+        "Interaction case %d failed: normal=%d disabled=%d loading=%d expected normal=%d\n",
+        test_case, trace_normal, trace_disabled, trace_loading,
+        expected_normal)
+        return false
+    }
+    if test_case == 5 && GetFocus() != 101 {
+        fprintf(stderr, "Tab focus failed: got %d, expected 101\n", GetFocus())
+        return false
+    }
+    fprintf(stdout, "Interaction case %d passed\n", test_case)
+    return true
+}
+
+TraceAfterFrame :: () {
+    if trace_wait > 0 {
+        if trace_key_release != 0 {
+            if !TraceKeyEdge(false, trace_key_release) {
+                puts("Could not release injected key")
+                exit(1)
+            }
+            trace_key_release = 0
+        }
+        trace_wait -= 1
+        return
+    }
+    if trace_case > 0 && !TraceCheck(trace_case - 1) { exit(1) }
+    if trace_case == 10 {
+        puts("Button interaction trace passed all 10 cases")
+        trace_done = true
+        return
+    }
+    if !TraceInject(trace_case) {
+        fprintf(stderr, "Could not inject interaction case %d\n", trace_case)
+        exit(1)
+    }
+    trace_case += 1
+    trace_wait = 2
+}
+
+ButtonInteractionTrace :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        normal: ButtonProps = {0}
+        normal.bounds = (Rectangle){40, 80, 160, 48}
+        normal.id = 101
+        normal.label = "Enabled"
+        normal.tone = ButtonToneAccent
+        if Button(normal) { trace_normal += 1 }
+
+        disabled: ButtonProps = normal
+        disabled.bounds = (Rectangle){230, 80, 160, 48}
+        disabled.id = 102
+        disabled.label = "Disabled"
+        disabled.disabled = true
+        if Button(disabled) { trace_disabled += 1 }
+
+        loading: ButtonProps = normal
+        loading.bounds = (Rectangle){40, 160, 160, 48}
+        loading.id = 103
+        loading.label = "Loading"
+        loading.loading = true
+        if Button(loading) { trace_loading += 1 }
+    }
+}

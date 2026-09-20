@@ -1,0 +1,74 @@
+#module "tree_frame"
+#import "ui_internal.h"
+#import "ui/tree_layout.h"
+#import "ui/tree_input.h"
+#import "ui/tree_paint.h"
+#import "ui/accessibility.h"
+#import "accessibility_internal.h"
+
+ui_tree_trace_enabled :: i32 = -1 #global
+ui_tree_trace_frame :: unsigned long #global
+
+EndTree :: () #export {
+    start: f64 = GetTime()
+    if ui_tree_trace_enabled < 0 {
+        ui_tree_trace_enabled = getenv("KRYON_FRAME_TRACE") != nil
+    }
+    ui_tree_building = 0
+    ui_tree_stack_depth = 0
+    keep_committed: bool = ui_tree_build_activation &&
+    ui_committed_node_count > 0 &&
+    ui_tree_node_count < ui_committed_node_count
+    if keep_committed {
+        ui_tree_node_count = 0
+        ui_tree_build_activation = 0
+    } else {
+        ReconcileTree()
+    }
+    reconcile: f64 = GetTime()
+    LayoutTree()
+    layout: f64 = GetTime()
+    if !keep_committed { RouteInput() }
+    input: f64 = GetTime()
+    UpdateTree()
+    update: f64 = GetTime()
+    DrawTree()
+    index: i32 = 0
+    while index < ui_accessibility_active_count {
+        ui_accessibility_request_clear(&ui_accessibility_active[index])
+        index += 1
+    }
+    ui_accessibility_active_count = 0
+    ui_accessibility_activation = 0
+    ui_accessibility_building = 0
+    if ui_accessibility_publish_requested() {
+        count: i32 = GetAccessibilitySnapshot(nil, 0)
+        nodes: *AccessibilityNode = nil
+        if count > 0 {
+            nodes = (AccessibilityNode*)malloc(
+            (size_t)count * sizeof(AccessibilityNode))
+        }
+        if count == 0 || nodes != nil {
+            GetAccessibilitySnapshot(nodes, count)
+            ui_accessibility_dispatch_snapshot(nodes, count)
+            free(nodes)
+        }
+    }
+    Overlays()
+    draw: f64 = GetTime()
+    ui_tree_trace_frame += 1
+    if ui_tree_trace_enabled &&
+    (ui_tree_trace_frame % 120 == 0 ||
+    (input - layout) * 1e6 >= 1000.0 ||
+    (draw - start) * 1e6 >= 4000.0) {
+        fprintf(stderr,
+        "{\"kryon_frame\":true,\"frame\":%lu,\"nodes\":%d,\"reconcile_us\":%.1f,\"layout_us\":%.1f,\"input_us\":%.1f,\"update_us\":%.1f,\"draw_us\":%.1f,\"total_us\":%.1f}\n",
+        ui_tree_trace_frame, ui_committed_node_count,
+        (reconcile - start) * 1e6,
+        (layout - reconcile) * 1e6,
+        (input - layout) * 1e6,
+        (update - input) * 1e6,
+        (draw - update) * 1e6,
+        (draw - start) * 1e6)
+    }
+}

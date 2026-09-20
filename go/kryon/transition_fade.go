@@ -3,180 +3,89 @@ package kryon
 
 // #import transition_props
 func TransitionFade_TransitionClampProgress(value float32) float32 {
-	var value_0 float32 = value
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if value < 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = value
-	var value_5 float32 = 1.0
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 float32 = 1.0
-		return value_7
+	if value > 1.0 {
+		return 1.0
 	}
-	var value_8 float32 = value
-	return value_8
+	return value
 }
 
 func TransitionFade_TransitionSmoothProgress(value float32) float32 {
-	var value_0 float32 = value
-	var value_1 float32 = TransitionFade_TransitionClampProgress(value_0)
-	value = value_1
-	var value_2 float32 = value
-	var value_3 float32 = value
-	var value_4 float32 = value_2 * value_3
-	var value_5 float32 = 3.0
-	var value_6 float32 = 2.0
-	var value_7 float32 = value
-	var value_8 float32 = value_6 * value_7
-	var value_9 float32 = value_5 - value_8
-	var value_10 float32 = value_4 * value_9
-	return value_10
+	var value_0 float32 = TransitionFade_TransitionClampProgress(value)
+	value = value_0
+	return ((value * value) * (3.0 - (2.0 * value)))
 }
 
 func TransitionFade_TransitionDuration(duration_seconds float32) float32 {
-	var value_0 float32 = duration_seconds
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 0.001
-		return value_3
+	if duration_seconds <= 0.0 {
+		return 0.001
 	}
-	var value_4 float32 = duration_seconds
-	return value_4
+	return duration_seconds
 }
 
 func TransitionFade_TransitionDelta(delta_seconds float32) float32 {
-	var value_0 float32 = delta_seconds
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 float32 = 0.0
-		return value_3
+	if delta_seconds < 0.0 {
+		return 0.0
 	}
-	var value_4 float32 = delta_seconds
-	return value_4
+	return delta_seconds
 }
 
 func TransitionFade_TransitionReverseElapsed(duration_seconds float32, elapsed_seconds float32) float32 {
-	var value_0 float32 = duration_seconds
-	var value_1 float32 = elapsed_seconds
-	var value_2 float32 = value_0 - value_1
-	var elapsed float32 = value_2
-	var value_3 float32 = elapsed
-	var value_4 float32 = 0.0
-	var value_5 bool = value_3 < value_4
-	if value_5 {
-		var value_6 float32 = 0.0
-		return value_6
+	var elapsed float32 = (duration_seconds - elapsed_seconds)
+	if elapsed < 0.0 {
+		return 0.0
 	}
-	var value_7 float32 = elapsed
-	return value_7
+	return elapsed
 }
 
 func TransitionFade_TransitionAlpha(active bool, phase int32, elapsed_seconds float32, duration_seconds float32) float32 {
-	var value_0 bool = active
-	var value_1 bool = !value_0
-	var value_2 bool = value_1
-	if !value_2 {
-		var value_3 float32 = duration_seconds
-		var value_4 float32 = 0.0
-		var value_5 bool = value_3 <= value_4
-		value_2 = value_5
+	var value_0 bool = !active
+	if !value_0 {
+		value_0 = (duration_seconds <= 0.0)
 	}
-	if value_2 {
-		var value_6 float32 = 0.0
-		return value_6
+	if value_0 {
+		return 0.0
 	}
-	var value_7 float32 = elapsed_seconds
-	var value_8 float32 = duration_seconds
-	var value_9 float32 = value_7 / value_8
-	var value_10 float32 = TransitionFade_TransitionSmoothProgress(value_9)
-	var progress float32 = value_10
-	var value_11 int32 = phase
-	var value_12 int32 = int32(TransitionOut)
-	var value_13 bool = value_11 == value_12
-	if value_13 {
-		var value_14 float32 = progress
-		return value_14
+	var value_1 float32 = (elapsed_seconds / duration_seconds)
+	var value_2 float32 = TransitionFade_TransitionSmoothProgress(value_1)
+	var progress float32 = value_2
+	if phase == int32(TransitionOut) {
+		return progress
 	}
-	var value_15 int32 = phase
-	var value_16 int32 = int32(TransitionIn)
-	var value_17 bool = value_15 == value_16
-	if value_17 {
-		var value_18 float32 = 1.0
-		var value_19 float32 = progress
-		var value_20 float32 = value_18 - value_19
-		return value_20
+	if phase == int32(TransitionIn) {
+		return (1.0 - progress)
 	}
-	var value_21 float32 = 0.0
-	return value_21
+	return 0.0
 }
 
 func TransitionFade_TransitionFadeAlphaByte(active bool, phase int32, elapsed_seconds float32, duration_seconds float32) int32 {
-	var value_0 bool = active
-	var value_1 int32 = phase
-	var value_2 float32 = elapsed_seconds
-	var value_3 float32 = duration_seconds
-	var value_4 float32 = TransitionFade_TransitionAlpha(value_0, value_1, value_2, value_3)
-	var value_5 float32 = 255.0
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	var alpha int32 = value_7
-	var value_8 int32 = alpha
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		return value_11
+	var value_0 float32 = TransitionFade_TransitionAlpha(active, phase, elapsed_seconds, duration_seconds)
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64((value_0*255.0)), 32, true)), uint64(0), 32, true, 0))
+	var alpha int32 = value_1
+	if alpha < 0 {
+		return 0
 	}
-	var value_12 int32 = alpha
-	var value_13 int32 = 255
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = 255
-		return value_15
+	if alpha > 255 {
+		return 255
 	}
-	var value_16 int32 = alpha
-	return value_16
+	return alpha
 }
 
 func TransitionFade_TransitionApplyAlpha(color_alpha int32, fade_alpha int32) int32 {
-	var value_0 int32 = fade_alpha
-	var value_1 int32 = 0
-	var value_2 bool = value_0 < value_1
-	if value_2 {
-		var value_3 int32 = 0
-		fade_alpha = value_3
+	if fade_alpha < 0 {
+		fade_alpha = 0
 	}
-	var value_4 int32 = fade_alpha
-	var value_5 int32 = 255
-	var value_6 bool = value_4 > value_5
-	if value_6 {
-		var value_7 int32 = 255
-		fade_alpha = value_7
+	if fade_alpha > 255 {
+		fade_alpha = 255
 	}
-	var value_8 int32 = color_alpha
-	var value_9 int32 = 0
-	var value_10 bool = value_8 < value_9
-	if value_10 {
-		var value_11 int32 = 0
-		color_alpha = value_11
+	if color_alpha < 0 {
+		color_alpha = 0
 	}
-	var value_12 int32 = color_alpha
-	var value_13 int32 = 255
-	var value_14 bool = value_12 > value_13
-	if value_14 {
-		var value_15 int32 = 255
-		color_alpha = value_15
+	if color_alpha > 255 {
+		color_alpha = 255
 	}
-	var value_16 int32 = color_alpha
-	var value_17 int32 = fade_alpha
-	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 3))
-	var value_19 int32 = 255
-	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 4))
-	return value_20
+	var value_0 int32 = int32(number_runtime_bits(uint64((int32(number_runtime_bits(uint64(color_alpha), uint64(fade_alpha), 32, true, 3)))), uint64(255), 32, true, 4))
+	return value_0
 }

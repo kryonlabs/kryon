@@ -26,7 +26,13 @@ def run(*command, cwd=ROOT):
 
 C_DRIVER = '''#include "widget_instances.h"
 #include "widget_instance_calls.h"
-#include "toolkit_store.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "ui/widget_store.h"
+#ifdef __cplusplus
+}
+#endif
 #include <assert.h>
 static int count(uint64_t key, int amount) {
     CounterProps props = {key, amount};

@@ -114,25 +114,19 @@ InfoIndicatorMetrics :: struct {
     diameter: i32
 }
 
+InfoIndicatorPaint :: struct {
+    bounds: Rectangle
+    hit: Rectangle
+    radius: i32
+    fill: u32
+    stroke: u32
+    text: u32
+    font: i32
+}
+
 ButtonInfoBounds :: struct {
     bounds: Rectangle
     diameter: i32
-}
-
-ButtonFallbackPolicy :: struct {
-    radius: float
-    disabled_background_alpha: u8
-    disabled_foreground_alpha: u8
-    fallback_border_lighten: i32
-    hover_border_lighten: i32
-    pressed_background_darken: i32
-    hover_background_lighten: i32
-    termi_border_lighten: i32
-    termi_hover_border_lighten: i32
-    outline_width: float
-    outline_alpha: u8
-    outline_adjust: i32
-    outline_white: bool
 }
 
 ButtonSplitLayout :: struct {
@@ -168,6 +162,7 @@ SwatchPaint :: struct {
     text_color: u32
     label_x: float
     radius: float
+    swatch_roundness: float
     border_width: float
     focus_width: float
     show_focus: bool
@@ -260,6 +255,37 @@ InfoIndicatorMetricsFor :: (requested_diameter: i32, scale: float,
     return metrics
 }
 
+InfoGlyphSizeFor :: (diameter: i32, styled_size: i32) -> i32 #export {
+    minimum: i32 = diameter * 3 / 5
+    if styled_size < minimum { return minimum }
+    return styled_size
+}
+
+InfoIndicatorPaintFor :: (center_x: i32, center_y: i32,
+    metrics: InfoIndicatorMetrics, face: StyleFrame,
+    fallback_font: i32) -> InfoIndicatorPaint #export {
+    paint: InfoIndicatorPaint
+    diameter: i32 = metrics.diameter
+    paint.radius = diameter / 2
+    paint.bounds.x = (float)(center_x - paint.radius)
+    paint.bounds.y = (float)(center_y - paint.radius)
+    paint.bounds.width = (float)diameter
+    paint.bounds.height = (float)diameter
+    hit_diameter: i32 = diameter
+    if hit_diameter < metrics.min_touch { hit_diameter = metrics.min_touch }
+    paint.hit.x = (float)(center_x - hit_diameter / 2)
+    paint.hit.y = (float)(center_y - hit_diameter / 2)
+    paint.hit.width = (float)hit_diameter
+    paint.hit.height = (float)hit_diameter
+    paint.fill = face.value.background
+    paint.stroke = face.value.border
+    paint.text = face.value.foreground
+    styled_font: i32 = ResolveFont(0,
+        StyleFontValue(face.value.fields, face.value.font_size), fallback_font)
+    paint.font = InfoGlyphSizeFor(diameter, styled_font)
+    return paint
+}
+
 ButtonInfoBoundsFor :: (declared: Rectangle, scale: float,
     face: StyleFrame) -> ButtonInfoBounds #export {
     result: ButtonInfoBounds
@@ -273,40 +299,6 @@ ButtonInfoBoundsFor :: (declared: Rectangle, scale: float,
     if result.bounds.width <= 0.0 { result.bounds.width = (float)result.diameter }
     if result.bounds.height <= 0.0 { result.bounds.height = (float)result.diameter }
     return result
-}
-
-ButtonFallbackPolicyFor :: (hovered: bool, pressed: bool, disabled: bool,
-    cues: bool, termi: bool) -> ButtonFallbackPolicy #export {
-    policy: ButtonFallbackPolicy
-    policy.radius = 0.06
-    policy.disabled_background_alpha = (u8)120
-    policy.disabled_foreground_alpha = (u8)150
-    policy.fallback_border_lighten = 32
-    policy.hover_border_lighten = cues ? 54 : 40
-    policy.pressed_background_darken = 18
-    policy.hover_background_lighten = 6
-    policy.termi_border_lighten = 58
-    policy.termi_hover_border_lighten = 78
-    policy.outline_width = hovered || pressed ? 2.0 : 1.0
-    policy.outline_alpha = (u8)255
-    policy.outline_adjust = 36
-    if disabled {
-        policy.outline_adjust = -45
-    } else if pressed {
-        policy.outline_adjust = 0
-        policy.outline_white = true
-    } else if hovered {
-        policy.outline_adjust = 72
-    }
-    return policy
-}
-
-ButtonDrawRadiusFor :: (fields: u32, radius: float,
-    fallback: ButtonFallbackPolicy) -> float #export {
-    if (fields & (u32)StyleRadius) == (u32)0 || radius < 0.0 {
-        return fallback.radius
-    }
-    return radius
 }
 
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {
@@ -324,8 +316,20 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
 
-    half_w: float = spec.bounds.width * 0.5
-    half_h: float = spec.bounds.height * 0.5
+    swatch_inset: float = 5.0 * scale
+    max_inset: float = spec.bounds.width / 6.0
+    if spec.bounds.height / 6.0 < max_inset {
+        max_inset = spec.bounds.height / 6.0
+    }
+    if max_inset < 0.0 { max_inset = 0.0 }
+    if swatch_inset > max_inset { swatch_inset = max_inset }
+    inner: Rectangle
+    inner.x = spec.bounds.x + swatch_inset
+    inner.y = spec.bounds.y + swatch_inset
+    inner.width = spec.bounds.width - 2.0 * swatch_inset
+    inner.height = spec.bounds.height - 2.0 * swatch_inset
+    half_w: float = inner.width * 0.5
+    half_h: float = inner.height * 0.5
     inset: float = spec.face.value.padding_x
     if (spec.face.value.fields & (u32)StylePaddingX) == (u32)0 ||
        inset < 0.0 {
@@ -336,20 +340,31 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     focus_width: float = spec.face.value.border_width
 
     paint.bounds = spec.bounds
-    paint.checker_base = spec.bounds
-    paint.checker_a.x = spec.bounds.x
-    paint.checker_a.y = spec.bounds.y
+    paint.checker_base = inner
+    paint.checker_a.x = inner.x
+    paint.checker_a.y = inner.y
     paint.checker_a.width = half_w
     paint.checker_a.height = half_h
-    paint.checker_b.x = spec.bounds.x + half_w
-    paint.checker_b.y = spec.bounds.y + half_h
+    paint.checker_b.x = inner.x + half_w
+    paint.checker_b.y = inner.y + half_h
     paint.checker_b.width = half_w
     paint.checker_b.height = half_h
-    paint.swatch = spec.bounds
+    paint.swatch = inner
     paint.focus_bounds = spec.bounds
     paint.swatch_color = spec.color
     paint.label_x = spec.bounds.x + inset
     paint.radius = spec.face.value.radius
+    swatch_diameter: float = inner.width
+    if inner.height < swatch_diameter { swatch_diameter = inner.height }
+    if swatch_diameter > 0.0 {
+        swatch_radius: float = paint.radius * scale
+        if swatch_radius < 0.0 { swatch_radius = 0.0 }
+        max_swatch_radius: float = swatch_diameter * 0.08
+        if swatch_radius > max_swatch_radius {
+            swatch_radius = max_swatch_radius
+        }
+        paint.swatch_roundness = 2.0 * swatch_radius / swatch_diameter
+    }
     paint.border_width = border_width
     paint.focus_width = focus_width
 

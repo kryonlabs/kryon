@@ -1,0 +1,901 @@
+#module "slider_host"
+#import "ui_internal.h"
+#import "ui_style_internal.h"
+#import "runtime/input.h"
+#import "runtime/slider.h"
+#import "runtime/style.h"
+#import "ui/paint_command.h"
+#import "ui/widget_store.h"
+#import "ui/widget_input.h"
+#import "ui_popup_input_internal.h"
+#import "ui/numeric_edit.h"
+#import "stdio.h"
+#import "math.h"
+
+ui_draw_slider_label :: (bounds: Rectangle, label: const char*,
+class_name: i32) #export {
+    if !IsWindowReady() || label == nil { return }
+    frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+    StyleKindSlider(), SliderLabelRole())
+    style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(frame).value)
+    font: i32 = ResolveFont(0, StyleFontValue(style.fields,
+    style.font_size), GetSmallFontSize())
+    scale: float = (float)Scale(1000) / 1000.0
+    paint: SliderTextPaint = SliderLabelTextPaintFor(bounds,
+    SliderLabelInsetForStyle(frame, scale), font,
+    SliderLabelGapForStyle(frame, scale))
+    RenderText(label, (int)paint.text_x, (int)paint.text_y,
+    font, Fade(style.foreground, style.opacity))
+}
+
+ui_slider_ratio :: (token: i32, focus_id: i32,
+bounds: Rectangle, disabled: i32, vertical: i32,
+ratio: *float) -> i32 #export {
+    toolkit: *ToolkitStore = toolkit_store_current()
+    mouse: Vector2 = ui_mouse_world()
+    disabled = disabled || ContentDisabled()
+    hot: i32 = !disabled && ui_hot(bounds)
+    pressed: i32 = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
+    decision: SliderRatioDecision = SliderRatioDecisionFor(
+    toolkit->slider_active != 0, toolkit->slider_active == token,
+    hot, disabled != 0,
+    toolkit->slider_active != 0 &&
+    ui_popup_input_owner_captures(toolkit->slider_owner),
+    pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0)
+    if decision.clear_active { toolkit->slider_active = 0 }
+    if hot { MarkClickable() }
+    if decision.start_active {
+        toolkit->slider_active = token
+        toolkit->slider_owner = ui_popup_input_owner()
+        if focus_id > 0 { SetFocus(focus_id) }
+    }
+    if decision.update_ratio {
+        span: float = vertical != 0 ? bounds.height : bounds.width
+        position: float = vertical != 0 ?
+        bounds.y + bounds.height - mouse.y : mouse.x - bounds.x
+        *ratio = SliderPointerRatio(position, 0.0, span, false)
+        if decision.finish_active { toolkit->slider_active = 0 }
+        return 1
+    }
+    if decision.finish_active { toolkit->slider_active = 0 }
+    return 0
+}
+
+SliderKeyboardEnabled :: (focus_id: i32) -> i32 {
+    return focus_id > 0 && SliderKeyboardShouldRun(
+    IsFocusActive(focus_id) != 0,
+    IsKeyboardInputEnabled() != 0,
+    ui_popup_input_focus_captures(focus_id) != 0)
+}
+
+SliderKeyboardDirectionNow :: (vertical: i32) -> i32 {
+    return SliderKeyboardDirectionFor(vertical != 0,
+    IsKeyPressed(KEY_UP) != 0,
+    IsKeyPressed(KEY_DOWN) != 0,
+    IsKeyPressed(KEY_RIGHT) != 0,
+    IsKeyPressed(KEY_LEFT) != 0)
+}
+
+ui_update_slider_continuous_keyboard :: (focus_id: i32,
+vertical: i32, minimum: float, maximum: float,
+value: *float) -> i32 #export {
+    if !SliderKeyboardEnabled(focus_id) { return 0 }
+    step: SliderStep = SliderKeyboardValue(*value, minimum, maximum,
+    SliderKeyboardDirectionNow(vertical),
+    IsKeyPressed(KEY_HOME) != 0,
+    IsKeyPressed(KEY_END) != 0,
+    IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+    IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+    if !step.changed { return 0 }
+    *value = step.value
+    return 1
+}
+
+ui_update_slider_discrete_keyboard :: (focus_id: i32,
+vertical: i32, minimum: i32, maximum: i32,
+value: *i32) -> i32 #export {
+    if !SliderKeyboardEnabled(focus_id) { return 0 }
+    step: SliderDiscreteStep = SliderDiscreteKeyboardValue(
+    *value, minimum, maximum, SliderKeyboardDirectionNow(vertical),
+    IsKeyPressed(KEY_HOME) != 0,
+    IsKeyPressed(KEY_END) != 0,
+    IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+    IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+    if !step.changed { return 0 }
+    *value = step.value
+    return 1
+}
+
+ui_draw_slider_cell :: (cell: Rectangle, ratio: float,
+text: const char*, disabled: i32, vertical: i32,
+focused: i32, class_name: i32) #export {
+    if !IsWindowReady() { return }
+    mouse: Vector2 = ui_mouse_world()
+    hovered: i32 = CheckCollisionPointRec(mouse, cell) &&
+    !disabled && !InputCapturesClick(mouse)
+    state: ButtonState = disabled != 0 ? ButtonStateDisabled :
+    (focused != 0 ? ButtonStateFocus :
+    (hovered != 0 ? ButtonStateHover : ButtonStateNormal))
+    track: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, disabled, 0, class_name,
+    StyleKindSlider(), SliderTrackRole())
+    active: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneAccent, state, disabled, 1, class_name,
+    StyleKindSlider(), SliderFillRole())
+    thumb: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneAccent, state, disabled, 1, class_name,
+    StyleKindSliderThumb(), StyleAny())
+    label: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, state, disabled, 0, class_name,
+    StyleKindSlider(), SliderLabelRole())
+    label_style: Style = ui_unpack_style(
+    ui_style_apply_effects_frame(label).value)
+    label_font: i32 = ResolveFont(0, StyleFontValue(
+    label_style.fields, label_style.font_size), GetSmallFontSize())
+    scale: float = (float)Scale(1000) / 1000.0
+    text_paint: SliderTextPaint = SliderCellTextPaintFor(
+    cell, SliderLabelInsetForStyle(label, scale),
+    (float)TextLineHeight(label_font))
+    spec: SliderSpec = (SliderSpec){0}
+    spec.bounds = cell
+    spec.ratio = ratio
+    spec.vertical = vertical != 0
+    spec.active = focused
+    spec.hovered = hovered
+    spec.disabled = disabled
+    spec.scale = scale
+    spec.track = track
+    spec.active_track = active
+    spec.thumb = thumb
+    SliderDrawPaint(SliderPaintFor(spec), hovered,
+    focused, disabled)
+    if text != nil {
+        RenderText(text, (int)text_paint.text_x,
+        (int)text_paint.text_y, label_font,
+        Fade(label_style.foreground, label_style.opacity))
+    }
+    if focused { RenderFocus(cell) }
+}
+
+ui_update_slider_continuous :: (slider: SliderContinuousProps,
+vertical: i32) -> i32 #export {
+    if slider.values == nil || slider.value_count <= 0 { return 0 }
+    changed: i32 = 0
+    index: i32 = 0
+    while index < slider.value_count {
+        focus_id: i32 = ui_numeric_focus_id(slider.id, index, 0)
+        cell: Rectangle = SliderCellBoundsFor(slider.bounds,
+        slider.value_count, index)
+        ratio: float = SliderRatio(slider.values[index],
+        slider.min, slider.max)
+        enabled: i32 = !slider.disabled && !ContentDisabled()
+        editing: i32 = 0
+        if enabled && focus_id > 0 { RegisterFocus(focus_id, cell) }
+        changed |= ui_numeric_temp_edit(cell,
+        NUMERIC_EDIT_SLIDER_FLOAT, slider.id, index, focus_id,
+        &slider.values[index], slider.format, slider.disabled,
+        0, &editing)
+        if !editing {
+            if enabled && ui_update_slider_continuous_keyboard(
+            focus_id, vertical, slider.min, slider.max,
+            &slider.values[index]) {
+                ratio = SliderRatio(slider.values[index],
+                slider.min, slider.max)
+                changed = 1
+            }
+            if slider.max > slider.min && ui_slider_ratio(
+            SliderFocusIdFor(slider.id, index, false), focus_id,
+            cell, slider.disabled, vertical, &ratio) {
+                value: float = SliderValue(slider.min, slider.max, ratio)
+                if value != slider.values[index] {
+                    slider.values[index] = value
+                    changed = 1
+                }
+            }
+        }
+        index += 1
+    }
+    return changed
+}
+
+ui_update_slider_discrete :: (slider: SliderDiscreteProps,
+vertical: i32) -> i32 #export {
+    if slider.values == nil || slider.value_count <= 0 { return 0 }
+    changed: i32 = 0
+    index: i32 = 0
+    while index < slider.value_count {
+        focus_id: i32 = ui_numeric_focus_id(slider.id, index, 1)
+        cell: Rectangle = SliderCellBoundsFor(slider.bounds,
+        slider.value_count, index)
+        ratio: float = SliderDiscreteRatio(slider.values[index],
+        slider.min, slider.max)
+        enabled: i32 = !slider.disabled && !ContentDisabled()
+        editing: i32 = 0
+        if enabled && focus_id > 0 { RegisterFocus(focus_id, cell) }
+        changed |= ui_numeric_temp_edit(cell, NUMERIC_EDIT_SLIDER_INT,
+        slider.id, index, focus_id, &slider.values[index],
+        slider.format, slider.disabled, 1, &editing)
+        if !editing {
+            if enabled && ui_update_slider_discrete_keyboard(
+            focus_id, vertical, slider.min, slider.max,
+            &slider.values[index]) {
+                ratio = SliderDiscreteRatio(slider.values[index],
+                slider.min, slider.max)
+                changed = 1
+            }
+            if slider.max > slider.min && ui_slider_ratio(
+            SliderFocusIdFor(slider.id, index, true), focus_id,
+            cell, slider.disabled, vertical, &ratio) {
+                value: i32 = SliderDiscreteValue(slider.min,
+                slider.max, ratio)
+                if value != slider.values[index] {
+                    slider.values[index] = value
+                    changed = 1
+                }
+            }
+        }
+        index += 1
+    }
+    return changed
+}
+
+ui_paint_slider_continuous :: (slider: SliderContinuousProps,
+vertical: i32) #export {
+    if !IsWindowReady() || slider.values == nil ||
+    slider.value_count <= 0 { return }
+    slider.disabled |= ContentDisabled()
+    index: i32 = 0
+    while index < slider.value_count {
+        cell: Rectangle = SliderCellBoundsFor(slider.bounds,
+        slider.value_count, index)
+        ratio: float = SliderRatio(slider.values[index],
+        slider.min, slider.max)
+        text: [64]char
+        focus_id: i32 = ui_numeric_focus_id(slider.id, index, 0)
+        state: *NumericInputState = ui_numeric_input_find(
+        NUMERIC_EDIT_SLIDER_FLOAT, slider.id, index)
+        if state == nil || !state->focused {
+            focused: i32 = !slider.disabled && focus_id > 0 &&
+            IsFocusActive(focus_id) &&
+            !ui_popup_input_focus_captures(focus_id)
+            format: const char* = slider.format
+            if format == nil { format = InputDefaultFormat(NumericFloat) }
+            snprintf(&text[0], sizeof(text), format,
+            slider.values[index])
+            ui_draw_slider_cell(cell, ratio, &text[0],
+            slider.disabled, vertical, focused, slider.class_name)
+        }
+        index += 1
+    }
+    ui_draw_slider_label(slider.bounds, slider.label,
+    slider.class_name)
+}
+
+ui_paint_slider_discrete :: (slider: SliderDiscreteProps,
+vertical: i32) #export {
+    if !IsWindowReady() || slider.values == nil ||
+    slider.value_count <= 0 { return }
+    slider.disabled |= ContentDisabled()
+    index: i32 = 0
+    while index < slider.value_count {
+        cell: Rectangle = SliderCellBoundsFor(slider.bounds,
+        slider.value_count, index)
+        ratio: float = SliderDiscreteRatio(slider.values[index],
+        slider.min, slider.max)
+        text: [64]char
+        focus_id: i32 = ui_numeric_focus_id(slider.id, index, 1)
+        state: *NumericInputState = ui_numeric_input_find(
+        NUMERIC_EDIT_SLIDER_INT, slider.id, index)
+        if state == nil || !state->focused {
+            focused: i32 = !slider.disabled && focus_id > 0 &&
+            IsFocusActive(focus_id) &&
+            !ui_popup_input_focus_captures(focus_id)
+            format: const char* = slider.format
+            if format == nil { format = InputDefaultFormat(NumericInt) }
+            snprintf(&text[0], sizeof(text), format,
+            slider.values[index])
+            ui_draw_slider_cell(cell, ratio, &text[0],
+            slider.disabled, vertical, focused, slider.class_name)
+        }
+        index += 1
+    }
+    ui_draw_slider_label(slider.bounds, slider.label,
+    slider.class_name)
+}
+
+SliderValueAt :: (slider: SliderProps, index: i32) -> double {
+    if slider.angle {
+        return slider.float_value != nil ?
+        *slider.float_value * 57.29577951308232 : 0
+    }
+    if InputKindIsInt(slider.kind) {
+        return slider.int_values != nil ? slider.int_values[index] : 0
+    }
+    return slider.float_values != nil ? slider.float_values[index] : 0
+}
+
+SliderFormatValue :: (slider: SliderProps, value: double,
+text: *char, size: size_t) {
+    if slider.value_format != nil {
+        scale: double = slider.value_scale != 0 ?
+        slider.value_scale : 1
+        snprintf(text, size, slider.value_format, value * scale)
+    } else if InputKindIsInt(slider.kind) && !slider.angle {
+        format: const char* = slider.format
+        if format == nil { format = "%d" }
+        snprintf(text, size, format, (int)value)
+    } else {
+        format: const char* = slider.format
+        if format == nil { format = "%.3f" }
+        snprintf(text, size, format, value)
+    }
+}
+
+SliderHeaderStyle :: (slider: SliderProps) -> Style {
+    frame: StyleFrame = WidgetFrameForClassRole(
+    ButtonToneNeutral, slider.disabled != 0 ?
+    ButtonStateDisabled : ButtonStateNormal,
+    slider.disabled, 0, slider.class_name,
+    StyleKindSlider(), SliderLabelRole())
+    return ui_unpack_style(ui_style_apply_effects_frame(frame).value)
+}
+
+SliderWidgetLayout :: (slider: SliderProps) -> SliderLayout {
+    style: Style = SliderHeaderStyle(slider)
+    font: i32 = ResolveFont(0, StyleFontValue(style.fields,
+    style.font_size), GetFontSize())
+    line_height: float = TextLineHeight(font)
+    scale: float = (float)Scale(1000) / 1000.0
+    value_width: float = 0
+    text: [96]char
+    index: i32 = -2
+    while index < slider.value_count {
+        value: double = index == -2 ? slider.min :
+        (index == -1 ? slider.max : SliderValueAt(slider, index))
+        SliderFormatValue(slider, value, &text[0], sizeof(text))
+        value_width = fmaxf(value_width, TextWidth(&text[0], font))
+        line_height = fmaxf(line_height, TextHeight(&text[0], font))
+        index += 1
+    }
+    label_width: float = slider.value_count > 1 ?
+    slider.bounds.width : fmaxf(1, slider.bounds.width -
+    value_width - Scale(12))
+    label_height: float = 0
+    if slider.label != nil && slider.label[0] != '\0' {
+        label_height = MeasureSelectableTextBlock(slider.label,
+        (int)label_width, font, 0)
+        label_height = fmaxf(label_height,
+        TextHeight(slider.label, font))
+    }
+    return SliderLayoutFor(slider.bounds, line_height,
+    label_height, value_width, scale,
+    slider.value_count > 1, slider.vertical,
+    slider.step_buttons && slider.value_count == 1,
+    slider.show_limits)
+}
+
+ui_slider_bounds :: (slider: SliderProps) -> Rectangle #export {
+    return SliderWidgetLayout(slider).bounds
+}
+
+ui_update_slider :: (slider: SliderProps) -> i32 #export {
+    if (slider.angle && slider.float_value == nil) ||
+    (!slider.angle && InputKindIsInt(slider.kind) &&
+    slider.int_values == nil) ||
+    (!slider.angle && !InputKindIsInt(slider.kind) &&
+    slider.float_values == nil) { return 0 }
+    layout: SliderLayout = SliderWidgetLayout(slider)
+    changed: i32 = 0
+    if slider.angle {
+        angle: SliderAngleProps = (SliderAngleProps){0}
+        angle.bounds = layout.track
+        angle.id = slider.id
+        angle.value = slider.float_value
+        angle.min_degrees = (float)slider.min
+        angle.max_degrees = (float)slider.max
+        angle.format = slider.format
+        angle.disabled = slider.disabled
+        angle.class_name = slider.class_name
+        changed = ui_update_slider_angle(angle)
+    } else if InputKindIsInt(slider.kind) {
+        discrete: SliderDiscreteProps = (SliderDiscreteProps){0}
+        discrete.bounds = layout.track
+        discrete.id = slider.id
+        discrete.values = slider.int_values
+        discrete.value_count = slider.value_count
+        discrete.min = (int)slider.min
+        discrete.max = (int)slider.max
+        discrete.format = slider.format
+        discrete.disabled = slider.disabled
+        discrete.class_name = slider.class_name
+        changed = ui_update_slider_discrete(discrete, slider.vertical)
+    } else {
+        continuous: SliderContinuousProps = (SliderContinuousProps){0}
+        continuous.bounds = layout.track
+        continuous.id = slider.id
+        continuous.values = slider.float_values
+        continuous.value_count = slider.value_count
+        continuous.min = (float)slider.min
+        continuous.max = (float)slider.max
+        continuous.format = slider.format
+        continuous.disabled = slider.disabled
+        continuous.class_name = slider.class_name
+        changed = ui_update_slider_continuous(continuous,
+        slider.vertical)
+    }
+    if layout.decrement.width > 0 {
+        integer: i32 = InputKindIsInt(slider.kind) && !slider.angle
+        state: *NumericInputState = ui_numeric_input_state(
+        integer != 0 ? NUMERIC_EDIT_SLIDER_INT :
+        NUMERIC_EDIT_SLIDER_FLOAT, slider.id, 0)
+        value: double = SliderValueAt(slider, 0)
+        decrement_props: ButtonProps = (ButtonProps){0}
+        decrement_props.id = state->token + 1
+        decrement_props.bounds = layout.decrement
+        decrement_props.label = "-"
+        decrement_props.circle = 1
+        decrement_props.tone = ButtonToneNeutral
+        decrement_props.emphasis = ButtonEmphasisSoft
+        decrement_props.disabled = slider.disabled ||
+        value <= slider.min || slider.max <= slider.min
+        increment_props: ButtonProps = (ButtonProps){0}
+        increment_props.id = state->token + 2
+        increment_props.bounds = layout.increment
+        increment_props.label = "+"
+        increment_props.circle = 1
+        increment_props.tone = ButtonToneNeutral
+        increment_props.emphasis = ButtonEmphasisSoft
+        increment_props.disabled = slider.disabled ||
+        value >= slider.max || slider.max <= slider.min
+        decrement: i32 = Button(decrement_props)
+        increment: i32 = Button(increment_props)
+        direction: i32 = increment - decrement
+        if direction != 0 {
+            step: double = integer != 0 ? 1 :
+            (slider.max - slider.min) / 100
+            next: double = fmax(slider.min,
+            fmin(slider.max, value + direction * step))
+            if slider.angle {
+                *slider.float_value = (float)(next *
+                0.017453292519943295)
+            } else if integer {
+                slider.int_values[0] = (int)next
+            } else {
+                slider.float_values[0] = (float)next
+            }
+            changed |= next != value
+        }
+    }
+    return changed
+}
+
+ui_paint_slider :: (slider: SliderProps) #export {
+    if !IsWindowReady() { return }
+    layout: SliderLayout = SliderWidgetLayout(slider)
+    style: Style = SliderHeaderStyle(slider)
+    font: i32 = ResolveFont(0, StyleFontValue(style.fields,
+    style.font_size), GetFontSize())
+    color: Color = Fade(style.foreground, style.opacity)
+    if slider.label != nil && slider.label[0] != '\0' {
+        ui_paint_text_box(slider.label, layout.label, font, color,
+        TextWrapAuto, TextAlignStart, TextAlignStart, 0, 0)
+    }
+    index: i32 = 0
+    while index < slider.value_count {
+        cell: Rectangle = SliderCellBoundsFor(layout.track,
+        slider.value_count, index)
+        integer: i32 = InputKindIsInt(slider.kind) && !slider.angle
+        focus_id: i32 = ui_numeric_focus_id(slider.id,
+        index, integer)
+        focused: i32 = !slider.disabled && focus_id > 0 &&
+        IsFocusActive(focus_id) &&
+        !ui_popup_input_focus_captures(focus_id)
+        state: *NumericInputState = ui_numeric_input_find(
+        integer != 0 ? NUMERIC_EDIT_SLIDER_INT :
+        NUMERIC_EDIT_SLIDER_FLOAT, slider.id, index)
+        value: double = SliderValueAt(slider, index)
+        ratio: float = SliderRatio((float)value,
+        (float)slider.min, (float)slider.max)
+        if state == nil || !state->focused {
+            ui_draw_slider_cell(cell, ratio, nil,
+            slider.disabled, slider.vertical, focused,
+            slider.class_name)
+        }
+        value_bounds: Rectangle = layout.value
+        if slider.value_count > 1 {
+            value_bounds.x = cell.x
+            value_bounds.width = cell.width
+        }
+        text: [96]char
+        SliderFormatValue(slider, value, &text[0], sizeof(text))
+        ui_paint_text_box(&text[0], value_bounds, font, color,
+        TextWrapNone, TextAlignEnd, TextAlignStart, 0, 0)
+        index += 1
+    }
+    if slider.show_limits {
+        text: [96]char
+        SliderFormatValue(slider, slider.min, &text[0],
+        sizeof(text))
+        ui_paint_text_box(&text[0], layout.limits, font, color,
+        TextWrapNone, TextAlignStart, TextAlignStart, 0, 0)
+        SliderFormatValue(slider, slider.max, &text[0],
+        sizeof(text))
+        ui_paint_text_box(&text[0], layout.limits, font, color,
+        TextWrapNone, TextAlignEnd, TextAlignStart, 0, 0)
+    }
+}
+
+ui_update_slider_angle :: (slider: SliderAngleProps) -> i32 #export {
+    if slider.value == nil { return 0 }
+    degrees: float = *slider.value * 57.295779513082320876
+    value_slider: SliderContinuousProps = (SliderContinuousProps){0}
+    value_slider.bounds = slider.bounds
+    value_slider.id = slider.id
+    value_slider.label = slider.label
+    value_slider.values = &degrees
+    value_slider.value_count = 1
+    value_slider.min = slider.min_degrees
+    value_slider.max = slider.max_degrees
+    value_slider.format = slider.format
+    value_slider.disabled = slider.disabled
+    value_slider.class_name = slider.class_name
+    changed: i32 = ui_update_slider_continuous(value_slider, 0)
+    if changed {
+        *slider.value = degrees * 0.01745329251994329577
+    }
+    return changed
+}
+
+ui_paint_slider_angle :: (slider: SliderAngleProps) #export {
+    if slider.value == nil { return }
+    degrees: float = *slider.value * 57.295779513082320876
+    value_slider: SliderContinuousProps = (SliderContinuousProps){0}
+    value_slider.bounds = slider.bounds
+    value_slider.id = slider.id
+    value_slider.label = slider.label
+    value_slider.values = &degrees
+    value_slider.value_count = 1
+    value_slider.min = slider.min_degrees
+    value_slider.max = slider.max_degrees
+    value_slider.format = slider.format
+    value_slider.disabled = slider.disabled
+    value_slider.class_name = slider.class_name
+    ui_paint_slider_continuous(value_slider, 0)
+}
+
+SliderDrawPaint :: (paint: SliderPaint, hovered: i32,
+active: i32, disabled: i32) {
+    track_frame: StyleFrame = ui_style_apply_effects_frame(paint.track)
+    track_style: Style = ui_unpack_style(track_frame.value)
+    active_frame: StyleFrame = ui_style_apply_effects_frame(
+    paint.active_track)
+    active_style: Style = ui_unpack_style(active_frame.value)
+    ui_draw_material(paint.track_bounds, (Rectangle){0},
+    track_style.background, track_style.border,
+    track_style.border, track_style.radius,
+    track_style.border_width,
+    hovered != 0 ? 1.0 : 0.0, active != 0 ? 1.0 : 0.0,
+    disabled, track_style.focus, 0.0,
+    track_style.opacity,
+    ui_style_apply_effects_fill(track_frame.fill),
+    track_style.material)
+    if paint.active_bounds.width > 0.0 &&
+    paint.active_bounds.height > 0.0 {
+        ui_draw_material(paint.active_bounds, paint.track_bounds,
+        active_style.background, active_style.border,
+        active_style.border, active_style.radius,
+        active_style.border_width,
+        hovered != 0 ? 1.0 : 0.0, active != 0 ? 1.0 : 0.0,
+        disabled, active_style.focus, 0.0,
+        active_style.opacity,
+        ui_style_apply_effects_fill(active_frame.fill),
+        active_style.material)
+    }
+    if FancyEffectsEnabled() &&
+    (active != 0 || hovered != 0) && paint.glow_radius > 0.0 {
+        DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+        paint.glow_radius, GetColor(paint.glow_color))
+    }
+    if FancyEffectsEnabled() {
+        DrawCircle((int)paint.thumb_shadow_x,
+        (int)paint.thumb_shadow_y,
+        paint.thumb_shadow_radius,
+        GetColor(paint.thumb_shadow_color))
+    }
+    DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+    paint.thumb_radius, GetColor(paint.thumb_fill_color))
+    if FancyEffectsEnabled() {
+        DrawCircle((int)paint.thumb_highlight_x,
+        (int)paint.thumb_highlight_y,
+        paint.thumb_highlight_radius,
+        GetColor(paint.thumb_highlight_color))
+    }
+    DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
+    paint.thumb_radius, GetColor(paint.thumb_edge_color))
+}
+
+SliderStyleFrameRoleKind :: (tone: ButtonTone, state: ButtonState,
+disabled: i32, kind: i32, role: i32) -> StyleFrame {
+    props: ButtonProps = (ButtonProps){0}
+    props.tone = tone
+    props.disabled = disabled
+    return ui_control_style_frame_role_kind(props, state,
+    0, 0.0, 0.0, 0.0, kind, role)
+}
+
+SliderTrackFrame :: (tone: ButtonTone, state: ButtonState,
+disabled: i32) -> StyleFrame {
+    return SliderStyleFrameRoleKind(tone, state, disabled,
+    StyleKindSlider(), SliderTrackRole())
+}
+
+SliderFillFrame :: (tone: ButtonTone, state: ButtonState,
+disabled: i32) -> StyleFrame {
+    return SliderStyleFrameRoleKind(tone, state, disabled,
+    StyleKindSlider(), SliderFillRole())
+}
+
+SliderThumbFrame :: (tone: ButtonTone, state: ButtonState,
+disabled: i32) -> StyleFrame {
+    return SliderStyleFrameRoleKind(tone, state, disabled,
+    StyleKindSliderThumb(), StyleAny())
+}
+
+ui_render_slider :: (id: i32, x: i32, y: i32, w: i32,
+label: const char*, min: i32, max: i32, value: *i32,
+suffix: const char*, value_text_override: const char*) -> i32 #export {
+    editor_id: [96]char
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    metric_track_frame: StyleFrame = SliderTrackFrame(
+    ButtonToneNeutral, ButtonStateNormal, ContentDisabled())
+    metric_thumb_frame: StyleFrame = SliderThumbFrame(
+    ButtonToneAccent, ButtonStateNormal, ContentDisabled())
+    layout: SliderEditorLayout = SliderHorizontalEditorLayoutFor(
+    x, y, w, ui_touch_target_min(), runtime_scale,
+    metric_track_frame, metric_thumb_frame)
+    editor_bounds: Rectangle = layout.editor_bounds
+    mouse_world: Vector2 = ui_mouse_world()
+    mouse_x: i32 = (int)mouse_world.x
+    label_font: i32 = GetFontSize()
+    value_font: i32 = GetFontSize()
+    changed: i32 = 0
+    can_draw: i32 = IsWindowReady()
+    value_text: [48]char
+    hit: Rectangle = layout.hit_bounds
+
+    widget: Widget = BeginWidget("Slider",
+    ui_inspect_control_id(editor_id, sizeof(editor_id),
+    "Slider", id, label),
+    editor_bounds, WidgetFlagMovable | WidgetFlagResizable)
+    editor_bounds = widget.bounds
+    x = (int)editor_bounds.x
+    y = (int)editor_bounds.y
+    w = (int)editor_bounds.width
+    layout = SliderHorizontalEditorLayoutFor(
+    x, y, w, ui_touch_target_min(), runtime_scale,
+    metric_track_frame, metric_thumb_frame)
+    editor_bounds = layout.editor_bounds
+    hit = layout.hit_bounds
+    WidgetSetBounds(&widget, editor_bounds)
+
+    pointer_decision: SliderPointerDecision = SliderPointerDecisionFor(
+    g_ui_slider_active_id == id,
+    CheckCollisionPointRec(mouse_world, hit) != 0,
+    InputCapturesClick(mouse_world) != 0,
+    ui_input_captures_click_internal(mouse_world, 0) ||
+    (ui_pointer_dragged_this_click() &&
+    g_ui_pointer_owner != POINTER_OWNER_HORIZONTAL_SLIDER),
+    IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false,
+    g_ui_pointer_owner == POINTER_OWNER_NONE,
+    g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER,
+    g_ui_pointer_dragging != 0,
+    ui_pointer_drag_is_horizontal() != 0)
+    if pointer_decision.clear_active { g_ui_slider_active_id = 0 }
+    if value_text_override != nil {
+        snprintf(value_text, sizeof(value_text),
+        "%s", value_text_override)
+    } else {
+        if suffix == nil { suffix = "" }
+        snprintf(value_text, sizeof(value_text),
+        "%d%s", *value, suffix)
+    }
+    if can_draw != 0 {
+        label_frame: StyleFrame = SliderStyleFrameRoleKind(
+        ButtonToneNeutral, ButtonStateNormal, 0,
+        StyleKindSlider(), SliderLabelRole())
+        label_style: Style = ui_unpack_style(
+        ui_style_apply_effects_frame(label_frame).value)
+        label_font = ResolveFont(0,
+        StyleFontValue(label_style.fields, label_style.font_size),
+        label_font)
+        value_font = label_font
+        label_color: Color = Fade(
+        label_style.foreground, label_style.opacity)
+        RenderText(label, x, y, label_font, label_color)
+        RenderText(value_text,
+        x + w - TextWidth(value_text, value_font),
+        y, value_font, label_color)
+    }
+    if pointer_decision.hovered {
+        MarkClickable()
+        if pointer_decision.start_active {
+            g_ui_slider_active_id = id
+        }
+    }
+    if pointer_decision.take_horizontal_owner {
+        g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER
+    }
+    if pointer_decision.cancel_active {
+        g_ui_slider_active_id = 0
+    }
+    if pointer_decision.update_value {
+        old_value: i32 = *value
+        *value = SliderDiscretePointerValue(
+        (float)mouse_x, (float)x, (float)w, min, max, false)
+        changed = *value != old_value
+    }
+    if pointer_decision.finish_active {
+        g_ui_slider_active_id = 0
+    }
+    ratio: float = 0.0
+    if max > min {
+        ratio = (float)(*value - min) / (float)(max - min)
+    }
+    if can_draw != 0 {
+        active: i32 = g_ui_slider_active_id == id
+        hovered: i32 = pointer_decision.hovered
+        state: ButtonState = ButtonStateNormal
+        if active != 0 {
+            state = ButtonStatePressed
+        } else if hovered != 0 {
+            state = ButtonStateHover
+        }
+        spec: SliderSpec = (SliderSpec){0}
+        spec.bounds = layout.paint_bounds
+        spec.ratio = ratio
+        spec.vertical = false
+        spec.active = active != 0
+        spec.hovered = hovered != 0
+        spec.disabled = ContentDisabled()
+        spec.scale = runtime_scale
+        spec.track = SliderTrackFrame(
+        ButtonToneNeutral, state, ContentDisabled())
+        spec.active_track = SliderFillFrame(
+        ButtonToneAccent, state, ContentDisabled())
+        spec.thumb = SliderThumbFrame(
+        ButtonToneAccent, state, ContentDisabled())
+        SliderDrawPaint(SliderPaintFor(spec), hovered,
+        active, ContentDisabled())
+    }
+    EndWidget(&widget)
+    return changed
+}
+
+SliderVerticalVisual :: (id: i32, x: i32, y: i32, h: i32,
+min: i32, max: i32, value: *i32, active_visual: i32,
+callback: SliderMarkCallback, callback_user_data: *void) -> i32 {
+    editor_id: [96]char
+    runtime_scale: float = (float)Scale(1000) / 1000.0
+    metric_track_frame: StyleFrame = SliderTrackFrame(
+    ButtonToneNeutral, ButtonStateNormal, ContentDisabled())
+    metric_thumb_frame: StyleFrame = SliderThumbFrame(
+    ButtonToneAccent, ButtonStateNormal, ContentDisabled())
+    layout: SliderEditorLayout = SliderVerticalEditorLayoutFor(
+    x, y, h, ui_touch_target_min(), runtime_scale,
+    metric_track_frame, metric_thumb_frame)
+    editor_bounds: Rectangle = layout.editor_bounds
+    mouse_world: Vector2 = ui_mouse_world()
+    mouse_y: i32 = (int)mouse_world.y
+    changed: i32 = 0
+    hit: Rectangle = layout.hit_bounds
+
+    widget: Widget = BeginWidget("Slider",
+    ui_inspect_control_id(editor_id, sizeof(editor_id),
+    "Slider", id, nil),
+    editor_bounds, WidgetFlagMovable | WidgetFlagResizable)
+    editor_bounds = widget.bounds
+    x = SliderEditorCenterX(editor_bounds)
+    y = (int)editor_bounds.y
+    h = (int)editor_bounds.height
+    layout = SliderVerticalEditorLayoutFor(
+    x, y, h, ui_touch_target_min(), runtime_scale,
+    metric_track_frame, metric_thumb_frame)
+    editor_bounds = layout.editor_bounds
+    hit = layout.hit_bounds
+    WidgetSetBounds(&widget, editor_bounds)
+
+    pointer_decision: SliderPointerDecision = SliderPointerDecisionFor(
+    g_ui_slider_active_id == id,
+    CheckCollisionPointRec(mouse_world, hit) != 0,
+    InputCapturesClick(mouse_world) != 0,
+    ui_input_captures_click_internal(mouse_world, 0) ||
+    (ui_pointer_dragged_this_click() &&
+    g_ui_pointer_owner != POINTER_OWNER_VERTICAL_SLIDER),
+    IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, true,
+    g_ui_pointer_owner == POINTER_OWNER_NONE,
+    g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER,
+    g_ui_pointer_dragging != 0,
+    ui_pointer_drag_is_horizontal() != 0)
+    if pointer_decision.clear_active {
+        g_ui_slider_active_id = 0
+    }
+    if callback != nil {
+        callback(callback_user_data, x, y, h, min, max, *value)
+    }
+    if pointer_decision.hovered {
+        MarkClickable()
+        if pointer_decision.start_active {
+            g_ui_slider_active_id = id
+            if pointer_decision.set_pointer_owner {
+                g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER
+            }
+        }
+    }
+    if pointer_decision.update_value {
+        old_value: i32 = *value
+        *value = SliderDiscretePointerValue(
+        (float)mouse_y, (float)y, (float)h,
+        min, max, true)
+        changed = *value != old_value
+    }
+    if pointer_decision.finish_active {
+        g_ui_slider_active_id = 0
+    }
+    ratio: float = 0.0
+    if max > min {
+        ratio = (float)(*value - min) / (float)(max - min)
+    }
+    active: i32 = active_visual || g_ui_slider_active_id == id
+    hovered: i32 = pointer_decision.hovered
+    state: ButtonState = ButtonStateNormal
+    if active != 0 {
+        state = ButtonStatePressed
+    } else if hovered != 0 {
+        state = ButtonStateHover
+    }
+    spec: SliderSpec = (SliderSpec){0}
+    spec.bounds = layout.paint_bounds
+    spec.ratio = ratio
+    spec.vertical = true
+    spec.active = active != 0
+    spec.hovered = hovered != 0
+    spec.disabled = ContentDisabled()
+    spec.scale = runtime_scale
+    spec.track = SliderTrackFrame(
+    ButtonToneNeutral, state, ContentDisabled())
+    spec.active_track = SliderFillFrame(
+    ButtonToneAccent, state, ContentDisabled())
+    spec.thumb = SliderThumbFrame(
+    ButtonToneAccent, state, ContentDisabled())
+    SliderDrawPaint(SliderPaintFor(spec), hovered,
+    active, ContentDisabled())
+    EndWidget(&widget)
+    return changed
+}
+
+ui_render_vertical_slider :: (id: i32, x: i32, y: i32, h: i32,
+min: i32, max: i32, value: *i32) -> i32 #export {
+    return SliderVerticalVisual(
+    id, x, y, h, min, max, value, 0, nil, nil)
+}
+
+ui_render_vertical_slider_active :: (id: i32, x: i32, y: i32,
+h: i32, min: i32, max: i32, value: *i32) -> i32 #export {
+    return SliderVerticalVisual(
+    id, x, y, h, min, max, value, 1, nil, nil)
+}
+
+ui_render_vertical_slider_with_marks :: (id: i32, x: i32,
+y: i32, h: i32, min: i32, max: i32, value: *i32,
+callback: SliderMarkCallback,
+callback_user_data: *void) -> i32 #export {
+    return SliderVerticalVisual(id, x, y, h, min, max,
+    value, 0, callback, callback_user_data)
+}

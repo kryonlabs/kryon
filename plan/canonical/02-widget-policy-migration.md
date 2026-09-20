@@ -3,8 +3,9 @@
 C/Go policy generation and canonical names are established. The remaining task
 is an implementation inventory, not another API rename.
 
-- Audit branches and defaults in `src/ui/ui.c`, `src/ui/ui_tk.c`,
-  `src/ui/ui_text.c`, and `src/ui/ui_text_layout.c`.
+- Audit branches and defaults in `src/ui/frame.kry`, `src/ui/text_field.kry`, `src/ui/text_area.kry`, `src/ui/menu_host.kry`,
+  `src/ui/table_view.kry`, `src/ui/slider.kry`, `src/ui/drag.kry`,
+  `src/ui/ui_text.c`, and `src/ui/text_layout.kry`.
 - Include handwritten `go/kryon/runtime.go` in the active inventory. Retain
   `web/kryon-runtime.js` only as historical input for the future web target.
   Generated policy files existing beside hosts is insufficient.

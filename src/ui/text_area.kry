@@ -1,0 +1,673 @@
+#module "text_area_host"
+#import "ui_internal.h"
+#import "ui/text_state.h"
+#import "ui/text_selection.h"
+#import "ui/text_surface.h"
+#import "ui/syntax_paint.h"
+#import "ui/focus.h"
+#import "ui/cursor.h"
+#import "ui/text_focus.h"
+#import "ui/text_context.h"
+#import "ui/text_editor.h"
+#import "runtime/text_input.h"
+
+text_area_last_click_id :: i32 #global
+text_area_last_click_owner :: *i32 #global
+text_area_last_click_x :: i32 #global
+text_area_last_click_y :: i32 #global
+text_area_last_click_time :: f64 #global
+
+ui_text_area_cursor_at_point :: (area: TextAreaProps,
+mouse_x: i32, mouse_y: i32) -> i32 #export {
+    style: TextInputAppearance = ui_resolve_text_input_appearance(
+    (TextInputAppearance){0}, StyleKindTextArea(), area.class_name)
+    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
+    style, StyleKindTextArea(), area.class_name, 0)
+    wrap_width: i32 = TextAreaWrapWidthFor(area.bounds.width,
+    metrics.padding_x, area.wrap != 0,
+    TextAreaMinWrapWidth((float)Scale(1000) / 1000.0))
+    scroll_y: i32 = 0
+    if area.scroll_y != nil { scroll_y = *area.scroll_y }
+    return ui_text_area_cursor_from_point(area.text,
+    metrics.font, metrics.line_gap, wrap_width,
+    (int)area.bounds.x + metrics.padding_x,
+    (int)area.bounds.y + metrics.padding_y,
+    mouse_x, mouse_y, scroll_y)
+}
+
+ui_text_area_reveal_cursor :: (area: TextAreaProps,
+cursor: i32) #export {
+    if area.text == nil || area.scroll_y == nil { return }
+    style: TextInputAppearance = ui_resolve_text_input_appearance(
+    (TextInputAppearance){0}, StyleKindTextArea(), area.class_name)
+    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
+    style, StyleKindTextArea(), area.class_name, 0)
+    wrap_width: i32 = TextAreaWrapWidthFor(area.bounds.width,
+    metrics.padding_x, area.wrap != 0,
+    TextAreaMinWrapWidth((float)Scale(1000) / 1000.0))
+    viewport_h: i32 = (int)area.bounds.height -
+    metrics.padding_y * 2
+    if viewport_h <= 0 { return }
+    content_h: i32 = ui_text_area_content_height(area.text,
+    metrics.font, metrics.line_gap, wrap_width,
+    area.content_version, 1)
+    max_scroll: i32 = TextAreaMaxScrollFor(content_h,
+    area.bounds.height, metrics.padding_y)
+    scroll_y: i32 = TextAreaScrollFor(*area.scroll_y,
+    max_scroll)
+    cursor_h: i32 = TextLineHeight(metrics.font)
+    cursor_y: i32 = ui_text_area_cursor_y(area.text, cursor,
+    metrics.font, metrics.line_gap, wrap_width, &cursor_h)
+    scroll_y = TextAreaRevealScroll(scroll_y, cursor_y,
+    cursor_h, viewport_h)
+    *area.scroll_y = TextAreaScrollFor(scroll_y, max_scroll)
+}
+
+PaintTextAreaInternal :: (area: TextAreaProps, cursor: i32,
+focused: i32, selection_start: i32, selection_end: i32,
+composition_start: i32, composition_end: i32) {
+    if area.text == nil { return }
+    requested_style: TextInputAppearance = (TextInputAppearance){0}
+    style: TextInputAppearance = ui_resolve_text_input_appearance(
+    requested_style, StyleKindTextArea(), area.class_name)
+    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
+    style, StyleKindTextArea(), area.class_name, 0)
+    scroll_y: i32 = 0
+    if area.scroll_y != nil { scroll_y = *area.scroll_y }
+    min_wrap_width: i32 = TextAreaMinWrapWidth(
+    (float)Scale(1000) / 1000.0)
+    wrap_width: i32 = TextAreaWrapWidthFor(area.bounds.width,
+    metrics.padding_x, area.wrap != 0, min_wrap_width)
+    content_h: i32 = ui_text_area_content_height(area.text,
+    metrics.font, metrics.line_gap, wrap_width,
+    area.content_version, 0)
+    paint: TextAreaPaint = TextAreaPaintFor(area.bounds,
+    metrics.font, metrics.line_gap, metrics.padding_x,
+    metrics.padding_y, area.wrap != 0, content_h,
+    scroll_y, TextLineHeight(metrics.font), min_wrap_width)
+    scroll_y = paint.scroll_y
+    wrap_width = paint.wrap_width
+    if area.scroll_y != nil { *area.scroll_y = scroll_y }
+    ui_text_input_surface(area.bounds, style, focused,
+    !area.read_only, area.focus_id, "TextArea",
+    requested_style, area.class_name)
+    ui_begin_world_clip(paint.clip_bounds)
+    if area.text[0] == '\0' && !focused &&
+    area.placeholder != nil {
+        RenderText(area.placeholder, paint.placeholder_x,
+        paint.placeholder_y, metrics.font, style.border)
+    } else {
+        ui_draw_text_area_text(area.text, cursor,
+        focused && !area.read_only, area.bounds,
+        metrics.font, metrics.line_gap, scroll_y,
+        wrap_width, area.syntax, style,
+        selection_start, selection_end,
+        composition_start, composition_end)
+    }
+    EndClip()
+}
+
+ui_paint_text_area :: (area: TextAreaProps, cursor: i32,
+focused: i32, selection_start: i32,
+selection_end: i32) #export {
+    PaintTextAreaInternal(area, cursor, focused,
+    selection_start, selection_end, 0, 0)
+}
+
+ui_paint_text_area_composition :: (area: TextAreaProps,
+cursor: i32, focused: i32, selection_start: i32,
+selection_end: i32, composition_start: i32,
+composition_end: i32) #export {
+    PaintTextAreaInternal(area, cursor, focused,
+    selection_start, selection_end,
+    composition_start, composition_end)
+}
+
+GetTextAreaSelection :: (focus_id: i32,
+start: *i32, end: *i32) -> i32 #export {
+    if start != nil { *start = 0 }
+    if end != nil { *end = 0 }
+    if focus_id <= 0 ||
+    g_ui_text_area_selection.id != focus_id { return 0 }
+    selection: TextSelectionRange = TextSelectionRangeFor(
+    g_ui_text_area_selection.anchor,
+    g_ui_text_area_selection.cursor)
+    if !selection.has_selection { return 0 }
+    if start != nil { *start = selection.start }
+    if end != nil { *end = selection.end }
+    return 1
+}
+
+SetTextAreaSelection :: (focus_id: i32, anchor: i32,
+cursor: i32) #export {
+    if focus_id <= 0 { return }
+    ui_text_selection_set(&g_ui_text_area_selection,
+    focus_id, nil, anchor, cursor, 0)
+}
+
+ui_text_area_render :: (area: TextAreaProps) -> i32 #export {
+    if area.text == nil || area.text_size == 0 ||
+    area.cursor_position == nil || area.focused == nil { return 0 }
+    editor_id: [96]char
+    changed: i32 = 0
+    context_active: i32 = 0
+    selection_start: i32 = 0
+    selection_end: i32 = 0
+    has_selection: i32 = 0
+    selection_key_handled: i32 = 0
+    double_clicked: i32 = 0
+    copy_pressed: i32 = 0
+    cut_pressed: i32 = 0
+    paste_pressed: i32 = 0
+    composition: TextCompositionView = (TextCompositionView){0}
+    composition_start: i32 = 0
+    composition_end: i32 = 0
+    style: TextInputAppearance = ui_resolve_text_input_appearance(
+    (TextInputAppearance){0}, StyleKindTextArea(), area.class_name)
+    area_edit: TextEdit = (TextEdit){0}
+    area_edit.text = area.text
+    area_edit.text_size = area.text_size
+    area_edit.cursor_position = area.cursor_position
+    area_edit.max_codepoints = area.max_codepoints
+    widget: Widget = BeginWidget("TextArea",
+    ui_inspect_control_id(editor_id, sizeof(editor_id),
+    "TextArea", area.focus_id, area.placeholder),
+    area.bounds, WidgetFlagMovable | WidgetFlagResizable)
+    area.bounds = widget.bounds
+    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
+    style, StyleKindTextArea(), area.class_name, 0)
+    font: i32 = metrics.font
+    line_gap: i32 = metrics.line_gap
+    padding_x: i32 = metrics.padding_x
+    padding_y: i32 = metrics.padding_y
+    line_h: i32 = TextLineHeight(font) + line_gap
+    wrap_width: i32 = TextAreaWrapWidthFor(area.bounds.width,
+    padding_x, area.wrap != 0,
+    TextAreaMinWrapWidth((float)Scale(1000) / 1000.0))
+    first_line_y: i32 = ControlTextBaselineY(
+    TextControlBaselineSample(),
+    (int)area.bounds.y + padding_y, line_h, font)
+    focused: i32 = *area.focused != 0
+    if !IsTextFocusOwner(area.focused) { focused = 0 }
+    scroll_y: i32 = 0
+    if area.scroll_y != nil { scroll_y = *area.scroll_y }
+    if area.focus_id > 0 && RegisterFocus(area.focus_id,
+    area.bounds) {
+        focused = 1
+        ClaimTextAreaFocus(area.focused)
+    }
+    mouse_world: Vector2 = ui_mouse_world()
+    mouse_inside: i32 = CheckCollisionPointRec(mouse_world, area.bounds)
+    captured: i32 = InputCapturesClick(mouse_world)
+    if mouse_inside && !captured { MarkTextCursor() }
+    drag_id: i32 = area.focus_id > 0 ? area.focus_id : 1
+    changed |= ui_text_context_take_changed(TEXT_CONTEXT_AREA,
+    drag_id, area.focused)
+    context_active = ui_text_context_matches(TEXT_CONTEXT_AREA,
+    drag_id, area.focused)
+    if context_active {
+        focused = 1
+        ClaimTextAreaFocus(area.focused)
+    }
+    if ui_text_context_open_for(TEXT_CONTEXT_AREA, drag_id,
+    area.focused, area.bounds, mouse_world, captured) {
+        focused = 1
+        ClaimTextAreaFocus(area.focused)
+        clicked_cursor: i32 = ui_text_area_cursor_from_point(
+        area.text, font, line_gap, wrap_width,
+        (int)area.bounds.x + padding_x,
+        (int)area.bounds.y + padding_y,
+        (int)mouse_world.x, (int)mouse_world.y, scroll_y)
+        current_start: i32 = 0
+        current_end: i32 = 0
+        if ui_text_selection_matches(g_ui_text_area_selection,
+        drag_id, area.focused) {
+            ui_selection_range(g_ui_text_area_selection,
+            area.text, &current_start, &current_end)
+        }
+        if clicked_cursor < current_start ||
+        clicked_cursor > current_end ||
+        current_end <= current_start {
+            *area.cursor_position = clicked_cursor
+            ui_text_selection_set(&g_ui_text_area_selection,
+            drag_id, area.focused,
+            clicked_cursor, clicked_cursor, 0)
+        }
+    }
+    if IsMouseButtonPressed(MOUSE_BUTTON_LEFT) {
+        if mouse_inside && !captured {
+            now: f64 = GetTime()
+            click_dx: i32 = (int)mouse_world.x - text_area_last_click_x
+            click_dy: i32 = (int)mouse_world.y - text_area_last_click_y
+            scale: float = (float)Scale(1000) / 1000.0
+            slop: i32 = TextInputDoubleClickSlopFor(scale)
+            g_ui_focus_pointer_claimed = 1
+            focused = 1
+            ClaimTextAreaFocus(area.focused)
+            g_ui_text_input_show_requested = 1
+            clicked_cursor: i32 = ui_text_area_cursor_from_point(
+            area.text, font, line_gap, wrap_width,
+            (int)area.bounds.x + padding_x,
+            (int)area.bounds.y + padding_y,
+            (int)mouse_world.x, (int)mouse_world.y, scroll_y)
+            *area.cursor_position = clicked_cursor
+            click_decision: TextInputDoubleClickDecision =
+            TextInputDoubleClickDecisionFor(
+            text_area_last_click_owner == area.focused,
+            text_area_last_click_id == drag_id,
+            (float)(now - text_area_last_click_time),
+            click_dx, click_dy, slop)
+            if click_decision.double_click {
+                line_start: i32 = 0
+                line_end: i32 = 0
+                if ui_text_area_select_line(area.text, clicked_cursor,
+                &line_start, &line_end) {
+                    ui_text_selection_set(&g_ui_text_area_selection,
+                    drag_id, area.focused, line_start, line_end, 0)
+                    *area.cursor_position = line_end
+                    double_clicked = 1
+                    g_ui_text_area_drag_id = 0
+                    g_ui_text_area_drag_owner = nil
+                }
+            }
+            if !double_clicked {
+                g_ui_text_area_drag_id = drag_id
+                g_ui_text_area_drag_owner = area.focused
+                ui_text_selection_set(&g_ui_text_area_selection,
+                drag_id, area.focused, *area.cursor_position,
+                *area.cursor_position, 1)
+            }
+            text_area_last_click_id = drag_id
+            text_area_last_click_owner = area.focused
+            text_area_last_click_x = (int)mouse_world.x
+            text_area_last_click_y = (int)mouse_world.y
+            text_area_last_click_time = now
+        } else if TextOutsideClickShouldBlur(focused,
+        context_active, g_ui_scroll_gesture_pending) {
+            focused = 0
+            ReleaseTextFocus(area.focused, area.focus_id)
+        }
+    }
+    if g_ui_text_area_drag_owner == area.focused &&
+    IsMouseButtonDown(MOUSE_BUTTON_LEFT) {
+        scroll_y = TextAreaDragScrollFor(scroll_y,
+        (int)mouse_world.y, area.bounds.y,
+        area.bounds.height, padding_y, line_h)
+        focused = 1
+        ClaimTextAreaFocus(area.focused)
+        *area.cursor_position = ui_text_area_cursor_from_point(
+        area.text, font, line_gap, wrap_width,
+        (int)area.bounds.x + padding_x,
+        (int)area.bounds.y + padding_y,
+        (int)mouse_world.x, (int)mouse_world.y, scroll_y)
+        if ui_text_selection_matches(g_ui_text_area_selection,
+        drag_id, area.focused) {
+            g_ui_text_area_selection.cursor = *area.cursor_position
+            g_ui_text_area_selection.dragging = 1
+        }
+    }
+    if g_ui_text_area_drag_owner == area.focused &&
+    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
+        g_ui_text_area_drag_id = 0
+        g_ui_text_area_drag_owner = nil
+        if ui_text_selection_matches(g_ui_text_area_selection,
+        drag_id, area.focused) {
+            g_ui_text_area_selection.dragging = 0
+        }
+    }
+    *area.focused = focused
+    SetFocusTextInputActive(focused && !area.read_only)
+    if TextEscapeShouldBlur(focused, IsKeyboardInputEnabled(),
+    IsKeyPressed(KEY_ESCAPE)) {
+        focused = 0
+        ReleaseTextFocus(area.focused, area.focus_id)
+        *area.focused = 0
+        SetFocusTextInputActive(0)
+    }
+    copy_pressed = IsKeyPressed(KEY_C)
+    cut_pressed = IsKeyPressed(KEY_X)
+    paste_pressed = IsKeyPressed(KEY_V)
+    enter_requested: i32 = focused && IsKeyboardInputEnabled() &&
+    (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+    g_ui_text_input_enter_count > 0)
+    has_selection = ui_text_selection_matches(
+    g_ui_text_area_selection, drag_id, area.focused)
+    if TextShortcutShouldClaimSelectionFocus(has_selection,
+    focused, IsKeyboardInputEnabled(), ui_mod_key_down(),
+    copy_pressed, cut_pressed, paste_pressed) {
+        focused = 1
+        ClaimTextAreaFocus(area.focused)
+        *area.focused = 1
+    }
+    if TextSelectionRangeShouldResolve(focused,
+    context_active, has_selection) {
+        range: TextSelectionRange = TextSelectionRangeForLength(
+        g_ui_text_area_selection.anchor,
+        g_ui_text_area_selection.cursor, (int)strlen(area.text))
+        selection_start = range.start
+        selection_end = range.end
+    }
+    anchor: i32 = *area.cursor_position
+    if has_selection { anchor = g_ui_text_area_selection.anchor }
+    composition_result: TextCompositionResult =
+    ui_text_composition_apply(area_edit, &anchor,
+    area.focused, focused,
+    area.read_only || !IsKeyboardInputEnabled(), 1)
+    changed |= composition_result.text_changed
+    if composition_result.selection_changed {
+        collapsed: TextSelectionState =
+        ui_text_selection_collapsed(*area.cursor_position)
+        ui_text_selection_set(&g_ui_text_area_selection,
+        drag_id, area.focused, anchor,
+        *area.cursor_position, 0)
+        has_selection = 1
+        selection_start = collapsed.anchor
+        selection_end = collapsed.cursor
+    }
+    if TextKeyboardShouldRun(focused, IsKeyboardInputEnabled()) {
+        shortcuts: TextShortcutInput = TextShortcutInputFor(
+        ui_mod_key_down(), IsKeyPressed(KEY_A),
+        IsKeyPressed(KEY_C), IsKeyPressed(KEY_X),
+        IsKeyPressed(KEY_V))
+        if shortcuts.select_all {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+            selection_end > selection_start, 0, 0,
+            area.text[0] != '\0', 1, !area.read_only,
+            !area.read_only)
+            if decision.select_all {
+                all: TextSelectionState = TextSelectionAll(
+                (int)strlen(area.text))
+                ui_text_selection_set(&g_ui_text_area_selection,
+                drag_id, area.focused, all.anchor, all.cursor, 0)
+                *area.cursor_position = all.cursor
+                selection_start = all.anchor
+                selection_end = all.cursor
+            }
+            selection_key_handled = 1
+        }
+        if shortcuts.copy {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandCopy(),
+            selection_end > selection_start, 0, 0,
+            area.text[0] != '\0', 1, !area.read_only,
+            !area.read_only)
+            if decision.copy_selection {
+                ui_text_copy_range(area.text,
+                selection_start, selection_end)
+            }
+            selection_key_handled |= decision.copy_selection
+        }
+        if shortcuts.cut {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandCut(),
+            selection_end > selection_start, 0, 0,
+            area.text[0] != '\0', !area.read_only,
+            !area.read_only, !area.read_only)
+            copied_selection: i32 = 0
+            if decision.copy_selection {
+                copied_selection = ui_text_copy_range(area.text,
+                selection_start, selection_end)
+            }
+            if decision.delete_selection && copied_selection &&
+            ui_text_delete_range(area.text, area.text_size,
+            area.cursor_position, selection_start, selection_end) {
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                drag_id, area.focused, *area.cursor_position, 0)
+                changed = 1
+            }
+            selection_key_handled |= decision.copy_selection ||
+            decision.delete_selection || decision.collapse_selection
+        }
+        if shortcuts.paste {
+            decision: TextContextCommandDecision =
+            TextEditCommandDecisionFor(TextContextCommandPaste(),
+            selection_end > selection_start, 0, 0,
+            area.text[0] != '\0', 1, !area.read_only,
+            !area.read_only)
+            if decision.delete_selection {
+                ui_text_delete_range(area.text, area.text_size,
+                area.cursor_position, selection_start, selection_end)
+            }
+            if decision.paste && ui_text_paste_clipboard(area_edit, 1) {
+                changed = 1
+            }
+            if decision.collapse_selection {
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                drag_id, area.focused, *area.cursor_position, 0)
+            }
+            selection_key_handled |= decision.delete_selection ||
+            decision.paste || decision.collapse_selection
+        }
+        if TextDeleteShortcutShouldRun(area.read_only,
+        IsKeyPressed(KEY_BACKSPACE), IsKeyPressed(KEY_DELETE),
+        g_ui_text_input_backspace_count) {
+            anchor = *area.cursor_position
+            if has_selection { anchor = g_ui_text_area_selection.anchor }
+            backspace_count: i32 = g_ui_text_input_backspace_count +
+            ui_backspace_repeat_count()
+            delete_count: i32 = IsKeyPressed(KEY_DELETE) ? 1 : 0
+            while backspace_count > 0 {
+                changed |= ui_text_delete_key(area.text, area.text_size,
+                &anchor, area.cursor_position, TextDeleteBackspace(),
+                ui_mod_key_down(), 0)
+                backspace_count -= 1
+            }
+            while delete_count > 0 {
+                changed |= ui_text_delete_key(area.text, area.text_size,
+                &anchor, area.cursor_position, TextDeleteForward(),
+                ui_mod_key_down(), 0)
+                delete_count -= 1
+            }
+            ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+            drag_id, area.focused, *area.cursor_position, 0)
+            g_ui_text_input_backspace_count = 0
+            selection_key_handled = 1
+        }
+        if ui_mod_key_down() &&
+        (copy_pressed || cut_pressed || paste_pressed) {
+            selection_key_handled = 1
+        }
+        if TextSelectionReplacementShouldRun(area.read_only,
+        selection_key_handled, selection_end > selection_start,
+        ui_mod_key_down()) {
+            inserted: i32 = 0
+            deleted_selection: i32 = 0
+            codepoint: i32 = GetCharPressed()
+            while codepoint > 0 {
+                if !deleted_selection {
+                    ui_text_delete_range(area.text, area.text_size,
+                    area.cursor_position, selection_start, selection_end)
+                    deleted_selection = 1
+                }
+                if ui_text_insert_codepoint(area.text, area.text_size,
+                area.cursor_position, codepoint, area.max_codepoints) {
+                    changed = 1
+                }
+                inserted = 1
+                codepoint = GetCharPressed()
+            }
+            index: i32 = 0
+            while index < g_ui_text_input_codepoint_count {
+                codepoint = g_ui_text_input_codepoints[index]
+                if !deleted_selection {
+                    ui_text_delete_range(area.text, area.text_size,
+                    area.cursor_position, selection_start, selection_end)
+                    deleted_selection = 1
+                }
+                if ui_text_insert_codepoint(area.text, area.text_size,
+                area.cursor_position, codepoint, area.max_codepoints) {
+                    changed = 1
+                }
+                inserted = 1
+                index += 1
+            }
+            if g_ui_text_input_codepoint_count > 0 {
+                g_ui_text_input_codepoint_count = 0
+            }
+            if enter_requested {
+                if !deleted_selection {
+                    ui_text_delete_range(area.text, area.text_size,
+                    area.cursor_position, selection_start, selection_end)
+                    deleted_selection = 1
+                }
+                if ui_text_insert_newline(area.text, area.text_size,
+                area.cursor_position, area.max_codepoints) {
+                    changed = 1
+                }
+                g_ui_text_input_enter_count = 0
+                enter_requested = 0
+                inserted = 1
+            }
+            if inserted {
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                drag_id, area.focused, *area.cursor_position, 0)
+                selection_key_handled = 1
+            }
+        }
+        if TextNavigationShouldRun(selection_key_handled) {
+            shift: i32 = IsKeyDown(KEY_LEFT_SHIFT) ||
+            IsKeyDown(KEY_RIGHT_SHIFT)
+            cursor: i32 = *area.cursor_position
+            anchor = cursor
+            navigation: TextNavigationInput = (TextNavigationInput){0}
+            navigation.text = area.text
+            navigation.area = &area
+            navigation.font = font
+            navigation.key = ui_text_navigation_key(1)
+            navigation.shift = shift
+            navigation.modifier = ui_mod_key_down()
+            if ui_text_selection_matches(g_ui_text_area_selection,
+            drag_id, area.focused) {
+                anchor = g_ui_text_area_selection.anchor
+            }
+            if ui_text_navigate(navigation, &anchor, &cursor) {
+                range: TextSelectionRange = TextSelectionRangeForLength(
+                anchor, cursor, (int)strlen(area.text))
+                *area.cursor_position = cursor
+                ui_text_selection_set(&g_ui_text_area_selection,
+                drag_id, area.focused, anchor, cursor, 0)
+                selection_start = range.start
+                selection_end = range.end
+                selection_key_handled = 1
+            }
+        }
+        if TextNativeEditShouldRun(area.read_only,
+        selection_key_handled) { changed |= EditText(area_edit) }
+        if TextAreaEnterNewlineShouldRun(area.read_only,
+        enter_requested) {
+            if ui_text_insert_newline(area.text, area.text_size,
+            area.cursor_position, area.max_codepoints) { changed = 1 }
+            g_ui_text_input_enter_count = 0
+        }
+        if TextAreaChangedShouldCollapseSelection(changed,
+        selection_key_handled) &&
+        !g_ui_text_area_selection.dragging {
+            ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+            drag_id, area.focused, *area.cursor_position, 0)
+        }
+    } else {
+        text_len: i32 = (int)strlen(area.text)
+        *area.cursor_position = TextCursorForLength(
+        *area.cursor_position, text_len)
+    }
+    if ui_text_selection_matches(g_ui_text_area_selection,
+    drag_id, area.focused) {
+        ui_selection_range(g_ui_text_area_selection,
+        area.text, &selection_start, &selection_end)
+    } else {
+        collapsed: TextSelectionState =
+        ui_text_selection_collapsed(*area.cursor_position)
+        selection_start = collapsed.anchor
+        selection_end = collapsed.cursor
+    }
+    committed_selection_start: i32 = selection_start
+    committed_selection_end: i32 = selection_end
+    display_text: const char* = area.text
+    display_cursor: i32 = *area.cursor_position
+    preedit: const char* = nil
+    preedit_cursor: i32 = 0
+    preedit_selection_length: i32 = 0
+    if ui_text_composition_get(area.focused, &preedit,
+    &preedit_cursor, &preedit_selection_length) &&
+    ui_text_composition_view(area.text,
+    selection_start, selection_end, preedit,
+    preedit_cursor, preedit_selection_length, &composition) {
+        display_text = composition.text
+        display_cursor = composition.cursor
+        selection_start = composition.selection_start
+        selection_end = composition.selection_end
+        composition_start = composition.composition_start
+        composition_end = composition.composition_end
+    }
+    ui_text_context_register_target(TEXT_CONTEXT_AREA, drag_id,
+    area.focused, area.text, area.text_size,
+    area.cursor_position, area.max_codepoints, nil, nil,
+    &g_ui_text_area_selection, committed_selection_start,
+    committed_selection_end, 1, 0, area.read_only)
+    content_h: i32 = ui_text_area_content_height(display_text,
+    font, line_gap, wrap_width,
+    composition.text != nil ? 0 : area.content_version, changed)
+    max_scroll: i32 = TextAreaMaxScrollFor(content_h,
+    area.bounds.height, padding_y)
+    scrollbar_w: i32 = 0
+    if TextAreaScrollbarShouldShow(area.scroll_y != nil,
+    max_scroll) {
+        scrollbar_w = TextAreaScrollbarWidthFor(
+        (float)Scale(1000) / 1000.0)
+    }
+    if TextAreaWheelShouldScroll(mouse_inside, captured,
+    ui_mod_key_down()) {
+        scroll_y = TextAreaWheelScrollFor(scroll_y,
+        GetMouseWheelMove(), line_h)
+    }
+    reveal_cursor: i32 = TextAreaRevealCursorShouldRun(focused,
+    changed, IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+    IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+    IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+    IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))
+    if reveal_cursor {
+        cursor_h: i32 = TextLineHeight(font)
+        cursor_y: i32 = ui_text_area_cursor_y(display_text,
+        display_cursor, font, line_gap, wrap_width, &cursor_h)
+        viewport_h: i32 = (int)area.bounds.height - padding_y * 2
+        scroll_y = TextAreaRevealScroll(scroll_y, cursor_y,
+        cursor_h, viewport_h)
+    }
+    scroll_y = TextAreaScrollFor(scroll_y, max_scroll)
+    if area.scroll_y != nil { *area.scroll_y = scroll_y }
+    if !IsWindowReady() {
+        ui_text_composition_view_free(&composition)
+        EndWidget(&widget)
+        return changed
+    }
+    ui_text_input_surface(area.bounds, style, focused,
+    !area.read_only, area.focus_id, "TextArea",
+    (TextInputAppearance){0}, area.class_name)
+    ui_begin_world_clip((Rectangle){area.bounds.x + padding_x,
+        area.bounds.y + padding_y,
+        area.bounds.width - padding_x * 2 - scrollbar_w,
+        area.bounds.height - padding_y * 2})
+    if area.text[0] == '\0' && !focused &&
+    area.placeholder != nil {
+        RenderText(area.placeholder,
+        (int)area.bounds.x + padding_x,
+        first_line_y, font, style.border)
+    } else {
+        ui_draw_text_area_text(display_text, display_cursor,
+        focused && !area.read_only, area.bounds,
+        font, line_gap, scroll_y, wrap_width,
+        area.syntax, style, selection_start,
+        selection_end, composition_start, composition_end)
+    }
+    EndClip()
+    if area.scroll_y != nil && max_scroll > 0 {
+        ui_scrollbar((int)(area.bounds.x +
+        area.bounds.width - scrollbar_w), (int)area.bounds.y,
+        (int)area.bounds.height, content_h + padding_y * 2,
+        area.scroll_y, max_scroll, 0)
+    }
+    ui_text_composition_view_free(&composition)
+    EndWidget(&widget)
+    return changed
+}
