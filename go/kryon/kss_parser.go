@@ -88,12 +88,13 @@ type KssName struct {
 }
 
 type KssEnvironment struct {
-	Theme    int32
-	Contrast int32
-	Density  int32
-	Pointer  int32
-	Platform int32
-	Variant  KssName
+	Theme     int32
+	ThemeName KssName
+	Contrast  int32
+	Density   int32
+	Pointer   int32
+	Platform  int32
+	Variant   KssName
 }
 
 type KssSourceFile struct {
@@ -436,6 +437,9 @@ type KssSelectorAtom struct {
 func KssParser_KssDefaultEnvironment() KssEnvironment {
 	var env KssEnvironment = KssEnvironment{}
 	env.Theme = int32(number_runtime_bits(uint64(KssThemeNone), uint64(0), 32, true, 0))
+	var value_0 string = ""
+	var value_1 KssName = KssParser_KssMakeName(value_0)
+	env.ThemeName = value_1
 	env.Contrast = int32(number_runtime_bits(uint64(KssContrastNormal), uint64(0), 32, true, 0))
 	env.Density = int32(number_runtime_bits(uint64(KssDensityComfortable), uint64(0), 32, true, 0))
 	env.Pointer = int32(number_runtime_bits(uint64(KssPointerMouse), uint64(0), 32, true, 0))
@@ -446,89 +450,91 @@ func KssParser_KssDefaultEnvironment() KssEnvironment {
 func KssParser_KssEnvironmentWithNames(env KssEnvironment, theme string, contrast string, density string, pointer string, platform string, variant string) KssEnvironment {
 	env.Theme = int32(number_runtime_bits(uint64(KssThemeNone), uint64(0), 32, true, 0))
 	var value_0 KssName = KssParser_KssMakeName(theme)
-	var value_1 string = "light"
-	var value_2 bool = KssParser_KssNameEquals(value_0, value_1)
-	if value_2 {
+	env.ThemeName = value_0
+	var value_1 KssName = KssParser_KssMakeName(theme)
+	var value_2 string = "light"
+	var value_3 bool = KssParser_KssNameEquals(value_1, value_2)
+	if value_3 {
 		env.Theme = int32(number_runtime_bits(uint64(KssThemeLight), uint64(0), 32, true, 0))
 	} else {
-		var value_3 KssName = KssParser_KssMakeName(theme)
-		var value_4 string = "dark"
-		var value_5 bool = KssParser_KssNameEquals(value_3, value_4)
-		if value_5 {
+		var value_4 KssName = KssParser_KssMakeName(theme)
+		var value_5 string = "dark"
+		var value_6 bool = KssParser_KssNameEquals(value_4, value_5)
+		if value_6 {
 			env.Theme = int32(number_runtime_bits(uint64(KssThemeDark), uint64(0), 32, true, 0))
 		}
 	}
 	env.Contrast = int32(number_runtime_bits(uint64(KssContrastNormal), uint64(0), 32, true, 0))
-	var value_6 KssName = KssParser_KssMakeName(contrast)
-	var value_7 string = "high"
-	var value_8 bool = KssParser_KssNameEquals(value_6, value_7)
-	if value_8 {
+	var value_7 KssName = KssParser_KssMakeName(contrast)
+	var value_8 string = "high"
+	var value_9 bool = KssParser_KssNameEquals(value_7, value_8)
+	if value_9 {
 		env.Contrast = int32(number_runtime_bits(uint64(KssContrastHigh), uint64(0), 32, true, 0))
 	}
 	env.Density = int32(number_runtime_bits(uint64(KssDensityComfortable), uint64(0), 32, true, 0))
-	var value_9 KssName = KssParser_KssMakeName(density)
-	var value_10 string = "compact"
-	var value_11 bool = KssParser_KssNameEquals(value_9, value_10)
-	if value_11 {
+	var value_10 KssName = KssParser_KssMakeName(density)
+	var value_11 string = "compact"
+	var value_12 bool = KssParser_KssNameEquals(value_10, value_11)
+	if value_12 {
 		env.Density = int32(number_runtime_bits(uint64(KssDensityCompact), uint64(0), 32, true, 0))
 	} else {
-		var value_12 KssName = KssParser_KssMakeName(density)
-		var value_13 string = "touch"
-		var value_14 bool = KssParser_KssNameEquals(value_12, value_13)
-		if value_14 {
+		var value_13 KssName = KssParser_KssMakeName(density)
+		var value_14 string = "touch"
+		var value_15 bool = KssParser_KssNameEquals(value_13, value_14)
+		if value_15 {
 			env.Density = int32(number_runtime_bits(uint64(KssDensityTouch), uint64(0), 32, true, 0))
 		}
 	}
 	env.Pointer = int32(number_runtime_bits(uint64(KssPointerMouse), uint64(0), 32, true, 0))
-	var value_15 KssName = KssParser_KssMakeName(pointer)
-	var value_16 string = "touch"
-	var value_17 bool = KssParser_KssNameEquals(value_15, value_16)
-	if value_17 {
+	var value_16 KssName = KssParser_KssMakeName(pointer)
+	var value_17 string = "touch"
+	var value_18 bool = KssParser_KssNameEquals(value_16, value_17)
+	if value_18 {
 		env.Pointer = int32(number_runtime_bits(uint64(KssPointerTouch), uint64(0), 32, true, 0))
 	} else {
-		var value_18 KssName = KssParser_KssMakeName(pointer)
-		var value_19 string = "mixed"
-		var value_20 bool = KssParser_KssNameEquals(value_18, value_19)
-		if value_20 {
+		var value_19 KssName = KssParser_KssMakeName(pointer)
+		var value_20 string = "mixed"
+		var value_21 bool = KssParser_KssNameEquals(value_19, value_20)
+		if value_21 {
 			env.Pointer = int32(number_runtime_bits(uint64(KssPointerMixed), uint64(0), 32, true, 0))
 		}
 	}
-	var value_21 KssName = KssParser_KssMakeName(platform)
-	var value_22 string = "desktop"
-	var value_23 bool = KssParser_KssNameEquals(value_21, value_22)
-	if value_23 {
+	var value_22 KssName = KssParser_KssMakeName(platform)
+	var value_23 string = "desktop"
+	var value_24 bool = KssParser_KssNameEquals(value_22, value_23)
+	if value_24 {
 		env.Platform = int32(number_runtime_bits(uint64(KssPlatformDesktop), uint64(0), 32, true, 0))
 	} else {
-		var value_24 KssName = KssParser_KssMakeName(platform)
-		var value_25 string = "android"
-		var value_26 bool = KssParser_KssNameEquals(value_24, value_25)
-		if value_26 {
+		var value_25 KssName = KssParser_KssMakeName(platform)
+		var value_26 string = "android"
+		var value_27 bool = KssParser_KssNameEquals(value_25, value_26)
+		if value_27 {
 			env.Platform = int32(number_runtime_bits(uint64(KssPlatformAndroid), uint64(0), 32, true, 0))
 		} else {
-			var value_27 KssName = KssParser_KssMakeName(platform)
-			var value_28 string = "web"
-			var value_29 bool = KssParser_KssNameEquals(value_27, value_28)
-			if value_29 {
+			var value_28 KssName = KssParser_KssMakeName(platform)
+			var value_29 string = "web"
+			var value_30 bool = KssParser_KssNameEquals(value_28, value_29)
+			if value_30 {
 				env.Platform = int32(number_runtime_bits(uint64(KssPlatformWeb), uint64(0), 32, true, 0))
 			} else {
-				var value_30 KssName = KssParser_KssMakeName(platform)
-				var value_31 string = "plan9"
-				var value_32 bool = KssParser_KssNameEquals(value_30, value_31)
-				if value_32 {
+				var value_31 KssName = KssParser_KssMakeName(platform)
+				var value_32 string = "plan9"
+				var value_33 bool = KssParser_KssNameEquals(value_31, value_32)
+				if value_33 {
 					env.Platform = int32(number_runtime_bits(uint64(KssPlatformPlan9), uint64(0), 32, true, 0))
 				} else {
-					var value_33 KssName = KssParser_KssMakeName(platform)
-					var value_34 string = "terminal"
-					var value_35 bool = KssParser_KssNameEquals(value_33, value_34)
-					if value_35 {
+					var value_34 KssName = KssParser_KssMakeName(platform)
+					var value_35 string = "terminal"
+					var value_36 bool = KssParser_KssNameEquals(value_34, value_35)
+					if value_36 {
 						env.Platform = int32(number_runtime_bits(uint64(KssPlatformTerminal), uint64(0), 32, true, 0))
 					}
 				}
 			}
 		}
 	}
-	var value_36 KssName = KssParser_KssMakeName(variant)
-	env.Variant = value_36
+	var value_37 KssName = KssParser_KssMakeName(variant)
+	env.Variant = value_37
 	return env
 }
 
@@ -4158,14 +4164,23 @@ func KssParser_KssEnvMatches(p KssParser, axis KssName, value KssName) bool {
 }
 
 func KssParser_KssThemeActive(p KssParser, name KssName) bool {
-	var value_0 string = "light"
-	var value_1 bool = KssParser_KssNameEquals(name, value_0)
-	if value_1 {
+	var value_0 bool = (p.Env.ThemeName.Length > 0)
+	if value_0 {
+		var value_1 KssName = p.Env.ThemeName
+		var value_2 bool = KssParser_KssNameEqualsName(value_1, name)
+		value_0 = value_2
+	}
+	if value_0 {
+		return true
+	}
+	var value_3 string = "light"
+	var value_4 bool = KssParser_KssNameEquals(name, value_3)
+	if value_4 {
 		return (p.Env.Theme == int32(number_runtime_bits(uint64(KssThemeLight), uint64(0), 32, true, 0)))
 	}
-	var value_2 string = "dark"
-	var value_3 bool = KssParser_KssNameEquals(name, value_2)
-	if value_3 {
+	var value_5 string = "dark"
+	var value_6 bool = KssParser_KssNameEquals(name, value_5)
+	if value_6 {
 		return (p.Env.Theme == int32(number_runtime_bits(uint64(KssThemeDark), uint64(0), 32, true, 0)))
 	}
 	return false
