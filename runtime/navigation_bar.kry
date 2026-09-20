@@ -432,14 +432,17 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
         (u32)StyleGap, spec.base.value.gap, 4.0, scale, true)
     edge_inset: i32 = NavigationBarMetric(spec.base.value.fields,
         (u32)StylePaddingY, spec.base.value.padding_y, 2.0, scale, true)
-    stack_h: i32 = state_h + label_gap + spec.label_height
+    # Reserve the font's descent and atlas padding inside the label box.
+    # The nominal line height alone clips glyphs at enlarged UI scales.
+    label_paint_h: i32 = spec.label_height + (i32)(8.0 * scale + 0.5)
+    stack_h: i32 = state_h + label_gap + label_paint_h
     state_y: i32 = spec.bar.y + (spec.bar.height - stack_h) / 2
     if state_y < spec.bar.y + edge_inset {
         state_y = spec.bar.y + edge_inset
     }
     label_y: i32 = state_y + state_h + label_gap
-    if label_y + spec.label_height > spec.bar.y + spec.bar.height - edge_inset {
-        label_y = spec.bar.y + spec.bar.height - spec.label_height - edge_inset
+    if label_y + label_paint_h > spec.bar.y + spec.bar.height - edge_inset {
+        label_y = spec.bar.y + spec.bar.height - label_paint_h - edge_inset
         state_y = label_y - label_gap - state_h
         if state_y < spec.bar.y + edge_inset {
             state_y = spec.bar.y + edge_inset
@@ -465,7 +468,7 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.label_bounds.y = (float)label_y
     paint.label_bounds.width = (float)(w - label_inset * 2)
     if paint.label_bounds.width < 0.0 { paint.label_bounds.width = 0.0 }
-    paint.label_bounds.height = (float)spec.label_height
+    paint.label_bounds.height = (float)label_paint_h
 
     paint.face = spec.face
     paint.draw_face = spec.active || spec.hovered
