@@ -741,7 +741,11 @@ StealCoreWindowClose(void)
 #define Rectangle RectangleWin32
 #define CloseWindow CloseWindowWin32
 #define ShowCursor ShowCursorWin32
+#define SetFocus Win32SetFocus
+#define GetFocus Win32GetFocus
 #include <windows.h>
+#undef GetFocus
+#undef SetFocus
 #undef Rectangle
 #undef CloseWindow
 #undef ShowCursor

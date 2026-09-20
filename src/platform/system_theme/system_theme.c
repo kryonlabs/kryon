@@ -14,7 +14,11 @@
 #define CloseWindow Win32CloseWindow
 #define ShowCursor Win32ShowCursor
 #define DrawIcon Win32DrawIcon
+#define SetFocus Win32SetFocus
+#define GetFocus Win32GetFocus
 #include <windows.h>
+#undef GetFocus
+#undef SetFocus
 #undef DrawIcon
 #undef ShowCursor
 #undef CloseWindow

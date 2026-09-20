@@ -2,10 +2,19 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#include "kry_gzip.h"
+#define SINFL_IMPLEMENTATION
+#define SDEFL_IMPLEMENTATION
+#include "../../vendor/raylib/src/external/sinfl.h"
+#include "../../vendor/raylib/src/external/sdefl.h"
+#else
 #include <zlib.h>
+#endif
 
 #if defined(_WIN32)
 #include <direct.h>
@@ -108,6 +117,16 @@ archive_impl(Archive *archive)
     if(archive == NULL)
         return NULL;
     return (ArchiveImpl *)archive->impl;
+}
+
+static uint32_t
+archive_crc32(const unsigned char *data, size_t size)
+{
+#if defined(_WIN32)
+    return (uint32_t)kry_gzip_crc32(data, (unsigned long)size);
+#else
+    return (uint32_t)crc32(0L, data, (uInt)size);
+#endif
 }
 
 static int
@@ -432,6 +451,17 @@ ArchiveReadEntryHeap(Archive *archive, int index, size_t *out_size)
         }
         memcpy(out, compressed, entry->uncompressed_size);
     } else if(entry->method == 8) {
+#if defined(_WIN32)
+        if(entry->compressed_size > INT_MAX ||
+           entry->uncompressed_size > INT_MAX ||
+           sinflate(out, (int)entry->uncompressed_size, compressed,
+                    (int)entry->compressed_size) !=
+               (int)entry->uncompressed_size) {
+            free(compressed);
+            free(out);
+            return NULL;
+        }
+#else
         z_stream stream;
         int rc;
 
@@ -452,13 +482,14 @@ ArchiveReadEntryHeap(Archive *archive, int index, size_t *out_size)
             free(out);
             return NULL;
         }
+#endif
     } else {
         free(compressed);
         free(out);
         return NULL;
     }
     free(compressed);
-    if(crc32(0L, out, entry->uncompressed_size) != entry->crc32) {
+    if(archive_crc32(out, entry->uncompressed_size) != entry->crc32) {
         free(out);
         return NULL;
     }
@@ -528,6 +559,34 @@ static int
 deflate_raw(const unsigned char *data, size_t data_size,
             unsigned char **out, uint32_t *out_size)
 {
+#if defined(_WIN32)
+    struct sdefl *scratch;
+    int bound;
+    int size;
+
+    if(data_size > INT_MAX)
+        return 0;
+    bound = sdefl_bound((int)data_size);
+    if(bound <= 0)
+        return 0;
+    *out = (unsigned char *)malloc((size_t)bound);
+    scratch = (struct sdefl *)calloc(1, sizeof(*scratch));
+    if(*out == NULL || scratch == NULL) {
+        free(*out);
+        free(scratch);
+        *out = NULL;
+        return 0;
+    }
+    size = sdeflate(scratch, *out, data, (int)data_size, 8);
+    free(scratch);
+    if(size <= 0 || size > bound) {
+        free(*out);
+        *out = NULL;
+        return 0;
+    }
+    *out_size = (uint32_t)size;
+    return 1;
+#else
     z_stream stream;
     unsigned long bound;
     int rc;
@@ -558,6 +617,7 @@ deflate_raw(const unsigned char *data, size_t data_size,
     *out_size = (uint32_t)stream.total_out;
     deflateEnd(&stream);
     return 1;
+#endif
 }
 
 static int
@@ -604,7 +664,7 @@ ArchiveAddMemory(Archive *archive, const char *name,
     if(entry.name == NULL)
         return 0;
     entry.method = compression == ARCHIVE_STORE ? 0 : 8;
-    entry.crc32 = crc32(0L, bytes, (uInt)data_size);
+    entry.crc32 = archive_crc32(bytes, data_size);
     entry.uncompressed_size = (uint32_t)data_size;
     if(entry.method == 8) {
         if(!deflate_raw(bytes, data_size, &compressed, &payload_size)) {
