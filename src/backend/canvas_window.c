@@ -480,8 +480,23 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
             var th = K.target.length ? K.target[K.target.length - 1].canvas.height : K.h;
             ctx.fillStyle = col;
             ctx.fillRect(0, 0, tw, th); break; }
-    case 1: /* fill rect */ ctx.fillStyle = col;
-            ctx.fillRect(a, b, c, d); break;
+    case 1: { /* fill rect: share exact device-pixel edges after camera zoom */
+            ctx.fillStyle = col;
+            var transform = ctx.getTransform();
+            if (transform.b === 0 && transform.c === 0 &&
+                transform.a > 0 && transform.d > 0) {
+                var x0 = Math.round(transform.a * a + transform.e);
+                var y0 = Math.round(transform.d * b + transform.f);
+                var x1 = Math.round(transform.a * (a + c) + transform.e);
+                var y1 = Math.round(transform.d * (b + d) + transform.f);
+                ctx.fillRect((x0 - transform.e) / transform.a,
+                             (y0 - transform.f) / transform.d,
+                             (x1 - x0) / transform.a,
+                             (y1 - y0) / transform.d);
+            } else {
+                ctx.fillRect(a, b, c, d);
+            }
+            break; }
     case 2: /* stroke rect */ ctx.strokeStyle = col; ctx.lineWidth = 1;
             ctx.strokeRect(a + .5, b + .5, c - 1, d - 1); break;
     case 3: /* fill circle */ ctx.fillStyle = col; ctx.beginPath();
