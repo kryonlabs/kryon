@@ -235,6 +235,30 @@ likely deserves a documented Kryon snippet or a helper fragment rather
 than a one-off Inbe edit.
 
 
+
+## Round 7 — inbe native build restored (end-to-end)
+
+Inbe's `make native` now produces a 7.8 MB ELF binary against the migrated
+Kryon. Fixes landed:
+
+- **Inbe build integration** (`inbe/Makefile`): generate Kryon's `src/ui/*.kry`
+  with `--root <kryon>/src` into `build/obj/kryon/generated/src` (so the
+  generated `ui/*.h` resolve), add the generated `src/ui/*.c` to
+  `KRYON_SRCS`, and add the `src/ui`, `src/platform`, `src/backend`,
+  generated `runtime`, and `vendor/utf8proc` include paths.
+- **Kryon k2c type mapping** (`dcaa99eb`): `const u8*` (and trailing-star
+  scalars generally) now emit `const uint8_t*`.
+- **Kryon k2c cast mapping** (`441a3ffb`): `(const u8*)` / `(i32)` paren casts
+  rewrite the scalar; `nil` and general parenthesized expressions are
+  untouched.
+- **Inbe app migration** (`src/app/application.kry`): the Button image moved
+  from the removed `image_asset_path`/`image_bounds`/`image_fit` fields to
+  `image = (ImageProps){...}`.
+
+Kryon is clean at `441a3ffb`; Inbe `vendor/kryon` points there (uncommitted).
+Inbe's own migration edits remain uncommitted in its working tree.
+
+
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
 Bend law proofs. The live-desktop rule (AGENTS.md) is absolute: everything GUI
