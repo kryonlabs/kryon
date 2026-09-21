@@ -454,7 +454,7 @@ ArchiveReadEntryHeap(Archive *archive, int index, size_t *out_size)
         }
         memcpy(out, compressed, entry->uncompressed_size);
     } else if(entry->method == 8) {
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(KRYON_PLATFORM_PLAN9)
         if(entry->compressed_size > INT_MAX ||
            entry->uncompressed_size > INT_MAX ||
            sinflate(out, (int)entry->uncompressed_size, compressed,
