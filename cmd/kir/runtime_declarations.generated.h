@@ -689,6 +689,13 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "PushInspectSource :: (path: const char*, line: i32) #extern #export\n"
         "PopInspectSource :: () #extern #export\n"
     },
+    {"runtime/instance_props.kry",
+        "#module \"instance_props\"\n"
+        "\n"
+        "# Implemented by the C-only widget-store host; declared here for the public ABI\n"
+        "# and for the state borrowing every generated module emits.\n"
+        "InstanceState :: (type: const char*, key: u64, size: size_t) -> *void #extern #export\n"
+    },
     {"runtime/layout_props.kry",
         "#module \"layout_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

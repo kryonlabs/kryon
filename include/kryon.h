@@ -18,7 +18,7 @@
 #include "ui_layout_props.generated.h"
 #include "ui_drawing_props.generated.h"
 #include "ui_core.h"
-#include "ui_instance.h"
+#include "ui_instance_props.generated.h"
 #include "ui_controls.h"
 #include "ui_accessibility_node.generated.h"
 #include "ui_accelerator.generated.h"

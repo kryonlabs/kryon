@@ -74,6 +74,7 @@ surface review:
 | `runtime/input.kry` | Input step-button default, component layout, value/step, temp-edit activation, and generic pointer activation/consume policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
+| `runtime/instance_props.kry` | Instance-state borrowing declaration | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry, handle-size, and release-consume policy | `.kry support` |
 | `runtime/inspect_props.kry` | Inspector selection and node records | `.kry support` |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |

@@ -360,7 +360,7 @@ KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target)
                 instances |= fn->stmts[j].is_instance;
         }
         if(instances)
-            fputs("#include \"ui_instance.h\"\n", out);
+            fputs("#include \"ui_instance_props.generated.h\"\n", out);
     }
     number_prefix(module, p, sizeof(p));
     KirEmitNumberSupport(out, target, p);
