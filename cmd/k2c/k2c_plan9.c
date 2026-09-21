@@ -1721,7 +1721,9 @@ k2c_plan9_rewrite_once(const char *text)
                         nlen = (size_t)(name_end - name_start);
                         if(nlen > 0 && nlen < sizeof(name)
                            && name_start > current + ilen
-                           && memchr(current, '.', (size_t)(name_start - current)) == NULL) {
+                           && memchr(current, '.', (size_t)(name_start - current)) == NULL
+                           && (name_start - current < 2
+                               || memmem(current, (size_t)(name_start - current), "->", 2) == NULL)) {
                             memcpy(name, name_start, nlen);
                             name[nlen] = '\0';
                             if(buf_append(&out, current,
