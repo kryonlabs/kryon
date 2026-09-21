@@ -259,6 +259,58 @@ Kryon is clean at `441a3ffb`; Inbe `vendor/kryon` points there (uncommitted).
 Inbe's own migration edits remain uncommitted in its working tree.
 
 
+## Round 8 — header-by-header props migrations + Inbe committed
+
+Eight further Go-compatible type sets moved out of handwritten headers into
+`runtime/*_props.kry` (each generating `include/ui_*_props.generated.h`), with
+the handwritten header reduced to that include plus its C-only declarations:
+
+- `b02e11f9` `TransitionState` → `transition_props.kry`
+- `00651e19` inspector records → `inspect_props.kry`
+- `b5c2103d` profile icon enum → `profile_icon_props.kry`
+- `b8b825a1` native window flags → `window_props.kry`
+- `1e43fb3a` DPI state record → `dpi_props.kry`
+- `611dfda4` style color token → `style_token_props.kry`
+- `c552478d` node registry record (`NodeType`) → `node_registry_props.kry`
+- `8f1a8608` icon sheet enum → `icon_sheet_props.kry`
+
+Every commit passed `generated-runtime-parity-test fast-test` and refreshed the
+public-API snapshot. Kryon `master` is clean at `8f1a8608`.
+
+### Inbe build and commit
+
+- `vendor/kryon` moved to `8f1a8608` and Inbe's own migration was committed on
+  `master` as `64c1b6b`. The committed gitlink is exactly
+  `8f1a860853f2c147a8f7dcfb81aa6942411e5dd4`; `git status` is clean and
+  `make no-vendor-edits` passes.
+- `make native` was initially red on `build/kryon/generated/src/app/screenshots.c`
+  for an implicit `import_sync_key_path`. The generated tree was stale: the
+  source had already been re-pointed to the exported
+  `settings_data_import_sync_key_path`, but the `.fresh` stamp was newer than
+  the edited source, so `make` skipped regeneration. `rm -f
+  build/kryon/generated/.fresh` forces the `k2c --root .` pass and the build
+  goes green. Treat `.fresh` regeneration as mandatory after app `.kry` edits.
+- Inbe gates all pass at the committed revision: `make native`,
+  `no-vendor-edits`, `clean-text-api-check`, `button-api-check`,
+  `version-test`, `proof-test`, `sync-recovery-test`.
+- The only Kryon-owned artifact in Inbe's non-vendor tree was the gitignored
+  `src/build/kryon/preview_shim.c`; it is confirmed absent, so Inbe carries no
+  Kryon-owned migration artifact.
+
+### Still blocked upstream
+
+- Handwritten UI headers cannot be fully deleted without a `.kry`
+  function-pointer typedef (`KryonPostFrameCallback`, `TextInputFilter`,
+  `KryRouteAllowedFn`, `AccessibilitySink`), a C-only public-header emitter
+  for `src/ui/*.kry`, or Go-mappable replacements for unions / mutable
+  `char*` / Go-host-divergent names (`PropertyValue`, `LocaleEntry`,
+  `ThemeId`/`ThemeSky`, `IconType`).
+- KSS/theme bridge B-001 (`ApplyCurrentTheme` + palette getters) stays until the
+  live Uku (`SetThemeStyle`/`GetThemeScopeName`), Krait, and Rill callers move
+  to `SetStyleTheme`/`ResolveActiveStyle`, and Inbe's `app_style.kry` palette
+  bridge becomes KSS overlays. Uku/Krait are pinned to pre-KSS Kryon and are not
+  broken until their pointers move.
+
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
 Bend law proofs. The live-desktop rule (AGENTS.md) is absolute: everything GUI

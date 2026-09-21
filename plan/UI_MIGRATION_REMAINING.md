@@ -1,9 +1,11 @@
 # UI migration: remaining work and evidence
 
 Updated 2026-09-20 from the Kryon and Inbe working trees. This is an open-work
-inventory, not a completion claim. The current `.kry` moves are uncommitted and
-have not been compiled or run as a set. Older passing captures, builds, and
-benchmarks establish evidence only for the revisions they used. See
+inventory, not a completion claim. The current `.kry` moves are committed on
+Kryon `master` at `8f1a8608` and Inbe `master` at `64c1b6b`; the type moves in
+`runtime/*_props.kry` pass `generated-runtime-parity-test fast-test`, and Inbe's
+`make native` plus contract gates pass at that pointer. Older passing captures,
+builds, and benchmarks establish evidence only for the revisions they used. See
 [native language completion](NATIVE_LANGUAGE_COMPLETION.md) for compiler,
 callable, and KSS milestones, [button review](button/REVIEW.md) for the exact
 button matrix, and [Inbe's migration plan](../../inbe/docs/kry-migration.md)
