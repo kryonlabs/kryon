@@ -1298,9 +1298,6 @@ include/ui_list_box_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_menu_props.generated.h function Menu
 include/ui_menu_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_modal_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_nav.h function GetPaneDropZone
-include/ui_nav.h function GetTabBarHeight
-include/ui_nav.h function TabBarHeight
 include/ui_navigation_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_node2d_props.generated.h function Node2DPropsDefault
 include/ui_node2d_props.generated.h function ScenePropsDefault
@@ -1352,6 +1349,7 @@ include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
 include/ui_page.h typedef FlowProps
 include/ui_page_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_paned_view_props.generated.h function GetPaneDropZone
 include/ui_paned_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_plot_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_popup_props.generated.h macro KIR_STRING_VALUE_DEFINED
@@ -1439,6 +1437,8 @@ include/ui_style_token_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_swipe_props.generated.h function ResetSwipe
 include/ui_swipe_props.generated.h function UpdateSwipe
 include/ui_swipe_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_tab_bar_props.generated.h function GetTabBarHeight
+include/ui_tab_bar_props.generated.h function TabBarHeight
 include/ui_tab_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_table_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_text.h function ClearTextFonts

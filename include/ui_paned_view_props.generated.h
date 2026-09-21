@@ -40,5 +40,6 @@ typedef struct PanedViewProps {
     int32_t min_first;
     int32_t min_second;
 } PanedViewProps;
+DropZone GetPaneDropZone(Rectangle bounds, Vector2  mouse);
 
 #endif /* K_RUNTIME_PANED_VIEW_PROPS_H */

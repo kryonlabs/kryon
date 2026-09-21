@@ -27,3 +27,7 @@ TabBarProps :: struct {
     id: i32
     disabled: bool
 }
+
+# Implemented by the C-only tab-bar host; declared here for the public ABI.
+GetTabBarHeight :: () -> i32 #extern #export
+TabBarHeight :: () -> i32 #extern #export

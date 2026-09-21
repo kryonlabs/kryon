@@ -1135,6 +1135,9 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    min_first: i32\n"
         "    min_second: i32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only paned-view host; declared here for the public ABI.\n"
+        "GetPaneDropZone :: (bounds: Rectangle, mouse: Vector2) -> DropZone #extern #export\n"
     },
     {"runtime/plot_props.kry",
         "#module \"plot_props\"\n"
@@ -1624,6 +1627,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    id: i32\n"
         "    disabled: bool\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only tab-bar host; declared here for the public ABI.\n"
+        "GetTabBarHeight :: () -> i32 #extern #export\n"
+        "TabBarHeight :: () -> i32 #extern #export\n"
     },
     {"runtime/table_view_props.kry",
         "#module \"table_view_props\"\n"

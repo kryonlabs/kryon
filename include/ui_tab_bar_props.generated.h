@@ -48,5 +48,7 @@ typedef struct TabBarProps {
     int32_t id;
     bool disabled;
 } TabBarProps;
+int32_t GetTabBarHeight(void);
+int32_t TabBarHeight(void);
 
 #endif /* K_RUNTIME_TAB_BAR_PROPS_H */

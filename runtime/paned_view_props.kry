@@ -19,3 +19,6 @@ PanedViewProps :: struct {
     min_first: i32
     min_second: i32
 }
+
+# Implemented by the C-only paned-view host; declared here for the public ABI.
+GetPaneDropZone :: (bounds: Rectangle, mouse: Vector2) -> DropZone #extern #export
