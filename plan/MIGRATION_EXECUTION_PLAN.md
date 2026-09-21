@@ -490,6 +490,36 @@ Remaining, all genuine type/global/inline blockers: `IconType` (`ui_icons`,
 `SYNC_PROFILE_ICON_*` enum (`ui_profile`), `LocaleEntry` (`locale.h`).
 B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
 
+## Round 23 — profile-header and text hosts move; IconType demoted from blocker
+
+Two more deletions, both clearing "blockers" that turned out to be softer than
+recorded:
+
+- `include/ui_profile.h` → the five profile-icon queries in
+  `runtime/profile_icon_props.kry`. `IconType` arrives via
+  `#import "ui_icon_types.h"`: an opaque C type is fine in extern signatures
+  because k2go skips externs entirely — the IconType blocker only ever applied
+  to stored struct fields (`IconAsset`).
+- `include/ui_text.h` → the ten `Text*` size macros (constants emit as the
+  same `#define`s) and the twenty-six font calls in `runtime/text_props.kry`,
+  with `Font` supplied by `kryon_compat`. The handwritten `Text*` constants
+  in `go/kryon/runtime.go` gave way to the generated ones (`table_host.go`
+  now types its fallback explicitly), and `runtime/button.kry` follows the
+  props-header import.
+
+Session total: twenty handwritten UI headers removed. Gates:
+`generated-runtime-parity-test`, `fast-test`, k2c/k2cpp/k2go-syntax-test,
+`go-runtime-test`, `examples-syntax-test`, refreshed snapshots. Inbe builds
+green at `254dabbd`, pointer committed (`7337178`).
+
+Remaining: unions (`Event`, `FrameState`), function-pointer typedefs
+(`ui_core`, `ui_controls`, `kryon_frame`, `ui_tree`, `app_shell`),
+`dpi_state` global + inline getters (`ui_dpi`), opaque `NativeWindow`
+(`ui_window`), `const StyleSheet*` (`ui_style_sheet`), `IconAsset`'s stored
+`IconType` field + the `ui_icon_names[]` extern (`ui_icons`), `void*` +
+`size_t` (`ui_instance`), `LocaleEntry` (`locale.h`). B-001 (KSS/theme) still
+waits on Uku/Krait/Rill and Inbe.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
