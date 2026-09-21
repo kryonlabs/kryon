@@ -53,7 +53,7 @@ app_select_source_path :: (userdata: void*,
         return 0
     }
     for int index = 0; index < app->route_count; index++ {
-        route_path := app->routes[index].source_path
+        route_path: const char* = app->routes[index].source_path
         if route_path != nil && strcmp(route_path, source_path) == 0 {
             app_select_screen(userdata, index)
             return 1

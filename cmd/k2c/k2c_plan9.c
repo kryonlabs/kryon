@@ -1279,7 +1279,11 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
             return 1;
         }
         if(head[0] != '*') {
-            /* expression over literals, macros, locals, and calls */
+            /* expression over literals, macros, locals, and calls.
+             * Member selections need the field's type, which is not
+             * tracked here: refuse instead of guessing. */
+            if(strstr(head, "->") != NULL || strchr(head, '.') != NULL)
+                return 0;
             if(expr_type(head, strlen(head), type, type_size))
                 return 1;
         }
