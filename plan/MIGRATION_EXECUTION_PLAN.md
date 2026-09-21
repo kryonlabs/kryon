@@ -196,6 +196,45 @@ headers are the documented "true host-facing declarations" per
 separate toolchain milestone beyond this migration.
 
 
+
+## Round 6 — committed + downstream pointer bumped
+
+The migration is committed on Kryon `master` as `0a655400`
+("Migrate retained UI to .kry and fix the native C boundary"; 77 files).
+Kryon's working tree is clean.
+
+Inbe `vendor/kryon` was moved to that exact commit (parent shows
+` M vendor/kryon`, uncommitted). It is NOT pushed anywhere.
+
+### Downstream build-integration gap (needs an inbe Makefile change)
+
+Inbe's `make native` now fails compiling Kryon's own sources:
+
+```
+vendor/kryon/src/ui/ui_internal.h:23: fatal error: ui/grapheme.h
+vendor/kryon/src/ui/ui_text.c:1:      fatal error: ui/text_rows.h
+vendor/kryon/src/ui/ui_window.c:3:    fatal error: ui/window_policy.h
+```
+
+Cause: the migration replaced the handwritten
+`src/ui/ui_grapheme.h` (still present at `405fc5c`) with the generated
+`ui/grapheme.h` from `src/ui/grapheme.kry`, and likewise
+`text_rows`/`window_policy`. Kryon's own build generates `src/ui/*.kry`
+into `build/.../generated/src/ui/`; Inbe generates only
+`$(KRYON_DIR)/runtime/*.kry` (`KRYON_RUNTIME_KRY`), so the generated
+`ui/*.h` are absent.
+
+Fix shape (app repository, not Kryon): generate Kryon's `src/ui/*.kry`
+with `--root $(KRYON_DIR)/src` into `$(KRYON_GENERATED_SRC_DIR)` (so
+`ui/*.h` resolves on the existing `-I`), and add the generated
+`src/ui/*.c` (the migrated implementations) to `KRYON_SRCS`; the
+handwritten `find src -name '*.c'` only covers host services now.
+
+This is a build-contract change shared by every downstream app, so it
+likely deserves a documented Kryon snippet or a helper fragment rather
+than a one-off Inbe edit.
+
+
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
 Bend law proofs. The live-desktop rule (AGENTS.md) is absolute: everything GUI
