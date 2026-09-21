@@ -84,8 +84,8 @@ OFILES=\
 
 gensrc=`{cat $genlist}
 genobj=${gensrc:%.c=%.$O}
-embedobj=$GEN/embedded_asset_data.$O
-iconobj=$GEN/ui_icon_assets.$O $GEN/ui_icon_names.$O
+embedobj=build/plan9/embedded_asset_data.$O
+iconobj=build/plan9/ui_icon_assets.$O build/plan9/ui_icon_names.$O
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/sync/*.$O src/platform/*/*.$O \
 	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i \
@@ -102,11 +102,10 @@ check:V:
 
 install:V: check $LIB
 
-$LIB:V: $OFILES
-	ar vu $LIB $newprereq
-
-&:n: &.$O
-	ar vu $LIB $stem.$O
+$LIB:V: $OFILES $genobj $embedobj $iconobj
+	rm -f $LIB
+	ar vq $LIB $OFILES $genobj $embedobj $iconobj
+	ar vu $LIB
 
 clean:V:
 	rm -f $CLEANFILES
@@ -145,20 +144,20 @@ src/ui/%.$O: src/ui/%.c
 src/markdown.$O: src/markdown.c
 	cd src && cpp -+ $CPPFLAGS markdown.c > markdown.i && $CC $CFLAGS -c markdown.i && mv markdown.i.$O markdown.$O && rm -f markdown.i
 
-$GEN/generated/runtime/%.$O: $GEN/generated/runtime/%.c
-	cd $GEN/generated/runtime && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+build/plan9/generated/runtime/%.$O: build/plan9/generated/runtime/%.c
+	cd build/plan9/generated/runtime && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 
-$GEN/generated/src/ui/%.$O: $GEN/generated/src/ui/%.c
-	cd $GEN/generated/src/ui && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+build/plan9/generated/src/ui/%.$O: build/plan9/generated/src/ui/%.c
+	cd build/plan9/generated/src/ui && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 
-$GEN/embedded_asset_data.$O: $GEN/embedded_asset_data.c
-	cd $GEN && cpp -+ $CPPFLAGS embedded_asset_data.c > embedded_asset_data.i && $CC $CFLAGS -c embedded_asset_data.i && mv embedded_asset_data.i.$O embedded_asset_data.$O && rm -f embedded_asset_data.i
+build/plan9/embedded_asset_data.$O: build/plan9/embedded_asset_data.c
+	cd build/plan9 && cpp -+ $CPPFLAGS embedded_asset_data.c > embedded_asset_data.i && $CC $CFLAGS -c embedded_asset_data.i && mv embedded_asset_data.i.$O embedded_asset_data.$O && rm -f embedded_asset_data.i
 
-$GEN/ui_icon_assets.$O: $GEN/ui_icon_assets.c
-	cd $GEN && cpp -+ $CPPFLAGS ui_icon_assets.c > ui_icon_assets.i && $CC $CFLAGS -c ui_icon_assets.i && mv ui_icon_assets.i.$O ui_icon_assets.$O && rm -f ui_icon_assets.i
+build/plan9/ui_icon_assets.$O: build/plan9/ui_icon_assets.c
+	cd build/plan9 && cpp -+ $CPPFLAGS ui_icon_assets.c > ui_icon_assets.i && $CC $CFLAGS -c ui_icon_assets.i && mv ui_icon_assets.i.$O ui_icon_assets.$O && rm -f ui_icon_assets.i
 
-$GEN/ui_icon_names.$O: $GEN/ui_icon_names.c
-	cd $GEN && cpp -+ $CPPFLAGS ui_icon_names.c > ui_icon_names.i && $CC $CFLAGS -c ui_icon_names.i && mv ui_icon_names.i.$O ui_icon_names.$O && rm -f ui_icon_names.i
+build/plan9/ui_icon_names.$O: build/plan9/ui_icon_names.c
+	cd build/plan9 && cpp -+ $CPPFLAGS ui_icon_names.c > ui_icon_names.i && $CC $CFLAGS -c ui_icon_names.i && mv ui_icon_names.i.$O ui_icon_names.$O && rm -f ui_icon_names.i
 
 src/platform/kry_activity_monitor.$O: src/platform/kry_activity_monitor.c
 	cd src/platform && cpp -+ $CPPFLAGS kry_activity_monitor.c > kry_activity_monitor.i && $CC $CFLAGS -c kry_activity_monitor.i && mv kry_activity_monitor.i.$O kry_activity_monitor.$O && rm -f kry_activity_monitor.i
