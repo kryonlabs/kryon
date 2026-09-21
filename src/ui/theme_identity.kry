@@ -1,6 +1,6 @@
 #module "theme_identity_host"
 #import "theme_meta.h"
-#import "locale.h"
+#import "ui_locale_props.generated.h"
 #import "string.h"
 
 theme_entries :: [THEME_COUNT]ThemeMeta #global

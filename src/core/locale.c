@@ -1,4 +1,4 @@
-#include "locale.h"
+#include "ui_locale_props.generated.h"
 #include "platform.h"
 #include "embedded_assets.h"
 #include "ui/locale_defaults.h"

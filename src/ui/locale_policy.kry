@@ -1,7 +1,7 @@
 #module "locale_policy"
 #inspect off
 
-#import "locale.h"
+#import "ui_locale_props.generated.h"
 #import <stdio.h>
 #import <string.h>
 
