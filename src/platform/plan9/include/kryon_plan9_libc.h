@@ -53,4 +53,23 @@ typedef long time_t;
  * same-directory name wstat. */
 int rename(const char *oldpath, const char *newpath);
 
+/* Compiler builtins that the vendored single-header libraries lean on. */
+static long
+kryon_plan9_clz(unsigned int v)
+{
+    long n;
+
+    if(v == 0)
+        return 32;
+    n = 0;
+    while((v & 0x80000000u) == 0) {
+        v <<= 1;
+        n++;
+    }
+    return n;
+}
+
+#define __builtin_clz(v) ((int)kryon_plan9_clz((unsigned int)(v)))
+#define __builtin_expect(e, c) (e)
+
 #endif
