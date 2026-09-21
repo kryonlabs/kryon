@@ -51,22 +51,12 @@ OFILES=\
 	src/backend/libdraw_audio.$O\
 	src/backend/libdraw_backend.$O\
 	src/backend/libdraw_font.$O\
-	src/core/app_host.$O\
-	src/core/app_runtime.$O\
-	src/core/app_shell.$O\
 	src/core/app_storage.$O\
 	src/core/automation.$O\
-	src/core/device_preferences.$O\
 	src/core/embedded_assets.$O\
-	src/core/kry_capabilities.$O\
 	src/core/kryon_abi.$O\
-	src/core/kryon_frame.$O\
-	src/core/kryon_frame_pacing.$O\
 	src/core/kryon_mem.$O\
-	src/core/kryon_node.$O\
 	src/core/locale.$O\
-	src/core/theme.$O\
-	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
 	src/kry_std/kry_xml.$O\
 	src/sync/sync_crypto.$O\
