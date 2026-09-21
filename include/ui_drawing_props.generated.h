@@ -34,5 +34,7 @@ typedef struct ParagraphSpec {
     TextAlign align;
     int32_t class_name;
 } ParagraphSpec;
+Color LightenColor(Color color, int32_t  amount);
+Color DarkenColor(Color color, int32_t  amount);
 
 #endif /* K_RUNTIME_DRAWING_PROPS_H */

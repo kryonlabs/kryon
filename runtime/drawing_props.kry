@@ -41,3 +41,97 @@ ParagraphSpec :: struct {
     align: TextAlign
     class_name: i32
 }
+
+# Shared color math. The lightness decision is identical on every target, so it
+# lives in the cross-target runtime instead of a C-only host shim.
+color_min :: (a: float, b: float) -> float #private {
+    if a < b { return a }
+    return b
+}
+
+color_max :: (a: float, b: float) -> float #private {
+    if a > b { return a }
+    return b
+}
+
+color_clamp :: (value: float, minimum: float,
+                maximum: float) -> float #private {
+    if value < minimum { return minimum }
+    if value > maximum { return maximum }
+    return value
+}
+
+color_byte :: (value: float) -> u8 #private {
+    scaled: i32 = (i32)(value * 255.0 + 0.5)
+    if scaled < 0 { return 0 }
+    if scaled > 255 { return 255 }
+    return (u8)scaled
+}
+
+color_hue_to_rgb :: (p: float, q: float, t: float) -> float #private {
+    if t < 0.0 { t += 1.0 }
+    if t > 1.0 { t -= 1.0 }
+    if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t }
+    if t < 1.0 / 2.0 { return q }
+    if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0 }
+    return p
+}
+
+color_from_hsl :: (hue: float, saturation: float, lightness: float,
+                   alpha: u8) -> Color #private {
+    hue = color_clamp(hue, 0.0, 1.0)
+    saturation = color_clamp(saturation, 0.0, 1.0)
+    lightness = color_clamp(lightness, 0.0, 1.0)
+    if saturation <= 0.0 {
+        gray: u8 = color_byte(lightness)
+        return (Color){gray, gray, gray, alpha}
+    }
+    q: float = lightness + saturation - lightness * saturation
+    if lightness < 0.5 {
+        q = lightness * (1.0 + saturation)
+    }
+    p: float = 2.0 * lightness - q
+    red: float = color_hue_to_rgb(p, q, hue + 1.0 / 3.0)
+    green: float = color_hue_to_rgb(p, q, hue)
+    blue: float = color_hue_to_rgb(p, q, hue - 1.0 / 3.0)
+    return (Color){color_byte(red), color_byte(green), color_byte(blue), alpha}
+}
+
+# Shift a color's HSL lightness by amount/255 and preserve its alpha.
+AdjustedColorLightness :: (color: Color, amount: i32) -> Color #private {
+    red: float = (float)color.r / 255.0
+    green: float = (float)color.g / 255.0
+    blue: float = (float)color.b / 255.0
+    maximum: float = color_max(red, color_max(green, blue))
+    minimum: float = color_min(red, color_min(green, blue))
+    chroma: float = maximum - minimum
+    lightness: float = (maximum + minimum) * 0.5
+    hue: float = 0.0
+    saturation: float = 0.0
+    if chroma > 0.0 {
+        absolute_lightness: float = 2.0 * lightness - 1.0
+        if absolute_lightness < 0.0 { absolute_lightness = -absolute_lightness }
+        saturation = chroma / (1.0 - absolute_lightness)
+        if maximum == red {
+            hue = (green - blue) / chroma
+            if green < blue { hue += 6.0 }
+        } else if maximum == green {
+            hue = (blue - red) / chroma + 2.0
+        } else {
+            hue = (red - green) / chroma + 4.0
+        }
+        hue /= 6.0
+    }
+    lightness = color_clamp(lightness + (float)amount / 255.0, 0.0, 1.0)
+    return color_from_hsl(hue, saturation, lightness, color.a)
+}
+
+LightenColor :: (color: Color, amount: i32) -> Color #export {
+    if amount < 0 { amount = 0 }
+    return AdjustedColorLightness(color, amount)
+}
+
+DarkenColor :: (color: Color, amount: i32) -> Color #export {
+    if amount < 0 { amount = 0 }
+    return AdjustedColorLightness(color, -amount)
+}

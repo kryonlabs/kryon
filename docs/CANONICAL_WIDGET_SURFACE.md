@@ -257,7 +257,6 @@ surface review:
 | `src/ui/tree_layout.kry` | Tree Layout widget host surface | `.kry canonical` |
 | `src/ui/tree_paint.kry` | Tree Paint widget host surface | `.kry canonical` |
 | `src/ui/tree_view.kry` | Tree View widget host surface | `.kry canonical` |
-| `src/ui/ui_color.kry` | Ui Color widget host surface | `.kry canonical` |
 | `src/ui/ui_layout.kry` | Ui Layout widget host surface | `.kry canonical` |
 | `src/ui/ui_scaling.kry` | Ui Scaling widget host surface | `.kry canonical` |
 | `src/ui/ui_transition.kry` | Ui Transition widget host surface | `.kry canonical` |

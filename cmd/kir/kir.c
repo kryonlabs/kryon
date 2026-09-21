@@ -231,13 +231,25 @@ KirResolveFunction(const KirModule *module, const char *name,
 }
 
 static KirProgram *runtime_programs[sizeof(runtime_sources) / sizeof(runtime_sources[0])];
+static int runtime_parsing[sizeof(runtime_sources) / sizeof(runtime_sources[0])];
 
 static KirProgram *
 runtime_program(size_t source)
 {
-    if(runtime_programs[source] == NULL)
+    if(runtime_programs[source] == NULL) {
+        /* A runtime source can reference another runtime type while it is
+         * still being parsed (for example a parenthesized expression whose
+         * first token is an identifier, which the expression parser probes
+         * as a cast type). Parsing the same source re-entrantly would
+         * recurse without bound, so the in-progress source resolves to NULL
+         * until its parse completes. */
+        if(runtime_parsing[source])
+            return NULL;
+        runtime_parsing[source] = 1;
         runtime_programs[source] = kir_parse_source(runtime_sources[source].path,
                                                   runtime_sources[source].source);
+        runtime_parsing[source] = 0;
+    }
     return runtime_programs[source];
 }
 

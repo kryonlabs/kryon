@@ -6,7 +6,7 @@
 #include "ui_tree_node_internal.h"
 #include "ui_clip.h"
 #include "theme.h"
-#include "ui_color.h"
+#include "ui_drawing_props.generated.h"
 #include "ui_window.h"
 #include "ui_dpi.h"
 #include "ui_icons.h"

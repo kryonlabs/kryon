@@ -13,7 +13,6 @@
 #include "kryon_frame.h"
 #include "kry_input.h"
 
-#include "ui_color.h"
 #include "ui_scaling.h"
 #include "ui_dpi.h"
 #include "ui_layout.h"

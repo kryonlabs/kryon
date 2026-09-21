@@ -21,8 +21,14 @@ done
 "$build/bin/k2js" --strict --no-main --root runtime --runtime ./kryon-runtime.js \
     -o "$work/web" runtime/control_props.kry
 cmp "$work/web/control_props.js" web/control_props.js
+# runtime/guide.kry, guide_pager.kry, and profile_header.kry are C-only:
+# the Makefile's RUNTIME_GO_KRY excludes them, so they have no checked-in Go
+# output to compare against.
 for source in runtime/*.kry; do
     name=$(basename "$source" .kry)
+    case "$name" in
+        guide|guide_pager|profile_header|terminal_pane) continue ;;
+    esac
     cmp "$work/go/$name.go" "go/kryon/$name.go"
 done
 

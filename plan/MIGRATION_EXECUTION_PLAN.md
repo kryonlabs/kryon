@@ -329,21 +329,35 @@ Re-audited every remaining handwritten public header against the current tree:
   symbol still has a maintained caller (the ledger cleanup already removed the
   unused ones), so there is no residual dead-API batch to delete.
 
-A potentially larger vein — moving Go-compatible *functions* (not just types)
-out of handwritten headers into `runtime/*_props.kry`, starting with
-`LightenColor`/`DarkenColor` in `include/ui_color.h` — was investigated and
-rejected for now. Those functions already have handwritten equivalents in other
-backends: `web/kryon-runtime.js` exports `LightenColor`/`DarkenColor`, and
-`go/kryon/style_runtime.go` implements them as `*runtime` methods, while
-`go/kryon/runtime.go` declares the interface methods. Publishing them from a
-shared `runtime` module would collide with the per-backend runtime contract
-unless all backends (C, Go, k2js, k2b) are migrated together, which is the same
-cross-backend milestone the header removal needs.
+## Round 15 — color functions move to the shared runtime, and a k2c stack-overflow fix
 
-Conclusion unchanged: the remaining header deletion and the B-001 KSS/theme
-removal need the separate cross-backend/C-only-public-header milestone plus the
-Uku/Krait/Rill and Inbe style migrations. No further pure-cleanup slice is
-available in the current tree.
+The round-14 conclusion was too pessimistic: moving Go-compatible *functions*
+into `runtime/*_props.kry` was blocked by a compiler bug, not by the backend
+contract.
+
+- `runtime/drawing_props.kry` now owns `LightenColor`/`DarkenColor` and their
+  private HSL helpers, so `include/ui_color.h` and `src/ui/ui_color.kry` are
+  deleted. `kryon.h`, `src/ui/ui_internal.h`, `src/ui/button.kry`, and
+  `system_theme.c` consume `ui_drawing_props.generated.h`. The C symbols keep
+  their names (`LightenColor`/`DarkenColor`); Go exposes
+  `DrawingProps_LightenColor`/`DrawingProps_DarkenColor`, so the handwritten
+  `web/kryon-runtime.js` and `go/kryon/style_runtime.go` copies stay
+  independent and the per-backend contract is not disturbed.
+- Adding those functions exposed a latent k2c/k2cpp/k2go stack overflow:
+  `runtime_program()` assigned its cache slot only after `kir_parse_source()`
+  returned, so a type probe during parsing (a parenthesized expression whose
+  first token is an identifier, e.g. `(q - p)`, which the expression parser
+  probes as a cast type) re-entered and parsed the same embedded source forever.
+  `cmd/kir/kir.c` now tracks the in-progress source and returns NULL until its
+  parse completes.
+
+Gates: `generated-runtime-parity-test`, `fast-test`,
+k2c/k2cpp/k2go-syntax-test, `go-runtime-test`, `examples-syntax-test`, and the
+refreshed public-API snapshot.
+
+Conclusion: the function-migration vein is open, not blocked. Remaining header
+deletion still needs a `.kry` function-pointer typedef or a C-only public-header
+path, and B-001 still waits on Uku/Krait/Rill and Inbe.
 
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and

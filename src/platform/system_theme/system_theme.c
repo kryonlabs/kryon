@@ -3,7 +3,7 @@
 #include <emscripten.h>
 #include <string.h>
 #endif
-#include "ui_color.h"
+#include "ui_drawing_props.generated.h"
 
 #include <stdio.h>
 #include <stdlib.h>
