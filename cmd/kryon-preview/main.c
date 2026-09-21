@@ -1,5 +1,5 @@
 #include "kryon.h"
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "session.h"
 #include "watch.h"
 

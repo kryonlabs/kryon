@@ -1,4 +1,4 @@
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "ui/kss_parser.h"
 
 #include <assert.h>

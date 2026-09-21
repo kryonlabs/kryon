@@ -3,7 +3,7 @@
 #import "ui/tree_layout.h"
 #import "ui_tree_layout_internal.h"
 #import "ui_style_internal.h"
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "ui_popup_input_internal.h"
 #import "ui_paint_internal.h"
 #import "ui_image_internal.h"

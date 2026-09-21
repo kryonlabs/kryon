@@ -1,7 +1,7 @@
 /* Matched-fixture and invalid-input coverage for the shared KSS module
  * (runtime/kss_parser.kry). Drives the generated parser directly so rule
  * provenance is asserted alongside values. */
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "ui/kss_parser.h"
 #include "runtime/kss_parser.h"
 

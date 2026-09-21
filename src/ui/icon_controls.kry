@@ -1,7 +1,7 @@
 #module "icon_controls_host"
 #import "ui_internal.h"
 #import "ui_style_internal.h"
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "runtime/dropdown.h"
 #import "runtime/toolbar.h"
 

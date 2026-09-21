@@ -1,5 +1,5 @@
 #module "style_picker_host"
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "ui_drawing_props.generated.h"
 #import "ui_tree_props.generated.h"
 

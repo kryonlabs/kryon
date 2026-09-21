@@ -2,7 +2,7 @@
 #define STYLE_INTERNAL_H
 
 #include "ui_control_props.generated.h"
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "runtime/surface.h"
 #include "runtime/style.h"
 #include "runtime/theme.h"

@@ -79,7 +79,7 @@
 #include "ui_node_registry_props.generated.h"
 #include "ui_text_props.generated.h"
 #include "ui_transition_props.generated.h"
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "ui_locale_props.generated.h"
 #if defined(KRYON_WITH_SYNC) && KRYON_WITH_SYNC
 #include "sync/account.h"

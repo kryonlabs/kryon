@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "kryon.h"
 #include "ui_style_internal.h"
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 #include "runtime/button.h"
 #include "runtime/dropdown.h"
 #include "runtime/material.h"

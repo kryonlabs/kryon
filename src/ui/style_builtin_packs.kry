@@ -1,6 +1,6 @@
 #module "style_builtin_host"
 #inspect off
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "ui/kss_parser.h"
 #import "embedded_assets.h"
 #import "stdio.h"

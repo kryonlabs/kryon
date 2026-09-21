@@ -1,5 +1,5 @@
 #module "style_pack_host"
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "string.h"
 
 StyleCacheEntry :: struct {

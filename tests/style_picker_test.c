@@ -1,4 +1,5 @@
-#include "ui_style_sheet.h"
+#include "ui_dropdown_props.generated.h"
+#include "ui_style_pack_props.generated.h"
 #include <assert.h>
 #include <string.h>
 

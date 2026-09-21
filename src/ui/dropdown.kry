@@ -3,7 +3,7 @@
 #import "ui_style_internal.h"
 #import "ui_popup_input_internal.h"
 #import "ui_paint_internal.h"
-#import "ui_style_sheet.h"
+#import "ui_style_pack_props.generated.h"
 #import "theme.h"
 #import "ui/dropdown_store.h"
 #import "ui/text.h"

@@ -1,6 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
-#include "ui_style_sheet.h"
+#include "ui_style_pack_props.generated.h"
 
 #include <assert.h>
 #include <stdio.h>
