@@ -7,4 +7,8 @@
 #define strcasecmp cistrcmp
 #define strncasecmp cistrncmp
 
+/* Native libc has no POSIX reentrant tokenizer; the portable sources use it
+ * in single-threaded parse loops, where the plain tokenizer is equivalent. */
+#define strtok_r(s, d, c) strtok((s), (d))
+
 #endif
