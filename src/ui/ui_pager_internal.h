@@ -2,7 +2,7 @@
 #define PAGER_INTERNAL_H
 
 #include "kryon_compat.generated.h"
-#include "ui_swipe.h"
+#include "ui_swipe_props.generated.h"
 
 typedef struct GuidePagerProps {
     Rectangle content_bounds;

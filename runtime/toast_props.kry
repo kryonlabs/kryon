@@ -6,3 +6,6 @@ ToastProps :: struct {
     class_name: i32
     seconds: double
 }
+
+# Implemented by the C-only toast host; declared here for the public ABI.
+Toast :: (props: ToastProps) #extern #export

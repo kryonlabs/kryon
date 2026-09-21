@@ -36,3 +36,7 @@ SwipeResult :: struct {
     dragging: i32
     cancelled: i32
 }
+
+# Implemented by the C-only swipe host; declared here for the public ABI.
+UpdateSwipe :: (gesture: *SwipeGesture, spec: SwipeSpec) -> SwipeResult #extern #export
+ResetSwipe :: (gesture: *SwipeGesture) #extern #export

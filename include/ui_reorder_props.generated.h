@@ -93,5 +93,6 @@ typedef struct ReorderListResult {
     int32_t pointer_y;
     int32_t drag_delta_y;
 } ReorderListResult;
+ReorderListResult UpdateReorderList(ReorderList list);
 
 #endif /* K_RUNTIME_REORDER_PROPS_H */

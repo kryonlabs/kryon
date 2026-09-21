@@ -1316,6 +1316,9 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    pointer_y: i32\n"
         "    drag_delta_y: i32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only reorder host; declared here for the public ABI.\n"
+        "UpdateReorderList :: (list: ReorderList) -> ReorderListResult #extern #export\n"
     },
     {"runtime/router_props.kry",
         "#module \"router_props\"\n"
@@ -1586,6 +1589,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    dragging: i32\n"
         "    cancelled: i32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only swipe host; declared here for the public ABI.\n"
+        "UpdateSwipe :: (gesture: *SwipeGesture, spec: SwipeSpec) -> SwipeResult #extern #export\n"
+        "ResetSwipe :: (gesture: *SwipeGesture) #extern #export\n"
     },
     {"runtime/tab_bar_props.kry",
         "#module \"tab_bar_props\"\n"
@@ -1778,6 +1785,9 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    class_name: i32\n"
         "    seconds: double\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only toast host; declared here for the public ABI.\n"
+        "Toast :: (props: ToastProps) #extern #export\n"
     },
     {"runtime/toggle_props.kry",
         "#module \"toggle_props\"\n"

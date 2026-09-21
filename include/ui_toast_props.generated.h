@@ -27,5 +27,6 @@ typedef struct ToastProps {
     int32_t class_name;
     double seconds;
 } ToastProps;
+void Toast(ToastProps props);
 
 #endif /* K_RUNTIME_TOAST_PROPS_H */

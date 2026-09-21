@@ -72,3 +72,6 @@ ReorderListResult :: struct {
     pointer_y: i32
     drag_delta_y: i32
 }
+
+# Implemented by the C-only reorder host; declared here for the public ABI.
+UpdateReorderList :: (list: ReorderList) -> ReorderListResult #extern #export

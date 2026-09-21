@@ -215,7 +215,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/modal.kry|src/ui/modal.kry|go/kryon/modal.go|tests/modal_policy_test.c|include/ui_modal.h)
+        runtime/modal.kry|src/ui/modal.kry|go/kryon/modal.go|tests/modal_policy_test.c|include/ui_modal_props.generated.h)
             needs_modal=1
             interesting=1
             ;;
@@ -229,7 +229,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/toast.kry|src/ui/toast.kry|go/kryon/toast.go|tests/toast_policy_test.c|include/ui_toast.h)
+        runtime/toast.kry|src/ui/toast.kry|go/kryon/toast.go|tests/toast_policy_test.c|include/ui_toast_props.generated.h)
             needs_toast=1
             interesting=1
             ;;

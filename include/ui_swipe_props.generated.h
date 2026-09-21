@@ -57,5 +57,7 @@ typedef struct SwipeResult {
     int32_t dragging;
     int32_t cancelled;
 } SwipeResult;
+SwipeResult UpdateSwipe(SwipeGesture* gesture, SwipeSpec  spec);
+void ResetSwipe(SwipeGesture* gesture);
 
 #endif /* K_RUNTIME_SWIPE_PROPS_H */
