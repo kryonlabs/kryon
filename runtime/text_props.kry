@@ -1,5 +1,57 @@
 #module "text_props"
 #import "ui_control_props.generated.h"
+#import "kryon_compat.generated.h"
+
+# Standard font size points; Font itself is the host's raylib handle.
+Text8 :: 8
+Text12 :: 12
+Text14 :: 14
+Text16 :: 16
+Text18 :: 18
+Text20 :: 20
+Text24 :: 24
+Text32 :: 32
+Text48 :: 48
+TextBaseSize :: 16
+
+# Implemented by the C-only text host; declared here for the public ABI.
+GetTextFont :: () -> Font #extern #export
+EnsureDefaultFont :: () -> i32 #extern #export
+RegisterTextFont :: (name: const char*, font: Font) -> i32 #extern #export
+RegisterSmallTextFont :: (name: const char*, font: Font) -> i32 #extern #export
+RegisterTextFontSource :: (name: const char*, file_type: const char*,
+                           font_data: const u8*, font_size: u32,
+                           codepoints: const i32*,
+                           codepoint_count: i32) -> i32 #extern #export
+RegisterTextFontSourceForText :: (name: const char*, file_type: const char*,
+                                  font_data: const u8*, font_size: u32,
+                                  text: const char*) -> i32 #extern #export
+RegisterFixedTextFontSource :: (name: const char*, file_type: const char*,
+                                font_data: const u8*, font_size: u32,
+                                codepoints: const i32*,
+                                codepoint_count: i32) -> i32 #extern #export
+RegisterTextFontFileSource :: (name: const char*, path: const char*,
+                               codepoints: const i32*,
+                               codepoint_count: i32) -> i32 #extern #export
+RegisterTextFontFileSourceForText :: (name: const char*, path: const char*,
+                                      text: const char*) -> i32 #extern #export
+UseTextFont :: (name: const char*) -> i32 #extern #export
+PushTextFont :: (name: const char*) -> i32 #extern #export
+PopTextFont :: (token: i32) #extern #export
+TextFontHasGlyph :: (font: Font, codepoint: i32) -> i32 #extern #export
+LoadTextFontFromMemory :: (file_type: const char*, font_data: const u8*,
+                           font_size: u32, base_size: i32) -> Font #extern #export
+LoadTextFontAsset :: (path: const char*, base_size: i32) -> Font #extern #export
+UnloadTextFont :: (font: *Font) #extern #export
+ClearTextFonts :: () #extern #export
+TextFontMemoryReport :: (tag: const char*) #extern #export
+MeasureTextWidth :: (text: const char*, font_size: i32,
+                     typeface: const char*) -> i32 #extern #export
+GetTextFontForCodepoint :: (codepoint: i32, font_size: i32) -> Font #extern #export
+GetTextFontForSize :: (font_size: i32) -> Font #extern #export
+GetTextFontScale :: (font: Font, font_size: i32) -> float #extern #export
+RenderTextGlyph :: (codepoint: u32, x: i32, y: i32, font_size: i32,
+                    color: Color) -> i32 #extern #export
 
 TextWrap :: enum {
     TextWrapAuto = 0

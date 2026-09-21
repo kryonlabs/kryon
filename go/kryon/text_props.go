@@ -2,6 +2,7 @@
 package kryon
 
 // #import ui_control_props.generated.h
+// #import kryon_compat.generated.h
 type TextWrap int32
 
 const (
@@ -29,3 +30,14 @@ type TextProps struct {
 	Selectable    bool
 	Strikethrough bool
 }
+
+const Text8 = 8
+const Text12 = 12
+const Text14 = 14
+const Text16 = 16
+const Text18 = 18
+const Text20 = 20
+const Text24 = 24
+const Text32 = 32
+const Text48 = 48
+const TextBaseSize = 16

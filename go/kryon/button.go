@@ -9,7 +9,7 @@ package kryon
 // #import input_props
 // #import paint
 // #import material
-// #import ui_text.h
+// #import ui_text_props.generated.h
 // #import ui_core.h
 type ButtonInput struct {
 	Flags       StateFlags

@@ -5,7 +5,7 @@
 #import "runtime/color_picker.h"
 #import "ui/text.h"
 #import "ui/selectable_text.h"
-#import "ui_text.h"
+#import "ui_text_props.generated.h"
 #import "ui_internal.h"
 #import "stdio.h"
 #import "stdlib.h"

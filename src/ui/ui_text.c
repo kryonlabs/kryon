@@ -1,6 +1,6 @@
 #include "ui/text_rows.h"
 #include "ui/text.h"
-#include "ui_text.h"
+#include "ui_text_props.generated.h"
 #include "ui_text_backend.h"
 #include "ui_drawing_props.generated.h"
 #include "ui_internal.h"

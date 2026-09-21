@@ -3,7 +3,7 @@
 
 #include "kryon.h"
 #include "ui_icon_types.h"
-#include "ui_text.h"
+#include "ui_text_props.generated.h"
 
 typedef enum {
     TEXT_ELEMENT_TEXT,

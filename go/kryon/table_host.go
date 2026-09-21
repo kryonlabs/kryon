@@ -584,7 +584,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if props.SelectedColumn != nil {
 		selectedCol = *props.SelectedColumn
 	}
-	fallbackFont := Text12
+	var fallbackFont int32 = Text12
 	if rowH >= 28 {
 		fallbackFont = Text14
 	}

@@ -1,6 +1,6 @@
 #module "selectable_text_host"
 #import "ui_internal.h"
-#import "ui_text.h"
+#import "ui_text_props.generated.h"
 #import "ui_text_backend.h"
 #import "ui/text_rows.h"
 #import "ui/cursor.h"

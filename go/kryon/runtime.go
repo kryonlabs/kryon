@@ -101,16 +101,6 @@ const (
 )
 
 const (
-	Text8  int32 = 8
-	Text12 int32 = 12
-	Text14 int32 = 14
-	Text16 int32 = 16
-	Text18 int32 = 18
-	Text20 int32 = 20
-	Text24 int32 = 24
-	Text32 int32 = 32
-	Text48 int32 = 48
-
 	THEME_SOURCE_APP    = 0
 	THEME_SOURCE_SYSTEM = 1
 	THEME_MODE_SYSTEM   = 0

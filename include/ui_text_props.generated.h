@@ -21,6 +21,17 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "ui_control_props.generated.h"
+#include "kryon_compat.generated.h"
+#define Text8 8
+#define Text12 12
+#define Text14 14
+#define Text16 16
+#define Text18 18
+#define Text20 20
+#define Text24 24
+#define Text32 32
+#define Text48 48
+#define TextBaseSize 16
 
 typedef enum TextWrap {
     TextWrapAuto = 0,
@@ -45,5 +56,28 @@ typedef struct TextProps {
     bool selectable;
     bool strikethrough;
 } TextProps;
+Font GetTextFont(void);
+int32_t EnsureDefaultFont(void);
+int32_t RegisterTextFont(const char* name, Font  font);
+int32_t RegisterSmallTextFont(const char* name, Font  font);
+int32_t RegisterTextFontSource(const char* name, const char*  file_type, const uint8_t*  font_data, uint32_t  font_size, const int32_t*  codepoints, int32_t  codepoint_count);
+int32_t RegisterTextFontSourceForText(const char* name, const char*  file_type, const uint8_t*  font_data, uint32_t  font_size, const char*  text);
+int32_t RegisterFixedTextFontSource(const char* name, const char*  file_type, const uint8_t*  font_data, uint32_t  font_size, const int32_t*  codepoints, int32_t  codepoint_count);
+int32_t RegisterTextFontFileSource(const char* name, const char*  path, const int32_t*  codepoints, int32_t  codepoint_count);
+int32_t RegisterTextFontFileSourceForText(const char* name, const char*  path, const char*  text);
+int32_t UseTextFont(const char* name);
+int32_t PushTextFont(const char* name);
+void PopTextFont(int32_t token);
+int32_t TextFontHasGlyph(Font font, int32_t  codepoint);
+Font LoadTextFontFromMemory(const char* file_type, const uint8_t*  font_data, uint32_t  font_size, int32_t  base_size);
+Font LoadTextFontAsset(const char* path, int32_t  base_size);
+void UnloadTextFont(Font* font);
+void ClearTextFonts(void);
+void TextFontMemoryReport(const char* tag);
+int32_t MeasureTextWidth(const char* text, int32_t  font_size, const char*  typeface);
+Font GetTextFontForCodepoint(int32_t codepoint, int32_t  font_size);
+Font GetTextFontForSize(int32_t font_size);
+float GetTextFontScale(Font font, int32_t  font_size);
+int32_t RenderTextGlyph(uint32_t codepoint, int32_t  x, int32_t  y, int32_t  font_size, Color  color);
 
 #endif /* K_RUNTIME_TEXT_PROPS_H */

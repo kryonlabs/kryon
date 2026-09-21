@@ -61,7 +61,7 @@
 #include "ui_profile_icon_props.generated.h"
 #include "ui_reorder_props.generated.h"
 #include "ui_swipe_props.generated.h"
-#include "ui_text.h"
+#include "ui_text_props.generated.h"
 #include "ui_toast_props.generated.h"
 #include "ui_tree.h"
 #include "ui_page_props.generated.h"

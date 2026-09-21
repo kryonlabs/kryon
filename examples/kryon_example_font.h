@@ -1,7 +1,7 @@
 #ifndef EXAMPLE_TEXT_FONT_H
 #define EXAMPLE_TEXT_FONT_H
 
-#include "ui_text.h"
+#include "ui_text_props.generated.h"
 
 #include "kryon.h"
 static void
