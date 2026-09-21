@@ -3,6 +3,7 @@ package kryon
 
 // #import ui_control_props.generated.h
 // #import kryon_compat.generated.h
+// #import ui_icon_types.h
 type TextWrap int32
 
 const (

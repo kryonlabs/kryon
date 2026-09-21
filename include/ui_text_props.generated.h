@@ -22,6 +22,7 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "ui_control_props.generated.h"
 #include "kryon_compat.generated.h"
+#include "ui_icon_types.h"
 #define Text8 8
 #define Text12 12
 #define Text14 14
@@ -32,6 +33,12 @@ static inline bool StringEqual(String a, String b) {
 #define Text32 32
 #define Text48 48
 #define TextBaseSize 16
+
+typedef enum { TEXT_ELEMENT_TEXT = 0, TEXT_ELEMENT_ICON = 1, TEXT_ELEMENT_LINE_BREAK = 2 } TextElementKind;
+
+typedef struct { TextElementKind type; const char *text; Texture2D icon; IconType icon_type; int icon_size; int text_width; } TextElement;
+
+typedef struct TextLayout { TextElement *elements; int element_count; int *line_breaks; int line_count; int *line_widths; int total_height; int line_height; int last_reflow_width; } TextLayout;
 
 typedef enum TextWrap {
     TextWrapAuto = 0,
@@ -56,6 +63,10 @@ typedef struct TextProps {
     bool selectable;
     bool strikethrough;
 } TextProps;
+TextLayout ParseTextLayout(const char* input, Texture2D  icon, IconType  icon_type, int32_t  icon_size);
+void ReflowTextLayout(TextLayout* layout, int32_t  max_width, int32_t  font_size, int32_t  line_height);
+int32_t GetTextLayoutHeight(TextLayout* layout);
+void FreeTextLayout(TextLayout* layout);
 Font GetTextFont(void);
 int32_t EnsureDefaultFont(void);
 int32_t RegisterTextFont(const char* name, Font  font);

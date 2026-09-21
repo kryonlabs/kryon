@@ -1,6 +1,18 @@
 #module "text_props"
 #import "ui_control_props.generated.h"
 #import "kryon_compat.generated.h"
+#import "ui_icon_types.h"
+
+# C-only layout records: TextElement stores a script-generated IconType and
+# Texture2D, TextLayout stores pointer spans, so both pass through as C text.
+TextElementKind :: enum { TEXT_ELEMENT_TEXT = 0, TEXT_ELEMENT_ICON = 1, TEXT_ELEMENT_LINE_BREAK = 2 } #type
+TextElement :: struct { TextElementKind type; const char *text; Texture2D icon; IconType icon_type; int icon_size; int text_width; } #type
+TextLayout :: struct TextLayout { TextElement *elements; int element_count; int *line_breaks; int line_count; int *line_widths; int total_height; int line_height; int last_reflow_width; } #type
+
+ParseTextLayout :: (input: const char*, icon: Texture2D, icon_type: IconType, icon_size: i32) -> TextLayout #extern #export
+ReflowTextLayout :: (layout: *TextLayout, max_width: i32, font_size: i32, line_height: i32) #extern #export
+GetTextLayoutHeight :: (layout: *TextLayout) -> i32 #extern #export
+FreeTextLayout :: (layout: *TextLayout) #extern #export
 
 # Standard font size points; Font itself is the host's raylib handle.
 Text8 :: 8

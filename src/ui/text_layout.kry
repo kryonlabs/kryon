@@ -1,5 +1,5 @@
 #module "text_layout_host"
-#import "ui_text_layout.h"
+#import "ui_text_props.generated.h"
 #import "ui_internal.h"
 #import "ui_paint_internal.h"
 #import "ui_icons.h"

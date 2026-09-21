@@ -19,7 +19,7 @@
 #include "ui_scroll_internal.h"
 #include "ui_widget_internal.h"
 #include "ui_rows_internal.h"
-#include "ui_text_layout.h"
+#include "ui_text_props.generated.h"
 #include "ui/grapheme.h"
 #include "runtime/text_input.h"
 

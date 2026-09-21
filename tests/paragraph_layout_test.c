@@ -1,4 +1,4 @@
-#include "ui_text_layout.h"
+#include "ui_text_props.generated.h"
 #include "../src/ui/ui_internal.h"
 #include "runtime/paint.h"
 
