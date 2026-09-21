@@ -17,7 +17,7 @@
 #include "ui_dpi.h"
 #include "ui_layout_props.generated.h"
 #include "ui_drawing_props.generated.h"
-#include "ui_core.h"
+#include "ui_core_props.generated.h"
 #include "ui_instance_props.generated.h"
 #include "ui_control_props.generated.h"
 #include "ui_accessibility_node.generated.h"

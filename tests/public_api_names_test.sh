@@ -1025,7 +1025,7 @@ fi
 
 public_text_platform_matches="$(
     rg -n '\b(UITextInputPlatformCallback|SetUITextInputPlatformCallback)\b' \
-        include/ui_core.h \
+        include/ui_core_props.generated.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"

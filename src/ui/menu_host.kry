@@ -429,7 +429,7 @@ class_name: i32) -> i32 #export {
                     }
                 }
             }
-            if pointer.set_focus { SetFocus(focus_id) }
+            if pointer.set_focus { KryonSetFocus(focus_id) }
             if pointer.set_submenu {
                 state->submenu_id = pointer.submenu_id
             }
@@ -501,7 +501,7 @@ item_count: i32) -> i32 #export {
     ui_popup_input_focus_captures(id),
     IsKeyPressed(KEY_ESCAPE)) {
         menu_navigation_reset(0, nil, 0)
-        SetFocus(0)
+        KryonSetFocus(0)
         return 0
     }
     menu_navigation_begin_frame()
@@ -544,7 +544,7 @@ RenderContextMenu :: (menu: MenuProps) -> i32 #export {
         *menu.open = result.open
         *menu.x = (int)activation.origin.x
         *menu.y = (int)activation.origin.y
-        SetFocus(menu.id)
+        KryonSetFocus(menu.id)
         menu_navigation_reset(menu.id, menu.items,
         menu.item_count)
     }
@@ -777,7 +777,7 @@ menu_count: i32, open_index: *i32) -> MenuResult #export {
         state->open_id, hot,
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         if pointer.consume_release { ConsumeRelease() }
-        if pointer.set_focus { SetFocus(id) }
+        if pointer.set_focus { KryonSetFocus(id) }
         if pointer.changed_open {
             state->open_id = pointer.next_open_id
         }

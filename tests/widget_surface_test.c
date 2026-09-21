@@ -1675,7 +1675,7 @@ test_pointer_click_clears_focus_outside_widgets(void)
     Rectangle second = {10, 60, 80, 30};
 
     InjectReset();
-    SetFocus(31001);
+    KryonSetFocus(31001);
     InjectMousePosition(160, 160);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
@@ -1683,7 +1683,7 @@ test_pointer_click_clears_focus_outside_widgets(void)
     RegisterFocus(31001, first);
     RegisterFocus(31002, second);
     EndInterfaceFrame();
-    check_int("empty click clears widget focus", GetFocus(), 0);
+    check_int("empty click clears widget focus", KryonGetFocus(), 0);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
@@ -1694,7 +1694,7 @@ test_pointer_click_clears_focus_outside_widgets(void)
     RegisterFocus(31001, first);
     RegisterFocus(31002, second);
     EndInterfaceFrame();
-    check_int("click on widget acquires focus", GetFocus(), 31001);
+    check_int("click on widget acquires focus", KryonGetFocus(), 31001);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
@@ -1705,7 +1705,7 @@ test_pointer_click_clears_focus_outside_widgets(void)
     RegisterFocus(31001, first);
     RegisterFocus(31002, second);
     EndInterfaceFrame();
-    check_int("click on another widget moves focus", GetFocus(), 31002);
+    check_int("click on another widget moves focus", KryonGetFocus(), 31002);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
     BeginInterfaceFrame(240, 240, 1.0f);
@@ -1740,7 +1740,7 @@ test_slider_keyboard_navigation(void)
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
     BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
-    check_int("click focuses slider component",GetFocus(),600);
+    check_int("click focuses slider component",KryonGetFocus(),600);
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
     BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
@@ -1764,7 +1764,7 @@ test_slider_keyboard_navigation(void)
 
     InjectKeyTap(KEY_TAB); InjectPump();
     BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
-    second_focus = GetFocus();
+    second_focus = KryonGetFocus();
     check_int("slider Tab reaches second component",second_focus != 600,1);
     InjectKeyTap(KEY_LEFT); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
@@ -1773,7 +1773,7 @@ test_slider_keyboard_navigation(void)
     check_int("second slider component value",
               (int)(floats[1]*1000.0f+0.5f),740);
 
-    SetFocus(601); InjectKeyTap(KEY_UP); InjectPump();
+    KryonSetFocus(601); InjectKeyTap(KEY_UP); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
     check_int("vertical slider Up changed",test_vslider_discrete(vertical),1);
     EndInterfaceFrame();
@@ -1789,7 +1789,7 @@ test_slider_keyboard_navigation(void)
     check_int("vertical slider End value",ints[0],10);
 
     vertical.disabled = 1;
-    SetFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
+    KryonSetFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
     check_int("disabled slider unchanged",test_vslider_discrete(vertical),0);
     EndInterfaceFrame();
@@ -1816,21 +1816,21 @@ test_drag_keyboard_navigation(void)
         .value_count=2,.speed=2,.min=0,.max=10};
 
     InjectReset(); draw_drag_keyboard(fp,ip);
-    SetFocus(630); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    KryonSetFocus(630); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag float Right",(int)(floats[0]*100),225);
     InjectPump(); InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_drag_keyboard(fp,ip);
     check_int("drag float Shift Right",(int)(floats[0]*100),475);
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
-    check_int("drag float Tab second",GetFocus(),ui_numeric_focus_id(630,1,0));
+    check_int("drag float Tab second",KryonGetFocus(),ui_numeric_focus_id(630,1,0));
     InjectKeyTap(KEY_HOME); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag float Home",(int)floats[1],0);
 
-    SetFocus(631); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    KryonSetFocus(631); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag int Right",ints[0],4);
     InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
-    check_int("drag int Tab second",GetFocus(),ui_numeric_focus_id(631,1,1));
+    check_int("drag int Tab second",KryonGetFocus(),ui_numeric_focus_id(631,1,1));
     InjectKeyTap(KEY_LEFT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag int second Left",ints[1],3);
 
@@ -1842,25 +1842,25 @@ test_drag_keyboard_navigation(void)
         DragDiscreteRangeProps ir = {.bounds={240,50,200,30},.id=633,
             .current_min=&imin,.current_max=&imax,.speed=2,.min=0,.max=10};
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
-        SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        KryonSetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag float range min",(int)fmin,3);
         InjectKeyTap(KEY_TAB); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
-        check_int("drag float range Tab",GetFocus(),ui_numeric_focus_id(632,1,0));
+        check_int("drag float range Tab",KryonGetFocus(),ui_numeric_focus_id(632,1,0));
         InjectKeyTap(KEY_LEFT); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag float range max",(int)fmax,7);
-        SetFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
+        KryonSetFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range min",imin,4);
         InjectKeyTap(KEY_TAB); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
-        check_int("drag int range Tab",GetFocus(),ui_numeric_focus_id(633,1,1));
+        check_int("drag int range Tab",KryonGetFocus(),ui_numeric_focus_id(633,1,1));
         InjectKeyTap(KEY_LEFT); InjectPump();
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range max",imax,6);
-        SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        KryonSetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(480,240,1); DisabledScope(1); test_drag_continuous_range(fr); DisabledEndScope(); EndInterfaceFrame();
         check_int("disabled drag range",(int)fmin,3);
     }
@@ -1986,7 +1986,7 @@ test_tab_bar_keyboard_navigation(void)
 
     InjectReset();
     BeginInterfaceFrame(360,180,1); ui_tab_bar_keyboard_input(props); EndInterfaceFrame();
-    SetFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
+    KryonSetFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginInterfaceFrame(360,180,1);
     selected = ui_tab_bar_keyboard_input(props);
     EndInterfaceFrame();
@@ -2008,7 +2008,7 @@ test_tab_bar_keyboard_navigation(void)
     props.disabled = 1;
     props.selected_index = 0;
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginInterfaceFrame(360,180,1); SetFocus(props.id);
+    BeginInterfaceFrame(360,180,1); KryonSetFocus(props.id);
     check_int("disabled tab ignores keyboard",ui_tab_bar_keyboard_input(props),-1);
     EndInterfaceFrame();
     InjectReset();
@@ -2057,7 +2057,7 @@ test_composed_tab_bar_scope(void)
     EndInterfaceFrame();
     check_int("first composed tab content",visible,0);
 
-    SetFocus(props.id);
+    KryonSetFocus(props.id);
     InjectKeyTap(KEY_RIGHT);
     InjectPump();
     BeginInterfaceFrame(260,140,1);
@@ -2098,7 +2098,7 @@ test_popup_tab_bar_keyboard_ownership(void)
         PopupInputToken child = ui_popup_input_begin(
             context,26101,(Rectangle){15,15,200,80});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(props.id);
+        KryonSetFocus(props.id);
         check_int("only top popup tab bar handles keyboard",
                   ui_tab_bar_keyboard_input(props),inside ? 1 : -1);
         if(inside) ui_popup_input_end(child);
@@ -2123,7 +2123,7 @@ test_step_button_keyboard_navigation(void)
 
     InjectReset();
     BeginInterfaceFrame(240,140,1); RenderSpinbox(spin); RenderInputDiscrete(field); EndInterfaceFrame();
-    SetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,140,1);
     check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
     RenderInputDiscrete(field); EndInterfaceFrame();
@@ -2131,7 +2131,7 @@ test_step_button_keyboard_navigation(void)
 
     {
         NumericInputState *state = ui_numeric_input_state(1,field.id,0);
-        SetFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+        KryonSetFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginInterfaceFrame(240,140,1); RenderSpinbox(spin);
         check_int("numeric step keyboard changed",RenderInputDiscrete(field),1);
         EndInterfaceFrame();
@@ -2139,7 +2139,7 @@ test_step_button_keyboard_navigation(void)
     }
 
     spin.disabled = 1;
-    SetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginInterfaceFrame(240,140,1);
     check_int("disabled spinbox keyboard",RenderSpinbox(spin),0);
     EndInterfaceFrame();
@@ -2190,40 +2190,40 @@ test_focusable_choice_keyboard_navigation(void)
                            &selectable_activated,&flags_activated,
                            &radio_activated);
 
-    SetFocus(609); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(609); InjectKeyTap(KEY_ENTER); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("checkbox Enter activation",checkbox_activated,1);
     check_int("checkbox Enter state",checkbox,1);
 
-    SetFocus(610); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(610); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("selectable Space activation",selectable_activated,1);
     check_int("selectable Space state",selected,1);
 
-    SetFocus(611); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(611); InjectKeyTap(KEY_ENTER); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("checkbox flags Enter activation",flags_activated,1);
     check_int("checkbox flags Enter state",flags,4);
 
-    SetFocus(612); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(612); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("radio Space activation",radio_activated,612);
 
-    SetFocus(610); InjectKeyTap(KEY_TAB); InjectPump();
+    KryonSetFocus(610); InjectKeyTap(KEY_TAB); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
-    check_int("choice Tab traversal",GetFocus(),611);
+    check_int("choice Tab traversal",KryonGetFocus(),611);
 
-    SetFocus(611); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(611); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,1,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
@@ -2243,7 +2243,7 @@ test_toggle_keyboard_navigation(void)
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
     EndInterfaceFrame();
 
-    SetFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginInterfaceFrame(240,120,1);
     activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
@@ -2251,14 +2251,14 @@ test_toggle_keyboard_navigation(void)
     check_int("toggle Space activation",activated,1);
     check_int("toggle Space state",value,1);
 
-    SetFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
+    KryonSetFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
     BeginInterfaceFrame(240,120,1);
     (void)Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
     EndInterfaceFrame();
-    check_int("toggle Tab traversal",GetFocus(),614);
+    check_int("toggle Tab traversal",KryonGetFocus(),614);
 
-    SetFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,120,1);
     DisabledScope(1);
     activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
@@ -2293,7 +2293,7 @@ test_multi_select_keyboard_navigation(void)
 
     InjectReset();
     draw_multi_select_keyboard(list);
-    SetFocus(618); InjectKeyTap(KEY_DOWN); InjectPump();
+    KryonSetFocus(618); InjectKeyTap(KEY_DOWN); InjectPump();
     check_int("multi Down clicked",draw_multi_select_keyboard(list),1);
     check_int("multi Down anchor",anchor,1);
     check_int("multi Down count",count,1);
@@ -2324,10 +2324,10 @@ test_multi_select_keyboard_navigation(void)
 
     InjectKeyTap(KEY_TAB); InjectPump();
     draw_multi_select_keyboard(list);
-    check_int("multi Tab traversal",GetFocus(),619);
+    check_int("multi Tab traversal",KryonGetFocus(),619);
 
     list.disabled = 1;
-    SetFocus(618); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(618); InjectKeyTap(KEY_SPACE); InjectPump();
     check_int("disabled multi rejects keyboard",draw_multi_select_keyboard(list),-1);
     check_int("disabled multi preserves selection",selected[0],1);
 }
@@ -2350,21 +2350,21 @@ test_focusable_image_keyboard_navigation(void)
     });
     EndInterfaceFrame();
 
-    SetFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("invisible button Enter activation",
               Button((ButtonProps){.bounds={10,50,40,30},.id=620,
                                     .invisible=true}),1);
     EndInterfaceFrame();
 
-    SetFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
+    KryonSetFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("image button Space activation",
               Button((ButtonProps){.bounds=image.bounds,.id=621,
                                    .image=image}),1);
     EndInterfaceFrame();
 
-    SetFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
+    KryonSetFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("color button Enter activation",
               Button((ButtonProps){
@@ -2492,19 +2492,19 @@ test_menu_keyboard_navigation(void)
     MenuResult result;
 
     InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Down opens",open,0);
     check_int("menu Down open result",result.open_index,0);
 
     InjectKeyTap(KEY_END); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectPump(); BeginInterfaceFrame(640,480,1);
     result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
@@ -2512,24 +2512,24 @@ test_menu_keyboard_navigation(void)
     check_int("submenu activation closes",open,-1);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Right then Down opens next",result.open_index,1);
     InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectPump(); BeginInterfaceFrame(640,480,1);
     result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("second menu Enter activates",result.activated_id,31);
 
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_ESCAPE); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(300);
     Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Escape closes",open,-1);
     InjectReset();
@@ -2546,12 +2546,12 @@ test_popup_menu_keyboard_navigation(void)
     int activated;
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(400);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(400);
     activated = Menu((MenuProps){.id = 400, .mode = MenuModePopup, .bounds = {20,20,0,0}, .items = items, .item_count = 3}).activated_id; EndInterfaceFrame();
     check_int("popup Enter skips disabled",activated,42);
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginInterfaceFrame(640,480,1); SetFocus(999);
+    BeginInterfaceFrame(640,480,1); KryonSetFocus(999);
     activated = Menu((MenuProps){.id = 400, .mode = MenuModePopup, .bounds = {20,20,0,0}, .items = items, .item_count = 3}).activated_id; EndInterfaceFrame();
     check_int("unfocused popup rejects Enter",activated,0);
     InjectReset();
@@ -2574,7 +2574,7 @@ test_popup_menu_keyboard_ownership(void)
         PopupInputToken child = ui_popup_input_begin(
             context,25701,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25711);
+        KryonSetFocus(25711);
         check_int("only top popup menu handles keyboard",
                   Menu((MenuProps){.id = 25711, .mode = MenuModePopup, .bounds = {10,10,0,0}, .items = items, .item_count = 1}).activated_id,inside ? 25710 : 0);
         if(inside) ui_popup_input_end(child);
@@ -2604,10 +2604,10 @@ test_popup_menu_keyboard_ownership(void)
             context,25701,(Rectangle){190,190,20,20});
         if(!inside)
             ui_popup_input_end(child);
-        SetFocus(25711);
+        KryonSetFocus(25711);
         (void)Menu((MenuProps){.id = 25711, .mode = MenuModePopup, .bounds = {10,10,0,0}, .items = items, .item_count = 1}).activated_id;
         check_int("only top popup menu handles Escape",
-                  GetFocus(),expected_focus);
+                  KryonGetFocus(),expected_focus);
         if(inside)
             ui_popup_input_end(child);
         ui_popup_input_end(parent);
@@ -2894,7 +2894,7 @@ test_tree_header_keyboard_gates(void)
     for(int mode = 0; mode < 4; mode++) {
         p.leaf = mode == 0;
         p.disabled = mode == 1;
-        SetFocus(994);
+        KryonSetFocus(994);
         InjectKeyTap(KEY_RIGHT);
         for(int frame = 0; frame < 2; frame++) {
             InjectPump();
@@ -3101,7 +3101,7 @@ test_popup_preedit_cancellation(void)
                 PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetFocus(frame == 1 && cause == 2 ? 0 : 26010);
+            KryonSetFocus(frame == 1 && cause == 2 ? 0 : 26010);
             TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
                 .cursor_position=&cursor,.focused=&focused,.focus_id=26010,
                 .read_only=frame == 1 && cause == 1});
@@ -3146,7 +3146,7 @@ test_popup_composition_dismissal_replay(void)
                 PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetFocus(26000); focused = 1;
+            KryonSetFocus(26000); focused = 1;
             if(area)
                 TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                     .cursor_position=&cursor,.focused=&focused,.focus_id=26000,.read_only=read_only});
@@ -3192,7 +3192,7 @@ test_popup_text_dismissal_replay(void)
                 PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetFocus(25900); focused = 1;
+            KryonSetFocus(25900); focused = 1;
             if(area)
                 TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                     .cursor_position=&cursor,.focused=&focused,.focus_id=25900});
@@ -3231,13 +3231,13 @@ test_popup_tab_missing_owner(void)
             if(frame == 0) {
                 PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 RegisterFocus(25820,(Rectangle){0});
-                SetFocus(25820);
+                KryonSetFocus(25820);
                 ui_popup_input_end(child);
             }
             ui_popup_input_end(parent);
         }
         EndFocusScope();
-        check_int("missing popup owner releases Tab in the same frame",GetFocus(),
+        check_int("missing popup owner releases Tab in the same frame",KryonGetFocus(),
             frame == 0 ? 25820 : frame == 1 ? 25810 : 25800);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
@@ -3264,7 +3264,7 @@ test_popup_button_keyboard_ownership(void)
         PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
         PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25700);
+        KryonSetFocus(25700);
         int activated = Button((ButtonProps){.bounds={10,10,120,28},.label="Action",.id=25700});
         check_int("only top popup button activates from keyboard",activated,inside);
         if(inside) ui_popup_input_end(child);
@@ -3298,7 +3298,7 @@ test_popup_choice_keyboard_ownership(void)
         PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25705);
+        KryonSetFocus(25705);
         int activated = Selectable((SelectableProps){
             .bounds={10,10,120,28},.label="Choice",.id=25705,
             .selected=&selected
@@ -3334,7 +3334,7 @@ test_popup_multi_select_keyboard_ownership(void)
         PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25706);
+        KryonSetFocus(25706);
         int clicked = ListBox((ListBoxProps){
             .bounds={10,10,120,56},.id=25706,.items=items,.item_count=2,
             .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
@@ -3367,7 +3367,7 @@ test_popup_drag_keyboard_ownership(void)
         PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25707);
+        KryonSetFocus(25707);
         int changed = test_drag_continuous((DragContinuousProps){
             .bounds={10,10,120,28},.id=25707,.values=&value,.value_count=1,
             .speed=1,.min=0,.max=10
@@ -3394,7 +3394,7 @@ test_popup_tab_ownership(void)
         if(mode == 2 || mode == 3) InjectKey(KEY_LEFT_SHIFT,1);
         InjectKeyTap(KEY_TAB); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        SetFocus(start[mode]);
+        KryonSetFocus(start[mode]);
         RegisterFocus(25600,(Rectangle){0});
         PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
@@ -3412,7 +3412,7 @@ test_popup_tab_ownership(void)
         if(mode == 4) ui_popup_input_close(context,1);
         if(mode == 5) ui_popup_input_close(context,0);
         EndFocusScope();
-        check_int("popup Tab ownership and wraparound",GetFocus(),want[mode]);
+        check_int("popup Tab ownership and wraparound",KryonGetFocus(),want[mode]);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
@@ -3438,7 +3438,7 @@ test_popup_text_keyboard_ownership(void)
         PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
         PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(25500);
+        KryonSetFocus(25500);
         if(area)
             TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                 .cursor_position=&cursor,.focused=&focused,.focus_id=25500});
@@ -3471,7 +3471,7 @@ test_text_area_page_navigation(void)
     };
 
     InjectReset();
-    SetFocus(area.focus_id);
+    KryonSetFocus(area.focus_id);
     InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Down advances one line",cursor > 4,1);
@@ -3543,7 +3543,7 @@ test_secure_text_field_word_navigation(void)
     };
 
     InjectReset();
-    SetFocus(field.focus_id);
+    KryonSetFocus(field.focus_id);
     InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
     BeginInterfaceFrame(240,100,1); TextField(field); EndInterfaceFrame();
     check_int("secure TextField Ctrl+Left hides word boundaries",cursor,0);
@@ -3588,7 +3588,7 @@ test_immediate_text_composition(void)
     InjectReset();
     ClearTextInputFocus();
     field_focused = 1;
-    SetFocus(field.focus_id);
+    KryonSetFocus(field.focus_id);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
                           "\xE6\x97\xA5\xE6\x9C\xAC", 3, 0);
     BeginInterfaceFrame(240,160,1);
@@ -3617,7 +3617,7 @@ test_immediate_text_composition(void)
 
     ClearTextInputFocus();
     area_focused = 1;
-    SetFocus(area.focus_id);
+    KryonSetFocus(area.focus_id);
     SetTextAreaSelection(area.focus_id, 1, 3);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
                           "\xE3\x81\xAB", 3, 0);
@@ -3859,7 +3859,7 @@ test_composed_popup_nested_escape(void)
     bool parent = true, child = true;
     PopupInput *context = ui_popup_input_create();
     InjectReset();
-    SetFocus(29820);
+    KryonSetFocus(29820);
     for (int frame = 0; frame < 2; frame++) {
         if (frame == 1) {
             InjectKeyTap(KEY_ESCAPE);
@@ -3887,7 +3887,7 @@ test_composed_popup_nested_escape(void)
     }
     check_int("nested Escape preserves parent state", parent, 1);
     check_int("nested Escape updates child state", child, 0);
-    check_int("nested Escape restores parent focus", GetFocus(), 29822);
+    check_int("nested Escape restores parent focus", KryonGetFocus(), 29822);
     ui_popup_input_destroy(context);
     InjectReset();
 }
@@ -3986,7 +3986,7 @@ test_composed_popup_focus_lifecycle(void)
     BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    SetFocus(29600);
+    KryonSetFocus(29600);
     BeginTree(Key("composed popup focus acquisition"));
     check_int("focus parent popup opens",
         PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
@@ -3997,7 +3997,7 @@ test_composed_popup_focus_lifecycle(void)
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     PopupEndScope();
     EndTree();
-    check_int("parent popup acquires first child focus",GetFocus(),29611);
+    check_int("parent popup acquires first child focus",KryonGetFocus(),29611);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -4016,7 +4016,7 @@ test_composed_popup_focus_lifecycle(void)
     PopupEndScope();
     PopupEndScope();
     EndTree();
-    check_int("nested popup acquires first child focus",GetFocus(),29621);
+    check_int("nested popup acquires first child focus",KryonGetFocus(),29621);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -4032,7 +4032,7 @@ test_composed_popup_focus_lifecycle(void)
         .open=&child_open});
     Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
     popup_close_scope();
-    check_int("nested popup restores parent focus",GetFocus(),29611);
+    check_int("nested popup restores parent focus",KryonGetFocus(),29611);
     PopupEndScope();
     PopupEndScope();
     EndTree();
@@ -4048,7 +4048,7 @@ test_composed_popup_focus_lifecycle(void)
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     popup_close_scope();
-    check_int("parent popup restores background focus",GetFocus(),29600);
+    check_int("parent popup restores background focus",KryonGetFocus(),29600);
     PopupEndScope();
     EndTree();
     ui_popup_input_finish(context);
@@ -4059,14 +4059,14 @@ test_composed_popup_focus_lifecycle(void)
     BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    SetFocus(29700);
+    KryonSetFocus(29700);
     BeginTree(Key("composed missing popup owner focus"));
     PopupScope((PopupProps){.bounds={20,20,120,80},.id=29710,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,90,24},.label="Popup",.id=29711});
     PopupEndScope();
     EndTree();
-    check_int("popup before missing owner has child focus",GetFocus(),29711);
+    check_int("popup before missing owner has child focus",KryonGetFocus(),29711);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -4077,7 +4077,7 @@ test_composed_popup_focus_lifecycle(void)
     BeginTree(Key("composed missing popup owner restore"));
     EndTree();
     ui_popup_input_finish(context);
-    check_int("missing popup owner restores background focus",GetFocus(),29700);
+    check_int("missing popup owner restores background focus",KryonGetFocus(),29700);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
     ui_popup_input_destroy(context);
@@ -4324,7 +4324,7 @@ test_popup_dropdown_keyboard_ownership(void)
         if(!inside) ui_popup_input_end(child);
         check_int("keyboard capture is independent of pointer bounds",ui_popup_input_keyboard_captures(),!inside);
         int selected = 0;
-        SetFocus(25400);
+        KryonSetFocus(25400);
         Dropdown((DropdownProps){.bounds={10,10,100,28},.id=25400,
             .options=options,.option_count=2,.selected_index=&selected});
         check_int("only top popup may open a focused dropdown",dropdown_captures((Vector2){20,60}),inside);
@@ -4352,7 +4352,7 @@ test_popup_dropdown_keyboard_ownership(void)
         InjectKeyTap(KEY_SPACE);
         InjectPump();
         BeginInterfaceFrame(240,240,1);
-        SetFocus(25400);
+        KryonSetFocus(25400);
         (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
@@ -4376,7 +4376,7 @@ test_popup_dropdown_keyboard_ownership(void)
             context,25701,(Rectangle){190,190,20,20});
         if(!inside)
             ui_popup_input_end(child);
-        SetFocus(25400);
+        KryonSetFocus(25400);
         (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
@@ -4448,7 +4448,7 @@ test_popup_collapsible_keyboard_ownership(void)
         PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,120,100});
         PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){20,20,80,60});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(26110);
+        KryonSetFocus(26110);
         Collapsible((CollapsibleProps){.bounds={20,20,80,28},.id=26110,
                     .label="Node",.open=&open,.tree=1});
         check_int("only top popup collapsible handles keyboard",open,inside);
@@ -4468,7 +4468,7 @@ test_retained_popup_pointer_focus(void)
     for(int blocked = 0; blocked < 2; blocked++) {
         InjectReset(); InjectTap(60,60); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        SetFocus(0);
+        KryonSetFocus(0);
         PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         PopupInput *previous = ui_popup_input_bind(context);
@@ -4483,14 +4483,14 @@ test_retained_popup_pointer_focus(void)
         Button((ButtonProps){.bounds={50,50,40,24},.id=25302,.label="Parent"});
         ui_popup_input_end(outer);
         Button((ButtonProps){.bounds={50,50,40,24},.id=25303,.label="Background"});
-        check_int("immediate popup focus preserves modal blocking",GetFocus(),blocked ? 0 : 25301);
+        check_int("immediate popup focus preserves modal blocking",KryonGetFocus(),blocked ? 0 : 25301);
         /* Exercise the deferred focus pass independently of the immediate
          * button check; the popup scopes are already closed here. */
-        SetFocus(0);
+        KryonSetFocus(0);
         Event event;
         while(NextEvent(&event)) {}
         EndTree();
-        check_int("deferred popup focus preserves modal blocking",GetFocus(),blocked ? 0 : 25301);
+        check_int("deferred popup focus preserves modal blocking",KryonGetFocus(),blocked ? 0 : 25301);
         int clicks = 0;
         while(NextEvent(&event)) {
             if(event.kind != EVENT_CLICK) continue;
@@ -4666,9 +4666,9 @@ test_nested_popup_input_ownership(void)
     ui_popup_input_close(context,0);
     check_int("closing parent disables active child",ui_popup_input_captures(context,(Vector2){60,60}),1);
     PopupInputToken late_child = ui_popup_input_begin(context, 29899, (Rectangle){10,10,100,100});
-    int prior_focus = GetFocus();
+    int prior_focus = KryonGetFocus();
     ui_popup_input_register_focus(29900, late_child, 1);
-    check_int("late child of closed owner cannot capture focus", GetFocus(), prior_focus);
+    check_int("late child of closed owner cannot capture focus", KryonGetFocus(), prior_focus);
     check_int("late child of closed owner cannot reclaim input", ui_popup_input_captures(context,(Vector2){60,60}), 1);
     ui_popup_input_end(late_child);
     ui_popup_input_end(nested); ui_popup_input_end(outer);
@@ -4761,7 +4761,7 @@ test_dropdown_horizontal_viewport(void)
         int selected = 0;
         InjectReset(); InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginInterfaceFrame(240,240,1); SetFocus(25002);
+            InjectPump(); BeginInterfaceFrame(240,240,1); KryonSetFocus(25002);
             Dropdown((DropdownProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
             EndInterfaceFrame();
         }
@@ -4791,7 +4791,7 @@ test_dropdown_scrollbar_dismissal(void)
         InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginInterfaceFrame(240,240,1);
-            SetFocus(25001);
+            KryonSetFocus(25001);
             Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected});
             EndInterfaceFrame();
@@ -4827,7 +4827,7 @@ test_dropdown_keyboard_open(void)
             for(int frame = 0; frame < 3; frame++) {
                 InjectPump();
                 BeginInterfaceFrame(240,240,1);
-                SetFocus(24000);
+                KryonSetFocus(24000);
                 DisabledScope(mode == 2);
                 Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 24000,
                     .options = options, .option_count = 2, .selected_index = &selected,
@@ -4922,32 +4922,32 @@ test_list_box_keyboard_navigation(void)
     };
 
     InjectReset(); InjectKeyTap(KEY_END); InjectPump();
-    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    BeginInterfaceFrame(200,120,1); KryonSetFocus(list.id);
     check_int("list End changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list End selection",selected,7);
     check_int("list End reveal",offset,144);
 
     InjectKeyTap(KEY_UP); InjectPump();
-    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    BeginInterfaceFrame(200,120,1); KryonSetFocus(list.id);
     check_int("list Up changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list Up selection",selected,6);
     check_int("list Up retains viewport",offset,144);
 
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    BeginInterfaceFrame(200,120,1); KryonSetFocus(list.id);
     check_int("list Home changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list Home selection",selected,0);
     check_int("list Home reveal",offset,0);
 
     list.disabled = 1;
     InjectKeyTap(KEY_END); InjectPump();
-    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    BeginInterfaceFrame(200,120,1); KryonSetFocus(list.id);
     check_int("disabled list rejects End",RenderListBox(list),0); EndInterfaceFrame();
     check_int("disabled list selection",selected,0);
     list.disabled = 0;
     selected = -1;
     InjectReset(); InjectPump();
-    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    BeginInterfaceFrame(200,120,1); KryonSetFocus(list.id);
     check_int("idle list unchanged",RenderListBox(list),0); EndInterfaceFrame();
     check_int("idle list keeps no selection",selected,-1);
     InjectReset();
@@ -4971,7 +4971,7 @@ test_popup_list_box_keyboard_ownership(void)
         PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,100});
         PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(list.id);
+        KryonSetFocus(list.id);
         RenderListBox(list);
         check_int("only top popup list handles keyboard",selected,inside ? 1 : 0);
         if(inside) ui_popup_input_end(child);
@@ -5153,38 +5153,38 @@ test_table_keyboard_navigation(void)
     };
 
     InjectReset(); InjectKey(KEY_RIGHT,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145);
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145);
     int changed = TableView(table); EndInterfaceFrame();
     InjectKey(KEY_RIGHT,0); InjectPump();
     check_int("table keyboard right changed",changed,1);
     check_int("table keyboard follows display order",selected_column,0);
 
     InjectKey(KEY_TAB,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_TAB,0); InjectPump();
     check_int("table tab advances within row",selected_column,1);
-    check_int("table tab retains table focus",GetFocus(),145);
+    check_int("table tab retains table focus",KryonGetFocus(),145);
 
     InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     check_int("table shift tab reverses within row",selected_column,0);
-    check_int("table shift tab retains table focus",GetFocus(),145);
+    check_int("table shift tab retains table focus",KryonGetFocus(),145);
 
     InjectKey(KEY_DOWN,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_DOWN,0); InjectPump();
     check_int("table keyboard down",selected_row,1);
 
     InjectKey(KEY_F2,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     check_int("table keyboard activated row",activated_row,1);
     check_int("table keyboard activated column",activated_column,0);
     InjectKey(KEY_F2,0); InjectPump();
 
     for(int row = 2; row < 6; row++) {
         InjectKey(KEY_DOWN,1); InjectPump();
-        BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+        BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
         InjectKey(KEY_DOWN,0); InjectPump();
         check_int("table keyboard advances each row",selected_row,row);
     }
@@ -5193,13 +5193,13 @@ test_table_keyboard_navigation(void)
 
     table.disabled = 1;
     InjectKey(KEY_UP,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_UP,0); InjectPump();
     check_int("disabled table blocks keyboard",selected_row,5);
     table.disabled = 0;
 
     InjectKey(KEY_ESCAPE,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_ESCAPE,0); InjectPump();
     check_int("table escape clears row",selected_row,-1);
     check_int("table escape clears column",selected_column,-1);
@@ -5207,26 +5207,26 @@ test_table_keyboard_navigation(void)
     selected_row = 0;
     selected_column = 1;
     InjectKey(KEY_LEFT_CONTROL,1); InjectKey(KEY_C,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
     check_int("table cell copy",strcmp(GetClipboardTextValue(),"b"),0);
 
     selected_column = -1;
     InjectKey(KEY_C,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
     check_int("table row copy",strcmp(GetClipboardTextValue(),"a\tb\tc"),0);
 
     selected_row = -1;
     selected_column = 2;
     InjectKey(KEY_C,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
     check_int("table column copy",strcmp(GetClipboardTextValue(),"c\nc\nc\nc\nc\nc"),0);
 
     table.copy_text = "editable-id";
     InjectKey(KEY_C,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
     check_int("table copy override",strcmp(GetClipboardTextValue(),"editable-id"),0);
 
@@ -5239,7 +5239,7 @@ test_table_keyboard_navigation(void)
     selected_column = 0;
     SetClipboardTextValue("new\tvalues");
     InjectKey(KEY_V,1); InjectPump();
-    BeginInterfaceFrame(240,160,1); SetFocus(145);
+    BeginInterfaceFrame(240,160,1); KryonSetFocus(145);
     check_int("table paste changed",TableView(table),1); EndInterfaceFrame();
     InjectKey(KEY_V,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     check_int("table paste text",strcmp(pasted_text,"new\tvalues"),0);
@@ -5270,7 +5270,7 @@ test_popup_table_keyboard_ownership(void)
         PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,120});
         PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,100});
         if(!inside) ui_popup_input_end(child);
-        SetFocus(26120);
+        KryonSetFocus(26120);
         TableView(table);
         check_int("only top popup table handles keyboard",selected_row,inside ? 1 : 0);
         if(inside) ui_popup_input_end(child);
@@ -5479,7 +5479,7 @@ test_accessibility_snapshot(void)
 
     InjectReset();
     SetAccessibilitySink(capture_accessibility, NULL);
-    SetFocus(7101);
+    KryonSetFocus(7101);
     BeginInterfaceFrame(500, 300, 1);
     BeginTree(Key("accessibility-test"));
     ButtonScope((ButtonProps){.bounds = {0, 0, 120, 30}, .id = 7101});

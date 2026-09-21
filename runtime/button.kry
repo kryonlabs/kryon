@@ -8,7 +8,7 @@
 #import "paint"
 #import "material"
 #import "ui_text_props.generated.h"
-#import "ui_core.h"
+#import "ui_core_props.generated.h"
 
 MeasureTextWidth :: (text: const char*, font: i32, typeface: const char*) -> i32 #extern
 ReadActivation :: (bounds: Rectangle, id: i32, enabled: bool) -> Activation #extern

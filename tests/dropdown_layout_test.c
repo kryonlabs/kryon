@@ -61,7 +61,7 @@ rich_step(int *selected, int all_disabled)
     };
     InjectPump();
     BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
-    SetFocus(7901);
+    KryonSetFocus(7901);
     Dropdown((DropdownProps){.bounds = {100, 100, 300, 40}, .id = 7901,
         .items = items, .option_count = 4, .selected_index = selected});
     EndInterfaceFrame();

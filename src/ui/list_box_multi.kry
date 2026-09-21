@@ -161,7 +161,7 @@ RenderListBoxMulti :: (list: ListBoxProps) -> i32 #export {
         if row_decision.consume_release { ConsumeRelease() }
         if row_decision.activate {
             if list.id > 0 {
-                SetFocus(list.id)
+                KryonSetFocus(list.id)
                 focused = 1
             }
             clicked = index

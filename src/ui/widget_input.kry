@@ -40,7 +40,7 @@ disabled: i32, focused: *i32) -> i32 #export {
     }
     if interaction.consume_release { ConsumeRelease() }
     if interaction.activated {
-        if id > 0 { SetFocus(id) }
+        if id > 0 { KryonSetFocus(id) }
         *focused = id > 0
         active = 1
     }

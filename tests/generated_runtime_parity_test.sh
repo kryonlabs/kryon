@@ -1634,7 +1634,7 @@ int main(void)
     if(tab_first_actions != 1 || tab_second_actions != 0) {
         fprintf(stderr,"tab scope: selected first child did not own input\n"); return 1;
     }
-    SetFocus(958); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_tab_scope();
+    KryonSetFocus(958); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_tab_scope();
     InjectTap(60,84); InjectPump(); draw_tab_scope();
     InjectPump(); draw_tab_scope();
     if(tab_scope_selected != 1 || tab_first_actions != 1 ||
@@ -1748,24 +1748,24 @@ int main(void)
     }
     InjectKey(KEY_C,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     popup_shortcut_open = 1;
-    SetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    KryonSetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(popup_tree_background_open) {
         fprintf(stderr,"generated background tree handled a popup-owned key\n"); return 1;
     }
-    InjectPump(); SetFocus(27071); InjectKeyTap(KEY_RIGHT); InjectPump();
+    InjectPump(); KryonSetFocus(27071); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(!popup_tree_inside_open) {
         fprintf(stderr,"generated popup tree did not handle its owned key\n"); return 1;
     }
     InjectPump(); popup_shortcut_open = 0;
-    SetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    KryonSetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(!popup_tree_background_open) {
         fprintf(stderr,"generated background tree routing was not restored\n"); return 1;
     }
     InjectKey(KEY_RIGHT,0); InjectPump();
-    SetFocus(26100);
+    KryonSetFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
     draw_composition();
     if(strcmp(composition_text,"base") != 0) {
@@ -1784,7 +1784,7 @@ int main(void)
     }
     composition_read_only = 1;
     for(int id = 26100; id <= 26101; id++) {
-        SetFocus(id);
+        KryonSetFocus(id);
         InjectKey(KEY_LEFT_CONTROL,1);
         InjectKeyTap(KEY_A); InjectKeyTap(KEY_C); InjectKeyTap(KEY_X); InjectKeyTap(KEY_V);
         InjectKeyTap(KEY_BACKSPACE); InjectKeyTap(KEY_DELETE); InjectText("blocked");
@@ -1797,7 +1797,7 @@ int main(void)
         InjectReset();
     }
     composition_read_only = 0;
-    SetFocus(26102);
+    KryonSetFocus(26102);
     InjectKey(KEY_LEFT_CONTROL,1);
     InjectKeyTap(KEY_RIGHT);
     InjectPump();
@@ -1967,7 +1967,7 @@ int main(void)
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
     if(mixed_actions != 0) { fprintf(stderr, "scroll: hidden mixed button activated\n"); return 1; }
-    SetFocus(988);
+    KryonSetFocus(988);
     InjectText("!");
     InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(mixed_text,"item!") != 0) { fprintf(stderr, "scroll: mixed text editing failed\n"); return 1; }
@@ -1992,10 +1992,10 @@ int main(void)
         }
     }
     InjectReset();
-    SetFocus(990);
+    KryonSetFocus(990);
     const int branch_keys[] = {KEY_LEFT,KEY_RIGHT,KEY_RIGHT,KEY_ENTER,KEY_SPACE};
     for(int i = 0; i < 5; i++) {
-        SetFocus(990);
+        KryonSetFocus(990);
         InjectKeyTap(branch_keys[i]);
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
@@ -2017,8 +2017,8 @@ int main(void)
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
         int want = (i == 0 || i == 2 || i == 6) ? 990 : i == 5 ? 995 : 991;
-        if(GetFocus() != want || !branch_open || nested_open != (i >= 4)) {
-            fprintf(stderr,"tree directional focus: step %d focus %d failed\n",i,GetFocus()); return 1;
+        if(KryonGetFocus() != want || !branch_open || nested_open != (i >= 4)) {
+            fprintf(stderr,"tree directional focus: step %d focus %d failed\n",i,KryonGetFocus()); return 1;
         }
     }
     InjectReset();
@@ -2049,7 +2049,7 @@ int main(void)
     }
     if(overlay_actions != 2) { fprintf(stderr,"dropdown dismissal: capture remained\n"); return 1; }
     for(int last = 0; last < 2; last++) {
-        SetFocus(996);
+        KryonSetFocus(996);
         InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
         int before = overlay_selected;
@@ -2061,7 +2061,7 @@ int main(void)
         if(overlay_selected != last) { fprintf(stderr,"dropdown keyboard commit failed\n"); return 1; }
     }
     InjectReset();
-    SetFocus(24001);
+    KryonSetFocus(24001);
     InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectKeyTap(KEY_END);
@@ -2071,7 +2071,7 @@ int main(void)
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     if(long_dropdown_selected != 19) { fprintf(stderr,"long dropdown flipped viewport did not reveal last row\n"); return 1; }
     long_dropdown_selected = 0;
-    SetFocus(24001);
+    KryonSetFocus(24001);
     InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
@@ -2085,7 +2085,7 @@ int main(void)
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     if(long_dropdown_selected != 19) { fprintf(stderr,"dropdown scrollbar did not reveal last row\n"); return 1; }
     edge_dropdown_visible = 1;
-    SetFocus(24002); InjectKeyTap(KEY_SPACE);
+    KryonSetFocus(24002); InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectTap(490,380);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
@@ -2137,7 +2137,7 @@ int main(void)
     InjectTap(20,380);
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
-    if(GetFocus() != 1006) { fprintf(stderr,"custom cell editor focus failed\n"); return 1; }
+    if(KryonGetFocus() != 1006) { fprintf(stderr,"custom cell editor focus failed\n"); return 1; }
     InjectKeyTap(KEY_END); InjectPump(); draw_ui(scroll_content_frame);
     InjectText("!"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"custom cell editing failed: %s\n",custom_text); return 1; }
@@ -2145,12 +2145,12 @@ int main(void)
     InjectText("X"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"disabled custom cell edited: %s\n",custom_text); return 1; }
     custom_disabled = 0;
-    SetFocus(1006); InjectPump(); draw_ui(scroll_content_frame);
+    KryonSetFocus(1006); InjectPump(); draw_ui(scroll_content_frame);
     InjectText("?"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!?") != 0) { fprintf(stderr,"custom cell editor re-enable failed: %s\n",custom_text); return 1; }
     InjectReset();
     draw_form();
-    SetFocus(101);
+    KryonSetFocus(101);
     draw_form();
     AccessibilityNode accessible_nodes[32];
     int accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
@@ -2290,14 +2290,14 @@ int main(void)
     first_cursor = 4;
     SetSelection(101, 4, 4);
 
-    SetFocus(102);
+    KryonSetFocus(102);
     draw_form();
     SetSelection(102, 0, 4);
     InjectText("acct");
     InjectPump();
     draw_form();
 
-    SetFocus(101);
+    KryonSetFocus(101);
     draw_form();
     InjectKeyTap(KEY_TAB);
     InjectPump();
@@ -2307,7 +2307,7 @@ int main(void)
     draw_form();
 
     SetClipboardTextValue("old");
-    SetFocus(103);
+    KryonSetFocus(103);
     draw_form();
     SetSelection(103, 0, 6);
     InjectKey(KEY_LEFT_CONTROL, 1);
@@ -2350,7 +2350,7 @@ int main(void)
     InjectText("A");
     InjectPump();
     draw_focus();
-    int focus_after_focus = GetFocus();
+    int focus_after_focus = KryonGetFocus();
 
     draw_buttons();
     InjectTap(30, 130);
@@ -2397,13 +2397,13 @@ int main(void)
     buttons_reverse = false;
     draw_buttons();
     int button_pointer_action = buttons_action;
-    SetFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
+    KryonSetFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
-    SetFocus(501); InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
+    KryonSetFocus(501); InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
     InjectKeyTap(KEY_TAB); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
-    if(GetFocus() != 502) {
+    if(KryonGetFocus() != 502) {
         fprintf(stderr,"generated button Tab did not skip disabled control\n");
         return 1;
     }
@@ -2417,7 +2417,7 @@ int main(void)
     draw_long_text();
     int long_text_nodes = 0;
     (void)GetTreeNodes(&long_text_nodes);
-    SetFocus(701);
+    KryonSetFocus(701);
     draw_long_text();
     require_long_text_node_count(long_text_nodes, "focus");
     for(int i = 0; i < 2048; i++) {
@@ -2474,7 +2474,7 @@ int main(void)
                 slider_value, toggle_value, checkbox_value, selected);
         return 1;
     }
-    SetFocus(802); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    KryonSetFocus(802); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
     if(toggle_value != 0) {
         fprintf(stderr,"controls: generated Toggle rejected keyboard toggle\n");
         return 1;
@@ -2484,20 +2484,20 @@ int main(void)
         fprintf(stderr,"controls: generated Toggle did not restore state\n");
         return 1;
     }
-    SetFocus(802); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
-    if(GetFocus() != 803) {
-        fprintf(stderr,"controls: generated Toggle Tab focus=%d, want 803\n",GetFocus());
+    KryonSetFocus(802); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(KryonGetFocus() != 803) {
+        fprintf(stderr,"controls: generated Toggle Tab focus=%d, want 803\n",KryonGetFocus());
         return 1;
     }
-    SetFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    KryonSetFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
     if(checkbox_value != 0) {
         fprintf(stderr,"controls: generated Checkbox rejected keyboard toggle\n");
         return 1;
     }
     InjectPump(); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
-    SetFocus(805); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
-    SetFocus(806); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
-    SetFocus(807); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    KryonSetFocus(805); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    KryonSetFocus(806); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    KryonSetFocus(807); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
     if(choice_selected != 1 || choice_flags != 4 || choice_radio_actions != 1) {
         fprintf(stderr,"controls: generated choice keyboard state=%d/%d/%d, want 1/4/1\n",
                 choice_selected,choice_flags,choice_radio_actions);
@@ -2522,13 +2522,13 @@ int main(void)
         return 1;
     }
     choice_radio_actions = 0;
-    SetFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
-    if(GetFocus() != 806) {
-        fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetFocus());
+    KryonSetFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(KryonGetFocus() != 806) {
+        fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",KryonGetFocus());
         return 1;
     }
     draw_multi_select();
-    SetFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
+    KryonSetFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
     if(multi_anchor != 1 || multi_count != 1 ||
        multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 0) {
         fprintf(stderr,"multi_select: generated Down state=%d%d%d/%d/%d\n",
@@ -2578,9 +2578,9 @@ int main(void)
     InjectTap(36, 78);
     InjectPump();
     draw_list_box();
-    SetFocus(0); InjectKeyTap(KEY_TAB); InjectPump(); draw_list_box();
-    if(GetFocus() != 801) { fprintf(stderr,"generated list Tab focus failed\n"); return 1; }
-    SetFocus(801); InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
+    KryonSetFocus(0); InjectKeyTap(KEY_TAB); InjectPump(); draw_list_box();
+    if(KryonGetFocus() != 801) { fprintf(stderr,"generated list Tab focus failed\n"); return 1; }
+    KryonSetFocus(801); InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_HOME); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_UP); InjectPump(); draw_list_box();
@@ -2593,7 +2593,7 @@ int main(void)
         return 1;
     }
 
-    SetFocus(940); InjectKeyTap(KEY_DOWN); InjectPump(); draw_menus();
+    KryonSetFocus(940); InjectKeyTap(KEY_DOWN); InjectPump(); draw_menus();
     if(open_menu != 0) { fprintf(stderr,"generated menu Down did not open\n"); return 1; }
     InjectKeyTap(KEY_END); InjectPump(); draw_menus();
     InjectKeyTap(KEY_RIGHT); InjectPump(); draw_menus();
@@ -2618,29 +2618,29 @@ int main(void)
 
     draw_progress();
     draw_plots();
-    SetFocus(920); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    KryonSetFocus(920); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
     if(plots_scalar_values[0] < 1.0999f || plots_scalar_values[0] > 1.1001f) {
         fprintf(stderr,"generated float drag keyboard value=%f, want 1.1\n",plots_scalar_values[0]);
         return 1;
     }
-    InjectPump(); SetFocus(921); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    InjectPump(); KryonSetFocus(921); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
     if(plots_whole_values[0] != 4) {
         fprintf(stderr,"generated int drag keyboard value=%d, want 4\n",plots_whole_values[0]);
         return 1;
     }
-    InjectPump(); SetFocus(938); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    InjectPump(); KryonSetFocus(938); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
     if(plots_scalar_range_min < 2.0999f || plots_scalar_range_min > 2.1001f) {
         fprintf(stderr,"generated float range drag keyboard value=%f, want 2.1\n",plots_scalar_range_min);
         return 1;
     }
     InjectPump();
-    SetFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    KryonSetFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
     if((int)(plots_slider_values[0]*1000.0f+0.5f) != 260) {
         fprintf(stderr,"generated float slider keyboard value=%f, want 0.26\n",
                 plots_slider_values[0]);
         return 1;
     }
-    SetFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
+    KryonSetFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
     if(plots_slider_discrete_values[0] != 3) {
         fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
                 plots_slider_discrete_values[0]);
@@ -2689,7 +2689,7 @@ int main(void)
                 plots_slider_discrete_values[0]);
         return 1;
     }
-    SetFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();
+    KryonSetFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();
     if(plots_input_whole_values[0] != 5) {
         fprintf(stderr,"generated input step keyboard value=%d, want 5\n",
                 plots_input_whole_values[0]);
@@ -2724,19 +2724,19 @@ int main(void)
         return 1;
     }
 
-    SetFocus(901);
+    KryonSetFocus(901);
     InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
     InjectKey(KEY_TAB,0); InjectPump();
-    if(selected_row != 1 || selected_column != 0 || GetFocus() != 901) {
+    if(selected_row != 1 || selected_column != 0 || KryonGetFocus() != 901) {
         fprintf(stderr,"table_view tab: got selected=(%d,%d) focus=%d, want (1,0),901\n",
-                selected_row,selected_column,GetFocus());
+                selected_row,selected_column,KryonGetFocus());
         return 1;
     }
     InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
     InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
-    if(selected_row != 0 || selected_column != 2 || GetFocus() != 901) {
+    if(selected_row != 0 || selected_column != 2 || KryonGetFocus() != 901) {
         fprintf(stderr,"table_view shift-tab: got selected=(%d,%d) focus=%d, want (0,2),901\n",
-                selected_row,selected_column,GetFocus());
+                selected_row,selected_column,KryonGetFocus());
         return 1;
     }
     InjectKey(KEY_LEFT,1); InjectPump(); draw_table_view();

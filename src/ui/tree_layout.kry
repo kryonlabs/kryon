@@ -1506,7 +1506,7 @@ enabled: i32) #export {
             ui_accessibility_active[index].id = 0
             if request.kind == kind &&
             AccessibilityActionAllowed(actions, request.action) {
-                SetFocus(id)
+                KryonSetFocus(id)
                 if request.action == AccessibilityActionActivate {
                     ui_accessibility_activation = id
                 }

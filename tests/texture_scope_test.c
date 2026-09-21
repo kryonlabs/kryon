@@ -586,15 +586,15 @@ int main(void)
         fprintf(stderr,"NativeWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
-        SetFocus(42001);
+        KryonSetFocus(42001);
         for(int frame = 0; frame < 4; frame++) {
             BeginNativeWindow(window);
-            if(GetFocus() != (frame == 0 ? 0 : 42002)) {
+            if(KryonGetFocus() != (frame == 0 ? 0 : 42002)) {
                 fprintf(stderr,"NativeWindow restored wrong owned focus: %d\n",
-                        GetFocus());
+                        KryonGetFocus());
                 failures++;
             }
-            SetFocus(42002);
+            KryonSetFocus(42002);
             if(frame == 2)
                 RegisterFocus(42002,(Rectangle){4,4,20,20});
             BeginTextureMode(inner);
@@ -621,9 +621,9 @@ int main(void)
             if(frame == 3) CloseNativeWindow(window);
             else EndNativeWindow();
             check_window_readback = 0;
-            if(GetFocus() != 42001) {
+            if(KryonGetFocus() != 42001) {
                 fprintf(stderr,"NativeWindow leaked focus into caller: %d\n",
-                        GetFocus());
+                        KryonGetFocus());
                 failures++;
             }
             if(ui_window_paint_layers() != NULL) {
@@ -944,7 +944,7 @@ int main(void)
         BeginTextureMode(popup_target);
         ClearBackground(BLACK);
         BeginInterfaceFrame(240,240,1);
-        SetFocus(22001);
+        KryonSetFocus(22001);
         Dropdown((DropdownProps){.bounds={10,10,160,28},.id=22001,
             .options=scroll_options,.option_count=20,.selected_index=&scroll_selected});
         int previous_draws = full_dropdown_text_draws;

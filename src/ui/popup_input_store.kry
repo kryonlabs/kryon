@@ -152,7 +152,7 @@ bounds: Rectangle) -> PopupInputToken #export {
         context->panels = panel
         panel->owner = owner
         panel->focus = PopupFocusInitialize(panel->focus,
-        false, GetFocus())
+        false, KryonGetFocus())
     }
     panel->parent = context->active
     panel->bounds = bounds
@@ -181,7 +181,7 @@ owner: i32) #export {
     panel: *PopupPanel = context->panels
     while panel != nil {
         if panel->owner == owner {
-            focused: i32 = GetFocus()
+            focused: i32 = KryonGetFocus()
             restore: i32 = 0
             entry: *PopupFocus = context->focus
             while entry != nil {
@@ -205,7 +205,7 @@ owner: i32) #export {
                 }
                 child = child->next
             }
-            if restore != 0 { SetFocus(panel->focus.restore_focus) }
+            if restore != 0 { KryonSetFocus(panel->focus.restore_focus) }
             return
         }
         panel = panel->next
@@ -405,11 +405,11 @@ token: PopupInputToken, eligible: i32) #export {
         panel->order != token.order) { panel = panel->next }
         if panel != nil {
             decision: PopupFocusDecision = PopupFocusRegister(
-            panel->focus, id, GetFocus(), panel->alive != 0,
+            panel->focus, id, KryonGetFocus(), panel->alive != 0,
             eligible != 0,
             ui_popup_input_snapshot_keyboard_captures(token) != 0)
             panel->focus = decision.state
-            if decision.acquire { SetFocus(id) }
+            if decision.acquire { KryonSetFocus(id) }
         }
     }
 }

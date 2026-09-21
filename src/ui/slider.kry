@@ -50,7 +50,7 @@ ratio: *float) -> i32 #export {
     if decision.start_active {
         toolkit->slider_active = token
         toolkit->slider_owner = ui_popup_input_owner()
-        if focus_id > 0 { SetFocus(focus_id) }
+        if focus_id > 0 { KryonSetFocus(focus_id) }
     }
     if decision.update_ratio {
         span: float = vertical != 0 ? bounds.height : bounds.width

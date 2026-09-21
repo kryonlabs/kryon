@@ -90,7 +90,7 @@ integer: i32, editing: *i32) -> i32 #export {
         }
         state->cursor = (int)strlen(&state->text[0])
         state->focused = 1
-        SetFocus(focus_id)
+        KryonSetFocus(focus_id)
         toolkit->drag_active = 0
         toolkit->slider_active = 0
     }
@@ -134,7 +134,7 @@ integer: i32, editing: *i32) -> i32 #export {
     if commit {
         state->focused = 0
         ClearTextInputFocus()
-        SetFocus(focus_id)
+        KryonSetFocus(focus_id)
     }
     *editing = state->focused
     return changed

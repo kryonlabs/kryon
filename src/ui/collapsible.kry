@@ -134,7 +134,7 @@ RenderCollapsible :: (section: CollapsibleProps) -> i32 #export {
     section.leaf != 0, section.open != nil)
     if pointer.mark_clickable { MarkClickable() }
     if pointer.consume_release { ConsumeRelease() }
-    if pointer.focus && section.id > 0 { SetFocus(section.id) }
+    if pointer.focus && section.id > 0 { KryonSetFocus(section.id) }
     if pointer.toggle_open && section.open != nil {
         open_result: CollapsibleOpenResult = CollapsibleOpenApply(
         *section.open != 0, pointer.toggle_open != 0,
@@ -154,7 +154,7 @@ RenderCollapsible :: (section: CollapsibleProps) -> i32 #export {
     section.tree != 0, key, open != 0, section.leaf != 0,
     section.open != nil, IsFocusActivatePressed(section.id) != 0)
     if keyboard.move_focus {
-        SetFocus(TreeHeaderTarget(section.id,
+        KryonSetFocus(TreeHeaderTarget(section.id,
         CollapsibleFocusKey(keyboard.focus_key)))
     } else if section.open != nil {
         open_result: CollapsibleOpenResult = CollapsibleOpenApply(

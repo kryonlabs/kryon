@@ -108,7 +108,7 @@ static int focus_random_field(int *index_out)
     frame();
     drain_events();
     if(!fields[index].focused)
-        SetFocus(fields[index].focus_id);   /* pointer miss fallback */
+        KryonSetFocus(fields[index].focus_id);   /* pointer miss fallback */
     *index_out = index;
     return fields[index].focused != 0;
 }

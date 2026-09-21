@@ -235,7 +235,7 @@ item: *i32) -> i32 #export {
                         *list.selected_index = selected
                     }
                     if !all { *item = index }
-                    SetFocus(list.id)
+                    KryonSetFocus(list.id)
                 }
             }
         }
@@ -330,7 +330,7 @@ field: *TextFieldProps) #export {
                     field->text, request->cursor)
                 }
                 if eligible {
-                    SetFocus(node->id)
+                    KryonSetFocus(node->id)
                     state->dragging = 0
                     if field->cursor_position != nil {
                         *field->cursor_position = state->cursor

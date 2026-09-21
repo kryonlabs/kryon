@@ -16,8 +16,7 @@
 #import "string.h"
 #import "limits.h"
 
-ui_view_width :: i32 = 320 #global #export
-ui_view_height :: i32 = 560 #global #export
+# ui_view_width/ui_view_height live in runtime/core_props.kry.
 c_text :: Color #global #export
 c_bg :: Color #global #export
 c_surface :: Color #global #export

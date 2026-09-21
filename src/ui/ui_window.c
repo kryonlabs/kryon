@@ -26,7 +26,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "ui_core.h"
+#include "ui_core_props.generated.h"
 
 #define NATIVE_WINDOW_MAX 8
 
@@ -481,8 +481,8 @@ BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    window->previous_focus_id = GetFocus();
-    SetFocus(window->focus_id);
+    window->previous_focus_id = KryonGetFocus();
+    KryonSetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -622,8 +622,8 @@ EndNativeWindow(void)
         return;
     EndInterfaceFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetFocus();
-    SetFocus(window->previous_focus_id);
+    window->focus_id = KryonGetFocus();
+    KryonSetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
@@ -741,7 +741,7 @@ StealCoreWindowClose(void)
 #undef ShowCursor
 #include <stdlib.h>
 #include <string.h>
-#include "ui_core.h"
+#include "ui_core_props.generated.h"
 
 #define NATIVE_WINDOW_CLASS_NAME "KryonNativeWindow"
 #define NATIVE_WINDOW_APP_ICON 101
@@ -924,8 +924,8 @@ void BeginNativeWindow(NativeWindow *window)
 {
     if(!window)
         return;
-    window->previous_focus_id = GetFocus();
-    SetFocus(window->focus_id);
+    window->previous_focus_id = KryonGetFocus();
+    KryonSetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -946,8 +946,8 @@ void EndNativeWindow(void)
     EndInterfaceFrame();
     if(window->paint_layers != NULL)
         ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetFocus();
-    SetFocus(window->previous_focus_id);
+    window->focus_id = KryonGetFocus();
+    KryonSetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     EndTextureMode();
     image=ui_paint_readback(window->target.texture); if(!image.data)return;
@@ -979,7 +979,7 @@ int StealCoreWindowClose(void)
 #endif
 #include <stdlib.h>
 
-#include "ui_core.h"
+#include "ui_core_props.generated.h"
 
 #define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
 struct NativeWindow {
@@ -1345,8 +1345,8 @@ BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    window->previous_focus_id = GetFocus();
-    SetFocus(window->focus_id);
+    window->previous_focus_id = KryonGetFocus();
+    KryonSetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -1363,8 +1363,8 @@ EndNativeWindow(void)
         return;
     EndInterfaceFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetFocus();
-    SetFocus(window->previous_focus_id);
+    window->focus_id = KryonGetFocus();
+    KryonSetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     EndTextureMode();
 #if defined(__linux__) || defined(__FreeBSD__)

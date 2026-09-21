@@ -67,7 +67,7 @@ static void focus_field(int index)
 {
     /* Pointer-to-focus routing is covered by ui_tree_api_test.  Setting the
      * focus manager here isolates the measured keystroke frame itself. */
-    SetFocus(fields[index].focus_id);
+    KryonSetFocus(fields[index].focus_id);
     frame();
     drain_events();
 }

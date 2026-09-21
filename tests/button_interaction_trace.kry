@@ -126,11 +126,11 @@ TraceInject :: (test_case: i32) -> bool {
     if test_case == 6 { return TraceKeyTap(SDL_SCANCODE_RETURN) }
     if test_case == 7 { return TraceKeyTap(SDL_SCANCODE_SPACE) }
     if test_case == 8 {
-        SetFocus(102)
+        KryonSetFocus(102)
         return TraceKeyTap(SDL_SCANCODE_RETURN)
     }
     if test_case == 9 {
-        SetFocus(103)
+        KryonSetFocus(103)
         return TraceKeyTap(SDL_SCANCODE_SPACE)
     }
     return false
@@ -148,8 +148,8 @@ TraceCheck :: (test_case: i32) -> bool {
         expected_normal)
         return false
     }
-    if test_case == 5 && GetFocus() != 101 {
-        fprintf(stderr, "Tab focus failed: got %d, expected 101\n", GetFocus())
+    if test_case == 5 && KryonGetFocus() != 101 {
+        fprintf(stderr, "Tab focus failed: got %d, expected 101\n", KryonGetFocus())
         return false
     }
     fprintf(stdout, "Interaction case %d passed\n", test_case)

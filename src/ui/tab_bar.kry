@@ -235,7 +235,7 @@ RenderTabBar :: (bar: TabBarProps) -> i32 #export {
         return -1
     }
     clicked_tab = ui_tab_bar_keyboard_input(bar)
-    focused = !disabled && bar.id > 0 && GetFocus() == bar.id &&
+    focused = !disabled && bar.id > 0 && KryonGetFocus() == bar.id &&
     !ui_popup_input_focus_captures(bar.id)
     if can_draw != 0 {
         bar_style: Style = ui_unpack_style(
@@ -467,7 +467,7 @@ RenderTabBar :: (bar: TabBarProps) -> i32 #export {
                 store->last_click_time = now
                 clicked_tab = index
                 if bar.id > 0 {
-                    SetFocus(bar.id)
+                    KryonSetFocus(bar.id)
                     focused = 1
                 }
             }

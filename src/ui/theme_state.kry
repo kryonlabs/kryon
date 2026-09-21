@@ -1,7 +1,7 @@
 #module "theme_state"
 #import "theme.h"
 #import "theme_meta.h"
-#import "ui_core.h"
+#import "ui_core_props.generated.h"
 #import "ui/theme_color.h"
 #import "runtime/theme.h"
 #import <stdio.h>

@@ -56,7 +56,7 @@ sample(int index, Rectangle bounds, const DropdownOption *items, int count,
         InjectMousePosition(-100, -100);
     InjectPump();
     BeginInterfaceFrame(WIDTH, HEIGHT, 1.0f);
-    SetFocus(focused || open ? id : 0);
+    KryonSetFocus(focused || open ? id : 0);
     DisabledScope(disabled);
     Dropdown((DropdownProps){.id = id, .bounds = bounds,
         .items = items, .option_count = count, .selected_index = &chosen});

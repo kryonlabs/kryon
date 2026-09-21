@@ -621,7 +621,7 @@ main(void)
         Rectangle third = {10, 90, 100, 30};
 
         InjectReset();
-        SetFocus(901);
+        KryonSetFocus(901);
         InjectKeyTap(KEY_TAB);
         InjectPump();
         BeginFocusScope();
@@ -749,7 +749,7 @@ main(void)
 
         InjectReset();
         SetClipboardTextValue(payload);
-        SetFocus(1005);
+        KryonSetFocus(1005);
         InjectKey(KEY_LEFT_CONTROL, 1);
         InjectKeyTap(KEY_V);
         InjectPump();

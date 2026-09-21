@@ -31,7 +31,7 @@ bounds: Rectangle, disabled: i32, delta: *float) -> i32 {
         toolkit->drag_active = token
         toolkit->drag_last_x = mouse.x
         toolkit->drag_owner = ui_popup_input_owner()
-        if focus_id > 0 { SetFocus(focus_id) }
+        if focus_id > 0 { KryonSetFocus(focus_id) }
     }
     if decision.update_delta {
         *delta = mouse.x - toolkit->drag_last_x

@@ -159,14 +159,14 @@ IsFocusActivatePressed :: (id: i32) -> i32 #export {
     g_ui_focus_text_input_active != 0)
 }
 
-SetFocus :: (id: i32) #export {
+KryonSetFocus :: (id: i32) #export {
     g_ui_focus_active_id = id
     if id > 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) {
         g_ui_focus_pointer_claimed = 1
     }
 }
 
-GetFocus :: () -> i32 #export {
+KryonGetFocus :: () -> i32 #export {
     return g_ui_focus_active_id
 }
 

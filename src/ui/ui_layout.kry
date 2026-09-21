@@ -1,6 +1,6 @@
 #module "layout_host"
 #import "ui_layout_props.generated.h"
-#import "ui_core.h"
+#import "ui_core_props.generated.h"
 #import "ui_internal.h"
 #import "runtime/layout.h"
 
