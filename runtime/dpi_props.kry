@@ -15,3 +15,9 @@ DPIState :: struct {
     base_height: int
     needs_update: int
 }
+
+# Implemented by the C-only scaling host; declared here for the public ABI.
+SetScale :: (scale: float) #extern #export
+GetScale :: () -> float #extern #export
+Scale :: (px: i32) -> i32 #extern #export
+ClampPx :: (px: i32, min_px: i32, max_px: i32) -> i32 #extern #export

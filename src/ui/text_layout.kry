@@ -3,7 +3,7 @@
 #import "ui_internal.h"
 #import "ui_paint_internal.h"
 #import "ui_icons.h"
-#import "ui_scaling.h"
+#import "ui_dpi_props.generated.h"
 #import "runtime/paragraph.h"
 #import "runtime/paint.h"
 #import "stdlib.h"

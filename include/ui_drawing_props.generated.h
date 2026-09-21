@@ -34,6 +34,11 @@ typedef struct ParagraphSpec {
     TextAlign align;
     int32_t class_name;
 } ParagraphSpec;
+Rectangle GetClipIntersection(Rectangle a, Rectangle  b);
+Rectangle GetClipEffective(Rectangle bounds);
+void BeginClip(int32_t x, int32_t  y, int32_t  w, int32_t  h);
+void EndClip(void);
+void ResetClip(void);
 Color LightenColor(Color color, int32_t  amount);
 Color DarkenColor(Color color, int32_t  amount);
 

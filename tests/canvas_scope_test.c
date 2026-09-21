@@ -1,5 +1,5 @@
 #include "../src/ui/ui_internal.h"
-#include "ui_clip.h"
+#include "ui_drawing_props.generated.h"
 #include <assert.h>
 #include <math.h>
 

@@ -1,5 +1,5 @@
 #module "scaling_host"
-#import "ui_scaling.h"
+#import "ui_dpi_props.generated.h"
 
 scale_value :: float = 1.0 #global
 

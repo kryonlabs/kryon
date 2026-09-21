@@ -13,10 +13,10 @@
 #include "kryon_frame.h"
 #include "kry_input.h"
 
-#include "ui_scaling.h"
+#include "ui_dpi_props.generated.h"
 #include "ui_dpi.h"
-#include "ui_layout.h"
-#include "ui_clip.h"
+#include "ui_layout_props.generated.h"
+#include "ui_drawing_props.generated.h"
 #include "ui_core.h"
 #include "ui_instance.h"
 #include "ui_controls.h"

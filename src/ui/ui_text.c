@@ -2,7 +2,7 @@
 #include "ui/text.h"
 #include "ui_text.h"
 #include "ui_text_backend.h"
-#include "ui_clip.h"
+#include "ui_drawing_props.generated.h"
 #include "ui_internal.h"
 #include "embedded_assets.h"
 #include "ui_style_internal.h"

@@ -1,7 +1,7 @@
 #include "web.h"
 
 #include "ui_dpi.h"
-#include "ui_layout.h"
+#include "ui_layout_props.generated.h"
 #include "kryon.h"
 
 #if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)

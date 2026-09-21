@@ -69,5 +69,12 @@ typedef struct FlexCursor {
     float gap;
     int32_t remaining;
 } FlexCursor;
+FlexCursor BeginFlexCursor(FlexProps props, int32_t  count, float  total_item_extent);
+FlexCursor FlexStep(FlexCursor cursor, float  width, float  height);
+void SetViewSize(int32_t width, int32_t  height);
+int32_t GetViewWidth(void);
+int32_t GetViewHeight(void);
+void GetCenteredColumn(int32_t max_w, int32_t  side_pad, int32_t*  x, int32_t*  w);
+int32_t GetPageSidePadding(void);
 
 #endif /* K_RUNTIME_LAYOUT_PROPS_H */

@@ -48,3 +48,13 @@ FlexCursor :: struct {
     gap: float
     remaining: i32
 }
+
+# Implemented by the C-only layout host; declared here for the public ABI.
+BeginFlexCursor :: (props: FlexProps, count: i32,
+                    total_item_extent: float) -> FlexCursor #extern #export
+FlexStep :: (cursor: FlexCursor, width: float, height: float) -> FlexCursor #extern #export
+SetViewSize :: (width: i32, height: i32) #extern #export
+GetViewWidth :: () -> i32 #extern #export
+GetViewHeight :: () -> i32 #extern #export
+GetCenteredColumn :: (max_w: i32, side_pad: i32, x: *i32, w: *i32) #extern #export
+GetPageSidePadding :: () -> i32 #extern #export

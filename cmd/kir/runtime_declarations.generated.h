@@ -297,6 +297,12 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    base_height: int\n"
         "    needs_update: int\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only scaling host; declared here for the public ABI.\n"
+        "SetScale :: (scale: float) #extern #export\n"
+        "GetScale :: () -> float #extern #export\n"
+        "Scale :: (px: i32) -> i32 #extern #export\n"
+        "ClampPx :: (px: i32, min_px: i32, max_px: i32) -> i32 #extern #export\n"
     },
     {"runtime/drag_drop_props.kry",
         "#module \"drag_drop_props\"\n"
@@ -490,6 +496,13 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    if amount < 0 { amount = 0 }\n"
         "    return AdjustedColorLightness(color, -amount)\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only clip host; declared here for the public ABI.\n"
+        "GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle #extern #export\n"
+        "GetClipEffective :: (bounds: Rectangle) -> Rectangle #extern #export\n"
+        "BeginClip :: (x: i32, y: i32, w: i32, h: i32) #extern #export\n"
+        "EndClip :: () #extern #export\n"
+        "ResetClip :: () #extern #export\n"
     },
     {"runtime/dropdown_props.kry",
         "#module \"dropdown_props\"\n"
@@ -727,6 +740,16 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    gap: float\n"
         "    remaining: i32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only layout host; declared here for the public ABI.\n"
+        "BeginFlexCursor :: (props: FlexProps, count: i32,\n"
+        "                    total_item_extent: float) -> FlexCursor #extern #export\n"
+        "FlexStep :: (cursor: FlexCursor, width: float, height: float) -> FlexCursor #extern #export\n"
+        "SetViewSize :: (width: i32, height: i32) #extern #export\n"
+        "GetViewWidth :: () -> i32 #extern #export\n"
+        "GetViewHeight :: () -> i32 #extern #export\n"
+        "GetCenteredColumn :: (max_w: i32, side_pad: i32, x: *i32, w: *i32) #extern #export\n"
+        "GetPageSidePadding :: () -> i32 #extern #export\n"
     },
     {"runtime/link_props.kry",
         "#module \"link_props\"\n"

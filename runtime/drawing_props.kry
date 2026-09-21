@@ -135,3 +135,10 @@ DarkenColor :: (color: Color, amount: i32) -> Color #export {
     if amount < 0 { amount = 0 }
     return AdjustedColorLightness(color, -amount)
 }
+
+# Implemented by the C-only clip host; declared here for the public ABI.
+GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle #extern #export
+GetClipEffective :: (bounds: Rectangle) -> Rectangle #extern #export
+BeginClip :: (x: i32, y: i32, w: i32, h: i32) #extern #export
+EndClip :: () #extern #export
+ResetClip :: () #extern #export
