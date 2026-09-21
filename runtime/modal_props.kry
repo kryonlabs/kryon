@@ -31,3 +31,7 @@ PanelFrame :: struct { int x; int y; int w; int h; int content_x; int content_y;
 # optional close icons. Implemented by the modal host; declared here so apps
 # can build palette-style overlays with their own content.
 RenderModalFrame :: (width: i32, height: i32, title: const char*, left_icon: Texture2D, right_icon: Texture2D) -> PanelFrame #extern #export
+
+# Action modal: title, message, and buttons; returns the activated action id
+# (0 = dismissed). Implemented by the modal host.
+RenderActionModal :: (modal: ModalProps) -> i32 #extern #export

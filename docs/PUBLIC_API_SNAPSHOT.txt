@@ -1317,6 +1317,7 @@ include/ui_locale_props.generated.h function SetLocale
 include/ui_locale_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_menu_props.generated.h function Menu
 include/ui_menu_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_modal_props.generated.h function RenderActionModal
 include/ui_modal_props.generated.h function RenderModalFrame
 include/ui_modal_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_navigation_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED

@@ -46,5 +46,6 @@ typedef struct ModalProps {
     int32_t focus_id;
 } ModalProps;
 PanelFrame RenderModalFrame(int32_t width, int32_t  height, const char*  title, Texture2D  left_icon, Texture2D  right_icon);
+int32_t RenderActionModal(ModalProps modal);
 
 #endif /* K_RUNTIME_MODAL_PROPS_H */

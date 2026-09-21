@@ -508,7 +508,6 @@ int RenderCollapsible(CollapsibleProps section);
 void RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count);
 GuideResult RenderGuideOverlay(GuideOverlayProps guide);
 void RenderImage(ImageProps image);
-int RenderActionModal(ModalProps modal);
 int RenderTitleBar(TitleBarProps title_bar);
 PanelFrame RenderModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);

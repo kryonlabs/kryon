@@ -1185,6 +1185,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "# optional close icons. Implemented by the modal host; declared here so apps\n"
         "# can build palette-style overlays with their own content.\n"
         "RenderModalFrame :: (width: i32, height: i32, title: const char*, left_icon: Texture2D, right_icon: Texture2D) -> PanelFrame #extern #export\n"
+        "\n"
+        "# Action modal: title, message, and buttons; returns the activated action id\n"
+        "# (0 = dismissed). Implemented by the modal host.\n"
+        "RenderActionModal :: (modal: ModalProps) -> i32 #extern #export\n"
     },
     {"runtime/navigation_bar_props.kry",
         "#module \"navigation_bar_props\"\n"
