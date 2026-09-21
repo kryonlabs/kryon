@@ -722,10 +722,21 @@ Session total: twenty-eight handwritten UI headers removed. Gates: parity,
 refreshed snapshots. Inbe builds green at `fcb171605` (its app_nav import
 re-pointed); pointer committed (`00603e0`).
 
-Remaining: `PropertyValue` in `KryonNodeEdit` (`kryon_node.h`), `ui_dpi`
-perf inlines (kept), `ui_window`, `ui_style_sheet`, `ui_icons`,
-`locale.h`, `ui_text_layout`, `app_runtime.h`, `theme.h`/`theme_meta.h`
-(die with B-001), and B-001 downstream.
+Audit correction (same round): an inventory of master's remaining headers
+found that round 20's `git stash` cycle had un-staged the ui_inspect.h
+deletion — the header survived beside the props header that already declares
+the identical inspector ABI (compatible prototypes, so everything compiled
+silently). No consumer referenced it; deleted for real (`9fe255f1`), Inbe
+re-verified and bumped (`6eedd34`). Lesson recorded: never interleave
+`git stash` with staged deletions; verify deletions with
+`git log --diff-filter=D -- <path>` after commit.
+
+Remaining after the true count (twenty-nine headers removed):
+`PropertyValue` in `KryonNodeEdit` (`kryon_node.h`), `ui_dpi` perf inlines
+(kept), `ui_window`, `ui_style_sheet`, `ui_icons`, `locale.h`,
+`ui_text_layout`, `app_runtime.h`/`app_host.h`/`app_instance.h` (host
+chain), `theme.h`/`theme_meta.h` (die with B-001), `kryon_key.h`
+(script-generated IDs), and B-001 downstream.
 
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
