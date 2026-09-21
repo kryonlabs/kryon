@@ -906,10 +906,16 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "# and for the state borrowing every generated module emits.\n"
         "InstanceState :: (type: const char*, key: u64, size: size_t) -> *void #extern #export\n"
     },
+    {"runtime/key_props.kry",
+        "#module \"key_props\"\n"
+        "\n"
+        "# Widget identity: a stable 64-bit hash of the key text.\n"
+        "KeyID :: unsigned long long #type\n"
+    },
     {"runtime/layout_props.kry",
         "#module \"layout_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
-        "#import \"kryon_key.h\"\n"
+        "#import \"ui_key_props.generated.h\"\n"
         "\n"
         "ColumnProps :: struct {\n"
         "    bounds: Rectangle\n"
@@ -1376,7 +1382,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     {"runtime/page_props.kry",
         "#module \"page_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
-        "#import \"kryon_key.h\"\n"
+        "#import \"ui_key_props.generated.h\"\n"
         "#import \"ui_layout_props.generated.h\"\n"
         "#import \"ui_link_props.generated.h\"\n"
         "\n"
@@ -1662,7 +1668,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     {"runtime/router_props.kry",
         "#module \"router_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
-        "#import \"kryon_key.h\"\n"
+        "#import \"ui_key_props.generated.h\"\n"
         "\n"
         "RouterRoute :: struct {\n"
         "    id: i32\n"
@@ -2348,7 +2354,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     {"runtime/tree_props.kry",
         "#module \"tree_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
-        "#import \"kryon_key.h\"\n"
+        "#import \"ui_key_props.generated.h\"\n"
         "#import \"ui_control_props.generated.h\"\n"
         "#import \"ui_drawing_props.generated.h\"\n"
         "#import \"ui_layout_props.generated.h\"\n"

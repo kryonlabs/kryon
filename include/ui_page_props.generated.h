@@ -21,7 +21,7 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "kryon_compat.generated.h"
-#include "kryon_key.h"
+#include "ui_key_props.generated.h"
 #include "ui_layout_props.generated.h"
 #include "ui_link_props.generated.h"
 

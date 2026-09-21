@@ -79,6 +79,7 @@ surface review:
 | `runtime/tree_props.kry` | Tree lifecycle, widget entry points, and router ABI | `.kry support` |
 | `runtime/locale_props.kry` | Locale catalog ABI declarations | `.kry support` |
 | `runtime/style_pack_props.kry` | Style pack registration and resolution ABI | `.kry support` |
+| `runtime/key_props.kry` | Widget key identity type | `.kry support` |
 | `runtime/app_shell_props.kry` | App-shell route and layout ABI | `.kry support` |
 | `runtime/frame_props.kry` | Frame lifecycle and pacing ABI declarations | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry, handle-size, and release-consume policy | `.kry support` |

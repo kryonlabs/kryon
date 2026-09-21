@@ -2,7 +2,7 @@
 package kryon
 
 // #import kryon_compat.generated.h
-// #import kryon_key.h
+// #import ui_key_props.generated.h
 // #import ui_control_props.generated.h
 // #import ui_drawing_props.generated.h
 // #import ui_layout_props.generated.h

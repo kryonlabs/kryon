@@ -21,7 +21,7 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "kryon_compat.generated.h"
-#include "kryon_key.h"
+#include "ui_key_props.generated.h"
 
 typedef struct ColumnProps {
     Rectangle bounds;

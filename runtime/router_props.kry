@@ -1,6 +1,6 @@
 #module "router_props"
 #import "kryon_compat.generated.h"
-#import "kryon_key.h"
+#import "ui_key_props.generated.h"
 
 RouterRoute :: struct {
     id: i32

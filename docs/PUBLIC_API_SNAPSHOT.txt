@@ -618,7 +618,6 @@ include/kryon.h function KryonAbiVersion
 include/kryon.h macro KRYON_ABI_VERSION
 include/kryon_edit_host.h macro KRYON_EDIT_HOST_ABI_VERSION
 include/kryon_edit_host.h typedef GetKryonEditHostCallback
-include/kryon_key.h typedef KeyID
 include/kryon_mem.h function KryonMemDebugEnabled
 include/kryon_mem.h function KryonMemReport
 include/kryon_property.h enum PROPERTY_ADVANCED
@@ -1279,6 +1278,8 @@ include/ui_inspect_props.generated.h function SetInspectVisible
 include/ui_inspect_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_instance_props.generated.h function InstanceState
 include/ui_instance_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_key_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_key_props.generated.h typedef KeyID
 include/ui_layout_props.generated.h function BeginFlexCursor
 include/ui_layout_props.generated.h function FlexStep
 include/ui_layout_props.generated.h function GetCenteredColumn

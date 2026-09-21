@@ -2,7 +2,7 @@
 package kryon
 
 // #import kryon_compat.generated.h
-// #import kryon_key.h
+// #import ui_key_props.generated.h
 type ColumnProps struct {
 	Bounds  Rectangle
 	Gap     int32
