@@ -461,11 +461,34 @@ Session total: fifteen handwritten UI headers removed. Gates:
 green at `4fa8986e`, pointer committed (`197fc01`); the concurrent session's
 in-flight inbe migration stays untouched.
 
-Remaining: `IconType` (`ui_icons`, `ui_profile`), unions (`Event`,
-`FrameState`), function-pointer typedefs (`ui_core`, `ui_controls`,
-`kryon_frame`, `ui_tree`, `app_shell`), `dpi_state` global + inline getters
-(`ui_dpi`), opaque `NativeWindow` (`ui_window`), `const StyleSheet*`
-(`ui_style_sheet`). B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
+## Round 22 — scaling, clip, and layout hosts move
+
+A re-read of the remaining headers sharpened the rule: the extern pattern does
+not care whether an implementation is stateful (`GetPaneDropZone` reads live
+style state and moved in round 18), so the only real blockers are *types*,
+globals, and inline functions — not state. Three more function-only headers
+fell:
+
+- `include/ui_scaling.h` → `SetScale`/`GetScale`/`Scale`/`ClampPx` in
+  `runtime/dpi_props.kry` (thematically the DPI home).
+- `include/ui_clip.h` → the five clip calls in `runtime/drawing_props.kry`.
+- `include/ui_layout.h` → the seven view/flex calls in
+  `runtime/layout_props.kry`, with `GetCenteredColumn`'s int out-params as
+  `*i32`.
+
+Session total: eighteen handwritten UI headers removed. Gates:
+`generated-runtime-parity-test`, `fast-test`, k2c/k2cpp/k2go-syntax-test,
+`go-runtime-test`, `examples-syntax-test`, refreshed snapshots. Inbe builds
+green at `2fcb30c7`, pointer committed (`c238bc5`).
+
+Remaining, all genuine type/global/inline blockers: `IconType` (`ui_icons`,
+`ui_profile`), unions (`Event`, `FrameState`), function-pointer typedefs
+(`ui_core`, `ui_controls`, `kryon_frame`, `ui_tree`, `app_shell`),
+`dpi_state` global + inline getters (`ui_dpi`), opaque `NativeWindow`
+(`ui_window`), `const StyleSheet*` (`ui_style_sheet`), `Font` and the
+`Text8..` macros (`ui_text`), `void*` + `size_t` (`ui_instance`), the
+`SYNC_PROFILE_ICON_*` enum (`ui_profile`), `LocaleEntry` (`locale.h`).
+B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
 
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
