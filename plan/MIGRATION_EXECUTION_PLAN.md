@@ -738,6 +738,32 @@ Remaining after the true count (twenty-nine headers removed):
 chain), `theme.h`/`theme_meta.h` (die with B-001), `kryon_key.h`
 (script-generated IDs), and B-001 downstream.
 
+## Round 31 — text-layout and node hosts move
+
+Two more deletions, both riding the one-line `#type` recipe:
+
+- `include/ui_text_layout.h` → `TextElementKind` as a `#type` enum and
+  `TextElement` (stores the script-generated `IconType` + `Texture2D`) and
+  `TextLayout` (pointer spans) as `#type` records in `text_props`, plus the
+  four layout calls as externs.
+- `include/kryon_node.h` → `KryonNodeEdit` — whose `PropertyValue` field is
+  the property system's union — as a `#type` record importing the handwritten
+  `kryon_property.h` host header, plus the two node calls as externs in
+  `node_props`. The `PropertyValue` "must stay real" blocker only ever applied
+  to declaring it in `.kry`; storing it by C text needs no language feature.
+
+Session total: thirty-one handwritten UI headers removed. Gates after each:
+parity, `fast-test`, all syntax tests, `go-runtime-test`, examples, boundary,
+refreshed snapshots. Inbe builds green at `501c203e7` and `baf523bdc`;
+pointers committed (`ac8400e`, `00faaf7`).
+
+Remaining after this round: `theme.h`/`theme_meta.h` (die with B-001),
+`ui_dpi` (perf inlines, kept by design), `ui_window` (opaque NativeWindow),
+`ui_style_sheet` (const StyleSheet*), `ui_icons` (IconAsset + ui_icon_names[]
+extern), `locale.h` (LocaleEntry + varargs), `app_runtime.h`/`app_host.h`/
+`app_instance.h` (host chain), `kryon_key.h` (script-generated IDs), and
+B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
