@@ -789,6 +789,32 @@ kept), `ui_window` (opaque NativeWindow), `ui_style_sheet` (const
 StyleSheet*), `ui_icons` (extern-variable gap), `app_runtime.h` (host void*
 chain), `kryon_key.h` (script-generated IDs), and B-001 downstream.
 
+## Round 33 — the style-pack ABI moves
+
+`include/ui_style_sheet.h` is deleted: `runtime/style_pack_props.kry`
+declares `STYLE_PACK_MAX`, `StylePack` as a one-line `#type` (its sheet field
+points at a parsed `StyleSheet` owned by the loader; the module imports the
+build-generated `runtime/style_sheet.h`/`runtime/style.h` headers, which the
+handwritten header already included), and the twenty registration/resolution/
+picker calls as externs. The Go host keeps its handwritten parallel — externs
+and `#type` emit nothing in Go.
+
+Couplings fixed along the way: the Makefile's style test dependencies, the C
+style-table generator's emitted include, the KSS host ledger (the props header
+and the embedded runtime declarations are now classified call-site files with
+ledger rows), and twenty-four consumers. Two gates fail identically on
+pristine master — `kss-parser-test` (a parse assertion) and
+`bridge-ledger-check` (visual-prop ratchet 10 vs actual 13, concurrent-session
+palette work) — verified in a detached base worktree and excluded.
+
+Session total: thirty-three handwritten UI headers removed. Inbe builds green
+at `e899a40b6`; pointer committed (`02774c6`).
+
+Remaining: `theme.h`/`theme_meta.h` (die with B-001), `ui_dpi` (perf inlines,
+kept), `ui_window` (opaque NativeWindow), `ui_icons` (extern-variable gap),
+`app_runtime.h` (host void* chain), `kryon_key.h` (script-generated IDs), and
+B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
