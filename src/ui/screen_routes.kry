@@ -1,7 +1,7 @@
 #module "screen_routes"
 
 #import "app_runtime.h"
-#import "ui_page.h"
+#import "ui_page_props.generated.h"
 #import <stdio.h>
 #import <stdlib.h>
 #import <string.h>

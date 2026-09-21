@@ -1,6 +1,8 @@
 #module "page_props"
 #import "kryon_compat.generated.h"
 #import "kryon_key.h"
+#import "ui_layout_props.generated.h"
+#import "ui_link_props.generated.h"
 
 SemanticKind :: enum {
     SemanticNone = 0
@@ -43,3 +45,21 @@ ParagraphTextProps :: struct {
     class_name: i32
     key: KeyID
 }
+
+# Implemented by the C-only page host and page_metadata; declared here for the
+# public ABI. Page/Section/Flow return the tree's NodeId (an int).
+SetPageTitle :: (title: const char*) #extern #export
+SetPageDescription :: (description: const char*) #extern #export
+SetPageCanonicalURL :: (url: const char*) #extern #export
+SetPageThemeColor :: (color: Color) #extern #export
+GetRoutePath :: () -> const char* #extern #export
+GetRouteHash :: () -> const char* #extern #export
+GetRouteVersion :: () -> i32 #extern #export
+PushRoute :: (path: const char*) #extern #export
+ReplaceRoute :: (path: const char*) #extern #export
+Page :: (props: PageProps) -> i32 #extern #export
+Section :: (props: SectionProps) -> i32 #extern #export
+Heading :: (props: HeadingProps) #extern #export
+ParagraphText :: (props: ParagraphTextProps) #extern #export
+Link :: (props: LinkProps) -> i32 #extern #export
+Flow :: (props: ColumnProps) -> i32 #extern #export

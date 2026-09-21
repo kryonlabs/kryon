@@ -341,7 +341,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/link.kry|src/ui/link.kry|src/ui/page.kry|include/ui_page.h|tests/link_policy_test.c)
+        runtime/link.kry|src/ui/link.kry|src/ui/page.kry|include/ui_page_props.generated.h|tests/link_policy_test.c)
             needs_link=1
             interesting=1
             ;;

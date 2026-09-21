@@ -167,6 +167,7 @@ int Selectable(SelectableProps selectable);
 void Bullet(Rectangle bounds);
 /* Layout nodes: auto-position children like flexbox. */
 typedef ColumnProps RowProps;
+typedef ColumnProps FlowProps;
 
 enum {
     ROUTER_NO_ROUTE = -2147483647

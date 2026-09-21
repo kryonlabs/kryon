@@ -22,6 +22,8 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "kryon_compat.generated.h"
 #include "kryon_key.h"
+#include "ui_layout_props.generated.h"
+#include "ui_link_props.generated.h"
 
 typedef enum SemanticKind {
     SemanticNone = 0,
@@ -64,5 +66,20 @@ typedef struct ParagraphTextProps {
     int32_t class_name;
     KeyID key;
 } ParagraphTextProps;
+void SetPageTitle(const char* title);
+void SetPageDescription(const char* description);
+void SetPageCanonicalURL(const char* url);
+void SetPageThemeColor(Color color);
+const char* GetRoutePath(void);
+const char* GetRouteHash(void);
+int32_t GetRouteVersion(void);
+void PushRoute(const char* path);
+void ReplaceRoute(const char* path);
+int32_t Page(PageProps props);
+int32_t Section(SectionProps props);
+void Heading(HeadingProps props);
+void ParagraphText(ParagraphTextProps props);
+int32_t Link(LinkProps props);
+int32_t Flow(ColumnProps props);
 
 #endif /* K_RUNTIME_PAGE_PROPS_H */
