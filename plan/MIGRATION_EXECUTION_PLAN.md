@@ -437,7 +437,35 @@ stays outside the standard gates. Gates: `generated-runtime-parity-test`,
 and its pointer is committed (`68622fb`); the concurrent session's 103-file
 in-flight inbe migration was left untouched.
 
-B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
+## Round 21 — the page host moves; FlowProps/NodeId handled
+
+`include/ui_page.h` is deleted: the nine page_metadata helpers (implemented in
+`src/platform/page_metadata.c`) and the six composition calls (implemented in
+`src/ui/page.kry`) are now `#extern #export` declarations in
+`runtime/page_props.kry`. Two type questions resolved:
+
+- `Page`/`Section`/`Flow` return `NodeId`; the props declare `-> i32`, which is
+  ABI-identical since `NodeId` is `typedef int`.
+- `FlowProps` is `typedef ColumnProps`; the props declare `Flow(ColumnProps)`
+  (compatible), and the alias itself moved into `ui_tree.h` next to the existing
+  `RowProps` alias so `.kry` and test code keep the name.
+
+One convention learned: props modules import sibling props modules through
+their tracked header names (`#import "ui_layout_props.generated.h"`), not the
+module name — a module-name import emits `layout_props.h`, which does not exist
+as a tracked file.
+
+Session total: fifteen handwritten UI headers removed. Gates:
+`generated-runtime-parity-test`, `fast-test`, k2c/k2cpp/k2go-syntax-test,
+`go-runtime-test`, `examples-syntax-test`, refreshed snapshots. Inbe builds
+green at `4fa8986e`, pointer committed (`197fc01`); the concurrent session's
+in-flight inbe migration stays untouched.
+
+Remaining: `IconType` (`ui_icons`, `ui_profile`), unions (`Event`,
+`FrameState`), function-pointer typedefs (`ui_core`, `ui_controls`,
+`kryon_frame`, `ui_tree`, `app_shell`), `dpi_state` global + inline getters
+(`ui_dpi`), opaque `NativeWindow` (`ui_window`), `const StyleSheet*`
+(`ui_style_sheet`). B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
 
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
