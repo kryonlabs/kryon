@@ -1652,7 +1652,7 @@ $(FRAME_PACING_TEST_CODEGEN)/.generated: tests/frame_pacing_test.kry $(K2C) | $(
 	$(K2C) --no-main --root tests -o $(FRAME_PACING_TEST_CODEGEN) $<
 	@touch $@
 
-$(FRAME_PACING_TEST): $(FRAME_PACING_TEST_CODEGEN)/.generated $(GENERATED_SRC_DIR)/ui/frame_pacing.c include/kryon_frame.h include/kryon_compat.generated.h | $(BUILD_DIR)
+$(FRAME_PACING_TEST): $(FRAME_PACING_TEST_CODEGEN)/.generated $(GENERATED_SRC_DIR)/ui/frame_pacing.c include/ui_frame_props.generated.h include/kryon_compat.generated.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(FRAME_PACING_TEST_CODEGEN) \
 		$(FRAME_PACING_TEST_CODEGEN)/frame_pacing_test.c \

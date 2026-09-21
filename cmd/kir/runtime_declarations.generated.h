@@ -542,6 +542,27 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    title: const char*\n"
         "}\n"
     },
+    {"runtime/frame_props.kry",
+        "#module \"frame_props\"\n"
+        "\n"
+        "# C-only callback type for work deferred to the end of the current frame.\n"
+        "KryonPostFrameCallback :: void (*)(void* userdata) #type\n"
+        "\n"
+        "# Implemented by the C-only frame host; declared here for the public ABI.\n"
+        "BeginFrame :: () #extern #export\n"
+        "EndFrame :: () #extern #export\n"
+        "SyncFrame :: () #extern #export\n"
+        "GetFrameWidth :: () -> i32 #extern #export\n"
+        "GetFrameHeight :: () -> i32 #extern #export\n"
+        "GetFrameScale :: () -> float #extern #export\n"
+        "ConfigureFramePacing :: (idle_fps: i32, active_fps: i32) #extern #export\n"
+        "DisableFramePacing :: () #extern #export\n"
+        "SetFramePacingActive :: (active: i32) #extern #export\n"
+        "UpdateFramePacing :: () #extern #export\n"
+        "GetFramePacingTargetFPS :: () -> i32 #extern #export\n"
+        "SchedulePostFrameCallback :: (callback: KryonPostFrameCallback,\n"
+        "                              userdata: *void) -> i32 #extern #export\n"
+    },
     {"runtime/grid_props.kry",
         "#module \"grid_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

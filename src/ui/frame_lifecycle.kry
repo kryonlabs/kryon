@@ -1,7 +1,7 @@
 #module "frame_lifecycle"
 
 #import "kryon.h"
-#import "kryon_frame.h"
+#import "ui_frame_props.generated.h"
 
 #if #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
     #import "android_surface.h"

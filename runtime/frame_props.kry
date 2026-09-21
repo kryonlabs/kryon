@@ -1,0 +1,19 @@
+#module "frame_props"
+
+# C-only callback type for work deferred to the end of the current frame.
+KryonPostFrameCallback :: void (*)(void* userdata) #type
+
+# Implemented by the C-only frame host; declared here for the public ABI.
+BeginFrame :: () #extern #export
+EndFrame :: () #extern #export
+SyncFrame :: () #extern #export
+GetFrameWidth :: () -> i32 #extern #export
+GetFrameHeight :: () -> i32 #extern #export
+GetFrameScale :: () -> float #extern #export
+ConfigureFramePacing :: (idle_fps: i32, active_fps: i32) #extern #export
+DisableFramePacing :: () #extern #export
+SetFramePacingActive :: (active: i32) #extern #export
+UpdateFramePacing :: () #extern #export
+GetFramePacingTargetFPS :: () -> i32 #extern #export
+SchedulePostFrameCallback :: (callback: KryonPostFrameCallback,
+                              userdata: *void) -> i32 #extern #export

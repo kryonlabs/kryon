@@ -1,8 +1,16 @@
 #module "frame_pacing_test"
 
-#import "kryon_frame.h"
+#import "ui_frame_props.generated.h"
 #import <stdio.h>
 #import <stdlib.h>
+
+# The generated module carries source instrumentation; this standalone test
+# links without the inspector, so provide its no-op entry points.
+PushInspectSource :: (path: const char*, line: i32) #export {
+}
+
+PopInspectSource :: () #export {
+}
 
 static set_target_fps_calls: int
 static last_target_fps: int = -1

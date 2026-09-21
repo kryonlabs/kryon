@@ -1,6 +1,6 @@
 #module "frame_pacing"
 
-#import "kryon_frame.h"
+#import "ui_frame_props.generated.h"
 #import "kryon_compat.generated.h"
 
 static frame_pacing_enabled: int

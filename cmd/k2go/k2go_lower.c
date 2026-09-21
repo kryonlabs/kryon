@@ -3384,8 +3384,16 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     continue;
 
                 if(!t->is_enum && t->name[0] == '#') {
-                    KirDiagnostic(t->span, "k2go.type", "C typedef has no portable Go representation: %s", t->body);
-                    exit(1);
+                    if(!runtime_output) {
+                        KirDiagnostic(t->span, "k2go.type", "C typedef has no portable Go representation: %s", t->body);
+                        exit(1);
+                    }
+                    /* C-only typedef ('#type') in a runtime-implementation
+                     * module declares the C ABI — function-pointer callback
+                     * types and similar. Go emits nothing for it; extern
+                     * signatures are skipped below, so a reference from a
+                     * Go-visible function still fails as an unresolved type. */
+                    continue;
                 }
 
                 if(t->is_slot) {

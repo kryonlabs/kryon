@@ -10,7 +10,7 @@
 /* Math3d surface (Vector3/Matrix/Quaternion arithmetic): must come after
  * the compat surface so raymath reuses its type definitions. */
 #include "kry_math3d.generated.h"
-#include "kryon_frame.h"
+#include "ui_frame_props.generated.h"
 #include "kry_input.h"
 
 #include "ui_dpi_props.generated.h"
