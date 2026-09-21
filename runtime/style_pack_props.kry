@@ -31,3 +31,7 @@ StyleClassId :: (class_name: const char*) -> i32 #extern #export
 ResolveStyle :: (sheet: const StyleSheet*, base: StyleData, facts: StyleFacts, active_state: i32) -> StyleData #extern #export
 ResolveActiveStyle :: (base: StyleData, facts: StyleFacts, active_state: i32) -> StyleData #extern #export
 StylePicker :: (props: StylePickerProps) -> bool #extern #export
+
+# Token reads for app-level colors outside the widget cascade.
+StyleTokenColor :: (name: const char*) -> Color #extern #export
+StyleTokenColorOr :: (name: const char*, fallback: Color) -> Color #extern #export

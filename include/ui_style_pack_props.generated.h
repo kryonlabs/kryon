@@ -48,5 +48,7 @@ int32_t StyleClassId(const char* class_name);
 StyleData ResolveStyle(const StyleSheet* sheet, StyleData  base, StyleFacts  facts, int32_t  active_state);
 StyleData ResolveActiveStyle(StyleData base, StyleFacts  facts, int32_t  active_state);
 bool StylePicker(StylePickerProps props);
+Color StyleTokenColor(const char* name);
+Color StyleTokenColorOr(const char* name, Color  fallback);
 
 #endif /* K_RUNTIME_STYLE_PACK_PROPS_H */

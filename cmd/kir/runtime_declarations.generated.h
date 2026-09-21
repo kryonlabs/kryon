@@ -1937,6 +1937,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "ResolveStyle :: (sheet: const StyleSheet*, base: StyleData, facts: StyleFacts, active_state: i32) -> StyleData #extern #export\n"
         "ResolveActiveStyle :: (base: StyleData, facts: StyleFacts, active_state: i32) -> StyleData #extern #export\n"
         "StylePicker :: (props: StylePickerProps) -> bool #extern #export\n"
+        "\n"
+        "# Token reads for app-level colors outside the widget cascade.\n"
+        "StyleTokenColor :: (name: const char*) -> Color #extern #export\n"
+        "StyleTokenColorOr :: (name: const char*, fallback: Color) -> Color #extern #export\n"
     },
     {"runtime/style_picker_props.kry",
         "#module \"style_picker_props\"\n"

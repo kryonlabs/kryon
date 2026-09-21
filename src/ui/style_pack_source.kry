@@ -11,11 +11,14 @@ StyleSourcePack :: struct {
     source: const char*
     label: const char*
     description: const char*
+    token_count: i32
     rules: [320]StyleRule
     sheet: StyleSheet
 }
 
 source_packs :: [32]StyleSourcePack #global
+# Flat 32x64 token table; .kry has no nested fixed arrays.
+source_pack_tokens :: [2048]StyleColorToken #global
 source_pack_count :: i32 #global
 active_style_theme :: const char* = "" #global
 
@@ -173,6 +176,17 @@ color_count: i32) -> bool {
     slot->source = source_copy
     slot->label = label_copy
     slot->description = description_copy
+    kept: i32 = color_count < 64 ? color_count : 64
+    if colors != nil && kept > 0 {
+        slot_index: i32 = 0
+        while slot_index < source_pack_count {
+            if &source_packs[slot_index] == slot { break }
+            slot_index += 1
+        }
+        memcpy(&source_pack_tokens[slot_index * 64], colors,
+        (size_t)kept * sizeof(colors[0]))
+    }
+    slot->token_count = kept
     memcpy(slot->rules, rules,
     (size_t)result.rule_count * sizeof(rules[0]))
     slot->sheet.rules = slot->rules
@@ -253,4 +267,46 @@ colors: const StyleColorToken*, color_count: i32) -> bool #export {
     if id == nil { return false }
     return RegisterStyleSource(source, label, "",
     id, colors, color_count)
+}
+
+StyleTokenColorU32 :: (value: u32) -> Color #private {
+    unpacked: Color = {0, 0, 0, 255}
+    unpacked.r = (unsigned char)((value >> 24) & 255)
+    unpacked.g = (unsigned char)((value >> 16) & 255)
+    unpacked.b = (unsigned char)((value >> 8) & 255)
+    unpacked.a = (unsigned char)(value & 255)
+    return unpacked
+}
+
+StyleTokenColorOr :: (name: const char*,
+fallback: Color) -> Color #export {
+    # Read a registered color token from the active style pack; an empty
+    # name or a miss returns the fallback so callers can chain lookups.
+    if name == nil || name[0] == '\0' { return fallback }
+    active: [64]char
+    StyleCopyBounded(active, sizeof(active), GetActiveStylePackId())
+    if active[0] == '\0' { return fallback }
+    index: i32 = 0
+    while index < source_pack_count {
+        slot: *StyleSourcePack = &source_packs[index]
+        if strcmp(slot->id, active) == 0 {
+            token: i32 = 0
+            while token < slot->token_count {
+                entry: *const StyleColorToken =
+                &source_pack_tokens[index * 64 + token]
+                if entry->name != nil &&
+                strcmp(entry->name, name) == 0 {
+                    return StyleTokenColorU32(entry->color)
+                }
+                token += 1
+            }
+        }
+        index += 1
+    }
+    return fallback
+}
+
+StyleTokenColor :: (name: const char*) -> Color #export {
+    opaque: Color = {0, 0, 0, 255}
+    return StyleTokenColorOr(name, opaque)
 }

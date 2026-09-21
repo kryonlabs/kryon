@@ -1443,6 +1443,8 @@ include/ui_style_pack_props.generated.h function SetStyleTheme
 include/ui_style_pack_props.generated.h function StyleClassId
 include/ui_style_pack_props.generated.h function StylePackVersion
 include/ui_style_pack_props.generated.h function StylePicker
+include/ui_style_pack_props.generated.h function StyleTokenColor
+include/ui_style_pack_props.generated.h function StyleTokenColorOr
 include/ui_style_pack_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_pack_props.generated.h macro STYLE_PACK_MAX
 include/ui_style_picker_props.generated.h function StylePickerOptionCountFor
