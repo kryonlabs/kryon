@@ -55,6 +55,37 @@ kryon_plan9_fminf(float a, float b)
 #define fmaxf kryon_plan9_fmaxf
 #define fminf kryon_plan9_fminf
 
+/* Double spellings of the same pair. */
+static double
+kryon_plan9_fmax(double a, double b)
+{
+    if(a != a)
+        return b;
+    if(b != b)
+        return a;
+    return a > b ? a : b;
+}
+
+static double
+kryon_plan9_fmin(double a, double b)
+{
+    if(a != a)
+        return b;
+    if(b != b)
+        return a;
+    return a < b ? a : b;
+}
+
+#define fmax kryon_plan9_fmax
+#define fmin kryon_plan9_fmin
+
+/* C99 classification: only NaN fails self-equality. */
+#define isfinite(v) ((v) == (v))
+#define isnan(v) ((v) != (v))
+
+/* Native libc has strtod only; the float spelling narrows. */
+#define strtof(n, e) (float)strtod(n, e)
+
 #ifndef PI
 #define PI 3.14159265358979323846
 #endif
