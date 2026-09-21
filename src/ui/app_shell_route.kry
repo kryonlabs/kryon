@@ -1,6 +1,6 @@
 #module "app_shell_route"
 
-#import "app_shell.h"
+#import "ui_app_shell_props.generated.h"
 
 KryRouteListContains :: (routes: const int*, count: int,
                           route: int) -> int #export {

@@ -97,7 +97,7 @@
 #include "markdown.h"
 #include "app_host.h"
 #include "app_runtime.h"
-#include "app_shell.h"
+#include "ui_app_shell_props.generated.h"
 #include "app_storage.h"
 #include "app_instance.h"
 #include "automation.h"

@@ -1,0 +1,61 @@
+#module "app_shell_props"
+#import "kryon_compat.generated.h"
+
+# The route filter is a host callback; the records are plain int data.
+KryRouteAllowedFn :: int (*)(int route, void *user) #type
+
+KryRouteList :: struct {
+    routes: *i32
+    count: i32
+    capacity: i32
+    empty_route: i32
+}
+
+KryRouteStack :: struct {
+    routes: *i32
+    count: i32
+    capacity: i32
+    root_route: i32
+}
+
+KryAppShellLayoutSpec :: struct {
+    view_width: i32
+    view_height: i32
+    safe_left: i32
+    safe_top: i32
+    safe_right: i32
+    safe_bottom: i32
+    padding: i32
+    nav_height: i32
+    sidebar_breakpoint: i32
+    sidebar_width: i32
+    min_content_width: i32
+    max_content_width: i32
+}
+
+KryAppShellLayout :: struct {
+    compact: i32
+    sidebar_width: i32
+    content_x: i32
+    content_y: i32
+    content_width: i32
+    content_height: i32
+    nav_x: i32
+    nav_y: i32
+    nav_width: i32
+    nav_height: i32
+}
+
+# Implemented by the C-only app-shell hosts; declared here for the public ABI.
+KryRouteListContains :: (routes: const i32*, count: i32, route: i32) -> i32 #extern #export
+KryRouteAllowedInSet :: (route: i32, allowed_routes: const i32*, allowed_count: i32) -> i32 #extern #export
+KryRouteListSanitize :: (list: KryRouteList, allowed: KryRouteAllowedFn, user: *void) -> i32 #extern #export
+KryRouteListSanitizeSet :: (list: KryRouteList, allowed_routes: const i32*, allowed_count: i32) -> i32 #extern #export
+KryRouteListMove :: (list: KryRouteList, from_index: i32, to_index: i32) -> i32 #extern #export
+KryRouteListFirstUnused :: (routes: const i32*, count: i32, candidates: const i32*, candidate_count: i32, fallback: i32) -> i32 #extern #export
+KryRouteStackInit :: (stack: *KryRouteStack, routes: *i32, capacity: i32, root_route: i32) #extern #export
+KryRouteStackCurrent :: (stack: const KryRouteStack*) -> i32 #extern #export
+KryRouteStackPush :: (stack: *KryRouteStack, route: i32) -> i32 #extern #export
+KryRouteStackPop :: (stack: *KryRouteStack) -> i32 #extern #export
+KryRouteStackReset :: (stack: *KryRouteStack, root_route: i32) #extern #export
+KryAppShellMeasure :: (spec: KryAppShellLayoutSpec) -> KryAppShellLayout #extern #export

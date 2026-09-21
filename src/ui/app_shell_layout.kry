@@ -1,6 +1,6 @@
 #module "app_shell_layout"
 
-#import "app_shell.h"
+#import "ui_app_shell_props.generated.h"
 
 KryAppShellMeasure :: (spec: KryAppShellLayoutSpec) -> KryAppShellLayout #export {
     layout: KryAppShellLayout = {0}
