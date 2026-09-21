@@ -9,6 +9,7 @@ ImageFit :: enum {
 
 ImageProps :: struct {
     asset_path: const char*
+    texture: Texture2D
     alt_text: const char*
     bounds: Rectangle
     source: Rectangle

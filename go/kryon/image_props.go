@@ -12,6 +12,7 @@ const (
 
 type ImageProps struct {
 	AssetPath string
+	Texture   Texture2D
 	AltText   string
 	Bounds    Rectangle
 	Source    Rectangle

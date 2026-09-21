@@ -58,6 +58,17 @@ BeginFrame :: () #export {
     SyncFrame()
 }
 
+# Offscreen frame: size layout for an explicit render target (already inside
+# BeginTextureMode); does not call BeginDrawing. Pair with the caller's
+# EndTextureMode and RestoreFrameState.
+BeginOffscreenFrame :: (width: i32, height: i32,
+forced_scale: float) #export {
+    if InstanceRejected() {
+        return
+    }
+    UpdateDPIOffscreen(width, height, forced_scale)
+}
+
 EndFrame :: () #export {
     if InstanceRejected() {
         return

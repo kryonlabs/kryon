@@ -30,6 +30,7 @@ typedef enum ImageFit {
 
 typedef struct ImageProps {
     const char* asset_path;
+    Texture2D texture;
     const char* alt_text;
     Rectangle bounds;
     Rectangle source;

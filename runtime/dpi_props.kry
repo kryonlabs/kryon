@@ -21,3 +21,4 @@ SetScale :: (scale: float) #extern #export
 GetScale :: () -> float #extern #export
 Scale :: (px: i32) -> i32 #extern #export
 ClampPx :: (px: i32, min_px: i32, max_px: i32) -> i32 #extern #export
+UpdateDPIOffscreen :: (view_width: i32, view_height: i32, forced_scale: float) #extern #export

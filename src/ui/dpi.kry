@@ -100,6 +100,30 @@ UpdateDPI :: (view_width: i32, view_height: i32) #export {
     dpi_state.needs_update = 1
 }
 
+# Offscreen variant: size the layout for an explicit render target with a
+# forced scale (render-to-texture previews want their own geometry, not the
+# window's density).
+UpdateDPIOffscreen :: (view_width: i32, view_height: i32,
+forced_scale: float) #export {
+    UpdateDPI(view_width, view_height)
+    if !(forced_scale > 0.0) { return }
+    dpi_state.ui_scale = forced_scale
+    dpi_state.ui_scale_clamped = forced_scale < 1.0 ? 1.0 : forced_scale
+    dpi_state.render_scale = dpi_state.ui_scale_clamped
+    layout_width: i32 = (int)((float)view_width /
+    dpi_state.render_scale + 0.5)
+    layout_height: i32 = (int)((float)view_height /
+    dpi_state.render_scale + 0.5)
+    if layout_width < 1 { layout_width = 1 }
+    if layout_height < 1 { layout_height = 1 }
+    dpi_state.layout_width = layout_width
+    dpi_state.layout_height = layout_height
+    dpi_state.view_width = layout_width
+    dpi_state.view_height = layout_height
+    dpi_state.camera_zoom = dpi_state.render_scale
+    dpi_state.needs_update = 1
+}
+
 IsDPIDirty :: () -> i32 #export {
     return dpi_state.needs_update
 }

@@ -144,7 +144,8 @@ RenderImage :: (image: ImageProps) #export {
     }
     ui_tree_add(0, WidgetKindImage, image.bounds,
     image.asset_path)
-    texture: Texture2D = LoadImageTexture(image.asset_path)
+    texture: Texture2D = image.texture.id != 0 ? image.texture :
+    LoadImageTexture(image.asset_path)
     if texture.id == 0 {
         missing_label: const char* = "Missing image"
         style_props: ButtonProps = (ButtonProps){

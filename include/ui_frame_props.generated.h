@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef void (*KryonPostFrameCallback)(void* userdata);
 void BeginFrame(void);
+void BeginOffscreenFrame(int32_t width, int32_t  height, float  forced_scale);
 void EndFrame(void);
 void SyncFrame(void);
 int32_t GetFrameWidth(void);

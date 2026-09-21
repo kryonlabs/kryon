@@ -547,6 +547,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "GetScale :: () -> float #extern #export\n"
         "Scale :: (px: i32) -> i32 #extern #export\n"
         "ClampPx :: (px: i32, min_px: i32, max_px: i32) -> i32 #extern #export\n"
+        "UpdateDPIOffscreen :: (view_width: i32, view_height: i32, forced_scale: float) #extern #export\n"
     },
     {"runtime/drag_drop_props.kry",
         "#module \"drag_drop_props\"\n"
@@ -788,6 +789,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "# Implemented by the C-only frame host; declared here for the public ABI.\n"
         "BeginFrame :: () #extern #export\n"
+        "BeginOffscreenFrame :: (width: i32, height: i32, forced_scale: float) #extern #export\n"
         "EndFrame :: () #extern #export\n"
         "SyncFrame :: () #extern #export\n"
         "GetFrameWidth :: () -> i32 #extern #export\n"
@@ -862,6 +864,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "ImageProps :: struct {\n"
         "    asset_path: const char*\n"
+        "    texture: Texture2D\n"
         "    alt_text: const char*\n"
         "    bounds: Rectangle\n"
         "    source: Rectangle\n"

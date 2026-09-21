@@ -40,5 +40,6 @@ void SetScale(float scale);
 float GetScale(void);
 int32_t Scale(int32_t px);
 int32_t ClampPx(int32_t px, int32_t  min_px, int32_t  max_px);
+void UpdateDPIOffscreen(int32_t view_width, int32_t  view_height, float  forced_scale);
 
 #endif /* K_RUNTIME_DPI_PROPS_H */

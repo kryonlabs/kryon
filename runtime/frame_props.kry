@@ -5,6 +5,7 @@ KryonPostFrameCallback :: void (*)(void* userdata) #type
 
 # Implemented by the C-only frame host; declared here for the public ABI.
 BeginFrame :: () #extern #export
+BeginOffscreenFrame :: (width: i32, height: i32, forced_scale: float) #extern #export
 EndFrame :: () #extern #export
 SyncFrame :: () #extern #export
 GetFrameWidth :: () -> i32 #extern #export
