@@ -1586,6 +1586,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     },
     {"runtime/profile_icon_props.kry",
         "#module \"profile_icon_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
         "#import \"ui_icon_types.h\"\n"
         "\n"
         "SyncProfileIcon :: enum {\n"
@@ -1628,6 +1629,11 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "GetProfileImageIconName :: (index: i32) -> const char* #extern #export\n"
         "GetProfileImageIconTypeForSyncID :: (sync_id: i32) -> IconType #extern #export\n"
         "GetSyncIDForProfileImageIconType :: (icon_type: IconType) -> i32 #extern #export\n"
+        "\n"
+        "# Profile picture picker modal: grid of profile icons with selection.\n"
+        "ProfileImagePickerProps :: struct { const char *title; const Texture2D *icons; IconType *selected_icon_type; Texture2D close_icon; int max_width; int *scroll_offset; } #type\n"
+        "ProfileImagePickerResult :: struct { int closed; int changed; int selected_index; IconType selected_icon_type; } #type\n"
+        "RenderProfileImagePickerModal :: (modal: ProfileImagePickerProps) -> ProfileImagePickerResult #extern #export\n"
     },
     {"runtime/progress_props.kry",
         "#module \"progress_props\"\n"

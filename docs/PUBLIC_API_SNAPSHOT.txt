@@ -1410,6 +1410,7 @@ include/ui_profile_icon_props.generated.h function GetProfileImageIconName
 include/ui_profile_icon_props.generated.h function GetProfileImageIconType
 include/ui_profile_icon_props.generated.h function GetProfileImageIconTypeForSyncID
 include/ui_profile_icon_props.generated.h function GetSyncIDForProfileImageIconType
+include/ui_profile_icon_props.generated.h function RenderProfileImagePickerModal
 include/ui_profile_icon_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_progress_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_radio_props.generated.h macro KIR_STRING_VALUE_DEFINED

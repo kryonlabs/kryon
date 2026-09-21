@@ -11,6 +11,7 @@
 #include "ui_window_props.generated.h"
 #include "ui_dpi.h"
 #include "ui_icon_sheet_props.generated.h"
+#include "ui_profile_icon_props.generated.h"
 #include "ui_layout_props.generated.h"
 #include "ui_dpi_props.generated.h"
 #include "ui_transition_props.generated.h"
@@ -230,21 +231,8 @@ typedef struct {
     int height;
 } SidebarAccountHeaderResult;
 
-typedef struct {
-    const char *title;
-    const Texture2D *icons;
-    IconType *selected_icon_type;
-    Texture2D close_icon;
-    int max_width;
-    int *scroll_offset;
-} ProfileImagePickerProps;
-
-typedef struct {
-    int closed;
-    int changed;
-    int selected_index;
-    IconType selected_icon_type;
-} ProfileImagePickerResult;
+/* ProfileImagePickerProps/Result and RenderProfileImagePickerModal are
+ * declared in ui_profile_icon_props.generated.h. */
 
 enum {
     POINTER_OWNER_NONE = 0,

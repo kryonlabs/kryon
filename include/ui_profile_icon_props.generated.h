@@ -20,7 +20,12 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
+#include "kryon_compat.generated.h"
 #include "ui_icon_types.h"
+
+typedef struct { const char *title; const Texture2D *icons; IconType *selected_icon_type; Texture2D close_icon; int max_width; int *scroll_offset; } ProfileImagePickerProps;
+
+typedef struct { int closed; int changed; int selected_index; IconType selected_icon_type; } ProfileImagePickerResult;
 
 typedef enum SyncProfileIcon {
     SYNC_PROFILE_ICON_NONE = 0,
@@ -59,5 +64,6 @@ IconType GetProfileImageIconType(int32_t index);
 const char* GetProfileImageIconName(int32_t index);
 IconType GetProfileImageIconTypeForSyncID(int32_t sync_id);
 int32_t GetSyncIDForProfileImageIconType(IconType icon_type);
+ProfileImagePickerResult RenderProfileImagePickerModal(ProfileImagePickerProps modal);
 
 #endif /* K_RUNTIME_PROFILE_ICON_PROPS_H */

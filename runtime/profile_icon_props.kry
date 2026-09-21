@@ -1,4 +1,5 @@
 #module "profile_icon_props"
+#import "kryon_compat.generated.h"
 #import "ui_icon_types.h"
 
 SyncProfileIcon :: enum {
@@ -41,3 +42,8 @@ GetProfileImageIconType :: (index: i32) -> IconType #extern #export
 GetProfileImageIconName :: (index: i32) -> const char* #extern #export
 GetProfileImageIconTypeForSyncID :: (sync_id: i32) -> IconType #extern #export
 GetSyncIDForProfileImageIconType :: (icon_type: IconType) -> i32 #extern #export
+
+# Profile picture picker modal: grid of profile icons with selection.
+ProfileImagePickerProps :: struct { const char *title; const Texture2D *icons; IconType *selected_icon_type; Texture2D close_icon; int max_width; int *scroll_offset; } #type
+ProfileImagePickerResult :: struct { int closed; int changed; int selected_index; IconType selected_icon_type; } #type
+RenderProfileImagePickerModal :: (modal: ProfileImagePickerProps) -> ProfileImagePickerResult #extern #export
