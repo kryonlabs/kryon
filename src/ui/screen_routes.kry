@@ -67,7 +67,7 @@ app_draw :: (userdata: void*, viewport: Rectangle) #private {
     if app == nil || app->routes == nil || app->route_count <= 0 {
         return
     }
-    index := app->selected_route
+    index: i32 = app->selected_route
     if index < 0 || index >= app->route_count {
         index = 0
     }

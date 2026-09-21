@@ -4,10 +4,10 @@
 
 KryAppShellMeasure :: (spec: KryAppShellLayoutSpec) -> KryAppShellLayout #export {
     layout: KryAppShellLayout = {0}
-    padding := spec.padding >= 0 ? spec.padding : 0
-    nav_height := spec.nav_height > 0 ? spec.nav_height : 0
-    breakpoint := spec.sidebar_breakpoint > 0 ? spec.sidebar_breakpoint : 480
-    sidebar_width := spec.sidebar_width > 0 ? spec.sidebar_width : 0
+    padding: i32 = spec.padding >= 0 ? spec.padding : 0
+    nav_height: i32 = spec.nav_height > 0 ? spec.nav_height : 0
+    breakpoint: i32 = spec.sidebar_breakpoint > 0 ? spec.sidebar_breakpoint : 480
+    sidebar_width: i32 = spec.sidebar_width > 0 ? spec.sidebar_width : 0
 
     layout.compact = spec.view_width <= breakpoint ? 1 : 0
     layout.sidebar_width = layout.compact ? 0 : sidebar_width
@@ -25,7 +25,7 @@ KryAppShellMeasure :: (spec: KryAppShellLayoutSpec) -> KryAppShellLayout #export
 
     layout.content_x = spec.safe_left + layout.sidebar_width + padding
     layout.content_y = spec.safe_top + padding
-    available_width := spec.view_width - spec.safe_left - spec.safe_right -
+    available_width: i32 = spec.view_width - spec.safe_left - spec.safe_right -
                        layout.sidebar_width - padding * 2
     layout.content_width = available_width
     if spec.max_content_width > 0 &&
