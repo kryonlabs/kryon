@@ -2,25 +2,10 @@
 #define KRYON_DPI_H
 
 #include "kryon.h"
+#include "ui_dpi_props.generated.h"
 
 #define DPI_BASE_WIDTH 320
 #define DPI_BASE_HEIGHT 560
-
-typedef struct DPIState {
-    int physical_width;
-    int physical_height;
-    int view_width;
-    int view_height;
-    int layout_width;
-    int layout_height;
-    float ui_scale;
-    float ui_scale_clamped;
-    float render_scale;
-    float camera_zoom;
-    int base_width;
-    int base_height;
-    int needs_update;
-} DPIState;
 
 extern DPIState dpi_state;
 

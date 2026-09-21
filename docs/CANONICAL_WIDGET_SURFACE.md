@@ -111,6 +111,7 @@ surface review:
 | `runtime/profile_header.kry` | Profile header geometry/text placement plus profile pointer activation and profile image picker geometry/selection/click policy | `.kry support` |
 | `runtime/profile_icon_props.kry` | Profile image (sync) icon selection enum | `.kry support` |
 | `runtime/window_props.kry` | Additional OS window flag values | `.kry support` |
+| `runtime/dpi_props.kry` | Device pixel-ratio state record | `.kry support` |
 | `runtime/progress.kry`, `src/ui/progress.kry` | Progress layout, style, and drawing | `.kry canonical` |
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
 | `runtime/radio.kry`, `src/ui/radio.kry` | Radio paint, layout, activation, animation, and drawing | `.kry canonical` |

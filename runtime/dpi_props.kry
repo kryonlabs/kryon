@@ -1,0 +1,17 @@
+#module "dpi_props"
+
+DPIState :: struct {
+    physical_width: int
+    physical_height: int
+    view_width: int
+    view_height: int
+    layout_width: int
+    layout_height: int
+    ui_scale: float
+    ui_scale_clamped: float
+    render_scale: float
+    camera_zoom: float
+    base_width: int
+    base_height: int
+    needs_update: int
+}

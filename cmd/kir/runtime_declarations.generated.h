@@ -279,6 +279,25 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    selected: Style\n"
         "}\n"
     },
+    {"runtime/dpi_props.kry",
+        "#module \"dpi_props\"\n"
+        "\n"
+        "DPIState :: struct {\n"
+        "    physical_width: int\n"
+        "    physical_height: int\n"
+        "    view_width: int\n"
+        "    view_height: int\n"
+        "    layout_width: int\n"
+        "    layout_height: int\n"
+        "    ui_scale: float\n"
+        "    ui_scale_clamped: float\n"
+        "    render_scale: float\n"
+        "    camera_zoom: float\n"
+        "    base_width: int\n"
+        "    base_height: int\n"
+        "    needs_update: int\n"
+        "}\n"
+    },
     {"runtime/drag_drop_props.kry",
         "#module \"drag_drop_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
