@@ -1,7 +1,7 @@
 #ifndef KRYON_ANDROID_SURFACE_H
 #define KRYON_ANDROID_SURFACE_H
 
-#include "kry_capabilities.h"
+#include "ui_capability_props.generated.h"
 
 typedef struct AndroidWindowInsets {
     int system_left;

@@ -1,6 +1,6 @@
 #module "capability_layout"
 
-#import "kry_capabilities.h"
+#import "ui_capability_props.generated.h"
 
 KryCapabilitiesHas :: (capabilities: int,
                         capability: KryCapability) -> int #export {

@@ -89,6 +89,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     },
     {"runtime/capability_props.kry",
         "#module \"capability_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
         "\n"
         "KryCapability :: enum {\n"
         "    KRY_CAP_FILE_PICKER = 1\n"
@@ -117,6 +118,11 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    reserved_bottom: int\n"
         "    min_content_width: int\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only capability host; declared here for the public ABI.\n"
+        "KryCapabilitiesHas :: (capabilities: i32, capability: KryCapability) -> i32 #extern #export\n"
+        "KryCapabilityName :: (capability: KryCapability) -> const char* #extern #export\n"
+        "KrySafeContentRect :: (spec: KryViewportSpec) -> Rectangle #extern #export\n"
     },
     {"runtime/card_props.kry",
         "#module \"card_props\"\n"

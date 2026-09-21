@@ -1,4 +1,5 @@
 #module "capability_props"
+#import "kryon_compat.generated.h"
 
 KryCapability :: enum {
     KRY_CAP_FILE_PICKER = 1
@@ -27,3 +28,8 @@ KryViewportSpec :: struct {
     reserved_bottom: int
     min_content_width: int
 }
+
+# Implemented by the C-only capability host; declared here for the public ABI.
+KryCapabilitiesHas :: (capabilities: i32, capability: KryCapability) -> i32 #extern #export
+KryCapabilityName :: (capability: KryCapability) -> const char* #extern #export
+KrySafeContentRect :: (spec: KryViewportSpec) -> Rectangle #extern #export

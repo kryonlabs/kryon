@@ -101,7 +101,7 @@
 #include "app_storage.h"
 #include "app_instance.h"
 #include "automation.h"
-#include "kry_capabilities.h"
+#include "ui_capability_props.generated.h"
 #include "kryon_mem.h"
 
 /* Kry standard library: platform surfaces (process, filesystem, dynamic

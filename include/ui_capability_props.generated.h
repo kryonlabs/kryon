@@ -20,6 +20,7 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
+#include "kryon_compat.generated.h"
 
 typedef enum KryCapability {
     KRY_CAP_FILE_PICKER = 1,
@@ -48,5 +49,8 @@ typedef struct KryViewportSpec {
     int reserved_bottom;
     int min_content_width;
 } KryViewportSpec;
+int32_t KryCapabilitiesHas(int32_t capabilities, KryCapability  capability);
+const char* KryCapabilityName(KryCapability capability);
+Rectangle KrySafeContentRect(KryViewportSpec spec);
 
 #endif /* K_RUNTIME_CAPABILITY_PROPS_H */

@@ -296,9 +296,6 @@ include/kry_backend_rec.h function KryBackendRecBackend
 include/kry_backend_rec.h function KryBackendRecCalls
 include/kry_bounds.h function KryonBoundsCheck
 include/kry_bounds.h macro KRYON_INDEX
-include/kry_capabilities.h function KryCapabilitiesHas
-include/kry_capabilities.h function KryCapabilityName
-include/kry_capabilities.h function KrySafeContentRect
 include/kry_dylib.h function kry_dylib_close
 include/kry_dylib.h function kry_dylib_error
 include/kry_dylib.h function kry_dylib_load
@@ -988,6 +985,9 @@ include/ui_capability_props.generated.h enum KRY_CAP_NOTIFICATIONS
 include/ui_capability_props.generated.h enum KRY_CAP_SECURE_STORE
 include/ui_capability_props.generated.h enum KRY_CAP_SHARE
 include/ui_capability_props.generated.h enum KRY_CAP_WAKELOCK
+include/ui_capability_props.generated.h function KryCapabilitiesHas
+include/ui_capability_props.generated.h function KryCapabilityName
+include/ui_capability_props.generated.h function KrySafeContentRect
 include/ui_capability_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_card_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_checkbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
