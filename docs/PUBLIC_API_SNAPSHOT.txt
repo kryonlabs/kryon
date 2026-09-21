@@ -1608,12 +1608,6 @@ include/ui_tree.h typedef NodeId
 include/ui_tree.h typedef RowProps
 include/ui_tree.h typedef TreeNode
 include/ui_tree_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_window.h enum NATIVE_WINDOW_ALWAYS_ON_TOP
-include/ui_window.h enum NATIVE_WINDOW_BORDERLESS
-include/ui_window.h enum NATIVE_WINDOW_CENTER
-include/ui_window.h enum NATIVE_WINDOW_SKIP_TASKBAR
-include/ui_window.h enum NATIVE_WINDOW_STICKY
-include/ui_window.h enum NATIVE_WINDOW_TOP_RIGHT
 include/ui_window.h function BeginNativeWindow
 include/ui_window.h function CloseNativeWindow
 include/ui_window.h function EndNativeWindow
@@ -1626,6 +1620,13 @@ include/ui_window.h function OpenNativeWindow
 include/ui_window.h function PumpWindows
 include/ui_window.h function StealCoreWindowClose
 include/ui_window.h typedef NativeWindow
+include/ui_window_props.generated.h enum NATIVE_WINDOW_ALWAYS_ON_TOP
+include/ui_window_props.generated.h enum NATIVE_WINDOW_BORDERLESS
+include/ui_window_props.generated.h enum NATIVE_WINDOW_CENTER
+include/ui_window_props.generated.h enum NATIVE_WINDOW_SKIP_TASKBAR
+include/ui_window_props.generated.h enum NATIVE_WINDOW_STICKY
+include/ui_window_props.generated.h enum NATIVE_WINDOW_TOP_RIGHT
+include/ui_window_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/web.h function FlushWebStorageSync
 include/web.h function FlushWebStorageSyncBlocking
 include/web.h function GetWebStorageSyncState

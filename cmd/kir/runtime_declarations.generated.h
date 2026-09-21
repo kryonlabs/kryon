@@ -1741,4 +1741,16 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "}\n"
     },
+    {"runtime/window_props.kry",
+        "#module \"window_props\"\n"
+        "\n"
+        "NativeWindowFlags :: enum {\n"
+        "    NATIVE_WINDOW_BORDERLESS = 1\n"
+        "    NATIVE_WINDOW_ALWAYS_ON_TOP = 2\n"
+        "    NATIVE_WINDOW_SKIP_TASKBAR = 4\n"
+        "    NATIVE_WINDOW_TOP_RIGHT = 8\n"
+        "    NATIVE_WINDOW_CENTER = 16\n"
+        "    NATIVE_WINDOW_STICKY = 32\n"
+        "}\n"
+    },
 };

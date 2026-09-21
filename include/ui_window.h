@@ -21,22 +21,9 @@
  */
 
 #include "kryon_compat.generated.h"
+#include "ui_window_props.generated.h"
 
 typedef struct NativeWindow NativeWindow;
-
-enum {
-    NATIVE_WINDOW_BORDERLESS = 0x01,     /* no OS decorations */
-    NATIVE_WINDOW_ALWAYS_ON_TOP = 0x02,  /* float above normal windows */
-    NATIVE_WINDOW_SKIP_TASKBAR = 0x04,   /* keep the window out of taskbars/docks */
-    NATIVE_WINDOW_TOP_RIGHT = 0x08,      /* x/y are margins from the top-right
-                                        corner of the primary displays work
-                                        area instead of absolute positions */
-    NATIVE_WINDOW_CENTER = 0x10,         /* center the window on the primary
-                                        displays work area (x/y ignored) */
-    NATIVE_WINDOW_STICKY = 0x20          /* keep the window visible across
-                                        virtual desktops/workspaces when the
-                                        window system supports it */
-};
 
 /*
  * Open a window. ui_scale is the UI scale widgets inside the window should
