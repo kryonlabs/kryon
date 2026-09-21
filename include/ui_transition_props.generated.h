@@ -27,4 +27,11 @@ typedef enum TransitionPhase {
     TransitionIn = 2,
 } TransitionPhase;
 
+typedef struct TransitionState {
+    int active;
+    TransitionPhase phase;
+    float elapsed_seconds;
+    float duration_seconds;
+} TransitionState;
+
 #endif /* K_RUNTIME_TRANSITION_PROPS_H */

@@ -5,3 +5,10 @@ TransitionPhase :: enum {
     TransitionOut = 1
     TransitionIn = 2
 }
+
+TransitionState :: struct {
+    active: int
+    phase: TransitionPhase
+    elapsed_seconds: float
+    duration_seconds: float
+}

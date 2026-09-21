@@ -1643,6 +1643,13 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    TransitionOut = 1\n"
         "    TransitionIn = 2\n"
         "}\n"
+        "\n"
+        "TransitionState :: struct {\n"
+        "    active: int\n"
+        "    phase: TransitionPhase\n"
+        "    elapsed_seconds: float\n"
+        "    duration_seconds: float\n"
+        "}\n"
     },
     {"runtime/tree_view_props.kry",
         "#module \"tree_view_props\"\n"

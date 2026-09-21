@@ -8,3 +8,10 @@ const (
 	TransitionOut  TransitionPhase = 1
 	TransitionIn   TransitionPhase = 2
 )
+
+type TransitionState struct {
+	Active          int32
+	Phase           TransitionPhase
+	ElapsedSeconds  float32
+	DurationSeconds float32
+}
