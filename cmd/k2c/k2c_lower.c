@@ -1757,7 +1757,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
      * public widget types, so pull the tree surface in only when some body
      * actually calls a hook. */
     if(module_uses_host_hooks(m)) {
-        fputs("#include \"ui_tree.h\"\n", c);
+        fputs("#include \"ui_tree_props.generated.h\"\n", c);
         fputs("#include \"ui_canvas_props.generated.h\"\n", c);
         fputs("#include \"ui_popup_props.generated.h\"\n", c);
         emit_ui_host_hook_prototypes(c);

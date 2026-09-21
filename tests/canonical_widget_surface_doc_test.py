@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "src/ui/node_registry.kry"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
-TREE_API = ROOT / "include/ui_tree.h"
+TREE_API = ROOT / "include/ui_tree_props.generated.h"
 GO_API = ROOT / "go/kryon/api.go"
 WEB_RUNTIME = ROOT / "web/kryon-runtime.js"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
@@ -147,7 +147,7 @@ def ui_tree_function_names() -> set[str]:
         )
     )
     if not names:
-        raise AssertionError("empty ui_tree.h function list")
+        raise AssertionError("empty tree props function list")
     return names
 
 

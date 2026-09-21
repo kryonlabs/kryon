@@ -1,6 +1,6 @@
 #include "../src/ui/ui_internal.h"
 #include "ui_style_sheet.h"
-#include "ui_tree.h"
+#include "ui_tree_props.generated.h"
 
 #include <stdio.h>
 

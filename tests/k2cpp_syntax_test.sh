@@ -476,7 +476,7 @@ cat > "$work/public_headers.cpp" <<'EOF'
 #include "ui_clipboard.generated.h"
 #include "ui_accelerator.generated.h"
 #include "ui_canvas_props.generated.h"
-#include "ui_tree.h"
+#include "ui_tree_props.generated.h"
 #include "runtime/kss_parser.h"
 EOF
 c++ -fsyntax-only -std=c++17 -Werror -I"$root/include" -I"$generated_include" "$work/public_headers.cpp"

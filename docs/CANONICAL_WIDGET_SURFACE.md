@@ -76,6 +76,7 @@ surface review:
 | `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
 | `runtime/instance_props.kry` | Instance-state borrowing declaration | `.kry support` |
 | `runtime/core_props.kry` | Interface frame, focus, and cursor ABI declarations | `.kry support` |
+| `runtime/tree_props.kry` | Tree lifecycle, widget entry points, and router ABI | `.kry support` |
 | `runtime/frame_props.kry` | Frame lifecycle and pacing ABI declarations | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry, handle-size, and release-consume policy | `.kry support` |
 | `runtime/inspect_props.kry` | Inspector selection and node records | `.kry support` |
@@ -598,7 +599,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 ## Native No-Compatibility Audit
 
 No lowered widget block scopes are public compatibility exports from
-`include/ui_tree.h`. Parser lowering and native tests use internal declarations
+`include/ui_tree_props.generated.h`. Parser lowering and native tests use internal declarations
 for these host scopes until the canonical `.kry` block surface owns the
 remaining generated backends.
 

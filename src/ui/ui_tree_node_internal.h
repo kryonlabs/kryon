@@ -1,7 +1,7 @@
 #ifndef KRYON_UI_TREE_NODE_INTERNAL_H
 #define KRYON_UI_TREE_NODE_INTERNAL_H
 
-#include "ui_tree.h"
+#include "ui_tree_props.generated.h"
 
 typedef struct {
     ButtonProps props;

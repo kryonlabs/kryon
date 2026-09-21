@@ -1,5 +1,5 @@
 #include "accessibility_internal.h"
-#include "ui_tree.h"
+#include "ui_tree_props.generated.h"
 
 static AccessibilitySink accessibility_sink;
 static void *accessibility_sink_userdata;

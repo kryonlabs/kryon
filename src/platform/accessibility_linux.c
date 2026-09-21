@@ -2,7 +2,7 @@
 
 #if defined(KRYON_ACCESSIBILITY_DBUS)
 #include "accessibility_protocol.h"
-#include "ui_tree.h"
+#include "ui_tree_props.generated.h"
 #include "kryon_version.h"
 #include <gio/gio.h>
 #include <pango/pango.h>
