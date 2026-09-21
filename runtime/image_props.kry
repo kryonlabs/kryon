@@ -18,3 +18,7 @@ ImageProps :: struct {
     fit: ImageFit
     class_name: i32
 }
+
+# C host entry for the canonical image surface (the .kry form is
+# Image(ImageProps)). Implemented by the image host.
+RenderImage :: (image: ImageProps) #extern #export

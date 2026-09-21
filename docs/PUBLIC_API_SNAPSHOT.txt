@@ -1268,6 +1268,7 @@ include/ui_icon_types.h enum ICON_WORKBOOK_FILL_COLOR
 include/ui_icon_types.h enum ICON_WORKBOOK_TEXT_COLOR
 include/ui_icon_types.h enum ICON_WRENCH
 include/ui_icon_types.h enum ICON_X
+include/ui_image_props.generated.h function RenderImage
 include/ui_image_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_input_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_inspect_props.generated.h function BeginInspectFrame

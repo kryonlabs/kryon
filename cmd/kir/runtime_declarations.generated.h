@@ -878,6 +878,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    fit: ImageFit\n"
         "    class_name: i32\n"
         "}\n"
+        "\n"
+        "# C host entry for the canonical image surface (the .kry form is\n"
+        "# Image(ImageProps)). Implemented by the image host.\n"
+        "RenderImage :: (image: ImageProps) #extern #export\n"
     },
     {"runtime/input_props.kry",
         "#module \"input_props\"\n"

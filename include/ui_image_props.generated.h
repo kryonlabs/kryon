@@ -39,5 +39,6 @@ typedef struct ImageProps {
     ImageFit fit;
     int32_t class_name;
 } ImageProps;
+void RenderImage(ImageProps image);
 
 #endif /* K_RUNTIME_IMAGE_PROPS_H */
