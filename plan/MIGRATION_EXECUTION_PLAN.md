@@ -413,11 +413,35 @@ What still blocks the remaining headers, now precisely:
 - `extern DPIState dpi_state` plus inline getters: `ui_dpi.h`
 - opaque `NativeWindow`: `ui_window.h`
 
+## Round 20 — node-registry and inspector hosts move; k2c's hardcoded include fixed
+
+Two more headers fell to the `#extern #export` pattern:
+
+- `include/ui_node_registry.h` → the ten NodeType queries in
+  `node_registry_props`, including `const NodeType*` returns and
+  `NodeTypeSnippet`'s `char*` output buffer (both accepted by k2go as
+  signatures).
+- `include/ui_inspect.h` → the eighteen inspector calls in `inspect_props`.
+  `Camera2D` needed no new home: `kryon_compat.generated.h` already defines it
+  and `inspect_props` imports that header. This also fixed a hidden coupling:
+  k2c and k2cpp hard-coded `#include "ui_inspect.h"` into every instrumented
+  module — the compilers now emit `ui_inspect_props.generated.h`, the syntax
+  tests assert the new include, and the round-13 mystery of inbe's generated
+  `screenshots.c` carrying that include is explained.
+
+Session total: fourteen handwritten UI headers removed. `widget-instance-test`
+fails identically before these changes (kry_math3d operator conflicts) and
+stays outside the standard gates. Gates: `generated-runtime-parity-test`,
+`fast-test`, k2c/k2cpp/k2go-syntax-test, `go-runtime-test`,
+`examples-syntax-test`, refreshed snapshots. Inbe builds green at `e2629fae`
+and its pointer is committed (`68622fb`); the concurrent session's 103-file
+in-flight inbe migration was left untouched.
+
 B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
 
-Note: the main checkout was left detached at `120390fb` by a concurrent
-session's Plan 9 builds; commits landed through a temporary linked worktree on
-`master`, which was removed afterwards so `master` is free to check out.
+Note: the main checkout remained detached at `120390fb` (concurrent session);
+commits again landed through a temporary linked worktree on `master`, removed
+afterwards so `master` is free to check out.
 
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
