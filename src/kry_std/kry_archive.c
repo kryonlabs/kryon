@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(KRYON_PLATFORM_PLAN9)
 #include "kry_gzip.h"
 #if defined(_M_IX86) || defined(__i386__)
 #define SINFL_NO_SIMD
@@ -125,7 +125,7 @@ archive_impl(Archive *archive)
 static uint32_t
 archive_crc32(const unsigned char *data, size_t size)
 {
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(KRYON_PLATFORM_PLAN9)
     return (uint32_t)kry_gzip_crc32(data, (unsigned long)size);
 #else
     return (uint32_t)crc32(0L, data, (uInt)size);
@@ -562,7 +562,7 @@ static int
 deflate_raw(const unsigned char *data, size_t data_size,
             unsigned char **out, uint32_t *out_size)
 {
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(KRYON_PLATFORM_PLAN9)
     struct sdefl *scratch;
     int bound;
     int size;
