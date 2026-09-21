@@ -540,6 +540,36 @@ kept), opaque `NativeWindow` (`ui_window`), `const StyleSheet*`
 `ui_icon_names[]` extern (`ui_icons`), `LocaleEntry` (`locale.h`). B-001
 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
 
+## Round 25 — capability and text-backend hosts move
+
+Two more full deletions:
+
+- `include/kry_capabilities.h` → `KryCapabilitiesHas`,
+  `KryCapabilityName`, and `KrySafeContentRect` in
+  `runtime/capability_props.kry` (the header had already shrunk to these three
+  calls; all their types were in the props module already).
+- `include/ui_text_backend.h` → the thirteen TextFont glyph/atlas/native-text
+  calls in `runtime/text_props.kry`; `Font`, `GlyphInfo`, `Texture2D`, and
+  `Rectangle` all arrive through `kryon_compat`, so no new type homes were
+  needed.
+
+Session total: twenty-three handwritten UI headers removed. Gates:
+`generated-runtime-parity-test`, `fast-test`, k2c/k2cpp/k2go-syntax-test,
+`go-runtime-test`, `examples-syntax-test`, refreshed snapshots. Inbe builds
+green at `606c11ee`, pointer committed (`1d37321`).
+
+Remaining: unions (`Event`, `FrameState`, `PropertyValue` in
+`KryonNodeEdit`), function-pointer typedefs (`ui_core`, `ui_controls`,
+`kryon_frame`, `ui_tree`, `app_shell`), `dpi_state` + perf-critical inline
+getters (`ui_dpi`, kept deliberately), opaque `NativeWindow` (`ui_window`),
+`const StyleSheet*` (`ui_style_sheet`), `IconAsset`'s stored `IconType`
+field + the `ui_icon_names[]` extern (`ui_icons`), `LocaleEntry`/
+`LocaleLanguage` mutable char* fields and `FormatLocaleText`'s varargs
+(`locale.h`), `TextElementKind` records (`ui_text_layout.h`), the
+`theme.h`/`theme_meta.h` catalogs (die with B-001 rather than entrench),
+`void *app` chain (`app_runtime.h`). B-001 (KSS/theme) still waits on
+Uku/Krait/Rill and Inbe.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
