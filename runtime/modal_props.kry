@@ -22,3 +22,12 @@ ModalProps :: struct {
     focused: *bool
     focus_id: i32
 }
+
+# Layout result of a custom modal frame: panel rect plus the content area the
+# caller draws into, and the optional title-icon click results.
+PanelFrame :: struct { int x; int y; int w; int h; int content_x; int content_y; int content_w; int content_h; int left_clicked; int right_clicked; } #type
+
+# Custom-content modal frame: scrim, movable/resizable panel, centered title,
+# optional close icons. Implemented by the modal host; declared here so apps
+# can build palette-style overlays with their own content.
+RenderModalFrame :: (width: i32, height: i32, title: const char*, left_icon: Texture2D, right_icon: Texture2D) -> PanelFrame #extern #export

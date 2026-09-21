@@ -2,6 +2,7 @@
 #define INTERFACE_INTERNAL_H
 
 #include "ui_drawing_props.generated.h"
+#include "ui_modal_props.generated.h"
 #include "ui_tree_props.generated.h"
 #include "ui_tree_node_internal.h"
 #include "ui_drawing_props.generated.h"
@@ -244,19 +245,6 @@ typedef struct {
     int selected_index;
     IconType selected_icon_type;
 } ProfileImagePickerResult;
-
-typedef struct {
-    int x;
-    int y;
-    int w;
-    int h;
-    int content_x;
-    int content_y;
-    int content_w;
-    int content_h;
-    int left_clicked;
-    int right_clicked;
-} PanelFrame;
 
 enum {
     POINTER_OWNER_NONE = 0,
@@ -536,6 +524,8 @@ int RenderActionModal(ModalProps modal);
 int RenderTitleBar(TitleBarProps title_bar);
 PanelFrame RenderModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
+/* PanelFrame and RenderModalFrame are declared in
+ * ui_modal_props.generated.h. */
 SidebarAccountHeaderResult RenderSidebarAccountHeader(SidebarAccountHeaderProps header);
 ProfileImagePickerResult RenderProfileImagePickerModal(ProfileImagePickerProps modal);
 void RenderReorderHandle(int x, int y, int w, int h, int active);

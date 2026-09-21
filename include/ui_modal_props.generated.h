@@ -22,6 +22,8 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "ui_control_props.generated.h"
 
+typedef struct { int x; int y; int w; int h; int content_x; int content_y; int content_w; int content_h; int left_clicked; int right_clicked; } PanelFrame;
+
 typedef struct ModalAction {
     const char* label;
     ButtonTone tone;
@@ -43,5 +45,6 @@ typedef struct ModalProps {
     bool* focused;
     int32_t focus_id;
 } ModalProps;
+PanelFrame RenderModalFrame(int32_t width, int32_t  height, const char*  title, Texture2D  left_icon, Texture2D  right_icon);
 
 #endif /* K_RUNTIME_MODAL_PROPS_H */

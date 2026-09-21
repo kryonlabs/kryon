@@ -1173,6 +1173,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    focused: *bool\n"
         "    focus_id: i32\n"
         "}\n"
+        "\n"
+        "# Layout result of a custom modal frame: panel rect plus the content area the\n"
+        "# caller draws into, and the optional title-icon click results.\n"
+        "PanelFrame :: struct { int x; int y; int w; int h; int content_x; int content_y; int content_w; int content_h; int left_clicked; int right_clicked; } #type\n"
+        "\n"
+        "# Custom-content modal frame: scrim, movable/resizable panel, centered title,\n"
+        "# optional close icons. Implemented by the modal host; declared here so apps\n"
+        "# can build palette-style overlays with their own content.\n"
+        "RenderModalFrame :: (width: i32, height: i32, title: const char*, left_icon: Texture2D, right_icon: Texture2D) -> PanelFrame #extern #export\n"
     },
     {"runtime/navigation_bar_props.kry",
         "#module \"navigation_bar_props\"\n"
