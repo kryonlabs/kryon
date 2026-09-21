@@ -1,7 +1,7 @@
 #module "image"
 #import "drawing_props"
 
-# Matches ImageFit in include/ui_image.h without exporting a second public enum.
+# Matches the ImageFit host contract without exporting a second public enum.
 ImagePlaceholderLayout :: struct {
     bounds: Rectangle
     label_x: i32

@@ -1,7 +1,7 @@
 #ifndef INTERFACE_INTERNAL_H
 #define INTERFACE_INTERNAL_H
 
-#include "ui_draw.h"
+#include "ui_drawing_props.generated.h"
 #include "ui_tree.h"
 #include "ui_tree_node_internal.h"
 #include "ui_clip.h"

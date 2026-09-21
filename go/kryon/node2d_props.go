@@ -2,7 +2,7 @@
 package kryon
 
 // #import kryon_compat.generated.h
-// #import ui_image.h
+// #import ui_image_props.generated.h
 // #import kry_animation.h
 type Body2DType int32
 

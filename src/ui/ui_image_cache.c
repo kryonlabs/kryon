@@ -4,7 +4,7 @@
  */
 
 #include "ui_internal.h"
-#include "ui_image.h"
+#include "ui_image_props.generated.h"
 #include "ui_image_internal.h"
 #include "embedded_assets.h"
 #include <stdio.h>

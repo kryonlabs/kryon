@@ -8,7 +8,7 @@
 #include "scene_tree.h"
 #include "node2d_props.h"
 #include "spritesheet.h"
-#include "ui_image.h"
+#include "ui_image_props.generated.h"
 #include "../ui/ui_image_internal.h"
 #include <stdlib.h>
 

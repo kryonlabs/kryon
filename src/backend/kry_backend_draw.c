@@ -1,7 +1,7 @@
 #include "kry_backend.h"
 #include "krb.h"
 #include "kryon.h"
-#include "ui_image.h"
+#include "ui_image_props.generated.h"
 #include "../ui/ui_internal.h"
 #include "../ui/ui_image_internal.h"
 

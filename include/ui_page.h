@@ -2,7 +2,7 @@
 #define KRYON_PAGE_H
 
 #include "kryon_compat.generated.h"
-#include "ui_image.h"
+#include "ui_image_props.generated.h"
 #include "ui_link_props.generated.h"
 #include "ui_page_props.generated.h"
 #include "ui_tree.h"

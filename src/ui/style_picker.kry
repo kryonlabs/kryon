@@ -1,6 +1,6 @@
 #module "style_picker_host"
 #import "ui_style_sheet.h"
-#import "ui_draw.h"
+#import "ui_drawing_props.generated.h"
 #import "ui_tree.h"
 
 StylePicker :: (props: StylePickerProps) -> bool #export {

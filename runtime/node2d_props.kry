@@ -1,6 +1,6 @@
 #module "node2d_props"
 #import "kryon_compat.generated.h"
-#import "ui_image.h"
+#import "ui_image_props.generated.h"
 #import "kry_animation.h"
 
 Body2DType :: enum {

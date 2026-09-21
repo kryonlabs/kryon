@@ -857,7 +857,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     {"runtime/node2d_props.kry",
         "#module \"node2d_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
-        "#import \"ui_image.h\"\n"
+        "#import \"ui_image_props.generated.h\"\n"
         "#import \"kry_animation.h\"\n"
         "\n"
         "Body2DType :: enum {\n"

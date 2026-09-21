@@ -1,7 +1,10 @@
 #ifndef IMAGE_INTERNAL_H
 #define IMAGE_INTERNAL_H
 
-#include "ui_image.h"
+#include "ui_image_props.generated.h"
+
+/* Capacity of the shared image texture cache in ui_image_cache.c. */
+#define KRY_IMAGE_CACHE_MAX 128
 
 Texture2D LoadImageTexture(const char *path);
 Rectangle ImageFitRect(ImageProps image, Texture2D texture);
