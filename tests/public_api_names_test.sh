@@ -236,7 +236,7 @@ fi
 
 form_matches="$(
     rg -n '\b(UIForm[A-Za-z0-9_]*|GetUI(LabelTextField|ButtonRow|SpinboxRow)Height|UIButtonRowNode|UIListBoxNode|UIScroll[A-Za-z0-9_]*|UIScreenScaffold[A-Za-z0-9_]*|BeginUIScrollContainer|EndUIScrollContainer|MeasureUIScrollContainer|EnsureUIScrollRectVisible|BeginUIScrollPage|EndUIScrollPage|BeginUIScreenScaffold|EndUIScreenScaffold|GetUIScrollbar[A-Za-z0-9_]*)\b' \
-        include/ui_scroll.h src/ui/rows.kry src/ui/scroll.kry \
+        include/ui_scroll_props.generated.h src/ui/rows.kry src/ui/scroll.kry \
         docs/API.md docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html tests/ui_tree_api_test.c || true
 )"
@@ -262,7 +262,7 @@ fi
 
 public_scroll_helper_matches="$(
     rg -n '\b(ScrollArea|ScrollView|ScrollPageSpec|ScrollPageHeightFn|ScreenScaffoldTitleFn|ScreenScaffoldSpec|ScreenScaffold|MeasureScrollContainer|BeginScrollContainer|EndScrollContainer|EnsureScrollRectVisible|BeginScrollPage|EndScrollPage|BeginScreenScaffold|EndScreenScaffold)\b' \
-        include/ui_scroll.h docs/API.md docs/PUBLIC_API_SNAPSHOT.txt \
+        include/ui_scroll_props.generated.h docs/API.md docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"

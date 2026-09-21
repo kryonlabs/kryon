@@ -1399,9 +1399,9 @@ include/ui_scaling.h function GetScale
 include/ui_scaling.h function Scale
 include/ui_scaling.h function SetScale
 include/ui_scene_tree_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_scroll.h function GetScrollbarContentWidth
-include/ui_scroll.h function GetScrollbarReservedWidth
-include/ui_scroll.h function GetScrollbarSafeContentWidth
+include/ui_scroll_props.generated.h function GetScrollbarContentWidth
+include/ui_scroll_props.generated.h function GetScrollbarReservedWidth
+include/ui_scroll_props.generated.h function GetScrollbarSafeContentWidth
 include/ui_scroll_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_segmented_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED

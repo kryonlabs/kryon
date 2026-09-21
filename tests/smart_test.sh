@@ -420,7 +420,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/scroll.kry|src/ui/scroll.kry|go/kryon/scroll.go|tests/scroll_policy_test.c|include/ui_scroll.h)
+        runtime/scroll.kry|src/ui/scroll.kry|go/kryon/scroll.go|tests/scroll_policy_test.c|include/ui_scroll_props.generated.h)
             needs_scroll=1
             interesting=1
             ;;

@@ -27,5 +27,8 @@ typedef struct ScrollProps {
     int32_t content_height;
     int32_t* offset;
 } ScrollProps;
+int32_t GetScrollbarReservedWidth(int32_t max_scroll);
+int32_t GetScrollbarContentWidth(int32_t content_width, int32_t  max_scroll);
+int32_t GetScrollbarSafeContentWidth(int32_t content_x, int32_t  content_width, int32_t  scrollbar_x, int32_t  max_scroll);
 
 #endif /* K_RUNTIME_SCROLL_PROPS_H */

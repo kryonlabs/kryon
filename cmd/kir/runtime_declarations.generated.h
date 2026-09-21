@@ -1399,6 +1399,12 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    content_height: i32\n"
         "    offset: *i32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only scroll host; declared here for the public ABI.\n"
+        "GetScrollbarReservedWidth :: (max_scroll: i32) -> i32 #extern #export\n"
+        "GetScrollbarContentWidth :: (content_width: i32, max_scroll: i32) -> i32 #extern #export\n"
+        "GetScrollbarSafeContentWidth :: (content_x: i32, content_width: i32,\n"
+        "                                 scrollbar_x: i32, max_scroll: i32) -> i32 #extern #export\n"
     },
     {"runtime/segmented_control_props.kry",
         "#module \"segmented_control_props\"\n"
