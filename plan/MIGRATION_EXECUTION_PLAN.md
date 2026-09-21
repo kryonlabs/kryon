@@ -670,6 +670,40 @@ left), `app_shell.h` (route records), `PropertyValue` in `KryonNodeEdit`,
 `ui_dpi` perf inlines (kept), `ui_window`, `ui_style_sheet`, `ui_icons`,
 `locale.h`, `ui_text_layout`, `app_runtime.h`, and B-001 downstream.
 
+## Round 29 — the umbrella header ui_tree.h falls
+
+The largest deletion of the session: `include/ui_tree.h`, the umbrella that
+re-exported every widget props header and declared the tree API, is gone.
+`runtime/tree_props.kry` carries the ABI:
+
+- `Event` — the union that anchored the original "union blocker" — passes
+  through as a one-line `#type`, anonymous union members and all.
+- `EventKind` and `Invalidation` are one-line `#type` enums: #type
+  declarations emit BEFORE the enum pass, so a record referencing an enum must
+  either be a #type or order-break. (`#type` bodies must not end with their
+  own name — the emitter appends it.)
+- `NodeId`, opaque `TreeNode`, `AccessibilitySink`, and the
+  `RowProps`/`FlowProps` aliases are one-line `#type`s;
+  `ROUTER_NO_ROUTE` is a Kry constant.
+- The tree lifecycle, node queries, accessibility queue, all ~40 widget entry
+  points, the router, and the layout nodes are externs (38 sibling-props
+  imports).
+
+Fourth compiler coupling found and fixed: k2c hard-coded
+`#include "ui_tree.h"` for instrumented modules. The canonical surface doc
+test now reads the generated header.
+
+Session total: twenty-seven handwritten UI headers removed — the umbrella,
+the last header that re-exported the widget surface. Gates: parity, fast-test
+(incl. canonical-surface), all syntax tests, go-runtime-test, examples,
+boundary, API-names, refreshed snapshots. Inbe builds green at `cd00fd1e6`
+(its bottom-nav test include re-pointed); pointer committed (`9c3cf32`).
+
+Remaining: `app_shell.h` (route records + KryRouteAllowedFn), `PropertyValue`
+in `KryonNodeEdit`, `ui_dpi` perf inlines (kept), `ui_window`,
+`ui_style_sheet`, `ui_icons`, `locale.h`, `ui_text_layout`,
+`app_runtime.h`, and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
