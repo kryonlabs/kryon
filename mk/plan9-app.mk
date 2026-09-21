@@ -23,7 +23,8 @@ obj=$ROOT/build/plan9/obj
 list=$ROOT/build/plan9/generated-c-files.txt
 
 CPPFLAGS=-I$KRYON/src/platform/plan9/include -I$KRYON/include -I$KRYON/src -I$KRYON/src/ui \
-	-I$KRYON/build/plan9/generated $APPCPPFLAGS \
+	-I$KRYON/build/plan9/generated -I$KRYON/build/plan9/generated/runtime \
+	-I$KRYON/build/plan9/generated/src $APPCPPFLAGS \
 	-DKRYON_BACKEND_LIBDRAW=1 -DKRYON_PLATFORM_PLAN9=1 -DKRYON_NATIVE_PLAN9=1 -DKRYON_EMBEDDED_ONLY=1
 
 CFLAGS=-FTVw

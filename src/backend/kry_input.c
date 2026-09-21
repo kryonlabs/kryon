@@ -147,7 +147,12 @@ kry_android_touch_down(void)
 Vector2
 kry_android_touch_position(void)
 {
-    return (Vector2){0};
+    {
+        Vector2 zero;
+        zero.x = 0;
+        zero.y = 0;
+        return zero;
+    }
 }
 
 int
