@@ -355,9 +355,29 @@ Gates: `generated-runtime-parity-test`, `fast-test`,
 k2c/k2cpp/k2go-syntax-test, `go-runtime-test`, `examples-syntax-test`, and the
 refreshed public-API snapshot.
 
-Conclusion: the function-migration vein is open, not blocked. Remaining header
-deletion still needs a `.kry` function-pointer typedef or a C-only public-header
-path, and B-001 still waits on Uku/Krait/Rill and Inbe.
+## Round 16 — shim-header sweep
+
+Removed the last pure re-export headers, which were duplicates of tracked props
+headers rather than host declarations:
+
+- `include/ui_draw.h` and `include/ui_modal.h` (re-exports only) are deleted;
+  `kryon.h`, `ui_tree.h`, `ui_internal.h`, and `style_picker.kry` include the
+  props headers directly.
+- `include/ui_image.h` is deleted; its includers and `runtime/node2d_props.kry`
+  use `ui_image_props.generated.h`, and `KRY_IMAGE_CACHE_MAX` moved into the
+  image host's `ui_image_internal.h`.
+
+After the sweep, an orphan scan over Kryon plus Uku/Krait/Rill/Inbe/Atr/Kapsule
+finds no unreferenced UI header, and a duplicate scan finds no handwritten
+declaration that also appears in a tracked props header. The remaining
+handwritten UI headers are host-facing declarations whose functions read global
+input/style/DPI state (`GetPaneDropZone`, `ui_tab_bar_height`,
+`UpdateReorderList`, `UpdateSwipe`, `Toast`, …) or hold the blocked types, so
+they are the documented ceiling rather than cleanup targets.
+
+Conclusion unchanged: the remaining reduction needs a `.kry` function-pointer
+typedef or a C-only public-header path; B-001 still waits on Uku/Krait/Rill and
+Inbe.
 
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
