@@ -76,3 +76,20 @@ TextProps :: struct {
     selectable: bool
     strikethrough: bool
 }
+
+# Implemented by the C-only text backend; declared here for the public ABI.
+TextFontReady :: (font: Font) -> i32 #extern #export
+TextFontBaseSize :: (font: Font) -> i32 #extern #export
+TextFontGlyphPadding :: (font: Font) -> i32 #extern #export
+TextFontGlyph :: (font: Font, codepoint: i32) -> GlyphInfo #extern #export
+TextFontAtlasRec :: (font: Font, codepoint: i32) -> Rectangle #extern #export
+TextFontAtlasTexture :: (font: Font) -> Texture2D #extern #export
+TextFontAdvance :: (font: Font, codepoint: i32) -> i32 #extern #export
+TextFontHasGlyphValue :: (font: Font, codepoint: i32) -> i32 #extern #export
+TextFontGlyphCount :: (font: Font) -> i32 #extern #export
+TextFontHasNativeText :: (font: Font) -> i32 #extern #export
+TextFontNativeTextWidth :: (font: Font, text: const char*, byte_len: i32) -> i32 #extern #export
+TextFontNativeTextHeight :: (font: Font) -> i32 #extern #export
+TextFontDrawNativeText :: (font: Font, text: const char*, byte_len: i32,
+                           x: i32, y: i32, font_size: i32,
+                           color: Color) -> i32 #extern #export

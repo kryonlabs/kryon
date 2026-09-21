@@ -79,5 +79,18 @@ Font GetTextFontForCodepoint(int32_t codepoint, int32_t  font_size);
 Font GetTextFontForSize(int32_t font_size);
 float GetTextFontScale(Font font, int32_t  font_size);
 int32_t RenderTextGlyph(uint32_t codepoint, int32_t  x, int32_t  y, int32_t  font_size, Color  color);
+int32_t TextFontReady(Font font);
+int32_t TextFontBaseSize(Font font);
+int32_t TextFontGlyphPadding(Font font);
+GlyphInfo TextFontGlyph(Font font, int32_t  codepoint);
+Rectangle TextFontAtlasRec(Font font, int32_t  codepoint);
+Texture2D TextFontAtlasTexture(Font font);
+int32_t TextFontAdvance(Font font, int32_t  codepoint);
+int32_t TextFontHasGlyphValue(Font font, int32_t  codepoint);
+int32_t TextFontGlyphCount(Font font);
+int32_t TextFontHasNativeText(Font font);
+int32_t TextFontNativeTextWidth(Font font, const char*  text, int32_t  byte_len);
+int32_t TextFontNativeTextHeight(Font font);
+int32_t TextFontDrawNativeText(Font font, const char*  text, int32_t  byte_len, int32_t  x, int32_t  y, int32_t  font_size, Color  color);
 
 #endif /* K_RUNTIME_TEXT_PROPS_H */

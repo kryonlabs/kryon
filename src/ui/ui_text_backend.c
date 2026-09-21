@@ -1,4 +1,4 @@
-#include "ui_text_backend.h"
+#include "ui_text_props.generated.h"
 
 #if defined(KRYON_BACKEND_LIBDRAW)
 int kry_libdraw_font_height(unsigned id);

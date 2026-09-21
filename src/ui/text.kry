@@ -1,7 +1,7 @@
 #module "text_widget"
 #import "ui_internal.h"
 #import "ui_text_props.generated.h"
-#import "ui_text_backend.h"
+#import "ui_text_props.generated.h"
 #import "ui/selectable_text.h"
 #import "ui/tree_layout.h"
 #import "ui_style_internal.h"
