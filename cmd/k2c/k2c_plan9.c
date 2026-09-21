@@ -484,6 +484,9 @@ proto_return_type(const char *name)
         {"malloc", "void *"},
         {"calloc", "void *"},
         {"realloc", "void *"},
+        {"getenv", "char *"},
+        {"getcwd", "char *"},
+        {"strerror", "char *"},
     };
     int i;
 
