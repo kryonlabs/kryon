@@ -311,6 +311,40 @@ public-API snapshot. Kryon `master` is clean at `8f1a8608`.
   bridge becomes KSS overlays. Uku/Krait are pinned to pre-KSS Kryon and are not
   broken until their pointers move.
 
+## Round 14 — header audit and the function-migration barrier
+
+Re-audited every remaining handwritten public header against the current tree:
+
+- The only fully orphaned header was `include/ui_menu_types.h` (a one-line
+  re-export of `ui_menu_props.generated.h` that `kryon.h` already includes
+  directly). No maintained source, test, example, or downstream app referenced
+  it. Deleted.
+- Every other remaining type is genuinely non-expressible: `FrameState` and
+  `Event` contain anonymous nested structs and unions; `TextEdit`,
+  `SliderMarkCallback`, `TextInputFilter`, `TextInputPlatformCallback`,
+  `KryonPostFrameCallback`, `AccessibilitySink`, and `KryRouteAllowedFn`
+  are function-pointer types; `IconAsset` depends on the script-generated
+  `IconType`; `theme.h` pulls `kryon.h` and `ThemeMetrics`.
+- No dead public `theme.h`/`theme_meta.h` getter is left: every declared
+  symbol still has a maintained caller (the ledger cleanup already removed the
+  unused ones), so there is no residual dead-API batch to delete.
+
+A potentially larger vein — moving Go-compatible *functions* (not just types)
+out of handwritten headers into `runtime/*_props.kry`, starting with
+`LightenColor`/`DarkenColor` in `include/ui_color.h` — was investigated and
+rejected for now. Those functions already have handwritten equivalents in other
+backends: `web/kryon-runtime.js` exports `LightenColor`/`DarkenColor`, and
+`go/kryon/style_runtime.go` implements them as `*runtime` methods, while
+`go/kryon/runtime.go` declares the interface methods. Publishing them from a
+shared `runtime` module would collide with the per-backend runtime contract
+unless all backends (C, Go, k2js, k2b) are migrated together, which is the same
+cross-backend milestone the header removal needs.
+
+Conclusion unchanged: the remaining header deletion and the B-001 KSS/theme
+removal need the separate cross-backend/C-only-public-header milestone plus the
+Uku/Krait/Rill and Inbe style migrations. No further pure-cleanup slice is
+available in the current tree.
+
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
 Bend law proofs. The live-desktop rule (AGENTS.md) is absolute: everything GUI
