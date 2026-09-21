@@ -286,4 +286,19 @@ X11InputWindow(void)
     return (void *)(uintptr_t)input.window;
 }
 
+/* libdraw surfaces have no touch input; the shared pointer frame still
+ * references the raylib touch queries, so satisfy them with empty results. */
+Vector2
+GetTouchPosition(int index)
+{
+    (void)index;
+    return (Vector2){0, 0};
+}
+
+int
+GetTouchPointCount(void)
+{
+    return 0;
+}
+
 #endif
