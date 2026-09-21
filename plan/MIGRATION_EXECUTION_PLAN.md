@@ -704,6 +704,29 @@ in `KryonNodeEdit`, `ui_dpi` perf inlines (kept), `ui_window`,
 `ui_style_sheet`, `ui_icons`, `locale.h`, `ui_text_layout`,
 `app_runtime.h`, and B-001 downstream.
 
+## Round 30 — app_shell.h falls; the strict-mode rule learned
+
+`include/app_shell.h` is deleted: `runtime/app_shell_props.kry` declares
+`KryRouteAllowedFn` as a one-line `#type`, the four route/stack/layout
+records as real structs (plain int data, no namesakes anywhere), and the
+thirteen calls as externs.
+
+One checker rule learned and recorded: a module with NO C imports is fully
+strict, and pointer-bearing records then fail as "unknown stored type" —
+reorder_props only passes because it imports a header, which marks a module
+C-referencing. The new module imports `kryon_compat` like its siblings; the
+import doubles as that marker.
+
+Session total: twenty-eight handwritten UI headers removed. Gates: parity,
+`fast-test`, all syntax tests, `go-runtime-test`, examples, boundary,
+refreshed snapshots. Inbe builds green at `fcb171605` (its app_nav import
+re-pointed); pointer committed (`00603e0`).
+
+Remaining: `PropertyValue` in `KryonNodeEdit` (`kryon_node.h`), `ui_dpi`
+perf inlines (kept), `ui_window`, `ui_style_sheet`, `ui_icons`,
+`locale.h`, `ui_text_layout`, `app_runtime.h`, `theme.h`/`theme_meta.h`
+(die with B-001), and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
