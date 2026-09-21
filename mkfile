@@ -59,7 +59,6 @@ OFILES=\
 	src/core/locale.$O\
 	src/kry_std/audio_library.$O\
 	src/kry_std/kry_xml.$O\
-	src/sync/sync_crypto.$O\
 	src/ui/ui_image_cache.$O\
 	src/ui/ui_paint.$O\
 	src/ui/ui_surface_cache.$O\
