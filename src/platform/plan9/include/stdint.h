@@ -26,9 +26,9 @@ typedef uvlong uintmax_t;
 #define INT8_MAX   127
 #define INT16_MAX  32767
 #define INT32_MAX  2147483647
-#define INT64_MAX  ((int64_t)0x7fffffffffffffff)
+#define INT64_MAX  ((int64_t)(((uint64_t)-1) >> 1))
 #define INT64_MIN  (-INT64_MAX - 1)
-#define UINT64_MAX ((uint64_t)0xffffffffffffffff)
+#define UINT64_MAX ((uint64_t)-1)
 #define UINT64_C(c) ((uint64_t)(c))
 #define INT64_C(c) ((int64_t)(c))
 #define UINT32_C(c) ((uint32_t)(c))
