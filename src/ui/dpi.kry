@@ -102,7 +102,7 @@ UpdateDPI :: (view_width: i32, view_height: i32) #export {
 
 # Offscreen variant: size the layout for an explicit render target with a
 # forced scale (render-to-texture previews want their own geometry, not the
-# window's density).
+# density of the on-screen window).
 UpdateDPIOffscreen :: (view_width: i32, view_height: i32,
 forced_scale: float) #export {
     UpdateDPI(view_width, view_height)
