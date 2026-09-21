@@ -12,7 +12,6 @@ const (
 
 type ImageProps struct {
 	AssetPath string
-	Texture   Texture2D
 	AltText   string
 	Bounds    Rectangle
 	Source    Rectangle
@@ -20,4 +19,5 @@ type ImageProps struct {
 	Rotation  float32
 	Fit       ImageFit
 	ClassName int32
+	Texture   Texture2D
 }
