@@ -68,6 +68,8 @@ void SetTransitionCuesEnabled(int32_t enabled);
 int32_t TransitionCuesEnabled(void);
 int32_t FocusFrameOpen(void);
 int32_t RegisterFocus(int32_t id, Rectangle  bounds);
+void BeginFocusScope(void);
+void EndFocusScope(void);
 int32_t IsFocusActive(int32_t id);
 int32_t IsFocusActivatePressed(int32_t id);
 void KryonSetFocus(int32_t id);

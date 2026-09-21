@@ -54,6 +54,11 @@ SetTransitionCuesEnabled :: (enabled: i32) #extern #export
 TransitionCuesEnabled :: () -> i32 #extern #export
 FocusFrameOpen :: () -> i32 #extern #export
 RegisterFocus :: (id: i32, bounds: Rectangle) -> i32 #extern #export
+
+# Per-frame focus scope: resets focus registration between frames. Implemented
+# by the focus host.
+BeginFocusScope :: () #extern #export
+EndFocusScope :: () #extern #export
 IsFocusActive :: (id: i32) -> i32 #extern #export
 IsFocusActivatePressed :: (id: i32) -> i32 #extern #export
 KryonSetFocus :: (id: i32) #extern #export

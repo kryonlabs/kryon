@@ -1034,11 +1034,13 @@ include/ui_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_control_props.generated.h typedef SliderMarkCallback
 include/ui_control_props.generated.h typedef TextInputFilter
 include/ui_core_props.generated.h function ApplyCurrentTheme
+include/ui_core_props.generated.h function BeginFocusScope
 include/ui_core_props.generated.h function BeginInterfaceFrame
 include/ui_core_props.generated.h function BeginModalLayer
 include/ui_core_props.generated.h function ClearFocus
 include/ui_core_props.generated.h function ClearInputCaptures
 include/ui_core_props.generated.h function ConsumeRelease
+include/ui_core_props.generated.h function EndFocusScope
 include/ui_core_props.generated.h function EndInterfaceFrame
 include/ui_core_props.generated.h function FocusFrameOpen
 include/ui_core_props.generated.h function GetDefaultCamera
