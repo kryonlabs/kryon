@@ -1282,6 +1282,7 @@ include/ui_inspect.h function PushInspectTransform
 include/ui_inspect.h function SetInspectCanvasBounds
 include/ui_inspect.h function SetInspectEnabled
 include/ui_inspect.h function SetInspectVisible
+include/ui_inspect_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_instance.h function InstanceState
 include/ui_layout.h function BeginFlexCursor
 include/ui_layout.h function FlexStep

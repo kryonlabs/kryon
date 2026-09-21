@@ -74,6 +74,7 @@ surface review:
 | `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry, handle-size, and release-consume policy | `.kry support` |
+| `runtime/inspect_props.kry` | Inspector selection and node records | `.kry support` |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
 | `runtime/focus.kry` | Focus ring, activation, tab-direction, and debug overlay geometry policy | `.kry support` |

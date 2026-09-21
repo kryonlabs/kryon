@@ -2,36 +2,11 @@
 #define KRYON_INSPECT_H
 
 #include "kryon_compat.generated.h"
+#include "ui_inspect_props.generated.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct InspectSelection {
-    char id[96];
-    char kind[32];
-    char action[64];
-    char source_path[512];
-    Rectangle bounds;
-    int flags;
-    int kind_index;
-    int source_line;
-    int valid;
-} InspectSelection;
-
-typedef struct InspectNode {
-    char name[96];
-    char role[32];
-    char text[64];
-    char value[128];
-    char source_path[512];
-    Rectangle bounds;
-    int flags;
-    int order;
-    int parent;
-    int source_line;
-    int valid;
-} InspectNode;
 
 void BeginInspectFrame(const char *project_root);
 void EndInspectFrame(void);
