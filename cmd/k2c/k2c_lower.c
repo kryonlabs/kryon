@@ -135,6 +135,8 @@ static int is_module_alias(const KirModule *m, const char *alias,
                            size_t alias_len);
 static void function_c_name(const KirModule *m, const KirFunction *fn,
                             char *dst, size_t dst_size);
+static void strip_alias_type(const KirModule *m, const char *type,
+                             char *dst, size_t dst_size);
 
 static int
 function_name_needs_global_prefix(const char *name)
@@ -254,24 +256,51 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                 e++;
             /* Fixed-width cast "(i32)", "(i64)", "(u8)", "(f32)", ... maps to
              * the C integer/float type just like a declaration does. */
-            if(p > src && p[-1] == '(' && *e == ')') {
-                char id[32];
-                size_t ilen = (size_t)(e - p);
-                if(ilen < sizeof(id)) {
-                    const char *scalar, *mapped;
-                    memcpy(id, p, ilen);
-                    id[ilen] = '\0';
-                    scalar = KirScalarType(id);
-                    if(*scalar && !strcmp(scalar, id)) {
-                        mapped = KirTargetType(id, KIR_C);
-                        if(mapped != NULL) {
-                            size_t mlen = strlen(mapped);
-                            if(n + mlen < dst_size) {
-                                memcpy(dst + n, mapped, mlen);
-                                n += mlen;
+            if(p > src) {
+                /* Cast context "(const u8*)", "(u8*)", "(i32)": a scalar
+                 * name wrapped by parens, optionally with a "const "
+                 * qualifier and a trailing star. Only the scalar token is
+                 * rewritten; the parens/const/star copy through verbatim. */
+                int cast_like = 0;
+                const char *fwd = e;
+
+                while(*fwd == ' ' || *fwd == '\t' || *fwd == '*')
+                    fwd++;
+                if(*fwd == ')') {
+                    const char *back = p;
+                    int steps = 0;
+
+                    while(back > src && steps < 16) {
+                        back--;
+                        steps++;
+                        if(*back == '(') {
+                            cast_like = 1;
+                            break;
+                        }
+                        if(*back == ')' || *back == ',' || *back == ';' ||
+                           *back == '=' || *back == '{' || *back == '}')
+                            break;
+                    }
+                }
+                if(cast_like) {
+                    char id[32];
+                    size_t ilen = (size_t)(e - p);
+                    if(ilen < sizeof(id)) {
+                        const char *scalar, *mapped;
+                        memcpy(id, p, ilen);
+                        id[ilen] = '\0';
+                        scalar = KirScalarType(id);
+                        if(*scalar && !strcmp(scalar, id)) {
+                            mapped = KirTargetType(id, KIR_C);
+                            if(mapped != NULL) {
+                                size_t mlen = strlen(mapped);
+                                if(n + mlen < dst_size) {
+                                    memcpy(dst + n, mapped, mlen);
+                                    n += mlen;
+                                }
+                                p = e - 1;
+                                continue;
                             }
-                            p = e - 1;
-                            continue;
                         }
                     }
                 }
