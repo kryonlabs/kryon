@@ -4,7 +4,7 @@
 #import "ui/tree_input.h"
 #import "ui/tree_paint.h"
 #import "ui/accessibility.h"
-#import "accessibility_internal.h"
+#import "../platform/accessibility_internal.h"
 
 ui_tree_trace_enabled :: i32 = -1 #global
 ui_tree_trace_frame :: unsigned long #global
