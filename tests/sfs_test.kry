@@ -3,7 +3,7 @@
 #import "kry_inject.h"
 #import "kry_sfs.h"
 #import "ui/kryon_test.h"
-#import "ui_inspect.h"
+#import "ui_inspect_props.generated.h"
 #import "ui_widget_internal.h"
 #import "stdio.h"
 #import "stdlib.h"

@@ -1737,7 +1737,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     for(int fi = 0; fi < m->function_count; fi++)
         if(!m->functions[fi].is_extern && !KirCanEmitBody(m, &m->functions[fi])) needs_inspection = 1;
     if(needs_inspection)
-        fprintf(c, "#include \"ui_inspect.h\"\n");
+        fprintf(c, "#include \"ui_inspect_props.generated.h\"\n");
     KirEmitNumbers(c, m, KIR_C);
     /* '#private' imports include here (implementation-only). */
     for(i = 0; i < m->import_count; i++) {

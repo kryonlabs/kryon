@@ -159,7 +159,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/inspect.kry|src/ui/inspect_state.kry|src/ui/inspect_overlay.kry|include/ui_inspect.h|tests/inspect_policy_test.c)
+        runtime/inspect.kry|src/ui/inspect_state.kry|src/ui/inspect_overlay.kry|include/ui_inspect_props.generated.h|tests/inspect_policy_test.c)
             needs_inspect=1
             interesting=1
             ;;

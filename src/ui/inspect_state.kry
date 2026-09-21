@@ -1,6 +1,6 @@
 #module "inspect_state_host"
 #import "ui_internal.h"
-#import "ui_inspect.h"
+#import "ui_inspect_props.generated.h"
 #import "ui/frame.h"
 #import "stdlib.h"
 #import "string.h"

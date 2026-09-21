@@ -1,5 +1,5 @@
 #module "kryon_test"
-#import "ui_inspect.h"
+#import "ui_inspect_props.generated.h"
 #import "kry_inject.h"
 #import "kry_sfs.h"
 #import "stdio.h"

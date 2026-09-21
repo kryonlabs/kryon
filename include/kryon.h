@@ -47,7 +47,7 @@
 #include "ui_toggle_props.generated.h"
 #include "ui_tree_view_props.generated.h"
 #include "ui_drawing_props.generated.h"
-#include "ui_inspect.h"
+#include "ui_inspect_props.generated.h"
 #include "ui_icons.h"
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"

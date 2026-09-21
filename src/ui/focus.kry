@@ -2,7 +2,7 @@
 #import "ui_internal.h"
 #import "ui_style_internal.h"
 #import "ui_popup_input_internal.h"
-#import "ui_inspect.h"
+#import "ui_inspect_props.generated.h"
 #import "runtime/focus.h"
 #import "runtime/style.h"
 

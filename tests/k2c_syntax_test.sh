@@ -224,7 +224,7 @@ if grep -Fq '#define ANDROID ANDROID_BUILD' "$h"; then
     echo "frontend build alias leaked into the generated interface" >&2
     exit 1
 fi
-grep -Fq '#include "ui_inspect.h"' "$c"
+grep -Fq '#include "ui_inspect_props.generated.h"' "$c"
 grep -Fq 'int abs(int value);' "$c"
 grep -Fq 'static int' "$c"
 grep -Fq 'c_abs(int value)' "$c"

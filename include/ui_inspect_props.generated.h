@@ -47,5 +47,24 @@ typedef struct InspectNode {
     int source_line;
     int valid;
 } InspectNode;
+void BeginInspectFrame(const char* project_root);
+void EndInspectFrame(void);
+void SetInspectEnabled(int32_t enabled);
+void SetInspectVisible(int32_t visible);
+int32_t InspectEnabled(void);
+int32_t InspectWidgetCount(void);
+int32_t InspectNodeCount(void);
+int32_t InspectGetNode(int32_t index, InspectNode*  node);
+int32_t InspectFindNode(const char* selector, InspectNode*  node);
+InspectSelection InspectGetSelection(void);
+int32_t InspectSelectAt(Vector2 point);
+void SetInspectCanvasBounds(Rectangle bounds);
+int32_t PushInspectTransform(Camera2D camera);
+void PopInspectTransform(int32_t token);
+int32_t PushInspectChrome(int32_t enabled);
+void PopInspectChrome(int32_t token);
+int32_t InspectInputCapturesClick(Vector2 point);
+void PushInspectSource(const char* path, int32_t  line);
+void PopInspectSource(void);
 
 #endif /* K_RUNTIME_INSPECT_PROPS_H */

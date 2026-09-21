@@ -28,7 +28,7 @@
 #include "runtime/toolbar.h"
 #include "runtime/toggle.h"
 #include "theme.h"
-#include "ui_inspect.h"
+#include "ui_inspect_props.generated.h"
 #include "../src/ui/ui_internal.h"
 #include "../src/ui/ui_numeric_internal.h"
 #include "ui/widget_store.h"

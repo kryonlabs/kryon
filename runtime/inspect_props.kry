@@ -26,3 +26,25 @@ InspectNode :: struct {
     source_line: int
     valid: int
 }
+
+# Implemented by the C-only inspector host; declared here for the public ABI
+# and for the instrumentation every generated module emits.
+BeginInspectFrame :: (project_root: const char*) #extern #export
+EndInspectFrame :: () #extern #export
+SetInspectEnabled :: (enabled: i32) #extern #export
+SetInspectVisible :: (visible: i32) #extern #export
+InspectEnabled :: () -> i32 #extern #export
+InspectWidgetCount :: () -> i32 #extern #export
+InspectNodeCount :: () -> i32 #extern #export
+InspectGetNode :: (index: i32, node: *InspectNode) -> i32 #extern #export
+InspectFindNode :: (selector: const char*, node: *InspectNode) -> i32 #extern #export
+InspectGetSelection :: () -> InspectSelection #extern #export
+InspectSelectAt :: (point: Vector2) -> i32 #extern #export
+SetInspectCanvasBounds :: (bounds: Rectangle) #extern #export
+PushInspectTransform :: (camera: Camera2D) -> i32 #extern #export
+PopInspectTransform :: (token: i32) #extern #export
+PushInspectChrome :: (enabled: i32) -> i32 #extern #export
+PopInspectChrome :: (token: i32) #extern #export
+InspectInputCapturesClick :: (point: Vector2) -> i32 #extern #export
+PushInspectSource :: (path: const char*, line: i32) #extern #export
+PopInspectSource :: () #extern #export

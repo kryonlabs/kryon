@@ -228,7 +228,7 @@ grep -Fq 'FixtureLimit = 12,' "$h"
 
 # source: preamble
 grep -Fq '#include "src/valid.hpp"' "$c"
-grep -Fq '#include "ui_inspect.h"' "$c"
+grep -Fq '#include "ui_inspect_props.generated.h"' "$c"
 grep -Fq 'int abs(int value);' "$c"
 grep -Fq 'static int' "$c"
 grep -Fq 'c_abs(int value)' "$c"

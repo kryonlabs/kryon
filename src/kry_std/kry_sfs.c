@@ -13,7 +13,7 @@
 #include "kry_inject.h"
 #include "kry_sfs.h"
 #include "theme.h"
-#include "ui_inspect.h"
+#include "ui_inspect_props.generated.h"
 
 #include <ctype.h>
 #include <stdio.h>
