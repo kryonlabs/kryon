@@ -1,4 +1,5 @@
 #module "profile_icon_props"
+#import "ui_icon_types.h"
 
 SyncProfileIcon :: enum {
     SYNC_PROFILE_ICON_NONE = 0
@@ -32,3 +33,11 @@ SyncProfileIcon :: enum {
     SYNC_PROFILE_ICON_TURTLE = 28
     SYNC_PROFILE_ICON_MOON = 29
 }
+
+# Implemented by the C-only profile-header host; declared here for the public
+# ABI. IconType comes from the script-generated ui_icon_types.h.
+GetProfileImageIconCount :: () -> i32 #extern #export
+GetProfileImageIconType :: (index: i32) -> IconType #extern #export
+GetProfileImageIconName :: (index: i32) -> const char* #extern #export
+GetProfileImageIconTypeForSyncID :: (sync_id: i32) -> IconType #extern #export
+GetSyncIDForProfileImageIconType :: (icon_type: IconType) -> i32 #extern #export

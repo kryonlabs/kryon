@@ -1375,11 +1375,6 @@ include/ui_paned_view_props.generated.h function GetPaneDropZone
 include/ui_paned_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_plot_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_popup_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_profile.h function GetProfileImageIconCount
-include/ui_profile.h function GetProfileImageIconName
-include/ui_profile.h function GetProfileImageIconType
-include/ui_profile.h function GetProfileImageIconTypeForSyncID
-include/ui_profile.h function GetSyncIDForProfileImageIconType
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_BAMBUS
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_BIRD
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_BOWL
@@ -1410,6 +1405,11 @@ include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_TREE3
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_TREE4
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_TREE5
 include/ui_profile_icon_props.generated.h enum SYNC_PROFILE_ICON_TURTLE
+include/ui_profile_icon_props.generated.h function GetProfileImageIconCount
+include/ui_profile_icon_props.generated.h function GetProfileImageIconName
+include/ui_profile_icon_props.generated.h function GetProfileImageIconType
+include/ui_profile_icon_props.generated.h function GetProfileImageIconTypeForSyncID
+include/ui_profile_icon_props.generated.h function GetSyncIDForProfileImageIconType
 include/ui_profile_icon_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_progress_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_radio_props.generated.h macro KIR_STRING_VALUE_DEFINED

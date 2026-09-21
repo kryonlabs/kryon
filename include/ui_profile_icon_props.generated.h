@@ -20,6 +20,7 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
+#include "ui_icon_types.h"
 
 typedef enum SyncProfileIcon {
     SYNC_PROFILE_ICON_NONE = 0,
@@ -53,5 +54,10 @@ typedef enum SyncProfileIcon {
     SYNC_PROFILE_ICON_TURTLE = 28,
     SYNC_PROFILE_ICON_MOON = 29,
 } SyncProfileIcon;
+int32_t GetProfileImageIconCount(void);
+IconType GetProfileImageIconType(int32_t index);
+const char* GetProfileImageIconName(int32_t index);
+IconType GetProfileImageIconTypeForSyncID(int32_t sync_id);
+int32_t GetSyncIDForProfileImageIconType(IconType icon_type);
 
 #endif /* K_RUNTIME_PROFILE_ICON_PROPS_H */

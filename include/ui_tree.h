@@ -39,7 +39,7 @@ extern "C" {
 #include "ui_paned_view_props.generated.h"
 #include "ui_tab_bar_props.generated.h"
 #include "ui_toolbar_props.generated.h"
-#include "ui_profile.h"
+#include "ui_profile_icon_props.generated.h"
 #include "ui_image_props.generated.h"
 #include "ui_router_props.generated.h"
 #include "ui_accessibility_node.generated.h"

@@ -58,7 +58,7 @@
 #include "ui_paned_view_props.generated.h"
 #include "ui_tab_bar_props.generated.h"
 #include "ui_toolbar_props.generated.h"
-#include "ui_profile.h"
+#include "ui_profile_icon_props.generated.h"
 #include "ui_reorder_props.generated.h"
 #include "ui_swipe_props.generated.h"
 #include "ui_text.h"

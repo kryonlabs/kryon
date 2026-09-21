@@ -1261,6 +1261,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     },
     {"runtime/profile_icon_props.kry",
         "#module \"profile_icon_props\"\n"
+        "#import \"ui_icon_types.h\"\n"
         "\n"
         "SyncProfileIcon :: enum {\n"
         "    SYNC_PROFILE_ICON_NONE = 0\n"
@@ -1294,6 +1295,14 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    SYNC_PROFILE_ICON_TURTLE = 28\n"
         "    SYNC_PROFILE_ICON_MOON = 29\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only profile-header host; declared here for the public\n"
+        "# ABI. IconType comes from the script-generated ui_icon_types.h.\n"
+        "GetProfileImageIconCount :: () -> i32 #extern #export\n"
+        "GetProfileImageIconType :: (index: i32) -> IconType #extern #export\n"
+        "GetProfileImageIconName :: (index: i32) -> const char* #extern #export\n"
+        "GetProfileImageIconTypeForSyncID :: (sync_id: i32) -> IconType #extern #export\n"
+        "GetSyncIDForProfileImageIconType :: (icon_type: IconType) -> i32 #extern #export\n"
     },
     {"runtime/progress_props.kry",
         "#module \"progress_props\"\n"
