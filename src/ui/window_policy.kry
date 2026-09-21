@@ -1,5 +1,5 @@
 #module "window_policy"
-#import "ui_window.h"
+#import "ui_window_props.generated.h"
 #import <limits.h>
 
 WindowPoint :: struct {

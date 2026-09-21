@@ -1,6 +1,6 @@
 #module "ui_window_test"
 #import "kryon.h"
-#import "ui_window.h"
+#import "ui_window_props.generated.h"
 #import "ui/window_policy.h"
 #import <limits.h>
 #import <stdio.h>

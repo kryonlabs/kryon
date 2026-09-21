@@ -1,4 +1,8 @@
 #module "window_props"
+#import "kryon_compat.generated.h"
+
+# Opaque handle: the OS window record is defined by the C host only.
+NativeWindow :: struct NativeWindow #type
 
 NativeWindowFlags :: enum {
     NATIVE_WINDOW_BORDERLESS = 1
@@ -8,3 +12,17 @@ NativeWindowFlags :: enum {
     NATIVE_WINDOW_CENTER = 16
     NATIVE_WINDOW_STICKY = 32
 }
+
+# Implemented by the C-only native-window host; declared here for the public
+# ABI.
+OpenNativeWindow :: (title: const char*, x: i32, y: i32, width: i32, height: i32, flags: i32, background: Color, ui_scale: float) -> *NativeWindow #extern #export
+CloseNativeWindow :: (window: *NativeWindow) #extern #export
+BeginNativeWindow :: (window: *NativeWindow) #extern #export
+EndNativeWindow :: () #extern #export
+IsNativeWindowClicked :: (window: *NativeWindow) -> i32 #extern #export
+IsNativeWindowRightClicked :: (window: *NativeWindow) -> i32 #extern #export
+IsNativeWindowDragged :: (window: *NativeWindow) -> i32 #extern #export
+PumpWindows :: () #extern #export
+StealCoreWindowClose :: () -> i32 #extern #export
+GetNativeWindowPosition :: (window: *NativeWindow, x: *i32, y: *i32) #extern #export
+GetNativeWindowClickPosition :: (window: *NativeWindow, x: *i32, y: *i32) #extern #export

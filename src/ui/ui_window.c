@@ -1,4 +1,4 @@
-#include "ui_window.h"
+#include "ui_window_props.generated.h"
 #include "ui_paint_layers_internal.h"
 #include "ui/window_policy.h"
 

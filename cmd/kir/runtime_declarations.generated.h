@@ -2585,6 +2585,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
     },
     {"runtime/window_props.kry",
         "#module \"window_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "# Opaque handle: the OS window record is defined by the C host only.\n"
+        "NativeWindow :: struct NativeWindow #type\n"
         "\n"
         "NativeWindowFlags :: enum {\n"
         "    NATIVE_WINDOW_BORDERLESS = 1\n"
@@ -2594,5 +2598,19 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    NATIVE_WINDOW_CENTER = 16\n"
         "    NATIVE_WINDOW_STICKY = 32\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only native-window host; declared here for the public\n"
+        "# ABI.\n"
+        "OpenNativeWindow :: (title: const char*, x: i32, y: i32, width: i32, height: i32, flags: i32, background: Color, ui_scale: float) -> *NativeWindow #extern #export\n"
+        "CloseNativeWindow :: (window: *NativeWindow) #extern #export\n"
+        "BeginNativeWindow :: (window: *NativeWindow) #extern #export\n"
+        "EndNativeWindow :: () #extern #export\n"
+        "IsNativeWindowClicked :: (window: *NativeWindow) -> i32 #extern #export\n"
+        "IsNativeWindowRightClicked :: (window: *NativeWindow) -> i32 #extern #export\n"
+        "IsNativeWindowDragged :: (window: *NativeWindow) -> i32 #extern #export\n"
+        "PumpWindows :: () #extern #export\n"
+        "StealCoreWindowClose :: () -> i32 #extern #export\n"
+        "GetNativeWindowPosition :: (window: *NativeWindow, x: *i32, y: *i32) #extern #export\n"
+        "GetNativeWindowClickPosition :: (window: *NativeWindow, x: *i32, y: *i32) #extern #export\n"
     },
 };

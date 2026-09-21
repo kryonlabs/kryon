@@ -65,7 +65,7 @@
 #include "ui_toast_props.generated.h"
 #include "ui_tree_props.generated.h"
 #include "ui_page_props.generated.h"
-#include "ui_window.h"
+#include "ui_window_props.generated.h"
 #include "spritesheet.h"
 #include "kry_math.h"
 #include "scene_tree.h"

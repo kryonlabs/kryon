@@ -7,7 +7,7 @@
 #include "ui_drawing_props.generated.h"
 #include "theme.h"
 #include "ui_drawing_props.generated.h"
-#include "ui_window.h"
+#include "ui_window_props.generated.h"
 #include "ui_dpi.h"
 #include "ui_icon_sheet_props.generated.h"
 #include "ui_layout_props.generated.h"

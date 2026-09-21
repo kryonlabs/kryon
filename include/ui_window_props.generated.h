@@ -20,6 +20,9 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
+#include "kryon_compat.generated.h"
+
+typedef struct NativeWindow NativeWindow;
 
 typedef enum NativeWindowFlags {
     NATIVE_WINDOW_BORDERLESS = 1,
@@ -29,5 +32,16 @@ typedef enum NativeWindowFlags {
     NATIVE_WINDOW_CENTER = 16,
     NATIVE_WINDOW_STICKY = 32,
 } NativeWindowFlags;
+NativeWindow* OpenNativeWindow(const char* title, int32_t  x, int32_t  y, int32_t  width, int32_t  height, int32_t  flags, Color  background, float  ui_scale);
+void CloseNativeWindow(NativeWindow* window);
+void BeginNativeWindow(NativeWindow* window);
+void EndNativeWindow(void);
+int32_t IsNativeWindowClicked(NativeWindow* window);
+int32_t IsNativeWindowRightClicked(NativeWindow* window);
+int32_t IsNativeWindowDragged(NativeWindow* window);
+void PumpWindows(void);
+int32_t StealCoreWindowClose(void);
+void GetNativeWindowPosition(NativeWindow* window, int32_t*  x, int32_t*  y);
+void GetNativeWindowClickPosition(NativeWindow* window, int32_t*  x, int32_t*  y);
 
 #endif /* K_RUNTIME_WINDOW_PROPS_H */
