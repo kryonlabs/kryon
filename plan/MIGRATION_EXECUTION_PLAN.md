@@ -570,6 +570,43 @@ field + the `ui_icon_names[]` extern (`ui_icons`), `LocaleEntry`/
 `void *app` chain (`app_runtime.h`). B-001 (KSS/theme) still waits on
 Uku/Krait/Rill and Inbe.
 
+## Round 26 — the function-pointer barrier breaks
+
+The biggest remaining "language blocker" fell. Two experiments showed (a) that
+extern signatures pass unknown C type names straight through (the checker never
+resolved `IconType` in round 23 — it simply doesn't resolve extern signature
+types), and (b) that `#type` already emits function-pointer typedefs into
+tracked headers. Only k2go's hard exit stood in the way.
+
+- k2go now skips `#type` declarations in runtime-implementation modules
+  (emitting nothing) while keeping the loud diagnostic for standalone
+  compilations — the `go_type_diagnostics` guard test is unchanged. A
+  reference from a Go-visible function still fails as an unresolved type, so
+  the protection moved rather than vanished.
+- `runtime/frame_props.kry` declares `KryonPostFrameCallback` as a `#type`
+  and all twelve frame lifecycle/pacing calls — including
+  `SchedulePostFrameCallback`'s callback parameter — as externs.
+  `include/kryon_frame.h` is deleted: the first header holding a
+  function-pointer type to go.
+
+Also repaired: `tests/frame_pacing_test.kry` gains no-op inspect entry points
+— its generated module has carried source instrumentation all along while the
+standalone link never provided them (latent, surfaced by the header swap). And
+`runtime-declarations-check`'s final web-artifact cmp is broken on master by
+the paused k2js target over the full runtime set (since the concurrent
+session's `405fc5c5` palette change), independent of this work; its C and Go
+comparisons pass.
+
+Session total: twenty-four handwritten UI headers removed. Inbe builds green
+at `76790698`, pointer committed (`c89f5e9`).
+
+Remaining: unions (`Event`, `FrameState`, `PropertyValue`), the remaining
+fn-ptr headers (`ui_core`, `ui_controls`, `ui_tree`, `app_shell` — each also
+holds a union or a global), `dpi_state` + perf inlines (`ui_dpi`, kept),
+opaque `NativeWindow`, `const StyleSheet*`, `IconAsset`/`ui_icon_names[]`,
+`LocaleEntry` + varargs, `ui_text_layout` records, the B-001 theme catalogs,
+`app_runtime.h`'s `void*` chain.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
