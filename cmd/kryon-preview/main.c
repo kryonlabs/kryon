@@ -699,6 +699,23 @@ run_watch(const PreviewOptions *opt)
     return exit_status;
 }
 
+/* Kryon's clipboard protocol declares these write callbacks as
+ * host-provided; the preview tool has no clipboard, so decline politely. */
+int ClipboardOSC52Write(void *userdata, const char *text)
+{
+    (void)userdata;
+    (void)text;
+    return 0;
+}
+
+int ClipboardPasteWrite(void *userdata, const char *text, int size)
+{
+    (void)userdata;
+    (void)text;
+    (void)size;
+    return 0;
+}
+
 int
 main(int argc, char **argv)
 {
