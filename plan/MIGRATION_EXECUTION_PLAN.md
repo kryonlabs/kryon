@@ -838,6 +838,35 @@ Remaining: `theme.h`/`theme_meta.h` (die with B-001), `ui_dpi` (perf inlines,
 kept), `ui_window` (opaque NativeWindow), `app_runtime.h` (host void* chain),
 `kryon_key.h` (script-generated IDs), and B-001 downstream.
 
+## Rounds 35-36 — key, and the whole host embedding ABI, move
+
+Three more deletions:
+
+- `include/kryon_key.h` (a single KeyID typedef — the "script-generated IDs"
+  note was wrong) → `runtime/key_props.kry` as a `#type`; the four props
+  modules that imported it now import the generated header.
+- `include/app_host.h` and `include/app_runtime.h` — the entire host
+  embedding ABI — → `runtime/app_host_props.kry`:
+  `KryonInputOverride` as a real struct, `APP_HOST_ABI_VERSION` as a Kry
+  constant, and AppRouteInfo/AppScreenInfo/AppHost/App/AppScreen plus the
+  create/destroy callbacks as `#type` records, with the fifteen embedding and
+  screen calls as externs.
+
+One new emitter rule learned (the hard way, via mangled
+`void (*AppRouteInfoenter)(...)` output): the `#type` name insertion fires at
+the first `(*`, so a struct record must not carry a `(*` of its own — its
+function-pointer fields are declared as their own `#type` typedefs first
+(AppRouteEnterFn, HostScreenCountFn, ...). ABI-identical.
+
+Session total: thirty-seven handwritten UI headers removed. Gates after each:
+parity, `fast-test`, all syntax tests, `go-runtime-test`, examples, boundary,
+refreshed snapshots. Inbe builds green at `dcb56c8fe` and `525fa58c8`; its
+application.kry host import re-pointed; pointers committed (`43d9fab`,
+`61f6e2c`).
+
+Remaining: `theme.h`/`theme_meta.h` (die with B-001), `ui_dpi` (perf inlines,
+kept), `ui_window` (opaque NativeWindow), and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
