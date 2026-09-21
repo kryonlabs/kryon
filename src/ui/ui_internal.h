@@ -9,7 +9,7 @@
 #include "ui_drawing_props.generated.h"
 #include "ui_window.h"
 #include "ui_dpi.h"
-#include "ui_icons.h"
+#include "ui_icon_sheet_props.generated.h"
 #include "ui_layout_props.generated.h"
 #include "ui_dpi_props.generated.h"
 #include "ui_transition_props.generated.h"

@@ -135,4 +135,8 @@ typedef enum {
     ICON_COUNT = 127
 } IconType;
 
+/* Declared with the names array the same script writes to
+ * ui_icon_names.c; sized to ICON_COUNT. */
+extern const char *ui_icon_names[127];
+
 #endif /* KRYON_ICON_TYPES_H */

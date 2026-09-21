@@ -20,16 +20,13 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
+#include "kryon_compat.generated.h"
+#include "ui_icon_types.h"
 
-typedef enum IconSheet {
-    ICON_SHEET_CORE = 0,
-    ICON_SHEET_PFP = 1,
-    ICON_SHEET_PLATFORMS = 2,
-    ICON_SHEET_PAYMENTS = 3,
-    ICON_SHEET_LANGUAGE = 4,
-    ICON_SHEET_TILES = 5,
-    ICON_SHEET_LOGOS = 6,
-    ICON_SHEET_COUNT = 7,
-} IconSheet;
+typedef enum { ICON_SHEET_CORE = 0, ICON_SHEET_PFP = 1, ICON_SHEET_PLATFORMS = 2, ICON_SHEET_PAYMENTS = 3, ICON_SHEET_LANGUAGE = 4, ICON_SHEET_TILES = 5, ICON_SHEET_LOGOS = 6, ICON_SHEET_COUNT = 7 } IconSheet;
+
+typedef struct { IconType type; const char *name; IconSheet sheet; Rectangle source; } IconAsset;
+const IconAsset* GetIconAsset(IconType type);
+const IconAsset* GetIconAssetByName(const char* name);
 
 #endif /* K_RUNTIME_ICON_SHEET_PROPS_H */

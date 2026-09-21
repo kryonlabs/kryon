@@ -48,7 +48,7 @@
 #include "ui_tree_view_props.generated.h"
 #include "ui_drawing_props.generated.h"
 #include "ui_inspect_props.generated.h"
-#include "ui_icons.h"
+#include "ui_icon_sheet_props.generated.h"
 #include "kryon_compat.generated.h"
 #include "ui_control_props.generated.h"
 #include "ui_modal_props.generated.h"

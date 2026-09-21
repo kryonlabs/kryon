@@ -2,7 +2,7 @@
 #import "ui_text_props.generated.h"
 #import "ui_internal.h"
 #import "ui_paint_internal.h"
-#import "ui_icons.h"
+#import "ui_icon_sheet_props.generated.h"
 #import "ui_dpi_props.generated.h"
 #import "runtime/paragraph.h"
 #import "runtime/paint.h"

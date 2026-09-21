@@ -1,4 +1,4 @@
-#include "ui_icons.h"
+#include "ui_icon_sheet_props.generated.h"
 #include "kryon.h"
 #include "kry_sw_png.h"
 #include <string.h>

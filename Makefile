@@ -2237,7 +2237,7 @@ $(LOCALE_POLICY_KRY_TEST): $(LOCALE_POLICY_KRY_CODEGEN)/.generated $(GENERATED_S
 test: $(LOCALE_POLICY_KRY_TEST)
 
 
-$(ICON_ASSETS_C) $(ICON_NAMES_C) $(ICON_TYPES_H): $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icons.h
+$(ICON_ASSETS_C) $(ICON_NAMES_C) $(ICON_TYPES_H): $(ICON_FILES) scripts/embed-icon-sheets.py
 	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(ICON_ASSETS_C)" \
 		--types-output "$(ICON_TYPES_H)" \
 		--names-output "$(ICON_NAMES_C)"

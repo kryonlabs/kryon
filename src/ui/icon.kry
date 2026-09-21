@@ -1,5 +1,5 @@
 #module "icon_host"
-#import "ui_icons.h"
+#import "ui_icon_sheet_props.generated.h"
 #import "ui/icon_assets.h"
 #import "ui_internal.h"
 #import "runtime/surface.h"

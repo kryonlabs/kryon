@@ -1,6 +1,6 @@
 #module "icon_assets_host"
 #inspect off
-#import "ui_icons.h"
+#import "ui_icon_sheet_props.generated.h"
 #import "string.h"
 
 kry_icon_asset_count :: () -> u32 #extern
