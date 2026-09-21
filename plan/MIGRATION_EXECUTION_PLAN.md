@@ -375,9 +375,49 @@ input/style/DPI state (`GetPaneDropZone`, `ui_tab_bar_height`,
 `UpdateReorderList`, `UpdateSwipe`, `Toast`, …) or hold the blocked types, so
 they are the documented ceiling rather than cleanup targets.
 
-Conclusion unchanged: the remaining reduction needs a `.kry` function-pointer
-typedef or a C-only public-header path; B-001 still waits on Uku/Krait/Rill and
-Inbe.
+## Round 18 — the "#extern #export" pattern removes the host-header ceiling
+
+The round-14 and round-16 conclusions were both wrong about function-only
+headers: `runtime/*_props.kry` already supports C-only host functions through
+`#extern #export` declarations (`canvas_props` and `menu_props` have used it
+all along), and k2go skips them, so no Go body is needed. The stateful host
+implementations stay in `src/ui/*.kry`; only the *declarations* move into the
+tracked props headers.
+
+Deleted with this pattern (`kryon.h` and internal consumers now include the
+props headers directly):
+
+- `include/ui_reorder.h` → `UpdateReorderList` in `reorder_props`
+- `include/ui_swipe.h` → `UpdateSwipe`/`ResetSwipe` in `swipe_props`
+- `include/ui_toast.h` → `Toast` in `toast_props`
+- `include/ui_transition.h` → the five transition-state calls in
+  `transition_props`
+- `include/ui_nav.h` → `GetPaneDropZone` in `paned_view_props` and
+  `GetTabBarHeight`/`TabBarHeight` in `tab_bar_props`
+- `include/ui_scroll.h` → the three scrollbar width calls in `scroll_props`
+
+Session total: twelve handwritten UI headers removed. Gates after every step:
+`generated-runtime-parity-test`, `fast-test`, the affected policy tests, and
+the refreshed public-API snapshot. Inbe builds green at `cf152103` and its
+pointer is committed; `app_types.kry` imports `ui_swipe_props.generated.h`.
+
+What still blocks the remaining headers, now precisely:
+
+- function-pointer typedefs: `ui_core.h`, `ui_controls.h`, `kryon_frame.h`,
+  `ui_tree.h`, `app_shell.h`
+- unions / anonymous nested structs: `Event`, `FrameState`
+- script-generated `IconType`: `ui_icons.h`, `ui_profile.h`
+- `Camera2D` has no props home: `ui_inspect.h` (partial)
+- `const StyleSheet*` in `StylePack`: `ui_style_sheet.h`
+- `FlowProps` alias and `NodeId`: `ui_page.h`
+- `extern DPIState dpi_state` plus inline getters: `ui_dpi.h`
+- opaque `NativeWindow`: `ui_window.h`
+
+B-001 (KSS/theme) still waits on Uku/Krait/Rill and Inbe.
+
+Note: the main checkout was left detached at `120390fb` by a concurrent
+session's Plan 9 builds; commits landed through a temporary linked worktree on
+`master`, which was removed afterwards so `master` is free to check out.
 
 ## Approval notes
 Project docs ask for per-run user approval for visual captures, benchmarks, and
