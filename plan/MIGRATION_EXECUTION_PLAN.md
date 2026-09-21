@@ -914,3 +914,30 @@ arrays are a hard error.
 Inbe builds green at `d40967fc0`; pointer committed (`1c242ea`).
 
 ## Approval notes
+
+## Rounds 59-61 — the downstream migration lands
+
+Every app now reads colors through StyleTokenColor with a per-app token
+bridge; zero legacy getter call sites remain outside the bridges (verified
+by audit across inbe, rill, uku, krait — the only keepers are
+GetThemeReadableText, a pure contrast function, and GetThemeLabel, catalog
+UI that dies with the catalog).
+
+The ecosystem, all committed and green: kryon master a9b9d8ad; inbe c990416
++ the migration-tracking doc removed (85330a2); rill ffee7de; uku 0eec431;
+krait 14c124d (kryon at master, kapsule engine relocated); kapsule 5df27dc.
+
+A latent positional-literal regression from the ImageProps.texture insertion
+was caught by the full gate suite rerun (k2go syntax test) and fixed by
+moving the field to the trailing slot (a9b9d8ad); the lesson is recorded:
+props struct field insertions shift positional literals, so new fields go
+last.
+
+Session total: 39 handwritten UI policy headers removed; ten tracked-surface
+promotions (RenderModalFrame, PanelFrame, offscreen frame, ImageProps texture,
+DrawFittedTextInRect, profile picker modal, RenderActionModal, focus scopes,
+RenderImage, StyleTokenColor); four apps and a terminal engine ported.
+
+What remains beyond this objective: theme.h/theme_meta.h deletion (B-001) is
+unblocked (bridges-only consumers) but belongs to its own campaign — it
+touches kryon's internal theme modules and the apps' system-theme features.
