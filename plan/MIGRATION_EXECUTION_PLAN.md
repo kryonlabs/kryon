@@ -607,6 +607,38 @@ opaque `NativeWindow`, `const StyleSheet*`, `IconAsset`/`ui_icon_names[]`,
 `LocaleEntry` + varargs, `ui_text_layout` records, the B-001 theme catalogs,
 `app_runtime.h`'s `void*` chain.
 
+## Round 27 — ui_controls.h falls: one-line "#type" records
+
+The round-26 fn-ptr unlock generalizes: a `#type` body can be an entire struct
+definition on one line, passed verbatim into the tracked header. That carries
+records whose raw C shapes Go cannot mirror — function-pointer fields,
+`unsigned char` metrics — without inventing union support.
+
+`include/ui_controls.h` is deleted:
+
+- `ThemeScheme` becomes a real struct in `runtime/control_props.kry` (pure
+  Color data; the Go side's `DefaultScheme` is a different name, so no
+  collision).
+- `TextInputFilter`, `SliderMarkCallback`, `TextEdit`, and the 41-field
+  `ThemeMetrics` are one-line `#type` records (the handwritten Go
+  `ThemeMetrics` keeps its partial mirror untouched — k2go skips `#type`).
+- The twenty-three style, text, and segmented-control calls are externs.
+
+`K2KIR_LINE_MAX` rises from 1024 to 4096 (matching `KIR_TEXT_MAX`) so a
+single line can carry ThemeMetrics' full field list.
+
+Session total: twenty-five handwritten UI headers removed. Gates: parity,
+`fast-test`, all syntax tests, `go-runtime-test`, examples, boundary check,
+refreshed snapshots. Inbe builds green at `5cb140590`, pointer committed
+(`ca763d9`).
+
+Remaining: `ui_core.h` (FrameState's anonymous struct arrays + its own
+callbacks — same #type recipe, next round), `ui_tree.h` (Event's union via
+one-line #type plus the tree API), `app_shell.h` (route records), unions that
+must stay real (`PropertyValue` in `KryonNodeEdit`), `ui_dpi` perf inlines
+(kept), `ui_window`/`ui_style_sheet`/`ui_icons`/`locale.h`/`ui_text_layout`/
+`app_runtime.h`, and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
