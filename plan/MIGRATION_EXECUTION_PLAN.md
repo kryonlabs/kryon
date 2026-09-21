@@ -764,6 +764,31 @@ extern), `locale.h` (LocaleEntry + varargs), `app_runtime.h`/`app_host.h`/
 `app_instance.h` (host chain), `kryon_key.h` (script-generated IDs), and
 B-001 downstream.
 
+## Round 32 — the locale catalog moves; varargs and mutable char* demoted
+
+`include/locale.h` is deleted: `runtime/locale_props.kry` declares
+`LocaleEntry`/`LocaleLanguage` (mutable `char*` spans owned by the loader) as
+one-line `#type` records and the thirteen catalog calls as externs —
+`FormatLocaleText` keeps its C varargs tail verbatim, which the extern
+signature parser passes through untouched. Both "blockers" (mutable `char*`
+fields, varargs) only ever applied to declaring them *in* `.kry`.
+
+`ui_icons.h` was assessed and skipped for a genuine reason: its remaining
+content after moving `IconAsset` and the two queries is
+`extern const char *ui_icon_names[];` — an extern-variable declaration with no
+definition, which `.kry` has no form for (`#global` always defines).
+Recorded as the one real language gap left in this area.
+
+Session total: thirty-two handwritten UI headers removed. Gates after the
+move: parity, `fast-test`, all syntax tests, `go-runtime-test`, examples,
+boundary, refreshed snapshots. Inbe builds green at `5bd9dc20c` (its fonts
+host and bottom-nav test re-pointed); pointer committed (`8c692e5`).
+
+Remaining: `theme.h`/`theme_meta.h` (die with B-001), `ui_dpi` (perf inlines,
+kept), `ui_window` (opaque NativeWindow), `ui_style_sheet` (const
+StyleSheet*), `ui_icons` (extern-variable gap), `app_runtime.h` (host void*
+chain), `kryon_key.h` (script-generated IDs), and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
