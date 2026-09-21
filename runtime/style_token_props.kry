@@ -1,0 +1,6 @@
+#module "style_token_props"
+
+StyleColorToken :: struct {
+    name: const char*
+    color: u32
+}

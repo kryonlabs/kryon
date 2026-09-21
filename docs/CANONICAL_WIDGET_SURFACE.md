@@ -136,6 +136,7 @@ surface review:
 | `runtime/kss_parser.kry` | The KSS parser: tokens, theme/env overlays, imports, layers, provenance, and diagnostics shared by all backends | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
 | `runtime/style_picker_props.kry` | StylePicker props and option/selection/dropdown state policy | `.kry canonical` |
+| `runtime/style_token_props.kry` | Named style color replacement token | `.kry support` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/swipe.kry` | Swipe begin, drag, release, lifecycle, direction, default, and progress policy | `.kry support` |

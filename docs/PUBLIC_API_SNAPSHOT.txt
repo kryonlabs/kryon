@@ -1435,6 +1435,7 @@ include/ui_style_sheet.h function StyleClassId
 include/ui_style_sheet.h function StylePackVersion
 include/ui_style_sheet.h function StylePicker
 include/ui_style_sheet.h macro STYLE_PACK_MAX
+include/ui_style_token_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_swipe.h function ResetSwipe
 include/ui_swipe.h function UpdateSwipe
 include/ui_swipe_props.generated.h macro KIR_STRING_VALUE_DEFINED

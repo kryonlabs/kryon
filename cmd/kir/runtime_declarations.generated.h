@@ -1422,6 +1422,14 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    return state\n"
         "}\n"
     },
+    {"runtime/style_token_props.kry",
+        "#module \"style_token_props\"\n"
+        "\n"
+        "StyleColorToken :: struct {\n"
+        "    name: const char*\n"
+        "    color: u32\n"
+        "}\n"
+    },
     {"runtime/swipe_props.kry",
         "#module \"swipe_props\"\n"
         "#import \"ui_drawing_props.generated.h\"\n"

@@ -3,6 +3,7 @@
 
 #include "runtime/style_sheet.h"
 #include "ui_style_picker_props.generated.h"
+#include "ui_style_token_props.generated.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,10 +16,6 @@ typedef struct StylePack {
     const StyleSheet *sheet;
 } StylePack;
 
-typedef struct StyleColorToken {
-    const char *name;
-    uint32_t color;
-} StyleColorToken;
 
 bool RegisterStylePackVariant(const char *id, const char *source,
                               const char *label, const StyleColorToken *colors,
