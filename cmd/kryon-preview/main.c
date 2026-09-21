@@ -675,7 +675,7 @@ run_watch(const PreviewOptions *opt)
             snprintf(details, sizeof(details), "%s %s | %s:%d | %.0f,%.0f %.0fx%.0f | focus %d",
                      selection.kind, selection.id, selection.source_path, selection.source_line,
                      selection.bounds.x, selection.bounds.y, selection.bounds.width,
-                     selection.bounds.height, GetFocus());
+                     selection.bounds.height, KryonGetFocus());
             status = details;
         }
         chrome = PushInspectChrome(1);
