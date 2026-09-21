@@ -890,11 +890,27 @@ downstream on Uku/Krait/Rill/Inbe. The handwriting-removal program has reached
 its genuine end: what remains is either generated already, deliberately kept
 for hot-path inlining, or gated on the B-001 downstream migration.
 
-Note: the main checkout remained detached at `120390fb` (concurrent session);
-commits again landed through a temporary linked worktree on `master`, removed
-afterwards so `master` is free to check out.
+## Round 38 — StyleTokenColor: the B-001 replacement surface
+
+The missing piece for every B-001 downstream migration: apps register named
+color tokens via `RegisterStylePackVariant`, but nothing could read one back
+outside the widget cascade — so `GetThemeBackground()`-style calls had nowhere
+to go. `style_pack_source.kry` now retains each pack's token table (flat
+32x64 global; .kry has no nested fixed arrays — hard parse error) and exposes
+`StyleTokenColor(name)` / `StyleTokenColorOr(name, fallback)` via
+`style_pack_props`, unpacking the u32 in raylib byte order locally (no
+`GetColor`, so the style suites link backend-free). Verified functionally:
+register → activate → exact-channel read, fallback on miss, opaque default.
+
+Migration path is now mechanical: inbe's `GetThemeBackground()` →
+`StyleTokenColor("canvas")` against the 45 token names its `app_style.kry`
+already registers.
+
+Two parser gotchas recorded: an apostrophe in a TOP-LEVEL `.kry` comment
+silently truncates parsing (the tokenizer eats the rest of the file as an
+unterminated char literal — cost most of this round's debugging); nested fixed
+arrays are a hard error.
+
+Inbe builds green at `d40967fc0`; pointer committed (`1c242ea`).
 
 ## Approval notes
-Project docs ask for per-run user approval for visual captures, benchmarks, and
-Bend law proofs. The live-desktop rule (AGENTS.md) is absolute: everything GUI
-runs under `xvfb-run`/private display, never the developer's real desktop.
