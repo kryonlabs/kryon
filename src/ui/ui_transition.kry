@@ -1,6 +1,6 @@
 #module "transition_host"
 #import "ui_internal.h"
-#import "ui_transition.h"
+#import "ui_transition_props.generated.h"
 #import "runtime/transition_fade.h"
 
 ResetTransition :: (transition: *TransitionState) #export {

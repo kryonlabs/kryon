@@ -33,5 +33,10 @@ typedef struct TransitionState {
     float elapsed_seconds;
     float duration_seconds;
 } TransitionState;
+void ResetTransition(TransitionState* transition);
+void BeginTransition(TransitionState* transition, float  duration_seconds);
+void ReverseTransitionToOut(TransitionState* transition);
+float GetTransitionAlpha(const TransitionState* transition);
+TransitionPhase StepTransition(TransitionState* transition, float  delta_seconds);
 
 #endif /* K_RUNTIME_TRANSITION_PROPS_H */

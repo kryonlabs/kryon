@@ -1,4 +1,5 @@
-#include "ui_transition.h"
+#include "kryon.h"
+#include "ui_transition_props.generated.h"
 
 #include <math.h>
 #include <stdio.h>

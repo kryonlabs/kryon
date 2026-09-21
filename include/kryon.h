@@ -75,7 +75,7 @@
 #include "kryon_edit_host.h"
 #include "ui_node_registry.h"
 #include "ui_text_layout.h"
-#include "ui_transition.h"
+#include "ui_transition_props.generated.h"
 #include "ui_style_sheet.h"
 #include "locale.h"
 #if defined(KRYON_WITH_SYNC) && KRYON_WITH_SYNC

@@ -1632,7 +1632,7 @@ $(SYNC_CRYPTO_TEST): tests/sync_crypto_test.c src/sync/sync_crypto.c include/syn
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sync_crypto_test.c src/sync/sync_crypto.c \
 		src/sync/monocypher.c src/sync/monocypher_ed25519.c -o $@
 
-$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.kry $(GENERATED_SRC_DIR)/ui/ui_transition.c include/ui_transition.h include/ui_transition_props.generated.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h | $(BUILD_DIR)
+$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.kry $(GENERATED_SRC_DIR)/ui/ui_transition.c include/ui_transition_props.generated.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui -I$(GENERATED_SRC_DIR)/runtime tests/transition_test.c $(GENERATED_SRC_DIR)/ui/ui_transition.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -o $@
 

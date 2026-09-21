@@ -1870,6 +1870,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    elapsed_seconds: float\n"
         "    duration_seconds: float\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only transition host; declared here for the public ABI.\n"
+        "ResetTransition :: (transition: *TransitionState) #extern #export\n"
+        "BeginTransition :: (transition: *TransitionState,\n"
+        "                    duration_seconds: float) #extern #export\n"
+        "ReverseTransitionToOut :: (transition: *TransitionState) #extern #export\n"
+        "GetTransitionAlpha :: (transition: const TransitionState*) -> float #extern #export\n"
+        "StepTransition :: (transition: *TransitionState,\n"
+        "                   delta_seconds: float) -> TransitionPhase #extern #export\n"
     },
     {"runtime/tree_view_props.kry",
         "#module \"tree_view_props\"\n"

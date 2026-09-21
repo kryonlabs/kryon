@@ -12,7 +12,7 @@
 #include "ui_icons.h"
 #include "ui_layout.h"
 #include "ui_scaling.h"
-#include "ui_transition.h"
+#include "ui_transition_props.generated.h"
 #include "kryon.h"
 #include "kry_input.h"
 #include "ui_numeric_internal.h"

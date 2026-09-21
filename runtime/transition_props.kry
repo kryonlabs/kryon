@@ -12,3 +12,12 @@ TransitionState :: struct {
     elapsed_seconds: float
     duration_seconds: float
 }
+
+# Implemented by the C-only transition host; declared here for the public ABI.
+ResetTransition :: (transition: *TransitionState) #extern #export
+BeginTransition :: (transition: *TransitionState,
+                    duration_seconds: float) #extern #export
+ReverseTransitionToOut :: (transition: *TransitionState) #extern #export
+GetTransitionAlpha :: (transition: const TransitionState*) -> float #extern #export
+StepTransition :: (transition: *TransitionState,
+                   delta_seconds: float) -> TransitionPhase #extern #export
