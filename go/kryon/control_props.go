@@ -2,6 +2,8 @@
 package kryon
 
 // #import kryon_compat.generated.h
+// #import ui_text_input_props.generated.h
+// #import ui_segmented_control_props.generated.h
 type ButtonTone int32
 
 const (
@@ -109,4 +111,21 @@ type ControlStyle struct {
 	Disabled Style
 	Loading  Style
 	Selected Style
+}
+
+type ThemeScheme struct {
+	Primary           Color
+	OnPrimary         Color
+	Secondary         Color
+	OnSecondary       Color
+	Surface           Color
+	OnSurface         Color
+	SurfaceContainer  Color
+	SurfaceVariant    Color
+	OnSurfaceVariant  Color
+	Outline           Color
+	Error             Color
+	OnError           Color
+	DisabledContainer Color
+	DisabledContent   Color
 }

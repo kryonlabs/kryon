@@ -3,7 +3,7 @@
 #include "android_surface.h"
 #include "platform.h"
 #include "theme.h"
-#include "ui_controls.h"
+#include "ui_control_props.generated.h"
 #include "ui_dpi.h"
 
 #include <stddef.h>

@@ -18,7 +18,7 @@
 
 enum {
     K2KIR_PATH_MAX = 1024,
-    K2KIR_LINE_MAX = 1024
+    K2KIR_LINE_MAX = 4096
 };
 
 static void

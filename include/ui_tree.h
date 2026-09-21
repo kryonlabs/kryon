@@ -7,7 +7,7 @@ extern "C" {
 
 #include "kryon_compat.generated.h"
 #include "kryon_key.h"
-#include "ui_controls.h"
+#include "ui_control_props.generated.h"
 #include "ui_button_props.generated.h"
 #include "ui_card_props.generated.h"
 #include "ui_checkbox_props.generated.h"
