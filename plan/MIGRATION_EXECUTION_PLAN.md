@@ -639,6 +639,37 @@ must stay real (`PropertyValue` in `KryonNodeEdit`), `ui_dpi` perf inlines
 (kept), `ui_window`/`ui_style_sheet`/`ui_icons`/`locale.h`/`ui_text_layout`/
 `app_runtime.h`, and B-001 downstream.
 
+## Round 28 — ui_core.h falls; the focus symbols unify
+
+`include/ui_core.h` — the interface frame, focus, and cursor API — is deleted.
+`runtime/core_props.kry` carries the ABI:
+
+- `FrameState`, whose anonymous capture structs and inline arrays defeated
+  every earlier analysis, is a one-line `#type` record (anonymous arrays and
+  all) — the union "language blocker" never applied to pass-through records.
+- `ui_view_width`/`ui_view_height` moved from `src/ui/frame.kry` as
+  `#global #export` (the first globals in a props module).
+- Forty-eight calls are externs.
+
+`SetFocus`/`GetFocus` became `KryonSetFocus`/`KryonGetFocus` in C: the old
+header renamed only the MinGW *declaration* via `__asm__`, so the exported
+symbol already differed per platform and a props declaration could not carry
+the label. The real names remove the collision by construction; Go keeps its
+`SetFocus` spelling, which never collided. The rename rippled through the UI
+hosts, eleven test files, and the generated-runtime-parity templates (its Go
+section keeps `SetFocus` for the Go interface — that distinction cost one
+debugging cycle).
+
+Session total: twenty-six handwritten UI headers removed. Gates: parity
+(17 fixtures, C and Go), `fast-test`, all syntax tests, `go-runtime-test`,
+examples, boundary check, refreshed snapshots. Inbe builds green at
+`790159020`; its two focus callers renamed; pointer committed (`ebcb99e`).
+
+Remaining: `ui_tree.h` (Event's union via #type + the tree API — largest
+left), `app_shell.h` (route records), `PropertyValue` in `KryonNodeEdit`,
+`ui_dpi` perf inlines (kept), `ui_window`, `ui_style_sheet`, `ui_icons`,
+`locale.h`, `ui_text_layout`, `app_runtime.h`, and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
