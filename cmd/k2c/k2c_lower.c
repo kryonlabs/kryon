@@ -453,6 +453,32 @@ strip_alias_type(const KirModule *m, const char *type,
         snprintf(dst, dst_size, "%s*", base);
         return;
     }
+    /* const-qualified type (e.g. "const u8") maps its base and keeps "const ". */
+    if(strncmp(type, "const ", 6) == 0 && type[6] != '\0') {
+        char inner[LOWER_NAME_MAX * 2];
+        strip_alias_type(m, type + 6, inner, sizeof(inner));
+        snprintf(dst, dst_size, "const %s", inner);
+        return;
+    }
+    /* trailing-star pointer (e.g. "u8*", "state.Foo*") maps its base and
+     * re-appends the star; the leading-star form is handled above. */
+    {
+        size_t tlen = strlen(type);
+        if(tlen > 1 && type[tlen - 1] == '*') {
+            char base[LOWER_NAME_MAX * 2];
+            char trimmed[LOWER_NAME_MAX * 2];
+            size_t blen = tlen - 1;
+            while(blen > 0 && (type[blen - 1] == ' ' || type[blen - 1] == '\t'))
+                blen--;
+            if(blen >= sizeof(trimmed))
+                blen = sizeof(trimmed) - 1;
+            memcpy(trimmed, type, blen);
+            trimmed[blen] = '\0';
+            strip_alias_type(m, trimmed, base, sizeof(base));
+            snprintf(dst, dst_size, "%s*", base);
+            return;
+        }
+    }
 
     if(dot != NULL) {
         size_t alen = (size_t)(dot - type);
