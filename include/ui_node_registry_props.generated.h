@@ -36,5 +36,15 @@ typedef struct NodeType {
     const char* detail;
     NodeTypeFlag flags;
 } NodeType;
+int32_t NodeTypeCount(void);
+const NodeType* NodeTypeAt(int32_t index);
+const char* NodeTypeName(int32_t index);
+const char* NodeTypeLabel(int32_t index);
+const char* NodeTypeGroup(int32_t index);
+const char* NodeTypeBase(int32_t index);
+const char* NodeTypeDetail(int32_t index);
+NodeTypeFlag NodeTypeFlagsAt(int32_t index);
+int32_t NodeTypeInsertable(int32_t index);
+int32_t NodeTypeSnippet(int32_t index, int32_t  x, int32_t  y, char*  dst, int32_t  cap);
 
 #endif /* K_RUNTIME_NODE_REGISTRY_PROPS_H */

@@ -1065,6 +1065,18 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    detail: const char*\n"
         "    flags: NodeTypeFlag\n"
         "}\n"
+        "\n"
+        "# Implemented by the C-only node-registry host; declared here for the public ABI.\n"
+        "NodeTypeCount :: () -> i32 #extern #export\n"
+        "NodeTypeAt :: (index: i32) -> const NodeType* #extern #export\n"
+        "NodeTypeName :: (index: i32) -> const char* #extern #export\n"
+        "NodeTypeLabel :: (index: i32) -> const char* #extern #export\n"
+        "NodeTypeGroup :: (index: i32) -> const char* #extern #export\n"
+        "NodeTypeBase :: (index: i32) -> const char* #extern #export\n"
+        "NodeTypeDetail :: (index: i32) -> const char* #extern #export\n"
+        "NodeTypeFlagsAt :: (index: i32) -> NodeTypeFlag #extern #export\n"
+        "NodeTypeInsertable :: (index: i32) -> i32 #extern #export\n"
+        "NodeTypeSnippet :: (index: i32, x: i32, y: i32, dst: *char, cap: i32) -> i32 #extern #export\n"
     },
     {"runtime/page_props.kry",
         "#module \"page_props\"\n"

@@ -183,7 +183,7 @@ fi
 
 node_registry_prefix_matches="$(
     rg -n '\b(KryonNodeType|KRYON_NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NodeTypeFlags)\b' \
-        include/ui_node_registry.h src/ui/node_registry.kry docs/PUBLIC_API_SNAPSHOT.txt \
+        include/ui_node_registry_props.generated.h src/ui/node_registry.kry docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"

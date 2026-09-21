@@ -15,3 +15,15 @@ NodeType :: struct {
     detail: const char*
     flags: NodeTypeFlag
 }
+
+# Implemented by the C-only node-registry host; declared here for the public ABI.
+NodeTypeCount :: () -> i32 #extern #export
+NodeTypeAt :: (index: i32) -> const NodeType* #extern #export
+NodeTypeName :: (index: i32) -> const char* #extern #export
+NodeTypeLabel :: (index: i32) -> const char* #extern #export
+NodeTypeGroup :: (index: i32) -> const char* #extern #export
+NodeTypeBase :: (index: i32) -> const char* #extern #export
+NodeTypeDetail :: (index: i32) -> const char* #extern #export
+NodeTypeFlagsAt :: (index: i32) -> NodeTypeFlag #extern #export
+NodeTypeInsertable :: (index: i32) -> i32 #extern #export
+NodeTypeSnippet :: (index: i32, x: i32, y: i32, dst: *char, cap: i32) -> i32 #extern #export

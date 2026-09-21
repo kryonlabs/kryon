@@ -76,7 +76,7 @@
 #include "kryon_node.h"
 #include "kryon_property.h"
 #include "kryon_edit_host.h"
-#include "ui_node_registry.h"
+#include "ui_node_registry_props.generated.h"
 #include "ui_text_layout.h"
 #include "ui_transition_props.generated.h"
 #include "ui_style_sheet.h"

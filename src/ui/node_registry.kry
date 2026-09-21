@@ -1,5 +1,5 @@
 #module "node_registry_host"
-#import "ui_node_registry.h"
+#import "ui_node_registry_props.generated.h"
 #import "string.h"
 #import "stdio.h"
 
