@@ -462,6 +462,20 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    used_height: i32\n"
         "}\n"
     },
+    {"runtime/icon_sheet_props.kry",
+        "#module \"icon_sheet_props\"\n"
+        "\n"
+        "IconSheet :: enum {\n"
+        "    ICON_SHEET_CORE = 0\n"
+        "    ICON_SHEET_PFP = 1\n"
+        "    ICON_SHEET_PLATFORMS = 2\n"
+        "    ICON_SHEET_PAYMENTS = 3\n"
+        "    ICON_SHEET_LANGUAGE = 4\n"
+        "    ICON_SHEET_TILES = 5\n"
+        "    ICON_SHEET_LOGOS = 6\n"
+        "    ICON_SHEET_COUNT = 7\n"
+        "}\n"
+    },
     {"runtime/image_props.kry",
         "#module \"image_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

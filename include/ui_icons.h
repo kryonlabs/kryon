@@ -3,17 +3,7 @@
 
 #include "kryon.h"
 #include "ui_icon_types.h"
-
-typedef enum IconSheet {
-    ICON_SHEET_CORE,
-    ICON_SHEET_PFP,
-    ICON_SHEET_PLATFORMS,
-    ICON_SHEET_PAYMENTS,
-    ICON_SHEET_LANGUAGE,
-    ICON_SHEET_TILES,
-    ICON_SHEET_LOGOS,
-    ICON_SHEET_COUNT
-} IconSheet;
+#include "ui_icon_sheet_props.generated.h"
 
 typedef struct IconAsset {
     IconType type;

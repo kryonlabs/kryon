@@ -67,6 +67,7 @@ surface review:
 | `runtime/guide.kry` | Guide overlay layout, arrow geometry, and step policy | `.kry canonical` |
 | `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | `.kry support` |
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
+| `runtime/icon_sheet_props.kry` | Icon sheet selection enum | `.kry support` |
 | `src/ui/icon.kry` | Icon shape selection, raster drawing, and profile icon behavior; atlas loading stays in the backend | `.kry canonical` |
 | `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
 | `runtime/image_props.kry` | Image props | `.kry canonical` |

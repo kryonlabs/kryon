@@ -1,0 +1,12 @@
+#module "icon_sheet_props"
+
+IconSheet :: enum {
+    ICON_SHEET_CORE = 0
+    ICON_SHEET_PFP = 1
+    ICON_SHEET_PLATFORMS = 2
+    ICON_SHEET_PAYMENTS = 3
+    ICON_SHEET_LANGUAGE = 4
+    ICON_SHEET_TILES = 5
+    ICON_SHEET_LOGOS = 6
+    ICON_SHEET_COUNT = 7
+}
