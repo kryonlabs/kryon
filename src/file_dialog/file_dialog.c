@@ -898,6 +898,36 @@ on_portal_response(GDBusConnection *connection, const char *sender,
     wait->done = 1;
 }
 
+/*
+ * Maximum time in milliseconds the portal file chooser is allowed to
+ * block the calling thread.  If the portal does not open a working
+ * window within this window the call returns 0 and lets the next
+ * backend (zenity / kdialog / yad) take over.
+ */
+#define PORTAL_DIALOG_DEADLINE_MS 15000
+
+static void
+portal_close_request(GDBusConnection *bus, const char *handle)
+{
+    GError *e = NULL;
+    GVariant *r;
+
+    if(bus == NULL || handle == NULL || handle[0] == '\0')
+        return;
+    r = g_dbus_connection_call_sync(bus,
+            "org.freedesktop.portal.Desktop",
+            handle,
+            "org.freedesktop.portal.Request",
+            "Close",
+            NULL,
+            NULL,
+            G_DBUS_CALL_FLAGS_NONE, 1000, NULL, &e);
+    if(r != NULL)
+        g_variant_unref(r);
+    if(e != NULL)
+        g_error_free(e);
+}
+
 static int
 run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
                   const char *filter, const char *default_filename)
@@ -912,6 +942,7 @@ run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
     char *handle = NULL;
     guint sub_id;
     PortalDialogWait wait;
+    gint64 deadline_us;
 
     (void)filter;
     internal = ensure_internal(dlg);
@@ -940,6 +971,11 @@ run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
 
     method = mode == FILE_DIALOG_SAVE ? "SaveFile" : "OpenFile";
     dialog_title = title != NULL && title[0] != '\0' ? title : "Select file";
+
+    /*
+     * The D-Bus call to OpenFile / SaveFile should complete within a
+     * few seconds at worst — it only returns a request handle.
+     */
     result = g_dbus_connection_call_sync(bus,
             "org.freedesktop.portal.Desktop",
             "/org/freedesktop/portal/desktop",
@@ -947,7 +983,8 @@ run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
             method,
             g_variant_new("(ssa{sv})", "", dialog_title, &options),
             G_VARIANT_TYPE("(o)"),
-            G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
+            G_DBUS_CALL_FLAGS_NONE,
+            PORTAL_DIALOG_DEADLINE_MS / 2, NULL, &error);
     if(result == NULL) {
         if(error != NULL)
             g_error_free(error);
@@ -961,8 +998,24 @@ run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
     sub_id = g_dbus_connection_signal_subscribe(bus, NULL,
             "org.freedesktop.portal.Request", "Response", handle, NULL,
             G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, &wait, NULL);
-    while(!wait.done)
-        g_main_context_iteration(NULL, TRUE);
+
+    /*
+     * Wait for the portal to deliver its Response signal (user picked
+     * a file or cancelled).  If nothing arrives before the deadline,
+     * close the portal request, tear down, and return 0 so the caller
+     * falls back to an external dialog helper.
+     */
+    deadline_us = g_get_monotonic_time()
+                  + (gint64)PORTAL_DIALOG_DEADLINE_MS * 1000;
+    while(!wait.done) {
+        if(g_get_monotonic_time() >= deadline_us)
+            break;
+        g_main_context_iteration(NULL, FALSE);
+    }
+
+    if(!wait.done)
+        portal_close_request(bus, handle);
+
     g_dbus_connection_signal_unsubscribe(bus, sub_id);
     g_free(handle);
     g_object_unref(bus);
@@ -1107,8 +1160,13 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
         return 0;
 
 #if defined(FILE_DIALOG_PORTAL)
-    if(backend == DIALOG_BACKEND_PORTAL)
-        return run_portal_dialog(dlg, mode, title, filter, default_filename);
+    if(backend == DIALOG_BACKEND_PORTAL) {
+        if(run_portal_dialog(dlg, mode, title, filter, default_filename))
+            return 1;
+        /* Portal failed, timed out, or the user cancelled.
+           Fall through to an external helper (zenity / kdialog / yad)
+           so the app is never stranded without a working chooser. */
+    }
 #endif
 
 #if defined(SYSTEM_THEME_GTK)
