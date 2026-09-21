@@ -1,0 +1,39 @@
+#module "capability_layout"
+
+#import "kry_capabilities.h"
+
+KryCapabilitiesHas :: (capabilities: int,
+                        capability: KryCapability) -> int #export {
+    return (capabilities & (int)capability) != 0 ? 1 : 0
+}
+
+KryCapabilityName :: (capability: KryCapability) -> const char* #export {
+    switch capability {
+        case KRY_CAP_FILE_PICKER: return "file-picker"
+        case KRY_CAP_FILE_SAVE: return "file-save"
+        case KRY_CAP_SHARE: return "share"
+        case KRY_CAP_SECURE_STORE: return "secure-store"
+        case KRY_CAP_BIOMETRIC_UNLOCK: return "biometric-unlock"
+        case KRY_CAP_NOTIFICATIONS: return "notifications"
+        case KRY_CAP_WAKELOCK: return "wakelock"
+        case KRY_CAP_CLIPBOARD: return "clipboard"
+    }
+    return "unknown"
+}
+
+KrySafeContentRect :: (spec: KryViewportSpec) -> Rectangle #export {
+    x := spec.safe_area.left + spec.padding
+    y := spec.safe_area.top + spec.reserved_top + spec.padding
+    width := spec.width - spec.safe_area.left - spec.safe_area.right -
+             spec.padding * 2
+    height := spec.height - spec.safe_area.top - spec.safe_area.bottom -
+              spec.reserved_top - spec.reserved_bottom - spec.padding * 2
+
+    if spec.min_content_width > 0 && width < spec.min_content_width {
+        width = spec.min_content_width
+    }
+    if height < 0 {
+        height = 0
+    }
+    return (Rectangle){(float)x, (float)y, (float)width, (float)height}
+}

@@ -1,6 +1,9 @@
 #include "locale.h"
 #include "platform.h"
 #include "embedded_assets.h"
+#include "ui/locale_defaults.h"
+#include "ui/locale_parser.h"
+#include "ui/locale_policy.h"
 
 #include "kryon.h"
 
@@ -35,20 +38,14 @@ static int g_loaded = 0;
 static char g_current_code[32] = "en";
 
 static char *
-dup_range(const char *src, size_t len)
+dup_cstr(const char *src)
 {
+    size_t len = strlen(src);
     char *out = malloc(len + 1);
     if(out == NULL)
         return NULL;
-    memcpy(out, src, len);
-    out[len] = '\0';
+    memcpy(out, src, len + 1);
     return out;
-}
-
-static char *
-dup_cstr(const char *src)
-{
-    return dup_range(src, strlen(src));
 }
 
 static void
@@ -119,8 +116,8 @@ ensure_language_capacity(void)
     g_language_cap = next_cap;
 }
 
-static void
-set_locale_entry(LocaleEntry **entries, size_t *count, size_t *cap, const char *key, const char *value)
+void
+LocaleStoreEntry(LocaleEntry **entries, size_t *count, size_t *cap, const char *key, const char *value)
 {
     size_t i;
 
@@ -154,187 +151,26 @@ set_locale_entry(LocaleEntry **entries, size_t *count, size_t *cap, const char *
     (*count)++;
 }
 
-static const char *
-find_locale_entry(LocaleEntry *entries, size_t count, const char *key)
+void
+LocaleStoreLanguage(const char *code, const char *label)
 {
-    if(key == NULL)
-        return "";
+    if(code == NULL || label == NULL)
+        return;
+    ensure_language_capacity();
+    if(g_language_count >= g_language_cap)
+        return;
 
-    for(size_t i = 0; i < count; i++) {
-        if(strcmp(entries[i].key, key) == 0)
-            return entries[i].value;
+    g_languages[g_language_count].code = dup_cstr(code);
+    g_languages[g_language_count].label = dup_cstr(label);
+    if(g_languages[g_language_count].code == NULL ||
+       g_languages[g_language_count].label == NULL) {
+        free(g_languages[g_language_count].code);
+        free(g_languages[g_language_count].label);
+        g_languages[g_language_count].code = NULL;
+        g_languages[g_language_count].label = NULL;
+        return;
     }
-    return NULL;
-}
-
-static void
-append_text(char **buf, size_t *len, size_t *cap, const char *text)
-{
-    size_t text_len;
-    char *next;
-    size_t needed;
-
-    if(text == NULL)
-        return;
-
-    text_len = strlen(text);
-    needed = *len + text_len + 1;
-    if(*cap < needed) {
-        size_t next_cap = (*cap == 0) ? 128 : *cap;
-        while(next_cap < needed)
-            next_cap *= 2;
-        next = realloc(*buf, next_cap);
-        if(next == NULL)
-            return;
-        *buf = next;
-        *cap = next_cap;
-    }
-
-    memcpy(*buf + *len, text, text_len);
-    *len += text_len;
-    (*buf)[*len] = '\0';
-}
-
-static void
-append_char(char **buf, size_t *len, size_t *cap, char c)
-{
-    char tmp[2] = { c, '\0' };
-    append_text(buf, len, cap, tmp);
-}
-
-static void
-load_locale_text_into(LocaleEntry **entries, size_t *count, size_t *cap, const char *text)
-{
-    char *mutable_text;
-    char *cursor;
-    char *current_key = NULL;
-    char *body = NULL;
-    size_t body_len = 0;
-    size_t body_cap = 0;
-
-    if(text == NULL || entries == NULL || count == NULL || cap == NULL)
-        return;
-
-    mutable_text = dup_cstr(text);
-    if(mutable_text == NULL)
-        return;
-
-    cursor = mutable_text;
-    while(cursor != NULL && *cursor != '\0') {
-        char *line = cursor;
-        char *eol = strpbrk(cursor, "\r\n");
-        if(eol != NULL) {
-            char line_end = *eol;
-            *eol = '\0';
-            cursor = eol + 1;
-            if((line_end == '\r' && *cursor == '\n') || (line_end == '\n' && *cursor == '\r'))
-                cursor++;
-        } else {
-            cursor = NULL;
-        }
-
-        if(line[0] == '[') {
-            size_t line_len = strlen(line);
-            if(line_len > 2 && line[line_len - 1] == ']') {
-                char *key = dup_range(line + 1, line_len - 2);
-                if(key != NULL) {
-                    free(current_key);
-                    current_key = key;
-                    free(body);
-                    body = NULL;
-                    body_len = 0;
-                    body_cap = 0;
-                }
-                continue;
-            }
-        }
-
-        if(strcmp(line, "---") == 0) {
-            if(current_key != NULL) {
-                set_locale_entry(entries, count, cap, current_key, body != NULL ? body : "");
-                free(current_key);
-                current_key = NULL;
-            }
-            free(body);
-            body = NULL;
-            body_len = 0;
-            body_cap = 0;
-            continue;
-        }
-
-        if(current_key == NULL)
-            continue;
-
-        if(body_len > 0)
-            append_char(&body, &body_len, &body_cap, '\n');
-        append_text(&body, &body_len, &body_cap, line);
-    }
-
-    if(current_key != NULL)
-        set_locale_entry(entries, count, cap, current_key, body != NULL ? body : "");
-
-    free(current_key);
-    free(body);
-    free(mutable_text);
-}
-
-static void
-load_language_list_from_text(const char *text)
-{
-    char *mutable_text;
-    char *cursor;
-
-    if(text == NULL)
-        return;
-
-    mutable_text = dup_cstr(text);
-    if(mutable_text == NULL)
-        return;
-
-    cursor = mutable_text;
-    while(cursor != NULL && *cursor != '\0') {
-        char *line = cursor;
-        char *eol = strpbrk(cursor, "\r\n");
-        if(eol != NULL) {
-            char line_end = *eol;
-            *eol = '\0';
-            cursor = eol + 1;
-            if((line_end == '\r' && *cursor == '\n') || (line_end == '\n' && *cursor == '\r'))
-                cursor++;
-        } else {
-            cursor = NULL;
-        }
-
-        if(line[0] == '\0' || line[0] == '#')
-            continue;
-
-        char *sep = strchr(line, '|');
-        if(sep == NULL)
-            continue;
-
-        *sep = '\0';
-        const char *code = line;
-        const char *label = sep + 1;
-        if(code[0] == '\0' || label[0] == '\0')
-            continue;
-
-        ensure_language_capacity();
-        if(g_language_count >= g_language_cap)
-            continue;
-
-        g_languages[g_language_count].code = dup_cstr(code);
-        g_languages[g_language_count].label = dup_cstr(label);
-        if(g_languages[g_language_count].code == NULL || g_languages[g_language_count].label == NULL) {
-            free(g_languages[g_language_count].code);
-            free(g_languages[g_language_count].label);
-            g_languages[g_language_count].code = NULL;
-            g_languages[g_language_count].label = NULL;
-            continue;
-        }
-        g_language_count++;
-    }
-
-    free(mutable_text);
+    g_language_count++;
 }
 
 static int
@@ -463,40 +299,8 @@ load_locale_file_for_code(const char *code, char **out_text)
 }
 
 static void
-load_defaults(void)
-{
-    int has_english = 0;
-
-    for(size_t i = 0; i < g_language_count; i++) {
-        if(g_languages[i].code != NULL && strcmp(g_languages[i].code, "en") == 0) {
-            has_english = 1;
-            break;
-        }
-    }
-
-    if(has_english)
-        return;
-
-    ensure_language_capacity();
-    if(g_language_count < g_language_cap) {
-        g_languages[g_language_count].code = dup_cstr("en");
-        g_languages[g_language_count].label = dup_cstr("English");
-        if(g_languages[g_language_count].code != NULL && g_languages[g_language_count].label != NULL)
-            g_language_count++;
-        else {
-            free(g_languages[g_language_count].code);
-            free(g_languages[g_language_count].label);
-            g_languages[g_language_count].code = NULL;
-            g_languages[g_language_count].label = NULL;
-        }
-    }
-}
-
-static void
 set_current_code(const char *code)
 {
-    if(code == NULL || code[0] == '\0')
-        code = "en";
     snprintf(g_current_code, sizeof(g_current_code), "%s", code);
 }
 
@@ -504,47 +308,12 @@ static void
 load_base_locale(void)
 {
     char *text = NULL;
-    static const struct {
-        const char *key;
-        const char *value;
-    } defaults[] = {
-        {"theme_style_label", "Style"},
-        {"theme_style_system", "System"},
-        {"theme_style_classic", "Classic"},
-        {"theme_style_default", "Default"},
-        {"theme_style_fluent", "Fluent"},
-        {"theme_style_adwaita", "Adwaita"},
-        {"theme_style_liquid_glass", "Liquid Glass"},
-        {"theme_label", "Theme source"},
-        {"theme_app", "Kryon"},
-        {"theme_system", "System"},
-        {"theme_mode_label", "Mode"},
-        {"theme_follow_device", "Follow device"},
-        {"theme_light", "Light"},
-        {"theme_dark", "Dark"},
-        {"theme_color_label", "Color theme"},
-        {"theme_picker_title", "Color theme"},
-        {"theme_sky", "Sky"},
-        {"theme_ocean", "Ocean"},
-        {"theme_forest", "Forest"},
-        {"theme_sunset", "Sunset"},
-        {"theme_lavender", "Lavender"},
-        {"theme_cherry", "Cherry"},
-        {"theme_dawn", "Dawn"},
-        {"theme_sage", "Sage"},
-        {"theme_sepia", "Sepia"},
-        {"theme_mono", "Mono"},
-        {"theme_mint", "Mint"},
-        {"theme_cobalt", "Cobalt"},
-        {"theme_sweet", "Sweet"},
-    };
-
-    for(size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++)
-        set_locale_entry(&g_base_entries, &g_base_count, &g_base_cap,
-                         defaults[i].key, defaults[i].value);
+    for(int i = 0; i < LocaleDefaultCount(); i++)
+        LocaleStoreEntry(&g_base_entries, &g_base_count, &g_base_cap,
+                         LocaleDefaultKeyAt(i), LocaleDefaultValueAt(i));
 
     if(load_file_text_from_paths("locales/en.txt", &text)) {
-        load_locale_text_into(&g_base_entries, &g_base_count, &g_base_cap, text);
+        LocaleParseEntries(text, &g_base_entries, &g_base_count, &g_base_cap);
         UnloadFileText(text);
     }
 }
@@ -554,10 +323,10 @@ load_registry(void)
 {
     char *text = NULL;
     if(load_file_text_from_paths("locales/index.txt", &text)) {
-        load_language_list_from_text(text);
+        LocaleParseLanguages(text);
         UnloadFileText(text);
     }
-    load_defaults();
+    LocaleEnsureEnglish(g_languages, g_language_count);
 }
 
 static void
@@ -586,13 +355,11 @@ int
 SetLocale(const char *code)
 {
     char *text = NULL;
-    int found = 0;
 
     if(!g_loaded)
         InitLocale();
 
-    if(code == NULL || code[0] == '\0')
-        code = "en";
+    code = LocaleRequestedCode(code);
 
     if(strcmp(code, "en") == 0) {
         clear_active_locale();
@@ -600,18 +367,12 @@ SetLocale(const char *code)
         return 1;
     }
 
-    for(size_t i = 0; i < g_language_count; i++) {
-        if(strcmp(g_languages[i].code, code) == 0) {
-            found = 1;
-            break;
-        }
-    }
-    if(!found)
+    if(!LocaleContainsCode(g_languages, g_language_count, code))
         return 0;
 
     clear_active_locale();
     if(load_locale_file_for_code(code, &text)) {
-        load_locale_text_into(&g_active_entries, &g_active_count, &g_active_cap, text);
+        LocaleParseEntries(text, &g_active_entries, &g_active_count, &g_active_cap);
         UnloadFileText(text);
         set_current_code(code);
         return 1;
@@ -620,162 +381,6 @@ SetLocale(const char *code)
     clear_active_locale();
     set_current_code("en");
     return 0;
-}
-
-static const char *
-lookup_locale_value(const char *key)
-{
-    const char *value;
-
-    value = find_locale_entry(g_active_entries, g_active_count, key);
-    if(value != NULL)
-        return value;
-
-    value = find_locale_entry(g_base_entries, g_base_count, key);
-    if(value != NULL)
-        return value;
-
-    return key != NULL ? key : "";
-}
-
-static int
-locale_is_pref_separator(char c)
-{
-    return c == ':' || c == ';' || c == ',' || c == ' ' || c == '\t' ||
-           c == '\r' || c == '\n';
-}
-
-static char
-locale_ascii_lower(char c)
-{
-    if(c >= 'A' && c <= 'Z')
-        return (char)(c + ('a' - 'A'));
-    return c;
-}
-
-static int
-normalize_locale_candidate(const char *src, size_t src_len,
-                           char *dst, size_t dst_size)
-{
-    size_t out = 0;
-    int saw_alnum = 0;
-    int last_sep = 0;
-
-    if(src == NULL || dst == NULL || dst_size == 0)
-        return 0;
-
-    for(size_t i = 0; i < src_len && src[i] != '\0'; i++) {
-        char c = src[i];
-
-        if(c == '.' || c == '@' || c == '%')
-            break;
-        if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-           (c >= '0' && c <= '9')) {
-            if(out + 1 >= dst_size)
-                break;
-            dst[out++] = locale_ascii_lower(c);
-            saw_alnum = 1;
-            last_sep = 0;
-            continue;
-        }
-        if(c == '-' || c == '_') {
-            if(out == 0 || last_sep)
-                continue;
-            if(out + 1 >= dst_size)
-                break;
-            dst[out++] = '-';
-            last_sep = 1;
-        }
-    }
-
-    while(out > 0 && dst[out - 1] == '-')
-        out--;
-    dst[out] = '\0';
-
-    if(!saw_alnum || strcmp(dst, "c") == 0 || strcmp(dst, "posix") == 0)
-        return 0;
-    return out > 0;
-}
-
-static int
-locale_code_equal_normalized(const char *code, const char *normalized)
-{
-    char norm_code[32];
-
-    if(code == NULL || normalized == NULL)
-        return 0;
-    if(!normalize_locale_candidate(code, strlen(code), norm_code, sizeof(norm_code)))
-        return 0;
-    return strcmp(norm_code, normalized) == 0;
-}
-
-static const char *
-find_supported_locale_code(const char *candidate)
-{
-    char normalized[32];
-    char base[32];
-    char *dash;
-
-    if(candidate == NULL)
-        return NULL;
-    if(!normalize_locale_candidate(candidate, strlen(candidate),
-                                   normalized, sizeof(normalized)))
-        return NULL;
-
-    for(size_t i = 0; i < g_language_count; i++) {
-        if(locale_code_equal_normalized(g_languages[i].code, normalized))
-            return g_languages[i].code;
-    }
-
-    snprintf(base, sizeof(base), "%s", normalized);
-    dash = strchr(base, '-');
-    if(dash != NULL)
-        *dash = '\0';
-    if(base[0] == '\0')
-        return NULL;
-
-    for(size_t i = 0; i < g_language_count; i++) {
-        if(locale_code_equal_normalized(g_languages[i].code, base))
-            return g_languages[i].code;
-    }
-
-    return NULL;
-}
-
-static const char *
-find_supported_locale_from_preferences(const char *preferences)
-{
-    const char *cursor;
-
-    if(preferences == NULL || preferences[0] == '\0')
-        return NULL;
-
-    cursor = preferences;
-    while(*cursor != '\0') {
-        const char *start;
-        size_t len;
-        char candidate[64];
-        const char *code;
-
-        while(locale_is_pref_separator(*cursor))
-            cursor++;
-        start = cursor;
-        while(*cursor != '\0' && !locale_is_pref_separator(*cursor))
-            cursor++;
-        len = (size_t)(cursor - start);
-        if(len == 0)
-            continue;
-        if(len >= sizeof(candidate))
-            len = sizeof(candidate) - 1;
-        memcpy(candidate, start, len);
-        candidate[len] = '\0';
-
-        code = find_supported_locale_code(candidate);
-        if(code != NULL)
-            return code;
-    }
-
-    return NULL;
 }
 
 static const char *
@@ -994,16 +599,11 @@ const char *
 GetSystemLocaleCode(void)
 {
     char preferences[512];
-    const char *code;
-
     if(!g_loaded)
         InitLocale();
 
     get_platform_locale_preferences(preferences, sizeof(preferences));
-    code = find_supported_locale_from_preferences(preferences);
-    if(code != NULL)
-        return code;
-    return "en";
+    return LocalePreferredCode(g_languages, g_language_count, preferences);
 }
 
 const char *
@@ -1017,7 +617,8 @@ GetLocaleText(const char *key)
 {
     if(!g_loaded)
         InitLocale();
-    return lookup_locale_value(key);
+    return LocaleResolveValue(g_active_entries, g_active_count,
+                              g_base_entries, g_base_count, key);
 }
 
 void

@@ -1,5 +1,6 @@
 #include "ui_window.h"
 #include "ui_paint_layers_internal.h"
+#include "ui/window_policy.h"
 
 #include <stddef.h>
 
@@ -39,16 +40,16 @@ typedef XID Atom;
 typedef XID Drawable;
 
 enum {
-    InbeLSBFirst = 0,
-    InbeMSBFirst = 1,
-    InbeZPixmap = 2,
-    InbeXA_ATOM = 4,
-    InbeXA_CARDINAL = 6,
-    InbePropModeReplace = 0,
-    InbeExposureMask = 1 << 15,
-    InbeButtonPressMask = 1 << 2,
-    InbeButtonReleaseMask = 1 << 3,
-    InbePointerMotionMask = 1 << 6
+    KryonX11LSBFirst = 0,
+    KryonX11MSBFirst = 1,
+    KryonX11ZPixmap = 2,
+    KryonX11XA_ATOM = 4,
+    KryonX11XA_CARDINAL = 6,
+    KryonX11PropModeReplace = 0,
+    KryonX11ExposureMask = 1 << 15,
+    KryonX11ButtonPressMask = 1 << 2,
+    KryonX11ButtonReleaseMask = 1 << 3,
+    KryonX11PointerMotionMask = 1 << 6
 };
 
 /* Prefix of XImage up to the fields the blit needs; the real object comes
@@ -65,13 +66,13 @@ typedef struct {
     int depth;
     int bytes_per_line;
     int bits_per_pixel;
-} InbeXImageInfo;
+} KryonX11XImageInfo;
 
 /* Padded stand-in for the XEvent union: big enough for every event we poll. */
 typedef union {
     int type;
     char pad[256];
-} InbeXEvent;
+} KryonX11XEvent;
 
 typedef struct {
     int type;
@@ -89,7 +90,7 @@ typedef struct {
     int same_screen;
     int pad1;
     unsigned long pad2, pad3;
-} InbeXButtonEvent;
+} KryonX11XButtonEvent;
 
 typedef struct {
     int type;
@@ -100,7 +101,7 @@ typedef struct {
     int pad1;
     int x, y, width, height, count;
     int pad2;
-} InbeXExposeEvent;
+} KryonX11XExposeEvent;
 
 /* Mirror of XSetWindowAttributes (LP64 layout) for XChangeWindowAttributes. */
 typedef struct {
@@ -119,47 +120,47 @@ typedef struct {
     int override_redirect;
     unsigned long colormap;
     unsigned long cursor;
-} InbeXSetWindowAttributes;
+} KryonX11XSetWindowAttributes;
 
-typedef Display *(*InbeXOpenDisplay)(const char *);
-typedef Window (*InbeXDefaultRootWindow)(Display *);
-typedef int (*InbeXDefaultScreen)(Display *);
-typedef unsigned long (*InbeXDefaultVisual)(Display *, int);
-typedef int (*InbeXDefaultDepth)(Display *, int);
-typedef int (*InbeXDisplayWidth)(Display *, int);
-typedef int (*InbeXDisplayHeight)(Display *, int);
-typedef Atom (*InbeXInternAtom)(Display *, const char *, int);
-typedef Window (*InbeXCreateSimpleWindow)(Display *, Window, int, int,
+typedef Display *(*KryonX11XOpenDisplay)(const char *);
+typedef Window (*KryonX11XDefaultRootWindow)(Display *);
+typedef int (*KryonX11XDefaultScreen)(Display *);
+typedef unsigned long (*KryonX11XDefaultVisual)(Display *, int);
+typedef int (*KryonX11XDefaultDepth)(Display *, int);
+typedef int (*KryonX11XDisplayWidth)(Display *, int);
+typedef int (*KryonX11XDisplayHeight)(Display *, int);
+typedef Atom (*KryonX11XInternAtom)(Display *, const char *, int);
+typedef Window (*KryonX11XCreateSimpleWindow)(Display *, Window, int, int,
                                           unsigned int, unsigned int,
                                           unsigned int, unsigned long,
                                           unsigned long);
-typedef int (*InbeXDestroyWindow)(Display *, Window);
-typedef int (*InbeXMoveWindow)(Display *, Window, int, int);
-typedef int (*InbeXMapWindow)(Display *, Window);
-typedef int (*InbeXStoreName)(Display *, Window, const char *);
-typedef int (*InbeXSelectInput)(Display *, Window, long);
-typedef int (*InbeXChangeWindowAttributes)(Display *, Window, unsigned long,
-                                           const InbeXSetWindowAttributes *);
-typedef void *(*InbeXCreateGC)(Display *, Drawable, unsigned long, void *);
-typedef int (*InbeXFreeGC)(Display *, void *);
-typedef int (*InbeXPutImage)(Display *, Drawable, void *, XImage *,
+typedef int (*KryonX11XDestroyWindow)(Display *, Window);
+typedef int (*KryonX11XMoveWindow)(Display *, Window, int, int);
+typedef int (*KryonX11XMapWindow)(Display *, Window);
+typedef int (*KryonX11XStoreName)(Display *, Window, const char *);
+typedef int (*KryonX11XSelectInput)(Display *, Window, long);
+typedef int (*KryonX11XChangeWindowAttributes)(Display *, Window, unsigned long,
+                                           const KryonX11XSetWindowAttributes *);
+typedef void *(*KryonX11XCreateGC)(Display *, Drawable, unsigned long, void *);
+typedef int (*KryonX11XFreeGC)(Display *, void *);
+typedef int (*KryonX11XPutImage)(Display *, Drawable, void *, XImage *,
                              int, int, int, int, unsigned int, unsigned int);
-typedef XImage *(*InbeXCreateImage)(Display *, void *, unsigned int,
+typedef XImage *(*KryonX11XCreateImage)(Display *, void *, unsigned int,
                                             int, int, char *, unsigned int,
                                             unsigned int, int, int);
-typedef int (*InbeXDestroyImage)(XImage *);
-typedef int (*InbeXPending)(Display *);
-typedef int (*InbeXNextEvent)(Display *, InbeXEvent *);
-typedef int (*InbeXFlush)(Display *);
-typedef int (*InbeXFree)(void *);
-typedef int (*InbeXGetWindowProperty)(Display *, Window, Atom, long, long, int,
+typedef int (*KryonX11XDestroyImage)(XImage *);
+typedef int (*KryonX11XPending)(Display *);
+typedef int (*KryonX11XNextEvent)(Display *, KryonX11XEvent *);
+typedef int (*KryonX11XFlush)(Display *);
+typedef int (*KryonX11XFree)(void *);
+typedef int (*KryonX11XGetWindowProperty)(Display *, Window, Atom, long, long, int,
                                       Atom, Atom *, int *, unsigned long *,
                                       unsigned long *, unsigned char **);
-typedef int (*InbeXChangeProperty)(Display *, Window, Atom, Atom, int, int,
+typedef int (*KryonX11XChangeProperty)(Display *, Window, Atom, Atom, int, int,
                                    const unsigned char *, int);
 
 /* XCreateWindow attributes we set through XChangeWindowAttributes. */
-enum { InbeCWOverrideRedirect = 1 << 9 };
+enum { KryonX11CWOverrideRedirect = 1 << 9 };
 
 #define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
 struct NativeWindow {
@@ -192,31 +193,31 @@ static NativeWindow *ui_windows[NATIVE_WINDOW_MAX];
 static int ui_window_count;
 static NativeWindow *ui_window_active;
 
-static InbeXOpenDisplay ui_open_display;
-static InbeXDefaultRootWindow ui_root_window;
-static InbeXDefaultScreen ui_default_screen;
-static InbeXDefaultVisual ui_default_visual;
-static InbeXDefaultDepth ui_default_depth;
-static InbeXDisplayWidth ui_display_width;
-static InbeXDisplayHeight ui_display_height;
-static InbeXInternAtom ui_intern_atom;
-static InbeXCreateSimpleWindow ui_create_simple_window;
-static InbeXDestroyWindow ui_destroy_window;
-static InbeXMoveWindow ui_move_window;
-static InbeXMapWindow ui_map_window;
-static InbeXStoreName ui_store_name;
-static InbeXSelectInput ui_select_input;
-static InbeXChangeWindowAttributes ui_change_attributes;
-static InbeXCreateGC ui_create_gc;
-static InbeXPutImage ui_put_image;
-static InbeXCreateImage ui_create_image;
-static InbeXDestroyImage ui_destroy_image;
-static InbeXPending ui_pending;
-static InbeXNextEvent ui_next_event;
-static InbeXFlush ui_x11_flush;
-static InbeXFree ui_x11_free;
-static InbeXGetWindowProperty ui_get_window_property;
-static InbeXChangeProperty ui_change_property;
+static KryonX11XOpenDisplay ui_open_display;
+static KryonX11XDefaultRootWindow ui_root_window;
+static KryonX11XDefaultScreen ui_default_screen;
+static KryonX11XDefaultVisual ui_default_visual;
+static KryonX11XDefaultDepth ui_default_depth;
+static KryonX11XDisplayWidth ui_display_width;
+static KryonX11XDisplayHeight ui_display_height;
+static KryonX11XInternAtom ui_intern_atom;
+static KryonX11XCreateSimpleWindow ui_create_simple_window;
+static KryonX11XDestroyWindow ui_destroy_window;
+static KryonX11XMoveWindow ui_move_window;
+static KryonX11XMapWindow ui_map_window;
+static KryonX11XStoreName ui_store_name;
+static KryonX11XSelectInput ui_select_input;
+static KryonX11XChangeWindowAttributes ui_change_attributes;
+static KryonX11XCreateGC ui_create_gc;
+static KryonX11XPutImage ui_put_image;
+static KryonX11XCreateImage ui_create_image;
+static KryonX11XDestroyImage ui_destroy_image;
+static KryonX11XPending ui_pending;
+static KryonX11XNextEvent ui_next_event;
+static KryonX11XFlush ui_x11_flush;
+static KryonX11XFree ui_x11_free;
+static KryonX11XGetWindowProperty ui_get_window_property;
+static KryonX11XChangeProperty ui_change_property;
 
 static void *
 ui_resolve(void *handle, const char *name)
@@ -239,31 +240,31 @@ ui_x11_init(void)
     if(ui_x11 == NULL)
         return 0;
 
-    ui_open_display = (InbeXOpenDisplay)ui_resolve(ui_x11, "XOpenDisplay");
-    ui_root_window = (InbeXDefaultRootWindow)ui_resolve(ui_x11, "XDefaultRootWindow");
-    ui_default_screen = (InbeXDefaultScreen)ui_resolve(ui_x11, "XDefaultScreen");
-    ui_default_visual = (InbeXDefaultVisual)ui_resolve(ui_x11, "XDefaultVisual");
-    ui_default_depth = (InbeXDefaultDepth)ui_resolve(ui_x11, "XDefaultDepth");
-    ui_display_width = (InbeXDisplayWidth)ui_resolve(ui_x11, "XDisplayWidth");
-    ui_display_height = (InbeXDisplayHeight)ui_resolve(ui_x11, "XDisplayHeight");
-    ui_intern_atom = (InbeXInternAtom)ui_resolve(ui_x11, "XInternAtom");
-    ui_create_simple_window = (InbeXCreateSimpleWindow)ui_resolve(ui_x11, "XCreateSimpleWindow");
-    ui_destroy_window = (InbeXDestroyWindow)ui_resolve(ui_x11, "XDestroyWindow");
-    ui_move_window = (InbeXMoveWindow)ui_resolve(ui_x11, "XMoveWindow");
-    ui_map_window = (InbeXMapWindow)ui_resolve(ui_x11, "XMapWindow");
-    ui_store_name = (InbeXStoreName)ui_resolve(ui_x11, "XStoreName");
-    ui_select_input = (InbeXSelectInput)ui_resolve(ui_x11, "XSelectInput");
-    ui_change_attributes = (InbeXChangeWindowAttributes)ui_resolve(ui_x11, "XChangeWindowAttributes");
-    ui_create_gc = (InbeXCreateGC)ui_resolve(ui_x11, "XCreateGC");
-    ui_put_image = (InbeXPutImage)ui_resolve(ui_x11, "XPutImage");
-    ui_create_image = (InbeXCreateImage)ui_resolve(ui_x11, "XCreateImage");
-    ui_destroy_image = (InbeXDestroyImage)ui_resolve(ui_x11, "XDestroyImage");
-    ui_pending = (InbeXPending)ui_resolve(ui_x11, "XPending");
-    ui_next_event = (InbeXNextEvent)ui_resolve(ui_x11, "XNextEvent");
-    ui_x11_flush = (InbeXFlush)ui_resolve(ui_x11, "XFlush");
-    ui_x11_free = (InbeXFree)ui_resolve(ui_x11, "XFree");
-    ui_get_window_property = (InbeXGetWindowProperty)ui_resolve(ui_x11, "XGetWindowProperty");
-    ui_change_property = (InbeXChangeProperty)ui_resolve(ui_x11, "XChangeProperty");
+    ui_open_display = (KryonX11XOpenDisplay)ui_resolve(ui_x11, "XOpenDisplay");
+    ui_root_window = (KryonX11XDefaultRootWindow)ui_resolve(ui_x11, "XDefaultRootWindow");
+    ui_default_screen = (KryonX11XDefaultScreen)ui_resolve(ui_x11, "XDefaultScreen");
+    ui_default_visual = (KryonX11XDefaultVisual)ui_resolve(ui_x11, "XDefaultVisual");
+    ui_default_depth = (KryonX11XDefaultDepth)ui_resolve(ui_x11, "XDefaultDepth");
+    ui_display_width = (KryonX11XDisplayWidth)ui_resolve(ui_x11, "XDisplayWidth");
+    ui_display_height = (KryonX11XDisplayHeight)ui_resolve(ui_x11, "XDisplayHeight");
+    ui_intern_atom = (KryonX11XInternAtom)ui_resolve(ui_x11, "XInternAtom");
+    ui_create_simple_window = (KryonX11XCreateSimpleWindow)ui_resolve(ui_x11, "XCreateSimpleWindow");
+    ui_destroy_window = (KryonX11XDestroyWindow)ui_resolve(ui_x11, "XDestroyWindow");
+    ui_move_window = (KryonX11XMoveWindow)ui_resolve(ui_x11, "XMoveWindow");
+    ui_map_window = (KryonX11XMapWindow)ui_resolve(ui_x11, "XMapWindow");
+    ui_store_name = (KryonX11XStoreName)ui_resolve(ui_x11, "XStoreName");
+    ui_select_input = (KryonX11XSelectInput)ui_resolve(ui_x11, "XSelectInput");
+    ui_change_attributes = (KryonX11XChangeWindowAttributes)ui_resolve(ui_x11, "XChangeWindowAttributes");
+    ui_create_gc = (KryonX11XCreateGC)ui_resolve(ui_x11, "XCreateGC");
+    ui_put_image = (KryonX11XPutImage)ui_resolve(ui_x11, "XPutImage");
+    ui_create_image = (KryonX11XCreateImage)ui_resolve(ui_x11, "XCreateImage");
+    ui_destroy_image = (KryonX11XDestroyImage)ui_resolve(ui_x11, "XDestroyImage");
+    ui_pending = (KryonX11XPending)ui_resolve(ui_x11, "XPending");
+    ui_next_event = (KryonX11XNextEvent)ui_resolve(ui_x11, "XNextEvent");
+    ui_x11_flush = (KryonX11XFlush)ui_resolve(ui_x11, "XFlush");
+    ui_x11_free = (KryonX11XFree)ui_resolve(ui_x11, "XFree");
+    ui_get_window_property = (KryonX11XGetWindowProperty)ui_resolve(ui_x11, "XGetWindowProperty");
+    ui_change_property = (KryonX11XChangeProperty)ui_resolve(ui_x11, "XChangeProperty");
 
     if(ui_open_display == NULL || ui_root_window == NULL ||
        ui_create_simple_window == NULL || ui_put_image == NULL ||
@@ -322,7 +323,7 @@ ui_primary_workarea(int *x, int *y, int *w, int *h)
     if(workarea == 0)
         return;
     if(ui_get_window_property(ui_display, ui_root_window(ui_display), workarea,
-                              0, 4, 0, InbeXA_CARDINAL, &type, &format,
+                              0, 4, 0, KryonX11XA_CARDINAL, &type, &format,
                               &n, &left, &data) != 0 || n < 4 || data == NULL) {
         if(data != NULL)
             ui_x11_free(data);
@@ -349,7 +350,7 @@ ui_window_apply_ewmh_hints(Window window, int flags)
         unsigned long hints[5] = { 2, 0, 0, 0, 0 };
         if(motif != 0)
             ui_change_property(ui_display, window, motif, motif, 32,
-                               InbePropModeReplace,
+                               KryonX11PropModeReplace,
                                (const unsigned char *)hints, 5);
     }
 
@@ -370,15 +371,15 @@ ui_window_apply_ewmh_hints(Window window, int flags)
         if(sticky != 0)
             states[state_count++] = sticky;
         if(desktop != 0)
-            ui_change_property(ui_display, window, desktop, InbeXA_CARDINAL,
-                               32, InbePropModeReplace,
+            ui_change_property(ui_display, window, desktop, KryonX11XA_CARDINAL,
+                               32, KryonX11PropModeReplace,
                                (const unsigned char *)&all_desktops, 1);
     }
     if(state_count > 0) {
         Atom state = ui_intern_atom(ui_display, "_NET_WM_STATE", 0);
         if(state != 0)
-            ui_change_property(ui_display, window, state, InbeXA_ATOM, 32,
-                               InbePropModeReplace,
+            ui_change_property(ui_display, window, state, KryonX11XA_ATOM, 32,
+                               KryonX11PropModeReplace,
                                (const unsigned char *)states, state_count);
     }
 }
@@ -395,16 +396,13 @@ OpenNativeWindow(const char *title, int x, int y, int width, int height,
     if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_x11_init())
         return NULL;
 
-    if((flags & NATIVE_WINDOW_TOP_RIGHT) != 0) {
+    if((flags & (NATIVE_WINDOW_TOP_RIGHT | NATIVE_WINDOW_CENTER)) != 0) {
         int wx, wy, ww, wh;
         ui_primary_workarea(&wx, &wy, &ww, &wh);
-        x = wx + ww - width - x;
-        y = wy + y;
-    } else if((flags & NATIVE_WINDOW_CENTER) != 0) {
-        int wx, wy, ww, wh;
-        ui_primary_workarea(&wx, &wy, &ww, &wh);
-        x = wx + (ww - width) / 2;
-        y = wy + (wh - height) / 2;
+        WindowPoint position = WindowInitialPosition(x, y, width, height,
+                                                     flags, wx, wy, ww, wh);
+        x = position.x;
+        y = position.y;
     }
 
     win = (NativeWindow *)calloc(1, sizeof(NativeWindow));
@@ -432,16 +430,16 @@ OpenNativeWindow(const char *title, int x, int y, int width, int height,
      * managed and drop decorations through _MOTIF_WM_HINTS instead. */
     if((flags & NATIVE_WINDOW_BORDERLESS) != 0 &&
        (flags & NATIVE_WINDOW_STICKY) == 0 && ui_change_attributes != NULL) {
-        InbeXSetWindowAttributes attributes;
+        KryonX11XSetWindowAttributes attributes;
         memset(&attributes, 0, sizeof(attributes));
         attributes.override_redirect = 1; /* True */
-        ui_change_attributes(ui_display, win->window, InbeCWOverrideRedirect, &attributes);
+        ui_change_attributes(ui_display, win->window, KryonX11CWOverrideRedirect, &attributes);
     }
     ui_window_apply_ewmh_hints(win->window, flags);
     if(ui_select_input != NULL)
         ui_select_input(ui_display, win->window,
-                        InbeExposureMask | InbeButtonPressMask |
-                        InbeButtonReleaseMask | InbePointerMotionMask);
+                        KryonX11ExposureMask | KryonX11ButtonPressMask |
+                        KryonX11ButtonReleaseMask | KryonX11PointerMotionMask);
 
     win->target = LoadRenderTexture(width, height);
     if(win->target.id == 0 || !ui_window_register(win)) {
@@ -468,7 +466,7 @@ CloseNativeWindow(NativeWindow *window)
     ui_window_unregister(window);
     ui_paint_layers_destroy(window->paint_layers);
     if(window->ximage != NULL) {
-        ((InbeXImageInfo *)window->ximage)->data = NULL;
+        ((KryonX11XImageInfo *)window->ximage)->data = NULL;
         ui_destroy_image(window->ximage);
     }
     free(window->pixels);
@@ -520,9 +518,9 @@ ui_window_dump(const unsigned char *flipped, int width, int height)
 static void
 ui_window_convert(NativeWindow *window, const unsigned char *rgba)
 {
-    InbeXImageInfo *info = (InbeXImageInfo *)window->ximage;
+    KryonX11XImageInfo *info = (KryonX11XImageInfo *)window->ximage;
     int width = window->width, height = window->height;
-    int lsb = info->byte_order == InbeLSBFirst;
+    int lsb = info->byte_order == KryonX11LSBFirst;
     int y, x, bpl = info->bytes_per_line;
     int bpp = info->bits_per_pixel / 8;
 
@@ -558,7 +556,7 @@ ui_window_blit(NativeWindow *window)
 static void
 ui_window_poll_events(NativeWindow *window)
 {
-    InbeXEvent event;
+    KryonX11XEvent event;
     int dirty = 0;
 
     if(ui_pending == NULL || ui_next_event == NULL)
@@ -566,11 +564,11 @@ ui_window_poll_events(NativeWindow *window)
     while(ui_pending(ui_display) > 0) {
         ui_next_event(ui_display, &event);
         if(event.type == 12 /* Expose */ &&
-           ((InbeXExposeEvent *)&event)->window == window->window)
+           ((KryonX11XExposeEvent *)&event)->window == window->window)
             dirty = 1;
         else if(event.type == 4 /* ButtonPress */ &&
-                ((InbeXButtonEvent *)&event)->window == window->window) {
-            InbeXButtonEvent *button = (InbeXButtonEvent *)&event;
+                ((KryonX11XButtonEvent *)&event)->window == window->window) {
+            KryonX11XButtonEvent *button = (KryonX11XButtonEvent *)&event;
             window->clicked = 1;
             window->click_button = (int)button->button;
             window->click_x = button->x;
@@ -582,11 +580,11 @@ ui_window_poll_events(NativeWindow *window)
                 window->dragged = 0;
             }
         } else if(event.type == 5 /* ButtonRelease */ &&
-                  ((InbeXButtonEvent *)&event)->window == window->window) {
+                  ((KryonX11XButtonEvent *)&event)->window == window->window) {
             window->drag_active = 0;
         } else if(event.type == 6 /* MotionNotify */ &&
-                  ((InbeXButtonEvent *)&event)->window == window->window) {
-            InbeXButtonEvent *motion = (InbeXButtonEvent *)&event;
+                  ((KryonX11XButtonEvent *)&event)->window == window->window) {
+            KryonX11XButtonEvent *motion = (KryonX11XButtonEvent *)&event;
             int dx, dy;
             if(!window->drag_active || ui_move_window == NULL)
                 continue;
@@ -596,24 +594,16 @@ ui_window_poll_events(NativeWindow *window)
                 continue;
             window->drag_last_root_x = motion->x_root;
             window->drag_last_root_y = motion->y_root;
-            window->x += dx;
-            window->y += dy;
-            /* Keep a grabbable strip inside the primary work area so the
-             * window can never be dragged out of reach. */
             {
                 int wx, wy, ww, wh;
                 ui_primary_workarea(&wx, &wy, &ww, &wh);
-                if(window->x < wx)
-                    window->x = wx;
-                if(window->y < wy)
-                    window->y = wy;
-                if(window->x > wx + ww - 24)
-                    window->x = wx + ww - 24;
-                if(window->y > wy + wh - 24)
-                    window->y = wy + wh - 24;
+                WindowPoint position = WindowDragPosition(
+                    window->x, window->y, dx, dy, wx, wy, ww, wh);
+                window->x = position.x;
+                window->y = position.y;
             }
             ui_move_window(ui_display, window->window, window->x, window->y);
-            if(dx * dx + dy * dy > 9)
+            if(WindowDragMoved(dx, dy))
                 window->dragged = 1;
             dirty = 1;
         }
@@ -644,11 +634,11 @@ EndNativeWindow(void)
         return;
 
     if(window->ximage != NULL &&
-       (((InbeXImageInfo *)window->ximage)->width != window->width ||
-        ((InbeXImageInfo *)window->ximage)->height != window->height)) {
+       (((KryonX11XImageInfo *)window->ximage)->width != window->width ||
+        ((KryonX11XImageInfo *)window->ximage)->height != window->height)) {
         /* XDestroyImage frees the data pointer it was created with; null it
          * first because the buffer belongs to the window, not the image. */
-        ((InbeXImageInfo *)window->ximage)->data = NULL;
+        ((KryonX11XImageInfo *)window->ximage)->data = NULL;
         ui_destroy_image(window->ximage);
         window->ximage = NULL;
     }
@@ -660,7 +650,7 @@ EndNativeWindow(void)
         window->ximage = ui_create_image(ui_display,
                                     (void *)ui_default_visual(ui_display, ui_default_screen(ui_display)),
                                     (unsigned int)ui_default_depth(ui_display, ui_default_screen(ui_display)),
-                                    InbeZPixmap, 0, (char *)window->pixels,
+                                    KryonX11ZPixmap, 0, (char *)window->pixels,
                                     (unsigned int)window->width, (unsigned int)window->height,
                                     32, 0);
         if(window->ximage == NULL)
@@ -838,18 +828,25 @@ ui_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
         GetCursorPos(&window->drag_last); SetCapture(hwnd); return 0;
     case WM_MOUSEMOVE:
         if(window->drag_active) {
-            RECT work; int dx, dy;
-            GetCursorPos(&point); dx = point.x - window->drag_last.x; dy = point.y - window->drag_last.y;
+            RECT work;
+            int dx, dy;
+            GetCursorPos(&point);
+            dx = point.x - window->drag_last.x;
+            dy = point.y - window->drag_last.y;
             if(dx != 0 || dy != 0) {
-                window->x += dx; window->y += dy;
-                SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
-                if(window->x < work.left) window->x = work.left;
-                if(window->y < work.top) window->y = work.top;
-                if(window->x > work.right - 24) window->x = work.right - 24;
-                if(window->y > work.bottom - 24) window->y = work.bottom - 24;
+                if(SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0)) {
+                    WindowPoint position = WindowDragPosition(
+                        window->x, window->y, dx, dy, work.left, work.top,
+                        work.right - work.left, work.bottom - work.top);
+                    window->x = position.x;
+                    window->y = position.y;
+                } else {
+                    window->x += dx;
+                    window->y += dy;
+                }
                 SetWindowPos(hwnd, NULL, window->x, window->y, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);
                 window->drag_last = point;
-                if(dx*dx + dy*dy > 9) window->dragged = 1;
+                if(WindowDragMoved(dx, dy)) window->dragged = 1;
             }
         }
         return 0;
@@ -883,9 +880,14 @@ NativeWindow *OpenNativeWindow(const char *title, int x, int y, int width, int h
 {
     NativeWindow *window; DWORD style = WS_POPUP, ex_style = 0; RECT work;
     if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_window_register_class()) return NULL;
-    SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
-    if(flags & NATIVE_WINDOW_CENTER) { x = work.left+(work.right-work.left-width)/2; y = work.top+(work.bottom-work.top-height)/2; }
-    else if(flags & NATIVE_WINDOW_TOP_RIGHT) { x = work.right-width-x; y = work.top+y; }
+    if((flags & (NATIVE_WINDOW_TOP_RIGHT | NATIVE_WINDOW_CENTER)) != 0 &&
+       SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0)) {
+        WindowPoint position = WindowInitialPosition(
+            x, y, width, height, flags, work.left, work.top,
+            work.right - work.left, work.bottom - work.top);
+        x = position.x;
+        y = position.y;
+    }
     if(!(flags & NATIVE_WINDOW_BORDERLESS)) style = WS_OVERLAPPEDWINDOW;
     if(flags & NATIVE_WINDOW_ALWAYS_ON_TOP) ex_style |= WS_EX_TOPMOST;
     if(flags & NATIVE_WINDOW_SKIP_TASKBAR) ex_style |= WS_EX_TOOLWINDOW;
@@ -1250,13 +1252,11 @@ OpenNativeWindow(const char *title, int x, int y, int width, int height,
     if((flags & (NATIVE_WINDOW_TOP_RIGHT | NATIVE_WINDOW_CENTER)) != 0) {
         SDL_Rect usable;
         if(SDL_GetDisplayUsableBounds(0, &usable) == 0) {
-            if((flags & NATIVE_WINDOW_TOP_RIGHT) != 0) {
-                x = usable.x + usable.w - width - x;
-                y = usable.y + y;
-            } else {
-                x = usable.x + (usable.w - width) / 2;
-                y = usable.y + (usable.h - height) / 2;
-            }
+            WindowPoint position = WindowInitialPosition(
+                x, y, width, height, flags,
+                usable.x, usable.y, usable.w, usable.h);
+            x = position.x;
+            y = position.y;
         }
     }
 
@@ -1484,10 +1484,19 @@ PumpWindows(void)
             window->drag_last_gx = gx;
             window->drag_last_gy = gy;
             if(dx != 0 || dy != 0) {
-                window->x += dx;
-                window->y += dy;
+                SDL_Rect usable;
+                if(SDL_GetDisplayUsableBounds(0, &usable) == 0) {
+                    WindowPoint position = WindowDragPosition(
+                        window->x, window->y, dx, dy,
+                        usable.x, usable.y, usable.w, usable.h);
+                    window->x = position.x;
+                    window->y = position.y;
+                } else {
+                    window->x += dx;
+                    window->y += dy;
+                }
                 SDL_SetWindowPosition(window->window, window->x, window->y);
-                if(dx * dx + dy * dy > 9)
+                if(WindowDragMoved(dx, dy))
                     window->dragged = 1;
             }
         }

@@ -12,6 +12,7 @@ int ui_backend_is_termi(void);
 void ui_draw(Drawing command);
 void ui_draw_surface(SurfaceDrawing command);
 void ui_draw_surface_direct(SurfaceDrawing command);
+void ui_draw_texture(Texture2D texture, Rectangle bounds, Color tint);
 int ui_draw_surface_cached(SurfaceDrawing command);
 void ui_surface_cache_shutdown(void);
 

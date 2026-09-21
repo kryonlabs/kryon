@@ -1,0 +1,29 @@
+#module "capability_props"
+
+KryCapability :: enum {
+    KRY_CAP_FILE_PICKER = 1
+    KRY_CAP_FILE_SAVE = 2
+    KRY_CAP_SHARE = 4
+    KRY_CAP_SECURE_STORE = 8
+    KRY_CAP_BIOMETRIC_UNLOCK = 16
+    KRY_CAP_NOTIFICATIONS = 32
+    KRY_CAP_WAKELOCK = 64
+    KRY_CAP_CLIPBOARD = 128
+}
+
+KrySafeArea :: struct {
+    left: int
+    top: int
+    right: int
+    bottom: int
+}
+
+KryViewportSpec :: struct {
+    width: int
+    height: int
+    safe_area: KrySafeArea
+    padding: int
+    reserved_top: int
+    reserved_bottom: int
+    min_content_width: int
+}

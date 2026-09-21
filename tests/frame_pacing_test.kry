@@ -1,0 +1,53 @@
+#module "frame_pacing_test"
+
+#import "kryon_frame.h"
+#import <stdio.h>
+#import <stdlib.h>
+
+static set_target_fps_calls: int
+static last_target_fps: int = -1
+
+SetTargetFPS :: (fps: int) #export {
+    set_target_fps_calls++
+    last_target_fps = fps
+}
+
+CheckFramePacingValue :: (name: const char*, got: int,
+                          expected: int) {
+    if got == expected {
+        return
+    }
+    fprintf(stderr, "%s: got %d expected %d\n", name, got, expected)
+    exit(1)
+}
+
+main :: () -> int #export {
+    ConfigureFramePacing(15, 30)
+    CheckFramePacingValue("initial target", last_target_fps, 15)
+    CheckFramePacingValue("initial getter", GetFramePacingTargetFPS(), 15)
+    CheckFramePacingValue("initial calls", set_target_fps_calls, 1)
+
+    UpdateFramePacing()
+    CheckFramePacingValue("unchanged calls", set_target_fps_calls, 1)
+
+    SetFramePacingActive(1)
+    UpdateFramePacing()
+    CheckFramePacingValue("active target", last_target_fps, 30)
+    CheckFramePacingValue("active getter", GetFramePacingTargetFPS(), 30)
+    CheckFramePacingValue("active calls", set_target_fps_calls, 2)
+
+    SetFramePacingActive(0)
+    UpdateFramePacing()
+    CheckFramePacingValue("idle target", last_target_fps, 15)
+    CheckFramePacingValue("idle calls", set_target_fps_calls, 3)
+
+    ConfigureFramePacing(0, 24)
+    CheckFramePacingValue("fallback target", last_target_fps, 24)
+
+    DisableFramePacing()
+    CheckFramePacingValue("disabled target", last_target_fps, 0)
+    CheckFramePacingValue("disabled getter", GetFramePacingTargetFPS(), 0)
+
+    puts("frame pacing Kry checks passed")
+    return 0
+}

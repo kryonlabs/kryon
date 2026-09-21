@@ -2,6 +2,7 @@
 #import "ui_internal.h"
 #import "ui_paint_internal.h"
 #import "ui_style_internal.h"
+#import "math.h"
 
 WidgetFrameForRole :: (tone: ButtonTone, state: ButtonState,
 disabled: i32, selected: i32, style_kind: i32,
@@ -62,4 +63,72 @@ ui_ring_paint_spec :: (ring: LoadingRingSpec) -> LoadingRingSpec #export {
         ring.glow_blur = 0.0
     }
     return ring
+}
+
+ui_draw :: (command: Drawing) #export {
+    bounds: Rectangle = command.bounds
+    color: Color = GetColor(command.color)
+    if command.kind == DrawingText {
+        baseline: i32 = TextBaselineY(command.text,
+            (int)bounds.y, (int)bounds.height, command.font)
+        RenderNonSelectableText(command.text, (int)bounds.x,
+            baseline, command.font, color)
+        return
+    }
+    if command.kind == DrawingIcon {
+        DrawIcon(command.icon, bounds, color)
+        return
+    }
+    if command.kind == DrawingTexture {
+        ui_draw_texture(command.texture, bounds, color)
+        return
+    }
+    if command.kind == DrawingChevron {
+        y: i32 = (int)floorf(bounds.y)
+        bottom: i32 = (int)ceilf(bounds.y + bounds.height)
+        right: i32 = (int)ceilf(bounds.x + bounds.width)
+        while y < bottom {
+            x: i32 = (int)floorf(bounds.x)
+            while x < right {
+                coverage: float = ChevronCoverage(
+                    (float)x - bounds.x, (float)y - bounds.y,
+                    bounds.width)
+                if coverage > 0.0f {
+                    DrawRectangle(x, y, 1, 1,
+                        GetColor(Opacity(command.color, coverage)))
+                }
+                x += 1
+            }
+            y += 1
+        }
+        return
+    }
+    if command.kind == DrawingRing {
+        ring: LoadingRingSpec = ui_ring_paint_spec(command.ring)
+        radius: float = LoadingPaintRadius(ring)
+        y: i32 = (int)floorf(ring.y - radius)
+        bottom: i32 = (int)ceilf(ring.y + radius)
+        right: i32 = (int)ceilf(ring.x + radius)
+        while y < bottom {
+            x: i32 = (int)floorf(ring.x - radius)
+            while x < right {
+                sample: RingSample = LoadingSample(ring,
+                    (float)x - ring.x, (float)y - ring.y)
+                if (sample.glow & 255) != 0 {
+                    DrawRectangle(x, y, 1, 1, GetColor(sample.glow))
+                }
+                if (sample.track & 255) != 0 {
+                    DrawRectangle(x, y, 1, 1, GetColor(sample.track))
+                }
+                if (sample.arc & 255) != 0 {
+                    DrawRectangle(x, y, 1, 1, GetColor(sample.arc))
+                }
+                if (sample.tip & 255) != 0 {
+                    DrawRectangle(x, y, 1, 1, GetColor(sample.tip))
+                }
+                x += 1
+            }
+            y += 1
+        }
+    }
 }

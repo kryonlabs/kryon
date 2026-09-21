@@ -42,6 +42,7 @@ surface review:
 | `runtime/button_props.kry` | Button props | `.kry canonical` |
 | `runtime/canvas.kry` | Canvas transform and hit-test policy | `.kry canonical` |
 | `runtime/canvas_props.kry` | Canvas props and result | `.kry canonical` |
+| `runtime/capability_props.kry` | Capability flag enum and viewport safe-area geometry | `.kry canonical` |
 | `runtime/canvas_grid.kry`, `src/ui/canvas.kry` | CanvasGrid lines, drawing, and hit testing | `.kry canonical` |
 | `runtime/card.kry` | Card composition | `.kry canonical` |
 | `runtime/card_props.kry` | Card props | `.kry canonical` |
@@ -93,6 +94,7 @@ surface review:
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
 | `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
+| `runtime/node_props.kry` | Retained node kind/flags, node record, and size constants | `.kry canonical` |
 | `runtime/scene_tree_props.kry` | Game2D scene node kind and flag values | `.kry support` |
 | `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
 | `runtime/paned_view.kry` | PanedView split/layout/handle geometry, drag lifecycle, and change policy | `.kry canonical` |
@@ -254,6 +256,23 @@ surface review:
 | `src/ui/ui_scaling.kry` | Ui Scaling widget host surface | `.kry canonical` |
 | `src/ui/ui_transition.kry` | Ui Transition widget host surface | `.kry canonical` |
 | `src/ui/widget_input.kry` | Widget Input widget host surface | `.kry canonical` |
+| `src/ui/app_shell_layout.kry` | App-shell route layout calculation (replaces `src/core/app_shell.c`) | `.kry canonical` |
+| `src/ui/app_shell_route.kry` | App-shell route operations (replaces `src/core/app_shell.c`) | `.kry canonical` |
+| `src/ui/capability_layout.kry` | Capability naming and viewport safe-content geometry (replaces `src/core/kry_capabilities.c`) | `.kry canonical` |
+| `src/ui/frame_lifecycle.kry` | Frame lifecycle policy (replaces `src/core/kryon_frame.c`) | `.kry canonical` |
+| `src/ui/frame_pacing.kry` | Frame pacing policy (replaces `src/core/kryon_frame_pacing.c`) | `.kry canonical` |
+| `src/ui/kryon_test.kry` | Test and inspection helper surface | `.kry support` |
+| `src/ui/locale_defaults.kry` | Built-in theme-control fallback labels | `.kry canonical` |
+| `src/ui/locale_parser.kry` | Catalog entry and language-list parsing | `.kry canonical` |
+| `src/ui/locale_policy.kry` | Locale-code selection, preferred-language matching, and catalog fallback | `.kry canonical` |
+| `src/ui/node.kry` | Retained node initializer and property-value constructors (replaces `src/core/kryon_node.c`) | `.kry canonical` |
+| `src/ui/preference_policy.kry` | Theme and orientation preference decisions (replaces `src/core/device_preferences.c`) | `.kry canonical` |
+| `src/ui/screen_routes.kry` | App screen routing and callback dispatch (replaces `src/core/app_runtime.c`) | `.kry canonical` |
+| `src/ui/theme_catalog.kry` | Theme catalog host policy | `.kry canonical` |
+| `src/ui/theme_color.kry` | Theme color resolution host policy | `.kry canonical` |
+| `src/ui/theme_identity.kry` | Theme identity host policy | `.kry canonical` |
+| `src/ui/theme_state.kry` | Active theme-selection state (replaces `src/core/theme.c`) | `.kry canonical` |
+| `src/ui/window_policy.kry` | Window placement, drag threshold, and grabbable-strip bounds | `.kry canonical` |
 
 ## Current Implementation Audit
 

@@ -156,7 +156,6 @@ ToolbarResult Toolbar(ToolbarProps toolbar);
 int TabBar(TabBarProps bar);
 int Modal(ModalProps modal);
 int TitleBar(TitleBarProps title_bar);
-MenuResult Menu(MenuProps menu);
 
 int Button(ButtonProps button);
 int Selectable(SelectableProps selectable);

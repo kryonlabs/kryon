@@ -350,6 +350,30 @@ rewrite_body2(const KirModule *m, const K2cppModuleSyms *restab,
 
             while(isalnum((unsigned char)*e) || *e == '_')
                 e++;
+            /* Fixed-width cast "(i32)", "(i64)", "(u8)", "(f32)", ... maps to
+             * the C integer/float type just like a declaration does. */
+            if(p > src && p[-1] == '(' && *e == ')') {
+                char id[32];
+                size_t ilen = (size_t)(e - p);
+                if(ilen < sizeof(id)) {
+                    const char *scalar, *mapped;
+                    memcpy(id, p, ilen);
+                    id[ilen] = '\0';
+                    scalar = KirScalarType(id);
+                    if(*scalar && !strcmp(scalar, id)) {
+                        mapped = KirTargetType(id, KIR_C);
+                        if(mapped != NULL) {
+                            size_t mlen = strlen(mapped);
+                            if(n + mlen < dst_size) {
+                                memcpy(dst + n, mapped, mlen);
+                                n += mlen;
+                            }
+                            p = e - 1;
+                            continue;
+                        }
+                    }
+                }
+            }
             if(*e == '.' && e[1] != '\0' &&
                is_module_alias(m, p, (size_t)(e - p))) {
                 /* alias.member — cross-module call or enum/type member */
@@ -916,10 +940,23 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
             indent++;
             break;
         }
-        case KIR_STMT_CASE:
+        case KIR_STMT_CASE: {
+            char *colon;
             emit_indent(c, indent - 1 > 0 ? indent - 1 : 1);
-            fprintf(c, "%s\n", rw);
+            /* A same-line body ("case X: return y") is one KRY statement, but
+             * the body is a C statement that still needs its terminator. */
+            colon = strchr(rw, ':');
+            if(colon != NULL && colon[1] != '\0') {
+                size_t rw_len = strlen(rw);
+                if(rw[rw_len - 1] != ';' && rw[rw_len - 1] != '{')
+                    fprintf(c, "%s;\n", rw);
+                else
+                    fprintf(c, "%s\n", rw);
+            } else {
+                fprintf(c, "%s\n", rw);
+            }
             break;
+        }
         case KIR_STMT_RETURN:
             emit_indent(c, indent);
             fprintf(c, "%s;\n", rw);

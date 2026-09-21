@@ -1,0 +1,61 @@
+#module "frame_pacing"
+
+#import "kryon_frame.h"
+#import "kryon_compat.generated.h"
+
+static frame_pacing_enabled: int
+static frame_pacing_idle_fps: int
+static frame_pacing_active_fps: int
+static frame_pacing_active: int
+static frame_pacing_target_fps: int
+
+frame_pacing_sanitize_fps :: (fps: int) -> int #private {
+    return fps > 0 ? fps : 0
+}
+
+ConfigureFramePacing :: (idle_fps: int, active_fps: int) #export {
+    frame_pacing_idle_fps = frame_pacing_sanitize_fps(idle_fps)
+    frame_pacing_active_fps = frame_pacing_sanitize_fps(active_fps)
+    frame_pacing_enabled = 0
+    if frame_pacing_idle_fps > 0 || frame_pacing_active_fps > 0 {
+        frame_pacing_enabled = 1
+    }
+    frame_pacing_target_fps = 0
+    UpdateFramePacing()
+}
+
+DisableFramePacing :: () #export {
+    frame_pacing_enabled = 0
+    frame_pacing_active = 0
+    frame_pacing_idle_fps = 0
+    frame_pacing_active_fps = 0
+    if frame_pacing_target_fps != 0 {
+        SetTargetFPS(0)
+        frame_pacing_target_fps = 0
+    }
+}
+
+SetFramePacingActive :: (active: int) #export {
+    frame_pacing_active = active != 0 ? 1 : 0
+}
+
+UpdateFramePacing :: () #export {
+    if !frame_pacing_enabled {
+        return
+    }
+
+    target_fps := frame_pacing_active != 0 ? frame_pacing_active_fps
+                                           : frame_pacing_idle_fps
+    if target_fps <= 0 {
+        target_fps = frame_pacing_active != 0 ? frame_pacing_idle_fps
+                                             : frame_pacing_active_fps
+    }
+    if frame_pacing_target_fps != target_fps {
+        SetTargetFPS(target_fps)
+        frame_pacing_target_fps = target_fps
+    }
+}
+
+GetFramePacingTargetFPS :: () -> int #export {
+    return frame_pacing_target_fps
+}

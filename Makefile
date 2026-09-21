@@ -317,6 +317,7 @@ LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 ANDROID_SURFACE_TEST = $(BUILD_DIR)/tests/android_surface_test
 FRAME_PACING_TEST = $(BUILD_DIR)/tests/frame_pacing_test
+FRAME_PACING_TEST_CODEGEN = $(BUILD_DIR)/frame-pacing-test-kry
 UI_DPI_TEST = $(BUILD_DIR)/tests/ui_dpi_test
 UI_DPI_DESKTOP_TEST = $(BUILD_DIR)/tests/ui_dpi_desktop_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
@@ -336,8 +337,10 @@ UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 UI_SWIPE_TEST = $(BUILD_DIR)/tests/ui_swipe_test
 UI_WINDOW_TEST = $(BUILD_DIR)/tests/ui_window_test
+UI_WINDOW_TEST_CODEGEN = $(BUILD_DIR)/ui-window-test-kry
 SPRITESHEET_TEST = $(BUILD_DIR)/tests/spritesheet_test
 APP_FRAMEWORK_TEST = $(BUILD_DIR)/tests/app_framework_test
+APP_FRAMEWORK_TEST_CODEGEN = $(BUILD_DIR)/app-framework-test-kry
 APP_STORAGE_TEST = $(BUILD_DIR)/tests/app_storage_test
 AUTOMATION_TEST = $(BUILD_DIR)/tests/automation_test
 SYSTEM_THEME_TEST = $(BUILD_DIR)/tests/system_theme_test
@@ -349,11 +352,18 @@ TEXT_INPUT_PRECISION_TEST = $(BUILD_DIR)/tests/text_input_precision_test
 CONTROL_APPEARANCE_PERF_TEST = $(BUILD_DIR)/tests/control_appearance_perf_test
 CONTROL_APPEARANCE_CAPTURE = $(BUILD_DIR)/tests/control_appearance_capture
 CONTROL_APPEARANCE_CAPTURE_PNG = $(BUILD_DIR)/control-appearance-side-by-side.png
+CONTROL_APPEARANCE_CAPTURE_CODEGEN = $(BUILD_DIR)/appearance-capture-kry
 STYLE_CAPTURE_BOARDS = $(BUILD_DIR)/tests/style_capture_boards
+STYLE_CAPTURE_BOARDS_CODEGEN = $(BUILD_DIR)/style-capture-kry
+IMAGE_POLICY_KRY_CODEGEN = $(BUILD_DIR)/image-policy-kry
+IMAGE_POLICY_KRY_TEST = $(BUILD_DIR)/image-policy-test
+TEXT_POLICY_KRY_CODEGEN = $(BUILD_DIR)/text-policy-kry
+TEXT_POLICY_KRY_TEST = $(BUILD_DIR)/text-policy-test
 BUTTON_GALLERY = $(BUILD_DIR)/examples/button_gallery
 BUTTON_GALLERY_CODEGEN = $(BUILD_DIR)/button-gallery-kry
 BUTTON_GALLERY_CAPTURE_DIR = $(BUILD_DIR)/button-gallery-builtins
 BUTTON_GALLERY_BENCHMARK_CSV = $(BUILD_DIR)/button-gallery-benchmark-isolated.csv
+BUTTON_GALLERY_SCORE_CSV = $(BUILD_DIR)/button-gallery-score.csv
 # Raise benchmark priority to reduce preemption noise. Do not pin to a single
 # core: llvmpipe is multithreaded and single-core pinning serializes software
 # rendering, inflating frame times ~5x. Override to disable:
@@ -440,6 +450,8 @@ RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
 KRY_SHA256_TEST = $(BUILD_DIR)/tests/kry_sha256_test
 LOCALE_TEST = $(BUILD_DIR)/tests/locale_test
+LOCALE_POLICY_KRY_TEST = $(BUILD_DIR)/tests/locale_policy_test
+LOCALE_POLICY_KRY_CODEGEN = $(BUILD_DIR)/locale-policy-test-kry
 KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 SFS_KRY_CODEGEN = $(BUILD_DIR)/sfs-kry
@@ -677,10 +689,22 @@ theme-policy-test: $(GENERATED_SRC_DIR)/runtime/theme.c $(GENERATED_SRC_DIR)/run
 	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/theme-cpp tests/theme_policy_test.c $(BUILD_DIR)/tests/theme-cpp/runtime/theme.cpp -o $(BUILD_DIR)/tests/theme-cpp/check
 	$(BUILD_DIR)/tests/theme-cpp/check tests/fixtures/theme/scheme.txt
 
-.PHONY: text-policy-test
-text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
-	$(BUILD_DIR)/text-policy-test
+.PHONY: text-policy-build text-policy-test
+text-policy-build: $(TEXT_POLICY_KRY_TEST)
+
+$(TEXT_POLICY_KRY_CODEGEN)/.generated: tests/text_policy_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(TEXT_POLICY_KRY_CODEGEN)
+	$(K2C) --no-main --root tests -o $(TEXT_POLICY_KRY_CODEGEN) $<
+	@touch $@
+
+$(TEXT_POLICY_KRY_TEST): $(TEXT_POLICY_KRY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(TEXT_POLICY_KRY_CODEGEN) \
+		$(TEXT_POLICY_KRY_CODEGEN)/text_policy_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+text-policy-test: $(TEXT_POLICY_KRY_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY $(TEXT_POLICY_KRY_TEST)
 
 style-policy-test: $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/style.h $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
@@ -781,9 +805,23 @@ surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)
 	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) -Iinclude tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
 	$(BUILD_DIR)/surface-policy-test
 
-image-policy-test: $(GENERATED_SRC_DIR)/runtime/image.c $(GENERATED_SRC_DIR)/runtime/image.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/image_policy_test.c $(GENERATED_SRC_DIR)/runtime/image.c -lm -o $(BUILD_DIR)/image-policy-test
-	$(BUILD_DIR)/image-policy-test
+.PHONY: image-policy-build
+image-policy-build: $(IMAGE_POLICY_KRY_TEST)
+
+$(IMAGE_POLICY_KRY_CODEGEN)/.generated: tests/image_policy_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(IMAGE_POLICY_KRY_CODEGEN)
+	$(K2C) --no-main --root tests -o $(IMAGE_POLICY_KRY_CODEGEN) $<
+	@touch $@
+
+$(IMAGE_POLICY_KRY_TEST): $(IMAGE_POLICY_KRY_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) \
+		-I$(IMAGE_POLICY_KRY_CODEGEN) \
+		$(IMAGE_POLICY_KRY_CODEGEN)/image_policy_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+image-policy-test: $(IMAGE_POLICY_KRY_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY $(IMAGE_POLICY_KRY_TEST)
 
 input-policy-test: $(GENERATED_SRC_DIR)/runtime/input.c $(GENERATED_SRC_DIR)/runtime/input.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/input_policy_test.c $(GENERATED_SRC_DIR)/runtime/input.c -lm -o $(INPUT_POLICY_TEST)
@@ -1128,6 +1166,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(KRY_UPDATE_FLOW_TEST)
 	$(KRY_SHA256_TEST)
 	$(LOCALE_TEST)
+	$(LOCALE_POLICY_KRY_TEST)
 	$(MAKE) sfs-kry-test
 	$(MAKE) theme-catalog-kry-test
 	@if [ "$(KRYON_WITH_SYNC)" = "1" ]; then \
@@ -1151,7 +1190,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(UI_TREE_API_TEST)
 	$(SPRITESHEET_TEST)
 	$(APP_FRAMEWORK_TEST)
-	$(UI_WINDOW_TEST)
+	env -u DISPLAY -u WAYLAND_DISPLAY $(UI_WINDOW_TEST)
 	$(SYSTEM_THEME_TEST)
 	$(CURSOR_INTENT_TEST)
 	$(KIR_TEST)
@@ -1343,7 +1382,7 @@ $(UI_KRY_C) $(UI_KRY_H) &: $(UI_KRY) $(RUNTIME_H) $(K2C)
 	$(K2C) --no-main --root src -o $(GENERATED_SRC_DIR) $(UI_KRY)
 
 $(UI_KRY_C:.c=.o): CPPFLAGS += -Isrc/ui -Isrc/platform -I$(GENERATED_SRC_DIR)/runtime
-$(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/ui/theme_color.h
+$(BUILD_DIR)/core/locale.o: $(GENERATED_SRC_DIR)/ui/locale_defaults.h $(GENERATED_SRC_DIR)/ui/locale_parser.h $(GENERATED_SRC_DIR)/ui/locale_policy.h
 $(GENERATED_SRC_DIR)/ui/scroll.o: CPPFLAGS += -Isrc/backend
 $(GENERATED_SRC_DIR)/ui/dpi.o: CPPFLAGS += -Isrc/backend
 $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST): CPPFLAGS += -Isrc/backend
@@ -1351,10 +1390,10 @@ $(BUILD_DIR)/ui/ui_text.o: CPPFLAGS += -Isrc/ui
 $(BUILD_DIR)/ui/ui_paint_layers.o: CPPFLAGS += -Isrc/ui
 $(WIDGET_SURFACE_TEST) $(DROPDOWN_LAYOUT_TEST) $(BUILD_DIR)/tests/dropdown_capture: CPPFLAGS += -Isrc/ui
 
-$(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
 $(BUILD_DIR)/ui/ui_paint_layers.o: $(GENERATED_SRC_DIR)/ui/widget_store.h $(GENERATED_SRC_DIR)/ui/tab_store.h $(GENERATED_SRC_DIR)/ui/clip.h $(GENERATED_SRC_DIR)/ui/dropdown_store.h $(GENERATED_SRC_DIR)/ui/disabled.h $(GENERATED_SRC_DIR)/ui/input_capture.h
 
 $(BUILD_DIR)/ui/ui_text.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/ui/selectable_text.h $(GENERATED_SRC_DIR)/ui/text.h
+$(BUILD_DIR)/ui/ui_window.o: $(GENERATED_SRC_DIR)/ui/window_policy.h
 $(BUILD_DIR)/ui/ui_text.o: $(GENERATED_SRC_DIR)/ui/text_rows.h
 
 $(GENERATED_SRC_DIR)/ui/button.o: src/ui/ui_style_internal.h
@@ -1608,10 +1647,16 @@ $(ANDROID_SURFACE_TEST): tests/android_surface_test.c src/platform/android_surfa
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/android_surface_test.c \
 		src/platform/android_surface.c src/platform/platform_thread.c -o $@
 
-$(FRAME_PACING_TEST): tests/frame_pacing_test.c src/core/kryon_frame_pacing.c include/kryon_frame.h include/kryon_compat.generated.h | $(BUILD_DIR)
+$(FRAME_PACING_TEST_CODEGEN)/.generated: tests/frame_pacing_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(FRAME_PACING_TEST_CODEGEN)
+	$(K2C) --no-main --root tests -o $(FRAME_PACING_TEST_CODEGEN) $<
+	@touch $@
+
+$(FRAME_PACING_TEST): $(FRAME_PACING_TEST_CODEGEN)/.generated $(GENERATED_SRC_DIR)/ui/frame_pacing.c include/kryon_frame.h include/kryon_compat.generated.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/frame_pacing_test.c \
-		src/core/kryon_frame_pacing.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(FRAME_PACING_TEST_CODEGEN) \
+		$(FRAME_PACING_TEST_CODEGEN)/frame_pacing_test.c \
+		$(GENERATED_SRC_DIR)/ui/frame_pacing.c -o $@
 
 $(UI_DPI_TEST): tests/ui_dpi_test.c $(GENERATED_SRC_DIR)/ui/dpi.c $(GENERATED_SRC_DIR)/ui/dpi.h src/backend/kry_dpi.c src/backend/kry_dpi_internal.h include/ui_dpi.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -1794,9 +1839,15 @@ $(SPRITESHEET_TEST): tests/spritesheet_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(B
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(APP_FRAMEWORK_TEST): tests/app_framework_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(APP_FRAMEWORK_TEST_CODEGEN)/.generated: tests/app_framework_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(APP_FRAMEWORK_TEST_CODEGEN)
+	$(K2C) --no-main --root tests -o $(APP_FRAMEWORK_TEST_CODEGEN) $<
+	@touch $@
+
+$(APP_FRAMEWORK_TEST): $(APP_FRAMEWORK_TEST_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_framework_test.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(APP_FRAMEWORK_TEST_CODEGEN) \
+		$(APP_FRAMEWORK_TEST_CODEGEN)/app_framework_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
@@ -1810,9 +1861,14 @@ $(AUTOMATION_TEST): tests/automation_test.c src/core/automation.c include/automa
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/automation_test.c \
 		src/core/automation.c -o $@
 
-$(UI_WINDOW_TEST): tests/ui_window_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(UI_WINDOW_TEST_CODEGEN)/.generated: tests/ui_window_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(UI_WINDOW_TEST_CODEGEN)
+	$(K2C) --no-main --root tests -o $(UI_WINDOW_TEST_CODEGEN) $<
+	@touch $@
+
+$(UI_WINDOW_TEST): $(UI_WINDOW_TEST_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_window_test.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(UI_WINDOW_TEST_CODEGEN)/ui_window_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
@@ -1855,19 +1911,33 @@ $(CONTROL_APPEARANCE_PERF_TEST): tests/control_appearance_perf_test.c $(LIB) $(K
 perf-control-appearance: $(CONTROL_APPEARANCE_PERF_TEST)
 	$(CONTROL_APPEARANCE_PERF_TEST)
 
-$(CONTROL_APPEARANCE_CAPTURE): tests/control_appearance_capture.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(CONTROL_APPEARANCE_CAPTURE_CODEGEN)/.generated: tests/control_appearance_capture.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(CONTROL_APPEARANCE_CAPTURE_CODEGEN)
+	$(K2C) --root tests -o $(CONTROL_APPEARANCE_CAPTURE_CODEGEN) $<
+	@touch $@
+
+$(CONTROL_APPEARANCE_CAPTURE): $(CONTROL_APPEARANCE_CAPTURE_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/control_appearance_capture.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests -I$(CONTROL_APPEARANCE_CAPTURE_CODEGEN) \
+		$(CONTROL_APPEARANCE_CAPTURE_CODEGEN)/control_appearance_capture.c \
+		$(CONTROL_APPEARANCE_CAPTURE_CODEGEN)/kryon_project.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(STYLE_CAPTURE_BOARDS): tests/style_capture_boards.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(STYLE_CAPTURE_BOARDS_CODEGEN)/.generated: tests/style_capture_boards.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(STYLE_CAPTURE_BOARDS_CODEGEN)
+	$(K2C) --root tests -o $(STYLE_CAPTURE_BOARDS_CODEGEN) $<
+	@touch $@
+
+$(STYLE_CAPTURE_BOARDS): $(STYLE_CAPTURE_BOARDS_CODEGEN)/.generated $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/style_capture_boards.c \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests -I$(STYLE_CAPTURE_BOARDS_CODEGEN) \
+		$(STYLE_CAPTURE_BOARDS_CODEGEN)/style_capture_boards.c \
+		$(STYLE_CAPTURE_BOARDS_CODEGEN)/kryon_project.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-.PHONY: button-gallery button-gallery-capture button-gallery-benchmark
+.PHONY: button-gallery button-gallery-capture button-gallery-benchmark button-gallery-score
 button-gallery: $(BUTTON_GALLERY)
 
 $(BUTTON_GALLERY_CODEGEN)/.generated: examples/28_button_gallery.kry $(K2C) | $(BUILD_DIR)
@@ -1895,6 +1965,18 @@ button-gallery-benchmark: $(BUTTON_GALLERY)
 		env KRYON_PRIVATE_DISPLAY=1 \
 		KRYON_BUTTON_BENCHMARK_CSV=$(abspath $(BUTTON_GALLERY_BENCHMARK_CSV)) \
 		$(BENCH_WRAP) $(BUTTON_GALLERY)
+
+button-gallery-score: $(BUTTON_GALLERY)
+	@rm -f $(BUTTON_GALLERY_SCORE_CSV)
+	@printf 'theme,input_us,peak_rss_kib\n' > $(BUTTON_GALLERY_SCORE_CSV)
+	@for t in -1 0 1 2 3; do \
+		env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+			-e $(BUILD_DIR)/button-gallery-score-xvfb.log \
+			env KRYON_PRIVATE_DISPLAY=1 KRYON_BUTTON_THEME=$$t \
+			KRYON_BUTTON_SCORE_CSV=$(abspath $(BUTTON_GALLERY_SCORE_CSV)) \
+			$(BUTTON_GALLERY) || exit 1; \
+	done
+	@echo "score CSV: $(BUTTON_GALLERY_SCORE_CSV)"
 
 .PHONY: button-interaction-trace-build button-interaction-trace-test
 button-interaction-trace-build: $(BUTTON_INTERACTION_TRACE)
@@ -1961,14 +2043,24 @@ widget-surface-kry-test: $(WIDGET_SURFACE_KRY_TEST)
 		-e $(BUILD_DIR)/widget-surface-kry-xvfb.log \
 		env KRYON_PRIVATE_DISPLAY=1 $(WIDGET_SURFACE_KRY_TEST)
 
+.PHONY: style-capture-boards-build
+style-capture-boards-build: $(STYLE_CAPTURE_BOARDS)
+
 style-capture-boards: $(STYLE_CAPTURE_BOARDS)
-	rm -f $(BUILD_DIR)/style-boards/*.png
-	xvfb-run -a $(STYLE_CAPTURE_BOARDS) $(BUILD_DIR)/style-boards
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/style-capture-boards-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 KRYON_STYLE_CAPTURE_DIR=$(abspath $(BUILD_DIR)/style-boards) \
+		$(STYLE_CAPTURE_BOARDS)
 	@ls $(BUILD_DIR)/style-boards/*.png >/dev/null && echo "style boards written to $(BUILD_DIR)/style-boards"
 
+.PHONY: capture-control-appearance-build
+capture-control-appearance-build: $(CONTROL_APPEARANCE_CAPTURE)
+
 capture-control-appearance: $(CONTROL_APPEARANCE_CAPTURE)
-	rm -f $(CONTROL_APPEARANCE_CAPTURE_PNG)
-	xvfb-run -a $(CONTROL_APPEARANCE_CAPTURE) $(CONTROL_APPEARANCE_CAPTURE_PNG) || test -s $(CONTROL_APPEARANCE_CAPTURE_PNG)
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		-e $(BUILD_DIR)/control-appearance-xvfb.log \
+		env KRYON_PRIVATE_DISPLAY=1 KRYON_APPEARANCE_CAPTURE_PNG=$(abspath $(CONTROL_APPEARANCE_CAPTURE_PNG)) \
+		$(CONTROL_APPEARANCE_CAPTURE)
 
 perf-text-input: $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
 	sh tests/text_input_perf.sh . $(BUILD_DIR)
@@ -2125,9 +2217,24 @@ $(KRY_SHA256_TEST): tests/kry_sha256_test.c src/kry_std/kry_sha256.c include/kry
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_sha256_test.c src/kry_std/kry_sha256.c -o $@
 
-$(LOCALE_TEST): tests/locale_test.c src/core/locale.c include/locale.h include/embedded_assets.h | $(BUILD_DIR)
+$(LOCALE_TEST): tests/locale_test.c src/core/locale.c include/locale.h include/embedded_assets.h $(GENERATED_SRC_DIR)/ui/locale_defaults.c $(GENERATED_SRC_DIR)/ui/locale_parser.c $(GENERATED_SRC_DIR)/ui/locale_policy.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/locale_test.c src/core/locale.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/locale_test.c src/core/locale.c \
+		$(GENERATED_SRC_DIR)/ui/locale_defaults.c $(GENERATED_SRC_DIR)/ui/locale_parser.c \
+		$(GENERATED_SRC_DIR)/ui/locale_policy.c -o $@
+
+$(LOCALE_POLICY_KRY_CODEGEN)/.generated: tests/locale_policy_test.kry $(K2C) | $(BUILD_DIR)
+	@mkdir -p $(LOCALE_POLICY_KRY_CODEGEN)
+	$(K2C) --no-main --root tests -o $(LOCALE_POLICY_KRY_CODEGEN) $<
+	@touch $@
+
+$(LOCALE_POLICY_KRY_TEST): $(LOCALE_POLICY_KRY_CODEGEN)/.generated $(GENERATED_SRC_DIR)/ui/locale_policy.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(LOCALE_POLICY_KRY_CODEGEN) \
+		$(LOCALE_POLICY_KRY_CODEGEN)/locale_policy_test.c \
+		$(GENERATED_SRC_DIR)/ui/locale_policy.c -o $@
+
+test: $(LOCALE_POLICY_KRY_TEST)
 
 
 $(ICON_ASSETS_C) $(ICON_NAMES_C) $(ICON_TYPES_H): $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icons.h

@@ -1,0 +1,58 @@
+#module "image_policy_test"
+#import "runtime/image.h"
+#import "math.h"
+#import "stdio.h"
+#import "stdlib.h"
+
+ImagePolicyCheckRect :: (label: const char*,
+actual: Rectangle, expected: Rectangle) {
+    epsilon: float = 0.001f
+    if fabsf(actual.x - expected.x) <= epsilon &&
+    fabsf(actual.y - expected.y) <= epsilon &&
+    fabsf(actual.width - expected.width) <= epsilon &&
+    fabsf(actual.height - expected.height) <= epsilon {
+        return
+    }
+    fprintf(stderr,
+        "%s: got {%.3f, %.3f, %.3f, %.3f}, want {%.3f, %.3f, %.3f, %.3f}\n",
+        label, actual.x, actual.y, actual.width, actual.height,
+        expected.x, expected.y, expected.width, expected.height)
+    exit(1)
+}
+
+ImagePolicyRequire :: (condition: bool, message: const char*) {
+    if condition { return }
+    fprintf(stderr, "image policy failed: %s\n", message)
+    exit(1)
+}
+
+main :: () -> i32 #export {
+    bounds: Rectangle = (Rectangle){10, 20, 200, 100}
+    empty: Rectangle = (Rectangle){0}
+    wide: Rectangle = (Rectangle){0, 0, 400, 100}
+    ImagePolicyCheckRect("stretch keeps bounds",
+        ImageFitBounds(bounds, wide, 400, 100, 0), bounds)
+    ImagePolicyCheckRect("contain centers by source aspect",
+        ImageFitBounds(bounds, wide, 400, 100, 1),
+        (Rectangle){10, 45, 200, 50})
+    ImagePolicyCheckRect("cover centers by source aspect",
+        ImageFitBounds(bounds, wide, 400, 100, 2),
+        (Rectangle){-90, 20, 400, 100})
+    ImagePolicyCheckRect("empty source uses texture size",
+        ImageFitBounds(bounds, empty, 400, 100, 1),
+        (Rectangle){10, 45, 200, 50})
+    ImagePolicyCheckRect("negative source dimensions use absolute size",
+        ImageFitBounds(bounds, (Rectangle){0, 0, -400, -100}, 1, 1, 1),
+        (Rectangle){10, 45, 200, 50})
+    placeholder: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(
+        (Rectangle){10, 20, 200, 100}, 48, 16)
+    ImagePolicyCheckRect("placeholder keeps bounds",
+        placeholder.bounds, (Rectangle){10, 20, 200, 100})
+    ImagePolicyRequire(placeholder.label_x == 86 &&
+        placeholder.label_y == 62, "placeholder label placement")
+    ImagePolicyRequire(ImagePlaceholderFontFor(16, 0) == 16 &&
+        ImagePlaceholderFontFor(16, 21) == 21,
+        "placeholder font fallback and override")
+    puts("image policy Kry checks passed")
+    return 0
+}

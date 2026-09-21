@@ -1,0 +1,182 @@
+#module "app_shell_route"
+
+#import "app_shell.h"
+
+KryRouteListContains :: (routes: const int*, count: int,
+                          route: int) -> int #export {
+    if routes == nil || count <= 0 {
+        return 0
+    }
+    for int index = 0; index < count; index++ {
+        if routes[index] == route {
+            return 1
+        }
+    }
+    return 0
+}
+
+KryRouteAllowedInSet :: (route: int, allowed_routes: const int*,
+                          allowed_count: int) -> int #export {
+    return KryRouteListContains(allowed_routes, allowed_count, route)
+}
+
+KryRouteListSanitize :: (list: KryRouteList, allowed: KryRouteAllowedFn,
+                         user: void*) -> int #export {
+    if list.routes == nil || list.capacity <= 0 {
+        return 0
+    }
+    if list.count < 0 || list.count > list.capacity {
+        list.count = list.capacity
+    }
+
+    write := 0
+    for int index = 0; index < list.count; index++ {
+        route := list.routes[index]
+        if allowed != nil && !allowed(route, user) {
+            continue
+        }
+        if KryRouteListContains(list.routes, write, route) {
+            continue
+        }
+        list.routes[write] = route
+        write++
+    }
+    for int index = write; index < list.capacity; index++ {
+        list.routes[index] = list.empty_route
+    }
+    return write
+}
+
+KryRouteListSanitizeSet :: (list: KryRouteList,
+                            allowed_routes: const int*,
+                            allowed_count: int) -> int #export {
+    if list.routes == nil || list.capacity <= 0 {
+        return 0
+    }
+    if list.count < 0 || list.count > list.capacity {
+        list.count = list.capacity
+    }
+
+    write := 0
+    for int index = 0; index < list.count; index++ {
+        route := list.routes[index]
+        if !KryRouteAllowedInSet(route, allowed_routes, allowed_count) {
+            continue
+        }
+        if KryRouteListContains(list.routes, write, route) {
+            continue
+        }
+        list.routes[write] = route
+        write++
+    }
+    for int index = write; index < list.capacity; index++ {
+        list.routes[index] = list.empty_route
+    }
+    return write
+}
+
+KryRouteListMove :: (list: KryRouteList, from_index: int,
+                     to_index: int) -> int #export {
+    if list.routes == nil || list.count <= 0 {
+        return 0
+    }
+    if from_index < 0 || to_index < 0 ||
+       from_index >= list.count || to_index >= list.count ||
+       from_index == to_index {
+        return 0
+    }
+
+    route := list.routes[from_index]
+    if from_index < to_index {
+        for int index = from_index; index < to_index; index++ {
+            list.routes[index] = list.routes[index + 1]
+        }
+    } else {
+        for int index = from_index; index > to_index; index-- {
+            list.routes[index] = list.routes[index - 1]
+        }
+    }
+    list.routes[to_index] = route
+    return 1
+}
+
+KryRouteListFirstUnused :: (routes: const int*, count: int,
+                             candidates: const int*, candidate_count: int,
+                             fallback: int) -> int #export {
+    if candidates == nil || candidate_count <= 0 {
+        return fallback
+    }
+    for int index = 0; index < candidate_count; index++ {
+        if !KryRouteListContains(routes, count, candidates[index]) {
+            return candidates[index]
+        }
+    }
+    return fallback
+}
+
+KryRouteStackInit :: (stack: KryRouteStack*, routes: int*,
+                      capacity: int, root_route: int) #export {
+    if stack == nil {
+        return
+    }
+    stack->routes = routes
+    stack->capacity = capacity
+    stack->root_route = root_route
+    stack->count = 0
+    if routes != nil && capacity > 0 {
+        routes[0] = root_route
+        stack->count = 1
+    }
+}
+
+KryRouteStackCurrent :: (stack: const KryRouteStack*) -> int #export {
+    if stack == nil {
+        return 0
+    }
+    if stack->routes == nil || stack->count <= 0 {
+        return stack->root_route
+    }
+    return stack->routes[stack->count - 1]
+}
+
+KryRouteStackPush :: (stack: KryRouteStack*, route: int) -> int #export {
+    if stack == nil || stack->routes == nil || stack->capacity <= 0 {
+        return 0
+    }
+    if stack->count <= 0 {
+        stack->routes[0] = stack->root_route
+        stack->count = 1
+    }
+    if KryRouteStackCurrent(stack) == route {
+        return 1
+    }
+    if stack->count >= stack->capacity {
+        return 0
+    }
+    stack->routes[stack->count] = route
+    stack->count++
+    return 1
+}
+
+KryRouteStackPop :: (stack: KryRouteStack*) -> int #export {
+    if stack == nil || stack->routes == nil {
+        return 0
+    }
+    if stack->count <= 1 {
+        return KryRouteStackCurrent(stack)
+    }
+    stack->count--
+    return KryRouteStackCurrent(stack)
+}
+
+KryRouteStackReset :: (stack: KryRouteStack*, root_route: int) #export {
+    if stack == nil {
+        return
+    }
+    stack->root_route = root_route
+    stack->count = 0
+    if stack->routes != nil && stack->capacity > 0 {
+        stack->routes[0] = root_route
+        stack->count = 1
+    }
+}

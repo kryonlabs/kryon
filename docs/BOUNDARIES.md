@@ -10,6 +10,34 @@ interaction, style, and capture decisions. Handwritten C provides platform,
 memory, and renderer effects called by generated code. Generated C is build
 output. Other C widget implementations still need migration.
 
+Secondary-window placement, drag movement thresholds, and reachable work-area
+bounds are authored in `src/ui/window_policy.kry`. The native window adapter
+collects OS events, moves windows, and presents their rendered content.
+Active theme and theme-family selection state is authored in
+`src/ui/theme_state.kry`; platform theme detection remains a host service.
+Node initialization and typed property values are authored in
+`src/ui/node.kry`, with the existing C declarations serving native callers.
+Route list/stack operations and app-shell measurement are authored in
+`src/ui/app_shell_route.kry` and `src/ui/app_shell_layout.kry`.
+Application screen selection, route parsing, and host callback dispatch are
+authored in `src/ui/screen_routes.kry`; app drawing callbacks remain supplied by
+their application.
+Theme and orientation preference decisions are authored in
+`src/ui/preference_policy.kry`; host callbacks and platform functions apply
+the selected orientation.
+Frame lifecycle, post-frame callback scheduling, and active/idle frame pacing
+are authored in `src/ui/frame_lifecycle.kry` and `src/ui/frame_pacing.kry`.
+Platform drawing and swap remain backend effects.
+Built-in locale fallback labels for theme controls are authored in
+`src/ui/locale_defaults.kry`. Catalog entry and language-list parsing are
+authored in `src/ui/locale_parser.kry`; native locale storage loads catalogs
+and keeps their allocated entries. Locale-code selection and normalization,
+default English registration, and catalog fallback lookup are authored in
+`src/ui/locale_policy.kry`; the host
+collects the OS language preferences.
+Capability naming and safe-content geometry are authored in
+`src/ui/capability_layout.kry`.
+
 Linux libdraw key releases, modifier samples and focus events are backend host
 translation. The private X11 observer listens only to the runtime's own window;
 it does not implement desktop commands, selection policy or file operations.
@@ -179,9 +207,10 @@ polling the host again. Its retained motion consumes that same resolved input.
 Button content selection and placement also belong to `.kry`. The paint module
 defines Drawing commands for text, icons, textures, rings, and chevrons. Native
 hosts rasterize commands; they do not choose which content a Button displays.
-Font measurement and resource lookup remain device services. `src/ui/text.kry`
-decides whether glyph bounds need a clip; hosts apply clip commands and blend
-pixels. C supports texture commands; the Go frame stream still lacks
+Font resource lookup, glyph measurements and width calculation remain device
+services. `src/ui/text.kry` aggregates glyph bounds for text height and baseline
+placement and decides whether drawn glyphs need a clip; hosts apply clip
+commands and blend pixels. C supports texture commands; the Go frame stream still lacks
 texture resource rendering.
 Material painting follows the same boundary. `runtime/material.kry` assembles
 SurfaceDrawing commands from resolved styles, retained fills, and interaction

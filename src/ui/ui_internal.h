@@ -360,10 +360,11 @@ int PushTextSelectable(int selectable);
 void PopTextSelectable(int token);
 void RenderTextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
+void DrawTextRun(const char *text, Font font, int x, int y,
+                 int font_size, Color color);
 void RenderTextStyled(const char *text, int x, int y, TextStyle style);
 void RenderNonSelectableText(const char *text, int x, int y, int font_size,
                              Color color);
-void DrawScaledText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
 void RenderControlTextInRect(const char *text, Rectangle rect,

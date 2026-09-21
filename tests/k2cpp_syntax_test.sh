@@ -15,6 +15,7 @@ root=$(pwd)
 generated_include="$root/$host/generated/src"
 internal_include="$root/src/ui"
 internal_header="$root/src/ui/ui_internal.h"
+vendor_include="$root/vendor/utf8proc"
 
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM
@@ -329,9 +330,9 @@ if grep -Fq 'defer ' "$c"; then
 fi
 
 # the generated C++ compiles
-c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$vendor_include" \
     -I"$generated_include" -I"$internal_include" -I"$work/out" "$c"
-c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$vendor_include" \
     -I"$generated_include" -I"$internal_include" -I"$work/out" \
     -include "$internal_header" "$hc"
 
@@ -347,7 +348,7 @@ grep -Fq 'context_open = false;' "$popup_cpp"
 grep -Fq 'popup_content_open = false;' "$popup_cpp"
 grep -Fq 'popup_open = false;' "$popup_cpp"
 grep -Fq 'PopupEndScope();' "$popup_cpp"
-c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$vendor_include" \
     -I"$generated_include" -I"$internal_include" -I"$work/composed" \
     -include "$internal_header" "$popup_cpp"
 
@@ -455,7 +456,7 @@ void PushInspectSource(const char *, int) {}
 void PopInspectSource(void) {}
 int main() { return check(); }
 EOF
-c++ -std=c++17 -I"$root/include" -I"$generated_include" -I"$internal_include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
+c++ -std=c++17 -I"$root/include" -I"$vendor_include" -I"$generated_include" -I"$internal_include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
 "$work/records/check"
 
 # Runtime-only modules must get array indexing support without kryon.h.

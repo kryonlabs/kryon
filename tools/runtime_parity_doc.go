@@ -23,7 +23,8 @@ func main() {
 	native, err := runtimeMethods("go/kryon/runtime.go")
 	check(err)
 	cleanC, err := cEntrypoints("include/kryon_frame.h", "include/ui_tree.h",
-		"include/ui_controls.h", "include/ui_page.h", "include/ui_toast.h")
+		"include/ui_controls.h", "include/ui_page.h", "include/ui_toast.h",
+		"include/ui_menu_props.generated.h")
 	check(err)
 	cleanC["Image"] = "internal host image support"
 	checkForbidden("go/kryon/runtime.go")

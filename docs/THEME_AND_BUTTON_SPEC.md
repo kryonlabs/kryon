@@ -614,7 +614,7 @@ rows remain historical targets or continuing migration work.
 | `include/ui_controls.h` `ThemeScheme` | replace with private resolution from `ThemeColors` |
 | legacy named button-style enum | replace with `ButtonTone` + `ButtonEmphasis` |
 | `include/ui_tree.h` `ButtonProps.style` | replace with `tone`, `emphasis`, `size`, state/content props |
-| `src/core/theme.c` catalog getters | produce/activate complete `Theme` values |
+| former `src/core/theme.c` catalog getters | produce/activate complete `Theme` values; active selection now lives in `src/ui/theme_state.kry` |
 | `src/ui/ui_style.c` style branches | replace with theme validation and shared resolvers |
 | old native Button color branches | replaced with `.kry` style resolution and KSS states |
 | old handwritten Button renderer | replaced with `src/ui/button.kry`; its C source was deleted |

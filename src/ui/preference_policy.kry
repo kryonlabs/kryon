@@ -1,0 +1,71 @@
+#module "preference_policy"
+
+#import "device_preferences.h"
+#import "kryon.h"
+
+#if #defined(PLATFORM_WEB) {
+    #import "web.h"
+}
+
+KryEffectiveThemeDarkMode :: (pref: KryThemePreference) -> int #export {
+    if pref.mode == THEME_MODE_LIGHT {
+        return 0
+    }
+    if pref.mode == THEME_MODE_DARK {
+        return 1
+    }
+    if pref.system_dark_mode != nil {
+        return pref.system_dark_mode(pref.user) ? 1 : 0
+    }
+    return GetEffectiveThemeDarkMode() ? 1 : 0
+}
+
+KryApplyThemePreference :: (pref: KryThemePreference) -> int #export {
+    SetThemeSource(pref.source)
+    SetThemeMode(pref.mode)
+    if pref.system_dark_mode != nil {
+        SetSystemThemeDarkMode(pref.system_dark_mode(pref.user) != 0)
+    }
+    dark := KryEffectiveThemeDarkMode(pref)
+    if pref.system_dark_mode != nil && pref.source == THEME_SOURCE_SYSTEM {
+        SetSystemThemeDarkMode(dark != 0)
+    }
+    SetCurrentTheme(pref.theme_id, dark)
+    return dark
+}
+
+KryApplyOrientationPreference :: (pref: KryOrientationPreference) -> int #export {
+    width := GetScreenWidth()
+    height := GetScreenHeight()
+
+    if pref.request_size != nil && width > 0 && height > 0 {
+        if pref.mode == pref.portrait_mode && width > height {
+            pref.request_size(pref.user, height, width)
+            return 1
+        }
+        if pref.mode == pref.landscape_mode && height > width {
+            pref.request_size(pref.user, height, width)
+            return 1
+        }
+    }
+    if pref.set_platform_orientation != nil {
+        pref.set_platform_orientation(pref.user, pref.mode)
+        return 1
+    }
+
+    #if #defined(PLATFORM_WEB) {
+        SetWebOrientationMode(pref.mode)
+        SyncWebWindowSize()
+        return 1
+    } #else {
+        if pref.mode == pref.portrait_mode && width > height {
+            SetWindowSize(height, width)
+            return 1
+        }
+        if pref.mode == pref.landscape_mode && height > width {
+            SetWindowSize(height, width)
+            return 1
+        }
+        return 0
+    }
+}

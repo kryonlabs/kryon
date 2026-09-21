@@ -37,6 +37,27 @@ ui_set_text_letter_spacing :: (spacing: i32) -> i32 #export {
 ui_render_italic_text :: (value: const char*, x: i32,
 y: i32, font_size: i32, color: Color) #extern
 
+RenderTextEx :: (value: const char*, x: i32, y: i32,
+font_size: i32, color: Color, selectable: i32) #export {
+    font: Font = GetTextFontForSize(font_size)
+    if value == nil || !TextFontReady(font) { return }
+    byte_len: i32 = 0
+    while value[byte_len] != '\0' && value[byte_len] != '\n' {
+        byte_len += 1
+    }
+    text_w: i32 = TextWidth(value, font_size)
+    line_h: i32 = TextLineHeight(font_size)
+    ui_inline_text_before_render(value, x, y, font_size, color,
+        selectable, byte_len, text_w, line_h)
+    DrawTextRun(value, font, x, y, font_size, color)
+    if text_strikethrough && text_w > 0 {
+        strike: Rectangle = TextStrikethroughBounds(
+            (float)x, (float)y, (float)text_w, (float)line_h,
+            (float)Scale(1000) / 1000.0f)
+        DrawRectangleRec(strike, color)
+    }
+}
+
 RenderText :: (value: const char*, x: i32, y: i32,
 font_size: i32, color: Color) #export {
     RenderTextEx(value, x, y, font_size, color, 1)
@@ -78,6 +99,92 @@ color: Color) #export {
     center_y - line_h / 2, line_h, font_size)
     RenderText(value, center_x - width / 2,
     y, font_size, color)
+}
+
+TextGlyphVerticalBounds :: struct {
+    min_top: float
+    max_bottom: float
+    seen_glyph: i32
+}
+
+TextVerticalBoundsFor :: (value: const char*,
+font_size: i32) -> TextGlyphVerticalBounds {
+    bounds: TextGlyphVerticalBounds = (TextGlyphVerticalBounds){0}
+    if value == nil { return bounds }
+    index: i32 = 0
+    while value[index] != '\0' {
+        codepoint_byte_count: i32 = 0
+        codepoint: i32 = GetCodepointNext(
+            value + index, &codepoint_byte_count)
+        if codepoint == '\n' { break }
+
+        if codepoint != ' ' && codepoint != '\t' {
+            glyph_font: Font = GetTextFontForCodepoint(
+                codepoint, font_size)
+            glyph: GlyphInfo = TextFontGlyph(glyph_font, codepoint)
+            atlas: Rectangle = TextFontAtlasRec(glyph_font, codepoint)
+            scale: float = GetTextFontScale(glyph_font, font_size)
+            padding: i32 = TextFontGlyphPadding(glyph_font)
+            glyph_top: float = (float)glyph.offsetY * scale -
+                (float)padding * scale
+            glyph_bottom: float = glyph_top +
+                (atlas.height + 2.0f * (float)padding) * scale
+
+            if !bounds.seen_glyph {
+                bounds.min_top = glyph_top
+                bounds.max_bottom = glyph_bottom
+                bounds.seen_glyph = 1
+            } else {
+                if glyph_top < bounds.min_top { bounds.min_top = glyph_top }
+                if glyph_bottom > bounds.max_bottom { bounds.max_bottom = glyph_bottom }
+            }
+        }
+
+        if codepoint_byte_count <= 0 { codepoint_byte_count = 1 }
+        index += codepoint_byte_count
+    }
+    return bounds
+}
+
+TextLineHeight :: (font_size: i32) -> i32 #export {
+    font: Font = GetTextFontForSize(font_size)
+    if TextFontHasNativeText(font) {
+        native_height: i32 = TextFontNativeTextHeight(font)
+        if native_height > 0 { return native_height }
+    }
+    return TextLineHeightFor(TextFontBaseSize(font),
+        TextBaseSize, GetTextFontScale(font, font_size))
+}
+
+TextHeight :: (value: const char*, font_size: i32) -> i32 #export {
+    font: Font = GetTextFontForSize(font_size)
+    if value == nil || value[0] == '\0' || !TextFontReady(font) {
+        return font_size
+    }
+    if TextFontHasNativeText(font) {
+        native_height: i32 = TextFontNativeTextHeight(font)
+        return native_height > 0 ? native_height : font_size
+    }
+    bounds: TextGlyphVerticalBounds = TextVerticalBoundsFor(
+        value, font_size)
+    fallback_height: i32 = (i32)((float)TextFontBaseSize(font) *
+        GetTextFontScale(font, font_size) + 0.5f)
+    return TextHeightFor(fallback_height, bounds.seen_glyph != 0,
+        bounds.min_top, bounds.max_bottom)
+}
+
+TextBaselineY :: (value: const char*, box_y: i32,
+box_h: i32, font_size: i32) -> i32 #export {
+    font: Font = GetTextFontForSize(font_size)
+    if value == nil || value[0] == '\0' || !TextFontReady(font) {
+        return TextBaselineYFor(box_y, box_h,
+            TextLineHeight(font_size), false, 0.0f, 0.0f)
+    }
+    bounds: TextGlyphVerticalBounds = TextVerticalBoundsFor(
+        value, font_size)
+
+    return TextBaselineYFor(box_y, box_h, font_size,
+        bounds.seen_glyph != 0, bounds.min_top, bounds.max_bottom)
 }
 
 RenderTextInputEx :: (bounds: Rectangle, text: const char*,

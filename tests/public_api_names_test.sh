@@ -669,7 +669,7 @@ fi
 
 window_api_matches="$(
     rg -n '\b(UIWindow|OpenUIWindow|CloseUIWindow|BeginUIWindow|EndUIWindow|IsUIWindowClicked|IsUIWindowRightClicked|IsUIWindowDragged|GetUIWindowPosition|GetUIWindowClickPosition|UI_WINDOW_[A-Z_]+|PumpUIWindows|StealUICoreWindowClose)\b' \
-        include/ui_window.h src/ui/ui_window.c tests/ui_window_test.c tests/texture_scope_test.c docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html examples || true
+        include/ui_window.h src/ui/ui_window.c src/ui/window_policy.kry tests/ui_window_test.kry tests/texture_scope_test.c docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html examples || true
 )"
 
 if [ -n "$window_api_matches" ]; then
@@ -834,7 +834,7 @@ fi
 
 inspect_widget_variant_matches="$(
     rg -n 'BeginWidget\("(button|slider|vertical_slider|vertical_slider_marks|toggle|checkbox|dropdown|modal|link|text|text_input|text_area|text_field|navigation_bar)"' \
-        src/ui tests/sfs_test.c \
+        src/ui tests/sfs_test.kry \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"

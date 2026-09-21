@@ -1,5 +1,9 @@
 # Native language and runtime remaining work
 
+The dated, file-level checklist for the requested all-UI-in-`.kry` migration,
+including header removal, native window input, Button visuals, and Inbe
+integration, is [UI_MIGRATION_REMAINING.md](UI_MIGRATION_REMAINING.md).
+
 Updated 2026-09-19 against master `9094c18f` and the slice implementation saved in this checkpoint. This is the remaining-task list, not a list of all historical
 work. Completed array, text/IME, image, host-organization and shared-policy
 batches are recorded in [completion evidence](../docs/COMPLETION_EVIDENCE.md#native-language-plan-cleanup-2026-09-19).
@@ -14,6 +18,65 @@ Shared behavior belongs in `.kry`; resource storage, Unicode/font services,
 rasterization and OS adapters remain native. Work goes directly to upstream
 master before pristine downstream vendor pointers are updated. Preserve Inbe's
 accepted UI. JS/web remains a future target.
+
+Working-tree checkpoint (2026-09-20): text selection mapping and painting,
+text-run selection/strikethrough orchestration, drawing-command dispatch, and
+rounded-image strip geometry now have `.kry` owners. Native C still supplies
+font metrics, glyph/raster work, texture loading and platform windows. The
+active theme-selection state now lives in `src/ui/theme_state.kry`, replacing
+`src/core/theme.c`; system theme detection remains native. The
+node initializer and property-value constructors now live in
+`src/ui/node.kry`, replacing `src/core/kryon_node.c`. The
+app-shell route operations and layout calculation now live in
+`src/ui/app_shell_route.kry` and `src/ui/app_shell_layout.kry`, replacing
+`src/core/app_shell.c`. App screen routing and callback dispatch now live in
+`src/ui/screen_routes.kry`, replacing `src/core/app_runtime.c`. The
+inspector opt-in check also lives there, replacing `src/core/app_host.c`. The
+theme and orientation preference decisions now live in
+`src/ui/preference_policy.kry`, replacing `src/core/device_preferences.c`. The
+frame lifecycle and pacing now live in `src/ui/frame_lifecycle.kry` and
+`src/ui/frame_pacing.kry`, replacing the two `src/core/kryon_frame*.c` files.
+The focused frame-pacing and app-framework checks are now authored in
+`tests/frame_pacing_test.kry` and `tests/app_framework_test.kry`.
+The theme-control fallback labels now live in `src/ui/locale_defaults.kry`.
+Catalog entry and language-list parsing now live in
+`src/ui/locale_parser.kry`; native locale loading and allocated catalog
+storage remain in C. This parser move is unverified until approved code
+generation and locale checks run.
+Locale-code selection, preferred-language matching, default English
+registration, and active/base catalog fallback also live in
+`src/ui/locale_policy.kry`. The native host
+still gathers locale preferences and owns catalog lifetimes. The focused
+language/fallback fixture is authored in `tests/locale_policy_test.kry`;
+it has not run pending approval.
+Capability naming and viewport safe-content geometry now live in
+`src/ui/capability_layout.kry`, replacing `src/core/kry_capabilities.c`.
+The
+style and appearance screenshot harnesses, image policy assertions, and
+native-window null/policy checks are now authored in `.kry`; their C sources
+were removed. An earlier revision of this slice built, but the current tree has
+not been compiled or run because code generation, tests, and laws await user
+approval. No full-migration completion claim follows from this checkpoint.
+
+The remaining handwritten `src/core` files are `app_storage.c`, `automation.c`,
+`embedded_assets.c`, `kryon_abi.c`, `kryon_mem.c`, and
+`locale.c`. They need host-service review before the C boundary can be closed.
+
+The current text pass also moves glyph vertical-bound aggregation, text height,
+line height and baseline placement into `src/ui/text.kry`. The previous C
+`DrawScaledText` helper had no maintained callers and was removed. This pass is
+still unverified until code generation and the approved text checks run.
+
+Current handwritten `src/ui/*.c` ownership inventory (2026-09-20):
+
+| File | Retained native service | Remaining UI-policy question |
+|---|---|---|
+| `ui_image_cache.c` | Asset decoding, texture cache and raster blits | Camera-to-screen clip conversion is a backend transform; verify it has no image-fit decisions. |
+| `ui_paint.c` | Direct pixel painting and renderer callback glue | Surface and drawing dispatch now have `.kry` owners in `paint_command.kry`. |
+| `ui_surface_cache.c` | Raster texture cache, memory budget and eviction | Cache eligibility is renderer resource policy; verify degraded backends render the same result. |
+| `ui_text.c` | Font registration, glyph selection, atlas drawing and width measurement | Vertical layout decisions moved to `text.kry`; check the remaining font-size fallback against the text contract. |
+| `ui_text_backend.c` | Backend font access and native text draw adapter | Confirm each backend returns matching metrics for shared layout. |
+| `ui_window.c` | Native window creation, OS event collection, texture presentation and readback | Placement, drag threshold and grabbable-strip bounds now call `window_policy.kry`; focus restoration and click/drag event arbitration still need an ownership review. |
 
 Milestone numbers are retained for existing references; completed milestone 2
 has been removed. Other plan ledgers contain older inventories: verify an open

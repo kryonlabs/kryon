@@ -1,0 +1,183 @@
+#module "text_policy_test"
+#import "runtime/text.h"
+#import "runtime/style.h"
+#import "stdio.h"
+#import "stdlib.h"
+#import "string.h"
+
+TextPolicyRequire :: (condition: bool, message: const char*) {
+    if condition {
+        return
+    }
+    fprintf(stderr, "text policy failed: %s\n", message)
+    exit(1)
+}
+
+TextPolicyColorChecks :: () {
+    TextPolicyRequire(TextContentColorFor(0, StyleForeground,
+        0, 0x123456ffu) == 0x123456ffu, "fallback foreground")
+    TextPolicyRequire(TextContentColorFor(StyleForeground, StyleForeground,
+        0xabcdef00u, 0x123456ffu) == 0xabcdef00u,
+        "explicit transparent foreground")
+    TextPolicyRequire(TextContentColorFor(0, StyleFocus,
+        0xabcdef80u, 0x123456ffu) == 0xabcdef80u,
+        "focus color fallback")
+    TextPolicyRequire(TextSelectionColorFor(0x11223300u) == 0x11223300u,
+        "transparent selection")
+    TextPolicyRequire(TextSelectionColorFor(0x112233ffu) ==
+        (0x11223300u | TextSelectionDefaultAlpha()),
+        "selection alpha")
+
+    inherited: TextAppearance = ResolveTextStyle(0, 27, 16,
+        0, 0x11223380u, 0xffffffffu,
+        true, false, false, false, -2)
+    TextPolicyRequire(inherited.font == 27 &&
+        inherited.color == 0x11223380u, "inherited font and color")
+    TextPolicyRequire(inherited.letter_spacing == 0,
+        "negative letter spacing clamps")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0x11223380u, 0xffffffffu,
+        true, false, false, true, 0).color == 0x11223380u,
+        "inherited color with disabled state")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0x11223380u, 0xffffffffu,
+        true, false, true, true, 0).color == 0x11223380u,
+        "inherited color with selection")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0, 0xffffff80u,
+        false, false, false, true, 0).color == 0xffffff39u,
+        "disabled default foreground")
+
+    custom: TextAppearance = ResolveTextStyle(19, 27, 16,
+        0x445566ffu, 0x11223380u, 0xffffffffu,
+        true, true, true, true, 3)
+    TextPolicyRequire(custom.font == 19 &&
+        custom.color == 0x44556672u, "explicit font and color")
+    TextPolicyRequire(custom.letter_spacing == 3,
+        "explicit letter spacing")
+    TextPolicyRequire(ResolveTextStyle(0, 0, 20, 0, 0,
+        0xabcdef80u, false, false, false, false, 0).font == 20,
+        "specified default font")
+    TextPolicyRequire(ResolveTextStyle(0, 0, 0, 0, 0,
+        0xabcdef80u, false, false, false, false, 0).font == 16,
+        "fallback font")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0x11223300u, 0xffffffffu,
+        true, false, false, false, 0).color == 0x11223300u,
+        "explicit transparent inherited color")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0x11223300u, 0xffffffffu,
+        false, false, false, false, 0).color == 0xffffffffu,
+        "default color when inheritance is off")
+    TextPolicyRequire(ResolveTextStyle(0, 27, 16, 0,
+        0x112233ffu, 0xffffffffu,
+        true, true, false, false, 0).color == 0,
+        "explicit zero color")
+}
+
+TextPolicyGeometryChecks :: () {
+    TextPolicyRequire(TextExtent(24, 100) == 24 &&
+        TextExtent(0, 100) == 100, "text extent")
+    TextPolicyRequire(TextExtent(-1, 0) == 0,
+        "negative text extent")
+    TextPolicyRequire(TextWrapPolicy(0, 0) == 1 &&
+        TextWrapPolicy(-1, 0) == 1, "wrap on narrow widths")
+    TextPolicyRequire(TextWrapPolicy(100, 0) == 0 &&
+        TextWrapPolicy(100, 1) == 1, "explicit wrap")
+    TextPolicyRequire(TextDoubleClickSlopFor(2.0f) == 12 &&
+        TextDoubleClickSlopFor(0.0f) == 6, "double click slop")
+    TextPolicyRequire(TextDoubleClickShouldSelectLine(true, true,
+        1.0f, 1.30f, 5.0f, -5.0f, 1.0f), "valid double click")
+    TextPolicyRequire(!TextDoubleClickShouldSelectLine(false, true,
+        1.0f, 1.30f, 5.0f, -5.0f, 1.0f), "inactive double click")
+    TextPolicyRequire(!TextDoubleClickShouldSelectLine(true, false,
+        1.0f, 1.30f, 5.0f, -5.0f, 1.0f), "unfocused double click")
+    TextPolicyRequire(!TextDoubleClickShouldSelectLine(true, true,
+        -1.0f, 1.30f, 5.0f, -5.0f, 1.0f), "invalid double click time")
+    TextPolicyRequire(!TextDoubleClickShouldSelectLine(true, true,
+        1.0f, 1.50f, 5.0f, -5.0f, 1.0f), "late double click")
+    TextPolicyRequire(!TextDoubleClickShouldSelectLine(true, true,
+        1.0f, 1.30f, 7.0f, -5.0f, 1.0f), "distant double click")
+    TextPolicyRequire(strcmp(TextControlBaselineSample(), "Hg") == 0,
+        "baseline sample")
+    TextPolicyRequire(TextControlClipGuardFor(0.0f) == 1 &&
+        TextControlClipGuardFor(2.0f) == 2, "clip guard")
+    clip: Rectangle = TextControlClipBounds(
+        (Rectangle){10, 20, 30, 40}, 2.0f)
+    TextPolicyRequire(clip.x == 10 && clip.y == 18 &&
+        clip.width == 30 && clip.height == 44, "clip bounds")
+    TextPolicyRequire(TextCenteredY((Rectangle){10, 20, 30, 40}, 16) == 32 &&
+        TextCenteredY((Rectangle){10, 20, 30, 15}, 16) == 20,
+        "centered vertical placement")
+    TextPolicyRequire(TextCenteredX((Rectangle){10, 20, 30, 40}, 12) == 19 &&
+        TextCenteredX((Rectangle){10, 20, 11, 40}, 12) == 9,
+        "centered horizontal placement")
+    TextPolicyRequire(TextBaselineYFor(10, 40, 16, false,
+        0.0f, 0.0f) == 22 &&
+        TextBaselineYFor(10, 40, 16, true,
+        -3.0f, 17.0f) == 23, "baseline placement")
+    TextPolicyRequire(TextHeightFor(16, false, 0.0f, 0.0f) == 16 &&
+        TextHeightFor(16, true, -3.0f, 17.0f) == 20,
+        "glyph height")
+    TextPolicyRequire(TextLineHeightFor(13, 16, 2.0f) == 26 &&
+        TextLineHeightFor(0, 16, 1.5f) == 24 &&
+        TextLineHeightFor(13, 16, 0.0f) == 13,
+        "line height")
+    TextPolicyRequire(TextSelectionLineEndPaddingFor(2.0f) == 12 &&
+        TextSelectionMinWidthFor(2.0f) == 8 &&
+        TextSelectionDefaultAlpha() == 88,
+        "selection dimensions and alpha")
+    TextPolicyRequire(TextSelectionHighlightEndX(10, 20, true,
+        1.0f) == 26 &&
+        TextSelectionHighlightEndX(10, 10, false,
+        1.0f) == 14 &&
+        TextSelectionHighlightEndX(10, 2, true,
+        1.0f) == 14, "selection highlight end")
+    TextPolicyRequire(TextAlignmentOffset(100, 40, 0) == 0 &&
+        TextAlignmentOffset(100, 40, 1) == 30 &&
+        TextAlignmentOffset(100, 40, 2) == 60,
+        "text alignment offsets")
+    TextPolicyRequire(TextAlignmentOffset(20, 41, 1) == -10.5f &&
+        TextAlignmentOffset(20, 41, 2) == -21,
+        "negative alignment offsets")
+}
+
+TextPolicySelectionChecks :: () {
+    pointer: TextSelectionPointerDecision =
+        TextSelectionPointerDecisionFor(true, false, false)
+    TextPolicyRequire(pointer.hover && !pointer.begin,
+        "selection pointer hover")
+    pointer = TextSelectionPointerDecisionFor(true, false, true)
+    TextPolicyRequire(pointer.hover && pointer.begin,
+        "selection pointer begin")
+    pointer = TextSelectionPointerDecisionFor(true, true, true)
+    TextPolicyRequire(!pointer.hover && !pointer.begin,
+        "selection pointer captured")
+
+    drag: TextSelectionDragDecision =
+        TextSelectionDragDecisionFor(true, true, true)
+    TextPolicyRequire(drag.active && drag.update && !drag.finish,
+        "selection drag update")
+    drag = TextSelectionDragDecisionFor(true, true, false)
+    TextPolicyRequire(drag.active && !drag.update && drag.finish,
+        "selection drag finish")
+    drag = TextSelectionDragDecisionFor(false, true, true)
+    TextPolicyRequire(!drag.active && !drag.update && !drag.finish,
+        "selection drag without owner")
+
+    copy: TextSelectionCopyDecision =
+        TextSelectionCopyDecisionFor(true, true, true, true)
+    TextPolicyRequire(copy.copy, "selection copy")
+    copy = TextSelectionCopyDecisionFor(true, true, false, true)
+    TextPolicyRequire(!copy.copy, "selection copy without modifier")
+    TextPolicyRequire(TextSelectionRangeShouldShow(true) &&
+        !TextSelectionRangeShouldShow(false), "visible selection range")
+}
+
+main :: () -> i32 #export {
+    TextPolicyColorChecks()
+    TextPolicyGeometryChecks()
+    TextPolicySelectionChecks()
+    puts("text policy Kry checks passed")
+    return 0
+}

@@ -12,6 +12,7 @@ app "Kryon Button Gallery" {
     init GalleryInit
     after_frame GalleryAfterFrame
     should_continue GalleryContinue
+    shutdown GalleryShutdown
 }
 
 state {
@@ -29,6 +30,25 @@ state {
     gallery_benchmark_emphasis: int = 0
     gallery_benchmark_start: double = 0
     gallery_benchmark_button_us: [35] double = {0}
+    gallery_score_path: const char*
+    gallery_score_theme: int = -2
+    gallery_score_input_us: double = 0
+    gallery_score_peak_rss: i32 = 0
+    gallery_score_frame: int = 0
+    gallery_score_written: int = 0
+}
+
+ReadRSSKiB :: () -> i32 {
+    file: FILE* = fopen("/proc/self/statm", "r")
+    if file == nil { return -1 }
+    total: i32 = 0
+    resident: i32 = 0
+    if fscanf(file, "%d %d", &total, &resident) != 2 {
+        fclose(file)
+        return -1
+    }
+    fclose(file)
+    return resident * 4
 }
 
 GalleryBeforeWindow :: () -> bool {
@@ -44,11 +64,20 @@ GalleryBeforeWindow :: () -> bool {
     }
     gallery_capture_dir = getenv("KRYON_BUTTON_CAPTURE_DIR")
     gallery_benchmark_path = getenv("KRYON_BUTTON_BENCHMARK_CSV")
-    if gallery_capture_dir != nil && gallery_benchmark_path != nil {
-        puts("Choose capture or benchmark, not both")
+    gallery_score_path = getenv("KRYON_BUTTON_SCORE_CSV")
+    if gallery_score_path != nil {
+        theme: const char* = getenv("KRYON_BUTTON_THEME")
+        gallery_score_theme = theme == nil ? -1 : atoi(theme)
+    }
+    modes: int = (gallery_capture_dir != nil ? 1 : 0) +
+        (gallery_benchmark_path != nil ? 1 : 0) +
+        (gallery_score_path != nil ? 1 : 0)
+    if modes > 1 {
+        puts("Choose capture, benchmark, or score, not more than one")
         return false
     }
-    if gallery_capture_dir != nil || gallery_benchmark_path != nil {
+    if gallery_capture_dir != nil || gallery_benchmark_path != nil ||
+    gallery_score_path != nil {
         SetConfigFlags(FLAG_WINDOW_HIDDEN)
     }
     return true
@@ -72,12 +101,56 @@ GalleryInit :: () {
             exit(1)
         }
     }
+    if gallery_score_path != nil {
+        SetTargetFPS(0)
+        probe: Rectangle = (Rectangle){0, 0, 100, 40}
+        total: double = 0
+        for int i = 0; i < 10000; i++ {
+            start: double = GetTime()
+            ReadActivation(probe, 0, true)
+            total += (GetTime() - start) * 1000000.0
+        }
+        gallery_score_input_us = total / 10000.0
+        if gallery_score_theme >= 0 {
+            gallery_page = gallery_score_theme * 5
+        } else {
+            gallery_page = 0
+        }
+    }
 }
 
 GalleryContinue :: () -> bool {
+    if gallery_score_path != nil {
+        if gallery_score_theme >= 0 {
+            return gallery_page < gallery_score_theme * 5 + 5
+        }
+        return gallery_page < 5
+    }
     if gallery_benchmark_path != nil { return gallery_page < 24 }
     if gallery_capture_dir == nil { return true }
     return gallery_page < 24
+}
+
+GalleryScoreName :: () -> const char* {
+    if gallery_score_theme == 0 { return "Material" }
+    if gallery_score_theme == 1 { return "Classic" }
+    if gallery_score_theme == 2 { return "Lightfield-flat" }
+    if gallery_score_theme == 3 { return "Lightfield-glow" }
+    return "baseline"
+}
+
+GalleryShutdown :: () {
+    if gallery_score_path == nil || gallery_score_written != 0 { return }
+    file: FILE* = fopen(gallery_score_path, "a")
+    if file == nil {
+        puts("Could not open button score CSV")
+        exit(1)
+    }
+    fprintf(file, "%s,%.3f,%d\n", GalleryScoreName(),
+    gallery_score_input_us, gallery_score_peak_rss)
+    fclose(file)
+    gallery_score_written = 1
+    puts("Button score written")
 }
 
 GalleryPack :: (page: int) -> int {
@@ -119,6 +192,16 @@ GalleryPageName :: (page: int) -> const char* {
 }
 
 GalleryAfterFrame :: () {
+    if gallery_score_path != nil {
+        rss: i32 = ReadRSSKiB()
+        if rss > gallery_score_peak_rss { gallery_score_peak_rss = rss }
+        gallery_score_frame += 1
+        if gallery_score_frame >= 30 {
+            gallery_score_frame = 0
+            gallery_page += 1
+        }
+        return
+    }
     if gallery_benchmark_file != nil {
         if gallery_benchmark_frame >= 20 {
             frame_us: double = (GetTime() - gallery_benchmark_start) * 1000000.0
@@ -485,9 +568,10 @@ ButtonGallery :: (viewport: Rectangle) #ui {
         } else {
             Background(GetThemeBackground())
         }
-        if gallery_page < 20 {
+        if gallery_page < 20 &&
+        !(gallery_score_path != nil && gallery_score_theme < 0) {
             GalleryMatrix(gallery_page)
-        } else {
+        } else if gallery_page >= 20 && gallery_score_path == nil {
             GalleryVariants(gallery_page)
         }
         if gallery_capture_dir == nil {

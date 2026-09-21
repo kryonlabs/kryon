@@ -334,7 +334,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/image.kry|src/ui/ui_image_cache.c|include/ui_image.h|src/ui/ui_image_internal.h|tests/image_policy_test.c)
+        runtime/image.kry|src/ui/image.kry|src/ui/ui_image_cache.c|include/ui_image.h|src/ui/ui_image_internal.h|tests/image_policy_test.kry)
             needs_image=1
             interesting=1
             ;;
@@ -478,7 +478,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/text.kry|runtime/style.kry|runtime/surface.kry|tests/text_policy_test.c)
+        runtime/text.kry|runtime/style.kry|runtime/surface.kry|src/ui/text.kry|src/ui/selectable_text.kry|tests/text_policy_test.kry)
             needs_text_policy=1
             interesting=1
             ;;

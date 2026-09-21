@@ -1,0 +1,144 @@
+#module "app_framework_test"
+
+#import "kryon.h"
+#import <stdio.h>
+#import <string.h>
+
+static failures: int
+
+CheckInt :: (name: const char*, got: int, wanted: int) {
+    if got == wanted {
+        return
+    }
+    fprintf(stderr, "FAIL: %s got %d want %d\n", name, got, wanted)
+    failures++
+}
+
+CheckString :: (name: const char*, got: const char*,
+                 wanted: const char*) {
+    if got != nil && wanted != nil && strcmp(got, wanted) == 0 {
+        return
+    }
+    fprintf(stderr, "FAIL: %s got %s want %s\n", name,
+            got != nil ? got : "(null)",
+            wanted != nil ? wanted : "(null)")
+    failures++
+}
+
+RouteFixture :: struct {
+    screens: [3]AppScreenInfo
+    selected: int
+}
+
+FixtureScreenCount :: (userdata: void*) -> int {
+    unused userdata
+    return 3
+}
+
+FixtureScreen :: (userdata: void*, index: int) -> AppScreenInfo {
+    fixture := (RouteFixture*)userdata
+    if fixture == nil || index < 0 || index >= 3 {
+        return (AppScreenInfo){0}
+    }
+    return fixture->screens[index]
+}
+
+FixtureSelectScreen :: (userdata: void*, index: int) {
+    fixture := (RouteFixture*)userdata
+    if fixture != nil {
+        fixture->selected = index
+    }
+}
+
+main :: () -> int #export {
+    routes: [4]int = {0}
+    stack: KryRouteStack = {0}
+    KryRouteStackInit(&stack, routes, 4, 10)
+    CheckInt("route stack root count", stack.count, 1)
+    CheckInt("route stack root", KryRouteStackCurrent(&stack), 10)
+    CheckInt("route stack push", KryRouteStackPush(&stack, 20), 1)
+    CheckInt("route stack current", KryRouteStackCurrent(&stack), 20)
+    CheckInt("route stack duplicate ok", KryRouteStackPush(&stack, 20), 1)
+    CheckInt("route stack duplicate count", stack.count, 2)
+    CheckInt("route stack pop", KryRouteStackPop(&stack), 10)
+    CheckInt("route stack root pop sticks", KryRouteStackPop(&stack), 10)
+    KryRouteStackReset(&stack, 30)
+    CheckInt("route stack reset", KryRouteStackCurrent(&stack), 30)
+
+    layout := KryAppShellMeasure((KryAppShellLayoutSpec){
+        .view_width = 900,
+        .view_height = 700,
+        .safe_left = 4,
+        .safe_top = 8,
+        .safe_right = 6,
+        .safe_bottom = 10,
+        .padding = 16,
+        .nav_height = 64,
+        .sidebar_breakpoint = 480,
+        .sidebar_width = 240,
+        .min_content_width = 280,
+        .max_content_width = 520
+    })
+    CheckInt("shell expanded", layout.compact, 0)
+    CheckInt("shell sidebar", layout.sidebar_width, 240)
+    CheckInt("shell content x", layout.content_x, 260)
+    CheckInt("shell content width", layout.content_width, 520)
+    CheckInt("shell nav y", layout.nav_y, 626)
+
+    layout = KryAppShellMeasure((KryAppShellLayoutSpec){
+        .view_width = 360,
+        .view_height = 640,
+        .padding = 12,
+        .nav_height = 56,
+        .sidebar_breakpoint = 480,
+        .sidebar_width = 240,
+        .min_content_width = 280
+    })
+    CheckInt("shell compact", layout.compact, 1)
+    CheckInt("shell compact sidebar hidden", layout.sidebar_width, 0)
+    CheckInt("shell compact content width", layout.content_width, 336)
+
+    CheckInt("cap has clipboard",
+             KryCapabilitiesHas(KRY_CAP_CLIPBOARD | KRY_CAP_FILE_PICKER,
+                                KRY_CAP_CLIPBOARD), 1)
+    CheckInt("cap lacks share",
+             KryCapabilitiesHas(KRY_CAP_CLIPBOARD, KRY_CAP_SHARE), 0)
+    CheckString("cap name", KryCapabilityName(KRY_CAP_SECURE_STORE),
+                "secure-store")
+
+    fixture: RouteFixture = {0}
+    fixture.screens[0].id = "home"
+    fixture.screens[1].id = "settings"
+    fixture.screens[2].id = "account"
+    fixture.selected = -1
+    route_host: AppHost = {0}
+    route_host.userdata = &fixture
+    route_host.screen_count = FixtureScreenCount
+    route_host.screen = FixtureScreen
+    route_host.select_screen = FixtureSelectScreen
+    CheckInt("app route by id", SetAppScreenById(&route_host, "settings"), 1)
+    CheckInt("app route selected", fixture.selected, 1)
+    CheckInt("app route unknown", SetAppScreenById(&route_host, "missing"), 0)
+    CheckInt("app route unknown preserves selected", fixture.selected, 1)
+    fixture.selected = 2
+    CheckInt("app route empty url", SetAppScreenFromRoute(&route_host), 0)
+    CheckInt("app route empty url selects first", fixture.selected, 0)
+    PushAppScreenRoute(&route_host, 2)
+    CheckInt("app route push selects", fixture.selected, 2)
+
+    content := KrySafeContentRect((KryViewportSpec){
+        .width = 400,
+        .height = 700,
+        .safe_area = {.left = 2, .top = 10, .right = 4, .bottom = 20},
+        .padding = 16,
+        .reserved_top = 8,
+        .reserved_bottom = 64,
+        .min_content_width = 320
+    })
+    CheckInt("safe rect x", (int)content.x, 18)
+    CheckInt("safe rect y", (int)content.y, 34)
+    CheckInt("safe rect width", (int)content.width, 362)
+    CheckInt("safe rect height", (int)content.height, 566)
+
+    return failures == 0 ? 0 : 1
+}

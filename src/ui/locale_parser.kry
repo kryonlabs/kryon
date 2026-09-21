@@ -1,0 +1,139 @@
+#module "locale_parser"
+#inspect off
+
+#import "locale.h"
+#import <stdlib.h>
+#import <string.h>
+
+LocaleStoreEntry :: (entries: **LocaleEntry, count: *size_t,
+cap: *size_t, key: const char*, value: const char*) #extern
+LocaleStoreLanguage :: (code: const char*, label: const char*) #extern
+
+locale_copy_range :: (source: const char*, length: size_t) -> *char #private {
+    copy: *char = (char*)malloc(length + 1)
+    if copy == nil { return nil }
+    memcpy(copy, source, length)
+    copy[length] = '\0'
+    return copy
+}
+
+locale_append_text :: (buffer: **char, length: *size_t,
+capacity: *size_t, value: const char*) #private {
+    if value == nil { return }
+    value_length: size_t = strlen(value)
+    needed: size_t = *length + value_length + 1
+    if *capacity < needed {
+        next_capacity: size_t = *capacity == 0 ? 128 : *capacity
+        while next_capacity < needed { next_capacity *= 2 }
+        grown: *char = (char*)realloc(*buffer, next_capacity)
+        if grown == nil { return }
+        *buffer = grown
+        *capacity = next_capacity
+    }
+    memcpy(*buffer + *length, value, value_length)
+    *length += value_length
+    (*buffer)[*length] = '\0'
+}
+
+locale_next_line :: (cursor: **char) -> *char #private {
+    if *cursor == nil || **cursor == '\0' { return nil }
+    line: *char = *cursor
+    eol: *char = strpbrk(*cursor, "\r\n")
+    if eol == nil {
+        *cursor = nil
+        return line
+    }
+    line_end: char = *eol
+    *eol = '\0'
+    *cursor = eol + 1
+    if (line_end == '\r' && **cursor == '\n') ||
+       (line_end == '\n' && **cursor == '\r') {
+        *cursor += 1
+    }
+    return line
+}
+
+LocaleParseEntries :: (text: const char*, entries: **LocaleEntry,
+count: *size_t, cap: *size_t) #export {
+    if text == nil || entries == nil || count == nil || cap == nil {
+        return
+    }
+    mutable_text: *char = locale_copy_range(text, strlen(text))
+    if mutable_text == nil { return }
+    cursor: *char = mutable_text
+    current_key: *char = nil
+    body: *char = nil
+    body_length: size_t = 0
+    body_capacity: size_t = 0
+
+    line: *char = locale_next_line(&cursor)
+    while line != nil {
+        if line[0] == '[' {
+            line_length: size_t = strlen(line)
+            if line_length > 2 && line[line_length - 1] == ']' {
+                key: *char = locale_copy_range(line + 1, line_length - 2)
+                if key != nil {
+                    free(current_key)
+                    current_key = key
+                    free(body)
+                    body = nil
+                    body_length = 0
+                    body_capacity = 0
+                }
+                line = locale_next_line(&cursor)
+                continue
+            }
+        }
+        if strcmp(line, "---") == 0 {
+            if current_key != nil {
+                LocaleStoreEntry(entries, count, cap, current_key,
+                                 body != nil ? body : "")
+                free(current_key)
+                current_key = nil
+            }
+            free(body)
+            body = nil
+            body_length = 0
+            body_capacity = 0
+            line = locale_next_line(&cursor)
+            continue
+        }
+        if current_key != nil {
+            if body_length > 0 {
+                locale_append_text(&body, &body_length, &body_capacity, "\n")
+            }
+            locale_append_text(&body, &body_length, &body_capacity, line)
+        }
+        line = locale_next_line(&cursor)
+    }
+    if current_key != nil {
+        LocaleStoreEntry(entries, count, cap, current_key,
+                         body != nil ? body : "")
+    }
+    free(current_key)
+    free(body)
+    free(mutable_text)
+}
+
+LocaleParseLanguages :: (text: const char*) #export {
+    if text == nil { return }
+    mutable_text: *char = locale_copy_range(text, strlen(text))
+    if mutable_text == nil { return }
+    cursor: *char = mutable_text
+    line: *char = locale_next_line(&cursor)
+    while line != nil {
+        if line[0] != '\0' && line[0] != '#' {
+            separator: *char = strchr(line, '|')
+            if separator != nil {
+                *separator = '\0'
+                code: *char = line
+                label: *char = separator + 1
+                if code[0] != '\0' && label[0] != '\0' {
+                    LocaleStoreLanguage(code, label)
+                }
+            }
+        }
+        line = locale_next_line(&cursor)
+    }
+    free(mutable_text)
+}

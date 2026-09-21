@@ -1,10 +1,17 @@
 # Button verification review
 
-Status: the `.kry` UI source migration is complete. Widget, layout,
-interaction, style, and UI-tree decisions are all authored in `.kry`; no
-hand-written C UI behavior remains. The generated-runtime parity test passes
-for both the C and Go runtimes. The Bend candidate laws and new checks below
-remain proposals, and each manual test still requires approval before running.
+The dated cross-project missing-pieces checklist is
+[../UI_MIGRATION_REMAINING.md](../UI_MIGRATION_REMAINING.md). A passing capture
+or benchmark is valid only for its source revision; the current uncommitted
+paint, style board, and gallery changes still require their own approved
+visual and timing evidence.
+
+Status: the Button widget and its retained UI decisions are authored in
+`.kry`. The repository-wide UI migration and revision-specific visual
+verification remain open. The generated-runtime parity test previously passed
+for both the C and Go runtimes; it has not been rerun for the current changes.
+The Bend candidate laws and new checks below remain proposals, and each
+manual test still requires approval before running.
 
 ## Current evidence
 
@@ -12,8 +19,10 @@ remain proposals, and each manual test still requires approval before running.
   surface and exports PNGs after settled frames. Its 24 pages cover each
   built-in style pack and Lightfield with glow enabled and disabled.
 - `docs/assets/button-widget-sprite-sheet.png` is a design illustration.
-- `tests/style_capture_boards.c` shows some states and styles, but not the full
-  tone, emphasis, and state matrix.
+- `tests/style_capture_boards.kry` builds a ten-board capture across Material,
+  Classic, Lightfield flat, Lightfield glow, and no style in light and dark
+  modes. Its PNG output awaits approval and visual review. The separate button
+  gallery contains the full tone, emphasis, and state matrix.
 - `law/program` contains nine candidate Bend button laws and an exhaustive
   Boolean comparison against generated C. They are not yet on `master`.
 - `tests/control_appearance_perf_test.c` currently measures one button recipe.
@@ -105,11 +114,12 @@ renderer effects requested by that `.kry` code; it must not retain an
 independent UI tree or choose UI behavior. Generated C from `.kry` is build
 output, not an alternate source. New handwritten C UI behavior is prohibited.
 
-This law now holds: `src/ui/ui_tree.c` and the widget C modules have been
-removed, and their decisions live in `.kry`. The remaining C is platform and
-raster backends (X11 window, font rasterization, paint command execution,
-surface/image caches, test helpers). The generated-runtime parity test passes
-for both the C and Go runtimes.
+The retained tree and widget C modules have been removed, and their decisions
+live in `.kry`. Repository-wide enforcement is still open: native window event
+arbitration needs an ownership pass, handwritten UI headers remain, and the
+remaining native raster/cache modules need a final policy audit. The
+generated-runtime parity test passed for both C and Go on an earlier revision;
+the current working tree is unverified.
 
 ## Candidate laws from `law/program`
 

@@ -1,0 +1,47 @@
+#module "node_props"
+#import "kryon_compat.generated.h"
+
+KRYON_NODE_ID_MAX :: 96
+KRYON_NODE_NAME_MAX :: 128
+KRYON_NODE_TYPE_MAX :: 64
+KRYON_NODE_PATH_MAX :: 512
+
+KryonNodeKind :: enum {
+    KRYON_NODE_KIND_UNKNOWN = 0
+    KRYON_NODE_KIND_UI = 1
+    KRYON_NODE_KIND_2D = 2
+    KRYON_NODE_KIND_DATA = 3
+    KRYON_NODE_KIND_GROUP = 4
+}
+
+KryonNodeFlags :: enum {
+    KRYON_NODE_FLAG_SELECTABLE = 1
+    KRYON_NODE_FLAG_MOVABLE = 2
+    KRYON_NODE_FLAG_RESIZABLE = 4
+    KRYON_NODE_FLAG_DELETABLE = 8
+    KRYON_NODE_FLAG_INSERTABLE = 16
+    KRYON_NODE_FLAG_READONLY = 32
+    KRYON_NODE_FLAG_VISIBLE = 64
+    KRYON_NODE_FLAG_LOCKED = 128
+}
+
+KryonNode :: struct {
+    id: [KRYON_NODE_ID_MAX]char
+    name: [KRYON_NODE_NAME_MAX]char
+    type: [KRYON_NODE_TYPE_MAX]char
+    base_type: [KRYON_NODE_TYPE_MAX]char
+    parent_id: [KRYON_NODE_ID_MAX]char
+    source_path: [KRYON_NODE_PATH_MAX]char
+    kind: KryonNodeKind
+    flags: unsigned
+    bounds: Rectangle
+    position: Vector2
+    scale: Vector2
+    origin: Vector2
+    rotation: float
+    layer: int
+    order: int
+    source_line: int
+    source_start: int
+    source_end: int
+}

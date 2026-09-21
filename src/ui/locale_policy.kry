@@ -1,0 +1,183 @@
+#module "locale_policy"
+#inspect off
+
+#import "locale.h"
+#import <stdio.h>
+#import <string.h>
+
+LocaleStoreLanguage :: (code: const char*, label: const char*) #extern
+
+LocaleRequestedCode :: (code: const char*) -> const char* #export {
+    if code == nil || code[0] == '\0' {
+        return "en"
+    }
+    return code
+}
+
+LocaleContainsCode :: (languages: const LocaleLanguage*,
+language_count: size_t, code: const char*) -> int #export {
+    if code == nil {
+        return 0
+    }
+    index: size_t = 0
+    while index < language_count {
+        if strcmp(languages[index].code, code) == 0 {
+            return 1
+        }
+        index++
+    }
+    return 0
+}
+
+LocaleEnsureEnglish :: (languages: const LocaleLanguage*,
+language_count: size_t) #export {
+    index: size_t = 0
+    while index < language_count {
+        if languages[index].code != nil &&
+           strcmp(languages[index].code, "en") == 0 {
+            return
+        }
+        index++
+    }
+    LocaleStoreLanguage("en", "English")
+}
+
+LocaleResolveValue :: (active: const LocaleEntry*, active_count: size_t,
+base: const LocaleEntry*, base_count: size_t,
+key: const char*) -> const char* #export {
+    if key == nil { return "" }
+    index: size_t = 0
+    while index < active_count {
+        if strcmp(active[index].key, key) == 0 {
+            return active[index].value
+        }
+        index++
+    }
+    index = 0
+    while index < base_count {
+        if strcmp(base[index].key, key) == 0 {
+            return base[index].value
+        }
+        index++
+    }
+    return key
+}
+
+locale_preference_separator :: (value: char) -> int #private {
+    return value == ':' || value == ';' || value == ',' ||
+           value == ' ' || value == '\t' || value == '\r' || value == '\n'
+}
+
+locale_ascii_lower :: (value: char) -> char #private {
+    if value >= 'A' && value <= 'Z' {
+        return (char)(value + ('a' - 'A'))
+    }
+    return value
+}
+
+locale_normalize_candidate :: (source: const char*, source_length: size_t,
+out: char*, out_size: size_t) -> int #private {
+    if source == nil || out == nil || out_size == 0 { return 0 }
+    used: size_t = 0
+    saw_alnum: int = 0
+    last_separator: int = 0
+    index: size_t = 0
+    while index < source_length && source[index] != '\0' {
+        value: char = source[index]
+        if value == '.' || value == '@' || value == '%' { break }
+        if (value >= 'A' && value <= 'Z') ||
+           (value >= 'a' && value <= 'z') ||
+           (value >= '0' && value <= '9') {
+            if used + 1 >= out_size { break }
+            out[used] = locale_ascii_lower(value)
+            used++
+            saw_alnum = 1
+            last_separator = 0
+            index++
+            continue
+        }
+        if value == '-' || value == '_' {
+            if used == 0 || last_separator != 0 {
+                index++
+                continue
+            }
+            if used + 1 >= out_size { break }
+            out[used] = '-'
+            used++
+            last_separator = 1
+        }
+        index++
+    }
+    while used > 0 && out[used - 1] == '-' { used-- }
+    out[used] = '\0'
+    if saw_alnum == 0 || strcmp(out, "c") == 0 ||
+       strcmp(out, "posix") == 0 {
+        return 0
+    }
+    return used > 0 ? 1 : 0
+}
+
+locale_code_matches :: (code: const char*, normalized: const char*) -> int #private {
+    if code == nil || normalized == nil { return 0 }
+    norm_code: [32]char
+    if !locale_normalize_candidate(code, strlen(code),
+                                   norm_code, sizeof(norm_code)) {
+        return 0
+    }
+    return strcmp(norm_code, normalized) == 0 ? 1 : 0
+}
+
+locale_find_supported_code :: (languages: const LocaleLanguage*,
+language_count: size_t, candidate: const char*) -> const char* #private {
+    if candidate == nil { return nil }
+    normalized: [32]char
+    base: [32]char
+    if !locale_normalize_candidate(candidate, strlen(candidate),
+                                   normalized, sizeof(normalized)) {
+        return nil
+    }
+    index: size_t = 0
+    while index < language_count {
+        if locale_code_matches(languages[index].code, normalized) {
+            return languages[index].code
+        }
+        index++
+    }
+    snprintf(base, sizeof(base), "%s", normalized)
+    dash: char* = strchr(base, '-')
+    if dash != nil { *dash = '\0' }
+    if base[0] == '\0' { return nil }
+    index = 0
+    while index < language_count {
+        if locale_code_matches(languages[index].code, base) {
+            return languages[index].code
+        }
+        index++
+    }
+    return nil
+}
+
+LocalePreferredCode :: (languages: const LocaleLanguage*,
+language_count: size_t, preferences: const char*) -> const char* #export {
+    if preferences == nil || preferences[0] == '\0' { return "en" }
+    cursor: const char* = preferences
+    while *cursor != '\0' {
+        while locale_preference_separator(*cursor) { cursor++ }
+        start: const char* = cursor
+        while *cursor != '\0' && !locale_preference_separator(*cursor) {
+            cursor++
+        }
+        length: size_t = (size_t)(cursor - start)
+        if length == 0 { continue }
+        candidate: [64]char
+        if length >= sizeof(candidate) {
+            length = sizeof(candidate) - 1
+        }
+        memcpy(candidate, start, length)
+        candidate[length] = '\0'
+        code: const char* = locale_find_supported_code(
+            languages, language_count, candidate)
+        if code != nil { return code }
+    }
+    return "en"
+}

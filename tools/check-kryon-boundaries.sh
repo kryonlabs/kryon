@@ -47,6 +47,7 @@ app_specific_matches=$(
         --glob '!tools/check-kryon-boundaries.sh' \
         --glob '!CHANGELOG.md' \
         --glob '!plan/**' \
+        --glob '!laws/evidence/**' \
         --glob '!docs/site/showcase-data.json' \
         --glob '!docs/site/showcase/**' \
         --glob '!docs/site/home.js' \

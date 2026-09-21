@@ -5,6 +5,7 @@
 #import "ui_image_internal.h"
 #import "runtime/image.h"
 #import "runtime/button.h"
+#import "math.h"
 
 ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle #export {
     return ImageFitBounds(image.bounds, image.source,
@@ -37,6 +38,68 @@ ImageWidgetTint :: (class_name: i32) -> Color {
 ImageTexture :: (texture: Texture2D, image: ImageProps) #export {
     ImageTextureTinted(texture, image,
     ImageWidgetTint(image.class_name))
+}
+
+ImageRowInset :: (bounds: Rectangle, radius: float,
+sample_y: float) -> float {
+    if radius <= 0.0f { return 0.0f }
+    top_center: float = bounds.y + radius
+    bottom_center: float = bounds.y + bounds.height - radius
+    dy: float = 0.0f
+    if sample_y < top_center {
+        dy = top_center - sample_y
+    } else if sample_y > bottom_center {
+        dy = sample_y - bottom_center
+    }
+    if dy <= 0.0f { return 0.0f }
+    if dy >= radius { return radius }
+    inside: float = radius * radius - dy * dy
+    return radius - sqrtf(inside > 0.0f ? inside : 0.0f)
+}
+
+ImageStripSource :: (source_base: Rectangle,
+dst: Rectangle, strip: Rectangle) -> Rectangle {
+    source: Rectangle = (Rectangle){0}
+    if dst.width == 0.0f || dst.height == 0.0f {
+        return source
+    }
+    source.x = source_base.x +
+        (strip.x - dst.x) * source_base.width / dst.width
+    source.y = source_base.y +
+        (strip.y - dst.y) * source_base.height / dst.height
+    source.width = strip.width * source_base.width / dst.width
+    source.height = strip.height * source_base.height / dst.height
+    return source
+}
+
+ImageDrawStrip :: (texture: Texture2D, source_base: Rectangle,
+dst: Rectangle, strip: Rectangle, tint: Color) {
+    if strip.width <= 0.0f || strip.height <= 0.0f { return }
+    source: Rectangle = ImageStripSource(source_base, dst, strip)
+    ui_image_draw_texture_strip(texture, source, strip, tint)
+}
+
+ui_image_draw_rounded_texture :: (texture: Texture2D,
+source: Rectangle, dst: Rectangle, bounds: Rectangle,
+radius: float, tint: Color) #export {
+    if radius <= 0.0f {
+        ImageDrawStrip(texture, source, dst, bounds, tint)
+        return
+    }
+    y: i32 = (int)ceilf(bounds.y)
+    y_end: i32 = (int)floorf(bounds.y + bounds.height)
+    while y < y_end {
+        sample_y: float = (float)y + 0.5f
+        inset: float = ceilf(ImageRowInset(bounds, radius, sample_y))
+        left: float = ceilf(bounds.x + inset)
+        right: float = floorf(bounds.x + bounds.width - inset)
+        if right > left {
+            strip: Rectangle = (Rectangle){left, (float)y,
+                right - left, 1.0f}
+            ImageDrawStrip(texture, source, dst, strip, tint)
+        }
+        y += 1
+    }
 }
 
 ImageTextureTinted :: (texture: Texture2D, image: ImageProps,

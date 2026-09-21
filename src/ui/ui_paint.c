@@ -1,8 +1,6 @@
 #include "ui_internal.h"
 #include "ui_paint_internal.h"
 
-LoadingRingSpec ui_ring_paint_spec(LoadingRingSpec ring);
-
 int
 ui_backend_is_termi(void)
 {
@@ -51,56 +49,12 @@ ui_draw_surface_direct(SurfaceDrawing command)
 }
 
 void
-ui_draw(Drawing command)
+ui_draw_texture(Texture2D texture, Rectangle bounds, Color tint)
 {
-    Rectangle bounds = command.bounds;
-    Color color = GetColor(command.color);
-    switch(command.kind) {
-    case DrawingText: {
-        int baseline = TextBaselineY(command.text, (int)bounds.y,
-            (int)bounds.height, command.font);
-        RenderNonSelectableText(command.text, (int)bounds.x, baseline,
-                                command.font, color);
-        break;
-    }
-    case DrawingIcon:
-        DrawIcon(command.icon, bounds, color);
-        break;
-    case DrawingTexture: {
-        static const Vector2 origin;
-        Rectangle source = {0, 0, (float)command.texture.width,
-                            (float)command.texture.height};
-        DrawTexturePro(command.texture, source, bounds, origin, 0.0f, color);
-        break;
-    }
-    case DrawingChevron:
-        for(int y = (int)floorf(bounds.y); y < (int)ceilf(bounds.y + bounds.height); y++) {
-            for(int x = (int)floorf(bounds.x); x < (int)ceilf(bounds.x + bounds.width); x++) {
-                float coverage = ChevronCoverage(x - bounds.x, y - bounds.y, bounds.width);
-                if(coverage > 0.0f)
-                    DrawRectangle(x, y, 1, 1, GetColor(Opacity(command.color, coverage)));
-            }
-        }
-        break;
-    case DrawingRing: {
-        LoadingRingSpec ring = ui_ring_paint_spec(command.ring);
-        float radius = LoadingPaintRadius(ring);
-        for(int y = (int)floorf(ring.y - radius); y < (int)ceilf(ring.y + radius); y++) {
-            for(int x = (int)floorf(ring.x - radius); x < (int)ceilf(ring.x + radius); x++) {
-                RingSample sample = LoadingSample(ring, x - ring.x, y - ring.y);
-                if((sample.glow & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.glow));
-                if((sample.track & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.track));
-                if((sample.arc & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.arc));
-                if((sample.tip & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.tip));
-            }
-        }
-        break;
-    }
-    }
+    Rectangle source = {0, 0, (float)texture.width,
+                        (float)texture.height};
+    DrawTexturePro(texture, source, bounds,
+                   (Vector2){0.0f, 0.0f}, 0.0f, tint);
 }
 
 static void

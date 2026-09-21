@@ -1,0 +1,57 @@
+#module "locale_defaults"
+#inspect off
+
+LocaleDefaultEntry :: struct {
+    key: const char*
+    value: const char*
+}
+
+static locale_defaults: [29]LocaleDefaultEntry = {
+    {"theme_style_label", "Style"},
+    {"theme_style_system", "System"},
+    {"theme_style_classic", "Classic"},
+    {"theme_style_default", "Default"},
+    {"theme_style_fluent", "Fluent"},
+    {"theme_style_adwaita", "Adwaita"},
+    {"theme_style_liquid_glass", "Liquid Glass"},
+    {"theme_label", "Theme source"},
+    {"theme_app", "Kryon"},
+    {"theme_system", "System"},
+    {"theme_mode_label", "Mode"},
+    {"theme_follow_device", "Follow device"},
+    {"theme_light", "Light"},
+    {"theme_dark", "Dark"},
+    {"theme_color_label", "Color theme"},
+    {"theme_picker_title", "Color theme"},
+    {"theme_sky", "Sky"},
+    {"theme_ocean", "Ocean"},
+    {"theme_forest", "Forest"},
+    {"theme_sunset", "Sunset"},
+    {"theme_lavender", "Lavender"},
+    {"theme_cherry", "Cherry"},
+    {"theme_dawn", "Dawn"},
+    {"theme_sage", "Sage"},
+    {"theme_sepia", "Sepia"},
+    {"theme_mono", "Mono"},
+    {"theme_mint", "Mint"},
+    {"theme_cobalt", "Cobalt"},
+    {"theme_sweet", "Sweet"},
+}
+
+LocaleDefaultCount :: () -> int #export {
+    return (int)(sizeof(locale_defaults) / sizeof(locale_defaults[0]))
+}
+
+LocaleDefaultKeyAt :: (index: int) -> const char* #export {
+    if index < 0 || index >= LocaleDefaultCount() {
+        return nil
+    }
+    return locale_defaults[index].key
+}
+
+LocaleDefaultValueAt :: (index: int) -> const char* #export {
+    if index < 0 || index >= LocaleDefaultCount() {
+        return nil
+    }
+    return locale_defaults[index].value
+}
