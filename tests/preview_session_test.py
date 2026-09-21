@@ -12,7 +12,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 CC = shlex.split(os.environ.get("CC", "cc"))
 HOST = r'''
-#include "app_host.h"
+#include "ui_app_host_props.generated.h"
 static int value = VERSION;
 static int count(void *context) { (void)context; return value; }
 static void draw(void *context, Rectangle bounds) {

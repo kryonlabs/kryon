@@ -1,6 +1,6 @@
 #module "screen_routes"
 
-#import "app_runtime.h"
+#import "ui_app_host_props.generated.h"
 #import "ui_page_props.generated.h"
 #import <stdio.h>
 #import <stdlib.h>

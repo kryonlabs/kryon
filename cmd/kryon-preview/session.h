@@ -1,7 +1,7 @@
 #ifndef PREVIEW_SESSION_H
 #define PREVIEW_SESSION_H
 
-#include "app_host.h"
+#include "ui_app_host_props.generated.h"
 
 #include <stdio.h>
 #include <sys/types.h>

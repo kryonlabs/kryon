@@ -1,7 +1,7 @@
 #ifndef KRYON_EDIT_HOST_H
 #define KRYON_EDIT_HOST_H
 
-#include "app_host.h"
+#include "ui_app_host_props.generated.h"
 #include "ui_node_props.generated.h"
 
 #define KRYON_EDIT_HOST_ABI_VERSION 1

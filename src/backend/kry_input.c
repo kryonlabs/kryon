@@ -7,7 +7,7 @@
 #include "kry_input.h"
 #include "kry_input_internal.h"
 #include "kry_inject.h"
-#include "app_host.h"
+#include "ui_app_host_props.generated.h"
 
 #include <stddef.h>
 #include <string.h>
