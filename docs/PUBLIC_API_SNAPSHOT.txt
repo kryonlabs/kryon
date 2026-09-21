@@ -621,8 +621,6 @@ include/kryon_edit_host.h typedef GetKryonEditHostCallback
 include/kryon_key.h typedef KeyID
 include/kryon_mem.h function KryonMemDebugEnabled
 include/kryon_mem.h function KryonMemReport
-include/kryon_node.h function KryonNodeInit
-include/kryon_node.h function KryonNodeKindName
 include/kryon_property.h enum PROPERTY_ADVANCED
 include/kryon_property.h enum PROPERTY_ASSET_PATH
 include/kryon_property.h enum PROPERTY_BOOL
@@ -1324,6 +1322,8 @@ include/ui_node_props.generated.h enum KRYON_NODE_KIND_DATA
 include/ui_node_props.generated.h enum KRYON_NODE_KIND_GROUP
 include/ui_node_props.generated.h enum KRYON_NODE_KIND_UI
 include/ui_node_props.generated.h enum KRYON_NODE_KIND_UNKNOWN
+include/ui_node_props.generated.h function KryonNodeInit
+include/ui_node_props.generated.h function KryonNodeKindName
 include/ui_node_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_node_props.generated.h macro KRYON_NODE_ID_MAX
 include/ui_node_props.generated.h macro KRYON_NODE_NAME_MAX

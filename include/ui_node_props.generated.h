@@ -21,10 +21,13 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "kryon_compat.generated.h"
+#include "kryon_property.h"
 #define KRYON_NODE_ID_MAX 96
 #define KRYON_NODE_NAME_MAX 128
 #define KRYON_NODE_TYPE_MAX 64
 #define KRYON_NODE_PATH_MAX 512
+
+typedef struct { const char *node_id; const char *property_id; PropertyValue value; } KryonNodeEdit;
 
 typedef enum KryonNodeKind {
     KRYON_NODE_KIND_UNKNOWN = 0,
@@ -65,5 +68,7 @@ typedef struct KryonNode {
     int source_start;
     int source_end;
 } KryonNode;
+const char* KryonNodeKindName(KryonNodeKind kind);
+void KryonNodeInit(KryonNode* node, const char*  id, const char*  type, KryonNodeKind  kind);
 
 #endif /* K_RUNTIME_NODE_PROPS_H */

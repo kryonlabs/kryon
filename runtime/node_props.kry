@@ -1,5 +1,14 @@
 #module "node_props"
 #import "kryon_compat.generated.h"
+#import "kryon_property.h"
+
+# C-only record: PropertyValue is the property system's union, declared in the
+# handwritten kryon_property.h host header.
+KryonNodeEdit :: struct { const char *node_id; const char *property_id; PropertyValue value; } #type
+
+# Implemented by the C-only node host; declared here for the public ABI.
+KryonNodeKindName :: (kind: KryonNodeKind) -> const char* #extern #export
+KryonNodeInit :: (node: *KryonNode, id: const char*, type: const char*, kind: KryonNodeKind) #extern #export
 
 KRYON_NODE_ID_MAX :: 96
 KRYON_NODE_NAME_MAX :: 128

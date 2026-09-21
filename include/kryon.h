@@ -73,7 +73,7 @@
 #include "scene_property.h"
 #include "kry_signal.h"
 #include "kry_animation.h"
-#include "kryon_node.h"
+#include "ui_node_props.generated.h"
 #include "kryon_property.h"
 #include "kryon_edit_host.h"
 #include "ui_node_registry_props.generated.h"

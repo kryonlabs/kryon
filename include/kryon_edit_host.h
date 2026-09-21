@@ -2,7 +2,7 @@
 #define KRYON_EDIT_HOST_H
 
 #include "app_host.h"
-#include "kryon_node.h"
+#include "ui_node_props.generated.h"
 
 #define KRYON_EDIT_HOST_ABI_VERSION 1
 

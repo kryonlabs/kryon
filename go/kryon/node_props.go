@@ -2,6 +2,7 @@
 package kryon
 
 // #import kryon_compat.generated.h
+// #import kryon_property.h
 type KryonNodeKind int32
 
 const (

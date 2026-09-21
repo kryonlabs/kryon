@@ -1,6 +1,6 @@
 #module "node"
 
-#import "kryon_node.h"
+#import "ui_node_props.generated.h"
 #import <stdio.h>
 #import <string.h>
 
