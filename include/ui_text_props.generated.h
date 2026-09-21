@@ -103,5 +103,6 @@ int32_t TextFontHasNativeText(Font font);
 int32_t TextFontNativeTextWidth(Font font, const char*  text, int32_t  byte_len);
 int32_t TextFontNativeTextHeight(Font font);
 int32_t TextFontDrawNativeText(Font font, const char*  text, int32_t  byte_len, int32_t  x, int32_t  y, int32_t  font_size, Color  color);
+void DrawFittedTextInRect(const char* text, Rectangle  rect, int32_t  preferred_size, int32_t  min_size, Color  color);
 
 #endif /* K_RUNTIME_TEXT_PROPS_H */

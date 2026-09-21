@@ -1467,6 +1467,7 @@ include/ui_text_props.generated.h enum TEXT_ELEMENT_ICON
 include/ui_text_props.generated.h enum TEXT_ELEMENT_LINE_BREAK
 include/ui_text_props.generated.h enum TEXT_ELEMENT_TEXT
 include/ui_text_props.generated.h function ClearTextFonts
+include/ui_text_props.generated.h function DrawFittedTextInRect
 include/ui_text_props.generated.h function EnsureDefaultFont
 include/ui_text_props.generated.h function FreeTextLayout
 include/ui_text_props.generated.h function GetTextFont

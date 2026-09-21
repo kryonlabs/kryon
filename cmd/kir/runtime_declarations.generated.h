@@ -2295,6 +2295,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "TextFontDrawNativeText :: (font: Font, text: const char*, byte_len: i32,\n"
         "                           x: i32, y: i32, font_size: i32,\n"
         "                           color: Color) -> i32 #extern #export\n"
+        "\n"
+        "# Shrink-to-fit text: draws text in rect, choosing the largest size between\n"
+        "# min_size and preferred_size that fits. Implemented by the text host.\n"
+        "DrawFittedTextInRect :: (text: const char*, rect: Rectangle, preferred_size: i32, min_size: i32, color: Color) #extern #export\n"
     },
     {"runtime/title_bar_props.kry",
         "#module \"title_bar_props\"\n"
