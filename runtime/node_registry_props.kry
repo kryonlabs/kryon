@@ -6,3 +6,12 @@ NodeTypeFlag :: enum {
     NodeTypeFlagMovable = 4
     NodeTypeFlagResizable = 8
 }
+
+NodeType :: struct {
+    name: const char*
+    label: const char*
+    group: const char*
+    base: const char*
+    detail: const char*
+    flags: NodeTypeFlag
+}

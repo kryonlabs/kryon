@@ -3,15 +3,6 @@
 
 #include "ui_node_registry_props.generated.h"
 
-typedef struct NodeType {
-    const char *name;
-    const char *label;
-    const char *group;
-    const char *base;
-    const char *detail;
-    NodeTypeFlag flags;
-} NodeType;
-
 int NodeTypeCount(void);
 const NodeType *NodeTypeAt(int index);
 const char *NodeTypeName(int index);

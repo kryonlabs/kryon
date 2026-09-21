@@ -28,4 +28,13 @@ typedef enum NodeTypeFlag {
     NodeTypeFlagResizable = 8,
 } NodeTypeFlag;
 
+typedef struct NodeType {
+    const char* name;
+    const char* label;
+    const char* group;
+    const char* base;
+    const char* detail;
+    NodeTypeFlag flags;
+} NodeType;
+
 #endif /* K_RUNTIME_NODE_REGISTRY_PROPS_H */

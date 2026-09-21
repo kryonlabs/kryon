@@ -948,6 +948,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    NodeTypeFlagMovable = 4\n"
         "    NodeTypeFlagResizable = 8\n"
         "}\n"
+        "\n"
+        "NodeType :: struct {\n"
+        "    name: const char*\n"
+        "    label: const char*\n"
+        "    group: const char*\n"
+        "    base: const char*\n"
+        "    detail: const char*\n"
+        "    flags: NodeTypeFlag\n"
+        "}\n"
     },
     {"runtime/page_props.kry",
         "#module \"page_props\"\n"

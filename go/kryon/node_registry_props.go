@@ -9,3 +9,12 @@ const (
 	NodeTypeFlagMovable    NodeTypeFlag = 4
 	NodeTypeFlagResizable  NodeTypeFlag = 8
 )
+
+type NodeType struct {
+	Name   string
+	Label  string
+	Group  string
+	Base   string
+	Detail string
+	Flags  NodeTypeFlag
+}
