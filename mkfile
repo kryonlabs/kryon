@@ -31,7 +31,7 @@ RAYEXT=$ROOT/vendor/raylib/src/external
 GEN=$ROOT/build/plan9
 genlist=$GEN/generated-c-files.txt
 
-CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN -I$GEN/generated -I$GEN/generated/src -I$GEN/generated/runtime -I$ROOT/vendor/utf8proc -DUTF8PROC_STATIC -I$ROOT/vendor/monocypher/src -I$ROOT/vendor/monocypher/src/optional -I$RAYEXT \
+CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$ROOT/src/backend -I$GEN -I$GEN/generated -I$GEN/generated/src -I$GEN/generated/runtime -I$ROOT/vendor/utf8proc -DUTF8PROC_STATIC -I$ROOT/vendor/monocypher/src -I$ROOT/vendor/monocypher/src/optional -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
 	-DKRYON_EMBEDDED_ONLY=0
 
