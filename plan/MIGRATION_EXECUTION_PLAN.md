@@ -815,6 +815,29 @@ kept), `ui_window` (opaque NativeWindow), `ui_icons` (extern-variable gap),
 `app_runtime.h` (host void* chain), `kryon_key.h` (script-generated IDs), and
 B-001 downstream.
 
+## Round 34 — the icon host moves; the extern-variable gap closes
+
+`include/ui_icons.h` is deleted. `runtime/icon_sheet_props.kry` declares
+`IconSheet` as a one-line `#type` enum (records emit before the enum pass, so
+`IconAsset`'s field needs it that way), `IconAsset` as a `#type` over the
+script-generated `IconType`, and the two asset queries as externs.
+
+The round-32 "extern-variable gap" closed differently than expected: the
+`ui_icon_names` array is *generated data* from `embed-icon-sheets.py`, so the
+script now also emits `extern const char *ui_icon_names[ICON_COUNT];` into the
+`ui_icon_types.h` it already generates — the declaration lives with its
+generator, sized to the count that generator owns. Inbe's Makefile carried the
+deleted header as a prerequisite and followed.
+
+Session total: thirty-four handwritten UI headers removed. Gates: parity,
+`fast-test`, all syntax tests, `go-runtime-test`, examples, boundary,
+`icon-policy-test`, refreshed snapshots. Inbe builds green at `3b32e0487`;
+pointer committed (`48ef392`).
+
+Remaining: `theme.h`/`theme_meta.h` (die with B-001), `ui_dpi` (perf inlines,
+kept), `ui_window` (opaque NativeWindow), `app_runtime.h` (host void* chain),
+`kryon_key.h` (script-generated IDs), and B-001 downstream.
+
 Note: the main checkout remained detached at `120390fb` (concurrent session);
 commits again landed through a temporary linked worktree on `master`, removed
 afterwards so `master` is free to check out.
