@@ -102,9 +102,15 @@ ImageTextureTintedRaw(Texture2D texture, Rectangle bounds, Color tint)
     if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
        bounds.width <= 0.0f || bounds.height <= 0.0f)
         return;
-    DrawTexturePro(texture,
-                   (Rectangle){0, 0, (float)texture.width, (float)texture.height},
-                   bounds, (Vector2){0}, 0.0f, tint);
+    {
+        Vector2 origin;
+
+        origin.x = 0;
+        origin.y = 0;
+        DrawTexturePro(texture,
+                       (Rectangle){0, 0, (float)texture.width, (float)texture.height},
+                       bounds, origin, 0.0f, tint);
+    }
 }
 
 void

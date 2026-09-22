@@ -395,7 +395,7 @@ KirEmitNumberSupport(FILE *out, KirTarget target, const char *p)
             "        if(!shift) return a;\n"
             "        return (a >> shift) | ((sign && (a & (UINT64_C(1) << (w-1)))) ? mask ^ (mask >> shift) : 0);\n"
             "    case 8: return a & b; case 9: return a | b; case 10: return a ^ b;\n"
-            "    default: abort(); }\n}\n\n", p, p, p);
+            "    default: abort(); }\n    return 0;\n}\n\n", p, p, p);
         fprintf(out,
             "static inline uint64_t %s_float(double x, int w, int sign) {\n"
             "    double bound = 1; for(int i = 0; i < w-sign; i++) bound *= 2;\n"

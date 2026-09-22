@@ -17,4 +17,20 @@ typedef ulong uintptr_t;
 typedef vlong intmax_t;
 typedef uvlong uintmax_t;
 
+#define UINT8_MAX  255
+#define UINT16_MAX 65535
+#define UINT32_MAX 4294967295U
+#define INT8_MIN   (-128)
+#define INT16_MIN  (-32768)
+#define INT32_MIN  (-2147483647 - 1)
+#define INT8_MAX   127
+#define INT16_MAX  32767
+#define INT32_MAX  2147483647
+#define INT64_MAX  ((int64_t)(((uint64_t)-1) >> 1))
+#define INT64_MIN  (-INT64_MAX - 1)
+#define UINT64_MAX ((uint64_t)-1)
+#define UINT64_C(c) ((uint64_t)(c))
+#define INT64_C(c) ((int64_t)(c))
+#define UINT32_C(c) ((uint32_t)(c))
+
 #endif

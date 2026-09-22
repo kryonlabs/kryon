@@ -31,7 +31,7 @@ KryRouteListSanitize :: (list: KryRouteList, allowed: KryRouteAllowedFn,
 
     write := 0
     for int index = 0; index < list.count; index++ {
-        route := list.routes[index]
+        route: i32 = list.routes[index]
         if allowed != nil && !allowed(route, user) {
             continue
         }
@@ -59,7 +59,7 @@ KryRouteListSanitizeSet :: (list: KryRouteList,
 
     write := 0
     for int index = 0; index < list.count; index++ {
-        route := list.routes[index]
+        route: i32 = list.routes[index]
         if !KryRouteAllowedInSet(route, allowed_routes, allowed_count) {
             continue
         }
@@ -86,7 +86,7 @@ KryRouteListMove :: (list: KryRouteList, from_index: int,
         return 0
     }
 
-    route := list.routes[from_index]
+    route: i32 = list.routes[from_index]
     if from_index < to_index {
         for int index = from_index; index < to_index; index++ {
             list.routes[index] = list.routes[index + 1]

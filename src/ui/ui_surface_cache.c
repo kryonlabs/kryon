@@ -156,8 +156,14 @@ ui_draw_surface_cached(SurfaceDrawing command)
         surface_cache_bytes += bytes;
     }
     surface_cache[index].used = ++surface_cache_clock;
-    DrawTexturePro(surface_cache[index].texture, (Rectangle){0, 0, width, height},
-        (Rectangle){left, top, width, height}, (Vector2){0}, 0, WHITE);
+    {
+        Vector2 origin;
+
+        origin.x = 0;
+        origin.y = 0;
+        DrawTexturePro(surface_cache[index].texture, (Rectangle){0, 0, width, height},
+            (Rectangle){left, top, width, height}, origin, 0, WHITE);
+    }
     return 1;
 #else
     (void)command;

@@ -1443,7 +1443,8 @@ PLAN9_ICON_TYPES_H = $(PLAN9_PREP_DIR)/ui_icon_types.h
 kry-c-plan9: $(K2C)
 	rm -rf $(PLAN9_GENERATED)
 	mkdir -p $(PLAN9_PREP_DIR)
-	$(K2C) --plan9 --root $(abspath .) -o $(PLAN9_GENERATED) $(RUNTIME_KRY) $(UI_KRY)
+	$(K2C) --plan9 --root $(abspath .) --include-dir include --include-dir src \
+		-o $(PLAN9_GENERATED) $(RUNTIME_KRY) $(UI_KRY)
 	find $(PLAN9_GENERATED) -type f -name '*.c' | LC_ALL=C sort > $(PLAN9_FILE_LIST)
 	sh scripts/embed-assets.sh $(PLAN9_EMBEDDED_ASSETS_C) $(EMBED_ASSETS)
 	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(PLAN9_ICON_ASSETS_C)" \

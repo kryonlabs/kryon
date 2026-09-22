@@ -53,7 +53,7 @@ app_select_source_path :: (userdata: void*,
         return 0
     }
     for int index = 0; index < app->route_count; index++ {
-        route_path := app->routes[index].source_path
+        route_path: const char* = app->routes[index].source_path
         if route_path != nil && strcmp(route_path, source_path) == 0 {
             app_select_screen(userdata, index)
             return 1
@@ -67,7 +67,7 @@ app_draw :: (userdata: void*, viewport: Rectangle) #private {
     if app == nil || app->routes == nil || app->route_count <= 0 {
         return
     }
-    index := app->selected_route
+    index: i32 = app->selected_route
     if index < 0 || index >= app->route_count {
         index = 0
     }

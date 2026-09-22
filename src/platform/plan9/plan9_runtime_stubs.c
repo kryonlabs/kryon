@@ -4,6 +4,7 @@
 #include "kry_update_flow.h"
 #include "kry_uri.h"
 #include "sync/account.h"
+#include "sync_crypto.h"
 #include "sync.h"
 #include "notification.h"
 #include "notification_schedule.h"
