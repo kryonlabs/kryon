@@ -21,6 +21,16 @@ rasterization, input, clipboard, IME, time, storage).
 | Public headers | `include/` | App-facing API: `kryon.h`, widget props (generated), platform and format modules. |
 | Tools | `cmd/` | `k2kir`, `k2c`, `k2cpp`, `k2go`, `k2b`, `krb-run`, `krb-sdl`, `kryon-preview`, `kssfmt`, `kt`, `kryon`. |
 
+## Ziran migration in progress
+
+`zi/layout.zi` is the first maintained Kryon policy module written for Ziran.
+It carries the centered-column and responsive-width decisions from
+`runtime/layout.kry`. A separate Ziran program imports `layout` normally; the
+[layout test](../tests/ziran_layout_test.sh) checks source and saved `.zir`
+builds in C, C++, and Go without linking a UI runtime. The active Kryon build
+still uses `runtime/layout.kry`; the `.zi` module is not yet wired into widget
+rendering or downstream applications.
+
 ## Core contracts
 
 ### One widget, one declaration

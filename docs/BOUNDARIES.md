@@ -10,6 +10,10 @@ interaction, style, and capture decisions. Handwritten C provides platform,
 memory, and renderer effects called by generated code. Generated C is build
 output. Other C widget implementations still need migration.
 
+The Ziran migration starts in `zi/layout.zi` with pure layout policy. It has no
+host dependency and is tested as an ordinary imported module. Current widgets
+still consume the corresponding `.kry` policy until the Ziran library cutover.
+
 Secondary-window placement, drag movement thresholds, and reachable work-area
 bounds are authored in `src/ui/window_policy.kry`. The native window adapter
 collects OS events, moves windows, and presents their rendered content.
