@@ -422,4 +422,19 @@ EOF
 "$k2c" --no-main --root "$work" -o "$work/indexing" "$work/src/indexing.kry"
 cc -fsyntax-only -std=c99 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$work/indexing" "$work/indexing/src/indexing.c"
 
+# Extensionless private Kry imports must name the generated header in C.
+cat > "$work/src/private_dependency.kry" <<'EOF'
+PrivateValue :: () -> int {
+    return 7
+}
+EOF
+cat > "$work/src/private_import.kry" <<'EOF'
+#import "src/private_dependency" #private
+UsePrivateValue :: () -> int {
+    return PrivateValue()
+}
+EOF
+"$k2c" --no-main --root "$work" -o "$work/private" "$work/src/private_dependency.kry" "$work/src/private_import.kry"
+cc -fsyntax-only -std=c99 -Werror -I"$root/include" -I"$work/private" "$work/private/src/private_import.c"
+
 echo "k2c ok"

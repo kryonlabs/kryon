@@ -1742,14 +1742,22 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     /* '#private' imports include here (implementation-only). */
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
+        const char *dot;
+        const char *slash;
+        int has_ext;
 
         if(imp->required || imp->kind != KIR_IMPORT_HEADER)
             continue;
+        dot = strrchr(imp->target, '.');
+        slash = strrchr(imp->target, '/');
+        has_ext = dot != NULL && (slash == NULL || dot > slash);
         emit_guard_open(c, imp->guard);
         if(strchr(imp->signature, '<') != NULL)
             fprintf(c, "#include <%s>\n", imp->target);
-        else
+        else if(has_ext)
             fprintf(c, "#include \"%s\"\n", imp->target);
+        else
+            fprintf(c, "#include \"%s.h\"\n", imp->target);
         emit_guard_close(c, imp->guard);
     }
     /* Block widgets lower to host-hook calls (ScrollScope, RenderImage, ...)

@@ -469,6 +469,21 @@ EOF
 "$k2cpp" --no-main --root "$work" -o "$work/indexing" "$work/src/indexing.kry"
 c++ -fsyntax-only -std=c++17 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$work/indexing" "$work/indexing/src/indexing.cpp"
 
+# Extensionless private Kry imports must name the generated header in C++.
+cat > "$work/src/private_dependency.kry" <<'EOF'
+PrivateValue :: () -> int {
+    return 7
+}
+EOF
+cat > "$work/src/private_import.kry" <<'EOF'
+#import "src/private_dependency" #private
+UsePrivateValue :: () -> int {
+    return PrivateValue()
+}
+EOF
+"$k2cpp" --no-main --root "$work" -o "$work/private" "$work/src/private_dependency.kry" "$work/src/private_import.kry"
+c++ -fsyntax-only -std=c++17 -Werror -I"$root/include" -I"$work/private" "$work/private/src/private_import.cpp"
+
 # C API headers must also be consumable together from C++. This catches
 # conflicting linkage and C++ keywords in generated KSS record fields.
 cat > "$work/public_headers.cpp" <<'EOF'
