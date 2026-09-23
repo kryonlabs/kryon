@@ -1,5 +1,4 @@
 #module "clipboard_host"
-#inspect off
 #import "ui_internal.h"
 
 // Match the host clipboard read limit and keep a stable value for callers.

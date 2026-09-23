@@ -1,5 +1,4 @@
 #module "paint_layers_host"
-#inspect off
 #import "ui_internal.h"
 #import "ui_blend_internal.h"
 #import "ui/clip.h"

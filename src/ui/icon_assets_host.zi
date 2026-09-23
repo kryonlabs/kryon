@@ -1,5 +1,4 @@
 #module "icon_assets_host"
-#inspect off
 #import "ui_icon_sheet_props.generated.h"
 #import "string.h"
 

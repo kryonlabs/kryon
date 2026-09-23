@@ -1,5 +1,4 @@
 #module "sprite_sheet_host"
-#inspect off
 #import "spritesheet.h"
 #import "ui_image_internal.h"
 

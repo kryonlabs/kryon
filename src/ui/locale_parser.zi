@@ -1,5 +1,4 @@
 #module "locale_parser"
-#inspect off
 
 #import "ui_locale_props.generated.h"
 #import <stdlib.h>

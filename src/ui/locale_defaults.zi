@@ -1,5 +1,4 @@
 #module "locale_defaults"
-#inspect off
 
 LocaleDefaultEntry :: struct {
     key: const char*

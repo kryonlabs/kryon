@@ -1,5 +1,4 @@
 #module "clipboard_protocol_host"
-#inspect off
 #import "ui_internal.h"
 
 ClipboardTargetIncludes :: (target: const char*, wanted: char) -> i32 #export {

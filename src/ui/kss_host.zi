@@ -1,5 +1,4 @@
 #module "kss_host"
-#inspect off
 #import "ui_style_pack_props.generated.h"
 #import "runtime/kss_parser.h"
 #import "runtime/kss_formatter.h"
