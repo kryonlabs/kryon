@@ -16,8 +16,9 @@ The Ziran migration includes `zi/geometry.zi`, `zi/layout.zi`, and
 and accessibility decisions. `zi/drag_drop.zi` provides the drag and drop
 source and target decisions. `zi/theme.zi` provides theme policy, palette,
 scheme, and metrics. `zi/popup_policy.zi` provides popup lifecycle decisions
-using `zi/geometry.zi` for rectangle and point values. They are tested as
-ordinary imported modules.
+using `zi/geometry.zi` for rectangle and point values. `zi/popup_ownership.zi`
+provides popup order, ancestry, capture, retirement, and focus decisions.
+They are tested as ordinary imported modules.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 

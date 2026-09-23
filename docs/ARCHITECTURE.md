@@ -48,7 +48,11 @@ builds in all four targets.
 and keyboard decisions with ordinary imports from `zi/geometry.zi`. The
 [popup policy test](../tests/ziran_popup_policy_test.sh) runs source and saved
 `.zir` builds in C, C++, Go, and portable `.zib`.
-`make ziran-test` runs the five migration tests with an adjacent Ziran checkout.
+`zi/popup_ownership.zi` ports popup order, ancestry, capture, retirement, and
+focus decisions. The [ownership test](../tests/ziran_popup_ownership_test.sh)
+checks full-range `u64` identities in source and saved `.zir` builds across
+C, C++, Go, and portable `.zib`.
+`make ziran-test` runs the six migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
