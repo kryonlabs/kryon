@@ -1,39 +1,65 @@
 #module "capability_layout"
+#import "geometry"
 
-#import "ui_capability_props.generated.h"
-
-KryCapabilitiesHas :: (capabilities: int,
-                        capability: KryCapability) -> int #export {
-    return (capabilities & (int)capability) != 0 ? 1 : 0
+Capability :: enum {
+    FilePicker = 1
+    FileSave = 2
+    Share = 4
+    SecureStore = 8
+    BiometricUnlock = 16
+    Notifications = 32
+    Wakelock = 64
+    Clipboard = 128
 }
 
-KryCapabilityName :: (capability: KryCapability) -> const char* #export {
-    switch capability {
-        case KRY_CAP_FILE_PICKER: return "file-picker"
-        case KRY_CAP_FILE_SAVE: return "file-save"
-        case KRY_CAP_SHARE: return "share"
-        case KRY_CAP_SECURE_STORE: return "secure-store"
-        case KRY_CAP_BIOMETRIC_UNLOCK: return "biometric-unlock"
-        case KRY_CAP_NOTIFICATIONS: return "notifications"
-        case KRY_CAP_WAKELOCK: return "wakelock"
-        case KRY_CAP_CLIPBOARD: return "clipboard"
-    }
+SafeArea :: struct {
+    left: i32
+    top: i32
+    right: i32
+    bottom: i32
+}
+
+ViewportSpec :: struct {
+    width: i32
+    height: i32
+    safe_area: SafeArea
+    padding: i32
+    reserved_top: i32
+    reserved_bottom: i32
+    min_content_width: i32
+}
+
+CapabilitiesHas :: (capabilities: u32, capability: Capability) -> bool #export {
+    return (capabilities & (u32)capability) != (u32)0
+}
+
+CapabilityName :: (capability: Capability) -> string #export {
+    if capability == (Capability)FilePicker { return "file-picker" }
+    if capability == (Capability)FileSave { return "file-save" }
+    if capability == (Capability)Share { return "share" }
+    if capability == (Capability)SecureStore { return "secure-store" }
+    if capability == (Capability)BiometricUnlock { return "biometric-unlock" }
+    if capability == (Capability)Notifications { return "notifications" }
+    if capability == (Capability)Wakelock { return "wakelock" }
+    if capability == (Capability)Clipboard { return "clipboard" }
     return "unknown"
 }
 
-KrySafeContentRect :: (spec: KryViewportSpec) -> Rectangle #export {
-    x := spec.safe_area.left + spec.padding
-    y := spec.safe_area.top + spec.reserved_top + spec.padding
-    width := spec.width - spec.safe_area.left - spec.safe_area.right -
-             spec.padding * 2
-    height := spec.height - spec.safe_area.top - spec.safe_area.bottom -
-              spec.reserved_top - spec.reserved_bottom - spec.padding * 2
-
+SafeContentRect :: (spec: ViewportSpec) -> Rectangle #export {
+    x: i32 = spec.safe_area.left + spec.padding
+    y: i32 = spec.safe_area.top + spec.reserved_top + spec.padding
+    width: i32 = spec.width - spec.safe_area.left - spec.safe_area.right -
+                 spec.padding * 2
+    height: i32 = spec.height - spec.safe_area.top - spec.safe_area.bottom -
+                  spec.reserved_top - spec.reserved_bottom - spec.padding * 2
     if spec.min_content_width > 0 && width < spec.min_content_width {
         width = spec.min_content_width
     }
-    if height < 0 {
-        height = 0
-    }
-    return (Rectangle){(float)x, (float)y, (float)width, (float)height}
+    if height < 0 { height = 0 }
+    bounds: Rectangle
+    bounds.x = (float)x
+    bounds.y = (float)y
+    bounds.width = (float)width
+    bounds.height = (float)height
+    return bounds
 }

@@ -1,15 +1,41 @@
 #module "app_shell_layout"
 
-#import "ui_app_shell_props.generated.h"
+AppShellLayoutSpec :: struct {
+    view_width: i32
+    view_height: i32
+    safe_left: i32
+    safe_top: i32
+    safe_right: i32
+    safe_bottom: i32
+    padding: i32
+    nav_height: i32
+    sidebar_breakpoint: i32
+    sidebar_width: i32
+    min_content_width: i32
+    max_content_width: i32
+}
 
-KryAppShellMeasure :: (spec: KryAppShellLayoutSpec) -> KryAppShellLayout #export {
-    layout: KryAppShellLayout = {0}
+AppShellLayout :: struct {
+    compact: bool
+    sidebar_width: i32
+    content_x: i32
+    content_y: i32
+    content_width: i32
+    content_height: i32
+    nav_x: i32
+    nav_y: i32
+    nav_width: i32
+    nav_height: i32
+}
+
+MeasureAppShell :: (spec: AppShellLayoutSpec) -> AppShellLayout #export {
+    layout: AppShellLayout
     padding: i32 = spec.padding >= 0 ? spec.padding : 0
     nav_height: i32 = spec.nav_height > 0 ? spec.nav_height : 0
     breakpoint: i32 = spec.sidebar_breakpoint > 0 ? spec.sidebar_breakpoint : 480
     sidebar_width: i32 = spec.sidebar_width > 0 ? spec.sidebar_width : 0
 
-    layout.compact = spec.view_width <= breakpoint ? 1 : 0
+    layout.compact = spec.view_width <= breakpoint
     layout.sidebar_width = layout.compact ? 0 : sidebar_width
 
     layout.nav_x = spec.safe_left

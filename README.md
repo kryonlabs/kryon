@@ -27,7 +27,8 @@ saved-IR, and portable bundle tests. No display is started.
 The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
 Button, Checkbox, Slider, Toggle, material layers, theme, style values, and
-selected Image, Separator, Progress, form row layout, and window placement decisions. Other runtime and widget
+selected Image, Separator, Progress, form row layout, app shell sizing,
+capability policy, safe area geometry, and window placement decisions. Other runtime and widget
 source has been moved into `.zi` files in `src/ui/`; those modules still need
 type, host interface, and backend work before they can join `modules.txt`.
 

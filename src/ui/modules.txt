@@ -2,12 +2,14 @@ accelerator.zi
 accessibility_node.zi
 accessibility_policy.zi
 accessibility_props.zi
+app_shell_layout.zi
 bevel.zi
 button.zi
 button_props.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi
+capability_layout.zi
 card.zi
 card_props.zi
 checkbox.zi
