@@ -170,6 +170,16 @@ test "$("$ziran" run "$work/portable-layout.zib")" = 42
     "$work/portable-ir/portable_layout.zir"
 cmp "$work/portable-layout.zib" "$work/portable-layout-ir.zib"
 test "$("$ziran" run "$work/portable-layout-ir.zib")" = 42
+"$ziran" bundle --root "$work" --entry use_layout:Answer \
+    -o "$work/full-layout.zib" "$work/geometry.zi" \
+    "$work/layout.zi" "$work/group.zi" "$work/use_layout.zi"
+test "$("$ziran" run "$work/full-layout.zib")" = 42
+"$ziran" bundle --root "$work" --entry use_layout:Answer \
+    -o "$work/full-layout-ir.zib" "$work/ir/geometry.zir" \
+    "$work/ir/layout.zir" "$work/ir/group.zir" \
+    "$work/ir/use_layout.zir"
+cmp "$work/full-layout.zib" "$work/full-layout-ir.zib"
+test "$("$ziran" run "$work/full-layout-ir.zib")" = 42
 python3 - "$work/scalar-layout.zib" <<'PY'
 from pathlib import Path
 import sys
