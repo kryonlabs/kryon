@@ -1,23 +1,92 @@
 #module "page"
 #import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "layout"
+#import "page_props"
 #import "style"
+#import "style_sheet"
+#import "tree"
+#import "widget_kind"
 
-PageLayoutMetrics :: struct {
-    gap: i32
-    padding: i32
+PageBoundsOrParent :: (bounds: Rectangle) -> Rectangle #export {
+    parent: Rectangle = TreeCurrentParentBounds()
+    if bounds.width <= 0.0 { bounds.width = parent.width }
+    if bounds.height <= 0.0 { bounds.height = parent.height }
+    return bounds
 }
 
-PageLayoutMetric :: (fields: u32, field: u32, value: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 {
-        return 0
+# A page or section is flush until KSS declares spacing.
+PageBoxStyle :: (kind: i32, class_name: i32) -> StyleData #export {
+    base: StyleData
+    base.fields = (u32)StyleGap | (u32)StylePaddingX |
+        (u32)StylePaddingY
+    facts: StyleFacts = StyleDefaultFacts(kind)
+    facts.class_name = class_name
+    facts.state = (i32)ButtonStateNormal
+    return ResolveStyleRules(ActiveStyleRules(), base, facts,
+        (i32)ButtonStateNormal)
+}
+
+PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing #export {
+    spacing: PageSpacing
+    if (style.fields & (u32)StyleGap) != (u32)0 &&
+        style.gap > 0.0 { spacing.gap = (i32)(style.gap + 0.5) }
+    if (style.fields & (u32)StylePaddingX) != (u32)0 &&
+        style.padding_x > 0.0 {
+        spacing.padding = (i32)(style.padding_x + 0.5)
     }
-    return (i32)(value + 0.5)
+    return spacing
 }
 
-PageLayoutMetricsFor :: (style: StyleData) -> PageLayoutMetrics #export {
-    metrics: PageLayoutMetrics
-    metrics.gap = PageLayoutMetric(style.fields, (u32)StyleGap, style.gap)
-    metrics.padding = PageLayoutMetric(style.fields, (u32)StylePaddingX,
-        style.padding_x)
-    return metrics
+# Page opens a retained tree scope. The caller closes it with End(). The
+# returned metadata is an effect request for a platform host, not a window or
+# browser operation hidden inside the widget.
+Page :: (props: PageProps) -> PageResult #export {
+    result: PageResult
+    result.node = -1
+    result.bounds = PageBoundsOrParent(props.bounds)
+    result.title = props.title
+    result.description = props.description
+    result.canonical_url = props.canonical_url
+    face: StyleData = PageBoxStyle(StyleKindPage(), props.class_name)
+    spacing: PageSpacing = PageLayoutMetricsFor(face)
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        spacing.gap, spacing.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    result.theme_color = ColorFromPacked(face.background)
+    result.has_theme_color = result.theme_color.a != (u8)0
+    if !TreeIsBuilding() { return result }
+    key: u64 = props.key
+    if key == (u64)0 { key = TreeNextKey() }
+    result.node = TreeSubmitCurrent(key, WidgetKindPage,
+        result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(result.node, props.title)
+    result.opened = TreePushScope(result.node)
+    return result
+}
+
+Section :: (props: SectionProps) -> SectionResult #export {
+    result: SectionResult
+    result.node = -1
+    result.bounds = PageBoundsOrParent(props.bounds)
+    face: StyleData = PageBoxStyle(StyleKindSection(), props.class_name)
+    spacing: PageSpacing = PageLayoutMetricsFor(face)
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        spacing.gap, spacing.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    if !TreeIsBuilding() { return result }
+    key: u64 = props.key
+    if key == (u64)0 { key = TreeNextKey() }
+    result.node = TreeSubmitCurrent(key, WidgetKindSection,
+        result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(result.node, props.label)
+    result.opened = TreePushScope(result.node)
+    return result
 }

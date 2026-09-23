@@ -443,10 +443,6 @@ Key :: (source: const char*) -> KeyID #export {
     return hash
 }
 
-End :: () #export {
-    if ui_tree_stack_depth > 1 { ui_tree_stack_depth -= 1 }
-}
-
 InvalidateTree :: (invalidation: Invalidation) #export {
     ui_tree_invalid |= (unsigned)invalidation
 }

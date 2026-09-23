@@ -70,6 +70,7 @@ navigation_bar.zi
 navigation_bar_props.zi
 overlay.zi
 page.zi
+page_props.zi
 paint.zi
 paint_queue.zi
 paned_view.zi

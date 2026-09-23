@@ -249,3 +249,11 @@ widgets submit to the current scope; controls that create their own children
 can still call `TreeSubmit` with an explicit parent index. `TreeFinish` rejects
 an unclosed scope and preserves the previous committed tree. `TreeCancel`
 discards the current build and its scope stack.
+
+`Page(PageProps)` and `Section(SectionProps)` are checked Ziran containers.
+They open a child scope, return its content bounds and KSS gap/padding values,
+and close with `End()`. The caller gives child widgets explicit bounds within
+that content area. `PageResult` also returns title, description, canonical URL,
+and optional theme color for the platform to apply. The library does not set
+browser or window metadata itself. Automatic child placement and the old
+Heading, ParagraphText, Link, and Flow host entry points still need migration.

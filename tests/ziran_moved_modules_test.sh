@@ -22,6 +22,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "list_box"
 #import "menu"
 #import "page"
+#import "page_props"
 #import "paned_view"
 #import "paragraph"
 #import "primitive"
@@ -47,7 +48,7 @@ Answer :: () -> i32 #export {
     style.fields = (u32)StyleGap | (u32)StylePaddingX
     style.gap = 8.0
     style.padding_x = 12.0
-    page: PageLayoutMetrics = PageLayoutMetricsFor(style)
+    page: PageSpacing = PageLayoutMetricsFor(style)
     if page.gap != 8 || page.padding != 12 { return 0 }
     selection: SegmentedSelectionResult = SegmentedSelectionFor(1, 2, true)
     if !selection.changed || selection.selected_index != 2 { return 0 }

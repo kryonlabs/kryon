@@ -123,6 +123,15 @@ TreeCurrentParentKey :: () -> u64 #export {
     return active_tree.submitted[parent].key
 }
 
+TreeCurrentParentBounds :: () -> Rectangle #export {
+    parent: i32 = TreeCurrentParent()
+    if parent < 0 {
+        empty: Rectangle
+        return empty
+    }
+    return active_tree.submitted[parent].bounds
+}
+
 TreeSubmitCurrent :: (key: u64, kind: i32,
     bounds: Rectangle) -> i32 #export {
     parent: i32 = TreeCurrentParent()
@@ -146,6 +155,12 @@ TreePopScope :: () -> bool #export {
     }
     active_tree.scope_depth -= 1
     return true
+}
+
+# Close the innermost container opened by Page, Section, or another layout
+# widget. The root scope closes only through TreeFinish.
+End :: () -> bool #export {
+    return TreePopScope()
 }
 
 TreeSubmit :: (key: u64, parent_index: i32, kind: i32,

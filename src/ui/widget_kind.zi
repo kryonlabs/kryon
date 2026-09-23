@@ -52,7 +52,9 @@ WidgetKind :: enum {
     WidgetKindMenu = 48
     WidgetKindSelectable = 49
     WidgetKindBullet = 50
-    WidgetKindCount = 51
+    WidgetKindPage = 51
+    WidgetKindSection = 52
+    WidgetKindCount = 53
 }
 
 WidgetFlag :: enum {

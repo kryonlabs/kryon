@@ -56,7 +56,6 @@ Event :: struct Event { KeyID key; EventKind kind; double timestamp; union { int
 # tree host.
 BeginTree :: (screen_key: KeyID) #extern #export
 EndTree :: () #extern #export
-End :: () #extern #export
 Key :: (text: const char*) -> KeyID #extern #export
 InvalidateTree :: (invalidation: Invalidation) #extern #export
 NextEvent :: (event: *Event) -> i32 #extern #export

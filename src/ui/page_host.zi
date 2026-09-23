@@ -3,25 +3,6 @@
 #import "ui_style_internal.h"
 #import "runtime/page.h"
 
-PageBoundsOrView :: (bounds: Rectangle) -> Rectangle {
-    if bounds.width <= 0.0 { bounds.width = (float)GetViewWidth() }
-    if bounds.height <= 0.0 { bounds.height = (float)GetViewHeight() }
-    return bounds
-}
-
-PageBoxStyle :: (style_kind: i32, class_name: i32) -> StyleData {
-    // Pages lay out flush unless a style rule declares spacing.
-    base: StyleData
-    base.fields = (uint32_t)(StyleGap | StylePaddingX | StylePaddingY)
-    base.gap = 0.0
-    base.padding_x = 0.0
-    base.padding_y = 0.0
-    facts: StyleFacts = StyleDefaultFacts(style_kind)
-    facts.class_name = class_name
-    facts.state = ButtonStateNormal
-    return ResolveActiveStyle(base, facts, ButtonStateNormal)
-}
-
 PageTextStyle :: (style_kind: i32, class_name: i32,
 fallback_font: i32) -> Style {
     base: StyleData
@@ -32,47 +13,6 @@ fallback_font: i32) -> Style {
     facts.state = ButtonStateNormal
     return ui_unpack_style(ResolveActiveStyle(base, facts,
     ButtonStateNormal))
-}
-
-Page :: (props: PageProps) -> NodeId #export {
-    bounds: Rectangle = PageBoundsOrView(props.bounds)
-    key: KeyID = props.key
-    if key == 0 { key = Key(props.title) }
-    style_data: StyleData = PageBoxStyle(StyleKindPage(), props.class_name)
-    style: Style = ui_unpack_style(style_data)
-
-    if props.title != nil { SetPageTitle(props.title) }
-    if props.description != nil { SetPageDescription(props.description) }
-    if props.canonical_url != nil {
-        SetPageCanonicalURL(props.canonical_url)
-    }
-    if style.background.a != 0 {
-        SetPageThemeColor(style.background)
-    }
-    ui_page_semantic_box(SemanticPage, bounds, props.title)
-    metrics: PageLayoutMetrics = PageLayoutMetricsFor(style_data)
-    column: ColumnProps
-    column.bounds = bounds
-    column.gap = metrics.gap
-    column.padding = metrics.padding
-    column.key = key
-    return Column(column)
-}
-
-Section :: (props: SectionProps) -> NodeId #export {
-    bounds: Rectangle = PageBoundsOrView(props.bounds)
-    key: KeyID = props.key
-    if key == 0 { key = Key(props.label) }
-
-    ui_page_semantic_box(SemanticSection, bounds, props.label)
-    style: StyleData = PageBoxStyle(StyleKindSection(), props.class_name)
-    metrics: PageLayoutMetrics = PageLayoutMetricsFor(style)
-    column: ColumnProps
-    column.bounds = bounds
-    column.gap = metrics.gap
-    column.padding = metrics.padding
-    column.key = key
-    return Column(column)
 }
 
 Heading :: (props: HeadingProps) #export {
