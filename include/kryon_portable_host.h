@@ -16,6 +16,31 @@ HostBinding KssStringSliceBinding(void);
 /* Byte-range views used by Text line composition. */
 HostBinding TextSliceBinding(void);
 
+typedef struct CompositionQueue CompositionQueue;
+
+typedef struct CompositionInputEvent {
+    int available;
+    int phase;
+    const char *text;
+    size_t length;
+    int cursor;
+    int selection_length;
+} CompositionInputEvent;
+
+/* Single-threaded input queue. Polled text borrows queue storage until the
+ * next BeginFrame call; callers retaining preedit state must own its bytes.
+ * Submit accepts UTF-8, trims incomplete final codepoints, and queues up to
+ * 16 events. */
+CompositionQueue *CompositionQueueCreate(void);
+void CompositionQueueDestroy(CompositionQueue *queue);
+void CompositionQueueBeginFrame(CompositionQueue *queue);
+int CompositionQueueSubmit(CompositionQueue *queue, int phase,
+                           const char *text, int cursor,
+                           int selection_length);
+int CompositionQueueTake(CompositionQueue *queue,
+                         CompositionInputEvent *event);
+HostBinding PollCompositionBinding(CompositionQueue *queue);
+
 typedef struct LineRenderer {
     void (*draw)(void *context, float x1, float y1, float x2, float y2,
                  uint8_t r, uint8_t g, uint8_t b, uint8_t a);

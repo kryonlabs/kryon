@@ -21,9 +21,12 @@ writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs
 The current C archive is `build/ziran/libkryon.a`; generated headers are in
 `build/ziran/c/`. Portable platform bindings are in
 `build/ziran/libkryon_host.a`: frame pacing maps to the selected backend's
-`SetTargetFPS`, and shared raster lines use a caller-supplied line renderer.
+`SetTargetFPS`, shared raster lines use a caller-supplied line renderer, and
+`CompositionQueue` carries raw IME events to the checked text widgets.
 `make test` also runs the Ziran source,
 saved-IR, and portable bundle tests. No display is started.
+See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
+contract and host queue lifetime.
 
 ## Migration status
 

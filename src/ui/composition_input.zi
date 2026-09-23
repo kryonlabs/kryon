@@ -1,0 +1,28 @@
+#module "composition_input"
+#import "text_input"
+
+# The platform supplies raw events. The focused widget decides how they
+# change composition state, committed text, and paint.
+CompositionSample :: struct {
+    available: bool
+    phase: CompositionPhase
+    text: string
+    cursor: i32
+    selection_length: i32
+}
+
+PollComposition :: () -> CompositionSample #extern
+
+SampleComposition :: () -> CompositionSample #export {
+    return PollComposition()
+}
+
+CompositionEventForSample :: (sample: CompositionSample) -> CompositionEvent #export {
+    event: CompositionEvent
+    if !sample.available { return event }
+    event.phase = sample.phase
+    event.text = sample.text
+    event.cursor = sample.cursor
+    event.selection_length = sample.selection_length
+    return event
+}

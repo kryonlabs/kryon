@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     };
     BundleInstance *instance = BundleInstantiate(bundle, bindings, 11);
     assert(instance != NULL);
-    for (int phase = 0; phase < 42; phase++) {
+    for (int phase = 0; phase < 43; phase++) {
         active_phase = phase;
         long long value = -1;
         int has_value = 0;

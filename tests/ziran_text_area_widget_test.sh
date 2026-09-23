@@ -204,6 +204,10 @@ Frame :: () -> i32 #export {
         props.input.composition_event.text = "a\nb\nc\nd\ne"
         props.input.composition_event.cursor = 9
     }
+    if phase == 42 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCancel
+    }
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
     if !EndTree() || result.node != 1 ||
@@ -457,6 +461,10 @@ Frame :: () -> i32 #export {
         if !result.composition.active ||
             result.scroll_y != scroll_y ||
             result.edit.changed { return -43 }
+    } else if phase == 42 {
+        if result.composition.active ||
+            result.scroll_y != 0 ||
+            result.edit.changed { return -44 }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -557,7 +565,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 42; phase++) {
+    for (int phase = 0; phase < 43; phase++) {
         active_phase = phase;
         assert(Frame() == phase);
     }
@@ -629,7 +637,7 @@ func TestTextArea(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    for phase := int32(0); phase < 42; phase++ {
+    for phase := int32(0); phase < 43; phase++ {
         h.phase = phase
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)

@@ -22,6 +22,7 @@ collapsible_widget.zi
 color_picker.zi
 color_picker_props.zi
 color_picker_widget.zi
+composition_input.zi
 control_props.zi
 dpi.zi
 drag.zi

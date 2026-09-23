@@ -535,7 +535,9 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     initial_composition: CompositionState = props.composition
     if !result.focused || props.read_only || props.disabled ||
         props.input.escape || activated || drag.started ||
-        drag.active || drag.ended {
+        drag.active || drag.ended ||
+        props.input.composition_event.phase !=
+            (CompositionPhase)CompositionNone {
         initial_composition = (CompositionState){}
     }
     initial_view: TextAreaView = TextAreaViewFor(props.value,
