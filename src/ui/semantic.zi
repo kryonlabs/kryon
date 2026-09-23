@@ -9,4 +9,6 @@ SemanticKind :: enum {
     SemanticLink = 5
     SemanticImage = 6
     SemanticButton = 7
+    SemanticTree = 8
+    SemanticTreeItem = 9
 }

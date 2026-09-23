@@ -31,6 +31,7 @@ The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
 Button, Checkbox, Slider, Toggle, Bevel and Separator line rendering, material
 layers, theme, style values, built-in theme labels, and selected Image, Progress,
+checked TreeView composition and row input from portable item values,
 portable theme and orientation preference decisions,
 form row layout, app shell sizing,
 capability policy, safe area geometry, and window placement decisions. Other runtime and widget

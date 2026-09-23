@@ -3,6 +3,15 @@
 #import "geometry"
 #import "style"
 #import "control_props"
+#import "font_metrics"
+#import "paint_queue"
+#import "semantic"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "tree_view_props"
+#import "widget_kind"
 
 TreeViewMetrics :: struct {
     default_row_height: i32
@@ -81,7 +90,9 @@ TreeViewRowHeight :: (requested_row_height: i32, scale: float,
 
 TreeViewContentHeight :: (item_count: i32, row_height: i32) -> i32 #export {
     if item_count <= 0 || row_height <= 0 { return 0 }
-    return item_count * row_height
+    height: i64 = (i64)item_count * (i64)row_height
+    if height > (i64)2147483647 { return 2147483647 }
+    return (i32)height
 }
 
 TreeViewMaxScroll :: (viewport_height: i32, content_height: i32) -> i32 #export {
@@ -154,7 +165,7 @@ TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
     return paint
 }
 
-TreeViewMarkerText :: (expanded: bool) -> const char* #export {
+TreeViewMarkerText :: (expanded: bool) -> string #export {
     if expanded { return "v" }
     return ">"
 }
@@ -179,4 +190,169 @@ TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Recta
     bar.width = (float)scrollbar_width
     bar.height = bounds.height
     return bar
+}
+
+TreeViewRowKey :: (item: TreeItem, index: i32) -> u64 #export {
+    if item.id > 0 { return (u64)(u32)item.id }
+    return (u64)4294967296 + (u64)(u32)(index + 1)
+}
+
+TreeViewFace :: (kind: i32, name: i32, class_name: i32,
+    state: i32) -> StyleFrame #export {
+    defaults: StyleData
+    defaults.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleFontSize | (u32)StylePaddingX |
+        (u32)StylePaddingY | (u32)StyleGap
+    defaults.background = (u32)0xffffffff
+    defaults.foreground = (u32)0x171717ff
+    defaults.border = (u32)0xd1d5dbff
+    defaults.border_width = 1.0
+    defaults.radius = 4.0
+    defaults.opacity = 1.0
+    defaults.font_size = 14.0
+    defaults.padding_x = 8.0
+    defaults.padding_y = 7.0
+    defaults.gap = 2.0
+    if kind == StyleKindTreeViewItem() {
+        defaults.background = (u32)0x00000000
+        defaults.border = (u32)0x00000000
+        defaults.border_width = 0.0
+        if state == ButtonStateHover {
+            defaults.background = (u32)0xe5e7ebff
+        } else if state == ButtonStatePressed {
+            defaults.background = (u32)0xd1d5dbff
+        } else if state == ButtonStateSelected {
+            defaults.background = (u32)0xdbeafeff
+            defaults.foreground = (u32)0x1d4ed8ff
+        }
+    }
+    if state == ButtonStateDisabled { defaults.opacity = 0.45 }
+    facts: StyleFacts = StyleControlRoleFacts(kind, name,
+        class_name, StyleAny(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+        facts, state)
+    return frame
+}
+
+# Items and view state are application values. Each visible row is a retained
+# selectable node whose bounds are clipped to the viewport for pointer input.
+TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export {
+    result: TreeViewResult
+    result.node = -1
+    result.selected_id = props.selected_id
+    bounds: Rectangle = props.bounds
+    parent: Rectangle = TreeCurrentParentBounds()
+    if bounds.width <= 0.0 { bounds.width = parent.width }
+    if bounds.height <= 0.0 { bounds.height = parent.height }
+    measured_bounds: Rectangle = bounds
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    panel_state: i32 = ButtonStateNormal
+    if props.disabled { panel_state = ButtonStateDisabled }
+    panel: StyleFrame = TreeViewFace(StyleKindTreeView(), props.id,
+        props.class_name, panel_state)
+    item_face: StyleFrame = TreeViewFace(StyleKindTreeViewItem(), 0,
+        props.class_name, ButtonStateNormal)
+    metrics: TreeViewMetrics = TreeViewMetricsFor(scale, panel, item_face)
+    row_height: i32 = TreeViewRowHeight(props.row_height, scale, metrics)
+    if row_height <= 0 { row_height = 1 }
+    content_height: i32 = TreeViewContentHeight(items.length, row_height)
+    max_scroll: i32 = TreeViewMaxScroll((i32)bounds.height, content_height)
+    scroll: i64 = (i64)props.scroll_offset
+    if !props.disabled { scroll += (i64)props.scroll_delta }
+    if scroll < 0 { scroll = 0 }
+    if scroll > (i64)max_scroll { scroll = (i64)max_scroll }
+    result.scroll_offset = (i32)scroll
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key, WidgetKindTreeView, bounds)
+        if result.node < 0 { return result }
+        bounds = TreeSubmittedNodeAt(result.node).bounds
+        if !TreePushScope(result.node) { return result }
+        TreeSetSemantic(result.node, (SemanticKind)SemanticTree, 0)
+    }
+    opacity: float = StyleOpacityValue(panel.value.fields,
+        panel.value.opacity)
+    PaintRoundedFill(result.node, measured_bounds, panel.value.radius, 12,
+        ColorFromPacked(Opacity(panel.value.background, opacity)))
+    if panel.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, measured_bounds,
+            panel.value.radius, 12, panel.value.border_width,
+            ColorFromPacked(Opacity(panel.value.border, opacity)))
+    }
+    layout: TreeViewScrollLayout = TreeViewScrollFor(result.scroll_offset,
+        row_height)
+    visible: i32 = TreeViewVisibleRows((i32)bounds.height, row_height)
+    visible_index: i32 = 0
+    while visible_index < visible &&
+        layout.first + visible_index < items.length {
+        index: i32 = layout.first + visible_index
+        item: TreeItem = items[index]
+        row: Rectangle = TreeViewRowBounds(bounds, visible_index,
+            row_height, layout.y_offset)
+        clipped: Rectangle = RectangleIntersection(row, bounds)
+        if clipped.height > 0.0 && clipped.width > 0.0 {
+            item_key: u64 = TreeViewRowKey(item, index)
+            previous: i32 = -1
+            if TreeIsBuilding() {
+                previous = TreeFind(item_key, key, WidgetKindSelectable)
+            }
+            activated: bool = TreeTakeActivationAt(previous)
+            if activated && !props.disabled && item.selectable {
+                result.changed = result.selected_id != item.id
+                result.selected_id = item.id
+            }
+            selected: bool = result.selected_id == item.id
+            state: i32 = ResolveState((i32)ButtonStateAuto,
+                props.disabled || !item.selectable, false,
+                TreePressedAt(previous), TreeHoveredAt(previous),
+                false, selected)
+            face: StyleFrame = TreeViewFace(StyleKindTreeViewItem(),
+                item.id, props.class_name, state)
+            node: i32 = -1
+            if TreeIsBuilding() {
+                node = TreeSubmitCurrent(item_key, WidgetKindSelectable,
+                    clipped)
+                if node < 0 { break }
+                TreeSetInteractive(node, props.disabled || !item.selectable,
+                    false, item.id)
+                TreeSetSelected(node, selected)
+                TreeSetLabel(node, item.label)
+                TreeSetSemantic(node, (SemanticKind)SemanticTreeItem, 0)
+            }
+            item_opacity: float = StyleOpacityValue(face.value.fields,
+                face.value.opacity)
+            if face.value.background != (u32)0 {
+                PaintRoundedFill(node, clipped, face.value.radius, 12,
+                    ColorFromPacked(Opacity(face.value.background,
+                        item_opacity)))
+            }
+            font: i32 = ResolveFont(0,
+                StyleFontValue(face.value.fields, face.value.font_size), 14)
+            line_height: i32 = GlyphLineHeight(font, face.value.typeface)
+            marker: Rectangle = TreeViewMarkerBounds(row, item.depth,
+                metrics)
+            label: Rectangle = TreeViewTextBounds(row, item.depth, metrics)
+            paint: TreeViewTextPaint = TreeViewTextPaintFor(marker, label,
+                line_height)
+            text_color: Color = ColorFromPacked(Opacity(
+                face.value.foreground, item_opacity))
+            marker_clip: Rectangle = RectangleIntersection(marker, bounds)
+            label_clip: Rectangle = RectangleIntersection(label, bounds)
+            PaintClippedLabel(node, TreeViewMarkerText(item.expanded),
+                paint.marker_x, paint.marker_y, font, text_color,
+                marker_clip)
+            PaintClippedLabel(node, item.label, paint.text_x,
+                paint.text_y, font, text_color, label_clip)
+        }
+        visible_index += 1
+    }
+    if TreeIsBuilding() { End() }
+    return result
 }

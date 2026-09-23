@@ -279,3 +279,11 @@ retained position. Explicitly positioned children retain their bounds. The
 `ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor`, and `GridStep`
 helpers remain available when the caller needs to calculate bounds itself.
 `Screen` fills the current tree viewport when its size is unspecified.
+
+`TreeView(TreeViewProps, []TreeItem)` takes a borrowed item slice and returns
+the selected item id, scroll offset, and whether selection changed. The caller
+stores those returned values between frames and supplies wheel or other scroll
+movement as `scroll_delta`. Each visible row has a retained selectable node;
+partly visible rows are clipped for both paint and pointer input. Unique positive
+item ids preserve row identity when items move. The checked surface currently paints
+rows and the panel; a draggable scrollbar and keyboard navigation remain open.

@@ -2,21 +2,31 @@
 #import "geometry"
 
 TreeItem :: struct {
-    label: const char*
+    label: string
     depth: i32
     id: i32
-    expanded: i32
-    selectable: i32
+    expanded: bool
+    selectable: bool
 }
 
+# Items are a borrowed slice passed to TreeView, not a pointer in this record.
+# The caller stores the returned selection and scroll value between frames.
 TreeViewProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    items: const TreeItem*
-    item_count: i32
-    selected_id: i32*
-    scroll_offset: i32*
+    selected_id: i32
+    scroll_offset: i32
+    scroll_delta: i32
     row_height: i32
+    scale: float
     disabled: bool
+}
+
+TreeViewResult :: struct {
+    node: i32
+    selected_id: i32
+    scroll_offset: i32
+    changed: bool
 }
