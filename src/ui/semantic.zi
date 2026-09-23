@@ -14,4 +14,6 @@ SemanticKind :: enum {
     SemanticComboBox = 10
     SemanticOption = 11
     SemanticTextField = 12
+    SemanticTabList = 13
+    SemanticTab = 14
 }

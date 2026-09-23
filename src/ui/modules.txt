@@ -143,6 +143,7 @@ swipe.zi
 swipe_props.zi
 tab_bar.zi
 tab_bar_props.zi
+tab_bar_widget.zi
 table_view.zi
 table_view_props.zi
 text.zi

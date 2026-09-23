@@ -51,6 +51,9 @@ checked Collapsible header and close interaction, caller owned open/hidden
 values, tree focus navigation from a borrowed ordered header slice, and paint,
 checked SegmentedControl layout from a borrowed option slice and checked Button
 children using the Segment KSS style kind,
+checked TabBar composition from borrowed tabs, caller owned selection and
+scroll state, retained pointer input, keyboard navigation, close and reorder
+intents, KSS Tab and TabClose roles, and queued icon and text paint,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned
@@ -96,6 +99,12 @@ formatting, and host integration remain open.
 The checked `Selectable(SelectableProps)` composes a caller owned boolean,
 retained pointer input, selected tree state, KSS styling, and queued row/text
 paint. Keyboard activation and native host integration remain open.
+
+The checked `TabBar(TabBarProps, []Tab)` accepts borrowed tab values with stable
+keys and optional `ImageProps` icons. It reports selection, close, middle and
+double click, and reorder events for the caller to apply. Scroll, drag, and
+double click history are caller owned; the host supplies raw input and time.
+Mouse drag panning and platform focus integration remain open.
 
 The checked `Fieldset(FieldsetProps)` resolves KSS frame style, measures its
 title from host supplied glyph metrics, and queues frame, title cover, and

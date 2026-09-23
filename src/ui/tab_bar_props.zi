@@ -1,34 +1,67 @@
 #module "tab_bar_props"
-#import "drawing_props"
 #import "geometry"
+#import "image_props"
 
 Tab :: struct {
-    label: const char*
-    icon: Texture2D
+    key: u64
+    label: string
+    image: ImageProps
     disabled: bool
     closeable: bool
 }
 
+TabBarInput :: struct {
+    focused: bool
+    left: bool
+    right: bool
+    up: bool
+    down: bool
+    home: bool
+    end: bool
+    close: bool
+    middle_click: bool
+    middle_x: float
+    middle_y: float
+    scroll_delta: i32
+    now: float
+}
+
 TabBarProps :: struct {
+    key: u64
     bounds: Rectangle
     class_name: i32
-    tabs: const Tab*
-    count: i32
     selected_index: i32
     min_tab_width: i32
     max_tab_width: i32
-    scroll_offset: i32*
+    scroll_offset: i32
     focus_selected: bool
-    closed_index: i32*
-    double_clicked_index: i32*
-    reordered_from_index: i32*
-    reordered_to_index: i32*
-    selected_tab_bounds: Rectangle*
-    middle_clicked_index: i32*
+    drag_from: i32
+    dragging: bool
+    last_clicked_index: i32
+    last_clicked_at: float
+    last_click_valid: bool
+    scale: float
     id: i32
     disabled: bool
+    reorder_enabled: bool
+    input: TabBarInput
 }
 
-# Implemented by the C-only tab-bar host; declared here for the public ABI.
-GetTabBarHeight :: () -> i32 #extern #export
-TabBarHeight :: () -> i32 #extern #export
+TabBarResult :: struct {
+    node: i32
+    selected_index: i32
+    activated_index: i32
+    closed_index: i32
+    double_clicked_index: i32
+    middle_clicked_index: i32
+    reordered_from: i32
+    reordered_to: i32
+    scroll_offset: i32
+    drag_from: i32
+    drag_to: i32
+    dragging: bool
+    last_clicked_index: i32
+    last_clicked_at: float
+    last_click_valid: bool
+    selected_tab_bounds: Rectangle
+}
