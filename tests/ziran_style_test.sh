@@ -93,6 +93,20 @@ Answer :: () -> i32 #export {
         painted.border_color != (u32)9 ||
         painted.border_width != 2.0 ||
         painted.layout.fill_bounds.width != 25.0 { return 0 }
+    painted.label_color = (u32)0x11223380
+    painted.filled_label_color = (u32)0x445566c0
+    plan: ProgressDrawPlan = ProgressDrawPlanFor(bounds, painted, true, 0.5)
+    if plan.radius != 0.25 || !plan.draw_fill || !plan.draw_border ||
+        !plan.draw_label || plan.label_color != (u32)0x11223340 {
+        return 0
+    }
+    painted.layout.label_on_fill = true
+    plan = ProgressDrawPlanFor(bounds, painted, false, 0.5)
+    if plan.draw_label || plan.label_color != (u32)0x44556660 { return 0 }
+    painted.layout.fill_bounds.width = 0.0
+    painted.border_width = 0.0
+    plan = ProgressDrawPlanFor(bounds, painted, false, 1.0)
+    if plan.draw_fill || plan.draw_border { return 0 }
     return 42
 }
 EOF

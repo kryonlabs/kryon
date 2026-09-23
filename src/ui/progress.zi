@@ -2,6 +2,7 @@
 #import "control_props"
 #import "geometry"
 #import "style"
+#import "surface"
 
 ProgressLayout :: struct {
     ratio: float
@@ -23,6 +24,14 @@ ProgressPaint :: struct {
     filled_label_color: u32
     radius: float
     border_width: float
+}
+
+ProgressDrawPlan :: struct {
+    radius: float
+    draw_fill: bool
+    draw_border: bool
+    draw_label: bool
+    label_color: u32
 }
 
 ProgressTrackRole :: () -> i32 #export {
@@ -145,4 +154,19 @@ ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
     paint.border_width = track.value.border_width * scale
     if paint.border_width < 0.0 { paint.border_width = 0.0 }
     return paint
+}
+
+ProgressDrawPlanFor :: (bounds: Rectangle, paint: ProgressPaint,
+    has_label: bool, label_opacity: float) -> ProgressDrawPlan #export {
+    plan: ProgressDrawPlan
+    plan.radius = ProgressDrawRadius(bounds, paint.radius)
+    plan.draw_fill = paint.layout.fill_bounds.width > 0.0
+    plan.draw_border = paint.border_width > 0.0
+    plan.draw_label = has_label
+    color: u32 = paint.label_color
+    if paint.layout.label_on_fill {
+        color = paint.filled_label_color
+    }
+    plan.label_color = Opacity(color, label_opacity)
+    return plan
 }

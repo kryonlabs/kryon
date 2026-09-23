@@ -51,6 +51,9 @@ with `make` and `make test` from the Kryon repository. No display is started.
 ## Migration boundary
 
 This library currently covers selected widget policy and line rendering.
+Progress layout, fill and border visibility, radius, and label color decisions
+are checked Ziran functions; its complete widget and raster host are still
+being migrated.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,

@@ -31,27 +31,23 @@ RenderProgress :: (progress: ProgressProps) #export {
     (float)label_width, (float)label_height,
     (float)Scale(1000) / 1000.0, track, active, text_frame)
     fill: Rectangle = paint.layout.fill_bounds
+    plan: ProgressDrawPlan = ProgressDrawPlanFor(progress.bounds, paint,
+        label != nil, text_style.opacity)
     if !IsWindowReady() { return }
-    radius: float = ProgressDrawRadius(progress.bounds, paint.radius)
-    DrawRectangleRounded(progress.bounds, radius, 12,
+    DrawRectangleRounded(progress.bounds, plan.radius, 12,
     GetColor(paint.track_color))
-    if fill.width > 0.0 {
-        DrawRectangleRounded(fill, radius, 12,
+    if plan.draw_fill {
+        DrawRectangleRounded(fill, plan.radius, 12,
         GetColor(paint.fill_color))
     }
-    if paint.border_width > 0.0 {
-        DrawRectangleRoundedLinesEx(progress.bounds, radius, 12,
+    if plan.draw_border {
+        DrawRectangleRoundedLinesEx(progress.bounds, plan.radius, 12,
         paint.border_width, GetColor(paint.border_color))
     }
 
-    if label != nil {
+    if plan.draw_label {
         text_x: i32 = (int)paint.layout.label_x
         text_y: i32 = (int)paint.layout.label_y
-        text_color: Color = GetColor(paint.label_color)
-        if paint.layout.label_on_fill {
-            text_color = GetColor(paint.filled_label_color)
-        }
-        RenderText(label, text_x, text_y, font,
-        Fade(text_color, text_style.opacity))
+        RenderText(label, text_x, text_y, font, GetColor(plan.label_color))
     }
 }
