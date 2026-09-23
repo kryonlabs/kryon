@@ -1,0 +1,520 @@
+#module "dropdown_widget"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "dropdown"
+#import "dropdown_props"
+#import "font_metrics"
+#import "geometry"
+#import "image"
+#import "image_props"
+#import "image_widget"
+#import "overlay_props"
+#import "overlay"
+#import "overlay_widget"
+#import "paint_queue"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+DropdownDefaultFace :: (role: i32, state: i32,
+    selected: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StylePaddingX | (u32)StylePaddingY |
+        (u32)StyleGap | (u32)StyleFontSize |
+        (u32)StyleIconSize | (u32)StyleContentOffset
+    face.foreground = (u32)0x111827ff
+    face.opacity = 1.0
+    face.font_size = 14.0
+    face.icon_size = 16.0
+    face.padding_x = 10.0
+    face.padding_y = 4.0
+    face.gap = 4.0
+    face.offset_x = 14.0
+    face.offset_y = 16.0
+    face.radius = 5.0
+    if role == DropdownPanelRole() {
+        face.background = (u32)0xffffffff
+        face.border = (u32)0x9ca3afff
+        face.border_width = 1.0
+    } else if role == DropdownOptionRole() {
+        face.background = (u32)0x00000000
+        if selected {
+            face.background = (u32)0xdbeafeff
+            face.foreground = (u32)0x1d4ed8ff
+        } else if state == ButtonStateHover {
+            face.background = (u32)0xe5e7ebff
+        }
+        if state == ButtonStateDisabled { face.opacity = 0.45 }
+    } else if role == DropdownScrollbarRole() {
+        face.background = (u32)0x94a3b8ff
+        face.border = (u32)0x00000000
+        face.icon_size = 8.0
+        face.padding_y = 2.0
+        face.radius = 4.0
+    } else {
+        face.background = (u32)0xf3f4f6ff
+        face.border = (u32)0x9ca3afff
+        face.border_width = 1.0
+        if state == ButtonStateHover {
+            face.background = (u32)0xe5e7ebff
+        } else if state == ButtonStatePressed ||
+            state == ButtonStateSelected {
+            face.background = (u32)0xdbeafeff
+        }
+        if state == ButtonStateDisabled { face.opacity = 0.45 }
+    }
+    return face
+}
+
+DropdownFaceFor :: (props: DropdownProps, role: i32,
+    state: i32, selected: bool) -> StyleFrame #export {
+    tone: i32 = (i32)ButtonToneNeutral
+    if selected { tone = (i32)ButtonToneAccent }
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindDropdown(), props.id, props.class_name, role,
+        tone, (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        DropdownDefaultFace(role, state, selected), facts, state)
+    return frame
+}
+
+DropdownKey :: (props: DropdownProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+DropdownOverlayKey :: (key: u64) -> u64 #export {
+    return key * (u64)65599 + (u64)7
+}
+
+DropdownOptionKey :: (key: u64, option: DropdownOption,
+    index: i32) -> u64 #export {
+    item: u64 = option.key
+    if item == (u64)0 { item = (u64)(u32)(index + 1) }
+    return key * (u64)131071 + item * (u64)17 + (u64)11
+}
+
+DropdownScrollbarKey :: (key: u64) -> u64 #export {
+    return key * (u64)131071 + (u64)3
+}
+
+DropdownThumbBounds :: (track: Rectangle, viewport: float,
+    content: i32, offset: i32, maximum: i32) -> Rectangle #export {
+    thumb: Rectangle = track
+    if content <= 0 || maximum <= 0 || track.height <= 0.0 {
+        thumb.height = 0.0
+        return thumb
+    }
+    thumb.height = track.height * viewport / (float)content
+    if thumb.height < 16.0 { thumb.height = 16.0 }
+    if thumb.height > track.height { thumb.height = track.height }
+    travel: float = track.height - thumb.height
+    thumb.y += travel * (float)offset / (float)maximum
+    return thumb
+}
+
+DropdownPaintImage :: (node: i32, image: ImageProps,
+    bounds: Rectangle, clip: Rectangle) #export {
+    if image.asset_path == "" && image.texture.id == (u32)0 { return }
+    image.bounds = bounds
+    texture: Texture2D = ImageTextureFor(image)
+    plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
+        (Color){255, 255, 255, 255})
+    if plan.draw {
+        PaintImage(node, image.asset_path, image.texture.id,
+            plan.source, plan.destination, clip, image.origin,
+            image.rotation, 0.0, plan.tint)
+    }
+}
+
+DropdownPaintTrigger :: (node: i32, bounds: Rectangle,
+    props: DropdownProps, options: []DropdownOption,
+    face: StyleFrame, selected_index: i32,
+    open: bool) #export {
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    PaintRoundedFill(node, bounds, face.value.radius, 12,
+        ColorFromPacked(Opacity(face.value.background, opacity)))
+    if face.value.border_width > 0.0 {
+        PaintRoundedOutline(node, bounds, face.value.radius, 12,
+            face.value.border_width,
+            ColorFromPacked(Opacity(face.value.border, opacity)))
+    }
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: DropdownTriggerMetrics = DropdownTriggerMetricsFor(scale,
+        face)
+    index: i32 = selected_index
+    label: string = props.placeholder
+    has_image: bool = false
+    if index >= 0 && index < options.length {
+        label = options[index].label
+        has_image = options[index].image.asset_path != "" ||
+            options[index].image.texture.id != (u32)0
+    }
+    content: DropdownTriggerContent = DropdownTriggerContentFor(
+        bounds, Content(face.value, scale), metrics, has_image)
+    color: Color = ColorFromPacked(Opacity(face.value.foreground,
+        opacity))
+    if has_image {
+        DropdownPaintImage(node, options[index].image,
+            content.icon_bounds, bounds)
+    }
+    if label != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(face.value.fields,
+                face.value.font_size), 14)
+        height: i32 = GlyphLineHeight(font, face.value.typeface)
+        y: i32 = (i32)(bounds.y +
+            (bounds.height - (float)height) * 0.5)
+        PaintClippedLabel(node, label,
+            (i32)content.text_bounds.x, y, font, color,
+            content.clip_bounds)
+    }
+    indicator: DropdownIndicator = DropdownIndicatorFor(
+        content.indicator_center_x, content.indicator_center_y,
+        metrics.indicator_size, open)
+    PaintLine(node, (Rectangle){(float)indicator.x1,
+        (float)indicator.y1, (float)(indicator.x2 - indicator.x1),
+        (float)(indicator.y2 - indicator.y1)}, color)
+    PaintLine(node, (Rectangle){(float)indicator.x3,
+        (float)indicator.y3, (float)(indicator.x4 - indicator.x3),
+        (float)(indicator.y4 - indicator.y3)}, color)
+}
+
+DropdownPaintRow :: (node: i32, props: DropdownProps,
+    option: DropdownOption, row: Rectangle, visible: Rectangle,
+    selected: bool, highlighted: bool, metrics: DropdownMenuMetrics,
+    face: StyleFrame) #export {
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    color: Color = ColorFromPacked(Opacity(face.value.foreground,
+        opacity))
+    if selected || highlighted {
+        highlight: Rectangle = row
+        highlight.x += (float)metrics.highlight_inset_x
+        highlight.y += (float)metrics.highlight_inset_y
+        highlight.width -= (float)(metrics.highlight_inset_x * 2)
+        highlight.height -= (float)(metrics.highlight_inset_y * 2)
+        highlight = RectangleIntersection(highlight, visible)
+        if highlight.width > 0.0 && highlight.height > 0.0 {
+            PaintRoundedFill(node, highlight, face.value.radius, 8,
+                ColorFromPacked(Opacity(face.value.background, opacity)))
+        }
+    }
+    content: ContentMetrics = Content(face.value, props.scale)
+    has_image: bool = option.image.asset_path != "" ||
+        option.image.texture.id != (u32)0
+    layout: DropdownOptionContent = DropdownOptionContentFor(
+        row, visible, content, metrics, has_image)
+    if option.separator_before {
+        separator: Rectangle = layout.separator_bounds
+        PaintLine(node, separator,
+            ColorFromPacked(Opacity(face.value.foreground, 0.18)))
+    }
+    if has_image {
+        DropdownPaintImage(node, option.image,
+            layout.icon_bounds, visible)
+    }
+    if option.label != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(face.value.fields,
+                face.value.font_size), 14)
+        height: i32 = GlyphLineHeight(font, face.value.typeface)
+        y: i32 = (i32)(row.y +
+            (row.height - (float)height) * 0.5)
+        PaintClippedLabel(node, option.label,
+            (i32)layout.text_bounds.x, y, font, color,
+            layout.clip_bounds)
+    }
+    if selected {
+        check: Rectangle = layout.check_bounds
+        PaintLine(node, (Rectangle){check.x, check.y +
+            check.height * 0.55, check.width * 0.4,
+            check.height * 0.3}, color)
+        PaintLine(node, (Rectangle){check.x + check.width * 0.4,
+            check.y + check.height * 0.85,
+            check.width * 0.6, -check.height * 0.7}, color)
+    }
+}
+
+# The caller retains the returned open, selection, highlight, and scroll
+# values. Keyboard and wheel samples are ordinary props; pointer ownership
+# comes from the retained tree. Call Dropdown after earlier page controls so
+# the menu is submitted above them in hit and paint order.
+Dropdown :: (props: DropdownProps,
+    options: []DropdownOption) -> DropdownResult #export {
+    result: DropdownResult
+    result.node = -1
+    result.selected_index = props.selected_index
+    result.highlight_index = props.highlight_index
+    result.scroll_offset = props.scroll_offset
+    result.open = props.open
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+    key: u64 = DropdownKey(props)
+    previous: i32 = -1
+    if TreeIsBuilding() {
+        previous = TreeFind(key, TreeCurrentParentKey(),
+            WidgetKindDropdown)
+    }
+    activated: bool = TreeTakeActivationAt(previous)
+    decision: DropdownOpenDecision = DropdownOpenDecisionFor(
+        props.open, props.disabled, options.length,
+        props.focused, true, activated,
+        props.trigger_input, bounds.height, false, false, false)
+    result.open = decision.open
+    result.opened = decision.opened
+    result.closed = decision.closed
+    if result.opened {
+        result.highlight_index = props.selected_index
+        result.scroll_offset = 0
+    }
+    if result.open && TreeIsBuilding() {
+        scrim: i32 = TreeFind(OverlayScrimKey(),
+            DropdownOverlayKey(key), WidgetKindButton)
+        release: PointerDrag = TreeTakeDragAt(scrim)
+        if release.ended {
+            panel_face: StyleFrame = DropdownFaceFor(props,
+                DropdownPanelRole(), (i32)ButtonStateNormal,
+                false)
+            scale: float = props.scale
+            if scale <= 0.0 { scale = 1.0 }
+            panel_bounds: Rectangle = PopupBounds(bounds,
+                TreeRootBounds(), options.length, scale, panel_face)
+            dismissal: DismissibleOverlayPolicy =
+                DismissibleOverlayPolicyFor(true, false, false,
+                    PointInBounds(release.x, release.y, panel_bounds))
+            if dismissal.closed {
+                result.open = false
+                result.closed = true
+            }
+        }
+    }
+    if result.open {
+        if props.menu_input.escape {
+            result.open = false
+            result.closed = true
+        } else {
+            if props.menu_input.navigating || result.opened {
+                nav: Navigation = StartNavigation(result.highlight_index,
+                    options.length, props.menu_input.up,
+                    props.menu_input.down, props.menu_input.home,
+                    props.menu_input.end)
+                while nav.searching {
+                    nav = ScanNavigation(nav,
+                        !options[nav.index].disabled)
+                }
+                result.highlight_index = nav.result
+            }
+            if !result.opened && props.menu_input.commit &&
+                result.highlight_index >= 0 &&
+                result.highlight_index < options.length &&
+                !options[result.highlight_index].disabled {
+                result.changed = result.selected_index !=
+                    result.highlight_index
+                result.selected_index = result.highlight_index
+                result.open = false
+                result.closed = true
+            }
+            if result.open {
+                option_index: i32 = 0
+                while option_index < options.length {
+                    if !options[option_index].disabled {
+                        old: i32 = TreeFind(DropdownOptionKey(key,
+                            options[option_index], option_index),
+                            OverlayPanelKey(), WidgetKindSelectable)
+                        if TreeTakeActivationAt(old) {
+                            result.changed = result.selected_index !=
+                                option_index
+                            result.selected_index = option_index
+                            result.highlight_index = option_index
+                            result.open = false
+                            result.closed = true
+                            break
+                        }
+                    }
+                    option_index += 1
+                }
+            }
+        }
+    }
+    state: i32 = (i32)ButtonStateNormal
+    if props.disabled { state = (i32)ButtonStateDisabled }
+    if result.open { state = (i32)ButtonStateSelected }
+    if TreePressedAt(previous) { state = (i32)ButtonStatePressed }
+    if TreeHoveredAt(previous) && !props.disabled && !result.open {
+        state = (i32)ButtonStateHover
+    }
+    face: StyleFrame = DropdownFaceFor(props, 0, state, result.open)
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key, WidgetKindDropdown,
+            bounds)
+        if result.node < 0 { return result }
+        TreeSetInteractive(result.node, props.disabled, false,
+            props.id)
+        TreeSetSemantic(result.node,
+            (SemanticKind)SemanticComboBox, 0)
+        TreeSetSelected(result.node, result.open)
+        label: string = props.placeholder
+        if result.selected_index >= 0 &&
+            result.selected_index < options.length {
+            label = options[result.selected_index].label
+        }
+        TreeSetLabel(result.node, label)
+        bounds = TreeSubmittedNodeAt(result.node).bounds
+    }
+    DropdownPaintTrigger(result.node, bounds, props, options,
+        face, result.selected_index, result.open)
+    if !result.open { return result }
+
+    panel: StyleFrame = DropdownFaceFor(props,
+        DropdownPanelRole(), (i32)ButtonStateNormal, false)
+    option_face: StyleFrame = DropdownFaceFor(props,
+        DropdownOptionRole(), (i32)ButtonStateNormal, false)
+    scrollbar_face: StyleFrame = DropdownFaceFor(props,
+        DropdownScrollbarRole(), (i32)ButtonStateNormal, false)
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    menu: Rectangle = PopupBounds(bounds, TreeRootBounds(),
+        options.length, scale, panel)
+    if menu.width <= 0.0 || menu.height <= 0.0 {
+        result.open = false
+        result.closed = true
+        return result
+    }
+    row_height: i32 = (i32)bounds.height
+    if row_height < 24 { row_height = 24 }
+    metrics: DropdownMenuMetrics = DropdownMenuMetricsFor(scale,
+        panel, option_face, scrollbar_face)
+    layout: MenuLayout = MenuLayoutFor(menu, options.length,
+        row_height, metrics.padding_top, metrics.padding_bottom,
+        metrics.scrollbar_width, metrics.scrollbar_gap)
+    result.scroll_offset = ScrollOffset((f64)result.scroll_offset,
+        layout.max_scroll)
+    if props.wheel != 0.0 {
+        result.scroll_offset = WheelOffset(result.scroll_offset,
+            props.wheel, (float)row_height, layout.max_scroll)
+    }
+    track: Rectangle = ScrollbarTrackBounds(
+        layout.scrollbar_bounds, metrics.scrollbar_track_inset)
+    thumb: Rectangle = DropdownThumbBounds(track, menu.height,
+        layout.content_height, result.scroll_offset,
+        layout.max_scroll)
+    if layout.max_scroll > 0 && TreeIsBuilding() {
+        old_thumb: i32 = TreeFind(DropdownScrollbarKey(key),
+            OverlayPanelKey(), WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(old_thumb)
+        travel: float = track.height - thumb.height
+        if (drag.active || drag.ended) && travel > 0.0 {
+            top: float = drag.y - drag.grab_y - track.y
+            result.scroll_offset = ScrollOffset(
+                (f64)(top * (float)layout.max_scroll / travel),
+                layout.max_scroll)
+            thumb = DropdownThumbBounds(track, menu.height,
+                layout.content_height, result.scroll_offset,
+                layout.max_scroll)
+        }
+    }
+
+    overlay_props: DismissibleOverlayProps
+    overlay_props.key = DropdownOverlayKey(key)
+    overlay_props.bounds = menu
+    overlay: DismissibleOverlayResult =
+        DismissibleOverlay(overlay_props)
+    if overlay.closed {
+        result.open = false
+        result.closed = true
+        return result
+    }
+    panel_node: i32 = overlay.panel_node
+    if panel_node < 0 { return result }
+    panel_opacity: float = StyleOpacityValue(panel.value.fields,
+        panel.value.opacity)
+    PaintRoundedFill(panel_node, menu, panel.value.radius, 12,
+        ColorFromPacked(Opacity(panel.value.background,
+            panel_opacity)))
+    if panel.value.border_width > 0.0 {
+        PaintRoundedOutline(panel_node, menu, panel.value.radius, 12,
+            panel.value.border_width,
+            ColorFromPacked(Opacity(panel.value.border,
+                panel_opacity)))
+    }
+    if !TreePushScope(panel_node) { return result }
+    rows: VisibleRows = Rows(options.length, result.scroll_offset,
+        layout.content_bounds.height, (float)row_height)
+    index: i32 = rows.first
+    while index < rows.end {
+        paint: OptionPaint = OptionPaintFor(menu,
+            layout.option_width, index, row_height,
+            result.scroll_offset, metrics.padding_top,
+            metrics.padding_bottom, metrics.highlight_inset_x,
+            metrics.highlight_inset_y)
+        visible: Rectangle = paint.visible_bounds
+        if visible.width > 0.0 && visible.height > 0.0 {
+            item: DropdownOption = options[index]
+            row: Rectangle = (Rectangle){menu.x,
+                (float)paint.option_y,
+                (float)layout.option_width, (float)row_height}
+            item_node: i32 = TreeSubmitCurrent(
+                DropdownOptionKey(key, item, index),
+                WidgetKindSelectable, visible)
+            if item_node >= 0 {
+                TreeSetInteractive(item_node, item.disabled,
+                    false, 0)
+                TreeSetSemantic(item_node,
+                    (SemanticKind)SemanticOption, 0)
+                TreeSetLabel(item_node, item.label)
+                TreeSetSelected(item_node,
+                    result.selected_index == index)
+                hovered: bool = TreeHoveredAt(TreeFind(
+                    DropdownOptionKey(key, item, index),
+                    OverlayPanelKey(), WidgetKindSelectable))
+                row_state: i32 = (i32)ButtonStateNormal
+                if item.disabled {
+                    row_state = (i32)ButtonStateDisabled
+                } else if hovered || result.highlight_index == index {
+                    row_state = (i32)ButtonStateHover
+                }
+                face = DropdownFaceFor(props,
+                    DropdownOptionRole(), row_state,
+                    result.selected_index == index)
+                DropdownPaintRow(item_node, props, item, row,
+                    visible, result.selected_index == index,
+                    hovered || result.highlight_index == index,
+                    metrics, face)
+            }
+        }
+        index += 1
+    }
+    if layout.max_scroll > 0 && thumb.height > 0.0 {
+        scrollbar_node: i32 = TreeSubmitCurrent(
+            DropdownScrollbarKey(key), WidgetKindSlider, thumb)
+        if scrollbar_node >= 0 {
+            TreeSetInteractive(scrollbar_node, false, false, 0)
+            PaintRoundedFill(scrollbar_node, track,
+                scrollbar_face.value.radius, 8,
+                ColorFromPacked(Opacity((u32)0xe5e7ebff,
+                    panel_opacity)))
+            PaintRoundedFill(scrollbar_node, thumb,
+                scrollbar_face.value.radius, 8,
+                ColorFromPacked(Opacity(
+                    scrollbar_face.value.background,
+                    StyleOpacityValue(scrollbar_face.value.fields,
+                        scrollbar_face.value.opacity))))
+        }
+    }
+    End()
+    return result
+}

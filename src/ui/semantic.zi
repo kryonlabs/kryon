@@ -11,4 +11,6 @@ SemanticKind :: enum {
     SemanticButton = 7
     SemanticTree = 8
     SemanticTreeItem = 9
+    SemanticComboBox = 10
+    SemanticOption = 11
 }

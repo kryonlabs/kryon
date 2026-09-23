@@ -1,20 +1,41 @@
 #module "dropdown_props"
+#import "dropdown"
 #import "geometry"
+#import "image_props"
 
 DropdownOption :: struct {
-    label: const char*
-    icon_type: i32
+    key: u64
+    label: string
+    image: ImageProps
     disabled: bool
     separator_before: bool
 }
 
 DropdownProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    options: const char**
-    option_count: i32
-    selected_index: i32*
+    placeholder: string
+    selected_index: i32
+    highlight_index: i32
+    scroll_offset: i32
+    open: bool
+    focused: bool
+    scale: float
+    wheel: float
+    trigger_input: DropdownTriggerInput
+    menu_input: DropdownMenuInput
     disabled: bool
-    items: const DropdownOption*
+}
+
+DropdownResult :: struct {
+    node: i32
+    selected_index: i32
+    highlight_index: i32
+    scroll_offset: i32
+    open: bool
+    changed: bool
+    opened: bool
+    closed: bool
 }

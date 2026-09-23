@@ -542,13 +542,16 @@ PopupBounds :: (button: Rectangle, view: Rectangle, count: i32,
     if above > available {
         available = above
     }
-    height: float = (float)ContentHeight(count, button.height, padding)
+    height: float = (float)ContentHeight(count, button.height,
+        padding * 2.0)
     if height > available && button.height > 0.0 {
-        rows: i32 = (i32)((available - padding) / button.height)
+        rows: i32 = (i32)((available - padding * 2.0) /
+            button.height)
         if rows < 1 {
             rows = 1
         }
-        height = (float)ContentHeight(rows, button.height, padding)
+        height = (float)ContentHeight(rows, button.height,
+            padding * 2.0)
     }
     y: float = below_y
     if height > below && above > below {

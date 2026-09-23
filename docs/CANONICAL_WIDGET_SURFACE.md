@@ -583,7 +583,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `ColorPicker` | checked Ziran | Block form with value based `ColorPickerProps` and `ColorPickerResult`. |
 | `Separator` | `.kry canonical` | Block form with `SeparatorProps`. |
 | `Spinbox` | `.kry canonical` | Block form with `SpinboxProps`. |
-| `Dropdown` | `.kry canonical` | Block form with `DropdownProps`. |
+| `Dropdown` | checked Ziran | Retained trigger and menu with value based `DropdownProps`, borrowed options, and caller owned result state. |
 | `SegmentedControl` | `.kry canonical` | Block form with `SegmentedControlProps`. |
 | `Fieldset` | `.kry canonical` | Titled frame block. |
 | `PanedView` | `.kry canonical` | Split pane block. |
