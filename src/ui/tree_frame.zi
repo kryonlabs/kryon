@@ -5,6 +5,7 @@
 #import "ui/tree_paint.h"
 #import "ui/accessibility.h"
 #import "../platform/accessibility_internal.h"
+#import "tree"
 
 ui_tree_trace_enabled :: i32 = -1 #global
 ui_tree_trace_frame :: unsigned long #global
@@ -16,19 +17,17 @@ EndTree :: () #export {
     }
     ui_tree_building = 0
     ui_tree_stack_depth = 0
-    keep_committed: bool = ui_tree_build_activation &&
-    ui_committed_node_count > 0 &&
-    ui_tree_node_count < ui_committed_node_count
-    if keep_committed {
+    plan: TreeCommitPlan = TreeCommitFor(ui_tree_build_activation != 0,
+        ui_committed_node_count, ui_tree_node_count)
+    if plan.keep_committed {
         ui_tree_node_count = 0
         ui_tree_build_activation = 0
-    } else {
-        ReconcileTree()
     }
+    if plan.reconcile { ReconcileTree() }
     reconcile: f64 = GetTime()
     LayoutTree()
     layout: f64 = GetTime()
-    if !keep_committed { RouteInput() }
+    if plan.route_input { RouteInput() }
     input: f64 = GetTime()
     UpdateTree()
     update: f64 = GetTime()

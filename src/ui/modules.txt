@@ -42,6 +42,7 @@ image.zi
 image_props.zi
 input.zi
 input_props.zi
+instance.zi
 inspect.zi
 kss_formatter.zi
 kss_parser.zi

@@ -29,7 +29,8 @@ from the retired compiler and must not be advertised as working modules.
 
 The existing C and Go host implementations are migration material. They are
 not included by `make` and do not presently provide a linked application UI.
-The checked archive is a policy subset, not the complete widget runtime.
+The checked archive contains selected widget policy and line rendering, not
+the complete widget runtime.
 
 ## Module rule
 

@@ -35,3 +35,21 @@ TreeInteractiveButtonLike :: (kind: i32, focus_id: i32,
     if kind == WidgetKindCard && focus_id <= 0 { return false }
     return !disabled && !loading
 }
+
+TreeCommitPlan :: struct {
+    keep_committed: bool
+    reconcile: bool
+    route_input: bool
+}
+
+# During activation, a partial submission must preserve the committed tree
+# and defer input until the replacement tree is complete.
+TreeCommitFor :: (activation: bool, committed_count: i32,
+    submitted_count: i32) -> TreeCommitPlan #export {
+    plan: TreeCommitPlan
+    plan.keep_committed = activation && committed_count > 0 &&
+        submitted_count >= 0 && submitted_count < committed_count
+    plan.reconcile = !plan.keep_committed
+    plan.route_input = !plan.keep_committed
+    return plan
+}
