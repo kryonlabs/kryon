@@ -11,6 +11,7 @@ PaintKind :: enum {
     PaintKindRoundedOutline = 3
     PaintKindText = 4
     PaintKindImage = 5
+    PaintKindClippedText = 6
 }
 
 PaintCommand :: struct {
@@ -65,6 +66,9 @@ EmitPaint :: (command: PaintCommand) #export {
             command.source, command.bounds, command.clip,
             command.origin, command.rotation, command.radius,
             command.color)
+    } else if command.kind == PaintKindClippedText {
+        PaintTextClipped(command.value, command.x, command.y,
+            command.font, command.color, command.clip)
     }
 }
 
@@ -126,6 +130,20 @@ PaintLabel :: (node: i32, value: string, x: i32, y: i32,
     command.y = y
     command.font = font
     command.color = color
+    SubmitPaint(command)
+}
+
+PaintClippedLabel :: (node: i32, value: string, x: i32, y: i32,
+    font: i32, color: Color, clip: Rectangle) #export {
+    command: PaintCommand
+    command.kind = PaintKindClippedText
+    command.node = node
+    command.value = value
+    command.x = x
+    command.y = y
+    command.font = font
+    command.color = color
+    command.clip = clip
     SubmitPaint(command)
 }
 

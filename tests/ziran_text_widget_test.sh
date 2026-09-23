@@ -27,7 +27,7 @@ Frame :: () -> i32 #export {
         if !EndTree() || TreeCount() != 2 { return -1 }
         node: TreeEntry = TreeNodeAt(1)
         if node.kind != WidgetKindText || node.key != (u64)7 ||
-            node.bounds.width != 50.0 || node.bounds.height != 44.0 ||
+            node.bounds.width != 50.0 || node.bounds.height != 24.0 ||
             node.semantic_label != "Alpha beta\nGamma" { return -2 }
         phase = 2
         return 42
@@ -47,7 +47,7 @@ Frame :: () -> i32 #export {
     InstallStyleRules(rules)
     props: TextProps
     props.key = (u64)7
-    props.bounds = (Rectangle){10.0, 20.0, 50.0, 0.0}
+    props.bounds = (Rectangle){10.0, 20.0, 50.0, 24.0}
     props.text = "Alpha beta\nGamma"
     props.class_name = 7
     props.wrap = (TextWrap)TextWrapAuto

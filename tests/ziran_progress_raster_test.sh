@@ -96,6 +96,11 @@ HOST void RasterText(String value, int32_t x, int32_t y, int32_t font,
           color.b == 0x30 && color.a == 0x40);
     calls++;
 }
+HOST void RasterTextClipped(String value, int32_t x, int32_t y,
+    int32_t font, Color color, Rectangle clip) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    CHECK(0 && "Progress should not draw clipped text");
+}
 HOST void RasterLine(Rectangle line, Color color) {
     (void)line; (void)color;
     CHECK(0 && "Progress should not draw lines");
@@ -168,6 +173,10 @@ func (host *progressHost) RasterText(value string, x int32, y int32,
        font != 14 || color.R != 0x10 || color.G != 0x20 ||
        color.B != 0x30 || color.A != 0x40 { host.t.Fatal("label") }
     host.calls++
+}
+func (host *progressHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    host.t.Fatal("Progress should not draw clipped text")
 }
 func (host *progressHost) RasterLine(line Rectangle, color Color) {
     host.t.Fatal("Progress should not draw lines")

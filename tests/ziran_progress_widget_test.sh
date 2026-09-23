@@ -151,6 +151,11 @@ HOST void RasterText(String value, int32_t x, int32_t y, int32_t font,
     assert(value.length == 3 && x == 41 && y == 25 && font == 14);
     draws++;
 }
+HOST void RasterTextClipped(String value, int32_t x, int32_t y,
+    int32_t font, Color color, Rectangle clip) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    assert(0 && "Progress should not draw clipped text");
+}
 HOST void RasterLine(Rectangle line, Color color) {
     (void)line; (void)color;
     assert(0 && "Progress should not draw separator lines");
@@ -224,6 +229,10 @@ func (host *widgetHost) RasterText(value string, x int32, y int32,
         host.t.Fatal("label")
     }
     host.draws++
+}
+func (host *widgetHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    host.t.Fatal("Progress should not draw clipped text")
 }
 func (host *widgetHost) RasterLine(line Rectangle, color Color) {
     host.t.Fatal("Progress should not draw separator lines")

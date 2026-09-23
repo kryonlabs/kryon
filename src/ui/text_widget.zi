@@ -147,12 +147,16 @@ PaintTextLines :: (node: i32, props: TextProps,
         x: i32 = ParagraphLineXFor((i32)prepared.bounds.x,
             (i32)prepared.bounds.width, line.width, (i32)props.align)
         if value != "" {
-            PaintLabel(node, value, x, y, prepared.font, prepared.color)
+            PaintClippedLabel(node, value, x, y, prepared.font,
+                prepared.color, prepared.bounds)
             if props.strikethrough {
                 strike: Rectangle = TextStrikethroughBounds((float)x,
                     (float)y, (float)line.width,
                     (float)prepared.line_height, 1.0)
-                PaintRoundedFill(node, strike, 0.0, 1, prepared.color)
+                strike = RectangleIntersection(strike, prepared.bounds)
+                if strike.width > 0.0 && strike.height > 0.0 {
+                    PaintRoundedFill(node, strike, 0.0, 1, prepared.color)
+                }
             }
         }
         y += prepared.line_height + prepared.line_gap

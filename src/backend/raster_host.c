@@ -142,19 +142,30 @@ draw_raster_text(void *context, const char *module, const char *function,
                  const VmHostValue *args, int arg_count, VmHostValue *result)
 {
     TextRenderer *renderer = context;
+    int clipped = strcmp(function, "RasterTextClipped") == 0;
     int x, y, font;
     uint8_t color[4];
-    if(renderer == NULL || renderer->draw == NULL ||
+    float clip[4];
+    if(renderer == NULL ||
+       (clipped ? renderer->draw_clipped == NULL : renderer->draw == NULL) ||
        strcmp(module, "raster_text") != 0 ||
-       strcmp(function, "RasterText") != 0 || arg_count != 5 ||
+       (!clipped && strcmp(function, "RasterText") != 0) ||
+       arg_count != (clipped ? 6 : 5) ||
        args[0].kind != VM_HOST_STRING ||
        strcmp(args[0].type, "string") != 0 ||
        !read_i32(&args[1], &x) || !read_i32(&args[2], &y) ||
-       !read_i32(&args[3], &font) || !read_color(&args[4], color))
+       !read_i32(&args[3], &font) || !read_color(&args[4], color) ||
+       (clipped && !read_rectangle(&args[5], clip)))
         return 0;
-    renderer->draw(renderer->context, (const char *)args[0].data,
-                   args[0].length, x, y, font,
-                   color[0], color[1], color[2], color[3]);
+    if(clipped)
+        renderer->draw_clipped(renderer->context,
+                               (const char *)args[0].data,
+                               args[0].length, x, y, font, clip,
+                               color[0], color[1], color[2], color[3]);
+    else
+        renderer->draw(renderer->context, (const char *)args[0].data,
+                       args[0].length, x, y, font,
+                       color[0], color[1], color[2], color[3]);
     result->kind = VM_HOST_VOID;
     return 1;
 }
@@ -164,4 +175,11 @@ RasterTextBinding(TextRenderer *renderer)
 {
     return (HostBinding){"raster_text", "RasterText", draw_raster_text,
                          renderer};
+}
+
+HostBinding
+RasterTextClippedBinding(TextRenderer *renderer)
+{
+    return (HostBinding){"raster_text", "RasterTextClipped",
+                         draw_raster_text, renderer};
 }

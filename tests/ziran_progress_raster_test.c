@@ -61,7 +61,7 @@ main(int argc, char **argv)
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
     assert(bundle != NULL);
-    assert(BundleCapabilityCount(bundle) == 5);
+    assert(BundleCapabilityCount(bundle) == 6);
     RoundedRectangleRenderer shapes = {fill, outline, NULL};
     TextRenderer text = {draw_text, NULL};
     LineRenderer lines = {line, NULL};
@@ -69,6 +69,7 @@ main(int argc, char **argv)
         RasterRoundedRectangleBinding(&shapes),
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&text),
+        RasterTextClippedBinding(&text),
         RasterLineBinding(&lines),
         RasterImageBinding(&unused_image_renderer),
     };
@@ -76,7 +77,7 @@ main(int argc, char **argv)
     int has_result = 0;
     assert(!BundleRun(bundle, bindings, 4, &result, &has_result));
     assert(calls == 0);
-    assert(BundleRun(bundle, bindings, 5, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 6, &result, &has_result));
     assert(has_result && result == 42 && calls == 5);
     BundleClose(bundle);
     return 0;

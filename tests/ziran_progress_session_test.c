@@ -85,6 +85,7 @@ static void run(Bundle *bundle)
         RasterRoundedRectangleBinding(&shapes),
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&labels),
+        RasterTextClippedBinding(&labels),
         RasterLineBinding(&lines),
         RasterImageBinding(&unused_image_renderer),
     };
@@ -92,7 +93,7 @@ static void run(Bundle *bundle)
     char function_name[] = "MeasureGlyphWidth";
     bindings[0].module = module_name;
     bindings[0].function = function_name;
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 7);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, 8);
     assert(instance != NULL);
     module_name[0] = 'x';
     function_name[0] = 'x';

@@ -81,13 +81,14 @@ int main(int argc, char **argv)
         RasterRoundedRectangleBinding(&shapes),
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&texts),
+        RasterTextClippedBinding(&texts),
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
         RasterImageBinding(&unused_image_renderer),
     };
     long long value = 0;
     int has_value = 0;
-    assert(BundleRun(bundle, bindings, 7, &value, &has_value));
+    assert(BundleRun(bundle, bindings, 8, &value, &has_value));
     assert(has_value && value == 4);
     sequence[count] = '\0';
     assert(strcmp(sequence, "FFOLFFO") == 0);

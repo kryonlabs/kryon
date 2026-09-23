@@ -11,3 +11,22 @@ Rectangle :: struct {
     width: float
     height: float
 }
+
+RectangleIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle #export {
+    result: Rectangle
+    right: float = a.x + a.width
+    bottom: float = a.y + a.height
+    other_right: float = b.x + b.width
+    other_bottom: float = b.y + b.height
+    result.x = a.x
+    if b.x > a.x { result.x = b.x }
+    result.y = a.y
+    if b.y > a.y { result.y = b.y }
+    if other_right < right { right = other_right }
+    if other_bottom < bottom { bottom = other_bottom }
+    result.width = right - result.x
+    result.height = bottom - result.y
+    if result.width < 0.0 { result.width = 0.0 }
+    if result.height < 0.0 { result.height = 0.0 }
+    return result
+}

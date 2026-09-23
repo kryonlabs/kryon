@@ -142,12 +142,13 @@ int main(int argc, char **argv)
         RasterRoundedRectangleBinding(&shape),
         RasterRoundedRectangleOutlineBinding(&shape),
         RasterTextBinding(&text),
+        RasterTextClippedBinding(&text),
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
     };
     long long result = 0;
     int has_result = 0;
-    assert(BundleRun(bundle, bindings, 9, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 10, &result, &has_result));
     assert(has_result && result == 42);
     pixel(0, 0, 255, 0, 0, 255);
     pixel(3, 0, 0, 255, 0, 255);

@@ -40,12 +40,17 @@ typedef struct TextRenderer {
                  int x, int y, int font,
                  uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     void *context;
+    /* The rasterizer applies this rectangle while drawing glyph pixels. */
+    void (*draw_clipped)(void *context, const char *text, size_t length,
+                         int x, int y, int font, const float clip[4],
+                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 } TextRenderer;
 
 /* Renderers and their contexts must remain valid through BundleRun. */
 HostBinding RasterRoundedRectangleBinding(RoundedRectangleRenderer *renderer);
 HostBinding RasterRoundedRectangleOutlineBinding(RoundedRectangleRenderer *renderer);
 HostBinding RasterTextBinding(TextRenderer *renderer);
+HostBinding RasterTextClippedBinding(TextRenderer *renderer);
 
 typedef struct FontMeasurer {
     int (*width)(void *context, const char *text, size_t text_length,

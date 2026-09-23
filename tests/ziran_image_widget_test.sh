@@ -171,6 +171,11 @@ HOST void RasterText(String value, int32_t x, int32_t y,
     (void)value; (void)x; (void)y; (void)font; (void)color;
     CHECK(0 && "unexpected text");
 }
+HOST void RasterTextClipped(String value, int32_t x, int32_t y,
+    int32_t font, Color color, Rectangle clip) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    CHECK(0 && "unexpected clipped text");
+}
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String typeface) {
     (void)value; (void)font; (void)typeface;

@@ -56,6 +56,9 @@ font metric callbacks for the checked Progress composition path. Both callbacks
 receive the requested typeface as borrowed UTF-8 bytes.
 `TextSliceBinding()` supplies borrowed byte ranges for checked `Text` line
 composition; the host does not choose wrap points or positions.
+`RasterTextClippedBinding()` supplies a glyph raster callback that must honor
+the clip rectangle selected by `Text`. Other widget labels continue to use
+`RasterTextBinding()` without a clip.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
@@ -124,11 +127,10 @@ broader image materials, accessibility event publication, and concrete
 desktop/browser image hosts still need migration.
 `Text(TextProps)` is a checked Ziran widget. It resolves KSS text rules,
 measures glyphs, wraps at word boundaries, positions lines with horizontal and
-vertical alignment, paints optional strikethrough, and submits semantic text to
-the retained tree. The host supplies byte slices, glyph metrics, and raw text
-rasterization. The current paint path does not clip glyphs to the bounds,
-apply letter spacing, inherit a parent widget's foreground, or route selectable
-text input; these still need migration.
+vertical alignment, clips glyphs and strikethrough to its bounds, and submits
+semantic text to the retained tree. The host supplies byte slices, glyph
+metrics, and raw clipped text rasterization. Letter spacing, parent foreground
+inheritance, and selectable text interaction still need migration.
 Text fields in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
 `FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
 props still contain pointer-based state or collections. Remaining widget

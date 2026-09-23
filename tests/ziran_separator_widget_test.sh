@@ -174,6 +174,11 @@ HOST void RasterText(String value, int32_t x, int32_t y,
            color.b == 0xcc && color.a == 0xdd);
     texts++;
 }
+HOST void RasterTextClipped(String value, int32_t x, int32_t y,
+    int32_t font, Color color, Rectangle clip) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    assert(0 && "Separator should not draw clipped text");
+}
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     int32_t segments, Color color) {
     (void)bounds; (void)radius; (void)segments; (void)color;
@@ -241,6 +246,10 @@ func (h *separatorHost) RasterText(value string, x, y, font int32,
        color.R != 0xaa || color.G != 0xbb ||
        color.B != 0xcc || color.A != 0xdd { h.t.Fatal("label") }
     h.texts++
+}
+func (h *separatorHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    h.t.Fatal("Separator should not draw clipped text")
 }
 func (h *separatorHost) RasterRoundedRectangle(bounds Rectangle,
     radius float32, segments int32, color Color) {

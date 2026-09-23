@@ -131,10 +131,11 @@ static void run(Bundle *bundle)
         RasterRoundedRectangleBinding(&shape_host),
         RasterRoundedRectangleOutlineBinding(&shape_host),
         RasterTextBinding(&text_host),
+        RasterTextClippedBinding(&text_host),
         MeasureGlyphWidthBinding(&font_host),
         MeasureGlyphLineHeightBinding(&font_host),
     };
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 9);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, 10);
     assert(instance != NULL);
     long long result = -1;
     int has_result = 0;
