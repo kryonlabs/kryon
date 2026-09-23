@@ -36,7 +36,8 @@ from both `.zi` and saved `.zir`.
 `zi/widget_kind.zi`, `zi/accessibility_props.zi`, and
 `zi/accessibility_policy.zi` port the widget-kind and accessibility decisions.
 The [accessibility test](../tests/ziran_accessibility_test.sh) builds the
-ordinary imported modules from `.zi` and saved `.zir` for C, C++, and Go.
+ordinary imported modules from `.zi` and saved `.zir` for C, C++, Go, and
+portable `.zib` execution.
 `make ziran-test` runs both migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.

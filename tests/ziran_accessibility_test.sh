@@ -47,6 +47,18 @@ EOF
 "$ziran" ir --root "$work" -o "$work/ir" \
     "$work/widget_kind.zi" "$work/accessibility_props.zi" \
     "$work/accessibility_policy.zi" "$work/use_accessibility.zi"
+"$ziran" bundle --root "$work" --entry use_accessibility:Answer \
+    -o "$work/accessibility.zib" "$work/widget_kind.zi" \
+    "$work/accessibility_props.zi" "$work/accessibility_policy.zi" \
+    "$work/use_accessibility.zi"
+test "$("$ziran" run "$work/accessibility.zib")" = 42
+"$ziran" bundle --root "$work" --entry use_accessibility:Answer \
+    -o "$work/accessibility-ir.zib" "$work/ir/widget_kind.zir" \
+    "$work/ir/accessibility_props.zir" \
+    "$work/ir/accessibility_policy.zir" \
+    "$work/ir/use_accessibility.zir"
+cmp "$work/accessibility.zib" "$work/accessibility-ir.zib"
+test "$("$ziran" run "$work/accessibility-ir.zib")" = 42
 
 for input in source ir; do
     if test "$input" = source; then
