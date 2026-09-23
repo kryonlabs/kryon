@@ -277,7 +277,7 @@ surface review:
 | `src/ui/frame_pacing.kry` | Frame pacing policy (replaces `src/core/kryon_frame_pacing.c`) | `.kry canonical` |
 | `src/ui/kryon_test.kry` | Test and inspection helper surface | `.kry support` |
 | `src/ui/locale_defaults.kry` | Built-in theme-control fallback labels | `.kry canonical` |
-| `src/ui/locale_parser.kry` | Catalog entry and language-list parsing | `.kry canonical` |
+| `src/ui/locale_parser.zi` | Portable catalog entry and language-list parsing into caller owned spans | checked Ziran |
 | `src/ui/locale_policy.zi` | Portable locale-code selection, preferred-language matching, and catalog fallback | checked Ziran |
 | `src/ui/node.kry` | Retained node initializer and property-value constructors (replaces `src/core/kryon_node.c`) | `.kry canonical` |
 | `src/ui/preference_policy.kry` | Theme and orientation preference decisions (replaces `src/core/device_preferences.c`) | `.kry canonical` |

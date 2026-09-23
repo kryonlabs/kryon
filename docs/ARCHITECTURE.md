@@ -88,6 +88,9 @@ capacity, and no C callback or route storage pointer crosses the API.
 The checked `locale_policy.zi` module keeps locale matching and catalog
 fallback in Ziran. Catalog storage and platform preference discovery stay
 outside the module; ordinary slices and strings cross its API.
+The checked locale parser reads immutable catalog strings, normalizes line
+endings in entry bodies, and writes entries and languages into caller supplied
+span and byte slices. The parser has no allocator or file access.
 
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses

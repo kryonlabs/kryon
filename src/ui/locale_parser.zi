@@ -1,138 +1,219 @@
 #module "locale_parser"
 
-#import "ui_locale_props.generated.h"
-#import <stdlib.h>
-#import <string.h>
-
-LocaleStoreEntry :: (entries: **LocaleEntry, count: *size_t,
-cap: *size_t, key: const char*, value: const char*) #extern
-LocaleStoreLanguage :: (code: const char*, label: const char*) #extern
-
-locale_copy_range :: (source: const char*, length: size_t) -> *char #private {
-    copy: *char = (char*)malloc(length + 1)
-    if copy == nil { return nil }
-    memcpy(copy, source, length)
-    copy[length] = '\0'
-    return copy
+# Catalog text remains immutable. Callers supply entry and byte storage;
+# returned spans address the byte storage, never a host pointer.
+LocaleSpan :: struct {
+    start: i32
+    length: i32
 }
 
-locale_append_text :: (buffer: **char, length: *size_t,
-capacity: *size_t, value: const char*) #private {
-    if value == nil { return }
-    value_length: size_t = strlen(value)
-    needed: size_t = *length + value_length + 1
-    if *capacity < needed {
-        next_capacity: size_t = *capacity == 0 ? 128 : *capacity
-        while next_capacity < needed { next_capacity *= 2 }
-        grown: *char = (char*)realloc(*buffer, next_capacity)
-        if grown == nil { return }
-        *buffer = grown
-        *capacity = next_capacity
-    }
-    memcpy(*buffer + *length, value, value_length)
-    *length += value_length
-    (*buffer)[*length] = '\0'
+LocaleEntrySpan :: struct {
+    key: LocaleSpan
+    value: LocaleSpan
 }
 
-locale_next_line :: (cursor: **char) -> *char #private {
-    if *cursor == nil || **cursor == '\0' { return nil }
-    line: *char = *cursor
-    eol: *char = strpbrk(*cursor, "\r\n")
-    if eol == nil {
-        *cursor = nil
-        return line
-    }
-    line_end: char = *eol
-    *eol = '\0'
-    *cursor = eol + 1
-    if (line_end == '\r' && **cursor == '\n') ||
-       (line_end == '\n' && **cursor == '\r') {
-        *cursor += 1
+LocaleLanguageSpan :: struct {
+    code: LocaleSpan
+    label: LocaleSpan
+}
+
+LocaleParseResult :: struct {
+    count: i32
+    byte_count: i32
+    complete: bool
+}
+
+LocaleLine :: struct {
+    start: i32
+    end: i32
+    next: i32
+}
+
+LocaleNextLine :: (text: string, cursor: i32) -> LocaleLine {
+    line: LocaleLine
+    line.start = cursor
+    line.end = cursor
+    while line.end < text.length && text[line.end] != 10 &&
+        text[line.end] != 13 { line.end += 1 }
+    line.next = line.end
+    if line.next < text.length {
+        first: u8 = text[line.next]
+        line.next += 1
+        if line.next < text.length &&
+            ((first == 10 && text[line.next] == 13) ||
+             (first == 13 && text[line.next] == 10)) {
+            line.next += 1
+        }
     }
     return line
 }
 
-LocaleParseEntries :: (text: const char*, entries: **LocaleEntry,
-count: *size_t, cap: *size_t) #export {
-    if text == nil || entries == nil || count == nil || cap == nil {
-        return
+LocaleCopyRange :: (text: string, start: i32, end: i32,
+    bytes: []u8, used: i32) -> i32 {
+    if start < 0 || end < start || end > text.length ||
+        used < 0 || used > bytes.length || end - start > bytes.length - used {
+        return -1
     }
-    mutable_text: *char = locale_copy_range(text, strlen(text))
-    if mutable_text == nil { return }
-    cursor: *char = mutable_text
-    current_key: *char = nil
-    body: *char = nil
-    body_length: size_t = 0
-    body_capacity: size_t = 0
-
-    line: *char = locale_next_line(&cursor)
-    while line != nil {
-        if line[0] == '[' {
-            line_length: size_t = strlen(line)
-            if line_length > 2 && line[line_length - 1] == ']' {
-                key: *char = locale_copy_range(line + 1, line_length - 2)
-                if key != nil {
-                    free(current_key)
-                    current_key = key
-                    free(body)
-                    body = nil
-                    body_length = 0
-                    body_capacity = 0
-                }
-                line = locale_next_line(&cursor)
-                continue
-            }
-        }
-        if strcmp(line, "---") == 0 {
-            if current_key != nil {
-                LocaleStoreEntry(entries, count, cap, current_key,
-                                 body != nil ? body : "")
-                free(current_key)
-                current_key = nil
-            }
-            free(body)
-            body = nil
-            body_length = 0
-            body_capacity = 0
-            line = locale_next_line(&cursor)
-            continue
-        }
-        if current_key != nil {
-            if body_length > 0 {
-                locale_append_text(&body, &body_length, &body_capacity, "\n")
-            }
-            locale_append_text(&body, &body_length, &body_capacity, line)
-        }
-        line = locale_next_line(&cursor)
+    index: i32 = start
+    while index < end {
+        bytes[used] = text[index]
+        used += 1
+        index += 1
     }
-    if current_key != nil {
-        LocaleStoreEntry(entries, count, cap, current_key,
-                         body != nil ? body : "")
-    }
-    free(current_key)
-    free(body)
-    free(mutable_text)
+    return used
 }
 
-LocaleParseLanguages :: (text: const char*) #export {
-    if text == nil { return }
-    mutable_text: *char = locale_copy_range(text, strlen(text))
-    if mutable_text == nil { return }
-    cursor: *char = mutable_text
-    line: *char = locale_next_line(&cursor)
-    while line != nil {
-        if line[0] != '\0' && line[0] != '#' {
-            separator: *char = strchr(line, '|')
-            if separator != nil {
-                *separator = '\0'
-                code: *char = line
-                label: *char = separator + 1
-                if code[0] != '\0' && label[0] != '\0' {
-                    LocaleStoreLanguage(code, label)
-                }
-            }
-        }
-        line = locale_next_line(&cursor)
+LocaleSpanMatchesText :: (bytes: []u8, span: LocaleSpan,
+    text: string, start: i32, end: i32) -> bool {
+    if span.start < 0 || span.length < 0 ||
+        span.start > bytes.length ||
+        span.length > bytes.length - span.start ||
+        start < 0 || end < start || end > text.length ||
+        span.length != end - start { return false }
+    index: i32 = 0
+    while index < span.length {
+        if bytes[span.start + index] != text[start + index] { return false }
+        index += 1
     }
-    free(mutable_text)
+    return true
+}
+
+LocaleSpanEquals :: (bytes: []u8, span: LocaleSpan,
+    text: string) -> bool #export {
+    return LocaleSpanMatchesText(bytes, span, text, 0, text.length)
+}
+
+LocaleCommitEntry :: (text: string, key_start: i32, key_end: i32,
+    body_start: i32, entries: []LocaleEntrySpan, bytes: []u8,
+    state: LocaleParseResult) -> LocaleParseResult {
+    index: i32 = 0
+    while index < state.count {
+        entry: LocaleEntrySpan = entries[index]
+        if LocaleSpanMatchesText(bytes, entry.key,
+            text, key_start, key_end) {
+            entries[index] = (LocaleEntrySpan){entry.key,
+                (LocaleSpan){body_start, state.byte_count - body_start}}
+            return state
+        }
+        index += 1
+    }
+    if state.count >= entries.length {
+        state.complete = false
+        return state
+    }
+    key_copy_start: i32 = state.byte_count
+    copied: i32 = LocaleCopyRange(text, key_start, key_end,
+        bytes, state.byte_count)
+    if copied < 0 {
+        state.complete = false
+        return state
+    }
+    state.byte_count = copied
+    entry: LocaleEntrySpan
+    entry.key.start = key_copy_start
+    entry.key.length = key_end - key_start
+    entry.value.start = body_start
+    entry.value.length = key_copy_start - body_start
+    entries[state.count] = entry
+    state.count += 1
+    return state
+}
+
+# A new [key] before a --- separator discards the unfinished entry, matching
+# the catalog format. Duplicate keys keep their original slot and latest value.
+LocaleParseEntries :: (text: string, entries: []LocaleEntrySpan,
+    bytes: []u8) -> LocaleParseResult #export {
+    state: LocaleParseResult
+    state.complete = true
+    cursor: i32 = 0
+    key_start: i32 = -1
+    key_end: i32 = 0
+    body_start: i32 = 0
+    while cursor < text.length {
+        line: LocaleLine = LocaleNextLine(text, cursor)
+        cursor = line.next
+        if line.end - line.start > 2 && text[line.start] == 91 &&
+            text[line.end - 1] == 93 {
+            state.byte_count = body_start
+            key_start = line.start + 1
+            key_end = line.end - 1
+            continue
+        }
+        if line.end - line.start == 3 && text[line.start] == 45 &&
+            text[line.start + 1] == 45 && text[line.start + 2] == 45 {
+            if key_start >= 0 {
+                state = LocaleCommitEntry(text, key_start, key_end,
+                    body_start, entries, bytes, state)
+                if !state.complete { return state }
+                key_start = -1
+            }
+            body_start = state.byte_count
+            continue
+        }
+        if key_start >= 0 {
+            if state.byte_count > body_start {
+                if state.byte_count >= bytes.length {
+                    state.complete = false
+                    return state
+                }
+                bytes[state.byte_count] = 10
+                state.byte_count += 1
+            }
+            copied: i32 = LocaleCopyRange(text, line.start, line.end,
+                bytes, state.byte_count)
+            if copied < 0 {
+                state.complete = false
+                return state
+            }
+            state.byte_count = copied
+        }
+    }
+    if key_start >= 0 {
+        state = LocaleCommitEntry(text, key_start, key_end,
+            body_start, entries, bytes, state)
+    }
+    return state
+}
+
+LocaleParseLanguages :: (text: string, languages: []LocaleLanguageSpan,
+    bytes: []u8) -> LocaleParseResult #export {
+    state: LocaleParseResult
+    state.complete = true
+    cursor: i32 = 0
+    while cursor < text.length {
+        line: LocaleLine = LocaleNextLine(text, cursor)
+        cursor = line.next
+        if line.end <= line.start || text[line.start] == 35 { continue }
+        separator: i32 = line.start
+        while separator < line.end && text[separator] != 124 {
+            separator += 1
+        }
+        if separator == line.start || separator >= line.end - 1 { continue }
+        if state.count >= languages.length {
+            state.complete = false
+            return state
+        }
+        language: LocaleLanguageSpan
+        language.code.start = state.byte_count
+        language.code.length = separator - line.start
+        copied: i32 = LocaleCopyRange(text, line.start, separator,
+            bytes, state.byte_count)
+        if copied < 0 {
+            state.complete = false
+            return state
+        }
+        state.byte_count = copied
+        language.label.start = state.byte_count
+        language.label.length = line.end - separator - 1
+        copied = LocaleCopyRange(text, separator + 1, line.end,
+            bytes, state.byte_count)
+        if copied < 0 {
+            state.complete = false
+            return state
+        }
+        state.byte_count = copied
+        languages[state.count] = language
+        state.count += 1
+    }
+    return state
 }

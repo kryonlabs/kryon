@@ -118,6 +118,10 @@ The checked `locale_policy.zi` module accepts caller owned slices of
 preferred codes from a language catalog, including normalized region tags and
 base language fallback, and resolves active/base translation entries. The
 caller owns catalog loading and adds English when `LocaleHasEnglish` is false.
+`LocaleParseEntries` and `LocaleParseLanguages` parse UTF-8 catalog text into
+caller owned `[]u8` storage and span tables. `LocaleParseResult.complete` is
+false when either table or byte storage is too small. `LocaleSpanEquals`
+compares a stored span with a string without a C string allocation.
 
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
