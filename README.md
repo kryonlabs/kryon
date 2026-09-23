@@ -17,22 +17,25 @@ make test
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
 writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs.
 The current C archive is `build/ziran/libkryon.a`; generated headers are in
-`build/ziran/c/`. The first portable platform binding is in
-`build/ziran/libkryon_host.a` and maps `frame_pacing:ApplyTargetFPS` to the
-selected backend's `SetTargetFPS`. `make test` also runs the Ziran source,
+`build/ziran/c/`. Portable platform bindings are in
+`build/ziran/libkryon_host.a`: frame pacing maps to the selected backend's
+`SetTargetFPS`, and bevel raster lines use a caller-supplied line renderer.
+`make test` also runs the Ziran source,
 saved-IR, and portable bundle tests. No display is started.
 
 ## Migration status
 
 The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
-Button, Checkbox, Slider, Toggle, material layers, theme, style values, and
+Button, Checkbox, Slider, Toggle, Bevel geometry and rendering, material layers,
+theme, style values, and
 selected Image, Separator, Progress, form row layout, app shell sizing,
 capability policy, safe area geometry, and window placement decisions. Other runtime and widget
 source has been moved into `.zi` files in `src/ui/`; those modules still need
 type, host interface, and backend work before they can join `modules.txt`.
 
-The current archive is a policy subset. Complete widget composition, rendering,
+The current archive includes selected widget behavior and a bevel rendering
+path. Complete widget composition and rendering,
 remaining platform host adapters, full `.zib` capability execution, and
 downstream app builds are still migration work. The old C and Go host code is
 retained only as platform implementation material and is not part of the default
