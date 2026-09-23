@@ -23,13 +23,15 @@ rasterization, input, clipboard, IME, time, storage).
 
 ## Ziran migration in progress
 
-`zi/layout.zi` is the first maintained Kryon policy module written for Ziran.
-It carries the centered-column and responsive-width decisions from
-`runtime/layout.kry`. A separate Ziran program imports `layout` normally; the
+`zi/geometry.zi` defines the portable rectangle record. `zi/layout.zi` ports
+the pure policy from `runtime/layout.kry`, including content insets, automatic
+child placement, and flex spacing and alignment. `zi/group.zi` composes those
+policies into group bounds. A separate Ziran program imports these modules
+normally; the
 [layout test](../tests/ziran_layout_test.sh) checks source and saved `.zir`
 builds in C, C++, and Go without linking a UI runtime. The active Kryon build
-still uses `runtime/layout.kry`; the `.zi` module is not yet wired into widget
-rendering or downstream applications.
+still uses `runtime/layout.kry`; the `.zi` modules are not yet wired into
+widget rendering or downstream applications.
 
 ## Core contracts
 
