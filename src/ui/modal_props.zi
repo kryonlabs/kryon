@@ -1,31 +1,8 @@
 #module "modal_props"
 #import "control_props"
-#import "drawing_props"
 #import "geometry"
 #import "image_props"
 #import "modal"
-
-ModalAction :: struct {
-    label: const char*
-    tone: ButtonTone
-    emphasis: ButtonEmphasis
-    disabled: bool
-}
-
-ModalProps :: struct {
-    title: const char*
-    class_name: i32
-    message: const char*
-    actions: const ModalAction*
-    action_count: i32
-    close_icon: Texture2D
-    max_width: i32
-    text: char*
-    text_size: i32
-    cursor_position: i32*
-    focused: bool*
-    focus_id: i32
-}
 
 # Caller supplied bounds support movable/resizable panels without making a
 # platform host decide the layout. Zero bounds center the requested size.
@@ -56,6 +33,31 @@ ModalFrameResult :: struct {
     right_clicked: bool
 }
 
-# Action modal: title, message, and buttons; returns the activated action id
-# (0 = dismissed). Implemented by the modal host.
-RenderActionModal :: (modal: ModalProps) -> i32 #extern #export
+# A message and action dialog. Actions are borrowed values supplied to
+# ActionModal; the caller keeps any selection and dismissal state.
+ActionModalProps :: struct {
+    key: u64
+    id: i32
+    class_name: i32
+    title: string
+    message: string
+    max_width: i32
+    scale: float
+    show_close: bool
+    close_label: string
+}
+
+ActionModalAction :: struct {
+    key: u64
+    label: string
+    tone: ButtonTone
+    emphasis: ButtonEmphasis
+    disabled: bool
+}
+
+ActionModalResult :: struct {
+    node: i32
+    # Zero means no decision; -1 means dismissed; positive values are the
+    # one-based action index.
+    action: i32
+}

@@ -391,7 +391,7 @@ has a single place to land.
 | `TabBar` | `Navigation` | Tabs | `runtime/tab_bar.kry`, `src/ui/tab_bar.kry`, `src/ui/tab_store.kry` | `.kry canonical` | Sizing, KSS style, input, scroll, retained drag state, icon and text paint, reorder, close, and double click are authored in `.kry`. |
 | `TitleBar` | `Navigation` | Title | `runtime/title_bar.kry`, `src/ui/title_bar.kry` | `.kry-backed` | TitleBar layout, styling, title text, dropdown dispatch, and leading action are authored in `.kry`; text measurement and drawing use lower-level runtime services. |
 | `Focus` | `Overlays` | Focus | `runtime/focus.kry`, `src/ui/focus.kry` | `.kry-backed` | State, traversal, registration, keyboard activation, and ring drawing are in `.kry`; backend supplies key and pointer samples. |
-| `Modal` | `Overlays` | Dialog | `src/ui/modal.zi`, `src/ui/modal_frame_widget.zi` | frame checked Ziran | Frame layout, backdrop dismissal, title and close actions are checked; action dialog and prompt composition remain in the old host. |
+| `Modal` | `Overlays` | Dialog | `src/ui/modal.zi`, `src/ui/modal_frame_widget.zi`, `src/ui/modal_widget.zi` | frame and ActionModal checked Ziran | Frame layout, backdrop dismissal, title, message, and wrapped action buttons are checked; the old combined API and prompt input remain in the legacy host. |
 | `Scene` | `Game2D/Core` | Scene root | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public declaration props/defaults and kind values are `.kry`; scene ownership, lifecycle, physics world, and rendering remain native Game2D support. |
 | `Node2D` | `Game2D/Core` | Transform | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public transform declaration props/defaults and kind values are `.kry`; runtime tree mutation and world transform propagation remain native. |
 | `Camera2D` | `Game2D/Core` | Camera | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; scene lifecycle and camera activation remain native Game2D support. |
@@ -542,7 +542,8 @@ host roles rather than retained nodes.
 | `Scroll` | `.kry canonical` | Parser statement form for generated/runtime lowering; lexical block form remains canonical for scroll content. |
 | `End` | Lowered support | Parser block close marker, not a widget. |
 | `ModalFrame` | checked Ziran | Reusable panel and content bounds with checked backdrop dismissal, title and close actions. |
-| `Modal` | migration pending | Action dialog and prompt composition still use the old host. |
+| `ActionModal` | checked Ziran | Message and borrowed action values with checked wrapping, selection, and dismissal; prompt text editing remains to migrate. |
+| `Modal` | migration pending | The old combined message, action, and prompt API still uses the legacy host; checked message and action composition is available as `ActionModal`. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |
 | `TabBar` | `.kry canonical` | Tab navigation surface. |
 | `NavigationBar` | checked Ziran bar and editor | App navigation bar with borrowed items and a clicked route result; checked configuration editor returns edited routes and caller owned state. Legacy host integration remains. |
@@ -745,7 +746,8 @@ metrics and protocol support here.
 |---|---|---|
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. `src/ui/popup.kry` owns pointer sampling, paint layers, clipping, release consumption, and child scope around `runtime/popup_policy.kry` lifecycle decisions. |
 | `ModalFrame` | checked Ziran | `modal_frame_widget.zi` owns panel layout, backdrop dismissal, title paint, and close actions. Caller supplied bounds allow moving or resizing without host layout decisions. |
-| `Modal` | migration pending | Action dialog, prompt input, and their old host composition still need conversion. |
+| `ActionModal` | checked Ziran | `modal_widget.zi` composes ModalFrame, wrapped Text, and action Buttons; prompt text editing remains to migrate. |
+| `Modal` | migration pending | The old combined API still depends on the legacy host, including prompt input; checked message and action composition is available as `ActionModal`. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Style facts, request/render clear decisions, duration/deadline, layout, text-placement, and truncation policy are in `.kry`; host keeps message storage, clock source, text measurement, and drawing. |
 | `Focus` | Partly `.kry-backed` | Focus ring geometry and keyboard activation policy are in `.kry`; focus state, registration, key sampling, popup capture lookup, and drawing remain host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. `src/ui/guide.kry` owns input, styling, layout, and drawing around `runtime/guide.kry` policy. Label typography uses resolved KSS font sizes directly. |
@@ -840,7 +842,7 @@ stays prefix-free.
 | `WidgetKindPanedView` | `PanedView` | `.kry canonical`; split/handle/drag policy lives in `runtime/paned_view.kry` |
 | `WidgetKindCollapsible` | `Collapsible` | `.kry canonical`; header/close/layout and input decision policy lives in `runtime/collapsible.kry` |
 | `WidgetKindColorPicker` | `ColorPicker` | checked Ziran; channel/swatch policy lives in `color_picker.zi`, with retained Slider composition in `color_picker_widget.zi` |
-| `WidgetKindModal` | `ModalFrame` | checked Ziran frame; action dialog migration remains |
+| `WidgetKindModal` | `ModalFrame`, `ActionModal` | checked Ziran frame and message/action dialog; prompt text editing remains |
 | `WidgetKindToolbar` | `Toolbar` | `.kry canonical`; toolbar, bottom-row layout, and icon slider popup policy lives in `runtime/toolbar.kry` |
 | `WidgetKindMenu` | `Menu` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |
 | `WidgetKindSelectable` | `Selectable` | `.kry canonical`; paint/layout and toggle policy live in `runtime/selectable.kry` |
