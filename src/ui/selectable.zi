@@ -47,11 +47,11 @@ SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {
     return paint
 }
 
-SelectableToggleFor :: (selected: bool, activated: bool, has_value: bool) -> SelectableToggleResult #export {
+SelectableToggleFor :: (selected: bool, activated: bool) -> SelectableToggleResult #export {
     result: SelectableToggleResult
     result.selected = selected
     result.changed = false
-    if activated && has_value {
+    if activated {
         result.selected = !selected
         result.changed = true
     }

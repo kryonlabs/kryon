@@ -1,0 +1,112 @@
+#module "selectable_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "selectable"
+#import "selectable_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+SelectableDefaultFace :: (state: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleFontSize | (u32)StylePaddingX
+    face.background = (u32)0x00000000
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0x00000000
+    face.opacity = 1.0
+    face.radius = 4.0
+    face.font_size = 14.0
+    face.padding_x = 8.0
+    if state == ButtonStateHover {
+        face.background = (u32)0xe5e7ebff
+    } else if state == ButtonStatePressed {
+        face.background = (u32)0xd1d5dbff
+    } else if state == ButtonStateSelected {
+        face.background = (u32)0xdbeafeff
+        face.foreground = (u32)0x1d4ed8ff
+    } else if state == ButtonStateDisabled {
+        face.foreground = Opacity(face.foreground, 0.45)
+    }
+    return face
+}
+
+SelectableFaceFor :: (props: SelectableProps,
+    state: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindSelectable(),
+        props.id, props.class_name, StyleAny(),
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
+        (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        SelectableDefaultFace(state), facts, state)
+    return frame
+}
+
+Selectable :: (props: SelectableProps) -> SelectableToggleResult #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    previous: i32 = -1
+    if TreeIsBuilding() && key != (u64)0 {
+        previous = TreeFind(key, TreeRootKey(), WidgetKindSelectable)
+    }
+    activated: bool = TreeTakeActivationAt(previous)
+    result: SelectableToggleResult = SelectableToggleFor(
+        props.selected, activated && !props.disabled)
+    state: i32 = ResolveState((i32)ButtonStateAuto,
+        props.disabled, false, TreePressedAt(previous),
+        TreeHoveredAt(previous), false, result.selected)
+    face: StyleFrame = SelectableFaceFor(props, state)
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 { bounds.width = 120.0 }
+    if bounds.height <= 0.0 { bounds.height = 36.0 }
+    spec: SelectableSpec
+    spec.bounds = bounds
+    spec.selected = result.selected
+    spec.hovered = TreeHoveredAt(previous)
+    spec.pressed = TreePressedAt(previous)
+    spec.disabled = props.disabled
+    spec.face = face
+    spec.label_inset = SelectableLabelInset(1.0, face)
+    paint: SelectablePaint = SelectablePaintFor(spec)
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindSelectable, bounds)
+        if node < 0 { return result }
+        TreeSetInteractive(node, props.disabled, false, props.id)
+        TreeSetSelected(node, result.selected)
+        TreeSetLabel(node, props.label)
+    }
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    if paint.draw_fill {
+        PaintRoundedFill(node, paint.bounds, face.value.radius, 12,
+            ColorFromPacked(Opacity(paint.fill_color, opacity)))
+    }
+    if face.value.border_width > 0.0 {
+        PaintRoundedOutline(node, paint.bounds, face.value.radius, 12,
+            face.value.border_width,
+            ColorFromPacked(Opacity(face.value.border, opacity)))
+    }
+    if props.label != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(face.value.fields, face.value.font_size), 14)
+        line_height: i32 = GlyphLineHeight(font, face.value.typeface)
+        y: i32 = (i32)(paint.bounds.y +
+            (paint.bounds.height - (float)line_height) * 0.5)
+        PaintClippedLabel(node, props.label, (i32)paint.label_x,
+            y, font,
+            ColorFromPacked(Opacity(paint.text_color, opacity)),
+            paint.bounds)
+    }
+    return result
+}

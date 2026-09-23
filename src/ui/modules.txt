@@ -100,6 +100,7 @@ segmented_control.zi
 segmented_control_props.zi
 selectable.zi
 selectable_props.zi
+selectable_widget.zi
 separator.zi
 separator_props.zi
 separator_widget.zi

@@ -465,7 +465,6 @@ DropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
 void RenderSeparator(SeparatorProps separator);
 int RenderDragDrop(DragDropProps drag_drop);
 int RenderListBoxMulti(ListBoxProps list);
-int RenderSelectable(SelectableProps selectable);
 int RenderCheckbox(CheckboxProps checkbox);
 void RenderBullet(Rectangle bounds);
 int RenderColorPicker(ColorPickerProps picker);

@@ -128,7 +128,6 @@ TabBar :: (bar: TabBarProps) -> i32 #extern #export
 Modal :: (modal: ModalProps) -> i32 #extern #export
 TitleBar :: (title_bar: TitleBarProps) -> i32 #extern #export
 Button :: (button: ButtonProps) -> i32 #extern #export
-Selectable :: (selectable: SelectableProps) -> i32 #extern #export
 Bullet :: (bounds: Rectangle) #extern #export
 
 # Router and layout nodes.

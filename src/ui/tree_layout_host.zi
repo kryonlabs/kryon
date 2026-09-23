@@ -1681,12 +1681,6 @@ ColorPicker :: (picker: ColorPickerProps) -> i32 #export {
     return RenderColorPicker(picker)
 }
 
-Selectable :: (selectable: SelectableProps) -> i32 #export {
-    ui_tree_add(selectable.id, WidgetKindSelectable,
-    selectable.bounds, &selectable)
-    return RenderSelectable(selectable)
-}
-
 Bullet :: (bounds: Rectangle) #export {
     ui_tree_add(0, WidgetKindBullet, bounds, nil)
     RenderBullet(bounds)

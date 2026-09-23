@@ -71,6 +71,10 @@ Button child controls, step and wrap behavior, and decimal glyph layout in
 Ziran. The caller stores the returned value. Native text editing, locale
 formatting, and host integration remain open.
 
+The checked `Selectable(SelectableProps)` composes a caller owned boolean,
+retained pointer input, selected tree state, KSS styling, and queued row/text
+paint. Keyboard activation and native host integration remain open.
+
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses
 retained pointer activation, and queues rounded shapes and clipped labels.

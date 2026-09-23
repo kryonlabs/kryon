@@ -96,6 +96,11 @@ when an application supplies its own formatted text. The parent and value
 surfaces resolve their KSS styles independently. Keyboard editing, locale
 number formatting, and native host integration remain open.
 
+The checked `Selectable(SelectableProps)` returns `{selected, changed}` from a
+caller owned boolean. It uses retained pointer activation, KSS styling,
+selected tree semantics, and clipped label paint. Keyboard activation and
+native host integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.

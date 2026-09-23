@@ -2,10 +2,11 @@
 #import "geometry"
 
 SelectableProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
-    label: const char*
-    selected: i32*
+    label: string
+    selected: bool
     disabled: bool
     class_name: i32
 }
