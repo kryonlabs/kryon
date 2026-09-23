@@ -41,7 +41,10 @@ portable `.zib` execution.
 `zi/drag_drop.zi` ports the source and target decisions from
 `runtime/drag_drop.kry`. The [drag and drop test](../tests/ziran_drag_drop_test.sh)
 checks source and saved `.zir` builds in C, C++, Go, and portable `.zib`.
-`make ziran-test` runs the three migration tests with an adjacent Ziran checkout.
+`zi/theme.zi` ports the theme policy, palette, scheme, and metrics. Its
+[theme test](../tests/ziran_theme_test.sh) checks source and saved `.zir`
+builds in all four targets.
+`make ziran-test` runs the four migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
