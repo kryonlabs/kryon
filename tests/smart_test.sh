@@ -44,7 +44,6 @@ needs_title_bar=0
 needs_paragraph=0
 needs_bevel=0
 needs_icon=0
-needs_transition_fade=0
 needs_modal=0
 needs_menu=0
 needs_tree_view=0
@@ -217,13 +216,6 @@ while IFS= read -r path; do
     case "$path" in
         runtime/modal.kry|src/ui/modal.kry|go/kryon/modal.go|tests/modal_policy_test.c|include/ui_modal_props.generated.h)
             needs_modal=1
-            interesting=1
-            ;;
-    esac
-
-    case "$path" in
-        runtime/transition_fade.kry|runtime/transition_props.kry|src/ui/ui_transition.kry|include/ui_transition_props.generated.h|tests/transition_fade_policy_test.c|tests/transition_test.c)
-            needs_transition_fade=1
             interesting=1
             ;;
     esac
@@ -650,9 +642,6 @@ if [ "$needs_bevel" -eq 1 ]; then
 fi
 if [ "$needs_icon" -eq 1 ]; then
     targets="$targets icon-policy-test"
-fi
-if [ "$needs_transition_fade" -eq 1 ]; then
-    targets="$targets transition-fade-policy-test"
 fi
 if [ "$needs_modal" -eq 1 ]; then
     targets="$targets modal-policy-test"

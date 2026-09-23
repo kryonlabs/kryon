@@ -14,7 +14,6 @@
 #include "ui_profile_icon_props.generated.h"
 #include "ui_layout_props.generated.h"
 #include "ui_dpi_props.generated.h"
-#include "ui_transition_props.generated.h"
 #include "kryon.h"
 #include "kry_input.h"
 #include "ui_numeric_internal.h"
@@ -366,8 +365,6 @@ void ui_paint_text_box(const char *text, Rectangle bounds, int font,
 int ui_set_text_letter_spacing(int spacing);
 int ui_set_text_strikethrough(int enabled);
 int ui_get_text_letter_spacing(void);
-void RenderTransitionFade(const TransitionState *transition, int width,
-                          int height, Color color);
 int ui_scrollbar(int x, int y, int viewport_h, int content_h,
                  int *scroll_offset, int max_scroll, int overlay);
 void ui_scrollbar_cancel(int *scroll_offset);

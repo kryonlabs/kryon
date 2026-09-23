@@ -1,5 +1,5 @@
 /* Unit tests for the pure UTF-8 codec and text-buffer helpers in
- * text_edit.kry. Like transition_test.c, this compiles the generated implementation
+ * text_edit.kry. This compiles the generated implementation
  * directly (no GUI/raylib link): GetCodepointNext is provided here as a
  * faithful stub. */
 

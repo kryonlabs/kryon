@@ -1,0 +1,23 @@
+#module "transition_widget"
+#import "drawing_props"
+#import "geometry"
+#import "raster_shape"
+#import "transition"
+
+# The caller draws the fade after its content. Kryon decides the alpha;
+# the platform only fills the rectangle.
+TransitionFadeColor :: (state: TransitionState,
+    color: Color) -> Color #export {
+    alpha: i32 = TransitionFadeAlphaByte(state.active, state.phase,
+        state.elapsed_seconds, state.duration_seconds)
+    color.a = (u8)TransitionApplyAlpha((i32)color.a, alpha)
+    return color
+}
+
+PaintTransitionFade :: (state: TransitionState,
+    bounds: Rectangle, color: Color) #export {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    color = TransitionFadeColor(state, color)
+    if color.a == (u8)0 { return }
+    FillRoundedRectangle(bounds, 0.0, 0, color)
+}

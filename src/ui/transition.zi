@@ -6,6 +6,65 @@ TransitionPhase :: enum {
     TransitionIn = 2
 }
 
+TransitionState :: struct {
+    active: bool
+    phase: i32
+    elapsed_seconds: float
+    duration_seconds: float
+}
+
+TransitionStep :: struct {
+    state: TransitionState
+    completed: i32
+}
+
+TransitionStart :: (duration_seconds: float) -> TransitionState #export {
+    state: TransitionState
+    state.active = true
+    state.phase = TransitionOut
+    state.duration_seconds = TransitionDuration(duration_seconds)
+    return state
+}
+
+TransitionReset :: () -> TransitionState #export {
+    state: TransitionState
+    return state
+}
+
+TransitionReverse :: (state: TransitionState) -> TransitionState #export {
+    if state.active && state.phase == TransitionIn {
+        state.phase = TransitionOut
+        state.elapsed_seconds = TransitionReverseElapsed(
+            state.duration_seconds, state.elapsed_seconds)
+    }
+    return state
+}
+
+TransitionAdvance :: (state: TransitionState,
+    delta_seconds: float) -> TransitionStep #export {
+    step: TransitionStep
+    step.state = state
+    if !state.active { return step }
+    step.state.elapsed_seconds += TransitionDelta(delta_seconds)
+    if step.state.elapsed_seconds < state.duration_seconds {
+        return step
+    }
+    if state.phase == TransitionOut {
+        step.state.phase = TransitionIn
+        step.state.elapsed_seconds = 0.0
+        step.completed = TransitionOut
+        return step
+    }
+    step.state = TransitionReset()
+    step.completed = TransitionIn
+    return step
+}
+
+TransitionOpacity :: (state: TransitionState) -> float #export {
+    return TransitionAlpha(state.active, state.phase,
+        state.elapsed_seconds, state.duration_seconds)
+}
+
 TransitionClampProgress :: (value: float) -> float #export {
     if value < 0.0 { return 0.0 }
     if value > 1.0 { return 1.0 }

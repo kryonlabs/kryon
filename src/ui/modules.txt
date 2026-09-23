@@ -158,6 +158,7 @@ toggle_widget.zi
 toolbar.zi
 toolbar_props.zi
 transition.zi
+transition_widget.zi
 tree.zi
 tree_draw.zi
 tree_input.zi

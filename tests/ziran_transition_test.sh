@@ -26,6 +26,35 @@ Answer :: () -> i32 #export {
     if TransitionFadeAlphaByte(true, TransitionOut, 0.5, 1.0) != 127 { return 0 }
     if TransitionApplyAlpha(200, 128) != 100 { return 0 }
     if TransitionApplyAlpha(300, 300) != 255 { return 0 }
+    state: TransitionState = TransitionStart(1.0)
+    if !state.active || state.phase != TransitionOut ||
+        TransitionOpacity(state) != 0.0 { return 1 }
+    step: TransitionStep = TransitionAdvance(state, 0.5)
+    state = step.state
+    if step.completed != TransitionNone ||
+        TransitionOpacity(state) != 0.5 { return 2 }
+    step = TransitionAdvance(state, 0.5)
+    state = step.state
+    if step.completed != TransitionOut ||
+        state.phase != TransitionIn ||
+        TransitionOpacity(state) != 1.0 { return 3 }
+    step = TransitionAdvance(state, 0.25)
+    state = TransitionReverse(step.state)
+    if step.completed != TransitionNone ||
+        state.phase != TransitionOut ||
+        TransitionOpacity(state) != 0.84375 { return 4 }
+    step = TransitionAdvance(state, 100.0)
+    if step.completed != TransitionOut ||
+        !step.state.active { return 5 }
+    step = TransitionAdvance(step.state, 100.0)
+    if step.completed != TransitionIn ||
+        step.state.active ||
+        TransitionOpacity(step.state) != 0.0 { return 6 }
+    state = TransitionStart(0.0)
+    if state.duration_seconds <= 0.0 ||
+        state.duration_seconds >= 0.002 { return 7 }
+    state = TransitionReset()
+    if state.active || state.phase != TransitionNone { return 8 }
     return 42
 }
 EOF

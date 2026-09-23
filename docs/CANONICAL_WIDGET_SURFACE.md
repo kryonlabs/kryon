@@ -170,8 +170,8 @@ surface review:
 | `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
 | `runtime/toast.kry` | Toast style facts, request/render decision, duration, layout, text-placement, and truncation policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
-| `runtime/transition_fade.kry` | Transition fade alpha/easing policy | `.kry support` |
-| `runtime/transition_props.kry` | Transition phase enum names | `.kry support` |
+| `src/ui/transition.zi` | Portable transition state, phase, alpha, and easing policy | Checked Ziran library |
+| `src/ui/transition_widget.zi` | Fade color and rectangle paint selected by Kryon; host only rasterizes | Checked Ziran library |
 | `runtime/modal.kry` | Modal layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback, prompt input/result, and action row policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/popup_ownership.kry` | Popup ancestry, branch ordering, input capture, focus acquisition/restoration, and owner retirement | `.kry support` |
@@ -269,7 +269,6 @@ surface review:
 | `src/ui/tree_view.kry` | Tree View widget host surface | `.kry canonical` |
 | `src/ui/ui_layout.kry` | Ui Layout widget host surface | `.kry canonical` |
 | `src/ui/ui_scaling.kry` | Ui Scaling widget host surface | `.kry canonical` |
-| `src/ui/ui_transition.kry` | Ui Transition widget host surface | `.kry canonical` |
 | `src/ui/widget_input.kry` | Widget Input widget host surface | `.kry canonical` |
 | `src/ui/app_shell_layout.kry` | App-shell route layout calculation (replaces `src/core/app_shell.c`) | `.kry canonical` |
 | `src/ui/route.zi` | App-shell route operations with portable slices | checked Ziran |
