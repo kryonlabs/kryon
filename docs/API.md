@@ -98,8 +98,15 @@ Identity survives repeated `BundleInstanceRun()` calls, including bounds
 changes. Submission is limited to 1024 nodes; `EndTree()` returns false,
 preserves the previous tree, and emits no paint effects if that limit is
 exceeded. The generic queue holds 4096 paint commands and likewise rejects an
-overfull frame before commit. Progress and Separator have portable retained
-paint paths so far; retained layout and input routing remain unfinished.
+overfull frame before commit. Progress, Separator, Text, and Image have portable
+retained paint paths. `TreeSetInteractive()` marks an eligible submitted node;
+after commit, `TreePointerUpdate(PointerFrame)` hit tests committed nodes in
+reverse paint order, blocks click-through at disabled controls, and owns press
+and release activation. `TreeHoveredAt()`,
+`TreePressedAt()`, and `TreeTakeActivationAt()` expose that state. The host
+supplies raw pointer samples. Button composition has not yet been connected to
+this path; retained layout, keyboard focus, clipping of input by ancestors,
+and broader interaction routing remain unfinished.
 `EndTree()` links the generic line, rounded shape, and text raster effects;
 the image raster effect is also linked for generic paint commands. Glyph
 metric and asset dimension requirements follow the widgets the application

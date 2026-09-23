@@ -61,6 +61,10 @@ TreeEntry :: struct {
     next_sibling: i32
     identity_generation: i32
     matched: bool
+    interactive: bool
+    disabled: bool
+    loading: bool
+    focus_id: i32
 }
 
 TreeStore :: struct {
@@ -199,4 +203,25 @@ TreeSetLabel :: (index: i32, label: string) #export {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].semantic_label = label
+}
+
+TreeSetInteractive :: (index: i32, disabled: bool, loading: bool,
+    focus_id: i32) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    active_tree.submitted[index].disabled = disabled
+    active_tree.submitted[index].loading = loading
+    active_tree.submitted[index].focus_id = focus_id
+    active_tree.submitted[index].interactive = true
+}
+
+TreeFind :: (key: u64, parent_key: u64, kind: i32) -> i32 #export {
+    index: i32 = 0
+    while index < active_tree.committed_count {
+        entry: TreeEntry = active_tree.committed[index]
+        if TreeSameIdentity(entry.key, entry.kind, entry.parent_key,
+            key, kind, parent_key) { return index }
+        index += 1
+    }
+    return -1
 }

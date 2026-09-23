@@ -134,6 +134,7 @@ toolbar_props.zi
 transition.zi
 tree.zi
 tree_draw.zi
+tree_input.zi
 tree_view.zi
 tree_view_props.zi
 widget_kind.zi

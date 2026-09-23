@@ -66,8 +66,11 @@ now owns node identity and Progress and Separator submissions through
 checked generic command queue during submission. EndTree rejects an overfull
 tree or paint queue before committing and emits raster effects only after
 commit; it does not import individual widget painters.
-Other widget submissions, retained layout, and input
-routing still need migration.
+`tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
+identity across tree reordering, and emits consumable activation on release.
+The host supplies raw pointer samples. Button composition and the remaining
+input modes, including keyboard focus and ancestor input clipping, still need
+migration. Other widget submissions and retained layout are also incomplete.
 
 The other `.zi` modules were moved from the previous implementation and are
 not yet in the checked build. Native widget rendering and downstream app
