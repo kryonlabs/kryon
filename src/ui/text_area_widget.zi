@@ -447,15 +447,53 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             }
         }
         result.committed = props.input.commit
-        if !props.read_only {
+        command: i32 = 0
+        if props.input.copy {
+            command = TextContextCommandCopy()
+        } else if props.input.cut {
+            command = TextContextCommandCut()
+        } else if props.input.paste {
+            command = TextContextCommandPaste()
+        }
+        if command != 0 {
+            selection: TextSelectionRange = TextSelectionRangeForLength(
+                result.anchor, result.cursor, props.value.length)
+            allow_copy: bool = command != TextContextCommandCut() ||
+                !props.read_only
+            decision: TextContextCommandDecision =
+                TextEditCommandDecisionFor(command,
+                    selection.has_selection, false, false,
+                    props.value.length > 0, allow_copy,
+                    !props.read_only, !props.read_only)
+            if decision.copy_selection {
+                result.clipboard_write = true
+                result.clipboard_text = TextSpan(props.value,
+                    selection.start, selection.end - selection.start)
+            }
+            if decision.paste &&
+                TextAreaInputTextAllowed(props.input.paste_text) &&
+                TextAreaReplacementAllowed(props, selection.start,
+                    selection.end, props.input.paste_text) {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                result.edit.replacement = props.input.paste_text
+                result.edit.changed = true
+            } else if !decision.paste &&
+                decision.delete_selection {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                result.edit.changed = result.edit.end >
+                    result.edit.start
+            }
+        } else if !props.read_only {
             result.edit = TextAreaEditFor(props,
                 result.cursor, result.anchor)
-            if result.edit.changed {
-                result.cursor = result.edit.start +
-                    result.edit.replacement.length
-                result.anchor = result.cursor
-                result.preferred_x_valid = false
-            }
+        }
+        if result.edit.changed {
+            result.cursor = result.edit.start +
+                result.edit.replacement.length
+            result.anchor = result.cursor
+            result.preferred_x_valid = false
         }
     }
     result.escaped = props.input.escape && result.focused

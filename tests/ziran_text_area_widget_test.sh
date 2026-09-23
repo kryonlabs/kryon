@@ -54,6 +54,15 @@ Frame :: () -> i32 #export {
         scroll_y = 0
         focused = true
     }
+    if phase == 20 {
+        value = "Aé\nBC"
+        cursor = 6
+        anchor = 1
+        scroll_y = 0
+        focused = true
+    }
+    if phase == 24 { anchor = 1 }
+    if phase == 27 { anchor = 0 }
     props: TextAreaProps
     props.key = (u64)77
     props.bounds = (Rectangle){20.0, 20.0, 100.0, 52.0}
@@ -96,6 +105,34 @@ Frame :: () -> i32 #export {
         props.syntax = (SyntaxMode)SyntaxZiran
         props.composition_start = 8
         props.composition_end = 13
+    }
+    if phase == 20 { props.input.copy = true }
+    if phase == 21 { props.input.cut = true }
+    if phase == 22 {
+        props.input.paste = true
+        props.input.paste_text = "é\nBC"
+    }
+    if phase == 23 { props.input.copy = true }
+    if phase == 24 {
+        props.read_only = true
+        props.input.copy = true
+    }
+    if phase == 25 {
+        props.read_only = true
+        props.input.cut = true
+    }
+    if phase == 26 {
+        props.read_only = true
+        props.input.paste = true
+        props.input.paste_text = "X"
+    }
+    if phase == 27 {
+        props.input.paste = true
+        props.input.paste_text = "\r"
+    }
+    if phase == 28 {
+        props.input.paste = true
+        props.input.paste_text = "XY"
     }
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
@@ -228,6 +265,49 @@ Frame :: () -> i32 #export {
                 false, (u32)0) != (u32)0x2448acff {
             return -21
         }
+    } else if phase == 20 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "é\nBC" ||
+            result.edit.changed { return -22 }
+    } else if phase == 21 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "é\nBC" ||
+            !result.edit.changed || result.edit.start != 1 ||
+            result.edit.end != 6 || result.cursor != 1 {
+            return -23
+        }
+        value = "A"
+    } else if phase == 22 {
+        if result.clipboard_write || !result.edit.changed ||
+            result.edit.start != 1 || result.edit.end != 1 ||
+            result.edit.replacement != "é\nBC" ||
+            result.cursor != 6 { return -24 }
+        value = "Aé\nBC"
+    } else if phase == 23 {
+        if result.clipboard_write || result.edit.changed {
+            return -25
+        }
+    } else if phase == 24 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "é\nBC" ||
+            result.edit.changed { return -26 }
+    } else if phase == 25 {
+        if result.clipboard_write || result.edit.changed {
+            return -27
+        }
+    } else if phase == 26 {
+        if result.clipboard_write || result.edit.changed {
+            return -28
+        }
+    } else if phase == 27 {
+        if result.clipboard_write || result.edit.changed ||
+            result.cursor != 6 { return -29 }
+    } else if phase == 28 {
+        if result.clipboard_write || !result.edit.changed ||
+            result.edit.start != 0 || result.edit.end != 6 ||
+            result.edit.replacement != "XY" ||
+            result.cursor != 2 { return -30 }
+        value = "XY"
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -316,7 +396,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 20; phase++)
+    for (int phase = 0; phase < 29; phase++)
         assert(Frame() == phase);
     assert(keyword_paint_count > 0);
     assert(composition_paint_count > 0);
@@ -377,7 +457,7 @@ func TestTextArea(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    for phase := int32(0); phase < 20; phase++ {
+    for phase := int32(0); phase < 29; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }

@@ -289,14 +289,60 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         result.committed = props.input.commit
         result.escaped = props.input.escape
         if result.escaped { result.focused = false }
-        if !props.read_only {
+        command: i32 = 0
+        if props.input.copy {
+            command = TextContextCommandCopy()
+        } else if props.input.cut {
+            command = TextContextCommandCut()
+        } else if props.input.paste {
+            command = TextContextCommandPaste()
+        }
+        if command != 0 {
+            selection: TextSelectionRange = TextSelectionRangeForLength(
+                result.anchor, result.cursor, props.value.length)
+            allow_copy: bool = !props.secure &&
+                (command != TextContextCommandCut() || !props.read_only)
+            decision: TextContextCommandDecision =
+                TextEditCommandDecisionFor(command,
+                    selection.has_selection, true, true,
+                    props.value.length > 0, allow_copy,
+                    !props.read_only && !props.secure,
+                    !props.read_only)
+            if decision.copy_selection {
+                result.clipboard_write = true
+                result.clipboard_text = TextSpan(props.value,
+                    selection.start, selection.end - selection.start)
+            } else if decision.copy_all {
+                result.clipboard_write = true
+                result.clipboard_text = props.value
+            }
+            if decision.paste &&
+                TextFieldInputTextAllowed(props.input.paste_text) &&
+                TextFieldReplacementAllowed(props, selection.start,
+                    selection.end, props.input.paste_text) {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                result.edit.replacement = props.input.paste_text
+                result.edit.changed = true
+            } else if !decision.paste &&
+                (decision.delete_selection || decision.clear_all) {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                if decision.clear_all {
+                    result.edit.start = 0
+                    result.edit.end = props.value.length
+                }
+                result.edit.changed = result.edit.end >
+                    result.edit.start
+            }
+        } else if !props.read_only {
             result.edit = TextFieldEditFor(props,
                 result.cursor, result.anchor)
-            if result.edit.changed {
-                result.cursor = result.edit.start +
-                    result.edit.replacement.length
-                result.anchor = result.cursor
-            }
+        }
+        if result.edit.changed {
+            result.cursor = result.edit.start +
+                result.edit.replacement.length
+            result.anchor = result.cursor
         }
     }
     face = TextFieldFaceFor(props, result.focused)

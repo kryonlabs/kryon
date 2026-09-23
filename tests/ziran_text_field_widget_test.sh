@@ -29,6 +29,14 @@ Frame :: () -> i32 #export {
         cursor = 4
         anchor = 4
     }
+    if phase == 8 {
+        value = "AéB"
+        cursor = 4
+        anchor = 1
+        focused = true
+    }
+    if phase == 13 { anchor = 1 }
+    if phase == 17 { anchor = 0 }
     props: TextFieldProps
     props.key = (u64)77
     props.bounds = (Rectangle){20.0, 20.0, 220.0, 36.0}
@@ -54,6 +62,39 @@ Frame :: () -> i32 #export {
     if phase == 7 {
         props.disabled = true
         props.input.text = "X"
+    }
+    if phase == 8 { props.input.copy = true }
+    if phase == 9 { props.input.cut = true }
+    if phase == 10 {
+        props.input.paste = true
+        props.input.paste_text = "éB"
+    }
+    if phase == 11 { props.input.copy = true }
+    if phase == 12 {
+        props.secure = true
+        props.display_value = "•••"
+        props.input.copy = true
+    }
+    if phase == 13 {
+        props.read_only = true
+        props.input.copy = true
+    }
+    if phase == 14 {
+        props.read_only = true
+        props.input.cut = true
+    }
+    if phase == 15 {
+        props.read_only = true
+        props.input.paste = true
+        props.input.paste_text = "Q"
+    }
+    if phase == 16 {
+        props.input.paste = true
+        props.input.paste_text = "Q"
+    }
+    if phase == 17 {
+        props.input.paste = true
+        props.input.paste_text = "\n"
     }
     TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 100.0})
     result: TextFieldResult = TextField(props)
@@ -96,6 +137,53 @@ Frame :: () -> i32 #export {
             result.edit.changed { return -7 }
     } else if phase == 7 {
         if result.focused || result.edit.changed { return -8 }
+    } else if phase == 8 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "éB" ||
+            result.edit.changed { return -9 }
+    } else if phase == 9 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "éB" ||
+            !result.edit.changed || result.edit.start != 1 ||
+            result.edit.end != 4 || result.cursor != 1 {
+            return -10
+        }
+        value = "A"
+    } else if phase == 10 {
+        if result.clipboard_write || !result.edit.changed ||
+            result.edit.start != 1 || result.edit.end != 1 ||
+            result.edit.replacement != "éB" ||
+            result.cursor != 4 { return -11 }
+        value = "AéB"
+    } else if phase == 11 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "AéB" ||
+            result.edit.changed { return -12 }
+    } else if phase == 12 {
+        if result.clipboard_write || result.edit.changed {
+            return -13
+        }
+    } else if phase == 13 {
+        if !result.clipboard_write ||
+            result.clipboard_text != "éB" ||
+            result.edit.changed { return -14 }
+    } else if phase == 14 {
+        if result.clipboard_write || result.edit.changed {
+            return -15
+        }
+    } else if phase == 15 {
+        if result.clipboard_write || result.edit.changed {
+            return -16
+        }
+    } else if phase == 16 {
+        if result.clipboard_write || !result.edit.changed ||
+            result.edit.start != 1 || result.edit.end != 4 ||
+            result.edit.replacement != "Q" ||
+            result.cursor != 2 { return -17 }
+        value = "AQ"
+    } else if phase == 17 {
+        if result.clipboard_write || result.edit.changed ||
+            result.cursor != 2 { return -18 }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -174,7 +262,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 8; phase++)
+    for (int phase = 0; phase < 18; phase++)
         assert(Frame() == phase);
     return 0;
 }
@@ -208,7 +296,7 @@ func (fieldHost) TextSlice(source string, start,
 func TestTextField(t *testing.T) {
     SetFontMetricsHost(fieldHost{})
     SetTextWidgetHost(fieldHost{})
-    for phase := int32(0); phase < 8; phase++ {
+    for phase := int32(0); phase < 18; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }

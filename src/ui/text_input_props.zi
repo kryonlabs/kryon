@@ -4,6 +4,7 @@
 
 TextFieldInput :: struct {
     text: string
+    paste_text: string
     left: bool
     right: bool
     home: bool
@@ -12,6 +13,9 @@ TextFieldInput :: struct {
     backspace: bool
     delete_forward: bool
     select_all: bool
+    copy: bool
+    cut: bool
+    paste: bool
     commit: bool
     escape: bool
     focus: bool
@@ -55,11 +59,14 @@ TextFieldResult :: struct {
     focused: bool
     committed: bool
     escaped: bool
+    clipboard_write: bool
+    clipboard_text: string
     edit: TextFieldEdit
 }
 
 TextAreaInput :: struct {
     text: string
+    paste_text: string
     left: bool
     right: bool
     up: bool
@@ -74,6 +81,9 @@ TextAreaInput :: struct {
     backspace: bool
     delete_forward: bool
     select_all: bool
+    copy: bool
+    cut: bool
+    paste: bool
     enter: bool
     commit: bool
     escape: bool
@@ -127,5 +137,7 @@ TextAreaResult :: struct {
     preferred_x_valid: bool
     committed: bool
     escaped: bool
+    clipboard_write: bool
+    clipboard_text: string
     edit: TextAreaEdit
 }
