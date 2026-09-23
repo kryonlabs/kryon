@@ -35,7 +35,7 @@ scroll interaction, frame pacing, paragraph layout policy, text input and text r
 window placement and drag policy,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
-selected Image, Separator, and Progress paint decisions.
+selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
 
 The other `.zi` modules were moved from the previous implementation and are
 not yet in the checked build. Native widget rendering and downstream app
@@ -45,8 +45,10 @@ modules an application imports and require host capabilities explicitly.
 `frame_pacing.zi` declares a scalar timer capability when its commit function
 is linked. The adapter binds it to the selected backend's `SetTargetFPS`; a
 bundle test links Ziran's public host archive and exercises the call with a
-timer stub, without opening a display. Rendering and pointer-bearing widget
-capabilities still need portable host contracts.
+timer stub, without opening a display. `raster.zi` declares a typed record
+line capability shared by Bevel and Separator; its adapter calls the platform's
+line renderer. Broader rendering and pointer-bearing widget capabilities still
+need portable host contracts.
 
 ## Completion requirements
 

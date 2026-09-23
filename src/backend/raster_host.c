@@ -14,12 +14,12 @@ record_field(const VmHostValue *record, size_t index, const char *name,
 }
 
 static int
-draw_bevel_line(void *context, const char *module, const char *function,
+draw_raster_line(void *context, const char *module, const char *function,
                 const VmHostValue *args, int arg_count, VmHostValue *result)
 {
     LineRenderer *renderer = context;
     if(renderer == NULL || renderer->draw == NULL ||
-       strcmp(module, "bevel") != 0 ||
+       strcmp(module, "raster") != 0 ||
        strcmp(function, "RasterLine") != 0 || arg_count != 2 ||
        args[0].kind != VM_HOST_RECORD ||
        strcmp(args[0].type, "Rectangle") != 0 ||
@@ -48,8 +48,8 @@ draw_bevel_line(void *context, const char *module, const char *function,
 }
 
 HostBinding
-BevelLineBinding(LineRenderer *renderer)
+RasterLineBinding(LineRenderer *renderer)
 {
-    return (HostBinding){"bevel", "RasterLine", draw_bevel_line,
+    return (HostBinding){"raster", "RasterLine", draw_raster_line,
                          renderer};
 }

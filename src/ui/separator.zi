@@ -1,6 +1,8 @@
 #module "separator"
 #import "control_props"
+#import "drawing_props"
 #import "geometry"
+#import "raster"
 #import "style"
 
 SeparatorLine :: struct {
@@ -51,6 +53,12 @@ SeparatorLineFor :: (bounds: Rectangle, vertical: bool, frame: StyleFrame) -> Se
         paint.line.height = 0.0
     }
     return paint
+}
+
+RenderSeparatorLine :: (bounds: Rectangle, vertical: bool,
+    frame: StyleFrame) #export {
+    paint: SeparatorLine = SeparatorLineFor(bounds, vertical, frame)
+    StrokeLine(paint.line, ColorFromPacked(paint.color))
 }
 
 SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,

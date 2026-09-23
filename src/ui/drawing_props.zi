@@ -11,6 +11,15 @@ Color :: struct {
     a: u8
 }
 
+ColorFromPacked :: (packed: u32) -> Color #export {
+    return (Color){
+        (u8)(packed >> (u32)24),
+        (u8)(packed >> (u32)16),
+        (u8)(packed >> (u32)8),
+        (u8)packed
+    }
+}
+
 Texture2D :: struct {
     id: u32
     width: i32

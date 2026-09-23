@@ -74,6 +74,7 @@ progress.zi
 progress_props.zi
 radio.zi
 radio_props.zi
+raster.zi
 reorder.zi
 reorder_props.zi
 rows.zi

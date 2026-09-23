@@ -10,10 +10,19 @@ cat > "$work/app.zi" <<'EOF'
 #module "app"
 #import "bevel"
 #import "drawing_props"
+#import "geometry"
+#import "separator"
+#import "style"
 Answer :: () -> i32 #export {
     light: Color = (Color){(u8)10, (u8)20, (u8)30, (u8)40}
     dark: Color = (Color){(u8)50, (u8)60, (u8)70, (u8)80}
     RenderBevel(10, 20, 5, 4, light, dark)
+    bounds: Rectangle = (Rectangle){2.0, 3.0, 10.0, 6.0}
+    frame: StyleFrame
+    frame.value.background = (u32)0x11223344
+    RenderSeparatorLine(bounds, true, frame)
+    frame.value.background = (u32)0x55667788
+    RenderSeparatorLine(bounds, false, frame)
     return 42
 }
 EOF
@@ -27,7 +36,7 @@ EOF
 cmp "$work/source.zib" "$work/saved.zib"
 
 "${CC:-cc}" -std=c11 -I"$repo/include" -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_bevel_host_test.c" \
+    "$repo/tests/ziran_raster_host_test.c" \
     "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a" \
     -o "$work/host-test"
 "$work/host-test" "$work/source.zib"
@@ -50,20 +59,26 @@ for input in source saved; do
 #include "app.h"
 #include <assert.h>
 static int calls;
-static const float expected[4][4] = {
+static const float expected[6][4] = {
     {10, 20, 4, 0}, {10, 20, 0, 3},
     {10, 23, 4, 0}, {14, 20, 0, 3},
+    {7, 3, 0, 6}, {2, 6, 10, 0},
+};
+static const unsigned char colors[6][4] = {
+    {10, 20, 30, 40}, {10, 20, 30, 40},
+    {50, 60, 70, 80}, {50, 60, 70, 80},
+    {0x11, 0x22, 0x33, 0x44}, {0x55, 0x66, 0x77, 0x88},
 };
 void RasterLine(Rectangle line, Color color) {
-    assert(calls < 4);
+    assert(calls < 6);
     assert(line.x == expected[calls][0] && line.y == expected[calls][1]);
     assert(line.width == expected[calls][2] &&
            line.height == expected[calls][3]);
-    assert(color.r == (calls < 2 ? 10 : 50));
-    assert(color.a == (calls < 2 ? 40 : 80));
+    assert(color.r == colors[calls][0] && color.g == colors[calls][1]);
+    assert(color.b == colors[calls][2] && color.a == colors[calls][3]);
     calls++;
 }
-int main(void) { return Answer() == 42 && calls == 4 ? 0 : 1; }
+int main(void) { return Answer() == 42 && calls == 6 ? 0 : 1; }
 C
             "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
@@ -73,50 +88,63 @@ C
 #include "app.hpp"
 #include <cassert>
 static int calls;
-static const float expected[4][4] = {
+static const float expected[6][4] = {
     {10, 20, 4, 0}, {10, 20, 0, 3},
     {10, 23, 4, 0}, {14, 20, 0, 3},
+    {7, 3, 0, 6}, {2, 6, 10, 0},
+};
+static const unsigned char colors[6][4] = {
+    {10, 20, 30, 40}, {10, 20, 30, 40},
+    {50, 60, 70, 80}, {50, 60, 70, 80},
+    {0x11, 0x22, 0x33, 0x44}, {0x55, 0x66, 0x77, 0x88},
 };
 extern "C" void RasterLine(Rectangle line, Color color) {
-    assert(calls < 4);
+    assert(calls < 6);
     assert(line.x == expected[calls][0] && line.y == expected[calls][1]);
     assert(line.width == expected[calls][2] &&
            line.height == expected[calls][3]);
-    assert(color.r == (calls < 2 ? 10 : 50));
-    assert(color.a == (calls < 2 ? 40 : 80));
+    assert(color.r == colors[calls][0] && color.g == colors[calls][1]);
+    assert(color.b == colors[calls][2] && color.a == colors[calls][3]);
     calls++;
 }
-int main() { return Answer() == 42 && calls == 4 ? 0 : 1; }
+int main() { return Answer() == 42 && calls == 6 ? 0 : 1; }
 CPP
             "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
-            cat > "$output/bevel_test.go" <<'GO'
+            cat > "$output/raster_test.go" <<'GO'
 package ziran
 import "testing"
 type lineHost struct { t *testing.T; calls int }
 func (host *lineHost) RasterLine(line Rectangle, color Color) {
-    expected := [4][4]float32{
+    expected := [6][4]float32{
         {10, 20, 4, 0}, {10, 20, 0, 3},
         {10, 23, 4, 0}, {14, 20, 0, 3},
+        {7, 3, 0, 6}, {2, 6, 10, 0},
     }
-    if host.calls >= 4 { host.t.Fatal("too many lines") }
+    if host.calls >= 6 { host.t.Fatal("too many lines") }
     want := expected[host.calls]
     if line.X != want[0] || line.Y != want[1] ||
        line.Width != want[2] || line.Height != want[3] {
-        host.t.Fatal("wrong bevel line", line)
+        host.t.Fatal("wrong raster line", line)
     }
-    if host.calls < 2 && (color.R != 10 || color.A != 40) ||
-       host.calls >= 2 && (color.R != 50 || color.A != 80) {
-        host.t.Fatal("wrong bevel color", color)
+    colors := [6][4]uint8{
+        {10, 20, 30, 40}, {10, 20, 30, 40},
+        {50, 60, 70, 80}, {50, 60, 70, 80},
+        {0x11, 0x22, 0x33, 0x44}, {0x55, 0x66, 0x77, 0x88},
+    }
+    wantColor := colors[host.calls]
+    if color.R != wantColor[0] || color.G != wantColor[1] ||
+       color.B != wantColor[2] || color.A != wantColor[3] {
+        host.t.Fatal("wrong raster color", color)
     }
     host.calls++
 }
-func TestBevel(t *testing.T) {
+func TestRaster(t *testing.T) {
     host := &lineHost{t: t}
-    SetBevelHost(host)
-    if App_Answer() != 42 || host.calls != 4 { t.Fatal("bevel draw order") }
+    SetRasterHost(host)
+    if App_Answer() != 42 || host.calls != 6 { t.Fatal("line draw order") }
 }
 GO
             GO111MODULE=off go test "$output"/*.go

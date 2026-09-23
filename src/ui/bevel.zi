@@ -1,8 +1,7 @@
 #module "bevel"
 #import "drawing_props"
 #import "geometry"
-
-RasterLine :: (line: Rectangle, color: Color) #extern
+#import "raster"
 
 BevelLines :: struct {
     top: Rectangle
@@ -34,8 +33,8 @@ BevelLinesFor :: (x: i32, y: i32, width: i32, height: i32) -> BevelLines #export
 RenderBevel :: (x: i32, y: i32, width: i32, height: i32,
     light: Color, dark: Color) #export {
     lines: BevelLines = BevelLinesFor(x, y, width, height)
-    RasterLine(lines.top, light)
-    RasterLine(lines.left, light)
-    RasterLine(lines.bottom, dark)
-    RasterLine(lines.right, dark)
+    StrokeLine(lines.top, light)
+    StrokeLine(lines.left, light)
+    StrokeLine(lines.bottom, dark)
+    StrokeLine(lines.right, dark)
 }

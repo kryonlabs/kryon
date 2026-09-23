@@ -1,0 +1,10 @@
+#module "raster"
+#import "drawing_props"
+#import "geometry"
+
+# The platform supplies rasterization; widgets decide what to draw.
+RasterLine :: (line: Rectangle, color: Color) #extern
+
+StrokeLine :: (line: Rectangle, color: Color) #export {
+    RasterLine(line, color)
+}

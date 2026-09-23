@@ -17,7 +17,7 @@ typedef struct LineRenderer {
 } LineRenderer;
 
 /* The renderer and its context must remain valid through BundleRun. */
-HostBinding BevelLineBinding(LineRenderer *renderer);
+HostBinding RasterLineBinding(LineRenderer *renderer);
 
 #ifdef __cplusplus
 }

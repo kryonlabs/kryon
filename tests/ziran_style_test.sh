@@ -130,7 +130,9 @@ func main() { if UseStyle_Answer() != 42 { panic("wrong style result") } }
 GO
             GO111MODULE=off go run "$output/control_props.go" \
                 "$output/surface.go" "$output/style.go" \
-                "$output/geometry.go" "$output/separator.go" \
+                "$output/geometry.go" "$output/text_align.go" \
+                "$output/drawing_props.go" \
+                "$output/raster.go" "$output/separator.go" \
                 "$output/progress.go" \
                 "$output/use_style.go" "$output/main.go"
         elif test "$target" = c; then
@@ -139,11 +141,14 @@ GO
                 "$input_dir/use_style.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_style.h"
+#include "raster.h"
+void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
                 "$output/control_props.c" "$output/surface.c" \
                 "$output/style.c" "$output/geometry.c" \
+                "$output/drawing_props.c" "$output/raster.c" \
                 "$output/separator.c" "$output/progress.c" \
                 "$output/use_style.c" \
                 "$output/main.c" -o "$output/app"
@@ -154,11 +159,14 @@ C
                 "$input_dir/use_style.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "use_style.hpp"
+#include "raster.hpp"
+extern "C" void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
                 "$output/control_props.cpp" "$output/surface.cpp" \
                 "$output/style.cpp" "$output/geometry.cpp" \
+                "$output/drawing_props.cpp" "$output/raster.cpp" \
                 "$output/separator.cpp" "$output/progress.cpp" \
                 "$output/use_style.cpp" \
                 "$output/main.cpp" -o "$output/app"
