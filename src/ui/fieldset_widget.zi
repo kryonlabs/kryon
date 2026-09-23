@@ -1,0 +1,86 @@
+#module "fieldset_widget"
+#import "control_props"
+#import "drawing_props"
+#import "fieldset"
+#import "fieldset_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
+
+FieldsetDefaultFace :: () -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleFontSize | (u32)StylePaddingX |
+        (u32)StylePaddingY | (u32)StyleGap
+    face.background = (u32)0xffffffff
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0xd1d5dbff
+    face.border_width = 1.0
+    face.radius = 6.0
+    face.opacity = 1.0
+    face.font_size = 18.0
+    face.padding_x = 8.0
+    face.padding_y = 8.0
+    face.gap = 9.0
+    return face
+}
+
+FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindFieldset(),
+        props.id, props.class_name, StyleAny(),
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
+        (i32)ControlSizeMedium, ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        FieldsetDefaultFace(), facts, ButtonStateNormal)
+    return frame
+}
+
+Fieldset :: (props: FieldsetProps) #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    face: StyleFrame = FieldsetFaceFor(props)
+    font: i32 = ResolveFont(0,
+        StyleFontValue(face.value.fields, face.value.font_size), 18)
+    title_width: i32 = 0
+    if props.title != "" {
+        title_width = GlyphWidth(props.title, font, face.value.typeface)
+    }
+    paint: FieldsetPaint = FieldsetPaintFor(props.bounds,
+        (float)title_width, props.title != "", 1.0, face)
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindFieldset, paint.frame)
+        if node < 0 { return }
+        TreeSetLabel(node, props.title)
+    }
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    background: Color = ColorFromPacked(Opacity(
+        paint.background_color, opacity))
+    if background.a > (u8)0 {
+        PaintRoundedFill(node, paint.frame, face.value.radius,
+            12, background)
+    }
+    if paint.border_width > 0.0 {
+        PaintRoundedOutline(node, paint.frame, face.value.radius,
+            12, paint.border_width,
+            ColorFromPacked(Opacity(paint.border_color, opacity)))
+    }
+    if paint.show_title {
+        PaintRoundedFill(node, paint.title_background, 0.0, 4,
+            background)
+        PaintClippedLabel(node, props.title, (i32)paint.title_text.x,
+            (i32)paint.title_text.y, font,
+            ColorFromPacked(Opacity(paint.text_color, opacity)),
+            paint.title_text)
+    }
+}

@@ -31,6 +31,7 @@ dropdown.zi
 dropdown_props.zi
 fieldset.zi
 fieldset_props.zi
+fieldset_widget.zi
 focus.zi
 font_metrics.zi
 frame_pacing.zi

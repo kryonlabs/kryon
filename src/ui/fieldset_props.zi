@@ -2,7 +2,9 @@
 #import "geometry"
 
 FieldsetProps :: struct {
+    key: u64
     bounds: Rectangle
+    id: i32
     class_name: i32
     title: string
 }

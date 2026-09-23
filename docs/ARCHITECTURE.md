@@ -75,6 +75,10 @@ The checked `Selectable(SelectableProps)` composes a caller owned boolean,
 retained pointer input, selected tree state, KSS styling, and queued row/text
 paint. Keyboard activation and native host integration remain open.
 
+The checked `Fieldset(FieldsetProps)` resolves KSS frame style, measures its
+title from host supplied glyph metrics, and queues frame, title cover, and
+clipped text paint from Ziran. Retained child layout composition remains open.
+
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses
 retained pointer activation, and queues rounded shapes and clipped labels.

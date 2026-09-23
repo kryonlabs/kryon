@@ -101,6 +101,11 @@ caller owned boolean. It uses retained pointer activation, KSS styling,
 selected tree semantics, and clipped label paint. Keyboard activation and
 native host integration remain open.
 
+The checked `Fieldset(FieldsetProps)` submits a noninteractive labeled frame.
+KSS controls its frame and title colors, while Kryon measures the title and
+queues clipped text and shape paint. Child layout composition and native host
+integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.
