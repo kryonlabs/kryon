@@ -255,8 +255,13 @@ They open a child scope, return its content bounds and KSS gap/padding values,
 and close with `End()`. The caller gives child widgets explicit bounds within
 that content area. `PageResult` also returns title, description, canonical URL,
 and optional theme color for the platform to apply. The library does not set
-browser or window metadata itself. Automatic child placement and the old
-Link and Flow host entry points still need migration. `Heading(HeadingProps)`
+browser or window metadata itself. Automatic child placement is still in
+progress. `Heading(HeadingProps)`
 and `ParagraphText(ParagraphTextProps)` compose the checked `Text` widget with
 their own KSS style kinds and semantic roles. The retained heading level is
 clamped to 1–6; ParagraphText uses its parent scope width when none is given.
+`Flow(FlowProps)` opens a row scope and returns content bounds; the caller
+places children with `FlowChildBounds` before submitting them, then calls
+`End()`. `Link(LinkProps)` paints checked KSS text and consumes retained
+pointer activation or an explicit focus action. It returns a URL effect for
+the platform to apply when `LinkResult.open_url` is true.

@@ -409,7 +409,6 @@ typedef struct {
 } IconActionSpec;
 
 int RenderIconAction(IconActionSpec action);
-int RenderLink(LinkProps link);
 int ui_text_input_default_font(int style_kind, int class_name);
 int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,

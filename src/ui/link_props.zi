@@ -2,10 +2,19 @@
 #import "geometry"
 
 LinkProps :: struct {
+    key: u64
     bounds: Rectangle
     class_name: i32
     text: string
     link: string
     focus_id: i32
     disabled: bool
+    focus_activate: bool
+}
+
+LinkResult :: struct {
+    node: i32
+    activated: bool
+    open_url: bool
+    url: string
 }

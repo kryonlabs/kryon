@@ -34,6 +34,7 @@ fieldset_props.zi
 fieldset_widget.zi
 focus.zi
 font_metrics.zi
+flow.zi
 frame_pacing.zi
 geometry.zi
 grid.zi
@@ -55,6 +56,7 @@ kss_parser.zi
 layout.zi
 link.zi
 link_props.zi
+link_widget.zi
 locale_defaults.zi
 locale_parser.zi
 locale_policy.zi

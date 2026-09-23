@@ -92,9 +92,8 @@ surface review:
 | `src/ui/input_capture.kry` | Pointer gesture, press origin, click activation, modal capture, and input clip stacks | `.kry canonical` |
 | `src/ui/cursor.kry` | Cursor intent, priority, and frame reset | `.kry canonical` |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
-| `runtime/layout_props.kry` | Column/Row/Flow layout props | `.kry canonical` |
-| `runtime/link.kry` | Link bounds, interaction, activation/release-consumption, state, and color policy | `.kry canonical` |
-| `runtime/link_props.kry` | Link props | `.kry canonical` |
+| `src/ui/flow.zi` | Checked Flow row scope and explicit child placement | checked Ziran |
+| `src/ui/link.zi`, `src/ui/link_props.zi`, `src/ui/link_widget.zi` | Link policy, props, paint, retained activation, and URL effect | checked Ziran |
 | `runtime/list_box.kry` | ListBox layout, keyboard navigation intent, and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly with typed `MaterialKind` policy | `.kry canonical` |
@@ -111,7 +110,6 @@ surface review:
 | `runtime/paned_view.kry` | PanedView split/layout/handle geometry, drag lifecycle, and change policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `src/ui/page.zi`, `src/ui/page_props.zi`, `src/ui/page_text.zi` | Checked Page and Section scopes, spacing, metadata effect, Heading, and ParagraphText | checked Ziran |
-| `src/ui/page_host.zi` | Unbuilt Link and Flow host entry points | migration pending |
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
 | `runtime/plot.kry`, `src/ui/plot.kry` | Plot geometry, text, style, and drawing | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props and mode names | `.kry canonical` |
@@ -207,7 +205,7 @@ surface review:
 | `src/ui/inspect_overlay.kry` | Inspect Overlay widget host surface | `.kry canonical` |
 | `src/ui/inspect_state.kry` | Inspect State widget host surface | `.kry canonical` |
 | `src/ui/kss_parser.kry` | Kss Parser widget host surface | `.kry canonical` |
-| `src/ui/link.kry` | Link widget host surface | `.kry canonical` |
+| `src/ui/link_widget.zi` | Checked Link widget surface | checked Ziran |
 | `src/ui/list_box.kry` | List Box widget host surface | `.kry canonical` |
 | `src/ui/list_box_multi.kry` | List Box Multi widget host surface | `.kry canonical` |
 | `src/ui/modal.kry` | Modal widget host surface | `.kry canonical` |
@@ -363,7 +361,7 @@ has a single place to land.
 | `Image` | `Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; placeholder typography uses resolved KSS font sizes directly; cache/loading/drawing remain host support. |
 | `Card` | `Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
 | `Button` | `Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition; retained and immediate typography defaults plus fallback/terminal paint policy are `.kry`/KSS-owned. |
-| `Link` | `Input` | Link | `runtime/link.kry`, `src/ui/link.kry` | `.kry canonical` | Bounds, interaction, activation, styling, inspector scope, and drawing are `.kry`; URL dispatch remains a platform service. |
+| `Link` | `Input` | Link | `src/ui/link.zi`, `src/ui/link_widget.zi` | checked Ziran | Bounds, retained activation, KSS style, paint, and returned URL effect are in Ziran. |
 | `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, keyboard edit-command decisions applied by both immediate and retained trees, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
 | `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry`, `src/ui/dropdown.kry`, `src/ui/dropdown_store.kry` | `.kry canonical` | Option data, KSS styling, trigger and menu paint, input, scrolling, keyboard navigation, retained state, and dismissal are authored in `.kry`. |
 | `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
@@ -511,7 +509,7 @@ host roles rather than retained nodes.
 | `WordBreakOpportunity` | `.kry canonical` | Web-native word-break opportunity element. |
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
-| `Link` | `.kry canonical` | Canonical link activation name. |
+| `Link` | checked Ziran | Retained link activation and returned URL effect. |
 | `TextField` | `.kry canonical` | Metrics, KSS typography defaults, scroll, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent policy in `.kry`; raw string storage/memmove/scanning and IME host support remain. |
 | `TextArea` | `.kry canonical` | Metrics, KSS typography defaults, page-navigation, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent policy in `.kry`; raw string storage/memmove/scanning and IME host support remain. |
 | `Dropdown` | `.kry canonical` | Selection control only; `DropdownOption` is generated data for rich options, not a separate widget. |
@@ -536,7 +534,7 @@ host roles rather than retained nodes.
 | `Column` | `.kry canonical` | Layout block. |
 | `Row` | `.kry canonical` | Layout block. |
 | `Stack` | `.kry canonical` | Layout block. |
-| `Flow` | `.kry canonical` | Page/content flow layout. |
+| `Flow` | checked Ziran | Row scope with caller placed children. |
 | `Grid` | `.kry canonical` | Grid layout; metrics and cursor placement are in `.kry`. |
 | `Scroll` | `.kry canonical` | Parser statement form for generated/runtime lowering; lexical block form remains canonical for scroll content. |
 | `End` | Lowered support | Parser block close marker, not a widget. |
@@ -597,8 +595,8 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Section` | checked Ziran | Section scope with explicit child bounds. |
 | `Heading` | checked Ziran | Heading KSS kind and retained semantic level. |
 | `ParagraphText` | checked Ziran | ParagraphText KSS kind and retained paragraph role. |
-| `Link` | `.kry canonical` | Link block. |
-| `Flow` | `.kry canonical` | Page flow block. |
+| `Link` | checked Ziran | Link block with KSS text and URL effect. |
+| `Flow` | checked Ziran | Page row scope with explicit child placement. |
 | `Grid` | `.kry canonical` | Grid layout block. |
 
 ## Native No-Compatibility Audit
@@ -653,7 +651,7 @@ should use canonical `.kry` names and blocks.
 |---|---|---|
 | `Card` | `.kry canonical` | Already has `.kry` module. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, emphasis, and fallback/terminal paint behavior live in `ButtonProps`/`.kry` policy or small `.kry` composition, not separate public widget names. |
-| `Link` | `.kry canonical` | Canonical public name for URL/link activation; `src/ui/link.kry` owns the widget, using `runtime/link.kry` interaction policy and KSS typography. URL dispatch remains a platform service. |
+| `Link` | checked Ziran | Canonical URL activation widget; the host applies the returned URL effect. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | `src/ui/dropdown.kry` owns trigger and menu input, KSS paint, scrolling, navigation, and dismissal; `src/ui/dropdown_store.kry` owns retained state and option strings. |
@@ -703,7 +701,7 @@ should use canonical `.kry` names and blocks.
 | `Section` | checked Ziran | Child scope with KSS spacing and caller placed content. |
 | `Heading` | checked Ziran | Checked Text paint and Heading KSS kind. |
 | `ParagraphText` | checked Ziran | Checked Text paint and ParagraphText KSS kind. |
-| `Flow` | `.kry canonical` | Page flow layout; lowers to row/layout policy. |
+| `Flow` | checked Ziran | Page row scope and explicit child bounds policy. |
 
 ## Collections And Editors
 
@@ -726,7 +724,7 @@ should use canonical `.kry` names and blocks.
 | `TabBar` | `.kry canonical` | `src/ui/tab_bar.kry` owns KSS style, sizing, input, scroll, drag, close, and paint; `src/ui/tab_store.kry` owns retained state. |
 | `TitleBar` | `.kry canonical` | Effective height/state, layout, and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | checked Ziran | Caller owned routes and state; submits an inert retained node; returns a URL effect for the host to apply. |
-| `Link` | `.kry canonical` | Canonical navigation/link widget. |
+| `Link` | checked Ziran | Canonical navigation/link widget. |
 
 ## Terminal Support
 
@@ -913,7 +911,7 @@ behind the canonical names.
   `DragRange` label placement now routes through `runtime/drag.kry`; generic
   pointer drag threshold policy now routes through `runtime/input.kry`;
   `TextArea` scrollbar width now routes through `runtime/text_input.kry`;
-  `Link` underline placement now routes through `runtime/link.kry`; text
+  `Link` underline placement now routes through `src/ui/link.zi`; text
   selection highlight padding and minimum width now route through
   `runtime/text.kry`; shared control-text baseline sample and clip guard now
   route through `runtime/text.kry`; text baseline vertical placement,
