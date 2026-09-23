@@ -159,6 +159,7 @@ surface review:
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_rows.kry` | Source-preserving visual-row breaks, logical lines, heading metrics, caret affinity and point-to-row decisions | `.kry support` |
 | `runtime/text_input.kry` | TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, cursor normalization, navigation, selection state/paint-span policy, double-click/pan decisions, text-buffer mutation/range/bracket policy, focus ownership, platform text-input sync, and edit-intent policy | `.kry canonical` |
+| `src/ui/text_input.zi` | Checked text input policy, mutable byte-buffer insertion/deletion, and UTF-8 codepoint cursor boundaries; retained TextField composition remains to migrate | checked Ziran |
 | `src/ui/text.kry`, `src/ui/text_edit.kry` | Control text fitting and clipping, TextArea gutter, and text-buffer line/edit commands | `.kry canonical` |
 | `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers and typed `ThemePolicy` resolution | `.kry canonical` |

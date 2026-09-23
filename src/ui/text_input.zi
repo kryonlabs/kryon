@@ -101,6 +101,12 @@ TextBufferDeleteRangeDecision :: struct {
     tail_count: i32
 }
 
+TextBufferEditResult :: struct {
+    length: i32
+    cursor: i32
+    changed: bool
+}
+
 TextBufferBracketDecision :: struct {
     valid: bool
     pos: i32
@@ -1299,6 +1305,102 @@ TextBufferCursorAfterDelete :: (cursor: i32, at: i32,
     }
     if cursor > at {
         return at
+    }
+    return cursor
+}
+
+# The buffer has a trailing zero byte and length excludes it. Insert bytes
+# must come from storage separate from the destination buffer.
+TextBufferInsertBytes :: (buffer: []u8, length: i32, at: i32,
+    bytes: []u8) -> TextBufferEditResult #export {
+    result: TextBufferEditResult
+    result.length = length
+    result.cursor = TextCursorForLength(at, length)
+    decision: TextBufferInsertDecision = TextBufferInsertDecisionFor(
+        buffer.length, length, at, bytes.length)
+    if !decision.can_insert || length >= buffer.length ||
+        buffer[length] != (u8)0 { return result }
+    index: i32 = 0
+    while index < bytes.length {
+        if bytes[index] == (u8)0 { return result }
+        index += 1
+    }
+    index = length
+    while index >= at {
+        buffer[index + bytes.length] = buffer[index]
+        index -= 1
+    }
+    index = 0
+    while index < bytes.length {
+        buffer[at + index] = bytes[index]
+        index += 1
+    }
+    result.length = length + bytes.length
+    result.cursor = at + bytes.length
+    result.changed = true
+    return result
+}
+
+TextBufferDeleteBytes :: (buffer: []u8, length: i32,
+    at: i32, count: i32) -> TextBufferEditResult #export {
+    result: TextBufferEditResult
+    result.length = length
+    result.cursor = TextCursorForLength(at, length)
+    decision: TextBufferDeleteDecision = TextBufferDeleteDecisionFor(
+        length, at, count)
+    if !decision.can_delete || length >= buffer.length ||
+        buffer[length] != (u8)0 { return result }
+    index: i32 = at
+    while index <= length - count {
+        buffer[index] = buffer[index + count]
+        index += 1
+    }
+    result.length = length - count
+    result.cursor = at
+    result.changed = true
+    return result
+}
+
+TextBufferDeleteRange :: (buffer: []u8, length: i32,
+    start: i32, end: i32) -> TextBufferEditResult #export {
+    decision: TextBufferDeleteRangeDecision =
+        TextBufferDeleteRangeDecisionFor(length, start, end)
+    if decision.can_delete {
+        return TextBufferDeleteBytes(buffer, length,
+            decision.start, decision.end - decision.start)
+    }
+    result: TextBufferEditResult
+    result.length = length
+    result.cursor = TextCursorForLength(start, length)
+    return result
+}
+
+TextUtf8Continuation :: (value: u8) -> bool #export {
+    return (value & (u8)0xc0) == (u8)0x80
+}
+
+TextPreviousCodepoint :: (buffer: []u8, length: i32,
+    cursor: i32) -> i32 #export {
+    if length < 0 { return 0 }
+    if length > buffer.length { length = buffer.length }
+    cursor = TextCursorForLength(cursor, length)
+    if cursor == 0 { return 0 }
+    cursor -= 1
+    while cursor > 0 && TextUtf8Continuation(buffer[cursor]) {
+        cursor -= 1
+    }
+    return cursor
+}
+
+TextNextCodepoint :: (buffer: []u8, length: i32,
+    cursor: i32) -> i32 #export {
+    if length < 0 { return 0 }
+    if length > buffer.length { length = buffer.length }
+    cursor = TextCursorForLength(cursor, length)
+    if cursor >= length { return length }
+    cursor += 1
+    while cursor < length && TextUtf8Continuation(buffer[cursor]) {
+        cursor += 1
     }
     return cursor
 }
