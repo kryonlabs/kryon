@@ -79,8 +79,14 @@ The retained input router now admits Slider nodes. `TreeTakeDragAt(index)`
 returns the latest held pointer coordinate, a one-time start marker, and a
 one-time release coordinate for the same stable node identity, including when
 the pointer leaves the hit box. A disabled node clears its pending drag.
-The checked `Slider` widget surface and its pointer-free value API still need
-migration.
+The checked `Slider(SliderProps)` returns `{value, changed}` for a continuous
+value, and `DiscreteSlider(DiscreteSliderProps)` returns the same shape with an
+integer value. Both use caller owned values, horizontal or vertical layouts,
+an optional label, KSS Track, Fill, Label, and Thumb roles, and retained drag
+input. Applications can compose multiple controls using their own arrays and
+`SliderCellBoundsFor()` without a fixed limit in the widget API. Angle editing,
+step buttons, numeric text editing, limit labels, keyboard control, richer
+materials, and native widget integration remain open.
 
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)

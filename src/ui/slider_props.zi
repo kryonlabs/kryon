@@ -1,26 +1,30 @@
 #module "slider_props"
 #import "geometry"
-#import "input_props"
 
+# Each control owns one value. Applications compose any number of controls
+# with their own arrays and SliderCellBoundsFor; no C pointer crosses the API.
 SliderProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
-    label: const char*
-    kind: NumericValueKind
-    float_values: float*
-    int_values: i32*
-    value_count: i32
-    float_value: float*
-    min: double
-    max: double
-    format: const char*
+    label: string
+    value: float
+    min: float
+    max: float
     disabled: bool
     vertical: bool
-    angle: bool
     class_name: i32
-    value_scale: double
-    value_format: const char*
-    step_buttons: bool
-    show_limits: bool
-    measured_height: float*
+}
+
+DiscreteSliderProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: i32
+    label: string
+    value: i32
+    min: i32
+    max: i32
+    disabled: bool
+    vertical: bool
+    class_name: i32
 }

@@ -105,6 +105,7 @@ separator_props.zi
 separator_widget.zi
 slider.zi
 slider_props.zi
+slider_widget.zi
 spinbox.zi
 spinbox_props.zi
 style.zi

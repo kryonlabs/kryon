@@ -58,6 +58,14 @@ uses retained pointer input, records selected state, and queues ring, fill,
 hover layer, and clipped label paint. Selection animation, ripple, keyboard
 focus, and native host integration remain open.
 
+The checked `Slider(SliderProps)` and `DiscreteSlider(DiscreteSliderProps)`
+compose caller owned scalar values, horizontal or vertical track geometry,
+KSS Track, Fill, Label, and Thumb roles, retained drag input, and queued shape
+and clipped label paint. An app composes multiple values from its own arrays
+and `SliderCellBoundsFor()`. Angle editing, step buttons, numeric text editing,
+limit labels, keyboard control, richer materials, and native host integration
+remain open.
+
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses
 retained pointer activation, and queues rounded shapes and clipped labels.
@@ -96,10 +104,9 @@ commit; it does not import individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
 The host supplies raw pointer samples. Button, Checkbox, Toggle, and Radio use
-this path for retained pointer activation. Slider nodes can retain drag
+this path for retained pointer activation. Slider nodes retain drag
 ownership across tree reordering and pointer movement outside their bounds;
 the route reports held and release coordinates and cancels a disabled drag.
-The checked Slider widget composition still needs migration.
 Remaining input modes, including keyboard focus and ancestor input clipping,
 still need migration. Other widget submissions and retained layout are also
 incomplete.

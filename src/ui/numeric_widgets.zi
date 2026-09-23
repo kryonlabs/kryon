@@ -251,50 +251,6 @@ Drag :: (drag: DragProps) -> i32 #export {
     return ui_tree_drag_continuous(value)
 }
 
-Slider :: (slider: SliderProps) -> i32 #export {
-    if slider.value_count <= 0 { slider.value_count = 1 }
-    slider.disabled |= ContentDisabled()
-    slider.bounds = ui_slider_bounds(slider)
-    id: NodeId = ui_tree_add(slider.id, WidgetKindSlider,
-    slider.bounds, nil)
-    if id >= 0 {
-        InvalidateTree(INVALIDATE_PAINT)
-        node: *TreeNode = &ui_tree_nodes[id]
-        slider.bounds = node->bounds
-        node->data.slider.props = slider
-        label: const char* = slider.label
-        if label == nil { label = "" }
-        format: const char* = slider.format
-        if format == nil { format = InputDefaultFormat(slider.kind) }
-        value_format: const char* = slider.value_format
-        if value_format == nil { value_format = "" }
-        label_size: size_t = strlen(label) + 1
-        format_size: size_t = strlen(format) + 1
-        value_size: size_t = strlen(value_format) + 1
-        node->owned_text = (char*)malloc(label_size +
-        format_size + value_size)
-        if node->owned_text != nil {
-            memcpy(node->owned_text, label, label_size)
-            memcpy(node->owned_text + label_size,
-            format, format_size)
-            memcpy(node->owned_text + label_size + format_size,
-            value_format, value_size)
-        }
-        node->data.slider.format_offset = label_size
-        node->data.slider.props.label = nil
-        node->data.slider.props.format = nil
-        node->data.slider.props.value_format = nil
-        node->data.slider.props.measured_height = nil
-    }
-    if slider.measured_height != nil {
-        *slider.measured_height = slider.bounds.height
-    }
-    changed: i32 = ui_update_slider(slider)
-    if !ui_tree_building { ui_paint_slider(slider) }
-    if changed { InvalidateTree(INVALIDATE_PAINT) }
-    return changed
-}
-
 ui_numeric_input_begin :: (id: i32,
 bounds: *Rectangle) -> i32 {
     depth: i32 = ui_tree_stack_depth
