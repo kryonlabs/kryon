@@ -38,6 +38,8 @@ platform metadata, plus Heading and ParagraphText through the checked Text
 widget and retained semantic roles,
 Flow row scope and child placement, and Link paint, pointer activation, and
 returned URL effects,
+checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
+explicit child placement,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

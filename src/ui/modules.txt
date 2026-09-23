@@ -54,6 +54,7 @@ inspect.zi
 kss_formatter.zi
 kss_parser.zi
 layout.zi
+layout_widget.zi
 link.zi
 link_props.zi
 link_widget.zi

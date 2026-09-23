@@ -1,0 +1,112 @@
+#module "layout_widget"
+#import "geometry"
+#import "grid"
+#import "grid_props"
+#import "layout"
+#import "tree"
+#import "widget_kind"
+
+LayoutContainer :: struct {
+    node: i32
+    opened: bool
+    kind: i32
+    bounds: Rectangle
+    content: Rectangle
+    gap: i32
+    padding: i32
+}
+
+GridResult :: struct {
+    container: LayoutContainer
+    cursor: GridCursor
+}
+
+ContainerFor :: (props: ColumnProps,
+    kind: i32) -> LayoutContainer #export {
+    result: LayoutContainer
+    result.node = -1
+    result.kind = kind
+    result.bounds = props.bounds
+    parent: Rectangle = TreeCurrentParentBounds()
+    if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
+    if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        props.gap, props.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    if !TreeIsBuilding() { return result }
+    key: u64 = props.key
+    if key == (u64)0 { key = TreeNextKey() }
+    result.node = TreeSubmitCurrent(key, kind, result.bounds)
+    if result.node < 0 { return result }
+    result.opened = TreePushScope(result.node)
+    return result
+}
+
+Column :: (props: ColumnProps) -> LayoutContainer #export {
+    return ContainerFor(props, WidgetKindColumn)
+}
+
+Row :: (props: ColumnProps) -> LayoutContainer #export {
+    return ContainerFor(props, WidgetKindRow)
+}
+
+Stack :: (props: ColumnProps) -> LayoutContainer #export {
+    return ContainerFor(props, WidgetKindStack)
+}
+
+Group :: (props: ColumnProps) -> LayoutContainer #export {
+    return ContainerFor(props, WidgetKindGroup)
+}
+
+Screen :: (props: ColumnProps) -> LayoutContainer #export {
+    root: Rectangle = TreeRootBounds()
+    if props.bounds.width <= 0.0 { props.bounds.width = root.width }
+    if props.bounds.height <= 0.0 { props.bounds.height = root.height }
+    return ContainerFor(props, WidgetKindGroup)
+}
+
+Grid :: (props: GridProps) -> GridResult #export {
+    row: ColumnProps
+    row.bounds = props.bounds
+    row.gap = props.gap
+    row.padding = props.padding
+    row.key = props.key
+    result: GridResult
+    result.container = ContainerFor(row, WidgetKindGrid)
+    props.bounds = result.container.bounds
+    result.cursor = BeginGridCursor(props)
+    return result
+}
+
+ContainerMetrics :: (container: LayoutContainer) -> LayoutMetrics {
+    return LayoutMetricsFor(container.bounds, container.gap,
+        container.padding)
+}
+
+ColumnChildBounds :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle, child_index: i32,
+    previous_height_sum: float) -> Rectangle #export {
+    metrics: LayoutMetrics = ContainerMetrics(container)
+    cursor: float = LayoutCursorForChild(metrics, false,
+        child_index, previous_height_sum)
+    return LayoutChildBounds(declared, measured, metrics,
+        false, cursor)
+}
+
+RowChildBounds :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle, child_index: i32,
+    previous_width_sum: float) -> Rectangle #export {
+    metrics: LayoutMetrics = ContainerMetrics(container)
+    cursor: float = LayoutCursorForChild(metrics, true,
+        child_index, previous_width_sum)
+    return LayoutChildBounds(declared, measured, metrics,
+        true, cursor)
+}
+
+StackChildBoundsFor :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle) -> Rectangle #export {
+    return StackChildBounds(declared, measured,
+        ContainerMetrics(container))
+}

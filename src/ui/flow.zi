@@ -1,8 +1,7 @@
 #module "flow"
 #import "geometry"
 #import "layout"
-#import "tree"
-#import "widget_kind"
+#import "layout_widget"
 
 FlowProps :: struct {
     bounds: Rectangle
@@ -23,32 +22,29 @@ FlowResult :: struct {
 # Flow places its children along a row. The caller uses FlowChildBounds before
 # submitting each child, then closes the retained scope with End().
 Flow :: (props: FlowProps) -> FlowResult #export {
+    row: ColumnProps
+    row.bounds = props.bounds
+    row.gap = props.gap
+    row.padding = props.padding
+    row.key = props.key
+    container: LayoutContainer = Row(row)
     result: FlowResult
-    result.node = -1
-    result.bounds = props.bounds
-    parent: Rectangle = TreeCurrentParentBounds()
-    if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
-    if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
-    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
-        props.gap, props.padding)
-    result.content = metrics.content
-    result.gap = metrics.gap
-    result.padding = metrics.padding
-    if !TreeIsBuilding() { return result }
-    key: u64 = props.key
-    if key == (u64)0 { key = TreeNextKey() }
-    result.node = TreeSubmitCurrent(key, WidgetKindRow, result.bounds)
-    if result.node < 0 { return result }
-    result.opened = TreePushScope(result.node)
+    result.node = container.node
+    result.opened = container.opened
+    result.bounds = container.bounds
+    result.content = container.content
+    result.gap = container.gap
+    result.padding = container.padding
     return result
 }
 
 FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
     measured: Rectangle, child_index: i32,
     previous_width_sum: float) -> Rectangle #export {
-    metrics: LayoutMetrics = LayoutMetricsFor(flow.bounds,
-        flow.gap, flow.padding)
-    cursor: float = LayoutCursorForChild(metrics, true,
+    container: LayoutContainer
+    container.bounds = flow.bounds
+    container.gap = flow.gap
+    container.padding = flow.padding
+    return RowChildBounds(container, declared, measured,
         child_index, previous_width_sum)
-    return LayoutChildBounds(declared, measured, metrics, true, cursor)
 }

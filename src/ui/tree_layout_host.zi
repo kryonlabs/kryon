@@ -1125,65 +1125,6 @@ ReconcileTree :: () #export {
     if changed { ui_tree_invalid |= INVALIDATE_LAYOUT | INVALIDATE_PAINT }
 }
 
-ui_begin_layout_node :: (kind: i32, key: KeyID,
-bounds: Rectangle, gap: i32, padding: i32) -> NodeId {
-    if key == 0 { key = (KeyID)(unsigned)(ui_tree_node_count + 1) }
-    metrics: LayoutMetrics = LayoutMetricsFor(bounds, gap, padding)
-    node: NodeId = ui_tree_add((int)(key & 0x7fffffffU),
-    kind, bounds, nil)
-    if node >= 0 {
-        ui_tree_nodes[node].key = key
-        ui_tree_nodes[node].data.layout.gap = metrics.gap
-        ui_tree_nodes[node].data.layout.padding = metrics.padding
-        ui_tree_nodes[node].data.layout.columns = 1
-        if ui_tree_stack_depth < TREE_LAYOUT_DEPTH {
-            ui_tree_stack[ui_tree_stack_depth] = node
-            ui_tree_stack_depth += 1
-        }
-    }
-    return node
-}
-
-Column :: (props: ColumnProps) -> NodeId #export {
-    return ui_begin_layout_node(WidgetKindColumn, props.key,
-    props.bounds, props.gap, props.padding)
-}
-
-Row :: (props: RowProps) -> NodeId #export {
-    return ui_begin_layout_node(WidgetKindRow, props.key,
-    props.bounds, props.gap, props.padding)
-}
-
-Grid :: (props: GridProps) -> NodeId #export {
-    node: NodeId = ui_begin_layout_node(WidgetKindGrid,
-    props.key, props.bounds, props.gap, props.padding)
-    if node >= 0 {
-        ui_tree_nodes[node].data.layout.columns = props.columns
-        ui_tree_nodes[node].data.layout.min_item_width = props.min_item_width
-        ui_tree_nodes[node].data.layout.max_columns = props.max_columns
-    }
-    return node
-}
-
-Stack :: (props: ColumnProps) -> NodeId #export {
-    return ui_begin_layout_node(WidgetKindStack, props.key,
-    props.bounds, props.gap, props.padding)
-}
-
-Group :: (props: ColumnProps) -> NodeId #export {
-    policy: GroupPolicy = GroupPolicyFor(props.bounds,
-    props.gap, props.padding)
-    return ui_begin_layout_node(WidgetKindGroup, props.key,
-    policy.bounds, policy.gap, policy.padding)
-}
-
-Screen :: (props: ColumnProps) -> NodeId #export {
-    policy: GroupPolicy = ScreenGroupPolicyFor(props.bounds,
-    ui_view_width, ui_view_height, props.gap, props.padding)
-    return ui_begin_layout_node(WidgetKindGroup, props.key,
-    policy.bounds, policy.gap, policy.padding)
-}
-
 GetNodeHeightById :: (id: i32) -> i32 #export {
     index: i32 = ui_tree_node_count - 1
     while index >= 0 {

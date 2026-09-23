@@ -265,3 +265,8 @@ places children with `FlowChildBounds` before submitting them, then calls
 `End()`. `Link(LinkProps)` paints checked KSS text and consumes retained
 pointer activation or an explicit focus action. It returns a URL effect for
 the platform to apply when `LinkResult.open_url` is true.
+`Column`, `Row`, `Stack`, `Group`, `Screen`, and `Grid` are checked Ziran
+containers. Each opens a retained child scope that closes with `End()`.
+`ColumnChildBounds`, `RowChildBounds`, and `StackChildBoundsFor` place measured
+children before painting; `Grid` returns a `GridCursor` for `GridStep` to place
+cells. `Screen` fills the current tree viewport when its size is unspecified.

@@ -93,6 +93,7 @@ surface review:
 | `src/ui/cursor.kry` | Cursor intent, priority, and frame reset | `.kry canonical` |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
 | `src/ui/flow.zi` | Checked Flow row scope and explicit child placement | checked Ziran |
+| `src/ui/layout_widget.zi` | Checked Column, Row, Stack, Group, Screen, and Grid retained scopes | checked Ziran |
 | `src/ui/link.zi`, `src/ui/link_props.zi`, `src/ui/link_widget.zi` | Link policy, props, paint, retained activation, and URL effect | checked Ziran |
 | `runtime/list_box.kry` | ListBox layout, keyboard navigation intent, and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
@@ -372,7 +373,7 @@ has a single place to land.
 | `Spinbox` | `Input` | Number | `runtime/spinbox.kry`, `src/ui/spinbox.kry` | `.kry-backed` | Layout, button actions, value formatting, stepping, and drawing are authored in `.kry`. |
 | `ColorPicker` | `Input` | Color | `runtime/color_picker.kry`, `src/ui/color_picker.kry` | `.kry-backed` | Channel layout, color conversion, swatch drawing, and slider composition are authored in `.kry`. |
 | `SegmentedControl` | `Input` | Segments | `runtime/segmented_control.kry` | `.kry-backed` | Layout, gap, font fallback, wrapping, segment sizing, and selection policy are `.kry`; host keeps label measurement, input sampling, state storage, and button drawing. |
-| `Group` | `Layout` | Container | `runtime/group.kry` | `.kry-backed` | Canonical non-layout grouping scope; bounds/content policy is `.kry`, host keeps retained tree scope ownership. |
+| `Group` | `Layout` | Container | `src/ui/layout_widget.zi` | checked Ziran | Group scope, bounds, and content are owned by the checked tree. |
 | `Separator` | `Layout` | Divider | `runtime/separator.kry`, `src/ui/separator.kry` | `.kry-backed` | Line, label, bullet style, and rendering are authored in `.kry`. |
 | `Fieldset` | `Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
 | `PanedView` | `Layout` | Split panes | `runtime/paned_view.kry`, `src/ui/paned_view.kry` | `.kry canonical` | Split clamp, layout, handle geometry, pointer input, drag lifecycle, active split storage, and drawing are `.kry`. |
@@ -526,16 +527,16 @@ host roles rather than retained nodes.
 | `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
 | `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
-| `Screen` | `.kry canonical` | Top-level screen container. |
+| `Screen` | checked Ziran | Top-level screen container with viewport fallback. |
 | `Page` | checked Ziran | Opens a retained page scope and returns content bounds and metadata. |
 | `Section` | checked Ziran | Opens a retained section scope and returns content bounds. |
 | `Heading` | checked Ziran | Uses checked Text with Heading KSS kind and retained semantic level. |
 | `ParagraphText` | checked Ziran | Uses checked Text with ParagraphText KSS kind and retained paragraph role. |
-| `Column` | `.kry canonical` | Layout block. |
-| `Row` | `.kry canonical` | Layout block. |
-| `Stack` | `.kry canonical` | Layout block. |
+| `Column` | checked Ziran | Retained vertical scope and child placement. |
+| `Row` | checked Ziran | Retained horizontal scope and child placement. |
+| `Stack` | checked Ziran | Retained overlay scope and child placement. |
 | `Flow` | checked Ziran | Row scope with caller placed children. |
-| `Grid` | `.kry canonical` | Grid layout; metrics and cursor placement are in `.kry`. |
+| `Grid` | checked Ziran | Retained grid scope with checked metrics and cursor placement. |
 | `Scroll` | `.kry canonical` | Parser statement form for generated/runtime lowering; lexical block form remains canonical for scroll content. |
 | `End` | Lowered support | Parser block close marker, not a widget. |
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
@@ -567,10 +568,10 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Canvas` | `.kry canonical` | Lexical canvas block. |
 | `Popup` | `.kry canonical` | Lexical arbitrary overlay block. |
 | `Text` | `.kry canonical` | Block form with `TextProps`. |
-| `Row` | `.kry canonical` | Layout block with `RowProps`. |
-| `Screen` | `.kry canonical` | Top-level layout block. |
-| `Column` | `.kry canonical` | Layout block using column props. |
-| `Stack` | `.kry canonical` | Layout block using stack/column props. |
+| `Row` | checked Ziran | Horizontal layout with `ColumnProps`. |
+| `Screen` | checked Ziran | Top-level layout scope. |
+| `Column` | checked Ziran | Vertical layout with `ColumnProps`. |
+| `Stack` | checked Ziran | Overlay layout with `ColumnProps`. |
 | `Button` | `.kry canonical` | Composed content button block; lowers through native support. |
 | `Card` | `.kry canonical` | Composed content card block; lowers through native support. |
 | `TextField` | `.kry canonical` | Block form with `TextFieldProps`. |
@@ -597,7 +598,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `ParagraphText` | checked Ziran | ParagraphText KSS kind and retained paragraph role. |
 | `Link` | checked Ziran | Link block with KSS text and URL effect. |
 | `Flow` | checked Ziran | Page row scope with explicit child placement. |
-| `Grid` | `.kry canonical` | Grid layout block. |
+| `Grid` | checked Ziran | Grid layout scope and cursor. |
 
 ## Native No-Compatibility Audit
 
@@ -677,12 +678,12 @@ should use canonical `.kry` names and blocks.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `Column` | `.kry canonical` | Content and child placement policy are in `.kry`; host keeps retained tree scope ownership. |
-| `Row` | `.kry canonical` | Content and child placement policy are in `.kry`; host keeps retained tree scope ownership. |
-| `Grid` | `.kry canonical` | Metrics, columns, and cursor placement policy are in `.kry`; host keeps retained tree scope ownership. |
-| `Stack` | `.kry canonical` | Content/child fill policy is in `.kry`; host keeps retained tree scope ownership. |
-| `Screen` | `.kry canonical` | Top-level screen container; viewport fallback bounds policy is in `.kry`. |
-| `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
+| `Column` | checked Ziran | Retained scope and vertical child placement. |
+| `Row` | checked Ziran | Retained scope and horizontal child placement. |
+| `Grid` | checked Ziran | Retained scope, columns, and cursor placement. |
+| `Stack` | checked Ziran | Retained scope and child fill policy. |
+| `Screen` | checked Ziran | Screen scope with viewport fallback bounds. |
+| `Group` | checked Ziran | Non-layout grouping scope and content bounds. |
 | `Separator` | `.kry canonical` | Public props live in `runtime/separator_props.kry`; line, label, and bullet layout, style, and drawing are authored in `.kry`; label typography is KSS-owned. |
 | `Fieldset` | `.kry canonical` | Public props live in `runtime/fieldset_props.kry`; titled border group. |
 | `PanedView` | `.kry canonical` | Public props live in `runtime/paned_view_props.kry`; `runtime/paned_view.kry` defines split and drag policy, while `src/ui/paned_view.kry` owns pointer input, active split storage, styling, and drawing. |
@@ -789,7 +790,7 @@ stays prefix-free.
 
 | Current node kind | Public widget/concept | Decision |
 |---|---|---|
-| `WidgetKindScreen` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
+| `WidgetKindScreen` | `TreeStart` root | checked Ziran |
 | `WidgetKindBackground` | `Background` | `.kry-backed`; bounds and app fallback policy live in runtime primitive policy |
 | `WidgetKindText` | `Text` | `.kry canonical` |
 | `WidgetKindBox` | `Box` | `.kry-backed`; retained node kind now matches the public `Box` concept |
@@ -808,11 +809,11 @@ stays prefix-free.
 | `WidgetKindNavigationBar` | `NavigationBar` | `.kry canonical` |
 | `WidgetKindTabBar` | `TabBar` | `.kry canonical` |
 | `WidgetKindTitleBar` | `TitleBar` | `.kry canonical` |
-| `WidgetKindGroup` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
-| `WidgetKindColumn` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WidgetKindRow` | `Row` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WidgetKindStack` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WidgetKindGrid` | `Grid` | `.kry canonical`; metrics and cursor placement policy are `.kry-backed` |
+| `WidgetKindGroup` | `Group`, `Screen` | checked Ziran |
+| `WidgetKindColumn` | `Column` | checked Ziran |
+| `WidgetKindRow` | `Row`, `Flow` | checked Ziran |
+| `WidgetKindStack` | `Stack` | checked Ziran |
+| `WidgetKindGrid` | `Grid` | checked Ziran |
 | `WidgetKindImage` | `Image` | `.kry canonical`; fit and missing-placeholder layout policy are `.kry-backed` |
 | `WidgetKindCustom` | `Custom` | Internal support escape hatch |
 | `WidgetKindDrag` | `Drag` | `.kry canonical` |
