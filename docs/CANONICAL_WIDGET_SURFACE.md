@@ -591,7 +591,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `ListBox` | checked Ziran | List block with retained item nodes. |
 | `TableView` | `.kry canonical` | Table block. |
 | `NavigationBar` | `.kry canonical` | Navigation block. |
-| `Toolbar` | `.kry canonical` | Toolbar block. |
+| `Toolbar` | checked Ziran | Composes retained Button actions and Dropdown with caller owned state. |
 | `TabBar` | `.kry canonical` | Tab bar block. |
 | `Page` | checked Ziran | Page scope and portable metadata effect. |
 | `Section` | checked Ziran | Section scope with explicit child bounds. |

@@ -1,0 +1,179 @@
+#module "toolbar_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "dropdown_props"
+#import "dropdown_widget"
+#import "drawing_props"
+#import "geometry"
+#import "image_props"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "toolbar"
+#import "toolbar_props"
+#import "tree"
+#import "widget_kind"
+
+ToolbarDefaultFace :: (role: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StylePaddingX | (u32)StyleIconSize |
+        (u32)StyleGap
+    face.background = (u32)0xf8fafcff
+    face.foreground = (u32)0x334155ff
+    face.border = (u32)0xcbd5e1ff
+    face.border_width = 0.0
+    face.radius = 0.0
+    face.opacity = 1.0
+    face.padding_x = 12.0
+    face.icon_size = 18.0
+    face.gap = 6.0
+    if role == ToolbarDividerRole() {
+        face.foreground = (u32)0xcbd5e1ff
+    } else if role == ToolbarActionRole() {
+        face.padding_x = 8.0
+    }
+    return face
+}
+
+ToolbarFaceFor :: (props: ToolbarProps,
+    role: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindToolbar(), props.id, props.class_name, role,
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        ToolbarDefaultFace(role), facts,
+        (i32)ButtonStateNormal)
+    return frame
+}
+
+ToolbarKey :: (props: ToolbarProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+ToolbarActionKey :: (toolbar_key: u64,
+    action: ToolbarAction, index: i32) -> u64 #export {
+    if action.key != (u64)0 { return action.key }
+    return toolbar_key * (u64)131071 + (u64)(u32)(index + 1)
+}
+
+# Toolbar composes checked Button and Dropdown widgets. The caller owns the
+# returned dropdown state, and passes it back in props.dropdown next frame.
+Toolbar :: (props: ToolbarProps, options: []DropdownOption,
+    actions: []ToolbarAction) -> ToolbarResult #export {
+    result: ToolbarResult
+    result.node = -1
+    result.dropdown.node = -1
+    result.dropdown.selected_index = props.dropdown.selected_index
+    result.dropdown.highlight_index = props.dropdown.highlight_index
+    result.dropdown.scroll_offset = props.dropdown.scroll_offset
+    result.dropdown.open = props.dropdown.open
+    result.selected_menu_item = -1
+    result.clicked_action = -1
+    if props.width <= 0 || props.height <= 0 { return result }
+    key: u64 = ToolbarKey(props)
+    bar: StyleFrame = ToolbarFaceFor(props, ToolbarBarRole())
+    divider: StyleFrame = ToolbarFaceFor(props, ToolbarDividerRole())
+    action_face: StyleFrame = ToolbarFaceFor(props,
+        ToolbarActionRole())
+    spec: ToolbarSpec
+    spec.x = props.x
+    spec.y = props.y
+    spec.width = props.width
+    spec.height = props.height
+    spec.action_count = actions.length
+    spec.action_icon_size = -1
+    spec.action_icon_padding = -1
+    spec.action_gap = -1
+    spec.side_padding = -1
+    spec.dropdown_min_width = props.dropdown_min_width
+    spec.dropdown_max_width = props.dropdown_max_width
+    spec.dropdown_height = props.dropdown_height
+    spec.scale = props.scale
+    spec.bar = bar
+    spec.action = action_face
+    layout: ToolbarLayout = ToolbarLayoutFor(spec)
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key, WidgetKindToolbar,
+            layout.bounds)
+        if result.node < 0 { return result }
+        submitted: Rectangle = TreeSubmittedNodeAt(result.node).bounds
+        if submitted.x != layout.bounds.x ||
+            submitted.y != layout.bounds.y ||
+            submitted.width != layout.bounds.width ||
+            submitted.height != layout.bounds.height {
+            spec.x = (i32)submitted.x
+            spec.y = (i32)submitted.y
+            spec.width = (i32)submitted.width
+            spec.height = (i32)submitted.height
+            layout = ToolbarLayoutFor(spec)
+        }
+    }
+    opacity: float = StyleOpacityValue(bar.value.fields,
+        bar.value.opacity)
+    PaintRoundedFill(result.node, layout.bounds,
+        bar.value.radius, 12,
+        ColorFromPacked(Opacity(bar.value.background, opacity)))
+    if bar.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, layout.bounds,
+            bar.value.radius, 12, bar.value.border_width,
+            ColorFromPacked(Opacity(bar.value.border, opacity)))
+    }
+    line: ToolbarDividerLine = ToolbarDividerLineFor(
+        (i32)layout.bounds.x, (i32)layout.bounds.y,
+        (i32)layout.bounds.width, (i32)layout.bounds.height)
+    PaintLine(result.node, (Rectangle){(float)line.x1,
+        (float)line.y1, (float)(line.x2 - line.x1), 0.0},
+        ColorFromPacked(Opacity(divider.value.foreground,
+            StyleOpacityValue(divider.value.fields,
+                divider.value.opacity))))
+
+    index: i32 = 0
+    while index < actions.length {
+        item: ToolbarAction = actions[index]
+        button: ButtonProps
+        button.key = ToolbarActionKey(key, item, index)
+        button.bounds = ToolbarActionBoundsFor(layout, index,
+            actions.length)
+        button.id = ToolbarActionIdFor(props.id, index)
+        button.class_name = props.class_name
+        button.style_kind = StyleKindToolbar()
+        button.style_role = ToolbarActionRole()
+        button.tone = (ButtonTone)ButtonToneNeutral
+        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.image = item.image
+        button.label = item.label
+        button.icon_only = item.image.asset_path != "" ||
+            item.image.texture.id != (u32)0
+        button.disabled = item.disabled
+        if SubmitButton(button, result.node, key) != 0 {
+            result.clicked_action = index
+        }
+        index += 1
+    }
+    if props.draw_menu && options.length > 0 {
+        dropdown: DropdownProps = props.dropdown
+        dropdown.bounds = layout.dropdown_bounds
+        if dropdown.key == (u64)0 {
+            dropdown.key = key * (u64)65599 + (u64)5
+        }
+        if dropdown.id <= 0 { dropdown.id = props.id }
+        if dropdown.class_name <= 0 {
+            dropdown.class_name = props.class_name
+        }
+        if dropdown.scale <= 0.0 { dropdown.scale = props.scale }
+        result.dropdown = Dropdown(dropdown, options)
+        if result.dropdown.changed {
+            result.selected_menu_item = result.dropdown.selected_index
+        }
+    }
+    return result
+}

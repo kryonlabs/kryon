@@ -1,5 +1,7 @@
 #module "toolbar_props"
 #import "drawing_props"
+#import "dropdown_props"
+#import "image_props"
 
 IconRowItem :: struct {
     icon: Texture2D
@@ -21,30 +23,31 @@ IconRowResult :: struct {
 }
 
 ToolbarAction :: struct {
-    icon: Texture2D
-    icon_type: i32
+    key: u64
+    label: string
+    image: ImageProps
     disabled: bool
 }
 
 ToolbarProps :: struct {
+    key: u64
     id: i32
     class_name: i32
     x: i32
     y: i32
     width: i32
     height: i32
+    scale: float
     draw_menu: bool
-    options: const char**
-    option_count: i32
-    selected_index: i32*
+    dropdown: DropdownProps
     dropdown_min_width: i32
     dropdown_max_width: i32
     dropdown_height: i32
-    actions: const ToolbarAction*
-    action_count: i32
 }
 
 ToolbarResult :: struct {
+    node: i32
+    dropdown: DropdownResult
     selected_menu_item: i32
     clicked_action: i32
 }

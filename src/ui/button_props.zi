@@ -19,6 +19,7 @@ ButtonProps :: struct {
     id: i32
     class_name: i32
     style_kind: i32
+    style_role: i32
     tone: ButtonTone
     emphasis: ButtonEmphasis
     size: ControlSize
