@@ -76,7 +76,9 @@ into that table. Parsing stops at `NeedImport` so the caller can use
 `StyleRulesParse.overflow` reports when a 321st rule would exceed the table.
 Portable hosts that import the KSS parser bind `KssStringSliceBinding()` for
 source byte ranges. A portable bundle's installed rules last for one
-`BundleRun`; another run begins with an empty rule table.
+`BundleRun`; another run begins with an empty rule table. A
+`BundleInstance` keeps those rules between runs, allowing a frame entry to
+install a style sheet once and paint subsequent frames from it.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,

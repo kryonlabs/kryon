@@ -1,0 +1,69 @@
+#!/bin/sh
+set -eu
+
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+
+cat > "$work/app.zi" <<'ZI'
+#module "app"
+#import "control_props"
+#import "geometry"
+#import "progress"
+#import "progress_props"
+#import "progress_widget"
+#import "style"
+#import "style_sheet"
+
+frame_index :: i32 #global
+
+Frame :: () -> i32 #export {
+    if frame_index == 0 {
+        rules: StyleRules
+        rules.count = 2
+        track: StyleRule
+        track.selector = StyleDefaultSelector()
+        track.selector.kind = StyleKindProgress()
+        track.selector.role = ProgressTrackRole()
+        track.selector.tone = (i32)ButtonToneNeutral
+        track.style.fields = (u32)StyleBackground
+        track.style.background = (u32)0x11223344
+        rules.items[0] = track
+        fill: StyleRule
+        fill.selector = StyleDefaultSelector()
+        fill.selector.kind = StyleKindProgress()
+        fill.selector.role = ProgressFillRole()
+        fill.selector.tone = (i32)ButtonToneAccent
+        fill.style.fields = (u32)StyleBackground
+        fill.style.background = (u32)0x55667788
+        rules.items[1] = fill
+        InstallStyleRules(rules)
+    }
+    props: ProgressProps
+    props.bounds = (Rectangle){10.0, 20.0, 100.0, 20.0}
+    props.min = 0
+    props.max = 100
+    props.value = 25
+    Progress(props)
+    frame_index += 1
+    return frame_index
+}
+ZI
+
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+    -o "$work/ir" "$work/app.zi"
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+cmp "$work/source.zib" "$work/saved.zib"
+
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/include" \
+    -I"$repo/../ziran/include" \
+    "$repo/tests/ziran_progress_session_test.c" \
+    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
+    ${VM_LDFLAGS:-} -o "$work/host-test"
+"$work/host-test" "$work/source.zib"
+"$work/host-test" "$work/saved.zib"
