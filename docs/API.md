@@ -37,6 +37,11 @@ interfaces.
 The checked modules cover geometry, layout, styling, themes, accessibility,
 focus, input, scroll, canvas transforms, popup policy, and several widget
 measurement and paint decisions, including `Text(TextProps)`.
+`ThemeDecisionFor(ThemePreference)` chooses the effective light or dark theme
+from an observed system preference. `OrientationDecisionFor` returns a resize
+or platform mode request from the current dimensions and host capabilities.
+Both are checked values; applications apply the returned request through
+their platform host.
 The checked `Button(ButtonProps)` path now submits a retained interactive node,
 resolves KSS class and state rules, measures a label and optional `ImageProps`
 asset or texture, and queues shape, clipped image, and clipped text paint.

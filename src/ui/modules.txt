@@ -84,6 +84,7 @@ plot_props.zi
 popup_ownership.zi
 popup_policy.zi
 popup_props.zi
+preference_policy.zi
 primitive.zi
 profile_header.zi
 progress.zi

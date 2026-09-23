@@ -45,6 +45,7 @@ caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned
 route and state values,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
+theme and orientation preference decisions from host observations,
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
