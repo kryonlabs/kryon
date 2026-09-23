@@ -1,5 +1,6 @@
 #module "card_props"
-#import "ui_control_props.generated.h"
+#import "control_props"
+#import "geometry"
 
 CardProps :: struct {
     bounds: Rectangle

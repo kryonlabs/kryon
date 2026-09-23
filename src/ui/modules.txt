@@ -6,6 +6,7 @@ button_props.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi
+card_props.zi
 checkbox.zi
 checkbox_props.zi
 collapsible.zi
