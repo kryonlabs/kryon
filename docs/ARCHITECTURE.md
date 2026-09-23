@@ -65,7 +65,10 @@ not yet portable `.zib` values.
 word starts, and cursor placement from `runtime/text_rows.kry`. The
 [text row test](../tests/ziran_text_rows_test.sh) runs imported source and
 saved `.zir` modules in C, C++, Go, and `.zib`.
-`make ziran-test` runs the nine migration tests with an adjacent Ziran checkout.
+`zi/drag.zi` ports drag pointer decisions, geometry, keyboard movement, and
+continuous and discrete value policy. The [drag test](../tests/ziran_drag_test.sh)
+checks source and saved `.zir` builds in C, C++, Go, and `.zib`.
+`make ziran-test` runs the ten migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
