@@ -63,9 +63,11 @@ Progress layout, fill and border visibility, radius, and label color decisions
 are checked Ziran functions. `PaintProgress()` emits its track, fill, outline,
 and label through declared raster effects. `PrepareProgress()` selects the font
 and uses host glyph measurements; `PaintProgressProps()` combines that with
-the raster path. Callers currently supply three resolved `ProgressFaces`.
-Style sheet lookup by class and the complete one-argument `Progress` widget
-are still being migrated.
+the raster path. `StyleRules` is an owned 320-rule value table; the checked
+`ProgressFacesFor()` resolves track, fill, and label roles by class and cascade
+priority, and `PaintProgressFromRules()` uses those faces. Callers still supply
+default faces and the rule table. The legacy pointer-backed style loader and
+the complete one-argument `Progress` widget are still being migrated.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,

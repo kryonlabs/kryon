@@ -4,18 +4,12 @@
 #import "progress"
 #import "progress_props"
 #import "progress_raster"
+#import "progress_style"
 #import "style"
+#import "style_sheet"
 
 # Resolved faces are values supplied by Kryon's style cascade. The platform
 # only measures glyphs and rasterizes commands.
-ProgressFaces :: struct {
-    track: StyleFrame
-    fill: StyleFrame
-    label: StyleFrame
-    scale: float
-    fallback_font: i32
-}
-
 PreparedProgress :: struct {
     paint: ProgressPaint
     font: i32
@@ -48,4 +42,10 @@ PaintProgressProps :: (props: ProgressProps, faces: ProgressFaces) #export {
     prepared: PreparedProgress = PrepareProgress(props, faces)
     PaintProgress(props.bounds, prepared.paint, props.label,
         prepared.font, prepared.label_opacity)
+}
+
+PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
+    defaults: ProgressFaces) #export {
+    faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
+    PaintProgressProps(props, faces)
 }

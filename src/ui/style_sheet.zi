@@ -310,6 +310,13 @@ StyleSheet :: struct {
     rule_count: i32
 }
 
+# Owned rule storage for portable programs. The pointer-based StyleSheet above
+# remains the input shape of the old native loader during migration.
+StyleRules :: struct {
+    items: [320]StyleRule
+    count: i32
+}
+
 StylePriority :: struct {
     present: bool
     layer: i32
@@ -720,5 +727,20 @@ ResolveStyleRule :: (base: StyleData, facts: StyleFacts,
     rule: StyleRule, active_state: i32) -> StyleData #export {
     cascade: StyleCascade = BeginStyleCascade(base)
     cascade = ApplyStyleRule(cascade, rule, facts, active_state)
+    return FinishStyleCascade(cascade)
+}
+
+ResolveStyleRules :: (rules: StyleRules, base: StyleData,
+    facts: StyleFacts, active_state: i32) -> StyleData #export {
+    cascade: StyleCascade = BeginStyleCascade(base)
+    limit: i32 = rules.count
+    if limit < 0 { limit = 0 }
+    if limit > 320 { limit = 320 }
+    index: i32 = 0
+    while index < limit {
+        cascade = ApplyStyleRule(cascade, rules.items[index],
+            facts, active_state)
+        index += 1
+    }
     return FinishStyleCascade(cascade)
 }

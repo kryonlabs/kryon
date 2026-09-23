@@ -12,8 +12,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "progress"
 #import "progress_props"
+#import "progress_style"
 #import "progress_widget"
 #import "style"
+#import "style_sheet"
 
 Answer :: () -> i32 #export {
     props: ProgressProps
@@ -22,29 +24,67 @@ Answer :: () -> i32 #export {
     props.max = 100
     props.value = 25
     props.label = "50%"
-    faces: ProgressFaces
-    faces.track.value.background = (u32)0x11223344
-    faces.track.value.border = (u32)0x99aabbcc
-    faces.track.value.border_width = 2.0
-    faces.track.value.radius = 5.0
-    faces.fill.value.background = (u32)0x55667788
-    faces.label.value.foreground = (u32)0x10203080
-    faces.label.value.fields = (u32)StyleFontSize | (u32)StyleOpacity
-    faces.label.value.font_size = 14.0
-    faces.label.value.opacity = 0.5
-    faces.label.value.typeface = "body"
-    faces.scale = 1.0
-    faces.fallback_font = 16
-    PaintProgressProps(props, faces)
+    props.class_name = 7
+    defaults: ProgressFaces
+    defaults.scale = 1.0
+    defaults.fallback_font = 16
+    rules: StyleRules
+    rules.count = 320
+    track: StyleRule
+    track.selector = StyleDefaultSelector()
+    track.selector.kind = StyleKindProgress()
+    track.selector.class_name = 7
+    track.selector.role = ProgressTrackRole()
+    track.selector.tone = (i32)ButtonToneNeutral
+    track.style.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleBorderWidth | (u32)StyleRadius
+    track.style.background = (u32)0x11223344
+    track.style.border = (u32)0x99aabbcc
+    track.style.border_width = 2.0
+    track.style.radius = 5.0
+    rules.items[0] = track
+    filled: StyleRule
+    filled.selector = StyleDefaultSelector()
+    filled.selector.kind = StyleKindProgress()
+    filled.selector.class_name = 7
+    filled.selector.role = ProgressFillRole()
+    filled.selector.tone = (i32)ButtonToneAccent
+    filled.style.fields = (u32)StyleBackground
+    filled.style.background = (u32)0x55667788
+    rules.items[1] = filled
+    label: StyleRule
+    label.selector = StyleDefaultSelector()
+    label.selector.kind = StyleKindProgress()
+    label.selector.class_name = 7
+    label.selector.role = ProgressLabelRole()
+    label.selector.tone = (i32)ButtonToneNeutral
+    label.style.fields = (u32)StyleForeground | (u32)StyleFontSize |
+        (u32)StyleOpacity | (u32)StyleTypeface
+    label.style.foreground = (u32)0x10203080
+    label.style.font_size = 14.0
+    label.style.opacity = 0.5
+    label.style.typeface = "body"
+    rules.items[2] = label
+    ignored: StyleRule = track
+    ignored.selector.class_name = 99
+    ignored.layer = 100
+    ignored.style.background = (u32)0xdeadbeef
+    rules.items[3] = ignored
+    faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
+    if faces.track.value.background != (u32)0x11223344 ||
+        faces.fill.value.background != (u32)0x55667788 ||
+        faces.label.value.font_size != 14.0 { return 0 }
+    PaintProgressFromRules(props, rules, defaults)
     props.value = 0
     props.label = ""
-    faces.track.value.border_width = 0.0
-    faces.label.value.fields = (u32)StyleOpacity
-    prepared: PreparedProgress = PrepareProgress(props, faces)
+    rules.count = 0
+    defaults.track.value.background = (u32)0x11223344
+    defaults.track.value.radius = 5.0
+    prepared: PreparedProgress = PrepareProgress(props, defaults)
     if prepared.font != 16 || prepared.paint.layout.fill_bounds.width != 0.0 {
         return 0
     }
-    PaintProgressProps(props, faces)
+    PaintProgressFromRules(props, rules, defaults)
     return 42
 }
 ZI

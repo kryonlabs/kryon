@@ -76,6 +76,7 @@ profile_header.zi
 progress.zi
 progress_raster.zi
 progress_props.zi
+progress_style.zi
 progress_widget.zi
 radio.zi
 radio_props.zi

@@ -1,0 +1,42 @@
+#module "progress_style"
+#import "control_props"
+#import "progress"
+#import "style"
+#import "style_sheet"
+#import "surface"
+
+ProgressFaces :: struct {
+    track: StyleFrame
+    fill: StyleFrame
+    label: StyleFrame
+    scale: float
+    fallback_font: i32
+}
+
+ProgressFacts :: (class_name: i32, role: i32,
+    tone: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindProgress(), 0, class_name, role,
+        tone, (i32)ButtonEmphasisFilled,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+}
+
+ProgressFacesFor :: (rules: StyleRules, class_name: i32,
+    defaults: ProgressFaces) -> ProgressFaces #export {
+    faces: ProgressFaces = defaults
+    faces.track.value = ResolveStyleRules(rules, defaults.track.value,
+        ProgressFacts(class_name, ProgressTrackRole(), ButtonToneNeutral),
+        (i32)ButtonStateNormal)
+    faces.fill.value = ResolveStyleRules(rules, defaults.fill.value,
+        ProgressFacts(class_name, ProgressFillRole(), ButtonToneAccent),
+        (i32)ButtonStateNormal)
+    faces.label.value = ResolveStyleRules(rules, defaults.label.value,
+        ProgressFacts(class_name, ProgressLabelRole(), ButtonToneNeutral),
+        (i32)ButtonStateNormal)
+    faces.track.fill = FillState(faces.track.value.fields,
+        faces.track.value.background, faces.track.value.background_end)
+    faces.fill.fill = FillState(faces.fill.value.fields,
+        faces.fill.value.background, faces.fill.value.background_end)
+    faces.label.fill = FillState(faces.label.value.fields,
+        faces.label.value.background, faces.label.value.background_end)
+    return faces
+}
