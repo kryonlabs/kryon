@@ -4,9 +4,9 @@
 RouterRoute :: struct {
     id: i32
     parent: i32
-    path: const char*
-    title: const char*
-    group: const char*
+    path: string
+    title: string
+    group: string
 }
 
 RouterState :: struct {

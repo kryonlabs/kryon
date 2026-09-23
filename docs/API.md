@@ -52,8 +52,11 @@ with `make` and `make test` from the Kryon repository. No display is started.
 
 This library currently covers selected widget policy and line rendering.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
-eligibility, and default tint decisions are checked Ziran functions. Full
-`Text(TextProps)`, `Image(ImageProps)`,
+eligibility, and default tint decisions are checked Ziran functions. Text fields
+in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
+`FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
+props still contain pointer-based state or collections. Full `Text(TextProps)`,
+`Image(ImageProps)`,
 widget composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not

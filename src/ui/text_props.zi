@@ -11,7 +11,7 @@ TextElementKind :: enum {
 
 TextElement :: struct {
     type: TextElementKind
-    text: const char*
+    text: string
     icon: Texture2D
     icon_type: i32
     icon_size: i32
@@ -103,7 +103,7 @@ TextWrap :: enum {
 
 TextProps :: struct {
     bounds: Rectangle
-    text: const char*
+    text: string
     font: i32
     class_name: i32
     wrap: TextWrap

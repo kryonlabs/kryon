@@ -4,8 +4,8 @@
 LinkProps :: struct {
     bounds: Rectangle
     class_name: i32
-    text: const char*
-    link: const char*
+    text: string
+    link: string
     focus_id: i32
     disabled: bool
 }

@@ -4,7 +4,7 @@
 SeparatorProps :: struct {
     bounds: Rectangle
     vertical: bool
-    label: const char*
+    label: string
     disabled: bool
     class_name: i32
 }

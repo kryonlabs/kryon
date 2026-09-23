@@ -6,6 +6,6 @@ ProgressProps :: struct {
     min: i32
     max: i32
     value: i32
-    label: const char*
+    label: string
     class_name: i32
 }

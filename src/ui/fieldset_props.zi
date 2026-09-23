@@ -4,5 +4,5 @@
 FieldsetProps :: struct {
     bounds: Rectangle
     class_name: i32
-    title: const char*
+    title: string
 }

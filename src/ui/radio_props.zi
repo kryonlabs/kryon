@@ -3,7 +3,7 @@
 
 RadioProps :: struct {
     bounds: Rectangle
-    label: const char*
+    label: string
     id: i32
     checked: bool
     disabled: bool
