@@ -50,6 +50,16 @@ menu, split,
 loading animation, material layers, keyboard focus, and immediate input still
 need migration. `ButtonProps` has a portable string label and no C pointers;
 menu items and mutable menu state need a separate value-based surface.
+
+The checked `Checkbox(CheckboxProps)` accepts a portable `checked` value and
+returns `{checked, changed}` after a retained pointer activation. It records
+the resulting selected state on its tree node, resolves KSS box and label
+roles, and queues the box, check mark, and clipped label. Hosts supply raw
+pointer samples, glyph metrics, and raster callbacks; callers keep the value
+returned by Checkbox for the next frame. The old pointer and flag fields are
+not part of this checked API. Keyboard focus, ancestor input clipping, and
+native widget integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.
@@ -70,8 +80,8 @@ receive the requested typeface as borrowed UTF-8 bytes.
 `TextSliceBinding()` supplies borrowed byte ranges for checked `Text` line
 composition; the host does not choose wrap points or positions.
 `RasterTextClippedBinding()` supplies a glyph raster callback that must honor
-the clip rectangle selected by `Text`. Other widget labels continue to use
-`RasterTextBinding()` without a clip.
+the clip rectangle selected by `Text`, Button, and Checkbox. Some other widget
+labels still use `RasterTextBinding()` without a clip.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 

@@ -42,8 +42,16 @@ The checked standard `Button(ButtonProps)` composes KSS state styling, label
 measurement, retained pointer activation, and queued shape, clipped image, and
 clipped text paint. `ButtonProps.image` uses portable `ImageProps` asset or
 texture values and Ziran image fit policy. Glyph and raw texture icons, menu,
-split, loading animation,
-material layers, keyboard focus, and immediate input still need migration.
+split, loading animation, material layers, keyboard focus, and immediate input
+still need migration.
+
+The checked `Checkbox(CheckboxProps)` accepts and returns portable values,
+uses the retained pointer router, resolves KSS box and label roles, and queues
+the box, mark, and clipped label. Its committed tree node carries the selected
+state. The caller stores a returned value for the next frame; hosts supply raw
+input, glyph measurements, and raster effects. Keyboard focus and native host
+integration remain open.
+
 `Text(TextProps)` now resolves style, measures and wraps words, positions lines,
 and queues clipped text and strikethrough paint from Ziran. The platform
 provides raw byte slices, glyph metrics, and a raster callback that honors the
@@ -74,10 +82,11 @@ tree or paint queue before committing and emits raster effects only after
 commit; it does not import individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
-The host supplies raw pointer samples. Button uses this path for retained
-pointer activation; remaining input modes, including keyboard focus and
-ancestor input clipping, still need
-migration. Other widget submissions and retained layout are also incomplete.
+The host supplies raw pointer samples. Button and Checkbox use this path for
+retained pointer activation; the router also admits Toggle and Radio nodes.
+Remaining input modes, including keyboard focus and ancestor input clipping,
+still need migration. Other widget submissions and retained layout are also
+incomplete.
 
 The other `.zi` modules were moved from the previous implementation and are
 not yet in the checked build. Native widget rendering and downstream app

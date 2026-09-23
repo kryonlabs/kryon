@@ -29,6 +29,16 @@ TreeInteractiveButtonLike :: (kind: i32, focus_id: i32,
     return !disabled && !loading
 }
 
+# Checked value controls use the same retained press and release routing as
+# Buttons. Cards remain opt in through a positive focus id.
+TreePointerActivatable :: (kind: i32, focus_id: i32,
+    disabled: bool, loading: bool) -> bool #export {
+    if disabled || loading { return false }
+    if kind == WidgetKindCard { return focus_id > 0 }
+    return kind == WidgetKindButton || kind == WidgetKindCheckbox ||
+        kind == WidgetKindToggle || kind == WidgetKindRadio
+}
+
 TreeCommitPlan :: struct {
     keep_committed: bool
     reconcile: bool
@@ -64,6 +74,7 @@ TreeEntry :: struct {
     interactive: bool
     disabled: bool
     loading: bool
+    selected: bool
     focus_id: i32
 }
 
@@ -233,6 +244,12 @@ TreeSetInteractive :: (index: i32, disabled: bool, loading: bool,
     active_tree.submitted[index].loading = loading
     active_tree.submitted[index].focus_id = focus_id
     active_tree.submitted[index].interactive = true
+}
+
+TreeSetSelected :: (index: i32, selected: bool) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    active_tree.submitted[index].selected = selected
 }
 
 TreeFind :: (key: u64, parent_key: u64, kind: i32) -> i32 #export {

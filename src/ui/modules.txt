@@ -15,6 +15,7 @@ card.zi
 card_props.zi
 checkbox.zi
 checkbox_props.zi
+checkbox_widget.zi
 collapsible.zi
 collapsible_props.zi
 color_picker.zi

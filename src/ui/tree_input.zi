@@ -33,9 +33,13 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
     index: i32 = TreeCount() - 1
     while index > 0 {
         entry: TreeEntry = TreeNodeAt(index)
-        if entry.interactive && TreeButtonLike(entry.kind) &&
+        if entry.interactive &&
+            (TreeButtonLike(entry.kind) ||
+                entry.kind == WidgetKindCheckbox ||
+                entry.kind == WidgetKindToggle ||
+                entry.kind == WidgetKindRadio) &&
             PointInBounds(x, y, entry.bounds) {
-            if TreeInteractiveButtonLike(entry.kind, entry.focus_id,
+            if TreePointerActivatable(entry.kind, entry.focus_id,
                 entry.disabled, entry.loading) { return index }
             return -1
         }
@@ -90,7 +94,7 @@ TreeTakeActivationAt :: (index: i32) -> bool #export {
     if index < 0 || index >= TreeCount() { return false }
     entry: TreeEntry = TreeNodeAt(index)
     if !entry.interactive ||
-        !TreeInteractiveButtonLike(entry.kind, entry.focus_id,
+        !TreePointerActivatable(entry.kind, entry.focus_id,
         entry.disabled, entry.loading) ||
         active_pointer.activation_generation == 0 ||
         active_pointer.activation_generation != entry.identity_generation {

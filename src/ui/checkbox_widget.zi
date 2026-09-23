@@ -1,0 +1,178 @@
+#module "checkbox_widget"
+#import "checkbox"
+#import "checkbox_props"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+CheckboxDefaultFace :: (role: i32, disabled: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleFocus |
+        (u32)StyleBorderWidth | (u32)StyleOpacity |
+        (u32)StyleFontSize
+    face.background = (u32)0x00000000
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0x737373ff
+    face.focus = (u32)0x2563ebff
+    face.border_width = 1.0
+    face.opacity = 1.0
+    face.font_size = 14.0
+    if role == CheckboxBoxRoleForTone((ButtonTone)ButtonToneAccent) {
+        face.background = (u32)0x2563ebff
+        face.foreground = (u32)0xffffffff
+        face.border = (u32)0x2563ebff
+    }
+    if disabled {
+        face.background = Opacity(face.background, 0.45)
+        face.foreground = Opacity(face.foreground, 0.45)
+        face.border = Opacity(face.border, 0.45)
+    }
+    return face
+}
+
+CheckboxFaceFor :: (rules: StyleRules, props: CheckboxProps,
+    role: i32, tone: ButtonTone, state: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindCheckbox(),
+        props.id, props.class_name, role, (i32)tone,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(rules,
+        CheckboxDefaultFace(role, props.disabled), facts, state)
+    return frame
+}
+
+PaintCheckboxSegment :: (node: i32, start: Vector2, end: Vector2,
+    width: float, color: Color) #export {
+    strokes: i32 = (i32)(width + 0.5)
+    if strokes < 1 { strokes = 1 }
+    if strokes > 8 { strokes = 8 }
+    index: i32 = 0
+    while index < strokes {
+        offset: float = (float)index - (float)(strokes - 1) * 0.5
+        PaintLine(node, (Rectangle){start.x, start.y + offset,
+            end.x - start.x, end.y - start.y}, color)
+        index += 1
+    }
+}
+
+PaintCheckboxForNode :: (node: i32, props: CheckboxProps,
+    paint: CheckboxPaint, label: StyleFrame, font: i32,
+    label_height: i32) #export {
+    box_opacity: float = StyleOpacityValue(paint.box.value.fields,
+        paint.box.value.opacity)
+    active_opacity: float = StyleOpacityValue(paint.active.value.fields,
+        paint.active.value.opacity)
+    if paint.show_state {
+        PaintRoundedFill(node, paint.state_bounds,
+            paint.state_radius, 8,
+            ColorFromPacked(Opacity(paint.state_color, box_opacity)))
+    }
+    if paint.show_focus {
+        PaintRoundedOutline(node, paint.focus_bounds,
+            paint.focus_radius, 8, paint.border_width,
+            ColorFromPacked(Opacity(paint.focus_color, box_opacity)))
+    }
+    if paint.show_fill {
+        PaintRoundedFill(node, paint.box_bounds, paint.radius, 8,
+            ColorFromPacked(Opacity(paint.fill_color, active_opacity)))
+    }
+    if paint.border_width > 0.0 {
+        opacity: float = box_opacity
+        if paint.show_fill { opacity = active_opacity }
+        PaintRoundedOutline(node, paint.box_bounds, paint.radius, 8,
+            paint.border_width,
+            ColorFromPacked(Opacity(paint.border_color, opacity)))
+    }
+    if paint.show_mark {
+        mark: Color = ColorFromPacked(Opacity(paint.mark_color,
+            active_opacity))
+        PaintCheckboxSegment(node, paint.check_start, paint.check_middle,
+            paint.mark_width, mark)
+        PaintCheckboxSegment(node, paint.check_middle, paint.check_end,
+            paint.mark_width, mark)
+    }
+    if props.label != "" {
+        x: i32 = (i32)CheckboxLabelXFor(paint.slot_bounds,
+            1.0, label)
+        y: i32 = (i32)CheckboxLabelYFor(paint.bounds,
+            (float)label_height)
+        label_opacity: float = StyleOpacityValue(label.value.fields,
+            label.value.opacity)
+        PaintClippedLabel(node, props.label, x, y, font,
+            ColorFromPacked(Opacity(paint.label_color,
+                label_opacity)), paint.bounds)
+    }
+}
+
+# The caller owns the current value. A release routed from the previous tree
+# returns a proposed value, without a platform pointer or mutable host state.
+Checkbox :: (props: CheckboxProps) -> CheckboxValueResult #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    previous: i32 = -1
+    if TreeIsBuilding() && key != (u64)0 {
+        previous = TreeFind(key, TreeRootKey(), WidgetKindCheckbox)
+    }
+    clicked: bool = TreeTakeActivationAt(previous)
+    result: CheckboxValueResult = CheckboxValueApply(props.checked,
+        clicked && !props.disabled, true)
+    state: i32 = ResolveState((i32)ButtonStateAuto, props.disabled,
+        false, TreePressedAt(previous), TreeHoveredAt(previous),
+        false, result.checked)
+    rules: StyleRules = ActiveStyleRules()
+    box: StyleFrame = CheckboxFaceFor(rules, props,
+        CheckboxBoxRoleForTone((ButtonTone)ButtonToneNeutral),
+        (ButtonTone)ButtonToneNeutral, state)
+    active: StyleFrame = CheckboxFaceFor(rules, props,
+        CheckboxBoxRoleForTone((ButtonTone)ButtonToneAccent),
+        (ButtonTone)ButtonToneAccent, state)
+    label: StyleFrame = CheckboxFaceFor(rules, props,
+        CheckboxLabelRole(), (ButtonTone)ButtonToneNeutral, state)
+    font: i32 = ResolveFont(0,
+        StyleFontValue(label.value.fields, label.value.font_size), 14)
+    label_width: i32 = 0
+    label_height: i32 = 0
+    if props.label != "" {
+        label_width = GlyphWidth(props.label, font,
+            label.value.typeface)
+        label_height = GlyphLineHeight(font, label.value.typeface)
+    }
+    layout: CheckboxLayout = CheckboxLayoutForText(props.bounds.x,
+        props.bounds.y, (float)label_width, (float)label_height,
+        1.0, box, label)
+    bounds: Rectangle = layout.bounds
+    if props.bounds.width > 0.0 { bounds.width = props.bounds.width }
+    if props.bounds.height > 0.0 { bounds.height = props.bounds.height }
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindCheckbox, bounds)
+        if node < 0 { return result }
+        TreeSetInteractive(node, props.disabled, false, props.id)
+        TreeSetSelected(node, result.checked)
+        TreeSetLabel(node, props.label)
+    }
+    spec: CheckboxSpec
+    spec.bounds = bounds
+    spec.checked = result.checked
+    spec.enabled = !props.disabled
+    spec.hovered = TreeHoveredAt(previous)
+    spec.pressed = TreePressedAt(previous)
+    spec.scale = 1.0
+    spec.box = box
+    spec.active = active
+    spec.label = label
+    paint: CheckboxPaint = CheckboxPaintFor(spec)
+    PaintCheckboxForNode(node, props, paint, label, font,
+        label_height)
+    return result
+}

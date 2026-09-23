@@ -104,6 +104,30 @@ Answer :: () -> i32 #export {
     TreePointerUpdate((PointerFrame){15.0, 15.0, true, true, false})
     TreePointerUpdate((PointerFrame){15.0, 15.0, false, false, true})
     if !TreeTakeActivationAt(1) { return -19 }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    checkbox: i32 = TreeSubmit((u64)14, 0, WidgetKindCheckbox,
+        (Rectangle){10.0, 10.0, 30.0, 30.0})
+    TreeSetInteractive(checkbox, false, false, 0)
+    toggle: i32 = TreeSubmit((u64)15, 0, WidgetKindToggle,
+        (Rectangle){45.0, 10.0, 30.0, 30.0})
+    TreeSetInteractive(toggle, false, false, 0)
+    if !TreeFinish() || TreeHitAt(15.0, 15.0) != 1 ||
+        TreeHitAt(50.0, 15.0) != 2 { return -21 }
+    TreePointerUpdate((PointerFrame){15.0, 15.0, true, true, false})
+    TreePointerUpdate((PointerFrame){15.0, 15.0, false, false, true})
+    if !TreeTakeActivationAt(checkbox) || TreeTakeActivationAt(toggle) {
+        return -22
+    }
+    TreePointerUpdate((PointerFrame){50.0, 15.0, true, true, false})
+    TreePointerUpdate((PointerFrame){50.0, 15.0, false, false, true})
+    if !TreeTakeActivationAt(toggle) { return -23 }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    checkbox = TreeSubmit((u64)14, 0, WidgetKindCheckbox,
+        (Rectangle){10.0, 10.0, 30.0, 30.0})
+    TreeSetInteractive(checkbox, true, false, 0)
+    if !TreeFinish() || TreeHitAt(15.0, 15.0) != -1 {
+        return -24
+    }
     return 42
 }
 ZI

@@ -176,6 +176,7 @@ Button :: (props: ButtonProps) -> i32 #export {
         node = TreeSubmit(key, 0, WidgetKindButton, bounds)
         if node < 0 { return 0 }
         TreeSetInteractive(node, flags.disabled, flags.loading, props.id)
+        TreeSetSelected(node, flags.selected)
         TreeSetLabel(node, props.label)
     }
     PaintButtonForNode(node, props, bounds, face, font,
