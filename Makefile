@@ -7,6 +7,9 @@ BUILD_DIR ?= build/ziran
 ZIRAN_DIR ?= ../ziran
 ZIRAN_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/ziran)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
+ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
+    $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/include/*.h \
+    $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/Makefile)
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE)))
@@ -21,7 +24,7 @@ $(BUILD_DIR)/libkryon_host.a: src/backend/ziran_host.c include/kryon_portable_ho
 	$(AR) rcs $@ $(BUILD_DIR)/ziran_host.o
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
-$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile
+$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(ZIRAN_SOURCES)
 	$(MAKE) -C $(ZIRAN_DIR) all
 	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj $(BUILD_DIR)/obj-cpp
 	$(ZIRAN_BIN) ir --root src/ui -o $(BUILD_DIR)/ir $(SOURCE)
