@@ -41,13 +41,16 @@ precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.s
 files show source, saved-IR, and bundle use of those modules.
 
 `build/ziran/libkryon.a` is the current C archive; generated headers are in
-`build/ziran/c/`. Build and test it with `make` and `make test` from the Kryon
-repository. No display is started.
+`build/ziran/c/`. The first portable host binding is
+`FramePacingBinding()` from `include/kryon_portable_host.h` in
+`build/ziran/libkryon_host.a`; the caller supplies the platform
+`SetTargetFPS` and passes the binding to Ziran's `BundleRun`. Build and test
+with `make` and `make test` from the Kryon repository. No display is started.
 
 ## Migration boundary
 
 This is a policy library subset. Full `Text(TextProps)`, `Image(ImageProps)`,
-widget composition, platform rendering, native host linking, and downstream
+widget composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not
 supported API yet. See [architecture](ARCHITECTURE.md) and

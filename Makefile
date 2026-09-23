@@ -13,7 +13,12 @@ MODULES := $(basename $(notdir $(SOURCE)))
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 
 .PHONY: all check test ziran-test clean
-all: $(BUILD_DIR)/libkryon.a
+all: $(BUILD_DIR)/libkryon.a $(BUILD_DIR)/libkryon_host.a
+
+$(BUILD_DIR)/libkryon_host.a: src/backend/ziran_host.c include/kryon_portable_host.h $(ZIRAN_INCLUDE)/ziran_host.h
+	mkdir -p $(BUILD_DIR)
+	$(CC) -std=c11 -Iinclude -I$(ZIRAN_INCLUDE) -c $< -o $(BUILD_DIR)/ziran_host.o
+	$(AR) rcs $@ $(BUILD_DIR)/ziran_host.o
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
 $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt
@@ -31,7 +36,7 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt
 	$(AR) rcs $@ $(OBJECTS)
 	GO111MODULE=off go test ./$(BUILD_DIR)/go
 
-ziran-test:
+ziran-test: $(BUILD_DIR)/libkryon_host.a
 	@for test_file in tests/ziran_*_test.sh; do sh "$$test_file" || exit 1; done
 
 check: all ziran-test

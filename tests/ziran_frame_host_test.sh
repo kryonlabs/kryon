@@ -29,3 +29,8 @@ if "$ziran" run "$work/source.zib" 2> "$work/missing.err"; then
 fi
 grep -Fq 'missing host capability: frame_pacing:ApplyTargetFPS' \
     "$work/missing.err"
+"${CC:-cc}" -std=c11 -I"$repo/include" -I"$repo/../ziran/include" \
+    -o "$work/frame-host-test" "$repo/tests/ziran_frame_host_test.c" \
+    "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a"
+"$work/frame-host-test" "$work/source.zib"
+"$work/frame-host-test" "$work/saved.zib"

@@ -27,7 +27,8 @@ the operating system requires it; they must not duplicate widget policy.
 ## Current build
 
 `make` compiles the [checked module list](../src/ui/modules.txt) to `.zir`, C,
-C++, and Go, then builds `build/ziran/libkryon.a`. `make test` runs the current
+C++, and Go, then builds `build/ziran/libkryon.a` and the initial portable host
+adapter `build/ziran/libkryon_host.a`. `make test` runs the current
 source, saved-IR, and portable bundle tests. The checked modules cover
 geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, swipe, and
 scroll interaction, frame pacing, paragraph layout policy, text input and text row decisions,
@@ -40,9 +41,11 @@ not yet in the checked build. Native widget rendering and downstream app
 integration are incomplete. The current C archive is therefore a subset of
 the intended Kryon library. A `.zib` containing Kryon code must link only the
 modules an application imports and require host capabilities explicitly.
-`frame_pacing.zi` now declares a scalar timer capability when its commit
-function is linked. Rendering and pointer-bearing widget capabilities still
-need portable host contracts.
+`frame_pacing.zi` declares a scalar timer capability when its commit function
+is linked. The adapter binds it to the selected backend's `SetTargetFPS`; a
+bundle test links Ziran's public host archive and exercises the call with a
+timer stub, without opening a display. Rendering and pointer-bearing widget
+capabilities still need portable host contracts.
 
 ## Completion requirements
 
