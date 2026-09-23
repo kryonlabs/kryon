@@ -129,7 +129,7 @@ Spinbox :: (props: SpinboxProps) -> SpinboxStepResult #export {
         SpinboxDefaultButtonWidth(1.0))
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(key, 0, WidgetKindSpinbox, bounds)
+        node = TreeSubmitCurrent(key, WidgetKindSpinbox, bounds)
         if node < 0 {
             empty: SpinboxStepResult
             empty.value = props.value

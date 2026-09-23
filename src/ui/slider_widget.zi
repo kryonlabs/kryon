@@ -74,7 +74,7 @@ PrepareSlider :: (key: u64, bounds: Rectangle, id: i32,
     if prepared.key == (u64)0 { prepared.key = TreeNextKey() }
     previous: i32 = -1
     if TreeIsBuilding() && prepared.key != (u64)0 {
-        previous = TreeFind(prepared.key, TreeRootKey(),
+        previous = TreeFind(prepared.key, TreeCurrentParentKey(),
             WidgetKindSlider)
     }
     prepared.drag = TreeTakeDragAt(previous)
@@ -198,7 +198,7 @@ SubmitSlider :: (prepared: SliderPrepared, ratio: float,
     paint: SliderPaint = SliderPaintFor(spec)
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(prepared.key, 0, WidgetKindSlider,
+        node = TreeSubmitCurrent(prepared.key, WidgetKindSlider,
             prepared.layout.bounds)
         if node < 0 { return }
         TreeSetInteractive(node, disabled, false, id)

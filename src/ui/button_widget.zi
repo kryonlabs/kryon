@@ -187,5 +187,5 @@ SubmitButton :: (props: ButtonProps, parent_index: i32,
 }
 
 Button :: (props: ButtonProps) -> i32 #export {
-    return SubmitButton(props, 0, TreeRootKey())
+    return SubmitButton(props, TreeCurrentParent(), TreeCurrentParentKey())
 }

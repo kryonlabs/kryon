@@ -241,3 +241,11 @@ application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not
 supported API yet. See [architecture](ARCHITECTURE.md) and
 [boundaries](BOUNDARIES.md) for the intended ownership and completion gates.
+
+The checked retained tree supports nested composition. `TreeStart` opens the
+root scope. A container calls `TreeSubmitCurrent`, then `TreePushScope(node)`
+before composing children, and `TreePopScope()` afterward. Standard checked
+widgets submit to the current scope; controls that create their own children
+can still call `TreeSubmit` with an explicit parent index. `TreeFinish` rejects
+an unclosed scope and preserves the previous committed tree. `TreeCancel`
+discards the current build and its scope stack.

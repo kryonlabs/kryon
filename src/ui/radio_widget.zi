@@ -89,7 +89,7 @@ Radio :: (props: RadioProps) -> i32 #export {
     if key == (u64)0 { key = TreeNextKey() }
     previous: i32 = -1
     if TreeIsBuilding() && key != (u64)0 {
-        previous = TreeFind(key, TreeRootKey(), WidgetKindRadio)
+        previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindRadio)
     }
     activated: i32 = RadioActivationFor(props.id,
         TreeTakeActivationAt(previous), props.disabled)
@@ -150,7 +150,7 @@ Radio :: (props: RadioProps) -> i32 #export {
     paint.label_color = label.value.foreground
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(key, 0, WidgetKindRadio, paint.hit_bounds)
+        node = TreeSubmitCurrent(key, WidgetKindRadio, paint.hit_bounds)
         if node < 0 { return activated }
         TreeSetInteractive(node, props.disabled, false, props.id)
         TreeSetSelected(node, props.checked)

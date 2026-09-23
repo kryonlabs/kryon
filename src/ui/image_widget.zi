@@ -87,7 +87,7 @@ PaintImagePlaceholder :: (node: i32, image: ImageProps,
 Image :: (image: ImageProps) #export {
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(image.key, 0, WidgetKindImage, image.bounds)
+        node = TreeSubmitCurrent(image.key, WidgetKindImage, image.bounds)
         if node < 0 { return }
         TreeSetLabel(node, image.alt_text)
     }

@@ -83,6 +83,8 @@ TreeStore :: struct {
     committed: [1024]TreeEntry
     submitted: [1024]TreeEntry
     slots: [2048]i32
+    scope: [64]i32
+    scope_depth: i32
     committed_count: i32
     submitted_count: i32
     next_identity_generation: i32
@@ -94,11 +96,56 @@ active_tree :: TreeStore #global
 
 TreeStart :: (screen_key: u64, bounds: Rectangle) #export {
     active_tree.submitted_count = 0
+    active_tree.scope_depth = 0
     active_tree.building = true
     active_tree.overflow = false
     key: u64 = screen_key
     if key == 0 { key = 1 }
-    TreeSubmit(key, -1, WidgetKindScreen, bounds)
+    if TreeSubmit(key, -1, WidgetKindScreen, bounds) == 0 {
+        active_tree.scope[0] = 0
+        active_tree.scope_depth = 1
+    }
+}
+
+# The root is the default scope. A container submits itself, pushes its node,
+# composes children, then pops it. Explicit TreeSubmit still accepts a parent
+# index for controls such as Spinbox that create their own child nodes.
+TreeCurrentParent :: () -> i32 #export {
+    if !active_tree.building || active_tree.scope_depth <= 0 {
+        return -1
+    }
+    return active_tree.scope[active_tree.scope_depth - 1]
+}
+
+TreeCurrentParentKey :: () -> u64 #export {
+    parent: i32 = TreeCurrentParent()
+    if parent < 0 { return (u64)0 }
+    return active_tree.submitted[parent].key
+}
+
+TreeSubmitCurrent :: (key: u64, kind: i32,
+    bounds: Rectangle) -> i32 #export {
+    parent: i32 = TreeCurrentParent()
+    if parent < 0 { return -1 }
+    return TreeSubmit(key, parent, kind, bounds)
+}
+
+TreePushScope :: (index: i32) -> bool #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count ||
+        active_tree.scope_depth <= 0 ||
+        active_tree.scope_depth >= 64 { return false }
+    active_tree.scope[active_tree.scope_depth] = index
+    active_tree.scope_depth += 1
+    return true
+}
+
+TreePopScope :: () -> bool #export {
+    if !active_tree.building || active_tree.scope_depth <= 1 {
+        return false
+    }
+    active_tree.scope_depth -= 1
+    return true
 }
 
 TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
@@ -141,7 +188,11 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
 TreeFinish :: () -> bool #export {
     if !active_tree.building { return false }
     active_tree.building = false
-    if active_tree.overflow { return false }
+    if active_tree.overflow || active_tree.scope_depth != 1 {
+        active_tree.scope_depth = 0
+        return false
+    }
+    active_tree.scope_depth = 0
     slot: i32 = 0
     while slot < 2048 {
         active_tree.slots[slot] = -1
@@ -222,6 +273,7 @@ TreeRootBounds :: () -> Rectangle #export {
 TreeCancel :: () #export {
     active_tree.building = false
     active_tree.submitted_count = 0
+    active_tree.scope_depth = 0
     active_tree.overflow = false
 }
 

@@ -183,7 +183,7 @@ Router :: (props: RouterProps, state: RouterState,
         key: u64 = props.key
         if key == (u64)0 { key = TreeNextKey() }
         bounds: Rectangle = props.bounds
-        node: i32 = TreeSubmit(key, 0, WidgetKindRouter, bounds)
+        node: i32 = TreeSubmitCurrent(key, WidgetKindRouter, bounds)
         result.node = node
     }
     return result

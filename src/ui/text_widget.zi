@@ -170,7 +170,7 @@ Text :: (props: TextProps) #export {
     prepared: PreparedText = PrepareText(props, face)
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(props.key, 0, WidgetKindText, prepared.bounds)
+        node = TreeSubmitCurrent(props.key, WidgetKindText, prepared.bounds)
         if node < 0 { return }
         TreeSetLabel(node, props.text)
     }

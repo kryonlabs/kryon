@@ -121,7 +121,7 @@ Checkbox :: (props: CheckboxProps) -> CheckboxValueResult #export {
     if key == (u64)0 { key = TreeNextKey() }
     previous: i32 = -1
     if TreeIsBuilding() && key != (u64)0 {
-        previous = TreeFind(key, TreeRootKey(), WidgetKindCheckbox)
+        previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindCheckbox)
     }
     clicked: bool = TreeTakeActivationAt(previous)
     result: CheckboxValueResult = CheckboxValueApply(props.checked,
@@ -155,7 +155,7 @@ Checkbox :: (props: CheckboxProps) -> CheckboxValueResult #export {
     if props.bounds.height > 0.0 { bounds.height = props.bounds.height }
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(key, 0, WidgetKindCheckbox, bounds)
+        node = TreeSubmitCurrent(key, WidgetKindCheckbox, bounds)
         if node < 0 { return result }
         TreeSetInteractive(node, props.disabled, false, props.id)
         TreeSetSelected(node, result.checked)

@@ -58,7 +58,7 @@ Fieldset :: (props: FieldsetProps) #export {
         (float)title_width, props.title != "", 1.0, face)
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(key, 0, WidgetKindFieldset, paint.frame)
+        node = TreeSubmitCurrent(key, WidgetKindFieldset, paint.frame)
         if node < 0 { return }
         TreeSetLabel(node, props.title)
     }
