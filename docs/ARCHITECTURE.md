@@ -59,9 +59,13 @@ alpha decisions across the same targets.
 policy, including pointer interaction, cell geometry, stepping, rounding, and
 format selection. The [input test](../tests/ziran_input_test.sh) checks native
 C, C++, and Go from source and saved `.zir`; the reachable numeric policy also
-runs as portable `.zib`. Format strings and pointer backed props are not yet
-portable `.zib` values.
-`make ziran-test` runs the eight migration tests with an adjacent Ziran checkout.
+runs as portable `.zib`, including format selection. Pointer backed props are
+not yet portable `.zib` values.
+`zi/text_rows.zi` ports logical line scanning, heading sizing, row breaks,
+word starts, and cursor placement from `runtime/text_rows.kry`. The
+[text row test](../tests/ziran_text_rows_test.sh) runs imported source and
+saved `.zir` modules in C, C++, Go, and `.zib`.
+`make ziran-test` runs the nine migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 

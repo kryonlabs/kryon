@@ -40,6 +40,7 @@ Answer :: () -> i32 #export {
     continuous: InputStep = InputStepValueForKind((NumericValueKind)NumericDouble, 2.0,
         0.5, 2.0, 1, false)
     if !continuous.changed || continuous.value != 2.5 { return 0 }
+    if FormatAnswer() != 42 { return 0 }
     return 42
 }
 

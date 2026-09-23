@@ -1,0 +1,81 @@
+#module "text_rows"
+
+# Byte ranges remain borrowed from the host. Grapheme boundaries and measured
+# prefix widths come from its Unicode/font services.
+TextLogicalLine :: struct {
+    start: i32
+    end: i32
+    next: i32
+    valid: bool
+}
+
+TextLogicalLineFor :: (text: string, offset: i32) -> TextLogicalLine #export {
+    line: TextLogicalLine
+    if offset < 0 { offset = 0 }
+    if offset > text.length { return line }
+    line.valid = true
+    line.start = offset
+    while offset < text.length && text[offset] != (u8)10 { offset += 1 }
+    line.end = offset
+    line.next = offset + 1
+    if offset < text.length && offset > line.start && text[offset - 1] == (u8)13 {
+        line.end -= 1
+    }
+    return line
+}
+
+TextRowFontFor :: (text: string, start: i32, end: i32, base_font: i32,
+headings: bool) -> i32 #export {
+    if !headings || base_font >= 24 { return base_font }
+    hashes: i32 = 0
+    while start + hashes < end && hashes < 3 && text[start + hashes] == (u8)35 {
+        hashes += 1
+    }
+    if hashes > 0 && hashes <= 2 && start + hashes < end && text[start + hashes] == (u8)32 {
+        return 24
+    }
+    return base_font
+}
+
+TextRowBreak :: struct {
+    end: i32
+    space: i32
+    has_space: bool
+    done: bool
+}
+
+TextRowAdvance :: (state: TextRowBreak, start: i32, next: i32, line_end: i32,
+space: bool, measured: float, max_width: float, words: bool) -> TextRowBreak #export {
+    if state.done { return state }
+    if next > line_end { next = line_end }
+    if max_width > 0.0 && measured > max_width && state.end > start {
+        if words && state.has_space && state.space > start { state.end = state.space }
+        state.done = true
+        return state
+    }
+    if space {
+        state.space = state.end
+        state.has_space = true
+    }
+    state.done = next <= state.end || next >= line_end ||
+    (max_width > 0.0 && measured > max_width)
+    state.end = next
+    return state
+}
+
+TextRowNextStart :: (text: string, offset: i32, end: i32, words: bool) -> i32 #export {
+    if words {
+        while offset < end && (text[offset] == (u8)32 || text[offset] == (u8)9) {
+            offset += 1
+        }
+    }
+    return offset
+}
+
+TextRowHasCursor :: (start: i32, end: i32, line_end: i32, cursor: i32) -> bool #export {
+    return cursor >= start && cursor <= end && (cursor < end || end == line_end)
+}
+
+TextRowAtY :: (y: i32, height: i32, target: i32, last: bool) -> bool #export {
+    return target < y + height || last
+}

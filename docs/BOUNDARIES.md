@@ -21,7 +21,9 @@ provides popup order, ancestry, capture, retirement, and focus decisions.
 `zi/transition.zi` provides transition timing and fade decisions. These are
 tested as ordinary imported modules. `zi/input_props.zi` and `zi/input.zi`
 provide numeric input data and decisions; host adapters still own the value
-buffers and pointer samples.
+buffers and pointer samples. `zi/text_rows.zi` provides logical line and row
+decisions over borrowed text; the host still supplies grapheme boundaries and
+measured prefix widths.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 
