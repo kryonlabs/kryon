@@ -3,8 +3,7 @@
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "raster"
-#import "raster_text"
+#import "paint_queue"
 #import "separator"
 #import "separator_props"
 #import "style"
@@ -92,17 +91,23 @@ PrepareSeparator :: (props: SeparatorProps,
     return prepared
 }
 
-PaintSeparatorProps :: (props: SeparatorProps,
+PaintSeparatorForNode :: (node: i32, props: SeparatorProps,
     faces: SeparatorFaces) #export {
     prepared: PreparedSeparator = PrepareSeparator(props, faces)
     if prepared.show_text {
-        PaintText(props.label, (i32)prepared.text.x,
+        PaintLabel(node, props.label, (i32)prepared.text.x,
             (i32)prepared.text.y, prepared.font,
             ColorFromPacked(prepared.text_color))
     }
     if prepared.show_line {
-        StrokeLine(prepared.line, ColorFromPacked(prepared.line_color))
+        PaintLine(node, prepared.line,
+            ColorFromPacked(prepared.line_color))
     }
+}
+
+PaintSeparatorProps :: (props: SeparatorProps,
+    faces: SeparatorFaces) #export {
+    PaintSeparatorForNode(-1, props, faces)
 }
 
 PaintSeparatorFromRules :: (props: SeparatorProps, rules: StyleRules,
@@ -110,49 +115,14 @@ PaintSeparatorFromRules :: (props: SeparatorProps, rules: StyleRules,
     PaintSeparatorProps(props, SeparatorFacesFor(rules, props, defaults))
 }
 
-SeparatorQueue :: struct {
-    items: [1024]SeparatorProps
-    indices: [1024]i32
-    present: [1024]bool
-    count: i32
-}
-
-queued_separators :: SeparatorQueue #global
-
 Separator :: (props: SeparatorProps) #export {
+    node: i32 = -1
     if TreeIsBuilding() {
-        index: i32 = TreeSubmit(props.key, 0,
+        node = TreeSubmit(props.key, 0,
             WidgetKindSeparator, props.bounds)
-        if index >= 0 {
-            queued_separators.items[index] = props
-            queued_separators.indices[queued_separators.count] = index
-            queued_separators.present[index] = true
-            queued_separators.count += 1
-        }
-        return
+        if node < 0 { return }
     }
-    PaintSeparatorFromRules(props, ActiveStyleRules(),
-        DefaultSeparatorFaces())
-}
-
-PaintQueuedSeparator :: (index: i32,
-    bounds: Rectangle) #export {
-    if index < 0 || index >= 1024 ||
-        !queued_separators.present[index] { return }
-    props: SeparatorProps = queued_separators.items[index]
-    props.bounds = bounds
-    PaintSeparatorFromRules(props, ActiveStyleRules(),
-        DefaultSeparatorFaces())
-}
-
-ClearQueuedSeparators :: () #export {
-    index: i32 = 0
-    while index < queued_separators.count {
-        empty: SeparatorProps
-        slot: i32 = queued_separators.indices[index]
-        queued_separators.items[slot] = empty
-        queued_separators.present[slot] = false
-        index += 1
-    }
-    queued_separators.count = 0
+    faces: SeparatorFaces = SeparatorFacesFor(ActiveStyleRules(),
+        props, DefaultSeparatorFaces())
+    PaintSeparatorForNode(node, props, faces)
 }

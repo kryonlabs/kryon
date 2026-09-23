@@ -6,6 +6,15 @@
 static int calls;
 
 static void
+line(void *context, float x1, float y1, float x2, float y2,
+     uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    (void)context; (void)x1; (void)y1; (void)x2; (void)y2;
+    (void)r; (void)g; (void)b; (void)a;
+    assert(0 && "Progress should not draw lines");
+}
+
+static void
 fill(void *context, float x, float y, float width, float height,
      float radius, int segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
@@ -51,19 +60,21 @@ main(int argc, char **argv)
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
     assert(bundle != NULL);
-    assert(BundleCapabilityCount(bundle) == 3);
+    assert(BundleCapabilityCount(bundle) == 4);
     RoundedRectangleRenderer shapes = {fill, outline, NULL};
     TextRenderer text = {draw_text, NULL};
+    LineRenderer lines = {line, NULL};
     HostBinding bindings[] = {
         RasterRoundedRectangleBinding(&shapes),
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&text),
+        RasterLineBinding(&lines),
     };
     long long result = 0;
     int has_result = 0;
-    assert(!BundleRun(bundle, bindings, 2, &result, &has_result));
+    assert(!BundleRun(bundle, bindings, 3, &result, &has_result));
     assert(calls == 0);
-    assert(BundleRun(bundle, bindings, 3, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 4, &result, &has_result));
     assert(has_result && result == 42 && calls == 5);
     BundleClose(bundle);
     return 0;

@@ -96,6 +96,10 @@ HOST void RasterText(String value, int32_t x, int32_t y, int32_t font,
           color.b == 0x30 && color.a == 0x40);
     calls++;
 }
+HOST void RasterLine(Rectangle line, Color color) {
+    (void)line; (void)color;
+    CHECK(0 && "Progress should not draw lines");
+}
 int main(void) {
     CHECK(Answer() == 42 && calls == 5);
     return 0;
@@ -158,10 +162,14 @@ func (host *progressHost) RasterText(value string, x int32, y int32,
        color.B != 0x30 || color.A != 0x40 { host.t.Fatal("label") }
     host.calls++
 }
+func (host *progressHost) RasterLine(line Rectangle, color Color) {
+    host.t.Fatal("Progress should not draw lines")
+}
 func TestProgressRaster(t *testing.T) {
     host := &progressHost{t: t}
     SetRasterShapeHost(host)
     SetRasterTextHost(host)
+    SetRasterHost(host)
     if App_Answer() != 42 || host.calls != 5 { t.Fatal("draw order") }
 }
 GO

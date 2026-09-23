@@ -1,0 +1,135 @@
+#module "paint_queue"
+#import "drawing_props"
+#import "geometry"
+#import "raster"
+#import "raster_shape"
+#import "raster_text"
+
+PaintKind :: enum {
+    PaintKindLine = 1
+    PaintKindRoundedFill = 2
+    PaintKindRoundedOutline = 3
+    PaintKindText = 4
+}
+
+PaintCommand :: struct {
+    kind: i32
+    node: i32
+    bounds: Rectangle
+    color: Color
+    radius: float
+    segments: i32
+    line_width: float
+    value: string
+    x: i32
+    y: i32
+    font: i32
+}
+
+PaintCommands :: struct {
+    items: [4096]PaintCommand
+    count: i32
+    overflow: bool
+}
+
+pending_paint :: PaintCommands #global
+
+EmitPaint :: (command: PaintCommand) #export {
+    if command.kind == PaintKindLine {
+        StrokeLine(command.bounds, command.color)
+    } else if command.kind == PaintKindRoundedFill {
+        FillRoundedRectangle(command.bounds, command.radius,
+            command.segments, command.color)
+    } else if command.kind == PaintKindRoundedOutline {
+        StrokeRoundedRectangle(command.bounds, command.radius,
+            command.segments, command.line_width, command.color)
+    } else if command.kind == PaintKindText {
+        PaintText(command.value, command.x, command.y,
+            command.font, command.color)
+    }
+}
+
+SubmitPaint :: (command: PaintCommand) #export {
+    if command.node < 0 {
+        EmitPaint(command)
+        return
+    }
+    if pending_paint.count >= 4096 {
+        pending_paint.overflow = true
+        return
+    }
+    pending_paint.items[pending_paint.count] = command
+    pending_paint.count += 1
+}
+
+PaintLine :: (node: i32, bounds: Rectangle,
+    color: Color) #export {
+    command: PaintCommand
+    command.kind = PaintKindLine
+    command.node = node
+    command.bounds = bounds
+    command.color = color
+    SubmitPaint(command)
+}
+
+PaintRoundedFill :: (node: i32, bounds: Rectangle, radius: float,
+    segments: i32, color: Color) #export {
+    command: PaintCommand
+    command.kind = PaintKindRoundedFill
+    command.node = node
+    command.bounds = bounds
+    command.radius = radius
+    command.segments = segments
+    command.color = color
+    SubmitPaint(command)
+}
+
+PaintRoundedOutline :: (node: i32, bounds: Rectangle, radius: float,
+    segments: i32, line_width: float, color: Color) #export {
+    command: PaintCommand
+    command.kind = PaintKindRoundedOutline
+    command.node = node
+    command.bounds = bounds
+    command.radius = radius
+    command.segments = segments
+    command.line_width = line_width
+    command.color = color
+    SubmitPaint(command)
+}
+
+PaintLabel :: (node: i32, value: string, x: i32, y: i32,
+    font: i32, color: Color) #export {
+    command: PaintCommand
+    command.kind = PaintKindText
+    command.node = node
+    command.value = value
+    command.x = x
+    command.y = y
+    command.font = font
+    command.color = color
+    SubmitPaint(command)
+}
+
+PaintClear :: () #export {
+    index: i32 = 0
+    while index < pending_paint.count {
+        empty: PaintCommand
+        pending_paint.items[index] = empty
+        index += 1
+    }
+    pending_paint.count = 0
+    pending_paint.overflow = false
+}
+
+PaintOverflow :: () -> bool #export {
+    return pending_paint.overflow
+}
+
+PaintFlush :: () #export {
+    index: i32 = 0
+    while index < pending_paint.count {
+        EmitPaint(pending_paint.items[index])
+        index += 1
+    }
+    PaintClear()
+}

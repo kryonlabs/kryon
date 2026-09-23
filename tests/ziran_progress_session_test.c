@@ -98,7 +98,7 @@ static void run(Bundle *bundle)
     int has_value = 0;
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 0 && draws == 0 &&
-           labels_drawn == 0 && measured == 0);
+           labels_drawn == 0 && measured == 2);
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 1 && draws == 3 &&
            labels_drawn == 1 && measured == 2);
@@ -107,7 +107,10 @@ static void run(Bundle *bundle)
            labels_drawn == 2 && measured == 4);
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 3 && draws == 6 &&
-           labels_drawn == 2 && measured == 4);
+           labels_drawn == 2 && measured == 6);
+    assert(BundleInstanceRun(instance, &value, &has_value));
+    assert(has_value && value == 4 && draws == 6 &&
+           labels_drawn == 2 && measured == 8);
     BundleInstanceClose(instance);
 }
 

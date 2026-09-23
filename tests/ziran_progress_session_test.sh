@@ -10,7 +10,9 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #module "app"
 #import "control_props"
+#import "drawing_props"
 #import "geometry"
+#import "paint_queue"
 #import "progress"
 #import "progress_props"
 #import "progress_widget"
@@ -62,6 +64,20 @@ Frame :: () -> i32 #export {
     props.key = (u64)17
     BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
     Progress(props)
+    if frame_index == 4 {
+        color: Color = (Color){1, 2, 3, 4}
+        index: i32 = 0
+        while index < 4093 {
+            PaintLine(1, props.bounds, color)
+            index += 1
+        }
+        if EndTree() || TreeCount() != 2 ||
+            TreeNodeAt(1).identity_generation != progress_identity {
+            return -1
+        }
+        frame_index = 5
+        return 4
+    }
     if frame_index == 3 {
         index: i32 = 0
         while index < 1023 {

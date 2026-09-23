@@ -174,6 +174,17 @@ HOST void RasterText(String value, int32_t x, int32_t y,
            color.b == 0xcc && color.a == 0xdd);
     texts++;
 }
+HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
+    int32_t segments, Color color) {
+    (void)bounds; (void)radius; (void)segments; (void)color;
+    assert(0 && "Separator should not draw rounded rectangles");
+}
+HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
+    int32_t segments, float width, Color color) {
+    (void)bounds; (void)radius; (void)segments;
+    (void)width; (void)color;
+    assert(0 && "Separator should not draw rounded outlines");
+}
 int main(void) {
     assert(Answer() == 42 && lines == 2 && texts == 1 && measures == 1);
     return 0;
@@ -224,11 +235,20 @@ func (h *separatorHost) RasterText(value string, x, y, font int32,
        color.B != 0xcc || color.A != 0xdd { h.t.Fatal("label") }
     h.texts++
 }
+func (h *separatorHost) RasterRoundedRectangle(bounds Rectangle,
+    radius float32, segments int32, color Color) {
+    h.t.Fatal("Separator should not draw rounded rectangles")
+}
+func (h *separatorHost) RasterRoundedRectangleOutline(bounds Rectangle,
+    radius float32, segments int32, width float32, color Color) {
+    h.t.Fatal("Separator should not draw rounded outlines")
+}
 func TestSeparatorWidget(t *testing.T) {
     host := &separatorHost{t: t}
     SetFontMetricsHost(host)
     SetRasterHost(host)
     SetRasterTextHost(host)
+    SetRasterShapeHost(host)
     if Native_Answer() != 42 || host.lines != 2 ||
        host.texts != 1 || host.measures != 1 {
         t.Fatal("separator composition")

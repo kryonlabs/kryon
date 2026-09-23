@@ -18,15 +18,6 @@ PreparedProgress :: struct {
     label_opacity: float
 }
 
-ProgressQueue :: struct {
-    items: [1024]ProgressProps
-    indices: [1024]i32
-    present: [1024]bool
-    count: i32
-}
-
-queued_progress :: ProgressQueue #global
-
 PrepareProgress :: (props: ProgressProps,
     faces: ProgressFaces) -> PreparedProgress #export {
     prepared: PreparedProgress
@@ -62,38 +53,15 @@ PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
 }
 
 Progress :: (props: ProgressProps) #export {
+    node: i32 = -1
     if TreeIsBuilding() {
-        index: i32 = TreeSubmit(props.key, 0,
+        node = TreeSubmit(props.key, 0,
             WidgetKindProgress, props.bounds)
-        if index >= 0 {
-            queued_progress.items[index] = props
-            queued_progress.indices[queued_progress.count] = index
-            queued_progress.present[index] = true
-            queued_progress.count += 1
-        }
-        return
+        if node < 0 { return }
     }
-    PaintProgressFromRules(props, ActiveStyleRules(),
-        DefaultProgressFaces())
-}
-
-PaintQueuedProgress :: (index: i32, bounds: Rectangle) #export {
-    if index < 0 || index >= 1024 ||
-        !queued_progress.present[index] { return }
-    props: ProgressProps = queued_progress.items[index]
-    props.bounds = bounds
-    PaintProgressFromRules(props,
-        ActiveStyleRules(), DefaultProgressFaces())
-}
-
-ClearQueuedProgress :: () #export {
-    index: i32 = 0
-    while index < queued_progress.count {
-        empty: ProgressProps
-        slot: i32 = queued_progress.indices[index]
-        queued_progress.items[slot] = empty
-        queued_progress.present[slot] = false
-        index += 1
-    }
-    queued_progress.count = 0
+    faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(),
+        props.class_name, DefaultProgressFaces())
+    prepared: PreparedProgress = PrepareProgress(props, faces)
+    PaintProgressForNode(node, props.bounds, prepared.paint,
+        props.label, prepared.font, prepared.label_opacity)
 }

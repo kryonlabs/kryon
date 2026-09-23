@@ -182,6 +182,12 @@ TreeIsBuilding :: () -> bool #export {
     return active_tree.building
 }
 
+TreeCancel :: () #export {
+    active_tree.building = false
+    active_tree.submitted_count = 0
+    active_tree.overflow = false
+}
+
 TreeNodeAt :: (index: i32) -> TreeEntry #export {
     empty: TreeEntry
     if index < 0 || index >= active_tree.committed_count { return empty }

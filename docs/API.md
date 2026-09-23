@@ -71,19 +71,21 @@ default faces. Lower-level `PaintProgressFromRules()` still accepts explicit
 defaults and rules. The pointer-backed style loader remains unfinished.
 `BeginTree(screen_key, bounds)` begins a portable retained submission, and
 `EndTree()` commits and paints it. During an open submission,
-`Progress(props)` registers a Progress node; raster effects are emitted only
-after the tree commits. Outside a tree, `Progress(props)` paints immediately.
+`Progress(props)` registers a Progress node and queues its generic paint
+commands; raster effects are emitted only after the tree commits. Style
+resolution and glyph measurement happen during submission. Outside a tree,
+`Progress(props)` paints immediately.
 `ProgressProps.key` and `SeparatorProps.key` provide stable identity; zero
-uses the submission
-position. `TreeCount()` and `TreeNodeAt(index)` inspect committed nodes.
+uses the submission position. `TreeCount()` and `TreeNodeAt(index)` inspect
+committed nodes.
 Identity survives repeated `BundleInstanceRun()` calls, including bounds
 changes. Submission is limited to 1024 nodes; `EndTree()` returns false,
 preserves the previous tree, and emits no paint effects if that limit is
-exceeded. Progress and Separator have portable retained paint paths so far;
-retained layout and input routing remain unfinished. Because `EndTree()`
-currently dispatches both widget painters, a portable host binding a retained
-tree must provide the line, rounded shape, text, and glyph metric effects used
-by those painters even when a frame uses only one widget type.
+exceeded. The generic queue holds 4096 paint commands and likewise rejects an
+overfull frame before commit. Progress and Separator have portable retained
+paint paths so far; retained layout and input routing remain unfinished.
+`EndTree()` links the generic line, rounded shape, and text raster effects;
+glyph metric requirements follow the widgets the application imports.
 `Separator(props)` resolves Line and Label KSS roles in checked Ziran. It
 positions an unlabeled vertical or horizontal line, or measures and paints a
 label followed by a line. It paints immediately outside a tree and submits a

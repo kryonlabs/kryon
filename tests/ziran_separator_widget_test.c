@@ -77,17 +77,16 @@ static void run(Bundle *bundle)
         RasterLineBinding(&lines_host),
         RasterTextBinding(&text_host),
         MeasureGlyphWidthBinding(&font_host),
-        MeasureGlyphLineHeightBinding(&font_host),
         RasterRoundedRectangleBinding(&shape_host),
         RasterRoundedRectangleOutlineBinding(&shape_host),
     };
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 6);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, 5);
     assert(instance != NULL);
     long long value = -1;
     int has_value = 0;
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 0 && lines == 0 && labels == 0 &&
-           measures == 0);
+           measures == 1);
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 1 && lines == 2 && labels == 1 &&
            measures == 1);
@@ -102,6 +101,7 @@ int main(int argc, char **argv)
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
     assert(bundle != NULL);
+    assert(BundleCapabilityCount(bundle) == 5);
     run(bundle);
     BundleClose(bundle);
     return 0;

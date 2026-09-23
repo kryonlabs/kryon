@@ -64,6 +64,7 @@ navigation_bar_props.zi
 overlay.zi
 page.zi
 paint.zi
+paint_queue.zi
 paned_view.zi
 paned_view_props.zi
 plot.zi

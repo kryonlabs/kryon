@@ -50,7 +50,10 @@ default faces. A persistent `.zib` instance keeps that rule table across
 frames. Separator resolves its Line and Label roles, measures labels, and
 emits line and text effects from checked Ziran. The portable retained tree
 now owns node identity and Progress and Separator submissions through
-`BeginTree()` and `EndTree()`; EndTree commits before emitting paint effects.
+`BeginTree()` and `EndTree()`. Widgets lower their paint decisions to a
+checked generic command queue during submission. EndTree rejects an overfull
+tree or paint queue before committing and emits raster effects only after
+commit; it does not import individual widget painters.
 Other widget submissions, retained layout, and input
 routing still need migration.
 
