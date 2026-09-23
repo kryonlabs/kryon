@@ -31,6 +31,12 @@ Answer :: () -> i32 #export {
     bounds.y = 20.0
     bounds.width = 100.0
     bounds.height = 60.0
+    column: ColumnProps
+    column.bounds = bounds
+    column.gap = 7
+    column.key = (u64)1 << 63
+    if column.key != ((u64)1 << 63) || column.bounds.width != 100.0 ||
+       column.gap != 7 { return 0 }
     metrics: LayoutMetrics = LayoutMetricsFor(bounds, 7, 5)
     if metrics.content.x != 15.0 || metrics.content.y != 25.0 { return 0 }
     if metrics.content.width != 90.0 || metrics.content.height != 50.0 { return 0 }

@@ -7,6 +7,13 @@ LayoutMetrics :: struct {
     padding: i32
 }
 
+ColumnProps :: struct {
+    bounds: Rectangle
+    gap: i32
+    padding: i32
+    key: u64
+}
+
 CenteredColumnLayout :: struct {
     x: i32
     width: i32

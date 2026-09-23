@@ -1,6 +1,5 @@
 #module "router_props"
-#import "kryon_compat.generated.h"
-#import "ui_key_props.generated.h"
+#import "geometry"
 
 RouterRoute :: struct {
     id: i32
@@ -22,8 +21,8 @@ RouterState :: struct {
 
 RouterProps :: struct {
     bounds: Rectangle
-    key: KeyID
-    state: *RouterState
+    key: u64
+    state: RouterState*
     routes: const RouterRoute*
     route_count: i32
     initial_route: i32
