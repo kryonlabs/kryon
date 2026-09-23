@@ -41,6 +41,8 @@ guide_pager.zi
 icon.zi
 image.zi
 image_props.zi
+image_raster.zi
+image_widget.zi
 input.zi
 input_props.zi
 instance.zi

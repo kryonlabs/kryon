@@ -10,6 +10,7 @@ PaintKind :: enum {
     PaintKindRoundedFill = 2
     PaintKindRoundedOutline = 3
     PaintKindText = 4
+    PaintKindImage = 5
 }
 
 PaintCommand :: struct {
@@ -24,6 +25,12 @@ PaintCommand :: struct {
     x: i32
     y: i32
     font: i32
+    asset_path: string
+    texture_id: u32
+    source: Rectangle
+    clip: Rectangle
+    origin: Vector2
+    rotation: float
 }
 
 PaintCommands :: struct {
@@ -33,6 +40,13 @@ PaintCommands :: struct {
 }
 
 pending_paint :: PaintCommands #global
+
+# Raw rasterization; the queued source, clip, radius, and tint are chosen in
+# checked widget code before this device effect is called.
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float, radius: float,
+    tint: Color) #extern
 
 EmitPaint :: (command: PaintCommand) #export {
     if command.kind == PaintKindLine {
@@ -46,6 +60,11 @@ EmitPaint :: (command: PaintCommand) #export {
     } else if command.kind == PaintKindText {
         PaintText(command.value, command.x, command.y,
             command.font, command.color)
+    } else if command.kind == PaintKindImage {
+        RasterImage(command.asset_path, command.texture_id,
+            command.source, command.bounds, command.clip,
+            command.origin, command.rotation, command.radius,
+            command.color)
     }
 }
 
@@ -107,6 +126,25 @@ PaintLabel :: (node: i32, value: string, x: i32, y: i32,
     command.y = y
     command.font = font
     command.color = color
+    SubmitPaint(command)
+}
+
+PaintImage :: (node: i32, asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float, radius: float,
+    tint: Color) #export {
+    command: PaintCommand
+    command.kind = PaintKindImage
+    command.node = node
+    command.asset_path = asset_path
+    command.texture_id = texture_id
+    command.source = source
+    command.bounds = destination
+    command.clip = clip
+    command.origin = origin
+    command.rotation = rotation
+    command.radius = radius
+    command.color = tint
     SubmitPaint(command)
 }
 

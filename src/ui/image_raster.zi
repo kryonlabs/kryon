@@ -1,0 +1,13 @@
+#module "image_raster"
+# The platform supplies asset dimensions. Kryon chooses source,
+# destination, clipping, tint, and placeholder behavior.
+ImageWidth :: (asset_path: string) -> i32 #extern
+ImageHeight :: (asset_path: string) -> i32 #extern
+
+AssetWidth :: (asset_path: string) -> i32 #export {
+    return ImageWidth(asset_path)
+}
+
+AssetHeight :: (asset_path: string) -> i32 #export {
+    return ImageHeight(asset_path)
+}

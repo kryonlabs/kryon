@@ -85,7 +85,9 @@ exceeded. The generic queue holds 4096 paint commands and likewise rejects an
 overfull frame before commit. Progress and Separator have portable retained
 paint paths so far; retained layout and input routing remain unfinished.
 `EndTree()` links the generic line, rounded shape, and text raster effects;
-glyph metric requirements follow the widgets the application imports.
+the image raster effect is also linked for generic paint commands. Glyph
+metric and asset dimension requirements follow the widgets the application
+imports.
 `Separator(props)` resolves Line and Label KSS roles in checked Ziran. It
 positions an unlabeled vertical or horizontal line, or measures and paints a
 label followed by a line. It paints immediately outside a tree and submits a
@@ -99,13 +101,18 @@ source byte ranges. A portable bundle's installed rules last for one
 `BundleRun`; another run begins with an empty rule table. A
 `BundleInstance` keeps those rules between runs, allowing a frame entry to
 install a style sheet once and paint subsequent frames from it.
-`ImageProps` now carries portable strings. Image fit, source selection, draw
-eligibility, and default tint decisions are checked Ziran functions. Text fields
+`Image(ImageProps)` is now a checked Ziran widget. It accepts an asset path or
+a supplied texture handle, resolves class styles, chooses source and fit,
+queues a clipped and optionally rounded image draw, and retains semantic alt
+text on its node. The platform supplies asset dimensions and executes the raw
+image raster command through declared host effects. A missing asset paints its
+alt text or the fallback label. Broader image materials, accessibility event
+publication, and concrete desktop/browser image hosts still need migration.
+Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
 `FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
 props still contain pointer-based state or collections. Full `Text(TextProps)`,
-`Image(ImageProps)`,
-widget composition, broader platform rendering and host linking, and downstream
+remaining widget composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not
 supported API yet. See [architecture](ARCHITECTURE.md) and

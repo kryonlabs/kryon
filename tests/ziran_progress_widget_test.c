@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include "unused_image_host.h"
 
 static int measures;
 static int draws;
@@ -81,7 +82,7 @@ main(int argc, char **argv)
 {
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
-    assert(bundle != NULL && BundleCapabilityCount(bundle) == 6);
+    assert(bundle != NULL && BundleCapabilityCount(bundle) == 7);
     FontMeasurer fonts = {width, line_height, NULL};
     RoundedRectangleRenderer shapes = {fill, outline, NULL};
     TextRenderer labels = {text, NULL};
@@ -93,12 +94,13 @@ main(int argc, char **argv)
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&labels),
         RasterLineBinding(&lines),
+        RasterImageBinding(&unused_image_renderer),
     };
     long long result = 0;
     int has_result = 0;
-    assert(!BundleRun(bundle, bindings, 5, &result, &has_result));
+    assert(!BundleRun(bundle, bindings, 6, &result, &has_result));
     assert(measures == 0 && draws == 0);
-    assert(BundleRun(bundle, bindings, 6, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 7, &result, &has_result));
     assert(has_result && result == 42 && measures == 2 && draws == 5);
     BundleClose(bundle);
     return 0;

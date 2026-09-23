@@ -56,6 +56,23 @@ typedef struct FontMeasurer {
 HostBinding MeasureGlyphWidthBinding(FontMeasurer *measurer);
 HostBinding MeasureGlyphLineHeightBinding(FontMeasurer *measurer);
 
+typedef struct ImageRasterizer {
+    /* Return nonzero when an asset exists; missing assets leave dimensions 0. */
+    int (*size)(void *context, const char *path, size_t path_length,
+                int *width, int *height);
+    /* Clip and radius are raw raster parameters selected by Kryon. */
+    void (*draw)(void *context, const char *path, size_t path_length,
+                 uint32_t texture_id, const float source[4],
+                 const float destination[4], const float clip[4],
+                 const float origin[2], float rotation, float radius,
+                 const uint8_t tint[4]);
+    void *context;
+} ImageRasterizer;
+
+HostBinding ImageWidthBinding(ImageRasterizer *renderer);
+HostBinding ImageHeightBinding(ImageRasterizer *renderer);
+HostBinding RasterImageBinding(ImageRasterizer *renderer);
+
 #ifdef __cplusplus
 }
 #endif

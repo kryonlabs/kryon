@@ -1,148 +1,120 @@
 #module "image_widget"
-#import "ui_internal.h"
-#import "ui/tree_layout.h"
-#import "ui_style_internal.h"
-#import "ui_image_internal.h"
-#import "runtime/image.h"
-#import "runtime/button.h"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
 #import "image"
-#import "math.h"
+#import "image_props"
+#import "image_raster"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
 
-ImageWidgetStyle :: (class_name: i32) -> Style {
-    props: ButtonProps = (ButtonProps){
-        .tone = ButtonToneNeutral,
-        .emphasis = ButtonEmphasisSoft,
-        .class_name = class_name}
-    return ui_unpack_style(ui_control_style_frame_kind(props,
-    ButtonStateNormal, 0, 0.0, 0.0, 0.0,
-    StyleKindImage()).value)
+ImageFaces :: struct {
+    surface: StyleData
+    label: StyleData
 }
 
-ImageWidgetTint :: (class_name: i32) -> Color {
+DefaultImageFaces :: () -> ImageFaces #export {
+    faces: ImageFaces
+    faces.surface.fields = (u32)StyleForeground |
+        (u32)StyleOpacity
+    faces.surface.foreground = (u32)0xffffffff
+    faces.surface.opacity = 1.0
+    faces.label.fields = (u32)StyleForeground |
+        (u32)StyleFontSize
+    faces.label.foreground = (u32)0x171717ff
+    faces.label.font_size = 14.0
+    return faces
+}
+
+ImageFacesFor :: (rules: StyleRules, image: ImageProps,
+    defaults: ImageFaces) -> ImageFaces #export {
+    faces: ImageFaces = defaults
     facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
-    facts.class_name = class_name
-    style: Style = ui_unpack_style(ResolveActiveStyle(
-    (StyleData){0}, facts, ButtonStateNormal))
-    tint: Color = (style.fields & StyleForeground)
-    ? style.foreground : WHITE
-    if (style.fields & StyleOpacity) && style.opacity < 1.0 {
-        tint = Fade(tint, style.opacity)
+    facts.class_name = image.class_name
+    faces.surface = ResolveStyleRules(rules, defaults.surface, facts,
+        (i32)ButtonStateNormal)
+    facts.role = ImageLabelRole()
+    faces.label = ResolveStyleRules(rules, defaults.label, facts,
+        (i32)ButtonStateNormal)
+    return faces
+}
+
+ImageTextureFor :: (image: ImageProps) -> Texture2D #export {
+    texture: Texture2D = image.texture
+    if texture.id != (u32)0 || image.asset_path == "" {
+        return texture
     }
-    return tint
-}
-
-ImageTexture :: (texture: Texture2D, image: ImageProps) #export {
-    ImageTextureTinted(texture, image,
-    ImageWidgetTint(image.class_name))
-}
-
-ImageRowInset :: (bounds: Rectangle, radius: float,
-sample_y: float) -> float {
-    if radius <= 0.0f { return 0.0f }
-    top_center: float = bounds.y + radius
-    bottom_center: float = bounds.y + bounds.height - radius
-    dy: float = 0.0f
-    if sample_y < top_center {
-        dy = top_center - sample_y
-    } else if sample_y > bottom_center {
-        dy = sample_y - bottom_center
+    texture.width = AssetWidth(image.asset_path)
+    texture.height = AssetHeight(image.asset_path)
+    if texture.width > 0 && texture.height > 0 {
+        # This marker makes the pure fit policy treat a host-backed asset as
+        # available. RasterImage receives the original id 0 and asset path.
+        texture.id = (u32)1
     }
-    if dy <= 0.0f { return 0.0f }
-    if dy >= radius { return radius }
-    inside: float = radius * radius - dy * dy
-    return radius - sqrtf(inside > 0.0f ? inside : 0.0f)
+    return texture
 }
 
-ImageDrawStrip :: (texture: Texture2D, source_base: Rectangle,
-dst: Rectangle, strip: Rectangle, tint: Color) {
-    if strip.width <= 0.0f || strip.height <= 0.0f { return }
-    source: Rectangle = ImageStripSource(source_base, dst, strip)
-    ui_image_draw_texture_strip(texture, source, strip, tint)
-}
-
-ui_image_draw_rounded_texture :: (texture: Texture2D,
-source: Rectangle, dst: Rectangle, bounds: Rectangle,
-radius: float, tint: Color) #export {
-    if radius <= 0.0f {
-        ImageDrawStrip(texture, source, dst, bounds, tint)
-        return
+ImageTint :: (surface: StyleData) -> Color #export {
+    packed: u32 = surface.foreground
+    if (surface.fields & (u32)StyleForeground) == (u32)0 {
+        packed = (u32)0xffffffff
     }
-    y: i32 = (int)ceilf(bounds.y)
-    y_end: i32 = (int)floorf(bounds.y + bounds.height)
-    while y < y_end {
-        sample_y: float = (float)y + 0.5f
-        inset: float = ceilf(ImageRowInset(bounds, radius, sample_y))
-        left: float = ceilf(bounds.x + inset)
-        right: float = floorf(bounds.x + bounds.width - inset)
-        if right > left {
-            strip: Rectangle = (Rectangle){left, (float)y,
-                right - left, 1.0f}
-            ImageDrawStrip(texture, source, dst, strip, tint)
-        }
-        y += 1
-    }
+    return ColorFromPacked(Opacity(packed,
+        StyleOpacityValue(surface.fields, surface.opacity)))
 }
 
-ImageTextureTinted :: (texture: Texture2D, image: ImageProps,
-tint: Color) #export {
+PaintImagePlaceholder :: (node: i32, image: ImageProps,
+    label_style: StyleData) #export {
+    label: string = image.alt_text
+    if label == "" { label = "Missing image" }
+    font: i32 = ResolveFont(0,
+        StyleFontValue(label_style.fields, label_style.font_size), 14)
+    width: i32 = GlyphWidth(label, font, label_style.typeface)
+    height: i32 = GlyphLineHeight(font, label_style.typeface)
+    layout: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(image.bounds,
+        width, height)
+    PaintLabel(node, label, layout.label_x, layout.label_y,
+        font, ColorFromPacked(Opacity(label_style.foreground,
+            StyleOpacityValue(label_style.fields,
+                label_style.opacity))))
+}
+
+Image :: (image: ImageProps) #export {
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(image.key, 0, WidgetKindImage, image.bounds)
+        if node < 0 { return }
+        TreeSetLabel(node, image.alt_text)
+    }
+    faces: ImageFaces = ImageFacesFor(ActiveStyleRules(), image,
+        DefaultImageFaces())
+    radius: float = 0.0
+    if (faces.surface.fields & (u32)StyleRadius) != (u32)0 {
+        radius = faces.surface.radius
+    }
+    if (faces.surface.fields & (u32)StyleBackground) != (u32)0 {
+        PaintRoundedFill(node, image.bounds, radius, 12,
+            ColorFromPacked(faces.surface.background))
+    }
+    texture: Texture2D = ImageTextureFor(image)
+    tint: Color = ImageTint(faces.surface)
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
-    if !plan.draw { return }
-    style: Style = ImageWidgetStyle(image.class_name)
-    if style.background.a > 0 || style.border.a > 0 ||
-    style.material != MaterialFlat || style.opacity < 1.0 ||
-    style.radius > 0.0 || style.border_width > 0.0 {
-        ui_draw_material(image.bounds, (Rectangle){0},
-        style.background, style.border, style.border,
-        style.radius, style.border_width, 0.0, 0.0, 0,
-        style.focus, 0.0, style.opacity,
-        ui_style_fill(style), style.material)
+    if plan.draw && tint.a > (u8)0 {
+        PaintImage(node, image.asset_path, image.texture.id,
+            plan.source, plan.destination, image.bounds,
+            image.origin, image.rotation, radius, plan.tint)
+    } else if !plan.draw {
+        PaintImagePlaceholder(node, image, faces.label)
     }
-    if style.radius <= 0.0 {
-        ui_image_draw_clipped_texture(texture, plan.source,
-        plan.destination, image.bounds, image.origin,
-        image.rotation, plan.tint)
-        return
+    if (faces.surface.fields & (u32)StyleBorderWidth) != (u32)0 &&
+        faces.surface.border_width > 0.0 {
+        PaintRoundedOutline(node, image.bounds, radius, 12,
+            faces.surface.border_width,
+            ColorFromPacked(faces.surface.border))
     }
-    ui_image_draw_rounded_texture(texture, plan.source,
-        plan.destination, image.bounds, style.radius, plan.tint)
-}
-
-RenderImage :: (image: ImageProps) #export {
-    if image.alt_text != nil && image.alt_text[0] != '\0' {
-        ui_page_semantic_next(SemanticImage, image.alt_text,
-        nil, "img", 0, -1)
-    }
-    ui_tree_add(0, WidgetKindImage, image.bounds,
-    image.asset_path)
-    texture: Texture2D = image.texture.id != 0 ? image.texture :
-    LoadImageTexture(image.asset_path)
-    if texture.id == 0 {
-        missing_label: const char* = "Missing image"
-        style_props: ButtonProps = (ButtonProps){
-            .tone = ButtonToneNeutral,
-            .emphasis = ButtonEmphasisSoft,
-            .class_name = image.class_name}
-        image_style: Style = ui_unpack_style(
-        ui_control_style_frame_kind(style_props,
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindImage()).value)
-        label_style: Style = ui_unpack_style(
-        ui_control_style_frame_role_kind(style_props,
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindImage(), ImageLabelRole()).value)
-        label_font: i32 = ResolveFont(0,
-        StyleFontValue(label_style.fields, label_style.font_size),
-        GetSmallFontSize())
-        placeholder: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(
-        image.bounds, TextWidth(missing_label, label_font),
-        TextLineHeight(label_font))
-        DrawRectangleRec(image.bounds, image_style.background)
-        DrawRectangleLinesEx(image.bounds, image_style.border_width,
-        image_style.border)
-        RenderText(missing_label, placeholder.label_x,
-        placeholder.label_y, label_font,
-        Fade(label_style.foreground, label_style.opacity))
-        return
-    }
-    ImageTexture(texture, image)
 }

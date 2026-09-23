@@ -54,6 +54,7 @@ TreeEntry :: struct {
     parent_key: u64
     kind: i32
     bounds: Rectangle
+    semantic_label: string
     parent: i32
     first_child: i32
     last_child: i32
@@ -192,4 +193,10 @@ TreeNodeAt :: (index: i32) -> TreeEntry #export {
     empty: TreeEntry
     if index < 0 || index >= active_tree.committed_count { return empty }
     return active_tree.committed[index]
+}
+
+TreeSetLabel :: (index: i32, label: string) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    active_tree.submitted[index].semantic_label = label
 }

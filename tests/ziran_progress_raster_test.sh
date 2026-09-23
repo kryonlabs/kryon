@@ -100,6 +100,13 @@ HOST void RasterLine(Rectangle line, Color color) {
     (void)line; (void)color;
     CHECK(0 && "Progress should not draw lines");
 }
+HOST void RasterImage(String path, uint32_t texture_id,
+    Rectangle source, Rectangle destination, Rectangle clip,
+    Vector2 origin, float rotation, float radius, Color tint) {
+    (void)path; (void)texture_id; (void)source; (void)destination;
+    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
+    CHECK(0 && "Progress should not draw images");
+}
 int main(void) {
     CHECK(Answer() == 42 && calls == 5);
     return 0;
@@ -165,11 +172,17 @@ func (host *progressHost) RasterText(value string, x int32, y int32,
 func (host *progressHost) RasterLine(line Rectangle, color Color) {
     host.t.Fatal("Progress should not draw lines")
 }
+func (host *progressHost) RasterImage(path string, textureID uint32,
+    source, destination, clip Rectangle, origin Vector2,
+    rotation, radius float32, tint Color) {
+    host.t.Fatal("Progress should not draw images")
+}
 func TestProgressRaster(t *testing.T) {
     host := &progressHost{t: t}
     SetRasterShapeHost(host)
     SetRasterTextHost(host)
     SetRasterHost(host)
+    SetPaintQueueHost(host)
     if App_Answer() != 42 || host.calls != 5 { t.Fatal("draw order") }
 }
 GO
