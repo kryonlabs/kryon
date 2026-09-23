@@ -15,6 +15,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "control_props"
 #import "drawing_props"
 #import "focus"
+#import "frame_pacing"
 #import "geometry"
 #import "input_props"
 #import "kss_parser"
@@ -58,6 +59,18 @@ Answer :: () -> i32 #export {
     }
     if FocusTabDirectionFor(true, true) != -1 { return 0 }
     if FocusTabDirectionFor(false, true) != 0 { return 0 }
+    pacing: FramePacing
+    paced: FramePacingDecision = ConfigureFramePacing(pacing, 30, 60)
+    if !paced.apply_target || paced.state.target_fps != 30 { return 0 }
+    pacing = SetFramePacingActive(paced.state, true)
+    paced = UpdateFramePacing(pacing)
+    if !paced.apply_target || paced.state.target_fps != 60 { return 0 }
+    paced = UpdateFramePacing(paced.state)
+    if paced.apply_target { return 0 }
+    paced = DisableFramePacing(paced.state)
+    if !paced.apply_target || paced.state.target_fps != 0 { return 0 }
+    paced = ConfigureFramePacing(paced.state, -1, 45)
+    if !paced.apply_target || paced.state.target_fps != 45 { return 0 }
     bounds: Rectangle
     bounds.x = 10.0
     bounds.y = 20.0

@@ -1,61 +1,58 @@
 #module "frame_pacing"
 
-#import "ui_frame_props.generated.h"
-#import "kryon_compat.generated.h"
-
-static frame_pacing_enabled: int
-static frame_pacing_idle_fps: int
-static frame_pacing_active_fps: int
-static frame_pacing_active: int
-static frame_pacing_target_fps: int
-
-frame_pacing_sanitize_fps :: (fps: int) -> int #private {
-    return fps > 0 ? fps : 0
+FramePacing :: struct {
+    enabled: bool
+    active: bool
+    idle_fps: i32
+    active_fps: i32
+    target_fps: i32
 }
 
-ConfigureFramePacing :: (idle_fps: int, active_fps: int) #export {
-    frame_pacing_idle_fps = frame_pacing_sanitize_fps(idle_fps)
-    frame_pacing_active_fps = frame_pacing_sanitize_fps(active_fps)
-    frame_pacing_enabled = 0
-    if frame_pacing_idle_fps > 0 || frame_pacing_active_fps > 0 {
-        frame_pacing_enabled = 1
-    }
-    frame_pacing_target_fps = 0
-    UpdateFramePacing()
+FramePacingDecision :: struct {
+    state: FramePacing
+    apply_target: bool
 }
 
-DisableFramePacing :: () #export {
-    frame_pacing_enabled = 0
-    frame_pacing_active = 0
-    frame_pacing_idle_fps = 0
-    frame_pacing_active_fps = 0
-    if frame_pacing_target_fps != 0 {
-        SetTargetFPS(0)
-        frame_pacing_target_fps = 0
-    }
+FramePacingSanitizeFPS :: (fps: i32) -> i32 {
+    if fps > 0 { return fps }
+    return 0
 }
 
-SetFramePacingActive :: (active: int) #export {
-    frame_pacing_active = active != 0 ? 1 : 0
+# The host applies target_fps only when apply_target is true.
+UpdateFramePacing :: (state: FramePacing) -> FramePacingDecision #export {
+    decision: FramePacingDecision
+    decision.state = state
+    if !state.enabled { return decision }
+    target: i32 = state.idle_fps
+    if state.active { target = state.active_fps }
+    if target <= 0 {
+        target = state.active_fps
+        if state.active { target = state.idle_fps }
+    }
+    if target != state.target_fps {
+        decision.state.target_fps = target
+        decision.apply_target = true
+    }
+    return decision
 }
 
-UpdateFramePacing :: () #export {
-    if !frame_pacing_enabled {
-        return
-    }
-
-    target_fps := frame_pacing_active != 0 ? frame_pacing_active_fps
-                                           : frame_pacing_idle_fps
-    if target_fps <= 0 {
-        target_fps = frame_pacing_active != 0 ? frame_pacing_idle_fps
-                                             : frame_pacing_active_fps
-    }
-    if frame_pacing_target_fps != target_fps {
-        SetTargetFPS(target_fps)
-        frame_pacing_target_fps = target_fps
-    }
+ConfigureFramePacing :: (state: FramePacing, idle_fps: i32,
+    active_fps: i32) -> FramePacingDecision #export {
+    state.idle_fps = FramePacingSanitizeFPS(idle_fps)
+    state.active_fps = FramePacingSanitizeFPS(active_fps)
+    state.enabled = state.idle_fps > 0 || state.active_fps > 0
+    state.target_fps = 0
+    return UpdateFramePacing(state)
 }
 
-GetFramePacingTargetFPS :: () -> int #export {
-    return frame_pacing_target_fps
+DisableFramePacing :: (state: FramePacing) -> FramePacingDecision #export {
+    decision: FramePacingDecision
+    decision.apply_target = state.target_fps != 0
+    return decision
+}
+
+SetFramePacingActive :: (state: FramePacing,
+    active: bool) -> FramePacing #export {
+    state.active = active
+    return state
 }

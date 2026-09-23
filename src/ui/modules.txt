@@ -27,6 +27,7 @@ dropdown_props.zi
 fieldset.zi
 fieldset_props.zi
 focus.zi
+frame_pacing.zi
 geometry.zi
 grid.zi
 grid_props.zi

@@ -11,10 +11,5 @@ SyncFrame :: () #extern #export
 GetFrameWidth :: () -> i32 #extern #export
 GetFrameHeight :: () -> i32 #extern #export
 GetFrameScale :: () -> float #extern #export
-ConfigureFramePacing :: (idle_fps: i32, active_fps: i32) #extern #export
-DisableFramePacing :: () #extern #export
-SetFramePacingActive :: (active: i32) #extern #export
-UpdateFramePacing :: () #extern #export
-GetFramePacingTargetFPS :: () -> i32 #extern #export
 SchedulePostFrameCallback :: (callback: KryonPostFrameCallback,
                               userdata: *void) -> i32 #extern #export
