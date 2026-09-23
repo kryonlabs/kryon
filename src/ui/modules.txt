@@ -131,6 +131,7 @@ toast.zi
 toast_props.zi
 toggle.zi
 toggle_props.zi
+toggle_widget.zi
 toolbar.zi
 toolbar_props.zi
 transition.zi

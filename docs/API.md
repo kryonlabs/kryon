@@ -60,6 +60,14 @@ returned by Checkbox for the next frame. The old pointer and flag fields are
 not part of this checked API. Keyboard focus, ancestor input clipping, and
 native widget integration remain open.
 
+The checked `Toggle(ToggleProps)` uses the same caller-owned value pattern and
+returns `{value, changed}`. A plain switch and an Off/On label control both
+resolve KSS roles in Ziran, submit retained interactive nodes, and queue
+rounded shapes and clipped text. The tree records the proposed selected
+state. Hosts only measure glyphs, rasterize, and provide raw pointer samples.
+The old pointer field is outside the checked API. Keyboard focus, animated
+transitions, material layers, and native widget integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.

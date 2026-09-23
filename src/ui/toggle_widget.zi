@@ -1,0 +1,198 @@
+#module "toggle_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "toggle"
+#import "toggle_props"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+ToggleDefaultFace :: (kind: i32, role: i32,
+    tone: ButtonTone, disabled: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleFocus |
+        (u32)StyleBorderWidth | (u32)StyleOpacity |
+        (u32)StyleFontSize
+    face.background = (u32)0xd1d5dbff
+    face.foreground = (u32)0x374151ff
+    face.border = (u32)0x00000000
+    face.focus = (u32)0x2563ebff
+    face.border_width = 0.0
+    face.opacity = 1.0
+    face.font_size = 14.0
+    if kind == StyleKindToggleThumb() {
+        face.background = (u32)0xffffffff
+        face.foreground = (u32)0xffffffff
+        face.border = (u32)0x94a3b8ff
+        face.border_width = 1.0
+    } else if tone == (ButtonTone)ButtonToneAccent {
+        face.background = (u32)0x2563ebff
+        face.foreground = (u32)0xffffffff
+    } else if role == ToggleLabelRole() {
+        face.background = (u32)0x00000000
+    }
+    if disabled {
+        face.background = Opacity(face.background, 0.45)
+        face.foreground = Opacity(face.foreground, 0.45)
+        face.border = Opacity(face.border, 0.45)
+    }
+    return face
+}
+
+ToggleFaceFor :: (rules: StyleRules, props: ToggleProps,
+    kind: i32, role: i32, tone: ButtonTone,
+    state: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
+        props.class_name, role, (i32)tone,
+        (i32)ButtonEmphasisSoft, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(rules,
+        ToggleDefaultFace(kind, role, tone, props.disabled),
+        facts, state)
+    return frame
+}
+
+PaintToggleForNode :: (node: i32, props: ToggleProps,
+    paint: TogglePaint, font: i32) #export {
+    track_opacity: float = StyleOpacityValue(paint.track.value.fields,
+        paint.track.value.opacity)
+    PaintRoundedFill(node, paint.track_bounds, 0.5, 16,
+        ColorFromPacked(Opacity(paint.track.value.background,
+            track_opacity)))
+    if paint.track.value.border_width > 0.0 {
+        PaintRoundedOutline(node, paint.track_bounds, 0.5, 16,
+            paint.track.value.border_width,
+            ColorFromPacked(Opacity(paint.track.value.border,
+                track_opacity)))
+    }
+    if paint.has_labels {
+        active_opacity: float = StyleOpacityValue(
+            paint.active.value.fields, paint.active.value.opacity)
+        PaintRoundedFill(node, paint.active_bounds, 0.5, 16,
+            ColorFromPacked(Opacity(paint.active.value.background,
+                active_opacity)))
+        if paint.active.value.border_width > 0.0 {
+            PaintRoundedOutline(node, paint.active_bounds, 0.5, 16,
+                paint.active.value.border_width,
+                ColorFromPacked(Opacity(paint.active.value.border,
+                    active_opacity)))
+        }
+        if props.off_label != "" {
+            PaintClippedLabel(node, props.off_label,
+                (i32)paint.off_label_bounds.x,
+                (i32)paint.off_label_bounds.y, font,
+                ColorFromPacked(paint.off_label_color),
+                paint.track_bounds)
+        }
+        if props.on_label != "" {
+            PaintClippedLabel(node, props.on_label,
+                (i32)paint.on_label_bounds.x,
+                (i32)paint.on_label_bounds.y, font,
+                ColorFromPacked(paint.on_label_color),
+                paint.track_bounds)
+        }
+    } else {
+        thumb: Rectangle = (Rectangle){
+            paint.thumb_x - paint.thumb_radius,
+            paint.thumb_y - paint.thumb_radius,
+            paint.thumb_radius * 2.0, paint.thumb_radius * 2.0}
+        PaintRoundedFill(node, thumb, 0.5, 16,
+            ColorFromPacked(paint.thumb_fill_color))
+        if paint.thumb.value.border_width > 0.0 {
+            PaintRoundedOutline(node, thumb, 0.5, 16,
+                paint.thumb.value.border_width,
+                ColorFromPacked(paint.thumb_edge_color))
+        }
+    }
+}
+
+# The caller retains the value returned here and supplies it on the next
+# frame. Pointer activation is consumed from the previous committed tree.
+Toggle :: (props: ToggleProps) -> ToggleValueResult #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    previous: i32 = -1
+    if TreeIsBuilding() && key != (u64)0 {
+        previous = TreeFind(key, TreeRootKey(), WidgetKindToggle)
+    }
+    result: ToggleValueResult = ToggleValueFor(props.value,
+        TreeTakeActivationAt(previous), !props.disabled, true)
+    has_labels: bool = props.off_label != "" || props.on_label != ""
+    state: i32 = ResolveState((i32)ButtonStateAuto, props.disabled,
+        false, TreePressedAt(previous), TreeHoveredAt(previous),
+        false, result.value)
+    rules: StyleRules = ActiveStyleRules()
+    tone: ButtonTone = (ButtonTone)ButtonToneNeutral
+    if result.value && !has_labels { tone = (ButtonTone)ButtonToneAccent }
+    track: StyleFrame = ToggleFaceFor(rules, props,
+        StyleKindToggle(), ToggleTrackRoleFor(result.value,
+            has_labels), tone, state)
+    active: StyleFrame = ToggleFaceFor(rules, props,
+        StyleKindToggle(), ToggleFillRole(),
+        (ButtonTone)ButtonToneAccent, state)
+    label: StyleFrame = ToggleFaceFor(rules, props,
+        StyleKindToggle(), ToggleLabelRole(),
+        (ButtonTone)ButtonToneNeutral, state)
+    thumb: StyleFrame = ToggleFaceFor(rules, props,
+        StyleKindToggleThumb(), StyleAny(), tone, state)
+    font: i32 = ResolveFont(0,
+        StyleFontValue(label.value.fields, label.value.font_size), 14)
+    off_width: i32 = 0
+    on_width: i32 = 0
+    if has_labels {
+        if props.off_label != "" {
+            off_width = GlyphWidth(props.off_label, font,
+                label.value.typeface)
+        }
+        if props.on_label != "" {
+            on_width = GlyphWidth(props.on_label, font,
+                label.value.typeface)
+        }
+    }
+    spec: ToggleSpec
+    spec.bounds = props.bounds
+    spec.checked = result.value
+    spec.enabled = !props.disabled
+    spec.hovered = TreeHoveredAt(previous)
+    spec.pressed = TreePressedAt(previous)
+    spec.has_labels = has_labels
+    spec.off_width = off_width
+    spec.on_width = on_width
+    spec.font = font
+    spec.scale = 1.0
+    spec.track = track
+    spec.active = active
+    spec.label = label
+    spec.thumb = thumb
+    paint: TogglePaint = TogglePaintFor(spec)
+    if has_labels {
+        inactive_color: u32 = Opacity(label.value.foreground,
+            StyleOpacityValue(label.value.fields, label.value.opacity))
+        if result.value {
+            paint.off_label_color = inactive_color
+        } else {
+            paint.on_label_color = inactive_color
+        }
+    }
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindToggle, paint.bounds)
+        if node < 0 { return result }
+        TreeSetInteractive(node, props.disabled, false, props.id)
+        TreeSetSelected(node, result.value)
+        semantic_label: string = props.label
+        if semantic_label == "" { semantic_label = props.on_label }
+        if semantic_label == "" { semantic_label = props.off_label }
+        TreeSetLabel(node, semantic_label)
+    }
+    PaintToggleForNode(node, props, paint, font)
+    return result
+}

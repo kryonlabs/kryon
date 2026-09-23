@@ -2,11 +2,13 @@
 #import "geometry"
 
 ToggleProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    value: i32*
-    off_label: const char*
-    on_label: const char*
+    value: bool
+    label: string
+    off_label: string
+    on_label: string
     disabled: bool
 }
