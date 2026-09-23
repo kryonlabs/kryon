@@ -15,6 +15,10 @@ its portable loader recognizes widget names.
 | `src/backend/`, other C and Go host code | Raw platform input, windows, font measurement, rasterization, storage, and device services |
 | `../ziran` | Language implementation and generic execution |
 
+`modules.txt` is a temporary migration inventory. The old build discovered
+every UI source file automatically; once every maintained `.zi` module builds,
+the library build should discover those files directly and remove this list.
+
 Host adapters provide observations and effects through declared interfaces.
 Widget state, policy, layout, and draw decisions belong in `.zi`, including for
 desktop, browser, and portable hosts. Platform adapters may use C or Go where
@@ -25,7 +29,7 @@ the operating system requires it; they must not duplicate widget policy.
 `make` compiles the [checked module list](../src/ui/modules.txt) to `.zir`, C,
 C++, and Go, then builds `build/ziran/libkryon.a`. `make test` runs the current
 source, saved-IR, and portable bundle tests. The checked modules cover
-geometry, layout, accessibility, focus, canvas transforms, drag, swipe, and
+geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, swipe, and
 scroll interaction, paragraph layout policy, text input and text row decisions,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and

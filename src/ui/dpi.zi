@@ -1,0 +1,140 @@
+#module "dpi"
+
+DPIPlatform :: enum {
+    DPIPlatformDesktop = 0
+    DPIPlatformAndroid = 1
+    DPIPlatformWeb = 2
+}
+
+DPIState :: struct {
+    physical_width: i32
+    physical_height: i32
+    view_width: i32
+    view_height: i32
+    layout_width: i32
+    layout_height: i32
+    ui_scale: float
+    ui_scale_clamped: float
+    render_scale: float
+    camera_zoom: float
+    base_width: i32
+    base_height: i32
+    needs_update: bool
+}
+
+InitialDPI :: () -> DPIState #export {
+    state: DPIState
+    state.physical_width = 320
+    state.physical_height = 560
+    state.view_width = 320
+    state.view_height = 560
+    state.layout_width = 320
+    state.layout_height = 560
+    state.ui_scale = 1.0
+    state.ui_scale_clamped = 1.0
+    state.render_scale = 1.0
+    state.camera_zoom = 1.0
+    state.base_width = 320
+    state.base_height = 560
+    return state
+}
+
+InvalidateDPI :: (state: DPIState) -> DPIState #export {
+    state.physical_width = -1
+    state.physical_height = -1
+    state.view_width = -1
+    state.view_height = -1
+    state.layout_width = -1
+    state.layout_height = -1
+    state.needs_update = true
+    return state
+}
+
+# The host passes platform and density observations. Ziran owns the scale and
+# layout decision; every backend receives the same resulting state.
+ResolveDPI :: (state: DPIState, view_width: i32, view_height: i32,
+    platform: DPIPlatform, device_density: float,
+    window_scale_x: float, window_scale_y: float) -> DPIState #export {
+    if state.base_height <= 0 { state = InitialDPI() }
+    if state.physical_width == view_width &&
+        state.physical_height == view_height {
+        state.needs_update = false
+        return state
+    }
+    state.physical_width = view_width
+    state.physical_height = view_height
+
+    viewport_scale: float = 1.0
+    if view_height > 0 {
+        viewport_scale = (float)view_height / (float)state.base_height
+    }
+    real_dpi: float = 1.0
+    if platform == (DPIPlatform)DPIPlatformAndroid {
+        real_dpi = viewport_scale
+        if device_density > 0.0 { real_dpi = device_density }
+    } else if platform == (DPIPlatform)DPIPlatformWeb {
+        real_dpi = viewport_scale
+    } else {
+        if device_density > real_dpi { real_dpi = device_density }
+        window_dpi: float = window_scale_y
+        if window_scale_x > 1.0 { window_dpi = window_scale_x }
+        if window_dpi > real_dpi { real_dpi = window_dpi }
+    }
+    if !(real_dpi > 0.0) || real_dpi > 8.0 { real_dpi = 1.0 }
+    state.ui_scale = real_dpi
+    state.ui_scale_clamped = real_dpi
+    if state.ui_scale_clamped < 1.0 { state.ui_scale_clamped = 1.0 }
+    state.render_scale = state.ui_scale_clamped
+
+    layout_width: i32 = view_width
+    layout_height: i32 = view_height
+    if state.render_scale > 1.0 {
+        layout_width = (i32)((float)view_width / state.render_scale + 0.5)
+        layout_height = (i32)((float)view_height / state.render_scale + 0.5)
+    }
+    if layout_width < 1 { layout_width = 1 }
+    if layout_height < 1 { layout_height = 1 }
+    state.layout_width = layout_width
+    state.layout_height = layout_height
+    state.view_width = layout_width
+    state.view_height = layout_height
+    state.camera_zoom = state.render_scale
+    state.needs_update = true
+    return state
+}
+
+OffscreenDPI :: (state: DPIState, view_width: i32, view_height: i32,
+    forced_scale: float, platform: DPIPlatform, device_density: float,
+    window_scale_x: float, window_scale_y: float) -> DPIState #export {
+    state = ResolveDPI(state, view_width, view_height, platform,
+        device_density, window_scale_x, window_scale_y)
+    if !(forced_scale > 0.0) { return state }
+    state.ui_scale = forced_scale
+    state.ui_scale_clamped = forced_scale
+    if state.ui_scale_clamped < 1.0 { state.ui_scale_clamped = 1.0 }
+    state.render_scale = state.ui_scale_clamped
+    state.layout_width = (i32)((float)view_width / state.render_scale + 0.5)
+    state.layout_height = (i32)((float)view_height / state.render_scale + 0.5)
+    if state.layout_width < 1 { state.layout_width = 1 }
+    if state.layout_height < 1 { state.layout_height = 1 }
+    state.view_width = state.layout_width
+    state.view_height = state.layout_height
+    state.camera_zoom = state.render_scale
+    state.needs_update = true
+    return state
+}
+
+ScalePixels :: (px: i32, scale: float) -> i32 #export {
+    if !(scale > 0.0) { scale = 1.0 }
+    return (i32)((float)px * scale + 0.5)
+}
+
+ClampPixels :: (px: i32, minimum: i32, maximum: i32,
+    scale: float) -> i32 #export {
+    value: i32 = ScalePixels(px, scale)
+    low: i32 = ScalePixels(minimum, scale)
+    high: i32 = ScalePixels(maximum, scale)
+    if value < low { value = low }
+    if value > high { value = high }
+    return value
+}

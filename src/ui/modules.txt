@@ -17,6 +17,7 @@ collapsible_props.zi
 color_picker.zi
 color_picker_props.zi
 control_props.zi
+dpi.zi
 drag.zi
 drag_drop.zi
 drag_drop_props.zi
