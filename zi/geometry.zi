@@ -1,5 +1,10 @@
 #module "geometry"
 
+Vector2 :: struct {
+    x: float
+    y: float
+}
+
 Rectangle :: struct {
     x: float
     y: float

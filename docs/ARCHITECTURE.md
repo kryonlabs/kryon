@@ -23,7 +23,7 @@ rasterization, input, clipboard, IME, time, storage).
 
 ## Ziran migration in progress
 
-`zi/geometry.zi` defines the portable rectangle record. `zi/layout.zi` ports
+`zi/geometry.zi` defines portable rectangle and point records. `zi/layout.zi` ports
 the pure policy from `runtime/layout.kry`, including content insets, automatic
 child placement, and flex spacing and alignment. `zi/group.zi` composes those
 policies into group bounds. A separate Ziran program imports these modules
@@ -44,7 +44,11 @@ checks source and saved `.zir` builds in C, C++, Go, and portable `.zib`.
 `zi/theme.zi` ports the theme policy, palette, scheme, and metrics. Its
 [theme test](../tests/ziran_theme_test.sh) checks source and saved `.zir`
 builds in all four targets.
-`make ziran-test` runs the four migration tests with an adjacent Ziran checkout.
+`zi/popup_policy.zi` ports popup eligibility, activation, bounds, dismissal,
+and keyboard decisions with ordinary imports from `zi/geometry.zi`. The
+[popup policy test](../tests/ziran_popup_policy_test.sh) runs source and saved
+`.zir` builds in C, C++, Go, and portable `.zib`.
+`make ziran-test` runs the five migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
