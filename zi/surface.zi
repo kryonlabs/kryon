@@ -1,0 +1,46 @@
+#module "surface"
+
+# Keep endpoint presence and values separate so a transparent override remains
+# distinguishable from an unset endpoint.
+FillStates :: struct {
+    normal: bool
+    hover: bool
+    press: bool
+    focus: bool
+    normal_start: u32
+    normal_end: u32
+    hover_start: u32
+    hover_end: u32
+    press_start: u32
+    press_end: u32
+    focus_start: u32
+    focus_end: u32
+    hover_amount: float
+    press_amount: float
+    focus_amount: float
+}
+
+FillState :: (fields: u32, start: u32, end: u32) -> FillStates #export {
+    state: FillStates
+    state.normal = (fields & (u32)8192) != (u32)0
+    state.normal_start = start
+    state.normal_end = end
+    return state
+}
+
+FillTransition :: (normal: FillStates, hover: FillStates, press: FillStates,
+    focus: FillStates, h: float, p: float, f: float) -> FillStates #export {
+    normal.hover = hover.normal
+    normal.press = press.normal
+    normal.focus = focus.normal
+    normal.hover_start = hover.normal_start
+    normal.hover_end = hover.normal_end
+    normal.press_start = press.normal_start
+    normal.press_end = press.normal_end
+    normal.focus_start = focus.normal_start
+    normal.focus_end = focus.normal_end
+    normal.hover_amount = h
+    normal.press_amount = p
+    normal.focus_amount = f
+    return normal
+}

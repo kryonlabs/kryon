@@ -77,7 +77,12 @@ library through the same module path.
 source mapping from the Image widget. The [image test](../tests/ziran_image_test.sh)
 checks source and saved `.zir` in C, C++, Go, and `.zib`. Texture loading,
 styling, and drawing still use the legacy host path.
-`make ziran-test` runs the twelve migration tests with an adjacent Ziran checkout.
+`zi/control_props.zi`, `zi/surface.zi`, and `zi/style.zi` establish the shared
+state, style, and fill-value model. `zi/separator.zi` and `zi/progress.zi` use
+that model for line, label, bullet, track, and fill decisions. The
+[style and widget test](../tests/ziran_style_test.sh) checks imported source
+and saved `.zir` in C, C++, Go, and `.zib`.
+`make ziran-test` runs the thirteen migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 

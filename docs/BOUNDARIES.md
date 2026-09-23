@@ -30,6 +30,11 @@ pointer and key samples and render the returned geometry.
 release decisions; hosts own pointer samples and gesture state.
 `zi/image.zi` provides image fit and clipped-strip geometry plus placeholder
 placement. The host still loads textures, resolves styles, and draws them.
+`zi/control_props.zi`, `zi/surface.zi`, and `zi/style.zi` provide the shared
+style state, field flags, fill presence, and value merge decisions now used by
+`zi/separator.zi` and `zi/progress.zi`. Hosts still resolve platform style
+inputs and issue draw calls. The remaining legacy style functions have not
+yet moved to Ziran.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 
