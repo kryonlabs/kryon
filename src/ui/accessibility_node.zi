@@ -1,5 +1,5 @@
 #module "accessibility_node"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 AccessibilityNode :: struct {
     bounds: Rectangle

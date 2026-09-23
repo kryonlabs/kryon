@@ -1,3 +1,5 @@
+accelerator.zi
+accessibility_node.zi
 accessibility_policy.zi
 accessibility_props.zi
 bevel.zi

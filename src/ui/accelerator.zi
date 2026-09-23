@@ -1,5 +1,4 @@
 #module "accelerator"
-#import "kryon_compat.generated.h"
 
 Accelerator :: struct {
     key: i32
