@@ -11,14 +11,24 @@ DropZone :: enum {
 }
 
 PanedViewProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
     vertical: bool
-    split: i32*
+    split: i32
+    has_split: bool
     min_first: i32
     min_second: i32
+    scale: float
+    disabled: bool
 }
 
-# Implemented by the C-only paned-view host; declared here for the public ABI.
-GetPaneDropZone :: (bounds: Rectangle, mouse: Vector2) -> DropZone #extern #export
+PanedViewResult :: struct {
+    node: i32
+    split: i32
+    changed: bool
+    first: Rectangle
+    second: Rectangle
+    handle: Rectangle
+}

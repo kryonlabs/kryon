@@ -292,3 +292,13 @@ input. Unique positive item ids preserve row identity when items move. The
 checked surface paints the
 panel, rows, and scrollbar; retained pointer capture controls its draggable
 thumb. A platform host supplies the raw key and wheel observations.
+
+`PanedView(PanedViewProps)` takes a split value and returns a
+`PanedViewResult` with the clamped split, change flag, and the first pane,
+second pane, and handle rectangles. The caller stores the returned split and
+places its pane content in the returned rectangles. The checked handle uses
+retained pointer capture, including release outside its bounds, and paints
+through the generic raster capability. `vertical` places the panes side by
+side; the other orientation stacks them. Set `has_split` when supplying a
+saved split; otherwise the widget chooses its default. `PaneDropZone` returns
+the drop region for a point using the same styled edge metric.

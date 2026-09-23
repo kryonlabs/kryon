@@ -140,7 +140,7 @@ Answer :: () -> i32 #export {
     drag: PointerDrag = TreeTakeDragAt(slider)
     if !drag.active || !drag.started || drag.ended ||
         drag.x != 150.0 || drag.y != 15.0 ||
-        drag.grab_y != 5.0 { return -26 }
+        drag.grab_x != 5.0 || drag.grab_y != 5.0 { return -26 }
     TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
     TreeSubmit((u64)17, 0, WidgetKindText,
         (Rectangle){0.0, 0.0, 5.0, 5.0})
@@ -150,12 +150,13 @@ Answer :: () -> i32 #export {
     if !TreeFinish() || slider != 2 { return -27 }
     drag = TreeTakeDragAt(slider)
     if !drag.active || drag.started || drag.ended ||
-        drag.x != 150.0 || drag.grab_y != 5.0 { return -28 }
+        drag.x != 150.0 || drag.grab_x != 5.0 ||
+        drag.grab_y != 5.0 { return -28 }
     TreePointerUpdate((PointerFrame){150.0, 15.0, false, false, true})
     drag = TreeTakeDragAt(slider)
     if drag.active || drag.started || !drag.ended ||
         drag.x != 150.0 || drag.y != 15.0 ||
-        drag.grab_y != 5.0 { return -29 }
+        drag.grab_x != 5.0 || drag.grab_y != 5.0 { return -29 }
     if TreeTakeDragAt(slider).ended || TreeTakeActivationAt(slider) {
         return -30
     }

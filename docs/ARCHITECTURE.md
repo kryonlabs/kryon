@@ -43,6 +43,8 @@ automatic placement for zero-positioned children and explicit placement otherwis
 checked TreeView row composition, selection, keyboard navigation, scroll values,
 draggable scrollbar, viewport clipping, and semantic row nodes from a caller
 owned item slice,
+checked PanedView split state, retained handle drag, pane rectangles, and
+drop zone policy,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned
@@ -145,7 +147,9 @@ identity across tree reordering, and emits consumable activation on release.
 The host supplies raw pointer samples. Button, Checkbox, Toggle, and Radio use
 this path for retained pointer activation. Slider nodes retain drag
 ownership across tree reordering and pointer movement outside their bounds;
-the route reports held and release coordinates and cancels a disabled drag.
+the route reports held and release coordinates with the original grab offset
+and cancels a disabled drag. PanedView uses this route for its handle and
+returns pane rectangles and the updated split to its caller.
 Remaining input modes, including keyboard focus and ancestor input clipping,
 still need migration. Other widget submissions and retained layout are also
 incomplete.
