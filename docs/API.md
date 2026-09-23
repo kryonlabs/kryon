@@ -88,6 +88,14 @@ input. Applications can compose multiple controls using their own arrays and
 step buttons, numeric text editing, limit labels, keyboard control, richer
 materials, and native widget integration remain open.
 
+The checked `Spinbox(SpinboxProps)` returns a caller owned integer value and
+change flag. It submits decrement and increment Button children, applies step,
+clamp, and wrap policy in Ziran, and renders the current integer as clipped
+glyphs, including negative values. `value_text` overrides the numeric display
+when an application supplies its own formatted text. The parent and value
+surfaces resolve their KSS styles independently. Keyboard editing, locale
+number formatting, and native host integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.

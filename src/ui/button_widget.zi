@@ -139,13 +139,14 @@ PaintButtonForNode :: (node: i32, props: ButtonProps, bounds: Rectangle,
 
 # A retained press is routed after the previous tree commits. The next
 # submission consumes its activation and paints from the latest input state.
-Button :: (props: ButtonProps) -> i32 #export {
+SubmitButton :: (props: ButtonProps, parent_index: i32,
+    parent_key: u64) -> i32 #export {
     key: u64 = props.key
     if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
     if key == (u64)0 { key = TreeNextKey() }
     previous: i32 = -1
     if TreeIsBuilding() && key != (u64)0 {
-        previous = TreeFind(key, TreeRootKey(), WidgetKindButton)
+        previous = TreeFind(key, parent_key, WidgetKindButton)
     }
     flags: StateFlags = ResolveFlags((i32)props.state,
         props.disabled, props.loading, props.selected)
@@ -173,7 +174,7 @@ Button :: (props: ButtonProps) -> i32 #export {
         available_width, 1.0, false)
     node: i32 = -1
     if TreeIsBuilding() {
-        node = TreeSubmit(key, 0, WidgetKindButton, bounds)
+        node = TreeSubmit(key, parent_index, WidgetKindButton, bounds)
         if node < 0 { return 0 }
         TreeSetInteractive(node, flags.disabled, flags.loading, props.id)
         TreeSetSelected(node, flags.selected)
@@ -183,4 +184,8 @@ Button :: (props: ButtonProps) -> i32 #export {
         label_width, label_height)
     if clicked { return 1 }
     return 0
+}
+
+Button :: (props: ButtonProps) -> i32 #export {
+    return SubmitButton(props, 0, TreeRootKey())
 }

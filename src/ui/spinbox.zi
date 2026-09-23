@@ -22,6 +22,7 @@ SpinboxEffectiveStep :: (step: i32) -> i32 #export {
 }
 
 SpinboxClampValue :: (value: i32, min_value: i32, max_value: i32) -> i32 #export {
+    if min_value > max_value { return value }
     if value < min_value {
         return min_value
     }
@@ -84,16 +85,21 @@ SpinboxStepValue :: (value: i32, min_value: i32, max_value: i32,
     step: i32, direction: i32, wrap: bool) -> SpinboxStepResult #export {
     result: SpinboxStepResult
     result.value = value
+    if min_value > max_value { return result }
     step = SpinboxEffectiveStep(step)
     if direction < 0 {
         if value > min_value {
-            result.value = value - step
+            next: i64 = (i64)value - (i64)step
+            if next < (i64)min_value { next = (i64)min_value }
+            result.value = (i32)next
         } else if wrap && value <= min_value {
             result.value = max_value
         }
     } else if direction > 0 {
         if value < max_value {
-            result.value = value + step
+            next: i64 = (i64)value + (i64)step
+            if next > (i64)max_value { next = (i64)max_value }
+            result.value = (i32)next
         } else if wrap && value >= max_value {
             result.value = min_value
         }
@@ -114,8 +120,8 @@ SpinboxStepButtonsValue :: (value: i32, min_value: i32, max_value: i32,
     if increment {
         next: SpinboxStepResult = SpinboxStepValue(result.value, min_value,
             max_value, step, 1, wrap)
-        result.changed = result.changed || next.changed
         result.value = next.value
     }
+    result.changed = result.value != value
     return result
 }

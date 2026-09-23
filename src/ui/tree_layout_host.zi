@@ -1628,12 +1628,6 @@ Plot :: (plot: PlotProps) #export {
     else { RenderPlotLines(plot) }
 }
 
-Spinbox :: (spinbox: SpinboxProps) -> i32 #export {
-    ui_tree_add(spinbox.id, WidgetKindSpinbox,
-    spinbox.bounds, &spinbox)
-    return RenderSpinbox(spinbox)
-}
-
 Fieldset :: (frame: FieldsetProps) #export {
     ui_tree_add(0, WidgetKindFieldset, frame.bounds, &frame)
     RenderFieldset(frame)

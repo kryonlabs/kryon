@@ -108,6 +108,7 @@ slider_props.zi
 slider_widget.zi
 spinbox.zi
 spinbox_props.zi
+spinbox_widget.zi
 style.zi
 style_parse.zi
 style_sheet.zi

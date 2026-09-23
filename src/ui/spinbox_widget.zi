@@ -1,0 +1,184 @@
+#module "spinbox_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "spinbox"
+#import "spinbox_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
+
+SpinboxDefaultFace :: (value_face: bool, disabled: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity | (u32)StyleFontSize
+    face.background = (u32)0xf9fafbff
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0xd1d5dbff
+    face.border_width = 1.0
+    face.radius = 6.0
+    face.opacity = 1.0
+    face.font_size = 14.0
+    if value_face { face.background = (u32)0xffffffff }
+    if disabled {
+        face.background = Opacity(face.background, 0.45)
+        face.foreground = Opacity(face.foreground, 0.45)
+        face.border = Opacity(face.border, 0.45)
+    }
+    return face
+}
+
+SpinboxFaceFor :: (props: SpinboxProps, value_face: bool) -> StyleData #export {
+    kind: i32 = StyleKindSpinbox()
+    if value_face { kind = StyleKindSpinboxValue() }
+    state: i32 = ButtonStateNormal
+    if props.disabled { state = ButtonStateDisabled }
+    facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
+        props.class_name, StyleAny(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    return ResolveStyleRules(ActiveStyleRules(),
+        SpinboxDefaultFace(value_face, props.disabled), facts, state)
+}
+
+SpinboxDigitText :: (digit: u32) -> string #export {
+    if digit == (u32)0 { return "0" }
+    if digit == (u32)1 { return "1" }
+    if digit == (u32)2 { return "2" }
+    if digit == (u32)3 { return "3" }
+    if digit == (u32)4 { return "4" }
+    if digit == (u32)5 { return "5" }
+    if digit == (u32)6 { return "6" }
+    if digit == (u32)7 { return "7" }
+    if digit == (u32)8 { return "8" }
+    return "9"
+}
+
+SpinboxMagnitude :: (value: i32) -> u32 #export {
+    if value < 0 { return (u32)(-(i64)value) }
+    return (u32)value
+}
+
+SpinboxPlace :: (magnitude: u32) -> u32 #export {
+    place: u32 = (u32)1
+    while magnitude / place >= (u32)10 { place *= (u32)10 }
+    return place
+}
+
+SpinboxIntegerWidth :: (value: i32, font: i32,
+    typeface: string) -> i32 #export {
+    width: i32 = 0
+    if value < 0 { width = GlyphWidth("-", font, typeface) }
+    magnitude: u32 = SpinboxMagnitude(value)
+    place: u32 = SpinboxPlace(magnitude)
+    while place > (u32)0 {
+        width += GlyphWidth(SpinboxDigitText(
+            (magnitude / place) % (u32)10), font, typeface)
+        place /= (u32)10
+    }
+    return width
+}
+
+SpinboxPaintInteger :: (node: i32, value: i32,
+    bounds: Rectangle, font: i32, typeface: string,
+    color: Color) #export {
+    width: i32 = SpinboxIntegerWidth(value, font, typeface)
+    height: i32 = GlyphLineHeight(font, typeface)
+    x: i32 = (i32)(bounds.x + (bounds.width - (float)width) * 0.5)
+    y: i32 = (i32)(bounds.y + (bounds.height - (float)height) * 0.5)
+    if value < 0 {
+        PaintClippedLabel(node, "-", x, y, font, color, bounds)
+        x += GlyphWidth("-", font, typeface)
+    }
+    magnitude: u32 = SpinboxMagnitude(value)
+    place: u32 = SpinboxPlace(magnitude)
+    while place > (u32)0 {
+        digit: string = SpinboxDigitText((magnitude / place) % (u32)10)
+        PaintClippedLabel(node, digit, x, y, font, color, bounds)
+        x += GlyphWidth(digit, font, typeface)
+        place /= (u32)10
+    }
+}
+
+SpinboxPaintFace :: (node: i32, bounds: Rectangle,
+    face: StyleData) #export {
+    opacity: float = StyleOpacityValue(face.fields, face.opacity)
+    PaintRoundedFill(node, bounds, face.radius, 12,
+        ColorFromPacked(Opacity(face.background, opacity)))
+    if face.border_width > 0.0 {
+        PaintRoundedOutline(node, bounds, face.radius, 12,
+            face.border_width,
+            ColorFromPacked(Opacity(face.border, opacity)))
+    }
+}
+
+Spinbox :: (props: SpinboxProps) -> SpinboxStepResult #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 { bounds.width = 120.0 }
+    if bounds.height <= 0.0 { bounds.height = 36.0 }
+    layout: SpinboxLayout = SpinboxLayoutFor(bounds,
+        SpinboxDefaultButtonWidth(1.0))
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindSpinbox, bounds)
+        if node < 0 {
+            empty: SpinboxStepResult
+            empty.value = props.value
+            return empty
+        }
+        TreeSetLabel(node, props.label)
+    }
+    face: StyleData = SpinboxFaceFor(props, false)
+    value_face: StyleData = SpinboxFaceFor(props, true)
+    SpinboxPaintFace(node, bounds, face)
+    SpinboxPaintFace(node, layout.text, value_face)
+    decrement: ButtonProps
+    decrement.key = (u64)1
+    decrement.bounds = layout.left
+    decrement.label = "-"
+    decrement.id = SpinboxDecrementIdFor(props.id)
+    decrement.class_name = props.class_name
+    decrement.disabled = props.disabled
+    decrement.size = (ControlSize)ControlSizeSmall
+    increment: ButtonProps = decrement
+    increment.key = (u64)2
+    increment.bounds = layout.right
+    increment.label = "+"
+    increment.id = SpinboxIncrementIdFor(props.id)
+    dec: bool = SubmitButton(decrement, node, key) != 0
+    inc: bool = SubmitButton(increment, node, key) != 0
+    result: SpinboxStepResult
+    result.value = props.value
+    if !props.disabled {
+        result = SpinboxStepButtonsValue(props.value, props.min,
+            props.max, props.step, dec, inc, props.wrap)
+    }
+    font: i32 = ResolveFont(0,
+        StyleFontValue(value_face.fields, value_face.font_size), 14)
+    opacity: float = StyleOpacityValue(value_face.fields,
+        value_face.opacity)
+    color: Color = ColorFromPacked(Opacity(value_face.foreground, opacity))
+    if props.value_text != "" {
+        width: i32 = GlyphWidth(props.value_text, font, value_face.typeface)
+        height: i32 = GlyphLineHeight(font, value_face.typeface)
+        x: i32 = (i32)(layout.text.x +
+            (layout.text.width - (float)width) * 0.5)
+        y: i32 = (i32)(layout.text.y +
+            (layout.text.height - (float)height) * 0.5)
+        PaintClippedLabel(node, props.value_text, x, y, font,
+            color, layout.text)
+    } else {
+        SpinboxPaintInteger(node, result.value, layout.text, font,
+            value_face.typeface, color)
+    }
+    return result
+}

@@ -112,7 +112,6 @@ Radio :: (radio: RadioProps) -> i32 #extern #export
 Plot :: (plot: PlotProps) #extern #export
 Drag :: (drag: DragProps) -> i32 #extern #export
 Input :: (input: InputProps) -> i32 #extern #export
-Spinbox :: (spinbox: SpinboxProps) -> i32 #extern #export
 Fieldset :: (frame: FieldsetProps) #extern #export
 ListBox :: (list: ListBoxProps) -> i32 #extern #export
 TreeView :: (tree: TreeViewProps) -> i32 #extern #export

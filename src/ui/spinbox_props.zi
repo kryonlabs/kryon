@@ -2,14 +2,16 @@
 #import "geometry"
 
 SpinboxProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
+    label: string
     min: i32
     max: i32
     step: i32
-    value: i32*
+    value: i32
     disabled: bool
-    value_text: const char*
+    value_text: string
     wrap: bool
 }

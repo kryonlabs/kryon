@@ -495,7 +495,6 @@ void ui_paint_slider_angle(SliderAngleProps slider);
 int RenderInputContinuous(InputContinuousProps input);
 int RenderInputDiscrete(InputDiscreteProps input);
 int RenderInputPrecise(InputPreciseProps input);
-int RenderSpinbox(SpinboxProps spinbox);
 void RenderFieldset(FieldsetProps frame);
 int RenderListBox(ListBoxProps list);
 int RenderTreeView(TreeViewProps tree);
