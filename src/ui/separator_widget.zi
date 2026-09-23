@@ -125,3 +125,25 @@ Separator :: (props: SeparatorProps) #export {
         props, DefaultSeparatorFaces())
     PaintSeparatorForNode(node, props, faces)
 }
+
+Bullet :: (bounds: Rectangle) #export {
+    defaults: StyleData
+    defaults.fields = (u32)StyleForeground
+    defaults.foreground = (u32)0x171717ff
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindSeparator(),
+        0, 0, SeparatorBulletRole(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium,
+        (i32)ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+        facts, (i32)ButtonStateNormal)
+    paint: BulletPaint = BulletPaintFor(bounds, frame)
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmitCurrent(TreeNextKey(), WidgetKindBullet, bounds)
+        if node < 0 { return }
+    }
+    PaintRoundedFill(node, paint.bounds, 0.5, 32,
+        ColorFromPacked(Opacity(paint.color,
+            StyleOpacityValue(frame.value.fields, frame.value.opacity))))
+}

@@ -23,7 +23,7 @@ phase :: i32 #global
 
 Frame :: () -> i32 #export {
     if phase == 1 {
-        if !EndTree() || TreeCount() != 3 { return -1 }
+        if !EndTree() || TreeCount() != 4 { return -1 }
         phase = 2
         return 1
     }
@@ -68,6 +68,7 @@ Frame :: () -> i32 #export {
     BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
     Separator(vertical)
     Separator(labelled)
+    Bullet((Rectangle){150.0, 20.0, 20.0, 20.0})
     phase = 1
     return 0
 }
@@ -101,7 +102,7 @@ cat > "$work/native.zi" <<'ZI'
 
 Answer :: () -> i32 #export {
     rules: StyleRules
-    rules.count = 2
+    rules.count = 3
     line: StyleRule
     line.selector = StyleDefaultSelector()
     line.selector.kind = StyleKindSeparator()
@@ -117,6 +118,14 @@ Answer :: () -> i32 #export {
     label.style.foreground = (u32)0xaabbccdd
     label.style.gap = 8.0
     rules.items[1] = label
+    bullet: StyleRule
+    bullet.selector = StyleDefaultSelector()
+    bullet.selector.kind = StyleKindSeparator()
+    bullet.selector.role = SeparatorBulletRole()
+    bullet.style.fields = (u32)StyleForeground | (u32)StyleIconSize
+    bullet.style.foreground = (u32)0x123456ff
+    bullet.style.icon_size = 8.0
+    rules.items[2] = bullet
     InstallStyleRules(rules)
     vertical: SeparatorProps
     vertical.bounds = (Rectangle){10.0, 20.0, 20.0, 40.0}
@@ -126,6 +135,7 @@ Answer :: () -> i32 #export {
     labelled.bounds = (Rectangle){40.0, 20.0, 100.0, 20.0}
     labelled.label = "A"
     Separator(labelled)
+    Bullet((Rectangle){150.0, 20.0, 20.0, 20.0})
     return 42
 }
 ZI
@@ -142,7 +152,7 @@ cat > "$work/native_main.h" <<'C'
 #include <string.h>
 #define HOST
 #endif
-static int lines, texts, measures;
+static int lines, texts, measures, bullets;
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String typeface) {
     (void)typeface;
@@ -181,8 +191,12 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
 }
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     int32_t segments, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)color;
-    assert(0 && "Separator should not draw rounded rectangles");
+    assert(bounds.x == 156 && bounds.y == 26 &&
+           bounds.width == 8 && bounds.height == 8);
+    assert(radius == 0.5f && segments == 32);
+    assert(color.r == 0x12 && color.g == 0x34 &&
+           color.b == 0x56 && color.a == 0xff);
+    bullets++;
 }
 HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
     int32_t segments, float width, Color color) {
@@ -198,7 +212,8 @@ HOST void RasterImage(String path, uint32_t texture_id,
     assert(0 && "Separator should not draw images");
 }
 int main(void) {
-    assert(Answer() == 42 && lines == 2 && texts == 1 && measures == 1);
+    assert(Answer() == 42 && lines == 2 && texts == 1 &&
+           measures == 1 && bullets == 1);
     return 0;
 }
 C
@@ -221,7 +236,7 @@ for target in c cpp go; do
         cat > "$output/separator_widget_test.go" <<'GO'
 package ziran
 import "testing"
-type separatorHost struct { t *testing.T; lines, texts, measures int }
+type separatorHost struct { t *testing.T; lines, texts, measures, bullets int }
 func (h *separatorHost) MeasureGlyphWidth(value string, font int32,
     typeface string) int32 {
     if value != "A" || font != 14 { h.t.Fatal("width") }
@@ -253,7 +268,12 @@ func (h *separatorHost) RasterTextClipped(value string, x, y, font int32,
 }
 func (h *separatorHost) RasterRoundedRectangle(bounds Rectangle,
     radius float32, segments int32, color Color) {
-    h.t.Fatal("Separator should not draw rounded rectangles")
+    if bounds.X != 156 || bounds.Y != 26 ||
+       bounds.Width != 8 || bounds.Height != 8 ||
+       radius != 0.5 || segments != 32 ||
+       color.R != 0x12 || color.G != 0x34 ||
+       color.B != 0x56 || color.A != 0xff { h.t.Fatal("bullet") }
+    h.bullets++
 }
 func (h *separatorHost) RasterRoundedRectangleOutline(bounds Rectangle,
     radius float32, segments int32, width float32, color Color) {
@@ -272,7 +292,7 @@ func TestSeparatorWidget(t *testing.T) {
     SetRasterShapeHost(host)
     SetPaintQueueHost(host)
     if Native_Answer() != 42 || host.lines != 2 ||
-       host.texts != 1 || host.measures != 1 {
+       host.texts != 1 || host.measures != 1 || host.bullets != 1 {
         t.Fatal("separator composition")
     }
 }

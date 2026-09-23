@@ -7,6 +7,7 @@
 static int lines;
 static int labels;
 static int measures;
+static int bullets;
 
 static void line(void *context, float x1, float y1, float x2, float y2,
                  uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -52,9 +53,11 @@ static void rounded(void *context, float x, float y, float width,
                     float height, float radius, int segments,
                     uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-    (void)context; (void)x; (void)y; (void)width; (void)height;
-    (void)radius; (void)segments; (void)r; (void)g; (void)b; (void)a;
-    assert(0 && "Separator should not draw rounded rectangles");
+    (void)context;
+    assert(x == 155 && y == 25 && width == 10 && height == 10);
+    assert(radius == 0.5f && segments == 32);
+    assert(r == 0x17 && g == 0x17 && b == 0x17 && a == 0xff);
+    bullets++;
 }
 
 static void outline(void *context, float x, float y, float width,
@@ -89,13 +92,13 @@ static void run(Bundle *bundle)
     int has_value = 0;
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 0 && lines == 0 && labels == 0 &&
-           measures == 1);
+           measures == 1 && bullets == 0);
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 1 && lines == 2 && labels == 1 &&
-           measures == 1);
+           measures == 1 && bullets == 1);
     assert(BundleInstanceRun(instance, &value, &has_value));
     assert(has_value && value == 2 && lines == 3 && labels == 1 &&
-           measures == 1);
+           measures == 1 && bullets == 1);
     BundleInstanceClose(instance);
 }
 
