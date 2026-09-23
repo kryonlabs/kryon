@@ -147,6 +147,7 @@ table_view.zi
 table_view_props.zi
 text.zi
 text_align.zi
+text_field_widget.zi
 text_input.zi
 text_input_props.zi
 text_props.zi

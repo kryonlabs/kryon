@@ -29,7 +29,8 @@ saved-IR, and portable bundle tests. No display is started.
 
 The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy plus portable text-buffer edits and UTF-8 cursor
-boundaries, canvas transforms, scroll, menu, color picker,
+boundaries, checked TextField composition with caller-owned text and edit
+intents, canvas transforms, scroll, menu, color picker,
 value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
 checked NavigationBar configuration editor composition, route editing, and

@@ -156,6 +156,11 @@ ownership across tree reordering and pointer movement outside their bounds;
 the route reports held and release coordinates with the original grab offset
 and cancels a disabled drag. PanedView uses this route for its handle and
 returns pane rectangles and the updated split to its caller.
+The checked `TextField(TextFieldProps)` consumes raw pointer and keyboard
+samples, resolves KSS styles, emits text, selection, and caret paint, and
+returns a UTF-8 byte replacement range plus cursor and focus state. The caller
+owns the string and applies edits. A secure field supplies its display mask;
+platform text services and IME integration remain host and app work.
 Remaining input modes, including keyboard focus and ancestor input clipping,
 still need migration. Other widget submissions and retained layout are also
 incomplete.

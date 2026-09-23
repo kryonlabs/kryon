@@ -60,7 +60,8 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
                 entry.kind == WidgetKindSelectable ||
                 entry.kind == WidgetKindLink ||
                 entry.kind == WidgetKindCollapsible ||
-                entry.kind == WidgetKindDropdown) &&
+                entry.kind == WidgetKindDropdown ||
+                entry.kind == WidgetKindTextField) &&
             PointInBounds(x, y, entry.bounds) {
             if TreePointerActivatable(entry.kind, entry.focus_id,
                 entry.disabled, entry.loading) { return index }

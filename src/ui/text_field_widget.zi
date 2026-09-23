@@ -1,0 +1,398 @@
+#module "text_field_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "text_input"
+#import "text_input_props"
+#import "text_widget"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+TextFieldKey :: (props: TextFieldProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.focus_id > 0 { return (u64)(u32)props.focus_id }
+    return TreeNextKey()
+}
+
+TextFieldDefaultFace :: () -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleFocus |
+        (u32)StyleRadius | (u32)StyleBorderWidth |
+        (u32)StyleOpacity | (u32)StylePaddingX |
+        (u32)StyleFontSize
+    face.background = (u32)0xffffffff
+    face.foreground = (u32)0x111827ff
+    face.border = (u32)0x94a3b8ff
+    face.focus = (u32)0x3b82f6ff
+    face.radius = 4.0
+    face.border_width = 1.0
+    face.opacity = 1.0
+    face.padding_x = 10.0
+    face.font_size = 14.0
+    return face
+}
+
+TextFieldFaceFor :: (props: TextFieldProps,
+    focused: bool) -> StyleFrame #export {
+    state: i32 = (i32)ButtonStateNormal
+    if focused { state = (i32)ButtonStateFocus }
+    if props.disabled { state = (i32)ButtonStateDisabled }
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindTextField(), props.focus_id,
+        props.class_name, 0, (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        TextFieldDefaultFace(), facts, state)
+    return frame
+}
+
+TextFieldPrevious :: (value: string, cursor: i32) -> i32 #export {
+    cursor = TextCursorForLength(cursor, value.length)
+    if cursor == 0 { return 0 }
+    cursor -= 1
+    while cursor > 0 && TextUtf8Continuation(value[cursor]) {
+        cursor -= 1
+    }
+    return cursor
+}
+
+TextFieldNext :: (value: string, cursor: i32) -> i32 #export {
+    cursor = TextCursorForLength(cursor, value.length)
+    if cursor >= value.length { return value.length }
+    cursor += 1
+    while cursor < value.length &&
+        TextUtf8Continuation(value[cursor]) { cursor += 1 }
+    return cursor
+}
+
+TextFieldCodepoints :: (value: string) -> i32 #export {
+    count: i32 = 0
+    index: i32 = 0
+    while index < value.length {
+        if !TextUtf8Continuation(value[index]) { count += 1 }
+        index += 1
+    }
+    return count
+}
+
+TextFieldByteAfter :: (value: string,
+    codepoints: i32) -> i32 #export {
+    if codepoints <= 0 { return 0 }
+    index: i32 = 0
+    seen: i32 = 0
+    while index < value.length {
+        index = TextFieldNext(value, index)
+        seen += 1
+        if seen >= codepoints { return index }
+    }
+    return value.length
+}
+
+TextFieldInputTextAllowed :: (value: string) -> bool #export {
+    if value == "" { return false }
+    index: i32 = 0
+    while index < value.length {
+        if value[index] < (u8)32 || value[index] == (u8)127 {
+            return false
+        }
+        index += 1
+    }
+    return true
+}
+
+TextFieldReplacementAllowed :: (props: TextFieldProps,
+    start: i32, end: i32, replacement: string) -> bool #export {
+    if start < 0 || end < start || end > props.value.length {
+        return false
+    }
+    length: i32 = props.value.length - (end - start) +
+        replacement.length
+    if props.max_bytes > 0 && length > props.max_bytes {
+        return false
+    }
+    if props.max_codepoints > 0 {
+        removed: string = TextSpan(props.value,
+            start, end - start)
+        count: i32 = TextFieldCodepoints(props.value) -
+            TextFieldCodepoints(removed) +
+            TextFieldCodepoints(replacement)
+        if count > props.max_codepoints { return false }
+    }
+    return true
+}
+
+TextFieldCursorAtX :: (value: string, x: i32,
+    font: i32, typeface: string) -> i32 #export {
+    if x <= 0 { return 0 }
+    index: i32 = 0
+    previous_width: i32 = 0
+    while index < value.length {
+        next: i32 = TextFieldNext(value, index)
+        prefix: string = TextSpan(value, 0, next)
+        width: i32 = GlyphWidth(prefix, font, typeface)
+        if x < (previous_width + width) / 2 {
+            return index
+        }
+        index = next
+        previous_width = width
+    }
+    return value.length
+}
+
+TextFieldDisplayByteFor :: (value: string, display: string,
+    cursor: i32, secure: bool) -> i32 #export {
+    cursor = TextCursorForLength(cursor, value.length)
+    if !secure { return cursor }
+    count: i32 = TextFieldCodepoints(TextSpan(value, 0, cursor))
+    return TextFieldByteAfter(display, count)
+}
+
+TextFieldEditFor :: (props: TextFieldProps,
+    cursor: i32, anchor: i32) -> TextFieldEdit #export {
+    edit: TextFieldEdit
+    selection: TextSelectionRange = TextSelectionRangeForLength(
+        anchor, cursor, props.value.length)
+    if TextFieldInputTextAllowed(props.input.text) {
+        if !TextFieldReplacementAllowed(props, selection.start,
+            selection.end, props.input.text) { return edit }
+        edit.start = selection.start
+        edit.end = selection.end
+        edit.replacement = props.input.text
+        edit.changed = true
+        return edit
+    }
+    if props.input.backspace {
+        edit.start = selection.start
+        edit.end = selection.end
+        if !selection.has_selection {
+            edit.start = TextFieldPrevious(props.value, cursor)
+        }
+    } else if props.input.delete_forward {
+        edit.start = selection.start
+        edit.end = selection.end
+        if !selection.has_selection {
+            edit.end = TextFieldNext(props.value, cursor)
+        }
+    }
+    edit.changed = edit.end > edit.start
+    return edit
+}
+
+# The caller supplies current text and raw input samples. Kryon returns the
+# replacement range and next selection; the caller owns text storage.
+TextField :: (props: TextFieldProps) -> TextFieldResult #export {
+    result: TextFieldResult
+    result.node = -1
+    result.cursor = TextCursorForLength(props.cursor,
+        props.value.length)
+    result.anchor = TextCursorForLength(props.anchor,
+        props.value.length)
+    result.scroll_x = props.scroll_x
+    result.focused = props.focused
+    if props.bounds.width <= 0.0 ||
+        props.bounds.height <= 0.0 { return result }
+    key: u64 = TextFieldKey(props)
+    previous: i32 = -1
+    if TreeIsBuilding() {
+        previous = TreeFind(key, TreeCurrentParentKey(),
+            WidgetKindTextField)
+    }
+    activated: bool = TreeTakeActivationAt(previous)
+    drag: PointerDrag = TreeTakeDragAt(previous)
+    if props.disabled || props.input.blur { result.focused = false }
+    if !props.disabled && props.input.focus { result.focused = true }
+    face: StyleFrame = TextFieldFaceFor(props, result.focused)
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    font: i32 = ResolveFont(0,
+        StyleFontValue(face.value.fields,
+            face.value.font_size), 14)
+    padding_x: i32 = TextInputScaledMetric(
+        face.value.padding_x, scale)
+    if padding_x < 0 { padding_x = 0 }
+    display: string = props.value
+    if props.secure { display = props.display_value }
+    text_width: i32 = GlyphWidth(display, font,
+        face.value.typeface)
+    scroll: TextFieldScroll = TextFieldScrollFor(
+        props.bounds.x, props.bounds.width,
+        padding_x, text_width, result.scroll_x)
+    result.scroll_x = scroll.scroll
+    if !props.disabled &&
+        (activated || drag.started || drag.active || drag.ended) {
+        result.focused = true
+        sample_x: float = drag.x
+        if drag.started {
+            sample_x = props.bounds.x + drag.grab_x
+        }
+        selected: i32 = TextFieldCursorAtX(display,
+            (i32)sample_x - scroll.text_origin_x,
+            font, face.value.typeface)
+        if props.secure {
+            count: i32 = TextFieldCodepoints(TextSpan(display,
+                0, selected))
+            selected = TextFieldByteAfter(props.value, count)
+        }
+        if drag.started || activated {
+            result.anchor = selected
+        }
+        result.cursor = selected
+    }
+    if result.focused && !props.disabled {
+        if props.input.select_all {
+            result.anchor = 0
+            result.cursor = props.value.length
+        } else {
+            target: i32 = result.cursor
+            selection: TextSelectionRange =
+                TextSelectionRangeForLength(result.anchor,
+                    result.cursor, props.value.length)
+            moved: bool = false
+            if props.input.left {
+                target = TextFieldPrevious(props.value,
+                    result.cursor)
+                if selection.has_selection && !props.input.shift {
+                    target = selection.start
+                }
+                moved = true
+            } else if props.input.right {
+                target = TextFieldNext(props.value, result.cursor)
+                if selection.has_selection && !props.input.shift {
+                    target = selection.end
+                }
+                moved = true
+            } else if props.input.home {
+                target = 0
+                moved = true
+            } else if props.input.end {
+                target = props.value.length
+                moved = true
+            }
+            if moved {
+                state: TextSelectionState = TextSelectionAfterMove(
+                    result.anchor, result.cursor, target,
+                    props.input.shift)
+                result.anchor = state.anchor
+                result.cursor = state.cursor
+            }
+        }
+        result.committed = props.input.commit
+        result.escaped = props.input.escape
+        if result.escaped { result.focused = false }
+        if !props.read_only {
+            result.edit = TextFieldEditFor(props,
+                result.cursor, result.anchor)
+            if result.edit.changed {
+                result.cursor = result.edit.start +
+                    result.edit.replacement.length
+                result.anchor = result.cursor
+            }
+        }
+    }
+    face = TextFieldFaceFor(props, result.focused)
+    display_cursor: i32 = TextFieldDisplayByteFor(props.value,
+        display, result.cursor, props.secure)
+    cursor_prefix: string = TextSpan(display, 0, display_cursor)
+    cursor_text_x: i32 = GlyphWidth(cursor_prefix, font,
+        face.value.typeface)
+    result.scroll_x = TextFieldRevealScroll(result.scroll_x,
+        scroll.max_scroll, scroll.clip_width, cursor_text_x,
+        padding_x)
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    bounds: Rectangle = props.bounds
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key,
+            WidgetKindTextField, bounds)
+        if result.node < 0 { return result }
+        TreeSetInteractive(result.node, props.disabled,
+            false, props.focus_id)
+        TreeSetSemantic(result.node,
+            (SemanticKind)SemanticTextField, 0)
+        TreeSetLabel(result.node, props.label)
+        TreeSetSelected(result.node, result.focused)
+        bounds = TreeSubmittedNodeAt(result.node).bounds
+    }
+    PaintRoundedFill(result.node, bounds,
+        face.value.radius, 12,
+        ColorFromPacked(Opacity(face.value.background,
+            opacity)))
+    border: u32 = face.value.border
+    if result.focused { border = face.value.focus }
+    if face.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, bounds,
+            face.value.radius, 12,
+            face.value.border_width,
+            ColorFromPacked(Opacity(border, opacity)))
+    }
+    line_height: i32 = GlyphLineHeight(font,
+        face.value.typeface)
+    paint: TextFieldPaint = TextFieldPaintFor(bounds,
+        padding_x, result.scroll_x, font, line_height,
+        TextFieldMinCursorHeight(scale),
+        TextFieldCursorVerticalPadding(scale),
+        TextFieldClipGuard(scale))
+    value_to_paint: string = display
+    foreground: u32 = face.value.foreground
+    if value_to_paint == "" {
+        value_to_paint = props.placeholder
+        foreground = (u32)0x64748bff
+    }
+    text_y: i32 = (i32)bounds.y +
+        ((i32)bounds.height - line_height) / 2
+    selection: TextSelectionRange = TextSelectionRangeForLength(
+        result.anchor, result.cursor, props.value.length)
+    if result.focused && selection.has_selection {
+        first: i32 = TextFieldDisplayByteFor(props.value,
+            display, selection.start, props.secure)
+        last: i32 = TextFieldDisplayByteFor(props.value,
+            display, selection.end, props.secure)
+        left: i32 = paint.text_x + GlyphWidth(TextSpan(
+            display, 0, first), font, face.value.typeface)
+        right: i32 = paint.text_x + GlyphWidth(TextSpan(
+            display, 0, last), font, face.value.typeface)
+        clip_left: i32 = (i32)paint.clip_bounds.x
+        clip_right: i32 = (i32)(paint.clip_bounds.x +
+            paint.clip_bounds.width)
+        if left < clip_left { left = clip_left }
+        if right > clip_right { right = clip_right }
+        if right > left {
+            PaintRoundedFill(result.node,
+                (Rectangle){(float)left, (float)text_y,
+                    (float)(right - left), (float)line_height},
+                0.0, 1,
+                ColorFromPacked(Opacity((u32)0x93c5fd88,
+                    opacity)))
+        }
+    }
+    if value_to_paint != "" {
+        PaintClippedLabel(result.node, value_to_paint,
+            paint.text_x, text_y, font,
+            ColorFromPacked(Opacity(foreground, opacity)),
+            paint.clip_bounds)
+    }
+    if result.focused && !props.disabled {
+        x: i32 = paint.text_x + GlyphWidth(cursor_prefix,
+            font, face.value.typeface)
+        if x >= (i32)paint.clip_bounds.x &&
+            x <= (i32)(paint.clip_bounds.x +
+                paint.clip_bounds.width) {
+            PaintLine(result.node,
+                (Rectangle){(float)x, (float)paint.cursor_y,
+                    0.0, (float)paint.cursor_height},
+                ColorFromPacked(Opacity(face.value.foreground,
+                    opacity)))
+        }
+    }
+    return result
+}
