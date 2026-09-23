@@ -1,5 +1,5 @@
 #module "toolbar_props"
-#import "kryon_compat.generated.h"
+#import "drawing_props"
 
 IconRowItem :: struct {
     icon: Texture2D
@@ -36,7 +36,7 @@ ToolbarProps :: struct {
     draw_menu: bool
     options: const char**
     option_count: i32
-    selected_index: *i32
+    selected_index: i32*
     dropdown_min_width: i32
     dropdown_max_width: i32
     dropdown_height: i32

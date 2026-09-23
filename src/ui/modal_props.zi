@@ -1,5 +1,6 @@
 #module "modal_props"
-#import "ui_control_props.generated.h"
+#import "control_props"
+#import "drawing_props"
 
 ModalAction :: struct {
     label: const char*
@@ -18,14 +19,25 @@ ModalProps :: struct {
     max_width: i32
     text: char*
     text_size: i32
-    cursor_position: *i32
-    focused: *bool
+    cursor_position: i32*
+    focused: bool*
     focus_id: i32
 }
 
 # Layout result of a custom modal frame: panel rect plus the content area the
 # caller draws into, and the optional title-icon click results.
-PanelFrame :: struct { int x; int y; int w; int h; int content_x; int content_y; int content_w; int content_h; int left_clicked; int right_clicked; } #type
+PanelFrame :: struct {
+    x: i32
+    y: i32
+    w: i32
+    h: i32
+    content_x: i32
+    content_y: i32
+    content_w: i32
+    content_h: i32
+    left_clicked: i32
+    right_clicked: i32
+}
 
 # Custom-content modal frame: scrim, movable/resizable panel, centered title,
 # optional close icons. Implemented by the modal host; declared here so apps

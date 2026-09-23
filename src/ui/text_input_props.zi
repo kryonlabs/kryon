@@ -1,9 +1,9 @@
 #module "text_input_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 SyntaxMode :: enum {
     SyntaxNone = 0
-    SyntaxKry = 1
+    SyntaxZiran = 1
     SyntaxC = 2
     SyntaxMake = 3
 }
@@ -22,11 +22,11 @@ TextFieldProps :: struct {
     bounds: Rectangle
     text: char*
     text_size: size_t
-    cursor_position: *i32
-    focused: *i32
+    cursor_position: i32*
+    focused: i32*
     max_codepoints: i32
     focus_id: i32
-    commit_pressed: *i32
+    commit_pressed: i32*
     secure: bool
     read_only: bool
     class_name: i32
@@ -36,9 +36,9 @@ TextAreaProps :: struct {
     bounds: Rectangle
     text: char*
     text_size: size_t
-    cursor_position: *i32
-    focused: *i32
-    scroll_y: *i32
+    cursor_position: i32*
+    focused: i32*
+    scroll_y: i32*
     max_codepoints: i32
     focus_id: i32
     placeholder: const char*

@@ -31,7 +31,7 @@ words: const char*) -> i32 {
     return strstr(words, needle) != nil
 }
 
-SyntaxKryKeyword :: (text: const char*, length: i32) -> i32 {
+SyntaxZiranKeyword :: (text: const char*, length: i32) -> i32 {
     words: const char* = "|#defined|#else|#enum|#extern|#export|#global|#if|#import|#module|#private|#type|#ui|app|args|background|button|c|c_rect|call|cimport|clamp_max|clamp_min|do|draw|else|endraw|event|fn|font|for|fps|global|goto|guard|icon_button|if|import|in|key|key_down|line|mod|native|on|page|pub|raw|rect|return|returns|screen|set|set_theme|size|state|swatch|text|texture|theme|use|var|widget|"
     return SyntaxWordInList(text, length, words)
 }
@@ -61,21 +61,21 @@ style: TextInputAppearance) -> Color {
     comment: Color = dark ? (Color){138, 146, 160, 255} :
     (Color){104, 112, 124, 255}
     if length <= 0 { return style.text }
-    if (syntax == SyntaxKry || syntax == SyntaxMake) &&
+    if (syntax == SyntaxZiran || syntax == SyntaxMake) &&
     first_token && text[0] == '#' &&
-    !(syntax == SyntaxKry && SyntaxKryKeyword(text, length)) {
+    !(syntax == SyntaxZiran && SyntaxZiranKeyword(text, length)) {
         return comment
     }
     if text[0] == '"' { return string_color }
     if (text[0] >= '0' && text[0] <= '9') ||
     (text[0] == '-' && length > 1 &&
     text[1] >= '0' && text[1] <= '9') { return number }
-    if syntax == SyntaxKry &&
+    if syntax == SyntaxZiran &&
     (text[0] == '/' ||
     (text[0] == '.' && length > 1 &&
     (text[1] == '/' || text[1] == '.')) ||
     text[0] == '%') { return path }
-    if syntax == SyntaxKry && SyntaxKryKeyword(text, length) {
+    if syntax == SyntaxZiran && SyntaxZiranKeyword(text, length) {
         return keyword
     }
     if syntax == SyntaxC && SyntaxCKeyword(text, length) {
@@ -102,7 +102,7 @@ first_token: i32) -> i32 {
         }
         return position - index
     }
-    if syntax == SyntaxKry && first_token &&
+    if syntax == SyntaxZiran && first_token &&
     line[position] == '#' &&
     SyntaxIdentStart(line[position + 1]) {
         position += 1
@@ -111,7 +111,7 @@ first_token: i32) -> i32 {
         }
         return position - index
     }
-    if (syntax == SyntaxKry || syntax == SyntaxMake) &&
+    if (syntax == SyntaxZiran || syntax == SyntaxMake) &&
     first_token && line[position] == '#' {
         return length - index
     }

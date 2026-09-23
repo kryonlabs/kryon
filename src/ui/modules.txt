@@ -6,6 +6,7 @@ button_props.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi
+card.zi
 card_props.zi
 checkbox.zi
 checkbox_props.zi
@@ -47,6 +48,7 @@ material.zi
 menu.zi
 menu_props.zi
 modal.zi
+modal_props.zi
 navigation_bar.zi
 navigation_bar_props.zi
 overlay.zi
@@ -82,10 +84,13 @@ surface.zi
 swipe.zi
 swipe_props.zi
 tab_bar.zi
+tab_bar_props.zi
 table_view.zi
+table_view_props.zi
 text.zi
 text_align.zi
 text_input.zi
+text_input_props.zi
 text_rows.zi
 theme.zi
 title_bar.zi
@@ -94,6 +99,8 @@ toast.zi
 toast_props.zi
 toggle.zi
 toggle_props.zi
+toolbar.zi
+toolbar_props.zi
 transition.zi
 tree.zi
 tree_view.zi

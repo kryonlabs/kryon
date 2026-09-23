@@ -1,5 +1,5 @@
 #module "table_view_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 TableRow :: struct {
     cells: const char**
@@ -14,19 +14,19 @@ TableViewProps :: struct {
     column_count: i32
     rows: const TableRow*
     row_count: i32
-    column_widths: *i32
-    selected_row: *i32
-    selected_column: *i32
-    activated_row: *i32
-    activated_column: *i32
-    right_clicked_row: *i32
-    right_clicked_column: *i32
-    sort_column: *i32
-    scroll_offset: *i32
+    column_widths: i32*
+    selected_row: i32*
+    selected_column: i32*
+    activated_row: i32*
+    activated_column: i32*
+    right_clicked_row: i32*
+    right_clicked_column: i32*
+    sort_column: i32*
+    scroll_offset: i32*
     row_height: i32
-    column_enabled: *i32
-    column_order: *i32
-    sort_direction: *i32
+    column_enabled: i32*
+    column_order: i32*
+    sort_direction: i32*
     disabled: bool
     resizable: bool
     min_column_width: i32
@@ -36,10 +36,10 @@ TableViewProps :: struct {
     custom_cells: bool
     copy_text: const char*
     pasted_text: const char**
-    pasted_row: *i32
-    pasted_column: *i32
-    selection_start_row: *i32
-    selection_start_column: *i32
-    selection_end_row: *i32
-    selection_end_column: *i32
+    pasted_row: i32*
+    pasted_column: i32*
+    selection_start_row: i32*
+    selection_start_column: i32*
+    selection_end_row: i32*
+    selection_end_column: i32*
 }
