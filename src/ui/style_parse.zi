@@ -1,0 +1,59 @@
+#module "style_parse"
+#import "kss_parser"
+#import "style_sheet"
+
+# The parser and its rule table are owned values. An application may pause at
+# NeedImport, provide the requested source, then keep parsing the same table.
+StyleRulesParse :: struct {
+    parser: KssParser
+    rules: StyleRules
+    overflow: bool
+}
+
+BeginStyleRules :: (source: string, path: string,
+    environment: KssEnvironment) -> StyleRulesParse #export {
+    result: StyleRulesParse
+    result.parser = KssBegin(source, path, environment)
+    return result
+}
+
+StepStyleRules :: (result: StyleRulesParse) -> StyleRulesParse #export {
+    if result.overflow { return result }
+    result.parser = KssStep(result.parser)
+    if result.parser.status == (i32)KssStatusRule {
+        if result.rules.count < 0 || result.rules.count >= 320 {
+            result.overflow = true
+        } else {
+            result.rules.items[result.rules.count] = result.parser.rule
+            result.rules.count += 1
+        }
+    }
+    return result
+}
+
+ParseStyleRules :: (result: StyleRulesParse) -> StyleRulesParse #export {
+    while !result.overflow &&
+        result.parser.status != (i32)KssStatusNeedImport &&
+        result.parser.status != (i32)KssStatusDone &&
+        result.parser.status != (i32)KssStatusError {
+        result = StepStyleRules(result)
+    }
+    return result
+}
+
+ProvideStyleRulesImport :: (result: StyleRulesParse,
+    source: string, name: string) -> StyleRulesParse #export {
+    if !result.overflow &&
+        result.parser.status == (i32)KssStatusNeedImport {
+        result.parser = KssProvideImport(result.parser, source, name)
+    }
+    return result
+}
+
+FailStyleRulesImport :: (result: StyleRulesParse) -> StyleRulesParse #export {
+    if !result.overflow &&
+        result.parser.status == (i32)KssStatusNeedImport {
+        result.parser = KssFailImport(result.parser)
+    }
+    return result
+}

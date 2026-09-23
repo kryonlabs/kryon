@@ -101,6 +101,7 @@ slider_props.zi
 spinbox.zi
 spinbox_props.zi
 style.zi
+style_parse.zi
 style_sheet.zi
 surface.zi
 swipe.zi

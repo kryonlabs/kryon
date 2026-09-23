@@ -68,6 +68,12 @@ the raster path. `StyleRules` is an owned 320-rule value table; the checked
 priority, and `PaintProgressFromRules()` uses those faces. Callers still supply
 default faces and the rule table. The legacy pointer-backed style loader and
 the complete one-argument `Progress` widget are still being migrated.
+`BeginStyleRules()` and `ParseStyleRules()` collect checked KSS parser output
+into that table. Parsing stops at `NeedImport` so the caller can use
+`ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.
+`StyleRulesParse.overflow` reports when a 321st rule would exceed the table.
+Portable hosts that import the KSS parser bind `KssStringSliceBinding()` for
+source byte ranges.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
