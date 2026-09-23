@@ -13,7 +13,7 @@ its portable loader recognizes widget names.
 | `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
 | `src/ui/modules.txt` | Modules that pass the current full native build |
 | `src/backend/`, other C and Go host code | Raw platform input, windows, font measurement, rasterization, storage, and device services |
-| `../ziran` | Language implementation and generic execution |
+| [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
 `modules.txt` is a temporary migration inventory. The old build discovered
 every UI source file automatically; once every maintained `.zi` module builds,

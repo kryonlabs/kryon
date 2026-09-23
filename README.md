@@ -2,14 +2,16 @@
 
 Kryon is a UI library written in Ziran. Its source lives under `src/ui/` and
 imports Ziran modules normally. The Ziran compiler, `.zir` representation, and
-`.zib` bundle format belong to the separate `../ziran` repository. Kryon has no
+`.zib` bundle format belong to the separate
+[Ziran](https://github.com/kryonlabs/ziran) repository. Kryon has no
 `.kry` runtime or language compiler.
 
 ## Build
 
-With the Ziran repository next to this one:
+For a fresh clone, place Ziran next to Kryon:
 
 ```sh
+git clone https://github.com/kryonlabs/ziran.git ../ziran
 make
 make test
 ```
@@ -42,5 +44,5 @@ retained only as platform implementation material and is not part of the default
 build.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
-boundary and [Ziran's implementation status](../ziran/docs/IMPLEMENTATION_STATUS.md)
+boundary and [Ziran's implementation status](https://github.com/kryonlabs/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
 for language and portable runtime gaps.
