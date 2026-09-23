@@ -76,7 +76,7 @@ surface review:
 | `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
 | `runtime/instance_props.kry` | Instance-state borrowing declaration | `.kry support` |
 | `runtime/core_props.kry` | Interface frame, focus, and cursor ABI declarations | `.kry support` |
-| `runtime/tree_props.kry` | Tree lifecycle, widget entry points, and router ABI | `.kry support` |
+| `runtime/tree_props.kry` | Legacy tree lifecycle and widget entry point declarations; Router declarations have moved to checked Ziran | migration pending |
 | `runtime/locale_props.kry` | Locale catalog ABI declarations | `.kry support` |
 | `runtime/style_pack_props.kry` | Style pack registration and resolution ABI | `.kry support` |
 | `runtime/key_props.kry` | Widget key identity type | `.kry support` |
@@ -128,7 +128,7 @@ surface review:
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
 | `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, target-index, lifecycle/release gates, and result normalization policy | `.kry support` |
 | `runtime/reorder_props.kry` | Reorder support state, data, and result records | `.kry support` |
-| `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
+| `src/ui/router_props.zi`, `src/ui/router.zi` | Portable Router records, navigation, hash matching, URL effect, and retained node | checked Ziran |
 | `runtime/rows.kry` | Info/form/button row sizing, wrapping, and layout fallback policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout, gap, font fallback, wrapping, segment sizing, and selection policy | `.kry canonical` |
 | `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
@@ -725,7 +725,7 @@ should use canonical `.kry` names and blocks.
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable/keyboard navigation, bar/context open/index policy, and group pointer open/close decisions are in `.kry`. |
 | `TabBar` | `.kry canonical` | `src/ui/tab_bar.kry` owns KSS style, sizing, input, scroll, drag, close, and paint; `src/ui/tab_store.kry` owns retained state. |
 | `TitleBar` | `.kry canonical` | Effective height/state, layout, and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
-| `Router` | `.kry canonical` | Navigation runtime, not a visual widget. Routes, state, props, and result live in `runtime/router_props.kry`. |
+| `Router` | checked Ziran | Caller owned routes and state; submits an inert retained node; returns a URL effect for the host to apply. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
 
 ## Terminal Support

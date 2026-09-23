@@ -10,11 +10,12 @@ RouterRoute :: struct {
 }
 
 RouterState :: struct {
-    initialized: i32
+    initialized: bool
     current_route: i32
     previous_route: i32
     requested_route: i32
-    changed: i32
+    has_request: bool
+    changed: bool
     route_version: i32
     generation: u32
 }
@@ -22,18 +23,22 @@ RouterState :: struct {
 RouterProps :: struct {
     bounds: Rectangle
     key: u64
-    state: RouterState*
-    routes: const RouterRoute*
-    route_count: i32
     initial_route: i32
     sync_url: bool
     replace_on_init: bool
 }
 
 RouterResult :: struct {
+    state: RouterState
     route: i32
     previous_route: i32
     requested_route: i32
     changed: bool
-    route_info: const RouterRoute*
+    route_index: i32
+    node: i32
+    write_url: bool
+    push_url: bool
+    url_base: string
+    url_path: string
+    url_path_start: i32
 }

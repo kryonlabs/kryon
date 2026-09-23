@@ -95,6 +95,7 @@ raster_text.zi
 reorder.zi
 reorder_props.zi
 route.zi
+router.zi
 rows.zi
 router_props.zi
 scroll.zi

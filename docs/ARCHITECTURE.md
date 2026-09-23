@@ -35,6 +35,8 @@ scroll interaction, frame pacing, retained tree commit and instance lifetime
 decisions, paragraph layout policy, text input and text row decisions,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
+Router navigation, hash matching, and URL effect decisions through caller owned
+route and state values,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and

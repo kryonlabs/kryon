@@ -225,7 +225,16 @@ semantic text to the retained tree. The host supplies byte slices, glyph
 metrics, and raw clipped text rasterization. Letter spacing, parent foreground
 inheritance, and selectable text interaction still need migration.
 Text fields in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
-`FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
+`FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. The
+checked `Router(RouterProps, RouterState, []RouterRoute, hash, base_path,
+route_version)` stores navigation decisions in a caller owned state value. It
+accepts a caller owned route slice, reads the host's hash and version as plain
+values, and returns the new state and an optional URL effect. The host applies
+that effect using `RouterFormatUrl(result, []u8)` and `result.push_url`, then
+passes the new route version through `RouterAcknowledgeVersion` or the next
+`Router` call. `RouterNavigate` queues an app navigation request; `RouterSetRoute`
+changes the route immediately without submitting a tree node. An active
+`Router` call submits an inert retained node when the tree is building. Other
 props still contain pointer-based state or collections. Remaining widget
 composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may

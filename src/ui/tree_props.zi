@@ -8,7 +8,6 @@
 #import "ui_accessibility_node.generated.h"
 #import "ui_accessibility_props.generated.h"
 #import "ui_icon_types.h"
-#import "ui_router_props.generated.h"
 #import "ui_text_props.generated.h"
 #import "ui_text_input_props.generated.h"
 #import "ui_button_props.generated.h"
@@ -42,8 +41,6 @@
 # declarations emit before the enum pass).
 EventKind :: enum { EVENT_NONE = 0, EVENT_CLICK = 1, EVENT_VALUE_CHANGED = 2, EVENT_TEXT_CHANGED = 3, EVENT_TEXT_COMMIT = 4, EVENT_SELECTION_CHANGED = 5, EVENT_COMPOSITION_CHANGED = 6, EVENT_FOCUS = 7, EVENT_BLUR = 8 } #type
 Invalidation :: enum { INVALIDATE_NONE = 0, INVALIDATE_PAINT = 1, INVALIDATE_LAYOUT = 2, INVALIDATE_TREE = 4 } #type
-
-ROUTER_NO_ROUTE :: -2147483647
 
 # C-only tree types: the identifier alias, the opaque tree node, the
 # accessibility sink callback, the flex aliases, and the event record whose
@@ -129,12 +126,7 @@ TitleBar :: (title_bar: TitleBarProps) -> i32 #extern #export
 Button :: (button: ButtonProps) -> i32 #extern #export
 Bullet :: (bounds: Rectangle) #extern #export
 
-# Router and layout nodes.
-RouterStateInit :: (state: *RouterState, initial_route: i32) #extern #export
-RouterNavigate :: (state: *RouterState, route_id: i32) #extern #export
-RouterSetRoute :: (props: RouterProps, route_id: i32, push: i32) -> i32 #extern #export
-RouterFindRoute :: (routes: const RouterRoute*, route_count: i32, route_id: i32) -> const RouterRoute* #extern #export
-Router :: (props: RouterProps) -> RouterResult #extern #export
+# Layout nodes.
 Column :: (props: ColumnProps) -> NodeId #extern #export
 Row :: (props: RowProps) -> NodeId #extern #export
 Grid :: (props: GridProps) -> NodeId #extern #export
