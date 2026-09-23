@@ -1,6 +1,7 @@
 #module "tree_draw"
 #import "geometry"
 #import "progress_widget"
+#import "separator_widget"
 #import "tree"
 #import "widget_kind"
 
@@ -8,12 +9,14 @@
 # only after the submitted tree is accepted.
 BeginTree :: (screen_key: u64, bounds: Rectangle) #export {
     ClearQueuedProgress()
+    ClearQueuedSeparators()
     TreeStart(screen_key, bounds)
 }
 
 EndTree :: () -> bool #export {
     if !TreeFinish() {
         ClearQueuedProgress()
+        ClearQueuedSeparators()
         return false
     }
     index: i32 = 0
@@ -21,9 +24,12 @@ EndTree :: () -> bool #export {
         node: TreeEntry = TreeNodeAt(index)
         if node.kind == WidgetKindProgress {
             PaintQueuedProgress(index, node.bounds)
+        } else if node.kind == WidgetKindSeparator {
+            PaintQueuedSeparator(index, node.bounds)
         }
         index += 1
     }
     ClearQueuedProgress()
+    ClearQueuedSeparators()
     return true
 }

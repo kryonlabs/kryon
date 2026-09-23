@@ -1,0 +1,158 @@
+#module "separator_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "raster"
+#import "raster_text"
+#import "separator"
+#import "separator_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
+
+SeparatorFaces :: struct {
+    line: StyleFrame
+    label: StyleFrame
+    scale: float
+    fallback_font: i32
+}
+
+DefaultSeparatorFaces :: () -> SeparatorFaces #export {
+    faces: SeparatorFaces
+    faces.line.value.fields = (u32)StyleBackground
+    faces.line.value.background = (u32)0x66645fff
+    faces.label.value.fields = (u32)StyleForeground |
+        (u32)StyleFontSize | (u32)StyleGap
+    faces.label.value.foreground = (u32)0x171717ff
+    faces.label.value.font_size = 14.0
+    faces.label.value.gap = 12.0
+    faces.scale = 1.0
+    faces.fallback_font = 14
+    return faces
+}
+
+SeparatorFacts :: (props: SeparatorProps, role: i32,
+    state: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindSeparator(), 0,
+        props.class_name, role, (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+}
+
+SeparatorFacesFor :: (rules: StyleRules, props: SeparatorProps,
+    defaults: SeparatorFaces) -> SeparatorFaces #export {
+    faces: SeparatorFaces = defaults
+    state: i32 = (i32)ButtonStateNormal
+    if props.disabled { state = (i32)ButtonStateDisabled }
+    faces.line.value = ResolveStyleRules(rules, defaults.line.value,
+        SeparatorFacts(props, SeparatorLineRole(), state), state)
+    faces.label.value = ResolveStyleRules(rules, defaults.label.value,
+        SeparatorFacts(props, SeparatorLabelRole(), state), state)
+    return faces
+}
+
+PreparedSeparator :: struct {
+    line: Rectangle
+    text: Rectangle
+    line_color: u32
+    text_color: u32
+    font: i32
+    show_text: bool
+    show_line: bool
+}
+
+PrepareSeparator :: (props: SeparatorProps,
+    faces: SeparatorFaces) -> PreparedSeparator #export {
+    prepared: PreparedSeparator
+    prepared.font = ResolveFont(0,
+        StyleFontValue(faces.label.value.fields,
+            faces.label.value.font_size), faces.fallback_font)
+    prepared.line_color = faces.line.value.background
+    if props.label == "" {
+        plain: SeparatorLine = SeparatorLineFor(props.bounds,
+            props.vertical, faces.line)
+        prepared.line = plain.line
+        prepared.show_line = true
+        return prepared
+    }
+    width: i32 = GlyphWidth(props.label, prepared.font,
+        faces.label.value.typeface)
+    paint: SeparatorLabelPaint = SeparatorLabelPaintFor(props.bounds,
+        (float)width, true, prepared.font, faces.scale,
+        faces.label)
+    prepared.line = paint.line
+    prepared.text = paint.text
+    prepared.show_line = paint.show_line
+    prepared.show_text = paint.show_text
+    prepared.text_color = Opacity(paint.text_color,
+        StyleOpacityValue(faces.label.value.fields,
+            faces.label.value.opacity))
+    return prepared
+}
+
+PaintSeparatorProps :: (props: SeparatorProps,
+    faces: SeparatorFaces) #export {
+    prepared: PreparedSeparator = PrepareSeparator(props, faces)
+    if prepared.show_text {
+        PaintText(props.label, (i32)prepared.text.x,
+            (i32)prepared.text.y, prepared.font,
+            ColorFromPacked(prepared.text_color))
+    }
+    if prepared.show_line {
+        StrokeLine(prepared.line, ColorFromPacked(prepared.line_color))
+    }
+}
+
+PaintSeparatorFromRules :: (props: SeparatorProps, rules: StyleRules,
+    defaults: SeparatorFaces) #export {
+    PaintSeparatorProps(props, SeparatorFacesFor(rules, props, defaults))
+}
+
+SeparatorQueue :: struct {
+    items: [1024]SeparatorProps
+    indices: [1024]i32
+    present: [1024]bool
+    count: i32
+}
+
+queued_separators :: SeparatorQueue #global
+
+Separator :: (props: SeparatorProps) #export {
+    if TreeIsBuilding() {
+        index: i32 = TreeSubmit(props.key, 0,
+            WidgetKindSeparator, props.bounds)
+        if index >= 0 {
+            queued_separators.items[index] = props
+            queued_separators.indices[queued_separators.count] = index
+            queued_separators.present[index] = true
+            queued_separators.count += 1
+        }
+        return
+    }
+    PaintSeparatorFromRules(props, ActiveStyleRules(),
+        DefaultSeparatorFaces())
+}
+
+PaintQueuedSeparator :: (index: i32,
+    bounds: Rectangle) #export {
+    if index < 0 || index >= 1024 ||
+        !queued_separators.present[index] { return }
+    props: SeparatorProps = queued_separators.items[index]
+    props.bounds = bounds
+    PaintSeparatorFromRules(props, ActiveStyleRules(),
+        DefaultSeparatorFaces())
+}
+
+ClearQueuedSeparators :: () #export {
+    index: i32 = 0
+    while index < queued_separators.count {
+        empty: SeparatorProps
+        slot: i32 = queued_separators.indices[index]
+        queued_separators.items[slot] = empty
+        queued_separators.present[slot] = false
+        index += 1
+    }
+    queued_separators.count = 0
+}

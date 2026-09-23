@@ -151,6 +151,10 @@ HOST void RasterText(String value, int32_t x, int32_t y, int32_t font,
     assert(value.length == 3 && x == 41 && y == 25 && font == 14);
     draws++;
 }
+HOST void RasterLine(Rectangle line, Color color) {
+    (void)line; (void)color;
+    assert(0 && "Progress should not draw separator lines");
+}
 int main(void) {
     assert(Answer() == 42 && measures == 2 && draws == 5);
     return 0;
@@ -214,11 +218,15 @@ func (host *widgetHost) RasterText(value string, x int32, y int32,
     }
     host.draws++
 }
+func (host *widgetHost) RasterLine(line Rectangle, color Color) {
+    host.t.Fatal("Progress should not draw separator lines")
+}
 func TestProgressWidget(t *testing.T) {
     host := &widgetHost{t: t}
     SetFontMetricsHost(host)
     SetRasterShapeHost(host)
     SetRasterTextHost(host)
+    SetRasterHost(host)
     if App_Answer() != 42 || host.measures != 2 || host.draws != 5 {
         t.Fatal("progress composition")
     }

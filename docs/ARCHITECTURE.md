@@ -47,9 +47,11 @@ pauses for host-provided imports. The host only slices source bytes and
 supplies imported text; Kryon resolves selectors and widget styles. The
 one-argument Progress painter uses an installed Ziran rule table and Ziran
 default faces. A persistent `.zib` instance keeps that rule table across
-frames. The portable retained tree now owns node identity and a Progress
-submission through `BeginTree()` and `EndTree()`; EndTree commits before
-emitting paint effects. Other widget submissions, retained layout, and input
+frames. Separator resolves its Line and Label roles, measures labels, and
+emits line and text effects from checked Ziran. The portable retained tree
+now owns node identity and Progress and Separator submissions through
+`BeginTree()` and `EndTree()`; EndTree commits before emitting paint effects.
+Other widget submissions, retained layout, and input
 routing still need migration.
 
 The other `.zi` modules were moved from the previous implementation and are

@@ -96,6 +96,7 @@ selectable.zi
 selectable_props.zi
 separator.zi
 separator_props.zi
+separator_widget.zi
 slider.zi
 slider_props.zi
 spinbox.zi

@@ -73,13 +73,21 @@ defaults and rules. The pointer-backed style loader remains unfinished.
 `EndTree()` commits and paints it. During an open submission,
 `Progress(props)` registers a Progress node; raster effects are emitted only
 after the tree commits. Outside a tree, `Progress(props)` paints immediately.
-`ProgressProps.key` provides stable identity; zero uses its submission
+`ProgressProps.key` and `SeparatorProps.key` provide stable identity; zero
+uses the submission
 position. `TreeCount()` and `TreeNodeAt(index)` inspect committed nodes.
 Identity survives repeated `BundleInstanceRun()` calls, including bounds
 changes. Submission is limited to 1024 nodes; `EndTree()` returns false,
 preserves the previous tree, and emits no paint effects if that limit is
-exceeded. Only Progress has a portable retained paint path so far; retained
-layout and input routing remain unfinished.
+exceeded. Progress and Separator have portable retained paint paths so far;
+retained layout and input routing remain unfinished. Because `EndTree()`
+currently dispatches both widget painters, a portable host binding a retained
+tree must provide the line, rounded shape, text, and glyph metric effects used
+by those painters even when a frame uses only one widget type.
+`Separator(props)` resolves Line and Label KSS roles in checked Ziran. It
+positions an unlabeled vertical or horizontal line, or measures and paints a
+label followed by a line. It paints immediately outside a tree and submits a
+node for deferred paint inside one.
 `BeginStyleRules()` and `ParseStyleRules()` collect checked KSS parser output
 into that table. Parsing stops at `NeedImport` so the caller can use
 `ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.

@@ -6,6 +6,15 @@
 static int measures;
 static int draws;
 
+static void
+line(void *context, float x1, float y1, float x2, float y2,
+     uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    (void)context; (void)x1; (void)y1; (void)x2; (void)y2;
+    (void)r; (void)g; (void)b; (void)a;
+    assert(0 && "Progress should not draw separator lines");
+}
+
 static int
 width(void *context, const char *text, size_t text_length, int font,
       const char *typeface, size_t typeface_length)
@@ -72,22 +81,24 @@ main(int argc, char **argv)
 {
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
-    assert(bundle != NULL && BundleCapabilityCount(bundle) == 5);
+    assert(bundle != NULL && BundleCapabilityCount(bundle) == 6);
     FontMeasurer fonts = {width, line_height, NULL};
     RoundedRectangleRenderer shapes = {fill, outline, NULL};
     TextRenderer labels = {text, NULL};
+    LineRenderer lines = {line, NULL};
     HostBinding bindings[] = {
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
         RasterRoundedRectangleBinding(&shapes),
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&labels),
+        RasterLineBinding(&lines),
     };
     long long result = 0;
     int has_result = 0;
-    assert(!BundleRun(bundle, bindings, 4, &result, &has_result));
+    assert(!BundleRun(bundle, bindings, 5, &result, &has_result));
     assert(measures == 0 && draws == 0);
-    assert(BundleRun(bundle, bindings, 5, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 6, &result, &has_result));
     assert(has_result && result == 42 && measures == 2 && draws == 5);
     BundleClose(bundle);
     return 0;
