@@ -106,6 +106,13 @@ KSS controls its frame and title colors, while Kryon measures the title and
 queues clipped text and shape paint. Child layout composition and native host
 integration remain open.
 
+The checked route helpers operate on caller owned `[]i32` slices and an
+explicit occupied count. `RouteSanitizeSet` filters with an allowed route set;
+`RouteSanitizeMask` accepts one decision per input slot for arbitrary app
+predicates. Both compact unique routes and clear the unused tail. Move, search,
+first-unused, and stack push/pop/reset helpers return portable values. The old
+pointer records and C callback route ABI have been removed.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.

@@ -1,0 +1,167 @@
+#module "route"
+
+# Route arrays belong to the application. A slice supplies capacity; count
+# identifies its occupied prefix. All writes stay in that prefix or clear its
+# unused tail, so routing policy has no platform pointer or callback ABI.
+
+RouteCount :: (routes: []i32, count: i32) -> i32 #export {
+    if count < 0 { return 0 }
+    if count > routes.length { return routes.length }
+    return count
+}
+
+RouteContains :: (routes: []i32, count: i32,
+    route: i32) -> bool #export {
+    count = RouteCount(routes, count)
+    index: i32 = 0
+    while index < count {
+        if routes[index] == route { return true }
+        index += 1
+    }
+    return false
+}
+
+RouteFirstUnused :: (routes: []i32, count: i32,
+    candidates: []i32, fallback: i32) -> i32 #export {
+    index: i32 = 0
+    while index < candidates.length {
+        if !RouteContains(routes, count, candidates[index]) {
+            return candidates[index]
+        }
+        index += 1
+    }
+    return fallback
+}
+
+RouteSanitizeSet :: (routes: []i32, count: i32,
+    allowed: []i32, empty_route: i32) -> i32 #export {
+    count = RouteCount(routes, count)
+    read: i32 = 0
+    write: i32 = 0
+    while read < count {
+        route: i32 = routes[read]
+        if RouteContains(allowed, allowed.length, route) &&
+            !RouteContains(routes, write, route) {
+            routes[write] = route
+            write += 1
+        }
+        read += 1
+    }
+    read = write
+    while read < routes.length {
+        routes[read] = empty_route
+        read += 1
+    }
+    return write
+}
+
+# The application may compute each mask entry with any predicate it owns.
+RouteSanitizeMask :: (routes: []i32, count: i32,
+    allowed: []bool, empty_route: i32) -> i32 #export {
+    count = RouteCount(routes, count)
+    read: i32 = 0
+    write: i32 = 0
+    while read < count {
+        route: i32 = routes[read]
+        if read < allowed.length && allowed[read] &&
+            !RouteContains(routes, write, route) {
+            routes[write] = route
+            write += 1
+        }
+        read += 1
+    }
+    read = write
+    while read < routes.length {
+        routes[read] = empty_route
+        read += 1
+    }
+    return write
+}
+
+RouteMove :: (routes: []i32, count: i32,
+    from_index: i32, to_index: i32) -> bool #export {
+    count = RouteCount(routes, count)
+    if from_index < 0 || to_index < 0 ||
+        from_index >= count || to_index >= count ||
+        from_index == to_index { return false }
+    route: i32 = routes[from_index]
+    if from_index < to_index {
+        index: i32 = from_index
+        while index < to_index {
+            routes[index] = routes[index + 1]
+            index += 1
+        }
+    } else {
+        index: i32 = from_index
+        while index > to_index {
+            routes[index] = routes[index - 1]
+            index -= 1
+        }
+    }
+    routes[to_index] = route
+    return true
+}
+
+RouteStackStep :: struct {
+    count: i32
+    current: i32
+    accepted: bool
+}
+
+RouteStackCurrent :: (routes: []i32, count: i32,
+    root_route: i32) -> i32 #export {
+    count = RouteCount(routes, count)
+    if count <= 0 { return root_route }
+    return routes[count - 1]
+}
+
+RouteStackInit :: (routes: []i32,
+    root_route: i32) -> RouteStackStep #export {
+    result: RouteStackStep
+    result.current = root_route
+    if routes.length > 0 {
+        routes[0] = root_route
+        result.count = 1
+        result.accepted = true
+    }
+    return result
+}
+
+RouteStackPush :: (routes: []i32, count: i32,
+    root_route: i32, route: i32) -> RouteStackStep #export {
+    result: RouteStackStep
+    result.count = RouteCount(routes, count)
+    result.current = RouteStackCurrent(routes, result.count, root_route)
+    if routes.length <= 0 { return result }
+    if result.count == 0 {
+        routes[0] = root_route
+        result.count = 1
+    }
+    if result.current == route {
+        result.accepted = true
+        return result
+    }
+    if result.count >= routes.length { return result }
+    routes[result.count] = route
+    result.count += 1
+    result.current = route
+    result.accepted = true
+    return result
+}
+
+RouteStackPop :: (routes: []i32, count: i32,
+    root_route: i32) -> RouteStackStep #export {
+    result: RouteStackStep
+    result.count = RouteCount(routes, count)
+    if result.count > 1 {
+        result.count -= 1
+        result.accepted = true
+    }
+    result.current = RouteStackCurrent(routes, result.count, root_route)
+    return result
+}
+
+RouteStackReset :: (routes: []i32,
+    root_route: i32) -> RouteStackStep #export {
+    return RouteStackInit(routes, root_route)
+}

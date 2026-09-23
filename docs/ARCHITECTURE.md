@@ -34,6 +34,7 @@ geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms
 scroll interaction, frame pacing, retained tree commit and instance lifetime
 decisions, paragraph layout policy, text input and text row decisions,
 window placement and drag policy,
+caller owned route list and stack policy through portable slices,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
@@ -78,6 +79,11 @@ paint. Keyboard activation and native host integration remain open.
 The checked `Fieldset(FieldsetProps)` resolves KSS frame style, measures its
 title from host supplied glyph metrics, and queues frame, title cover, and
 clipped text paint from Ziran. Retained child layout composition remains open.
+
+The checked `route.zi` module now owns list deduplication, allowed-set or
+per-item-mask filtering, first-unused selection, moving, and stack transitions.
+Applications keep route arrays and occupied counts; Ziran slices carry their
+capacity, and no C callback or route storage pointer crosses the API.
 
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses

@@ -81,7 +81,7 @@ surface review:
 | `runtime/style_pack_props.kry` | Style pack registration and resolution ABI | `.kry support` |
 | `runtime/key_props.kry` | Widget key identity type | `.kry support` |
 | `runtime/app_host_props.kry` | Host embedding and app runtime ABI | `.kry support` |
-| `runtime/app_shell_props.kry` | App-shell route and layout ABI | `.kry support` |
+| `src/ui/route.zi` | Portable app-shell route policy; caller owned slices and counts | checked Ziran |
 | `runtime/frame_props.kry` | Frame lifecycle and pacing ABI declarations | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry, handle-size, and release-consume policy | `.kry support` |
 | `runtime/inspect_props.kry` | Inspector selection and node records | `.kry support` |
@@ -271,7 +271,7 @@ surface review:
 | `src/ui/ui_transition.kry` | Ui Transition widget host surface | `.kry canonical` |
 | `src/ui/widget_input.kry` | Widget Input widget host surface | `.kry canonical` |
 | `src/ui/app_shell_layout.kry` | App-shell route layout calculation (replaces `src/core/app_shell.c`) | `.kry canonical` |
-| `src/ui/app_shell_route.kry` | App-shell route operations (replaces `src/core/app_shell.c`) | `.kry canonical` |
+| `src/ui/route.zi` | App-shell route operations with portable slices | checked Ziran |
 | `src/ui/capability_layout.kry` | Capability naming and viewport safe-content geometry (replaces `src/core/kry_capabilities.c`) | `.kry canonical` |
 | `src/ui/frame_lifecycle.kry` | Frame lifecycle policy (replaces `src/core/kryon_frame.c`) | `.kry canonical` |
 | `src/ui/frame_pacing.kry` | Frame pacing policy (replaces `src/core/kryon_frame_pacing.c`) | `.kry canonical` |
