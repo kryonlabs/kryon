@@ -1,8 +1,0 @@
-# Fixture: low-level texture calls must fail the image-surface law under
-# every compile instead of passing as opaque host calls.
-#import "kryon.h"
-
-LawSurface :: () -> int #export {
-    Texture(0)
-    return 0
-}

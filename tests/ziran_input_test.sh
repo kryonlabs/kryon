@@ -7,9 +7,9 @@ ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cp "$repo/zi/geometry.zi" "$work/geometry.zi"
-cp "$repo/zi/input_props.zi" "$work/input_props.zi"
-cp "$repo/zi/input.zi" "$work/input.zi"
+cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
+cp "$repo/src/ui/input_props.zi" "$work/input_props.zi"
+cp "$repo/src/ui/input.zi" "$work/input.zi"
 cat > "$work/use_input.zi" <<'EOF'
 #module "use_input"
 #import "input"

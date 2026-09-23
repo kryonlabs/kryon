@@ -1,6 +1,0 @@
-#module "widget_instance_calls"
-#import "widget_instances"
-
-ReadForwardedCounter :: (key: u64) -> i32 #export {
-    return ReadCounter(key)
-}

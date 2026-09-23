@@ -1,3 +1,0 @@
-# Fixture: an #import target carrying a control byte must be rejected at
-# parse time; the target is emitted verbatim inside #include "..." lines.
-#import "evil.h"

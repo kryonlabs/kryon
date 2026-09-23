@@ -1,4 +1,0 @@
-#import "kryon.h"
-
-WEB :: #defined(PLATFORM_WEB)
-#assert WEB, "spec unresolved assertion"

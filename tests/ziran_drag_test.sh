@@ -46,11 +46,11 @@ Answer :: () -> i32 #export {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/zi" "$work/use_drag.zi"
-"$ziran" ir --root "$work" --module-path "$repo/zi" -o "$work/ir" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" "$work/use_drag.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" -o "$work/ir" \
     "$work/use_drag.zi"
 "$ziran" bundle --root "$work" --entry use_drag:Answer \
-    --module-path "$repo/zi" -o "$work/source.zib" "$work/use_drag.zi"
+    --module-path "$repo/src/ui" -o "$work/source.zib" "$work/use_drag.zi"
 "$ziran" bundle --root "$work" --entry use_drag:Answer \
     --module-path "$work/ir" -o "$work/ir.zib" "$work/ir/use_drag.zir"
 cmp "$work/source.zib" "$work/ir.zib"
@@ -61,7 +61,7 @@ for input in source ir; do
     if test "$input" = source; then
         extension=zi
         input_dir=$work
-        module_dir=$repo/zi
+        module_dir=$repo/src/ui
     else
         extension=zir
         input_dir=$work/ir

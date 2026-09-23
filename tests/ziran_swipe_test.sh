@@ -52,11 +52,11 @@ Answer :: () -> i32 #export {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/zi" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" \
     "$work/use_swipe.zi"
-"$ziran" ir --root "$work" --module-path "$repo/zi" -o "$work/ir" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" -o "$work/ir" \
     "$work/use_swipe.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/zi" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
     --entry use_swipe:Answer -o "$work/source.zib" "$work/use_swipe.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_swipe:Answer -o "$work/ir.zib" "$work/ir/use_swipe.zir"
@@ -67,7 +67,7 @@ test "$("$ziran" run "$work/ir.zib")" = 42
 for input in source ir; do
     if test "$input" = source; then
         input_dir=$work
-        module_dir=$repo/zi
+        module_dir=$repo/src/ui
         extension=zi
     else
         input_dir=$work/ir

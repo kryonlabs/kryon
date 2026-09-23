@@ -7,7 +7,7 @@ ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cp "$repo/zi/theme.zi" "$work/theme.zi"
+cp "$repo/src/ui/theme.zi" "$work/theme.zi"
 cat > "$work/use_theme.zi" <<'EOF'
 #module "use_theme"
 #import "theme"

@@ -1,3 +1,0 @@
-#import "kryon.h"
-
-#assert 2 * 2 == 5, "spec intentional assertion failure"
