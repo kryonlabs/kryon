@@ -48,6 +48,7 @@ kss_parser.zi
 layout.zi
 link.zi
 link_props.zi
+locale_defaults.zi
 list_box.zi
 list_box_multi.zi
 list_box_props.zi

@@ -1,56 +1,109 @@
 #module "locale_defaults"
 
 LocaleDefaultEntry :: struct {
-    key: const char*
-    value: const char*
+    key: string
+    value: string
 }
 
-static locale_defaults: [29]LocaleDefaultEntry = {
-    {"theme_style_label", "Style"},
-    {"theme_style_system", "System"},
-    {"theme_style_classic", "Classic"},
-    {"theme_style_default", "Default"},
-    {"theme_style_fluent", "Fluent"},
-    {"theme_style_adwaita", "Adwaita"},
-    {"theme_style_liquid_glass", "Liquid Glass"},
-    {"theme_label", "Theme source"},
-    {"theme_app", "Kryon"},
-    {"theme_system", "System"},
-    {"theme_mode_label", "Mode"},
-    {"theme_follow_device", "Follow device"},
-    {"theme_light", "Light"},
-    {"theme_dark", "Dark"},
-    {"theme_color_label", "Color theme"},
-    {"theme_picker_title", "Color theme"},
-    {"theme_sky", "Sky"},
-    {"theme_ocean", "Ocean"},
-    {"theme_forest", "Forest"},
-    {"theme_sunset", "Sunset"},
-    {"theme_lavender", "Lavender"},
-    {"theme_cherry", "Cherry"},
-    {"theme_dawn", "Dawn"},
-    {"theme_sage", "Sage"},
-    {"theme_sepia", "Sepia"},
-    {"theme_mono", "Mono"},
-    {"theme_mint", "Mint"},
-    {"theme_cobalt", "Cobalt"},
-    {"theme_sweet", "Sweet"},
+LocaleDefaultCount :: () -> i32 #export {
+    return 29
 }
 
-LocaleDefaultCount :: () -> int #export {
-    return (int)(sizeof(locale_defaults) / sizeof(locale_defaults[0]))
-}
-
-LocaleDefaultKeyAt :: (index: int) -> const char* #export {
-    if index < 0 || index >= LocaleDefaultCount() {
-        return nil
+LocaleDefaultAt :: (index: i32) -> LocaleDefaultEntry #export {
+    if index == 0 {
+        return (LocaleDefaultEntry){"theme_style_label", "Style"}
     }
-    return locale_defaults[index].key
+    if index == 1 {
+        return (LocaleDefaultEntry){"theme_style_system", "System"}
+    }
+    if index == 2 {
+        return (LocaleDefaultEntry){"theme_style_classic", "Classic"}
+    }
+    if index == 3 {
+        return (LocaleDefaultEntry){"theme_style_default", "Default"}
+    }
+    if index == 4 {
+        return (LocaleDefaultEntry){"theme_style_fluent", "Fluent"}
+    }
+    if index == 5 {
+        return (LocaleDefaultEntry){"theme_style_adwaita", "Adwaita"}
+    }
+    if index == 6 {
+        return (LocaleDefaultEntry){"theme_style_liquid_glass", "Liquid Glass"}
+    }
+    if index == 7 {
+        return (LocaleDefaultEntry){"theme_label", "Theme source"}
+    }
+    if index == 8 {
+        return (LocaleDefaultEntry){"theme_app", "Kryon"}
+    }
+    if index == 9 {
+        return (LocaleDefaultEntry){"theme_system", "System"}
+    }
+    if index == 10 {
+        return (LocaleDefaultEntry){"theme_mode_label", "Mode"}
+    }
+    if index == 11 {
+        return (LocaleDefaultEntry){"theme_follow_device", "Follow device"}
+    }
+    if index == 12 {
+        return (LocaleDefaultEntry){"theme_light", "Light"}
+    }
+    if index == 13 {
+        return (LocaleDefaultEntry){"theme_dark", "Dark"}
+    }
+    if index == 14 {
+        return (LocaleDefaultEntry){"theme_color_label", "Color theme"}
+    }
+    if index == 15 {
+        return (LocaleDefaultEntry){"theme_picker_title", "Color theme"}
+    }
+    if index == 16 {
+        return (LocaleDefaultEntry){"theme_sky", "Sky"}
+    }
+    if index == 17 {
+        return (LocaleDefaultEntry){"theme_ocean", "Ocean"}
+    }
+    if index == 18 {
+        return (LocaleDefaultEntry){"theme_forest", "Forest"}
+    }
+    if index == 19 {
+        return (LocaleDefaultEntry){"theme_sunset", "Sunset"}
+    }
+    if index == 20 {
+        return (LocaleDefaultEntry){"theme_lavender", "Lavender"}
+    }
+    if index == 21 {
+        return (LocaleDefaultEntry){"theme_cherry", "Cherry"}
+    }
+    if index == 22 {
+        return (LocaleDefaultEntry){"theme_dawn", "Dawn"}
+    }
+    if index == 23 {
+        return (LocaleDefaultEntry){"theme_sage", "Sage"}
+    }
+    if index == 24 {
+        return (LocaleDefaultEntry){"theme_sepia", "Sepia"}
+    }
+    if index == 25 {
+        return (LocaleDefaultEntry){"theme_mono", "Mono"}
+    }
+    if index == 26 {
+        return (LocaleDefaultEntry){"theme_mint", "Mint"}
+    }
+    if index == 27 {
+        return (LocaleDefaultEntry){"theme_cobalt", "Cobalt"}
+    }
+    if index == 28 {
+        return (LocaleDefaultEntry){"theme_sweet", "Sweet"}
+    }
+    return (LocaleDefaultEntry){"", ""}
 }
 
-LocaleDefaultValueAt :: (index: int) -> const char* #export {
-    if index < 0 || index >= LocaleDefaultCount() {
-        return nil
-    }
-    return locale_defaults[index].value
+LocaleDefaultKeyAt :: (index: i32) -> string #export {
+    return LocaleDefaultAt(index).key
+}
+
+LocaleDefaultValueAt :: (index: i32) -> string #export {
+    return LocaleDefaultAt(index).value
 }

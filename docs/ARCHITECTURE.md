@@ -34,6 +34,7 @@ geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms
 scroll interaction, frame pacing, paragraph layout policy, text input and text row decisions,
 window placement and drag policy,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
+portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
 
