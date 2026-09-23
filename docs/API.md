@@ -51,7 +51,9 @@ with `make` and `make test` from the Kryon repository. No display is started.
 ## Migration boundary
 
 This library currently covers selected widget policy and line rendering.
-Full `Text(TextProps)`, `Image(ImageProps)`,
+`ImageProps` now carries portable strings. Image fit, source selection, draw
+eligibility, and default tint decisions are checked Ziran functions. Full
+`Text(TextProps)`, `Image(ImageProps)`,
 widget composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not

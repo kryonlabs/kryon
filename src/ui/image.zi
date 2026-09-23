@@ -1,5 +1,7 @@
 #module "image"
+#import "drawing_props"
 #import "geometry"
+#import "image_props"
 
 # Matches the ImageFit host contract without exporting a second public enum.
 ImagePlaceholderLayout :: struct {
@@ -10,6 +12,40 @@ ImagePlaceholderLayout :: struct {
 
 ImageLabelRole :: () -> i32 #export {
     return 6
+}
+
+ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle #export {
+    return ImageFitBounds(image.bounds, image.source,
+        texture.width, texture.height, (i32)image.fit)
+}
+
+ImageDrawPlan :: struct {
+    draw: bool
+    source: Rectangle
+    destination: Rectangle
+    tint: Color
+}
+
+ImageDrawPlanFor :: (image: ImageProps, texture: Texture2D,
+    tint: Color) -> ImageDrawPlan #export {
+    plan: ImageDrawPlan
+    if texture.id == (u32)0 || texture.width <= 0 ||
+        texture.height <= 0 || image.bounds.width <= 0.0 ||
+        image.bounds.height <= 0.0 {
+        return plan
+    }
+    plan.draw = true
+    plan.source = image.source
+    if plan.source.width == 0.0 || plan.source.height == 0.0 {
+        plan.source = (Rectangle){0.0, 0.0,
+            (float)texture.width, (float)texture.height}
+    }
+    plan.destination = ImageFitRect(image, texture)
+    plan.tint = tint
+    if plan.tint.a == (u8)0 {
+        plan.tint = (Color){(u8)255, (u8)255, (u8)255, (u8)255}
+    }
+    return plan
 }
 
 ImageFitBounds :: (bounds: Rectangle, source: Rectangle,

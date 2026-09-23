@@ -9,18 +9,14 @@ ImageFit :: enum {
 }
 
 ImageProps :: struct {
-    asset_path: const char*
-    alt_text: const char*
+    asset_path: string
+    alt_text: string
     bounds: Rectangle
     source: Rectangle
     origin: Vector2
     rotation: float
     fit: ImageFit
     class_name: i32
-    # Runtime texture: honored instead of asset_path when set. Trailing so
-    # positional literals in existing sources keep their mapping.
+    # Runtime texture: honored instead of asset_path when set.
     texture: Texture2D
 }
-
-# Host entry for the canonical Image(ImageProps) surface.
-RenderImage :: (image: ImageProps) #extern #export

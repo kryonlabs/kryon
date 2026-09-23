@@ -8,7 +8,9 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_image.zi" <<'EOF'
 #module "use_image"
+#import "drawing_props"
 #import "image"
+#import "image_props"
 #import "geometry"
 
 Answer :: () -> i32 #export {
@@ -21,6 +23,40 @@ Answer :: () -> i32 #export {
     contain: Rectangle = ImageFitBounds(bounds, source, 20, 20, 1)
     if contain.x != 25.0 || contain.y != 0.0 ||
         contain.width != 50.0 || contain.height != 50.0 { return 0 }
+    image: ImageProps
+    image.asset_path = "assets/photo.png"
+    image.alt_text = "A photo"
+    image.bounds = bounds
+    image.source = source
+    image.fit = (ImageFit)ImageFitContain
+    texture: Texture2D
+    texture.id = (u32)1
+    texture.width = 20
+    texture.height = 20
+    fitted: Rectangle = ImageFitRect(image, texture)
+    if image.asset_path != "assets/photo.png" ||
+        image.alt_text != "A photo" ||
+        fitted.x != contain.x || fitted.width != contain.width {
+        return 0
+    }
+    tint: Color
+    plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
+    if !plan.draw || plan.source.width != 20.0 ||
+        plan.destination.x != 25.0 || plan.tint.r != (u8)255 ||
+        plan.tint.a != (u8)255 { return 0 }
+    image.source.width = 0.0
+    plan = ImageDrawPlanFor(image, texture, tint)
+    if plan.source.width != 20.0 || plan.source.height != 20.0 {
+        return 0
+    }
+    texture.id = (u32)0
+    plan = ImageDrawPlanFor(image, texture, tint)
+    if plan.draw { return 0 }
+    texture.id = (u32)1
+    image.source = source
+    image.bounds.width = 0.0
+    if ImageDrawPlanFor(image, texture, tint).draw { return 0 }
+    image.bounds = bounds
     cover: Rectangle = ImageFitBounds(bounds, source, 20, 20, 2)
     if cover.x != 0.0 || cover.y != -25.0 ||
         cover.width != 100.0 || cover.height != 100.0 { return 0 }
@@ -87,7 +123,9 @@ package main
 func main() { if UseImage_Answer() != 42 { panic("wrong image result") } }
 GO
             GO111MODULE=off go run "$output/geometry.go" \
-                "$output/image.go" "$output/use_image.go" "$output/main.go"
+                "$output/text_align.go" "$output/drawing_props.go" \
+                "$output/image_props.go" "$output/image.go" \
+                "$output/use_image.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --strict --root "$work" \
                 --module-path "$module_dir" -o "$output" \
@@ -97,7 +135,9 @@ GO
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/image.c" \
+                "$output/geometry.c" "$output/text_align.c" \
+                "$output/drawing_props.c" "$output/image_props.c" \
+                "$output/image.c" \
                 "$output/use_image.c" "$output/main.c" -o "$output/app"
             "$output/app"
         else
@@ -109,7 +149,9 @@ C
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/image.cpp" \
+                "$output/geometry.cpp" "$output/text_align.cpp" \
+                "$output/drawing_props.cpp" "$output/image_props.cpp" \
+                "$output/image.cpp" \
                 "$output/use_image.cpp" "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi
