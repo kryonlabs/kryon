@@ -1,0 +1,51 @@
+#module "progress_widget"
+#import "font_metrics"
+#import "geometry"
+#import "progress"
+#import "progress_props"
+#import "progress_raster"
+#import "style"
+
+# Resolved faces are values supplied by Kryon's style cascade. The platform
+# only measures glyphs and rasterizes commands.
+ProgressFaces :: struct {
+    track: StyleFrame
+    fill: StyleFrame
+    label: StyleFrame
+    scale: float
+    fallback_font: i32
+}
+
+PreparedProgress :: struct {
+    paint: ProgressPaint
+    font: i32
+    label_opacity: float
+}
+
+PrepareProgress :: (props: ProgressProps,
+    faces: ProgressFaces) -> PreparedProgress #export {
+    prepared: PreparedProgress
+    prepared.font = ResolveFont(0,
+        StyleFontValue(faces.label.value.fields,
+            faces.label.value.font_size), faces.fallback_font)
+    prepared.label_opacity = StyleOpacityValue(faces.label.value.fields,
+        faces.label.value.opacity)
+    label_width: i32 = 0
+    label_height: i32 = 0
+    if props.label != "" {
+        label_width = GlyphWidth(props.label, prepared.font,
+            faces.label.value.typeface)
+        label_height = GlyphLineHeight(prepared.font,
+            faces.label.value.typeface)
+    }
+    prepared.paint = ProgressPaintFor(props.bounds, props.min, props.max,
+        props.value, (float)label_width, (float)label_height, faces.scale,
+        faces.track, faces.fill, faces.label)
+    return prepared
+}
+
+PaintProgressProps :: (props: ProgressProps, faces: ProgressFaces) #export {
+    prepared: PreparedProgress = PrepareProgress(props, faces)
+    PaintProgress(props.bounds, prepared.paint, props.label,
+        prepared.font, prepared.label_opacity)
+}

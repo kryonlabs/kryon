@@ -41,6 +41,18 @@ HostBinding RasterRoundedRectangleBinding(RoundedRectangleRenderer *renderer);
 HostBinding RasterRoundedRectangleOutlineBinding(RoundedRectangleRenderer *renderer);
 HostBinding RasterTextBinding(TextRenderer *renderer);
 
+typedef struct FontMeasurer {
+    int (*width)(void *context, const char *text, size_t text_length,
+                 int font, const char *typeface, size_t typeface_length);
+    int (*line_height)(void *context, int font,
+                       const char *typeface, size_t typeface_length);
+    void *context;
+} FontMeasurer;
+
+/* Text and typeface byte spans are borrowed for the duration of each call. */
+HostBinding MeasureGlyphWidthBinding(FontMeasurer *measurer);
+HostBinding MeasureGlyphLineHeightBinding(FontMeasurer *measurer);
+
 #ifdef __cplusplus
 }
 #endif

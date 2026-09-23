@@ -39,7 +39,9 @@ portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
 Progress can also emit its rounded track, fill, border, and text through
-separate generic raster shape and text capabilities.
+separate generic raster shape and text capabilities. Its checked composition
+module selects the font and positions the label from raw glyph measurements;
+resolved style faces are still supplied by the caller.
 
 The other `.zi` modules were moved from the previous implementation and are
 not yet in the checked build. Native widget rendering and downstream app
@@ -53,8 +55,9 @@ timer stub, without opening a display. `raster.zi` declares a typed record
 line capability shared by Bevel and Separator; its adapter calls the platform's
 line renderer. `raster_shape.zi` and `raster_text.zi` declare rounded rectangle
 and UTF-8 text effects for Progress; their adapters pass draw calls to the
-embedding renderer. Broader rendering and pointer-bearing widget capabilities
-still need portable host contracts.
+embedding renderer. `font_metrics.zi` declares width and line height effects
+for the platform font rasterizer. Broader rendering and pointer-bearing widget
+capabilities still need portable host contracts.
 
 ## Completion requirements
 
