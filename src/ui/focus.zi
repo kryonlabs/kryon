@@ -1,6 +1,6 @@
 #module "focus"
 #import "control_props"
-#import "drawing_props"
+#import "geometry"
 #import "style"
 
 FocusPaint :: struct {

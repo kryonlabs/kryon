@@ -1,5 +1,4 @@
 #module "overlay"
-#import "drawing_props"
 
 DismissibleOverlayPolicy :: struct {
     closed: bool

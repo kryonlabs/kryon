@@ -1,5 +1,5 @@
 #module "inspect"
-#import "drawing_props"
+#import "geometry"
 
 InspectEdit :: struct {
     bounds: Rectangle

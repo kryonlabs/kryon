@@ -1,5 +1,5 @@
 #module "canvas"
-#import "drawing_props"
+#import "geometry"
 
 CanvasPolicyResult :: struct {
     active: bool

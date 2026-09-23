@@ -8,7 +8,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/use_moved.zi" <<'EOF'
 #module "use_moved"
+#import "canvas"
 #import "control_props"
+#import "focus"
+#import "geometry"
 #import "page"
 #import "segmented_control"
 #import "style"
@@ -34,6 +37,19 @@ Answer :: () -> i32 #export {
     if !TreeInteractiveButtonLike(WidgetKindButton, 0, false, false) {
         return 0
     }
+    if FocusTabDirectionFor(true, true) != -1 { return 0 }
+    if FocusTabDirectionFor(false, true) != 0 { return 0 }
+    bounds: Rectangle
+    bounds.x = 10.0
+    bounds.y = 20.0
+    bounds.width = 100.0
+    bounds.height = 80.0
+    point: Vector2
+    point.x = 30.0
+    point.y = 40.0
+    screen: Vector2 = CanvasPointToScreen(bounds, point, 4, 6, 2.0)
+    world: Vector2 = CanvasPointFromScreen(bounds, screen, 4, 6, 2.0)
+    if world.x != point.x || world.y != point.y { return 0 }
     return 42
 }
 EOF

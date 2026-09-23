@@ -1,5 +1,5 @@
 #module "icon"
-#import "drawing_props"
+#import "geometry"
 
 IconLayout :: struct {
     bounds: Rectangle
