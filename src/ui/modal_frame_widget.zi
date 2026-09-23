@@ -1,0 +1,201 @@
+#module "modal_frame_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "image_props"
+#import "modal"
+#import "modal_props"
+#import "overlay_props"
+#import "overlay_widget"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+
+ModalFrameDefaultFace :: (role: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleFontSize
+    face.background = (u32)0xffffffff
+    face.foreground = (u32)0x111827ff
+    face.border = (u32)0x94a3b8ff
+    face.border_width = 1.0
+    face.radius = 8.0
+    face.opacity = 1.0
+    face.font_size = 18.0
+    if role == ModalScrimRole() {
+        face.background = (u32)0x00000080
+        face.border_width = 0.0
+        face.radius = 0.0
+    } else if role == ModalTitleRole() {
+        face.background = (u32)0x00000000
+    } else if role == ModalMessageRole() {
+        face.font_size = 14.0
+    }
+    return face
+}
+
+ModalFrameFaceFor :: (props: ModalFrameProps,
+    role: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindModal(), props.id, props.class_name, role,
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        ModalFrameDefaultFace(role), facts,
+        (i32)ButtonStateNormal)
+    return frame
+}
+
+ModalFrameKey :: (props: ModalFrameProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+# Returns the checked panel and content rectangles. The caller may submit
+# content under panel_node using TreePushScope, then End that scope.
+ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
+    result: ModalFrameResult
+    result.node = -1
+    result.panel_node = -1
+    viewport: Rectangle = TreeRootBounds()
+    if viewport.width <= 0.0 || viewport.height <= 0.0 {
+        return result
+    }
+    panel: StyleFrame = ModalFrameFaceFor(props,
+        ModalPanelRole())
+    title: StyleFrame = ModalFrameFaceFor(props,
+        ModalTitleRole())
+    message: StyleFrame = ModalFrameFaceFor(props,
+        ModalMessageRole())
+    action: StyleFrame = ModalFrameFaceFor(props,
+        ModalActionRole())
+    close: StyleFrame = ModalFrameFaceFor(props,
+        ModalCloseRole())
+    scrim: StyleFrame = ModalFrameFaceFor(props,
+        ModalScrimRole())
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ModalMetrics = ModalMetricsFor(scale,
+        panel, title, message, action, close)
+    width: i32 = props.width
+    height: i32 = props.height
+    if width <= 0 { width = metrics.default_max_width }
+    if height <= 0 { height = metrics.min_height }
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 || bounds.height <= 0.0 {
+        bounds = ModalFramePanelFor((i32)viewport.width,
+            (i32)viewport.height, width, height, metrics)
+        bounds.x += viewport.x
+        bounds.y += viewport.y
+    }
+    result.layout = ModalFrameLayoutFor(bounds, metrics)
+    overlay_props: DismissibleOverlayProps
+    overlay_props.key = ModalFrameKey(props)
+    overlay_props.bounds = result.layout.panel
+    overlay_props.dismiss_disabled = props.dismiss_disabled
+    overlay_props.scrim = ColorFromPacked(Opacity(
+        scrim.value.background,
+        StyleOpacityValue(scrim.value.fields,
+            scrim.value.opacity)))
+    overlay: DismissibleOverlayResult =
+        DismissibleOverlay(overlay_props)
+    result.node = overlay.node
+    result.panel_node = overlay.panel_node
+    result.dismissed = overlay.closed
+    if overlay.closed || result.panel_node < 0 { return result }
+    opacity: float = StyleOpacityValue(panel.value.fields,
+        panel.value.opacity)
+    PaintRoundedFill(result.panel_node, result.layout.panel,
+        panel.value.radius, 12,
+        ColorFromPacked(Opacity(panel.value.background, opacity)))
+    if panel.value.border_width > 0.0 {
+        PaintRoundedOutline(result.panel_node,
+            result.layout.panel, panel.value.radius, 12,
+            panel.value.border_width,
+            ColorFromPacked(Opacity(panel.value.border, opacity)))
+    }
+    if props.title != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(title.value.fields,
+                title.value.font_size), 18)
+        width: i32 = GlyphWidth(props.title, font,
+            title.value.typeface)
+        while width > result.layout.title_max_width && font > 12 {
+            font -= 1
+            width = GlyphWidth(props.title, font,
+                title.value.typeface)
+        }
+        title_x: i32 = (i32)result.layout.panel.x +
+            ((i32)result.layout.panel.width - width) / 2
+        title_clip: Rectangle = result.layout.panel
+        title_clip.x += (float)metrics.frame_title_side_padding
+        title_clip.width -= (float)(metrics.frame_title_side_padding * 2)
+        if title_clip.width < 0.0 { title_clip.width = 0.0 }
+        PaintClippedLabel(result.panel_node, props.title,
+            title_x, result.layout.title_y, font,
+            ColorFromPacked(Opacity(title.value.foreground,
+                StyleOpacityValue(title.value.fields,
+                    title.value.opacity))), title_clip)
+    }
+    if props.has_left_action {
+        button: ButtonProps
+        button.key = overlay_props.key * (u64)65599 + (u64)1
+        button.bounds = result.layout.left_button
+        button.id = props.id
+        button.class_name = props.class_name
+        button.style_kind = StyleKindModal()
+        button.style_role = ModalCloseRole()
+        button.tone = (ButtonTone)ButtonToneNeutral
+        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.label = props.left_label
+        button.image = props.left_image
+        button.icon_only = true
+        button.arrow = props.left_image.asset_path == "" &&
+            props.left_image.texture.id == (u32)0
+        button.direction = (ArrowDirection)ArrowLeft
+        result.left_clicked = SubmitButton(button,
+            result.panel_node, OverlayPanelKey()) != 0
+    }
+    if props.has_right_action {
+        button: ButtonProps
+        button.key = overlay_props.key * (u64)65599 + (u64)2
+        button.bounds = result.layout.right_button
+        button.id = props.id
+        button.class_name = props.class_name
+        button.style_kind = StyleKindModal()
+        button.style_role = ModalCloseRole()
+        button.tone = (ButtonTone)ButtonToneNeutral
+        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.label = props.right_label
+        button.image = props.right_image
+        button.icon_only = true
+        result.right_clicked = SubmitButton(button,
+            result.panel_node, OverlayPanelKey()) != 0
+        if button.image.asset_path == "" &&
+            button.image.texture.id == (u32)0 {
+            cx: float = button.bounds.x + button.bounds.width * 0.5
+            cy: float = button.bounds.y + button.bounds.height * 0.5
+            span: float = (float)metrics.frame_icon_size * 0.25
+            color: Color = ColorFromPacked(Opacity(
+                close.value.foreground,
+                StyleOpacityValue(close.value.fields,
+                    close.value.opacity)))
+            PaintLine(result.panel_node,
+                (Rectangle){cx - span, cy - span,
+                    span * 2.0, span * 2.0}, color)
+            PaintLine(result.panel_node,
+                (Rectangle){cx + span, cy - span,
+                    -span * 2.0, span * 2.0}, color)
+        }
+    }
+    return result
+}

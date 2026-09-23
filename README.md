@@ -33,6 +33,7 @@ value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
 Bevel and Separator line rendering, material
 layers, theme, style values, built-in theme labels, and selected Image, Progress,
+checked ModalFrame layout, backdrop dismissal, title and close actions,
 checked TreeView composition and row input from portable item values,
 checked PanedView composition and handle dragging with returned pane bounds,
 checked Toast lifetime, text truncation, layout, and paint,

@@ -1,6 +1,9 @@
 #module "modal_props"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
+#import "image_props"
+#import "modal"
 
 ModalAction :: struct {
     label: const char*
@@ -24,25 +27,34 @@ ModalProps :: struct {
     focus_id: i32
 }
 
-# Layout result of a custom modal frame: panel rect plus the content area the
-# caller draws into, and the optional title-icon click results.
-PanelFrame :: struct {
-    x: i32
-    y: i32
-    w: i32
-    h: i32
-    content_x: i32
-    content_y: i32
-    content_w: i32
-    content_h: i32
-    left_clicked: i32
-    right_clicked: i32
+# Caller supplied bounds support movable/resizable panels without making a
+# platform host decide the layout. Zero bounds center the requested size.
+ModalFrameProps :: struct {
+    key: u64
+    id: i32
+    class_name: i32
+    title: string
+    bounds: Rectangle
+    width: i32
+    height: i32
+    scale: float
+    left_image: ImageProps
+    right_image: ImageProps
+    left_label: string
+    right_label: string
+    has_left_action: bool
+    has_right_action: bool
+    dismiss_disabled: bool
 }
 
-# Custom-content modal frame: scrim, movable/resizable panel, centered title,
-# optional close icons. Implemented by the modal host; declared here so apps
-# can build palette-style overlays with their own content.
-RenderModalFrame :: (width: i32, height: i32, title: const char*, left_icon: Texture2D, right_icon: Texture2D) -> PanelFrame #extern #export
+ModalFrameResult :: struct {
+    node: i32
+    panel_node: i32
+    layout: ModalFrameLayout
+    dismissed: bool
+    left_clicked: bool
+    right_clicked: bool
+}
 
 # Action modal: title, message, and buttons; returns the activated action id
 # (0 = dismissed). Implemented by the modal host.
