@@ -103,12 +103,40 @@ Answer :: () -> i32 #export {
     return 42
 }
 EOF
+cat > "$work/scalar_layout.zi" <<'EOF'
+#module "scalar_layout"
+#import "layout"
+Answer :: () -> i32 #export {
+    if PageSidePaddingFor(300) == 12 && IsDesktopWidth(750, 1.5) {
+        return 42
+    }
+    return 0
+}
+EOF
 
 "$ziran" check --root "$work" "$work/geometry.zi" "$work/layout.zi" \
-    "$work/group.zi" "$work/use_layout.zi"
+    "$work/group.zi" "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" ir --root "$work" -o "$work/ir" \
     "$work/geometry.zi" "$work/layout.zi" "$work/group.zi" \
-    "$work/use_layout.zi"
+    "$work/use_layout.zi" "$work/scalar_layout.zi"
+"$ziran" bundle --root "$work" --entry scalar_layout:Answer \
+    -o "$work/scalar-layout.zib" "$work/geometry.zi" "$work/layout.zi" \
+    "$work/group.zi" "$work/scalar_layout.zi"
+test "$("$ziran" run "$work/scalar-layout.zib")" = 42
+"$ziran" bundle --root "$work" --entry scalar_layout:Answer \
+    -o "$work/scalar-layout-ir.zib" "$work/ir/geometry.zir" \
+    "$work/ir/layout.zir" "$work/ir/group.zir" \
+    "$work/ir/scalar_layout.zir"
+cmp "$work/scalar-layout.zib" "$work/scalar-layout-ir.zib"
+test "$("$ziran" run "$work/scalar-layout-ir.zib")" = 42
+python3 - "$work/scalar-layout.zib" <<'PY'
+from pathlib import Path
+import sys
+data = Path(sys.argv[1]).read_bytes()
+assert b'geometry' not in data
+assert b'GroupPolicyFor' not in data
+assert b'BeginFlexCursor' not in data
+PY
 
 for input in source ir; do
     if test "$input" = source; then
