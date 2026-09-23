@@ -164,6 +164,231 @@ TextAreaCaretFor :: (value: string, cursor: i32,
     return caret
 }
 
+# A composition replaces the current selection only in the painted view.
+# The committed value remains borrowed and unchanged until an edit is returned.
+TextAreaView :: struct {
+    value: string
+    preedit: string
+    replace_start: i32
+    replace_end: i32
+    length: i32
+    composing: bool
+}
+
+TextAreaViewSegment :: struct {
+    source: string
+    source_start: i32
+    start: i32
+    end: i32
+}
+
+TextAreaViewFor :: (value: string, anchor: i32,
+    cursor: i32, composition: CompositionState) -> TextAreaView #export {
+    view: TextAreaView
+    view.value = value
+    view.length = value.length
+    view.replace_start = value.length
+    view.replace_end = value.length
+    if composition.active {
+        selection: TextSelectionRange = TextSelectionRangeForLength(
+            anchor, cursor, value.length)
+        view.composing = true
+        view.preedit = composition.text
+        view.replace_start = selection.start
+        view.replace_end = selection.end
+        view.length = value.length -
+            (selection.end - selection.start) +
+            composition.text.length
+    }
+    return view
+}
+
+TextAreaViewSegmentFor :: (view: TextAreaView,
+    part: i32) -> TextAreaViewSegment #export {
+    segment: TextAreaViewSegment
+    if part == 0 {
+        segment.source = view.value
+        segment.end = view.replace_start
+    } else if part == 1 {
+        segment.source = view.preedit
+        segment.start = view.replace_start
+        segment.end = segment.start + view.preedit.length
+    } else if part == 2 {
+        segment.source = view.value
+        segment.source_start = view.replace_end
+        segment.start = view.replace_start + view.preedit.length
+        segment.end = view.length
+    }
+    return segment
+}
+
+TextAreaViewByteAt :: (view: TextAreaView,
+    index: i32) -> u8 #export {
+    if index < view.replace_start { return view.value[index] }
+    after: i32 = index - view.replace_start
+    if after < view.preedit.length { return view.preedit[after] }
+    return view.value[view.replace_end + after -
+        view.preedit.length]
+}
+
+TextAreaViewNext :: (view: TextAreaView,
+    cursor: i32) -> i32 #export {
+    cursor = TextCursorForLength(cursor, view.length)
+    if cursor >= view.length { return view.length }
+    cursor += 1
+    while cursor < view.length &&
+        TextUtf8Continuation(TextAreaViewByteAt(view, cursor)) {
+        cursor += 1
+    }
+    return cursor
+}
+
+TextAreaViewSpanWidth :: (view: TextAreaView,
+    start: i32, end: i32, font: i32,
+    typeface: string) -> i32 #export {
+    start = TextCursorForLength(start, view.length)
+    end = TextCursorForLength(end, view.length)
+    if end <= start { return 0 }
+    width: i32 = 0
+    part: i32 = 0
+    while part < 3 {
+        segment: TextAreaViewSegment =
+            TextAreaViewSegmentFor(view, part)
+        left: i32 = start
+        if left < segment.start { left = segment.start }
+        right: i32 = end
+        if right > segment.end { right = segment.end }
+        if right > left {
+            width += GlyphWidth(TextSpan(segment.source,
+                segment.source_start + left - segment.start,
+                right - left), font, typeface)
+        }
+        part += 1
+    }
+    return width
+}
+
+TextAreaViewNextRow :: (view: TextAreaView,
+    start: i32, wrap_width: i32, font: i32,
+    typeface: string) -> TextAreaRow #export {
+    row: TextAreaRow
+    row.start = start
+    row.end = start
+    row.next = view.length + 1
+    if start < 0 || start > view.length { return row }
+    line_end: i32 = start
+    while line_end < view.length &&
+        TextAreaViewByteAt(view, line_end) != (u8)10 {
+        line_end += 1
+    }
+    row.end = line_end
+    row.next = line_end + 1
+    if line_end < view.length && line_end > start &&
+        TextAreaViewByteAt(view, line_end - 1) == (u8)13 {
+        row.end -= 1
+    }
+    if wrap_width <= 0 || row.end <= start { return row }
+    cursor: i32 = start
+    fitted: i32 = start
+    break_after: i32 = -1
+    while cursor < row.end {
+        next: i32 = TextAreaViewNext(view, cursor)
+        width: i32 = TextAreaViewSpanWidth(view, start,
+            next, font, typeface)
+        if width > wrap_width {
+            if fitted == start { fitted = next }
+            if break_after > start && break_after <= fitted {
+                fitted = break_after
+            }
+            if fitted < row.end {
+                row.end = fitted
+                row.next = fitted
+                row.soft_wrap = true
+            }
+            return row
+        }
+        fitted = next
+        if TextAreaViewByteAt(view, cursor) == (u8)32 ||
+            TextAreaViewByteAt(view, cursor) == (u8)9 {
+            break_after = next
+        }
+        cursor = next
+    }
+    return row
+}
+
+TextAreaViewRowCount :: (view: TextAreaView,
+    wrap_width: i32, font: i32,
+    typeface: string) -> i32 #export {
+    count: i32 = 0
+    offset: i32 = 0
+    while offset <= view.length {
+        row: TextAreaRow = TextAreaViewNextRow(view,
+            offset, wrap_width, font, typeface)
+        count += 1
+        if row.next <= offset { break }
+        offset = row.next
+    }
+    return count
+}
+
+TextAreaViewCaretFor :: (view: TextAreaView,
+    cursor: i32, wrap_width: i32,
+    font: i32, typeface: string,
+    advance: i32) -> TextAreaCaret #export {
+    caret: TextAreaCaret
+    cursor = TextCursorForLength(cursor, view.length)
+    offset: i32 = 0
+    index: i32 = 0
+    while offset <= view.length {
+        row: TextAreaRow = TextAreaViewNextRow(view,
+            offset, wrap_width, font, typeface)
+        if cursor < row.end ||
+            (cursor == row.end && !row.soft_wrap) ||
+            row.next > view.length {
+            within: i32 = cursor
+            if within < row.start { within = row.start }
+            if within > row.end { within = row.end }
+            caret.x = TextAreaViewSpanWidth(view,
+                row.start, within, font, typeface)
+            caret.y = index * advance
+            caret.row_start = row.start
+            caret.row_end = row.end
+            caret.row_index = index
+            return caret
+        }
+        if row.next <= offset { break }
+        offset = row.next
+        index += 1
+    }
+    return caret
+}
+
+TextAreaViewPaintRow :: (node: i32, view: TextAreaView,
+    row: TextAreaRow, x: i32, y: i32, font: i32,
+    typeface: string, color: Color,
+    clip: Rectangle) #export {
+    part: i32 = 0
+    while part < 3 {
+        segment: TextAreaViewSegment =
+            TextAreaViewSegmentFor(view, part)
+        left: i32 = row.start
+        if left < segment.start { left = segment.start }
+        right: i32 = row.end
+        if right > segment.end { right = segment.end }
+        if right > left {
+            PaintClippedLabel(node,
+                TextSpan(segment.source,
+                    segment.source_start + left - segment.start,
+                    right - left),
+                x + TextAreaViewSpanWidth(view,
+                    row.start, left, font, typeface),
+                y, font, color, clip)
+        }
+        part += 1
+    }
+}
+
 TextAreaCursorAtPoint :: (value: string, x: i32,
     y: i32, wrap_width: i32, font: i32,
     typeface: string, advance: i32) -> i32 #export {
@@ -307,8 +532,20 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     if padding_y < 0 { padding_y = 0 }
     wrap_width: i32 = TextAreaWrapWidthFor(bounds.width,
         padding_x, props.wrap, TextAreaMinWrapWidth(scale))
+    initial_composition: CompositionState = props.composition
+    if !result.focused || props.read_only || props.disabled ||
+        props.input.escape || activated || drag.started ||
+        drag.active || drag.ended {
+        initial_composition = (CompositionState){}
+    }
+    initial_view: TextAreaView = TextAreaViewFor(props.value,
+        result.anchor, result.cursor, initial_composition)
     content_height: i32 = TextAreaRowCount(props.value,
         wrap_width, font, face.value.typeface) * advance
+    if initial_view.composing {
+        content_height = TextAreaViewRowCount(initial_view,
+            wrap_width, font, face.value.typeface) * advance
+    }
     paint: TextAreaPaint = TextAreaPaintFor(bounds,
         font, gap, padding_x, padding_y, props.wrap,
         content_height, result.scroll_y, line_height,
@@ -547,16 +784,35 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             (CompositionPhase)CompositionNone
     if result.escaped { result.focused = false }
     if props.disabled || props.input.blur { result.focused = false }
+    view: TextAreaView = TextAreaViewFor(props.value,
+        result.anchor, result.cursor, result.composition)
+    display_cursor: i32 = result.cursor
+    if view.composing {
+        display_cursor = view.replace_start +
+            result.composition.cursor
+        content_height = TextAreaViewRowCount(view,
+            wrap_width, font, face.value.typeface) * advance
+        paint = TextAreaPaintFor(bounds, font, gap,
+            padding_x, padding_y, props.wrap,
+            content_height, result.scroll_y, line_height,
+            TextAreaMinWrapWidth(scale))
+        result.scroll_y = paint.scroll_y
+    }
+    display_caret: TextAreaCaret = TextAreaCaretFor(
+        props.value, result.cursor, wrap_width,
+        font, face.value.typeface, advance)
+    if view.composing {
+        display_caret = TextAreaViewCaretFor(view,
+            display_cursor, wrap_width, font,
+            face.value.typeface, advance)
+    }
     if TextAreaRevealCursorShouldRun(result.focused,
         result.edit.changed, navigation || pointer_moved ||
-        props.input.focus) {
-        caret: TextAreaCaret = TextAreaCaretFor(props.value,
-            result.cursor, wrap_width, font,
-            face.value.typeface, advance)
+        props.input.focus || result.composition_changed) {
         viewport: i32 = (i32)bounds.height - padding_y * 2
         result.scroll_y = TextAreaScrollFor(
             TextAreaRevealScroll(result.scroll_y,
-                caret.y, line_height, viewport),
+                display_caret.y, line_height, viewport),
             paint.max_scroll)
     }
     face = TextAreaFaceFor(props, result.focused)
@@ -590,7 +846,8 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         padding_x, padding_y, props.wrap,
         content_height, result.scroll_y, line_height,
         TextAreaMinWrapWidth(scale))
-    if props.value == "" && props.placeholder != "" {
+    if view.length == 0 && props.placeholder != "" &&
+        !view.composing {
         PaintClippedLabel(result.node, props.placeholder,
             paint.placeholder_x, paint.placeholder_y,
             font, ColorFromPacked(Opacity(
@@ -599,19 +856,30 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(
         result.anchor, result.cursor, props.value.length)
-    caret: TextAreaCaret = TextAreaCaretFor(props.value,
-        result.cursor, wrap_width, font,
-        face.value.typeface, advance)
+    paint_selection_start: i32 = selection.start
+    paint_selection_end: i32 = selection.end
+    paint_has_selection: bool = selection.has_selection
+    if view.composing {
+        paint_selection_start = display_cursor
+        paint_selection_end = display_cursor +
+            result.composition.selection_length
+        paint_has_selection = paint_selection_end >
+            paint_selection_start
+    }
     offset: i32 = 0
     row_index: i32 = 0
     first_token: bool = true
     block_comment: bool = false
     dark_syntax: bool = SyntaxDarkBackground(
         face.value.background)
-    while offset <= props.value.length {
+    while offset <= view.length {
         row: TextAreaRow = TextAreaNextRow(props.value,
             offset, wrap_width, font,
             face.value.typeface)
+        if view.composing {
+            row = TextAreaViewNextRow(view, offset,
+                wrap_width, font, face.value.typeface)
+        }
         y: i32 = (i32)paint.clip_bounds.y +
             row_index * advance - result.scroll_y
         row_visible: bool = y + advance >
@@ -619,17 +887,18 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             y < (i32)(paint.clip_bounds.y +
                 paint.clip_bounds.height)
         if row_visible {
-            if selection.has_selection && result.focused {
+            if paint_has_selection && result.focused {
                 span: TextSelectionPaintSpan =
                     TextSelectionPaintSpanForLine(
-                        selection.start, selection.end,
+                        paint_selection_start,
+                        paint_selection_end,
                         row.start, row.end)
                 if span.visible {
-                    left: i32 = GlyphWidth(TextSpan(props.value,
-                        row.start, span.start - row.start),
+                    left: i32 = TextAreaViewSpanWidth(view,
+                        row.start, span.start,
                         font, face.value.typeface)
-                    right: i32 = GlyphWidth(TextSpan(props.value,
-                        row.start, span.end - row.start),
+                    right: i32 = TextAreaViewSpanWidth(view,
+                        row.start, span.end,
                         font, face.value.typeface)
                     highlight: Rectangle = RectangleIntersection(
                         (Rectangle){paint.clip_bounds.x +
@@ -648,7 +917,16 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             }
         }
         if row.end > row.start {
-            if props.syntax == (SyntaxMode)SyntaxNone {
+            if view.composing {
+                if row_visible {
+                    TextAreaViewPaintRow(result.node, view,
+                        row, (i32)paint.clip_bounds.x,
+                        y, font, face.value.typeface,
+                        ColorFromPacked(Opacity(
+                            face.value.foreground, opacity)),
+                        paint.clip_bounds)
+                }
+            } else if props.syntax == (SyntaxMode)SyntaxNone {
                 if row_visible {
                 PaintClippedLabel(result.node,
                     TextSpan(props.value, row.start,
@@ -691,20 +969,26 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 }
             }
         }
+        composition_start: i32 = props.composition_start
+        composition_end: i32 = props.composition_end
+        if view.composing {
+            composition_start = view.replace_start
+            composition_end = composition_start +
+                view.preedit.length
+        }
         if result.focused && row_visible &&
-            props.composition_end > props.composition_start {
+            composition_end > composition_start {
             composition: TextCompositionPaintSpan =
                 TextCompositionPaintSpanForLine(
-                    props.composition_start,
-                    props.composition_end,
+                    composition_start, composition_end,
                     row.start, row.end)
             if composition.visible {
                 stroke: i32 = TextInputStrokeWidth(scale)
-                left: i32 = GlyphWidth(TextSpan(props.value,
-                    row.start, composition.start - row.start),
+                left: i32 = TextAreaViewSpanWidth(view,
+                    row.start, composition.start,
                     font, face.value.typeface)
-                right: i32 = GlyphWidth(TextSpan(props.value,
-                    row.start, composition.end - row.start),
+                right: i32 = TextAreaViewSpanWidth(view,
+                    row.start, composition.end,
                     font, face.value.typeface)
                 right = TextCompositionUnderlineEndX(left,
                     right, stroke)
@@ -730,9 +1014,9 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         row_index += 1
     }
     if result.focused && !props.disabled {
-        x: i32 = (i32)paint.clip_bounds.x + caret.x
+        x: i32 = (i32)paint.clip_bounds.x + display_caret.x
         y: i32 = (i32)paint.clip_bounds.y +
-            caret.y - result.scroll_y
+            display_caret.y - result.scroll_y
         if x >= (i32)paint.clip_bounds.x &&
             x <= (i32)(paint.clip_bounds.x +
                 paint.clip_bounds.width) &&

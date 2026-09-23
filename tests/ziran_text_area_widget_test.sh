@@ -63,6 +63,21 @@ Frame :: () -> i32 #export {
         scroll_y = 0
         focused = true
     }
+    if phase == 37 {
+        value = "abCD"
+        cursor = 2
+        anchor = 1
+        scroll_y = 0
+        focused = true
+        ime_state = (CompositionState){}
+    }
+    if phase == 40 {
+        value = ""
+        cursor = 0
+        anchor = 0
+        scroll_y = 0
+        focused = true
+    }
     if phase == 24 { anchor = 1 }
     if phase == 27 { anchor = 0 }
     props: TextAreaProps
@@ -167,6 +182,28 @@ Frame :: () -> i32 #export {
             (CompositionPhase)CompositionCancel
     }
     if phase == 35 || phase == 36 { props.input.escape = true }
+    if phase == 37 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "é\nX"
+        props.input.composition_event.cursor = 3
+        props.input.composition_event.selection_length = 1
+    }
+    if phase == 38 {
+        props.input.left = true
+        props.input.text = "Z"
+    }
+    if phase == 39 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCommit
+        props.input.composition_event.text = "Q"
+    }
+    if phase == 40 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "a\nb\nc\nd\ne"
+        props.input.composition_event.cursor = 9
+    }
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
     if !EndTree() || result.node != 1 ||
@@ -377,6 +414,49 @@ Frame :: () -> i32 #export {
             result.escaped || !result.focused { return -37 }
     } else if phase == 36 {
         if !result.escaped || result.focused { return -38 }
+    } else if phase == 37 {
+        view: TextAreaView = TextAreaViewFor(value,
+            result.anchor, result.cursor, result.composition)
+        first: TextAreaRow = TextAreaViewNextRow(view,
+            0, 80, 14, "")
+        wrapped: TextAreaRow = TextAreaViewNextRow(view,
+            4, 14, 14, "")
+        preedit_caret: TextAreaCaret = TextAreaViewCaretFor(
+            view, 4, 80, 14, "", 18)
+        if !result.composition.active ||
+            result.composition.selection_length != 1 ||
+            result.edit.changed || result.cursor != 2 ||
+            result.anchor != 1 || !view.composing ||
+            view.length != 7 ||
+            TextAreaViewByteAt(view, 3) != (u8)10 ||
+            TextAreaViewNext(view, 1) != 3 ||
+            TextAreaViewSpanWidth(view, 0, 3,
+                14, "") != 21 ||
+            TextAreaViewRowCount(view, 80,
+                14, "") != 2 ||
+            first.end != 3 || first.next != 4 ||
+            wrapped.end != 6 || !wrapped.soft_wrap ||
+            preedit_caret.row_index != 1 ||
+            preedit_caret.x != 0 { return -39 }
+    } else if phase == 38 {
+        if !result.composition.active ||
+            result.edit.changed || result.cursor != 2 ||
+            result.anchor != 1 { return -40 }
+    } else if phase == 39 {
+        if result.composition.active ||
+            !result.edit.changed || result.edit.start != 1 ||
+            result.edit.end != 2 ||
+            result.edit.replacement != "Q" ||
+            result.cursor != 2 { return -41 }
+        value = "aQCD"
+    } else if phase == 40 {
+        if !result.composition.active ||
+            result.scroll_y <= 0 ||
+            result.edit.changed { return -42 }
+    } else if phase == 41 {
+        if !result.composition.active ||
+            result.scroll_y != scroll_y ||
+            result.edit.changed { return -43 }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -412,14 +492,19 @@ cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
 #include "app.hpp"
 #include <cassert>
+#include <cstring>
 #define HOST extern "C"
 #else
 #include "app.h"
 #include <assert.h>
+#include <string.h>
 #define HOST
 #endif
 static int keyword_paint_count;
 static int composition_paint_count;
+static int preedit_paint_count;
+static int preedit_underline_count;
+static int active_phase;
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String face) { (void)face; return (int32_t)value.length * font / 2; }
 HOST int32_t MeasureGlyphLineHeight(int32_t font,
@@ -445,6 +530,9 @@ HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     if (bounds.height <= 3.0f && color.r == 59 &&
         color.g == 130 && color.b == 246)
         composition_paint_count++;
+    if (active_phase == 37 && bounds.height <= 3.0f &&
+        color.r == 59 && color.g == 130 && color.b == 246)
+        preedit_underline_count++;
 }
 HOST void RasterRoundedRectangleOutline(Rectangle bounds,
     float radius, int32_t segments, float width, Color color) {
@@ -463,13 +551,20 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)value; (void)x; (void)y; (void)font;
     if (color.r == 36 && color.g == 72 && color.b == 172)
         keyword_paint_count++;
+    if (active_phase == 37 && value.length == 2 &&
+        memcmp(value.data, "é", 2) == 0)
+        preedit_paint_count++;
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 37; phase++)
+    for (int phase = 0; phase < 42; phase++) {
+        active_phase = phase;
         assert(Frame() == phase);
+    }
     assert(keyword_paint_count > 0);
     assert(composition_paint_count > 0);
+    assert(preedit_paint_count > 0);
+    assert(preedit_underline_count > 0);
     return 0;
 }
 C
@@ -492,7 +587,10 @@ for target in c cpp go; do
         cat > "$output/text_area_widget_test.go" <<'GO'
 package ziran
 import "testing"
-type fieldHost struct{ keyword, composition int }
+type fieldHost struct {
+    keyword, composition, preedit, preeditUnderline int
+    phase int32
+}
 func (*fieldHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
 func (*fieldHost) MeasureGlyphLineHeight(font int32,
@@ -505,6 +603,9 @@ func (h *fieldHost) RasterRoundedRectangle(bounds Rectangle,
     radius float32, segments int32, color Color) {
     if bounds.Height <= 3 && color.R == 59 &&
        color.G == 130 && color.B == 246 { h.composition++ }
+    if h.phase == 37 && bounds.Height <= 3 &&
+       color.R == 59 && color.G == 130 &&
+       color.B == 246 { h.preeditUnderline++ }
 }
 func (*fieldHost) RasterRoundedRectangleOutline(bounds Rectangle,
     radius float32, segments int32, width float32, color Color) {}
@@ -515,6 +616,7 @@ func (h *fieldHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
     if color.R == 36 && color.G == 72 &&
        color.B == 172 { h.keyword++ }
+    if h.phase == 37 && value == "é" { h.preedit++ }
 }
 func (*fieldHost) RasterImage(path string, id uint32,
     source, destination, clip Rectangle, origin Vector2,
@@ -527,7 +629,8 @@ func TestTextArea(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    for phase := int32(0); phase < 37; phase++ {
+    for phase := int32(0); phase < 42; phase++ {
+        h.phase = phase
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }
@@ -535,6 +638,10 @@ func TestTextArea(t *testing.T) {
     if h.keyword == 0 || h.composition == 0 {
         t.Fatalf("syntax paint %d composition %d",
             h.keyword, h.composition)
+    }
+    if h.preedit == 0 || h.preeditUnderline == 0 {
+        t.Fatalf("preedit paint %d underline %d",
+            h.preedit, h.preeditUnderline)
     }
 }
 GO

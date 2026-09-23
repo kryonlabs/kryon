@@ -31,8 +31,8 @@ The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy plus portable text-buffer edits and UTF-8 cursor
 boundaries, checked TextField and TextArea composition with caller-owned text
 and edit and clipboard intents, checked composition event decisions and
-TextField preedit paint, Ziran/C/Make syntax coloring and TextArea composition
-underlines, canvas transforms, scroll, menu, color picker,
+TextField/TextArea preedit paint, Ziran/C/Make syntax coloring, canvas
+transforms, scroll, menu, color picker,
 value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
 checked TabBar composition, keyboard selection, scrolling, close actions,
