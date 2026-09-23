@@ -13,7 +13,8 @@ output. Other C widget implementations still need migration.
 The Ziran migration includes `zi/geometry.zi`, `zi/layout.zi`, and
 `zi/group.zi` for portable geometry and layout, plus `zi/widget_kind.zi`,
 `zi/accessibility_props.zi`, and `zi/accessibility_policy.zi` for widget-kind
-and accessibility decisions. They are tested as ordinary imported modules.
+and accessibility decisions. `zi/drag_drop.zi` provides the drag and drop
+source and target decisions. They are tested as ordinary imported modules.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 

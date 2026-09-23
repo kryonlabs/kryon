@@ -602,6 +602,7 @@ language-test: $(K2C) $(K2CPP) $(K2GO)
 ziran-test:
 	sh tests/ziran_layout_test.sh
 	sh tests/ziran_accessibility_test.sh
+	sh tests/ziran_drag_drop_test.sh
 
 spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)

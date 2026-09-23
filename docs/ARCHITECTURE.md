@@ -38,7 +38,10 @@ from both `.zi` and saved `.zir`.
 The [accessibility test](../tests/ziran_accessibility_test.sh) builds the
 ordinary imported modules from `.zi` and saved `.zir` for C, C++, Go, and
 portable `.zib` execution.
-`make ziran-test` runs both migration tests with an adjacent Ziran checkout.
+`zi/drag_drop.zi` ports the source and target decisions from
+`runtime/drag_drop.kry`. The [drag and drop test](../tests/ziran_drag_drop_test.sh)
+checks source and saved `.zir` builds in C, C++, Go, and portable `.zib`.
+`make ziran-test` runs the three migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
