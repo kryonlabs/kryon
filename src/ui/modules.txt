@@ -139,6 +139,7 @@ style.zi
 style_parse.zi
 style_sheet.zi
 surface.zi
+syntax.zi
 swipe.zi
 swipe_props.zi
 tab_bar.zi

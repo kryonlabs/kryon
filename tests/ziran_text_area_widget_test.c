@@ -3,6 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+static int keyword_paint_count;
+static int composition_paint_count;
+
 static int width(void *context, const char *value, size_t length,
                  int font, const char *face, size_t face_length)
 {
@@ -41,7 +44,9 @@ static void shape(void *context, float x, float y, float w, float h,
                   uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)context; (void)x; (void)y; (void)w; (void)h;
-    (void)radius; (void)segments; (void)r; (void)g; (void)b; (void)a;
+    (void)radius; (void)segments; (void)a;
+    if (h <= 3.0f && r == 59 && g == 130 && b == 246)
+        composition_paint_count++;
 }
 
 static void outline(void *context, float x, float y, float w, float h,
@@ -72,6 +77,8 @@ static void clipped(void *context, const char *value, size_t bytes,
                     uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)clip;
+    if (r == 36 && g == 72 && b == 172)
+        keyword_paint_count++;
     text(context, value, bytes, x, y, font, r, g, b, a);
 }
 
@@ -100,7 +107,7 @@ int main(int argc, char **argv)
     };
     BundleInstance *instance = BundleInstantiate(bundle, bindings, 11);
     assert(instance != NULL);
-    for (int phase = 0; phase < 19; phase++) {
+    for (int phase = 0; phase < 20; phase++) {
         long long value = -1;
         int has_value = 0;
         assert(BundleInstanceRun(instance, &value, &has_value));
@@ -109,6 +116,8 @@ int main(int argc, char **argv)
                     phase, value);
         assert(has_value && value == phase);
     }
+    assert(keyword_paint_count > 0);
+    assert(composition_paint_count > 0);
     BundleInstanceClose(instance);
     BundleClose(bundle);
     return 0;

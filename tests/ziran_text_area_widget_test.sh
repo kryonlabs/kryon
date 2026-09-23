@@ -11,9 +11,11 @@ cat > "$work/app.zi" <<'ZI'
 #module "app"
 #import "geometry"
 #import "semantic"
+#import "syntax"
 #import "text_area_widget"
 #import "text_input_props"
 #import "tree"
+#import "tree_draw"
 #import "tree_input"
 
 phase :: i32 #global
@@ -44,6 +46,13 @@ Frame :: () -> i32 #export {
         anchor = 0
         scroll_y = 0
         selecting = false
+    }
+    if phase == 19 {
+        value = "#module \"app\"\nreturn 42"
+        cursor = 0
+        anchor = 0
+        scroll_y = 0
+        focused = true
     }
     props: TextAreaProps
     props.key = (u64)77
@@ -83,9 +92,14 @@ Frame :: () -> i32 #export {
         props.input.page_down = true
     }
     if phase == 18 { props.input.text = "Y" }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
+    if phase == 19 {
+        props.syntax = (SyntaxMode)SyntaxZiran
+        props.composition_start = 8
+        props.composition_end = 13
+    }
+    BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
-    if !TreeFinish() || result.node != 1 ||
+    if !EndTree() || result.node != 1 ||
         TreeNodeAt(result.node).semantic_label != "Notes" ||
         TreeNodeAt(result.node).semantic_kind !=
             (SemanticKind)SemanticTextArea { return -20 }
@@ -177,6 +191,43 @@ Frame :: () -> i32 #export {
             result.edit.end != 4 ||
             result.edit.replacement != "Y" ||
             result.cursor != 1 { return -18 }
+    } else if phase == 19 {
+        directive: SyntaxToken = SyntaxTokenAt(
+            "#module \"app\"", 0, 13,
+            (SyntaxMode)SyntaxZiran, true, false)
+        comment: SyntaxToken = SyntaxTokenAt(
+            "# note", 0, 6,
+            (SyntaxMode)SyntaxZiran, true, false)
+        keyword: SyntaxToken = SyntaxTokenAt(
+            "return 42", 0, 9,
+            (SyntaxMode)SyntaxZiran, true, false)
+        number: SyntaxToken = SyntaxTokenAt(
+            "return 42", 7, 9,
+            (SyntaxMode)SyntaxZiran, false, false)
+        open: SyntaxToken = SyntaxTokenAt(
+            "/* open", 0, 7,
+            (SyntaxMode)SyntaxC, true, false)
+        close: SyntaxToken = SyntaxTokenAt(
+            "close */x", 0, 9,
+            (SyntaxMode)SyntaxC, false, true)
+        make: SyntaxToken = SyntaxTokenAt(
+            "$(CC) file", 0, 10,
+            (SyntaxMode)SyntaxMake, true, false)
+        if directive.length != 7 ||
+            directive.kind != (SyntaxTokenKind)SyntaxKeyword ||
+            comment.kind != (SyntaxTokenKind)SyntaxComment ||
+            keyword.kind != (SyntaxTokenKind)SyntaxKeyword ||
+            number.kind != (SyntaxTokenKind)SyntaxNumber ||
+            !open.block_comment || close.block_comment ||
+            close.length != 8 ||
+            make.kind != (SyntaxTokenKind)SyntaxPath ||
+            make.length != 5 ||
+            !SyntaxDarkBackground((u32)0x101820ff) ||
+            SyntaxDarkBackground((u32)0xffffffff) ||
+            SyntaxColorFor((SyntaxTokenKind)SyntaxKeyword,
+                false, (u32)0) != (u32)0x2448acff {
+            return -21
+        }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -217,6 +268,8 @@ cat > "$work/native_main.h" <<'C'
 #include <assert.h>
 #define HOST
 #endif
+static int keyword_paint_count;
+static int composition_paint_count;
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String face) { (void)face; return (int32_t)value.length * font / 2; }
 HOST int32_t MeasureGlyphLineHeight(int32_t font,
@@ -238,7 +291,10 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
 }
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     int32_t segments, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)color;
+    (void)radius; (void)segments;
+    if (bounds.height <= 3.0f && color.r == 59 &&
+        color.g == 130 && color.b == 246)
+        composition_paint_count++;
 }
 HOST void RasterRoundedRectangleOutline(Rectangle bounds,
     float radius, int32_t segments, float width, Color color) {
@@ -254,12 +310,16 @@ HOST void RasterText(String value, int32_t x, int32_t y,
 }
 HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     int32_t font, Color color, Rectangle clip) {
-    (void)value; (void)x; (void)y; (void)font; (void)color;
+    (void)value; (void)x; (void)y; (void)font;
+    if (color.r == 36 && color.g == 72 && color.b == 172)
+        keyword_paint_count++;
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 19; phase++)
+    for (int phase = 0; phase < 20; phase++)
         assert(Frame() == phase);
+    assert(keyword_paint_count > 0);
+    assert(composition_paint_count > 0);
     return 0;
 }
 C
@@ -282,20 +342,49 @@ for target in c cpp go; do
         cat > "$output/text_area_widget_test.go" <<'GO'
 package ziran
 import "testing"
-type fieldHost struct{}
-func (fieldHost) MeasureGlyphWidth(value string, font int32,
+type fieldHost struct{ keyword, composition int }
+func (*fieldHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
-func (fieldHost) MeasureGlyphLineHeight(font int32,
+func (*fieldHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
-func (fieldHost) TextSlice(source string, start,
+func (*fieldHost) TextSlice(source string, start,
     length int32) string { return source[start:start+length] }
+func (*fieldHost) ImageWidth(path string) int32 { return 0 }
+func (*fieldHost) ImageHeight(path string) int32 { return 0 }
+func (h *fieldHost) RasterRoundedRectangle(bounds Rectangle,
+    radius float32, segments int32, color Color) {
+    if bounds.Height <= 3 && color.R == 59 &&
+       color.G == 130 && color.B == 246 { h.composition++ }
+}
+func (*fieldHost) RasterRoundedRectangleOutline(bounds Rectangle,
+    radius float32, segments int32, width float32, color Color) {}
+func (*fieldHost) RasterLine(line Rectangle, color Color) {}
+func (*fieldHost) RasterText(value string, x, y, font int32,
+    color Color) {}
+func (h *fieldHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    if color.R == 36 && color.G == 72 &&
+       color.B == 172 { h.keyword++ }
+}
+func (*fieldHost) RasterImage(path string, id uint32,
+    source, destination, clip Rectangle, origin Vector2,
+    rotation, radius float32, tint Color) {}
 func TestTextArea(t *testing.T) {
-    SetFontMetricsHost(fieldHost{})
-    SetTextWidgetHost(fieldHost{})
-    for phase := int32(0); phase < 19; phase++ {
+    h := &fieldHost{}
+    SetFontMetricsHost(h)
+    SetTextWidgetHost(h)
+    SetRasterShapeHost(h)
+    SetRasterTextHost(h)
+    SetRasterHost(h)
+    SetPaintQueueHost(h)
+    for phase := int32(0); phase < 20; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }
+    }
+    if h.keyword == 0 || h.composition == 0 {
+        t.Fatalf("syntax paint %d composition %d",
+            h.keyword, h.composition)
     }
 }
 GO

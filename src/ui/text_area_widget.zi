@@ -8,6 +8,7 @@
 #import "style"
 #import "style_sheet"
 #import "surface"
+#import "syntax"
 #import "text_field_widget"
 #import "text_input"
 #import "text_input_props"
@@ -517,15 +518,21 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         face.value.typeface, advance)
     offset: i32 = 0
     row_index: i32 = 0
+    first_token: bool = true
+    block_comment: bool = false
+    dark_syntax: bool = SyntaxDarkBackground(
+        face.value.background)
     while offset <= props.value.length {
         row: TextAreaRow = TextAreaNextRow(props.value,
             offset, wrap_width, font,
             face.value.typeface)
         y: i32 = (i32)paint.clip_bounds.y +
             row_index * advance - result.scroll_y
-        if y + advance > (i32)paint.clip_bounds.y &&
+        row_visible: bool = y + advance >
+            (i32)paint.clip_bounds.y &&
             y < (i32)(paint.clip_bounds.y +
-                paint.clip_bounds.height) {
+                paint.clip_bounds.height)
+        if row_visible {
             if selection.has_selection && result.focused {
                 span: TextSelectionPaintSpan =
                     TextSelectionPaintSpanForLine(
@@ -553,7 +560,10 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                     }
                 }
             }
-            if row.end > row.start {
+        }
+        if row.end > row.start {
+            if props.syntax == (SyntaxMode)SyntaxNone {
+                if row_visible {
                 PaintClippedLabel(result.node,
                     TextSpan(props.value, row.start,
                         row.end - row.start),
@@ -561,8 +571,74 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                     font, ColorFromPacked(Opacity(
                         face.value.foreground, opacity)),
                     paint.clip_bounds)
+                }
+            } else {
+                token_start: i32 = row.start
+                while token_start < row.end {
+                    token: SyntaxToken = SyntaxTokenAt(
+                        props.value, token_start, row.end,
+                        props.syntax, first_token,
+                        block_comment)
+                    if token.length <= 0 { break }
+                    if row_visible {
+                        prefix: string = TextSpan(props.value,
+                            row.start, token_start - row.start)
+                        token_x: i32 = (i32)paint.clip_bounds.x +
+                            GlyphWidth(prefix, font,
+                                face.value.typeface)
+                        PaintClippedLabel(result.node,
+                            TextSpan(props.value,
+                                token_start, token.length),
+                            token_x, y, font,
+                            ColorFromPacked(Opacity(
+                                SyntaxColorFor(token.kind,
+                                    dark_syntax,
+                                    face.value.foreground),
+                                opacity)), paint.clip_bounds)
+                    }
+                    if token.kind !=
+                        (SyntaxTokenKind)SyntaxWhitespace {
+                        first_token = false
+                    }
+                    block_comment = token.block_comment
+                    token_start += token.length
+                }
             }
         }
+        if result.focused && row_visible &&
+            props.composition_end > props.composition_start {
+            composition: TextCompositionPaintSpan =
+                TextCompositionPaintSpanForLine(
+                    props.composition_start,
+                    props.composition_end,
+                    row.start, row.end)
+            if composition.visible {
+                stroke: i32 = TextInputStrokeWidth(scale)
+                left: i32 = GlyphWidth(TextSpan(props.value,
+                    row.start, composition.start - row.start),
+                    font, face.value.typeface)
+                right: i32 = GlyphWidth(TextSpan(props.value,
+                    row.start, composition.end - row.start),
+                    font, face.value.typeface)
+                right = TextCompositionUnderlineEndX(left,
+                    right, stroke)
+                underline: Rectangle = RectangleIntersection(
+                    (Rectangle){paint.clip_bounds.x +
+                        (float)left,
+                        (float)TextCompositionUnderlineY(y,
+                            line_height, stroke),
+                        (float)(right - left), (float)stroke},
+                    paint.clip_bounds)
+                if underline.width > 0.0 &&
+                    underline.height > 0.0 {
+                    PaintRoundedFill(result.node, underline,
+                        0.0, 1,
+                        ColorFromPacked(Opacity(
+                            face.value.focus, opacity)))
+                }
+            }
+        }
+        if !row.soft_wrap { first_token = true }
         if row.next <= offset { break }
         offset = row.next
         row_index += 1
