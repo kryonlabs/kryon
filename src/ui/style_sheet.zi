@@ -317,6 +317,16 @@ StyleRules :: struct {
     count: i32
 }
 
+installed_rules :: StyleRules #global
+
+InstallStyleRules :: (rules: StyleRules) #export {
+    installed_rules = rules
+}
+
+ActiveStyleRules :: () -> StyleRules #export {
+    return installed_rules
+}
+
 StylePriority :: struct {
     present: bool
     layer: i32

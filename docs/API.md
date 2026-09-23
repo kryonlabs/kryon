@@ -65,15 +65,18 @@ and label through declared raster effects. `PrepareProgress()` selects the font
 and uses host glyph measurements; `PaintProgressProps()` combines that with
 the raster path. `StyleRules` is an owned 320-rule value table; the checked
 `ProgressFacesFor()` resolves track, fill, and label roles by class and cascade
-priority, and `PaintProgressFromRules()` uses those faces. Callers still supply
-default faces and the rule table. The legacy pointer-backed style loader and
-the complete one-argument `Progress` widget are still being migrated.
+priority. `InstallStyleRules()` installs the owned table, and the checked
+one-argument `Progress(props)` paints from that table with Ziran-defined
+default faces. Lower-level `PaintProgressFromRules()` still accepts explicit
+defaults and rules. The pointer-backed style loader and retained tree
+integration remain unfinished.
 `BeginStyleRules()` and `ParseStyleRules()` collect checked KSS parser output
 into that table. Parsing stops at `NeedImport` so the caller can use
 `ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.
 `StyleRulesParse.overflow` reports when a 321st rule would exceed the table.
 Portable hosts that import the KSS parser bind `KssStringSliceBinding()` for
-source byte ranges.
+source byte ranges. A portable bundle's installed rules last for one
+`BundleRun`; another run begins with an empty rule table.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,

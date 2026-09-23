@@ -28,8 +28,9 @@ Answer :: () -> i32 #export {
     parsed = ParseStyleRules(parsed)
     if parsed.parser.status != (i32)KssStatusDone ||
         parsed.overflow || parsed.rules.count != 2 { return 0 }
+    InstallStyleRules(parsed.rules)
     defaults: ProgressFaces
-    faces: ProgressFaces = ProgressFacesFor(parsed.rules, 0, defaults)
+    faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(), 0, defaults)
     if faces.track.value.background != (u32)0x112233ff ||
         faces.track.value.border != (u32)0x99aabbff ||
         faces.track.value.border_width != 2.0 ||

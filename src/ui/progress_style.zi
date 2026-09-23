@@ -13,6 +13,25 @@ ProgressFaces :: struct {
     fallback_font: i32
 }
 
+DefaultProgressFaces :: () -> ProgressFaces #export {
+    faces: ProgressFaces
+    faces.track.value.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleRadius | (u32)StyleBorderWidth
+    faces.track.value.background = (u32)0xd4d0c8ff
+    faces.track.value.border = (u32)0x66645fff
+    faces.track.value.radius = 4.0
+    faces.track.value.border_width = 1.0
+    faces.fill.value.fields = (u32)StyleBackground | (u32)StyleForeground
+    faces.fill.value.background = (u32)0x3b609bff
+    faces.fill.value.foreground = (u32)0xffffffff
+    faces.label.value.fields = (u32)StyleForeground | (u32)StyleFontSize
+    faces.label.value.foreground = (u32)0x171717ff
+    faces.label.value.font_size = 14.0
+    faces.scale = 1.0
+    faces.fallback_font = 16
+    return faces
+}
+
 ProgressFacts :: (class_name: i32, role: i32,
     tone: i32) -> StyleFacts #export {
     return StyleControlRoleFacts(StyleKindProgress(), 0, class_name, role,

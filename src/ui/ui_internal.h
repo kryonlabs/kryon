@@ -477,7 +477,6 @@ int RenderPopupMenu(int id, int class_name, int x, int y,
 int RenderContextMenu(MenuProps menu);
 MenuResult RenderMenu(MenuProps menu);
 int RenderRadio(RadioProps radio);
-void RenderProgress(ProgressProps progress);
 void RenderPlotLines(PlotProps plot);
 void RenderPlotHistogram(PlotProps plot);
 int ui_update_drag_continuous(DragContinuousProps drag);

@@ -44,8 +44,9 @@ module selects the font and positions the label from raw glyph measurements;
 its checked style module resolves track, fill, and label roles from a portable
 rule table. A checked parser bridge collects KSS rules into that table and
 pauses for host-provided imports. The host only slices source bytes and
-supplies imported text; Kryon resolves selectors and widget styles. Callers
-still supply default faces and rule data.
+supplies imported text; Kryon resolves selectors and widget styles. The
+one-argument Progress painter uses an installed Ziran rule table and Ziran
+default faces. Retained tree submission still needs migration.
 
 The other `.zi` modules were moved from the previous implementation and are
 not yet in the checked build. Native widget rendering and downstream app

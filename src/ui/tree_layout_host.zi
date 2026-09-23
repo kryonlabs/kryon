@@ -1622,12 +1622,6 @@ Radio :: (radio: RadioProps) -> i32 #export {
     return RenderRadio(radio)
 }
 
-Progress :: (progress: ProgressProps) #export {
-    ui_tree_add(0, WidgetKindProgress,
-    progress.bounds, &progress)
-    RenderProgress(progress)
-}
-
 Plot :: (plot: PlotProps) #export {
     ui_tree_add(0, WidgetKindPlot, plot.bounds, &plot)
     if plot.mode == PlotBars { RenderPlotHistogram(plot) }

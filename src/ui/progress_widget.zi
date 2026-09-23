@@ -49,3 +49,8 @@ PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
     faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
     PaintProgressProps(props, faces)
 }
+
+Progress :: (props: ProgressProps) #export {
+    PaintProgressFromRules(props, ActiveStyleRules(),
+        DefaultProgressFaces())
+}
