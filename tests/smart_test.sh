@@ -32,7 +32,6 @@ needs_link=0
 needs_page=0
 needs_separator=0
 needs_progress=0
-needs_plot=0
 needs_color_picker=0
 needs_selectable=0
 needs_fieldset=0
@@ -356,13 +355,6 @@ while IFS= read -r path; do
     case "$path" in
         runtime/progress.kry|src/ui/progress.kry|tests/progress_policy_test.c)
             needs_progress=1
-            interesting=1
-            ;;
-    esac
-
-    case "$path" in
-        runtime/plot.kry|src/ui/plot.kry|tests/plot_policy_test.c)
-            needs_plot=1
             interesting=1
             ;;
     esac
@@ -720,9 +712,6 @@ if [ "$needs_separator" -eq 1 ]; then
 fi
 if [ "$needs_progress" -eq 1 ]; then
     targets="$targets progress-policy-test"
-fi
-if [ "$needs_plot" -eq 1 ]; then
-    targets="$targets plot-policy-test"
 fi
 if [ "$needs_color_picker" -eq 1 ]; then
     targets="$targets color-picker-policy-test"

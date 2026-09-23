@@ -114,8 +114,8 @@ surface review:
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `src/ui/page.zi`, `src/ui/page_props.zi`, `src/ui/page_text.zi` | Checked Page and Section scopes, spacing, metadata effect, Heading, and ParagraphText | checked Ziran |
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
-| `runtime/plot.kry`, `src/ui/plot.kry` | Plot geometry, text, style, and drawing | `.kry canonical` |
-| `runtime/plot_props.kry` | Plot props and mode names | `.kry canonical` |
+| `src/ui/plot.zi`, `src/ui/plot_widget.zi` | Plot range, marks, KSS styling, text, tree, and paint | Checked Ziran library |
+| `src/ui/plot_props.zi` | Portable Plot props and mode names; values are borrowed through a slice argument | Checked Ziran library |
 | `runtime/popup_policy.kry` | Popup mode/input record/open-state, tooltip visibility, outside-dismissal, and Escape-close policy | `.kry canonical` |
 | `runtime/popup_props.kry` | Popup props | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
@@ -522,7 +522,7 @@ host roles rather than retained nodes.
 | `Checkbox` | `.kry canonical` | Boolean checkbox. |
 | `Radio` | `.kry canonical` | Choice control. |
 | `Progress` | `.kry canonical` | One progress concept. |
-| `Plot` | `.kry canonical` | Public props and mode names live in `runtime/plot_props.kry`; plot geometry, text, style, and drawing live in `.kry`. |
+| `Plot` | Checked Ziran library | `Plot(props, values)` submits a retained Plot node and paints lines or bars from borrowed values. |
 | `Drag` | `.kry canonical` | Numeric drag value control; value type/count, component layout, and text paint geometry are props/policy. |
 | `Input` | `.kry canonical` | Numeric input control; value type/count, component/step-button layout, and temp-edit activation are props/policy. |
 | `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
@@ -826,7 +826,7 @@ stays prefix-free.
 | `WidgetKindDragDrop` | `DragDrop` | `.kry canonical`; source/target lifecycle policy lives in `runtime/drag_drop.kry` |
 | `WidgetKindRadio` | `Radio` | `.kry canonical`; paint/layout/marker policy lives in `runtime/radio.kry` |
 | `WidgetKindProgress` | `Progress` | `.kry canonical`; track/fill/label layout policy lives in `runtime/progress.kry` |
-| `WidgetKindPlot` | `Plot` | `.kry canonical`; range/mark/text paint policy lives in `runtime/plot.kry` |
+| `WidgetKindPlot` | `Plot` | Checked Ziran tree and paint; range/mark/text policy lives in `src/ui/plot.zi`. |
 | `WidgetKindFocus` | `Focus` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
 | `WidgetKindSpinbox` | `Spinbox` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
 | `WidgetKindFieldset` | `Fieldset` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |

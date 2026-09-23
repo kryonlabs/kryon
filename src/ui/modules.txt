@@ -86,6 +86,7 @@ paned_view.zi
 paned_view_props.zi
 plot.zi
 plot_props.zi
+plot_widget.zi
 popup_ownership.zi
 popup_policy.zi
 popup_props.zi

@@ -1,0 +1,172 @@
+#module "plot_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "plot"
+#import "plot_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
+
+PlotFaces :: struct {
+    plot: StyleFrame
+    mark: StyleFrame
+}
+
+DefaultPlotFaces :: () -> PlotFaces #export {
+    faces: PlotFaces
+    faces.plot.value.fields = (u32)StyleBackground |
+        (u32)StyleForeground | (u32)StyleBorder |
+        (u32)StyleBorderWidth | (u32)StyleRadius |
+        (u32)StyleFontSize | (u32)StylePaddingX |
+        (u32)StylePaddingY | (u32)StyleOpacity
+    faces.plot.value.background = (u32)0xf5f5f5ff
+    faces.plot.value.foreground = (u32)0x171717ff
+    faces.plot.value.border = (u32)0x737373ff
+    faces.plot.value.border_width = 1.0
+    faces.plot.value.radius = 4.0
+    faces.plot.value.font_size = 14.0
+    faces.plot.value.padding_x = 6.0
+    faces.plot.value.padding_y = 4.0
+    faces.plot.value.opacity = 1.0
+    faces.mark.value.fields = (u32)StyleBackground |
+        (u32)StyleOpacity
+    faces.mark.value.background = (u32)0x3b609bff
+    faces.mark.value.opacity = 1.0
+    return faces
+}
+
+PlotFacesFor :: (rules: StyleRules, props: PlotProps,
+    defaults: PlotFaces) -> PlotFaces #export {
+    faces: PlotFaces = defaults
+    plot_facts: StyleFacts = StyleControlRoleFacts(StyleKindPlot(),
+        props.id, props.class_name, StyleAny(),
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    mark_facts: StyleFacts = StyleControlRoleFacts(StyleKindPlotMark(),
+        props.id, props.class_name, StyleAny(),
+        (i32)ButtonToneAccent, (i32)ButtonEmphasisFilled,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    faces.plot.value = ResolveStyleRules(rules, defaults.plot.value,
+        plot_facts, (i32)ButtonStateNormal)
+    faces.mark.value = ResolveStyleRules(rules, defaults.mark.value,
+        mark_facts, (i32)ButtonStateNormal)
+    return faces
+}
+
+PlotObservedRange :: (values: []float,
+    offset: i32, props: PlotProps) -> PlotRange #export {
+    offset = PlotOffset(values.length, offset)
+    observed_min: float = 0.0
+    observed_max: float = 0.0
+    if values.length > 0 {
+        observed_min = values[offset]
+        observed_max = observed_min
+        index: i32 = 1
+        while index < values.length {
+            value: float = values[(offset + index) % values.length]
+            if value < observed_min { observed_min = value }
+            if value > observed_max { observed_max = value }
+            index += 1
+        }
+    }
+    return PlotRangeFor(props.scale_min, props.scale_max,
+        observed_min, observed_max)
+}
+
+# Values are borrowed for this frame. The retained node keeps only its key,
+# bounds, and semantic label; the caller supplies the next frame's values.
+Plot :: (props: PlotProps, values: []float) -> i32 #export {
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return -1 }
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmitCurrent(key, WidgetKindPlot, bounds)
+        if node < 0 { return -1 }
+        TreeSetLabel(node, props.label)
+        bounds = TreeSubmittedNodeAt(node).bounds
+    }
+    faces: PlotFaces = PlotFacesFor(ActiveStyleRules(), props,
+        DefaultPlotFaces())
+    opacity: float = StyleOpacityValue(faces.plot.value.fields,
+        faces.plot.value.opacity)
+    PaintRoundedFill(node, bounds, faces.plot.value.radius, 12,
+        ColorFromPacked(Opacity(faces.plot.value.background, opacity)))
+    if faces.plot.value.border_width > 0.0 {
+        PaintRoundedOutline(node, bounds, faces.plot.value.radius, 12,
+            faces.plot.value.border_width,
+            ColorFromPacked(Opacity(faces.plot.value.border, opacity)))
+    }
+    if values.length > 0 {
+        offset: i32 = PlotOffset(values.length, props.offset)
+        value_range: PlotRange = PlotObservedRange(values, offset, props)
+        mark_color: Color = ColorFromPacked(Opacity(
+            faces.mark.value.background,
+            StyleOpacityValue(faces.mark.value.fields,
+                faces.mark.value.opacity)))
+        index: i32 = 0
+        if props.mode == (PlotMode)PlotBars {
+            while index < values.length {
+                mark: PlotMark = PlotHistogramBar(bounds, index,
+                    values.length, values[(offset + index) % values.length],
+                    value_range, faces.mark)
+                if mark.bounds.width > 0.0 && mark.bounds.height > 0.0 {
+                    PaintRoundedFill(node, mark.bounds, 0.0, 0, mark_color)
+                }
+                index += 1
+            }
+        } else if values.length == 1 {
+            mark: PlotMark = PlotSingleLine(bounds, values[offset],
+                value_range, faces.mark)
+            PaintLine(node, mark.bounds, mark_color)
+        } else {
+            index = 1
+            while index < values.length {
+                a: float = values[(offset + index - 1) % values.length]
+                b: float = values[(offset + index) % values.length]
+                mark: PlotMark = PlotLineSegment(bounds, index,
+                    values.length, a, b, value_range, faces.mark)
+                PaintLine(node, mark.bounds, mark_color)
+                index += 1
+            }
+        }
+    }
+    if props.label != "" || props.overlay != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(faces.plot.value.fields,
+                faces.plot.value.font_size), 14)
+        label_width: float = 0.0
+        overlay_width: float = 0.0
+        if props.label != "" {
+            label_width = (float)GlyphWidth(props.label, font,
+                faces.plot.value.typeface)
+        }
+        if props.overlay != "" {
+            overlay_width = (float)GlyphWidth(props.overlay, font,
+                faces.plot.value.typeface)
+        }
+        paint: PlotTextPaint = PlotTextPaintFor(bounds, label_width,
+            overlay_width, props.scale, faces.plot,
+            props.label != "", props.overlay != "")
+        text_color: Color = ColorFromPacked(Opacity(paint.text_color,
+            opacity))
+        if paint.show_label {
+            PaintClippedLabel(node, props.label,
+                (i32)paint.label_bounds.x,
+                (i32)paint.label_bounds.y, font, text_color, bounds)
+        }
+        if paint.show_overlay {
+            PaintClippedLabel(node, props.overlay,
+                (i32)paint.overlay_bounds.x,
+                (i32)paint.overlay_bounds.y, font, text_color, bounds)
+        }
+    }
+    return node
+}

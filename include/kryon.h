@@ -34,7 +34,6 @@
 #include "ui_list_box_props.generated.h"
 #include "ui_menu_props.generated.h"
 #include "ui_paned_view_props.generated.h"
-#include "ui_plot_props.generated.h"
 #include "ui_popup_props.generated.h"
 #include "ui_progress_props.generated.h"
 #include "ui_radio_props.generated.h"

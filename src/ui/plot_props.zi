@@ -7,14 +7,15 @@ PlotMode :: enum {
 }
 
 PlotProps :: struct {
+    key: u64
     bounds: Rectangle
+    id: i32
     class_name: i32
-    label: const char*
-    values: const float*
-    value_count: i32
+    label: string
+    overlay: string
     offset: i32
-    overlay: const char*
     scale_min: float
     scale_max: float
+    scale: float
     mode: PlotMode
 }
