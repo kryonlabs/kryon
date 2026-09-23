@@ -43,7 +43,8 @@ TreePointerActivatable :: (kind: i32, focus_id: i32,
         kind == WidgetKindToggle || kind == WidgetKindRadio ||
         kind == WidgetKindSlider || kind == WidgetKindSelectable ||
         kind == WidgetKindLink || kind == WidgetKindCollapsible ||
-        kind == WidgetKindDropdown || kind == WidgetKindTextField
+        kind == WidgetKindDropdown || kind == WidgetKindTextField ||
+        kind == WidgetKindTextArea
 }
 
 TreeCommitPlan :: struct {

@@ -170,6 +170,11 @@ samples, resolves KSS styles, emits text, selection, and caret paint, and
 returns a UTF-8 byte replacement range plus cursor and focus state. The caller
 owns the string and applies edits. A secure field supplies its display mask;
 platform text services and IME integration remain host and app work.
+The checked `TextArea(TextAreaProps)` also owns visual row wrapping, pointer
+selection, vertical and page navigation, scrolling, multiline replacement
+intents, and clipped text, selection, and caret paint. The caller stores the
+string and editing state. Syntax highlighting, IME composition, clipboard
+commands, and native host integration remain migration work.
 Remaining input modes, including keyboard focus and ancestor input clipping,
 still need migration. Other widget submissions and retained layout are also
 incomplete.

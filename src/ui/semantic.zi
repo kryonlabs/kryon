@@ -16,4 +16,5 @@ SemanticKind :: enum {
     SemanticTextField = 12
     SemanticTabList = 13
     SemanticTab = 14
+    SemanticTextArea = 15
 }

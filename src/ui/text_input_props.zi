@@ -1,23 +1,6 @@
 #module "text_input_props"
 #import "geometry"
 
-SyntaxMode :: enum {
-    SyntaxNone = 0
-    SyntaxZiran = 1
-    SyntaxC = 2
-    SyntaxMake = 3
-}
-
-TextInputProps :: struct {
-    bounds: Rectangle
-    text: const char*
-    cursor_position: i32
-    focused: bool
-    cursor_visible: bool
-    focus_id: i32
-    class_name: i32
-}
-
 TextFieldInput :: struct {
     text: string
     left: bool
@@ -74,19 +57,71 @@ TextFieldResult :: struct {
     edit: TextFieldEdit
 }
 
+TextAreaInput :: struct {
+    text: string
+    left: bool
+    right: bool
+    up: bool
+    down: bool
+    home: bool
+    end: bool
+    document_home: bool
+    document_end: bool
+    page_up: bool
+    page_down: bool
+    shift: bool
+    backspace: bool
+    delete_forward: bool
+    select_all: bool
+    enter: bool
+    commit: bool
+    escape: bool
+    focus: bool
+    blur: bool
+    wheel: float
+}
+
 TextAreaProps :: struct {
+    key: u64
     bounds: Rectangle
-    text: char*
-    text_size: size_t
-    cursor_position: i32*
-    focused: i32*
-    scroll_y: i32*
+    value: string
+    label: string
+    placeholder: string
+    cursor: i32
+    anchor: i32
+    scroll_y: i32
+    focused: bool
+    selecting: bool
+    preferred_x: i32
+    preferred_x_valid: bool
+    max_bytes: i32
     max_codepoints: i32
     focus_id: i32
-    placeholder: const char*
-    syntax: SyntaxMode
-    content_version: i32
     read_only: bool
     wrap: bool
     class_name: i32
+    scale: float
+    disabled: bool
+    input: TextAreaInput
+}
+
+TextAreaEdit :: struct {
+    start: i32
+    end: i32
+    replacement: string
+    changed: bool
+}
+
+TextAreaResult :: struct {
+    node: i32
+    cursor: i32
+    anchor: i32
+    scroll_y: i32
+    focused: bool
+    selecting: bool
+    preferred_x: i32
+    preferred_x_valid: bool
+    committed: bool
+    escaped: bool
+    edit: TextAreaEdit
 }

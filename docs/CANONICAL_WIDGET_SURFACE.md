@@ -159,9 +159,9 @@ surface review:
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_rows.kry` | Source-preserving visual-row breaks, logical lines, heading metrics, caret affinity and point-to-row decisions | `.kry support` |
 | `runtime/text_input.kry` | TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, cursor normalization, navigation, selection state/paint-span policy, double-click/pan decisions, text-buffer mutation/range/bracket policy, focus ownership, platform text-input sync, and edit-intent policy | `.kry canonical` |
-| `src/ui/text_input.zi` | Checked text input policy, mutable byte-buffer insertion/deletion, and UTF-8 codepoint cursor boundaries; retained TextField composition remains to migrate | checked Ziran |
+| `src/ui/text_input.zi`, `src/ui/text_field_widget.zi`, `src/ui/text_area_widget.zi` | Checked text policy, portable byte-buffer edits, UTF-8 boundaries, retained TextField and TextArea composition, editing intents, selection, scroll, and paint; syntax highlighting and IME remain to migrate | checked Ziran |
 | `src/ui/text.kry`, `src/ui/text_edit.kry` | Control text fitting and clipping, TextArea gutter, and text-buffer line/edit commands | `.kry canonical` |
-| `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
+| `src/ui/text_input_props.zi` | Portable TextField and TextArea props, raw input, caller owned state, and edit results | checked Ziran |
 | `runtime/theme.kry` | Theme data/helpers and typed `ThemePolicy` resolution | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar effective state, layout, reservation, and paint geometry policy | `.kry canonical` |
 | `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
@@ -384,7 +384,7 @@ has a single place to land.
 | `ListBox` | `Collections` | List | `src/ui/list_box_widget.zi` | checked Ziran | Borrowed items, value selection and scroll results, retained row input, and clipped paint; raw device observations enter the shared tree input. |
 | `TreeView` | `Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, marker text, text bounds, paint geometry, and row-selection decision policy are `.kry`; item typography defaults are KSS-owned; host keeps input sampling, selected-id storage, expansion state, and drawing. |
 | `TableView` | `Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection intent, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy are `.kry`; host keeps column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
-| `TextArea` | `Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
+| `TextArea` | `Collections` | Text area | `src/ui/text_input.zi`, `src/ui/text_input_props.zi`, `src/ui/text_area_widget.zi` | checked Ziran | Caller owned text and state, visual wrapping, retained pointer selection, vertical/page navigation, scrolling, edit intents, KSS, and clipped paint are checked. Syntax highlighting, IME, clipboard commands, and native host integration remain. |
 | `CanvasGrid` | `Collections` | Grid | `runtime/canvas_grid.kry`, `src/ui/canvas.kry` | `.kry-backed` | Grid spacing, line geometry, drawing, and hit testing are authored in `.kry`. |
 | `Menu` | `Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data plus bar, popup, context, and outside-close behavior props are generated from `.kry`. |
 | `NavigationBar` | `Navigation` | Tabs | `src/ui/navigation_bar.zi`, `src/ui/navigation_bar_widget.zi`, `src/ui/navigation_bar_config_widget.zi` | checked Ziran bar and editor | Borrowed item values, retained activation, KSS, paint, and configuration modal composition are checked; legacy host integration remains. |
@@ -514,8 +514,8 @@ host roles rather than retained nodes.
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | checked Ziran | Retained link activation and returned URL effect. |
-| `TextField` | `.kry canonical` | Metrics, KSS typography defaults, scroll, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent policy in `.kry`; raw string storage/memmove/scanning and IME host support remain. |
-| `TextArea` | `.kry canonical` | Metrics, KSS typography defaults, page-navigation, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent policy in `.kry`; raw string storage/memmove/scanning and IME host support remain. |
+| `TextField` | checked Ziran | Caller owned text; retained focus, cursor, selection, scroll, KSS paint, and UTF-8 byte edit intents. IME and native host integration remain. |
+| `TextArea` | checked Ziran | Caller owned text; wrapped rows, pointer selection, page navigation, scroll, KSS paint, and multiline edit intents. Syntax highlighting, IME, clipboard commands, and native host integration remain. |
 | `Dropdown` | `.kry canonical` | Selection control only; `DropdownOption` is generated data for rich options, not a separate widget. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping/selection policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
 | `Slider` | checked Ziran | Scalar float or discrete value control with horizontal or vertical retained drag and KSS typography. |
@@ -579,8 +579,8 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Stack` | checked Ziran | Overlay layout with `ColumnProps`. |
 | `Button` | `.kry canonical` | Composed content button block; lowers through native support. |
 | `Card` | `.kry canonical` | Composed content card block; lowers through native support. |
-| `TextField` | `.kry canonical` | Block form with `TextFieldProps`. |
-| `TextArea` | `.kry canonical` | Block form with `TextAreaProps`. |
+| `TextField` | checked Ziran | `TextField(TextFieldProps)` returns caller applied edits. |
+| `TextArea` | checked Ziran | `TextArea(TextAreaProps)` returns caller applied multiline edits. |
 | `Image` | `.kry canonical` | Block form with `ImageProps`. |
 | `Radio` | `.kry canonical` | Block form with `RadioProps`. |
 | `Progress` | `.kry canonical` | Block form with `ProgressProps`. |
@@ -658,8 +658,8 @@ should use canonical `.kry` names and blocks.
 | `Card` | `.kry canonical` | Already has `.kry` module. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, emphasis, and fallback/terminal paint behavior live in `ButtonProps`/`.kry` policy or small `.kry` composition, not separate public widget names. |
 | `Link` | checked Ziran | Canonical URL activation widget; the host applies the returned URL effect. |
-| `TextField` | `.kry canonical` | Metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
-| `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
+| `TextField` | checked Ziran | `text_field_widget.zi` owns retained input, selection, scroll, KSS, paint, and byte edit intents; applications own text and focus state. IME and native host integration remain. |
+| `TextArea` | checked Ziran | `text_area_widget.zi` owns visual rows, retained input, selection, scroll, KSS, paint, and multiline edit intents; applications own text and focus state. Syntax highlighting, IME, clipboard commands, and native host integration remain. |
 | `Dropdown` | `.kry canonical` | `src/ui/dropdown.kry` owns trigger and menu input, KSS paint, scrolling, navigation, and dismissal; `src/ui/dropdown_store.kry` owns retained state and option strings. |
 | `Slider` | checked Ziran | `slider_props.zi` holds caller-owned scalar values and optional semantic labels; `slider_widget.zi` owns retained drag, style, and paint. Compose multiple Sliders with `SliderCellBoundsFor`. |
 | `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, typed keyboard input, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
@@ -806,8 +806,8 @@ stays prefix-free.
 | `WidgetKindLine` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |
 | `WidgetKindTriangle` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
 | `WidgetKindButton` | `Button` | `.kry canonical` |
-| `WidgetKindTextField` | `TextField` | `.kry canonical`; metrics, horizontal scroll, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent migrated; raw string storage and IME still host support |
-| `WidgetKindTextArea` | `TextArea` | `.kry canonical`; metrics, page rows, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent migrated; raw string storage and IME still host support |
+| `WidgetKindTextField` | `TextField` | checked Ziran composition in `text_field_widget.zi`; caller owned text and state |
+| `WidgetKindTextArea` | `TextArea` | checked Ziran composition in `text_area_widget.zi`; caller owned text and state |
 | `WidgetKindDropdown` | `Dropdown` | `.kry canonical` |
 | `WidgetKindSlider` | `Slider` | checked Ziran retained drag and paint in `slider_widget.zi` |
 | `WidgetKindToggle` | `Toggle` | `.kry canonical` |
