@@ -1,5 +1,6 @@
 #module "button"
 #import "drawing_props"
+#import "font_metrics"
 #import "geometry"
 #import "style"
 #import "style_sheet"
@@ -9,9 +10,6 @@
 #import "input_props"
 #import "paint"
 #import "material"
-
-MeasureTextWidth :: (text: const char*, font: i32, typeface: string) -> i32 #extern
-ReadActivation :: (bounds: Rectangle, id: i32, enabled: bool) -> Activation #extern
 
 ButtonInput :: struct {
     flags: StateFlags
@@ -48,13 +46,6 @@ ResolveButtonInput :: (state: i32, disabled: bool, loading: bool, selected: bool
         result.flags.loading, enabled && sample.pressed, enabled && sample.hovered,
         enabled && sample.focused, result.flags.selected)
     return result
-}
-
-ReadButtonInput :: (bounds: Rectangle, id: i32, state: i32, disabled: bool,
-    loading: bool, selected: bool) -> ButtonInput #export {
-    flags: StateFlags = ResolveFlags(state, disabled, loading, selected)
-    sample: Activation = ReadActivation(bounds, id, CanActivate(flags.disabled, flags.loading))
-    return ResolveButtonInput(state, disabled, loading, selected, sample)
 }
 
 # Style facts for the generic control path. A zero style_kind falls back to the
@@ -378,7 +369,7 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
 
 MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float,
     font: i32, available_width: float, scale: float, disclosure: bool) -> Rectangle #export {
-    label_width: float = (float)MeasureTextWidth(props.label, font, paint.typeface)
+    label_width: float = (float)GlyphWidth(props.label, font, paint.typeface)
     return MeasureBounds(props, paint, minimum_height, font, label_width,
         available_width, scale, disclosure)
 }

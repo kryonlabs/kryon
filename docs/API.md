@@ -37,6 +37,15 @@ interfaces.
 The checked modules cover geometry, layout, styling, themes, accessibility,
 focus, input, scroll, canvas transforms, popup policy, and several widget
 measurement and paint decisions, including `Text(TextProps)`.
+The checked `Button(ButtonProps)` path now submits a retained interactive node,
+resolves KSS class and state rules, measures a label, and queues shape and
+clipped text paint. It consumes an activation routed from the previous
+committed tree and returns `1` for that frame. The host supplies raw pointer
+samples and glyph/raster callbacks; it does not implement Button state policy.
+This path currently covers the standard text Button. Icon, menu, split,
+loading animation, material layers, keyboard focus, and immediate input still
+need migration. `ButtonProps` has a portable string label and no C pointers;
+menu items and mutable menu state need a separate value-based surface.
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.
@@ -91,7 +100,7 @@ defaults and rules. The pointer-backed style loader remains unfinished.
 commands; raster effects are emitted only after the tree commits. Style
 resolution and glyph measurement happen during submission. Outside a tree,
 `Progress(props)` paints immediately.
-`ProgressProps.key` and `SeparatorProps.key` provide stable identity; zero
+`ButtonProps.key`, `ProgressProps.key`, and `SeparatorProps.key` provide stable identity; zero
 uses the submission position. `TreeCount()` and `TreeNodeAt(index)` inspect
 committed nodes.
 Identity survives repeated `BundleInstanceRun()` calls, including bounds
@@ -104,8 +113,8 @@ after commit, `TreePointerUpdate(PointerFrame)` hit tests committed nodes in
 reverse paint order, blocks click-through at disabled controls, and owns press
 and release activation. `TreeHoveredAt()`,
 `TreePressedAt()`, and `TreeTakeActivationAt()` expose that state. The host
-supplies raw pointer samples. Button composition has not yet been connected to
-this path; retained layout, keyboard focus, clipping of input by ancestors,
+supplies raw pointer samples. Button uses this path for retained pointer
+activation; retained layout, keyboard focus, clipping of input by ancestors,
 and broader interaction routing remain unfinished.
 `EndTree()` links the generic line, rounded shape, and text raster effects;
 the image raster effect is also linked for generic paint commands. Glyph

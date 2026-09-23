@@ -8,6 +8,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
 #module "app"
+#import "button_props"
 #import "drawing_props"
 #import "fieldset"
 #import "fieldset_props"
@@ -28,6 +29,11 @@ cat > "$work/app.zi" <<'EOF'
 #import "toast_props"
 
 Answer :: () -> i32 #export {
+    button: ButtonProps
+    button.key = (u64)7
+    button.label = "Run"
+    if button.label.length != 3 || button.key != (u64)7 { return 0 }
+
     link: LinkProps
     link.text = "Read more"
     link.link = "https://example.org"

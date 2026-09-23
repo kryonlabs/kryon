@@ -3,7 +3,6 @@
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
-#import "menu_props"
 
 ArrowDirection :: enum {
     ArrowLeft = 0
@@ -14,8 +13,9 @@ ArrowDirection :: enum {
 
 # Shared public contract. The host renders the declared values.
 ButtonProps :: struct {
+    key: u64
     bounds: Rectangle
-    label: const char*
+    label: string
     id: i32
     class_name: i32
     tone: ButtonTone
@@ -37,10 +37,6 @@ ButtonProps :: struct {
     swatch: bool
     swatch_color: Color
     menu_id: i32
-    items: const MenuItem*
-    item_count: i32
-    open: i32*
-    activated_id: i32*
     menu: bool
     split: bool
     arrow: bool

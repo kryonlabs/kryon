@@ -187,6 +187,26 @@ TreeIsBuilding :: () -> bool #export {
     return active_tree.building
 }
 
+TreeNextKey :: () -> u64 #export {
+    if !active_tree.building { return (u64)0 }
+    return (u64)(active_tree.submitted_count + 1)
+}
+
+TreeRootKey :: () -> u64 #export {
+    if !active_tree.building || active_tree.submitted_count == 0 {
+        return (u64)0
+    }
+    return active_tree.submitted[0].key
+}
+
+TreeRootBounds :: () -> Rectangle #export {
+    empty: Rectangle
+    if !active_tree.building || active_tree.submitted_count == 0 {
+        return empty
+    }
+    return active_tree.submitted[0].bounds
+}
+
 TreeCancel :: () #export {
     active_tree.building = false
     active_tree.submitted_count = 0

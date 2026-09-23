@@ -38,6 +38,10 @@ text and accessibility contracts, keyboard accelerator contracts, theme and styl
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
+The checked standard `Button(ButtonProps)` composes KSS state styling, label
+measurement, retained pointer activation, and queued shape and clipped text
+paint. Its props are portable values. Icon, menu, split, loading animation,
+material layers, keyboard focus, and immediate input still need migration.
 `Text(TextProps)` now resolves style, measures and wraps words, positions lines,
 and queues clipped text and strikethrough paint from Ziran. The platform
 provides raw byte slices, glyph metrics, and a raster callback that honors the
@@ -68,8 +72,9 @@ tree or paint queue before committing and emits raster effects only after
 commit; it does not import individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
-The host supplies raw pointer samples. Button composition and the remaining
-input modes, including keyboard focus and ancestor input clipping, still need
+The host supplies raw pointer samples. Button uses this path for retained
+pointer activation; remaining input modes, including keyboard focus and
+ancestor input clipping, still need
 migration. Other widget submissions and retained layout are also incomplete.
 
 The other `.zi` modules were moved from the previous implementation and are

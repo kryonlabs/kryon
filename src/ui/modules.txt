@@ -6,6 +6,7 @@ app_shell_layout.zi
 bevel.zi
 button.zi
 button_props.zi
+button_widget.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi
