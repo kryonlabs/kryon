@@ -131,6 +131,53 @@ PaintButtonForNode :: (node: i32, props: ButtonProps, bounds: Rectangle,
                 image.rotation, radius, plan.tint)
         }
     }
+    if props.arrow && !has_image {
+        cx: float = bounds.x + bounds.width * 0.5
+        cy: float = bounds.y + bounds.height * 0.5
+        span: float = bounds.height * 0.18
+        if bounds.width < bounds.height {
+            span = bounds.width * 0.18
+        }
+        if span < 3.0 { span = 3.0 }
+        if span > 9.0 { span = 9.0 }
+        tip_x: float = cx
+        tip_y: float = cy
+        end1_x: float = cx
+        end1_y: float = cy
+        end2_x: float = cx
+        end2_y: float = cy
+        if props.direction == (ArrowDirection)ArrowLeft {
+            tip_x -= span * 0.5
+            end1_x += span * 0.5
+            end2_x += span * 0.5
+            end1_y -= span
+            end2_y += span
+        } else if props.direction == (ArrowDirection)ArrowRight {
+            tip_x += span * 0.5
+            end1_x -= span * 0.5
+            end2_x -= span * 0.5
+            end1_y -= span
+            end2_y += span
+        } else if props.direction == (ArrowDirection)ArrowUp {
+            tip_y -= span * 0.5
+            end1_y += span * 0.5
+            end2_y += span * 0.5
+            end1_x -= span
+            end2_x += span
+        } else {
+            tip_y += span * 0.5
+            end1_y -= span * 0.5
+            end2_y -= span * 0.5
+            end1_x -= span
+            end2_x += span
+        }
+        arrow_color: Color = ColorFromPacked(Opacity(
+            face.foreground, opacity))
+        PaintLine(node, (Rectangle){tip_x, tip_y,
+            end1_x - tip_x, end1_y - tip_y}, arrow_color)
+        PaintLine(node, (Rectangle){tip_x, tip_y,
+            end2_x - tip_x, end2_y - tip_y}, arrow_color)
+    }
     if !props.icon_only && props.label != "" {
         x: i32 = (i32)(bounds.x + content.text_x)
         y: i32 = (i32)(bounds.y +

@@ -1,0 +1,203 @@
+#module "title_bar_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "dropdown_props"
+#import "dropdown_widget"
+#import "font_metrics"
+#import "geometry"
+#import "image_props"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "title_bar"
+#import "title_bar_props"
+#import "tree"
+#import "widget_kind"
+
+TitleBarDefaultFace :: (role: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StylePaddingX | (u32)StyleGap |
+        (u32)StyleIconSize | (u32)StyleContentOffset |
+        (u32)StyleFontSize
+    face.background = (u32)0xf8fafcff
+    face.foreground = (u32)0x111827ff
+    face.border = (u32)0xcbd5e1ff
+    face.opacity = 1.0
+    face.padding_x = 12.0
+    face.gap = 4.0
+    face.icon_size = 32.0
+    face.offset_x = 60.0
+    face.font_size = 18.0
+    if role == TitleBarTitleRole() {
+        face.padding_x = 16.0
+        face.icon_size = 48.0
+    } else if role == TitleBarActionRole() {
+        face.icon_size = 18.0
+        face.padding_x = 10.0
+    }
+    return face
+}
+
+TitleBarFaceFor :: (props: TitleBarProps,
+    role: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindTitleBar(), props.id, props.class_name, role,
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        TitleBarDefaultFace(role), facts,
+        (i32)ButtonStateNormal)
+    return frame
+}
+
+TitleBarKey :: (props: TitleBarProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
+    has_dropdown: bool, dropdown_height: i32,
+    dropdown_min_width: i32,
+    metrics: TitleBarMetrics) -> TitleBarLayout #export {
+    layout: TitleBarLayout = TitleBarLayoutFor((i32)bounds.width,
+        (i32)bounds.height, has_leading, has_dropdown,
+        dropdown_height, dropdown_min_width, metrics)
+    layout.bounds = bounds
+    layout.leading_bounds.x += bounds.x
+    layout.leading_bounds.y += bounds.y
+    layout.title_bounds.x += bounds.x
+    layout.title_bounds.y += bounds.y
+    layout.dropdown_bounds.x += bounds.x
+    layout.dropdown_bounds.y += bounds.y
+    return layout
+}
+
+# A TitleBar is ordinary checked UI composition. A caller retains the
+# dropdown result and passes it back through props.dropdown next frame.
+TitleBar :: (props: TitleBarProps,
+    options: []DropdownOption) -> TitleBarResult #export {
+    result: TitleBarResult
+    result.node = -1
+    result.dropdown.node = -1
+    result.dropdown.open = props.dropdown.open
+    result.dropdown.selected_index = props.dropdown.selected_index
+    result.dropdown.highlight_index = props.dropdown.highlight_index
+    result.dropdown.scroll_offset = props.dropdown.scroll_offset
+    bar: StyleFrame = TitleBarFaceFor(props, TitleBarBarRole())
+    title: StyleFrame = TitleBarFaceFor(props, TitleBarTitleRole())
+    action: StyleFrame = TitleBarFaceFor(props,
+        TitleBarActionRole())
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TitleBarMetrics = TitleBarMetricsFor(scale,
+        bar, title, action)
+    requested_height: i32 = props.height
+    if requested_height <= 0 && props.bounds.height > 0.0 {
+        requested_height = (i32)props.bounds.height
+    }
+    state: TitleBarState = TitleBarStateFor(requested_height,
+        TitleBarDefaultHeightFor(scale, bar),
+        props.has_leading_action,
+        props.has_dropdown && options.length > 0)
+    result.height = state.height
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 {
+        parent: Rectangle = TreeCurrentParentBounds()
+        bounds.x = parent.x
+        bounds.width = parent.width
+    }
+    bounds.height = (float)state.height
+    if bounds.width <= 0.0 || bounds.height <= 0.0 {
+        return result
+    }
+    key: u64 = TitleBarKey(props)
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key, WidgetKindTitleBar,
+            bounds)
+        if result.node < 0 { return result }
+        TreeSetLabel(result.node, props.title)
+        bounds = TreeSubmittedNodeAt(result.node).bounds
+    }
+    layout: TitleBarLayout = TitleBarLayoutAt(bounds,
+        state.has_leading, state.has_dropdown,
+        props.dropdown_height, props.dropdown_min_width,
+        metrics)
+    opacity: float = StyleOpacityValue(bar.value.fields,
+        bar.value.opacity)
+    PaintRoundedFill(result.node, bounds, bar.value.radius, 12,
+        ColorFromPacked(Opacity(bar.value.background, opacity)))
+    if bar.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, bounds, bar.value.radius,
+            12, bar.value.border_width,
+            ColorFromPacked(Opacity(bar.value.border, opacity)))
+    }
+    PaintLine(result.node, (Rectangle){bounds.x,
+        bounds.y + bounds.height - 1.0, bounds.width, 0.0},
+        ColorFromPacked(Opacity(bar.value.border, opacity)))
+    if state.has_leading {
+        button: ButtonProps
+        button.key = key * (u64)65599 + (u64)1
+        button.bounds = layout.leading_bounds
+        button.id = props.id
+        button.class_name = props.class_name
+        button.style_kind = StyleKindTitleBar()
+        button.style_role = TitleBarActionRole()
+        button.tone = (ButtonTone)ButtonToneNeutral
+        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.icon_only = true
+        button.circle = true
+        button.image = props.leading_image
+        button.label = props.leading_label
+        button.arrow = props.leading_image.asset_path == "" &&
+            props.leading_image.texture.id == (u32)0
+        button.direction = (ArrowDirection)ArrowLeft
+        result.clicked_leading = SubmitButton(button,
+            result.node, key) != 0
+    }
+    if state.has_dropdown {
+        dropdown: DropdownProps = props.dropdown
+        dropdown.bounds = layout.dropdown_bounds
+        if dropdown.key == (u64)0 {
+            dropdown.key = key * (u64)65599 + (u64)2
+        }
+        if dropdown.id <= 0 { dropdown.id = props.id }
+        if dropdown.class_name <= 0 {
+            dropdown.class_name = props.class_name
+        }
+        if dropdown.scale <= 0.0 { dropdown.scale = scale }
+        result.dropdown = Dropdown(dropdown, options)
+        return result
+    }
+    if props.title != "" {
+        font: i32 = ResolveFont(0,
+            StyleFontValue(title.value.fields,
+                title.value.font_size), 18)
+        width: i32 = GlyphWidth(props.title, font,
+            title.value.typeface)
+        while TitleBarShouldShrinkTitleFont(width,
+            (i32)layout.title_bounds.width, font, 12) {
+            font = TitleBarShrinkTitleFontStep(width,
+                (i32)layout.title_bounds.width, font, 12)
+            width = GlyphWidth(props.title, font,
+                title.value.typeface)
+        }
+        line_height: i32 = GlyphLineHeight(font,
+            title.value.typeface)
+        paint: TitleBarTitlePaint = TitleBarTitlePaintFor(
+            layout, width, line_height)
+        PaintClippedLabel(result.node, props.title, paint.x,
+            paint.y, font, ColorFromPacked(Opacity(
+                title.value.foreground,
+                StyleOpacityValue(title.value.fields,
+                    title.value.opacity))), layout.title_bounds)
+    }
+    return result
+}

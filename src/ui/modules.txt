@@ -151,6 +151,7 @@ text_rows.zi
 theme.zi
 title_bar.zi
 title_bar_props.zi
+title_bar_widget.zi
 toast.zi
 toast_props.zi
 toast_widget.zi

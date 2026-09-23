@@ -721,10 +721,10 @@ should use canonical `.kry` names and blocks.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | `src/ui/navigation_bar.kry` owns input, item paint, icons, and configuration modal composition around `runtime/navigation_bar.kry` policy. Item and configuration-slot labels use `NavigationBarItem` KSS typography. |
-| `Toolbar` | `.kry canonical` | Metrics, geometry, icon style-size, and icon slider popup open/close policy are in `.kry`; host handles input, drawing, state storage, and child `Button`/`Dropdown` calls. |
+| `Toolbar` | checked Ziran | Retained Button actions and Dropdown composition with caller owned state. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable/keyboard navigation, bar/context open/index policy, and group pointer open/close decisions are in `.kry`. |
 | `TabBar` | `.kry canonical` | `src/ui/tab_bar.kry` owns KSS style, sizing, input, scroll, drag, close, and paint; `src/ui/tab_store.kry` owns retained state. |
-| `TitleBar` | `.kry canonical` | Effective height/state, layout, and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
+| `TitleBar` | checked Ziran | Retained leading Button, optional Dropdown, KSS title paint, and caller owned dropdown state. |
 | `Router` | checked Ziran | Caller owned routes and state; submits an inert retained node; returns a URL effect for the host to apply. |
 | `Link` | checked Ziran | Canonical navigation/link widget. |
 
