@@ -119,6 +119,7 @@ text_align.zi
 text_input.zi
 text_input_props.zi
 text_props.zi
+text_widget.zi
 paragraph.zi
 text_rows.zi
 theme.zi

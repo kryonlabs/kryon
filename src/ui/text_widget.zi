@@ -1,959 +1,174 @@
 #module "text_widget"
-#import "ui_internal.h"
-#import "ui_text_props.generated.h"
-#import "ui_text_props.generated.h"
-#import "ui/selectable_text.h"
-#import "ui/tree_layout.h"
-#import "ui_style_internal.h"
-#import "runtime/text.h"
-#import "runtime/paragraph.h"
-#import "runtime/button.h"
-#import "runtime/text_input.h"
-#import "runtime/style.h"
-#import "stdio.h"
-#import "string.h"
-#import "ui/text_surface.h"
-#import "ui/text_navigation.h"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "paragraph"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "text"
+#import "text_align"
+#import "text_props"
+#import "tree"
+#import "widget_kind"
 
-text_strikethrough :: i32 #global #export
-g_ui_text_letter_spacing :: i32 #global #export
+# A raw byte-range view. The host only returns bytes; line breaking, layout,
+# style, and paint order are decided by this module.
+TextSlice :: (source: string, start: i32, length: i32) -> string #extern
 
-ui_set_text_strikethrough :: (enabled: i32) -> i32 #export {
-    previous: i32 = text_strikethrough
-    text_strikethrough = enabled
-    return previous
+TextFace :: struct {
+    value: StyleData
+    fallback_font: i32
 }
 
-ui_get_text_letter_spacing :: () -> i32 #export {
-    return g_ui_text_letter_spacing
+DefaultTextFace :: () -> TextFace #export {
+    face: TextFace
+    face.value.fields = (u32)StyleForeground | (u32)StyleFontSize
+    face.value.foreground = (u32)0x171717ff
+    face.value.font_size = 16.0
+    face.fallback_font = 16
+    return face
 }
 
-ui_set_text_letter_spacing :: (spacing: i32) -> i32 #export {
-    previous: i32 = g_ui_text_letter_spacing
-    g_ui_text_letter_spacing = spacing > 0 ? spacing : 0
-    return previous
+TextFaceFor :: (rules: StyleRules, props: TextProps,
+    defaults: TextFace) -> TextFace #export {
+    face: TextFace = defaults
+    state: i32 = (i32)ButtonStateNormal
+    if props.disabled { state = (i32)ButtonStateDisabled }
+    face.value = ResolveStyleRules(rules, defaults.value,
+        StyleTextFacts(0, props.class_name, StyleKindText(), state), state)
+    return face
 }
 
-ui_render_italic_text :: (value: const char*, x: i32,
-y: i32, font_size: i32, color: Color) #extern
+TextLinePlan :: struct {
+    start: i32
+    end: i32
+    next: i32
+    width: i32
+}
 
-RenderTextEx :: (value: const char*, x: i32, y: i32,
-font_size: i32, color: Color, selectable: i32) #export {
-    font: Font = GetTextFontForSize(font_size)
-    if value == nil || !TextFontReady(font) { return }
-    byte_len: i32 = 0
-    while value[byte_len] != '\0' && value[byte_len] != '\n' {
-        byte_len += 1
+# A word that exceeds the available width stays intact on its own line.
+# ParagraphTokenNext keeps UTF-8 bytes together by splitting only at ASCII
+# whitespace and line breaks.
+NextTextLine :: (value: string, start: i32, max_width: float,
+    wrap: TextWrap, font: i32, typeface: string) -> TextLinePlan #export {
+    line: TextLinePlan
+    line.start = start
+    line.end = start
+    line.next = value.length + 1
+    if start >= value.length { return line }
+    offset: i32 = start
+    while offset < value.length {
+        token: ParagraphToken = ParagraphTokenNext(value, offset, false)
+        if !token.valid { break }
+        if token.line_break {
+            line.next = token.next
+            return line
+        }
+        candidate: string = TextSlice(value, line.start,
+            token.end - line.start)
+        width: i32 = GlyphWidth(candidate, font, typeface)
+        if wrap == (TextWrap)TextWrapAuto && max_width > 0.0 &&
+            line.end > line.start && (float)width > max_width {
+            line.next = token.start
+            return line
+        }
+        line.end = token.end
+        line.width = width
+        offset = token.next
     }
-    text_w: i32 = TextWidth(value, font_size)
-    line_h: i32 = TextLineHeight(font_size)
-    ui_inline_text_before_render(value, x, y, font_size, color,
-        selectable, byte_len, text_w, line_h)
-    DrawTextRun(value, font, x, y, font_size, color)
-    if text_strikethrough && text_w > 0 {
-        strike: Rectangle = TextStrikethroughBounds(
-            (float)x, (float)y, (float)text_w, (float)line_h,
-            (float)Scale(1000) / 1000.0f)
-        DrawRectangleRec(strike, color)
+    return line
+}
+
+PreparedText :: struct {
+    bounds: Rectangle
+    font: i32
+    color: Color
+    typeface: string
+    line_height: i32
+    line_gap: i32
+    line_count: i32
+    wrap: TextWrap
+}
+
+PrepareText :: (props: TextProps, face: TextFace) -> PreparedText #export {
+    prepared: PreparedText
+    prepared.bounds = props.bounds
+    prepared.typeface = face.value.typeface
+    appearance: TextAppearance = ResolveTextStyle(props.font, 0,
+        ResolveFont(0, StyleFontValue(face.value.fields,
+            face.value.font_size), face.fallback_font),
+        face.value.foreground, (u32)0, (u32)0x171717ff,
+        false, (face.value.fields & (u32)StyleForeground) != (u32)0,
+        props.disabled, false, 0)
+    prepared.font = appearance.font
+    prepared.color = ColorFromPacked(Opacity(appearance.color,
+        StyleOpacityValue(face.value.fields, face.value.opacity)))
+    prepared.line_height = GlyphLineHeight(prepared.font,
+        prepared.typeface)
+    if prepared.line_height < 1 { prepared.line_height = prepared.font }
+    prepared.line_gap = ParagraphDefaultLineGap(1.0)
+    prepared.wrap = (TextWrap)TextWrapPolicy(props.bounds.width,
+        (i32)props.wrap)
+
+    start: i32 = 0
+    maximum: i32 = 0
+    while start <= props.text.length {
+        line: TextLinePlan = NextTextLine(props.text, start,
+            props.bounds.width, prepared.wrap, prepared.font,
+            prepared.typeface)
+        prepared.line_count += 1
+        if line.width > maximum { maximum = line.width }
+        start = line.next
     }
+    prepared.bounds.width = TextExtent(props.bounds.width, (float)maximum)
+    height: i32 = ParagraphLayoutTotalHeight(prepared.line_count,
+        prepared.line_height, prepared.line_gap)
+    prepared.bounds.height = TextExtent(props.bounds.height, (float)height)
+    return prepared
 }
 
-RenderText :: (value: const char*, x: i32, y: i32,
-font_size: i32, color: Color) #export {
-    RenderTextEx(value, x, y, font_size, color, 1)
-}
-
-RenderTextStyled :: (value: const char*, x: i32,
-y: i32, style: TextStyle) #export {
-    font_size: i32 = style.font_size > 0
-    ? style.font_size : TextBaseSize
-    if !style.italic {
-        RenderTextEx(value, x, y, font_size,
-        style.color, style.selectable)
-        return
-    }
-    ui_render_italic_text(value, x, y, font_size, style.color)
-}
-
-RenderTextItalic :: (value: const char*, x: i32,
-y: i32, font_size: i32, color: Color) #export {
-    style: TextStyle = (TextStyle){0}
-    style.font_size = font_size
-    style.color = color
-    style.italic = 1
-    style.selectable = 1
-    RenderTextStyled(value, x, y, style)
-}
-
-RenderNonSelectableText :: (value: const char*, x: i32,
-y: i32, font_size: i32, color: Color) #export {
-    RenderTextEx(value, x, y, font_size, color, 0)
-}
-
-DrawCenteredText :: (value: const char*,
-center_x: i32, center_y: i32, font_size: i32,
-color: Color) #export {
-    width: i32 = TextWidth(value, font_size)
-    line_h: i32 = TextLineHeight(font_size)
-    y: i32 = TextBaselineY(TextControlBaselineSample(),
-    center_y - line_h / 2, line_h, font_size)
-    RenderText(value, center_x - width / 2,
-    y, font_size, color)
-}
-
-TextGlyphVerticalBounds :: struct {
-    min_top: float
-    max_bottom: float
-    seen_glyph: i32
-}
-
-TextVerticalBoundsFor :: (value: const char*,
-font_size: i32) -> TextGlyphVerticalBounds {
-    bounds: TextGlyphVerticalBounds = (TextGlyphVerticalBounds){0}
-    if value == nil { return bounds }
-    index: i32 = 0
-    while value[index] != '\0' {
-        codepoint_byte_count: i32 = 0
-        codepoint: i32 = GetCodepointNext(
-            value + index, &codepoint_byte_count)
-        if codepoint == '\n' { break }
-
-        if codepoint != ' ' && codepoint != '\t' {
-            glyph_font: Font = GetTextFontForCodepoint(
-                codepoint, font_size)
-            glyph: GlyphInfo = TextFontGlyph(glyph_font, codepoint)
-            atlas: Rectangle = TextFontAtlasRec(glyph_font, codepoint)
-            scale: float = GetTextFontScale(glyph_font, font_size)
-            padding: i32 = TextFontGlyphPadding(glyph_font)
-            glyph_top: float = (float)glyph.offsetY * scale -
-                (float)padding * scale
-            glyph_bottom: float = glyph_top +
-                (atlas.height + 2.0f * (float)padding) * scale
-
-            if !bounds.seen_glyph {
-                bounds.min_top = glyph_top
-                bounds.max_bottom = glyph_bottom
-                bounds.seen_glyph = 1
-            } else {
-                if glyph_top < bounds.min_top { bounds.min_top = glyph_top }
-                if glyph_bottom > bounds.max_bottom { bounds.max_bottom = glyph_bottom }
+PaintTextLines :: (node: i32, props: TextProps,
+    prepared: PreparedText) #export {
+    total_height: i32 = ParagraphLayoutTotalHeight(prepared.line_count,
+        prepared.line_height, prepared.line_gap)
+    y: i32 = (i32)prepared.bounds.y +
+        (i32)TextAlignmentOffset(prepared.bounds.height,
+            (float)total_height, (i32)props.vertical_align)
+    start: i32 = 0
+    while start <= props.text.length {
+        line: TextLinePlan = NextTextLine(props.text, start,
+            prepared.bounds.width, prepared.wrap, prepared.font,
+            prepared.typeface)
+        value: string = TextSlice(props.text, line.start,
+            line.end - line.start)
+        x: i32 = ParagraphLineXFor((i32)prepared.bounds.x,
+            (i32)prepared.bounds.width, line.width, (i32)props.align)
+        if value != "" {
+            PaintLabel(node, value, x, y, prepared.font, prepared.color)
+            if props.strikethrough {
+                strike: Rectangle = TextStrikethroughBounds((float)x,
+                    (float)y, (float)line.width,
+                    (float)prepared.line_height, 1.0)
+                PaintRoundedFill(node, strike, 0.0, 1, prepared.color)
             }
         }
-
-        if codepoint_byte_count <= 0 { codepoint_byte_count = 1 }
-        index += codepoint_byte_count
-    }
-    return bounds
-}
-
-TextLineHeight :: (font_size: i32) -> i32 #export {
-    font: Font = GetTextFontForSize(font_size)
-    if TextFontHasNativeText(font) {
-        native_height: i32 = TextFontNativeTextHeight(font)
-        if native_height > 0 { return native_height }
-    }
-    return TextLineHeightFor(TextFontBaseSize(font),
-        TextBaseSize, GetTextFontScale(font, font_size))
-}
-
-TextHeight :: (value: const char*, font_size: i32) -> i32 #export {
-    font: Font = GetTextFontForSize(font_size)
-    if value == nil || value[0] == '\0' || !TextFontReady(font) {
-        return font_size
-    }
-    if TextFontHasNativeText(font) {
-        native_height: i32 = TextFontNativeTextHeight(font)
-        return native_height > 0 ? native_height : font_size
-    }
-    bounds: TextGlyphVerticalBounds = TextVerticalBoundsFor(
-        value, font_size)
-    fallback_height: i32 = (i32)((float)TextFontBaseSize(font) *
-        GetTextFontScale(font, font_size) + 0.5f)
-    return TextHeightFor(fallback_height, bounds.seen_glyph != 0,
-        bounds.min_top, bounds.max_bottom)
-}
-
-TextBaselineY :: (value: const char*, box_y: i32,
-box_h: i32, font_size: i32) -> i32 #export {
-    font: Font = GetTextFontForSize(font_size)
-    if value == nil || value[0] == '\0' || !TextFontReady(font) {
-        return TextBaselineYFor(box_y, box_h,
-            TextLineHeight(font_size), false, 0.0f, 0.0f)
-    }
-    bounds: TextGlyphVerticalBounds = TextVerticalBoundsFor(
-        value, font_size)
-
-    return TextBaselineYFor(box_y, box_h, font_size,
-        bounds.seen_glyph != 0, bounds.min_top, bounds.max_bottom)
-}
-
-RenderTextInputEx :: (bounds: Rectangle, text: const char*,
-cursor_position: i32, focused: i32, text_input_active: i32,
-cursor_visible: i32, font: i32, style: TextInputAppearance,
-selection_start: i32, selection_end: i32,
-composition_start: i32, composition_end: i32,
-scroll_x: i32, focus_id: i32, class_name: i32) #export {
-    requested_style: TextInputAppearance = style
-    style = ui_resolve_text_input_appearance(style,
-    StyleKindTextField(), class_name)
-    value: const char* = text
-    if value == nil { value = "" }
-    y: i32 = (int)bounds.y
-    h: i32 = (int)bounds.height
-    metrics: TextInputMetrics = ui_text_input_metrics_for_appearance(
-    style, StyleKindTextField(), class_name, 0)
-    scale: float = (float)Scale(1000) / 1000.0
-    stroke_width: i32 = TextInputStrokeWidth(scale)
-    clip_guard: i32 = TextFieldClipGuard(scale)
-    paint: TextFieldPaint = TextFieldPaintFor(bounds,
-    metrics.padding_x, scroll_x, font, TextLineHeight(font),
-    TextFieldMinCursorHeight(scale),
-    TextFieldCursorVerticalPadding(scale), clip_guard)
-    text_x: i32 = paint.text_x
-    text_y: i32 = ControlTextBaselineY(value, y, h, font)
-    cursor_h: i32 = paint.cursor_height
-    cursor_y: i32 = paint.cursor_y
-    text_color: Color = GetColor(TextContentColorFor(style.fields,
-    StyleForeground, ColorToInt(style.text), ColorToInt(BLACK)))
-    cursor_color: Color = GetColor(TextContentColorFor(style.fields,
-    StyleFocus, ColorToInt(style.cursor), ColorToInt(text_color)))
-    if focused && text_input_active { SetFocusTextInputActive(1) }
-    ui_text_input_surface(bounds, style, focused,
-    text_input_active, focus_id, "TextField",
-    requested_style, class_name)
-    ui_begin_world_clip(paint.clip_bounds)
-    if selection_end > selection_start {
-        span: TextSelectionPaintSpan = TextSelectionPaintSpanForText(
-        selection_start, selection_end, (int)strlen(value))
-        if span.visible {
-            prefix: [1024]char
-            selected_text: [1024]char
-            prefix_len: i32 = span.start
-            selected_len: i32 = span.end - span.start
-            if prefix_len >= (int)sizeof(prefix) {
-                prefix_len = (int)sizeof(prefix) - 1
-            }
-            if selected_len >= (int)sizeof(selected_text) {
-                selected_len = (int)sizeof(selected_text) - 1
-            }
-            memcpy(prefix, value, (size_t)prefix_len)
-            prefix[prefix_len] = '\0'
-            memcpy(selected_text, value + span.start,
-            (size_t)selected_len)
-            selected_text[selected_len] = '\0'
-            sel_x: i32 = text_x + TextWidth(prefix, font)
-            sel_w: i32 = TextWidth(selected_text, font)
-            if sel_w < stroke_width { sel_w = stroke_width }
-            DrawRectangle(sel_x, text_y, sel_w, TextLineHeight(font),
-            GetColor(TextSelectionColorFor(ColorToInt(cursor_color))))
-        }
-    }
-    RenderText(value, text_x, text_y, font, text_color)
-    if composition_end > composition_start {
-        span: TextCompositionPaintSpan = TextCompositionPaintSpanForText(
-        composition_start, composition_end, (int)strlen(value))
-        if span.visible {
-            composition: [1024]char
-            composition_len: i32 = span.end - span.start
-            if composition_len >= (int)sizeof(composition) {
-                composition_len = (int)sizeof(composition) - 1
-            }
-            memcpy(composition, value + span.start,
-            (size_t)composition_len)
-            composition[composition_len] = '\0'
-            composition_x: i32 = text_x +
-            ui_text_width_before_cursor(value, font, span.start)
-            composition_w: i32 = TextWidth(composition, font)
-            composition_w = TextCompositionUnderlineEndX(
-            composition_x, composition_x + composition_w,
-            stroke_width) - composition_x
-            composition_y: i32 = TextCompositionUnderlineY(
-            text_y, TextLineHeight(font), stroke_width)
-            DrawRectangle(composition_x, composition_y,
-            composition_w, stroke_width, cursor_color)
-        }
-    }
-    if focused && cursor_visible {
-        cursor_x: i32 = text_x +
-        ui_text_width_before_cursor(value, font, cursor_position)
-        DrawRectangle(cursor_x, cursor_y,
-        stroke_width, cursor_h, cursor_color)
-    }
-    EndClip()
-}
-
-DrawTextInput :: (bounds: Rectangle, text: const char*,
-cursor_position: i32, focused: i32, cursor_visible: i32,
-font: i32, focus_id: i32, class_name: i32) #export {
-    RenderTextInputEx(bounds, text, cursor_position, focused,
-    1, cursor_visible, font, (TextInputAppearance){0},
-    0, 0, 0, 0, 0, focus_id, class_name)
-}
-
-ui_draw_text_input_selection :: (bounds: Rectangle,
-text: const char*, cursor: i32, focused: i32,
-font: i32, style: TextInputAppearance,
-selection_start: i32, selection_end: i32) #export {
-    RenderTextInputEx(bounds, text, cursor, focused, 1, 1,
-    font, style, selection_start, selection_end,
-    0, 0, 0, 0, 0)
-}
-
-ui_text_input_control_render :: (input: TextInputProps) -> i32 #export {
-    editor_id: [96]char
-    widget: Widget = BeginWidget("TextField",
-    ui_inspect_control_id(editor_id, sizeof(editor_id),
-    "TextField", input.focus_id, nil), input.bounds,
-    WidgetFlagMovable | WidgetFlagResizable)
-    input.bounds = widget.bounds
-    focused: i32 = input.focused
-    if input.focus_id > 0 && RegisterFocus(input.focus_id,
-    input.bounds) {
-        focused = 1
-        SetFocusTextInputActive(1)
-    }
-    DrawTextInput(input.bounds, input.text, input.cursor_position,
-    focused, input.cursor_visible,
-    ui_text_input_default_font(StyleKindTextField(),
-    input.class_name), input.focus_id, input.class_name)
-    EndWidget(&widget)
-    return focused
-}
-
-ui_text_field_render :: (field: TextFieldProps) -> i32 #export {
-    return ui_text_field_render_filtered(field, nil, nil)
-}
-
-ParagraphLayout :: (paragraph: ParagraphSpec) -> TextLayout {
-    metrics: ParagraphMetrics = ParagraphResolveMetrics(
-    paragraph.font, GetFontSize(), paragraph.line_gap,
-    ParagraphDefaultLineGap((float)Scale(1000) / 1000.0),
-    paragraph.icon_size, paragraph.width,
-    paragraph.width, 0, 0)
-    value: const char* = paragraph.text
-    if value == nil { value = "" }
-    layout: TextLayout = ParseTextLayout(value,
-    paragraph.icon, paragraph.icon_type, metrics.icon_size)
-    ReflowTextLayout(&layout, metrics.width,
-    metrics.font, metrics.line_gap)
-    return layout
-}
-
-ParagraphTextColor :: (paragraph: ParagraphSpec) -> Color {
-    facts: StyleFacts = StyleDefaultFacts(StyleKindParagraphText())
-    facts.class_name = paragraph.class_name
-    facts.state = ButtonStateNormal
-    style: Style = ui_unpack_style(ResolveActiveStyle(
-    (StyleData){0}, facts, ButtonStateNormal))
-    if (style.fields & StyleForeground) == 0 {
-        style.foreground = TextDefaultColor()
-    }
-    return Fade(style.foreground,
-    StyleOpacityValue(style.fields, style.opacity))
-}
-
-ui_paragraph_height :: (paragraph: ParagraphSpec) -> i32 #export {
-    if !ParagraphCanLayout(paragraph.width) { return 0 }
-    layout: TextLayout = ParagraphLayout(paragraph)
-    height: i32 = GetTextLayoutHeight(&layout)
-    FreeTextLayout(&layout)
-    return height
-}
-
-DrawParagraphColor :: (paragraph: ParagraphSpec,
-x: i32, y: *i32, align: i32, color: Color) {
-    if y == nil || !ParagraphCanLayout(paragraph.width) { return }
-    metrics: ParagraphMetrics = ParagraphResolveMetrics(
-    paragraph.font, GetFontSize(), paragraph.line_gap,
-    ParagraphDefaultLineGap((float)Scale(1000) / 1000.0),
-    paragraph.icon_size, paragraph.width,
-    paragraph.width, 0, *y)
-    layout: TextLayout = ParagraphLayout(paragraph)
-    if align != TextAlignStart {
-        DrawTextLayoutAligned(&layout, x, y, metrics.font,
-        color, paragraph.width, align)
-    } else {
-        DrawTextLayout(&layout, x, y, metrics.font, color)
-    }
-    FreeTextLayout(&layout)
-}
-
-ui_draw_paragraph :: (paragraph: ParagraphSpec,
-x: i32, y: *i32) #export {
-    DrawParagraphColor(paragraph, x, y,
-    paragraph.align, ParagraphTextColor(paragraph))
-}
-
-ui_draw_paragraph_aligned :: (paragraph: ParagraphSpec,
-x: i32, y: *i32, align: i32) #export {
-    DrawParagraphColor(paragraph, x, y,
-    align, ParagraphTextColor(paragraph))
-}
-
-ui_draw_paragraph_aligned_color :: (paragraph: ParagraphSpec,
-x: i32, y: *i32, align: i32, color: Color) #export {
-    DrawParagraphColor(paragraph, x, y, align, color)
-}
-
-ui_caret_blink_visible :: () -> i32 #export {
-    return ((int)(GetTime() * 2.0)) % 2 == 0
-}
-
-ui_paint_text_input :: (bounds: Rectangle,
-text: const char*, paint: TextInputPaint) #export {
-    if !IsWindowReady() { return }
-    previous_font: i32 = ui_active_font_token()
-    PopTextFont(paint.font_token)
-    RenderTextInputEx(bounds, text, paint.cursor,
-    paint.focused, paint.editable, paint.caret,
-    paint.font, paint.appearance, paint.selection_start,
-    paint.selection_end, paint.composition_start,
-    paint.composition_end, paint.scroll_x, 0,
-    paint.class_name)
-    PopTextFont(previous_font)
-}
-
-GetFontSize :: () -> i32 #export {
-    return Scale(Text16)
-}
-
-GetSmallFontSize :: () -> i32 #export {
-    return Scale(Text14)
-}
-
-GetTitleFontSize :: (title: const char*, max_width: i32) -> i32 #export {
-    value: const char* = title
-    if value == nil { value = "" }
-    large: i32 = Scale(Text24)
-    medium: i32 = Scale(Text16)
-    small: i32 = Scale(Text14)
-    if max_width <= 0 || TextWidth(value, large) <= max_width {
-        return large
-    }
-    if TextWidth(value, medium) <= max_width { return medium }
-    return small
-}
-
-ControlTextBaselineY :: (text: const char*, box_y: i32,
-box_h: i32, font: i32) -> i32 #export {
-    return TextBaselineY(TextControlBaselineSample(),
-    box_y, box_h, font)
-}
-
-ui_text_input_default_font :: (style_kind: i32,
-class_name: i32) -> i32 #export {
-    resolved: Style = ui_unpack_style(ui_style_apply_effects_data(
-    ResolveActiveStyle((StyleData){0},
-    TextInputFactsFor(style_kind, class_name), ButtonStateNormal)))
-    return ResolveFont(0, StyleFontValue(resolved.fields,
-    resolved.font_size), GetFontSize())
-}
-
-ui_resolve_text_input_appearance :: (style: TextInputAppearance,
-style_kind: i32, class_name: i32) -> TextInputAppearance #export {
-    scale: float = (float)Scale(1000) / 1000.0
-    resolved: Style = ui_unpack_style(ui_style_apply_effects_data(
-    ResolveActiveStyle((StyleData){0},
-    TextInputFactsFor(style_kind, class_name), ButtonStateNormal)))
-    policy: TextInputResolvedStyle = TextInputResolvedStyleFor(
-    style.fields, style.padding_x, style.padding_y, style.line_gap,
-    style.radius, resolved.fields, resolved.padding_x,
-    resolved.padding_y, resolved.gap, resolved.radius, scale)
-    if style.background.a == 0 { style.background = resolved.background }
-    if style.border.a == 0 { style.border = resolved.border }
-    if style.focus_border.a == 0 { style.focus_border = resolved.focus }
-    if style.text.a == 0 { style.text = resolved.foreground }
-    if style.cursor.a == 0 {
-        style.cursor = resolved.focus.a != 0 ?
-        resolved.focus : resolved.foreground
-    }
-    style.fields = policy.fields
-    style.padding_x = policy.padding_x
-    style.padding_y = policy.padding_y
-    style.line_gap = policy.line_gap
-    style.radius = policy.radius
-    return style
-}
-
-ui_text_input_metrics_for_appearance :: (style: TextInputAppearance,
-style_kind: i32, class_name: i32,
-default_line_gap: i32) -> TextInputMetrics #export {
-    scale: float = (float)Scale(1000) / 1000.0
-    return TextInputMetricsFor(style.fields, 0, style.padding_x,
-    style.padding_y, style.line_gap,
-    ui_text_input_default_font(style_kind, class_name),
-    TextInputDefaultPaddingX(scale),
-    TextInputDefaultPaddingY(scale), default_line_gap)
-}
-
-ui_world_rect_to_screen :: (rect: Rectangle) -> Rectangle {
-    return (Rectangle){
-        g_ui_camera.offset.x + rect.x * g_ui_camera.zoom,
-        g_ui_camera.offset.y + rect.y * g_ui_camera.zoom,
-        rect.width * g_ui_camera.zoom,
-        rect.height * g_ui_camera.zoom}
-}
-
-ui_begin_world_clip :: (rect: Rectangle) #export {
-    screen: Rectangle = ui_world_rect_to_screen(rect)
-    BeginClip((int)screen.x, (int)screen.y,
-    (int)screen.width, (int)screen.height)
-}
-
-ui_text_quad_inside_clip :: (quad: Rectangle,
-clip: Rectangle) -> i32 {
-    left: float = g_ui_camera.offset.x + quad.x * g_ui_camera.zoom
-    top: float = g_ui_camera.offset.y + quad.y * g_ui_camera.zoom
-    return left >= clip.x && top >= clip.y &&
-    left + quad.width * g_ui_camera.zoom <= clip.x + clip.width &&
-    top + quad.height * g_ui_camera.zoom <= clip.y + clip.height
-}
-
-ui_text_fits_bounds :: (value: const char*, x: i32, y: i32,
-font_size: i32, bounds: Rectangle) -> i32 #export {
-    if value == nil || value[0] == '\0' { return 1 }
-    font: Font = GetTextFontForSize(font_size)
-    if !TextFontReady(font) || TextFontHasNativeText(font) ||
-    g_ui_camera.zoom <= 0 || g_ui_camera.rotation != 0 ||
-    g_ui_camera.target.x != 0 || g_ui_camera.target.y != 0 {
-        return 0
-    }
-
-    // Match the integer pixel bounds used by ui_begin_world_clip.
-    // Glyphs and selections may overhang their text advance.
-    clip: Rectangle = (Rectangle){
-        (float)(int)(g_ui_camera.offset.x +
-        bounds.x * g_ui_camera.zoom),
-        (float)(int)(g_ui_camera.offset.y +
-        bounds.y * g_ui_camera.zoom),
-        (float)(int)(bounds.width * g_ui_camera.zoom),
-        (float)(int)(bounds.height * g_ui_camera.zoom)}
-    if ui_inline_text_selection_active(value, x, y, font_size) {
-        selection: Rectangle = (Rectangle){(float)x, (float)y,
-            (float)TextWidth(value, font_size),
-            (float)TextLineHeight(font_size)}
-        if !ui_text_quad_inside_clip(selection, clip) { return 0 }
-    }
-
-    cursor_x: i32 = x
-    i: i32 = 0
-    while value[i] != '\0' {
-        bytes: i32 = 0
-        codepoint: i32 = GetCodepointNext(value + i, &bytes)
-        if codepoint == '\n' { break }
-        glyph_font: Font = GetTextFontForCodepoint(codepoint, font_size)
-        if !TextFontReady(glyph_font) ||
-        TextFontHasNativeText(glyph_font) { return 0 }
-        scale: float = GetTextFontScale(glyph_font, font_size)
-        glyph: GlyphInfo = TextFontGlyph(glyph_font, codepoint)
-        source: Rectangle = TextFontAtlasRec(glyph_font, codepoint)
-        quad: Rectangle = (Rectangle){
-            (float)cursor_x + (float)glyph.offsetX * scale,
-            (float)y + (float)glyph.offsetY * scale,
-            source.width * scale, source.height * scale}
-        if source.width > 0 && source.height > 0 &&
-        !ui_text_quad_inside_clip(quad, clip) { return 0 }
-        cursor_x += (int)((float)glyph.advanceX * scale + 0.5f) +
-        g_ui_text_letter_spacing
-        i += bytes
-    }
-    return 1
-}
-
-TextCenteredInRect :: (text: const char*, rect: Rectangle,
-font_size: i32, color: Color) {
-    value: const char* = text
-    if value == nil { value = "" }
-    scale: float = (float)Scale(1000) / 1000.0
-    text_w: i32 = TextWidth(value, font_size)
-    x: i32 = TextCenteredX(rect, text_w)
-    y: i32 = ControlTextBaselineY(value, (int)rect.y,
-    (int)rect.height, font_size)
-    clip: Rectangle = TextControlClipBounds(rect, scale)
-    needs_clip: i32 = !ui_text_fits_bounds(value,
-    x, y, font_size, clip)
-    if needs_clip { ui_begin_world_clip(clip) }
-    RenderText(value, x, y, font_size, color)
-    if needs_clip { EndClip() }
-}
-
-ui_inspect_control_id :: (buf: *char, buf_size: size_t,
-kind: const char*, numeric_id: i32,
-label: const char*) -> const char* #export {
-    if numeric_id > 0 {
-        snprintf(buf, buf_size, "%s:%d", kind, numeric_id)
-        return buf
-    }
-    if label != nil && label[0] != '\0' {
-        snprintf(buf, buf_size, "tmp:%s:%s", kind, label)
-        return buf
-    }
-    snprintf(buf, buf_size, "tmp:%s", kind)
-    return buf
-}
-
-TextNextSmallerSize :: (font_size: i32) -> i32 {
-    body: i32 = Scale(Text16)
-    small: i32 = Scale(Text14)
-    caption: i32 = Scale(Text12)
-    minimum: i32 = Scale(Text8)
-    if font_size > body { return body }
-    if font_size > small { return small }
-    if font_size > caption { return caption }
-    return minimum
-}
-
-TextNormalizeSize :: (font_size: i32) -> i32 {
-    minimum: i32 = Scale(Text8)
-    caption: i32 = Scale(Text12)
-    small: i32 = Scale(Text14)
-    body: i32 = Scale(Text16)
-    if font_size == Text8 { return minimum }
-    if font_size == Text12 { return caption }
-    if font_size == Text14 { return small }
-    if font_size == Text16 { return body }
-    if font_size == Text24 { return Scale(Text24) }
-    if font_size <= minimum { return minimum }
-    if font_size <= caption { return caption }
-    if font_size <= small { return small }
-    if font_size <= body { return body }
-    return Scale(Text24)
-}
-
-FitFontSize :: (text: const char*, max_width: i32,
-preferred_size: i32, min_size: i32) -> i32 #export {
-    value: const char* = text
-    if value == nil { value = "" }
-    font_size: i32 = TextNormalizeSize(preferred_size)
-    min_allowed: i32 = TextNormalizeSize(min_size)
-    if font_size < min_allowed { font_size = min_allowed }
-    while font_size > min_allowed &&
-    TextWidth(value, font_size) > max_width {
-        font_size = TextNextSmallerSize(font_size)
-    }
-    return font_size
-}
-
-RenderControlTextInRect :: (text: const char*,
-rect: Rectangle, font_size: i32,
-color: Color) #export {
-    value: const char* = text
-    if value == nil { value = "" }
-    scale: float = (float)Scale(1000) / 1000.0
-    y: i32 = ControlTextBaselineY(value, (int)rect.y,
-    (int)rect.height, font_size)
-    clip: Rectangle = TextControlClipBounds(rect, scale)
-    needs_clip: i32 = !ui_text_fits_bounds(value,
-    (int)rect.x, y, font_size, clip)
-    if needs_clip { ui_begin_world_clip(clip) }
-    RenderText(value, (int)rect.x, y, font_size, color)
-    if needs_clip { EndClip() }
-}
-
-DrawFittedTextInRect :: (text: const char*,
-rect: Rectangle, preferred_size: i32,
-min_size: i32, color: Color) #export {
-    value: const char* = text
-    if value == nil { value = "" }
-    font_size: i32 = FitFontSize(value, (int)rect.width,
-    preferred_size, min_size)
-    TextCenteredInRect(value, rect, font_size, color)
-}
-
-TextDefaultColor :: () -> Color {
-    control: ControlStyle = (ControlStyle){0}
-    control.normal.opacity = 1
-    states: StyleStates = ui_pack_style_states(control)
-    style: Style = ui_unpack_style(ResolveActiveStyle(
-    states.normal,
-    StyleTextFacts(0, 0, StyleKindText(), ButtonStateNormal),
-    ButtonStateNormal))
-    if style.foreground.a != 0 { return style.foreground }
-    return c_text
-}
-
-TextAreaGutter :: (area: TextAreaProps,
-gutter_width: i32) -> Rectangle #export {
-    if gutter_width <= 0 { return area.bounds }
-    appearance: TextInputAppearance =
-    ui_resolve_text_input_appearance((TextInputAppearance){0},
-    StyleKindTextArea(), area.class_name)
-    metrics: TextInputMetrics =
-    ui_text_input_metrics_for_appearance(appearance,
-    StyleKindTextArea(), area.class_name, 0)
-    font: i32 = metrics.font
-    line_gap: i32 = metrics.line_gap
-    line_h: i32 = TextLineHeight(font) + line_gap
-    if line_h <= 0 { return area.bounds }
-    scroll_y: i32 = area.scroll_y != nil ? *area.scroll_y : 0
-    first: i32 = scroll_y / line_h
-    scale: float = (float)Scale(1000) / 1000.0
-    gutter_metrics: TextAreaGutterMetrics =
-    TextAreaGutterMetricsFor(scale)
-    rows: i32 = TextAreaGutterRowsFor(area.bounds.height,
-    line_h, gutter_metrics)
-    cursor: i32 = area.cursor_position != nil ?
-    *area.cursor_position : 0
-    active: i32 = TextBufferLineAtCursor(area.text, cursor)
-    total: i32 = TextBufferLineCount(area.text)
-    gutter: Rectangle = (Rectangle){area.bounds.x,
-        area.bounds.y, (float)gutter_width, area.bounds.height}
-    DrawRectangleRec(gutter, appearance.background)
-    DrawLine((int)(gutter.x + gutter.width) - 1,
-    (int)gutter.y, (int)(gutter.x + gutter.width) - 1,
-    (int)(gutter.y + gutter.height), appearance.border)
-    y: i32 = TextAreaGutterFirstY(gutter.y, scroll_y,
-    line_h, gutter_metrics)
-    row: i32 = 0
-    while row < rows {
-        line_no: i32 = first + row + 1
-        if line_no > total { break }
-        if line_no == active {
-            DrawRectangle((int)gutter.x,
-            y - gutter_metrics.active_y_inset,
-            (int)gutter.width, line_h, appearance.border)
-        }
-        label: [24]char
-        snprintf(&label[0], sizeof(label), "%d", line_no)
-        inactive: Color = TextDefaultColor()
-        inactive.a = TextAreaGutterInactiveAlpha(inactive.a)
-        RenderText(&label[0],
-        (int)gutter.x + gutter_metrics.label_x_inset,
-        y, gutter_metrics.label_font,
-        line_no == active ? appearance.text : inactive)
-        y += line_h
-        if y > (int)(gutter.y + gutter.height) { break }
-        row += 1
-    }
-    area.bounds.x += gutter_width
-    area.bounds.width -= gutter_width
-    return area.bounds
-}
-
-ui_paint_text_box_decorated :: (value: const char*,
-bounds: Rectangle, font: i32, color: Color,
-wrap: i32, align: i32, vertical_align: i32,
-font_token: i32, letter_spacing: i32,
-strikethrough: i32) #export {
-    previous_font: i32 = ui_active_font_token()
-    previous_strikethrough: i32 =
-    ui_set_text_strikethrough(strikethrough)
-    previous_spacing: i32 =
-    ui_set_text_letter_spacing(Scale(letter_spacing))
-    y: i32 = (int)bounds.y
-    PopTextFont(font_token)
-    text_width: i32 = TextWidth(value, font)
-    text_height: i32 = TextHeight(value, font)
-    needs_clip: i32 = wrap == TextWrapAuto ||
-    text_width > (int)bounds.width ||
-    text_height > (int)bounds.height
-    if needs_clip { ui_begin_world_clip(bounds) }
-    if wrap == TextWrapAuto {
-        paragraph: ParagraphSpec = (ParagraphSpec){0}
-        paragraph.text = value
-        paragraph.width = (int)bounds.width
-        paragraph.font = font
-        paragraph.line_gap = ParagraphDefaultLineGap(
-        (float)Scale(1000) / 1000.0f)
-        height: i32 = ui_paragraph_height(paragraph)
-        y += (int)TextAlignmentOffset((int)bounds.height,
-        height, vertical_align)
-        ui_draw_paragraph_aligned_color(paragraph,
-        (int)bounds.x, &y, align, color)
-    } else {
-        x: i32 = (int)bounds.x
-        x += (int)TextAlignmentOffset((int)bounds.width,
-        text_width, align)
-        if vertical_align == TextAlignCenter {
-            y = TextBaselineY(value, (int)bounds.y,
-            (int)bounds.height, font)
-        } else {
-            y += (int)TextAlignmentOffset((int)bounds.height,
-            text_height, vertical_align)
-        }
-        RenderText(value, x, y, font, color)
-    }
-    if needs_clip { EndClip() }
-    ui_set_text_strikethrough(previous_strikethrough)
-    PopTextFont(previous_font)
-    ui_set_text_letter_spacing(previous_spacing)
-}
-
-ui_paint_text_box :: (value: const char*, bounds: Rectangle,
-font: i32, color: Color, wrap: i32, align: i32,
-vertical_align: i32, font_token: i32,
-letter_spacing: i32) #export {
-    ui_paint_text_box_decorated(value, bounds, font, color,
-    wrap, align, vertical_align, font_token,
-    letter_spacing, 0)
-}
-
-ui_tree_inherit_foreground :: (parent: i32,
-foreground: Color, disabled: bool) #export {
-    child: i32 = ui_committed_nodes[parent].first_child
-    while child >= 0 {
-        node: *TreeNode = &ui_committed_nodes[child]
-        if !ui_tree_button_like_kind(node->kind) {
-            if node->kind == WidgetKindText &&
-            (node->flags & TreeNodeFlagInheritForeground) != 0 {
-                appearance: TextAppearance = ResolveTextStyle(
-                0, 0, 16, 0, ColorToInt(foreground), 0,
-                true, false,
-                (node->flags & TreeNodeFlagTextDisabled) != 0,
-                disabled, 0)
-                node->data.primitive.color = GetColor(Opacity(
-                appearance.color,
-                node->data.primitive.style.opacity))
-            }
-            if node->first_child >= 0 {
-                ui_tree_inherit_foreground(child, foreground, disabled)
-            }
-        }
-        child = node->next_sibling
+        y += prepared.line_height + prepared.line_gap
+        start = line.next
     }
 }
 
 Text :: (props: TextProps) #export {
-    value: const char* = props.text
-    if value == nil { value = "" }
-    typeface: const char* = nil
-    requested_font: i32 = 0
-    letter_spacing: i32 = 0
-    inherited_font: i32 = 0
-    inherited_color: Color = (Color){0}
-    inherited_color_set: bool = false
-    inherited_disabled: i32 = 0
-    bounded: i32 = props.bounds.width > 0
-    bounds: Rectangle = props.bounds
-    if ui_tree_building {
-        index: i32 = ui_tree_stack_depth - 1
-        while index >= 0 {
-            parent: *TreeNode = ui_tree_node(ui_tree_stack[index])
-            if parent != nil &&
-            ui_tree_button_like_kind(parent->kind) {
-                button: *ButtonSpec = &parent->data.button
-                button_style: Style = ResolveButtonStyle(
-                button->props, button->props.state)
-                inherited_font = ResolveFont(0,
-                StyleFontValue(button_style.fields,
-                button_style.font_size), GetFontSize())
-                inherited_color = button->paint.foreground
-                inherited_color_set = true
-                inherited_disabled = button->props.disabled
-                break
-            }
-            index -= 1
-        }
+    face: TextFace = TextFaceFor(ActiveStyleRules(), props,
+        DefaultTextFace())
+    prepared: PreparedText = PrepareText(props, face)
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(props.key, 0, WidgetKindText, prepared.bounds)
+        if node < 0 { return }
+        TreeSetLabel(node, props.text)
     }
-    props.disabled = props.disabled ||
-    (ContentDisabled() && !inherited_disabled)
-    text_state: ButtonState = ButtonStateNormal
-    if props.disabled { text_state = ButtonStateDisabled }
-    base_style: ControlStyle = (ControlStyle){0}
-    base_style.normal.opacity = 1
-    style: Style = ui_unpack_style(ResolveActiveStyle(
-    ui_pack_style_states(base_style).normal,
-    StyleTextFacts(0, props.class_name, StyleKindText(),
-    text_state), text_state))
-    requested_font = props.font
-    if requested_font <= 0 {
-        requested_font = StyleFontValue(style.fields,
-        style.font_size)
-    }
-    if (style.fields & StyleTypeface) != 0 {
-        typeface = style.typeface
-    }
-    if (style.fields & StyleLetterSpacing) != 0 {
-        letter_spacing = (int)(style.letter_spacing + 0.5f)
-    }
-    previous_typeface: i32 = PushTextFont(typeface)
-    appearance: TextAppearance = ResolveTextStyle(
-    requested_font, inherited_font, GetFontSize(),
-    ColorToInt(style.foreground), ColorToInt(inherited_color),
-    ColorToInt(GetThemeText()), inherited_color_set,
-    (style.fields & StyleForeground) != 0,
-    props.disabled, inherited_disabled, letter_spacing)
-    font: i32 = appearance.font
-    color: Color = GetColor(Opacity(appearance.color,
-    style.opacity))
-    letter_spacing = appearance.letter_spacing
-    previous_spacing: i32 =
-    ui_set_text_letter_spacing(Scale(letter_spacing))
-    props.wrap = (TextWrap)TextWrapPolicy(bounds.width, props.wrap)
-    measured_width: f32 = 0
-    if !bounded { measured_width = (float)TextWidth(value, font) }
-    bounds.width = TextExtent(bounds.width, measured_width)
-    measured_height: f32 = 0
-    if bounds.height <= 0 {
-        if bounded && props.wrap == TextWrapAuto {
-            paragraph: ParagraphSpec = (ParagraphSpec){0}
-            paragraph.text = value
-            paragraph.width = (int)bounds.width
-            paragraph.font = font
-            paragraph.line_gap = ParagraphDefaultLineGap(
-            (float)Scale(1000) / 1000.0f)
-            measured_height = (float)ui_paragraph_height(paragraph)
-        } else {
-            measured_height = (float)TextHeight(value, font)
-        }
-    }
-    bounds.height = TextExtent(bounds.height, measured_height)
-    node: NodeId = ui_tree_add(0, WidgetKindText, bounds, nil)
-    if node >= 0 {
-        ui_tree_nodes[node].owned_text = ui_tree_strdup(value)
-        ui_tree_nodes[node].data.primitive.font = font
-        ui_tree_nodes[node].data.primitive.font_token =
-        ui_active_font_token()
-        ui_tree_nodes[node].data.primitive.letter_spacing =
-        letter_spacing
-        ui_tree_nodes[node].data.primitive.strikethrough =
-        props.strikethrough
-        ui_tree_nodes[node].data.primitive.color = color
-        ui_tree_nodes[node].data.primitive.style = style
-        ui_tree_nodes[node].data.primitive.wrap = props.wrap
-        ui_tree_nodes[node].data.primitive.align = props.align
-        ui_tree_nodes[node].data.primitive.vertical_align =
-        props.vertical_align
-        if (style.fields & StyleForeground) == 0 &&
-        inherited_color_set {
-            ui_tree_nodes[node].flags |=
-            TreeNodeFlagInheritForeground
-        }
-        if props.disabled {
-            ui_tree_nodes[node].flags |= TreeNodeFlagTextDisabled
-        }
-        ui_tree_invalid |= INVALIDATE_PAINT
-    }
-    selectable_token: i32 = PushTextSelectable(props.selectable)
-    paint_now: bool = !ui_tree_building
-    if ui_tree_building && IsWindowReady() &&
-    !TreeNodeUsesRetainedLayout(ui_tree_nodes,
-    ui_tree_node_count, node) { paint_now = true }
-    if paint_now {
-        ui_paint_text_box_decorated(value, bounds, font, color,
-        props.wrap, props.align, props.vertical_align,
-        ui_active_font_token(), letter_spacing,
-        props.strikethrough)
-        if ui_tree_building { ui_tree_mark_painted_immediate(node) }
-    }
-    PopTextSelectable(selectable_token)
-    ui_set_text_letter_spacing(previous_spacing)
-    PopTextFont(previous_typeface)
-}
-
-ui_tree_heading :: (value: const char*, bounds: Rectangle,
-font: i32, color: Color, level: i32) #export {
-    if !ui_tree_building && level > 0 {
-        ui_page_semantic_next(SemanticHeading, value,
-        nil, nil, level, -1)
-    }
-    props: TextProps = (TextProps){0}
-    props.bounds = bounds
-    props.text = value
-    props.wrap = TextWrapNone
-    Text(props)
-    if ui_tree_building && ui_tree_node_count > 0 {
-        ui_tree_nodes[ui_tree_node_count - 1].data.primitive.heading_level =
-        level
-    }
+    PaintTextLines(node, props, prepared)
 }

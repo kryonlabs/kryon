@@ -38,6 +38,10 @@ text and accessibility contracts, keyboard accelerator contracts, theme and styl
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
+`Text(TextProps)` now resolves style, measures and wraps words, positions lines,
+and queues text and strikethrough paint from Ziran. The platform provides raw
+byte slices, glyph metrics, and raster text output. Glyph clipping, letter
+spacing, parent style inheritance, and selectable text interaction remain open.
 The checked `Image(ImageProps)` composition now resolves KSS class styles,
 uses asset dimensions or a supplied texture handle, selects source and fit,
 and queues an image command with clip, radius, tint, origin, and rotation.

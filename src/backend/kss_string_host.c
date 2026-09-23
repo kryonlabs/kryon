@@ -7,8 +7,10 @@ slice_string(void *context, const char *module, const char *function,
              const VmHostValue *args, int arg_count, VmHostValue *result)
 {
     (void)context;
-    if(strcmp(module, "kss_parser") != 0 ||
-       strcmp(function, "StringSlice") != 0 || arg_count != 3 ||
+    if(!((strcmp(module, "kss_parser") == 0 &&
+          strcmp(function, "StringSlice") == 0) ||
+         (strcmp(module, "text_widget") == 0 &&
+          strcmp(function, "TextSlice") == 0)) || arg_count != 3 ||
        args[0].kind != VM_HOST_STRING ||
        args[0].type == NULL ||
        strcmp(args[0].type, "string") != 0 ||
@@ -37,4 +39,10 @@ HostBinding
 KssStringSliceBinding(void)
 {
     return (HostBinding){"kss_parser", "StringSlice", slice_string, NULL};
+}
+
+HostBinding
+TextSliceBinding(void)
+{
+    return (HostBinding){"text_widget", "TextSlice", slice_string, NULL};
 }

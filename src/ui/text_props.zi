@@ -102,6 +102,7 @@ TextWrap :: enum {
 }
 
 TextProps :: struct {
+    key: u64
     bounds: Rectangle
     text: string
     font: i32

@@ -36,7 +36,8 @@ interfaces.
 
 The checked modules cover geometry, layout, styling, themes, accessibility,
 focus, input, scroll, canvas transforms, popup policy, and several widget
-measurement and paint decisions. [`modules.txt`](../src/ui/modules.txt) is the
+measurement and paint decisions, including `Text(TextProps)`.
+[`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.
 
@@ -53,6 +54,8 @@ line interface.
 `MeasureGlyphWidthBinding()` and `MeasureGlyphLineHeightBinding()` accept
 font metric callbacks for the checked Progress composition path. Both callbacks
 receive the requested typeface as borrowed UTF-8 bytes.
+`TextSliceBinding()` supplies borrowed byte ranges for checked `Text` line
+composition; the host does not choose wrap points or positions.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
@@ -119,11 +122,17 @@ image raster command through declared host effects. A missing asset paints its
 alt text or the fallback label. The headless software host covers RGBA output;
 broader image materials, accessibility event publication, and concrete
 desktop/browser image hosts still need migration.
-Text fields
-in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
+`Text(TextProps)` is a checked Ziran widget. It resolves KSS text rules,
+measures glyphs, wraps at word boundaries, positions lines with horizontal and
+vertical alignment, paints optional strikethrough, and submits semantic text to
+the retained tree. The host supplies byte slices, glyph metrics, and raw text
+rasterization. The current paint path does not clip glyphs to the bounds,
+apply letter spacing, inherit a parent widget's foreground, or route selectable
+text input; these still need migration.
+Text fields in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
 `FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
-props still contain pointer-based state or collections. Full `Text(TextProps)`,
-remaining widget composition, broader platform rendering and host linking, and downstream
+props still contain pointer-based state or collections. Remaining widget
+composition, broader platform rendering and host linking, and downstream
 application integration are unfinished. Modules outside `modules.txt` may
 still contain syntax or imports from the retired implementation and are not
 supported API yet. See [architecture](ARCHITECTURE.md) and
