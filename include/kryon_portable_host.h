@@ -10,6 +10,14 @@ extern "C" {
 /* Bind Kryon's frame pacing effect to the platform's SetTargetFPS. */
 HostBinding FramePacingBinding(void);
 
+typedef struct CursorPlatform {
+    void (*set_shape)(void *context, int shape);
+    void *context;
+} CursorPlatform;
+
+/* The platform maps the checked shape to its native cursor. */
+HostBinding CursorBinding(CursorPlatform *platform);
+
 /* Byte-range slicing for KSS source text; the result borrows the source. */
 HostBinding KssStringSliceBinding(void);
 

@@ -91,7 +91,7 @@ surface review:
 | `runtime/focus.kry` | Focus ring, activation, tab-direction, and debug overlay geometry policy | `.kry support` |
 | `src/ui/focus.kry` | Focus state, traversal, registration, keyboard activation, and ring drawing | `.kry canonical` |
 | `src/ui/input_capture.kry` | Pointer gesture, press origin, click activation, modal capture, and input clip stacks | `.kry canonical` |
-| `src/ui/cursor.kry` | Cursor intent, priority, and frame reset | `.kry canonical` |
+| `src/ui/cursor.zi` | Cursor shape, widget hint, priority, frame reset, and platform effect decision | checked Ziran |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
 | `src/ui/flow.zi` | Checked Flow row scope and explicit child placement | checked Ziran |
 | `src/ui/layout_widget.zi` | Checked Column, Row, Stack, Group, Screen, and Grid retained scopes | checked Ziran |

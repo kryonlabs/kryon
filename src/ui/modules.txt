@@ -24,6 +24,7 @@ color_picker_props.zi
 color_picker_widget.zi
 composition_input.zi
 control_props.zi
+cursor.zi
 dpi.zi
 drag.zi
 drag_drop.zi

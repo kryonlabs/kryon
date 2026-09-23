@@ -36,12 +36,6 @@ PushInputClip :: (bounds: Rectangle) #extern #export
 PopInputClip :: () #extern #export
 SetModalCapture :: (bounds: Rectangle) #extern #export
 SetTextInputPlatformCallback :: (callback: TextInputPlatformCallback) #extern #export
-SetCursorClickable :: (cursor_clickable: *i32) #extern #export
-SetCursorDisabled :: (cursor_disabled: *i32) #extern #export
-MarkCursor :: (cursor: i32) #extern #export
-MarkClickable :: () #extern #export
-MarkDisabled :: () #extern #export
-GetMouseCursorIntent :: () -> i32 #extern #export
 SetInterfaceIcons :: (gear_icon: Texture2D, x_icon: Texture2D) #extern #export
 HandleClick :: (bounds: Rectangle, disabled: i32, hover: *i32) -> i32 #extern #export
 ReadActivation :: (bounds: Rectangle, id: i32, enabled: bool) -> Activation #extern #export

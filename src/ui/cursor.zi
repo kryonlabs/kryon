@@ -1,0 +1,99 @@
+#module "cursor"
+#import "widget_kind"
+
+# The shape is a UI decision. The platform only applies the selected shape.
+CursorShape :: enum {
+    CursorDefault = 0
+    CursorArrow = 1
+    CursorText = 2
+    CursorCrosshair = 3
+    CursorClickable = 4
+    CursorResizeHorizontal = 5
+    CursorResizeVertical = 6
+    CursorResizeDown = 7
+    CursorResizeUp = 8
+    CursorResizeAll = 9
+    CursorDisabled = 10
+}
+
+CursorFrame :: struct {
+    applied: i32
+    requested: i32
+    priority: i32
+    has_request: bool
+}
+
+CursorDecision :: struct {
+    state: CursorFrame
+    apply: bool
+}
+
+ApplyCursorShape :: (shape: i32) #extern
+
+CursorBeginFrame :: (state: CursorFrame) -> CursorFrame #export {
+    state.requested = state.applied
+    state.priority = 0
+    state.has_request = false
+    return state
+}
+
+CursorPriorityFor :: (shape: i32) -> i32 #export {
+    if shape == (i32)CursorDisabled { return 1 }
+    if shape == (i32)CursorText { return 2 }
+    if shape == (i32)CursorResizeHorizontal ||
+        shape == (i32)CursorResizeVertical ||
+        shape == (i32)CursorResizeDown ||
+        shape == (i32)CursorResizeUp ||
+        shape == (i32)CursorResizeAll { return 4 }
+    if shape == (i32)CursorDefault { return 0 }
+    return 3
+}
+
+CursorShapeForWidget :: (kind: WidgetKind,
+    disabled: bool) -> i32 #export {
+    if disabled { return (i32)CursorDisabled }
+    if kind == (WidgetKind)WidgetKindTextField ||
+        kind == (WidgetKind)WidgetKindTextArea ||
+        kind == (WidgetKind)WidgetKindSelectable {
+        return (i32)CursorText
+    }
+    if kind == (WidgetKind)WidgetKindButton ||
+        kind == (WidgetKind)WidgetKindLink ||
+        kind == (WidgetKind)WidgetKindCheckbox ||
+        kind == (WidgetKind)WidgetKindToggle ||
+        kind == (WidgetKind)WidgetKindRadio ||
+        kind == (WidgetKind)WidgetKindSlider ||
+        kind == (WidgetKind)WidgetKindDropdown ||
+        kind == (WidgetKind)WidgetKindCollapsible ||
+        kind == (WidgetKind)WidgetKindTabBar ||
+        kind == (WidgetKind)WidgetKindColorPicker {
+        return (i32)CursorClickable
+    }
+    return (i32)CursorDefault
+}
+
+CursorRequest :: (state: CursorFrame, shape: i32) -> CursorFrame #export {
+    if shape < (i32)CursorDefault || shape > (i32)CursorDisabled {
+        return state
+    }
+    priority: i32 = CursorPriorityFor(shape)
+    if state.has_request && priority < state.priority { return state }
+    state.requested = shape
+    state.priority = priority
+    state.has_request = true
+    return state
+}
+
+CursorEndFrame :: (state: CursorFrame) -> CursorDecision #export {
+    decision: CursorDecision
+    if !state.has_request { state.requested = (i32)CursorDefault }
+    decision.apply = state.requested != state.applied
+    state.applied = state.requested
+    decision.state = state
+    return decision
+}
+
+CommitCursor :: (decision: CursorDecision) -> CursorFrame #export {
+    if decision.apply { ApplyCursorShape(decision.state.applied) }
+    return decision.state
+}
