@@ -17,6 +17,8 @@ cat > "$work/app.zi" <<'ZI'
 #import "progress_widget"
 #import "style"
 #import "style_sheet"
+#import "tree"
+#import "tree_draw"
 
 Answer :: () -> i32 #export {
     props: ProgressProps
@@ -76,7 +78,10 @@ Answer :: () -> i32 #export {
         faces.fill.value.background != (u32)0x55667788 ||
         faces.label.value.font_size != 14.0 { return 0 }
     InstallStyleRules(rules)
+    props.key = (u64)17
+    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
     Progress(props)
+    if !EndTree() || TreeCount() != 2 { return 0 }
     props.value = 0
     props.label = ""
     rules.count = 0

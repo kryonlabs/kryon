@@ -69,15 +69,17 @@ priority. `InstallStyleRules()` installs the owned table, and the checked
 one-argument `Progress(props)` paints from that table with Ziran-defined
 default faces. Lower-level `PaintProgressFromRules()` still accepts explicit
 defaults and rules. The pointer-backed style loader remains unfinished.
-`TreeStart(screen_key, bounds)` begins a
-portable retained submission, and `TreeFinish()` commits it. During an open
-submission, `Progress(props)` registers a Progress node and paints it.
+`BeginTree(screen_key, bounds)` begins a portable retained submission, and
+`EndTree()` commits and paints it. During an open submission,
+`Progress(props)` registers a Progress node; raster effects are emitted only
+after the tree commits. Outside a tree, `Progress(props)` paints immediately.
 `ProgressProps.key` provides stable identity; zero uses its submission
 position. `TreeCount()` and `TreeNodeAt(index)` inspect committed nodes.
 Identity survives repeated `BundleInstanceRun()` calls, including bounds
-changes. Submission is limited to 1024 nodes; `TreeFinish()` returns false
-and preserves the previous tree if that limit is exceeded. Retained rendering,
-layout, and input routing remain unfinished.
+changes. Submission is limited to 1024 nodes; `EndTree()` returns false,
+preserves the previous tree, and emits no paint effects if that limit is
+exceeded. Only Progress has a portable retained paint path so far; retained
+layout and input routing remain unfinished.
 `BeginStyleRules()` and `ParseStyleRules()` collect checked KSS parser output
 into that table. Parsing stops at `NeedImport` so the caller can use
 `ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.

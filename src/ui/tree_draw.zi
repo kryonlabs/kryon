@@ -1,0 +1,29 @@
+#module "tree_draw"
+#import "geometry"
+#import "progress_widget"
+#import "tree"
+#import "widget_kind"
+
+# Committing and painting are one frame boundary. Raster effects are emitted
+# only after the submitted tree is accepted.
+BeginTree :: (screen_key: u64, bounds: Rectangle) #export {
+    ClearQueuedProgress()
+    TreeStart(screen_key, bounds)
+}
+
+EndTree :: () -> bool #export {
+    if !TreeFinish() {
+        ClearQueuedProgress()
+        return false
+    }
+    index: i32 = 0
+    while index < TreeCount() {
+        node: TreeEntry = TreeNodeAt(index)
+        if node.kind == WidgetKindProgress {
+            PaintQueuedProgress(index, node.bounds)
+        }
+        index += 1
+    }
+    ClearQueuedProgress()
+    return true
+}

@@ -1,24 +1,27 @@
 #include "kryon_portable_host.h"
 
 #include <assert.h>
+#include <string.h>
 
 static int draws;
+static int labels_drawn;
+static int measured;
 
 static int width(void *context, const char *text, size_t length, int font,
                  const char *typeface, size_t typeface_length)
 {
-    (void)context; (void)text; (void)length; (void)font;
-    (void)typeface; (void)typeface_length;
-    assert(0 && "unlabelled Progress measured text");
-    return 0;
+    (void)context; (void)font; (void)typeface; (void)typeface_length;
+    assert(length == 3 && memcmp(text, "25%", length) == 0);
+    measured++;
+    return 20;
 }
 
 static int height(void *context, int font, const char *typeface,
                   size_t typeface_length)
 {
     (void)context; (void)font; (void)typeface; (void)typeface_length;
-    assert(0 && "unlabelled Progress measured a line");
-    return 0;
+    measured++;
+    return 10;
 }
 
 static void fill(void *context, float x, float y, float width_value,
@@ -55,9 +58,10 @@ static void text(void *context, const char *value, size_t length,
                  int x, int y, int font, uint8_t r, uint8_t g,
                  uint8_t b, uint8_t a)
 {
-    (void)context; (void)value; (void)length; (void)x; (void)y;
+    (void)context; (void)x; (void)y;
     (void)font; (void)r; (void)g; (void)b; (void)a;
-    assert(0 && "unlabelled Progress painted text");
+    assert(length == 3 && memcmp(value, "25%", length) == 0);
+    labels_drawn++;
 }
 
 static void run(Bundle *bundle)
@@ -83,9 +87,17 @@ static void run(Bundle *bundle)
     long long value = 0;
     int has_value = 0;
     assert(BundleInstanceRun(instance, &value, &has_value));
-    assert(has_value && value == 1 && draws == 3);
+    assert(has_value && value == 0 && draws == 0 &&
+           labels_drawn == 0 && measured == 0);
     assert(BundleInstanceRun(instance, &value, &has_value));
-    assert(has_value && value == 2 && draws == 6);
+    assert(has_value && value == 1 && draws == 3 &&
+           labels_drawn == 1 && measured == 2);
+    assert(BundleInstanceRun(instance, &value, &has_value));
+    assert(has_value && value == 2 && draws == 6 &&
+           labels_drawn == 2 && measured == 4);
+    assert(BundleInstanceRun(instance, &value, &has_value));
+    assert(has_value && value == 3 && draws == 6 &&
+           labels_drawn == 2 && measured == 4);
     BundleInstanceClose(instance);
 }
 

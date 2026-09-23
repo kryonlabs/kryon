@@ -17,12 +17,21 @@ cat > "$work/app.zi" <<'ZI'
 #import "style"
 #import "style_sheet"
 #import "tree"
+#import "tree_draw"
 #import "widget_kind"
 
 frame_index :: i32 #global
 progress_identity :: i32 #global
 
 Frame :: () -> i32 #export {
+    if frame_index == 1 {
+        if !EndTree() || TreeCount() != 2 ||
+            TreeNodeAt(1).kind != WidgetKindProgress { return -1 }
+        progress_identity = TreeNodeAt(1).identity_generation
+        if progress_identity <= 0 { return -1 }
+        frame_index = 2
+        return 1
+    }
     if frame_index == 0 {
         rules: StyleRules
         rules.count = 2
@@ -49,19 +58,35 @@ Frame :: () -> i32 #export {
     props.min = 0
     props.max = 100
     props.value = 25
+    props.label = "25%"
     props.key = (u64)17
-    TreeStart((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
+    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
     Progress(props)
-    if !TreeFinish() || TreeCount() != 2 ||
-        TreeNodeAt(1).kind != WidgetKindProgress { return -1 }
+    if frame_index == 3 {
+        index: i32 = 0
+        while index < 1023 {
+            TreeSubmit((u64)(index + 100), 0, WidgetKindBox,
+                props.bounds)
+            index += 1
+        }
+        if EndTree() || TreeCount() != 2 ||
+            TreeNodeAt(1).identity_generation != progress_identity {
+            return -1
+        }
+        frame_index = 4
+        return 3
+    }
     if frame_index == 0 {
-        progress_identity = TreeNodeAt(1).identity_generation
-        if progress_identity <= 0 { return -1 }
-    } else if TreeNodeAt(1).identity_generation != progress_identity {
+        frame_index = 1
+        return 0
+    }
+    if !EndTree() || TreeCount() != 2 ||
+        TreeNodeAt(1).kind != WidgetKindProgress ||
+        TreeNodeAt(1).identity_generation != progress_identity {
         return -1
     }
-    frame_index += 1
-    return frame_index
+    frame_index = 3
+    return 2
 }
 ZI
 

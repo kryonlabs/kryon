@@ -54,6 +54,10 @@ TreeEntry :: struct {
     parent_key: u64
     kind: i32
     bounds: Rectangle
+    parent: i32
+    first_child: i32
+    last_child: i32
+    next_sibling: i32
     identity_generation: i32
     matched: bool
 }
@@ -99,7 +103,20 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     }
     entry.kind = kind
     entry.bounds = bounds
+    entry.parent = parent_index
+    entry.first_child = -1
+    entry.last_child = -1
+    entry.next_sibling = -1
     active_tree.submitted[index] = entry
+    if parent_index >= 0 {
+        last: i32 = active_tree.submitted[parent_index].last_child
+        if last < 0 {
+            active_tree.submitted[parent_index].first_child = index
+        } else {
+            active_tree.submitted[last].next_sibling = index
+        }
+        active_tree.submitted[parent_index].last_child = index
+    }
     active_tree.submitted_count += 1
     return index
 }
@@ -159,6 +176,10 @@ TreeFinish :: () -> bool #export {
 
 TreeCount :: () -> i32 #export {
     return active_tree.committed_count
+}
+
+TreeIsBuilding :: () -> bool #export {
+    return active_tree.building
 }
 
 TreeNodeAt :: (index: i32) -> TreeEntry #export {

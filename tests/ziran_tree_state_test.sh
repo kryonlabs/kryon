@@ -19,6 +19,8 @@ Check :: () -> i32 #export {
         return 0
     }
     if !TreeFinish() || TreeCount() != 2 { return 0 }
+    if TreeNodeAt(0).first_child != 1 ||
+        TreeNodeAt(1).parent != 0 { return 0 }
     first: i32 = TreeNodeAt(1).identity_generation
     if first <= 0 { return 0 }
 
@@ -42,6 +44,9 @@ Check :: () -> i32 #export {
     TreeSubmit((u64)17, 0, WidgetKindProgress, bounds)
     TreeSubmit((u64)17, 0, WidgetKindProgress, bounds)
     if !TreeFinish() || TreeCount() != 3 { return 0 }
+    if TreeNodeAt(0).first_child != 1 ||
+        TreeNodeAt(1).next_sibling != 2 ||
+        TreeNodeAt(2).parent != 0 { return 0 }
     if TreeNodeAt(1).identity_generation ==
         TreeNodeAt(2).identity_generation { return 0 }
 
