@@ -71,6 +71,7 @@ progress.zi
 progress_props.zi
 radio.zi
 radio_props.zi
+rows.zi
 scroll.zi
 scroll_props.zi
 segmented_control.zi
