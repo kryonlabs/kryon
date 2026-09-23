@@ -83,7 +83,9 @@ ripple, keyboard focus, and native widget integration remain open.
 The retained input router now admits Slider nodes. `TreeTakeDragAt(index)`
 returns the latest held pointer coordinate, a one-time start marker, and a
 one-time release coordinate for the same stable node identity, including when
-the pointer leaves the hit box. A disabled node clears its pending drag.
+the pointer leaves the hit box. It also returns the pointer's grab offset
+within the pressed node, which stays stable as that node moves. A disabled
+node clears its pending drag.
 The checked `Slider(SliderProps)` returns `{value, changed}` for a continuous
 value, and `DiscreteSlider(DiscreteSliderProps)` returns the same shape with an
 integer value. Both use caller owned values, horizontal or vertical layouts,
@@ -283,7 +285,10 @@ helpers remain available when the caller needs to calculate bounds itself.
 `TreeView(TreeViewProps, []TreeItem)` takes a borrowed item slice and returns
 the selected item id, scroll offset, and whether selection changed. The caller
 stores those returned values between frames and supplies wheel or other scroll
-movement as `scroll_delta`. Each visible row has a retained selectable node;
-partly visible rows are clipped for both paint and pointer input. Unique positive
-item ids preserve row identity when items move. The checked surface currently paints
-rows and the panel; a draggable scrollbar and keyboard navigation remain open.
+movement as `scroll_delta`. When `focused` is true, `navigation` accepts Home,
+End, Up, or Down and reveals the selected row. Each visible row has a retained
+selectable node; partly visible rows are clipped for both paint and pointer
+input. Unique positive item ids preserve row identity when items move. The
+checked surface paints the
+panel, rows, and scrollbar; retained pointer capture controls its draggable
+thumb. A platform host supplies the raw key and wheel observations.

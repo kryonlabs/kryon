@@ -27,6 +27,7 @@ Frame :: () -> i32 #export {
     items[0] = (TreeItem){"First", 0, 1, false, true}
     items[1] = (TreeItem){"Second", 1, 2, true, true}
     items[2] = (TreeItem){"Third", 2, 3, false, true}
+    if phase == 8 { items[1].selectable = false }
     props: TreeViewProps
     props.key = (u64)20
     props.bounds = (Rectangle){10.0, 10.0, 120.0, 48.0}
@@ -39,12 +40,29 @@ Frame :: () -> i32 #export {
         props.disabled = true
         props.scroll_delta = 100
     }
+    if phase == 3 { props.scroll_offset = 0 }
+    if phase >= 6 { props.focused = true }
+    if phase == 6 || phase == 8 {
+        props.navigation = (TreeViewNavigation)TreeViewNavigationUp
+    }
+    if phase == 7 { props.navigation = (TreeViewNavigation)TreeViewNavigationEnd }
+    if phase == 9 {
+        props.navigation = (TreeViewNavigation)TreeViewNavigationHome
+        props.disabled = true
+    }
+    if phase == 10 {
+        props.navigation = (TreeViewNavigation)TreeViewNavigationDown
+    }
+    if phase == 11 {
+        props.navigation = (TreeViewNavigation)TreeViewNavigationHome
+    }
     TreeStart((u64)1, (Rectangle){0.0, 0.0, 160.0, 100.0})
     result: TreeViewResult = TreeView(props, items[0:3])
-    if !TreeFinish() || TreeCount() != 5 || result.node != 1 ||
+    if !TreeFinish() || TreeCount() != 7 || result.node != 1 ||
         TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticTree ||
         TreeNodeAt(3).semantic_kind != (SemanticKind)SemanticTreeItem ||
-        TreeNodeAt(3).semantic_label != "Second" { return -10 }
+        TreeNodeAt(3).semantic_label != "Second" ||
+        TreeNodeAt(6).kind != WidgetKindSlider { return -10 }
     if phase == 0 {
         if result.selected_id != 1 || result.changed ||
             result.scroll_offset != 0 ||
@@ -58,10 +76,41 @@ Frame :: () -> i32 #export {
             TreeNodeAt(2).bounds.y != 10.0 ||
             TreeNodeAt(2).bounds.height != 8.0 ||
             TreeHitAt(20.0, 9.0) != -1 { return -2 }
-    } else {
+    } else if phase == 2 {
         if result.selected_id != 2 || result.changed ||
             result.scroll_offset != 12 ||
             TreeHitAt(20.0, 25.0) != -1 { return -3 }
+    } else if phase == 3 {
+        if result.selected_id != 2 || result.scroll_offset != 0 ||
+            TreeNodeAt(6).bounds.y != 10.0 ||
+            TreeHitAt(126.0, 20.0) != 6 { return -4 }
+        TreePointerUpdate((PointerFrame){126.0, 20.0, true, true, false})
+        TreePointerUpdate((PointerFrame){126.0, 40.0, true, false, false})
+    } else if phase == 4 {
+        if result.selected_id != 2 || result.scroll_offset != 7 ||
+            result.changed { return -5 }
+        TreePointerUpdate((PointerFrame){126.0, 45.0, false, false, true})
+    } else if phase == 5 {
+        if result.selected_id != 2 || result.scroll_offset != 9 ||
+            result.changed { return -6 }
+    } else if phase == 6 {
+        if result.selected_id != 1 || result.scroll_offset != 0 ||
+            !result.changed { return -7 }
+    } else if phase == 7 {
+        if result.selected_id != 3 || result.scroll_offset != 12 ||
+            !result.changed { return -8 }
+    } else if phase == 8 {
+        if result.selected_id != 1 || result.scroll_offset != 0 ||
+            !result.changed { return -9 }
+    } else if phase == 9 {
+        if result.selected_id != 1 || result.scroll_offset != 0 ||
+            result.changed { return -11 }
+    } else if phase == 10 {
+        if result.selected_id != 2 || result.scroll_offset != 0 ||
+            !result.changed { return -12 }
+    } else {
+        if result.selected_id != 1 || result.scroll_offset != 0 ||
+            !result.changed { return -13 }
     }
     PaintFlush()
     selected = result.selected_id
@@ -144,7 +193,7 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
     assert(0);
 }
 int main(void) {
-    for(int phase = 0; phase < 3; phase++) {
+    for(int phase = 0; phase < 12; phase++) {
         assert(Frame() == phase);
         assert(labels == (phase + 1) * 6);
     }
@@ -211,7 +260,7 @@ func TestTreeView(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    for phase := 0; phase < 3; phase++ {
+    for phase := 0; phase < 12; phase++ {
         if App_Frame() != int32(phase) || h.labels != (phase+1)*6 {
             t.Fatal("tree view phase", phase)
         }

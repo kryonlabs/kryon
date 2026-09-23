@@ -40,8 +40,9 @@ Flow row scope and child placement, and Link paint, pointer activation, and
 returned URL effects,
 checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
 automatic placement for zero-positioned children and explicit placement otherwise,
-checked TreeView row composition, selection, scroll values, viewport clipping,
-and semantic row nodes from a caller owned item slice,
+checked TreeView row composition, selection, keyboard navigation, scroll values,
+draggable scrollbar, viewport clipping, and semantic row nodes from a caller
+owned item slice,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

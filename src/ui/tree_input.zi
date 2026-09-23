@@ -21,6 +21,7 @@ PointerState :: struct {
     released_generation: i32
     held_x: float
     held_y: float
+    grab_y: float
     released_x: float
     released_y: float
 }
@@ -31,6 +32,7 @@ PointerDrag :: struct {
     ended: bool
     x: float
     y: float
+    grab_y: float
 }
 
 active_pointer :: PointerState #global
@@ -82,6 +84,7 @@ TreePointerUpdate :: (frame: PointerFrame) -> i32 #export {
                 TreeNodeAt(hit).identity_generation
             active_pointer.pressed_generation =
                 active_pointer.held_generation
+            active_pointer.grab_y = frame.y - TreeNodeAt(hit).bounds.y
         }
     }
     if frame.down && active_pointer.held_generation != 0 {
@@ -138,6 +141,9 @@ TreeTakeDragAt :: (index: i32) -> PointerDrag #export {
         active_pointer.pressed_generation == generation
     drag.ended = generation != 0 &&
         active_pointer.released_generation == generation
+    if drag.active || drag.ended {
+        drag.grab_y = active_pointer.grab_y
+    }
     if drag.active {
         drag.x = active_pointer.held_x
         drag.y = active_pointer.held_y

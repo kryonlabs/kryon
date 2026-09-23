@@ -9,6 +9,14 @@ TreeItem :: struct {
     selectable: bool
 }
 
+TreeViewNavigation :: enum {
+    TreeViewNavigationNone = 0
+    TreeViewNavigationHome = 1
+    TreeViewNavigationEnd = 2
+    TreeViewNavigationUp = 3
+    TreeViewNavigationDown = 4
+}
+
 # Items are a borrowed slice passed to TreeView, not a pointer in this record.
 # The caller stores the returned selection and scroll value between frames.
 TreeViewProps :: struct {
@@ -21,6 +29,8 @@ TreeViewProps :: struct {
     scroll_delta: i32
     row_height: i32
     scale: float
+    focused: bool
+    navigation: TreeViewNavigation
     disabled: bool
 }
 

@@ -95,14 +95,14 @@ int main(int argc, char **argv)
     };
     BundleInstance *instance = BundleInstantiate(bundle, bindings, 7);
     assert(instance != NULL);
-    for(int phase = 0; phase < 3; phase++) {
+    for(int phase = 0; phase < 12; phase++) {
         long long result = -1;
         int has_result = 0;
         assert(BundleInstanceRun(instance, &result, &has_result));
         assert(has_result && result == phase);
         assert(labels == (phase + 1) * 6);
     }
-    assert(fills >= 3);
+    assert(fills >= 6);
     BundleInstanceClose(instance);
     BundleClose(bundle);
     return 0;
