@@ -113,6 +113,34 @@ Answer :: () -> i32 #export {
     return 0
 }
 EOF
+cat > "$work/portable_layout.zi" <<'EOF'
+#module "portable_layout"
+#import "geometry"
+#import "layout"
+#import "group"
+Answer :: () -> i32 #export {
+    centered: CenteredColumnLayout = CenteredColumnFor(800, 600, 50)
+    if centered.x != 100 || centered.width != 600 { return 0 }
+    bounds: Rectangle
+    bounds.x = 10.0
+    bounds.y = 20.0
+    bounds.width = 100.0
+    bounds.height = 60.0
+    metrics: LayoutMetrics = LayoutMetricsFor(bounds, 7, 5)
+    if metrics.content.x != 15.0 || metrics.content.y != 25.0 { return 0 }
+    if metrics.content.width != 90.0 || metrics.content.height != 50.0 { return 0 }
+    scoped: Rectangle = bounds
+    scoped.width = 0.0
+    scoped = LayoutScopeBounds(scoped, 80, 40)
+    if scoped.width != 80.0 || bounds.width != 100.0 { return 0 }
+    policy: GroupPolicy = GroupPolicyFor(bounds, 7, 5)
+    if policy.content.width != 90.0 || policy.gap != 7 { return 0 }
+    screen: Rectangle
+    policy = ScreenGroupPolicyFor(screen, 200, 100, 3, 10)
+    if policy.bounds.width != 200.0 || policy.content.height != 80.0 { return 0 }
+    return 42
+}
+EOF
 
 "$ziran" check --root "$work" "$work/geometry.zi" "$work/layout.zi" \
     "$work/group.zi" "$work/use_layout.zi" "$work/scalar_layout.zi"
@@ -129,6 +157,19 @@ test "$("$ziran" run "$work/scalar-layout.zib")" = 42
     "$work/ir/scalar_layout.zir"
 cmp "$work/scalar-layout.zib" "$work/scalar-layout-ir.zib"
 test "$("$ziran" run "$work/scalar-layout-ir.zib")" = 42
+"$ziran" bundle --root "$work" --entry portable_layout:Answer \
+    -o "$work/portable-layout.zib" "$work/geometry.zi" \
+    "$work/layout.zi" "$work/group.zi" "$work/portable_layout.zi"
+test "$("$ziran" run "$work/portable-layout.zib")" = 42
+"$ziran" ir --root "$work" -o "$work/portable-ir" \
+    "$work/geometry.zi" "$work/layout.zi" "$work/group.zi" \
+    "$work/portable_layout.zi"
+"$ziran" bundle --root "$work" --entry portable_layout:Answer \
+    -o "$work/portable-layout-ir.zib" "$work/portable-ir/geometry.zir" \
+    "$work/portable-ir/layout.zir" "$work/portable-ir/group.zir" \
+    "$work/portable-ir/portable_layout.zir"
+cmp "$work/portable-layout.zib" "$work/portable-layout-ir.zib"
+test "$("$ziran" run "$work/portable-layout-ir.zib")" = 42
 python3 - "$work/scalar-layout.zib" <<'PY'
 from pathlib import Path
 import sys
