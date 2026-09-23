@@ -67,8 +67,13 @@ word starts, and cursor placement from `runtime/text_rows.kry`. The
 saved `.zir` modules in C, C++, Go, and `.zib`.
 `zi/drag.zi` ports drag pointer decisions, geometry, keyboard movement, and
 continuous and discrete value policy. The [drag test](../tests/ziran_drag_test.sh)
-checks source and saved `.zir` builds in C, C++, Go, and `.zib`.
-`make ziran-test` runs the ten migration tests with an adjacent Ziran checkout.
+checks source and saved `.zir` builds in C, C++, Go, and `.zib`. The test
+imports the library through Ziran's general `--module-path` option.
+`zi/swipe_props.zi` and `zi/swipe.zi` port swipe direction, drag, cancellation,
+and release decisions. The [swipe test](../tests/ziran_swipe_test.sh) checks
+those policies from source and saved `.zir` in all four targets, loading the
+library through the same module path.
+`make ziran-test` runs the eleven migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 

@@ -26,6 +26,8 @@ decisions over borrowed text; the host still supplies grapheme boundaries and
 measured prefix widths.
 `zi/drag.zi` provides drag pointer, keyboard, and value policy; hosts supply
 pointer and key samples and render the returned geometry.
+`zi/swipe_props.zi` and `zi/swipe.zi` provide swipe direction, drag, and
+release decisions; hosts own pointer samples and gesture state.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 
