@@ -1,0 +1,163 @@
+#module "radio_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "radio"
+#import "radio_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+RadioDefaultFace :: (role: i32, disabled: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleOpacity | (u32)StyleFontSize
+    face.background = (u32)0x00000000
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0x737373ff
+    face.border_width = 2.0
+    face.opacity = 1.0
+    face.font_size = 14.0
+    if role == RadioMarkRole() {
+        face.background = (u32)0x2563ebff
+        face.foreground = (u32)0xffffffff
+        face.border = (u32)0x2563ebff
+    }
+    if disabled {
+        face.background = Opacity(face.background, 0.45)
+        face.foreground = Opacity(face.foreground, 0.45)
+        face.border = Opacity(face.border, 0.45)
+    }
+    return face
+}
+
+RadioFaceFor :: (rules: StyleRules, props: RadioProps,
+    role: i32, tone: ButtonTone, state: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindRadio(),
+        props.id, props.class_name, role, (i32)tone,
+        (i32)ButtonEmphasisOutline, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(rules,
+        RadioDefaultFace(role, props.disabled), facts, state)
+    return frame
+}
+
+PaintRadioForNode :: (node: i32, props: RadioProps,
+    paint: RadioPaint, label: StyleFrame, font: i32,
+    label_height: i32, hovered: bool, pressed: bool) #export {
+    layer_alpha: i32 = RadioStateLayerAlpha(hovered, pressed, 0.0)
+    if layer_alpha > 0 {
+        layer: Color = ColorFromPacked(paint.ring_color)
+        layer.a = (u8)layer_alpha
+        PaintRoundedFill(node, (Rectangle){
+            paint.center.x - paint.touch * 0.5,
+            paint.center.y - paint.touch * 0.5,
+            paint.touch, paint.touch}, 0.5, 32, layer)
+    }
+    if paint.fill_radius > 0.2 {
+        PaintRoundedFill(node, (Rectangle){
+            paint.center.x - paint.fill_radius,
+            paint.center.y - paint.fill_radius,
+            paint.fill_radius * 2.0, paint.fill_radius * 2.0},
+            0.5, 32, ColorFromPacked(paint.fill_color))
+    }
+    if paint.stroke_width > 0.0 {
+        PaintRoundedOutline(node, paint.mark_bounds, 0.5, 32,
+            paint.stroke_width, ColorFromPacked(paint.ring_color))
+    }
+    if props.label != "" {
+        y: i32 = (i32)(paint.hit_bounds.y +
+            (paint.hit_bounds.height - (float)label_height) * 0.5)
+        PaintClippedLabel(node, props.label, (i32)paint.label_x,
+            y, font, ColorFromPacked(Opacity(paint.label_color,
+                StyleOpacityValue(label.value.fields,
+                    label.value.opacity))), paint.hit_bounds)
+    }
+}
+
+# A Radio reports its id on activation; the caller chooses which option in a
+# group is checked on the next frame. The checked value stays caller-owned.
+Radio :: (props: RadioProps) -> i32 #export {
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    previous: i32 = -1
+    if TreeIsBuilding() && key != (u64)0 {
+        previous = TreeFind(key, TreeRootKey(), WidgetKindRadio)
+    }
+    activated: i32 = RadioActivationFor(props.id,
+        TreeTakeActivationAt(previous), props.disabled)
+    hovered: bool = TreeHoveredAt(previous)
+    pressed: bool = TreePressedAt(previous)
+    state: i32 = ResolveState((i32)ButtonStateAuto, props.disabled,
+        false, pressed, hovered, false, props.checked)
+    rules: StyleRules = ActiveStyleRules()
+    ring: StyleFrame = RadioFaceFor(rules, props, RadioRingRole(),
+        (ButtonTone)ButtonToneNeutral, state)
+    mark: StyleFrame = RadioFaceFor(rules, props, RadioMarkRole(),
+        (ButtonTone)ButtonToneAccent, state)
+    label: StyleFrame = RadioFaceFor(rules, props, RadioLabelRole(),
+        (ButtonTone)ButtonToneNeutral, state)
+    font: i32 = ResolveFont(0,
+        StyleFontValue(label.value.fields, label.value.font_size), 14)
+    label_width: i32 = 0
+    label_height: i32 = 0
+    if props.label != "" {
+        label_width = GlyphWidth(props.label, font, label.value.typeface)
+        label_height = GlyphLineHeight(font, label.value.typeface)
+    }
+    bounds: Rectangle = props.bounds
+    if bounds.height <= 0.0 {
+        bounds.height = (float)RadioTouchSizeForStyle(ring, 1.0)
+    }
+    if bounds.width <= 0.0 {
+        bounds.width = (float)RadioTouchSizeForStyle(ring, 1.0)
+        diameter: float = (float)RadioSizeForStyle(ring, 1.0)
+        if bounds.width < diameter { bounds.width = diameter }
+        if props.label != "" {
+            gap: float = 8.0
+            if (ring.value.fields & (u32)StyleGap) != (u32)0 &&
+                ring.value.gap >= 0.0 {
+                gap = ring.value.gap
+            }
+            bounds.width += gap + (float)label_width
+        }
+    }
+    spec: RadioSpec
+    spec.bounds = bounds
+    spec.checked = props.checked
+    spec.disabled = props.disabled
+    spec.scale = 1.0
+    spec.frame = ring
+    spec.selected = mark
+    paint: RadioPaint = RadioPaintFor(spec)
+    ring_opacity: float = StyleOpacityValue(ring.value.fields,
+        ring.value.opacity)
+    mark_opacity: float = StyleOpacityValue(mark.value.fields,
+        mark.value.opacity)
+    if props.checked {
+        paint.ring_color = Opacity(paint.ring_color, mark_opacity)
+    } else {
+        paint.ring_color = Opacity(paint.ring_color, ring_opacity)
+    }
+    paint.fill_color = Opacity(paint.fill_color, mark_opacity)
+    paint.label_color = label.value.foreground
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmit(key, 0, WidgetKindRadio, paint.hit_bounds)
+        if node < 0 { return activated }
+        TreeSetInteractive(node, props.disabled, false, props.id)
+        TreeSetSelected(node, props.checked)
+        TreeSetLabel(node, props.label)
+    }
+    PaintRadioForNode(node, props, paint, label, font,
+        label_height, hovered && !props.disabled,
+        pressed && !props.disabled)
+    return activated
+}

@@ -67,7 +67,7 @@ RadioTouchSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
         ring.value.padding_x, 40.0, scale, true)
 }
 
-RadioMarkText :: (checked: bool) -> const char* #export {
+RadioMarkText :: (checked: bool) -> string #export {
     if checked { return "◉" }
     return "○"
 }

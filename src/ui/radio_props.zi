@@ -2,6 +2,7 @@
 #import "geometry"
 
 RadioProps :: struct {
+    key: u64
     bounds: Rectangle
     label: string
     id: i32

@@ -52,6 +52,12 @@ state. The caller stores a returned value for the next frame; hosts supply raw
 input, glyph measurements, and raster effects. Keyboard focus and native host
 integration remain open.
 
+The checked `Radio(RadioProps)` returns the activated option id while the
+caller owns the checked value. It resolves KSS Ring, Mark, and Label roles,
+uses retained pointer input, records selected state, and queues ring, fill,
+hover layer, and clipped label paint. Selection animation, ripple, keyboard
+focus, and native host integration remain open.
+
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses
 retained pointer activation, and queues rounded shapes and clipped labels.
@@ -89,8 +95,8 @@ tree or paint queue before committing and emits raster effects only after
 commit; it does not import individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
-The host supplies raw pointer samples. Button, Checkbox, and Toggle use this
-path for retained pointer activation; the router also admits Radio nodes.
+The host supplies raw pointer samples. Button, Checkbox, Toggle, and Radio use
+this path for retained pointer activation.
 Remaining input modes, including keyboard focus and ancestor input clipping,
 still need migration. Other widget submissions and retained layout are also
 incomplete.

@@ -68,6 +68,13 @@ state. Hosts only measure glyphs, rasterize, and provide raw pointer samples.
 The old pointer field is outside the checked API. Keyboard focus, animated
 transitions, material layers, and native widget integration remain open.
 
+The checked `Radio(RadioProps)` returns the activated option id; the caller
+chooses the checked option on the next frame. It resolves KSS Ring, Mark, and
+Label roles, submits a retained interactive node with selected state, and
+queues the ring, fill, hover layer, and clipped label. The host supplies raw
+pointer samples, glyph metrics, and raster effects. Selection animation,
+ripple, keyboard focus, and native widget integration remain open.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.
