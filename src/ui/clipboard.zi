@@ -1,44 +1,77 @@
 #module "clipboard"
 
-CLIPBOARD_BUFFER_SIZE :: 4096
-
-ClipboardBuffer :: struct {
-    text: [4096]char
-    pending: i32
-}
-
+# Clipboard bytes are owned by the caller. The host supplies observations and
+# applies writes; this module selects which value is visible to a widget.
 ClipboardSource :: enum {
-    CLIPBOARD_SOURCE_CLIPBOARD
-    CLIPBOARD_SOURCE_PRIMARY
-    CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD
+    ClipboardSystem = 0
+    ClipboardPrimary = 1
+    ClipboardPrimaryOrSystem = 2
 }
 
-# Host-provided write callbacks. The host writes text to the OSC52 response
-# or paste stream for the terminal identified by userdata. These replace the
-# former raw function-pointer typedefs so generated Go can type the callbacks.
-ClipboardOSC52Write :: (userdata: *void, text: const char*) -> i32 #extern #export
-ClipboardPasteWrite :: (userdata: *void, text: const char*, size: i32) -> i32 #extern #export
+ClipboardState :: struct {
+    system: string
+    primary: string
+    pending_write: bool
+}
 
-SetClipboardTextValue :: (text: const char*) -> i32 #extern #export
-GetClipboardTextValue :: () -> const char* #extern #export
-SetPrimarySelectionTextValue :: (text: const char*) -> i32 #extern #export
-GetPrimarySelectionTextValue :: () -> const char* #extern #export
-ClipboardSourceHasText :: (source: ClipboardSource) -> i32 #extern #export
-GetClipboardSourceText :: (clipboard: const ClipboardBuffer*, source: ClipboardSource) -> const char* #extern #export
-SetPrimarySelectionFromText :: (text: const char*) -> i32 #extern #export
-CopySelectionTextToClipboard :: (clipboard: *ClipboardBuffer, text: const char*) -> i32 #extern #export
-ClipboardTargetIncludes :: (target: const char*, wanted: char) -> i32 #extern #export
-ClipboardTargetUsesPrimary :: (target: const char*) -> i32 #extern #export
-GetClipboardTargetText :: (clipboard: const ClipboardBuffer*, target: const char*) -> const char* #extern #export
-RequestClipboardTargetWrite :: (clipboard: *ClipboardBuffer, target: const char*, text: const char*) -> i32 #extern #export
-HandleClipboardOSC52 :: (clipboard: *ClipboardBuffer, payload: const char*, userdata: *void) -> i32 #extern #export
-WriteClipboardPaste :: (text: const char*, bracketed: i32, userdata: *void) -> i32 #extern #export
-WriteClipboardTextPaste :: (clipboard: *ClipboardBuffer, text: const char*, bracketed: i32, userdata: *void) -> i32 #extern #export
-WriteClipboardSourcePaste :: (clipboard: *ClipboardBuffer, source: ClipboardSource, bracketed: i32, userdata: *void) -> i32 #extern #export
-InitClipboardBuffer :: (buffer: *ClipboardBuffer, text: const char*) #extern #export
-SetClipboardBufferText :: (buffer: *ClipboardBuffer, text: const char*) -> i32 #extern #export
-RequestClipboardBufferWrite :: (buffer: *ClipboardBuffer, text: const char*) -> i32 #extern #export
-GetClipboardBufferText :: (buffer: const ClipboardBuffer*) -> const char* #extern #export
-ClipboardBufferHasPendingWrite :: (buffer: const ClipboardBuffer*) -> i32 #extern #export
-SyncClipboardBufferFromHost :: (buffer: *ClipboardBuffer) -> i32 #extern #export
-FlushClipboardBufferToHost :: (buffer: *ClipboardBuffer) -> i32 #extern #export
+ClipboardWrite :: struct {
+    available: bool
+    text: string
+}
+
+ClipboardSetPrimary :: (state: ClipboardState,
+    text: string) -> ClipboardState #export {
+    state.primary = text
+    return state
+}
+
+ClipboardRequestWrite :: (state: ClipboardState,
+    text: string) -> ClipboardState #export {
+    state.system = text
+    state.pending_write = true
+    return state
+}
+
+ClipboardCopySelection :: (state: ClipboardState,
+    text: string) -> ClipboardState #export {
+    state.primary = text
+    if text.length > 0 {
+        state = ClipboardRequestWrite(state, text)
+    }
+    return state
+}
+
+ClipboardObserve :: (state: ClipboardState,
+    text: string) -> ClipboardState #export {
+    if !state.pending_write { state.system = text }
+    return state
+}
+
+ClipboardPendingWrite :: (state: ClipboardState) -> ClipboardWrite #export {
+    write: ClipboardWrite
+    write.available = state.pending_write
+    if write.available { write.text = state.system }
+    return write
+}
+
+ClipboardWriteCompleted :: (state: ClipboardState) -> ClipboardState #export {
+    state.pending_write = false
+    return state
+}
+
+ClipboardRead :: (state: ClipboardState,
+    source: ClipboardSource) -> string #export {
+    if source == (ClipboardSource)ClipboardPrimary {
+        return state.primary
+    }
+    if source == (ClipboardSource)ClipboardPrimaryOrSystem &&
+        state.primary.length > 0 {
+        return state.primary
+    }
+    return state.system
+}
+
+ClipboardHasText :: (state: ClipboardState,
+    source: ClipboardSource) -> bool #export {
+    return ClipboardRead(state, source).length > 0
+}

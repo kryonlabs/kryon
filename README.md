@@ -30,11 +30,13 @@ contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform
 effect contract.
 See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
+See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
+host effect contract.
 
 ## Migration status
 
 The checked library currently covers geometry, layout, accessibility, focus,
-input and text input policy plus portable text-buffer edits and UTF-8 cursor
+input and text input policy, portable clipboard state, text-buffer edits, and UTF-8 cursor
 boundaries, checked TextField and TextArea composition with caller-owned text
 and edit and clipboard intents, checked composition event decisions and
 TextField/TextArea preedit paint, Ziran/C/Make syntax coloring, canvas

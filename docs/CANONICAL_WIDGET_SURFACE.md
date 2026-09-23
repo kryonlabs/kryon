@@ -187,7 +187,7 @@ surface review:
 
 | `runtime/accelerator.kry` | Accelerator policy module | `.kry canonical` |
 | `runtime/accessibility_node.kry` | Accessibility Node policy module | `.kry canonical` |
-| `runtime/clipboard.kry` | Clipboard policy module | `.kry canonical` |
+| `src/ui/clipboard.zi` | Caller-owned system and primary clipboard values, pending host write, and source selection | checked Ziran |
 | `runtime/tree.kry` | Tree policy module | `.kry canonical` |
 | `src/ui/accessibility.kry` | Accessibility widget host surface | `.kry canonical` |
 | `src/ui/bevel.kry` | Bevel widget host surface | `.kry canonical` |

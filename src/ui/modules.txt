@@ -16,6 +16,7 @@ card_props.zi
 checkbox.zi
 checkbox_props.zi
 checkbox_widget.zi
+clipboard.zi
 collapsible.zi
 collapsible_props.zi
 collapsible_widget.zi
