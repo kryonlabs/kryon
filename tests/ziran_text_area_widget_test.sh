@@ -13,6 +13,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "semantic"
 #import "syntax"
 #import "text_area_widget"
+#import "text_input"
 #import "text_input_props"
 #import "tree"
 #import "tree_draw"
@@ -24,6 +25,7 @@ cursor :: i32 #global
 anchor :: i32 #global
 scroll_y :: i32 #global
 focused :: bool #global
+ime_state :: CompositionState #global
 selecting :: bool #global
 preferred_x :: i32 #global
 preferred_x_valid :: bool #global
@@ -73,6 +75,7 @@ Frame :: () -> i32 #export {
     props.anchor = anchor
     props.scroll_y = scroll_y
     props.focused = focused
+    props.composition = ime_state
     props.selecting = selecting
     props.preferred_x = preferred_x
     props.preferred_x_valid = preferred_x_valid
@@ -134,6 +137,36 @@ Frame :: () -> i32 #export {
         props.input.paste = true
         props.input.paste_text = "XY"
     }
+    if phase == 29 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "é\n"
+        props.input.composition_event.cursor = 1
+        props.input.composition_event.selection_length = 99
+        props.input.text = "X"
+    }
+    if phase == 30 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCommit
+        props.input.composition_event.text = "Z\n"
+        props.input.text = "X"
+    }
+    if phase == 31 {
+        props.read_only = true
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "A"
+    }
+    if phase == 32 || phase == 34 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "B"
+    }
+    if phase == 33 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCancel
+    }
+    if phase == 35 || phase == 36 { props.input.escape = true }
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
     if !EndTree() || result.node != 1 ||
@@ -308,11 +341,48 @@ Frame :: () -> i32 #export {
             result.edit.replacement != "XY" ||
             result.cursor != 2 { return -30 }
         value = "XY"
+    } else if phase == 29 {
+        if !result.composition.active ||
+            result.composition.text != "é\n" ||
+            result.composition.cursor != 0 ||
+            result.composition.selection_length != 3 ||
+            !result.composition_changed ||
+            result.edit.changed { return -31 }
+    } else if phase == 30 {
+        if result.composition.active { return -321 }
+        if !result.edit.changed { return -322 }
+        if result.edit.start != 2 { return -323 }
+        if result.edit.end != 2 { return -324 }
+        if result.edit.replacement != "Z\n" { return -325 }
+        if result.cursor != 4 { return -326 }
+        value = "XYZ\n"
+    } else if phase == 31 {
+        if result.composition.active || result.edit.changed {
+            return -33
+        }
+    } else if phase == 32 {
+        if !result.composition.active ||
+            result.composition.text != "B" {
+            return -34
+        }
+    } else if phase == 33 {
+        if result.composition.active ||
+            !result.composition_changed ||
+            result.edit.changed { return -35 }
+    } else if phase == 34 {
+        if !result.composition.active { return -36 }
+    } else if phase == 35 {
+        if result.composition.active ||
+            !result.composition_changed ||
+            result.escaped || !result.focused { return -37 }
+    } else if phase == 36 {
+        if !result.escaped || result.focused { return -38 }
     }
     cursor = result.cursor
     anchor = result.anchor
     scroll_y = result.scroll_y
     focused = result.focused
+    ime_state = result.composition
     selecting = result.selecting
     preferred_x = result.preferred_x
     preferred_x_valid = result.preferred_x_valid
@@ -396,7 +466,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 29; phase++)
+    for (int phase = 0; phase < 37; phase++)
         assert(Frame() == phase);
     assert(keyword_paint_count > 0);
     assert(composition_paint_count > 0);
@@ -457,7 +527,7 @@ func TestTextArea(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    for phase := int32(0); phase < 29; phase++ {
+    for phase := int32(0); phase < 37; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }

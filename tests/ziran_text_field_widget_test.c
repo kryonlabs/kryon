@@ -2,6 +2,10 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
+
+static int preedit_paint_count;
+static int underline_paint_count;
 
 static int width(void *context, const char *value, size_t length,
                  int font, const char *face, size_t face_length)
@@ -42,6 +46,9 @@ static void shape(void *context, float x, float y, float w, float h,
 {
     (void)context; (void)x; (void)y; (void)w; (void)h;
     (void)radius; (void)segments; (void)r; (void)g; (void)b; (void)a;
+    if (radius == 0.0f && h == 2.0f &&
+        r == 59 && g == 130 && b == 246)
+        underline_paint_count++;
 }
 
 static void outline(void *context, float x, float y, float w, float h,
@@ -65,6 +72,8 @@ static void text(void *context, const char *value, size_t bytes,
 {
     (void)context; (void)value; (void)bytes; (void)x; (void)y;
     (void)font; (void)r; (void)g; (void)b; (void)a;
+    if (bytes == 2 && memcmp(value, "é", 2) == 0)
+        preedit_paint_count++;
 }
 
 static void clipped(void *context, const char *value, size_t bytes,
@@ -100,7 +109,7 @@ int main(int argc, char **argv)
     };
     BundleInstance *instance = BundleInstantiate(bundle, bindings, 11);
     assert(instance != NULL);
-    for (int phase = 0; phase < 18; phase++) {
+    for (int phase = 0; phase < 27; phase++) {
         long long value = -1;
         int has_value = 0;
         assert(BundleInstanceRun(instance, &value, &has_value));
@@ -109,6 +118,8 @@ int main(int argc, char **argv)
                     phase, value);
         assert(has_value && value == phase);
     }
+    assert(preedit_paint_count > 0);
+    assert(underline_paint_count > 0);
     BundleInstanceClose(instance);
     BundleClose(bundle);
     return 0;

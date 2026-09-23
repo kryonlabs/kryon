@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     };
     BundleInstance *instance = BundleInstantiate(bundle, bindings, 11);
     assert(instance != NULL);
-    for (int phase = 0; phase < 29; phase++) {
+    for (int phase = 0; phase < 37; phase++) {
         long long value = -1;
         int has_value = 0;
         assert(BundleInstanceRun(instance, &value, &has_value));

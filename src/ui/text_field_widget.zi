@@ -199,6 +199,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         props.value.length)
     result.scroll_x = props.scroll_x
     result.focused = props.focused
+    result.composition = props.composition
     if props.bounds.width <= 0.0 ||
         props.bounds.height <= 0.0 { return result }
     key: u64 = TextFieldKey(props)
@@ -248,11 +249,28 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         }
         result.cursor = selected
     }
+    composition_state: CompositionState = props.composition
+    if activated || drag.started || drag.active || drag.ended {
+        if composition_state.active {
+            composition_state = (CompositionState){}
+            result.composition_changed = true
+        }
+    }
+    transition: CompositionTransition = CompositionTransitionFor(
+        composition_state, props.input.composition_event,
+        result.focused, props.read_only || props.disabled)
+    result.composition = transition.state
+    result.composition_changed = result.composition_changed ||
+        transition.changed
     if result.focused && !props.disabled {
-        if props.input.select_all {
+        if props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone &&
+            !result.composition.active && props.input.select_all {
             result.anchor = 0
             result.cursor = props.value.length
-        } else {
+        } else if props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone &&
+            !result.composition.active {
             target: i32 = result.cursor
             selection: TextSelectionRange =
                 TextSelectionRangeForLength(result.anchor,
@@ -286,8 +304,18 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
                 result.cursor = state.cursor
             }
         }
-        result.committed = props.input.commit
-        result.escaped = props.input.escape
+        result.committed = props.input.commit &&
+            !result.composition.active &&
+            props.input.composition_event.phase ==
+                (CompositionPhase)CompositionNone
+        if props.input.escape && result.composition.active {
+            result.composition = (CompositionState){}
+            result.composition_changed = true
+        } else {
+            result.escaped = props.input.escape &&
+                props.input.composition_event.phase ==
+                    (CompositionPhase)CompositionNone
+        }
         if result.escaped { result.focused = false }
         command: i32 = 0
         if props.input.copy {
@@ -297,7 +325,21 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         } else if props.input.paste {
             command = TextContextCommandPaste()
         }
-        if command != 0 {
+        if transition.commit {
+            selection: TextSelectionRange = TextSelectionRangeForLength(
+                result.anchor, result.cursor, props.value.length)
+            if TextFieldInputTextAllowed(transition.commit_text) &&
+                TextFieldReplacementAllowed(props, selection.start,
+                    selection.end, transition.commit_text) {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                result.edit.replacement = transition.commit_text
+                result.edit.changed = true
+            }
+        } else if props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone &&
+            !result.composition.active &&
+            !props.input.escape && command != 0 {
             selection: TextSelectionRange = TextSelectionRangeForLength(
                 result.anchor, result.cursor, props.value.length)
             allow_copy: bool = !props.secure &&
@@ -335,7 +377,11 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
                 result.edit.changed = result.edit.end >
                     result.edit.start
             }
-        } else if !props.read_only {
+        } else if !props.read_only &&
+            props.input.composition_event.phase ==
+                (CompositionPhase)CompositionNone &&
+            !result.composition.active &&
+            !props.input.escape {
             result.edit = TextFieldEditFor(props,
                 result.cursor, result.anchor)
         }
@@ -343,7 +389,36 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
             result.cursor = result.edit.start +
                 result.edit.replacement.length
             result.anchor = result.cursor
+            if result.composition.active {
+                result.composition = (CompositionState){}
+                result.composition_changed = true
+            }
         }
+    }
+    composing: bool = result.composition.active &&
+        result.focused && !props.secure
+    composition_prefix: string
+    composition_suffix: string
+    prefix_width: i32 = 0
+    preedit_width: i32 = 0
+    if composing {
+        replacing: TextSelectionRange = TextSelectionRangeForLength(
+            result.anchor, result.cursor, props.value.length)
+        composition_prefix = TextSpan(display, 0,
+            replacing.start)
+        composition_suffix = TextSpan(display, replacing.end,
+            display.length - replacing.end)
+        prefix_width = GlyphWidth(composition_prefix, font,
+            face.value.typeface)
+        preedit_width = GlyphWidth(result.composition.text,
+            font, face.value.typeface)
+        text_width = prefix_width + preedit_width +
+            GlyphWidth(composition_suffix, font,
+                face.value.typeface)
+        scroll = TextFieldScrollFor(props.bounds.x,
+            props.bounds.width, padding_x, text_width,
+            result.scroll_x)
+        result.scroll_x = scroll.scroll
     }
     face = TextFieldFaceFor(props, result.focused)
     display_cursor: i32 = TextFieldDisplayByteFor(props.value,
@@ -351,6 +426,12 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
     cursor_prefix: string = TextSpan(display, 0, display_cursor)
     cursor_text_x: i32 = GlyphWidth(cursor_prefix, font,
         face.value.typeface)
+    if composing {
+        cursor_text_x = prefix_width + GlyphWidth(TextSpan(
+            result.composition.text, 0,
+            result.composition.cursor), font,
+            face.value.typeface)
+    }
     result.scroll_x = TextFieldRevealScroll(result.scroll_x,
         scroll.max_scroll, scroll.clip_width, cursor_text_x,
         padding_x)
@@ -390,7 +471,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         TextFieldClipGuard(scale))
     value_to_paint: string = display
     foreground: u32 = face.value.foreground
-    if value_to_paint == "" {
+    if value_to_paint == "" && !composing {
         value_to_paint = props.placeholder
         foreground = (u32)0x64748bff
     }
@@ -398,7 +479,9 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
         ((i32)bounds.height - line_height) / 2
     selection: TextSelectionRange = TextSelectionRangeForLength(
         result.anchor, result.cursor, props.value.length)
-    if result.focused && selection.has_selection {
+    if result.focused &&
+        ((selection.has_selection && !composing) ||
+        (composing && result.composition.selection_length > 0)) {
         first: i32 = TextFieldDisplayByteFor(props.value,
             display, selection.start, props.secure)
         last: i32 = TextFieldDisplayByteFor(props.value,
@@ -407,6 +490,17 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
             display, 0, first), font, face.value.typeface)
         right: i32 = paint.text_x + GlyphWidth(TextSpan(
             display, 0, last), font, face.value.typeface)
+        if composing {
+            left = paint.text_x + prefix_width +
+                GlyphWidth(TextSpan(result.composition.text,
+                    0, result.composition.cursor),
+                    font, face.value.typeface)
+            right = paint.text_x + prefix_width +
+                GlyphWidth(TextSpan(result.composition.text,
+                    0, result.composition.cursor +
+                        result.composition.selection_length),
+                    font, face.value.typeface)
+        }
         clip_left: i32 = (i32)paint.clip_bounds.x
         clip_right: i32 = (i32)(paint.clip_bounds.x +
             paint.clip_bounds.width)
@@ -421,15 +515,56 @@ TextField :: (props: TextFieldProps) -> TextFieldResult #export {
                     opacity)))
         }
     }
-    if value_to_paint != "" {
+    if composing {
+        foreground = face.value.foreground
+        if composition_prefix != "" {
+            PaintClippedLabel(result.node,
+                composition_prefix, paint.text_x,
+                text_y, font,
+                ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+        }
+        if result.composition.text != "" {
+            PaintClippedLabel(result.node,
+                result.composition.text,
+                paint.text_x + prefix_width,
+                text_y, font,
+                ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+        }
+        if composition_suffix != "" {
+            PaintClippedLabel(result.node,
+                composition_suffix,
+                paint.text_x + prefix_width +
+                    preedit_width,
+                text_y, font,
+                ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+        }
+        stroke: i32 = TextInputStrokeWidth(scale)
+        underline: Rectangle = RectangleIntersection(
+            (Rectangle){(float)(paint.text_x +
+                prefix_width),
+                (float)TextCompositionUnderlineY(
+                    text_y, line_height, stroke),
+                (float)TextCompositionUnderlineEndX(0,
+                    preedit_width, stroke),
+                (float)stroke}, paint.clip_bounds)
+        if underline.width > 0.0 &&
+            underline.height > 0.0 {
+            PaintRoundedFill(result.node, underline,
+                0.0, 1,
+                ColorFromPacked(Opacity(face.value.focus,
+                    opacity)))
+        }
+    } else if value_to_paint != "" {
         PaintClippedLabel(result.node, value_to_paint,
             paint.text_x, text_y, font,
             ColorFromPacked(Opacity(foreground, opacity)),
             paint.clip_bounds)
     }
     if result.focused && !props.disabled {
-        x: i32 = paint.text_x + GlyphWidth(cursor_prefix,
-            font, face.value.typeface)
+        x: i32 = paint.text_x + cursor_text_x
         if x >= (i32)paint.clip_bounds.x &&
             x <= (i32)(paint.clip_bounds.x +
                 paint.clip_bounds.width) {

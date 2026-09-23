@@ -271,6 +271,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         props.value.length)
     result.scroll_y = props.scroll_y
     result.focused = props.focused
+    result.composition = props.composition
     result.selecting = props.selecting
     result.preferred_x = props.preferred_x
     result.preferred_x_valid = props.preferred_x_valid
@@ -366,9 +367,24 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         }
         result.preferred_x_valid = false
     }
+    composition_state: CompositionState = props.composition
+    if activated || drag.started || drag.active || drag.ended {
+        if composition_state.active {
+            composition_state = (CompositionState){}
+            result.composition_changed = true
+        }
+    }
+    transition: CompositionTransition = CompositionTransitionFor(
+        composition_state, props.input.composition_event,
+        result.focused, props.read_only || props.disabled)
+    result.composition = transition.state
+    result.composition_changed = result.composition_changed ||
+        transition.changed
     navigation: bool = false
     if result.focused && !props.disabled &&
-        !props.input.escape {
+        !props.input.escape && !result.composition.active &&
+        props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone {
         if props.input.select_all {
             result.anchor = 0
             result.cursor = props.value.length
@@ -446,7 +462,12 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 }
             }
         }
-        result.committed = props.input.commit
+    }
+    if result.focused && !props.disabled && !props.input.escape {
+        result.committed = props.input.commit &&
+            !result.composition.active &&
+            props.input.composition_event.phase ==
+                (CompositionPhase)CompositionNone
         command: i32 = 0
         if props.input.copy {
             command = TextContextCommandCopy()
@@ -455,7 +476,20 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         } else if props.input.paste {
             command = TextContextCommandPaste()
         }
-        if command != 0 {
+        if transition.commit {
+            selection: TextSelectionRange = TextSelectionRangeForLength(
+                result.anchor, result.cursor, props.value.length)
+            if TextAreaInputTextAllowed(transition.commit_text) &&
+                TextAreaReplacementAllowed(props, selection.start,
+                    selection.end, transition.commit_text) {
+                result.edit.start = selection.start
+                result.edit.end = selection.end
+                result.edit.replacement = transition.commit_text
+                result.edit.changed = true
+            }
+        } else if props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone &&
+            !result.composition.active && command != 0 {
             selection: TextSelectionRange = TextSelectionRangeForLength(
                 result.anchor, result.cursor, props.value.length)
             allow_copy: bool = command != TextContextCommandCut() ||
@@ -485,7 +519,10 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 result.edit.changed = result.edit.end >
                     result.edit.start
             }
-        } else if !props.read_only {
+        } else if !props.read_only &&
+            props.input.composition_event.phase ==
+                (CompositionPhase)CompositionNone &&
+            !result.composition.active {
             result.edit = TextAreaEditFor(props,
                 result.cursor, result.anchor)
         }
@@ -494,9 +531,20 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 result.edit.replacement.length
             result.anchor = result.cursor
             result.preferred_x_valid = false
+            if result.composition.active {
+                result.composition = (CompositionState){}
+                result.composition_changed = true
+            }
         }
     }
-    result.escaped = props.input.escape && result.focused
+    if props.input.escape && result.composition.active {
+        result.composition = (CompositionState){}
+        result.composition_changed = true
+    }
+    result.escaped = props.input.escape && result.focused &&
+        !props.composition.active &&
+        props.input.composition_event.phase ==
+            (CompositionPhase)CompositionNone
     if result.escaped { result.focused = false }
     if props.disabled || props.input.blur { result.focused = false }
     if TextAreaRevealCursorShouldRun(result.focused,

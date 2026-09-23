@@ -1,10 +1,12 @@
 #module "text_input_props"
 #import "geometry"
 #import "syntax"
+#import "text_input"
 
 TextFieldInput :: struct {
     text: string
     paste_text: string
+    composition_event: CompositionEvent
     left: bool
     right: bool
     home: bool
@@ -33,6 +35,7 @@ TextFieldProps :: struct {
     anchor: i32
     scroll_x: i32
     focused: bool
+    composition: CompositionState
     focus_id: i32
     class_name: i32
     scale: float
@@ -59,6 +62,8 @@ TextFieldResult :: struct {
     focused: bool
     committed: bool
     escaped: bool
+    composition: CompositionState
+    composition_changed: bool
     clipboard_write: bool
     clipboard_text: string
     edit: TextFieldEdit
@@ -67,6 +72,7 @@ TextFieldResult :: struct {
 TextAreaInput :: struct {
     text: string
     paste_text: string
+    composition_event: CompositionEvent
     left: bool
     right: bool
     up: bool
@@ -102,6 +108,7 @@ TextAreaProps :: struct {
     anchor: i32
     scroll_y: i32
     focused: bool
+    composition: CompositionState
     selecting: bool
     preferred_x: i32
     preferred_x_valid: bool
@@ -137,6 +144,8 @@ TextAreaResult :: struct {
     preferred_x_valid: bool
     committed: bool
     escaped: bool
+    composition: CompositionState
+    composition_changed: bool
     clipboard_write: bool
     clipboard_text: string
     edit: TextAreaEdit

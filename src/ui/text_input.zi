@@ -4,6 +4,93 @@
 #import "geometry"
 #import "style_sheet"
 
+CompositionPhase :: enum {
+    CompositionNone = 0
+    CompositionStart = 1
+    CompositionUpdate = 2
+    CompositionCommit = 3
+    CompositionCancel = 4
+}
+
+CompositionEvent :: struct {
+    phase: CompositionPhase
+    text: string
+    cursor: i32
+    selection_length: i32
+}
+
+CompositionState :: struct {
+    active: bool
+    # The caller owns these bytes until the next state update or cancel.
+    text: string
+    cursor: i32
+    selection_length: i32
+}
+
+CompositionTransition :: struct {
+    state: CompositionState
+    commit: bool
+    commit_text: string
+    changed: bool
+}
+
+CompositionBoundaryFor :: (value: string,
+    offset: i32) -> i32 #export {
+    offset = TextCursorForLength(offset, value.length)
+    while offset > 0 && offset < value.length &&
+        TextUtf8Continuation(value[offset]) {
+        offset -= 1
+    }
+    return offset
+}
+
+CompositionTransitionFor :: (state: CompositionState,
+    event: CompositionEvent, focused: bool,
+    read_only: bool) -> CompositionTransition #export {
+    transition: CompositionTransition
+    if !focused || read_only {
+        transition.changed = state.active
+        return transition
+    }
+    transition.state = state
+    if event.phase == (CompositionPhase)CompositionNone {
+        return transition
+    }
+    if event.phase == (CompositionPhase)CompositionStart ||
+        event.phase == (CompositionPhase)CompositionUpdate {
+        transition.state.active = true
+        transition.state.text = event.text
+        raw_cursor: i32 = TextCursorForLength(
+            event.cursor, event.text.length)
+        transition.state.cursor = CompositionBoundaryFor(
+            event.text, raw_cursor)
+        end: i32 = event.text.length
+        if event.selection_length <= 0 {
+            end = raw_cursor
+        } else if event.selection_length <
+            event.text.length - raw_cursor {
+            end = raw_cursor + event.selection_length
+        }
+        end = CompositionBoundaryFor(event.text, end)
+        transition.state.selection_length = end -
+            transition.state.cursor
+        transition.changed = true
+        return transition
+    }
+    if event.phase == (CompositionPhase)CompositionCommit {
+        transition.state = (CompositionState){}
+        transition.commit = true
+        transition.commit_text = event.text
+        transition.changed = true
+        return transition
+    }
+    if event.phase == (CompositionPhase)CompositionCancel {
+        transition.state = (CompositionState){}
+        transition.changed = state.active
+    }
+    return transition
+}
+
 TextInputMetrics :: struct {
     font: i32
     padding_x: i32

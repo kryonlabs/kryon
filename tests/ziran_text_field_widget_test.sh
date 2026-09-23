@@ -12,8 +12,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "semantic"
 #import "text_field_widget"
+#import "text_input"
 #import "text_input_props"
 #import "tree"
+#import "tree_draw"
 #import "tree_input"
 
 phase :: i32 #global
@@ -22,6 +24,7 @@ cursor :: i32 #global
 anchor :: i32 #global
 scroll_x :: i32 #global
 focused :: bool #global
+ime_state :: CompositionState #global
 
 Frame :: () -> i32 #export {
     if phase == 0 {
@@ -47,6 +50,7 @@ Frame :: () -> i32 #export {
     props.anchor = anchor
     props.scroll_x = scroll_x
     props.focused = focused
+    props.composition = ime_state
     props.focus_id = 77
     props.max_bytes = 5
     props.max_codepoints = 4
@@ -96,9 +100,45 @@ Frame :: () -> i32 #export {
         props.input.paste = true
         props.input.paste_text = "\n"
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 100.0})
+    if phase == 18 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "é"
+        props.input.composition_event.cursor = 1
+        props.input.composition_event.selection_length = 99
+        props.input.text = "X"
+    }
+    if phase == 19 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionUpdate
+        props.input.composition_event.text = "éx"
+        props.input.composition_event.cursor = 3
+    }
+    if phase == 20 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCommit
+        props.input.composition_event.text = "Q"
+        props.input.text = "X"
+    }
+    if phase == 21 {
+        props.read_only = true
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "A"
+    }
+    if phase == 22 || phase == 24 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionStart
+        props.input.composition_event.text = "B"
+    }
+    if phase == 23 {
+        props.input.composition_event.phase =
+            (CompositionPhase)CompositionCancel
+    }
+    if phase == 25 || phase == 26 { props.input.escape = true }
+    BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 100.0})
     result: TextFieldResult = TextField(props)
-    if !TreeFinish() || result.node != 1 ||
+    if !EndTree() || result.node != 1 ||
         TreeNodeAt(result.node).semantic_label != "Name" ||
         TreeNodeAt(result.node).semantic_kind !=
             (SemanticKind)SemanticTextField { return -20 }
@@ -184,11 +224,66 @@ Frame :: () -> i32 #export {
     } else if phase == 17 {
         if result.clipboard_write || result.edit.changed ||
             result.cursor != 2 { return -18 }
+    } else if phase == 18 {
+        sample: CompositionEvent
+        sample.phase = (CompositionPhase)CompositionUpdate
+        sample.text = "éx"
+        sample.cursor = 1
+        sample.selection_length = 2
+        boundary: CompositionTransition = CompositionTransitionFor(
+            (CompositionState){}, sample, true, false)
+        if boundary.state.cursor != 0 ||
+            boundary.state.selection_length != 3 {
+            return -28
+        }
+        if !result.composition.active ||
+            result.composition.text != "é" ||
+            result.composition.cursor != 0 ||
+            result.composition.selection_length != 2 ||
+            !result.composition_changed ||
+            result.edit.changed { return -19 }
+    } else if phase == 19 {
+        if !result.composition.active ||
+            result.composition.text != "éx" ||
+            result.composition.cursor != 3 ||
+            result.edit.changed { return -20 }
+    } else if phase == 20 {
+        if result.composition.active ||
+            !result.composition_changed ||
+            !result.edit.changed || result.edit.start != 0 ||
+            result.edit.end != 2 ||
+            result.edit.replacement != "Q" ||
+            result.cursor != 1 { return -21 }
+        value = "Q"
+    } else if phase == 21 {
+        if result.composition.active || result.edit.changed {
+            return -22
+        }
+    } else if phase == 22 {
+        if !result.composition.active ||
+            result.composition.text != "B" {
+            return -23
+        }
+    } else if phase == 23 {
+        if result.composition.active ||
+            !result.composition_changed ||
+            result.edit.changed { return -24 }
+    } else if phase == 24 {
+        if !result.composition.active { return -25 }
+    } else if phase == 25 {
+        if result.composition.active ||
+            !result.composition_changed ||
+            result.escaped || !result.focused { return -26 }
+    } else if phase == 26 {
+        if !result.escaped || result.focused {
+            return -27
+        }
     }
     cursor = result.cursor
     anchor = result.anchor
     scroll_x = result.scroll_x
     focused = result.focused
+    ime_state = result.composition
     old: i32 = phase
     phase += 1
     return old
@@ -262,7 +357,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 18; phase++)
+    for (int phase = 0; phase < 27; phase++)
         assert(Frame() == phase);
     return 0;
 }
@@ -286,20 +381,48 @@ for target in c cpp go; do
         cat > "$output/text_field_widget_test.go" <<'GO'
 package ziran
 import "testing"
-type fieldHost struct{}
-func (fieldHost) MeasureGlyphWidth(value string, font int32,
+type fieldHost struct{ preedit, underline int }
+func (*fieldHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
-func (fieldHost) MeasureGlyphLineHeight(font int32,
+func (*fieldHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
-func (fieldHost) TextSlice(source string, start,
+func (*fieldHost) TextSlice(source string, start,
     length int32) string { return source[start:start+length] }
+func (*fieldHost) ImageWidth(path string) int32 { return 0 }
+func (*fieldHost) ImageHeight(path string) int32 { return 0 }
+func (h *fieldHost) RasterRoundedRectangle(bounds Rectangle,
+    radius float32, segments int32, color Color) {
+    if bounds.Height == 2 && color.R == 59 &&
+       color.G == 130 && color.B == 246 { h.underline++ }
+}
+func (*fieldHost) RasterRoundedRectangleOutline(bounds Rectangle,
+    radius float32, segments int32, width float32, color Color) {}
+func (*fieldHost) RasterLine(line Rectangle, color Color) {}
+func (*fieldHost) RasterText(value string, x, y, font int32,
+    color Color) {}
+func (h *fieldHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    if value == "é" { h.preedit++ }
+}
+func (*fieldHost) RasterImage(path string, id uint32,
+    source, destination, clip Rectangle, origin Vector2,
+    rotation, radius float32, tint Color) {}
 func TestTextField(t *testing.T) {
-    SetFontMetricsHost(fieldHost{})
-    SetTextWidgetHost(fieldHost{})
-    for phase := int32(0); phase < 18; phase++ {
+    h := &fieldHost{}
+    SetFontMetricsHost(h)
+    SetTextWidgetHost(h)
+    SetRasterShapeHost(h)
+    SetRasterTextHost(h)
+    SetRasterHost(h)
+    SetPaintQueueHost(h)
+    for phase := int32(0); phase < 27; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }
+    }
+    if h.preedit == 0 || h.underline == 0 {
+        t.Fatalf("preedit paint %d underline %d",
+            h.preedit, h.underline)
     }
 }
 GO
