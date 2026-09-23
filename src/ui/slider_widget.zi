@@ -192,7 +192,8 @@ PaintSliderForNode :: (node: i32, paint: SliderPaint,
 }
 
 SubmitSlider :: (prepared: SliderPrepared, ratio: float,
-    id: i32, label_text: string, disabled: bool) #export {
+    id: i32, label_text: string, semantic_label: string,
+    disabled: bool) #export {
     spec: SliderSpec = prepared.spec
     spec.ratio = ratio
     paint: SliderPaint = SliderPaintFor(spec)
@@ -202,7 +203,8 @@ SubmitSlider :: (prepared: SliderPrepared, ratio: float,
             prepared.layout.bounds)
         if node < 0 { return }
         TreeSetInteractive(node, disabled, false, id)
-        TreeSetLabel(node, label_text)
+        if semantic_label == "" { semantic_label = label_text }
+        TreeSetLabel(node, semantic_label)
     }
     PaintSliderForNode(node, paint, label_text,
         prepared.layout, prepared.label, prepared.font,
@@ -225,7 +227,8 @@ Slider :: (props: SliderProps) -> SliderStep #export {
         result.changed = result.value != props.value
     }
     SubmitSlider(prepared, SliderRatio(result.value,
-        props.min, props.max), props.id, props.label, props.disabled)
+        props.min, props.max), props.id, props.label,
+        props.semantic_label, props.disabled)
     return result
 }
 
@@ -243,6 +246,7 @@ DiscreteSlider :: (props: DiscreteSliderProps) -> SliderDiscreteStep #export {
         result.changed = result.value != props.value
     }
     SubmitSlider(prepared, SliderDiscreteRatio(result.value,
-        props.min, props.max), props.id, props.label, props.disabled)
+        props.min, props.max), props.id, props.label,
+        props.semantic_label, props.disabled)
     return result
 }

@@ -8,6 +8,7 @@ SliderProps :: struct {
     bounds: Rectangle
     id: i32
     label: string
+    semantic_label: string
     value: float
     min: float
     max: float
@@ -21,6 +22,7 @@ DiscreteSliderProps :: struct {
     bounds: Rectangle
     id: i32
     label: string
+    semantic_label: string
     value: i32
     min: i32
     max: i32

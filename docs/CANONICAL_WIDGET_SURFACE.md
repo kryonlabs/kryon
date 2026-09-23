@@ -51,8 +51,8 @@ surface review:
 | `runtime/checkbox_props.kry` | Checkbox props | `.kry canonical` |
 | `runtime/collapsible.kry` | Collapsible metrics/header geometry, pointer, close, keyboard, and open-state policy | `.kry canonical` |
 | `runtime/collapsible_props.kry` | Collapsible props | `.kry canonical` |
-| `runtime/color_picker.kry`, `src/ui/color_picker.kry` | ColorPicker channel, swatch, color, slider composition, and drawing | `.kry canonical` |
-| `runtime/color_picker_props.kry` | ColorPicker props | `.kry canonical` |
+| `src/ui/color_picker.zi`, `src/ui/color_picker_widget.zi` | ColorPicker channel geometry, color conversion, checked Slider composition, and swatch paint | checked Ziran |
+| `src/ui/color_picker_props.zi` | Value based ColorPicker props and result | checked Ziran |
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
 | `runtime/drawing_props.kry` | Shared drawing props and paragraph spec data | `.kry canonical` |
 | `runtime/dropdown.kry` | Dropdown composition, option/index normalization, open/dismiss/commit-close state, popup, row, scrollbar, keyboard intent, navigation, and indicator geometry policy | `.kry canonical` |
@@ -137,8 +137,8 @@ surface review:
 | `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
 | `runtime/separator.kry`, `src/ui/separator.kry` | Separator/Bullet layout, style, and paint | `.kry canonical` |
 | `runtime/separator_props.kry` | Separator props | `.kry canonical` |
-| `runtime/slider.kry` | Slider composition, component/editor/hit layout, text paint geometry, and value/keyboard policy | `.kry canonical` |
-| `runtime/slider_props.kry` | Slider props | `.kry canonical` |
+| `src/ui/slider.zi` | Slider geometry, ratio, value, and cell layout policy | checked Ziran |
+| `src/ui/slider_props.zi` | Scalar and discrete value props with separate visible and semantic labels | checked Ziran |
 | `runtime/spinbox.kry`, `src/ui/spinbox.kry` | Spinbox layout, style, input, value, and drawing | `.kry canonical` |
 | `runtime/spinbox_props.kry` | Spinbox props | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement, sizing, wheel, content-drag decision, thumb drag offset, scrollbar drag/release decision, and ensure-visible policy | `.kry canonical` |
@@ -231,7 +231,7 @@ surface review:
 | `src/ui/scroll.kry` | Scroll widget host surface | `.kry canonical` |
 | `src/ui/segmented_control.kry` | Segmented Control widget host surface | `.kry canonical` |
 | `src/ui/selectable_text.kry` | Selectable Text widget host surface | `.kry canonical` |
-| `src/ui/slider.kry` | Slider widget host surface | `.kry canonical` |
+| `src/ui/slider_widget.zi` | Retained pointer drag, KSS styling, and checked paint | checked Ziran |
 | `src/ui/sprite_sheet.kry` | Sprite Sheet widget host surface | `.kry canonical` |
 | `src/ui/style_builtin_packs.kry` | Style Builtin Packs widget host surface | `.kry canonical` |
 | `src/ui/style_effects.kry` | Style Effects widget host surface | `.kry canonical` |
@@ -367,13 +367,13 @@ has a single place to land.
 | `Link` | `Input` | Link | `src/ui/link.zi`, `src/ui/link_widget.zi` | checked Ziran | Bounds, retained activation, KSS style, paint, and returned URL effect are in Ziran. |
 | `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, keyboard edit-command decisions applied by both immediate and retained trees, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
 | `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry`, `src/ui/dropdown.kry`, `src/ui/dropdown_store.kry` | `.kry canonical` | Option data, KSS styling, trigger and menu paint, input, scrolling, keyboard navigation, retained state, and dismissal are authored in `.kry`. |
-| `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
+| `Slider` | `Input` | Value | `src/ui/slider_widget.zi` | checked Ziran | Scalar float and discrete values return from retained drag; horizontal and vertical layouts use KSS styles. A semantic label can differ from visible text. |
 | `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host samples input and draws; paint/layout and value policy are `.kry`. |
 | `Checkbox` | `Input` | Boolean | `runtime/checkbox.kry`, `src/ui/checkbox.kry` | `.kry-backed` | Input, style, drawing, and value/flag toggles are authored in `.kry`; box, mark, and label roles are KSS-owned. |
 | `Radio` | `Input` | Choice | `runtime/radio.kry`, `src/ui/radio.kry` | `.kry-backed` | Paint, input, animation, and drawing are authored in `.kry`; host retains per-window state in `src/ui/widget_store.kry`. |
 | `Progress` | `Input` | Progress | `runtime/progress.kry`, `src/ui/progress.kry` | `.kry-backed` | Layout, style, and drawing are authored in `.kry`. |
 | `Spinbox` | `Input` | Number | `runtime/spinbox.kry`, `src/ui/spinbox.kry` | `.kry-backed` | Layout, button actions, value formatting, stepping, and drawing are authored in `.kry`. |
-| `ColorPicker` | `Input` | Color | `runtime/color_picker.kry`, `src/ui/color_picker.kry` | `.kry-backed` | Channel layout, color conversion, swatch drawing, and slider composition are authored in `.kry`. |
+| `ColorPicker` | `Input` | Color | `src/ui/color_picker_widget.zi` | checked Ziran | Float channels and changed state return as values; channel Sliders and swatch paint are composed in Ziran. |
 | `SegmentedControl` | `Input` | Segments | `runtime/segmented_control.kry` | `.kry-backed` | Layout, gap, font fallback, wrapping, segment sizing, and selection policy are `.kry`; host keeps label measurement, input sampling, state storage, and button drawing. |
 | `Group` | `Layout` | Container | `src/ui/layout_widget.zi` | checked Ziran | Group scope, bounds, and content are owned by the checked tree. |
 | `Separator` | `Layout` | Divider | `runtime/separator.kry`, `src/ui/separator.kry` | `.kry-backed` | Line, label, bullet style, and rendering are authored in `.kry`. |
@@ -517,7 +517,7 @@ host roles rather than retained nodes.
 | `TextArea` | `.kry canonical` | Metrics, KSS typography defaults, page-navigation, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent policy in `.kry`; raw string storage/memmove/scanning and IME host support remain. |
 | `Dropdown` | `.kry canonical` | Selection control only; `DropdownOption` is generated data for rich options, not a separate widget. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping/selection policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
-| `Slider` | `.kry canonical` | Type/orientation/angle variants, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
+| `Slider` | checked Ziran | Scalar float or discrete value control with horizontal or vertical retained drag and KSS typography. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. `MenuItem`, `MenuGroup`, and `MenuResult` are generated data/result records, not separate widgets. KSS uses `Menu`, `MenuItem`, and `MenuSeparator`; item typography participates in popup sizing; no `MenuBar` selector. |
 | `Toggle` | `.kry canonical` | Boolean switch. |
 | `Checkbox` | `.kry canonical` | Boolean checkbox. |
@@ -553,7 +553,7 @@ host roles rather than retained nodes.
 | `ListBox` | checked Ziran | Single selection and navigation return value state. |
 | `TreeView` | `.kry canonical` | Tree rows/window, marker text, paint geometry, and row-selection decision policy in `.kry`; host keeps state/input. |
 | `TableView` | `.kry canonical` | Table layout, scroll, scrollbar, cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy in `.kry`; host keeps state/input. |
-| `ColorPicker` | `.kry canonical` | Color channel layout/conversion. |
+| `ColorPicker` | checked Ziran | Color channel layout, conversion, and retained Slider composition. |
 | `CanvasGrid` | `.kry canonical` | Canvas grid line policy. |
 
 ## Block Statement Surface
@@ -581,7 +581,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Image` | `.kry canonical` | Block form with `ImageProps`. |
 | `Radio` | `.kry canonical` | Block form with `RadioProps`. |
 | `Progress` | `.kry canonical` | Block form with `ProgressProps`. |
-| `ColorPicker` | `.kry canonical` | Block form with `ColorPickerProps`. |
+| `ColorPicker` | checked Ziran | Block form with value based `ColorPickerProps` and `ColorPickerResult`. |
 | `Separator` | `.kry canonical` | Block form with `SeparatorProps`. |
 | `Spinbox` | `.kry canonical` | Block form with `SpinboxProps`. |
 | `Dropdown` | `.kry canonical` | Block form with `DropdownProps`. |
@@ -658,7 +658,7 @@ should use canonical `.kry` names and blocks.
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | `src/ui/dropdown.kry` owns trigger and menu input, KSS paint, scrolling, navigation, and dismissal; `src/ui/dropdown_store.kry` owns retained state and option strings. |
-| `Slider` | `.kry canonical` | Public props live in `runtime/slider_props.kry`; value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry live in `SliderProps`/`.kry`; generated Go uses `kr.Slider`. |
+| `Slider` | checked Ziran | `slider_props.zi` holds caller-owned scalar values and optional semantic labels; `slider_widget.zi` owns retained drag, style, and paint. Compose multiple Sliders with `SliderCellBoundsFor`. |
 | `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, typed keyboard input, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, step policy, and temp-edit activation live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout, button actions, value formatting, stepping, and drawing are authored in `.kry`. |
@@ -667,7 +667,7 @@ should use canonical `.kry` names and blocks.
 | `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, input, activation, animation, and drawing are authored in `.kry`. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint, input, and toggle are authored in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Public props live in `runtime/progress_props.kry`; prefer one public progress name. |
-| `ColorPicker` | `.kry canonical` | Public props live in `runtime/color_picker_props.kry`; channel layout, swatch paint geometry, and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
+| `ColorPicker` | checked Ziran | `color_picker_props.zi` holds four float channel values and mode. `color_picker_widget.zi` composes retained Sliders and renders the RGB/RGBA swatch; the caller stores the returned values. |
 | `SegmentedControl` | `.kry canonical` | Layout and selection policy are in `.kry`; segment typography and paint are KSS-owned; host handles label measurement, focus/input, state storage, and button drawing. |
 | `LabelTextField` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `TextField`. |
 | `CheckboxRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `Checkbox`. |
@@ -804,7 +804,7 @@ stays prefix-free.
 | `WidgetKindTextField` | `TextField` | `.kry canonical`; metrics, horizontal scroll, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent migrated; raw string storage and IME still host support |
 | `WidgetKindTextArea` | `TextArea` | `.kry canonical`; metrics, page rows, paint geometry, buffer-limit, navigation, focus/platform text-input sync, text-buffer mutation/range/bracket policy, selection state, and edit intent migrated; raw string storage and IME still host support |
 | `WidgetKindDropdown` | `Dropdown` | `.kry canonical` |
-| `WidgetKindSlider` | `Slider` | `.kry canonical` |
+| `WidgetKindSlider` | `Slider` | checked Ziran retained drag and paint in `slider_widget.zi` |
 | `WidgetKindToggle` | `Toggle` | `.kry canonical` |
 | `WidgetKindCheckbox` | `Checkbox` | `.kry canonical` |
 | `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection policy is `.kry-backed` |
@@ -837,7 +837,7 @@ stays prefix-free.
 | `WidgetKindCanvasGrid` | `CanvasGrid` | `.kry canonical`; grid line policy lives in `runtime/canvas_grid.kry` |
 | `WidgetKindPanedView` | `PanedView` | `.kry canonical`; split/handle/drag policy lives in `runtime/paned_view.kry` |
 | `WidgetKindCollapsible` | `Collapsible` | `.kry canonical`; header/close/layout and input decision policy lives in `runtime/collapsible.kry` |
-| `WidgetKindColorPicker` | `ColorPicker` | `.kry canonical`; channel/swatch policy lives in `runtime/color_picker.kry` |
+| `WidgetKindColorPicker` | `ColorPicker` | checked Ziran; channel/swatch policy lives in `color_picker.zi`, with retained Slider composition in `color_picker_widget.zi` |
 | `WidgetKindModal` | `Modal` | `.kry canonical`; layout/frame/action policy lives in `runtime/modal.kry` |
 | `WidgetKindToolbar` | `Toolbar` | `.kry canonical`; toolbar, bottom-row layout, and icon slider popup policy lives in `runtime/toolbar.kry` |
 | `WidgetKindMenu` | `Menu` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |

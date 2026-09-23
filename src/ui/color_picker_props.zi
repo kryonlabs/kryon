@@ -2,12 +2,20 @@
 #import "geometry"
 
 ColorPickerProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    label: const char*
-    values: float*
-    value_count: i32
+    label: string
+    values: [4]float
+    channels: i32
+    scale: float
     disabled: bool
     picker: bool
+}
+
+ColorPickerResult :: struct {
+    node: i32
+    values: [4]float
+    changed: bool
 }
