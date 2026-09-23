@@ -42,7 +42,9 @@ The checked `Image(ImageProps)` composition now resolves KSS class styles,
 uses asset dimensions or a supplied texture handle, selects source and fit,
 and queues an image command with clip, radius, tint, origin, and rotation.
 The platform host measures asset dimensions and rasterizes that command;
-concrete desktop and browser adapters remain to be connected.
+`ImageCanvasRasterizer()` is a headless RGBA8 implementation of that contract
+using caller-supplied assets. Concrete desktop and browser adapters remain to
+be connected.
 Progress can also emit its rounded track, fill, border, and text through
 separate generic raster shape and text capabilities. Its checked composition
 module selects the font and positions the label from raw glyph measurements;

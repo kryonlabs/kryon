@@ -56,6 +56,16 @@ receive the requested typeface as borrowed UTF-8 bytes.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
+For a headless RGBA8 target, `include/image_canvas.h` provides `ImageAsset`,
+`ImageCanvas`, and `ImageCanvasRasterizer()`. The caller owns the straight-alpha
+pixel buffers and asset table, then binds the resulting `ImageRasterizer` with
+`ImageWidthBinding()`, `ImageHeightBinding()`, and `RasterImageBinding()`.
+Assets can be found by path or texture ID. The software host applies source
+crop, nearest-neighbor scaling, clip, rounded corners, rotation, and tint.
+Link it with `libkryon_host.a` and `-lm`; the
+[`ziran_image_canvas_test.sh`](../tests/ziran_image_canvas_test.sh) example runs
+the same widget from source and saved `.zir` bundles into an in-memory canvas.
+
 ## Migration boundary
 
 This library currently covers selected widget policy and line rendering.
@@ -106,8 +116,9 @@ a supplied texture handle, resolves class styles, chooses source and fit,
 queues a clipped and optionally rounded image draw, and retains semantic alt
 text on its node. The platform supplies asset dimensions and executes the raw
 image raster command through declared host effects. A missing asset paints its
-alt text or the fallback label. Broader image materials, accessibility event
-publication, and concrete desktop/browser image hosts still need migration.
+alt text or the fallback label. The headless software host covers RGBA output;
+broader image materials, accessibility event publication, and concrete
+desktop/browser image hosts still need migration.
 Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
 `FieldsetProps`, `ProgressProps`, and `RouterRoute` now use Ziran strings. Other
