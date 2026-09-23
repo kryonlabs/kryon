@@ -18,7 +18,8 @@ source and target decisions. `zi/theme.zi` provides theme policy, palette,
 scheme, and metrics. `zi/popup_policy.zi` provides popup lifecycle decisions
 using `zi/geometry.zi` for rectangle and point values. `zi/popup_ownership.zi`
 provides popup order, ancestry, capture, retirement, and focus decisions.
-They are tested as ordinary imported modules.
+`zi/transition.zi` provides transition timing and fade decisions. These are
+tested as ordinary imported modules.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 

@@ -52,7 +52,10 @@ and keyboard decisions with ordinary imports from `zi/geometry.zi`. The
 focus decisions. The [ownership test](../tests/ziran_popup_ownership_test.sh)
 checks full-range `u64` identities in source and saved `.zir` builds across
 C, C++, Go, and portable `.zib`.
-`make ziran-test` runs the six migration tests with an adjacent Ziran checkout.
+`zi/transition.zi` ports transition timing and fade policy. The
+[transition test](../tests/ziran_transition_test.sh) checks its phase and
+alpha decisions across the same targets.
+`make ziran-test` runs the seven migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 

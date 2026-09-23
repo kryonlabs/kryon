@@ -606,6 +606,7 @@ ziran-test:
 	sh tests/ziran_theme_test.sh
 	sh tests/ziran_popup_policy_test.sh
 	sh tests/ziran_popup_ownership_test.sh
+	sh tests/ziran_transition_test.sh
 
 spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
