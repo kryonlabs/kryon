@@ -1,182 +1,152 @@
 #module "locale_policy"
 
-#import "ui_locale_props.generated.h"
-#import <stdio.h>
-#import <string.h>
+# Locale catalogs own their strings. Policy only reads caller-owned slices;
+# loading files and applying a chosen locale belong to the host or app.
+LocaleEntry :: struct {
+    key: string
+    value: string
+}
 
-LocaleStoreLanguage :: (code: const char*, label: const char*) #extern
+LocaleLanguage :: struct {
+    code: string
+    label: string
+}
 
-LocaleRequestedCode :: (code: const char*) -> const char* #export {
-    if code == nil || code[0] == '\0' {
-        return "en"
-    }
+LocaleCode :: struct {
+    bytes: [32]u8
+    length: i32
+}
+
+LocaleRequestedCode :: (code: string) -> string #export {
+    if code.length == 0 { return "en" }
     return code
 }
 
-LocaleContainsCode :: (languages: const LocaleLanguage*,
-language_count: size_t, code: const char*) -> int #export {
-    if code == nil {
-        return 0
+LocaleContainsCode :: (languages: []LocaleLanguage,
+    code: string) -> bool #export {
+    index: i32 = 0
+    while index < languages.length {
+        if languages[index].code == code { return true }
+        index += 1
     }
-    index: size_t = 0
-    while index < language_count {
-        if strcmp(languages[index].code, code) == 0 {
-            return 1
-        }
-        index++
-    }
-    return 0
+    return false
 }
 
-LocaleEnsureEnglish :: (languages: const LocaleLanguage*,
-language_count: size_t) #export {
-    index: size_t = 0
-    while index < language_count {
-        if languages[index].code != nil &&
-           strcmp(languages[index].code, "en") == 0 {
-            return
-        }
-        index++
-    }
-    LocaleStoreLanguage("en", "English")
+LocaleHasEnglish :: (languages: []LocaleLanguage) -> bool #export {
+    return LocaleContainsCode(languages, "en")
 }
 
-LocaleResolveValue :: (active: const LocaleEntry*, active_count: size_t,
-base: const LocaleEntry*, base_count: size_t,
-key: const char*) -> const char* #export {
-    if key == nil { return "" }
-    index: size_t = 0
-    while index < active_count {
-        if strcmp(active[index].key, key) == 0 {
-            return active[index].value
-        }
-        index++
+LocaleResolveValue :: (active: []LocaleEntry, base: []LocaleEntry,
+    key: string) -> string #export {
+    index: i32 = 0
+    while index < active.length {
+        if active[index].key == key { return active[index].value }
+        index += 1
     }
     index = 0
-    while index < base_count {
-        if strcmp(base[index].key, key) == 0 {
-            return base[index].value
-        }
-        index++
+    while index < base.length {
+        if base[index].key == key { return base[index].value }
+        index += 1
     }
     return key
 }
 
-locale_preference_separator :: (value: char) -> int #private {
-    return value == ':' || value == ';' || value == ',' ||
-           value == ' ' || value == '\t' || value == '\r' || value == '\n'
+LocaleSeparator :: (byte: u8) -> bool {
+    return byte == 58 || byte == 59 || byte == 44 || byte == 32 ||
+        byte == 9 || byte == 13 || byte == 10
 }
 
-locale_ascii_lower :: (value: char) -> char #private {
-    if value >= 'A' && value <= 'Z' {
-        return (char)(value + ('a' - 'A'))
-    }
-    return value
+LocaleLower :: (byte: u8) -> u8 {
+    if byte >= 65 && byte <= 90 { return byte + (u8)32 }
+    return byte
 }
 
-locale_normalize_candidate :: (source: const char*, source_length: size_t,
-out: char*, out_size: size_t) -> int #private {
-    if source == nil || out == nil || out_size == 0 { return 0 }
-    used: size_t = 0
-    saw_alnum: int = 0
-    last_separator: int = 0
-    index: size_t = 0
-    while index < source_length && source[index] != '\0' {
-        value: char = source[index]
-        if value == '.' || value == '@' || value == '%' { break }
-        if (value >= 'A' && value <= 'Z') ||
-           (value >= 'a' && value <= 'z') ||
-           (value >= '0' && value <= '9') {
-            if used + 1 >= out_size { break }
-            out[used] = locale_ascii_lower(value)
-            used++
-            saw_alnum = 1
-            last_separator = 0
-            index++
-            continue
-        }
-        if value == '-' || value == '_' {
-            if used == 0 || last_separator != 0 {
-                index++
-                continue
+LocaleNormalize :: (text: string, start: i32, end: i32) -> LocaleCode {
+    result: LocaleCode
+    if start < 0 || end < start || end > text.length { return result }
+    index: i32 = start
+    last_separator: bool = false
+    while index < end {
+        byte: u8 = text[index]
+        if byte == 46 || byte == 64 || byte == 37 { break }
+        if (byte >= 65 && byte <= 90) ||
+            (byte >= 97 && byte <= 122) ||
+            (byte >= 48 && byte <= 57) {
+            if result.length >= 31 { break }
+            result.bytes[result.length] = LocaleLower(byte)
+            result.length += 1
+            last_separator = false
+        } else if byte == 45 || byte == 95 {
+            if result.length > 0 && !last_separator {
+                if result.length >= 31 { break }
+                result.bytes[result.length] = 45
+                result.length += 1
+                last_separator = true
             }
-            if used + 1 >= out_size { break }
-            out[used] = '-'
-            used++
-            last_separator = 1
         }
-        index++
+        index += 1
     }
-    while used > 0 && out[used - 1] == '-' { used-- }
-    out[used] = '\0'
-    if saw_alnum == 0 || strcmp(out, "c") == 0 ||
-       strcmp(out, "posix") == 0 {
-        return 0
+    if result.length > 0 && result.bytes[result.length - 1] == 45 {
+        result.length -= 1
     }
-    return used > 0 ? 1 : 0
+    if result.length == 1 && result.bytes[0] == 99 {
+        result.length = 0
+    }
+    if result.length == 5 && result.bytes[0] == 112 &&
+        result.bytes[1] == 111 && result.bytes[2] == 115 &&
+        result.bytes[3] == 105 && result.bytes[4] == 120 {
+        result.length = 0
+    }
+    return result
 }
 
-locale_code_matches :: (code: const char*, normalized: const char*) -> int #private {
-    if code == nil || normalized == nil { return 0 }
-    norm_code: [32]char
-    if !locale_normalize_candidate(code, strlen(code),
-                                   norm_code, sizeof(norm_code)) {
-        return 0
+LocaleCodeEqual :: (left: LocaleCode, right: LocaleCode) -> bool {
+    if left.length == 0 || left.length != right.length { return false }
+    index: i32 = 0
+    while index < left.length {
+        if left.bytes[index] != right.bytes[index] { return false }
+        index += 1
     }
-    return strcmp(norm_code, normalized) == 0 ? 1 : 0
+    return true
 }
 
-locale_find_supported_code :: (languages: const LocaleLanguage*,
-language_count: size_t, candidate: const char*) -> const char* #private {
-    if candidate == nil { return nil }
-    normalized: [32]char
-    base: [32]char
-    if !locale_normalize_candidate(candidate, strlen(candidate),
-                                   normalized, sizeof(normalized)) {
-        return nil
+LocaleFindNormalized :: (languages: []LocaleLanguage,
+    candidate: LocaleCode) -> string {
+    if candidate.length == 0 { return "" }
+    index: i32 = 0
+    while index < languages.length {
+        language: string = languages[index].code
+        code: LocaleCode = LocaleNormalize(language, 0, language.length)
+        if LocaleCodeEqual(code, candidate) { return language }
+        index += 1
     }
-    index: size_t = 0
-    while index < language_count {
-        if locale_code_matches(languages[index].code, normalized) {
-            return languages[index].code
-        }
-        index++
-    }
-    snprintf(base, sizeof(base), "%s", normalized)
-    dash: char* = strchr(base, '-')
-    if dash != nil { *dash = '\0' }
-    if base[0] == '\0' { return nil }
-    index = 0
-    while index < language_count {
-        if locale_code_matches(languages[index].code, base) {
-            return languages[index].code
-        }
-        index++
-    }
-    return nil
+    return ""
 }
 
-LocalePreferredCode :: (languages: const LocaleLanguage*,
-language_count: size_t, preferences: const char*) -> const char* #export {
-    if preferences == nil || preferences[0] == '\0' { return "en" }
-    cursor: const char* = preferences
-    while *cursor != '\0' {
-        while locale_preference_separator(*cursor) { cursor++ }
-        start: const char* = cursor
-        while *cursor != '\0' && !locale_preference_separator(*cursor) {
-            cursor++
+LocalePreferredCode :: (languages: []LocaleLanguage,
+    preferences: string) -> string #export {
+    cursor: i32 = 0
+    while cursor < preferences.length {
+        while cursor < preferences.length &&
+            LocaleSeparator(preferences[cursor]) { cursor += 1 }
+        start: i32 = cursor
+        while cursor < preferences.length &&
+            !LocaleSeparator(preferences[cursor]) { cursor += 1 }
+        if cursor == start { continue }
+        end: i32 = cursor
+        if end - start > 63 { end = start + 63 }
+        candidate: LocaleCode = LocaleNormalize(preferences, start, end)
+        found: string = LocaleFindNormalized(languages, candidate)
+        if found.length > 0 { return found }
+        index: i32 = 0
+        while index < candidate.length && candidate.bytes[index] != 45 {
+            index += 1
         }
-        length: size_t = (size_t)(cursor - start)
-        if length == 0 { continue }
-        candidate: [64]char
-        if length >= sizeof(candidate) {
-            length = sizeof(candidate) - 1
+        if index < candidate.length {
+            candidate.length = index
+            found = LocaleFindNormalized(languages, candidate)
+            if found.length > 0 { return found }
         }
-        memcpy(candidate, start, length)
-        candidate[length] = '\0'
-        code: const char* = locale_find_supported_code(
-            languages, language_count, candidate)
-        if code != nil { return code }
     }
     return "en"
 }

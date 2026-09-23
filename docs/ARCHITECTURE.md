@@ -85,6 +85,10 @@ per-item-mask filtering, first-unused selection, moving, and stack transitions.
 Applications keep route arrays and occupied counts; Ziran slices carry their
 capacity, and no C callback or route storage pointer crosses the API.
 
+The checked `locale_policy.zi` module keeps locale matching and catalog
+fallback in Ziran. Catalog storage and platform preference discovery stay
+outside the module; ordinary slices and strings cross its API.
+
 The checked `Toggle(ToggleProps)` composes plain and labeled switches from
 portable values. It resolves track, fill, label, and thumb KSS styles, uses
 retained pointer activation, and queues rounded shapes and clipped labels.
