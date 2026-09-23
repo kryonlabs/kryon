@@ -13,6 +13,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "button_widget"
 #import "control_props"
 #import "geometry"
+#import "image_props"
 #import "style"
 #import "style_sheet"
 #import "tree"
@@ -61,6 +62,16 @@ Frame :: () -> i32 #export {
         phase = 2
         return 42
     }
+    if phase == 3 {
+        props.image.asset_path = "badge.png"
+        props.image.fit = (ImageFit)ImageFitContain
+        props.icon_placement = (IconPlacement)IconPlacementTrailing
+        BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+        if Button(props) != 0 || !EndTree() ||
+            TreeNodeAt(1).semantic_label != "Run" { return -4 }
+        phase = 4
+        return 44
+    }
     props.disabled = true
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
     clicked: i32 = Button(props)
@@ -100,7 +111,15 @@ cat > "$work/native_main.h" <<'C'
 #include <string.h>
 #define HOST
 #endif
-static int fills, labels;
+static int fills, labels, images;
+HOST int32_t ImageWidth(String path) {
+    assert(path.length == 9 && memcmp(path.data, "badge.png", 9) == 0);
+    return 32;
+}
+HOST int32_t ImageHeight(String path) {
+    assert(path.length == 9 && memcmp(path.data, "badge.png", 9) == 0);
+    return 16;
+}
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String typeface) {
     assert(value.length == 3 && memcmp(value.data, "Run", 3) == 0);
@@ -134,7 +153,7 @@ HOST void RasterText(String value, int32_t x, int32_t y,
 HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     int32_t font, Color color, Rectangle clip) {
     assert(value.length == 3 && memcmp(value.data, "Run", 3) == 0);
-    assert(x == 39 && y == 29 && font == 14);
+    assert(x == (images == 0 ? 39 : 26) && y == 29 && font == 14);
     assert(clip.x == 10 && clip.y == 20 &&
            clip.width == 80 && clip.height == 30);
     assert(color.r == 0xaa && color.g == 0xbb &&
@@ -148,14 +167,23 @@ HOST void RasterLine(Rectangle line, Color color) {
 HOST void RasterImage(String path, uint32_t id, Rectangle source,
     Rectangle destination, Rectangle clip, Vector2 origin,
     float rotation, float radius, Color tint) {
-    (void)path; (void)id; (void)source; (void)destination;
-    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
-    assert(0 && "unexpected image");
+    assert(path.length == 9 && memcmp(path.data, "badge.png", 9) == 0);
+    assert(id == 0 && source.x == 0 && source.y == 0 &&
+           source.width == 32 && source.height == 16);
+    assert(destination.x == 55.5f && destination.y == 30.5f &&
+           destination.width == 18 && destination.height == 9);
+    assert(clip.x == 10 && clip.y == 20 &&
+           clip.width == 80 && clip.height == 30);
+    assert(origin.x == 0 && origin.y == 0 && rotation == 0 && radius == 4);
+    assert(tint.r == 255 && tint.g == 255 &&
+           tint.b == 255 && tint.a == 127);
+    images++;
 }
 int main(void) {
     assert(Frame() == 0 && fills == 1 && labels == 1);
     assert(Frame() == 42 && fills == 2 && labels == 2);
     assert(Frame() == 43 && fills == 3 && labels == 3);
+    assert(Frame() == 44 && fills == 4 && labels == 4 && images == 1);
     return 0;
 }
 C
@@ -178,7 +206,15 @@ for target in c cpp go; do
         cat > "$output/button_widget_test.go" <<'GO'
 package ziran
 import "testing"
-type buttonTestHost struct { t *testing.T; fills, labels int }
+type buttonTestHost struct { t *testing.T; fills, labels, images int }
+func (h *buttonTestHost) ImageWidth(path string) int32 {
+    if path != "badge.png" { h.t.Fatal("button image width") }
+    return 32
+}
+func (h *buttonTestHost) ImageHeight(path string) int32 {
+    if path != "badge.png" { h.t.Fatal("button image height") }
+    return 16
+}
 func (h *buttonTestHost) MeasureGlyphWidth(value string, font int32,
     typeface string) int32 {
     if value != "Run" || font != 14 || typeface != "" {
@@ -207,7 +243,9 @@ func (h *buttonTestHost) RasterText(value string, x, y, font int32,
     color Color) { h.t.Fatal("unclipped button label") }
 func (h *buttonTestHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
-    if value != "Run" || x != 39 || y != 29 || font != 14 ||
+    expectedX := int32(39)
+    if h.images != 0 { expectedX = 26 }
+    if value != "Run" || x != expectedX || y != 29 || font != 14 ||
        clip.X != 10 || clip.Y != 20 ||
        clip.Width != 80 || clip.Height != 30 ||
        color.R != 0xaa || color.G != 0xbb ||
@@ -220,7 +258,17 @@ func (h *buttonTestHost) RasterLine(line Rectangle, color Color) {
 func (h *buttonTestHost) RasterImage(path string, id uint32,
     source, destination, clip Rectangle, origin Vector2,
     rotation, radius float32, tint Color) {
-    h.t.Fatal("unexpected image")
+    if path != "badge.png" || id != 0 ||
+       source.X != 0 || source.Y != 0 ||
+       source.Width != 32 || source.Height != 16 ||
+       destination.X != 55.5 || destination.Y != 30.5 ||
+       destination.Width != 18 || destination.Height != 9 ||
+       clip.X != 10 || clip.Y != 20 ||
+       clip.Width != 80 || clip.Height != 30 ||
+       origin.X != 0 || origin.Y != 0 || rotation != 0 || radius != 4 ||
+       tint.R != 255 || tint.G != 255 ||
+       tint.B != 255 || tint.A != 127 { h.t.Fatal("button image") }
+    h.images++
 }
 func TestButtonWidget(t *testing.T) {
     h := &buttonTestHost{t: t}
@@ -229,6 +277,7 @@ func TestButtonWidget(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
+    SetImageRasterHost(h)
     if App_Frame() != 0 || h.fills != 1 || h.labels != 1 {
         t.Fatal("first frame")
     }
@@ -237,6 +286,9 @@ func TestButtonWidget(t *testing.T) {
     }
     if App_Frame() != 43 || h.fills != 3 || h.labels != 3 {
         t.Fatal("disabled")
+    }
+    if App_Frame() != 44 || h.fills != 4 || h.labels != 4 || h.images != 1 {
+        t.Fatal("image")
     }
 }
 GO

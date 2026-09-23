@@ -3,7 +3,17 @@
 #include <assert.h>
 #include <string.h>
 
-static int fills, labels;
+static int fills, labels, images;
+
+static int image_size(void *context, const char *path, size_t length,
+                      int *width, int *height)
+{
+    (void)context;
+    assert(length == 9 && memcmp(path, "badge.png", length) == 0);
+    *width = 32;
+    *height = 16;
+    return 1;
+}
 
 static int width(void *context, const char *value, size_t length,
                  int font, const char *typeface, size_t typeface_length)
@@ -39,7 +49,7 @@ static void text(void *context, const char *value, size_t length,
 {
     (void)context;
     assert(length == 3 && memcmp(value, "Run", 3) == 0);
-    assert(x == 39 && y == 29 && font == 14);
+    assert(x == (images == 0 ? 39 : 26) && y == 29 && font == 14);
     assert(clip[0] == 10 && clip[1] == 20 &&
            clip[2] == 80 && clip[3] == 30);
     assert(r == 0xaa && g == 0xbb && b == 0xcc && a == 127);
@@ -76,7 +86,7 @@ static void unexpected_text(void *context, const char *value,
     assert(0 && "Button should clip its label");
 }
 
-static void unexpected_image(void *context, const char *path,
+static void draw_image(void *context, const char *path,
                              size_t length, uint32_t texture_id,
                              const float source[4],
                              const float destination[4],
@@ -84,10 +94,19 @@ static void unexpected_image(void *context, const char *path,
                              float rotation, float radius,
                              const uint8_t tint[4])
 {
-    (void)context; (void)path; (void)length; (void)texture_id;
-    (void)source; (void)destination; (void)clip; (void)origin;
-    (void)rotation; (void)radius; (void)tint;
-    assert(0 && "Button should not draw an image");
+    (void)context;
+    assert(length == 9 && memcmp(path, "badge.png", length) == 0);
+    assert(texture_id == 0 && source[0] == 0 && source[1] == 0 &&
+           source[2] == 32 && source[3] == 16);
+    assert(destination[0] == 55.5f && destination[1] == 30.5f &&
+           destination[2] == 18 && destination[3] == 9);
+    assert(clip[0] == 10 && clip[1] == 20 &&
+           clip[2] == 80 && clip[3] == 30);
+    assert(origin[0] == 0 && origin[1] == 0 &&
+           rotation == 0 && radius == 4);
+    assert(tint[0] == 255 && tint[1] == 255 &&
+           tint[2] == 255 && tint[3] == 127);
+    images++;
 }
 
 int main(int argc, char **argv)
@@ -99,7 +118,7 @@ int main(int argc, char **argv)
     RoundedRectangleRenderer shape = {fill, unexpected_outline, NULL};
     TextRenderer labels_host = {unexpected_text, NULL, text};
     LineRenderer line = {unexpected_line, NULL};
-    ImageRasterizer image = {NULL, unexpected_image, NULL};
+    ImageRasterizer image = {image_size, draw_image, NULL};
     HostBinding bindings[] = {
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
@@ -109,8 +128,10 @@ int main(int argc, char **argv)
         RasterTextClippedBinding(&labels_host),
         RasterLineBinding(&line),
         RasterImageBinding(&image),
+        ImageWidthBinding(&image),
+        ImageHeightBinding(&image),
     };
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 8);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, 10);
     assert(instance != NULL);
     long long result = 0;
     int has_result = 0;
@@ -120,6 +141,9 @@ int main(int argc, char **argv)
     assert(has_result && result == 42 && fills == 2 && labels == 2);
     assert(BundleInstanceRun(instance, &result, &has_result));
     assert(has_result && result == 43 && fills == 3 && labels == 3);
+    assert(BundleInstanceRun(instance, &result, &has_result));
+    assert(has_result && result == 44 && fills == 4 &&
+           labels == 4 && images == 1);
     BundleInstanceClose(instance);
     BundleClose(bundle);
     return 0;

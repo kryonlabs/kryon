@@ -2,6 +2,7 @@
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
+#import "image_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -385,7 +386,9 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float,
     if props.label != "" && !props.icon_only { text_height = (float)font / scale }
     height: float = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)
-    has_icon: bool = disclosure || props.icon.id != (u32)0 || props.icon_type != 0
+    has_icon: bool = disclosure || props.icon.id != (u32)0 ||
+        props.icon_type != 0 || props.image.asset_path != "" ||
+        props.image.texture.id != (u32)0
     content: ContentSize = MeasureContent(height, label_width / scale,
         paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only)
     width: float = ShapeWidth(bounds.width / scale, height, content.width,

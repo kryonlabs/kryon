@@ -38,11 +38,15 @@ The checked modules cover geometry, layout, styling, themes, accessibility,
 focus, input, scroll, canvas transforms, popup policy, and several widget
 measurement and paint decisions, including `Text(TextProps)`.
 The checked `Button(ButtonProps)` path now submits a retained interactive node,
-resolves KSS class and state rules, measures a label, and queues shape and
-clipped text paint. It consumes an activation routed from the previous
+resolves KSS class and state rules, measures a label and optional `ImageProps`
+asset or texture, and queues shape, clipped image, and clipped text paint.
+The image uses the same fit rules as `Image(ImageProps)`; `icon_placement`
+selects its side of the label. It consumes an activation routed from the previous
 committed tree and returns `1` for that frame. The host supplies raw pointer
-samples and glyph/raster callbacks; it does not implement Button state policy.
-This path currently covers the standard text Button. Icon, menu, split,
+samples, glyph and raster callbacks, and asset dimensions when an image path is
+used; it does not implement Button state policy.
+This path currently covers text and image Buttons. Glyph and raw texture icons,
+menu, split,
 loading animation, material layers, keyboard focus, and immediate input still
 need migration. `ButtonProps` has a portable string label and no C pointers;
 menu items and mutable menu state need a separate value-based surface.

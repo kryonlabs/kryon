@@ -5,6 +5,9 @@
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
+#import "image"
+#import "image_props"
+#import "image_widget"
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
@@ -19,7 +22,7 @@ ButtonDefaultFace :: (props: ButtonProps, state: i32) -> StyleData #export {
         (u32)StyleBorder | (u32)StyleRadius |
         (u32)StyleBorderWidth | (u32)StyleOpacity |
         (u32)StylePaddingX | (u32)StylePaddingY |
-        (u32)StyleFontSize
+        (u32)StyleFontSize | (u32)StyleIconSize | (u32)StyleGap
     face.background = (u32)0xe5e7ebff
     face.foreground = (u32)0x111827ff
     face.border = (u32)0x00000000
@@ -65,6 +68,8 @@ ButtonDefaultFace :: (props: ButtonProps, state: i32) -> StyleData #export {
     face.padding_x = 12.0
     face.padding_y = 6.0
     face.font_size = 14.0
+    face.icon_size = 18.0
+    face.gap = 8.0
     return face
 }
 
@@ -101,11 +106,32 @@ PaintButtonForNode :: (node: i32, props: ButtonProps, bounds: Rectangle,
                 face.border_width, border)
         }
     }
+    has_image: bool = props.image.asset_path != "" ||
+        props.image.texture.id != (u32)0
+    content: ButtonContent = ContentLayout(bounds.width, bounds.height,
+        (float)label_width, face.icon_size, face.gap, has_image,
+        props.icon_only,
+        (i32)props.icon_placement == IconPlacementTrailing,
+        face.offset_x, face.offset_y)
+    if has_image && content.icon_size > 0.0 {
+        image: ImageProps = props.image
+        image.bounds = (Rectangle){bounds.x + content.icon_x,
+            bounds.y + content.icon_y, content.icon_size,
+            content.icon_size}
+        texture: Texture2D = ImageTextureFor(image)
+        tint: Color = ColorFromPacked(Opacity((u32)0xffffffff, opacity))
+        plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
+        if plan.draw && tint.a > (u8)0 {
+            PaintImage(node, image.asset_path, image.texture.id,
+                plan.source, plan.destination, bounds, image.origin,
+                image.rotation, radius, plan.tint)
+        }
+    }
     if !props.icon_only && props.label != "" {
-        x: i32 = (i32)(bounds.x +
-            (bounds.width - (float)label_width) * 0.5)
+        x: i32 = (i32)(bounds.x + content.text_x)
         y: i32 = (i32)(bounds.y +
-            (bounds.height - (float)label_height) * 0.5)
+            (bounds.height - (float)label_height) * 0.5 +
+            face.offset_y)
         PaintClippedLabel(node, props.label, x, y, font,
             ColorFromPacked(Opacity(face.foreground, opacity)), bounds)
     }

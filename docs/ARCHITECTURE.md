@@ -39,8 +39,10 @@ portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
 The checked standard `Button(ButtonProps)` composes KSS state styling, label
-measurement, retained pointer activation, and queued shape and clipped text
-paint. Its props are portable values. Icon, menu, split, loading animation,
+measurement, retained pointer activation, and queued shape, clipped image, and
+clipped text paint. `ButtonProps.image` uses portable `ImageProps` asset or
+texture values and Ziran image fit policy. Glyph and raw texture icons, menu,
+split, loading animation,
 material layers, keyboard focus, and immediate input still need migration.
 `Text(TextProps)` now resolves style, measures and wraps words, positions lines,
 and queues clipped text and strikethrough paint from Ziran. The platform
