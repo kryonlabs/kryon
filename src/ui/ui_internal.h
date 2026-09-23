@@ -512,7 +512,6 @@ SidebarAccountHeaderResult RenderSidebarAccountHeader(SidebarAccountHeaderProps 
 ProfileImagePickerResult RenderProfileImagePickerModal(ProfileImagePickerProps modal);
 void RenderReorderHandle(int x, int y, int w, int h, int active);
 void RenderReorderPlaceholder(Rectangle bounds);
-void RenderToast(void);
 void RenderInspectOverlay(void);
 
 /* Internal focus pass hooks. Public frames use BeginInterfaceFrame,

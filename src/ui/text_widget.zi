@@ -19,6 +19,10 @@
 # style, and paint order are decided by this module.
 TextSlice :: (source: string, start: i32, length: i32) -> string #extern
 
+TextSpan :: (source: string, start: i32, length: i32) -> string #export {
+    return TextSlice(source, start, length)
+}
+
 TextFace :: struct {
     value: StyleData
     fallback_font: i32

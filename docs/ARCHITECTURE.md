@@ -45,6 +45,8 @@ draggable scrollbar, viewport clipping, and semantic row nodes from a caller
 owned item slice,
 checked PanedView split state, retained handle drag, pane rectangles, and
 drop zone policy,
+checked Toast lifetime, UTF-8 safe truncation, styled layout, and paint from
+caller owned state and host time observations,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

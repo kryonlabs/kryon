@@ -1,0 +1,171 @@
+#module "toast_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "text_widget"
+#import "toast"
+#import "toast_props"
+#import "tree"
+#import "widget_kind"
+
+ToastDisplay :: struct {
+    prefix: string
+    ellipsis: bool
+    prefix_width: i32
+    width: i32
+}
+
+ToastPrefixBefore :: (message: string, limit: i32) -> i32 #export {
+    if limit > message.length { limit = message.length }
+    if limit <= 0 { return 0 }
+    limit -= 1
+    while limit > 0 &&
+        (message[limit] & (u8)0xc0) == (u8)0x80 {
+        limit -= 1
+    }
+    return limit
+}
+
+ToastDisplayFor :: (message: string, max_width: i32, font: i32,
+    typeface: string) -> ToastDisplay #export {
+    display: ToastDisplay
+    display.prefix = message
+    display.prefix_width = GlyphWidth(message, font, typeface)
+    display.width = display.prefix_width
+    if display.width <= max_width { return display }
+    display.ellipsis = true
+    ellipsis_width: i32 = GlyphWidth("...", font, typeface)
+    limit: i32 = message.length
+    while limit > 0 {
+        limit = ToastPrefixBefore(message, limit)
+        display.prefix = TextSpan(message, 0, limit)
+        display.prefix_width = GlyphWidth(display.prefix, font, typeface)
+        if display.prefix_width + ellipsis_width <= max_width { break }
+    }
+    display.width = display.prefix_width + ellipsis_width
+    return display
+}
+
+ToastSurfaceFace :: (class_name: i32) -> StyleFrame #export {
+    defaults: StyleData
+    defaults.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleBorderWidth | (u32)StyleRadius |
+        (u32)StyleOpacity | (u32)StylePaddingX |
+        (u32)StylePaddingY | (u32)StyleGap
+    defaults.background = (u32)0x27272aff
+    defaults.border = (u32)0x52525bff
+    defaults.border_width = 1.0
+    defaults.radius = 8.0
+    defaults.opacity = 1.0
+    defaults.padding_x = 14.0
+    defaults.padding_y = 10.0
+    defaults.gap = 18.0
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+        ToastSurfaceFactsFor(class_name), ButtonStateNormal)
+    return frame
+}
+
+ToastLabelFace :: (class_name: i32) -> StyleFrame #export {
+    defaults: StyleData
+    defaults.fields = (u32)StyleForeground | (u32)StyleFontSize |
+        (u32)StyleOpacity
+    defaults.foreground = (u32)0xffffffff
+    defaults.font_size = 14.0
+    defaults.opacity = 1.0
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+        ToastLabelFactsFor(class_name), ButtonStateNormal)
+    return frame
+}
+
+# The caller passes the previous result.state on every frame. A nonempty
+# props.message starts or replaces the toast; props.clear removes it.
+Toast :: (props: ToastProps) -> ToastResult #export {
+    result: ToastResult
+    result.node = -1
+    state: ToastState = props.state
+    if props.clear {
+        state = (ToastState){}
+    }
+    if props.message.length > 0 && !props.clear {
+        state.message = props.message
+        state.class_name = props.class_name
+        metrics: ToastMetrics = ToastMetricsFor(props.scale,
+            ToastSurfaceFace(props.class_name))
+        duration: float = ToastDuration((float)props.seconds, metrics)
+        state.until_seconds = props.now_seconds + (double)duration
+    }
+    if state.message.length == 0 ||
+        props.now_seconds >= state.until_seconds {
+        result.state = (ToastState){}
+        return result
+    }
+    result.state = state
+    surface: StyleFrame = ToastSurfaceFace(state.class_name)
+    label: StyleFrame = ToastLabelFace(state.class_name)
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ToastMetrics = ToastMetricsFor(scale, surface)
+    font: i32 = ResolveFont(0, StyleFontValue(label.value.fields,
+        label.value.font_size), 14)
+    viewport: Rectangle = props.viewport
+    if viewport.width <= 0.0 || viewport.height <= 0.0 {
+        viewport = TreeRootBounds()
+    }
+    display: ToastDisplay = ToastDisplayFor(state.message,
+        ToastContentWidth((i32)viewport.width, metrics), font,
+        label.value.typeface)
+    line_height: i32 = GlyphLineHeight(font, label.value.typeface)
+    layout: ToastLayout = ToastLayoutFor((i32)viewport.width,
+        (i32)viewport.height, display.width, line_height, metrics)
+    layout.bounds.x += viewport.x
+    layout.bounds.y += viewport.y
+    layout.text_bounds.x += viewport.x
+    layout.text_bounds.y += viewport.y
+    result.bounds = layout.bounds
+    result.display = display.prefix
+    result.ellipsis = display.ellipsis
+    result.visible = true
+    key: u64 = props.key
+    if key == (u64)0 { key = TreeNextKey() }
+    if TreeIsBuilding() {
+        result.node = TreeSubmit(key, 0, WidgetKindCustom,
+            layout.bounds)
+        if result.node < 0 {
+            result.visible = false
+            return result
+        }
+        TreeSetLabel(result.node, state.message)
+    }
+    opacity: float = StyleOpacityValue(surface.value.fields,
+        surface.value.opacity)
+    background: Color = ColorFromPacked(Opacity(
+        surface.value.background, opacity))
+    PaintRoundedFill(result.node, layout.bounds,
+        surface.value.radius, 12, background)
+    border_width: float = surface.value.border_width
+    if border_width > 0.0 {
+        PaintRoundedOutline(result.node, layout.bounds,
+            surface.value.radius, 12, border_width,
+            ColorFromPacked(Opacity(surface.value.border, opacity)))
+    }
+    text_color: Color = ColorFromPacked(Opacity(
+        label.value.foreground,
+        StyleOpacityValue(label.value.fields, label.value.opacity)))
+    PaintClippedLabel(result.node, display.prefix,
+        (i32)layout.text_bounds.x, (i32)layout.text_bounds.y,
+        font, text_color, layout.text_bounds)
+    if display.ellipsis {
+        PaintClippedLabel(result.node, "...",
+            (i32)layout.text_bounds.x + display.prefix_width,
+            (i32)layout.text_bounds.y, font, text_color,
+            layout.text_bounds)
+    }
+    return result
+}

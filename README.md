@@ -34,6 +34,7 @@ Button, Checkbox, Slider, Toggle, Bevel and Separator line rendering, material
 layers, theme, style values, built-in theme labels, and selected Image, Progress,
 checked TreeView composition and row input from portable item values,
 checked PanedView composition and handle dragging with returned pane bounds,
+checked Toast lifetime, text truncation, layout, and paint,
 portable theme and orientation preference decisions,
 form row layout, app shell sizing,
 capability policy, safe area geometry, and window placement decisions. Other runtime and widget

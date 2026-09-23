@@ -145,6 +145,7 @@ title_bar.zi
 title_bar_props.zi
 toast.zi
 toast_props.zi
+toast_widget.zi
 toggle.zi
 toggle_props.zi
 toggle_widget.zi

@@ -307,3 +307,11 @@ through the generic raster capability. `vertical` places the panes side by
 side; the other orientation stacks them. Set `has_split` when supplying a
 saved split; otherwise the widget chooses its default. `PaneDropZone` returns
 the drop region for a point using the same styled edge metric.
+
+`Toast(ToastProps)` takes the previous `ToastState`, the current time, and an
+optional new message. A nonempty message starts or replaces the toast;
+`clear` removes it. The caller stores `ToastResult.state` and keeps its message
+bytes alive until the state expires or is cleared. The widget resolves KSS
+surface and label styles, measures and truncates text at UTF-8 boundaries,
+places the toast in the supplied viewport or root tree, and queues paint.
+Font measurement and raster effects remain host capabilities.
