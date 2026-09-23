@@ -175,7 +175,7 @@ surface review:
 | `runtime/modal.kry` | Modal layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback, prompt input/result, and action row policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/popup_ownership.kry` | Popup ancestry, branch ordering, input capture, focus acquisition/restoration, and owner retirement | `.kry support` |
-| `runtime/overlay.kry` | Internal dismissible overlay viewport, dismissal, and release-consumption policy | `.kry support` |
+| `src/ui/overlay.zi`, `src/ui/overlay_props.zi` | Dismissible overlay viewport, value props/result, and outside-release policy | checked Ziran |
 | `runtime/tree_view.kry` | TreeView row/window, paint geometry, marker text, and row-selection decision policy | `.kry canonical` |
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
 | `runtime/table_view.kry` | TableView layout, scroll, scrollbar, cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy | `.kry canonical` |
@@ -216,7 +216,7 @@ surface review:
 | `src/ui/navigation_bar.kry` | Navigation Bar widget host surface | `.kry canonical` |
 | `src/ui/node_registry.kry` | Node Registry widget host surface | `.kry canonical` |
 | `src/ui/numeric.kry` | Numeric widget host surface | `.kry canonical` |
-| `src/ui/overlay.kry` | Overlay widget host surface | `.kry canonical` |
+| `src/ui/overlay_widget.zi` | Retained backdrop, input interception, panel node, and clipped release decision | checked Ziran |
 | `src/ui/pager.kry` | Pager widget host surface | `.kry canonical` |
 | `src/ui/paint_command.kry` | Resolves KSS widget frames and draws them | `.kry canonical` |
 | `src/ui/paint_frame.kry` | Paint Frame widget host surface | `.kry canonical` |
@@ -325,7 +325,7 @@ The nine generic `InputPointerInteractionFor` calls use `runtime/input.kry`.
 | Native files | Policy owner | Native responsibility |
 |---|---|---|
 | `src/ui/button.kry`, `src/ui/dropdown.kry`, `src/ui/slider.kry`, `src/ui/drag.kry`, `src/ui/numeric_edit.kry`, `src/ui/toggle.kry`, `src/ui/checkbox.kry`, generic helpers in `input_capture.kry` | `input.kry`, with dropdown/value policy | Sample input, apply activation/consume flags, draw/store results |
-| `src/ui/modal.kry`, `src/ui/popup.kry`, `src/ui/overlay.kry` | `modal.kry`, `overlay.kry`, `popup_policy.kry` | Dialog, popup, and dismissible overlay behavior is authored in `.kry` |
+| `src/ui/modal.kry`, `src/ui/popup.kry`, `src/ui/overlay_widget.zi` | `modal.kry`, `popup_policy.kry`, `src/ui/overlay.zi` | Dismissible overlay capture and release behavior is checked Ziran; dialog and popup hosts remain to migrate. |
 | `src/ui/navigation_bar.kry`, `src/ui/profile_header.kry` | `navigation_bar.kry`, `profile_header.kry` | Navigation and profile input, image selection, and drawing are authored in `.kry` |
 | `src/ui/swipe.kry`, `src/ui/tab_bar.kry`, `src/ui/tab_store.kry`, `ui_inspect.c` | `swipe.kry`, `tab_bar.kry`, `inspect.kry` | Swipe and TabBar input, drag state, and drawing are authored in `.kry`; inspector work remains in C |
 | Scrollbar and ScrollScope in `src/ui/scroll.kry` | `scroll.kry` | Store scroll/drag state, apply release, clip content, and paint the scrollbar |
