@@ -5,6 +5,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "paragraph"
+#import "semantic"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -37,8 +38,10 @@ TextFaceFor :: (rules: StyleRules, props: TextProps,
     face: TextFace = defaults
     state: i32 = (i32)ButtonStateNormal
     if props.disabled { state = (i32)ButtonStateDisabled }
+    kind: i32 = props.style_kind
+    if kind <= 0 { kind = StyleKindText() }
     face.value = ResolveStyleRules(rules, defaults.value,
-        StyleTextFacts(0, props.class_name, StyleKindText(), state), state)
+        StyleTextFacts(0, props.class_name, kind, state), state)
     return face
 }
 
@@ -165,14 +168,19 @@ PaintTextLines :: (node: i32, props: TextProps,
 }
 
 Text :: (props: TextProps) #export {
-    face: TextFace = TextFaceFor(ActiveStyleRules(), props,
-        DefaultTextFace())
+    defaults: TextFace = DefaultTextFace()
+    if props.fallback_font > 0 {
+        defaults.fallback_font = props.fallback_font
+        defaults.value.font_size = (float)props.fallback_font
+    }
+    face: TextFace = TextFaceFor(ActiveStyleRules(), props, defaults)
     prepared: PreparedText = PrepareText(props, face)
     node: i32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(props.key, WidgetKindText, prepared.bounds)
         if node < 0 { return }
         TreeSetLabel(node, props.text)
+        TreeSetSemantic(node, props.semantic_kind, props.heading_level)
     }
     PaintTextLines(node, props, prepared)
 }

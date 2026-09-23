@@ -110,8 +110,8 @@ surface review:
 | `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
 | `runtime/paned_view.kry` | PanedView split/layout/handle geometry, drag lifecycle, and change policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
-| `src/ui/page.zi`, `src/ui/page_props.zi` | Checked Page and Section scopes, spacing, and page metadata effect | checked Ziran |
-| `src/ui/page_host.zi` | Unbuilt Heading, ParagraphText, Link, and Flow host entry points | migration pending |
+| `src/ui/page.zi`, `src/ui/page_props.zi`, `src/ui/page_text.zi` | Checked Page and Section scopes, spacing, metadata effect, Heading, and ParagraphText | checked Ziran |
+| `src/ui/page_host.zi` | Unbuilt Link and Flow host entry points | migration pending |
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
 | `runtime/plot.kry`, `src/ui/plot.kry` | Plot geometry, text, style, and drawing | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props and mode names | `.kry canonical` |
@@ -531,8 +531,8 @@ host roles rather than retained nodes.
 | `Screen` | `.kry canonical` | Top-level screen container. |
 | `Page` | checked Ziran | Opens a retained page scope and returns content bounds and metadata. |
 | `Section` | checked Ziran | Opens a retained section scope and returns content bounds. |
-| `Heading` | `.kry canonical` | Semantic heading backed by KSS heading policy. |
-| `ParagraphText` | `.kry canonical` | Semantic plain page paragraph text backed by KSS paragraph text policy. |
+| `Heading` | checked Ziran | Uses checked Text with Heading KSS kind and retained semantic level. |
+| `ParagraphText` | checked Ziran | Uses checked Text with ParagraphText KSS kind and retained paragraph role. |
 | `Column` | `.kry canonical` | Layout block. |
 | `Row` | `.kry canonical` | Layout block. |
 | `Stack` | `.kry canonical` | Layout block. |
@@ -595,8 +595,8 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `TabBar` | `.kry canonical` | Tab bar block. |
 | `Page` | checked Ziran | Page scope and portable metadata effect. |
 | `Section` | checked Ziran | Section scope with explicit child bounds. |
-| `Heading` | `.kry canonical` | Semantic page heading block with its own KSS style kind. |
-| `ParagraphText` | `.kry canonical` | Semantic page paragraph block with its own KSS style kind. |
+| `Heading` | checked Ziran | Heading KSS kind and retained semantic level. |
+| `ParagraphText` | checked Ziran | ParagraphText KSS kind and retained paragraph role. |
 | `Link` | `.kry canonical` | Link block. |
 | `Flow` | `.kry canonical` | Page flow block. |
 | `Grid` | `.kry canonical` | Grid layout block. |
@@ -701,8 +701,8 @@ should use canonical `.kry` names and blocks.
 |---|---|---|
 | `Page` | checked Ziran | Top-level document scope; returns metadata for a host to apply. |
 | `Section` | checked Ziran | Child scope with KSS spacing and caller placed content. |
-| `Heading` | `.kry canonical` | Semantic page heading backed by `Heading` KSS policy. |
-| `ParagraphText` | `.kry canonical` | Semantic page paragraph backed by `ParagraphText` KSS policy. |
+| `Heading` | checked Ziran | Checked Text paint and Heading KSS kind. |
+| `ParagraphText` | checked Ziran | Checked Text paint and ParagraphText KSS kind. |
 | `Flow` | `.kry canonical` | Page flow layout; lowers to row/layout policy. |
 
 ## Collections And Editors

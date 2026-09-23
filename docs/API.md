@@ -256,4 +256,7 @@ and close with `End()`. The caller gives child widgets explicit bounds within
 that content area. `PageResult` also returns title, description, canonical URL,
 and optional theme color for the platform to apply. The library does not set
 browser or window metadata itself. Automatic child placement and the old
-Heading, ParagraphText, Link, and Flow host entry points still need migration.
+Link and Flow host entry points still need migration. `Heading(HeadingProps)`
+and `ParagraphText(ParagraphTextProps)` compose the checked `Text` widget with
+their own KSS style kinds and semantic roles. The retained heading level is
+clamped to 1–6; ParagraphText uses its parent scope width when none is given.

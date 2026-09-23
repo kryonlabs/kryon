@@ -3,62 +3,6 @@
 #import "ui_style_internal.h"
 #import "runtime/page.h"
 
-PageTextStyle :: (style_kind: i32, class_name: i32,
-fallback_font: i32) -> Style {
-    base: StyleData
-    base.fields = (uint32_t)StyleFontSize
-    base.font_size = (float)fallback_font
-    facts: StyleFacts = StyleDefaultFacts(style_kind)
-    facts.class_name = class_name
-    facts.state = ButtonStateNormal
-    return ui_unpack_style(ResolveActiveStyle(base, facts,
-    ButtonStateNormal))
-}
-
-Heading :: (props: HeadingProps) #export {
-    bounds: Rectangle = props.bounds
-    value: const char* = props.text
-    if value == nil { value = "" }
-    level: i32 = props.level
-    text_style: Style = PageTextStyle(StyleKindHeading(),
-    props.class_name, Text24)
-    font: i32 = (int)text_style.font_size
-    if font <= 0 { font = Text24 }
-    color: Color = Fade(text_style.foreground,
-    StyleOpacityValue(text_style.fields, text_style.opacity))
-
-    if level < 1 { level = 1 }
-    if level > 6 { level = 6 }
-    if bounds.width <= 0.0 { bounds.width = (float)TextWidth(value, font) }
-    if bounds.height <= 0.0 {
-        bounds.height = (float)TextHeight(value, font)
-    }
-    ui_tree_heading(value, bounds, font, color, level)
-}
-
-ParagraphText :: (props: ParagraphTextProps) #export {
-    value: const char* = props.text
-    if value == nil { value = "" }
-    y: i32 = (int)props.bounds.y
-    width: i32 = (int)props.bounds.width
-    if width <= 0 { width = GetViewWidth() - (int)props.bounds.x }
-    if width < 0 { width = 0 }
-
-    paragraph: ParagraphSpec
-    paragraph.text = value
-    paragraph.width = width
-    paragraph.class_name = props.class_name
-    text_style: Style = PageTextStyle(StyleKindParagraphText(),
-    props.class_name, GetFontSize())
-    paragraph.font = (int)text_style.font_size
-    if paragraph.font <= 0 { paragraph.font = GetFontSize() }
-    if text_style.gap > 0.0 {
-        paragraph.line_gap = (int)(text_style.gap + 0.5)
-    }
-    ui_page_semantic_next(SemanticParagraph, value, nil, nil, 0, -1)
-    Paragraph(paragraph, (int)props.bounds.x, &y)
-}
-
 Link :: (props: LinkProps) -> i32 #export {
     ui_page_semantic_next(SemanticLink, props.text, props.link,
     "link", 0, props.focus_id)

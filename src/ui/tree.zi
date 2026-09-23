@@ -1,5 +1,6 @@
 #module "tree"
 #import "geometry"
+#import "semantic"
 #import "widget_kind"
 
 # A retained node keeps its identity only when its key, kind, and parent key
@@ -66,6 +67,8 @@ TreeEntry :: struct {
     kind: i32
     bounds: Rectangle
     semantic_label: string
+    semantic_kind: SemanticKind
+    heading_level: i32
     parent: i32
     first_child: i32
     last_child: i32
@@ -302,6 +305,20 @@ TreeSetLabel :: (index: i32, label: string) #export {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].semantic_label = label
+}
+
+TreeSetSemantic :: (index: i32, kind: SemanticKind,
+    heading_level: i32) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    if kind != (SemanticKind)SemanticHeading {
+        heading_level = 0
+    } else {
+        if heading_level < 1 { heading_level = 1 }
+        if heading_level > 6 { heading_level = 6 }
+    }
+    active_tree.submitted[index].semantic_kind = kind
+    active_tree.submitted[index].heading_level = heading_level
 }
 
 TreeSetInteractive :: (index: i32, disabled: bool, loading: bool,

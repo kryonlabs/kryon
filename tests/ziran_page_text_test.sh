@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eu
+
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+
+cat > "$work/app.zi" <<'ZI'
+#module "app"
+#import "geometry"
+#import "page"
+#import "page_props"
+#import "page_text"
+#import "paint_queue"
+#import "semantic"
+#import "tree"
+#import "widget_kind"
+
+Answer :: () -> i32 #export {
+    bounds: Rectangle = (Rectangle){0.0, 0.0, 200.0, 100.0}
+    TreeStart((u64)1, bounds)
+    page_props: PageProps
+    page_props.key = (u64)10
+    page_props.title = "Document"
+    page: PageResult = Page(page_props)
+    heading: HeadingProps
+    heading.key = (u64)11
+    heading.bounds = (Rectangle){10.0, 20.0, 0.0, 0.0}
+    heading.text = "Title"
+    heading.level = 9
+    Heading(heading)
+    paragraph: ParagraphTextProps
+    paragraph.key = (u64)12
+    paragraph.bounds = (Rectangle){10.0, 40.0, 0.0, 0.0}
+    paragraph.text = "Body"
+    ParagraphText(paragraph)
+    if !page.opened || !End() || !TreeFinish() ||
+        TreeCount() != 4 ||
+        TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticPage ||
+        TreeNodeAt(2).parent != 1 ||
+        TreeNodeAt(2).kind != WidgetKindText ||
+        TreeNodeAt(2).semantic_kind != (SemanticKind)SemanticHeading ||
+        TreeNodeAt(2).heading_level != 6 ||
+        TreeNodeAt(2).semantic_label != "Title" ||
+        TreeNodeAt(2).bounds.width != 50.0 ||
+        TreeNodeAt(3).parent != 1 ||
+        TreeNodeAt(3).semantic_kind != (SemanticKind)SemanticParagraph ||
+        TreeNodeAt(3).heading_level != 0 ||
+        TreeNodeAt(3).bounds.width != 190.0 { return -1 }
+    PaintFlush()
+    return 42
+}
+ZI
+
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+    -o "$work/ir" "$work/app.zi"
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+    --entry app:Answer -o "$work/source.zib" "$work/app.zi"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+    --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
+cmp "$work/source.zib" "$work/saved.zib"
+
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/include" \
+    -I"$repo/../ziran/include" \
+    "$repo/tests/ziran_page_text_test.c" \
+    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
+    ${VM_LDFLAGS:-} -o "$work/host-test"
+"$work/host-test" "$work/source.zib"
+"$work/host-test" "$work/saved.zib"

@@ -1,0 +1,40 @@
+#module "page_text"
+#import "geometry"
+#import "page_props"
+#import "semantic"
+#import "style_sheet"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+
+Heading :: (props: HeadingProps) #export {
+    text: TextProps
+    text.bounds = props.bounds
+    text.text = props.text
+    text.key = props.key
+    text.class_name = props.class_name
+    text.fallback_font = 24
+    text.style_kind = StyleKindHeading()
+    text.semantic_kind = (SemanticKind)SemanticHeading
+    text.heading_level = props.level
+    Text(text)
+}
+
+ParagraphText :: (props: ParagraphTextProps) #export {
+    text: TextProps
+    text.bounds = props.bounds
+    text.text = props.text
+    text.key = props.key
+    text.class_name = props.class_name
+    text.fallback_font = 16
+    text.style_kind = StyleKindParagraphText()
+    text.semantic_kind = (SemanticKind)SemanticParagraph
+    if text.bounds.width <= 0.0 {
+        parent: Rectangle = TreeCurrentParentBounds()
+        offset: float = text.bounds.x - parent.x
+        if offset < 0.0 { offset = 0.0 }
+        text.bounds.width = parent.width - offset
+        if text.bounds.width < 0.0 { text.bounds.width = 0.0 }
+    }
+    Text(text)
+}

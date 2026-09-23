@@ -1,0 +1,12 @@
+#module "semantic"
+
+SemanticKind :: enum {
+    SemanticNone = 0
+    SemanticPage = 1
+    SemanticSection = 2
+    SemanticHeading = 3
+    SemanticParagraph = 4
+    SemanticLink = 5
+    SemanticImage = 6
+    SemanticButton = 7
+}

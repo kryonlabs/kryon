@@ -18,6 +18,21 @@ SectionProps :: struct {
     key: u64
 }
 
+HeadingProps :: struct {
+    bounds: Rectangle
+    text: string
+    level: i32
+    class_name: i32
+    key: u64
+}
+
+ParagraphTextProps :: struct {
+    bounds: Rectangle
+    text: string
+    class_name: i32
+    key: u64
+}
+
 PageSpacing :: struct {
     gap: i32
     padding: i32

@@ -34,7 +34,8 @@ geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms
 scroll interaction, frame pacing, retained tree commit and instance lifetime
 decisions, nested retained tree scopes, paragraph layout policy, text input and text row decisions,
 checked Page and Section containers with explicit child bounds and returned
-platform metadata,
+platform metadata, plus Heading and ParagraphText through the checked Text
+widget and retained semantic roles,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

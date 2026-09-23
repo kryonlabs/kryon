@@ -71,6 +71,7 @@ navigation_bar_props.zi
 overlay.zi
 page.zi
 page_props.zi
+page_text.zi
 paint.zi
 paint_queue.zi
 paned_view.zi
@@ -102,6 +103,7 @@ router_props.zi
 scroll.zi
 scroll_props.zi
 scene_tree_props.zi
+semantic.zi
 segmented_control.zi
 segmented_control_props.zi
 selectable.zi

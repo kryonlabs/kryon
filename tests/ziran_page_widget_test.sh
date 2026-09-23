@@ -13,6 +13,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "layout"
 #import "page"
 #import "page_props"
+#import "semantic"
 #import "style"
 #import "tree"
 #import "widget_kind"
@@ -45,8 +46,10 @@ Answer :: () -> i32 #export {
         section.content) != 3 || !End() || !End() || End() ||
         !TreeFinish() { return -3 }
     if TreeCount() != 4 || TreeNodeAt(1).kind != WidgetKindPage ||
+        TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticPage ||
         TreeNodeAt(1).semantic_label != "Welcome" ||
         TreeNodeAt(2).kind != WidgetKindSection ||
+        TreeNodeAt(2).semantic_kind != (SemanticKind)SemanticSection ||
         TreeNodeAt(2).semantic_label != "Details" ||
         TreeNodeAt(2).parent != 1 || TreeNodeAt(3).parent != 2 {
         return -4
