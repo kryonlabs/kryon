@@ -18,6 +18,7 @@ checkbox_props.zi
 checkbox_widget.zi
 collapsible.zi
 collapsible_props.zi
+collapsible_widget.zi
 color_picker.zi
 color_picker_props.zi
 control_props.zi

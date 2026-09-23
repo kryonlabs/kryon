@@ -2,6 +2,8 @@
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
+#import "focus"
+#import "collapsible_props"
 #import "style"
 
 CollapsibleMarkerKind :: enum {
@@ -123,7 +125,7 @@ CollapsibleMarkerFor :: (open: bool, leaf: bool) -> i32 #export {
     return CollapsibleMarkerClosed
 }
 
-CollapsibleMarkerText :: (marker: i32) -> const char* #export {
+CollapsibleMarkerText :: (marker: i32) -> string #export {
     if marker == CollapsibleMarkerLeaf { return "•" }
     if marker == CollapsibleMarkerOpen { return "v" }
     return ">"
@@ -246,4 +248,30 @@ CollapsibleOpenApply :: (open: bool, toggle_open: bool, set_open: bool,
     }
     result.changed = result.open != open
     return result
+}
+
+CollapsibleFocusTarget :: (headers: []CollapsibleHeader,
+    current_id: i32, key: i32) -> i32 #export {
+    current: i32 = -1
+    index: i32 = 0
+    while index < headers.length {
+        if headers[index].id == current_id {
+            current = index
+            break
+        }
+        index += 1
+    }
+    if current < 0 { return current_id }
+    depth: i32 = headers[current].depth
+    if depth < 0 { depth = 0 }
+    scan: TreeFocusScan = TreeFocusBegin(current, headers.length,
+        depth, key == CollapsibleKeyDown(),
+        key == CollapsibleKeyUp(), key == CollapsibleKeyRight(),
+        key == CollapsibleKeyLeft())
+    while !scan.done {
+        candidate_depth: i32 = headers[scan.index].depth
+        if candidate_depth < 0 { candidate_depth = 0 }
+        scan = TreeFocusAdvance(scan, candidate_depth)
+    }
+    return headers[scan.index].id
 }

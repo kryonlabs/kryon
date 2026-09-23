@@ -58,7 +58,8 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
                 entry.kind == WidgetKindRadio ||
                 entry.kind == WidgetKindSlider ||
                 entry.kind == WidgetKindSelectable ||
-                entry.kind == WidgetKindLink) &&
+                entry.kind == WidgetKindLink ||
+                entry.kind == WidgetKindCollapsible) &&
             PointInBounds(x, y, entry.bounds) {
             if TreePointerActivatable(entry.kind, entry.focus_id,
                 entry.disabled, entry.loading) { return index }

@@ -1439,18 +1439,6 @@ color: Color) #export {
     RenderCanvasGrid(bounds, step, color)
 }
 
-PanedView :: (panes: PanedViewProps) -> i32 #export {
-    ui_tree_add(panes.id, WidgetKindPanedView,
-    panes.bounds, &panes)
-    return RenderPanedView(panes)
-}
-
-Collapsible :: (section: CollapsibleProps) -> i32 #export {
-    ui_tree_add(section.id, WidgetKindCollapsible,
-    section.bounds, &section)
-    return RenderCollapsible(section)
-}
-
 ColorPicker :: (picker: ColorPickerProps) -> i32 #export {
     ui_tree_add(picker.id, WidgetKindColorPicker,
     picker.bounds, &picker)

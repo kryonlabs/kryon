@@ -315,3 +315,12 @@ bytes alive until the state expires or is cleared. The widget resolves KSS
 surface and label styles, measures and truncates text at UTF-8 boundaries,
 places the toast in the supplied viewport or root tree, and queues paint.
 Font measurement and raster effects remain host capabilities.
+
+`Collapsible(CollapsibleProps, []CollapsibleHeader)` returns the open and hidden
+values, a change flag, the header and content rectangles, and any requested
+focus target. The caller stores `open` and `hidden`; `has_open` enables toggling
+and `closable` adds a retained close control. `close_label` supplies its
+localized accessibility text. For tree headers, pass the ordered id and depth
+slice so Right and Left can target a child or parent; Up and Down target the
+adjacent header. The platform supplies focus and key observations, while
+Kryon chooses the navigation target and handles retained pointer activation.

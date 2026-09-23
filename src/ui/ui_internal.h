@@ -460,7 +460,6 @@ NavigationBarConfigResult RenderNavigationBarConfigModal(NavigationBarConfigProp
 ToolbarResult RenderToolbar(ToolbarProps toolbar);
 int ui_tab_bar_keyboard_input(TabBarProps bar);
 int RenderTabBar(TabBarProps bar);
-DropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
 void RenderSeparator(SeparatorProps separator);
 int RenderDragDrop(DragDropProps drag_drop);
 int RenderListBoxMulti(ListBoxProps list);
@@ -498,8 +497,6 @@ int RenderTreeView(TreeViewProps tree);
 int RenderTableView(TableViewProps table);
 void ui_consume_focus_tab(void);
 void RenderCanvasGrid(Rectangle bounds, int step, Color color);
-int RenderPanedView(PanedViewProps panes);
-int RenderCollapsible(CollapsibleProps section);
 void RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count);
 GuideResult RenderGuideOverlay(GuideOverlayProps guide);
 void RenderImage(ImageProps image);

@@ -47,6 +47,8 @@ checked PanedView split state, retained handle drag, pane rectangles, and
 drop zone policy,
 checked Toast lifetime, UTF-8 safe truncation, styled layout, and paint from
 caller owned state and host time observations,
+checked Collapsible header and close interaction, caller owned open/hidden
+values, tree focus navigation from a borrowed ordered header slice, and paint,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

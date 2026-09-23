@@ -113,8 +113,6 @@ TreeView :: (tree: TreeViewProps) -> i32 #extern #export
 TableView :: (table: TableViewProps) -> i32 #extern #export
 TextArea :: (area: TextAreaProps) -> i32 #extern #export
 CanvasGrid :: (bounds: Rectangle, step: i32, color: Color) #extern #export
-PanedView :: (panes: PanedViewProps) -> i32 #extern #export
-Collapsible :: (section: CollapsibleProps) -> i32 #extern #export
 ColorPicker :: (picker: ColorPickerProps) -> i32 #extern #export
 Focus :: (bounds: Rectangle) #extern #export
 NavigationBar :: (nav: NavigationBarProps) -> NavigationBarResult #extern #export
