@@ -138,6 +138,8 @@ spinbox.zi
 spinbox_props.zi
 spinbox_widget.zi
 style.zi
+style_picker.zi
+style_picker_props.zi
 style_parse.zi
 style_sheet.zi
 surface.zi

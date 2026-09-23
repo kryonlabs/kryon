@@ -1,18 +1,21 @@
 #module "style_picker_props"
-#import "kryon_compat.generated.h"
+#import "dropdown_props"
 
 StylePackOption :: struct {
-    id: const char*
-    label: const char*
-    description: const char*
+    id: string
+    label: string
+    description: string
     active: bool
 }
 
 StylePickerProps :: struct {
-    bounds: Rectangle
-    id: i32
-    class_name: i32
-    disabled: bool
+    dropdown: DropdownProps
+}
+
+StylePickerResult :: struct {
+    dropdown: DropdownResult
+    selected_id: string
+    changed: bool
 }
 
 StylePickerState :: struct {

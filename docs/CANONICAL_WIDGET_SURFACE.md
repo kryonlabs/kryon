@@ -147,7 +147,7 @@ surface review:
 | `runtime/kss_formatter.kry` | The KSS formatter: stable re-layout from parser-verified construct spans with comment preservation | `.kry canonical` |
 | `runtime/kss_parser.kry` | The KSS parser: tokens, theme/env overlays, imports, layers, provenance, and diagnostics shared by all backends | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
-| `runtime/style_picker_props.kry` | StylePicker props and option/selection/dropdown state policy | `.kry canonical` |
+| `src/ui/style_picker_props.zi` | Portable StylePicker props, pack option, and selection state | checked Ziran |
 | `runtime/style_token_props.kry` | Named style color replacement token | `.kry support` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
@@ -241,7 +241,7 @@ surface review:
 | `src/ui/style_metrics.kry` | Style Metrics widget host surface | `.kry canonical` |
 | `src/ui/style_pack_source.kry` | Style Pack Source widget host surface | `.kry canonical` |
 | `src/ui/style_palette.kry` | Style Palette widget host surface | `.kry canonical` |
-| `src/ui/style_picker.kry` | Style Picker widget host surface | `.kry canonical` |
+| `src/ui/style_picker.zi` | Caller-owned pack selection composed from checked Dropdown | checked Ziran; native host integration pending |
 | `src/ui/style_sheet.kry` | Style Sheet widget host surface | `.kry canonical` |
 | `src/ui/style_values.kry` | Style Values widget host surface | `.kry canonical` |
 | `src/ui/swipe.kry` | Swipe widget host surface | `.kry canonical` |
@@ -755,7 +755,7 @@ metrics and protocol support here.
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. `src/ui/guide.kry` owns input, styling, layout, and drawing around `runtime/guide.kry` policy. Label typography uses resolved KSS font sizes directly. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
-| `StylePicker` | `.kry canonical` | Public props and option/selection/dropdown state policy live in `runtime/style_picker_props.kry`; style-pack storage, KSS parsing, and dropdown rendering remain host support. |
+| `StylePicker` | checked Ziran | The caller supplies pack values and applies the selected ID; checked Dropdown provides UI composition. Style-pack storage and native host integration remain. |
 
 ## Game2D Nodes
 

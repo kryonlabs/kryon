@@ -29,6 +29,7 @@ See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
 contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform
 effect contract.
+See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
 
 ## Migration status
 
@@ -38,6 +39,7 @@ boundaries, checked TextField and TextArea composition with caller-owned text
 and edit and clipboard intents, checked composition event decisions and
 TextField/TextArea preedit paint, Ziran/C/Make syntax coloring, canvas
 transforms, cursor shape and priority decisions, scroll, menu, color picker,
+and a caller-owned style picker composed from the checked Dropdown,
 value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
 checked TabBar composition, keyboard selection, scrolling, close actions,
