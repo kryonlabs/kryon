@@ -1,14 +1,15 @@
 # Canonical Widget Surface
 
-This is the shared review document for Kryon's public widget and node names.
-It is meant to be easy to edit while we decide what stays, what gets renamed,
-and what must move out of native code into `.kry`.
+This is a historical review of the former `.kry` surface. Current Kryon widget
+source is `.zi` in `src/ui/`, and the live migration status is documented in
+`ARCHITECTURE.md` and `API.md`. Entries below describe the old surface and are
+not current API declarations.
 
 ## Decision Rules
 
 - One concept gets one public name.
-- New public widget behavior starts in `.kry`.
-- Native C, Go, JS, and C++ code should support generated `.kry` widgets, not
+- New public widget behavior starts in `.zi`.
+- Native C, Go, JS, and C++ code should support generated `.zi` widgets, not
   define parallel user-facing widget APIs.
 - Compatibility layers are migration debt to delete. Do not add new public
   compatibility names.
@@ -302,7 +303,7 @@ text measurement, painting, storage, or platform services.
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry plus pointer/close/keyboard/open-state decisions, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag/release decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/lifecycle/release gate/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | list/table begin-end wrappers remain host support; `src/ui/scroll.kry` and `src/ui/reorder.kry` own scroll and reorder pointer state and drawing |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop source/target lifecycle decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection row activation policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry, marker text, and row-selection decision policy, `TableView` layout/scroll/scrollbar/cell geometry/header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, item interaction, paint/config layout/count/default policy, `TabBar` sizing/scroll/keyboard intent/keyboard-index/reorder marker/drag lifecycle/release-consumption/double-click decision policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry/open/close policy, `TitleBar` effective state/layout/reservation/paint geometry policy, `Menu` geometry/keyboard navigation plus bar/context outside-close and group pointer open/close decision policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
-| Overlays | `Popup` mode/input/open-state/tooltip visibility/outside-dismissal/Escape-close policy, internal dismissible-overlay viewport/dismissal/release-consumption policy, `Focus` ring geometry and keyboard activation policy, `Guide` overlay layout/arrow/step/keyboard-input policy, guide pager layout/page/keyboard-input policy, swipe begin/drag/release/lifecycle decision policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/outside-dismissal/release-consumption/prompt availability/focus fallback/prompt-input/result/action policy, `Toast` style facts/request/render decision, duration/layout/text-placement/truncation policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection/dropdown state policy, profile header geometry/text placement/pointer activation/click policy, profile image picker geometry/selection policy, inspector edit/resize geometry, handle-size, and release-consume policy | theme picker, inspector state/input, and profile image rendering/input host support; swipe pointer ownership storage remains host support |
+| Overlays | `Popup` mode/input/open-state/tooltip visibility/outside-dismissal/Escape-close policy, internal dismissible-overlay viewport/dismissal/release-consumption policy, `Focus` ring geometry and keyboard activation policy, `Guide` overlay layout/arrow/step/keyboard-input policy, guide pager layout/page/keyboard-input policy, swipe begin/drag/release/lifecycle decision policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/outside-dismissal/release-consumption/prompt availability/focus fallback/prompt-input/result/action policy, `Toast` style facts/request/render decision, duration/layout/text-placement/truncation policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection/dropdown state policy, profile header geometry/text placement/pointer activation/click policy, profile image picker geometry/selection policy, inspector edit/resize geometry, handle-size, and release-consume policy | Historical host support inventory; the checked Swipe path now returns its state and pointer ownership effects in Ziran. |
 | Game2D | `Scene`, `Node2D`, `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums/defaults; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and runtime node mutation remain native Game2D support. |
 
 The remaining migration target is the native support around text editing and

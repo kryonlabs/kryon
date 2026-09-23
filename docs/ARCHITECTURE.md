@@ -30,7 +30,7 @@ the operating system requires it; they must not duplicate widget policy.
 C++, and Go, then builds `build/ziran/libkryon.a` and the initial portable host
 adapter `build/ziran/libkryon_host.a`. `make test` runs the current
 source, saved-IR, and portable bundle tests. The checked modules cover
-geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, swipe, and
+geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, checked swipe state and pointer ownership effects, and
 scroll interaction, frame pacing, retained tree commit and instance lifetime
 decisions, nested retained tree scopes, paragraph layout policy, text input and text row decisions,
 checked Page and Section containers with automatic or explicit child bounds and returned

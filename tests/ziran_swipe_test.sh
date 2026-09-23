@@ -48,6 +48,130 @@ Answer :: () -> i32 #export {
         return 0
     }
     if !SwipeReleaseLifecycleFor(true).consume_release { return 0 }
+
+    spec: SwipeSpec
+    spec.bounds = (Rectangle){0.0, 0.0, 100.0, 100.0}
+    spec.directions = (u32)SwipeHorizontal
+    spec.min_distance = 30.0
+    spec.max_duration = 0.5
+    frame: SwipeFrame
+    frame.pointer = (Vector2){10.0, 10.0}
+    frame.pressed = true
+    frame.down = true
+    frame.input_clear = true
+    frame.owner_clear = true
+    frame.now_seconds = 1.0
+    gesture: SwipeGesture
+    step: SwipeResult = Swipe(spec, gesture, frame)
+    if step.active != 1 || step.dragging != 0 ||
+        step.claim_pointer || step.capture_input ||
+        step.gesture.active != 1 || step.gesture.start.x != 10.0 {
+        return 0
+    }
+    gesture = step.gesture
+    frame.pressed = false
+    frame.pointer = (Vector2){50.0, 12.0}
+    frame.now_seconds = 1.1
+    step = Swipe(spec, gesture, frame)
+    if step.active != 1 || step.dragging != 1 ||
+        !step.claim_pointer || !step.capture_input ||
+        step.progress != 1.0 || step.gesture.dragging != 1 {
+        return 0
+    }
+    gesture = step.gesture
+    frame.pointer = (Vector2){60.0, 12.0}
+    frame.owner_clear = false
+    frame.owner_is_swipe = true
+    step = Swipe(spec, gesture, frame)
+    if step.active != 1 || step.dragging != 1 ||
+        step.claim_pointer || !step.capture_input { return 0 }
+    gesture = step.gesture
+    frame.down = false
+    frame.released = true
+    frame.pointer = (Vector2){80.0, 12.0}
+    frame.now_seconds = 1.2
+    step = Swipe(spec, gesture, frame)
+    if step.active != 0 || step.direction != (SwipeDirection)SwipeRight ||
+        !step.consume_release || !step.capture_input ||
+        !step.release_pointer || step.gesture.active != 0 {
+        return 0
+    }
+
+    frame = (SwipeFrame){}
+    frame.pointer = (Vector2){10.0, 10.0}
+    frame.pressed = true
+    frame.down = true
+    frame.input_clear = true
+    frame.owner_clear = true
+    frame.now_seconds = 2.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.pressed = false
+    frame.pointer = (Vector2){12.0, 50.0}
+    step = Swipe(spec, step.gesture, frame)
+    if step.active != 0 || step.cancelled != 1 ||
+        step.claim_pointer || step.gesture.active != 0 ||
+        step.gesture.cancelled != 1 { return 0 }
+
+    frame.pressed = true
+    frame.owner_clear = false
+    step = Swipe(spec, step.gesture, frame)
+    if step.active != 0 || step.cancelled != 0 { return 0 }
+    frame.owner_clear = true
+    frame.pointer.x = 150.0
+    step = Swipe(spec, step.gesture, frame)
+    if step.active != 0 { return 0 }
+
+    frame.pointer = (Vector2){10.0, 10.0}
+    frame.now_seconds = 3.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.pressed = false
+    frame.pointer.x = 60.0
+    frame.owner_clear = false
+    step = Swipe(spec, step.gesture, frame)
+    if step.active != 0 || step.cancelled != 1 { return 0 }
+
+    frame.pressed = true
+    frame.owner_clear = true
+    frame.pointer.x = 10.0
+    frame.now_seconds = 4.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.pressed = false
+    frame.pointer.x = 60.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.down = false
+    frame.released = true
+    frame.owner_clear = false
+    frame.owner_is_swipe = true
+    frame.now_seconds = 5.0
+    step = Swipe(spec, step.gesture, frame)
+    if step.direction != (SwipeDirection)SwipeNone ||
+        !step.consume_release || !step.release_pointer { return 0 }
+
+    frame = (SwipeFrame){}
+    frame.pointer = (Vector2){10.0, 10.0}
+    frame.pressed = true
+    frame.down = true
+    frame.input_clear = true
+    frame.owner_clear = true
+    frame.now_seconds = 6.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.pressed = false
+    frame.pointer.x = 60.0
+    step = Swipe(spec, step.gesture, frame)
+    frame.down = false
+    frame.released = true
+    frame.owner_clear = false
+    frame.owner_is_swipe = false
+    step = Swipe(spec, step.gesture, frame)
+    if step.direction != (SwipeDirection)SwipeNone ||
+        step.consume_release || step.active != 0 ||
+        step.cancelled != 1 { return 0 }
+
+    spec.bounds.width = 0.0
+    gesture.active = 1
+    frame.owner_is_swipe = true
+    step = Swipe(spec, gesture, frame)
+    if step.gesture.active != 0 || !step.release_pointer { return 0 }
     return 42
 }
 EOF

@@ -28,6 +28,18 @@ SwipeGesture :: struct {
     started_at: double
 }
 
+SwipeFrame :: struct {
+    pointer: Vector2
+    pressed: bool
+    down: bool
+    released: bool
+    input_clear: bool
+    owner_clear: bool
+    owner_is_swipe: bool
+    now_seconds: double
+    scale: float
+}
+
 SwipeResult :: struct {
     direction: SwipeDirection
     delta: Vector2
@@ -35,4 +47,9 @@ SwipeResult :: struct {
     active: i32
     dragging: i32
     cancelled: i32
+    gesture: SwipeGesture
+    claim_pointer: bool
+    release_pointer: bool
+    capture_input: bool
+    consume_release: bool
 }

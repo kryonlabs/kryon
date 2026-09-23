@@ -42,6 +42,11 @@ from an observed system preference. `OrientationDecisionFor` returns a resize
 or platform mode request from the current dimensions and host capabilities.
 Both are checked values; applications apply the returned request through
 their platform host.
+`Swipe(SwipeSpec, SwipeGesture, SwipeFrame)` updates a gesture from raw pointer,
+time, scale, and input ownership observations. The caller stores the returned
+`SwipeResult.gesture` and applies its pointer claim, release, input capture,
+and release consumption effects. Direction and progress decisions live in the
+checked library; a host does not maintain a separate gesture state.
 The checked `Button(ButtonProps)` path now submits a retained interactive node,
 resolves KSS class and state rules, measures a label and optional `ImageProps`
 asset or texture, and queues shape, clipped image, and clipped text paint.

@@ -185,3 +185,107 @@ SwipeReleaseLifecycleFor :: (was_dragging: bool) -> SwipeReleaseLifecycle #expor
     lifecycle.capture_input = was_dragging
     return lifecycle
 }
+
+SwipeInside :: (bounds: Rectangle, point: Vector2) -> bool {
+    return point.x >= bounds.x && point.y >= bounds.y &&
+        point.x <= bounds.x + bounds.width &&
+        point.y <= bounds.y + bounds.height
+}
+
+# The host supplies pointer observations and applies the returned ownership
+# effects. The caller stores result.gesture for the next frame.
+Swipe :: (spec: SwipeSpec, gesture: SwipeGesture,
+    frame: SwipeFrame) -> SwipeResult #export {
+    result: SwipeResult
+    result.gesture = gesture
+    if spec.bounds.width <= 0.0 || spec.bounds.height <= 0.0 {
+        result.release_pointer = frame.owner_is_swipe
+        result.gesture = (SwipeGesture){}
+        return result
+    }
+    scale: float = frame.scale
+    if scale <= 0.0 { scale = 1.0 }
+    directions: u32 = SwipeDirectionsFor(spec.directions)
+    min_distance: float = SwipeMinDistanceFor(scale, spec.min_distance)
+    axis_bias: float = SwipeAxisBiasFor(spec.axis_bias)
+    decision_distance: float = SwipeDecisionDistanceFor(scale)
+
+    if frame.pressed {
+        result.release_pointer = frame.owner_is_swipe
+        gesture = (SwipeGesture){}
+        if SwipeCanBegin(spec.bounds,
+            SwipeInside(spec.bounds, frame.pointer),
+            frame.input_clear &&
+                (frame.owner_clear || frame.owner_is_swipe)) {
+            gesture.active = 1
+            gesture.start = frame.pointer
+            gesture.started_at = frame.now_seconds
+        }
+    }
+    if gesture.active == 0 {
+        result.cancelled = gesture.cancelled
+        result.gesture = gesture
+        return result
+    }
+
+    delta: Vector2
+    delta.x = frame.pointer.x - gesture.start.x
+    delta.y = frame.pointer.y - gesture.start.y
+    result.delta = delta
+    result.active = 1
+    if frame.down {
+        drag: SwipeDragState = SwipeDragStateFor(delta, directions,
+            axis_bias, decision_distance, min_distance,
+            gesture.dragging != 0)
+        lifecycle: SwipeDragLifecycle = SwipeDragLifecycleFor(
+            frame.owner_clear || frame.owner_is_swipe,
+            drag.cancelled, gesture.dragging != 0, drag.dragging)
+        if lifecycle.cancel_active {
+            gesture.active = 0
+            gesture.dragging = 0
+            gesture.cancelled = 1
+            result.active = 0
+            result.cancelled = 1
+            result.release_pointer = frame.owner_is_swipe
+            result.gesture = gesture
+            return result
+        }
+        if lifecycle.claim_pointer_owner { gesture.dragging = 1 }
+        result.claim_pointer = lifecycle.claim_pointer_owner ||
+            (lifecycle.dragging && frame.owner_clear &&
+                !frame.owner_is_swipe)
+        result.capture_input = lifecycle.capture_input
+        result.dragging = 0
+        if lifecycle.dragging { result.dragging = 1 }
+        result.progress = drag.progress
+        result.gesture = gesture
+        return result
+    }
+    if frame.released {
+        if gesture.dragging != 0 && !frame.owner_clear &&
+            !frame.owner_is_swipe {
+            result.active = 0
+            result.cancelled = 1
+            result.gesture = (SwipeGesture){}
+            return result
+        }
+        release: SwipeReleaseState = SwipeReleaseStateFor(delta,
+            directions, axis_bias, min_distance,
+            frame.now_seconds - gesture.started_at,
+            spec.max_duration, gesture.dragging != 0)
+        lifecycle: SwipeReleaseLifecycle =
+            SwipeReleaseLifecycleFor(gesture.dragging != 0)
+        result.direction = release.direction
+        result.progress = release.progress
+        result.active = 0
+        result.consume_release = lifecycle.consume_release
+        result.capture_input = lifecycle.capture_input
+        result.release_pointer = frame.owner_is_swipe
+        result.gesture = (SwipeGesture){}
+        return result
+    }
+    result.active = 0
+    result.release_pointer = frame.owner_is_swipe
+    result.gesture = (SwipeGesture){}
+    return result
+}

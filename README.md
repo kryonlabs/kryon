@@ -29,6 +29,7 @@ saved-IR, and portable bundle tests. No display is started.
 
 The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
+value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Bevel and Separator line rendering, material
 layers, theme, style values, built-in theme labels, and selected Image, Progress,
 checked TreeView composition and row input from portable item values,
