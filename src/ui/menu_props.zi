@@ -1,5 +1,5 @@
 #module "menu_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 MenuItemKind :: enum {
     MenuCommand = 0
@@ -48,10 +48,10 @@ MenuProps :: struct {
     menu_count: i32
     items: const MenuItem*
     item_count: i32
-    open_index: *i32
-    open: *i32
-    x: *i32
-    y: *i32
+    open_index: i32*
+    open: i32*
+    x: i32*
+    y: i32*
 }
 
 Menu :: (menu: MenuProps) -> MenuResult #extern #export

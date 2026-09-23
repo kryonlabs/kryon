@@ -8,6 +8,25 @@ ButtonTone :: enum {
     ButtonToneWarning = 4
 }
 
+ButtonEmphasis :: enum {
+    ButtonEmphasisFilled = 0
+    ButtonEmphasisSoft = 1
+    ButtonEmphasisOutline = 2
+    ButtonEmphasisGhost = 3
+    ButtonEmphasisLink = 4
+}
+
+ControlSize :: enum {
+    ControlSizeMedium = 0
+    ControlSizeSmall = 1
+    ControlSizeLarge = 2
+}
+
+IconPlacement :: enum {
+    IconPlacementLeading = 0
+    IconPlacementTrailing = 1
+}
+
 ButtonState :: enum {
     ButtonStateAuto = 0
     ButtonStateNormal = 1

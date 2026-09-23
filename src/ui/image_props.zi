@@ -1,5 +1,6 @@
 #module "image_props"
-#import "kryon_compat.generated.h"
+#import "drawing_props"
+#import "geometry"
 
 ImageFit :: enum {
     ImageFitStretch = 0
@@ -21,6 +22,5 @@ ImageProps :: struct {
     texture: Texture2D
 }
 
-# C host entry for the canonical image surface (the .kry form is
-# Image(ImageProps)). Implemented by the image host.
+# Host entry for the canonical Image(ImageProps) surface.
 RenderImage :: (image: ImageProps) #extern #export

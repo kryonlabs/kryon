@@ -14,14 +14,19 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "drawing_props"
 #import "focus"
 #import "geometry"
+#import "list_box"
 #import "menu"
 #import "page"
+#import "paned_view"
 #import "primitive"
 #import "radio"
 #import "scroll"
 #import "segmented_control"
 #import "style"
 #import "style_sheet"
+#import "table_view"
+#import "text_input"
+#import "toast"
 #import "tree"
 #import "widget_kind"
 
@@ -76,6 +81,12 @@ Answer :: () -> i32 #export {
     if PrimitiveAppBackgroundColor(color, color).r != (u8)20 {
         return 0
     }
+    if ListBoxClampScroll(99, 15) != 15 { return 0 }
+    if PanedViewClampSplit(5, 10, 90) != 10 { return 0 }
+    if TableViewSelectedRowFor(8, 3) != 2 { return 0 }
+    if !TextNativeEditShouldRun(false, false) { return 0 }
+    if TextNativeEditShouldRun(true, false) { return 0 }
+    if ToastDeadlineFor(10.0, 2.0) != 12.0 { return 0 }
     return 42
 }
 EOF

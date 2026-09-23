@@ -1,5 +1,5 @@
 #module "paned_view_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 DropZone :: enum {
     DropNone = 0
@@ -15,7 +15,7 @@ PanedViewProps :: struct {
     id: i32
     class_name: i32
     vertical: bool
-    split: *i32
+    split: i32*
     min_first: i32
     min_second: i32
 }

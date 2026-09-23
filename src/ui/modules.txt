@@ -1,6 +1,7 @@
 accessibility_policy.zi
 accessibility_props.zi
 bevel.zi
+button_props.zi
 canvas.zi
 canvas_grid.zi
 color_picker.zi
@@ -15,13 +16,18 @@ group.zi
 guide.zi
 icon.zi
 image.zi
+image_props.zi
 input.zi
 input_props.zi
 inspect.zi
 layout.zi
+list_box.zi
 menu.zi
+menu_props.zi
 overlay.zi
 page.zi
+paned_view.zi
+paned_view_props.zi
 popup_ownership.zi
 popup_policy.zi
 plot.zi
@@ -29,6 +35,7 @@ progress.zi
 primitive.zi
 radio.zi
 scroll.zi
+scroll_props.zi
 selectable.zi
 separator.zi
 segmented_control.zi
@@ -37,9 +44,12 @@ style_sheet.zi
 surface.zi
 swipe.zi
 swipe_props.zi
+table_view.zi
 text_align.zi
+text_input.zi
 text_rows.zi
 theme.zi
+toast.zi
 transition.zi
 tree.zi
 widget_kind.zi

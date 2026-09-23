@@ -1,10 +1,10 @@
 #module "scroll_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 ScrollProps :: struct {
     bounds: Rectangle
     content_height: i32
-    offset: *i32
+    offset: i32*
 }
 
 # Implemented by the C-only scroll host; declared here for the public ABI.

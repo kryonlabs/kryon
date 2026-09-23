@@ -1,7 +1,9 @@
 #module "button_props"
-#import "ui_control_props.generated.h"
-#import "ui_menu_props.generated.h"
-#import "ui_image_props.generated.h"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "image_props"
+#import "menu_props"
 
 ArrowDirection :: enum {
     ArrowLeft = 0
@@ -10,7 +12,7 @@ ArrowDirection :: enum {
     ArrowDown = 3
 }
 
-# Shared public contract. Hosts provide the geometry, texture, and style types.
+# Shared public contract. The host renders the declared values.
 ButtonProps :: struct {
     bounds: Rectangle
     label: const char*
@@ -37,8 +39,8 @@ ButtonProps :: struct {
     menu_id: i32
     items: const MenuItem*
     item_count: i32
-    open: *i32
-    activated_id: *i32
+    open: i32*
+    activated_id: i32*
     menu: bool
     split: bool
     arrow: bool
