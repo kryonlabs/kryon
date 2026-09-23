@@ -22,6 +22,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "menu"
 #import "page"
 #import "paned_view"
+#import "paragraph"
 #import "primitive"
 #import "radio"
 #import "scroll"
@@ -31,6 +32,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "surface"
 #import "table_view"
 #import "text"
+#import "text_align"
 #import "text_input"
 #import "toast"
 #import "tree"
@@ -90,6 +92,24 @@ Answer :: () -> i32 #export {
     if ListBoxClampScroll(99, 15) != 15 { return 0 }
     if PanedViewClampSplit(5, 10, 90) != 10 { return 0 }
     if TableViewSelectedRowFor(8, 3) != 2 { return 0 }
+    if ParagraphDefaultLineGap(1.5) != 6 { return 0 }
+    if ParagraphLineXFor(10, 100, 40, TextAlignCenter) != 40 {
+        return 0
+    }
+    if ParagraphLineIndexFor(85.0, 10.0, 20, 3) != 2 { return 0 }
+    token: ParagraphToken = ParagraphTokenNext("  one two", 0, false)
+    if !token.valid || token.start != 2 || token.end != 5 { return 0 }
+    paragraph_line: ParagraphLine
+    paragraph_line.start = 0
+    paragraph_line.end = 1
+    paragraph_line.width = 20.0
+    paragraph_line.has_content = true
+    wrapped: ParagraphLineDecision = ParagraphLineAdvance(paragraph_line, 1,
+        false, false, 15.0, 40.0, 30.0)
+    if !wrapped.emit || wrapped.line.end != 1 ||
+        wrapped.next.start != 1 || wrapped.next.width != 15.0 {
+        return 0
+    }
     if !TextNativeEditShouldRun(false, false) { return 0 }
     if TextNativeEditShouldRun(true, false) { return 0 }
     if ToastDeadlineFor(10.0, 2.0) != 12.0 { return 0 }

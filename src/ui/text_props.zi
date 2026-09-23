@@ -1,20 +1,51 @@
 #module "text_props"
-#import "ui_control_props.generated.h"
-#import "kryon_compat.generated.h"
-#import "ui_icon_types.h"
+#import "drawing_props"
+#import "geometry"
+#import "text_align"
 
-# C-only layout records: TextElement stores a script-generated IconType and
-# Texture2D, TextLayout stores pointer spans, so both pass through as C text.
-TextElementKind :: enum { TEXT_ELEMENT_TEXT = 0, TEXT_ELEMENT_ICON = 1, TEXT_ELEMENT_LINE_BREAK = 2 } #type
-TextElement :: struct { TextElementKind type; const char *text; Texture2D icon; IconType icon_type; int icon_size; int text_width; } #type
-TextLayout :: struct TextLayout { TextElement *elements; int element_count; int *line_breaks; int line_count; int *line_widths; int total_height; int line_height; int last_reflow_width; } #type
+TextElementKind :: enum {
+    TextElementText = 0
+    TextElementIcon = 1
+    TextElementLineBreak = 2
+}
 
-ParseTextLayout :: (input: const char*, icon: Texture2D, icon_type: IconType, icon_size: i32) -> TextLayout #extern #export
+TextElement :: struct {
+    type: TextElementKind
+    text: const char*
+    icon: Texture2D
+    icon_type: i32
+    icon_size: i32
+    text_width: i32
+}
+
+TextLayout :: struct {
+    elements: TextElement*
+    element_count: i32
+    line_breaks: i32*
+    line_count: i32
+    line_widths: i32*
+    total_height: i32
+    line_height: i32
+    last_reflow_width: i32
+}
+
+Font :: struct {
+    handle: u64
+}
+
+GlyphInfo :: struct {
+    value: i32
+    offsetX: i32
+    offsetY: i32
+    advanceX: i32
+}
+
+ParseTextLayout :: (input: const char*, icon: Texture2D, icon_type: i32, icon_size: i32) -> TextLayout #extern #export
 ReflowTextLayout :: (layout: *TextLayout, max_width: i32, font_size: i32, line_height: i32) #extern #export
 GetTextLayoutHeight :: (layout: *TextLayout) -> i32 #extern #export
 FreeTextLayout :: (layout: *TextLayout) #extern #export
 
-# Standard font size points; Font itself is the host's raylib handle.
+# Standard font size points; the host resolves each Font handle.
 Text8 :: 8
 Text12 :: 12
 Text14 :: 14
@@ -68,12 +99,6 @@ RenderTextGlyph :: (codepoint: u32, x: i32, y: i32, font_size: i32,
 TextWrap :: enum {
     TextWrapAuto = 0
     TextWrapNone = 1
-}
-
-TextAlign :: enum {
-    TextAlignStart = 0
-    TextAlignCenter = 1
-    TextAlignEnd = 2
 }
 
 TextProps :: struct {

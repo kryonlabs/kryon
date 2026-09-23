@@ -91,6 +91,8 @@ text.zi
 text_align.zi
 text_input.zi
 text_input_props.zi
+text_props.zi
+paragraph.zi
 text_rows.zi
 theme.zi
 title_bar.zi
