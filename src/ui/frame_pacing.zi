@@ -13,6 +13,16 @@ FramePacingDecision :: struct {
     apply_target: bool
 }
 
+# The platform host owns the timer; Kryon decides when its target changes.
+ApplyTargetFPS :: (fps: i32) #extern
+
+CommitFramePacing :: (decision: FramePacingDecision) -> FramePacing #export {
+    if decision.apply_target {
+        ApplyTargetFPS(decision.state.target_fps)
+    }
+    return decision.state
+}
+
 FramePacingSanitizeFPS :: (fps: i32) -> i32 {
     if fps > 0 { return fps }
     return 0

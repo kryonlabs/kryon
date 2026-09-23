@@ -40,6 +40,9 @@ not yet in the checked build. Native widget rendering and downstream app
 integration are incomplete. The current C archive is therefore a subset of
 the intended Kryon library. A `.zib` containing Kryon code must link only the
 modules an application imports and require host capabilities explicitly.
+`frame_pacing.zi` now declares a scalar timer capability when its commit
+function is linked. Rendering and pointer-bearing widget capabilities still
+need portable host contracts.
 
 ## Completion requirements
 
