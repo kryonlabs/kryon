@@ -112,3 +112,5 @@ tree.zi
 tree_view.zi
 tree_view_props.zi
 widget_kind.zi
+window_flags.zi
+window_policy.zi

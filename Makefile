@@ -21,7 +21,7 @@ $(BUILD_DIR)/libkryon_host.a: src/backend/ziran_host.c include/kryon_portable_ho
 	$(AR) rcs $@ $(BUILD_DIR)/ziran_host.o
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
-$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt
+$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile
 	$(MAKE) -C $(ZIRAN_DIR) all
 	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj $(BUILD_DIR)/obj-cpp
 	$(ZIRAN_BIN) ir --root src/ui -o $(BUILD_DIR)/ir $(SOURCE)
@@ -32,9 +32,9 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/cpp -c $(BUILD_DIR)/cpp/$$module.cpp -o $(BUILD_DIR)/obj-cpp/$$module.o || exit 1; \
 	done
+	GO111MODULE=off go test ./$(BUILD_DIR)/go
 	rm -f $@
 	$(AR) rcs $@ $(OBJECTS)
-	GO111MODULE=off go test ./$(BUILD_DIR)/go
 
 ziran-test: $(BUILD_DIR)/libkryon_host.a
 	@for test_file in tests/ziran_*_test.sh; do sh "$$test_file" || exit 1; done

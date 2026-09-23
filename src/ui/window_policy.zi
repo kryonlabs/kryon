@@ -1,6 +1,5 @@
 #module "window_policy"
-#import "ui_window_props.generated.h"
-#import <limits.h>
+#import "window_flags"
 
 WindowPoint :: struct {
     x: i32
@@ -8,11 +7,11 @@ WindowPoint :: struct {
 }
 
 WindowCoordinateClamp :: (value: i64) -> i32 #private {
-    if value < (i64)INT_MIN {
-        return INT_MIN
+    if value < (i64)(-2147483648) {
+        return -2147483648
     }
-    if value > (i64)INT_MAX {
-        return INT_MAX
+    if value > (i64)2147483647 {
+        return 2147483647
     }
     return (i32)value
 }

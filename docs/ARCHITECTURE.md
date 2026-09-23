@@ -32,6 +32,7 @@ adapter `build/ziran/libkryon_host.a`. `make test` runs the current
 source, saved-IR, and portable bundle tests. The checked modules cover
 geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, swipe, and
 scroll interaction, frame pacing, paragraph layout policy, text input and text row decisions,
+window placement and drag policy,
 text and accessibility contracts, keyboard accelerator contracts, theme and style values,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image, Separator, and Progress paint decisions.
