@@ -598,6 +598,11 @@ language-test: $(K2C) $(K2CPP) $(K2GO)
 	python3 tests/imported_cast_test.py $(BUILD_DIR)
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 
+.PHONY: ziran-test
+ziran-test:
+	sh tests/ziran_layout_test.sh
+	sh tests/ziran_accessibility_test.sh
+
 spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 

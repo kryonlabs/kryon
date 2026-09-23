@@ -29,11 +29,17 @@ child placement, and flex spacing and alignment. `zi/group.zi` composes those
 policies into group bounds. A separate Ziran program imports these modules
 normally; the
 [layout test](../tests/ziran_layout_test.sh) checks source and saved `.zir`
-builds in C, C++, and Go without linking a UI runtime. It also links the
-reachable scalar layout functions into a `.zib` and runs that bundle without
-the unused geometry, group, or flex functions. The active Kryon build still
-uses `runtime/layout.kry`; the `.zi` modules are not yet wired into widget
-rendering or downstream applications.
+builds in C, C++, and Go without linking a UI runtime. It runs scalar and
+record subsets and the complete layout calculation test from `.zib`, built
+from both `.zi` and saved `.zir`.
+
+`zi/widget_kind.zi`, `zi/accessibility_props.zi`, and
+`zi/accessibility_policy.zi` port the widget-kind and accessibility decisions.
+The [accessibility test](../tests/ziran_accessibility_test.sh) builds the
+ordinary imported modules from `.zi` and saved `.zir` for C, C++, and Go.
+`make ziran-test` runs both migration tests with an adjacent Ziran checkout.
+The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
+modules are not yet wired into widget rendering or downstream applications.
 
 ## Core contracts
 
