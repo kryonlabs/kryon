@@ -1,25 +1,27 @@
 #module "navigation_bar_props"
-#import "drawing_props"
+#import "image_props"
 
 NavigationBarItem :: struct {
+    key: u64
     route: i32
-    label: const char*
-    icon: Texture2D
-    icon_type: i32
+    label: string
+    image: ImageProps
     active: bool
     disabled: bool
 }
 
 NavigationBarProps :: struct {
+    key: u64
+    id: i32
     view_width: i32
     view_height: i32
     class_name: i32
-    count: i32
-    items: const NavigationBarItem*
     height: i32
+    scale: float
 }
 
 NavigationBarResult :: struct {
+    node: i32
     clicked_index: i32
     clicked_route: i32
     y: i32

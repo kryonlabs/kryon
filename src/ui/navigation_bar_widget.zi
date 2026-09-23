@@ -1,0 +1,235 @@
+#module "navigation_bar_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "image"
+#import "image_props"
+#import "image_widget"
+#import "navigation_bar"
+#import "navigation_bar_props"
+#import "paint_queue"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+NavigationBarDefaultFace :: (item: bool, active: bool,
+    hovered: bool, disabled: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleIconSize | (u32)StyleFontSize |
+        (u32)StyleGap
+    face.background = (u32)0xf1f5f9ff
+    face.foreground = (u32)0x334155ff
+    face.border = (u32)0xcbd5e1ff
+    face.border_width = 1.0
+    face.radius = 20.0
+    face.opacity = 1.0
+    face.icon_size = 32.0
+    face.font_size = 12.0
+    face.gap = 4.0
+    if item {
+        face.background = (u32)0x00000000
+        face.border_width = 0.0
+        face.radius = 29.0
+        if active {
+            face.background = (u32)0x2563ebff
+            face.foreground = (u32)0xffffffff
+        } else if hovered {
+            face.background = (u32)0xe2e8f0ff
+        }
+        if disabled { face.opacity = 0.45 }
+    }
+    return face
+}
+
+NavigationBarFaceFor :: (props: NavigationBarProps) -> StyleFrame #export {
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        NavigationBarDefaultFace(false, false, false, false),
+        StyleControlRoleFacts(StyleKindNavigationBar(),
+            props.id, props.class_name, StyleAny(),
+            (i32)ButtonToneNeutral,
+            (i32)ButtonEmphasisSoft,
+            (i32)ControlSizeMedium,
+            (i32)ButtonStateNormal),
+        (i32)ButtonStateNormal)
+    return frame
+}
+
+NavigationBarItemFaceFor :: (props: NavigationBarProps,
+    item: NavigationBarItem, hovered: bool) -> StyleFrame #export {
+    state: i32 = (i32)NavigationBarItemStateFor(item.active,
+        item.disabled, hovered)
+    tone: i32 = (i32)ButtonToneNeutral
+    emphasis: i32 = (i32)ButtonEmphasisGhost
+    if item.active {
+        tone = (i32)ButtonToneAccent
+        emphasis = (i32)ButtonEmphasisFilled
+    }
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindNavigationBarItem(), props.id, props.class_name,
+        StyleAny(), tone, emphasis,
+        (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        NavigationBarDefaultFace(true, item.active, hovered,
+            item.disabled), facts, state)
+    return frame
+}
+
+NavigationBarKey :: (props: NavigationBarProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+NavigationBarItemKey :: (bar_key: u64, item: NavigationBarItem,
+    index: i32) -> u64 #export {
+    if item.key != (u64)0 { return item.key }
+    return bar_key * (u64)131071 + (u64)(u32)(index + 1)
+}
+
+NavigationBarPaintImage :: (node: i32, image: ImageProps,
+    bounds: Rectangle, clip: Rectangle, opacity: float) #export {
+    if image.asset_path == "" && image.texture.id == (u32)0 { return }
+    image.bounds = bounds
+    texture: Texture2D = ImageTextureFor(image)
+    plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
+        ColorFromPacked(Opacity((u32)0xffffffff, opacity)))
+    if plan.draw {
+        PaintImage(node, image.asset_path, image.texture.id,
+            plan.source, plan.destination, clip, image.origin,
+            image.rotation, 0.0, plan.tint)
+    }
+}
+
+# Items are borrowed values. Each item owns a stable key when routes can
+# move. The result reports the activated route; the caller applies routing.
+NavigationBar :: (props: NavigationBarProps,
+    items: []NavigationBarItem) -> NavigationBarResult #export {
+    result: NavigationBarResult
+    result.node = -1
+    result.clicked_index = -1
+    result.clicked_route = -1
+    if items.length <= 0 || props.view_width <= 0 ||
+        props.view_height <= 0 { return result }
+    key: u64 = NavigationBarKey(props)
+    bar: StyleFrame = NavigationBarFaceFor(props)
+    base_item: NavigationBarItem
+    item_face: StyleFrame = NavigationBarItemFaceFor(props,
+        base_item, false)
+    spec: NavigationBarSpec
+    spec.view_width = props.view_width
+    spec.view_height = props.view_height
+    spec.count = items.length
+    spec.height = props.height
+    spec.side_margin = -1
+    spec.bottom_margin = -1
+    spec.icon_size = -1
+    spec.scale = props.scale
+    spec.bar = bar
+    spec.item = item_face
+    paint: NavigationBarPaint = NavigationBarPaintFor(spec)
+    result.y = paint.y
+    result.height = paint.height
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key,
+            WidgetKindNavigationBar, paint.bounds)
+        if result.node < 0 { return result }
+        submitted: Rectangle = TreeSubmittedNodeAt(result.node).bounds
+        dx: float = submitted.x - paint.bounds.x
+        dy: float = submitted.y - paint.bounds.y
+        paint.bounds = submitted
+        paint.bar_bounds.x += dx
+        paint.bar_bounds.y += dy
+        paint.start_x += (i32)dx
+        paint.y += (i32)dy
+        result.y = paint.y
+    }
+    opacity: float = StyleOpacityValue(bar.value.fields,
+        bar.value.opacity)
+    PaintRoundedFill(result.node, paint.bar_bounds,
+        bar.value.radius, 12,
+        ColorFromPacked(Opacity(bar.value.background, opacity)))
+    if bar.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, paint.bar_bounds,
+            bar.value.radius, 12, bar.value.border_width,
+            ColorFromPacked(Opacity(bar.value.border, opacity)))
+    }
+    index: i32 = 0
+    while index < paint.count {
+        item: NavigationBarItem = items[index]
+        item_key: u64 = NavigationBarItemKey(key, item, index)
+        previous: i32 = -1
+        if TreeIsBuilding() {
+            previous = TreeFind(item_key, key, WidgetKindButton)
+        }
+        if !item.disabled && TreeTakeActivationAt(previous) {
+            result.clicked_index = index
+            result.clicked_route = item.route
+        }
+        hovered: bool = TreeHoveredAt(previous) && !item.disabled
+        face: StyleFrame = NavigationBarItemFaceFor(props,
+            item, hovered)
+        base: StyleFrame = NavigationBarItemFaceFor(props,
+            base_item, false)
+        font: i32 = ResolveFont(0,
+            StyleFontValue(face.value.fields,
+                face.value.font_size), 12)
+        line_height: i32 = GlyphLineHeight(font,
+            face.value.typeface)
+        item_spec: NavigationBarItemSpec
+        item_spec.bar = paint
+        item_spec.index = index
+        item_spec.active = item.active
+        item_spec.disabled = item.disabled
+        item_spec.hovered = hovered
+        item_spec.label_height = line_height
+        item_spec.base = base
+        item_spec.face = face
+        layout: NavigationBarItemPaint =
+            NavigationBarItemPaintFor(item_spec)
+        node: i32 = -1
+        if TreeIsBuilding() {
+            node = TreeSubmit(item_key, result.node,
+                WidgetKindButton, layout.bounds)
+            if node < 0 { return result }
+            TreeSetInteractive(node, item.disabled, false, 0)
+            TreeSetSemantic(node,
+                (SemanticKind)SemanticButton, 0)
+            TreeSetLabel(node, item.label)
+            TreeSetSelected(node, item.active)
+        }
+        if layout.draw_face {
+            face_opacity: float = StyleOpacityValue(
+                layout.face.value.fields,
+                layout.face.value.opacity)
+            PaintRoundedFill(node, layout.state_bounds,
+                layout.face.value.radius, 12,
+                ColorFromPacked(Opacity(
+                    layout.face.value.background, face_opacity)))
+        }
+        image_opacity: float = (float)layout.icon_alpha / 255.0
+        NavigationBarPaintImage(node, item.image,
+            layout.icon_bounds, layout.bounds, image_opacity)
+        if item.label != "" {
+            text_opacity: float = StyleOpacityValue(
+                base.value.fields, base.value.opacity)
+            PaintClippedLabel(node, item.label,
+                (i32)layout.label_bounds.x,
+                (i32)layout.label_bounds.y, font,
+                ColorFromPacked(Opacity(
+                    layout.text_color, text_opacity)),
+                layout.label_bounds)
+        }
+        index += 1
+    }
+    return result
+}

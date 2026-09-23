@@ -103,8 +103,8 @@ surface review:
 | `runtime/menu.kry`, `src/ui/menu_host.kry` | Menu metrics, geometry, navigation, accelerator matching, panel tracking, bar/context open/index/outside-close policy, and group pointer open/close decisions | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
 | `src/ui/list_box_multi.zi` | ListBox multi-selection keyboard navigation and selection policy | checked Ziran |
-| `runtime/navigation_bar.kry` | Navigation bar default-height, item interaction, paint, and configuration layout/count/default policy | `.kry canonical` |
-| `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
+| `src/ui/navigation_bar.zi` | Navigation bar layout, item geometry, and configuration layout/count/default policy | checked Ziran |
+| `src/ui/navigation_bar_props.zi` | Borrowed NavigationBar item values, props, and result | checked Ziran |
 | `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
 | `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
 | `runtime/node_props.kry` | Retained node kind/flags, node record, and size constants | `.kry canonical` |
@@ -213,7 +213,7 @@ surface review:
 | `src/ui/list_box_multi.kry` | List Box Multi widget host surface | `.kry canonical` |
 | `src/ui/modal.kry` | Modal widget host surface | `.kry canonical` |
 | `src/ui/modal_tree.kry` | Modal Tree widget host surface | `.kry canonical` |
-| `src/ui/navigation_bar.kry` | Navigation Bar widget host surface | `.kry canonical` |
+| `src/ui/navigation_bar_widget.zi` | Retained NavigationBar input, KSS, icon and label paint, and route result | checked Ziran |
 | `src/ui/node_registry.kry` | Node Registry widget host surface | `.kry canonical` |
 | `src/ui/numeric.kry` | Numeric widget host surface | `.kry canonical` |
 | `src/ui/overlay_widget.zi` | Retained backdrop, input interception, panel node, and clipped release decision | checked Ziran |
@@ -325,7 +325,7 @@ The nine generic `InputPointerInteractionFor` calls use `runtime/input.kry`.
 |---|---|---|
 | `src/ui/button.kry`, `src/ui/dropdown.kry`, `src/ui/slider.kry`, `src/ui/drag.kry`, `src/ui/numeric_edit.kry`, `src/ui/toggle.kry`, `src/ui/checkbox.kry`, generic helpers in `input_capture.kry` | `input.kry`, with dropdown/value policy | Sample input, apply activation/consume flags, draw/store results |
 | `src/ui/modal.kry`, `src/ui/popup.kry`, `src/ui/overlay_widget.zi` | `modal.kry`, `popup_policy.kry`, `src/ui/overlay.zi` | Dismissible overlay capture and release behavior is checked Ziran; dialog and popup hosts remain to migrate. |
-| `src/ui/navigation_bar.kry`, `src/ui/profile_header.kry` | `navigation_bar.kry`, `profile_header.kry` | Navigation and profile input, image selection, and drawing are authored in `.kry` |
+| `src/ui/navigation_bar_widget.zi`, `src/ui/profile_header_host.zi` | `navigation_bar.zi`, `profile_header.zi` | NavigationBar input and paint are checked Ziran; profile header host migration remains. |
 | `src/ui/swipe.kry`, `src/ui/tab_bar.kry`, `src/ui/tab_store.kry`, `ui_inspect.c` | `swipe.kry`, `tab_bar.kry`, `inspect.kry` | Swipe and TabBar input, drag state, and drawing are authored in `.kry`; inspector work remains in C |
 | Scrollbar and ScrollScope in `src/ui/scroll.kry` | `scroll.kry` | Store scroll/drag state, apply release, clip content, and paint the scrollbar |
 | Collection and Menu paths in `src/ui/table_view.kry` and `src/ui/menu_host.kry` | `drag_drop.kry`, `list_box_multi.kry`, `menu.kry`, `list_box.kry`, `tree_view.kry`, `table_view.kry`, `collapsible.kry` | Apply source/target, row, menu, resize and header decision flags |
@@ -385,7 +385,7 @@ has a single place to land.
 | `TextArea` | `Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
 | `CanvasGrid` | `Collections` | Grid | `runtime/canvas_grid.kry`, `src/ui/canvas.kry` | `.kry-backed` | Grid spacing, line geometry, drawing, and hit testing are authored in `.kry`. |
 | `Menu` | `Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data plus bar, popup, context, and outside-close behavior props are generated from `.kry`. |
-| `NavigationBar` | `Navigation` | Tabs | `runtime/navigation_bar.kry`, `src/ui/navigation_bar.kry` | `.kry canonical` | Item interaction, KSS styling, paint, and configuration modal composition are `.kry`. |
+| `NavigationBar` | `Navigation` | Tabs | `src/ui/navigation_bar.zi`, `src/ui/navigation_bar_widget.zi` | checked Ziran bar | Borrowed item values, retained activation, KSS, and paint are checked; configuration modal composition remains in the old host. |
 | `Toolbar` | `Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry/style-size and icon slider popup open/close policy are `.kry`; host dispatches child actions. |
 | `TabBar` | `Navigation` | Tabs | `runtime/tab_bar.kry`, `src/ui/tab_bar.kry`, `src/ui/tab_store.kry` | `.kry canonical` | Sizing, KSS style, input, scroll, retained drag state, icon and text paint, reorder, close, and double click are authored in `.kry`. |
 | `TitleBar` | `Navigation` | Title | `runtime/title_bar.kry`, `src/ui/title_bar.kry` | `.kry-backed` | TitleBar layout, styling, title text, dropdown dispatch, and leading action are authored in `.kry`; text measurement and drawing use lower-level runtime services. |
@@ -543,7 +543,7 @@ host roles rather than retained nodes.
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |
 | `TabBar` | `.kry canonical` | Tab navigation surface. |
-| `NavigationBar` | `.kry canonical` | App navigation bar. |
+| `NavigationBar` | checked Ziran bar | App navigation bar with borrowed items and a clicked route result; configuration modal migration remains. |
 | `Toolbar` | `.kry canonical` | Tool/action strip. |
 | `Toast` | `.kry canonical` | Public props live in `runtime/toast_props.kry`; toast feedback command. |
 | `Fieldset` | `.kry canonical` | Titled frame/group. |
@@ -590,7 +590,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Collapsible` | `.kry canonical` | Collapsible section block. |
 | `ListBox` | checked Ziran | List block with retained item nodes. |
 | `TableView` | `.kry canonical` | Table block. |
-| `NavigationBar` | `.kry canonical` | Navigation block. |
+| `NavigationBar` | checked Ziran bar | Navigation block with retained item activation and asset backed icons. |
 | `Toolbar` | checked Ziran | Composes retained Button actions and Dropdown with caller owned state. |
 | `TabBar` | `.kry canonical` | Tab bar block. |
 | `Page` | checked Ziran | Page scope and portable metadata effect. |
@@ -720,7 +720,7 @@ should use canonical `.kry` names and blocks.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `NavigationBar` | `.kry canonical` | `src/ui/navigation_bar.kry` owns input, item paint, icons, and configuration modal composition around `runtime/navigation_bar.kry` policy. Item and configuration-slot labels use `NavigationBarItem` KSS typography. |
+| `NavigationBar` | checked Ziran bar | `navigation_bar_widget.zi` owns retained input, item paint, asset backed icons, and route results; configuration modal composition still needs migration. |
 | `Toolbar` | checked Ziran | Retained Button actions and Dropdown composition with caller owned state. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable/keyboard navigation, bar/context open/index policy, and group pointer open/close decisions are in `.kry`. |
 | `TabBar` | `.kry canonical` | `src/ui/tab_bar.kry` owns KSS style, sizing, input, scroll, drag, close, and paint; `src/ui/tab_store.kry` owns retained state. |
@@ -807,7 +807,7 @@ stays prefix-free.
 | `WidgetKindToggle` | `Toggle` | `.kry canonical` |
 | `WidgetKindCheckbox` | `Checkbox` | `.kry canonical` |
 | `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection policy is `.kry-backed` |
-| `WidgetKindNavigationBar` | `NavigationBar` | `.kry canonical` |
+| `WidgetKindNavigationBar` | `NavigationBar` | checked Ziran bar |
 | `WidgetKindTabBar` | `TabBar` | `.kry canonical` |
 | `WidgetKindTitleBar` | `TitleBar` | `.kry canonical` |
 | `WidgetKindGroup` | `Group`, `Screen` | checked Ziran |
@@ -935,7 +935,7 @@ behind the canonical names.
   text-area gutter inactive-label alpha now routes through
   `runtime/text_input.kry`;
   navigation-bar icon tint alpha now routes through
-  `runtime/navigation_bar.kry`;
+  `src/ui/navigation_bar.zi`;
   profile image picker selected-stroke width now routes through
   `runtime/profile_header.kry`; toolbar divider line geometry now routes
   through `runtime/toolbar.kry`; radio state-layer alpha now routes through

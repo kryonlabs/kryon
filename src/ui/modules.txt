@@ -75,6 +75,7 @@ modal.zi
 modal_props.zi
 navigation_bar.zi
 navigation_bar_props.zi
+navigation_bar_widget.zi
 overlay.zi
 overlay_props.zi
 overlay_widget.zi
