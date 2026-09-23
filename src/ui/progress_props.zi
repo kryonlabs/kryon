@@ -8,4 +8,5 @@ ProgressProps :: struct {
     value: i32
     label: string
     class_name: i32
+    key: u64
 }

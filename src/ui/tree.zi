@@ -1,22 +1,15 @@
 #module "tree"
+#import "geometry"
 #import "widget_kind"
 
 # A retained node keeps its identity only when its key, kind, and parent key
-# match the previous committed tree. The native host supplies stored node
-# fields; this module owns the reconciliation decision.
+# match the previous committed tree. The portable tree owns this decision;
+# the old native tree host also calls these pure policy functions.
 TreeIdentityHash :: (parent: u64, key: u64, kind: i32) -> u64 #export {
-    mix_parent: u64 = 0x9e3779b97f4a7c15ULL
-    mix_kind: u64 = 0x9e3779b185ebca87ULL
-    avalanche_a: u64 = 0xbf58476d1ce4e5b9ULL
-    avalanche_b: u64 = 0x94d049bb133111ebULL
-    hash: u64 = key ^ (parent + mix_parent +
-        (key << (u64)6) + (key >> (u64)2))
-    hash = hash ^ ((u64)(u32)kind * mix_kind)
-    hash = hash ^ (hash >> (u64)30)
-    hash = hash * avalanche_a
-    hash = hash ^ (hash >> (u64)27)
-    hash = hash * avalanche_b
-    return hash ^ (hash >> (u64)31)
+    hash: u64 = key ^ (parent * (u64)16777619)
+    hash = hash ^ ((u64)(u32)kind * (u64)2166136261)
+    hash = (hash ^ (hash >> (u64)16)) * (u64)2246822519
+    return hash ^ (hash >> (u64)16)
 }
 
 TreeSameIdentity :: (old_key: u64, old_kind: i32, old_parent_key: u64,
@@ -52,4 +45,124 @@ TreeCommitFor :: (activation: bool, committed_count: i32,
     plan.reconcile = !plan.keep_committed
     plan.route_input = !plan.keep_committed
     return plan
+}
+
+# The portable tree owns node identity across bundle instance runs. Geometry
+# and widget data are values; platform hosts only consume the committed tree.
+TreeEntry :: struct {
+    key: u64
+    parent_key: u64
+    kind: i32
+    bounds: Rectangle
+    identity_generation: i32
+    matched: bool
+}
+
+TreeStore :: struct {
+    committed: [1024]TreeEntry
+    submitted: [1024]TreeEntry
+    slots: [2048]i32
+    committed_count: i32
+    submitted_count: i32
+    next_identity_generation: i32
+    building: bool
+    overflow: bool
+}
+
+active_tree :: TreeStore #global
+
+TreeStart :: (screen_key: u64, bounds: Rectangle) #export {
+    active_tree.submitted_count = 0
+    active_tree.building = true
+    active_tree.overflow = false
+    key: u64 = screen_key
+    if key == 0 { key = 1 }
+    TreeSubmit(key, -1, WidgetKindScreen, bounds)
+}
+
+TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
+    bounds: Rectangle) -> i32 #export {
+    if !active_tree.building || active_tree.overflow { return -1 }
+    if active_tree.submitted_count >= 1024 {
+        active_tree.overflow = true
+        return -1
+    }
+    if parent_index >= active_tree.submitted_count || parent_index < -1 {
+        return -1
+    }
+    index: i32 = active_tree.submitted_count
+    entry: TreeEntry
+    entry.key = key
+    if key == 0 { entry.key = (u64)(index + 1) }
+    if parent_index >= 0 {
+        entry.parent_key = active_tree.submitted[parent_index].key
+    }
+    entry.kind = kind
+    entry.bounds = bounds
+    active_tree.submitted[index] = entry
+    active_tree.submitted_count += 1
+    return index
+}
+
+TreeFinish :: () -> bool #export {
+    if !active_tree.building { return false }
+    active_tree.building = false
+    if active_tree.overflow { return false }
+    slot: i32 = 0
+    while slot < 2048 {
+        active_tree.slots[slot] = -1
+        slot += 1
+    }
+    old_index: i32 = 0
+    while old_index < active_tree.committed_count {
+        active_tree.committed[old_index].matched = false
+        old: TreeEntry = active_tree.committed[old_index]
+        slot = (i32)(TreeIdentityHash(old.parent_key, old.key, old.kind) &
+            (u64)2047)
+        while active_tree.slots[slot] >= 0 {
+            slot = (slot + 1) & 2047
+        }
+        active_tree.slots[slot] = old_index
+        old_index += 1
+    }
+    index: i32 = 0
+    while index < active_tree.submitted_count {
+        next: TreeEntry = active_tree.submitted[index]
+        slot = (i32)(TreeIdentityHash(next.parent_key, next.key,
+            next.kind) & (u64)2047)
+        while active_tree.slots[slot] >= 0 {
+            old_index = active_tree.slots[slot]
+            old: TreeEntry = active_tree.committed[old_index]
+            if !old.matched && TreeSameIdentity(old.key, old.kind,
+                old.parent_key, next.key, next.kind, next.parent_key) {
+                next.identity_generation = old.identity_generation
+                active_tree.committed[old_index].matched = true
+                break
+            }
+            slot = (slot + 1) & 2047
+        }
+        if next.identity_generation == 0 {
+            active_tree.next_identity_generation += 1
+            next.identity_generation = active_tree.next_identity_generation
+        }
+        active_tree.submitted[index] = next
+        index += 1
+    }
+    index = 0
+    while index < active_tree.submitted_count {
+        active_tree.committed[index] = active_tree.submitted[index]
+        index += 1
+    }
+    active_tree.committed_count = active_tree.submitted_count
+    return true
+}
+
+TreeCount :: () -> i32 #export {
+    return active_tree.committed_count
+}
+
+TreeNodeAt :: (index: i32) -> TreeEntry #export {
+    empty: TreeEntry
+    if index < 0 || index >= active_tree.committed_count { return empty }
+    return active_tree.committed[index]
 }

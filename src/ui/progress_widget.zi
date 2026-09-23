@@ -7,6 +7,8 @@
 #import "progress_style"
 #import "style"
 #import "style_sheet"
+#import "tree"
+#import "widget_kind"
 
 # Resolved faces are values supplied by Kryon's style cascade. The platform
 # only measures glyphs and rasterizes commands.
@@ -51,6 +53,7 @@ PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
 }
 
 Progress :: (props: ProgressProps) #export {
+    TreeSubmit(props.key, 0, WidgetKindProgress, props.bounds)
     PaintProgressFromRules(props, ActiveStyleRules(),
         DefaultProgressFaces())
 }
