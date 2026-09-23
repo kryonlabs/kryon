@@ -73,10 +73,13 @@ popup_props.zi
 primitive.zi
 profile_header.zi
 progress.zi
+progress_raster.zi
 progress_props.zi
 radio.zi
 radio_props.zi
 raster.zi
+raster_shape.zi
+raster_text.zi
 reorder.zi
 reorder_props.zi
 rows.zi

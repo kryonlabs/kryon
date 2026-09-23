@@ -19,6 +19,28 @@ typedef struct LineRenderer {
 /* The renderer and its context must remain valid through BundleRun. */
 HostBinding RasterLineBinding(LineRenderer *renderer);
 
+typedef struct RoundedRectangleRenderer {
+    void (*fill)(void *context, float x, float y, float width, float height,
+                 float radius, int segments,
+                 uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    void (*outline)(void *context, float x, float y, float width, float height,
+                    float radius, int segments, float line_width,
+                    uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    void *context;
+} RoundedRectangleRenderer;
+
+typedef struct TextRenderer {
+    void (*draw)(void *context, const char *text, size_t length,
+                 int x, int y, int font,
+                 uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    void *context;
+} TextRenderer;
+
+/* Renderers and their contexts must remain valid through BundleRun. */
+HostBinding RasterRoundedRectangleBinding(RoundedRectangleRenderer *renderer);
+HostBinding RasterRoundedRectangleOutlineBinding(RoundedRectangleRenderer *renderer);
+HostBinding RasterTextBinding(TextRenderer *renderer);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,19 @@
+#module "raster_shape"
+#import "drawing_props"
+#import "geometry"
+
+# The platform only rasterizes the shapes selected by a Kryon widget.
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float,
+    segments: i32, color: Color) #extern
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float,
+    segments: i32, width: float, color: Color) #extern
+
+FillRoundedRectangle :: (bounds: Rectangle, radius: float,
+    segments: i32, color: Color) #export {
+    RasterRoundedRectangle(bounds, radius, segments, color)
+}
+
+StrokeRoundedRectangle :: (bounds: Rectangle, radius: float,
+    segments: i32, width: float, color: Color) #export {
+    RasterRoundedRectangleOutline(bounds, radius, segments, width, color)
+}

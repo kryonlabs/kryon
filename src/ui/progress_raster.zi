@@ -1,0 +1,28 @@
+#module "progress_raster"
+#import "drawing_props"
+#import "geometry"
+#import "progress"
+#import "raster_shape"
+#import "raster_text"
+
+# The host rasterizes these primitives; draw order and color choices are Ziran.
+PaintProgress :: (bounds: Rectangle, paint: ProgressPaint,
+    label: string, font: i32, label_opacity: float) #export {
+    plan: ProgressDrawPlan = ProgressDrawPlanFor(bounds, paint,
+        label != "", label_opacity)
+    FillRoundedRectangle(bounds, plan.radius, 12,
+        ColorFromPacked(paint.track_color))
+    if plan.draw_fill {
+        FillRoundedRectangle(paint.layout.fill_bounds, plan.radius, 12,
+            ColorFromPacked(paint.fill_color))
+    }
+    if plan.draw_border {
+        StrokeRoundedRectangle(bounds, plan.radius, 12, paint.border_width,
+            ColorFromPacked(paint.border_color))
+    }
+    if plan.draw_label {
+        PaintText(label, (i32)paint.layout.label_x,
+            (i32)paint.layout.label_y, font,
+            ColorFromPacked(plan.label_color))
+    }
+}

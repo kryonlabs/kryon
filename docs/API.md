@@ -45,6 +45,11 @@ files show source, saved-IR, and bundle use of those modules.
 `include/kryon_portable_host.h` and built into `build/ziran/libkryon_host.a`.
 `FramePacingBinding()` uses the platform's `SetTargetFPS`;
 `RasterLineBinding()` accepts a line renderer for Bevel and Separator lines.
+`RasterRoundedRectangleBinding()`,
+`RasterRoundedRectangleOutlineBinding()`, and `RasterTextBinding()` accept
+shape and UTF-8 text renderers for the checked Progress paint path. Shape and
+text effects live in separate modules, so a line-only Go host needs only the
+line interface.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
@@ -52,8 +57,9 @@ with `make` and `make test` from the Kryon repository. No display is started.
 
 This library currently covers selected widget policy and line rendering.
 Progress layout, fill and border visibility, radius, and label color decisions
-are checked Ziran functions; its complete widget and raster host are still
-being migrated.
+are checked Ziran functions. `PaintProgress()` emits its track, fill, outline,
+and label through declared raster effects. Style lookup, font measurement, and
+the complete `Progress(ProgressProps)` widget are still being migrated.
 `ImageProps` now carries portable strings. Image fit, source selection, draw
 eligibility, and default tint decisions are checked Ziran functions. Text fields
 in `TextProps`, `LinkProps`, `ToastProps`, `SeparatorProps`, `RadioProps`,
