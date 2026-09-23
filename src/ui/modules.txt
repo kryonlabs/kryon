@@ -65,6 +65,7 @@ locale_policy.zi
 list_box.zi
 list_box_multi.zi
 list_box_props.zi
+list_box_widget.zi
 material.zi
 menu.zi
 menu_props.zi

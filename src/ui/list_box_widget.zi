@@ -1,0 +1,505 @@
+#module "list_box_widget"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "list_box"
+#import "list_box_multi"
+#import "list_box_props"
+#import "paint_queue"
+#import "scroll"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+ListBoxView :: struct {
+    key: u64
+    bounds: Rectangle
+    id: i32
+    class_name: i32
+    scroll_offset: i32
+    scroll_delta: i32
+    row_height: i32
+    scale: float
+    disabled: bool
+}
+
+ListBoxViewState :: struct {
+    node: i32
+    key: u64
+    bounds: Rectangle
+    layout: ListBoxLayout
+    panel: StyleFrame
+    item: StyleFrame
+    track: StyleFrame
+    thumb: StyleFrame
+    scroll_metrics: ScrollMetrics
+    scale: float
+    max_scroll: i32
+    scroll: i32
+    valid: bool
+    multi: bool
+}
+
+ListBoxItemKey :: (item: ListBoxItem, index: i32) -> u64 #export {
+    if item.key != (u64)0 { return item.key }
+    return (u64)(index + 1)
+}
+
+ListBoxThumbKey :: () -> u64 #export {
+    return (u64)4294967295
+}
+
+ListBoxDefaultFace :: (state: i32,
+    item: bool) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleForeground |
+        (u32)StyleBorder | (u32)StyleBorderWidth |
+        (u32)StyleRadius | (u32)StyleOpacity |
+        (u32)StyleFontSize | (u32)StylePaddingX |
+        (u32)StyleIconSize
+    face.background = (u32)0xffffffff
+    face.foreground = (u32)0x171717ff
+    face.border = (u32)0xd1d5dbff
+    face.border_width = 1.0
+    face.radius = 4.0
+    face.opacity = 1.0
+    face.font_size = 14.0
+    face.padding_x = 8.0
+    face.icon_size = 8.0
+    if item {
+        face.background = (u32)0x00000000
+        face.border = (u32)0x00000000
+        face.border_width = 0.0
+        if state == ButtonStateHover {
+            face.background = (u32)0xe5e7ebff
+        } else if state == ButtonStatePressed {
+            face.background = (u32)0xd1d5dbff
+        } else if state == ButtonStateSelected {
+            face.background = (u32)0xdbeafeff
+            face.foreground = (u32)0x1d4ed8ff
+        }
+    }
+    if state == ButtonStateDisabled { face.opacity = 0.45 }
+    return face
+}
+
+ListBoxFace :: (kind: i32, id: i32, class_name: i32,
+    state: i32, item: bool) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(kind, id,
+        class_name, StyleAny(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        ListBoxDefaultFace(state, item), facts, state)
+    return frame
+}
+
+ListBoxScrollFace :: (kind: i32, class_name: i32,
+    disabled: bool) -> StyleFrame #export {
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleRadius |
+        (u32)StyleOpacity | (u32)StyleIconSize |
+        (u32)StylePaddingX
+    face.background = (u32)0xe5e7ebff
+    face.radius = 4.0
+    face.opacity = 1.0
+    face.icon_size = 8.0
+    face.padding_x = 2.0
+    if kind == StyleKindScrollThumb() {
+        face.background = (u32)0x9ca3afff
+        face.icon_size = 16.0
+    }
+    state: i32 = ButtonStateNormal
+    if disabled { state = ButtonStateDisabled }
+    facts: StyleFacts = StyleControlRoleFacts(kind, 0,
+        class_name, StyleAny(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), face,
+        facts, state)
+    return frame
+}
+
+ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView #export {
+    view: ListBoxView
+    view.key = props.key
+    view.bounds = props.bounds
+    view.id = props.id
+    view.class_name = props.class_name
+    view.scroll_offset = props.scroll_offset
+    view.scroll_delta = props.scroll_delta
+    view.row_height = props.row_height
+    view.scale = props.scale
+    view.disabled = props.disabled
+    return view
+}
+
+ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView #export {
+    view: ListBoxView
+    view.key = props.key
+    view.bounds = props.bounds
+    view.id = props.id
+    view.class_name = props.class_name
+    view.scroll_offset = props.scroll_offset
+    view.scroll_delta = props.scroll_delta
+    view.row_height = props.row_height
+    view.scale = props.scale
+    view.disabled = props.disabled
+    return view
+}
+
+ListBoxViewStart :: (view: ListBoxView, item_count: i32,
+    multi: bool) -> ListBoxViewState #export {
+    result: ListBoxViewState
+    result.node = -1
+    result.multi = multi
+    result.bounds = view.bounds
+    parent: Rectangle = TreeCurrentParentBounds()
+    if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
+    if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
+    if result.bounds.width <= 0.0 || result.bounds.height <= 0.0 {
+        return result
+    }
+    scale: float = view.scale
+    if scale <= 0.0 { scale = 1.0 }
+    result.scale = scale
+    panel_kind: i32 = StyleKindListBox()
+    item_kind: i32 = StyleKindListBoxItem()
+    if multi {
+        panel_kind = StyleKindListBoxMulti()
+        item_kind = StyleKindListBoxMultiItem()
+    }
+    state: i32 = ButtonStateNormal
+    if view.disabled { state = ButtonStateDisabled }
+    result.panel = ListBoxFace(panel_kind, view.id,
+        view.class_name, state, false)
+    result.item = ListBoxFace(item_kind, 0,
+        view.class_name, state, true)
+    result.track = ListBoxScrollFace(StyleKindScroll(),
+        view.class_name, view.disabled)
+    result.thumb = ListBoxScrollFace(StyleKindScrollThumb(),
+        view.class_name, view.disabled)
+    result.scroll_metrics = ScrollMetricsFor(scale,
+        result.track, result.thumb)
+    row_height: i32 = view.row_height
+    if row_height > 0 { row_height = (i32)((float)row_height * scale) }
+    if multi {
+        row_height = ListBoxMultiRowHeight(row_height, scale, result.item)
+    } else {
+        row_height = ListBoxRowHeight(row_height, scale, result.item)
+    }
+    if row_height <= 0 { row_height = 1 }
+    content_height: i32 = ListBoxContentHeight(item_count,
+        row_height, 0, scale, result.item)
+    result.max_scroll = ListBoxMaxScroll(result.bounds.height,
+        item_count, row_height, content_height, scale, result.item)
+    scroll: i64 = (i64)view.scroll_offset
+    if !view.disabled { scroll += (i64)view.scroll_delta }
+    if scroll < 0 { scroll = 0 }
+    if scroll > (i64)result.max_scroll {
+        scroll = (i64)result.max_scroll
+    }
+    result.scroll = (i32)scroll
+    result.key = view.key
+    if result.key == (u64)0 && view.id > 0 {
+        result.key = (u64)(u32)view.id
+    }
+    if result.key == (u64)0 { result.key = TreeNextKey() }
+    measured: Rectangle = result.bounds
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(result.key,
+            WidgetKindListBox, result.bounds)
+        if result.node < 0 { return result }
+        result.bounds = TreeSubmittedNodeAt(result.node).bounds
+        if !TreePushScope(result.node) { return result }
+        if result.max_scroll > 0 && !view.disabled {
+            previous: i32 = TreeFind(ListBoxThumbKey(),
+                result.key, WidgetKindSlider)
+            drag: PointerDrag = TreeTakeDragAt(previous)
+            if drag.active || drag.ended {
+                bar: ScrollBarPaint = ScrollBarPaintFor(
+                    (i32)(result.bounds.x + result.bounds.width) -
+                        result.scroll_metrics.scrollbar_width,
+                    (i32)result.bounds.y, (i32)result.bounds.height,
+                    content_height, result.scroll, result.max_scroll,
+                    result.scroll_metrics)
+                result.scroll = ScrollDragOffsetFor(drag.y,
+                    bar.track_bounds.y, drag.grab_y,
+                    result.max_scroll, bar)
+            }
+        }
+    }
+    result.layout = ListBoxLayoutFor(result.bounds, item_count,
+        row_height, content_height, result.scroll, scale, result.item)
+    opacity: float = StyleOpacityValue(result.panel.value.fields,
+        result.panel.value.opacity)
+    PaintRoundedFill(result.node, measured,
+        result.panel.value.radius, 12,
+        ColorFromPacked(Opacity(result.panel.value.background, opacity)))
+    if result.panel.value.border_width > 0.0 {
+        PaintRoundedOutline(result.node, measured,
+            result.panel.value.radius, 12,
+            result.panel.value.border_width,
+            ColorFromPacked(Opacity(result.panel.value.border, opacity)))
+    }
+    result.valid = true
+    return result
+}
+
+ListBoxViewScroll :: (view: ListBoxViewState,
+    scroll: i32) -> ListBoxViewState #export {
+    view.scroll = ListBoxClampScroll(scroll, view.max_scroll)
+    view.layout.scroll = view.scroll
+    view.layout.first_row = view.scroll / view.layout.row_height
+    view.layout.y_offset = view.scroll % view.layout.row_height
+    return view
+}
+
+ListBoxRow :: (view: ListBoxViewState, item: ListBoxItem,
+    index: i32, selected: bool, disabled: bool,
+    class_name: i32, id: i32) -> bool #export {
+    visible_index: i32 = index - view.layout.first_row
+    row: Rectangle = ListBoxRowBounds(view.bounds,
+        visible_index, view.layout)
+    clipped: Rectangle = RectangleIntersection(row, view.bounds)
+    if clipped.width <= 0.0 || clipped.height <= 0.0 { return true }
+    item_key: u64 = ListBoxItemKey(item, index)
+    previous: i32 = -1
+    if TreeIsBuilding() {
+        previous = TreeFind(item_key, view.key, WidgetKindSelectable)
+    }
+    state: i32 = ResolveState((i32)ButtonStateAuto,
+        disabled, false, TreePressedAt(previous),
+        TreeHoveredAt(previous), false, selected)
+    kind: i32 = StyleKindListBoxItem()
+    if view.multi { kind = StyleKindListBoxMultiItem() }
+    face: StyleFrame = ListBoxFace(kind, index + 1,
+        class_name, state, true)
+    node: i32 = -1
+    if TreeIsBuilding() {
+        node = TreeSubmitCurrent(item_key,
+            WidgetKindSelectable, clipped)
+        if node < 0 { return false }
+        TreeSetInteractive(node, disabled, false, id)
+        TreeSetSelected(node, selected)
+        TreeSetLabel(node, item.label)
+    }
+    opacity: float = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    if face.value.background != (u32)0 {
+        PaintRoundedFill(node, clipped, face.value.radius, 12,
+            ColorFromPacked(Opacity(face.value.background, opacity)))
+    }
+    if face.value.border_width > 0.0 {
+        PaintRoundedOutline(node, clipped, face.value.radius, 12,
+            face.value.border_width,
+            ColorFromPacked(Opacity(face.value.border, opacity)))
+    }
+    font: i32 = ResolveFont(0,
+        StyleFontValue(face.value.fields, face.value.font_size), 14)
+    line_height: i32 = GlyphLineHeight(font, face.value.typeface)
+    inset: i32 = ListBoxItemLabelInset(view.scale, face)
+    if view.multi {
+        inset = ListBoxMultiItemLabelInset(view.scale, face)
+    }
+    paint: ListBoxItemPaint = ListBoxItemPaintFor(row,
+        inset, line_height)
+    PaintClippedLabel(node, item.label, paint.text_x,
+        paint.text_y, font,
+        ColorFromPacked(Opacity(face.value.foreground, opacity)),
+        clipped)
+    return true
+}
+
+ListBoxViewFinish :: (view: ListBoxViewState,
+    disabled: bool) #export {
+    if !view.valid { return }
+    if view.max_scroll > 0 &&
+        view.scroll_metrics.scrollbar_width > 0 {
+        bar: ScrollBarPaint = ScrollBarPaintFor(
+            (i32)(view.bounds.x + view.bounds.width) -
+                view.scroll_metrics.scrollbar_width,
+            (i32)view.bounds.y, (i32)view.bounds.height,
+            view.layout.content_height, view.scroll,
+            view.max_scroll, view.scroll_metrics)
+        track_node: i32 = -1
+        thumb_node: i32 = -1
+        if TreeIsBuilding() {
+            track_node = TreeSubmitCurrent(ListBoxThumbKey() + (u64)1,
+                WidgetKindCustom, bar.track_bounds)
+            thumb_node = TreeSubmitCurrent(ListBoxThumbKey(),
+                WidgetKindSlider, bar.thumb_bounds)
+            TreeSetInteractive(thumb_node, disabled, false, 0)
+        }
+        PaintRoundedFill(track_node, bar.track_bounds,
+            view.track.value.radius, 12,
+            ColorFromPacked(Opacity(view.track.value.background,
+                StyleOpacityValue(view.track.value.fields,
+                    view.track.value.opacity))))
+        PaintRoundedFill(thumb_node, bar.thumb_bounds,
+            view.thumb.value.radius, 12,
+            ColorFromPacked(Opacity(view.thumb.value.background,
+                StyleOpacityValue(view.thumb.value.fields,
+                    view.thumb.value.opacity))))
+    }
+    if TreeIsBuilding() { End() }
+}
+
+# Selection and scroll are returned as values. Rows keep identity through
+# their keys and use the same retained pointer routing as other controls.
+ListBox :: (props: ListBoxProps,
+    items: []ListBoxItem) -> ListBoxResult #export {
+    result: ListBoxResult
+    result.node = -1
+    result.selected_index = props.selected_index
+    result.scroll_offset = props.scroll_offset
+    view: ListBoxViewState = ListBoxViewStart(
+        ListBoxSingleView(props), items.length, false)
+    if !view.valid { return result }
+    result.node = view.node
+    if props.focused && !props.disabled && props.navigation != 0 {
+        nav: ListBoxNavigation = ListBoxNavigate(
+            result.selected_index, items.length, props.navigation,
+            view.scroll, view.layout.row_height, view.bounds.height,
+            view.max_scroll, props.scale, view.item)
+        result.selected_index = nav.selected
+        view = ListBoxViewScroll(view, nav.scroll)
+    }
+    visible: i32 = view.layout.visible_rows + 2
+    index: i32 = view.layout.first_row
+    end: i32 = index + visible
+    if end > items.length { end = items.length }
+    if TreeIsBuilding() && !props.disabled {
+        while index < end {
+            previous: i32 = TreeFind(ListBoxItemKey(items[index], index),
+                view.key, WidgetKindSelectable)
+            if TreeTakeActivationAt(previous) {
+                result.selected_index = index
+            }
+            index += 1
+        }
+    }
+    index = view.layout.first_row
+    while index < end {
+        if !ListBoxRow(view, items[index], index,
+            index == result.selected_index, props.disabled,
+            props.class_name, props.id) { break }
+        index += 1
+    }
+    ListBoxViewFinish(view, props.disabled)
+    result.scroll_offset = view.scroll
+    result.changed = result.selected_index != props.selected_index
+    return result
+}
+
+ListBoxMultiApply :: (selected: []bool, clicked: i32,
+    anchor: i32, control: bool, shift: bool,
+    range_anchor: i32) -> bool #export {
+    changed: bool = false
+    index: i32 = 0
+    while index < selected.length {
+        next: bool = ListBoxMultiSelectionForRow(index,
+            selected[index], clicked, selected.length, anchor,
+            control, shift, range_anchor)
+        if next != selected[index] { changed = true }
+        selected[index] = next
+        index += 1
+    }
+    return changed
+}
+
+# The borrowed selection slice is changed in place. Its length must match
+# items. The result carries anchor, scroll, count, and activation as values.
+ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
+    selected: []bool) -> ListBoxMultiResult #export {
+    result: ListBoxMultiResult
+    result.node = -1
+    result.clicked_index = -1
+    result.anchor = props.anchor
+    result.scroll_offset = props.scroll_offset
+    if selected.length != items.length { return result }
+    view: ListBoxViewState = ListBoxViewStart(
+        ListBoxMultiView(props), items.length, true)
+    if !view.valid { return result }
+    result.valid = true
+    result.node = view.node
+    control: bool = props.control
+    shift: bool = props.shift
+    range_anchor: i32 = -1
+    if props.focused && !props.disabled {
+        first: i32 = -1
+        index: i32 = 0
+        while index < selected.length {
+            if selected[index] {
+                first = index
+                break
+            }
+            index += 1
+        }
+        cursor: i32 = ListBoxMultiFocusedRow(result.anchor,
+            first, items.length)
+        nav: ListBoxMultiNavResult = ListBoxMultiNavigate(
+            items.length, cursor, control, shift, props.navigation)
+        if nav.anchor_changed { result.anchor = nav.anchor }
+        result.clicked_index = nav.clicked
+        control = nav.control
+        shift = nav.shift
+        range_anchor = nav.range_anchor
+        if nav.anchor_changed {
+            view = ListBoxViewScroll(view, ListBoxRevealScroll(
+                result.anchor, view.scroll, view.layout.row_height,
+                view.bounds.height, view.max_scroll, props.scale,
+                view.item))
+        }
+    }
+    if result.clicked_index >= 0 {
+        result.changed = ListBoxMultiApply(selected,
+            result.clicked_index, result.anchor, control,
+            shift, range_anchor)
+        result.anchor = ListBoxMultiAnchorAfterClick(result.anchor,
+            result.clicked_index, items.length,
+            control, shift, range_anchor)
+    }
+    visible: i32 = view.layout.visible_rows + 2
+    index: i32 = view.layout.first_row
+    end: i32 = index + visible
+    if end > items.length { end = items.length }
+    if TreeIsBuilding() && !props.disabled {
+        while index < end {
+            previous: i32 = TreeFind(ListBoxItemKey(items[index], index),
+                view.key, WidgetKindSelectable)
+            if TreeTakeActivationAt(previous) {
+                result.clicked_index = index
+                if ListBoxMultiApply(selected, index,
+                    result.anchor, props.control, props.shift, -1) {
+                    result.changed = true
+                }
+                result.anchor = ListBoxMultiAnchorAfterClick(
+                    result.anchor, index, items.length,
+                    props.control, props.shift, -1)
+            }
+            index += 1
+        }
+    }
+    index = view.layout.first_row
+    while index < end {
+        if !ListBoxRow(view, items[index], index,
+            selected[index], props.disabled,
+            props.class_name, props.id) { break }
+        index += 1
+    }
+    # Count all selected items, including rows outside the viewport.
+    result.selected_count = 0
+    index = 0
+    while index < selected.length {
+        if selected[index] { result.selected_count += 1 }
+        index += 1
+    }
+    ListBoxViewFinish(view, props.disabled)
+    result.scroll_offset = view.scroll
+    return result
+}

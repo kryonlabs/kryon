@@ -96,12 +96,13 @@ surface review:
 | `src/ui/flow.zi` | Checked Flow row scope and explicit child placement | checked Ziran |
 | `src/ui/layout_widget.zi` | Checked Column, Row, Stack, Group, Screen, and Grid retained scopes | checked Ziran |
 | `src/ui/link.zi`, `src/ui/link_props.zi`, `src/ui/link_widget.zi` | Link policy, props, paint, retained activation, and URL effect | checked Ziran |
-| `runtime/list_box.kry` | ListBox layout, keyboard navigation intent, and row paint geometry policy | `.kry canonical` |
-| `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
+| `src/ui/list_box.zi` | ListBox layout, keyboard navigation, and row paint geometry policy | checked Ziran |
+| `src/ui/list_box_props.zi` | Borrowed items, value props/results, and multi-selection state contract | checked Ziran |
+| `src/ui/list_box_widget.zi` | Retained rows, clipped paint, style, scrollbar drag, and selection | checked Ziran |
 | `runtime/material.kry` | Material layer assembly with typed `MaterialKind` policy | `.kry canonical` |
 | `runtime/menu.kry`, `src/ui/menu_host.kry` | Menu metrics, geometry, navigation, accelerator matching, panel tracking, bar/context open/index/outside-close policy, and group pointer open/close decisions | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
-| `runtime/list_box_multi.kry` | ListBox multi-selection row activation, keyboard navigation, and selection policy | `.kry canonical` |
+| `src/ui/list_box_multi.zi` | ListBox multi-selection keyboard navigation and selection policy | checked Ziran |
 | `runtime/navigation_bar.kry` | Navigation bar default-height, item interaction, paint, and configuration layout/count/default policy | `.kry canonical` |
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
@@ -379,7 +380,7 @@ has a single place to land.
 | `Fieldset` | `Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
 | `PanedView` | `Layout` | Split panes | `runtime/paned_view.kry`, `src/ui/paned_view.kry` | `.kry canonical` | Split clamp, layout, handle geometry, pointer input, drag lifecycle, active split storage, and drawing are `.kry`. |
 | `Collapsible` | `Layout` | Section | `runtime/collapsible.kry`, `src/ui/collapsible.kry` | `.kry canonical` | Header metrics, geometry, marker text, pointer/body toggle, close, keyboard open, tree focus routing, state storage, styling, and drawing are `.kry`/KSS-owned. |
-| `ListBox` | `Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout, keyboard navigation intent, and row paint geometry policy is `.kry`; host keeps input/scroll sampling. |
+| `ListBox` | `Collections` | List | `src/ui/list_box_widget.zi` | checked Ziran | Borrowed items, value selection and scroll results, retained row input, and clipped paint; raw device observations enter the shared tree input. |
 | `TreeView` | `Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, marker text, text bounds, paint geometry, and row-selection decision policy are `.kry`; item typography defaults are KSS-owned; host keeps input sampling, selected-id storage, expansion state, and drawing. |
 | `TableView` | `Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection intent, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy are `.kry`; host keeps column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
 | `TextArea` | `Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
@@ -527,7 +528,7 @@ host roles rather than retained nodes.
 | `Input` | `.kry canonical` | Numeric input control; value type/count, component/step-button layout, and temp-edit activation are props/policy. |
 | `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
-| `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
+| `ListBoxMulti` | checked Ziran | Pass `ListBoxMultiProps`, borrowed items, and a caller-owned mutable `[]bool` selection slice of equal length; the result returns anchor, scroll, count, and activation. |
 | `Screen` | checked Ziran | Top-level screen container with viewport fallback. |
 | `Page` | checked Ziran | Opens a retained page scope and returns content bounds and metadata. |
 | `Section` | checked Ziran | Opens a retained section scope and returns content bounds. |
@@ -549,7 +550,7 @@ host roles rather than retained nodes.
 | `Fieldset` | `.kry canonical` | Titled frame/group. |
 | `PanedView` | `.kry canonical` | Split panes. |
 | `Collapsible` | `.kry canonical` | Collapsible section. |
-| `ListBox` | `.kry canonical` | List selection/navigation. |
+| `ListBox` | checked Ziran | Single selection and navigation return value state. |
 | `TreeView` | `.kry canonical` | Tree rows/window, marker text, paint geometry, and row-selection decision policy in `.kry`; host keeps state/input. |
 | `TableView` | `.kry canonical` | Table layout, scroll, scrollbar, cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy in `.kry`; host keeps state/input. |
 | `ColorPicker` | `.kry canonical` | Color channel layout/conversion. |
@@ -588,7 +589,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Fieldset` | `.kry canonical` | Titled frame block. |
 | `PanedView` | `.kry canonical` | Split pane block. |
 | `Collapsible` | `.kry canonical` | Collapsible section block. |
-| `ListBox` | `.kry canonical` | List block. |
+| `ListBox` | checked Ziran | List block with retained item nodes. |
 | `TableView` | `.kry canonical` | Table block. |
 | `NavigationBar` | `.kry canonical` | Navigation block. |
 | `Toolbar` | `.kry canonical` | Toolbar block. |
@@ -709,7 +710,7 @@ should use canonical `.kry` names and blocks.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `ListBox` | `.kry canonical` | `src/ui/list_box.kry` owns single selection input, scroll, styling, and paint around `runtime/list_box.kry` policy. Multi-selection uses `selected`, `selected_count`, and `anchor` props; its corresponding behavior lives in `src/ui/list_box_multi.kry`. Item typography is KSS-owned; KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`. |
+| `ListBox`, `ListBoxMulti` | checked Ziran | `list_box_widget.zi` owns retained input, scrolling, KSS styling, and paint. `ListBox` returns selection and scroll values; `ListBoxMulti` updates a borrowed selection slice and returns anchor, count, scroll, and clicked index. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`. |
 | `TreeView` | `.kry canonical` | `src/ui/tree_view.kry` owns input sampling, scrolling, styling, selection, and drawing around row/window, marker, and paint geometry policy in `runtime/tree_view.kry`. Item typography defaults are KSS-owned. |
 | `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy are in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
@@ -830,7 +831,7 @@ stays prefix-free.
 | `WidgetKindFocus` | `Focus` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
 | `WidgetKindSpinbox` | `Spinbox` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
 | `WidgetKindFieldset` | `Fieldset` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |
-| `WidgetKindListBox` | `ListBox` | `.kry canonical`; row/window plus multi-select row activation/selection policy lives in `runtime/list_box.kry` and `runtime/list_box_multi.kry` |
+| `WidgetKindListBox` | `ListBox`, `ListBoxMulti` | checked Ziran; policy lives in `list_box.zi` and `list_box_multi.zi`, with retained rows and paint in `list_box_widget.zi` |
 | `WidgetKindTreeView` | `TreeView` | `.kry canonical`; row/window/marker/selection paint policy lives in `runtime/tree_view.kry` |
 | `WidgetKindTableView` | `TableView` | `.kry canonical`; table geometry, roles, pointer decisions, selection, activation, resize, clipboard intent, and scroll policy live in `runtime/table_view.kry` |
 | `WidgetKindCanvasGrid` | `CanvasGrid` | `.kry canonical`; grid line policy lives in `runtime/canvas_grid.kry` |
@@ -876,8 +877,8 @@ behind the canonical names.
   row and bar keyboard input decisions, wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
   through `runtime/menu.kry`; ListBox row selection policy now routes through
-  `runtime/list_box.kry`; ListBox multi-select keyboard input now routes
-  through `runtime/list_box_multi.kry`; centered-column and page side-padding policy now route
+  `src/ui/list_box.zi`; ListBox multi-select keyboard input now routes
+  through `src/ui/list_box_multi.zi`; centered-column and page side-padding policy now route
   through `runtime/layout.kry`; reorder lifecycle and release gates now route through
   `runtime/reorder.kry`; swipe drag/release lifecycle effects now route through
   `runtime/swipe.kry`; drag/drop source/target lifecycle decisions now route

@@ -1,19 +1,62 @@
 #module "list_box_props"
 #import "geometry"
+#import "list_box_multi"
 
+# Items are borrowed for one frame. Nonzero keys preserve row identity when
+# items move; zero keys use their current index.
+ListBoxItem :: struct {
+    key: u64
+    label: string
+}
+
+# The caller stores returned selection and scroll values between frames.
 ListBoxProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    items: const char**
-    item_count: i32
-    selected_index: i32*
-    selected: i32*
-    selected_count: i32*
-    anchor: i32*
-    scroll_offset: i32*
+    selected_index: i32
+    scroll_offset: i32
+    scroll_delta: i32
     row_height: i32
+    scale: float
+    focused: bool
+    navigation: i32
     disabled: bool
-    content_height: i32
-    item_keys: i32*
+}
+
+ListBoxResult :: struct {
+    node: i32
+    selected_index: i32
+    scroll_offset: i32
+    changed: bool
+}
+
+# Selection is a caller-owned mutable bool slice passed to ListBoxMulti.
+# It must contain one element per item. Anchor and scroll remain values.
+ListBoxMultiProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: i32
+    class_name: i32
+    anchor: i32
+    scroll_offset: i32
+    scroll_delta: i32
+    row_height: i32
+    scale: float
+    focused: bool
+    navigation: ListBoxMultiInput
+    control: bool
+    shift: bool
+    disabled: bool
+}
+
+ListBoxMultiResult :: struct {
+    node: i32
+    clicked_index: i32
+    anchor: i32
+    scroll_offset: i32
+    selected_count: i32
+    changed: bool
+    valid: bool
 }
