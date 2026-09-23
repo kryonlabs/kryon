@@ -3,6 +3,7 @@
 #import "button_widget"
 #import "control_props"
 #import "drawing_props"
+#import "dropdown"
 #import "dropdown_props"
 #import "dropdown_widget"
 #import "font_metrics"
@@ -321,6 +322,11 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                     routes[index])
             dropdown.open = result.dropdown_open &&
                 result.dropdown_row == index
+            if props.focused_row == index {
+                dropdown.focused = true
+                dropdown.trigger_input = props.trigger_input
+                dropdown.menu_input = props.menu_input
+            }
             if dropdown.open {
                 rendered_open = true
                 dropdown.highlight_index =

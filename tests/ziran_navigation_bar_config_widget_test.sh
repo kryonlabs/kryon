@@ -9,6 +9,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
 #module "app"
+#import "dropdown"
 #import "geometry"
 #import "navigation_bar_config_props"
 #import "navigation_bar_config_widget"
@@ -72,6 +73,13 @@ Frame :: () -> i32 #export {
     props.dropdown_row = open_row
     props.dropdown_highlight_index = highlight
     props.dropdown_scroll_offset = menu_scroll
+    props.focused_row = 0
+    if phase == 6 { props.trigger_input.enter = true }
+    if phase == 7 {
+        props.menu_input.navigating = true
+        props.menu_input.up = true
+    }
+    if phase == 8 { props.menu_input.commit = true }
     props.close_label = "Close"
     props.remove_label = "Remove"
     props.add_label = "Add"
@@ -111,6 +119,16 @@ Frame :: () -> i32 #export {
     } else if phase == 5 {
         if result.action != 2 || route_count != 2 {
             return -6
+        }
+    } else if phase == 6 {
+        if !open || open_row != 0 || highlight != 1 {
+            return -7
+        }
+    } else if phase == 7 {
+        if !open || highlight != 0 { return -8 }
+    } else if phase == 8 {
+        if open || !result.changed || routes[0] != 11 {
+            return -9
         }
     }
     old: i32 = phase
@@ -180,7 +198,7 @@ HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     (void)clip;
 }
 int main(void) {
-    for (int phase = 0; phase < 6; phase++)
+    for (int phase = 0; phase < 9; phase++)
         assert(Frame() == phase);
     return 0;
 }
@@ -211,7 +229,7 @@ func (configHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
 func TestNavigationBarConfig(t *testing.T) {
     SetFontMetricsHost(configHost{})
-    for phase := int32(0); phase < 6; phase++ {
+    for phase := int32(0); phase < 9; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)
         }

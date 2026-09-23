@@ -105,7 +105,7 @@ surface review:
 | `src/ui/list_box_multi.zi` | ListBox multi-selection keyboard navigation and selection policy | checked Ziran |
 | `src/ui/navigation_bar.zi` | Navigation bar layout, item geometry, and configuration layout/count/default policy | checked Ziran |
 | `src/ui/navigation_bar_props.zi` | Borrowed NavigationBar item values, props, and result | checked Ziran |
-| `src/ui/navigation_bar_config_props.zi`, `src/ui/navigation_bar_config_widget.zi` | Borrowed route/options data and checked configuration editor composition with returned caller owned state | checked Ziran |
+| `src/ui/navigation_bar_config_props.zi`, `src/ui/navigation_bar_config_widget.zi` | Borrowed route/options data and checked configuration editor composition with returned caller owned state and keyboard menu input | checked Ziran |
 | `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
 | `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
 | `runtime/node_props.kry` | Retained node kind/flags, node record, and size constants | `.kry canonical` |

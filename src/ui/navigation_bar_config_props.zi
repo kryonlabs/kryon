@@ -1,4 +1,5 @@
 #module "navigation_bar_config_props"
+#import "dropdown"
 #import "geometry"
 #import "image_props"
 
@@ -27,6 +28,10 @@ NavigationBarConfigProps :: struct {
     dropdown_highlight_index: i32
     dropdown_scroll_offset: i32
     dropdown_wheel: float
+    # Route keyboard samples to focused_row; the caller owns focus.
+    focused_row: i32
+    trigger_input: DropdownTriggerInput
+    menu_input: DropdownMenuInput
     close_label: string
     remove_label: string
     add_label: string
