@@ -36,7 +36,8 @@ TreePointerActivatable :: (kind: i32, focus_id: i32,
     if disabled || loading { return false }
     if kind == WidgetKindCard { return focus_id > 0 }
     return kind == WidgetKindButton || kind == WidgetKindCheckbox ||
-        kind == WidgetKindToggle || kind == WidgetKindRadio
+        kind == WidgetKindToggle || kind == WidgetKindRadio ||
+        kind == WidgetKindSlider
 }
 
 TreeCommitPlan :: struct {

@@ -17,6 +17,20 @@ PointerState :: struct {
     hovered_generation: i32
     held_generation: i32
     activation_generation: i32
+    pressed_generation: i32
+    released_generation: i32
+    held_x: float
+    held_y: float
+    released_x: float
+    released_y: float
+}
+
+PointerDrag :: struct {
+    active: bool
+    started: bool
+    ended: bool
+    x: float
+    y: float
 }
 
 active_pointer :: PointerState #global
@@ -37,7 +51,8 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
             (TreeButtonLike(entry.kind) ||
                 entry.kind == WidgetKindCheckbox ||
                 entry.kind == WidgetKindToggle ||
-                entry.kind == WidgetKindRadio) &&
+                entry.kind == WidgetKindRadio ||
+                entry.kind == WidgetKindSlider) &&
             PointInBounds(x, y, entry.bounds) {
             if TreePointerActivatable(entry.kind, entry.focus_id,
                 entry.disabled, entry.loading) { return index }
@@ -58,23 +73,83 @@ TreePointerUpdate :: (frame: PointerFrame) -> i32 #export {
     }
     if frame.pressed {
         active_pointer.held_generation = 0
+        active_pointer.pressed_generation = 0
+        active_pointer.released_generation = 0
         if frame.down && hit >= 0 {
             active_pointer.held_generation =
                 TreeNodeAt(hit).identity_generation
+            active_pointer.pressed_generation =
+                active_pointer.held_generation
         }
     }
+    if frame.down && active_pointer.held_generation != 0 {
+        active_pointer.held_x = frame.x
+        active_pointer.held_y = frame.y
+    }
     if frame.released {
-        if active_pointer.held_generation != 0 && hit >= 0 &&
-            active_pointer.held_generation ==
-                TreeNodeAt(hit).identity_generation {
-            active_pointer.activation_generation =
+        if active_pointer.held_generation != 0 {
+            active_pointer.released_generation =
                 active_pointer.held_generation
+            active_pointer.released_x = frame.x
+            active_pointer.released_y = frame.y
+            if hit >= 0 && active_pointer.held_generation ==
+                TreeNodeAt(hit).identity_generation {
+                active_pointer.activation_generation =
+                    active_pointer.held_generation
+            }
         }
         active_pointer.held_generation = 0
     } else if !frame.down {
         active_pointer.held_generation = 0
+        active_pointer.pressed_generation = 0
     }
     return hit
+}
+
+# A drag keeps its original node identity while held, including when the
+# pointer leaves that node or the root. The release sample is consumed once.
+TreeTakeDragAt :: (index: i32) -> PointerDrag #export {
+    drag: PointerDrag
+    if index < 0 || index >= TreeCount() { return drag }
+    entry: TreeEntry = TreeNodeAt(index)
+    generation: i32 = entry.identity_generation
+    if !entry.interactive ||
+        !TreePointerActivatable(entry.kind, entry.focus_id,
+            entry.disabled, entry.loading) {
+        if active_pointer.held_generation == generation {
+            active_pointer.held_generation = 0
+        }
+        if active_pointer.pressed_generation == generation {
+            active_pointer.pressed_generation = 0
+        }
+        if active_pointer.released_generation == generation {
+            active_pointer.released_generation = 0
+        }
+        if active_pointer.activation_generation == generation {
+            active_pointer.activation_generation = 0
+        }
+        return drag
+    }
+    drag.active = generation != 0 &&
+        active_pointer.held_generation == generation
+    drag.started = generation != 0 &&
+        active_pointer.pressed_generation == generation
+    drag.ended = generation != 0 &&
+        active_pointer.released_generation == generation
+    if drag.active {
+        drag.x = active_pointer.held_x
+        drag.y = active_pointer.held_y
+    }
+    if drag.ended {
+        drag.x = active_pointer.released_x
+        drag.y = active_pointer.released_y
+        active_pointer.released_generation = 0
+        if active_pointer.activation_generation == generation {
+            active_pointer.activation_generation = 0
+        }
+    }
+    if drag.started { active_pointer.pressed_generation = 0 }
+    return drag
 }
 
 TreeHoveredAt :: (index: i32) -> bool #export {

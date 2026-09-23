@@ -75,6 +75,13 @@ queues the ring, fill, hover layer, and clipped label. The host supplies raw
 pointer samples, glyph metrics, and raster effects. Selection animation,
 ripple, keyboard focus, and native widget integration remain open.
 
+The retained input router now admits Slider nodes. `TreeTakeDragAt(index)`
+returns the latest held pointer coordinate, a one-time start marker, and a
+one-time release coordinate for the same stable node identity, including when
+the pointer leaves the hit box. A disabled node clears its pending drag.
+The checked `Slider` widget surface and its pointer-free value API still need
+migration.
+
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)
 files show source, saved-IR, and bundle use of those modules.

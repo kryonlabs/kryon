@@ -128,6 +128,68 @@ Answer :: () -> i32 #export {
     if !TreeFinish() || TreeHitAt(15.0, 15.0) != -1 {
         return -24
     }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    slider: i32 = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, false, false, 0)
+    if !TreeFinish() || TreeHitAt(15.0, 15.0) != slider {
+        return -25
+    }
+    TreePointerUpdate((PointerFrame){15.0, 15.0, true, true, false})
+    TreePointerUpdate((PointerFrame){150.0, 15.0, true, false, false})
+    drag: PointerDrag = TreeTakeDragAt(slider)
+    if !drag.active || !drag.started || drag.ended ||
+        drag.x != 150.0 || drag.y != 15.0 { return -26 }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    TreeSubmit((u64)17, 0, WidgetKindText,
+        (Rectangle){0.0, 0.0, 5.0, 5.0})
+    slider = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, false, false, 0)
+    if !TreeFinish() || slider != 2 { return -27 }
+    drag = TreeTakeDragAt(slider)
+    if !drag.active || drag.started || drag.ended ||
+        drag.x != 150.0 { return -28 }
+    TreePointerUpdate((PointerFrame){150.0, 15.0, false, false, true})
+    drag = TreeTakeDragAt(slider)
+    if drag.active || drag.started || !drag.ended ||
+        drag.x != 150.0 || drag.y != 15.0 { return -29 }
+    if TreeTakeDragAt(slider).ended || TreeTakeActivationAt(slider) {
+        return -30
+    }
+    TreePointerUpdate((PointerFrame){15.0, 15.0, true, true, false})
+    TreePointerUpdate((PointerFrame){30.0, 15.0, false, false, true})
+    drag = TreeTakeDragAt(slider)
+    if !drag.started || !drag.ended || drag.x != 30.0 ||
+        TreeTakeActivationAt(slider) { return -31 }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    slider = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, true, false, 0)
+    if !TreeFinish() || TreeHitAt(15.0, 15.0) != -1 {
+        return -32
+    }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    slider = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, false, false, 0)
+    if !TreeFinish() { return -33 }
+    TreePointerUpdate((PointerFrame){15.0, 15.0, true, true, false})
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    slider = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, true, false, 0)
+    if !TreeFinish() || TreeTakeDragAt(slider).active {
+        return -34
+    }
+    TreePointerUpdate((PointerFrame){30.0, 15.0, false, false, true})
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    slider = TreeSubmit((u64)16, 0, WidgetKindSlider,
+        (Rectangle){10.0, 10.0, 60.0, 20.0})
+    TreeSetInteractive(slider, false, false, 0)
+    if !TreeFinish() || TreeTakeDragAt(slider).ended {
+        return -35
+    }
     return 42
 }
 ZI
