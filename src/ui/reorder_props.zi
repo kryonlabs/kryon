@@ -1,5 +1,5 @@
 #module "reorder_props"
-#import "ui_drawing_props.generated.h"
+#import "geometry"
 
 ReorderItem :: struct {
     id: i32
@@ -15,7 +15,7 @@ ReorderList :: struct {
     handle_width: i32
     handle_height: i32
     drag_threshold: i32
-    scroll_offset: *i32
+    scroll_offset: i32*
     max_scroll: i32
     viewport_top: i32
     viewport_bottom: i32

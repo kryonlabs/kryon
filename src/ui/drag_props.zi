@@ -1,5 +1,6 @@
 #module "drag_props"
-#import "ui_input_props.generated.h"
+#import "geometry"
+#import "input_props"
 
 DragMode :: enum {
     DragValue = 0
@@ -13,13 +14,13 @@ DragProps :: struct {
     label: const char*
     kind: NumericValueKind
     mode: DragMode
-    float_values: *float
-    int_values: *i32
+    float_values: float*
+    int_values: i32*
     value_count: i32
-    float_min: *float
-    float_max: *float
-    int_min: *i32
-    int_max: *i32
+    float_min: float*
+    float_max: float*
+    int_min: i32*
+    int_max: i32*
     speed: float
     min: double
     max: double

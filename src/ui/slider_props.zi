@@ -1,15 +1,16 @@
 #module "slider_props"
-#import "ui_input_props.generated.h"
+#import "geometry"
+#import "input_props"
 
 SliderProps :: struct {
     bounds: Rectangle
     id: i32
     label: const char*
     kind: NumericValueKind
-    float_values: *float
-    int_values: *i32
+    float_values: float*
+    int_values: i32*
     value_count: i32
-    float_value: *float
+    float_value: float*
     min: double
     max: double
     format: const char*
@@ -21,5 +22,5 @@ SliderProps :: struct {
     value_format: const char*
     step_buttons: bool
     show_limits: bool
-    measured_height: *float
+    measured_height: float*
 }

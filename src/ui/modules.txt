@@ -23,6 +23,7 @@ dpi.zi
 drag.zi
 drag_drop.zi
 drag_drop_props.zi
+drag_props.zi
 drawing_props.zi
 dropdown.zi
 dropdown_props.zi
@@ -73,9 +74,12 @@ progress.zi
 progress_props.zi
 radio.zi
 radio_props.zi
+reorder.zi
+reorder_props.zi
 rows.zi
 scroll.zi
 scroll_props.zi
+scene_tree_props.zi
 segmented_control.zi
 segmented_control_props.zi
 selectable.zi
@@ -83,6 +87,7 @@ selectable_props.zi
 separator.zi
 separator_props.zi
 slider.zi
+slider_props.zi
 spinbox.zi
 spinbox_props.zi
 style.zi
