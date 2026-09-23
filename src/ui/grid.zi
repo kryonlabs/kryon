@@ -1,4 +1,5 @@
 #module "grid"
+#import "geometry"
 #import "grid_props"
 
 MeasureGrid :: (props: GridProps) -> GridMetrics #export {

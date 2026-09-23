@@ -1,5 +1,5 @@
 #module "plot_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 PlotMode :: enum {
     PlotLines = 0

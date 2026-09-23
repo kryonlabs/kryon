@@ -1,12 +1,12 @@
 #module "color_picker_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 ColorPickerProps :: struct {
     bounds: Rectangle
     id: i32
     class_name: i32
     label: const char*
-    values: *float
+    values: float*
     value_count: i32
     disabled: bool
     picker: bool

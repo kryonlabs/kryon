@@ -1,6 +1,47 @@
 #module "style"
 #import "control_props"
+#import "geometry"
 #import "surface"
+
+StateFlags :: struct {
+    disabled: bool
+    loading: bool
+    selected: bool
+}
+
+ResolveFlags :: (state: i32, disabled: bool, loading: bool,
+    selected: bool) -> StateFlags #export {
+    flags: StateFlags
+    flags.disabled = disabled || state == ButtonStateDisabled
+    flags.loading = loading || state == ButtonStateLoading
+    flags.selected = selected || state == ButtonStateSelected
+    return flags
+}
+
+InteractionState :: struct {
+    state: i32
+    hovered: bool
+    pressed: bool
+    focused: bool
+}
+
+ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
+    pressed: bool, hovered: bool, focused: bool,
+    selected: bool) -> InteractionState #export {
+    state: i32 = ResolveState(explicit_state, disabled, loading,
+        pressed, hovered, focused, selected)
+    interaction: InteractionState
+    interaction.state = state
+    interaction.hovered = hovered
+    interaction.pressed = pressed
+    interaction.focused = focused
+    if explicit_state != ButtonStateAuto {
+        interaction.hovered = state == ButtonStateHover
+        interaction.pressed = state == ButtonStatePressed
+        interaction.focused = state == ButtonStateFocus
+    }
+    return interaction
+}
 
 StyleData :: struct {
     fields: u32
@@ -78,6 +119,43 @@ StyleOpacityValue :: (fields: u32, opacity: float) -> float #export {
     if opacity < 0.0 { return 0.0 }
     if opacity > 1.0 { return 1.0 }
     return opacity
+}
+
+FitHeight :: (requested: float, minimum: float, content: float,
+    padding: float) -> float #export {
+    if requested > 0.0 { return requested }
+    if padding < 0.0 { padding = 0.0 }
+    if content < 0.0 { content = 0.0 }
+    height: float = content + 2.0 * padding
+    if height < minimum { height = minimum }
+    return height
+}
+
+ContentBounds :: (width: float, height: float, padding_x: float,
+    padding_y: float) -> Rectangle #export {
+    box: Rectangle
+    if padding_x < 0.0 { padding_x = 0.0 }
+    if padding_y < 0.0 { padding_y = 0.0 }
+    box.x = padding_x
+    box.y = padding_y
+    box.width = width - 2.0 * padding_x
+    box.height = height - 2.0 * padding_y
+    if box.width < 0.0 { box.width = 0.0 }
+    if box.height < 0.0 { box.height = 0.0 }
+    return box
+}
+
+InsetBounds :: (bounds: Rectangle, padding_x: float, padding_y: float,
+    scale: float) -> Rectangle #export {
+    if scale <= 0.0 { scale = 1.0 }
+    content: Rectangle = ContentBounds(bounds.width / scale,
+        bounds.height / scale, padding_x, padding_y)
+    result: Rectangle
+    result.x = bounds.x + content.x * scale
+    result.y = bounds.y + content.y * scale
+    result.width = content.width * scale
+    result.height = content.height * scale
+    return result
 }
 
 MergeValues :: (base: StyleData, override: StyleData) -> StyleData #export {

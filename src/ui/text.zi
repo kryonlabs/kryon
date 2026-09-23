@@ -1,4 +1,5 @@
 #module "text"
+#import "geometry"
 #import "style"
 
 # Typeface lookup, shaping and glyph measurement remain host services.

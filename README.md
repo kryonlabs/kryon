@@ -24,10 +24,10 @@ bundle tests. No display is started.
 
 The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
-interaction, theme, style values, and selected Image, Separator, and Progress
-decisions. Other runtime and widget source has been moved into `.zi` files in
-`src/ui/`; those modules still need type, host interface, and backend work
-before they can join `modules.txt`.
+Button, Checkbox, Slider, Toggle, material layers, theme, style values, and
+selected Image, Separator, and Progress decisions. Other runtime and widget
+source has been moved into `.zi` files in `src/ui/`; those modules still need
+type, host interface, and backend work before they can join `modules.txt`.
 
 The current archive is a policy subset. Complete widget composition, rendering,
 platform host adapters, `.zib` capability execution, and downstream app builds

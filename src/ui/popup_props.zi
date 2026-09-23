@@ -1,5 +1,5 @@
 #module "popup_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 PopupFlags :: enum {
     PopupFlagsNone = 0
@@ -12,7 +12,7 @@ PopupProps :: struct {
     bounds: Rectangle
     id: i32
     class_name: i32
-    open: *bool
+    open: bool*
     disabled: bool
     trigger: Rectangle
     flags: PopupFlags

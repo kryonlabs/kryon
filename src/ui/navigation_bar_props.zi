@@ -1,5 +1,5 @@
 #module "navigation_bar_props"
-#import "kryon_compat.generated.h"
+#import "drawing_props"
 
 NavigationBarItem :: struct {
     route: i32

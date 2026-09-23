@@ -1,4 +1,5 @@
 #module "reorder"
+#import "geometry"
 #import "control_props"
 #import "reorder_props"
 #import "style"

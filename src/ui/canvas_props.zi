@@ -1,12 +1,12 @@
 #module "canvas_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 Canvas :: struct {
     bounds: Rectangle
     class_name: i32
-    scroll_x: *i32
-    scroll_y: *i32
-    zoom: *f32
+    scroll_x: i32*
+    scroll_y: i32*
+    zoom: f32*
 }
 
 CanvasResult :: struct {

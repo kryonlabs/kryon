@@ -1,5 +1,5 @@
 #module "radio_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 RadioProps :: struct {
     bounds: Rectangle

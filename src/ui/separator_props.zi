@@ -1,5 +1,5 @@
 #module "separator_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 SeparatorProps :: struct {
     bounds: Rectangle

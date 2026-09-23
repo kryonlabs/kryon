@@ -1,5 +1,5 @@
 #module "tree_view_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 TreeItem :: struct {
     label: const char*
@@ -15,8 +15,8 @@ TreeViewProps :: struct {
     class_name: i32
     items: const TreeItem*
     item_count: i32
-    selected_id: *i32
-    scroll_offset: *i32
+    selected_id: i32*
+    scroll_offset: i32*
     row_height: i32
     disabled: bool
 }

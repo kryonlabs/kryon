@@ -1,4 +1,6 @@
 #module "button"
+#import "drawing_props"
+#import "geometry"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -7,10 +9,8 @@
 #import "input_props"
 #import "paint"
 #import "material"
-#import "ui_text_props.generated.h"
-#import "ui_core_props.generated.h"
 
-MeasureTextWidth :: (text: const char*, font: i32, typeface: const char*) -> i32 #extern
+MeasureTextWidth :: (text: const char*, font: i32, typeface: string) -> i32 #extern
 ReadActivation :: (bounds: Rectangle, id: i32, enabled: bool) -> Activation #extern
 
 ButtonInput :: struct {
@@ -67,19 +67,13 @@ ButtonRoleFactsFor :: (style_kind: i32, name: i32, class_name: i32, role: i32,
         size, state)
 }
 
-# The declaration owns the retained shape; hosts only allocate it by identity.
-ButtonInstance :: struct {
-    motion: InteractionMotion
-}
-
-AdvanceButtonMotion :: (key: u64, state: i32, input: ButtonInput, enabled: bool,
+AdvanceButtonMotion :: (previous: InteractionMotion, state: i32,
+    input: ButtonInput, enabled: bool,
     delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
-    retained: ButtonInstance #instance(key)
-    retained.motion = AdvanceInteractionMotion(retained.motion, input.interaction.hovered,
+    return AdvanceInteractionMotion(previous, input.interaction.hovered,
         input.interaction.pressed, input.interaction.focused, enabled,
         state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
         delta_ms, normal_ms, fast_ms)
-    return retained.motion
 }
 
 CanActivate :: (disabled: bool, loading: bool) -> bool #export {
@@ -382,7 +376,7 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     return paint
 }
 
-MeasureButton :: (props: ButtonProps, paint: Style, minimum_height: float,
+MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float,
     font: i32, available_width: float, scale: float, disclosure: bool) -> Rectangle #export {
     label_width: float = (float)MeasureTextWidth(props.label, font, paint.typeface)
     return MeasureBounds(props, paint, minimum_height, font, label_width,
@@ -391,7 +385,7 @@ MeasureButton :: (props: ButtonProps, paint: Style, minimum_height: float,
 
 # The host supplies physical glyph measurements, available space, and scale.
 # The declaration reads the real props and owns shape, label, and size policy.
-MeasureBounds :: (props: ButtonProps, paint: Style, minimum_height: float,
+MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float,
     font: i32, label_width: float, available_width: float,
     scale: float, disclosure: bool) -> Rectangle #export {
     if scale <= 0.0 { scale = 1.0 }

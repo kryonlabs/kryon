@@ -1,5 +1,5 @@
 #module "fieldset_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 FieldsetProps :: struct {
     bounds: Rectangle

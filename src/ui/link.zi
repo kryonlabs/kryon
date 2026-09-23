@@ -1,5 +1,6 @@
 #module "link"
 #import "control_props"
+#import "geometry"
 #import "style"
 
 LinkVisualState :: enum {

@@ -1,5 +1,5 @@
 #module "dropdown_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 DropdownOption :: struct {
     label: const char*
@@ -14,7 +14,7 @@ DropdownProps :: struct {
     class_name: i32
     options: const char**
     option_count: i32
-    selected_index: *i32
+    selected_index: i32*
     disabled: bool
     items: const DropdownOption*
 }

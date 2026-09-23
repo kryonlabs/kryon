@@ -1,11 +1,11 @@
 #module "title_bar_props"
-#import "kryon_compat.generated.h"
+#import "drawing_props"
 
 TitleBarDropdown :: struct {
     id: i32
     options: const char**
     option_count: i32
-    selected_index: *i32
+    selected_index: i32*
     disabled: bool
     min_width: i32
     height: i32

@@ -1,5 +1,5 @@
 #module "segmented_control_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 SegmentOption :: struct {
     label: const char*
@@ -12,7 +12,7 @@ SegmentedControlProps :: struct {
     class_name: i32
     options: const SegmentOption*
     option_count: i32
-    selected_index: *i32
+    selected_index: i32*
     height: i32
     min_item_width: i32
     max_item_width: i32

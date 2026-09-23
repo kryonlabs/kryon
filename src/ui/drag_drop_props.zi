@@ -1,5 +1,5 @@
 #module "drag_drop_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 DragDropRole :: enum {
     DragDropRoleSource = 0
@@ -16,6 +16,6 @@ DragDropProps :: struct {
     data_size: i32
     output: void*
     output_size: i32
-    accepted_size: *i32
+    accepted_size: i32*
     disabled: bool
 }

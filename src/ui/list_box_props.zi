@@ -1,5 +1,5 @@
 #module "list_box_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 ListBoxProps :: struct {
     bounds: Rectangle
@@ -7,13 +7,13 @@ ListBoxProps :: struct {
     class_name: i32
     items: const char**
     item_count: i32
-    selected_index: *i32
-    selected: *i32
-    selected_count: *i32
-    anchor: *i32
-    scroll_offset: *i32
+    selected_index: i32*
+    selected: i32*
+    selected_count: i32*
+    anchor: i32*
+    scroll_offset: i32*
     row_height: i32
     disabled: bool
     content_height: i32
-    item_keys: *i32
+    item_keys: i32*
 }

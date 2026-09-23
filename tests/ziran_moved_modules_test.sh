@@ -8,12 +8,16 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/use_moved.zi" <<'EOF'
 #module "use_moved"
+#import "button"
+#import "button_props"
 #import "canvas"
 #import "color_picker"
 #import "control_props"
 #import "drawing_props"
 #import "focus"
 #import "geometry"
+#import "input_props"
+#import "kss_parser"
 #import "list_box"
 #import "menu"
 #import "page"
@@ -24,7 +28,9 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "segmented_control"
 #import "style"
 #import "style_sheet"
+#import "surface"
 #import "table_view"
+#import "text"
 #import "text_input"
 #import "toast"
 #import "tree"
@@ -87,6 +93,34 @@ Answer :: () -> i32 #export {
     if !TextNativeEditShouldRun(false, false) { return 0 }
     if TextNativeEditShouldRun(true, false) { return 0 }
     if ToastDeadlineFor(10.0, 2.0) != 12.0 { return 0 }
+    if !TextDoubleClickShouldSelectLine(true, true, 1.0, 1.2,
+        2.0, 1.0, 1.0) { return 0 }
+    if TextDoubleClickShouldSelectLine(true, false, 1.0, 1.2,
+        2.0, 1.0, 1.0) { return 0 }
+    if !KssCSSNeedsPixels("width") { return 0 }
+    if ButtonActionEnabled(true, false) { return 0 }
+    if ButtonArrowGlyph((ArrowDirection)ArrowRight) != 62 { return 0 }
+    sample: Activation
+    sample.activated = true
+    sample.hovered = true
+    input: ButtonInput = ResolveButtonInput(ButtonStateAuto, false, false,
+        false, sample)
+    if !input.activated || input.flags.disabled { return 0 }
+    previous: InteractionMotion
+    motion: InteractionMotion = AdvanceButtonMotion(previous,
+        ButtonStateAuto, input, true, 16.0, 180.0, 90.0)
+    if motion.hover.value <= 0.0 || motion.hover.value >= 1.0 {
+        return 0
+    }
+    if Opacity((u32)4294967295, 0.5) != (u32)4294967167 {
+        return 0
+    }
+    face: SurfaceLayer = MaterialLayer((MaterialKind)MaterialFlat, 0, 100.0, 50.0,
+        4.0, 1.0, (u32)255, (u32)255, (u32)255, (u32)255,
+        0.0, 0.0, 0.0, false, 1.0, (u32)255)
+    if !face.is_face || face.width != 100.0 || face.height != 50.0 {
+        return 0
+    }
     return 42
 }
 EOF

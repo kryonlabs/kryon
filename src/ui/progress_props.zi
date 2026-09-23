@@ -1,5 +1,5 @@
 #module "progress_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 ProgressProps :: struct {
     bounds: Rectangle

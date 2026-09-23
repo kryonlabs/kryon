@@ -1,16 +1,16 @@
 #module "collapsible_props"
-#import "kryon_compat.generated.h"
+#import "geometry"
 
 CollapsibleProps :: struct {
     bounds: Rectangle
     class_name: i32
     label: const char*
-    open: *bool
+    open: bool*
     tree: bool
     depth: i32
     leaf: bool
     selected: bool
     disabled: bool
     id: i32
-    visible: *bool
+    visible: bool*
 }
