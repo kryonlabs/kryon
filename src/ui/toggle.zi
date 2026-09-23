@@ -2,6 +2,7 @@
 #import "button"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "material"
 #import "style"
 #import "surface"

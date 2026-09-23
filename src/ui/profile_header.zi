@@ -1,5 +1,6 @@
 #module "profile_header"
 #import "drawing_props"
+#import "geometry"
 
 ProfileHeaderLayout :: struct {
     height: i32

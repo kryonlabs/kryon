@@ -9,10 +9,16 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_moved.zi" <<'EOF'
 #module "use_moved"
 #import "canvas"
+#import "color_picker"
 #import "control_props"
+#import "drawing_props"
 #import "focus"
 #import "geometry"
+#import "menu"
 #import "page"
+#import "primitive"
+#import "radio"
+#import "scroll"
 #import "segmented_control"
 #import "style"
 #import "style_sheet"
@@ -50,6 +56,26 @@ Answer :: () -> i32 #export {
     screen: Vector2 = CanvasPointToScreen(bounds, point, 4, 6, 2.0)
     world: Vector2 = CanvasPointFromScreen(bounds, screen, 4, 6, 2.0)
     if world.x != point.x || world.y != point.y { return 0 }
+    if ScrollClamp(-5, 20) != 0 || ScrollClamp(40, 20) != 20 {
+        return 0
+    }
+    if ScrollMax(80, 100) != 0 || ScrollMax(180, 100) != 80 {
+        return 0
+    }
+    if MenuWrappedItemIndex(2, 1, 3) != 0 { return 0 }
+    if RadioActivationFor(7, true, false) != 7 { return 0 }
+    if ColorPickerChannelByte(0.5) != (u8)128 { return 0 }
+    line: LinePrimitive = PrimitiveLineFor(5, 9, 1, 3)
+    if line.bounds.x != 1.0 || line.bounds.y != 3.0 ||
+        line.bounds.width != 4.0 || line.bounds.height != 6.0 {
+        return 0
+    }
+    color: Color
+    color.r = (u8)20
+    color.a = (u8)255
+    if PrimitiveAppBackgroundColor(color, color).r != (u8)20 {
+        return 0
+    }
     return 42
 }
 EOF

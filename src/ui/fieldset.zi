@@ -1,6 +1,7 @@
 #module "fieldset"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 FieldsetPaint :: struct {

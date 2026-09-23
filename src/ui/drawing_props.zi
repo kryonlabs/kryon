@@ -1,28 +1,17 @@
 #module "drawing_props"
-#import "kryon_compat.generated.h"
-#import "ui_text_props.generated.h"
+#import "geometry"
+#import "text_align"
 
-# The graphics host supplies these C types. Native Go uses the same field contract.
-Vector2 :: struct #extern {
-    x: float
-    y: float
-}
-
-Rectangle :: struct #extern {
-    x: float
-    y: float
-    width: float
-    height: float
-}
-
-Color :: struct #extern {
+# The public value records have the same layout on every generated target.
+# A platform host may adapt them to its own graphics library.
+Color :: struct {
     r: u8
     g: u8
     b: u8
     a: u8
 }
 
-Texture2D :: struct #extern {
+Texture2D :: struct {
     id: u32
     width: i32
     height: i32

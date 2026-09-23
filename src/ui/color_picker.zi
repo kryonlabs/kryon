@@ -1,6 +1,7 @@
 #module "color_picker"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 ColorPickerLayout :: struct {

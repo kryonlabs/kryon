@@ -1,5 +1,6 @@
 #module "material"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 #import "control_props"
 #import "surface"

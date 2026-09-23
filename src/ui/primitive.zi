@@ -1,5 +1,6 @@
 #module "primitive"
 #import "drawing_props"
+#import "geometry"
 
 LinePrimitive :: struct {
     bounds: Rectangle

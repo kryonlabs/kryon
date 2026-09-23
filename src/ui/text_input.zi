@@ -1,6 +1,7 @@
 #module "text_input"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style_sheet"
 
 TextInputMetrics :: struct {

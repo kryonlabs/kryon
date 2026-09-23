@@ -1,6 +1,7 @@
 #module "paned_view"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "paned_view_props"
 #import "style"
 #import "style_sheet"

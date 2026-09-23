@@ -1,5 +1,6 @@
 #module "menu"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 #import "control_props"
 

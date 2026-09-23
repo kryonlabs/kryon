@@ -1,6 +1,7 @@
 #module "modal"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 ModalMetrics :: struct {

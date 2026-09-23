@@ -1,6 +1,7 @@
 #module "guide_pager"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 GuidePagerMetrics :: struct {

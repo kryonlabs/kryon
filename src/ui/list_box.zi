@@ -1,5 +1,6 @@
 #module "list_box"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 #import "control_props"
 

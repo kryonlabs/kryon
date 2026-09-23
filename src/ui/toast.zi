@@ -1,6 +1,7 @@
 #module "toast"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 #import "style_sheet"
 

@@ -1,6 +1,7 @@
 #module "scroll"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 ScrollMetrics :: struct {

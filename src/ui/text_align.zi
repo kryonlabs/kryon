@@ -1,0 +1,7 @@
+#module "text_align"
+
+TextAlign :: enum {
+    TextAlignStart = 0
+    TextAlignCenter = 1
+    TextAlignEnd = 2
+}

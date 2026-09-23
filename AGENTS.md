@@ -1,108 +1,49 @@
-# Kryon Repository Rules
+# Kryon repository rules
 
-Kryon is the canonical runtime. Keep it small, direct, and free of stale
-surfaces.
+Kryon is a reusable UI library authored in Ziran. The Ziran language,
+compiler, `.zir` representation, `.zib` format, and portable runtime live in
+the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
 
-## Instruction Location
+## Source and build
 
-Keep repository-wide agent and contributor rules in this root `AGENTS.md`.
-Documentation under `docs/` describes API behavior, integration, and design;
-do not put agent policy there or maintain a duplicate instruction file there.
-Keep `docs/API.md`, `docs/BOUNDARIES.md`, and `docs/ARCHITECTURE.md` current
-when their corresponding APIs or subsystem boundaries change.
+- Make changes in this upstream repository on `master`. Commit and push here
+  before updating a downstream application's clean `vendor/kryon` pointer.
+- `src/ui/modules.txt` lists modules that pass the current C, C++, and Go
+  build. Moved modules outside that list still need conversion; a checker pass
+  alone does not establish native or portable readiness.
+- `make test` is the current Kryon gate. It builds the checked Ziran library
+  and runs Ziran source, saved-IR, and bundle behavior tests without a display.
+- Use direct domain names for APIs. Do not restore the removed KIR compiler,
+  `.kry` runtime, or `.krb` loader as compatibility paths.
 
-## Upstream and Preview Workflow
+## UI ownership
 
-Make Kryon changes here on `master`, commit and push them here, then update
-downstream apps' submodule pointers. Never edit a downstream `vendor/kryon`.
+Author reusable widget behavior, composition, layout, interaction, styling,
+accessibility, and UI tree decisions in `.zi`. Platform hosts may gather OS
+input, manage windows, load fonts and images, rasterize, and store data. Host
+code must not independently choose widget behavior.
 
-Kryon owns live preview, PNG capture, and hot-reload verification. Use
-Kryon-owned tooling, not Krait, to verify `.kry` rendering and reload behavior.
+An application imports Kryon as an ordinary Ziran library. The Ziran compiler
+and portable loader must never recognize Kryon widget names specially. An
+application that does not import Kryon needs no Kryon code or graphical host.
+Keep app-specific screens, assets, copy, workflows, and state in the app repo.
 
-## Clean API Rule
+One widget concept has one public implementation. `Text(TextProps)` and
+`Image(ImageProps)` are the intended text and image widget surfaces. Do not
+add parallel wrappers or expose raw texture draw calls as app widget APIs.
 
-Do not introduce new public generated-runtime APIs with stale prefixes or
-compatibility names. New `.kry` generated code must target the clean runtime
-surface:
+## Testing and desktop safety
 
-- `BeginFrame`
-- `EndFrame`
-- `Text`
-- `Button`
-- `TextField`
-- `TextArea`
-- `Row`
-- `Column`
+Test changed modules through all relevant generated targets and portable
+bundles. Use focused behavior tests for decisions that could diverge across
+targets. Do not treat code generation alone as proof that a host or app works.
 
-Do not add `kryc`. The supported transpilers are `k2go` for native Go, `k2c`
-for native C, and `k2cpp` for native C++ (C++ codegen over the C runtime).
-
-Generated Go must be native Go and must not use cgo, `go/kryui`, `kryruntime`,
-or an injected `rt` runtime object. Generated C must not call stale prefixed UI
-symbols such as draw-prefixed UI helpers, `UIText*`, `TextInputControl`, or
-`UIRender*`.
-
-Existing compatibility code may only remain while actively migrating callers.
-Do not expand it, duplicate it under another alias, or use it from generated
-output. Remove compatibility code once no maintained app or fixture depends on
-it.
-
-## Kry UI Source Rule
-
-All widget behavior, layout, interaction, styling decisions, and UI tree
-construction must be authored in `.kry`. KSS defines theme values. C is only
-permitted for platform and raster backend services called by `.kry`; it must
-not define a widget, compose a UI tree, or choose a widget's visual state.
-Migrate existing `src/ui/*.c` implementations rather than renaming or copying
-their bodies into generated C. This rule applies to every widget, including
-Button and SegmentedControl, and to `ui.c` and `ui_tree.c`.
-
-## Canonical Widget Rule
-
-One widget concept has one public implementation. Variations such as wrapping,
-clipping, color, alignment, and disabled state belong in that widget's props;
-do not create parallel helpers such as `TextWrapped`, `TextColored`, or
-`TextDisabled`. Migrate maintained callers when consolidating an older split
-surface, then remove the duplicate entry points and generated output.
-
-`Text` has exactly one public signature: `Text(TextProps)`. Every maintained C
-and `.kry` caller must pass one explicit `TextProps` value. Position, bounds,
-wrapping, clipping, color, alignment, and disabled state belong in those props.
-Do not restore the positional `Text(text, x, y, font, color)` form or hide it
-behind a helper, macro, overload, generated shim, or compatibility alias.
-
-`Image` has exactly one public widget surface: `Image(ImageProps)`. Semantic
-page images are still `Image(ImageProps)` with semantic props/alt text, not a
-separate image widget. Do not expose or recommend raylib texture draw calls
-(`Texture`, `DrawTexture`, `DrawTexturePro`,
-`DrawTextureRec`, or similar) as app-facing `.kry` UI fixes. Low-level texture
-drawing may exist inside backend/native tests and renderer internals, but
-generated app UI should target `ImageProps`. If `ImageProps` cannot express a
-needed app image case, add a clean reusable Kryon primitive here first instead
-of adding a downstream wrapper or compatibility alias.
-
-## Test Rule
-
-Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must keep the
-generated-output scanners and runtime parity tests passing. If a new widget or
-semantic is added, add it to both generated runtimes and to parity coverage in
-the same change.
-
-Run `python3 scripts/check-clean-text-api.py <changed-source-roots>` when a
-maintained app or fixture changes text rendering. Downstream repositories must
-wire this check into their normal test target.
-
-## Readability Rule
-
-Write conventional, fully readable code. Do not compress multiple statements,
-branches, or error checks onto one line. Handlers and protocol code must use
-descriptive names, explicit control flow, and focused helpers. Run the language
-formatter and inspect the resulting diff before considering a change complete.
+Never run tests or binaries that can send X/Wayland requests against the
+developer's live desktop. Use a private Xvfb/Xephyr display for any visual or
+window-management test, and scope window effects to processes Kryon owns.
+Never touch the inherited display or `/tmp/.X11-unix/X0` during cleanup.
 
 ## Bend
 
-When using Bend:
-- run `bend guide` to learn it
-- use `LAWS.bend` to keep important rules
-- run `bend PROOF.bend` before committing
-- parallelize the code whenever possible
+When using Bend, run `bend guide`, keep important rules in `LAWS.bend`, run
+`bend PROOF.bend` before committing, and parallelize the code where possible.

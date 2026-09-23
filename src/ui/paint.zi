@@ -1,5 +1,6 @@
 #module "paint"
 #import "drawing_props"
+#import "geometry"
 #import "surface"
 #import "material"
 

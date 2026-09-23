@@ -1,6 +1,7 @@
 #module "guide"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 GuideMetrics :: struct {

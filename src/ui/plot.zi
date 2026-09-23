@@ -1,6 +1,7 @@
 #module "plot"
 #import "control_props"
 #import "drawing_props"
+#import "geometry"
 #import "style"
 
 PlotRange :: struct {
