@@ -65,6 +65,10 @@ Page :: (props: PageProps) -> PageResult #export {
     result.node = TreeSubmitCurrent(key, WidgetKindPage,
         result.bounds)
     if result.node < 0 { return result }
+    result.bounds = TreeSubmittedNodeAt(result.node).bounds
+    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
+    result.content = metrics.content
+    TreeSetLayout(result.node, result.gap, result.padding, 0, 0, 0)
     TreeSetLabel(result.node, props.title)
     TreeSetSemantic(result.node, (SemanticKind)SemanticPage, 0)
     result.opened = TreePushScope(result.node)
@@ -88,6 +92,10 @@ Section :: (props: SectionProps) -> SectionResult #export {
     result.node = TreeSubmitCurrent(key, WidgetKindSection,
         result.bounds)
     if result.node < 0 { return result }
+    result.bounds = TreeSubmittedNodeAt(result.node).bounds
+    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
+    result.content = metrics.content
+    TreeSetLayout(result.node, result.gap, result.padding, 0, 0, 0)
     TreeSetLabel(result.node, props.label)
     TreeSetSemantic(result.node, (SemanticKind)SemanticSection, 0)
     result.opened = TreePushScope(result.node)

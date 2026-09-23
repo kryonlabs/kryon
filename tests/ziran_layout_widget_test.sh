@@ -16,6 +16,61 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "widget_kind"
 
+AutoAnswer :: () -> i32 {
+    root: Rectangle = (Rectangle){0.0, 0.0, 100.0, 80.0}
+    TreeStart((u64)101, root)
+    props: ColumnProps
+    props.key = (u64)102
+    props.bounds = root
+    props.gap = 3
+    props.padding = 5
+    column: LayoutContainer = Column(props)
+    child: Rectangle = (Rectangle){0.0, 0.0, 10.0, 12.0}
+    first: i32 = TreeSubmitCurrent((u64)103, WidgetKindText, child)
+    second: i32 = TreeSubmitCurrent((u64)104, WidgetKindText, child)
+    if !column.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(first).bounds.y != 5.0 ||
+        TreeSubmittedNodeAt(second).bounds.y != 20.0 || !End() {
+        return -20
+    }
+    props.key = (u64)105
+    row: LayoutContainer = Row(props)
+    first = TreeSubmitCurrent((u64)106, WidgetKindText, child)
+    second = TreeSubmitCurrent((u64)107, WidgetKindText, child)
+    if !row.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(second).bounds.x != 18.0 ||
+        TreeSubmittedNodeAt(second).bounds.y != 5.0 || !End() {
+        return -21
+    }
+    props.key = (u64)108
+    stack: LayoutContainer = Stack(props)
+    first = TreeSubmitCurrent((u64)109, WidgetKindText, child)
+    second = TreeSubmitCurrent((u64)110, WidgetKindText, child)
+    if !stack.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(second).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(second).bounds.y != 5.0 || !End() {
+        return -22
+    }
+    grid_props: GridProps
+    grid_props.key = (u64)111
+    grid_props.bounds = root
+    grid_props.columns = 2
+    grid_props.gap = 4
+    grid_props.padding = 2
+    grid: GridResult = Grid(grid_props)
+    first = TreeSubmitCurrent((u64)112, WidgetKindText, child)
+    second = TreeSubmitCurrent((u64)113, WidgetKindText, child)
+    third: i32 = TreeSubmitCurrent((u64)114, WidgetKindText, child)
+    if !grid.container.opened ||
+        TreeSubmittedNodeAt(first).bounds.x != 2.0 ||
+        TreeSubmittedNodeAt(first).bounds.width != 46.0 ||
+        TreeSubmittedNodeAt(second).bounds.x != 52.0 ||
+        TreeSubmittedNodeAt(third).bounds.x != 2.0 ||
+        TreeSubmittedNodeAt(third).bounds.y != 18.0 ||
+        !End() || !TreeFinish() { return -23 }
+    return 42
+}
+
 Answer :: () -> i32 #export {
     root: Rectangle = (Rectangle){0.0, 0.0, 300.0, 200.0}
     TreeStart((u64)1, root)
@@ -95,7 +150,7 @@ Answer :: () -> i32 #export {
         !End() || !TreeFinish() || TreeCount() != 12 ||
         TreeNodeAt(5).parent != 4 || TreeNodeAt(8).parent != 6 ||
         TreeNodeAt(11).parent != 1 { return -12 }
-    return 42
+    return AutoAnswer()
 }
 ZI
 

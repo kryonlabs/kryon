@@ -252,11 +252,11 @@ discards the current build and its scope stack.
 
 `Page(PageProps)` and `Section(SectionProps)` are checked Ziran containers.
 They open a child scope, return its content bounds and KSS gap/padding values,
-and close with `End()`. The caller gives child widgets explicit bounds within
-that content area. `PageResult` also returns title, description, canonical URL,
-and optional theme color for the platform to apply. The library does not set
-browser or window metadata itself. Automatic child placement is still in
-progress. `Heading(HeadingProps)`
+and close with `End()`. Children with zero x and y are placed in a vertical
+sequence using the page or section padding and gap; explicitly positioned
+children retain their bounds. `PageResult` also returns title, description,
+canonical URL, and optional theme color for the platform to apply. The library does not set
+browser or window metadata itself. `Heading(HeadingProps)`
 and `ParagraphText(ParagraphTextProps)` compose the checked `Text` widget with
 their own KSS style kinds and semantic roles. The retained heading level is
 clamped to 1–6; ParagraphText uses its parent scope width when none is given.
@@ -267,6 +267,10 @@ pointer activation or an explicit focus action. It returns a URL effect for
 the platform to apply when `LinkResult.open_url` is true.
 `Column`, `Row`, `Stack`, `Group`, `Screen`, and `Grid` are checked Ziran
 containers. Each opens a retained child scope that closes with `End()`.
-`ColumnChildBounds`, `RowChildBounds`, and `StackChildBoundsFor` place measured
-children before painting; `Grid` returns a `GridCursor` for `GridStep` to place
-cells. `Screen` fills the current tree viewport when its size is unspecified.
+Children with zero x and y are placed by Column, Row, Stack, or Grid during
+tree submission. Column and Row advance by the measured size and gap; Grid
+uses its configured cell widths and row heights. Queued paint follows the
+retained position. Explicitly positioned children retain their bounds. The
+`ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor`, and `GridStep`
+helpers remain available when the caller needs to calculate bounds itself.
+`Screen` fills the current tree viewport when its size is unspecified.

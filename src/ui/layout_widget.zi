@@ -40,6 +40,10 @@ ContainerFor :: (props: ColumnProps,
     if key == (u64)0 { key = TreeNextKey() }
     result.node = TreeSubmitCurrent(key, kind, result.bounds)
     if result.node < 0 { return result }
+    result.bounds = TreeSubmittedNodeAt(result.node).bounds
+    metrics = LayoutMetricsFor(result.bounds, props.gap, props.padding)
+    result.content = metrics.content
+    TreeSetLayout(result.node, result.gap, result.padding, 0, 0, 0)
     result.opened = TreePushScope(result.node)
     return result
 }
@@ -75,6 +79,9 @@ Grid :: (props: GridProps) -> GridResult #export {
     row.key = props.key
     result: GridResult
     result.container = ContainerFor(row, WidgetKindGrid)
+    TreeSetLayout(result.container.node, result.container.gap,
+        result.container.padding, props.columns, props.min_item_width,
+        props.max_columns)
     props.bounds = result.container.bounds
     result.cursor = BeginGridCursor(props)
     return result

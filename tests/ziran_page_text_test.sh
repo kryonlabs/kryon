@@ -10,12 +10,16 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #module "app"
 #import "geometry"
+#import "layout"
+#import "layout_widget"
 #import "page"
 #import "page_props"
 #import "page_text"
 #import "paint_queue"
 #import "semantic"
 #import "tree"
+#import "text_props"
+#import "text_widget"
 #import "widget_kind"
 
 Answer :: () -> i32 #export {
@@ -49,6 +53,26 @@ Answer :: () -> i32 #export {
         TreeNodeAt(3).semantic_kind != (SemanticKind)SemanticParagraph ||
         TreeNodeAt(3).heading_level != 0 ||
         TreeNodeAt(3).bounds.width != 190.0 { return -1 }
+    PaintFlush()
+    TreeStart((u64)20, bounds)
+    column_props: ColumnProps
+    column_props.key = (u64)21
+    column_props.bounds = bounds
+    column_props.padding = 5
+    column_props.gap = 3
+    column: LayoutContainer = Column(column_props)
+    first: TextProps
+    first.key = (u64)22
+    first.text = "A"
+    Text(first)
+    first.key = (u64)23
+    first.text = "BB"
+    Text(first)
+    if !column.opened || !End() || !TreeFinish() ||
+        TreeNodeAt(2).bounds.x != 5.0 ||
+        TreeNodeAt(2).bounds.y != 5.0 ||
+        TreeNodeAt(3).bounds.x != 5.0 ||
+        TreeNodeAt(3).bounds.y != 20.0 { return -2 }
     PaintFlush()
     return 42
 }

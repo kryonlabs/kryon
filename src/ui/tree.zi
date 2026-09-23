@@ -1,5 +1,8 @@
 #module "tree"
 #import "geometry"
+#import "grid"
+#import "grid_props"
+#import "layout"
 #import "semantic"
 #import "widget_kind"
 
@@ -67,6 +70,13 @@ TreeEntry :: struct {
     parent_key: u64
     kind: i32
     bounds: Rectangle
+    measured_bounds: Rectangle
+    auto_placed: bool
+    layout_gap: i32
+    layout_padding: i32
+    grid_columns: i32
+    grid_min_item_width: i32
+    grid_max_columns: i32
     semantic_label: string
     semantic_kind: SemanticKind
     heading_level: i32
@@ -185,7 +195,59 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
         entry.parent_key = active_tree.submitted[parent_index].key
     }
     entry.kind = kind
-    entry.bounds = bounds
+    entry.measured_bounds = bounds
+    if parent_index >= 0 && bounds.x == 0.0 && bounds.y == 0.0 {
+        parent: TreeEntry = active_tree.submitted[parent_index]
+        metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
+            parent.layout_gap, parent.layout_padding)
+        horizontal: bool = parent.kind == WidgetKindRow
+        vertical: bool = parent.kind == WidgetKindColumn ||
+            parent.kind == WidgetKindPage ||
+            parent.kind == WidgetKindSection
+        if horizontal || vertical {
+            sibling: i32 = parent.first_child
+            count: i32 = 0
+            extent: float = 0.0
+            while sibling >= 0 {
+                prior: TreeEntry = active_tree.submitted[sibling]
+                if prior.auto_placed {
+                    count += 1
+                    if horizontal { extent += prior.bounds.width }
+                    else { extent += prior.bounds.height }
+                }
+                sibling = prior.next_sibling
+            }
+            cursor: float = LayoutCursorForChild(metrics, horizontal,
+                count, extent)
+            entry.bounds = LayoutChildBounds(bounds, bounds,
+                metrics, horizontal, cursor)
+            entry.auto_placed = true
+        } else if parent.kind == WidgetKindStack {
+            entry.bounds = StackChildBounds(bounds, bounds, metrics)
+            entry.auto_placed = true
+        } else if parent.kind == WidgetKindGrid {
+            props: GridProps
+            props.bounds = parent.bounds
+            props.gap = parent.layout_gap
+            props.padding = parent.layout_padding
+            props.columns = parent.grid_columns
+            props.min_item_width = parent.grid_min_item_width
+            props.max_columns = parent.grid_max_columns
+            grid: GridCursor = BeginGridCursor(props)
+            sibling: i32 = parent.first_child
+            while sibling >= 0 {
+                prior: TreeEntry = active_tree.submitted[sibling]
+                if prior.auto_placed {
+                    grid = GridStep(grid, (i32)prior.bounds.height, 1)
+                }
+                sibling = prior.next_sibling
+            }
+            grid = GridStep(grid, (i32)bounds.height, 1)
+            entry.bounds = grid.item
+            entry.auto_placed = true
+        }
+    }
+    if !entry.auto_placed { entry.bounds = bounds }
     entry.parent = parent_index
     entry.first_child = -1
     entry.last_child = -1
@@ -202,6 +264,25 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     }
     active_tree.submitted_count += 1
     return index
+}
+
+TreeSetLayout :: (index: i32, gap: i32, padding: i32,
+    columns: i32, min_item_width: i32,
+    max_columns: i32) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    active_tree.submitted[index].layout_gap = gap
+    active_tree.submitted[index].layout_padding = padding
+    active_tree.submitted[index].grid_columns = columns
+    active_tree.submitted[index].grid_min_item_width = min_item_width
+    active_tree.submitted[index].grid_max_columns = max_columns
+}
+
+TreeSubmittedNodeAt :: (index: i32) -> TreeEntry #export {
+    empty: TreeEntry
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return empty }
+    return active_tree.submitted[index]
 }
 
 TreeFinish :: () -> bool #export {

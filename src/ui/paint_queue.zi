@@ -4,6 +4,7 @@
 #import "raster"
 #import "raster_shape"
 #import "raster_text"
+#import "tree"
 
 PaintKind :: enum {
     PaintKindLine = 1
@@ -80,6 +81,33 @@ SubmitPaint :: (command: PaintCommand) #export {
     if pending_paint.count >= 4096 {
         pending_paint.overflow = true
         return
+    }
+    if TreeIsBuilding() {
+        entry: TreeEntry = TreeSubmittedNodeAt(command.node)
+        dx: float = entry.bounds.x - entry.measured_bounds.x
+        dy: float = entry.bounds.y - entry.measured_bounds.y
+        full_bounds: bool = command.bounds.x == entry.measured_bounds.x &&
+            command.bounds.y == entry.measured_bounds.y &&
+            command.bounds.width == entry.measured_bounds.width &&
+            command.bounds.height == entry.measured_bounds.height
+        full_clip: bool = command.clip.x == entry.measured_bounds.x &&
+            command.clip.y == entry.measured_bounds.y &&
+            command.clip.width == entry.measured_bounds.width &&
+            command.clip.height == entry.measured_bounds.height
+        command.bounds.x += dx
+        command.bounds.y += dy
+        command.clip.x += dx
+        command.clip.y += dy
+        command.x += (i32)dx
+        command.y += (i32)dy
+        if full_bounds {
+            command.bounds.width = entry.bounds.width
+            command.bounds.height = entry.bounds.height
+        }
+        if full_clip {
+            command.clip.width = entry.bounds.width
+            command.clip.height = entry.bounds.height
+        }
     }
     pending_paint.items[pending_paint.count] = command
     pending_paint.count += 1

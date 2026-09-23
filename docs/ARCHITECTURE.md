@@ -33,13 +33,13 @@ source, saved-IR, and portable bundle tests. The checked modules cover
 geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, swipe, and
 scroll interaction, frame pacing, retained tree commit and instance lifetime
 decisions, nested retained tree scopes, paragraph layout policy, text input and text row decisions,
-checked Page and Section containers with explicit child bounds and returned
+checked Page and Section containers with automatic or explicit child bounds and returned
 platform metadata, plus Heading and ParagraphText through the checked Text
 widget and retained semantic roles,
 Flow row scope and child placement, and Link paint, pointer activation, and
 returned URL effects,
 checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
-explicit child placement,
+automatic placement for zero-positioned children and explicit placement otherwise,
 window placement and drag policy,
 caller owned route list and stack policy through portable slices,
 Router navigation, hash matching, and URL effect decisions through caller owned

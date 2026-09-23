@@ -3,11 +3,11 @@
 #include <assert.h>
 #include <string.h>
 
-static const char *expected[] = {"Title", "Body"};
-static const int expected_x[] = {10, 10};
-static const int expected_y[] = {20, 40};
-static const int expected_width[] = {50, 190};
-static const int expected_font[] = {24, 16};
+static const char *expected[] = {"Title", "Body", "A", "BB"};
+static const int expected_x[] = {10, 10, 5, 5};
+static const int expected_y[] = {20, 40, 5, 20};
+static const int expected_width[] = {50, 190, 10, 20};
+static const int expected_font[] = {24, 16, 16, 16};
 static int texts;
 
 static int width(void *context, const char *value, size_t length,
@@ -33,13 +33,13 @@ static void draw_text_clipped(void *context, const char *value,
 {
     (void)context;
     int index = texts;
-    assert(index < 2);
+    assert(index < 4);
     assert(strlen(expected[index]) == length &&
            memcmp(expected[index], value, length) == 0);
     assert(x == expected_x[index] && y == expected_y[index]);
     assert(font == expected_font[index] && r == 0x17 &&
            g == 0x17 && b == 0x17 && a == 255);
-    assert(clip[0] == 10 && clip[1] == expected_y[index] &&
+    assert(clip[0] == expected_x[index] && clip[1] == expected_y[index] &&
            clip[2] == expected_width[index] && clip[3] == 12);
     texts++;
 }
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     long long result = 0;
     int has_result = 0;
     assert(BundleInstanceRun(instance, &result, &has_result));
-    assert(has_result && result == 42 && texts == 2);
+    assert(has_result && result == 42 && texts == 4);
     BundleInstanceClose(instance);
     BundleClose(bundle);
     return 0;
