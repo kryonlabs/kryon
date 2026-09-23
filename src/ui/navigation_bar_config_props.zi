@@ -1,0 +1,48 @@
+#module "navigation_bar_config_props"
+#import "geometry"
+#import "image_props"
+
+NavigationBarOption :: struct {
+    key: u64
+    route: i32
+    label: string
+    image: ImageProps
+}
+
+# Routes are a caller owned mutable slice. The returned count and dropdown
+# state must be passed back on the next frame.
+NavigationBarConfigProps :: struct {
+    key: u64
+    id: i32
+    class_name: i32
+    title: string
+    bounds: Rectangle
+    scale: float
+    route_count: i32
+    max_route_count: i32
+    scroll_offset: i32
+    wheel: float
+    dropdown_open: bool
+    dropdown_row: i32
+    dropdown_highlight_index: i32
+    dropdown_scroll_offset: i32
+    dropdown_wheel: float
+    close_label: string
+    remove_label: string
+    add_label: string
+    reset_label: string
+    cancel_label: string
+    save_label: string
+}
+
+NavigationBarConfigResult :: struct {
+    node: i32
+    action: i32
+    changed: bool
+    route_count: i32
+    scroll_offset: i32
+    dropdown_open: bool
+    dropdown_row: i32
+    dropdown_highlight_index: i32
+    dropdown_scroll_offset: i32
+}

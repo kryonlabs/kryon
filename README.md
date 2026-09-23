@@ -31,6 +31,7 @@ The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, canvas transforms, scroll, menu, color picker,
 value based swipe gesture state and pointer ownership effects,
 Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
+checked NavigationBar configuration editor composition and route editing,
 Bevel and Separator line rendering, material
 layers, theme, style values, built-in theme labels, and selected Image, Progress,
 checked ModalFrame layout, backdrop dismissal, title and close actions,

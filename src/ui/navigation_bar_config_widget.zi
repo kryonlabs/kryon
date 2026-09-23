@@ -1,0 +1,363 @@
+#module "navigation_bar_config_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "dropdown_props"
+#import "dropdown_widget"
+#import "font_metrics"
+#import "geometry"
+#import "image_props"
+#import "modal"
+#import "modal_frame_widget"
+#import "modal_props"
+#import "navigation_bar"
+#import "navigation_bar_config_props"
+#import "overlay_widget"
+#import "paint_queue"
+#import "scroll"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+NavigationBarConfigDefaultFace :: (role: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleForeground | (u32)StyleFontSize |
+        (u32)StyleOpacity
+    face.foreground = (u32)0x334155ff
+    face.font_size = 12.0
+    face.opacity = 1.0
+    if role == NavigationBarActionRole() {
+        face.font_size = 14.0
+    }
+    return face
+}
+
+NavigationBarConfigFaceFor :: (props: NavigationBarConfigProps,
+    role: i32) -> StyleFrame #export {
+    facts: StyleFacts = StyleControlRoleFacts(
+        StyleKindNavigationBar(), props.id, props.class_name,
+        role, (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        NavigationBarConfigDefaultFace(role), facts,
+        (i32)ButtonStateNormal)
+    return frame
+}
+
+NavigationBarConfigKey :: (props: NavigationBarConfigProps) -> u64 #export {
+    if props.key != (u64)0 { return props.key }
+    if props.id > 0 { return (u64)(u32)props.id }
+    return TreeNextKey()
+}
+
+NavigationBarConfigOptionIndex :: (
+    options: []NavigationBarOption, count: i32,
+    route: i32) -> i32 #export {
+    index: i32 = 0
+    while index < count {
+        if options[index].route == route { return index }
+        index += 1
+    }
+    if count > 0 { return 0 }
+    return -1
+}
+
+NavigationBarConfigButton :: (key: u64, id: i32,
+    class_name: i32, bounds: Rectangle, label: string,
+    disabled: bool, icon_only: bool) -> bool #export {
+    button: ButtonProps
+    button.key = key
+    button.id = id
+    button.class_name = class_name
+    button.bounds = bounds
+    button.label = label
+    button.disabled = disabled
+    button.icon_only = icon_only
+    button.tone = (ButtonTone)ButtonToneNeutral
+    button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+    button.size = (ControlSize)ControlSizeSmall
+    button.style_kind = StyleKindNavigationBar()
+    button.style_role = NavigationBarActionRole()
+    return Button(button) != 0
+}
+
+# This editor mutates only the borrowed route slice and returns all retained
+# UI state. The caller owns save/cancel/reset effects and route persistence.
+NavigationBarConfig :: (props: NavigationBarConfigProps,
+    routes: []i32, slot_labels: []string,
+    options: []NavigationBarOption) -> NavigationBarConfigResult #export {
+    result: NavigationBarConfigResult
+    result.node = -1
+    result.scroll_offset = props.scroll_offset
+    result.dropdown_open = props.dropdown_open
+    result.dropdown_row = props.dropdown_row
+    result.dropdown_highlight_index =
+        props.dropdown_highlight_index
+    result.dropdown_scroll_offset = props.dropdown_scroll_offset
+    counts: NavigationBarConfigCounts =
+        NavigationBarConfigCountsFor(props.route_count,
+            props.max_route_count, options.length, 16)
+    if counts.max_route_count > routes.length {
+        counts.max_route_count = routes.length
+    }
+    if counts.route_count > counts.max_route_count {
+        counts.route_count = counts.max_route_count
+    }
+    result.route_count = counts.route_count
+    key: u64 = NavigationBarConfigKey(props)
+    panel: StyleFrame = NavigationBarConfigFaceFor(props,
+        NavigationBarPanelRole())
+    row_face: StyleFrame = NavigationBarConfigFaceFor(props,
+        NavigationBarRowRole())
+    action_face: StyleFrame = NavigationBarConfigFaceFor(props,
+        NavigationBarActionRole())
+    route_face: StyleFrame = NavigationBarConfigFaceFor(props,
+        NavigationBarRouteRole())
+    scale: float = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: NavigationBarConfigMetrics =
+        NavigationBarConfigMetricsFor(scale, panel,
+            row_face, action_face, route_face)
+    modal: ModalFrameProps
+    modal.key = key
+    modal.id = props.id
+    modal.class_name = props.class_name
+    modal.title = props.title
+    modal.bounds = props.bounds
+    modal.width = metrics.frame_width
+    modal.height = NavigationBarConfigFrameHeight(
+        result.route_count, metrics)
+    modal.scale = scale
+    modal.has_right_action = true
+    modal.right_label = props.close_label
+    frame: ModalFrameResult = ModalFrame(modal)
+    result.node = frame.node
+    if frame.dismissed || frame.right_clicked {
+        result.action = 1
+        result.dropdown_open = false
+        return result
+    }
+    if frame.panel_node < 0 { return result }
+    layout: NavigationBarConfigLayout =
+        NavigationBarConfigLayoutFor(frame.layout.panel,
+            frame.layout.content, result.route_count, metrics)
+    max_scroll: i32 = ScrollMax(layout.route_content_height,
+        (i32)layout.route_bounds.height)
+    result.scroll_offset = ScrollClamp(result.scroll_offset,
+        max_scroll)
+    if !result.dropdown_open && props.wheel != 0.0 {
+        result.scroll_offset = ScrollWheelOffsetFor(
+            result.scroll_offset, props.wheel,
+            max_scroll, metrics.row_height)
+    }
+    if !TreePushScope(frame.panel_node) { return result }
+    if max_scroll > 0 {
+        scroll_metrics: ScrollMetrics
+        scroll_metrics.scrollbar_width = metrics.scrollbar_width
+        scroll_metrics.thumb_min_height = 16
+        scroll_metrics.thumb_inset = 1
+        bar: ScrollBarPaint = ScrollBarPaintFor(
+            layout.scrollbar_x, (i32)layout.route_bounds.y,
+            (i32)layout.route_bounds.height,
+            layout.route_content_height, result.scroll_offset,
+            max_scroll, scroll_metrics)
+        old: i32 = TreeFind(key * (u64)65599 + (u64)5,
+            OverlayPanelKey(), WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(old)
+        if drag.active || drag.ended {
+            result.scroll_offset = ScrollDragOffsetFor(drag.y,
+                bar.track_bounds.y, drag.grab_y,
+                max_scroll, bar)
+            bar = ScrollBarPaintFor(layout.scrollbar_x,
+                (i32)layout.route_bounds.y,
+                (i32)layout.route_bounds.height,
+                layout.route_content_height,
+                result.scroll_offset, max_scroll, scroll_metrics)
+        }
+        thumb_node: i32 = TreeSubmitCurrent(
+            key * (u64)65599 + (u64)5,
+            WidgetKindSlider, bar.thumb_bounds)
+        if thumb_node >= 0 {
+            TreeSetInteractive(thumb_node, false, false, 0)
+            PaintRoundedFill(thumb_node, bar.track_bounds,
+                4.0, 8, ColorFromPacked((u32)0xe2e8f0ff))
+            PaintRoundedFill(thumb_node, bar.thumb_bounds,
+                4.0, 8, ColorFromPacked((u32)0x94a3b8ff))
+        }
+    }
+    row_content: Rectangle = layout.route_bounds
+    if max_scroll > 0 {
+        row_content.width -= (float)(metrics.scrollbar_width +
+            metrics.button_gap)
+    }
+    if row_content.width < 1.0 { row_content.width = 1.0 }
+    font: i32 = ResolveFont(0,
+        StyleFontValue(row_face.value.fields,
+            row_face.value.font_size), 12)
+    line_height: i32 = GlyphLineHeight(font,
+        row_face.value.typeface)
+    removed: i32 = -1
+    index: i32 = 0
+    while index < result.route_count {
+        y: i32 = (i32)layout.route_bounds.y +
+            index * metrics.row_height - result.scroll_offset
+        if y >= (i32)layout.route_bounds.y &&
+            y + metrics.row_height <=
+                (i32)(layout.route_bounds.y +
+                    layout.route_bounds.height) {
+            row: NavigationBarConfigRowLayout =
+                NavigationBarConfigRowLayoutFor(
+                    row_content, y, line_height, metrics)
+            if index < slot_labels.length &&
+                slot_labels[index] != "" {
+                PaintClippedLabel(frame.panel_node,
+                    slot_labels[index],
+                    (i32)row.label_bounds.x,
+                    (i32)row.label_bounds.y, font,
+                    ColorFromPacked(Opacity(
+                        row_face.value.foreground,
+                        StyleOpacityValue(row_face.value.fields,
+                            row_face.value.opacity))),
+                    layout.route_bounds)
+            }
+            if NavigationBarConfigButton(
+                key * (u64)131071 + (u64)(u32)(index + 1) *
+                    (u64)17 + (u64)1,
+                props.id + index + 1, props.class_name,
+                row.remove_bounds, props.remove_label,
+                false, true) {
+                removed = index
+            }
+            cx: float = row.remove_bounds.x +
+                row.remove_bounds.width * 0.5
+            cy: float = row.remove_bounds.y +
+                row.remove_bounds.height * 0.5
+            PaintLine(frame.panel_node,
+                (Rectangle){cx - 5.0, cy, 10.0, 0.0},
+                ColorFromPacked((u32)0x334155ff))
+        }
+        index += 1
+    }
+    if removed >= 0 {
+        index = removed
+        while index < result.route_count - 1 {
+            routes[index] = routes[index + 1]
+            index += 1
+        }
+        result.route_count -= 1
+        result.changed = true
+        result.dropdown_open = false
+        result.dropdown_row = -1
+        result.scroll_offset = ScrollClamp(result.scroll_offset,
+            ScrollMax(metrics.row_height * result.route_count,
+                (i32)layout.route_bounds.height))
+    }
+    if result.route_count < counts.max_route_count {
+        if NavigationBarConfigButton(key * (u64)65599 +
+            (u64)10, props.id, props.class_name,
+            layout.add_bounds, props.add_label, false, false) {
+            default_route: i32 = 0
+            if counts.option_count > 0 {
+                default_route = options[0].route
+            }
+            routes[result.route_count] =
+                NavigationBarConfigDefaultRoute(
+                    counts.option_count, default_route)
+            result.route_count += 1
+            result.changed = true
+        }
+    }
+    if NavigationBarConfigButton(key * (u64)65599 +
+        (u64)11, props.id, props.class_name,
+        layout.reset_bounds, props.reset_label,
+        false, false) { result.action = 3 }
+    if NavigationBarConfigButton(key * (u64)65599 +
+        (u64)12, props.id, props.class_name,
+        layout.cancel_bounds, props.cancel_label,
+        false, false) { result.action = 1 }
+    if NavigationBarConfigButton(key * (u64)65599 +
+        (u64)13, props.id, props.class_name,
+        layout.save_bounds, props.save_label,
+        false, false) { result.action = 2 }
+
+    dropdown_options: [16]DropdownOption
+    index = 0
+    while index < counts.option_count {
+        option: NavigationBarOption = options[index]
+        dropdown_option: DropdownOption
+        dropdown_option.key = option.key
+        dropdown_option.label = option.label
+        dropdown_option.image = option.image
+        dropdown_options[index] = dropdown_option
+        index += 1
+    }
+    rendered_open: bool = false
+    index = 0
+    while index < result.route_count && counts.option_count > 0 {
+        y: i32 = (i32)layout.route_bounds.y +
+            index * metrics.row_height - result.scroll_offset
+        if y >= (i32)layout.route_bounds.y &&
+            y + metrics.row_height <=
+                (i32)(layout.route_bounds.y +
+                    layout.route_bounds.height) {
+            row: NavigationBarConfigRowLayout =
+                NavigationBarConfigRowLayoutFor(
+                    row_content, y, line_height, metrics)
+            dropdown: DropdownProps
+            dropdown.key = key * (u64)131071 +
+                (u64)(u32)(index + 1) * (u64)17 + (u64)2
+            dropdown.id = props.id + index + 1
+            dropdown.class_name = props.class_name
+            dropdown.bounds = row.dropdown_bounds
+            dropdown.selected_index =
+                NavigationBarConfigOptionIndex(options,
+                    counts.option_count,
+                    routes[index])
+            dropdown.open = result.dropdown_open &&
+                result.dropdown_row == index
+            if dropdown.open {
+                rendered_open = true
+                dropdown.highlight_index =
+                    result.dropdown_highlight_index
+                dropdown.scroll_offset =
+                    result.dropdown_scroll_offset
+                dropdown.wheel = props.dropdown_wheel
+            }
+            selection: DropdownResult = Dropdown(dropdown,
+                dropdown_options[0:counts.option_count])
+            if selection.changed && selection.selected_index >= 0 &&
+                selection.selected_index < counts.option_count {
+                routes[index] = options[selection.selected_index].route
+                result.changed = true
+            }
+            if selection.opened {
+                result.dropdown_open = true
+                result.dropdown_row = index
+            } else if selection.closed &&
+                result.dropdown_row == index {
+                result.dropdown_open = false
+                result.dropdown_row = -1
+            }
+            if selection.open || selection.opened {
+                result.dropdown_highlight_index =
+                    selection.highlight_index
+                result.dropdown_scroll_offset =
+                    selection.scroll_offset
+            }
+        }
+        index += 1
+    }
+    if result.dropdown_open && !rendered_open &&
+        props.dropdown_open {
+        result.dropdown_open = false
+        result.dropdown_row = -1
+    }
+    End()
+    return result
+}
