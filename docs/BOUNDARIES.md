@@ -19,7 +19,9 @@ scheme, and metrics. `zi/popup_policy.zi` provides popup lifecycle decisions
 using `zi/geometry.zi` for rectangle and point values. `zi/popup_ownership.zi`
 provides popup order, ancestry, capture, retirement, and focus decisions.
 `zi/transition.zi` provides transition timing and fade decisions. These are
-tested as ordinary imported modules.
+tested as ordinary imported modules. `zi/input_props.zi` and `zi/input.zi`
+provide numeric input data and decisions; host adapters still own the value
+buffers and pointer samples.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 

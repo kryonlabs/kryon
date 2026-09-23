@@ -55,7 +55,13 @@ C, C++, Go, and portable `.zib`.
 `zi/transition.zi` ports transition timing and fade policy. The
 [transition test](../tests/ziran_transition_test.sh) checks its phase and
 alpha decisions across the same targets.
-`make ziran-test` runs the seven migration tests with an adjacent Ziran checkout.
+`zi/input_props.zi` and `zi/input.zi` port numeric input props and decision
+policy, including pointer interaction, cell geometry, stepping, rounding, and
+format selection. The [input test](../tests/ziran_input_test.sh) checks native
+C, C++, and Go from source and saved `.zir`; the reachable numeric policy also
+runs as portable `.zib`. Format strings and pointer backed props are not yet
+portable `.zib` values.
+`make ziran-test` runs the eight migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
