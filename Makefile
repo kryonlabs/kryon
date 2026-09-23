@@ -611,6 +611,7 @@ ziran-test:
 	sh tests/ziran_text_rows_test.sh
 	sh tests/ziran_drag_test.sh
 	sh tests/ziran_swipe_test.sh
+	sh tests/ziran_image_test.sh
 
 spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)

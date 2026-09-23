@@ -28,6 +28,8 @@ measured prefix widths.
 pointer and key samples and render the returned geometry.
 `zi/swipe_props.zi` and `zi/swipe.zi` provide swipe direction, drag, and
 release decisions; hosts own pointer samples and gesture state.
+`zi/image.zi` provides image fit and clipped-strip geometry plus placeholder
+placement. The host still loads textures, resolves styles, and draws them.
 Current widgets still consume the corresponding `.kry` policy until the Ziran
 library cutover.
 

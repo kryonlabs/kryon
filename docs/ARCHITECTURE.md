@@ -73,7 +73,11 @@ imports the library through Ziran's general `--module-path` option.
 and release decisions. The [swipe test](../tests/ziran_swipe_test.sh) checks
 those policies from source and saved `.zir` in all four targets, loading the
 library through the same module path.
-`make ziran-test` runs the eleven migration tests with an adjacent Ziran checkout.
+`zi/image.zi` ports image fitting, placeholder placement, and clipped texture
+source mapping from the Image widget. The [image test](../tests/ziran_image_test.sh)
+checks source and saved `.zir` in C, C++, Go, and `.zib`. Texture loading,
+styling, and drawing still use the legacy host path.
+`make ziran-test` runs the twelve migration tests with an adjacent Ziran checkout.
 The active Kryon build still uses the corresponding `.kry` modules; the `.zi`
 modules are not yet wired into widget rendering or downstream applications.
 
