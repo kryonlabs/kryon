@@ -324,3 +324,11 @@ localized accessibility text. For tree headers, pass the ordered id and depth
 slice so Right and Left can target a child or parent; Up and Down target the
 adjacent header. The platform supplies focus and key observations, while
 Kryon chooses the navigation target and handles retained pointer activation.
+
+`SegmentedControl(SegmentedControlProps, []SegmentOption)` lays out a borrowed
+option slice and returns the selected and clicked indexes, change flag, and
+measured height. The caller stores `selected_index` and sets `has_selection`
+when it has a saved selection. Option keys keep button identity when options
+move. Each segment uses the checked Button widget with the `Segment` KSS style
+kind; disabled options do not accept pointer activation. Use
+`SegmentedControlHeight` when the container needs the height before submission.

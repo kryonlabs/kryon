@@ -75,7 +75,9 @@ ButtonDefaultFace :: (props: ButtonProps, state: i32) -> StyleData #export {
 
 ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
     state: i32) -> StyleData #export {
-    facts: StyleFacts = ButtonRoleFactsFor(StyleKindButton(), props.id,
+    kind: i32 = props.style_kind
+    if kind <= 0 { kind = StyleKindButton() }
+    facts: StyleFacts = ButtonRoleFactsFor(kind, props.id,
         props.class_name, StyleAny(), (i32)props.tone,
         (i32)props.emphasis, (i32)props.size, state)
     return ResolveStyleRules(rules, ButtonDefaultFace(props, state),

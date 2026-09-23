@@ -163,7 +163,8 @@ SegmentedRowFor :: (bounds_x: float, bounds_width: float, y: i32,
         row.x = (i32)bounds_x + (available -
             (row.button_width * row_count + metrics.gap * (row_count - 1))) / 2
     } else {
-        row.button_width = row_width / row_count
+        row.button_width = (row_width -
+            metrics.gap * (row_count - 1)) / row_count
         row.x = (i32)bounds_x
     }
     if row.button_width < 0 {

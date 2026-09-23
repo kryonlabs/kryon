@@ -1,0 +1,202 @@
+#module "segmented_control_widget"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "font_metrics"
+#import "geometry"
+#import "segmented_control"
+#import "segmented_control_props"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+SegmentedControlDefaultFace :: (kind: i32) -> StyleData #export {
+    face: StyleData
+    face.fields = (u32)StyleFontSize | (u32)StylePaddingX
+    face.font_size = 14.0
+    face.padding_x = 10.0
+    if kind == StyleKindSegmentedControl() {
+        face.fields = face.fields | (u32)StyleGap |
+            (u32)StyleIconSize | (u32)StyleContentOffset
+        face.gap = 6.0
+        face.icon_size = 30.0
+        face.offset_x = 72.0
+        face.offset_y = 180.0
+    }
+    return face
+}
+
+SegmentedControlFaceFor :: (props: SegmentedControlProps,
+    kind: i32) -> StyleFrame #export {
+    state: i32 = ButtonStateNormal
+    if props.disabled { state = ButtonStateDisabled }
+    facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
+        props.class_name, StyleAny(),
+        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
+        (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(),
+        SegmentedControlDefaultFace(kind), facts, state)
+    return frame
+}
+
+SegmentedOptionKey :: (option: SegmentOption,
+    index: i32) -> u64 #export {
+    if option.key != (u64)0 { return option.key }
+    return (u64)(index + 1)
+}
+
+SegmentedControlMetricsFor :: (props: SegmentedControlProps) -> SegmentedMetrics #export {
+    control: StyleFrame = SegmentedControlFaceFor(props,
+        StyleKindSegmentedControl())
+    segment: StyleFrame = SegmentedControlFaceFor(props,
+        StyleKindSegment())
+    return SegmentedDefaultMetrics(props.height,
+        props.min_item_width, props.max_item_width,
+        props.scale, control, segment)
+}
+
+SegmentedControlHeight :: (props: SegmentedControlProps,
+    options: []SegmentOption) -> i32 #export {
+    metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
+    if options.length <= 0 || metrics.row_height <= 0 { return 0 }
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
+    if bounds.width <= 0.0 || !props.wrap { return metrics.row_height }
+    segment: StyleFrame = SegmentedControlFaceFor(props,
+        StyleKindSegment())
+    font: i32 = ResolveFont(0,
+        StyleFontValue(segment.value.fields,
+            segment.value.font_size), 14)
+    row_width: i32 = 0
+    rows: i32 = 1
+    index: i32 = 0
+    while index < options.length {
+        item_width: i32 = SegmentedItemWidth(
+            GlyphWidth(options[index].label, font,
+                segment.value.typeface), metrics)
+        advance: SegmentedRowAdvance = SegmentedRowAdvanceFor(true,
+            row_width, 0, item_width, (i32)bounds.width, metrics)
+        if advance.wrap_before { rows += 1 }
+        row_width = advance.row_width
+        index += 1
+    }
+    return SegmentedHeightForRows(rows, metrics.row_height,
+        metrics.gap)
+}
+
+# A segment is a checked Button with the Segment style kind. Option keys
+# preserve identity when caller owned options move between rows or positions.
+SegmentedControl :: (props: SegmentedControlProps,
+    options: []SegmentOption) -> SegmentedControlResult #export {
+    result: SegmentedControlResult
+    result.node = -1
+    result.clicked_index = -1
+    result.selected_index = -1
+    if props.has_selection { result.selected_index = props.selected_index }
+    result.height = SegmentedControlHeight(props, options)
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
+    if options.length <= 0 || bounds.width <= 0.0 ||
+        result.height <= 0 { return result }
+    bounds.height = (float)result.height
+    key: u64 = props.key
+    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
+    if key == (u64)0 { key = TreeNextKey() }
+    if TreeIsBuilding() {
+        index: i32 = 0
+        while index < options.length {
+            if !props.disabled && !options[index].disabled {
+                previous: i32 = TreeFind(
+                    SegmentedOptionKey(options[index], index), key,
+                    WidgetKindButton)
+                if TreeTakeActivationAt(previous) {
+                    result.clicked_index = index
+                }
+            }
+            index += 1
+        }
+    }
+    selection: SegmentedSelectionResult = SegmentedSelectionFor(
+        result.selected_index, result.clicked_index,
+        props.has_selection)
+    result.selected_index = selection.selected_index
+    result.changed = selection.changed
+    if TreeIsBuilding() {
+        result.node = TreeSubmitCurrent(key,
+            WidgetKindSegmentedControl, bounds)
+        if result.node < 0 { return result }
+        bounds = TreeSubmittedNodeAt(result.node).bounds
+    }
+    metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
+    segment: StyleFrame = SegmentedControlFaceFor(props,
+        StyleKindSegment())
+    font: i32 = ResolveFont(0,
+        StyleFontValue(segment.value.fields,
+            segment.value.font_size), 14)
+    row_start: i32 = 0
+    row_width: i32 = 0
+    row_count: i32 = 0
+    row_y: i32 = (i32)bounds.y
+    index: i32 = 0
+    while index <= options.length {
+        end_row: bool = index == options.length
+        advance: SegmentedRowAdvance
+        if !end_row {
+            item_width: i32 = SegmentedItemWidth(
+                GlyphWidth(options[index].label, font,
+                    segment.value.typeface), metrics)
+            advance = SegmentedRowAdvanceFor(props.wrap, row_width,
+                row_count, item_width, (i32)bounds.width, metrics)
+            if !advance.wrap_before {
+                row_width = advance.row_width
+                row_count = advance.row_count
+                index += 1
+                continue
+            }
+        }
+        if row_count > 0 {
+            row: SegmentedRow = SegmentedRowFor(bounds.x,
+                bounds.width, row_y, row_start, row_count,
+                row_width, props.wrap, metrics)
+            item_x: i32 = row.x
+            row_item: i32 = 0
+            while row_item < row_count {
+                item_index: i32 = row_start + row_item
+                option: SegmentOption = options[item_index]
+                button: ButtonProps
+                button.key = SegmentedOptionKey(option, item_index)
+                button.bounds = (Rectangle){(float)item_x,
+                    (float)row_y, (float)row.button_width,
+                    (float)metrics.row_height}
+                button.label = option.label
+                button.id = SegmentedFocusIdFor(props.id, item_index)
+                button.class_name = props.class_name
+                button.style_kind = StyleKindSegment()
+                button.tone = (ButtonTone)ButtonToneNeutral
+                if item_index == result.selected_index {
+                    button.tone = (ButtonTone)ButtonToneAccent
+                }
+                button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+                button.selected = item_index == result.selected_index
+                button.disabled = props.disabled || option.disabled
+                SubmitButton(button, result.node, key)
+                item_x += row.button_width + metrics.gap
+                row_item += 1
+            }
+            row_y += metrics.row_height + metrics.gap
+        }
+        if end_row {
+            row_width = 0
+            row_count = 0
+        } else {
+            row_start = index
+            row_width = advance.row_width
+            row_count = advance.row_count
+        }
+        index += 1
+    }
+    return result
+}

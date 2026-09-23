@@ -111,6 +111,7 @@ scene_tree_props.zi
 semantic.zi
 segmented_control.zi
 segmented_control_props.zi
+segmented_control_widget.zi
 selectable.zi
 selectable_props.zi
 selectable_widget.zi

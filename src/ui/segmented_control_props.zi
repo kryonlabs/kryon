@@ -2,26 +2,30 @@
 #import "geometry"
 
 SegmentOption :: struct {
-    label: const char*
+    key: u64
+    label: string
     disabled: bool
 }
 
 SegmentedControlProps :: struct {
+    key: u64
     bounds: Rectangle
     id: i32
     class_name: i32
-    options: const SegmentOption*
-    option_count: i32
-    selected_index: i32*
+    selected_index: i32
+    has_selection: bool
     height: i32
     min_item_width: i32
     max_item_width: i32
     wrap: bool
+    scale: float
+    disabled: bool
 }
 
 SegmentedControlResult :: struct {
+    node: i32
     selected_index: i32
     clicked_index: i32
-    changed: i32
+    changed: bool
     height: i32
 }

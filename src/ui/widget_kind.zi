@@ -55,7 +55,8 @@ WidgetKind :: enum {
     WidgetKindPage = 51
     WidgetKindSection = 52
     WidgetKindLink = 53
-    WidgetKindCount = 54
+    WidgetKindSegmentedControl = 54
+    WidgetKindCount = 55
 }
 
 WidgetFlag :: enum {

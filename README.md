@@ -36,6 +36,7 @@ checked TreeView composition and row input from portable item values,
 checked PanedView composition and handle dragging with returned pane bounds,
 checked Toast lifetime, text truncation, layout, and paint,
 checked Collapsible header interaction and tree keyboard navigation,
+checked SegmentedControl layout, selection, and styled Button children,
 portable theme and orientation preference decisions,
 form row layout, app shell sizing,
 capability policy, safe area geometry, and window placement decisions. Other runtime and widget
