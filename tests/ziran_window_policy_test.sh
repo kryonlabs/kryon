@@ -7,11 +7,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "window_flags"
 #import "window_policy"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     point: WindowPoint = WindowInitialPosition(11, 12, 100, 50,
         0, 0, 0, 1920, 1080)
     if point.x != 11 || point.y != 12 { return 0 }
