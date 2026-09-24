@@ -299,6 +299,17 @@ retained position. Explicitly positioned children retain their bounds. The
 helpers remain available when the caller needs to calculate bounds itself.
 `Screen` fills the current tree viewport when its size is unspecified.
 
+`Scroll(ScrollProps)` opens a clipped child scope and returns `ScrollResult`.
+The caller stores `scroll_offset`, positions children within `content`, and
+closes the scope with `End()`. `scroll_delta` handles keyboard or programmatic
+movement. For pointer input, set `input.enabled` and provide the current mouse,
+button, wheel, and drag ownership values. Kryon applies wheel and scrollbar
+drag policy, resolves KSS track and thumb styles, and queues their paint.
+`result.frame` reports wheel and release consumption, drag start or clear,
+and the grab offset that the caller retains between frames. A platform can
+use `TreeScrollAt(x, y)` to give wheel input to the deepest visible scroll
+viewport. Pointer sampling and drag ownership storage belong to the caller.
+
 `TreeView(TreeViewProps, []TreeItem)` takes a borrowed item slice and returns
 the selected item id, scroll offset, and whether selection changed. The caller
 stores those returned values between frames and supplies wheel or other scroll
