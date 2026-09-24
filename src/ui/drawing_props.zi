@@ -1,6 +1,5 @@
 #import "geometry"
 #import "text_align"
-host_api :: #system_library "host_api";
 
 # The public value records have the same layout on every generated target.
 # A platform host may adapt them to its own graphics library.
@@ -139,17 +138,8 @@ DarkenColor :: (color: Color, amount: s32) -> Color {
     return AdjustedColorLightness(color, -amount)
 }
 
-# Rectangle intersection is a value calculation; clip stack effects belong to
-# the host capability interface.
+# Clip calculations are values; paint commands carry explicit clip rectangles.
 #program_export
 GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     return RectangleIntersection(a, b)
 }
-#program_export
-GetClipEffective :: (bounds: Rectangle) -> Rectangle #foreign host_api;
-#program_export
-BeginClip :: (x: s32, y: s32, w: s32, h: s32) #foreign host_api;
-#program_export
-EndClip :: () #foreign host_api;
-#program_export
-ResetClip :: () #foreign host_api;
