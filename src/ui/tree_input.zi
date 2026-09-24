@@ -74,6 +74,22 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
     return -1
 }
 
+# The most recently submitted scroll viewport under the pointer wins. A
+# child scroll clips to its parent, so an outer page cannot consume its wheel.
+TreeScrollAt :: (x: float, y: float) -> u64 #export {
+    index: i32 = TreeCount() - 1
+    while index > 0 {
+        entry: TreeEntry = TreeNodeAt(index)
+        if entry.kind == WidgetKindScroll &&
+            PointInBounds(x, y, entry.bounds) &&
+            (!entry.clipped || PointInBounds(x, y, entry.clip)) {
+            return entry.key
+        }
+        index -= 1
+    }
+    return (u64)0
+}
+
 TreePointerUpdate :: (frame: PointerFrame) -> i32 #export {
     if TreeIsBuilding() { return -1 }
     hit: i32 = TreeHitAt(frame.x, frame.y)

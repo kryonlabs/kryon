@@ -94,6 +94,19 @@ Answer :: () -> i32 #export {
     if !result.frame.clear_drag || !result.frame.consume_release ||
         !End() || !TreeFinish() { return -9 }
     PaintClear()
+
+    TreeStart((u64)1, root)
+    props.input.enabled = false
+    result = Scroll(props)
+    inner: ScrollProps
+    inner.key = (u64)4
+    inner.bounds = (Rectangle){30.0, 15.0, 30.0, 20.0}
+    inner.content_height = 50
+    unused Scroll(inner)
+    if !End() || !End() || !TreeFinish() ||
+        TreeScrollAt(40.0, 20.0) != (u64)4 ||
+        TreeScrollAt(25.0, 15.0) != (u64)2 ||
+        TreeScrollAt(150.0, 20.0) != (u64)0 { return -10 }
     return 42
 }
 ZI
