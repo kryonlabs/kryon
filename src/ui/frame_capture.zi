@@ -1,0 +1,147 @@
+#module "frame_capture"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "semantic"
+#import "tree"
+#import "tree_draw"
+
+# These records deliberately expose values useful for comparing frames, not
+# the tree's internal links or queue storage. They also cross the portable
+# host boundary without importing internal record types into the host ABI.
+FrameNode :: struct {
+    key: u64
+    parent_key: u64
+    kind: i32
+    x: float
+    y: float
+    width: float
+    height: float
+    label: string
+    semantic_kind: i32
+    heading_level: i32
+    identity_generation: i32
+    interactive: bool
+    disabled: bool
+    loading: bool
+    selected: bool
+    focus_id: i32
+}
+
+FramePaint :: struct {
+    kind: i32
+    node: i32
+    x: float
+    y: float
+    width: float
+    height: float
+    clip_x: float
+    clip_y: float
+    clip_width: float
+    clip_height: float
+    red: u8
+    green: u8
+    blue: u8
+    alpha: u8
+    radius: float
+    segments: i32
+    line_width: float
+    value: string
+    text_x: i32
+    text_y: i32
+    font: i32
+    asset_path: string
+    texture_id: u32
+    source_x: float
+    source_y: float
+    source_width: float
+    source_height: float
+    origin_x: float
+    origin_y: float
+    rotation: float
+}
+
+FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
+    node: FrameNode
+    node.key = entry.key
+    node.parent_key = entry.parent_key
+    node.kind = entry.kind
+    node.x = entry.bounds.x
+    node.y = entry.bounds.y
+    node.width = entry.bounds.width
+    node.height = entry.bounds.height
+    node.label = entry.semantic_label
+    node.semantic_kind = (i32)entry.semantic_kind
+    node.heading_level = entry.heading_level
+    node.identity_generation = entry.identity_generation
+    node.interactive = entry.interactive
+    node.disabled = entry.disabled
+    node.loading = entry.loading
+    node.selected = entry.selected
+    node.focus_id = entry.focus_id
+    return node
+}
+
+FramePaintFrom :: (command: PaintCommand) -> FramePaint {
+    paint: FramePaint
+    paint.kind = command.kind
+    paint.node = command.node
+    paint.x = command.bounds.x
+    paint.y = command.bounds.y
+    paint.width = command.bounds.width
+    paint.height = command.bounds.height
+    paint.clip_x = command.clip.x
+    paint.clip_y = command.clip.y
+    paint.clip_width = command.clip.width
+    paint.clip_height = command.clip.height
+    paint.red = command.color.r
+    paint.green = command.color.g
+    paint.blue = command.color.b
+    paint.alpha = command.color.a
+    paint.radius = command.radius
+    paint.segments = command.segments
+    paint.line_width = command.line_width
+    paint.value = command.value
+    paint.text_x = command.x
+    paint.text_y = command.y
+    paint.font = command.font
+    paint.asset_path = command.asset_path
+    paint.texture_id = command.texture_id
+    paint.source_x = command.source.x
+    paint.source_y = command.source.y
+    paint.source_width = command.source.width
+    paint.source_height = command.source.height
+    paint.origin_x = command.origin.x
+    paint.origin_y = command.origin.y
+    paint.rotation = command.rotation
+    return paint
+}
+
+# These effects belong to an opt-in inspection host. Ordinary EndTree does
+# not require them. A host may record the values without opening a display.
+RecordFrameStart :: (node_count: i32, paint_count: i32) #extern
+RecordNode :: (index: i32, node: FrameNode) #extern
+RecordPaint :: (index: i32, command: FramePaint) #extern
+RecordFrameEnd :: () #extern
+
+# Capture only a complete, committed frame. All values are sent before paint
+# is flushed, while the queue still contains the commands chosen by widgets.
+EndTreeCapture :: () -> bool #export {
+    if !CommitTree() { return false }
+    node_count: i32 = TreeCount()
+    paint_count: i32 = PendingPaintCount()
+    RecordFrameStart(node_count, paint_count)
+    index: i32 = 0
+    while index < node_count {
+        RecordNode(index, FrameNodeFrom(TreeNodeAt(index)))
+        index += 1
+    }
+    index = 0
+    while index < paint_count {
+        RecordPaint(index, FramePaintFrom(PendingPaintAt(index)))
+        index += 1
+    }
+    RecordFrameEnd()
+    PaintFlush()
+    return true
+}

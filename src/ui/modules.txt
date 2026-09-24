@@ -42,6 +42,7 @@ fieldset_widget.zi
 focus.zi
 font_metrics.zi
 flow.zi
+frame_capture.zi
 frame_pacing.zi
 geometry.zi
 grid.zi

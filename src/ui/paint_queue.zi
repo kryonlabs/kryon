@@ -76,7 +76,7 @@ EmitPaint :: (command: PaintCommand) #export {
 }
 
 SubmitPaint :: (command: PaintCommand) #export {
-    if command.node < 0 {
+    if command.node < 0 && !TreeIsBuilding() {
         EmitPaint(command)
         return
     }
@@ -84,7 +84,7 @@ SubmitPaint :: (command: PaintCommand) #export {
         pending_paint.overflow = true
         return
     }
-    if TreeIsBuilding() {
+    if command.node >= 0 && TreeIsBuilding() {
         entry: TreeEntry = TreeSubmittedNodeAt(command.node)
         dx: float = entry.bounds.x - entry.measured_bounds.x
         dy: float = entry.bounds.y - entry.measured_bounds.y
@@ -219,6 +219,18 @@ PaintClear :: () #export {
 
 PaintOverflow :: () -> bool #export {
     return pending_paint.overflow
+}
+
+# The pending commands are inspectable after the tree commits and before
+# PaintFlush clears them. A failed commit clears the queue instead.
+PendingPaintCount :: () -> i32 #export {
+    return pending_paint.count
+}
+
+PendingPaintAt :: (index: i32) -> PaintCommand #export {
+    empty: PaintCommand
+    if index < 0 || index >= pending_paint.count { return empty }
+    return pending_paint.items[index]
 }
 
 PaintFlush :: () #export {

@@ -10,7 +10,7 @@ BeginTree :: (screen_key: u64, bounds: Rectangle) #export {
     TreeStart(screen_key, bounds)
 }
 
-EndTree :: () -> bool #export {
+CommitTree :: () -> bool #export {
     if PaintOverflow() {
         TreeCancel()
         PaintClear()
@@ -20,6 +20,11 @@ EndTree :: () -> bool #export {
         PaintClear()
         return false
     }
+    return true
+}
+
+EndTree :: () -> bool #export {
+    if !CommitTree() { return false }
     PaintFlush()
     return true
 }

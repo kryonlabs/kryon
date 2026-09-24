@@ -33,6 +33,8 @@ effect contract.
 See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
 See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
+See [frame replay](docs/FRAME_REPLAY.md) for committed UI and paint capture
+with scripted input on a headless host.
 The [Ziran example](examples/README.md) builds a `.zib` that imports Kryon and
 runs a retained `Button` press and release through a separate SVG host without
 a display.

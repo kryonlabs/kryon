@@ -1,0 +1,31 @@
+#module "frame_replay_demo"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "frame_capture"
+#import "geometry"
+#import "paint_queue"
+#import "tree_draw"
+#import "tree_input"
+
+PollPointer :: () -> PointerFrame #extern
+
+clicks :: i32 #global
+
+Frame :: () -> i32 #export {
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(pointer)
+    BeginTree((u64)1, (Rectangle){0.0, 0.0, 320.0, 160.0})
+    button: ButtonProps
+    button.key = (u64)2
+    button.bounds = (Rectangle){40.0, 48.0, 240.0, 64.0}
+    button.label = "Hello, Ziran"
+    if clicks > 0 { button.label = "Clicked!" }
+    button.tone = (ButtonTone)ButtonToneAccent
+    clicks += Button(button)
+    PaintLine(-1, (Rectangle){0.0, 159.0, 320.0, 159.0},
+        (Color){1, 2, 3, 255})
+    if !EndTreeCapture() { return -1 }
+    return clicks
+}
