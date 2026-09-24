@@ -65,9 +65,6 @@ theme and orientation preference decisions from host observations,
 portable built-in theme labels,
 Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
 selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
-The optional SDL2/Cairo example also links generated C applications directly
-to `libkryon.a`. Its button and image tests match the corresponding portable
-`.zib` screenshots byte for byte in private Xvfb displays.
 The checked standard `Button(ButtonProps)` composes KSS state styling, label
 measurement, retained pointer activation, and queued shape, clipped image, and
 clipped text paint. `ButtonProps.image` uses portable `ImageProps` asset or
