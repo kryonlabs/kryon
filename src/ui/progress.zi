@@ -1,14 +1,13 @@
-#module "progress"
 #import "control_props"
 #import "geometry"
 #import "style"
 #import "surface"
 
 ProgressLayout :: struct {
-    ratio: float
+    ratio: float32
     fill_bounds: Rectangle
-    label_x: float
-    label_y: float
+    label_x: float32
+    label_y: float32
     label_on_fill: bool
 }
 
@@ -22,41 +21,45 @@ ProgressPaint :: struct {
     border_color: u32
     label_color: u32
     filled_label_color: u32
-    radius: float
-    border_width: float
+    radius: float32
+    border_width: float32
 }
 
 ProgressDrawPlan :: struct {
-    radius: float
+    radius: float32
     draw_fill: bool
     draw_border: bool
     draw_label: bool
     label_color: u32
 }
 
-ProgressTrackRole :: () -> i32 #export {
+#program_export
+ProgressTrackRole :: () -> s32 {
     return 4
 }
 
-ProgressFillRole :: () -> i32 #export {
+#program_export
+ProgressFillRole :: () -> s32 {
     return 5
 }
 
-ProgressLabelRole :: () -> i32 #export {
+#program_export
+ProgressLabelRole :: () -> s32 {
     return 6
 }
 
-ProgressMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+ProgressMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
     return value * scale
 }
 
-ProgressRatio :: (min: i32, max: i32, value: i32) -> float #export {
+#program_export
+ProgressRatio :: (min: s32, max: s32, value: s32) -> float32 {
     if max <= min {
         max = min + 1
     }
-    ratio: float = (float)(value - min) / (float)(max - min)
+    ratio: float32 = cast(float32)(value - min) / cast(float32)(max - min)
     if ratio < 0.0 {
         return 0.0
     }
@@ -66,7 +69,8 @@ ProgressRatio :: (min: i32, max: i32, value: i32) -> float #export {
     return ratio
 }
 
-ProgressFillBounds :: (bounds: Rectangle, ratio: float) -> Rectangle #export {
+#program_export
+ProgressFillBounds :: (bounds: Rectangle, ratio: float32) -> Rectangle {
     fill: Rectangle = bounds
     if ratio < 0.0 {
         ratio = 0.0
@@ -78,7 +82,8 @@ ProgressFillBounds :: (bounds: Rectangle, ratio: float) -> Rectangle #export {
     return fill
 }
 
-ProgressDrawRadius :: (bounds: Rectangle, radius: float) -> float #export {
+#program_export
+ProgressDrawRadius :: (bounds: Rectangle, radius: float32) -> float32 {
     if bounds.height <= 0.0 {
         return 0.0
     }
@@ -92,11 +97,12 @@ ProgressDrawRadius :: (bounds: Rectangle, radius: float) -> float #export {
     return radius
 }
 
-ProgressLabelX :: (bounds: Rectangle, fill_width: float,
-    label_width: float, padding: float) -> float #export {
-    x: float = bounds.x + (bounds.width - label_width) * 0.5
-    fill_end: float = bounds.x + fill_width
-    empty_width: float = bounds.width - fill_width
+#program_export
+ProgressLabelX :: (bounds: Rectangle, fill_width: float32,
+    label_width: float32, padding: float32) -> float32 {
+    x: float32 = bounds.x + (bounds.width - label_width) * 0.5
+    fill_end: float32 = bounds.x + fill_width
+    empty_width: float32 = bounds.width - fill_width
     if empty_width >= label_width + padding * 2.0 {
         return fill_end + padding
     }
@@ -106,17 +112,20 @@ ProgressLabelX :: (bounds: Rectangle, fill_width: float,
     return x
 }
 
-ProgressLabelY :: (bounds: Rectangle, label_line_height: float) -> float #export {
+#program_export
+ProgressLabelY :: (bounds: Rectangle, label_line_height: float32) -> float32 {
     return bounds.y + (bounds.height - label_line_height) * 0.5
 }
 
-ProgressLabelOnFill :: (fill_width: float, label_width: float,
-    padding: float) -> bool #export {
+#program_export
+ProgressLabelOnFill :: (fill_width: float32, label_width: float32,
+    padding: float32) -> bool {
     return fill_width >= label_width + padding * 2.0
 }
 
-ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
-    label_width: float, label_line_height: float, padding: float) -> ProgressLayout #export {
+#program_export
+ProgressLayoutFor :: (bounds: Rectangle, min: s32, max: s32, value: s32,
+    label_width: float32, label_line_height: float32, padding: float32) -> ProgressLayout {
     layout: ProgressLayout
     layout.ratio = ProgressRatio(min, max, value)
     layout.fill_bounds = ProgressFillBounds(bounds, layout.ratio)
@@ -128,18 +137,20 @@ ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
     return layout
 }
 
-ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float) -> float #export {
+#program_export
+ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float32) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
-    return ProgressMetric(label.value.fields, (u32)StylePaddingX,
+    return ProgressMetric(label.value.fields, cast(u32)StylePaddingX,
         label.value.padding_x, 6.0, scale)
 }
 
-ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
-    label_width: float, label_line_height: float, scale: float,
-    track: StyleFrame, fill: StyleFrame, label: StyleFrame) -> ProgressPaint #export {
+#program_export
+ProgressPaintFor :: (bounds: Rectangle, min: s32, max: s32, value: s32,
+    label_width: float32, label_line_height: float32, scale: float32,
+    track: StyleFrame, fill: StyleFrame, label: StyleFrame) -> ProgressPaint {
     paint: ProgressPaint
     if scale <= 0.0 { scale = 1.0 }
-    padding: float = ProgressLabelPaddingForStyle(label, scale)
+    padding: float32 = ProgressLabelPaddingForStyle(label, scale)
     paint.layout = ProgressLayoutFor(bounds, min, max, value, label_width,
         label_line_height, padding)
     paint.track = track
@@ -156,8 +167,9 @@ ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
     return paint
 }
 
+#program_export
 ProgressDrawPlanFor :: (bounds: Rectangle, paint: ProgressPaint,
-    has_label: bool, label_opacity: float) -> ProgressDrawPlan #export {
+    has_label: bool, label_opacity: float32) -> ProgressDrawPlan {
     plan: ProgressDrawPlan
     plan.radius = ProgressDrawRadius(bounds, paint.radius)
     plan.draw_fill = paint.layout.fill_bounds.width > 0.0

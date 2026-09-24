@@ -1,4 +1,3 @@
-#module "link"
 #import "control_props"
 #import "geometry"
 #import "style"
@@ -23,29 +22,32 @@ LinkInteraction :: struct {
     state: ButtonState
 }
 
-LinkBoundsFor :: (bounds: Rectangle, text_width: i32,
-    text_height: i32, font: i32) -> Rectangle #export {
+#program_export
+LinkBoundsFor :: (bounds: Rectangle, text_width: s32,
+    text_height: s32, font: s32) -> Rectangle {
     result: Rectangle = bounds
     if result.width <= 0.0 {
-        result.width = (float)text_width
+        result.width = cast(float32)text_width
     }
     if result.height <= 0.0 {
-        result.height = (float)text_height
+        result.height = cast(float32)text_height
     }
     if result.height <= 0.0 {
-        result.height = (float)font
+        result.height = cast(float32)font
     }
     return result
 }
 
-LinkUnderlineYFor :: (bounds: Rectangle, scale: float) -> i32 #export {
+#program_export
+LinkUnderlineYFor :: (bounds: Rectangle, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(bounds.y + bounds.height) - (i32)(2.0 * scale)
+    return cast(s32)(bounds.y + bounds.height) - cast(s32)(2.0 * scale)
 }
 
+#program_export
 LinkInteractionFor :: (disabled: bool, captured: bool, mouse_inside: bool,
     hover_effects: bool, released: bool, release_consumed: bool,
-    press_started_inside: bool) -> LinkInteraction #export {
+    press_started_inside: bool) -> LinkInteraction {
     interaction: LinkInteraction
     interaction.active = !disabled && !captured && mouse_inside
     interaction.hovered = interaction.active && hover_effects
@@ -53,23 +55,25 @@ LinkInteractionFor :: (disabled: bool, captured: bool, mouse_inside: bool,
     interaction.activated = interaction.active && released &&
         !release_consumed && press_started_inside
     interaction.consume_release = interaction.activated
-    interaction.state = (ButtonState)ButtonStateNormal
+    interaction.state = cast(ButtonState)ButtonStateNormal
     if interaction.hovered {
-        interaction.state = (ButtonState)ButtonStateHover
+        interaction.state = cast(ButtonState)ButtonStateHover
     }
     if disabled {
-        interaction.state = (ButtonState)ButtonStateDisabled
+        interaction.state = cast(ButtonState)ButtonStateDisabled
     }
     return interaction
 }
 
-LinkActivated :: (disabled: bool, clicked: bool, focus_activate: bool) -> bool #export {
+#program_export
+LinkActivated :: (disabled: bool, clicked: bool, focus_activate: bool) -> bool {
     return !disabled && (clicked || focus_activate)
 }
 
+#program_export
 ResolveLinkAppearance :: (frame: StyleFrame, hovered: bool,
-    disabled: bool) -> LinkAppearance #export {
-    state: i32 = LinkStateNormal
+    disabled: bool) -> LinkAppearance {
+    state: s32 = LinkStateNormal
     if hovered {
         state = LinkStateHover
     }

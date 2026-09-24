@@ -1,15 +1,17 @@
-#module "font_metrics"
+host_api :: #system_library "host_api";
 
 # Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
-MeasureGlyphWidth :: (value: string, font: i32,
-    typeface: string) -> i32 #extern
-MeasureGlyphLineHeight :: (font: i32, typeface: string) -> i32 #extern
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 #foreign host_api;
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #foreign host_api;
 
-GlyphWidth :: (value: string, font: i32,
-    typeface: string) -> i32 #export {
+#program_export
+GlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
     return MeasureGlyphWidth(value, font, typeface)
 }
 
-GlyphLineHeight :: (font: i32, typeface: string) -> i32 #export {
+#program_export
+GlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     return MeasureGlyphLineHeight(font, typeface)
 }

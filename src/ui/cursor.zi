@@ -1,5 +1,5 @@
-#module "cursor"
 #import "widget_kind"
+host_api :: #system_library "host_api";
 
 # The shape is a UI decision. The platform only applies the selected shape.
 CursorShape :: enum {
@@ -17,9 +17,9 @@ CursorShape :: enum {
 }
 
 CursorFrame :: struct {
-    applied: i32
-    requested: i32
-    priority: i32
+    applied: s32
+    requested: s32
+    priority: s32
     has_request: bool
 }
 
@@ -28,55 +28,59 @@ CursorDecision :: struct {
     apply: bool
 }
 
-ApplyCursorShape :: (shape: i32) #extern
+ApplyCursorShape :: (shape: s32) #foreign host_api;
 
-CursorBeginFrame :: (state: CursorFrame) -> CursorFrame #export {
+#program_export
+CursorBeginFrame :: (state: CursorFrame) -> CursorFrame {
     state.requested = state.applied
     state.priority = 0
     state.has_request = false
     return state
 }
 
-CursorPriorityFor :: (shape: i32) -> i32 #export {
-    if shape == (i32)CursorDisabled { return 1 }
-    if shape == (i32)CursorText { return 2 }
-    if shape == (i32)CursorResizeHorizontal ||
-        shape == (i32)CursorResizeVertical ||
-        shape == (i32)CursorResizeDown ||
-        shape == (i32)CursorResizeUp ||
-        shape == (i32)CursorResizeAll { return 4 }
-    if shape == (i32)CursorDefault { return 0 }
+#program_export
+CursorPriorityFor :: (shape: s32) -> s32 {
+    if shape == cast(s32)CursorDisabled { return 1 }
+    if shape == cast(s32)CursorText { return 2 }
+    if shape == cast(s32)CursorResizeHorizontal ||
+        shape == cast(s32)CursorResizeVertical ||
+        shape == cast(s32)CursorResizeDown ||
+        shape == cast(s32)CursorResizeUp ||
+        shape == cast(s32)CursorResizeAll { return 4 }
+    if shape == cast(s32)CursorDefault { return 0 }
     return 3
 }
 
+#program_export
 CursorShapeForWidget :: (kind: WidgetKind,
-    disabled: bool) -> i32 #export {
-    if disabled { return (i32)CursorDisabled }
-    if kind == (WidgetKind)WidgetKindTextField ||
-        kind == (WidgetKind)WidgetKindTextArea ||
-        kind == (WidgetKind)WidgetKindSelectable {
-        return (i32)CursorText
+    disabled: bool) -> s32 {
+    if disabled { return cast(s32)CursorDisabled }
+    if kind == cast(WidgetKind)WidgetKindTextField ||
+        kind == cast(WidgetKind)WidgetKindTextArea ||
+        kind == cast(WidgetKind)WidgetKindSelectable {
+        return cast(s32)CursorText
     }
-    if kind == (WidgetKind)WidgetKindButton ||
-        kind == (WidgetKind)WidgetKindLink ||
-        kind == (WidgetKind)WidgetKindCheckbox ||
-        kind == (WidgetKind)WidgetKindToggle ||
-        kind == (WidgetKind)WidgetKindRadio ||
-        kind == (WidgetKind)WidgetKindSlider ||
-        kind == (WidgetKind)WidgetKindDropdown ||
-        kind == (WidgetKind)WidgetKindCollapsible ||
-        kind == (WidgetKind)WidgetKindTabBar ||
-        kind == (WidgetKind)WidgetKindColorPicker {
-        return (i32)CursorClickable
+    if kind == cast(WidgetKind)WidgetKindButton ||
+        kind == cast(WidgetKind)WidgetKindLink ||
+        kind == cast(WidgetKind)WidgetKindCheckbox ||
+        kind == cast(WidgetKind)WidgetKindToggle ||
+        kind == cast(WidgetKind)WidgetKindRadio ||
+        kind == cast(WidgetKind)WidgetKindSlider ||
+        kind == cast(WidgetKind)WidgetKindDropdown ||
+        kind == cast(WidgetKind)WidgetKindCollapsible ||
+        kind == cast(WidgetKind)WidgetKindTabBar ||
+        kind == cast(WidgetKind)WidgetKindColorPicker {
+        return cast(s32)CursorClickable
     }
-    return (i32)CursorDefault
+    return cast(s32)CursorDefault
 }
 
-CursorRequest :: (state: CursorFrame, shape: i32) -> CursorFrame #export {
-    if shape < (i32)CursorDefault || shape > (i32)CursorDisabled {
+#program_export
+CursorRequest :: (state: CursorFrame, shape: s32) -> CursorFrame {
+    if shape < cast(s32)CursorDefault || shape > cast(s32)CursorDisabled {
         return state
     }
-    priority: i32 = CursorPriorityFor(shape)
+    priority: s32 = CursorPriorityFor(shape)
     if state.has_request && priority < state.priority { return state }
     state.requested = shape
     state.priority = priority
@@ -84,16 +88,18 @@ CursorRequest :: (state: CursorFrame, shape: i32) -> CursorFrame #export {
     return state
 }
 
-CursorEndFrame :: (state: CursorFrame) -> CursorDecision #export {
+#program_export
+CursorEndFrame :: (state: CursorFrame) -> CursorDecision {
     decision: CursorDecision
-    if !state.has_request { state.requested = (i32)CursorDefault }
+    if !state.has_request { state.requested = cast(s32)CursorDefault }
     decision.apply = state.requested != state.applied
     state.applied = state.requested
     decision.state = state
     return decision
 }
 
-CommitCursor :: (decision: CursorDecision) -> CursorFrame #export {
+#program_export
+CommitCursor :: (decision: CursorDecision) -> CursorFrame {
     if decision.apply { ApplyCursorShape(decision.state.applied) }
     return decision.state
 }

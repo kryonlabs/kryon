@@ -1,87 +1,88 @@
-#module "segmented_control"
 #import "style"
 #import "control_props"
 
 SegmentedMetrics :: struct {
-    gap: i32
-    row_height: i32
-    min_item_width: i32
-    max_item_width: i32
-    label_padding: i32
+    gap: s32
+    row_height: s32
+    min_item_width: s32
+    max_item_width: s32
+    label_padding: s32
 }
 
 SegmentedRow :: struct {
-    start: i32
-    count: i32
-    width: i32
-    button_width: i32
-    x: i32
-    y: i32
+    start: s32
+    count: s32
+    width: s32
+    button_width: s32
+    x: s32
+    y: s32
 }
 
 SegmentedRowAdvance :: struct {
-    row_width: i32
-    row_count: i32
+    row_width: s32
+    row_count: s32
     wrap_before: bool
 }
 
 SegmentedSelectionResult :: struct {
-    selected_index: i32
+    selected_index: s32
     changed: bool
 }
 
-SegmentedMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 ||
+SegmentedMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-SegmentedDefaultMetrics :: (row_height: i32, min_item_width: i32,
-    max_item_width: i32, scale: float, control: StyleFrame,
-    segment: StyleFrame) -> SegmentedMetrics #export {
+#program_export
+SegmentedDefaultMetrics :: (row_height: s32, min_item_width: s32,
+    max_item_width: s32, scale: float32, control: StyleFrame,
+    segment: StyleFrame) -> SegmentedMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: SegmentedMetrics
-    metrics.gap = SegmentedMetric(segment.value.fields, (u32)StyleGap,
+    metrics.gap = SegmentedMetric(segment.value.fields, cast(u32)StyleGap,
         segment.value.gap, -1.0, scale, true)
     if metrics.gap < 0 {
-        metrics.gap = SegmentedMetric(control.value.fields, (u32)StyleGap,
+        metrics.gap = SegmentedMetric(control.value.fields, cast(u32)StyleGap,
             control.value.gap, 6.0, scale, true)
     }
     metrics.row_height = row_height
     if metrics.row_height <= 0 {
         metrics.row_height = SegmentedMetric(control.value.fields,
-            (u32)StyleIconSize, control.value.icon_size, 30.0, scale, false)
+            cast(u32)StyleIconSize, control.value.icon_size, 30.0, scale, false)
     }
     metrics.min_item_width = min_item_width
     if metrics.min_item_width <= 0 {
         metrics.min_item_width = SegmentedMetric(control.value.fields,
-            (u32)StyleContentOffset, control.value.offset_x, 72.0, scale,
+            cast(u32)StyleContentOffset, control.value.offset_x, 72.0, scale,
             false)
     }
     metrics.max_item_width = max_item_width
     if metrics.max_item_width <= 0 {
         metrics.max_item_width = SegmentedMetric(control.value.fields,
-            (u32)StyleContentOffset, control.value.offset_y, 180.0, scale,
+            cast(u32)StyleContentOffset, control.value.offset_y, 180.0, scale,
             false)
     }
     if metrics.max_item_width > 0 && metrics.max_item_width < metrics.min_item_width {
         metrics.max_item_width = metrics.min_item_width
     }
-    label_padding: float = segment.value.padding_x * 2.0
-    if (segment.value.fields & (u32)StylePaddingX) == (u32)0 ||
+    label_padding: float32 = segment.value.padding_x * 2.0
+    if (segment.value.fields & cast(u32)StylePaddingX) == cast(u32)0 ||
        segment.value.padding_x < 0.0 {
         label_padding = 20.0
     }
     metrics.label_padding = SegmentedMetric(segment.value.fields,
-        (u32)StyleContentOffset, segment.value.offset_x, label_padding, scale, true)
+        cast(u32)StyleContentOffset, segment.value.offset_x, label_padding, scale, true)
     return metrics
 }
 
-SegmentedItemWidth :: (label_width: i32, metrics: SegmentedMetrics) -> i32 #export {
-    width: i32 = label_width + metrics.label_padding
+#program_export
+SegmentedItemWidth :: (label_width: s32, metrics: SegmentedMetrics) -> s32 {
+    width: s32 = label_width + metrics.label_padding
     if width < metrics.min_item_width {
         width = metrics.min_item_width
     }
@@ -91,22 +92,25 @@ SegmentedItemWidth :: (label_width: i32, metrics: SegmentedMetrics) -> i32 #expo
     return width
 }
 
-SegmentedNextRowWidth :: (row_width: i32, item_width: i32, gap: i32) -> i32 #export {
+#program_export
+SegmentedNextRowWidth :: (row_width: s32, item_width: s32, gap: s32) -> s32 {
     if row_width > 0 {
         return row_width + gap + item_width
     }
     return item_width
 }
 
-SegmentedShouldWrap :: (wrap: bool, row_width: i32, next_width: i32,
-    available_width: i32) -> bool #export {
+#program_export
+SegmentedShouldWrap :: (wrap: bool, row_width: s32, next_width: s32,
+    available_width: s32) -> bool {
     return wrap && row_width > 0 && next_width > available_width
 }
 
-SegmentedRowAdvanceFor :: (wrap: bool, row_width: i32, row_count: i32,
-    item_width: i32, available_width: i32, metrics: SegmentedMetrics) -> SegmentedRowAdvance #export {
+#program_export
+SegmentedRowAdvanceFor :: (wrap: bool, row_width: s32, row_count: s32,
+    item_width: s32, available_width: s32, metrics: SegmentedMetrics) -> SegmentedRowAdvance {
     advance: SegmentedRowAdvance
-    next_width: i32 = SegmentedNextRowWidth(row_width, item_width, metrics.gap)
+    next_width: s32 = SegmentedNextRowWidth(row_width, item_width, metrics.gap)
     advance.wrap_before = SegmentedShouldWrap(wrap, row_width, next_width,
         available_width)
     if advance.wrap_before {
@@ -119,22 +123,25 @@ SegmentedRowAdvanceFor :: (wrap: bool, row_width: i32, row_count: i32,
     return advance
 }
 
-SegmentedHeightForRows :: (rows: i32, row_height: i32, gap: i32) -> i32 #export {
+#program_export
+SegmentedHeightForRows :: (rows: s32, row_height: s32, gap: s32) -> s32 {
     if rows <= 0 || row_height <= 0 {
         return 0
     }
     return rows * row_height + (rows - 1) * gap
 }
 
-SegmentedFocusIdFor :: (control_id: i32, index: i32) -> i32 #export {
+#program_export
+SegmentedFocusIdFor :: (control_id: s32, index: s32) -> s32 {
     if control_id <= 0 || index < 0 {
         return 0
     }
     return control_id * 1000 + index + 1
 }
 
-SegmentedSelectionFor :: (selected_index: i32, clicked_index: i32,
-    has_selected_index: bool) -> SegmentedSelectionResult #export {
+#program_export
+SegmentedSelectionFor :: (selected_index: s32, clicked_index: s32,
+    has_selected_index: bool) -> SegmentedSelectionResult {
     result: SegmentedSelectionResult
     result.selected_index = selected_index
     result.changed = false
@@ -146,26 +153,27 @@ SegmentedSelectionFor :: (selected_index: i32, clicked_index: i32,
     return result
 }
 
-SegmentedRowFor :: (bounds_x: float, bounds_width: float, y: i32,
-    row_start: i32, row_count: i32, row_width: i32, wrap: bool,
-    metrics: SegmentedMetrics) -> SegmentedRow #export {
+#program_export
+SegmentedRowFor :: (bounds_x: float32, bounds_width: float32, y: s32,
+    row_start: s32, row_count: s32, row_width: s32, wrap: bool,
+    metrics: SegmentedMetrics) -> SegmentedRow {
     row: SegmentedRow
     row.start = row_start
     row.count = row_count
     row.width = row_width
     row.y = y
-    available: i32 = (i32)bounds_width
+    available: s32 = cast(s32)bounds_width
     if row_count <= 0 || available <= 0 {
         return row
     }
     if wrap {
         row.button_width = (available - metrics.gap * (row_count - 1)) / row_count
-        row.x = (i32)bounds_x + (available -
+        row.x = cast(s32)bounds_x + (available -
             (row.button_width * row_count + metrics.gap * (row_count - 1))) / 2
     } else {
         row.button_width = (row_width -
             metrics.gap * (row_count - 1)) / row_count
-        row.x = (i32)bounds_x
+        row.x = cast(s32)bounds_x
     }
     if row.button_width < 0 {
         row.button_width = 0

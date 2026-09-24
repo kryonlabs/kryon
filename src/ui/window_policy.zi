@@ -1,39 +1,42 @@
-#module "window_policy"
 #import "window_flags"
 
 WindowPoint :: struct {
-    x: i32
-    y: i32
+    x: s32
+    y: s32
 }
 
-WindowCoordinateClamp :: (value: i64) -> i32 #private {
-    if value < (i64)(-2147483648) {
+#scope_file
+WindowCoordinateClamp :: (value: s64) -> s32 {
+    if value < cast(s64)(-2147483648) {
         return -2147483648
     }
-    if value > (i64)2147483647 {
+    if value > cast(s64)2147483647 {
         return 2147483647
     }
-    return (i32)value
+    return cast(s32)value
 }
 
-WindowInitialPosition :: (x: i32, y: i32, width: i32, height: i32,
-                          flags: i32, work_x: i32, work_y: i32,
-                          work_width: i32, work_height: i32) -> WindowPoint #export {
-    position: WindowPoint = (WindowPoint){x, y}
+#scope_export
+#program_export
+WindowInitialPosition :: (x: s32, y: s32, width: s32, height: s32,
+                          flags: s32, work_x: s32, work_y: s32,
+                          work_width: s32, work_height: s32) -> WindowPoint {
+    position: WindowPoint = WindowPoint.{x, y}
     if (flags & NATIVE_WINDOW_TOP_RIGHT) != 0 {
-        position.x = WindowCoordinateClamp((i64)work_x + (i64)work_width -
-                                           (i64)width - (i64)x)
-        position.y = WindowCoordinateClamp((i64)work_y + (i64)y)
+        position.x = WindowCoordinateClamp(cast(s64)work_x + cast(s64)work_width -
+                                           cast(s64)width - cast(s64)x)
+        position.y = WindowCoordinateClamp(cast(s64)work_y + cast(s64)y)
     } else if (flags & NATIVE_WINDOW_CENTER) != 0 {
-        position.x = WindowCoordinateClamp((i64)work_x +
-                                           ((i64)work_width - (i64)width) / 2)
-        position.y = WindowCoordinateClamp((i64)work_y +
-                                           ((i64)work_height - (i64)height) / 2)
+        position.x = WindowCoordinateClamp(cast(s64)work_x +
+                                           (cast(s64)work_width - cast(s64)width) / 2)
+        position.y = WindowCoordinateClamp(cast(s64)work_y +
+                                           (cast(s64)work_height - cast(s64)height) / 2)
     }
     return position
 }
 
-WindowDragMoved :: (delta_x: i32, delta_y: i32) -> i32 #export {
+#program_export
+WindowDragMoved :: (delta_x: s32, delta_y: s32) -> s32 {
     if delta_x < -3 || delta_x > 3 || delta_y < -3 || delta_y > 3 {
         return 1
     }
@@ -43,13 +46,14 @@ WindowDragMoved :: (delta_x: i32, delta_y: i32) -> i32 #export {
     return 0
 }
 
-WindowDragPosition :: (x: i32, y: i32, delta_x: i32,
-                       delta_y: i32, work_x: i32, work_y: i32,
-                       work_width: i32, work_height: i32) -> WindowPoint #export {
-    left: i64 = (i64)work_x
-    top: i64 = (i64)work_y
-    right: i64 = left + (i64)work_width - 24
-    bottom: i64 = top + (i64)work_height - 24
+#program_export
+WindowDragPosition :: (x: s32, y: s32, delta_x: s32,
+                       delta_y: s32, work_x: s32, work_y: s32,
+                       work_width: s32, work_height: s32) -> WindowPoint {
+    left: s64 = cast(s64)work_x
+    top: s64 = cast(s64)work_y
+    right: s64 = left + cast(s64)work_width - 24
+    bottom: s64 = top + cast(s64)work_height - 24
     if right < left {
         right = left
     }
@@ -57,8 +61,8 @@ WindowDragPosition :: (x: i32, y: i32, delta_x: i32,
         bottom = top
     }
 
-    next_x: i64 = (i64)x + (i64)delta_x
-    next_y: i64 = (i64)y + (i64)delta_y
+    next_x: s64 = cast(s64)x + cast(s64)delta_x
+    next_y: s64 = cast(s64)y + cast(s64)delta_y
     if next_x < left {
         next_x = left
     }
@@ -71,6 +75,6 @@ WindowDragPosition :: (x: i32, y: i32, delta_x: i32,
     if next_y > bottom {
         next_y = bottom
     }
-    return (WindowPoint){WindowCoordinateClamp(next_x),
+    return WindowPoint.{WindowCoordinateClamp(next_x),
                          WindowCoordinateClamp(next_y)}
 }

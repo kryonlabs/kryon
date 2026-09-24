@@ -1,11 +1,10 @@
-#module "rows"
 #import "control_props"
 #import "geometry"
 #import "style"
 
 InfoRowsMetrics :: struct {
-    row_height: i32
-    padding_x: i32
+    row_height: s32
+    padding_x: s32
 }
 
 InfoRowsLayout :: struct {
@@ -14,14 +13,14 @@ InfoRowsLayout :: struct {
 
 InfoRowLayout :: struct {
     text_bounds: Rectangle
-    separator_y: i32
+    separator_y: s32
 }
 
 LabelTextFieldMetrics :: struct {
-    label_height: i32
-    field_height: i32
-    gap: i32
-    bottom_gap: i32
+    label_height: s32
+    field_height: s32
+    gap: s32
+    bottom_gap: s32
 }
 
 LabelTextFieldLayout :: struct {
@@ -30,249 +29,269 @@ LabelTextFieldLayout :: struct {
 }
 
 SectionLabelMetrics :: struct {
-    height: i32
-    icon_diameter: i32
-    info_gap: i32
-    info_y_offset: i32
+    height: s32
+    icon_diameter: s32
+    info_gap: s32
+    info_y_offset: s32
 }
 
 CheckboxRowMetrics :: struct {
-    height: i32
+    height: s32
 }
 
 ButtonRowMetrics :: struct {
-    height: i32
-    gap: i32
-    item_padding_x: i32
-    min_width: i32
-    max_width: i32
+    height: s32
+    gap: s32
+    item_padding_x: s32
+    min_width: s32
+    max_width: s32
 }
 
 ButtonRowPlacement :: struct {
-    start_x: i32
-    button_width: i32
-    total_width: i32
+    start_x: s32
+    button_width: s32
+    total_width: s32
 }
 
 ButtonRowWrapDecision :: struct {
     wraps: bool
-    row_width: i32
+    row_width: s32
 }
 
 SpinboxRowMetrics :: struct {
-    row_height: i32
-    control_width: i32
-    label_gap: i32
-    control_height_inset: i32
+    row_height: s32
+    control_width: s32
+    label_gap: s32
+    control_height_inset: s32
 }
 
 FormRectResult :: struct {
     bounds: Rectangle
-    next_cursor_y: i32
+    next_cursor_y: s32
 }
 
 SpinboxRowLayout :: struct {
     label_bounds: Rectangle
     spinbox_bounds: Rectangle
-    control_width: i32
-    label_width: i32
+    control_width: s32
+    label_width: s32
 }
 
-RowsMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+RowsMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-RowsRequestedMetric :: (requested: i32, fields: u32, field: u32,
-    value: float, fallback: float, scale: float, allow_zero: bool) -> i32 {
+RowsRequestedMetric :: (requested: s32, fields: u32, field: u32,
+    value: float32, fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if requested > 0 { return requested }
     return RowsMetric(fields, field, value, fallback, scale, allow_zero)
 }
 
-RowsMutedAlpha :: (alpha: u8) -> u8 #export {
-    return (u8)((float)alpha * 0.72)
+#program_export
+RowsMutedAlpha :: (alpha: u8) -> u8 {
+    return cast(u8)(cast(float32)alpha * 0.72)
 }
 
-InfoRowsTextRole :: () -> i32 #export {
+#program_export
+InfoRowsTextRole :: () -> s32 {
     return 0
 }
 
-LabelTextFieldLabelRole :: () -> i32 #export {
+#program_export
+LabelTextFieldLabelRole :: () -> s32 {
     return 1
 }
 
-LabelTextFieldFieldRole :: () -> i32 #export {
+#program_export
+LabelTextFieldFieldRole :: () -> s32 {
     return 2
 }
 
-SectionLabelRole :: () -> i32 #export {
+#program_export
+SectionLabelRole :: () -> s32 {
     return 3
 }
 
-CheckboxRowRole :: () -> i32 #export {
+#program_export
+CheckboxRowRole :: () -> s32 {
     return 4
 }
 
-ButtonRowPrimaryRole :: () -> i32 #export {
+#program_export
+ButtonRowPrimaryRole :: () -> s32 {
     return 5
 }
 
-ButtonRowSecondaryRole :: () -> i32 #export {
+#program_export
+ButtonRowSecondaryRole :: () -> s32 {
     return 6
 }
 
-SpinboxRowLabelRole :: () -> i32 #export {
+#program_export
+SpinboxRowLabelRole :: () -> s32 {
     return 7
 }
 
-SpinboxRowControlRole :: () -> i32 #export {
+#program_export
+SpinboxRowControlRole :: () -> s32 {
     return 8
 }
 
-InfoRowsMetricsFor :: (row_height: i32, padding_x: i32, scale: float,
-    row: StyleFrame) -> InfoRowsMetrics #export {
+#program_export
+InfoRowsMetricsFor :: (row_height: s32, padding_x: s32, scale: float32,
+    row: StyleFrame) -> InfoRowsMetrics {
     metrics: InfoRowsMetrics
     metrics.row_height = RowsRequestedMetric(row_height, row.value.fields,
-        (u32)StyleContentOffset, row.value.offset_y, 32.0, scale, false)
+        cast(u32)StyleContentOffset, row.value.offset_y, 32.0, scale, false)
     metrics.padding_x = RowsRequestedMetric(padding_x, row.value.fields,
-        (u32)StylePaddingX, row.value.padding_x, 10.0, scale, true)
+        cast(u32)StylePaddingX, row.value.padding_x, 10.0, scale, true)
     return metrics
 }
 
-InfoRowsLayoutFor :: (x: i32, y: i32, width: i32, row_count: i32,
-    metrics: InfoRowsMetrics) -> InfoRowsLayout #export {
+#program_export
+InfoRowsLayoutFor :: (x: s32, y: s32, width: s32, row_count: s32,
+    metrics: InfoRowsMetrics) -> InfoRowsLayout {
     layout: InfoRowsLayout
-    h: i32 = row_count * metrics.row_height
+    h: s32 = row_count * metrics.row_height
     if width < 0 { width = 0 }
     if h < 0 { h = 0 }
-    layout.background.x = (float)x
-    layout.background.y = (float)y
-    layout.background.width = (float)width
-    layout.background.height = (float)h
+    layout.background.x = cast(float32)x
+    layout.background.y = cast(float32)y
+    layout.background.width = cast(float32)width
+    layout.background.height = cast(float32)h
     return layout
 }
 
-InfoRowLayoutFor :: (x: i32, y: i32, width: i32, row_index: i32,
-    metrics: InfoRowsMetrics) -> InfoRowLayout #export {
+#program_export
+InfoRowLayoutFor :: (x: s32, y: s32, width: s32, row_index: s32,
+    metrics: InfoRowsMetrics) -> InfoRowLayout {
     layout: InfoRowLayout
     if row_index < 0 { row_index = 0 }
-    row_y: i32 = y + row_index * metrics.row_height
-    text_width: i32 = width - metrics.padding_x * 2
+    row_y: s32 = y + row_index * metrics.row_height
+    text_width: s32 = width - metrics.padding_x * 2
     if text_width < 0 { text_width = 0 }
-    layout.text_bounds.x = (float)(x + metrics.padding_x)
-    layout.text_bounds.y = (float)row_y
-    layout.text_bounds.width = (float)text_width
-    layout.text_bounds.height = (float)metrics.row_height
+    layout.text_bounds.x = cast(float32)(x + metrics.padding_x)
+    layout.text_bounds.y = cast(float32)row_y
+    layout.text_bounds.width = cast(float32)text_width
+    layout.text_bounds.height = cast(float32)metrics.row_height
     layout.separator_y = row_y
     return layout
 }
 
-LabelTextFieldMetricsFor :: (label_height: i32, field_height: i32,
-    gap: i32, bottom_gap: i32, scale: float, label: StyleFrame,
-    field: StyleFrame) -> LabelTextFieldMetrics #export {
+#program_export
+LabelTextFieldMetricsFor :: (label_height: s32, field_height: s32,
+    gap: s32, bottom_gap: s32, scale: float32, label: StyleFrame,
+    field: StyleFrame) -> LabelTextFieldMetrics {
     metrics: LabelTextFieldMetrics
     metrics.label_height = RowsRequestedMetric(label_height,
-        label.value.fields, (u32)StyleContentOffset, label.value.offset_y,
+        label.value.fields, cast(u32)StyleContentOffset, label.value.offset_y,
         22.0, scale, false)
     metrics.field_height = RowsRequestedMetric(field_height,
-        field.value.fields, (u32)StyleContentOffset, field.value.offset_y,
+        field.value.fields, cast(u32)StyleContentOffset, field.value.offset_y,
         40.0, scale, false)
     if gap > 0 {
         metrics.gap = gap
     } else {
-        metrics.gap = RowsMetric(label.value.fields, (u32)StyleGap,
+        metrics.gap = RowsMetric(label.value.fields, cast(u32)StyleGap,
             label.value.gap, 0.0, scale, true)
     }
     metrics.bottom_gap = RowsRequestedMetric(bottom_gap, field.value.fields,
-        (u32)StyleGap, field.value.gap, 24.0, scale, true)
+        cast(u32)StyleGap, field.value.gap, 24.0, scale, true)
     return metrics
 }
 
-LabelTextFieldLayoutFor :: (x: i32, y: i32, width: i32,
-    requested_bounds: Rectangle, metrics: LabelTextFieldMetrics) -> LabelTextFieldLayout #export {
+#program_export
+LabelTextFieldLayoutFor :: (x: s32, y: s32, width: s32,
+    requested_bounds: Rectangle, metrics: LabelTextFieldMetrics) -> LabelTextFieldLayout {
     layout: LabelTextFieldLayout
 
-    layout.label_bounds.x = (float)x
-    layout.label_bounds.y = (float)y
-    layout.label_bounds.width = (float)width
-    layout.label_bounds.height = (float)metrics.label_height
+    layout.label_bounds.x = cast(float32)x
+    layout.label_bounds.y = cast(float32)y
+    layout.label_bounds.width = cast(float32)width
+    layout.label_bounds.height = cast(float32)metrics.label_height
 
     if requested_bounds.width > 0.0 && requested_bounds.height > 0.0 {
         layout.field_bounds = requested_bounds
         return layout
     }
 
-    layout.field_bounds.x = (float)x
-    layout.field_bounds.y = (float)(y + metrics.label_height + metrics.gap)
-    layout.field_bounds.width = (float)width
-    layout.field_bounds.height = (float)metrics.field_height
+    layout.field_bounds.x = cast(float32)x
+    layout.field_bounds.y = cast(float32)(y + metrics.label_height + metrics.gap)
+    layout.field_bounds.width = cast(float32)width
+    layout.field_bounds.height = cast(float32)metrics.field_height
     return layout
 }
 
-SectionLabelMetricsFor :: (height: i32, icon_diameter: i32, scale: float,
-    label: StyleFrame) -> SectionLabelMetrics #export {
+#program_export
+SectionLabelMetricsFor :: (height: s32, icon_diameter: s32, scale: float32,
+    label: StyleFrame) -> SectionLabelMetrics {
     metrics: SectionLabelMetrics
     metrics.height = RowsRequestedMetric(height, label.value.fields,
-        (u32)StyleContentOffset, label.value.offset_y, 24.0, scale, false)
+        cast(u32)StyleContentOffset, label.value.offset_y, 24.0, scale, false)
     metrics.icon_diameter = RowsRequestedMetric(icon_diameter,
-        label.value.fields, (u32)StyleIconSize, label.value.icon_size,
+        label.value.fields, cast(u32)StyleIconSize, label.value.icon_size,
         18.0, scale, false)
-    metrics.info_gap = RowsMetric(label.value.fields, (u32)StylePaddingX,
+    metrics.info_gap = RowsMetric(label.value.fields, cast(u32)StylePaddingX,
         label.value.padding_x, 16.0, scale, true)
-    metrics.info_y_offset = RowsMetric(label.value.fields, (u32)StylePaddingY,
+    metrics.info_y_offset = RowsMetric(label.value.fields, cast(u32)StylePaddingY,
         label.value.padding_y, 1.0, scale, true)
     return metrics
 }
 
-CheckboxRowMetricsFor :: (height: i32, scale: float,
-    row: StyleFrame) -> CheckboxRowMetrics #export {
+#program_export
+CheckboxRowMetricsFor :: (height: s32, scale: float32,
+    row: StyleFrame) -> CheckboxRowMetrics {
     metrics: CheckboxRowMetrics
     metrics.height = RowsRequestedMetric(height, row.value.fields,
-        (u32)StyleContentOffset, row.value.offset_y, 42.0, scale, false)
+        cast(u32)StyleContentOffset, row.value.offset_y, 42.0, scale, false)
     return metrics
 }
 
-ButtonRowMetricsFor :: (height: i32, gap: i32, scale: float,
-    row: StyleFrame, item: StyleFrame) -> ButtonRowMetrics #export {
+#program_export
+ButtonRowMetricsFor :: (height: s32, gap: s32, scale: float32,
+    row: StyleFrame, item: StyleFrame) -> ButtonRowMetrics {
     metrics: ButtonRowMetrics
     metrics.height = RowsRequestedMetric(height, row.value.fields,
-        (u32)StyleContentOffset, row.value.offset_y, 30.0, scale, false)
+        cast(u32)StyleContentOffset, row.value.offset_y, 30.0, scale, false)
     if gap > 0 {
         metrics.gap = gap
     } else {
-        metrics.gap = RowsMetric(row.value.fields, (u32)StyleGap,
+        metrics.gap = RowsMetric(row.value.fields, cast(u32)StyleGap,
             row.value.gap, 6.0, scale, true)
     }
     metrics.item_padding_x = RowsMetric(item.value.fields,
-        (u32)StylePaddingX, item.value.padding_x, 10.0, scale, true)
+        cast(u32)StylePaddingX, item.value.padding_x, 10.0, scale, true)
     metrics.min_width = RowsMetric(item.value.fields,
-        (u32)StyleContentOffset, item.value.offset_x, 76.0, scale, false)
+        cast(u32)StyleContentOffset, item.value.offset_x, 76.0, scale, false)
     metrics.max_width = RowsMetric(item.value.fields,
-        (u32)StyleIconSize, item.value.icon_size, 144.0, scale, false)
+        cast(u32)StyleIconSize, item.value.icon_size, 144.0, scale, false)
     if metrics.max_width < metrics.min_width {
         metrics.max_width = metrics.min_width
     }
     return metrics
 }
 
-ButtonRowItemWidth :: (label_width: i32, metrics: ButtonRowMetrics) -> i32 #export {
-    width: i32 = label_width + metrics.item_padding_x * 2
+#program_export
+ButtonRowItemWidth :: (label_width: s32, metrics: ButtonRowMetrics) -> s32 {
+    width: s32 = label_width + metrics.item_padding_x * 2
     if width < metrics.min_width { width = metrics.min_width }
     if width > metrics.max_width { width = metrics.max_width }
     return width
 }
 
-ButtonRowWrapFor :: (row_width: i32, item_width: i32, total_width: i32,
-    gap: i32) -> ButtonRowWrapDecision #export {
+#program_export
+ButtonRowWrapFor :: (row_width: s32, item_width: s32, total_width: s32,
+    gap: s32) -> ButtonRowWrapDecision {
     decision: ButtonRowWrapDecision
     if item_width < 0 { item_width = 0 }
     if gap < 0 { gap = 0 }
-    next_width: i32 = item_width
+    next_width: s32 = item_width
     if row_width > 0 {
         next_width = row_width + gap + item_width
     }
@@ -285,14 +304,15 @@ ButtonRowWrapFor :: (row_width: i32, item_width: i32, total_width: i32,
     return decision
 }
 
-ButtonRowPlacementFor :: (x: i32, width: i32, row_count: i32,
-    gap: i32) -> ButtonRowPlacement #export {
+#program_export
+ButtonRowPlacementFor :: (x: s32, width: s32, row_count: s32,
+    gap: s32) -> ButtonRowPlacement {
     placement: ButtonRowPlacement
     if row_count <= 0 || width <= 0 {
         placement.start_x = x
         return placement
     }
-    usable: i32 = width - gap * (row_count - 1)
+    usable: s32 = width - gap * (row_count - 1)
     placement.button_width = usable / row_count
     if placement.button_width < 0 { placement.button_width = 0 }
     placement.total_width = placement.button_width * row_count +
@@ -301,83 +321,89 @@ ButtonRowPlacementFor :: (x: i32, width: i32, row_count: i32,
     return placement
 }
 
-ButtonRowTotalHeight :: (row_count: i32, row_height: i32, gap: i32) -> i32 #export {
+#program_export
+ButtonRowTotalHeight :: (row_count: s32, row_height: s32, gap: s32) -> s32 {
     if row_count <= 0 { return 0 }
     if row_height < 0 { row_height = 0 }
     if gap < 0 { gap = 0 }
     return row_count * row_height + (row_count - 1) * gap
 }
 
-ButtonRowNextY :: (y: i32, row_height: i32, gap: i32) -> i32 #export {
+#program_export
+ButtonRowNextY :: (y: s32, row_height: s32, gap: s32) -> s32 {
     if row_height < 0 { row_height = 0 }
     if gap < 0 { gap = 0 }
     return y + row_height + gap
 }
 
-SpinboxRowMetricsFor :: (row_height: i32, control_width: i32,
-    scale: float, row: StyleFrame, control: StyleFrame) -> SpinboxRowMetrics #export {
+#program_export
+SpinboxRowMetricsFor :: (row_height: s32, control_width: s32,
+    scale: float32, row: StyleFrame, control: StyleFrame) -> SpinboxRowMetrics {
     metrics: SpinboxRowMetrics
     metrics.row_height = RowsRequestedMetric(row_height, row.value.fields,
-        (u32)StyleContentOffset, row.value.offset_y, 54.0, scale, false)
+        cast(u32)StyleContentOffset, row.value.offset_y, 54.0, scale, false)
     metrics.control_width = RowsRequestedMetric(control_width,
-        control.value.fields, (u32)StyleContentOffset, control.value.offset_x,
+        control.value.fields, cast(u32)StyleContentOffset, control.value.offset_x,
         156.0, scale, false)
-    metrics.label_gap = RowsMetric(row.value.fields, (u32)StyleGap,
+    metrics.label_gap = RowsMetric(row.value.fields, cast(u32)StyleGap,
         row.value.gap, 12.0, scale, true)
     metrics.control_height_inset = RowsMetric(control.value.fields,
-        (u32)StylePaddingY, control.value.padding_y, 14.0, scale, true)
+        cast(u32)StylePaddingY, control.value.padding_y, 14.0, scale, true)
     return metrics
 }
 
-FormAdvanceY :: (cursor_y: i32, height: i32, gap: i32) -> i32 #export {
-    next_y: i32 = cursor_y
+#program_export
+FormAdvanceY :: (cursor_y: s32, height: s32, gap: s32) -> s32 {
+    next_y: s32 = cursor_y
     if height > 0 { next_y += height }
     if gap > 0 { next_y += gap }
     return next_y
 }
 
-FormRectFor :: (x: i32, cursor_y: i32, width: i32, height: i32,
-    gap: i32) -> FormRectResult #export {
+#program_export
+FormRectFor :: (x: s32, cursor_y: s32, width: s32, height: s32,
+    gap: s32) -> FormRectResult {
     result: FormRectResult
-    rect_h: i32 = height
+    rect_h: s32 = height
     if rect_h < 0 { rect_h = 0 }
-    result.bounds.x = (float)x
-    result.bounds.y = (float)cursor_y
-    result.bounds.width = (float)width
-    result.bounds.height = (float)rect_h
+    result.bounds.x = cast(float32)x
+    result.bounds.y = cast(float32)cursor_y
+    result.bounds.width = cast(float32)width
+    result.bounds.height = cast(float32)rect_h
     result.next_cursor_y = FormAdvanceY(cursor_y, height, gap)
     return result
 }
 
-SpinboxRowLayoutFor :: (x: i32, y: i32, width: i32, label_width: i32,
-    requested_bounds: Rectangle, metrics: SpinboxRowMetrics) -> SpinboxRowLayout #export {
+#program_export
+SpinboxRowLayoutFor :: (x: s32, y: s32, width: s32, label_width: s32,
+    requested_bounds: Rectangle, metrics: SpinboxRowMetrics) -> SpinboxRowLayout {
     layout: SpinboxRowLayout
-    height: i32 = metrics.row_height
-    control_w: i32 = metrics.control_width
+    height: s32 = metrics.row_height
+    control_w: s32 = metrics.control_width
     if control_w > width { control_w = width }
     if control_w < 0 { control_w = 0 }
 
-    label_w: i32 = label_width
+    label_w: s32 = label_width
     if label_w <= 0 {
         label_w = width - control_w - metrics.label_gap
     }
     if label_w < 0 { label_w = 0 }
 
-    spinbox_w: i32 = (i32)requested_bounds.width
-    spinbox_h: i32 = (i32)requested_bounds.height
+    spinbox_w: s32 = cast(s32)requested_bounds.width
+    spinbox_h: s32 = cast(s32)requested_bounds.height
     if spinbox_w <= 0 { spinbox_w = control_w }
     if spinbox_h <= 0 { spinbox_h = height - metrics.control_height_inset }
     if spinbox_w < 0 { spinbox_w = 0 }
     if spinbox_h < 0 { spinbox_h = 0 }
 
-    layout.label_bounds.x = (float)x
-    layout.label_bounds.y = (float)y
-    layout.label_bounds.width = (float)label_w
-    layout.label_bounds.height = (float)height
-    layout.spinbox_bounds.x = (float)(x + width - spinbox_w)
-    layout.spinbox_bounds.y = (float)(y + (height - spinbox_h) / 2)
-    layout.spinbox_bounds.width = (float)spinbox_w
-    layout.spinbox_bounds.height = (float)spinbox_h
+    layout.label_bounds.x = cast(float32)x
+    layout.label_bounds.y = cast(float32)y
+    layout.label_bounds.width = cast(float32)label_w
+    layout.label_bounds.height = cast(float32)height
+    layout.spinbox_bounds.x = cast(float32)(x + width - spinbox_w)
+    layout.spinbox_bounds.y = cast(float32)(y + (height - spinbox_h) / 2)
+    layout.spinbox_bounds.width = cast(float32)spinbox_w
+    layout.spinbox_bounds.height = cast(float32)spinbox_h
     layout.control_width = control_w
     layout.label_width = label_w
     return layout

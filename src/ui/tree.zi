@@ -1,4 +1,3 @@
-#module "tree"
 #import "geometry"
 #import "grid"
 #import "grid_props"
@@ -9,25 +8,29 @@
 # A retained node keeps its identity only when its key, kind, and parent key
 # match the previous committed tree. The portable tree owns this decision;
 # the old native tree host also calls these pure policy functions.
-TreeIdentityHash :: (parent: u64, key: u64, kind: i32) -> u64 #export {
-    hash: u64 = key ^ (parent * (u64)16777619)
-    hash = hash ^ ((u64)(u32)kind * (u64)2166136261)
-    hash = (hash ^ (hash >> (u64)16)) * (u64)2246822519
-    return hash ^ (hash >> (u64)16)
+#program_export
+TreeIdentityHash :: (parent: u64, key: u64, kind: s32) -> u64 {
+    hash: u64 = key ^ (parent * cast(u64)16777619)
+    hash = hash ^ (cast(u64)cast(u32)kind * cast(u64)2166136261)
+    hash = (hash ^ (hash >> cast(u64)16)) * cast(u64)2246822519
+    return hash ^ (hash >> cast(u64)16)
 }
 
-TreeSameIdentity :: (old_key: u64, old_kind: i32, old_parent_key: u64,
-    new_key: u64, new_kind: i32, new_parent_key: u64) -> bool #export {
+#program_export
+TreeSameIdentity :: (old_key: u64, old_kind: s32, old_parent_key: u64,
+    new_key: u64, new_kind: s32, new_parent_key: u64) -> bool {
     return old_key == new_key && old_kind == new_kind &&
         old_parent_key == new_parent_key
 }
 
-TreeButtonLike :: (kind: i32) -> bool #export {
+#program_export
+TreeButtonLike :: (kind: s32) -> bool {
     return kind == WidgetKindButton || kind == WidgetKindCard
 }
 
-TreeInteractiveButtonLike :: (kind: i32, focus_id: i32,
-    disabled: bool, loading: bool) -> bool #export {
+#program_export
+TreeInteractiveButtonLike :: (kind: s32, focus_id: s32,
+    disabled: bool, loading: bool) -> bool {
     if !TreeButtonLike(kind) { return false }
     if kind == WidgetKindCard && focus_id <= 0 { return false }
     return !disabled && !loading
@@ -35,8 +38,9 @@ TreeInteractiveButtonLike :: (kind: i32, focus_id: i32,
 
 # Checked value controls use the same retained press and release routing as
 # Buttons. Cards remain opt in through a positive focus id.
-TreePointerActivatable :: (kind: i32, focus_id: i32,
-    disabled: bool, loading: bool) -> bool #export {
+#program_export
+TreePointerActivatable :: (kind: s32, focus_id: s32,
+    disabled: bool, loading: bool) -> bool {
     if disabled || loading { return false }
     if kind == WidgetKindCard { return focus_id > 0 }
     return kind == WidgetKindButton || kind == WidgetKindCheckbox ||
@@ -55,8 +59,9 @@ TreeCommitPlan :: struct {
 
 # During activation, a partial submission must preserve the committed tree
 # and defer input until the replacement tree is complete.
-TreeCommitFor :: (activation: bool, committed_count: i32,
-    submitted_count: i32) -> TreeCommitPlan #export {
+#program_export
+TreeCommitFor :: (activation: bool, committed_count: s32,
+    submitted_count: s32) -> TreeCommitPlan {
     plan: TreeCommitPlan
     plan.keep_committed = activation && committed_count > 0 &&
         submitted_count >= 0 && submitted_count < committed_count
@@ -70,7 +75,7 @@ TreeCommitFor :: (activation: bool, committed_count: i32,
 TreeEntry :: struct {
     key: u64
     parent_key: u64
-    kind: i32
+    kind: s32
     bounds: Rectangle
     clip: Rectangle
     child_clip: Rectangle
@@ -78,43 +83,44 @@ TreeEntry :: struct {
     clips_children: bool
     measured_bounds: Rectangle
     auto_placed: bool
-    layout_gap: i32
-    layout_padding: i32
-    grid_columns: i32
-    grid_min_item_width: i32
-    grid_max_columns: i32
+    layout_gap: s32
+    layout_padding: s32
+    grid_columns: s32
+    grid_min_item_width: s32
+    grid_max_columns: s32
     semantic_label: string
     semantic_kind: SemanticKind
-    heading_level: i32
-    parent: i32
-    first_child: i32
-    last_child: i32
-    next_sibling: i32
-    identity_generation: i32
+    heading_level: s32
+    parent: s32
+    first_child: s32
+    last_child: s32
+    next_sibling: s32
+    identity_generation: s32
     matched: bool
     interactive: bool
     disabled: bool
     loading: bool
     selected: bool
-    focus_id: i32
+    focus_id: s32
 }
 
 TreeStore :: struct {
     committed: [1024]TreeEntry
     submitted: [1024]TreeEntry
-    slots: [2048]i32
-    scope: [64]i32
-    scope_depth: i32
-    committed_count: i32
-    submitted_count: i32
-    next_identity_generation: i32
+    slots: [2048]s32
+    scope: [64]s32
+    scope_depth: s32
+    committed_count: s32
+    submitted_count: s32
+    next_identity_generation: s32
     building: bool
     overflow: bool
 }
 
-active_tree :: TreeStore #global
+active_tree: TreeStore;
 
-TreeStart :: (screen_key: u64, bounds: Rectangle) #export {
+#program_export
+TreeStart :: (screen_key: u64, bounds: Rectangle) {
     active_tree.submitted_count = 0
     active_tree.scope_depth = 0
     active_tree.building = true
@@ -130,21 +136,24 @@ TreeStart :: (screen_key: u64, bounds: Rectangle) #export {
 # The root is the default scope. A container submits itself, pushes its node,
 # composes children, then pops it. Explicit TreeSubmit still accepts a parent
 # index for controls such as Spinbox that create their own child nodes.
-TreeCurrentParent :: () -> i32 #export {
+#program_export
+TreeCurrentParent :: () -> s32 {
     if !active_tree.building || active_tree.scope_depth <= 0 {
         return -1
     }
     return active_tree.scope[active_tree.scope_depth - 1]
 }
 
-TreeCurrentParentKey :: () -> u64 #export {
-    parent: i32 = TreeCurrentParent()
-    if parent < 0 { return (u64)0 }
+#program_export
+TreeCurrentParentKey :: () -> u64 {
+    parent: s32 = TreeCurrentParent()
+    if parent < 0 { return cast(u64)0 }
     return active_tree.submitted[parent].key
 }
 
-TreeCurrentParentBounds :: () -> Rectangle #export {
-    parent: i32 = TreeCurrentParent()
+#program_export
+TreeCurrentParentBounds :: () -> Rectangle {
+    parent: s32 = TreeCurrentParent()
     if parent < 0 {
         empty: Rectangle
         return empty
@@ -152,14 +161,16 @@ TreeCurrentParentBounds :: () -> Rectangle #export {
     return active_tree.submitted[parent].bounds
 }
 
-TreeSubmitCurrent :: (key: u64, kind: i32,
-    bounds: Rectangle) -> i32 #export {
-    parent: i32 = TreeCurrentParent()
+#program_export
+TreeSubmitCurrent :: (key: u64, kind: s32,
+    bounds: Rectangle) -> s32 {
+    parent: s32 = TreeCurrentParent()
     if parent < 0 { return -1 }
     return TreeSubmit(key, parent, kind, bounds)
 }
 
-TreePushScope :: (index: i32) -> bool #export {
+#program_export
+TreePushScope :: (index: s32) -> bool {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count ||
         active_tree.scope_depth <= 0 ||
@@ -169,7 +180,8 @@ TreePushScope :: (index: i32) -> bool #export {
     return true
 }
 
-TreePopScope :: () -> bool #export {
+#program_export
+TreePopScope :: () -> bool {
     if !active_tree.building || active_tree.scope_depth <= 1 {
         return false
     }
@@ -179,12 +191,14 @@ TreePopScope :: () -> bool #export {
 
 # Close the innermost container opened by Page, Section, or another layout
 # widget. The root scope closes only through TreeFinish.
-End :: () -> bool #export {
+#program_export
+End :: () -> bool {
     return TreePopScope()
 }
 
-TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
-    bounds: Rectangle) -> i32 #export {
+#program_export
+TreeSubmit :: (key: u64, parent_index: s32, kind: s32,
+    bounds: Rectangle) -> s32 {
     if !active_tree.building || active_tree.overflow { return -1 }
     if active_tree.submitted_count >= 1024 {
         active_tree.overflow = true
@@ -193,10 +207,10 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     if parent_index >= active_tree.submitted_count || parent_index < -1 {
         return -1
     }
-    index: i32 = active_tree.submitted_count
+    index: s32 = active_tree.submitted_count
     entry: TreeEntry
     entry.key = key
-    if key == 0 { entry.key = (u64)(index + 1) }
+    if key == 0 { entry.key = cast(u64)(index + 1) }
     if parent_index >= 0 {
         entry.parent_key = active_tree.submitted[parent_index].key
         parent_clip: TreeEntry = active_tree.submitted[parent_index]
@@ -219,9 +233,9 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
             parent.kind == WidgetKindPage ||
             parent.kind == WidgetKindSection
         if horizontal || vertical {
-            sibling: i32 = parent.first_child
-            count: i32 = 0
-            extent: float = 0.0
+            sibling: s32 = parent.first_child
+            count: s32 = 0
+            extent: float32 = 0.0
             while sibling >= 0 {
                 prior: TreeEntry = active_tree.submitted[sibling]
                 if prior.auto_placed {
@@ -231,7 +245,7 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
                 }
                 sibling = prior.next_sibling
             }
-            cursor: float = LayoutCursorForChild(metrics, horizontal,
+            cursor: float32 = LayoutCursorForChild(metrics, horizontal,
                 count, extent)
             entry.bounds = LayoutChildBounds(bounds, bounds,
                 metrics, horizontal, cursor)
@@ -248,15 +262,15 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
             props.min_item_width = parent.grid_min_item_width
             props.max_columns = parent.grid_max_columns
             grid: GridCursor = BeginGridCursor(props)
-            sibling: i32 = parent.first_child
+            sibling: s32 = parent.first_child
             while sibling >= 0 {
                 prior: TreeEntry = active_tree.submitted[sibling]
                 if prior.auto_placed {
-                    grid = GridStep(grid, (i32)prior.bounds.height, 1)
+                    grid = GridStep(grid, cast(s32)prior.bounds.height, 1)
                 }
                 sibling = prior.next_sibling
             }
-            grid = GridStep(grid, (i32)bounds.height, 1)
+            grid = GridStep(grid, cast(s32)bounds.height, 1)
             entry.bounds = grid.item
             entry.auto_placed = true
         }
@@ -268,7 +282,7 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     entry.next_sibling = -1
     active_tree.submitted[index] = entry
     if parent_index >= 0 {
-        last: i32 = active_tree.submitted[parent_index].last_child
+        last: s32 = active_tree.submitted[parent_index].last_child
         if last < 0 {
             active_tree.submitted[parent_index].first_child = index
         } else {
@@ -280,9 +294,10 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     return index
 }
 
-TreeSetLayout :: (index: i32, gap: i32, padding: i32,
-    columns: i32, min_item_width: i32,
-    max_columns: i32) #export {
+#program_export
+TreeSetLayout :: (index: s32, gap: s32, padding: s32,
+    columns: s32, min_item_width: s32,
+    max_columns: s32) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].layout_gap = gap
@@ -294,7 +309,8 @@ TreeSetLayout :: (index: i32, gap: i32, padding: i32,
 
 # A container sets this before submitting children. Its own input is not
 # clipped by the child viewport; descendants inherit the intersection.
-TreeSetChildClip :: (index: i32, bounds: Rectangle) #export {
+#program_export
+TreeSetChildClip :: (index: s32, bounds: Rectangle) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     entry: TreeEntry = active_tree.submitted[index]
@@ -307,14 +323,16 @@ TreeSetChildClip :: (index: i32, bounds: Rectangle) #export {
     active_tree.submitted[index] = entry
 }
 
-TreeSubmittedNodeAt :: (index: i32) -> TreeEntry #export {
+#program_export
+TreeSubmittedNodeAt :: (index: s32) -> TreeEntry {
     empty: TreeEntry
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return empty }
     return active_tree.submitted[index]
 }
 
-TreeFinish :: () -> bool #export {
+#program_export
+TreeFinish :: () -> bool {
     if !active_tree.building { return false }
     active_tree.building = false
     if active_tree.overflow || active_tree.scope_depth != 1 {
@@ -322,28 +340,28 @@ TreeFinish :: () -> bool #export {
         return false
     }
     active_tree.scope_depth = 0
-    slot: i32 = 0
+    slot: s32 = 0
     while slot < 2048 {
         active_tree.slots[slot] = -1
         slot += 1
     }
-    old_index: i32 = 0
+    old_index: s32 = 0
     while old_index < active_tree.committed_count {
         active_tree.committed[old_index].matched = false
         old: TreeEntry = active_tree.committed[old_index]
-        slot = (i32)(TreeIdentityHash(old.parent_key, old.key, old.kind) &
-            (u64)2047)
+        slot = cast(s32)(TreeIdentityHash(old.parent_key, old.key, old.kind) &
+            cast(u64)2047)
         while active_tree.slots[slot] >= 0 {
             slot = (slot + 1) & 2047
         }
         active_tree.slots[slot] = old_index
         old_index += 1
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < active_tree.submitted_count {
         next: TreeEntry = active_tree.submitted[index]
-        slot = (i32)(TreeIdentityHash(next.parent_key, next.key,
-            next.kind) & (u64)2047)
+        slot = cast(s32)(TreeIdentityHash(next.parent_key, next.key,
+            next.kind) & cast(u64)2047)
         while active_tree.slots[slot] >= 0 {
             old_index = active_tree.slots[slot]
             old: TreeEntry = active_tree.committed[old_index]
@@ -371,27 +389,32 @@ TreeFinish :: () -> bool #export {
     return true
 }
 
-TreeCount :: () -> i32 #export {
+#program_export
+TreeCount :: () -> s32 {
     return active_tree.committed_count
 }
 
-TreeIsBuilding :: () -> bool #export {
+#program_export
+TreeIsBuilding :: () -> bool {
     return active_tree.building
 }
 
-TreeNextKey :: () -> u64 #export {
-    if !active_tree.building { return (u64)0 }
-    return (u64)(active_tree.submitted_count + 1)
+#program_export
+TreeNextKey :: () -> u64 {
+    if !active_tree.building { return cast(u64)0 }
+    return cast(u64)(active_tree.submitted_count + 1)
 }
 
-TreeRootKey :: () -> u64 #export {
+#program_export
+TreeRootKey :: () -> u64 {
     if !active_tree.building || active_tree.submitted_count == 0 {
-        return (u64)0
+        return cast(u64)0
     }
     return active_tree.submitted[0].key
 }
 
-TreeRootBounds :: () -> Rectangle #export {
+#program_export
+TreeRootBounds :: () -> Rectangle {
     empty: Rectangle
     if !active_tree.building || active_tree.submitted_count == 0 {
         return empty
@@ -399,30 +422,34 @@ TreeRootBounds :: () -> Rectangle #export {
     return active_tree.submitted[0].bounds
 }
 
-TreeCancel :: () #export {
+#program_export
+TreeCancel :: () {
     active_tree.building = false
     active_tree.submitted_count = 0
     active_tree.scope_depth = 0
     active_tree.overflow = false
 }
 
-TreeNodeAt :: (index: i32) -> TreeEntry #export {
+#program_export
+TreeNodeAt :: (index: s32) -> TreeEntry {
     empty: TreeEntry
     if index < 0 || index >= active_tree.committed_count { return empty }
     return active_tree.committed[index]
 }
 
-TreeSetLabel :: (index: i32, label: string) #export {
+#program_export
+TreeSetLabel :: (index: s32, label: string) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].semantic_label = label
 }
 
-TreeSetSemantic :: (index: i32, kind: SemanticKind,
-    heading_level: i32) #export {
+#program_export
+TreeSetSemantic :: (index: s32, kind: SemanticKind,
+    heading_level: s32) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
-    if kind != (SemanticKind)SemanticHeading {
+    if kind != cast(SemanticKind)SemanticHeading {
         heading_level = 0
     } else {
         if heading_level < 1 { heading_level = 1 }
@@ -432,8 +459,9 @@ TreeSetSemantic :: (index: i32, kind: SemanticKind,
     active_tree.submitted[index].heading_level = heading_level
 }
 
-TreeSetInteractive :: (index: i32, disabled: bool, loading: bool,
-    focus_id: i32) #export {
+#program_export
+TreeSetInteractive :: (index: s32, disabled: bool, loading: bool,
+    focus_id: s32) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].disabled = disabled
@@ -442,14 +470,16 @@ TreeSetInteractive :: (index: i32, disabled: bool, loading: bool,
     active_tree.submitted[index].interactive = true
 }
 
-TreeSetSelected :: (index: i32, selected: bool) #export {
+#program_export
+TreeSetSelected :: (index: s32, selected: bool) {
     if !active_tree.building || index < 0 ||
         index >= active_tree.submitted_count { return }
     active_tree.submitted[index].selected = selected
 }
 
-TreeFind :: (key: u64, parent_key: u64, kind: i32) -> i32 #export {
-    index: i32 = 0
+#program_export
+TreeFind :: (key: u64, parent_key: u64, kind: s32) -> s32 {
+    index: s32 = 0
     while index < active_tree.committed_count {
         entry: TreeEntry = active_tree.committed[index]
         if TreeSameIdentity(entry.key, entry.kind, entry.parent_key,

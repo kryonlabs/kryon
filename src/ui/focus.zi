@@ -1,96 +1,104 @@
-#module "focus"
 #import "control_props"
 #import "geometry"
 #import "style"
 
 FocusPaint :: struct {
     bounds: Rectangle
-    stroke_width: i32
+    stroke_width: s32
 }
 
 FocusDebugOverlayPaint :: struct {
     outline: Rectangle
     label_position: Vector2
-    stroke_width: i32
+    stroke_width: s32
     label_visible: bool
 }
 
-FocusBoxRole :: () -> i32 #export {
+#program_export
+FocusBoxRole :: () -> s32 {
     return 9
 }
 
-FocusLabelRole :: () -> i32 #export {
+#program_export
+FocusLabelRole :: () -> s32 {
     return 6
 }
 
-FocusMetric :: (fields: u32, field: u32, value: float,
-fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
-    return (i32)(value * scale)
+FocusMetric :: (fields: u32, field: u32, value: float32,
+fallback: float32, scale: float32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
+    return cast(s32)(value * scale)
 }
 
-FocusStrokeWidthFor :: (scale: float) -> i32 #export {
+#program_export
+FocusStrokeWidthFor :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(2.0 * scale)
+    return cast(s32)(2.0 * scale)
 }
 
+#program_export
 FocusActivationFor :: (active: bool, keyboard_enabled: bool,
 content_disabled: bool, captured: bool, enter_pressed: bool,
-space_pressed: bool, text_input_active: bool) -> bool #export {
+space_pressed: bool, text_input_active: bool) -> bool {
     return active && keyboard_enabled && !content_disabled && !captured &&
     (enter_pressed || (!text_input_active && space_pressed))
 }
 
-FocusTabDirectionFor :: (tab_pressed: bool, shift_down: bool) -> i32 #export {
+#program_export
+FocusTabDirectionFor :: (tab_pressed: bool, shift_down: bool) -> s32 {
     if !tab_pressed { return 0 }
     if shift_down { return -1 }
     return 1
 }
 
-FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
+#program_export
+FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float32) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
-    pad: i32 = (i32)(2.0 * scale)
+    pad: s32 = cast(s32)(2.0 * scale)
     out: Rectangle
-    out.x = bounds.x - (float)pad
-    out.y = bounds.y - (float)pad
-    out.width = bounds.width + (float)(pad * 2)
-    out.height = bounds.height + (float)(pad * 2)
+    out.x = bounds.x - cast(float32)pad
+    out.y = bounds.y - cast(float32)pad
+    out.width = bounds.width + cast(float32)(pad * 2)
+    out.height = bounds.height + cast(float32)(pad * 2)
     return out
 }
 
-FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
+#program_export
+FocusPaintFor :: (bounds: Rectangle, scale: float32, frame: StyleFrame) -> FocusPaint {
     if scale <= 0.0 { scale = 1.0 }
-    pad: i32 = FocusMetric(frame.value.fields, (u32)StylePaddingX,
+    pad: s32 = FocusMetric(frame.value.fields, cast(u32)StylePaddingX,
     frame.value.padding_x, 3.0, scale)
-    stroke: i32 = FocusMetric(frame.value.fields, (u32)StyleBorderWidth,
+    stroke: s32 = FocusMetric(frame.value.fields, cast(u32)StyleBorderWidth,
     frame.value.border_width, 2.0, scale)
     paint: FocusPaint
-    paint.bounds.x = bounds.x - (float)pad
-    paint.bounds.y = bounds.y - (float)pad
-    paint.bounds.width = bounds.width + (float)(pad * 2)
-    paint.bounds.height = bounds.height + (float)(pad * 2)
+    paint.bounds.x = bounds.x - cast(float32)pad
+    paint.bounds.y = bounds.y - cast(float32)pad
+    paint.bounds.width = bounds.width + cast(float32)(pad * 2)
+    paint.bounds.height = bounds.height + cast(float32)(pad * 2)
     paint.stroke_width = stroke
     return paint
 }
 
-FocusDebugOverlayPaintFor :: (bounds: Rectangle, font_height: i32, has_label: bool) -> FocusDebugOverlayPaint #export {
+#program_export
+FocusDebugOverlayPaintFor :: (bounds: Rectangle, font_height: s32, has_label: bool) -> FocusDebugOverlayPaint {
     if font_height < 0 { font_height = 0 }
     paint: FocusDebugOverlayPaint
     paint.outline = bounds
     paint.label_position.x = bounds.x
-    paint.label_position.y = bounds.y - (float)font_height
+    paint.label_position.y = bounds.y - cast(float32)font_height
     paint.stroke_width = 1
     paint.label_visible = has_label
     return paint
 }
 
 FocusTraversal :: struct {
-    index: i32
+    index: s32
     move: bool
     clear: bool
 }
 
-FocusTraversalFor :: (current: i32, count: i32, direction: i32) -> FocusTraversal #export {
+#program_export
+FocusTraversalFor :: (current: s32, count: s32, direction: s32) -> FocusTraversal {
     result: FocusTraversal
     result.index = current
     if count <= 0 {
@@ -116,17 +124,18 @@ FocusTraversalFor :: (current: i32, count: i32, direction: i32) -> FocusTraversa
 }
 
 TreeFocusScan :: struct {
-    index: i32
-    origin: i32
-    depth: i32
+    index: s32
+    origin: s32
+    depth: s32
     parent: bool
     child: bool
     done: bool
 }
 
-TreeFocusBegin :: (current: i32, count: i32, depth: i32, down: bool,
-up: bool, right: bool, left: bool) -> TreeFocusScan #export {
-    scan: TreeFocusScan = (TreeFocusScan){.index = current, .origin = current, .depth = depth, .done = true}
+#program_export
+TreeFocusBegin :: (current: s32, count: s32, depth: s32, down: bool,
+up: bool, right: bool, left: bool) -> TreeFocusScan {
+    scan: TreeFocusScan = TreeFocusScan.{.index = current, .origin = current, .depth = depth, .done = true}
     if current < 0 || current >= count { return scan }
     if down || right {
         if current + 1 >= count { return scan }
@@ -143,7 +152,8 @@ up: bool, right: bool, left: bool) -> TreeFocusScan #export {
     return scan
 }
 
-TreeFocusAdvance :: (scan: TreeFocusScan, candidate_depth: i32) -> TreeFocusScan #export {
+#program_export
+TreeFocusAdvance :: (scan: TreeFocusScan, candidate_depth: s32) -> TreeFocusScan {
     if scan.done { return scan }
     if scan.parent && candidate_depth >= scan.depth {
         if scan.index > 0 {

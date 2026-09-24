@@ -1,4 +1,3 @@
-#module "progress_style"
 #import "control_props"
 #import "progress"
 #import "style"
@@ -9,48 +8,51 @@ ProgressFaces :: struct {
     track: StyleFrame
     fill: StyleFrame
     label: StyleFrame
-    scale: float
-    fallback_font: i32
+    scale: float32
+    fallback_font: s32
 }
 
-DefaultProgressFaces :: () -> ProgressFaces #export {
+#program_export
+DefaultProgressFaces :: () -> ProgressFaces {
     faces: ProgressFaces
-    faces.track.value.fields = (u32)StyleBackground | (u32)StyleBorder |
-        (u32)StyleRadius | (u32)StyleBorderWidth
-    faces.track.value.background = (u32)0xd4d0c8ff
-    faces.track.value.border = (u32)0x66645fff
+    faces.track.value.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
+        cast(u32)StyleRadius | cast(u32)StyleBorderWidth
+    faces.track.value.background = cast(u32)0xd4d0c8ff
+    faces.track.value.border = cast(u32)0x66645fff
     faces.track.value.radius = 4.0
     faces.track.value.border_width = 1.0
-    faces.fill.value.fields = (u32)StyleBackground | (u32)StyleForeground
-    faces.fill.value.background = (u32)0x3b609bff
-    faces.fill.value.foreground = (u32)0xffffffff
-    faces.label.value.fields = (u32)StyleForeground | (u32)StyleFontSize
-    faces.label.value.foreground = (u32)0x171717ff
+    faces.fill.value.fields = cast(u32)StyleBackground | cast(u32)StyleForeground
+    faces.fill.value.background = cast(u32)0x3b609bff
+    faces.fill.value.foreground = cast(u32)0xffffffff
+    faces.label.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
+    faces.label.value.foreground = cast(u32)0x171717ff
     faces.label.value.font_size = 14.0
     faces.scale = 1.0
     faces.fallback_font = 16
     return faces
 }
 
-ProgressFacts :: (class_name: i32, role: i32,
-    tone: i32) -> StyleFacts #export {
+#program_export
+ProgressFacts :: (class_name: s32, role: s32,
+    tone: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindProgress(), 0, class_name, role,
-        tone, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        tone, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
 }
 
-ProgressFacesFor :: (rules: StyleRules, class_name: i32,
-    defaults: ProgressFaces) -> ProgressFaces #export {
+#program_export
+ProgressFacesFor :: (rules: StyleRules, class_name: s32,
+    defaults: ProgressFaces) -> ProgressFaces {
     faces: ProgressFaces = defaults
     faces.track.value = ResolveStyleRules(rules, defaults.track.value,
         ProgressFacts(class_name, ProgressTrackRole(), ButtonToneNeutral),
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     faces.fill.value = ResolveStyleRules(rules, defaults.fill.value,
         ProgressFacts(class_name, ProgressFillRole(), ButtonToneAccent),
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     faces.label.value = ResolveStyleRules(rules, defaults.label.value,
         ProgressFacts(class_name, ProgressLabelRole(), ButtonToneNeutral),
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     faces.track.fill = FillState(faces.track.value.fields,
         faces.track.value.background, faces.track.value.background_end)
     faces.fill.fill = FillState(faces.fill.value.fields,

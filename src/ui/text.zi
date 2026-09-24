@@ -1,32 +1,34 @@
-#module "text"
 #import "geometry"
 #import "style"
 
 # Typeface lookup, shaping and glyph measurement remain host services.
 # Inheritance and layout policy must not differ between renderers.
+#program_export
 TextContentColorFor :: (fields: u32, field: u32, color: u32,
-    fallback: u32) -> u32 #export {
-    if (fields & field) != (u32)0 || (color & (u32)255) != (u32)0 {
+    fallback: u32) -> u32 {
+    if (fields & field) != cast(u32)0 || (color & cast(u32)255) != cast(u32)0 {
         return color
     }
     return fallback
 }
 
-TextSelectionColorFor :: (color: u32) -> u32 #export {
-    alpha: u32 = (color & (u32)255) * (u32)TextSelectionDefaultAlpha() / (u32)255
-    return (color & ~(u32)255) | alpha
+#program_export
+TextSelectionColorFor :: (color: u32) -> u32 {
+    alpha: u32 = (color & cast(u32)255) * cast(u32)TextSelectionDefaultAlpha() / cast(u32)255
+    return (color & ~cast(u32)255) | alpha
 }
 
 TextAppearance :: struct {
-    font: i32
+    font: s32
     color: u32
-    letter_spacing: i32
+    letter_spacing: s32
 }
 
-ResolveTextStyle :: (font: i32, inherited_font: i32, default_font: i32,
+#program_export
+ResolveTextStyle :: (font: s32, inherited_font: s32, default_font: s32,
     color: u32, inherited_color: u32, fallback_color: u32, inherited_color_set: bool,
     color_set: bool,
-    disabled: bool, inherited_disabled: bool, letter_spacing: i32) -> TextAppearance #export {
+    disabled: bool, inherited_disabled: bool, letter_spacing: s32) -> TextAppearance {
     style: TextAppearance
     style.font = ResolveFont(font, inherited_font, default_font)
     style.color = color
@@ -43,8 +45,8 @@ ResolveTextStyle :: (font: i32, inherited_font: i32, default_font: i32,
     # An explicit child color still needs disabled presentation of its own.
     if (disabled || inherited_disabled) &&
        (color_set || !inherited_color_set || !inherited_disabled) {
-        alpha: u32 = (u32)((float)(style.color & (u32)255) * 0.45)
-        style.color = ((style.color >> (u32)8) << (u32)8) | alpha
+        alpha: u32 = cast(u32)(cast(float32)(style.color & cast(u32)255) * 0.45)
+        style.color = ((style.color >> cast(u32)8) << cast(u32)8) | alpha
     }
     style.letter_spacing = letter_spacing
     if style.letter_spacing < 0 {
@@ -53,115 +55,131 @@ ResolveTextStyle :: (font: i32, inherited_font: i32, default_font: i32,
     return style
 }
 
-TextExtent :: (requested: float, measured: float) -> float #export {
+#program_export
+TextExtent :: (requested: float32, measured: float32) -> float32 {
     if requested > 0.0 {
         return requested
     }
     return measured
 }
 
-TextWrapPolicy :: (width: float, requested: i32) -> i32 #export {
+#program_export
+TextWrapPolicy :: (width: float32, requested: s32) -> s32 {
     if width <= 0.0 {
         return 1
     }
     return requested
 }
 
-TextDoubleClickSlopFor :: (scale: float) -> i32 #export {
+#program_export
+TextDoubleClickSlopFor :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(6.0 * scale)
+    return cast(s32)(6.0 * scale)
 }
 
+#program_export
 TextDoubleClickShouldSelectLine :: (same_target: bool, same_line: bool,
-    last_time: float, now: float, dx: float, dy: float,
-    scale: float) -> bool #export {
-    slop: i32 = TextDoubleClickSlopFor(scale)
+    last_time: float32, now: float32, dx: float32, dy: float32,
+    scale: float32) -> bool {
+    slop: s32 = TextDoubleClickSlopFor(scale)
     if !same_target || !same_line || last_time < 0.0 {
         return false
     }
     if now - last_time > 0.40 {
         return false
     }
-    if dx < (float)-slop || dx > (float)slop {
+    if dx < cast(float32)-slop || dx > cast(float32)slop {
         return false
     }
-    if dy < (float)-slop || dy > (float)slop {
+    if dy < cast(float32)-slop || dy > cast(float32)slop {
         return false
     }
     return true
 }
 
-TextControlBaselineSample :: () -> const char* #export {
+#program_export
+TextControlBaselineSample :: () -> string {
     return "Hg"
 }
 
-TextControlClipGuardFor :: (scale: float) -> i32 #export {
-    pad: i32 = 1
+#program_export
+TextControlClipGuardFor :: (scale: float32) -> s32 {
+    pad: s32 = 1
     if scale <= 0.0 { scale = 1.0 }
-    pad = (i32)(1.0 * scale)
+    pad = cast(s32)(1.0 * scale)
     if pad < 1 { pad = 1 }
     return pad
 }
 
-TextControlClipBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
-    pad: i32 = TextControlClipGuardFor(scale)
+#program_export
+TextControlClipBounds :: (bounds: Rectangle, scale: float32) -> Rectangle {
+    pad: s32 = TextControlClipGuardFor(scale)
     clip: Rectangle = bounds
-    clip.y -= (float)pad
-    clip.height += (float)(pad * 2)
+    clip.y -= cast(float32)pad
+    clip.height += cast(float32)(pad * 2)
     return clip
 }
 
-TextCenteredY :: (bounds: Rectangle, line_height: i32) -> i32 #export {
-    return (i32)bounds.y + ((i32)bounds.height - line_height) / 2
+#program_export
+TextCenteredY :: (bounds: Rectangle, line_height: s32) -> s32 {
+    return cast(s32)bounds.y + (cast(s32)bounds.height - line_height) / 2
 }
 
-TextCenteredX :: (bounds: Rectangle, text_width: i32) -> i32 #export {
-    return (i32)(bounds.x + (bounds.width - (float)text_width) * 0.5)
+#program_export
+TextCenteredX :: (bounds: Rectangle, text_width: s32) -> s32 {
+    return cast(s32)(bounds.x + (bounds.width - cast(float32)text_width) * 0.5)
 }
 
-TextBaselineYFor :: (box_y: i32, box_h: i32, fallback_height: i32,
-    has_glyphs: bool, min_top: float, max_bottom: float) -> i32 #export {
+#program_export
+TextBaselineYFor :: (box_y: s32, box_h: s32, fallback_height: s32,
+    has_glyphs: bool, min_top: float32, max_bottom: float32) -> s32 {
     if !has_glyphs {
-        return box_y + (i32)(((float)box_h - (float)fallback_height) * 0.5 + 0.5)
+        return box_y + cast(s32)((cast(float32)box_h - cast(float32)fallback_height) * 0.5 + 0.5)
     }
-    glyph_height: float = max_bottom - min_top
-    return box_y + (i32)(((float)box_h - glyph_height) * 0.5 - min_top + 0.5)
+    glyph_height: float32 = max_bottom - min_top
+    return box_y + cast(s32)((cast(float32)box_h - glyph_height) * 0.5 - min_top + 0.5)
 }
 
-TextHeightFor :: (fallback_height: i32, has_glyphs: bool,
-    min_top: float, max_bottom: float) -> i32 #export {
+#program_export
+TextHeightFor :: (fallback_height: s32, has_glyphs: bool,
+    min_top: float32, max_bottom: float32) -> s32 {
     if !has_glyphs {
         return fallback_height
     }
-    return (i32)(max_bottom - min_top + 0.5)
+    return cast(s32)(max_bottom - min_top + 0.5)
 }
 
-TextLineHeightFor :: (font_base_size: i32, fallback_base_size: i32,
-    scale: float) -> i32 #export {
+#program_export
+TextLineHeightFor :: (font_base_size: s32, fallback_base_size: s32,
+    scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    base: i32 = font_base_size
+    base: s32 = font_base_size
     if base <= 0 {
         base = fallback_base_size
     }
-    return (i32)((float)base * scale + 0.5)
+    return cast(s32)(cast(float32)base * scale + 0.5)
 }
 
-TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
+#program_export
+TextSelectionLineEndPaddingFor :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(6.0 * scale)
+    return cast(s32)(6.0 * scale)
 }
 
-TextSelectionMinWidthFor :: (scale: float) -> i32 #export {
+#program_export
+TextSelectionMinWidthFor :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(4.0 * scale)
+    return cast(s32)(4.0 * scale)
 }
 
-TextSelectionDefaultAlpha :: () -> u8 #export {
-    return (u8)88
+#program_export
+TextSelectionDefaultAlpha :: () -> u8 {
+    return cast(u8)88
 }
 
-TextSelectionHighlightEndX :: (start_x: i32, end_x: i32,
-    continues_past_line: bool, scale: float) -> i32 #export {
+#program_export
+TextSelectionHighlightEndX :: (start_x: s32, end_x: s32,
+    continues_past_line: bool, scale: float32) -> s32 {
     if continues_past_line {
         end_x += TextSelectionLineEndPaddingFor(scale)
     }
@@ -186,16 +204,18 @@ TextSelectionCopyDecision :: struct {
     copy: bool
 }
 
+#program_export
 TextSelectionPointerDecisionFor :: (inside: bool, captured: bool,
-    pressed: bool) -> TextSelectionPointerDecision #export {
+    pressed: bool) -> TextSelectionPointerDecision {
     out: TextSelectionPointerDecision
     out.hover = inside && !captured
     out.begin = out.hover && pressed
     return out
 }
 
+#program_export
 TextSelectionDragDecisionFor :: (same_id: bool, dragging: bool,
-    down: bool) -> TextSelectionDragDecision #export {
+    down: bool) -> TextSelectionDragDecision {
     out: TextSelectionDragDecision
     out.active = same_id && dragging
     out.update = out.active && down
@@ -203,18 +223,21 @@ TextSelectionDragDecisionFor :: (same_id: bool, dragging: bool,
     return out
 }
 
+#program_export
 TextSelectionCopyDecisionFor :: (same_id: bool, keyboard_enabled: bool,
-    modifier_down: bool, copy_pressed: bool) -> TextSelectionCopyDecision #export {
+    modifier_down: bool, copy_pressed: bool) -> TextSelectionCopyDecision {
     out: TextSelectionCopyDecision
     out.copy = same_id && keyboard_enabled && modifier_down && copy_pressed
     return out
 }
 
-TextSelectionRangeShouldShow :: (same_id: bool) -> bool #export {
+#program_export
+TextSelectionRangeShouldShow :: (same_id: bool) -> bool {
     return same_id
 }
 
-TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> float #export {
+#program_export
+TextAlignmentOffset :: (available: float32, measured: float32, alignment: s32) -> float32 {
     if alignment == 1 {
         return (available - measured) * 0.5
     }
@@ -225,8 +248,9 @@ TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> fl
 }
 
 # Decorations use the same measured line geometry as the glyphs.
-TextStrikethroughBounds :: (x: float, y: float, width: float,
-    line_height: float, scale: float) -> Rectangle #export {
+#program_export
+TextStrikethroughBounds :: (x: float32, y: float32, width: float32,
+    line_height: float32, scale: float32) -> Rectangle {
     result: Rectangle
     if scale < 1.0 { scale = 1.0 }
     result.x = x

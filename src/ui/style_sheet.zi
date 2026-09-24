@@ -1,337 +1,404 @@
-#module "style_sheet"
 #import "style"
 #import "control_props"
 
 # KSS is the text format. The runtime API uses plain Style* names.
 # Compilers and parsers lower .kss files into these typed rule tables.
 
-StyleAny :: () -> i32 #export {
+#program_export
+StyleAny :: () -> s32 {
     return -1
 }
 
-StyleStateAny :: () -> i32 #export {
+#program_export
+StyleStateAny :: () -> s32 {
     return 0
 }
 
-StyleKindAny :: () -> i32 #export {
+#program_export
+StyleKindAny :: () -> s32 {
     return 0
 }
 
-StyleKindApp :: () -> i32 #export {
+#program_export
+StyleKindApp :: () -> s32 {
     return 1
 }
 
-StyleKindButton :: () -> i32 #export {
+#program_export
+StyleKindButton :: () -> s32 {
     return 2
 }
 
-StyleKindText :: () -> i32 #export {
+#program_export
+StyleKindText :: () -> s32 {
     return 3
 }
 
-StyleKindTextField :: () -> i32 #export {
+#program_export
+StyleKindTextField :: () -> s32 {
     return 4
 }
 
-StyleKindTextArea :: () -> i32 #export {
+#program_export
+StyleKindTextArea :: () -> s32 {
     return 5
 }
 
-StyleKindSurface :: () -> i32 #export {
+#program_export
+StyleKindSurface :: () -> s32 {
     return 6
 }
 
-StyleKindDropdown :: () -> i32 #export {
+#program_export
+StyleKindDropdown :: () -> s32 {
     return 7
 }
 
-StyleKindCard :: () -> i32 #export {
+#program_export
+StyleKindCard :: () -> s32 {
     return 8
 }
 
-StyleKindSlider :: () -> i32 #export {
+#program_export
+StyleKindSlider :: () -> s32 {
     return 9
 }
 
-StyleKindToggle :: () -> i32 #export {
+#program_export
+StyleKindToggle :: () -> s32 {
     return 10
 }
 
-StyleKindCheckbox :: () -> i32 #export {
+#program_export
+StyleKindCheckbox :: () -> s32 {
     return 11
 }
 
-StyleKindRadio :: () -> i32 #export {
+#program_export
+StyleKindRadio :: () -> s32 {
     return 12
 }
 
-StyleKindProgress :: () -> i32 #export {
+#program_export
+StyleKindProgress :: () -> s32 {
     return 13
 }
 
-StyleKindSeparator :: () -> i32 #export {
+#program_export
+StyleKindSeparator :: () -> s32 {
     return 14
 }
 
-StyleKindNavigationBar :: () -> i32 #export {
+#program_export
+StyleKindNavigationBar :: () -> s32 {
     return 15
 }
 
-StyleKindNavigationBarItem :: () -> i32 #export {
+#program_export
+StyleKindNavigationBarItem :: () -> s32 {
     return 16
 }
 
-StyleKindSelectable :: () -> i32 #export {
+#program_export
+StyleKindSelectable :: () -> s32 {
     return 17
 }
 
-StyleKindFieldset :: () -> i32 #export {
+#program_export
+StyleKindFieldset :: () -> s32 {
     return 18
 }
 
-StyleKindPlot :: () -> i32 #export {
+#program_export
+StyleKindPlot :: () -> s32 {
     return 19
 }
 
-StyleKindPlotMark :: () -> i32 #export {
+#program_export
+StyleKindPlotMark :: () -> s32 {
     return 20
 }
 
-StyleKindLink :: () -> i32 #export {
+#program_export
+StyleKindLink :: () -> s32 {
     return 21
 }
 
-StyleKindTabBar :: () -> i32 #export {
+#program_export
+StyleKindTabBar :: () -> s32 {
     return 22
 }
 
-StyleKindTab :: () -> i32 #export {
+#program_export
+StyleKindTab :: () -> s32 {
     return 23
 }
 
-StyleKindTabClose :: () -> i32 #export {
+#program_export
+StyleKindTabClose :: () -> s32 {
     return 24
 }
 
-StyleKindSegmentedControl :: () -> i32 #export {
+#program_export
+StyleKindSegmentedControl :: () -> s32 {
     return 25
 }
 
-StyleKindSegment :: () -> i32 #export {
+#program_export
+StyleKindSegment :: () -> s32 {
     return 26
 }
 
-StyleKindMenu :: () -> i32 #export {
+#program_export
+StyleKindMenu :: () -> s32 {
     return 27
 }
 
-StyleKindMenuItem :: () -> i32 #export {
+#program_export
+StyleKindMenuItem :: () -> s32 {
     return 28
 }
 
-StyleKindMenuSeparator :: () -> i32 #export {
+#program_export
+StyleKindMenuSeparator :: () -> s32 {
     return 29
 }
 
-StyleKindListBox :: () -> i32 #export {
+#program_export
+StyleKindListBox :: () -> s32 {
     return 30
 }
 
-StyleKindListBoxItem :: () -> i32 #export {
+#program_export
+StyleKindListBoxItem :: () -> s32 {
     return 31
 }
 
-StyleKindTreeView :: () -> i32 #export {
+#program_export
+StyleKindTreeView :: () -> s32 {
     return 32
 }
 
-StyleKindTreeViewItem :: () -> i32 #export {
+#program_export
+StyleKindTreeViewItem :: () -> s32 {
     return 33
 }
 
-StyleKindListBoxMulti :: () -> i32 #export {
+#program_export
+StyleKindListBoxMulti :: () -> s32 {
     return 34
 }
 
-StyleKindListBoxMultiItem :: () -> i32 #export {
+#program_export
+StyleKindListBoxMultiItem :: () -> s32 {
     return 35
 }
 
-StyleKindDragDropTarget :: () -> i32 #export {
+#program_export
+StyleKindDragDropTarget :: () -> s32 {
     return 36
 }
 
-StyleKindSpinbox :: () -> i32 #export {
+#program_export
+StyleKindSpinbox :: () -> s32 {
     return 37
 }
 
-StyleKindSpinboxValue :: () -> i32 #export {
+#program_export
+StyleKindSpinboxValue :: () -> s32 {
     return 38
 }
 
-StyleKindColorPickerSwatch :: () -> i32 #export {
+#program_export
+StyleKindColorPickerSwatch :: () -> s32 {
     return 39
 }
 
-StyleKindColorPicker :: () -> i32 #export {
+#program_export
+StyleKindColorPicker :: () -> s32 {
     return 62
 }
 
-StyleKindSliderThumb :: () -> i32 #export {
+#program_export
+StyleKindSliderThumb :: () -> s32 {
     return 40
 }
 
-StyleKindToggleThumb :: () -> i32 #export {
+#program_export
+StyleKindToggleThumb :: () -> s32 {
     return 41
 }
 
-StyleKindScroll :: () -> i32 #export {
+#program_export
+StyleKindScroll :: () -> s32 {
     return 42
 }
 
-StyleKindScrollThumb :: () -> i32 #export {
+#program_export
+StyleKindScrollThumb :: () -> s32 {
     return 43
 }
 
-StyleKindPanedView :: () -> i32 #export {
+#program_export
+StyleKindPanedView :: () -> s32 {
     return 44
 }
 
-StyleKindToast :: () -> i32 #export {
+#program_export
+StyleKindToast :: () -> s32 {
     return 45
 }
 
-StyleKindCollapsible :: () -> i32 #export {
+#program_export
+StyleKindCollapsible :: () -> s32 {
     return 46
 }
 
-StyleKindTitleBar :: () -> i32 #export {
+#program_export
+StyleKindTitleBar :: () -> s32 {
     return 47
 }
 
-StyleKindToolbar :: () -> i32 #export {
+#program_export
+StyleKindToolbar :: () -> s32 {
     return 48
 }
 
-StyleKindModal :: () -> i32 #export {
+#program_export
+StyleKindModal :: () -> s32 {
     return 49
 }
 
-StyleKindTableView :: () -> i32 #export {
+#program_export
+StyleKindTableView :: () -> s32 {
     return 50
 }
 
-StyleKindGuide :: () -> i32 #export {
+#program_export
+StyleKindGuide :: () -> s32 {
     return 51
 }
 
-StyleKindImage :: () -> i32 #export {
+#program_export
+StyleKindImage :: () -> s32 {
     return 52
 }
 
-StyleKindFocus :: () -> i32 #export {
+#program_export
+StyleKindFocus :: () -> s32 {
     return 53
 }
 
-StyleKindPopup :: () -> i32 #export {
+#program_export
+StyleKindPopup :: () -> s32 {
     return 54
 }
 
-StyleKindCanvas :: () -> i32 #export {
+#program_export
+StyleKindCanvas :: () -> s32 {
     return 55
 }
 
-StyleKindDrag :: () -> i32 #export {
+#program_export
+StyleKindDrag :: () -> s32 {
     return 56
 }
 
-StyleKindDragValue :: () -> i32 #export {
+#program_export
+StyleKindDragValue :: () -> s32 {
     return 57
 }
 
-StyleKindHeading :: () -> i32 #export {
+#program_export
+StyleKindHeading :: () -> s32 {
     return 58
 }
 
-StyleKindParagraphText :: () -> i32 #export {
+#program_export
+StyleKindParagraphText :: () -> s32 {
     return 59
 }
 
-StyleKindPage :: () -> i32 #export {
+#program_export
+StyleKindPage :: () -> s32 {
     return 60
 }
 
-StyleKindSection :: () -> i32 #export {
+#program_export
+StyleKindSection :: () -> s32 {
     return 61
 }
 
-StyleKindReorder :: () -> i32 #export {
+#program_export
+StyleKindReorder :: () -> s32 {
     return 63
 }
 
 StyleFacts :: struct {
-    kind: i32
-    name: i32
-    class_name: i32
-    role: i32
-    tone: i32
-    emphasis: i32
-    size: i32
-    state: i32
-    validation: i32
-    orientation: i32
-    placement: i32
+    kind: s32
+    name: s32
+    class_name: s32
+    role: s32
+    tone: s32
+    emphasis: s32
+    size: s32
+    state: s32
+    validation: s32
+    orientation: s32
+    placement: s32
 }
 
 StyleSelector :: struct {
-    kind: i32
-    name: i32
-    class_name: i32
-    role: i32
-    tone: i32
-    emphasis: i32
-    size: i32
-    state: i32
-    validation: i32
-    orientation: i32
-    placement: i32
+    kind: s32
+    name: s32
+    class_name: s32
+    role: s32
+    tone: s32
+    emphasis: s32
+    size: s32
+    state: s32
+    validation: s32
+    orientation: s32
+    placement: s32
 }
 
 StyleRule :: struct {
     selector: StyleSelector
-    state: i32
-    layer: i32
-    order: i32
+    state: s32
+    layer: s32
+    order: s32
     style: StyleData
 }
 
 StyleSheet :: struct {
-    rules: const StyleRule*
-    rule_count: i32
+    rules: *StyleRule
+    rule_count: s32
 }
 
 # Owned rule storage for portable programs. The pointer-based StyleSheet above
 # remains the input shape of the old native loader during migration.
 StyleRules :: struct {
     items: [320]StyleRule
-    count: i32
+    count: s32
 }
 
-installed_rules :: StyleRules #global
+installed_rules: StyleRules;
 
-InstallStyleRules :: (rules: StyleRules) #export {
+#program_export
+InstallStyleRules :: (rules: StyleRules) {
     installed_rules = rules
 }
 
-ActiveStyleRules :: () -> StyleRules #export {
+#program_export
+ActiveStyleRules :: () -> StyleRules {
     return installed_rules
 }
 
 StylePriority :: struct {
     present: bool
-    layer: i32
-    specificity: i32
-    order: i32
+    layer: s32
+    specificity: s32
+    order: s32
 }
 
 StyleCascade :: struct {
@@ -359,16 +426,17 @@ StyleFieldDecision :: struct {
     matched: bool
     field_present: bool
     wins: bool
-    layer: i32
-    specificity: i32
-    order: i32
+    layer: s32
+    specificity: s32
+    order: s32
     current_present: bool
-    current_layer: i32
-    current_specificity: i32
-    current_order: i32
+    current_layer: s32
+    current_specificity: s32
+    current_order: s32
 }
 
-StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
+#program_export
+StyleDefaultFacts :: (kind: s32) -> StyleFacts {
     facts: StyleFacts
     facts.kind = kind
     facts.role = StyleAny()
@@ -382,8 +450,9 @@ StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
     return facts
 }
 
-StyleControlFacts :: (kind: i32, name: i32, class_name: i32, tone: i32,
-    emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
+#program_export
+StyleControlFacts :: (kind: s32, name: s32, class_name: s32, tone: s32,
+    emphasis: s32, size: s32, state: s32) -> StyleFacts {
     facts: StyleFacts = StyleDefaultFacts(kind)
     facts.name = name
     facts.class_name = class_name
@@ -394,16 +463,18 @@ StyleControlFacts :: (kind: i32, name: i32, class_name: i32, tone: i32,
     return facts
 }
 
-StyleControlRoleFacts :: (kind: i32, name: i32, class_name: i32, role: i32,
-    tone: i32, emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
+#program_export
+StyleControlRoleFacts :: (kind: s32, name: s32, class_name: s32, role: s32,
+    tone: s32, emphasis: s32, size: s32, state: s32) -> StyleFacts {
     facts: StyleFacts = StyleControlFacts(kind, name, class_name, tone,
         emphasis, size, state)
     facts.role = role
     return facts
 }
 
-StyleTextFacts :: (name: i32, class_name: i32, role: i32,
-    state: i32) -> StyleFacts #export {
+#program_export
+StyleTextFacts :: (name: s32, class_name: s32, role: s32,
+    state: s32) -> StyleFacts {
     facts: StyleFacts = StyleDefaultFacts(StyleKindText())
     facts.name = name
     facts.class_name = class_name
@@ -412,7 +483,8 @@ StyleTextFacts :: (name: i32, class_name: i32, role: i32,
     return facts
 }
 
-StyleDefaultSelector :: () -> StyleSelector #export {
+#program_export
+StyleDefaultSelector :: () -> StyleSelector {
     selector: StyleSelector
     selector.kind = StyleKindAny()
     selector.role = StyleAny()
@@ -426,14 +498,16 @@ StyleDefaultSelector :: () -> StyleSelector #export {
     return selector
 }
 
-StyleMatchesOptional :: (selector_value: i32, fact_value: i32) -> bool #export {
+#program_export
+StyleMatchesOptional :: (selector_value: s32, fact_value: s32) -> bool {
     if selector_value == StyleAny() {
         return true
     }
     return selector_value == fact_value
 }
 
-StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool #export {
+#program_export
+StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool {
     if selector.kind != StyleKindAny() && selector.kind != facts.kind {
         return false
     }
@@ -472,15 +546,17 @@ StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool #ex
 
 # Selector parsers provide counts; weights and cascade ordering live here for
 # typed native selectors and the richer declarative web selector surface.
-StyleSpecificity :: (kinds: i32, attributes: i32, classes: i32, names: i32) -> i32 #export {
+#program_export
+StyleSpecificity :: (kinds: s32, attributes: s32, classes: s32, names: s32) -> s32 {
     return kinds + attributes * 10 + classes * 20 + names * 100
 }
 
-StyleSelectorSpecificity :: (selector: StyleSelector) -> i32 #export {
-    kinds: i32 = 0
-    attributes: i32 = 0
-    classes: i32 = 0
-    names: i32 = 0
+#program_export
+StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
+    kinds: s32 = 0
+    attributes: s32 = 0
+    classes: s32 = 0
+    names: s32 = 0
     if selector.kind != StyleKindAny() {
         kinds = 1
     }
@@ -517,11 +593,13 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> i32 #export {
     return StyleSpecificity(kinds, attributes, classes, names)
 }
 
-StylePriorityScore :: (layer: i32, specificity: i32, order: i32) -> i32 #export {
+#program_export
+StylePriorityScore :: (layer: s32, specificity: s32, order: s32) -> s32 {
     return layer * 1000000 + specificity * 1000 + order
 }
 
-StyleRulePriority :: (rule: StyleRule) -> StylePriority #export {
+#program_export
+StyleRulePriority :: (rule: StyleRule) -> StylePriority {
     priority: StylePriority
     priority.present = true
     priority.layer = rule.layer
@@ -530,47 +608,52 @@ StyleRulePriority :: (rule: StyleRule) -> StylePriority #export {
     return priority
 }
 
-StyleRuleMatchesState :: (rule_state: i32, active_state: i32) -> bool #export {
+#program_export
+StyleRuleMatchesState :: (rule_state: s32, active_state: s32) -> bool {
     if rule_state == StyleStateAny() { return true }
     if rule_state == ButtonStateNormal { return true }
     return rule_state == active_state
 }
 
-StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: i32) -> bool #export {
+#program_export
+StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: s32) -> bool {
     if !StyleRuleMatchesState(rule.state, active_state) {
         return false
     }
     return StyleSelectorMatches(rule.selector, facts)
 }
 
-StyleHasField :: (style: StyleData, field: u32) -> bool #export {
-    return (style.fields & field) != (u32)0
+#program_export
+StyleHasField :: (style: StyleData, field: u32) -> bool {
+    return (style.fields & field) != cast(u32)0
 }
 
-StyleCascadeFieldPriority :: (cascade: StyleCascade, field: u32) -> StylePriority #export {
-    if field == (u32)StyleBackground { return cascade.background_priority }
-    if field == (u32)StyleForeground { return cascade.foreground_priority }
-    if field == (u32)StyleBorder { return cascade.border_priority }
-    if field == (u32)StyleFocus { return cascade.focus_priority }
-    if field == (u32)StyleRadius { return cascade.radius_priority }
-    if field == (u32)StyleBorderWidth { return cascade.border_width_priority }
-    if field == (u32)StyleOpacity { return cascade.opacity_priority }
-    if field == (u32)StylePaddingX { return cascade.padding_x_priority }
-    if field == (u32)StylePaddingY { return cascade.padding_y_priority }
-    if field == (u32)StyleGap { return cascade.gap_priority }
-    if field == (u32)StyleFontSize { return cascade.font_size_priority }
-    if field == (u32)StyleLetterSpacing { return cascade.letter_spacing_priority }
-    if field == (u32)StyleIconSize { return cascade.icon_size_priority }
-    if field == (u32)StyleContentOffset { return cascade.content_offset_priority }
-    if field == (u32)StyleBackgroundEnd { return cascade.background_end_priority }
-    if field == (u32)StyleMaterial { return cascade.material_priority }
-    if field == (u32)StyleTypeface { return cascade.typeface_priority }
+#program_export
+StyleCascadeFieldPriority :: (cascade: StyleCascade, field: u32) -> StylePriority {
+    if field == cast(u32)StyleBackground { return cascade.background_priority }
+    if field == cast(u32)StyleForeground { return cascade.foreground_priority }
+    if field == cast(u32)StyleBorder { return cascade.border_priority }
+    if field == cast(u32)StyleFocus { return cascade.focus_priority }
+    if field == cast(u32)StyleRadius { return cascade.radius_priority }
+    if field == cast(u32)StyleBorderWidth { return cascade.border_width_priority }
+    if field == cast(u32)StyleOpacity { return cascade.opacity_priority }
+    if field == cast(u32)StylePaddingX { return cascade.padding_x_priority }
+    if field == cast(u32)StylePaddingY { return cascade.padding_y_priority }
+    if field == cast(u32)StyleGap { return cascade.gap_priority }
+    if field == cast(u32)StyleFontSize { return cascade.font_size_priority }
+    if field == cast(u32)StyleLetterSpacing { return cascade.letter_spacing_priority }
+    if field == cast(u32)StyleIconSize { return cascade.icon_size_priority }
+    if field == cast(u32)StyleContentOffset { return cascade.content_offset_priority }
+    if field == cast(u32)StyleBackgroundEnd { return cascade.background_end_priority }
+    if field == cast(u32)StyleMaterial { return cascade.material_priority }
+    if field == cast(u32)StyleTypeface { return cascade.typeface_priority }
     priority: StylePriority
     return priority
 }
 
+#program_export
 StyleRuleFieldDecision :: (current: StylePriority, rule: StyleRule,
-    facts: StyleFacts, active_state: i32, field: u32) -> StyleFieldDecision #export {
+    facts: StyleFacts, active_state: s32, field: u32) -> StyleFieldDecision {
     decision: StyleFieldDecision
     decision.current_present = current.present
     decision.current_layer = current.layer
@@ -594,7 +677,8 @@ StyleRuleFieldDecision :: (current: StylePriority, rule: StyleRule,
 
 # A scalar score is useful for display but cannot order arbitrary selector
 # counts or source positions without collisions. Compare each tier directly.
-StylePriorityWins :: (priority: StylePriority, current: StylePriority) -> bool #export {
+#program_export
+StylePriorityWins :: (priority: StylePriority, current: StylePriority) -> bool {
     if !priority.present {
         return false
     }
@@ -610,143 +694,148 @@ StylePriorityWins :: (priority: StylePriority, current: StylePriority) -> bool #
     return priority.order >= current.order
 }
 
-BeginStyleCascade :: (base: StyleData) -> StyleCascade #export {
+#program_export
+BeginStyleCascade :: (base: StyleData) -> StyleCascade {
     cascade: StyleCascade
     cascade.result = base
     return cascade
 }
 
+#program_export
 ApplyStyleRule :: (cascade: StyleCascade, rule: StyleRule,
-    facts: StyleFacts, active_state: i32) -> StyleCascade #export {
+    facts: StyleFacts, active_state: s32) -> StyleCascade {
     if !StyleRuleMatches(rule, facts, active_state) {
         return cascade
     }
     priority: StylePriority = StyleRulePriority(rule)
     style: StyleData = rule.style
-    if (style.fields & (u32)StyleBackground) != (u32)0 &&
+    if (style.fields & cast(u32)StyleBackground) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.background_priority) {
         cascade.result.background = style.background
-        cascade.result.fields = cascade.result.fields | (u32)StyleBackground
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleBackground
         cascade.background_priority = priority
     }
-    if (style.fields & (u32)StyleForeground) != (u32)0 &&
+    if (style.fields & cast(u32)StyleForeground) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.foreground_priority) {
         cascade.result.foreground = style.foreground
-        cascade.result.fields = cascade.result.fields | (u32)StyleForeground
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleForeground
         cascade.foreground_priority = priority
     }
-    if (style.fields & (u32)StyleBorder) != (u32)0 &&
+    if (style.fields & cast(u32)StyleBorder) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.border_priority) {
         cascade.result.border = style.border
-        cascade.result.fields = cascade.result.fields | (u32)StyleBorder
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleBorder
         cascade.border_priority = priority
     }
-    if (style.fields & (u32)StyleFocus) != (u32)0 &&
+    if (style.fields & cast(u32)StyleFocus) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.focus_priority) {
         cascade.result.focus = style.focus
-        cascade.result.fields = cascade.result.fields | (u32)StyleFocus
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleFocus
         cascade.focus_priority = priority
     }
-    if (style.fields & (u32)StyleRadius) != (u32)0 &&
+    if (style.fields & cast(u32)StyleRadius) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.radius_priority) {
         cascade.result.radius = style.radius
-        cascade.result.fields = cascade.result.fields | (u32)StyleRadius
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleRadius
         cascade.radius_priority = priority
     }
-    if (style.fields & (u32)StyleBorderWidth) != (u32)0 &&
+    if (style.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.border_width_priority) {
         cascade.result.border_width = style.border_width
-        cascade.result.fields = cascade.result.fields | (u32)StyleBorderWidth
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleBorderWidth
         cascade.border_width_priority = priority
     }
-    if (style.fields & (u32)StyleOpacity) != (u32)0 &&
+    if (style.fields & cast(u32)StyleOpacity) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.opacity_priority) {
         cascade.result.opacity = style.opacity
-        cascade.result.fields = cascade.result.fields | (u32)StyleOpacity
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleOpacity
         cascade.opacity_priority = priority
     }
-    if (style.fields & (u32)StylePaddingX) != (u32)0 &&
+    if (style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.padding_x_priority) {
         cascade.result.padding_x = style.padding_x
-        cascade.result.fields = cascade.result.fields | (u32)StylePaddingX
+        cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingX
         cascade.padding_x_priority = priority
     }
-    if (style.fields & (u32)StylePaddingY) != (u32)0 &&
+    if (style.fields & cast(u32)StylePaddingY) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.padding_y_priority) {
         cascade.result.padding_y = style.padding_y
-        cascade.result.fields = cascade.result.fields | (u32)StylePaddingY
+        cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingY
         cascade.padding_y_priority = priority
     }
-    if (style.fields & (u32)StyleGap) != (u32)0 &&
+    if (style.fields & cast(u32)StyleGap) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.gap_priority) {
         cascade.result.gap = style.gap
-        cascade.result.fields = cascade.result.fields | (u32)StyleGap
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleGap
         cascade.gap_priority = priority
     }
-    if (style.fields & (u32)StyleFontSize) != (u32)0 &&
+    if (style.fields & cast(u32)StyleFontSize) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.font_size_priority) {
         cascade.result.font_size = style.font_size
-        cascade.result.fields = cascade.result.fields | (u32)StyleFontSize
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleFontSize
         cascade.font_size_priority = priority
     }
-    if (style.fields & (u32)StyleLetterSpacing) != (u32)0 &&
+    if (style.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.letter_spacing_priority) {
         cascade.result.letter_spacing = style.letter_spacing
-        cascade.result.fields = cascade.result.fields | (u32)StyleLetterSpacing
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleLetterSpacing
         cascade.letter_spacing_priority = priority
     }
-    if (style.fields & (u32)StyleIconSize) != (u32)0 &&
+    if (style.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.icon_size_priority) {
         cascade.result.icon_size = style.icon_size
-        cascade.result.fields = cascade.result.fields | (u32)StyleIconSize
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleIconSize
         cascade.icon_size_priority = priority
     }
-    if (style.fields & (u32)StyleContentOffset) != (u32)0 &&
+    if (style.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.content_offset_priority) {
         cascade.result.offset_x = style.offset_x
         cascade.result.offset_y = style.offset_y
-        cascade.result.fields = cascade.result.fields | (u32)StyleContentOffset
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleContentOffset
         cascade.content_offset_priority = priority
     }
-    if (style.fields & (u32)StyleBackgroundEnd) != (u32)0 &&
+    if (style.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.background_end_priority) {
         cascade.result.background_end = style.background_end
-        cascade.result.fields = cascade.result.fields | (u32)StyleBackgroundEnd
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleBackgroundEnd
         cascade.background_end_priority = priority
     }
-    if (style.fields & (u32)StyleMaterial) != (u32)0 &&
+    if (style.fields & cast(u32)StyleMaterial) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.material_priority) {
         cascade.result.material = style.material
-        cascade.result.fields = cascade.result.fields | (u32)StyleMaterial
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleMaterial
         cascade.material_priority = priority
     }
-    if (style.fields & (u32)StyleTypeface) != (u32)0 &&
+    if (style.fields & cast(u32)StyleTypeface) != cast(u32)0 &&
        StylePriorityWins(priority, cascade.typeface_priority) {
         cascade.result.typeface = style.typeface
-        cascade.result.fields = cascade.result.fields | (u32)StyleTypeface
+        cascade.result.fields = cascade.result.fields | cast(u32)StyleTypeface
         cascade.typeface_priority = priority
     }
     return cascade
 }
 
-FinishStyleCascade :: (cascade: StyleCascade) -> StyleData #export {
+#program_export
+FinishStyleCascade :: (cascade: StyleCascade) -> StyleData {
     return cascade.result
 }
 
+#program_export
 ResolveStyleRule :: (base: StyleData, facts: StyleFacts,
-    rule: StyleRule, active_state: i32) -> StyleData #export {
+    rule: StyleRule, active_state: s32) -> StyleData {
     cascade: StyleCascade = BeginStyleCascade(base)
     cascade = ApplyStyleRule(cascade, rule, facts, active_state)
     return FinishStyleCascade(cascade)
 }
 
+#program_export
 ResolveStyleRules :: (rules: StyleRules, base: StyleData,
-    facts: StyleFacts, active_state: i32) -> StyleData #export {
+    facts: StyleFacts, active_state: s32) -> StyleData {
     cascade: StyleCascade = BeginStyleCascade(base)
-    limit: i32 = rules.count
+    limit: s32 = rules.count
     if limit < 0 { limit = 0 }
     if limit > 320 { limit = 320 }
-    index: i32 = 0
+    index: s32 = 0
     while index < limit {
         cascade = ApplyStyleRule(cascade, rules.items[index],
             facts, active_state)

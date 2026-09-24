@@ -1,4 +1,3 @@
-#module "router"
 #import "geometry"
 #import "router_props"
 #import "tree"
@@ -6,8 +5,9 @@
 
 # Router owns navigation and URL decisions. Applications own the route table
 # and state value; a platform host applies a requested URL effect.
-RouterFindRoute :: (routes: []RouterRoute, route_id: i32) -> i32 #export {
-    index: i32 = 0
+#program_export
+RouterFindRoute :: (routes: []RouterRoute, route_id: s32) -> s32 {
+    index: s32 = 0
     while index < routes.length {
         if routes[index].id == route_id { return index }
         index += 1
@@ -15,8 +15,9 @@ RouterFindRoute :: (routes: []RouterRoute, route_id: i32) -> i32 #export {
     return -1
 }
 
-RouterStateInit :: (initial_route: i32,
-    route_version: i32) -> RouterState #export {
+#program_export
+RouterStateInit :: (initial_route: s32,
+    route_version: s32) -> RouterState {
     state: RouterState
     state.initialized = true
     state.current_route = initial_route
@@ -26,43 +27,47 @@ RouterStateInit :: (initial_route: i32,
     return state
 }
 
+#program_export
 RouterNavigate :: (state: RouterState,
-    route_id: i32) -> RouterState #export {
+    route_id: s32) -> RouterState {
     state.requested_route = route_id
     state.has_request = true
     return state
 }
 
+#program_export
 RouterAcknowledgeVersion :: (state: RouterState,
-    route_version: i32) -> RouterState #export {
+    route_version: s32) -> RouterState {
     state.route_version = route_version
     return state
 }
 
-RouterPathStart :: (path: string) -> i32 #export {
-    start: i32 = 0
+#program_export
+RouterPathStart :: (path: string) -> s32 {
+    start: s32 = 0
     while start < path.length && path[start] == 35 { start += 1 }
     if start < path.length && path[start] == 47 { start += 1 }
     return start
 }
 
-RouterHashMatches :: (hash: string, path: string) -> bool #export {
+#program_export
+RouterHashMatches :: (hash: string, path: string) -> bool {
     if path.length == 0 { return false }
-    start: i32 = 0
+    start: s32 = 0
     while start < hash.length &&
         (hash[start] == 32 || hash[start] == 9 || hash[start] == 35) {
         start += 1
     }
     if start < hash.length && hash[start] == 47 { start += 1 }
-    end: i32 = start
+    end: s32 = start
     while end < hash.length && hash[end] != 63 && hash[end] != 38 {
         end += 1
     }
-    path_start: i32 = RouterPathStart(path)
+    path_start: s32 = RouterPathStart(path)
     if end == start || end - start != path.length - path_start {
         return false
     }
-    index: i32 = 0
+    index: s32 = 0
     while start + index < end {
         if hash[start + index] != path[path_start + index] {
             return false
@@ -72,9 +77,10 @@ RouterHashMatches :: (hash: string, path: string) -> bool #export {
     return true
 }
 
+#program_export
 RouterFindHash :: (routes: []RouterRoute,
-    hash: string) -> i32 #export {
-    index: i32 = 0
+    hash: string) -> s32 {
+    index: s32 = 0
     while index < routes.length {
         if RouterHashMatches(hash, routes[index].path) { return index }
         index += 1
@@ -101,7 +107,7 @@ RouterUrlFor :: (result: RouterResult, props: RouterProps,
     if !props.sync_url || result.route_index < 0 { return result }
     path: string = routes[result.route_index].path
     if path.length == 0 { return result }
-    start: i32 = RouterPathStart(path)
+    start: s32 = RouterPathStart(path)
     if start >= path.length { return result }
     result.write_url = true
     result.push_url = push
@@ -112,33 +118,35 @@ RouterUrlFor :: (result: RouterResult, props: RouterProps,
     return result
 }
 
+#program_export
 RouterSetRoute :: (props: RouterProps, state: RouterState,
-    routes: []RouterRoute, route_id: i32,
+    routes: []RouterRoute, route_id: s32,
     push: bool, base_path: string,
-    route_version: i32) -> RouterResult #export {
+    route_version: s32) -> RouterResult {
     if !state.initialized {
         state = RouterStateInit(props.initial_route, route_version)
     }
     state.changed = false
     state.previous_route = state.current_route
-    index: i32 = RouterFindRoute(routes, route_id)
+    index: s32 = RouterFindRoute(routes, route_id)
     if index < 0 { return RouterResultFor(state, routes) }
     state.changed = state.current_route != route_id
     state.current_route = route_id
     state.requested_route = -1
     state.has_request = false
-    if state.changed { state.generation += (u32)1 }
+    if state.changed { state.generation += cast(u32)1 }
     result: RouterResult = RouterResultFor(state, routes)
     return RouterUrlFor(result, props, routes, base_path, push)
 }
 
+#program_export
 Router :: (props: RouterProps, state: RouterState,
     routes: []RouterRoute, hash: string,
-    base_path: string, route_version: i32) -> RouterResult #export {
+    base_path: string, route_version: s32) -> RouterResult {
     write_on_init: bool = false
     if !state.initialized {
-        initial: i32 = props.initial_route
-        from_hash: i32 = -1
+        initial: s32 = props.initial_route
+        from_hash: s32 = -1
         if props.sync_url { from_hash = RouterFindHash(routes, hash) }
         if from_hash >= 0 { initial = routes[from_hash].id }
         state = RouterStateInit(initial, route_version)
@@ -147,11 +155,11 @@ Router :: (props: RouterProps, state: RouterState,
     }
     state.changed = false
     state.previous_route = state.current_route
-    next: i32 = -1
+    next: s32 = -1
     has_next: bool = false
     push: bool = false
     if props.sync_url && route_version != state.route_version {
-        changed_hash: i32 = RouterFindHash(routes, hash)
+        changed_hash: s32 = RouterFindHash(routes, hash)
         state.route_version = route_version
         if changed_hash >= 0 {
             next = routes[changed_hash].id
@@ -165,13 +173,13 @@ Router :: (props: RouterProps, state: RouterState,
         state.has_request = false
         state.requested_route = -1
     }
-    candidate_index: i32 = -1
+    candidate_index: s32 = -1
     if has_next { candidate_index = RouterFindRoute(routes, next) }
     if candidate_index >= 0 && next != state.current_route {
         state.previous_route = state.current_route
         state.current_route = next
         state.changed = true
-        state.generation += (u32)1
+        state.generation += cast(u32)1
     }
     result: RouterResult = RouterResultFor(state, routes)
     if state.changed {
@@ -181,9 +189,9 @@ Router :: (props: RouterProps, state: RouterState,
     }
     if TreeIsBuilding() {
         key: u64 = props.key
-        if key == (u64)0 { key = TreeNextKey() }
+        if key == cast(u64)0 { key = TreeNextKey() }
         bounds: Rectangle = props.bounds
-        node: i32 = TreeSubmitCurrent(key, WidgetKindRouter, bounds)
+        node: s32 = TreeSubmitCurrent(key, WidgetKindRouter, bounds)
         result.node = node
     }
     return result
@@ -191,14 +199,15 @@ Router :: (props: RouterProps, state: RouterState,
 
 # Formats the URL effect into caller storage. A negative result means no URL
 # effect or insufficient capacity; the host may then push or replace it.
+#program_export
 RouterFormatUrl :: (result: RouterResult,
-    output: []u8) -> i32 #export {
+    output: []u8) -> s32 {
     if !result.write_url { return -1 }
-    needed: i32 = result.url_base.length + 2 +
+    needed: s32 = result.url_base.length + 2 +
         result.url_path.length - result.url_path_start
     if needed > output.length { return -1 }
-    used: i32 = 0
-    index: i32 = 0
+    used: s32 = 0
+    index: s32 = 0
     while index < result.url_base.length {
         output[used] = result.url_base[index]
         used += 1

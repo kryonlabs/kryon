@@ -1,4 +1,3 @@
-#module "tree_input"
 #import "geometry"
 #import "tree"
 #import "widget_kind"
@@ -6,49 +5,51 @@
 # Raw device observations are supplied by the platform. Kryon owns hit order,
 # capture, eligibility, and activation across retained frames.
 PointerFrame :: struct {
-    x: float
-    y: float
+    x: float32
+    y: float32
     down: bool
     pressed: bool
     released: bool
 }
 
 PointerState :: struct {
-    hovered_generation: i32
-    held_generation: i32
-    activation_generation: i32
-    pressed_generation: i32
-    released_generation: i32
-    held_x: float
-    held_y: float
-    grab_x: float
-    grab_y: float
-    released_x: float
-    released_y: float
+    hovered_generation: s32
+    held_generation: s32
+    activation_generation: s32
+    pressed_generation: s32
+    released_generation: s32
+    held_x: float32
+    held_y: float32
+    grab_x: float32
+    grab_y: float32
+    released_x: float32
+    released_y: float32
 }
 
 PointerDrag :: struct {
     active: bool
     started: bool
     ended: bool
-    x: float
-    y: float
-    grab_x: float
-    grab_y: float
+    x: float32
+    y: float32
+    grab_x: float32
+    grab_y: float32
 }
 
-active_pointer :: PointerState #global
+active_pointer: PointerState;
 
-PointInBounds :: (x: float, y: float, bounds: Rectangle) -> bool #export {
+#program_export
+PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
     return bounds.width > 0.0 && bounds.height > 0.0 &&
         x >= bounds.x && y >= bounds.y &&
         x < bounds.x + bounds.width && y < bounds.y + bounds.height
 }
 
-TreeHitAt :: (x: float, y: float) -> i32 #export {
+#program_export
+TreeHitAt :: (x: float32, y: float32) -> s32 {
     if TreeCount() == 0 ||
         !PointInBounds(x, y, TreeNodeAt(0).bounds) { return -1 }
-    index: i32 = TreeCount() - 1
+    index: s32 = TreeCount() - 1
     while index > 0 {
         entry: TreeEntry = TreeNodeAt(index)
         if entry.interactive &&
@@ -76,8 +77,9 @@ TreeHitAt :: (x: float, y: float) -> i32 #export {
 
 # The most recently submitted scroll viewport under the pointer wins. A
 # child scroll clips to its parent, so an outer page cannot consume its wheel.
-TreeScrollAt :: (x: float, y: float) -> u64 #export {
-    index: i32 = TreeCount() - 1
+#program_export
+TreeScrollAt :: (x: float32, y: float32) -> u64 {
+    index: s32 = TreeCount() - 1
     while index > 0 {
         entry: TreeEntry = TreeNodeAt(index)
         if entry.kind == WidgetKindScroll &&
@@ -87,12 +89,13 @@ TreeScrollAt :: (x: float, y: float) -> u64 #export {
         }
         index -= 1
     }
-    return (u64)0
+    return cast(u64)0
 }
 
-TreePointerUpdate :: (frame: PointerFrame) -> i32 #export {
+#program_export
+TreePointerUpdate :: (frame: PointerFrame) -> s32 {
     if TreeIsBuilding() { return -1 }
-    hit: i32 = TreeHitAt(frame.x, frame.y)
+    hit: s32 = TreeHitAt(frame.x, frame.y)
     active_pointer.hovered_generation = 0
     if hit >= 0 {
         active_pointer.hovered_generation =
@@ -137,11 +140,12 @@ TreePointerUpdate :: (frame: PointerFrame) -> i32 #export {
 
 # A drag keeps its original node identity while held, including when the
 # pointer leaves that node or the root. The release sample is consumed once.
-TreeTakeDragAt :: (index: i32) -> PointerDrag #export {
+#program_export
+TreeTakeDragAt :: (index: s32) -> PointerDrag {
     drag: PointerDrag
     if index < 0 || index >= TreeCount() { return drag }
     entry: TreeEntry = TreeNodeAt(index)
-    generation: i32 = entry.identity_generation
+    generation: s32 = entry.identity_generation
     if !entry.interactive ||
         !TreePointerActivatable(entry.kind, entry.focus_id,
             entry.disabled, entry.loading) {
@@ -185,20 +189,23 @@ TreeTakeDragAt :: (index: i32) -> PointerDrag #export {
     return drag
 }
 
-TreeHoveredAt :: (index: i32) -> bool #export {
+#program_export
+TreeHoveredAt :: (index: s32) -> bool {
     if index < 0 || index >= TreeCount() { return false }
     return active_pointer.hovered_generation != 0 &&
         TreeNodeAt(index).identity_generation ==
             active_pointer.hovered_generation
 }
 
-TreePressedAt :: (index: i32) -> bool #export {
+#program_export
+TreePressedAt :: (index: s32) -> bool {
     if !TreeHoveredAt(index) { return false }
     return active_pointer.held_generation ==
         TreeNodeAt(index).identity_generation
 }
 
-TreeTakeActivationAt :: (index: i32) -> bool #export {
+#program_export
+TreeTakeActivationAt :: (index: s32) -> bool {
     if index < 0 || index >= TreeCount() { return false }
     entry: TreeEntry = TreeNodeAt(index)
     if !entry.interactive ||
