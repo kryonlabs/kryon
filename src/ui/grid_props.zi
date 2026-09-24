@@ -1,31 +1,30 @@
-#module "grid_props"
 #import "geometry"
 
 GridProps :: struct {
     bounds: Rectangle
-    columns: i32
-    min_item_width: i32
-    max_columns: i32
-    gap: i32
-    padding: i32
+    columns: s32
+    min_item_width: s32
+    max_columns: s32
+    gap: s32
+    padding: s32
     key: u64
 }
 
 GridMetrics :: struct {
     bounds: Rectangle
     content: Rectangle
-    columns: i32
-    gap: i32
-    padding: i32
-    cell_width: i32
+    columns: s32
+    gap: s32
+    padding: s32
+    cell_width: s32
 }
 
 GridCursor :: struct {
     metrics: GridMetrics
     item: Rectangle
-    x: i32
-    y: i32
-    col: i32
-    row_height: i32
-    used_height: i32
+    x: s32
+    y: s32
+    col: s32
+    row_height: s32
+    used_height: s32
 }

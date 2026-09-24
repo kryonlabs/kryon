@@ -1,43 +1,42 @@
-#module "collapsible_props"
 #import "geometry"
 
 CollapsibleProps :: struct {
     key: u64
     bounds: Rectangle
-    class_name: i32
+    class_name: s32
     label: string
     close_label: string
     open: bool
     has_open: bool
     tree: bool
-    depth: i32
+    depth: s32
     leaf: bool
     selected: bool
     disabled: bool
-    id: i32
+    id: s32
     hidden: bool
     closable: bool
-    scale: float
+    scale: float32
     focused: bool
     focus_captured: bool
     key_already_handled: bool
-    navigation: i32
+    navigation: s32
     activate: bool
 }
 
 CollapsibleHeader :: struct {
-    id: i32
-    depth: i32
+    id: s32
+    depth: s32
 }
 
 CollapsibleResult :: struct {
-    node: i32
+    node: s32
     open: bool
     hidden: bool
     changed: bool
     closed: bool
     focus_requested: bool
-    focus_target: i32
+    focus_target: s32
     key_handled: bool
     header: Rectangle
     body: Rectangle

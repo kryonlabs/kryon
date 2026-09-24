@@ -1,4 +1,3 @@
-#module "transition"
 
 TransitionPhase :: enum {
     TransitionNone = 0
@@ -8,17 +7,18 @@ TransitionPhase :: enum {
 
 TransitionState :: struct {
     active: bool
-    phase: i32
-    elapsed_seconds: float
-    duration_seconds: float
+    phase: s32
+    elapsed_seconds: float32
+    duration_seconds: float32
 }
 
 TransitionStep :: struct {
     state: TransitionState
-    completed: i32
+    completed: s32
 }
 
-TransitionStart :: (duration_seconds: float) -> TransitionState #export {
+#program_export
+TransitionStart :: (duration_seconds: float32) -> TransitionState {
     state: TransitionState
     state.active = true
     state.phase = TransitionOut
@@ -26,12 +26,14 @@ TransitionStart :: (duration_seconds: float) -> TransitionState #export {
     return state
 }
 
-TransitionReset :: () -> TransitionState #export {
+#program_export
+TransitionReset :: () -> TransitionState {
     state: TransitionState
     return state
 }
 
-TransitionReverse :: (state: TransitionState) -> TransitionState #export {
+#program_export
+TransitionReverse :: (state: TransitionState) -> TransitionState {
     if state.active && state.phase == TransitionIn {
         state.phase = TransitionOut
         state.elapsed_seconds = TransitionReverseElapsed(
@@ -40,8 +42,9 @@ TransitionReverse :: (state: TransitionState) -> TransitionState #export {
     return state
 }
 
+#program_export
 TransitionAdvance :: (state: TransitionState,
-    delta_seconds: float) -> TransitionStep #export {
+    delta_seconds: float32) -> TransitionStep {
     step: TransitionStep
     step.state = state
     if !state.active { return step }
@@ -60,58 +63,67 @@ TransitionAdvance :: (state: TransitionState,
     return step
 }
 
-TransitionOpacity :: (state: TransitionState) -> float #export {
+#program_export
+TransitionOpacity :: (state: TransitionState) -> float32 {
     return TransitionAlpha(state.active, state.phase,
         state.elapsed_seconds, state.duration_seconds)
 }
 
-TransitionClampProgress :: (value: float) -> float #export {
+#program_export
+TransitionClampProgress :: (value: float32) -> float32 {
     if value < 0.0 { return 0.0 }
     if value > 1.0 { return 1.0 }
     return value
 }
 
-TransitionSmoothProgress :: (value: float) -> float #export {
+#program_export
+TransitionSmoothProgress :: (value: float32) -> float32 {
     value = TransitionClampProgress(value)
     return value * value * (3.0 - 2.0 * value)
 }
 
-TransitionDuration :: (duration_seconds: float) -> float #export {
+#program_export
+TransitionDuration :: (duration_seconds: float32) -> float32 {
     if duration_seconds <= 0.0 { return 0.001 }
     return duration_seconds
 }
 
-TransitionDelta :: (delta_seconds: float) -> float #export {
+#program_export
+TransitionDelta :: (delta_seconds: float32) -> float32 {
     if delta_seconds < 0.0 { return 0.0 }
     return delta_seconds
 }
 
-TransitionReverseElapsed :: (duration_seconds: float,
-    elapsed_seconds: float) -> float #export {
-    elapsed: float = duration_seconds - elapsed_seconds
+#program_export
+TransitionReverseElapsed :: (duration_seconds: float32,
+    elapsed_seconds: float32) -> float32 {
+    elapsed: float32 = duration_seconds - elapsed_seconds
     if elapsed < 0.0 { return 0.0 }
     return elapsed
 }
 
-TransitionAlpha :: (active: bool, phase: i32, elapsed_seconds: float,
-    duration_seconds: float) -> float #export {
+#program_export
+TransitionAlpha :: (active: bool, phase: s32, elapsed_seconds: float32,
+    duration_seconds: float32) -> float32 {
     if !active || duration_seconds <= 0.0 { return 0.0 }
-    progress: float = TransitionSmoothProgress(elapsed_seconds / duration_seconds)
+    progress: float32 = TransitionSmoothProgress(elapsed_seconds / duration_seconds)
     if phase == TransitionOut { return progress }
     if phase == TransitionIn { return 1.0 - progress }
     return 0.0
 }
 
-TransitionFadeAlphaByte :: (active: bool, phase: i32, elapsed_seconds: float,
-    duration_seconds: float) -> i32 #export {
-    alpha: i32 = (i32)(TransitionAlpha(active, phase, elapsed_seconds,
+#program_export
+TransitionFadeAlphaByte :: (active: bool, phase: s32, elapsed_seconds: float32,
+    duration_seconds: float32) -> s32 {
+    alpha: s32 = cast(s32)(TransitionAlpha(active, phase, elapsed_seconds,
         duration_seconds) * 255.0)
     if alpha < 0 { return 0 }
     if alpha > 255 { return 255 }
     return alpha
 }
 
-TransitionApplyAlpha :: (color_alpha: i32, fade_alpha: i32) -> i32 #export {
+#program_export
+TransitionApplyAlpha :: (color_alpha: s32, fade_alpha: s32) -> s32 {
     if fade_alpha < 0 { fade_alpha = 0 }
     if fade_alpha > 255 { fade_alpha = 255 }
     if color_alpha < 0 { color_alpha = 0 }

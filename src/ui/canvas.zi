@@ -1,4 +1,3 @@
-#module "canvas"
 #import "geometry"
 
 CanvasPolicyResult :: struct {
@@ -7,42 +6,47 @@ CanvasPolicyResult :: struct {
     world: Vector2
 }
 
-CanvasZoom :: (zoom: float) -> float #export {
+#program_export
+CanvasZoom :: (zoom: float32) -> float32 {
     if zoom <= 0.01 { return 1.0 }
     return zoom
 }
 
-CanvasContains :: (bounds: Rectangle, point: Vector2) -> bool #export {
+#program_export
+CanvasContains :: (bounds: Rectangle, point: Vector2) -> bool {
     return point.x >= bounds.x && point.y >= bounds.y &&
     point.x <= bounds.x + bounds.width &&
     point.y <= bounds.y + bounds.height
 }
 
-CanvasPointToScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
-scroll_y: i32, zoom: float) -> Vector2 #export {
+#program_export
+CanvasPointToScreen :: (bounds: Rectangle, point: Vector2, scroll_x: s32,
+scroll_y: s32, zoom: float32) -> Vector2 {
     out: Vector2 = point
-    z: float = CanvasZoom(zoom)
-    out.x = out.x - (float)scroll_x
-    out.y = out.y - (float)scroll_y
+    z: float32 = CanvasZoom(zoom)
+    out.x = out.x - cast(float32)scroll_x
+    out.y = out.y - cast(float32)scroll_y
     out.x = bounds.x + (out.x - bounds.x) * z
     out.y = bounds.y + (out.y - bounds.y) * z
     return out
 }
 
-CanvasPointFromScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
-scroll_y: i32, zoom: float) -> Vector2 #export {
+#program_export
+CanvasPointFromScreen :: (bounds: Rectangle, point: Vector2, scroll_x: s32,
+scroll_y: s32, zoom: float32) -> Vector2 {
     out: Vector2 = point
-    z: float = CanvasZoom(zoom)
-    out.x = bounds.x + (out.x - bounds.x) / z + (float)scroll_x
-    out.y = bounds.y + (out.y - bounds.y) / z + (float)scroll_y
+    z: float32 = CanvasZoom(zoom)
+    out.x = bounds.x + (out.x - bounds.x) / z + cast(float32)scroll_x
+    out.y = bounds.y + (out.y - bounds.y) / z + cast(float32)scroll_y
     return out
 }
 
+#program_export
 CanvasRectToScreenBounds :: (bounds: Rectangle, rect: Rectangle,
-scroll_x: i32, scroll_y: i32, zoom: float) -> Rectangle #export {
+scroll_x: s32, scroll_y: s32, zoom: float32) -> Rectangle {
     out: Rectangle = rect
-    z: float = CanvasZoom(zoom)
-    point: Vector2 = CanvasPointToScreen(bounds, (Vector2){rect.x, rect.y},
+    z: float32 = CanvasZoom(zoom)
+    point: Vector2 = CanvasPointToScreen(bounds, Vector2.{rect.x, rect.y},
     scroll_x, scroll_y, z)
     out.x = point.x
     out.y = point.y
@@ -51,8 +55,9 @@ scroll_x: i32, scroll_y: i32, zoom: float) -> Rectangle #export {
     return out
 }
 
-CanvasBeginResultFor :: (bounds: Rectangle, mouse: Vector2, scroll_x: i32,
-scroll_y: i32, zoom: float, mouse_down: bool) -> CanvasPolicyResult #export {
+#program_export
+CanvasBeginResultFor :: (bounds: Rectangle, mouse: Vector2, scroll_x: s32,
+scroll_y: s32, zoom: float32, mouse_down: bool) -> CanvasPolicyResult {
     result: CanvasPolicyResult
     result.active = CanvasContains(bounds, mouse)
     result.dragging = result.active && mouse_down
@@ -61,8 +66,9 @@ scroll_y: i32, zoom: float, mouse_down: bool) -> CanvasPolicyResult #export {
     return result
 }
 
-CanvasHitTestStep :: (point: Vector2, item: Rectangle, item_index: i32,
-current_index: i32) -> i32 #export {
+#program_export
+CanvasHitTestStep :: (point: Vector2, item: Rectangle, item_index: s32,
+current_index: s32) -> s32 {
     if current_index >= 0 { return current_index }
     if CanvasContains(item, point) { return item_index }
     return -1
@@ -72,32 +78,36 @@ current_index: i32) -> i32 #export {
 # camera inherits its parent; an explicit camera replaces it and is restored
 # when the lexical scope exits.
 CanvasTransform :: struct {
-    scale: float
-    x: float
-    y: float
+    scale: float32
+    x: float32
+    y: float32
 }
 
+#program_export
 CanvasHasTransform :: (has_scroll_x: bool, has_scroll_y: bool,
-has_zoom: bool, zoom: float) -> bool #export {
+has_zoom: bool, zoom: float32) -> bool {
     return has_scroll_x || has_scroll_y ||
     (has_zoom && zoom > 0.01 && zoom != 1.0)
 }
 
-CanvasTransformFor :: (bounds: Rectangle, scroll_x: i32, scroll_y: i32,
-zoom: float) -> CanvasTransform #export {
-    scale: float = CanvasZoom(zoom)
-    return (CanvasTransform){scale,
-        bounds.x - (bounds.x + (float)scroll_x) * scale,
-        bounds.y - (bounds.y + (float)scroll_y) * scale}
+#program_export
+CanvasTransformFor :: (bounds: Rectangle, scroll_x: s32, scroll_y: s32,
+zoom: float32) -> CanvasTransform {
+    scale: float32 = CanvasZoom(zoom)
+    return CanvasTransform.{scale,
+        bounds.x - (bounds.x + cast(float32)scroll_x) * scale,
+        bounds.y - (bounds.y + cast(float32)scroll_y) * scale}
 }
 
-CanvasTransformPoint :: (transform: CanvasTransform, point: Vector2) -> Vector2 #export {
-    return (Vector2){point.x * transform.scale + transform.x,
+#program_export
+CanvasTransformPoint :: (transform: CanvasTransform, point: Vector2) -> Vector2 {
+    return Vector2.{point.x * transform.scale + transform.x,
         point.y * transform.scale + transform.y}
 }
 
-CanvasTransformRect :: (transform: CanvasTransform, bounds: Rectangle) -> Rectangle #export {
-    point: Vector2 = CanvasTransformPoint(transform, (Vector2){bounds.x, bounds.y})
-    return (Rectangle){point.x, point.y, bounds.width * transform.scale,
+#program_export
+CanvasTransformRect :: (transform: CanvasTransform, bounds: Rectangle) -> Rectangle {
+    point: Vector2 = CanvasTransformPoint(transform, Vector2.{bounds.x, bounds.y})
+    return Rectangle.{point.x, point.y, bounds.width * transform.scale,
         bounds.height * transform.scale}
 }

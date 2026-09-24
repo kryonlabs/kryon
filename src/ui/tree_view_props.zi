@@ -1,10 +1,9 @@
-#module "tree_view_props"
 #import "geometry"
 
 TreeItem :: struct {
     label: string
-    depth: i32
-    id: i32
+    depth: s32
+    id: s32
     expanded: bool
     selectable: bool
 }
@@ -22,21 +21,21 @@ TreeViewNavigation :: enum {
 TreeViewProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    selected_id: i32
-    scroll_offset: i32
-    scroll_delta: i32
-    row_height: i32
-    scale: float
+    id: s32
+    class_name: s32
+    selected_id: s32
+    scroll_offset: s32
+    scroll_delta: s32
+    row_height: s32
+    scale: float32
     focused: bool
     navigation: TreeViewNavigation
     disabled: bool
 }
 
 TreeViewResult :: struct {
-    node: i32
-    selected_id: i32
-    scroll_offset: i32
+    node: s32
+    selected_id: s32
+    scroll_offset: s32
     changed: bool
 }

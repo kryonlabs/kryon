@@ -1,4 +1,3 @@
-#module "accessibility_props"
 
 AccessibilityAction :: enum {
     AccessibilityActionFocus = 1

@@ -9,27 +9,27 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/dpi.zi" "$work/dpi.zi"
 cat > "$work/use_dpi.zi" <<'EOF'
-#module "use_dpi"
 #import "dpi"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     state: DPIState = InitialDPI()
     state = ResolveDPI(state, 720, 1400,
-        (DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
+        cast(DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
     if state.ui_scale != 1.0 || state.layout_width != 720 ||
         state.layout_height != 1400 { return 0 }
     state = InvalidateDPI(state)
     state = ResolveDPI(state, 720, 1400,
-        (DPIPlatform)DPIPlatformAndroid, 0.0, 1.0, 1.0)
+        cast(DPIPlatform)DPIPlatformAndroid, 0.0, 1.0, 1.0)
     if state.ui_scale != 2.5 || state.layout_width != 288 ||
         state.layout_height != 560 { return 0 }
     state = InvalidateDPI(state)
     state = ResolveDPI(state, 720, 1400,
-        (DPIPlatform)DPIPlatformDesktop, 1.75, 1.0, 1.0)
+        cast(DPIPlatform)DPIPlatformDesktop, 1.75, 1.0, 1.0)
     if state.ui_scale != 1.75 || state.layout_width != 411 ||
         state.layout_height != 800 { return 0 }
     state = OffscreenDPI(state, 320, 560, 2.0,
-        (DPIPlatform)DPIPlatformWeb, 0.0, 1.0, 1.0)
+        cast(DPIPlatform)DPIPlatformWeb, 0.0, 1.0, 1.0)
     if state.render_scale != 2.0 || state.layout_width != 160 ||
         state.layout_height != 280 { return 0 }
     if ScalePixels(5, 1.5) != 8 || ClampPixels(20, 0, 10, 1.5) != 15 {

@@ -1,72 +1,78 @@
-#module "accessibility_policy"
 #import "accessibility_props"
 #import "widget_kind"
 
-AccessibilityActionsFor :: (kind: i32, focus_id: i32, disabled: bool,
-captured: bool, read_only: bool) -> u32 #export {
-    if focus_id <= 0 || disabled || captured { return (u32)0 }
-    if kind == (i32)WidgetKindButton || kind == (i32)WidgetKindCard ||
-    kind == (i32)WidgetKindCheckbox || kind == (i32)WidgetKindToggle ||
-    kind == (i32)WidgetKindRadio || kind == (i32)WidgetKindLink {
-        return (u32)AccessibilityActionFocus | (u32)AccessibilityActionActivate
+#program_export
+AccessibilityActionsFor :: (kind: s32, focus_id: s32, disabled: bool,
+captured: bool, read_only: bool) -> u32 {
+    if focus_id <= 0 || disabled || captured { return cast(u32)0 }
+    if kind == cast(s32)WidgetKindButton || kind == cast(s32)WidgetKindCard ||
+    kind == cast(s32)WidgetKindCheckbox || kind == cast(s32)WidgetKindToggle ||
+    kind == cast(s32)WidgetKindRadio || kind == cast(s32)WidgetKindLink {
+        return cast(u32)AccessibilityActionFocus | cast(u32)AccessibilityActionActivate
     }
-    if kind == (i32)WidgetKindTextField || kind == (i32)WidgetKindTextArea {
-        actions: u32 = (u32)AccessibilityActionFocus | (u32)AccessibilityActionSetSelection
-        if !read_only { actions |= (u32)AccessibilityActionSetValue }
+    if kind == cast(s32)WidgetKindTextField || kind == cast(s32)WidgetKindTextArea {
+        actions: u32 = cast(u32)AccessibilityActionFocus | cast(u32)AccessibilityActionSetSelection
+        if !read_only { actions |= cast(u32)AccessibilityActionSetValue }
         return actions
     }
-    if kind == (i32)WidgetKindListBox {
-        actions: u32 = (u32)AccessibilityActionFocus
+    if kind == cast(s32)WidgetKindListBox {
+        actions: u32 = cast(u32)AccessibilityActionFocus
         if !read_only {
-            actions |= (u32)AccessibilityActionSelectItem | (u32)AccessibilityActionDeselectItem |
-                (u32)AccessibilityActionSelectAll | (u32)AccessibilityActionClearSelection
+            actions |= cast(u32)AccessibilityActionSelectItem | cast(u32)AccessibilityActionDeselectItem |
+                cast(u32)AccessibilityActionSelectAll | cast(u32)AccessibilityActionClearSelection
         }
         return actions
     }
-    return (u32)0
+    return cast(u32)0
 }
 
-AccessibilityActionAllowed :: (actions: u32, action: AccessibilityAction) -> bool #export {
-    if action != (AccessibilityAction)AccessibilityActionFocus &&
-    action != (AccessibilityAction)AccessibilityActionActivate &&
-    action != (AccessibilityAction)AccessibilityActionSetValue &&
-    action != (AccessibilityAction)AccessibilityActionSetSelection &&
-    action != (AccessibilityAction)AccessibilityActionSelectItem &&
-    action != (AccessibilityAction)AccessibilityActionDeselectItem &&
-    action != (AccessibilityAction)AccessibilityActionSelectAll &&
-    action != (AccessibilityAction)AccessibilityActionClearSelection {
+#program_export
+AccessibilityActionAllowed :: (actions: u32, action: AccessibilityAction) -> bool {
+    if action != cast(AccessibilityAction)AccessibilityActionFocus &&
+    action != cast(AccessibilityAction)AccessibilityActionActivate &&
+    action != cast(AccessibilityAction)AccessibilityActionSetValue &&
+    action != cast(AccessibilityAction)AccessibilityActionSetSelection &&
+    action != cast(AccessibilityAction)AccessibilityActionSelectItem &&
+    action != cast(AccessibilityAction)AccessibilityActionDeselectItem &&
+    action != cast(AccessibilityAction)AccessibilityActionSelectAll &&
+    action != cast(AccessibilityAction)AccessibilityActionClearSelection {
         return false
     }
-    return (actions & (u32)action) != (u32)0
+    return (actions & cast(u32)action) != cast(u32)0
 }
 
-AccessibilityValueByteLimit :: () -> i32 #export {
+#program_export
+AccessibilityValueByteLimit :: () -> s32 {
     return 65536
 }
 
-AccessibilityItemSelectionFor :: (selected: bool, row: i32, item: i32,
-action: AccessibilityAction) -> bool #export {
-    if action == (AccessibilityAction)AccessibilityActionSelectAll { return true }
-    if action == (AccessibilityAction)AccessibilityActionClearSelection { return false }
+#program_export
+AccessibilityItemSelectionFor :: (selected: bool, row: s32, item: s32,
+action: AccessibilityAction) -> bool {
+    if action == cast(AccessibilityAction)AccessibilityActionSelectAll { return true }
+    if action == cast(AccessibilityAction)AccessibilityActionClearSelection { return false }
     if row != item { return selected }
-    return action == (AccessibilityAction)AccessibilityActionSelectItem
+    return action == cast(AccessibilityAction)AccessibilityActionSelectItem
 }
 
-AccessibilitySingleSelectionFor :: (selected: i32, item: i32,
-action: AccessibilityAction) -> i32 #export {
-    if action == (AccessibilityAction)AccessibilityActionSelectItem { return item }
-    if action == (AccessibilityAction)AccessibilityActionClearSelection ||
-    (action == (AccessibilityAction)AccessibilityActionDeselectItem && selected == item) { return -1 }
+#program_export
+AccessibilitySingleSelectionFor :: (selected: s32, item: s32,
+action: AccessibilityAction) -> s32 {
+    if action == cast(AccessibilityAction)AccessibilityActionSelectItem { return item }
+    if action == cast(AccessibilityAction)AccessibilityActionClearSelection ||
+    (action == cast(AccessibilityAction)AccessibilityActionDeselectItem && selected == item) { return -1 }
     return selected
 }
 
-AccessibilityValueCodepointAllowed :: (codepoint: i32, multiline: bool) -> bool #export {
+#program_export
+AccessibilityValueCodepointAllowed :: (codepoint: s32, multiline: bool) -> bool {
     if codepoint >= 32 && codepoint != 127 { return true }
     return multiline && (codepoint == 9 || codepoint == 10 || codepoint == 13)
 }
 
-AccessibilityValueFits :: (bytes: i32, codepoints: i32, capacity: i32,
-max_codepoints: i32) -> bool #export {
+#program_export
+AccessibilityValueFits :: (bytes: s32, codepoints: s32, capacity: s32,
+max_codepoints: s32) -> bool {
     if bytes < 0 || bytes > AccessibilityValueByteLimit() || capacity <= bytes {
         return false
     }

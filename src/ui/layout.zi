@@ -1,35 +1,35 @@
-#module "layout"
 #import "geometry"
 
 LayoutMetrics :: struct {
     content: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }
 
 ColumnProps :: struct {
     bounds: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
     key: u64
 }
 
 # Stable widget identity from UTF-8 bytes. This matches the native Key
 # helper, including its historical offset basis and zero sentinel.
-KeyHash :: (text: string) -> u64 #export {
-    hash: u64 = (u64)1469598103934665603
-    index: i32 = 0
+#program_export
+KeyHash :: (text: string) -> u64 {
+    hash: u64 = cast(u64)1469598103934665603
+    index: s32 = 0
     while index < text.length {
-        hash = (hash ^ (u64)text[index]) * (u64)1099511628211
+        hash = (hash ^ cast(u64)text[index]) * cast(u64)1099511628211
         index += 1
     }
-    if hash == (u64)0 { return (u64)1 }
+    if hash == cast(u64)0 { return cast(u64)1 }
     return hash
 }
 
 CenteredColumnLayout :: struct {
-    x: i32
-    width: i32
+    x: s32
+    width: s32
 }
 
 FlexDirection :: enum {
@@ -58,8 +58,8 @@ FlexProps :: struct {
     direction: FlexDirection
     justify_content: JustifyContent
     align_items: AlignItems
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }
 
 FlexCursor :: struct {
@@ -67,24 +67,25 @@ FlexCursor :: struct {
     item: Rectangle
     direction: FlexDirection
     align_items: AlignItems
-    position: float
-    gap: float
-    remaining: i32
+    position: float32
+    gap: float32
+    remaining: s32
 }
 
-Clamp :: (value: i32, min_value: i32, max_value: i32) -> i32 {
-    out: i32 = value
+Clamp :: (value: s32, min_value: s32, max_value: s32) -> s32 {
+    out: s32 = value
     if out < min_value { out = min_value }
     if out > max_value { out = max_value }
     return out
 }
 
-CenteredColumnFor :: (view_width: i32, max_width: i32, side_padding: i32) -> CenteredColumnLayout #export {
+#program_export
+CenteredColumnFor :: (view_width: s32, max_width: s32, side_padding: s32) -> CenteredColumnLayout {
     layout: CenteredColumnLayout
     if view_width < 0 { view_width = 0 }
     if max_width < 0 { max_width = 0 }
     if side_padding < 0 { side_padding = 0 }
-    available: i32 = view_width - side_padding * 2
+    available: s32 = view_width - side_padding * 2
     if available < 0 { available = 0 }
     layout.width = max_width
     if layout.width > available { layout.width = available }
@@ -92,54 +93,61 @@ CenteredColumnFor :: (view_width: i32, max_width: i32, side_padding: i32) -> Cen
     return layout
 }
 
-PageSidePaddingFor :: (view_width: i32) -> i32 #export {
-    padding: i32 = view_width / 50
+#program_export
+PageSidePaddingFor :: (view_width: s32) -> s32 {
+    padding: s32 = view_width / 50
     return Clamp(padding, 12, 24)
 }
 
-DesktopWidthThresholdFor :: (scale: float) -> i32 #export {
+#program_export
+DesktopWidthThresholdFor :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(500.0 * scale + 0.5)
+    return cast(s32)(500.0 * scale + 0.5)
 }
 
-IsDesktopWidth :: (view_width: i32, scale: float) -> bool #export {
+#program_export
+IsDesktopWidth :: (view_width: s32, scale: float32) -> bool {
     return view_width >= DesktopWidthThresholdFor(scale)
 }
 
-LayoutMetricsFor :: (bounds: Rectangle, gap: i32, padding: i32) -> LayoutMetrics #export {
+#program_export
+LayoutMetricsFor :: (bounds: Rectangle, gap: s32, padding: s32) -> LayoutMetrics {
     metrics: LayoutMetrics
     if gap < 0 { gap = 0 }
     if padding < 0 { padding = 0 }
     metrics.gap = gap
     metrics.padding = padding
-    metrics.content.x = bounds.x + (float)padding
-    metrics.content.y = bounds.y + (float)padding
-    metrics.content.width = bounds.width - (float)(padding * 2)
-    metrics.content.height = bounds.height - (float)(padding * 2)
+    metrics.content.x = bounds.x + cast(float32)padding
+    metrics.content.y = bounds.y + cast(float32)padding
+    metrics.content.width = bounds.width - cast(float32)(padding * 2)
+    metrics.content.height = bounds.height - cast(float32)(padding * 2)
     if metrics.content.width < 0.0 { metrics.content.width = 0.0 }
     if metrics.content.height < 0.0 { metrics.content.height = 0.0 }
     return metrics
 }
 
-LayoutScopeBounds :: (bounds: Rectangle, fallback_width: i32, fallback_height: i32) -> Rectangle #export {
+#program_export
+LayoutScopeBounds :: (bounds: Rectangle, fallback_width: s32, fallback_height: s32) -> Rectangle {
     out: Rectangle = bounds
-    if out.width <= 0.0 { out.width = (float)fallback_width }
-    if out.height <= 0.0 { out.height = (float)fallback_height }
+    if out.width <= 0.0 { out.width = cast(float32)fallback_width }
+    if out.height <= 0.0 { out.height = cast(float32)fallback_height }
     if out.width < 0.0 { out.width = 0.0 }
     if out.height < 0.0 { out.height = 0.0 }
     return out
 }
 
+#program_export
 LayoutCursorForChild :: (metrics: LayoutMetrics, horizontal: bool,
-    child_index: i32, previous_extent_sum: float) -> float #export {
+    child_index: s32, previous_extent_sum: float32) -> float32 {
     if child_index < 0 { child_index = 0 }
-    base: float = metrics.content.y
+    base: float32 = metrics.content.y
     if horizontal { base = metrics.content.x }
-    return base + previous_extent_sum + (float)(child_index * metrics.gap)
+    return base + previous_extent_sum + cast(float32)(child_index * metrics.gap)
 }
 
+#program_export
 LayoutChildBounds :: (declared: Rectangle, current: Rectangle,
-    metrics: LayoutMetrics, horizontal: bool, cursor: float) -> Rectangle #export {
+    metrics: LayoutMetrics, horizontal: bool, cursor: float32) -> Rectangle {
     out: Rectangle = current
     if horizontal {
         out.x = cursor
@@ -154,8 +162,9 @@ LayoutChildBounds :: (declared: Rectangle, current: Rectangle,
     return out
 }
 
+#program_export
 StackChildBounds :: (declared: Rectangle, current: Rectangle,
-    metrics: LayoutMetrics) -> Rectangle #export {
+    metrics: LayoutMetrics) -> Rectangle {
     out: Rectangle = current
     if declared.x != 0.0 || declared.y != 0.0 { return current }
     out.x = metrics.content.x
@@ -165,64 +174,66 @@ StackChildBounds :: (declared: Rectangle, current: Rectangle,
     return out
 }
 
-BeginFlexCursor :: (props: FlexProps, count: i32, total_item_extent: float) -> FlexCursor #export {
+#program_export
+BeginFlexCursor :: (props: FlexProps, count: s32, total_item_extent: float32) -> FlexCursor {
     cursor: FlexCursor
     metrics := LayoutMetricsFor(props.bounds, props.gap, props.padding)
-    horizontal := props.direction != (FlexDirection)FlexColumn
-    available := horizontal ? metrics.content.width : metrics.content.height
+    horizontal := props.direction != cast(FlexDirection)FlexColumn
+    available := ifx horizontal then metrics.content.width else metrics.content.height
     cursor.content = metrics.content
     cursor.direction = props.direction
     cursor.align_items = props.align_items
-    cursor.gap = (float)metrics.gap
-    cursor.position = horizontal ? metrics.content.x : metrics.content.y
+    cursor.gap = cast(float32)metrics.gap
+    cursor.position = ifx horizontal then metrics.content.x else metrics.content.y
     if count <= 0 { return cursor }
     cursor.remaining = count
     if total_item_extent < 0.0 { total_item_extent = 0.0 }
-    remaining := available - total_item_extent - cursor.gap * (float)(count - 1)
+    remaining := available - total_item_extent - cursor.gap * cast(float32)(count - 1)
     if remaining < 0.0 { remaining = 0.0 }
-    offset: float = 0.0
-    if props.justify_content == (JustifyContent)JustifyCenter {
+    offset: float32 = 0.0
+    if props.justify_content == cast(JustifyContent)JustifyCenter {
         offset = remaining / 2.0
-    } else if props.justify_content == (JustifyContent)JustifyEnd {
+    } else if props.justify_content == cast(JustifyContent)JustifyEnd {
         offset = remaining
-    } else if props.justify_content == (JustifyContent)JustifySpaceBetween && count > 1 {
-        cursor.gap += remaining / (float)(count - 1)
-    } else if props.justify_content == (JustifyContent)JustifySpaceAround {
-        offset = remaining / (float)count / 2.0
-        cursor.gap += remaining / (float)count
-    } else if props.justify_content == (JustifyContent)JustifySpaceEvenly {
-        offset = remaining / ((float)count + 1.0)
+    } else if props.justify_content == cast(JustifyContent)JustifySpaceBetween && count > 1 {
+        cursor.gap += remaining / cast(float32)(count - 1)
+    } else if props.justify_content == cast(JustifyContent)JustifySpaceAround {
+        offset = remaining / cast(float32)count / 2.0
+        cursor.gap += remaining / cast(float32)count
+    } else if props.justify_content == cast(JustifyContent)JustifySpaceEvenly {
+        offset = remaining / (cast(float32)count + 1.0)
         cursor.gap += offset
     }
     cursor.position += offset
     return cursor
 }
 
-FlexStep :: (cursor: FlexCursor, width: float, height: float) -> FlexCursor #export {
-    cursor.item = (Rectangle){0.0, 0.0, 0.0, 0.0}
+#program_export
+FlexStep :: (cursor: FlexCursor, width: float32, height: float32) -> FlexCursor {
+    cursor.item = Rectangle.{0.0, 0.0, 0.0, 0.0}
     if cursor.remaining <= 0 { return cursor }
     if width < 0.0 { width = 0.0 }
     if height < 0.0 { height = 0.0 }
-    horizontal := cursor.direction != (FlexDirection)FlexColumn
-    cross_size := horizontal ? cursor.content.height : cursor.content.width
-    extent := horizontal ? height : width
-    if cursor.align_items == (AlignItems)AlignStretch && extent <= 0.0 {
+    horizontal := cursor.direction != cast(FlexDirection)FlexColumn
+    cross_size := ifx horizontal then cursor.content.height else cursor.content.width
+    extent := ifx horizontal then height else width
+    if cursor.align_items == cast(AlignItems)AlignStretch && extent <= 0.0 {
         extent = cross_size
     }
     cross_remaining := cross_size - extent
     if cross_remaining < 0.0 { cross_remaining = 0.0 }
-    cross_offset: float = 0.0
-    if cursor.align_items == (AlignItems)AlignCenter {
+    cross_offset: float32 = 0.0
+    if cursor.align_items == cast(AlignItems)AlignCenter {
         cross_offset = cross_remaining / 2.0
-    } else if cursor.align_items == (AlignItems)AlignEnd {
+    } else if cursor.align_items == cast(AlignItems)AlignEnd {
         cross_offset = cross_remaining
     }
     if horizontal {
-        cursor.item = (Rectangle){cursor.position,
+        cursor.item = Rectangle.{cursor.position,
             cursor.content.y + cross_offset, width, extent}
         cursor.position += width + cursor.gap
     } else {
-        cursor.item = (Rectangle){cursor.content.x + cross_offset,
+        cursor.item = Rectangle.{cursor.content.x + cross_offset,
             cursor.position, extent, height}
         cursor.position += height + cursor.gap
     }

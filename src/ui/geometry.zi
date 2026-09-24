@@ -1,23 +1,23 @@
-#module "geometry"
 
 Vector2 :: struct {
-    x: float
-    y: float
+    x: float32
+    y: float32
 }
 
 Rectangle :: struct {
-    x: float
-    y: float
-    width: float
-    height: float
+    x: float32
+    y: float32
+    width: float32
+    height: float32
 }
 
-RectangleIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle #export {
+#program_export
+RectangleIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     result: Rectangle
-    right: float = a.x + a.width
-    bottom: float = a.y + a.height
-    other_right: float = b.x + b.width
-    other_bottom: float = b.y + b.height
+    right: float32 = a.x + a.width
+    bottom: float32 = a.y + a.height
+    other_right: float32 = b.x + b.width
+    other_bottom: float32 = b.y + b.height
     result.x = a.x
     if b.x > a.x { result.x = b.x }
     result.y = a.y

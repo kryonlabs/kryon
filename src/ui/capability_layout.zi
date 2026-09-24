@@ -1,4 +1,3 @@
-#module "capability_layout"
 #import "geometry"
 
 Capability :: enum {
@@ -13,53 +12,56 @@ Capability :: enum {
 }
 
 SafeArea :: struct {
-    left: i32
-    top: i32
-    right: i32
-    bottom: i32
+    left: s32
+    top: s32
+    right: s32
+    bottom: s32
 }
 
 ViewportSpec :: struct {
-    width: i32
-    height: i32
+    width: s32
+    height: s32
     safe_area: SafeArea
-    padding: i32
-    reserved_top: i32
-    reserved_bottom: i32
-    min_content_width: i32
+    padding: s32
+    reserved_top: s32
+    reserved_bottom: s32
+    min_content_width: s32
 }
 
-CapabilitiesHas :: (capabilities: u32, capability: Capability) -> bool #export {
-    return (capabilities & (u32)capability) != (u32)0
+#program_export
+CapabilitiesHas :: (capabilities: u32, capability: Capability) -> bool {
+    return (capabilities & cast(u32)capability) != cast(u32)0
 }
 
-CapabilityName :: (capability: Capability) -> string #export {
-    if capability == (Capability)FilePicker { return "file-picker" }
-    if capability == (Capability)FileSave { return "file-save" }
-    if capability == (Capability)Share { return "share" }
-    if capability == (Capability)SecureStore { return "secure-store" }
-    if capability == (Capability)BiometricUnlock { return "biometric-unlock" }
-    if capability == (Capability)Notifications { return "notifications" }
-    if capability == (Capability)Wakelock { return "wakelock" }
-    if capability == (Capability)Clipboard { return "clipboard" }
+#program_export
+CapabilityName :: (capability: Capability) -> string {
+    if capability == cast(Capability)FilePicker { return "file-picker" }
+    if capability == cast(Capability)FileSave { return "file-save" }
+    if capability == cast(Capability)Share { return "share" }
+    if capability == cast(Capability)SecureStore { return "secure-store" }
+    if capability == cast(Capability)BiometricUnlock { return "biometric-unlock" }
+    if capability == cast(Capability)Notifications { return "notifications" }
+    if capability == cast(Capability)Wakelock { return "wakelock" }
+    if capability == cast(Capability)Clipboard { return "clipboard" }
     return "unknown"
 }
 
-SafeContentRect :: (spec: ViewportSpec) -> Rectangle #export {
-    x: i32 = spec.safe_area.left + spec.padding
-    y: i32 = spec.safe_area.top + spec.reserved_top + spec.padding
-    width: i32 = spec.width - spec.safe_area.left - spec.safe_area.right -
+#program_export
+SafeContentRect :: (spec: ViewportSpec) -> Rectangle {
+    x: s32 = spec.safe_area.left + spec.padding
+    y: s32 = spec.safe_area.top + spec.reserved_top + spec.padding
+    width: s32 = spec.width - spec.safe_area.left - spec.safe_area.right -
                  spec.padding * 2
-    height: i32 = spec.height - spec.safe_area.top - spec.safe_area.bottom -
+    height: s32 = spec.height - spec.safe_area.top - spec.safe_area.bottom -
                   spec.reserved_top - spec.reserved_bottom - spec.padding * 2
     if spec.min_content_width > 0 && width < spec.min_content_width {
         width = spec.min_content_width
     }
     if height < 0 { height = 0 }
     bounds: Rectangle
-    bounds.x = (float)x
-    bounds.y = (float)y
-    bounds.width = (float)width
-    bounds.height = (float)height
+    bounds.x = cast(float32)x
+    bounds.y = cast(float32)y
+    bounds.width = cast(float32)width
+    bounds.height = cast(float32)height
     return bounds
 }

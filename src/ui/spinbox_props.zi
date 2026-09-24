@@ -1,16 +1,15 @@
-#module "spinbox_props"
 #import "geometry"
 
 SpinboxProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     label: string
-    min: i32
-    max: i32
-    step: i32
-    value: i32
+    min: s32
+    max: s32
+    step: s32
+    value: s32
     disabled: bool
     value_text: string
     wrap: bool

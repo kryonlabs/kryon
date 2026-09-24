@@ -1,4 +1,3 @@
-#module "style"
 #import "control_props"
 #import "geometry"
 #import "surface"
@@ -9,8 +8,9 @@ StateFlags :: struct {
     selected: bool
 }
 
-ResolveFlags :: (state: i32, disabled: bool, loading: bool,
-    selected: bool) -> StateFlags #export {
+#program_export
+ResolveFlags :: (state: s32, disabled: bool, loading: bool,
+    selected: bool) -> StateFlags {
     flags: StateFlags
     flags.disabled = disabled || state == ButtonStateDisabled
     flags.loading = loading || state == ButtonStateLoading
@@ -19,16 +19,17 @@ ResolveFlags :: (state: i32, disabled: bool, loading: bool,
 }
 
 InteractionState :: struct {
-    state: i32
+    state: s32
     hovered: bool
     pressed: bool
     focused: bool
 }
 
-ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
+#program_export
+ResolveInteraction :: (explicit_state: s32, disabled: bool, loading: bool,
     pressed: bool, hovered: bool, focused: bool,
-    selected: bool) -> InteractionState #export {
-    state: i32 = ResolveState(explicit_state, disabled, loading,
+    selected: bool) -> InteractionState {
+    state: s32 = ResolveState(explicit_state, disabled, loading,
         pressed, hovered, focused, selected)
     interaction: InteractionState
     interaction.state = state
@@ -49,20 +50,20 @@ StyleData :: struct {
     foreground: u32
     border: u32
     focus: u32
-    radius: float
-    border_width: float
-    opacity: float
-    padding_x: float
-    padding_y: float
-    gap: float
-    font_size: float
-    icon_size: float
-    offset_x: float
-    offset_y: float
+    radius: float32
+    border_width: float32
+    opacity: float32
+    padding_x: float32
+    padding_y: float32
+    gap: float32
+    font_size: float32
+    icon_size: float32
+    offset_x: float32
+    offset_y: float32
     background_end: u32
     material: MaterialKind
     typeface: string
-    letter_spacing: float
+    letter_spacing: float32
 }
 
 StyleFrame :: struct {
@@ -80,16 +81,18 @@ StyleStates :: struct {
     selected: StyleData
 }
 
-DefaultFields :: () -> u32 #export {
-    return (u32)StyleBackground | (u32)StyleForeground | (u32)StyleBorder |
-        (u32)StyleFocus | (u32)StyleRadius | (u32)StyleBorderWidth |
-        (u32)StyleOpacity | (u32)StylePaddingX | (u32)StylePaddingY |
-        (u32)StyleGap | (u32)StyleFontSize | (u32)StyleIconSize |
-        (u32)StyleContentOffset | (u32)StyleMaterial
+#program_export
+DefaultFields :: () -> u32 {
+    return cast(u32)StyleBackground | cast(u32)StyleForeground | cast(u32)StyleBorder |
+        cast(u32)StyleFocus | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleIconSize |
+        cast(u32)StyleContentOffset | cast(u32)StyleMaterial
 }
 
-ResolveState :: (explicit_state: i32, disabled: bool, loading: bool,
-    pressed: bool, hovered: bool, focused: bool, selected: bool) -> i32 #export {
+#program_export
+ResolveState :: (explicit_state: s32, disabled: bool, loading: bool,
+    pressed: bool, hovered: bool, focused: bool, selected: bool) -> s32 {
     if disabled { return ButtonStateDisabled }
     if loading { return ButtonStateLoading }
     if explicit_state != ButtonStateAuto { return explicit_state }
@@ -100,39 +103,44 @@ ResolveState :: (explicit_state: i32, disabled: bool, loading: bool,
     return ButtonStateNormal
 }
 
-ResolveFont :: (requested: i32, inherited: i32,
-    fallback: i32) -> i32 #export {
+#program_export
+ResolveFont :: (requested: s32, inherited: s32,
+    fallback: s32) -> s32 {
     if requested > 0 { return requested }
     if inherited > 0 { return inherited }
     if fallback > 0 { return fallback }
     return 16
 }
 
-StyleFontValue :: (fields: u32, font_size: float) -> i32 #export {
-    if (fields & (u32)StyleFontSize) == (u32)0 { return 0 }
+#program_export
+StyleFontValue :: (fields: u32, font_size: float32) -> s32 {
+    if (fields & cast(u32)StyleFontSize) == cast(u32)0 { return 0 }
     if font_size <= 0.0 { return 0 }
-    return (i32)(font_size + 0.5)
+    return cast(s32)(font_size + 0.5)
 }
 
-StyleOpacityValue :: (fields: u32, opacity: float) -> float #export {
-    if (fields & (u32)StyleOpacity) == (u32)0 { return 1.0 }
+#program_export
+StyleOpacityValue :: (fields: u32, opacity: float32) -> float32 {
+    if (fields & cast(u32)StyleOpacity) == cast(u32)0 { return 1.0 }
     if opacity < 0.0 { return 0.0 }
     if opacity > 1.0 { return 1.0 }
     return opacity
 }
 
-FitHeight :: (requested: float, minimum: float, content: float,
-    padding: float) -> float #export {
+#program_export
+FitHeight :: (requested: float32, minimum: float32, content: float32,
+    padding: float32) -> float32 {
     if requested > 0.0 { return requested }
     if padding < 0.0 { padding = 0.0 }
     if content < 0.0 { content = 0.0 }
-    height: float = content + 2.0 * padding
+    height: float32 = content + 2.0 * padding
     if height < minimum { height = minimum }
     return height
 }
 
-ContentBounds :: (width: float, height: float, padding_x: float,
-    padding_y: float) -> Rectangle #export {
+#program_export
+ContentBounds :: (width: float32, height: float32, padding_x: float32,
+    padding_y: float32) -> Rectangle {
     box: Rectangle
     if padding_x < 0.0 { padding_x = 0.0 }
     if padding_y < 0.0 { padding_y = 0.0 }
@@ -145,8 +153,9 @@ ContentBounds :: (width: float, height: float, padding_x: float,
     return box
 }
 
-InsetBounds :: (bounds: Rectangle, padding_x: float, padding_y: float,
-    scale: float) -> Rectangle #export {
+#program_export
+InsetBounds :: (bounds: Rectangle, padding_x: float32, padding_y: float32,
+    scale: float32) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
     content: Rectangle = ContentBounds(bounds.width / scale,
         bounds.height / scale, padding_x, padding_y)
@@ -158,31 +167,33 @@ InsetBounds :: (bounds: Rectangle, padding_x: float, padding_y: float,
     return result
 }
 
-MergeValues :: (base: StyleData, override: StyleData) -> StyleData #export {
-    if (override.fields & (u32)StyleBackground) != (u32)0 { base.background = override.background }
-    if (override.fields & (u32)StyleForeground) != (u32)0 { base.foreground = override.foreground }
-    if (override.fields & (u32)StyleBorder) != (u32)0 { base.border = override.border }
-    if (override.fields & (u32)StyleFocus) != (u32)0 { base.focus = override.focus }
-    if (override.fields & (u32)StyleRadius) != (u32)0 { base.radius = override.radius }
-    if (override.fields & (u32)StyleBorderWidth) != (u32)0 { base.border_width = override.border_width }
-    if (override.fields & (u32)StyleOpacity) != (u32)0 { base.opacity = override.opacity }
-    if (override.fields & (u32)StylePaddingX) != (u32)0 { base.padding_x = override.padding_x }
-    if (override.fields & (u32)StylePaddingY) != (u32)0 { base.padding_y = override.padding_y }
-    if (override.fields & (u32)StyleGap) != (u32)0 { base.gap = override.gap }
-    if (override.fields & (u32)StyleFontSize) != (u32)0 { base.font_size = override.font_size }
-    if (override.fields & (u32)StyleIconSize) != (u32)0 { base.icon_size = override.icon_size }
-    if (override.fields & (u32)StyleContentOffset) != (u32)0 { base.offset_x = override.offset_x }
-    if (override.fields & (u32)StyleContentOffset) != (u32)0 { base.offset_y = override.offset_y }
-    if (override.fields & (u32)StyleBackgroundEnd) != (u32)0 { base.background_end = override.background_end }
-    if (override.fields & (u32)StyleMaterial) != (u32)0 { base.material = override.material }
-    if (override.fields & (u32)StyleTypeface) != (u32)0 { base.typeface = override.typeface }
-    if (override.fields & (u32)StyleLetterSpacing) != (u32)0 { base.letter_spacing = override.letter_spacing }
+#program_export
+MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
+    if (override.fields & cast(u32)StyleBackground) != cast(u32)0 { base.background = override.background }
+    if (override.fields & cast(u32)StyleForeground) != cast(u32)0 { base.foreground = override.foreground }
+    if (override.fields & cast(u32)StyleBorder) != cast(u32)0 { base.border = override.border }
+    if (override.fields & cast(u32)StyleFocus) != cast(u32)0 { base.focus = override.focus }
+    if (override.fields & cast(u32)StyleRadius) != cast(u32)0 { base.radius = override.radius }
+    if (override.fields & cast(u32)StyleBorderWidth) != cast(u32)0 { base.border_width = override.border_width }
+    if (override.fields & cast(u32)StyleOpacity) != cast(u32)0 { base.opacity = override.opacity }
+    if (override.fields & cast(u32)StylePaddingX) != cast(u32)0 { base.padding_x = override.padding_x }
+    if (override.fields & cast(u32)StylePaddingY) != cast(u32)0 { base.padding_y = override.padding_y }
+    if (override.fields & cast(u32)StyleGap) != cast(u32)0 { base.gap = override.gap }
+    if (override.fields & cast(u32)StyleFontSize) != cast(u32)0 { base.font_size = override.font_size }
+    if (override.fields & cast(u32)StyleIconSize) != cast(u32)0 { base.icon_size = override.icon_size }
+    if (override.fields & cast(u32)StyleContentOffset) != cast(u32)0 { base.offset_x = override.offset_x }
+    if (override.fields & cast(u32)StyleContentOffset) != cast(u32)0 { base.offset_y = override.offset_y }
+    if (override.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0 { base.background_end = override.background_end }
+    if (override.fields & cast(u32)StyleMaterial) != cast(u32)0 { base.material = override.material }
+    if (override.fields & cast(u32)StyleTypeface) != cast(u32)0 { base.typeface = override.typeface }
+    if (override.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 { base.letter_spacing = override.letter_spacing }
     base.fields = base.fields | override.fields
     return base
 }
 
+#program_export
 ResolveValues :: (base: StyleData, states: StyleStates,
-    state: i32) -> StyleData #export {
+    state: s32) -> StyleData {
     base = MergeValues(base, states.normal)
     if state == ButtonStateHover { return MergeValues(base, states.hover) }
     if state == ButtonStatePressed { return MergeValues(base, states.pressed) }

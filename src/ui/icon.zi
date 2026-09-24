@@ -1,48 +1,50 @@
-#module "icon"
 #import "geometry"
 
 IconLayout :: struct {
     bounds: Rectangle
-    size: i32
+    size: s32
     drawable: bool
 }
 
-IconScaledPx :: (px: i32, scale: float) -> i32 {
+IconScaledPx :: (px: s32, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)((float)px * scale + 0.5)
+    return cast(s32)(cast(float32)px * scale + 0.5)
 }
 
-IconClampPx :: (px: i32, min_px: i32, max_px: i32, scale: float) -> i32 {
-    value: i32 = IconScaledPx(px, scale)
-    min_value: i32 = IconScaledPx(min_px, scale)
-    max_value: i32 = IconScaledPx(max_px, scale)
+IconClampPx :: (px: s32, min_px: s32, max_px: s32, scale: float32) -> s32 {
+    value: s32 = IconScaledPx(px, scale)
+    min_value: s32 = IconScaledPx(min_px, scale)
+    max_value: s32 = IconScaledPx(max_px, scale)
     if value < min_value { value = min_value }
     if value > max_value { value = max_value }
     return value
 }
 
-IconButtonSizeFor :: (kind: i32, scale: float) -> i32 #export {
+#program_export
+IconButtonSizeFor :: (kind: s32, scale: float32) -> s32 {
     if kind == 0 { return IconClampPx(12, 10, 18, scale) }
     if kind == 2 { return IconClampPx(16, 14, 24, scale) }
     if kind == 3 { return IconClampPx(20, 18, 28, scale) }
     return IconClampPx(14, 12, 20, scale)
 }
 
-IconButtonPaddingFor :: (kind: i32, scale: float) -> i32 #export {
+#program_export
+IconButtonPaddingFor :: (kind: s32, scale: float32) -> s32 {
     if kind == 0 { return IconScaledPx(4, scale) }
     if kind == 2 { return IconScaledPx(6, scale) }
     if kind == 3 { return IconScaledPx(7, scale) }
     return IconScaledPx(5, scale)
 }
 
-IconLayoutFor :: (x: i32, y: i32, size: i32) -> IconLayout #export {
+#program_export
+IconLayoutFor :: (x: s32, y: s32, size: s32) -> IconLayout {
     layout: IconLayout
     layout.size = size
     if layout.size < 0 { layout.size = 0 }
-    layout.bounds.x = (float)x
-    layout.bounds.y = (float)y
-    layout.bounds.width = (float)layout.size
-    layout.bounds.height = (float)layout.size
+    layout.bounds.x = cast(float32)x
+    layout.bounds.y = cast(float32)y
+    layout.bounds.width = cast(float32)layout.size
+    layout.bounds.height = cast(float32)layout.size
     layout.drawable = layout.size > 0
     return layout
 }

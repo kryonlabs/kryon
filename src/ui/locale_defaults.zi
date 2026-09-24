@@ -1,109 +1,112 @@
-#module "locale_defaults"
 
 LocaleDefaultEntry :: struct {
     key: string
     value: string
 }
 
-LocaleDefaultCount :: () -> i32 #export {
+#program_export
+LocaleDefaultCount :: () -> s32 {
     return 29
 }
 
-LocaleDefaultAt :: (index: i32) -> LocaleDefaultEntry #export {
+#program_export
+LocaleDefaultAt :: (index: s32) -> LocaleDefaultEntry {
     if index == 0 {
-        return (LocaleDefaultEntry){"theme_style_label", "Style"}
+        return LocaleDefaultEntry.{"theme_style_label", "Style"}
     }
     if index == 1 {
-        return (LocaleDefaultEntry){"theme_style_system", "System"}
+        return LocaleDefaultEntry.{"theme_style_system", "System"}
     }
     if index == 2 {
-        return (LocaleDefaultEntry){"theme_style_classic", "Classic"}
+        return LocaleDefaultEntry.{"theme_style_classic", "Classic"}
     }
     if index == 3 {
-        return (LocaleDefaultEntry){"theme_style_default", "Default"}
+        return LocaleDefaultEntry.{"theme_style_default", "Default"}
     }
     if index == 4 {
-        return (LocaleDefaultEntry){"theme_style_fluent", "Fluent"}
+        return LocaleDefaultEntry.{"theme_style_fluent", "Fluent"}
     }
     if index == 5 {
-        return (LocaleDefaultEntry){"theme_style_adwaita", "Adwaita"}
+        return LocaleDefaultEntry.{"theme_style_adwaita", "Adwaita"}
     }
     if index == 6 {
-        return (LocaleDefaultEntry){"theme_style_liquid_glass", "Liquid Glass"}
+        return LocaleDefaultEntry.{"theme_style_liquid_glass", "Liquid Glass"}
     }
     if index == 7 {
-        return (LocaleDefaultEntry){"theme_label", "Theme source"}
+        return LocaleDefaultEntry.{"theme_label", "Theme source"}
     }
     if index == 8 {
-        return (LocaleDefaultEntry){"theme_app", "Kryon"}
+        return LocaleDefaultEntry.{"theme_app", "Kryon"}
     }
     if index == 9 {
-        return (LocaleDefaultEntry){"theme_system", "System"}
+        return LocaleDefaultEntry.{"theme_system", "System"}
     }
     if index == 10 {
-        return (LocaleDefaultEntry){"theme_mode_label", "Mode"}
+        return LocaleDefaultEntry.{"theme_mode_label", "Mode"}
     }
     if index == 11 {
-        return (LocaleDefaultEntry){"theme_follow_device", "Follow device"}
+        return LocaleDefaultEntry.{"theme_follow_device", "Follow device"}
     }
     if index == 12 {
-        return (LocaleDefaultEntry){"theme_light", "Light"}
+        return LocaleDefaultEntry.{"theme_light", "Light"}
     }
     if index == 13 {
-        return (LocaleDefaultEntry){"theme_dark", "Dark"}
+        return LocaleDefaultEntry.{"theme_dark", "Dark"}
     }
     if index == 14 {
-        return (LocaleDefaultEntry){"theme_color_label", "Color theme"}
+        return LocaleDefaultEntry.{"theme_color_label", "Color theme"}
     }
     if index == 15 {
-        return (LocaleDefaultEntry){"theme_picker_title", "Color theme"}
+        return LocaleDefaultEntry.{"theme_picker_title", "Color theme"}
     }
     if index == 16 {
-        return (LocaleDefaultEntry){"theme_sky", "Sky"}
+        return LocaleDefaultEntry.{"theme_sky", "Sky"}
     }
     if index == 17 {
-        return (LocaleDefaultEntry){"theme_ocean", "Ocean"}
+        return LocaleDefaultEntry.{"theme_ocean", "Ocean"}
     }
     if index == 18 {
-        return (LocaleDefaultEntry){"theme_forest", "Forest"}
+        return LocaleDefaultEntry.{"theme_forest", "Forest"}
     }
     if index == 19 {
-        return (LocaleDefaultEntry){"theme_sunset", "Sunset"}
+        return LocaleDefaultEntry.{"theme_sunset", "Sunset"}
     }
     if index == 20 {
-        return (LocaleDefaultEntry){"theme_lavender", "Lavender"}
+        return LocaleDefaultEntry.{"theme_lavender", "Lavender"}
     }
     if index == 21 {
-        return (LocaleDefaultEntry){"theme_cherry", "Cherry"}
+        return LocaleDefaultEntry.{"theme_cherry", "Cherry"}
     }
     if index == 22 {
-        return (LocaleDefaultEntry){"theme_dawn", "Dawn"}
+        return LocaleDefaultEntry.{"theme_dawn", "Dawn"}
     }
     if index == 23 {
-        return (LocaleDefaultEntry){"theme_sage", "Sage"}
+        return LocaleDefaultEntry.{"theme_sage", "Sage"}
     }
     if index == 24 {
-        return (LocaleDefaultEntry){"theme_sepia", "Sepia"}
+        return LocaleDefaultEntry.{"theme_sepia", "Sepia"}
     }
     if index == 25 {
-        return (LocaleDefaultEntry){"theme_mono", "Mono"}
+        return LocaleDefaultEntry.{"theme_mono", "Mono"}
     }
     if index == 26 {
-        return (LocaleDefaultEntry){"theme_mint", "Mint"}
+        return LocaleDefaultEntry.{"theme_mint", "Mint"}
     }
     if index == 27 {
-        return (LocaleDefaultEntry){"theme_cobalt", "Cobalt"}
+        return LocaleDefaultEntry.{"theme_cobalt", "Cobalt"}
     }
     if index == 28 {
-        return (LocaleDefaultEntry){"theme_sweet", "Sweet"}
+        return LocaleDefaultEntry.{"theme_sweet", "Sweet"}
     }
-    return (LocaleDefaultEntry){"", ""}
+    return LocaleDefaultEntry.{"", ""}
 }
 
-LocaleDefaultKeyAt :: (index: i32) -> string #export {
+#program_export
+LocaleDefaultKeyAt :: (index: s32) -> string {
     return LocaleDefaultAt(index).key
 }
 
-LocaleDefaultValueAt :: (index: i32) -> string #export {
+#program_export
+LocaleDefaultValueAt :: (index: s32) -> string {
     return LocaleDefaultAt(index).value
 }

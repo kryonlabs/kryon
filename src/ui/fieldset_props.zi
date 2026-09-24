@@ -1,10 +1,9 @@
-#module "fieldset_props"
 #import "geometry"
 
 FieldsetProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     title: string
 }

@@ -1,12 +1,11 @@
-#module "radio_props"
 #import "geometry"
 
 RadioProps :: struct {
     key: u64
     bounds: Rectangle
     label: string
-    id: i32
+    id: s32
     checked: bool
     disabled: bool
-    class_name: i32
+    class_name: s32
 }

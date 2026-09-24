@@ -1,12 +1,11 @@
-#module "checkbox_props"
 #import "geometry"
 
 CheckboxProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
+    id: s32
     label: string
     checked: bool
     disabled: bool
-    class_name: i32
+    class_name: s32
 }

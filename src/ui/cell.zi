@@ -1,4 +1,3 @@
-#module "cell"
 
 # A terminal cell is a character and resolved colors. A platform host may
 # compare successive buffers and emit ANSI, but it never decides layout.
@@ -9,23 +8,25 @@ Cell :: struct {
     attributes: u32
 }
 
-CellPut :: (cells: []Cell, columns: i32, rows: i32,
-    x: i32, y: i32, cell: Cell) -> bool #export {
+#program_export
+CellPut :: (cells: []Cell, columns: s32, rows: s32,
+    x: s32, y: s32, cell: Cell) -> bool {
     if columns <= 0 || rows <= 0 || x < 0 || y < 0 ||
        x >= columns || y >= rows { return false }
-    at: i64 = (i64)y * (i64)columns + (i64)x
-    if at < (i64)0 || at >= (i64)cells.length { return false }
-    cells[(i32)at] = cell
+    at: s64 = cast(s64)y * cast(s64)columns + cast(s64)x
+    if at < cast(s64)0 || at >= cast(s64)cells.length { return false }
+    cells[cast(s32)at] = cell
     return true
 }
 
-CellFill :: (cells: []Cell, columns: i32, rows: i32,
-    x: i32, y: i32, width: i32, height: i32,
-    cell: Cell) #export {
+#program_export
+CellFill :: (cells: []Cell, columns: s32, rows: s32,
+    x: s32, y: s32, width: s32, height: s32,
+    cell: Cell) {
     if width <= 0 || height <= 0 { return }
-    row: i32 = 0
+    row: s32 = 0
     while row < height {
-        col: i32 = 0
+        col: s32 = 0
         while col < width {
             CellPut(cells, columns, rows, x + col, y + row, cell)
             col += 1
@@ -36,49 +37,50 @@ CellFill :: (cells: []Cell, columns: i32, rows: i32,
 
 CellCodepointResult :: struct {
     value: u32
-    after: i32
+    after: s32
 }
 
 # Returns one Unicode scalar and the byte offset after it. Invalid UTF-8
 # consumes one byte and yields U+FFFD so the terminal renderer stays aligned.
-CellCodepoint :: (text: string, at: i32) -> CellCodepointResult #export {
+#program_export
+CellCodepoint :: (text: string, at: s32) -> CellCodepointResult {
     result: CellCodepointResult
     result.after = at
     if at < 0 || at >= text.length { return result }
     first: u8 = text[at]
     result.after = at + 1
-    if first < (u8)128 {
-        result.value = (u32)first
+    if first < cast(u8)128 {
+        result.value = cast(u32)first
         return result
     }
-    result.value = (u32)65533
-    count: i32 = 0
-    codepoint: u32 = (u32)0
-    minimum: u32 = (u32)0
-    if first >= (u8)194 && first <= (u8)223 {
+    result.value = cast(u32)65533
+    count: s32 = 0
+    codepoint: u32 = cast(u32)0
+    minimum: u32 = cast(u32)0
+    if first >= cast(u8)194 && first <= cast(u8)223 {
         count = 1
-        codepoint = (u32)(first & (u8)31)
-        minimum = (u32)128
-    } else if first >= (u8)224 && first <= (u8)239 {
+        codepoint = cast(u32)(first & cast(u8)31)
+        minimum = cast(u32)128
+    } else if first >= cast(u8)224 && first <= cast(u8)239 {
         count = 2
-        codepoint = (u32)(first & (u8)15)
-        minimum = (u32)2048
-    } else if first >= (u8)240 && first <= (u8)244 {
+        codepoint = cast(u32)(first & cast(u8)15)
+        minimum = cast(u32)2048
+    } else if first >= cast(u8)240 && first <= cast(u8)244 {
         count = 3
-        codepoint = (u32)(first & (u8)7)
-        minimum = (u32)65536
+        codepoint = cast(u32)(first & cast(u8)7)
+        minimum = cast(u32)65536
     }
     if count == 0 { return result }
     if at + count >= text.length { return result }
-    index: i32 = 1
+    index: s32 = 1
     while index <= count {
         part: u8 = text[at + index]
-        if part < (u8)128 || part > (u8)191 { return result }
-        codepoint = (codepoint << (u32)6) | (u32)(part & (u8)63)
+        if part < cast(u8)128 || part > cast(u8)191 { return result }
+        codepoint = (codepoint << cast(u32)6) | cast(u32)(part & cast(u8)63)
         index += 1
     }
-    if codepoint < minimum || codepoint > (u32)1114111 ||
-       (codepoint >= (u32)55296 && codepoint <= (u32)57343) {
+    if codepoint < minimum || codepoint > cast(u32)1114111 ||
+       (codepoint >= cast(u32)55296 && codepoint <= cast(u32)57343) {
         return result
     }
     result.value = codepoint
@@ -89,12 +91,13 @@ CellCodepoint :: (text: string, at: i32) -> CellCodepointResult #export {
 # Write one scalar per cell. This primitive covers single-width text; a
 # complete terminal layout layer must resolve wide and combining clusters in
 # Ziran before submitting cells. The host only encodes and presents them.
-CellWrite :: (cells: []Cell, columns: i32, rows: i32,
-    x: i32, y: i32, text: string, foreground: u32,
-    background: u32, attributes: u32) -> i32 #export {
-    at: i32 = 0
-    col: i32 = x
-    written: i32 = 0
+#program_export
+CellWrite :: (cells: []Cell, columns: s32, rows: s32,
+    x: s32, y: s32, text: string, foreground: u32,
+    background: u32, attributes: u32) -> s32 {
+    at: s32 = 0
+    col: s32 = x
+    written: s32 = 0
     while at < text.length {
         point: CellCodepointResult = CellCodepoint(text, at)
         if point.after <= at { break }

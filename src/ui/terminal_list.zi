@@ -1,14 +1,14 @@
-#module "terminal_list"
 
 # Keyboard navigation for a list presented as terminal rows. The application
 # owns its items; a terminal host supplies key events and viewport height.
 TerminalListState :: struct {
-    selected: i32
-    first: i32
+    selected: s32
+    first: s32
 }
 
-TerminalListMove :: (state: TerminalListState, count: i32,
-    visible_rows: i32, key: i32) -> TerminalListState #export {
+#program_export
+TerminalListMove :: (state: TerminalListState, count: s32,
+    visible_rows: s32, key: s32) -> TerminalListState {
     if count <= 0 {
         state.selected = 0
         state.first = 0
@@ -28,7 +28,7 @@ TerminalListMove :: (state: TerminalListState, count: i32,
     if state.selected < 0 { state.selected = 0 }
     if state.selected >= count { state.selected = count - 1 }
 
-    max_first: i32 = count - visible_rows
+    max_first: s32 = count - visible_rows
     if max_first < 0 { max_first = 0 }
     if state.first < 0 { state.first = 0 }
     if state.first > max_first { state.first = max_first }

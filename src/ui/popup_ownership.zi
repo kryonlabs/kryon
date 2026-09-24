@@ -1,12 +1,11 @@
-#module "popup_ownership"
 
 # Hosts provide parent links and opaque identity equality. This driver compares
 # whole branches: a child of an earlier sibling stays below the later sibling.
 # Parent cursors and their storage are owned by the host, not copied into `.zir`.
 PopupOrder :: struct {
-    phase: i32
-    depth_a: i32
-    depth_b: i32
+    phase: s32
+    depth_a: s32
+    depth_b: s32
     a_deeper: bool
     move_a: bool
     move_b: bool
@@ -16,8 +15,9 @@ PopupOrder :: struct {
     above: bool
 }
 
+#program_export
 PopupOrderAdvance :: (state: PopupOrder, has_a: bool, has_b: bool,
-same: bool, same_parent: bool, order_a: u64, order_b: u64) -> PopupOrder #export {
+same: bool, same_parent: bool, order_a: u64, order_b: u64) -> PopupOrder {
     result: PopupOrder = state
     result.move_a = false
     result.move_b = false
@@ -77,31 +77,35 @@ PopupAncestry :: struct {
     contains: bool
 }
 
+#program_export
 PopupAncestryAdvance :: (has_owner: bool, same: bool,
-has_parent: bool) -> PopupAncestry #export {
+has_parent: bool) -> PopupAncestry {
     result: PopupAncestry
     result.contains = has_owner && same
     result.done = !has_owner || same || !has_parent
     return result
 }
 
+#program_export
 PopupInputCaptured :: (has_owner: bool, alive: bool,
-has_top: bool, same_top: bool) -> bool #export {
+has_top: bool, same_top: bool) -> bool {
     if has_owner && !alive { return true }
     return has_top && (!has_owner || !same_top)
 }
 
-PopupOwnerAlive :: (has_parent: bool, parent_alive: bool) -> bool #export {
+#program_export
+PopupOwnerAlive :: (has_parent: bool, parent_alive: bool) -> bool {
     return !has_parent || parent_alive
 }
 
-PopupOwnerRetired :: (alive: bool, seen: u64, frame: u64) -> bool #export {
+#program_export
+PopupOwnerRetired :: (alive: bool, seen: u64, frame: u64) -> bool {
     return !alive || seen != frame
 }
 
 PopupFocusState :: struct {
-    restore_focus: i32
-    last_focus: i32
+    restore_focus: s32
+    last_focus: s32
     has_last_focus: bool
     autofocus: bool
 }
@@ -111,8 +115,9 @@ PopupFocusDecision :: struct {
     acquire: bool
 }
 
+#program_export
 PopupFocusInitialize :: (state: PopupFocusState, exists: bool,
-focused: i32) -> PopupFocusState #export {
+focused: s32) -> PopupFocusState {
     if exists { return state }
     result: PopupFocusState
     result.restore_focus = focused
@@ -120,8 +125,9 @@ focused: i32) -> PopupFocusState #export {
     return result
 }
 
-PopupFocusRegister :: (state: PopupFocusState, id: i32, focused: i32,
-alive: bool, eligible: bool, keyboard_captured: bool) -> PopupFocusDecision #export {
+#program_export
+PopupFocusRegister :: (state: PopupFocusState, id: s32, focused: s32,
+alive: bool, eligible: bool, keyboard_captured: bool) -> PopupFocusDecision {
     result: PopupFocusDecision
     result.state = state
     if !alive || id <= 0 { return result }
@@ -136,8 +142,9 @@ alive: bool, eligible: bool, keyboard_captured: bool) -> PopupFocusDecision #exp
     return result
 }
 
-PopupFocusRestore :: (state: PopupFocusState, focused: i32,
-in_branch: bool, registered: bool) -> bool #export {
+#program_export
+PopupFocusRestore :: (state: PopupFocusState, focused: s32,
+in_branch: bool, registered: bool) -> bool {
     return in_branch && (registered ||
     (state.has_last_focus && state.last_focus == focused))
 }

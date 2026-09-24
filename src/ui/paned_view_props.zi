@@ -1,4 +1,3 @@
-#module "paned_view_props"
 #import "geometry"
 
 DropZone :: enum {
@@ -13,20 +12,20 @@ DropZone :: enum {
 PanedViewProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     vertical: bool
-    split: i32
+    split: s32
     has_split: bool
-    min_first: i32
-    min_second: i32
-    scale: float
+    min_first: s32
+    min_second: s32
+    scale: float32
     disabled: bool
 }
 
 PanedViewResult :: struct {
-    node: i32
-    split: i32
+    node: s32
+    split: s32
     changed: bool
     first: Rectangle
     second: Rectangle

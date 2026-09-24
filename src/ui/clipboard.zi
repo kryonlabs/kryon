@@ -1,4 +1,3 @@
-#module "clipboard"
 
 # Clipboard bytes are owned by the caller. The host supplies observations and
 # applies writes; this module selects which value is visible to a widget.
@@ -19,21 +18,24 @@ ClipboardWrite :: struct {
     text: string
 }
 
+#program_export
 ClipboardSetPrimary :: (state: ClipboardState,
-    text: string) -> ClipboardState #export {
+    text: string) -> ClipboardState {
     state.primary = text
     return state
 }
 
+#program_export
 ClipboardRequestWrite :: (state: ClipboardState,
-    text: string) -> ClipboardState #export {
+    text: string) -> ClipboardState {
     state.system = text
     state.pending_write = true
     return state
 }
 
+#program_export
 ClipboardCopySelection :: (state: ClipboardState,
-    text: string) -> ClipboardState #export {
+    text: string) -> ClipboardState {
     state.primary = text
     if text.length > 0 {
         state = ClipboardRequestWrite(state, text)
@@ -41,37 +43,42 @@ ClipboardCopySelection :: (state: ClipboardState,
     return state
 }
 
+#program_export
 ClipboardObserve :: (state: ClipboardState,
-    text: string) -> ClipboardState #export {
+    text: string) -> ClipboardState {
     if !state.pending_write { state.system = text }
     return state
 }
 
-ClipboardPendingWrite :: (state: ClipboardState) -> ClipboardWrite #export {
+#program_export
+ClipboardPendingWrite :: (state: ClipboardState) -> ClipboardWrite {
     write: ClipboardWrite
     write.available = state.pending_write
     if write.available { write.text = state.system }
     return write
 }
 
-ClipboardWriteCompleted :: (state: ClipboardState) -> ClipboardState #export {
+#program_export
+ClipboardWriteCompleted :: (state: ClipboardState) -> ClipboardState {
     state.pending_write = false
     return state
 }
 
+#program_export
 ClipboardRead :: (state: ClipboardState,
-    source: ClipboardSource) -> string #export {
-    if source == (ClipboardSource)ClipboardPrimary {
+    source: ClipboardSource) -> string {
+    if source == cast(ClipboardSource)ClipboardPrimary {
         return state.primary
     }
-    if source == (ClipboardSource)ClipboardPrimaryOrSystem &&
+    if source == cast(ClipboardSource)ClipboardPrimaryOrSystem &&
         state.primary.length > 0 {
         return state.primary
     }
     return state.system
 }
 
+#program_export
 ClipboardHasText :: (state: ClipboardState,
-    source: ClipboardSource) -> bool #export {
+    source: ClipboardSource) -> bool {
     return ClipboardRead(state, source).length > 0
 }

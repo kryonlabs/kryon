@@ -1,4 +1,3 @@
-#module "drag_drop"
 
 DragDropSourceDecision :: struct {
     clear_source: bool
@@ -9,19 +8,21 @@ DragDropSourceDecision :: struct {
 
 DragDropTargetDecision :: struct {
     accepted: bool
-    copy_size: i32
+    copy_size: s32
     clear_source: bool
     consume_release: bool
 }
 
-DragDropShouldClearSource :: (active: bool, active_source_id: i32,
-    source_id: i32, mouse_down: bool, mouse_released: bool) -> bool #export {
+#program_export
+DragDropShouldClearSource :: (active: bool, active_source_id: s32,
+    source_id: s32, mouse_down: bool, mouse_released: bool) -> bool {
     return active && active_source_id == source_id && !mouse_down &&
         !mouse_released
 }
 
+#program_export
 DragDropSourceValid :: (disabled: bool, content_disabled: bool,
-    has_type: bool, data_size: i32, max_size: i32, has_data: bool) -> bool #export {
+    has_type: bool, data_size: s32, max_size: s32, has_data: bool) -> bool {
     if disabled || content_disabled || !has_type { return false }
     if max_size >= 0 && data_size > max_size { return false }
     if data_size < 0 { return false }
@@ -29,43 +30,50 @@ DragDropSourceValid :: (disabled: bool, content_disabled: bool,
     return true
 }
 
-DragDropSourceStarts :: (valid: bool, hot: bool, mouse_pressed: bool) -> bool #export {
+#program_export
+DragDropSourceStarts :: (valid: bool, hot: bool, mouse_pressed: bool) -> bool {
     return valid && hot && mouse_pressed
 }
 
-DragDropSourceReturnsActive :: (active: bool, active_source_id: i32,
-    source_id: i32, mouse_down: bool, mouse_released: bool) -> bool #export {
+#program_export
+DragDropSourceReturnsActive :: (active: bool, active_source_id: s32,
+    source_id: s32, mouse_down: bool, mouse_released: bool) -> bool {
     return active && active_source_id == source_id &&
         (mouse_down || mouse_released)
 }
 
+#program_export
 DragDropTargetMatches :: (active: bool, has_type: bool,
-    same_type: bool) -> bool #export {
+    same_type: bool) -> bool {
     return active && has_type && same_type
 }
 
+#program_export
 DragDropTargetHot :: (disabled: bool, content_disabled: bool,
-    pointer_hot: bool) -> bool #export {
+    pointer_hot: bool) -> bool {
     return !disabled && !content_disabled && pointer_hot
 }
 
+#program_export
 DragDropTargetAccepts :: (disabled: bool, content_disabled: bool,
-    matches: bool, hot: bool, mouse_released: bool) -> bool #export {
+    matches: bool, hot: bool, mouse_released: bool) -> bool {
     return !disabled && !content_disabled && matches && hot && mouse_released
 }
 
-DragDropCopySize :: (data_size: i32, output_size: i32) -> i32 #export {
+#program_export
+DragDropCopySize :: (data_size: s32, output_size: s32) -> s32 {
     if data_size < 0 { data_size = 0 }
     if output_size < 0 { output_size = 0 }
     if data_size < output_size { return data_size }
     return output_size
 }
 
-DragDropSourceDecisionFor :: (active: bool, active_source_id: i32,
-    source_id: i32, disabled: bool, content_disabled: bool, has_type: bool,
-    data_size: i32, max_size: i32, has_data: bool, hot: bool,
+#program_export
+DragDropSourceDecisionFor :: (active: bool, active_source_id: s32,
+    source_id: s32, disabled: bool, content_disabled: bool, has_type: bool,
+    data_size: s32, max_size: s32, has_data: bool, hot: bool,
     mouse_pressed: bool, mouse_down: bool,
-    mouse_released: bool) -> DragDropSourceDecision #export {
+    mouse_released: bool) -> DragDropSourceDecision {
     decision: DragDropSourceDecision
     decision.clear_source = DragDropShouldClearSource(active,
         active_source_id, source_id, mouse_down, mouse_released)
@@ -80,10 +88,11 @@ DragDropSourceDecisionFor :: (active: bool, active_source_id: i32,
     return decision
 }
 
+#program_export
 DragDropTargetDecisionFor :: (disabled: bool, content_disabled: bool,
     active: bool, has_type: bool, same_type: bool, hot: bool,
-    mouse_released: bool, data_size: i32,
-    output_size: i32) -> DragDropTargetDecision #export {
+    mouse_released: bool, data_size: s32,
+    output_size: s32) -> DragDropTargetDecision {
     decision: DragDropTargetDecision
     matches: bool = DragDropTargetMatches(active, has_type, same_type)
     decision.accepted = DragDropTargetAccepts(disabled, content_disabled,

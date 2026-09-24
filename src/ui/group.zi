@@ -1,15 +1,15 @@
-#module "group"
 #import "geometry"
 #import "layout"
 
 GroupPolicy :: struct {
     bounds: Rectangle
     content: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }
 
-GroupPolicyFor :: (bounds: Rectangle, gap: i32, padding: i32) -> GroupPolicy #export {
+#program_export
+GroupPolicyFor :: (bounds: Rectangle, gap: s32, padding: s32) -> GroupPolicy {
     metrics: LayoutMetrics = LayoutMetricsFor(bounds, gap, padding)
     policy: GroupPolicy
     policy.bounds = bounds
@@ -19,8 +19,9 @@ GroupPolicyFor :: (bounds: Rectangle, gap: i32, padding: i32) -> GroupPolicy #ex
     return policy
 }
 
-ScreenGroupPolicyFor :: (bounds: Rectangle, fallback_width: i32,
-    fallback_height: i32, gap: i32, padding: i32) -> GroupPolicy #export {
+#program_export
+ScreenGroupPolicyFor :: (bounds: Rectangle, fallback_width: s32,
+    fallback_height: s32, gap: s32, padding: s32) -> GroupPolicy {
     scoped: Rectangle = LayoutScopeBounds(bounds, fallback_width, fallback_height)
     return GroupPolicyFor(scoped, gap, padding)
 }

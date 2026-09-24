@@ -1,12 +1,11 @@
-#module "progress_props"
 #import "geometry"
 
 ProgressProps :: struct {
     bounds: Rectangle
-    min: i32
-    max: i32
-    value: i32
+    min: s32
+    max: s32
+    value: s32
     label: string
-    class_name: i32
+    class_name: s32
     key: u64
 }

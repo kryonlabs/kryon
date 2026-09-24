@@ -1,4 +1,3 @@
-#module "control_props"
 
 ButtonTone :: enum {
     ButtonToneNeutral = 0

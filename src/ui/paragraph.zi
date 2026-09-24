@@ -1,34 +1,33 @@
-#module "paragraph"
 #import "text_align"
 
 ParagraphMetrics :: struct {
-    font: i32
-    line_gap: i32
-    icon_size: i32
-    width: i32
-    height: i32
-    next_y: i32
+    font: s32
+    line_gap: s32
+    icon_size: s32
+    width: s32
+    height: s32
+    next_y: s32
 }
 
 ParagraphLayoutPolicy :: struct {
-    space_width: i32
-    icon_spacing: i32
-    line_gap: i32
+    space_width: s32
+    icon_spacing: s32
+    line_gap: s32
 }
 
 ParagraphToken :: struct {
-    start: i32
-    end: i32
-    next: i32
+    start: s32
+    end: s32
+    next: s32
     valid: bool
     line_break: bool
     icon: bool
 }
 
 ParagraphLine :: struct {
-    start: i32
-    end: i32
-    width: float
+    start: s32
+    end: s32
+    width: float32
     has_content: bool
 }
 
@@ -42,11 +41,12 @@ ParagraphLineDecision :: struct {
 # explicit line breaks and inline icon recognition are shared language policy.
 # Non-breaking spaces and other UTF-8 sequences remain inside their word.
 ParagraphIsSpace :: (value: u8) -> bool {
-    return value == (u8)32 || value == (u8)9 ||
-    value == (u8)11 || value == (u8)12
+    return value == cast(u8)32 || value == cast(u8)9 ||
+    value == cast(u8)11 || value == cast(u8)12
 }
 
-ParagraphTokenNext :: (text: string, offset: i32, icons: bool) -> ParagraphToken #export {
+#program_export
+ParagraphTokenNext :: (text: string, offset: s32, icons: bool) -> ParagraphToken {
     token: ParagraphToken
     if offset < 0 {
         offset = 0
@@ -62,24 +62,24 @@ ParagraphTokenNext :: (text: string, offset: i32, icons: bool) -> ParagraphToken
     }
     token.valid = true
     value: u8 = text[offset]
-    if value == (u8)10 || value == (u8)13 {
+    if value == cast(u8)10 || value == cast(u8)13 {
         token.line_break = true
         offset += 1
-        if value == (u8)13 && offset < text.length && text[offset] == (u8)10 {
+        if value == cast(u8)13 && offset < text.length && text[offset] == cast(u8)10 {
             offset += 1
         }
-    } else if icons && value == (u8)37 && offset + 1 < text.length &&
-    text[offset + 1] == (u8)105 {
+    } else if icons && value == cast(u8)37 && offset + 1 < text.length &&
+    text[offset + 1] == cast(u8)105 {
         token.icon = true
         offset += 2
     } else {
         while offset < text.length {
             value = text[offset]
-            if ParagraphIsSpace(value) || value == (u8)10 || value == (u8)13 {
+            if ParagraphIsSpace(value) || value == cast(u8)10 || value == cast(u8)13 {
                 break
             }
-            if icons && value == (u8)37 && offset + 1 < text.length &&
-            text[offset + 1] == (u8)105 {
+            if icons && value == cast(u8)37 && offset + 1 < text.length &&
+            text[offset + 1] == cast(u8)105 {
                 break
             }
             offset += 1
@@ -90,7 +90,8 @@ ParagraphTokenNext :: (text: string, offset: i32, icons: bool) -> ParagraphToken
     return token
 }
 
-ParagraphTextSeparator :: (line: ParagraphLine) -> string #export {
+#program_export
+ParagraphTextSeparator :: (line: ParagraphLine) -> string {
     if line.has_content {
         return " "
     }
@@ -100,15 +101,16 @@ ParagraphTextSeparator :: (line: ParagraphLine) -> string #export {
 # The host supplies both the standalone element width and the measured joined
 # candidate (including shaping/letter spacing). No renderer chooses wrap points.
 # An oversized first element stays on its line; it never emits a phantom blank.
-ParagraphLineAdvance :: (line: ParagraphLine, index: i32,
-line_break: bool, end: bool, element_width: float, candidate_width: float,
-max_width: float) -> ParagraphLineDecision #export {
+#program_export
+ParagraphLineAdvance :: (line: ParagraphLine, index: s32,
+line_break: bool, end: bool, element_width: float32, candidate_width: float32,
+max_width: float32) -> ParagraphLineDecision {
     decision: ParagraphLineDecision
     decision.next = line
     if line_break || end {
         decision.emit = true
         decision.line = line
-        decision.next = (ParagraphLine){.start = index + 1, .end = index + 1}
+        decision.next = ParagraphLine.{.start = index + 1, .end = index + 1}
         return decision
     }
     if element_width < 0.0 {
@@ -120,7 +122,7 @@ max_width: float) -> ParagraphLineDecision #export {
     if line.has_content && max_width > 0.0 && candidate_width > max_width {
         decision.emit = true
         decision.line = line
-        decision.next = (ParagraphLine){.start = index}
+        decision.next = ParagraphLine.{.start = index}
     }
     decision.next.width = candidate_width
     if !decision.next.has_content {
@@ -131,8 +133,9 @@ max_width: float) -> ParagraphLineDecision #export {
     return decision
 }
 
+#program_export
 ParagraphElementSpacing :: (has_content: bool, icon: bool,
-policy: ParagraphLayoutPolicy) -> i32 #export {
+policy: ParagraphLayoutPolicy) -> s32 {
     if !has_content {
         return 0
     }
@@ -142,10 +145,11 @@ policy: ParagraphLayoutPolicy) -> i32 #export {
     return policy.space_width
 }
 
-ParagraphResolveMetrics :: (requested_font: i32, default_font: i32,
-requested_line_gap: i32, default_line_gap: i32, requested_icon_size: i32,
-requested_width: i32, fallback_width: i32, measured_height: i32,
-current_y: i32) -> ParagraphMetrics #export {
+#program_export
+ParagraphResolveMetrics :: (requested_font: s32, default_font: s32,
+requested_line_gap: s32, default_line_gap: s32, requested_icon_size: s32,
+requested_width: s32, fallback_width: s32, measured_height: s32,
+current_y: s32) -> ParagraphMetrics {
     metrics: ParagraphMetrics
     metrics.font = requested_font
     if metrics.font <= 0 { metrics.font = default_font }
@@ -162,63 +166,71 @@ current_y: i32) -> ParagraphMetrics #export {
     return metrics
 }
 
-ParagraphCanLayout :: (width: i32) -> bool #export {
+#program_export
+ParagraphCanLayout :: (width: s32) -> bool {
     return width > 0
 }
 
-ParagraphDefaultLineGap :: (scale: float) -> i32 #export {
+#program_export
+ParagraphDefaultLineGap :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(4.0 * scale)
+    return cast(s32)(4.0 * scale)
 }
 
-ParagraphLayoutPolicyFor :: (space_text_width: i32, letter_spacing: i32, requested_line_gap: i32, default_line_gap: i32, scale: float) -> ParagraphLayoutPolicy #export {
+#program_export
+ParagraphLayoutPolicyFor :: (space_text_width: s32, letter_spacing: s32, requested_line_gap: s32, default_line_gap: s32, scale: float32) -> ParagraphLayoutPolicy {
     policy: ParagraphLayoutPolicy
     policy.space_width = space_text_width + 2 * letter_spacing
     if policy.space_width < 0 { policy.space_width = 0 }
-    policy.icon_spacing = (i32)(4.0 * scale + 0.5)
+    policy.icon_spacing = cast(s32)(4.0 * scale + 0.5)
     policy.line_gap = requested_line_gap
     if policy.line_gap <= 0 { policy.line_gap = default_line_gap }
     return policy
 }
 
-ParagraphLayoutTotalHeight :: (line_count: i32, drawn_line_height: i32,
-line_gap: i32) -> i32 #export {
+#program_export
+ParagraphLayoutTotalHeight :: (line_count: s32, drawn_line_height: s32,
+line_gap: s32) -> s32 {
     if line_count <= 0 { return 0 }
-    height: i32 = line_count * drawn_line_height
+    height: s32 = line_count * drawn_line_height
     if line_count > 1 { height += (line_count - 1) * line_gap }
     if height < 0 { return 0 }
     return height
 }
 
-ParagraphLineXFor :: (x: i32, width: i32, line_width: i32, align: i32) -> i32 #export {
-    spare: i32 = width - line_width
+#program_export
+ParagraphLineXFor :: (x: s32, width: s32, line_width: s32, align: s32) -> s32 {
+    spare: s32 = width - line_width
     if align == TextAlignCenter { return x + spare / 2 }
     if align == TextAlignEnd { return x + spare }
     return x
 }
 
-ParagraphNextLineY :: (current_y: i32, drawn_line_height: i32,
-line_gap: i32, has_next_line: bool) -> i32 #export {
-    next: i32 = current_y + drawn_line_height
+#program_export
+ParagraphNextLineY :: (current_y: s32, drawn_line_height: s32,
+line_gap: s32, has_next_line: bool) -> s32 {
+    next: s32 = current_y + drawn_line_height
     if has_next_line { next += line_gap }
     return next
 }
 
-ParagraphLineStride :: (drawn_line_height: i32, line_gap: i32) -> i32 #export {
-    stride: i32 = drawn_line_height + line_gap
+#program_export
+ParagraphLineStride :: (drawn_line_height: s32, line_gap: s32) -> s32 {
+    stride: s32 = drawn_line_height + line_gap
     if stride < 1 { return 1 }
     return stride
 }
 
-ParagraphLineIndexFor :: (mouse_y: float, bounds_y: float,
-line_stride: i32, line_count: i32) -> i32 #export {
+#program_export
+ParagraphLineIndexFor :: (mouse_y: float32, bounds_y: float32,
+line_stride: s32, line_count: s32) -> s32 {
     if line_count <= 0 {
         return -1
     }
     if line_stride < 1 {
         line_stride = 1
     }
-    index: i32 = (i32)(mouse_y - bounds_y) / line_stride
+    index: s32 = cast(s32)(mouse_y - bounds_y) / line_stride
     if index < 0 {
         return 0
     }
@@ -228,15 +240,16 @@ line_stride: i32, line_count: i32) -> i32 #export {
     return index
 }
 
-ParagraphSelectionLocalOffsetFor :: (mouse_y: float, bounds_y: float,
-block_height: i32, line_length: i32, measured_offset: i32) -> i32 #export {
+#program_export
+ParagraphSelectionLocalOffsetFor :: (mouse_y: float32, bounds_y: float32,
+block_height: s32, line_length: s32, measured_offset: s32) -> s32 {
     if line_length < 0 {
         line_length = 0
     }
     if mouse_y < bounds_y {
         return 0
     }
-    if mouse_y > bounds_y + (float)block_height {
+    if mouse_y > bounds_y + cast(float32)block_height {
         return line_length
     }
     if measured_offset < 0 {

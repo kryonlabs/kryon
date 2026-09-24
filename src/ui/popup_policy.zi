@@ -1,4 +1,3 @@
-#module "popup_policy"
 #import "geometry"
 
 PopupDecision :: struct {
@@ -26,24 +25,26 @@ PopupDismissDecision :: struct {
     consume_release: bool
 }
 
-PopupPanelRole :: () -> i32 #export {
+#program_export
+PopupPanelRole :: () -> s32 {
     return 2
 }
 
-PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
+#program_export
+PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision {
     decision: PopupDecision
-    tooltip_flag: u32 = (u32)1
-    modal_flag: u32 = (u32)2
-    context_flag: u32 = (u32)4
+    tooltip_flag: u32 = cast(u32)1
+    modal_flag: u32 = cast(u32)2
+    context_flag: u32 = cast(u32)4
     known: u32 = tooltip_flag | modal_flag | context_flag
 
-    if (flags & ~known) != (u32)0 {
+    if (flags & ~known) != cast(u32)0 {
         return decision
     }
-    decision.tooltip = (flags & tooltip_flag) != (u32)0
-    decision.modal = (flags & modal_flag) != (u32)0
-    decision.context = (flags & context_flag) != (u32)0
-    selected: i32 = 0
+    decision.tooltip = (flags & tooltip_flag) != cast(u32)0
+    decision.modal = (flags & modal_flag) != cast(u32)0
+    decision.context = (flags & context_flag) != cast(u32)0
+    selected: s32 = 0
     if decision.tooltip { selected += 1 }
     if decision.modal { selected += 1 }
     if decision.context { selected += 1 }
@@ -60,8 +61,9 @@ PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
     return decision
 }
 
-PopupCanBegin :: (decision: PopupDecision, id: i32, bounds: Rectangle,
-trigger: Rectangle, has_open: bool) -> bool #export {
+#program_export
+PopupCanBegin :: (decision: PopupDecision, id: s32, bounds: Rectangle,
+trigger: Rectangle, has_open: bool) -> bool {
     if !decision.valid || id <= 0 || bounds.width <= 0.0 || bounds.height <= 0.0 {
         return false
     }
@@ -75,24 +77,27 @@ trigger: Rectangle, has_open: bool) -> bool #export {
     return true
 }
 
+#program_export
 PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
-disabled: bool) -> bool #export {
+disabled: bool) -> bool {
     if disabled && !decision.tooltip {
         return false
     }
     return open
 }
 
+#program_export
 PopupTooltipVisible :: (decision: PopupDecision, disabled: bool,
-pointer_inside_trigger: bool) -> bool #export {
+pointer_inside_trigger: bool) -> bool {
     if !decision.tooltip {
         return false
     }
     return !disabled && pointer_inside_trigger
 }
 
+#program_export
 PopupOpenFor :: (open: bool, open_requested: bool, close_requested: bool,
-has_open: bool) -> PopupOpenResult #export {
+has_open: bool) -> PopupOpenResult {
     result: PopupOpenResult
     result.open = open
     if !has_open {
@@ -108,8 +113,9 @@ has_open: bool) -> PopupOpenResult #export {
     return result
 }
 
+#program_export
 PopupInputBounds :: (decision: PopupDecision, bounds: Rectangle,
-view_width: float, view_height: float) -> Rectangle #export {
+view_width: float32, view_height: float32) -> Rectangle {
     input: Rectangle = bounds
     if decision.modal {
         input.x = 0.0
@@ -120,20 +126,23 @@ view_width: float, view_height: float) -> Rectangle #export {
     return input
 }
 
-PopupMenuBarOrigin :: (item: Rectangle, bar: Rectangle) -> Vector2 #export {
+#program_export
+PopupMenuBarOrigin :: (item: Rectangle, bar: Rectangle) -> Vector2 {
     origin: Vector2
     origin.x = item.x
     origin.y = bar.y + bar.height
     return origin
 }
 
-PopupContextOrigin :: (mouse: Vector2) -> Vector2 #export {
+#program_export
+PopupContextOrigin :: (mouse: Vector2) -> Vector2 {
     return mouse
 }
 
+#program_export
 PopupContextActivationFor :: (decision: PopupDecision, trigger: Rectangle,
 mouse: Vector2, disabled: bool, click_captured: bool,
-right_released: bool) -> PopupContextActivation #export {
+right_released: bool) -> PopupContextActivation {
     activation: PopupContextActivation
     activation.origin = PopupContextOrigin(mouse)
     if !decision.context || disabled || click_captured || !right_released {
@@ -148,8 +157,9 @@ right_released: bool) -> PopupContextActivation #export {
     return activation
 }
 
+#program_export
 PopupDismissDecisionFor :: (decision: PopupDecision, left_released: bool,
-release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision #export {
+release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision {
     dismiss: PopupDismissDecision
     if decision.tooltip || decision.modal {
         return dismiss
@@ -161,7 +171,8 @@ release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision #exp
     return dismiss
 }
 
-PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
+#program_export
+PopupBackdropAlpha :: (decision: PopupDecision) -> s32 {
     if decision.modal {
         return 180
     }
@@ -172,7 +183,7 @@ PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
 # caller-owned open value, paint layers and input registry. Keyboard ownership
 # must be sampled after entering the input scope, including on the first frame.
 PopupFrameInput :: struct {
-    id: i32
+    id: s32
     bounds: Rectangle
     trigger: Rectangle
     has_open: bool
@@ -181,8 +192,8 @@ PopupFrameInput :: struct {
     trigger_blocked: bool
     mouse: Vector2
     right_released: bool
-    view_width: float
-    view_height: float
+    view_width: float32
+    view_height: float32
 }
 
 PopupLifecycle :: struct {
@@ -194,10 +205,11 @@ PopupLifecycle :: struct {
     context_opened: bool
     consume_release: bool
     input_bounds: Rectangle
-    backdrop_alpha: i32
+    backdrop_alpha: s32
 }
 
-PopupLifecycleBegin :: (flags: u32, input: PopupFrameInput) -> PopupLifecycle #export {
+#program_export
+PopupLifecycleBegin :: (flags: u32, input: PopupFrameInput) -> PopupLifecycle {
     state: PopupLifecycle
     state.decision = PopupDecisionFor(flags, input.disabled)
     state.open = input.open
@@ -229,8 +241,9 @@ PopupLifecycleBegin :: (flags: u32, input: PopupFrameInput) -> PopupLifecycle #e
     return state
 }
 
+#program_export
 PopupLifecycleFinish :: (state: PopupLifecycle, open: bool,
-close_requested: bool) -> PopupLifecycle #export {
+close_requested: bool) -> PopupLifecycle {
     result: PopupLifecycle = state
     if !state.eligible {
         return result
@@ -243,8 +256,9 @@ close_requested: bool) -> PopupLifecycle #export {
 
 # Consume exactly the release that dismisses an open popup. Hosts with queues
 # feed releases in order; an already closed popup cannot consume later taps.
+#program_export
 PopupLifecycleRelease :: (state: PopupLifecycle, released: bool,
-consumed: bool, inside: bool) -> PopupLifecycle #export {
+consumed: bool, inside: bool) -> PopupLifecycle {
     result: PopupLifecycle = state
     result.consume_release = false
     if !state.visible {
@@ -259,8 +273,9 @@ consumed: bool, inside: bool) -> PopupLifecycle #export {
     return result
 }
 
+#program_export
 PopupLifecycleKeyboard :: (state: PopupLifecycle, escape: bool,
-keyboard_captured: bool) -> PopupLifecycle #export {
+keyboard_captured: bool) -> PopupLifecycle {
     if state.visible && state.decision.captures_input && escape &&
     !keyboard_captured {
         return PopupLifecycleFinish(state, false, true)

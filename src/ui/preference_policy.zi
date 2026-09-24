@@ -1,4 +1,3 @@
-#module "preference_policy"
 #import "theme"
 
 ThemeSource :: enum {
@@ -7,14 +6,14 @@ ThemeSource :: enum {
 }
 
 ThemePreference :: struct {
-    theme_id: i32
+    theme_id: s32
     source: ThemeSource
     mode: ThemePolicy
     system_dark: bool
 }
 
 ThemeDecision :: struct {
-    theme_id: i32
+    theme_id: s32
     source: ThemeSource
     mode: ThemePolicy
     dark: bool
@@ -22,27 +21,28 @@ ThemeDecision :: struct {
 
 # The host reports the system preference. Kryon chooses the effective palette
 # and returns a value for native, browser, or portable presentation.
-ThemeDecisionFor :: (preference: ThemePreference) -> ThemeDecision #export {
+#program_export
+ThemeDecisionFor :: (preference: ThemePreference) -> ThemeDecision {
     decision: ThemeDecision
     decision.theme_id = preference.theme_id
     decision.source = preference.source
-    if decision.source != (ThemeSource)ThemeSourceApp &&
-        decision.source != (ThemeSource)ThemeSourceSystem {
-        decision.source = (ThemeSource)ThemeSourceSystem
+    if decision.source != cast(ThemeSource)ThemeSourceApp &&
+        decision.source != cast(ThemeSource)ThemeSourceSystem {
+        decision.source = cast(ThemeSource)ThemeSourceSystem
     }
     decision.mode = preference.mode
-    if decision.mode != (ThemePolicy)ThemePolicyLight &&
-        decision.mode != (ThemePolicy)ThemePolicyDark {
-        decision.mode = (ThemePolicy)ThemePolicySystem
+    if decision.mode != cast(ThemePolicy)ThemePolicyLight &&
+        decision.mode != cast(ThemePolicy)ThemePolicyDark {
+        decision.mode = cast(ThemePolicy)ThemePolicySystem
     }
     decision.dark = ResolveDark(decision.mode, preference.system_dark)
     return decision
 }
 
 OrientationPreference :: struct {
-    mode: i32
-    portrait_mode: i32
-    landscape_mode: i32
+    mode: s32
+    portrait_mode: s32
+    landscape_mode: s32
 }
 
 OrientationAction :: enum {
@@ -53,28 +53,29 @@ OrientationAction :: enum {
 
 OrientationDecision :: struct {
     action: OrientationAction
-    width: i32
-    height: i32
-    mode: i32
+    width: s32
+    height: s32
+    mode: s32
 }
 
 # Capabilities are observations supplied by the host. The policy decides
 # whether to request a resize or a platform orientation change.
+#program_export
 OrientationDecisionFor :: (preference: OrientationPreference,
-    width: i32, height: i32, can_resize: bool,
-    can_set_mode: bool) -> OrientationDecision #export {
+    width: s32, height: s32, can_resize: bool,
+    can_set_mode: bool) -> OrientationDecision {
     decision: OrientationDecision
     decision.mode = preference.mode
     if width > 0 && height > 0 && can_resize &&
         ((preference.mode == preference.portrait_mode && width > height) ||
          (preference.mode == preference.landscape_mode && height > width)) {
-        decision.action = (OrientationAction)OrientationActionResize
+        decision.action = cast(OrientationAction)OrientationActionResize
         decision.width = height
         decision.height = width
         return decision
     }
     if can_set_mode {
-        decision.action = (OrientationAction)OrientationActionSetMode
+        decision.action = cast(OrientationAction)OrientationActionSetMode
     }
     return decision
 }

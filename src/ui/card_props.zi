@@ -1,11 +1,10 @@
-#module "card_props"
 #import "control_props"
 #import "geometry"
 
 CardProps :: struct {
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     clickable: bool
     disabled: bool
     selected: bool

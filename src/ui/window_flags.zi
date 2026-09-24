@@ -1,4 +1,3 @@
-#module "window_flags"
 
 NativeWindowFlags :: enum {
     NATIVE_WINDOW_BORDERLESS = 1

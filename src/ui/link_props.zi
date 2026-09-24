@@ -1,19 +1,18 @@
-#module "link_props"
 #import "geometry"
 
 LinkProps :: struct {
     key: u64
     bounds: Rectangle
-    class_name: i32
+    class_name: s32
     text: string
     link: string
-    focus_id: i32
+    focus_id: s32
     disabled: bool
     focus_activate: bool
 }
 
 LinkResult :: struct {
-    node: i32
+    node: s32
     activated: bool
     open_url: bool
     url: string

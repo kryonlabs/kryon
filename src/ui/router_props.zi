@@ -1,9 +1,8 @@
-#module "router_props"
 #import "geometry"
 
 RouterRoute :: struct {
-    id: i32
-    parent: i32
+    id: s32
+    parent: s32
     path: string
     title: string
     group: string
@@ -11,34 +10,34 @@ RouterRoute :: struct {
 
 RouterState :: struct {
     initialized: bool
-    current_route: i32
-    previous_route: i32
-    requested_route: i32
+    current_route: s32
+    previous_route: s32
+    requested_route: s32
     has_request: bool
     changed: bool
-    route_version: i32
+    route_version: s32
     generation: u32
 }
 
 RouterProps :: struct {
     bounds: Rectangle
     key: u64
-    initial_route: i32
+    initial_route: s32
     sync_url: bool
     replace_on_init: bool
 }
 
 RouterResult :: struct {
     state: RouterState
-    route: i32
-    previous_route: i32
-    requested_route: i32
+    route: s32
+    previous_route: s32
+    requested_route: s32
     changed: bool
-    route_index: i32
-    node: i32
+    route_index: s32
+    node: s32
     write_url: bool
     push_url: bool
     url_base: string
     url_path: string
-    url_path_start: i32
+    url_path_start: s32
 }

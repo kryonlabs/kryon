@@ -1,42 +1,42 @@
-#module "app_shell_layout"
 
 AppShellLayoutSpec :: struct {
-    view_width: i32
-    view_height: i32
-    safe_left: i32
-    safe_top: i32
-    safe_right: i32
-    safe_bottom: i32
-    padding: i32
-    nav_height: i32
-    sidebar_breakpoint: i32
-    sidebar_width: i32
-    min_content_width: i32
-    max_content_width: i32
+    view_width: s32
+    view_height: s32
+    safe_left: s32
+    safe_top: s32
+    safe_right: s32
+    safe_bottom: s32
+    padding: s32
+    nav_height: s32
+    sidebar_breakpoint: s32
+    sidebar_width: s32
+    min_content_width: s32
+    max_content_width: s32
 }
 
 AppShellLayout :: struct {
     compact: bool
-    sidebar_width: i32
-    content_x: i32
-    content_y: i32
-    content_width: i32
-    content_height: i32
-    nav_x: i32
-    nav_y: i32
-    nav_width: i32
-    nav_height: i32
+    sidebar_width: s32
+    content_x: s32
+    content_y: s32
+    content_width: s32
+    content_height: s32
+    nav_x: s32
+    nav_y: s32
+    nav_width: s32
+    nav_height: s32
 }
 
-MeasureAppShell :: (spec: AppShellLayoutSpec) -> AppShellLayout #export {
+#program_export
+MeasureAppShell :: (spec: AppShellLayoutSpec) -> AppShellLayout {
     layout: AppShellLayout
-    padding: i32 = spec.padding >= 0 ? spec.padding : 0
-    nav_height: i32 = spec.nav_height > 0 ? spec.nav_height : 0
-    breakpoint: i32 = spec.sidebar_breakpoint > 0 ? spec.sidebar_breakpoint : 480
-    sidebar_width: i32 = spec.sidebar_width > 0 ? spec.sidebar_width : 0
+    padding: s32 = ifx spec.padding >= 0 then spec.padding else 0
+    nav_height: s32 = ifx spec.nav_height > 0 then spec.nav_height else 0
+    breakpoint: s32 = ifx spec.sidebar_breakpoint > 0 then spec.sidebar_breakpoint else 480
+    sidebar_width: s32 = ifx spec.sidebar_width > 0 then spec.sidebar_width else 0
 
     layout.compact = spec.view_width <= breakpoint
-    layout.sidebar_width = layout.compact ? 0 : sidebar_width
+    layout.sidebar_width = ifx layout.compact then 0 else sidebar_width
 
     layout.nav_x = spec.safe_left
     layout.nav_y = spec.view_height - spec.safe_bottom - nav_height
@@ -51,7 +51,7 @@ MeasureAppShell :: (spec: AppShellLayoutSpec) -> AppShellLayout #export {
 
     layout.content_x = spec.safe_left + layout.sidebar_width + padding
     layout.content_y = spec.safe_top + padding
-    available_width: i32 = spec.view_width - spec.safe_left - spec.safe_right -
+    available_width: s32 = spec.view_width - spec.safe_left - spec.safe_right -
                        layout.sidebar_width - padding * 2
     layout.content_width = available_width
     if spec.max_content_width > 0 &&

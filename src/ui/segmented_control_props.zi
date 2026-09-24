@@ -1,4 +1,3 @@
-#module "segmented_control_props"
 #import "geometry"
 
 SegmentOption :: struct {
@@ -10,22 +9,22 @@ SegmentOption :: struct {
 SegmentedControlProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    selected_index: i32
+    id: s32
+    class_name: s32
+    selected_index: s32
     has_selection: bool
-    height: i32
-    min_item_width: i32
-    max_item_width: i32
+    height: s32
+    min_item_width: s32
+    max_item_width: s32
     wrap: bool
-    scale: float
+    scale: float32
     disabled: bool
 }
 
 SegmentedControlResult :: struct {
-    node: i32
-    selected_index: i32
-    clicked_index: i32
+    node: s32
+    selected_index: s32
+    clicked_index: s32
     changed: bool
-    height: i32
+    height: s32
 }

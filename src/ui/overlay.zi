@@ -1,4 +1,3 @@
-#module "overlay"
 
 DismissibleOverlayPolicy :: struct {
     closed: bool
@@ -6,14 +5,16 @@ DismissibleOverlayPolicy :: struct {
     release_consumed: bool
 }
 
-OverlayViewExtent :: (requested: i32, fallback: i32) -> i32 #export {
+#program_export
+OverlayViewExtent :: (requested: s32, fallback: s32) -> s32 {
     if requested > 0 { return requested }
     if fallback > 0 { return fallback }
     return 0
 }
 
+#program_export
 DismissibleOverlayPolicyFor :: (released: bool, release_consumed: bool,
-    dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy #export {
+    dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy {
     policy: DismissibleOverlayPolicy
     if released && !release_consumed && !dismiss_disabled && !pointer_inside {
         policy.closed = true

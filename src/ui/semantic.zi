@@ -1,4 +1,3 @@
-#module "semantic"
 
 SemanticKind :: enum {
     SemanticNone = 0

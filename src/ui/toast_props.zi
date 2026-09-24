@@ -1,10 +1,9 @@
-#module "toast_props"
 #import "geometry"
 
 ToastState :: struct {
     message: string
-    class_name: i32
-    until_seconds: double
+    class_name: s32
+    until_seconds: float64
 }
 
 ToastProps :: struct {
@@ -12,17 +11,17 @@ ToastProps :: struct {
     viewport: Rectangle
     state: ToastState
     message: string
-    class_name: i32
-    seconds: double
-    now_seconds: double
-    scale: float
+    class_name: s32
+    seconds: float64
+    now_seconds: float64
+    scale: float32
     clear: bool
 }
 
 ToastResult :: struct {
     state: ToastState
     visible: bool
-    node: i32
+    node: s32
     bounds: Rectangle
     display: string
     ellipsis: bool

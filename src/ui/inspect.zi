@@ -1,4 +1,3 @@
-#module "inspect"
 #import "geometry"
 
 InspectEdit :: struct {
@@ -11,35 +10,40 @@ InspectReleaseDecision :: struct {
     consume_release: bool
 }
 
-InspectClampBounds :: (bounds: Rectangle, min_size: float) -> Rectangle #export {
+#program_export
+InspectClampBounds :: (bounds: Rectangle, min_size: float32) -> Rectangle {
     if min_size <= 0.0 { min_size = 4.0 }
     if bounds.width < min_size { bounds.width = min_size }
     if bounds.height < min_size { bounds.height = min_size }
     return bounds
 }
 
-InspectResizeHandleBounds :: (bounds: Rectangle, handle_size: i32) -> Rectangle #export {
+#program_export
+InspectResizeHandleBounds :: (bounds: Rectangle, handle_size: s32) -> Rectangle {
     if handle_size <= 0 { handle_size = 12 }
-    return (Rectangle){
-        bounds.x + bounds.width - (float)handle_size,
-        bounds.y + bounds.height - (float)handle_size,
-        (float)handle_size,
-        (float)handle_size}
+    return Rectangle.{
+        bounds.x + bounds.width - cast(float32)handle_size,
+        bounds.y + bounds.height - cast(float32)handle_size,
+        cast(float32)handle_size,
+        cast(float32)handle_size}
 }
 
-InspectResizeHitHandleSize :: (scale: float) -> i32 #export {
+#program_export
+InspectResizeHitHandleSize :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(12.0 * scale)
+    return cast(s32)(12.0 * scale)
 }
 
-InspectResizePaintHandleSize :: (scale: float) -> i32 #export {
+#program_export
+InspectResizePaintHandleSize :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(10.0 * scale)
+    return cast(s32)(10.0 * scale)
 }
 
+#program_export
 InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
-    dx: float, dy: float, zoom: float, resizing: bool,
-    min_size: float) -> InspectEdit #export {
+    dx: float32, dy: float32, zoom: float32, resizing: bool,
+    min_size: float32) -> InspectEdit {
     edit: InspectEdit
     if zoom <= 0.0 { zoom = 1.0 }
     edit.bounds = start
@@ -59,15 +63,17 @@ InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
     return edit
 }
 
+#program_export
 InspectReleaseDecisionFor :: (released: bool, dragging: bool,
-    resizing: bool) -> InspectReleaseDecision #export {
+    resizing: bool) -> InspectReleaseDecision {
     decision: InspectReleaseDecision
     decision.end_edit = released && (dragging || resizing)
     decision.consume_release = decision.end_edit
     return decision
 }
 
-InspectKeyboardStep :: (shift: bool) -> float #export {
+#program_export
+InspectKeyboardStep :: (shift: bool) -> float32 {
     if shift { return 8.0 }
     return 1.0
 }

@@ -1,4 +1,3 @@
-#module "scene_tree_props"
 
 NodeKind :: enum {
     NodeKindRoot = 0

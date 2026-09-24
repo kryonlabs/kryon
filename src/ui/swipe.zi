@@ -1,4 +1,3 @@
-#module "swipe"
 #import "swipe_props"
 #import "geometry"
 
@@ -6,12 +5,12 @@ SwipeDragState :: struct {
     dragging: bool
     cancelled: bool
     direction: SwipeDirection
-    progress: float
+    progress: float32
 }
 
 SwipeReleaseState :: struct {
     direction: SwipeDirection
-    progress: float
+    progress: float32
     committed: bool
 }
 
@@ -27,93 +26,104 @@ SwipeReleaseLifecycle :: struct {
     capture_input: bool
 }
 
-SwipeAbs :: (value: float) -> float #export {
+#program_export
+SwipeAbs :: (value: float32) -> float32 {
     if value < 0.0 { return -value }
     return value
 }
 
-SwipeDirectionsFor :: (directions: u32) -> u32 #export {
-    if directions != (u32)0 { return directions }
-    return (u32)SwipeAll
+#program_export
+SwipeDirectionsFor :: (directions: u32) -> u32 {
+    if directions != cast(u32)0 { return directions }
+    return cast(u32)SwipeAll
 }
 
-SwipeMinDistanceFor :: (scale: float, min_distance: float) -> float #export {
+#program_export
+SwipeMinDistanceFor :: (scale: float32, min_distance: float32) -> float32 {
     if min_distance > 0.0 { return min_distance }
     return 48.0 * scale
 }
 
-SwipeAxisBiasFor :: (axis_bias: float) -> float #export {
+#program_export
+SwipeAxisBiasFor :: (axis_bias: float32) -> float32 {
     if axis_bias >= 1.0 { return axis_bias }
     return 1.25
 }
 
-SwipeDecisionDistanceFor :: (scale: float) -> float #export {
+#program_export
+SwipeDecisionDistanceFor :: (scale: float32) -> float32 {
     return 8.0 * scale
 }
 
-SwipeCanBegin :: (bounds: Rectangle, pointer_inside: bool, input_clear: bool) -> bool #export {
+#program_export
+SwipeCanBegin :: (bounds: Rectangle, pointer_inside: bool, input_clear: bool) -> bool {
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
     if !pointer_inside { return false }
     return input_clear
 }
 
+#program_export
 SwipeDirectionFor :: (delta: Vector2, directions: u32,
-    axis_bias: float) -> SwipeDirection #export {
-    dx: float = SwipeAbs(delta.x)
-    dy: float = SwipeAbs(delta.y)
-    direction: SwipeDirection = (SwipeDirection)SwipeNone
+    axis_bias: float32) -> SwipeDirection {
+    dx: float32 = SwipeAbs(delta.x)
+    dy: float32 = SwipeAbs(delta.y)
+    direction: SwipeDirection = cast(SwipeDirection)SwipeNone
 
     if dx >= dy * axis_bias {
         if delta.x < 0.0 {
-            direction = (SwipeDirection)SwipeLeft
+            direction = cast(SwipeDirection)SwipeLeft
         } else {
-            direction = (SwipeDirection)SwipeRight
+            direction = cast(SwipeDirection)SwipeRight
         }
     } else if dy >= dx * axis_bias {
         if delta.y < 0.0 {
-            direction = (SwipeDirection)SwipeUp
+            direction = cast(SwipeDirection)SwipeUp
         } else {
-            direction = (SwipeDirection)SwipeDown
+            direction = cast(SwipeDirection)SwipeDown
         }
     } else {
-        return (SwipeDirection)SwipeNone
+        return cast(SwipeDirection)SwipeNone
     }
 
-    if (directions & (u32)direction) != (u32)0 {
+    if (directions & cast(u32)direction) != cast(u32)0 {
         return direction
     }
-    return (SwipeDirection)SwipeNone
+    return cast(SwipeDirection)SwipeNone
 }
 
-SwipePrimaryDistanceFor :: (delta: Vector2, direction: SwipeDirection) -> float #export {
-    if direction == (SwipeDirection)SwipeLeft ||
-       direction == (SwipeDirection)SwipeRight {
+#program_export
+SwipePrimaryDistanceFor :: (delta: Vector2, direction: SwipeDirection) -> float32 {
+    if direction == cast(SwipeDirection)SwipeLeft ||
+       direction == cast(SwipeDirection)SwipeRight {
         return SwipeAbs(delta.x)
     }
     return SwipeAbs(delta.y)
 }
 
-SwipeMaxDistanceFor :: (delta: Vector2) -> float #export {
-    dx: float = SwipeAbs(delta.x)
-    dy: float = SwipeAbs(delta.y)
+#program_export
+SwipeMaxDistanceFor :: (delta: Vector2) -> float32 {
+    dx: float32 = SwipeAbs(delta.x)
+    dy: float32 = SwipeAbs(delta.y)
     if dx > dy { return dx }
     return dy
 }
 
-SwipeProgressFor :: (primary: float, min_distance: float) -> float #export {
+#program_export
+SwipeProgressFor :: (primary: float32, min_distance: float32) -> float32 {
     if min_distance <= 0.0 { return 0.0 }
-    progress: float = primary / min_distance
+    progress: float32 = primary / min_distance
     if progress > 1.0 { return 1.0 }
     if progress < 0.0 { return 0.0 }
     return progress
 }
 
+#program_export
 SwipeShouldCancelForAxis :: (delta: Vector2, directions: u32,
-    axis_bias: float) -> bool #export {
-    dx: float = SwipeAbs(delta.x)
-    dy: float = SwipeAbs(delta.y)
-    horizontal_allowed: bool = (directions & (u32)SwipeHorizontal) != (u32)0
-    vertical_allowed: bool = (directions & (u32)SwipeVertical) != (u32)0
+    axis_bias: float32) -> bool {
+    dx: float32 = SwipeAbs(delta.x)
+    dy: float32 = SwipeAbs(delta.y)
+    horizontal_allowed: bool = (directions & cast(u32)SwipeHorizontal) != cast(u32)0
+    vertical_allowed: bool = (directions & cast(u32)SwipeVertical) != cast(u32)0
 
     if horizontal_allowed && !vertical_allowed && dy >= dx * axis_bias {
         return true
@@ -124,17 +134,18 @@ SwipeShouldCancelForAxis :: (delta: Vector2, directions: u32,
     return false
 }
 
-SwipeDragStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
-    decision_distance: float, min_distance: float,
-    was_dragging: bool) -> SwipeDragState #export {
+#program_export
+SwipeDragStateFor :: (delta: Vector2, directions: u32, axis_bias: float32,
+    decision_distance: float32, min_distance: float32,
+    was_dragging: bool) -> SwipeDragState {
     state: SwipeDragState
     state.dragging = was_dragging
     direction: SwipeDirection = SwipeDirectionFor(delta, directions, axis_bias)
-    primary: float = SwipePrimaryDistanceFor(delta, direction)
-    distance: float = SwipeMaxDistanceFor(delta)
+    primary: float32 = SwipePrimaryDistanceFor(delta, direction)
+    distance: float32 = SwipeMaxDistanceFor(delta)
 
     if !state.dragging && distance >= decision_distance {
-        if direction == (SwipeDirection)SwipeNone {
+        if direction == cast(SwipeDirection)SwipeNone {
             state.cancelled = SwipeShouldCancelForAxis(delta, directions,
                 axis_bias)
             return state
@@ -149,8 +160,9 @@ SwipeDragStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
     return state
 }
 
+#program_export
 SwipeDragLifecycleFor :: (pointer_owner_clear: bool, drag_cancelled: bool,
-    was_dragging: bool, next_dragging: bool) -> SwipeDragLifecycle #export {
+    was_dragging: bool, next_dragging: bool) -> SwipeDragLifecycle {
     lifecycle: SwipeDragLifecycle
     if !pointer_owner_clear || drag_cancelled {
         lifecycle.cancel_active = true
@@ -162,24 +174,26 @@ SwipeDragLifecycleFor :: (pointer_owner_clear: bool, drag_cancelled: bool,
     return lifecycle
 }
 
-SwipeReleaseStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
-    min_distance: float, elapsed: f64, max_duration: float,
-    was_dragging: bool) -> SwipeReleaseState #export {
+#program_export
+SwipeReleaseStateFor :: (delta: Vector2, directions: u32, axis_bias: float32,
+    min_distance: float32, elapsed: float64, max_duration: float32,
+    was_dragging: bool) -> SwipeReleaseState {
     state: SwipeReleaseState
     state.direction = SwipeDirectionFor(delta, directions, axis_bias)
-    primary: float = SwipePrimaryDistanceFor(delta, state.direction)
+    primary: float32 = SwipePrimaryDistanceFor(delta, state.direction)
     within_time: bool = max_duration <= 0.0 ||
-        elapsed <= (f64)max_duration
+        elapsed <= cast(float64)max_duration
 
     state.progress = SwipeProgressFor(primary, min_distance)
     state.committed = was_dragging && within_time && primary >= min_distance
     if !state.committed {
-        state.direction = (SwipeDirection)SwipeNone
+        state.direction = cast(SwipeDirection)SwipeNone
     }
     return state
 }
 
-SwipeReleaseLifecycleFor :: (was_dragging: bool) -> SwipeReleaseLifecycle #export {
+#program_export
+SwipeReleaseLifecycleFor :: (was_dragging: bool) -> SwipeReleaseLifecycle {
     lifecycle: SwipeReleaseLifecycle
     lifecycle.consume_release = was_dragging
     lifecycle.capture_input = was_dragging
@@ -194,25 +208,26 @@ SwipeInside :: (bounds: Rectangle, point: Vector2) -> bool {
 
 # The host supplies pointer observations and applies the returned ownership
 # effects. The caller stores result.gesture for the next frame.
+#program_export
 Swipe :: (spec: SwipeSpec, gesture: SwipeGesture,
-    frame: SwipeFrame) -> SwipeResult #export {
+    frame: SwipeFrame) -> SwipeResult {
     result: SwipeResult
     result.gesture = gesture
     if spec.bounds.width <= 0.0 || spec.bounds.height <= 0.0 {
         result.release_pointer = frame.owner_is_swipe
-        result.gesture = (SwipeGesture){}
+        result.gesture = SwipeGesture.{}
         return result
     }
-    scale: float = frame.scale
+    scale: float32 = frame.scale
     if scale <= 0.0 { scale = 1.0 }
     directions: u32 = SwipeDirectionsFor(spec.directions)
-    min_distance: float = SwipeMinDistanceFor(scale, spec.min_distance)
-    axis_bias: float = SwipeAxisBiasFor(spec.axis_bias)
-    decision_distance: float = SwipeDecisionDistanceFor(scale)
+    min_distance: float32 = SwipeMinDistanceFor(scale, spec.min_distance)
+    axis_bias: float32 = SwipeAxisBiasFor(spec.axis_bias)
+    decision_distance: float32 = SwipeDecisionDistanceFor(scale)
 
     if frame.pressed {
         result.release_pointer = frame.owner_is_swipe
-        gesture = (SwipeGesture){}
+        gesture = SwipeGesture.{}
         if SwipeCanBegin(spec.bounds,
             SwipeInside(spec.bounds, frame.pointer),
             frame.input_clear &&
@@ -266,7 +281,7 @@ Swipe :: (spec: SwipeSpec, gesture: SwipeGesture,
             !frame.owner_is_swipe {
             result.active = 0
             result.cancelled = 1
-            result.gesture = (SwipeGesture){}
+            result.gesture = SwipeGesture.{}
             return result
         }
         release: SwipeReleaseState = SwipeReleaseStateFor(delta,
@@ -281,11 +296,11 @@ Swipe :: (spec: SwipeSpec, gesture: SwipeGesture,
         result.consume_release = lifecycle.consume_release
         result.capture_input = lifecycle.capture_input
         result.release_pointer = frame.owner_is_swipe
-        result.gesture = (SwipeGesture){}
+        result.gesture = SwipeGesture.{}
         return result
     }
     result.active = 0
     result.release_pointer = frame.owner_is_swipe
-    result.gesture = (SwipeGesture){}
+    result.gesture = SwipeGesture.{}
     return result
 }

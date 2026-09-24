@@ -1,4 +1,3 @@
-#module "canvas_grid"
 #import "geometry"
 
 CanvasGridLine :: struct {
@@ -6,7 +5,8 @@ CanvasGridLine :: struct {
     color: u32
 }
 
-CanvasGridSpacing :: (step: i32, minimum: i32) -> i32 #export {
+#program_export
+CanvasGridSpacing :: (step: s32, minimum: s32) -> s32 {
     if minimum <= 0 {
         minimum = 1
     }
@@ -16,23 +16,25 @@ CanvasGridSpacing :: (step: i32, minimum: i32) -> i32 #export {
     return step
 }
 
-CanvasGridLineCount :: (length: float, spacing: i32) -> i32 #export {
+#program_export
+CanvasGridLineCount :: (length: float32, spacing: s32) -> s32 {
     if length <= 0.0 {
         return 0
     }
     spacing = CanvasGridSpacing(spacing, 1)
-    count: i32 = (i32)(length / (float)spacing)
-    if (float)count * (float)spacing < length {
+    count: s32 = cast(s32)(length / cast(float32)spacing)
+    if cast(float32)count * cast(float32)spacing < length {
         count = count + 1
     }
     return count
 }
 
-CanvasGridVerticalLine :: (bounds: Rectangle, index: i32,
-    spacing: i32, color: u32) -> CanvasGridLine #export {
+#program_export
+CanvasGridVerticalLine :: (bounds: Rectangle, index: s32,
+    spacing: s32, color: u32) -> CanvasGridLine {
     line: CanvasGridLine
     spacing = CanvasGridSpacing(spacing, 1)
-    line.bounds.x = bounds.x + (float)(index * spacing)
+    line.bounds.x = bounds.x + cast(float32)(index * spacing)
     line.bounds.y = bounds.y
     line.bounds.width = 0.0
     line.bounds.height = bounds.height
@@ -40,12 +42,13 @@ CanvasGridVerticalLine :: (bounds: Rectangle, index: i32,
     return line
 }
 
-CanvasGridHorizontalLine :: (bounds: Rectangle, index: i32,
-    spacing: i32, color: u32) -> CanvasGridLine #export {
+#program_export
+CanvasGridHorizontalLine :: (bounds: Rectangle, index: s32,
+    spacing: s32, color: u32) -> CanvasGridLine {
     line: CanvasGridLine
     spacing = CanvasGridSpacing(spacing, 1)
     line.bounds.x = bounds.x
-    line.bounds.y = bounds.y + (float)(index * spacing)
+    line.bounds.y = bounds.y + cast(float32)(index * spacing)
     line.bounds.width = bounds.width
     line.bounds.height = 0.0
     line.color = color

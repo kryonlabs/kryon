@@ -1,4 +1,3 @@
-#module "plot_props"
 #import "geometry"
 
 PlotMode :: enum {
@@ -9,13 +8,13 @@ PlotMode :: enum {
 PlotProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     label: string
     overlay: string
-    offset: i32
-    scale_min: float
-    scale_max: float
-    scale: float
+    offset: s32
+    scale_min: float32
+    scale_max: float32
+    scale: float32
     mode: PlotMode
 }
