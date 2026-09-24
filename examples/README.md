@@ -38,3 +38,17 @@ without contacting the current desktop display.
 text, and path-backed PNG images. Texture handles and other image formats
 remain open. It is a desktop integration proof, not the finished platform
 renderer.
+
+The same desktop surface also links ordinary generated C applications directly
+against `libkryon.a`:
+
+```sh
+make -C examples native
+env -u DISPLAY -u WAYLAND_DISPLAY make -C examples native-test native-image-test
+```
+
+The native tests use private Xvfb displays, exercise the same button and image
+frames, and compare the native screenshots byte for byte with the portable
+`.zib` screenshots. `hello-native` and `image-native` are standalone C
+executables; neither needs the portable bundle loader at runtime. The sample
+host supplies only pointer observations, font metrics, and raster effects.

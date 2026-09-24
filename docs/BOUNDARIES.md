@@ -31,13 +31,16 @@ their integration with the library.
 
 The prior runtime's C and Go platform implementations are outside the
 maintained build. The current archives contain all checked UI modules and
-portable host adapters, but application integration and supported renderer
-paths still need completion.
+portable host adapters. The desktop examples now prove that both the `.zib`
+loader and a generated C program linked directly to `libkryon.a` render a
+button and image with identical pixels. Application integration and supported
+renderer paths still need completion.
 
-The optional SDL2/Cairo example opens a Kryon bundle in a private-display
-desktop test. Its checks capture a clicked button and a tinted, asset-backed
-PNG image. It is an integration proof; texture handles, other image formats,
-text services, and production platform hosts remain unfinished.
+The optional SDL2/Cairo example opens a Kryon bundle or native linked program
+in a private-display desktop test. Its checks capture a clicked button and a
+tinted, asset-backed PNG image. It is an integration proof; texture handles,
+other image formats, text services, and production platform hosts remain
+unfinished.
 
 ## Module rule
 

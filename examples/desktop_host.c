@@ -1,5 +1,20 @@
 #include "kryon_portable_host.h"
 
+#ifdef KRYON_NATIVE_DESKTOP
+#ifdef KRYON_NATIVE_IMAGE
+#include "image_demo.h"
+#else
+#include "hello.h"
+#endif
+#include "font_metrics.h"
+#include "image_raster.h"
+#include "paint_queue.h"
+#include "pointer_input.h"
+#include "raster.h"
+#include "raster_shape.h"
+#include "raster_text.h"
+#endif
+
 #include <SDL.h>
 #include <cairo.h>
 
@@ -318,17 +333,124 @@ close_desktop(DesktopHost *host)
     SDL_Quit();
 }
 
+#ifdef KRYON_NATIVE_DESKTOP
+/* The generated library calls these host effects directly when linked as C. */
+static DesktopHost *active_host;
+
+int32_t
+MeasureGlyphWidth(String value, int32_t font, String typeface)
+{
+    return text_width(active_host, value.data, value.length, font,
+                      typeface.data, typeface.length);
+}
+
+int32_t
+MeasureGlyphLineHeight(int32_t font, String typeface)
+{
+    return text_line_height(active_host, font, typeface.data, typeface.length);
+}
+
+PointerFrame
+PollPointer(void)
+{
+    PointerHost *pointer = &active_host->pointer;
+    return (PointerFrame){pointer->x, pointer->y, pointer->down,
+                          pointer->pressed, pointer->released};
+}
+
+void
+RasterRoundedRectangle(Rectangle bounds, float radius, int32_t segments,
+                       Color color)
+{
+    fill(active_host, bounds.x, bounds.y, bounds.width, bounds.height,
+         radius, segments, color.r, color.g, color.b, color.a);
+}
+
+void
+RasterRoundedRectangleOutline(Rectangle bounds, float radius,
+                              int32_t segments, float width, Color color)
+{
+    outline(active_host, bounds.x, bounds.y, bounds.width, bounds.height,
+            radius, segments, width, color.r, color.g, color.b, color.a);
+}
+
+void
+RasterLine(Rectangle bounds, Color color)
+{
+    line(active_host, bounds.x, bounds.y,
+         bounds.x + bounds.width, bounds.y + bounds.height,
+         color.r, color.g, color.b, color.a);
+}
+
+void
+RasterText(String value, int32_t x, int32_t y, int32_t font, Color color)
+{
+    draw_text(active_host, value.data, value.length, x, y, font,
+              color.r, color.g, color.b, color.a);
+}
+
+void
+RasterTextClipped(String value, int32_t x, int32_t y, int32_t font,
+                  Color color, Rectangle clip)
+{
+    float bounds[4] = {clip.x, clip.y, clip.width, clip.height};
+    draw_text_clipped(active_host, value.data, value.length, x, y, font,
+                      bounds, color.r, color.g, color.b, color.a);
+}
+
+int32_t
+ImageWidth(String asset_path)
+{
+    int width = 0, height = 0;
+    if(!image_size(active_host, asset_path.data, asset_path.length,
+                   &width, &height)) return 0;
+    return width;
+}
+
+int32_t
+ImageHeight(String asset_path)
+{
+    int width = 0, height = 0;
+    if(!image_size(active_host, asset_path.data, asset_path.length,
+                   &width, &height)) return 0;
+    return height;
+}
+
+void
+RasterImage(String asset_path, uint32_t texture_id, Rectangle source,
+            Rectangle destination, Rectangle clip, Vector2 origin,
+            float rotation, float radius, Color tint)
+{
+    float src[4] = {source.x, source.y, source.width, source.height};
+    float dst[4] = {destination.x, destination.y,
+                    destination.width, destination.height};
+    float cut[4] = {clip.x, clip.y, clip.width, clip.height};
+    float pivot[2] = {origin.x, origin.y};
+    uint8_t shade[4] = {tint.r, tint.g, tint.b, tint.a};
+    image_draw(active_host, asset_path.data, asset_path.length, texture_id,
+               src, dst, cut, pivot, rotation, radius, shade);
+}
+#endif
+
 static int
 run_frame(DesktopHost *host, BundleInstance *instance, long long *value)
 {
-    int has_result = 0;
     cairo_save(host->paint);
     set_color(host->paint, 248, 250, 252, 255);
     cairo_paint(host->paint);
     cairo_restore(host->paint);
+#ifdef KRYON_NATIVE_DESKTOP
+    (void)instance;
+    *value = Frame();
+    if(*value < 0 || host->image_error ||
+       cairo_status(host->paint) != CAIRO_STATUS_SUCCESS)
+        return 0;
+#else
+    int has_result = 0;
     if(!BundleInstanceRun(instance, value, &has_result) || !has_result ||
        host->image_error || cairo_status(host->paint) != CAIRO_STATUS_SUCCESS)
         return 0;
+#endif
     cairo_surface_flush(host->surface);
     if(SDL_UpdateTexture(host->texture, NULL, host->pixels->pixels,
                          host->pixels->pitch) != 0) return 0;
@@ -342,27 +464,50 @@ int
 main(int argc, char **argv)
 {
     DesktopHost host = {0};
+#ifndef KRYON_NATIVE_DESKTOP
     Bundle *bundle = NULL;
+#endif
     BundleInstance *instance = NULL;
     int self_test;
     int image_test;
     int ok = 1;
+#ifdef KRYON_NATIVE_DESKTOP
+    int flag = 1, output = 2;
+    if(argc != 1 && argc != 3) {
+        fprintf(stderr, "usage: %s [--self-test|--image-self-test output.png]\n",
+                argv[0]);
+        return 2;
+    }
+#else
+    int flag = 2, output = 3;
     if(argc != 2 && argc != 4) {
         fprintf(stderr, "usage: %s app.zib "
                 "[--self-test|--image-self-test output.png]\n",
                 argv[0]);
         return 2;
     }
-    self_test = argc == 4 && strcmp(argv[2], "--self-test") == 0;
-    image_test = argc == 4 && strcmp(argv[2], "--image-self-test") == 0;
-    if(argc == 4 && !self_test && !image_test) return 2;
     bundle = BundleOpen(argv[1]);
-    if(bundle == NULL || !open_desktop(&host)) {
+#endif
+    self_test = argc == output + 1 && strcmp(argv[flag], "--self-test") == 0;
+    image_test = argc == output + 1 &&
+                 strcmp(argv[flag], "--image-self-test") == 0;
+    if(argc == output + 1 && !self_test && !image_test) return 2;
+#ifdef KRYON_NATIVE_DESKTOP
+    active_host = &host;
+#else
+    if(bundle == NULL) {
+        fprintf(stderr, "bundle load failed\n");
+        ok = 0;
+        goto done;
+    }
+#endif
+    if(!open_desktop(&host)) {
         fprintf(stderr, "desktop initialization failed: %s\n",
                 SDL_GetError());
         ok = 0;
         goto done;
     }
+#ifndef KRYON_NATIVE_DESKTOP
     FontMeasurer fonts = {text_width, text_line_height, &host};
     RoundedRectangleRenderer shape = {fill, outline, &host};
     TextRenderer text = {draw_text, &host, draw_text_clipped};
@@ -388,6 +533,7 @@ main(int argc, char **argv)
         ok = 0;
         goto done;
     }
+#endif
     if(self_test) {
         static const long long expected[4] = {2, 2, 102, 102};
         for(int frame = 0; ok && frame < 4; frame++) {
@@ -456,7 +602,7 @@ main(int argc, char **argv)
     }
     if((self_test || image_test) && ok) {
         cairo_status_t status = cairo_surface_write_to_png(host.surface,
-                                                           argv[3]);
+                                                           argv[output]);
         if(status != CAIRO_STATUS_SUCCESS) {
             fprintf(stderr, "screenshot failed: %s\n",
                     cairo_status_to_string(status));
@@ -464,8 +610,10 @@ main(int argc, char **argv)
         }
     }
 done:
+#ifndef KRYON_NATIVE_DESKTOP
     if(instance != NULL) BundleInstanceClose(instance);
-    close_desktop(&host);
     if(bundle != NULL) BundleClose(bundle);
+#endif
+    close_desktop(&host);
     return ok ? 0 : 1;
 }
