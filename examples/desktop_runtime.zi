@@ -1,0 +1,392 @@
+#import "c_string"
+#import "drawing_props"
+#import "geometry"
+#import "tree_input"
+
+sdl_library :: #system_library "SDL2";
+GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
+
+# SDL_Event is 56 bytes on the supported SDL2 ABI. SDL_MouseButtonEvent's
+# button byte is at offset 16; the remaining union storage is opaque.
+Event :: struct {
+    kind: u32
+    timestamp: u32
+    window_id: u32
+    which: u32
+    button: u8
+    state: u8
+    clicks: u8
+    padding: u8
+    x: s32
+    y: s32
+    payload: [28]u8
+}
+
+Init :: (flags: u32) -> s32 #foreign sdl_library "SDL_Init";
+Quit :: () #foreign sdl_library "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
+    height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl_library "SDL_DestroyWindow";
+CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
+DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
+CreateTexture :: (renderer: *void, format: u32, access: s32,
+    width: s32, height: s32) -> *void #foreign sdl_library "SDL_CreateTexture";
+DestroyTexture :: (texture: *void) #foreign sdl_library "SDL_DestroyTexture";
+UpdateTexture :: (texture: *void, rect: *void, pixels: *u8,
+    pitch: s32) -> s32 #foreign sdl_library "SDL_UpdateTexture";
+RenderCopy :: (renderer: *void, texture: *void, source: *void,
+    destination: *void) -> s32 #foreign sdl_library "SDL_RenderCopy";
+RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
+PollEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PollEvent";
+PushEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PushEvent";
+GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
+Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
+
+cairo_library :: #system_library "cairo";
+
+ImageSurfaceCreate :: (format: s32, width: s32, height: s32) -> *void #foreign cairo_library "cairo_image_surface_create";
+ImageSurfaceFromPNG :: (path: *u8) -> *void #foreign cairo_library "cairo_image_surface_create_from_png";
+ImageSurfaceWidth :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_width";
+ImageSurfaceHeight :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_height";
+ImageSurfaceData :: (surface: *void) -> *u8 #foreign cairo_library "cairo_image_surface_get_data";
+ImageSurfaceStride :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_stride";
+SurfaceStatus :: (surface: *void) -> s32 #foreign cairo_library "cairo_surface_status";
+SurfaceFlush :: (surface: *void) #foreign cairo_library "cairo_surface_flush";
+SurfaceWritePNG :: (surface: *void, path: *u8) -> s32 #foreign cairo_library "cairo_surface_write_to_png";
+SurfaceDestroy :: (surface: *void) #foreign cairo_library "cairo_surface_destroy";
+Create :: (surface: *void) -> *void #foreign cairo_library "cairo_create";
+Destroy :: (paint: *void) #foreign cairo_library "cairo_destroy";
+Status :: (paint: *void) -> s32 #foreign cairo_library "cairo_status";
+Save :: (paint: *void) #foreign cairo_library "cairo_save";
+Restore :: (paint: *void) #foreign cairo_library "cairo_restore";
+SetSourceRGBA :: (paint: *void, red: float64, green: float64,
+    blue: float64, alpha: float64) #foreign cairo_library "cairo_set_source_rgba";
+SetSourceSurface :: (paint: *void, surface: *void, x: float64,
+    y: float64) #foreign cairo_library "cairo_set_source_surface";
+GetSource :: (paint: *void) -> *void #foreign cairo_library "cairo_get_source";
+PatternExtend :: (pattern: *void, extend: s32) #foreign cairo_library "cairo_pattern_set_extend";
+PatternFilter :: (pattern: *void, filter: s32) #foreign cairo_library "cairo_pattern_set_filter";
+Paint :: (paint: *void) #foreign cairo_library "cairo_paint";
+MaskSurface :: (paint: *void, surface: *void, x: float64,
+    y: float64) #foreign cairo_library "cairo_mask_surface";
+NewPath :: (paint: *void) #foreign cairo_library "cairo_new_path";
+CanvasRectangle :: (paint: *void, x: float64, y: float64,
+    width: float64, height: float64) #foreign cairo_library "cairo_rectangle";
+Arc :: (paint: *void, x: float64, y: float64, radius: float64,
+    angle1: float64, angle2: float64) #foreign cairo_library "cairo_arc";
+ClosePath :: (paint: *void) #foreign cairo_library "cairo_close_path";
+Fill :: (paint: *void) #foreign cairo_library "cairo_fill";
+Stroke :: (paint: *void) #foreign cairo_library "cairo_stroke";
+Clip :: (paint: *void) #foreign cairo_library "cairo_clip";
+MoveTo :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_move_to";
+LineTo :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_line_to";
+SetLineWidth :: (paint: *void, width: float64) #foreign cairo_library "cairo_set_line_width";
+SelectFontFace :: (paint: *void, family: *u8, slant: s32, weight: s32) #foreign cairo_library "cairo_select_font_face";
+SetFontSize :: (paint: *void, size: float64) #foreign cairo_library "cairo_set_font_size";
+ShowText :: (paint: *void, value: *u8) #foreign cairo_library "cairo_show_text";
+Translate :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_translate";
+Rotate :: (paint: *void, radians: float64) #foreign cairo_library "cairo_rotate";
+Scale :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_scale";
+
+window: *void;
+renderer: *void;
+texture: *void;
+surface: *void;
+paint: *void;
+pointer: PointerFrame;
+image_error: bool;
+loaded_image: *void;
+loaded_path: [1024]u8;
+loaded_length: s32;
+
+SetColor :: (color: Color) {
+    SetSourceRGBA(paint, cast(float64)color.r / 255.0,
+        cast(float64)color.g / 255.0, cast(float64)color.b / 255.0,
+        cast(float64)color.a / 255.0)
+}
+
+RoundBox :: (bounds: Rectangle, requested_radius: float32) {
+    x: float64 = cast(float64)bounds.x
+    y: float64 = cast(float64)bounds.y
+    width: float64 = cast(float64)bounds.width
+    height: float64 = cast(float64)bounds.height
+    radius: float64 = cast(float64)requested_radius
+    NewPath(paint)
+    if width <= 0.0 || height <= 0.0 { return }
+    if radius < 0.0 { radius = 0.0 }
+    if radius > width / 2.0 { radius = width / 2.0 }
+    if radius > height / 2.0 { radius = height / 2.0 }
+    if radius == 0.0 {
+        CanvasRectangle(paint, x, y, width, height)
+        return
+    }
+    half_pi: float64 = 1.5707963267948966
+    Arc(paint, x + width - radius, y + radius, radius, -half_pi, 0.0)
+    Arc(paint, x + width - radius, y + height - radius, radius,
+        0.0, half_pi)
+    Arc(paint, x + radius, y + height - radius, radius,
+        half_pi, 2.0 * half_pi)
+    Arc(paint, x + radius, y + radius, radius,
+        2.0 * half_pi, 3.0 * half_pi)
+    ClosePath(paint)
+}
+
+#program_export
+OpenDesktop :: () -> bool {
+    if size_of(Event) != 56 { return false }
+    if Init(cast(u32)0x20) != 0 { return false }
+    title: [32]u8
+    if !CopyCString("Kryon Ziran", title[:]) { return false }
+    window = CreateWindow(*title[0], cast(s32)0x2fff0000,
+        cast(s32)0x2fff0000, 320, 160, cast(u32)0)
+    if window == null { return false }
+    renderer = CreateRenderer(window, -1, cast(u32)1)
+    if renderer == null { return false }
+    texture = CreateTexture(renderer, cast(u32)0x16362004, 1, 320, 160)
+    if texture == null { return false }
+    surface = ImageSurfaceCreate(0, 320, 160)
+    if surface == null || SurfaceStatus(surface) != 0 { return false }
+    paint = Create(surface)
+    return paint != null && Status(paint) == 0
+}
+
+#program_export
+CloseDesktop :: () {
+    if loaded_image != null { SurfaceDestroy(loaded_image) }
+    if paint != null { Destroy(paint) }
+    if surface != null { SurfaceDestroy(surface) }
+    if texture != null { DestroyTexture(texture) }
+    if renderer != null { DestroyRenderer(renderer) }
+    if window != null { DestroyWindow(window) }
+    Quit()
+}
+
+#program_export
+SetPointerFrame :: (x: float32, y: float32, down: bool,
+    pressed: bool, released: bool) {
+    pointer.x = x
+    pointer.y = y
+    pointer.down = down
+    pointer.pressed = pressed
+    pointer.released = released
+}
+
+#program_export
+PollDesktop :: () -> bool {
+    event: Event
+    pressed: bool = false
+    released: bool = false
+    while PollEvent(*event) != 0 {
+        if event.kind == cast(u32)0x100 { return false }
+        if event.button == cast(u8)1 {
+            if event.kind == cast(u32)0x401 { pressed = true }
+            if event.kind == cast(u32)0x402 { released = true }
+        }
+    }
+    x: s32 = 0
+    y: s32 = 0
+    buttons: u32 = GetMouseState(*x, *y)
+    down: bool = (buttons & cast(u32)1) != cast(u32)0
+    SetPointerFrame(cast(float32)x, cast(float32)y, down,
+        pressed, released)
+    return true
+}
+
+#program_export
+CheckPointerEvents :: () -> bool {
+    event: Event
+    event.kind = cast(u32)0x401
+    event.button = cast(u8)1
+    if PushEvent(*event) != 1 || !PollDesktop() ||
+        !pointer.pressed || pointer.released { return false }
+    event.kind = cast(u32)0x402
+    if PushEvent(*event) != 1 || !PollDesktop() ||
+        pointer.pressed || !pointer.released { return false }
+    return true
+}
+
+#program_export
+BeginDesktopFrame :: () {
+    Save(paint)
+    SetSourceRGBA(paint, 248.0 / 255.0, 250.0 / 255.0,
+        252.0 / 255.0, 1.0)
+    Paint(paint)
+    Restore(paint)
+}
+
+#program_export
+EndDesktopFrame :: () -> bool {
+    if image_error || Status(paint) != 0 { return false }
+    SurfaceFlush(surface)
+    if UpdateTexture(texture, null, ImageSurfaceData(surface),
+        ImageSurfaceStride(surface)) != 0 { return false }
+    if RenderCopy(renderer, texture, null, null) != 0 { return false }
+    RenderPresent(renderer)
+    return true
+}
+
+#program_export
+CaptureRequested :: () -> bool {
+    key: [32]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", key[:]) { return false }
+    return GetEnvironment(*key[0]) != null
+}
+
+#program_export
+CaptureConfigured :: () -> bool {
+    key: [32]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", key[:]) { return false }
+    path: *u8 = GetEnvironment(*key[0])
+    if path == null { return false }
+    return SurfaceWritePNG(surface, path) == 0
+}
+
+#program_export
+PauseDesktop :: () { Delay(cast(u32)16) }
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    return (cast(s32)value.count * font * 3) / 5
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    return font
+}
+
+#program_export
+PollPointer :: () -> PointerFrame { return pointer }
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    RoundBox(bounds, radius)
+    SetColor(color)
+    Fill(paint)
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    RoundBox(bounds, radius)
+    SetColor(color)
+    SetLineWidth(paint, cast(float64)width)
+    Stroke(paint)
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    MoveTo(paint, cast(float64)line.x, cast(float64)line.y)
+    LineTo(paint, cast(float64)(line.x + line.width),
+        cast(float64)(line.y + line.height))
+    SetColor(color)
+    SetLineWidth(paint, 1.0)
+    Stroke(paint)
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32,
+    font: s32, color: Color) {
+    bytes: [1024]u8
+    if !CopyCString(value, bytes[:]) { return }
+    SetFontSize(paint, cast(float64)font)
+    MoveTo(paint, cast(float64)x, cast(float64)(y + font))
+    SetColor(color)
+    ShowText(paint, *bytes[0])
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    Save(paint)
+    CanvasRectangle(paint, cast(float64)clip.x, cast(float64)clip.y,
+        cast(float64)clip.width, cast(float64)clip.height)
+    Clip(paint)
+    RasterText(value, x, y, font, color)
+    Restore(paint)
+}
+
+LoadPNG :: (asset_path: string) -> *void {
+    length: s32 = cast(s32)asset_path.count
+    if length == 0 || length >= cast(s32)loaded_path.count { return null }
+    same: bool = loaded_image != null && loaded_length == length
+    index: s32 = 0
+    while same && index < length {
+        if loaded_path[index] != asset_path[index] { same = false }
+        index += 1
+    }
+    if same { return loaded_image }
+    if loaded_image != null {
+        SurfaceDestroy(loaded_image)
+        loaded_image = null
+    }
+    if !CopyCString(asset_path, loaded_path[:]) { return null }
+    image: *void = ImageSurfaceFromPNG(*loaded_path[0])
+    if image == null { return null }
+    if SurfaceStatus(image) != 0 {
+        SurfaceDestroy(image)
+        return null
+    }
+    loaded_image = image
+    loaded_length = length
+    return loaded_image
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    image: *void = LoadPNG(asset_path)
+    if image == null { return 0 }
+    return ImageSurfaceWidth(image)
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    image: *void = LoadPNG(asset_path)
+    if image == null { return 0 }
+    return ImageSurfaceHeight(image)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    if texture_id != cast(u32)0 || asset_path.count == 0 ||
+        source.width <= 0.0 || source.height <= 0.0 ||
+        destination.width <= 0.0 || destination.height <= 0.0 ||
+        clip.width <= 0.0 || clip.height <= 0.0 {
+        image_error = true
+        return
+    }
+    image: *void = LoadPNG(asset_path)
+    if image == null {
+        image_error = true
+        return
+    }
+    Save(paint)
+    RoundBox(clip, radius)
+    Clip(paint)
+    Translate(paint, cast(float64)destination.x,
+        cast(float64)destination.y)
+    Rotate(paint, cast(float64)rotation *
+        3.14159265358979323846 / 180.0)
+    Translate(paint, -cast(float64)origin.x,
+        -cast(float64)origin.y)
+    CanvasRectangle(paint, 0.0, 0.0,
+        cast(float64)destination.width,
+        cast(float64)destination.height)
+    Clip(paint)
+    Scale(paint, cast(float64)destination.width /
+        cast(float64)source.width,
+        cast(float64)destination.height / cast(float64)source.height)
+    Translate(paint, -cast(float64)source.x, -cast(float64)source.y)
+    if tint.r == cast(u8)255 && tint.g == cast(u8)255 &&
+        tint.b == cast(u8)255 && tint.a == cast(u8)255 {
+        SetSourceSurface(paint, image, 0.0, 0.0)
+        Paint(paint)
+    } else {
+        SetColor(tint)
+        MaskSurface(paint, image, 0.0, 0.0)
+    }
+    Restore(paint)
+}

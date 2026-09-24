@@ -1,0 +1,36 @@
+#import "desktop_runtime"
+#import "hello"
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktop() {
+        CloseDesktop()
+        return 1
+    }
+    ok: bool = true
+    if CaptureRequested() {
+        ok = CheckPointerEvents()
+        frame: s32 = 0
+        while frame < 4 && ok {
+            down: bool = frame == 1
+            SetPointerFrame(80.0, 70.0, down, down, frame == 2)
+            BeginDesktopFrame()
+            value: s32 = Frame()
+            expected: s32 = 2
+            if frame >= 2 { expected = 102 }
+            ok = EndDesktopFrame() && value == expected
+            frame += 1
+        }
+        if ok { ok = CaptureConfigured() }
+    } else {
+        while ok && PollDesktop() {
+            BeginDesktopFrame()
+            value: s32 = Frame()
+            ok = EndDesktopFrame() && value >= 0
+            if ok { PauseDesktop() }
+        }
+    }
+    CloseDesktop()
+    if ok { return 0 }
+    return 1
+}

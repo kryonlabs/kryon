@@ -75,11 +75,11 @@ The current archive includes selected widget behavior and shared line rendering
 path. Complete widget composition and rendering,
 remaining platform host adapters, full `.zib` capability execution, and
 downstream app builds are still migration work. Kryon's implementation target
-is 100% current Ziran source. The C files under `src/backend/` and C example
-hosts are migration debt still used by the present test harness; they must be
-replaced in Ziran rather than extended. The unused handwritten Go runtime has
-been removed. The old KRB renderer and static C package were removed with
-their header-dependent implementation.
+is 100% current Ziran source. The C files under `src/backend/` and the C frame
+replay tool are migration debt still used by the present test harness; they
+must be replaced in Ziran rather than extended. The unused handwritten Go
+runtime has been removed. The old KRB renderer and static C package were
+removed with their header-dependent implementation.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
 boundary and [Ziran's implementation status](https://github.com/kryonlabs/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)

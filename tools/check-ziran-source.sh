@@ -4,8 +4,7 @@ set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 # This list only shrinks as the remaining hosts move to current Ziran.
-expected='examples/desktop_host.c
-src/backend/composition_host.c
+expected='src/backend/composition_host.c
 src/backend/font_metrics_host.c
 src/backend/image_host.c
 src/backend/image_software.c

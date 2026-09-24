@@ -5,10 +5,8 @@ ZIRAN_DIR ?= ../../ziran
 ZI2ZIR_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zir)
 ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)
-ZIRAN_LIB ?= $(abspath $(ZIRAN_DIR)/build/libziran.a)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 BUILD_DIR ?= ../build/examples/ziran
-HOST_LIB := ../build/ziran/libkryon_host.a
 NATIVE_LIB := ../build/ziran/libkryon.a
 
 .PHONY: all test desktop desktop-test desktop-image-test clean
@@ -17,8 +15,8 @@ all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zib
 $(ZI2ZIB_BIN):
 	$(MAKE) -C $(ZIRAN_DIR) all
 
-$(HOST_LIB):
-	$(MAKE) -C .. $(HOST_LIB)
+$(ZI2C_BIN):
+	$(MAKE) -C $(ZIRAN_DIR) all
 
 $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(wildcard ../src/ui/*.zi)
 	$(MAKE) -C .. all
@@ -66,23 +64,41 @@ $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
 test: all $(BUILD_DIR)/hello-saved.zib
 	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
 
-$(BUILD_DIR)/hello-desktop: desktop_host.c $(HOST_LIB) $(ZIRAN_LIB)
-	$(CC) -std=c11 -Wall -Wextra -I../build/ziran/c \
-		-I$(ZIRAN_INCLUDE) $$(pkg-config --cflags sdl2 cairo) \
-		desktop_host.c $(HOST_LIB) $(ZIRAN_LIB) \
+$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi desktop_runtime.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+	mkdir -p $(BUILD_DIR)/desktop-hello-native
+	$(ZI2C_BIN) --strict --root . --module-path ../src/ui \
+		--module-path $(ZIRAN_DIR)/std \
+		-o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
+
+$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi desktop_runtime.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+	mkdir -p $(BUILD_DIR)/desktop-image-native
+	$(ZI2C_BIN) --strict --root . --module-path ../src/ui \
+		--module-path $(ZIRAN_DIR)/std \
+		-o $(BUILD_DIR)/desktop-image-native desktop_image.zi
+
+$(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
+		-I$(BUILD_DIR)/desktop-hello-native \
+		$(BUILD_DIR)/desktop-hello-native/*.c \
 		$$(pkg-config --libs sdl2 cairo) -lm -o $@
 
-desktop: $(BUILD_DIR)/hello.zib $(BUILD_DIR)/hello-desktop
+$(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Makefile
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
+		-I$(BUILD_DIR)/desktop-image-native \
+		$(BUILD_DIR)/desktop-image-native/*.c \
+		$$(pkg-config --libs sdl2 cairo) -lm -o $@
+
+desktop: $(BUILD_DIR)/hello-desktop
 
 desktop-test: desktop
-	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
-		$(BUILD_DIR)/hello-desktop $(BUILD_DIR)/hello.zib \
-		--self-test $(BUILD_DIR)/hello-desktop.png
+	env -u DISPLAY -u WAYLAND_DISPLAY \
+		KRYON_CAPTURE_PATH=$(BUILD_DIR)/hello-desktop.png \
+		xvfb-run -a $(BUILD_DIR)/hello-desktop
 
-desktop-image-test: $(BUILD_DIR)/image-saved.zib $(BUILD_DIR)/hello-desktop
-	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
-		$(BUILD_DIR)/hello-desktop $(BUILD_DIR)/image.zib \
-		--image-self-test $(BUILD_DIR)/image-desktop.png
+desktop-image-test: $(BUILD_DIR)/image-saved.zib $(BUILD_DIR)/image-desktop
+	env -u DISPLAY -u WAYLAND_DISPLAY \
+		KRYON_CAPTURE_PATH=$(BUILD_DIR)/image-desktop.png \
+		xvfb-run -a $(BUILD_DIR)/image-desktop
 
 clean:
 	$(RM) -r $(BUILD_DIR)

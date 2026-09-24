@@ -29,14 +29,14 @@ Ziran host supplies raw input, font, and drawing effects. Production window
 loops, platform text services, and the remaining widget migration are still in
 progress.
 
-An optional SDL2/Cairo desktop host runs the same bundle in a real window.
-Build it with `make -C examples desktop`. Its repeatable four-frame check runs
-on a private display with `make -C examples desktop-test` and writes
-`build/examples/ziran/hello-desktop.png`. The check captures the clicked state
-without contacting the current desktop display.
-`make -C examples desktop-image-test` renders the canonical
+An optional Ziran desktop host links the application with SDL2 and Cairo
+through declared foreign calls. Build it with `make -C examples desktop`.
+Run `build/examples/ziran/hello-desktop` from `examples/` to interact with its
+button. Its repeatable four-frame check runs on a private display with
+`make -C examples desktop-test` and writes
+`build/examples/ziran/hello-desktop.png` without contacting the current
+desktop display. `make -C examples desktop-image-test` renders the canonical
 `Image(ImageProps)` with a path-backed PNG and red tint, then writes
-`build/examples/ziran/image-desktop.png`. This host currently handles shapes,
-text, and path-backed PNG images. Texture handles and other image formats
-remain open. It is a desktop integration proof, not the finished platform
-renderer.
+`build/examples/ziran/image-desktop.png`. The host imports Ziran's generic
+`c_string` module for safe C string arguments. It handles shapes, text, and
+path-backed PNG images. Texture handles and other image formats remain open.

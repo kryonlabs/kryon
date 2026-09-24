@@ -33,11 +33,11 @@ their integration with the library.
 
 The unused handwritten Go runtime has been removed. The current archives
 contain all checked UI modules and C portable host adapters. Those C adapters
-and C examples are migration debt: they still support today's tests and must
-be replaced with current Ziran source. Application integration and supported
-renderer paths still need completion.
+and the C frame replay tool are migration debt: they still support today's
+tests and must be replaced with current Ziran source. Application integration
+and supported renderer paths still need completion.
 
-The optional SDL2/Cairo example opens a Kryon bundle in a private-display
+The optional SDL2/Cairo example links ordinary Ziran source in a private-display
 desktop test. Its checks capture a clicked button and a tinted, asset-backed
 PNG image. It is an integration proof; texture handles, other image formats,
 text services, and production platform hosts remain unfinished.

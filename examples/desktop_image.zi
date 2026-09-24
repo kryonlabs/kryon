@@ -1,0 +1,27 @@
+#import "desktop_runtime"
+#import "image_demo"
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktop() {
+        CloseDesktop()
+        return 1
+    }
+    ok: bool = true
+    if CaptureRequested() {
+        BeginDesktopFrame()
+        ok = Frame() == 2
+        if ok { ok = EndDesktopFrame() }
+        if ok { ok = CaptureConfigured() }
+    } else {
+        while ok && PollDesktop() {
+            BeginDesktopFrame()
+            ok = Frame() == 2
+            if ok { ok = EndDesktopFrame() }
+            if ok { PauseDesktop() }
+        }
+    }
+    CloseDesktop()
+    if ok { return 0 }
+    return 1
+}
