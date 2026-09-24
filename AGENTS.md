@@ -4,6 +4,21 @@ Kryon is a reusable UI library authored in Ziran. The Ziran language,
 compiler, `.zir` representation, `.zib` format, and portable runtime live in
 the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
 
+## 100% Ziran rule
+
+- Kryon's handwritten implementation, platform integration, and maintained
+  examples must be written in current Ziran (`.zi`). Do not add or expand
+  handwritten C, C++, Go, or other language implementations inside Kryon.
+  Generated native output under `build/` is an output of Ziran, not source.
+- Use the latest Ziran syntax and APIs directly. Do not add compatibility
+  wrappers, aliases, fallback runtimes, or old-syntax paths for Ziran in Kryon.
+  When Ziran lacks a general capability, implement it in `../ziran` first and
+  import it as an ordinary language capability. Do not add UI special cases to
+  Ziran.
+- Existing handwritten non-Ziran host and example code is migration debt.
+  Remove or replace it with Ziran; do not copy, extend, or promote it into a
+  new Kryon backend.
+
 ## Source and build
 
 - Make changes in this upstream repository on `master`. Commit and push here
