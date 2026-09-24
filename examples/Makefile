@@ -9,7 +9,7 @@ ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 BUILD_DIR ?= ../build/examples/ziran
 HOST_LIB := ../build/ziran/libkryon_host.a
 
-.PHONY: all test desktop desktop-test clean
+.PHONY: all test desktop desktop-test desktop-image-test clean
 all: $(BUILD_DIR)/hello.svg
 
 $(ZI2ZIB_BIN):
@@ -30,6 +30,19 @@ $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
 		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
 		-o $@ $(BUILD_DIR)/ir/hello.zir
 	cmp $(BUILD_DIR)/hello.zib $@
+
+$(BUILD_DIR)/image.zib: image_demo.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
+	mkdir -p $(BUILD_DIR)
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
+		--entry image_demo:Frame -o $@ image_demo.zi
+
+$(BUILD_DIR)/image-saved.zib: $(BUILD_DIR)/image.zib
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
+		-o $(BUILD_DIR)/image-ir image_demo.zi
+	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/image-ir \
+		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
+		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
+	cmp $(BUILD_DIR)/image.zib $@
 
 $(BUILD_DIR)/hello-host: hello_host.c $(HOST_LIB) $(ZIRAN_LIB)
 	mkdir -p $(BUILD_DIR)
@@ -61,6 +74,11 @@ desktop-test: desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
 		$(BUILD_DIR)/hello-desktop $(BUILD_DIR)/hello.zib \
 		--self-test $(BUILD_DIR)/hello-desktop.png
+
+desktop-image-test: $(BUILD_DIR)/image-saved.zib $(BUILD_DIR)/hello-desktop
+	env -u DISPLAY -u WAYLAND_DISPLAY xvfb-run -a \
+		$(BUILD_DIR)/hello-desktop $(BUILD_DIR)/image.zib \
+		--image-self-test $(BUILD_DIR)/image-desktop.png
 
 clean:
 	$(RM) -r $(BUILD_DIR)

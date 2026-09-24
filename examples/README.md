@@ -31,6 +31,10 @@ An optional SDL2/Cairo desktop host runs the same bundle in a real window.
 Build it with `make -C examples desktop`. Its repeatable four-frame check runs
 on a private display with `make -C examples desktop-test` and writes
 `build/examples/ziran/hello-desktop.png`. The check captures the clicked state
-without contacting the current desktop display. This host currently renders
-shapes and text; it reports image paint as unsupported. It is a desktop
-integration proof, not the finished platform renderer.
+without contacting the current desktop display.
+`make -C examples desktop-image-test` renders the canonical
+`Image(ImageProps)` with a path-backed PNG and red tint, then writes
+`build/examples/ziran/image-desktop.png`. This host currently handles shapes,
+text, and path-backed PNG images. Texture handles and other image formats
+remain open. It is a desktop integration proof, not the finished platform
+renderer.

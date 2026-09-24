@@ -1,0 +1,37 @@
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "image"
+#import "image_props"
+#import "image_widget"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+
+#program_export
+Frame :: () -> s32 {
+    rules: StyleRules
+    rules.count = 1
+    tint: StyleRule
+    tint.selector = StyleDefaultSelector()
+    tint.selector.kind = StyleKindImage()
+    tint.selector.class_name = 7
+    tint.style.fields = cast(u32)StyleForeground |
+        cast(u32)StyleOpacity | cast(u32)StyleRadius
+    tint.style.foreground = cast(u32)0xff0000ff
+    tint.style.opacity = 0.75
+    tint.style.radius = 8.0
+    rules.items[0] = tint
+    InstallStyleRules(rules)
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
+    image: ImageProps
+    image.class_name = 7
+    image.asset_path = "../docs/site/cursors/arrow.png"
+    image.alt_text = "Arrow"
+    image.bounds = Rectangle.{112.0, 32.0, 96.0, 96.0}
+    image.fit = cast(ImageFit)ImageFitStretch
+    Image(image)
+    if !EndTree() { return -1 }
+    return TreeCount()
+}

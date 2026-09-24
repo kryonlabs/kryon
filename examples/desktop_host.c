@@ -19,7 +19,7 @@ typedef struct DesktopHost {
     cairo_surface_t *surface;
     cairo_t *paint;
     PointerHost pointer;
-    int unsupported_image;
+    int image_error;
 } DesktopHost;
 
 static char *
@@ -187,6 +187,37 @@ image_size(void *context, const char *path, size_t length,
     return 1;
 }
 
+static cairo_surface_t *
+tinted_image(cairo_surface_t *image, const uint8_t tint[4])
+{
+    int width = cairo_image_surface_get_width(image);
+    int height = cairo_image_surface_get_height(image);
+    int input_stride = cairo_image_surface_get_stride(image);
+    cairo_surface_t *copy = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                                        width, height);
+    if(cairo_surface_status(copy) != CAIRO_STATUS_SUCCESS) return copy;
+    cairo_surface_flush(image);
+    for(int y = 0; y < height; y++) {
+        uint32_t *input = (uint32_t *)(cairo_image_surface_get_data(image) +
+                                       y * input_stride);
+        uint32_t *output = (uint32_t *)(cairo_image_surface_get_data(copy) +
+                                        y * cairo_image_surface_get_stride(copy));
+        for(int x = 0; x < width; x++) {
+            uint32_t pixel = input[x];
+            uint32_t alpha = ((pixel >> 24) & 255u) * tint[3] / 255u;
+            uint32_t red = ((pixel >> 16) & 255u) * tint[0] * tint[3] /
+                           (255u * 255u);
+            uint32_t green = ((pixel >> 8) & 255u) * tint[1] * tint[3] /
+                             (255u * 255u);
+            uint32_t blue = (pixel & 255u) * tint[2] * tint[3] /
+                            (255u * 255u);
+            output[x] = (alpha << 24) | (red << 16) | (green << 8) | blue;
+        }
+    }
+    cairo_surface_mark_dirty(copy);
+    return copy;
+}
+
 static void
 image_draw(void *context, const char *path, size_t length,
            uint32_t texture_id, const float source[4],
@@ -195,17 +226,59 @@ image_draw(void *context, const char *path, size_t length,
            const uint8_t tint[4])
 {
     DesktopHost *host = context;
-    (void)path;
-    (void)length;
-    (void)texture_id;
-    (void)source;
-    (void)destination;
-    (void)clip;
-    (void)origin;
-    (void)rotation;
-    (void)radius;
-    (void)tint;
-    host->unsupported_image = 1;
+    char *name;
+    cairo_surface_t *image;
+    cairo_surface_t *colored;
+    if(texture_id != 0 || path == NULL || length == 0 ||
+       source[2] <= 0 || source[3] <= 0 ||
+       destination[2] <= 0 || destination[3] <= 0 ||
+       clip[2] <= 0 || clip[3] <= 0) {
+        host->image_error = 1;
+        return;
+    }
+    name = copy_text(path, length);
+    if(name == NULL) {
+        host->image_error = 1;
+        return;
+    }
+    image = cairo_image_surface_create_from_png(name);
+    free(name);
+    if(cairo_surface_status(image) != CAIRO_STATUS_SUCCESS) {
+        host->image_error = 1;
+        cairo_surface_destroy(image);
+        return;
+    }
+    colored = image;
+    if(tint[0] != 255 || tint[1] != 255 || tint[2] != 255 ||
+       tint[3] != 255) {
+        colored = tinted_image(image, tint);
+        if(cairo_surface_status(colored) != CAIRO_STATUS_SUCCESS) {
+            host->image_error = 1;
+            cairo_surface_destroy(colored);
+            cairo_surface_destroy(image);
+            return;
+        }
+    }
+    cairo_save(host->paint);
+    round_box(host->paint, clip[0], clip[1], clip[2], clip[3], radius);
+    cairo_clip(host->paint);
+    cairo_translate(host->paint, destination[0], destination[1]);
+    cairo_rotate(host->paint, rotation * 3.14159265358979323846 / 180.0);
+    cairo_translate(host->paint, -origin[0], -origin[1]);
+    cairo_rectangle(host->paint, 0, 0, destination[2], destination[3]);
+    cairo_clip(host->paint);
+    cairo_scale(host->paint, destination[2] / source[2],
+                destination[3] / source[3]);
+    cairo_translate(host->paint, -source[0], -source[1]);
+    cairo_set_source_surface(host->paint, colored, 0, 0);
+    cairo_pattern_set_extend(cairo_get_source(host->paint),
+                             CAIRO_EXTEND_NONE);
+    cairo_pattern_set_filter(cairo_get_source(host->paint),
+                             CAIRO_FILTER_NEAREST);
+    cairo_paint(host->paint);
+    cairo_restore(host->paint);
+    if(colored != image) cairo_surface_destroy(colored);
+    cairo_surface_destroy(image);
 }
 
 static int
@@ -254,7 +327,7 @@ run_frame(DesktopHost *host, BundleInstance *instance, long long *value)
     cairo_paint(host->paint);
     cairo_restore(host->paint);
     if(!BundleInstanceRun(instance, value, &has_result) || !has_result ||
-       host->unsupported_image || cairo_status(host->paint) != CAIRO_STATUS_SUCCESS)
+       host->image_error || cairo_status(host->paint) != CAIRO_STATUS_SUCCESS)
         return 0;
     cairo_surface_flush(host->surface);
     if(SDL_UpdateTexture(host->texture, NULL, host->pixels->pixels,
@@ -272,14 +345,17 @@ main(int argc, char **argv)
     Bundle *bundle = NULL;
     BundleInstance *instance = NULL;
     int self_test;
+    int image_test;
     int ok = 1;
     if(argc != 2 && argc != 4) {
-        fprintf(stderr, "usage: %s hello.zib [--self-test output.png]\n",
+        fprintf(stderr, "usage: %s app.zib "
+                "[--self-test|--image-self-test output.png]\n",
                 argv[0]);
         return 2;
     }
     self_test = argc == 4 && strcmp(argv[2], "--self-test") == 0;
-    if(argc == 4 && !self_test) return 2;
+    image_test = argc == 4 && strcmp(argv[2], "--image-self-test") == 0;
+    if(argc == 4 && !self_test && !image_test) return 2;
     bundle = BundleOpen(argv[1]);
     if(bundle == NULL || !open_desktop(&host)) {
         fprintf(stderr, "desktop initialization failed: %s\n",
@@ -324,18 +400,33 @@ main(int argc, char **argv)
             ok = run_frame(&host, instance, &value) && value == expected[frame];
             if(!ok) {
                 fprintf(stderr, "desktop frame %d returned %lld (expected %lld), "
-                        "unsupported image: %d\n", frame, value,
-                        expected[frame], host.unsupported_image);
+                        "image error: %d\n", frame, value,
+                        expected[frame], host.image_error);
             }
         }
+    } else if(image_test) {
+        long long value = 0;
+        int painted = 0;
+        ok = run_frame(&host, instance, &value) && value == 2;
         if(ok) {
-            cairo_status_t status = cairo_surface_write_to_png(host.surface,
-                                                               argv[3]);
-            if(status != CAIRO_STATUS_SUCCESS) {
-                fprintf(stderr, "screenshot failed: %s\n",
-                        cairo_status_to_string(status));
-                ok = 0;
+            const unsigned char *data = cairo_image_surface_get_data(host.surface);
+            int stride = cairo_image_surface_get_stride(host.surface);
+            for(int y = 32; y < 128; y++) {
+                const uint32_t *row = (const uint32_t *)(data + y * stride);
+                for(int x = 112; x < 208; x++) {
+                    unsigned red = (row[x] >> 16) & 255u;
+                    unsigned green = (row[x] >> 8) & 255u;
+                    unsigned blue = row[x] & 255u;
+                    if(red > green + 20 && red > blue + 20)
+                        painted++;
+                }
             }
+            ok = painted > 0;
+        }
+        if(!ok) {
+            fprintf(stderr, "desktop image frame returned %lld, "
+                    "painted pixels: %d, image error: %d\n", value,
+                    painted, host.image_error);
         }
     } else {
         int running = 1;
@@ -361,6 +452,15 @@ main(int argc, char **argv)
             host.pointer.down = (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
             ok = run_frame(&host, instance, &value);
             SDL_Delay(16);
+        }
+    }
+    if((self_test || image_test) && ok) {
+        cairo_status_t status = cairo_surface_write_to_png(host.surface,
+                                                           argv[3]);
+        if(status != CAIRO_STATUS_SUCCESS) {
+            fprintf(stderr, "screenshot failed: %s\n",
+                    cairo_status_to_string(status));
+            ok = 0;
         }
     }
 done:

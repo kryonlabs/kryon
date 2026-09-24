@@ -29,14 +29,15 @@ compilation. Backend host declarations also compile with the current Ziran
 toolchain. Platform hosts and downstream applications have not yet completed
 their integration with the library.
 
-The C and Go platform implementations from the prior runtime remain migration
-material. They are not included by `make` and do not presently provide a
-linked application UI. The current archives contain all checked UI modules
-and the portable host adapters, but application integration and supported
-renderer paths still need completion.
+The prior runtime's C and Go platform implementations are outside the
+maintained build. The current archives contain all checked UI modules and
+portable host adapters, but application integration and supported renderer
+paths still need completion.
+
 The optional SDL2/Cairo example opens a Kryon bundle in a private-display
-desktop test and captures its clicked state. It is an integration proof;
-image paint, text services, and production platform hosts remain unfinished.
+desktop test. Its checks capture a clicked button and a tinted, asset-backed
+PNG image. It is an integration proof; texture handles, other image formats,
+text services, and production platform hosts remain unfinished.
 
 ## Module rule
 
