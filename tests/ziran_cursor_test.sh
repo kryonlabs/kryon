@@ -3,6 +3,7 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -109,6 +110,6 @@ C
 
 "${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
     -o "$work/host" "$work/host.c" \
-    "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a"
+    "$repo/build/ziran/libkryon_host.a" "$ziran_lib"
 "$work/host" "$work/source.zib"
 "$work/host" "$work/saved.zib"

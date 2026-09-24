@@ -2,29 +2,31 @@
 
 CC ?= cc
 ZIRAN_DIR ?= ../../ziran
-ZIRAN_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/ziran)
+ZI2ZIR_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zir)
+ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
 ZIRAN_LIB ?= $(abspath $(ZIRAN_DIR)/build/libziran.a)
+ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 BUILD_DIR ?= ../build/examples/ziran
 HOST_LIB := ../build/ziran/libkryon_host.a
 
 .PHONY: all test clean
 all: $(BUILD_DIR)/hello.svg
 
-$(ZIRAN_BIN):
+$(ZI2ZIB_BIN):
 	$(MAKE) -C $(ZIRAN_DIR) all
 
 $(HOST_LIB):
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_BIN)
+$(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZIRAN_BIN) bundle --root . --module-path ../src/ui \
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
 		--entry hello:Frame -o $@ hello.zi
 
 $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
-	$(ZIRAN_BIN) ir --root . --module-path ../src/ui \
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
 		-o $(BUILD_DIR)/ir hello.zi
-	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/ir \
+	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/ir \
 		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
 		-o $@ $(BUILD_DIR)/ir/hello.zir
 	cmp $(BUILD_DIR)/hello.zib $@
@@ -32,7 +34,7 @@ $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
 $(BUILD_DIR)/hello-host: hello_host.c $(HOST_LIB) $(ZIRAN_LIB)
 	mkdir -p $(BUILD_DIR)
 	$(CC) -std=c11 -Wall -Wextra -I../build/ziran/c \
-		-I$(ZIRAN_DIR)/include hello_host.c $(HOST_LIB) \
+		-I$(ZIRAN_INCLUDE) hello_host.c $(HOST_LIB) \
 		$(ZIRAN_LIB) -o $@
 
 $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host $(BUILD_DIR)/hello.zib

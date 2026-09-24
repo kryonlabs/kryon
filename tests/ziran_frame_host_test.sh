@@ -3,6 +3,7 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -31,6 +32,6 @@ grep -Fq 'missing host capability: frame_pacing:ApplyTargetFPS' \
     "$work/missing.err"
 "${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
     -o "$work/frame-host-test" "$repo/tests/ziran_frame_host_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a"
+    "$repo/build/ziran/libkryon_host.a" "$ziran_lib"
 "$work/frame-host-test" "$work/source.zib"
 "$work/frame-host-test" "$work/saved.zib"

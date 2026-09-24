@@ -68,6 +68,9 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 ziran-test: $(BUILD_DIR)/libkryon_host.a
 	@for test_file in tests/ziran_*_test.sh; do \
 		echo "$$test_file"; \
+		ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
+		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
+		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
 		sh "$$test_file" || exit 1; \
 	done
 
