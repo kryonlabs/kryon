@@ -1278,41 +1278,6 @@
       "evidence_revision": "b97812e3"
     },
     {
-      "id": "runtime.parity.cross-target",
-      "domain": "compiler",
-      "summary": "C, Go and JS runtime outputs agree (cross-target parity)",
-      "sources": [
-        "tools/runtime_parity_doc.go"
-      ],
-      "phase": 4,
-      "targets": [
-        "c",
-        "go"
-      ],
-      "status": "implementation-connected",
-      "mechanism": "test-suite",
-      "evidence": {
-        "c": "test-suite",
-        "go": "test-suite"
-      },
-      "evidence_revision": "b97812e3"
-    },
-    {
-      "id": "runtime.parity.cross-target.js",
-      "domain": "compiler",
-      "summary": "JS leg of cross-target runtime parity",
-      "sources": [
-        "tools/runtime_parity_doc.go"
-      ],
-      "phase": 4,
-      "targets": [
-        "js"
-      ],
-      "status": "deferred",
-      "mechanism": "planned:test-suite",
-      "deferred_reason": "JS/web target paused; reactivation must meet the same law requirements before this row changes."
-    },
-    {
       "id": "semantic.button.label.equals.text.child",
       "domain": "policy",
       "summary": "A button label and an equivalent child text node lay out identically",
