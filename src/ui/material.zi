@@ -1,4 +1,3 @@
-#module "material"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -13,26 +12,27 @@ MaterialPaint :: struct {
     value: StyleData
     light: u32
     ambient: u32
-    hover: float
-    press: float
-    focus: float
+    hover: float32
+    press: float32
+    focus: float32
     disabled: bool
     fill: FillStates
     fill_valid: bool
-    scale: float
+    scale: float32
 }
 
 SurfaceDrawing :: struct {
     layer: SurfaceLayer
     bounds: Rectangle
     area: Rectangle
-    scale: float
+    scale: float32
     surface: Rectangle
     segment: Rectangle
     visible: bool
 }
 
-PrepareMaterial :: (paint: MaterialPaint) -> MaterialPaint #export {
+#program_export
+PrepareMaterial :: (paint: MaterialPaint) -> MaterialPaint {
     if paint.scale <= 0.0 { paint.scale = 1.0 }
     if paint.surface.width <= 0.0 || paint.surface.height <= 0.0 {
         paint.surface = paint.bounds
@@ -40,14 +40,16 @@ PrepareMaterial :: (paint: MaterialPaint) -> MaterialPaint #export {
     return paint
 }
 
-MaterialContentBounds :: (paint: MaterialPaint) -> Rectangle #export {
+#program_export
+MaterialContentBounds :: (paint: MaterialPaint) -> Rectangle {
     result: Rectangle = paint.bounds
     result.y += MaterialOffset(paint.value.material, paint.hover, paint.press,
         paint.disabled) * paint.scale
     return result
 }
 
-PaintMaterialLayer :: (paint: MaterialPaint, index: i32) -> SurfaceDrawing #export {
+#program_export
+PaintMaterialLayer :: (paint: MaterialPaint, index: s32) -> SurfaceDrawing {
     result: SurfaceDrawing
     value: StyleData = paint.value
     layer: SurfaceLayer = MaterialLayer(value.material, index,
@@ -59,7 +61,7 @@ PaintMaterialLayer :: (paint: MaterialPaint, index: i32) -> SurfaceDrawing #expo
         if paint.fill_valid {
             layer = ApplyFillStates(layer, paint.fill, value.opacity)
         } else {
-            layer = FillGradient(layer, (value.fields & (u32)StyleBackgroundEnd) != (u32)0,
+            layer = FillGradient(layer, (value.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0,
                 value.background, value.background_end, value.opacity)
         }
     }
@@ -68,14 +70,14 @@ PaintMaterialLayer :: (paint: MaterialPaint, index: i32) -> SurfaceDrawing #expo
     result.bounds.y = paint.surface.y + layer.y * paint.scale
     result.bounds.width = layer.width * paint.scale
     result.bounds.height = layer.height * paint.scale
-    blur: float = layer.blur * paint.scale
+    blur: float32 = layer.blur * paint.scale
     result.area.x = result.bounds.x - blur
     result.area.y = result.bounds.y - blur
     result.area.width = result.bounds.width + 2.0 * blur
     result.area.height = result.bounds.height + 2.0 * blur
     result.visible = result.bounds.width > 0.0 && result.bounds.height > 0.0 &&
-        ((layer.color & (u32)255) != (u32)0 ||
-         (layer.gradient && (layer.end_color & (u32)255) != (u32)0))
+        ((layer.color & cast(u32)255) != cast(u32)0 ||
+         (layer.gradient && (layer.end_color & cast(u32)255) != cast(u32)0))
     result.scale = paint.scale
     result.surface = paint.surface
     result.segment = paint.bounds

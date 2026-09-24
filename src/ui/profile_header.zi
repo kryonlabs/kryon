@@ -1,19 +1,18 @@
-#module "profile_header"
 #import "drawing_props"
 #import "geometry"
 
 ProfileHeaderLayout :: struct {
-    height: i32
-    top_pad: i32
-    avatar_radius: i32
-    avatar_size: i32
-    padding_x: i32
-    avatar_center_x: i32
-    avatar_center_y: i32
-    name_x: i32
-    name_y: i32
-    count_y: i32
-    max_name_width: i32
+    height: s32
+    top_pad: s32
+    avatar_radius: s32
+    avatar_size: s32
+    padding_x: s32
+    avatar_center_x: s32
+    avatar_center_y: s32
+    name_x: s32
+    name_y: s32
+    count_y: s32
+    max_name_width: s32
     profile_bounds: Rectangle
     avatar_tile_bounds: Rectangle
     icon_bounds: Rectangle
@@ -23,22 +22,22 @@ ProfileHeaderLayout :: struct {
 }
 
 ProfilePickerLayout :: struct {
-    width: i32
-    gap: i32
-    content_width: i32
-    columns: i32
-    cell: i32
-    rows: i32
-    grid_width: i32
-    content_height: i32
-    height: i32
-    max_height: i32
-    icon_inset: i32
+    width: s32
+    gap: s32
+    content_width: s32
+    columns: s32
+    cell: s32
+    rows: s32
+    grid_width: s32
+    content_height: s32
+    height: s32
+    max_height: s32
+    icon_inset: s32
 }
 
 ProfilePickerCell :: struct {
-    row: i32
-    column: i32
+    row: s32
+    column: s32
     bounds: Rectangle
     icon_bounds: Rectangle
 }
@@ -56,53 +55,61 @@ ProfilePickerCellDecision :: struct {
     consume_release: bool
     select: bool
     changed: bool
-    selected_index: i32
-    selected_icon_type: i32
+    selected_index: s32
+    selected_icon_type: s32
     close: bool
 }
 
-ProfileScale :: (scale: float) -> float {
+ProfileScale :: (scale: float32) -> float32 {
     if scale <= 0.0 { return 1.0 }
     return scale
 }
 
-ProfilePx :: (value: float, scale: float) -> i32 {
-    return (i32)(value * ProfileScale(scale))
+ProfilePx :: (value: float32, scale: float32) -> s32 {
+    return cast(s32)(value * ProfileScale(scale))
 }
 
-ProfileHeaderUsernameHitWidth :: (text_width: i32, scale: float) -> i32 #export {
+#program_export
+ProfileHeaderUsernameHitWidth :: (text_width: s32, scale: float32) -> s32 {
     if text_width < 0 { text_width = 0 }
     return text_width + ProfilePx(8.0, scale)
 }
 
-ProfileHeaderUsernameHitHeight :: (text_height: i32, scale: float) -> i32 #export {
+#program_export
+ProfileHeaderUsernameHitHeight :: (text_height: s32, scale: float32) -> s32 {
     if text_height < 0 { text_height = 0 }
     return text_height + ProfilePx(8.0, scale)
 }
 
-ProfileHeaderSubtitleY :: (name_y: i32, scale: float) -> i32 #export {
+#program_export
+ProfileHeaderSubtitleY :: (name_y: s32, scale: float32) -> s32 {
     return name_y + ProfilePx(22.0, scale)
 }
 
-ProfileHeaderFriendsTextX :: (header_x: i32, scale: float) -> i32 #export {
+#program_export
+ProfileHeaderFriendsTextX :: (header_x: s32, scale: float32) -> s32 {
     return header_x + ProfilePx(12.0, scale)
 }
 
-ProfileHeaderFriendsTextY :: (count_y: i32, scale: float) -> i32 #export {
+#program_export
+ProfileHeaderFriendsTextY :: (count_y: s32, scale: float32) -> s32 {
     return count_y + ProfilePx(8.0, scale)
 }
 
-ProfileHeaderMutedAlpha :: (alpha: u8) -> u8 #export {
-    return (u8)((float)alpha * 0.72)
+#program_export
+ProfileHeaderMutedAlpha :: (alpha: u8) -> u8 {
+    return cast(u8)(cast(float32)alpha * 0.72)
 }
 
-ProfilePickerSelectedStrokeWidth :: (scale: float) -> i32 #export {
+#program_export
+ProfilePickerSelectedStrokeWidth :: (scale: float32) -> s32 {
     return ProfilePx(2.0, scale)
 }
 
-ProfileHeaderLayoutFor :: (x: i32, y: i32, width: i32,
-    requested_height: i32, requested_padding_x: i32, username_width: i32,
-    username_height: i32, scale: float) -> ProfileHeaderLayout #export {
+#program_export
+ProfileHeaderLayoutFor :: (x: s32, y: s32, width: s32,
+    requested_height: s32, requested_padding_x: s32, username_width: s32,
+    username_height: s32, scale: float32) -> ProfileHeaderLayout {
     layout: ProfileHeaderLayout
     layout.height = requested_height
     if layout.height <= 0 { layout.height = ProfilePx(138.0, scale) }
@@ -126,45 +133,46 @@ ProfileHeaderLayoutFor :: (x: i32, y: i32, width: i32,
     if username_width > layout.max_name_width {
         username_width = layout.max_name_width
     }
-    layout.profile_bounds = (Rectangle){
-        (float)(layout.avatar_center_x - layout.avatar_radius -
+    layout.profile_bounds = Rectangle.{
+        cast(float32)(layout.avatar_center_x - layout.avatar_radius -
             ProfilePx(4.0, scale)),
-        (float)(layout.avatar_center_y - layout.avatar_radius -
+        cast(float32)(layout.avatar_center_y - layout.avatar_radius -
             ProfilePx(4.0, scale)),
-        (float)(layout.avatar_size + ProfilePx(8.0, scale)),
-        (float)(layout.avatar_size + ProfilePx(8.0, scale))}
-    layout.avatar_tile_bounds = (Rectangle){
-        (float)(layout.avatar_center_x - layout.avatar_radius -
+        cast(float32)(layout.avatar_size + ProfilePx(8.0, scale)),
+        cast(float32)(layout.avatar_size + ProfilePx(8.0, scale))}
+    layout.avatar_tile_bounds = Rectangle.{
+        cast(float32)(layout.avatar_center_x - layout.avatar_radius -
             ProfilePx(3.0, scale)),
-        (float)(layout.avatar_center_y - layout.avatar_radius -
+        cast(float32)(layout.avatar_center_y - layout.avatar_radius -
             ProfilePx(3.0, scale)),
-        (float)(layout.avatar_size + ProfilePx(6.0, scale)),
-        (float)(layout.avatar_size + ProfilePx(6.0, scale))}
-    layout.icon_bounds = (Rectangle){
-        (float)(layout.avatar_center_x - layout.avatar_radius +
+        cast(float32)(layout.avatar_size + ProfilePx(6.0, scale)),
+        cast(float32)(layout.avatar_size + ProfilePx(6.0, scale))}
+    layout.icon_bounds = Rectangle.{
+        cast(float32)(layout.avatar_center_x - layout.avatar_radius +
             ProfilePx(3.0, scale)),
-        (float)(layout.avatar_center_y - layout.avatar_radius +
+        cast(float32)(layout.avatar_center_y - layout.avatar_radius +
             ProfilePx(3.0, scale)),
-        (float)(layout.avatar_size - ProfilePx(6.0, scale)),
-        (float)(layout.avatar_size - ProfilePx(6.0, scale))}
-    layout.username_bounds = (Rectangle){
-        (float)layout.name_x,
-        (float)(layout.name_y - ProfilePx(4.0, scale)),
-        (float)username_width,
-        (float)username_height}
-    layout.friends_bounds = (Rectangle){
-        (float)x, (float)layout.count_y, (float)width,
-        (float)ProfilePx(36.0, scale)}
-    layout.header_bounds = (Rectangle){
-        (float)x, (float)y, (float)width, (float)layout.height}
+        cast(float32)(layout.avatar_size - ProfilePx(6.0, scale)),
+        cast(float32)(layout.avatar_size - ProfilePx(6.0, scale))}
+    layout.username_bounds = Rectangle.{
+        cast(float32)layout.name_x,
+        cast(float32)(layout.name_y - ProfilePx(4.0, scale)),
+        cast(float32)username_width,
+        cast(float32)username_height}
+    layout.friends_bounds = Rectangle.{
+        cast(float32)x, cast(float32)layout.count_y, cast(float32)width,
+        cast(float32)ProfilePx(36.0, scale)}
+    layout.header_bounds = Rectangle.{
+        cast(float32)x, cast(float32)y, cast(float32)width, cast(float32)layout.height}
     return layout
 }
 
-ProfilePickerLayoutFor :: (view_width: i32, view_height: i32,
-    requested_max_width: i32, icon_count: i32, scale: float) -> ProfilePickerLayout #export {
+#program_export
+ProfilePickerLayoutFor :: (view_width: s32, view_height: s32,
+    requested_max_width: s32, icon_count: s32, scale: float32) -> ProfilePickerLayout {
     layout: ProfilePickerLayout
     layout.width = requested_max_width
-    if layout.width > 0 { layout.width = ProfilePx((float)layout.width, scale) }
+    if layout.width > 0 { layout.width = ProfilePx(cast(float32)layout.width, scale) }
     if layout.width <= 0 { layout.width = ProfilePx(520.0, scale) }
     if layout.width > view_width - ProfilePx(24.0, scale) {
         layout.width = view_width - ProfilePx(24.0, scale)
@@ -200,26 +208,28 @@ ProfilePickerLayoutFor :: (view_width: i32, view_height: i32,
     return layout
 }
 
-ProfilePickerCellFor :: (index: i32, content_x: i32, content_y: i32,
-    content_width: i32, picker: ProfilePickerLayout) -> ProfilePickerCell #export {
+#program_export
+ProfilePickerCellFor :: (index: s32, content_x: s32, content_y: s32,
+    content_width: s32, picker: ProfilePickerLayout) -> ProfilePickerCell {
     cell: ProfilePickerCell
     if picker.columns <= 0 { return cell }
     cell.row = index / picker.columns
     cell.column = index % picker.columns
-    x: i32 = content_x + (content_width - picker.grid_width) / 2 +
+    x: s32 = content_x + (content_width - picker.grid_width) / 2 +
         cell.column * (picker.cell + picker.gap)
-    y: i32 = content_y + cell.row * (picker.cell + picker.gap)
-    cell.bounds = (Rectangle){
-        (float)x, (float)y, (float)picker.cell, (float)picker.cell}
-    cell.icon_bounds = (Rectangle){
-        (float)(x + picker.icon_inset),
-        (float)(y + picker.icon_inset),
-        (float)(picker.cell - picker.icon_inset * 2),
-        (float)(picker.cell - picker.icon_inset * 2)}
+    y: s32 = content_y + cell.row * (picker.cell + picker.gap)
+    cell.bounds = Rectangle.{
+        cast(float32)x, cast(float32)y, cast(float32)picker.cell, cast(float32)picker.cell}
+    cell.icon_bounds = Rectangle.{
+        cast(float32)(x + picker.icon_inset),
+        cast(float32)(y + picker.icon_inset),
+        cast(float32)(picker.cell - picker.icon_inset * 2),
+        cast(float32)(picker.cell - picker.icon_inset * 2)}
     return cell
 }
 
-ProfilePointerActionFor :: (active: bool, activated: bool) -> ProfilePointerAction #export {
+#program_export
+ProfilePointerActionFor :: (active: bool, activated: bool) -> ProfilePointerAction {
     action: ProfilePointerAction
     action.active = active
     action.activated = activated
@@ -229,14 +239,16 @@ ProfilePointerActionFor :: (active: bool, activated: bool) -> ProfilePointerActi
     return action
 }
 
+#program_export
 ProfilePointerActionFromInput :: (inside: bool, input_captured: bool,
-    hover_enabled: bool, released: bool) -> ProfilePointerAction #export {
+    hover_enabled: bool, released: bool) -> ProfilePointerAction {
     active: bool = inside && !input_captured && hover_enabled
     return ProfilePointerActionFor(active, active && released)
 }
 
+#program_export
 ProfilePickerCellDecisionFor :: (active: bool, activated: bool,
-    index: i32, icon_type: i32, selected_icon_type: i32) -> ProfilePickerCellDecision #export {
+    index: s32, icon_type: s32, selected_icon_type: s32) -> ProfilePickerCellDecision {
     decision: ProfilePickerCellDecision
     decision.selected_index = -1
     decision.selected_icon_type = selected_icon_type

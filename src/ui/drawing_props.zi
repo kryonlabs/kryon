@@ -1,6 +1,6 @@
-#module "drawing_props"
 #import "geometry"
 #import "text_align"
+host_api :: #system_library "host_api";
 
 # The public value records have the same layout on every generated target.
 # A platform host may adapt them to its own graphics library.
@@ -11,62 +11,64 @@ Color :: struct {
     a: u8
 }
 
-ColorFromPacked :: (packed: u32) -> Color #export {
-    return (Color){
-        (u8)(packed >> (u32)24),
-        (u8)(packed >> (u32)16),
-        (u8)(packed >> (u32)8),
-        (u8)packed
+#program_export
+ColorFromPacked :: (packed: u32) -> Color {
+    return Color.{
+        cast(u8)(packed >> cast(u32)24),
+        cast(u8)(packed >> cast(u32)16),
+        cast(u8)(packed >> cast(u32)8),
+        cast(u8)packed
     }
 }
 
 Texture2D :: struct {
     id: u32
-    width: i32
-    height: i32
-    mipmaps: i32
-    format: i32
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
 }
 
 ParagraphSpec :: struct {
-    text: const char*
+    text: string
     icon: Texture2D
-    icon_type: i32
-    icon_size: i32
-    width: i32
-    font: i32
-    line_gap: i32
+    icon_type: s32
+    icon_size: s32
+    width: s32
+    font: s32
+    line_gap: s32
     align: TextAlign
-    class_name: i32
+    class_name: s32
 }
 
 # Shared color math. The lightness decision is identical on every target, so it
 # lives in the cross-target runtime instead of a C-only host shim.
-color_min :: (a: float, b: float) -> float #private {
+#scope_file
+color_min :: (a: float32, b: float32) -> float32 {
     if a < b { return a }
     return b
 }
 
-color_max :: (a: float, b: float) -> float #private {
+color_max :: (a: float32, b: float32) -> float32 {
     if a > b { return a }
     return b
 }
 
-color_clamp :: (value: float, minimum: float,
-                maximum: float) -> float #private {
+color_clamp :: (value: float32, minimum: float32,
+                maximum: float32) -> float32 {
     if value < minimum { return minimum }
     if value > maximum { return maximum }
     return value
 }
 
-color_byte :: (value: float) -> u8 #private {
-    scaled: i32 = (i32)(value * 255.0 + 0.5)
+color_byte :: (value: float32) -> u8 {
+    scaled: s32 = cast(s32)(value * 255.0 + 0.5)
     if scaled < 0 { return 0 }
     if scaled > 255 { return 255 }
-    return (u8)scaled
+    return cast(u8)scaled
 }
 
-color_hue_to_rgb :: (p: float, q: float, t: float) -> float #private {
+color_hue_to_rgb :: (p: float32, q: float32, t: float32) -> float32 {
     if t < 0.0 { t += 1.0 }
     if t > 1.0 { t -= 1.0 }
     if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t }
@@ -75,39 +77,39 @@ color_hue_to_rgb :: (p: float, q: float, t: float) -> float #private {
     return p
 }
 
-color_from_hsl :: (hue: float, saturation: float, lightness: float,
-                   alpha: u8) -> Color #private {
+color_from_hsl :: (hue: float32, saturation: float32, lightness: float32,
+                   alpha: u8) -> Color {
     hue = color_clamp(hue, 0.0, 1.0)
     saturation = color_clamp(saturation, 0.0, 1.0)
     lightness = color_clamp(lightness, 0.0, 1.0)
     if saturation <= 0.0 {
         gray: u8 = color_byte(lightness)
-        return (Color){gray, gray, gray, alpha}
+        return Color.{gray, gray, gray, alpha}
     }
-    q: float = lightness + saturation - lightness * saturation
+    q: float32 = lightness + saturation - lightness * saturation
     if lightness < 0.5 {
         q = lightness * (1.0 + saturation)
     }
-    p: float = 2.0 * lightness - q
-    red: float = color_hue_to_rgb(p, q, hue + 1.0 / 3.0)
-    green: float = color_hue_to_rgb(p, q, hue)
-    blue: float = color_hue_to_rgb(p, q, hue - 1.0 / 3.0)
-    return (Color){color_byte(red), color_byte(green), color_byte(blue), alpha}
+    p: float32 = 2.0 * lightness - q
+    red: float32 = color_hue_to_rgb(p, q, hue + 1.0 / 3.0)
+    green: float32 = color_hue_to_rgb(p, q, hue)
+    blue: float32 = color_hue_to_rgb(p, q, hue - 1.0 / 3.0)
+    return Color.{color_byte(red), color_byte(green), color_byte(blue), alpha}
 }
 
 # Shift a color's HSL lightness by amount/255 and preserve its alpha.
-AdjustedColorLightness :: (color: Color, amount: i32) -> Color #private {
-    red: float = (float)color.r / 255.0
-    green: float = (float)color.g / 255.0
-    blue: float = (float)color.b / 255.0
-    maximum: float = color_max(red, color_max(green, blue))
-    minimum: float = color_min(red, color_min(green, blue))
-    chroma: float = maximum - minimum
-    lightness: float = (maximum + minimum) * 0.5
-    hue: float = 0.0
-    saturation: float = 0.0
+AdjustedColorLightness :: (color: Color, amount: s32) -> Color {
+    red: float32 = cast(float32)color.r / 255.0
+    green: float32 = cast(float32)color.g / 255.0
+    blue: float32 = cast(float32)color.b / 255.0
+    maximum: float32 = color_max(red, color_max(green, blue))
+    minimum: float32 = color_min(red, color_min(green, blue))
+    chroma: float32 = maximum - minimum
+    lightness: float32 = (maximum + minimum) * 0.5
+    hue: float32 = 0.0
+    saturation: float32 = 0.0
     if chroma > 0.0 {
-        absolute_lightness: float = 2.0 * lightness - 1.0
+        absolute_lightness: float32 = 2.0 * lightness - 1.0
         if absolute_lightness < 0.0 { absolute_lightness = -absolute_lightness }
         saturation = chroma / (1.0 - absolute_lightness)
         if maximum == red {
@@ -120,23 +122,34 @@ AdjustedColorLightness :: (color: Color, amount: i32) -> Color #private {
         }
         hue /= 6.0
     }
-    lightness = color_clamp(lightness + (float)amount / 255.0, 0.0, 1.0)
+    lightness = color_clamp(lightness + cast(float32)amount / 255.0, 0.0, 1.0)
     return color_from_hsl(hue, saturation, lightness, color.a)
 }
 
-LightenColor :: (color: Color, amount: i32) -> Color #export {
+#scope_export
+#program_export
+LightenColor :: (color: Color, amount: s32) -> Color {
     if amount < 0 { amount = 0 }
     return AdjustedColorLightness(color, amount)
 }
 
-DarkenColor :: (color: Color, amount: i32) -> Color #export {
+#program_export
+DarkenColor :: (color: Color, amount: s32) -> Color {
     if amount < 0 { amount = 0 }
     return AdjustedColorLightness(color, -amount)
 }
 
-# Implemented by the C-only clip host; declared here for the public ABI.
-GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle #extern #export
-GetClipEffective :: (bounds: Rectangle) -> Rectangle #extern #export
-BeginClip :: (x: i32, y: i32, w: i32, h: i32) #extern #export
-EndClip :: () #extern #export
-ResetClip :: () #extern #export
+# Rectangle intersection is a value calculation; clip stack effects belong to
+# the host capability interface.
+#program_export
+GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
+    return RectangleIntersection(a, b)
+}
+#program_export
+GetClipEffective :: (bounds: Rectangle) -> Rectangle #foreign host_api;
+#program_export
+BeginClip :: (x: s32, y: s32, w: s32, h: s32) #foreign host_api;
+#program_export
+EndClip :: () #foreign host_api;
+#program_export
+ResetClip :: () #foreign host_api;

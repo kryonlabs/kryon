@@ -1,4 +1,3 @@
-#module "checkbox"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -12,7 +11,7 @@ CheckboxSpec :: struct {
     hovered: bool
     pressed: bool
     focused: bool
-    scale: float
+    scale: float32
     box: StyleFrame
     active: StyleFrame
     label: StyleFrame
@@ -35,11 +34,11 @@ CheckboxPaint :: struct {
     state_color: u32
     focus_color: u32
     label_color: u32
-    radius: float
-    border_width: float
-    mark_width: float
-    state_radius: float
-    focus_radius: float
+    radius: float32
+    border_width: float32
+    mark_width: float32
+    state_radius: float32
+    focus_radius: float32
     show_fill: bool
     show_mark: bool
     show_state: bool
@@ -49,8 +48,8 @@ CheckboxPaint :: struct {
 CheckboxLayout :: struct {
     bounds: Rectangle
     slot_bounds: Rectangle
-    label_x: float
-    label_y: float
+    label_x: float32
+    label_y: float32
 }
 
 CheckboxFlagResult :: struct {
@@ -64,44 +63,49 @@ CheckboxValueResult :: struct {
     changed: bool
 }
 
-CheckboxMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> float {
+CheckboxMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
     return value * scale
 }
 
-CheckboxSlotSize :: (scale: float, box: StyleFrame) -> i32 #export {
-    return (i32)CheckboxMetric(box.value.fields, (u32)StylePaddingX,
+#program_export
+CheckboxSlotSize :: (scale: float32, box: StyleFrame) -> s32 {
+    return cast(s32)CheckboxMetric(box.value.fields, cast(u32)StylePaddingX,
         box.value.padding_x, 22.0, scale, false)
 }
 
-CheckboxBoxSize :: (scale: float, box: StyleFrame) -> i32 #export {
-    return (i32)CheckboxMetric(box.value.fields, (u32)StyleIconSize,
+#program_export
+CheckboxBoxSize :: (scale: float32, box: StyleFrame) -> s32 {
+    return cast(s32)CheckboxMetric(box.value.fields, cast(u32)StyleIconSize,
         box.value.icon_size, 20.0, scale, true)
 }
 
-CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float,
-    label: StyleFrame) -> float #export {
-    gap: float = CheckboxMetric(label.value.fields, (u32)StyleGap,
+#program_export
+CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float32,
+    label: StyleFrame) -> float32 {
+    gap: float32 = CheckboxMetric(label.value.fields, cast(u32)StyleGap,
         label.value.gap, 10.0, scale, true)
     return slot_bounds.x + slot_bounds.width + gap
 }
 
-CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float) -> float #export {
+#program_export
+CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float32) -> float32 {
     return bounds.y + (bounds.height - text_line_height) / 2.0
 }
 
-CheckboxLayoutForText :: (x: float, y: float, label_width: float,
-    text_line_height: float, scale: float, box: StyleFrame,
-    label: StyleFrame) -> CheckboxLayout #export {
+#program_export
+CheckboxLayoutForText :: (x: float32, y: float32, label_width: float32,
+    text_line_height: float32, scale: float32, box: StyleFrame,
+    label: StyleFrame) -> CheckboxLayout {
     layout: CheckboxLayout
     if scale <= 0.0 { scale = 1.0 }
-    slot_size: float = (float)CheckboxSlotSize(scale, box)
-    gap: float = CheckboxMetric(label.value.fields, (u32)StyleGap,
+    slot_size: float32 = cast(float32)CheckboxSlotSize(scale, box)
+    gap: float32 = CheckboxMetric(label.value.fields, cast(u32)StyleGap,
         label.value.gap, 10.0, scale, true)
     layout.bounds.x = x
     layout.bounds.y = y
@@ -117,13 +121,15 @@ CheckboxLayoutForText :: (x: float, y: float, label_width: float,
     return layout
 }
 
-CheckboxLayoutFor :: (x: float, y: float, label_width: float,
-    scale: float, box: StyleFrame, label: StyleFrame) -> CheckboxLayout #export {
+#program_export
+CheckboxLayoutFor :: (x: float32, y: float32, label_width: float32,
+    scale: float32, box: StyleFrame, label: StyleFrame) -> CheckboxLayout {
     return CheckboxLayoutForText(x, y, label_width,
-        (float)CheckboxSlotSize(scale, box), scale, box, label)
+        cast(float32)CheckboxSlotSize(scale, box), scale, box, label)
 }
 
-CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult #export {
+#program_export
+CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult {
     result: CheckboxFlagResult
     result.flags = flags
     result.checked = (flags & flag_value) == flag_value
@@ -140,7 +146,8 @@ CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFla
     return result
 }
 
-CheckboxValueApply :: (checked: bool, pressed: bool, has_value: bool) -> CheckboxValueResult #export {
+#program_export
+CheckboxValueApply :: (checked: bool, pressed: bool, has_value: bool) -> CheckboxValueResult {
     result: CheckboxValueResult
     result.checked = checked
     result.changed = false
@@ -151,33 +158,36 @@ CheckboxValueApply :: (checked: bool, pressed: bool, has_value: bool) -> Checkbo
     return result
 }
 
-CheckboxBoxRoleForTone :: (tone: ButtonTone) -> i32 #export {
-    if tone == (ButtonTone)ButtonToneAccent {
+#program_export
+CheckboxBoxRoleForTone :: (tone: ButtonTone) -> s32 {
+    if tone == cast(ButtonTone)ButtonToneAccent {
         return 10
     }
     return 9
 }
 
-CheckboxLabelRole :: () -> i32 #export {
+#program_export
+CheckboxLabelRole :: () -> s32 {
     return 6
 }
 
-CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
+#program_export
+CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint {
     paint: CheckboxPaint
-    scale: float = spec.scale
+    scale: float32 = spec.scale
     if scale <= 0.0 { scale = 1.0 }
 
-    slot_size: float = (float)CheckboxSlotSize(scale, spec.box)
-    box_size: float = (float)CheckboxBoxSize(scale, spec.box)
-    state_outset: float = CheckboxMetric(spec.box.value.fields,
-        (u32)StyleGap, spec.box.value.gap, 4.0, scale, true)
-    focus_outset: float = CheckboxMetric(spec.box.value.fields,
-        (u32)StylePaddingY, spec.box.value.padding_y, 3.0, scale, true)
-    mark_inset: float = CheckboxMetric(spec.active.value.fields,
-        (u32)StylePaddingX, spec.active.value.padding_x, 5.0, scale, true)
-    mark_width: float = CheckboxMetric(spec.active.value.fields,
-        (u32)StyleIconSize, spec.active.value.icon_size, 2.4, scale, true)
-    border_width: float = spec.box.value.border_width * scale
+    slot_size: float32 = cast(float32)CheckboxSlotSize(scale, spec.box)
+    box_size: float32 = cast(float32)CheckboxBoxSize(scale, spec.box)
+    state_outset: float32 = CheckboxMetric(spec.box.value.fields,
+        cast(u32)StyleGap, spec.box.value.gap, 4.0, scale, true)
+    focus_outset: float32 = CheckboxMetric(spec.box.value.fields,
+        cast(u32)StylePaddingY, spec.box.value.padding_y, 3.0, scale, true)
+    mark_inset: float32 = CheckboxMetric(spec.active.value.fields,
+        cast(u32)StylePaddingX, spec.active.value.padding_x, 5.0, scale, true)
+    mark_width: float32 = CheckboxMetric(spec.active.value.fields,
+        cast(u32)StyleIconSize, spec.active.value.icon_size, 2.4, scale, true)
+    border_width: float32 = spec.box.value.border_width * scale
 
     paint.bounds = spec.bounds
     paint.slot_bounds.x = spec.bounds.x
@@ -209,14 +219,18 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
 
     paint.box = spec.box
     paint.active = spec.active
-    paint.fill_color = spec.checked ? spec.active.value.background : spec.box.value.background
-    paint.border_color = spec.checked ? spec.active.value.border : spec.box.value.border
+    paint.fill_color = ifx spec.checked then spec.active.value.background else spec.box.value.background
+    paint.border_color = ifx spec.checked then spec.active.value.border else spec.box.value.border
     paint.mark_color = spec.active.value.foreground
-    paint.state_color = Opacity(spec.checked ? spec.active.value.background : spec.box.value.foreground,
-        spec.pressed ? 0.14 : (spec.hovered ? 0.08 : 0.10))
+    state_base: u32 = spec.box.value.foreground
+    if spec.checked { state_base = spec.active.value.background }
+    state_alpha: float32 = 0.10
+    if spec.hovered { state_alpha = 0.08 }
+    if spec.pressed { state_alpha = 0.14 }
+    paint.state_color = Opacity(state_base, state_alpha)
     paint.focus_color = spec.box.value.focus
     paint.label_color = spec.box.value.foreground
-    if (spec.label.value.fields & (u32)StyleForeground) != (u32)0 {
+    if (spec.label.value.fields & cast(u32)StyleForeground) != cast(u32)0 {
         paint.label_color = spec.label.value.foreground
     }
 

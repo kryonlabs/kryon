@@ -1,4 +1,3 @@
-#module "image_props"
 #import "drawing_props"
 #import "geometry"
 
@@ -14,9 +13,9 @@ ImageProps :: struct {
     bounds: Rectangle
     source: Rectangle
     origin: Vector2
-    rotation: float
+    rotation: float32
     fit: ImageFit
-    class_name: i32
+    class_name: s32
     # Runtime texture: honored instead of asset_path when set.
     texture: Texture2D
     key: u64

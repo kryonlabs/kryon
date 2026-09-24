@@ -1,19 +1,18 @@
-#module "title_bar"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 
 TitleBarMetrics :: struct {
-    side_margin: i32
-    leading_reserved: i32
-    leading_icon_size: i32
-    leading_padding: i32
-    leading_x: i32
-    dropdown_gap: i32
-    dropdown_default_height: i32
-    title_min_width: i32
-    title_horizontal_padding: i32
+    side_margin: s32
+    leading_reserved: s32
+    leading_icon_size: s32
+    leading_padding: s32
+    leading_x: s32
+    dropdown_gap: s32
+    dropdown_default_height: s32
+    title_min_width: s32
+    title_horizontal_padding: s32
 }
 
 TitleBarLayout :: struct {
@@ -21,7 +20,7 @@ TitleBarLayout :: struct {
     leading_bounds: Rectangle
     title_bounds: Rectangle
     dropdown_bounds: Rectangle
-    side_reserved: i32
+    side_reserved: s32
 }
 
 TitleBarPaint :: struct {
@@ -30,70 +29,77 @@ TitleBarPaint :: struct {
 }
 
 TitleBarTitlePaint :: struct {
-    x: i32
-    y: i32
+    x: s32
+    y: s32
 }
 
 TitleBarState :: struct {
-    height: i32
+    height: s32
     has_leading: bool
     has_dropdown: bool
 }
 
-TitleBarMetric :: (fields: u32, field: u32, value: float, fallback: float,
-    scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
-    return (i32)(value * scale)
+TitleBarMetric :: (fields: u32, field: u32, value: float32, fallback: float32,
+    scale: float32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
+    return cast(s32)(value * scale)
 }
 
-TitleBarBarRole :: () -> i32 #export {
+#program_export
+TitleBarBarRole :: () -> s32 {
     return 1
 }
 
-TitleBarTitleRole :: () -> i32 #export {
+#program_export
+TitleBarTitleRole :: () -> s32 {
     return 16
 }
 
-TitleBarActionRole :: () -> i32 #export {
+#program_export
+TitleBarActionRole :: () -> s32 {
     return 17
 }
 
-TitleBarActionRadius :: () -> float #export {
+#program_export
+TitleBarActionRadius :: () -> float32 {
     return 0.50
 }
 
-TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
-    action: StyleFrame) -> TitleBarMetrics #export {
+#program_export
+TitleBarMetricsFor :: (scale: float32, bar: StyleFrame, title: StyleFrame,
+    action: StyleFrame) -> TitleBarMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TitleBarMetrics
     metrics.side_margin = TitleBarMetric(bar.value.fields,
-        (u32)StylePaddingX, bar.value.padding_x, 12.0, scale)
+        cast(u32)StylePaddingX, bar.value.padding_x, 12.0, scale)
     metrics.leading_reserved = TitleBarMetric(bar.value.fields,
-        (u32)StyleContentOffset, bar.value.offset_x, 60.0, scale)
+        cast(u32)StyleContentOffset, bar.value.offset_x, 60.0, scale)
     metrics.leading_icon_size = TitleBarMetric(action.value.fields,
-        (u32)StyleIconSize, action.value.icon_size, 20.0, scale)
+        cast(u32)StyleIconSize, action.value.icon_size, 20.0, scale)
     metrics.leading_padding = TitleBarMetric(action.value.fields,
-        (u32)StylePaddingX, action.value.padding_x, 10.0, scale)
+        cast(u32)StylePaddingX, action.value.padding_x, 10.0, scale)
     metrics.leading_x = metrics.side_margin
     metrics.dropdown_gap = TitleBarMetric(bar.value.fields,
-        (u32)StyleGap, bar.value.gap, 4.0, scale)
+        cast(u32)StyleGap, bar.value.gap, 4.0, scale)
     metrics.dropdown_default_height = TitleBarMetric(bar.value.fields,
-        (u32)StyleIconSize, bar.value.icon_size, 32.0, scale)
+        cast(u32)StyleIconSize, bar.value.icon_size, 32.0, scale)
     metrics.title_min_width = TitleBarMetric(title.value.fields,
-        (u32)StyleIconSize, title.value.icon_size, 48.0, scale)
+        cast(u32)StyleIconSize, title.value.icon_size, 48.0, scale)
     metrics.title_horizontal_padding = TitleBarMetric(title.value.fields,
-        (u32)StylePaddingX, title.value.padding_x, 16.0, scale)
+        cast(u32)StylePaddingX, title.value.padding_x, 16.0, scale)
     return metrics
 }
 
-TitleBarDefaultHeightFor :: (scale: float, bar: StyleFrame) -> i32 #export {
+#program_export
+TitleBarDefaultHeightFor :: (scale: float32, bar: StyleFrame) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return TitleBarMetric(bar.value.fields, (u32)StyleIconSize,
+    return TitleBarMetric(bar.value.fields, cast(u32)StyleIconSize,
         bar.value.icon_size, 32.0, scale)
 }
 
-TitleBarStateFor :: (requested_height: i32, fallback_height: i32,
-    has_leading: bool, has_dropdown: bool) -> TitleBarState #export {
+#program_export
+TitleBarStateFor :: (requested_height: s32, fallback_height: s32,
+    has_leading: bool, has_dropdown: bool) -> TitleBarState {
     state: TitleBarState
     state.height = requested_height
     if state.height <= 0 { state.height = fallback_height }
@@ -103,90 +109,96 @@ TitleBarStateFor :: (requested_height: i32, fallback_height: i32,
     return state
 }
 
-TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
-    has_dropdown: bool, dropdown_height: i32, dropdown_min_width: i32,
-    metrics: TitleBarMetrics) -> TitleBarLayout #export {
+#program_export
+TitleBarLayoutFor :: (view_width: s32, height: s32, has_leading: bool,
+    has_dropdown: bool, dropdown_height: s32, dropdown_min_width: s32,
+    metrics: TitleBarMetrics) -> TitleBarLayout {
     layout: TitleBarLayout
-    layout.bounds.width = (float)view_width
-    layout.bounds.height = (float)height
+    layout.bounds.width = cast(float32)view_width
+    layout.bounds.height = cast(float32)height
     layout.side_reserved = metrics.side_margin
     if has_leading {
-        button_size: i32 = metrics.leading_icon_size + metrics.leading_padding * 2
-        y: i32 = (height - button_size) / 2
+        button_size: s32 = metrics.leading_icon_size + metrics.leading_padding * 2
+        y: s32 = (height - button_size) / 2
         if y < 0 { y = 0 }
-        layout.leading_bounds.x = (float)metrics.leading_x
-        layout.leading_bounds.y = (float)y
-        layout.leading_bounds.width = (float)button_size
-        layout.leading_bounds.height = (float)button_size
+        layout.leading_bounds.x = cast(float32)metrics.leading_x
+        layout.leading_bounds.y = cast(float32)y
+        layout.leading_bounds.width = cast(float32)button_size
+        layout.leading_bounds.height = cast(float32)button_size
         layout.side_reserved = metrics.leading_reserved
     }
 
-    max_width: i32 = view_width - layout.side_reserved * 2
+    max_width: s32 = view_width - layout.side_reserved * 2
     if max_width < metrics.title_min_width {
         max_width = view_width - metrics.title_horizontal_padding
     }
     if max_width < 1 { max_width = 1 }
-    layout.title_bounds.x = (float)((view_width - max_width) / 2)
+    layout.title_bounds.x = cast(float32)((view_width - max_width) / 2)
     layout.title_bounds.y = 0.0
-    layout.title_bounds.width = (float)max_width
-    layout.title_bounds.height = (float)height
+    layout.title_bounds.width = cast(float32)max_width
+    layout.title_bounds.height = cast(float32)height
 
     if has_dropdown {
-        dropdown_x: i32 = metrics.side_margin
+        dropdown_x: s32 = metrics.side_margin
         if has_leading {
             dropdown_x += metrics.leading_icon_size + metrics.leading_padding * 2 +
                 metrics.dropdown_gap
         }
-        dropdown_h: i32 = dropdown_height
+        dropdown_h: s32 = dropdown_height
         if dropdown_h <= 0 { dropdown_h = metrics.dropdown_default_height }
-        dropdown_y: i32 = (height - dropdown_h) / 2
+        dropdown_y: s32 = (height - dropdown_h) / 2
         if dropdown_y < 0 { dropdown_y = 0 }
-        dropdown_w: i32 = view_width - dropdown_x - metrics.side_margin
+        dropdown_w: s32 = view_width - dropdown_x - metrics.side_margin
         if dropdown_min_width > 0 && dropdown_w < dropdown_min_width {
             dropdown_w = view_width - dropdown_x
         }
         if dropdown_w < 1 { dropdown_w = 1 }
-        layout.dropdown_bounds.x = (float)dropdown_x
-        layout.dropdown_bounds.y = (float)dropdown_y
-        layout.dropdown_bounds.width = (float)dropdown_w
-        layout.dropdown_bounds.height = (float)dropdown_h
+        layout.dropdown_bounds.x = cast(float32)dropdown_x
+        layout.dropdown_bounds.y = cast(float32)dropdown_y
+        layout.dropdown_bounds.width = cast(float32)dropdown_w
+        layout.dropdown_bounds.height = cast(float32)dropdown_h
     }
     return layout
 }
 
-TitleBarReservedHasLeading :: (side_reserved: i32,
-    metrics: TitleBarMetrics) -> bool #export {
+#program_export
+TitleBarReservedHasLeading :: (side_reserved: s32,
+    metrics: TitleBarMetrics) -> bool {
     return side_reserved > metrics.side_margin
 }
 
-TitleBarPaintFor :: (view_width: i32, height: i32) -> TitleBarPaint #export {
+#program_export
+TitleBarPaintFor :: (view_width: s32, height: s32) -> TitleBarPaint {
     paint: TitleBarPaint
-    paint.bounds.width = (float)view_width
-    paint.bounds.height = (float)height
+    paint.bounds.width = cast(float32)view_width
+    paint.bounds.height = cast(float32)height
     paint.divider.x = 0.0
-    paint.divider.y = (float)(height - 1)
-    paint.divider.width = (float)view_width
+    paint.divider.y = cast(float32)(height - 1)
+    paint.divider.width = cast(float32)view_width
     paint.divider.height = 1.0
     return paint
 }
 
-TitleBarTitlePaintFor :: (layout: TitleBarLayout, title_width: i32,
-    title_line_height: i32) -> TitleBarTitlePaint #export {
+#program_export
+TitleBarTitlePaintFor :: (layout: TitleBarLayout, title_width: s32,
+    title_line_height: s32) -> TitleBarTitlePaint {
     paint: TitleBarTitlePaint
-    paint.x = (i32)(layout.title_bounds.x +
-        (layout.title_bounds.width - (float)title_width) / 2.0)
-    paint.y = (i32)(layout.title_bounds.y +
-        (layout.title_bounds.height - (float)title_line_height) / 2.0)
+    paint.x = cast(s32)(layout.title_bounds.x +
+        (layout.title_bounds.width - cast(float32)title_width) / 2.0)
+    paint.y = cast(s32)(layout.title_bounds.y +
+        (layout.title_bounds.height - cast(float32)title_line_height) / 2.0)
     return paint
 }
 
-TitleBarShouldShrinkTitleFont :: (title_width: i32, max_width: i32,
-    font: i32, min_font: i32) -> bool #export {
+#program_export
+TitleBarShouldShrinkTitleFont :: (title_width: s32, max_width: s32,
+    font: s32, min_font: s32) -> bool {
     return font > min_font && title_width > max_width
 }
 
-TitleBarShrinkTitleFontStep :: (title_width: i32, max_width: i32,
-    font: i32, min_font: i32) -> i32 #export {
+#program_export
+TitleBarShrinkTitleFontStep :: (title_width: s32, max_width: s32,
+    font: s32, min_font: s32) -> s32 {
     if TitleBarShouldShrinkTitleFont(title_width, max_width, font, min_font) {
         return font - 1
     }

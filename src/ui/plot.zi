@@ -1,13 +1,12 @@
-#module "plot"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 
 PlotRange :: struct {
-    min_value: float
-    max_value: float
-    range: float
+    min_value: float32
+    max_value: float32
+    range: float32
 }
 
 PlotMark :: struct {
@@ -23,25 +22,27 @@ PlotTextPaint :: struct {
     show_overlay: bool
 }
 
-PlotMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+PlotMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
     return value * scale
 }
 
-PlotOffset :: (count: i32, offset: i32) -> i32 #export {
+#program_export
+PlotOffset :: (count: s32, offset: s32) -> s32 {
     if count <= 0 {
         return 0
     }
-    wrapped: i32 = offset % count
+    wrapped: s32 = offset % count
     if wrapped < 0 {
         wrapped = wrapped + count
     }
     return wrapped
 }
 
-PlotRangeFor :: (scale_min: float, scale_max: float,
-    observed_min: float, observed_max: float) -> PlotRange #export {
+#program_export
+PlotRangeFor :: (scale_min: float32, scale_max: float32,
+    observed_min: float32, observed_max: float32) -> PlotRange {
     result: PlotRange
     result.min_value = scale_min
     result.max_value = scale_max
@@ -60,8 +61,9 @@ PlotRangeFor :: (scale_min: float, scale_max: float,
     return result
 }
 
-PlotNormalize :: (value: float, plot_range: PlotRange) -> float #export {
-    t: float = (value - plot_range.min_value) / plot_range.range
+#program_export
+PlotNormalize :: (value: float32, plot_range: PlotRange) -> float32 {
+    t: float32 = (value - plot_range.min_value) / plot_range.range
     if t < 0.0 {
         return 0.0
     }
@@ -71,20 +73,21 @@ PlotNormalize :: (value: float, plot_range: PlotRange) -> float #export {
     return t
 }
 
-PlotHistogramBar :: (bounds: Rectangle, index: i32, count: i32,
-    value: float, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
+#program_export
+PlotHistogramBar :: (bounds: Rectangle, index: s32, count: s32,
+    value: float32, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark {
     mark: PlotMark
     if count <= 0 {
         mark.color = mark_frame.value.background
         return mark
     }
-    step: float = bounds.width / (float)count
-    height: float = PlotNormalize(value, plot_range) * bounds.height
-    width: float = step - 2.0
+    step: float32 = bounds.width / cast(float32)count
+    height: float32 = PlotNormalize(value, plot_range) * bounds.height
+    width: float32 = step - 2.0
     if width < 1.0 {
         width = step
     }
-    mark.bounds.x = bounds.x + (float)index * step + 1.0
+    mark.bounds.x = bounds.x + cast(float32)index * step + 1.0
     mark.bounds.y = bounds.y + bounds.height - height
     mark.bounds.width = width
     mark.bounds.height = height
@@ -92,10 +95,11 @@ PlotHistogramBar :: (bounds: Rectangle, index: i32, count: i32,
     return mark
 }
 
-PlotSingleLine :: (bounds: Rectangle, value: float,
-    plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
+#program_export
+PlotSingleLine :: (bounds: Rectangle, value: float32,
+    plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark {
     mark: PlotMark
-    y: float = bounds.y + (1.0 - PlotNormalize(value, plot_range)) * bounds.height
+    y: float32 = bounds.y + (1.0 - PlotNormalize(value, plot_range)) * bounds.height
     mark.bounds.x = bounds.x
     mark.bounds.y = y
     mark.bounds.width = bounds.width
@@ -104,16 +108,17 @@ PlotSingleLine :: (bounds: Rectangle, value: float,
     return mark
 }
 
-PlotLineSegment :: (bounds: Rectangle, index: i32, count: i32,
-    a: float, b: float, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
+#program_export
+PlotLineSegment :: (bounds: Rectangle, index: s32, count: s32,
+    a: float32, b: float32, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark {
     mark: PlotMark
     if count <= 1 {
         return PlotSingleLine(bounds, b, plot_range, mark_frame)
     }
-    x1: float = bounds.x + (float)(index - 1) * bounds.width / (float)(count - 1)
-    x2: float = bounds.x + (float)index * bounds.width / (float)(count - 1)
-    y1: float = bounds.y + (1.0 - PlotNormalize(a, plot_range)) * bounds.height
-    y2: float = bounds.y + (1.0 - PlotNormalize(b, plot_range)) * bounds.height
+    x1: float32 = bounds.x + cast(float32)(index - 1) * bounds.width / cast(float32)(count - 1)
+    x2: float32 = bounds.x + cast(float32)index * bounds.width / cast(float32)(count - 1)
+    y1: float32 = bounds.y + (1.0 - PlotNormalize(a, plot_range)) * bounds.height
+    y2: float32 = bounds.y + (1.0 - PlotNormalize(b, plot_range)) * bounds.height
     mark.bounds.x = x1
     mark.bounds.y = y1
     mark.bounds.width = x2 - x1
@@ -122,18 +127,19 @@ PlotLineSegment :: (bounds: Rectangle, index: i32, count: i32,
     return mark
 }
 
-PlotTextPaintFor :: (bounds: Rectangle, label_width: float,
-    overlay_width: float, scale: float, frame: StyleFrame,
-    show_label: bool, show_overlay: bool) -> PlotTextPaint #export {
+#program_export
+PlotTextPaintFor :: (bounds: Rectangle, label_width: float32,
+    overlay_width: float32, scale: float32, frame: StyleFrame,
+    show_label: bool, show_overlay: bool) -> PlotTextPaint {
     paint: PlotTextPaint
     if scale <= 0.0 {
         scale = 1.0
     }
-    pad_x: float = PlotMetric(frame.value.fields, (u32)StylePaddingX,
+    pad_x: float32 = PlotMetric(frame.value.fields, cast(u32)StylePaddingX,
         frame.value.padding_x, 6.0, scale)
-    pad_y: float = PlotMetric(frame.value.fields, (u32)StylePaddingY,
+    pad_y: float32 = PlotMetric(frame.value.fields, cast(u32)StylePaddingY,
         frame.value.padding_y, 4.0, scale)
-    text_height: float = PlotMetric(frame.value.fields, (u32)StyleFontSize,
+    text_height: float32 = PlotMetric(frame.value.fields, cast(u32)StyleFontSize,
         frame.value.font_size, 18.0, scale)
     if text_height <= 0.0 { text_height = 18.0 * scale }
     paint.text_color = frame.value.foreground

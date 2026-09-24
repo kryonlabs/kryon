@@ -1,4 +1,3 @@
-#module "page_props"
 #import "drawing_props"
 #import "geometry"
 
@@ -7,46 +6,46 @@ PageProps :: struct {
     title: string
     description: string
     canonical_url: string
-    class_name: i32
+    class_name: s32
     key: u64
 }
 
 SectionProps :: struct {
     bounds: Rectangle
     label: string
-    class_name: i32
+    class_name: s32
     key: u64
 }
 
 HeadingProps :: struct {
     bounds: Rectangle
     text: string
-    level: i32
-    class_name: i32
+    level: s32
+    class_name: s32
     key: u64
 }
 
 ParagraphTextProps :: struct {
     bounds: Rectangle
     text: string
-    class_name: i32
+    class_name: s32
     key: u64
 }
 
 PageSpacing :: struct {
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }
 
 # Page metadata is an effect request. The platform may apply it to a browser
 # document, desktop window, exported document, or ignore it entirely.
 PageResult :: struct {
-    node: i32
+    node: s32
     opened: bool
     bounds: Rectangle
     content: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
     title: string
     description: string
     canonical_url: string
@@ -55,10 +54,10 @@ PageResult :: struct {
 }
 
 SectionResult :: struct {
-    node: i32
+    node: s32
     opened: bool
     bounds: Rectangle
     content: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }

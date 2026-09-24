@@ -1,4 +1,3 @@
-#module "collapsible"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -13,11 +12,11 @@ CollapsibleMarkerKind :: enum {
 }
 
 CollapsibleMetrics :: struct {
-    header_height: i32
-    depth_indent: i32
-    close_width: i32
-    icon_offset: i32
-    text_offset: i32
+    header_height: s32
+    depth_indent: s32
+    close_width: s32
+    icon_offset: s32
+    text_offset: s32
 }
 
 CollapsibleLayout :: struct {
@@ -42,7 +41,7 @@ CollapsibleCloseDecision :: struct {
 
 CollapsibleKeyboardDecision :: struct {
     move_focus: bool
-    focus_key: i32
+    focus_key: s32
     set_open: bool
     open: bool
     toggle_open: bool
@@ -54,90 +53,103 @@ CollapsibleOpenResult :: struct {
     changed: bool
 }
 
-CollapsibleKeyNone :: () -> i32 #export {
+#program_export
+CollapsibleKeyNone :: () -> s32 {
     return 0
 }
 
-CollapsibleKeyLeft :: () -> i32 #export {
+#program_export
+CollapsibleKeyLeft :: () -> s32 {
     return 1
 }
 
-CollapsibleKeyRight :: () -> i32 #export {
+#program_export
+CollapsibleKeyRight :: () -> s32 {
     return 2
 }
 
-CollapsibleKeyUp :: () -> i32 #export {
+#program_export
+CollapsibleKeyUp :: () -> s32 {
     return 3
 }
 
-CollapsibleKeyDown :: () -> i32 #export {
+#program_export
+CollapsibleKeyDown :: () -> s32 {
     return 4
 }
 
-CollapsibleHeaderRole :: () -> i32 #export {
+#program_export
+CollapsibleHeaderRole :: () -> s32 {
     return 13
 }
 
-CollapsibleTreeHeaderRole :: () -> i32 #export {
+#program_export
+CollapsibleTreeHeaderRole :: () -> s32 {
     return 14
 }
 
-CollapsibleCloseRole :: () -> i32 #export {
+#program_export
+CollapsibleCloseRole :: () -> s32 {
     return 15
 }
 
-CollapsibleHeaderRoleFor :: (tree: bool) -> i32 #export {
+#program_export
+CollapsibleHeaderRoleFor :: (tree: bool) -> s32 {
     if tree { return CollapsibleTreeHeaderRole() }
     return CollapsibleHeaderRole()
 }
 
-CollapsibleMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+CollapsibleMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
     return value * scale
 }
 
-CollapsibleMetricsFor :: (scale: float, header: StyleFrame,
-    tree_header: StyleFrame, close: StyleFrame) -> CollapsibleMetrics #export {
+#program_export
+CollapsibleMetricsFor :: (scale: float32, header: StyleFrame,
+    tree_header: StyleFrame, close: StyleFrame) -> CollapsibleMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: CollapsibleMetrics
-    font_size: float = CollapsibleMetric(header.value.fields,
-        (u32)StyleFontSize, header.value.font_size, 16.0, scale)
-    header_padding_y: float = CollapsibleMetric(header.value.fields,
-        (u32)StylePaddingY, header.value.padding_y, 8.0, scale)
-    metrics.header_height = (i32)(font_size + header_padding_y * 2.0)
-    metrics.depth_indent = (i32)CollapsibleMetric(tree_header.value.fields,
-        (u32)StylePaddingX, tree_header.value.padding_x, 20.0, scale)
-    metrics.close_width = (i32)CollapsibleMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 28.0, scale)
-    icon_offset: float = CollapsibleMetric(header.value.fields,
-        (u32)StylePaddingX, header.value.padding_x, 8.0, scale)
-    metrics.icon_offset = (i32)icon_offset
-    icon_size: float = CollapsibleMetric(header.value.fields,
-        (u32)StyleIconSize, header.value.icon_size, 20.0, scale)
-    metrics.text_offset = (i32)(icon_offset + icon_size)
+    font_size: float32 = CollapsibleMetric(header.value.fields,
+        cast(u32)StyleFontSize, header.value.font_size, 16.0, scale)
+    header_padding_y: float32 = CollapsibleMetric(header.value.fields,
+        cast(u32)StylePaddingY, header.value.padding_y, 8.0, scale)
+    metrics.header_height = cast(s32)(font_size + header_padding_y * 2.0)
+    metrics.depth_indent = cast(s32)CollapsibleMetric(tree_header.value.fields,
+        cast(u32)StylePaddingX, tree_header.value.padding_x, 20.0, scale)
+    metrics.close_width = cast(s32)CollapsibleMetric(close.value.fields,
+        cast(u32)StyleIconSize, close.value.icon_size, 28.0, scale)
+    icon_offset: float32 = CollapsibleMetric(header.value.fields,
+        cast(u32)StylePaddingX, header.value.padding_x, 8.0, scale)
+    metrics.icon_offset = cast(s32)icon_offset
+    icon_size: float32 = CollapsibleMetric(header.value.fields,
+        cast(u32)StyleIconSize, header.value.icon_size, 20.0, scale)
+    metrics.text_offset = cast(s32)(icon_offset + icon_size)
     return metrics
 }
 
-CollapsibleMarkerFor :: (open: bool, leaf: bool) -> i32 #export {
+#program_export
+CollapsibleMarkerFor :: (open: bool, leaf: bool) -> s32 {
     if leaf { return CollapsibleMarkerLeaf }
     if open { return CollapsibleMarkerOpen }
     return CollapsibleMarkerClosed
 }
 
-CollapsibleMarkerText :: (marker: i32) -> string #export {
+#program_export
+CollapsibleMarkerText :: (marker: s32) -> string {
     if marker == CollapsibleMarkerLeaf { return "•" }
     if marker == CollapsibleMarkerOpen { return "v" }
     return ">"
 }
 
-CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
-    has_close: bool, metrics: CollapsibleMetrics) -> CollapsibleLayout #export {
+#program_export
+CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: s32,
+    has_close: bool, metrics: CollapsibleMetrics) -> CollapsibleLayout {
     layout: CollapsibleLayout
     header: Rectangle = bounds
-    header.height = (float)metrics.header_height
+    header.height = cast(float32)metrics.header_height
     if tree && depth > 0 {
-        indent: float = (float)(depth * metrics.depth_indent)
+        indent: float32 = cast(float32)(depth * metrics.depth_indent)
         if indent > header.width { indent = header.width }
         header.x += indent
         header.width -= indent
@@ -146,7 +158,7 @@ CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
     layout.body = header
     layout.has_close = has_close
     if has_close {
-        close_width: float = (float)metrics.close_width
+        close_width: float32 = cast(float32)metrics.close_width
         if close_width > header.width { close_width = header.width }
         layout.close_bounds.x = header.x + header.width - close_width
         layout.close_bounds.y = header.y
@@ -158,8 +170,9 @@ CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
     return layout
 }
 
+#program_export
 CollapsiblePointerDecisionFor :: (enabled: bool, closed: bool, hot_body: bool,
-    released: bool, leaf: bool, has_open: bool) -> CollapsiblePointerDecision #export {
+    released: bool, leaf: bool, has_open: bool) -> CollapsiblePointerDecision {
     decision: CollapsiblePointerDecision
     if !enabled || closed || !hot_body {
         return decision
@@ -175,16 +188,18 @@ CollapsiblePointerDecisionFor :: (enabled: bool, closed: bool, hot_body: bool,
     return decision
 }
 
+#program_export
 CollapsibleCloseDecisionFor :: (enabled: bool, has_visible: bool,
-    clicked: bool) -> CollapsibleCloseDecision #export {
+    clicked: bool) -> CollapsibleCloseDecision {
     decision: CollapsibleCloseDecision
     decision.hide = enabled && has_visible && clicked
     decision.changed = decision.hide
     return decision
 }
 
+#program_export
 CollapsibleKeyFor :: (down: bool, up: bool, right: bool,
-    left: bool) -> i32 #export {
+    left: bool) -> s32 {
     if down {
         return CollapsibleKeyDown()
     }
@@ -200,9 +215,10 @@ CollapsibleKeyFor :: (down: bool, up: bool, right: bool,
     return CollapsibleKeyNone()
 }
 
+#program_export
 CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
-    key_already_handled: bool, tree: bool, key: i32, open: bool, leaf: bool,
-    has_open: bool, activate: bool) -> CollapsibleKeyboardDecision #export {
+    key_already_handled: bool, tree: bool, key: s32, open: bool, leaf: bool,
+    has_open: bool, activate: bool) -> CollapsibleKeyboardDecision {
     decision: CollapsibleKeyboardDecision
     if !focused || focus_captured || key_already_handled {
         return decision
@@ -232,8 +248,9 @@ CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
     return decision
 }
 
+#program_export
 CollapsibleOpenApply :: (open: bool, toggle_open: bool, set_open: bool,
-    next_open: bool, has_open: bool) -> CollapsibleOpenResult #export {
+    next_open: bool, has_open: bool) -> CollapsibleOpenResult {
     result: CollapsibleOpenResult
     result.open = open
     result.changed = false
@@ -250,10 +267,11 @@ CollapsibleOpenApply :: (open: bool, toggle_open: bool, set_open: bool,
     return result
 }
 
+#program_export
 CollapsibleFocusTarget :: (headers: []CollapsibleHeader,
-    current_id: i32, key: i32) -> i32 #export {
-    current: i32 = -1
-    index: i32 = 0
+    current_id: s32, key: s32) -> s32 {
+    current: s32 = -1
+    index: s32 = 0
     while index < headers.length {
         if headers[index].id == current_id {
             current = index
@@ -262,14 +280,14 @@ CollapsibleFocusTarget :: (headers: []CollapsibleHeader,
         index += 1
     }
     if current < 0 { return current_id }
-    depth: i32 = headers[current].depth
+    depth: s32 = headers[current].depth
     if depth < 0 { depth = 0 }
     scan: TreeFocusScan = TreeFocusBegin(current, headers.length,
         depth, key == CollapsibleKeyDown(),
         key == CollapsibleKeyUp(), key == CollapsibleKeyRight(),
         key == CollapsibleKeyLeft())
     while !scan.done {
-        candidate_depth: i32 = headers[scan.index].depth
+        candidate_depth: s32 = headers[scan.index].depth
         if candidate_depth < 0 { candidate_depth = 0 }
         scan = TreeFocusAdvance(scan, candidate_depth)
     }

@@ -1,4 +1,3 @@
-#module "toast"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -6,27 +5,27 @@
 #import "style_sheet"
 
 ToastMetrics :: struct {
-    pad_x: i32
-    pad_y: i32
-    margin: i32
-    default_seconds: float
+    pad_x: s32
+    pad_y: s32
+    margin: s32
+    default_seconds: float32
 }
 
 ToastLayout :: struct {
     bounds: Rectangle
     text_bounds: Rectangle
-    content_width: i32
+    content_width: s32
 }
 
 ToastTruncation :: struct {
-    prefix_len: i32
+    prefix_len: s32
     ellipsis: bool
 }
 
 ToastRequestDecision :: struct {
     show: bool
     clear: bool
-    seconds: float
+    seconds: float32
 }
 
 ToastRenderDecision :: struct {
@@ -34,52 +33,59 @@ ToastRenderDecision :: struct {
     clear: bool
 }
 
-ToastLabelRole :: () -> i32 #export {
+#program_export
+ToastLabelRole :: () -> s32 {
     return 6
 }
 
-ToastSurfaceFactsFor :: (class_name: i32) -> StyleFacts #export {
+#program_export
+ToastSurfaceFactsFor :: (class_name: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindToast(), 0, class_name, StyleAny(),
         ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
         ButtonStateNormal)
 }
 
-ToastLabelFactsFor :: (class_name: i32) -> StyleFacts #export {
+#program_export
+ToastLabelFactsFor :: (class_name: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindToast(), 0, class_name,
         ToastLabelRole(), ButtonToneNeutral, ButtonEmphasisSoft,
         ControlSizeMedium, ButtonStateNormal)
 }
 
-ToastMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
-    return (i32)(value * scale)
+ToastMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
+    return cast(s32)(value * scale)
 }
 
-ToastMetricsFor :: (scale: float, frame: StyleFrame) -> ToastMetrics #export {
+#program_export
+ToastMetricsFor :: (scale: float32, frame: StyleFrame) -> ToastMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ToastMetrics
-    metrics.pad_x = ToastMetric(frame.value.fields, (u32)StylePaddingX,
+    metrics.pad_x = ToastMetric(frame.value.fields, cast(u32)StylePaddingX,
         frame.value.padding_x, 14.0, scale)
-    metrics.pad_y = ToastMetric(frame.value.fields, (u32)StylePaddingY,
+    metrics.pad_y = ToastMetric(frame.value.fields, cast(u32)StylePaddingY,
         frame.value.padding_y, 10.0, scale)
-    metrics.margin = ToastMetric(frame.value.fields, (u32)StyleGap,
+    metrics.margin = ToastMetric(frame.value.fields, cast(u32)StyleGap,
         frame.value.gap, 18.0, scale)
     metrics.default_seconds = 3.0
     return metrics
 }
 
-ToastDuration :: (seconds: float, metrics: ToastMetrics) -> float #export {
+#program_export
+ToastDuration :: (seconds: float32, metrics: ToastMetrics) -> float32 {
     if seconds <= 0.0 { return metrics.default_seconds }
     return seconds
 }
 
-ToastDeadlineFor :: (now_seconds: float, duration_seconds: float) -> float #export {
+#program_export
+ToastDeadlineFor :: (now_seconds: float32, duration_seconds: float32) -> float32 {
     return now_seconds + duration_seconds
 }
 
-ToastRequestDecisionFor :: (has_message: bool, seconds: float,
-    metrics: ToastMetrics) -> ToastRequestDecision #export {
+#program_export
+ToastRequestDecisionFor :: (has_message: bool, seconds: float32,
+    metrics: ToastMetrics) -> ToastRequestDecision {
     decision: ToastRequestDecision
     if !has_message {
         decision.clear = true
@@ -90,8 +96,9 @@ ToastRequestDecisionFor :: (has_message: bool, seconds: float,
     return decision
 }
 
-ToastRenderDecisionFor :: (has_message: bool, now_seconds: float,
-    until_seconds: float) -> ToastRenderDecision #export {
+#program_export
+ToastRenderDecisionFor :: (has_message: bool, now_seconds: float32,
+    until_seconds: float32) -> ToastRenderDecision {
     decision: ToastRenderDecision
     if !has_message || now_seconds >= until_seconds {
         decision.clear = true
@@ -101,7 +108,8 @@ ToastRenderDecisionFor :: (has_message: bool, now_seconds: float,
     return decision
 }
 
-ToastTruncationFor :: (text_len: i32, fits: bool) -> ToastTruncation #export {
+#program_export
+ToastTruncationFor :: (text_len: s32, fits: bool) -> ToastTruncation {
     truncation: ToastTruncation
     if text_len < 0 { text_len = 0 }
     truncation.prefix_len = text_len
@@ -113,8 +121,9 @@ ToastTruncationFor :: (text_len: i32, fits: bool) -> ToastTruncation #export {
     return truncation
 }
 
+#program_export
 ToastTruncationNext :: (truncation: ToastTruncation,
-    fits: bool) -> ToastTruncation #export {
+    fits: bool) -> ToastTruncation {
     if fits || !truncation.ellipsis {
         return truncation
     }
@@ -124,35 +133,38 @@ ToastTruncationNext :: (truncation: ToastTruncation,
     return truncation
 }
 
-ToastMaxWidth :: (view_width: i32, metrics: ToastMetrics) -> i32 #export {
-    width: i32 = view_width - metrics.margin * 2
+#program_export
+ToastMaxWidth :: (view_width: s32, metrics: ToastMetrics) -> s32 {
+    width: s32 = view_width - metrics.margin * 2
     if width < 1 { width = 1 }
     return width
 }
 
-ToastContentWidth :: (view_width: i32, metrics: ToastMetrics) -> i32 #export {
-    width: i32 = ToastMaxWidth(view_width, metrics) - metrics.pad_x * 2
+#program_export
+ToastContentWidth :: (view_width: s32, metrics: ToastMetrics) -> s32 {
+    width: s32 = ToastMaxWidth(view_width, metrics) - metrics.pad_x * 2
     if width < 1 { width = 1 }
     return width
 }
 
-ToastLayoutFor :: (view_width: i32, view_height: i32, text_width: i32,
-    line_height: i32, metrics: ToastMetrics) -> ToastLayout #export {
+#program_export
+ToastLayoutFor :: (view_width: s32, view_height: s32, text_width: s32,
+    line_height: s32, metrics: ToastMetrics) -> ToastLayout {
     layout: ToastLayout
-    max_width: i32 = ToastMaxWidth(view_width, metrics)
-    width: i32 = text_width + metrics.pad_x * 2
-    height: i32 = line_height + metrics.pad_y * 2
+    max_width: s32 = ToastMaxWidth(view_width, metrics)
+    width: s32 = text_width + metrics.pad_x * 2
+    height: s32 = line_height + metrics.pad_y * 2
     if width > max_width { width = max_width }
     if width < 1 { width = 1 }
     if height < 1 { height = 1 }
-    layout.bounds.x = (float)((view_width - width) / 2)
-    layout.bounds.y = (float)(view_height - height - metrics.margin)
-    layout.bounds.width = (float)width
-    layout.bounds.height = (float)height
-    layout.text_bounds.x = layout.bounds.x + (float)((width - text_width) / 2)
-    layout.text_bounds.y = layout.bounds.y + (float)metrics.pad_y
-    layout.text_bounds.width = (float)(width - metrics.pad_x * 2)
-    layout.text_bounds.height = (float)line_height
+    layout.bounds.x = cast(float32)((view_width - width) / 2)
+    layout.bounds.y = cast(float32)(view_height - height - metrics.margin)
+    layout.bounds.width = cast(float32)width
+    layout.bounds.height = cast(float32)height
+    layout.text_bounds.x = layout.bounds.x + cast(float32)((width - text_width) / 2)
+    layout.text_bounds.y = layout.bounds.y + cast(float32)metrics.pad_y
+    layout.text_bounds.width = cast(float32)(width - metrics.pad_x * 2)
+    layout.text_bounds.height = cast(float32)line_height
     if layout.text_bounds.width < 0.0 { layout.text_bounds.width = 0.0 }
     layout.content_width = ToastContentWidth(view_width, metrics)
     return layout

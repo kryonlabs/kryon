@@ -1,4 +1,3 @@
-#module "radio"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -8,8 +7,8 @@ RadioSpec :: struct {
     bounds: Rectangle
     checked: bool
     disabled: bool
-    selected_amount: float
-    scale: float
+    selected_amount: float32
+    scale: float32
     frame: StyleFrame
     selected: StyleFrame
 }
@@ -19,82 +18,91 @@ RadioPaint :: struct {
     mark_bounds: Rectangle
     label_bounds: Rectangle
     center: Vector2
-    label_x: float
-    diameter: float
-    touch: float
-    outer_radius: float
-    stroke_width: float
-    fill_radius: float
+    label_x: float32
+    diameter: float32
+    touch: float32
+    outer_radius: float32
+    stroke_width: float32
+    fill_radius: float32
     ring_color: u32
     fill_color: u32
     label_color: u32
 }
 
 RadioHas :: (fields: u32, field: u32) -> bool {
-    return (fields & field) != (u32)0
+    return (fields & field) != cast(u32)0
 }
 
-RadioMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+RadioMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if !RadioHas(fields, field) || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-RadioRingRole :: () -> i32 #export {
+#program_export
+RadioRingRole :: () -> s32 {
     return 11
 }
 
-RadioMarkRole :: () -> i32 #export {
+#program_export
+RadioMarkRole :: () -> s32 {
     return 10
 }
 
-RadioLabelRole :: () -> i32 #export {
+#program_export
+RadioLabelRole :: () -> s32 {
     return 6
 }
 
-RadioSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
+#program_export
+RadioSizeForStyle :: (ring: StyleFrame, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return RadioMetric(ring.value.fields, (u32)StyleIconSize,
+    return RadioMetric(ring.value.fields, cast(u32)StyleIconSize,
         ring.value.icon_size, 20.0, scale, true)
 }
 
-RadioTouchSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
+#program_export
+RadioTouchSizeForStyle :: (ring: StyleFrame, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return RadioMetric(ring.value.fields, (u32)StylePaddingX,
+    return RadioMetric(ring.value.fields, cast(u32)StylePaddingX,
         ring.value.padding_x, 40.0, scale, true)
 }
 
-RadioMarkText :: (checked: bool) -> string #export {
+#program_export
+RadioMarkText :: (checked: bool) -> string {
     if checked { return "◉" }
     return "○"
 }
 
-RadioStateLayerAlpha :: (hovered: bool, down: bool, press_amount: float) -> i32 #export {
+#program_export
+RadioStateLayerAlpha :: (hovered: bool, down: bool, press_amount: float32) -> s32 {
     if down { return 31 }
     if !hovered { return 0 }
     if press_amount < 0.0 { press_amount = 0.0 }
     if press_amount > 1.0 { press_amount = 1.0 }
-    return (i32)(20.0 + 11.0 * press_amount)
+    return cast(s32)(20.0 + 11.0 * press_amount)
 }
 
-RadioActivationFor :: (id: i32, activated: bool, disabled: bool) -> i32 #export {
+#program_export
+RadioActivationFor :: (id: s32, activated: bool, disabled: bool) -> s32 {
     if activated && !disabled {
         return id
     }
     return 0
 }
 
-RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
+#program_export
+RadioPaintFor :: (spec: RadioSpec) -> RadioPaint {
     paint: RadioPaint
-    scale: float = spec.scale
+    scale: float32 = spec.scale
     if scale <= 0.0 { scale = 1.0 }
-    diameter: float = (float)RadioSizeForStyle(spec.frame, scale)
-    gap: float = (float)RadioMetric(spec.frame.value.fields,
-        (u32)StyleGap, spec.frame.value.gap, 8.0, scale, true)
-    slot_width: float = (float)RadioTouchSizeForStyle(spec.frame, scale)
+    diameter: float32 = cast(float32)RadioSizeForStyle(spec.frame, scale)
+    gap: float32 = cast(float32)RadioMetric(spec.frame.value.fields,
+        cast(u32)StyleGap, spec.frame.value.gap, 8.0, scale, true)
+    slot_width: float32 = cast(float32)RadioTouchSizeForStyle(spec.frame, scale)
     if slot_width < diameter {
         slot_width = diameter
     }
@@ -122,7 +130,7 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
         paint.label_bounds.width = 0.0
     }
 
-    selected: float = spec.selected_amount
+    selected: float32 = spec.selected_amount
     if selected < 0.0 { selected = 0.0 }
     if selected > 1.0 { selected = 1.0 }
     if spec.checked {

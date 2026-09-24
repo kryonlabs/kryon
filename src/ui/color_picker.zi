@@ -1,22 +1,22 @@
-#module "color_picker"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 
 ColorPickerLayout :: struct {
-    row_height: float
+    row_height: float32
     swatch_bounds: Rectangle
 }
 
 ColorPickerSwatchPaint :: struct {
     bounds: Rectangle
-    label_x: float
-    label_y: float
+    label_x: float32
+    label_y: float32
 }
 
-ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
-    text_line_height: float) -> ColorPickerSwatchPaint #export {
+#program_export
+ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float32,
+    text_line_height: float32) -> ColorPickerSwatchPaint {
     paint: ColorPickerSwatchPaint
     paint.bounds = bounds
     paint.label_x = bounds.x + label_inset
@@ -24,15 +24,16 @@ ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
     return paint
 }
 
-ColorPickerSwatchLabelInset :: (scale: float, swatch: StyleFrame) -> float #export {
+#program_export
+ColorPickerSwatchLabelInset :: (scale: float32, swatch: StyleFrame) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
-    return ColorPickerMetric(swatch.value.fields, (u32)StylePaddingX,
+    return ColorPickerMetric(swatch.value.fields, cast(u32)StylePaddingX,
         swatch.value.padding_x, 6.0, scale, true)
 }
 
-ColorPickerMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 {
+ColorPickerMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 {
         value = fallback
     }
     if !allow_zero && value <= 0.0 {
@@ -41,62 +42,68 @@ ColorPickerMetric :: (fields: u32, field: u32, value: float,
     return value * scale
 }
 
-ColorPickerChannelIdFor :: (picker_id: i32, index: i32) -> i32 #export {
+#program_export
+ColorPickerChannelIdFor :: (picker_id: s32, index: s32) -> s32 {
     if picker_id <= 0 || index < 0 {
         return 0
     }
     return picker_id * 8 + index + 1
 }
 
-ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
-    channels: i32, scale: float, metrics: StyleFrame) -> Rectangle #export {
+#program_export
+ColorPickerChannelBounds :: (bounds: Rectangle, index: s32,
+    channels: s32, scale: float32, metrics: StyleFrame) -> Rectangle {
     row: Rectangle
     layout: ColorPickerLayout = ColorPickerLayoutFor(bounds, channels, scale, metrics)
-    inset: float = ColorPickerMetric(metrics.value.fields, (u32)StylePaddingY,
+    inset: float32 = ColorPickerMetric(metrics.value.fields, cast(u32)StylePaddingY,
         metrics.value.padding_y, 2.0, scale, true)
     row.x = bounds.x
-    row.y = bounds.y + layout.row_height * (float)index
+    row.y = bounds.y + layout.row_height * cast(float32)index
     row.width = bounds.width
     row.height = layout.row_height - inset
     if row.height < 0.0 { row.height = 0.0 }
     return row
 }
 
-ColorPickerLayoutFor :: (bounds: Rectangle, channels: i32,
-    scale: float, metrics: StyleFrame) -> ColorPickerLayout #export {
+#program_export
+ColorPickerLayoutFor :: (bounds: Rectangle, channels: s32,
+    scale: float32, metrics: StyleFrame) -> ColorPickerLayout {
     layout: ColorPickerLayout
     if scale <= 0.0 { scale = 1.0 }
     if channels < 1 { channels = 1 }
-    swatch_height: float = ColorPickerMetric(metrics.value.fields,
-        (u32)StyleIconSize, metrics.value.icon_size, 36.0, scale, true)
-    gap: float = ColorPickerMetric(metrics.value.fields, (u32)StyleGap,
+    swatch_height: float32 = ColorPickerMetric(metrics.value.fields,
+        cast(u32)StyleIconSize, metrics.value.icon_size, 36.0, scale, true)
+    gap: float32 = ColorPickerMetric(metrics.value.fields, cast(u32)StyleGap,
         metrics.value.gap, 4.0, scale, true)
-    minimum_row: float = ColorPickerMetric(metrics.value.fields,
-        (u32)StyleContentOffset, metrics.value.offset_y, 28.0, scale, false)
-    compact_threshold: float = ColorPickerMetric(metrics.value.fields,
-        (u32)StyleContentOffset, metrics.value.offset_x, 20.0, scale, false)
-    row_height: float = (bounds.height - swatch_height - gap) / (float)channels
+    minimum_row: float32 = ColorPickerMetric(metrics.value.fields,
+        cast(u32)StyleContentOffset, metrics.value.offset_y, 28.0, scale, false)
+    compact_threshold: float32 = ColorPickerMetric(metrics.value.fields,
+        cast(u32)StyleContentOffset, metrics.value.offset_x, 20.0, scale, false)
+    row_height: float32 = (bounds.height - swatch_height - gap) / cast(float32)channels
     if row_height < compact_threshold { row_height = minimum_row }
     layout.row_height = row_height
     layout.swatch_bounds.x = bounds.x
-    layout.swatch_bounds.y = bounds.y + row_height * (float)channels + gap
+    layout.swatch_bounds.y = bounds.y + row_height * cast(float32)channels + gap
     layout.swatch_bounds.width = bounds.width
     layout.swatch_bounds.height = swatch_height
     return layout
 }
 
-ColorPickerClampChannel :: (value: float) -> float #export {
+#program_export
+ColorPickerClampChannel :: (value: float32) -> float32 {
     if value < 0.0 { return 0.0 }
     if value > 1.0 { return 1.0 }
     return value
 }
 
-ColorPickerChannelByte :: (value: float) -> u8 #export {
-    return (u8)(ColorPickerClampChannel(value) * 255.0 + 0.5)
+#program_export
+ColorPickerChannelByte :: (value: float32) -> u8 {
+    return cast(u8)(ColorPickerClampChannel(value) * 255.0 + 0.5)
 }
 
-ColorPickerColorFor :: (red: float, green: float, blue: float,
-    alpha: float, channels: i32) -> Color #export {
+#program_export
+ColorPickerColorFor :: (red: float32, green: float32, blue: float32,
+    alpha: float32, channels: s32) -> Color {
     color: Color
     color.r = ColorPickerChannelByte(red)
     color.g = ColorPickerChannelByte(green)
@@ -104,7 +111,7 @@ ColorPickerColorFor :: (red: float, green: float, blue: float,
     if channels >= 4 {
         color.a = ColorPickerChannelByte(alpha)
     } else {
-        color.a = (u8)255
+        color.a = cast(u8)255
     }
     return color
 }

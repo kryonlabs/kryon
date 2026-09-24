@@ -1,19 +1,18 @@
-#module "overlay_props"
 #import "drawing_props"
 #import "geometry"
 
 DismissibleOverlayProps :: struct {
     key: u64
     bounds: Rectangle
-    view_width: i32
-    view_height: i32
+    view_width: s32
+    view_height: s32
     scrim: Color
     dismiss_disabled: bool
 }
 
 DismissibleOverlayResult :: struct {
-    node: i32
-    panel_node: i32
+    node: s32
+    panel_node: s32
     closed: bool
     outside_released: bool
     release_consumed: bool

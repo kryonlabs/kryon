@@ -1,4 +1,3 @@
-#module "selectable"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -11,14 +10,14 @@ SelectableSpec :: struct {
     pressed: bool
     disabled: bool
     face: StyleFrame
-    label_inset: float
+    label_inset: float32
 }
 
 SelectablePaint :: struct {
     bounds: Rectangle
     fill_color: u32
     text_color: u32
-    label_x: float
+    label_x: float32
     draw_fill: bool
 }
 
@@ -27,17 +26,19 @@ SelectableToggleResult :: struct {
     changed: bool
 }
 
-SelectableLabelInset :: (scale: float, face: StyleFrame) -> float #export {
+#program_export
+SelectableLabelInset :: (scale: float32, face: StyleFrame) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
-    inset: float = face.value.padding_x
-    if (face.value.fields & (u32)StylePaddingX) == (u32)0 ||
+    inset: float32 = face.value.padding_x
+    if (face.value.fields & cast(u32)StylePaddingX) == cast(u32)0 ||
        inset < 0.0 {
         inset = 8.0
     }
     return inset * scale
 }
 
-SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {
+#program_export
+SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint {
     paint: SelectablePaint
     paint.bounds = spec.bounds
     paint.label_x = spec.bounds.x + spec.label_inset
@@ -47,7 +48,8 @@ SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {
     return paint
 }
 
-SelectableToggleFor :: (selected: bool, activated: bool) -> SelectableToggleResult #export {
+#program_export
+SelectableToggleFor :: (selected: bool, activated: bool) -> SelectableToggleResult {
     result: SelectableToggleResult
     result.selected = selected
     result.changed = false

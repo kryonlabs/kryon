@@ -1,4 +1,3 @@
-#module "fieldset"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -12,31 +11,32 @@ FieldsetPaint :: struct {
     border_color: u32
     background_color: u32
     text_color: u32
-    border_width: float
+    border_width: float32
     show_title: bool
 }
 
-FieldsetMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+FieldsetMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
     return value * scale
 }
 
-FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
-    has_title: bool, scale: float, frame: StyleFrame) -> FieldsetPaint #export {
+#program_export
+FieldsetPaintFor :: (bounds: Rectangle, title_width: float32,
+    has_title: bool, scale: float32, frame: StyleFrame) -> FieldsetPaint {
     paint: FieldsetPaint
     if scale <= 0.0 {
         scale = 1.0
     }
 
-    pad: float = FieldsetMetric(frame.value.fields, (u32)StylePaddingX,
+    pad: float32 = FieldsetMetric(frame.value.fields, cast(u32)StylePaddingX,
         frame.value.padding_x, 8.0, scale)
-    title_height: float = FieldsetMetric(frame.value.fields,
-        (u32)StyleFontSize, frame.value.font_size, 18.0, scale)
+    title_height: float32 = FieldsetMetric(frame.value.fields,
+        cast(u32)StyleFontSize, frame.value.font_size, 18.0, scale)
     if title_height <= 0.0 { title_height = 18.0 * scale }
-    title_offset_y: float = FieldsetMetric(frame.value.fields,
-        (u32)StylePaddingY, frame.value.padding_y, 8.0, scale)
-    text_offset_y: float = FieldsetMetric(frame.value.fields, (u32)StyleGap,
+    title_offset_y: float32 = FieldsetMetric(frame.value.fields,
+        cast(u32)StylePaddingY, frame.value.padding_y, 8.0, scale)
+    text_offset_y: float32 = FieldsetMetric(frame.value.fields, cast(u32)StyleGap,
         frame.value.gap, 9.0, scale)
 
     paint.frame = bounds

@@ -1,87 +1,93 @@
-#module "primitive"
 #import "drawing_props"
 #import "geometry"
 
 LinePrimitive :: struct {
     bounds: Rectangle
-    x1: i32
-    y1: i32
-    x2: i32
-    y2: i32
+    x1: s32
+    y1: s32
+    x2: s32
+    y2: s32
 }
 
 TrianglePrimitive :: struct {
     bounds: Rectangle
-    x1: i32
-    y1: i32
-    x2: i32
-    y2: i32
-    x3: i32
-    y3: i32
+    x1: s32
+    y1: s32
+    x2: s32
+    y2: s32
+    x3: s32
+    y3: s32
 }
 
-PrimitiveBackgroundBounds :: (width: i32, height: i32) -> Rectangle #export {
+#program_export
+PrimitiveBackgroundBounds :: (width: s32, height: s32) -> Rectangle {
     bounds: Rectangle
     bounds.x = 0.0
     bounds.y = 0.0
-    bounds.width = (float)width
-    bounds.height = (float)height
+    bounds.width = cast(float32)width
+    bounds.height = cast(float32)height
     return bounds
 }
 
-PrimitiveAppBackgroundColor :: (styled: Color, fallback: Color) -> Color #export {
-    if styled.a != (u8)0 {
+#program_export
+PrimitiveAppBackgroundColor :: (styled: Color, fallback: Color) -> Color {
+    if styled.a != cast(u8)0 {
         return styled
     }
     return fallback
 }
 
-PrimitiveRectBounds :: (x: i32, y: i32, width: i32, height: i32) -> Rectangle #export {
+#program_export
+PrimitiveRectBounds :: (x: s32, y: s32, width: s32, height: s32) -> Rectangle {
     bounds: Rectangle
-    bounds.x = (float)x
-    bounds.y = (float)y
-    bounds.width = (float)width
-    bounds.height = (float)height
+    bounds.x = cast(float32)x
+    bounds.y = cast(float32)y
+    bounds.width = cast(float32)width
+    bounds.height = cast(float32)height
     return bounds
 }
 
-PrimitiveLineFor :: (x1: i32, y1: i32, x2: i32, y2: i32) -> LinePrimitive #export {
+#program_export
+PrimitiveLineFor :: (x1: s32, y1: s32, x2: s32, y2: s32) -> LinePrimitive {
     line: LinePrimitive
     line.x1 = x1
     line.y1 = y1
     line.x2 = x2
     line.y2 = y2
-    min_x: i32 = x1
-    max_x: i32 = x2
+    min_x: s32 = x1
+    max_x: s32 = x2
     if x2 < min_x {
         min_x = x2
         max_x = x1
     }
-    min_y: i32 = y1
-    max_y: i32 = y2
+    min_y: s32 = y1
+    max_y: s32 = y2
     if y2 < min_y {
         min_y = y2
         max_y = y1
     }
-    line.bounds.x = (float)min_x
-    line.bounds.y = (float)min_y
-    line.bounds.width = (float)(max_x - min_x)
-    line.bounds.height = (float)(max_y - min_y)
+    line.bounds.x = cast(float32)min_x
+    line.bounds.y = cast(float32)min_y
+    line.bounds.width = cast(float32)(max_x - min_x)
+    line.bounds.height = cast(float32)(max_y - min_y)
     return line
 }
 
-PrimitiveCircleBounds :: (center_x: i32, center_y: i32, radius: i32) -> Rectangle #export {
-    diameter: i32 = radius * 2
+#program_export
+PrimitiveCircleBounds :: (center_x: s32, center_y: s32, radius: s32) -> Rectangle {
+    diameter: s32 = radius * 2
     return PrimitiveRectBounds(center_x - radius, center_y - radius,
                                diameter, diameter)
 }
 
-PrimitiveRingBounds :: (center_x: i32, center_y: i32, outer_radius: i32) -> Rectangle #export {
+#program_export
+PrimitiveRingBounds :: (center_x: s32, center_y: s32, outer_radius: s32) -> Rectangle {
     return PrimitiveCircleBounds(center_x, center_y, outer_radius)
 }
 
-PrimitiveTriangleFor :: (x1: i32, y1: i32, x2: i32, y2: i32,
-    x3: i32, y3: i32) -> TrianglePrimitive #export {
+#program_export
+PrimitiveTriangleFor :: (x1: s32, y1: s32, x2: s32, y2: s32,
+    x3: s32, y3: s32) -> TrianglePrimitive {
     triangle: TrianglePrimitive
     triangle.x1 = x1
     triangle.y1 = y1
@@ -90,10 +96,10 @@ PrimitiveTriangleFor :: (x1: i32, y1: i32, x2: i32, y2: i32,
     triangle.x3 = x3
     triangle.y3 = y3
 
-    min_x: i32 = x1
-    min_y: i32 = y1
-    max_x: i32 = x1
-    max_y: i32 = y1
+    min_x: s32 = x1
+    min_y: s32 = y1
+    max_x: s32 = x1
+    max_y: s32 = y1
     if x2 < min_x { min_x = x2 }
     if x3 < min_x { min_x = x3 }
     if y2 < min_y { min_y = y2 }
