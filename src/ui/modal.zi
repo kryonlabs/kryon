@@ -1,47 +1,46 @@
-#module "modal"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 
 ModalMetrics :: struct {
-    screen_pad: i32
-    min_width: i32
-    default_max_width: i32
-    edge_pad: i32
-    title_height: i32
-    padding_x: i32
-    padding_bottom: i32
-    message_gap: i32
-    prompt_height: i32
-    prompt_gap: i32
-    button_height: i32
-    button_gap: i32
-    action_padding_x: i32
-    action_min_width: i32
-    action_max_width: i32
-    content_min_width: i32
-    min_height: i32
-    frame_min_width: i32
-    frame_min_height: i32
-    frame_title_y: i32
-    frame_content_y: i32
-    frame_content_bottom_pad: i32
-    frame_icon_size: i32
-    frame_icon_padding: i32
-    frame_icon_edge_gap: i32
-    frame_title_side_padding: i32
+    screen_pad: s32
+    min_width: s32
+    default_max_width: s32
+    edge_pad: s32
+    title_height: s32
+    padding_x: s32
+    padding_bottom: s32
+    message_gap: s32
+    prompt_height: s32
+    prompt_gap: s32
+    button_height: s32
+    button_gap: s32
+    action_padding_x: s32
+    action_min_width: s32
+    action_max_width: s32
+    content_min_width: s32
+    min_height: s32
+    frame_min_width: s32
+    frame_min_height: s32
+    frame_title_y: s32
+    frame_content_y: s32
+    frame_content_bottom_pad: s32
+    frame_icon_size: s32
+    frame_icon_padding: s32
+    frame_icon_edge_gap: s32
+    frame_title_side_padding: s32
 }
 
 ModalLayout :: struct {
     panel: Rectangle
-    content_width: i32
-    message_x: i32
-    message_y: i32
-    button_y: i32
-    prompt_y: i32
-    prompt_height: i32
-    buttons_height: i32
+    content_width: s32
+    message_x: s32
+    message_y: s32
+    button_y: s32
+    prompt_y: s32
+    prompt_height: s32
+    buttons_height: s32
 }
 
 ModalFrameLayout :: struct {
@@ -49,16 +48,16 @@ ModalFrameLayout :: struct {
     content: Rectangle
     left_button: Rectangle
     right_button: Rectangle
-    title_y: i32
-    title_max_width: i32
-    icon_size: i32
-    icon_padding: i32
+    title_y: s32
+    title_max_width: s32
+    icon_size: s32
+    icon_padding: s32
 }
 
 ModalActionPlacement :: struct {
-    start_x: i32
-    action_width: i32
-    total_width: i32
+    start_x: s32
+    action_width: s32
+    total_width: s32
 }
 
 ModalDismissal :: struct {
@@ -67,7 +66,7 @@ ModalDismissal :: struct {
 }
 
 ModalResultDecision :: struct {
-    result: i32
+    result: s32
 }
 
 ModalPromptInput :: struct {
@@ -75,111 +74,120 @@ ModalPromptInput :: struct {
     escape: bool
 }
 
-ModalPanelRole :: () -> i32 #export {
+#program_export
+ModalPanelRole :: () -> s32 {
     return 2
 }
 
-ModalTitleRole :: () -> i32 #export {
+#program_export
+ModalTitleRole :: () -> s32 {
     return 16
 }
 
-ModalActionRole :: () -> i32 #export {
+#program_export
+ModalActionRole :: () -> s32 {
     return 17
 }
 
-ModalScrimRole :: () -> i32 #export {
+#program_export
+ModalScrimRole :: () -> s32 {
     return 19
 }
 
-ModalMessageRole :: () -> i32 #export {
+#program_export
+ModalMessageRole :: () -> s32 {
     return 20
 }
 
-ModalCloseRole :: () -> i32 #export {
+#program_export
+ModalCloseRole :: () -> s32 {
     return 15
 }
 
 ModalHas :: (fields: u32, field: u32) -> bool {
-    return (fields & field) != (u32)0
+    return (fields & field) != cast(u32)0
 }
 
-ModalMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+ModalMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if !ModalHas(fields, field) || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-ModalActionButtonFrame :: (action: StyleFrame) -> StyleFrame #export {
+#program_export
+ModalActionButtonFrame :: (action: StyleFrame) -> StyleFrame {
     action.value.offset_x = 0.0
     action.value.offset_y = 0.0
     return action
 }
 
-ModalMetricsFor :: (scale: float, panel: StyleFrame, title: StyleFrame,
-    message: StyleFrame, action: StyleFrame, close: StyleFrame) -> ModalMetrics #export {
+#program_export
+ModalMetricsFor :: (scale: float32, panel: StyleFrame, title: StyleFrame,
+    message: StyleFrame, action: StyleFrame, close: StyleFrame) -> ModalMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ModalMetrics
     metrics.screen_pad = ModalMetric(panel.value.fields,
-        (u32)StyleGap, panel.value.gap, 24.0, scale, true)
+        cast(u32)StyleGap, panel.value.gap, 24.0, scale, true)
     metrics.min_width = ModalMetric(panel.value.fields,
-        (u32)StyleIconSize, panel.value.icon_size, 280.0, scale, false)
+        cast(u32)StyleIconSize, panel.value.icon_size, 280.0, scale, false)
     metrics.default_max_width = ModalMetric(panel.value.fields,
-        (u32)StyleContentOffset, panel.value.offset_x, 420.0, scale, false)
+        cast(u32)StyleContentOffset, panel.value.offset_x, 420.0, scale, false)
     metrics.edge_pad = ModalMetric(panel.value.fields,
-        (u32)StylePaddingY, panel.value.padding_y, 8.0, scale, true)
+        cast(u32)StylePaddingY, panel.value.padding_y, 8.0, scale, true)
     metrics.title_height = ModalMetric(title.value.fields,
-        (u32)StyleIconSize, title.value.icon_size, 48.0, scale, true)
+        cast(u32)StyleIconSize, title.value.icon_size, 48.0, scale, true)
     metrics.padding_x = ModalMetric(panel.value.fields,
-        (u32)StylePaddingX, panel.value.padding_x, 18.0, scale, true)
+        cast(u32)StylePaddingX, panel.value.padding_x, 18.0, scale, true)
     metrics.padding_bottom = ModalMetric(title.value.fields,
-        (u32)StylePaddingY, title.value.padding_y, 18.0, scale, true)
+        cast(u32)StylePaddingY, title.value.padding_y, 18.0, scale, true)
     metrics.message_gap = ModalMetric(message.value.fields,
-        (u32)StyleGap, message.value.gap, 18.0, scale, true)
+        cast(u32)StyleGap, message.value.gap, 18.0, scale, true)
     metrics.prompt_height = ModalMetric(message.value.fields,
-        (u32)StyleIconSize, message.value.icon_size, 38.0, scale, true)
+        cast(u32)StyleIconSize, message.value.icon_size, 38.0, scale, true)
     metrics.prompt_gap = ModalMetric(message.value.fields,
-        (u32)StyleContentOffset, message.value.offset_y, 18.0, scale, true)
+        cast(u32)StyleContentOffset, message.value.offset_y, 18.0, scale, true)
     metrics.button_height = ModalMetric(action.value.fields,
-        (u32)StyleIconSize, action.value.icon_size, 44.0, scale, false)
+        cast(u32)StyleIconSize, action.value.icon_size, 44.0, scale, false)
     metrics.button_gap = ModalMetric(action.value.fields,
-        (u32)StyleGap, action.value.gap, 8.0, scale, true)
+        cast(u32)StyleGap, action.value.gap, 8.0, scale, true)
     metrics.action_padding_x = ModalMetric(action.value.fields,
-        (u32)StylePaddingX, action.value.padding_x, 24.0, scale, true)
+        cast(u32)StylePaddingX, action.value.padding_x, 24.0, scale, true)
     metrics.action_min_width = ModalMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_x, 88.0, scale, false)
+        cast(u32)StyleContentOffset, action.value.offset_x, 88.0, scale, false)
     metrics.action_max_width = ModalMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_y, 150.0, scale, false)
+        cast(u32)StyleContentOffset, action.value.offset_y, 150.0, scale, false)
     metrics.content_min_width = ModalMetric(message.value.fields,
-        (u32)StylePaddingX, message.value.padding_x, 120.0, scale, false)
+        cast(u32)StylePaddingX, message.value.padding_x, 120.0, scale, false)
     metrics.min_height = ModalMetric(message.value.fields,
-        (u32)StylePaddingY, message.value.padding_y, 160.0, scale, false)
+        cast(u32)StylePaddingY, message.value.padding_y, 160.0, scale, false)
     metrics.frame_min_width = ModalMetric(close.value.fields,
-        (u32)StyleContentOffset, close.value.offset_x, 120.0, scale, false)
+        cast(u32)StyleContentOffset, close.value.offset_x, 120.0, scale, false)
     metrics.frame_min_height = ModalMetric(close.value.fields,
-        (u32)StyleContentOffset, close.value.offset_y, 96.0, scale, false)
+        cast(u32)StyleContentOffset, close.value.offset_y, 96.0, scale, false)
     metrics.frame_title_y = ModalMetric(title.value.fields,
-        (u32)StyleContentOffset, title.value.offset_y, 14.0, scale, true)
+        cast(u32)StyleContentOffset, title.value.offset_y, 14.0, scale, true)
     metrics.frame_content_y = ModalMetric(panel.value.fields,
-        (u32)StyleContentOffset, panel.value.offset_y, 58.0, scale, true)
+        cast(u32)StyleContentOffset, panel.value.offset_y, 58.0, scale, true)
     metrics.frame_content_bottom_pad = ModalMetric(close.value.fields,
-        (u32)StylePaddingY, close.value.padding_y, 16.0, scale, true)
+        cast(u32)StylePaddingY, close.value.padding_y, 16.0, scale, true)
     metrics.frame_icon_size = ModalMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 20.0, scale, true)
+        cast(u32)StyleIconSize, close.value.icon_size, 20.0, scale, true)
     metrics.frame_icon_padding = ModalMetric(close.value.fields,
-        (u32)StylePaddingX, close.value.padding_x, 8.0, scale, true)
+        cast(u32)StylePaddingX, close.value.padding_x, 8.0, scale, true)
     metrics.frame_icon_edge_gap = ModalMetric(close.value.fields,
-        (u32)StyleGap, close.value.gap, 6.0, scale, true)
+        cast(u32)StyleGap, close.value.gap, 6.0, scale, true)
     metrics.frame_title_side_padding = ModalMetric(title.value.fields,
-        (u32)StylePaddingX, title.value.padding_x, 24.0, scale, true)
+        cast(u32)StylePaddingX, title.value.padding_x, 24.0, scale, true)
     return metrics
 }
 
-ModalClampWidth :: (view_width: i32, requested_max_width: i32,
-    metrics: ModalMetrics) -> i32 #export {
-    width: i32 = requested_max_width
+#program_export
+ModalClampWidth :: (view_width: s32, requested_max_width: s32,
+    metrics: ModalMetrics) -> s32 {
+    width: s32 = requested_max_width
     if width <= 0 { width = metrics.default_max_width }
     if width > view_width - metrics.screen_pad { width = view_width - metrics.screen_pad }
     if width < metrics.min_width { width = metrics.min_width }
@@ -188,42 +196,47 @@ ModalClampWidth :: (view_width: i32, requested_max_width: i32,
     return width
 }
 
-ModalContentWidth :: (modal_width: i32, metrics: ModalMetrics) -> i32 #export {
-    width: i32 = modal_width - metrics.padding_x * 2
+#program_export
+ModalContentWidth :: (modal_width: s32, metrics: ModalMetrics) -> s32 {
+    width: s32 = modal_width - metrics.padding_x * 2
     if width < metrics.content_min_width { width = metrics.content_min_width }
     return width
 }
 
-ModalActionWidth :: (label_width: i32, metrics: ModalMetrics) -> i32 #export {
-    width: i32 = label_width + metrics.action_padding_x
+#program_export
+ModalActionWidth :: (label_width: s32, metrics: ModalMetrics) -> s32 {
+    width: s32 = label_width + metrics.action_padding_x
     if width < metrics.action_min_width { width = metrics.action_min_width }
     return width
 }
 
-ModalActionRowsStep :: (row_width: i32, rows: i32, action_width: i32,
-    content_width: i32, gap: i32) -> i32 #export {
-    next_width: i32 = action_width
+#program_export
+ModalActionRowsStep :: (row_width: s32, rows: s32, action_width: s32,
+    content_width: s32, gap: s32) -> s32 {
+    next_width: s32 = action_width
     if row_width > 0 { next_width = row_width + gap + action_width }
     if row_width > 0 && next_width > content_width { return rows + 1 }
     return rows
 }
 
-ModalActionRowWidthStep :: (row_width: i32, action_width: i32,
-    content_width: i32, gap: i32) -> i32 #export {
-    next_width: i32 = action_width
+#program_export
+ModalActionRowWidthStep :: (row_width: s32, action_width: s32,
+    content_width: s32, gap: s32) -> s32 {
+    next_width: s32 = action_width
     if row_width > 0 { next_width = row_width + gap + action_width }
     if row_width > 0 && next_width > content_width { return action_width }
     return next_width
 }
 
-ModalActionPlacementFor :: (x: i32, content_width: i32, row_count: i32,
-    gap: i32) -> ModalActionPlacement #export {
+#program_export
+ModalActionPlacementFor :: (x: s32, content_width: s32, row_count: s32,
+    gap: s32) -> ModalActionPlacement {
     placement: ModalActionPlacement
     if row_count <= 0 || content_width <= 0 {
         placement.start_x = x
         return placement
     }
-    usable: i32 = content_width - gap * (row_count - 1)
+    usable: s32 = content_width - gap * (row_count - 1)
     placement.action_width = usable / row_count
     if placement.action_width < 0 { placement.action_width = 0 }
     placement.total_width = placement.action_width * row_count +
@@ -232,56 +245,66 @@ ModalActionPlacementFor :: (x: i32, content_width: i32, row_count: i32,
     return placement
 }
 
-ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {
+#program_export
+ModalButtonsHeight :: (rows: s32, metrics: ModalMetrics) -> s32 {
     if rows <= 0 { return 0 }
     return rows * metrics.button_height + (rows - 1) * metrics.button_gap
 }
 
-ModalActionNextY :: (y: i32, button_height: i32, gap: i32) -> i32 #export {
+#program_export
+ModalActionNextY :: (y: s32, button_height: s32, gap: s32) -> s32 {
     if button_height < 0 { button_height = 0 }
     if gap < 0 { gap = 0 }
     return y + button_height + gap
 }
 
-ModalFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
+#program_export
+ModalFontFor :: (default_font: s32, style_font: s32) -> s32 {
     if style_font > 0 { return style_font }
     return default_font
 }
 
-ModalMessageLineGap :: (scale: float) -> i32 #export {
+#program_export
+ModalMessageLineGap :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(4.0 * scale)
+    return cast(s32)(4.0 * scale)
 }
 
-ModalHasPromptFor :: (has_text: bool, text_size: i32, has_cursor: bool,
-    has_focus: bool) -> bool #export {
+#program_export
+ModalHasPromptFor :: (has_text: bool, text_size: s32, has_cursor: bool,
+    has_focus: bool) -> bool {
     return has_text && text_size > 0 && has_cursor && has_focus
 }
 
-ModalPromptFallbackFocusId :: () -> i32 #export {
+#program_export
+ModalPromptFallbackFocusId :: () -> s32 {
     return 7301
 }
 
-ModalPromptFocusIdFor :: (requested_focus_id: i32) -> i32 #export {
+#program_export
+ModalPromptFocusIdFor :: (requested_focus_id: s32) -> s32 {
     if requested_focus_id > 0 { return requested_focus_id }
     return ModalPromptFallbackFocusId()
 }
 
-ModalPromptCommitResult :: (action_count: i32) -> i32 #export {
+#program_export
+ModalPromptCommitResult :: (action_count: s32) -> s32 {
     if action_count > 1 { return 2 }
     return 1
 }
 
-ModalPromptInputFor :: (commit_pressed: bool, escape_pressed: bool) -> ModalPromptInput #export {
+#program_export
+ModalPromptInputFor :: (commit_pressed: bool, escape_pressed: bool) -> ModalPromptInput {
     input: ModalPromptInput
     input.commit = commit_pressed
     input.escape = escape_pressed
     return input
 }
 
-ModalPromptResultFor :: (current_result: i32, has_prompt: bool,
+#program_export
+ModalPromptResultFor :: (current_result: s32, has_prompt: bool,
     commit_pressed: bool, escape_pressed: bool,
-    action_count: i32) -> ModalResultDecision #export {
+    action_count: s32) -> ModalResultDecision {
     decision: ModalResultDecision
     decision.result = current_result
     if current_result != 0 || !has_prompt {
@@ -297,14 +320,16 @@ ModalPromptResultFor :: (current_result: i32, has_prompt: bool,
     return decision
 }
 
-ModalPromptResultDecisionFor :: (current_result: i32, has_prompt: bool,
-    input: ModalPromptInput, action_count: i32) -> ModalResultDecision #export {
+#program_export
+ModalPromptResultDecisionFor :: (current_result: s32, has_prompt: bool,
+    input: ModalPromptInput, action_count: s32) -> ModalResultDecision {
     return ModalPromptResultFor(current_result, has_prompt, input.commit,
         input.escape, action_count)
 }
 
+#program_export
 ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,
-    pointer_inside: bool) -> ModalDismissal #export {
+    pointer_inside: bool) -> ModalDismissal {
     dismissal: ModalDismissal
     if released && !release_consumed && !pointer_inside {
         dismissal.dismissed = true
@@ -315,86 +340,89 @@ ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,
     return dismissal
 }
 
-ModalLayoutFor :: (view_width: i32, view_height: i32, max_width: i32,
-    message_height: i32, button_rows: i32, has_prompt: bool,
-    metrics: ModalMetrics) -> ModalLayout #export {
+#program_export
+ModalLayoutFor :: (view_width: s32, view_height: s32, max_width: s32,
+    message_height: s32, button_rows: s32, has_prompt: bool,
+    metrics: ModalMetrics) -> ModalLayout {
     layout: ModalLayout
-    modal_width: i32 = ModalClampWidth(view_width, max_width, metrics)
-    content_width: i32 = ModalContentWidth(modal_width, metrics)
-    buttons_height: i32 = ModalButtonsHeight(button_rows, metrics)
-    prompt_height: i32 = 0
-    prompt_gap: i32 = 0
+    modal_width: s32 = ModalClampWidth(view_width, max_width, metrics)
+    content_width: s32 = ModalContentWidth(modal_width, metrics)
+    buttons_height: s32 = ModalButtonsHeight(button_rows, metrics)
+    prompt_height: s32 = 0
+    prompt_gap: s32 = 0
     if has_prompt {
         prompt_height = metrics.prompt_height
         prompt_gap = metrics.prompt_gap
     }
-    modal_height: i32 = metrics.title_height + message_height +
+    modal_height: s32 = metrics.title_height + message_height +
         prompt_gap + prompt_height
     if buttons_height > 0 { modal_height += metrics.message_gap + buttons_height }
     modal_height += metrics.padding_bottom
     if modal_height < metrics.min_height { modal_height = metrics.min_height }
-    max_height: i32 = view_height - metrics.screen_pad
+    max_height: s32 = view_height - metrics.screen_pad
     if modal_height > max_height { modal_height = max_height }
     if modal_height < 1 { modal_height = 1 }
 
-    layout.panel.x = (float)((view_width - modal_width) / 2)
-    layout.panel.y = (float)((view_height - modal_height) / 2)
-    layout.panel.width = (float)modal_width
-    layout.panel.height = (float)modal_height
+    layout.panel.x = cast(float32)((view_width - modal_width) / 2)
+    layout.panel.y = cast(float32)((view_height - modal_height) / 2)
+    layout.panel.width = cast(float32)modal_width
+    layout.panel.height = cast(float32)modal_height
     layout.content_width = content_width
-    layout.message_x = (i32)layout.panel.x + metrics.padding_x
-    layout.message_y = (i32)layout.panel.y + metrics.title_height
+    layout.message_x = cast(s32)layout.panel.x + metrics.padding_x
+    layout.message_y = cast(s32)layout.panel.y + metrics.title_height
     layout.buttons_height = buttons_height
-    layout.button_y = (i32)layout.panel.y + modal_height -
+    layout.button_y = cast(s32)layout.panel.y + modal_height -
         buttons_height - metrics.padding_bottom
     layout.prompt_y = layout.message_y + message_height + prompt_gap
     layout.prompt_height = prompt_height
     return layout
 }
 
-ModalFramePanelFor :: (view_width: i32, view_height: i32, width: i32,
-    height: i32, metrics: ModalMetrics) -> Rectangle #export {
+#program_export
+ModalFramePanelFor :: (view_width: s32, view_height: s32, width: s32,
+    height: s32, metrics: ModalMetrics) -> Rectangle {
     panel: Rectangle
-    max_width: i32 = view_width - metrics.screen_pad
-    max_height: i32 = view_height - metrics.screen_pad
+    max_width: s32 = view_width - metrics.screen_pad
+    max_height: s32 = view_height - metrics.screen_pad
     if width > max_width { width = max_width }
     if height > max_height { height = max_height }
     if width < 1 { width = 1 }
     if height < 1 { height = 1 }
-    panel.x = (float)((view_width - width) / 2)
-    panel.y = (float)((view_height - height) / 2)
-    panel.width = (float)width
-    panel.height = (float)height
+    panel.x = cast(float32)((view_width - width) / 2)
+    panel.y = cast(float32)((view_height - height) / 2)
+    panel.width = cast(float32)width
+    panel.height = cast(float32)height
     return panel
 }
 
-ModalFrameLayoutFor :: (panel: Rectangle, metrics: ModalMetrics) -> ModalFrameLayout #export {
+#program_export
+ModalFrameLayoutFor :: (panel: Rectangle, metrics: ModalMetrics) -> ModalFrameLayout {
     layout: ModalFrameLayout
-    if panel.width < (float)metrics.frame_min_width {
-        panel.width = (float)metrics.frame_min_width
+    if panel.width < cast(float32)metrics.frame_min_width {
+        panel.width = cast(float32)metrics.frame_min_width
     }
-    if panel.height < (float)metrics.frame_min_height {
-        panel.height = (float)metrics.frame_min_height
+    if panel.height < cast(float32)metrics.frame_min_height {
+        panel.height = cast(float32)metrics.frame_min_height
     }
-    icon_w: i32 = metrics.frame_icon_size + metrics.frame_icon_padding * 2
+    icon_w: s32 = metrics.frame_icon_size + metrics.frame_icon_padding * 2
     layout.panel = panel
-    layout.content.x = panel.x + (float)metrics.padding_x
-    layout.content.y = panel.y + (float)metrics.frame_content_y
-    layout.content.width = panel.width - (float)(metrics.padding_x * 2)
+    layout.content.x = panel.x + cast(float32)metrics.padding_x
+    layout.content.y = panel.y + cast(float32)metrics.frame_content_y
+    layout.content.width = panel.width - cast(float32)(metrics.padding_x * 2)
     layout.content.height = panel.height -
-        (float)(metrics.frame_content_y + metrics.frame_content_bottom_pad)
+        cast(float32)(metrics.frame_content_y + metrics.frame_content_bottom_pad)
     if layout.content.width < 1.0 { layout.content.width = 1.0 }
     if layout.content.height < 1.0 { layout.content.height = 1.0 }
 
-    layout.left_button.x = panel.x + (float)metrics.frame_icon_edge_gap
-    layout.left_button.y = panel.y + (float)metrics.frame_icon_edge_gap
-    layout.left_button.width = (float)icon_w
-    layout.left_button.height = (float)icon_w
+    layout.left_button.x = panel.x + cast(float32)metrics.frame_icon_edge_gap
+    layout.left_button.y = panel.y + cast(float32)metrics.frame_icon_edge_gap
+    layout.left_button.width = cast(float32)icon_w
+    layout.left_button.height = cast(float32)icon_w
     layout.right_button = layout.left_button
-    layout.right_button.x = panel.x + panel.width - (float)(icon_w + metrics.frame_icon_edge_gap)
+    layout.right_button.x = panel.x + panel.width - cast(float32)(icon_w + metrics.frame_icon_edge_gap)
 
-    layout.title_y = (i32)panel.y + metrics.frame_title_y
-    layout.title_max_width = (i32)panel.width - icon_w * 2 -
+    layout.title_y = cast(s32)panel.y + metrics.frame_title_y
+    layout.title_max_width = cast(s32)panel.width - icon_w * 2 -
         metrics.frame_title_side_padding
     if layout.title_max_width < 1 { layout.title_max_width = 1 }
     layout.icon_size = metrics.frame_icon_size

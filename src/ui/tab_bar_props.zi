@@ -1,4 +1,3 @@
-#module "tab_bar_props"
 #import "geometry"
 #import "image_props"
 
@@ -20,48 +19,48 @@ TabBarInput :: struct {
     end: bool
     close: bool
     middle_click: bool
-    middle_x: float
-    middle_y: float
-    scroll_delta: i32
-    now: float
+    middle_x: float32
+    middle_y: float32
+    scroll_delta: s32
+    now: float32
 }
 
 TabBarProps :: struct {
     key: u64
     bounds: Rectangle
-    class_name: i32
-    selected_index: i32
-    min_tab_width: i32
-    max_tab_width: i32
-    scroll_offset: i32
+    class_name: s32
+    selected_index: s32
+    min_tab_width: s32
+    max_tab_width: s32
+    scroll_offset: s32
     focus_selected: bool
-    drag_from: i32
+    drag_from: s32
     dragging: bool
-    last_clicked_index: i32
-    last_clicked_at: float
+    last_clicked_index: s32
+    last_clicked_at: float32
     last_click_valid: bool
-    scale: float
-    id: i32
+    scale: float32
+    id: s32
     disabled: bool
     reorder_enabled: bool
     input: TabBarInput
 }
 
 TabBarResult :: struct {
-    node: i32
-    selected_index: i32
-    activated_index: i32
-    closed_index: i32
-    double_clicked_index: i32
-    middle_clicked_index: i32
-    reordered_from: i32
-    reordered_to: i32
-    scroll_offset: i32
-    drag_from: i32
-    drag_to: i32
+    node: s32
+    selected_index: s32
+    activated_index: s32
+    closed_index: s32
+    double_clicked_index: s32
+    middle_clicked_index: s32
+    reordered_from: s32
+    reordered_to: s32
+    scroll_offset: s32
+    drag_from: s32
+    drag_to: s32
     dragging: bool
-    last_clicked_index: i32
-    last_clicked_at: float
+    last_clicked_index: s32
+    last_clicked_at: float32
     last_click_valid: bool
     selected_tab_bounds: Rectangle
 }

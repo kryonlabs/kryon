@@ -1,9 +1,8 @@
-#module "navigation_bar_props"
 #import "image_props"
 
 NavigationBarItem :: struct {
     key: u64
-    route: i32
+    route: s32
     label: string
     image: ImageProps
     active: bool
@@ -12,18 +11,18 @@ NavigationBarItem :: struct {
 
 NavigationBarProps :: struct {
     key: u64
-    id: i32
-    view_width: i32
-    view_height: i32
-    class_name: i32
-    height: i32
-    scale: float
+    id: s32
+    view_width: s32
+    view_height: s32
+    class_name: s32
+    height: s32
+    scale: float32
 }
 
 NavigationBarResult :: struct {
-    node: i32
-    clicked_index: i32
-    clicked_route: i32
-    y: i32
-    height: i32
+    node: s32
+    clicked_index: s32
+    clicked_route: s32
+    y: s32
+    height: s32
 }

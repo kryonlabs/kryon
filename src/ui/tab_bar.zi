@@ -1,21 +1,20 @@
-#module "tab_bar"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 #import "control_props"
 
 TabBarMetrics :: struct {
-    min_width: i32
-    max_width: i32
-    icon_width: i32
-    gap: i32
-    close_width: i32
-    label_padding: i32
+    min_width: s32
+    max_width: s32
+    icon_width: s32
+    gap: s32
+    close_width: s32
+    label_padding: s32
 }
 
 TabBarScroll :: struct {
-    scroll: i32
-    max_scroll: i32
+    scroll: s32
+    max_scroll: s32
     equal_tabs: bool
 }
 
@@ -42,8 +41,8 @@ TabBarPressCleanupDecision :: struct {
 }
 
 TabBarKeyboardInput :: struct {
-    direction: i32
-    from_index: i32
+    direction: s32
+    from_index: s32
     close_requested: bool
 }
 
@@ -59,16 +58,16 @@ TabBarPaint :: struct {
     icon_color: u32
     close_color: u32
     focus_color: u32
-    radius: float
-    border_width: float
-    opacity: float
-    text_padding: i32
-    icon_size: i32
-    icon_gap: i32
-    content_inset_y: i32
-    close_size: i32
-    close_gap: i32
-    reorder_drag_threshold: i32
+    radius: float32
+    border_width: float32
+    opacity: float32
+    text_padding: s32
+    icon_size: s32
+    icon_gap: s32
+    content_inset_y: s32
+    close_size: s32
+    close_gap: s32
+    reorder_drag_threshold: s32
 }
 
 TabBarContentLayout :: struct {
@@ -78,12 +77,13 @@ TabBarContentLayout :: struct {
 }
 
 TabBarCloseLabelPaint :: struct {
-    x: i32
-    y: i32
+    x: s32
+    y: s32
 }
 
+#program_export
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
-    close: StyleFrame, scale: float) -> TabBarPaint #export {
+    close: StyleFrame, scale: float32) -> TabBarPaint {
     if scale <= 0.0 { scale = 1.0 }
     paint: TabBarPaint
     paint.bar = bar
@@ -101,79 +101,82 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     paint.border_width = tab.value.border_width
     paint.opacity = tab.value.opacity
     paint.text_padding = TabBarMetric(tab.value.fields,
-        (u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
+        cast(u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
     paint.icon_size = TabBarMetric(tab.value.fields,
-        (u32)StyleIconSize, tab.value.icon_size, 16.0, scale, true)
+        cast(u32)StyleIconSize, tab.value.icon_size, 16.0, scale, true)
     paint.icon_gap = TabBarMetric(tab.value.fields,
-        (u32)StyleGap, tab.value.gap, 4.0, scale, true)
+        cast(u32)StyleGap, tab.value.gap, 4.0, scale, true)
     paint.content_inset_y = TabBarMetric(tab.value.fields,
-        (u32)StylePaddingY, tab.value.padding_y, 8.0, scale, true)
+        cast(u32)StylePaddingY, tab.value.padding_y, 8.0, scale, true)
     paint.close_size = TabBarMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 18.0, scale, true)
+        cast(u32)StyleIconSize, close.value.icon_size, 18.0, scale, true)
     paint.close_gap = TabBarMetric(close.value.fields,
-        (u32)StyleGap, close.value.gap, 6.0, scale, true)
+        cast(u32)StyleGap, close.value.gap, 6.0, scale, true)
     paint.reorder_drag_threshold = TabBarMetric(bar.value.fields,
-        (u32)StylePaddingY, bar.value.padding_y, 6.0, scale, false)
+        cast(u32)StylePaddingY, bar.value.padding_y, 6.0, scale, false)
     return paint
 }
 
 TabBarHas :: (fields: u32, field: u32) -> bool {
-    return (fields & field) != (u32)0
+    return (fields & field) != cast(u32)0
 }
 
-TabBarMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+TabBarMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if !TabBarHas(fields, field) || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-TabBarPolicyHeight :: (scale: float, bar: StyleFrame) -> i32 #export {
+#program_export
+TabBarPolicyHeight :: (scale: float32, bar: StyleFrame) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    return TabBarMetric(bar.value.fields, (u32)StyleIconSize,
+    return TabBarMetric(bar.value.fields, cast(u32)StyleIconSize,
         bar.value.icon_size, 32.0, scale, false)
 }
 
-TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float,
-    bar: StyleFrame, tab: StyleFrame, close: StyleFrame) -> TabBarMetrics #export {
+#program_export
+TabBarDefaultMetrics :: (min_width: s32, max_width: s32, scale: float32,
+    bar: StyleFrame, tab: StyleFrame, close: StyleFrame) -> TabBarMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TabBarMetrics
     metrics.min_width = min_width
     if metrics.min_width <= 0 {
         metrics.min_width = TabBarMetric(bar.value.fields,
-            (u32)StylePaddingX, bar.value.padding_x, 120.0, scale, false)
+            cast(u32)StylePaddingX, bar.value.padding_x, 120.0, scale, false)
     }
     metrics.max_width = max_width
     if metrics.max_width <= 0 {
         metrics.max_width = TabBarMetric(bar.value.fields,
-            (u32)StyleContentOffset, bar.value.offset_x,
-            (float)metrics.min_width / scale, scale, false)
+            cast(u32)StyleContentOffset, bar.value.offset_x,
+            cast(float32)metrics.min_width / scale, scale, false)
     }
     if metrics.max_width < metrics.min_width {
         metrics.max_width = metrics.min_width
     }
     metrics.icon_width = TabBarMetric(tab.value.fields,
-        (u32)StyleIconSize, tab.value.icon_size, 44.0, scale, true)
-    metrics.gap = TabBarMetric(bar.value.fields, (u32)StyleGap,
+        cast(u32)StyleIconSize, tab.value.icon_size, 44.0, scale, true)
+    metrics.gap = TabBarMetric(bar.value.fields, cast(u32)StyleGap,
         bar.value.gap, 0.0, scale, true)
     metrics.close_width = TabBarMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 24.0, scale, true)
+        cast(u32)StyleIconSize, close.value.icon_size, 24.0, scale, true)
     metrics.label_padding = TabBarMetric(tab.value.fields,
-        (u32)StylePaddingX, tab.value.padding_x * 2.0, 16.0, scale, true)
+        cast(u32)StylePaddingX, tab.value.padding_x * 2.0, 16.0, scale, true)
     return metrics
 }
 
-TabBarTabWidth :: (label_width: i32, has_label: bool, has_icon: bool,
-    closeable: bool, metrics: TabBarMetrics) -> i32 #export {
+#program_export
+TabBarTabWidth :: (label_width: s32, has_label: bool, has_icon: bool,
+    closeable: bool, metrics: TabBarMetrics) -> s32 {
     if !has_label && has_icon {
         return metrics.icon_width
     }
     if !has_label {
         return metrics.min_width
     }
-    width: i32 = label_width + metrics.label_padding
+    width: s32 = label_width + metrics.label_padding
     if closeable {
         width += metrics.close_width
     }
@@ -186,103 +189,112 @@ TabBarTabWidth :: (label_width: i32, has_label: bool, has_icon: bool,
     return width
 }
 
-TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: i32,
+#program_export
+TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
     has_label: bool, has_icon: bool, closeable: bool,
-    paint: TabBarPaint) -> TabBarContentLayout #export {
+    paint: TabBarPaint) -> TabBarContentLayout {
     layout: TabBarContentLayout
-    tab_x: i32 = (i32)tab_bounds.x
-    tab_y: i32 = (i32)tab_bounds.y
-    tab_w: i32 = (i32)tab_bounds.width
-    tab_h: i32 = (i32)tab_bounds.height
-    text_pad: i32 = paint.text_padding
-    icon_size: i32 = paint.icon_size
-    close_size: i32 = paint.close_size
-    close_gap: i32 = paint.close_gap
-    content_h: i32 = tab_h - paint.content_inset_y
+    tab_x: s32 = cast(s32)tab_bounds.x
+    tab_y: s32 = cast(s32)tab_bounds.y
+    tab_w: s32 = cast(s32)tab_bounds.width
+    tab_h: s32 = cast(s32)tab_bounds.height
+    text_pad: s32 = paint.text_padding
+    icon_size: s32 = paint.icon_size
+    close_size: s32 = paint.close_size
+    close_gap: s32 = paint.close_gap
+    content_h: s32 = tab_h - paint.content_inset_y
     if content_h < 0 { content_h = 0 }
-    content_y: i32 = tab_y + (tab_h - content_h) / 2
-    icon_x: i32 = tab_x + text_pad
-    text_x: i32 = icon_x + icon_size + paint.icon_gap
+    content_y: s32 = tab_y + (tab_h - content_h) / 2
+    icon_x: s32 = tab_x + text_pad
+    text_x: s32 = icon_x + icon_size + paint.icon_gap
 
-    layout.close_bounds.x = (float)(tab_x + tab_w - text_pad - close_size)
-    layout.close_bounds.y = (float)(tab_y + (tab_h - close_size) / 2)
-    layout.close_bounds.width = (float)close_size
-    layout.close_bounds.height = (float)close_size
+    layout.close_bounds.x = cast(float32)(tab_x + tab_w - text_pad - close_size)
+    layout.close_bounds.y = cast(float32)(tab_y + (tab_h - close_size) / 2)
+    layout.close_bounds.width = cast(float32)close_size
+    layout.close_bounds.height = cast(float32)close_size
 
     if has_icon && icon_size > 0 {
         if !has_label {
             icon_x = tab_x + (tab_w - icon_size) / 2
         } else {
-            gap: i32 = paint.icon_gap
-            content_w: i32 = icon_size + gap + label_width
-            available_w: i32 = tab_w - text_pad * 2
+            gap: s32 = paint.icon_gap
+            content_w: s32 = icon_size + gap + label_width
+            available_w: s32 = tab_w - text_pad * 2
             if content_w > available_w { content_w = available_w }
             icon_x = tab_x + (tab_w - content_w) / 2
             text_x = icon_x + icon_size + gap
         }
-        layout.icon_bounds.x = (float)icon_x
-        layout.icon_bounds.y = (float)(tab_y + (tab_h - icon_size) / 2)
-        layout.icon_bounds.width = (float)icon_size
-        layout.icon_bounds.height = (float)icon_size
+        layout.icon_bounds.x = cast(float32)icon_x
+        layout.icon_bounds.y = cast(float32)(tab_y + (tab_h - icon_size) / 2)
+        layout.icon_bounds.width = cast(float32)icon_size
+        layout.icon_bounds.height = cast(float32)icon_size
         text_x = icon_x + icon_size + paint.icon_gap
     } else {
         text_x = tab_x + text_pad
     }
 
-    layout.text_bounds.x = (float)text_x
-    layout.text_bounds.y = (float)content_y
-    layout.text_bounds.width = (float)(tab_x + tab_w - text_pad - text_x -
-        (closeable ? close_size + close_gap : 0))
-    layout.text_bounds.height = (float)content_h
+    layout.text_bounds.x = cast(float32)text_x
+    layout.text_bounds.y = cast(float32)content_y
+    close_extent: s32 = 0
+    if closeable { close_extent = close_size + close_gap }
+    layout.text_bounds.width = cast(float32)(tab_x + tab_w - text_pad - text_x -
+        close_extent)
+    layout.text_bounds.height = cast(float32)content_h
     return layout
 }
 
-TabBarCloseLabelPaintFor :: (close_bounds: Rectangle, label_width: i32,
-    label_line_height: i32) -> TabBarCloseLabelPaint #export {
+#program_export
+TabBarCloseLabelPaintFor :: (close_bounds: Rectangle, label_width: s32,
+    label_line_height: s32) -> TabBarCloseLabelPaint {
     paint: TabBarCloseLabelPaint
-    paint.x = (i32)(close_bounds.x + (close_bounds.width - (float)label_width) * 0.5)
-    paint.y = (i32)(close_bounds.y + (close_bounds.height - (float)label_line_height) * 0.5)
+    paint.x = cast(s32)(close_bounds.x + (close_bounds.width - cast(float32)label_width) * 0.5)
+    paint.y = cast(s32)(close_bounds.y + (close_bounds.height - cast(float32)label_line_height) * 0.5)
     return paint
 }
 
-TabBarTotalWidth :: (tab_width_sum: i32, count: i32, gap: i32) -> i32 #export {
+#program_export
+TabBarTotalWidth :: (tab_width_sum: s32, count: s32, gap: s32) -> s32 {
     if count <= 0 {
         return 0
     }
-    total: i32 = tab_width_sum + gap * (count - 1)
+    total: s32 = tab_width_sum + gap * (count - 1)
     if total < 0 {
         return 0
     }
     return total
 }
 
-TabBarSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
+#program_export
+TabBarSelectedIndexFor :: (selected: s32, count: s32) -> s32 {
     if count <= 0 { return -1 }
     if selected < 0 || selected >= count { return 0 }
     return selected
 }
 
-TabBarClampedIndexFor :: (index: i32, count: i32) -> i32 #export {
+#program_export
+TabBarClampedIndexFor :: (index: s32, count: s32) -> s32 {
     if count <= 0 { return -1 }
     if index < 0 { return 0 }
     if index >= count { return count - 1 }
     return index
 }
 
-TabBarWrappedIndex :: (from: i32, direction: i32, step: i32,
-    count: i32) -> i32 #export {
+#program_export
+TabBarWrappedIndex :: (from: s32, direction: s32, step: s32,
+    count: s32) -> s32 {
     if count <= 0 { return -1 }
     if direction == 0 { direction = 1 }
     if step < 0 { step = 0 }
-    index: i32 = (from + direction * step) % count
+    index: s32 = (from + direction * step) % count
     if index < 0 { index += count }
     return index
 }
 
-TabBarKeyboardInputFor :: (selected: i32, count: i32, left_pressed: bool,
+#program_export
+TabBarKeyboardInputFor :: (selected: s32, count: s32, left_pressed: bool,
     right_pressed: bool, up_pressed: bool, down_pressed: bool,
     home_pressed: bool, end_pressed: bool, delete_pressed: bool,
-    backspace_pressed: bool) -> TabBarKeyboardInput #export {
+    backspace_pressed: bool) -> TabBarKeyboardInput {
     input: TabBarKeyboardInput
     selected = TabBarSelectedIndexFor(selected, count)
     input.from_index = selected
@@ -304,8 +316,9 @@ TabBarKeyboardInputFor :: (selected: i32, count: i32, left_pressed: bool,
     return input
 }
 
-TabBarDoubleClickShouldRun :: (same_bar: bool, last_index: i32,
-    index: i32, last_time: float, now: float) -> bool #export {
+#program_export
+TabBarDoubleClickShouldRun :: (same_bar: bool, last_index: s32,
+    index: s32, last_time: float32, now: float32) -> bool {
     if !same_bar {
         return false
     }
@@ -321,10 +334,11 @@ TabBarDoubleClickShouldRun :: (same_bar: bool, last_index: i32,
     return true
 }
 
-TabBarScrollFor :: (bounds_width: float, total_width: i32, scroll: i32) -> TabBarScroll #export {
+#program_export
+TabBarScrollFor :: (bounds_width: float32, total_width: s32, scroll: s32) -> TabBarScroll {
     result: TabBarScroll
-    result.equal_tabs = (float)total_width <= bounds_width
-    result.max_scroll = total_width - (i32)bounds_width
+    result.equal_tabs = cast(float32)total_width <= bounds_width
+    result.max_scroll = total_width - cast(s32)bounds_width
     if result.max_scroll < 0 || result.equal_tabs {
         result.max_scroll = 0
     }
@@ -340,12 +354,13 @@ TabBarScrollFor :: (bounds_width: float, total_width: i32, scroll: i32) -> TabBa
     return result
 }
 
-TabBarRevealScroll :: (tab_x: float, tab_width: float, bounds: Rectangle,
-    scroll: i32, max_scroll: i32) -> i32 #export {
+#program_export
+TabBarRevealScroll :: (tab_x: float32, tab_width: float32, bounds: Rectangle,
+    scroll: s32, max_scroll: s32) -> s32 {
     if tab_x < bounds.x {
-        scroll = scroll - (i32)(bounds.x - tab_x)
+        scroll = scroll - cast(s32)(bounds.x - tab_x)
     } else if tab_x + tab_width > bounds.x + bounds.width {
-        scroll = scroll + (i32)((tab_x + tab_width) - (bounds.x + bounds.width))
+        scroll = scroll + cast(s32)((tab_x + tab_width) - (bounds.x + bounds.width))
     }
     if scroll < 0 {
         return 0
@@ -356,35 +371,37 @@ TabBarRevealScroll :: (tab_x: float, tab_width: float, bounds: Rectangle,
     return scroll
 }
 
-TabBarDragMarkerBounds :: (tab_x: i32, tab_width: i32, bar_y: i32,
-    bar_height: i32, after_tab: bool, scale: float) -> Rectangle #export {
+#program_export
+TabBarDragMarkerBounds :: (tab_x: s32, tab_width: s32, bar_y: s32,
+    bar_height: s32, after_tab: bool, scale: float32) -> Rectangle {
     marker: Rectangle
     if scale <= 0.0 { scale = 1.0 }
-    marker_x: i32 = tab_x
+    marker_x: s32 = tab_x
     if after_tab {
         marker_x = tab_x + tab_width
     }
-    marker.x = (float)marker_x - scale
-    marker.y = (float)bar_y + 4.0 * scale
+    marker.x = cast(float32)marker_x - scale
+    marker.y = cast(float32)bar_y + 4.0 * scale
     marker.width = 2.0 * scale
-    marker.height = (float)bar_height - 8.0 * scale
+    marker.height = cast(float32)bar_height - 8.0 * scale
     if marker.height < 0.0 {
         marker.height = 0.0
     }
     return marker
 }
 
+#program_export
 TabBarReorderDragDecisionFor :: (disabled: bool, reorder_enabled: bool,
-    owns_press: bool, press_index: i32, count: i32, pointer_down: bool,
-    drag_active: bool, dx: i32, dy: i32,
-    threshold: i32) -> TabBarReorderDragDecision #export {
+    owns_press: bool, press_index: s32, count: s32, pointer_down: bool,
+    drag_active: bool, dx: s32, dy: s32,
+    threshold: s32) -> TabBarReorderDragDecision {
     decision: TabBarReorderDragDecision
     if disabled || !reorder_enabled || !owns_press ||
        press_index < 0 || press_index >= count || !pointer_down {
         return decision
     }
-    abs_dx: i32 = dx
-    abs_dy: i32 = dy
+    abs_dx: s32 = dx
+    abs_dy: s32 = dy
     if abs_dx < 0 { abs_dx = -abs_dx }
     if abs_dy < 0 { abs_dy = -abs_dy }
     decision.start_drag = !drag_active && abs_dx >= threshold &&
@@ -394,9 +411,10 @@ TabBarReorderDragDecisionFor :: (disabled: bool, reorder_enabled: bool,
     return decision
 }
 
+#program_export
 TabBarReorderReleaseDecisionFor :: (disabled: bool, reorder_enabled: bool,
-    owns_drag: bool, released: bool, press_index: i32,
-    count: i32) -> TabBarReorderReleaseDecision #export {
+    owns_drag: bool, released: bool, press_index: s32,
+    count: s32) -> TabBarReorderReleaseDecision {
     decision: TabBarReorderReleaseDecision
     decision.finish = !disabled && reorder_enabled && owns_drag && released &&
         press_index >= 0 && press_index < count
@@ -404,8 +422,9 @@ TabBarReorderReleaseDecisionFor :: (disabled: bool, reorder_enabled: bool,
     return decision
 }
 
+#program_export
 TabBarTabPointerDecisionFor :: (close_active: bool, released: bool,
-    owns_drag: bool, press_matches: bool) -> TabBarTabPointerDecision #export {
+    owns_drag: bool, press_matches: bool) -> TabBarTabPointerDecision {
     decision: TabBarTabPointerDecision
     if !released || owns_drag {
         return decision
@@ -422,21 +441,23 @@ TabBarTabPointerDecisionFor :: (close_active: bool, released: bool,
     return decision
 }
 
+#program_export
 TabBarPressCleanupDecisionFor :: (released: bool, pointer_down: bool,
-    owns_press: bool, pointer_owner_is_reorder: bool) -> TabBarPressCleanupDecision #export {
+    owns_press: bool, pointer_owner_is_reorder: bool) -> TabBarPressCleanupDecision {
     decision: TabBarPressCleanupDecision
     decision.clear_press = owns_press && (released || !pointer_down)
     decision.clear_pointer_owner = decision.clear_press && pointer_owner_is_reorder
     return decision
 }
 
-TabBarEqualTabBounds :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
+#program_export
+TabBarEqualTabBounds :: (bounds: Rectangle, count: s32, index: s32) -> Rectangle {
     rect: Rectangle
     if count <= 0 || index < 0 || index >= count {
         return rect
     }
-    width: float = bounds.width / (float)count
-    rect.x = bounds.x + width * (float)index
+    width: float32 = bounds.width / cast(float32)count
+    rect.x = bounds.x + width * cast(float32)index
     rect.y = bounds.y
     rect.width = width
     rect.height = bounds.height

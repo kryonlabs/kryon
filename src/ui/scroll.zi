@@ -1,4 +1,3 @@
-#module "scroll"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -6,31 +5,31 @@
 #import "style_sheet"
 
 ScrollMetrics :: struct {
-    scrollbar_width: i32
-    reserved_width: i32
-    safe_gap: i32
-    default_wheel_step: i32
-    drag_threshold: i32
-    visual_bleed: i32
-    thumb_min_height: i32
-    thumb_inset: i32
+    scrollbar_width: s32
+    reserved_width: s32
+    safe_gap: s32
+    default_wheel_step: s32
+    drag_threshold: s32
+    visual_bleed: s32
+    thumb_min_height: s32
+    thumb_inset: s32
 }
 
 ScrollPolicyView :: struct {
-    content_x: i32
-    content_y: i32
-    content_w: i32
-    viewport_h: i32
-    content_h: i32
-    max_scroll: i32
-    scrollbar_x: i32
+    content_x: s32
+    content_y: s32
+    content_w: s32
+    viewport_h: s32
+    content_h: s32
+    max_scroll: s32
+    scrollbar_x: s32
 }
 
 ScrollBarPaint :: struct {
     track_bounds: Rectangle
     thumb_bounds: Rectangle
-    track_span: i32
-    scroll_per_pixel: float
+    track_span: s32
+    scroll_per_pixel: float32
 }
 
 ScrollBarDragDecision :: struct {
@@ -38,7 +37,7 @@ ScrollBarDragDecision :: struct {
     continue_drag: bool
     cancel_drag: bool
     claim_scroll_owner: bool
-    scroll_offset: i32
+    scroll_offset: s32
 }
 
 ScrollBarDragReleaseDecision :: struct {
@@ -53,100 +52,107 @@ ScrollContentDragDecision :: struct {
     gesture_pending: bool
     claim_scroll_owner: bool
     capture_input: bool
-    scroll_offset: i32
+    scroll_offset: s32
 }
 
 ScrollClipGeometry :: struct {
     screen_bounds: Rectangle
     clipped_world_bounds: Rectangle
     visual_screen_bounds: Rectangle
-    visual_bleed: i32
+    visual_bleed: s32
 }
 
-ScrollMetric :: (fields: u32, field: u32, value: float, fallback: float,
-scale: float) -> i32 {
+ScrollMetric :: (fields: u32, field: u32, value: float32, fallback: float32,
+scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) != (u32)0 && value >= 0.0 {
-        return (i32)(value * scale)
+    if (fields & field) != cast(u32)0 && value >= 0.0 {
+        return cast(s32)(value * scale)
     }
-    return (i32)(fallback * scale)
+    return cast(s32)(fallback * scale)
 }
 
-ScrollMetricsFor :: (scale: float, track: StyleFrame, thumb: StyleFrame) -> ScrollMetrics #export {
+#program_export
+ScrollMetricsFor :: (scale: float32, track: StyleFrame, thumb: StyleFrame) -> ScrollMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ScrollMetrics
     metrics.scrollbar_width = ScrollMetric(track.value.fields,
-    (u32)StyleIconSize, track.value.icon_size, 10.0, scale)
+    cast(u32)StyleIconSize, track.value.icon_size, 10.0, scale)
     metrics.reserved_width = ScrollMetric(track.value.fields,
-    (u32)StylePaddingX, track.value.padding_x, 16.0, scale)
+    cast(u32)StylePaddingX, track.value.padding_x, 16.0, scale)
     metrics.safe_gap = ScrollMetric(track.value.fields,
-    (u32)StyleGap, track.value.gap, 20.0, scale)
+    cast(u32)StyleGap, track.value.gap, 20.0, scale)
     metrics.default_wheel_step = ScrollMetric(track.value.fields,
-    (u32)StyleContentOffset, track.value.offset_y, 42.0, scale)
+    cast(u32)StyleContentOffset, track.value.offset_y, 42.0, scale)
     metrics.drag_threshold = ScrollMetric(track.value.fields,
-    (u32)StyleContentOffset, track.value.offset_x, 5.0, scale)
+    cast(u32)StyleContentOffset, track.value.offset_x, 5.0, scale)
     metrics.visual_bleed = ScrollMetric(track.value.fields,
-    (u32)StylePaddingY, track.value.padding_y, 8.0, scale)
+    cast(u32)StylePaddingY, track.value.padding_y, 8.0, scale)
     metrics.thumb_min_height = ScrollMetric(thumb.value.fields,
-    (u32)StyleIconSize, thumb.value.icon_size, 16.0, scale)
+    cast(u32)StyleIconSize, thumb.value.icon_size, 16.0, scale)
     metrics.thumb_inset = ScrollMetric(thumb.value.fields,
-    (u32)StylePaddingX, thumb.value.padding_x, 2.0, scale)
+    cast(u32)StylePaddingX, thumb.value.padding_x, 2.0, scale)
     return metrics
 }
 
-ScrollFace :: (kind: i32, class_name: i32, disabled: bool,
-    state: i32, track_width: float) -> StyleFrame #export {
+#program_export
+ScrollFace :: (kind: s32, class_name: s32, disabled: bool,
+    state: s32, track_width: float32) -> StyleFrame {
     if track_width <= 0.0 { track_width = 10.0 }
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleRadius |
-        (u32)StyleOpacity | (u32)StyleIconSize | (u32)StylePaddingX
-    face.background = (u32)0xe5e7ebff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleIconSize | cast(u32)StylePaddingX
+    face.background = cast(u32)0xe5e7ebff
     face.radius = 4.0
     face.opacity = 1.0
     face.icon_size = track_width
     face.padding_x = 2.0
     if kind == StyleKindScrollThumb() {
-        face.background = (u32)0x9ca3afff
+        face.background = cast(u32)0x9ca3afff
         face.icon_size = 16.0
     }
-    if disabled { state = (i32)ButtonStateDisabled }
+    if disabled { state = cast(s32)ButtonStateDisabled }
     facts: StyleFacts = StyleControlRoleFacts(kind, 0,
-        class_name, StyleAny(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+        class_name, StyleAny(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(), face, facts, state)
     return frame
 }
 
-ScrollClamp :: (value: i32, maximum: i32) -> i32 #export {
+#program_export
+ScrollClamp :: (value: s32, maximum: s32) -> s32 {
     if value < 0 { return 0 }
     if value > maximum { return maximum }
     return value
 }
 
-ScrollMax :: (content_height: i32, viewport_height: i32) -> i32 #export {
-    maximum: i32 = content_height - viewport_height
+#program_export
+ScrollMax :: (content_height: s32, viewport_height: s32) -> s32 {
+    maximum: s32 = content_height - viewport_height
     if maximum < 0 { maximum = 0 }
     return maximum
 }
 
-ScrollReservedWidth :: (max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
+#program_export
+ScrollReservedWidth :: (max_scroll: s32, metrics: ScrollMetrics) -> s32 {
     if max_scroll > 0 { return metrics.reserved_width }
     return 0
 }
 
-ScrollContentWidth :: (content_width: i32, max_scroll: i32,
-metrics: ScrollMetrics) -> i32 #export {
-    reserved: i32 = ScrollReservedWidth(max_scroll, metrics)
+#program_export
+ScrollContentWidth :: (content_width: s32, max_scroll: s32,
+metrics: ScrollMetrics) -> s32 {
+    reserved: s32 = ScrollReservedWidth(max_scroll, metrics)
     if reserved <= 0 { return content_width }
     if content_width <= reserved { return 0 }
     return content_width - reserved
 }
 
-ScrollPageContentWidthFor :: (view_width: i32, max_content_width: i32,
-min_content_width: i32, side_padding: i32) -> i32 #export {
+#program_export
+ScrollPageContentWidthFor :: (view_width: s32, max_content_width: s32,
+min_content_width: s32, side_padding: s32) -> s32 {
     if max_content_width <= 0 { max_content_width = view_width }
-    available: i32 = view_width - side_padding * 2
+    available: s32 = view_width - side_padding * 2
     if max_content_width > available { max_content_width = available }
     if min_content_width > 0 && max_content_width < min_content_width {
         max_content_width = min_content_width
@@ -155,9 +161,10 @@ min_content_width: i32, side_padding: i32) -> i32 #export {
     return max_content_width
 }
 
-ScrollSafeContentWidth :: (content_x: i32, content_width: i32,
-scrollbar_x: i32, max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
-    safe_width: i32 = content_width
+#program_export
+ScrollSafeContentWidth :: (content_x: s32, content_width: s32,
+scrollbar_x: s32, max_scroll: s32, metrics: ScrollMetrics) -> s32 {
+    safe_width: s32 = content_width
     if max_scroll <= 0 || scrollbar_x <= 0 { return content_width }
     safe_width = scrollbar_x - content_x - metrics.safe_gap
     if safe_width > content_width { return content_width }
@@ -165,18 +172,20 @@ scrollbar_x: i32, max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
     return safe_width
 }
 
+#program_export
 ScrollContentBounds :: (bounds: Rectangle, has_scroll: bool,
-metrics: ScrollMetrics) -> Rectangle #export {
+metrics: ScrollMetrics) -> Rectangle {
     content: Rectangle = bounds
     if has_scroll {
-        content.width = bounds.width - (float)metrics.scrollbar_width
+        content.width = bounds.width - cast(float32)metrics.scrollbar_width
         if content.width < 0.0 { content.width = 0.0 }
     }
     return content
 }
 
+#program_export
 ScrollScreenBoundsFor :: (bounds: Rectangle, camera_offset: Vector2,
-zoom: float) -> Rectangle #export {
+zoom: float32) -> Rectangle {
     if zoom <= 0.0 { zoom = 1.0 }
     screen: Rectangle
     screen.x = camera_offset.x + bounds.x * zoom
@@ -186,8 +195,9 @@ zoom: float) -> Rectangle #export {
     return screen
 }
 
+#program_export
 ScrollWorldBoundsFor :: (screen_bounds: Rectangle, camera_offset: Vector2,
-zoom: float) -> Rectangle #export {
+zoom: float32) -> Rectangle {
     if zoom <= 0.0 { zoom = 1.0 }
     world: Rectangle
     world.x = (screen_bounds.x - camera_offset.x) / zoom
@@ -197,18 +207,19 @@ zoom: float) -> Rectangle #export {
     return world
 }
 
-ScrollVisualBoundsFor :: (screen_bounds: Rectangle, visual_bleed: i32,
-zoom: float, screen_width: i32, screen_height: i32, view_width: i32,
-view_height: i32, camera_offset: Vector2) -> Rectangle #export {
+#program_export
+ScrollVisualBoundsFor :: (screen_bounds: Rectangle, visual_bleed: s32,
+zoom: float32, screen_width: s32, screen_height: s32, view_width: s32,
+view_height: s32, camera_offset: Vector2) -> Rectangle {
     if zoom <= 0.0 { zoom = 1.0 }
-    bleed: i32 = (i32)((float)visual_bleed * zoom)
+    bleed: s32 = cast(s32)(cast(float32)visual_bleed * zoom)
     if bleed < 1 { bleed = 1 }
 
     visual: Rectangle
-    visual.x = screen_bounds.x - (float)bleed
-    visual.y = screen_bounds.y - (float)bleed
-    visual.width = screen_bounds.width + (float)(bleed * 2)
-    visual.height = screen_bounds.height + (float)(bleed * 2)
+    visual.x = screen_bounds.x - cast(float32)bleed
+    visual.y = screen_bounds.y - cast(float32)bleed
+    visual.width = screen_bounds.width + cast(float32)(bleed * 2)
+    visual.height = screen_bounds.height + cast(float32)(bleed * 2)
 
     if visual.x < 0.0 {
         visual.width += visual.x
@@ -220,25 +231,26 @@ view_height: i32, camera_offset: Vector2) -> Rectangle #export {
     }
 
     if screen_width <= 0 {
-        screen_width = (i32)(camera_offset.x + (float)view_width * zoom)
+        screen_width = cast(s32)(camera_offset.x + cast(float32)view_width * zoom)
     }
     if screen_height <= 0 {
-        screen_height = (i32)(camera_offset.y + (float)view_height * zoom)
+        screen_height = cast(s32)(camera_offset.y + cast(float32)view_height * zoom)
     }
-    if visual.x + visual.width > (float)screen_width {
-        visual.width = (float)screen_width - visual.x
+    if visual.x + visual.width > cast(float32)screen_width {
+        visual.width = cast(float32)screen_width - visual.x
     }
-    if visual.y + visual.height > (float)screen_height {
-        visual.height = (float)screen_height - visual.y
+    if visual.y + visual.height > cast(float32)screen_height {
+        visual.height = cast(float32)screen_height - visual.y
     }
     if visual.width < 0.0 { visual.width = 0.0 }
     if visual.height < 0.0 { visual.height = 0.0 }
     return visual
 }
 
+#program_export
 ScrollClipGeometryFor :: (bounds: Rectangle, clipped_screen_bounds: Rectangle,
-visual_bleed: i32, camera_offset: Vector2, zoom: float, screen_width: i32,
-screen_height: i32, view_width: i32, view_height: i32) -> ScrollClipGeometry #export {
+visual_bleed: s32, camera_offset: Vector2, zoom: float32, screen_width: s32,
+screen_height: s32, view_width: s32, view_height: s32) -> ScrollClipGeometry {
     if zoom <= 0.0 { zoom = 1.0 }
     geometry: ScrollClipGeometry
     geometry.screen_bounds = ScrollScreenBoundsFor(bounds, camera_offset, zoom)
@@ -247,51 +259,57 @@ screen_height: i32, view_width: i32, view_height: i32) -> ScrollClipGeometry #ex
     geometry.visual_screen_bounds = ScrollVisualBoundsFor(geometry.screen_bounds,
     visual_bleed, zoom, screen_width, screen_height, view_width,
     view_height, camera_offset)
-    geometry.visual_bleed = (i32)((float)visual_bleed * zoom)
+    geometry.visual_bleed = cast(s32)(cast(float32)visual_bleed * zoom)
     if geometry.visual_bleed < 1 { geometry.visual_bleed = 1 }
     return geometry
 }
 
-ScrollWheelOffsetFor :: (scroll_offset: i32, wheel_move: float,
-max_scroll: i32, wheel_step: i32) -> i32 #export {
-    delta: i32 = (i32)(wheel_move * (float)wheel_step)
+#program_export
+ScrollWheelOffsetFor :: (scroll_offset: s32, wheel_move: float32,
+max_scroll: s32, wheel_step: s32) -> s32 {
+    delta: s32 = cast(s32)(wheel_move * cast(float32)wheel_step)
     return ScrollClamp(scroll_offset - delta, max_scroll)
 }
 
-ScrollRowWheelStepFor :: (row_height: i32, scale: float) -> i32 #export {
+#program_export
+ScrollRowWheelStepFor :: (row_height: s32, scale: float32) -> s32 {
     if row_height > 0 { return row_height * 3 }
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(90.0 * scale)
+    return cast(s32)(90.0 * scale)
 }
 
-ScrollDragOffsetFor :: (mouse_y: float, track_y: float, grab_y: float,
-max_scroll: i32, paint: ScrollBarPaint) -> i32 #export {
+#program_export
+ScrollDragOffsetFor :: (mouse_y: float32, track_y: float32, grab_y: float32,
+max_scroll: s32, paint: ScrollBarPaint) -> s32 {
     if paint.scroll_per_pixel <= 0.0 {
         return ScrollClamp(0, max_scroll)
     }
-    offset: i32 = (i32)((mouse_y - track_y - grab_y) * paint.scroll_per_pixel)
+    offset: s32 = cast(s32)((mouse_y - track_y - grab_y) * paint.scroll_per_pixel)
     return ScrollClamp(offset, max_scroll)
 }
 
-ScrollDragDeltaOffsetFor :: (start_scroll: i32, delta_y: i32,
-max_scroll: i32) -> i32 #export {
+#program_export
+ScrollDragDeltaOffsetFor :: (start_scroll: s32, delta_y: s32,
+max_scroll: s32) -> s32 {
     return ScrollClamp(start_scroll - delta_y, max_scroll)
 }
 
-ScrollThumbDragDeltaOffsetFor :: (start_scroll: i32, delta_y: i32,
-max_scroll: i32, paint: ScrollBarPaint) -> i32 #export {
-    offset: i32 = start_scroll
+#program_export
+ScrollThumbDragDeltaOffsetFor :: (start_scroll: s32, delta_y: s32,
+max_scroll: s32, paint: ScrollBarPaint) -> s32 {
+    offset: s32 = start_scroll
     if paint.scroll_per_pixel > 0.0 {
-        offset += (i32)((float)delta_y * paint.scroll_per_pixel)
+        offset += cast(s32)(cast(float32)delta_y * paint.scroll_per_pixel)
     }
     return ScrollClamp(offset, max_scroll)
 }
 
+#program_export
 ScrollBarDragFor :: (mouse_down: bool, input_captured: bool,
 thumb_active: bool, pointer_owner_none: bool, drag_active: bool,
-owns_drag: bool, current_scroll: i32, start_scroll: i32,
-delta_y: i32, max_scroll: i32,
-paint: ScrollBarPaint) -> ScrollBarDragDecision #export {
+owns_drag: bool, current_scroll: s32, start_scroll: s32,
+delta_y: s32, max_scroll: s32,
+paint: ScrollBarPaint) -> ScrollBarDragDecision {
     decision: ScrollBarDragDecision
     decision.scroll_offset = ScrollClamp(current_scroll, max_scroll)
     if mouse_down && (!input_captured || owns_drag) {
@@ -316,20 +334,22 @@ paint: ScrollBarPaint) -> ScrollBarDragDecision #export {
     return decision
 }
 
+#program_export
 ScrollBarDragReleaseFor :: (drag_active: bool, mouse_released: bool,
-content_disabled: bool) -> ScrollBarDragReleaseDecision #export {
+content_disabled: bool) -> ScrollBarDragReleaseDecision {
     decision: ScrollBarDragReleaseDecision
     decision.clear_drag = drag_active && (mouse_released || content_disabled)
     decision.consume_release = drag_active && mouse_released
     return decision
 }
 
-ScrollContentDragFor :: (max_scroll: i32, mouse_pressed: bool,
+#program_export
+ScrollContentDragFor :: (max_scroll: s32, mouse_pressed: bool,
 mouse_down: bool, inside: bool, input_captured: bool,
 on_scrollbar: bool, pointer_owner_none: bool, pointer_owner_scroll: bool,
 blocked_by_other_drag: bool, active: bool, dragging: bool,
-current_scroll: i32, start_scroll: i32, delta_y: i32,
-drag_threshold: i32) -> ScrollContentDragDecision #export {
+current_scroll: s32, start_scroll: s32, delta_y: s32,
+drag_threshold: s32) -> ScrollContentDragDecision {
     decision: ScrollContentDragDecision
     decision.scroll_offset = ScrollClamp(current_scroll, max_scroll)
     if blocked_by_other_drag {
@@ -359,15 +379,16 @@ drag_threshold: i32) -> ScrollContentDragDecision #export {
     return decision
 }
 
-ScrollRectVisibleOffsetFor :: (scroll_offset: i32, viewport_y: i32,
-viewport_height: i32, rect_y: i32, rect_height: i32, margin: i32,
-max_scroll: i32) -> i32 #export {
+#program_export
+ScrollRectVisibleOffsetFor :: (scroll_offset: s32, viewport_y: s32,
+viewport_height: s32, rect_y: s32, rect_height: s32, margin: s32,
+max_scroll: s32) -> s32 {
     if margin < 0 { margin = 0 }
-    next_scroll: i32 = ScrollClamp(scroll_offset, max_scroll)
-    viewport_top: i32 = viewport_y + margin
-    viewport_bottom: i32 = viewport_y + viewport_height - margin
-    rect_top: i32 = rect_y
-    rect_bottom: i32 = rect_y + rect_height
+    next_scroll: s32 = ScrollClamp(scroll_offset, max_scroll)
+    viewport_top: s32 = viewport_y + margin
+    viewport_bottom: s32 = viewport_y + viewport_height - margin
+    rect_top: s32 = rect_y
+    rect_bottom: s32 = rect_y + rect_height
 
     if viewport_bottom < viewport_top { viewport_bottom = viewport_top }
     if rect_bottom > viewport_bottom {
@@ -379,14 +400,15 @@ max_scroll: i32) -> i32 #export {
     return ScrollClamp(next_scroll, max_scroll)
 }
 
-ScrollMeasure :: (bounds: Rectangle, content_height: i32, content_x: i32,
-content_width: i32, scroll_offset: i32, scrollbar_x: i32,
-metrics: ScrollMetrics) -> ScrollPolicyView #export {
+#program_export
+ScrollMeasure :: (bounds: Rectangle, content_height: s32, content_x: s32,
+content_width: s32, scroll_offset: s32, scrollbar_x: s32,
+metrics: ScrollMetrics) -> ScrollPolicyView {
     view: ScrollPolicyView
-    x: i32 = (i32)bounds.x
-    y: i32 = (i32)bounds.y
-    w: i32 = (i32)bounds.width
-    h: i32 = (i32)bounds.height
+    x: s32 = cast(s32)bounds.x
+    y: s32 = cast(s32)bounds.y
+    w: s32 = cast(s32)bounds.width
+    h: s32 = cast(s32)bounds.height
     if content_height < 0 { content_height = 0 }
     if content_x <= 0 { content_x = x }
     if content_width <= 0 { content_width = w }
@@ -404,84 +426,91 @@ metrics: ScrollMetrics) -> ScrollPolicyView #export {
     return view
 }
 
-ScrollBarPaintFor :: (x: i32, y: i32, viewport_h: i32, content_h: i32,
-scroll_offset: i32, max_scroll: i32, metrics: ScrollMetrics) -> ScrollBarPaint #export {
+#program_export
+ScrollBarPaintFor :: (x: s32, y: s32, viewport_h: s32, content_h: s32,
+scroll_offset: s32, max_scroll: s32, metrics: ScrollMetrics) -> ScrollBarPaint {
     paint: ScrollBarPaint
-    scrollbar_w: i32 = metrics.scrollbar_width
+    scrollbar_w: s32 = metrics.scrollbar_width
     if scrollbar_w < 0 { scrollbar_w = 0 }
     if viewport_h < 0 { viewport_h = 0 }
     if content_h < 0 { content_h = 0 }
 
-    thumb_h: i32 = viewport_h
+    thumb_h: s32 = viewport_h
     if content_h > 0 {
-        thumb_h = (i32)((float)viewport_h * ((float)viewport_h / (float)content_h))
+        thumb_h = cast(s32)(cast(float32)viewport_h * (cast(float32)viewport_h / cast(float32)content_h))
     }
     if thumb_h < metrics.thumb_min_height { thumb_h = metrics.thumb_min_height }
-    max_thumb_h: i32 = (i32)((float)viewport_h * 0.28)
+    max_thumb_h: s32 = cast(s32)(cast(float32)viewport_h * 0.28)
     if max_thumb_h < metrics.thumb_min_height { max_thumb_h = metrics.thumb_min_height }
     if thumb_h > max_thumb_h { thumb_h = max_thumb_h }
     if thumb_h > viewport_h { thumb_h = viewport_h }
     if thumb_h < 0 { thumb_h = 0 }
 
-    clamped_scroll: i32 = ScrollClamp(scroll_offset, max_scroll)
-    scroll_ratio: float = max_scroll > 0 ? (float)clamped_scroll / (float)max_scroll : 0.0
+    clamped_scroll: s32 = ScrollClamp(scroll_offset, max_scroll)
+    scroll_ratio: float32 = 0.0
+    if max_scroll > 0 {
+        scroll_ratio = cast(float32)clamped_scroll / cast(float32)max_scroll
+    }
     if scroll_ratio < 0.0 { scroll_ratio = 0.0 }
     if scroll_ratio > 1.0 { scroll_ratio = 1.0 }
-    track_span: i32 = viewport_h - thumb_h
+    track_span: s32 = viewport_h - thumb_h
     if track_span < 0 { track_span = 0 }
-    thumb_y: i32 = y + (i32)(scroll_ratio * (float)track_span)
+    thumb_y: s32 = y + cast(s32)(scroll_ratio * cast(float32)track_span)
     if thumb_y < y { thumb_y = y }
     if thumb_y + thumb_h > y + viewport_h {
         thumb_y = y + viewport_h - thumb_h
     }
 
-    inset: i32 = metrics.thumb_inset
+    inset: s32 = metrics.thumb_inset
     if inset < 0 { inset = 0 }
-    thumb_w: i32 = scrollbar_w - inset * 2
+    thumb_w: s32 = scrollbar_w - inset * 2
     if thumb_w < 0 { thumb_w = 0 }
 
-    paint.track_bounds.x = (float)x
-    paint.track_bounds.y = (float)y
-    paint.track_bounds.width = (float)scrollbar_w
-    paint.track_bounds.height = (float)viewport_h
-    paint.thumb_bounds.x = (float)(x + inset)
-    paint.thumb_bounds.y = (float)thumb_y
-    paint.thumb_bounds.width = (float)thumb_w
-    paint.thumb_bounds.height = (float)thumb_h
+    paint.track_bounds.x = cast(float32)x
+    paint.track_bounds.y = cast(float32)y
+    paint.track_bounds.width = cast(float32)scrollbar_w
+    paint.track_bounds.height = cast(float32)viewport_h
+    paint.thumb_bounds.x = cast(float32)(x + inset)
+    paint.thumb_bounds.y = cast(float32)thumb_y
+    paint.thumb_bounds.width = cast(float32)thumb_w
+    paint.thumb_bounds.height = cast(float32)thumb_h
     paint.track_span = track_span
-    paint.scroll_per_pixel = track_span > 0 ? (float)max_scroll / (float)track_span : 0.0
+    paint.scroll_per_pixel = 0.0
+    if track_span > 0 {
+        paint.scroll_per_pixel = cast(float32)max_scroll / cast(float32)track_span
+    }
     return paint
 }
 
 ScrollFrameInput :: struct {
     bounds: Rectangle
-    content_height: i32
+    content_height: s32
     has_offset: bool
-    offset: i32
+    offset: s32
     pointer_allowed: bool
     disabled: bool
     mouse: Vector2
     pressed: bool
     down: bool
     released: bool
-    wheel: float
+    wheel: float32
     owns_drag: bool
     owner_captured: bool
-    grab: float
+    grab: float32
 }
 
 ScrollFrame :: struct {
     clip: Rectangle
     content: Rectangle
     paint: ScrollBarPaint
-    offset: i32
-    grab: float
+    offset: s32
+    grab: float32
     scrollbar: bool
     start_drag: bool
     clear_drag: bool
     consume_release: bool
     consume_wheel: bool
-    thumb_state: i32
+    thumb_state: s32
 }
 
 ScrollPointInside :: (point: Vector2, bounds: Rectangle) -> bool {
@@ -489,12 +518,13 @@ ScrollPointInside :: (point: Vector2, bounds: Rectangle) -> bool {
     point.x < bounds.x + bounds.width && point.y < bounds.y + bounds.height
 }
 
-ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFrame #export {
+#program_export
+ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFrame {
     frame: ScrollFrame
     frame.clip = input.bounds
     frame.grab = input.grab
-    frame.thumb_state = (i32)ButtonStateNormal
-    maximum: i32 = ScrollMax(input.content_height, (i32)input.bounds.height)
+    frame.thumb_state = cast(s32)ButtonStateNormal
+    maximum: s32 = ScrollMax(input.content_height, cast(s32)input.bounds.height)
     active: bool = input.owns_drag
     if input.has_offset {
         frame.offset = ScrollClamp(input.offset, maximum)
@@ -504,7 +534,7 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
             frame.consume_wheel = true
         }
         frame.scrollbar = maximum > 0 &&
-        input.bounds.width > (float)metrics.scrollbar_width && input.bounds.height > 0.0
+        input.bounds.width > cast(float32)metrics.scrollbar_width && input.bounds.height > 0.0
     }
     if !frame.scrollbar || input.disabled || input.owner_captured {
         frame.clear_drag = active
@@ -512,8 +542,8 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         active = false
     }
     if frame.scrollbar {
-        x: i32 = (i32)(input.bounds.x + input.bounds.width) - metrics.scrollbar_width
-        frame.paint = ScrollBarPaintFor(x, (i32)input.bounds.y, (i32)input.bounds.height,
+        x: s32 = cast(s32)(input.bounds.x + input.bounds.width) - metrics.scrollbar_width
+        frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
         input.content_height, frame.offset, maximum, metrics)
         if !input.disabled && !input.owner_captured && input.pointer_allowed &&
         input.pressed && ScrollPointInside(input.mouse, frame.paint.track_bounds) {
@@ -536,19 +566,19 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                 active = false
             }
         }
-        frame.paint = ScrollBarPaintFor(x, (i32)input.bounds.y, (i32)input.bounds.height,
+        frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
         input.content_height, frame.offset, maximum, metrics)
         if active {
-            frame.thumb_state = (i32)ButtonStatePressed
+            frame.thumb_state = cast(s32)ButtonStatePressed
         } else if !input.disabled && input.pointer_allowed &&
         ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
-            frame.thumb_state = (i32)ButtonStateHover
+            frame.thumb_state = cast(s32)ButtonStateHover
         }
         frame.clip = ScrollContentBounds(input.bounds, true, metrics)
     }
     frame.content = frame.clip
-    frame.content.y -= (float)frame.offset
-    frame.content.height = (float)input.content_height
+    frame.content.y -= cast(float32)frame.offset
+    frame.content.height = cast(float32)input.content_height
     if frame.content.height < 0.0 { frame.content.height = 0.0 }
     return frame
 }

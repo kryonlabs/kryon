@@ -1,4 +1,3 @@
-#module "text_input"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -15,16 +14,16 @@ CompositionPhase :: enum {
 CompositionEvent :: struct {
     phase: CompositionPhase
     text: string
-    cursor: i32
-    selection_length: i32
+    cursor: s32
+    selection_length: s32
 }
 
 CompositionState :: struct {
     active: bool
     # The caller owns these bytes until the next state update or cancel.
     text: string
-    cursor: i32
-    selection_length: i32
+    cursor: s32
+    selection_length: s32
 }
 
 CompositionTransition :: struct {
@@ -34,8 +33,9 @@ CompositionTransition :: struct {
     changed: bool
 }
 
+#program_export
 CompositionBoundaryFor :: (value: string,
-    offset: i32) -> i32 #export {
+    offset: s32) -> s32 {
     offset = TextCursorForLength(offset, value.length)
     while offset > 0 && offset < value.length &&
         TextUtf8Continuation(value[offset]) {
@@ -44,27 +44,28 @@ CompositionBoundaryFor :: (value: string,
     return offset
 }
 
+#program_export
 CompositionTransitionFor :: (state: CompositionState,
     event: CompositionEvent, focused: bool,
-    read_only: bool) -> CompositionTransition #export {
+    read_only: bool) -> CompositionTransition {
     transition: CompositionTransition
     if !focused || read_only {
         transition.changed = state.active
         return transition
     }
     transition.state = state
-    if event.phase == (CompositionPhase)CompositionNone {
+    if event.phase == cast(CompositionPhase)CompositionNone {
         return transition
     }
-    if event.phase == (CompositionPhase)CompositionStart ||
-        event.phase == (CompositionPhase)CompositionUpdate {
+    if event.phase == cast(CompositionPhase)CompositionStart ||
+        event.phase == cast(CompositionPhase)CompositionUpdate {
         transition.state.active = true
         transition.state.text = event.text
-        raw_cursor: i32 = TextCursorForLength(
+        raw_cursor: s32 = TextCursorForLength(
             event.cursor, event.text.length)
         transition.state.cursor = CompositionBoundaryFor(
             event.text, raw_cursor)
-        end: i32 = event.text.length
+        end: s32 = event.text.length
         if event.selection_length <= 0 {
             end = raw_cursor
         } else if event.selection_length <
@@ -77,91 +78,92 @@ CompositionTransitionFor :: (state: CompositionState,
         transition.changed = true
         return transition
     }
-    if event.phase == (CompositionPhase)CompositionCommit {
-        transition.state = (CompositionState){}
+    if event.phase == cast(CompositionPhase)CompositionCommit {
+        transition.state = CompositionState.{}
         transition.commit = true
         transition.commit_text = event.text
         transition.changed = true
         return transition
     }
-    if event.phase == (CompositionPhase)CompositionCancel {
-        transition.state = (CompositionState){}
+    if event.phase == cast(CompositionPhase)CompositionCancel {
+        transition.state = CompositionState.{}
         transition.changed = state.active
     }
     return transition
 }
 
 TextInputMetrics :: struct {
-    font: i32
-    padding_x: i32
-    padding_y: i32
-    line_gap: i32
-    line_height: i32
+    font: s32
+    padding_x: s32
+    padding_y: s32
+    line_gap: s32
+    line_height: s32
 }
 
 TextInputResolvedStyle :: struct {
     fields: u32
-    padding_x: i32
-    padding_y: i32
-    line_gap: i32
-    radius: float
+    padding_x: s32
+    padding_y: s32
+    line_gap: s32
+    radius: float32
 }
 
-TextInputFactsFor :: (style_kind: i32, class_name: i32) -> StyleFacts #export {
+#program_export
+TextInputFactsFor :: (style_kind: s32, class_name: s32) -> StyleFacts {
     return StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
         ButtonEmphasisSoft, ControlSizeMedium, ButtonStateNormal)
 }
 
 TextFieldScroll :: struct {
-    scroll: i32
-    max_scroll: i32
-    clip_width: i32
-    text_origin_x: i32
+    scroll: s32
+    max_scroll: s32
+    clip_width: s32
+    text_origin_x: s32
 }
 
 TextFieldPaint :: struct {
     clip_bounds: Rectangle
-    text_x: i32
-    cursor_y: i32
-    cursor_height: i32
+    text_x: s32
+    cursor_y: s32
+    cursor_height: s32
 }
 
 TextAreaPaint :: struct {
     clip_bounds: Rectangle
-    wrap_width: i32
-    viewport_height: i32
-    max_scroll: i32
-    scroll_y: i32
-    placeholder_x: i32
-    placeholder_y: i32
+    wrap_width: s32
+    viewport_height: s32
+    max_scroll: s32
+    scroll_y: s32
+    placeholder_x: s32
+    placeholder_y: s32
 }
 
 TextAreaGutterMetrics :: struct {
-    top_inset: i32
-    active_y_inset: i32
-    label_x_inset: i32
-    label_font: i32
-    extra_rows: i32
+    top_inset: s32
+    active_y_inset: s32
+    label_x_inset: s32
+    label_font: s32
+    extra_rows: s32
 }
 
 TextNavigationDecision :: struct {
     consumed: bool
     collapse_selection_start: bool
     collapse_selection_end: bool
-    char_direction: i32
-    word_direction: i32
-    document_edge: i32
-    line_edge: i32
-    vertical_direction: i32
-    page_direction: i32
+    char_direction: s32
+    word_direction: s32
+    document_edge: s32
+    line_edge: s32
+    vertical_direction: s32
+    page_direction: s32
     extend_selection: bool
 }
 
 TextDeleteDecision :: struct {
     consumed: bool
-    char_direction: i32
-    word_direction: i32
-    document_edge: i32
+    char_direction: s32
+    word_direction: s32
+    document_edge: s32
 }
 
 TextInsertDecision :: struct {
@@ -172,34 +174,34 @@ TextInsertDecision :: struct {
 
 TextBufferInsertDecision :: struct {
     can_insert: bool
-    tail_count: i32
+    tail_count: s32
 }
 
 TextBufferDeleteDecision :: struct {
     can_delete: bool
-    tail_count: i32
+    tail_count: s32
 }
 
 TextBufferDeleteRangeDecision :: struct {
     can_delete: bool
-    start: i32
-    end: i32
-    cursor: i32
-    tail_count: i32
+    start: s32
+    end: s32
+    cursor: s32
+    tail_count: s32
 }
 
 TextBufferEditResult :: struct {
-    length: i32
-    cursor: i32
+    length: s32
+    cursor: s32
     changed: bool
 }
 
 TextBufferBracketDecision :: struct {
     valid: bool
-    pos: i32
-    open: i32
-    close: i32
-    direction: i32
+    pos: s32
+    open: s32
+    close: s32
+    direction: s32
 }
 
 TextContextMenuState :: struct {
@@ -247,25 +249,25 @@ TextCompositionApplyDecision :: struct {
 }
 
 TextCompositionViewRange :: struct {
-    replace_start: i32
-    replace_end: i32
-    cursor: i32
-    selection_start: i32
-    selection_end: i32
-    composition_start: i32
-    composition_end: i32
+    replace_start: s32
+    replace_end: s32
+    cursor: s32
+    selection_start: s32
+    selection_end: s32
+    composition_start: s32
+    composition_end: s32
 }
 
 TextCompositionPaintSpan :: struct {
     visible: bool
-    start: i32
-    end: i32
+    start: s32
+    end: s32
 }
 
 TextSelectionPaintSpan :: struct {
     visible: bool
-    start: i32
-    end: i32
+    start: s32
+    end: s32
     continues_past_line: bool
 }
 
@@ -306,8 +308,9 @@ TextPlatformInputSyncDecision :: struct {
     clear_show_request: bool
 }
 
+#program_export
 TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
-    same_owner: bool) -> TextFocusClaimDecision #export {
+    same_owner: bool) -> TextFocusClaimDecision {
     decision: TextFocusClaimDecision
     decision.claim = has_target
     if !has_target {
@@ -320,9 +323,10 @@ TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
     return decision
 }
 
+#program_export
 TextFocusOwnerDecisionFor :: (has_target: bool, owns_focus: bool,
     has_frame_owner: bool, target_flag: bool,
-    has_focus_owner: bool) -> TextFocusOwnerDecision #export {
+    has_focus_owner: bool) -> TextFocusOwnerDecision {
     decision: TextFocusOwnerDecision
     if !has_target {
         return decision
@@ -346,20 +350,23 @@ TextFocusOwnerDecisionFor :: (has_target: bool, owns_focus: bool,
     return decision
 }
 
-TextFocusOwnerIsStale :: (has_owner: bool, owner_frame: i64,
-    current_frame: i64) -> bool #export {
+#program_export
+TextFocusOwnerIsStale :: (has_owner: bool, owner_frame: s64,
+    current_frame: s64) -> bool {
     return has_owner && owner_frame != current_frame - 1 &&
         owner_frame != current_frame
 }
 
+#program_export
 TextPlatformInputActiveFor :: (requested: bool, has_owner: bool,
-    owner_rendered_this_frame: bool) -> bool #export {
+    owner_rendered_this_frame: bool) -> bool {
     return requested || (has_owner && owner_rendered_this_frame)
 }
 
+#program_export
 TextPlatformInputSyncDecisionFor :: (show_requested: bool,
     has_callback: bool, platform_active: bool,
-    text_input_active: bool) -> TextPlatformInputSyncDecision #export {
+    text_input_active: bool) -> TextPlatformInputSyncDecision {
     decision: TextPlatformInputSyncDecision
     decision.clear_show_request = true
     if show_requested && has_callback {
@@ -376,9 +383,10 @@ TextPlatformInputSyncDecisionFor :: (show_requested: bool,
     return decision
 }
 
+#program_export
 TextFocusReleaseDecisionFor :: (has_target: bool, owns_focus: bool,
     owns_frame_focus: bool, active_focus_matches: bool,
-    owns_field_drag: bool, owns_area_drag: bool) -> TextFocusReleaseDecision #export {
+    owns_field_drag: bool, owns_area_drag: bool) -> TextFocusReleaseDecision {
     decision: TextFocusReleaseDecision
     decision.release = has_target
     if !has_target {
@@ -394,7 +402,8 @@ TextFocusReleaseDecisionFor :: (has_target: bool, owns_focus: bool,
     return decision
 }
 
-TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompositionInputDecision #export {
+#program_export
+TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompositionInputDecision {
     decision: TextCompositionInputDecision
     decision.accept_events = focused && !read_only
     decision.cancel = !decision.accept_events
@@ -402,21 +411,24 @@ TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompo
     return decision
 }
 
+#program_export
 TextCompositionCancelDecisionFor :: (has_owner: bool, scoped: bool,
-    same_owner: bool) -> TextCompositionSessionDecision #export {
+    same_owner: bool) -> TextCompositionSessionDecision {
     decision: TextCompositionSessionDecision
     decision.cancel = has_owner && (!scoped || same_owner)
     return decision
 }
 
+#program_export
 TextCompositionGetDecisionFor :: (has_owner: bool, same_owner: bool,
-    has_text: bool) -> TextCompositionSessionDecision #export {
+    has_text: bool) -> TextCompositionSessionDecision {
     decision: TextCompositionSessionDecision
     decision.visible = has_owner && same_owner && has_text
     return decision
 }
 
-TextCompositionPhaseDecisionFor :: (phase: i32) -> TextCompositionPhaseDecision #export {
+#program_export
+TextCompositionPhaseDecisionFor :: (phase: s32) -> TextCompositionPhaseDecision {
     decision: TextCompositionPhaseDecision
     decision.store_preedit = phase == 1 || phase == 2
     decision.commit = phase == 3
@@ -424,8 +436,9 @@ TextCompositionPhaseDecisionFor :: (phase: i32) -> TextCompositionPhaseDecision 
     return decision
 }
 
-TextCompositionApplyDecisionFor :: (phase: i32,
-    text_changed: bool) -> TextCompositionApplyDecision #export {
+#program_export
+TextCompositionApplyDecisionFor :: (phase: s32,
+    text_changed: bool) -> TextCompositionApplyDecision {
     event: TextCompositionPhaseDecision = TextCompositionPhaseDecisionFor(phase)
     decision: TextCompositionApplyDecision
     if event.store_preedit || event.cancel {
@@ -440,20 +453,22 @@ TextCompositionApplyDecisionFor :: (phase: i32,
     return decision
 }
 
-TextCompositionSelectionLength :: (preedit_len: i32, cursor: i32,
-    selection_length: i32) -> i32 #export {
+#program_export
+TextCompositionSelectionLength :: (preedit_len: s32, cursor: s32,
+    selection_length: s32) -> s32 {
     if preedit_len < 0 { preedit_len = 0 }
     if cursor < 0 { cursor = 0 }
     if cursor > preedit_len { cursor = preedit_len }
     if selection_length < 0 { selection_length = 0 }
-    max_length: i32 = preedit_len - cursor
+    max_length: s32 = preedit_len - cursor
     if selection_length > max_length { return max_length }
     return selection_length
 }
 
-TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
-    preedit_len: i32, preedit_cursor: i32,
-    preedit_selection_end: i32) -> TextCompositionViewRange #export {
+#program_export
+TextCompositionViewRangeFor :: (selection_start: s32, selection_end: s32,
+    preedit_len: s32, preedit_cursor: s32,
+    preedit_selection_end: s32) -> TextCompositionViewRange {
     view_range: TextCompositionViewRange
     if selection_start < 0 { selection_start = 0 }
     if selection_end < 0 { selection_end = 0 }
@@ -481,8 +496,9 @@ TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
     return view_range
 }
 
-TextCompositionPaintSpanForText :: (composition_start: i32,
-    composition_end: i32, text_len: i32) -> TextCompositionPaintSpan #export {
+#program_export
+TextCompositionPaintSpanForText :: (composition_start: s32,
+    composition_end: s32, text_len: s32) -> TextCompositionPaintSpan {
     span: TextCompositionPaintSpan
     if text_len < 0 { text_len = 0 }
     if composition_start < 0 { composition_start = 0 }
@@ -496,9 +512,10 @@ TextCompositionPaintSpanForText :: (composition_start: i32,
     return span
 }
 
-TextCompositionPaintSpanForLine :: (composition_start: i32,
-    composition_end: i32, line_start: i32,
-    line_end: i32) -> TextCompositionPaintSpan #export {
+#program_export
+TextCompositionPaintSpanForLine :: (composition_start: s32,
+    composition_end: s32, line_start: s32,
+    line_end: s32) -> TextCompositionPaintSpan {
     span: TextCompositionPaintSpan
     if composition_end <= composition_start { return span }
     if line_end < line_start { line_end = line_start }
@@ -511,22 +528,25 @@ TextCompositionPaintSpanForLine :: (composition_start: i32,
     return span
 }
 
-TextCompositionUnderlineEndX :: (start_x: i32, end_x: i32,
-    stroke_width: i32) -> i32 #export {
+#program_export
+TextCompositionUnderlineEndX :: (start_x: s32, end_x: s32,
+    stroke_width: s32) -> s32 {
     if stroke_width < 1 { stroke_width = 1 }
     if end_x <= start_x { return start_x + stroke_width }
     return end_x
 }
 
-TextCompositionUnderlineY :: (text_y: i32, line_height: i32,
-    stroke_width: i32) -> i32 #export {
+#program_export
+TextCompositionUnderlineY :: (text_y: s32, line_height: s32,
+    stroke_width: s32) -> s32 {
     if stroke_width < 1 { stroke_width = 1 }
     return text_y + line_height - stroke_width
 }
 
-TextSelectionPaintSpanForLine :: (selection_start: i32,
-    selection_end: i32, line_start: i32,
-    line_end: i32) -> TextSelectionPaintSpan #export {
+#program_export
+TextSelectionPaintSpanForLine :: (selection_start: s32,
+    selection_end: s32, line_start: s32,
+    line_end: s32) -> TextSelectionPaintSpan {
     span: TextSelectionPaintSpan
     if selection_end <= selection_start { return span }
     if line_end < line_start { line_end = line_start }
@@ -544,8 +564,9 @@ TextSelectionPaintSpanForLine :: (selection_start: i32,
     return span
 }
 
-TextSelectionPaintSpanForText :: (selection_start: i32,
-    selection_end: i32, text_len: i32) -> TextSelectionPaintSpan #export {
+#program_export
+TextSelectionPaintSpanForText :: (selection_start: s32,
+    selection_end: s32, text_len: s32) -> TextSelectionPaintSpan {
     span: TextSelectionPaintSpan
     if text_len < 0 { text_len = 0 }
     if selection_start < 0 { selection_start = 0 }
@@ -561,28 +582,30 @@ TextSelectionPaintSpanForText :: (selection_start: i32,
 }
 
 TextSelectionRange :: struct {
-    start: i32
-    end: i32
+    start: s32
+    end: s32
     has_selection: bool
 }
 
 TextSelectionState :: struct {
-    anchor: i32
-    cursor: i32
+    anchor: s32
+    cursor: s32
     has_selection: bool
 }
 
+#program_export
 TextSelectionOwnerMatches :: (has_owner: bool, same_owner: bool,
-    selection_id: i32, requested_id: i32) -> bool #export {
+    selection_id: s32, requested_id: s32) -> bool {
     if has_owner && same_owner {
         return true
     }
     return requested_id > 0 && selection_id == requested_id
 }
 
+#program_export
 TextContextMenuStateFor :: (has_selection: bool,
     copy_all_when_empty: bool, has_text: bool, read_only: bool,
-    clipboard_has_text: bool) -> TextContextMenuState #export {
+    clipboard_has_text: bool) -> TextContextMenuState {
     state: TextContextMenuState
     can_copy_content: bool = has_selection ||
         (copy_all_when_empty && has_text)
@@ -593,26 +616,31 @@ TextContextMenuStateFor :: (has_selection: bool,
     return state
 }
 
-TextContextCommandCut :: () -> i32 #export {
+#program_export
+TextContextCommandCut :: () -> s32 {
     return 1
 }
 
-TextContextCommandCopy :: () -> i32 #export {
+#program_export
+TextContextCommandCopy :: () -> s32 {
     return 2
 }
 
-TextContextCommandPaste :: () -> i32 #export {
+#program_export
+TextContextCommandPaste :: () -> s32 {
     return 3
 }
 
-TextContextCommandSelectAll :: () -> i32 #export {
+#program_export
+TextContextCommandSelectAll :: () -> s32 {
     return 4
 }
 
-TextEditCommandDecisionFor :: (command: i32, has_selection: bool,
+#program_export
+TextEditCommandDecisionFor :: (command: s32, has_selection: bool,
     copy_all_when_empty: bool, clear_all_when_empty: bool, has_text: bool,
     allow_copy: bool, allow_delete: bool,
-    allow_paste: bool) -> TextContextCommandDecision #export {
+    allow_paste: bool) -> TextContextCommandDecision {
     decision: TextContextCommandDecision
     if command == TextContextCommandCut() {
         if has_selection {
@@ -649,9 +677,10 @@ TextEditCommandDecisionFor :: (command: i32, has_selection: bool,
     return decision
 }
 
-TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
+#program_export
+TextContextCommandDecisionFor :: (command: s32, has_selection: bool,
     copy_all_when_empty: bool, has_text: bool,
-    read_only: bool) -> TextContextCommandDecision #export {
+    read_only: bool) -> TextContextCommandDecision {
     return TextEditCommandDecisionFor(command, has_selection,
         copy_all_when_empty, copy_all_when_empty, has_text,
         true, !read_only, !read_only)
@@ -664,8 +693,9 @@ TextShortcutInput :: struct {
     paste: bool
 }
 
+#program_export
 TextShortcutInputFor :: (modifier: bool, select_all: bool, copy: bool,
-    cut: bool, paste: bool) -> TextShortcutInput #export {
+    cut: bool, paste: bool) -> TextShortcutInput {
     input: TextShortcutInput
     input.select_all = modifier && select_all
     input.copy = modifier && copy
@@ -674,97 +704,116 @@ TextShortcutInputFor :: (modifier: bool, select_all: bool, copy: bool,
     return input
 }
 
+#program_export
 TextShortcutShouldClaimSelectionFocus :: (has_selection: bool, focused: bool,
     keyboard_enabled: bool, modifier: bool, copy_pressed: bool,
-    cut_pressed: bool, paste_pressed: bool) -> bool #export {
+    cut_pressed: bool, paste_pressed: bool) -> bool {
     return has_selection && !focused && keyboard_enabled && modifier &&
         (copy_pressed || cut_pressed || paste_pressed)
 }
 
+#program_export
 TextDeleteShortcutShouldRun :: (read_only: bool, backspace_pressed: bool,
-    delete_pressed: bool, queued_backspace_count: i32) -> bool #export {
+    delete_pressed: bool, queued_backspace_count: s32) -> bool {
     return !read_only && (backspace_pressed || delete_pressed ||
         queued_backspace_count > 0)
 }
 
+#program_export
 TextSelectionReplacementShouldRun :: (read_only: bool, handled: bool,
-    has_selection: bool, modifier: bool) -> bool #export {
+    has_selection: bool, modifier: bool) -> bool {
     return !read_only && !handled && has_selection && !modifier
 }
 
-TextNativeEditShouldRun :: (read_only: bool, handled: bool) -> bool #export {
+#program_export
+TextNativeEditShouldRun :: (read_only: bool, handled: bool) -> bool {
     return !read_only && !handled
 }
 
+#program_export
 TextCommitAfterHandledShouldRun :: (read_only: bool, handled: bool,
-    enter_requested: bool) -> bool #export {
+    enter_requested: bool) -> bool {
     return !read_only && handled && enter_requested
 }
 
-TextNavigationShouldRun :: (handled: bool) -> bool #export {
+#program_export
+TextNavigationShouldRun :: (handled: bool) -> bool {
     return !handled
 }
 
+#program_export
 TextAreaEnterNewlineShouldRun :: (read_only: bool,
-    enter_requested: bool) -> bool #export {
+    enter_requested: bool) -> bool {
     return !read_only && enter_requested
 }
 
+#program_export
 TextAreaChangedShouldCollapseSelection :: (changed: bool,
-    handled: bool) -> bool #export {
+    handled: bool) -> bool {
     return changed && !handled
 }
 
+#program_export
 TextFieldChangedShouldCollapseSelection :: (changed: bool, left_pressed: bool,
-    right_pressed: bool, home_pressed: bool, end_pressed: bool) -> bool #export {
+    right_pressed: bool, home_pressed: bool, end_pressed: bool) -> bool {
     return changed || left_pressed || right_pressed || home_pressed || end_pressed
 }
 
-TextKeyboardShouldRun :: (focused: bool, keyboard_enabled: bool) -> bool #export {
+#program_export
+TextKeyboardShouldRun :: (focused: bool, keyboard_enabled: bool) -> bool {
     return focused && keyboard_enabled
 }
 
+#program_export
 TextEscapeShouldBlur :: (focused: bool, keyboard_enabled: bool,
-    escape_pressed: bool) -> bool #export {
+    escape_pressed: bool) -> bool {
     return focused && keyboard_enabled && escape_pressed
 }
 
+#program_export
 TextOutsideClickShouldBlur :: (focused: bool, context_active: bool,
-    scroll_gesture_pending: bool) -> bool #export {
+    scroll_gesture_pending: bool) -> bool {
     return focused && !context_active && !scroll_gesture_pending
 }
 
+#program_export
 TextSelectionRangeShouldResolve :: (focused: bool, context_active: bool,
-    has_selection: bool) -> bool #export {
+    has_selection: bool) -> bool {
     return (focused || context_active) && has_selection
 }
 
-TextCompositionDisplayShouldRun :: (secure: bool) -> bool #export {
+#program_export
+TextCompositionDisplayShouldRun :: (secure: bool) -> bool {
     return !secure
 }
 
+#program_export
 TextEditCommitShouldRun :: (enter_pressed: bool,
-    queued_enter_count: i32) -> bool #export {
+    queued_enter_count: s32) -> bool {
     return enter_pressed || queued_enter_count > 0
 }
 
+#program_export
 TextAreaScrollbarShouldShow :: (has_scroll_storage: bool,
-    max_scroll: i32) -> bool #export {
+    max_scroll: s32) -> bool {
     return has_scroll_storage && max_scroll > 0
 }
 
+#program_export
 TextAreaWheelShouldScroll :: (mouse_inside: bool, captured: bool,
-    modifier: bool) -> bool #export {
+    modifier: bool) -> bool {
     return mouse_inside && !captured && !modifier
 }
 
+#program_export
 TextAreaRevealCursorShouldRun :: (focused: bool, changed: bool,
-    navigation_pressed: bool) -> bool #export {
+    navigation_pressed: bool) -> bool {
     return focused && (changed || navigation_pressed)
 }
 
-TextAreaRevealScroll :: (scroll: i32, cursor_y: i32, cursor_height: i32,
-    viewport_height: i32) -> i32 #export {
+#program_export
+TextAreaRevealScroll :: (scroll: s32, cursor_y: s32, cursor_height: s32,
+    viewport_height: s32) -> s32 {
     if cursor_y < scroll {
         return cursor_y
     }
@@ -774,7 +823,8 @@ TextAreaRevealScroll :: (scroll: i32, cursor_y: i32, cursor_height: i32,
     return scroll
 }
 
-TextAreaScrollFor :: (scroll: i32, max_scroll: i32) -> i32 #export {
+#program_export
+TextAreaScrollFor :: (scroll: s32, max_scroll: s32) -> s32 {
     if max_scroll < 0 {
         max_scroll = 0
     }
@@ -787,53 +837,65 @@ TextAreaScrollFor :: (scroll: i32, max_scroll: i32) -> i32 #export {
     return scroll
 }
 
-TextFieldRevealCursorShouldRun :: (focused: bool) -> bool #export {
+#program_export
+TextFieldRevealCursorShouldRun :: (focused: bool) -> bool {
     return focused
 }
 
-TextFieldContextShouldRegister :: (secure: bool) -> bool #export {
+#program_export
+TextFieldContextShouldRegister :: (secure: bool) -> bool {
     return !secure
 }
 
-TextNavNone :: () -> i32 #export {
+#program_export
+TextNavNone :: () -> s32 {
     return 0
 }
 
-TextNavLeft :: () -> i32 #export {
+#program_export
+TextNavLeft :: () -> s32 {
     return 1
 }
 
-TextNavRight :: () -> i32 #export {
+#program_export
+TextNavRight :: () -> s32 {
     return 2
 }
 
-TextNavHome :: () -> i32 #export {
+#program_export
+TextNavHome :: () -> s32 {
     return 3
 }
 
-TextNavEnd :: () -> i32 #export {
+#program_export
+TextNavEnd :: () -> s32 {
     return 4
 }
 
-TextNavUp :: () -> i32 #export {
+#program_export
+TextNavUp :: () -> s32 {
     return 5
 }
 
-TextNavDown :: () -> i32 #export {
+#program_export
+TextNavDown :: () -> s32 {
     return 6
 }
 
-TextNavPageUp :: () -> i32 #export {
+#program_export
+TextNavPageUp :: () -> s32 {
     return 7
 }
 
-TextNavPageDown :: () -> i32 #export {
+#program_export
+TextNavPageDown :: () -> s32 {
     return 8
 }
 
+#program_export
 TextNavigationKeyFor :: (multiline: bool, left: bool, right: bool,
     home: bool, end: bool, up: bool, down: bool,
-    page_up: bool, page_down: bool) -> i32 #export {
+    page_up: bool, page_down: bool) -> s32 {
     if left { return TextNavLeft() }
     if right { return TextNavRight() }
     if home { return TextNavHome() }
@@ -846,12 +908,13 @@ TextNavigationKeyFor :: (multiline: bool, left: bool, right: bool,
 }
 
 TextBackspaceRepeat :: struct {
-    count: i32
-    next_repeat_at: f64
+    count: s32
+    next_repeat_at: float64
 }
 
-TextBackspaceRepeatFor :: (pressed: bool, down: bool, now: f64,
-    next_repeat_at: f64) -> TextBackspaceRepeat #export {
+#program_export
+TextBackspaceRepeatFor :: (pressed: bool, down: bool, now: float64,
+    next_repeat_at: float64) -> TextBackspaceRepeat {
     result: TextBackspaceRepeat
     if pressed {
         result.count = 1
@@ -866,8 +929,8 @@ TextBackspaceRepeatFor :: (pressed: bool, down: bool, now: f64,
         result.next_repeat_at = now + 0.34
         return result
     }
-    count: i32 = 0
-    cursor: f64 = next_repeat_at
+    count: s32 = 0
+    cursor: float64 = next_repeat_at
     while now >= cursor && count < 8 {
         count += 1
         cursor += 0.045
@@ -877,130 +940,141 @@ TextBackspaceRepeatFor :: (pressed: bool, down: bool, now: f64,
     return result
 }
 
-TextDeleteNone :: () -> i32 #export {
+#program_export
+TextDeleteNone :: () -> s32 {
     return 0
 }
 
-TextDeleteBackspace :: () -> i32 #export {
+#program_export
+TextDeleteBackspace :: () -> s32 {
     return 1
 }
 
-TextDeleteForward :: () -> i32 #export {
+#program_export
+TextDeleteForward :: () -> s32 {
     return 2
 }
 
-TextInputMetric :: (fields: u32, field: u32, value: i32,
-    fallback: i32) -> i32 {
-    if (fields & field) == (u32)0 || value < 0 {
+TextInputMetric :: (fields: u32, field: u32, value: s32,
+    fallback: s32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0 {
         return fallback
     }
     return value
 }
 
-TextInputScaledMetric :: (value: float, scale: float) -> i32 {
+TextInputScaledMetric :: (value: float32, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    metric: i32 = (i32)(value * scale)
+    metric: s32 = cast(s32)(value * scale)
     if metric < 0 { return 0 }
     return metric
 }
 
-TextInputRoundScaledMetric :: (value: float, scale: float) -> i32 {
+TextInputRoundScaledMetric :: (value: float32, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    metric: i32 = (i32)(((float)((i32)(value + 0.5))) * scale + 0.5)
+    metric: s32 = cast(s32)((cast(float32)(cast(s32)(value + 0.5))) * scale + 0.5)
     if metric < 0 { return 0 }
     return metric
 }
 
-TextInputRequestedFieldsFor :: (fields: u32, padding_x: i32,
-    padding_y: i32, line_gap: i32) -> u32 {
+TextInputRequestedFieldsFor :: (fields: u32, padding_x: s32,
+    padding_y: s32, line_gap: s32) -> u32 {
     requested: u32 = fields
     if padding_x > 0 {
-        requested = requested | (u32)StylePaddingX
+        requested = requested | cast(u32)StylePaddingX
     }
     if padding_y > 0 {
-        requested = requested | (u32)StylePaddingY
+        requested = requested | cast(u32)StylePaddingY
     }
     if line_gap >= 0 {
-        requested = requested | (u32)StyleGap
+        requested = requested | cast(u32)StyleGap
     }
     return requested
 }
 
 TextInputResolvedMetric :: (requested_fields: u32, field: u32,
-    requested_value: i32, resolved_fields: u32, resolved_value: float,
-    scale: float, unset_value: i32) -> i32 {
-    if (requested_fields & field) != (u32)0 {
+    requested_value: s32, resolved_fields: u32, resolved_value: float32,
+    scale: float32, unset_value: s32) -> s32 {
+    if (requested_fields & field) != cast(u32)0 {
         if requested_value < 0 { return 0 }
         return requested_value
     }
-    if (resolved_fields & field) != (u32)0 && resolved_value >= 0.0 {
+    if (resolved_fields & field) != cast(u32)0 && resolved_value >= 0.0 {
         return TextInputRoundScaledMetric(resolved_value, scale)
     }
     return unset_value
 }
 
-TextInputResolvedStyleFor :: (fields: u32, padding_x: i32, padding_y: i32,
-    line_gap: i32, radius: float, resolved_fields: u32,
-    resolved_padding_x: float, resolved_padding_y: float,
-    resolved_gap: float, resolved_radius: float,
-    scale: float) -> TextInputResolvedStyle #export {
+#program_export
+TextInputResolvedStyleFor :: (fields: u32, padding_x: s32, padding_y: s32,
+    line_gap: s32, radius: float32, resolved_fields: u32,
+    resolved_padding_x: float32, resolved_padding_y: float32,
+    resolved_gap: float32, resolved_radius: float32,
+    scale: float32) -> TextInputResolvedStyle {
     style: TextInputResolvedStyle
     requested_fields: u32 = TextInputRequestedFieldsFor(fields, padding_x,
         padding_y, line_gap)
     style.fields = requested_fields | resolved_fields
     style.padding_x = TextInputResolvedMetric(requested_fields,
-        (u32)StylePaddingX, padding_x, resolved_fields, resolved_padding_x,
+        cast(u32)StylePaddingX, padding_x, resolved_fields, resolved_padding_x,
         scale, padding_x)
     style.padding_y = TextInputResolvedMetric(requested_fields,
-        (u32)StylePaddingY, padding_y, resolved_fields, resolved_padding_y,
+        cast(u32)StylePaddingY, padding_y, resolved_fields, resolved_padding_y,
         scale, padding_y)
     style.line_gap = TextInputResolvedMetric(requested_fields,
-        (u32)StyleGap, line_gap, resolved_fields, resolved_gap, scale, -1)
+        cast(u32)StyleGap, line_gap, resolved_fields, resolved_gap, scale, -1)
     style.radius = radius
-    if (fields & (u32)StyleRadius) == (u32)0 || radius < 0.0 {
+    if (fields & cast(u32)StyleRadius) == cast(u32)0 || radius < 0.0 {
         style.radius = resolved_radius
     }
     return style
 }
 
-TextInputDefaultPaddingX :: (scale: float) -> i32 #export {
+#program_export
+TextInputDefaultPaddingX :: (scale: float32) -> s32 {
     return TextInputScaledMetric(10.0, scale)
 }
 
-TextInputDefaultPaddingY :: (scale: float) -> i32 #export {
+#program_export
+TextInputDefaultPaddingY :: (scale: float32) -> s32 {
     return TextInputScaledMetric(8.0, scale)
 }
 
-TextAreaMinWrapWidth :: (scale: float) -> i32 #export {
+#program_export
+TextAreaMinWrapWidth :: (scale: float32) -> s32 {
     return TextInputScaledMetric(24.0, scale)
 }
 
-TextAreaScrollbarWidthFor :: (scale: float) -> i32 #export {
+#program_export
+TextAreaScrollbarWidthFor :: (scale: float32) -> s32 {
     return TextInputScaledMetric(12.0, scale)
 }
 
-TextAreaMaxScrollFor :: (content_height: i32, bounds_height: float,
-    padding_y: i32) -> i32 #export {
-    viewport_height: i32 = (i32)bounds_height - padding_y * 2
-    max_scroll: i32 = content_height - viewport_height
+#program_export
+TextAreaMaxScrollFor :: (content_height: s32, bounds_height: float32,
+    padding_y: s32) -> s32 {
+    viewport_height: s32 = cast(s32)bounds_height - padding_y * 2
+    max_scroll: s32 = content_height - viewport_height
     if max_scroll < 0 {
         return 0
     }
     return max_scroll
 }
 
-TextAreaWheelScrollFor :: (scroll: i32, wheel: float,
-    line_height: i32) -> i32 #export {
-    return scroll - (i32)(wheel * (float)line_height * 3.0)
+#program_export
+TextAreaWheelScrollFor :: (scroll: s32, wheel: float32,
+    line_height: s32) -> s32 {
+    return scroll - cast(s32)(wheel * cast(float32)line_height * 3.0)
 }
 
-TextAreaDragScrollFor :: (scroll: i32, mouse_y: i32, bounds_y: float,
-    bounds_height: float, padding_y: i32, line_height: i32) -> i32 #export {
-    next: i32 = scroll
-    if mouse_y < (i32)bounds_y + padding_y {
+#program_export
+TextAreaDragScrollFor :: (scroll: s32, mouse_y: s32, bounds_y: float32,
+    bounds_height: float32, padding_y: s32, line_height: s32) -> s32 {
+    next: s32 = scroll
+    if mouse_y < cast(s32)bounds_y + padding_y {
         next -= line_height
     }
-    if mouse_y > (i32)(bounds_y + bounds_height) - padding_y {
+    if mouse_y > cast(s32)(bounds_y + bounds_height) - padding_y {
         next += line_height
     }
     if next < 0 {
@@ -1009,7 +1083,8 @@ TextAreaDragScrollFor :: (scroll: i32, mouse_y: i32, bounds_y: float,
     return next
 }
 
-TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
+#program_export
+TextAreaGutterMetricsFor :: (scale: float32) -> TextAreaGutterMetrics {
     metrics: TextAreaGutterMetrics
     metrics.top_inset = TextInputScaledMetric(10.0, scale)
     metrics.active_y_inset = TextInputScaledMetric(2.0, scale)
@@ -1019,39 +1094,46 @@ TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
     return metrics
 }
 
-TextAreaGutterRowsFor :: (bounds_height: float, line_height: i32,
-    metrics: TextAreaGutterMetrics) -> i32 #export {
+#program_export
+TextAreaGutterRowsFor :: (bounds_height: float32, line_height: s32,
+    metrics: TextAreaGutterMetrics) -> s32 {
     if line_height <= 0 { return 0 }
-    rows: i32 = ((i32)bounds_height / line_height) + metrics.extra_rows
+    rows: s32 = (cast(s32)bounds_height / line_height) + metrics.extra_rows
     if rows < 0 { return 0 }
     return rows
 }
 
-TextAreaGutterFirstY :: (gutter_y: float, scroll_y: i32, line_height: i32,
-    metrics: TextAreaGutterMetrics) -> i32 #export {
-    if line_height <= 0 { return (i32)gutter_y + metrics.top_inset }
-    return (i32)gutter_y + metrics.top_inset - (scroll_y % line_height)
+#program_export
+TextAreaGutterFirstY :: (gutter_y: float32, scroll_y: s32, line_height: s32,
+    metrics: TextAreaGutterMetrics) -> s32 {
+    if line_height <= 0 { return cast(s32)gutter_y + metrics.top_inset }
+    return cast(s32)gutter_y + metrics.top_inset - (scroll_y % line_height)
 }
 
-TextAreaGutterInactiveAlpha :: (alpha: u8) -> u8 #export {
-    return (u8)((float)alpha * 0.62)
+#program_export
+TextAreaGutterInactiveAlpha :: (alpha: u8) -> u8 {
+    return cast(u8)(cast(float32)alpha * 0.62)
 }
 
-TextFieldRevealMargin :: (scale: float) -> i32 #export {
+#program_export
+TextFieldRevealMargin :: (scale: float32) -> s32 {
     return TextInputScaledMetric(8.0, scale)
 }
 
-TextInputDoubleClickSlopFor :: (scale: float) -> i32 #export {
+#program_export
+TextInputDoubleClickSlopFor :: (scale: float32) -> s32 {
     return TextInputScaledMetric(6.0, scale)
 }
 
-TextInputDoubleClickMaxSeconds :: () -> float #export {
+#program_export
+TextInputDoubleClickMaxSeconds :: () -> float32 {
     return 0.45
 }
 
+#program_export
 TextInputDoubleClickDecisionFor :: (same_owner: bool, same_id: bool,
-    elapsed_seconds: float, dx: i32, dy: i32,
-    slop: i32) -> TextInputDoubleClickDecision #export {
+    elapsed_seconds: float32, dx: s32, dy: s32,
+    slop: s32) -> TextInputDoubleClickDecision {
     decision: TextInputDoubleClickDecision
     if slop < 0 { slop = 0 }
     if dx < 0 { dx = -dx }
@@ -1062,16 +1144,18 @@ TextInputDoubleClickDecisionFor :: (same_owner: bool, same_id: bool,
     return decision
 }
 
-TextFieldPanDragThresholdFor :: (scale: float) -> i32 #export {
+#program_export
+TextFieldPanDragThresholdFor :: (scale: float32) -> s32 {
     return TextInputScaledMetric(5.0, scale)
 }
 
-TextFieldPanDecisionFor :: (already_panning: bool, dx: i32, dy: i32,
-    threshold: i32) -> TextFieldPanDecision #export {
+#program_export
+TextFieldPanDecisionFor :: (already_panning: bool, dx: s32, dy: s32,
+    threshold: s32) -> TextFieldPanDecision {
     decision: TextFieldPanDecision
     if threshold < 0 { threshold = 0 }
-    abs_dx: i32 = dx
-    abs_dy: i32 = dy
+    abs_dx: s32 = dx
+    abs_dy: s32 = dy
     if abs_dx < 0 { abs_dx = -abs_dx }
     if abs_dy < 0 { abs_dy = -abs_dy }
     decision.pan = already_panning ||
@@ -1079,39 +1163,44 @@ TextFieldPanDecisionFor :: (already_panning: bool, dx: i32, dy: i32,
     return decision
 }
 
-TextFieldMinCursorHeight :: (scale: float) -> i32 #export {
+#program_export
+TextFieldMinCursorHeight :: (scale: float32) -> s32 {
     return TextInputScaledMetric(8.0, scale)
 }
 
-TextFieldCursorVerticalPadding :: (scale: float) -> i32 #export {
+#program_export
+TextFieldCursorVerticalPadding :: (scale: float32) -> s32 {
     return TextInputScaledMetric(8.0, scale)
 }
 
-TextFieldClipGuard :: (scale: float) -> i32 #export {
-    clip_guard: i32 = TextInputScaledMetric(1.0, scale)
+#program_export
+TextFieldClipGuard :: (scale: float32) -> s32 {
+    clip_guard: s32 = TextInputScaledMetric(1.0, scale)
     if clip_guard < 1 { return 1 }
     return clip_guard
 }
 
-TextInputStrokeWidth :: (scale: float) -> i32 #export {
-    width: i32 = TextInputScaledMetric(2.0, scale)
+#program_export
+TextInputStrokeWidth :: (scale: float32) -> s32 {
+    width: s32 = TextInputScaledMetric(2.0, scale)
     if width < 1 { return 1 }
     return width
 }
 
-TextInputMetricsFor :: (fields: u32, font: i32, padding_x: i32, padding_y: i32,
-    line_gap: i32, default_font: i32, default_padding_x: i32,
-    default_padding_y: i32, default_line_gap: i32) -> TextInputMetrics #export {
+#program_export
+TextInputMetricsFor :: (fields: u32, font: s32, padding_x: s32, padding_y: s32,
+    line_gap: s32, default_font: s32, default_padding_x: s32,
+    default_padding_y: s32, default_line_gap: s32) -> TextInputMetrics {
     metrics: TextInputMetrics
     metrics.font = font
     if metrics.font <= 0 {
         metrics.font = default_font
     }
-    metrics.padding_x = TextInputMetric(fields, (u32)StylePaddingX,
+    metrics.padding_x = TextInputMetric(fields, cast(u32)StylePaddingX,
         padding_x, default_padding_x)
-    metrics.padding_y = TextInputMetric(fields, (u32)StylePaddingY,
+    metrics.padding_y = TextInputMetric(fields, cast(u32)StylePaddingY,
         padding_y, default_padding_y)
-    metrics.line_gap = TextInputMetric(fields, (u32)StyleGap,
+    metrics.line_gap = TextInputMetric(fields, cast(u32)StyleGap,
         line_gap, default_line_gap)
     metrics.line_height = metrics.font + metrics.line_gap
     if metrics.line_height <= 0 {
@@ -1120,22 +1209,24 @@ TextInputMetricsFor :: (fields: u32, font: i32, padding_x: i32, padding_y: i32,
     return metrics
 }
 
-TextInputContentWidth :: (bounds_width: float, padding_x: i32) -> i32 #export {
-    width: i32 = (i32)bounds_width - padding_x * 2
+#program_export
+TextInputContentWidth :: (bounds_width: float32, padding_x: s32) -> s32 {
+    width: s32 = cast(s32)bounds_width - padding_x * 2
     if width < 0 {
         return 0
     }
     return width
 }
 
-TextAreaPageRows :: (bounds_height: float, font: i32, line_gap: i32,
-    padding_y: i32) -> i32 #export {
-    line_height: i32 = font + line_gap
-    visible_height: i32 = (i32)bounds_height - padding_y * 2
+#program_export
+TextAreaPageRows :: (bounds_height: float32, font: s32, line_gap: s32,
+    padding_y: s32) -> s32 {
+    line_height: s32 = font + line_gap
+    visible_height: s32 = cast(s32)bounds_height - padding_y * 2
     if line_height <= 0 || visible_height < line_height {
         return 1
     }
-    rows: i32 = visible_height / line_height
+    rows: s32 = visible_height / line_height
     if rows < 1 {
         return 1
     }
@@ -1145,40 +1236,43 @@ TextAreaPageRows :: (bounds_height: float, font: i32, line_gap: i32,
     return rows
 }
 
-TextAreaWrapWidthFor :: (bounds_width: float, padding_x: i32,
-    wrap: bool, min_wrap_width: i32) -> i32 #export {
+#program_export
+TextAreaWrapWidthFor :: (bounds_width: float32, padding_x: s32,
+    wrap: bool, min_wrap_width: s32) -> s32 {
     if !wrap { return 0 }
-    width: i32 = (i32)bounds_width - padding_x * 2
+    width: s32 = cast(s32)bounds_width - padding_x * 2
     if width < min_wrap_width { return 0 }
     return width
 }
 
-TextAreaPaintFor :: (bounds: Rectangle, font: i32, line_gap: i32,
-    padding_x: i32, padding_y: i32, wrap: bool, content_height: i32,
-    scroll_y: i32, text_line_height: i32, min_wrap_width: i32) -> TextAreaPaint #export {
+#program_export
+TextAreaPaintFor :: (bounds: Rectangle, font: s32, line_gap: s32,
+    padding_x: s32, padding_y: s32, wrap: bool, content_height: s32,
+    scroll_y: s32, text_line_height: s32, min_wrap_width: s32) -> TextAreaPaint {
     paint: TextAreaPaint
-    line_height: i32 = font + line_gap
-    paint.viewport_height = (i32)bounds.height - padding_y * 2
+    line_height: s32 = font + line_gap
+    paint.viewport_height = cast(s32)bounds.height - padding_y * 2
     if paint.viewport_height < 0 { paint.viewport_height = 0 }
     paint.max_scroll = TextAreaMaxScrollFor(content_height, bounds.height,
                                             padding_y)
     paint.scroll_y = TextAreaScrollFor(scroll_y, paint.max_scroll)
     paint.wrap_width = TextAreaWrapWidthFor(bounds.width, padding_x, wrap,
                                             min_wrap_width)
-    paint.clip_bounds.x = bounds.x + (float)padding_x
-    paint.clip_bounds.y = bounds.y + (float)padding_y
-    paint.clip_bounds.width = bounds.width - (float)(padding_x * 2)
-    paint.clip_bounds.height = bounds.height - (float)(padding_y * 2)
+    paint.clip_bounds.x = bounds.x + cast(float32)padding_x
+    paint.clip_bounds.y = bounds.y + cast(float32)padding_y
+    paint.clip_bounds.width = bounds.width - cast(float32)(padding_x * 2)
+    paint.clip_bounds.height = bounds.height - cast(float32)(padding_y * 2)
     if paint.clip_bounds.width < 0.0 { paint.clip_bounds.width = 0.0 }
     if paint.clip_bounds.height < 0.0 { paint.clip_bounds.height = 0.0 }
-    paint.placeholder_x = (i32)bounds.x + padding_x
-    paint.placeholder_y = (i32)bounds.y + padding_y +
+    paint.placeholder_x = cast(s32)bounds.x + padding_x
+    paint.placeholder_y = cast(s32)bounds.y + padding_y +
         (line_height - text_line_height) / 2
     return paint
 }
 
-TextInputBufferLimit :: (text_size: i32, max_codepoints: i32) -> i32 #export {
-    limit: i32 = text_size - 1
+#program_export
+TextInputBufferLimit :: (text_size: s32, max_codepoints: s32) -> s32 {
+    limit: s32 = text_size - 1
     if max_codepoints > 0 && max_codepoints < limit {
         limit = max_codepoints
     }
@@ -1188,8 +1282,9 @@ TextInputBufferLimit :: (text_size: i32, max_codepoints: i32) -> i32 #export {
     return limit
 }
 
-TextFieldScrollFor :: (bounds_x: float, bounds_width: float, padding_x: i32,
-    text_width: i32, scroll: i32) -> TextFieldScroll #export {
+#program_export
+TextFieldScrollFor :: (bounds_x: float32, bounds_width: float32, padding_x: s32,
+    text_width: s32, scroll: s32) -> TextFieldScroll {
     result: TextFieldScroll
     result.clip_width = TextInputContentWidth(bounds_width, padding_x)
     result.max_scroll = text_width - result.clip_width
@@ -1203,12 +1298,13 @@ TextFieldScrollFor :: (bounds_x: float, bounds_width: float, padding_x: i32,
     } else {
         result.scroll = scroll
     }
-    result.text_origin_x = (i32)bounds_x + padding_x - result.scroll
+    result.text_origin_x = cast(s32)bounds_x + padding_x - result.scroll
     return result
 }
 
-TextFieldRevealScroll :: (scroll: i32, max_scroll: i32, clip_width: i32,
-    cursor_text_x: i32, margin: i32) -> i32 #export {
+#program_export
+TextFieldRevealScroll :: (scroll: s32, max_scroll: s32, clip_width: s32,
+    cursor_text_x: s32, margin: s32) -> s32 {
     if margin < 0 {
         margin = 0
     }
@@ -1227,38 +1323,41 @@ TextFieldRevealScroll :: (scroll: i32, max_scroll: i32, clip_width: i32,
     return scroll
 }
 
-TextFieldCursorHeightFor :: (font: i32, bounds_height: float,
-    text_line_height: i32, min_height: i32, vertical_padding: i32) -> i32 #export {
-    height: i32 = text_line_height
-    max_height: i32 = (i32)bounds_height - vertical_padding
+#program_export
+TextFieldCursorHeightFor :: (font: s32, bounds_height: float32,
+    text_line_height: s32, min_height: s32, vertical_padding: s32) -> s32 {
+    height: s32 = text_line_height
+    max_height: s32 = cast(s32)bounds_height - vertical_padding
     if height < font { height = font }
-    if max_height < min_height { max_height = (i32)bounds_height }
+    if max_height < min_height { max_height = cast(s32)bounds_height }
     if height > max_height { height = max_height }
     if height < min_height { height = min_height }
     return height
 }
 
-TextFieldPaintFor :: (bounds: Rectangle, padding_x: i32, scroll_x: i32,
-    font: i32, text_line_height: i32, min_cursor_height: i32,
-    cursor_vertical_padding: i32, clip_guard: i32) -> TextFieldPaint #export {
+#program_export
+TextFieldPaintFor :: (bounds: Rectangle, padding_x: s32, scroll_x: s32,
+    font: s32, text_line_height: s32, min_cursor_height: s32,
+    cursor_vertical_padding: s32, clip_guard: s32) -> TextFieldPaint {
     paint: TextFieldPaint
-    clip_width: i32 = TextInputContentWidth(bounds.width, padding_x)
+    clip_width: s32 = TextInputContentWidth(bounds.width, padding_x)
 
-    paint.clip_bounds.x = bounds.x + (float)padding_x
-    paint.clip_bounds.y = bounds.y - (float)clip_guard
-    paint.clip_bounds.width = (float)clip_width
-    paint.clip_bounds.height = bounds.height + (float)(clip_guard * 2)
+    paint.clip_bounds.x = bounds.x + cast(float32)padding_x
+    paint.clip_bounds.y = bounds.y - cast(float32)clip_guard
+    paint.clip_bounds.width = cast(float32)clip_width
+    paint.clip_bounds.height = bounds.height + cast(float32)(clip_guard * 2)
     if paint.clip_bounds.height < 0.0 { paint.clip_bounds.height = 0.0 }
-    paint.text_x = (i32)bounds.x + padding_x - scroll_x
+    paint.text_x = cast(s32)bounds.x + padding_x - scroll_x
     paint.cursor_height = TextFieldCursorHeightFor(
         font, bounds.height, text_line_height, min_cursor_height,
         cursor_vertical_padding)
-    paint.cursor_y = (i32)bounds.y +
-        ((i32)bounds.height - paint.cursor_height) / 2
+    paint.cursor_y = cast(s32)bounds.y +
+        (cast(s32)bounds.height - paint.cursor_height) / 2
     return paint
 }
 
-TextSelectionRangeFor :: (anchor: i32, cursor: i32) -> TextSelectionRange #export {
+#program_export
+TextSelectionRangeFor :: (anchor: s32, cursor: s32) -> TextSelectionRange {
     out: TextSelectionRange
     if anchor < cursor {
         out.start = anchor
@@ -1271,8 +1370,9 @@ TextSelectionRangeFor :: (anchor: i32, cursor: i32) -> TextSelectionRange #expor
     return out
 }
 
-TextSelectionRangeForLength :: (anchor: i32, cursor: i32,
-    length: i32) -> TextSelectionRange #export {
+#program_export
+TextSelectionRangeForLength :: (anchor: s32, cursor: s32,
+    length: s32) -> TextSelectionRange {
     out: TextSelectionRange = TextSelectionRangeFor(anchor, cursor)
     if length < 0 { length = 0 }
     if out.start < 0 { out.start = 0 }
@@ -1283,15 +1383,17 @@ TextSelectionRangeForLength :: (anchor: i32, cursor: i32,
     return out
 }
 
-TextCursorForLength :: (cursor: i32, length: i32) -> i32 #export {
+#program_export
+TextCursorForLength :: (cursor: s32, length: s32) -> s32 {
     if length < 0 { length = 0 }
     if cursor < 0 { return 0 }
     if cursor > length { return length }
     return cursor
 }
 
-TextSelectionAfterMove :: (anchor: i32, cursor: i32, target: i32,
-    extend: bool) -> TextSelectionState #export {
+#program_export
+TextSelectionAfterMove :: (anchor: s32, cursor: s32, target: s32,
+    extend: bool) -> TextSelectionState {
     out: TextSelectionState
     if extend {
         if anchor == cursor {
@@ -1308,7 +1410,8 @@ TextSelectionAfterMove :: (anchor: i32, cursor: i32, target: i32,
     return out
 }
 
-TextSelectionCollapsed :: (cursor: i32) -> TextSelectionState #export {
+#program_export
+TextSelectionCollapsed :: (cursor: s32) -> TextSelectionState {
     out: TextSelectionState
     out.anchor = cursor
     out.cursor = cursor
@@ -1316,7 +1419,8 @@ TextSelectionCollapsed :: (cursor: i32) -> TextSelectionState #export {
     return out
 }
 
-TextSelectionAll :: (length: i32) -> TextSelectionState #export {
+#program_export
+TextSelectionAll :: (length: s32) -> TextSelectionState {
     out: TextSelectionState
     if length < 0 {
         length = 0
@@ -1327,13 +1431,15 @@ TextSelectionAll :: (length: i32) -> TextSelectionState #export {
     return out
 }
 
-TextBufferLineStartCursor :: (cursor: i32) -> i32 #export {
+#program_export
+TextBufferLineStartCursor :: (cursor: s32) -> s32 {
     if cursor < 0 { return 0 }
     return cursor
 }
 
-TextBufferInsertDecisionFor :: (text_size: i32, used: i32, at: i32,
-    insert_len: i32) -> TextBufferInsertDecision #export {
+#program_export
+TextBufferInsertDecisionFor :: (text_size: s32, used: s32, at: s32,
+    insert_len: s32) -> TextBufferInsertDecision {
     decision: TextBufferInsertDecision
     if text_size <= 0 || used < 0 || at < 0 || at > used || insert_len <= 0 {
         return decision
@@ -1346,8 +1452,9 @@ TextBufferInsertDecisionFor :: (text_size: i32, used: i32, at: i32,
     return decision
 }
 
-TextBufferDeleteDecisionFor :: (used: i32, at: i32,
-    delete_len: i32) -> TextBufferDeleteDecision #export {
+#program_export
+TextBufferDeleteDecisionFor :: (used: s32, at: s32,
+    delete_len: s32) -> TextBufferDeleteDecision {
     decision: TextBufferDeleteDecision
     if used < 0 || at < 0 || delete_len <= 0 || at + delete_len > used {
         return decision
@@ -1357,8 +1464,9 @@ TextBufferDeleteDecisionFor :: (used: i32, at: i32,
     return decision
 }
 
-TextBufferDeleteRangeDecisionFor :: (used: i32, start: i32,
-    end: i32) -> TextBufferDeleteRangeDecision #export {
+#program_export
+TextBufferDeleteRangeDecisionFor :: (used: s32, start: s32,
+    end: s32) -> TextBufferDeleteRangeDecision {
     decision: TextBufferDeleteRangeDecision
     if used < 0 {
         return decision
@@ -1378,15 +1486,17 @@ TextBufferDeleteRangeDecisionFor :: (used: i32, start: i32,
     return decision
 }
 
-TextBufferCursorAfterInsert :: (cursor: i32, at: i32, insert_len: i32) -> i32 #export {
+#program_export
+TextBufferCursorAfterInsert :: (cursor: s32, at: s32, insert_len: s32) -> s32 {
     if cursor >= at {
         return cursor + insert_len
     }
     return cursor
 }
 
-TextBufferCursorAfterDelete :: (cursor: i32, at: i32,
-    delete_len: i32) -> i32 #export {
+#program_export
+TextBufferCursorAfterDelete :: (cursor: s32, at: s32,
+    delete_len: s32) -> s32 {
     if cursor >= at + delete_len {
         return cursor - delete_len
     }
@@ -1398,18 +1508,19 @@ TextBufferCursorAfterDelete :: (cursor: i32, at: i32,
 
 # The buffer has a trailing zero byte and length excludes it. Insert bytes
 # must come from storage separate from the destination buffer.
-TextBufferInsertBytes :: (buffer: []u8, length: i32, at: i32,
-    bytes: []u8) -> TextBufferEditResult #export {
+#program_export
+TextBufferInsertBytes :: (buffer: []u8, length: s32, at: s32,
+    bytes: []u8) -> TextBufferEditResult {
     result: TextBufferEditResult
     result.length = length
     result.cursor = TextCursorForLength(at, length)
     decision: TextBufferInsertDecision = TextBufferInsertDecisionFor(
         buffer.length, length, at, bytes.length)
     if !decision.can_insert || length >= buffer.length ||
-        buffer[length] != (u8)0 { return result }
-    index: i32 = 0
+        buffer[length] != cast(u8)0 { return result }
+    index: s32 = 0
     while index < bytes.length {
-        if bytes[index] == (u8)0 { return result }
+        if bytes[index] == cast(u8)0 { return result }
         index += 1
     }
     index = length
@@ -1428,16 +1539,17 @@ TextBufferInsertBytes :: (buffer: []u8, length: i32, at: i32,
     return result
 }
 
-TextBufferDeleteBytes :: (buffer: []u8, length: i32,
-    at: i32, count: i32) -> TextBufferEditResult #export {
+#program_export
+TextBufferDeleteBytes :: (buffer: []u8, length: s32,
+    at: s32, count: s32) -> TextBufferEditResult {
     result: TextBufferEditResult
     result.length = length
     result.cursor = TextCursorForLength(at, length)
     decision: TextBufferDeleteDecision = TextBufferDeleteDecisionFor(
         length, at, count)
     if !decision.can_delete || length >= buffer.length ||
-        buffer[length] != (u8)0 { return result }
-    index: i32 = at
+        buffer[length] != cast(u8)0 { return result }
+    index: s32 = at
     while index <= length - count {
         buffer[index] = buffer[index + count]
         index += 1
@@ -1448,8 +1560,9 @@ TextBufferDeleteBytes :: (buffer: []u8, length: i32,
     return result
 }
 
-TextBufferDeleteRange :: (buffer: []u8, length: i32,
-    start: i32, end: i32) -> TextBufferEditResult #export {
+#program_export
+TextBufferDeleteRange :: (buffer: []u8, length: s32,
+    start: s32, end: s32) -> TextBufferEditResult {
     decision: TextBufferDeleteRangeDecision =
         TextBufferDeleteRangeDecisionFor(length, start, end)
     if decision.can_delete {
@@ -1462,12 +1575,14 @@ TextBufferDeleteRange :: (buffer: []u8, length: i32,
     return result
 }
 
-TextUtf8Continuation :: (value: u8) -> bool #export {
-    return (value & (u8)0xc0) == (u8)0x80
+#program_export
+TextUtf8Continuation :: (value: u8) -> bool {
+    return (value & cast(u8)0xc0) == cast(u8)0x80
 }
 
-TextPreviousCodepoint :: (buffer: []u8, length: i32,
-    cursor: i32) -> i32 #export {
+#program_export
+TextPreviousCodepoint :: (buffer: []u8, length: s32,
+    cursor: s32) -> s32 {
     if length < 0 { return 0 }
     if length > buffer.length { length = buffer.length }
     cursor = TextCursorForLength(cursor, length)
@@ -1479,8 +1594,9 @@ TextPreviousCodepoint :: (buffer: []u8, length: i32,
     return cursor
 }
 
-TextNextCodepoint :: (buffer: []u8, length: i32,
-    cursor: i32) -> i32 #export {
+#program_export
+TextNextCodepoint :: (buffer: []u8, length: s32,
+    cursor: s32) -> s32 {
     if length < 0 { return 0 }
     if length > buffer.length { length = buffer.length }
     cursor = TextCursorForLength(cursor, length)
@@ -1492,23 +1608,26 @@ TextNextCodepoint :: (buffer: []u8, length: i32,
     return cursor
 }
 
-TextBufferBracketCursorFor :: (cursor: i32, length: i32) -> i32 #export {
+#program_export
+TextBufferBracketCursorFor :: (cursor: s32, length: s32) -> s32 {
     if length <= 0 { return -1 }
     if cursor < 0 { return 0 }
     if cursor >= length { return length - 1 }
     return cursor
 }
 
-TextBufferBracketCandidatePos :: (cursor: i32,
-    current_is_bracket: bool) -> i32 #export {
+#program_export
+TextBufferBracketCandidatePos :: (cursor: s32,
+    current_is_bracket: bool) -> s32 {
     if cursor > 0 && !current_is_bracket {
         return cursor - 1
     }
     return cursor
 }
 
-TextBufferBracketDecisionFor :: (pos: i32,
-    bracket_code: i32) -> TextBufferBracketDecision #export {
+#program_export
+TextBufferBracketDecisionFor :: (pos: s32,
+    bracket_code: s32) -> TextBufferBracketDecision {
     decision: TextBufferBracketDecision
     decision.pos = pos
     if bracket_code == 40 {
@@ -1556,8 +1675,9 @@ TextBufferBracketDecisionFor :: (pos: i32,
     return decision
 }
 
-TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
-    modifier: bool, secure: bool, has_selection: bool) -> TextNavigationDecision #export {
+#program_export
+TextNavigationDecisionFor :: (key: s32, multiline: bool, shift: bool,
+    modifier: bool, secure: bool, has_selection: bool) -> TextNavigationDecision {
     decision: TextNavigationDecision
     decision.extend_selection = shift
 
@@ -1636,8 +1756,9 @@ TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
     return decision
 }
 
-TextDeleteDecisionFor :: (action: i32, modifier: bool, secure: bool,
-    has_selection: bool) -> TextDeleteDecision #export {
+#program_export
+TextDeleteDecisionFor :: (action: s32, modifier: bool, secure: bool,
+    has_selection: bool) -> TextDeleteDecision {
     decision: TextDeleteDecision
 
     if action == TextDeleteBackspace() {
@@ -1673,10 +1794,11 @@ TextDeleteDecisionFor :: (action: i32, modifier: bool, secure: bool,
     return decision
 }
 
-TextInsertDecisionFor :: (codepoint: i32, encoded_len: i32,
-    text_len: i32, text_size: i32, current_codepoints: i32,
-    inserted_codepoints: i32, max_codepoints: i32,
-    allow_newlines: bool) -> TextInsertDecision #export {
+#program_export
+TextInsertDecisionFor :: (codepoint: s32, encoded_len: s32,
+    text_len: s32, text_size: s32, current_codepoints: s32,
+    inserted_codepoints: s32, max_codepoints: s32,
+    allow_newlines: bool) -> TextInsertDecision {
     decision: TextInsertDecision
 
     if codepoint == 13 {
@@ -1714,11 +1836,11 @@ TextInsertDecisionFor :: (codepoint: i32, encoded_len: i32,
     return decision
 }
 
-TextWordBlank :: (codepoint: i32) -> bool {
+TextWordBlank :: (codepoint: s32) -> bool {
     return codepoint == 32 || codepoint == 9 || codepoint == 0x3000
 }
 
-TextWordSeparator :: (codepoint: i32) -> bool {
+TextWordSeparator :: (codepoint: s32) -> bool {
     return codepoint == 44 || codepoint == 0x3001 ||
         codepoint == 46 || codepoint == 0x3002 ||
         codepoint == 59 || codepoint == 0xff1b ||
@@ -1735,7 +1857,8 @@ TextWordSeparator :: (codepoint: i32) -> bool {
         codepoint == 10 || codepoint == 13
 }
 
-TextWordBoundaryFor :: (previous: i32, current: i32) -> bool #export {
+#program_export
+TextWordBoundaryFor :: (previous: s32, current: s32) -> bool {
     previous_blank := TextWordBlank(previous)
     previous_separator := TextWordSeparator(previous)
     current_blank := TextWordBlank(current)

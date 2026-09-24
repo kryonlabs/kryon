@@ -1,4 +1,3 @@
-#module "image"
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
@@ -6,17 +5,19 @@
 # Matches the ImageFit host contract without exporting a second public enum.
 ImagePlaceholderLayout :: struct {
     bounds: Rectangle
-    label_x: i32
-    label_y: i32
+    label_x: s32
+    label_y: s32
 }
 
-ImageLabelRole :: () -> i32 #export {
+#program_export
+ImageLabelRole :: () -> s32 {
     return 6
 }
 
-ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle #export {
+#program_export
+ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle {
     return ImageFitBounds(image.bounds, image.source,
-        texture.width, texture.height, (i32)image.fit)
+        texture.width, texture.height, cast(s32)image.fit)
 }
 
 ImageDrawPlan :: struct {
@@ -26,10 +27,11 @@ ImageDrawPlan :: struct {
     tint: Color
 }
 
+#program_export
 ImageDrawPlanFor :: (image: ImageProps, texture: Texture2D,
-    tint: Color) -> ImageDrawPlan #export {
+    tint: Color) -> ImageDrawPlan {
     plan: ImageDrawPlan
-    if texture.id == (u32)0 || texture.width <= 0 ||
+    if texture.id == cast(u32)0 || texture.width <= 0 ||
         texture.height <= 0 || image.bounds.width <= 0.0 ||
         image.bounds.height <= 0.0 {
         return plan
@@ -37,35 +39,36 @@ ImageDrawPlanFor :: (image: ImageProps, texture: Texture2D,
     plan.draw = true
     plan.source = image.source
     if plan.source.width == 0.0 || plan.source.height == 0.0 {
-        plan.source = (Rectangle){0.0, 0.0,
-            (float)texture.width, (float)texture.height}
+        plan.source = Rectangle.{0.0, 0.0,
+            cast(float32)texture.width, cast(float32)texture.height}
     }
     plan.destination = ImageFitRect(image, texture)
     plan.tint = tint
-    if plan.tint.a == (u8)0 {
-        plan.tint = (Color){(u8)255, (u8)255, (u8)255, (u8)255}
+    if plan.tint.a == cast(u8)0 {
+        plan.tint = Color.{cast(u8)255, cast(u8)255, cast(u8)255, cast(u8)255}
     }
     return plan
 }
 
+#program_export
 ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
-    texture_width: i32, texture_height: i32, fit: i32) -> Rectangle #export {
+    texture_width: s32, texture_height: s32, fit: s32) -> Rectangle {
     dst: Rectangle = bounds
-    src_w: float = source.width
-    src_h: float = source.height
+    src_w: float32 = source.width
+    src_h: float32 = source.height
 
     if src_w < 0.0 { src_w = -src_w }
     if src_h < 0.0 { src_h = -src_h }
-    if src_w == 0.0 { src_w = (float)texture_width }
-    if src_h == 0.0 { src_h = (float)texture_height }
+    if src_w == 0.0 { src_w = cast(float32)texture_width }
+    if src_h == 0.0 { src_h = cast(float32)texture_height }
 
     if fit == 1 || fit == 2 {
         if src_w == 0.0 || src_h == 0.0 {
             return dst
         }
-        sx: float = bounds.width / src_w
-        sy: float = bounds.height / src_h
-        scale: float = sx
+        sx: float32 = bounds.width / src_w
+        sy: float32 = bounds.height / src_h
+        scale: float32 = sx
         if fit == 2 {
             if sy > scale { scale = sy }
         } else {
@@ -79,24 +82,27 @@ ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
     return dst
 }
 
-ImagePlaceholderLayoutFor :: (bounds: Rectangle, text_width: i32,
-    font_height: i32) -> ImagePlaceholderLayout #export {
+#program_export
+ImagePlaceholderLayoutFor :: (bounds: Rectangle, text_width: s32,
+    font_height: s32) -> ImagePlaceholderLayout {
     layout: ImagePlaceholderLayout
     layout.bounds = bounds
-    layout.label_x = (i32)bounds.x + ((i32)bounds.width - text_width) / 2
-    layout.label_y = (i32)bounds.y + ((i32)bounds.height - font_height) / 2
+    layout.label_x = cast(s32)bounds.x + (cast(s32)bounds.width - text_width) / 2
+    layout.label_y = cast(s32)bounds.y + (cast(s32)bounds.height - font_height) / 2
     return layout
 }
 
-ImagePlaceholderFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
+#program_export
+ImagePlaceholderFontFor :: (default_font: s32, style_font: s32) -> s32 {
     if style_font > 0 { return style_font }
     return default_font
 }
 
 # Maps a clipped destination strip back to the corresponding texture source.
 # The image host uses this when drawing rounded or otherwise clipped images.
+#program_export
 ImageStripSource :: (source_base: Rectangle, dst: Rectangle,
-    strip: Rectangle) -> Rectangle #export {
+    strip: Rectangle) -> Rectangle {
     source: Rectangle
     if dst.width == 0.0 || dst.height == 0.0 {
         return source

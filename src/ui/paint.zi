@@ -1,4 +1,3 @@
-#module "paint"
 #import "drawing_props"
 #import "geometry"
 #import "surface"
@@ -15,12 +14,12 @@ DrawingKind :: enum {
 }
 
 Drawing :: struct {
-    kind: i32
+    kind: s32
     bounds: Rectangle
     color: u32
     text: string
-    font: i32
-    icon: i32
+    font: s32
+    icon: s32
     texture: Texture2D
     ring: LoadingRingSpec
 }

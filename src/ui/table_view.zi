@@ -1,4 +1,3 @@
-#module "table_view"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -6,45 +5,45 @@
 #import "control_props"
 
 TableViewMetrics :: struct {
-    default_row_height: i32
-    min_header_height: i32
-    default_min_column_width: i32
-    header_text_pad_x: i32
-    resize_tolerance: i32
-    scrollbar_width: i32
+    default_row_height: s32
+    min_header_height: s32
+    default_min_column_width: s32
+    header_text_pad_x: s32
+    resize_tolerance: s32
+    scrollbar_width: s32
 }
 
 TableViewLayout :: struct {
-    row_height: i32
-    header_height: i32
+    row_height: s32
+    header_height: s32
     body: Rectangle
-    frozen_rows: i32
-    scroll_body_height: i32
-    max_scroll: i32
+    frozen_rows: s32
+    scroll_body_height: s32
+    max_scroll: s32
 }
 
 TableViewScrollLayout :: struct {
-    first: i32
-    y_offset: i32
-    visible_rows: i32
+    first: s32
+    y_offset: s32
+    visible_rows: s32
 }
 
 TableViewSelection :: struct {
-    row: i32
-    column_slot: i32
+    row: s32
+    column_slot: s32
 }
 
 TableViewSelectionClearDecision :: struct {
-    row: i32
-    column: i32
+    row: s32
+    column: s32
     changed: bool
 }
 
 TableViewSortDecision :: struct {
-    selected_row: i32
-    selected_column: i32
-    sort_column: i32
-    sort_direction: i32
+    selected_row: s32
+    selected_column: s32
+    sort_column: s32
+    sort_direction: s32
     changed: bool
 }
 
@@ -60,16 +59,16 @@ TableViewRowPointerDecision :: struct {
 }
 
 TableViewRowClickDecision :: struct {
-    selected_row: i32
-    selected_column: i32
-    activated_row: i32
-    activated_column: i32
+    selected_row: s32
+    selected_column: s32
+    activated_row: s32
+    activated_column: s32
     changed: bool
 }
 
 TableViewRowContextDecision :: struct {
-    row: i32
-    column: i32
+    row: s32
+    column: s32
     changed: bool
 }
 
@@ -84,7 +83,7 @@ TableViewResizeClearDecision :: struct {
 
 TableViewResizeStartDecision :: struct {
     begin: bool
-    column: i32
+    column: s32
 }
 
 TableViewResizeDragDecision :: struct {
@@ -95,155 +94,172 @@ TableViewResizeDragDecision :: struct {
 }
 
 TableViewKeyboardIntent :: struct {
-    move_row: i32
-    move_column: i32
+    move_row: s32
+    move_column: s32
     tab: bool
     tab_backwards: bool
     activate: bool
     clear_selection: bool
 }
 
-TableViewPanelRole :: () -> i32 #export {
+#program_export
+TableViewPanelRole :: () -> s32 {
     return 2
 }
 
-TableViewHeaderRole :: () -> i32 #export {
+#program_export
+TableViewHeaderRole :: () -> s32 {
     return 13
 }
 
-TableViewDividerRole :: () -> i32 #export {
+#program_export
+TableViewDividerRole :: () -> s32 {
     return 18
 }
 
-TableViewRowRole :: () -> i32 #export {
+#program_export
+TableViewRowRole :: () -> s32 {
     return 21
 }
 
-TableViewCellRole :: () -> i32 #export {
+#program_export
+TableViewCellRole :: () -> s32 {
     return 22
 }
 
-TableViewSelectionRole :: () -> i32 #export {
+#program_export
+TableViewSelectionRole :: () -> s32 {
     return 23
 }
 
-TableViewFactsFor :: (class_name: i32, state: i32) -> StyleFacts #export {
+#program_export
+TableViewFactsFor :: (class_name: s32, state: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindTableView(), 0, class_name,
         StyleAny(), ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
         state)
 }
 
-TableViewRoleFactsFor :: (class_name: i32, role: i32, state: i32) -> StyleFacts #export {
+#program_export
+TableViewRoleFactsFor :: (class_name: s32, role: s32, state: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindTableView(), 0, class_name, role,
         ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium, state)
 }
 
-TableViewMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 ||
+TableViewMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-TableViewMetricsFor :: (scale: float, table: StyleFrame, header: StyleFrame,
-    cell: StyleFrame, divider: StyleFrame) -> TableViewMetrics #export {
+#program_export
+TableViewMetricsFor :: (scale: float32, table: StyleFrame, header: StyleFrame,
+    cell: StyleFrame, divider: StyleFrame) -> TableViewMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TableViewMetrics
     metrics.default_row_height = TableViewMetric(table.value.fields,
-        (u32)StyleContentOffset, table.value.offset_y, 28.0, scale, false)
+        cast(u32)StyleContentOffset, table.value.offset_y, 28.0, scale, false)
     metrics.min_header_height = TableViewMetric(header.value.fields,
-        (u32)StyleContentOffset, header.value.offset_y, 30.0, scale, false)
+        cast(u32)StyleContentOffset, header.value.offset_y, 30.0, scale, false)
     metrics.default_min_column_width = TableViewMetric(cell.value.fields,
-        (u32)StyleContentOffset, cell.value.offset_x, 32.0, scale, false)
+        cast(u32)StyleContentOffset, cell.value.offset_x, 32.0, scale, false)
     metrics.header_text_pad_x = TableViewMetric(header.value.fields,
-        (u32)StylePaddingX, header.value.padding_x, 6.0, scale, true)
+        cast(u32)StylePaddingX, header.value.padding_x, 6.0, scale, true)
     metrics.resize_tolerance = TableViewMetric(divider.value.fields,
-        (u32)StylePaddingX, divider.value.padding_x, 5.0, scale, true)
+        cast(u32)StylePaddingX, divider.value.padding_x, 5.0, scale, true)
     metrics.scrollbar_width = TableViewMetric(divider.value.fields,
-        (u32)StyleContentOffset, divider.value.offset_y, 8.0, scale, true)
+        cast(u32)StyleContentOffset, divider.value.offset_y, 8.0, scale, true)
     return metrics
 }
 
-TableViewRowHeight :: (requested_row_height: i32, scale: float,
-    metrics: TableViewMetrics) -> i32 #export {
+#program_export
+TableViewRowHeight :: (requested_row_height: s32, scale: float32,
+    metrics: TableViewMetrics) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     if requested_row_height > 0 {
-        height: i32 = (i32)((float)requested_row_height * scale)
+        height: s32 = cast(s32)(cast(float32)requested_row_height * scale)
         if height > 0 { return height }
     }
     return metrics.default_row_height
 }
 
-TableViewHeaderHeight :: (requested_header_height: i32, scale: float,
-    metrics: TableViewMetrics) -> i32 #export {
+#program_export
+TableViewHeaderHeight :: (requested_header_height: s32, scale: float32,
+    metrics: TableViewMetrics) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    height: i32 = metrics.min_header_height
+    height: s32 = metrics.min_header_height
     if requested_header_height > 0 {
-        height = (i32)((float)requested_header_height * scale)
+        height = cast(s32)(cast(float32)requested_header_height * scale)
     }
     if height < metrics.min_header_height { height = metrics.min_header_height }
     return height
 }
 
-TableViewBodyBounds :: (bounds: Rectangle, header_height: i32) -> Rectangle #export {
+#program_export
+TableViewBodyBounds :: (bounds: Rectangle, header_height: s32) -> Rectangle {
     body: Rectangle
     body.x = bounds.x
-    body.y = bounds.y + (float)header_height
+    body.y = bounds.y + cast(float32)header_height
     body.width = bounds.width
-    body.height = bounds.height - (float)header_height
+    body.height = bounds.height - cast(float32)header_height
     if body.height < 0.0 { body.height = 0.0 }
     return body
 }
 
-TableViewFrozenRows :: (requested: i32, row_count: i32, body_height: i32,
-    row_height: i32) -> i32 #export {
-    frozen: i32 = requested
+#program_export
+TableViewFrozenRows :: (requested: s32, row_count: s32, body_height: s32,
+    row_height: s32) -> s32 {
+    frozen: s32 = requested
     if frozen < 0 { frozen = 0 }
     if frozen > row_count { frozen = row_count }
     if row_height <= 0 { row_height = 1 }
-    max_frozen: i32 = body_height / row_height
+    max_frozen: s32 = body_height / row_height
     if max_frozen < 0 { max_frozen = 0 }
     if frozen > max_frozen { frozen = max_frozen }
     return frozen
 }
 
-TableViewScrollBodyHeight :: (body_height: i32, frozen_rows: i32,
-    row_height: i32) -> i32 #export {
-    height: i32 = body_height - frozen_rows * row_height
+#program_export
+TableViewScrollBodyHeight :: (body_height: s32, frozen_rows: s32,
+    row_height: s32) -> s32 {
+    height: s32 = body_height - frozen_rows * row_height
     if height < 0 { return 0 }
     return height
 }
 
-TableViewMaxScroll :: (row_count: i32, frozen_rows: i32, row_height: i32,
-    scroll_body_height: i32) -> i32 #export {
-    rows: i32 = row_count - frozen_rows
+#program_export
+TableViewMaxScroll :: (row_count: s32, frozen_rows: s32, row_height: s32,
+    scroll_body_height: s32) -> s32 {
+    rows: s32 = row_count - frozen_rows
     if rows < 0 { rows = 0 }
-    max_scroll: i32 = rows * row_height - scroll_body_height
+    max_scroll: s32 = rows * row_height - scroll_body_height
     if max_scroll < 0 { return 0 }
     return max_scroll
 }
 
-TableViewLayoutFor :: (bounds: Rectangle, row_count: i32,
-    requested_row_height: i32, requested_header_height: i32,
-    requested_frozen_rows: i32, scale: float,
-    metrics: TableViewMetrics) -> TableViewLayout #export {
+#program_export
+TableViewLayoutFor :: (bounds: Rectangle, row_count: s32,
+    requested_row_height: s32, requested_header_height: s32,
+    requested_frozen_rows: s32, scale: float32,
+    metrics: TableViewMetrics) -> TableViewLayout {
     layout: TableViewLayout
     layout.row_height = TableViewRowHeight(requested_row_height, scale, metrics)
     layout.header_height = TableViewHeaderHeight(requested_header_height, scale, metrics)
     layout.body = TableViewBodyBounds(bounds, layout.header_height)
     layout.frozen_rows = TableViewFrozenRows(requested_frozen_rows, row_count,
-        (i32)layout.body.height, layout.row_height)
-    layout.scroll_body_height = TableViewScrollBodyHeight((i32)layout.body.height,
+        cast(s32)layout.body.height, layout.row_height)
+    layout.scroll_body_height = TableViewScrollBodyHeight(cast(s32)layout.body.height,
         layout.frozen_rows, layout.row_height)
     layout.max_scroll = TableViewMaxScroll(row_count, layout.frozen_rows,
         layout.row_height, layout.scroll_body_height)
     return layout
 }
 
-TableViewScrollFor :: (scroll_y: i32, frozen_rows: i32, row_height: i32,
-    scroll_body_height: i32) -> TableViewScrollLayout #export {
+#program_export
+TableViewScrollFor :: (scroll_y: s32, frozen_rows: s32, row_height: s32,
+    scroll_body_height: s32) -> TableViewScrollLayout {
     layout: TableViewScrollLayout
     if scroll_y < 0 { scroll_y = 0 }
     if row_height <= 0 { row_height = 1 }
@@ -257,113 +273,124 @@ TableViewScrollFor :: (scroll_y: i32, frozen_rows: i32, row_height: i32,
     return layout
 }
 
-TableViewDefaultColumnWidth :: (bounds_width: i32, visible_columns: i32) -> i32 #export {
+#program_export
+TableViewDefaultColumnWidth :: (bounds_width: s32, visible_columns: s32) -> s32 {
     if visible_columns <= 0 { return 0 }
     return bounds_width / visible_columns
 }
 
-TableViewColumnWidth :: (requested_width: i32, default_width: i32) -> i32 #export {
+#program_export
+TableViewColumnWidth :: (requested_width: s32, default_width: s32) -> s32 {
     if requested_width > 0 { return requested_width }
     return default_width
 }
 
-TableViewHeaderBounds :: (bounds: Rectangle, column_x: i32,
-    column_width: i32, header_height: i32) -> Rectangle #export {
+#program_export
+TableViewHeaderBounds :: (bounds: Rectangle, column_x: s32,
+    column_width: s32, header_height: s32) -> Rectangle {
     header: Rectangle
-    header.x = (float)column_x
+    header.x = cast(float32)column_x
     header.y = bounds.y
-    header.width = (float)column_width
-    header.height = (float)header_height
+    header.width = cast(float32)column_width
+    header.height = cast(float32)header_height
     return header
 }
 
+#program_export
 TableViewRowBounds :: (bounds: Rectangle, layout: TableViewLayout,
-    row_index: i32, draw_index: i32, scroll: TableViewScrollLayout,
-    scrolling: bool) -> Rectangle #export {
+    row_index: s32, draw_index: s32, scroll: TableViewScrollLayout,
+    scrolling: bool) -> Rectangle {
     row: Rectangle
     row.x = bounds.x
     if scrolling {
-        local: i32 = draw_index - layout.frozen_rows
-        row.y = bounds.y + (float)(layout.header_height +
+        local: s32 = draw_index - layout.frozen_rows
+        row.y = bounds.y + cast(float32)(layout.header_height +
             layout.frozen_rows * layout.row_height +
             local * layout.row_height - scroll.y_offset)
     } else {
-        row.y = bounds.y + (float)(layout.header_height +
+        row.y = bounds.y + cast(float32)(layout.header_height +
             row_index * layout.row_height)
     }
     row.width = bounds.width
-    row.height = (float)layout.row_height
+    row.height = cast(float32)layout.row_height
     return row
 }
 
-TableViewCellBounds :: (row: Rectangle, column_x: i32, column_width: i32) -> Rectangle #export {
+#program_export
+TableViewCellBounds :: (row: Rectangle, column_x: s32, column_width: s32) -> Rectangle {
     cell: Rectangle
-    cell.x = (float)column_x
+    cell.x = cast(float32)column_x
     cell.y = row.y
-    cell.width = (float)column_width
+    cell.width = cast(float32)column_width
     cell.height = row.height
     return cell
 }
 
+#program_export
 TableViewViewport :: (bounds: Rectangle, layout: TableViewLayout,
-    scrolling: bool) -> Rectangle #export {
+    scrolling: bool) -> Rectangle {
     viewport: Rectangle
     viewport.x = bounds.x
-    viewport.y = bounds.y + (float)layout.header_height
+    viewport.y = bounds.y + cast(float32)layout.header_height
     viewport.width = bounds.width
     if scrolling {
-        viewport.y += (float)(layout.frozen_rows * layout.row_height)
-        viewport.height = (float)layout.scroll_body_height
+        viewport.y += cast(float32)(layout.frozen_rows * layout.row_height)
+        viewport.height = cast(float32)layout.scroll_body_height
     } else {
-        viewport.height = (float)(layout.frozen_rows * layout.row_height)
+        viewport.height = cast(float32)(layout.frozen_rows * layout.row_height)
     }
     if viewport.height < 0.0 { viewport.height = 0.0 }
     return viewport
 }
 
+#program_export
 TableViewScrollbarBoundsFor :: (bounds: Rectangle, layout: TableViewLayout,
-    scrollbar_width: i32) -> Rectangle #export {
+    scrollbar_width: s32) -> Rectangle {
     scrollbar: Rectangle
-    scrollbar.x = bounds.x + bounds.width - (float)scrollbar_width
-    scrollbar.y = bounds.y + (float)(layout.header_height +
+    scrollbar.x = bounds.x + bounds.width - cast(float32)scrollbar_width
+    scrollbar.y = bounds.y + cast(float32)(layout.header_height +
         layout.frozen_rows * layout.row_height)
-    scrollbar.width = (float)scrollbar_width
-    scrollbar.height = (float)layout.scroll_body_height
+    scrollbar.width = cast(float32)scrollbar_width
+    scrollbar.height = cast(float32)layout.scroll_body_height
     if scrollbar.width < 0.0 { scrollbar.width = 0.0 }
     if scrollbar.height < 0.0 { scrollbar.height = 0.0 }
     return scrollbar
 }
 
-TableViewMinimumColumnWidth :: (requested_min_width: i32, scale: float,
-    metrics: TableViewMetrics) -> i32 #export {
+#program_export
+TableViewMinimumColumnWidth :: (requested_min_width: s32, scale: float32,
+    metrics: TableViewMetrics) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     if requested_min_width > 0 {
-        width: i32 = (i32)((float)requested_min_width * scale)
+        width: s32 = cast(s32)(cast(float32)requested_min_width * scale)
         if width > 0 { return width }
     }
     return metrics.default_min_column_width
 }
 
-TableViewHeaderAngleFor :: (requested_angle: float) -> float #export {
+#program_export
+TableViewHeaderAngleFor :: (requested_angle: float32) -> float32 {
     if requested_angle != requested_angle { return 0.0 }
     if requested_angle < -89.0 { return -89.0 }
     if requested_angle > 89.0 { return 89.0 }
     return requested_angle
 }
 
-TableViewResizeColumnWidthFor :: (start_width: i32, start_x: i32,
-    pointer_x: i32, minimum_width: i32) -> i32 #export {
-    width: i32 = start_width + pointer_x - start_x
+#program_export
+TableViewResizeColumnWidthFor :: (start_width: s32, start_x: s32,
+    pointer_x: s32, minimum_width: s32) -> s32 {
+    width: s32 = start_width + pointer_x - start_x
     if width < minimum_width {
         return minimum_width
     }
     return width
 }
 
+#program_export
 TableViewResizeStartFor :: (active: bool, content_disabled: bool,
     table_disabled: bool, resizable: bool, has_column_widths: bool,
     pressed: bool, pointer_in_header: bool,
-    column: i32) -> TableViewResizeStartDecision #export {
+    column: s32) -> TableViewResizeStartDecision {
     decision: TableViewResizeStartDecision
     decision.column = column
     decision.begin = !active && !content_disabled && !table_disabled &&
@@ -372,10 +399,11 @@ TableViewResizeStartFor :: (active: bool, content_disabled: bool,
     return decision
 }
 
+#program_export
 TableViewResizeDragFor :: (active: bool, same_table: bool,
     content_disabled: bool, table_disabled: bool, resizable: bool,
     has_column_widths: bool, down: bool,
-    released: bool) -> TableViewResizeDragDecision #export {
+    released: bool) -> TableViewResizeDragDecision {
     decision: TableViewResizeDragDecision
     if !active || !same_table {
         return decision
@@ -389,10 +417,11 @@ TableViewResizeDragFor :: (active: bool, same_table: bool,
     return decision
 }
 
+#program_export
 TableViewResizeClearFor :: (active: bool, owner_captured: bool,
     content_disabled: bool, released: bool, same_table: bool,
     table_disabled: bool, resizable: bool,
-    has_column_widths: bool) -> TableViewResizeClearDecision #export {
+    has_column_widths: bool) -> TableViewResizeClearDecision {
     decision: TableViewResizeClearDecision
     if !active {
         return decision
@@ -409,25 +438,29 @@ TableViewResizeClearFor :: (active: bool, owner_captured: bool,
     return decision
 }
 
+#program_export
 TableViewHeaderHotFor :: (disabled: bool, pointer_in_headers: bool,
-    pointer_in_header: bool, captured: bool) -> bool #export {
+    pointer_in_header: bool, captured: bool) -> bool {
     return !disabled && pointer_in_headers && pointer_in_header && !captured
 }
 
+#program_export
 TableViewRowHotFor :: (disabled: bool, custom_cells: bool,
-    pointer_in_viewport: bool, row_hot: bool) -> bool #export {
+    pointer_in_viewport: bool, row_hot: bool) -> bool {
     return !disabled && !custom_cells && pointer_in_viewport && row_hot
 }
 
-TableViewSelectedRowFor :: (selected_row: i32, row_count: i32) -> i32 #export {
+#program_export
+TableViewSelectedRowFor :: (selected_row: s32, row_count: s32) -> s32 {
     if row_count <= 0 { return -1 }
     if selected_row < 0 { return 0 }
     if selected_row >= row_count { return row_count - 1 }
     return selected_row
 }
 
-TableViewSelectionMoveRow :: (row: i32, row_count: i32,
-    direction: i32) -> i32 #export {
+#program_export
+TableViewSelectionMoveRow :: (row: s32, row_count: s32,
+    direction: s32) -> s32 {
     if row_count <= 0 { return -1 }
     row = TableViewSelectedRowFor(row, row_count)
     if direction < 0 && row > 0 { row -= 1 }
@@ -435,15 +468,17 @@ TableViewSelectionMoveRow :: (row: i32, row_count: i32,
     return row
 }
 
-TableViewColumnSlotFor :: (slot: i32, visible_columns: i32) -> i32 #export {
+#program_export
+TableViewColumnSlotFor :: (slot: s32, visible_columns: s32) -> s32 {
     if visible_columns <= 0 { return -1 }
     if slot < 0 { return 0 }
     if slot >= visible_columns { return visible_columns - 1 }
     return slot
 }
 
-TableViewSelectionMoveColumn :: (slot: i32, visible_columns: i32,
-    direction: i32) -> i32 #export {
+#program_export
+TableViewSelectionMoveColumn :: (slot: s32, visible_columns: s32,
+    direction: s32) -> s32 {
     if visible_columns <= 0 { return -1 }
     slot = TableViewColumnSlotFor(slot, visible_columns)
     if direction < 0 && slot > 0 { slot -= 1 }
@@ -451,8 +486,9 @@ TableViewSelectionMoveColumn :: (slot: i32, visible_columns: i32,
     return slot
 }
 
-TableViewSelectionTab :: (row: i32, column_slot: i32, row_count: i32,
-    visible_columns: i32, backwards: bool) -> TableViewSelection #export {
+#program_export
+TableViewSelectionTab :: (row: s32, column_slot: s32, row_count: s32,
+    visible_columns: s32, backwards: bool) -> TableViewSelection {
     selection: TableViewSelection
     selection.row = TableViewSelectedRowFor(row, row_count)
     selection.column_slot = TableViewColumnSlotFor(column_slot, visible_columns)
@@ -477,8 +513,9 @@ TableViewSelectionTab :: (row: i32, column_slot: i32, row_count: i32,
     return selection
 }
 
-TableViewSelectionClearFor :: (selected_row: i32,
-    selected_column: i32) -> TableViewSelectionClearDecision #export {
+#program_export
+TableViewSelectionClearFor :: (selected_row: s32,
+    selected_column: s32) -> TableViewSelectionClearDecision {
     decision: TableViewSelectionClearDecision
     decision.row = selected_row
     decision.column = selected_column
@@ -490,9 +527,10 @@ TableViewSelectionClearFor :: (selected_row: i32,
     return decision
 }
 
+#program_export
 TableViewKeyboardIntentFor :: (up: bool, down: bool, left: bool, right: bool,
     tab: bool, tab_backwards: bool, enter: bool, f2: bool,
-    escape: bool) -> TableViewKeyboardIntent #export {
+    escape: bool) -> TableViewKeyboardIntent {
     intent: TableViewKeyboardIntent
     if up { intent.move_row = -1 }
     if down { intent.move_row = 1 }
@@ -505,15 +543,17 @@ TableViewKeyboardIntentFor :: (up: bool, down: bool, left: bool, right: bool,
     return intent
 }
 
+#program_export
 TableViewHeaderPointerDecisionFor :: (disabled: bool, header_hot: bool,
-    released: bool, has_sort_column: bool) -> TableViewHeaderPointerDecision #export {
+    released: bool, has_sort_column: bool) -> TableViewHeaderPointerDecision {
     decision: TableViewHeaderPointerDecision
     decision.sort = !disabled && header_hot && released && has_sort_column
     return decision
 }
 
-TableViewSortDecisionFor :: (column: i32, previous_sort_column: i32,
-    previous_sort_direction: i32) -> TableViewSortDecision #export {
+#program_export
+TableViewSortDecisionFor :: (column: s32, previous_sort_column: s32,
+    previous_sort_direction: s32) -> TableViewSortDecision {
     decision: TableViewSortDecision
     decision.selected_row = -1
     decision.selected_column = column
@@ -535,9 +575,10 @@ TableViewSortDecisionFor :: (column: i32, previous_sort_column: i32,
     return decision
 }
 
+#program_export
 TableViewRowPointerDecisionFor :: (disabled: bool, hot: bool,
     left_released: bool, right_released: bool, has_selection: bool,
-    has_context: bool) -> TableViewRowPointerDecision #export {
+    has_context: bool) -> TableViewRowPointerDecision {
     decision: TableViewRowPointerDecision
     decision.mark_clickable = !disabled && hot
     decision.click = decision.mark_clickable && left_released && has_selection
@@ -546,9 +587,10 @@ TableViewRowPointerDecisionFor :: (disabled: bool, hot: bool,
     return decision
 }
 
+#program_export
 TableViewClipboardDecisionFor :: (modifier_down: bool,
     copy_pressed: bool, cut_pressed: bool, paste_pressed: bool,
-    has_paste_target: bool) -> TableViewClipboardDecision #export {
+    has_paste_target: bool) -> TableViewClipboardDecision {
     decision: TableViewClipboardDecision
     if !modifier_down {
         return decision
@@ -558,8 +600,9 @@ TableViewClipboardDecisionFor :: (modifier_down: bool,
     return decision
 }
 
-TableViewActivationShouldRun :: (clicked_column: i32, same_table: bool,
-    last_row: i32, row: i32, last_column: i32, elapsed_seconds: float) -> bool #export {
+#program_export
+TableViewActivationShouldRun :: (clicked_column: s32, same_table: bool,
+    last_row: s32, row: s32, last_column: s32, elapsed_seconds: float32) -> bool {
     if clicked_column < 0 {
         return false
     }
@@ -572,9 +615,10 @@ TableViewActivationShouldRun :: (clicked_column: i32, same_table: bool,
     return elapsed_seconds <= 0.45
 }
 
-TableViewRowClickDecisionFor :: (row: i32, clicked_column: i32,
-    same_table: bool, last_row: i32, last_column: i32,
-    elapsed_seconds: float) -> TableViewRowClickDecision #export {
+#program_export
+TableViewRowClickDecisionFor :: (row: s32, clicked_column: s32,
+    same_table: bool, last_row: s32, last_column: s32,
+    elapsed_seconds: float32) -> TableViewRowClickDecision {
     decision: TableViewRowClickDecision
     decision.selected_row = row
     decision.selected_column = clicked_column
@@ -589,8 +633,9 @@ TableViewRowClickDecisionFor :: (row: i32, clicked_column: i32,
     return decision
 }
 
-TableViewRowContextDecisionFor :: (row: i32,
-    clicked_column: i32) -> TableViewRowContextDecision #export {
+#program_export
+TableViewRowContextDecisionFor :: (row: s32,
+    clicked_column: s32) -> TableViewRowContextDecision {
     decision: TableViewRowContextDecision
     decision.row = row
     decision.column = clicked_column
@@ -598,9 +643,10 @@ TableViewRowContextDecisionFor :: (row: i32,
     return decision
 }
 
-TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,
-    row_height: i32, view_height: i32, scroll_offset: i32,
-    max_scroll: i32) -> i32 #export {
+#program_export
+TableViewSelectionScrollOffset :: (row: s32, frozen_rows: s32,
+    row_height: s32, view_height: s32, scroll_offset: s32,
+    max_scroll: s32) -> s32 {
     if scroll_offset < 0 { scroll_offset = 0 }
     if max_scroll < 0 { max_scroll = 0 }
     if row < frozen_rows || view_height <= 0 {
@@ -608,8 +654,8 @@ TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,
         return scroll_offset
     }
     if row_height <= 0 { row_height = 1 }
-    top: i32 = (row - frozen_rows) * row_height
-    bottom: i32 = top + row_height
+    top: s32 = (row - frozen_rows) * row_height
+    bottom: s32 = top + row_height
     if top < scroll_offset {
         scroll_offset = top
     } else if bottom > scroll_offset + view_height {

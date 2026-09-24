@@ -1,4 +1,3 @@
-#module "list_box_props"
 #import "geometry"
 #import "list_box_multi"
 
@@ -13,22 +12,22 @@ ListBoxItem :: struct {
 ListBoxProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    selected_index: i32
-    scroll_offset: i32
-    scroll_delta: i32
-    row_height: i32
-    scale: float
+    id: s32
+    class_name: s32
+    selected_index: s32
+    scroll_offset: s32
+    scroll_delta: s32
+    row_height: s32
+    scale: float32
     focused: bool
-    navigation: i32
+    navigation: s32
     disabled: bool
 }
 
 ListBoxResult :: struct {
-    node: i32
-    selected_index: i32
-    scroll_offset: i32
+    node: s32
+    selected_index: s32
+    scroll_offset: s32
     changed: bool
 }
 
@@ -37,13 +36,13 @@ ListBoxResult :: struct {
 ListBoxMultiProps :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    anchor: i32
-    scroll_offset: i32
-    scroll_delta: i32
-    row_height: i32
-    scale: float
+    id: s32
+    class_name: s32
+    anchor: s32
+    scroll_offset: s32
+    scroll_delta: s32
+    row_height: s32
+    scale: float32
     focused: bool
     navigation: ListBoxMultiInput
     control: bool
@@ -52,11 +51,11 @@ ListBoxMultiProps :: struct {
 }
 
 ListBoxMultiResult :: struct {
-    node: i32
-    clicked_index: i32
-    anchor: i32
-    scroll_offset: i32
-    selected_count: i32
+    node: s32
+    clicked_index: s32
+    anchor: s32
+    scroll_offset: s32
+    selected_count: s32
     changed: bool
     valid: bool
 }

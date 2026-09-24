@@ -240,8 +240,11 @@ TreeSubmit :: (key: u64, parent_index: s32, kind: s32,
                 prior: TreeEntry = active_tree.submitted[sibling]
                 if prior.auto_placed {
                     count += 1
-                    if horizontal { extent += prior.bounds.width }
-                    else { extent += prior.bounds.height }
+                    if horizontal {
+                        extent += prior.bounds.width
+                    } else {
+                        extent += prior.bounds.height
+                    }
                 }
                 sibling = prior.next_sibling
             }

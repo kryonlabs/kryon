@@ -1,4 +1,3 @@
-#module "page"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -10,7 +9,8 @@
 #import "tree"
 #import "widget_kind"
 
-PageBoundsOrParent :: (bounds: Rectangle) -> Rectangle #export {
+#program_export
+PageBoundsOrParent :: (bounds: Rectangle) -> Rectangle {
     parent: Rectangle = TreeCurrentParentBounds()
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
@@ -18,24 +18,26 @@ PageBoundsOrParent :: (bounds: Rectangle) -> Rectangle #export {
 }
 
 # A page or section is flush until KSS declares spacing.
-PageBoxStyle :: (kind: i32, class_name: i32) -> StyleData #export {
+#program_export
+PageBoxStyle :: (kind: s32, class_name: s32) -> StyleData {
     base: StyleData
-    base.fields = (u32)StyleGap | (u32)StylePaddingX |
-        (u32)StylePaddingY
+    base.fields = cast(u32)StyleGap | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY
     facts: StyleFacts = StyleDefaultFacts(kind)
     facts.class_name = class_name
-    facts.state = (i32)ButtonStateNormal
+    facts.state = cast(s32)ButtonStateNormal
     return ResolveStyleRules(ActiveStyleRules(), base, facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
 }
 
-PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing #export {
+#program_export
+PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing {
     spacing: PageSpacing
-    if (style.fields & (u32)StyleGap) != (u32)0 &&
-        style.gap > 0.0 { spacing.gap = (i32)(style.gap + 0.5) }
-    if (style.fields & (u32)StylePaddingX) != (u32)0 &&
+    if (style.fields & cast(u32)StyleGap) != cast(u32)0 &&
+        style.gap > 0.0 { spacing.gap = cast(s32)(style.gap + 0.5) }
+    if (style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
         style.padding_x > 0.0 {
-        spacing.padding = (i32)(style.padding_x + 0.5)
+        spacing.padding = cast(s32)(style.padding_x + 0.5)
     }
     return spacing
 }
@@ -43,7 +45,8 @@ PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing #export {
 # Page opens a retained tree scope. The caller closes it with End(). The
 # returned metadata is an effect request for a platform host, not a window or
 # browser operation hidden inside the widget.
-Page :: (props: PageProps) -> PageResult #export {
+#program_export
+Page :: (props: PageProps) -> PageResult {
     result: PageResult
     result.node = -1
     result.bounds = PageBoundsOrParent(props.bounds)
@@ -58,10 +61,10 @@ Page :: (props: PageProps) -> PageResult #export {
     result.gap = metrics.gap
     result.padding = metrics.padding
     result.theme_color = ColorFromPacked(face.background)
-    result.has_theme_color = result.theme_color.a != (u8)0
+    result.has_theme_color = result.theme_color.a != cast(u8)0
     if !TreeIsBuilding() { return result }
     key: u64 = props.key
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey() }
     result.node = TreeSubmitCurrent(key, WidgetKindPage,
         result.bounds)
     if result.node < 0 { return result }
@@ -70,12 +73,13 @@ Page :: (props: PageProps) -> PageResult #export {
     result.content = metrics.content
     TreeSetLayout(result.node, result.gap, result.padding, 0, 0, 0)
     TreeSetLabel(result.node, props.title)
-    TreeSetSemantic(result.node, (SemanticKind)SemanticPage, 0)
+    TreeSetSemantic(result.node, cast(SemanticKind)SemanticPage, 0)
     result.opened = TreePushScope(result.node)
     return result
 }
 
-Section :: (props: SectionProps) -> SectionResult #export {
+#program_export
+Section :: (props: SectionProps) -> SectionResult {
     result: SectionResult
     result.node = -1
     result.bounds = PageBoundsOrParent(props.bounds)
@@ -88,7 +92,7 @@ Section :: (props: SectionProps) -> SectionResult #export {
     result.padding = metrics.padding
     if !TreeIsBuilding() { return result }
     key: u64 = props.key
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey() }
     result.node = TreeSubmitCurrent(key, WidgetKindSection,
         result.bounds)
     if result.node < 0 { return result }
@@ -97,7 +101,7 @@ Section :: (props: SectionProps) -> SectionResult #export {
     result.content = metrics.content
     TreeSetLayout(result.node, result.gap, result.padding, 0, 0, 0)
     TreeSetLabel(result.node, props.label)
-    TreeSetSemantic(result.node, (SemanticKind)SemanticSection, 0)
+    TreeSetSemantic(result.node, cast(SemanticKind)SemanticSection, 0)
     result.opened = TreePushScope(result.node)
     return result
 }
