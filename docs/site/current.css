@@ -33,7 +33,7 @@ main>section{padding-block:4.3rem;border-bottom:1px solid var(--line)}
 .header-nav{display:flex;align-items:center;gap:1.8rem}
 .header-nav a{color:var(--ink);font-size:.9rem;text-decoration:none}
 .header-nav a:hover,.header-nav a[aria-current=page]{color:var(--accent);text-decoration:underline}
-.theme-toggle{display:grid;place-items:center;padding:0;background:none;border:1px solid var(--line);border-radius:50%;width:40px;height:40px;font-size:0;line-height:1}
+.theme-toggle{display:grid;place-items:center;flex:0 0 40px;padding:0;background:none;border:1px solid var(--line);border-radius:50%;width:40px;height:40px;line-height:1}
 .theme-toggle::before{content:"";display:block;width:16px;height:16px;border:1.5px solid currentColor;border-radius:50%;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
 .menu-button{display:none;border:1px solid var(--line);border-radius:5px;padding:.4rem .8rem;background:var(--surface)}
 .eyebrow{color:var(--rust);font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;margin-bottom:1.4rem}
