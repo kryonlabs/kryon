@@ -12,29 +12,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CALLS = {
     "StyleControlRoleFacts": 3,
-    "StyleSheet_StyleControlRoleFacts": 3,
-    "WidgetFrameForClassRole": 6,
-    "simpleStyleFrameWithClassRole": 6,
-    "ui_control_style_frame_role_kind": 7,
-    "resolveMinimalControlRoleFrame": 7,
 }
 
-PATHS = [
-    ROOT / "src/ui",
-    ROOT / "go/kryon/runtime.go",
-    ROOT / "go/kryon/popup.go",
-] + sorted((ROOT / "go/kryon").glob("*_host.go"))
+SOURCE_DIR = ROOT / "src/ui"
 
 
 def source_files() -> list[Path]:
-    files: list[Path] = []
-    for path in PATHS:
-        if path.is_file():
-            files.append(path)
-        else:
-            files.extend(sorted(path.glob("*.c")))
-            files.extend(sorted(path.glob("*.kry")))
-    return files
+    return sorted(SOURCE_DIR.glob("*.zi"))
 
 
 def split_args(text: str) -> list[str]:
@@ -92,7 +76,7 @@ def main() -> int:
                 if is_forbidden_literal(role):
                     errors.append(
                         f"{rel}:{line}: hard-coded style role {role} in {name}; "
-                        "use a runtime/*.kry role helper"
+                        "use a named Ziran role helper"
                     )
     if errors:
         print("style role policy drift:")

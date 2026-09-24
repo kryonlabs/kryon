@@ -13,7 +13,7 @@ its portable loader recognizes widget names.
 | `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
 | `src/ui/modules.txt` | Complete maintained UI module inventory |
 | `src/backend/*.zi` | Host ABI declarations that generate C headers during the build |
-| `src/backend/*_host.c`, `image_software.c` | Raw platform effects, font measurement, and rasterization |
+| `src/backend/*_host.c`, `image_software.c` | Existing non-Ziran host debt used by tests; slated for removal |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
 Every maintained UI source is in `modules.txt`. The checked build has no
@@ -21,8 +21,10 @@ handwritten Kryon headers; C hosts include headers generated from `.zi`.
 
 Host adapters provide observations and effects through declared interfaces.
 Widget state, policy, layout, and draw decisions belong in `.zi`, including for
-desktop, browser, and portable hosts. Platform adapters may use C or Go where
-the operating system requires it; they must not duplicate widget policy.
+desktop, browser, and portable hosts. Kryon's maintained implementation and
+platform integration must use current Ziran directly. Generic OS access that
+Ziran lacks belongs in the Ziran project, without Kryon-specific compiler or
+runtime branches. The current handwritten C adapters remain migration debt.
 
 ## Current build
 

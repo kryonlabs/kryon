@@ -11,7 +11,7 @@ portable format.
 | --- | --- |
 | Ziran repository | `.zi` language, `.zir` representation, `.zib` format, checker, code generation, and portable execution |
 | Kryon `src/ui/*.zi` | Widget APIs and reusable UI behavior |
-| Kryon platform hosts | Operating system input, windows, font and image loading, rasterization, and storage effects |
+| Kryon Ziran platform modules | Operating system input, windows, font and image loading, rasterization, and storage effects through general Ziran capabilities |
 | Application repositories | Screens, product state, copy, assets, and app-specific workflows |
 
 The Ziran compiler and portable loader have no widget-specific branches. A
@@ -29,10 +29,11 @@ compilation. Backend host declarations also compile with the current Ziran
 toolchain. Platform hosts and downstream applications have not yet completed
 their integration with the library.
 
-The prior runtime's C and Go platform implementations are outside the
-maintained build. The current archives contain all checked UI modules and
-portable host adapters, but application integration and supported renderer
-paths still need completion.
+The unused handwritten Go runtime has been removed. The current archives
+contain all checked UI modules and C portable host adapters. Those C adapters
+and C examples are migration debt: they still support today's tests and must
+be replaced with current Ziran source. Application integration and supported
+renderer paths still need completion.
 
 The optional SDL2/Cairo example opens a Kryon bundle in a private-display
 desktop test. Its checks capture a clicked button and a tinted, asset-backed
