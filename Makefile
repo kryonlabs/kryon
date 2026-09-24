@@ -19,8 +19,8 @@ SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE)))
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 
-.PHONY: all check test ziran-test header-check clean
-all: $(BUILD_DIR)/libkryon.a
+.PHONY: all check test ziran-test header-check source-check clean
+all: source-check $(BUILD_DIR)/libkryon.a
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all
@@ -81,6 +81,9 @@ ziran-test: $(BUILD_DIR)/libkryon_host.a
 
 header-check:
 	sh tools/check-zi-header-free.sh
+
+source-check:
+	sh tools/check-ziran-source.sh
 
 check: all ziran-test header-check
 test: check
