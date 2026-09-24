@@ -21,16 +21,15 @@ modules call.
 
 ## Current implementation
 
-The modules in [`src/ui/modules.txt`](../src/ui/modules.txt) pass the native C,
-C++, and Go build. The other `.zi` files in `src/ui/` preserve the UI source
-while its types, imports, and host interfaces are converted. They are not part
-of the library archive yet. Some still refer to generated headers or syntax
-from the retired compiler and must not be advertised as working modules.
+Every maintained `.zi` module in `src/ui/` appears in
+[`src/ui/modules.txt`](../src/ui/modules.txt) and passes the native C, C++, and
+Go library build. Platform hosts and downstream applications have not yet
+completed their integration with that library.
 
 The existing C and Go host implementations are migration material. They are
 not included by `make` and do not presently provide a linked application UI.
-The checked archive contains selected widget policy and line rendering, not
-the complete widget runtime.
+The checked archive contains the maintained widget modules. It is not yet a
+complete linked application runtime without platform host bindings.
 
 ## Module rule
 
