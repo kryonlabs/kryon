@@ -165,7 +165,7 @@ scrollbar_x: i32, max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
     return safe_width
 }
 
-ScrollScopeContentBounds :: (bounds: Rectangle, has_scroll: bool,
+ScrollContentBounds :: (bounds: Rectangle, has_scroll: bool,
 metrics: ScrollMetrics) -> Rectangle #export {
     content: Rectangle = bounds
     if has_scroll {
@@ -453,7 +453,7 @@ scroll_offset: i32, max_scroll: i32, metrics: ScrollMetrics) -> ScrollBarPaint #
     return paint
 }
 
-ScrollScopeInput :: struct {
+ScrollFrameInput :: struct {
     bounds: Rectangle
     content_height: i32
     has_offset: bool
@@ -470,7 +470,7 @@ ScrollScopeInput :: struct {
     grab: float
 }
 
-ScrollScopeFrame :: struct {
+ScrollFrame :: struct {
     clip: Rectangle
     content: Rectangle
     paint: ScrollBarPaint
@@ -489,8 +489,8 @@ ScrollPointInside :: (point: Vector2, bounds: Rectangle) -> bool {
     point.x < bounds.x + bounds.width && point.y < bounds.y + bounds.height
 }
 
-ScrollScopeFrameFor :: (input: ScrollScopeInput, metrics: ScrollMetrics) -> ScrollScopeFrame #export {
-    frame: ScrollScopeFrame
+ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFrame #export {
+    frame: ScrollFrame
     frame.clip = input.bounds
     frame.grab = input.grab
     frame.thumb_state = (i32)ButtonStateNormal
@@ -544,7 +544,7 @@ ScrollScopeFrameFor :: (input: ScrollScopeInput, metrics: ScrollMetrics) -> Scro
         ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
             frame.thumb_state = (i32)ButtonStateHover
         }
-        frame.clip = ScrollScopeContentBounds(input.bounds, true, metrics)
+        frame.clip = ScrollContentBounds(input.bounds, true, metrics)
     }
     frame.content = frame.clip
     frame.content.y -= (float)frame.offset

@@ -55,7 +55,7 @@ Scroll :: (props: ScrollProps) -> ScrollResult #export {
         if metrics.scrollbar_width <= 0 {
             metrics = ScrollMetricsFor(props.scale, track, thumb)
         }
-        input: ScrollScopeInput
+        input: ScrollFrameInput
         input.bounds = result.viewport
         input.content_height = props.content_height
         input.has_offset = true
@@ -70,7 +70,7 @@ Scroll :: (props: ScrollProps) -> ScrollResult #export {
         input.owns_drag = props.input.owns_drag
         input.owner_captured = props.input.owner_captured
         input.grab = props.input.grab
-        result.frame = ScrollScopeFrameFor(input, metrics)
+        result.frame = ScrollFrameFor(input, metrics)
         result.scroll_offset = result.frame.offset
         result.content = result.frame.content
         if result.frame.scrollbar {

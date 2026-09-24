@@ -37,5 +37,5 @@ ScrollResult :: struct {
     content: Rectangle
     scroll_offset: i32
     max_scroll: i32
-    frame: ScrollScopeFrame
+    frame: ScrollFrame
 }
