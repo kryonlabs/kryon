@@ -193,6 +193,32 @@ Answer :: () -> i32 #export {
     if !TreeFinish() || TreeTakeDragAt(slider).ended {
         return -35
     }
+    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+    outer: i32 = TreeSubmit((u64)20, 0, WidgetKindCard,
+        (Rectangle){0.0, 0.0, 90.0, 90.0})
+    TreeSetInteractive(outer, false, false, 1)
+    TreeSetChildClip(outer, (Rectangle){20.0, 20.0, 40.0, 40.0})
+    child: i32 = TreeSubmit((u64)21, outer, WidgetKindButton,
+        (Rectangle){10.0, 10.0, 70.0, 70.0})
+    TreeSetInteractive(child, false, false, 0)
+    nested: i32 = TreeSubmit((u64)22, outer, WidgetKindStack,
+        (Rectangle){15.0, 15.0, 50.0, 50.0})
+    TreeSetChildClip(nested, (Rectangle){50.0, 50.0, 30.0, 30.0})
+    grandchild: i32 = TreeSubmit((u64)23, nested, WidgetKindButton,
+        (Rectangle){45.0, 45.0, 30.0, 30.0})
+    TreeSetInteractive(grandchild, false, false, 0)
+    if !TreeFinish() ||
+        TreeHitAt(12.0, 12.0) != outer ||
+        TreeHitAt(25.0, 25.0) != child ||
+        TreeHitAt(35.0, 35.0) != child ||
+        TreeHitAt(45.0, 45.0) != child ||
+        TreeHitAt(55.0, 55.0) != grandchild ||
+        TreeHitAt(65.0, 65.0) != outer ||
+        !TreeNodeAt(child).clipped ||
+        TreeNodeAt(child).clip.width != 40.0 ||
+        TreeNodeAt(grandchild).clip.width != 10.0 {
+        return -36
+    }
     return 42
 }
 ZI

@@ -72,6 +72,10 @@ TreeEntry :: struct {
     parent_key: u64
     kind: i32
     bounds: Rectangle
+    clip: Rectangle
+    child_clip: Rectangle
+    clipped: bool
+    clips_children: bool
     measured_bounds: Rectangle
     auto_placed: bool
     layout_gap: i32
@@ -195,6 +199,14 @@ TreeSubmit :: (key: u64, parent_index: i32, kind: i32,
     if key == 0 { entry.key = (u64)(index + 1) }
     if parent_index >= 0 {
         entry.parent_key = active_tree.submitted[parent_index].key
+        parent_clip: TreeEntry = active_tree.submitted[parent_index]
+        if parent_clip.clips_children {
+            entry.clip = parent_clip.child_clip
+            entry.clipped = true
+        } else if parent_clip.clipped {
+            entry.clip = parent_clip.clip
+            entry.clipped = true
+        }
     }
     entry.kind = kind
     entry.measured_bounds = bounds
@@ -278,6 +290,21 @@ TreeSetLayout :: (index: i32, gap: i32, padding: i32,
     active_tree.submitted[index].grid_columns = columns
     active_tree.submitted[index].grid_min_item_width = min_item_width
     active_tree.submitted[index].grid_max_columns = max_columns
+}
+
+# A container sets this before submitting children. Its own input is not
+# clipped by the child viewport; descendants inherit the intersection.
+TreeSetChildClip :: (index: i32, bounds: Rectangle) #export {
+    if !active_tree.building || index < 0 ||
+        index >= active_tree.submitted_count { return }
+    entry: TreeEntry = active_tree.submitted[index]
+    if entry.clipped {
+        entry.child_clip = RectangleIntersection(bounds, entry.clip)
+    } else {
+        entry.child_clip = bounds
+    }
+    entry.clips_children = true
+    active_tree.submitted[index] = entry
 }
 
 TreeSubmittedNodeAt :: (index: i32) -> TreeEntry #export {

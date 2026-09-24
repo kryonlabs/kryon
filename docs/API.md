@@ -67,8 +67,8 @@ the resulting selected state on its tree node, resolves KSS box and label
 roles, and queues the box, check mark, and clipped label. Hosts supply raw
 pointer samples, glyph metrics, and raster callbacks; callers keep the value
 returned by Checkbox for the next frame. The old pointer and flag fields are
-not part of this checked API. Keyboard focus, ancestor input clipping, and
-native widget integration remain open.
+not part of this checked API. Keyboard focus, wiring the tree's explicit
+child clip into this widget, and native widget integration remain open.
 
 The checked `Toggle(ToggleProps)` uses the same caller-owned value pattern and
 returns `{value, changed}`. A plain switch and an Off/On label control both
@@ -203,8 +203,8 @@ reverse paint order, blocks click-through at disabled controls, and owns press
 and release activation. `TreeHoveredAt()`,
 `TreePressedAt()`, and `TreeTakeActivationAt()` expose that state. The host
 supplies raw pointer samples. Button uses this path for retained pointer
-activation; retained layout, keyboard focus, clipping of input by ancestors,
-and broader interaction routing remain unfinished.
+activation; retained layout, keyboard focus, wiring child viewport clips into
+widgets, and broader interaction routing remain unfinished.
 `EndTree()` links the generic line, rounded shape, and text raster effects;
 the image raster effect is also linked for generic paint commands. Glyph
 metric and asset dimension requirements follow the widgets the application
@@ -261,6 +261,13 @@ widgets submit to the current scope; controls that create their own children
 can still call `TreeSubmit` with an explicit parent index. `TreeFinish` rejects
 an unclosed scope and preserves the previous committed tree. `TreeCancel`
 discards the current build and its scope stack.
+
+`TreeSetChildClip(node, bounds)` sets a viewport before a container submits
+children. Submitted descendants inherit the intersection of all ancestor
+viewports, and `TreeHitAt` excludes points outside that intersection. The
+container's own hit area remains available for controls such as scrollbars.
+Generic paint commands do not yet inherit this clip; widgets must still pass
+their own paint clip until that path is wired through the tree.
 
 `Page(PageProps)` and `Section(SectionProps)` are checked Ziran containers.
 They open a child scope, return its content bounds and KSS gap/padding values,
