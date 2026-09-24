@@ -7,10 +7,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "locale_parser"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     entries: [4]LocaleEntrySpan
     data: [128]u8
     parsed: LocaleParseResult = LocaleParseEntries(

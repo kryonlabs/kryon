@@ -1,9 +1,9 @@
 #import "geometry"
 
 NumericValueKind :: enum {
-    NumericFloat = 0
-    NumericInt = 1
-    NumericDouble = 2
+    NumericFloat :: 0
+    NumericInt :: 1
+    NumericDouble :: 2
 }
 
 Activation :: struct {

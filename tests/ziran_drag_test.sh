@@ -8,11 +8,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/use_drag.zi" <<'EOF'
-#module "use_drag"
 #import "geometry"
 #import "drag"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if DragComponentTokenFor(5, 2) != 83 { return 0 }
     if DragTextInsetFor(2.0) != 12.0 { return 0 }
     bounds: Rectangle

@@ -11,28 +11,28 @@ cp "$repo/src/ui/widget_kind.zi" "$work/widget_kind.zi"
 cp "$repo/src/ui/accessibility_props.zi" "$work/accessibility_props.zi"
 cp "$repo/src/ui/accessibility_policy.zi" "$work/accessibility_policy.zi"
 cat > "$work/use_accessibility.zi" <<'EOF'
-#module "use_accessibility"
 #import "widget_kind"
 #import "accessibility_props"
 #import "accessibility_policy"
 
-Answer :: () -> i32 #export {
-    button: u32 = AccessibilityActionsFor((i32)WidgetKindButton, 7,
+#program_export
+Answer :: () -> s32 {
+    button: u32 = AccessibilityActionsFor(cast(s32)WidgetKindButton, 7,
         false, false, false)
-    if button != (u32)3 { return 0 }
+    if button != cast(u32)3 { return 0 }
     if !AccessibilityActionAllowed(button,
-        (AccessibilityAction)AccessibilityActionActivate) { return 0 }
-    if AccessibilityActionsFor((i32)WidgetKindButton, 0,
-        false, false, false) != (u32)0 { return 0 }
-    field: u32 = AccessibilityActionsFor((i32)WidgetKindTextField, 8,
+        cast(AccessibilityAction)AccessibilityActionActivate) { return 0 }
+    if AccessibilityActionsFor(cast(s32)WidgetKindButton, 0,
+        false, false, false) != cast(u32)0 { return 0 }
+    field: u32 = AccessibilityActionsFor(cast(s32)WidgetKindTextField, 8,
         false, false, false)
-    if field != (u32)13 { return 0 }
-    if AccessibilityActionsFor((i32)WidgetKindListBox, 9,
-        false, false, true) != (u32)1 { return 0 }
+    if field != cast(u32)13 { return 0 }
+    if AccessibilityActionsFor(cast(s32)WidgetKindListBox, 9,
+        false, false, true) != cast(u32)1 { return 0 }
     if !AccessibilityItemSelectionFor(false, 3, 3,
-        (AccessibilityAction)AccessibilityActionSelectItem) { return 0 }
+        cast(AccessibilityAction)AccessibilityActionSelectItem) { return 0 }
     if AccessibilitySingleSelectionFor(3, 3,
-        (AccessibilityAction)AccessibilityActionDeselectItem) != -1 { return 0 }
+        cast(AccessibilityAction)AccessibilityActionDeselectItem) != -1 { return 0 }
     if !AccessibilityValueCodepointAllowed(10, true) { return 0 }
     if AccessibilityValueCodepointAllowed(10, false) { return 0 }
     if !AccessibilityValueFits(5, 3, 6, 3) { return 0 }

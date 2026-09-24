@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "dropdown_props"
 #import "geometry"
@@ -22,13 +21,14 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-open_state :: bool #global
-selected_state :: i32 #global
-highlight_state :: i32 #global
-scroll_state :: i32 #global
+phase: s32;
+open_state: bool;
+selected_state: s32;
+highlight_state: s32;
+scroll_state: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -37,33 +37,33 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindTitleBar()
         rule.selector.role = TitleBarBarRole()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
     options: [2]DropdownOption
-    options[0].key = (u64)41
+    options[0].key = cast(u64)41
     options[0].label = "One"
-    options[1].key = (u64)42
+    options[1].key = cast(u64)42
     options[1].label = "Two"
     props: TitleBarProps
-    props.key = (u64)10
+    props.key = cast(u64)10
     props.id = 10
     props.class_name = 9
-    props.bounds = (Rectangle){0.0, 0.0, 240.0, 48.0}
+    props.bounds = Rectangle.{0.0, 0.0, 240.0, 48.0}
     props.title = "Voyager"
     if phase == 4 { props.title = "Interstellar Navigation" }
     props.leading_label = "Return"
     props.has_leading_action = true
     props.has_dropdown = phase > 0 && phase < 4
-    props.dropdown.key = (u64)11
+    props.dropdown.key = cast(u64)11
     props.dropdown.id = 11
     props.dropdown.open = open_state
     props.dropdown.selected_index = selected_state
     props.dropdown.highlight_index = highlight_state
     props.dropdown.scroll_offset = scroll_state
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 260.0, 150.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 150.0})
     result: TitleBarResult = TitleBar(props, options[0:2])
     if !TreeFinish() || result.node != 1 ||
         result.height != 48 ||
@@ -75,24 +75,24 @@ Frame :: () -> i32 #export {
     if phase == 0 {
         if result.clicked_leading || TreeCount() != 3 ||
             TreeHitAt(20.0, 20.0) != 2 { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 1 {
         if !result.clicked_leading || TreeCount() != 4 ||
             result.dropdown.open ||
             TreeNodeAt(3).kind != WidgetKindDropdown { return -2 }
-        TreePointerUpdate((PointerFrame){70.0, 20.0,
+        TreePointerUpdate(PointerFrame.{70.0, 20.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){70.0, 20.0,
+        TreePointerUpdate(PointerFrame.{70.0, 20.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
             TreeCount() != 9 { return -3 }
-        TreePointerUpdate((PointerFrame){70.0, 90.0,
+        TreePointerUpdate(PointerFrame.{70.0, 90.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){70.0, 90.0,
+        TreePointerUpdate(PointerFrame.{70.0, 90.0,
             false, false, true})
     } else if phase == 3 {
         if result.dropdown.open || !result.dropdown.changed ||
@@ -107,7 +107,7 @@ Frame :: () -> i32 #export {
     selected_state = result.dropdown.selected_index
     highlight_state = result.dropdown.highlight_index
     scroll_state = result.dropdown.scroll_offset
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

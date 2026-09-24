@@ -1,11 +1,11 @@
 
 AccessibilityAction :: enum {
-    AccessibilityActionFocus = 1
-    AccessibilityActionActivate = 2
-    AccessibilityActionSetValue = 4
-    AccessibilityActionSetSelection = 8
-    AccessibilityActionSelectItem = 16
-    AccessibilityActionDeselectItem = 32
-    AccessibilityActionSelectAll = 64
-    AccessibilityActionClearSelection = 128
+    AccessibilityActionFocus :: 1
+    AccessibilityActionActivate :: 2
+    AccessibilityActionSetValue :: 4
+    AccessibilityActionSetSelection :: 8
+    AccessibilityActionSelectItem :: 16
+    AccessibilityActionDeselectItem :: 32
+    AccessibilityActionSelectAll :: 64
+    AccessibilityActionClearSelection :: 128
 }

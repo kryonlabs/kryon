@@ -3,9 +3,9 @@
 #import "style"
 
 LinkVisualState :: enum {
-    LinkStateNormal = 0
-    LinkStateHover = 1
-    LinkStateDisabled = 2
+    LinkStateNormal :: 0
+    LinkStateHover :: 1
+    LinkStateDisabled :: 2
 }
 
 LinkAppearance :: struct {

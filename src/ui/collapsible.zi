@@ -6,9 +6,9 @@
 #import "style"
 
 CollapsibleMarkerKind :: enum {
-    CollapsibleMarkerClosed = 0
-    CollapsibleMarkerOpen = 1
-    CollapsibleMarkerLeaf = 2
+    CollapsibleMarkerClosed :: 0
+    CollapsibleMarkerOpen :: 1
+    CollapsibleMarkerLeaf :: 2
 }
 
 CollapsibleMetrics :: struct {

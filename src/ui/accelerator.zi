@@ -1,12 +1,22 @@
-#module "accelerator"
+host_api :: #system_library "host_api";
 
 Accelerator :: struct {
-    key: i32
-    ctrl: i32
-    shift: i32
-    alt: i32
-    id: i32
+    key: s32
+    ctrl: s32
+    shift: s32
+    alt: s32
+    id: s32
 }
 
-AcceleratorPressed :: (accelerator: Accelerator) -> i32 #extern #export
-DispatchAccelerators :: (accelerators: const Accelerator*, count: i32) -> i32 #extern #export
+AcceleratorPressed :: (accelerator: Accelerator) -> s32 #foreign host_api;
+
+#program_export
+DispatchAccelerators :: (accelerators: []Accelerator) -> s32 {
+    index: s32 = 0
+    while index < accelerators.length {
+        pressed: s32 = AcceleratorPressed(accelerators[index])
+        if pressed != 0 { return pressed }
+        index += 1
+    }
+    return 0
+}

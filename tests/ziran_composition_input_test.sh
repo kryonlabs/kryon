@@ -8,21 +8,21 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "composition_input"
 #import "text_input"
 
-phase :: i32 #global
-state :: CompositionState #global
+phase: s32;
+state: CompositionState;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     sample: CompositionSample = SampleComposition()
     transition: CompositionTransition = CompositionTransitionFor(
         state, CompositionEventForSample(sample), true, false)
     state = transition.state
     if phase == 0 {
         if !sample.available ||
-            sample.phase != (CompositionPhase)CompositionStart ||
+            sample.phase != cast(CompositionPhase)CompositionStart ||
             !state.active || state.text != "é" ||
             state.cursor != 0 || state.selection_length != 2 {
             return -1
@@ -46,7 +46,7 @@ Frame :: () -> i32 #export {
             state.text != "A" { return -5 }
         canceled: CompositionSample = SampleComposition()
         if !canceled.available ||
-            canceled.phase != (CompositionPhase)CompositionCancel {
+            canceled.phase != cast(CompositionPhase)CompositionCancel {
             return -6
         }
         after: CompositionTransition = CompositionTransitionFor(
@@ -54,7 +54,7 @@ Frame :: () -> i32 #export {
         state = after.state
         if state.active || !after.changed { return -7 }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }
@@ -126,6 +126,19 @@ int main(int argc, char **argv)
     for(int i = 0; i < 16; i++)
         assert(CompositionQueueSubmit(queue, 1, "x", 0, 0));
     assert(!CompositionQueueSubmit(queue, 1, "x", 0, 0));
+    for(int i = 0; i < 16; i++) {
+        assert(CompositionQueueTake(queue, &event));
+        assert(event.length == 1 && event.text[0] == 'x');
+    }
+    assert(!CompositionQueueTake(queue, &event));
+    CompositionQueueBeginFrame(queue);
+    assert(CompositionQueueSubmit(queue, 1, "first", 0, 0));
+    assert(CompositionQueueSubmit(queue, 2, "second", 0, 0));
+    assert(CompositionQueueTake(queue, &event));
+    const char *retained = event.text;
+    assert(CompositionQueueTake(queue, &event));
+    assert(strcmp(retained, "first") == 0);
+    assert(strcmp(event.text, "second") == 0);
     CompositionQueueDestroy(queue);
     return 0;
 }

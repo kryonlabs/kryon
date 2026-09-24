@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "color_picker"
 #import "color_picker_props"
 #import "color_picker_widget"
@@ -19,14 +18,15 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-compact_red :: float #global
-alpha :: float #global
+phase: s32;
+compact_red: float32;
+alpha: float32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     compact: ColorPickerProps
-    compact.key = (u64)20
-    compact.bounds = (Rectangle){10.0, 10.0, 180.0, 50.0}
+    compact.key = cast(u64)20
+    compact.bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}
     compact.label = "Color"
     compact.channels = 3
     compact.values[0] = compact_red
@@ -34,8 +34,8 @@ Frame :: () -> i32 #export {
     compact.values[2] = 0.75
     if phase >= 3 { compact.disabled = true }
     expanded: ColorPickerProps
-    expanded.key = (u64)30
-    expanded.bounds = (Rectangle){10.0, 70.0, 180.0, 180.0}
+    expanded.key = cast(u64)30
+    expanded.bounds = Rectangle.{10.0, 70.0, 180.0, 180.0}
     expanded.label = "Preview"
     expanded.channels = 4
     expanded.picker = true
@@ -43,16 +43,16 @@ Frame :: () -> i32 #export {
     expanded.values[1] = 0.5
     expanded.values[2] = 0.75
     expanded.values[3] = alpha
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 220.0, 270.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 270.0})
     one: ColorPickerResult = ColorPicker(compact)
     two: ColorPickerResult = ColorPicker(expanded)
     if !TreeFinish() || TreeCount() != 19 ||
         one.node != 1 || two.node != 9 ||
         TreeNodeAt(2).kind != WidgetKindText ||
         TreeNodeAt(18).kind != WidgetKindCustom { return -10 }
-    red_slider: i32 = TreeFind((u64)1, (u64)20,
+    red_slider: s32 = TreeFind(cast(u64)1, cast(u64)20,
         WidgetKindSlider)
-    alpha_slider: i32 = TreeFind((u64)4, (u64)30,
+    alpha_slider: s32 = TreeFind(cast(u64)4, cast(u64)30,
         WidgetKindSlider)
     if red_slider < 0 || alpha_slider < 0 { return -14 }
     if TreeNodeAt(red_slider).semantic_label != "R" ||
@@ -61,46 +61,46 @@ Frame :: () -> i32 #export {
     }
     swatch: Color = ColorPickerColorFor(two.values[0],
         two.values[1], two.values[2], two.values[3], 4)
-    if swatch.r != (u8)64 || swatch.g != (u8)128 ||
-        swatch.b != (u8)191 { return -11 }
+    if swatch.r != cast(u8)64 || swatch.g != cast(u8)128 ||
+        swatch.b != cast(u8)191 { return -11 }
     if phase == 0 {
         if one.changed || two.changed ||
             one.values[0] != 0.0 { return -1 }
         if TreeHitAt(40.0, 45.0) != red_slider { return -12 }
-        TreePointerUpdate((PointerFrame){40.0, 45.0, true, true, false})
-        TreePointerUpdate((PointerFrame){65.0, 45.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{40.0, 45.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{65.0, 45.0, true, false, false})
     } else if phase == 1 {
         if !one.changed || one.values[0] < 0.6 ||
             two.changed { return -2 }
-        TreePointerUpdate((PointerFrame){65.0, 45.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{65.0, 45.0, false, false, true})
     } else if phase == 2 {
         if one.values[0] < 0.6 || two.changed { return -3 }
         if TreeHitAt(100.0, 190.0) != alpha_slider { return -13 }
-        TreePointerUpdate((PointerFrame){100.0, 190.0,
+        TreePointerUpdate(PointerFrame.{100.0, 190.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){175.0, 190.0,
+        TreePointerUpdate(PointerFrame.{175.0, 190.0,
             true, false, false})
     } else if phase == 3 {
         if one.changed || !two.changed ||
-            two.values[3] < 0.7 || swatch.a < (u8)178 {
+            two.values[3] < 0.7 || swatch.a < cast(u8)178 {
             return -4
         }
-        TreePointerUpdate((PointerFrame){175.0, 190.0,
+        TreePointerUpdate(PointerFrame.{175.0, 190.0,
             false, false, true})
-        TreePointerUpdate((PointerFrame){40.0, 45.0,
+        TreePointerUpdate(PointerFrame.{40.0, 45.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){65.0, 45.0,
+        TreePointerUpdate(PointerFrame.{65.0, 45.0,
             true, false, false})
     } else {
         if one.changed || one.values[0] != compact_red ||
             two.values[3] != alpha { return -5 }
-        TreePointerUpdate((PointerFrame){65.0, 45.0,
+        TreePointerUpdate(PointerFrame.{65.0, 45.0,
             false, false, true})
     }
     PaintFlush()
     compact_red = one.values[0]
     alpha = two.values[3]
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

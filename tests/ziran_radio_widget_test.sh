@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "radio"
@@ -22,24 +21,25 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if RadioMarkText(true) != "◉" ||
         RadioMarkText(false) != "○" { return -6 }
     first: RadioProps
-    first.key = (u64)7
+    first.key = cast(u64)7
     first.id = 7
     first.class_name = 9
     first.label = "One"
-    first.bounds = (Rectangle){10.0, 20.0, 120.0, 30.0}
+    first.bounds = Rectangle.{10.0, 20.0, 120.0, 30.0}
     first.checked = phase < 2
     second: RadioProps
-    second.key = (u64)8
+    second.key = cast(u64)8
     second.id = 8
     second.class_name = 9
     second.label = "Two"
-    second.bounds = (Rectangle){10.0, 60.0, 120.0, 30.0}
+    second.bounds = Rectangle.{10.0, 60.0, 120.0, 30.0}
     second.checked = phase >= 2
     if phase >= 3 { second.disabled = true }
     if phase == 0 {
@@ -50,8 +50,8 @@ Frame :: () -> i32 #export {
         mark.selector.kind = StyleKindRadio()
         mark.selector.class_name = 9
         mark.selector.role = RadioMarkRole()
-        mark.style.fields = (u32)StyleBackground | (u32)StyleOpacity
-        mark.style.background = (u32)0x123456ff
+        mark.style.fields = cast(u32)StyleBackground | cast(u32)StyleOpacity
+        mark.style.background = cast(u32)0x123456ff
         mark.style.opacity = 0.5
         rules.items[0] = mark
         label: StyleRule
@@ -59,14 +59,14 @@ Frame :: () -> i32 #export {
         label.selector.kind = StyleKindRadio()
         label.selector.class_name = 9
         label.selector.role = RadioLabelRole()
-        label.style.fields = (u32)StyleForeground
-        label.style.foreground = (u32)0xaabbccff
+        label.style.fields = cast(u32)StyleForeground
+        label.style.foreground = cast(u32)0xaabbccff
         rules.items[1] = label
         InstallStyleRules(rules)
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 150.0, 120.0})
-    one: i32 = Radio(first)
-    two: i32 = Radio(second)
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 120.0})
+    one: s32 = Radio(first)
+    two: s32 = Radio(second)
     if !EndTree() || TreeCount() != 3 ||
         TreeNodeAt(1).kind != WidgetKindRadio ||
         TreeNodeAt(1).semantic_label != "One" ||
@@ -78,9 +78,9 @@ Frame :: () -> i32 #export {
             !TreeNodeAt(1).selected || TreeNodeAt(2).selected {
             return -2
         }
-        TreePointerUpdate((PointerFrame){20.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 70.0, false, false, true})
-        TreePointerUpdate((PointerFrame){140.0, 110.0, false, false, false})
+        TreePointerUpdate(PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{140.0, 110.0, false, false, false})
         phase = 1
         return 0
     }

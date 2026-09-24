@@ -1,8 +1,8 @@
 #import "theme"
 
 ThemeSource :: enum {
-    ThemeSourceApp = 0
-    ThemeSourceSystem = 1
+    ThemeSourceApp :: 0
+    ThemeSourceSystem :: 1
 }
 
 ThemePreference :: struct {
@@ -46,9 +46,9 @@ OrientationPreference :: struct {
 }
 
 OrientationAction :: enum {
-    OrientationActionNone = 0
-    OrientationActionResize = 1
-    OrientationActionSetMode = 2
+    OrientationActionNone :: 0
+    OrientationActionResize :: 1
+    OrientationActionSetMode :: 2
 }
 
 OrientationDecision :: struct {

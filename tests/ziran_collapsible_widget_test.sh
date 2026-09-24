@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "collapsible"
 #import "collapsible_props"
 #import "collapsible_widget"
@@ -19,20 +18,21 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-open_state :: bool #global
-hidden_state :: bool #global
+phase: s32;
+open_state: bool;
+hidden_state: bool;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     headers: [4]CollapsibleHeader
-    headers[0] = (CollapsibleHeader){19, 0}
-    headers[1] = (CollapsibleHeader){20, 1}
-    headers[2] = (CollapsibleHeader){21, 2}
-    headers[3] = (CollapsibleHeader){22, 1}
+    headers[0] = CollapsibleHeader.{19, 0}
+    headers[1] = CollapsibleHeader.{20, 1}
+    headers[2] = CollapsibleHeader.{21, 2}
+    headers[3] = CollapsibleHeader.{22, 1}
     props: CollapsibleProps
-    props.key = (u64)20
+    props.key = cast(u64)20
     props.id = 20
-    props.bounds = (Rectangle){10.0, 20.0, 140.0, 90.0}
+    props.bounds = Rectangle.{10.0, 20.0, 140.0, 90.0}
     props.label = "Details"
     props.close_label = "Close"
     props.open = open_state
@@ -72,7 +72,7 @@ Frame :: () -> i32 #export {
         props.activate = true
         props.selected = true
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 200.0, 150.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
     result: CollapsibleResult = Collapsible(props, headers[0:4])
     if !TreeFinish() { return -10 }
     if phase == 0 {
@@ -83,20 +83,20 @@ Frame :: () -> i32 #export {
             result.content.height != 0.0 ||
             TreeCount() != 3 || result.node != 1 ||
             TreeNodeAt(1).kind != WidgetKindCollapsible ||
-            TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticButton ||
+            TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticButton ||
             TreeNodeAt(2).kind != WidgetKindButton ||
-            TreeNodeAt(2).semantic_kind != (SemanticKind)SemanticButton ||
+            TreeNodeAt(2).semantic_kind != cast(SemanticKind)SemanticButton ||
             TreeHitAt(20.0, 30.0) != 1 ||
             TreeHitAt(130.0, 30.0) != 2 { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
     } else if phase == 1 {
         if !result.open || !result.changed ||
             !result.focus_requested || result.focus_target != 20 ||
             result.content.y != 52.0 ||
             result.content.height != 58.0 { return -2 }
-        TreePointerUpdate((PointerFrame){130.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){130.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{130.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{130.0, 30.0, false, false, true})
     } else if phase == 2 {
         if !result.hidden || !result.closed || !result.changed ||
             result.node != -1 || TreeCount() != 1 { return -3 }
@@ -104,7 +104,7 @@ Frame :: () -> i32 #export {
         if !result.open || !result.changed || !result.key_handled ||
             result.focus_requested || result.header.x != 30.0 ||
             result.header.width != 120.0 ||
-            TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticTreeItem ||
+            TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
             TreeCount() != 2 || TreeHitAt(40.0, 30.0) != 1 {
             return -4
         }
@@ -130,7 +130,7 @@ Frame :: () -> i32 #export {
     PaintFlush()
     open_state = result.open
     hidden_state = result.hidden
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

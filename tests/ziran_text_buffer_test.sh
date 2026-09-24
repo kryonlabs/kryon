@@ -8,29 +8,29 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "text_input"
 
-phase :: i32 #global
-used :: i32 #global
-buffer :: [12]u8 #global
+phase: s32;
+used: s32;
+buffer: [12]u8;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
-        buffer[0] = (u8)65
-        buffer[1] = (u8)66
-        buffer[2] = (u8)0
+        buffer[0] = cast(u8)65
+        buffer[1] = cast(u8)66
+        buffer[2] = cast(u8)0
         used = 2
         accent: [2]u8
-        accent[0] = (u8)0xc3
-        accent[1] = (u8)0xa9
+        accent[0] = cast(u8)0xc3
+        accent[1] = cast(u8)0xa9
         edit: TextBufferEditResult = TextBufferInsertBytes(
             buffer[0:12], used, 1, accent[0:2])
         if !edit.changed || edit.length != 4 ||
-            edit.cursor != 3 || buffer[0] != (u8)65 ||
-            buffer[1] != (u8)0xc3 ||
-            buffer[2] != (u8)0xa9 ||
-            buffer[3] != (u8)66 || buffer[4] != (u8)0 ||
+            edit.cursor != 3 || buffer[0] != cast(u8)65 ||
+            buffer[1] != cast(u8)0xc3 ||
+            buffer[2] != cast(u8)0xa9 ||
+            buffer[3] != cast(u8)66 || buffer[4] != cast(u8)0 ||
             TextPreviousCodepoint(buffer[0:12], 4, 3) != 1 ||
             TextNextCodepoint(buffer[0:12], 4, 1) != 3 {
             return -1
@@ -41,21 +41,21 @@ Frame :: () -> i32 #export {
             buffer[0:12], used, 1,
             TextNextCodepoint(buffer[0:12], used, 1))
         if !edit.changed || edit.length != 2 ||
-            edit.cursor != 1 || buffer[0] != (u8)65 ||
-            buffer[1] != (u8)66 || buffer[2] != (u8)0 {
+            edit.cursor != 1 || buffer[0] != cast(u8)65 ||
+            buffer[1] != cast(u8)66 || buffer[2] != cast(u8)0 {
             return -2
         }
         used = edit.length
     } else if phase == 2 {
         tail: [3]u8
-        tail[0] = (u8)88
-        tail[1] = (u8)89
-        tail[2] = (u8)90
+        tail[0] = cast(u8)88
+        tail[1] = cast(u8)89
+        tail[2] = cast(u8)90
         edit: TextBufferEditResult = TextBufferInsertBytes(
             buffer[0:12], used, 2, tail[0:3])
         if !edit.changed || edit.length != 5 ||
-            buffer[2] != (u8)88 || buffer[3] != (u8)89 ||
-            buffer[4] != (u8)90 || buffer[5] != (u8)0 {
+            buffer[2] != cast(u8)88 || buffer[3] != cast(u8)89 ||
+            buffer[4] != cast(u8)90 || buffer[5] != cast(u8)0 {
             return -3
         }
         used = edit.length
@@ -63,8 +63,8 @@ Frame :: () -> i32 #export {
         edit: TextBufferEditResult = TextBufferDeleteRange(
             buffer[0:12], used, 1, 4)
         if !edit.changed || edit.length != 2 ||
-            edit.cursor != 1 || buffer[0] != (u8)65 ||
-            buffer[1] != (u8)90 || buffer[2] != (u8)0 {
+            edit.cursor != 1 || buffer[0] != cast(u8)65 ||
+            buffer[1] != cast(u8)90 || buffer[2] != cast(u8)0 {
             return -4
         }
         used = edit.length
@@ -73,23 +73,23 @@ Frame :: () -> i32 #export {
         edit: TextBufferEditResult = TextBufferInsertBytes(
             buffer[0:12], used, 1, too_large[0:10])
         if edit.changed || edit.length != 2 ||
-            buffer[0] != (u8)65 || buffer[1] != (u8)90 ||
-            buffer[2] != (u8)0 ||
+            buffer[0] != cast(u8)65 || buffer[1] != cast(u8)90 ||
+            buffer[2] != cast(u8)0 ||
             TextPreviousCodepoint(buffer[0:12], used, 0) != 0 ||
             TextNextCodepoint(buffer[0:12], used, used) != used {
             return -5
         }
     } else if phase == 5 {
         invalid: [2]u8
-        invalid[0] = (u8)0
-        invalid[1] = (u8)66
+        invalid[0] = cast(u8)0
+        invalid[1] = cast(u8)66
         edit: TextBufferEditResult = TextBufferInsertBytes(
             buffer[0:12], used, 1, invalid[0:2])
         if edit.changed || edit.length != 2 ||
-            buffer[0] != (u8)65 || buffer[1] != (u8)90 ||
-            buffer[2] != (u8)0 { return -6 }
+            buffer[0] != cast(u8)65 || buffer[1] != cast(u8)90 ||
+            buffer[2] != cast(u8)0 { return -6 }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

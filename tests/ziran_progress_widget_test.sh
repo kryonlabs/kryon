@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "progress"
@@ -20,9 +19,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "tree_draw"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     props: ProgressProps
-    props.bounds = (Rectangle){10.0, 20.0, 100.0, 20.0}
+    props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
     props.min = 0
     props.max = 100
     props.value = 25
@@ -38,11 +38,11 @@ Answer :: () -> i32 #export {
     track.selector.kind = StyleKindProgress()
     track.selector.class_name = 7
     track.selector.role = ProgressTrackRole()
-    track.selector.tone = (i32)ButtonToneNeutral
-    track.style.fields = (u32)StyleBackground | (u32)StyleBorder |
-        (u32)StyleBorderWidth | (u32)StyleRadius
-    track.style.background = (u32)0x11223344
-    track.style.border = (u32)0x99aabbcc
+    track.selector.tone = cast(s32)ButtonToneNeutral
+    track.style.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
+        cast(u32)StyleBorderWidth | cast(u32)StyleRadius
+    track.style.background = cast(u32)0x11223344
+    track.style.border = cast(u32)0x99aabbcc
     track.style.border_width = 2.0
     track.style.radius = 5.0
     rules.items[0] = track
@@ -51,19 +51,19 @@ Answer :: () -> i32 #export {
     filled.selector.kind = StyleKindProgress()
     filled.selector.class_name = 7
     filled.selector.role = ProgressFillRole()
-    filled.selector.tone = (i32)ButtonToneAccent
-    filled.style.fields = (u32)StyleBackground
-    filled.style.background = (u32)0x55667788
+    filled.selector.tone = cast(s32)ButtonToneAccent
+    filled.style.fields = cast(u32)StyleBackground
+    filled.style.background = cast(u32)0x55667788
     rules.items[1] = filled
     label: StyleRule
     label.selector = StyleDefaultSelector()
     label.selector.kind = StyleKindProgress()
     label.selector.class_name = 7
     label.selector.role = ProgressLabelRole()
-    label.selector.tone = (i32)ButtonToneNeutral
-    label.style.fields = (u32)StyleForeground | (u32)StyleFontSize |
-        (u32)StyleOpacity | (u32)StyleTypeface
-    label.style.foreground = (u32)0x10203080
+    label.selector.tone = cast(s32)ButtonToneNeutral
+    label.style.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
+        cast(u32)StyleOpacity | cast(u32)StyleTypeface
+    label.style.foreground = cast(u32)0x10203080
     label.style.font_size = 14.0
     label.style.opacity = 0.5
     label.style.typeface = "body"
@@ -71,21 +71,21 @@ Answer :: () -> i32 #export {
     ignored: StyleRule = track
     ignored.selector.class_name = 99
     ignored.layer = 100
-    ignored.style.background = (u32)0xdeadbeef
+    ignored.style.background = cast(u32)0xdeadbeef
     rules.items[3] = ignored
     faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
-    if faces.track.value.background != (u32)0x11223344 ||
-        faces.fill.value.background != (u32)0x55667788 ||
+    if faces.track.value.background != cast(u32)0x11223344 ||
+        faces.fill.value.background != cast(u32)0x55667788 ||
         faces.label.value.font_size != 14.0 { return 0 }
     InstallStyleRules(rules)
-    props.key = (u64)17
-    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
+    props.key = cast(u64)17
+    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Progress(props)
     if !EndTree() || TreeCount() != 2 { return 0 }
     props.value = 0
     props.label = ""
     rules.count = 0
-    defaults.track.value.background = (u32)0x11223344
+    defaults.track.value.background = cast(u32)0x11223344
     defaults.track.value.radius = 5.0
     prepared: PreparedProgress = PrepareProgress(props, defaults)
     if prepared.font != 16 || prepared.paint.layout.fill_bounds.width != 0.0 {

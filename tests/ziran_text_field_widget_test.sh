@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "semantic"
 #import "text_field_widget"
@@ -18,15 +17,16 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "tree_input"
 
-phase :: i32 #global
-value :: string #global
-cursor :: i32 #global
-anchor :: i32 #global
-scroll_x :: i32 #global
-focused :: bool #global
-ime_state :: CompositionState #global
+phase: s32;
+value: string;
+cursor: s32;
+anchor: s32;
+scroll_x: s32;
+focused: bool;
+ime_state: CompositionState;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         value = "AéB"
         cursor = 4
@@ -41,8 +41,8 @@ Frame :: () -> i32 #export {
     if phase == 13 { anchor = 1 }
     if phase == 17 { anchor = 0 }
     props: TextFieldProps
-    props.key = (u64)77
-    props.bounds = (Rectangle){20.0, 20.0, 220.0, 36.0}
+    props.key = cast(u64)77
+    props.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
     props.value = value
     props.label = "Name"
     props.placeholder = "Enter name"
@@ -102,7 +102,7 @@ Frame :: () -> i32 #export {
     }
     if phase == 18 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "é"
         props.input.composition_event.cursor = 1
         props.input.composition_event.selection_length = 99
@@ -110,43 +110,43 @@ Frame :: () -> i32 #export {
     }
     if phase == 19 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionUpdate
+            cast(CompositionPhase)CompositionUpdate
         props.input.composition_event.text = "éx"
         props.input.composition_event.cursor = 3
     }
     if phase == 20 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCommit
+            cast(CompositionPhase)CompositionCommit
         props.input.composition_event.text = "Q"
         props.input.text = "X"
     }
     if phase == 21 {
         props.read_only = true
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "A"
     }
     if phase == 22 || phase == 24 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "B"
     }
     if phase == 23 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCancel
+            cast(CompositionPhase)CompositionCancel
     }
     if phase == 25 || phase == 26 { props.input.escape = true }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 100.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     result: TextFieldResult = TextField(props)
     if !EndTree() || result.node != 1 ||
         TreeNodeAt(result.node).semantic_label != "Name" ||
         TreeNodeAt(result.node).semantic_kind !=
-            (SemanticKind)SemanticTextField { return -20 }
+            cast(SemanticKind)SemanticTextField { return -20 }
     if phase == 0 {
         if result.focused || result.edit.changed { return -1 }
-        TreePointerUpdate((PointerFrame){220.0, 38.0,
+        TreePointerUpdate(PointerFrame.{220.0, 38.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){220.0, 38.0,
+        TreePointerUpdate(PointerFrame.{220.0, 38.0,
             false, false, true})
     } else if phase == 1 {
         if !result.focused || !result.edit.changed ||
@@ -226,12 +226,12 @@ Frame :: () -> i32 #export {
             result.cursor != 2 { return -18 }
     } else if phase == 18 {
         sample: CompositionEvent
-        sample.phase = (CompositionPhase)CompositionUpdate
+        sample.phase = cast(CompositionPhase)CompositionUpdate
         sample.text = "éx"
         sample.cursor = 1
         sample.selection_length = 2
         boundary: CompositionTransition = CompositionTransitionFor(
-            (CompositionState){}, sample, true, false)
+            CompositionState.{}, sample, true, false)
         if boundary.state.cursor != 0 ||
             boundary.state.selection_length != 3 {
             return -28
@@ -284,7 +284,7 @@ Frame :: () -> i32 #export {
     scroll_x = result.scroll_x
     focused = result.focused
     ime_state = result.composition
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

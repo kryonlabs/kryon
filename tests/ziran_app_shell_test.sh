@@ -7,12 +7,12 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "app_shell_layout"
 #import "capability_layout"
 #import "geometry"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     spec: AppShellLayoutSpec
     spec.view_width = 360
     spec.view_height = 640
@@ -60,11 +60,11 @@ Answer :: () -> i32 #export {
     if !shell.compact || shell.nav_y != 15 || shell.nav_width != 0 ||
        shell.content_height != 0 || shell.content_width != 100 { return 0 }
 
-    available: u32 = (u32)FilePicker | (u32)Share
-    if !CapabilitiesHas(available, (Capability)Share) ||
-       CapabilitiesHas(available, (Capability)Clipboard) { return 0 }
-    if CapabilityName((Capability)FilePicker) != "file-picker" ||
-       CapabilityName((Capability)0) != "unknown" { return 0 }
+    available: u32 = cast(u32)FilePicker | cast(u32)Share
+    if !CapabilitiesHas(available, cast(Capability)Share) ||
+       CapabilitiesHas(available, cast(Capability)Clipboard) { return 0 }
+    if CapabilityName(cast(Capability)FilePicker) != "file-picker" ||
+       CapabilityName(cast(Capability)0) != "unknown" { return 0 }
     viewport: ViewportSpec
     viewport.width = 100
     viewport.height = 80

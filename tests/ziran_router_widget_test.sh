@@ -7,16 +7,15 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "router"
 #import "router_props"
 #import "tree"
 #import "widget_kind"
 
-Matches :: (bytes: []u8, length: i32, text: string) -> bool {
+Matches :: (bytes: []u8, length: s32, text: string) -> bool {
     if length != text.length { return false }
-    index: i32 = 0
+    index: s32 = 0
     while index < length {
         if bytes[index] != text[index] { return false }
         index += 1
@@ -24,15 +23,16 @@ Matches :: (bytes: []u8, length: i32, text: string) -> bool {
     return true
 }
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     routes: [3]RouterRoute
-    routes[0] = (RouterRoute){1, -1, "home", "Home", ""}
-    routes[1] = (RouterRoute){2, -1, "##/docs/api", "Docs", ""}
-    routes[2] = (RouterRoute){3, -1, "", "Empty", ""}
-    bounds: Rectangle = (Rectangle){0.0, 0.0, 200.0, 100.0}
+    routes[0] = RouterRoute.{1, -1, "home", "Home", ""}
+    routes[1] = RouterRoute.{2, -1, "##/docs/api", "Docs", ""}
+    routes[2] = RouterRoute.{3, -1, "", "Empty", ""}
+    bounds: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
     props: RouterProps
     props.bounds = bounds
-    props.key = (u64)91
+    props.key = cast(u64)91
     props.initial_route = 1
     props.sync_url = true
     props.replace_on_init = true
@@ -43,25 +43,25 @@ Answer :: () -> i32 #export {
         RouterFindHash(routes[:], "#/docs/api&x") != 1 { return -1 }
 
     state: RouterState
-    TreeStart((u64)7, bounds)
+    TreeStart(cast(u64)7, bounds)
     result: RouterResult = Router(props, state, routes[:], "", "/app", 1)
     if !TreeFinish() || !result.state.initialized || result.route != 1 ||
         result.route_index != 0 || result.changed || !result.write_url ||
         result.push_url || result.node != 1 ||
         TreeNodeAt(1).kind != WidgetKindRouter { return -2 }
     url: [64]u8
-    used: i32 = RouterFormatUrl(result, url[:])
+    used: s32 = RouterFormatUrl(result, url[:])
     if !Matches(url[:], used, "/app#/home") ||
         RouterFormatUrl(result, url[:3]) != -1 { return -3 }
 
     state = RouterAcknowledgeVersion(result.state, 2)
     state = RouterNavigate(state, 2)
-    TreeStart((u64)7, bounds)
+    TreeStart(cast(u64)7, bounds)
     result = Router(props, state, routes[:], "#/home", "/app", 2)
     if !TreeFinish() || result.route != 2 ||
         result.previous_route != 1 || !result.changed ||
         !result.write_url || !result.push_url ||
-        result.state.generation != (u32)1 ||
+        result.state.generation != cast(u32)1 ||
         result.state.has_request { return -4 }
     used = RouterFormatUrl(result, url[:])
     if !Matches(url[:], used, "/app#/docs/api") { return -5 }
@@ -69,7 +69,7 @@ Answer :: () -> i32 #export {
     result = RouterSetRoute(props, result.state, routes[:], 1,
         false, "", 2)
     if !result.changed || result.route != 1 || result.push_url ||
-        !result.write_url || result.state.generation != (u32)2 {
+        !result.write_url || result.state.generation != cast(u32)2 {
         return -6
     }
     used = RouterFormatUrl(result, url[:])

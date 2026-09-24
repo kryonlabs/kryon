@@ -18,10 +18,10 @@ For example, a non-graphical program can import layout policy without
 initializing a window:
 
 ```zi
-#module "main"
 #import "scroll"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     return ScrollClamp(120, 80)
 }
 ```
@@ -118,7 +118,7 @@ KSS controls its frame and title colors, while Kryon measures the title and
 queues clipped text and shape paint. Child layout composition and native host
 integration remain open.
 
-The checked route helpers operate on caller owned `[]i32` slices and an
+The checked route helpers operate on caller owned `[]s32` slices and an
 explicit occupied count. `RouteSanitizeSet` filters with an allowed route set;
 `RouteSanitizeMask` accepts one decision per input slot for arbitrary app
 predicates. Both compact unique routes and clear the unused tail. Move, search,

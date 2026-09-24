@@ -8,21 +8,21 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "bevel"
 #import "drawing_props"
 #import "geometry"
 #import "separator"
 #import "style"
-Answer :: () -> i32 #export {
-    light: Color = (Color){(u8)10, (u8)20, (u8)30, (u8)40}
-    dark: Color = (Color){(u8)50, (u8)60, (u8)70, (u8)80}
+#program_export
+Answer :: () -> s32 {
+    light: Color = Color.{cast(u8)10, cast(u8)20, cast(u8)30, cast(u8)40}
+    dark: Color = Color.{cast(u8)50, cast(u8)60, cast(u8)70, cast(u8)80}
     RenderBevel(10, 20, 5, 4, light, dark)
-    bounds: Rectangle = (Rectangle){2.0, 3.0, 10.0, 6.0}
+    bounds: Rectangle = Rectangle.{2.0, 3.0, 10.0, 6.0}
     frame: StyleFrame
-    frame.value.background = (u32)0x11223344
+    frame.value.background = cast(u32)0x11223344
     RenderSeparatorLine(bounds, true, frame)
-    frame.value.background = (u32)0x55667788
+    frame.value.background = cast(u32)0x55667788
     RenderSeparatorLine(bounds, false, frame)
     return 42
 }

@@ -9,10 +9,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/transition.zi" "$work/transition.zi"
 cat > "$work/use_transition.zi" <<'EOF'
-#module "use_transition"
 #import "transition"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if TransitionClampProgress(-2.0) != 0.0 { return 0 }
     if TransitionClampProgress(2.0) != 1.0 { return 0 }
     if TransitionSmoothProgress(0.5) != 0.5 { return 0 }

@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "list_box"
 #import "list_box_multi"
@@ -19,22 +18,23 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-single_selected :: i32 #global
-single_scroll :: i32 #global
-multi_scroll :: i32 #global
-anchor :: i32 #global
-selected :: [4]bool #global
+phase: s32;
+single_selected: s32;
+single_scroll: s32;
+multi_scroll: s32;
+anchor: s32;
+selected: [4]bool;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     items: [4]ListBoxItem
-    items[0] = (ListBoxItem){(u64)11, "A"}
-    items[1] = (ListBoxItem){(u64)12, "B"}
-    items[2] = (ListBoxItem){(u64)13, "C"}
-    items[3] = (ListBoxItem){(u64)14, "D"}
+    items[0] = ListBoxItem.{cast(u64)11, "A"}
+    items[1] = ListBoxItem.{cast(u64)12, "B"}
+    items[2] = ListBoxItem.{cast(u64)13, "C"}
+    items[3] = ListBoxItem.{cast(u64)14, "D"}
     single: ListBoxProps
-    single.key = (u64)20
-    single.bounds = (Rectangle){10.0, 10.0, 100.0, 42.0}
+    single.key = cast(u64)20
+    single.bounds = Rectangle.{10.0, 10.0, 100.0, 42.0}
     single.row_height = 20
     single.selected_index = single_selected
     single.scroll_offset = single_scroll
@@ -50,8 +50,8 @@ Frame :: () -> i32 #export {
         single.scroll_delta = -100
     }
     multi: ListBoxMultiProps
-    multi.key = (u64)30
-    multi.bounds = (Rectangle){120.0, 10.0, 100.0, 60.0}
+    multi.key = cast(u64)30
+    multi.bounds = Rectangle.{120.0, 10.0, 100.0, 60.0}
     multi.row_height = 20
     multi.anchor = anchor
     multi.scroll_offset = multi_scroll
@@ -68,7 +68,7 @@ Frame :: () -> i32 #export {
         multi.navigation.end = true
         multi.scroll_delta = 100
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 240.0, 100.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 100.0})
     one: ListBoxResult = ListBox(single, items[0:4])
     many: ListBoxMultiResult = ListBoxMulti(multi,
         items[0:4], selected[0:4])
@@ -88,23 +88,23 @@ Frame :: () -> i32 #export {
             many.anchor != -1 || many.clicked_index != -1 {
             return -1
         }
-        TreePointerUpdate((PointerFrame){20.0, 35.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 35.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 35.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 35.0, false, false, true})
     } else if phase == 1 {
         if one.selected_index != 1 || !one.changed ||
             one.scroll_offset != 10 || many.selected_count != 0 {
             return -2
         }
-        TreePointerUpdate((PointerFrame){130.0, 35.0, true, true, false})
-        TreePointerUpdate((PointerFrame){130.0, 35.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{130.0, 35.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{130.0, 35.0, false, false, true})
     } else if phase == 2 {
         if one.selected_index != 3 || one.scroll_offset != 38 ||
             !one.changed || !selected[1] || many.selected_count != 1 ||
             many.anchor != 1 || many.clicked_index != 1 {
             return -3
         }
-        TreePointerUpdate((PointerFrame){130.0, 55.0, true, true, false})
-        TreePointerUpdate((PointerFrame){130.0, 55.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{130.0, 55.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{130.0, 55.0, false, false, true})
     } else if phase == 3 {
         if one.selected_index != 3 || one.changed ||
             one.scroll_offset != 38 { return -41 }
@@ -134,7 +134,7 @@ Frame :: () -> i32 #export {
     single_scroll = one.scroll_offset
     multi_scroll = many.scroll_offset
     anchor = many.anchor
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

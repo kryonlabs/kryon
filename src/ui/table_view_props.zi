@@ -1,45 +1,48 @@
-#module "table_view_props"
 #import "geometry"
 
+TableText :: struct {
+    value: string
+}
+
 TableRow :: struct {
-    cells: const char**
-    cell_count: i32
+    cells: *TableText
+    cell_count: s32
 }
 
 TableViewProps :: struct {
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    columns: const char**
-    column_count: i32
-    rows: const TableRow*
-    row_count: i32
-    column_widths: i32*
-    selected_row: i32*
-    selected_column: i32*
-    activated_row: i32*
-    activated_column: i32*
-    right_clicked_row: i32*
-    right_clicked_column: i32*
-    sort_column: i32*
-    scroll_offset: i32*
-    row_height: i32
-    column_enabled: i32*
-    column_order: i32*
-    sort_direction: i32*
+    id: s32
+    class_name: s32
+    columns: *TableText
+    column_count: s32
+    rows: *TableRow
+    row_count: s32
+    column_widths: *s32
+    selected_row: *s32
+    selected_column: *s32
+    activated_row: *s32
+    activated_column: *s32
+    right_clicked_row: *s32
+    right_clicked_column: *s32
+    sort_column: *s32
+    scroll_offset: *s32
+    row_height: s32
+    column_enabled: *s32
+    column_order: *s32
+    sort_direction: *s32
     disabled: bool
     resizable: bool
-    min_column_width: i32
-    freeze_rows: i32
-    header_height: i32
-    header_angle: f32
+    min_column_width: s32
+    freeze_rows: s32
+    header_height: s32
+    header_angle: float32
     custom_cells: bool
-    copy_text: const char*
-    pasted_text: const char**
-    pasted_row: i32*
-    pasted_column: i32*
-    selection_start_row: i32*
-    selection_start_column: i32*
-    selection_end_row: i32*
-    selection_end_column: i32*
+    copy_text: string
+    pasted_text: *TableText
+    pasted_row: *s32
+    pasted_column: *s32
+    selection_start_row: *s32
+    selection_start_column: *s32
+    selection_end_row: *s32
+    selection_end_column: *s32
 }

@@ -8,9 +8,9 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "frame_pacing"
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     state: FramePacing
     decision: FramePacingDecision = ConfigureFramePacing(state, 30, 60)
     state = CommitFramePacing(decision)

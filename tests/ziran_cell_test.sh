@@ -11,10 +11,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     -o "$work/ir" "$repo/tests/ziran_cell_test.zi"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --entry cell_test:SelfTest -o "$work/source.zib" \
+    --entry ziran_cell_test:SelfTest -o "$work/source.zib" \
     "$repo/tests/ziran_cell_test.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry cell_test:SelfTest -o "$work/saved.zib" \
+    --entry ziran_cell_test:SelfTest -o "$work/saved.zib" \
     "$work/ir/ziran_cell_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 42

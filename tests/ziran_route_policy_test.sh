@@ -7,32 +7,32 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "route"
 
-Answer :: () -> i32 #export {
-    routes: [6]i32 = {1, 2, 2, 3, 4, 0}
-    view: []i32 = routes[:]
-    allowed: [2]i32 = {2, 4}
+#program_export
+Answer :: () -> s32 {
+    routes: [6]s32 = .[1, 2, 2, 3, 4, 0]
+    view: []s32 = routes[:]
+    allowed: [2]s32 = .[2, 4]
     if RouteSanitizeSet(view, 5, allowed[:], -1) != 2 ||
         routes[0] != 2 || routes[1] != 4 ||
         routes[2] != -1 || routes[5] != -1 { return -1 }
     if !RouteMove(view, 2, 0, 1) ||
         routes[0] != 4 || routes[1] != 2 ||
         RouteMove(view, 2, 0, 2) { return -2 }
-    candidates: [3]i32 = {4, 2, 5}
+    candidates: [3]s32 = .[4, 2, 5]
     if RouteFirstUnused(view, 2, candidates[:], 9) != 5 ||
         !RouteContains(view, 2, 2) ||
         RouteContains(view, 2, 3) ||
         RouteCount(view, 99) != 6 { return -3 }
 
-    filtered: [5]i32 = {1, 2, 2, 3, 4}
-    mask: [5]bool = {false, true, false, true, false}
+    filtered: [5]s32 = .[1, 2, 2, 3, 4]
+    mask: [5]bool = .[false, true, false, true, false]
     if RouteSanitizeMask(filtered[:], 5, mask[:], -1) != 2 ||
         filtered[0] != 2 || filtered[1] != 3 ||
         filtered[4] != -1 { return -4 }
 
-    stack: [3]i32
+    stack: [3]s32
     step: RouteStackStep = RouteStackInit(stack[:], 10)
     if !step.accepted || step.count != 1 ||
         step.current != 10 { return -5 }
@@ -53,7 +53,7 @@ Answer :: () -> i32 #export {
     step = RouteStackReset(stack[:], 11)
     if !step.accepted || step.count != 1 ||
         step.current != 11 || stack[0] != 11 { return -11 }
-    empty: []i32 = stack[:0]
+    empty: []s32 = stack[:0]
     step = RouteStackInit(empty, 7)
     if step.accepted || step.count != 0 ||
         step.current != 7 { return -12 }

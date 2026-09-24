@@ -11,16 +11,16 @@ cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$repo/src/ui/layout.zi" "$work/layout.zi"
 cp "$repo/src/ui/group.zi" "$work/group.zi"
 cat > "$work/use_layout.zi" <<'EOF'
-#module "use_layout"
 #import "geometry"
 #import "layout"
 #import "group"
-Answer :: () -> i32 #export {
-    if KeyHash("") != (u64)1469598103934665603 { return 0 }
-    if KeyHash("results/root") != (u64)5627422651130798188 { return 0 }
-    if KeyHash("meditation/root") != (u64)4594846862641403136 { return 0 }
-    if KeyHash("settings/root") != (u64)4237429609958274031 { return 0 }
-    if KeyHash("☯") != (u64)9292100647144557370 { return 0 }
+#program_export
+Answer :: () -> s32 {
+    if KeyHash("") != cast(u64)1469598103934665603 { return 0 }
+    if KeyHash("results/root") != cast(u64)5627422651130798188 { return 0 }
+    if KeyHash("meditation/root") != cast(u64)4594846862641403136 { return 0 }
+    if KeyHash("settings/root") != cast(u64)4237429609958274031 { return 0 }
+    if KeyHash("☯") != cast(u64)9292100647144557370 { return 0 }
     centered: CenteredColumnLayout = CenteredColumnFor(800, 600, 50)
     compact: CenteredColumnLayout = CenteredColumnFor(200, 500, 20)
     if centered.x != 100 || centered.width != 600 { return 0 }
@@ -39,8 +39,8 @@ Answer :: () -> i32 #export {
     column: ColumnProps
     column.bounds = bounds
     column.gap = 7
-    column.key = (u64)1 << 63
-    if column.key != ((u64)1 << 63) || column.bounds.width != 100.0 ||
+    column.key = cast(u64)1 << 63
+    if column.key != (cast(u64)1 << 63) || column.bounds.width != 100.0 ||
        column.gap != 7 { return 0 }
     metrics: LayoutMetrics = LayoutMetricsFor(bounds, 7, 5)
     if metrics.content.x != 15.0 || metrics.content.y != 25.0 { return 0 }
@@ -72,9 +72,9 @@ Answer :: () -> i32 #export {
     props: FlexProps
     props.bounds.width = 200.0
     props.bounds.height = 100.0
-    props.direction = (FlexDirection)FlexRow
-    props.justify_content = (JustifyContent)JustifySpaceBetween
-    props.align_items = (AlignItems)AlignCenter
+    props.direction = cast(FlexDirection)FlexRow
+    props.justify_content = cast(JustifyContent)JustifySpaceBetween
+    props.align_items = cast(AlignItems)AlignCenter
     props.gap = 5
     props.padding = 10
     cursor: FlexCursor = BeginFlexCursor(props, 2, 80.0)
@@ -85,18 +85,18 @@ Answer :: () -> i32 #export {
     cursor = FlexStep(cursor, 50.0, 40.0)
     if cursor.item.x != 140.0 || cursor.item.y != 30.0 { return 0 }
     if cursor.remaining != 0 { return 0 }
-    props.direction = (FlexDirection)FlexColumn
-    props.justify_content = (JustifyContent)JustifyStart
-    props.align_items = (AlignItems)AlignStretch
+    props.direction = cast(FlexDirection)FlexColumn
+    props.justify_content = cast(JustifyContent)JustifyStart
+    props.align_items = cast(AlignItems)AlignStretch
     cursor = BeginFlexCursor(props, 2, 30.0)
     cursor = FlexStep(cursor, 0.0, 10.0)
     if cursor.item.x != 10.0 || cursor.item.y != 10.0 { return 0 }
     if cursor.item.width != 180.0 || cursor.item.height != 10.0 { return 0 }
     cursor = FlexStep(cursor, 0.0, 20.0)
     if cursor.item.y != 25.0 || cursor.item.width != 180.0 { return 0 }
-    props.direction = (FlexDirection)FlexRow
-    props.justify_content = (JustifyContent)JustifyEnd
-    props.align_items = (AlignItems)AlignEnd
+    props.direction = cast(FlexDirection)FlexRow
+    props.justify_content = cast(JustifyContent)JustifyEnd
+    props.align_items = cast(AlignItems)AlignEnd
     cursor = BeginFlexCursor(props, 1, 20.0)
     if cursor.position != 170.0 { return 0 }
     cursor = FlexStep(cursor, 20.0, 20.0)
@@ -115,9 +115,9 @@ Answer :: () -> i32 #export {
 }
 EOF
 cat > "$work/scalar_layout.zi" <<'EOF'
-#module "scalar_layout"
 #import "layout"
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if PageSidePaddingFor(300) == 12 && IsDesktopWidth(750, 1.5) {
         return 42
     }
@@ -125,11 +125,11 @@ Answer :: () -> i32 #export {
 }
 EOF
 cat > "$work/portable_layout.zi" <<'EOF'
-#module "portable_layout"
 #import "geometry"
 #import "layout"
 #import "group"
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     centered: CenteredColumnLayout = CenteredColumnFor(800, 600, 50)
     if centered.x != 100 || centered.width != 600 { return 0 }
     bounds: Rectangle

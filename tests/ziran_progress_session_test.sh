@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -22,10 +21,11 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "widget_kind"
 
-frame_index :: i32 #global
-progress_identity :: i32 #global
+frame_index: s32;
+progress_identity: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if frame_index == 1 {
         if !EndTree() || TreeCount() != 2 ||
             TreeNodeAt(1).kind != WidgetKindProgress { return -1 }
@@ -41,32 +41,32 @@ Frame :: () -> i32 #export {
         track.selector = StyleDefaultSelector()
         track.selector.kind = StyleKindProgress()
         track.selector.role = ProgressTrackRole()
-        track.selector.tone = (i32)ButtonToneNeutral
-        track.style.fields = (u32)StyleBackground
-        track.style.background = (u32)0x11223344
+        track.selector.tone = cast(s32)ButtonToneNeutral
+        track.style.fields = cast(u32)StyleBackground
+        track.style.background = cast(u32)0x11223344
         rules.items[0] = track
         fill: StyleRule
         fill.selector = StyleDefaultSelector()
         fill.selector.kind = StyleKindProgress()
         fill.selector.role = ProgressFillRole()
-        fill.selector.tone = (i32)ButtonToneAccent
-        fill.style.fields = (u32)StyleBackground
-        fill.style.background = (u32)0x55667788
+        fill.selector.tone = cast(s32)ButtonToneAccent
+        fill.style.fields = cast(u32)StyleBackground
+        fill.style.background = cast(u32)0x55667788
         rules.items[1] = fill
         InstallStyleRules(rules)
     }
     props: ProgressProps
-    props.bounds = (Rectangle){10.0, 20.0, 100.0, 20.0}
+    props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
     props.min = 0
     props.max = 100
     props.value = 25
     props.label = "25%"
-    props.key = (u64)17
-    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
+    props.key = cast(u64)17
+    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Progress(props)
     if frame_index == 4 {
-        color: Color = (Color){1, 2, 3, 4}
-        index: i32 = 0
+        color: Color = Color.{1, 2, 3, 4}
+        index: s32 = 0
         while index < 4093 {
             PaintLine(1, props.bounds, color)
             index += 1
@@ -79,9 +79,9 @@ Frame :: () -> i32 #export {
         return 4
     }
     if frame_index == 3 {
-        index: i32 = 0
+        index: s32 = 0
         while index < 1023 {
-            TreeSubmit((u64)(index + 100), 0, WidgetKindBox,
+            TreeSubmit(cast(u64)(index + 100), 0, WidgetKindBox,
                 props.bounds)
             index += 1
         }

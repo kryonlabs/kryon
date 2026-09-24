@@ -8,15 +8,15 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "image_props"
 #import "image_widget"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     image: ImageProps
     image.asset_path = "checker"
-    image.bounds = (Rectangle){0.0, 0.0, 4.0, 4.0}
+    image.bounds = Rectangle.{0.0, 0.0, 4.0, 4.0}
     Image(image)
     return 42
 }

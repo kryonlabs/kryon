@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "semantic"
@@ -18,19 +17,20 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_view_props"
 #import "widget_kind"
 
-phase :: i32 #global
-selected :: i32 #global
-scroll :: i32 #global
+phase: s32;
+selected: s32;
+scroll: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     items: [3]TreeItem
-    items[0] = (TreeItem){"First", 0, 1, false, true}
-    items[1] = (TreeItem){"Second", 1, 2, true, true}
-    items[2] = (TreeItem){"Third", 2, 3, false, true}
+    items[0] = TreeItem.{"First", 0, 1, false, true}
+    items[1] = TreeItem.{"Second", 1, 2, true, true}
+    items[2] = TreeItem.{"Third", 2, 3, false, true}
     if phase == 8 { items[1].selectable = false }
     props: TreeViewProps
-    props.key = (u64)20
-    props.bounds = (Rectangle){10.0, 10.0, 120.0, 48.0}
+    props.key = cast(u64)20
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 48.0}
     props.row_height = 20
     props.selected_id = selected
     props.scroll_offset = scroll
@@ -43,24 +43,24 @@ Frame :: () -> i32 #export {
     if phase == 3 { props.scroll_offset = 0 }
     if phase >= 6 { props.focused = true }
     if phase == 6 || phase == 8 {
-        props.navigation = (TreeViewNavigation)TreeViewNavigationUp
+        props.navigation = cast(TreeViewNavigation)TreeViewNavigationUp
     }
-    if phase == 7 { props.navigation = (TreeViewNavigation)TreeViewNavigationEnd }
+    if phase == 7 { props.navigation = cast(TreeViewNavigation)TreeViewNavigationEnd }
     if phase == 9 {
-        props.navigation = (TreeViewNavigation)TreeViewNavigationHome
+        props.navigation = cast(TreeViewNavigation)TreeViewNavigationHome
         props.disabled = true
     }
     if phase == 10 {
-        props.navigation = (TreeViewNavigation)TreeViewNavigationDown
+        props.navigation = cast(TreeViewNavigation)TreeViewNavigationDown
     }
     if phase == 11 {
-        props.navigation = (TreeViewNavigation)TreeViewNavigationHome
+        props.navigation = cast(TreeViewNavigation)TreeViewNavigationHome
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 160.0, 100.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 160.0, 100.0})
     result: TreeViewResult = TreeView(props, items[0:3])
     if !TreeFinish() || TreeCount() != 7 || result.node != 1 ||
-        TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticTree ||
-        TreeNodeAt(3).semantic_kind != (SemanticKind)SemanticTreeItem ||
+        TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticTree ||
+        TreeNodeAt(3).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
         TreeNodeAt(3).semantic_label != "Second" ||
         TreeNodeAt(6).kind != WidgetKindSlider { return -10 }
     if phase == 0 {
@@ -68,8 +68,8 @@ Frame :: () -> i32 #export {
             result.scroll_offset != 0 ||
             TreeNodeAt(4).bounds.height != 8.0 ||
             TreeHitAt(20.0, 59.0) != -1 { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 35.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 35.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 35.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 35.0, false, false, true})
     } else if phase == 1 {
         if result.selected_id != 2 || !result.changed ||
             result.scroll_offset != 12 ||
@@ -84,12 +84,12 @@ Frame :: () -> i32 #export {
         if result.selected_id != 2 || result.scroll_offset != 0 ||
             TreeNodeAt(6).bounds.y != 10.0 ||
             TreeHitAt(126.0, 20.0) != 6 { return -4 }
-        TreePointerUpdate((PointerFrame){126.0, 20.0, true, true, false})
-        TreePointerUpdate((PointerFrame){126.0, 40.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{126.0, 20.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{126.0, 40.0, true, false, false})
     } else if phase == 4 {
         if result.selected_id != 2 || result.scroll_offset != 7 ||
             result.changed { return -5 }
-        TreePointerUpdate((PointerFrame){126.0, 45.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{126.0, 45.0, false, false, true})
     } else if phase == 5 {
         if result.selected_id != 2 || result.scroll_offset != 9 ||
             result.changed { return -6 }
@@ -115,7 +115,7 @@ Frame :: () -> i32 #export {
     PaintFlush()
     selected = result.selected_id
     scroll = result.scroll_offset
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

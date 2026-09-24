@@ -1,12 +1,11 @@
-#module "reorder"
 #import "geometry"
 #import "control_props"
 #import "reorder_props"
 #import "style"
 
 ReorderDragMotion :: struct {
-    dragging: i32
-    scroll_offset: i32
+    dragging: s32
+    scroll_offset: s32
 }
 
 ReorderLifecycleDecision :: struct {
@@ -24,56 +23,58 @@ ReorderReleaseDecision :: struct {
     cancel_active: bool
 }
 
-ReorderMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
-    return (i32)(value * scale)
+ReorderMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
+    return cast(s32)(value * scale)
 }
 
-ReorderMetricFloat :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> float {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+ReorderMetricFloat :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32) -> float32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
     return value * scale
 }
 
-ReorderMetricsFor :: (scale: float, handle_width: i32, drag_threshold: i32,
-    auto_scroll_margin: i32, auto_scroll_step: i32, handle: StyleFrame,
-    placeholder: StyleFrame) -> ReorderMetrics #export {
+#program_export
+ReorderMetricsFor :: (scale: float32, handle_width: s32, drag_threshold: s32,
+    auto_scroll_margin: s32, auto_scroll_step: s32, handle: StyleFrame,
+    placeholder: StyleFrame) -> ReorderMetrics {
     metrics: ReorderMetrics
 
     metrics.handle_width = handle_width
     if metrics.handle_width <= 0 {
         metrics.handle_width = ReorderMetric(handle.value.fields,
-            (u32)StyleContentOffset, handle.value.offset_x, 36.0, scale)
+            cast(u32)StyleContentOffset, handle.value.offset_x, 36.0, scale)
     }
 
     metrics.drag_threshold = drag_threshold
     if metrics.drag_threshold <= 0 {
         metrics.drag_threshold = ReorderMetric(handle.value.fields,
-            (u32)StyleContentOffset, handle.value.offset_y, 5.0, scale)
+            cast(u32)StyleContentOffset, handle.value.offset_y, 5.0, scale)
     }
 
     metrics.auto_scroll_margin = auto_scroll_margin
     if metrics.auto_scroll_margin <= 0 {
         metrics.auto_scroll_margin = ReorderMetric(placeholder.value.fields,
-            (u32)StyleContentOffset, placeholder.value.offset_x, 34.0, scale)
+            cast(u32)StyleContentOffset, placeholder.value.offset_x, 34.0, scale)
     }
 
     metrics.auto_scroll_step = auto_scroll_step
     if metrics.auto_scroll_step <= 0 {
         metrics.auto_scroll_step = ReorderMetric(placeholder.value.fields,
-            (u32)StyleContentOffset, placeholder.value.offset_y, 12.0, scale)
+            cast(u32)StyleContentOffset, placeholder.value.offset_y, 12.0, scale)
     }
 
     return metrics
 }
 
-ReorderHandleBounds :: (item_bounds: Rectangle, handle_width: i32,
-    handle_height: i32) -> Rectangle #export {
+#program_export
+ReorderHandleBounds :: (item_bounds: Rectangle, handle_width: s32,
+    handle_height: s32) -> Rectangle {
     handle: Rectangle = item_bounds
-    handle.width = (float)handle_width
+    handle.width = cast(float32)handle_width
     if handle_height > 0 {
-        limit: float = (float)handle_height
+        limit: float32 = cast(float32)handle_height
         if handle.height > limit {
             handle.height = limit
         }
@@ -81,27 +82,28 @@ ReorderHandleBounds :: (item_bounds: Rectangle, handle_width: i32,
     return handle
 }
 
-ReorderHandlePaintFor :: (bounds: Rectangle, scale: float,
-    handle: StyleFrame) -> ReorderHandlePaint #export {
+#program_export
+ReorderHandlePaintFor :: (bounds: Rectangle, scale: float32,
+    handle: StyleFrame) -> ReorderHandlePaint {
     paint: ReorderHandlePaint
-    w: i32 = (i32)bounds.width
-    h: i32 = (i32)bounds.height
+    w: s32 = cast(s32)bounds.width
+    h: s32 = cast(s32)bounds.height
     if w <= 0 || h <= 0 { return paint }
 
-    dot: i32 = ReorderMetric(handle.value.fields, (u32)StyleIconSize,
+    dot: s32 = ReorderMetric(handle.value.fields, cast(u32)StyleIconSize,
         handle.value.icon_size, 3.0, scale)
-    gap: i32 = ReorderMetric(handle.value.fields, (u32)StyleGap,
+    gap: s32 = ReorderMetric(handle.value.fields, cast(u32)StyleGap,
         handle.value.gap, 4.0, scale)
-    col_gap: i32 = ReorderMetric(handle.value.fields, (u32)StylePaddingX,
+    col_gap: s32 = ReorderMetric(handle.value.fields, cast(u32)StylePaddingX,
         handle.value.padding_x, 8.0, scale)
     if dot <= 0 { return paint }
     if gap < 0 { gap = 0 }
     if col_gap < 0 { col_gap = 0 }
 
-    total_w: i32 = dot * 2 + col_gap
-    total_h: i32 = dot * 3 + gap * 2
-    start_x: i32 = (i32)bounds.x + (w - total_w) / 2
-    start_y: i32 = (i32)bounds.y + (h - total_h) / 2
+    total_w: s32 = dot * 2 + col_gap
+    total_h: s32 = dot * 3 + gap * 2
+    start_x: s32 = cast(s32)bounds.x + (w - total_w) / 2
+    start_y: s32 = cast(s32)bounds.y + (h - total_h) / 2
 
     paint.dot0 = ReorderDotBounds(start_x, start_y, dot)
     paint.dot1 = ReorderDotBounds(start_x + dot + col_gap, start_y, dot)
@@ -113,51 +115,52 @@ ReorderHandlePaintFor :: (bounds: Rectangle, scale: float,
     return paint
 }
 
-ReorderDotBounds :: (x: i32, y: i32, size: i32) -> Rectangle {
+ReorderDotBounds :: (x: s32, y: s32, size: s32) -> Rectangle {
     bounds: Rectangle
-    bounds.x = (float)x
-    bounds.y = (float)y
-    bounds.width = (float)size
-    bounds.height = (float)size
+    bounds.x = cast(float32)x
+    bounds.y = cast(float32)y
+    bounds.width = cast(float32)size
+    bounds.height = cast(float32)size
     return bounds
 }
 
-ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float,
-    placeholder: StyleFrame) -> ReorderPlaceholderPaint #export {
+#program_export
+ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float32,
+    placeholder: StyleFrame) -> ReorderPlaceholderPaint {
     paint: ReorderPlaceholderPaint
-    x: i32 = (i32)bounds.x
-    y: i32 = (i32)bounds.y
-    w: i32 = (i32)bounds.width
-    h: i32 = (i32)bounds.height
+    x: s32 = cast(s32)bounds.x
+    y: s32 = cast(s32)bounds.y
+    w: s32 = cast(s32)bounds.width
+    h: s32 = cast(s32)bounds.height
     if w <= 0 || h <= 0 { return paint }
 
-    line_h: i32 = ReorderMetric(placeholder.value.fields,
-        (u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
+    line_h: s32 = ReorderMetric(placeholder.value.fields,
+        cast(u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
     if line_h < 0 { line_h = 0 }
 
-    threshold: i32 = ReorderMetric(placeholder.value.fields,
-        (u32)StyleIconSize, placeholder.value.icon_size, 32.0, scale)
+    threshold: s32 = ReorderMetric(placeholder.value.fields,
+        cast(u32)StyleIconSize, placeholder.value.icon_size, 32.0, scale)
     if h >= threshold {
-        inset: i32 = ReorderMetric(placeholder.value.fields,
-            (u32)StylePaddingX, placeholder.value.padding_x, 3.0, scale)
-        slot_w: i32 = w - inset * 2
-        slot_h: i32 = h - inset * 2
+        inset: s32 = ReorderMetric(placeholder.value.fields,
+            cast(u32)StylePaddingX, placeholder.value.padding_x, 3.0, scale)
+        slot_w: s32 = w - inset * 2
+        slot_h: s32 = h - inset * 2
         if slot_w <= 0 || slot_h <= 0 { return paint }
-        paint.slot_bounds.x = (float)(x + inset)
-        paint.slot_bounds.y = (float)(y + inset)
-        paint.slot_bounds.width = (float)slot_w
-        paint.slot_bounds.height = (float)slot_h
+        paint.slot_bounds.x = cast(float32)(x + inset)
+        paint.slot_bounds.y = cast(float32)(y + inset)
+        paint.slot_bounds.width = cast(float32)slot_w
+        paint.slot_bounds.height = cast(float32)slot_h
         paint.stroke_width = ReorderMetricFloat(placeholder.value.fields,
-            (u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
+            cast(u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
         if paint.stroke_width < 0.0 { paint.stroke_width = 0.0 }
         paint.radius = 0.12
-        if (placeholder.value.fields & (u32)StyleRadius) != (u32)0 &&
+        if (placeholder.value.fields & cast(u32)StyleRadius) != cast(u32)0 &&
            placeholder.value.radius >= 0.0 {
             paint.radius = placeholder.value.radius
         }
         paint.segments = 10
         paint.fill_alpha = 0.10
-        if (placeholder.value.fields & (u32)StyleOpacity) != (u32)0 &&
+        if (placeholder.value.fields & cast(u32)StyleOpacity) != cast(u32)0 &&
            placeholder.value.opacity >= 0.0 {
             paint.fill_alpha = placeholder.value.opacity
         }
@@ -165,29 +168,33 @@ ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float,
         return paint
     }
 
-    paint.line_bounds.x = (float)x
-    paint.line_bounds.y = (float)(y + h / 2 - line_h / 2)
-    paint.line_bounds.width = (float)w
-    paint.line_bounds.height = (float)line_h
+    paint.line_bounds.x = cast(float32)x
+    paint.line_bounds.y = cast(float32)(y + h / 2 - line_h / 2)
+    paint.line_bounds.width = cast(float32)w
+    paint.line_bounds.height = cast(float32)line_h
     return paint
 }
 
-ReorderDraggedCenterY :: (pointer_y: i32, press_offset_y: i32,
-    item_height: float) -> i32 #export {
-    return pointer_y - press_offset_y + (i32)(item_height / 2.0)
+#program_export
+ReorderDraggedCenterY :: (pointer_y: s32, press_offset_y: s32,
+    item_height: float32) -> s32 {
+    return pointer_y - press_offset_y + cast(s32)(item_height / 2.0)
 }
 
-ReorderItemMatches :: (candidate_id: i32, item_id: i32) -> bool #export {
+#program_export
+ReorderItemMatches :: (candidate_id: s32, item_id: s32) -> bool {
     return candidate_id == item_id
 }
 
-ReorderTargetIncludesItem :: (pointer_y: i32, item_bounds: Rectangle) -> bool #export {
-    center_y: i32 = (i32)(item_bounds.y + item_bounds.height / 2.0)
+#program_export
+ReorderTargetIncludesItem :: (pointer_y: s32, item_bounds: Rectangle) -> bool {
+    center_y: s32 = cast(s32)(item_bounds.y + item_bounds.height / 2.0)
     return pointer_y > center_y
 }
 
-ReorderTargetStep :: (target: i32, index: i32, active_index: i32,
-    pointer_y: i32, item_bounds: Rectangle) -> i32 #export {
+#program_export
+ReorderTargetStep :: (target: s32, index: s32, active_index: s32,
+    pointer_y: s32, item_bounds: Rectangle) -> s32 {
     if index == active_index { return target }
     if ReorderTargetIncludesItem(pointer_y, item_bounds) {
         return target + 1
@@ -195,15 +202,17 @@ ReorderTargetStep :: (target: i32, index: i32, active_index: i32,
     return target
 }
 
-ReorderTargetIndexFor :: (target: i32, item_count: i32) -> i32 #export {
+#program_export
+ReorderTargetIndexFor :: (target: s32, item_count: s32) -> s32 {
     if item_count <= 0 { return -1 }
     if target < 0 { return 0 }
-    limit: i32 = item_count - 1
+    limit: s32 = item_count - 1
     if target > limit { return limit }
     return target
 }
 
-ReorderListResultDefault :: (pointer_y: i32) -> ReorderListResult #export {
+#program_export
+ReorderListResultDefault :: (pointer_y: s32) -> ReorderListResult {
     result: ReorderListResult
     result.from_index = -1
     result.to_index = -1
@@ -213,8 +222,9 @@ ReorderListResultDefault :: (pointer_y: i32) -> ReorderListResult #export {
     return result
 }
 
-ReorderListPressResultFor :: (index: i32, item_id: i32,
-    pointer_y: i32) -> ReorderListResult #export {
+#program_export
+ReorderListPressResultFor :: (index: s32, item_id: s32,
+    pointer_y: s32) -> ReorderListResult {
     result: ReorderListResult = ReorderListResultDefault(pointer_y)
     result.active = 1
     result.from_index = index
@@ -225,9 +235,10 @@ ReorderListPressResultFor :: (index: i32, item_id: i32,
     return result
 }
 
-ReorderListActiveResultFor :: (from_index: i32, active_index: i32,
-    target_index: i32, active_id: i32, pointer_y: i32,
-    press_y: i32) -> ReorderListResult #export {
+#program_export
+ReorderListActiveResultFor :: (from_index: s32, active_index: s32,
+    target_index: s32, active_id: s32, pointer_y: s32,
+    press_y: s32) -> ReorderListResult {
     result: ReorderListResult = ReorderListResultDefault(pointer_y)
     result.active = 1
     result.from_index = from_index
@@ -239,8 +250,9 @@ ReorderListActiveResultFor :: (from_index: i32, active_index: i32,
     return result
 }
 
+#program_export
 ReorderListCommitResultFor :: (active: ReorderListResult,
-    item_count: i32) -> ReorderListResult #export {
+    item_count: s32) -> ReorderListResult {
     result: ReorderListResult = active
     result.dragging = 0
     result.from_index = active.active_index
@@ -252,9 +264,10 @@ ReorderListCommitResultFor :: (active: ReorderListResult,
     return result
 }
 
+#program_export
 ReorderForeignActiveListFor :: (has_active_list: bool,
-    active_list_id: i32, list_id: i32,
-    mouse_down: bool) -> ReorderLifecycleDecision #export {
+    active_list_id: s32, list_id: s32,
+    mouse_down: bool) -> ReorderLifecycleDecision {
     decision: ReorderLifecycleDecision
     if has_active_list && active_list_id != list_id {
         decision.ignore_list = true
@@ -265,8 +278,9 @@ ReorderForeignActiveListFor :: (has_active_list: bool,
     return decision
 }
 
-ReorderActiveItemLifecycleFor :: (active_index: i32, item_count: i32,
-    has_items: bool, active_item_disabled: bool) -> ReorderLifecycleDecision #export {
+#program_export
+ReorderActiveItemLifecycleFor :: (active_index: s32, item_count: s32,
+    has_items: bool, active_item_disabled: bool) -> ReorderLifecycleDecision {
     decision: ReorderLifecycleDecision
     if active_index < 0 || active_index >= item_count || !has_items ||
         active_item_disabled {
@@ -276,17 +290,19 @@ ReorderActiveItemLifecycleFor :: (active_index: i32, item_count: i32,
     return decision
 }
 
-ReorderPressFor :: (list_id: i32, has_items: bool, item_count: i32,
+#program_export
+ReorderPressFor :: (list_id: s32, has_items: bool, item_count: s32,
     mouse_pressed: bool, captured: bool, pointer_owner_none: bool,
-    inside_bounds: bool) -> ReorderPressDecision #export {
+    inside_bounds: bool) -> ReorderPressDecision {
     decision: ReorderPressDecision
     decision.can_press = list_id != 0 && has_items && item_count > 0 &&
         mouse_pressed && !captured && pointer_owner_none && inside_bounds
     return decision
 }
 
+#program_export
 ReorderReleaseFor :: (mouse_released: bool,
-    was_dragging: bool) -> ReorderReleaseDecision #export {
+    was_dragging: bool) -> ReorderReleaseDecision {
     decision: ReorderReleaseDecision
     decision.capture_input = mouse_released
     decision.commit = mouse_released && was_dragging
@@ -294,13 +310,14 @@ ReorderReleaseFor :: (mouse_released: bool,
     return decision
 }
 
-ReorderDragMotionFor :: (pointer_y: i32, press_y: i32, was_dragging: i32,
-    bounds: Rectangle, viewport_top: i32, viewport_bottom: i32,
-    scroll_offset: i32, max_scroll: i32,
-    metrics: ReorderMetrics) -> ReorderDragMotion #export {
+#program_export
+ReorderDragMotionFor :: (pointer_y: s32, press_y: s32, was_dragging: s32,
+    bounds: Rectangle, viewport_top: s32, viewport_bottom: s32,
+    scroll_offset: s32, max_scroll: s32,
+    metrics: ReorderMetrics) -> ReorderDragMotion {
     motion: ReorderDragMotion
-    dy: i32 = pointer_y - press_y
-    abs_dy: i32 = dy
+    dy: s32 = pointer_y - press_y
+    abs_dy: s32 = dy
     if abs_dy < 0 { abs_dy = -abs_dy }
 
     motion.dragging = was_dragging
@@ -313,10 +330,10 @@ ReorderDragMotionFor :: (pointer_y: i32, press_y: i32, was_dragging: i32,
         return motion
     }
 
-    view_top: i32 = viewport_top
-    if view_top <= 0 { view_top = (i32)bounds.y }
-    view_bottom: i32 = viewport_bottom
-    if view_bottom <= 0 { view_bottom = (i32)(bounds.y + bounds.height) }
+    view_top: s32 = viewport_top
+    if view_top <= 0 { view_top = cast(s32)bounds.y }
+    view_bottom: s32 = viewport_bottom
+    if view_bottom <= 0 { view_bottom = cast(s32)(bounds.y + bounds.height) }
 
     if pointer_y < view_top + metrics.auto_scroll_margin {
         motion.scroll_offset -= metrics.auto_scroll_step

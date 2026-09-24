@@ -7,27 +7,27 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "tree"
 #import "widget_kind"
 
-Frame :: () -> i32 #export {
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
-    viewport: i32 = TreeSubmit((u64)2, 0, WidgetKindCard,
-        (Rectangle){0.0, 0.0, 90.0, 90.0})
-    TreeSetChildClip(viewport, (Rectangle){20.0, 20.0, 40.0, 40.0})
-    child: i32 = TreeSubmit((u64)3, viewport, WidgetKindText,
-        (Rectangle){10.0, 10.0, 70.0, 70.0})
-    ink: Color = ColorFromPacked((u32)0x171717ff)
+#program_export
+Frame :: () -> s32 {
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    viewport: s32 = TreeSubmit(cast(u64)2, 0, WidgetKindCard,
+        Rectangle.{0.0, 0.0, 90.0, 90.0})
+    TreeSetChildClip(viewport, Rectangle.{20.0, 20.0, 40.0, 40.0})
+    child: s32 = TreeSubmit(cast(u64)3, viewport, WidgetKindText,
+        Rectangle.{10.0, 10.0, 70.0, 70.0})
+    ink: Color = ColorFromPacked(cast(u32)0x171717ff)
     PaintLabel(child, "Clip", 10, 10, 16, ink)
-    PaintImage(child, "", (u32)7,
-        (Rectangle){0.0, 0.0, 70.0, 70.0},
-        (Rectangle){10.0, 10.0, 70.0, 70.0},
-        (Rectangle){10.0, 10.0, 70.0, 70.0},
-        (Vector2){0.0, 0.0}, 0.0, 0.0, ink)
+    PaintImage(child, "", cast(u32)7,
+        Rectangle.{0.0, 0.0, 70.0, 70.0},
+        Rectangle.{10.0, 10.0, 70.0, 70.0},
+        Rectangle.{10.0, 10.0, 70.0, 70.0},
+        Vector2.{0.0, 0.0}, 0.0, 0.0, ink)
     if !TreeFinish() { return -1 }
     PaintFlush()
     return 42

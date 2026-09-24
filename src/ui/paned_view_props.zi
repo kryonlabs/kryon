@@ -1,12 +1,12 @@
 #import "geometry"
 
 DropZone :: enum {
-    DropNone = 0
-    DropCenter = 1
-    DropLeft = 2
-    DropRight = 3
-    DropTop = 4
-    DropBottom = 5
+    DropNone :: 0
+    DropCenter :: 1
+    DropLeft :: 2
+    DropRight :: 3
+    DropTop :: 4
+    DropBottom :: 5
 }
 
 PanedViewProps :: struct {

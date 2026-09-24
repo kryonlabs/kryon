@@ -8,22 +8,22 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "progress"
 #import "progress_raster"
 
-Answer :: () -> i32 #export {
-    bounds: Rectangle = (Rectangle){10.0, 20.0, 100.0, 20.0}
+#program_export
+Answer :: () -> s32 {
+    bounds: Rectangle = Rectangle.{10.0, 20.0, 100.0, 20.0}
     paint: ProgressPaint
-    paint.layout.fill_bounds = (Rectangle){10.0, 20.0, 25.0, 20.0}
+    paint.layout.fill_bounds = Rectangle.{10.0, 20.0, 25.0, 20.0}
     paint.layout.label_x = 40.9
     paint.layout.label_y = 25.9
-    paint.track_color = (u32)0x11223344
-    paint.fill_color = (u32)0x55667788
-    paint.border_color = (u32)0x99aabbcc
-    paint.label_color = (u32)0x10203080
-    paint.filled_label_color = (u32)0x405060c0
+    paint.track_color = cast(u32)0x11223344
+    paint.fill_color = cast(u32)0x55667788
+    paint.border_color = cast(u32)0x99aabbcc
+    paint.label_color = cast(u32)0x10203080
+    paint.filled_label_color = cast(u32)0x405060c0
     paint.radius = 5.0
     paint.border_width = 2.0
     PaintProgress(bounds, paint, "50%", 14, 0.5)

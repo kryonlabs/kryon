@@ -22,19 +22,18 @@ modules call.
 ## Current implementation
 
 Every maintained `.zi` module in `src/ui/` appears in
-[`src/ui/modules.txt`](../src/ui/modules.txt). The current Ziran syntax
-transition has migrated 106 of the 191 modules. That subset passes source
-checking, strict C, C++, and Go generation, native C/C++ compilation, and Go
-package compilation. The full Kryon `make all` gate remains red until the
-other 85 modules and the backend host declarations use current Ziran syntax.
-Platform hosts and downstream applications have not yet completed their
-integration with the library.
+[`src/ui/modules.txt`](../src/ui/modules.txt). All 191 modules use current
+Ziran syntax. `make all` passes source checking, checked `.zir` output,
+strict C, C++, and Go generation, native C/C++ compilation, and Go package
+compilation. Backend host declarations also compile with the current Ziran
+toolchain. Platform hosts and downstream applications have not yet completed
+their integration with the library.
 
-The existing C and Go host implementations are migration material. They are
-not included by `make` and do not presently provide a linked application UI.
-The last complete archive was built with the older Ziran compiler. The current
-compiler does not yet produce a complete archive; platform host bindings and
-application integration remain to be completed after source migration.
+The C and Go platform implementations from the prior runtime remain migration
+material. They are not included by `make` and do not presently provide a
+linked application UI. The current archives contain all checked UI modules
+and the portable host adapters, but application integration and supported
+renderer paths still need completion.
 
 ## Module rule
 

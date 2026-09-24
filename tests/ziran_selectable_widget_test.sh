@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "selectable"
@@ -21,14 +20,15 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     props: SelectableProps
-    props.key = (u64)7
+    props.key = cast(u64)7
     props.id = 7
     props.class_name = 9
-    props.bounds = (Rectangle){10.0, 20.0, 100.0, 36.0}
+    props.bounds = Rectangle.{10.0, 20.0, 100.0, 36.0}
     props.label = "Alpha"
     if phase == 2 { props.selected = true }
     if phase == 3 { props.disabled = true }
@@ -39,13 +39,13 @@ Frame :: () -> i32 #export {
         rule.selector = StyleDefaultSelector()
         rule.selector.kind = StyleKindSelectable()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground | (u32)StyleForeground
-        rule.style.background = (u32)0x123456ff
-        rule.style.foreground = (u32)0xaabbccff
+        rule.style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground
+        rule.style.background = cast(u32)0x123456ff
+        rule.style.foreground = cast(u32)0xaabbccff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 140.0, 80.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 80.0})
     result: SelectableToggleResult = Selectable(props)
     if !EndTree() || TreeCount() != 2 ||
         TreeNodeAt(1).kind != WidgetKindSelectable ||
@@ -53,19 +53,19 @@ Frame :: () -> i32 #export {
         TreeNodeAt(1).selected != result.selected { return -10 }
     if phase == 0 {
         if result.selected || result.changed { return -1 }
-        TreePointerUpdate((PointerFrame){50.0, 38.0, true, true, false})
-        TreePointerUpdate((PointerFrame){50.0, 38.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{50.0, 38.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{50.0, 38.0, false, false, true})
     } else if phase == 1 {
         if !result.selected || !result.changed { return -2 }
-        TreePointerUpdate((PointerFrame){50.0, 38.0, true, true, false})
-        TreePointerUpdate((PointerFrame){50.0, 38.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{50.0, 38.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{50.0, 38.0, false, false, true})
     } else if phase == 2 {
         if result.selected || !result.changed { return -3 }
     } else {
         if result.selected || result.changed ||
             TreeHitAt(50.0, 38.0) != -1 { return -4 }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

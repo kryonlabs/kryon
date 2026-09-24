@@ -1,57 +1,58 @@
-#module "menu_props"
 #import "geometry"
+host_api :: #system_library "host_api";
 
 MenuItemKind :: enum {
-    MenuCommand = 0
-    MenuCheck = 1
-    MenuRadio = 2
-    MenuSeparator = 3
-    MenuSubmenu = 4
+    MenuCommand :: 0
+    MenuCheck :: 1
+    MenuRadio :: 2
+    MenuSeparator :: 3
+    MenuSubmenu :: 4
 }
 
 MenuMode :: enum {
-    MenuModeBar = 0
-    MenuModePopup = 1
-    MenuModeContext = 2
+    MenuModeBar :: 0
+    MenuModePopup :: 1
+    MenuModeContext :: 2
 }
 
 MenuItem :: struct {
     kind: MenuItemKind
-    label: const char*
-    accelerator: const char*
-    id: i32
+    label: string
+    accelerator: string
+    id: s32
     disabled: bool
     checked: bool
-    submenu: const MenuItem*
-    submenu_count: i32
+    submenu: *MenuItem
+    submenu_count: s32
 }
 
 MenuGroup :: struct {
     bounds: Rectangle
-    label: const char*
-    items: const MenuItem*
-    item_count: i32
+    label: string
+    items: *MenuItem
+    item_count: s32
 }
 
 MenuResult :: struct {
-    activated_id: i32
-    open_index: i32
+    activated_id: s32
+    open_index: s32
 }
 
 MenuProps :: struct {
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     mode: MenuMode
     bounds: Rectangle
     trigger: Rectangle
-    menus: const MenuGroup*
-    menu_count: i32
-    items: const MenuItem*
-    item_count: i32
-    open_index: i32*
-    open: i32*
-    x: i32*
-    y: i32*
+    menus: *MenuGroup
+    menu_count: s32
+    items: *MenuItem
+    item_count: s32
+    open_index: *s32
+    open: *s32
+    x: *s32
+    y: *s32
 }
 
-Menu :: (menu: MenuProps) -> MenuResult #extern #export
+#program_export
+Menu :: (menu: MenuProps) -> MenuResult #foreign host_api;

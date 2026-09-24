@@ -9,12 +9,12 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/popup_ownership.zi" "$work/popup_ownership.zi"
 cat > "$work/use_ownership.zi" <<'EOF'
-#module "use_ownership"
 #import "popup_ownership"
 
-Answer :: () -> i32 #export {
-    high: u64 = (u64)0x8000000000000000
-    latest: u64 = (u64)0xffffffffffffffff
+#program_export
+Answer :: () -> s32 {
+    high: u64 = cast(u64)0x8000000000000000
+    latest: u64 = cast(u64)0xffffffffffffffff
     order: PopupOrder
     order.phase = 2
     above: PopupOrder = PopupOrderAdvance(order, true, true,

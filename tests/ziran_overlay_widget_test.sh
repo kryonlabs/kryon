@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "drawing_props"
 #import "geometry"
 #import "overlay_props"
@@ -18,31 +17,32 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     props: DismissibleOverlayProps
-    props.key = (u64)20
-    props.bounds = (Rectangle){120.0, 20.0, 80.0, 70.0}
-    props.scrim = (Color){0, 0, 0, 160}
+    props.key = cast(u64)20
+    props.bounds = Rectangle.{120.0, 20.0, 80.0, 70.0}
+    props.scrim = Color.{0, 0, 0, 160}
     if phase == 5 {
         props.dismiss_disabled = true
         props.view_width = 240
         props.view_height = 120
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 240.0, 120.0})
-    beneath: i32 = TreeSubmitCurrent((u64)10,
-        WidgetKindButton, (Rectangle){10.0, 10.0, 80.0, 30.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 120.0})
+    beneath: s32 = TreeSubmitCurrent(cast(u64)10,
+        WidgetKindButton, Rectangle.{10.0, 10.0, 80.0, 30.0})
     TreeSetInteractive(beneath, false, false, 10)
     overlay: DismissibleOverlayResult = DismissibleOverlay(props)
     if overlay.node < 0 || overlay.panel_node < 0 { return -1 }
-    child: i32 = TreeSubmit((u64)3, overlay.panel_node,
-        WidgetKindButton, (Rectangle){130.0, 30.0, 50.0, 20.0})
+    child: s32 = TreeSubmit(cast(u64)3, overlay.panel_node,
+        WidgetKindButton, Rectangle.{130.0, 30.0, 50.0, 20.0})
     TreeSetInteractive(child, false, false, 3)
     child_activation: bool = TreeTakeActivationAt(
-        TreeFind((u64)3, OverlayPanelKey(), WidgetKindButton))
+        TreeFind(cast(u64)3, OverlayPanelKey(), WidgetKindButton))
     beneath_activation: bool = TreeTakeActivationAt(
-        TreeFind((u64)10, (u64)1, WidgetKindButton))
+        TreeFind(cast(u64)10, cast(u64)1, WidgetKindButton))
     if !TreeFinish() || TreeCount() != 6 ||
         overlay.node != 2 || overlay.panel_node != 4 ||
         TreeHitAt(20.0, 20.0) != 3 ||
@@ -52,34 +52,34 @@ Frame :: () -> i32 #export {
     if phase == 0 {
         if overlay.closed || overlay.release_consumed ||
             child_activation { return -3 }
-        TreePointerUpdate((PointerFrame){20.0, 20.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 20.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 20.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 20.0, false, false, true})
     } else if phase == 1 {
         if !overlay.closed || !overlay.outside_released ||
             !overlay.release_consumed || child_activation { return -4 }
-        TreePointerUpdate((PointerFrame){135.0, 35.0, true, true, false})
-        TreePointerUpdate((PointerFrame){135.0, 35.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{135.0, 35.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{135.0, 35.0, false, false, true})
     } else if phase == 2 {
         if overlay.closed || overlay.release_consumed ||
             !child_activation { return -5 }
-        TreePointerUpdate((PointerFrame){190.0, 80.0, true, true, false})
-        TreePointerUpdate((PointerFrame){190.0, 80.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{190.0, 80.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{190.0, 80.0, false, false, true})
     } else if phase == 3 {
         if overlay.closed || overlay.release_consumed ||
             child_activation { return -6 }
-        TreePointerUpdate((PointerFrame){190.0, 80.0, true, true, false})
-        TreePointerUpdate((PointerFrame){250.0, 130.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{190.0, 80.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{250.0, 130.0, false, false, true})
     } else if phase == 4 {
         if !overlay.closed || !overlay.outside_released ||
             !overlay.release_consumed { return -7 }
-        TreePointerUpdate((PointerFrame){20.0, 20.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 20.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 20.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 20.0, false, false, true})
     } else {
         if overlay.closed || overlay.release_consumed ||
             child_activation { return -8 }
     }
     PaintFlush()
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

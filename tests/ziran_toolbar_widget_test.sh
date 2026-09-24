@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "dropdown_props"
 #import "geometry"
 #import "paint_queue"
@@ -22,13 +21,14 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-open_state :: bool #global
-selected_state :: i32 #global
-highlight_state :: i32 #global
-scroll_state :: i32 #global
+phase: s32;
+open_state: bool;
+selected_state: s32;
+highlight_state: s32;
+scroll_state: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -37,24 +37,24 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindToolbar()
         rule.selector.role = ToolbarActionRole()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
     options: [2]DropdownOption
-    options[0].key = (u64)41
+    options[0].key = cast(u64)41
     options[0].label = "One"
-    options[1].key = (u64)42
+    options[1].key = cast(u64)42
     options[1].label = "Two"
     actions: [2]ToolbarAction
-    actions[0].key = (u64)51
+    actions[0].key = cast(u64)51
     actions[0].label = "Act"
-    actions[1].key = (u64)52
+    actions[1].key = cast(u64)52
     actions[1].label = "Off"
     actions[1].disabled = true
     props: ToolbarProps
-    props.key = (u64)10
+    props.key = cast(u64)10
     props.id = 10
     props.class_name = 9
     props.x = 10
@@ -62,13 +62,13 @@ Frame :: () -> i32 #export {
     props.width = 300
     props.height = 40
     props.draw_menu = true
-    props.dropdown.key = (u64)11
+    props.dropdown.key = cast(u64)11
     props.dropdown.id = 11
     props.dropdown.selected_index = selected_state
     props.dropdown.highlight_index = highlight_state
     props.dropdown.scroll_offset = scroll_state
     props.dropdown.open = open_state
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 340.0, 180.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 340.0, 180.0})
     result: ToolbarResult = Toolbar(props, options[0:2],
         actions[0:2])
     if !TreeFinish() || result.node != 1 ||
@@ -82,25 +82,25 @@ Frame :: () -> i32 #export {
             result.selected_menu_item != -1 ||
             TreeHitAt(230.0, 20.0) != 2 ||
             TreeHitAt(270.0, 20.0) != -1 { return -1 }
-        TreePointerUpdate((PointerFrame){230.0, 20.0,
+        TreePointerUpdate(PointerFrame.{230.0, 20.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){230.0, 20.0,
+        TreePointerUpdate(PointerFrame.{230.0, 20.0,
             false, false, true})
     } else if phase == 1 {
         if result.clicked_action != 0 || result.dropdown.open ||
             result.selected_menu_item != -1 { return -2 }
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
             result.clicked_action != -1 || TreeCount() != 10 {
             return -3
         }
-        TreePointerUpdate((PointerFrame){20.0, 100.0,
+        TreePointerUpdate(PointerFrame.{20.0, 100.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 100.0,
+        TreePointerUpdate(PointerFrame.{20.0, 100.0,
             false, false, true})
     } else if phase == 3 {
         if result.dropdown.open || !result.dropdown.changed ||
@@ -113,7 +113,7 @@ Frame :: () -> i32 #export {
     selected_state = result.dropdown.selected_index
     highlight_state = result.dropdown.highlight_index
     scroll_state = result.dropdown.scroll_offset
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "modal"
@@ -21,9 +20,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -32,13 +32,13 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindModal()
         rule.selector.role = ModalPanelRole()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
     props: ModalFrameProps
-    props.key = (u64)11
+    props.key = cast(u64)11
     props.id = 11
     props.class_name = 9
     props.title = "Settings"
@@ -48,11 +48,11 @@ Frame :: () -> i32 #export {
     props.has_right_action = phase <= 2
     props.right_label = "Close"
     if phase >= 3 {
-        props.bounds = (Rectangle){60.0, 20.0, 180.0, 120.0}
+        props.bounds = Rectangle.{60.0, 20.0, 180.0, 120.0}
         props.has_left_action = true
         props.left_label = "Back"
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 220.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
     result: ModalFrameResult = ModalFrame(props)
     if !TreeFinish() || result.node != 1 ||
         result.panel_node != 3 ||
@@ -66,16 +66,16 @@ Frame :: () -> i32 #export {
             result.layout.content.x != 68.0 ||
             TreeNodeAt(4).semantic_label != "Close" ||
             TreeHitAt(220.0, 60.0) != 4 { return -1 }
-        TreePointerUpdate((PointerFrame){220.0, 60.0,
+        TreePointerUpdate(PointerFrame.{220.0, 60.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){220.0, 60.0,
+        TreePointerUpdate(PointerFrame.{220.0, 60.0,
             false, false, true})
     } else if phase == 1 {
         if !result.right_clicked || result.dismissed ||
             TreeCount() != 5 { return -2 }
-        TreePointerUpdate((PointerFrame){10.0, 10.0,
+        TreePointerUpdate(PointerFrame.{10.0, 10.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){10.0, 10.0,
+        TreePointerUpdate(PointerFrame.{10.0, 10.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dismissed || result.right_clicked ||
@@ -88,16 +88,16 @@ Frame :: () -> i32 #export {
             result.layout.content.x != 78.0 ||
             TreeNodeAt(4).semantic_label != "Back" ||
             TreeHitAt(80.0, 40.0) != 4 { return -4 }
-        TreePointerUpdate((PointerFrame){80.0, 40.0,
+        TreePointerUpdate(PointerFrame.{80.0, 40.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){80.0, 40.0,
+        TreePointerUpdate(PointerFrame.{80.0, 40.0,
             false, false, true})
     } else if phase == 4 {
         if !result.left_clicked || result.dismissed ||
             TreeCount() != 5 { return -5 }
     }
     PaintFlush()
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

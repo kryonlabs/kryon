@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "modal_props"
@@ -17,10 +16,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-FindLabel :: (label: string) -> i32 {
-    index: i32 = 0
+FindLabel :: (label: string) -> s32 {
+    index: s32 = 0
     while index < TreeCount() {
         if TreeNodeAt(index).semantic_label == label {
             return index
@@ -30,33 +29,34 @@ FindLabel :: (label: string) -> i32 {
     return -1
 }
 
-Click :: (index: i32) -> bool {
+Click :: (index: s32) -> bool {
     if index < 0 { return false }
     bounds: Rectangle = TreeNodeAt(index).bounds
-    x: float = bounds.x + bounds.width * 0.5
-    y: float = bounds.y + bounds.height * 0.5
-    TreePointerUpdate((PointerFrame){x, y, true, true, false})
-    TreePointerUpdate((PointerFrame){x, y, false, false, true})
+    x: float32 = bounds.x + bounds.width * 0.5
+    y: float32 = bounds.y + bounds.height * 0.5
+    TreePointerUpdate(PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(PointerFrame.{x, y, false, false, true})
     return true
 }
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     actions: [3]ActionModalAction
     actions[0].label = "Cancel"
-    actions[0].tone = (ButtonTone)ButtonToneNeutral
-    actions[0].emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+    actions[0].tone = cast(ButtonTone)ButtonToneNeutral
+    actions[0].emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
     actions[1].label = "Delete"
-    actions[1].tone = (ButtonTone)ButtonToneAccent
-    actions[1].emphasis = (ButtonEmphasis)ButtonEmphasisFilled
+    actions[1].tone = cast(ButtonTone)ButtonToneAccent
+    actions[1].emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
     actions[2].label = "Details"
     actions[2].disabled = true
     props: ActionModalProps
-    props.key = (u64)42
+    props.key = cast(u64)42
     props.title = "Confirm"
     props.message = "Delete the selected file and every associated version?"
     props.show_close = true
     props.close_label = "Close"
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 280.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 280.0})
     result: ActionModalResult = ActionModal(props, actions[0:3])
     if !TreeFinish() || result.node != 1 { return -20 }
     if phase != 3 && phase != 5 && (
@@ -78,9 +78,9 @@ Frame :: () -> i32 #export {
             !Click(FindLabel("Details")) { return -2 }
     } else if phase == 2 {
         if result.action != 0 { return -3 }
-        TreePointerUpdate((PointerFrame){5.0, 5.0,
+        TreePointerUpdate(PointerFrame.{5.0, 5.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){5.0, 5.0,
+        TreePointerUpdate(PointerFrame.{5.0, 5.0,
             false, false, true})
     } else if phase == 3 {
         if result.action != -1 { return -4 }
@@ -90,7 +90,7 @@ Frame :: () -> i32 #export {
     } else if phase == 5 {
         if result.action != -1 { return -6 }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

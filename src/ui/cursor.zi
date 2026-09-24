@@ -3,17 +3,17 @@ host_api :: #system_library "host_api";
 
 # The shape is a UI decision. The platform only applies the selected shape.
 CursorShape :: enum {
-    CursorDefault = 0
-    CursorArrow = 1
-    CursorText = 2
-    CursorCrosshair = 3
-    CursorClickable = 4
-    CursorResizeHorizontal = 5
-    CursorResizeVertical = 6
-    CursorResizeDown = 7
-    CursorResizeUp = 8
-    CursorResizeAll = 9
-    CursorDisabled = 10
+    CursorDefault :: 0
+    CursorArrow :: 1
+    CursorText :: 2
+    CursorCrosshair :: 3
+    CursorClickable :: 4
+    CursorResizeHorizontal :: 5
+    CursorResizeVertical :: 6
+    CursorResizeDown :: 7
+    CursorResizeUp :: 8
+    CursorResizeAll :: 9
+    CursorDisabled :: 10
 }
 
 CursorFrame :: struct {

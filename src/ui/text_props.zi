@@ -1,33 +1,33 @@
-#module "text_props"
 #import "drawing_props"
 #import "geometry"
 #import "semantic"
 #import "text_align"
+host_api :: #system_library "host_api";
 
 TextElementKind :: enum {
-    TextElementText = 0
-    TextElementIcon = 1
-    TextElementLineBreak = 2
+    TextElementText :: 0
+    TextElementIcon :: 1
+    TextElementLineBreak :: 2
 }
 
 TextElement :: struct {
     type: TextElementKind
     text: string
     icon: Texture2D
-    icon_type: i32
-    icon_size: i32
-    text_width: i32
+    icon_type: s32
+    icon_size: s32
+    text_width: s32
 }
 
 TextLayout :: struct {
-    elements: TextElement*
-    element_count: i32
-    line_breaks: i32*
-    line_count: i32
-    line_widths: i32*
-    total_height: i32
-    line_height: i32
-    last_reflow_width: i32
+    elements: *TextElement
+    element_count: s32
+    line_breaks: *s32
+    line_count: s32
+    line_widths: *s32
+    total_height: s32
+    line_height: s32
+    last_reflow_width: s32
 }
 
 Font :: struct {
@@ -35,16 +35,20 @@ Font :: struct {
 }
 
 GlyphInfo :: struct {
-    value: i32
-    offsetX: i32
-    offsetY: i32
-    advanceX: i32
+    value: s32
+    offsetX: s32
+    offsetY: s32
+    advanceX: s32
 }
 
-ParseTextLayout :: (input: const char*, icon: Texture2D, icon_type: i32, icon_size: i32) -> TextLayout #extern #export
-ReflowTextLayout :: (layout: *TextLayout, max_width: i32, font_size: i32, line_height: i32) #extern #export
-GetTextLayoutHeight :: (layout: *TextLayout) -> i32 #extern #export
-FreeTextLayout :: (layout: *TextLayout) #extern #export
+#program_export
+ParseTextLayout :: (input: string, icon: Texture2D, icon_type: s32, icon_size: s32) -> TextLayout #foreign host_api;
+#program_export
+ReflowTextLayout :: (layout: *TextLayout, max_width: s32, font_size: s32, line_height: s32) #foreign host_api;
+#program_export
+GetTextLayoutHeight :: (layout: *TextLayout) -> s32 #foreign host_api;
+#program_export
+FreeTextLayout :: (layout: *TextLayout) #foreign host_api;
 
 # Standard font size points; the host resolves each Font handle.
 Text8 :: 8
@@ -59,59 +63,82 @@ Text48 :: 48
 TextBaseSize :: 16
 
 # Implemented by the C-only text host; declared here for the public ABI.
-GetTextFont :: () -> Font #extern #export
-EnsureDefaultFont :: () -> i32 #extern #export
-RegisterTextFont :: (name: const char*, font: Font) -> i32 #extern #export
-RegisterSmallTextFont :: (name: const char*, font: Font) -> i32 #extern #export
-RegisterTextFontSource :: (name: const char*, file_type: const char*,
-                           font_data: const u8*, font_size: u32,
-                           codepoints: const i32*,
-                           codepoint_count: i32) -> i32 #extern #export
-RegisterTextFontSourceForText :: (name: const char*, file_type: const char*,
-                                  font_data: const u8*, font_size: u32,
-                                  text: const char*) -> i32 #extern #export
-RegisterFixedTextFontSource :: (name: const char*, file_type: const char*,
-                                font_data: const u8*, font_size: u32,
-                                codepoints: const i32*,
-                                codepoint_count: i32) -> i32 #extern #export
-RegisterTextFontFileSource :: (name: const char*, path: const char*,
-                               codepoints: const i32*,
-                               codepoint_count: i32) -> i32 #extern #export
-RegisterTextFontFileSourceForText :: (name: const char*, path: const char*,
-                                      text: const char*) -> i32 #extern #export
-UseTextFont :: (name: const char*) -> i32 #extern #export
-PushTextFont :: (name: const char*) -> i32 #extern #export
-PopTextFont :: (token: i32) #extern #export
-TextFontHasGlyph :: (font: Font, codepoint: i32) -> i32 #extern #export
-LoadTextFontFromMemory :: (file_type: const char*, font_data: const u8*,
-                           font_size: u32, base_size: i32) -> Font #extern #export
-LoadTextFontAsset :: (path: const char*, base_size: i32) -> Font #extern #export
-UnloadTextFont :: (font: *Font) #extern #export
-ClearTextFonts :: () #extern #export
-TextFontMemoryReport :: (tag: const char*) #extern #export
-MeasureTextWidth :: (text: const char*, font_size: i32,
-                     typeface: const char*) -> i32 #extern #export
-GetTextFontForCodepoint :: (codepoint: i32, font_size: i32) -> Font #extern #export
-GetTextFontForSize :: (font_size: i32) -> Font #extern #export
-GetTextFontScale :: (font: Font, font_size: i32) -> float #extern #export
-RenderTextGlyph :: (codepoint: u32, x: i32, y: i32, font_size: i32,
-                    color: Color) -> i32 #extern #export
+#program_export
+GetTextFont :: () -> Font #foreign host_api;
+#program_export
+EnsureDefaultFont :: () -> s32 #foreign host_api;
+#program_export
+RegisterTextFont :: (name: string, font: Font) -> s32 #foreign host_api;
+#program_export
+RegisterSmallTextFont :: (name: string, font: Font) -> s32 #foreign host_api;
+#program_export
+RegisterTextFontSource :: (name: string, file_type: string,
+                           font_data: []u8, font_size: u32,
+                           codepoints: []s32,
+                           codepoint_count: s32) -> s32 #foreign host_api;
+#program_export
+RegisterTextFontSourceForText :: (name: string, file_type: string,
+                                  font_data: []u8, font_size: u32,
+                                  text: string) -> s32 #foreign host_api;
+#program_export
+RegisterFixedTextFontSource :: (name: string, file_type: string,
+                                font_data: []u8, font_size: u32,
+                                codepoints: []s32,
+                                codepoint_count: s32) -> s32 #foreign host_api;
+#program_export
+RegisterTextFontFileSource :: (name: string, path: string,
+                               codepoints: []s32,
+                               codepoint_count: s32) -> s32 #foreign host_api;
+#program_export
+RegisterTextFontFileSourceForText :: (name: string, path: string,
+                                      text: string) -> s32 #foreign host_api;
+#program_export
+UseTextFont :: (name: string) -> s32 #foreign host_api;
+#program_export
+PushTextFont :: (name: string) -> s32 #foreign host_api;
+#program_export
+PopTextFont :: (token: s32) #foreign host_api;
+#program_export
+TextFontHasGlyph :: (font: Font, codepoint: s32) -> s32 #foreign host_api;
+#program_export
+LoadTextFontFromMemory :: (file_type: string, font_data: []u8,
+                           font_size: u32, base_size: s32) -> Font #foreign host_api;
+#program_export
+LoadTextFontAsset :: (path: string, base_size: s32) -> Font #foreign host_api;
+#program_export
+UnloadTextFont :: (font: *Font) #foreign host_api;
+#program_export
+ClearTextFonts :: () #foreign host_api;
+#program_export
+TextFontMemoryReport :: (tag: string) #foreign host_api;
+#program_export
+MeasureTextWidth :: (text: string, font_size: s32,
+                     typeface: string) -> s32 #foreign host_api;
+#program_export
+GetTextFontForCodepoint :: (codepoint: s32, font_size: s32) -> Font #foreign host_api;
+#program_export
+GetTextFontForSize :: (font_size: s32) -> Font #foreign host_api;
+#program_export
+GetTextFontScale :: (font: Font, font_size: s32) -> float32 #foreign host_api;
+#program_export
+RenderTextGlyph :: (codepoint: u32, x: s32, y: s32, font_size: s32,
+                    color: Color) -> s32 #foreign host_api;
 
 TextWrap :: enum {
-    TextWrapAuto = 0
-    TextWrapNone = 1
+    TextWrapAuto :: 0
+    TextWrapNone :: 1
 }
 
 TextProps :: struct {
     key: u64
     bounds: Rectangle
     text: string
-    font: i32
-    fallback_font: i32
-    style_kind: i32
+    font: s32
+    fallback_font: s32
+    style_kind: s32
     semantic_kind: SemanticKind
-    heading_level: i32
-    class_name: i32
+    heading_level: s32
+    class_name: s32
     wrap: TextWrap
     align: TextAlign
     vertical_align: TextAlign
@@ -121,22 +148,36 @@ TextProps :: struct {
 }
 
 # Implemented by the C-only text backend; declared here for the public ABI.
-TextFontReady :: (font: Font) -> i32 #extern #export
-TextFontBaseSize :: (font: Font) -> i32 #extern #export
-TextFontGlyphPadding :: (font: Font) -> i32 #extern #export
-TextFontGlyph :: (font: Font, codepoint: i32) -> GlyphInfo #extern #export
-TextFontAtlasRec :: (font: Font, codepoint: i32) -> Rectangle #extern #export
-TextFontAtlasTexture :: (font: Font) -> Texture2D #extern #export
-TextFontAdvance :: (font: Font, codepoint: i32) -> i32 #extern #export
-TextFontHasGlyphValue :: (font: Font, codepoint: i32) -> i32 #extern #export
-TextFontGlyphCount :: (font: Font) -> i32 #extern #export
-TextFontHasNativeText :: (font: Font) -> i32 #extern #export
-TextFontNativeTextWidth :: (font: Font, text: const char*, byte_len: i32) -> i32 #extern #export
-TextFontNativeTextHeight :: (font: Font) -> i32 #extern #export
-TextFontDrawNativeText :: (font: Font, text: const char*, byte_len: i32,
-                           x: i32, y: i32, font_size: i32,
-                           color: Color) -> i32 #extern #export
+#program_export
+TextFontReady :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontBaseSize :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontGlyphPadding :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontGlyph :: (font: Font, codepoint: s32) -> GlyphInfo #foreign host_api;
+#program_export
+TextFontAtlasRec :: (font: Font, codepoint: s32) -> Rectangle #foreign host_api;
+#program_export
+TextFontAtlasTexture :: (font: Font) -> Texture2D #foreign host_api;
+#program_export
+TextFontAdvance :: (font: Font, codepoint: s32) -> s32 #foreign host_api;
+#program_export
+TextFontHasGlyphValue :: (font: Font, codepoint: s32) -> s32 #foreign host_api;
+#program_export
+TextFontGlyphCount :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontHasNativeText :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontNativeTextWidth :: (font: Font, text: string, byte_len: s32) -> s32 #foreign host_api;
+#program_export
+TextFontNativeTextHeight :: (font: Font) -> s32 #foreign host_api;
+#program_export
+TextFontDrawNativeText :: (font: Font, text: string, byte_len: s32,
+                           x: s32, y: s32, font_size: s32,
+                           color: Color) -> s32 #foreign host_api;
 
 # Shrink-to-fit text: draws text in rect, choosing the largest size between
 # min_size and preferred_size that fits. Implemented by the text host.
-DrawFittedTextInRect :: (text: const char*, rect: Rectangle, preferred_size: i32, min_size: i32, color: Color) #extern #export
+#program_export
+DrawFittedTextInRect :: (text: string, rect: Rectangle, preferred_size: s32, min_size: s32, color: Color) #foreign host_api;

@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "toast"
@@ -17,18 +16,19 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "widget_kind"
 
-phase :: i32 #global
-state :: ToastState #global
+phase: s32;
+state: ToastState;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if ToastPrefixBefore("aéz", 3) != 1 { return -20 }
     utf8: ToastDisplay = ToastDisplayFor("aéabcdefghijkl", 48,
         14, "")
     if !utf8.ellipsis || utf8.prefix != "aé" ||
         utf8.width != 48 { return -21 }
     props: ToastProps
-    props.key = (u64)17
-    props.viewport = (Rectangle){10.0, 20.0, 200.0, 100.0}
+    props.key = cast(u64)17
+    props.viewport = Rectangle.{10.0, 20.0, 200.0, 100.0}
     props.state = state
     if phase == 0 {
         props.message = "Hello"
@@ -49,7 +49,7 @@ Frame :: () -> i32 #export {
         props.clear = true
         props.now_seconds = 6.0
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 220.0, 140.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 140.0})
     result: ToastResult = Toast(props)
     if !TreeFinish() { return -10 }
     if phase == 0 || phase == 1 {
@@ -73,7 +73,7 @@ Frame :: () -> i32 #export {
     }
     PaintFlush()
     state = result.state
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

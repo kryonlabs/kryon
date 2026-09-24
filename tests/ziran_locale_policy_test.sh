@@ -7,18 +7,18 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "locale_policy"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     languages: [7]LocaleLanguage
-    languages[0] = (LocaleLanguage){"en", "English"}
-    languages[1] = (LocaleLanguage){"pt-BR", "Português"}
-    languages[2] = (LocaleLanguage){"fr", "Français"}
-    languages[3] = (LocaleLanguage){"pt", "Português"}
-    languages[4] = (LocaleLanguage){"zh", "中文"}
-    languages[5] = (LocaleLanguage){"es", "Español"}
-    languages[6] = (LocaleLanguage){"de", "Deutsch"}
+    languages[0] = LocaleLanguage.{"en", "English"}
+    languages[1] = LocaleLanguage.{"pt-BR", "Português"}
+    languages[2] = LocaleLanguage.{"fr", "Français"}
+    languages[3] = LocaleLanguage.{"pt", "Português"}
+    languages[4] = LocaleLanguage.{"zh", "中文"}
+    languages[5] = LocaleLanguage.{"es", "Español"}
+    languages[6] = LocaleLanguage.{"de", "Deutsch"}
     if LocaleRequestedCode("") != "en" ||
         LocaleRequestedCode("fr") != "fr" ||
         !LocaleHasEnglish(languages[:]) ||
@@ -26,10 +26,10 @@ Answer :: () -> i32 #export {
         LocaleContainsCode(languages[:], "ja") { return -1 }
 
     active: [1]LocaleEntry
-    active[0] = (LocaleEntry){"greeting", "Olá"}
+    active[0] = LocaleEntry.{"greeting", "Olá"}
     base: [2]LocaleEntry
-    base[0] = (LocaleEntry){"greeting", "Hello"}
-    base[1] = (LocaleEntry){"bye", "Goodbye"}
+    base[0] = LocaleEntry.{"greeting", "Hello"}
+    base[1] = LocaleEntry.{"bye", "Goodbye"}
     if LocaleResolveValue(active[:], base[:], "greeting") != "Olá" ||
         LocaleResolveValue(active[:], base[:], "bye") != "Goodbye" ||
         LocaleResolveValue(active[:], base[:], "missing") != "missing" {

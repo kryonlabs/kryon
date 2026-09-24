@@ -2,9 +2,9 @@
 #import "geometry"
 
 ImageFit :: enum {
-    ImageFitStretch = 0
-    ImageFitContain = 1
-    ImageFitCover = 2
+    ImageFitStretch :: 0
+    ImageFitContain :: 1
+    ImageFitCover :: 2
 }
 
 ImageProps :: struct {

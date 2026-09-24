@@ -1,7 +1,7 @@
 ThemePolicy :: enum {
-    ThemePolicySystem = 0
-    ThemePolicyLight = 1
-    ThemePolicyDark = 2
+    ThemePolicySystem :: 0
+    ThemePolicyLight :: 1
+    ThemePolicyDark :: 2
 }
 
 #program_export

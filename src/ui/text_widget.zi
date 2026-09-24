@@ -1,4 +1,3 @@
-#module "text_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -14,35 +13,39 @@
 #import "text_props"
 #import "tree"
 #import "widget_kind"
+host_api :: #system_library "host_api";
 
 # A raw byte-range view. The host only returns bytes; line breaking, layout,
 # style, and paint order are decided by this module.
-TextSlice :: (source: string, start: i32, length: i32) -> string #extern
+TextSlice :: (source: string, start: s32, length: s32) -> string #foreign host_api;
 
-TextSpan :: (source: string, start: i32, length: i32) -> string #export {
+#program_export
+TextSpan :: (source: string, start: s32, length: s32) -> string {
     return TextSlice(source, start, length)
 }
 
 TextFace :: struct {
     value: StyleData
-    fallback_font: i32
+    fallback_font: s32
 }
 
-DefaultTextFace :: () -> TextFace #export {
+#program_export
+DefaultTextFace :: () -> TextFace {
     face: TextFace
-    face.value.fields = (u32)StyleForeground | (u32)StyleFontSize
-    face.value.foreground = (u32)0x171717ff
+    face.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
+    face.value.foreground = cast(u32)0x171717ff
     face.value.font_size = 16.0
     face.fallback_font = 16
     return face
 }
 
+#program_export
 TextFaceFor :: (rules: StyleRules, props: TextProps,
-    defaults: TextFace) -> TextFace #export {
+    defaults: TextFace) -> TextFace {
     face: TextFace = defaults
-    state: i32 = (i32)ButtonStateNormal
-    if props.disabled { state = (i32)ButtonStateDisabled }
-    kind: i32 = props.style_kind
+    state: s32 = cast(s32)ButtonStateNormal
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
+    kind: s32 = props.style_kind
     if kind <= 0 { kind = StyleKindText() }
     face.value = ResolveStyleRules(rules, defaults.value,
         StyleTextFacts(0, props.class_name, kind, state), state)
@@ -50,23 +53,24 @@ TextFaceFor :: (rules: StyleRules, props: TextProps,
 }
 
 TextLinePlan :: struct {
-    start: i32
-    end: i32
-    next: i32
-    width: i32
+    start: s32
+    end: s32
+    next: s32
+    width: s32
 }
 
 # A word that exceeds the available width stays intact on its own line.
 # ParagraphTokenNext keeps UTF-8 bytes together by splitting only at ASCII
 # whitespace and line breaks.
-NextTextLine :: (value: string, start: i32, max_width: float,
-    wrap: TextWrap, font: i32, typeface: string) -> TextLinePlan #export {
+#program_export
+NextTextLine :: (value: string, start: s32, max_width: float32,
+    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
     line: TextLinePlan
     line.start = start
     line.end = start
     line.next = value.length + 1
     if start >= value.length { return line }
-    offset: i32 = start
+    offset: s32 = start
     while offset < value.length {
         token: ParagraphToken = ParagraphTokenNext(value, offset, false)
         if !token.valid { break }
@@ -76,9 +80,9 @@ NextTextLine :: (value: string, start: i32, max_width: float,
         }
         candidate: string = TextSlice(value, line.start,
             token.end - line.start)
-        width: i32 = GlyphWidth(candidate, font, typeface)
-        if wrap == (TextWrap)TextWrapAuto && max_width > 0.0 &&
-            line.end > line.start && (float)width > max_width {
+        width: s32 = GlyphWidth(candidate, font, typeface)
+        if wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0 &&
+            line.end > line.start && cast(float32)width > max_width {
             line.next = token.start
             return line
         }
@@ -91,24 +95,25 @@ NextTextLine :: (value: string, start: i32, max_width: float,
 
 PreparedText :: struct {
     bounds: Rectangle
-    font: i32
+    font: s32
     color: Color
     typeface: string
-    line_height: i32
-    line_gap: i32
-    line_count: i32
+    line_height: s32
+    line_gap: s32
+    line_count: s32
     wrap: TextWrap
 }
 
-PrepareText :: (props: TextProps, face: TextFace) -> PreparedText #export {
+#program_export
+PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
     prepared: PreparedText
     prepared.bounds = props.bounds
     prepared.typeface = face.value.typeface
     appearance: TextAppearance = ResolveTextStyle(props.font, 0,
         ResolveFont(0, StyleFontValue(face.value.fields,
             face.value.font_size), face.fallback_font),
-        face.value.foreground, (u32)0, (u32)0x171717ff,
-        false, (face.value.fields & (u32)StyleForeground) != (u32)0,
+        face.value.foreground, cast(u32)0, cast(u32)0x171717ff,
+        false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
         props.disabled, false, 0)
     prepared.font = appearance.font
     prepared.color = ColorFromPacked(Opacity(appearance.color,
@@ -117,11 +122,11 @@ PrepareText :: (props: TextProps, face: TextFace) -> PreparedText #export {
         prepared.typeface)
     if prepared.line_height < 1 { prepared.line_height = prepared.font }
     prepared.line_gap = ParagraphDefaultLineGap(1.0)
-    prepared.wrap = (TextWrap)TextWrapPolicy(props.bounds.width,
-        (i32)props.wrap)
+    prepared.wrap = cast(TextWrap)TextWrapPolicy(props.bounds.width,
+        cast(s32)props.wrap)
 
-    start: i32 = 0
-    maximum: i32 = 0
+    start: s32 = 0
+    maximum: s32 = 0
     while start <= props.text.length {
         line: TextLinePlan = NextTextLine(props.text, start,
             props.bounds.width, prepared.wrap, prepared.font,
@@ -130,36 +135,37 @@ PrepareText :: (props: TextProps, face: TextFace) -> PreparedText #export {
         if line.width > maximum { maximum = line.width }
         start = line.next
     }
-    prepared.bounds.width = TextExtent(props.bounds.width, (float)maximum)
-    height: i32 = ParagraphLayoutTotalHeight(prepared.line_count,
+    prepared.bounds.width = TextExtent(props.bounds.width, cast(float32)maximum)
+    height: s32 = ParagraphLayoutTotalHeight(prepared.line_count,
         prepared.line_height, prepared.line_gap)
-    prepared.bounds.height = TextExtent(props.bounds.height, (float)height)
+    prepared.bounds.height = TextExtent(props.bounds.height, cast(float32)height)
     return prepared
 }
 
-PaintTextLines :: (node: i32, props: TextProps,
-    prepared: PreparedText) #export {
-    total_height: i32 = ParagraphLayoutTotalHeight(prepared.line_count,
+#program_export
+PaintTextLines :: (node: s32, props: TextProps,
+    prepared: PreparedText) {
+    total_height: s32 = ParagraphLayoutTotalHeight(prepared.line_count,
         prepared.line_height, prepared.line_gap)
-    y: i32 = (i32)prepared.bounds.y +
-        (i32)TextAlignmentOffset(prepared.bounds.height,
-            (float)total_height, (i32)props.vertical_align)
-    start: i32 = 0
+    y: s32 = cast(s32)prepared.bounds.y +
+        cast(s32)TextAlignmentOffset(prepared.bounds.height,
+            cast(float32)total_height, cast(s32)props.vertical_align)
+    start: s32 = 0
     while start <= props.text.length {
         line: TextLinePlan = NextTextLine(props.text, start,
             prepared.bounds.width, prepared.wrap, prepared.font,
             prepared.typeface)
         value: string = TextSlice(props.text, line.start,
             line.end - line.start)
-        x: i32 = ParagraphLineXFor((i32)prepared.bounds.x,
-            (i32)prepared.bounds.width, line.width, (i32)props.align)
+        x: s32 = ParagraphLineXFor(cast(s32)prepared.bounds.x,
+            cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
         if value != "" {
             PaintClippedLabel(node, value, x, y, prepared.font,
                 prepared.color, prepared.bounds)
             if props.strikethrough {
-                strike: Rectangle = TextStrikethroughBounds((float)x,
-                    (float)y, (float)line.width,
-                    (float)prepared.line_height, 1.0)
+                strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
+                    cast(float32)y, cast(float32)line.width,
+                    cast(float32)prepared.line_height, 1.0)
                 strike = RectangleIntersection(strike, prepared.bounds)
                 if strike.width > 0.0 && strike.height > 0.0 {
                     PaintRoundedFill(node, strike, 0.0, 1, prepared.color)
@@ -171,15 +177,16 @@ PaintTextLines :: (node: i32, props: TextProps,
     }
 }
 
-Text :: (props: TextProps) #export {
+#program_export
+Text :: (props: TextProps) {
     defaults: TextFace = DefaultTextFace()
     if props.fallback_font > 0 {
         defaults.fallback_font = props.fallback_font
-        defaults.value.font_size = (float)props.fallback_font
+        defaults.value.font_size = cast(float32)props.fallback_font
     }
     face: TextFace = TextFaceFor(ActiveStyleRules(), props, defaults)
     prepared: PreparedText = PrepareText(props, face)
-    node: i32 = -1
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(props.key, WidgetKindText, prepared.bounds)
         if node < 0 { return }

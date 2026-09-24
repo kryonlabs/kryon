@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "plot"
@@ -17,14 +16,15 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
-    lines: [3]float
+#program_export
+Frame :: () -> s32 {
+    lines: [3]float32
     lines[0] = 0.0
     lines[1] = 0.5
     lines[2] = 1.0
-    bars: [3]float
+    bars: [3]float32
     bars[0] = 0.25
     bars[1] = 0.5
     bars[2] = 1.0
@@ -47,22 +47,22 @@ Frame :: () -> i32 #export {
         singleton.max_value != 3.5 ||
         singleton.range != 1.0 { return -5 }
     line_props: PlotProps
-    line_props.key = (u64)11
-    line_props.bounds = (Rectangle){10.0, 10.0, 100.0, 60.0}
+    line_props.key = cast(u64)11
+    line_props.bounds = Rectangle.{10.0, 10.0, 100.0, 60.0}
     line_props.label = "Trend"
     line_props.overlay = "Now"
     line_props.scale_min = 0.0
     line_props.scale_max = 1.0
     bar_props: PlotProps
-    bar_props.key = (u64)12
-    bar_props.bounds = (Rectangle){10.0, 90.0, 100.0, 60.0}
+    bar_props.key = cast(u64)12
+    bar_props.bounds = Rectangle.{10.0, 90.0, 100.0, 60.0}
     bar_props.label = "Bars"
     bar_props.overlay = "Peak"
     bar_props.offset = 1
     bar_props.scale_min = 0.0
     bar_props.scale_max = 1.0
-    bar_props.mode = (PlotMode)PlotBars
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 140.0, 180.0})
+    bar_props.mode = cast(PlotMode)PlotBars
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 180.0})
     if Plot(line_props, lines[0:3]) != 1 ||
         Plot(bar_props, bars[0:3]) != 2 ||
         !TreeFinish() || TreeCount() != 3 ||
@@ -71,7 +71,7 @@ Frame :: () -> i32 #export {
         TreeNodeAt(1).semantic_label != "Trend" ||
         TreeNodeAt(2).semantic_label != "Bars" { return -1 }
     PaintFlush()
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

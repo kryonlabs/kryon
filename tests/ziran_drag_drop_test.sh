@@ -9,10 +9,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/drag_drop.zi" "$work/drag_drop.zi"
 cat > "$work/use_drag_drop.zi" <<'EOF'
-#module "use_drag_drop"
 #import "drag_drop"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     source: DragDropSourceDecision = DragDropSourceDecisionFor(
         false, 0, 7, false, false, true, 6, 8, true, true,
         true, true, false)

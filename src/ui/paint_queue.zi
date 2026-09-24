@@ -7,12 +7,12 @@
 host_api :: #system_library "host_api";
 
 PaintKind :: enum {
-    PaintKindLine = 1
-    PaintKindRoundedFill = 2
-    PaintKindRoundedOutline = 3
-    PaintKindText = 4
-    PaintKindImage = 5
-    PaintKindClippedText = 6
+    PaintKindLine :: 1
+    PaintKindRoundedFill :: 2
+    PaintKindRoundedOutline :: 3
+    PaintKindText :: 4
+    PaintKindImage :: 5
+    PaintKindClippedText :: 6
 }
 
 PaintCommand :: struct {

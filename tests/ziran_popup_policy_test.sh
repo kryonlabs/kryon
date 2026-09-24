@@ -10,14 +10,14 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$repo/src/ui/popup_policy.zi" "$work/popup_policy.zi"
 cat > "$work/use_popup.zi" <<'EOF'
-#module "use_popup"
 #import "geometry"
 #import "popup_policy"
 
-Answer :: () -> i32 #export {
-    invalid: PopupDecision = PopupDecisionFor((u32)8, false)
+#program_export
+Answer :: () -> s32 {
+    invalid: PopupDecision = PopupDecisionFor(cast(u32)8, false)
     if invalid.valid { return 0 }
-    context: PopupDecision = PopupDecisionFor((u32)4, false)
+    context: PopupDecision = PopupDecisionFor(cast(u32)4, false)
     if !context.valid || !context.context || !context.requires_trigger ||
         context.tooltip { return 0 }
     input: PopupFrameInput
@@ -31,18 +31,18 @@ Answer :: () -> i32 #export {
     input.mouse.x = 30.0
     input.mouse.y = 40.0
     input.right_released = true
-    state: PopupLifecycle = PopupLifecycleBegin((u32)4, input)
+    state: PopupLifecycle = PopupLifecycleBegin(cast(u32)4, input)
     if !state.eligible || !state.context_opened || !state.visible ||
         state.input_bounds.width != 100.0 { return 0 }
     dismissed: PopupLifecycle = PopupLifecycleRelease(state, true, false, false)
     if dismissed.visible || !dismissed.consume_release ||
         !dismissed.close_input { return 0 }
-    modal: PopupDecision = PopupDecisionFor((u32)2, false)
+    modal: PopupDecision = PopupDecisionFor(cast(u32)2, false)
     if PopupBackdropAlpha(modal) != 180 { return 0 }
     bounds: Rectangle = PopupInputBounds(modal, input.bounds, 640.0, 480.0)
     if bounds.x != 0.0 || bounds.y != 0.0 ||
         bounds.width != 640.0 || bounds.height != 480.0 { return 0 }
-    tooltip: PopupDecision = PopupDecisionFor((u32)1, false)
+    tooltip: PopupDecision = PopupDecisionFor(cast(u32)1, false)
     if !PopupTooltipVisible(tooltip, false, true) ||
         PopupTooltipVisible(tooltip, true, true) { return 0 }
     opened: PopupOpenResult = PopupOpenFor(false, true, false, true)

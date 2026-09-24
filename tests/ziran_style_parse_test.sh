@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "kss_parser"
 #import "progress"
 #import "progress_style"
@@ -16,26 +15,27 @@ cat > "$work/app.zi" <<'ZI'
 #import "style"
 #import "style_sheet"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     parsed: StyleRulesParse = BeginStyleRules(
         "@pack demo; @import <base>; Progress[role=Track] { background: #112233; border: #99aabb; border-width: 2; radius: 5; }",
         "demo.kss", KssDefaultEnvironment())
     parsed = ParseStyleRules(parsed)
-    if parsed.parser.status != (i32)KssStatusNeedImport ||
+    if parsed.parser.status != cast(s32)KssStatusNeedImport ||
         parsed.rules.count != 0 { return 0 }
     parsed = ProvideStyleRulesImport(parsed,
         "Progress[role=Fill] { background: #556677; }", "base")
     parsed = ParseStyleRules(parsed)
-    if parsed.parser.status != (i32)KssStatusDone ||
+    if parsed.parser.status != cast(s32)KssStatusDone ||
         parsed.overflow || parsed.rules.count != 2 { return 0 }
     InstallStyleRules(parsed.rules)
     defaults: ProgressFaces
     faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(), 0, defaults)
-    if faces.track.value.background != (u32)0x112233ff ||
-        faces.track.value.border != (u32)0x99aabbff ||
+    if faces.track.value.background != cast(u32)0x112233ff ||
+        faces.track.value.border != cast(u32)0x99aabbff ||
         faces.track.value.border_width != 2.0 ||
         faces.track.value.radius != 5.0 ||
-        faces.fill.value.background != (u32)0x556677ff {
+        faces.fill.value.background != cast(u32)0x556677ff {
         return 0
     }
     parsed = BeginStyleRules("Progress { background: #112233; }",
@@ -46,9 +46,9 @@ Answer :: () -> i32 #export {
     parsed = BeginStyleRules("@import <missing>;", "missing.kss",
         KssDefaultEnvironment())
     parsed = ParseStyleRules(parsed)
-    if parsed.parser.status != (i32)KssStatusNeedImport { return 0 }
+    if parsed.parser.status != cast(s32)KssStatusNeedImport { return 0 }
     parsed = FailStyleRulesImport(parsed)
-    if parsed.parser.status != (i32)KssStatusError { return 0 }
+    if parsed.parser.status != cast(s32)KssStatusError { return 0 }
     return 42
 }
 ZI

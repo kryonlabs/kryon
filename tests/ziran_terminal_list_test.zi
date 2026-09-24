@@ -1,7 +1,7 @@
-#module "terminal_list_test"
 #import "terminal_list"
 
-SelfTest :: () -> i32 #export {
+#program_export
+SelfTest :: () -> s32 {
     state: TerminalListState
     state = TerminalListMove(state, 8, 3, 2)
     if state.selected != 1 || state.first != 0 { return 1 }

@@ -7,7 +7,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/use_moved.zi" <<'EOF'
-#module "use_moved"
 #import "button"
 #import "button_props"
 #import "canvas"
@@ -40,12 +39,13 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "tree"
 #import "widget_kind"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if !StyleMatchesOptional(-1, 8) { return 0 }
     if StyleMatchesOptional(3, 8) { return 0 }
     if StyleSpecificity(1, 2, 3, 4) <= 0 { return 0 }
     style: StyleData
-    style.fields = (u32)StyleGap | (u32)StylePaddingX
+    style.fields = cast(u32)StyleGap | cast(u32)StylePaddingX
     style.gap = 8.0
     style.padding_x = 12.0
     page: PageSpacing = PageLayoutMetricsFor(style)
@@ -91,16 +91,16 @@ Answer :: () -> i32 #export {
     }
     if MenuWrappedItemIndex(2, 1, 3) != 0 { return 0 }
     if RadioActivationFor(7, true, false) != 7 { return 0 }
-    if ColorPickerChannelByte(0.5) != (u8)128 { return 0 }
+    if ColorPickerChannelByte(0.5) != cast(u8)128 { return 0 }
     line: LinePrimitive = PrimitiveLineFor(5, 9, 1, 3)
     if line.bounds.x != 1.0 || line.bounds.y != 3.0 ||
         line.bounds.width != 4.0 || line.bounds.height != 6.0 {
         return 0
     }
     color: Color
-    color.r = (u8)20
-    color.a = (u8)255
-    if PrimitiveAppBackgroundColor(color, color).r != (u8)20 {
+    color.r = cast(u8)20
+    color.a = cast(u8)255
+    if PrimitiveAppBackgroundColor(color, color).r != cast(u8)20 {
         return 0
     }
     if ListBoxClampScroll(99, 15) != 15 { return 0 }
@@ -133,7 +133,7 @@ Answer :: () -> i32 #export {
         2.0, 1.0, 1.0) { return 0 }
     if !KssCSSNeedsPixels("width") { return 0 }
     if ButtonActionEnabled(true, false) { return 0 }
-    if ButtonArrowGlyph((ArrowDirection)ArrowRight) != 62 { return 0 }
+    if ButtonArrowGlyph(cast(ArrowDirection)ArrowRight) != 62 { return 0 }
     sample: Activation
     sample.activated = true
     sample.hovered = true
@@ -146,12 +146,12 @@ Answer :: () -> i32 #export {
     if motion.hover.value <= 0.0 || motion.hover.value >= 1.0 {
         return 0
     }
-    if Opacity((u32)4294967295, 0.5) != (u32)4294967167 {
+    if Opacity(cast(u32)4294967295, 0.5) != cast(u32)4294967167 {
         return 0
     }
-    face: SurfaceLayer = MaterialLayer((MaterialKind)MaterialFlat, 0, 100.0, 50.0,
-        4.0, 1.0, (u32)255, (u32)255, (u32)255, (u32)255,
-        0.0, 0.0, 0.0, false, 1.0, (u32)255)
+    face: SurfaceLayer = MaterialLayer(cast(MaterialKind)MaterialFlat, 0, 100.0, 50.0,
+        4.0, 1.0, cast(u32)255, cast(u32)255, cast(u32)255, cast(u32)255,
+        0.0, 0.0, 0.0, false, 1.0, cast(u32)255)
     if !face.is_face || face.width != 100.0 || face.height != 50.0 {
         return 0
     }

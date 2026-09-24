@@ -1,43 +1,43 @@
-#module "reorder_props"
 #import "geometry"
+host_api :: #system_library "host_api";
 
 ReorderItem :: struct {
-    id: i32
+    id: s32
     bounds: Rectangle
-    disabled: i32
+    disabled: s32
 }
 
 ReorderList :: struct {
-    id: i32
+    id: s32
     bounds: Rectangle
-    items: const ReorderItem*
-    item_count: i32
-    handle_width: i32
-    handle_height: i32
-    drag_threshold: i32
-    scroll_offset: i32*
-    max_scroll: i32
-    viewport_top: i32
-    viewport_bottom: i32
-    auto_scroll_margin: i32
-    auto_scroll_step: i32
+    items: *ReorderItem
+    item_count: s32
+    handle_width: s32
+    handle_height: s32
+    drag_threshold: s32
+    scroll_offset: *s32
+    max_scroll: s32
+    viewport_top: s32
+    viewport_bottom: s32
+    auto_scroll_margin: s32
+    auto_scroll_step: s32
 }
 
 ReorderState :: struct {
-    list_id: i32
-    item_id: i32
-    from_index: i32
-    press_y: i32
-    press_offset_y: i32
-    scroll_start: i32
-    dragging: i32
+    list_id: s32
+    item_id: s32
+    from_index: s32
+    press_y: s32
+    press_offset_y: s32
+    scroll_start: s32
+    dragging: s32
 }
 
 ReorderMetrics :: struct {
-    handle_width: i32
-    drag_threshold: i32
-    auto_scroll_margin: i32
-    auto_scroll_step: i32
+    handle_width: s32
+    drag_threshold: s32
+    auto_scroll_margin: s32
+    auto_scroll_step: s32
 }
 
 ReorderHandlePaint :: struct {
@@ -47,31 +47,32 @@ ReorderHandlePaint :: struct {
     dot3: Rectangle
     dot4: Rectangle
     dot5: Rectangle
-    dot_count: i32
+    dot_count: s32
 }
 
 ReorderPlaceholderPaint :: struct {
     slot_bounds: Rectangle
     line_bounds: Rectangle
-    stroke_width: float
-    radius: float
-    segments: i32
-    fill_alpha: float
-    use_slot: i32
+    stroke_width: float32
+    radius: float32
+    segments: s32
+    fill_alpha: float32
+    use_slot: s32
 }
 
 ReorderListResult :: struct {
-    active: i32
-    dragging: i32
-    committed: i32
-    from_index: i32
-    to_index: i32
-    active_index: i32
-    target_index: i32
-    active_id: i32
-    pointer_y: i32
-    drag_delta_y: i32
+    active: s32
+    dragging: s32
+    committed: s32
+    from_index: s32
+    to_index: s32
+    active_index: s32
+    target_index: s32
+    active_id: s32
+    pointer_y: s32
+    drag_delta_y: s32
 }
 
-# Implemented by the C-only reorder host; declared here for the public ABI.
-UpdateReorderList :: (list: ReorderList) -> ReorderListResult #extern #export
+# The host applies the user's pointer motion and scrolling to the list.
+#program_export
+UpdateReorderList :: (list: ReorderList) -> ReorderListResult #foreign host_api;

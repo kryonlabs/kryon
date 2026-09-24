@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -20,16 +19,17 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "tree_input"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     props: ButtonProps
-    props.key = (u64)7
+    props.key = cast(u64)7
     props.id = 7
     props.class_name = 9
     props.label = "Run"
-    props.bounds = (Rectangle){10.0, 20.0, 80.0, 30.0}
-    props.tone = (ButtonTone)ButtonToneAccent
+    props.bounds = Rectangle.{10.0, 20.0, 80.0, 30.0}
+    props.tone = cast(ButtonTone)ButtonToneAccent
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -37,47 +37,47 @@ Frame :: () -> i32 #export {
         rule.selector = StyleDefaultSelector()
         rule.selector.kind = StyleKindButton()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground |
-            (u32)StyleForeground | (u32)StyleRadius |
-            (u32)StyleOpacity | (u32)StyleFontSize
-        rule.style.background = (u32)0x123456ff
-        rule.style.foreground = (u32)0xaabbccff
+        rule.style.fields = cast(u32)StyleBackground |
+            cast(u32)StyleForeground | cast(u32)StyleRadius |
+            cast(u32)StyleOpacity | cast(u32)StyleFontSize
+        rule.style.background = cast(u32)0x123456ff
+        rule.style.foreground = cast(u32)0xaabbccff
         rule.style.radius = 4.0
         rule.style.opacity = 0.5
         rule.style.font_size = 14.0
         rules.items[0] = rule
         InstallStyleRules(rules)
-        BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         if Button(props) != 0 || !EndTree() || TreeCount() != 2 ||
             TreeNodeAt(1).semantic_label != "Run" { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
         phase = 1
         return 0
     }
     if phase == 1 {
-        TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
-        BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
-        clicked: i32 = Button(props)
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        clicked: s32 = Button(props)
         if !EndTree() || clicked != 1 { return -2 }
         phase = 2
         return 42
     }
     if phase == 3 {
         props.image.asset_path = "badge.png"
-        props.image.fit = (ImageFit)ImageFitContain
-        props.icon_placement = (IconPlacement)IconPlacementTrailing
-        BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
+        props.image.fit = cast(ImageFit)ImageFitContain
+        props.icon_placement = cast(IconPlacement)IconPlacementTrailing
+        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         if Button(props) != 0 || !EndTree() ||
             TreeNodeAt(1).semantic_label != "Run" { return -4 }
         phase = 4
         return 44
     }
     props.disabled = true
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 100.0, 100.0})
-    clicked: i32 = Button(props)
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    clicked: s32 = Button(props)
     if !EndTree() || clicked != 0 { return -3 }
-    TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-    TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
+    TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+    TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
     phase = 3
     return 43
 }

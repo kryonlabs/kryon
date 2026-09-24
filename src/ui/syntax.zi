@@ -1,19 +1,19 @@
 
 SyntaxMode :: enum {
-    SyntaxNone = 0
-    SyntaxZiran = 1
-    SyntaxC = 2
-    SyntaxMake = 3
+    SyntaxNone :: 0
+    SyntaxZiran :: 1
+    SyntaxC :: 2
+    SyntaxMake :: 3
 }
 
 SyntaxTokenKind :: enum {
-    SyntaxPlain = 0
-    SyntaxWhitespace = 1
-    SyntaxKeyword = 2
-    SyntaxString = 3
-    SyntaxNumber = 4
-    SyntaxPath = 5
-    SyntaxComment = 6
+    SyntaxPlain :: 0
+    SyntaxWhitespace :: 1
+    SyntaxKeyword :: 2
+    SyntaxString :: 3
+    SyntaxNumber :: 4
+    SyntaxPath :: 5
+    SyntaxComment :: 6
 }
 
 SyntaxToken :: struct {
@@ -75,7 +75,7 @@ SyntaxKeywordFor :: (mode: SyntaxMode,
     length: s32) -> bool {
     if mode == cast(SyntaxMode)SyntaxZiran {
         return SyntaxWordInList(value, start, length,
-            "|import|program_export|foreign|system_library|scope_file|scope_module|scope_export|char|type|struct|enum|variant|match|if|ifx|then|else|while|return|cast|true|false|null|bool|string|s8|s16|s32|s64|u8|u16|u32|u64|float32|float64|")
+            "|import|program_export|foreign|system_library|scope_file|scope_module|scope_export|char|type|struct|enum|enum_flags|specified|variant|match|case|complete|if|ifx|then|else|while|return|cast|size_of|type_of|true|false|null|bool|string|int|s8|s16|s32|s64|u8|u16|u32|u64|float32|float64|")
     }
     if mode == cast(SyntaxMode)SyntaxC {
         return SyntaxWordInList(value, start, length,
@@ -188,7 +188,7 @@ SyntaxTokenAt :: (value: string, start: s32,
             while index < end &&
                 SyntaxIdent(mode, value[index]) { index += 1 }
             if SyntaxKeywordFor(mode, value,
-                start, index - start) {
+                start + 1, index - start - 1) {
                 token.length = index - start
                 token.kind = cast(SyntaxTokenKind)SyntaxKeyword
                 return token

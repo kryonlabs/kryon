@@ -1,8 +1,8 @@
 
 DPIPlatform :: enum {
-    DPIPlatformDesktop = 0
-    DPIPlatformAndroid = 1
-    DPIPlatformWeb = 2
+    DPIPlatformDesktop :: 0
+    DPIPlatformAndroid :: 1
+    DPIPlatformWeb :: 2
 }
 
 DPIState :: struct {

@@ -1,4 +1,3 @@
-#module "navigation_bar_config_widget"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -24,11 +23,12 @@
 #import "tree_input"
 #import "widget_kind"
 
-NavigationBarConfigDefaultFace :: (role: i32) -> StyleData #export {
+#program_export
+NavigationBarConfigDefaultFace :: (role: s32) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleForeground | (u32)StyleFontSize |
-        (u32)StyleOpacity
-    face.foreground = (u32)0x334155ff
+    face.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
+        cast(u32)StyleOpacity
+    face.foreground = cast(u32)0x334155ff
     face.font_size = 12.0
     face.opacity = 1.0
     if role == NavigationBarActionRole() {
@@ -37,30 +37,33 @@ NavigationBarConfigDefaultFace :: (role: i32) -> StyleData #export {
     return face
 }
 
+#program_export
 NavigationBarConfigFaceFor :: (props: NavigationBarConfigProps,
-    role: i32) -> StyleFrame #export {
+    role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindNavigationBar(), props.id, props.class_name,
-        role, (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisSoft,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        role, cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         NavigationBarConfigDefaultFace(role), facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     return frame
 }
 
-NavigationBarConfigKey :: (props: NavigationBarConfigProps) -> u64 #export {
-    if props.key != (u64)0 { return props.key }
-    if props.id > 0 { return (u64)(u32)props.id }
+#program_export
+NavigationBarConfigKey :: (props: NavigationBarConfigProps) -> u64 {
+    if props.key != cast(u64)0 { return props.key }
+    if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey()
 }
 
+#program_export
 NavigationBarConfigOptionIndex :: (
-    options: []NavigationBarOption, count: i32,
-    route: i32) -> i32 #export {
-    index: i32 = 0
+    options: []NavigationBarOption, count: s32,
+    route: s32) -> s32 {
+    index: s32 = 0
     while index < count {
         if options[index].route == route { return index }
         index += 1
@@ -69,9 +72,10 @@ NavigationBarConfigOptionIndex :: (
     return -1
 }
 
-NavigationBarConfigButton :: (key: u64, id: i32,
-    class_name: i32, bounds: Rectangle, label: string,
-    disabled: bool, icon_only: bool) -> bool #export {
+#program_export
+NavigationBarConfigButton :: (key: u64, id: s32,
+    class_name: s32, bounds: Rectangle, label: string,
+    disabled: bool, icon_only: bool) -> bool {
     button: ButtonProps
     button.key = key
     button.id = id
@@ -80,9 +84,9 @@ NavigationBarConfigButton :: (key: u64, id: i32,
     button.label = label
     button.disabled = disabled
     button.icon_only = icon_only
-    button.tone = (ButtonTone)ButtonToneNeutral
-    button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
-    button.size = (ControlSize)ControlSizeSmall
+    button.tone = cast(ButtonTone)ButtonToneNeutral
+    button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
+    button.size = cast(ControlSize)ControlSizeSmall
     button.style_kind = StyleKindNavigationBar()
     button.style_role = NavigationBarActionRole()
     return Button(button) != 0
@@ -90,9 +94,10 @@ NavigationBarConfigButton :: (key: u64, id: i32,
 
 # This editor mutates only the borrowed route slice and returns all retained
 # UI state. The caller owns save/cancel/reset effects and route persistence.
+#program_export
 NavigationBarConfig :: (props: NavigationBarConfigProps,
-    routes: []i32, slot_labels: []string,
-    options: []NavigationBarOption) -> NavigationBarConfigResult #export {
+    routes: []s32, slot_labels: []string,
+    options: []NavigationBarOption) -> NavigationBarConfigResult {
     result: NavigationBarConfigResult
     result.node = -1
     result.scroll_offset = props.scroll_offset
@@ -120,7 +125,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
         NavigationBarActionRole())
     route_face: StyleFrame = NavigationBarConfigFaceFor(props,
         NavigationBarRouteRole())
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     metrics: NavigationBarConfigMetrics =
         NavigationBarConfigMetricsFor(scale, panel,
@@ -148,8 +153,8 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
     layout: NavigationBarConfigLayout =
         NavigationBarConfigLayoutFor(frame.layout.panel,
             frame.layout.content, result.route_count, metrics)
-    max_scroll: i32 = ScrollMax(layout.route_content_height,
-        (i32)layout.route_bounds.height)
+    max_scroll: s32 = ScrollMax(layout.route_content_height,
+        cast(s32)layout.route_bounds.height)
     result.scroll_offset = ScrollClamp(result.scroll_offset,
         max_scroll)
     if !result.dropdown_open && props.wheel != 0.0 {
@@ -164,11 +169,11 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
         scroll_metrics.thumb_min_height = 16
         scroll_metrics.thumb_inset = 1
         bar: ScrollBarPaint = ScrollBarPaintFor(
-            layout.scrollbar_x, (i32)layout.route_bounds.y,
-            (i32)layout.route_bounds.height,
+            layout.scrollbar_x, cast(s32)layout.route_bounds.y,
+            cast(s32)layout.route_bounds.height,
             layout.route_content_height, result.scroll_offset,
             max_scroll, scroll_metrics)
-        old: i32 = TreeFind(key * (u64)65599 + (u64)5,
+        old: s32 = TreeFind(key * cast(u64)65599 + cast(u64)5,
             OverlayPanelKey(), WidgetKindSlider)
         drag: PointerDrag = TreeTakeDragAt(old)
         if drag.active || drag.ended {
@@ -176,41 +181,41 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                 bar.track_bounds.y, drag.grab_y,
                 max_scroll, bar)
             bar = ScrollBarPaintFor(layout.scrollbar_x,
-                (i32)layout.route_bounds.y,
-                (i32)layout.route_bounds.height,
+                cast(s32)layout.route_bounds.y,
+                cast(s32)layout.route_bounds.height,
                 layout.route_content_height,
                 result.scroll_offset, max_scroll, scroll_metrics)
         }
-        thumb_node: i32 = TreeSubmitCurrent(
-            key * (u64)65599 + (u64)5,
+        thumb_node: s32 = TreeSubmitCurrent(
+            key * cast(u64)65599 + cast(u64)5,
             WidgetKindSlider, bar.thumb_bounds)
         if thumb_node >= 0 {
             TreeSetInteractive(thumb_node, false, false, 0)
             PaintRoundedFill(thumb_node, bar.track_bounds,
-                4.0, 8, ColorFromPacked((u32)0xe2e8f0ff))
+                4.0, 8, ColorFromPacked(cast(u32)0xe2e8f0ff))
             PaintRoundedFill(thumb_node, bar.thumb_bounds,
-                4.0, 8, ColorFromPacked((u32)0x94a3b8ff))
+                4.0, 8, ColorFromPacked(cast(u32)0x94a3b8ff))
         }
     }
     row_content: Rectangle = layout.route_bounds
     if max_scroll > 0 {
-        row_content.width -= (float)(metrics.scrollbar_width +
+        row_content.width -= cast(float32)(metrics.scrollbar_width +
             metrics.button_gap)
     }
     if row_content.width < 1.0 { row_content.width = 1.0 }
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(row_face.value.fields,
             row_face.value.font_size), 12)
-    line_height: i32 = GlyphLineHeight(font,
+    line_height: s32 = GlyphLineHeight(font,
         row_face.value.typeface)
-    removed: i32 = -1
-    index: i32 = 0
+    removed: s32 = -1
+    index: s32 = 0
     while index < result.route_count {
-        y: i32 = (i32)layout.route_bounds.y +
+        y: s32 = cast(s32)layout.route_bounds.y +
             index * metrics.row_height - result.scroll_offset
-        if y >= (i32)layout.route_bounds.y &&
+        if y >= cast(s32)layout.route_bounds.y &&
             y + metrics.row_height <=
-                (i32)(layout.route_bounds.y +
+                cast(s32)(layout.route_bounds.y +
                     layout.route_bounds.height) {
             row: NavigationBarConfigRowLayout =
                 NavigationBarConfigRowLayoutFor(
@@ -219,8 +224,8 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                 slot_labels[index] != "" {
                 PaintClippedLabel(frame.panel_node,
                     slot_labels[index],
-                    (i32)row.label_bounds.x,
-                    (i32)row.label_bounds.y, font,
+                    cast(s32)row.label_bounds.x,
+                    cast(s32)row.label_bounds.y, font,
                     ColorFromPacked(Opacity(
                         row_face.value.foreground,
                         StyleOpacityValue(row_face.value.fields,
@@ -228,20 +233,20 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                     layout.route_bounds)
             }
             if NavigationBarConfigButton(
-                key * (u64)131071 + (u64)(u32)(index + 1) *
-                    (u64)17 + (u64)1,
+                key * cast(u64)131071 + cast(u64)cast(u32)(index + 1) *
+                    cast(u64)17 + cast(u64)1,
                 props.id + index + 1, props.class_name,
                 row.remove_bounds, props.remove_label,
                 false, true) {
                 removed = index
             }
-            cx: float = row.remove_bounds.x +
+            cx: float32 = row.remove_bounds.x +
                 row.remove_bounds.width * 0.5
-            cy: float = row.remove_bounds.y +
+            cy: float32 = row.remove_bounds.y +
                 row.remove_bounds.height * 0.5
             PaintLine(frame.panel_node,
-                (Rectangle){cx - 5.0, cy, 10.0, 0.0},
-                ColorFromPacked((u32)0x334155ff))
+                Rectangle.{cx - 5.0, cy, 10.0, 0.0},
+                ColorFromPacked(cast(u32)0x334155ff))
         }
         index += 1
     }
@@ -257,13 +262,13 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
         result.dropdown_row = -1
         result.scroll_offset = ScrollClamp(result.scroll_offset,
             ScrollMax(metrics.row_height * result.route_count,
-                (i32)layout.route_bounds.height))
+                cast(s32)layout.route_bounds.height))
     }
     if result.route_count < counts.max_route_count {
-        if NavigationBarConfigButton(key * (u64)65599 +
-            (u64)10, props.id, props.class_name,
+        if NavigationBarConfigButton(key * cast(u64)65599 +
+            cast(u64)10, props.id, props.class_name,
             layout.add_bounds, props.add_label, false, false) {
-            default_route: i32 = 0
+            default_route: s32 = 0
             if counts.option_count > 0 {
                 default_route = options[0].route
             }
@@ -274,16 +279,16 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
             result.changed = true
         }
     }
-    if NavigationBarConfigButton(key * (u64)65599 +
-        (u64)11, props.id, props.class_name,
+    if NavigationBarConfigButton(key * cast(u64)65599 +
+        cast(u64)11, props.id, props.class_name,
         layout.reset_bounds, props.reset_label,
         false, false) { result.action = 3 }
-    if NavigationBarConfigButton(key * (u64)65599 +
-        (u64)12, props.id, props.class_name,
+    if NavigationBarConfigButton(key * cast(u64)65599 +
+        cast(u64)12, props.id, props.class_name,
         layout.cancel_bounds, props.cancel_label,
         false, false) { result.action = 1 }
-    if NavigationBarConfigButton(key * (u64)65599 +
-        (u64)13, props.id, props.class_name,
+    if NavigationBarConfigButton(key * cast(u64)65599 +
+        cast(u64)13, props.id, props.class_name,
         layout.save_bounds, props.save_label,
         false, false) { result.action = 2 }
 
@@ -301,18 +306,18 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
     rendered_open: bool = false
     index = 0
     while index < result.route_count && counts.option_count > 0 {
-        y: i32 = (i32)layout.route_bounds.y +
+        y: s32 = cast(s32)layout.route_bounds.y +
             index * metrics.row_height - result.scroll_offset
-        if y >= (i32)layout.route_bounds.y &&
+        if y >= cast(s32)layout.route_bounds.y &&
             y + metrics.row_height <=
-                (i32)(layout.route_bounds.y +
+                cast(s32)(layout.route_bounds.y +
                     layout.route_bounds.height) {
             row: NavigationBarConfigRowLayout =
                 NavigationBarConfigRowLayoutFor(
                     row_content, y, line_height, metrics)
             dropdown: DropdownProps
-            dropdown.key = key * (u64)131071 +
-                (u64)(u32)(index + 1) * (u64)17 + (u64)2
+            dropdown.key = key * cast(u64)131071 +
+                cast(u64)cast(u32)(index + 1) * cast(u64)17 + cast(u64)2
             dropdown.id = props.id + index + 1
             dropdown.class_name = props.class_name
             dropdown.bounds = row.dropdown_bounds

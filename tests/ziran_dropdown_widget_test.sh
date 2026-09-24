@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "dropdown"
 #import "dropdown_props"
@@ -24,13 +23,14 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-open_state :: bool #global
-selected_state :: i32 #global
-highlight_state :: i32 #global
-scroll_state :: i32 #global
+phase: s32;
+open_state: bool;
+selected_state: s32;
+highlight_state: s32;
+scroll_state: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -39,33 +39,33 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindDropdown()
         rule.selector.role = 0
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
     options: [3]DropdownOption
-    options[0].key = (u64)41
+    options[0].key = cast(u64)41
     options[0].label = "First"
-    options[1].key = (u64)42
+    options[1].key = cast(u64)42
     options[1].label = "Blocked"
     options[1].disabled = true
-    options[2].key = (u64)43
+    options[2].key = cast(u64)43
     options[2].label = "Third"
     if phase == 13 { options[0].image.asset_path = "badge.png" }
     long_options: [8]DropdownOption
-    option_index: i32 = 0
+    option_index: s32 = 0
     while option_index < 8 {
         long_options[option_index].key =
-            (u64)(u32)(100 + option_index)
+            cast(u64)cast(u32)(100 + option_index)
         long_options[option_index].label = "Item"
         option_index += 1
     }
     props: DropdownProps
-    props.key = (u64)11
+    props.key = cast(u64)11
     props.id = 11
     props.class_name = 9
-    props.bounds = (Rectangle){10.0, 10.0, 120.0, 28.0}
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
     props.selected_index = selected_state
     props.highlight_index = highlight_state
     props.scroll_offset = scroll_state
@@ -88,7 +88,7 @@ Frame :: () -> i32 #export {
         if phase == 10 { props.wheel = -1.0 }
         if phase == 13 { props.open = false }
     }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 220.0, 220.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult
     if phase >= 10 && phase <= 12 {
         result = Dropdown(props, long_options[0:8])
@@ -98,29 +98,29 @@ Frame :: () -> i32 #export {
     if !TreeFinish() || result.node != 1 ||
         TreeNodeAt(1).kind != WidgetKindDropdown ||
         TreeNodeAt(1).semantic_kind !=
-            (SemanticKind)SemanticComboBox { return -20 }
+            cast(SemanticKind)SemanticComboBox { return -20 }
     if phase == 0 {
         if result.open || result.changed || TreeCount() != 2 ||
             TreeHitAt(20.0, 20.0) != 1 { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 20.0,
+        TreePointerUpdate(PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 1 {
         if !result.open { return -21 }
         if !result.opened { return -22 }
         if result.highlight_index != 0 { return -23 }
         if TreeCount() != 8 { return -24 }
-        TreePointerUpdate((PointerFrame){20.0, 88.0,
+        TreePointerUpdate(PointerFrame.{20.0, 88.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 88.0,
+        TreePointerUpdate(PointerFrame.{20.0, 88.0,
             false, false, true})
     } else if phase == 2 {
         if !result.open || result.changed ||
             TreeCount() != 8 { return -3 }
-        TreePointerUpdate((PointerFrame){20.0, 115.0,
+        TreePointerUpdate(PointerFrame.{20.0, 115.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 115.0,
+        TreePointerUpdate(PointerFrame.{20.0, 115.0,
             false, false, true})
     } else if phase == 3 {
         if result.open || !result.changed || !result.closed ||
@@ -137,9 +137,9 @@ Frame :: () -> i32 #export {
             result.selected_index != 0 { return -7 }
     } else if phase == 7 {
         if !result.open || TreeCount() != 8 { return -8 }
-        TreePointerUpdate((PointerFrame){180.0, 180.0,
+        TreePointerUpdate(PointerFrame.{180.0, 180.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){180.0, 180.0,
+        TreePointerUpdate(PointerFrame.{180.0, 180.0,
             false, false, true})
     } else if phase == 8 {
         if result.open || !result.closed || result.changed ||
@@ -153,14 +153,14 @@ Frame :: () -> i32 #export {
             TreeCount() != 11 ||
             TreeNodeAt(10).kind != WidgetKindSlider ||
             TreeHitAt(126.0, 80.0) != 10 { return -11 }
-        TreePointerUpdate((PointerFrame){126.0, 80.0,
+        TreePointerUpdate(PointerFrame.{126.0, 80.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){126.0, 160.0,
+        TreePointerUpdate(PointerFrame.{126.0, 160.0,
             true, false, false})
     } else if phase == 11 {
         if !result.open || result.scroll_offset != 84 ||
             TreeCount() != 11 { return -12 }
-        TreePointerUpdate((PointerFrame){126.0, 160.0,
+        TreePointerUpdate(PointerFrame.{126.0, 160.0,
             false, false, true})
     } else if phase == 12 {
         if !result.open || result.scroll_offset != 84 ||
@@ -174,7 +174,7 @@ Frame :: () -> i32 #export {
     selected_state = result.selected_index
     highlight_state = result.highlight_index
     scroll_state = result.scroll_offset
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

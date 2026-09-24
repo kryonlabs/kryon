@@ -4,11 +4,11 @@
 #import "style_sheet"
 
 CompositionPhase :: enum {
-    CompositionNone = 0
-    CompositionStart = 1
-    CompositionUpdate = 2
-    CompositionCommit = 3
-    CompositionCancel = 4
+    CompositionNone :: 0
+    CompositionStart :: 1
+    CompositionUpdate :: 2
+    CompositionCommit :: 3
+    CompositionCancel :: 4
 }
 
 CompositionEvent :: struct {

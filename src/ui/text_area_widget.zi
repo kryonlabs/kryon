@@ -1,4 +1,3 @@
-#module "text_area_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -19,38 +18,40 @@
 #import "widget_kind"
 
 TextAreaRow :: struct {
-    start: i32
-    end: i32
-    next: i32
+    start: s32
+    end: s32
+    next: s32
     soft_wrap: bool
 }
 
 TextAreaCaret :: struct {
-    x: i32
-    y: i32
-    row_start: i32
-    row_end: i32
-    row_index: i32
+    x: s32
+    y: s32
+    row_start: s32
+    row_end: s32
+    row_index: s32
 }
 
-TextAreaKey :: (props: TextAreaProps) -> u64 #export {
-    if props.key != (u64)0 { return props.key }
-    if props.focus_id > 0 { return (u64)(u32)props.focus_id }
+#program_export
+TextAreaKey :: (props: TextAreaProps) -> u64 {
+    if props.key != cast(u64)0 { return props.key }
+    if props.focus_id > 0 { return cast(u64)cast(u32)props.focus_id }
     return TreeNextKey()
 }
 
-TextAreaDefaultFace :: () -> StyleData #export {
+#program_export
+TextAreaDefaultFace :: () -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleFocus |
-        (u32)StyleRadius | (u32)StyleBorderWidth |
-        (u32)StyleOpacity | (u32)StylePaddingX |
-        (u32)StylePaddingY | (u32)StyleFontSize |
-        (u32)StyleGap
-    face.background = (u32)0xffffffff
-    face.foreground = (u32)0x111827ff
-    face.border = (u32)0x94a3b8ff
-    face.focus = (u32)0x3b82f6ff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleFocus |
+        cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY | cast(u32)StyleFontSize |
+        cast(u32)StyleGap
+    face.background = cast(u32)0xffffffff
+    face.foreground = cast(u32)0x111827ff
+    face.border = cast(u32)0x94a3b8ff
+    face.focus = cast(u32)0x3b82f6ff
     face.radius = 4.0
     face.border_width = 1.0
     face.opacity = 1.0
@@ -61,27 +62,29 @@ TextAreaDefaultFace :: () -> StyleData #export {
     return face
 }
 
+#program_export
 TextAreaFaceFor :: (props: TextAreaProps,
-    focused: bool) -> StyleFrame #export {
-    state: i32 = (i32)ButtonStateNormal
-    if focused { state = (i32)ButtonStateFocus }
-    if props.disabled { state = (i32)ButtonStateDisabled }
+    focused: bool) -> StyleFrame {
+    state: s32 = cast(s32)ButtonStateNormal
+    if focused { state = cast(s32)ButtonStateFocus }
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         TextAreaDefaultFace(),
         StyleControlRoleFacts(StyleKindTextArea(),
             props.focus_id, props.class_name, 0,
-            (i32)ButtonToneNeutral,
-            (i32)ButtonEmphasisSoft,
-            (i32)ControlSizeMedium, state), state)
+            cast(s32)ButtonToneNeutral,
+            cast(s32)ButtonEmphasisSoft,
+            cast(s32)ControlSizeMedium, state), state)
     return frame
 }
 
 # Rows preserve every byte, including spaces at wrap boundaries. The cursor
 # can therefore address the original value without a shadow text buffer.
-TextAreaNextRow :: (value: string, start: i32,
-    wrap_width: i32, font: i32,
-    typeface: string) -> TextAreaRow #export {
+#program_export
+TextAreaNextRow :: (value: string, start: s32,
+    wrap_width: s32, font: s32,
+    typeface: string) -> TextAreaRow {
     row: TextAreaRow
     row.start = start
     row.end = start
@@ -91,12 +94,12 @@ TextAreaNextRow :: (value: string, start: i32,
     row.end = line.end
     row.next = line.next
     if wrap_width <= 0 || line.end <= start { return row }
-    cursor: i32 = start
-    fitted: i32 = start
-    break_after: i32 = -1
+    cursor: s32 = start
+    fitted: s32 = start
+    break_after: s32 = -1
     while cursor < line.end {
-        next: i32 = TextFieldNext(value, cursor)
-        width: i32 = GlyphWidth(TextSpan(value,
+        next: s32 = TextFieldNext(value, cursor)
+        width: s32 = GlyphWidth(TextSpan(value,
             start, next - start), font, typeface)
         if width > wrap_width {
             if fitted == start { fitted = next }
@@ -111,17 +114,18 @@ TextAreaNextRow :: (value: string, start: i32,
             return row
         }
         fitted = next
-        if value[cursor] == (u8)32 ||
-            value[cursor] == (u8)9 { break_after = next }
+        if value[cursor] == cast(u8)32 ||
+            value[cursor] == cast(u8)9 { break_after = next }
         cursor = next
     }
     return row
 }
 
-TextAreaRowCount :: (value: string, wrap_width: i32,
-    font: i32, typeface: string) -> i32 #export {
-    count: i32 = 0
-    offset: i32 = 0
+#program_export
+TextAreaRowCount :: (value: string, wrap_width: s32,
+    font: s32, typeface: string) -> s32 {
+    count: s32 = 0
+    offset: s32 = 0
     while offset <= value.length {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
@@ -132,20 +136,21 @@ TextAreaRowCount :: (value: string, wrap_width: i32,
     return count
 }
 
-TextAreaCaretFor :: (value: string, cursor: i32,
-    wrap_width: i32, font: i32, typeface: string,
-    advance: i32) -> TextAreaCaret #export {
+#program_export
+TextAreaCaretFor :: (value: string, cursor: s32,
+    wrap_width: s32, font: s32, typeface: string,
+    advance: s32) -> TextAreaCaret {
     caret: TextAreaCaret
     cursor = TextCursorForLength(cursor, value.length)
-    offset: i32 = 0
-    index: i32 = 0
+    offset: s32 = 0
+    index: s32 = 0
     while offset <= value.length {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
         if cursor < row.end ||
             (cursor == row.end && !row.soft_wrap) ||
             row.next > value.length {
-            within: i32 = cursor
+            within: s32 = cursor
             if within < row.start { within = row.start }
             if within > row.end { within = row.end }
             caret.x = GlyphWidth(TextSpan(value,
@@ -169,21 +174,22 @@ TextAreaCaretFor :: (value: string, cursor: i32,
 TextAreaView :: struct {
     value: string
     preedit: string
-    replace_start: i32
-    replace_end: i32
-    length: i32
+    replace_start: s32
+    replace_end: s32
+    length: s32
     composing: bool
 }
 
 TextAreaViewSegment :: struct {
     source: string
-    source_start: i32
-    start: i32
-    end: i32
+    source_start: s32
+    start: s32
+    end: s32
 }
 
-TextAreaViewFor :: (value: string, anchor: i32,
-    cursor: i32, composition: CompositionState) -> TextAreaView #export {
+#program_export
+TextAreaViewFor :: (value: string, anchor: s32,
+    cursor: s32, composition: CompositionState) -> TextAreaView {
     view: TextAreaView
     view.value = value
     view.length = value.length
@@ -203,8 +209,9 @@ TextAreaViewFor :: (value: string, anchor: i32,
     return view
 }
 
+#program_export
 TextAreaViewSegmentFor :: (view: TextAreaView,
-    part: i32) -> TextAreaViewSegment #export {
+    part: s32) -> TextAreaViewSegment {
     segment: TextAreaViewSegment
     if part == 0 {
         segment.source = view.value
@@ -222,17 +229,19 @@ TextAreaViewSegmentFor :: (view: TextAreaView,
     return segment
 }
 
+#program_export
 TextAreaViewByteAt :: (view: TextAreaView,
-    index: i32) -> u8 #export {
+    index: s32) -> u8 {
     if index < view.replace_start { return view.value[index] }
-    after: i32 = index - view.replace_start
+    after: s32 = index - view.replace_start
     if after < view.preedit.length { return view.preedit[after] }
     return view.value[view.replace_end + after -
         view.preedit.length]
 }
 
+#program_export
 TextAreaViewNext :: (view: TextAreaView,
-    cursor: i32) -> i32 #export {
+    cursor: s32) -> s32 {
     cursor = TextCursorForLength(cursor, view.length)
     if cursor >= view.length { return view.length }
     cursor += 1
@@ -243,20 +252,21 @@ TextAreaViewNext :: (view: TextAreaView,
     return cursor
 }
 
+#program_export
 TextAreaViewSpanWidth :: (view: TextAreaView,
-    start: i32, end: i32, font: i32,
-    typeface: string) -> i32 #export {
+    start: s32, end: s32, font: s32,
+    typeface: string) -> s32 {
     start = TextCursorForLength(start, view.length)
     end = TextCursorForLength(end, view.length)
     if end <= start { return 0 }
-    width: i32 = 0
-    part: i32 = 0
+    width: s32 = 0
+    part: s32 = 0
     while part < 3 {
         segment: TextAreaViewSegment =
             TextAreaViewSegmentFor(view, part)
-        left: i32 = start
+        left: s32 = start
         if left < segment.start { left = segment.start }
-        right: i32 = end
+        right: s32 = end
         if right > segment.end { right = segment.end }
         if right > left {
             width += GlyphWidth(TextSpan(segment.source,
@@ -268,32 +278,33 @@ TextAreaViewSpanWidth :: (view: TextAreaView,
     return width
 }
 
+#program_export
 TextAreaViewNextRow :: (view: TextAreaView,
-    start: i32, wrap_width: i32, font: i32,
-    typeface: string) -> TextAreaRow #export {
+    start: s32, wrap_width: s32, font: s32,
+    typeface: string) -> TextAreaRow {
     row: TextAreaRow
     row.start = start
     row.end = start
     row.next = view.length + 1
     if start < 0 || start > view.length { return row }
-    line_end: i32 = start
+    line_end: s32 = start
     while line_end < view.length &&
-        TextAreaViewByteAt(view, line_end) != (u8)10 {
+        TextAreaViewByteAt(view, line_end) != cast(u8)10 {
         line_end += 1
     }
     row.end = line_end
     row.next = line_end + 1
     if line_end < view.length && line_end > start &&
-        TextAreaViewByteAt(view, line_end - 1) == (u8)13 {
+        TextAreaViewByteAt(view, line_end - 1) == cast(u8)13 {
         row.end -= 1
     }
     if wrap_width <= 0 || row.end <= start { return row }
-    cursor: i32 = start
-    fitted: i32 = start
-    break_after: i32 = -1
+    cursor: s32 = start
+    fitted: s32 = start
+    break_after: s32 = -1
     while cursor < row.end {
-        next: i32 = TextAreaViewNext(view, cursor)
-        width: i32 = TextAreaViewSpanWidth(view, start,
+        next: s32 = TextAreaViewNext(view, cursor)
+        width: s32 = TextAreaViewSpanWidth(view, start,
             next, font, typeface)
         if width > wrap_width {
             if fitted == start { fitted = next }
@@ -308,8 +319,8 @@ TextAreaViewNextRow :: (view: TextAreaView,
             return row
         }
         fitted = next
-        if TextAreaViewByteAt(view, cursor) == (u8)32 ||
-            TextAreaViewByteAt(view, cursor) == (u8)9 {
+        if TextAreaViewByteAt(view, cursor) == cast(u8)32 ||
+            TextAreaViewByteAt(view, cursor) == cast(u8)9 {
             break_after = next
         }
         cursor = next
@@ -317,11 +328,12 @@ TextAreaViewNextRow :: (view: TextAreaView,
     return row
 }
 
+#program_export
 TextAreaViewRowCount :: (view: TextAreaView,
-    wrap_width: i32, font: i32,
-    typeface: string) -> i32 #export {
-    count: i32 = 0
-    offset: i32 = 0
+    wrap_width: s32, font: s32,
+    typeface: string) -> s32 {
+    count: s32 = 0
+    offset: s32 = 0
     while offset <= view.length {
         row: TextAreaRow = TextAreaViewNextRow(view,
             offset, wrap_width, font, typeface)
@@ -332,21 +344,22 @@ TextAreaViewRowCount :: (view: TextAreaView,
     return count
 }
 
+#program_export
 TextAreaViewCaretFor :: (view: TextAreaView,
-    cursor: i32, wrap_width: i32,
-    font: i32, typeface: string,
-    advance: i32) -> TextAreaCaret #export {
+    cursor: s32, wrap_width: s32,
+    font: s32, typeface: string,
+    advance: s32) -> TextAreaCaret {
     caret: TextAreaCaret
     cursor = TextCursorForLength(cursor, view.length)
-    offset: i32 = 0
-    index: i32 = 0
+    offset: s32 = 0
+    index: s32 = 0
     while offset <= view.length {
         row: TextAreaRow = TextAreaViewNextRow(view,
             offset, wrap_width, font, typeface)
         if cursor < row.end ||
             (cursor == row.end && !row.soft_wrap) ||
             row.next > view.length {
-            within: i32 = cursor
+            within: s32 = cursor
             if within < row.start { within = row.start }
             if within > row.end { within = row.end }
             caret.x = TextAreaViewSpanWidth(view,
@@ -364,17 +377,18 @@ TextAreaViewCaretFor :: (view: TextAreaView,
     return caret
 }
 
-TextAreaViewPaintRow :: (node: i32, view: TextAreaView,
-    row: TextAreaRow, x: i32, y: i32, font: i32,
+#program_export
+TextAreaViewPaintRow :: (node: s32, view: TextAreaView,
+    row: TextAreaRow, x: s32, y: s32, font: s32,
     typeface: string, color: Color,
-    clip: Rectangle) #export {
-    part: i32 = 0
+    clip: Rectangle) {
+    part: s32 = 0
     while part < 3 {
         segment: TextAreaViewSegment =
             TextAreaViewSegmentFor(view, part)
-        left: i32 = row.start
+        left: s32 = row.start
         if left < segment.start { left = segment.start }
-        right: i32 = row.end
+        right: s32 = row.end
         if right > segment.end { right = segment.end }
         if right > left {
             PaintClippedLabel(node,
@@ -389,14 +403,15 @@ TextAreaViewPaintRow :: (node: i32, view: TextAreaView,
     }
 }
 
-TextAreaCursorAtPoint :: (value: string, x: i32,
-    y: i32, wrap_width: i32, font: i32,
-    typeface: string, advance: i32) -> i32 #export {
+#program_export
+TextAreaCursorAtPoint :: (value: string, x: s32,
+    y: s32, wrap_width: s32, font: s32,
+    typeface: string, advance: s32) -> s32 {
     if advance < 1 { advance = 1 }
     if y < 0 { y = 0 }
-    wanted: i32 = y / advance
-    offset: i32 = 0
-    index: i32 = 0
+    wanted: s32 = y / advance
+    offset: s32 = 0
+    index: s32 = 0
     while offset <= value.length {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
@@ -413,13 +428,14 @@ TextAreaCursorAtPoint :: (value: string, x: i32,
     return value.length
 }
 
-TextAreaInputTextAllowed :: (value: string) -> bool #export {
+#program_export
+TextAreaInputTextAllowed :: (value: string) -> bool {
     if value == "" { return false }
-    index: i32 = 0
+    index: s32 = 0
     while index < value.length {
         byte: u8 = value[index]
-        if (byte < (u8)32 && byte != (u8)9 &&
-            byte != (u8)10) || byte == (u8)127 {
+        if (byte < cast(u8)32 && byte != cast(u8)9 &&
+            byte != cast(u8)10) || byte == cast(u8)127 {
             return false
         }
         index += 1
@@ -427,13 +443,14 @@ TextAreaInputTextAllowed :: (value: string) -> bool #export {
     return true
 }
 
+#program_export
 TextAreaReplacementAllowed :: (props: TextAreaProps,
-    start: i32, end: i32,
-    replacement: string) -> bool #export {
+    start: s32, end: s32,
+    replacement: string) -> bool {
     if start < 0 || end < start || end > props.value.length {
         return false
     }
-    bytes: i32 = props.value.length - (end - start) +
+    bytes: s32 = props.value.length - (end - start) +
         replacement.length
     if props.max_bytes > 0 && bytes > props.max_bytes {
         return false
@@ -441,7 +458,7 @@ TextAreaReplacementAllowed :: (props: TextAreaProps,
     if props.max_codepoints > 0 {
         removed: string = TextSpan(props.value,
             start, end - start)
-        count: i32 = TextFieldCodepoints(props.value) -
+        count: s32 = TextFieldCodepoints(props.value) -
             TextFieldCodepoints(removed) +
             TextFieldCodepoints(replacement)
         if count > props.max_codepoints { return false }
@@ -449,8 +466,9 @@ TextAreaReplacementAllowed :: (props: TextAreaProps,
     return true
 }
 
+#program_export
 TextAreaEditFor :: (props: TextAreaProps,
-    cursor: i32, anchor: i32) -> TextAreaEdit #export {
+    cursor: s32, anchor: s32) -> TextAreaEdit {
     edit: TextAreaEdit
     selection: TextSelectionRange = TextSelectionRangeForLength(
         anchor, cursor, props.value.length)
@@ -487,7 +505,8 @@ TextAreaEditFor :: (props: TextAreaProps,
 
 # The caller stores text, focus, selection, and scroll state. Kryon returns
 # UTF-8 byte edits and paints from the immutable value for this frame.
-TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
+#program_export
+TextArea :: (props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
@@ -503,7 +522,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
     key: u64 = TextAreaKey(props)
-    previous: i32 = -1
+    previous: s32 = -1
     if TreeIsBuilding() {
         previous = TreeFind(key, TreeCurrentParentKey(),
             WidgetKindTextArea)
@@ -513,36 +532,36 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     if props.disabled || props.input.blur { result.focused = false }
     if !props.disabled && props.input.focus { result.focused = true }
     face: StyleFrame = TextAreaFaceFor(props, result.focused)
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields,
             face.value.font_size), 14)
-    line_height: i32 = GlyphLineHeight(font,
+    line_height: s32 = GlyphLineHeight(font,
         face.value.typeface)
-    gap: i32 = TextInputScaledMetric(face.value.gap, scale)
+    gap: s32 = TextInputScaledMetric(face.value.gap, scale)
     if gap < 0 { gap = 0 }
-    advance: i32 = line_height + gap
+    advance: s32 = line_height + gap
     if advance < 1 { advance = 1 }
-    padding_x: i32 = TextInputScaledMetric(
+    padding_x: s32 = TextInputScaledMetric(
         face.value.padding_x, scale)
-    padding_y: i32 = TextInputScaledMetric(
+    padding_y: s32 = TextInputScaledMetric(
         face.value.padding_y, scale)
     if padding_x < 0 { padding_x = 0 }
     if padding_y < 0 { padding_y = 0 }
-    wrap_width: i32 = TextAreaWrapWidthFor(bounds.width,
+    wrap_width: s32 = TextAreaWrapWidthFor(bounds.width,
         padding_x, props.wrap, TextAreaMinWrapWidth(scale))
     initial_composition: CompositionState = props.composition
     if !result.focused || props.read_only || props.disabled ||
         props.input.escape || activated || drag.started ||
         drag.active || drag.ended ||
         props.input.composition_event.phase !=
-            (CompositionPhase)CompositionNone {
-        initial_composition = (CompositionState){}
+            cast(CompositionPhase)CompositionNone {
+        initial_composition = CompositionState.{}
     }
     initial_view: TextAreaView = TextAreaViewFor(props.value,
         result.anchor, result.cursor, initial_composition)
-    content_height: i32 = TextAreaRowCount(props.value,
+    content_height: s32 = TextAreaRowCount(props.value,
         wrap_width, font, face.value.typeface) * advance
     if initial_view.composing {
         content_height = TextAreaViewRowCount(initial_view,
@@ -564,26 +583,26 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         (drag.started || drag.active || drag.ended || activated) {
         result.focused = true
         prior: Rectangle = TreeNodeAt(previous).bounds
-        origin_x: float = prior.x + drag.grab_x
-        origin_y: float = prior.y + drag.grab_y
-        sample_x: float = drag.x
-        sample_y: float = drag.y
+        origin_x: float32 = prior.x + drag.grab_x
+        origin_y: float32 = prior.y + drag.grab_y
+        sample_x: float32 = drag.x
+        sample_y: float32 = drag.y
         if drag.started {
             sample_x = origin_x
             sample_y = origin_y
         }
-        initial: i32 = TextAreaCursorAtPoint(props.value,
-            (i32)origin_x - ((i32)bounds.x + padding_x),
-            (i32)origin_y - ((i32)bounds.y + padding_y) +
+        initial: s32 = TextAreaCursorAtPoint(props.value,
+            cast(s32)origin_x - (cast(s32)bounds.x + padding_x),
+            cast(s32)origin_y - (cast(s32)bounds.y + padding_y) +
                 result.scroll_y,
             wrap_width, font, face.value.typeface, advance)
-        selected: i32 = TextAreaCursorAtPoint(props.value,
-            (i32)sample_x - ((i32)bounds.x + padding_x),
-            (i32)sample_y - ((i32)bounds.y + padding_y) +
+        selected: s32 = TextAreaCursorAtPoint(props.value,
+            cast(s32)sample_x - (cast(s32)bounds.x + padding_x),
+            cast(s32)sample_y - (cast(s32)bounds.y + padding_y) +
                 result.scroll_y,
             wrap_width, font, face.value.typeface, advance)
-        dx: float = sample_x - origin_x
-        dy: float = sample_y - origin_y
+        dx: float32 = sample_x - origin_x
+        dy: float32 = sample_y - origin_y
         if dx < 0.0 { dx = -dx }
         if dy < 0.0 { dy = -dy }
         pointer_moved = dx > 2.0 || dy > 2.0 ||
@@ -609,7 +628,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     composition_state: CompositionState = props.composition
     if activated || drag.started || drag.active || drag.ended {
         if composition_state.active {
-            composition_state = (CompositionState){}
+            composition_state = CompositionState.{}
             result.composition_changed = true
         }
     }
@@ -623,13 +642,13 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     if result.focused && !props.disabled &&
         !props.input.escape && !result.composition.active &&
         props.input.composition_event.phase ==
-            (CompositionPhase)CompositionNone {
+            cast(CompositionPhase)CompositionNone {
         if props.input.select_all {
             result.anchor = 0
             result.cursor = props.value.length
             navigation = true
         } else {
-            target: i32 = result.cursor
+            target: s32 = result.cursor
             moved: bool = false
             selection: TextSelectionRange =
                 TextSelectionRangeForLength(result.anchor,
@@ -665,16 +684,16 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 moved = true
             } else if props.input.up || props.input.down ||
                 props.input.page_up || props.input.page_down {
-                rows: i32 = 1
+                rows: s32 = 1
                 if props.input.page_up || props.input.page_down {
                     rows = TextAreaPageRows(bounds.height,
                         font, gap, padding_y)
                 }
-                direction: i32 = 1
+                direction: s32 = 1
                 if props.input.up || props.input.page_up {
                     direction = -1
                 }
-                preferred: i32 = caret.x
+                preferred: s32 = caret.x
                 if result.preferred_x_valid {
                     preferred = result.preferred_x
                 }
@@ -706,8 +725,8 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         result.committed = props.input.commit &&
             !result.composition.active &&
             props.input.composition_event.phase ==
-                (CompositionPhase)CompositionNone
-        command: i32 = 0
+                cast(CompositionPhase)CompositionNone
+        command: s32 = 0
         if props.input.copy {
             command = TextContextCommandCopy()
         } else if props.input.cut {
@@ -727,7 +746,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 result.edit.changed = true
             }
         } else if props.input.composition_event.phase ==
-            (CompositionPhase)CompositionNone &&
+            cast(CompositionPhase)CompositionNone &&
             !result.composition.active && command != 0 {
             selection: TextSelectionRange = TextSelectionRangeForLength(
                 result.anchor, result.cursor, props.value.length)
@@ -760,7 +779,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             }
         } else if !props.read_only &&
             props.input.composition_event.phase ==
-                (CompositionPhase)CompositionNone &&
+                cast(CompositionPhase)CompositionNone &&
             !result.composition.active {
             result.edit = TextAreaEditFor(props,
                 result.cursor, result.anchor)
@@ -771,24 +790,24 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             result.anchor = result.cursor
             result.preferred_x_valid = false
             if result.composition.active {
-                result.composition = (CompositionState){}
+                result.composition = CompositionState.{}
                 result.composition_changed = true
             }
         }
     }
     if props.input.escape && result.composition.active {
-        result.composition = (CompositionState){}
+        result.composition = CompositionState.{}
         result.composition_changed = true
     }
     result.escaped = props.input.escape && result.focused &&
         !props.composition.active &&
         props.input.composition_event.phase ==
-            (CompositionPhase)CompositionNone
+            cast(CompositionPhase)CompositionNone
     if result.escaped { result.focused = false }
     if props.disabled || props.input.blur { result.focused = false }
     view: TextAreaView = TextAreaViewFor(props.value,
         result.anchor, result.cursor, result.composition)
-    display_cursor: i32 = result.cursor
+    display_cursor: s32 = result.cursor
     if view.composing {
         display_cursor = view.replace_start +
             result.composition.cursor
@@ -811,14 +830,14 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
     if TextAreaRevealCursorShouldRun(result.focused,
         result.edit.changed, navigation || pointer_moved ||
         props.input.focus || result.composition_changed) {
-        viewport: i32 = (i32)bounds.height - padding_y * 2
+        viewport: s32 = cast(s32)bounds.height - padding_y * 2
         result.scroll_y = TextAreaScrollFor(
             TextAreaRevealScroll(result.scroll_y,
                 display_caret.y, line_height, viewport),
             paint.max_scroll)
     }
     face = TextAreaFaceFor(props, result.focused)
-    opacity: float = StyleOpacityValue(face.value.fields,
+    opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     if TreeIsBuilding() {
         result.node = TreeSubmitCurrent(key,
@@ -827,7 +846,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         TreeSetInteractive(result.node, props.disabled,
             false, props.focus_id)
         TreeSetSemantic(result.node,
-            (SemanticKind)SemanticTextArea, 0)
+            cast(SemanticKind)SemanticTextArea, 0)
         TreeSetLabel(result.node, props.label)
         TreeSetSelected(result.node, result.focused)
         bounds = TreeSubmittedNodeAt(result.node).bounds
@@ -853,13 +872,13 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         PaintClippedLabel(result.node, props.placeholder,
             paint.placeholder_x, paint.placeholder_y,
             font, ColorFromPacked(Opacity(
-                (u32)0x64748bff, opacity)),
+                cast(u32)0x64748bff, opacity)),
             paint.clip_bounds)
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(
         result.anchor, result.cursor, props.value.length)
-    paint_selection_start: i32 = selection.start
-    paint_selection_end: i32 = selection.end
+    paint_selection_start: s32 = selection.start
+    paint_selection_end: s32 = selection.end
     paint_has_selection: bool = selection.has_selection
     if view.composing {
         paint_selection_start = display_cursor
@@ -868,8 +887,8 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         paint_has_selection = paint_selection_end >
             paint_selection_start
     }
-    offset: i32 = 0
-    row_index: i32 = 0
+    offset: s32 = 0
+    row_index: s32 = 0
     first_token: bool = true
     block_comment: bool = false
     dark_syntax: bool = SyntaxDarkBackground(
@@ -882,11 +901,11 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             row = TextAreaViewNextRow(view, offset,
                 wrap_width, font, face.value.typeface)
         }
-        y: i32 = (i32)paint.clip_bounds.y +
+        y: s32 = cast(s32)paint.clip_bounds.y +
             row_index * advance - result.scroll_y
         row_visible: bool = y + advance >
-            (i32)paint.clip_bounds.y &&
-            y < (i32)(paint.clip_bounds.y +
+            cast(s32)paint.clip_bounds.y &&
+            y < cast(s32)(paint.clip_bounds.y +
                 paint.clip_bounds.height)
         if row_visible {
             if paint_has_selection && result.focused {
@@ -896,24 +915,24 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                         paint_selection_end,
                         row.start, row.end)
                 if span.visible {
-                    left: i32 = TextAreaViewSpanWidth(view,
+                    left: s32 = TextAreaViewSpanWidth(view,
                         row.start, span.start,
                         font, face.value.typeface)
-                    right: i32 = TextAreaViewSpanWidth(view,
+                    right: s32 = TextAreaViewSpanWidth(view,
                         row.start, span.end,
                         font, face.value.typeface)
                     highlight: Rectangle = RectangleIntersection(
-                        (Rectangle){paint.clip_bounds.x +
-                            (float)left, (float)y,
-                            (float)(right - left),
-                            (float)line_height},
+                        Rectangle.{paint.clip_bounds.x +
+                            cast(float32)left, cast(float32)y,
+                            cast(float32)(right - left),
+                            cast(float32)line_height},
                         paint.clip_bounds)
                     if highlight.width > 0.0 &&
                         highlight.height > 0.0 {
                         PaintRoundedFill(result.node,
                             highlight, 0.0, 1,
                             ColorFromPacked(Opacity(
-                                (u32)0x93c5fd88, opacity)))
+                                cast(u32)0x93c5fd88, opacity)))
                     }
                 }
             }
@@ -922,24 +941,24 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
             if view.composing {
                 if row_visible {
                     TextAreaViewPaintRow(result.node, view,
-                        row, (i32)paint.clip_bounds.x,
+                        row, cast(s32)paint.clip_bounds.x,
                         y, font, face.value.typeface,
                         ColorFromPacked(Opacity(
                             face.value.foreground, opacity)),
                         paint.clip_bounds)
                 }
-            } else if props.syntax == (SyntaxMode)SyntaxNone {
+            } else if props.syntax == cast(SyntaxMode)SyntaxNone {
                 if row_visible {
                 PaintClippedLabel(result.node,
                     TextSpan(props.value, row.start,
                         row.end - row.start),
-                    (i32)paint.clip_bounds.x, y,
+                    cast(s32)paint.clip_bounds.x, y,
                     font, ColorFromPacked(Opacity(
                         face.value.foreground, opacity)),
                     paint.clip_bounds)
                 }
             } else {
-                token_start: i32 = row.start
+                token_start: s32 = row.start
                 while token_start < row.end {
                     token: SyntaxToken = SyntaxTokenAt(
                         props.value, token_start, row.end,
@@ -949,7 +968,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                     if row_visible {
                         prefix: string = TextSpan(props.value,
                             row.start, token_start - row.start)
-                        token_x: i32 = (i32)paint.clip_bounds.x +
+                        token_x: s32 = cast(s32)paint.clip_bounds.x +
                             GlyphWidth(prefix, font,
                                 face.value.typeface)
                         PaintClippedLabel(result.node,
@@ -963,7 +982,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                                 opacity)), paint.clip_bounds)
                     }
                     if token.kind !=
-                        (SyntaxTokenKind)SyntaxWhitespace {
+                        cast(SyntaxTokenKind)SyntaxWhitespace {
                         first_token = false
                     }
                     block_comment = token.block_comment
@@ -971,8 +990,8 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                 }
             }
         }
-        composition_start: i32 = props.composition_start
-        composition_end: i32 = props.composition_end
+        composition_start: s32 = props.composition_start
+        composition_end: s32 = props.composition_end
         if view.composing {
             composition_start = view.replace_start
             composition_end = composition_start +
@@ -985,21 +1004,21 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
                     composition_start, composition_end,
                     row.start, row.end)
             if composition.visible {
-                stroke: i32 = TextInputStrokeWidth(scale)
-                left: i32 = TextAreaViewSpanWidth(view,
+                stroke: s32 = TextInputStrokeWidth(scale)
+                left: s32 = TextAreaViewSpanWidth(view,
                     row.start, composition.start,
                     font, face.value.typeface)
-                right: i32 = TextAreaViewSpanWidth(view,
+                right: s32 = TextAreaViewSpanWidth(view,
                     row.start, composition.end,
                     font, face.value.typeface)
                 right = TextCompositionUnderlineEndX(left,
                     right, stroke)
                 underline: Rectangle = RectangleIntersection(
-                    (Rectangle){paint.clip_bounds.x +
-                        (float)left,
-                        (float)TextCompositionUnderlineY(y,
+                    Rectangle.{paint.clip_bounds.x +
+                        cast(float32)left,
+                        cast(float32)TextCompositionUnderlineY(y,
                             line_height, stroke),
-                        (float)(right - left), (float)stroke},
+                        cast(float32)(right - left), cast(float32)stroke},
                     paint.clip_bounds)
                 if underline.width > 0.0 &&
                     underline.height > 0.0 {
@@ -1016,18 +1035,18 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult #export {
         row_index += 1
     }
     if result.focused && !props.disabled {
-        x: i32 = (i32)paint.clip_bounds.x + display_caret.x
-        y: i32 = (i32)paint.clip_bounds.y +
+        x: s32 = cast(s32)paint.clip_bounds.x + display_caret.x
+        y: s32 = cast(s32)paint.clip_bounds.y +
             display_caret.y - result.scroll_y
-        if x >= (i32)paint.clip_bounds.x &&
-            x <= (i32)(paint.clip_bounds.x +
+        if x >= cast(s32)paint.clip_bounds.x &&
+            x <= cast(s32)(paint.clip_bounds.x +
                 paint.clip_bounds.width) &&
-            y + line_height > (i32)paint.clip_bounds.y &&
-            y < (i32)(paint.clip_bounds.y +
+            y + line_height > cast(s32)paint.clip_bounds.y &&
+            y < cast(s32)(paint.clip_bounds.y +
                 paint.clip_bounds.height) {
             PaintLine(result.node,
-                (Rectangle){(float)x, (float)y,
-                    0.0, (float)line_height},
+                Rectangle.{cast(float32)x, cast(float32)y,
+                    0.0, cast(float32)line_height},
                 ColorFromPacked(Opacity(
                     face.value.foreground, opacity)))
         }

@@ -8,28 +8,28 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "drawing_props"
 #import "geometry"
 #import "transition"
 #import "transition_widget"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     state: TransitionState = TransitionStart(1.0)
-    color: Color = (Color){10, 20, 30, 200}
-    bounds: Rectangle = (Rectangle){2.0, 3.0, 40.0, 20.0}
+    color: Color = Color.{10, 20, 30, 200}
+    bounds: Rectangle = Rectangle.{2.0, 3.0, 40.0, 20.0}
     if phase == 0 {
-        if TransitionFadeColor(state, color).a != (u8)0 { return -1 }
+        if TransitionFadeColor(state, color).a != cast(u8)0 { return -1 }
         PaintTransitionFade(state, bounds, color)
     } else if phase == 1 {
         state = TransitionAdvance(state, 0.5).state
-        if TransitionFadeColor(state, color).a != (u8)99 { return -2 }
+        if TransitionFadeColor(state, color).a != cast(u8)99 { return -2 }
         PaintTransitionFade(state, bounds, color)
     } else if phase == 2 {
         state = TransitionAdvance(state, 1.0).state
-        if TransitionFadeColor(state, color).a != (u8)200 { return -3 }
+        if TransitionFadeColor(state, color).a != cast(u8)200 { return -3 }
         PaintTransitionFade(state, bounds, color)
         bounds.width = 0.0
         PaintTransitionFade(state, bounds, color)
@@ -37,7 +37,7 @@ Frame :: () -> i32 #export {
         state = TransitionReset()
         PaintTransitionFade(state, bounds, color)
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

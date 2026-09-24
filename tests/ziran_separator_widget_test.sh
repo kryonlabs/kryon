@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "separator"
@@ -19,19 +18,20 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "tree_draw"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 1 {
         if !EndTree() || TreeCount() != 4 { return -1 }
         phase = 2
         return 1
     }
     vertical: SeparatorProps
-    vertical.bounds = (Rectangle){10.0, 20.0, 20.0, 40.0}
+    vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
     vertical.vertical = true
     vertical.class_name = 7
-    vertical.key = (u64)11
+    vertical.key = cast(u64)11
     if phase == 2 {
         Separator(vertical)
         phase = 3
@@ -44,31 +44,31 @@ Frame :: () -> i32 #export {
     line.selector.kind = StyleKindSeparator()
     line.selector.class_name = 7
     line.selector.role = SeparatorLineRole()
-    line.style.fields = (u32)StyleBackground
-    line.style.background = (u32)0x11223344
+    line.style.fields = cast(u32)StyleBackground
+    line.style.background = cast(u32)0x11223344
     rules.items[0] = line
     label_rule: StyleRule
     label_rule.selector = StyleDefaultSelector()
     label_rule.selector.kind = StyleKindSeparator()
     label_rule.selector.class_name = 7
     label_rule.selector.role = SeparatorLabelRole()
-    label_rule.style.fields = (u32)StyleForeground |
-        (u32)StyleFontSize | (u32)StyleGap | (u32)StyleOpacity
-    label_rule.style.foreground = (u32)0xaabbccdd
+    label_rule.style.fields = cast(u32)StyleForeground |
+        cast(u32)StyleFontSize | cast(u32)StyleGap | cast(u32)StyleOpacity
+    label_rule.style.foreground = cast(u32)0xaabbccdd
     label_rule.style.font_size = 14.0
     label_rule.style.gap = 8.0
     label_rule.style.opacity = 0.5
     rules.items[1] = label_rule
     InstallStyleRules(rules)
     labelled: SeparatorProps
-    labelled.bounds = (Rectangle){40.0, 20.0, 100.0, 20.0}
+    labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
     labelled.label = "A"
     labelled.class_name = 7
-    labelled.key = (u64)12
-    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 100.0})
+    labelled.key = cast(u64)12
+    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Separator(vertical)
     Separator(labelled)
-    Bullet((Rectangle){150.0, 20.0, 20.0, 20.0})
+    Bullet(Rectangle.{150.0, 20.0, 20.0, 20.0})
     phase = 1
     return 0
 }
@@ -91,7 +91,6 @@ cmp "$work/source.zib" "$work/saved.zib"
 "$work/host-test" "$work/saved.zib"
 
 cat > "$work/native.zi" <<'ZI'
-#module "native"
 #import "control_props"
 #import "geometry"
 #import "separator"
@@ -100,42 +99,43 @@ cat > "$work/native.zi" <<'ZI'
 #import "style"
 #import "style_sheet"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     rules: StyleRules
     rules.count = 3
     line: StyleRule
     line.selector = StyleDefaultSelector()
     line.selector.kind = StyleKindSeparator()
     line.selector.role = SeparatorLineRole()
-    line.style.fields = (u32)StyleBackground
-    line.style.background = (u32)0x11223344
+    line.style.fields = cast(u32)StyleBackground
+    line.style.background = cast(u32)0x11223344
     rules.items[0] = line
     label: StyleRule
     label.selector = StyleDefaultSelector()
     label.selector.kind = StyleKindSeparator()
     label.selector.role = SeparatorLabelRole()
-    label.style.fields = (u32)StyleForeground | (u32)StyleGap
-    label.style.foreground = (u32)0xaabbccdd
+    label.style.fields = cast(u32)StyleForeground | cast(u32)StyleGap
+    label.style.foreground = cast(u32)0xaabbccdd
     label.style.gap = 8.0
     rules.items[1] = label
     bullet: StyleRule
     bullet.selector = StyleDefaultSelector()
     bullet.selector.kind = StyleKindSeparator()
     bullet.selector.role = SeparatorBulletRole()
-    bullet.style.fields = (u32)StyleForeground | (u32)StyleIconSize
-    bullet.style.foreground = (u32)0x123456ff
+    bullet.style.fields = cast(u32)StyleForeground | cast(u32)StyleIconSize
+    bullet.style.foreground = cast(u32)0x123456ff
     bullet.style.icon_size = 8.0
     rules.items[2] = bullet
     InstallStyleRules(rules)
     vertical: SeparatorProps
-    vertical.bounds = (Rectangle){10.0, 20.0, 20.0, 40.0}
+    vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
     vertical.vertical = true
     Separator(vertical)
     labelled: SeparatorProps
-    labelled.bounds = (Rectangle){40.0, 20.0, 100.0, 20.0}
+    labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
     labelled.label = "A"
     Separator(labelled)
-    Bullet((Rectangle){150.0, 20.0, 20.0, 20.0})
+    Bullet(Rectangle.{150.0, 20.0, 20.0, 20.0})
     return 42
 }
 ZI

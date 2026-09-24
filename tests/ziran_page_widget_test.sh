@@ -7,7 +7,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "layout"
@@ -18,46 +17,47 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "widget_kind"
 
-Answer :: () -> i32 #export {
-    bounds: Rectangle = (Rectangle){0.0, 0.0, 320.0, 240.0}
+#program_export
+Answer :: () -> s32 {
+    bounds: Rectangle = Rectangle.{0.0, 0.0, 320.0, 240.0}
     page_props: PageProps
-    page_props.key = (u64)20
+    page_props.key = cast(u64)20
     page_props.title = "Welcome"
     page_props.description = "Start here"
     page_props.canonical_url = "https://example.test/"
     section_props: SectionProps
-    section_props.key = (u64)30
+    section_props.key = cast(u64)30
     section_props.label = "Details"
-    section_props.bounds = (Rectangle){8.0, 10.0, 100.0, 50.0}
+    section_props.bounds = Rectangle.{8.0, 10.0, 100.0, 50.0}
 
-    TreeStart((u64)10, bounds)
+    TreeStart(cast(u64)10, bounds)
     page: PageResult = Page(page_props)
     if !page.opened || page.node != 1 ||
         page.bounds.width != 320.0 || page.content.height != 240.0 ||
         page.gap != 0 || page.padding != 0 || page.has_theme_color ||
         page.title != "Welcome" || page.description != "Start here" ||
         page.canonical_url != "https://example.test/" ||
-        TreeCurrentParentKey() != (u64)20 { return -1 }
+        TreeCurrentParentKey() != cast(u64)20 { return -1 }
     section: SectionResult = Section(section_props)
     if !section.opened || section.node != 2 ||
         section.bounds.width != 100.0 ||
-        TreeCurrentParentKey() != (u64)30 { return -2 }
-    if TreeSubmitCurrent((u64)40, WidgetKindText,
+        TreeCurrentParentKey() != cast(u64)30 { return -2 }
+    if TreeSubmitCurrent(cast(u64)40, WidgetKindText,
         section.content) != 3 || !End() || !End() || End() ||
         !TreeFinish() { return -3 }
     if TreeCount() != 4 || TreeNodeAt(1).kind != WidgetKindPage ||
-        TreeNodeAt(1).semantic_kind != (SemanticKind)SemanticPage ||
+        TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticPage ||
         TreeNodeAt(1).semantic_label != "Welcome" ||
         TreeNodeAt(2).kind != WidgetKindSection ||
-        TreeNodeAt(2).semantic_kind != (SemanticKind)SemanticSection ||
+        TreeNodeAt(2).semantic_kind != cast(SemanticKind)SemanticSection ||
         TreeNodeAt(2).semantic_label != "Details" ||
         TreeNodeAt(2).parent != 1 || TreeNodeAt(3).parent != 2 {
         return -4
     }
-    generation: i32 = TreeNodeAt(2).identity_generation
-    page_props.bounds = (Rectangle){0.0, 0.0, 200.0, 180.0}
-    section_props.bounds = (Rectangle){0.0, 0.0, 0.0, 0.0}
-    TreeStart((u64)10, bounds)
+    generation: s32 = TreeNodeAt(2).identity_generation
+    page_props.bounds = Rectangle.{0.0, 0.0, 200.0, 180.0}
+    section_props.bounds = Rectangle.{0.0, 0.0, 0.0, 0.0}
+    TreeStart(cast(u64)10, bounds)
     page = Page(page_props)
     section = Section(section_props)
     if section.bounds.width != 200.0 ||
@@ -70,7 +70,7 @@ Answer :: () -> i32 #export {
     style.padding_x = 5.2
     metrics: PageSpacing = PageLayoutMetricsFor(style)
     if metrics.gap != 0 || metrics.padding != 0 { return -6 }
-    style.fields = (u32)StyleGap | (u32)StylePaddingX
+    style.fields = cast(u32)StyleGap | cast(u32)StylePaddingX
     metrics = PageLayoutMetricsFor(style)
     if metrics.gap != 4 || metrics.padding != 5 { return -7 }
     return 42

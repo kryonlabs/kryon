@@ -1,8 +1,8 @@
 #import "geometry"
 
 PlotMode :: enum {
-    PlotLines = 0
-    PlotBars = 1
+    PlotLines :: 0
+    PlotBars :: 1
 }
 
 PlotProps :: struct {

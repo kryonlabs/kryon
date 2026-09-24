@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "semantic"
 #import "syntax"
@@ -19,18 +18,19 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "tree_input"
 
-phase :: i32 #global
-value :: string #global
-cursor :: i32 #global
-anchor :: i32 #global
-scroll_y :: i32 #global
-focused :: bool #global
-ime_state :: CompositionState #global
-selecting :: bool #global
-preferred_x :: i32 #global
-preferred_x_valid :: bool #global
+phase: s32;
+value: string;
+cursor: s32;
+anchor: s32;
+scroll_y: s32;
+focused: bool;
+ime_state: CompositionState;
+selecting: bool;
+preferred_x: s32;
+preferred_x_valid: bool;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         value = "Aé\nBC"
         cursor = 6
@@ -50,7 +50,7 @@ Frame :: () -> i32 #export {
         selecting = false
     }
     if phase == 19 {
-        value = "#module \"app\"\nreturn 42"
+        value = "#import \"app\"\nreturn 42"
         cursor = 0
         anchor = 0
         scroll_y = 0
@@ -69,7 +69,7 @@ Frame :: () -> i32 #export {
         anchor = 1
         scroll_y = 0
         focused = true
-        ime_state = (CompositionState){}
+        ime_state = CompositionState.{}
     }
     if phase == 40 {
         value = ""
@@ -81,8 +81,8 @@ Frame :: () -> i32 #export {
     if phase == 24 { anchor = 1 }
     if phase == 27 { anchor = 0 }
     props: TextAreaProps
-    props.key = (u64)77
-    props.bounds = (Rectangle){20.0, 20.0, 100.0, 52.0}
+    props.key = cast(u64)77
+    props.bounds = Rectangle.{20.0, 20.0, 100.0, 52.0}
     props.value = value
     props.label = "Notes"
     props.placeholder = "Write notes"
@@ -120,7 +120,7 @@ Frame :: () -> i32 #export {
     }
     if phase == 18 { props.input.text = "Y" }
     if phase == 19 {
-        props.syntax = (SyntaxMode)SyntaxZiran
+        props.syntax = cast(SyntaxMode)SyntaxZiran
         props.composition_start = 8
         props.composition_end = 13
     }
@@ -154,7 +154,7 @@ Frame :: () -> i32 #export {
     }
     if phase == 29 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "é\n"
         props.input.composition_event.cursor = 1
         props.input.composition_event.selection_length = 99
@@ -162,29 +162,29 @@ Frame :: () -> i32 #export {
     }
     if phase == 30 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCommit
+            cast(CompositionPhase)CompositionCommit
         props.input.composition_event.text = "Z\n"
         props.input.text = "X"
     }
     if phase == 31 {
         props.read_only = true
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "A"
     }
     if phase == 32 || phase == 34 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "B"
     }
     if phase == 33 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCancel
+            cast(CompositionPhase)CompositionCancel
     }
     if phase == 35 || phase == 36 { props.input.escape = true }
     if phase == 37 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "é\nX"
         props.input.composition_event.cursor = 3
         props.input.composition_event.selection_length = 1
@@ -195,25 +195,25 @@ Frame :: () -> i32 #export {
     }
     if phase == 39 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCommit
+            cast(CompositionPhase)CompositionCommit
         props.input.composition_event.text = "Q"
     }
     if phase == 40 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionStart
+            cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "a\nb\nc\nd\ne"
         props.input.composition_event.cursor = 9
     }
     if phase == 42 {
         props.input.composition_event.phase =
-            (CompositionPhase)CompositionCancel
+            cast(CompositionPhase)CompositionCancel
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 300.0, 140.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(props)
     if !EndTree() || result.node != 1 ||
         TreeNodeAt(result.node).semantic_label != "Notes" ||
         TreeNodeAt(result.node).semantic_kind !=
-            (SemanticKind)SemanticTextArea { return -20 }
+            cast(SemanticKind)SemanticTextArea { return -20 }
     if phase == 0 {
         if result.focused || result.edit.changed { return -1 }
         if TextAreaRowCount(value, 0, 14, "") != 2 ||
@@ -221,9 +221,9 @@ Frame :: () -> i32 #export {
             TextAreaCaretFor(value, 5, 0, 14, "", 18).row_index != 1 {
             return -19
         }
-        TreePointerUpdate((PointerFrame){60.0, 49.0,
+        TreePointerUpdate(PointerFrame.{60.0, 49.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){60.0, 49.0,
+        TreePointerUpdate(PointerFrame.{60.0, 49.0,
             false, false, true})
     } else if phase == 1 {
         if !result.focused || !result.edit.changed ||
@@ -281,18 +281,18 @@ Frame :: () -> i32 #export {
         if !result.focused || result.cursor != 4 ||
             result.scroll_y != 36 { return -14 }
     } else if phase == 14 {
-        TreePointerUpdate((PointerFrame){31.0, 36.0,
+        TreePointerUpdate(PointerFrame.{31.0, 36.0,
             true, true, false})
     } else if phase == 15 {
         if result.cursor != 0 || result.selecting {
             return -15
         }
-        TreePointerUpdate((PointerFrame){60.0, 36.0,
+        TreePointerUpdate(PointerFrame.{60.0, 36.0,
             true, false, false})
     } else if phase == 16 {
         if !result.selecting || result.anchor != 0 ||
             result.cursor != 4 { return -16 }
-        TreePointerUpdate((PointerFrame){60.0, 36.0,
+        TreePointerUpdate(PointerFrame.{60.0, 36.0,
             false, false, true})
     } else if phase == 17 {
         if result.selecting || result.anchor != 0 ||
@@ -304,39 +304,39 @@ Frame :: () -> i32 #export {
             result.cursor != 1 { return -18 }
     } else if phase == 19 {
         directive: SyntaxToken = SyntaxTokenAt(
-            "#module \"app\"", 0, 13,
-            (SyntaxMode)SyntaxZiran, true, false)
+            "#import \"app\"", 0, 13,
+            cast(SyntaxMode)SyntaxZiran, true, false)
         comment: SyntaxToken = SyntaxTokenAt(
             "# note", 0, 6,
-            (SyntaxMode)SyntaxZiran, true, false)
+            cast(SyntaxMode)SyntaxZiran, true, false)
         keyword: SyntaxToken = SyntaxTokenAt(
             "return 42", 0, 9,
-            (SyntaxMode)SyntaxZiran, true, false)
+            cast(SyntaxMode)SyntaxZiran, true, false)
         number: SyntaxToken = SyntaxTokenAt(
             "return 42", 7, 9,
-            (SyntaxMode)SyntaxZiran, false, false)
+            cast(SyntaxMode)SyntaxZiran, false, false)
         open: SyntaxToken = SyntaxTokenAt(
             "/* open", 0, 7,
-            (SyntaxMode)SyntaxC, true, false)
+            cast(SyntaxMode)SyntaxC, true, false)
         close: SyntaxToken = SyntaxTokenAt(
             "close */x", 0, 9,
-            (SyntaxMode)SyntaxC, false, true)
+            cast(SyntaxMode)SyntaxC, false, true)
         make: SyntaxToken = SyntaxTokenAt(
             "$(CC) file", 0, 10,
-            (SyntaxMode)SyntaxMake, true, false)
+            cast(SyntaxMode)SyntaxMake, true, false)
         if directive.length != 7 ||
-            directive.kind != (SyntaxTokenKind)SyntaxKeyword ||
-            comment.kind != (SyntaxTokenKind)SyntaxComment ||
-            keyword.kind != (SyntaxTokenKind)SyntaxKeyword ||
-            number.kind != (SyntaxTokenKind)SyntaxNumber ||
+            directive.kind != cast(SyntaxTokenKind)SyntaxKeyword ||
+            comment.kind != cast(SyntaxTokenKind)SyntaxComment ||
+            keyword.kind != cast(SyntaxTokenKind)SyntaxKeyword ||
+            number.kind != cast(SyntaxTokenKind)SyntaxNumber ||
             !open.block_comment || close.block_comment ||
             close.length != 8 ||
-            make.kind != (SyntaxTokenKind)SyntaxPath ||
+            make.kind != cast(SyntaxTokenKind)SyntaxPath ||
             make.length != 5 ||
-            !SyntaxDarkBackground((u32)0x101820ff) ||
-            SyntaxDarkBackground((u32)0xffffffff) ||
-            SyntaxColorFor((SyntaxTokenKind)SyntaxKeyword,
-                false, (u32)0) != (u32)0x2448acff {
+            !SyntaxDarkBackground(cast(u32)0x101820ff) ||
+            SyntaxDarkBackground(cast(u32)0xffffffff) ||
+            SyntaxColorFor(cast(SyntaxTokenKind)SyntaxKeyword,
+                false, cast(u32)0) != cast(u32)0x2448acff {
             return -21
         }
     } else if phase == 20 {
@@ -432,7 +432,7 @@ Frame :: () -> i32 #export {
             result.edit.changed || result.cursor != 2 ||
             result.anchor != 1 || !view.composing ||
             view.length != 7 ||
-            TextAreaViewByteAt(view, 3) != (u8)10 ||
+            TextAreaViewByteAt(view, 3) != cast(u8)10 ||
             TextAreaViewNext(view, 1) != 3 ||
             TextAreaViewSpanWidth(view, 0, 3,
                 14, "") != 21 ||
@@ -474,7 +474,7 @@ Frame :: () -> i32 #export {
     selecting = result.selecting
     preferred_x = result.preferred_x
     preferred_x_valid = result.preferred_x_valid
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

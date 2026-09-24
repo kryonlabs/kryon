@@ -7,7 +7,6 @@ ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_style.zi" <<'EOF'
-#module "use_style"
 #import "control_props"
 #import "surface"
 #import "style"
@@ -15,45 +14,46 @@ cat > "$work/use_style.zi" <<'EOF'
 #import "progress"
 #import "geometry"
 
-Answer :: () -> i32 #export {
-    if (DefaultFields() & (u32)StyleBackground) == (u32)0 { return 0 }
+#program_export
+Answer :: () -> s32 {
+    if (DefaultFields() & cast(u32)StyleBackground) == cast(u32)0 { return 0 }
     if ResolveState(ButtonStateAuto, false, false, false,
         true, false, false) != ButtonStateHover { return 0 }
     if ResolveState(ButtonStateHover, true, false, false,
         true, false, false) != ButtonStateDisabled { return 0 }
     base: StyleData
-    base.background = (u32)99
-    base.foreground = (u32)11
+    base.background = cast(u32)99
+    base.foreground = cast(u32)11
     base.typeface = "base"
     override: StyleData
-    override.fields = (u32)StyleBackground | (u32)StyleTypeface
-    override.background = (u32)0
+    override.fields = cast(u32)StyleBackground | cast(u32)StyleTypeface
+    override.background = cast(u32)0
     override.typeface = "new"
     merged: StyleData = MergeValues(base, override)
-    if merged.background != (u32)0 || merged.foreground != (u32)11 ||
+    if merged.background != cast(u32)0 || merged.foreground != cast(u32)11 ||
         merged.typeface != "new" { return 0 }
     states: StyleStates
-    states.normal.fields = (u32)StyleForeground
-    states.normal.foreground = (u32)22
-    states.hover.fields = (u32)StyleRadius
+    states.normal.fields = cast(u32)StyleForeground
+    states.normal.foreground = cast(u32)22
+    states.hover.fields = cast(u32)StyleRadius
     states.hover.radius = 4.0
     active: StyleData = ResolveValues(base, states, ButtonStateHover)
-    if active.foreground != (u32)22 || active.radius != 4.0 { return 0 }
-    endpoint: FillStates = FillState((u32)StyleBackgroundEnd,
-        (u32)3, (u32)7)
+    if active.foreground != cast(u32)22 || active.radius != 4.0 { return 0 }
+    endpoint: FillStates = FillState(cast(u32)StyleBackgroundEnd,
+        cast(u32)3, cast(u32)7)
     empty: FillStates
     fill: FillStates = FillTransition(endpoint, endpoint, empty, empty,
         0.5, 0.25, 0.0)
     if !fill.normal || !fill.hover || fill.press ||
-        fill.normal_end != (u32)7 || fill.hover_amount != 0.5 { return 0 }
+        fill.normal_end != cast(u32)7 || fill.hover_amount != 0.5 { return 0 }
     frame: StyleFrame
     frame.value = active
     frame.fill = fill
     if frame.value.radius != 4.0 || !frame.fill.normal { return 0 }
-    frame.value.fields = (u32)StyleGap
+    frame.value.fields = cast(u32)StyleGap
     frame.value.gap = 10.0
-    frame.value.background = (u32)7
-    frame.value.foreground = (u32)8
+    frame.value.background = cast(u32)7
+    frame.value.foreground = cast(u32)8
     bounds: Rectangle
     bounds.x = 10.0
     bounds.y = 20.0
@@ -61,7 +61,7 @@ Answer :: () -> i32 #export {
     bounds.height = 20.0
     line: SeparatorLine = SeparatorLineFor(bounds, false, frame)
     if line.line.y != 30.0 || line.line.width != 100.0 ||
-        line.color != (u32)7 { return 0 }
+        line.color != cast(u32)7 { return 0 }
     vertical: SeparatorLine = SeparatorLineFor(bounds, true, frame)
     if vertical.line.x != 60.0 || vertical.line.height != 20.0 {
         return 0
@@ -73,7 +73,7 @@ Answer :: () -> i32 #export {
         !label.show_line { return 0 }
     bullet: BulletPaint = BulletPaintFor(bounds, frame)
     if bullet.radius != 5.0 || bullet.center.x != 60.0 ||
-        bullet.center.y != 30.0 || bullet.color != (u32)8 { return 0 }
+        bullet.center.y != 30.0 || bullet.color != cast(u32)8 { return 0 }
     progress: ProgressLayout = ProgressLayoutFor(bounds, 0, 100, 25,
         20.0, 10.0, 5.0)
     if progress.ratio != 0.25 || progress.fill_bounds.width != 25.0 ||
@@ -81,28 +81,28 @@ Answer :: () -> i32 #export {
         progress.label_on_fill { return 0 }
     if ProgressDrawRadius(bounds, 5.0) != 0.25 { return 0 }
     track: StyleFrame = frame
-    track.value.border = (u32)9
+    track.value.border = cast(u32)9
     track.value.border_width = 2.0
     track.value.radius = 5.0
     filled: StyleFrame = frame
-    filled.value.background = (u32)10
+    filled.value.background = cast(u32)10
     painted: ProgressPaint = ProgressPaintFor(bounds, 0, 100, 25,
         20.0, 10.0, 1.0, track, filled, frame)
-    if painted.track_color != (u32)7 ||
-        painted.fill_color != (u32)10 ||
-        painted.border_color != (u32)9 ||
+    if painted.track_color != cast(u32)7 ||
+        painted.fill_color != cast(u32)10 ||
+        painted.border_color != cast(u32)9 ||
         painted.border_width != 2.0 ||
         painted.layout.fill_bounds.width != 25.0 { return 0 }
-    painted.label_color = (u32)0x11223380
-    painted.filled_label_color = (u32)0x445566c0
+    painted.label_color = cast(u32)0x11223380
+    painted.filled_label_color = cast(u32)0x445566c0
     plan: ProgressDrawPlan = ProgressDrawPlanFor(bounds, painted, true, 0.5)
     if plan.radius != 0.25 || !plan.draw_fill || !plan.draw_border ||
-        !plan.draw_label || plan.label_color != (u32)0x11223340 {
+        !plan.draw_label || plan.label_color != cast(u32)0x11223340 {
         return 0
     }
     painted.layout.label_on_fill = true
     plan = ProgressDrawPlanFor(bounds, painted, false, 0.5)
-    if plan.draw_label || plan.label_color != (u32)0x44556660 { return 0 }
+    if plan.draw_label || plan.label_color != cast(u32)0x44556660 { return 0 }
     painted.layout.fill_bounds.width = 0.0
     painted.border_width = 0.0
     plan = ProgressDrawPlanFor(bounds, painted, false, 1.0)

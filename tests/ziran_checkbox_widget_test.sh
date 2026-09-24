@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "checkbox"
 #import "checkbox_props"
 #import "checkbox_widget"
@@ -21,15 +20,16 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     props: CheckboxProps
-    props.key = (u64)7
+    props.key = cast(u64)7
     props.id = 7
     props.class_name = 9
     props.label = "Agree"
-    props.bounds = (Rectangle){10.0, 20.0, 120.0, 30.0}
+    props.bounds = Rectangle.{10.0, 20.0, 120.0, 30.0}
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -38,27 +38,27 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindCheckbox()
         rule.selector.class_name = 9
         rule.selector.role = CheckboxBoxRoleForTone(
-            (ButtonTone)ButtonToneAccent)
-        rule.style.fields = (u32)StyleBackground | (u32)StyleBorder
-        rule.style.background = (u32)0x123456ff
-        rule.style.border = (u32)0x123456ff
+            cast(ButtonTone)ButtonToneAccent)
+        rule.style.fields = cast(u32)StyleBackground | cast(u32)StyleBorder
+        rule.style.background = cast(u32)0x123456ff
+        rule.style.border = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
-        BeginTree((u64)1, (Rectangle){0.0, 0.0, 150.0, 100.0})
+        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
         result: CheckboxValueResult = Checkbox(props)
         if result.checked || result.changed || !EndTree() ||
             TreeCount() != 2 ||
             TreeNodeAt(1).kind != WidgetKindCheckbox ||
             TreeNodeAt(1).selected ||
             TreeNodeAt(1).semantic_label != "Agree" { return -1 }
-        TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
-        TreePointerUpdate((PointerFrame){140.0, 80.0, false, false, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{140.0, 80.0, false, false, false})
         phase = 1
         return 0
     }
     if phase == 1 {
-        BeginTree((u64)1, (Rectangle){0.0, 0.0, 150.0, 100.0})
+        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
         result: CheckboxValueResult = Checkbox(props)
         if !result.checked || !result.changed || !EndTree() ||
             !TreeNodeAt(1).selected {
@@ -69,12 +69,12 @@ Frame :: () -> i32 #export {
     }
     props.checked = true
     props.disabled = true
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 150.0, 100.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
     result: CheckboxValueResult = Checkbox(props)
     if !result.checked || result.changed || !EndTree() ||
         !TreeNodeAt(1).selected { return -3 }
-    TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-    TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
+    TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+    TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
     phase = 3
     return 2
 }

@@ -1,25 +1,25 @@
-#module "cell_test"
 #import "cell"
 
-SelfTest :: () -> i32 #export {
+#program_export
+SelfTest :: () -> s32 {
     buffer: [12]Cell
     cells: []Cell = buffer[0:12]
     base: Cell
-    base.glyph = (u32)32
-    base.foreground = (u32)7
-    base.background = (u32)1
+    base.glyph = cast(u32)32
+    base.foreground = cast(u32)7
+    base.background = cast(u32)1
     CellFill(cells, 4, 3, 0, 0, 4, 3, base)
-    if buffer[11].glyph != (u32)32 { return 1 }
-    if CellWrite(cells, 4, 3, 2, 1, "aé", (u32)2, (u32)1, (u32)0) != 2 {
+    if buffer[11].glyph != cast(u32)32 { return 1 }
+    if CellWrite(cells, 4, 3, 2, 1, "aé", cast(u32)2, cast(u32)1, cast(u32)0) != 2 {
         return 2
     }
-    if buffer[6].glyph != (u32)97 || buffer[7].glyph != (u32)233 ||
-       buffer[7].foreground != (u32)2 { return 3 }
-    if CellWrite(cells, 4, 3, 3, 2, "long", (u32)2, (u32)1, (u32)0) != 1 {
+    if buffer[6].glyph != cast(u32)97 || buffer[7].glyph != cast(u32)233 ||
+       buffer[7].foreground != cast(u32)2 { return 3 }
+    if CellWrite(cells, 4, 3, 3, 2, "long", cast(u32)2, cast(u32)1, cast(u32)0) != 1 {
         return 4
     }
     emoji: CellCodepointResult = CellCodepoint("\xf0\x9f\x92\xa1", 0)
-    if emoji.value != (u32)128161 {
+    if emoji.value != cast(u32)128161 {
         return 5
     }
     if CellPut(cells, 4, 3, 4, 0, base) { return 6 }

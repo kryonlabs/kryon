@@ -7,7 +7,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "scroll"
@@ -17,12 +16,13 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-Answer :: () -> i32 #export {
-    root: Rectangle = (Rectangle){0.0, 0.0, 200.0, 100.0}
-    TreeStart((u64)1, root)
+#program_export
+Answer :: () -> s32 {
+    root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
+    TreeStart(cast(u64)1, root)
     props: ScrollProps
-    props.key = (u64)2
-    props.bounds = (Rectangle){20.0, 10.0, 80.0, 40.0}
+    props.key = cast(u64)2
+    props.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
     props.content_height = 140
     props.scroll_offset = 30
     props.scroll_delta = 20
@@ -31,9 +31,9 @@ Answer :: () -> i32 #export {
         result.max_scroll != 100 || result.scroll_offset != 50 ||
         result.viewport.y != 10.0 || result.content.y != -40.0 ||
         result.content.height != 140.0 { return -1 }
-    child: Rectangle = (Rectangle){result.content.x - 10.0,
+    child: Rectangle = Rectangle.{result.content.x - 10.0,
         result.content.y + 45.0, 40.0, 20.0}
-    node: i32 = TreeSubmitCurrent((u64)3, WidgetKindButton, child)
+    node: s32 = TreeSubmitCurrent(cast(u64)3, WidgetKindButton, child)
     TreeSetInteractive(node, false, false, 3)
     if node != 2 || !End() || !TreeFinish() { return -2 }
     if TreeNodeAt(node).clip.x != 20.0 ||
@@ -41,19 +41,19 @@ Answer :: () -> i32 #export {
         TreeHitAt(15.0, 15.0) != -1 ||
         TreeHitAt(25.0, 15.0) != node { return -3 }
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.scroll_offset = 2147483647
     result = Scroll(props)
     if result.scroll_offset != 100 || !End() ||
         !TreeFinish() { return -4 }
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.scroll_offset = -2147483647
     props.scroll_delta = -20
     result = Scroll(props)
     if result.scroll_offset != 0 || !End() ||
         !TreeFinish() { return -5 }
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.scroll_offset = 20
     props.scroll_delta = 0
     props.input.enabled = true
@@ -68,17 +68,17 @@ Answer :: () -> i32 #export {
         PendingPaintAt(1).bounds.width <= 0.0 ||
         !End() || !TreeFinish() { return -6 }
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.scroll_offset = result.scroll_offset
     props.input.wheel = 0.0
     props.input.pressed = true
     props.input.down = true
-    props.input.mouse = (Vector2){95.0, 20.0}
+    props.input.mouse = Vector2.{95.0, 20.0}
     result = Scroll(props)
     if !result.frame.start_drag || result.frame.clear_drag ||
         !End() || !TreeFinish() { return -7 }
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.input.pressed = false
     props.input.owns_drag = true
     props.input.grab = result.frame.grab
@@ -87,7 +87,7 @@ Answer :: () -> i32 #export {
     if result.scroll_offset <= 62 || result.scroll_offset > 100 ||
         !End() || !TreeFinish() { return -8 }
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.input.down = false
     props.input.released = true
     result = Scroll(props)
@@ -95,18 +95,18 @@ Answer :: () -> i32 #export {
         !End() || !TreeFinish() { return -9 }
     PaintClear()
 
-    TreeStart((u64)1, root)
+    TreeStart(cast(u64)1, root)
     props.input.enabled = false
     result = Scroll(props)
     inner: ScrollProps
-    inner.key = (u64)4
-    inner.bounds = (Rectangle){30.0, 15.0, 30.0, 20.0}
+    inner.key = cast(u64)4
+    inner.bounds = Rectangle.{30.0, 15.0, 30.0, 20.0}
     inner.content_height = 50
     unused Scroll(inner)
     if !End() || !End() || !TreeFinish() ||
-        TreeScrollAt(40.0, 20.0) != (u64)4 ||
-        TreeScrollAt(25.0, 15.0) != (u64)2 ||
-        TreeScrollAt(150.0, 20.0) != (u64)0 { return -10 }
+        TreeScrollAt(40.0, 20.0) != cast(u64)4 ||
+        TreeScrollAt(25.0, 15.0) != cast(u64)2 ||
+        TreeScrollAt(150.0, 20.0) != cast(u64)0 { return -10 }
     return 42
 }
 ZI

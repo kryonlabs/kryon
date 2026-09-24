@@ -9,10 +9,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/text_rows.zi" "$work/text_rows.zi"
 cat > "$work/use_text_rows.zi" <<'EOF'
-#module "use_text_rows"
 #import "text_rows"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     text: string = "ab\r\ncd"
     first: TextLogicalLine = TextLogicalLineFor(text, 0)
     if !first.valid || first.start != 0 || first.end != 2 ||

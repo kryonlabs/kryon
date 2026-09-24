@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "slider"
@@ -22,22 +21,23 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     continuous: SliderProps
-    continuous.key = (u64)7
+    continuous.key = cast(u64)7
     continuous.id = 7
     continuous.class_name = 9
     continuous.label = "Gain"
-    continuous.bounds = (Rectangle){10.0, 20.0, 100.0, 80.0}
+    continuous.bounds = Rectangle.{10.0, 20.0, 100.0, 80.0}
     continuous.value = 25.0
     continuous.min = 0.0
     continuous.max = 100.0
     discrete: DiscreteSliderProps
-    discrete.key = (u64)8
+    discrete.key = cast(u64)8
     discrete.id = 8
-    discrete.bounds = (Rectangle){130.0, 20.0, 30.0, 100.0}
+    discrete.bounds = Rectangle.{130.0, 20.0, 30.0, 100.0}
     discrete.value = 5
     discrete.min = 0
     discrete.max = 10
@@ -55,21 +55,21 @@ Frame :: () -> i32 #export {
         track.selector.kind = StyleKindSlider()
         track.selector.class_name = 9
         track.selector.role = SliderTrackRole()
-        track.style.fields = (u32)StyleBackground
-        track.style.background = (u32)0x123456ff
+        track.style.fields = cast(u32)StyleBackground
+        track.style.background = cast(u32)0x123456ff
         rules.items[0] = track
         label: StyleRule
         label.selector = StyleDefaultSelector()
         label.selector.kind = StyleKindSlider()
         label.selector.class_name = 9
         label.selector.role = SliderLabelRole()
-        label.style.fields = (u32)StyleForeground | (u32)StyleOpacity
-        label.style.foreground = (u32)0xaabbccff
+        label.style.fields = cast(u32)StyleForeground | cast(u32)StyleOpacity
+        label.style.foreground = cast(u32)0xaabbccff
         label.style.opacity = 0.5
         rules.items[1] = label
         InstallStyleRules(rules)
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 200.0, 150.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
     current: SliderStep = Slider(continuous)
     count: SliderDiscreteStep = DiscreteSlider(discrete)
     if !EndTree() || TreeCount() != 3 ||
@@ -81,18 +81,18 @@ Frame :: () -> i32 #export {
     if phase == 0 {
         if current.value != 25.0 || current.changed ||
             count.value != 5 || count.changed { return -2 }
-        TreePointerUpdate((PointerFrame){60.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){110.0, 70.0, true, false, false})
-        TreePointerUpdate((PointerFrame){110.0, 70.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{60.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{110.0, 70.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{110.0, 70.0, false, false, true})
         phase = 1
         return 0
     }
     if phase == 1 {
         if current.value != 100.0 || !current.changed ||
             count.value != 5 || count.changed { return -3 }
-        TreePointerUpdate((PointerFrame){145.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){145.0, 0.0, true, false, false})
-        TreePointerUpdate((PointerFrame){145.0, 0.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{145.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{145.0, 0.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{145.0, 0.0, false, false, true})
         phase = 2
         return 1
     }

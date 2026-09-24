@@ -5,12 +5,12 @@
 
 # Device-independent drawing commands. Hosts rasterize; widgets choose commands.
 DrawingKind :: enum {
-    DrawingNone = 0
-    DrawingText = 1
-    DrawingIcon = 2
-    DrawingTexture = 3
-    DrawingRing = 4
-    DrawingChevron = 5
+    DrawingNone :: 0
+    DrawingText :: 1
+    DrawingIcon :: 2
+    DrawingTexture :: 3
+    DrawingRing :: 4
+    DrawingChevron :: 5
 }
 
 Drawing :: struct {

@@ -8,34 +8,34 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "clipboard"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     state: ClipboardState
     state = ClipboardObserve(state, "external")
-    if ClipboardRead(state, (ClipboardSource)ClipboardSystem) != "external" ||
-        ClipboardHasText(state, (ClipboardSource)ClipboardPrimary) { return -1 }
+    if ClipboardRead(state, cast(ClipboardSource)ClipboardSystem) != "external" ||
+        ClipboardHasText(state, cast(ClipboardSource)ClipboardPrimary) { return -1 }
     state = ClipboardSetPrimary(state, "selected")
-    if ClipboardRead(state, (ClipboardSource)ClipboardPrimaryOrSystem) != "selected" {
+    if ClipboardRead(state, cast(ClipboardSource)ClipboardPrimaryOrSystem) != "selected" {
         return -2
     }
     state = ClipboardCopySelection(state, "copy")
     write: ClipboardWrite = ClipboardPendingWrite(state)
     if !write.available || write.text != "copy" ||
-        ClipboardRead(state, (ClipboardSource)ClipboardPrimary) != "copy" { return -3 }
+        ClipboardRead(state, cast(ClipboardSource)ClipboardPrimary) != "copy" { return -3 }
     state = ClipboardObserve(state, "stale")
-    if ClipboardRead(state, (ClipboardSource)ClipboardSystem) != "copy" { return -4 }
+    if ClipboardRead(state, cast(ClipboardSource)ClipboardSystem) != "copy" { return -4 }
     state = ClipboardWriteCompleted(state)
     state = ClipboardObserve(state, "fresh")
     if ClipboardPendingWrite(state).available ||
-        ClipboardRead(state, (ClipboardSource)ClipboardSystem) != "fresh" { return -5 }
+        ClipboardRead(state, cast(ClipboardSource)ClipboardSystem) != "fresh" { return -5 }
     state = ClipboardCopySelection(state, "")
-    if ClipboardRead(state, (ClipboardSource)ClipboardPrimaryOrSystem) != "fresh" ||
+    if ClipboardRead(state, cast(ClipboardSource)ClipboardPrimaryOrSystem) != "fresh" ||
         ClipboardPendingWrite(state).available { return -6 }
     state = ClipboardRequestWrite(state, "")
     if !ClipboardPendingWrite(state).available ||
-        ClipboardHasText(state, (ClipboardSource)ClipboardSystem) { return -7 }
+        ClipboardHasText(state, cast(ClipboardSource)ClipboardSystem) { return -7 }
     return 42
 }
 ZI

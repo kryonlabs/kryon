@@ -7,17 +7,17 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "flow"
 #import "geometry"
 #import "tree"
 #import "widget_kind"
 
-Answer :: () -> i32 #export {
-    bounds: Rectangle = (Rectangle){0.0, 0.0, 200.0, 60.0}
-    TreeStart((u64)1, bounds)
+#program_export
+Answer :: () -> s32 {
+    bounds: Rectangle = Rectangle.{0.0, 0.0, 200.0, 60.0}
+    TreeStart(cast(u64)1, bounds)
     props: FlowProps
-    props.key = (u64)10
+    props.key = cast(u64)10
     props.gap = 3
     props.padding = 5
     flow: FlowResult = Flow(props)
@@ -27,17 +27,17 @@ Answer :: () -> i32 #export {
         flow.padding != 5 { return -1 }
     empty: Rectangle
     first: Rectangle = FlowChildBounds(flow, empty,
-        (Rectangle){0.0, 0.0, 20.0, 0.0}, 0, 0.0)
+        Rectangle.{0.0, 0.0, 20.0, 0.0}, 0, 0.0)
     second: Rectangle = FlowChildBounds(flow, empty,
-        (Rectangle){0.0, 0.0, 30.0, 0.0}, 1, 20.0)
+        Rectangle.{0.0, 0.0, 30.0, 0.0}, 1, 20.0)
     if first.x != 5.0 || first.y != 5.0 ||
         first.width != 20.0 || first.height != 50.0 ||
         second.x != 28.0 || second.y != 5.0 ||
         second.width != 30.0 || second.height != 50.0 {
         return -2
     }
-    if TreeSubmitCurrent((u64)11, WidgetKindText, first) != 2 ||
-        TreeSubmitCurrent((u64)12, WidgetKindImage, second) != 3 ||
+    if TreeSubmitCurrent(cast(u64)11, WidgetKindText, first) != 2 ||
+        TreeSubmitCurrent(cast(u64)12, WidgetKindImage, second) != 3 ||
         !End() || !TreeFinish() || TreeCount() != 4 ||
         TreeNodeAt(1).kind != WidgetKindRow ||
         TreeNodeAt(2).parent != 1 || TreeNodeAt(3).parent != 1 ||

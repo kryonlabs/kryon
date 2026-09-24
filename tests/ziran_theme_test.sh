@@ -9,22 +9,22 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/theme.zi" "$work/theme.zi"
 cat > "$work/use_theme.zi" <<'EOF'
-#module "use_theme"
 #import "theme"
 
-Answer :: () -> i32 #export {
-    if ResolveDark((ThemePolicy)ThemePolicyLight, true) { return 0 }
-    if !ResolveDark((ThemePolicy)ThemePolicySystem, true) { return 0 }
+#program_export
+Answer :: () -> s32 {
+    if ResolveDark(cast(ThemePolicy)ThemePolicyLight, true) { return 0 }
+    if !ResolveDark(cast(ThemePolicy)ThemePolicySystem, true) { return 0 }
     light: Palette = DefaultPalette(false)
     dark: Palette = DefaultPalette(true)
-    if light.background != PackedColor((u32)0xF8FBFF, (u32)255) { return 0 }
-    if dark.background != PackedColor((u32)0x001D38, (u32)255) { return 0 }
+    if light.background != PackedColor(cast(u32)0xF8FBFF, cast(u32)255) { return 0 }
+    if dark.background != PackedColor(cast(u32)0x001D38, cast(u32)255) { return 0 }
     if light.focus == dark.focus { return 0 }
-    if OnColor((u32)0x000000FF) != (u32)0xFFFFFFFF { return 0 }
-    if OnColor((u32)0xFFFFFFFF) != (u32)0x1D1B20FF { return 0 }
+    if OnColor(cast(u32)0x000000FF) != cast(u32)0xFFFFFFFF { return 0 }
+    if OnColor(cast(u32)0xFFFFFFFF) != cast(u32)0x1D1B20FF { return 0 }
     scheme: Scheme = SchemeFor(light.background, light.surface,
-        light.text, light.accent, light.info, false, (u8)96)
-    if scheme.disabled_content != ((light.text & ~(u32)255) | (u32)96) {
+        light.text, light.accent, light.info, false, cast(u8)96)
+    if scheme.disabled_content != ((light.text & ~cast(u32)255) | cast(u32)96) {
         return 0
     }
     metrics: Metrics = DefaultMetrics()

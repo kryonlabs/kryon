@@ -7,13 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "rows"
 #import "style"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     frame: StyleFrame
     metrics: InfoRowsMetrics = InfoRowsMetricsFor(0, 0, 2.0, frame)
     if metrics.row_height != 64 || metrics.padding_x != 20 { return 0 }

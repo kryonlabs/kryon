@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "image_props"
@@ -22,9 +21,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -32,22 +32,22 @@ Frame :: () -> i32 #export {
         rule.selector = StyleDefaultSelector()
         rule.selector.kind = StyleKindNavigationBar()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
     items: [3]NavigationBarItem
-    items[0].key = (u64)41
+    items[0].key = cast(u64)41
     items[0].route = 11
     items[0].label = "Home"
     items[0].image.asset_path = "icon.png"
     items[0].active = true
-    items[1].key = (u64)42
+    items[1].key = cast(u64)42
     items[1].route = 22
     items[1].label = "Search"
     items[1].image.asset_path = "icon.png"
-    items[2].key = (u64)43
+    items[2].key = cast(u64)43
     items[2].route = 33
     items[2].label = "Blocked"
     items[2].disabled = true
@@ -58,13 +58,13 @@ Frame :: () -> i32 #export {
     }
     if phase == 2 { items[1].disabled = true }
     props: NavigationBarProps
-    props.key = (u64)10
+    props.key = cast(u64)10
     props.id = 10
     props.class_name = 9
     props.view_width = 300
     props.view_height = 180
     props.height = 80
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 180.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 180.0})
     result: NavigationBarResult = NavigationBar(props,
         items[0:3])
     if !TreeFinish() || result.node != 1 ||
@@ -75,14 +75,14 @@ Frame :: () -> i32 #export {
         TreeNodeAt(3).kind != WidgetKindButton ||
         TreeNodeAt(4).kind != WidgetKindButton ||
         TreeNodeAt(2).semantic_kind !=
-            (SemanticKind)SemanticButton { return -20 }
+            cast(SemanticKind)SemanticButton { return -20 }
     if phase == 0 {
         if result.clicked_index != -1 ||
             TreeHitAt(150.0, 120.0) != 3 ||
             TreeHitAt(250.0, 120.0) != -1 { return -1 }
-        TreePointerUpdate((PointerFrame){150.0, 120.0,
+        TreePointerUpdate(PointerFrame.{150.0, 120.0,
             true, true, false})
-        TreePointerUpdate((PointerFrame){150.0, 120.0,
+        TreePointerUpdate(PointerFrame.{150.0, 120.0,
             false, false, true})
     } else if phase == 1 {
         if result.clicked_index != 0 ||
@@ -94,7 +94,7 @@ Frame :: () -> i32 #export {
             TreeHitAt(150.0, 120.0) != -1 { return -3 }
     }
     PaintFlush()
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

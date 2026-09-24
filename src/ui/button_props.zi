@@ -4,10 +4,10 @@
 #import "image_props"
 
 ArrowDirection :: enum {
-    ArrowLeft = 0
-    ArrowRight = 1
-    ArrowUp = 2
-    ArrowDown = 3
+    ArrowLeft :: 0
+    ArrowRight :: 1
+    ArrowUp :: 2
+    ArrowDown :: 3
 }
 
 # Shared public contract. The host renders the declared values.

@@ -7,10 +7,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "locale_defaults"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if LocaleDefaultCount() != 29 { return 0 }
     first: LocaleDefaultEntry = LocaleDefaultAt(0)
     if first.key != "theme_style_label" || first.value != "Style" { return 0 }

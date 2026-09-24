@@ -1,4 +1,3 @@
-#module "kss_formatter"
 #import "kss_parser"
 
 # The KSS formatter lives here once and lowers to C, Go, and JavaScript with
@@ -14,38 +13,38 @@
 # kind 2 (emit a newline followed by `length` spaces).
 
 KssFormatSegment :: struct {
-    kind: i32
-    start: i32
-    length: i32
+    kind: s32
+    start: s32
+    length: s32
     atom: u8
 }
 
 KssFormatResult :: struct {
     ok: bool
     segments: [1024]KssFormatSegment
-    count: i32
+    count: s32
     diagnostic: [128]u8
-    diagnostic_length: i32
+    diagnostic_length: s32
 }
 
 # Construct kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive, 6 rule,
 # 7 foreign block, 8 comment. Mirrors the parser's block kinds.
 
 KssFormatConstruct :: struct {
-    kind: i32
-    start: i32
-    end: i32
+    kind: s32
+    start: s32
+    end: s32
 }
 
 KssFormatState :: struct {
     source: string
     result: KssFormatResult
     constructs: [192]KssFormatConstruct
-    construct_count: i32
+    construct_count: s32
 }
 
 KssFormatFail :: (state: KssFormatState, text: string) -> KssFormatState {
-    index: i32 = 0
+    index: s32 = 0
     state.result.ok = false
     state.result.diagnostic_length = 0
     index = 0
@@ -57,7 +56,7 @@ KssFormatFail :: (state: KssFormatState, text: string) -> KssFormatState {
     return state
 }
 
-KssFormatEmitCopy :: (state: KssFormatState, start: i32, length: i32) -> KssFormatState {
+KssFormatEmitCopy :: (state: KssFormatState, start: s32, length: s32) -> KssFormatState {
     if length <= 0 {
         return state
     }
@@ -84,7 +83,7 @@ KssFormatEmitAtom :: (state: KssFormatState, atom: u8) -> KssFormatState {
     return state
 }
 
-KssFormatEmitIndent :: (state: KssFormatState, spaces: i32) -> KssFormatState {
+KssFormatEmitIndent :: (state: KssFormatState, spaces: s32) -> KssFormatState {
     if state.result.count >= 1024 {
         return KssFormatFail(state, "format segment capacity exceeded")
     }
@@ -99,7 +98,7 @@ KssFormatEmitIndent :: (state: KssFormatState, spaces: i32) -> KssFormatState {
     return state
 }
 
-KssFormatAddConstruct :: (state: KssFormatState, kind: i32, start: i32, end: i32) -> KssFormatState {
+KssFormatAddConstruct :: (state: KssFormatState, kind: s32, start: s32, end: s32) -> KssFormatState {
     if end <= start {
         return state
     }
@@ -122,29 +121,29 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
     p: KssParser = KssBeginDeclarative(state.source, "", env)
     running: bool = true
     while running {
-        if p.status == (i32)KssStatusRule {
-            end: i32 = p.rule_span.end
+        if p.status == cast(s32)KssStatusRule {
+            end: s32 = p.rule_span.end
             if end <= p.rule_span.selector_start {
                 end = p.rule_span.body_start + p.rule_span.body_length
             }
             state = KssFormatAddConstruct(state, 6, p.rule_span.selector_start, end)
-            p.status = (i32)KssStatusContinue
+            p.status = cast(s32)KssStatusContinue
             continue
         }
-        if p.status != (i32)KssStatusContinue {
+        if p.status != cast(s32)KssStatusContinue {
             break
         }
         p = KssStep(p)
-        if p.status == (i32)KssStatusNeedImport {
+        if p.status == cast(s32)KssStatusNeedImport {
             # Formatting re-layouts one file; imports resolve to empty modules
             # and the resolved name is irrelevant to the layout.
             p = KssProvideImport(p, "", "import")
         }
     }
-    if p.status != (i32)KssStatusDone {
+    if p.status != cast(s32)KssStatusDone {
         return KssFormatFail(state, "style sheet did not parse")
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < p.block_count {
         state = KssFormatAddConstruct(state, p.blocks[index].kind,
             p.blocks[index].start,
@@ -153,7 +152,7 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
     }
     index = 0
     while index < p.foreign_count {
-        end: i32 = p.foreign[index].body_start + p.foreign[index].body_length
+        end: s32 = p.foreign[index].body_start + p.foreign[index].body_length
         state = KssFormatAddConstruct(state, 7, p.foreign[index].query_start, end)
         index = index + 1
     }
@@ -163,10 +162,10 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
 # Comments between constructs are preserved as standalone constructs.
 
 KssFormatScanGaps :: (state: KssFormatState) -> KssFormatState {
-    cursor: i32 = 0
-    index: i32 = 0
+    cursor: s32 = 0
+    index: s32 = 0
     while index < state.construct_count {
-        start: i32 = state.constructs[index].start
+        start: s32 = state.constructs[index].start
         state = KssFormatScanRange(state, cursor, start)
         cursor = state.constructs[index].end
         index = index + 1
@@ -175,8 +174,8 @@ KssFormatScanGaps :: (state: KssFormatState) -> KssFormatState {
     return state
 }
 
-KssFormatScanRange :: (state: KssFormatState, from: i32, to: i32) -> KssFormatState {
-    cursor: i32 = from
+KssFormatScanRange :: (state: KssFormatState, from: s32, to: s32) -> KssFormatState {
+    cursor: s32 = from
     while cursor < to {
         byte: u8 = 0
         if cursor < state.source.length {
@@ -185,7 +184,7 @@ KssFormatScanRange :: (state: KssFormatState, from: i32, to: i32) -> KssFormatSt
         if byte == 47 && cursor + 1 < to && cursor + 1 < state.source.length {
             next: u8 = state.source[cursor + 1]
             if next == 47 {
-                end: i32 = cursor
+                end: s32 = cursor
                 while end < state.source.length && state.source[end] != 10 {
                     end = end + 1
                 }
@@ -194,7 +193,7 @@ KssFormatScanRange :: (state: KssFormatState, from: i32, to: i32) -> KssFormatSt
                 continue
             }
             if next == 42 {
-                end: i32 = cursor + 2
+                end: s32 = cursor + 2
                 while end + 1 < state.source.length {
                     if state.source[end] == 42 && state.source[end + 1] == 47 {
                         end = end + 2
@@ -215,10 +214,10 @@ KssFormatScanRange :: (state: KssFormatState, from: i32, to: i32) -> KssFormatSt
 # Sort constructs by start (insertion sort; sheets are small).
 
 KssFormatSortConstructs :: (state: KssFormatState) -> KssFormatState {
-    index: i32 = 1
+    index: s32 = 1
     while index < state.construct_count {
         candidate: KssFormatConstruct = state.constructs[index]
-        scan: i32 = index - 1
+        scan: s32 = index - 1
         while scan >= 0 && state.constructs[scan].start > candidate.start {
             state.constructs[scan + 1] = state.constructs[scan]
             scan = scan - 1
@@ -233,12 +232,12 @@ KssFormatSortConstructs :: (state: KssFormatState) -> KssFormatState {
 # span; drop them so their text is not emitted twice.
 
 KssFormatDropNested :: (state: KssFormatState) -> KssFormatState {
-    kept: i32 = 0
-    index: i32 = 0
+    kept: s32 = 0
+    index: s32 = 0
     while index < state.construct_count {
         candidate: KssFormatConstruct = state.constructs[index]
         nested: bool = false
-        scan: i32 = 0
+        scan: s32 = 0
         while scan < state.construct_count {
             other: KssFormatConstruct = state.constructs[scan]
             if scan != index && other.kind != 6 && other.kind != 8 {
@@ -263,8 +262,8 @@ KssFormatDropNested :: (state: KssFormatState) -> KssFormatState {
 # text is copied verbatim per line; only leading whitespace is dropped unless a
 # single-line declaration block can be reflowed structurally.
 
-KssFormatTrimStart :: (state: KssFormatState, start: i32, end: i32) -> i32 {
-    pos: i32 = start
+KssFormatTrimStart :: (state: KssFormatState, start: s32, end: s32) -> s32 {
+    pos: s32 = start
     while pos < end {
         byte: u8 = state.source[pos]
         if byte == 32 || byte == 9 || byte == 13 {
@@ -276,8 +275,8 @@ KssFormatTrimStart :: (state: KssFormatState, start: i32, end: i32) -> i32 {
     return pos
 }
 
-KssFormatTrimEnd :: (state: KssFormatState, start: i32, end: i32) -> i32 {
-    pos: i32 = end
+KssFormatTrimEnd :: (state: KssFormatState, start: s32, end: s32) -> s32 {
+    pos: s32 = end
     while pos > start {
         byte: u8 = state.source[pos - 1]
         if byte == 32 || byte == 9 || byte == 13 {
@@ -289,8 +288,8 @@ KssFormatTrimEnd :: (state: KssFormatState, start: i32, end: i32) -> i32 {
     return pos
 }
 
-KssFormatLineHasComments :: (state: KssFormatState, start: i32, end: i32) -> bool {
-    pos: i32 = start
+KssFormatLineHasComments :: (state: KssFormatState, start: s32, end: s32) -> bool {
+    pos: s32 = start
     while pos + 1 < end {
         if state.source[pos] == 47 {
             next: u8 = state.source[pos + 1]
@@ -303,14 +302,14 @@ KssFormatLineHasComments :: (state: KssFormatState, start: i32, end: i32) -> boo
     return false
 }
 
-KssFormatLineCanReflow :: (state: KssFormatState, start: i32, end: i32) -> bool {
+KssFormatLineCanReflow :: (state: KssFormatState, start: s32, end: s32) -> bool {
     if KssFormatLineHasComments(state, start, end) {
         return false
     }
     open_seen: bool = false
     semicolon_seen: bool = false
     close_seen: bool = false
-    pos: i32 = start
+    pos: s32 = start
     while pos < end {
         byte: u8 = state.source[pos]
         if byte == 123 {
@@ -326,7 +325,7 @@ KssFormatLineCanReflow :: (state: KssFormatState, start: i32, end: i32) -> bool 
 }
 
 KssFormatEmitLineStart :: (state: KssFormatState, leading_break: bool,
-    first_line: bool, spaces: i32) -> KssFormatState {
+    first_line: bool, spaces: s32) -> KssFormatState {
     if leading_break && first_line {
         state = KssFormatEmitIndent(state, 0)
         state = KssFormatEmitIndent(state, 0)
@@ -336,20 +335,20 @@ KssFormatEmitLineStart :: (state: KssFormatState, leading_break: bool,
     return state
 }
 
-KssFormatEmitTrimmedRange :: (state: KssFormatState, start: i32, end: i32) -> KssFormatState {
-    trimmed_start: i32 = KssFormatTrimStart(state, start, end)
-    trimmed_end: i32 = KssFormatTrimEnd(state, trimmed_start, end)
+KssFormatEmitTrimmedRange :: (state: KssFormatState, start: s32, end: s32) -> KssFormatState {
+    trimmed_start: s32 = KssFormatTrimStart(state, start, end)
+    trimmed_end: s32 = KssFormatTrimEnd(state, trimmed_start, end)
     if trimmed_start < trimmed_end {
         state = KssFormatEmitCopy(state, trimmed_start, trimmed_end - trimmed_start)
     }
     return state
 }
 
-KssFormatEmitReflowLine :: (state: KssFormatState, start: i32, end: i32,
-    base_depth: i32, leading_break: bool, first_line: bool) -> KssFormatState {
-    cursor: i32 = start
-    token_start: i32 = start
-    depth: i32 = base_depth
+KssFormatEmitReflowLine :: (state: KssFormatState, start: s32, end: s32,
+    base_depth: s32, leading_break: bool, first_line: bool) -> KssFormatState {
+    cursor: s32 = start
+    token_start: s32 = start
+    depth: s32 = base_depth
     emitted: bool = false
     while cursor < end {
         byte: u8 = state.source[cursor]
@@ -390,18 +389,18 @@ KssFormatEmitReflowLine :: (state: KssFormatState, start: i32, end: i32,
 }
 
 KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct, leading_break: bool) -> KssFormatState {
-    depth: i32 = 0
-    pos: i32 = construct.start
+    depth: s32 = 0
+    pos: s32 = construct.start
     first: bool = true
     while pos < construct.end {
-        line_end: i32 = pos
+        line_end: s32 = pos
         while line_end < construct.end && line_end < state.source.length {
             if state.source[line_end] == 10 {
                 break
             }
             line_end = line_end + 1
         }
-        trimmed: i32 = pos
+        trimmed: s32 = pos
         while trimmed < line_end {
             byte: u8 = state.source[trimmed]
             if byte == 32 || byte == 9 || byte == 13 {
@@ -411,7 +410,7 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
             }
         }
         if trimmed < line_end {
-            indent: i32 = depth
+            indent: s32 = depth
             if state.source[trimmed] == 125 && depth > 0 {
                 indent = depth - 1
             }
@@ -423,7 +422,7 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
                     indent * 4)
                 state = KssFormatEmitCopy(state, trimmed, line_end - trimmed)
             }
-            scan: i32 = trimmed
+            scan: s32 = trimmed
             while scan < line_end {
                 byte: u8 = state.source[scan]
                 if byte == 123 {
@@ -444,7 +443,8 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
 # source.slice(start, start + length), kind 1 as the atom byte, and kind 2 as
 # a newline plus `length` spaces.
 
-KssFormat :: (source: string) -> KssFormatResult #export {
+#program_export
+KssFormat :: (source: string) -> KssFormatResult {
     state: KssFormatState
     state.source = source
     state.result.ok = true
@@ -459,7 +459,7 @@ KssFormat :: (source: string) -> KssFormatResult #export {
     state = KssFormatSortConstructs(state)
     state = KssFormatScanGaps(state)
     state = KssFormatSortConstructs(state)
-    index: i32 = 0
+    index: s32 = 0
     while index < state.construct_count {
         if !state.result.ok {
             return state.result

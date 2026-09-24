@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "dropdown"
 #import "geometry"
 #import "navigation_bar_config_props"
@@ -17,16 +16,16 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-route_count :: i32 #global
-routes :: [4]i32 #global
-open :: bool #global
-open_row :: i32 #global
-highlight :: i32 #global
-menu_scroll :: i32 #global
+phase: s32;
+route_count: s32;
+routes: [4]s32;
+open: bool;
+open_row: s32;
+highlight: s32;
+menu_scroll: s32;
 
-FindLabel :: (label: string) -> i32 {
-    index: i32 = 0
+FindLabel :: (label: string) -> s32 {
+    index: s32 = 0
     while index < TreeCount() {
         if TreeNodeAt(index).semantic_label == label {
             return index
@@ -36,27 +35,28 @@ FindLabel :: (label: string) -> i32 {
     return -1
 }
 
-Click :: (index: i32) -> bool {
+Click :: (index: s32) -> bool {
     if index < 0 { return false }
     bounds: Rectangle = TreeNodeAt(index).bounds
-    x: float = bounds.x + bounds.width * 0.5
-    y: float = bounds.y + bounds.height * 0.5
-    TreePointerUpdate((PointerFrame){x, y, true, true, false})
-    TreePointerUpdate((PointerFrame){x, y, false, false, true})
+    x: float32 = bounds.x + bounds.width * 0.5
+    y: float32 = bounds.y + bounds.height * 0.5
+    TreePointerUpdate(PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(PointerFrame.{x, y, false, false, true})
     return true
 }
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 0 {
         route_count = 2
         routes[0] = 11
         routes[1] = 22
     }
     options: [2]NavigationBarOption
-    options[0].key = (u64)101
+    options[0].key = cast(u64)101
     options[0].route = 11
     options[0].label = "Home"
-    options[1].key = (u64)102
+    options[1].key = cast(u64)102
     options[1].route = 22
     options[1].label = "Search"
     labels: [4]string
@@ -64,7 +64,7 @@ Frame :: () -> i32 #export {
     labels[1] = "Second"
     labels[2] = "Third"
     props: NavigationBarConfigProps
-    props.key = (u64)40
+    props.key = cast(u64)40
     props.id = 40
     props.title = "Navigation"
     props.route_count = route_count
@@ -86,7 +86,7 @@ Frame :: () -> i32 #export {
     props.reset_label = "Reset"
     props.cancel_label = "Cancel"
     props.save_label = "Save"
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 640.0, 480.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
     result: NavigationBarConfigResult = NavigationBarConfig(
         props, routes[0:4], labels[0:4], options[0:2])
     if !TreeFinish() || result.node != 1 ||
@@ -131,7 +131,7 @@ Frame :: () -> i32 #export {
             return -9
         }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

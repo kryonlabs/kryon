@@ -8,20 +8,20 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/use_reorder.zi" <<'EOF'
-#module "use_reorder"
 #import "control_props"
 #import "geometry"
 #import "reorder"
 #import "reorder_props"
 #import "style"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     handle: StyleFrame
-    handle.value.fields = (u32)StyleContentOffset
+    handle.value.fields = cast(u32)StyleContentOffset
     handle.value.offset_x = 36.0
     handle.value.offset_y = 5.0
     placeholder: StyleFrame
-    placeholder.value.fields = (u32)StyleContentOffset
+    placeholder.value.fields = cast(u32)StyleContentOffset
     placeholder.value.offset_x = 34.0
     placeholder.value.offset_y = 12.0
     metrics: ReorderMetrics = ReorderMetricsFor(2.0, 0, 0, 0, 0,
@@ -30,7 +30,7 @@ Answer :: () -> i32 #export {
        metrics.auto_scroll_margin != 68 || metrics.auto_scroll_step != 24 {
         return 0
     }
-    bounds: Rectangle = (Rectangle){10.0, 20.0, 200.0, 80.0}
+    bounds: Rectangle = Rectangle.{10.0, 20.0, 200.0, 80.0}
     grip: Rectangle = ReorderHandleBounds(bounds, 36, 40)
     if grip.x != 10.0 || grip.width != 36.0 || grip.height != 40.0 {
         return 0
@@ -56,7 +56,7 @@ Answer :: () -> i32 #export {
     metrics.auto_scroll_margin = 20
     metrics.auto_scroll_step = 7
     motion: ReorderDragMotion = ReorderDragMotionFor(45, 100, 1,
-        (Rectangle){10.0, 40.0, 200.0, 100.0}, 0, 0, 30, 80, metrics)
+        Rectangle.{10.0, 40.0, 200.0, 100.0}, 0, 0, 30, 80, metrics)
     if motion.dragging != 1 || motion.scroll_offset != 23 { return 0 }
     return 42
 }

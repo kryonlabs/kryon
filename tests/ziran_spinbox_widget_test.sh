@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "spinbox"
@@ -21,15 +20,16 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     props: SpinboxProps
-    props.key = (u64)7
+    props.key = cast(u64)7
     props.id = 7
     props.class_name = 9
     props.label = "Count"
-    props.bounds = (Rectangle){10.0, 20.0, 120.0, 36.0}
+    props.bounds = Rectangle.{10.0, 20.0, 120.0, 36.0}
     props.min = -12
     props.max = 12
     props.step = 2
@@ -42,18 +42,18 @@ Frame :: () -> i32 #export {
         props.value_text = "twelve"
     }
     if phase == 5 {
-        props.value = (i32)(-(i64)2147483647 - (i64)1)
+        props.value = cast(s32)(-cast(s64)2147483647 - cast(s64)1)
         props.disabled = true
     }
     high: SpinboxStepResult = SpinboxStepValue(2147483646, 0,
         2147483647, 2147483647, 1, false)
     low: SpinboxStepResult = SpinboxStepValue(-2147483647,
-        (i32)(-(i64)2147483647 - (i64)1), 0,
+        cast(s32)(-cast(s64)2147483647 - cast(s64)1), 0,
         2147483647, -1, false)
     both: SpinboxStepResult = SpinboxStepButtonsValue(4, 0, 10,
         1, true, true, false)
     if high.value != 2147483647 || !high.changed ||
-        low.value != (i32)(-(i64)2147483647 - (i64)1) ||
+        low.value != cast(s32)(-cast(s64)2147483647 - cast(s64)1) ||
         !low.changed || both.value != 4 || both.changed { return -11 }
     if phase == 0 {
         rules: StyleRules
@@ -62,12 +62,12 @@ Frame :: () -> i32 #export {
         rule.selector = StyleDefaultSelector()
         rule.selector.kind = StyleKindSpinboxValue()
         rule.selector.class_name = 9
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 180.0, 90.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 180.0, 90.0})
     result: SpinboxStepResult = Spinbox(props)
     if !EndTree() || TreeCount() != 4 ||
         TreeNodeAt(1).kind != WidgetKindSpinbox ||
@@ -78,23 +78,23 @@ Frame :: () -> i32 #export {
     }
     if phase == 0 {
         if result.value != -12 || result.changed { return -1 }
-        TreePointerUpdate((PointerFrame){116.0, 38.0, true, true, false})
-        TreePointerUpdate((PointerFrame){116.0, 38.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{116.0, 38.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{116.0, 38.0, false, false, true})
     } else if phase == 1 {
         if result.value != -10 || !result.changed { return -2 }
-        TreePointerUpdate((PointerFrame){24.0, 38.0, true, true, false})
-        TreePointerUpdate((PointerFrame){24.0, 38.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{24.0, 38.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{24.0, 38.0, false, false, true})
     } else if phase == 2 {
         if result.value != -12 || !result.changed { return -3 }
-        TreePointerUpdate((PointerFrame){24.0, 38.0, true, true, false})
-        TreePointerUpdate((PointerFrame){24.0, 38.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{24.0, 38.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{24.0, 38.0, false, false, true})
     } else if phase == 3 {
         if result.value != 12 || !result.changed { return -4 }
     } else {
         if result.value != props.value || result.changed ||
             TreeHitAt(116.0, 38.0) != -1 { return -5 }
     }
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

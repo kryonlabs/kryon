@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "geometry"
 #import "style"
@@ -22,18 +21,19 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     plain: ToggleProps
-    plain.key = (u64)7
+    plain.key = cast(u64)7
     plain.id = 7
     plain.class_name = 9
     plain.label = "Wireless"
     plain.bounds.x = 10.0
     plain.bounds.y = 20.0
     labels: ToggleProps
-    labels.key = (u64)8
+    labels.key = cast(u64)8
     labels.id = 8
     labels.class_name = 10
     labels.label = "Mode"
@@ -49,16 +49,16 @@ Frame :: () -> i32 #export {
         rule.selector.kind = StyleKindToggle()
         rule.selector.class_name = 9
         rule.selector.role = ToggleFillRole()
-        rule.style.fields = (u32)StyleBackground
-        rule.style.background = (u32)0x123456ff
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
         rules.items[0] = rule
         label_rule: StyleRule
         label_rule.selector = StyleDefaultSelector()
         label_rule.selector.kind = StyleKindToggle()
         label_rule.selector.class_name = 10
         label_rule.selector.role = ToggleLabelRole()
-        label_rule.style.fields = (u32)StyleForeground
-        label_rule.style.foreground = (u32)0xaabbccff
+        label_rule.style.fields = cast(u32)StyleForeground
+        label_rule.style.foreground = cast(u32)0xaabbccff
         rules.items[1] = label_rule
         InstallStyleRules(rules)
     }
@@ -67,7 +67,7 @@ Frame :: () -> i32 #export {
         labels.value = true
         labels.disabled = true
     }
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 200.0, 150.0})
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
     first: ToggleValueResult = Toggle(plain)
     second: ToggleValueResult = Toggle(labels)
     if !EndTree() || TreeCount() != 3 ||
@@ -80,9 +80,9 @@ Frame :: () -> i32 #export {
         if first.value || first.changed || second.value ||
             second.changed || TreeNodeAt(1).selected ||
             TreeNodeAt(2).selected { return -2 }
-        TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
-        TreePointerUpdate((PointerFrame){180.0, 140.0, false, false, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{180.0, 140.0, false, false, false})
         phase = 1
         return 0
     }
@@ -90,9 +90,9 @@ Frame :: () -> i32 #export {
         if !first.value || !first.changed || second.value ||
             second.changed || !TreeNodeAt(1).selected ||
             TreeNodeAt(2).selected { return -3 }
-        TreePointerUpdate((PointerFrame){20.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 70.0, false, false, true})
-        TreePointerUpdate((PointerFrame){180.0, 140.0, false, false, false})
+        TreePointerUpdate(PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{180.0, 140.0, false, false, false})
         phase = 2
         return 1
     }

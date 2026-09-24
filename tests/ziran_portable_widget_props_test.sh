@@ -7,7 +7,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "button_props"
 #import "drawing_props"
 #import "fieldset"
@@ -28,11 +27,12 @@ cat > "$work/app.zi" <<'EOF'
 #import "toast"
 #import "toast_props"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     button: ButtonProps
-    button.key = (u64)7
+    button.key = cast(u64)7
     button.label = "Run"
-    if button.label.length != 3 || button.key != (u64)7 { return 0 }
+    if button.label.length != 3 || button.key != cast(u64)7 { return 0 }
 
     link: LinkProps
     link.text = "Read more"
@@ -48,19 +48,19 @@ Answer :: () -> i32 #export {
     metrics: ToastMetrics
     metrics.default_seconds = 3.0
     request: ToastRequestDecision = ToastRequestDecisionFor(
-        toast.message.length > 0, (float)toast.seconds, metrics)
+        toast.message.length > 0, cast(float32)toast.seconds, metrics)
     if !request.show || request.clear || request.seconds != 3.0 {
         return 0
     }
 
     frame: StyleFrame
-    frame.value.background = (u32)0x11223344
+    frame.value.background = cast(u32)0x11223344
     separator: SeparatorProps
     separator.label = "Section"
     separator.bounds.width = 100.0
     line: SeparatorLine = SeparatorLineFor(separator.bounds,
         separator.vertical, frame)
-    if separator.label != "Section" || line.color != (u32)0x11223344 {
+    if separator.label != "Section" || line.color != cast(u32)0x11223344 {
         return 0
     }
 
@@ -95,11 +95,11 @@ Answer :: () -> i32 #export {
 
     text: TextProps
     text.text = "one two"
-    text.wrap = (TextWrap)TextWrapAuto
+    text.wrap = cast(TextWrap)TextWrapAuto
     element: TextElement
     element.text = text.text
     if element.text != "one two" ||
-        TextWrapPolicy(text.bounds.width, (i32)text.wrap) != 1 { return 0 }
+        TextWrapPolicy(text.bounds.width, cast(s32)text.wrap) != 1 { return 0 }
     return 42
 }
 EOF

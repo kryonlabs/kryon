@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "fieldset_props"
 #import "fieldset_widget"
@@ -19,30 +18,31 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "widget_kind"
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     rules: StyleRules
     rules.count = 1
     rule: StyleRule
     rule.selector = StyleDefaultSelector()
     rule.selector.kind = StyleKindFieldset()
     rule.selector.class_name = 9
-    rule.style.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleOpacity
-    rule.style.background = (u32)0x123456ff
-    rule.style.foreground = (u32)0xaabbccff
+    rule.style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleOpacity
+    rule.style.background = cast(u32)0x123456ff
+    rule.style.foreground = cast(u32)0xaabbccff
     rule.style.opacity = 0.5
     rules.items[0] = rule
     InstallStyleRules(rules)
     first: FieldsetProps
-    first.key = (u64)7
+    first.key = cast(u64)7
     first.id = 7
     first.class_name = 9
-    first.bounds = (Rectangle){10.0, 30.0, 100.0, 50.0}
+    first.bounds = Rectangle.{10.0, 30.0, 100.0, 50.0}
     first.title = "Group"
     second: FieldsetProps
-    second.key = (u64)8
-    second.bounds = (Rectangle){120.0, 30.0, 80.0, 50.0}
-    BeginTree((u64)1, (Rectangle){0.0, 0.0, 220.0, 100.0})
+    second.key = cast(u64)8
+    second.bounds = Rectangle.{120.0, 30.0, 80.0, 50.0}
+    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 100.0})
     Fieldset(first)
     Fieldset(second)
     if !EndTree() || TreeCount() != 3 ||

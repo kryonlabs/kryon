@@ -7,36 +7,36 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "tree"
 #import "widget_kind"
 
 Frame :: (bounds: Rectangle) -> bool {
-    TreeStart((u64)9, bounds)
-    if TreeCurrentParent() != 0 || TreeCurrentParentKey() != (u64)9 ||
+    TreeStart(cast(u64)9, bounds)
+    if TreeCurrentParent() != 0 || TreeCurrentParentKey() != cast(u64)9 ||
         TreePopScope() || TreePushScope(99) { return false }
-    outer: i32 = TreeSubmitCurrent((u64)10, WidgetKindColumn, bounds)
+    outer: s32 = TreeSubmitCurrent(cast(u64)10, WidgetKindColumn, bounds)
     if outer != 1 || !TreePushScope(outer) ||
         TreeCurrentParent() != outer ||
-        TreeCurrentParentKey() != (u64)10 { return false }
-    if TreeSubmitCurrent((u64)11, WidgetKindButton, bounds) != 2 {
+        TreeCurrentParentKey() != cast(u64)10 { return false }
+    if TreeSubmitCurrent(cast(u64)11, WidgetKindButton, bounds) != 2 {
         return false
     }
-    inner: i32 = TreeSubmitCurrent((u64)12, WidgetKindGroup, bounds)
+    inner: s32 = TreeSubmitCurrent(cast(u64)12, WidgetKindGroup, bounds)
     if inner != 3 || !TreePushScope(inner) { return false }
-    if TreeSubmitCurrent((u64)13, WidgetKindText, bounds) != 4 ||
+    if TreeSubmitCurrent(cast(u64)13, WidgetKindText, bounds) != 4 ||
         !TreePopScope() { return false }
-    if TreeSubmitCurrent((u64)14, WidgetKindImage, bounds) != 5 ||
+    if TreeSubmitCurrent(cast(u64)14, WidgetKindImage, bounds) != 5 ||
         !TreePopScope() { return false }
-    if TreeSubmitCurrent((u64)15, WidgetKindRouter, bounds) != 6 {
+    if TreeSubmitCurrent(cast(u64)15, WidgetKindRouter, bounds) != 6 {
         return false
     }
     return TreeFinish()
 }
 
-Answer :: () -> i32 #export {
-    bounds: Rectangle = (Rectangle){0.0, 0.0, 100.0, 80.0}
+#program_export
+Answer :: () -> s32 {
+    bounds: Rectangle = Rectangle.{0.0, 0.0, 100.0, 80.0}
     if !Frame(bounds) || TreeCount() != 7 ||
         TreeNodeAt(1).parent != 0 ||
         TreeNodeAt(2).parent != 1 ||
@@ -44,21 +44,21 @@ Answer :: () -> i32 #export {
         TreeNodeAt(4).parent != 3 ||
         TreeNodeAt(5).parent != 1 ||
         TreeNodeAt(6).parent != 0 ||
-        TreeNodeAt(4).parent_key != (u64)12 ||
+        TreeNodeAt(4).parent_key != cast(u64)12 ||
         TreeNodeAt(1).first_child != 2 ||
         TreeNodeAt(2).next_sibling != 3 ||
         TreeNodeAt(3).next_sibling != 5 { return -1 }
-    generation: i32 = TreeNodeAt(4).identity_generation
+    generation: s32 = TreeNodeAt(4).identity_generation
     if !Frame(bounds) || TreeNodeAt(4).identity_generation != generation {
         return -2
     }
-    TreeStart((u64)9, bounds)
-    inner: i32 = TreeSubmitCurrent((u64)12, WidgetKindGroup, bounds)
+    TreeStart(cast(u64)9, bounds)
+    inner: s32 = TreeSubmitCurrent(cast(u64)12, WidgetKindGroup, bounds)
     if !TreePushScope(inner) || TreeFinish() || TreeCount() != 7 ||
         TreeNodeAt(4).identity_generation != generation { return -3 }
-    TreeStart((u64)9, bounds)
+    TreeStart(cast(u64)9, bounds)
     TreeCancel()
-    if TreeCurrentParent() != -1 || TreeSubmitCurrent((u64)20,
+    if TreeCurrentParent() != -1 || TreeSubmitCurrent(cast(u64)20,
         WidgetKindText, bounds) != -1 { return -4 }
     return 42
 }

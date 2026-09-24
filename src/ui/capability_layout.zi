@@ -1,14 +1,14 @@
 #import "geometry"
 
 Capability :: enum {
-    FilePicker = 1
-    FileSave = 2
-    Share = 4
-    SecureStore = 8
-    BiometricUnlock = 16
-    Notifications = 32
-    Wakelock = 64
-    Clipboard = 128
+    FilePicker :: 1
+    FileSave :: 2
+    Share :: 4
+    SecureStore :: 8
+    BiometricUnlock :: 16
+    Notifications :: 32
+    Wakelock :: 64
+    Clipboard :: 128
 }
 
 SafeArea :: struct {

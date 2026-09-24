@@ -11,12 +11,12 @@ cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$repo/src/ui/input_props.zi" "$work/input_props.zi"
 cp "$repo/src/ui/input.zi" "$work/input.zi"
 cat > "$work/use_input.zi" <<'EOF'
-#module "use_input"
 #import "input"
 #import "input_props"
 #import "geometry"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     if InputDefaultStepButtonWidth(2.0) != 48 { return 0 }
     if !InputPointerDragShouldStart(7, 0, 5) { return 0 }
     if !InputPointerDragIsHorizontal(3, 2) { return 0 }
@@ -33,21 +33,22 @@ Answer :: () -> i32 #export {
     cell: InputCellLayout = InputCellLayoutFor(bounds, 2, 1, 10, true)
     if cell.cell.x != 60.0 || cell.field.width != 30.0 ||
         cell.minus.x != 90.0 || !cell.has_step_buttons { return 0 }
-    if InputRoundValueForKind((NumericValueKind)NumericInt, -1.6) != -2.0 { return 0 }
-    discrete: InputStep = InputStepValueForKind((NumericValueKind)NumericInt, 2.0,
+    if InputRoundValueForKind(cast(NumericValueKind)NumericInt, -1.6) != -2.0 { return 0 }
+    discrete: InputStep = InputStepValueForKind(cast(NumericValueKind)NumericInt, 2.0,
         1.0, 3.0, 1, true)
     if !discrete.changed || discrete.value != 5.0 { return 0 }
-    continuous: InputStep = InputStepValueForKind((NumericValueKind)NumericDouble, 2.0,
+    continuous: InputStep = InputStepValueForKind(cast(NumericValueKind)NumericDouble, 2.0,
         0.5, 2.0, 1, false)
     if !continuous.changed || continuous.value != 2.5 { return 0 }
     if FormatAnswer() != 42 { return 0 }
     return 42
 }
 
-FormatAnswer :: () -> i32 #export {
-    if InputDefaultFormat((NumericValueKind)NumericInt) != "%d" { return 0 }
-    if InputDefaultFormat((NumericValueKind)NumericDouble) != "%.6f" { return 0 }
-    if InputDefaultFormat((NumericValueKind)NumericFloat) != "%.3f" { return 0 }
+#program_export
+FormatAnswer :: () -> s32 {
+    if InputDefaultFormat(cast(NumericValueKind)NumericInt) != "%d" { return 0 }
+    if InputDefaultFormat(cast(NumericValueKind)NumericDouble) != "%.6f" { return 0 }
+    if InputDefaultFormat(cast(NumericValueKind)NumericFloat) != "%.3f" { return 0 }
     return 42
 }
 EOF

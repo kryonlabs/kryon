@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "semantic"
 #import "tab_bar_props"
@@ -16,50 +15,51 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "tree_input"
 
-phase :: i32 #global
-selected :: i32 #global
-scroll_offset :: i32 #global
-dragging :: bool #global
-drag_from :: i32 #global
-last_clicked_index :: i32 #global
-last_clicked_at :: float #global
-last_click_valid :: bool #global
-selected_bounds :: Rectangle #global
+phase: s32;
+selected: s32;
+scroll_offset: s32;
+dragging: bool;
+drag_from: s32;
+last_clicked_index: s32;
+last_clicked_at: float32;
+last_click_valid: bool;
+selected_bounds: Rectangle;
 
-Click :: (x: float, y: float) {
-    TreePointerUpdate((PointerFrame){x, y,
+Click :: (x: float32, y: float32) {
+    TreePointerUpdate(PointerFrame.{x, y,
         true, true, false})
-    TreePointerUpdate((PointerFrame){x, y,
+    TreePointerUpdate(PointerFrame.{x, y,
         false, false, true})
 }
 
 CloseBounds :: () -> Rectangle {
-    index: i32 = 0
+    index: s32 = 0
     while index < TreeCount() {
         if TreeNodeAt(index).semantic_label == "Close tab" {
             return TreeNodeAt(index).bounds
         }
         index += 1
     }
-    return (Rectangle){0.0, 0.0, 0.0, 0.0}
+    return Rectangle.{0.0, 0.0, 0.0, 0.0}
 }
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     tabs: [4]Tab
-    tabs[0].key = (u64)10
+    tabs[0].key = cast(u64)10
     tabs[0].label = "Home"
-    tabs[1].key = (u64)11
+    tabs[1].key = cast(u64)11
     tabs[1].label = "Editor"
     tabs[1].closeable = true
-    tabs[2].key = (u64)12
+    tabs[2].key = cast(u64)12
     tabs[2].label = "Hidden"
     tabs[2].disabled = true
-    tabs[3].key = (u64)13
+    tabs[3].key = cast(u64)13
     tabs[3].label = "Build"
     tabs[3].closeable = true
     props: TabBarProps
-    props.key = (u64)77
-    props.bounds = (Rectangle){20.0, 20.0, 240.0, 36.0}
+    props.key = cast(u64)77
+    props.bounds = Rectangle.{20.0, 20.0, 240.0, 36.0}
     props.selected_index = selected
     props.scroll_offset = scroll_offset
     props.dragging = dragging
@@ -69,7 +69,7 @@ Frame :: () -> i32 #export {
     props.last_click_valid = last_click_valid
     props.id = 77
     props.reorder_enabled = true
-    props.input.now = (float)phase * 0.1
+    props.input.now = cast(float32)phase * 0.1
     if phase == 3 {
         props.input.focused = true
         props.input.right = true
@@ -86,11 +86,11 @@ Frame :: () -> i32 #export {
     }
     if phase == 12 { props.input.scroll_delta = -40 }
     if phase == 13 { props.focus_selected = true }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 300.0, 100.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     result: TabBarResult = TabBar(props, tabs[0:4])
     if !TreeFinish() || result.node != 1 ||
         TreeNodeAt(result.node).semantic_kind !=
-            (SemanticKind)SemanticTabList { return -20 }
+            cast(SemanticKind)SemanticTabList { return -20 }
     if phase == 0 {
         if result.selected_index != 0 ||
             result.activated_index != -1 ||
@@ -134,19 +134,19 @@ Frame :: () -> i32 #export {
             selected_bounds.width * 0.5, 38.0)
     } else if phase == 8 {
         if result.double_clicked_index != 3 { return -9 }
-        TreePointerUpdate((PointerFrame){
+        TreePointerUpdate(PointerFrame.{
             selected_bounds.x + selected_bounds.width * 0.5,
             38.0, true, true, false})
     } else if phase == 9 {
         if result.dragging || result.reordered_from != -1 {
             return -10
         }
-        TreePointerUpdate((PointerFrame){-300.0, 38.0,
+        TreePointerUpdate(PointerFrame.{-300.0, 38.0,
             true, false, false})
     } else if phase == 10 {
         if !result.dragging || result.drag_from != 3 ||
             result.drag_to != 0 { return -11 }
-        TreePointerUpdate((PointerFrame){-300.0, 38.0,
+        TreePointerUpdate(PointerFrame.{-300.0, 38.0,
             false, false, true})
     } else if phase == 11 {
         if result.reordered_from != 3 ||
@@ -171,7 +171,7 @@ Frame :: () -> i32 #export {
     last_clicked_at = result.last_clicked_at
     last_click_valid = result.last_click_valid
     selected_bounds = result.selected_tab_bounds
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

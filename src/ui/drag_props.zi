@@ -2,8 +2,8 @@
 #import "input_props"
 
 DragMode :: enum {
-    DragValue = 0
-    DragRange = 1
+    DragValue :: 0
+    DragRange :: 1
 }
 
 DragProps :: struct {

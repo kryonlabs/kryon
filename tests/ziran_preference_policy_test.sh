@@ -7,31 +7,31 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "preference_policy"
 #import "theme"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     theme: ThemePreference
     theme.theme_id = 7
-    theme.source = (ThemeSource)ThemeSourceApp
-    theme.mode = (ThemePolicy)ThemePolicyLight
+    theme.source = cast(ThemeSource)ThemeSourceApp
+    theme.mode = cast(ThemePolicy)ThemePolicyLight
     theme.system_dark = true
     choice: ThemeDecision = ThemeDecisionFor(theme)
     if choice.theme_id != 7 || choice.dark ||
-        choice.source != (ThemeSource)ThemeSourceApp { return -1 }
-    theme.mode = (ThemePolicy)ThemePolicySystem
+        choice.source != cast(ThemeSource)ThemeSourceApp { return -1 }
+    theme.mode = cast(ThemePolicy)ThemePolicySystem
     choice = ThemeDecisionFor(theme)
     if !choice.dark { return -2 }
-    theme.mode = (ThemePolicy)ThemePolicyDark
+    theme.mode = cast(ThemePolicy)ThemePolicyDark
     theme.system_dark = false
     choice = ThemeDecisionFor(theme)
     if !choice.dark { return -3 }
-    theme.source = (ThemeSource)99
-    theme.mode = (ThemePolicy)99
+    theme.source = cast(ThemeSource)99
+    theme.mode = cast(ThemePolicy)99
     choice = ThemeDecisionFor(theme)
-    if choice.source != (ThemeSource)ThemeSourceSystem ||
-        choice.mode != (ThemePolicy)ThemePolicySystem ||
+    if choice.source != cast(ThemeSource)ThemeSourceSystem ||
+        choice.mode != cast(ThemePolicy)ThemePolicySystem ||
         choice.dark { return -4 }
 
     orientation: OrientationPreference
@@ -40,24 +40,24 @@ Answer :: () -> i32 #export {
     orientation.landscape_mode = 2
     plan: OrientationDecision = OrientationDecisionFor(orientation,
         800, 400, true, true)
-    if plan.action != (OrientationAction)OrientationActionResize ||
+    if plan.action != cast(OrientationAction)OrientationActionResize ||
         plan.width != 400 || plan.height != 800 || plan.mode != 1 {
         return -5
     }
     orientation.mode = 2
     plan = OrientationDecisionFor(orientation, 400, 800, true, true)
-    if plan.action != (OrientationAction)OrientationActionResize ||
+    if plan.action != cast(OrientationAction)OrientationActionResize ||
         plan.width != 800 || plan.height != 400 { return -6 }
     plan = OrientationDecisionFor(orientation, 800, 400, true, true)
-    if plan.action != (OrientationAction)OrientationActionSetMode {
+    if plan.action != cast(OrientationAction)OrientationActionSetMode {
         return -7
     }
     plan = OrientationDecisionFor(orientation, 0, 400, true, true)
-    if plan.action != (OrientationAction)OrientationActionSetMode {
+    if plan.action != cast(OrientationAction)OrientationActionSetMode {
         return -8
     }
     plan = OrientationDecisionFor(orientation, 400, 800, false, false)
-    if plan.action != (OrientationAction)OrientationActionNone {
+    if plan.action != cast(OrientationAction)OrientationActionNone {
         return -9
     }
     return 42

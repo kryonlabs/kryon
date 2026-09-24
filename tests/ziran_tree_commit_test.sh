@@ -7,11 +7,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'EOF'
-#module "app"
 #import "instance"
 #import "tree"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     partial: TreeCommitPlan = TreeCommitFor(true, 10, 9)
     if !partial.keep_committed || partial.reconcile || partial.route_input {
         return 0

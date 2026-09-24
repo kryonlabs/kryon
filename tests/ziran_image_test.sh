@@ -7,13 +7,13 @@ ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_image.zi" <<'EOF'
-#module "use_image"
 #import "drawing_props"
 #import "image"
 #import "image_props"
 #import "geometry"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     bounds: Rectangle
     bounds.width = 100.0
     bounds.height = 50.0
@@ -28,9 +28,9 @@ Answer :: () -> i32 #export {
     image.alt_text = "A photo"
     image.bounds = bounds
     image.source = source
-    image.fit = (ImageFit)ImageFitContain
+    image.fit = cast(ImageFit)ImageFitContain
     texture: Texture2D
-    texture.id = (u32)1
+    texture.id = cast(u32)1
     texture.width = 20
     texture.height = 20
     fitted: Rectangle = ImageFitRect(image, texture)
@@ -42,17 +42,17 @@ Answer :: () -> i32 #export {
     tint: Color
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
     if !plan.draw || plan.source.width != 20.0 ||
-        plan.destination.x != 25.0 || plan.tint.r != (u8)255 ||
-        plan.tint.a != (u8)255 { return 0 }
+        plan.destination.x != 25.0 || plan.tint.r != cast(u8)255 ||
+        plan.tint.a != cast(u8)255 { return 0 }
     image.source.width = 0.0
     plan = ImageDrawPlanFor(image, texture, tint)
     if plan.source.width != 20.0 || plan.source.height != 20.0 {
         return 0
     }
-    texture.id = (u32)0
+    texture.id = cast(u32)0
     plan = ImageDrawPlanFor(image, texture, tint)
     if plan.draw { return 0 }
-    texture.id = (u32)1
+    texture.id = cast(u32)1
     image.source = source
     image.bounds.width = 0.0
     if ImageDrawPlanFor(image, texture, tint).draw { return 0 }

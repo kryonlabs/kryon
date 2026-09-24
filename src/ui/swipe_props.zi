@@ -1,14 +1,14 @@
 #import "geometry"
 
 SwipeDirection :: enum {
-    SwipeNone = 0
-    SwipeLeft = 1
-    SwipeRight = 2
-    SwipeUp = 4
-    SwipeDown = 8
-    SwipeHorizontal = 3
-    SwipeVertical = 12
-    SwipeAll = 15
+    SwipeNone :: 0
+    SwipeLeft :: 1
+    SwipeRight :: 2
+    SwipeUp :: 4
+    SwipeDown :: 8
+    SwipeHorizontal :: 3
+    SwipeVertical :: 12
+    SwipeAll :: 15
 }
 
 SwipeSpec :: struct {

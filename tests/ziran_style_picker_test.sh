@@ -8,11 +8,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "style_picker"
 #import "style_picker_props"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     packs: [3]StylePackOption
     packs[0].id = "dawn"
     packs[1].id = "dusk"

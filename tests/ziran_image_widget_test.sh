@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -20,9 +19,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "tree_draw"
 
-phase :: i32 #global
+phase: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     if phase == 1 {
         if !EndTree() || TreeCount() != 2 ||
             TreeNodeAt(1).semantic_label != "Hero image" { return -1 }
@@ -31,7 +31,7 @@ Frame :: () -> i32 #export {
     }
     image: ImageProps
     image.class_name = 7
-    image.key = (u64)17
+    image.key = cast(u64)17
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
@@ -39,28 +39,28 @@ Frame :: () -> i32 #export {
         tint.selector = StyleDefaultSelector()
         tint.selector.kind = StyleKindImage()
         tint.selector.class_name = 7
-        tint.style.fields = (u32)StyleForeground |
-            (u32)StyleOpacity | (u32)StyleRadius
-        tint.style.foreground = (u32)0x102030ff
+        tint.style.fields = cast(u32)StyleForeground |
+            cast(u32)StyleOpacity | cast(u32)StyleRadius
+        tint.style.foreground = cast(u32)0x102030ff
         tint.style.opacity = 0.5
         tint.style.radius = 6.0
         rules.items[0] = tint
         InstallStyleRules(rules)
         image.asset_path = "assets/hero.png"
         image.alt_text = "Hero image"
-        image.bounds = (Rectangle){10.0, 20.0, 100.0, 100.0}
-        image.fit = (ImageFit)ImageFitContain
+        image.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
+        image.fit = cast(ImageFit)ImageFitContain
         image.rotation = 15.0
-        BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 200.0})
+        BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
         Image(image)
         phase = 1
         return 0
     }
     if phase == 2 {
         image.asset_path = "ignored.png"
-        image.bounds = (Rectangle){20.0, 30.0, 60.0, 40.0}
-        image.fit = (ImageFit)ImageFitCover
-        image.texture.id = (u32)77
+        image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
+        image.fit = cast(ImageFit)ImageFitCover
+        image.texture.id = cast(u32)77
         image.texture.width = 40
         image.texture.height = 40
         Image(image)
@@ -69,8 +69,8 @@ Frame :: () -> i32 #export {
     }
     image.asset_path = "missing.png"
     image.alt_text = "Missing hero"
-    image.bounds = (Rectangle){0.0, 0.0, 100.0, 20.0}
-    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 200.0})
+    image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
+    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
     Image(image)
     if !EndTree() || TreeNodeAt(1).semantic_label != "Missing hero" {
         return -1
@@ -97,18 +97,18 @@ cmp "$work/source.zib" "$work/saved.zib"
 "$work/host-test" "$work/saved.zib"
 
 cat > "$work/native.zi" <<'ZI'
-#module "native"
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
 #import "image_widget"
 
-Answer :: () -> i32 #export {
+#program_export
+Answer :: () -> s32 {
     image: ImageProps
     image.asset_path = "ignored.png"
-    image.bounds = (Rectangle){20.0, 30.0, 60.0, 40.0}
-    image.fit = (ImageFit)ImageFitCover
-    image.texture.id = (u32)77
+    image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
+    image.fit = cast(ImageFit)ImageFitCover
+    image.texture.id = cast(u32)77
     image.texture.width = 40
     image.texture.height = 40
     Image(image)

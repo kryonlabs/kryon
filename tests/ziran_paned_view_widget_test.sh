@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "paned_view"
@@ -17,23 +16,24 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-split :: i32 #global
+phase: s32;
+split: s32;
 
-Frame :: () -> i32 #export {
-    bounds: Rectangle = (Rectangle){10.0, 20.0, 120.0, 80.0}
-    if PaneDropZone(bounds, (Vector2){70.0, 60.0}, 0.2, 0) !=
-            (DropZone)DropCenter ||
-        PaneDropZone(bounds, (Vector2){12.0, 60.0}, 0.2, 0) !=
-            (DropZone)DropLeft ||
-        PaneDropZone(bounds, (Vector2){129.0, 60.0}, 0.2, 0) !=
-            (DropZone)DropRight ||
-        PaneDropZone(bounds, (Vector2){70.0, 22.0}, 0.2, 0) !=
-            (DropZone)DropTop ||
-        PaneDropZone(bounds, (Vector2){70.0, 98.0}, 0.2, 0) !=
-            (DropZone)DropBottom { return -15 }
+#program_export
+Frame :: () -> s32 {
+    bounds: Rectangle = Rectangle.{10.0, 20.0, 120.0, 80.0}
+    if PaneDropZone(bounds, Vector2.{70.0, 60.0}, 0.2, 0) !=
+            cast(DropZone)DropCenter ||
+        PaneDropZone(bounds, Vector2.{12.0, 60.0}, 0.2, 0) !=
+            cast(DropZone)DropLeft ||
+        PaneDropZone(bounds, Vector2.{129.0, 60.0}, 0.2, 0) !=
+            cast(DropZone)DropRight ||
+        PaneDropZone(bounds, Vector2.{70.0, 22.0}, 0.2, 0) !=
+            cast(DropZone)DropTop ||
+        PaneDropZone(bounds, Vector2.{70.0, 98.0}, 0.2, 0) !=
+            cast(DropZone)DropBottom { return -15 }
     props: PanedViewProps
-    props.key = (u64)20
+    props.key = cast(u64)20
     props.id = 20
     props.bounds = bounds
     props.vertical = phase < 3
@@ -44,7 +44,7 @@ Frame :: () -> i32 #export {
     if phase == 0 { props.split = 60 }
     if phase == 3 { props.split = 40 }
     if phase == 6 { props.disabled = true }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 200.0, 150.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
     result: PanedViewResult = PanedView(props)
     if !TreeFinish() || TreeCount() != 3 || result.node != 1 ||
         TreeNodeAt(1).kind != WidgetKindPanedView ||
@@ -55,13 +55,13 @@ Frame :: () -> i32 #export {
             result.first.width != 56.0 ||
             result.second.x != 74.0 ||
             TreeHitAt(70.0, 30.0) != 2 { return -1 }
-        TreePointerUpdate((PointerFrame){70.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){90.0, 30.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{70.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{90.0, 30.0, true, false, false})
     } else if phase == 1 {
         if result.split != 80 || !result.changed ||
             result.handle.x != 86.0 ||
             result.first.width != 76.0 { return -2 }
-        TreePointerUpdate((PointerFrame){180.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{180.0, 30.0, false, false, true})
     } else if phase == 2 {
         if result.split != 100 || !result.changed ||
             result.second.x != 114.0 ||
@@ -72,12 +72,12 @@ Frame :: () -> i32 #export {
             result.first.height != 36.0 ||
             result.second.y != 64.0 ||
             TreeHitAt(20.0, 60.0) != 2 { return -4 }
-        TreePointerUpdate((PointerFrame){20.0, 60.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 80.0, true, false, false})
+        TreePointerUpdate(PointerFrame.{20.0, 60.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 80.0, true, false, false})
     } else if phase == 4 {
         if result.split != 60 || !result.changed ||
             result.handle.y != 76.0 { return -5 }
-        TreePointerUpdate((PointerFrame){20.0, 149.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 149.0, false, false, true})
     } else if phase == 5 {
         if result.split != 60 || result.changed { return -6 }
     } else {
@@ -86,7 +86,7 @@ Frame :: () -> i32 #export {
     }
     PaintFlush()
     split = result.split
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

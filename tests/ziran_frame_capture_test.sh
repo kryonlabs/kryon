@@ -10,16 +10,16 @@ mkdir -p "$output"
     --module-path "$repo/src/ui" -o "$output/ir" \
     "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$repo/tests/fixtures" \
-    --module-path "$repo/src/ui" --entry frame_replay_demo:Frame \
+    --module-path "$repo/src/ui" --entry frame_replay:Frame \
     -o "$output/source.zib" "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$output/ir" --module-path "$output/ir" \
-    --entry frame_replay_demo:Frame -o "$output/saved.zib" \
+    --entry frame_replay:Frame -o "$output/saved.zib" \
     "$output/ir/frame_replay.zir"
 cmp "$output/source.zib" "$output/saved.zib"
 
-"$repo/tools/frame-replay.sh" "$output/source.zib" frame_replay_demo \
+"$repo/tools/frame-replay.sh" "$output/source.zib" frame_replay \
     "$repo/tests/fixtures/frame_replay.trace" "$output/source.json"
-"$repo/tools/frame-replay.sh" "$output/saved.zib" frame_replay_demo \
+"$repo/tools/frame-replay.sh" "$output/saved.zib" frame_replay \
     "$repo/tests/fixtures/frame_replay.trace" "$output/saved.json"
 cmp "$output/source.json" "$output/saved.json"
 

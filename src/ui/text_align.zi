@@ -1,6 +1,6 @@
 
 TextAlign :: enum {
-    TextAlignStart = 0
-    TextAlignCenter = 1
-    TextAlignEnd = 2
+    TextAlignStart :: 0
+    TextAlignCenter :: 1
+    TextAlignEnd :: 2
 }

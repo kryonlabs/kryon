@@ -20,10 +20,15 @@ hosts can use `CompositionQueueTake` to implement their `PollComposition`
 function. The queue is single-threaded and holds up to 16 pending events;
 sampling consumes them in order.
 
+`src/backend/composition_queue.zi` implements queue ordering, event capacity,
+owned text copies, and UTF-8 truncation. `composition_host.c` allocates the
+queue and converts samples to the portable VM host-value ABI. The generated
+Ziran queue code is linked into `libkryon_host.a`.
+
 Polled text borrows queue storage through the current frame. A caller that
 retains `CompositionState.text` must copy the bytes into its own storage before
 the next `CompositionQueueBeginFrame`. The widget owns composition decisions,
-preedit paint, and commit ranges. Platform adapters own event delivery and
-text storage. Current Android and browser adapters still submit to the old
-runtime queue and need to be wired to this host queue during native host
-migration.
+preedit paint, and commit ranges. Platform adapters own event delivery; the
+queue owns sampled text storage. Current Android and browser adapters still
+submit to the old runtime queue and need to be wired to this host queue during
+native host migration.

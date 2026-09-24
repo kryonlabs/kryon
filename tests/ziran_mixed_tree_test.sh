@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "progress_props"
 #import "progress_widget"
@@ -17,16 +16,17 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree"
 #import "tree_draw"
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     progress: ProgressProps
-    progress.bounds = (Rectangle){10.0, 20.0, 100.0, 20.0}
+    progress.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
     progress.min = 0
     progress.max = 100
     progress.value = 50
     separator: SeparatorProps
-    separator.bounds = (Rectangle){20.0, 50.0, 20.0, 40.0}
+    separator.bounds = Rectangle.{20.0, 50.0, 20.0, 40.0}
     separator.vertical = true
-    BeginTree((u64)10, (Rectangle){0.0, 0.0, 200.0, 200.0})
+    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
     Progress(progress)
     Separator(separator)
     progress.bounds.y = 100.0

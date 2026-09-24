@@ -1,0 +1,75 @@
+# The host owns this state while the platform supplies raw IME events.
+# Event ordering, capacity, text retention, and UTF-8 trimming are Ziran
+# behavior shared by native and bundled hosts.
+QueuedComposition :: struct {
+    phase: s32
+    cursor: s32
+    selection_length: s32
+    length: s32
+    text: [256]u8
+}
+
+CompositionQueueState :: struct {
+    pending: [16]QueuedComposition
+    pinned: [16]QueuedComposition
+    head: s32
+    count: s32
+    pinned_count: s32
+}
+
+#program_export
+BeginCompositionFrame :: (queue: *CompositionQueueState) {
+    if queue != null { queue.pinned_count = 0 }
+}
+
+#program_export
+SubmitComposition :: (queue: *CompositionQueueState, phase: s32,
+    text: string, cursor: s32, selection_length: s32) -> bool {
+    if queue == null || phase < 1 || phase > 4 || queue.count >= 16 {
+        return false
+    }
+    event: QueuedComposition
+    event.phase = phase
+    if cursor > 0 { event.cursor = cursor }
+    if selection_length > 0 { event.selection_length = selection_length }
+    length: s32 = 0
+    while length < 255 && length < text.length {
+        event.text[length] = text[length]
+        length += 1
+    }
+    if length > 0 {
+        start: s32 = length - 1
+        while start > 0 && (event.text[start] & 192) == 128 {
+            start -= 1
+        }
+        lead: u8 = event.text[start]
+        expected: s32 = 1
+        if (lead & 224) == 192 {
+            expected = 2
+        } else if (lead & 240) == 224 {
+            expected = 3
+        } else if (lead & 248) == 240 {
+            expected = 4
+        }
+        if start + expected > length { length = start }
+    }
+    event.length = length
+    event.text[length] = 0
+    slot: s32 = (queue.head + queue.count) % 16
+    queue.pending[slot] = event
+    queue.count += 1
+    return true
+}
+
+#program_export
+TakeComposition :: (queue: *CompositionQueueState) -> s32 {
+    if queue == null || queue.count == 0 || queue.pinned_count >= 16 {
+        return -1
+    }
+    slot: s32 = queue.pinned_count
+    queue.pinned[slot] = queue.pending[queue.head]
+    queue.pinned_count += 1
+    queue.head = (queue.head + 1) % 16
+    queue.count -= 1
+    return slot
+}

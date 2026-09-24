@@ -9,11 +9,11 @@ TreeItem :: struct {
 }
 
 TreeViewNavigation :: enum {
-    TreeViewNavigationNone = 0
-    TreeViewNavigationHome = 1
-    TreeViewNavigationEnd = 2
-    TreeViewNavigationUp = 3
-    TreeViewNavigationDown = 4
+    TreeViewNavigationNone :: 0
+    TreeViewNavigationHome :: 1
+    TreeViewNavigationEnd :: 2
+    TreeViewNavigationUp :: 3
+    TreeViewNavigationDown :: 4
 }
 
 # Items are a borrowed slice passed to TreeView, not a pointer in this record.

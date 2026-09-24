@@ -1,11 +1,11 @@
-#module "kss_parser"
 #import "style"
 #import "style_sheet"
 #import "control_props"
+host_api :: #system_library "host_api";
 
 # Host-provided borrowed substring view; backends slice their native strings.
 
-StringSlice :: (source: string, start: i32, length: i32) -> string #extern
+StringSlice :: (source: string, start: s32, length: s32) -> string #foreign host_api;
 
 # KSS is the text style format; this module is the one shared implementation.
 # Backends lower it to C, Go, and JavaScript, so the grammar, environment
@@ -13,108 +13,110 @@ StringSlice :: (source: string, start: i32, length: i32) -> string #extern
 # Hosts own I/O: they feed source text in and resolve import requests.
 
 KssTokenKind :: enum {
-    KssTokenColor = 0
-    KssTokenLength = 1
-    KssTokenDuration = 2
-    KssTokenMaterial = 3
+    KssTokenColor :: 0
+    KssTokenLength :: 1
+    KssTokenDuration :: 2
+    KssTokenMaterial :: 3
 }
 
 KssOriginKind :: enum {
-    KssOriginPack = 0
-    KssOriginImport = 1
-    KssOriginTheme = 2
-    KssOriginEnvironment = 3
-    KssOriginVariant = 4
+    KssOriginPack :: 0
+    KssOriginImport :: 1
+    KssOriginTheme :: 2
+    KssOriginEnvironment :: 3
+    KssOriginVariant :: 4
 }
 
 KssStatus :: enum {
-    KssStatusContinue = 0
-    KssStatusRule = 1
-    KssStatusNeedImport = 2
-    KssStatusDone = 3
-    KssStatusError = 4
+    KssStatusContinue :: 0
+    KssStatusRule :: 1
+    KssStatusNeedImport :: 2
+    KssStatusDone :: 3
+    KssStatusError :: 4
 }
 
 KssContrast :: enum {
-    KssContrastNormal = 0
-    KssContrastHigh = 1
+    KssContrastNormal :: 0
+    KssContrastHigh :: 1
 }
 
 KssDensity :: enum {
-    KssDensityComfortable = 0
-    KssDensityCompact = 1
-    KssDensityTouch = 2
+    KssDensityComfortable :: 0
+    KssDensityCompact :: 1
+    KssDensityTouch :: 2
 }
 
 KssPointer :: enum {
-    KssPointerMouse = 0
-    KssPointerTouch = 1
-    KssPointerMixed = 2
+    KssPointerMouse :: 0
+    KssPointerTouch :: 1
+    KssPointerMixed :: 2
 }
 
 KssPlatform :: enum {
-    KssPlatformDesktop = 0
-    KssPlatformAndroid = 1
-    KssPlatformWeb = 2
-    KssPlatformPlan9 = 3
-    KssPlatformTerminal = 4
+    KssPlatformDesktop :: 0
+    KssPlatformAndroid :: 1
+    KssPlatformWeb :: 2
+    KssPlatformPlan9 :: 3
+    KssPlatformTerminal :: 4
 }
 
 KssTheme :: enum {
-    KssThemeNone = 0
-    KssThemeLight = 1
-    KssThemeDark = 2
+    KssThemeNone :: 0
+    KssThemeLight :: 1
+    KssThemeDark :: 2
 }
 
 
-KssDefaultEnvironment :: () -> KssEnvironment #export {
+#program_export
+KssDefaultEnvironment :: () -> KssEnvironment {
     env: KssEnvironment
-    env.theme = (i32)KssThemeNone
+    env.theme = cast(s32)KssThemeNone
     env.theme_name = KssMakeName("")
-    env.contrast = (i32)KssContrastNormal
-    env.density = (i32)KssDensityComfortable
-    env.pointer = (i32)KssPointerMouse
-    env.platform = (i32)KssPlatformDesktop
+    env.contrast = cast(s32)KssContrastNormal
+    env.density = cast(s32)KssDensityComfortable
+    env.pointer = cast(s32)KssPointerMouse
+    env.platform = cast(s32)KssPlatformDesktop
     return env
 }
 
 # Hosts supply platform defaults; interpretation of KSS names stays here.
+#program_export
 KssEnvironmentWithNames :: (env: KssEnvironment, theme: string,
     contrast: string, density: string, pointer: string, platform: string,
-    variant: string) -> KssEnvironment #export {
-    env.theme = (i32)KssThemeNone
+    variant: string) -> KssEnvironment {
+    env.theme = cast(s32)KssThemeNone
     env.theme_name = KssMakeName(theme)
     if KssNameEquals(KssMakeName(theme), "light") {
-        env.theme = (i32)KssThemeLight
+        env.theme = cast(s32)KssThemeLight
     } else if KssNameEquals(KssMakeName(theme), "dark") {
-        env.theme = (i32)KssThemeDark
+        env.theme = cast(s32)KssThemeDark
     }
-    env.contrast = (i32)KssContrastNormal
+    env.contrast = cast(s32)KssContrastNormal
     if KssNameEquals(KssMakeName(contrast), "high") {
-        env.contrast = (i32)KssContrastHigh
+        env.contrast = cast(s32)KssContrastHigh
     }
-    env.density = (i32)KssDensityComfortable
+    env.density = cast(s32)KssDensityComfortable
     if KssNameEquals(KssMakeName(density), "compact") {
-        env.density = (i32)KssDensityCompact
+        env.density = cast(s32)KssDensityCompact
     } else if KssNameEquals(KssMakeName(density), "touch") {
-        env.density = (i32)KssDensityTouch
+        env.density = cast(s32)KssDensityTouch
     }
-    env.pointer = (i32)KssPointerMouse
+    env.pointer = cast(s32)KssPointerMouse
     if KssNameEquals(KssMakeName(pointer), "touch") {
-        env.pointer = (i32)KssPointerTouch
+        env.pointer = cast(s32)KssPointerTouch
     } else if KssNameEquals(KssMakeName(pointer), "mixed") {
-        env.pointer = (i32)KssPointerMixed
+        env.pointer = cast(s32)KssPointerMixed
     }
     if KssNameEquals(KssMakeName(platform), "desktop") {
-        env.platform = (i32)KssPlatformDesktop
+        env.platform = cast(s32)KssPlatformDesktop
     } else if KssNameEquals(KssMakeName(platform), "android") {
-        env.platform = (i32)KssPlatformAndroid
+        env.platform = cast(s32)KssPlatformAndroid
     } else if KssNameEquals(KssMakeName(platform), "web") {
-        env.platform = (i32)KssPlatformWeb
+        env.platform = cast(s32)KssPlatformWeb
     } else if KssNameEquals(KssMakeName(platform), "plan9") {
-        env.platform = (i32)KssPlatformPlan9
+        env.platform = cast(s32)KssPlatformPlan9
     } else if KssNameEquals(KssMakeName(platform), "terminal") {
-        env.platform = (i32)KssPlatformTerminal
+        env.platform = cast(s32)KssPlatformTerminal
     }
     env.variant = KssMakeName(variant)
     return env
@@ -122,42 +124,42 @@ KssEnvironmentWithNames :: (env: KssEnvironment, theme: string,
 
 KssCursor :: struct {
     source: string
-    pos: i32
-    line: i32
-    column: i32
-    file: i32
+    pos: s32
+    line: s32
+    column: s32
+    file: s32
 }
 
 KssName :: struct {
     bytes: [64]u8
-    length: i32
+    length: s32
 }
 
 KssEnvironment :: struct {
-    theme: i32
+    theme: s32
     theme_name: KssName
-    contrast: i32
-    density: i32
-    pointer: i32
-    platform: i32
+    contrast: s32
+    density: s32
+    pointer: s32
+    platform: s32
     variant: KssName
 }
 
 KssSourceFile :: struct {
     name: [96]u8
-    length: i32
+    length: s32
 }
 
 KssToken :: struct {
     name: KssName
-    kind: i32
+    kind: s32
     color: u32
-    number: f32
-    material: i32
-    origin: i32
-    file: i32
-    line: i32
-    column: i32
+    number: float32
+    material: s32
+    origin: s32
+    file: s32
+    line: s32
+    column: s32
 }
 
 KssColorOverride :: struct {
@@ -166,22 +168,22 @@ KssColorOverride :: struct {
 }
 
 KssOrigin :: struct {
-    file: i32
-    line: i32
-    column: i32
+    file: s32
+    line: s32
+    column: s32
 }
 
 # Source spans let hosts map typed rules back to their original text (the web
 # CSS layer builds selectors and declarations from these byte ranges).
 
 KssRuleSpan :: struct {
-    file: i32
-    selector_start: i32
-    selector_length: i32
-    body_start: i32
-    body_length: i32
-    group: i32
-    end: i32
+    file: s32
+    selector_start: s32
+    selector_length: s32
+    body_start: s32
+    body_length: s32
+    group: s32
+    end: s32
 }
 
 # Declarative hosts (the web CSS mapping) consume raw declaration text and
@@ -190,29 +192,29 @@ KssRuleSpan :: struct {
 # into the owning rule's source unit.
 
 KssDeclaration :: struct {
-    rule: i32
-    name_start: i32
-    name_length: i32
-    value_start: i32
-    value_length: i32
+    rule: s32
+    name_start: s32
+    name_length: s32
+    value_start: s32
+    value_length: s32
 }
 
 KssForeignBlock :: struct {
     name: KssName
-    query_start: i32
-    query_length: i32
-    body_start: i32
-    body_length: i32
-    file: i32
+    query_start: s32
+    query_length: s32
+    body_start: s32
+    body_length: s32
+    file: s32
 }
 
 KssImportFrame :: struct {
     name: KssName
     outer_source: string
-    outer_pos: i32
-    outer_line: i32
-    outer_column: i32
-    outer_file: i32
+    outer_pos: s32
+    outer_line: s32
+    outer_column: s32
+    outer_file: s32
 }
 
 KssVariantDecl :: struct {
@@ -225,54 +227,55 @@ KssVariantDecl :: struct {
 # in the host. Kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive.
 
 KssBlockSpan :: struct {
-    kind: i32
-    start: i32
-    length: i32
+    kind: s32
+    start: s32
+    length: s32
 }
 
 KssParser :: struct {
     cursor: KssCursor
     files: [8]KssSourceFile
-    file_count: i32
+    file_count: s32
     imports: [8]KssImportFrame
-    import_depth: i32
+    import_depth: s32
     tokens: [128]KssToken
-    token_count: i32
+    token_count: s32
     overrides: [64]KssColorOverride
-    override_count: i32
-    layer: i32
+    override_count: s32
+    layer: s32
     layer_names: [12]KssName
-    layer_count: i32
+    layer_count: s32
     layer_declared: bool
     pack: KssName
     env: KssEnvironment
     themes: [16]KssName
-    theme_count: i32
+    theme_count: s32
     version_seen: bool
-    status: i32
+    status: s32
     rule: StyleRule
     origin: KssOrigin
     rule_span: KssRuleSpan
     pending_import: KssName
     in_env: bool
     variants: [8]KssVariantDecl
-    variant_count: i32
+    variant_count: s32
     in_variant: bool
     variant_label: KssName
     blocks: [32]KssBlockSpan
-    block_count: i32
-    resume_group: i32
+    block_count: s32
+    resume_group: s32
     declarative: bool
     declarations: [1024]KssDeclaration
-    declaration_count: i32
+    declaration_count: s32
     foreign: [16]KssForeignBlock
-    foreign_count: i32
+    foreign_count: s32
     diagnostic: [256]u8
-    diagnostic_length: i32
-    rule_total: i32
+    diagnostic_length: s32
+    rule_total: s32
 }
 
-KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #export {
+#program_export
+KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser {
     p: KssParser
     p.cursor.source = source
     p.cursor.pos = 0
@@ -309,13 +312,15 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #ex
 # Declarative hosts consume raw declarations and foreign blocks instead of the
 # closed property vocabulary; grammar and structure stay identical.
 
-KssBeginDeclarative :: (source: string, path: string, env: KssEnvironment) -> KssParser #export {
+#program_export
+KssBeginDeclarative :: (source: string, path: string, env: KssEnvironment) -> KssParser {
     p: KssParser = KssBegin(source, path, env)
     p.declarative = true
     return p
 }
 
-KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser #export {
+#program_export
+KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser {
     if p.override_count < 64 {
         p.overrides[p.override_count].name = name
         p.overrides[p.override_count].color = color
@@ -331,16 +336,16 @@ KssAtEnd :: (c: KssCursor) -> bool {
     return c.pos >= c.source.length
 }
 
-KssPeek :: (c: KssCursor, ahead: i32) -> u8 {
-    index: i32 = c.pos + ahead
+KssPeek :: (c: KssCursor, ahead: s32) -> u8 {
+    index: s32 = c.pos + ahead
     if index < 0 || index >= c.source.length {
         return 0
     }
     return c.source[index]
 }
 
-KssAdvance :: (c: KssCursor, count: i32) -> KssCursor {
-    step: i32 = 0
+KssAdvance :: (c: KssCursor, count: s32) -> KssCursor {
+    step: s32 = 0
     while step < count {
         if c.pos < c.source.length {
             if c.source[c.pos] == 10 {
@@ -397,7 +402,7 @@ KssNameEquals :: (name: KssName, text: string) -> bool {
     if name.length != text.length {
         return false
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < name.length {
         if KssLower(name.bytes[index]) != KssLower(text[index]) {
             return false
@@ -411,7 +416,7 @@ KssNameEqualsName :: (a: KssName, b: KssName) -> bool {
     if a.length != b.length {
         return false
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < a.length {
         if KssLower(a.bytes[index]) != KssLower(b.bytes[index]) {
             return false
@@ -423,7 +428,7 @@ KssNameEqualsName :: (a: KssName, b: KssName) -> bool {
 
 KssMakeName :: (text: string) -> KssName {
     name: KssName
-    index: i32 = 0
+    index: s32 = 0
     while index < text.length && index < 64 {
         name.bytes[index] = text[index]
         index = index + 1
@@ -434,7 +439,7 @@ KssMakeName :: (text: string) -> KssName {
 
 KssCopyFileName :: (text: string) -> KssSourceFile {
     file: KssSourceFile
-    index: i32 = 0
+    index: s32 = 0
     while index < text.length && index < 96 {
         file.name[index] = text[index]
         index = index + 1
@@ -495,13 +500,13 @@ KssExpectResult :: struct {
 
 KssNumberResult :: struct {
     parser: KssCursor
-    value: f32
+    value: float32
     ok: bool
 }
 
 KssScalarResult :: struct {
     parser: KssCursor
-    value: f64
+    value: float64
     ok: bool
 }
 
@@ -569,7 +574,7 @@ KssExpect :: (c: KssCursor, byte: u8) -> KssExpectResult {
 # Diagnostics carry the message plus the exact file, line, and column.
 
 KssDiagnosticAppend :: (p: KssParser, text: string) -> KssParser {
-    index: i32 = 0
+    index: s32 = 0
     while index < text.length && p.diagnostic_length < 255 {
         p.diagnostic[p.diagnostic_length] = text[index]
         p.diagnostic_length = p.diagnostic_length + 1
@@ -579,7 +584,7 @@ KssDiagnosticAppend :: (p: KssParser, text: string) -> KssParser {
 }
 
 KssDiagnosticAppendName :: (p: KssParser, name: KssName) -> KssParser {
-    index: i32 = 0
+    index: s32 = 0
     while index < name.length && p.diagnostic_length < 255 {
         p.diagnostic[p.diagnostic_length] = name.bytes[index]
         p.diagnostic_length = p.diagnostic_length + 1
@@ -588,32 +593,32 @@ KssDiagnosticAppendName :: (p: KssParser, name: KssName) -> KssParser {
     return p
 }
 
-KssDiagnosticAppendInt :: (p: KssParser, value: i32) -> KssParser {
-    remaining: i32 = value
-    digits: i32 = 1
+KssDiagnosticAppendInt :: (p: KssParser, value: s32) -> KssParser {
+    remaining: s32 = value
+    digits: s32 = 1
     if remaining < 0 {
         p = KssDiagnosticAppend(p, "-")
         remaining = -remaining
     }
-    probe: i32 = 10
+    probe: s32 = 10
     while probe <= remaining && digits < 10 {
         probe = probe * 10
         digits = digits + 1
     }
     while digits > 0 {
-        power: i32 = 1
-        step: i32 = 1
+        power: s32 = 1
+        step: s32 = 1
         while step < digits {
             power = power * 10
             step = step + 1
         }
-        digit: i32 = 0
+        digit: s32 = 0
         while remaining >= power {
             remaining = remaining - power
             digit = digit + 1
         }
         if p.diagnostic_length < 255 {
-            p.diagnostic[p.diagnostic_length] = (u8)(48 + digit)
+            p.diagnostic[p.diagnostic_length] = cast(u8)(48 + digit)
             p.diagnostic_length = p.diagnostic_length + 1
         }
         digits = digits - 1
@@ -624,7 +629,7 @@ KssDiagnosticAppendInt :: (p: KssParser, value: i32) -> KssParser {
 KssDiagnosticAt :: (p: KssParser) -> KssParser {
     p = KssDiagnosticAppend(p, " at ")
     if p.cursor.file >= 0 && p.cursor.file < p.file_count && p.files[p.cursor.file].length > 0 {
-        index: i32 = 0
+        index: s32 = 0
         while index < p.files[p.cursor.file].length && p.diagnostic_length < 255 {
             p.diagnostic[p.diagnostic_length] = p.files[p.cursor.file].name[index]
             p.diagnostic_length = p.diagnostic_length + 1
@@ -642,7 +647,7 @@ KssFail :: (p: KssParser, message: string) -> KssParser {
     p.diagnostic_length = 0
     p = KssDiagnosticAppend(p, message)
     p = KssDiagnosticAt(p)
-    p.status = (i32)KssStatusError
+    p.status = cast(s32)KssStatusError
     return p
 }
 
@@ -651,14 +656,14 @@ KssFailName :: (p: KssParser, message: string, name: KssName) -> KssParser {
     p = KssDiagnosticAppend(p, message)
     p = KssDiagnosticAppendName(p, name)
     p = KssDiagnosticAt(p)
-    p.status = (i32)KssStatusError
+    p.status = cast(s32)KssStatusError
     return p
 }
 
 KssReadHexColor :: (c: KssCursor) -> KssColorResult {
     result: KssColorResult
     value: u32 = 0
-    digits: i32 = 0
+    digits: s32 = 0
     c = KssSkipSpace(c)
     if KssAtEnd(c) || c.source[c.pos] != 35 {
         result.parser = c
@@ -669,18 +674,18 @@ KssReadHexColor :: (c: KssCursor) -> KssColorResult {
         byte: u8 = c.source[c.pos]
         digit: u32 = 0
         if byte >= 48 && byte <= 57 {
-            digit = (u32)(byte - 48)
+            digit = cast(u32)(byte - 48)
         } else if byte >= 97 && byte <= 102 {
-            digit = (u32)(byte - 87)
+            digit = cast(u32)(byte - 87)
         } else {
-            digit = (u32)(byte - 55)
+            digit = cast(u32)(byte - 55)
         }
-        value = (value << (u32)4) | digit
+        value = (value << cast(u32)4) | digit
         digits = digits + 1
         c = KssAdvance(c, 1)
     }
     if digits == 6 {
-        value = (value << (u32)8) | (u32)255
+        value = (value << cast(u32)8) | cast(u32)255
     } else if digits != 8 {
         result.parser = c
         return result
@@ -695,7 +700,7 @@ KssReadNumber :: (c: KssCursor) -> KssNumberResult {
     scalar: KssScalarResult = KssReadScalar(c)
     result: KssNumberResult
     result.parser = scalar.parser
-    result.value = (f32)scalar.value
+    result.value = cast(float32)scalar.value
     result.ok = scalar.ok
     return result
 }
@@ -703,14 +708,14 @@ KssReadNumber :: (c: KssCursor) -> KssNumberResult {
 KssReadScalar :: (c: KssCursor) -> KssScalarResult {
     result: KssScalarResult
     negative: bool = false
-    whole: f64 = 0.0
-    fraction: f64 = 0.0
-    fraction_digits: i32 = 0
-    exponent: i32 = 0
+    whole: float64 = 0.0
+    fraction: float64 = 0.0
+    fraction_digits: s32 = 0
+    exponent: s32 = 0
     exponent_negative: bool = false
     seen_digits: bool = false
-    power: f64 = 1.0
-    value64: f64 = 0.0
+    power: float64 = 1.0
+    value64: float64 = 0.0
     c = KssSkipSpace(c)
     if KssAtEnd(c) {
         result.parser = c
@@ -723,7 +728,7 @@ KssReadScalar :: (c: KssCursor) -> KssScalarResult {
         c = KssAdvance(c, 1)
     }
     while !KssAtEnd(c) && KssIsDigit(c.source[c.pos]) {
-        whole = whole * 10.0 + (f64)(c.source[c.pos] - 48)
+        whole = whole * 10.0 + cast(float64)(c.source[c.pos] - 48)
         seen_digits = true
         c = KssAdvance(c, 1)
     }
@@ -735,7 +740,7 @@ KssReadScalar :: (c: KssCursor) -> KssScalarResult {
         c = KssAdvance(c, 1)
         while !KssAtEnd(c) && KssIsDigit(c.source[c.pos]) {
             if fraction_digits < 17 {
-                fraction = fraction * 10.0 + (f64)(c.source[c.pos] - 48)
+                fraction = fraction * 10.0 + cast(float64)(c.source[c.pos] - 48)
                 fraction_digits = fraction_digits + 1
             }
             seen_digits = true
@@ -754,10 +759,10 @@ KssReadScalar :: (c: KssCursor) -> KssScalarResult {
         } else if !KssAtEnd(c) && c.source[c.pos] == 43 {
             c = KssAdvance(c, 1)
         }
-        exponent_start: i32 = c.pos
+        exponent_start: s32 = c.pos
         while !KssAtEnd(c) && KssIsDigit(c.source[c.pos]) {
             if exponent <= 400 {
-                exponent = exponent * 10 + (i32)(c.source[c.pos] - 48)
+                exponent = exponent * 10 + cast(s32)(c.source[c.pos] - 48)
             }
             c = KssAdvance(c, 1)
         }
@@ -766,12 +771,12 @@ KssReadScalar :: (c: KssCursor) -> KssScalarResult {
             return result
         }
     }
-    step: i32 = 0
+    step: s32 = 0
     while step < fraction_digits {
         power = power * 10.0
         step = step + 1
     }
-    value64 = (f64)whole + (f64)fraction / power
+    value64 = cast(float64)whole + cast(float64)fraction / power
     step = 0
     while step < exponent {
         if exponent_negative {
@@ -802,7 +807,7 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
     negative: bool = false
     whole: u32 = 0
     fraction: u32 = 0
-    fraction_digits: i32 = 0
+    fraction_digits: s32 = 0
     seen_digits: bool = false
     seconds: bool = false
     c = KssSkipSpace(c)
@@ -817,7 +822,7 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
         c = KssAdvance(c, 1)
     }
     while !KssAtEnd(c) && KssIsDigit(c.source[c.pos]) {
-        whole = whole * 10 + (u32)(c.source[c.pos] - 48)
+        whole = whole * 10 + cast(u32)(c.source[c.pos] - 48)
         seen_digits = true
         c = KssAdvance(c, 1)
     }
@@ -825,7 +830,7 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
         c = KssAdvance(c, 1)
         while !KssAtEnd(c) && KssIsDigit(c.source[c.pos]) {
             if fraction_digits < 9 {
-                fraction = fraction * 10 + (u32)(c.source[c.pos] - 48)
+                fraction = fraction * 10 + cast(u32)(c.source[c.pos] - 48)
                 fraction_digits = fraction_digits + 1
             }
             seen_digits = true
@@ -849,17 +854,17 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
         return result
     }
 
-    value: f64 = 0.0
+    value: float64 = 0.0
     scaled: u32 = whole
-    shift: i32 = fraction_digits
+    shift: s32 = fraction_digits
     while shift > 0 {
         scaled = scaled * 10
         shift = shift - 1
     }
     scaled = scaled + fraction
     if seconds {
-        value = (f64)scaled
-        step: i32 = 0
+        value = cast(float64)scaled
+        step: s32 = 0
         while step < 3 - fraction_digits {
             value = value * 10.0
             step = step + 1
@@ -870,8 +875,8 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
             step = step + 1
         }
     } else {
-        value = (f64)scaled
-        step: i32 = 0
+        value = cast(float64)scaled
+        step: s32 = 0
         while step < fraction_digits {
             value = value / 10.0
             step = step + 1
@@ -881,7 +886,7 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
         value = -value
     }
     result.parser = unit.parser
-    result.value = (f32)value
+    result.value = cast(float32)value
     result.ok = true
     return result
 }
@@ -890,8 +895,8 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
 # provenance always reflects the winning value. Variant color overrides are
 # applied on add, matching the highest precedence layer.
 
-KssFindToken :: (p: KssParser, name: KssName, kind: i32) -> i32 {
-    index: i32 = p.token_count - 1
+KssFindToken :: (p: KssParser, name: KssName, kind: s32) -> s32 {
+    index: s32 = p.token_count - 1
     while index >= 0 {
         if p.tokens[index].kind == kind && KssNameEqualsName(p.tokens[index].name, name) {
             return index
@@ -901,15 +906,15 @@ KssFindToken :: (p: KssParser, name: KssName, kind: i32) -> i32 {
     return -1
 }
 
-KssApplyOverride :: (p: KssParser, index: i32) -> KssParser {
-    override: i32 = 0
+KssApplyOverride :: (p: KssParser, index: s32) -> KssParser {
+    override: s32 = 0
     while override < p.override_count {
-        if p.tokens[index].kind == (i32)KssTokenColor &&
+        if p.tokens[index].kind == cast(s32)KssTokenColor &&
            p.overrides[override].name.length == p.tokens[index].name.length {
             same: bool = true
-            byte_index: i32 = 0
+            byte_index: s32 = 0
             while byte_index < p.tokens[index].name.length {
-                if KssLower((u8)p.overrides[override].name[byte_index]) !=
+                if KssLower(cast(u8)p.overrides[override].name[byte_index]) !=
                    KssLower(p.tokens[index].name.bytes[byte_index]) {
                     same = false
                 }
@@ -917,7 +922,7 @@ KssApplyOverride :: (p: KssParser, index: i32) -> KssParser {
             }
             if same {
                 p.tokens[index].color = p.overrides[override].color
-                p.tokens[index].origin = (i32)KssOriginVariant
+                p.tokens[index].origin = cast(s32)KssOriginVariant
                 return p
             }
         }
@@ -939,15 +944,15 @@ KssAddToken :: (p: KssParser, token: KssToken) -> KssParser {
 # Update an existing token in place: theme overlays and matching environment
 # overlays win over base and imported values but keep a single entry.
 
-KssOverlayToken :: (p: KssParser, name: KssName, kind: i32, color: u32,
-    number: f32, material: i32, origin: i32) -> KssParser {
-    index: i32 = KssFindToken(p, name, kind)
+KssOverlayToken :: (p: KssParser, name: KssName, kind: s32, color: u32,
+    number: float32, material: s32, origin: s32) -> KssParser {
+    index: s32 = KssFindToken(p, name, kind)
     if index < 0 {
         return KssFailName(p, "unknown overlay token '", name)
     }
-    if kind == (i32)KssTokenColor {
+    if kind == cast(s32)KssTokenColor {
         p.tokens[index].color = color
-    } else if kind == (i32)KssTokenMaterial {
+    } else if kind == cast(s32)KssTokenMaterial {
         p.tokens[index].material = material
     } else {
         p.tokens[index].number = number
@@ -960,8 +965,8 @@ KssOverlayToken :: (p: KssParser, name: KssName, kind: i32, color: u32,
     return p
 }
 
-KssFindColorToken :: (p: KssParser, name: KssName) -> i32 {
-    return KssFindToken(p, name, (i32)KssTokenColor)
+KssFindColorToken :: (p: KssParser, name: KssName) -> s32 {
+    return KssFindToken(p, name, cast(s32)KssTokenColor)
 }
 
 KssColorTokenResult :: struct {
@@ -969,12 +974,13 @@ KssColorTokenResult :: struct {
     color: u32
 }
 
+#program_export
 KssColorTokenValue :: (parser: KssParser,
-name: string) -> KssColorTokenResult #export {
+name: string) -> KssColorTokenResult {
     result: KssColorTokenResult
     result.found = false
     result.color = 0
-    index: i32 = KssFindColorToken(parser, KssMakeName(name))
+    index: s32 = KssFindColorToken(parser, KssMakeName(name))
     if index >= 0 {
         result.found = true
         result.color = parser.tokens[index].color
@@ -982,52 +988,52 @@ name: string) -> KssColorTokenResult #export {
     return result
 }
 
-KssFindNumberToken :: (p: KssParser, name: KssName) -> i32 {
-    index: i32 = KssFindToken(p, name, (i32)KssTokenDuration)
+KssFindNumberToken :: (p: KssParser, name: KssName) -> s32 {
+    index: s32 = KssFindToken(p, name, cast(s32)KssTokenDuration)
     if index >= 0 {
         return index
     }
-    return KssFindToken(p, name, (i32)KssTokenLength)
+    return KssFindToken(p, name, cast(s32)KssTokenLength)
 }
 
-KssFindMaterialToken :: (p: KssParser, name: KssName) -> i32 {
-    return KssFindToken(p, name, (i32)KssTokenMaterial)
+KssFindMaterialToken :: (p: KssParser, name: KssName) -> s32 {
+    return KssFindToken(p, name, cast(s32)KssTokenMaterial)
 }
 
-KssMaterialValue :: (name: KssName) -> i32 {
+KssMaterialValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "lightfield") {
-        return (i32)MaterialLightfield
+        return cast(s32)MaterialLightfield
     }
     if KssNameEquals(name, "flat") {
-        return (i32)MaterialFlat
+        return cast(s32)MaterialFlat
     }
     if KssNameEquals(name, "glass") {
-        return (i32)MaterialGlass
+        return cast(s32)MaterialGlass
     }
     return -999999
 }
 
 # Stable class ids match StyleClassId in the C and Go pack registries.
 
-KssClassId :: (name: KssName) -> i32 {
+KssClassId :: (name: KssName) -> s32 {
     hash: u32 = 2166136261
     if name.length == 0 {
         return 0
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < name.length {
-        hash = hash ^ (u32)name.bytes[index]
-        hash = hash * (u32)16777619
+        hash = hash ^ cast(u32)name.bytes[index]
+        hash = hash * cast(u32)16777619
         index = index + 1
     }
-    hash = hash & (u32)2147483647
+    hash = hash & cast(u32)2147483647
     if hash == 0 {
         return 1
     }
-    return (i32)hash
+    return cast(s32)hash
 }
 
-KssKindValue :: (name: KssName) -> i32 {
+KssKindValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "*") || KssNameEquals(name, "Any") {
         return StyleKindAny()
     }
@@ -1145,7 +1151,7 @@ KssKindValue :: (name: KssName) -> i32 {
     return KssKindValueMore(name)
 }
 
-KssKindValueMore :: (name: KssName) -> i32 {
+KssKindValueMore :: (name: KssName) -> s32 {
     if KssNameEquals(name, "ListBoxMulti") {
         return StyleKindListBoxMulti()
     }
@@ -1227,95 +1233,95 @@ KssKindValueMore :: (name: KssName) -> i32 {
     return -999999
 }
 
-KssStateValue :: (name: KssName) -> i32 {
+KssStateValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "any") {
         return StyleStateAny()
     }
     if KssNameEquals(name, "normal") {
-        return (i32)ButtonStateNormal
+        return cast(s32)ButtonStateNormal
     }
     if KssNameEquals(name, "hover") {
-        return (i32)ButtonStateHover
+        return cast(s32)ButtonStateHover
     }
     if KssNameEquals(name, "pressed") || KssNameEquals(name, "press") {
-        return (i32)ButtonStatePressed
+        return cast(s32)ButtonStatePressed
     }
     if KssNameEquals(name, "focus") || KssNameEquals(name, "focused") {
-        return (i32)ButtonStateFocus
+        return cast(s32)ButtonStateFocus
     }
     if KssNameEquals(name, "disabled") {
-        return (i32)ButtonStateDisabled
+        return cast(s32)ButtonStateDisabled
     }
     if KssNameEquals(name, "loading") {
-        return (i32)ButtonStateLoading
+        return cast(s32)ButtonStateLoading
     }
     if KssNameEquals(name, "selected") {
-        return (i32)ButtonStateSelected
+        return cast(s32)ButtonStateSelected
     }
     return -999999
 }
 
-KssToneValue :: (name: KssName) -> i32 {
+KssToneValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "any") {
         return StyleAny()
     }
     if KssNameEquals(name, "Neutral") {
-        return (i32)ButtonToneNeutral
+        return cast(s32)ButtonToneNeutral
     }
     if KssNameEquals(name, "Accent") {
-        return (i32)ButtonToneAccent
+        return cast(s32)ButtonToneAccent
     }
     if KssNameEquals(name, "Danger") {
-        return (i32)ButtonToneDanger
+        return cast(s32)ButtonToneDanger
     }
     if KssNameEquals(name, "Success") {
-        return (i32)ButtonToneSuccess
+        return cast(s32)ButtonToneSuccess
     }
     if KssNameEquals(name, "Warning") {
-        return (i32)ButtonToneWarning
+        return cast(s32)ButtonToneWarning
     }
     return -999999
 }
 
-KssEmphasisValue :: (name: KssName) -> i32 {
+KssEmphasisValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "any") {
         return StyleAny()
     }
     if KssNameEquals(name, "Filled") {
-        return (i32)ButtonEmphasisFilled
+        return cast(s32)ButtonEmphasisFilled
     }
     if KssNameEquals(name, "Soft") {
-        return (i32)ButtonEmphasisSoft
+        return cast(s32)ButtonEmphasisSoft
     }
     if KssNameEquals(name, "Outline") {
-        return (i32)ButtonEmphasisOutline
+        return cast(s32)ButtonEmphasisOutline
     }
     if KssNameEquals(name, "Ghost") {
-        return (i32)ButtonEmphasisGhost
+        return cast(s32)ButtonEmphasisGhost
     }
     if KssNameEquals(name, "Link") {
-        return (i32)ButtonEmphasisLink
+        return cast(s32)ButtonEmphasisLink
     }
     return -999999
 }
 
-KssSizeValue :: (name: KssName) -> i32 {
+KssSizeValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "any") {
         return StyleAny()
     }
     if KssNameEquals(name, "Medium") {
-        return (i32)ControlSizeMedium
+        return cast(s32)ControlSizeMedium
     }
     if KssNameEquals(name, "Small") {
-        return (i32)ControlSizeSmall
+        return cast(s32)ControlSizeSmall
     }
     if KssNameEquals(name, "Large") {
-        return (i32)ControlSizeLarge
+        return cast(s32)ControlSizeLarge
     }
     return -999999
 }
 
-KssRoleValue :: (name: KssName) -> i32 {
+KssRoleValue :: (name: KssName) -> s32 {
     if KssNameEquals(name, "Any") {
         return StyleAny()
     }
@@ -1445,7 +1451,7 @@ KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         return result
     }
     if KssNameEquals(attribute.name, "tone") {
-        mapped: i32 = KssToneValue(value.name)
+        mapped: s32 = KssToneValue(value.name)
         if mapped == -999999 {
             p.cursor = close.parser
             result.parser = KssFailName(p, "unknown tone '", value.name)
@@ -1453,7 +1459,7 @@ KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         }
         rule.selector.tone = mapped
     } else if KssNameEquals(attribute.name, "emphasis") {
-        mapped: i32 = KssEmphasisValue(value.name)
+        mapped: s32 = KssEmphasisValue(value.name)
         if mapped == -999999 {
             p.cursor = close.parser
             result.parser = KssFailName(p, "unknown emphasis '", value.name)
@@ -1461,7 +1467,7 @@ KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         }
         rule.selector.emphasis = mapped
     } else if KssNameEquals(attribute.name, "size") {
-        mapped: i32 = KssSizeValue(value.name)
+        mapped: s32 = KssSizeValue(value.name)
         if mapped == -999999 {
             p.cursor = close.parser
             result.parser = KssFailName(p, "unknown size '", value.name)
@@ -1469,7 +1475,7 @@ KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         }
         rule.selector.size = mapped
     } else if KssNameEquals(attribute.name, "state") {
-        mapped: i32 = KssStateValue(value.name)
+        mapped: s32 = KssStateValue(value.name)
         if mapped == -999999 {
             p.cursor = close.parser
             result.parser = KssFailName(p, "unknown state '", value.name)
@@ -1477,7 +1483,7 @@ KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         }
         rule.selector.state = mapped
     } else if KssNameEquals(attribute.name, "role") {
-        mapped: i32 = KssRoleValue(value.name)
+        mapped: s32 = KssRoleValue(value.name)
         if mapped == -999999 {
             p.cursor = close.parser
             result.parser = KssFailName(p, "unknown role '", value.name)
@@ -1510,7 +1516,7 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
         result.parser = KssFail(p, "expected style selector")
         return result
     }
-    mapped: i32 = KssKindValue(kind.name)
+    mapped: s32 = KssKindValue(kind.name)
     if mapped == -999999 {
         p.cursor = kind.parser
         result.parser = KssFailName(p, "unknown style selector '",
@@ -1532,7 +1538,7 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
             c = KssAdvance(c, 1)
             p.cursor = c
             attribute: KssRuleResult = KssApplyAttr(p, rule)
-            if attribute.parser.status == (i32)KssStatusError {
+            if attribute.parser.status == cast(s32)KssStatusError {
                 return attribute
             }
             p = attribute.parser
@@ -1564,7 +1570,7 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
                 result.parser = KssFail(p, "expected state after ':'")
                 return result
             }
-            state_mapped: i32 = KssStateValue(state.name)
+            state_mapped: s32 = KssStateValue(state.name)
             if state_mapped == -999999 {
                 p.cursor = state.parser
                 result.parser = KssFailName(p, "unknown state '",
@@ -1589,7 +1595,7 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
 # rule is yielded, before subsequent overlays change the table.
 
 KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
-    name_start: i32, name_end: i32) -> KssRuleResult {
+    name_start: s32, name_end: s32) -> KssRuleResult {
     c: KssCursor = p.cursor
     result: KssRuleResult
     if p.declaration_count >= 1024 {
@@ -1604,7 +1610,7 @@ KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
     p.cursor = c
     entry.value_start = p.cursor.pos
     quote: u8 = 0
-    depth: i32 = 0
+    depth: s32 = 0
     running: bool = true
     while running {
         if KssAtEnd(c) {
@@ -1675,7 +1681,7 @@ KssCaptureForeign :: (p: KssParser, name: KssName) -> KssParser {
     }
     c = KssSkipSpace(c)
     p.cursor = c
-    query_start: i32 = p.cursor.pos
+    query_start: s32 = p.cursor.pos
     while !KssAtEnd(c) && p.cursor.source[p.cursor.pos] != 123 {
         if p.cursor.source[p.cursor.pos] == 59 || p.cursor.source[p.cursor.pos] == 125 {
             return KssFailName(p, "unknown directive '@", name)
@@ -1706,7 +1712,7 @@ KssCaptureForeign :: (p: KssParser, name: KssName) -> KssParser {
     p.foreign[p.foreign_count] = entry
     p.foreign_count = p.foreign_count + 1
     p = KssSkipBlockRemainder(p)
-    if p.status == (i32)KssStatusError {
+    if p.status == cast(s32)KssStatusError {
         return p
     }
     p.foreign[p.foreign_count - 1].body_length = p.cursor.pos - 1 - p.foreign[p.foreign_count - 1].body_start
@@ -1729,7 +1735,7 @@ KssParseGroupBlock :: (p: KssParser, name: KssName) -> KssParser {
     }
     c = KssSkipSpace(c)
     p.cursor = c
-    query_start: i32 = p.cursor.pos
+    query_start: s32 = p.cursor.pos
     while !KssAtEnd(c) && p.cursor.source[p.cursor.pos] != 123 {
         c = KssAdvance(c, 1)
         p.cursor = c
@@ -1751,7 +1757,7 @@ KssParseGroupBlock :: (p: KssParser, name: KssName) -> KssParser {
     entry.body_start = 0
     entry.body_length = 0
     entry.file = p.cursor.file
-    group: i32 = p.foreign_count
+    group: s32 = p.foreign_count
     p.foreign[p.foreign_count] = entry
     p.foreign_count = p.foreign_count + 1
     c = KssAdvance(c, 1)
@@ -1779,7 +1785,7 @@ KssContinueGroupBlock :: (p: KssParser) -> KssParser {
             continue
         }
         p = KssParseRule(p)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         p.rule_span.group = p.resume_group
@@ -1797,7 +1803,7 @@ KssReadColorValue :: (p: KssParser) -> KssColorResult {
     reference: KssNameResult = KssReadName(hex.parser)
     if reference.ok {
         p.cursor = reference.parser
-        index: i32 = KssFindColorToken(p, reference.name)
+        index: s32 = KssFindColorToken(p, reference.name)
         if index >= 0 {
             hex.value = p.tokens[index].color
             hex.ok = true
@@ -1839,7 +1845,7 @@ KssReadNumberValue :: (p: KssParser) -> KssNumberResult {
     reference: KssNameResult = KssReadName(literal.parser)
     if reference.ok {
         p.cursor = reference.parser
-        index: i32 = KssFindNumberToken(p, reference.name)
+        index: s32 = KssFindNumberToken(p, reference.name)
         if index >= 0 {
             literal.value = p.tokens[index].number
             literal.ok = true
@@ -1853,7 +1859,7 @@ KssReadNumberValue :: (p: KssParser) -> KssNumberResult {
 
 KssIntResult :: struct {
     parser: KssParser
-    value: i32
+    value: s32
     ok: bool
 }
 
@@ -1866,10 +1872,10 @@ KssReadMaterialValue :: (p: KssParser) -> KssIntResult {
         result.parser = KssFail(p, "expected material")
         return result
     }
-    mapped: i32 = KssMaterialValue(reference.name)
+    mapped: s32 = KssMaterialValue(reference.name)
     if mapped == -999999 {
         p.cursor = reference.parser
-        index: i32 = KssFindMaterialToken(p, reference.name)
+        index: s32 = KssFindMaterialToken(p, reference.name)
         if index >= 0 {
             mapped = p.tokens[index].material
         }
@@ -1894,7 +1900,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
     result: KssRuleResult
     c = KssSkipSpace(c)
     p.cursor = c
-    name_start: i32 = p.cursor.pos
+    name_start: s32 = p.cursor.pos
     name: KssNameResult = KssReadName(c)
     if !name.ok {
         p.cursor = name.parser
@@ -1922,7 +1928,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
             result.parser = KssFail(p, "expected hex color")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleBackground
+        rule.style.fields = rule.style.fields | cast(u32)StyleBackground
         rule.style.background = value.value
         c = value.parser
         p.cursor = c
@@ -1933,7 +1939,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
             result.parser = KssFail(p, "expected hex color")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleForeground
+        rule.style.fields = rule.style.fields | cast(u32)StyleForeground
         rule.style.foreground = value.value
         c = value.parser
         p.cursor = c
@@ -1944,7 +1950,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
             result.parser = KssFail(p, "expected hex color")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleBorder
+        rule.style.fields = rule.style.fields | cast(u32)StyleBorder
         rule.style.border = value.value
         c = value.parser
         p.cursor = c
@@ -1955,7 +1961,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
             result.parser = KssFail(p, "expected hex color")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleFocus
+        rule.style.fields = rule.style.fields | cast(u32)StyleFocus
         rule.style.focus = value.value
         c = value.parser
         p.cursor = c
@@ -1966,7 +1972,7 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
             result.parser = KssFail(p, "expected hex color")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleBackgroundEnd
+        rule.style.fields = rule.style.fields | cast(u32)StyleBackgroundEnd
         rule.style.background_end = value.value
         c = value.parser
         p.cursor = c
@@ -1996,7 +2002,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleRadius
+        rule.style.fields = rule.style.fields | cast(u32)StyleRadius
         rule.style.radius = value.value
         c = value.parser
         p.cursor = c
@@ -2007,7 +2013,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleBorderWidth
+        rule.style.fields = rule.style.fields | cast(u32)StyleBorderWidth
         rule.style.border_width = value.value
         c = value.parser
         p.cursor = c
@@ -2018,7 +2024,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleOpacity
+        rule.style.fields = rule.style.fields | cast(u32)StyleOpacity
         rule.style.opacity = value.value
         c = value.parser
         p.cursor = c
@@ -2029,7 +2035,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StylePaddingX
+        rule.style.fields = rule.style.fields | cast(u32)StylePaddingX
         rule.style.padding_x = value.value
         c = value.parser
         p.cursor = c
@@ -2040,7 +2046,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StylePaddingY
+        rule.style.fields = rule.style.fields | cast(u32)StylePaddingY
         rule.style.padding_y = value.value
         c = value.parser
         p.cursor = c
@@ -2051,7 +2057,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleGap
+        rule.style.fields = rule.style.fields | cast(u32)StyleGap
         rule.style.gap = value.value
         c = value.parser
         p.cursor = c
@@ -2062,7 +2068,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleFontSize
+        rule.style.fields = rule.style.fields | cast(u32)StyleFontSize
         rule.style.font_size = value.value
         c = value.parser
         p.cursor = c
@@ -2073,7 +2079,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleLetterSpacing
+        rule.style.fields = rule.style.fields | cast(u32)StyleLetterSpacing
         rule.style.letter_spacing = value.value
         c = value.parser
         p.cursor = c
@@ -2084,7 +2090,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleIconSize
+        rule.style.fields = rule.style.fields | cast(u32)StyleIconSize
         rule.style.icon_size = value.value
         c = value.parser
         p.cursor = c
@@ -2095,7 +2101,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleContentOffset
+        rule.style.fields = rule.style.fields | cast(u32)StyleContentOffset
         rule.style.offset_x = value.value
         c = value.parser
         p.cursor = c
@@ -2106,7 +2112,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected number")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleContentOffset
+        rule.style.fields = rule.style.fields | cast(u32)StyleContentOffset
         rule.style.offset_y = value.value
         c = value.parser
         p.cursor = c
@@ -2116,13 +2122,13 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = value.parser
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleMaterial
-        rule.style.material = (MaterialKind)value.value
+        rule.style.fields = rule.style.fields | cast(u32)StyleMaterial
+        rule.style.material = cast(MaterialKind)value.value
         p.cursor = value.parser.cursor
         c = value.parser.cursor
     } else if KssNameEquals(name, "typeface") {
-        start: i32 = -1
-        length: i32 = 0
+        start: s32 = -1
+        length: s32 = 0
         scan: KssCursor = KssSkipSpace(c)
         if !KssAtEnd(scan) && KssIdentStart(scan.source[scan.pos]) {
             start = scan.pos
@@ -2136,7 +2142,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             result.parser = KssFail(p, "expected typeface name")
             return result
         }
-        rule.style.fields = rule.style.fields | (u32)StyleTypeface
+        rule.style.fields = rule.style.fields | cast(u32)StyleTypeface
         rule.style.typeface = StringSlice(scan.source, start, length)
         c = scan
     } else {
@@ -2172,10 +2178,10 @@ KssParseRule :: (p: KssParser) -> KssParser {
     selector: KssRuleResult
     c = KssSkipSpace(c)
     p.cursor = c
-    selector_start: i32 = p.cursor.pos
+    selector_start: s32 = p.cursor.pos
     if p.declarative {
-        bracket: i32 = 0
-        paren: i32 = 0
+        bracket: s32 = 0
+        paren: s32 = 0
         quote: u8 = 0
         running: bool = true
         while running {
@@ -2220,7 +2226,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
         }
     } else {
         selector = KssParseSelector(p)
-        if selector.parser.status == (i32)KssStatusError {
+        if selector.parser.status == cast(s32)KssStatusError {
             return selector.parser
         }
         p = selector.parser
@@ -2255,7 +2261,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
             continue
         }
         property: KssRuleResult = KssParseProperty(p, rule)
-        if property.parser.status == (i32)KssStatusError {
+        if property.parser.status == cast(s32)KssStatusError {
             return property.parser
         }
         p = property.parser
@@ -2266,7 +2272,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
     p.origin = origin
     p.rule_span = span
     p.rule_total = p.rule_total + 1
-    p.status = (i32)KssStatusRule
+    p.status = cast(s32)KssStatusRule
     return p
 }
 
@@ -2302,47 +2308,47 @@ KssEnvValueValid :: (axis: KssName, value: KssName) -> bool {
 KssEnvMatches :: (p: KssParser, axis: KssName, value: KssName) -> bool {
     if KssNameEquals(axis, "theme") {
         if KssNameEquals(value, "light") {
-            return p.env.theme == (i32)KssThemeLight
+            return p.env.theme == cast(s32)KssThemeLight
         }
-        return p.env.theme == (i32)KssThemeDark
+        return p.env.theme == cast(s32)KssThemeDark
     }
     if KssNameEquals(axis, "contrast") {
         if KssNameEquals(value, "high") {
-            return p.env.contrast == (i32)KssContrastHigh
+            return p.env.contrast == cast(s32)KssContrastHigh
         }
-        return p.env.contrast == (i32)KssContrastNormal
+        return p.env.contrast == cast(s32)KssContrastNormal
     }
     if KssNameEquals(axis, "density") {
         if KssNameEquals(value, "compact") {
-            return p.env.density == (i32)KssDensityCompact
+            return p.env.density == cast(s32)KssDensityCompact
         }
         if KssNameEquals(value, "touch") {
-            return p.env.density == (i32)KssDensityTouch
+            return p.env.density == cast(s32)KssDensityTouch
         }
-        return p.env.density == (i32)KssDensityComfortable
+        return p.env.density == cast(s32)KssDensityComfortable
     }
     if KssNameEquals(axis, "pointer") {
         if KssNameEquals(value, "touch") {
-            return p.env.pointer == (i32)KssPointerTouch
+            return p.env.pointer == cast(s32)KssPointerTouch
         }
         if KssNameEquals(value, "mixed") {
-            return p.env.pointer == (i32)KssPointerMixed
+            return p.env.pointer == cast(s32)KssPointerMixed
         }
-        return p.env.pointer == (i32)KssPointerMouse
+        return p.env.pointer == cast(s32)KssPointerMouse
     }
     if KssNameEquals(value, "android") {
-        return p.env.platform == (i32)KssPlatformAndroid
+        return p.env.platform == cast(s32)KssPlatformAndroid
     }
     if KssNameEquals(value, "web") {
-        return p.env.platform == (i32)KssPlatformWeb
+        return p.env.platform == cast(s32)KssPlatformWeb
     }
     if KssNameEquals(value, "plan9") {
-        return p.env.platform == (i32)KssPlatformPlan9
+        return p.env.platform == cast(s32)KssPlatformPlan9
     }
     if KssNameEquals(value, "terminal") {
-        return p.env.platform == (i32)KssPlatformTerminal
+        return p.env.platform == cast(s32)KssPlatformTerminal
     }
-    return p.env.platform == (i32)KssPlatformDesktop
+    return p.env.platform == cast(s32)KssPlatformDesktop
 }
 
 KssThemeActive :: (p: KssParser, name: KssName) -> bool {
@@ -2351,10 +2357,10 @@ KssThemeActive :: (p: KssParser, name: KssName) -> bool {
         return true
     }
     if KssNameEquals(name, "light") {
-        return p.env.theme == (i32)KssThemeLight
+        return p.env.theme == cast(s32)KssThemeLight
     }
     if KssNameEquals(name, "dark") {
-        return p.env.theme == (i32)KssThemeDark
+        return p.env.theme == cast(s32)KssThemeDark
     }
     return false
 }
@@ -2364,7 +2370,7 @@ KssThemeActive :: (p: KssParser, name: KssName) -> bool {
 
 KssSkipBlockRemainder :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
-    depth: i32 = 1
+    depth: s32 = 1
     while !KssAtEnd(c) && depth > 0 {
         if c.source[c.pos] == 123 {
             depth = depth + 1
@@ -2388,7 +2394,7 @@ KssOverlayOutcome :: struct {
     matched: bool
 }
 
-KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
+KssTryOverlayEntry :: (p: KssParser, origin_kind: s32) -> KssOverlayOutcome {
     c: KssCursor = p.cursor
     outcome: KssOverlayOutcome
     name: KssNameResult = KssReadName(c)
@@ -2404,8 +2410,8 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
         return outcome
     }
     p.cursor = name.parser
-    token_index: i32 = -1
-    scan: i32 = p.token_count - 1
+    token_index: s32 = -1
+    scan: s32 = p.token_count - 1
     while scan >= 0 {
         if KssNameEqualsName(p.tokens[scan].name, name.name) {
             token_index = scan
@@ -2417,8 +2423,8 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
         outcome.parser = p
         return outcome
     }
-    kind: i32 = p.tokens[token_index].kind
-    if kind == (i32)KssTokenColor {
+    kind: s32 = p.tokens[token_index].kind
+    if kind == cast(s32)KssTokenColor {
         value: KssColorResult = KssReadHexColor(colon.parser)
         if !value.ok {
             p.cursor = colon.parser
@@ -2434,7 +2440,7 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
         p.cursor = semicolon.parser
         p = KssOverlayToken(p, name.name, kind, value.value,
             0.0, 0, origin_kind)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             outcome.parser = p
             return outcome
         }
@@ -2442,7 +2448,7 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
         outcome.matched = true
         return outcome
     }
-    if kind == (i32)KssTokenMaterial {
+    if kind == cast(s32)KssTokenMaterial {
         p.cursor = colon.parser
         value: KssIntResult = KssReadMaterialValue(p)
         if !value.ok {
@@ -2458,7 +2464,7 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
         p.cursor = semicolon.parser
         p = KssOverlayToken(p, name.name, kind, 0, 0.0,
             value.value, origin_kind)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             outcome.parser = p
             return outcome
         }
@@ -2484,7 +2490,7 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
     p.cursor = semicolon.parser
     p = KssOverlayToken(p, name.name, kind, 0, value.value,
         0, origin_kind)
-    if p.status == (i32)KssStatusError {
+    if p.status == cast(s32)KssStatusError {
         outcome.parser = p
         return outcome
     }
@@ -2526,8 +2532,8 @@ KssParseThemeBlock :: (p: KssParser, name: KssName) -> KssParser {
         if !active {
             return KssSkipBlockRemainder(p)
         }
-        entry: KssOverlayOutcome = KssTryOverlayEntry(p, (i32)KssOriginTheme)
-        if entry.parser.status == (i32)KssStatusError {
+        entry: KssOverlayOutcome = KssTryOverlayEntry(p, cast(s32)KssOriginTheme)
+        if entry.parser.status == cast(s32)KssStatusError {
             return entry.parser
         }
         if !entry.matched {
@@ -2580,8 +2586,8 @@ KssContinueEnvBlock :: (p: KssParser) -> KssParser {
         }
         saved: KssParser = p
         entry: KssOverlayOutcome = KssTryOverlayEntry(p,
-            (i32)KssOriginEnvironment)
-        if entry.parser.status == (i32)KssStatusError {
+            cast(s32)KssOriginEnvironment)
+        if entry.parser.status == cast(s32)KssStatusError {
             return entry.parser
         }
         if entry.matched {
@@ -2590,7 +2596,7 @@ KssContinueEnvBlock :: (p: KssParser) -> KssParser {
             continue
         }
         p = KssParseRule(saved)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return p
@@ -2627,7 +2633,7 @@ KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
     return result
 }
 
-KssRecordBlock :: (p: KssParser, kind: i32, start: i32, end_pos: i32) -> KssParser {
+KssRecordBlock :: (p: KssParser, kind: s32, start: s32, end_pos: s32) -> KssParser {
     if p.block_count >= 32 {
         return KssFail(p, "style block capacity exceeded")
     }
@@ -2638,12 +2644,14 @@ KssRecordBlock :: (p: KssParser, kind: i32, start: i32, end_pos: i32) -> KssPars
     return p
 }
 
-KssSetVariant :: (p: KssParser, name: KssName) -> KssParser #export {
+#program_export
+KssSetVariant :: (p: KssParser, name: KssName) -> KssParser {
     p.env.variant = name
     return p
 }
 
-KssSetTheme :: (p: KssParser, theme: i32) -> KssParser #export {
+#program_export
+KssSetTheme :: (p: KssParser, theme: s32) -> KssParser {
     p.env.theme = theme
     return p
 }
@@ -2693,8 +2701,8 @@ KssContinueVariantBlock :: (p: KssParser) -> KssParser {
         }
         saved: KssParser = p
         entry: KssOverlayOutcome = KssTryOverlayEntry(p,
-            (i32)KssOriginVariant)
-        if entry.parser.status == (i32)KssStatusError {
+            cast(s32)KssOriginVariant)
+        if entry.parser.status == cast(s32)KssStatusError {
             return entry.parser
         }
         if entry.matched {
@@ -2703,7 +2711,7 @@ KssContinueVariantBlock :: (p: KssParser) -> KssParser {
             continue
         }
         p = KssParseRule(saved)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return p
@@ -2713,23 +2721,23 @@ KssContinueVariantBlock :: (p: KssParser) -> KssParser {
 
 # 'tokens { group { name: value; ... } ... }'
 
-KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
+KssParseTokenGroup :: (p: KssParser, origin_kind: s32) -> KssParser {
     c: KssCursor = p.cursor
     group: KssNameResult = KssReadName(c)
     if !group.ok {
         p.cursor = group.parser
         return KssFail(p, "expected token group")
     }
-    kind: i32 = -1
+    kind: s32 = -1
     if KssNameEquals(group.name, "color") {
-        kind = (i32)KssTokenColor
+        kind = cast(s32)KssTokenColor
     } else if KssNameEquals(group.name, "length") ||
         KssNameEquals(group.name, "number") {
-        kind = (i32)KssTokenLength
+        kind = cast(s32)KssTokenLength
     } else if KssNameEquals(group.name, "duration") {
-        kind = (i32)KssTokenDuration
+        kind = cast(s32)KssTokenDuration
     } else if KssNameEquals(group.name, "material") {
-        kind = (i32)KssTokenMaterial
+        kind = cast(s32)KssTokenMaterial
     } else {
         p.cursor = group.parser
         return KssFailName(p, "unknown token group '", group.name)
@@ -2771,7 +2779,7 @@ KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
             p.cursor = colon.parser
             return KssFail(p, "expected ':' after token name")
         }
-        if kind == (i32)KssTokenColor {
+        if kind == cast(s32)KssTokenColor {
             value: KssColorResult = KssReadHexColor(colon.parser)
             if !value.ok {
                 p.cursor = value.parser
@@ -2780,7 +2788,7 @@ KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
             token.color = value.value
             c = value.parser
             p.cursor = c
-        } else if kind == (i32)KssTokenMaterial {
+        } else if kind == cast(s32)KssTokenMaterial {
             p.cursor = colon.parser
             value: KssIntResult = KssReadMaterialValue(p)
             if !value.ok {
@@ -2788,7 +2796,7 @@ KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
             }
             token.material = value.value
             c = value.parser.cursor
-        } else if kind == (i32)KssTokenDuration {
+        } else if kind == cast(s32)KssTokenDuration {
             value: KssNumberResult = KssReadDuration(colon.parser)
             if !value.ok {
                 p.cursor = value.parser
@@ -2815,14 +2823,14 @@ KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
         c = semicolon.parser
         p.cursor = c
         p = KssAddToken(p, token)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
     }
     return p
 }
 
-KssParseTokensBlock :: (p: KssParser, origin_kind: i32) -> KssParser {
+KssParseTokensBlock :: (p: KssParser, origin_kind: s32) -> KssParser {
     c: KssCursor = p.cursor
     open: KssExpectResult = KssExpect(c, 123)
     if !open.ok {
@@ -2845,7 +2853,7 @@ KssParseTokensBlock :: (p: KssParser, origin_kind: i32) -> KssParser {
             continue
         }
         p = KssParseTokenGroup(p, origin_kind)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
@@ -2856,7 +2864,7 @@ KssParseTokensBlock :: (p: KssParser, origin_kind: i32) -> KssParser {
 # Directives: @pack, @version, @layer, @import, @theme, @env.
 
 KssParseLayerName :: (p: KssParser, name: KssName) -> KssParser {
-    index: i32 = 0
+    index: s32 = 0
     while index < p.layer_count {
         if KssNameEqualsName(p.layer_names[index], name) {
             p.layer = index
@@ -2961,8 +2969,8 @@ KssReadImportTarget :: (p: KssParser) -> KssNameResult {
     return result
 }
 
-KssParseLayerList :: (p: KssParser, block_start: i32) -> KssParser {
-    layer_start: i32 = block_start
+KssParseLayerList :: (p: KssParser, block_start: s32) -> KssParser {
+    layer_start: s32 = block_start
     c: KssCursor = KssSkipSpace(p.cursor)
     p.cursor = c
     if KssAtEnd(c) {
@@ -2981,13 +2989,13 @@ KssParseLayerList :: (p: KssParser, block_start: i32) -> KssParser {
         c = KssAdvance(c, 1)
         p.cursor = c
         p = KssParseLayerDeclaration(p)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
     } else {
         p = KssParseLayerName(p, first.name)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
@@ -3003,7 +3011,7 @@ KssParseLayerList :: (p: KssParser, block_start: i32) -> KssParser {
 
 KssParseDirective :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
-    directive_start: i32 = p.cursor.pos
+    directive_start: s32 = p.cursor.pos
     c = KssAdvance(c, 1)
     p.cursor = c
     keyword: KssNameResult = KssReadName(c)
@@ -3044,7 +3052,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
             p.cursor = value.parser
             return KssFail(p, "expected version number")
         }
-        if (i32)value.value != 1 {
+        if cast(s32)value.value != 1 {
             p.cursor = value.parser
             return KssFail(p, "unsupported style sheet version")
         }
@@ -3082,7 +3090,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         c = semicolon.parser
         p.cursor = c
         p.pending_import = target.name
-        p.status = (i32)KssStatusNeedImport
+        p.status = cast(s32)KssStatusNeedImport
         return p
     }
     if KssNameEquals(keyword.name, "variant") {
@@ -3099,7 +3107,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         p.variant_label = label.name
         p.cursor = label.parser
         p = KssParseVariantBlock(p, name.name)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return KssRecordBlock(p, 4, directive_start, p.cursor.pos)
@@ -3112,7 +3120,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         }
         p.cursor = value.parser
         p = KssParseThemeBlock(p, value.name)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return KssRecordBlock(p, 2, directive_start, p.cursor.pos)
@@ -3145,7 +3153,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         }
         p.cursor = close.parser
         p = KssParseEnvBlock(p, axis.name, value.name)
-        if p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return KssRecordBlock(p, 3, directive_start, p.cursor.pos)
@@ -3166,7 +3174,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
 # cycles, and per-file provenance.
 
 KssImportNameOnStack :: (p: KssParser, name: KssName) -> bool {
-    index: i32 = 0
+    index: s32 = 0
     while index < p.import_depth {
         if KssNameEqualsName(p.imports[index].name, name) {
             return true
@@ -3176,7 +3184,8 @@ KssImportNameOnStack :: (p: KssParser, name: KssName) -> bool {
     return false
 }
 
-KssProvideImport :: (p: KssParser, source: string, name: string) -> KssParser #export {
+#program_export
+KssProvideImport :: (p: KssParser, source: string, name: string) -> KssParser {
     import_name: KssName = KssMakeName(name)
     if KssImportNameOnStack(p, import_name) {
         return KssFailName(p, "@import cycle: ", import_name)
@@ -3198,11 +3207,12 @@ KssProvideImport :: (p: KssParser, source: string, name: string) -> KssParser #e
     p.cursor.pos = 0
     p.cursor.line = 1
     p.cursor.column = 1
-    p.status = (i32)KssStatusContinue
+    p.status = cast(s32)KssStatusContinue
     return p
 }
 
-KssFailImport :: (p: KssParser) -> KssParser #export {
+#program_export
+KssFailImport :: (p: KssParser) -> KssParser {
     return KssFailName(p, "missing import: ", p.pending_import)
 }
 
@@ -3222,34 +3232,35 @@ KssPopImport :: (p: KssParser) -> KssParser {
 # One parse step. Statuses: Rule (collect p.rule), NeedImport (feed via
 # KssProvideImport/KssFailImport), Done, Error (read p.diagnostic).
 
-KssStep :: (p: KssParser) -> KssParser #export {
+#program_export
+KssStep :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
-    if p.status == (i32)KssStatusError || p.status == (i32)KssStatusDone {
+    if p.status == cast(s32)KssStatusError || p.status == cast(s32)KssStatusDone {
         return p
     }
     if p.resume_group >= 0 {
-        p.status = (i32)KssStatusContinue
+        p.status = cast(s32)KssStatusContinue
         p = KssContinueGroupBlock(p)
-        if p.status == (i32)KssStatusRule ||
-           p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusRule ||
+           p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
     }
     if p.in_env {
-        p.status = (i32)KssStatusContinue
+        p.status = cast(s32)KssStatusContinue
         p = KssContinueEnvBlock(p)
-        if p.status == (i32)KssStatusRule ||
-           p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusRule ||
+           p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
     }
     if p.in_variant {
-        p.status = (i32)KssStatusContinue
+        p.status = cast(s32)KssStatusContinue
         p = KssContinueVariantBlock(p)
-        if p.status == (i32)KssStatusRule ||
-           p.status == (i32)KssStatusError {
+        if p.status == cast(s32)KssStatusRule ||
+           p.status == cast(s32)KssStatusError {
             return p
         }
         c = p.cursor
@@ -3259,28 +3270,28 @@ KssStep :: (p: KssParser) -> KssParser #export {
     if KssAtEnd(c) {
         if p.import_depth > 0 {
             p = KssPopImport(p)
-            p.status = (i32)KssStatusContinue
+            p.status = cast(s32)KssStatusContinue
             return p
         }
-        p.status = (i32)KssStatusDone
+        p.status = cast(s32)KssStatusDone
         return p
     }
     if p.cursor.source[p.cursor.pos] == 64 {
         p = KssParseDirective(p)
-        if p.status == (i32)KssStatusNeedImport ||
-           p.status == (i32)KssStatusError ||
-           p.status == (i32)KssStatusRule {
+        if p.status == cast(s32)KssStatusNeedImport ||
+           p.status == cast(s32)KssStatusError ||
+           p.status == cast(s32)KssStatusRule {
             return p
         }
-        p.status = (i32)KssStatusContinue
+        p.status = cast(s32)KssStatusContinue
         return p
     }
-    tokens_start: i32 = c.pos
+    tokens_start: s32 = c.pos
     probe: KssNameResult = KssReadName(c)
     if probe.ok && KssNameEquals(probe.name, "tokens") {
         p.cursor = probe.parser
-        p = KssParseTokensBlock(p, (i32)KssOriginPack)
-        if p.status == (i32)KssStatusError {
+        p = KssParseTokensBlock(p, cast(s32)KssOriginPack)
+        if p.status == cast(s32)KssStatusError {
             return p
         }
         return KssRecordBlock(p, 1, tokens_start, p.cursor.pos)
@@ -3293,25 +3304,26 @@ KssStep :: (p: KssParser) -> KssParser #export {
 # properties stay opaque after classification instead of becoming native fields.
 
 KssCSSValueKind :: enum {
-    KssCSSLiteral = 0
-    KssCSSNumber = 1
-    KssCSSColor = 2
-    KssCSSMaterial = 3
+    KssCSSLiteral :: 0
+    KssCSSNumber :: 1
+    KssCSSColor :: 2
+    KssCSSMaterial :: 3
 }
 
 KssCSSValue :: struct {
     valid: bool
-    kind: i32
-    number: f64
+    kind: s32
+    number: float64
     color: u32
-    material: i32
+    material: s32
     text: string
     has_token: bool
     token_name: KssName
-    token_origin: i32
+    token_origin: s32
 }
 
-KssCSSPropertyKind :: (name: KssName) -> i32 #export {
+#program_export
+KssCSSPropertyKind :: (name: KssName) -> s32 {
     if name.length > 2 && name.bytes[0] == 45 && name.bytes[1] == 45 {
         return -2
     }
@@ -3868,14 +3880,15 @@ KssCSSPropertyKind :: (name: KssName) -> i32 #export {
 
 # CSS property vocabulary reuses declaration classification. These names are
 # canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
-KssCSSPropertyName :: (name: string) -> string #export {
+#program_export
+KssCSSPropertyName :: (name: string) -> string {
     if name.length >= 2 && name[0] == 45 && name[1] == 45 {
         return name
     }
     if name.length > 64 {
         return ""
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < name.length {
         if name[index] != KssLower(name[index]) {
             return ""
@@ -3921,7 +3934,8 @@ KssCSSPropertyName :: (name: string) -> string #export {
 }
 
 # Whether a numeric host value receives px. String values keep their units.
-KssCSSNeedsPixels :: (name: string) -> bool #export {
+#program_export
+KssCSSNeedsPixels :: (name: string) -> bool {
     if name == "opacity" ||
         name == "font-weight" ||
         name == "fontWeight" ||
@@ -3982,7 +3996,7 @@ KssCSSNeedsPixels :: (name: string) -> bool #export {
 }
 
 # UTF-8 whitespace accepted by the existing CSS text adapter.
-KssCSSSpaceLength :: (value: string, index: i32) -> i32 {
+KssCSSSpaceLength :: (value: string, index: s32) -> s32 {
     if KssIsSpace(value[index]) {
         return 1
     }
@@ -4015,12 +4029,13 @@ KssCSSSpaceLength :: (value: string, index: i32) -> i32 {
 }
 
 # Preserve KSS border's color alias unless its trimmed value has whitespace.
-KssCSSBorderShorthand :: (value: string) -> bool #export {
-    index: i32 = 0
+#program_export
+KssCSSBorderShorthand :: (value: string) -> bool {
+    index: s32 = 0
     content: bool = false
     space_after_content: bool = false
     while index < value.length {
-        space: i32 = KssCSSSpaceLength(value, index)
+        space: s32 = KssCSSSpaceLength(value, index)
         if space > 0 {
             if content {
                 space_after_content = true
@@ -4044,7 +4059,8 @@ KssCSSExpansion :: struct {
     second: string
 }
 
-KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> KssCSSExpansion #export {
+#program_export
+KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> KssCSSExpansion {
     result: KssCSSExpansion
     if value == "" || name == "offset-x" || name == "offset-y" {
         return result
@@ -4083,11 +4099,12 @@ KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> K
 
 # An authored nonzero border width or border paint requests a visible border.
 # Emit this before authored declarations so explicit styles and sides win.
-KssCSSBorderDefault :: (border: string, width: string) -> string #export {
+#program_export
+KssCSSBorderDefault :: (border: string, width: string) -> string {
     paint: KssCSSValue = KssCSSValueFromText(border)
     size: KssCSSValue = KssCSSValueFromText(width)
-    if (paint.text != "" && (paint.kind != (i32)KssCSSNumber || paint.number != 0)) ||
-        (size.text != "" && (size.kind != (i32)KssCSSNumber || size.number != 0)) {
+    if (paint.text != "" && (paint.kind != cast(s32)KssCSSNumber || paint.number != 0)) ||
+        (size.text != "" && (size.kind != cast(s32)KssCSSNumber || size.number != 0)) {
         return "solid"
     }
     return ""
@@ -4114,13 +4131,15 @@ KssCSSOutput :: struct {
     suffix: string
 }
 
-KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool #export {
+#program_export
+KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool {
     return facts.offset_x != "" || facts.offset_y != ""
 }
 
 # Slots 0..3 follow ordinary declarations: gradient, x, y, then transform.
 # An absent or out-of-range slot produces no output.
-KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: i32) -> KssCSSOutput #export {
+#program_export
+KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: s32) -> KssCSSOutput {
     result: KssCSSOutput
     if index == 0 && facts.background != "" && facts.background_end != "" && facts.background_image == "" {
         result.name = "background-image"
@@ -4146,11 +4165,12 @@ KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: i32) -> KssCSSOutput #export
     return result
 }
 
-KssCSSValueFromText :: (source: string) -> KssCSSValue #export {
+#program_export
+KssCSSValueFromText :: (source: string) -> KssCSSValue {
     result: KssCSSValue
     result.valid = true
-    start: i32 = 0
-    end: i32 = source.length
+    start: s32 = 0
+    end: s32 = source.length
     while start < end && KssIsSpace(source[start]) {
         start = start + 1
     }
@@ -4168,21 +4188,22 @@ KssCSSValueFromText :: (source: string) -> KssCSSValue #export {
         }
         c = KssSkipSpace(c)
         if KssAtEnd(c) {
-            result.kind = (i32)KssCSSNumber
+            result.kind = cast(s32)KssCSSNumber
             result.number = scalar.value
         }
     }
     return result
 }
 
-KssResolveCSSValue :: (p: KssParser, property: string, source: string) -> KssCSSValue #export {
+#program_export
+KssResolveCSSValue :: (p: KssParser, property: string, source: string) -> KssCSSValue {
     result: KssCSSValue = KssCSSValueFromText(source)
-    property_kind: i32 = KssCSSPropertyKind(KssMakeName(property))
+    property_kind: s32 = KssCSSPropertyKind(KssMakeName(property))
     if property_kind == -1 {
         result.valid = false
         return result
     }
-    if result.kind == (i32)KssCSSNumber || property_kind == -2 {
+    if result.kind == cast(s32)KssCSSNumber || property_kind == -2 {
         return result
     }
     c: KssCursor
@@ -4192,8 +4213,8 @@ KssResolveCSSValue :: (p: KssParser, property: string, source: string) -> KssCSS
     if !reference.ok || !KssAtEnd(c) {
         return result
     }
-    index: i32 = -1
-    if property_kind == (i32)KssTokenLength {
+    index: s32 = -1
+    if property_kind == cast(s32)KssTokenLength {
         index = KssFindNumberToken(p, reference.name)
     } else {
         index = KssFindToken(p, reference.name, property_kind)
@@ -4204,21 +4225,22 @@ KssResolveCSSValue :: (p: KssParser, property: string, source: string) -> KssCSS
     result.has_token = true
     result.token_name = p.tokens[index].name
     result.token_origin = p.tokens[index].origin
-    if property_kind == (i32)KssTokenColor {
-        result.kind = (i32)KssCSSColor
+    if property_kind == cast(s32)KssTokenColor {
+        result.kind = cast(s32)KssCSSColor
         result.color = p.tokens[index].color
-    } else if property_kind == (i32)KssTokenMaterial {
-        result.kind = (i32)KssCSSMaterial
+    } else if property_kind == cast(s32)KssTokenMaterial {
+        result.kind = cast(s32)KssCSSMaterial
         result.material = p.tokens[index].material
     } else {
-        result.kind = (i32)KssCSSNumber
-        result.number = (f64)p.tokens[index].number
+        result.kind = cast(s32)KssCSSNumber
+        result.number = cast(float64)p.tokens[index].number
     }
     return result
 }
 
-KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool) -> KssCSSValue #export {
-    if !provided || !value.has_token || value.kind != (i32)KssCSSColor {
+#program_export
+KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool) -> KssCSSValue {
+    if !provided || !value.has_token || value.kind != cast(s32)KssCSSColor {
         return value
     }
     parsed: KssCSSValue = KssCSSValueFromText(replacement)
@@ -4230,11 +4252,11 @@ KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool)
 
 # Selector predicates operate on borrowed UTF-8 bytes. Hosts supply attribute
 # values and sibling positions; matching semantics stay shared.
-KssTextAt :: (value: string, needle: string, start: i32) -> bool {
+KssTextAt :: (value: string, needle: string, start: s32) -> bool {
     if start < 0 || start > value.length || needle.length > value.length - start {
         return false
     }
-    index: i32 = 0
+    index: s32 = 0
     while index < needle.length {
         if value[start + index] != needle[index] {
             return false
@@ -4250,14 +4272,16 @@ KssIdentityFacts :: struct {
     key: string
 }
 
-KssIdentityMatches :: (expected: string, facts: KssIdentityFacts) -> bool #export {
+#program_export
+KssIdentityMatches :: (expected: string, facts: KssIdentityFacts) -> bool {
     if expected.length == 0 {
         return false
     }
     return expected == facts.id || expected == facts.name || expected == facts.key
 }
 
-KssAttributeMatches :: (value: string, needle: string, operation: string, present: bool) -> bool #export {
+#program_export
+KssAttributeMatches :: (value: string, needle: string, operation: string, present: bool) -> bool {
     if !present {
         return false
     }
@@ -4278,7 +4302,7 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
         return KssTextAt(value, needle, value.length - needle.length)
     }
     if operation == "*=" {
-        start: i32 = 0
+        start: s32 = 0
         while start <= value.length - needle.length {
             if KssTextAt(value, needle, start) {
                 return true
@@ -4288,12 +4312,12 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
         return false
     }
     if operation == "~=" {
-        start: i32 = 0
+        start: s32 = 0
         while start < value.length {
             while start < value.length && KssIsSpace(value[start]) {
                 start = start + 1
             }
-            end: i32 = start
+            end: s32 = start
             while end < value.length && !KssIsSpace(value[end]) {
                 end = end + 1
             }
@@ -4308,12 +4332,13 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
 }
 
 KssNthFormula :: struct {
-    step: i64
-    offset: i64
+    step: s64
+    offset: s64
     ok: bool
 }
 
-KssParseNth :: (source: string) -> KssNthFormula #export {
+#program_export
+KssParseNth :: (source: string) -> KssNthFormula {
     result: KssNthFormula
     c: KssCursor
     c.source = source
@@ -4337,17 +4362,17 @@ KssParseNth :: (source: string) -> KssNthFormula #export {
             return result
         }
     }
-    sign: i64 = 1
+    sign: s64 = 1
     if KssPeek(c, 0) == 45 {
         sign = -1
         c = KssAdvance(c, 1)
     } else if KssPeek(c, 0) == 43 {
         c = KssAdvance(c, 1)
     }
-    number: i64 = 0
+    number: s64 = 0
     digits: bool = false
     while KssIsDigit(KssPeek(c, 0)) {
-        number = number * 10 + (i64)(KssPeek(c, 0) - 48)
+        number = number * 10 + cast(s64)(KssPeek(c, 0) - 48)
         if number > 2147483647 {
             return result
         }
@@ -4365,13 +4390,13 @@ KssParseNth :: (source: string) -> KssNthFormula #export {
     if !digits {
         number = 1
     }
-    step: i64 = sign * number
+    step: s64 = sign * number
     space = KssSelectorSpace(KssAdvance(c, 1))
     if !space.ok {
         return result
     }
     c = space.parser
-    offset: i64 = 0
+    offset: s64 = 0
     if !KssAtEnd(c) {
         sign = 1
         if KssPeek(c, 0) == 45 {
@@ -4386,7 +4411,7 @@ KssParseNth :: (source: string) -> KssNthFormula #export {
         c = space.parser
         digits = false
         while KssIsDigit(KssPeek(c, 0)) {
-            offset = offset * 10 + (i64)(KssPeek(c, 0) - 48)
+            offset = offset * 10 + cast(s64)(KssPeek(c, 0) - 48)
             if offset > 2147483647 {
                 return result
             }
@@ -4405,17 +4430,17 @@ KssParseNth :: (source: string) -> KssNthFormula #export {
     return result
 }
 
-KssNthAppendInteger :: (text: KssName, value: i64) -> KssName {
+KssNthAppendInteger :: (text: KssName, value: s64) -> KssName {
     if value < 0 {
         text = KssNameAppend(text, 45)
         value = -value
     }
-    divisor: i64 = 1
+    divisor: s64 = 1
     while value / divisor >= 10 {
         divisor = divisor * 10
     }
     while divisor > 0 {
-        text = KssNameAppend(text, (u8)(48 + value / divisor))
+        text = KssNameAppend(text, cast(u8)(48 + value / divisor))
         value = value % divisor
         divisor = divisor / 10
     }
@@ -4423,7 +4448,8 @@ KssNthAppendInteger :: (text: KssName, value: i64) -> KssName {
 }
 
 # A bounded canonical CSS An+B spelling; invalid formulas produce empty text.
-KssNthText :: (source: string) -> KssName #export {
+#program_export
+KssNthText :: (source: string) -> KssName {
     text: KssName
     formula: KssNthFormula = KssParseNth(source)
     if !formula.ok {
@@ -4447,7 +4473,8 @@ KssNthText :: (source: string) -> KssName #export {
     return text
 }
 
-KssNthMatches :: (source: string, position: i32) -> bool #export {
+#program_export
+KssNthMatches :: (source: string, position: s32) -> bool {
     if position <= 0 {
         return false
     }
@@ -4456,17 +4483,18 @@ KssNthMatches :: (source: string, position: i32) -> bool #export {
         return false
     }
     if formula.step == 0 {
-        return (i64)position == formula.offset
+        return cast(s64)position == formula.offset
     }
-    delta: i64 = (i64)position - formula.offset
+    delta: s64 = cast(s64)position - formula.offset
     return delta % formula.step == 0 && delta / formula.step >= 0
 }
 
-KssNthSiblingMatches :: (source: string, index: i32, count: i32, from_end: bool) -> bool #export {
+#program_export
+KssNthSiblingMatches :: (source: string, index: s32, count: s32, from_end: bool) -> bool {
     if index < 0 || index >= count {
         return false
     }
-    position: i32 = index + 1
+    position: s32 = index + 1
     if from_end {
         position = count - index
     }
@@ -4498,7 +4526,8 @@ KssStateFacts :: struct {
     value_present: bool
 }
 
-KssStateName :: (source: string) -> KssName #export {
+#program_export
+KssStateName :: (source: string) -> KssName {
     name: KssName
     if source.length > 64 {
         return name
@@ -4522,7 +4551,8 @@ KssIsFormControl :: (kind: string, tag: string) -> bool {
         kind == "Toggle" || kind == "Radio"
 }
 
-KssStateMatches :: (source: string, facts: KssStateFacts) -> bool #export {
+#program_export
+KssStateMatches :: (source: string, facts: KssStateFacts) -> bool {
     if source.length > 64 {
         return false
     }
@@ -4576,10 +4606,10 @@ KssStructuralFacts :: struct {
     has_parent: bool
     has_scope: bool
     is_scope: bool
-    sibling_index: i32
-    sibling_count: i32
-    type_index: i32
-    type_count: i32
+    sibling_index: s32
+    sibling_count: s32
+    type_index: s32
+    type_count: s32
     has_children: bool
     has_text: bool
     focus_within: bool
@@ -4588,7 +4618,8 @@ KssStructuralFacts :: struct {
 
 # -1 means the name is not a basic structural pseudo. KssPseudoMatch handles
 # further dispatch; zero and one are complete decisions from these facts.
-KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> i32 #export {
+#program_export
+KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> s32 {
     matched: bool = false
     if name == "root" {
         matched = !facts.has_parent
@@ -4632,7 +4663,8 @@ KssPseudoFunction :: struct {
     from_end: bool
 }
 
-KssPseudoFunctionInfo :: (name: string) -> KssPseudoFunction #export {
+#program_export
+KssPseudoFunctionInfo :: (name: string) -> KssPseudoFunction {
     result: KssPseudoFunction
     result.relative = name == "has"
     result.positional = name == "nth-child" || name == "nth-last-child" ||
@@ -4644,10 +4676,11 @@ KssPseudoFunctionInfo :: (name: string) -> KssPseudoFunction #export {
 
 # Names and arguments come from selector atoms. -1 requests relative :has
 # traversal; all other supported/unknown cases resolve to zero or one here.
+#program_export
 KssPseudoMatch :: (name: string, argument: string, functional: bool,
-    facts: KssStructuralFacts) -> i32 #export {
+    facts: KssStructuralFacts) -> s32 {
     if !functional {
-        decision: i32 = KssStructuralMatch(name, facts)
+        decision: s32 = KssStructuralMatch(name, facts)
         if decision < 0 {
             return 0
         }
@@ -4660,8 +4693,8 @@ KssPseudoMatch :: (name: string, argument: string, functional: bool,
     if !kind.positional {
         return 0
     }
-    index: i32 = facts.sibling_index
-    count: i32 = facts.sibling_count
+    index: s32 = facts.sibling_index
+    count: s32 = facts.sibling_count
     if kind.same_type {
         index = facts.type_index
         count = facts.type_count
@@ -4681,9 +4714,9 @@ KssSelectorStack :: struct {
 
 KssSelectorSpan :: struct {
     parser: KssCursor
-    start: i32
-    length: i32
-    combinator: i32
+    start: s32
+    length: s32
+    combinator: s32
     ok: bool
     done: bool
 }
@@ -4732,7 +4765,7 @@ KssSelectorSpace :: (c: KssCursor) -> KssExpectResult {
 
 KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSelectorSpan {
     result: KssSelectorSpan
-    initial: i32 = c.pos
+    initial: s32 = c.pos
     skipped: KssExpectResult = KssSelectorSpace(c)
     c = skipped.parser
     result.parser = c
@@ -4753,7 +4786,7 @@ KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSele
             if initial == 0 && !relative {
                 return result
             }
-            result.combinator = (i32)byte
+            result.combinator = cast(s32)byte
             skipped = KssSelectorSpace(KssAdvance(c, 1))
             c = skipped.parser
             result.parser = c
@@ -4763,9 +4796,9 @@ KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSele
         }
     }
     result.start = c.pos
-    end: i32 = c.pos
+    end: s32 = c.pos
     stack: KssSelectorStack
-    depth: i32 = 0
+    depth: s32 = 0
     quote: u8 = 0
     while !KssAtEnd(c) {
         byte: u8 = KssPeek(c, 0)
@@ -4831,11 +4864,13 @@ KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSele
     return result
 }
 
-KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan #export {
+#program_export
+KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan {
     return KssSelectorPartMode(c, sequence, false)
 }
 
-KssRelativeSelectorPart :: (c: KssCursor) -> KssSelectorSpan #export {
+#program_export
+KssRelativeSelectorPart :: (c: KssCursor) -> KssSelectorSpan {
     result: KssSelectorSpan = KssSelectorPartMode(c, true, true)
     if c.pos == 0 && result.ok && !result.done && result.combinator == 0 {
         result.combinator = 32
@@ -4848,7 +4883,7 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     opening: u8 = KssPeek(c, 0)
     stack: KssSelectorStack
     stack.bytes[0] = opening
-    depth: i32 = 1
+    depth: s32 = 1
     quote: u8 = 0
     c = KssAdvance(c, 1)
     result.start = c.pos
@@ -4903,33 +4938,35 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
 # A popped child means that candidate failed, so the resumed frame tries the
 # next ancestor/sibling only for descendant and general-sibling combinators.
 KssSelectorChainAction :: enum {
-    KssSelectorPop = 0
-    KssSelectorPush = 1
-    KssSelectorAccept = 2
+    KssSelectorPop :: 0
+    KssSelectorPush :: 1
+    KssSelectorAccept :: 2
 }
 
 KssSelectorChainFrame :: struct {
-    part: i32
-    cursor: i32
+    part: s32
+    cursor: s32
     entered: bool
     anchored: bool
-    anchor: i32
+    anchor: s32
 }
 
 KssSelectorChainResult :: struct {
     frame: KssSelectorChainFrame
     next: KssSelectorChainFrame
-    action: i32
+    action: s32
 }
 
-KssSelectorChainBegin :: (count: i32, node: i32) -> KssSelectorChainFrame #export {
+#program_export
+KssSelectorChainBegin :: (count: s32, node: s32) -> KssSelectorChainFrame {
     frame: KssSelectorChainFrame
     frame.part = count - 1
     frame.cursor = node
     return frame
 }
 
-KssRelativeSelectorBegin :: (count: i32, node: i32, anchor: i32) -> KssSelectorChainFrame #export {
+#program_export
+KssRelativeSelectorBegin :: (count: s32, node: s32, anchor: s32) -> KssSelectorChainFrame {
     frame: KssSelectorChainFrame = KssSelectorChainBegin(count, node)
     frame.anchored = count > 0 && anchor >= 0
     frame.anchor = anchor
@@ -4939,8 +4976,9 @@ KssRelativeSelectorBegin :: (count: i32, node: i32, anchor: i32) -> KssSelectorC
     return frame
 }
 
+#program_export
 KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
-    relation: i32, parent: i32, previous: i32) -> KssSelectorChainResult #export {
+    relation: s32, parent: s32, previous: s32) -> KssSelectorChainResult {
     result: KssSelectorChainResult
     result.frame = frame
     if frame.cursor < 0 {
@@ -4948,7 +4986,7 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
     }
     if frame.part < 0 {
         if frame.part == -1 && frame.anchored && frame.cursor == frame.anchor {
-            result.action = (i32)KssSelectorAccept
+            result.action = cast(s32)KssSelectorAccept
         }
         return result
     }
@@ -4962,11 +5000,11 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
             return result
         }
         if frame.part == 0 && !frame.anchored {
-            result.action = (i32)KssSelectorAccept
+            result.action = cast(s32)KssSelectorAccept
             return result
         }
     }
-    candidate: i32 = -1
+    candidate: s32 = -1
     if relation == 0 || relation == 32 || relation == 62 {
         candidate = parent
     } else if relation == 43 || relation == 126 {
@@ -4981,12 +5019,13 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
     result.next.cursor = candidate
     result.next.anchored = frame.anchored
     result.next.anchor = frame.anchor
-    result.action = (i32)KssSelectorPush
+    result.action = cast(s32)KssSelectorPush
     return result
 }
 
 # Hosts count matching alternatives; this policy owns selector-list negation.
-KssSelectorGroupMatches :: (name: string, count: i32, matching: i32) -> bool #export {
+#program_export
+KssSelectorGroupMatches :: (name: string, count: s32, matching: s32) -> bool {
     if count <= 0 || matching < 0 || matching > count {
         return false
     }
@@ -5000,25 +5039,25 @@ KssSelectorGroupMatches :: (name: string, count: i32, matching: i32) -> bool #ex
 }
 
 KssSelectorAtomKind :: enum {
-    KssSelectorKind = 0
-    KssSelectorId = 1
-    KssSelectorClass = 2
-    KssSelectorAttribute = 3
-    KssSelectorPseudo = 4
-    KssSelectorState = 5
-    KssSelectorNot = 6
-    KssSelectorMatches = 7
+    KssSelectorKind :: 0
+    KssSelectorId :: 1
+    KssSelectorClass :: 2
+    KssSelectorAttribute :: 3
+    KssSelectorPseudo :: 4
+    KssSelectorState :: 5
+    KssSelectorNot :: 6
+    KssSelectorMatches :: 7
 }
 
 KssSelectorCursor :: struct {
     cursor: KssCursor
-    specificity: i32
+    specificity: s32
     has_kind: bool
 }
 
 KssSelectorAtom :: struct {
     parser: KssSelectorCursor
-    kind: i32
+    kind: s32
     name: string
     value: string
     operation: string
@@ -5030,7 +5069,8 @@ KssSelectorAtom :: struct {
     done: bool
 }
 
-KssBeginSelector :: (source: string) -> KssSelectorCursor #export {
+#program_export
+KssBeginSelector :: (source: string) -> KssSelectorCursor {
     parser: KssSelectorCursor
     parser.cursor.source = source
     return parser
@@ -5038,7 +5078,7 @@ KssBeginSelector :: (source: string) -> KssSelectorCursor #export {
 
 KssPseudoName :: (source: string) -> KssName {
     name: KssName = KssStateName(source)
-    index: i32 = 0
+    index: s32 = 0
     while index < name.length {
         if name.bytes[index] == 95 {
             name.bytes[index] = 45
@@ -5083,7 +5123,7 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
     c.source = StringSlice(group.parser.source, group.start, group.length)
     skipped: KssExpectResult = KssSelectorSpace(c)
     c = skipped.parser
-    start: i32 = c.pos
+    start: s32 = c.pos
     key: KssNameResult = KssReadName(c)
     if !skipped.ok || !key.ok {
         return result
@@ -5114,7 +5154,7 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
         return result
     }
     start = c.pos
-    end: i32 = c.source.length
+    end: s32 = c.source.length
     quote: u8 = KssPeek(c, 0)
     if quote == 34 || quote == 39 {
         c = KssAdvance(c, 1)
@@ -5186,7 +5226,7 @@ KssHasArgumentAllowed :: (source: string) -> bool {
             c = KssAdvance(c, 1)
         } else if byte == 58 {
             c = KssAdvance(c, 1)
-            start: i32 = c.pos
+            start: s32 = c.pos
             name: KssNameResult = KssReadSelectorName(c)
             if !name.ok {
                 return false
@@ -5203,7 +5243,8 @@ KssHasArgumentAllowed :: (source: string) -> bool {
     return true
 }
 
-KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
+#program_export
+KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom {
     result: KssSelectorAtom
     result.parser = parser
     skipped: KssExpectResult = KssSelectorSpace(parser.cursor)
@@ -5218,14 +5259,14 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
         return result
     }
     byte: u8 = KssPeek(c, 0)
-    start: i32 = c.pos
+    start: s32 = c.pos
     if byte == 91 {
         group: KssSelectorSpan = KssSelectorGroup(c)
         result.parser.cursor = group.parser
         if !group.ok {
             return result
         }
-        result.kind = (i32)KssSelectorAttribute
+        result.kind = cast(s32)KssSelectorAttribute
         result = KssSelectorAttributeAtom(result, group)
         if result.ok {
             result.parser.specificity = result.parser.specificity + StyleSpecificity(0, 1, 0, 0)
@@ -5242,13 +5283,13 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
         c = name.parser
         result.name = StringSlice(c.source, start, c.pos - start)
         if byte == 35 {
-            result.kind = (i32)KssSelectorId
+            result.kind = cast(s32)KssSelectorId
             result.parser.specificity = result.parser.specificity + StyleSpecificity(0, 0, 0, 1)
         } else if byte == 46 {
-            result.kind = (i32)KssSelectorClass
+            result.kind = cast(s32)KssSelectorClass
             result.parser.specificity = result.parser.specificity + StyleSpecificity(0, 0, 1, 0)
         } else {
-            result.kind = (i32)KssSelectorPseudo
+            result.kind = cast(s32)KssSelectorPseudo
             result.canonical = KssPseudoName(result.name)
             if result.canonical.length == 0 {
                 return result
@@ -5276,14 +5317,14 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
                     return result
                 }
                 if KssNameEquals(result.canonical, "not") {
-                    result.kind = (i32)KssSelectorNot
+                    result.kind = cast(s32)KssSelectorNot
                 } else if KssNameEquals(result.canonical, "is") || KssNameEquals(result.canonical, "where") {
-                    result.kind = (i32)KssSelectorMatches
+                    result.kind = cast(s32)KssSelectorMatches
                 }
             } else {
                 state: KssName = KssPseudoState(result.canonical)
                 if state.length > 0 {
-                    result.kind = (i32)KssSelectorState
+                    result.kind = cast(s32)KssSelectorState
                     result.canonical = state
                 }
             }
@@ -5306,7 +5347,7 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
             c = KssAdvance(c, 1)
         }
         result.name = StringSlice(c.source, start, c.pos - start)
-        result.kind = (i32)KssSelectorKind
+        result.kind = cast(s32)KssSelectorKind
         result.parser.has_kind = true
         if result.name != "*" {
             result.parser.specificity = result.parser.specificity + StyleSpecificity(1, 0, 0, 0)

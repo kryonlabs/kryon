@@ -8,45 +8,45 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "cursor"
 
-stage :: i32 #global
-state :: CursorFrame #global
+stage: s32;
+state: CursorFrame;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     state = CursorBeginFrame(state)
     if stage == 0 {
-        state = CursorRequest(state, (i32)CursorClickable)
-        state = CursorRequest(state, (i32)CursorDisabled)
+        state = CursorRequest(state, cast(s32)CursorClickable)
+        state = CursorRequest(state, cast(s32)CursorDisabled)
     } else if stage == 1 {
-        state = CursorRequest(state, (i32)CursorText)
-        state = CursorRequest(state, (i32)CursorResizeHorizontal)
+        state = CursorRequest(state, cast(s32)CursorText)
+        state = CursorRequest(state, cast(s32)CursorResizeHorizontal)
     } else if stage == 4 {
-        state = CursorRequest(state, (i32)CursorText)
-        state = CursorRequest(state, (i32)CursorClickable)
+        state = CursorRequest(state, cast(s32)CursorText)
+        state = CursorRequest(state, cast(s32)CursorClickable)
     } else if stage == 5 {
-        state = CursorRequest(state, (i32)CursorClickable)
-        state = CursorRequest(state, (i32)CursorCrosshair)
+        state = CursorRequest(state, cast(s32)CursorClickable)
+        state = CursorRequest(state, cast(s32)CursorCrosshair)
     } else if stage == 6 {
         state = CursorRequest(state, 99)
     }
     decision: CursorDecision = CursorEndFrame(state)
     if stage == 0 && (!decision.apply ||
-        decision.state.applied != (i32)CursorClickable) { return -1 }
+        decision.state.applied != cast(s32)CursorClickable) { return -1 }
     if stage == 1 && (!decision.apply ||
-        decision.state.applied != (i32)CursorResizeHorizontal) { return -2 }
+        decision.state.applied != cast(s32)CursorResizeHorizontal) { return -2 }
     if stage == 2 && (!decision.apply ||
-        decision.state.applied != (i32)CursorDefault) { return -3 }
+        decision.state.applied != cast(s32)CursorDefault) { return -3 }
     if stage == 3 && decision.apply { return -4 }
     if stage == 4 && (!decision.apply ||
-        decision.state.applied != (i32)CursorClickable) { return -5 }
+        decision.state.applied != cast(s32)CursorClickable) { return -5 }
     if stage == 5 && (!decision.apply ||
-        decision.state.applied != (i32)CursorCrosshair) { return -6 }
+        decision.state.applied != cast(s32)CursorCrosshair) { return -6 }
     if stage == 6 && (!decision.apply ||
-        decision.state.applied != (i32)CursorDefault) { return -7 }
+        decision.state.applied != cast(s32)CursorDefault) { return -7 }
     state = CommitCursor(decision)
-    old: i32 = stage
+    old: s32 = stage
     stage += 1
     return old
 }

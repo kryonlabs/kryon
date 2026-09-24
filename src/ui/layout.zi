@@ -33,12 +33,12 @@ CenteredColumnLayout :: struct {
 }
 
 FlexDirection :: enum {
-    FlexRow = 0
+    FlexRow :: 0
     FlexColumn
 }
 
 JustifyContent :: enum {
-    JustifyStart = 0
+    JustifyStart :: 0
     JustifyCenter
     JustifyEnd
     JustifySpaceBetween
@@ -47,7 +47,7 @@ JustifyContent :: enum {
 }
 
 AlignItems :: enum {
-    AlignStart = 0
+    AlignStart :: 0
     AlignCenter
     AlignEnd
     AlignStretch

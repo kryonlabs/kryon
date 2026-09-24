@@ -1,8 +1,8 @@
 #import "geometry"
 
 DragDropRole :: enum {
-    DragDropRoleSource = 0
-    DragDropRoleTarget = 1
+    DragDropRoleSource :: 0
+    DragDropRoleTarget :: 1
 }
 
 DragDropProps :: struct {

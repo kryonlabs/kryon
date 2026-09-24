@@ -8,7 +8,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
-#module "app"
 #import "geometry"
 #import "paint_queue"
 #import "segmented_control"
@@ -18,24 +17,25 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_input"
 #import "widget_kind"
 
-phase :: i32 #global
-selected :: i32 #global
+phase: s32;
+selected: s32;
 
-Frame :: () -> i32 #export {
+#program_export
+Frame :: () -> s32 {
     options: [3]SegmentOption
-    options[0] = (SegmentOption){(u64)11, "One", false}
-    options[1] = (SegmentOption){(u64)22, "Two", false}
-    options[2] = (SegmentOption){(u64)33, "Three", false}
+    options[0] = SegmentOption.{cast(u64)11, "One", false}
+    options[1] = SegmentOption.{cast(u64)22, "Two", false}
+    options[2] = SegmentOption.{cast(u64)33, "Three", false}
     props: SegmentedControlProps
-    props.key = (u64)20
+    props.key = cast(u64)20
     props.id = 20
-    props.bounds = (Rectangle){10.0, 20.0, 150.0, 0.0}
+    props.bounds = Rectangle.{10.0, 20.0, 150.0, 0.0}
     props.has_selection = true
     props.selected_index = selected
     props.wrap = phase < 4
     if phase == 3 || phase == 4 { options[2].disabled = true }
     if phase == 6 { props.has_selection = false }
-    TreeStart((u64)1, (Rectangle){0.0, 0.0, 260.0, 120.0})
+    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 120.0})
     result: SegmentedControlResult = SegmentedControl(props, options[0:3])
     if !TreeFinish() || TreeCount() != 5 || result.node != 1 ||
         TreeNodeAt(1).kind != WidgetKindSegmentedControl ||
@@ -49,27 +49,27 @@ Frame :: () -> i32 #export {
             TreeNodeAt(3).bounds.x != 88.0 ||
             TreeNodeAt(4).bounds.y != 56.0 ||
             TreeHitAt(100.0, 30.0) != 3 { return -1 }
-        TreePointerUpdate((PointerFrame){100.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){100.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{100.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{100.0, 30.0, false, false, true})
     } else if phase == 1 {
         if result.selected_index != 1 || !result.changed ||
             result.clicked_index != 1 { return -2 }
-        TreePointerUpdate((PointerFrame){50.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){50.0, 70.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{50.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{50.0, 70.0, false, false, true})
     } else if phase == 2 {
         if result.selected_index != 2 || !result.changed ||
             result.clicked_index != 2 { return -3 }
     } else if phase == 3 {
         if result.selected_index != 2 || result.changed ||
             TreeHitAt(50.0, 70.0) != -1 { return -4 }
-        TreePointerUpdate((PointerFrame){50.0, 70.0, true, true, false})
-        TreePointerUpdate((PointerFrame){50.0, 70.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{50.0, 70.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{50.0, 70.0, false, false, true})
     } else if phase == 4 {
         if result.height != 30 || result.selected_index != 2 ||
             result.changed || TreeNodeAt(4).bounds.x != 166.0 ||
             TreeNodeAt(4).bounds.y != 20.0 { return -5 }
-        TreePointerUpdate((PointerFrame){20.0, 30.0, true, true, false})
-        TreePointerUpdate((PointerFrame){20.0, 30.0, false, false, true})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
     } else if phase == 5 {
         if result.selected_index != 0 || !result.changed ||
             result.clicked_index != 0 { return -6 }
@@ -79,7 +79,7 @@ Frame :: () -> i32 #export {
     }
     PaintFlush()
     selected = result.selected_index
-    old: i32 = phase
+    old: s32 = phase
     phase += 1
     return old
 }

@@ -1,10 +1,10 @@
 #import "geometry"
 
 PopupFlags :: enum {
-    PopupFlagsNone = 0
-    PopupTooltip = 1
-    PopupModal = 2
-    PopupContext = 4
+    PopupFlagsNone :: 0
+    PopupTooltip :: 1
+    PopupModal :: 2
+    PopupContext :: 4
 }
 
 PopupProps :: struct {

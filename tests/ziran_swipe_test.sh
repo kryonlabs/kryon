@@ -7,13 +7,13 @@ ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_swipe.zi" <<'EOF'
-#module "use_swipe"
 #import "swipe"
 #import "swipe_props"
 #import "geometry"
 
-Answer :: () -> i32 #export {
-    if SwipeDirectionsFor((u32)0) != (u32)SwipeAll { return 0 }
+#program_export
+Answer :: () -> s32 {
+    if SwipeDirectionsFor(cast(u32)0) != cast(u32)SwipeAll { return 0 }
     if SwipeMinDistanceFor(2.0, 0.0) != 96.0 { return 0 }
     if SwipeAxisBiasFor(0.0) != 1.25 { return 0 }
     bounds: Rectangle
@@ -23,15 +23,15 @@ Answer :: () -> i32 #export {
     delta: Vector2
     delta.x = -80.0
     delta.y = 5.0
-    direction: SwipeDirection = SwipeDirectionFor(delta, (u32)SwipeAll, 1.25)
-    if direction != (SwipeDirection)SwipeLeft { return 0 }
-    if !SwipeShouldCancelForAxis(delta, (u32)SwipeVertical, 1.25) {
+    direction: SwipeDirection = SwipeDirectionFor(delta, cast(u32)SwipeAll, 1.25)
+    if direction != cast(SwipeDirection)SwipeLeft { return 0 }
+    if !SwipeShouldCancelForAxis(delta, cast(u32)SwipeVertical, 1.25) {
         return 0
     }
-    drag: SwipeDragState = SwipeDragStateFor(delta, (u32)SwipeAll,
+    drag: SwipeDragState = SwipeDragStateFor(delta, cast(u32)SwipeAll,
         1.25, 8.0, 48.0, false)
     if !drag.dragging || drag.cancelled ||
-        drag.direction != (SwipeDirection)SwipeLeft ||
+        drag.direction != cast(SwipeDirection)SwipeLeft ||
         drag.progress != 1.0 { return 0 }
     lifecycle: SwipeDragLifecycle = SwipeDragLifecycleFor(true, false,
         false, drag.dragging)
@@ -39,23 +39,23 @@ Answer :: () -> i32 #export {
         return 0
     }
     release: SwipeReleaseState = SwipeReleaseStateFor(delta,
-        (u32)SwipeAll, 1.25, 48.0, 0.2, 0.5, true)
+        cast(u32)SwipeAll, 1.25, 48.0, 0.2, 0.5, true)
     if !release.committed ||
-        release.direction != (SwipeDirection)SwipeLeft { return 0 }
+        release.direction != cast(SwipeDirection)SwipeLeft { return 0 }
     slow: SwipeReleaseState = SwipeReleaseStateFor(delta,
-        (u32)SwipeAll, 1.25, 48.0, 0.8, 0.5, true)
-    if slow.committed || slow.direction != (SwipeDirection)SwipeNone {
+        cast(u32)SwipeAll, 1.25, 48.0, 0.8, 0.5, true)
+    if slow.committed || slow.direction != cast(SwipeDirection)SwipeNone {
         return 0
     }
     if !SwipeReleaseLifecycleFor(true).consume_release { return 0 }
 
     spec: SwipeSpec
-    spec.bounds = (Rectangle){0.0, 0.0, 100.0, 100.0}
-    spec.directions = (u32)SwipeHorizontal
+    spec.bounds = Rectangle.{0.0, 0.0, 100.0, 100.0}
+    spec.directions = cast(u32)SwipeHorizontal
     spec.min_distance = 30.0
     spec.max_duration = 0.5
     frame: SwipeFrame
-    frame.pointer = (Vector2){10.0, 10.0}
+    frame.pointer = Vector2.{10.0, 10.0}
     frame.pressed = true
     frame.down = true
     frame.input_clear = true
@@ -70,7 +70,7 @@ Answer :: () -> i32 #export {
     }
     gesture = step.gesture
     frame.pressed = false
-    frame.pointer = (Vector2){50.0, 12.0}
+    frame.pointer = Vector2.{50.0, 12.0}
     frame.now_seconds = 1.1
     step = Swipe(spec, gesture, frame)
     if step.active != 1 || step.dragging != 1 ||
@@ -79,7 +79,7 @@ Answer :: () -> i32 #export {
         return 0
     }
     gesture = step.gesture
-    frame.pointer = (Vector2){60.0, 12.0}
+    frame.pointer = Vector2.{60.0, 12.0}
     frame.owner_clear = false
     frame.owner_is_swipe = true
     step = Swipe(spec, gesture, frame)
@@ -88,17 +88,17 @@ Answer :: () -> i32 #export {
     gesture = step.gesture
     frame.down = false
     frame.released = true
-    frame.pointer = (Vector2){80.0, 12.0}
+    frame.pointer = Vector2.{80.0, 12.0}
     frame.now_seconds = 1.2
     step = Swipe(spec, gesture, frame)
-    if step.active != 0 || step.direction != (SwipeDirection)SwipeRight ||
+    if step.active != 0 || step.direction != cast(SwipeDirection)SwipeRight ||
         !step.consume_release || !step.capture_input ||
         !step.release_pointer || step.gesture.active != 0 {
         return 0
     }
 
-    frame = (SwipeFrame){}
-    frame.pointer = (Vector2){10.0, 10.0}
+    frame = SwipeFrame.{}
+    frame.pointer = Vector2.{10.0, 10.0}
     frame.pressed = true
     frame.down = true
     frame.input_clear = true
@@ -106,7 +106,7 @@ Answer :: () -> i32 #export {
     frame.now_seconds = 2.0
     step = Swipe(spec, step.gesture, frame)
     frame.pressed = false
-    frame.pointer = (Vector2){12.0, 50.0}
+    frame.pointer = Vector2.{12.0, 50.0}
     step = Swipe(spec, step.gesture, frame)
     if step.active != 0 || step.cancelled != 1 ||
         step.claim_pointer || step.gesture.active != 0 ||
@@ -121,7 +121,7 @@ Answer :: () -> i32 #export {
     step = Swipe(spec, step.gesture, frame)
     if step.active != 0 { return 0 }
 
-    frame.pointer = (Vector2){10.0, 10.0}
+    frame.pointer = Vector2.{10.0, 10.0}
     frame.now_seconds = 3.0
     step = Swipe(spec, step.gesture, frame)
     frame.pressed = false
@@ -144,11 +144,11 @@ Answer :: () -> i32 #export {
     frame.owner_is_swipe = true
     frame.now_seconds = 5.0
     step = Swipe(spec, step.gesture, frame)
-    if step.direction != (SwipeDirection)SwipeNone ||
+    if step.direction != cast(SwipeDirection)SwipeNone ||
         !step.consume_release || !step.release_pointer { return 0 }
 
-    frame = (SwipeFrame){}
-    frame.pointer = (Vector2){10.0, 10.0}
+    frame = SwipeFrame.{}
+    frame.pointer = Vector2.{10.0, 10.0}
     frame.pressed = true
     frame.down = true
     frame.input_clear = true
@@ -163,7 +163,7 @@ Answer :: () -> i32 #export {
     frame.owner_clear = false
     frame.owner_is_swipe = false
     step = Swipe(spec, step.gesture, frame)
-    if step.direction != (SwipeDirection)SwipeNone ||
+    if step.direction != cast(SwipeDirection)SwipeNone ||
         step.consume_release || step.active != 0 ||
         step.cancelled != 1 { return 0 }
 
