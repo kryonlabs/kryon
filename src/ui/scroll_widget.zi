@@ -40,8 +40,34 @@ Scroll :: (props: ScrollProps) -> ScrollResult #export {
     if props.content_height > (i32)result.viewport.height {
         result.content.height = (float)props.content_height
     }
+    if props.input.enabled {
+        metrics: ScrollMetrics = props.metrics
+        if metrics.scrollbar_width <= 0 {
+            metrics = ScrollDefaultMetrics(1.0)
+        }
+        input: ScrollScopeInput
+        input.bounds = result.viewport
+        input.content_height = props.content_height
+        input.has_offset = true
+        input.offset = result.scroll_offset
+        input.pointer_allowed = props.input.pointer_allowed
+        input.disabled = props.input.disabled
+        input.mouse = props.input.mouse
+        input.pressed = props.input.pressed
+        input.down = props.input.down
+        input.released = props.input.released
+        input.wheel = props.input.wheel
+        input.owns_drag = props.input.owns_drag
+        input.owner_captured = props.input.owner_captured
+        input.grab = props.input.grab
+        result.frame = ScrollScopeFrameFor(input, metrics)
+        result.scroll_offset = result.frame.offset
+        result.content = result.frame.content
+    }
     if result.node >= 0 {
-        TreeSetChildClip(result.node, result.viewport)
+        clip: Rectangle = result.viewport
+        if props.input.enabled { clip = result.frame.clip }
+        TreeSetChildClip(result.node, clip)
         result.opened = TreePushScope(result.node)
     }
     return result

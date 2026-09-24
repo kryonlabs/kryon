@@ -1,5 +1,22 @@
 #module "scroll_props"
 #import "geometry"
+#import "scroll"
+
+# Device observations and drag ownership are supplied by the platform.
+# The caller retains grab and ownership from the returned frame.
+ScrollInput :: struct {
+    enabled: bool
+    pointer_allowed: bool
+    disabled: bool
+    mouse: Vector2
+    pressed: bool
+    down: bool
+    released: bool
+    wheel: float
+    owns_drag: bool
+    owner_captured: bool
+    grab: float
+}
 
 ScrollProps :: struct {
     key: u64
@@ -7,6 +24,8 @@ ScrollProps :: struct {
     content_height: i32
     scroll_offset: i32
     scroll_delta: i32
+    input: ScrollInput
+    metrics: ScrollMetrics
 }
 
 ScrollResult :: struct {
@@ -16,6 +35,7 @@ ScrollResult :: struct {
     content: Rectangle
     scroll_offset: i32
     max_scroll: i32
+    frame: ScrollScopeFrame
 }
 
 # Implemented by the C-only scroll host; declared here for the public ABI.

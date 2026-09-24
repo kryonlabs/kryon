@@ -93,6 +93,20 @@ ScrollMetricsFor :: (scale: float, track: StyleFrame, thumb: StyleFrame) -> Scro
     return metrics
 }
 
+ScrollDefaultMetrics :: (scale: float) -> ScrollMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ScrollMetrics
+    metrics.scrollbar_width = (i32)(10.0 * scale)
+    metrics.reserved_width = (i32)(16.0 * scale)
+    metrics.safe_gap = (i32)(20.0 * scale)
+    metrics.default_wheel_step = (i32)(42.0 * scale)
+    metrics.drag_threshold = (i32)(5.0 * scale)
+    metrics.visual_bleed = (i32)(8.0 * scale)
+    metrics.thumb_min_height = (i32)(16.0 * scale)
+    metrics.thumb_inset = (i32)(2.0 * scale)
+    return metrics
+}
+
 ScrollClamp :: (value: i32, maximum: i32) -> i32 #export {
     if value < 0 { return 0 }
     if value > maximum { return maximum }

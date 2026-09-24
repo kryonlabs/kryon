@@ -9,6 +9,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #module "app"
 #import "geometry"
+#import "scroll"
 #import "scroll_props"
 #import "scroll_widget"
 #import "tree"
@@ -50,6 +51,43 @@ Answer :: () -> i32 #export {
     result = Scroll(props)
     if result.scroll_offset != 0 || !End() ||
         !TreeFinish() { return -5 }
+
+    TreeStart((u64)1, root)
+    props.scroll_offset = 20
+    props.scroll_delta = 0
+    props.input.enabled = true
+    props.input.pointer_allowed = true
+    props.input.wheel = -1.0
+    result = Scroll(props)
+    if result.scroll_offset != 62 || !result.frame.consume_wheel ||
+        !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
+        result.content.y != -52.0 || !End() || !TreeFinish() { return -6 }
+
+    TreeStart((u64)1, root)
+    props.scroll_offset = result.scroll_offset
+    props.input.wheel = 0.0
+    props.input.pressed = true
+    props.input.down = true
+    props.input.mouse = (Vector2){95.0, 20.0}
+    result = Scroll(props)
+    if !result.frame.start_drag || result.frame.clear_drag ||
+        !End() || !TreeFinish() { return -7 }
+
+    TreeStart((u64)1, root)
+    props.input.pressed = false
+    props.input.owns_drag = true
+    props.input.grab = result.frame.grab
+    props.input.mouse.y = 45.0
+    result = Scroll(props)
+    if result.scroll_offset <= 62 || result.scroll_offset > 100 ||
+        !End() || !TreeFinish() { return -8 }
+
+    TreeStart((u64)1, root)
+    props.input.down = false
+    props.input.released = true
+    result = Scroll(props)
+    if !result.frame.clear_drag || !result.frame.consume_release ||
+        !End() || !TreeFinish() { return -9 }
     return 42
 }
 ZI
