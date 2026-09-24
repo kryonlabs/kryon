@@ -63,10 +63,12 @@ EmitPaint :: (command: PaintCommand) #export {
         PaintText(command.value, command.x, command.y,
             command.font, command.color)
     } else if command.kind == PaintKindImage {
-        RasterImage(command.asset_path, command.texture_id,
-            command.source, command.bounds, command.clip,
-            command.origin, command.rotation, command.radius,
-            command.color)
+        if command.clip.width > 0.0 && command.clip.height > 0.0 {
+            RasterImage(command.asset_path, command.texture_id,
+                command.source, command.bounds, command.clip,
+                command.origin, command.rotation, command.radius,
+                command.color)
+        }
     } else if command.kind == PaintKindClippedText {
         PaintTextClipped(command.value, command.x, command.y,
             command.font, command.color, command.clip)
@@ -107,6 +109,16 @@ SubmitPaint :: (command: PaintCommand) #export {
         if full_clip {
             command.clip.width = entry.bounds.width
             command.clip.height = entry.bounds.height
+        }
+        if entry.clipped {
+            if command.kind == PaintKindText {
+                command.kind = PaintKindClippedText
+                command.clip = entry.clip
+            } else if command.kind == PaintKindClippedText ||
+                command.kind == PaintKindImage {
+                command.clip = RectangleIntersection(command.clip,
+                    entry.clip)
+            }
         }
     }
     pending_paint.items[pending_paint.count] = command

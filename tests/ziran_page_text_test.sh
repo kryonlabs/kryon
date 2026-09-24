@@ -9,6 +9,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
 #module "app"
+#import "drawing_props"
 #import "geometry"
 #import "layout"
 #import "layout_widget"
@@ -73,6 +74,24 @@ Answer :: () -> i32 #export {
         TreeNodeAt(2).bounds.y != 5.0 ||
         TreeNodeAt(3).bounds.x != 5.0 ||
         TreeNodeAt(3).bounds.y != 20.0 { return -2 }
+    PaintFlush()
+    TreeStart((u64)30, bounds)
+    viewport: i32 = TreeSubmit((u64)31, 0, WidgetKindCard,
+        (Rectangle){0.0, 0.0, 100.0, 100.0})
+    TreeSetChildClip(viewport,
+        (Rectangle){20.0, 20.0, 40.0, 40.0})
+    child: i32 = TreeSubmit((u64)32, viewport, WidgetKindText,
+        (Rectangle){10.0, 10.0, 70.0, 70.0})
+    ink: Color = ColorFromPacked((u32)0x171717ff)
+    PaintLabel(child, "Plain", 10, 10, 16, ink)
+    PaintClippedLabel(child, "Clipped", 30, 30, 16, ink,
+        (Rectangle){30.0, 30.0, 50.0, 50.0})
+    PaintImage(child, "", (u32)7,
+        (Rectangle){0.0, 0.0, 70.0, 70.0},
+        (Rectangle){10.0, 10.0, 70.0, 70.0},
+        (Rectangle){10.0, 10.0, 70.0, 70.0},
+        (Vector2){0.0, 0.0}, 0.0, 0.0, ink)
+    if !TreeFinish() { return -3 }
     PaintFlush()
     return 42
 }

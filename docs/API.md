@@ -266,8 +266,9 @@ discards the current build and its scope stack.
 children. Submitted descendants inherit the intersection of all ancestor
 viewports, and `TreeHitAt` excludes points outside that intersection. The
 container's own hit area remains available for controls such as scrollbars.
-Generic paint commands do not yet inherit this clip; widgets must still pass
-their own paint clip until that path is wired through the tree.
+Queued text and image paint inherit this clip; their own clips are intersected
+with it. Lines and rounded shapes still need a host scissor effect to honor
+child viewports when they overlap a boundary.
 
 `Page(PageProps)` and `Section(SectionProps)` are checked Ziran containers.
 They open a child scope, return its content bounds and KSS gap/padding values,
