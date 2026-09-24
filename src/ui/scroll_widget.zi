@@ -1,0 +1,48 @@
+#module "scroll_widget"
+#import "geometry"
+#import "scroll"
+#import "scroll_props"
+#import "tree"
+#import "widget_kind"
+
+# A value based scroll viewport. The caller supplies wheel or keyboard
+# movement, keeps the returned offset, and positions children in content.
+# Close the child scope with End().
+Scroll :: (props: ScrollProps) -> ScrollResult #export {
+    result: ScrollResult
+    result.node = -1
+    result.viewport = props.bounds
+    parent: Rectangle = TreeCurrentParentBounds()
+    if result.viewport.width <= 0.0 {
+        result.viewport.width = parent.width
+    }
+    if result.viewport.height <= 0.0 {
+        result.viewport.height = parent.height
+    }
+    if TreeIsBuilding() {
+        key: u64 = props.key
+        if key == (u64)0 { key = TreeNextKey() }
+        result.node = TreeSubmitCurrent(key, WidgetKindScroll,
+            result.viewport)
+        if result.node < 0 { return result }
+        result.viewport = TreeSubmittedNodeAt(result.node).bounds
+    }
+    result.max_scroll = ScrollMax(props.content_height,
+        (i32)result.viewport.height)
+    offset: i64 = (i64)props.scroll_offset + (i64)props.scroll_delta
+    if offset < (i64)0 { offset = (i64)0 }
+    if offset > (i64)result.max_scroll {
+        offset = (i64)result.max_scroll
+    }
+    result.scroll_offset = (i32)offset
+    result.content = result.viewport
+    result.content.y -= (float)result.scroll_offset
+    if props.content_height > (i32)result.viewport.height {
+        result.content.height = (float)props.content_height
+    }
+    if result.node >= 0 {
+        TreeSetChildClip(result.node, result.viewport)
+        result.opened = TreePushScope(result.node)
+    }
+    return result
+}

@@ -2,9 +2,20 @@
 #import "geometry"
 
 ScrollProps :: struct {
+    key: u64
     bounds: Rectangle
     content_height: i32
-    offset: i32*
+    scroll_offset: i32
+    scroll_delta: i32
+}
+
+ScrollResult :: struct {
+    node: i32
+    opened: bool
+    viewport: Rectangle
+    content: Rectangle
+    scroll_offset: i32
+    max_scroll: i32
 }
 
 # Implemented by the C-only scroll host; declared here for the public ABI.

@@ -56,6 +56,7 @@ layers, theme, style values, built-in theme labels, and selected Image, Progress
 checked ModalFrame layout, backdrop dismissal, title and close actions,
 checked ActionModal message layout, wrapped buttons, and dismissal,
 checked TreeView composition and row input from portable item values,
+checked Scroll child scopes with caller owned scroll values and viewport clips,
 checked PanedView composition and handle dragging with returned pane bounds,
 checked Toast lifetime, text truncation, layout, and paint,
 checked Collapsible header interaction and tree keyboard navigation,

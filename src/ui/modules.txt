@@ -121,6 +121,7 @@ rows.zi
 router_props.zi
 scroll.zi
 scroll_props.zi
+scroll_widget.zi
 scene_tree_props.zi
 semantic.zi
 segmented_control.zi

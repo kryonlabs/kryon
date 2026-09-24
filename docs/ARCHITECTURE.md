@@ -40,6 +40,8 @@ Flow row scope and child placement, and Link paint, pointer activation, and
 returned URL effects,
 checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
 automatic placement for zero-positioned children and explicit placement otherwise,
+checked Scroll viewport scopes with caller owned offsets and deltas, content
+bounds, and inherited child paint and input clipping,
 checked TreeView row composition, selection, keyboard navigation, scroll values,
 draggable scrollbar, viewport clipping, and semantic row nodes from a caller
 owned item slice,
@@ -69,6 +71,11 @@ clipped text paint. `ButtonProps.image` uses portable `ImageProps` asset or
 texture values and Ziran image fit policy. Glyph and raw texture icons, menu,
 split, loading animation, material layers, keyboard focus, and immediate input
 still need migration.
+
+`Scroll(ScrollProps)` opens a clipped retained child scope and returns the
+viewport, shifted content bounds, and a clamped scroll offset. The caller
+stores that value and supplies wheel or keyboard deltas. Scrollbar paint and
+drag input, platform event routing, and native host integration remain open.
 
 The checked `Checkbox(CheckboxProps)` accepts and returns portable values,
 uses the retained pointer router, resolves KSS box and label roles, and queues
