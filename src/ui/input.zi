@@ -1,19 +1,18 @@
-#module "input"
 #import "input_props"
 #import "geometry"
 
 InputContinuousStep :: struct {
-    value: float
+    value: float32
     changed: bool
 }
 
 InputDiscreteStep :: struct {
-    value: i32
+    value: s32
     changed: bool
 }
 
 InputStep :: struct {
-    value: f64
+    value: float64
     changed: bool
 }
 
@@ -33,40 +32,46 @@ InputCellLayout :: struct {
     has_step_buttons: bool
 }
 
-InputScaledMetric :: (value: float, scale: float) -> i32 {
+InputScaledMetric :: (value: float32, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    metric: i32 = (i32)(value * scale)
+    metric: s32 = cast(s32)(value * scale)
     if metric < 0 { return 0 }
     return metric
 }
 
-InputDefaultStepButtonWidth :: (scale: float) -> i32 #export {
+#program_export
+InputDefaultStepButtonWidth :: (scale: float32) -> s32 {
     return InputScaledMetric(24.0, scale)
 }
 
-InputDoubleClickSlopFor :: (scale: float) -> i32 #export {
+#program_export
+InputDoubleClickSlopFor :: (scale: float32) -> s32 {
     return InputScaledMetric(6.0, scale)
 }
 
-InputPointerDragThresholdFor :: (scale: float) -> i32 #export {
+#program_export
+InputPointerDragThresholdFor :: (scale: float32) -> s32 {
     return InputScaledMetric(5.0, scale)
 }
 
-InputPointerDragShouldStart :: (dx: i32, dy: i32, threshold: i32) -> bool #export {
+#program_export
+InputPointerDragShouldStart :: (dx: s32, dy: s32, threshold: s32) -> bool {
     if threshold < 0 { threshold = 0 }
     return dx > threshold || dx < -threshold ||
         dy > threshold || dy < -threshold
 }
 
-InputPointerDragIsHorizontal :: (dx: i32, dy: i32) -> bool #export {
+#program_export
+InputPointerDragIsHorizontal :: (dx: s32, dy: s32) -> bool {
     if dx < 0 { dx = -dx }
     if dy < 0 { dy = -dy }
     return dx >= dy
 }
 
+#program_export
 InputPointerInteractionFor :: (inside: bool, captured: bool, disabled: bool,
     hover_effects: bool, released: bool, release_consumed: bool,
-    press_started_inside: bool) -> InputPointerInteraction #export {
+    press_started_inside: bool) -> InputPointerInteraction {
     interaction: InputPointerInteraction
     interaction.active = inside && !captured && !disabled
     interaction.hovered = interaction.active && hover_effects
@@ -77,9 +82,10 @@ InputPointerInteractionFor :: (inside: bool, captured: bool, disabled: bool,
     return interaction
 }
 
+#program_export
 InputTempEditActivationFor :: (pressed: bool, control: bool,
     same_kind: bool, same_widget: bool, same_component: bool,
-    elapsed_seconds: float, dx: float, dy: float, slop: i32) -> bool #export {
+    elapsed_seconds: float32, dx: float32, dy: float32, slop: s32) -> bool {
     if !pressed {
         return false
     }
@@ -87,144 +93,157 @@ InputTempEditActivationFor :: (pressed: bool, control: bool,
         return true
     }
     if slop < 0 { slop = 0 }
-    if dx < (float)-slop || dx > (float)slop {
+    if dx < cast(float32)-slop || dx > cast(float32)slop {
         return false
     }
-    if dy < (float)-slop || dy > (float)slop {
+    if dy < cast(float32)-slop || dy > cast(float32)slop {
         return false
     }
     return same_kind && same_widget && same_component &&
         elapsed_seconds <= 0.30
 }
 
-InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
-    requested_button_width: i32, has_step: bool) -> InputCellLayout #export {
+#program_export
+InputCellLayoutFor :: (bounds: Rectangle, count: s32, index: s32,
+    requested_button_width: s32, has_step: bool) -> InputCellLayout {
     layout: InputCellLayout
     if count <= 0 { return layout }
 
     if index < 0 { index = 0 }
     if index >= count { index = count - 1 }
 
-    layout.cell.x = bounds.x + bounds.width * (float)index / (float)count
+    layout.cell.x = bounds.x + bounds.width * cast(float32)index / cast(float32)count
     layout.cell.y = bounds.y
-    layout.cell.width = bounds.width / (float)count
+    layout.cell.width = bounds.width / cast(float32)count
     layout.cell.height = bounds.height
     layout.field = layout.cell
     layout.minus = layout.cell
     layout.plus = layout.cell
 
     if has_step {
-        button_width: i32 = requested_button_width
+        button_width: s32 = requested_button_width
         if button_width < 0 { button_width = 0 }
-        max_button: i32 = (i32)(layout.cell.width / 2.0)
+        max_button: s32 = cast(s32)(layout.cell.width / 2.0)
         if button_width > max_button { button_width = max_button }
-        layout.field.width = layout.field.width - (float)(button_width * 2)
+        layout.field.width = layout.field.width - cast(float32)(button_width * 2)
         if layout.field.width < 0.0 { layout.field.width = 0.0 }
         layout.minus.x = layout.field.x + layout.field.width
-        layout.minus.width = (float)button_width
+        layout.minus.width = cast(float32)button_width
         layout.plus.x = layout.minus.x + layout.minus.width
-        layout.plus.width = (float)button_width
+        layout.plus.width = cast(float32)button_width
         layout.has_step_buttons = button_width > 0
     }
 
     return layout
 }
 
-InputContinuousEffectiveStep :: (step: float, step_fast: float, fast: bool) -> float #export {
+#program_export
+InputContinuousEffectiveStep :: (step: float32, step_fast: float32, fast: bool) -> float32 {
     if fast && step_fast != 0.0 { return step_fast }
     return step
 }
 
-InputDiscreteEffectiveStep :: (step: i32, step_fast: i32, fast: bool) -> i32 #export {
+#program_export
+InputDiscreteEffectiveStep :: (step: s32, step_fast: s32, fast: bool) -> s32 {
     if fast && step_fast != 0 { return step_fast }
     return step
 }
 
-InputEffectiveStep :: (step: f64, step_fast: f64, fast: bool) -> f64 #export {
+#program_export
+InputEffectiveStep :: (step: float64, step_fast: float64, fast: bool) -> float64 {
     if fast && step_fast != 0.0 { return step_fast }
     return step
 }
 
-InputKindIsFloat :: (kind: NumericValueKind) -> bool #export {
-    return (i32)kind == (i32)NumericFloat
+#program_export
+InputKindIsFloat :: (kind: NumericValueKind) -> bool {
+    return cast(s32)kind == cast(s32)NumericFloat
 }
 
-InputKindIsInt :: (kind: NumericValueKind) -> bool #export {
-    return (i32)kind == (i32)NumericInt
+#program_export
+InputKindIsInt :: (kind: NumericValueKind) -> bool {
+    return cast(s32)kind == cast(s32)NumericInt
 }
 
-InputKindIsDouble :: (kind: NumericValueKind) -> bool #export {
-    return (i32)kind == (i32)NumericDouble
+#program_export
+InputKindIsDouble :: (kind: NumericValueKind) -> bool {
+    return cast(s32)kind == cast(s32)NumericDouble
 }
 
-InputDefaultFormat :: (kind: NumericValueKind) -> string #export {
+#program_export
+InputDefaultFormat :: (kind: NumericValueKind) -> string {
     if InputKindIsInt(kind) { return "%d" }
     if InputKindIsDouble(kind) { return "%.6f" }
     return "%.3f"
 }
 
-InputRoundValueForKind :: (kind: NumericValueKind, value: f64) -> f64 #export {
+#program_export
+InputRoundValueForKind :: (kind: NumericValueKind, value: float64) -> float64 {
     if InputKindIsInt(kind) {
-        if value < 0.0 { return (f64)((i32)(value - 0.5)) }
-        return (f64)((i32)(value + 0.5))
+        if value < 0.0 { return cast(float64)(cast(s32)(value - 0.5)) }
+        return cast(float64)(cast(s32)(value + 0.5))
     }
     return value
 }
 
-InputContinuousStepValue :: (value: float, step: float, step_fast: float,
-    direction: i32, fast: bool) -> InputContinuousStep #export {
+#program_export
+InputContinuousStepValue :: (value: float32, step: float32, step_fast: float32,
+    direction: s32, fast: bool) -> InputContinuousStep {
     result: InputContinuousStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0.0 { return result }
-    next: float = value + (float)direction *
+    next: float32 = value + cast(float32)direction *
         InputContinuousEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result
 }
 
-InputDiscreteStepValue :: (value: i32, step: i32, step_fast: i32,
-    direction: i32, fast: bool) -> InputDiscreteStep #export {
+#program_export
+InputDiscreteStepValue :: (value: s32, step: s32, step_fast: s32,
+    direction: s32, fast: bool) -> InputDiscreteStep {
     result: InputDiscreteStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0 { return result }
-    next: i32 = value + direction * InputDiscreteEffectiveStep(step, step_fast, fast)
+    next: s32 = value + direction * InputDiscreteEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result
 }
 
-InputStepValue :: (value: f64, step: f64, step_fast: f64,
-    direction: i32, fast: bool) -> InputStep #export {
+#program_export
+InputStepValue :: (value: float64, step: float64, step_fast: float64,
+    direction: s32, fast: bool) -> InputStep {
     result: InputStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0.0 { return result }
-    next: f64 = value + (f64)direction *
+    next: float64 = value + cast(float64)direction *
         InputEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result
 }
 
-InputStepValueForKind :: (kind: NumericValueKind, value: f64, step: f64,
-    step_fast: f64, direction: i32, fast: bool) -> InputStep #export {
+#program_export
+InputStepValueForKind :: (kind: NumericValueKind, value: float64, step: float64,
+    step_fast: float64, direction: s32, fast: bool) -> InputStep {
     result: InputStep
     result.value = value
     result.changed = false
     if InputKindIsInt(kind) {
-        stepped: InputDiscreteStep = InputDiscreteStepValue((i32)value,
-            (i32)step, (i32)step_fast, direction, fast)
-        result.value = (f64)stepped.value
+        stepped: InputDiscreteStep = InputDiscreteStepValue(cast(s32)value,
+            cast(s32)step, cast(s32)step_fast, direction, fast)
+        result.value = cast(float64)stepped.value
         result.changed = stepped.changed
         return result
     }
     if InputKindIsFloat(kind) {
         continuous: InputContinuousStep = InputContinuousStepValue(
-            (float)value, (float)step, (float)step_fast, direction, fast)
-        result.value = (f64)continuous.value
+            cast(float32)value, cast(float32)step, cast(float32)step_fast, direction, fast)
+        result.value = cast(float64)continuous.value
         result.changed = continuous.changed
         return result
     }

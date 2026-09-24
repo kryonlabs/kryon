@@ -1,26 +1,25 @@
-#module "accessibility_node"
 #import "geometry"
 
 AccessibilityNode :: struct {
     bounds: Rectangle
-    role: const char*
-    label: const char*
+    role: string
+    label: string
     focused: bool
     disabled: bool
     checked: bool
-    focus_id: i32
-    value: const char*
+    focus_id: s32
+    value: string
     read_only: bool
     secure: bool
     multiline: bool
     generation: u64
-    actions: unsigned
-    selection_anchor: i32
-    selection_cursor: i32
+    actions: u32
+    selection_anchor: s32
+    selection_cursor: s32
     key: u64
-    parent: unsigned
+    parent: u32
     selected: bool
     multi_select: bool
-    item_index: i32
+    item_index: s32
     offscreen: bool
 }

@@ -1,21 +1,39 @@
-#module "canvas_props"
+#import "canvas"
 #import "geometry"
 
 Canvas :: struct {
     bounds: Rectangle
-    class_name: i32
-    scroll_x: i32*
-    scroll_y: i32*
-    zoom: f32*
+    class_name: s32
+    scroll_x: s32
+    scroll_y: s32
+    zoom: float32
 }
 
 CanvasResult :: struct {
     active: bool
     dragging: bool
-    selected_index: i32
+    selected_index: s32
     world: Vector2
 }
 
-CanvasHitTest :: (point: Vector2, items: *Rectangle, item_count: i32) -> i32 #extern #export
-CanvasToScreen :: (canvas: Canvas, point: Vector2) -> Vector2 #extern #export
-CanvasRectToScreen :: (canvas: Canvas, rect: Rectangle) -> Rectangle #extern #export
+#program_export
+CanvasHitTest :: (point: Vector2, items: []Rectangle) -> s32 {
+    index: s32 = items.length
+    while index > 0 {
+        index -= 1
+        if CanvasContains(items[index], point) { return index }
+    }
+    return -1
+}
+
+#program_export
+CanvasToScreen :: (canvas: Canvas, point: Vector2) -> Vector2 {
+    return CanvasPointToScreen(canvas.bounds, point, canvas.scroll_x,
+        canvas.scroll_y, canvas.zoom)
+}
+
+#program_export
+CanvasRectToScreen :: (canvas: Canvas, rect: Rectangle) -> Rectangle {
+    return CanvasRectToScreenBounds(canvas.bounds, rect, canvas.scroll_x,
+        canvas.scroll_y, canvas.zoom)
+}

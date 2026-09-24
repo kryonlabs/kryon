@@ -1,4 +1,3 @@
-#module "input_props"
 #import "geometry"
 
 NumericValueKind :: enum {
@@ -16,15 +15,15 @@ Activation :: struct {
 
 InputProps :: struct {
     bounds: Rectangle
-    id: i32
-    label: const char*
+    id: s32
+    label: string
     kind: NumericValueKind
-    float_values: float*
-    int_values: i32*
-    double_values: double*
-    value_count: i32
-    step: double
-    step_fast: double
-    format: const char*
+    float_values: *float32
+    int_values: *s32
+    double_values: *float64
+    value_count: s32
+    step: float64
+    step_fast: float64
+    format: string
     disabled: bool
 }

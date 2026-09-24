@@ -1,4 +1,3 @@
-#module "drag_props"
 #import "geometry"
 #import "input_props"
 
@@ -9,22 +8,22 @@ DragMode :: enum {
 
 DragProps :: struct {
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    label: const char*
+    id: s32
+    class_name: s32
+    label: string
     kind: NumericValueKind
     mode: DragMode
-    float_values: float*
-    int_values: i32*
-    value_count: i32
-    float_min: float*
-    float_max: float*
-    int_min: i32*
-    int_max: i32*
-    speed: float
-    min: double
-    max: double
-    format: const char*
-    format_max: const char*
+    float_values: *float32
+    int_values: *s32
+    value_count: s32
+    float_min: *float32
+    float_max: *float32
+    int_min: *s32
+    int_max: *s32
+    speed: float32
+    min: float64
+    max: float64
+    format: string
+    format_max: string
     disabled: bool
 }

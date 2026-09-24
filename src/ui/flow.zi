@@ -1,27 +1,27 @@
-#module "flow"
 #import "geometry"
 #import "layout"
 #import "layout_widget"
 
 FlowProps :: struct {
     bounds: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
     key: u64
 }
 
 FlowResult :: struct {
-    node: i32
+    node: s32
     opened: bool
     bounds: Rectangle
     content: Rectangle
-    gap: i32
-    padding: i32
+    gap: s32
+    padding: s32
 }
 
 # Flow places its children along a row. The caller uses FlowChildBounds before
 # submitting each child, then closes the retained scope with End().
-Flow :: (props: FlowProps) -> FlowResult #export {
+#program_export
+Flow :: (props: FlowProps) -> FlowResult {
     row: ColumnProps
     row.bounds = props.bounds
     row.gap = props.gap
@@ -38,9 +38,10 @@ Flow :: (props: FlowProps) -> FlowResult #export {
     return result
 }
 
+#program_export
 FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
-    measured: Rectangle, child_index: i32,
-    previous_width_sum: float) -> Rectangle #export {
+    measured: Rectangle, child_index: s32,
+    previous_width_sum: float32) -> Rectangle {
     container: LayoutContainer
     container.bounds = flow.bounds
     container.gap = flow.gap

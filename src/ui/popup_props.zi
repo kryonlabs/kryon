@@ -1,4 +1,3 @@
-#module "popup_props"
 #import "geometry"
 
 PopupFlags :: enum {
@@ -10,9 +9,9 @@ PopupFlags :: enum {
 
 PopupProps :: struct {
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    open: bool*
+    id: s32
+    class_name: s32
+    open: *bool
     disabled: bool
     trigger: Rectangle
     flags: PopupFlags

@@ -1,4 +1,3 @@
-#module "drag_drop_props"
 #import "geometry"
 
 DragDropRole :: enum {
@@ -8,14 +7,14 @@ DragDropRole :: enum {
 
 DragDropProps :: struct {
     bounds: Rectangle
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     role: DragDropRole
-    type: const char*
-    data: const void*
-    data_size: i32
-    output: void*
-    output_size: i32
-    accepted_size: i32*
+    type: string
+    data: *u8
+    data_size: s32
+    output: *u8
+    output_size: s32
+    accepted_size: *s32
     disabled: bool
 }
