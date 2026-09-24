@@ -23,10 +23,10 @@ modules call.
 
 Every maintained `.zi` module in `src/ui/` appears in
 [`src/ui/modules.txt`](../src/ui/modules.txt). The current Ziran syntax
-transition has migrated 86 of the 191 modules. That subset passes source
+transition has migrated 106 of the 191 modules. That subset passes source
 checking, strict C, C++, and Go generation, native C/C++ compilation, and Go
 package compilation. The full Kryon `make all` gate remains red until the
-other 105 modules and the backend host declarations use current Ziran syntax.
+other 85 modules and the backend host declarations use current Ziran syntax.
 Platform hosts and downstream applications have not yet completed their
 integration with the library.
 
