@@ -96,9 +96,7 @@ Answer :: () -> s32 {
     text: TextProps
     text.text = "one two"
     text.wrap = cast(TextWrap)TextWrapAuto
-    element: TextElement
-    element.text = text.text
-    if element.text != "one two" ||
+    if text.text != "one two" ||
         TextWrapPolicy(text.bounds.width, cast(s32)text.wrap) != 1 { return 0 }
     return 42
 }

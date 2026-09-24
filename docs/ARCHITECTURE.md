@@ -144,6 +144,10 @@ and queues clipped text and strikethrough paint from Ziran. The platform
 provides raw byte slices, glyph metrics, and a raster callback that honors the
 chosen clip. Letter spacing, parent style inheritance, and selectable text
 interaction remain open.
+`text_props.zi` contains the value props and common font sizes. Its unused
+C-only layout and font-registration declarations were removed; the checked
+text path requests glyph measurements through `font_metrics.zi` and paint
+through `raster_text.zi`.
 The checked `Image(ImageProps)` composition now resolves KSS class styles,
 uses asset dimensions or a supplied texture handle, selects source and fit,
 and queues an image command with clip, radius, tint, origin, and rotation.
