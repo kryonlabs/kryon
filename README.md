@@ -37,8 +37,8 @@ host effect contract.
 See [frame replay](docs/FRAME_REPLAY.md) for committed UI and paint capture
 with scripted input on a headless host.
 The [Ziran example](examples/README.md) builds a `.zib` that imports Kryon and
-runs a retained `Button` press and release through a separate SVG host without
-a display.
+runs a retained `Button` press and release through a separate Ziran SVG host
+without a display.
 
 ## Migration status
 

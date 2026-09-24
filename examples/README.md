@@ -2,10 +2,10 @@
 
 `hello.zi` is a small Ziran application that imports Kryon's ordinary
 `Button` and pointer modules. It builds a retained tree, handles a press and
-release, and changes the button label after the click. `hello_host.c` supplies
-four raw pointer samples through Kryon's `PointerBinding`, plus font
-measurements and SVG raster effects through
-declared host bindings. No window or display server is opened.
+release, and changes the button label after the click. `hello_host.zi` supplies
+four raw pointer samples, font measurements, and SVG drawing effects. The
+application and host are both Ziran source. No window or display server is
+opened.
 
 From the Kryon repository root, with Ziran checked out beside it:
 
@@ -14,17 +14,19 @@ make -C examples
 make -C examples test
 ```
 
-The first command builds `build/examples/ziran/hello.zib`, runs one persistent
-bundle instance across four frames, and writes
+The first command builds `build/examples/ziran/hello.zib`, generates and links
+a native program from the two `.zi` sources, and writes
 `build/examples/ziran/hello.svg`. Open the SVG in an image viewer to see the
 idle, pressed, released, and clicked frames side by side. The test also bundles
-the saved `.zir`, verifies that both `.zib` files match, runs both, compares
-their SVG output, and checks that exactly one click changed the label.
+the saved `.zir`, verifies that both `.zib` files match, and checks the native
+host's four-frame click result and SVG content. The portable bundle is built
+and compared here; its execution is covered by the separate portable runtime
+tests.
 
-This example shows the intended application boundary: Ziran bundles only the
+This example shows the intended application boundary: Ziran compiles only the
 modules the application imports; Kryon supplies widget decisions; a separate
-host supplies raw input, font, and drawing effects. Production window loops,
-platform text services, and the remaining widget migration are still in
+Ziran host supplies raw input, font, and drawing effects. Production window
+loops, platform text services, and the remaining widget migration are still in
 progress.
 
 An optional SDL2/Cairo desktop host runs the same bundle in a real window.

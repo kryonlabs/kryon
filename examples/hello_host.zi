@@ -1,0 +1,243 @@
+#import "drawing_props"
+#import "geometry"
+#import "hello"
+#import "tree_input"
+
+c :: #system_library "c";
+putchar :: (character: s32) -> s32 #foreign c;
+
+pointer: PointerFrame;
+shape_count: s32;
+label_count: s32;
+clip_count: s32;
+image_error: bool;
+
+Write :: (value: string) {
+    index: s32 = 0
+    while index < cast(s32)value.count {
+        putchar(cast(s32)value[index])
+        index += 1
+    }
+}
+
+WriteInt :: (value: s32) {
+    number: s64 = cast(s64)value
+    if number < 0 {
+        putchar(45)
+        number = -number
+    }
+    if number == 0 {
+        putchar(48)
+        return
+    }
+    digits: [20]u8
+    count: s32 = 0
+    while number > 0 {
+        digits[count] = cast(u8)(number % 10) + cast(u8)48
+        number /= 10
+        count += 1
+    }
+    while count > 0 {
+        count -= 1
+        putchar(cast(s32)digits[count])
+    }
+}
+
+WriteHexDigit :: (value: u8) {
+    if value < cast(u8)10 {
+        putchar(cast(s32)value + 48)
+    } else {
+        putchar(cast(s32)value + 87)
+    }
+}
+
+WriteHexByte :: (value: u8) {
+    WriteHexDigit(value / cast(u8)16)
+    WriteHexDigit(value % cast(u8)16)
+}
+
+WriteOpacity :: (alpha: u8) {
+    if alpha == cast(u8)255 {
+        Write("1")
+        return
+    }
+    value: s32 = (cast(s32)alpha * 1000 + 127) / 255
+    Write("0.")
+    putchar(48 + value / 100)
+    putchar(48 + (value / 10) % 10)
+    putchar(48 + value % 10)
+}
+
+WriteColor :: (color: Color, attribute: string) {
+    Write(attribute)
+    Write("=\"#")
+    WriteHexByte(color.r)
+    WriteHexByte(color.g)
+    WriteHexByte(color.b)
+    Write("\" opacity=\"")
+    WriteOpacity(color.a)
+    Write("\"")
+}
+
+WriteEscaped :: (value: string) {
+    index: s32 = 0
+    while index < cast(s32)value.count {
+        character: u8 = value[index]
+        if character == cast(u8)38 {
+            Write("&amp;")
+        } else if character == cast(u8)60 {
+            Write("&lt;")
+        } else if character == cast(u8)62 {
+            Write("&gt;")
+        } else if character == cast(u8)34 {
+            Write("&quot;")
+        } else {
+            putchar(cast(s32)character)
+        }
+        index += 1
+    }
+}
+
+WriteRect :: (bounds: Rectangle) {
+    Write(" x=\"")
+    WriteInt(cast(s32)bounds.x)
+    Write("\" y=\"")
+    WriteInt(cast(s32)bounds.y)
+    Write("\" width=\"")
+    WriteInt(cast(s32)bounds.width)
+    Write("\" height=\"")
+    WriteInt(cast(s32)bounds.height)
+    Write("\"")
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    return (cast(s32)value.count * font * 3) / 5
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    return font
+}
+
+#program_export
+PollPointer :: () -> PointerFrame {
+    return pointer
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    Write("<rect")
+    WriteRect(bounds)
+    Write(" rx=\"")
+    WriteInt(cast(s32)radius)
+    Write("\" ")
+    WriteColor(color, "fill")
+    Write("/>\n")
+    shape_count += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    Write("<rect")
+    WriteRect(bounds)
+    Write(" rx=\"")
+    WriteInt(cast(s32)radius)
+    Write("\" fill=\"none\" stroke-width=\"")
+    WriteInt(cast(s32)width)
+    Write("\" ")
+    WriteColor(color, "stroke")
+    Write("/>\n")
+    shape_count += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    Write("<line x1=\"")
+    WriteInt(cast(s32)line.x)
+    Write("\" y1=\"")
+    WriteInt(cast(s32)line.y)
+    Write("\" x2=\"")
+    WriteInt(cast(s32)(line.x + line.width))
+    Write("\" y2=\"")
+    WriteInt(cast(s32)(line.y + line.height))
+    Write("\" ")
+    WriteColor(color, "stroke")
+    Write("/>\n")
+    shape_count += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32,
+    font: s32, color: Color) {
+    Write("<text x=\"")
+    WriteInt(x)
+    Write("\" y=\"")
+    WriteInt(y + font)
+    Write("\" font-size=\"")
+    WriteInt(font)
+    Write("\" ")
+    WriteColor(color, "fill")
+    Write(">")
+    WriteEscaped(value)
+    Write("</text>\n")
+    label_count += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    clip_count += 1
+    Write("<defs><clipPath id=\"clip")
+    WriteInt(clip_count)
+    Write("\"><rect")
+    WriteRect(clip)
+    Write("/></clipPath></defs>\n<g clip-path=\"url(#clip")
+    WriteInt(clip_count)
+    Write(")\">\n")
+    RasterText(value, x, y, font, color)
+    Write("</g>\n")
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    image_error = true
+}
+
+#program_export
+main :: () -> s32 {
+    Write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1280\" ")
+    Write("height=\"160\" viewBox=\"0 0 1280 160\">\n")
+    frame: s32 = 0
+    while frame < 4 {
+        pointer.x = 80.0
+        pointer.y = 70.0
+        pointer.down = frame == 1
+        pointer.pressed = frame == 1
+        pointer.released = frame == 2
+        Write("<g transform=\"translate(")
+        WriteInt(frame * 320)
+        Write(" 0)\">\n<rect width=\"320\" height=\"160\" ")
+        Write("fill=\"#f8fafc\"/>\n")
+        result: s32 = Frame()
+        expected: s32 = 2
+        if frame >= 2 { expected = 102 }
+        if result != expected || image_error { return 1 }
+        Write("</g>\n")
+        frame += 1
+    }
+    Write("</svg>\n")
+    if shape_count < 4 || label_count != 4 { return 1 }
+    return 0
+}
