@@ -1,11 +1,10 @@
-#module "navigation_bar_config_props"
 #import "dropdown"
 #import "geometry"
 #import "image_props"
 
 NavigationBarOption :: struct {
     key: u64
-    route: i32
+    route: s32
     label: string
     image: ImageProps
 }
@@ -14,22 +13,22 @@ NavigationBarOption :: struct {
 # state must be passed back on the next frame.
 NavigationBarConfigProps :: struct {
     key: u64
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     title: string
     bounds: Rectangle
-    scale: float
-    route_count: i32
-    max_route_count: i32
-    scroll_offset: i32
-    wheel: float
+    scale: float32
+    route_count: s32
+    max_route_count: s32
+    scroll_offset: s32
+    wheel: float32
     dropdown_open: bool
-    dropdown_row: i32
-    dropdown_highlight_index: i32
-    dropdown_scroll_offset: i32
-    dropdown_wheel: float
+    dropdown_row: s32
+    dropdown_highlight_index: s32
+    dropdown_scroll_offset: s32
+    dropdown_wheel: float32
     # Route keyboard samples to focused_row; the caller owns focus.
-    focused_row: i32
+    focused_row: s32
     trigger_input: DropdownTriggerInput
     menu_input: DropdownMenuInput
     close_label: string
@@ -41,13 +40,13 @@ NavigationBarConfigProps :: struct {
 }
 
 NavigationBarConfigResult :: struct {
-    node: i32
-    action: i32
+    node: s32
+    action: s32
     changed: bool
-    route_count: i32
-    scroll_offset: i32
+    route_count: s32
+    scroll_offset: s32
     dropdown_open: bool
-    dropdown_row: i32
-    dropdown_highlight_index: i32
-    dropdown_scroll_offset: i32
+    dropdown_row: s32
+    dropdown_highlight_index: s32
+    dropdown_scroll_offset: s32
 }

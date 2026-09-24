@@ -1,10 +1,11 @@
-#module "raster"
 #import "drawing_props"
 #import "geometry"
+host_api :: #system_library "host_api";
 
 # The platform supplies rasterization; widgets decide what to draw.
-RasterLine :: (line: Rectangle, color: Color) #extern
+RasterLine :: (line: Rectangle, color: Color) #foreign host_api;
 
-StrokeLine :: (line: Rectangle, color: Color) #export {
+#program_export
+StrokeLine :: (line: Rectangle, color: Color) {
     RasterLine(line, color)
 }

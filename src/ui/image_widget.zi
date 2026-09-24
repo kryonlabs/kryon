@@ -1,4 +1,3 @@
-#module "image_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -18,35 +17,38 @@ ImageFaces :: struct {
     label: StyleData
 }
 
-DefaultImageFaces :: () -> ImageFaces #export {
+#program_export
+DefaultImageFaces :: () -> ImageFaces {
     faces: ImageFaces
-    faces.surface.fields = (u32)StyleForeground |
-        (u32)StyleOpacity
-    faces.surface.foreground = (u32)0xffffffff
+    faces.surface.fields = cast(u32)StyleForeground |
+        cast(u32)StyleOpacity
+    faces.surface.foreground = cast(u32)0xffffffff
     faces.surface.opacity = 1.0
-    faces.label.fields = (u32)StyleForeground |
-        (u32)StyleFontSize
-    faces.label.foreground = (u32)0x171717ff
+    faces.label.fields = cast(u32)StyleForeground |
+        cast(u32)StyleFontSize
+    faces.label.foreground = cast(u32)0x171717ff
     faces.label.font_size = 14.0
     return faces
 }
 
+#program_export
 ImageFacesFor :: (rules: StyleRules, image: ImageProps,
-    defaults: ImageFaces) -> ImageFaces #export {
+    defaults: ImageFaces) -> ImageFaces {
     faces: ImageFaces = defaults
     facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
     facts.class_name = image.class_name
     faces.surface = ResolveStyleRules(rules, defaults.surface, facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     facts.role = ImageLabelRole()
     faces.label = ResolveStyleRules(rules, defaults.label, facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     return faces
 }
 
-ImageTextureFor :: (image: ImageProps) -> Texture2D #export {
+#program_export
+ImageTextureFor :: (image: ImageProps) -> Texture2D {
     texture: Texture2D = image.texture
-    if texture.id != (u32)0 || image.asset_path == "" {
+    if texture.id != cast(u32)0 || image.asset_path == "" {
         return texture
     }
     texture.width = AssetWidth(image.asset_path)
@@ -54,28 +56,30 @@ ImageTextureFor :: (image: ImageProps) -> Texture2D #export {
     if texture.width > 0 && texture.height > 0 {
         # This marker makes the pure fit policy treat a host-backed asset as
         # available. RasterImage receives the original id 0 and asset path.
-        texture.id = (u32)1
+        texture.id = cast(u32)1
     }
     return texture
 }
 
-ImageTint :: (surface: StyleData) -> Color #export {
+#program_export
+ImageTint :: (surface: StyleData) -> Color {
     packed: u32 = surface.foreground
-    if (surface.fields & (u32)StyleForeground) == (u32)0 {
-        packed = (u32)0xffffffff
+    if (surface.fields & cast(u32)StyleForeground) == cast(u32)0 {
+        packed = cast(u32)0xffffffff
     }
     return ColorFromPacked(Opacity(packed,
         StyleOpacityValue(surface.fields, surface.opacity)))
 }
 
-PaintImagePlaceholder :: (node: i32, image: ImageProps,
-    label_style: StyleData) #export {
+#program_export
+PaintImagePlaceholder :: (node: s32, image: ImageProps,
+    label_style: StyleData) {
     label: string = image.alt_text
     if label == "" { label = "Missing image" }
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(label_style.fields, label_style.font_size), 14)
-    width: i32 = GlyphWidth(label, font, label_style.typeface)
-    height: i32 = GlyphLineHeight(font, label_style.typeface)
+    width: s32 = GlyphWidth(label, font, label_style.typeface)
+    height: s32 = GlyphLineHeight(font, label_style.typeface)
     layout: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(image.bounds,
         width, height)
     PaintLabel(node, label, layout.label_x, layout.label_y,
@@ -84,8 +88,9 @@ PaintImagePlaceholder :: (node: i32, image: ImageProps,
                 label_style.opacity))))
 }
 
-Image :: (image: ImageProps) #export {
-    node: i32 = -1
+#program_export
+Image :: (image: ImageProps) {
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(image.key, WidgetKindImage, image.bounds)
         if node < 0 { return }
@@ -93,25 +98,25 @@ Image :: (image: ImageProps) #export {
     }
     faces: ImageFaces = ImageFacesFor(ActiveStyleRules(), image,
         DefaultImageFaces())
-    radius: float = 0.0
-    if (faces.surface.fields & (u32)StyleRadius) != (u32)0 {
+    radius: float32 = 0.0
+    if (faces.surface.fields & cast(u32)StyleRadius) != cast(u32)0 {
         radius = faces.surface.radius
     }
-    if (faces.surface.fields & (u32)StyleBackground) != (u32)0 {
+    if (faces.surface.fields & cast(u32)StyleBackground) != cast(u32)0 {
         PaintRoundedFill(node, image.bounds, radius, 12,
             ColorFromPacked(faces.surface.background))
     }
     texture: Texture2D = ImageTextureFor(image)
     tint: Color = ImageTint(faces.surface)
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
-    if plan.draw && tint.a > (u8)0 {
+    if plan.draw && tint.a > cast(u8)0 {
         PaintImage(node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint)
     } else if !plan.draw {
         PaintImagePlaceholder(node, image, faces.label)
     }
-    if (faces.surface.fields & (u32)StyleBorderWidth) != (u32)0 &&
+    if (faces.surface.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
         faces.surface.border_width > 0.0 {
         PaintRoundedOutline(node, image.bounds, radius, 12,
             faces.surface.border_width,

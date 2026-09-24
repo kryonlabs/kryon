@@ -1,4 +1,3 @@
-#module "plot_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -17,58 +16,61 @@ PlotFaces :: struct {
     mark: StyleFrame
 }
 
-DefaultPlotFaces :: () -> PlotFaces #export {
+#program_export
+DefaultPlotFaces :: () -> PlotFaces {
     faces: PlotFaces
-    faces.plot.value.fields = (u32)StyleBackground |
-        (u32)StyleForeground | (u32)StyleBorder |
-        (u32)StyleBorderWidth | (u32)StyleRadius |
-        (u32)StyleFontSize | (u32)StylePaddingX |
-        (u32)StylePaddingY | (u32)StyleOpacity
-    faces.plot.value.background = (u32)0xf5f5f5ff
-    faces.plot.value.foreground = (u32)0x171717ff
-    faces.plot.value.border = (u32)0x737373ff
+    faces.plot.value.fields = cast(u32)StyleBackground |
+        cast(u32)StyleForeground | cast(u32)StyleBorder |
+        cast(u32)StyleBorderWidth | cast(u32)StyleRadius |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY | cast(u32)StyleOpacity
+    faces.plot.value.background = cast(u32)0xf5f5f5ff
+    faces.plot.value.foreground = cast(u32)0x171717ff
+    faces.plot.value.border = cast(u32)0x737373ff
     faces.plot.value.border_width = 1.0
     faces.plot.value.radius = 4.0
     faces.plot.value.font_size = 14.0
     faces.plot.value.padding_x = 6.0
     faces.plot.value.padding_y = 4.0
     faces.plot.value.opacity = 1.0
-    faces.mark.value.fields = (u32)StyleBackground |
-        (u32)StyleOpacity
-    faces.mark.value.background = (u32)0x3b609bff
+    faces.mark.value.fields = cast(u32)StyleBackground |
+        cast(u32)StyleOpacity
+    faces.mark.value.background = cast(u32)0x3b609bff
     faces.mark.value.opacity = 1.0
     return faces
 }
 
+#program_export
 PlotFacesFor :: (rules: StyleRules, props: PlotProps,
-    defaults: PlotFaces) -> PlotFaces #export {
+    defaults: PlotFaces) -> PlotFaces {
     faces: PlotFaces = defaults
     plot_facts: StyleFacts = StyleControlRoleFacts(StyleKindPlot(),
         props.id, props.class_name, StyleAny(),
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     mark_facts: StyleFacts = StyleControlRoleFacts(StyleKindPlotMark(),
         props.id, props.class_name, StyleAny(),
-        (i32)ButtonToneAccent, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        cast(s32)ButtonToneAccent, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     faces.plot.value = ResolveStyleRules(rules, defaults.plot.value,
-        plot_facts, (i32)ButtonStateNormal)
+        plot_facts, cast(s32)ButtonStateNormal)
     faces.mark.value = ResolveStyleRules(rules, defaults.mark.value,
-        mark_facts, (i32)ButtonStateNormal)
+        mark_facts, cast(s32)ButtonStateNormal)
     return faces
 }
 
-PlotObservedRange :: (values: []float,
-    offset: i32, props: PlotProps) -> PlotRange #export {
+#program_export
+PlotObservedRange :: (values: []float32,
+    offset: s32, props: PlotProps) -> PlotRange {
     offset = PlotOffset(values.length, offset)
-    observed_min: float = 0.0
-    observed_max: float = 0.0
+    observed_min: float32 = 0.0
+    observed_max: float32 = 0.0
     if values.length > 0 {
         observed_min = values[offset]
         observed_max = observed_min
-        index: i32 = 1
+        index: s32 = 1
         while index < values.length {
-            value: float = values[(offset + index) % values.length]
+            value: float32 = values[(offset + index) % values.length]
             if value < observed_min { observed_min = value }
             if value > observed_max { observed_max = value }
             index += 1
@@ -80,13 +82,14 @@ PlotObservedRange :: (values: []float,
 
 # Values are borrowed for this frame. The retained node keeps only its key,
 # bounds, and semantic label; the caller supplies the next frame's values.
-Plot :: (props: PlotProps, values: []float) -> i32 #export {
+#program_export
+Plot :: (props: PlotProps, values: []float32) -> s32 {
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return -1 }
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
-    node: i32 = -1
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(key, WidgetKindPlot, bounds)
         if node < 0 { return -1 }
@@ -95,7 +98,7 @@ Plot :: (props: PlotProps, values: []float) -> i32 #export {
     }
     faces: PlotFaces = PlotFacesFor(ActiveStyleRules(), props,
         DefaultPlotFaces())
-    opacity: float = StyleOpacityValue(faces.plot.value.fields,
+    opacity: float32 = StyleOpacityValue(faces.plot.value.fields,
         faces.plot.value.opacity)
     PaintRoundedFill(node, bounds, faces.plot.value.radius, 12,
         ColorFromPacked(Opacity(faces.plot.value.background, opacity)))
@@ -105,14 +108,14 @@ Plot :: (props: PlotProps, values: []float) -> i32 #export {
             ColorFromPacked(Opacity(faces.plot.value.border, opacity)))
     }
     if values.length > 0 {
-        offset: i32 = PlotOffset(values.length, props.offset)
+        offset: s32 = PlotOffset(values.length, props.offset)
         value_range: PlotRange = PlotObservedRange(values, offset, props)
         mark_color: Color = ColorFromPacked(Opacity(
             faces.mark.value.background,
             StyleOpacityValue(faces.mark.value.fields,
                 faces.mark.value.opacity)))
-        index: i32 = 0
-        if props.mode == (PlotMode)PlotBars {
+        index: s32 = 0
+        if props.mode == cast(PlotMode)PlotBars {
             while index < values.length {
                 mark: PlotMark = PlotHistogramBar(bounds, index,
                     values.length, values[(offset + index) % values.length],
@@ -129,8 +132,8 @@ Plot :: (props: PlotProps, values: []float) -> i32 #export {
         } else {
             index = 1
             while index < values.length {
-                a: float = values[(offset + index - 1) % values.length]
-                b: float = values[(offset + index) % values.length]
+                a: float32 = values[(offset + index - 1) % values.length]
+                b: float32 = values[(offset + index) % values.length]
                 mark: PlotMark = PlotLineSegment(bounds, index,
                     values.length, a, b, value_range, faces.mark)
                 PaintLine(node, mark.bounds, mark_color)
@@ -139,17 +142,17 @@ Plot :: (props: PlotProps, values: []float) -> i32 #export {
         }
     }
     if props.label != "" || props.overlay != "" {
-        font: i32 = ResolveFont(0,
+        font: s32 = ResolveFont(0,
             StyleFontValue(faces.plot.value.fields,
                 faces.plot.value.font_size), 14)
-        label_width: float = 0.0
-        overlay_width: float = 0.0
+        label_width: float32 = 0.0
+        overlay_width: float32 = 0.0
         if props.label != "" {
-            label_width = (float)GlyphWidth(props.label, font,
+            label_width = cast(float32)GlyphWidth(props.label, font,
                 faces.plot.value.typeface)
         }
         if props.overlay != "" {
-            overlay_width = (float)GlyphWidth(props.overlay, font,
+            overlay_width = cast(float32)GlyphWidth(props.overlay, font,
                 faces.plot.value.typeface)
         }
         paint: PlotTextPaint = PlotTextPaintFor(bounds, label_width,
@@ -159,13 +162,13 @@ Plot :: (props: PlotProps, values: []float) -> i32 #export {
             opacity))
         if paint.show_label {
             PaintClippedLabel(node, props.label,
-                (i32)paint.label_bounds.x,
-                (i32)paint.label_bounds.y, font, text_color, bounds)
+                cast(s32)paint.label_bounds.x,
+                cast(s32)paint.label_bounds.y, font, text_color, bounds)
         }
         if paint.show_overlay {
             PaintClippedLabel(node, props.overlay,
-                (i32)paint.overlay_bounds.x,
-                (i32)paint.overlay_bounds.y, font, text_color, bounds)
+                cast(s32)paint.overlay_bounds.x,
+                cast(s32)paint.overlay_bounds.y, font, text_color, bounds)
         }
     }
     return node

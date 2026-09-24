@@ -1,16 +1,16 @@
-#module "card"
 #import "card_props"
 #import "button_props"
 #import "control_props"
 #import "geometry"
 
-CardButtonProps :: (card: CardProps) -> ButtonProps #export {
+#program_export
+CardButtonProps :: (card: CardProps) -> ButtonProps {
     button: ButtonProps
 
     button.bounds = card.bounds
     if card.clickable { button.id = card.id }
     button.class_name = card.class_name
-    button.size = (ControlSize)ControlSizeLarge
+    button.size = cast(ControlSize)ControlSizeLarge
     button.disabled = card.disabled
     button.selected = card.selected
     button.state = card.state

@@ -1,20 +1,22 @@
-#module "raster_text"
 #import "drawing_props"
 #import "geometry"
+host_api :: #system_library "host_api";
 
 # Text bytes are borrowed for the call; the platform owns glyph rasterization.
-RasterText :: (value: string, x: i32, y: i32, font: i32,
-    color: Color) #extern
-RasterTextClipped :: (value: string, x: i32, y: i32, font: i32,
-    color: Color, clip: Rectangle) #extern
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) #foreign host_api;
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) #foreign host_api;
 
-PaintText :: (value: string, x: i32, y: i32, font: i32,
-    color: Color) #export {
+#program_export
+PaintText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
     RasterText(value, x, y, font, color)
 }
 
-PaintTextClipped :: (value: string, x: i32, y: i32, font: i32,
-    color: Color, clip: Rectangle) #export {
+#program_export
+PaintTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
     if clip.width <= 0.0 || clip.height <= 0.0 { return }
     RasterTextClipped(value, x, y, font, color, clip)
 }

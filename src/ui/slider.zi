@@ -1,4 +1,3 @@
-#module "slider"
 #import "button"
 #import "control_props"
 #import "drawing_props"
@@ -8,12 +7,12 @@
 
 SliderSpec :: struct {
     bounds: Rectangle
-    ratio: float
+    ratio: float32
     vertical: bool
     active: bool
     hovered: bool
     disabled: bool
-    scale: float
+    scale: float32
     track: StyleFrame
     active_track: StyleFrame
     thumb: StyleFrame
@@ -23,16 +22,16 @@ SliderPaint :: struct {
     bounds: Rectangle
     track_bounds: Rectangle
     active_bounds: Rectangle
-    thumb_x: float
-    thumb_y: float
-    thumb_radius: float
-    glow_radius: float
-    thumb_shadow_x: float
-    thumb_shadow_y: float
-    thumb_shadow_radius: float
-    thumb_highlight_x: float
-    thumb_highlight_y: float
-    thumb_highlight_radius: float
+    thumb_x: float32
+    thumb_y: float32
+    thumb_radius: float32
+    glow_radius: float32
+    thumb_shadow_x: float32
+    thumb_shadow_y: float32
+    thumb_shadow_radius: float32
+    thumb_highlight_x: float32
+    thumb_highlight_y: float32
+    thumb_highlight_radius: float32
     glow_color: u32
     thumb_fill_color: u32
     thumb_edge_color: u32
@@ -44,12 +43,12 @@ SliderPaint :: struct {
 }
 
 SliderStep :: struct {
-    value: float
+    value: float32
     changed: bool
 }
 
 SliderDiscreteStep :: struct {
-    value: i32
+    value: s32
     changed: bool
 }
 
@@ -78,8 +77,8 @@ SliderEditorLayout :: struct {
 }
 
 SliderTextPaint :: struct {
-    text_x: float
-    text_y: float
+    text_x: float32
+    text_y: float32
 }
 
 # The header belongs to the widget. Only the interaction row is inset for
@@ -94,9 +93,10 @@ SliderLayout :: struct {
     limits: Rectangle
 }
 
-SliderLayoutFor :: (bounds: Rectangle, line_height: float, label_height: float,
-    value_width: float, scale: float, multiple: bool, vertical: bool,
-    step_buttons: bool, show_limits: bool) -> SliderLayout #export {
+#program_export
+SliderLayoutFor :: (bounds: Rectangle, line_height: float32, label_height: float32,
+    value_width: float32, scale: float32, multiple: bool, vertical: bool,
+    step_buttons: bool, show_limits: bool) -> SliderLayout {
     layout: SliderLayout
     if scale <= 0.0 { scale = 1.0 }
     gap := 12.0 * scale
@@ -118,9 +118,9 @@ SliderLayoutFor :: (bounds: Rectangle, line_height: float, label_height: float,
         layout.value.y += label_height + gap
         header = label_height + gap + line_height
     }
-    footer: float = 0.0
+    footer: float32 = 0.0
     if show_limits { footer = line_height + 4.0 * scale }
-    extra: float = 0.0
+    extra: float32 = 0.0
     if !vertical && step_buttons && bounds.width < target * 3.0 + gap * 2.0 {
         extra = target + gap
     }
@@ -164,275 +164,306 @@ SliderLayoutFor :: (bounds: Rectangle, line_height: float, label_height: float,
     return layout
 }
 
-SliderCellTextPaintFor :: (bounds: Rectangle, inset: float,
-    text_line_height: float) -> SliderTextPaint #export {
+#program_export
+SliderCellTextPaintFor :: (bounds: Rectangle, inset: float32,
+    text_line_height: float32) -> SliderTextPaint {
     paint: SliderTextPaint
     paint.text_x = bounds.x + inset
     paint.text_y = bounds.y + (bounds.height - text_line_height) / 2.0
     return paint
 }
 
-SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float, font_size: i32,
-    gap: float) -> SliderTextPaint #export {
+#program_export
+SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float32, font_size: s32,
+    gap: float32) -> SliderTextPaint {
     paint: SliderTextPaint
     paint.text_x = bounds.x + inset
-    paint.text_y = bounds.y - (float)font_size - gap
+    paint.text_y = bounds.y - cast(float32)font_size - gap
     return paint
 }
 
-SliderEditorCenterX :: (bounds: Rectangle) -> i32 #export {
-    return (i32)(bounds.x + bounds.width * 0.5)
+#program_export
+SliderEditorCenterX :: (bounds: Rectangle) -> s32 {
+    return cast(s32)(bounds.x + bounds.width * 0.5)
 }
 
-SliderLabelInsetForStyle :: (label: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(label.value.fields, (u32)StylePaddingX,
+#program_export
+SliderLabelInsetForStyle :: (label: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(label.value.fields, cast(u32)StylePaddingX,
         label.value.padding_x, 6.0, scale, true)
 }
 
-SliderLabelGapForStyle :: (label: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(label.value.fields, (u32)StyleGap,
+#program_export
+SliderLabelGapForStyle :: (label: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(label.value.fields, cast(u32)StyleGap,
         label.value.gap, 2.0, scale, true)
 }
 
-SliderComponentTokenFor :: (control_id: i32, component: i32) -> i32 #export {
+#program_export
+SliderComponentTokenFor :: (control_id: s32, component: s32) -> s32 {
     if control_id <= 0 || component < 0 {
         return 0
     }
     return control_id * 16 + component + 1
 }
 
-SliderFocusIdFor :: (control_id: i32, component: i32, integer: bool) -> i32 #export {
+#program_export
+SliderFocusIdFor :: (control_id: s32, component: s32, integer: bool) -> s32 {
     if control_id <= 0 {
         return 0
     }
     if component <= 0 {
         return control_id
     }
-    prefix: i32 = 0x40000000
+    prefix: s32 = 0x40000000
     if integer {
         prefix = 0x50000000
     }
-    token: i32 = prefix ^ SliderComponentTokenFor(control_id, component)
+    token: s32 = prefix ^ SliderComponentTokenFor(control_id, component)
     return token & 0x7fffffff
 }
 
-SliderTrackRole :: () -> i32 #export {
+#program_export
+SliderTrackRole :: () -> s32 {
     return 4
 }
 
-SliderFillRole :: () -> i32 #export {
+#program_export
+SliderFillRole :: () -> s32 {
     return 5
 }
 
-SliderLabelRole :: () -> i32 #export {
+#program_export
+SliderLabelRole :: () -> s32 {
     return 6
 }
 
-SliderCenteredHitBounds :: (x: i32, y: i32, width: i32, height: i32,
-    min_width: i32, min_height: i32) -> Rectangle #export {
+#program_export
+SliderCenteredHitBounds :: (x: s32, y: s32, width: s32, height: s32,
+    min_width: s32, min_height: s32) -> Rectangle {
     hit: Rectangle
-    hit_width: i32 = width
-    hit_height: i32 = height
+    hit_width: s32 = width
+    hit_height: s32 = height
     if hit_width < min_width { hit_width = min_width }
     if hit_height < min_height { hit_height = min_height }
-    hit.x = (float)(x + width / 2 - hit_width / 2)
-    hit.y = (float)(y + height / 2 - hit_height / 2)
-    hit.width = (float)hit_width
-    hit.height = (float)hit_height
+    hit.x = cast(float32)(x + width / 2 - hit_width / 2)
+    hit.y = cast(float32)(y + height / 2 - hit_height / 2)
+    hit.width = cast(float32)hit_width
+    hit.height = cast(float32)hit_height
     return hit
 }
 
-SliderHorizontalEditorLayoutFor :: (x: i32, y: i32, width: i32,
-    min_touch_height: i32, scale: float, track: StyleFrame,
-    thumb: StyleFrame) -> SliderEditorLayout #export {
+#program_export
+SliderHorizontalEditorLayoutFor :: (x: s32, y: s32, width: s32,
+    min_touch_height: s32, scale: float32, track: StyleFrame,
+    thumb: StyleFrame) -> SliderEditorLayout {
     layout: SliderEditorLayout
     if scale <= 0.0 { scale = 1.0 }
     if width < SliderMinimumLengthForStyle(track, scale) {
         width = SliderMinimumLengthForStyle(track, scale)
     }
-    center_offset: i32 = SliderTrackCenterOffsetForStyle(track, scale)
-    editor_height: i32 = center_offset * 2
-    track_y: i32 = y + center_offset
-    thumb_height: i32 = SliderThumbSizeForStyle(thumb, scale)
-    track_height: i32 = SliderTrackSizeForStyle(false, track, scale)
-    thumb_y: i32 = track_y - (thumb_height - track_height) / 2
-    layout.editor_bounds.x = (float)x
-    layout.editor_bounds.y = (float)y
-    layout.editor_bounds.width = (float)width
-    layout.editor_bounds.height = (float)editor_height
+    center_offset: s32 = SliderTrackCenterOffsetForStyle(track, scale)
+    editor_height: s32 = center_offset * 2
+    track_y: s32 = y + center_offset
+    thumb_height: s32 = SliderThumbSizeForStyle(thumb, scale)
+    track_height: s32 = SliderTrackSizeForStyle(false, track, scale)
+    thumb_y: s32 = track_y - (thumb_height - track_height) / 2
+    layout.editor_bounds.x = cast(float32)x
+    layout.editor_bounds.y = cast(float32)y
+    layout.editor_bounds.width = cast(float32)width
+    layout.editor_bounds.height = cast(float32)editor_height
     layout.hit_bounds = SliderCenteredHitBounds(x, thumb_y, width,
         thumb_height, width, min_touch_height)
-    layout.paint_bounds.x = (float)x
-    layout.paint_bounds.y = (float)thumb_y
-    layout.paint_bounds.width = (float)width
-    layout.paint_bounds.height = (float)thumb_height
+    layout.paint_bounds.x = cast(float32)x
+    layout.paint_bounds.y = cast(float32)thumb_y
+    layout.paint_bounds.width = cast(float32)width
+    layout.paint_bounds.height = cast(float32)thumb_height
     return layout
 }
 
-SliderVerticalEditorLayoutFor :: (center_x: i32, y: i32, height: i32,
-    min_touch_width: i32, scale: float, track: StyleFrame,
-    thumb: StyleFrame) -> SliderEditorLayout #export {
+#program_export
+SliderVerticalEditorLayoutFor :: (center_x: s32, y: s32, height: s32,
+    min_touch_width: s32, scale: float32, track: StyleFrame,
+    thumb: StyleFrame) -> SliderEditorLayout {
     layout: SliderEditorLayout
     if scale <= 0.0 { scale = 1.0 }
     if height < SliderMinimumLengthForStyle(track, scale) {
         height = SliderMinimumLengthForStyle(track, scale)
     }
-    editor_width: i32 = SliderVerticalEditorWidthForStyle(track, thumb, scale)
-    track_width: i32 = SliderTrackSizeForStyle(true, track, scale)
-    thumb_width: i32 = SliderThumbSizeForStyle(thumb, scale)
-    track_x: i32 = center_x - track_width / 2
-    layout.editor_bounds.x = (float)(center_x - editor_width / 2)
-    layout.editor_bounds.y = (float)y
-    layout.editor_bounds.width = (float)editor_width
-    layout.editor_bounds.height = (float)height
+    editor_width: s32 = SliderVerticalEditorWidthForStyle(track, thumb, scale)
+    track_width: s32 = SliderTrackSizeForStyle(true, track, scale)
+    thumb_width: s32 = SliderThumbSizeForStyle(thumb, scale)
+    track_x: s32 = center_x - track_width / 2
+    layout.editor_bounds.x = cast(float32)(center_x - editor_width / 2)
+    layout.editor_bounds.y = cast(float32)y
+    layout.editor_bounds.width = cast(float32)editor_width
+    layout.editor_bounds.height = cast(float32)height
     layout.hit_bounds = SliderCenteredHitBounds(track_x, y, track_width,
         height, min_touch_width, height)
-    layout.paint_bounds.x = (float)(center_x - thumb_width / 2)
-    layout.paint_bounds.y = (float)y
-    layout.paint_bounds.width = (float)thumb_width
-    layout.paint_bounds.height = (float)height
+    layout.paint_bounds.x = cast(float32)(center_x - thumb_width / 2)
+    layout.paint_bounds.y = cast(float32)y
+    layout.paint_bounds.width = cast(float32)thumb_width
+    layout.paint_bounds.height = cast(float32)height
     return layout
 }
 
-SliderCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
+#program_export
+SliderCellBoundsFor :: (bounds: Rectangle, count: s32, index: s32) -> Rectangle {
     cell: Rectangle
     if count <= 0 { return cell }
     if index < 0 { index = 0 }
     if index >= count { index = count - 1 }
-    cell.x = bounds.x + bounds.width * (float)index / (float)count
+    cell.x = bounds.x + bounds.width * cast(float32)index / cast(float32)count
     cell.y = bounds.y
-    cell.width = bounds.width / (float)count
+    cell.width = bounds.width / cast(float32)count
     cell.height = bounds.height
     return cell
 }
 
-SliderMetric :: (fields: u32, field: u32, value: float, fallback: float,
-    scale: float, allow_zero: bool) -> i32 {
+SliderMetric :: (fields: u32, field: u32, value: float32, fallback: float32,
+    scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-SliderMetricFloat :: (fields: u32, field: u32, value: float, fallback: float,
-    scale: float, allow_zero: bool) -> float {
+SliderMetricFloat :: (fields: u32, field: u32, value: float32, fallback: float32,
+    scale: float32, allow_zero: bool) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
     return value * scale
 }
 
-SliderMinimumLengthForStyle :: (track: StyleFrame, scale: float) -> i32 #export {
-    return SliderMetric(track.value.fields, (u32)StylePaddingX,
+#program_export
+SliderMinimumLengthForStyle :: (track: StyleFrame, scale: float32) -> s32 {
+    return SliderMetric(track.value.fields, cast(u32)StylePaddingX,
         track.value.padding_x, 32.0, scale, false)
 }
 
-SliderThumbSizeForStyle :: (thumb: StyleFrame, scale: float) -> i32 #export {
-    return SliderMetric(thumb.value.fields, (u32)StyleIconSize,
+#program_export
+SliderThumbSizeForStyle :: (thumb: StyleFrame, scale: float32) -> s32 {
+    return SliderMetric(thumb.value.fields, cast(u32)StyleIconSize,
         thumb.value.icon_size, 22.0, scale, false)
 }
 
+#program_export
 SliderTrackSizeForStyle :: (vertical: bool, track: StyleFrame,
-    scale: float) -> i32 #export {
+    scale: float32) -> s32 {
     if vertical {
-        return SliderMetric(track.value.fields, (u32)StyleIconSize,
+        return SliderMetric(track.value.fields, cast(u32)StyleIconSize,
             track.value.icon_size, 8.0, scale, false)
     }
-    return SliderMetric(track.value.fields, (u32)StylePaddingY,
+    return SliderMetric(track.value.fields, cast(u32)StylePaddingY,
         track.value.padding_y, 6.0, scale, false)
 }
 
+#program_export
 SliderTrackCenterOffsetForStyle :: (track: StyleFrame,
-    scale: float) -> i32 #export {
-    return SliderMetric(track.value.fields, (u32)StyleContentOffset,
+    scale: float32) -> s32 {
+    return SliderMetric(track.value.fields, cast(u32)StyleContentOffset,
         track.value.offset_y, 28.0, scale, false)
 }
 
+#program_export
 SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
-    scale: float) -> i32 #export {
+    scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    width: float = track.value.offset_x
-    if (track.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+    width: float32 = track.value.offset_x
+    if (track.value.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
        width >= 0.0 {
-        return (i32)(width * scale)
+        return cast(s32)(width * scale)
     }
-    thumb_size: i32 = SliderThumbSizeForStyle(thumb, scale)
-    track_size: i32 = SliderTrackSizeForStyle(true, track, scale)
-    content: i32 = thumb_size
+    thumb_size: s32 = SliderThumbSizeForStyle(thumb, scale)
+    track_size: s32 = SliderTrackSizeForStyle(true, track, scale)
+    content: s32 = thumb_size
     if track_size > content { content = track_size }
-    return content + SliderMetric(track.value.fields, (u32)StyleGap,
+    return content + SliderMetric(track.value.fields, cast(u32)StyleGap,
         track.value.gap, 14.0, scale, true)
 }
 
-SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StyleGap,
+#program_export
+SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StyleGap,
         thumb.value.gap, 8.0, scale, true)
 }
 
-SliderThumbShadowOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StyleContentOffset,
+#program_export
+SliderThumbShadowOffsetXForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StyleContentOffset,
         thumb.value.offset_x, 0.0, scale, true)
 }
 
-SliderThumbShadowOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StyleContentOffset,
+#program_export
+SliderThumbShadowOffsetYForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StyleContentOffset,
         thumb.value.offset_y, 2.0, scale, true)
 }
 
-SliderThumbShadowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StyleBorderWidth,
+#program_export
+SliderThumbShadowExpansionForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StyleBorderWidth,
         thumb.value.border_width, 1.0, scale, true)
 }
 
-SliderThumbHighlightOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StylePaddingX,
+#program_export
+SliderThumbHighlightOffsetXForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StylePaddingX,
         thumb.value.padding_x, -3.0, scale, true)
 }
 
-SliderThumbHighlightOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    return SliderMetricFloat(thumb.value.fields, (u32)StylePaddingY,
+#program_export
+SliderThumbHighlightOffsetYForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
+    return SliderMetricFloat(thumb.value.fields, cast(u32)StylePaddingY,
         thumb.value.padding_y, -4.0, scale, true)
 }
 
-SliderClampRatio :: (ratio: float) -> float #export {
+#program_export
+SliderClampRatio :: (ratio: float32) -> float32 {
     if ratio < 0.0 { return 0.0 }
     if ratio > 1.0 { return 1.0 }
     return ratio
 }
 
-SliderPointerRatio :: (pointer: float, origin: float, length: float,
-    inverted: bool) -> float #export {
+#program_export
+SliderPointerRatio :: (pointer: float32, origin: float32, length: float32,
+    inverted: bool) -> float32 {
     if length <= 0.0 { return 0.0 }
-    ratio: float = (pointer - origin) / length
+    ratio: float32 = (pointer - origin) / length
     if inverted {
         ratio = 1.0 - ratio
     }
     return SliderClampRatio(ratio)
 }
 
-SliderRatio :: (value: float, minimum: float, maximum: float) -> float #export {
-    span: float = maximum - minimum
+#program_export
+SliderRatio :: (value: float32, minimum: float32, maximum: float32) -> float32 {
+    span: float32 = maximum - minimum
     if span <= 0.0 { return 0.0 }
     return SliderClampRatio((value - minimum) / span)
 }
 
-SliderValue :: (minimum: float, maximum: float, ratio: float) -> float #export {
-    span: float = maximum - minimum
+#program_export
+SliderValue :: (minimum: float32, maximum: float32, ratio: float32) -> float32 {
+    span: float32 = maximum - minimum
     if span <= 0.0 { return minimum }
     return minimum + SliderClampRatio(ratio) * span
 }
 
+#program_export
 SliderKeyboardShouldRun :: (focus_active: bool, keyboard_enabled: bool,
-    popup_captures: bool) -> bool #export {
+    popup_captures: bool) -> bool {
     return focus_active && keyboard_enabled && !popup_captures
 }
 
+#program_export
 SliderKeyboardDirectionFor :: (vertical: bool, up: bool, down: bool,
-    right: bool, left: bool) -> i32 #export {
+    right: bool, left: bool) -> s32 {
     if vertical {
         if up { return 1 }
         if down { return -1 }
@@ -443,23 +474,24 @@ SliderKeyboardDirectionFor :: (vertical: bool, up: bool, down: bool,
     return 0
 }
 
-SliderKeyboardValue :: (value: float, minimum: float, maximum: float,
-    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderStep #export {
+#program_export
+SliderKeyboardValue :: (value: float32, minimum: float32, maximum: float32,
+    direction: s32, home: bool, end: bool, alt: bool, shift: bool) -> SliderStep {
     result: SliderStep
     result.value = value
     result.changed = false
-    span: float = maximum - minimum
+    span: float32 = maximum - minimum
     if span <= 0.0 { return result }
-    next: float = value
+    next: float32 = value
     if home {
         next = minimum
     } else if end {
         next = maximum
     } else if direction != 0 {
-        step: float = span * 0.01
+        step: float32 = span * 0.01
         if alt { step = step * 0.1 }
         if shift { step = step * 10.0 }
-        next = next + (float)direction * step
+        next = next + cast(float32)direction * step
         if next < minimum { next = minimum }
         if next > maximum { next = maximum }
     }
@@ -468,28 +500,32 @@ SliderKeyboardValue :: (value: float, minimum: float, maximum: float,
     return result
 }
 
-SliderDiscreteRatio :: (value: i32, minimum: i32, maximum: i32) -> float #export {
-    span: i64 = (i64)maximum - (i64)minimum
+#program_export
+SliderDiscreteRatio :: (value: s32, minimum: s32, maximum: s32) -> float32 {
+    span: s64 = cast(s64)maximum - cast(s64)minimum
     if span <= 0 { return 0.0 }
-    return SliderClampRatio((float)((i64)value - (i64)minimum) / (float)span)
+    return SliderClampRatio(cast(float32)(cast(s64)value - cast(s64)minimum) / cast(float32)span)
 }
 
-SliderDiscreteValue :: (minimum: i32, maximum: i32, ratio: float) -> i32 #export {
-    span: i64 = (i64)maximum - (i64)minimum
+#program_export
+SliderDiscreteValue :: (minimum: s32, maximum: s32, ratio: float32) -> s32 {
+    span: s64 = cast(s64)maximum - cast(s64)minimum
     if span <= 0 { return minimum }
-    return (i32)((i64)minimum + (i64)(SliderClampRatio(ratio) * (float)span + 0.5))
+    return cast(s32)(cast(s64)minimum + cast(s64)(SliderClampRatio(ratio) * cast(float32)span + 0.5))
 }
 
-SliderDiscretePointerValue :: (pointer: float, origin: float, length: float,
-    minimum: i32, maximum: i32, inverted: bool) -> i32 #export {
+#program_export
+SliderDiscretePointerValue :: (pointer: float32, origin: float32, length: float32,
+    minimum: s32, maximum: s32, inverted: bool) -> s32 {
     return SliderDiscreteValue(minimum, maximum,
         SliderPointerRatio(pointer, origin, length, inverted))
 }
 
+#program_export
 SliderPointerDecisionFor :: (active: bool, inside: bool, captured: bool,
     internal_captured: bool, pressed: bool, down: bool, released: bool,
     vertical: bool, pointer_owner_none: bool, pointer_owner_matches: bool,
-    dragging: bool, drag_horizontal: bool) -> SliderPointerDecision #export {
+    dragging: bool, drag_horizontal: bool) -> SliderPointerDecision {
     decision: SliderPointerDecision
     decision.hovered = inside && !captured
     decision.clear_active = active && !down && !released
@@ -519,9 +555,10 @@ SliderPointerDecisionFor :: (active: bool, inside: bool, captured: bool,
     return decision
 }
 
+#program_export
 SliderRatioDecisionFor :: (any_active: bool, active: bool, hot: bool, disabled: bool,
     owner_captured: bool, pressed: bool, down: bool,
-    released: bool) -> SliderRatioDecision #export {
+    released: bool) -> SliderRatioDecision {
     decision: SliderRatioDecision
     decision.clear_active = (any_active && owner_captured) ||
         (active && disabled)
@@ -533,44 +570,46 @@ SliderRatioDecisionFor :: (any_active: bool, active: bool, hot: bool, disabled: 
     return decision
 }
 
-SliderDiscreteKeyboardValue :: (value: i32, minimum: i32, maximum: i32,
-    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderDiscreteStep #export {
+#program_export
+SliderDiscreteKeyboardValue :: (value: s32, minimum: s32, maximum: s32,
+    direction: s32, home: bool, end: bool, alt: bool, shift: bool) -> SliderDiscreteStep {
     result: SliderDiscreteStep
     result.value = value
     result.changed = false
-    span: i64 = (i64)maximum - (i64)minimum
+    span: s64 = cast(s64)maximum - cast(s64)minimum
     if span <= 0 { return result }
-    next: i64 = (i64)value
+    next: s64 = cast(s64)value
     if home {
-        next = (i64)minimum
+        next = cast(s64)minimum
     } else if end {
-        next = (i64)maximum
+        next = cast(s64)maximum
     } else if direction != 0 {
-        step: i64 = 1
+        step: s64 = 1
         if span > 100 { step = (span + 50) / 100 }
         if alt {
             step = step / 10
             if step < 1 { step = 1 }
         }
         if shift { step = step * 10 }
-        next = next + (i64)direction * step
-        if next < (i64)minimum { next = (i64)minimum }
-        if next > (i64)maximum { next = (i64)maximum }
+        next = next + cast(s64)direction * step
+        if next < cast(s64)minimum { next = cast(s64)minimum }
+        if next > cast(s64)maximum { next = cast(s64)maximum }
     }
-    result.value = (i32)next
+    result.value = cast(s32)next
     result.changed = result.value != value
     return result
 }
 
-SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
+#program_export
+SliderPaintFor :: (spec: SliderSpec) -> SliderPaint {
     paint: SliderPaint
-    scale: float = spec.scale
+    scale: float32 = spec.scale
     if scale <= 0.0 { scale = 1.0 }
-    ratio: float = SliderClampRatio(spec.ratio)
+    ratio: float32 = SliderClampRatio(spec.ratio)
     bounds: Rectangle = spec.bounds
-    min_length: float = (float)SliderMinimumLengthForStyle(spec.track, scale)
-    thumb_size: float = (float)SliderThumbSizeForStyle(spec.thumb, scale)
-    track_size: float = (float)SliderTrackSizeForStyle(spec.vertical,
+    min_length: float32 = cast(float32)SliderMinimumLengthForStyle(spec.track, scale)
+    thumb_size: float32 = cast(float32)SliderThumbSizeForStyle(spec.thumb, scale)
+    track_size: float32 = cast(float32)SliderTrackSizeForStyle(spec.vertical,
         spec.track, scale)
     if spec.vertical {
         if bounds.height < min_length { bounds.height = min_length }
@@ -579,7 +618,7 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
         paint.track_bounds.y = bounds.y
         paint.track_bounds.width = track_size
         paint.track_bounds.height = bounds.height
-        position_y: float = paint.track_bounds.y + paint.track_bounds.height * (1.0 - ratio)
+        position_y: float32 = paint.track_bounds.y + paint.track_bounds.height * (1.0 - ratio)
         paint.active_bounds.x = paint.track_bounds.x
         paint.active_bounds.y = position_y
         paint.active_bounds.width = paint.track_bounds.width
@@ -620,18 +659,27 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     paint.active_track = spec.active_track
     paint.thumb = spec.thumb
 
-    thumb_opacity: float = paint.thumb.value.opacity
+    thumb_opacity: float32 = paint.thumb.value.opacity
     paint.thumb_fill_color = Opacity(paint.thumb.value.background, thumb_opacity)
     paint.thumb_edge_color = Opacity(paint.thumb.value.border, thumb_opacity)
+    shadow_alpha: float32 = 0.36
+    highlight_alpha: float32 = 0.20
+    if spec.disabled {
+        shadow_alpha = 0.18
+        highlight_alpha = 0.08
+    }
     paint.thumb_shadow_color = Opacity(paint.thumb.value.focus,
-        (spec.disabled ? 0.18 : 0.36) * thumb_opacity)
+        shadow_alpha * thumb_opacity)
     paint.thumb_highlight_color = Opacity(paint.thumb.value.foreground,
-        (spec.disabled ? 0.08 : 0.20) * thumb_opacity)
-    if paint.thumb.value.material == (MaterialKind)MaterialFlat {
+        highlight_alpha * thumb_opacity)
+    if paint.thumb.value.material == cast(MaterialKind)MaterialFlat {
         paint.thumb_shadow_color = 0
         paint.thumb_highlight_color = 0
     }
+    glow_alpha: float32 = 0.0
+    if spec.hovered { glow_alpha = 0.18 }
+    if spec.active { glow_alpha = 0.32 }
     paint.glow_color = Opacity(paint.thumb.value.focus,
-        (spec.active ? 0.32 : (spec.hovered ? 0.18 : 0.0)) * thumb_opacity)
+        glow_alpha * thumb_opacity)
     return paint
 }

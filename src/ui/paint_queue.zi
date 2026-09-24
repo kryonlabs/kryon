@@ -1,10 +1,10 @@
-#module "paint_queue"
 #import "drawing_props"
 #import "geometry"
 #import "raster"
 #import "raster_shape"
 #import "raster_text"
 #import "tree"
+host_api :: #system_library "host_api";
 
 PaintKind :: enum {
     PaintKindLine = 1
@@ -16,41 +16,42 @@ PaintKind :: enum {
 }
 
 PaintCommand :: struct {
-    kind: i32
-    node: i32
+    kind: s32
+    node: s32
     bounds: Rectangle
     color: Color
-    radius: float
-    segments: i32
-    line_width: float
+    radius: float32
+    segments: s32
+    line_width: float32
     value: string
-    x: i32
-    y: i32
-    font: i32
+    x: s32
+    y: s32
+    font: s32
     asset_path: string
     texture_id: u32
     source: Rectangle
     clip: Rectangle
     origin: Vector2
-    rotation: float
+    rotation: float32
 }
 
 PaintCommands :: struct {
     items: [4096]PaintCommand
-    count: i32
+    count: s32
     overflow: bool
 }
 
-pending_paint :: PaintCommands #global
+pending_paint: PaintCommands;
 
 # Raw rasterization; the queued source, clip, radius, and tint are chosen in
 # checked widget code before this device effect is called.
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
-    origin: Vector2, rotation: float, radius: float,
-    tint: Color) #extern
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) #foreign host_api;
 
-EmitPaint :: (command: PaintCommand) #export {
+#program_export
+EmitPaint :: (command: PaintCommand) {
     if command.kind == PaintKindLine {
         StrokeLine(command.bounds, command.color)
     } else if command.kind == PaintKindRoundedFill {
@@ -75,7 +76,8 @@ EmitPaint :: (command: PaintCommand) #export {
     }
 }
 
-SubmitPaint :: (command: PaintCommand) #export {
+#program_export
+SubmitPaint :: (command: PaintCommand) {
     if command.node < 0 && !TreeIsBuilding() {
         EmitPaint(command)
         return
@@ -86,8 +88,8 @@ SubmitPaint :: (command: PaintCommand) #export {
     }
     if command.node >= 0 && TreeIsBuilding() {
         entry: TreeEntry = TreeSubmittedNodeAt(command.node)
-        dx: float = entry.bounds.x - entry.measured_bounds.x
-        dy: float = entry.bounds.y - entry.measured_bounds.y
+        dx: float32 = entry.bounds.x - entry.measured_bounds.x
+        dy: float32 = entry.bounds.y - entry.measured_bounds.y
         full_bounds: bool = command.bounds.x == entry.measured_bounds.x &&
             command.bounds.y == entry.measured_bounds.y &&
             command.bounds.width == entry.measured_bounds.width &&
@@ -100,8 +102,8 @@ SubmitPaint :: (command: PaintCommand) #export {
         command.bounds.y += dy
         command.clip.x += dx
         command.clip.y += dy
-        command.x += (i32)dx
-        command.y += (i32)dy
+        command.x += cast(s32)dx
+        command.y += cast(s32)dy
         if full_bounds {
             command.bounds.width = entry.bounds.width
             command.bounds.height = entry.bounds.height
@@ -125,8 +127,9 @@ SubmitPaint :: (command: PaintCommand) #export {
     pending_paint.count += 1
 }
 
-PaintLine :: (node: i32, bounds: Rectangle,
-    color: Color) #export {
+#program_export
+PaintLine :: (node: s32, bounds: Rectangle,
+    color: Color) {
     command: PaintCommand
     command.kind = PaintKindLine
     command.node = node
@@ -135,8 +138,9 @@ PaintLine :: (node: i32, bounds: Rectangle,
     SubmitPaint(command)
 }
 
-PaintRoundedFill :: (node: i32, bounds: Rectangle, radius: float,
-    segments: i32, color: Color) #export {
+#program_export
+PaintRoundedFill :: (node: s32, bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
     command: PaintCommand
     command.kind = PaintKindRoundedFill
     command.node = node
@@ -147,8 +151,9 @@ PaintRoundedFill :: (node: i32, bounds: Rectangle, radius: float,
     SubmitPaint(command)
 }
 
-PaintRoundedOutline :: (node: i32, bounds: Rectangle, radius: float,
-    segments: i32, line_width: float, color: Color) #export {
+#program_export
+PaintRoundedOutline :: (node: s32, bounds: Rectangle, radius: float32,
+    segments: s32, line_width: float32, color: Color) {
     command: PaintCommand
     command.kind = PaintKindRoundedOutline
     command.node = node
@@ -160,8 +165,9 @@ PaintRoundedOutline :: (node: i32, bounds: Rectangle, radius: float,
     SubmitPaint(command)
 }
 
-PaintLabel :: (node: i32, value: string, x: i32, y: i32,
-    font: i32, color: Color) #export {
+#program_export
+PaintLabel :: (node: s32, value: string, x: s32, y: s32,
+    font: s32, color: Color) {
     command: PaintCommand
     command.kind = PaintKindText
     command.node = node
@@ -173,8 +179,9 @@ PaintLabel :: (node: i32, value: string, x: i32, y: i32,
     SubmitPaint(command)
 }
 
-PaintClippedLabel :: (node: i32, value: string, x: i32, y: i32,
-    font: i32, color: Color, clip: Rectangle) #export {
+#program_export
+PaintClippedLabel :: (node: s32, value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
     command: PaintCommand
     command.kind = PaintKindClippedText
     command.node = node
@@ -187,10 +194,11 @@ PaintClippedLabel :: (node: i32, value: string, x: i32, y: i32,
     SubmitPaint(command)
 }
 
-PaintImage :: (node: i32, asset_path: string, texture_id: u32,
+#program_export
+PaintImage :: (node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
-    origin: Vector2, rotation: float, radius: float,
-    tint: Color) #export {
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
     command: PaintCommand
     command.kind = PaintKindImage
     command.node = node
@@ -206,8 +214,9 @@ PaintImage :: (node: i32, asset_path: string, texture_id: u32,
     SubmitPaint(command)
 }
 
-PaintClear :: () #export {
-    index: i32 = 0
+#program_export
+PaintClear :: () {
+    index: s32 = 0
     while index < pending_paint.count {
         empty: PaintCommand
         pending_paint.items[index] = empty
@@ -217,24 +226,28 @@ PaintClear :: () #export {
     pending_paint.overflow = false
 }
 
-PaintOverflow :: () -> bool #export {
+#program_export
+PaintOverflow :: () -> bool {
     return pending_paint.overflow
 }
 
 # The pending commands are inspectable after the tree commits and before
 # PaintFlush clears them. A failed commit clears the queue instead.
-PendingPaintCount :: () -> i32 #export {
+#program_export
+PendingPaintCount :: () -> s32 {
     return pending_paint.count
 }
 
-PendingPaintAt :: (index: i32) -> PaintCommand #export {
+#program_export
+PendingPaintAt :: (index: s32) -> PaintCommand {
     empty: PaintCommand
     if index < 0 || index >= pending_paint.count { return empty }
     return pending_paint.items[index]
 }
 
-PaintFlush :: () #export {
-    index: i32 = 0
+#program_export
+PaintFlush :: () {
+    index: s32 = 0
     while index < pending_paint.count {
         EmitPaint(pending_paint.items[index])
         index += 1

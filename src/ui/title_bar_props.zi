@@ -1,28 +1,27 @@
-#module "title_bar_props"
 #import "dropdown_props"
 #import "geometry"
 #import "image_props"
 
 TitleBarProps :: struct {
     key: u64
-    id: i32
-    class_name: i32
+    id: s32
+    class_name: s32
     bounds: Rectangle
     title: string
-    height: i32
-    scale: float
+    height: s32
+    scale: float32
     leading_image: ImageProps
     leading_label: string
     has_leading_action: bool
     dropdown: DropdownProps
     has_dropdown: bool
-    dropdown_min_width: i32
-    dropdown_height: i32
+    dropdown_min_width: s32
+    dropdown_height: s32
 }
 
 TitleBarResult :: struct {
-    node: i32
-    height: i32
+    node: s32
+    height: s32
     clicked_leading: bool
     dropdown: DropdownResult
 }

@@ -1,4 +1,3 @@
-#module "dropdown"
 #import "geometry"
 #import "style"
 #import "button"
@@ -8,20 +7,24 @@
 # Roles select semantic facts for host-side style resolution. They do not
 # manufacture color, material, gradient, radius, or border recipes.
 # 0: trigger, 2: floating panel, 26: option row, 27: scrollbar.
-DropdownPanelRole :: () -> i32 #export {
+#program_export
+DropdownPanelRole :: () -> s32 {
     return 2
 }
 
-DropdownOptionRole :: () -> i32 #export {
+#program_export
+DropdownOptionRole :: () -> s32 {
     return 26
 }
 
-DropdownScrollbarRole :: () -> i32 #export {
+#program_export
+DropdownScrollbarRole :: () -> s32 {
     return 27
 }
 
-Appearance :: (base: StyleData, accent: StyleData, role: i32,
-    state: i32, selected: bool) -> StyleData #export {
+#program_export
+Appearance :: (base: StyleData, accent: StyleData, role: s32,
+    state: s32, selected: bool) -> StyleData {
     if role == DropdownOptionRole() && selected && state != ButtonStateDisabled {
         return accent
     }
@@ -29,26 +32,26 @@ Appearance :: (base: StyleData, accent: StyleData, role: i32,
 }
 
 ContentMetrics :: struct {
-    padding: float
-    gap: float
-    icon: float
-    font: float
+    padding: float32
+    gap: float32
+    icon: float32
+    font: float32
 }
 
 DropdownTriggerMetrics :: struct {
-    min_width: i32
-    min_height: i32
-    indicator_padding: i32
-    indicator_size: i32
-    text_indicator_gap: i32
+    min_width: s32
+    min_height: s32
+    indicator_padding: s32
+    indicator_size: s32
+    text_indicator_gap: s32
 }
 
 DropdownTriggerContent :: struct {
     icon_bounds: Rectangle
     text_bounds: Rectangle
     clip_bounds: Rectangle
-    indicator_center_x: i32
-    indicator_center_y: i32
+    indicator_center_x: s32
+    indicator_center_y: s32
 }
 
 DropdownTriggerInput :: struct {
@@ -76,76 +79,80 @@ DropdownOpenDecision :: struct {
 
 # Both native hosts consume Button's resolved content metrics. Geometry does
 # not silently select another size: the standard dropdown uses medium tokens.
-Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
+#program_export
+Content :: (paint: StyleData, scale: float32) -> ContentMetrics {
     if scale <= 0.0 { scale = 1.0 }
-    return (ContentMetrics){.padding = paint.padding_x * scale,
+    return ContentMetrics.{.padding = paint.padding_x * scale,
         .gap = paint.gap * scale, .icon = paint.icon_size * scale,
         .font = paint.font_size * scale}
 }
 
-DropdownMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+DropdownMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-DropdownTriggerMetricsFor :: (scale: float, trigger: StyleFrame) -> DropdownTriggerMetrics #export {
+#program_export
+DropdownTriggerMetricsFor :: (scale: float32, trigger: StyleFrame) -> DropdownTriggerMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: DropdownTriggerMetrics
-    metrics.min_width = (i32)(32.0 * scale)
-    metrics.min_height = (i32)(24.0 * scale)
+    metrics.min_width = cast(s32)(32.0 * scale)
+    metrics.min_height = cast(s32)(24.0 * scale)
     metrics.indicator_padding = DropdownMetric(trigger.value.fields,
-        (u32)StyleContentOffset, trigger.value.offset_x, 24.0, scale, true)
+        cast(u32)StyleContentOffset, trigger.value.offset_x, 24.0, scale, true)
     metrics.indicator_size = DropdownMetric(trigger.value.fields,
-        (u32)StyleIconSize, trigger.value.icon_size, 10.0, scale, true)
+        cast(u32)StyleIconSize, trigger.value.icon_size, 10.0, scale, true)
     metrics.text_indicator_gap = DropdownMetric(trigger.value.fields,
-        (u32)StyleGap, trigger.value.gap, 8.0, scale, true)
+        cast(u32)StyleGap, trigger.value.gap, 8.0, scale, true)
     return metrics
 }
 
 DropdownIndicator :: struct {
-    x1: i32
-    y1: i32
-    x2: i32
-    y2: i32
-    x3: i32
-    y3: i32
-    x4: i32
-    y4: i32
+    x1: s32
+    y1: s32
+    x2: s32
+    y2: s32
+    x3: s32
+    y3: s32
+    x4: s32
+    y4: s32
 }
 
-DropdownIndicatorFor :: (center_x: i32, center_y: i32, size: i32,
-    open: bool) -> DropdownIndicator #export {
+#program_export
+DropdownIndicatorFor :: (center_x: s32, center_y: s32, size: s32,
+    open: bool) -> DropdownIndicator {
     if size < 0 { size = 0 }
-    half: i32 = size / 2
-    left: i32 = center_x - half
-    right: i32 = center_x + half
-    upper: i32 = center_y - half / 2
-    lower: i32 = center_y + half / 2
+    half: s32 = size / 2
+    left: s32 = center_x - half
+    right: s32 = center_x + half
+    upper: s32 = center_y - half / 2
+    lower: s32 = center_y + half / 2
 
     if open {
-        return (DropdownIndicator){.x1 = left, .y1 = lower,
+        return DropdownIndicator.{.x1 = left, .y1 = lower,
             .x2 = center_x, .y2 = upper, .x3 = center_x, .y3 = upper,
             .x4 = right, .y4 = lower}
     }
-    return (DropdownIndicator){.x1 = left, .y1 = upper,
+    return DropdownIndicator.{.x1 = left, .y1 = upper,
         .x2 = center_x, .y2 = lower, .x3 = center_x, .y3 = lower,
         .x4 = right, .y4 = upper}
 }
 
+#program_export
 DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
-    metrics: DropdownTriggerMetrics, has_icon: bool) -> DropdownTriggerContent #export {
+    metrics: DropdownTriggerMetrics, has_icon: bool) -> DropdownTriggerContent {
     layout: DropdownTriggerContent
-    text_x: float = bounds.x + content.padding
-    text_right: float
+    text_x: float32 = bounds.x + content.padding
+    text_right: float32
 
-    layout.indicator_center_x = (i32)(bounds.x + bounds.width) -
+    layout.indicator_center_x = cast(s32)(bounds.x + bounds.width) -
         metrics.indicator_padding
-    layout.indicator_center_y = (i32)bounds.y + (i32)bounds.height / 2
+    layout.indicator_center_y = cast(s32)bounds.y + cast(s32)bounds.height / 2
     if has_icon {
         layout.icon_bounds.x = text_x
         layout.icon_bounds.y = bounds.y + (bounds.height - content.icon) / 2.0
@@ -153,7 +160,7 @@ DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
         layout.icon_bounds.height = content.icon
         text_x += content.icon + content.gap
     }
-    text_right = (float)(layout.indicator_center_x -
+    text_right = cast(float32)(layout.indicator_center_x -
         metrics.indicator_size - metrics.text_indicator_gap)
     layout.clip_bounds.x = text_x
     layout.clip_bounds.y = bounds.y
@@ -168,7 +175,8 @@ DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
 
 # Portable input and popup policy. Hosts supply input samples and option
 # availability; no host reimplements navigation, dismissal, or geometry.
-ClampIndex :: (value: i32, count: i32) -> i32 #export {
+#program_export
+ClampIndex :: (value: s32, count: s32) -> s32 {
     if count <= 0 {
         return -1
     }
@@ -181,19 +189,22 @@ ClampIndex :: (value: i32, count: i32) -> i32 #export {
     return value
 }
 
-DropdownOptionCountFor :: (count: i32) -> i32 #export {
+#program_export
+DropdownOptionCountFor :: (count: s32) -> s32 {
     if count < 0 { return 0 }
     return count
 }
 
-DropdownCurrentIndexFor :: (selected: i32, count: i32) -> i32 #export {
-    index: i32 = ClampIndex(selected, count)
+#program_export
+DropdownCurrentIndexFor :: (selected: s32, count: s32) -> s32 {
+    index: s32 = ClampIndex(selected, count)
     if index < 0 { return 0 }
     return index
 }
 
-Trigger :: (open: bool, disabled: bool, count: i32, focused: bool,
-    keyboard: bool, activated: bool, enter: bool, space: bool, down: bool) -> bool #export {
+#program_export
+Trigger :: (open: bool, disabled: bool, count: s32, focused: bool,
+    keyboard: bool, activated: bool, enter: bool, space: bool, down: bool) -> bool {
     if disabled || count <= 0 {
         return false
     }
@@ -206,8 +217,9 @@ Trigger :: (open: bool, disabled: bool, count: i32, focused: bool,
     return open
 }
 
+#program_export
 DropdownTriggerInputFor :: (enter_pressed: bool, keypad_enter_pressed: bool,
-    space_pressed: bool, down_pressed: bool) -> DropdownTriggerInput #export {
+    space_pressed: bool, down_pressed: bool) -> DropdownTriggerInput {
     input: DropdownTriggerInput
     input.enter = enter_pressed || keypad_enter_pressed
     input.space = space_pressed
@@ -215,10 +227,11 @@ DropdownTriggerInputFor :: (enter_pressed: bool, keypad_enter_pressed: bool,
     return input
 }
 
+#program_export
 DropdownMenuInputFor :: (keyboard_available: bool, opening: bool,
     up_pressed: bool, down_pressed: bool, home_pressed: bool,
     end_pressed: bool, enter_pressed: bool, keypad_enter_pressed: bool,
-    escape_pressed: bool) -> DropdownMenuInput #export {
+    escape_pressed: bool) -> DropdownMenuInput {
     input: DropdownMenuInput
     if !keyboard_available {
         return input
@@ -235,15 +248,17 @@ DropdownMenuInputFor :: (keyboard_available: bool, opening: bool,
     return input
 }
 
-Dismiss :: (open: bool, opening: bool, count: i32, height: float,
-    escape: bool, lost_focus: bool, outside: bool) -> bool #export {
+#program_export
+Dismiss :: (open: bool, opening: bool, count: s32, height: float32,
+    escape: bool, lost_focus: bool, outside: bool) -> bool {
     return open && (count <= 0 || height <= 0.0 || escape || lost_focus || (!opening && outside))
 }
 
-DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: i32,
+#program_export
+DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: s32,
     focused: bool, keyboard: bool, activated: bool,
-    trigger: DropdownTriggerInput, height: float, escape: bool,
-    lost_focus: bool, outside: bool) -> DropdownOpenDecision #export {
+    trigger: DropdownTriggerInput, height: float32, escape: bool,
+    lost_focus: bool, outside: bool) -> DropdownOpenDecision {
     decision: DropdownOpenDecision
     next: bool = Trigger(open, disabled, count, focused, keyboard, activated,
         trigger.enter, trigger.space, trigger.down)
@@ -258,7 +273,8 @@ DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: i32,
     return decision
 }
 
-DropdownOpenAfterCommit :: (open: bool, committed: bool) -> DropdownOpenDecision #export {
+#program_export
+DropdownOpenAfterCommit :: (open: bool, committed: bool) -> DropdownOpenDecision {
     decision: DropdownOpenDecision
     decision.open = open
     if committed {
@@ -271,19 +287,20 @@ DropdownOpenAfterCommit :: (open: bool, committed: bool) -> DropdownOpenDecision
 }
 
 Navigation :: struct {
-    index: i32
-    previous: i32
-    count: i32
-    direction: i32
-    phase: i32
+    index: s32
+    previous: s32
+    count: s32
+    direction: s32
+    phase: s32
     searching: bool
-    result: i32
+    result: s32
 }
 
-StartNavigation :: (current: i32, count: i32, up: bool, down: bool,
-    home: bool, end: bool) -> Navigation #export {
+#program_export
+StartNavigation :: (current: s32, count: s32, up: bool, down: bool,
+    home: bool, end: bool) -> Navigation {
     current = ClampIndex(current, count)
-    nav: Navigation = (Navigation){.index = current, .previous = current,
+    nav: Navigation = Navigation.{.index = current, .previous = current,
         .count = count, .direction = 1, .searching = count > 0, .result = -1}
     if up {
         nav.index = ClampIndex(current - 1, count)
@@ -301,7 +318,8 @@ StartNavigation :: (current: i32, count: i32, up: bool, down: bool,
 
 # The host only looks up the availability of nav.index. This bounded scan
 # includes boundary fallback and handles all-disabled lists without activation.
-ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation #export {
+#program_export
+ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation {
     if !nav.searching {
         return nav
     }
@@ -327,33 +345,35 @@ ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation #export {
     return nav
 }
 
+#program_export
 CanCommit :: (enabled: bool, opening: bool, keyboard: bool, enter: bool,
-    pointer: bool, scrollbar: bool, dragging: bool, returned: bool) -> bool #export {
+    pointer: bool, scrollbar: bool, dragging: bool, returned: bool) -> bool {
     return enabled && !opening && ((keyboard && enter) ||
         (pointer && !scrollbar && (!dragging || returned)))
 }
 
-ContentHeight :: (count: i32, row: float, padding: float) -> i32 #export {
-    height: f64 = (f64)count * (f64)row + (f64)padding
+#program_export
+ContentHeight :: (count: s32, row: float32, padding: float32) -> s32 {
+    height: float64 = cast(float64)count * cast(float64)row + cast(float64)padding
     if height <= 0.0 {
         return 0
     }
     if height >= 2147483647.0 {
         return 2147483647
     }
-    return (i32)height
+    return cast(s32)height
 }
 
 MenuLayout :: struct {
     content_bounds: Rectangle
     scrollbar_bounds: Rectangle
-    option_width: i32
-    content_height: i32
-    max_scroll: i32
+    option_width: s32
+    content_height: s32
+    max_scroll: s32
 }
 
 OptionPaint :: struct {
-    option_y: i32
+    option_y: s32
     visible_bounds: Rectangle
     highlight_bounds: Rectangle
 }
@@ -367,119 +387,124 @@ DropdownOptionContent :: struct {
 }
 
 DropdownMenuMetrics :: struct {
-    padding_top: i32
-    padding_bottom: i32
-    scrollbar_width: i32
-    scrollbar_gap: i32
-    scrollbar_track_inset: i32
-    highlight_inset_x: i32
-    highlight_inset_y: i32
-    separator_inset: i32
-    drag_threshold: i32
+    padding_top: s32
+    padding_bottom: s32
+    scrollbar_width: s32
+    scrollbar_gap: s32
+    scrollbar_track_inset: s32
+    highlight_inset_x: s32
+    highlight_inset_y: s32
+    separator_inset: s32
+    drag_threshold: s32
 }
 
-DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,
-    option: StyleFrame, scrollbar: StyleFrame) -> DropdownMenuMetrics #export {
+#program_export
+DropdownMenuMetricsFor :: (scale: float32, panel: StyleFrame,
+    option: StyleFrame, scrollbar: StyleFrame) -> DropdownMenuMetrics {
     metrics: DropdownMenuMetrics
     metrics.padding_top = DropdownMetric(panel.value.fields,
-        (u32)StylePaddingY, panel.value.padding_y, 4.0, scale, true)
+        cast(u32)StylePaddingY, panel.value.padding_y, 4.0, scale, true)
     metrics.padding_bottom = metrics.padding_top
     metrics.scrollbar_width = DropdownMetric(scrollbar.value.fields,
-        (u32)StyleIconSize, scrollbar.value.icon_size, 8.0, scale, true)
+        cast(u32)StyleIconSize, scrollbar.value.icon_size, 8.0, scale, true)
     metrics.scrollbar_gap = DropdownMetric(scrollbar.value.fields,
-        (u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
+        cast(u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
     metrics.scrollbar_track_inset = DropdownMetric(scrollbar.value.fields,
-        (u32)StylePaddingY, scrollbar.value.padding_y, 2.0, scale, true)
+        cast(u32)StylePaddingY, scrollbar.value.padding_y, 2.0, scale, true)
     metrics.highlight_inset_x = DropdownMetric(option.value.fields,
-        (u32)StylePaddingX, option.value.padding_x, 4.0, scale, true)
+        cast(u32)StylePaddingX, option.value.padding_x, 4.0, scale, true)
     metrics.highlight_inset_y = DropdownMetric(option.value.fields,
-        (u32)StylePaddingY, option.value.padding_y, 2.0, scale, true)
+        cast(u32)StylePaddingY, option.value.padding_y, 2.0, scale, true)
     metrics.separator_inset = DropdownMetric(option.value.fields,
-        (u32)StyleContentOffset, option.value.offset_x, 16.0, scale, true)
+        cast(u32)StyleContentOffset, option.value.offset_x, 16.0, scale, true)
     metrics.drag_threshold = DropdownMetric(scrollbar.value.fields,
-        (u32)StyleContentOffset, scrollbar.value.offset_x, 8.0, scale, false)
+        cast(u32)StyleContentOffset, scrollbar.value.offset_x, 8.0, scale, false)
     return metrics
 }
 
-MenuLayoutFor :: (bounds: Rectangle, count: i32, row_height: i32,
-    padding_top: i32, padding_bottom: i32, scrollbar_width: i32,
-    scrollbar_gap: i32) -> MenuLayout #export {
+#program_export
+MenuLayoutFor :: (bounds: Rectangle, count: s32, row_height: s32,
+    padding_top: s32, padding_bottom: s32, scrollbar_width: s32,
+    scrollbar_gap: s32) -> MenuLayout {
     layout: MenuLayout
-    layout.content_height = ContentHeight(count, (float)row_height,
-        (float)(padding_top + padding_bottom))
-    layout.max_scroll = layout.content_height - (i32)bounds.height
+    layout.content_height = ContentHeight(count, cast(float32)row_height,
+        cast(float32)(padding_top + padding_bottom))
+    layout.max_scroll = layout.content_height - cast(s32)bounds.height
     if layout.max_scroll < 0 { layout.max_scroll = 0 }
-    layout.option_width = (i32)bounds.width
+    layout.option_width = cast(s32)bounds.width
     if layout.max_scroll > 0 {
         layout.option_width -= scrollbar_width + scrollbar_gap
         if layout.option_width < 0 { layout.option_width = 0 }
     }
     layout.content_bounds.x = bounds.x
-    layout.content_bounds.y = bounds.y + (float)padding_top
-    layout.content_bounds.width = (float)layout.option_width
-    layout.content_bounds.height = bounds.height - (float)(padding_top + padding_bottom)
+    layout.content_bounds.y = bounds.y + cast(float32)padding_top
+    layout.content_bounds.width = cast(float32)layout.option_width
+    layout.content_bounds.height = bounds.height - cast(float32)(padding_top + padding_bottom)
     if layout.content_bounds.height < 0.0 { layout.content_bounds.height = 0.0 }
-    layout.scrollbar_bounds.x = bounds.x + bounds.width - (float)scrollbar_width
+    layout.scrollbar_bounds.x = bounds.x + bounds.width - cast(float32)scrollbar_width
     layout.scrollbar_bounds.y = bounds.y
-    layout.scrollbar_bounds.width = (float)scrollbar_width
+    layout.scrollbar_bounds.width = cast(float32)scrollbar_width
     layout.scrollbar_bounds.height = bounds.height
     if layout.scrollbar_bounds.width < 0.0 { layout.scrollbar_bounds.width = 0.0 }
     if layout.scrollbar_bounds.height < 0.0 { layout.scrollbar_bounds.height = 0.0 }
     return layout
 }
 
-ScrollbarTrackBounds :: (scrollbar: Rectangle, inset: i32) -> Rectangle #export {
+#program_export
+ScrollbarTrackBounds :: (scrollbar: Rectangle, inset: s32) -> Rectangle {
     track: Rectangle = scrollbar
-    track.y += (float)inset
-    track.height -= (float)(inset * 2)
+    track.y += cast(float32)inset
+    track.height -= cast(float32)(inset * 2)
     if track.height < 0.0 { track.height = 0.0 }
     return track
 }
 
-OptionPaintFor :: (menu: Rectangle, option_width: i32, index: i32,
-    row_height: i32, scroll_offset: i32, padding_top: i32,
-    padding_bottom: i32, highlight_inset_x: i32,
-    highlight_inset_y: i32) -> OptionPaint #export {
+#program_export
+OptionPaintFor :: (menu: Rectangle, option_width: s32, index: s32,
+    row_height: s32, scroll_offset: s32, padding_top: s32,
+    padding_bottom: s32, highlight_inset_x: s32,
+    highlight_inset_y: s32) -> OptionPaint {
     paint: OptionPaint
-    option_bottom: i32
-    visible_bottom: i32
-    content_top: i32 = (i32)menu.y + padding_top
-    content_bottom: i32 = (i32)(menu.y + menu.height) - padding_bottom
+    option_bottom: s32
+    visible_bottom: s32
+    content_top: s32 = cast(s32)menu.y + padding_top
+    content_bottom: s32 = cast(s32)(menu.y + menu.height) - padding_bottom
 
-    paint.option_y = (i32)((i64)((i32)menu.y) + (i64)padding_top +
-        (i64)index * (i64)row_height - (i64)scroll_offset)
+    paint.option_y = cast(s32)(cast(s64)(cast(s32)menu.y) + cast(s64)padding_top +
+        cast(s64)index * cast(s64)row_height - cast(s64)scroll_offset)
     option_bottom = paint.option_y + row_height
     paint.visible_bounds.x = menu.x
-    paint.visible_bounds.y = (float)paint.option_y
-    if (i32)paint.visible_bounds.y < content_top {
-        paint.visible_bounds.y = (float)content_top
+    paint.visible_bounds.y = cast(float32)paint.option_y
+    if cast(s32)paint.visible_bounds.y < content_top {
+        paint.visible_bounds.y = cast(float32)content_top
     }
     visible_bottom = option_bottom
     if visible_bottom > content_bottom { visible_bottom = content_bottom }
-    paint.visible_bounds.width = (float)option_width
-    paint.visible_bounds.height = (float)visible_bottom - paint.visible_bounds.y
+    paint.visible_bounds.width = cast(float32)option_width
+    paint.visible_bounds.height = cast(float32)visible_bottom - paint.visible_bounds.y
     if paint.visible_bounds.height < 0.0 { paint.visible_bounds.height = 0.0 }
-    paint.highlight_bounds.x = menu.x + (float)highlight_inset_x
-    paint.highlight_bounds.y = (float)(paint.option_y + highlight_inset_y)
-    paint.highlight_bounds.width = (float)(option_width - highlight_inset_x * 2)
-    paint.highlight_bounds.height = (float)(row_height - highlight_inset_y * 2)
+    paint.highlight_bounds.x = menu.x + cast(float32)highlight_inset_x
+    paint.highlight_bounds.y = cast(float32)(paint.option_y + highlight_inset_y)
+    paint.highlight_bounds.width = cast(float32)(option_width - highlight_inset_x * 2)
+    paint.highlight_bounds.height = cast(float32)(row_height - highlight_inset_y * 2)
     if paint.highlight_bounds.width < 0.0 { paint.highlight_bounds.width = 0.0 }
     if paint.highlight_bounds.height < 0.0 { paint.highlight_bounds.height = 0.0 }
     return paint
 }
 
+#program_export
 DropdownOptionContentFor :: (row: Rectangle, visible: Rectangle,
     content: ContentMetrics, metrics: DropdownMenuMetrics,
-    has_icon: bool) -> DropdownOptionContent #export {
+    has_icon: bool) -> DropdownOptionContent {
     layout: DropdownOptionContent
-    text_x: float = row.x + content.padding
-    text_right: float = row.x + row.width - content.padding -
+    text_x: float32 = row.x + content.padding
+    text_right: float32 = row.x + row.width - content.padding -
         content.icon - content.gap
 
-    layout.separator_bounds.x = row.x + (float)metrics.separator_inset
+    layout.separator_bounds.x = row.x + cast(float32)metrics.separator_inset
     layout.separator_bounds.y = row.y
     layout.separator_bounds.width = row.width -
-        (float)(metrics.separator_inset * 2)
+        cast(float32)(metrics.separator_inset * 2)
     if layout.separator_bounds.width < 0.0 {
         layout.separator_bounds.width = 0.0
     }
@@ -514,46 +539,47 @@ DropdownOptionContentFor :: (row: Rectangle, visible: Rectangle,
     return layout
 }
 
-PopupBounds :: (button: Rectangle, view: Rectangle, count: i32,
-    scale: float, panel: StyleFrame) -> Rectangle #export {
+#program_export
+PopupBounds :: (button: Rectangle, view: Rectangle, count: s32,
+    scale: float32, panel: StyleFrame) -> Rectangle {
     if scale <= 0.0 {
         scale = 1.0
     }
-    gap: float = (float)DropdownMetric(panel.value.fields, (u32)StyleGap,
+    gap: float32 = cast(float32)DropdownMetric(panel.value.fields, cast(u32)StyleGap,
         panel.value.gap, 4.0, scale, true)
-    padding: float = (float)DropdownMetric(panel.value.fields,
-        (u32)StylePaddingY, panel.value.padding_y, 8.0, scale, true)
-    margin: float = (float)DropdownMetric(panel.value.fields,
-        (u32)StyleContentOffset, panel.value.offset_y, 16.0, scale, true)
-    bottom: float = view.y + view.height
-    below_y: float = button.y + button.height + gap
+    padding: float32 = cast(float32)DropdownMetric(panel.value.fields,
+        cast(u32)StylePaddingY, panel.value.padding_y, 8.0, scale, true)
+    margin: float32 = cast(float32)DropdownMetric(panel.value.fields,
+        cast(u32)StyleContentOffset, panel.value.offset_y, 16.0, scale, true)
+    bottom: float32 = view.y + view.height
+    below_y: float32 = button.y + button.height + gap
     if below_y < view.y {
         below_y = view.y
     }
-    below: float = bottom - below_y - margin
-    above: float = button.y - view.y - margin
+    below: float32 = bottom - below_y - margin
+    above: float32 = button.y - view.y - margin
     if below < 0.0 {
         below = 0.0
     }
     if above < 0.0 {
         above = 0.0
     }
-    available: float = below
+    available: float32 = below
     if above > available {
         available = above
     }
-    height: float = (float)ContentHeight(count, button.height,
+    height: float32 = cast(float32)ContentHeight(count, button.height,
         padding * 2.0)
     if height > available && button.height > 0.0 {
-        rows: i32 = (i32)((available - padding * 2.0) /
+        rows: s32 = cast(s32)((available - padding * 2.0) /
             button.height)
         if rows < 1 {
             rows = 1
         }
-        height = (float)ContentHeight(rows, button.height,
+        height = cast(float32)ContentHeight(rows, button.height,
             padding * 2.0)
     }
-    y: float = below_y
+    y: float32 = below_y
     if height > below && above > below {
         y = button.y - gap - height
     }
@@ -569,78 +595,82 @@ PopupBounds :: (button: Rectangle, view: Rectangle, count: i32,
     if y < view.y {
         y = view.y
     }
-    width: float = button.width
+    width: float32 = button.width
     if width > view.width {
         width = view.width
     }
     if width < 0.0 {
         width = 0.0
     }
-    x: float = button.x
+    x: float32 = button.x
     if x > view.x + view.width - width {
         x = view.x + view.width - width
     }
     if x < view.x {
         x = view.x
     }
-    return (Rectangle){.x = x, .y = y, .width = width, .height = height}
+    return Rectangle.{.x = x, .y = y, .width = width, .height = height}
 }
 
-ScrollOffset :: (offset: f64, maximum: i32) -> i32 #export {
+#program_export
+ScrollOffset :: (offset: float64, maximum: s32) -> s32 {
     if maximum < 0 {
         maximum = 0
     }
     if offset <= 0.0 {
         return 0
     }
-    if offset >= (f64)maximum {
+    if offset >= cast(float64)maximum {
         return maximum
     }
-    return (i32)offset
+    return cast(s32)offset
 }
 
-RevealRow :: (offset: i32, index: i32, row: float, viewport: float, maximum: i32) -> i32 #export {
+#program_export
+RevealRow :: (offset: s32, index: s32, row: float32, viewport: float32, maximum: s32) -> s32 {
     if index < 0 {
-        return ScrollOffset((f64)offset, maximum)
+        return ScrollOffset(cast(float64)offset, maximum)
     }
-    top: f64 = (f64)index * (f64)row
-    next: f64 = (f64)offset
+    top: float64 = cast(float64)index * cast(float64)row
+    next: float64 = cast(float64)offset
     if top < next {
         next = top
     }
-    if top + (f64)row > next + (f64)viewport {
-        next = top + (f64)row - (f64)viewport
+    if top + cast(float64)row > next + cast(float64)viewport {
+        next = top + cast(float64)row - cast(float64)viewport
     }
     return ScrollOffset(next, maximum)
 }
 
-WheelOffset :: (offset: i32, wheel: float, row: float, maximum: i32) -> i32 #export {
-    return ScrollOffset((f64)offset - (f64)wheel * (f64)row, maximum)
+#program_export
+WheelOffset :: (offset: s32, wheel: float32, row: float32, maximum: s32) -> s32 {
+    return ScrollOffset(cast(float64)offset - cast(float64)wheel * cast(float64)row, maximum)
 }
 
 VisibleRows :: struct {
-    first: i32
-    end: i32
+    first: s32
+    end: s32
 }
 
-Rows :: (count: i32, offset: i32, viewport: float, row: float) -> VisibleRows #export {
+#program_export
+Rows :: (count: s32, offset: s32, viewport: float32, row: float32) -> VisibleRows {
     result: VisibleRows
     if count <= 0 || row <= 0.0 || viewport <= 0.0 {
         return result
     }
-    result.first = (i32)((float)offset / row)
+    result.first = cast(s32)(cast(float32)offset / row)
     if result.first < 0 {
         result.first = 0
     }
     if result.first > count {
         result.first = count
     }
-    bottom: f64 = ((f64)offset + (f64)viewport) / (f64)row
-    if bottom >= (f64)count {
+    bottom: float64 = (cast(float64)offset + cast(float64)viewport) / cast(float64)row
+    if bottom >= cast(float64)count {
         result.end = count
     } else {
-        result.end = (i32)bottom
-        if (f64)result.end < bottom {
+        result.end = cast(s32)bottom
+        if cast(float64)result.end < bottom {
             result.end += 1
         }
     }
@@ -650,14 +680,15 @@ Rows :: (count: i32, offset: i32, viewport: float, row: float) -> VisibleRows #e
 PopupGesture :: struct {
     pressed: bool
     dragging: bool
-    origin_y: float
-    origin_offset: i32
-    offset: i32
+    origin_y: float32
+    origin_offset: s32
+    offset: s32
 }
 
-PopupDragGesture :: (gesture: PopupGesture, offset: i32, down: bool, inside: bool,
-    scrollbar: bool, y: float, maximum: i32, threshold: float) -> PopupGesture #export {
-    gesture.offset = ScrollOffset((f64)offset, maximum)
+#program_export
+PopupDragGesture :: (gesture: PopupGesture, offset: s32, down: bool, inside: bool,
+    scrollbar: bool, y: float32, maximum: s32, threshold: float32) -> PopupGesture {
+    gesture.offset = ScrollOffset(cast(float64)offset, maximum)
     if down && !scrollbar {
         if !gesture.pressed && inside {
             gesture.pressed = true
@@ -665,13 +696,13 @@ PopupDragGesture :: (gesture: PopupGesture, offset: i32, down: bool, inside: boo
             gesture.origin_offset = gesture.offset
             gesture.dragging = false
         } else if gesture.pressed && !gesture.dragging {
-            delta: float = y - gesture.origin_y
+            delta: float32 = y - gesture.origin_y
             if maximum > 0 && (delta > threshold || delta < -threshold) {
                 gesture.dragging = true
             }
         }
         if gesture.dragging && maximum > 0 {
-            gesture.offset = ScrollOffset((f64)gesture.offset - (f64)(y - gesture.origin_y), maximum)
+            gesture.offset = ScrollOffset(cast(float64)gesture.offset - cast(float64)(y - gesture.origin_y), maximum)
             gesture.origin_y = y
         }
     } else {
@@ -680,12 +711,14 @@ PopupDragGesture :: (gesture: PopupGesture, offset: i32, down: bool, inside: boo
     return gesture
 }
 
-DropdownJustOpenedNext :: (just_opened: bool, pointer_pressed: bool) -> bool #export {
+#program_export
+DropdownJustOpenedNext :: (just_opened: bool, pointer_pressed: bool) -> bool {
     return just_opened && pointer_pressed
 }
 
+#program_export
 DropdownScrollbarPressedNext :: (pressed: bool, pointer_down: bool,
-    pointer_pressed: bool, max_scroll: i32, pointer_over_scrollbar: bool) -> bool #export {
+    pointer_pressed: bool, max_scroll: s32, pointer_over_scrollbar: bool) -> bool {
     if !pointer_down {
         return false
     }

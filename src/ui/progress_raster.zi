@@ -1,13 +1,13 @@
-#module "progress_raster"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "progress"
 
 # The host rasterizes these primitives; draw order and color choices are Ziran.
-PaintProgressForNode :: (node: i32, bounds: Rectangle,
-    paint: ProgressPaint, label: string, font: i32,
-    label_opacity: float) #export {
+#program_export
+PaintProgressForNode :: (node: s32, bounds: Rectangle,
+    paint: ProgressPaint, label: string, font: s32,
+    label_opacity: float32) {
     plan: ProgressDrawPlan = ProgressDrawPlanFor(bounds, paint,
         label != "", label_opacity)
     PaintRoundedFill(node, bounds, plan.radius, 12,
@@ -22,14 +22,15 @@ PaintProgressForNode :: (node: i32, bounds: Rectangle,
             ColorFromPacked(paint.border_color))
     }
     if plan.draw_label {
-        PaintLabel(node, label, (i32)paint.layout.label_x,
-            (i32)paint.layout.label_y, font,
+        PaintLabel(node, label, cast(s32)paint.layout.label_x,
+            cast(s32)paint.layout.label_y, font,
             ColorFromPacked(plan.label_color))
     }
 }
 
+#program_export
 PaintProgress :: (bounds: Rectangle, paint: ProgressPaint,
-    label: string, font: i32, label_opacity: float) #export {
+    label: string, font: s32, label_opacity: float32) {
     PaintProgressForNode(-1, bounds, paint, label,
         font, label_opacity)
 }

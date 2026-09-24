@@ -1,4 +1,3 @@
-#module "list_box_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -18,17 +17,17 @@
 ListBoxView :: struct {
     key: u64
     bounds: Rectangle
-    id: i32
-    class_name: i32
-    scroll_offset: i32
-    scroll_delta: i32
-    row_height: i32
-    scale: float
+    id: s32
+    class_name: s32
+    scroll_offset: s32
+    scroll_delta: s32
+    row_height: s32
+    scale: float32
     disabled: bool
 }
 
 ListBoxViewState :: struct {
-    node: i32
+    node: s32
     key: u64
     bounds: Rectangle
     layout: ListBoxLayout
@@ -37,33 +36,36 @@ ListBoxViewState :: struct {
     track: StyleFrame
     thumb: StyleFrame
     scroll_metrics: ScrollMetrics
-    scale: float
-    max_scroll: i32
-    scroll: i32
+    scale: float32
+    max_scroll: s32
+    scroll: s32
     valid: bool
     multi: bool
 }
 
-ListBoxItemKey :: (item: ListBoxItem, index: i32) -> u64 #export {
-    if item.key != (u64)0 { return item.key }
-    return (u64)(index + 1)
+#program_export
+ListBoxItemKey :: (item: ListBoxItem, index: s32) -> u64 {
+    if item.key != cast(u64)0 { return item.key }
+    return cast(u64)(index + 1)
 }
 
-ListBoxThumbKey :: () -> u64 #export {
-    return (u64)4294967295
+#program_export
+ListBoxThumbKey :: () -> u64 {
+    return cast(u64)4294967295
 }
 
-ListBoxDefaultFace :: (state: i32,
-    item: bool) -> StyleData #export {
+#program_export
+ListBoxDefaultFace :: (state: s32,
+    item: bool) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize | (u32)StylePaddingX |
-        (u32)StyleIconSize
-    face.background = (u32)0xffffffff
-    face.foreground = (u32)0x171717ff
-    face.border = (u32)0xd1d5dbff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+        cast(u32)StyleIconSize
+    face.background = cast(u32)0xffffffff
+    face.foreground = cast(u32)0x171717ff
+    face.border = cast(u32)0xd1d5dbff
     face.border_width = 1.0
     face.radius = 4.0
     face.opacity = 1.0
@@ -71,34 +73,36 @@ ListBoxDefaultFace :: (state: i32,
     face.padding_x = 8.0
     face.icon_size = 8.0
     if item {
-        face.background = (u32)0x00000000
-        face.border = (u32)0x00000000
+        face.background = cast(u32)0x00000000
+        face.border = cast(u32)0x00000000
         face.border_width = 0.0
         if state == ButtonStateHover {
-            face.background = (u32)0xe5e7ebff
+            face.background = cast(u32)0xe5e7ebff
         } else if state == ButtonStatePressed {
-            face.background = (u32)0xd1d5dbff
+            face.background = cast(u32)0xd1d5dbff
         } else if state == ButtonStateSelected {
-            face.background = (u32)0xdbeafeff
-            face.foreground = (u32)0x1d4ed8ff
+            face.background = cast(u32)0xdbeafeff
+            face.foreground = cast(u32)0x1d4ed8ff
         }
     }
     if state == ButtonStateDisabled { face.opacity = 0.45 }
     return face
 }
 
-ListBoxFace :: (kind: i32, id: i32, class_name: i32,
-    state: i32, item: bool) -> StyleFrame #export {
+#program_export
+ListBoxFace :: (kind: s32, id: s32, class_name: s32,
+    state: s32, item: bool) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(kind, id,
-        class_name, StyleAny(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+        class_name, StyleAny(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         ListBoxDefaultFace(state, item), facts, state)
     return frame
 }
 
-ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView #export {
+#program_export
+ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView {
     view: ListBoxView
     view.key = props.key
     view.bounds = props.bounds
@@ -112,7 +116,8 @@ ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView #export {
     return view
 }
 
-ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView #export {
+#program_export
+ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView {
     view: ListBoxView
     view.key = props.key
     view.bounds = props.bounds
@@ -126,8 +131,9 @@ ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView #export {
     return view
 }
 
-ListBoxViewStart :: (view: ListBoxView, item_count: i32,
-    multi: bool) -> ListBoxViewState #export {
+#program_export
+ListBoxViewStart :: (view: ListBoxView, item_count: s32,
+    multi: bool) -> ListBoxViewState {
     result: ListBoxViewState
     result.node = -1
     result.multi = multi
@@ -138,51 +144,51 @@ ListBoxViewStart :: (view: ListBoxView, item_count: i32,
     if result.bounds.width <= 0.0 || result.bounds.height <= 0.0 {
         return result
     }
-    scale: float = view.scale
+    scale: float32 = view.scale
     if scale <= 0.0 { scale = 1.0 }
     result.scale = scale
-    panel_kind: i32 = StyleKindListBox()
-    item_kind: i32 = StyleKindListBoxItem()
+    panel_kind: s32 = StyleKindListBox()
+    item_kind: s32 = StyleKindListBoxItem()
     if multi {
         panel_kind = StyleKindListBoxMulti()
         item_kind = StyleKindListBoxMultiItem()
     }
-    state: i32 = ButtonStateNormal
+    state: s32 = ButtonStateNormal
     if view.disabled { state = ButtonStateDisabled }
     result.panel = ListBoxFace(panel_kind, view.id,
         view.class_name, state, false)
     result.item = ListBoxFace(item_kind, 0,
         view.class_name, state, true)
     result.track = ScrollFace(StyleKindScroll(),
-        view.class_name, view.disabled, (i32)ButtonStateNormal, 8.0)
+        view.class_name, view.disabled, cast(s32)ButtonStateNormal, 8.0)
     result.thumb = ScrollFace(StyleKindScrollThumb(),
-        view.class_name, view.disabled, (i32)ButtonStateNormal, 8.0)
+        view.class_name, view.disabled, cast(s32)ButtonStateNormal, 8.0)
     result.scroll_metrics = ScrollMetricsFor(scale,
         result.track, result.thumb)
-    row_height: i32 = view.row_height
-    if row_height > 0 { row_height = (i32)((float)row_height * scale) }
+    row_height: s32 = view.row_height
+    if row_height > 0 { row_height = cast(s32)(cast(float32)row_height * scale) }
     if multi {
         row_height = ListBoxMultiRowHeight(row_height, scale, result.item)
     } else {
         row_height = ListBoxRowHeight(row_height, scale, result.item)
     }
     if row_height <= 0 { row_height = 1 }
-    content_height: i32 = ListBoxContentHeight(item_count,
+    content_height: s32 = ListBoxContentHeight(item_count,
         row_height, 0, scale, result.item)
     result.max_scroll = ListBoxMaxScroll(result.bounds.height,
         item_count, row_height, content_height, scale, result.item)
-    scroll: i64 = (i64)view.scroll_offset
-    if !view.disabled { scroll += (i64)view.scroll_delta }
+    scroll: s64 = cast(s64)view.scroll_offset
+    if !view.disabled { scroll += cast(s64)view.scroll_delta }
     if scroll < 0 { scroll = 0 }
-    if scroll > (i64)result.max_scroll {
-        scroll = (i64)result.max_scroll
+    if scroll > cast(s64)result.max_scroll {
+        scroll = cast(s64)result.max_scroll
     }
-    result.scroll = (i32)scroll
+    result.scroll = cast(s32)scroll
     result.key = view.key
-    if result.key == (u64)0 && view.id > 0 {
-        result.key = (u64)(u32)view.id
+    if result.key == cast(u64)0 && view.id > 0 {
+        result.key = cast(u64)cast(u32)view.id
     }
-    if result.key == (u64)0 { result.key = TreeNextKey() }
+    if result.key == cast(u64)0 { result.key = TreeNextKey() }
     measured: Rectangle = result.bounds
     if TreeIsBuilding() {
         result.node = TreeSubmitCurrent(result.key,
@@ -191,14 +197,14 @@ ListBoxViewStart :: (view: ListBoxView, item_count: i32,
         result.bounds = TreeSubmittedNodeAt(result.node).bounds
         if !TreePushScope(result.node) { return result }
         if result.max_scroll > 0 && !view.disabled {
-            previous: i32 = TreeFind(ListBoxThumbKey(),
+            previous: s32 = TreeFind(ListBoxThumbKey(),
                 result.key, WidgetKindSlider)
             drag: PointerDrag = TreeTakeDragAt(previous)
             if drag.active || drag.ended {
                 bar: ScrollBarPaint = ScrollBarPaintFor(
-                    (i32)(result.bounds.x + result.bounds.width) -
+                    cast(s32)(result.bounds.x + result.bounds.width) -
                         result.scroll_metrics.scrollbar_width,
-                    (i32)result.bounds.y, (i32)result.bounds.height,
+                    cast(s32)result.bounds.y, cast(s32)result.bounds.height,
                     content_height, result.scroll, result.max_scroll,
                     result.scroll_metrics)
                 result.scroll = ScrollDragOffsetFor(drag.y,
@@ -209,7 +215,7 @@ ListBoxViewStart :: (view: ListBoxView, item_count: i32,
     }
     result.layout = ListBoxLayoutFor(result.bounds, item_count,
         row_height, content_height, result.scroll, scale, result.item)
-    opacity: float = StyleOpacityValue(result.panel.value.fields,
+    opacity: float32 = StyleOpacityValue(result.panel.value.fields,
         result.panel.value.opacity)
     PaintRoundedFill(result.node, measured,
         result.panel.value.radius, 12,
@@ -224,8 +230,9 @@ ListBoxViewStart :: (view: ListBoxView, item_count: i32,
     return result
 }
 
+#program_export
 ListBoxViewScroll :: (view: ListBoxViewState,
-    scroll: i32) -> ListBoxViewState #export {
+    scroll: s32) -> ListBoxViewState {
     view.scroll = ListBoxClampScroll(scroll, view.max_scroll)
     view.layout.scroll = view.scroll
     view.layout.first_row = view.scroll / view.layout.row_height
@@ -233,27 +240,28 @@ ListBoxViewScroll :: (view: ListBoxViewState,
     return view
 }
 
+#program_export
 ListBoxRow :: (view: ListBoxViewState, item: ListBoxItem,
-    index: i32, selected: bool, disabled: bool,
-    class_name: i32, id: i32) -> bool #export {
-    visible_index: i32 = index - view.layout.first_row
+    index: s32, selected: bool, disabled: bool,
+    class_name: s32, id: s32) -> bool {
+    visible_index: s32 = index - view.layout.first_row
     row: Rectangle = ListBoxRowBounds(view.bounds,
         visible_index, view.layout)
     clipped: Rectangle = RectangleIntersection(row, view.bounds)
     if clipped.width <= 0.0 || clipped.height <= 0.0 { return true }
     item_key: u64 = ListBoxItemKey(item, index)
-    previous: i32 = -1
+    previous: s32 = -1
     if TreeIsBuilding() {
         previous = TreeFind(item_key, view.key, WidgetKindSelectable)
     }
-    state: i32 = ResolveState((i32)ButtonStateAuto,
+    state: s32 = ResolveState(cast(s32)ButtonStateAuto,
         disabled, false, TreePressedAt(previous),
         TreeHoveredAt(previous), false, selected)
-    kind: i32 = StyleKindListBoxItem()
+    kind: s32 = StyleKindListBoxItem()
     if view.multi { kind = StyleKindListBoxMultiItem() }
     face: StyleFrame = ListBoxFace(kind, index + 1,
         class_name, state, true)
-    node: i32 = -1
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(item_key,
             WidgetKindSelectable, clipped)
@@ -262,9 +270,9 @@ ListBoxRow :: (view: ListBoxViewState, item: ListBoxItem,
         TreeSetSelected(node, selected)
         TreeSetLabel(node, item.label)
     }
-    opacity: float = StyleOpacityValue(face.value.fields,
+    opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
-    if face.value.background != (u32)0 {
+    if face.value.background != cast(u32)0 {
         PaintRoundedFill(node, clipped, face.value.radius, 12,
             ColorFromPacked(Opacity(face.value.background, opacity)))
     }
@@ -273,10 +281,10 @@ ListBoxRow :: (view: ListBoxViewState, item: ListBoxItem,
             face.value.border_width,
             ColorFromPacked(Opacity(face.value.border, opacity)))
     }
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), 14)
-    line_height: i32 = GlyphLineHeight(font, face.value.typeface)
-    inset: i32 = ListBoxItemLabelInset(view.scale, face)
+    line_height: s32 = GlyphLineHeight(font, face.value.typeface)
+    inset: s32 = ListBoxItemLabelInset(view.scale, face)
     if view.multi {
         inset = ListBoxMultiItemLabelInset(view.scale, face)
     }
@@ -289,21 +297,22 @@ ListBoxRow :: (view: ListBoxViewState, item: ListBoxItem,
     return true
 }
 
+#program_export
 ListBoxViewFinish :: (view: ListBoxViewState,
-    disabled: bool) #export {
+    disabled: bool) {
     if !view.valid { return }
     if view.max_scroll > 0 &&
         view.scroll_metrics.scrollbar_width > 0 {
         bar: ScrollBarPaint = ScrollBarPaintFor(
-            (i32)(view.bounds.x + view.bounds.width) -
+            cast(s32)(view.bounds.x + view.bounds.width) -
                 view.scroll_metrics.scrollbar_width,
-            (i32)view.bounds.y, (i32)view.bounds.height,
+            cast(s32)view.bounds.y, cast(s32)view.bounds.height,
             view.layout.content_height, view.scroll,
             view.max_scroll, view.scroll_metrics)
-        track_node: i32 = -1
-        thumb_node: i32 = -1
+        track_node: s32 = -1
+        thumb_node: s32 = -1
         if TreeIsBuilding() {
-            track_node = TreeSubmitCurrent(ListBoxThumbKey() + (u64)1,
+            track_node = TreeSubmitCurrent(ListBoxThumbKey() + cast(u64)1,
                 WidgetKindCustom, bar.track_bounds)
             thumb_node = TreeSubmitCurrent(ListBoxThumbKey(),
                 WidgetKindSlider, bar.thumb_bounds)
@@ -325,8 +334,9 @@ ListBoxViewFinish :: (view: ListBoxViewState,
 
 # Selection and scroll are returned as values. Rows keep identity through
 # their keys and use the same retained pointer routing as other controls.
+#program_export
 ListBox :: (props: ListBoxProps,
-    items: []ListBoxItem) -> ListBoxResult #export {
+    items: []ListBoxItem) -> ListBoxResult {
     result: ListBoxResult
     result.node = -1
     result.selected_index = props.selected_index
@@ -343,13 +353,13 @@ ListBox :: (props: ListBoxProps,
         result.selected_index = nav.selected
         view = ListBoxViewScroll(view, nav.scroll)
     }
-    visible: i32 = view.layout.visible_rows + 2
-    index: i32 = view.layout.first_row
-    end: i32 = index + visible
+    visible: s32 = view.layout.visible_rows + 2
+    index: s32 = view.layout.first_row
+    end: s32 = index + visible
     if end > items.length { end = items.length }
     if TreeIsBuilding() && !props.disabled {
         while index < end {
-            previous: i32 = TreeFind(ListBoxItemKey(items[index], index),
+            previous: s32 = TreeFind(ListBoxItemKey(items[index], index),
                 view.key, WidgetKindSelectable)
             if TreeTakeActivationAt(previous) {
                 result.selected_index = index
@@ -370,11 +380,12 @@ ListBox :: (props: ListBoxProps,
     return result
 }
 
-ListBoxMultiApply :: (selected: []bool, clicked: i32,
-    anchor: i32, control: bool, shift: bool,
-    range_anchor: i32) -> bool #export {
+#program_export
+ListBoxMultiApply :: (selected: []bool, clicked: s32,
+    anchor: s32, control: bool, shift: bool,
+    range_anchor: s32) -> bool {
     changed: bool = false
-    index: i32 = 0
+    index: s32 = 0
     while index < selected.length {
         next: bool = ListBoxMultiSelectionForRow(index,
             selected[index], clicked, selected.length, anchor,
@@ -388,8 +399,9 @@ ListBoxMultiApply :: (selected: []bool, clicked: i32,
 
 # The borrowed selection slice is changed in place. Its length must match
 # items. The result carries anchor, scroll, count, and activation as values.
+#program_export
 ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
-    selected: []bool) -> ListBoxMultiResult #export {
+    selected: []bool) -> ListBoxMultiResult {
     result: ListBoxMultiResult
     result.node = -1
     result.clicked_index = -1
@@ -403,10 +415,10 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
     result.node = view.node
     control: bool = props.control
     shift: bool = props.shift
-    range_anchor: i32 = -1
+    range_anchor: s32 = -1
     if props.focused && !props.disabled {
-        first: i32 = -1
-        index: i32 = 0
+        first: s32 = -1
+        index: s32 = 0
         while index < selected.length {
             if selected[index] {
                 first = index
@@ -414,7 +426,7 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
             }
             index += 1
         }
-        cursor: i32 = ListBoxMultiFocusedRow(result.anchor,
+        cursor: s32 = ListBoxMultiFocusedRow(result.anchor,
             first, items.length)
         nav: ListBoxMultiNavResult = ListBoxMultiNavigate(
             items.length, cursor, control, shift, props.navigation)
@@ -438,13 +450,13 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
             result.clicked_index, items.length,
             control, shift, range_anchor)
     }
-    visible: i32 = view.layout.visible_rows + 2
-    index: i32 = view.layout.first_row
-    end: i32 = index + visible
+    visible: s32 = view.layout.visible_rows + 2
+    index: s32 = view.layout.first_row
+    end: s32 = index + visible
     if end > items.length { end = items.length }
     if TreeIsBuilding() && !props.disabled {
         while index < end {
-            previous: i32 = TreeFind(ListBoxItemKey(items[index], index),
+            previous: s32 = TreeFind(ListBoxItemKey(items[index], index),
                 view.key, WidgetKindSelectable)
             if TreeTakeActivationAt(previous) {
                 result.clicked_index = index

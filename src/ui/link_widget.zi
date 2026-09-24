@@ -1,4 +1,3 @@
-#module "link_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -14,11 +13,12 @@
 #import "tree_input"
 #import "widget_kind"
 
-LinkFaceFor :: (props: LinkProps, state: i32) -> StyleFrame #export {
+#program_export
+LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
     base: StyleData
-    base.fields = (u32)StyleForeground | (u32)StyleFontSize |
-        (u32)StyleOpacity
-    base.foreground = (u32)0x2563ebff
+    base.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
+        cast(u32)StyleOpacity
+    base.foreground = cast(u32)0x2563ebff
     base.font_size = 16.0
     base.opacity = 1.0
     if props.disabled { base.foreground = Opacity(base.foreground, 0.45) }
@@ -32,16 +32,17 @@ LinkFaceFor :: (props: LinkProps, state: i32) -> StyleFrame #export {
 
 # Navigation is a returned effect. The host opens result.url when open_url is
 # true; neither a browser nor a window is required to run this widget.
-Link :: (props: LinkProps) -> LinkResult #export {
+#program_export
+Link :: (props: LinkProps) -> LinkResult {
     result: LinkResult
     result.node = -1
     key: u64 = props.key
-    if key == (u64)0 && props.focus_id > 0 {
-        key = (u64)(u32)props.focus_id
+    if key == cast(u64)0 && props.focus_id > 0 {
+        key = cast(u64)cast(u32)props.focus_id
     }
-    if key == (u64)0 { key = TreeNextKey() }
-    previous: i32 = -1
-    if TreeIsBuilding() && key != (u64)0 {
+    if key == cast(u64)0 { key = TreeNextKey() }
+    previous: s32 = -1
+    if TreeIsBuilding() && key != cast(u64)0 {
         previous = TreeFind(key, TreeCurrentParentKey(),
             WidgetKindLink)
     }
@@ -51,14 +52,14 @@ Link :: (props: LinkProps) -> LinkResult #export {
     result.open_url = result.activated && props.link != ""
     if result.open_url { result.url = props.link }
     hovered: bool = TreeHoveredAt(previous)
-    state: i32 = ResolveState((i32)ButtonStateAuto,
+    state: s32 = ResolveState(cast(s32)ButtonStateAuto,
         props.disabled, false, TreePressedAt(previous), hovered,
         false, false)
     face: StyleFrame = LinkFaceFor(props, state)
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), 16)
-    text_width: i32 = GlyphWidth(props.text, font, face.value.typeface)
-    text_height: i32 = GlyphLineHeight(font, face.value.typeface)
+    text_width: s32 = GlyphWidth(props.text, font, face.value.typeface)
+    text_height: s32 = GlyphLineHeight(font, face.value.typeface)
     bounds: Rectangle = LinkBoundsFor(props.bounds, text_width,
         text_height, font)
     if TreeIsBuilding() {
@@ -67,23 +68,23 @@ Link :: (props: LinkProps) -> LinkResult #export {
         TreeSetInteractive(result.node, props.disabled, false,
             props.focus_id)
         TreeSetLabel(result.node, props.text)
-        TreeSetSemantic(result.node, (SemanticKind)SemanticLink, 0)
+        TreeSetSemantic(result.node, cast(SemanticKind)SemanticLink, 0)
     }
     appearance: LinkAppearance = ResolveLinkAppearance(face,
         hovered, props.disabled)
     color: Color = ColorFromPacked(Opacity(appearance.color,
         StyleOpacityValue(face.value.fields, face.value.opacity)))
     if props.text != "" {
-        y: i32 = (i32)(bounds.y +
-            (bounds.height - (float)text_height) * 0.5)
+        y: s32 = cast(s32)(bounds.y +
+            (bounds.height - cast(float32)text_height) * 0.5)
         PaintClippedLabel(result.node, props.text,
-            (i32)bounds.x, y, font, color, bounds)
+            cast(s32)bounds.x, y, font, color, bounds)
     }
     if appearance.underline && text_width > 0 {
-        underline_y: i32 = LinkUnderlineYFor(bounds, 1.0)
+        underline_y: s32 = LinkUnderlineYFor(bounds, 1.0)
         PaintLine(result.node,
-            (Rectangle){bounds.x, (float)underline_y,
-                (float)text_width, 0.0}, color)
+            Rectangle.{bounds.x, cast(float32)underline_y,
+                cast(float32)text_width, 0.0}, color)
     }
     return result
 }

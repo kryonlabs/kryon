@@ -1,4 +1,3 @@
-#module "scroll_props"
 #import "geometry"
 #import "scroll"
 
@@ -12,30 +11,30 @@ ScrollInput :: struct {
     pressed: bool
     down: bool
     released: bool
-    wheel: float
+    wheel: float32
     owns_drag: bool
     owner_captured: bool
-    grab: float
+    grab: float32
 }
 
 ScrollProps :: struct {
     key: u64
-    class_name: i32
-    scale: float
+    class_name: s32
+    scale: float32
     bounds: Rectangle
-    content_height: i32
-    scroll_offset: i32
-    scroll_delta: i32
+    content_height: s32
+    scroll_offset: s32
+    scroll_delta: s32
     input: ScrollInput
     metrics: ScrollMetrics
 }
 
 ScrollResult :: struct {
-    node: i32
+    node: s32
     opened: bool
     viewport: Rectangle
     content: Rectangle
-    scroll_offset: i32
-    max_scroll: i32
+    scroll_offset: s32
+    max_scroll: s32
     frame: ScrollFrame
 }

@@ -1,4 +1,3 @@
-#module "toolbar"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -6,21 +5,21 @@
 #import "toolbar_props"
 
 ToolbarSpec :: struct {
-    x: i32
-    y: i32
-    width: i32
-    height: i32
-    action_count: i32
-    action_icon_size: i32
-    action_icon_padding: i32
-    action_gap: i32
-    side_padding: i32
+    x: s32
+    y: s32
+    width: s32
+    height: s32
+    action_count: s32
+    action_icon_size: s32
+    action_icon_padding: s32
+    action_gap: s32
+    side_padding: s32
     action_fields: u32
     bar_fields: u32
-    dropdown_min_width: i32
-    dropdown_max_width: i32
-    dropdown_height: i32
-    scale: float
+    dropdown_min_width: s32
+    dropdown_max_width: s32
+    dropdown_height: s32
+    scale: float32
     bar: StyleFrame
     action: StyleFrame
 }
@@ -28,73 +27,80 @@ ToolbarSpec :: struct {
 ToolbarLayout :: struct {
     bounds: Rectangle
     dropdown_bounds: Rectangle
-    controls_x: i32
-    action_width: i32
-    action_y: i32
-    action_icon_size: i32
-    action_icon_padding: i32
-    action_gap: i32
-    side_padding: i32
+    controls_x: s32
+    action_width: s32
+    action_y: s32
+    action_icon_size: s32
+    action_icon_padding: s32
+    action_gap: s32
+    side_padding: s32
 }
 
 ToolbarDividerLine :: struct {
-    x1: i32
-    y1: i32
-    x2: i32
-    y2: i32
+    x1: s32
+    y1: s32
+    x2: s32
+    y2: s32
 }
 
-ToolbarMetric :: (fields: u32, field: u32, value: i32, fallback: float,
-    scale: float) -> i32 {
+ToolbarMetric :: (fields: u32, field: u32, value: s32, fallback: float32,
+    scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) != (u32)0 && value >= 0 { return value }
-    return (i32)(fallback * scale)
+    if (fields & field) != cast(u32)0 && value >= 0 { return value }
+    return cast(s32)(fallback * scale)
 }
 
-ToolbarPropMetric :: (value: i32, fallback: float, scale: float) -> i32 {
+ToolbarPropMetric :: (value: s32, fallback: float32, scale: float32) -> s32 {
     if value > 0 { return value }
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(fallback * scale)
+    return cast(s32)(fallback * scale)
 }
 
-ToolbarStyleMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+ToolbarStyleMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-ToolbarBarRole :: () -> i32 #export {
+#program_export
+ToolbarBarRole :: () -> s32 {
     return 1
 }
 
-ToolbarDividerRole :: () -> i32 #export {
+#program_export
+ToolbarDividerRole :: () -> s32 {
     return 18
 }
 
-ToolbarActionRole :: () -> i32 #export {
+#program_export
+ToolbarActionRole :: () -> s32 {
     return 17
 }
 
-ToolbarBottomBarRole :: () -> i32 #export {
+#program_export
+ToolbarBottomBarRole :: () -> s32 {
     return 28
 }
 
-ToolbarBottomActionRole :: () -> i32 #export {
+#program_export
+ToolbarBottomActionRole :: () -> s32 {
     return 29
 }
 
-ToolbarActionIdFor :: (toolbar_id: i32, index: i32) -> i32 #export {
+#program_export
+ToolbarActionIdFor :: (toolbar_id: s32, index: s32) -> s32 {
     if toolbar_id <= 0 || index < 0 {
         return 0
     }
     return toolbar_id * 100 + index + 1
 }
 
-ToolbarDividerLineFor :: (x: i32, y: i32, width: i32, height: i32) -> ToolbarDividerLine #export {
+#program_export
+ToolbarDividerLineFor :: (x: s32, y: s32, width: s32, height: s32) -> ToolbarDividerLine {
     line: ToolbarDividerLine
     if width < 0 { width = 0 }
     line.x1 = x
@@ -104,61 +110,63 @@ ToolbarDividerLineFor :: (x: i32, y: i32, width: i32, height: i32) -> ToolbarDiv
     return line
 }
 
-ToolbarSidePadding :: (value: i32, fields: u32, scale: float) -> i32 #export {
+#program_export
+ToolbarSidePadding :: (value: s32, fields: u32, scale: float32) -> s32 {
     if value < 0 { return 0 }
-    return ToolbarMetric(fields, (u32)StylePaddingX, value, 12.0, scale)
+    return ToolbarMetric(fields, cast(u32)StylePaddingX, value, 12.0, scale)
 }
 
-ToolbarSpecMetric :: (value: i32, fields: u32, field: u32,
-    frame: StyleFrame, frame_value: float, fallback: float,
-    scale: float) -> i32 {
-    if (fields & field) != (u32)0 && value >= 0 {
+ToolbarSpecMetric :: (value: s32, fields: u32, field: u32,
+    frame: StyleFrame, frame_value: float32, fallback: float32,
+    scale: float32) -> s32 {
+    if (fields & field) != cast(u32)0 && value >= 0 {
         return value
     }
     return ToolbarStyleMetric(frame.value.fields, field, frame_value,
         fallback, scale, true)
 }
 
-ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
+#program_export
+ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout {
     layout: ToolbarLayout
-    scale: float = spec.scale
+    scale: float32 = spec.scale
     if scale <= 0.0 { scale = 1.0 }
-    width: i32 = spec.width
+    width: s32 = spec.width
     if width < 0 { width = 0 }
-    height: i32 = spec.height
+    height: s32 = spec.height
     if height < 0 { height = 0 }
-    action_count: i32 = spec.action_count
+    action_count: s32 = spec.action_count
     if action_count < 0 { action_count = 0 }
 
-    layout.bounds.x = (float)spec.x
-    layout.bounds.y = (float)spec.y
-    layout.bounds.width = (float)width
-    layout.bounds.height = (float)height
+    layout.bounds.x = cast(float32)spec.x
+    layout.bounds.y = cast(float32)spec.y
+    layout.bounds.width = cast(float32)width
+    layout.bounds.height = cast(float32)height
     layout.side_padding = ToolbarSpecMetric(spec.side_padding,
-        spec.bar_fields, (u32)StylePaddingX, spec.bar,
+        spec.bar_fields, cast(u32)StylePaddingX, spec.bar,
         spec.bar.value.padding_x, 12.0, scale)
     layout.action_icon_size = ToolbarSpecMetric(spec.action_icon_size,
-        spec.action_fields, (u32)StyleIconSize, spec.action,
+        spec.action_fields, cast(u32)StyleIconSize, spec.action,
         spec.action.value.icon_size, 20.0, scale)
     layout.action_icon_padding = ToolbarSpecMetric(spec.action_icon_padding,
-        spec.action_fields, (u32)StylePaddingX, spec.action,
+        spec.action_fields, cast(u32)StylePaddingX, spec.action,
         spec.action.value.padding_x, 8.0, scale)
     layout.action_gap = ToolbarSpecMetric(spec.action_gap,
-        spec.action_fields, (u32)StyleGap, spec.action,
+        spec.action_fields, cast(u32)StyleGap, spec.action,
         spec.action.value.gap, 6.0, scale)
     layout.action_width = layout.action_icon_size + layout.action_icon_padding * 2
     layout.action_y = spec.y + (height - layout.action_width) / 2
     layout.controls_x = spec.x + width - layout.side_padding
 
-    controls_after_actions: i32 = layout.controls_x
+    controls_after_actions: s32 = layout.controls_x
     if action_count > 0 {
         controls_after_actions -= action_count * (layout.action_width + layout.action_gap)
     }
-    dropdown_width: i32 = controls_after_actions - spec.x
+    dropdown_width: s32 = controls_after_actions - spec.x
     if action_count > 0 {
         dropdown_width -= layout.side_padding - layout.action_gap
     }
-    available_width: i32 = dropdown_width
+    available_width: s32 = dropdown_width
     if spec.dropdown_min_width > 0 && dropdown_width < spec.dropdown_min_width {
         dropdown_width = spec.dropdown_min_width
     }
@@ -170,87 +178,91 @@ ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
     }
     if dropdown_width < 0 { dropdown_width = 0 }
 
-    layout.dropdown_bounds.x = (float)spec.x
-    layout.dropdown_bounds.y = (float)spec.y
-    layout.dropdown_bounds.width = (float)dropdown_width
-    layout.dropdown_bounds.height = (float)ToolbarPropMetric(spec.dropdown_height, 36.0, scale)
+    layout.dropdown_bounds.x = cast(float32)spec.x
+    layout.dropdown_bounds.y = cast(float32)spec.y
+    layout.dropdown_bounds.width = cast(float32)dropdown_width
+    layout.dropdown_bounds.height = cast(float32)ToolbarPropMetric(spec.dropdown_height, 36.0, scale)
     return layout
 }
 
-ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: i32,
-    action_count: i32) -> Rectangle #export {
+#program_export
+ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: s32,
+    action_count: s32) -> Rectangle {
     bounds: Rectangle
     if action_count <= 0 { return bounds }
     if index < 0 { index = 0 }
     if index >= action_count { index = action_count - 1 }
-    from_right: i32 = action_count - 1 - index
-    bounds.x = (float)(layout.controls_x - layout.action_width -
+    from_right: s32 = action_count - 1 - index
+    bounds.x = cast(float32)(layout.controls_x - layout.action_width -
         from_right * (layout.action_width + layout.action_gap))
-    bounds.y = (float)layout.action_y
-    bounds.width = (float)layout.action_width
-    bounds.height = (float)layout.action_width
+    bounds.y = cast(float32)layout.action_y
+    bounds.width = cast(float32)layout.action_width
+    bounds.height = cast(float32)layout.action_width
     return bounds
 }
 
-ToolbarActionStyleIconSize :: (icon_size: i32, scale: float) -> float #export {
+#program_export
+ToolbarActionStyleIconSize :: (icon_size: s32, scale: float32) -> float32 {
     if icon_size < 0 { icon_size = 0 }
     if scale <= 0.0 { scale = 1.0 }
-    return (float)icon_size / scale
+    return cast(float32)icon_size / scale
 }
 
 BottomIconRowLayout :: struct {
-    y: i32
-    button_width: i32
-    icon_size: i32
-    icon_padding: i32
-    gap: i32
-    start_x: i32
-    count: i32
+    y: s32
+    button_width: s32
+    icon_size: s32
+    icon_padding: s32
+    gap: s32
+    start_x: s32
+    count: s32
 }
 
-BottomIconRowLayoutFor :: (row: BottomIconRowProps, scale: float) -> BottomIconRowLayout #export {
+#program_export
+BottomIconRowLayoutFor :: (row: BottomIconRowProps, scale: float32) -> BottomIconRowLayout {
     bar: StyleFrame
     action: StyleFrame
     return BottomIconRowLayoutForStyle(row, scale, bar, action)
 }
 
-BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float,
-    bar: StyleFrame, action: StyleFrame) -> BottomIconRowLayout #export {
+#program_export
+BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float32,
+    bar: StyleFrame, action: StyleFrame) -> BottomIconRowLayout {
     layout: BottomIconRowLayout
     if scale <= 0.0 { scale = 1.0 }
 
-    count: i32 = row.count
+    count: s32 = row.count
     if count < 0 { count = 0 }
-    icon_size: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleIconSize, action.value.icon_size, 24.0, scale, true)
-    icon_padding: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StylePaddingX, action.value.padding_x, 10.0, scale, true)
-    gap: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleGap, action.value.gap, 12.0, scale, true)
-    side_margin: i32 = ToolbarStyleMetric(bar.value.fields,
-        (u32)StylePaddingX, bar.value.padding_x, 24.0, scale, true)
-    bottom_margin: i32 = ToolbarStyleMetric(bar.value.fields,
-        (u32)StylePaddingY, bar.value.padding_y, 6.0, scale, true)
-    min_icon_size: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_x, 16.0, scale, true)
-    min_icon_padding: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_y, 6.0, scale, true)
-    min_gap: i32 = ToolbarStyleMetric(bar.value.fields,
-        (u32)StyleGap, bar.value.gap, 8.0, scale, true)
-    available_w: i32 = row.view_width - side_margin * 2
-    min_available: i32 = ToolbarStyleMetric(bar.value.fields,
-        (u32)StyleContentOffset, bar.value.offset_x, 120.0, scale, false)
+    icon_size: s32 = ToolbarStyleMetric(action.value.fields,
+        cast(u32)StyleIconSize, action.value.icon_size, 24.0, scale, true)
+    icon_padding: s32 = ToolbarStyleMetric(action.value.fields,
+        cast(u32)StylePaddingX, action.value.padding_x, 10.0, scale, true)
+    gap: s32 = ToolbarStyleMetric(action.value.fields,
+        cast(u32)StyleGap, action.value.gap, 12.0, scale, true)
+    side_margin: s32 = ToolbarStyleMetric(bar.value.fields,
+        cast(u32)StylePaddingX, bar.value.padding_x, 24.0, scale, true)
+    bottom_margin: s32 = ToolbarStyleMetric(bar.value.fields,
+        cast(u32)StylePaddingY, bar.value.padding_y, 6.0, scale, true)
+    min_icon_size: s32 = ToolbarStyleMetric(action.value.fields,
+        cast(u32)StyleContentOffset, action.value.offset_x, 16.0, scale, true)
+    min_icon_padding: s32 = ToolbarStyleMetric(action.value.fields,
+        cast(u32)StyleContentOffset, action.value.offset_y, 6.0, scale, true)
+    min_gap: s32 = ToolbarStyleMetric(bar.value.fields,
+        cast(u32)StyleGap, bar.value.gap, 8.0, scale, true)
+    available_w: s32 = row.view_width - side_margin * 2
+    min_available: s32 = ToolbarStyleMetric(bar.value.fields,
+        cast(u32)StyleContentOffset, bar.value.offset_x, 120.0, scale, false)
     if available_w < min_available { available_w = min_available }
 
-    max_btn_w: i32 = available_w
+    max_btn_w: s32 = available_w
     if count > 1 {
-        fit_btn_w: i32 = (available_w - gap * (count - 1)) / count
+        fit_btn_w: s32 = (available_w - gap * (count - 1)) / count
         if max_btn_w <= 0 || max_btn_w > fit_btn_w {
             max_btn_w = fit_btn_w
         }
     }
 
-    button_w: i32 = icon_size + icon_padding * 2
+    button_w: s32 = icon_size + icon_padding * 2
     if button_w > max_btn_w {
         button_w = max_btn_w
         icon_padding = button_w / 4
@@ -264,7 +276,7 @@ BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float,
     gap = button_w / 4
     if gap < min_gap { gap = min_gap }
 
-    row_w: i32 = button_w * count
+    row_w: s32 = button_w * count
     if count > 1 { row_w += gap * (count - 1) }
     layout.y = row.view_height - bottom_margin - button_w
     layout.button_width = button_w
@@ -276,27 +288,28 @@ BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float,
     return layout
 }
 
+#program_export
 BottomIconRowButtonBoundsFor :: (layout: BottomIconRowLayout,
-    index: i32) -> Rectangle #export {
+    index: s32) -> Rectangle {
     bounds: Rectangle
     if layout.count <= 0 { return bounds }
     if index < 0 { index = 0 }
     if index >= layout.count { index = layout.count - 1 }
-    bounds.x = (float)(layout.start_x +
+    bounds.x = cast(float32)(layout.start_x +
         index * (layout.button_width + layout.gap))
-    bounds.y = (float)layout.y
-    bounds.width = (float)layout.button_width
-    bounds.height = (float)layout.button_width
+    bounds.y = cast(float32)layout.y
+    bounds.width = cast(float32)layout.button_width
+    bounds.height = cast(float32)layout.button_width
     return bounds
 }
 
 IconSliderPopupLayout :: struct {
     button_bounds: Rectangle
     popup_bounds: Rectangle
-    slider_x: i32
-    slider_y: i32
-    slider_height: i32
-    icon_size: i32
+    slider_x: s32
+    slider_y: s32
+    slider_height: s32
+    icon_size: s32
 }
 
 IconSliderPopupCloseDecision :: struct {
@@ -308,46 +321,49 @@ IconSliderPopupOpenResult :: struct {
     changed: bool
 }
 
-IconSliderPopupLayoutFor :: (x: i32, y: i32, icon_size: i32,
-    icon_padding: i32, popup_width: i32, popup_height: i32,
-    scale: float) -> IconSliderPopupLayout #export {
+#program_export
+IconSliderPopupLayoutFor :: (x: s32, y: s32, icon_size: s32,
+    icon_padding: s32, popup_width: s32, popup_height: s32,
+    scale: float32) -> IconSliderPopupLayout {
     layout: IconSliderPopupLayout
     if scale <= 0.0 { scale = 1.0 }
     if icon_size < 0 { icon_size = 0 }
     if icon_padding < 0 { icon_padding = 0 }
 
-    button_w: i32 = icon_size + icon_padding * 2
-    popup_w: i32 = popup_width
+    button_w: s32 = icon_size + icon_padding * 2
+    popup_w: s32 = popup_width
     if popup_w <= 0 { popup_w = button_w }
     if popup_w < button_w { popup_w = button_w }
-    popup_h: i32 = popup_height
-    if popup_h <= 0 { popup_h = (i32)(200.0 * scale) }
+    popup_h: s32 = popup_height
+    if popup_h <= 0 { popup_h = cast(s32)(200.0 * scale) }
 
-    layout.button_bounds.x = (float)x
-    layout.button_bounds.y = (float)y
-    layout.button_bounds.width = (float)button_w
-    layout.button_bounds.height = (float)button_w
-    layout.popup_bounds.x = (float)(x + button_w / 2 - popup_w / 2)
-    layout.popup_bounds.y = (float)(y + button_w + (i32)(4.0 * scale))
-    layout.popup_bounds.width = (float)popup_w
-    layout.popup_bounds.height = (float)popup_h
-    layout.slider_x = (i32)layout.popup_bounds.x + popup_w / 2
-    layout.slider_y = (i32)layout.popup_bounds.y + (i32)(14.0 * scale)
-    layout.slider_height = popup_h - (i32)(24.0 * scale)
+    layout.button_bounds.x = cast(float32)x
+    layout.button_bounds.y = cast(float32)y
+    layout.button_bounds.width = cast(float32)button_w
+    layout.button_bounds.height = cast(float32)button_w
+    layout.popup_bounds.x = cast(float32)(x + button_w / 2 - popup_w / 2)
+    layout.popup_bounds.y = cast(float32)(y + button_w + cast(s32)(4.0 * scale))
+    layout.popup_bounds.width = cast(float32)popup_w
+    layout.popup_bounds.height = cast(float32)popup_h
+    layout.slider_x = cast(s32)layout.popup_bounds.x + popup_w / 2
+    layout.slider_y = cast(s32)layout.popup_bounds.y + cast(s32)(14.0 * scale)
+    layout.slider_height = popup_h - cast(s32)(24.0 * scale)
     if layout.slider_height < 0 { layout.slider_height = 0 }
     layout.icon_size = icon_size
     return layout
 }
 
+#program_export
 IconSliderPopupCloseDecisionFor :: (icon_clicked: bool, released: bool,
-    pointer_inside_popup: bool) -> IconSliderPopupCloseDecision #export {
+    pointer_inside_popup: bool) -> IconSliderPopupCloseDecision {
     decision: IconSliderPopupCloseDecision
     decision.close = !icon_clicked && released && !pointer_inside_popup
     return decision
 }
 
+#program_export
 IconSliderPopupOpenFor :: (open: bool, icon_clicked: bool,
-    close_requested: bool, has_open: bool) -> IconSliderPopupOpenResult #export {
+    close_requested: bool, has_open: bool) -> IconSliderPopupOpenResult {
     result: IconSliderPopupOpenResult
     result.open = open
     result.changed = false

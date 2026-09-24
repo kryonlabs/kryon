@@ -1,4 +1,3 @@
-#module "collapsible_widget"
 #import "collapsible"
 #import "collapsible_props"
 #import "control_props"
@@ -14,19 +13,20 @@
 #import "tree_input"
 #import "widget_kind"
 
-CollapsibleDefaultFace :: (role: i32, state: i32) -> StyleData #export {
+#program_export
+CollapsibleDefaultFace :: (role: s32, state: s32) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleFocus | (u32)StyleRadius |
-        (u32)StyleOpacity | (u32)StyleFontSize |
-        (u32)StylePaddingX | (u32)StylePaddingY |
-        (u32)StyleIconSize
-    face.background = (u32)0xf8fafcff
-    face.foreground = (u32)0x171717ff
-    face.border = (u32)0xd1d5dbff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleFocus | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleFontSize |
+        cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleIconSize
+    face.background = cast(u32)0xf8fafcff
+    face.foreground = cast(u32)0x171717ff
+    face.border = cast(u32)0xd1d5dbff
     face.border_width = 1.0
-    face.focus = (u32)0x2563ebff
+    face.focus = cast(u32)0x2563ebff
     face.radius = 4.0
     face.opacity = 1.0
     face.font_size = 16.0
@@ -34,22 +34,22 @@ CollapsibleDefaultFace :: (role: i32, state: i32) -> StyleData #export {
     face.padding_y = 8.0
     face.icon_size = 20.0
     if role == CollapsibleTreeHeaderRole() {
-        face.background = (u32)0x00000000
-        face.border = (u32)0x00000000
+        face.background = cast(u32)0x00000000
+        face.border = cast(u32)0x00000000
         face.border_width = 0.0
         face.padding_x = 20.0
     }
     if role == CollapsibleCloseRole() {
-        face.background = (u32)0x00000000
-        face.border = (u32)0x00000000
+        face.background = cast(u32)0x00000000
+        face.border = cast(u32)0x00000000
         face.border_width = 0.0
         face.icon_size = 28.0
     }
     if state == ButtonStateSelected {
-        face.background = (u32)0xdbeafeff
-        face.foreground = (u32)0x1d4ed8ff
+        face.background = cast(u32)0xdbeafeff
+        face.foreground = cast(u32)0x1d4ed8ff
     } else if state == ButtonStateHover {
-        face.background = (u32)0xe5e7ebff
+        face.background = cast(u32)0xe5e7ebff
     } else if state == ButtonStateDisabled {
         face.foreground = Opacity(face.foreground, 0.45)
         face.background = Opacity(face.background, 0.45)
@@ -57,37 +57,40 @@ CollapsibleDefaultFace :: (role: i32, state: i32) -> StyleData #export {
     return face
 }
 
-CollapsibleFaceFor :: (props: CollapsibleProps, role: i32,
-    state: i32) -> StyleFrame #export {
+#program_export
+CollapsibleFaceFor :: (props: CollapsibleProps, role: s32,
+    state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindCollapsible(),
         props.id, props.class_name, role,
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
-        (i32)ControlSizeMedium, state)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         CollapsibleDefaultFace(role, state), facts, state)
     return frame
 }
 
-CollapsibleCloseKey :: () -> u64 #export {
-    return (u64)1
+#program_export
+CollapsibleCloseKey :: () -> u64 {
+    return cast(u64)1
 }
 
 # The caller owns open, hidden, and focus state. The ordered header slice
 # supplies tree navigation without a host side registration list.
+#program_export
 Collapsible :: (props: CollapsibleProps,
-    headers: []CollapsibleHeader) -> CollapsibleResult #export {
+    headers: []CollapsibleHeader) -> CollapsibleResult {
     result: CollapsibleResult
     result.node = -1
     result.open = props.open
     result.hidden = props.hidden
     if props.hidden { return result }
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
     parent_key: u64 = TreeCurrentParentKey()
-    previous: i32 = -1
-    close_previous: i32 = -1
+    previous: s32 = -1
+    close_previous: s32 = -1
     if TreeIsBuilding() {
         previous = TreeFind(key, parent_key, WidgetKindCollapsible)
         if props.closable {
@@ -141,22 +144,22 @@ Collapsible :: (props: CollapsibleProps,
         focused_now = false
     }
     if pointer.focus && props.id > 0 { focused_now = true }
-    state: i32 = ButtonStateNormal
+    state: s32 = ButtonStateNormal
     if props.selected { state = ButtonStateSelected }
     if TreeHoveredAt(previous) { state = ButtonStateHover }
     if TreePressedAt(previous) { state = ButtonStatePressed }
     if focused_now { state = ButtonStateFocus }
     if props.disabled { state = ButtonStateDisabled }
-    role: i32 = CollapsibleHeaderRoleFor(props.tree)
+    role: s32 = CollapsibleHeaderRoleFor(props.tree)
     face: StyleFrame = CollapsibleFaceFor(props, role, state)
     tree_face: StyleFrame = CollapsibleFaceFor(props,
         CollapsibleTreeHeaderRole(), state)
-    close_state: i32 = ButtonStateNormal
+    close_state: s32 = ButtonStateNormal
     if TreeHoveredAt(close_previous) { close_state = ButtonStateHover }
     if props.disabled { close_state = ButtonStateDisabled }
     close_face: StyleFrame = CollapsibleFaceFor(props,
         CollapsibleCloseRole(), close_state)
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     metrics: CollapsibleMetrics = CollapsibleMetricsFor(scale,
         face, tree_face, close_face)
@@ -179,16 +182,16 @@ Collapsible :: (props: CollapsibleProps,
             false, props.id)
         TreeSetSelected(result.node, props.selected)
         TreeSetLabel(result.node, props.label)
-        semantic: SemanticKind = (SemanticKind)SemanticButton
+        semantic: SemanticKind = cast(SemanticKind)SemanticButton
         if props.tree {
-            semantic = (SemanticKind)SemanticTreeItem
+            semantic = cast(SemanticKind)SemanticTreeItem
         }
         TreeSetSemantic(result.node, semantic, 0)
     }
     result.header = layout.header
     result.body = layout.body
     result.close_bounds = layout.close_bounds
-    result.content = (Rectangle){bounds.x,
+    result.content = Rectangle.{bounds.x,
         layout.header.y + layout.header.height, bounds.width, 0.0}
     if result.open && props.has_open && !props.leaf {
         result.content.height = bounds.height - layout.header.height
@@ -196,7 +199,7 @@ Collapsible :: (props: CollapsibleProps,
             result.content.height = 0.0
         }
     }
-    close_node: i32 = -1
+    close_node: s32 = -1
     if props.closable && TreeIsBuilding() {
         close_node = TreeSubmit(CollapsibleCloseKey(), result.node,
             WidgetKindButton, layout.close_bounds)
@@ -204,19 +207,19 @@ Collapsible :: (props: CollapsibleProps,
         close_label: string = props.close_label
         if close_label == "" { close_label = "Close" }
         TreeSetLabel(close_node, close_label)
-        TreeSetSemantic(close_node, (SemanticKind)SemanticButton, 0)
+        TreeSetSemantic(close_node, cast(SemanticKind)SemanticButton, 0)
     }
-    opacity: float = StyleOpacityValue(face.value.fields,
+    opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     background: Color = ColorFromPacked(Opacity(
         face.value.background, opacity))
-    if (!props.tree || props.selected) && background.a > (u8)0 {
+    if (!props.tree || props.selected) && background.a > cast(u8)0 {
         PaintRoundedFill(result.node, layout.header,
             face.value.radius, 12, background)
     }
     border: Color = ColorFromPacked(Opacity(face.value.border, opacity))
     if (!props.tree || props.selected) &&
-        face.value.border_width > 0.0 && border.a > (u8)0 {
+        face.value.border_width > 0.0 && border.a > cast(u8)0 {
         PaintRoundedOutline(result.node, layout.header,
             face.value.radius, 12, face.value.border_width, border)
     }
@@ -225,39 +228,39 @@ Collapsible :: (props: CollapsibleProps,
             face.value.radius, 12, 2.0,
             ColorFromPacked(Opacity(face.value.focus, opacity)))
     }
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), 16)
-    line_height: i32 = GlyphLineHeight(font, face.value.typeface)
-    text_y: i32 = (i32)(layout.header.y +
-        (layout.header.height - (float)line_height) * 0.5)
+    line_height: s32 = GlyphLineHeight(font, face.value.typeface)
+    text_y: s32 = cast(s32)(layout.header.y +
+        (layout.header.height - cast(float32)line_height) * 0.5)
     text_color: Color = ColorFromPacked(Opacity(
         face.value.foreground, opacity))
     PaintClippedLabel(result.node,
         CollapsibleMarkerText(CollapsibleMarkerFor(result.open,
             props.leaf)),
-        (i32)layout.header.x + metrics.icon_offset,
+        cast(s32)layout.header.x + metrics.icon_offset,
         text_y, font, text_color, layout.body)
     label_clip: Rectangle = layout.body
-    label_clip.x = layout.header.x + (float)metrics.text_offset
+    label_clip.x = layout.header.x + cast(float32)metrics.text_offset
     label_clip.width = layout.body.x + layout.body.width - label_clip.x
     if label_clip.width < 0.0 { label_clip.width = 0.0 }
     if props.label != "" {
         PaintClippedLabel(result.node, props.label,
-            (i32)label_clip.x, text_y, font, text_color, label_clip)
+            cast(s32)label_clip.x, text_y, font, text_color, label_clip)
     }
     if props.closable {
-        close_font: i32 = ResolveFont(0,
+        close_font: s32 = ResolveFont(0,
             StyleFontValue(close_face.value.fields,
                 close_face.value.font_size), font)
-        close_height: i32 = GlyphLineHeight(close_font,
+        close_height: s32 = GlyphLineHeight(close_font,
             close_face.value.typeface)
-        close_width: i32 = GlyphWidth("x", close_font,
+        close_width: s32 = GlyphWidth("x", close_font,
             close_face.value.typeface)
-        close_x: i32 = (i32)(layout.close_bounds.x +
-            (layout.close_bounds.width - (float)close_width) * 0.5)
-        close_y: i32 = (i32)(layout.close_bounds.y +
-            (layout.close_bounds.height - (float)close_height) * 0.5)
-        close_opacity: float = StyleOpacityValue(
+        close_x: s32 = cast(s32)(layout.close_bounds.x +
+            (layout.close_bounds.width - cast(float32)close_width) * 0.5)
+        close_y: s32 = cast(s32)(layout.close_bounds.y +
+            (layout.close_bounds.height - cast(float32)close_height) * 0.5)
+        close_opacity: float32 = StyleOpacityValue(
             close_face.value.fields, close_face.value.opacity)
         PaintClippedLabel(close_node, "x", close_x, close_y,
             close_font, ColorFromPacked(Opacity(

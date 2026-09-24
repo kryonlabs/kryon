@@ -1,4 +1,3 @@
-#module "paned_view"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -12,14 +11,14 @@
 #import "widget_kind"
 
 PanedViewMetrics :: struct {
-    grip: i32
-    drop_edge: i32
+    grip: s32
+    drop_edge: s32
 }
 
 PanedViewLayout :: struct {
-    size: i32
-    limit: i32
-    split: i32
+    size: s32
+    limit: s32
+    split: s32
     handle: Rectangle
 }
 
@@ -29,49 +28,55 @@ PanedViewDragDecision :: struct {
     drag_active: bool
 }
 
-PanedViewHandleRole :: () -> i32 #export {
+#program_export
+PanedViewHandleRole :: () -> s32 {
     return 12
 }
 
-PanedViewHandleFactsFor :: (class_name: i32, state: i32) -> StyleFacts #export {
+#program_export
+PanedViewHandleFactsFor :: (class_name: s32, state: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindPanedView(), 0, class_name,
         PanedViewHandleRole(), ButtonToneNeutral, ButtonEmphasisSoft,
         ControlSizeMedium, state)
 }
 
-PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
-    return (i32)(value * scale)
+PanedViewMetric :: (fields: u32, field: u32, value: float32, fallback: float32, scale: float32) -> s32 {
+    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
+    return cast(s32)(value * scale)
 }
 
-PanedViewMetricsFor :: (scale: float, handle: StyleFrame) -> PanedViewMetrics #export {
+#program_export
+PanedViewMetricsFor :: (scale: float32, handle: StyleFrame) -> PanedViewMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: PanedViewMetrics
-    metrics.grip = PanedViewMetric(handle.value.fields, (u32)StyleIconSize,
+    metrics.grip = PanedViewMetric(handle.value.fields, cast(u32)StyleIconSize,
         handle.value.icon_size, 8.0, scale)
-    metrics.drop_edge = PanedViewMetric(handle.value.fields, (u32)StylePaddingX,
+    metrics.drop_edge = PanedViewMetric(handle.value.fields, cast(u32)StylePaddingX,
         handle.value.padding_x, 46.0, scale)
     return metrics
 }
 
-PanedViewSize :: (bounds: Rectangle, vertical: bool) -> i32 #export {
-    size: i32 = (i32)bounds.height
-    if vertical { size = (i32)bounds.width }
+#program_export
+PanedViewSize :: (bounds: Rectangle, vertical: bool) -> s32 {
+    size: s32 = cast(s32)bounds.height
+    if vertical { size = cast(s32)bounds.width }
     if size < 0 { return 0 }
     return size
 }
 
-PanedViewLimit :: (size: i32, min_first: i32, min_second: i32) -> i32 #export {
+#program_export
+PanedViewLimit :: (size: s32, min_first: s32, min_second: s32) -> s32 {
     if size < 0 { size = 0 }
     if min_first < 0 { min_first = 0 }
     if min_first > size { min_first = size }
     if min_second < 0 { min_second = 0 }
-    limit: i32 = size - min_second
+    limit: s32 = size - min_second
     if limit < min_first { limit = min_first }
     return limit
 }
 
-PanedViewClampSplit :: (split: i32, min_first: i32, limit: i32) -> i32 #export {
+#program_export
+PanedViewClampSplit :: (split: s32, min_first: s32, limit: s32) -> s32 {
     if min_first < 0 { min_first = 0 }
     if limit < min_first { limit = min_first }
     if split < min_first { return min_first }
@@ -79,57 +84,63 @@ PanedViewClampSplit :: (split: i32, min_first: i32, limit: i32) -> i32 #export {
     return split
 }
 
-PanedViewDefaultSplit :: (limit: i32) -> i32 #export {
+#program_export
+PanedViewDefaultSplit :: (limit: s32) -> s32 {
     return limit / 2
 }
 
-PanedViewSplitFor :: (current_split: i32, has_split: bool,
-    size: i32, min_first: i32, min_second: i32) -> i32 #export {
+#program_export
+PanedViewSplitFor :: (current_split: s32, has_split: bool,
+    size: s32, min_first: s32, min_second: s32) -> s32 {
     if min_first > size { min_first = size }
-    limit: i32 = PanedViewLimit(size, min_first, min_second)
-    split: i32 = current_split
+    limit: s32 = PanedViewLimit(size, min_first, min_second)
+    split: s32 = current_split
     if !has_split { split = PanedViewDefaultSplit(limit) }
     return PanedViewClampSplit(split, min_first, limit)
 }
 
+#program_export
 PanedViewPointerSplit :: (bounds: Rectangle, vertical: bool,
-    pointer_x: float, pointer_y: float) -> i32 #export {
-    if vertical { return (i32)(pointer_x - bounds.x) }
-    return (i32)(pointer_y - bounds.y)
+    pointer_x: float32, pointer_y: float32) -> s32 {
+    if vertical { return cast(s32)(pointer_x - bounds.x) }
+    return cast(s32)(pointer_y - bounds.y)
 }
 
+#program_export
 PanedViewPointerSplitFor :: (bounds: Rectangle, vertical: bool,
-    pointer_x: float, pointer_y: float, min_first: i32,
-    min_second: i32) -> i32 #export {
-    size: i32 = PanedViewSize(bounds, vertical)
+    pointer_x: float32, pointer_y: float32, min_first: s32,
+    min_second: s32) -> s32 {
+    size: s32 = PanedViewSize(bounds, vertical)
     if min_first > size { min_first = size }
-    limit: i32 = PanedViewLimit(size, min_first, min_second)
-    split: i32 = PanedViewPointerSplit(bounds, vertical, pointer_x,
+    limit: s32 = PanedViewLimit(size, min_first, min_second)
+    split: s32 = PanedViewPointerSplit(bounds, vertical, pointer_x,
         pointer_y)
     return PanedViewClampSplit(split, min_first, limit)
 }
 
+#program_export
 PanedViewHandleFor :: (bounds: Rectangle, vertical: bool,
-    split: i32, metrics: PanedViewMetrics) -> Rectangle #export {
+    split: s32, metrics: PanedViewMetrics) -> Rectangle {
     handle: Rectangle
-    half: float = (float)metrics.grip * 0.5
+    half: float32 = cast(float32)metrics.grip * 0.5
     if vertical {
-        handle.x = bounds.x + (float)split - half
+        handle.x = bounds.x + cast(float32)split - half
         handle.y = bounds.y
-        handle.width = (float)metrics.grip
+        handle.width = cast(float32)metrics.grip
         handle.height = bounds.height
     } else {
         handle.x = bounds.x
-        handle.y = bounds.y + (float)split - half
+        handle.y = bounds.y + cast(float32)split - half
         handle.width = bounds.width
-        handle.height = (float)metrics.grip
+        handle.height = cast(float32)metrics.grip
     }
     return handle
 }
 
+#program_export
 PanedViewLayoutFor :: (bounds: Rectangle, vertical: bool,
-    current_split: i32, has_split: bool, min_first: i32, min_second: i32,
-    metrics: PanedViewMetrics) -> PanedViewLayout #export {
+    current_split: s32, has_split: bool, min_first: s32, min_second: s32,
+    metrics: PanedViewMetrics) -> PanedViewLayout {
     layout: PanedViewLayout
     layout.size = PanedViewSize(bounds, vertical)
     if min_first > layout.size { min_first = layout.size }
@@ -144,15 +155,17 @@ PanedViewLayoutFor :: (bounds: Rectangle, vertical: bool,
     return layout
 }
 
-PanedViewChanged :: (previous_split: i32, next_split: i32,
-    has_split: bool) -> bool #export {
+#program_export
+PanedViewChanged :: (previous_split: s32, next_split: s32,
+    has_split: bool) -> bool {
     if !has_split { return false }
     return previous_split != next_split
 }
 
+#program_export
 PanedViewDragFor :: (has_active: bool, active_is_current: bool,
     owner_captured: bool, mouse_down: bool, disabled: bool, has_split: bool,
-    handle_hot: bool, mouse_pressed: bool) -> PanedViewDragDecision #export {
+    handle_hot: bool, mouse_pressed: bool) -> PanedViewDragDecision {
     decision: PanedViewDragDecision
     if has_active && owner_captured {
         decision.clear_active = true
@@ -174,33 +187,35 @@ PanedViewDragFor :: (has_active: bool, active_is_current: bool,
     return decision
 }
 
+#program_export
 PanedViewDropZoneFor :: (bounds: Rectangle, mouse: Vector2,
-    metrics: PanedViewMetrics) -> i32 #export {
+    metrics: PanedViewMetrics) -> s32 {
     if mouse.x < bounds.x || mouse.x > bounds.x + bounds.width ||
        mouse.y < bounds.y || mouse.y > bounds.y + bounds.height {
         return DropNone
     }
-    edge: i32 = metrics.drop_edge
+    edge: s32 = metrics.drop_edge
     if edge < 0 { edge = 0 }
-    if mouse.x < bounds.x + (float)edge { return DropLeft }
-    if mouse.x > bounds.x + bounds.width - (float)edge { return DropRight }
-    if mouse.y < bounds.y + (float)edge { return DropTop }
-    if mouse.y > bounds.y + bounds.height - (float)edge { return DropBottom }
+    if mouse.x < bounds.x + cast(float32)edge { return DropLeft }
+    if mouse.x > bounds.x + bounds.width - cast(float32)edge { return DropRight }
+    if mouse.y < bounds.y + cast(float32)edge { return DropTop }
+    if mouse.y > bounds.y + bounds.height - cast(float32)edge { return DropBottom }
     return DropCenter
 }
 
-PanedViewFace :: (class_name: i32, disabled: bool) -> StyleFrame #export {
+#program_export
+PanedViewFace :: (class_name: s32, disabled: bool) -> StyleFrame {
     defaults: StyleData
-    defaults.fields = (u32)StyleBackground | (u32)StyleRadius |
-        (u32)StyleOpacity | (u32)StyleIconSize |
-        (u32)StylePaddingX
-    defaults.background = (u32)0x9ca3afff
+    defaults.fields = cast(u32)StyleBackground | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleIconSize |
+        cast(u32)StylePaddingX
+    defaults.background = cast(u32)0x9ca3afff
     defaults.radius = 4.0
     defaults.opacity = 1.0
     defaults.icon_size = 8.0
     defaults.padding_x = 46.0
     if disabled { defaults.opacity = 0.45 }
-    state: i32 = ButtonStateNormal
+    state: s32 = ButtonStateNormal
     if disabled { state = ButtonStateDisabled }
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
@@ -208,8 +223,9 @@ PanedViewFace :: (class_name: i32, disabled: bool) -> StyleFrame #export {
     return frame
 }
 
-PanedViewHandleKey :: () -> u64 #export {
-    return (u64)1
+#program_export
+PanedViewHandleKey :: () -> u64 {
+    return cast(u64)1
 }
 
 PaneBounds :: struct {
@@ -217,8 +233,9 @@ PaneBounds :: struct {
     second: Rectangle
 }
 
+#program_export
 PanedViewPanesFor :: (bounds: Rectangle, handle: Rectangle,
-    vertical: bool) -> PaneBounds #export {
+    vertical: bool) -> PaneBounds {
     panes: PaneBounds
     panes.first = bounds
     panes.second = bounds
@@ -238,29 +255,31 @@ PanedViewPanesFor :: (bounds: Rectangle, handle: Rectangle,
     return panes
 }
 
-PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float,
-    class_name: i32) -> DropZone #export {
+#program_export
+PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float32,
+    class_name: s32) -> DropZone {
     face: StyleFrame = PanedViewFace(class_name, false)
     metrics: PanedViewMetrics = PanedViewMetricsFor(scale, face)
-    return (DropZone)PanedViewDropZoneFor(bounds, mouse, metrics)
+    return cast(DropZone)PanedViewDropZoneFor(bounds, mouse, metrics)
 }
 
 # The caller stores the returned split and places its pane content in the
 # returned rectangles. The handle uses the retained pointer drag route.
-PanedView :: (props: PanedViewProps) -> PanedViewResult #export {
+#program_export
+PanedView :: (props: PanedViewProps) -> PanedViewResult {
     result: PanedViewResult
     result.node = -1
     bounds: Rectangle = props.bounds
     parent: Rectangle = TreeCurrentParentBounds()
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     face: StyleFrame = PanedViewFace(props.class_name, props.disabled)
     metrics: PanedViewMetrics = PanedViewMetricsFor(scale, face)
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
     if TreeIsBuilding() {
         result.node = TreeSubmitCurrent(key, WidgetKindPanedView, bounds)
         if result.node < 0 { return result }
@@ -270,14 +289,14 @@ PanedView :: (props: PanedViewProps) -> PanedViewResult #export {
         props.split, props.has_split, props.min_first,
         props.min_second, metrics)
     if TreeIsBuilding() && props.has_split && !props.disabled {
-        previous: i32 = TreeFind(PanedViewHandleKey(), key,
+        previous: s32 = TreeFind(PanedViewHandleKey(), key,
             WidgetKindSlider)
         drag: PointerDrag = TreeTakeDragAt(previous)
         if drag.active || drag.ended {
-            pointer_x: float = drag.x - drag.grab_x +
-                (float)metrics.grip * 0.5
-            pointer_y: float = drag.y - drag.grab_y +
-                (float)metrics.grip * 0.5
+            pointer_x: float32 = drag.x - drag.grab_x +
+                cast(float32)metrics.grip * 0.5
+            pointer_y: float32 = drag.y - drag.grab_y +
+                cast(float32)metrics.grip * 0.5
             layout.split = PanedViewPointerSplitFor(bounds,
                 props.vertical, pointer_x, pointer_y,
                 props.min_first, props.min_second)
@@ -293,7 +312,7 @@ PanedView :: (props: PanedViewProps) -> PanedViewResult #export {
         props.vertical)
     result.first = panes.first
     result.second = panes.second
-    handle_node: i32 = -1
+    handle_node: s32 = -1
     if TreeIsBuilding() {
         handle_node = TreeSubmit(PanedViewHandleKey(), result.node,
             WidgetKindSlider, result.handle)

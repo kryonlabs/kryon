@@ -1,4 +1,3 @@
-#module "toolbar_props"
 #import "drawing_props"
 #import "dropdown_props"
 #import "image_props"
@@ -9,17 +8,17 @@ IconRowItem :: struct {
 }
 
 BottomIconRowProps :: struct {
-    center_x: i32
-    view_width: i32
-    view_height: i32
-    count: i32
-    items: const IconRowItem*
+    center_x: s32
+    view_width: s32
+    view_height: s32
+    count: s32
+    items: *IconRowItem
 }
 
 IconRowResult :: struct {
-    clicked_index: i32
-    y: i32
-    button_width: i32
+    clicked_index: s32
+    y: s32
+    button_width: s32
 }
 
 ToolbarAction :: struct {
@@ -31,23 +30,23 @@ ToolbarAction :: struct {
 
 ToolbarProps :: struct {
     key: u64
-    id: i32
-    class_name: i32
-    x: i32
-    y: i32
-    width: i32
-    height: i32
-    scale: float
+    id: s32
+    class_name: s32
+    x: s32
+    y: s32
+    width: s32
+    height: s32
+    scale: float32
     draw_menu: bool
     dropdown: DropdownProps
-    dropdown_min_width: i32
-    dropdown_max_width: i32
-    dropdown_height: i32
+    dropdown_min_width: s32
+    dropdown_max_width: s32
+    dropdown_height: s32
 }
 
 ToolbarResult :: struct {
-    node: i32
+    node: s32
     dropdown: DropdownResult
-    selected_menu_item: i32
-    clicked_action: i32
+    selected_menu_item: s32
+    clicked_action: s32
 }

@@ -1,4 +1,3 @@
-#module "overlay_widget"
 #import "drawing_props"
 #import "geometry"
 #import "overlay"
@@ -8,39 +7,42 @@
 #import "tree_input"
 #import "widget_kind"
 
-OverlayScrimKey :: () -> u64 #export {
-    return (u64)1
+#program_export
+OverlayScrimKey :: () -> u64 {
+    return cast(u64)1
 }
 
-OverlayPanelKey :: () -> u64 #export {
-    return (u64)2
+#program_export
+OverlayPanelKey :: () -> u64 {
+    return cast(u64)2
 }
 
 # The full viewport backdrop sits above earlier controls in hit order. Panel
 # children can be submitted under result.panel_node with TreePushScope/End.
 # Pointer release is owned by the retained backdrop, including drags that
 # finish outside the viewport. The caller decides when to stop submitting it.
-DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResult #export {
+#program_export
+DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResult {
     result: DismissibleOverlayResult
     result.node = -1
     result.panel_node = -1
     viewport: Rectangle = TreeRootBounds()
     if props.view_width > 0 {
         viewport.x = 0.0
-        viewport.width = (float)props.view_width
+        viewport.width = cast(float32)props.view_width
     }
     if props.view_height > 0 {
         viewport.y = 0.0
-        viewport.height = (float)props.view_height
+        viewport.height = cast(float32)props.view_height
     }
     if viewport.width <= 0.0 || viewport.height <= 0.0 {
         return result
     }
     key: u64 = props.key
-    if key == (u64)0 { key = TreeNextKey() }
-    scrim_node: i32 = -1
+    if key == cast(u64)0 { key = TreeNextKey() }
+    scrim_node: s32 = -1
     if TreeIsBuilding() {
-        previous: i32 = TreeFind(OverlayScrimKey(), key,
+        previous: s32 = TreeFind(OverlayScrimKey(), key,
             WidgetKindButton)
         release: PointerDrag = TreeTakeDragAt(previous)
         if release.ended {
@@ -62,7 +64,7 @@ DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResu
             WidgetKindCustom, props.bounds)
         if result.panel_node < 0 { return result }
     }
-    if props.scrim.a != (u8)0 {
+    if props.scrim.a != cast(u8)0 {
         PaintRoundedFill(scrim_node, viewport, 0.0, 4,
             props.scrim)
     }

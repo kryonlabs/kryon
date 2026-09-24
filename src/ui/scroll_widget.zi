@@ -1,4 +1,3 @@
-#module "scroll_widget"
 #import "control_props"
 #import "geometry"
 #import "drawing_props"
@@ -14,7 +13,8 @@
 # A value based scroll viewport. The caller supplies wheel or keyboard
 # movement, keeps the returned offset, and positions children in content.
 # Close the child scope with End().
-Scroll :: (props: ScrollProps) -> ScrollResult #export {
+#program_export
+Scroll :: (props: ScrollProps) -> ScrollResult {
     result: ScrollResult
     result.node = -1
     result.viewport = props.bounds
@@ -27,30 +27,30 @@ Scroll :: (props: ScrollProps) -> ScrollResult #export {
     }
     if TreeIsBuilding() {
         key: u64 = props.key
-        if key == (u64)0 { key = TreeNextKey() }
+        if key == cast(u64)0 { key = TreeNextKey() }
         result.node = TreeSubmitCurrent(key, WidgetKindScroll,
             result.viewport)
         if result.node < 0 { return result }
         result.viewport = TreeSubmittedNodeAt(result.node).bounds
     }
     result.max_scroll = ScrollMax(props.content_height,
-        (i32)result.viewport.height)
-    offset: i64 = (i64)props.scroll_offset + (i64)props.scroll_delta
-    if offset < (i64)0 { offset = (i64)0 }
-    if offset > (i64)result.max_scroll {
-        offset = (i64)result.max_scroll
+        cast(s32)result.viewport.height)
+    offset: s64 = cast(s64)props.scroll_offset + cast(s64)props.scroll_delta
+    if offset < cast(s64)0 { offset = cast(s64)0 }
+    if offset > cast(s64)result.max_scroll {
+        offset = cast(s64)result.max_scroll
     }
-    result.scroll_offset = (i32)offset
+    result.scroll_offset = cast(s32)offset
     result.content = result.viewport
-    result.content.y -= (float)result.scroll_offset
-    if props.content_height > (i32)result.viewport.height {
-        result.content.height = (float)props.content_height
+    result.content.y -= cast(float32)result.scroll_offset
+    if props.content_height > cast(s32)result.viewport.height {
+        result.content.height = cast(float32)props.content_height
     }
     if props.input.enabled {
         track: StyleFrame = ScrollFace(StyleKindScroll(),
-            props.class_name, props.input.disabled, (i32)ButtonStateNormal, 10.0)
+            props.class_name, props.input.disabled, cast(s32)ButtonStateNormal, 10.0)
         thumb: StyleFrame = ScrollFace(StyleKindScrollThumb(),
-            props.class_name, props.input.disabled, (i32)ButtonStateNormal, 10.0)
+            props.class_name, props.input.disabled, cast(s32)ButtonStateNormal, 10.0)
         metrics: ScrollMetrics = props.metrics
         if metrics.scrollbar_width <= 0 {
             metrics = ScrollMetricsFor(props.scale, track, thumb)

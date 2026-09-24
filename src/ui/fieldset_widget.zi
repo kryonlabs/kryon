@@ -1,4 +1,3 @@
-#module "fieldset_widget"
 #import "control_props"
 #import "drawing_props"
 #import "fieldset"
@@ -12,16 +11,17 @@
 #import "tree"
 #import "widget_kind"
 
-FieldsetDefaultFace :: () -> StyleData #export {
+#program_export
+FieldsetDefaultFace :: () -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize | (u32)StylePaddingX |
-        (u32)StylePaddingY | (u32)StyleGap
-    face.background = (u32)0xffffffff
-    face.foreground = (u32)0x171717ff
-    face.border = (u32)0xd1d5dbff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY | cast(u32)StyleGap
+    face.background = cast(u32)0xffffffff
+    face.foreground = cast(u32)0x171717ff
+    face.border = cast(u32)0xd1d5dbff
     face.border_width = 1.0
     face.radius = 6.0
     face.opacity = 1.0
@@ -32,41 +32,43 @@ FieldsetDefaultFace :: () -> StyleData #export {
     return face
 }
 
-FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame #export {
+#program_export
+FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindFieldset(),
         props.id, props.class_name, StyleAny(),
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, ButtonStateNormal)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, ButtonStateNormal)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         FieldsetDefaultFace(), facts, ButtonStateNormal)
     return frame
 }
 
-Fieldset :: (props: FieldsetProps) #export {
+#program_export
+Fieldset :: (props: FieldsetProps) {
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
     face: StyleFrame = FieldsetFaceFor(props)
-    font: i32 = ResolveFont(0,
+    font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), 18)
-    title_width: i32 = 0
+    title_width: s32 = 0
     if props.title != "" {
         title_width = GlyphWidth(props.title, font, face.value.typeface)
     }
     paint: FieldsetPaint = FieldsetPaintFor(props.bounds,
-        (float)title_width, props.title != "", 1.0, face)
-    node: i32 = -1
+        cast(float32)title_width, props.title != "", 1.0, face)
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(key, WidgetKindFieldset, paint.frame)
         if node < 0 { return }
         TreeSetLabel(node, props.title)
     }
-    opacity: float = StyleOpacityValue(face.value.fields,
+    opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     background: Color = ColorFromPacked(Opacity(
         paint.background_color, opacity))
-    if background.a > (u8)0 {
+    if background.a > cast(u8)0 {
         PaintRoundedFill(node, paint.frame, face.value.radius,
             12, background)
     }
@@ -78,8 +80,8 @@ Fieldset :: (props: FieldsetProps) #export {
     if paint.show_title {
         PaintRoundedFill(node, paint.title_background, 0.0, 4,
             background)
-        PaintClippedLabel(node, props.title, (i32)paint.title_text.x,
-            (i32)paint.title_text.y, font,
+        PaintClippedLabel(node, props.title, cast(s32)paint.title_text.x,
+            cast(s32)paint.title_text.y, font,
             ColorFromPacked(Opacity(paint.text_color, opacity)),
             paint.title_text)
     }

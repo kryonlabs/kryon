@@ -1,4 +1,3 @@
-#module "separator_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -15,17 +14,18 @@
 SeparatorFaces :: struct {
     line: StyleFrame
     label: StyleFrame
-    scale: float
-    fallback_font: i32
+    scale: float32
+    fallback_font: s32
 }
 
-DefaultSeparatorFaces :: () -> SeparatorFaces #export {
+#program_export
+DefaultSeparatorFaces :: () -> SeparatorFaces {
     faces: SeparatorFaces
-    faces.line.value.fields = (u32)StyleBackground
-    faces.line.value.background = (u32)0x66645fff
-    faces.label.value.fields = (u32)StyleForeground |
-        (u32)StyleFontSize | (u32)StyleGap
-    faces.label.value.foreground = (u32)0x171717ff
+    faces.line.value.fields = cast(u32)StyleBackground
+    faces.line.value.background = cast(u32)0x66645fff
+    faces.label.value.fields = cast(u32)StyleForeground |
+        cast(u32)StyleFontSize | cast(u32)StyleGap
+    faces.label.value.foreground = cast(u32)0x171717ff
     faces.label.value.font_size = 14.0
     faces.label.value.gap = 12.0
     faces.scale = 1.0
@@ -33,18 +33,20 @@ DefaultSeparatorFaces :: () -> SeparatorFaces #export {
     return faces
 }
 
-SeparatorFacts :: (props: SeparatorProps, role: i32,
-    state: i32) -> StyleFacts #export {
+#program_export
+SeparatorFacts :: (props: SeparatorProps, role: s32,
+    state: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindSeparator(), 0,
-        props.class_name, role, (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+        props.class_name, role, cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
 }
 
+#program_export
 SeparatorFacesFor :: (rules: StyleRules, props: SeparatorProps,
-    defaults: SeparatorFaces) -> SeparatorFaces #export {
+    defaults: SeparatorFaces) -> SeparatorFaces {
     faces: SeparatorFaces = defaults
-    state: i32 = (i32)ButtonStateNormal
-    if props.disabled { state = (i32)ButtonStateDisabled }
+    state: s32 = cast(s32)ButtonStateNormal
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
     faces.line.value = ResolveStyleRules(rules, defaults.line.value,
         SeparatorFacts(props, SeparatorLineRole(), state), state)
     faces.label.value = ResolveStyleRules(rules, defaults.label.value,
@@ -57,13 +59,14 @@ PreparedSeparator :: struct {
     text: Rectangle
     line_color: u32
     text_color: u32
-    font: i32
+    font: s32
     show_text: bool
     show_line: bool
 }
 
+#program_export
 PrepareSeparator :: (props: SeparatorProps,
-    faces: SeparatorFaces) -> PreparedSeparator #export {
+    faces: SeparatorFaces) -> PreparedSeparator {
     prepared: PreparedSeparator
     prepared.font = ResolveFont(0,
         StyleFontValue(faces.label.value.fields,
@@ -76,10 +79,10 @@ PrepareSeparator :: (props: SeparatorProps,
         prepared.show_line = true
         return prepared
     }
-    width: i32 = GlyphWidth(props.label, prepared.font,
+    width: s32 = GlyphWidth(props.label, prepared.font,
         faces.label.value.typeface)
     paint: SeparatorLabelPaint = SeparatorLabelPaintFor(props.bounds,
-        (float)width, true, prepared.font, faces.scale,
+        cast(float32)width, true, prepared.font, faces.scale,
         faces.label)
     prepared.line = paint.line
     prepared.text = paint.text
@@ -91,12 +94,13 @@ PrepareSeparator :: (props: SeparatorProps,
     return prepared
 }
 
-PaintSeparatorForNode :: (node: i32, props: SeparatorProps,
-    faces: SeparatorFaces) #export {
+#program_export
+PaintSeparatorForNode :: (node: s32, props: SeparatorProps,
+    faces: SeparatorFaces) {
     prepared: PreparedSeparator = PrepareSeparator(props, faces)
     if prepared.show_text {
-        PaintLabel(node, props.label, (i32)prepared.text.x,
-            (i32)prepared.text.y, prepared.font,
+        PaintLabel(node, props.label, cast(s32)prepared.text.x,
+            cast(s32)prepared.text.y, prepared.font,
             ColorFromPacked(prepared.text_color))
     }
     if prepared.show_line {
@@ -105,18 +109,21 @@ PaintSeparatorForNode :: (node: i32, props: SeparatorProps,
     }
 }
 
+#program_export
 PaintSeparatorProps :: (props: SeparatorProps,
-    faces: SeparatorFaces) #export {
+    faces: SeparatorFaces) {
     PaintSeparatorForNode(-1, props, faces)
 }
 
+#program_export
 PaintSeparatorFromRules :: (props: SeparatorProps, rules: StyleRules,
-    defaults: SeparatorFaces) #export {
+    defaults: SeparatorFaces) {
     PaintSeparatorProps(props, SeparatorFacesFor(rules, props, defaults))
 }
 
-Separator :: (props: SeparatorProps) #export {
-    node: i32 = -1
+#program_export
+Separator :: (props: SeparatorProps) {
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(props.key, WidgetKindSeparator, props.bounds)
         if node < 0 { return }
@@ -126,19 +133,20 @@ Separator :: (props: SeparatorProps) #export {
     PaintSeparatorForNode(node, props, faces)
 }
 
-Bullet :: (bounds: Rectangle) #export {
+#program_export
+Bullet :: (bounds: Rectangle) {
     defaults: StyleData
-    defaults.fields = (u32)StyleForeground
-    defaults.foreground = (u32)0x171717ff
+    defaults.fields = cast(u32)StyleForeground
+    defaults.foreground = cast(u32)0x171717ff
     facts: StyleFacts = StyleControlRoleFacts(StyleKindSeparator(),
-        0, 0, SeparatorBulletRole(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium,
-        (i32)ButtonStateNormal)
+        0, 0, SeparatorBulletRole(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium,
+        cast(s32)ButtonStateNormal)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
-        facts, (i32)ButtonStateNormal)
+        facts, cast(s32)ButtonStateNormal)
     paint: BulletPaint = BulletPaintFor(bounds, frame)
-    node: i32 = -1
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(TreeNextKey(), WidgetKindBullet, bounds)
         if node < 0 { return }

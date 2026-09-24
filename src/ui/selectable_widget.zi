@@ -1,4 +1,3 @@
-#module "selectable_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -13,56 +12,59 @@
 #import "tree_input"
 #import "widget_kind"
 
-SelectableDefaultFace :: (state: i32) -> StyleData #export {
+#program_export
+SelectableDefaultFace :: (state: s32) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize | (u32)StylePaddingX
-    face.background = (u32)0x00000000
-    face.foreground = (u32)0x171717ff
-    face.border = (u32)0x00000000
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX
+    face.background = cast(u32)0x00000000
+    face.foreground = cast(u32)0x171717ff
+    face.border = cast(u32)0x00000000
     face.opacity = 1.0
     face.radius = 4.0
     face.font_size = 14.0
     face.padding_x = 8.0
     if state == ButtonStateHover {
-        face.background = (u32)0xe5e7ebff
+        face.background = cast(u32)0xe5e7ebff
     } else if state == ButtonStatePressed {
-        face.background = (u32)0xd1d5dbff
+        face.background = cast(u32)0xd1d5dbff
     } else if state == ButtonStateSelected {
-        face.background = (u32)0xdbeafeff
-        face.foreground = (u32)0x1d4ed8ff
+        face.background = cast(u32)0xdbeafeff
+        face.foreground = cast(u32)0x1d4ed8ff
     } else if state == ButtonStateDisabled {
         face.foreground = Opacity(face.foreground, 0.45)
     }
     return face
 }
 
+#program_export
 SelectableFaceFor :: (props: SelectableProps,
-    state: i32) -> StyleFrame #export {
+    state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindSelectable(),
         props.id, props.class_name, StyleAny(),
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, state)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         SelectableDefaultFace(state), facts, state)
     return frame
 }
 
-Selectable :: (props: SelectableProps) -> SelectableToggleResult #export {
+#program_export
+Selectable :: (props: SelectableProps) -> SelectableToggleResult {
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
-    previous: i32 = -1
-    if TreeIsBuilding() && key != (u64)0 {
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
+    previous: s32 = -1
+    if TreeIsBuilding() && key != cast(u64)0 {
         previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindSelectable)
     }
     activated: bool = TreeTakeActivationAt(previous)
     result: SelectableToggleResult = SelectableToggleFor(
         props.selected, activated && !props.disabled)
-    state: i32 = ResolveState((i32)ButtonStateAuto,
+    state: s32 = ResolveState(cast(s32)ButtonStateAuto,
         props.disabled, false, TreePressedAt(previous),
         TreeHoveredAt(previous), false, result.selected)
     face: StyleFrame = SelectableFaceFor(props, state)
@@ -78,7 +80,7 @@ Selectable :: (props: SelectableProps) -> SelectableToggleResult #export {
     spec.face = face
     spec.label_inset = SelectableLabelInset(1.0, face)
     paint: SelectablePaint = SelectablePaintFor(spec)
-    node: i32 = -1
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(key, WidgetKindSelectable, bounds)
         if node < 0 { return result }
@@ -86,7 +88,7 @@ Selectable :: (props: SelectableProps) -> SelectableToggleResult #export {
         TreeSetSelected(node, result.selected)
         TreeSetLabel(node, props.label)
     }
-    opacity: float = StyleOpacityValue(face.value.fields,
+    opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     if paint.draw_fill {
         PaintRoundedFill(node, paint.bounds, face.value.radius, 12,
@@ -98,12 +100,12 @@ Selectable :: (props: SelectableProps) -> SelectableToggleResult #export {
             ColorFromPacked(Opacity(face.value.border, opacity)))
     }
     if props.label != "" {
-        font: i32 = ResolveFont(0,
+        font: s32 = ResolveFont(0,
             StyleFontValue(face.value.fields, face.value.font_size), 14)
-        line_height: i32 = GlyphLineHeight(font, face.value.typeface)
-        y: i32 = (i32)(paint.bounds.y +
-            (paint.bounds.height - (float)line_height) * 0.5)
-        PaintClippedLabel(node, props.label, (i32)paint.label_x,
+        line_height: s32 = GlyphLineHeight(font, face.value.typeface)
+        y: s32 = cast(s32)(paint.bounds.y +
+            (paint.bounds.height - cast(float32)line_height) * 0.5)
+        PaintClippedLabel(node, props.label, cast(s32)paint.label_x,
             y, font,
             ColorFromPacked(Opacity(paint.text_color, opacity)),
             paint.bounds)

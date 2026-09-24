@@ -1,4 +1,3 @@
-#module "tree_view"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -15,94 +14,99 @@
 #import "widget_kind"
 
 TreeViewMetrics :: struct {
-    default_row_height: i32
-    indent_x: i32
-    depth_indent: i32
-    marker_width: i32
-    text_gap: i32
-    scrollbar_width: i32
+    default_row_height: s32
+    indent_x: s32
+    depth_indent: s32
+    marker_width: s32
+    text_gap: s32
+    scrollbar_width: s32
 }
 
 TreeViewScrollLayout :: struct {
-    first: i32
-    y_offset: i32
+    first: s32
+    y_offset: s32
 }
 
 TreeViewTextPaint :: struct {
-    marker_x: i32
-    marker_y: i32
-    text_x: i32
-    text_y: i32
+    marker_x: s32
+    marker_y: s32
+    text_x: s32
+    text_y: s32
 }
 
 TreeViewRowDecision :: struct {
     select: bool
-    selected_id: i32
+    selected_id: s32
     consume_release: bool
     changed: bool
 }
 
 TreeViewHas :: (fields: u32, field: u32) -> bool {
-    return (fields & field) != (u32)0
+    return (fields & field) != cast(u32)0
 }
 
-TreeViewMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+TreeViewMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if !TreeViewHas(fields, field) || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-TreeViewMetricsFor :: (scale: float, panel: StyleFrame,
-    item: StyleFrame) -> TreeViewMetrics #export {
+#program_export
+TreeViewMetricsFor :: (scale: float32, panel: StyleFrame,
+    item: StyleFrame) -> TreeViewMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TreeViewMetrics
-    row_height: float = 28.0
-    if TreeViewHas(item.value.fields, (u32)StyleFontSize) &&
-       TreeViewHas(item.value.fields, (u32)StylePaddingY) {
+    row_height: float32 = 28.0
+    if TreeViewHas(item.value.fields, cast(u32)StyleFontSize) &&
+       TreeViewHas(item.value.fields, cast(u32)StylePaddingY) {
         row_height = item.value.font_size + item.value.padding_y * 2.0
     }
     metrics.default_row_height = TreeViewMetric(item.value.fields,
-        (u32)StyleContentOffset, item.value.offset_y, row_height, scale, false)
+        cast(u32)StyleContentOffset, item.value.offset_y, row_height, scale, false)
     metrics.indent_x = TreeViewMetric(panel.value.fields,
-        (u32)StylePaddingX, panel.value.padding_x, 8.0, scale, true)
+        cast(u32)StylePaddingX, panel.value.padding_x, 8.0, scale, true)
     metrics.depth_indent = TreeViewMetric(item.value.fields,
-        (u32)StyleContentOffset, item.value.offset_x, 18.0, scale, false)
+        cast(u32)StyleContentOffset, item.value.offset_x, 18.0, scale, false)
     metrics.marker_width = TreeViewMetric(item.value.fields,
-        (u32)StyleIconSize, item.value.icon_size, 16.0, scale, false)
+        cast(u32)StyleIconSize, item.value.icon_size, 16.0, scale, false)
     metrics.text_gap = TreeViewMetric(item.value.fields,
-        (u32)StyleGap, item.value.gap, 2.0, scale, true)
+        cast(u32)StyleGap, item.value.gap, 2.0, scale, true)
     metrics.scrollbar_width = TreeViewMetric(panel.value.fields,
-        (u32)StyleIconSize, panel.value.icon_size, 8.0, scale, true)
+        cast(u32)StyleIconSize, panel.value.icon_size, 8.0, scale, true)
     return metrics
 }
 
-TreeViewRowHeight :: (requested_row_height: i32, scale: float,
-    metrics: TreeViewMetrics) -> i32 #export {
+#program_export
+TreeViewRowHeight :: (requested_row_height: s32, scale: float32,
+    metrics: TreeViewMetrics) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     if requested_row_height > 0 {
-        height: i32 = (i32)((float)requested_row_height * scale)
+        height: s32 = cast(s32)(cast(float32)requested_row_height * scale)
         if height > 0 { return height }
     }
     return metrics.default_row_height
 }
 
-TreeViewContentHeight :: (item_count: i32, row_height: i32) -> i32 #export {
+#program_export
+TreeViewContentHeight :: (item_count: s32, row_height: s32) -> s32 {
     if item_count <= 0 || row_height <= 0 { return 0 }
-    height: i64 = (i64)item_count * (i64)row_height
-    if height > (i64)2147483647 { return 2147483647 }
-    return (i32)height
+    height: s64 = cast(s64)item_count * cast(s64)row_height
+    if height > cast(s64)2147483647 { return 2147483647 }
+    return cast(s32)height
 }
 
-TreeViewMaxScroll :: (viewport_height: i32, content_height: i32) -> i32 #export {
-    max_scroll: i32 = content_height - viewport_height
+#program_export
+TreeViewMaxScroll :: (viewport_height: s32, content_height: s32) -> s32 {
+    max_scroll: s32 = content_height - viewport_height
     if max_scroll < 0 { return 0 }
     return max_scroll
 }
 
-TreeViewScrollFor :: (scroll_y: i32, row_height: i32) -> TreeViewScrollLayout #export {
+#program_export
+TreeViewScrollFor :: (scroll_y: s32, row_height: s32) -> TreeViewScrollLayout {
     layout: TreeViewScrollLayout
     if scroll_y < 0 { scroll_y = 0 }
     if row_height <= 0 { row_height = 1 }
@@ -111,43 +115,48 @@ TreeViewScrollFor :: (scroll_y: i32, row_height: i32) -> TreeViewScrollLayout #e
     return layout
 }
 
-TreeViewVisibleRows :: (viewport_height: i32, row_height: i32) -> i32 #export {
+#program_export
+TreeViewVisibleRows :: (viewport_height: s32, row_height: s32) -> s32 {
     if viewport_height <= 0 { return 0 }
     if row_height <= 0 { row_height = 1 }
     return viewport_height / row_height + 1
 }
 
-TreeViewRowBounds :: (bounds: Rectangle, visible_index: i32,
-    row_height: i32, y_offset: i32) -> Rectangle #export {
+#program_export
+TreeViewRowBounds :: (bounds: Rectangle, visible_index: s32,
+    row_height: s32, y_offset: s32) -> Rectangle {
     row: Rectangle
     row.x = bounds.x
-    row.y = bounds.y + (float)(visible_index * row_height - y_offset)
+    row.y = bounds.y + cast(float32)(visible_index * row_height - y_offset)
     row.width = bounds.width
-    row.height = (float)row_height
+    row.height = cast(float32)row_height
     return row
 }
 
-TreeViewIndent :: (depth: i32, metrics: TreeViewMetrics) -> i32 #export {
+#program_export
+TreeViewIndent :: (depth: s32, metrics: TreeViewMetrics) -> s32 {
     if depth < 0 { depth = 0 }
     return metrics.indent_x + depth * metrics.depth_indent
 }
 
-TreeViewMarkerBounds :: (row: Rectangle, depth: i32,
-    metrics: TreeViewMetrics) -> Rectangle #export {
+#program_export
+TreeViewMarkerBounds :: (row: Rectangle, depth: s32,
+    metrics: TreeViewMetrics) -> Rectangle {
     marker: Rectangle
-    indent: i32 = TreeViewIndent(depth, metrics)
-    marker.x = row.x + (float)indent
+    indent: s32 = TreeViewIndent(depth, metrics)
+    marker.x = row.x + cast(float32)indent
     marker.y = row.y
-    marker.width = (float)metrics.marker_width
+    marker.width = cast(float32)metrics.marker_width
     marker.height = row.height
     return marker
 }
 
-TreeViewTextBounds :: (row: Rectangle, depth: i32,
-    metrics: TreeViewMetrics) -> Rectangle #export {
+#program_export
+TreeViewTextBounds :: (row: Rectangle, depth: s32,
+    metrics: TreeViewMetrics) -> Rectangle {
     text: Rectangle
-    indent: i32 = TreeViewIndent(depth, metrics)
-    x: float = row.x + (float)(indent + metrics.marker_width + metrics.text_gap)
+    indent: s32 = TreeViewIndent(depth, metrics)
+    x: float32 = row.x + cast(float32)(indent + metrics.marker_width + metrics.text_gap)
     text.x = x
     text.y = row.y
     text.width = row.width - (x - row.x)
@@ -156,23 +165,26 @@ TreeViewTextBounds :: (row: Rectangle, depth: i32,
     return text
 }
 
+#program_export
 TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
-    text_line_height: i32) -> TreeViewTextPaint #export {
+    text_line_height: s32) -> TreeViewTextPaint {
     paint: TreeViewTextPaint
-    paint.marker_x = (i32)marker.x
-    paint.marker_y = (i32)marker.y + ((i32)marker.height - text_line_height) / 2
-    paint.text_x = (i32)text.x
-    paint.text_y = (i32)text.y + ((i32)text.height - text_line_height) / 2
+    paint.marker_x = cast(s32)marker.x
+    paint.marker_y = cast(s32)marker.y + (cast(s32)marker.height - text_line_height) / 2
+    paint.text_x = cast(s32)text.x
+    paint.text_y = cast(s32)text.y + (cast(s32)text.height - text_line_height) / 2
     return paint
 }
 
-TreeViewMarkerText :: (expanded: bool) -> string #export {
+#program_export
+TreeViewMarkerText :: (expanded: bool) -> string {
     if expanded { return "v" }
     return ">"
 }
 
+#program_export
 TreeViewRowDecisionFor :: (hot: bool, released: bool, selectable: bool,
-    has_selection: bool, item_id: i32) -> TreeViewRowDecision #export {
+    has_selection: bool, item_id: s32) -> TreeViewRowDecision {
     decision: TreeViewRowDecision
     decision.selected_id = item_id
     if hot && released && selectable && has_selection {
@@ -183,32 +195,35 @@ TreeViewRowDecisionFor :: (hot: bool, released: bool, selectable: bool,
     return decision
 }
 
-TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
+#program_export
+TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: s32) -> Rectangle {
     bar: Rectangle
     if scrollbar_width < 0 { scrollbar_width = 0 }
-    bar.x = bounds.x + bounds.width - (float)scrollbar_width
+    bar.x = bounds.x + bounds.width - cast(float32)scrollbar_width
     bar.y = bounds.y
-    bar.width = (float)scrollbar_width
+    bar.width = cast(float32)scrollbar_width
     bar.height = bounds.height
     return bar
 }
 
-TreeViewRowKey :: (item: TreeItem, index: i32) -> u64 #export {
-    if item.id > 0 { return (u64)(u32)item.id }
-    return (u64)4294967296 + (u64)(u32)(index + 1)
+#program_export
+TreeViewRowKey :: (item: TreeItem, index: s32) -> u64 {
+    if item.id > 0 { return cast(u64)cast(u32)item.id }
+    return cast(u64)4294967296 + cast(u64)cast(u32)(index + 1)
 }
 
-TreeViewFace :: (kind: i32, name: i32, class_name: i32,
-    state: i32) -> StyleFrame #export {
+#program_export
+TreeViewFace :: (kind: s32, name: s32, class_name: s32,
+    state: s32) -> StyleFrame {
     defaults: StyleData
-    defaults.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize | (u32)StylePaddingX |
-        (u32)StylePaddingY | (u32)StyleGap
-    defaults.background = (u32)0xffffffff
-    defaults.foreground = (u32)0x171717ff
-    defaults.border = (u32)0xd1d5dbff
+    defaults.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY | cast(u32)StyleGap
+    defaults.background = cast(u32)0xffffffff
+    defaults.foreground = cast(u32)0x171717ff
+    defaults.border = cast(u32)0xd1d5dbff
     defaults.border_width = 1.0
     defaults.radius = 4.0
     defaults.opacity = 1.0
@@ -217,64 +232,67 @@ TreeViewFace :: (kind: i32, name: i32, class_name: i32,
     defaults.padding_y = 7.0
     defaults.gap = 2.0
     if kind == StyleKindTreeViewItem() {
-        defaults.background = (u32)0x00000000
-        defaults.border = (u32)0x00000000
+        defaults.background = cast(u32)0x00000000
+        defaults.border = cast(u32)0x00000000
         defaults.border_width = 0.0
         if state == ButtonStateHover {
-            defaults.background = (u32)0xe5e7ebff
+            defaults.background = cast(u32)0xe5e7ebff
         } else if state == ButtonStatePressed {
-            defaults.background = (u32)0xd1d5dbff
+            defaults.background = cast(u32)0xd1d5dbff
         } else if state == ButtonStateSelected {
-            defaults.background = (u32)0xdbeafeff
-            defaults.foreground = (u32)0x1d4ed8ff
+            defaults.background = cast(u32)0xdbeafeff
+            defaults.foreground = cast(u32)0x1d4ed8ff
         }
     }
     if state == ButtonStateDisabled { defaults.opacity = 0.45 }
     facts: StyleFacts = StyleControlRoleFacts(kind, name,
-        class_name, StyleAny(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+        class_name, StyleAny(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
         facts, state)
     return frame
 }
 
-TreeViewScrollFace :: (kind: i32, class_name: i32,
-    disabled: bool) -> StyleFrame #export {
+#program_export
+TreeViewScrollFace :: (kind: s32, class_name: s32,
+    disabled: bool) -> StyleFrame {
     defaults: StyleData
-    defaults.fields = (u32)StyleBackground | (u32)StyleRadius |
-        (u32)StyleOpacity | (u32)StyleIconSize |
-        (u32)StylePaddingX
-    defaults.background = (u32)0xe5e7ebff
+    defaults.fields = cast(u32)StyleBackground | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleIconSize |
+        cast(u32)StylePaddingX
+    defaults.background = cast(u32)0xe5e7ebff
     defaults.radius = 4.0
     defaults.opacity = 1.0
     defaults.icon_size = 8.0
     defaults.padding_x = 2.0
     if kind == StyleKindScrollThumb() {
-        defaults.background = (u32)0x9ca3afff
+        defaults.background = cast(u32)0x9ca3afff
         defaults.icon_size = 16.0
     }
-    state: i32 = ButtonStateNormal
+    state: s32 = ButtonStateNormal
     if disabled { state = ButtonStateDisabled }
     facts: StyleFacts = StyleControlRoleFacts(kind, 0,
-        class_name, StyleAny(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+        class_name, StyleAny(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
         facts, state)
     return frame
 }
 
-TreeViewThumbKey :: () -> u64 #export {
-    return (u64)4294967295
+#program_export
+TreeViewThumbKey :: () -> u64 {
+    return cast(u64)4294967295
 }
 
-TreeViewNavigationIndex :: (items: []TreeItem, selected_id: i32,
-    navigation: TreeViewNavigation) -> i32 #export {
-    if navigation == (TreeViewNavigation)TreeViewNavigationNone ||
+#program_export
+TreeViewNavigationIndex :: (items: []TreeItem, selected_id: s32,
+    navigation: TreeViewNavigation) -> s32 {
+    if navigation == cast(TreeViewNavigation)TreeViewNavigationNone ||
         items.length <= 0 { return -1 }
-    current: i32 = -1
-    index: i32 = 0
+    current: s32 = -1
+    index: s32 = 0
     while index < items.length {
         if items[index].id == selected_id {
             current = index
@@ -282,18 +300,18 @@ TreeViewNavigationIndex :: (items: []TreeItem, selected_id: i32,
         }
         index += 1
     }
-    direction: i32 = 1
-    candidate: i32 = 0
-    if navigation == (TreeViewNavigation)TreeViewNavigationEnd {
+    direction: s32 = 1
+    candidate: s32 = 0
+    if navigation == cast(TreeViewNavigation)TreeViewNavigationEnd {
         direction = -1
         candidate = items.length - 1
-    } else if navigation == (TreeViewNavigation)TreeViewNavigationUp {
+    } else if navigation == cast(TreeViewNavigation)TreeViewNavigationUp {
         direction = -1
         candidate = current - 1
         if current < 0 { candidate = items.length - 1 }
-    } else if navigation == (TreeViewNavigation)TreeViewNavigationDown {
+    } else if navigation == cast(TreeViewNavigation)TreeViewNavigationDown {
         candidate = current + 1
-    } else if navigation != (TreeViewNavigation)TreeViewNavigationHome {
+    } else if navigation != cast(TreeViewNavigation)TreeViewNavigationHome {
         return -1
     }
     while candidate >= 0 && candidate < items.length {
@@ -303,25 +321,27 @@ TreeViewNavigationIndex :: (items: []TreeItem, selected_id: i32,
     return -1
 }
 
-TreeViewRevealScroll :: (index: i32, row_height: i32,
-    viewport_height: i32, scroll: i32, max_scroll: i32) -> i32 #export {
+#program_export
+TreeViewRevealScroll :: (index: s32, row_height: s32,
+    viewport_height: s32, scroll: s32, max_scroll: s32) -> s32 {
     if index < 0 || row_height <= 0 { return ScrollClamp(scroll, max_scroll) }
-    top: i64 = (i64)index * (i64)row_height
-    bottom: i64 = top + (i64)row_height
-    next: i64 = (i64)scroll
+    top: s64 = cast(s64)index * cast(s64)row_height
+    bottom: s64 = top + cast(s64)row_height
+    next: s64 = cast(s64)scroll
     if top < next {
         next = top
-    } else if bottom > next + (i64)viewport_height {
-        next = bottom - (i64)viewport_height
+    } else if bottom > next + cast(s64)viewport_height {
+        next = bottom - cast(s64)viewport_height
     }
     if next < 0 { next = 0 }
-    if next > (i64)max_scroll { next = (i64)max_scroll }
-    return (i32)next
+    if next > cast(s64)max_scroll { next = cast(s64)max_scroll }
+    return cast(s32)next
 }
 
 # Items and view state are application values. Each visible row is a retained
 # selectable node whose bounds are clipped to the viewport for pointer input.
-TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export {
+#program_export
+TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     result: TreeViewResult
     result.node = -1
     result.selected_id = props.selected_id
@@ -330,33 +350,33 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
     measured_bounds: Rectangle = bounds
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
-    panel_state: i32 = ButtonStateNormal
+    panel_state: s32 = ButtonStateNormal
     if props.disabled { panel_state = ButtonStateDisabled }
     panel: StyleFrame = TreeViewFace(StyleKindTreeView(), props.id,
         props.class_name, panel_state)
     item_face: StyleFrame = TreeViewFace(StyleKindTreeViewItem(), 0,
         props.class_name, ButtonStateNormal)
     metrics: TreeViewMetrics = TreeViewMetricsFor(scale, panel, item_face)
-    row_height: i32 = TreeViewRowHeight(props.row_height, scale, metrics)
+    row_height: s32 = TreeViewRowHeight(props.row_height, scale, metrics)
     if row_height <= 0 { row_height = 1 }
-    content_height: i32 = TreeViewContentHeight(items.length, row_height)
-    max_scroll: i32 = TreeViewMaxScroll((i32)bounds.height, content_height)
-    scroll: i64 = (i64)props.scroll_offset
-    if !props.disabled { scroll += (i64)props.scroll_delta }
+    content_height: s32 = TreeViewContentHeight(items.length, row_height)
+    max_scroll: s32 = TreeViewMaxScroll(cast(s32)bounds.height, content_height)
+    scroll: s64 = cast(s64)props.scroll_offset
+    if !props.disabled { scroll += cast(s64)props.scroll_delta }
     if scroll < 0 { scroll = 0 }
-    if scroll > (i64)max_scroll { scroll = (i64)max_scroll }
-    result.scroll_offset = (i32)scroll
+    if scroll > cast(s64)max_scroll { scroll = cast(s64)max_scroll }
+    result.scroll_offset = cast(s32)scroll
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
     if TreeIsBuilding() {
         result.node = TreeSubmitCurrent(key, WidgetKindTreeView, bounds)
         if result.node < 0 { return result }
         bounds = TreeSubmittedNodeAt(result.node).bounds
         if !TreePushScope(result.node) { return result }
-        TreeSetSemantic(result.node, (SemanticKind)SemanticTree, 0)
+        TreeSetSemantic(result.node, cast(SemanticKind)SemanticTree, 0)
     }
     track_face: StyleFrame = TreeViewScrollFace(StyleKindScroll(),
         props.class_name, props.disabled)
@@ -367,13 +387,13 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
     scroll_metrics.scrollbar_width = metrics.scrollbar_width
     has_scrollbar: bool = max_scroll > 0 && metrics.scrollbar_width > 0
     if has_scrollbar && TreeIsBuilding() && !props.disabled {
-        previous_thumb: i32 = TreeFind(TreeViewThumbKey(), key,
+        previous_thumb: s32 = TreeFind(TreeViewThumbKey(), key,
             WidgetKindSlider)
         drag: PointerDrag = TreeTakeDragAt(previous_thumb)
         if drag.active || drag.ended {
             initial_paint: ScrollBarPaint = ScrollBarPaintFor(
-                (i32)(bounds.x + bounds.width) - metrics.scrollbar_width,
-                (i32)bounds.y, (i32)bounds.height, content_height,
+                cast(s32)(bounds.x + bounds.width) - metrics.scrollbar_width,
+                cast(s32)bounds.y, cast(s32)bounds.height, content_height,
                 result.scroll_offset, max_scroll, scroll_metrics)
             result.scroll_offset = ScrollDragOffsetFor(drag.y,
                 initial_paint.track_bounds.y, drag.grab_y,
@@ -381,16 +401,16 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
         }
     }
     if props.focused && !props.disabled {
-        selected_index: i32 = TreeViewNavigationIndex(items,
+        selected_index: s32 = TreeViewNavigationIndex(items,
             result.selected_id, props.navigation)
         if selected_index >= 0 {
             result.selected_id = items[selected_index].id
             result.scroll_offset = TreeViewRevealScroll(selected_index,
-                row_height, (i32)bounds.height, result.scroll_offset,
+                row_height, cast(s32)bounds.height, result.scroll_offset,
                 max_scroll)
         }
     }
-    opacity: float = StyleOpacityValue(panel.value.fields,
+    opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
     PaintRoundedFill(result.node, measured_bounds, panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background, opacity)))
@@ -401,18 +421,18 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
     }
     layout: TreeViewScrollLayout = TreeViewScrollFor(result.scroll_offset,
         row_height)
-    visible: i32 = TreeViewVisibleRows((i32)bounds.height, row_height)
-    visible_index: i32 = 0
+    visible: s32 = TreeViewVisibleRows(cast(s32)bounds.height, row_height)
+    visible_index: s32 = 0
     while visible_index < visible &&
         layout.first + visible_index < items.length {
-        index: i32 = layout.first + visible_index
+        index: s32 = layout.first + visible_index
         item: TreeItem = items[index]
         row: Rectangle = TreeViewRowBounds(bounds, visible_index,
             row_height, layout.y_offset)
         clipped: Rectangle = RectangleIntersection(row, bounds)
         if clipped.height > 0.0 && clipped.width > 0.0 {
             item_key: u64 = TreeViewRowKey(item, index)
-            previous: i32 = -1
+            previous: s32 = -1
             if TreeIsBuilding() {
                 previous = TreeFind(item_key, key, WidgetKindSelectable)
             }
@@ -422,13 +442,13 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
                 result.selected_id = item.id
             }
             selected: bool = result.selected_id == item.id
-            state: i32 = ResolveState((i32)ButtonStateAuto,
+            state: s32 = ResolveState(cast(s32)ButtonStateAuto,
                 props.disabled || !item.selectable, false,
                 TreePressedAt(previous), TreeHoveredAt(previous),
                 false, selected)
             face: StyleFrame = TreeViewFace(StyleKindTreeViewItem(),
                 item.id, props.class_name, state)
-            node: i32 = -1
+            node: s32 = -1
             if TreeIsBuilding() {
                 node = TreeSubmitCurrent(item_key, WidgetKindSelectable,
                     clipped)
@@ -437,18 +457,18 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
                     false, item.id)
                 TreeSetSelected(node, selected)
                 TreeSetLabel(node, item.label)
-                TreeSetSemantic(node, (SemanticKind)SemanticTreeItem, 0)
+                TreeSetSemantic(node, cast(SemanticKind)SemanticTreeItem, 0)
             }
-            item_opacity: float = StyleOpacityValue(face.value.fields,
+            item_opacity: float32 = StyleOpacityValue(face.value.fields,
                 face.value.opacity)
-            if face.value.background != (u32)0 {
+            if face.value.background != cast(u32)0 {
                 PaintRoundedFill(node, clipped, face.value.radius, 12,
                     ColorFromPacked(Opacity(face.value.background,
                         item_opacity)))
             }
-            font: i32 = ResolveFont(0,
+            font: s32 = ResolveFont(0,
                 StyleFontValue(face.value.fields, face.value.font_size), 14)
-            line_height: i32 = GlyphLineHeight(font, face.value.typeface)
+            line_height: s32 = GlyphLineHeight(font, face.value.typeface)
             marker: Rectangle = TreeViewMarkerBounds(row, item.depth,
                 metrics)
             label: Rectangle = TreeViewTextBounds(row, item.depth, metrics)
@@ -468,13 +488,13 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult #export 
     }
     if has_scrollbar {
         bar: ScrollBarPaint = ScrollBarPaintFor(
-            (i32)(bounds.x + bounds.width) - metrics.scrollbar_width,
-            (i32)bounds.y, (i32)bounds.height, content_height,
+            cast(s32)(bounds.x + bounds.width) - metrics.scrollbar_width,
+            cast(s32)bounds.y, cast(s32)bounds.height, content_height,
             result.scroll_offset, max_scroll, scroll_metrics)
-        track_node: i32 = -1
-        thumb_node: i32 = -1
+        track_node: s32 = -1
+        thumb_node: s32 = -1
         if TreeIsBuilding() {
-            track_node = TreeSubmitCurrent(TreeViewThumbKey() + (u64)1,
+            track_node = TreeSubmitCurrent(TreeViewThumbKey() + cast(u64)1,
                 WidgetKindCustom, bar.track_bounds)
             thumb_node = TreeSubmitCurrent(TreeViewThumbKey(),
                 WidgetKindSlider, bar.thumb_bounds)

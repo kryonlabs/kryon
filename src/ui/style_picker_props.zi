@@ -1,4 +1,3 @@
-#module "style_picker_props"
 #import "dropdown_props"
 
 StylePackOption :: struct {
@@ -19,18 +18,20 @@ StylePickerResult :: struct {
 }
 
 StylePickerState :: struct {
-    option_count: i32
-    selected_index: i32
+    option_count: s32
+    selected_index: s32
     has_options: bool
 }
 
-StylePickerOptionCountFor :: (count: i32, limit: i32) -> i32 #export {
+#program_export
+StylePickerOptionCountFor :: (count: s32, limit: s32) -> s32 {
     if count < 0 { return 0 }
     if limit > 0 && count > limit { return limit }
     return count
 }
 
-StylePickerSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
+#program_export
+StylePickerSelectedIndexFor :: (selected: s32, count: s32) -> s32 {
     count = StylePickerOptionCountFor(count, 0)
     if count <= 0 { return -1 }
     if selected < 0 { return 0 }
@@ -38,7 +39,8 @@ StylePickerSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
     return selected
 }
 
-StylePickerStateFor :: (count: i32, selected: i32, limit: i32) -> StylePickerState #export {
+#program_export
+StylePickerStateFor :: (count: s32, selected: s32, limit: s32) -> StylePickerState {
     state: StylePickerState
     state.option_count = StylePickerOptionCountFor(count, limit)
     state.selected_index = StylePickerSelectedIndexFor(selected,

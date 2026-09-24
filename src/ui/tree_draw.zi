@@ -1,16 +1,17 @@
-#module "tree_draw"
 #import "geometry"
 #import "paint_queue"
 #import "tree"
 
 # Committing and painting are one frame boundary. Raster effects are emitted
 # only after the submitted tree is accepted.
-BeginTree :: (screen_key: u64, bounds: Rectangle) #export {
+#program_export
+BeginTree :: (screen_key: u64, bounds: Rectangle) {
     PaintClear()
     TreeStart(screen_key, bounds)
 }
 
-CommitTree :: () -> bool #export {
+#program_export
+CommitTree :: () -> bool {
     if PaintOverflow() {
         TreeCancel()
         PaintClear()
@@ -23,7 +24,8 @@ CommitTree :: () -> bool #export {
     return true
 }
 
-EndTree :: () -> bool #export {
+#program_export
+EndTree :: () -> bool {
     if !CommitTree() { return false }
     PaintFlush()
     return true

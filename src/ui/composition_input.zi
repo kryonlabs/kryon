@@ -1,5 +1,5 @@
-#module "composition_input"
 #import "text_input"
+host_api :: #system_library "host_api";
 
 # The platform supplies raw events. The focused widget decides how they
 # change composition state, committed text, and paint.
@@ -7,17 +7,19 @@ CompositionSample :: struct {
     available: bool
     phase: CompositionPhase
     text: string
-    cursor: i32
-    selection_length: i32
+    cursor: s32
+    selection_length: s32
 }
 
-PollComposition :: () -> CompositionSample #extern
+PollComposition :: () -> CompositionSample #foreign host_api;
 
-SampleComposition :: () -> CompositionSample #export {
+#program_export
+SampleComposition :: () -> CompositionSample {
     return PollComposition()
 }
 
-CompositionEventForSample :: (sample: CompositionSample) -> CompositionEvent #export {
+#program_export
+CompositionEventForSample :: (sample: CompositionSample) -> CompositionEvent {
     event: CompositionEvent
     if !sample.available { return event }
     event.phase = sample.phase

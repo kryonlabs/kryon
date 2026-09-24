@@ -1,4 +1,3 @@
-#module "button"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
@@ -18,18 +17,20 @@ ButtonInput :: struct {
     activated: bool
 }
 
-ButtonActionEnabled :: (disabled: bool, content_disabled: bool) -> bool #export {
+#program_export
+ButtonActionEnabled :: (disabled: bool, content_disabled: bool) -> bool {
     return !disabled && !content_disabled
 }
 
-ButtonArrowGlyph :: (direction: ArrowDirection) -> i32 #export {
-    if direction == (ArrowDirection)ArrowRight {
+#program_export
+ButtonArrowGlyph :: (direction: ArrowDirection) -> s32 {
+    if direction == cast(ArrowDirection)ArrowRight {
         return 62
     }
-    if direction == (ArrowDirection)ArrowUp {
+    if direction == cast(ArrowDirection)ArrowUp {
         return 94
     }
-    if direction == (ArrowDirection)ArrowDown {
+    if direction == cast(ArrowDirection)ArrowDown {
         return 118
     }
     return 60
@@ -37,8 +38,9 @@ ButtonArrowGlyph :: (direction: ArrowDirection) -> i32 #export {
 
 # Both immediate input and retained painting use this interpretation. Painting
 # supplies its stored sample and must not poll or consume activation again.
-ResolveButtonInput :: (state: i32, disabled: bool, loading: bool, selected: bool,
-    sample: Activation) -> ButtonInput #export {
+#program_export
+ResolveButtonInput :: (state: s32, disabled: bool, loading: bool, selected: bool,
+    sample: Activation) -> ButtonInput {
     result: ButtonInput
     result.flags = ResolveFlags(state, disabled, loading, selected)
     enabled: bool = CanActivate(result.flags.disabled, result.flags.loading)
@@ -51,24 +53,27 @@ ResolveButtonInput :: (state: i32, disabled: bool, loading: bool, selected: bool
 
 # Style facts for the generic control path. A zero style_kind falls back to the
 # Button kind so generic control callers keep one policy source.
-ButtonRoleFactsFor :: (style_kind: i32, name: i32, class_name: i32, role: i32,
-    tone: i32, emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
-    kind: i32 = style_kind
+#program_export
+ButtonRoleFactsFor :: (style_kind: s32, name: s32, class_name: s32, role: s32,
+    tone: s32, emphasis: s32, size: s32, state: s32) -> StyleFacts {
+    kind: s32 = style_kind
     if kind == 0 { kind = StyleKindButton() }
     return StyleControlRoleFacts(kind, name, class_name, role, tone, emphasis,
         size, state)
 }
 
-AdvanceButtonMotion :: (previous: InteractionMotion, state: i32,
+#program_export
+AdvanceButtonMotion :: (previous: InteractionMotion, state: s32,
     input: ButtonInput, enabled: bool,
-    delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
+    delta_ms: float32, normal_ms: float32, fast_ms: float32) -> InteractionMotion {
     return AdvanceInteractionMotion(previous, input.interaction.hovered,
         input.interaction.pressed, input.interaction.focused, enabled,
         state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
         delta_ms, normal_ms, fast_ms)
 }
 
-CanActivate :: (disabled: bool, loading: bool) -> bool #export {
+#program_export
+CanActivate :: (disabled: bool, loading: bool) -> bool {
     return !disabled && !loading
 }
 
@@ -77,50 +82,50 @@ CanActivate :: (disabled: bool, loading: bool) -> bool #export {
 # local logical pixels so scale, font rasterization and texture APIs stay out
 # of the widget definition.
 ContentSize :: struct {
-    width: float
-    text_width: float
-    icon_size: float
-    gap: float
+    width: float32
+    text_width: float32
+    icon_size: float32
+    gap: float32
 }
 
 IconActionMetrics :: struct {
-    padding: i32
-    icon_size: i32
+    padding: s32
+    icon_size: s32
 }
 
 TextButtonMetrics :: struct {
-    padding_x: i32
-    padding_y: i32
-    min_width: i32
-    min_height: i32
+    padding_x: s32
+    padding_y: s32
+    min_width: s32
+    min_height: s32
 }
 
 InfoIndicatorMetrics :: struct {
-    min_touch: i32
-    diameter: i32
+    min_touch: s32
+    diameter: s32
 }
 
 InfoIndicatorPaint :: struct {
     bounds: Rectangle
     hit: Rectangle
-    radius: i32
+    radius: s32
     fill: u32
     stroke: u32
     text: u32
-    font: i32
+    font: s32
 }
 
 ButtonInfoBounds :: struct {
     bounds: Rectangle
-    diameter: i32
+    diameter: s32
 }
 
 ButtonSplitLayout :: struct {
-    width: float
-    action_width: float
-    menu_offset: float
-    menu_width: float
-    divider_inset: float
+    width: float32
+    action_width: float32
+    menu_offset: float32
+    menu_width: float32
+    divider_inset: float32
 }
 
 SwatchSpec :: struct {
@@ -129,7 +134,7 @@ SwatchSpec :: struct {
     disabled: bool
     hovered: bool
     focused: bool
-    scale: float
+    scale: float32
     face: StyleFrame
 }
 
@@ -146,15 +151,16 @@ SwatchPaint :: struct {
     border_color: u32
     focus_color: u32
     text_color: u32
-    label_x: float
-    radius: float
-    swatch_roundness: float
-    border_width: float
-    focus_width: float
+    label_x: float32
+    radius: float32
+    swatch_roundness: float32
+    border_width: float32
+    focus_width: float32
     show_focus: bool
 }
 
-ButtonResolveSplitLayout :: (width: float, height: float) -> ButtonSplitLayout #export {
+#program_export
+ButtonResolveSplitLayout :: (width: float32, height: float32) -> ButtonSplitLayout {
     layout: ButtonSplitLayout
     layout.width = width
     if layout.width < height * 2.0 {
@@ -167,143 +173,154 @@ ButtonResolveSplitLayout :: (width: float, height: float) -> ButtonSplitLayout #
     return layout
 }
 
-ButtonMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
+ButtonMetric :: (fields: u32, field: u32, value: float32,
+    fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
+    if (fields & field) == cast(u32)0 || value < 0.0 ||
        (!allow_zero && value <= 0.0) {
         value = fallback
     }
-    return (i32)(value * scale)
+    return cast(s32)(value * scale)
 }
 
-IconActionMetricsFor :: (bounds: Rectangle, requested_icon_size: i32,
-    requested_padding: i32, scale: float, face: StyleFrame) -> IconActionMetrics #export {
+#program_export
+IconActionMetricsFor :: (bounds: Rectangle, requested_icon_size: s32,
+    requested_padding: s32, scale: float32, face: StyleFrame) -> IconActionMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: IconActionMetrics
     if requested_padding > 0 {
         metrics.padding = requested_padding
     } else {
-        metrics.padding = ButtonMetric(face.value.fields, (u32)StylePaddingX,
+        metrics.padding = ButtonMetric(face.value.fields, cast(u32)StylePaddingX,
             face.value.padding_x, 3.0, scale, true)
     }
     metrics.icon_size = requested_icon_size
     if metrics.icon_size <= 0 {
-        available: i32 = (i32)bounds.width
-        if bounds.height < bounds.width { available = (i32)bounds.height }
+        available: s32 = cast(s32)bounds.width
+        if bounds.height < bounds.width { available = cast(s32)bounds.height }
         metrics.icon_size = available - metrics.padding * 2
     }
     if metrics.icon_size < 1 { metrics.icon_size = 1 }
     return metrics
 }
 
-IconActionStyleIconSize :: (icon_size: i32, scale: float) -> float #export {
+#program_export
+IconActionStyleIconSize :: (icon_size: s32, scale: float32) -> float32 {
     if icon_size < 0 { icon_size = 0 }
     if scale <= 0.0 { scale = 1.0 }
-    return (float)icon_size / scale
+    return cast(float32)icon_size / scale
 }
 
-IconActionStyleRadius :: (radius: float, bounds: Rectangle, scale: float) -> float #export {
+#program_export
+IconActionStyleRadius :: (radius: float32, bounds: Rectangle, scale: float32) -> float32 {
     if radius <= 0.0 { return 0.0 }
     if scale <= 0.0 { scale = 1.0 }
-    side: float = bounds.width
+    side: float32 = bounds.width
     if bounds.height < side { side = bounds.height }
     if side < 0.0 { side = 0.0 }
     return radius * side / (2.0 * scale)
 }
 
-TextButtonMetricsFor :: (scale: float, face: StyleFrame) -> TextButtonMetrics #export {
+#program_export
+TextButtonMetricsFor :: (scale: float32, face: StyleFrame) -> TextButtonMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TextButtonMetrics
-    metrics.padding_x = ButtonMetric(face.value.fields, (u32)StylePaddingX,
+    metrics.padding_x = ButtonMetric(face.value.fields, cast(u32)StylePaddingX,
         face.value.padding_x, 8.0, scale, true)
-    metrics.padding_y = ButtonMetric(face.value.fields, (u32)StylePaddingY,
+    metrics.padding_y = ButtonMetric(face.value.fields, cast(u32)StylePaddingY,
         face.value.padding_y, 4.0, scale, true)
-    metrics.min_width = ButtonMetric(face.value.fields, (u32)StyleContentOffset,
+    metrics.min_width = ButtonMetric(face.value.fields, cast(u32)StyleContentOffset,
         face.value.offset_x, 34.0, scale, false)
-    metrics.min_height = ButtonMetric(face.value.fields, (u32)StyleIconSize,
+    metrics.min_height = ButtonMetric(face.value.fields, cast(u32)StyleIconSize,
         face.value.icon_size, 34.0, scale, false)
     return metrics
 }
 
-InfoIndicatorMetricsFor :: (requested_diameter: i32, scale: float,
-    face: StyleFrame) -> InfoIndicatorMetrics #export {
+#program_export
+InfoIndicatorMetricsFor :: (requested_diameter: s32, scale: float32,
+    face: StyleFrame) -> InfoIndicatorMetrics {
     if scale <= 0.0 { scale = 1.0 }
     metrics: InfoIndicatorMetrics
-    metrics.min_touch = ButtonMetric(face.value.fields, (u32)StyleContentOffset,
+    metrics.min_touch = ButtonMetric(face.value.fields, cast(u32)StyleContentOffset,
         face.value.offset_x, 32.0, scale, false)
     if requested_diameter > 0 {
         metrics.diameter = requested_diameter
     } else {
-        metrics.diameter = ButtonMetric(face.value.fields, (u32)StyleIconSize,
+        metrics.diameter = ButtonMetric(face.value.fields, cast(u32)StyleIconSize,
             face.value.icon_size, 18.0, scale, false)
     }
     return metrics
 }
 
-InfoGlyphSizeFor :: (diameter: i32, styled_size: i32) -> i32 #export {
-    minimum: i32 = diameter * 3 / 5
+#program_export
+InfoGlyphSizeFor :: (diameter: s32, styled_size: s32) -> s32 {
+    minimum: s32 = diameter * 3 / 5
     if styled_size < minimum { return minimum }
     return styled_size
 }
 
-InfoIndicatorPaintFor :: (center_x: i32, center_y: i32,
+#program_export
+InfoIndicatorPaintFor :: (center_x: s32, center_y: s32,
     metrics: InfoIndicatorMetrics, face: StyleFrame,
-    fallback_font: i32) -> InfoIndicatorPaint #export {
+    fallback_font: s32) -> InfoIndicatorPaint {
     paint: InfoIndicatorPaint
-    diameter: i32 = metrics.diameter
+    diameter: s32 = metrics.diameter
     paint.radius = diameter / 2
-    paint.bounds.x = (float)(center_x - paint.radius)
-    paint.bounds.y = (float)(center_y - paint.radius)
-    paint.bounds.width = (float)diameter
-    paint.bounds.height = (float)diameter
-    hit_diameter: i32 = diameter
+    paint.bounds.x = cast(float32)(center_x - paint.radius)
+    paint.bounds.y = cast(float32)(center_y - paint.radius)
+    paint.bounds.width = cast(float32)diameter
+    paint.bounds.height = cast(float32)diameter
+    hit_diameter: s32 = diameter
     if hit_diameter < metrics.min_touch { hit_diameter = metrics.min_touch }
-    paint.hit.x = (float)(center_x - hit_diameter / 2)
-    paint.hit.y = (float)(center_y - hit_diameter / 2)
-    paint.hit.width = (float)hit_diameter
-    paint.hit.height = (float)hit_diameter
+    paint.hit.x = cast(float32)(center_x - hit_diameter / 2)
+    paint.hit.y = cast(float32)(center_y - hit_diameter / 2)
+    paint.hit.width = cast(float32)hit_diameter
+    paint.hit.height = cast(float32)hit_diameter
     paint.fill = face.value.background
     paint.stroke = face.value.border
     paint.text = face.value.foreground
-    styled_font: i32 = ResolveFont(0,
+    styled_font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), fallback_font)
     paint.font = InfoGlyphSizeFor(diameter, styled_font)
     return paint
 }
 
-ButtonInfoBoundsFor :: (declared: Rectangle, scale: float,
-    face: StyleFrame) -> ButtonInfoBounds #export {
+#program_export
+ButtonInfoBoundsFor :: (declared: Rectangle, scale: float32,
+    face: StyleFrame) -> ButtonInfoBounds {
     result: ButtonInfoBounds
-    requested: i32 = (i32)declared.width
+    requested: s32 = cast(s32)declared.width
     if declared.height > 0.0 && declared.height < declared.width {
-        requested = (i32)declared.height
+        requested = cast(s32)declared.height
     }
     metrics: InfoIndicatorMetrics = InfoIndicatorMetricsFor(requested, scale, face)
     result.bounds = declared
     result.diameter = metrics.diameter
-    if result.bounds.width <= 0.0 { result.bounds.width = (float)result.diameter }
-    if result.bounds.height <= 0.0 { result.bounds.height = (float)result.diameter }
+    if result.bounds.width <= 0.0 { result.bounds.width = cast(float32)result.diameter }
+    if result.bounds.height <= 0.0 { result.bounds.height = cast(float32)result.diameter }
     return result
 }
 
-ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {
+#program_export
+ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool {
     if clicked { return !open }
     return open
 }
 
-ButtonCloseMenuAfterActivation :: (open: bool, activated_id: i32) -> bool #export {
+#program_export
+ButtonCloseMenuAfterActivation :: (open: bool, activated_id: s32) -> bool {
     if activated_id != 0 { return false }
     return open
 }
 
-SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
+#program_export
+SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint {
     paint: SwatchPaint
-    scale: float = spec.scale
+    scale: float32 = spec.scale
     if scale <= 0.0 { scale = 1.0 }
 
-    swatch_inset: float = 5.0 * scale
-    max_inset: float = spec.bounds.width / 6.0
+    swatch_inset: float32 = 5.0 * scale
+    max_inset: float32 = spec.bounds.width / 6.0
     if spec.bounds.height / 6.0 < max_inset {
         max_inset = spec.bounds.height / 6.0
     }
@@ -314,16 +331,16 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     inner.y = spec.bounds.y + swatch_inset
     inner.width = spec.bounds.width - 2.0 * swatch_inset
     inner.height = spec.bounds.height - 2.0 * swatch_inset
-    half_w: float = inner.width * 0.5
-    half_h: float = inner.height * 0.5
-    inset: float = spec.face.value.padding_x
-    if (spec.face.value.fields & (u32)StylePaddingX) == (u32)0 ||
+    half_w: float32 = inner.width * 0.5
+    half_h: float32 = inner.height * 0.5
+    inset: float32 = spec.face.value.padding_x
+    if (spec.face.value.fields & cast(u32)StylePaddingX) == cast(u32)0 ||
        inset < 0.0 {
         inset = 6.0
     }
     inset *= scale
-    border_width: float = spec.face.value.border_width
-    focus_width: float = spec.face.value.border_width
+    border_width: float32 = spec.face.value.border_width
+    focus_width: float32 = spec.face.value.border_width
 
     paint.bounds = spec.bounds
     paint.checker_base = inner
@@ -340,12 +357,12 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     paint.swatch_color = spec.color
     paint.label_x = spec.bounds.x + inset
     paint.radius = spec.face.value.radius
-    swatch_diameter: float = inner.width
+    swatch_diameter: float32 = inner.width
     if inner.height < swatch_diameter { swatch_diameter = inner.height }
     if swatch_diameter > 0.0 {
-        swatch_radius: float = paint.radius * scale
+        swatch_radius: float32 = paint.radius * scale
         if swatch_radius < 0.0 { swatch_radius = 0.0 }
-        max_swatch_radius: float = swatch_diameter * 0.08
+        max_swatch_radius: float32 = swatch_diameter * 0.08
         if swatch_radius > max_swatch_radius {
             swatch_radius = max_swatch_radius
         }
@@ -362,36 +379,38 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
     paint.show_focus = !spec.disabled && spec.focused
 
     if spec.disabled {
-        paint.swatch_color.a = (u8)128
+        paint.swatch_color.a = cast(u8)128
     }
 
     return paint
 }
 
-MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float,
-    font: i32, available_width: float, scale: float, disclosure: bool) -> Rectangle #export {
-    label_width: float = (float)GlyphWidth(props.label, font, paint.typeface)
+#program_export
+MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
+    font: s32, available_width: float32, scale: float32, disclosure: bool) -> Rectangle {
+    label_width: float32 = cast(float32)GlyphWidth(props.label, font, paint.typeface)
     return MeasureBounds(props, paint, minimum_height, font, label_width,
         available_width, scale, disclosure)
 }
 
 # The host supplies physical glyph measurements, available space, and scale.
 # The declaration reads the real props and owns shape, label, and size policy.
-MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float,
-    font: i32, label_width: float, available_width: float,
-    scale: float, disclosure: bool) -> Rectangle #export {
+#program_export
+MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
+    font: s32, label_width: float32, available_width: float32,
+    scale: float32, disclosure: bool) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
     bounds: Rectangle = props.bounds
-    text_height: float = 0.0
-    if props.label != "" && !props.icon_only { text_height = (float)font / scale }
-    height: float = FitHeight(bounds.height / scale, minimum_height / scale,
+    text_height: float32 = 0.0
+    if props.label != "" && !props.icon_only { text_height = cast(float32)font / scale }
+    height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)
-    has_icon: bool = disclosure || props.icon.id != (u32)0 ||
+    has_icon: bool = disclosure || props.icon.id != cast(u32)0 ||
         props.icon_type != 0 || props.image.asset_path != "" ||
-        props.image.texture.id != (u32)0
+        props.image.texture.id != cast(u32)0
     content: ContentSize = MeasureContent(height, label_width / scale,
         paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only)
-    width: float = ShapeWidth(bounds.width / scale, height, content.width,
+    width: float32 = ShapeWidth(bounds.width / scale, height, content.width,
         available_width / scale, props.full_width,
         props.square || props.icon_only, props.circle)
     # Preserve explicit physical coordinates without a lossy scale roundtrip.
@@ -408,14 +427,15 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float,
 # consumes neither text width nor a gap; icons fit the available face height.
 # Style resolution already supplies theme defaults. Small sizes stay small;
 # zero hides the icon and its gap instead of restoring a font-sized fallback.
-MeasureContent :: (height: float, label_width: float,
-    requested_icon_size: float, gap: float, padding_x: float,
-    has_icon: bool, icon_only: bool) -> ContentSize #export {
+#program_export
+MeasureContent :: (height: float32, label_width: float32,
+    requested_icon_size: float32, gap: float32, padding_x: float32,
+    has_icon: bool, icon_only: bool) -> ContentSize {
     result: ContentSize
     # Match Style.ContentBounds: negative padding never shrinks the area
     # required by content, while explicit zero remains a valid override.
     if padding_x < 0.0 { padding_x = 0.0 }
-    icon_size: float = requested_icon_size
+    icon_size: float32 = requested_icon_size
     if icon_size > height - 12.0 { icon_size = height - 12.0 }
     if icon_size < 0.0 { icon_size = 0.0 }
     if icon_only { label_width = 0.0 }
@@ -429,27 +449,28 @@ MeasureContent :: (height: float, label_width: float,
 }
 
 ButtonContent :: struct {
-    icon_x: float
-    icon_y: float
-    icon_size: float
-    text_x: float
-    text_y: float
-    text_width: float
-    text_height: float
+    icon_x: float32
+    icon_y: float32
+    icon_size: float32
+    text_x: float32
+    text_y: float32
+    text_width: float32
+    text_height: float32
 }
 
+#program_export
 ContentLayout :: (
-    width: float, height: float, label_width: float,
-    requested_icon_size: float, gap: float, has_icon: bool, icon_only: bool,
-    trailing: bool, offset_x: float, offset_y: float
-) -> ButtonContent #export {
+    width: float32, height: float32, label_width: float32,
+    requested_icon_size: float32, gap: float32, has_icon: bool, icon_only: bool,
+    trailing: bool, offset_x: float32, offset_y: float32
+) -> ButtonContent {
     result: ButtonContent
     measured: ContentSize = MeasureContent(height, label_width,
         requested_icon_size, gap, 0.0, has_icon, icon_only)
-    icon_size: float = measured.icon_size
+    icon_size: float32 = measured.icon_size
     label_width = measured.text_width
     gap = measured.gap
-    x: float = (width - measured.width) * 0.5 + offset_x
+    x: float32 = (width - measured.width) * 0.5 + offset_x
     result.icon_x = x
     result.icon_y = (height - icon_size) * 0.5 + offset_y
     result.icon_size = icon_size
@@ -458,8 +479,11 @@ ContentLayout :: (
     result.text_width = label_width
     result.text_height = height
     if has_icon {
-        if trailing { result.icon_x += label_width + gap }
-        else { result.text_x += icon_size + gap }
+        if trailing {
+            result.icon_x += label_width + gap
+        } else {
+            result.text_x += icon_size + gap
+        }
     }
     return result
 }
@@ -474,15 +498,16 @@ ContentDrawing :: struct {
     label: Drawing
 }
 
+#program_export
 PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
-    font: i32, label_width: float, foreground: u32, ambient: u32,
-    scale: float, elapsed_ms: f64, disclosure: bool) -> ContentDrawing #export {
+    font: s32, label_width: float32, foreground: u32, ambient: u32,
+    scale: float32, elapsed_ms: float64, disclosure: bool) -> ContentDrawing {
     result: ContentDrawing
     if scale <= 0.0 { scale = 1.0 }
-    has_icon: bool = disclosure || props.icon.id != (u32)0 || props.icon_type != 0
+    has_icon: bool = disclosure || props.icon.id != cast(u32)0 || props.icon_type != 0
     content: ButtonContent = ContentLayout(bounds.width / scale, bounds.height / scale,
         label_width / scale, paint.icon_size, paint.gap, has_icon, props.icon_only,
-        (i32)props.icon_placement == IconPlacementTrailing,
+        cast(s32)props.icon_placement == IconPlacementTrailing,
         paint.offset_x, paint.offset_y)
     result.mark.color = foreground
     if props.loading {
@@ -504,7 +529,7 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
         result.mark.bounds.height = content.icon_size * scale
         if disclosure {
             result.mark.kind = DrawingChevron
-        } else if props.icon.id != (u32)0 {
+        } else if props.icon.id != cast(u32)0 {
             result.mark.kind = DrawingTexture
             result.mark.texture = props.icon
         } else {
@@ -530,16 +555,17 @@ ButtonFrame :: struct {
     appearance: StyleFrame
     material: MaterialPaint
     content_bounds: Rectangle
-    font: i32
+    font: s32
     foreground: u32
     repaint: bool
 }
 
 # Finish the widget frame once; native backends only adapt this result to their
 # retained tree or operation stream. Rasterizers supply the physical font size.
+#program_export
 BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     motion: InteractionMotion, surface: Rectangle, ambient: u32,
-    scale: float, style_font: i32, fallback_font: i32) -> ButtonFrame #export {
+    scale: float32, style_font: s32, fallback_font: s32) -> ButtonFrame {
     result: ButtonFrame
     props.disabled = input.flags.disabled
     props.loading = input.flags.loading
@@ -547,10 +573,10 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     props.pill = props.pill || props.circle
     if props.loading { props.label = "" }
     if props.circle {
-        shape_scale: float = scale
+        shape_scale: float32 = scale
         if shape_scale <= 0.0 { shape_scale = 1.0 }
         appearance.value.radius = props.bounds.height * 0.5 / shape_scale
-        appearance.value.fields |= (u32)StyleRadius
+        appearance.value.fields |= cast(u32)StyleRadius
     }
     result.props = props
     result.appearance = appearance
@@ -577,9 +603,10 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
 
 # Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
 # invoke this after layout; callbacks never outlive this paint pass.
-PaintButton :: (frame: ButtonFrame, label_width: float, elapsed_ms: f64,
-    disclosure: bool, surface: SurfacePainter, draw: Painter) #export {
-    layer: i32 = 0
+#program_export
+PaintButton :: (frame: ButtonFrame, label_width: float32, elapsed_ms: float64,
+    disclosure: bool, surface: SurfacePainter, draw: Painter) {
+    layer: s32 = 0
     while layer < MaterialLayerCount(frame.material.value.material) {
         surface(PaintMaterialLayer(frame.material, layer))
         layer += 1
@@ -592,15 +619,16 @@ PaintButton :: (frame: ButtonFrame, label_width: float, elapsed_ms: f64,
     draw(content.label)
 }
 
+#program_export
 ShapeWidth :: (
-    width: float,
-    height: float,
-    measured_width: float,
-    available_width: float,
+    width: float32,
+    height: float32,
+    measured_width: float32,
+    available_width: float32,
     full_width: bool,
     square: bool,
     circle: bool
-) -> float #export {
+) -> float32 {
     if square || circle { return height }
     if full_width && width <= 0.0 {
         if available_width < height { return height }
@@ -610,12 +638,13 @@ ShapeWidth :: (
     return width
 }
 
+#program_export
 ShapeRadius :: (
-    normal_radius: float,
-    pill_radius: float,
+    normal_radius: float32,
+    pill_radius: float32,
     pill: bool,
     circle: bool
-) -> float #export {
+) -> float32 {
     if pill || circle { return pill_radius }
     return normal_radius
 }
