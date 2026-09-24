@@ -1,10 +1,10 @@
-#module "frame_capture"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "semantic"
 #import "tree"
 #import "tree_draw"
+host_api :: #system_library "host_api";
 
 # These records deliberately expose values useful for comparing frames, not
 # the tree's internal links or queue storage. They also cross the portable
@@ -12,53 +12,53 @@
 FrameNode :: struct {
     key: u64
     parent_key: u64
-    kind: i32
-    x: float
-    y: float
-    width: float
-    height: float
+    kind: s32
+    x: float32
+    y: float32
+    width: float32
+    height: float32
     label: string
-    semantic_kind: i32
-    heading_level: i32
-    identity_generation: i32
+    semantic_kind: s32
+    heading_level: s32
+    identity_generation: s32
     interactive: bool
     disabled: bool
     loading: bool
     selected: bool
-    focus_id: i32
+    focus_id: s32
 }
 
 FramePaint :: struct {
-    kind: i32
-    node: i32
-    x: float
-    y: float
-    width: float
-    height: float
-    clip_x: float
-    clip_y: float
-    clip_width: float
-    clip_height: float
+    kind: s32
+    node: s32
+    x: float32
+    y: float32
+    width: float32
+    height: float32
+    clip_x: float32
+    clip_y: float32
+    clip_width: float32
+    clip_height: float32
     red: u8
     green: u8
     blue: u8
     alpha: u8
-    radius: float
-    segments: i32
-    line_width: float
+    radius: float32
+    segments: s32
+    line_width: float32
     value: string
-    text_x: i32
-    text_y: i32
-    font: i32
+    text_x: s32
+    text_y: s32
+    font: s32
     asset_path: string
     texture_id: u32
-    source_x: float
-    source_y: float
-    source_width: float
-    source_height: float
-    origin_x: float
-    origin_y: float
-    rotation: float
+    source_x: float32
+    source_y: float32
+    source_width: float32
+    source_height: float32
+    origin_x: float32
+    origin_y: float32
+    rotation: float32
 }
 
 FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
@@ -71,7 +71,7 @@ FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
     node.width = entry.bounds.width
     node.height = entry.bounds.height
     node.label = entry.semantic_label
-    node.semantic_kind = (i32)entry.semantic_kind
+    node.semantic_kind = cast(s32)entry.semantic_kind
     node.heading_level = entry.heading_level
     node.identity_generation = entry.identity_generation
     node.interactive = entry.interactive
@@ -119,19 +119,20 @@ FramePaintFrom :: (command: PaintCommand) -> FramePaint {
 
 # These effects belong to an opt-in inspection host. Ordinary EndTree does
 # not require them. A host may record the values without opening a display.
-RecordFrameStart :: (node_count: i32, paint_count: i32) #extern
-RecordNode :: (index: i32, node: FrameNode) #extern
-RecordPaint :: (index: i32, command: FramePaint) #extern
-RecordFrameEnd :: () #extern
+RecordFrameStart :: (node_count: s32, paint_count: s32) #foreign host_api;
+RecordNode :: (index: s32, node: FrameNode) #foreign host_api;
+RecordPaint :: (index: s32, command: FramePaint) #foreign host_api;
+RecordFrameEnd :: () #foreign host_api;
 
 # Capture only a complete, committed frame. All values are sent before paint
 # is flushed, while the queue still contains the commands chosen by widgets.
-EndTreeCapture :: () -> bool #export {
+#program_export
+EndTreeCapture :: () -> bool {
     if !CommitTree() { return false }
-    node_count: i32 = TreeCount()
-    paint_count: i32 = PendingPaintCount()
+    node_count: s32 = TreeCount()
+    paint_count: s32 = PendingPaintCount()
     RecordFrameStart(node_count, paint_count)
-    index: i32 = 0
+    index: s32 = 0
     while index < node_count {
         RecordNode(index, FrameNodeFrom(TreeNodeAt(index)))
         index += 1

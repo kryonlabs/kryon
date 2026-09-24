@@ -1,4 +1,3 @@
-#module "progress_widget"
 #import "font_metrics"
 #import "geometry"
 #import "progress"
@@ -14,20 +13,21 @@
 # only measures glyphs and rasterizes commands.
 PreparedProgress :: struct {
     paint: ProgressPaint
-    font: i32
-    label_opacity: float
+    font: s32
+    label_opacity: float32
 }
 
+#program_export
 PrepareProgress :: (props: ProgressProps,
-    faces: ProgressFaces) -> PreparedProgress #export {
+    faces: ProgressFaces) -> PreparedProgress {
     prepared: PreparedProgress
     prepared.font = ResolveFont(0,
         StyleFontValue(faces.label.value.fields,
             faces.label.value.font_size), faces.fallback_font)
     prepared.label_opacity = StyleOpacityValue(faces.label.value.fields,
         faces.label.value.opacity)
-    label_width: i32 = 0
-    label_height: i32 = 0
+    label_width: s32 = 0
+    label_height: s32 = 0
     if props.label != "" {
         label_width = GlyphWidth(props.label, prepared.font,
             faces.label.value.typeface)
@@ -35,25 +35,28 @@ PrepareProgress :: (props: ProgressProps,
             faces.label.value.typeface)
     }
     prepared.paint = ProgressPaintFor(props.bounds, props.min, props.max,
-        props.value, (float)label_width, (float)label_height, faces.scale,
+        props.value, cast(float32)label_width, cast(float32)label_height, faces.scale,
         faces.track, faces.fill, faces.label)
     return prepared
 }
 
-PaintProgressProps :: (props: ProgressProps, faces: ProgressFaces) #export {
+#program_export
+PaintProgressProps :: (props: ProgressProps, faces: ProgressFaces) {
     prepared: PreparedProgress = PrepareProgress(props, faces)
     PaintProgress(props.bounds, prepared.paint, props.label,
         prepared.font, prepared.label_opacity)
 }
 
+#program_export
 PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
-    defaults: ProgressFaces) #export {
+    defaults: ProgressFaces) {
     faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
     PaintProgressProps(props, faces)
 }
 
-Progress :: (props: ProgressProps) #export {
-    node: i32 = -1
+#program_export
+Progress :: (props: ProgressProps) {
+    node: s32 = -1
     if TreeIsBuilding() {
         node = TreeSubmitCurrent(props.key, WidgetKindProgress, props.bounds)
         if node < 0 { return }

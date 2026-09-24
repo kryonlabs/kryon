@@ -1,4 +1,3 @@
-#module "title_bar_widget"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -17,17 +16,18 @@
 #import "tree"
 #import "widget_kind"
 
-TitleBarDefaultFace :: (role: i32) -> StyleData #export {
+#program_export
+TitleBarDefaultFace :: (role: s32) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StylePaddingX | (u32)StyleGap |
-        (u32)StyleIconSize | (u32)StyleContentOffset |
-        (u32)StyleFontSize
-    face.background = (u32)0xf8fafcff
-    face.foreground = (u32)0x111827ff
-    face.border = (u32)0xcbd5e1ff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StylePaddingX | cast(u32)StyleGap |
+        cast(u32)StyleIconSize | cast(u32)StyleContentOffset |
+        cast(u32)StyleFontSize
+    face.background = cast(u32)0xf8fafcff
+    face.foreground = cast(u32)0x111827ff
+    face.border = cast(u32)0xcbd5e1ff
     face.opacity = 1.0
     face.padding_x = 12.0
     face.gap = 4.0
@@ -44,31 +44,34 @@ TitleBarDefaultFace :: (role: i32) -> StyleData #export {
     return face
 }
 
+#program_export
 TitleBarFaceFor :: (props: TitleBarProps,
-    role: i32) -> StyleFrame #export {
+    role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindTitleBar(), props.id, props.class_name, role,
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         TitleBarDefaultFace(role), facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     return frame
 }
 
-TitleBarKey :: (props: TitleBarProps) -> u64 #export {
-    if props.key != (u64)0 { return props.key }
-    if props.id > 0 { return (u64)(u32)props.id }
+#program_export
+TitleBarKey :: (props: TitleBarProps) -> u64 {
+    if props.key != cast(u64)0 { return props.key }
+    if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey()
 }
 
+#program_export
 TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
-    has_dropdown: bool, dropdown_height: i32,
-    dropdown_min_width: i32,
-    metrics: TitleBarMetrics) -> TitleBarLayout #export {
-    layout: TitleBarLayout = TitleBarLayoutFor((i32)bounds.width,
-        (i32)bounds.height, has_leading, has_dropdown,
+    has_dropdown: bool, dropdown_height: s32,
+    dropdown_min_width: s32,
+    metrics: TitleBarMetrics) -> TitleBarLayout {
+    layout: TitleBarLayout = TitleBarLayoutFor(cast(s32)bounds.width,
+        cast(s32)bounds.height, has_leading, has_dropdown,
         dropdown_height, dropdown_min_width, metrics)
     layout.bounds = bounds
     layout.leading_bounds.x += bounds.x
@@ -82,8 +85,9 @@ TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
 
 # A TitleBar is ordinary checked UI composition. A caller retains the
 # dropdown result and passes it back through props.dropdown next frame.
+#program_export
 TitleBar :: (props: TitleBarProps,
-    options: []DropdownOption) -> TitleBarResult #export {
+    options: []DropdownOption) -> TitleBarResult {
     result: TitleBarResult
     result.node = -1
     result.dropdown.node = -1
@@ -95,13 +99,13 @@ TitleBar :: (props: TitleBarProps,
     title: StyleFrame = TitleBarFaceFor(props, TitleBarTitleRole())
     action: StyleFrame = TitleBarFaceFor(props,
         TitleBarActionRole())
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     metrics: TitleBarMetrics = TitleBarMetricsFor(scale,
         bar, title, action)
-    requested_height: i32 = props.height
+    requested_height: s32 = props.height
     if requested_height <= 0 && props.bounds.height > 0.0 {
-        requested_height = (i32)props.bounds.height
+        requested_height = cast(s32)props.bounds.height
     }
     state: TitleBarState = TitleBarStateFor(requested_height,
         TitleBarDefaultHeightFor(scale, bar),
@@ -114,7 +118,7 @@ TitleBar :: (props: TitleBarProps,
         bounds.x = parent.x
         bounds.width = parent.width
     }
-    bounds.height = (float)state.height
+    bounds.height = cast(float32)state.height
     if bounds.width <= 0.0 || bounds.height <= 0.0 {
         return result
     }
@@ -130,7 +134,7 @@ TitleBar :: (props: TitleBarProps,
         state.has_leading, state.has_dropdown,
         props.dropdown_height, props.dropdown_min_width,
         metrics)
-    opacity: float = StyleOpacityValue(bar.value.fields,
+    opacity: float32 = StyleOpacityValue(bar.value.fields,
         bar.value.opacity)
     PaintRoundedFill(result.node, bounds, bar.value.radius, 12,
         ColorFromPacked(Opacity(bar.value.background, opacity)))
@@ -139,34 +143,34 @@ TitleBar :: (props: TitleBarProps,
             12, bar.value.border_width,
             ColorFromPacked(Opacity(bar.value.border, opacity)))
     }
-    PaintLine(result.node, (Rectangle){bounds.x,
+    PaintLine(result.node, Rectangle.{bounds.x,
         bounds.y + bounds.height - 1.0, bounds.width, 0.0},
         ColorFromPacked(Opacity(bar.value.border, opacity)))
     if state.has_leading {
         button: ButtonProps
-        button.key = key * (u64)65599 + (u64)1
+        button.key = key * cast(u64)65599 + cast(u64)1
         button.bounds = layout.leading_bounds
         button.id = props.id
         button.class_name = props.class_name
         button.style_kind = StyleKindTitleBar()
         button.style_role = TitleBarActionRole()
-        button.tone = (ButtonTone)ButtonToneNeutral
-        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.tone = cast(ButtonTone)ButtonToneNeutral
+        button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
         button.icon_only = true
         button.circle = true
         button.image = props.leading_image
         button.label = props.leading_label
         button.arrow = props.leading_image.asset_path == "" &&
-            props.leading_image.texture.id == (u32)0
-        button.direction = (ArrowDirection)ArrowLeft
+            props.leading_image.texture.id == cast(u32)0
+        button.direction = cast(ArrowDirection)ArrowLeft
         result.clicked_leading = SubmitButton(button,
             result.node, key) != 0
     }
     if state.has_dropdown {
         dropdown: DropdownProps = props.dropdown
         dropdown.bounds = layout.dropdown_bounds
-        if dropdown.key == (u64)0 {
-            dropdown.key = key * (u64)65599 + (u64)2
+        if dropdown.key == cast(u64)0 {
+            dropdown.key = key * cast(u64)65599 + cast(u64)2
         }
         if dropdown.id <= 0 { dropdown.id = props.id }
         if dropdown.class_name <= 0 {
@@ -177,19 +181,19 @@ TitleBar :: (props: TitleBarProps,
         return result
     }
     if props.title != "" {
-        font: i32 = ResolveFont(0,
+        font: s32 = ResolveFont(0,
             StyleFontValue(title.value.fields,
                 title.value.font_size), 18)
-        width: i32 = GlyphWidth(props.title, font,
+        width: s32 = GlyphWidth(props.title, font,
             title.value.typeface)
         while TitleBarShouldShrinkTitleFont(width,
-            (i32)layout.title_bounds.width, font, 12) {
+            cast(s32)layout.title_bounds.width, font, 12) {
             font = TitleBarShrinkTitleFontStep(width,
-                (i32)layout.title_bounds.width, font, 12)
+                cast(s32)layout.title_bounds.width, font, 12)
             width = GlyphWidth(props.title, font,
                 title.value.typeface)
         }
-        line_height: i32 = GlyphLineHeight(font,
+        line_height: s32 = GlyphLineHeight(font,
             title.value.typeface)
         paint: TitleBarTitlePaint = TitleBarTitlePaintFor(
             layout, width, line_height)

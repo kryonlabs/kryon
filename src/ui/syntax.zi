@@ -1,4 +1,3 @@
-#module "syntax"
 
 SyntaxMode :: enum {
     SyntaxNone = 0
@@ -18,41 +17,44 @@ SyntaxTokenKind :: enum {
 }
 
 SyntaxToken :: struct {
-    length: i32
+    length: s32
     kind: SyntaxTokenKind
     block_comment: bool
 }
 
-SyntaxIdentStart :: (byte: u8) -> bool #export {
-    return (byte >= (u8)65 && byte <= (u8)90) ||
-        (byte >= (u8)97 && byte <= (u8)122) ||
-        byte == (u8)95
+#program_export
+SyntaxIdentStart :: (byte: u8) -> bool {
+    return (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+        (byte >= cast(u8)97 && byte <= cast(u8)122) ||
+        byte == cast(u8)95
 }
 
-SyntaxIdent :: (mode: SyntaxMode, byte: u8) -> bool #export {
+#program_export
+SyntaxIdent :: (mode: SyntaxMode, byte: u8) -> bool {
     return SyntaxIdentStart(byte) ||
-        (byte >= (u8)48 && byte <= (u8)57) ||
-        (mode == (SyntaxMode)SyntaxMake && byte == (u8)45)
+        (byte >= cast(u8)48 && byte <= cast(u8)57) ||
+        (mode == cast(SyntaxMode)SyntaxMake && byte == cast(u8)45)
 }
 
-SyntaxWordInList :: (value: string, start: i32,
-    length: i32, words: string) -> bool #export {
+#program_export
+SyntaxWordInList :: (value: string, start: s32,
+    length: s32, words: string) -> bool {
     if start < 0 || length <= 0 ||
         start + length > value.length { return false }
-    offset: i32 = 0
+    offset: s32 = 0
     while offset < words.length {
-        if words[offset] != (u8)124 {
+        if words[offset] != cast(u8)124 {
             offset += 1
             continue
         }
-        begin: i32 = offset + 1
-        end: i32 = begin
-        while end < words.length && words[end] != (u8)124 {
+        begin: s32 = offset + 1
+        end: s32 = begin
+        while end < words.length && words[end] != cast(u8)124 {
             end += 1
         }
         if end - begin == length {
             equal: bool = true
-            index: i32 = 0
+            index: s32 = 0
             while index < length {
                 if value[start + index] != words[begin + index] {
                     equal = false
@@ -67,72 +69,76 @@ SyntaxWordInList :: (value: string, start: i32,
     return false
 }
 
+#program_export
 SyntaxKeywordFor :: (mode: SyntaxMode,
-    value: string, start: i32,
-    length: i32) -> bool #export {
-    if mode == (SyntaxMode)SyntaxZiran {
+    value: string, start: s32,
+    length: s32) -> bool {
+    if mode == cast(SyntaxMode)SyntaxZiran {
         return SyntaxWordInList(value, start, length,
-            "|#module|#import|#export|#extern|#global|#private|#type|struct|enum|if|else|while|return|true|false|nil|bool|string|i8|i16|i32|i64|u8|u16|u32|u64|float|double|f32|f64|char|const|size_t|void|int|")
+            "|import|program_export|foreign|system_library|scope_file|scope_module|scope_export|char|type|struct|enum|variant|match|if|ifx|then|else|while|return|cast|true|false|null|bool|string|s8|s16|s32|s64|u8|u16|u32|u64|float32|float64|")
     }
-    if mode == (SyntaxMode)SyntaxC {
+    if mode == cast(SyntaxMode)SyntaxC {
         return SyntaxWordInList(value, start, length,
             "|auto|break|case|char|const|continue|default|do|double|else|enum|extern|float|for|goto|if|inline|int|long|register|restrict|return|short|signed|sizeof|static|struct|switch|typedef|union|unsigned|void|volatile|while|_Bool|_Complex|_Atomic|_Thread_local|")
     }
-    if mode == (SyntaxMode)SyntaxMake {
+    if mode == cast(SyntaxMode)SyntaxMake {
         return SyntaxWordInList(value, start, length,
             "|define|else|endef|endif|export|ifdef|ifeq|ifndef|ifneq|include|override|private|undefine|unexport|vpath|")
     }
     return false
 }
 
-SyntaxDarkBackground :: (background: u32) -> bool #export {
-    red: u32 = (background >> (u32)24) & (u32)255
-    green: u32 = (background >> (u32)16) & (u32)255
-    blue: u32 = (background >> (u32)8) & (u32)255
-    return red * (u32)3 + green * (u32)6 + blue <
-        (u32)1280
+#program_export
+SyntaxDarkBackground :: (background: u32) -> bool {
+    red: u32 = (background >> cast(u32)24) & cast(u32)255
+    green: u32 = (background >> cast(u32)16) & cast(u32)255
+    blue: u32 = (background >> cast(u32)8) & cast(u32)255
+    return red * cast(u32)3 + green * cast(u32)6 + blue <
+        cast(u32)1280
 }
 
+#program_export
 SyntaxColorFor :: (kind: SyntaxTokenKind,
-    dark: bool, base: u32) -> u32 #export {
-    if kind == (SyntaxTokenKind)SyntaxKeyword {
-        if dark { return (u32)0x8ea0f0ff }
-        return (u32)0x2448acff
+    dark: bool, base: u32) -> u32 {
+    if kind == cast(SyntaxTokenKind)SyntaxKeyword {
+        if dark { return cast(u32)0x8ea0f0ff }
+        return cast(u32)0x2448acff
     }
-    if kind == (SyntaxTokenKind)SyntaxString {
-        if dark { return (u32)0x6ec8b0ff }
-        return (u32)0x227e52ff
+    if kind == cast(SyntaxTokenKind)SyntaxString {
+        if dark { return cast(u32)0x6ec8b0ff }
+        return cast(u32)0x227e52ff
     }
-    if kind == (SyntaxTokenKind)SyntaxNumber {
-        if dark { return (u32)0xd59152ff }
-        return (u32)0x96487eff
+    if kind == cast(SyntaxTokenKind)SyntaxNumber {
+        if dark { return cast(u32)0xd59152ff }
+        return cast(u32)0x96487eff
     }
-    if kind == (SyntaxTokenKind)SyntaxPath {
-        if dark { return (u32)0xcdaa6eff }
-        return (u32)0x8a6020ff
+    if kind == cast(SyntaxTokenKind)SyntaxPath {
+        if dark { return cast(u32)0xcdaa6eff }
+        return cast(u32)0x8a6020ff
     }
-    if kind == (SyntaxTokenKind)SyntaxComment {
-        if dark { return (u32)0x8a92a0ff }
-        return (u32)0x68707cff
+    if kind == cast(SyntaxTokenKind)SyntaxComment {
+        if dark { return cast(u32)0x8a92a0ff }
+        return cast(u32)0x68707cff
     }
     return base
 }
 
-SyntaxTokenAt :: (value: string, start: i32,
-    end: i32, mode: SyntaxMode, first_token: bool,
-    block_comment: bool) -> SyntaxToken #export {
+#program_export
+SyntaxTokenAt :: (value: string, start: s32,
+    end: s32, mode: SyntaxMode, first_token: bool,
+    block_comment: bool) -> SyntaxToken {
     token: SyntaxToken
-    token.kind = (SyntaxTokenKind)SyntaxPlain
+    token.kind = cast(SyntaxTokenKind)SyntaxPlain
     token.block_comment = block_comment
     if start < 0 || end > value.length ||
         start >= end { return token }
     byte: u8 = value[start]
-    index: i32 = start
+    index: s32 = start
     if block_comment {
-        token.kind = (SyntaxTokenKind)SyntaxComment
+        token.kind = cast(SyntaxTokenKind)SyntaxComment
         while index < end {
-            if value[index] == (u8)42 && index + 1 < end &&
-                value[index + 1] == (u8)47 {
+            if value[index] == cast(u8)42 && index + 1 < end &&
+                value[index + 1] == cast(u8)47 {
                 index += 2
                 token.block_comment = false
                 break
@@ -142,22 +148,22 @@ SyntaxTokenAt :: (value: string, start: i32,
         token.length = index - start
         return token
     }
-    if byte == (u8)32 || byte == (u8)9 {
-        token.kind = (SyntaxTokenKind)SyntaxWhitespace
+    if byte == cast(u8)32 || byte == cast(u8)9 {
+        token.kind = cast(SyntaxTokenKind)SyntaxWhitespace
         while index < end &&
-            (value[index] == (u8)32 ||
-                value[index] == (u8)9) { index += 1 }
+            (value[index] == cast(u8)32 ||
+                value[index] == cast(u8)9) { index += 1 }
         token.length = index - start
         return token
     }
-    if mode == (SyntaxMode)SyntaxC && byte == (u8)47 &&
-        start + 1 < end && value[start + 1] == (u8)42 {
-        token.kind = (SyntaxTokenKind)SyntaxComment
+    if mode == cast(SyntaxMode)SyntaxC && byte == cast(u8)47 &&
+        start + 1 < end && value[start + 1] == cast(u8)42 {
+        token.kind = cast(SyntaxTokenKind)SyntaxComment
         token.block_comment = true
         index = start + 2
         while index < end {
-            if value[index] == (u8)42 && index + 1 < end &&
-                value[index + 1] == (u8)47 {
+            if value[index] == cast(u8)42 && index + 1 < end &&
+                value[index + 1] == cast(u8)47 {
                 index += 2
                 token.block_comment = false
                 break
@@ -167,15 +173,15 @@ SyntaxTokenAt :: (value: string, start: i32,
         token.length = index - start
         return token
     }
-    if mode == (SyntaxMode)SyntaxC && byte == (u8)47 &&
-        start + 1 < end && value[start + 1] == (u8)47 {
+    if mode == cast(SyntaxMode)SyntaxC && byte == cast(u8)47 &&
+        start + 1 < end && value[start + 1] == cast(u8)47 {
         token.length = end - start
-        token.kind = (SyntaxTokenKind)SyntaxComment
+        token.kind = cast(SyntaxTokenKind)SyntaxComment
         return token
     }
-    if (mode == (SyntaxMode)SyntaxZiran ||
-        mode == (SyntaxMode)SyntaxMake) && byte == (u8)35 {
-        if mode == (SyntaxMode)SyntaxZiran && first_token &&
+    if (mode == cast(SyntaxMode)SyntaxZiran ||
+        mode == cast(SyntaxMode)SyntaxMake) && byte == cast(u8)35 {
+        if mode == cast(SyntaxMode)SyntaxZiran && first_token &&
             start + 1 < end &&
             SyntaxIdentStart(value[start + 1]) {
             index = start + 2
@@ -184,19 +190,19 @@ SyntaxTokenAt :: (value: string, start: i32,
             if SyntaxKeywordFor(mode, value,
                 start, index - start) {
                 token.length = index - start
-                token.kind = (SyntaxTokenKind)SyntaxKeyword
+                token.kind = cast(SyntaxTokenKind)SyntaxKeyword
                 return token
             }
         }
         token.length = end - start
-        token.kind = (SyntaxTokenKind)SyntaxComment
+        token.kind = cast(SyntaxTokenKind)SyntaxComment
         return token
     }
-    if byte == (u8)34 ||
-        (mode == (SyntaxMode)SyntaxC && byte == (u8)39) {
+    if byte == cast(u8)34 ||
+        (mode == cast(SyntaxMode)SyntaxC && byte == cast(u8)39) {
         index = start + 1
         while index < end {
-            if value[index] == (u8)92 && index + 1 < end {
+            if value[index] == cast(u8)92 && index + 1 < end {
                 index += 2
                 continue
             }
@@ -207,16 +213,16 @@ SyntaxTokenAt :: (value: string, start: i32,
             index += 1
         }
         token.length = index - start
-        token.kind = (SyntaxTokenKind)SyntaxString
+        token.kind = cast(SyntaxTokenKind)SyntaxString
         return token
     }
-    if mode == (SyntaxMode)SyntaxMake && byte == (u8)36 {
+    if mode == cast(SyntaxMode)SyntaxMake && byte == cast(u8)36 {
         index = start + 1
         if index < end &&
-            (value[index] == (u8)40 ||
-                value[index] == (u8)123) {
-            close: u8 = (u8)41
-            if value[index] == (u8)123 { close = (u8)125 }
+            (value[index] == cast(u8)40 ||
+                value[index] == cast(u8)123) {
+            close: u8 = cast(u8)41
+            if value[index] == cast(u8)123 { close = cast(u8)125 }
             index += 1
             while index < end && value[index] != close {
                 index += 1
@@ -226,29 +232,29 @@ SyntaxTokenAt :: (value: string, start: i32,
             if index < end { index += 1 }
         }
         token.length = index - start
-        token.kind = (SyntaxTokenKind)SyntaxPath
+        token.kind = cast(SyntaxTokenKind)SyntaxPath
         return token
     }
-    digit: bool = byte >= (u8)48 && byte <= (u8)57
-    negative: bool = byte == (u8)45 &&
-        start + 1 < end && value[start + 1] >= (u8)48 &&
-        value[start + 1] <= (u8)57
+    digit: bool = byte >= cast(u8)48 && byte <= cast(u8)57
+    negative: bool = byte == cast(u8)45 &&
+        start + 1 < end && value[start + 1] >= cast(u8)48 &&
+        value[start + 1] <= cast(u8)57
     if digit || negative {
         index = start + 1
         while index < end {
             next: u8 = value[index]
-            if (next >= (u8)48 && next <= (u8)57) ||
-                next == (u8)46 || next == (u8)95 ||
-                next == (u8)120 || next == (u8)88 ||
-                (next >= (u8)65 && next <= (u8)70) ||
-                (next >= (u8)97 && next <= (u8)102) {
+            if (next >= cast(u8)48 && next <= cast(u8)57) ||
+                next == cast(u8)46 || next == cast(u8)95 ||
+                next == cast(u8)120 || next == cast(u8)88 ||
+                (next >= cast(u8)65 && next <= cast(u8)70) ||
+                (next >= cast(u8)97 && next <= cast(u8)102) {
                 index += 1
                 continue
             }
             break
         }
         token.length = index - start
-        token.kind = (SyntaxTokenKind)SyntaxNumber
+        token.kind = cast(SyntaxTokenKind)SyntaxNumber
         return token
     }
     if SyntaxIdentStart(byte) {
@@ -259,14 +265,14 @@ SyntaxTokenAt :: (value: string, start: i32,
         token.length = index - start
         if SyntaxKeywordFor(mode, value,
             start, token.length) {
-            token.kind = (SyntaxTokenKind)SyntaxKeyword
+            token.kind = cast(SyntaxTokenKind)SyntaxKeyword
         }
         return token
     }
-    if byte >= (u8)128 {
+    if byte >= cast(u8)128 {
         index = start + 1
         while index < end &&
-            (value[index] & (u8)192) == (u8)128 {
+            (value[index] & cast(u8)192) == cast(u8)128 {
             index += 1
         }
         token.length = index - start

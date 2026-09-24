@@ -1,4 +1,3 @@
-#module "color_picker_widget"
 #import "color_picker"
 #import "color_picker_props"
 #import "control_props"
@@ -15,18 +14,19 @@
 #import "tree"
 #import "widget_kind"
 
+#program_export
 ColorPickerDefaultFace :: (swatch: bool,
-    disabled: bool) -> StyleData #export {
+    disabled: bool) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize | (u32)StylePaddingX |
-        (u32)StylePaddingY | (u32)StyleGap |
-        (u32)StyleIconSize | (u32)StyleContentOffset
-    face.background = (u32)0x00000000
-    face.foreground = (u32)0x171717ff
-    face.border = (u32)0x00000000
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY | cast(u32)StyleGap |
+        cast(u32)StyleIconSize | cast(u32)StyleContentOffset
+    face.background = cast(u32)0x00000000
+    face.foreground = cast(u32)0x171717ff
+    face.border = cast(u32)0x00000000
     face.opacity = 1.0
     face.radius = 4.0
     face.font_size = 14.0
@@ -37,53 +37,57 @@ ColorPickerDefaultFace :: (swatch: bool,
     face.offset_x = 20.0
     face.offset_y = 28.0
     if swatch {
-        face.border = (u32)0x737373ff
+        face.border = cast(u32)0x737373ff
         face.border_width = 1.0
     }
     if disabled { face.opacity = 0.45 }
     return face
 }
 
+#program_export
 ColorPickerFace :: (props: ColorPickerProps,
-    swatch: bool) -> StyleFrame #export {
-    kind: i32 = StyleKindColorPicker()
+    swatch: bool) -> StyleFrame {
+    kind: s32 = StyleKindColorPicker()
     if swatch { kind = StyleKindColorPickerSwatch() }
-    state: i32 = ButtonStateNormal
+    state: s32 = ButtonStateNormal
     if props.disabled { state = ButtonStateDisabled }
     facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
         props.class_name, StyleAny(),
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisFilled,
-        (i32)ControlSizeMedium, state)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
+        cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         ColorPickerDefaultFace(swatch, props.disabled), facts, state)
     return frame
 }
 
-ColorPickerChannelLabel :: (index: i32) -> string #export {
+#program_export
+ColorPickerChannelLabel :: (index: s32) -> string {
     if index == 0 { return "R" }
     if index == 1 { return "G" }
     if index == 2 { return "B" }
     return "A"
 }
 
-ColorPickerChannels :: (requested: i32) -> i32 #export {
+#program_export
+ColorPickerChannels :: (requested: s32) -> s32 {
     if requested >= 4 { return 4 }
     return 3
 }
 
-ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float,
-    label_height: i32, picker: bool,
-    scale: float) -> Rectangle #export {
+#program_export
+ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float32,
+    label_height: s32, picker: bool,
+    scale: float32) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
     if thumb_radius < 0.0 { thumb_radius = 0.0 }
-    left: float = thumb_radius
-    right: float = thumb_radius
+    left: float32 = thumb_radius
+    right: float32 = thumb_radius
     if picker {
         left += 12.0 * scale
     } else {
-        row.y += (float)label_height
-        row.height -= (float)label_height
+        row.y += cast(float32)label_height
+        row.height -= cast(float32)label_height
         if row.height < 0.0 { row.height = 0.0 }
     }
     row.x += left
@@ -94,10 +98,11 @@ ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float,
 
 # A zero key uses the containing tree's next key; child sliders use stable
 # per-channel keys. The returned values belong to the caller's next frame.
-ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
+#program_export
+ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
     result: ColorPickerResult
     result.node = -1
-    index: i32 = 0
+    index: s32 = 0
     while index < 4 {
         result.values[index] = props.values[index]
         index += 1
@@ -108,8 +113,8 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
     if bounds.height <= 0.0 { bounds.height = parent.height }
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
     key: u64 = props.key
-    if key == (u64)0 && props.id > 0 { key = (u64)(u32)props.id }
-    if key == (u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 { key = TreeNextKey() }
     if TreeIsBuilding() {
         result.node = TreeSubmitCurrent(key,
             WidgetKindColorPicker, bounds)
@@ -117,51 +122,51 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
         bounds = TreeSubmittedNodeAt(result.node).bounds
         if !TreePushScope(result.node) { return result }
     }
-    channels: i32 = ColorPickerChannels(props.channels)
-    scale: float = props.scale
+    channels: s32 = ColorPickerChannels(props.channels)
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     frame: StyleFrame = ColorPickerFace(props, false)
     swatch_face: StyleFrame = ColorPickerFace(props, true)
-    slider_state: i32 = ButtonStateNormal
+    slider_state: s32 = ButtonStateNormal
     if props.disabled { slider_state = ButtonStateDisabled }
     thumb_face: StyleFrame = SliderFaceFor(ActiveStyleRules(),
         props.id, props.class_name, props.disabled,
         StyleKindSliderThumb(), StyleAny(),
-        (ButtonTone)ButtonToneAccent, slider_state)
-    thumb_radius: float = (float)SliderThumbSizeForStyle(
+        cast(ButtonTone)ButtonToneAccent, slider_state)
+    thumb_radius: float32 = cast(float32)SliderThumbSizeForStyle(
         thumb_face, 1.0) * 0.5
     layout: ColorPickerLayout = ColorPickerLayoutFor(bounds,
         channels, scale, frame)
     rows: Rectangle = bounds
     if !props.picker {
         if props.label != "" {
-            font: i32 = ResolveFont(0,
+            font: s32 = ResolveFont(0,
                 StyleFontValue(frame.value.fields,
                     frame.value.font_size), 14)
-            line_height: i32 = GlyphLineHeight(font,
+            line_height: s32 = GlyphLineHeight(font,
                 frame.value.typeface)
             title: Rectangle = bounds
-            title.height = (float)line_height
-            title_node: i32 = -1
+            title.height = cast(float32)line_height
+            title_node: s32 = -1
             if TreeIsBuilding() {
-                title_node = TreeSubmitCurrent((u64)10,
+                title_node = TreeSubmitCurrent(cast(u64)10,
                     WidgetKindText, title)
                 TreeSetLabel(title_node, props.label)
             }
             PaintClippedLabel(title_node, props.label,
-                (i32)bounds.x, (i32)bounds.y, font,
+                cast(s32)bounds.x, cast(s32)bounds.y, font,
                 ColorFromPacked(Opacity(frame.value.foreground,
                     StyleOpacityValue(frame.value.fields,
                         frame.value.opacity))), title)
-            rows.y += (float)(line_height + 4)
-            rows.height -= (float)(line_height + 4)
+            rows.y += cast(float32)(line_height + 4)
+            rows.height -= cast(float32)(line_height + 4)
             if rows.height < 0.0 { rows.height = 0.0 }
         }
     }
     index = 0
     while index < channels {
         slider: SliderProps
-        slider.key = (u64)(index + 1)
+        slider.key = cast(u64)(index + 1)
         row: Rectangle
         if props.picker {
             row = ColorPickerChannelBounds(bounds,
@@ -170,10 +175,10 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
             row = SliderCellBoundsFor(rows,
                 channels, index)
         }
-        font: i32 = ResolveFont(0,
+        font: s32 = ResolveFont(0,
             StyleFontValue(frame.value.fields,
                 frame.value.font_size), 14)
-        line_height: i32 = GlyphLineHeight(font,
+        line_height: s32 = GlyphLineHeight(font,
             frame.value.typeface)
         slider.bounds = ColorPickerSliderBounds(row,
             thumb_radius, line_height, props.picker, scale)
@@ -187,21 +192,21 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
         step: SliderStep = Slider(slider)
         result.values[index] = step.value
         if step.changed { result.changed = true }
-        label_y: i32 = (i32)row.y
+        label_y: s32 = cast(s32)row.y
         if props.picker {
-            label_y = (i32)(row.y +
-                (row.height - (float)line_height) * 0.5)
+            label_y = cast(s32)(row.y +
+                (row.height - cast(float32)line_height) * 0.5)
         }
-        label_node: i32 = -1
+        label_node: s32 = -1
         if TreeIsBuilding() {
-            label_node = TreeSubmitCurrent((u64)(index + 6),
+            label_node = TreeSubmitCurrent(cast(u64)(index + 6),
                 WidgetKindText, row)
             TreeSetLabel(label_node,
                 ColorPickerChannelLabel(index))
         }
         PaintClippedLabel(label_node,
             ColorPickerChannelLabel(index),
-            (i32)(row.x + 2.0 * scale), label_y,
+            cast(s32)(row.x + 2.0 * scale), label_y,
             font, ColorFromPacked(Opacity(
                 frame.value.foreground,
                 StyleOpacityValue(frame.value.fields,
@@ -210,9 +215,9 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
     }
     if props.picker {
         swatch: Rectangle = layout.swatch_bounds
-        node: i32 = -1
+        node: s32 = -1
         if TreeIsBuilding() {
-            node = TreeSubmitCurrent((u64)5,
+            node = TreeSubmitCurrent(cast(u64)5,
                 WidgetKindCustom, swatch)
             TreeSetLabel(node, props.label)
         }
@@ -233,16 +238,16 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult #export {
                         swatch_face.value.opacity))))
         }
         if props.label != "" {
-            font: i32 = ResolveFont(0,
+            font: s32 = ResolveFont(0,
                 StyleFontValue(swatch_face.value.fields,
                     swatch_face.value.font_size), 14)
-            line_height: i32 = GlyphLineHeight(font,
+            line_height: s32 = GlyphLineHeight(font,
                 swatch_face.value.typeface)
             paint = ColorPickerSwatchPaintFor(swatch,
                 ColorPickerSwatchLabelInset(scale, swatch_face),
-                (float)line_height)
+                cast(float32)line_height)
             PaintClippedLabel(node, props.label,
-                (i32)paint.label_x, (i32)paint.label_y,
+                cast(s32)paint.label_x, cast(s32)paint.label_y,
                 font, ColorFromPacked(Opacity(
                     swatch_face.value.foreground,
                     StyleOpacityValue(swatch_face.value.fields,

@@ -1,4 +1,3 @@
-#module "text_input_props"
 #import "geometry"
 #import "syntax"
 #import "text_input"
@@ -31,16 +30,16 @@ TextFieldProps :: struct {
     display_value: string
     label: string
     placeholder: string
-    cursor: i32
-    anchor: i32
-    scroll_x: i32
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
     focused: bool
     composition: CompositionState
-    focus_id: i32
-    class_name: i32
-    scale: float
-    max_bytes: i32
-    max_codepoints: i32
+    focus_id: s32
+    class_name: s32
+    scale: float32
+    max_bytes: s32
+    max_codepoints: s32
     secure: bool
     read_only: bool
     disabled: bool
@@ -48,17 +47,17 @@ TextFieldProps :: struct {
 }
 
 TextFieldEdit :: struct {
-    start: i32
-    end: i32
+    start: s32
+    end: s32
     replacement: string
     changed: bool
 }
 
 TextFieldResult :: struct {
-    node: i32
-    cursor: i32
-    anchor: i32
-    scroll_x: i32
+    node: s32
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
     focused: bool
     committed: bool
     escaped: bool
@@ -95,7 +94,7 @@ TextAreaInput :: struct {
     escape: bool
     focus: bool
     blur: bool
-    wheel: float
+    wheel: float32
 }
 
 TextAreaProps :: struct {
@@ -104,43 +103,43 @@ TextAreaProps :: struct {
     value: string
     label: string
     placeholder: string
-    cursor: i32
-    anchor: i32
-    scroll_y: i32
+    cursor: s32
+    anchor: s32
+    scroll_y: s32
     focused: bool
     composition: CompositionState
     selecting: bool
-    preferred_x: i32
+    preferred_x: s32
     preferred_x_valid: bool
-    max_bytes: i32
-    max_codepoints: i32
-    focus_id: i32
+    max_bytes: s32
+    max_codepoints: s32
+    focus_id: s32
     syntax: SyntaxMode
-    composition_start: i32
-    composition_end: i32
+    composition_start: s32
+    composition_end: s32
     read_only: bool
     wrap: bool
-    class_name: i32
-    scale: float
+    class_name: s32
+    scale: float32
     disabled: bool
     input: TextAreaInput
 }
 
 TextAreaEdit :: struct {
-    start: i32
-    end: i32
+    start: s32
+    end: s32
     replacement: string
     changed: bool
 }
 
 TextAreaResult :: struct {
-    node: i32
-    cursor: i32
-    anchor: i32
-    scroll_y: i32
+    node: s32
+    cursor: s32
+    anchor: s32
+    scroll_y: s32
     focused: bool
     selecting: bool
-    preferred_x: i32
+    preferred_x: s32
     preferred_x_valid: bool
     committed: bool
     escaped: bool

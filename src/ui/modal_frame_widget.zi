@@ -1,4 +1,3 @@
-#module "modal_frame_widget"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -16,53 +15,57 @@
 #import "surface"
 #import "tree"
 
-ModalFrameDefaultFace :: (role: i32) -> StyleData #export {
+#program_export
+ModalFrameDefaultFace :: (role: s32) -> StyleData {
     face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleForeground |
-        (u32)StyleBorder | (u32)StyleBorderWidth |
-        (u32)StyleRadius | (u32)StyleOpacity |
-        (u32)StyleFontSize
-    face.background = (u32)0xffffffff
-    face.foreground = (u32)0x111827ff
-    face.border = (u32)0x94a3b8ff
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StyleFontSize
+    face.background = cast(u32)0xffffffff
+    face.foreground = cast(u32)0x111827ff
+    face.border = cast(u32)0x94a3b8ff
     face.border_width = 1.0
     face.radius = 8.0
     face.opacity = 1.0
     face.font_size = 18.0
     if role == ModalScrimRole() {
-        face.background = (u32)0x00000080
+        face.background = cast(u32)0x00000080
         face.border_width = 0.0
         face.radius = 0.0
     } else if role == ModalTitleRole() {
-        face.background = (u32)0x00000000
+        face.background = cast(u32)0x00000000
     } else if role == ModalMessageRole() {
         face.font_size = 14.0
     }
     return face
 }
 
+#program_export
 ModalFrameFaceFor :: (props: ModalFrameProps,
-    role: i32) -> StyleFrame #export {
+    role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindModal(), props.id, props.class_name, role,
-        (i32)ButtonToneNeutral, (i32)ButtonEmphasisSoft,
-        (i32)ControlSizeMedium, (i32)ButtonStateNormal)
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     frame: StyleFrame
     frame.value = ResolveStyleRules(ActiveStyleRules(),
         ModalFrameDefaultFace(role), facts,
-        (i32)ButtonStateNormal)
+        cast(s32)ButtonStateNormal)
     return frame
 }
 
-ModalFrameKey :: (props: ModalFrameProps) -> u64 #export {
-    if props.key != (u64)0 { return props.key }
-    if props.id > 0 { return (u64)(u32)props.id }
+#program_export
+ModalFrameKey :: (props: ModalFrameProps) -> u64 {
+    if props.key != cast(u64)0 { return props.key }
+    if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey()
 }
 
 # Returns the checked panel and content rectangles. The caller may submit
 # content under panel_node using TreePushScope, then End that scope.
-ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
+#program_export
+ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
     result: ModalFrameResult
     result.node = -1
     result.panel_node = -1
@@ -82,18 +85,18 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
         ModalCloseRole())
     scrim: StyleFrame = ModalFrameFaceFor(props,
         ModalScrimRole())
-    scale: float = props.scale
+    scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     metrics: ModalMetrics = ModalMetricsFor(scale,
         panel, title, message, action, close)
-    width: i32 = props.width
-    height: i32 = props.height
+    width: s32 = props.width
+    height: s32 = props.height
     if width <= 0 { width = metrics.default_max_width }
     if height <= 0 { height = metrics.min_height }
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 {
-        bounds = ModalFramePanelFor((i32)viewport.width,
-            (i32)viewport.height, width, height, metrics)
+        bounds = ModalFramePanelFor(cast(s32)viewport.width,
+            cast(s32)viewport.height, width, height, metrics)
         bounds.x += viewport.x
         bounds.y += viewport.y
     }
@@ -112,7 +115,7 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
     result.panel_node = overlay.panel_node
     result.dismissed = overlay.closed
     if overlay.closed || result.panel_node < 0 { return result }
-    opacity: float = StyleOpacityValue(panel.value.fields,
+    opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
     PaintRoundedFill(result.panel_node, result.layout.panel,
         panel.value.radius, 12,
@@ -124,21 +127,21 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
             ColorFromPacked(Opacity(panel.value.border, opacity)))
     }
     if props.title != "" {
-        font: i32 = ResolveFont(0,
+        font: s32 = ResolveFont(0,
             StyleFontValue(title.value.fields,
                 title.value.font_size), 18)
-        width: i32 = GlyphWidth(props.title, font,
+        width: s32 = GlyphWidth(props.title, font,
             title.value.typeface)
         while width > result.layout.title_max_width && font > 12 {
             font -= 1
             width = GlyphWidth(props.title, font,
                 title.value.typeface)
         }
-        title_x: i32 = (i32)result.layout.panel.x +
-            ((i32)result.layout.panel.width - width) / 2
+        title_x: s32 = cast(s32)result.layout.panel.x +
+            (cast(s32)result.layout.panel.width - width) / 2
         title_clip: Rectangle = result.layout.panel
-        title_clip.x += (float)metrics.frame_title_side_padding
-        title_clip.width -= (float)(metrics.frame_title_side_padding * 2)
+        title_clip.x += cast(float32)metrics.frame_title_side_padding
+        title_clip.width -= cast(float32)(metrics.frame_title_side_padding * 2)
         if title_clip.width < 0.0 { title_clip.width = 0.0 }
         PaintClippedLabel(result.panel_node, props.title,
             title_x, result.layout.title_y, font,
@@ -148,52 +151,52 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult #export {
     }
     if props.has_left_action {
         button: ButtonProps
-        button.key = overlay_props.key * (u64)65599 + (u64)1
+        button.key = overlay_props.key * cast(u64)65599 + cast(u64)1
         button.bounds = result.layout.left_button
         button.id = props.id
         button.class_name = props.class_name
         button.style_kind = StyleKindModal()
         button.style_role = ModalCloseRole()
-        button.tone = (ButtonTone)ButtonToneNeutral
-        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.tone = cast(ButtonTone)ButtonToneNeutral
+        button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
         button.label = props.left_label
         button.image = props.left_image
         button.icon_only = true
         button.arrow = props.left_image.asset_path == "" &&
-            props.left_image.texture.id == (u32)0
-        button.direction = (ArrowDirection)ArrowLeft
+            props.left_image.texture.id == cast(u32)0
+        button.direction = cast(ArrowDirection)ArrowLeft
         result.left_clicked = SubmitButton(button,
             result.panel_node, OverlayPanelKey()) != 0
     }
     if props.has_right_action {
         button: ButtonProps
-        button.key = overlay_props.key * (u64)65599 + (u64)2
+        button.key = overlay_props.key * cast(u64)65599 + cast(u64)2
         button.bounds = result.layout.right_button
         button.id = props.id
         button.class_name = props.class_name
         button.style_kind = StyleKindModal()
         button.style_role = ModalCloseRole()
-        button.tone = (ButtonTone)ButtonToneNeutral
-        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+        button.tone = cast(ButtonTone)ButtonToneNeutral
+        button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
         button.label = props.right_label
         button.image = props.right_image
         button.icon_only = true
         result.right_clicked = SubmitButton(button,
             result.panel_node, OverlayPanelKey()) != 0
         if button.image.asset_path == "" &&
-            button.image.texture.id == (u32)0 {
-            cx: float = button.bounds.x + button.bounds.width * 0.5
-            cy: float = button.bounds.y + button.bounds.height * 0.5
-            span: float = (float)metrics.frame_icon_size * 0.25
+            button.image.texture.id == cast(u32)0 {
+            cx: float32 = button.bounds.x + button.bounds.width * 0.5
+            cy: float32 = button.bounds.y + button.bounds.height * 0.5
+            span: float32 = cast(float32)metrics.frame_icon_size * 0.25
             color: Color = ColorFromPacked(Opacity(
                 close.value.foreground,
                 StyleOpacityValue(close.value.fields,
                     close.value.opacity)))
             PaintLine(result.panel_node,
-                (Rectangle){cx - span, cy - span,
+                Rectangle.{cx - span, cy - span,
                     span * 2.0, span * 2.0}, color)
             PaintLine(result.panel_node,
-                (Rectangle){cx + span, cy - span,
+                Rectangle.{cx + span, cy - span,
                     -span * 2.0, span * 2.0}, color)
         }
     }

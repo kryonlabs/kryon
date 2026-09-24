@@ -1,11 +1,11 @@
-#module "style_picker"
 #import "dropdown_props"
 #import "dropdown_widget"
 #import "style_picker_props"
 
+#program_export
 StylePickerActiveIndex :: (packs: []StylePackOption,
-    count: i32) -> i32 #export {
-    index: i32 = 0
+    count: s32) -> s32 {
+    index: s32 = 0
     while index < count {
         if packs[index].active { return index }
         index += 1
@@ -13,28 +13,30 @@ StylePickerActiveIndex :: (packs: []StylePackOption,
     return -1
 }
 
+#program_export
 StylePickerSelectedId :: (packs: []StylePackOption,
-    index: i32) -> string #export {
+    index: s32) -> string {
     if index < 0 || index >= packs.length { return "" }
     return packs[index].id
 }
 
 # The caller owns pack values and applies a returned selection to its style
 # store. The widget only composes a normal checked Dropdown.
+#program_export
 StylePicker :: (props: StylePickerProps,
-    packs: []StylePackOption) -> StylePickerResult #export {
+    packs: []StylePackOption) -> StylePickerResult {
     result: StylePickerResult
-    count: i32 = StylePickerOptionCountFor(packs.length, 32)
+    count: s32 = StylePickerOptionCountFor(packs.length, 32)
     result.dropdown.node = -1
     result.dropdown.selected_index = -1
     if count == 0 { return result }
-    selected: i32 = StylePickerSelectedIndexFor(
+    selected: s32 = StylePickerSelectedIndexFor(
         StylePickerActiveIndex(packs, count), count)
     options: [32]DropdownOption
-    index: i32 = 0
+    index: s32 = 0
     while index < count {
         option: DropdownOption
-        option.key = (u64)(u32)(index + 1)
+        option.key = cast(u64)cast(u32)(index + 1)
         option.label = packs[index].label
         if option.label.length == 0 { option.label = packs[index].id }
         options[index] = option
