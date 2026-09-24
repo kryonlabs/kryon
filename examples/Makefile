@@ -1,275 +1,51 @@
-# UI Examples Makefile
+.DEFAULT_GOAL := all
 
 CC ?= cc
-CFLAGS_BASE ?= -Wall -Wextra -O2
-CFLAGS = $(CFLAGS_BASE) -I. -I../include \
-	-I$(KRYON_BUILD_DIR)/generated/include \
-	-I$(KRYON_BUILD_DIR)/generated/src
-LDFLAGS = -L$(KRYON_BUILD_DIR) -lkryon
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
-ifeq ($(UNAME_M),amd64)
-    KRYON_ARCH := x86_64
-else
-    KRYON_ARCH := $(UNAME_M)
-endif
-ifeq ($(UNAME_S),Linux)
-    KRYON_PLATFORM := linux
-else ifeq ($(UNAME_S),FreeBSD)
-    KRYON_PLATFORM := freebsd
-else ifeq ($(UNAME_S),Darwin)
-    KRYON_PLATFORM := macos
-else
-    KRYON_PLATFORM := $(UNAME_S)
-endif
-# kryon archives libkryon.a under its platform-tagged build dir (not the repo root),
-# so the host platform must be derived the same way as kryon's own Makefile.
-KRYON_BUILD_DIR := ../build/$(KRYON_PLATFORM)-$(KRYON_ARCH)
-KRYON_LIB := $(KRYON_BUILD_DIR)/libkryon.a
-GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
-GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
-GTK_PKG_LIBS := $(shell pkg-config --libs gtk+-3.0 2>/dev/null)
-RAY_PKGS ?= sdl2 libdrm gbm egl glesv2
-RAY_SDL_CFLAGS ?= $(shell pkg-config --cflags sdl2 2>/dev/null)
-RAY_SDL_LDLIBS ?= $(shell pkg-config --libs sdl2 2>/dev/null)
-RAY_GL_CFLAGS ?= $(shell pkg-config --cflags libdrm gbm egl glesv2 2>/dev/null)
-RAY_GL_LDLIBS ?= $(shell pkg-config --libs libdrm gbm egl glesv2 2>/dev/null)
-RAY_CFLAGS ?= $(strip $(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS))
-RAY_LDLIBS ?= $(strip $(RAY_SDL_LDLIBS) $(RAY_GL_LDLIBS))
-RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
-# Backend selection mirroring the root Makefile; examples link libkryon.a
-# (built with the same KRYON_BACKEND below) plus the backend's own libs.
-KRYON_BACKEND ?= raylib
-ifeq ($(KRYON_BACKEND),raylib)
-  EXAMPLE_BACKEND_LIBS = $(RAYLIB_A)
-  EXAMPLE_BACKEND_LDLIBS = $(RAY_LDLIBS)
-else ifeq ($(KRYON_BACKEND),libdraw)
-  PLAN9PORT_DIR ?= /mnt/storage/Projects/plan9port
-  EXAMPLE_BACKEND_LIBS =
-  EXAMPLE_BACKEND_LDLIBS = -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9
-  CFLAGS += -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include
-else
-  EXAMPLE_BACKEND_LIBS =
-  EXAMPLE_BACKEND_LDLIBS =
-endif
-EXAMPLE_SYSTEM_LDLIBS := $(EXAMPLE_BACKEND_LDLIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
-ifeq ($(UNAME_S),Linux)
-    EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
-endif
-KRYON_DIR := ..
-FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
-BUILD_DIR ?= ../build/examples
+ZIRAN_DIR ?= ../../ziran
+ZIRAN_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/ziran)
+ZIRAN_LIB ?= $(abspath $(ZIRAN_DIR)/build/libziran.a)
+BUILD_DIR ?= ../build/examples/ziran
+HOST_LIB := ../build/ziran/libkryon_host.a
 
-# MSYS installations can live in a protected system directory where the
-# default /tmp is not writable. The repository root always exists and is
-# writable during an example build.
-ifneq ($(filter MSYS% MINGW%,$(UNAME_S)),)
-KRYON_MSYS_TMP := $(shell cygpath -m "$(abspath ..)")
-export TMPDIR := $(KRYON_MSYS_TMP)
-export TMP := $(KRYON_MSYS_TMP)
-export TEMP := $(KRYON_MSYS_TMP)
-endif
-K2C ?= $(KRYON_BUILD_DIR)/bin/k2c
-K2B ?= $(KRYON_BUILD_DIR)/bin/k2b
-CODEGEN_DIR := $(BUILD_DIR)/codegen
-BIN_DIR := $(BUILD_DIR)/bin
-RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-native
-RAYLIB_LIB_NAME := raylib
-RAYLIB_A := $(RAYLIB_BUILD_DIR)/lib$(RAYLIB_LIB_NAME).a
-WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
-WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
-WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
-WEB_RAYLIB_A := $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
-KRYON_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
-KRYON_WEB_LIBOQS_BUILD_DIR ?= $(KRYON_VENDOR_BUILD_DIR)/web-liboqs
-include ../mk/vendor.mk
-WEB_CC ?= emcc
-WEB_AR ?= emar
-EMSCRIPTEN_FILE_PACKAGER ?= /usr/local/lib/emscripten/tools/file_packager
-WEB_SHELL := web_shell.html
-EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
-include ../mk/raylib.mk
-KRYON_LIBRARY_SRCS := $(shell find ../src -type f -name '*.c' | LC_ALL=C sort)
-ifeq ($(KRYON_BACKEND),raylib)
-  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_RAYLIB_WRAPPERS_C)
-  KRYON_EXAMPLES_WEB_BACKEND_LIBS := $(WEB_RAYLIB_A)
-else ifeq ($(KRYON_BACKEND),canvas)
-  # the canvas sources are swept in by the ../src find in
-  # KRYON_LIBRARY_SRCS; appending them here would compile every canvas
-  # TU twice.
-  KRYON_EXAMPLES_WEB_BACKEND_C :=
-  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
-else ifeq ($(KRYON_BACKEND),libdraw)
-  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)
-  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
-else ifeq ($(KRYON_BACKEND),null)
-  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)
-  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
-else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
-endif
-KRYON_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(KRYON_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
-KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
-WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DKRYON_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(KRYON_WEB_LIBOQS_BUILD_DIR)/include
-WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
-WEB_PRELOAD_FLAGS ?= $(if $(wildcard $(EMSCRIPTEN_FILE_PACKAGER)),--preload-file ../fonts/noto@fonts/noto,)
-WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLE_NATIVE)))
+.PHONY: all test clean
+all: $(BUILD_DIR)/hello.svg
 
-# Check if we're in nix-shell and use its flags
-CFLAGS += $(GTK_PKG_CFLAGS) -I$(CODEGEN_DIR)
-ifneq ($(NIX_CFLAGS_COMPILE),)
-    CFLAGS += $(NIX_CFLAGS_COMPILE)
-endif
+$(ZIRAN_BIN):
+	$(MAKE) -C $(ZIRAN_DIR) all
 
-LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
+$(HOST_LIB):
+	$(MAKE) -C .. all
 
-EXAMPLE_NATIVE = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
-	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
-	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility \
-	19_images 20_scroll 25_text_area_slider 26_widget_catalog 27_dropdowns
-EXAMPLE_SCENE = 20_scene 21_signals 22_physics 23_animation 24_tilemap
-EXAMPLES = $(EXAMPLE_NATIVE) $(EXAMPLE_SCENE)
-EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLE_NATIVE))
-SCENE_CODEGEN := $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLE_SCENE)))
+$(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_BIN)
+	mkdir -p $(BUILD_DIR)
+	$(ZIRAN_BIN) bundle --root . --module-path ../src/ui \
+		--entry hello:Frame -o $@ hello.zi
 
-.PHONY: all clean run list font-assets web web-clean
-.SECONDARY: $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLES))) $(addprefix $(CODEGEN_DIR)/,$(addsuffix .h,$(EXAMPLES)))
+$(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
+	$(ZIRAN_BIN) ir --root . --module-path ../src/ui \
+		-o $(BUILD_DIR)/ir hello.zi
+	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/ir \
+		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
+		-o $@ $(BUILD_DIR)/ir/hello.zir
+	cmp $(BUILD_DIR)/hello.zib $@
 
-all: $(KRYON_LIB) $(K2C) $(EXAMPLE_BINS) $(SCENE_CODEGEN) $(BIN_DIR)/02_buttons_krb
+$(BUILD_DIR)/hello-host: hello_host.c ../include/kryon_portable_host.h $(HOST_LIB)
+	mkdir -p $(BUILD_DIR)
+	$(CC) -std=c11 -Wall -Wextra -I../include \
+		-I$(ZIRAN_DIR)/include hello_host.c $(HOST_LIB) \
+		$(ZIRAN_LIB) -o $@
 
-$(KRYON_LIB):
-	@$(MAKE) -C .. KRYON_BACKEND=$(KRYON_BACKEND)
+$(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host $(BUILD_DIR)/hello.zib
+	env -u DISPLAY -u WAYLAND_DISPLAY \
+		$(BUILD_DIR)/hello-host $(BUILD_DIR)/hello.zib $@
 
-$(K2C):
-	@$(MAKE) -C .. k2c
+$(BUILD_DIR)/hello-saved.svg: $(BUILD_DIR)/hello-host $(BUILD_DIR)/hello-saved.zib
+	env -u DISPLAY -u WAYLAND_DISPLAY \
+		$(BUILD_DIR)/hello-host $(BUILD_DIR)/hello-saved.zib $@
 
-font-assets:
-	@printf '%s\n' 'font assets are checked in'
-
-$(CODEGEN_DIR):
-	@mkdir -p $@
-
-$(BIN_DIR):
-	@mkdir -p $@
-
-$(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(K2C) | $(CODEGEN_DIR)
-	@echo "Generating $*..."
-	@$(K2C) --root . -o $(CODEGEN_DIR) $<
-
-$(CODEGEN_DIR)/%/.generated: %.kry $(K2C) | $(CODEGEN_DIR)
-	@echo "Generating native $*..."
-	@mkdir -p $(CODEGEN_DIR)/$*
-	@$(K2C) --root . -o $(CODEGEN_DIR)/$* $<
-	@touch $@
-
-$(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(K2C) | $(CODEGEN_DIR)
-	@echo "Generating 02_buttons cartridge..."
-	@$(K2B) --root . -o $(CODEGEN_DIR) $<
-
-$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
-	@echo "Building $@..."
-	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/02_buttons.krb.c $(LDFLAGS)
-	@echo "Built: $@"
-
-$(BIN_DIR)/%: $(CODEGEN_DIR)/%/.generated $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
-	@echo "Building $@..."
-	@$(CC) $(CFLAGS) -I$(CODEGEN_DIR)/$* -o $@ \
-		$(CODEGEN_DIR)/$*/$*.c $(CODEGEN_DIR)/$*/kryon_project.c \
-		$(LDFLAGS)
-	@echo "Built: $@"
-
-$(EXAMPLES): %: $(BIN_DIR)/%
-
-web: $(WEB_OUTPUTS)
-
-$(BUILD_DIR):
-	@mkdir -p $@
-
-$(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
-	sh ../scripts/embed-assets.sh $@ ../themes
-
-$(EXAMPLES_WEB_SITE_DIR)/%/index.html: $(CODEGEN_DIR)/%.c $(FONT_OUTPUTS) $(KRYON_EXAMPLES_WEB_BACKEND_LIBS) $(KRYON_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
-	@echo "Building web example $*..."
-	@mkdir -p $(dir $@)
-	$(WEB_CC) $(WEB_CFLAGS) \
-		-I. -I../include -I$(CODEGEN_DIR) \
-		-o $(dir $@)/index.js \
-		$< \
-		$(if $(filter 01_file_dialog,$*),$(KRYON_ALL_WEB_SRCS),$(KRYON_WEB_SRCS)) \
-		$(KRYON_EXAMPLES_WEB_BACKEND_LIBS) \
-		$(KRYON_WEB_LIBOQS_A) \
-		$(WEB_LDFLAGS) \
-		$(WEB_PRELOAD_FLAGS)
-	perl -0pe 's#\{\{\{ SCRIPT \}\}\}#<script async src="index.js"></script>#g' $(WEB_SHELL) > $@
-
-web-clean:
-	rm -rf $(BUILD_DIR) $(EXAMPLES_WEB_SITE_DIR)
+test: all $(BUILD_DIR)/hello-saved.svg
+	cmp $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello-saved.svg
+	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert any(node.text=="Hello, Ziran" for node in root.iter(ns+"text")); assert len(list(root.iter(ns+"rect")))>=2'
 
 clean:
-	rm -f $(EXAMPLE_NATIVE)
-	rm -rf $(BUILD_DIR)
-
-list:
-	@echo "UI Examples:"
-	@for i in $(EXAMPLES); do \
-		echo "  $$i"; \
-		done
-
-run:
-	@echo "UI Examples"
-	@echo "================"
-	@echo ""
-	@echo "Available examples:"
-	@echo "  1) file_dialog"
-	@echo "  2) buttons"
-	@echo "  3) theme"
-	@echo "  4) modal"
-	@echo "  5) color"
-	@echo "  6) scaling"
-	@echo "  7) layout"
-	@echo "  8) geometry"
-	@echo "  9) menus"
-	@echo "  10) basic_controls"
-	@echo "  11) collections"
-	@echo "  12) text_editor"
-	@echo "  13) canvas"
-	@echo "  14) containers"
-	@echo "  15) dialogs"
-	@echo "  16) keyboard_platform"
-	@echo "  17) accessibility"
-	@echo "  18) images"
-	@echo ""
-	@read -p "Enter example number: " num; \
-	case "$$num" in \
-		1) example="01_file_dialog";; \
-		2) example="02_buttons";; \
-		3) example="03_theme";; \
-		4) example="04_modal";; \
-		5) example="05_color";; \
-		6) example="06_scaling";; \
-		7) example="07_layout";; \
-		8) example="09_geometry";; \
-		9) example="10_menus";; \
-		10) example="11_basic_controls";; \
-		11) example="12_collections";; \
-		12) example="13_text_editor";; \
-		13) example="14_canvas";; \
-		14) example="15_containers";; \
-		15) example="16_dialogs";; \
-		16) example="17_keyboard_platform";; \
-		17) example="18_accessibility";; \
-		18) example="19_images";; \
-		*) example=;; \
-	esac; \
-	if [ -n "$$example" ]; then \
-		$(MAKE) $(BIN_DIR)/$$example; \
-		if [ -f "$(BIN_DIR)/$$example" ]; then \
-			echo ""; \
-			echo "Running $$example..."; \
-			$(BIN_DIR)/$$example; \
-		else \
-			echo "Failed to build $$example"; \
-		fi; \
-	else \
-		echo "Invalid example number"; \
-	fi
+	$(RM) -r $(BUILD_DIR)

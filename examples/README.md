@@ -1,110 +1,25 @@
-# Kryon Examples
+# Ziran example
 
-This directory contains `.kry` example programs demonstrating Kryon library
-components. The C files used for native and web builds are generated into
-`../build/examples/codegen` and are not source files.
+`hello.zi` is a small Ziran application that imports Kryon's ordinary
+`Button` widget module. It builds a retained tree, paints the button, and
+returns its node count. `hello_host.c` provides raw font measurements and SVG
+raster effects through the public portable host bindings. No window or display
+server is opened.
 
-## Available Examples
-
-1. **01_file_dialog** - File dialog component with theme integration
-2. **02_buttons** - Button styles and click handling
-3. **03_theme** - Theme switching
-4. **04_modal** - Modal dialogs
-5. **05_color** - Color helpers
-6. **06_scaling** - UI scaling
-7. **07_layout** - Existing layout helpers
-8. **09_geometry** - Packed frames, grid cells, placement, separators
-9. **10_menus** - Menubar and menu items
-10. **11_basic_controls** - Radio, progress, spinbox, dropdown, fieldset
-11. **12_collections** - Listbox, tree view, table view
-12. **13_text_editor** - Text area plus clipboard helpers
-13. **14_canvas** - Canvas clipping, grid, and hit testing
-14. **15_containers** - TabBar, paned view, collapsible section
-15. **16_dialogs** - Message, confirm, prompt, and color picker
-16. **17_keyboard_platform** - Accelerators and clipboard
-17. **18_accessibility** - Accessibility/debug node overlay
-18. **25_text_area_slider** - Editable multiline text with a live background-color slider
-19. **26_widget_catalog** - Native `.kry` widget catalog with ten clickable sidebar categories, scrollable previews, editable controls, and click feedback
-
-## Requirements
-
-- Kryon library must be built (`make` in parent directory)
-- Edit the `.kry` files; generated C/H in `../build/examples/codegen` is disposable
-- X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
-
-## Building Examples
-
-```bash
-# Build all examples
-make
-
-# Build specific example
-make ../build/examples/bin/01_file_dialog
-
-# Clean examples
-make clean
-```
-
-Each build transpiles `NN_name.kry` with `k2c`, writes generated C/H under
-`../build/examples/codegen`, then compiles the standalone example binary under
-`../build/examples/bin`.
-
-## Running Examples
-
-```bash
-# Interactive menu to select and run examples
-make run
-
-# Run directly (after building)
-../build/examples/bin/01_file_dialog
-```
-
-## IDE Preview
-
-Open this directory in Krait (the standalone Kryon IDE, a separate
-`kryonlabs/krait` repo):
-
-```bash
-krait .
-```
-
-Krait automatically discovers `.kry` screens, builds the generated app host under
-`build/kryon`, and reloads when `.kry` sources change. A `project.kryon` file is
-only needed for full projects that want custom build or run targets.
-
-## Example Features
-
-### Toolkit Examples
-
-The toolkit examples use one direct API shape per widget: fill the struct that
-describes the widget state and call its widget function, such as `Button`,
-`TextField`, or `TableView`. Geometry examples use plain `Rectangle` values
-alongside canonical layout widgets; canvas content uses the lexical `Canvas`
-block.
-
-## Usage
-
-- Press **L** to open load file dialog
-- Press **S** to open save file dialog  
-- Press **ESC** to exit
-- Toggle "Show hidden files" checkbox in dialogs
-
-## Widget catalog
-
-The catalog UI lives entirely in `26_widget_catalog.kry` and uses standard Kryon
-widgets. Build and launch it from the repository root:
+From the Kryon repository root, with Ziran checked out beside it:
 
 ```sh
-make -C examples 26_widget_catalog
-./build/examples/bin/26_widget_catalog
+make -C examples
+make -C examples test
 ```
 
-Choose a category in the left sidebar. The right pane scrolls independently and
-resets to the top when categories change. Numeric controls expose live values;
-buttons increment the sidebar click counter. Tabs can be added and closed,
-themes apply immediately, and the canvas supports wheel zoom and drag panning. Image samples use the checked-in
-`icons/tiles.png` asset. Escape is reserved for controls; close the window to quit.
+The first command builds `build/examples/ziran/hello.zib`, runs it, and writes
+`build/examples/ziran/hello.svg`. Open the SVG in an image viewer to see the
+result. The test also bundles the saved `.zir`, verifies that both `.zib`
+files match, runs both, compares their SVG output, and checks that the widget
+produced a shape and its label.
 
-See [the native catalog audit](WIDGET_CATALOG_AUDIT.md) for verified behavior,
-visual checks, regression tests, and reproducible audit commands. This example is a native C-target
-showcase; its Go/JS rendering is not claimed to have equivalent coverage.
+This example shows the intended application boundary: Ziran bundles only the
+modules the application imports; Kryon supplies widget decisions; a separate
+host supplies font and drawing effects. Native app input loops, platform text
+services, and the remaining widget migration are still in progress.

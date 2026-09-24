@@ -1,5 +1,11 @@
 # Button gallery
 
+Historical audit only. The `.kry` gallery source and the build targets below
+were removed during the Ziran split. The current runnable example is
+[`hello.zi`](hello.zi), built with `make -C examples`; it exercises a checked
+Ziran Button through the portable SVG host. The historical commands and
+coverage claims below do not describe the current build.
+
 [`28_button_gallery.kry`](28_button_gallery.kry) owns the gallery UI and PNG
 capture loop. `make button-gallery` compiles it to a native app. It refuses to
 open unless

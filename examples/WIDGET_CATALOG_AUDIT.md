@@ -1,5 +1,10 @@
 # Native widget catalog audit
 
+Historical audit only. The `.kry` catalog source and the build commands below
+were removed during the Ziran split. The current runnable example is
+[`hello.zi`](hello.zi). The observations below describe the earlier native
+catalog and are not current Ziran conformance claims.
+
 The catalog is implemented in [`26_widget_catalog.kry`](26_widget_catalog.kry).
 It has ten sidebar categories, independently scrollable previews, persistent
 control values, and standard Kryon theme styling. The preview scale fits smaller

@@ -1,0 +1,19 @@
+#module "hello"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+
+Frame :: () -> i32 #export {
+    BeginTree((u64)1, (Rectangle){0.0, 0.0, 320.0, 160.0})
+    button: ButtonProps
+    button.key = (u64)2
+    button.bounds = (Rectangle){40.0, 48.0, 240.0, 64.0}
+    button.label = "Hello, Ziran"
+    button.tone = (ButtonTone)ButtonToneAccent
+    Button(button)
+    if !EndTree() { return -1 }
+    return TreeCount()
+}
