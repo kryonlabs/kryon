@@ -18,8 +18,9 @@ make test
 
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
 writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs.
-The current C archive is `build/ziran/libkryon.a`; generated headers are in
-`build/ziran/c/`. Portable platform bindings are in
+The current C archive is `build/ziran/libkryon.a`; C headers are generated
+from Ziran declarations into `build/ziran/c/`. Kryon has no handwritten
+source headers. Portable platform bindings are in
 `build/ziran/libkryon_host.a`: frame pacing maps to the selected backend's
 `SetTargetFPS`, shared raster lines use a caller-supplied line renderer, and
 `CompositionQueue` carries raw IME events to the checked text widgets.
@@ -63,16 +64,18 @@ checked Collapsible header interaction and tree keyboard navigation,
 checked SegmentedControl layout, selection, and styled Button children,
 portable theme and orientation preference decisions,
 form row layout, app shell sizing,
-capability policy, safe area geometry, and window placement decisions. Other runtime and widget
-source has been moved into `.zi` files in `src/ui/`; those modules still need
-type, host interface, and backend work before they can join `modules.txt`.
+capability policy, safe area geometry, and window placement decisions.
+Every retained UI module is listed in `modules.txt`; the header-dependent
+legacy implementation has been deleted.
 
 The current archive includes selected widget behavior and shared line rendering
 path. Complete widget composition and rendering,
 remaining platform host adapters, full `.zib` capability execution, and
-downstream app builds are still migration work. The old C and Go host code is
-retained only as platform implementation material and is not part of the default
-build.
+downstream app builds are still migration work. The C files under
+`src/backend/` implement platform effects requested by Ziran modules.
+The old KRB renderer, static C package, and site release jobs were removed
+with their header-dependent implementation. This tree currently builds the
+Ziran library, host archive, and headless example.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
 boundary and [Ziran's implementation status](https://github.com/kryonlabs/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)

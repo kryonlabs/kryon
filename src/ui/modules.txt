@@ -9,6 +9,7 @@ button_props.zi
 button_widget.zi
 canvas.zi
 canvas_grid.zi
+cell.zi
 canvas_props.zi
 capability_layout.zi
 card.zi
@@ -153,6 +154,7 @@ tab_bar_props.zi
 tab_bar_widget.zi
 table_view.zi
 table_view_props.zi
+terminal_list.zi
 text.zi
 text_align.zi
 text_area_widget.zi

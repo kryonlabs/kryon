@@ -30,8 +30,8 @@ ZI
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/include" \
-    -I"$repo/../ziran/include" \
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
+    -I"$repo/../ziran/include" -I"$repo/build/ziran/c" \
     "$repo/tests/ziran_image_canvas_test.c" \
     "$repo/build/ziran/libkryon_host.a" "$ziran_lib" -lm \
     ${VM_LDFLAGS:-} -o "$work/host-test"

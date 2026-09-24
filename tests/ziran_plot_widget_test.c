@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "unused_image_host.h"
+#include "unused_image_host.c"
 
 static int backgrounds, marks, outlines, lines, labels;
 

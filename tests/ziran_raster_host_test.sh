@@ -35,7 +35,7 @@ EOF
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 
-"${CC:-cc}" -std=c11 -I"$repo/include" -I"$repo/../ziran/include" \
+"${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
     "$repo/tests/ziran_raster_host_test.c" \
     "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a" \
     -o "$work/host-test"

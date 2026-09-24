@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 }
 C
 
-"${CC:-cc}" -std=c11 -I"$repo/include" -I"$repo/../ziran/include" \
+"${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
     -o "$work/host" "$work/host.c" \
     "$repo/build/ziran/libkryon_host.a" "$repo/../ziran/build/libziran.a"
 "$work/host" "$work/source.zib"

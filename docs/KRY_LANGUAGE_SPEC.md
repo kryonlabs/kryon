@@ -309,12 +309,9 @@ Rules:
   indexing. The paused JS
   path previously routed reads through a byte-aware helper; it is not current
   conformance evidence.
-- C/C++ output lowers `record.field[index]` and `text[index]` through the
-  `KRYON_INDEX` macro. Generated headers include `kry_bounds.h` directly,
-  so indexing works without importing the UI umbrella header. Builds that define `KRYON_BOUNDS_CHECK` trap on
-  out-of-range indexes with a diagnostic naming the array; release builds
-  compile to plain indexing. Checks apply to both reads and writes, including
-  arrays with symbolic capacities. Go bounds-checks natively.
+- The maintained Ziran C/C++ backends lower indexed reads and writes through
+  `ZIRAN_INDEX` from Ziran's `zir_bounds.h`. Builds that define
+  `ZIRAN_BOUNDS_CHECK` trap on out-of-range indexes; Go bounds-checks natively.
 - Strict stored-type validation rejects unknown types, zero-capacity arrays,
   recursive record value layouts, and stored borrowed slots. Slices remain
   rejected until portable storage and ownership semantics are implemented.

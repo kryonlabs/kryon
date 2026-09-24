@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <string.h>
-#include "unused_image_host.h"
+#include "unused_image_host.c"
 
 static char sequence[16];
 static int count;

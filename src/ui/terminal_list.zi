@@ -1,0 +1,40 @@
+#module "terminal_list"
+
+# Keyboard navigation for a list presented as terminal rows. The application
+# owns its items; a terminal host supplies key events and viewport height.
+TerminalListState :: struct {
+    selected: i32
+    first: i32
+}
+
+TerminalListMove :: (state: TerminalListState, count: i32,
+    visible_rows: i32, key: i32) -> TerminalListState #export {
+    if count <= 0 {
+        state.selected = 0
+        state.first = 0
+        return state
+    }
+    if visible_rows < 1 { visible_rows = 1 }
+    if state.selected < 0 { state.selected = 0 }
+    if state.selected >= count { state.selected = count - 1 }
+
+    # 1/2 move by one row, 3/4 by a page, 5/6 jump to an edge.
+    if key == 1 { state.selected -= 1 }
+    if key == 2 { state.selected += 1 }
+    if key == 3 { state.selected -= visible_rows }
+    if key == 4 { state.selected += visible_rows }
+    if key == 5 { state.selected = 0 }
+    if key == 6 { state.selected = count - 1 }
+    if state.selected < 0 { state.selected = 0 }
+    if state.selected >= count { state.selected = count - 1 }
+
+    max_first: i32 = count - visible_rows
+    if max_first < 0 { max_first = 0 }
+    if state.first < 0 { state.first = 0 }
+    if state.first > max_first { state.first = max_first }
+    if state.selected < state.first { state.first = state.selected }
+    if state.selected >= state.first + visible_rows {
+        state.first = state.selected - visible_rows + 1
+    }
+    return state
+}

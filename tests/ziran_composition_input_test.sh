@@ -131,7 +131,7 @@ int main(int argc, char **argv)
 }
 C
 
-"${CC:-cc}" -std=c11 -I"$repo/include" \
+"${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
     -I"$repo/../ziran/include" "$work/host.c" \
     "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
     -o "$work/host-test"
@@ -194,14 +194,14 @@ for target in c cpp go; do
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/include" \
+        "${CC:-cc}" -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
             -I"$repo/../ziran/include" -I"$output" \
             "$output"/*.c "$repo/build/ziran/libkryon_host.a" \
             -o "$output/app"
         "$output/app"
     elif test "$target" = cpp; then
         cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/include" \
+        "${CXX:-c++}" -std=c++17 -I"$repo/build/ziran/c" -I"$repo/include" \
             -I"$repo/../ziran/include" -I"$output" \
             "$output"/*.cpp "$repo/build/ziran/libkryon_host.a" \
             -o "$output/app"

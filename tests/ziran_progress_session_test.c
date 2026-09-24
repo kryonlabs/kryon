@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <string.h>
-#include "unused_image_host.h"
+#include "unused_image_host.c"
 
 static int draws;
 static int labels_drawn;

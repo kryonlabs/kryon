@@ -1,0 +1,21 @@
+#module "image_canvas_types"
+
+# Host-owned RGBA8 storage. Ziran declares the ABI so generated targets and
+# the C raster host agree on one type definition.
+ImageAsset :: struct {
+    path: const char*
+    texture_id: u32
+    pixels: const u8*
+    width: i32
+    height: i32
+    stride: i32
+}
+
+ImageCanvas :: struct {
+    pixels: u8*
+    width: i32
+    height: i32
+    stride: i32
+    assets: const ImageAsset*
+    asset_count: u64
+}

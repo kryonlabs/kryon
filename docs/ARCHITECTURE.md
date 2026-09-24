@@ -11,13 +11,13 @@ its portable loader recognizes widget names.
 | Location | Responsibility |
 | --- | --- |
 | `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
-| `src/ui/modules.txt` | Modules that pass the current full native build |
-| `src/backend/`, other C and Go host code | Raw platform input, windows, font measurement, rasterization, storage, and device services |
+| `src/ui/modules.txt` | Complete maintained UI module inventory |
+| `src/backend/*.zi` | Host ABI declarations that generate C headers during the build |
+| `src/backend/*_host.c`, `image_software.c` | Raw platform effects, font measurement, and rasterization |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
-`modules.txt` is a temporary migration inventory. The old build discovered
-every UI source file automatically; once every maintained `.zi` module builds,
-the library build should discover those files directly and remove this list.
+Every maintained UI source is in `modules.txt`. The checked build has no
+handwritten Kryon headers; C hosts include headers generated from `.zi`.
 
 Host adapters provide observations and effects through declared interfaces.
 Widget state, policy, layout, and draw decisions belong in `.zi`, including for

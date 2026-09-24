@@ -1,16 +1,16 @@
 # Kryon API
 
 Kryon is a collection of ordinary Ziran modules under `src/ui/`. An
-application imports only the modules it needs. The modules listed in
-[`modules.txt`](../src/ui/modules.txt) currently pass Kryon's C, C++, and Go
-build; other `.zi` files are moved source awaiting conversion.
+application imports only the modules it needs. Every maintained UI module is
+listed in [`modules.txt`](../src/ui/modules.txt) and passes Kryon's C, C++,
+and Go build.
 
 ## Use a checked module
 
 Pass the Kryon source directory as an ordinary module path:
 
 ```sh
-../ziran/build/bin/ziran check --root app \
+../ziran/build/bin/zi2zir --check-only --root app \
     --module-path ../kryon/src/ui app/main.zi
 ```
 
@@ -141,7 +141,9 @@ files show source, saved-IR, and bundle use of those modules.
 
 `build/ziran/libkryon.a` is the current C archive; generated headers are in
 `build/ziran/c/`. Portable host bindings are declared in
-`include/kryon_portable_host.h` and built into `build/ziran/libkryon_host.a`.
+`src/backend/kryon_portable_host.zi`, generated as
+`build/ziran/c/kryon_portable_host.h`, and built into
+`build/ziran/libkryon_host.a`.
 `FramePacingBinding()` uses the platform's `SetTargetFPS`;
 `RasterLineBinding()` accepts a line renderer for Bevel and Separator lines.
 `RasterRoundedRectangleBinding()`,
@@ -160,8 +162,10 @@ labels still use `RasterTextBinding()` without a clip.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
-For a headless RGBA8 target, `include/image_canvas.h` provides `ImageAsset`,
-`ImageCanvas`, and `ImageCanvasRasterizer()`. The caller owns the straight-alpha
+For a headless RGBA8 target, `src/backend/image_canvas_types.zi` defines
+`ImageAsset` and `ImageCanvas`, with a generated C header in `build/ziran/c/`.
+The generated `kryon_portable_host.h` declares `ImageCanvasRasterizer()`.
+The caller owns the straight-alpha
 pixel buffers and asset table, then binds the resulting `ImageRasterizer` with
 `ImageWidthBinding()`, `ImageHeightBinding()`, and `RasterImageBinding()`.
 Assets can be found by path or texture ID. The software host applies source

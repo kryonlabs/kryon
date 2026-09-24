@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include "unused_image_host.h"
+#include "unused_image_host.c"
 
 static int labels;
 

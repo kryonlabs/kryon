@@ -1,4 +1,0 @@
-#module "key_props"
-
-# Widget identity: a stable 64-bit hash of the key text.
-KeyID :: unsigned long long #type

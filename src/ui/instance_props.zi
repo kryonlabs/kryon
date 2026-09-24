@@ -1,5 +1,0 @@
-#module "instance_props"
-
-# Implemented by the C-only widget-store host; declared here for the public ABI
-# and for the state borrowing every generated module emits.
-InstanceState :: (type: const char*, key: u64, size: size_t) -> *void #extern #export

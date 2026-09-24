@@ -1,0 +1,17 @@
+#module "terminal_list_test"
+#import "terminal_list"
+
+SelfTest :: () -> i32 #export {
+    state: TerminalListState
+    state = TerminalListMove(state, 8, 3, 2)
+    if state.selected != 1 || state.first != 0 { return 1 }
+    state = TerminalListMove(state, 8, 3, 4)
+    if state.selected != 4 || state.first != 2 { return 2 }
+    state = TerminalListMove(state, 8, 3, 6)
+    if state.selected != 7 || state.first != 5 { return 3 }
+    state = TerminalListMove(state, 2, 10, 0)
+    if state.selected != 1 || state.first != 0 { return 4 }
+    state = TerminalListMove(state, 0, 0, 1)
+    if state.selected != 0 || state.first != 0 { return 5 }
+    return 42
+}

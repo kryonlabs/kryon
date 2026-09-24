@@ -1,4 +1,5 @@
-#include "image_canvas.h"
+#include "kryon_portable_host.h"
+#include "image_canvas_types.h"
 
 #include <limits.h>
 #include <math.h>

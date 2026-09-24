@@ -114,7 +114,7 @@ ZI
     --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/include" \
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
     -I"$repo/../ziran/include" \
     "$repo/tests/ziran_color_picker_widget_test.c" \
     "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \

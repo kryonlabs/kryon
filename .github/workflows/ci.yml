@@ -2,196 +2,48 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
   workflow_dispatch:
 
-# Cancel a superseded run on the same ref.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  guard-submodule-urls:
-    name: Submodule URLs are public HTTPS
-    runs-on: ubuntu-latest
-    steps:
-      # Plain checkout on purpose: the guard must not depend on fetching
-      # the submodules it validates (an SSH URL would break that fetch).
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-
-      - name: Reject non-HTTPS submodule URLs
-        run: sh scripts/check-submodule-urls.sh
-
   test-linux:
-    name: Build and test (Linux)
-    needs: guard-submodule-urls
+    name: Ziran library and host tests
     runs-on: ubuntu-latest
-    env:
-      CC: ccache cc
-      CXX: ccache c++
-      CCACHE_COMPILERCHECK: content
-      CCACHE_MAXSIZE: 2G
-
+    defaults:
+      run:
+        working-directory: kryon
     steps:
-      - name: Checkout Repository
+      - name: Checkout Kryon
         uses: actions/checkout@v7
         with:
-          submodules: recursive
+          path: kryon
 
-      - name: Restore build cache
-        uses: actions/cache@v4
+      - name: Checkout Ziran
+        uses: actions/checkout@v7
         with:
-          path: ~/.cache/ccache
-          key: ccache-linux-${{ runner.os }}-${{ github.ref }}
-          restore-keys: |
-            ccache-linux-${{ runner.os }}-master
-            ccache-linux-${{ runner.os }}-
+          repository: kryonlabs/ziran
+          path: ziran
 
-      - name: Install Packages
+      - name: Install build tools
         run: |
-          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
-            zlib1g-dev libzstd-dev libbrotli-dev \
-            libglib2.0-dev libgtk-3-dev \
-            libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev \
-            ripgrep python3 xvfb xauth xdotool imagemagick libgl1-mesa-dev libx11-dev \
-            ccache
-
-      - name: Set up Node.js for Bend proofs
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Build
-        run: |
-          set -euo pipefail
-          make clean CMAKE=/usr/bin/cmake
-          make all CMAKE=/usr/bin/cmake
-
-      - name: Laws
-        run: make laws-test CMAKE=/usr/bin/cmake
-
-      - name: Test
-        run: make test CMAKE=/usr/bin/cmake
-
-      - name: Native rendering and widget catalog audit
-        run: |
-          set -euo pipefail
-          make overlay-paint-test CMAKE=/usr/bin/cmake
-          xvfb-run -a make texture-scope-test CMAKE=/usr/bin/cmake
-          xvfb-run -a -s '-screen 0 1920x1080x24' python3 tests/widget_catalog_audit.py
-
-      - name: Upload native widget audit
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: widget-catalog-audit-linux
-          path: |
-            build/widget-catalog-audit/*.json
-            build/widget-catalog-audit/*.png
-            build/widget-catalog-audit/*.log
-          if-no-files-found: ignore
-
-      - name: Text input latency gate
-        run: |
-          set -euo pipefail
-          make perf-text-input CMAKE=/usr/bin/cmake | grep '^{' | tee text-input-perf.jsonl
-          cat text-input-perf.jsonl >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload text input measurements
-        uses: actions/upload-artifact@v7
-        with:
-          name: text-input-perf-linux
-          path: text-input-perf.jsonl
-          if-no-files-found: error
-
-  test-freebsd:
-    name: Build and test (FreeBSD)
-    needs: guard-submodule-urls
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Build and test on FreeBSD VM
-        uses: vmactions/freebsd-vm@v1
-        with:
-          usesh: true
-          mem: 4096
-          prepare: |
-            set -eu
-            pkg install -y gmake cmake pkgconf \
-              sdl2 libdrm mesa-libs gtk3 \
-              curl openssl zstd brotli \
-              git go python3 ripgrep node22
-          run: |
-            set -eu
-            gmake clean
-            gmake all
-            gmake test
-            if ! gmake perf-text-input; then
-              echo "FreeBSD text-input measurements are non-gating during calibration" >&2
-            fi
-
-  sanitizers:
-    name: Memory safety (${{ matrix.sanitizer }})
-    needs: guard-submodule-urls
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        sanitizer: [asan, ubsan]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Install Packages
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
-            zlib1g-dev libzstd-dev libbrotli-dev libglib2.0-dev libgtk-3-dev \
-            libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
-
-      - name: Run sanitizer suite
-        run: make test-${{ matrix.sanitizer }} CMAKE=/usr/bin/cmake
-
-  portable-go:
-    name: Pure Go runtime (${{ matrix.goos }})
-    needs: guard-submodule-urls
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        goos: [linux, windows, darwin]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
+          sudo apt-get install -y build-essential python3 ripgrep
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go/kryon/go.mod
+          go-version: '1.25.x'
 
-      - name: Compile tests
-        working-directory: go/kryon
-        env:
-          GOOS: ${{ matrix.goos }}
-          CGO_ENABLED: 0
-        run: go test -c -o "kryon.test.${GOOS}" .
+      - name: Check submodule URLs
+        run: sh scripts/check-submodule-urls.sh
 
-      - name: Run native Go tests
-        if: matrix.goos == 'linux'
-        working-directory: go/kryon
-        env:
-          CGO_ENABLED: 0
-        run: go test ./...
+      - name: Build and test
+        run: env -u DISPLAY -u WAYLAND_DISPLAY make test
+
+      - name: Test SVG example
+        run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test

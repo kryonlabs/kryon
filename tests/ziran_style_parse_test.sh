@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     return 0;
 }
 C
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/include" -I"$repo/../ziran/include" \
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
     "$work/host.c" "$repo/build/ziran/libkryon_host.a" \
     "$ziran_lib" ${VM_LDFLAGS:-} -o "$work/host"
 "$work/host" "$work/source.zib"

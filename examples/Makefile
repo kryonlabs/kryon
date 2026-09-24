@@ -29,9 +29,9 @@ $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
 		-o $@ $(BUILD_DIR)/ir/hello.zir
 	cmp $(BUILD_DIR)/hello.zib $@
 
-$(BUILD_DIR)/hello-host: hello_host.c ../include/kryon_portable_host.h $(HOST_LIB)
+$(BUILD_DIR)/hello-host: hello_host.c $(HOST_LIB) $(ZIRAN_LIB)
 	mkdir -p $(BUILD_DIR)
-	$(CC) -std=c11 -Wall -Wextra -I../include \
+	$(CC) -std=c11 -Wall -Wextra -I../build/ziran/c \
 		-I$(ZIRAN_DIR)/include hello_host.c $(HOST_LIB) \
 		$(ZIRAN_LIB) -o $@
 
