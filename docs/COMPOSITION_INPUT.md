@@ -25,6 +25,10 @@ owned text copies, and UTF-8 truncation. `composition_host.c` allocates the
 queue and converts samples to the portable VM host-value ABI. The generated
 Ziran queue code is linked into `libkryon_host.a`.
 
+The VM currently registers host callbacks through a C ABI, so this adapter
+remains C until Ziran can declare and implement those callback records. It
+contains no composition ordering or widget policy.
+
 Polled text borrows queue storage through the current frame. A caller that
 retains `CompositionState.text` must copy the bytes into its own storage before
 the next `CompositionQueueBeginFrame`. The widget owns composition decisions,
