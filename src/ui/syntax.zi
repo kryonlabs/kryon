@@ -75,7 +75,7 @@ SyntaxKeywordFor :: (mode: SyntaxMode,
     length: s32) -> bool {
     if mode == cast(SyntaxMode)SyntaxZiran {
         return SyntaxWordInList(value, start, length,
-            "|import|program_export|foreign|system_library|scope_file|scope_module|scope_export|char|type|struct|enum|enum_flags|specified|variant|match|case|complete|if|ifx|then|else|while|return|cast|size_of|type_of|true|false|null|bool|string|int|s8|s16|s32|s64|u8|u16|u32|u64|float32|float64|")
+            "|import|program_export|foreign|system_library|scope_file|scope_module|scope_export|char|type|struct|enum|enum_flags|specified|case|complete|if|ifx|then|else|while|return|cast|size_of|type_of|true|false|null|bool|string|int|s8|s16|s32|s64|u8|u16|u32|u64|float32|float64|")
     }
     if mode == cast(SyntaxMode)SyntaxC {
         return SyntaxWordInList(value, start, length,
