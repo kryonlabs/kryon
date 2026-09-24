@@ -32,13 +32,13 @@ LocaleNextLine :: (text: string, cursor: s32) -> LocaleLine {
     line: LocaleLine
     line.start = cursor
     line.end = cursor
-    while line.end < text.length && text[line.end] != 10 &&
+    while line.end < (cast(s32)text.count) && text[line.end] != 10 &&
         text[line.end] != 13 { line.end += 1 }
     line.next = line.end
-    if line.next < text.length {
+    if line.next < (cast(s32)text.count) {
         first: u8 = text[line.next]
         line.next += 1
-        if line.next < text.length &&
+        if line.next < (cast(s32)text.count) &&
             ((first == 10 && text[line.next] == 13) ||
              (first == 13 && text[line.next] == 10)) {
             line.next += 1
@@ -49,8 +49,8 @@ LocaleNextLine :: (text: string, cursor: s32) -> LocaleLine {
 
 LocaleCopyRange :: (text: string, start: s32, end: s32,
     bytes: []u8, used: s32) -> s32 {
-    if start < 0 || end < start || end > text.length ||
-        used < 0 || used > bytes.length || end - start > bytes.length - used {
+    if start < 0 || end < start || end > (cast(s32)text.count) ||
+        used < 0 || used > (cast(s32)bytes.count) || end - start > (cast(s32)bytes.count) - used {
         return -1
     }
     index: s32 = start
@@ -65,9 +65,9 @@ LocaleCopyRange :: (text: string, start: s32, end: s32,
 LocaleSpanMatchesText :: (bytes: []u8, span: LocaleSpan,
     text: string, start: s32, end: s32) -> bool {
     if span.start < 0 || span.length < 0 ||
-        span.start > bytes.length ||
-        span.length > bytes.length - span.start ||
-        start < 0 || end < start || end > text.length ||
+        span.start > (cast(s32)bytes.count) ||
+        span.length > (cast(s32)bytes.count) - span.start ||
+        start < 0 || end < start || end > (cast(s32)text.count) ||
         span.length != end - start { return false }
     index: s32 = 0
     while index < span.length {
@@ -80,7 +80,7 @@ LocaleSpanMatchesText :: (bytes: []u8, span: LocaleSpan,
 #program_export
 LocaleSpanEquals :: (bytes: []u8, span: LocaleSpan,
     text: string) -> bool {
-    return LocaleSpanMatchesText(bytes, span, text, 0, text.length)
+    return LocaleSpanMatchesText(bytes, span, text, 0, (cast(s32)text.count))
 }
 
 LocaleCommitEntry :: (text: string, key_start: s32, key_end: s32,
@@ -97,7 +97,7 @@ LocaleCommitEntry :: (text: string, key_start: s32, key_end: s32,
         }
         index += 1
     }
-    if state.count >= entries.length {
+    if state.count >= cast(s32)entries.count {
         state.complete = false
         return state
     }
@@ -130,7 +130,7 @@ LocaleParseEntries :: (text: string, entries: []LocaleEntrySpan,
     key_start: s32 = -1
     key_end: s32 = 0
     body_start: s32 = 0
-    while cursor < text.length {
+    while cursor < (cast(s32)text.count) {
         line: LocaleLine = LocaleNextLine(text, cursor)
         cursor = line.next
         if line.end - line.start > 2 && text[line.start] == 91 &&
@@ -153,7 +153,7 @@ LocaleParseEntries :: (text: string, entries: []LocaleEntrySpan,
         }
         if key_start >= 0 {
             if state.byte_count > body_start {
-                if state.byte_count >= bytes.length {
+                if state.byte_count >= (cast(s32)bytes.count) {
                     state.complete = false
                     return state
                 }
@@ -182,7 +182,7 @@ LocaleParseLanguages :: (text: string, languages: []LocaleLanguageSpan,
     state: LocaleParseResult
     state.complete = true
     cursor: s32 = 0
-    while cursor < text.length {
+    while cursor < (cast(s32)text.count) {
         line: LocaleLine = LocaleNextLine(text, cursor)
         cursor = line.next
         if line.end <= line.start || text[line.start] == 35 { continue }
@@ -191,7 +191,7 @@ LocaleParseLanguages :: (text: string, languages: []LocaleLanguageSpan,
             separator += 1
         }
         if separator == line.start || separator >= line.end - 1 { continue }
-        if state.count >= languages.length {
+        if state.count >= (cast(s32)languages.count) {
             state.complete = false
             return state
         }

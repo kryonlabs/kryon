@@ -13,7 +13,7 @@ AcceleratorPressed :: (accelerator: Accelerator) -> s32 #foreign host_api;
 #program_export
 DispatchAccelerators :: (accelerators: []Accelerator) -> s32 {
     index: s32 = 0
-    while index < accelerators.length {
+    while index < (cast(s32)accelerators.count) {
         pressed: s32 = AcceleratorPressed(accelerators[index])
         if pressed != 0 { return pressed }
         index += 1

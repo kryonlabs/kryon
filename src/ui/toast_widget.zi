@@ -21,7 +21,7 @@ ToastDisplay :: struct {
 
 #program_export
 ToastPrefixBefore :: (message: string, limit: s32) -> s32 {
-    if limit > message.length { limit = message.length }
+    if limit > (cast(s32)message.count) { limit = (cast(s32)message.count) }
     if limit <= 0 { return 0 }
     limit -= 1
     while limit > 0 &&
@@ -41,7 +41,7 @@ ToastDisplayFor :: (message: string, max_width: s32, font: s32,
     if display.width <= max_width { return display }
     display.ellipsis = true
     ellipsis_width: s32 = GlyphWidth("...", font, typeface)
-    limit: s32 = message.length
+    limit: s32 = (cast(s32)message.count)
     while limit > 0 {
         limit = ToastPrefixBefore(message, limit)
         display.prefix = TextSpan(message, 0, limit)
@@ -97,7 +97,7 @@ Toast :: (props: ToastProps) -> ToastResult {
     if props.clear {
         state = ToastState.{}
     }
-    if props.message.length > 0 && !props.clear {
+    if (cast(s32)props.message.count) > 0 && !props.clear {
         state.message = props.message
         state.class_name = props.class_name
         metrics: ToastMetrics = ToastMetricsFor(props.scale,
@@ -105,7 +105,7 @@ Toast :: (props: ToastProps) -> ToastResult {
         duration: float32 = ToastDuration(cast(float32)props.seconds, metrics)
         state.until_seconds = props.now_seconds + cast(float64)duration
     }
-    if state.message.length == 0 ||
+    if (cast(s32)state.message.count) == 0 ||
         props.now_seconds >= state.until_seconds {
         result.state = ToastState.{}
         return result

@@ -93,7 +93,7 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
     spec.y = props.y
     spec.width = props.width
     spec.height = props.height
-    spec.action_count = actions.length
+    spec.action_count = (cast(s32)actions.count)
     spec.action_icon_size = -1
     spec.action_icon_padding = -1
     spec.action_gap = -1
@@ -141,12 +141,12 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
                 divider.value.opacity))))
 
     index: s32 = 0
-    while index < actions.length {
+    while index < (cast(s32)actions.count) {
         item: ToolbarAction = actions[index]
         button: ButtonProps
         button.key = ToolbarActionKey(key, item, index)
         button.bounds = ToolbarActionBoundsFor(layout, index,
-            actions.length)
+            (cast(s32)actions.count))
         button.id = ToolbarActionIdFor(props.id, index)
         button.class_name = props.class_name
         button.style_kind = StyleKindToolbar()
@@ -163,7 +163,7 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
         }
         index += 1
     }
-    if props.draw_menu && options.length > 0 {
+    if props.draw_menu && (cast(s32)options.count) > 0 {
         dropdown: DropdownProps = props.dropdown
         dropdown.bounds = layout.dropdown_bounds
         if dropdown.key == cast(u64)0 {

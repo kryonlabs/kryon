@@ -51,13 +51,13 @@ ParagraphTokenNext :: (text: string, offset: s32, icons: bool) -> ParagraphToken
     if offset < 0 {
         offset = 0
     }
-    while offset < text.length && ParagraphIsSpace(text[offset]) {
+    while offset < (cast(s32)text.count) && ParagraphIsSpace(text[offset]) {
         offset += 1
     }
     token.start = offset
     token.end = offset
     token.next = offset
-    if offset >= text.length {
+    if offset >= (cast(s32)text.count) {
         return token
     }
     token.valid = true
@@ -65,20 +65,20 @@ ParagraphTokenNext :: (text: string, offset: s32, icons: bool) -> ParagraphToken
     if value == cast(u8)10 || value == cast(u8)13 {
         token.line_break = true
         offset += 1
-        if value == cast(u8)13 && offset < text.length && text[offset] == cast(u8)10 {
+        if value == cast(u8)13 && offset < (cast(s32)text.count) && text[offset] == cast(u8)10 {
             offset += 1
         }
-    } else if icons && value == cast(u8)37 && offset + 1 < text.length &&
+    } else if icons && value == cast(u8)37 && offset + 1 < (cast(s32)text.count) &&
     text[offset + 1] == cast(u8)105 {
         token.icon = true
         offset += 2
     } else {
-        while offset < text.length {
+        while offset < (cast(s32)text.count) {
             value = text[offset]
             if ParagraphIsSpace(value) || value == cast(u8)10 || value == cast(u8)13 {
                 break
             }
-            if icons && value == cast(u8)37 && offset + 1 < text.length &&
+            if icons && value == cast(u8)37 && offset + 1 < (cast(s32)text.count) &&
             text[offset + 1] == cast(u8)105 {
                 break
             }

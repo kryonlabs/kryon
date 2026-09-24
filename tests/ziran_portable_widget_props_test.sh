@@ -32,13 +32,13 @@ Answer :: () -> s32 {
     button: ButtonProps
     button.key = cast(u64)7
     button.label = "Run"
-    if button.label.length != 3 || button.key != cast(u64)7 { return 0 }
+    if button.label.count != 3 || button.key != cast(u64)7 { return 0 }
 
     link: LinkProps
     link.text = "Read more"
     link.link = "https://example.org"
     link.bounds.width = 0.0
-    if link.text.length != 9 || link.link != "https://example.org" ||
+    if link.text.count != 9 || link.link != "https://example.org" ||
         LinkBoundsFor(link.bounds, 70, 12, 14).width != 70.0 {
         return 0
     }
@@ -48,7 +48,7 @@ Answer :: () -> s32 {
     metrics: ToastMetrics
     metrics.default_seconds = 3.0
     request: ToastRequestDecision = ToastRequestDecisionFor(
-        toast.message.length > 0, cast(float32)toast.seconds, metrics)
+        toast.message.count > 0, cast(float32)toast.seconds, metrics)
     if !request.show || request.clear || request.seconds != 3.0 {
         return 0
     }
@@ -67,14 +67,14 @@ Answer :: () -> s32 {
     radio: RadioProps
     radio.id = 7
     radio.label = "Choice"
-    if radio.label.length != 6 ||
+    if radio.label.count != 6 ||
         RadioActivationFor(radio.id, true, radio.disabled) != 7 { return 0 }
 
     progress: ProgressProps
     progress.label = "Downloads"
     progress.max = 100
     progress.value = 25
-    if progress.label.length != 9 ||
+    if progress.label.count != 9 ||
         ProgressRatio(progress.min, progress.max, progress.value) != 0.25 {
         return 0
     }
@@ -90,7 +90,7 @@ Answer :: () -> s32 {
     fieldset.title = "Details"
     fieldset.bounds.width = 100.0
     paint: FieldsetPaint = FieldsetPaintFor(fieldset.bounds, 40.0,
-        fieldset.title.length > 0, 1.0, frame)
+        fieldset.title.count > 0, 1.0, frame)
     if !paint.show_title || paint.title_text.width != 40.0 { return 0 }
 
     text: TextProps

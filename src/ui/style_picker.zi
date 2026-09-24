@@ -16,7 +16,7 @@ StylePickerActiveIndex :: (packs: []StylePackOption,
 #program_export
 StylePickerSelectedId :: (packs: []StylePackOption,
     index: s32) -> string {
-    if index < 0 || index >= packs.length { return "" }
+    if index < 0 || index >= (cast(s32)packs.count) { return "" }
     return packs[index].id
 }
 
@@ -26,7 +26,7 @@ StylePickerSelectedId :: (packs: []StylePackOption,
 StylePicker :: (props: StylePickerProps,
     packs: []StylePackOption) -> StylePickerResult {
     result: StylePickerResult
-    count: s32 = StylePickerOptionCountFor(packs.length, 32)
+    count: s32 = StylePickerOptionCountFor((cast(s32)packs.count), 32)
     result.dropdown.node = -1
     result.dropdown.selected_index = -1
     if count == 0 { return result }
@@ -38,7 +38,7 @@ StylePicker :: (props: StylePickerProps,
         option: DropdownOption
         option.key = cast(u64)cast(u32)(index + 1)
         option.label = packs[index].label
-        if option.label.length == 0 { option.label = packs[index].id }
+        if option.label.count == 0 { option.label = packs[index].id }
         options[index] = option
         index += 1
     }
@@ -50,7 +50,7 @@ StylePicker :: (props: StylePickerProps,
         result.dropdown.selected_index < count
     if result.changed {
         result.selected_id = packs[result.dropdown.selected_index].id
-        if result.selected_id.length == 0 { result.changed = false }
+        if (cast(s32)result.selected_id.count) == 0 { result.changed = false }
     }
     return result
 }

@@ -18,7 +18,7 @@ CanvasResult :: struct {
 
 #program_export
 CanvasHitTest :: (point: Vector2, items: []Rectangle) -> s32 {
-    index: s32 = items.length
+    index: s32 = (cast(s32)items.count)
     while index > 0 {
         index -= 1
         if CanvasContains(items[index], point) { return index }

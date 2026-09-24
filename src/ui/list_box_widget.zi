@@ -342,12 +342,12 @@ ListBox :: (props: ListBoxProps,
     result.selected_index = props.selected_index
     result.scroll_offset = props.scroll_offset
     view: ListBoxViewState = ListBoxViewStart(
-        ListBoxSingleView(props), items.length, false)
+        ListBoxSingleView(props), (cast(s32)items.count), false)
     if !view.valid { return result }
     result.node = view.node
     if props.focused && !props.disabled && props.navigation != 0 {
         nav: ListBoxNavigation = ListBoxNavigate(
-            result.selected_index, items.length, props.navigation,
+            result.selected_index, (cast(s32)items.count), props.navigation,
             view.scroll, view.layout.row_height, view.bounds.height,
             view.max_scroll, props.scale, view.item)
         result.selected_index = nav.selected
@@ -356,7 +356,7 @@ ListBox :: (props: ListBoxProps,
     visible: s32 = view.layout.visible_rows + 2
     index: s32 = view.layout.first_row
     end: s32 = index + visible
-    if end > items.length { end = items.length }
+    if end > (cast(s32)items.count) { end = (cast(s32)items.count) }
     if TreeIsBuilding() && !props.disabled {
         while index < end {
             previous: s32 = TreeFind(ListBoxItemKey(items[index], index),
@@ -386,9 +386,9 @@ ListBoxMultiApply :: (selected: []bool, clicked: s32,
     range_anchor: s32) -> bool {
     changed: bool = false
     index: s32 = 0
-    while index < selected.length {
+    while index < (cast(s32)selected.count) {
         next: bool = ListBoxMultiSelectionForRow(index,
-            selected[index], clicked, selected.length, anchor,
+            selected[index], clicked, (cast(s32)selected.count), anchor,
             control, shift, range_anchor)
         if next != selected[index] { changed = true }
         selected[index] = next
@@ -407,9 +407,9 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
     result.clicked_index = -1
     result.anchor = props.anchor
     result.scroll_offset = props.scroll_offset
-    if selected.length != items.length { return result }
+    if (cast(s32)selected.count) != (cast(s32)items.count) { return result }
     view: ListBoxViewState = ListBoxViewStart(
-        ListBoxMultiView(props), items.length, true)
+        ListBoxMultiView(props), (cast(s32)items.count), true)
     if !view.valid { return result }
     result.valid = true
     result.node = view.node
@@ -419,7 +419,7 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
     if props.focused && !props.disabled {
         first: s32 = -1
         index: s32 = 0
-        while index < selected.length {
+        while index < (cast(s32)selected.count) {
             if selected[index] {
                 first = index
                 break
@@ -427,9 +427,9 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
             index += 1
         }
         cursor: s32 = ListBoxMultiFocusedRow(result.anchor,
-            first, items.length)
+            first, (cast(s32)items.count))
         nav: ListBoxMultiNavResult = ListBoxMultiNavigate(
-            items.length, cursor, control, shift, props.navigation)
+            (cast(s32)items.count), cursor, control, shift, props.navigation)
         if nav.anchor_changed { result.anchor = nav.anchor }
         result.clicked_index = nav.clicked
         control = nav.control
@@ -447,13 +447,13 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
             result.clicked_index, result.anchor, control,
             shift, range_anchor)
         result.anchor = ListBoxMultiAnchorAfterClick(result.anchor,
-            result.clicked_index, items.length,
+            result.clicked_index, (cast(s32)items.count),
             control, shift, range_anchor)
     }
     visible: s32 = view.layout.visible_rows + 2
     index: s32 = view.layout.first_row
     end: s32 = index + visible
-    if end > items.length { end = items.length }
+    if end > (cast(s32)items.count) { end = (cast(s32)items.count) }
     if TreeIsBuilding() && !props.disabled {
         while index < end {
             previous: s32 = TreeFind(ListBoxItemKey(items[index], index),
@@ -465,7 +465,7 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
                     result.changed = true
                 }
                 result.anchor = ListBoxMultiAnchorAfterClick(
-                    result.anchor, index, items.length,
+                    result.anchor, index, (cast(s32)items.count),
                     props.control, props.shift, -1)
             }
             index += 1
@@ -481,7 +481,7 @@ ListBoxMulti :: (props: ListBoxMultiProps, items: []ListBoxItem,
     # Count all selected items, including rows outside the viewport.
     result.selected_count = 0
     index = 0
-    while index < selected.length {
+    while index < (cast(s32)selected.count) {
         if selected[index] { result.selected_count += 1 }
         index += 1
     }

@@ -37,7 +37,7 @@ ClipboardRequestWrite :: (state: ClipboardState,
 ClipboardCopySelection :: (state: ClipboardState,
     text: string) -> ClipboardState {
     state.primary = text
-    if text.length > 0 {
+    if (cast(s32)text.count) > 0 {
         state = ClipboardRequestWrite(state, text)
     }
     return state
@@ -71,7 +71,7 @@ ClipboardRead :: (state: ClipboardState,
         return state.primary
     }
     if source == cast(ClipboardSource)ClipboardPrimaryOrSystem &&
-        state.primary.length > 0 {
+        (cast(s32)state.primary.count) > 0 {
         return state.primary
     }
     return state.system
@@ -80,5 +80,5 @@ ClipboardRead :: (state: ClipboardState,
 #program_export
 ClipboardHasText :: (state: ClipboardState,
     source: ClipboardSource) -> bool {
-    return ClipboardRead(state, source).length > 0
+    return ClipboardRead(state, source).count > 0
 }

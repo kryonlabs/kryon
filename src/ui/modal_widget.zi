@@ -38,11 +38,11 @@ ActionModalWidth :: (action: ActionModalAction,
 ActionModalRows :: (actions: []ActionModalAction,
     content_width: s32, font: s32, typeface: string,
     metrics: ModalMetrics) -> s32 {
-    if actions.length == 0 { return 0 }
+    if (cast(s32)actions.count) == 0 { return 0 }
     rows: s32 = 1
     row_width: s32 = 0
     index: s32 = 0
-    while index < actions.length {
+    while index < (cast(s32)actions.count) {
         width: s32 = ActionModalWidth(actions[index], font,
             typeface, content_width, metrics)
         rows = ModalActionRowsStep(row_width, rows, width,
@@ -196,8 +196,8 @@ ActionModal :: (props: ActionModalProps,
     row_width: s32 = 0
     row_y: s32 = layout.button_y
     index: s32 = 0
-    while index <= actions.length {
-        at_end: bool = index == actions.length
+    while index <= (cast(s32)actions.count) {
+        at_end: bool = index == (cast(s32)actions.count)
         next_width: s32 = 0
         if !at_end {
             width = ActionModalWidth(actions[index], font,

@@ -333,12 +333,12 @@ KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser {
 # line/column provenance current so diagnostics and rule origins stay exact.
 
 KssAtEnd :: (c: KssCursor) -> bool {
-    return c.pos >= c.source.length
+    return c.pos >= (cast(s32)c.source.count)
 }
 
 KssPeek :: (c: KssCursor, ahead: s32) -> u8 {
     index: s32 = c.pos + ahead
-    if index < 0 || index >= c.source.length {
+    if index < 0 || index >= (cast(s32)c.source.count) {
         return 0
     }
     return c.source[index]
@@ -347,7 +347,7 @@ KssPeek :: (c: KssCursor, ahead: s32) -> u8 {
 KssAdvance :: (c: KssCursor, count: s32) -> KssCursor {
     step: s32 = 0
     while step < count {
-        if c.pos < c.source.length {
+        if c.pos < (cast(s32)c.source.count) {
             if c.source[c.pos] == 10 {
                 c.line = c.line + 1
                 c.column = 1
@@ -399,7 +399,7 @@ KssLower :: (byte: u8) -> u8 {
 }
 
 KssNameEquals :: (name: KssName, text: string) -> bool {
-    if name.length != text.length {
+    if name.length != (cast(s32)text.count) {
         return false
     }
     index: s32 = 0
@@ -429,7 +429,7 @@ KssNameEqualsName :: (a: KssName, b: KssName) -> bool {
 KssMakeName :: (text: string) -> KssName {
     name: KssName
     index: s32 = 0
-    while index < text.length && index < 64 {
+    while index < (cast(s32)text.count) && index < 64 {
         name.bytes[index] = text[index]
         index = index + 1
     }
@@ -440,7 +440,7 @@ KssMakeName :: (text: string) -> KssName {
 KssCopyFileName :: (text: string) -> KssSourceFile {
     file: KssSourceFile
     index: s32 = 0
-    while index < text.length && index < 96 {
+    while index < (cast(s32)text.count) && index < 96 {
         file.name[index] = text[index]
         index = index + 1
     }
@@ -575,7 +575,7 @@ KssExpect :: (c: KssCursor, byte: u8) -> KssExpectResult {
 
 KssDiagnosticAppend :: (p: KssParser, text: string) -> KssParser {
     index: s32 = 0
-    while index < text.length && p.diagnostic_length < 255 {
+    while index < (cast(s32)text.count) && p.diagnostic_length < 255 {
         p.diagnostic[p.diagnostic_length] = text[index]
         p.diagnostic_length = p.diagnostic_length + 1
         index = index + 1
@@ -910,7 +910,7 @@ KssApplyOverride :: (p: KssParser, index: s32) -> KssParser {
     override: s32 = 0
     while override < p.override_count {
         if p.tokens[index].kind == cast(s32)KssTokenColor &&
-           p.overrides[override].name.length == p.tokens[index].name.length {
+           cast(s32)p.overrides[override].name.count == p.tokens[index].name.length {
             same: bool = true
             byte_index: s32 = 0
             while byte_index < p.tokens[index].name.length {
@@ -3882,14 +3882,14 @@ KssCSSPropertyKind :: (name: KssName) -> s32 {
 # canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
 #program_export
 KssCSSPropertyName :: (name: string) -> string {
-    if name.length >= 2 && name[0] == 45 && name[1] == 45 {
+    if name.count >= 2 && name[0] == 45 && name[1] == 45 {
         return name
     }
-    if name.length > 64 {
+    if name.count > 64 {
         return ""
     }
     index: s32 = 0
-    while index < name.length {
+    while index < cast(s32)name.count {
         if name[index] != KssLower(name[index]) {
             return ""
         }
@@ -4000,10 +4000,10 @@ KssCSSSpaceLength :: (value: string, index: s32) -> s32 {
     if KssIsSpace(value[index]) {
         return 1
     }
-    if index + 1 < value.length && value[index] == 194 && value[index + 1] == 160 {
+    if index + 1 < (cast(s32)value.count) && value[index] == 194 && value[index + 1] == 160 {
         return 2
     }
-    if index + 2 >= value.length {
+    if index + 2 >= (cast(s32)value.count) {
         return 0
     }
     first: u8 = value[index]
@@ -4034,7 +4034,7 @@ KssCSSBorderShorthand :: (value: string) -> bool {
     index: s32 = 0
     content: bool = false
     space_after_content: bool = false
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         space: s32 = KssCSSSpaceLength(value, index)
         if space > 0 {
             if content {
@@ -4170,7 +4170,7 @@ KssCSSValueFromText :: (source: string) -> KssCSSValue {
     result: KssCSSValue
     result.valid = true
     start: s32 = 0
-    end: s32 = source.length
+    end: s32 = (cast(s32)source.count)
     while start < end && KssIsSpace(source[start]) {
         start = start + 1
     }
@@ -4253,11 +4253,11 @@ KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool)
 # Selector predicates operate on borrowed UTF-8 bytes. Hosts supply attribute
 # values and sibling positions; matching semantics stay shared.
 KssTextAt :: (value: string, needle: string, start: s32) -> bool {
-    if start < 0 || start > value.length || needle.length > value.length - start {
+    if start < 0 || start > (cast(s32)value.count) || (cast(s32)needle.count) > (cast(s32)value.count) - start {
         return false
     }
     index: s32 = 0
-    while index < needle.length {
+    while index < (cast(s32)needle.count) {
         if value[start + index] != needle[index] {
             return false
         }
@@ -4274,7 +4274,7 @@ KssIdentityFacts :: struct {
 
 #program_export
 KssIdentityMatches :: (expected: string, facts: KssIdentityFacts) -> bool {
-    if expected.length == 0 {
+    if (cast(s32)expected.count) == 0 {
         return false
     }
     return expected == facts.id || expected == facts.name || expected == facts.key
@@ -4290,20 +4290,20 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
     }
     if operation == "|=" {
         return value == needle || (KssTextAt(value, needle, 0) &&
-            value.length > needle.length && value[needle.length] == 45)
+            (cast(s32)value.count) > (cast(s32)needle.count) && value[(cast(s32)needle.count)] == 45)
     }
-    if needle.length == 0 {
+    if (cast(s32)needle.count) == 0 {
         return false
     }
     if operation == "^=" {
         return KssTextAt(value, needle, 0)
     }
     if operation == "$=" {
-        return KssTextAt(value, needle, value.length - needle.length)
+        return KssTextAt(value, needle, (cast(s32)value.count) - (cast(s32)needle.count))
     }
     if operation == "*=" {
         start: s32 = 0
-        while start <= value.length - needle.length {
+        while start <= (cast(s32)value.count) - (cast(s32)needle.count) {
             if KssTextAt(value, needle, start) {
                 return true
             }
@@ -4313,15 +4313,15 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
     }
     if operation == "~=" {
         start: s32 = 0
-        while start < value.length {
-            while start < value.length && KssIsSpace(value[start]) {
+        while start < (cast(s32)value.count) {
+            while start < (cast(s32)value.count) && KssIsSpace(value[start]) {
                 start = start + 1
             }
             end: s32 = start
-            while end < value.length && !KssIsSpace(value[end]) {
+            while end < (cast(s32)value.count) && !KssIsSpace(value[end]) {
                 end = end + 1
             }
-            if end - start == needle.length && KssTextAt(value, needle, start) {
+            if end - start == (cast(s32)needle.count) && KssTextAt(value, needle, start) {
                 return true
             }
             start = end
@@ -4529,10 +4529,10 @@ KssStateFacts :: struct {
 #program_export
 KssStateName :: (source: string) -> KssName {
     name: KssName
-    if source.length > 64 {
+    if (cast(s32)source.count) > 64 {
         return name
     }
-    while name.length < source.length {
+    while name.length < (cast(s32)source.count) {
         name.bytes[name.length] = KssLower(source[name.length])
         name.length = name.length + 1
     }
@@ -4553,7 +4553,7 @@ KssIsFormControl :: (kind: string, tag: string) -> bool {
 
 #program_export
 KssStateMatches :: (source: string, facts: KssStateFacts) -> bool {
-    if source.length > 64 {
+    if (cast(s32)source.count) > 64 {
         return false
     }
     name: KssName = KssStateName(source)
@@ -5154,7 +5154,7 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
         return result
     }
     start = c.pos
-    end: s32 = c.source.length
+    end: s32 = (cast(s32)c.source.count)
     quote: u8 = KssPeek(c, 0)
     if quote == 34 || quote == 39 {
         c = KssAdvance(c, 1)

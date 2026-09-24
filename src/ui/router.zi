@@ -8,7 +8,7 @@
 #program_export
 RouterFindRoute :: (routes: []RouterRoute, route_id: s32) -> s32 {
     index: s32 = 0
-    while index < routes.length {
+    while index < (cast(s32)routes.count) {
         if routes[index].id == route_id { return index }
         index += 1
     }
@@ -45,26 +45,26 @@ RouterAcknowledgeVersion :: (state: RouterState,
 #program_export
 RouterPathStart :: (path: string) -> s32 {
     start: s32 = 0
-    while start < path.length && path[start] == 35 { start += 1 }
-    if start < path.length && path[start] == 47 { start += 1 }
+    while start < (cast(s32)path.count) && path[start] == 35 { start += 1 }
+    if start < (cast(s32)path.count) && path[start] == 47 { start += 1 }
     return start
 }
 
 #program_export
 RouterHashMatches :: (hash: string, path: string) -> bool {
-    if path.length == 0 { return false }
+    if (cast(s32)path.count) == 0 { return false }
     start: s32 = 0
-    while start < hash.length &&
+    while start < (cast(s32)hash.count) &&
         (hash[start] == 32 || hash[start] == 9 || hash[start] == 35) {
         start += 1
     }
-    if start < hash.length && hash[start] == 47 { start += 1 }
+    if start < (cast(s32)hash.count) && hash[start] == 47 { start += 1 }
     end: s32 = start
-    while end < hash.length && hash[end] != 63 && hash[end] != 38 {
+    while end < (cast(s32)hash.count) && hash[end] != 63 && hash[end] != 38 {
         end += 1
     }
     path_start: s32 = RouterPathStart(path)
-    if end == start || end - start != path.length - path_start {
+    if end == start || end - start != (cast(s32)path.count) - path_start {
         return false
     }
     index: s32 = 0
@@ -81,7 +81,7 @@ RouterHashMatches :: (hash: string, path: string) -> bool {
 RouterFindHash :: (routes: []RouterRoute,
     hash: string) -> s32 {
     index: s32 = 0
-    while index < routes.length {
+    while index < (cast(s32)routes.count) {
         if RouterHashMatches(hash, routes[index].path) { return index }
         index += 1
     }
@@ -106,13 +106,13 @@ RouterUrlFor :: (result: RouterResult, props: RouterProps,
     push: bool) -> RouterResult {
     if !props.sync_url || result.route_index < 0 { return result }
     path: string = routes[result.route_index].path
-    if path.length == 0 { return result }
+    if (cast(s32)path.count) == 0 { return result }
     start: s32 = RouterPathStart(path)
-    if start >= path.length { return result }
+    if start >= (cast(s32)path.count) { return result }
     result.write_url = true
     result.push_url = push
     result.url_base = base_path
-    if result.url_base.length == 0 { result.url_base = "/" }
+    if (cast(s32)result.url_base.count) == 0 { result.url_base = "/" }
     result.url_path = path
     result.url_path_start = start
     return result
@@ -203,12 +203,12 @@ Router :: (props: RouterProps, state: RouterState,
 RouterFormatUrl :: (result: RouterResult,
     output: []u8) -> s32 {
     if !result.write_url { return -1 }
-    needed: s32 = result.url_base.length + 2 +
-        result.url_path.length - result.url_path_start
-    if needed > output.length { return -1 }
+    needed: s32 = (cast(s32)result.url_base.count) + 2 +
+        (cast(s32)result.url_path.count) - result.url_path_start
+    if needed > (cast(s32)output.count) { return -1 }
     used: s32 = 0
     index: s32 = 0
-    while index < result.url_base.length {
+    while index < (cast(s32)result.url_base.count) {
         output[used] = result.url_base[index]
         used += 1
         index += 1
@@ -217,7 +217,7 @@ RouterFormatUrl :: (result: RouterResult,
     output[used + 1] = 47
     used += 2
     index = result.url_path_start
-    while index < result.url_path.length {
+    while index < (cast(s32)result.url_path.count) {
         output[used] = result.url_path[index]
         used += 1
         index += 1

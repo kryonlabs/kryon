@@ -14,7 +14,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "widget_kind"
 
 Matches :: (bytes: []u8, length: s32, text: string) -> bool {
-    if length != text.length { return false }
+    if length != cast(s32)text.count { return false }
     index: s32 = 0
     while index < length {
         if bytes[index] != text[index] { return false }

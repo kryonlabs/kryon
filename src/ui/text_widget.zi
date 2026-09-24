@@ -68,10 +68,10 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
     line: TextLinePlan
     line.start = start
     line.end = start
-    line.next = value.length + 1
-    if start >= value.length { return line }
+    line.next = (cast(s32)value.count) + 1
+    if start >= (cast(s32)value.count) { return line }
     offset: s32 = start
-    while offset < value.length {
+    while offset < (cast(s32)value.count) {
         token: ParagraphToken = ParagraphTokenNext(value, offset, false)
         if !token.valid { break }
         if token.line_break {
@@ -127,7 +127,7 @@ PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
 
     start: s32 = 0
     maximum: s32 = 0
-    while start <= props.text.length {
+    while start <= (cast(s32)props.text.count) {
         line: TextLinePlan = NextTextLine(props.text, start,
             props.bounds.width, prepared.wrap, prepared.font,
             prepared.typeface)
@@ -151,7 +151,7 @@ PaintTextLines :: (node: s32, props: TextProps,
         cast(s32)TextAlignmentOffset(prepared.bounds.height,
             cast(float32)total_height, cast(s32)props.vertical_align)
     start: s32 = 0
-    while start <= props.text.length {
+    while start <= (cast(s32)props.text.count) {
         line: TextLinePlan = NextTextLine(props.text, start,
             prepared.bounds.width, prepared.wrap, prepared.font,
             prepared.typeface)

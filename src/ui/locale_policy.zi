@@ -18,7 +18,7 @@ LocaleCode :: struct {
 
 #program_export
 LocaleRequestedCode :: (code: string) -> string {
-    if code.length == 0 { return "en" }
+    if (cast(s32)code.count) == 0 { return "en" }
     return code
 }
 
@@ -26,7 +26,7 @@ LocaleRequestedCode :: (code: string) -> string {
 LocaleContainsCode :: (languages: []LocaleLanguage,
     code: string) -> bool {
     index: s32 = 0
-    while index < languages.length {
+    while index < (cast(s32)languages.count) {
         if languages[index].code == code { return true }
         index += 1
     }
@@ -42,12 +42,12 @@ LocaleHasEnglish :: (languages: []LocaleLanguage) -> bool {
 LocaleResolveValue :: (active: []LocaleEntry, base: []LocaleEntry,
     key: string) -> string {
     index: s32 = 0
-    while index < active.length {
+    while index < (cast(s32)active.count) {
         if active[index].key == key { return active[index].value }
         index += 1
     }
     index = 0
-    while index < base.length {
+    while index < (cast(s32)base.count) {
         if base[index].key == key { return base[index].value }
         index += 1
     }
@@ -66,7 +66,7 @@ LocaleLower :: (byte: u8) -> u8 {
 
 LocaleNormalize :: (text: string, start: s32, end: s32) -> LocaleCode {
     result: LocaleCode
-    if start < 0 || end < start || end > text.length { return result }
+    if start < 0 || end < start || end > (cast(s32)text.count) { return result }
     index: s32 = start
     last_separator: bool = false
     while index < end {
@@ -117,9 +117,9 @@ LocaleFindNormalized :: (languages: []LocaleLanguage,
     candidate: LocaleCode) -> string {
     if candidate.length == 0 { return "" }
     index: s32 = 0
-    while index < languages.length {
+    while index < (cast(s32)languages.count) {
         language: string = languages[index].code
-        code: LocaleCode = LocaleNormalize(language, 0, language.length)
+        code: LocaleCode = LocaleNormalize(language, 0, (cast(s32)language.count))
         if LocaleCodeEqual(code, candidate) { return language }
         index += 1
     }
@@ -130,18 +130,18 @@ LocaleFindNormalized :: (languages: []LocaleLanguage,
 LocalePreferredCode :: (languages: []LocaleLanguage,
     preferences: string) -> string {
     cursor: s32 = 0
-    while cursor < preferences.length {
-        while cursor < preferences.length &&
+    while cursor < (cast(s32)preferences.count) {
+        while cursor < (cast(s32)preferences.count) &&
             LocaleSeparator(preferences[cursor]) { cursor += 1 }
         start: s32 = cursor
-        while cursor < preferences.length &&
+        while cursor < (cast(s32)preferences.count) &&
             !LocaleSeparator(preferences[cursor]) { cursor += 1 }
         if cursor == start { continue }
         end: s32 = cursor
         if end - start > 63 { end = start + 63 }
         candidate: LocaleCode = LocaleNormalize(preferences, start, end)
         found: string = LocaleFindNormalized(languages, candidate)
-        if found.length > 0 { return found }
+        if found.count > 0 { return found }
         index: s32 = 0
         while index < candidate.length && candidate.bytes[index] != 45 {
             index += 1
@@ -149,7 +149,7 @@ LocalePreferredCode :: (languages: []LocaleLanguage,
         if index < candidate.length {
             candidate.length = index
             found = LocaleFindNormalized(languages, candidate)
-            if found.length > 0 { return found }
+            if found.count > 0 { return found }
         }
     }
     return "en"

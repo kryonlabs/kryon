@@ -6,7 +6,7 @@
 #program_export
 RouteCount :: (routes: []s32, count: s32) -> s32 {
     if count < 0 { return 0 }
-    if count > routes.length { return routes.length }
+    if count > (cast(s32)routes.count) { return (cast(s32)routes.count) }
     return count
 }
 
@@ -26,7 +26,7 @@ RouteContains :: (routes: []s32, count: s32,
 RouteFirstUnused :: (routes: []s32, count: s32,
     candidates: []s32, fallback: s32) -> s32 {
     index: s32 = 0
-    while index < candidates.length {
+    while index < (cast(s32)candidates.count) {
         if !RouteContains(routes, count, candidates[index]) {
             return candidates[index]
         }
@@ -43,7 +43,7 @@ RouteSanitizeSet :: (routes: []s32, count: s32,
     write: s32 = 0
     while read < count {
         route: s32 = routes[read]
-        if RouteContains(allowed, allowed.length, route) &&
+        if RouteContains(allowed, (cast(s32)allowed.count), route) &&
             !RouteContains(routes, write, route) {
             routes[write] = route
             write += 1
@@ -51,7 +51,7 @@ RouteSanitizeSet :: (routes: []s32, count: s32,
         read += 1
     }
     read = write
-    while read < routes.length {
+    while read < (cast(s32)routes.count) {
         routes[read] = empty_route
         read += 1
     }
@@ -67,7 +67,7 @@ RouteSanitizeMask :: (routes: []s32, count: s32,
     write: s32 = 0
     while read < count {
         route: s32 = routes[read]
-        if read < allowed.length && allowed[read] &&
+        if read < (cast(s32)allowed.count) && allowed[read] &&
             !RouteContains(routes, write, route) {
             routes[write] = route
             write += 1
@@ -75,7 +75,7 @@ RouteSanitizeMask :: (routes: []s32, count: s32,
         read += 1
     }
     read = write
-    while read < routes.length {
+    while read < (cast(s32)routes.count) {
         routes[read] = empty_route
         read += 1
     }
@@ -126,7 +126,7 @@ RouteStackInit :: (routes: []s32,
     root_route: s32) -> RouteStackStep {
     result: RouteStackStep
     result.current = root_route
-    if routes.length > 0 {
+    if (cast(s32)routes.count) > 0 {
         routes[0] = root_route
         result.count = 1
         result.accepted = true
@@ -140,7 +140,7 @@ RouteStackPush :: (routes: []s32, count: s32,
     result: RouteStackStep
     result.count = RouteCount(routes, count)
     result.current = RouteStackCurrent(routes, result.count, root_route)
-    if routes.length <= 0 { return result }
+    if (cast(s32)routes.count) <= 0 { return result }
     if result.count == 0 {
         routes[0] = root_route
         result.count = 1
@@ -149,7 +149,7 @@ RouteStackPush :: (routes: []s32, count: s32,
         result.accepted = true
         return result
     }
-    if result.count >= routes.length { return result }
+    if result.count >= (cast(s32)routes.count) { return result }
     routes[result.count] = route
     result.count += 1
     result.current = route

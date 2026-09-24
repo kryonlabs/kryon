@@ -40,16 +40,16 @@ SyntaxIdent :: (mode: SyntaxMode, byte: u8) -> bool {
 SyntaxWordInList :: (value: string, start: s32,
     length: s32, words: string) -> bool {
     if start < 0 || length <= 0 ||
-        start + length > value.length { return false }
+        start + length > (cast(s32)value.count) { return false }
     offset: s32 = 0
-    while offset < words.length {
+    while offset < (cast(s32)words.count) {
         if words[offset] != cast(u8)124 {
             offset += 1
             continue
         }
         begin: s32 = offset + 1
         end: s32 = begin
-        while end < words.length && words[end] != cast(u8)124 {
+        while end < (cast(s32)words.count) && words[end] != cast(u8)124 {
             end += 1
         }
         if end - begin == length {
@@ -130,7 +130,7 @@ SyntaxTokenAt :: (value: string, start: s32,
     token: SyntaxToken
     token.kind = cast(SyntaxTokenKind)SyntaxPlain
     token.block_comment = block_comment
-    if start < 0 || end > value.length ||
+    if start < 0 || end > (cast(s32)value.count) ||
         start >= end { return token }
     byte: u8 = value[start]
     index: s32 = start

@@ -110,7 +110,7 @@ TitleBar :: (props: TitleBarProps,
     state: TitleBarState = TitleBarStateFor(requested_height,
         TitleBarDefaultHeightFor(scale, bar),
         props.has_leading_action,
-        props.has_dropdown && options.length > 0)
+        props.has_dropdown && (cast(s32)options.count) > 0)
     result.height = state.height
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 {

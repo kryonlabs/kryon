@@ -290,10 +290,10 @@ TreeViewThumbKey :: () -> u64 {
 TreeViewNavigationIndex :: (items: []TreeItem, selected_id: s32,
     navigation: TreeViewNavigation) -> s32 {
     if navigation == cast(TreeViewNavigation)TreeViewNavigationNone ||
-        items.length <= 0 { return -1 }
+        (cast(s32)items.count) <= 0 { return -1 }
     current: s32 = -1
     index: s32 = 0
-    while index < items.length {
+    while index < (cast(s32)items.count) {
         if items[index].id == selected_id {
             current = index
             break
@@ -304,17 +304,17 @@ TreeViewNavigationIndex :: (items: []TreeItem, selected_id: s32,
     candidate: s32 = 0
     if navigation == cast(TreeViewNavigation)TreeViewNavigationEnd {
         direction = -1
-        candidate = items.length - 1
+        candidate = (cast(s32)items.count) - 1
     } else if navigation == cast(TreeViewNavigation)TreeViewNavigationUp {
         direction = -1
         candidate = current - 1
-        if current < 0 { candidate = items.length - 1 }
+        if current < 0 { candidate = (cast(s32)items.count) - 1 }
     } else if navigation == cast(TreeViewNavigation)TreeViewNavigationDown {
         candidate = current + 1
     } else if navigation != cast(TreeViewNavigation)TreeViewNavigationHome {
         return -1
     }
-    while candidate >= 0 && candidate < items.length {
+    while candidate >= 0 && candidate < (cast(s32)items.count) {
         if items[candidate].selectable { return candidate }
         candidate += direction
     }
@@ -361,7 +361,7 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     metrics: TreeViewMetrics = TreeViewMetricsFor(scale, panel, item_face)
     row_height: s32 = TreeViewRowHeight(props.row_height, scale, metrics)
     if row_height <= 0 { row_height = 1 }
-    content_height: s32 = TreeViewContentHeight(items.length, row_height)
+    content_height: s32 = TreeViewContentHeight((cast(s32)items.count), row_height)
     max_scroll: s32 = TreeViewMaxScroll(cast(s32)bounds.height, content_height)
     scroll: s64 = cast(s64)props.scroll_offset
     if !props.disabled { scroll += cast(s64)props.scroll_delta }
@@ -424,7 +424,7 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     visible: s32 = TreeViewVisibleRows(cast(s32)bounds.height, row_height)
     visible_index: s32 = 0
     while visible_index < visible &&
-        layout.first + visible_index < items.length {
+        layout.first + visible_index < (cast(s32)items.count) {
         index: s32 = layout.first + visible_index
         item: TreeItem = items[index]
         row: Rectangle = TreeViewRowBounds(bounds, visible_index,

@@ -108,9 +108,9 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
     result.dropdown_scroll_offset = props.dropdown_scroll_offset
     counts: NavigationBarConfigCounts =
         NavigationBarConfigCountsFor(props.route_count,
-            props.max_route_count, options.length, 16)
-    if counts.max_route_count > routes.length {
-        counts.max_route_count = routes.length
+            props.max_route_count, (cast(s32)options.count), 16)
+    if counts.max_route_count > (cast(s32)routes.count) {
+        counts.max_route_count = (cast(s32)routes.count)
     }
     if counts.route_count > counts.max_route_count {
         counts.route_count = counts.max_route_count
@@ -220,7 +220,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
             row: NavigationBarConfigRowLayout =
                 NavigationBarConfigRowLayoutFor(
                     row_content, y, line_height, metrics)
-            if index < slot_labels.length &&
+            if index < cast(s32)slot_labels.count &&
                 slot_labels[index] != "" {
                 PaintClippedLabel(frame.panel_node,
                     slot_labels[index],

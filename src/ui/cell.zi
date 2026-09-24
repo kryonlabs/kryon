@@ -14,7 +14,7 @@ CellPut :: (cells: []Cell, columns: s32, rows: s32,
     if columns <= 0 || rows <= 0 || x < 0 || y < 0 ||
        x >= columns || y >= rows { return false }
     at: s64 = cast(s64)y * cast(s64)columns + cast(s64)x
-    if at < cast(s64)0 || at >= cast(s64)cells.length { return false }
+    if at < cast(s64)0 || at >= cast(s64)(cast(s32)cells.count) { return false }
     cells[cast(s32)at] = cell
     return true
 }
@@ -46,7 +46,7 @@ CellCodepointResult :: struct {
 CellCodepoint :: (text: string, at: s32) -> CellCodepointResult {
     result: CellCodepointResult
     result.after = at
-    if at < 0 || at >= text.length { return result }
+    if at < 0 || at >= (cast(s32)text.count) { return result }
     first: u8 = text[at]
     result.after = at + 1
     if first < cast(u8)128 {
@@ -71,7 +71,7 @@ CellCodepoint :: (text: string, at: s32) -> CellCodepointResult {
         minimum = cast(u32)65536
     }
     if count == 0 { return result }
-    if at + count >= text.length { return result }
+    if at + count >= (cast(s32)text.count) { return result }
     index: s32 = 1
     while index <= count {
         part: u8 = text[at + index]
@@ -98,7 +98,7 @@ CellWrite :: (cells: []Cell, columns: s32, rows: s32,
     at: s32 = 0
     col: s32 = x
     written: s32 = 0
-    while at < text.length {
+    while at < (cast(s32)text.count) {
         point: CellCodepointResult = CellCodepoint(text, at)
         if point.after <= at { break }
         cell: Cell

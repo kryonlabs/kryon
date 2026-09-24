@@ -166,7 +166,7 @@ DropdownPaintTrigger :: (node: s32, bounds: Rectangle,
     index: s32 = selected_index
     label: string = props.placeholder
     has_image: bool = false
-    if index >= 0 && index < options.length {
+    if index >= 0 && index < (cast(s32)options.count) {
         label = options[index].label
         has_image = options[index].image.asset_path != "" ||
             options[index].image.texture.id != cast(u32)0
@@ -281,7 +281,7 @@ Dropdown :: (props: DropdownProps,
     }
     activated: bool = TreeTakeActivationAt(previous)
     decision: DropdownOpenDecision = DropdownOpenDecisionFor(
-        props.open, props.disabled, options.length,
+        props.open, props.disabled, (cast(s32)options.count),
         props.focused, true, activated,
         props.trigger_input, bounds.height, false, false, false)
     result.open = decision.open
@@ -302,7 +302,7 @@ Dropdown :: (props: DropdownProps,
             scale: float32 = props.scale
             if scale <= 0.0 { scale = 1.0 }
             panel_bounds: Rectangle = PopupBounds(bounds,
-                TreeRootBounds(), options.length, scale, panel_face)
+                TreeRootBounds(), (cast(s32)options.count), scale, panel_face)
             dismissal: DismissibleOverlayPolicy =
                 DismissibleOverlayPolicyFor(true, false, false,
                     PointInBounds(release.x, release.y, panel_bounds))
@@ -319,7 +319,7 @@ Dropdown :: (props: DropdownProps,
         } else {
             if props.menu_input.navigating || result.opened {
                 nav: Navigation = StartNavigation(result.highlight_index,
-                    options.length, props.menu_input.up,
+                    (cast(s32)options.count), props.menu_input.up,
                     props.menu_input.down, props.menu_input.home,
                     props.menu_input.end)
                 while nav.searching {
@@ -330,7 +330,7 @@ Dropdown :: (props: DropdownProps,
             }
             if !result.opened && props.menu_input.commit &&
                 result.highlight_index >= 0 &&
-                result.highlight_index < options.length &&
+                result.highlight_index < (cast(s32)options.count) &&
                 !options[result.highlight_index].disabled {
                 result.changed = result.selected_index !=
                     result.highlight_index
@@ -340,7 +340,7 @@ Dropdown :: (props: DropdownProps,
             }
             if result.open {
                 option_index: s32 = 0
-                while option_index < options.length {
+                while option_index < (cast(s32)options.count) {
                     if !options[option_index].disabled {
                         old: s32 = TreeFind(DropdownOptionKey(key,
                             options[option_index], option_index),
@@ -379,7 +379,7 @@ Dropdown :: (props: DropdownProps,
         TreeSetSelected(result.node, result.open)
         label: string = props.placeholder
         if result.selected_index >= 0 &&
-            result.selected_index < options.length {
+            result.selected_index < (cast(s32)options.count) {
             label = options[result.selected_index].label
         }
         TreeSetLabel(result.node, label)
@@ -398,7 +398,7 @@ Dropdown :: (props: DropdownProps,
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     menu: Rectangle = PopupBounds(bounds, TreeRootBounds(),
-        options.length, scale, panel)
+        (cast(s32)options.count), scale, panel)
     if menu.width <= 0.0 || menu.height <= 0.0 {
         result.open = false
         result.closed = true
@@ -408,7 +408,7 @@ Dropdown :: (props: DropdownProps,
     if row_height < 24 { row_height = 24 }
     metrics: DropdownMenuMetrics = DropdownMenuMetricsFor(scale,
         panel, option_face, scrollbar_face)
-    layout: MenuLayout = MenuLayoutFor(menu, options.length,
+    layout: MenuLayout = MenuLayoutFor(menu, (cast(s32)options.count),
         row_height, metrics.padding_top, metrics.padding_bottom,
         metrics.scrollbar_width, metrics.scrollbar_gap)
     result.scroll_offset = ScrollOffset(cast(float64)result.scroll_offset,
@@ -462,7 +462,7 @@ Dropdown :: (props: DropdownProps,
                 panel_opacity)))
     }
     if !TreePushScope(panel_node) { return result }
-    rows: VisibleRows = Rows(options.length, result.scroll_offset,
+    rows: VisibleRows = Rows((cast(s32)options.count), result.scroll_offset,
         layout.content_bounds.height, cast(float32)row_height)
     index: s32 = rows.first
     while index < rows.end {

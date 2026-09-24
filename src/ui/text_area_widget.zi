@@ -88,8 +88,8 @@ TextAreaNextRow :: (value: string, start: s32,
     row: TextAreaRow
     row.start = start
     row.end = start
-    row.next = value.length + 1
-    if start < 0 || start > value.length { return row }
+    row.next = (cast(s32)value.count) + 1
+    if start < 0 || start > (cast(s32)value.count) { return row }
     line: TextLogicalLine = TextLogicalLineFor(value, start)
     row.end = line.end
     row.next = line.next
@@ -126,7 +126,7 @@ TextAreaRowCount :: (value: string, wrap_width: s32,
     font: s32, typeface: string) -> s32 {
     count: s32 = 0
     offset: s32 = 0
-    while offset <= value.length {
+    while offset <= (cast(s32)value.count) {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
         count += 1
@@ -141,15 +141,15 @@ TextAreaCaretFor :: (value: string, cursor: s32,
     wrap_width: s32, font: s32, typeface: string,
     advance: s32) -> TextAreaCaret {
     caret: TextAreaCaret
-    cursor = TextCursorForLength(cursor, value.length)
+    cursor = TextCursorForLength(cursor, (cast(s32)value.count))
     offset: s32 = 0
     index: s32 = 0
-    while offset <= value.length {
+    while offset <= (cast(s32)value.count) {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
         if cursor < row.end ||
             (cursor == row.end && !row.soft_wrap) ||
-            row.next > value.length {
+            row.next > (cast(s32)value.count) {
             within: s32 = cursor
             if within < row.start { within = row.start }
             if within > row.end { within = row.end }
@@ -192,19 +192,19 @@ TextAreaViewFor :: (value: string, anchor: s32,
     cursor: s32, composition: CompositionState) -> TextAreaView {
     view: TextAreaView
     view.value = value
-    view.length = value.length
-    view.replace_start = value.length
-    view.replace_end = value.length
+    view.length = (cast(s32)value.count)
+    view.replace_start = (cast(s32)value.count)
+    view.replace_end = (cast(s32)value.count)
     if composition.active {
         selection: TextSelectionRange = TextSelectionRangeForLength(
-            anchor, cursor, value.length)
+            anchor, cursor, (cast(s32)value.count))
         view.composing = true
         view.preedit = composition.text
         view.replace_start = selection.start
         view.replace_end = selection.end
-        view.length = value.length -
+        view.length = (cast(s32)value.count) -
             (selection.end - selection.start) +
-            composition.text.length
+            (cast(s32)composition.text.count)
     }
     return view
 }
@@ -219,11 +219,11 @@ TextAreaViewSegmentFor :: (view: TextAreaView,
     } else if part == 1 {
         segment.source = view.preedit
         segment.start = view.replace_start
-        segment.end = segment.start + view.preedit.length
+        segment.end = segment.start + (cast(s32)view.preedit.count)
     } else if part == 2 {
         segment.source = view.value
         segment.source_start = view.replace_end
-        segment.start = view.replace_start + view.preedit.length
+        segment.start = view.replace_start + (cast(s32)view.preedit.count)
         segment.end = view.length
     }
     return segment
@@ -234,9 +234,9 @@ TextAreaViewByteAt :: (view: TextAreaView,
     index: s32) -> u8 {
     if index < view.replace_start { return view.value[index] }
     after: s32 = index - view.replace_start
-    if after < view.preedit.length { return view.preedit[after] }
+    if after < (cast(s32)view.preedit.count) { return view.preedit[after] }
     return view.value[view.replace_end + after -
-        view.preedit.length]
+        (cast(s32)view.preedit.count)]
 }
 
 #program_export
@@ -412,10 +412,10 @@ TextAreaCursorAtPoint :: (value: string, x: s32,
     wanted: s32 = y / advance
     offset: s32 = 0
     index: s32 = 0
-    while offset <= value.length {
+    while offset <= (cast(s32)value.count) {
         row: TextAreaRow = TextAreaNextRow(value, offset,
             wrap_width, font, typeface)
-        if index >= wanted || row.next > value.length {
+        if index >= wanted || row.next > (cast(s32)value.count) {
             span: string = TextSpan(value, row.start,
                 row.end - row.start)
             return row.start + TextFieldCursorAtX(span,
@@ -425,14 +425,14 @@ TextAreaCursorAtPoint :: (value: string, x: s32,
         offset = row.next
         index += 1
     }
-    return value.length
+    return (cast(s32)value.count)
 }
 
 #program_export
 TextAreaInputTextAllowed :: (value: string) -> bool {
     if value == "" { return false }
     index: s32 = 0
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         byte: u8 = value[index]
         if (byte < cast(u8)32 && byte != cast(u8)9 &&
             byte != cast(u8)10) || byte == cast(u8)127 {
@@ -447,11 +447,11 @@ TextAreaInputTextAllowed :: (value: string) -> bool {
 TextAreaReplacementAllowed :: (props: TextAreaProps,
     start: s32, end: s32,
     replacement: string) -> bool {
-    if start < 0 || end < start || end > props.value.length {
+    if start < 0 || end < start || end > (cast(s32)props.value.count) {
         return false
     }
-    bytes: s32 = props.value.length - (end - start) +
-        replacement.length
+    bytes: s32 = (cast(s32)props.value.count) - (end - start) +
+        (cast(s32)replacement.count)
     if props.max_bytes > 0 && bytes > props.max_bytes {
         return false
     }
@@ -471,7 +471,7 @@ TextAreaEditFor :: (props: TextAreaProps,
     cursor: s32, anchor: s32) -> TextAreaEdit {
     edit: TextAreaEdit
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        anchor, cursor, props.value.length)
+        anchor, cursor, (cast(s32)props.value.count))
     replacement: string = props.input.text
     if replacement == "" && props.input.enter {
         replacement = "\n"
@@ -510,9 +510,9 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
-        props.value.length)
+        (cast(s32)props.value.count))
     result.anchor = TextCursorForLength(props.anchor,
-        props.value.length)
+        (cast(s32)props.value.count))
     result.scroll_y = props.scroll_y
     result.focused = props.focused
     result.composition = props.composition
@@ -645,14 +645,14 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
             cast(CompositionPhase)CompositionNone {
         if props.input.select_all {
             result.anchor = 0
-            result.cursor = props.value.length
+            result.cursor = (cast(s32)props.value.count)
             navigation = true
         } else {
             target: s32 = result.cursor
             moved: bool = false
             selection: TextSelectionRange =
                 TextSelectionRangeForLength(result.anchor,
-                    result.cursor, props.value.length)
+                    result.cursor, (cast(s32)props.value.count))
             caret: TextAreaCaret = TextAreaCaretFor(props.value,
                 result.cursor, wrap_width, font,
                 face.value.typeface, advance)
@@ -680,7 +680,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
                 target = 0
                 moved = true
             } else if props.input.document_end {
-                target = props.value.length
+                target = (cast(s32)props.value.count)
                 moved = true
             } else if props.input.up || props.input.down ||
                 props.input.page_up || props.input.page_down {
@@ -736,7 +736,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
         }
         if transition.commit {
             selection: TextSelectionRange = TextSelectionRangeForLength(
-                result.anchor, result.cursor, props.value.length)
+                result.anchor, result.cursor, (cast(s32)props.value.count))
             if TextAreaInputTextAllowed(transition.commit_text) &&
                 TextAreaReplacementAllowed(props, selection.start,
                     selection.end, transition.commit_text) {
@@ -749,13 +749,13 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
             cast(CompositionPhase)CompositionNone &&
             !result.composition.active && command != 0 {
             selection: TextSelectionRange = TextSelectionRangeForLength(
-                result.anchor, result.cursor, props.value.length)
+                result.anchor, result.cursor, (cast(s32)props.value.count))
             allow_copy: bool = command != TextContextCommandCut() ||
                 !props.read_only
             decision: TextContextCommandDecision =
                 TextEditCommandDecisionFor(command,
                     selection.has_selection, false, false,
-                    props.value.length > 0, allow_copy,
+                    (cast(s32)props.value.count) > 0, allow_copy,
                     !props.read_only, !props.read_only)
             if decision.copy_selection {
                 result.clipboard_write = true
@@ -786,7 +786,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
         }
         if result.edit.changed {
             result.cursor = result.edit.start +
-                result.edit.replacement.length
+                (cast(s32)result.edit.replacement.count)
             result.anchor = result.cursor
             result.preferred_x_valid = false
             if result.composition.active {
@@ -876,7 +876,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
             paint.clip_bounds)
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        result.anchor, result.cursor, props.value.length)
+        result.anchor, result.cursor, (cast(s32)props.value.count))
     paint_selection_start: s32 = selection.start
     paint_selection_end: s32 = selection.end
     paint_has_selection: bool = selection.has_selection
@@ -995,7 +995,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
         if view.composing {
             composition_start = view.replace_start
             composition_end = composition_start +
-                view.preedit.length
+                (cast(s32)view.preedit.count)
         }
         if result.focused && row_visible &&
             composition_end > composition_start {

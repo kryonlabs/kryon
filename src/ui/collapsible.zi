@@ -272,7 +272,7 @@ CollapsibleFocusTarget :: (headers: []CollapsibleHeader,
     current_id: s32, key: s32) -> s32 {
     current: s32 = -1
     index: s32 = 0
-    while index < headers.length {
+    while index < (cast(s32)headers.count) {
         if headers[index].id == current_id {
             current = index
             break
@@ -282,7 +282,7 @@ CollapsibleFocusTarget :: (headers: []CollapsibleHeader,
     if current < 0 { return current_id }
     depth: s32 = headers[current].depth
     if depth < 0 { depth = 0 }
-    scan: TreeFocusScan = TreeFocusBegin(current, headers.length,
+    scan: TreeFocusScan = TreeFocusBegin(current, (cast(s32)headers.count),
         depth, key == CollapsibleKeyDown(),
         key == CollapsibleKeyUp(), key == CollapsibleKeyRight(),
         key == CollapsibleKeyLeft())

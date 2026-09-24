@@ -36,8 +36,8 @@ CompositionTransition :: struct {
 #program_export
 CompositionBoundaryFor :: (value: string,
     offset: s32) -> s32 {
-    offset = TextCursorForLength(offset, value.length)
-    while offset > 0 && offset < value.length &&
+    offset = TextCursorForLength(offset, (cast(s32)value.count))
+    while offset > 0 && offset < (cast(s32)value.count) &&
         TextUtf8Continuation(value[offset]) {
         offset -= 1
     }
@@ -62,14 +62,14 @@ CompositionTransitionFor :: (state: CompositionState,
         transition.state.active = true
         transition.state.text = event.text
         raw_cursor: s32 = TextCursorForLength(
-            event.cursor, event.text.length)
+            event.cursor, (cast(s32)event.text.count))
         transition.state.cursor = CompositionBoundaryFor(
             event.text, raw_cursor)
-        end: s32 = event.text.length
+        end: s32 = (cast(s32)event.text.count)
         if event.selection_length <= 0 {
             end = raw_cursor
         } else if event.selection_length <
-            event.text.length - raw_cursor {
+            (cast(s32)event.text.count) - raw_cursor {
             end = raw_cursor + event.selection_length
         }
         end = CompositionBoundaryFor(event.text, end)
@@ -1515,26 +1515,26 @@ TextBufferInsertBytes :: (buffer: []u8, length: s32, at: s32,
     result.length = length
     result.cursor = TextCursorForLength(at, length)
     decision: TextBufferInsertDecision = TextBufferInsertDecisionFor(
-        buffer.length, length, at, bytes.length)
-    if !decision.can_insert || length >= buffer.length ||
+        (cast(s32)buffer.count), length, at, (cast(s32)bytes.count))
+    if !decision.can_insert || length >= (cast(s32)buffer.count) ||
         buffer[length] != cast(u8)0 { return result }
     index: s32 = 0
-    while index < bytes.length {
+    while index < (cast(s32)bytes.count) {
         if bytes[index] == cast(u8)0 { return result }
         index += 1
     }
     index = length
     while index >= at {
-        buffer[index + bytes.length] = buffer[index]
+        buffer[index + (cast(s32)bytes.count)] = buffer[index]
         index -= 1
     }
     index = 0
-    while index < bytes.length {
+    while index < (cast(s32)bytes.count) {
         buffer[at + index] = bytes[index]
         index += 1
     }
-    result.length = length + bytes.length
-    result.cursor = at + bytes.length
+    result.length = length + (cast(s32)bytes.count)
+    result.cursor = at + (cast(s32)bytes.count)
     result.changed = true
     return result
 }
@@ -1547,7 +1547,7 @@ TextBufferDeleteBytes :: (buffer: []u8, length: s32,
     result.cursor = TextCursorForLength(at, length)
     decision: TextBufferDeleteDecision = TextBufferDeleteDecisionFor(
         length, at, count)
-    if !decision.can_delete || length >= buffer.length ||
+    if !decision.can_delete || length >= (cast(s32)buffer.count) ||
         buffer[length] != cast(u8)0 { return result }
     index: s32 = at
     while index <= length - count {
@@ -1584,7 +1584,7 @@ TextUtf8Continuation :: (value: u8) -> bool {
 TextPreviousCodepoint :: (buffer: []u8, length: s32,
     cursor: s32) -> s32 {
     if length < 0 { return 0 }
-    if length > buffer.length { length = buffer.length }
+    if length > (cast(s32)buffer.count) { length = (cast(s32)buffer.count) }
     cursor = TextCursorForLength(cursor, length)
     if cursor == 0 { return 0 }
     cursor -= 1
@@ -1598,7 +1598,7 @@ TextPreviousCodepoint :: (buffer: []u8, length: s32,
 TextNextCodepoint :: (buffer: []u8, length: s32,
     cursor: s32) -> s32 {
     if length < 0 { return 0 }
-    if length > buffer.length { length = buffer.length }
+    if length > (cast(s32)buffer.count) { length = (cast(s32)buffer.count) }
     cursor = TextCursorForLength(cursor, length)
     if cursor >= length { return length }
     cursor += 1

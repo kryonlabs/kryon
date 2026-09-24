@@ -60,7 +60,7 @@ TextFieldFaceFor :: (props: TextFieldProps,
 
 #program_export
 TextFieldPrevious :: (value: string, cursor: s32) -> s32 {
-    cursor = TextCursorForLength(cursor, value.length)
+    cursor = TextCursorForLength(cursor, (cast(s32)value.count))
     if cursor == 0 { return 0 }
     cursor -= 1
     while cursor > 0 && TextUtf8Continuation(value[cursor]) {
@@ -71,10 +71,10 @@ TextFieldPrevious :: (value: string, cursor: s32) -> s32 {
 
 #program_export
 TextFieldNext :: (value: string, cursor: s32) -> s32 {
-    cursor = TextCursorForLength(cursor, value.length)
-    if cursor >= value.length { return value.length }
+    cursor = TextCursorForLength(cursor, (cast(s32)value.count))
+    if cursor >= (cast(s32)value.count) { return (cast(s32)value.count) }
     cursor += 1
-    while cursor < value.length &&
+    while cursor < (cast(s32)value.count) &&
         TextUtf8Continuation(value[cursor]) { cursor += 1 }
     return cursor
 }
@@ -83,7 +83,7 @@ TextFieldNext :: (value: string, cursor: s32) -> s32 {
 TextFieldCodepoints :: (value: string) -> s32 {
     count: s32 = 0
     index: s32 = 0
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         if !TextUtf8Continuation(value[index]) { count += 1 }
         index += 1
     }
@@ -96,19 +96,19 @@ TextFieldByteAfter :: (value: string,
     if codepoints <= 0 { return 0 }
     index: s32 = 0
     seen: s32 = 0
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         index = TextFieldNext(value, index)
         seen += 1
         if seen >= codepoints { return index }
     }
-    return value.length
+    return (cast(s32)value.count)
 }
 
 #program_export
 TextFieldInputTextAllowed :: (value: string) -> bool {
     if value == "" { return false }
     index: s32 = 0
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         if value[index] < cast(u8)32 || value[index] == cast(u8)127 {
             return false
         }
@@ -120,11 +120,11 @@ TextFieldInputTextAllowed :: (value: string) -> bool {
 #program_export
 TextFieldReplacementAllowed :: (props: TextFieldProps,
     start: s32, end: s32, replacement: string) -> bool {
-    if start < 0 || end < start || end > props.value.length {
+    if start < 0 || end < start || end > (cast(s32)props.value.count) {
         return false
     }
-    length: s32 = props.value.length - (end - start) +
-        replacement.length
+    length: s32 = (cast(s32)props.value.count) - (end - start) +
+        (cast(s32)replacement.count)
     if props.max_bytes > 0 && length > props.max_bytes {
         return false
     }
@@ -145,7 +145,7 @@ TextFieldCursorAtX :: (value: string, x: s32,
     if x <= 0 { return 0 }
     index: s32 = 0
     previous_width: s32 = 0
-    while index < value.length {
+    while index < (cast(s32)value.count) {
         next: s32 = TextFieldNext(value, index)
         prefix: string = TextSpan(value, 0, next)
         width: s32 = GlyphWidth(prefix, font, typeface)
@@ -155,13 +155,13 @@ TextFieldCursorAtX :: (value: string, x: s32,
         index = next
         previous_width = width
     }
-    return value.length
+    return (cast(s32)value.count)
 }
 
 #program_export
 TextFieldDisplayByteFor :: (value: string, display: string,
     cursor: s32, secure: bool) -> s32 {
-    cursor = TextCursorForLength(cursor, value.length)
+    cursor = TextCursorForLength(cursor, (cast(s32)value.count))
     if !secure { return cursor }
     count: s32 = TextFieldCodepoints(TextSpan(value, 0, cursor))
     return TextFieldByteAfter(display, count)
@@ -172,7 +172,7 @@ TextFieldEditFor :: (props: TextFieldProps,
     cursor: s32, anchor: s32) -> TextFieldEdit {
     edit: TextFieldEdit
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        anchor, cursor, props.value.length)
+        anchor, cursor, (cast(s32)props.value.count))
     if TextFieldInputTextAllowed(props.input.text) {
         if !TextFieldReplacementAllowed(props, selection.start,
             selection.end, props.input.text) { return edit }
@@ -206,9 +206,9 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     result: TextFieldResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
-        props.value.length)
+        (cast(s32)props.value.count))
     result.anchor = TextCursorForLength(props.anchor,
-        props.value.length)
+        (cast(s32)props.value.count))
     result.scroll_x = props.scroll_x
     result.focused = props.focused
     result.composition = props.composition
@@ -279,14 +279,14 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
             cast(CompositionPhase)CompositionNone &&
             !result.composition.active && props.input.select_all {
             result.anchor = 0
-            result.cursor = props.value.length
+            result.cursor = (cast(s32)props.value.count)
         } else if props.input.composition_event.phase ==
             cast(CompositionPhase)CompositionNone &&
             !result.composition.active {
             target: s32 = result.cursor
             selection: TextSelectionRange =
                 TextSelectionRangeForLength(result.anchor,
-                    result.cursor, props.value.length)
+                    result.cursor, (cast(s32)props.value.count))
             moved: bool = false
             if props.input.left {
                 target = TextFieldPrevious(props.value,
@@ -305,7 +305,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
                 target = 0
                 moved = true
             } else if props.input.end {
-                target = props.value.length
+                target = (cast(s32)props.value.count)
                 moved = true
             }
             if moved {
@@ -339,7 +339,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
         }
         if transition.commit {
             selection: TextSelectionRange = TextSelectionRangeForLength(
-                result.anchor, result.cursor, props.value.length)
+                result.anchor, result.cursor, (cast(s32)props.value.count))
             if TextFieldInputTextAllowed(transition.commit_text) &&
                 TextFieldReplacementAllowed(props, selection.start,
                     selection.end, transition.commit_text) {
@@ -353,13 +353,13 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
             !result.composition.active &&
             !props.input.escape && command != 0 {
             selection: TextSelectionRange = TextSelectionRangeForLength(
-                result.anchor, result.cursor, props.value.length)
+                result.anchor, result.cursor, (cast(s32)props.value.count))
             allow_copy: bool = !props.secure &&
                 (command != TextContextCommandCut() || !props.read_only)
             decision: TextContextCommandDecision =
                 TextEditCommandDecisionFor(command,
                     selection.has_selection, true, true,
-                    props.value.length > 0, allow_copy,
+                    (cast(s32)props.value.count) > 0, allow_copy,
                     !props.read_only && !props.secure,
                     !props.read_only)
             if decision.copy_selection {
@@ -384,7 +384,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
                 result.edit.end = selection.end
                 if decision.clear_all {
                     result.edit.start = 0
-                    result.edit.end = props.value.length
+                    result.edit.end = (cast(s32)props.value.count)
                 }
                 result.edit.changed = result.edit.end >
                     result.edit.start
@@ -399,7 +399,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
         }
         if result.edit.changed {
             result.cursor = result.edit.start +
-                result.edit.replacement.length
+                (cast(s32)result.edit.replacement.count)
             result.anchor = result.cursor
             if result.composition.active {
                 result.composition = CompositionState.{}
@@ -415,11 +415,11 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     preedit_width: s32 = 0
     if composing {
         replacing: TextSelectionRange = TextSelectionRangeForLength(
-            result.anchor, result.cursor, props.value.length)
+            result.anchor, result.cursor, (cast(s32)props.value.count))
         composition_prefix = TextSpan(display, 0,
             replacing.start)
         composition_suffix = TextSpan(display, replacing.end,
-            display.length - replacing.end)
+            (cast(s32)display.count) - replacing.end)
         prefix_width = GlyphWidth(composition_prefix, font,
             face.value.typeface)
         preedit_width = GlyphWidth(result.composition.text,
@@ -490,7 +490,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     text_y: s32 = cast(s32)bounds.y +
         (cast(s32)bounds.height - line_height) / 2
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        result.anchor, result.cursor, props.value.length)
+        result.anchor, result.cursor, (cast(s32)props.value.count))
     if result.focused &&
         ((selection.has_selection && !composing) ||
         (composing && result.composition.selection_length > 0)) {

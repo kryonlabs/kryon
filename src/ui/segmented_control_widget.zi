@@ -65,7 +65,7 @@ SegmentedControlMetricsFor :: (props: SegmentedControlProps) -> SegmentedMetrics
 SegmentedControlHeight :: (props: SegmentedControlProps,
     options: []SegmentOption) -> s32 {
     metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
-    if options.length <= 0 || metrics.row_height <= 0 { return 0 }
+    if (cast(s32)options.count) <= 0 || metrics.row_height <= 0 { return 0 }
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
     if bounds.width <= 0.0 || !props.wrap { return metrics.row_height }
@@ -77,7 +77,7 @@ SegmentedControlHeight :: (props: SegmentedControlProps,
     row_width: s32 = 0
     rows: s32 = 1
     index: s32 = 0
-    while index < options.length {
+    while index < (cast(s32)options.count) {
         item_width: s32 = SegmentedItemWidth(
             GlyphWidth(options[index].label, font,
                 segment.value.typeface), metrics)
@@ -104,7 +104,7 @@ SegmentedControl :: (props: SegmentedControlProps,
     result.height = SegmentedControlHeight(props, options)
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
-    if options.length <= 0 || bounds.width <= 0.0 ||
+    if (cast(s32)options.count) <= 0 || bounds.width <= 0.0 ||
         result.height <= 0 { return result }
     bounds.height = cast(float32)result.height
     key: u64 = props.key
@@ -112,7 +112,7 @@ SegmentedControl :: (props: SegmentedControlProps,
     if key == cast(u64)0 { key = TreeNextKey() }
     if TreeIsBuilding() {
         index: s32 = 0
-        while index < options.length {
+        while index < (cast(s32)options.count) {
             if !props.disabled && !options[index].disabled {
                 previous: s32 = TreeFind(
                     SegmentedOptionKey(options[index], index), key,
@@ -146,8 +146,8 @@ SegmentedControl :: (props: SegmentedControlProps,
     row_count: s32 = 0
     row_y: s32 = cast(s32)bounds.y
     index: s32 = 0
-    while index <= options.length {
-        end_row: bool = index == options.length
+    while index <= (cast(s32)options.count) {
+        end_row: bool = index == (cast(s32)options.count)
         advance: SegmentedRowAdvance
         if !end_row {
             item_width: s32 = SegmentedItemWidth(

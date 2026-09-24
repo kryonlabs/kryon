@@ -60,12 +60,12 @@ Frame :: () -> s32 {
             TreeNodeAt(1).kind != WidgetKindCustom { return -1 }
     } else if phase == 2 {
         if !result.visible || result.state.until_seconds != 3.5 ||
-            !result.ellipsis || result.display.length != 14 ||
+            !result.ellipsis || result.display.count != 14 ||
             result.bounds.width != 164.0 || TreeCount() != 2 {
             return -2
         }
     } else if phase == 3 || phase == 5 {
-        if result.visible || result.state.message.length != 0 ||
+        if result.visible || result.state.message.count != 0 ||
             TreeCount() != 1 { return -3 }
     } else {
         if !result.visible || result.state.until_seconds != 8.0 ||

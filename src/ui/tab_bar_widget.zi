@@ -146,12 +146,12 @@ TabBarTotalWidthFor :: (tabs: []Tab, metrics: TabBarMetrics,
     font: s32, typeface: string) -> s32 {
     total: s32 = 0
     index: s32 = 0
-    while index < tabs.length {
+    while index < (cast(s32)tabs.count) {
         total += TabBarTabWidthFor(tabs[index], metrics,
             font, typeface)
         index += 1
     }
-    return TabBarTotalWidth(total, tabs.length, metrics.gap)
+    return TabBarTotalWidth(total, (cast(s32)tabs.count), metrics.gap)
 }
 
 #program_export
@@ -160,9 +160,9 @@ TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
     font: s32, typeface: string,
     scroll: TabBarScroll) -> Rectangle {
     rect: Rectangle
-    if index < 0 || index >= tabs.length { return rect }
+    if index < 0 || index >= (cast(s32)tabs.count) { return rect }
     if scroll.equal_tabs {
-        return TabBarEqualTabBounds(bounds, tabs.length, index)
+        return TabBarEqualTabBounds(bounds, (cast(s32)tabs.count), index)
     }
     x: float32 = bounds.x - cast(float32)scroll.scroll
     cursor: s32 = 0
@@ -183,9 +183,9 @@ TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
 TabBarNextEnabled :: (tabs: []Tab, from: s32,
     direction: s32) -> s32 {
     step: s32 = 1
-    while step <= tabs.length {
+    while step <= (cast(s32)tabs.count) {
         index: s32 = TabBarWrappedIndex(from, direction,
-            step, tabs.length)
+            step, (cast(s32)tabs.count))
         if index >= 0 && !tabs[index].disabled { return index }
         step += 1
     }
@@ -197,10 +197,10 @@ TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
     active_index: s32, pointer_x: float32,
     metrics: TabBarMetrics, font: s32,
     typeface: string, scroll: TabBarScroll) -> s32 {
-    if active_index < 0 || active_index >= tabs.length { return -1 }
+    if active_index < 0 || active_index >= (cast(s32)tabs.count) { return -1 }
     target: s32 = 0
     index: s32 = 0
-    while index < tabs.length {
+    while index < (cast(s32)tabs.count) {
         if index != active_index {
             rect: Rectangle = TabBarBoundsAt(bounds, tabs,
                 index, metrics, font, typeface, scroll)
@@ -210,7 +210,7 @@ TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
         }
         index += 1
     }
-    return TabBarClampedIndexFor(target, tabs.length)
+    return TabBarClampedIndexFor(target, (cast(s32)tabs.count))
 }
 
 #program_export
@@ -244,7 +244,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
     result.drag_from = -1
     result.drag_to = -1
     result.selected_index = TabBarSelectedIndexFor(
-        props.selected_index, tabs.length)
+        props.selected_index, (cast(s32)tabs.count))
     result.last_clicked_index = props.last_clicked_index
     result.last_clicked_at = props.last_clicked_at
     result.last_click_valid = props.last_click_valid
@@ -272,9 +272,9 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
     if !props.disabled { requested_scroll += props.input.scroll_delta }
     scroll: TabBarScroll = TabBarScrollFor(bounds.width,
         total_width, requested_scroll)
-    if !props.disabled && props.input.focused && tabs.length > 0 {
+    if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
         key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
-            result.selected_index, tabs.length,
+            result.selected_index, (cast(s32)tabs.count),
             props.input.left, props.input.right,
             props.input.up, props.input.down,
             props.input.home, props.input.end,
@@ -296,7 +296,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
     }
     if TreeIsBuilding() {
         index: s32 = 0
-        while index < tabs.length {
+        while index < (cast(s32)tabs.count) {
             tab: Tab = tabs[index]
             tab_key: u64 = TabBarTabKey(key, tab, index)
             previous: s32 = TreeFind(tab_key, key,
@@ -322,7 +322,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     props.drag_from == index
                 decision: TabBarReorderDragDecision =
                     TabBarReorderDragDecisionFor(false, true,
-                        true, index, tabs.length, drag.active,
+                        true, index, (cast(s32)tabs.count), drag.active,
                         was_dragging, dx, 0,
                         TabBarMetric(tab_face.value.fields,
                             cast(u32)StylePaddingY,
@@ -410,7 +410,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                 bar_opacity)))
     }
     index: s32 = 0
-    while index < tabs.length {
+    while index < (cast(s32)tabs.count) {
         tab: Tab = tabs[index]
         tab_key: u64 = TabBarTabKey(key, tab, index)
         rect: Rectangle = TabBarBoundsAt(bounds, tabs,

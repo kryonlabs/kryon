@@ -33,7 +33,7 @@ SubmitComposition :: (queue: *CompositionQueueState, phase: s32,
     if cursor > 0 { event.cursor = cursor }
     if selection_length > 0 { event.selection_length = selection_length }
     length: s32 = 0
-    while length < 255 && length < text.length {
+    while length < 255 && length < (cast(s32)text.count) {
         event.text[length] = text[length]
         length += 1
     }

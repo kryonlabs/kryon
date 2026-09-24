@@ -48,7 +48,7 @@ KssFormatFail :: (state: KssFormatState, text: string) -> KssFormatState {
     state.result.ok = false
     state.result.diagnostic_length = 0
     index = 0
-    while index < 128 && index < text.length {
+    while index < 128 && index < (cast(s32)text.count) {
         state.result.diagnostic[index] = text[index]
         state.result.diagnostic_length = index + 1
         index = index + 1
@@ -170,7 +170,7 @@ KssFormatScanGaps :: (state: KssFormatState) -> KssFormatState {
         cursor = state.constructs[index].end
         index = index + 1
     }
-    state = KssFormatScanRange(state, cursor, state.source.length)
+    state = KssFormatScanRange(state, cursor, (cast(s32)state.source.count))
     return state
 }
 
@@ -178,14 +178,14 @@ KssFormatScanRange :: (state: KssFormatState, from: s32, to: s32) -> KssFormatSt
     cursor: s32 = from
     while cursor < to {
         byte: u8 = 0
-        if cursor < state.source.length {
+        if cursor < (cast(s32)state.source.count) {
             byte = state.source[cursor]
         }
-        if byte == 47 && cursor + 1 < to && cursor + 1 < state.source.length {
+        if byte == 47 && cursor + 1 < to && cursor + 1 < (cast(s32)state.source.count) {
             next: u8 = state.source[cursor + 1]
             if next == 47 {
                 end: s32 = cursor
-                while end < state.source.length && state.source[end] != 10 {
+                while end < (cast(s32)state.source.count) && state.source[end] != 10 {
                     end = end + 1
                 }
                 state = KssFormatAddConstruct(state, 8, cursor, end)
@@ -194,7 +194,7 @@ KssFormatScanRange :: (state: KssFormatState, from: s32, to: s32) -> KssFormatSt
             }
             if next == 42 {
                 end: s32 = cursor + 2
-                while end + 1 < state.source.length {
+                while end + 1 < (cast(s32)state.source.count) {
                     if state.source[end] == 42 && state.source[end + 1] == 47 {
                         end = end + 2
                         break
@@ -394,7 +394,7 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
     first: bool = true
     while pos < construct.end {
         line_end: s32 = pos
-        while line_end < construct.end && line_end < state.source.length {
+        while line_end < construct.end && line_end < (cast(s32)state.source.count) {
             if state.source[line_end] == 10 {
                 break
             }

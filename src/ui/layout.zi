@@ -19,7 +19,7 @@ ColumnProps :: struct {
 KeyHash :: (text: string) -> u64 {
     hash: u64 = cast(u64)1469598103934665603
     index: s32 = 0
-    while index < text.length {
+    while index < (cast(s32)text.count) {
         hash = (hash ^ cast(u64)text[index]) * cast(u64)1099511628211
         index += 1
     }

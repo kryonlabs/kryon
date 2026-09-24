@@ -62,15 +62,15 @@ PlotFacesFor :: (rules: StyleRules, props: PlotProps,
 #program_export
 PlotObservedRange :: (values: []float32,
     offset: s32, props: PlotProps) -> PlotRange {
-    offset = PlotOffset(values.length, offset)
+    offset = PlotOffset((cast(s32)values.count), offset)
     observed_min: float32 = 0.0
     observed_max: float32 = 0.0
-    if values.length > 0 {
+    if (cast(s32)values.count) > 0 {
         observed_min = values[offset]
         observed_max = observed_min
         index: s32 = 1
-        while index < values.length {
-            value: float32 = values[(offset + index) % values.length]
+        while index < (cast(s32)values.count) {
+            value: float32 = values[(offset + index) % (cast(s32)values.count)]
             if value < observed_min { observed_min = value }
             if value > observed_max { observed_max = value }
             index += 1
@@ -107,8 +107,8 @@ Plot :: (props: PlotProps, values: []float32) -> s32 {
             faces.plot.value.border_width,
             ColorFromPacked(Opacity(faces.plot.value.border, opacity)))
     }
-    if values.length > 0 {
-        offset: s32 = PlotOffset(values.length, props.offset)
+    if (cast(s32)values.count) > 0 {
+        offset: s32 = PlotOffset((cast(s32)values.count), props.offset)
         value_range: PlotRange = PlotObservedRange(values, offset, props)
         mark_color: Color = ColorFromPacked(Opacity(
             faces.mark.value.background,
@@ -116,26 +116,26 @@ Plot :: (props: PlotProps, values: []float32) -> s32 {
                 faces.mark.value.opacity)))
         index: s32 = 0
         if props.mode == cast(PlotMode)PlotBars {
-            while index < values.length {
+            while index < (cast(s32)values.count) {
                 mark: PlotMark = PlotHistogramBar(bounds, index,
-                    values.length, values[(offset + index) % values.length],
+                    (cast(s32)values.count), values[(offset + index) % (cast(s32)values.count)],
                     value_range, faces.mark)
                 if mark.bounds.width > 0.0 && mark.bounds.height > 0.0 {
                     PaintRoundedFill(node, mark.bounds, 0.0, 0, mark_color)
                 }
                 index += 1
             }
-        } else if values.length == 1 {
+        } else if (cast(s32)values.count) == 1 {
             mark: PlotMark = PlotSingleLine(bounds, values[offset],
                 value_range, faces.mark)
             PaintLine(node, mark.bounds, mark_color)
         } else {
             index = 1
-            while index < values.length {
-                a: float32 = values[(offset + index - 1) % values.length]
-                b: float32 = values[(offset + index) % values.length]
+            while index < (cast(s32)values.count) {
+                a: float32 = values[(offset + index - 1) % (cast(s32)values.count)]
+                b: float32 = values[(offset + index) % (cast(s32)values.count)]
                 mark: PlotMark = PlotLineSegment(bounds, index,
-                    values.length, a, b, value_range, faces.mark)
+                    (cast(s32)values.count), a, b, value_range, faces.mark)
                 PaintLine(node, mark.bounds, mark_color)
                 index += 1
             }

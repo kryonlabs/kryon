@@ -12,13 +12,13 @@ TextLogicalLine :: struct {
 TextLogicalLineFor :: (text: string, offset: s32) -> TextLogicalLine {
     line: TextLogicalLine
     if offset < 0 { offset = 0 }
-    if offset > text.length { return line }
+    if offset > (cast(s32)text.count) { return line }
     line.valid = true
     line.start = offset
-    while offset < text.length && text[offset] != cast(u8)10 { offset += 1 }
+    while offset < (cast(s32)text.count) && text[offset] != cast(u8)10 { offset += 1 }
     line.end = offset
     line.next = offset + 1
-    if offset < text.length && offset > line.start && text[offset - 1] == cast(u8)13 {
+    if offset < (cast(s32)text.count) && offset > line.start && text[offset - 1] == cast(u8)13 {
         line.end -= 1
     }
     return line

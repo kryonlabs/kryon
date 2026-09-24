@@ -124,7 +124,7 @@ NavigationBar :: (props: NavigationBarProps,
     result.node = -1
     result.clicked_index = -1
     result.clicked_route = -1
-    if items.length <= 0 || props.view_width <= 0 ||
+    if (cast(s32)items.count) <= 0 || props.view_width <= 0 ||
         props.view_height <= 0 { return result }
     key: u64 = NavigationBarKey(props)
     bar: StyleFrame = NavigationBarFaceFor(props)
@@ -134,7 +134,7 @@ NavigationBar :: (props: NavigationBarProps,
     spec: NavigationBarSpec
     spec.view_width = props.view_width
     spec.view_height = props.view_height
-    spec.count = items.length
+    spec.count = (cast(s32)items.count)
     spec.height = props.height
     spec.side_margin = -1
     spec.bottom_margin = -1
