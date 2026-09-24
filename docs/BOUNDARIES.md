@@ -22,7 +22,7 @@ modules call.
 ## Current implementation
 
 Every maintained `.zi` module in `src/ui/` appears in
-[`src/ui/modules.txt`](../src/ui/modules.txt). All 191 modules use current
+[`src/ui/modules.txt`](../src/ui/modules.txt). All 192 modules use current
 Ziran syntax. `make all` passes source checking, checked `.zir` output,
 strict C, C++, and Go generation, native C/C++ compilation, and Go package
 compilation. Backend host declarations also compile with the current Ziran
@@ -34,6 +34,9 @@ material. They are not included by `make` and do not presently provide a
 linked application UI. The current archives contain all checked UI modules
 and the portable host adapters, but application integration and supported
 renderer paths still need completion.
+The optional SDL2/Cairo example opens a Kryon bundle in a private-display
+desktop test and captures its clicked state. It is an integration proof;
+image paint, text services, and production platform hosts remain unfinished.
 
 ## Module rule
 

@@ -2,18 +2,16 @@
 #import "button_widget"
 #import "control_props"
 #import "geometry"
+#import "pointer_input"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
-host_api :: #system_library "host_api";
-
-PollPointer :: () -> PointerFrame #foreign host_api;
 
 clicks: s32;
 
 #program_export
 Frame :: () -> s32 {
-    pointer: PointerFrame = PollPointer()
+    pointer: PointerFrame = SamplePointer()
     TreePointerUpdate(pointer)
     BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
     button: ButtonProps

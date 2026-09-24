@@ -1,0 +1,11 @@
+#import "tree_input"
+host_api :: #system_library "host_api";
+
+# The host reports raw pointer state. Retained hit testing and capture stay
+# in tree_input.zi.
+PollPointer :: () -> PointerFrame #foreign host_api;
+
+#program_export
+SamplePointer :: () -> PointerFrame {
+    return PollPointer()
+}

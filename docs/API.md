@@ -159,6 +159,9 @@ composition; the host does not choose wrap points or positions.
 `RasterTextClippedBinding()` supplies a glyph raster callback that must honor
 the clip rectangle selected by `Text`, Button, and Checkbox. Some other widget
 labels still use `RasterTextBinding()` without a clip.
+`pointer_input.zi` provides `SamplePointer()` and the corresponding
+`PointerBinding()` accepts current device coordinates and button transitions.
+Kryon resolves hit testing, capture, and activation in `tree_input.zi`.
 The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 

@@ -169,8 +169,9 @@ tree or paint queue before committing and emits raster effects only after
 commit; it does not import individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
-The host supplies raw pointer samples. Button, Checkbox, Toggle, and Radio use
-this path for retained pointer activation. Slider nodes retain drag
+`pointer_input.zi` imports raw pointer samples through the reusable host
+binding. Button, Checkbox, Toggle, and Radio use this path for retained
+pointer activation. Slider nodes retain drag
 ownership across tree reordering and pointer movement outside their bounds;
 the route reports held and release coordinates with the original grab offset
 and cancels a disabled drag. PanedView uses this route for its handle and
@@ -189,15 +190,14 @@ text, selection, and caret paint. The caller stores the string and editing
 state. IME event handling, clipboard commands, and native host integration
 remain migration work.
 
-Remaining input modes, including keyboard focus and ancestor input clipping,
-still need migration. Other widget submissions and retained layout are also
-incomplete.
+Remaining input modes, including keyboard focus, still need migration.
+Ancestor viewport clipping works for retained child paint and input, but
+full widget and platform integration remains incomplete.
 
-The other `.zi` modules were moved from the previous implementation and are
-not yet in the checked build. Native widget rendering and downstream app
-integration are incomplete. The current C archive is therefore a subset of
-the intended Kryon library. A `.zib` containing Kryon code must link only the
-modules an application imports and require host capabilities explicitly.
+All maintained `src/ui/*.zi` modules are in the checked build. Native window
+hosts, platform text services, and downstream app integration are incomplete.
+A `.zib` containing Kryon code links only the modules an application imports
+and requires host capabilities explicitly.
 `frame_pacing.zi` declares a scalar timer capability when its commit function
 is linked. The adapter binds it to the selected backend's `SetTargetFPS`; a
 bundle test links Ziran's public host archive and exercises the call with a
@@ -206,8 +206,10 @@ line capability shared by Bevel and Separator; its adapter calls the platform's
 line renderer. `raster_shape.zi` and `raster_text.zi` declare rounded rectangle
 and UTF-8 text effects for Progress; their adapters pass draw calls to the
 embedding renderer. `font_metrics.zi` declares width and line height effects
-for the platform font rasterizer. Broader rendering and pointer-bearing widget
-capabilities still need portable host contracts.
+for the platform font rasterizer. `pointer_input.zi` declares the raw pointer
+sample capability; `PointerBinding()` accepts current device coordinates and
+button transitions. Other input and rendering capabilities still need host
+adapters.
 
 ## Completion requirements
 

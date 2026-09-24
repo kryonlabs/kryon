@@ -93,6 +93,7 @@ page_props.zi
 page_text.zi
 paint.zi
 paint_queue.zi
+pointer_input.zi
 paned_view.zi
 paned_view_props.zi
 plot.zi
