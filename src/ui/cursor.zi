@@ -1,5 +1,4 @@
 #import "widget_kind"
-host_api :: #system_library "host_api";
 
 # The shape is a UI decision. The platform only applies the selected shape.
 CursorShape :: enum {
@@ -27,8 +26,6 @@ CursorDecision :: struct {
     state: CursorFrame
     apply: bool
 }
-
-ApplyCursorShape :: (shape: s32) #foreign host_api;
 
 #program_export
 CursorBeginFrame :: (state: CursorFrame) -> CursorFrame {
@@ -96,10 +93,4 @@ CursorEndFrame :: (state: CursorFrame) -> CursorDecision {
     state.applied = state.requested
     decision.state = state
     return decision
-}
-
-#program_export
-CommitCursor :: (decision: CursorDecision) -> CursorFrame {
-    if decision.apply { ApplyCursorShape(decision.state.applied) }
-    return decision.state
 }

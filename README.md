@@ -17,14 +17,15 @@ make test
 ```
 
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
-writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs.
+writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs
+from Ziran source. It does not build the handwritten C test host.
 The current C archive is `build/ziran/libkryon.a`; C headers are generated
 from Ziran declarations into `build/ziran/c/`. Kryon has no handwritten
 source headers. Portable platform bindings are in
-`build/ziran/libkryon_host.a`: frame pacing maps to the selected backend's
-`SetTargetFPS`, shared raster lines use a caller-supplied line renderer, and
-`CompositionQueue` carries raw IME events to the checked text widgets.
-`make test` also runs the Ziran source,
+`build/ziran/libkryon_host.a`: shared raster lines use a caller-supplied line
+renderer, and `CompositionQueue` carries raw IME events to the checked text
+widgets.
+`make test` temporarily builds that C test host and runs the Ziran source,
 saved-IR, and portable bundle tests. No display is started.
 See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
 contract and host queue lifetime.

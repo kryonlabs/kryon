@@ -144,7 +144,8 @@ files show source, saved-IR, and bundle use of those modules.
 `src/backend/kryon_portable_host.zi`, generated as
 `build/ziran/c/kryon_portable_host.h`, and built into
 `build/ziran/libkryon_host.a`.
-`FramePacingBinding()` uses the platform's `SetTargetFPS`;
+`FramePacingDecision` reports the target FPS; the application applies it to
+its own timer when `apply_target` is true.
 `RasterLineBinding()` accepts a line renderer for Bevel and Separator lines.
 `RasterRoundedRectangleBinding()`,
 `RasterRoundedRectangleOutlineBinding()`, and `RasterTextBinding()` accept

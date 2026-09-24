@@ -25,8 +25,10 @@ Every maintained `.zi` module in `src/ui/` appears in
 [`src/ui/modules.txt`](../src/ui/modules.txt). All 192 modules use current
 Ziran syntax. `make all` passes source checking, checked `.zir` output,
 strict C, C++, and Go generation, native C/C++ compilation, and Go package
-compilation. Backend host declarations also compile with the current Ziran
-toolchain. Platform hosts and downstream applications have not yet completed
+compilation. The default build emits only the library generated from Ziran;
+the C portable host archive is still built for the existing test gate. Backend
+host declarations also compile with the current Ziran toolchain. Platform
+hosts and downstream applications have not yet completed
 their integration with the library.
 
 The unused handwritten Go runtime has been removed. The current archives

@@ -29,8 +29,9 @@ runtime branches. The current handwritten C adapters remain migration debt.
 ## Current build
 
 `make` compiles the [checked module list](../src/ui/modules.txt) to `.zir`, C,
-C++, and Go, then builds `build/ziran/libkryon.a` and the initial portable host
-adapter `build/ziran/libkryon_host.a`. `make test` runs the current
+C++, and Go, then builds `build/ziran/libkryon.a` from Ziran source.
+`make test` also builds the temporary C portable host adapter
+`build/ziran/libkryon_host.a` for existing tests. It runs the current
 source, saved-IR, and portable bundle tests. The checked modules cover
 geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, checked swipe state and pointer ownership effects, and
 scroll interaction, frame pacing, retained tree commit and instance lifetime
@@ -205,11 +206,9 @@ All maintained `src/ui/*.zi` modules are in the checked build. Native window
 hosts, platform text services, and downstream app integration are incomplete.
 A `.zib` containing Kryon code links only the modules an application imports
 and requires host capabilities explicitly.
-`frame_pacing.zi` declares a scalar timer capability when its commit function
-is linked. The adapter binds it to the selected backend's `SetTargetFPS`; a
-bundle test links Ziran's public host archive and exercises the call with a
-timer stub, without opening a display. `raster.zi` declares a typed record
-line capability shared by Bevel and Separator; its adapter calls the platform's
+`frame_pacing.zi` returns a pure `FramePacingDecision`; the application applies
+the target FPS to its timer when `apply_target` is true. `raster.zi` declares a
+typed record line capability shared by Bevel and Separator; its adapter calls the platform's
 line renderer. `raster_shape.zi` and `raster_text.zi` declare rounded rectangle
 and UTF-8 text effects for Progress; their adapters pass draw calls to the
 embedding renderer. `font_metrics.zi` declares width and line height effects

@@ -16,7 +16,7 @@ $(ZI2ZIB_BIN):
 	$(MAKE) -C $(ZIRAN_DIR) all
 
 $(HOST_LIB):
-	$(MAKE) -C .. all
+	$(MAKE) -C .. $(HOST_LIB)
 
 $(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
 	mkdir -p $(BUILD_DIR)

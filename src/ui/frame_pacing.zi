@@ -1,5 +1,3 @@
-host_api :: #system_library "host_api";
-
 FramePacing :: struct {
     enabled: bool
     active: bool
@@ -13,16 +11,7 @@ FramePacingDecision :: struct {
     apply_target: bool
 }
 
-# The platform host owns the timer; Kryon decides when its target changes.
-ApplyTargetFPS :: (fps: s32) #foreign host_api;
-
-#program_export
-CommitFramePacing :: (decision: FramePacingDecision) -> FramePacing {
-    if decision.apply_target {
-        ApplyTargetFPS(decision.state.target_fps)
-    }
-    return decision.state
-}
+# The caller applies target_fps to its timer when apply_target is true.
 
 FramePacingSanitizeFPS :: (fps: s32) -> s32 {
     if fps > 0 { return fps }

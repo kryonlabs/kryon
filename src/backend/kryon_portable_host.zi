@@ -6,16 +6,9 @@ CString :: const char* #type
 # Host adapters implement effects requested by Kryon UI modules. The C
 # callback typedefs are ABI declarations; their behavior stays in the host.
 #program_export
-FramePacingBinding :: () -> HostBinding #foreign c;
-#program_export
 KssStringSliceBinding :: () -> HostBinding #foreign c;
 #program_export
 TextSliceBinding :: () -> HostBinding #foreign c;
-
-CursorShapeFn :: void (*)(void *context, int32_t shape) #type
-CursorPlatform :: struct CursorPlatform { CursorShapeFn set_shape; void *context; } #type
-#program_export
-CursorBinding :: (platform: *CursorPlatform) -> HostBinding #foreign c;
 
 CompositionQueue :: struct CompositionQueue #type
 CompositionInputEvent :: struct CompositionInputEvent { int32_t available; int32_t phase; const char *text; size_t length; int32_t cursor; int32_t selection_length; } #type

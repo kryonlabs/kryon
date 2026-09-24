@@ -20,7 +20,7 @@ MODULES := $(basename $(notdir $(SOURCE)))
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 
 .PHONY: all check test ziran-test header-check clean
-all: $(BUILD_DIR)/libkryon.a $(BUILD_DIR)/libkryon_host.a
+all: $(BUILD_DIR)/libkryon.a
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all
@@ -42,10 +42,8 @@ $(BUILD_DIR)/c/composition_queue.h: src/backend/composition_queue.zi $(BUILD_DIR
 	$(ZI2C_BIN) --no-main --strict --root src/backend \
 		-o $(BUILD_DIR)/c src/backend/composition_queue.zi
 
-$(BUILD_DIR)/libkryon_host.a: src/backend/frame_pacing_host.c src/backend/cursor_host.c src/backend/pointer_host.c src/backend/raster_host.c src/backend/font_metrics_host.c src/backend/image_host.c src/backend/image_software.c src/backend/kss_string_host.c src/backend/composition_host.c $(BUILD_DIR)/c/kryon_portable_host.h $(BUILD_DIR)/c/composition_queue.h $(ZIRAN_INCLUDE)/ziran_host.h Makefile
+$(BUILD_DIR)/libkryon_host.a: src/backend/pointer_host.c src/backend/raster_host.c src/backend/font_metrics_host.c src/backend/image_host.c src/backend/image_software.c src/backend/kss_string_host.c src/backend/composition_host.c $(BUILD_DIR)/c/kryon_portable_host.h $(BUILD_DIR)/c/composition_queue.h $(ZIRAN_INCLUDE)/ziran_host.h Makefile
 	mkdir -p $(BUILD_DIR)
-	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/frame_pacing_host.c -o $(BUILD_DIR)/frame_pacing_host.o
-	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/cursor_host.c -o $(BUILD_DIR)/cursor_host.o
 	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/pointer_host.c -o $(BUILD_DIR)/pointer_host.o
 	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/raster_host.c -o $(BUILD_DIR)/raster_host.o
 	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/font_metrics_host.c -o $(BUILD_DIR)/font_metrics_host.o
@@ -55,7 +53,7 @@ $(BUILD_DIR)/libkryon_host.a: src/backend/frame_pacing_host.c src/backend/cursor
 	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c src/backend/composition_host.c -o $(BUILD_DIR)/composition_host.o
 	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c $(BUILD_DIR)/c/composition_queue.c -o $(BUILD_DIR)/composition_queue.o
 	rm -f $@
-	$(AR) rcs $@ $(BUILD_DIR)/frame_pacing_host.o $(BUILD_DIR)/cursor_host.o $(BUILD_DIR)/pointer_host.o $(BUILD_DIR)/raster_host.o $(BUILD_DIR)/font_metrics_host.o $(BUILD_DIR)/image_host.o $(BUILD_DIR)/image_software.o $(BUILD_DIR)/kss_string_host.o $(BUILD_DIR)/composition_host.o $(BUILD_DIR)/composition_queue.o
+	$(AR) rcs $@ $(BUILD_DIR)/pointer_host.o $(BUILD_DIR)/raster_host.o $(BUILD_DIR)/font_metrics_host.o $(BUILD_DIR)/image_host.o $(BUILD_DIR)/image_software.o $(BUILD_DIR)/kss_string_host.o $(BUILD_DIR)/composition_host.o $(BUILD_DIR)/composition_queue.o
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
 $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
