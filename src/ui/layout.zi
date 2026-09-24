@@ -14,6 +14,19 @@ ColumnProps :: struct {
     key: u64
 }
 
+# Stable widget identity from UTF-8 bytes. This matches the native Key
+# helper, including its historical offset basis and zero sentinel.
+KeyHash :: (text: string) -> u64 #export {
+    hash: u64 = (u64)1469598103934665603
+    index: i32 = 0
+    while index < text.length {
+        hash = (hash ^ (u64)text[index]) * (u64)1099511628211
+        index += 1
+    }
+    if hash == (u64)0 { return (u64)1 }
+    return hash
+}
+
 CenteredColumnLayout :: struct {
     x: i32
     width: i32

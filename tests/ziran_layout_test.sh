@@ -16,6 +16,11 @@ cat > "$work/use_layout.zi" <<'EOF'
 #import "layout"
 #import "group"
 Answer :: () -> i32 #export {
+    if KeyHash("") != (u64)1469598103934665603 { return 0 }
+    if KeyHash("results/root") != (u64)5627422651130798188 { return 0 }
+    if KeyHash("meditation/root") != (u64)4594846862641403136 { return 0 }
+    if KeyHash("settings/root") != (u64)4237429609958274031 { return 0 }
+    if KeyHash("☯") != (u64)9292100647144557370 { return 0 }
     centered: CenteredColumnLayout = CenteredColumnFor(800, 600, 50)
     compact: CenteredColumnLayout = CenteredColumnFor(200, 500, 20)
     if centered.x != 100 || centered.width != 600 { return 0 }
