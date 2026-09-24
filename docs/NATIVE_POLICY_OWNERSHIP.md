@@ -1,5 +1,9 @@
 # Native policy ownership evidence
 
+This is a historical audit of the former `.kry` runtime and native widget
+hosts. For the maintained Ziran library and its current host boundary, see
+`ARCHITECTURE.md` and `API.md`.
+
 This audit covers the remaining input, composed-scope and text-layout slices
 of the canonical migration. C and Go are active targets; C++ executes generated
 policy over the C host. JS/web stays paused and is future roadmap work.
