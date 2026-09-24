@@ -9,6 +9,9 @@ typedef struct SvgHost {
     int clip_id;
     int shapes;
     int labels;
+    int frame_index;
+    int pointer_calls;
+    VmHostField pointer_fields[5];
 } SvgHost;
 
 static void
@@ -161,6 +164,36 @@ image_draw(void *context, const char *path, size_t length,
     (void)tint;
 }
 
+static int
+poll_pointer(void *context, const char *module, const char *function,
+             const VmHostValue *args, int arg_count, VmHostValue *result)
+{
+    SvgHost *host = context;
+    static const int samples[4][3] = {
+        {0, 0, 0}, {1, 1, 0}, {0, 0, 1}, {0, 0, 0}
+    };
+    int frame = host->frame_index;
+    (void)args;
+    if(strcmp(module, "hello") != 0 ||
+       strcmp(function, "PollPointer") != 0 || arg_count != 0 ||
+       frame < 0 || frame >= 4)
+        return 0;
+    host->pointer_calls++;
+    host->pointer_fields[0] = (VmHostField){"x",
+        {.kind = VM_HOST_REAL, .type = "float", .real = 80.0}};
+    host->pointer_fields[1] = (VmHostField){"y",
+        {.kind = VM_HOST_REAL, .type = "float", .real = 70.0}};
+    host->pointer_fields[2] = (VmHostField){"down",
+        {.kind = VM_HOST_INTEGER, .type = "bool", .integer = samples[frame][0]}};
+    host->pointer_fields[3] = (VmHostField){"pressed",
+        {.kind = VM_HOST_INTEGER, .type = "bool", .integer = samples[frame][1]}};
+    host->pointer_fields[4] = (VmHostField){"released",
+        {.kind = VM_HOST_INTEGER, .type = "bool", .integer = samples[frame][2]}};
+    *result = (VmHostValue){.kind = VM_HOST_RECORD, .type = "PointerFrame",
+        .fields = host->pointer_fields, .field_count = 5};
+    return 1;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -175,7 +208,8 @@ main(int argc, char **argv)
         BundleClose(bundle);
         return 1;
     }
-    SvgHost host = {file, 0, 0, 0};
+    SvgHost host = {0};
+    host.file = file;
     FontMeasurer fonts = {width, line_height, &host};
     RoundedRectangleRenderer shape = {fill, outline, &host};
     TextRenderer text = {draw_text, &host, draw_text_clipped};
@@ -192,20 +226,30 @@ main(int argc, char **argv)
         RasterImageBinding(&images),
         ImageWidthBinding(&images),
         ImageHeightBinding(&images),
+        {"hello", "PollPointer", poll_pointer, &host},
     };
     fputs("<svg xmlns=\"http://www.w3.org/2000/svg\" "
-          "width=\"320\" height=\"160\" viewBox=\"0 0 320 160\">\n",
+          "width=\"1280\" height=\"160\" viewBox=\"0 0 1280 160\">\n",
           file);
-    fputs("<rect width=\"320\" height=\"160\" fill=\"#f8fafc\"/>\n",
-          file);
-    long long result = 0;
-    int has_result = 0;
-    int ok = BundleRun(bundle, bindings,
-                       sizeof(bindings) / sizeof(bindings[0]),
-                       &result, &has_result);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings,
+        sizeof(bindings) / sizeof(bindings[0]));
+    int ok = instance != NULL;
+    static const long long expected[4] = {2, 2, 102, 102};
+    for(int frame = 0; ok && frame < 4; frame++) {
+        long long result = 0;
+        int has_result = 0;
+        host.frame_index = frame;
+        fprintf(file, "<g transform=\"translate(%d 0)\">\n", frame * 320);
+        fputs("<rect width=\"320\" height=\"160\" fill=\"#f8fafc\"/>\n",
+              file);
+        ok = BundleInstanceRun(instance, &result, &has_result) &&
+             has_result && result == expected[frame];
+        fputs("</g>\n", file);
+    }
+    BundleInstanceClose(instance);
     fputs("</svg>\n", file);
-    ok = ok && has_result && result == 2 &&
-         host.shapes > 0 && host.labels > 0 && !ferror(file);
+    ok = ok && host.pointer_calls == 4 && host.shapes >= 4 &&
+         host.labels == 4 && !ferror(file);
     if(fclose(file) != 0) ok = 0;
     BundleClose(bundle);
     return ok ? 0 : 1;

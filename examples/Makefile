@@ -45,7 +45,7 @@ $(BUILD_DIR)/hello-saved.svg: $(BUILD_DIR)/hello-host $(BUILD_DIR)/hello-saved.z
 
 test: all $(BUILD_DIR)/hello-saved.svg
 	cmp $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello-saved.svg
-	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert any(node.text=="Hello, Ziran" for node in root.iter(ns+"text")); assert len(list(root.iter(ns+"rect")))>=2'
+	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
 
 clean:
 	$(RM) -r $(BUILD_DIR)

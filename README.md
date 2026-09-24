@@ -33,7 +33,8 @@ See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
 See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
 The [Ziran example](examples/README.md) builds a `.zib` that imports Kryon and
-renders its `Button` through a separate SVG host without a display.
+runs a retained `Button` press and release through a separate SVG host without
+a display.
 
 ## Migration status
 

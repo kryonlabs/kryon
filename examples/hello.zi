@@ -5,15 +5,23 @@
 #import "geometry"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
+
+PollPointer :: () -> PointerFrame #extern
+
+clicks :: i32 #global
 
 Frame :: () -> i32 #export {
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(pointer)
     BeginTree((u64)1, (Rectangle){0.0, 0.0, 320.0, 160.0})
     button: ButtonProps
     button.key = (u64)2
     button.bounds = (Rectangle){40.0, 48.0, 240.0, 64.0}
     button.label = "Hello, Ziran"
+    if clicks > 0 { button.label = "Clicked!" }
     button.tone = (ButtonTone)ButtonToneAccent
-    Button(button)
+    clicks += Button(button)
     if !EndTree() { return -1 }
-    return TreeCount()
+    return TreeCount() + clicks * 100
 }
