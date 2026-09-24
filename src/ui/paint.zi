@@ -25,5 +25,5 @@ Drawing :: struct {
 }
 
 # Synchronous rasterizer endpoints. The widget owns command order and content.
-Painter :: (command: Drawing) #slot
-SurfacePainter :: (command: SurfaceDrawing) #slot
+Painter :: (Drawing) -> ();
+SurfacePainter :: (SurfaceDrawing) -> ();
