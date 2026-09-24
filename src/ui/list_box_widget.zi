@@ -98,32 +98,6 @@ ListBoxFace :: (kind: i32, id: i32, class_name: i32,
     return frame
 }
 
-ListBoxScrollFace :: (kind: i32, class_name: i32,
-    disabled: bool) -> StyleFrame #export {
-    face: StyleData
-    face.fields = (u32)StyleBackground | (u32)StyleRadius |
-        (u32)StyleOpacity | (u32)StyleIconSize |
-        (u32)StylePaddingX
-    face.background = (u32)0xe5e7ebff
-    face.radius = 4.0
-    face.opacity = 1.0
-    face.icon_size = 8.0
-    face.padding_x = 2.0
-    if kind == StyleKindScrollThumb() {
-        face.background = (u32)0x9ca3afff
-        face.icon_size = 16.0
-    }
-    state: i32 = ButtonStateNormal
-    if disabled { state = ButtonStateDisabled }
-    facts: StyleFacts = StyleControlRoleFacts(kind, 0,
-        class_name, StyleAny(), (i32)ButtonToneNeutral,
-        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
-    frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), face,
-        facts, state)
-    return frame
-}
-
 ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView #export {
     view: ListBoxView
     view.key = props.key
@@ -179,10 +153,10 @@ ListBoxViewStart :: (view: ListBoxView, item_count: i32,
         view.class_name, state, false)
     result.item = ListBoxFace(item_kind, 0,
         view.class_name, state, true)
-    result.track = ListBoxScrollFace(StyleKindScroll(),
-        view.class_name, view.disabled)
-    result.thumb = ListBoxScrollFace(StyleKindScrollThumb(),
-        view.class_name, view.disabled)
+    result.track = ScrollFace(StyleKindScroll(),
+        view.class_name, view.disabled, (i32)ButtonStateNormal, 8.0)
+    result.thumb = ScrollFace(StyleKindScrollThumb(),
+        view.class_name, view.disabled, (i32)ButtonStateNormal, 8.0)
     result.scroll_metrics = ScrollMetricsFor(scale,
         result.track, result.thumb)
     row_height: i32 = view.row_height

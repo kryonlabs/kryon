@@ -3,6 +3,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "style"
+#import "style_sheet"
 
 ScrollMetrics :: struct {
     scrollbar_width: i32
@@ -93,18 +94,28 @@ ScrollMetricsFor :: (scale: float, track: StyleFrame, thumb: StyleFrame) -> Scro
     return metrics
 }
 
-ScrollDefaultMetrics :: (scale: float) -> ScrollMetrics #export {
-    if scale <= 0.0 { scale = 1.0 }
-    metrics: ScrollMetrics
-    metrics.scrollbar_width = (i32)(10.0 * scale)
-    metrics.reserved_width = (i32)(16.0 * scale)
-    metrics.safe_gap = (i32)(20.0 * scale)
-    metrics.default_wheel_step = (i32)(42.0 * scale)
-    metrics.drag_threshold = (i32)(5.0 * scale)
-    metrics.visual_bleed = (i32)(8.0 * scale)
-    metrics.thumb_min_height = (i32)(16.0 * scale)
-    metrics.thumb_inset = (i32)(2.0 * scale)
-    return metrics
+ScrollFace :: (kind: i32, class_name: i32, disabled: bool,
+    state: i32, track_width: float) -> StyleFrame #export {
+    if track_width <= 0.0 { track_width = 10.0 }
+    face: StyleData
+    face.fields = (u32)StyleBackground | (u32)StyleRadius |
+        (u32)StyleOpacity | (u32)StyleIconSize | (u32)StylePaddingX
+    face.background = (u32)0xe5e7ebff
+    face.radius = 4.0
+    face.opacity = 1.0
+    face.icon_size = track_width
+    face.padding_x = 2.0
+    if kind == StyleKindScrollThumb() {
+        face.background = (u32)0x9ca3afff
+        face.icon_size = 16.0
+    }
+    if disabled { state = (i32)ButtonStateDisabled }
+    facts: StyleFacts = StyleControlRoleFacts(kind, 0,
+        class_name, StyleAny(), (i32)ButtonToneNeutral,
+        (i32)ButtonEmphasisFilled, (i32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveStyleRules(ActiveStyleRules(), face, facts, state)
+    return frame
 }
 
 ScrollClamp :: (value: i32, maximum: i32) -> i32 #export {

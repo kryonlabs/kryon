@@ -74,8 +74,11 @@ still need migration.
 
 `Scroll(ScrollProps)` opens a clipped retained child scope and returns the
 viewport, shifted content bounds, and a clamped scroll offset. The caller
-stores that value and supplies wheel or keyboard deltas. Scrollbar paint and
-drag input, platform event routing, and native host integration remain open.
+stores that value and supplies keyboard deltas or explicit pointer and wheel
+observations. Kryon resolves KSS scrollbar faces, queues track and thumb
+paint, and returns drag ownership and consumption decisions. The platform
+still supplies observations and retains drag ownership between frames; native
+host integration remains open.
 
 The checked `Checkbox(CheckboxProps)` accepts and returns portable values,
 uses the retained pointer router, resolves KSS box and label roles, and queues

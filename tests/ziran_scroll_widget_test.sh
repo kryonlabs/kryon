@@ -9,6 +9,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #module "app"
 #import "geometry"
+#import "paint_queue"
 #import "scroll"
 #import "scroll_props"
 #import "scroll_widget"
@@ -58,10 +59,14 @@ Answer :: () -> i32 #export {
     props.input.enabled = true
     props.input.pointer_allowed = true
     props.input.wheel = -1.0
+    PaintClear()
     result = Scroll(props)
     if result.scroll_offset != 62 || !result.frame.consume_wheel ||
         !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
-        result.content.y != -52.0 || !End() || !TreeFinish() { return -6 }
+        result.content.y != -52.0 || PendingPaintCount() != 2 ||
+        PendingPaintAt(0).bounds.x != 90.0 ||
+        PendingPaintAt(1).bounds.width <= 0.0 ||
+        !End() || !TreeFinish() { return -6 }
 
     TreeStart((u64)1, root)
     props.scroll_offset = result.scroll_offset
@@ -88,9 +93,46 @@ Answer :: () -> i32 #export {
     result = Scroll(props)
     if !result.frame.clear_drag || !result.frame.consume_release ||
         !End() || !TreeFinish() { return -9 }
+    PaintClear()
     return 42
 }
 ZI
+
+cat > "$work/native_main.h" <<'C'
+#ifdef __cplusplus
+#include "app.hpp"
+#define HOST extern "C"
+#else
+#include "app.h"
+#define HOST
+#endif
+HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
+    int32_t segments, Color color) {
+    (void)bounds; (void)radius; (void)segments; (void)color;
+}
+HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
+    int32_t segments, float width, Color color) {
+    (void)bounds; (void)radius; (void)segments; (void)width; (void)color;
+}
+HOST void RasterLine(Rectangle bounds, Color color) {
+    (void)bounds; (void)color;
+}
+HOST void RasterText(String value, int32_t x, int32_t y,
+    int32_t font, Color color) {
+    (void)value; (void)x; (void)y; (void)font; (void)color;
+}
+HOST void RasterTextClipped(String value, int32_t x, int32_t y,
+    int32_t font, Color color, Rectangle clip) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+}
+HOST void RasterImage(String path, uint32_t id, Rectangle source,
+    Rectangle destination, Rectangle clip, Vector2 origin,
+    float rotation, float radius, Color tint) {
+    (void)path; (void)id; (void)source; (void)destination;
+    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
+}
+int main(void) { return Answer() == 42 ? 0 : 1; }
+C
 
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" \
     -o "$work/ir" "$work/app.zi"
@@ -106,25 +148,18 @@ for input in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$module_path" \
         --entry app:Answer -o "$work/$input.zib" "$source"
-    test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --strict \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then
-            cat > "$output/main.c" <<'C'
-#include "app.h"
-int main(void) { return Answer() == 42 ? 0 : 1; }
-C
+            cp "$work/native_main.h" "$output/main.c"
             "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" \
                 -I"$output" "$output"/*.c -o "$output/app"
             "$output/app"
         elif test "$target" = cpp; then
-            cat > "$output/main.cpp" <<'CPP'
-#include "app.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
+            cp "$work/native_main.h" "$output/main.cpp"
             "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
                 -I"$output" "$output"/*.cpp -o "$output/app"
             "$output/app"

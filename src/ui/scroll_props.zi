@@ -20,6 +20,8 @@ ScrollInput :: struct {
 
 ScrollProps :: struct {
     key: u64
+    class_name: i32
+    scale: float
     bounds: Rectangle
     content_height: i32
     scroll_offset: i32
@@ -37,9 +39,3 @@ ScrollResult :: struct {
     max_scroll: i32
     frame: ScrollScopeFrame
 }
-
-# Implemented by the C-only scroll host; declared here for the public ABI.
-GetScrollbarReservedWidth :: (max_scroll: i32) -> i32 #extern #export
-GetScrollbarContentWidth :: (content_width: i32, max_scroll: i32) -> i32 #extern #export
-GetScrollbarSafeContentWidth :: (content_x: i32, content_width: i32,
-                                 scrollbar_x: i32, max_scroll: i32) -> i32 #extern #export
