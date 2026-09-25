@@ -5,6 +5,8 @@
 #import "tree"
 #import "tree_draw"
 
+using FrameStatus;
+
 // The application supplies Frame(session, viewport). The Kryon host owns
 // entry, screen storage, rendering effects, and presentation.
 #program_export
