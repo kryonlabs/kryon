@@ -33,6 +33,7 @@ PaintCommand :: struct {
     font: s32
     asset_path: string
     texture_id: u32
+    texture: Texture2D
     source: Rectangle
     clip: Rectangle
     origin: Vector2
@@ -57,6 +58,12 @@ PaintCommands :: struct {
 }
 
 pending_paint: [9]PaintCommands;
+emitting_texture: Texture2D;
+
+// The raylib host needs the complete handle for UV scaling when a widget
+// paints a cropped runtime texture. Paint emission is serial per frame.
+#program_export
+CurrentPaintTexture :: () -> Texture2D { return emitting_texture }
 
 // Raw rasterization; the queued source, clip, radius, and tint are chosen in
 // checked widget code before this device effect is called.
@@ -99,10 +106,12 @@ EmitLabel :: (command: PaintCommand) {
 
 EmitImage :: (command: PaintCommand) {
     if command.clip.width > 0.0 && command.clip.height > 0.0 {
+        emitting_texture = command.texture
         RasterImage(command.asset_path, command.texture_id,
             command.source, command.bounds, command.clip,
             command.origin, command.rotation, command.radius,
             command.color)
+        emitting_texture.id = cast(u32)0
     }
 }
 
@@ -256,12 +265,13 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
 PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
-    tint: Color) {
+    tint: Color, texture: Texture2D = Texture2D.{0, 0, 0, 0, 0}) {
     command: QueuedPaint
     command.data.kind = PaintKindImage
     command.data.node = node
     command.data.asset_path = asset_path
     command.data.texture_id = texture_id
+    command.data.texture = texture
     command.data.source = source
     command.data.bounds = destination
     command.data.clip = clip

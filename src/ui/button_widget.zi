@@ -141,7 +141,7 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
         if plan.draw && tint.a > cast(u8)0 {
             PaintImage(session, node, image.asset_path, image.texture.id,
                 plan.source, plan.destination, bounds, image.origin,
-                image.rotation, radius, plan.tint)
+                image.rotation, radius, plan.tint, image.texture)
         }
     }
     if props.arrow && !has_image {

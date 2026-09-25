@@ -117,7 +117,7 @@ Image :: (session: Session, image: ImageProps) {
     if plan.draw && tint.a > cast(u8)0 {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
-            image.origin, image.rotation, radius, plan.tint)
+            image.origin, image.rotation, radius, plan.tint, image.texture)
     } else if !plan.draw {
         PaintImagePlaceholder(session, node, image, faces.label)
     }

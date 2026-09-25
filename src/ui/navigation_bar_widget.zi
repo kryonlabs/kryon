@@ -120,7 +120,7 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
     if plan.draw {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, clip, image.origin,
-            image.rotation, 0.0, plan.tint)
+            image.rotation, 0.0, plan.tint, image.texture)
     }
 }
 
