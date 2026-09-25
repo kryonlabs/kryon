@@ -13,6 +13,8 @@ __pycache__/
 build/
 dist/
 assets/fonts/*
+!assets/fonts/LiberationSans-Regular.ttf
+!assets/fonts/LICENSE-Liberation
 
 tools/otfchop/otfchop
 

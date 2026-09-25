@@ -19,7 +19,7 @@ Put a `kryon.toml` at the root of a Ziran app:
 backend = "terminal"
 
 [profiles.desktop]
-backend = "desktop"
+backend = "raylib"
 ```
 
 The directory name becomes the app name. The entry defaults to `src/app.zi`,
@@ -41,12 +41,20 @@ From the app directory, use `kryon run`, `kryon build`, or `kryon check`.
 `kryon run --profile tui` selects a named profile without prompting. A `Makefile` may simply forward `run`,
 `build`, and `check` to these commands.
 
-The current project route supports `terminal` and `desktop` with C99 code
+The project route supports `terminal`, `desktop`, and `raylib` with C99 code
 generation. On a terminal, the terminal host keeps its 80 by 24 cell display
 active until Ctrl-C and sends key presses to the app through `KeyboardTake`.
 When standard input or output is redirected, it writes one frame and exits.
-The desktop host opens a 960 by 600 SDL2/Cairo window.
-Desktop builds require the SDL2 and Cairo development packages.
+The `desktop` host opens a 960 by 600 SDL2/Cairo window; it requires the SDL2
+and Cairo development packages. The `raylib` host opens a resizable 960 by 600
+raylib window. It implements the frame loop, keyboard and pointer input,
+text, shapes, and asset-backed images in Ziran. The host uses raylib's SDL2
+platform and OpenGL ES 2 renderer. Initialize Kryon's dependency with
+`git -C ../kryon submodule update --init vendor/raylib` and install the SDL2,
+libdrm, GBM, EGL, and GLESv2 development packages. The first raylib build
+compiles a static library in Kryon's `build/` directory; later builds reuse it.
+`make -C ../kryon raylib-project-test` checks a captured frame on a private
+Xvfb display.
 Project output is `build/<app-name>-<profile>`. The build saves checked Ziran
 modules in `build/generated/<profile>/ir/*.zir` before producing C99 source
 by module in `build/generated/<profile>/c/`. The linker removes unreachable

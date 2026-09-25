@@ -1,5 +1,12 @@
 # Kryon Backends
 
+The C backend contract below is historical and does not describe the current
+Ziran project launcher. For current `kryon.toml` profiles, see
+[Ziran projects](PROJECTS.md): `terminal`, `desktop` (SDL2/Cairo), and `raylib`
+(raylib SDL2/OpenGL ES 2). The raylib window host and its rendering behavior
+are implemented in `src/backend/raylib_run.zi` and
+`src/backend/raylib_runtime.zi`.
+
 How the graphics/input backend is selected, what a backend must implement, and
 how to add a new one. For the machine-readable backend inventory see
 `docs/BACKEND_CAPABILITIES.json`; for the operational guide see

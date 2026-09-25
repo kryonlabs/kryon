@@ -125,6 +125,10 @@ check: all ziran-test header-check project-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh
 
+.PHONY: raylib-project-test
+raylib-project-test: build/bin/kryon
+	@python3 tests/raylib_project_test.py
+
 test: check typeface-source-test
 
 clean:
