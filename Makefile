@@ -76,6 +76,7 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 	$(ZI2ZIR_BIN) --root src/ui -o $(BUILD_DIR)/ir $(SOURCE)
 	$(ZI2C_BIN) --no-main --root src/ui -o $(BUILD_DIR)/c $(SOURCE)
 	$(ZI2CPP_BIN) --no-main --root src/ui -o $(BUILD_DIR)/cpp $(SOURCE)
+	rm -f $(BUILD_DIR)/go/*.go
 	$(ZI2GO_BIN) --no-main --root src/ui -o $(BUILD_DIR)/go $(SOURCE)
 	@for module in $(MODULES); do \
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
