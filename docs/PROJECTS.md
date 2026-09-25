@@ -17,12 +17,17 @@ Put a `kryon.toml` at the root of a Ziran app:
 ```toml
 [profiles.tui]
 backend = "terminal"
+
+[profiles.desktop]
+backend = "desktop"
 ```
 
 The directory name becomes the app name. The entry defaults to `src/app.zi`,
 the paths default to `../kryon` and `../ziran`, and codegen defaults to `c99`.
 A sole profile becomes the default; with several profiles, set
-`default_profile` under `[project]`. You may override `name`, `entry`, and
+`default_profile` under `[project]` for `build` and `check`. When `run` sees
+several profiles and no `--profile`, it asks you to choose a number.
+You may override `name`, `entry`, and
 `default_profile` under `[project]`, `kryon` and `ziran` under `[paths]`, and
 `codegen` under each profile. Paths are relative to the app directory.
 
@@ -33,17 +38,18 @@ independent of its backend. A `TextProps` value needs only its `text` field for
 content at the origin; key, measured size, and wrap use widget defaults.
 
 From the app directory, use `kryon run`, `kryon build`, or `kryon check`.
-`kryon run --profile tui` selects a named profile; otherwise the command uses
-`default_profile` or the sole profile. A `Makefile` may simply forward `run`,
+`kryon run --profile tui` selects a named profile without prompting. A `Makefile` may simply forward `run`,
 `build`, and `check` to these commands.
 
-The current project route supports `terminal` with C99 code generation. More
-backend routes can be added to the shared `mk/ziran-project.mk` without
-changing the app's `Frame`. The terminal host currently renders a single
-80 by 24 cell frame and writes it to standard output.
-Project output is `build/<app-name>`. The build saves checked Ziran modules in
-`build/generated/ir/*.zir` before producing C99 source by module from those
-saved modules in `build/generated/c/`. The linker removes unreachable
+The current project route supports `terminal` and `desktop` with C99 code
+generation. On a terminal, the terminal host keeps its 80 by 24 cell display
+active until Ctrl-C and sends key presses to the app through `KeyboardTake`.
+When standard input or output is redirected, it writes one frame and exits.
+The desktop host opens a 960 by 600 SDL2/Cairo window.
+Desktop builds require the SDL2 and Cairo development packages.
+Project output is `build/<app-name>-<profile>`. The build saves checked Ziran
+modules in `build/generated/<profile>/ir/*.zir` before producing C99 source
+by module in `build/generated/<profile>/c/`. The linker removes unreachable
 declarations from the selected host entry; reachable runtime branches remain.
 The `.zir` files are
 binary.

@@ -1,0 +1,67 @@
+#import "app"
+#import "desktop_runtime"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+using FrameStatus;
+
+libc :: #system_library "libc";
+DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+
+DesktopError :: (message: string) -> s32 {
+    output: [256]u8
+    length: s32 = cast(s32)message.count
+    if length > 254 { length = 254 }
+    index: s32 = 0
+    while index < length {
+        output[index] = message[index]
+        index += 1
+    }
+    output[index] = cast(u8)10
+    DesktopWrite(2, *output[0], cast(u64)(length + 1))
+    return 1
+}
+
+DrawFrame :: (session: Session, viewport: Rectangle) -> bool {
+    BeginDesktopFrame()
+    TreePointerUpdate(session, PollPointer())
+    if BeginFrame(session, cast(u64)1, viewport) !=
+        cast(FrameStatus)FrameOk { return false }
+    if Frame(session, viewport) != 0 {
+        TreeCancel(session)
+        return false
+    }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return false }
+    return EndDesktopFrame()
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktop() {
+        CloseDesktop()
+        return DesktopError("kryon: could not open the desktop window")
+    }
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        CloseDesktop()
+        return DesktopError("kryon: could not open a UI session")
+    }
+    viewport: Rectangle = Rectangle.{0.0, 0.0, 960.0, 600.0}
+    ok: bool = true
+    if CaptureRequested() {
+        ok = DrawFrame(session, viewport)
+        if ok { ok = CaptureConfigured() }
+    } else {
+        while ok && PollDesktop() {
+            ok = DrawFrame(session, viewport)
+            if ok { PauseDesktop() }
+        }
+    }
+    CloseSession(session)
+    CloseDesktop()
+    if ok { return 0 }
+    return DesktopError("kryon: desktop frame rendering failed")
+}

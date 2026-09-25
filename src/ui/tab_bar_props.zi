@@ -1,10 +1,8 @@
 #import "geometry"
-#import "image_props"
 
 Tab :: struct {
     key: u64
     label: string
-    image: ImageProps
     disabled: bool
     closeable: bool
 }
@@ -25,9 +23,20 @@ TabBarInput :: struct {
     now: float32
 }
 
+TabBarPlacement :: enum {
+    TabBarTop :: 0
+    TabBarBottom :: 1
+    TabBarLeft :: 2
+    TabBarRight :: 3
+}
+
+// Top and Bottom lay tabs out horizontally; Left and Right lay them out as
+// an upright vertical list. Omitted dimensions use the parent size across
+// the bar and the style size along it. Placement anchors the bar to that edge.
 TabBarProps :: struct {
     key: u64
     bounds: Rectangle
+    placement: TabBarPlacement
     class_name: s32
     selected_index: s32
     min_tab_width: s32

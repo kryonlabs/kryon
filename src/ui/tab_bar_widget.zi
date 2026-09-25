@@ -3,9 +3,6 @@
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "image"
-#import "image_props"
-#import "image_widget"
 #import "paint_queue"
 #import "semantic"
 #import "style"
@@ -24,6 +21,7 @@ using ButtonEmphasis;
 using ControlSize;
 using ButtonState;
 using StyleField;
+using TabBarPlacement;
 
 #program_export
 TabBarDefaultFace :: (kind: s32, selected: bool,
@@ -38,7 +36,7 @@ TabBarDefaultFace :: (kind: s32, selected: bool,
     face.background = cast(u32)0xe2e8f0ff
     face.foreground = cast(u32)0x334155ff
     face.border = cast(u32)0x94a3b8ff
-    face.border_width = 1.0
+    face.border_width = 0.0
     face.radius = 6.0
     face.opacity = 1.0
     face.padding_x = 120.0
@@ -51,10 +49,8 @@ TabBarDefaultFace :: (kind: s32, selected: bool,
         face.background = cast(u32)0x00000000
         face.border_width = 0.0
         face.padding_x = 12.0
-        face.icon_size = 18.0
         if selected {
             face.background = cast(u32)0xffffffff
-            face.border_width = 1.0
         }
     } else if kind == StyleKindTabClose() {
         face.background = cast(u32)0x00000000
@@ -142,11 +138,9 @@ TabBarFontFor :: (props: TabBarProps) -> s32 {
 TabBarTabWidthFor :: (tab: Tab, metrics: TabBarMetrics,
     font: s32, typeface: string) -> s32 {
     has_label: bool = tab.label != ""
-    has_image: bool = tab.image.asset_path != "" ||
-        tab.image.texture.id != cast(u32)0
     width: s32 = 0
     if has_label { width = GlyphWidth(tab.label, font, typeface) }
-    return TabBarTabWidth(width, has_label, has_image,
+    return TabBarTabWidth(width, has_label,
         tab.closeable, metrics)
 }
 
@@ -167,11 +161,28 @@ TabBarTotalWidthFor :: (tabs: []Tab, metrics: TabBarMetrics,
 TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
     index: s32, metrics: TabBarMetrics,
     font: s32, typeface: string,
-    scroll: TabBarScroll) -> Rectangle {
+    scroll: TabBarScroll, vertical: bool,
+    tab_extent: s32) -> Rectangle {
     rect: Rectangle
     if index < 0 || index >= (cast(s32)tabs.count) { return rect }
     if scroll.equal_tabs {
+        if vertical {
+            height: float32 = bounds.height / cast(float32)tabs.count
+            rect = Rectangle.{bounds.x,
+                bounds.y + height * cast(float32)index,
+                bounds.width, height}
+            if index == (cast(s32)tabs.count) - 1 {
+                rect.height = bounds.y + bounds.height - rect.y
+            }
+            return rect
+        }
         return TabBarEqualTabBounds(bounds, (cast(s32)tabs.count), index)
+    }
+    if vertical {
+        return Rectangle.{bounds.x,
+            bounds.y - cast(float32)scroll.scroll +
+                cast(float32)index * cast(float32)(tab_extent + metrics.gap),
+            bounds.width, cast(float32)tab_extent}
     }
     x: float32 = bounds.x - cast(float32)scroll.scroll
     cursor: s32 = 0
@@ -203,39 +214,27 @@ TabBarNextEnabled :: (tabs: []Tab, from: s32,
 
 #program_export
 TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
-    active_index: s32, pointer_x: float32,
+    active_index: s32, pointer_axis: float32,
     metrics: TabBarMetrics, font: s32,
-    typeface: string, scroll: TabBarScroll) -> s32 {
+    typeface: string, scroll: TabBarScroll,
+    vertical: bool, tab_extent: s32) -> s32 {
     if active_index < 0 || active_index >= (cast(s32)tabs.count) { return -1 }
     target: s32 = 0
     index: s32 = 0
     while index < (cast(s32)tabs.count) {
         if index != active_index {
             rect: Rectangle = TabBarBoundsAt(bounds, tabs,
-                index, metrics, font, typeface, scroll)
-            if pointer_x > rect.x + rect.width * 0.5 {
+                index, metrics, font, typeface, scroll,
+                vertical, tab_extent)
+            center: float32 = rect.x + rect.width * 0.5
+            if vertical { center = rect.y + rect.height * 0.5 }
+            if pointer_axis > center {
                 target += 1
             }
         }
         index += 1
     }
     return TabBarClampedIndexFor(target, (cast(s32)tabs.count))
-}
-
-#program_export
-TabBarPaintImage :: (session: Session, node: s32, image: ImageProps,
-    bounds: Rectangle, clip: Rectangle,
-    opacity: float32) {
-    if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
-    image.bounds = bounds
-    texture: Texture2D = ImageTextureFor(image)
-    plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
-        ColorFromPacked(Opacity(cast(u32)0xffffffff, opacity)))
-    if plan.draw {
-        PaintImage(session, node, image.asset_path, image.texture.id,
-            plan.source, plan.destination, clip,
-            image.origin, image.rotation, 0.0, plan.tint)
-    }
 }
 
 // Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
@@ -258,14 +257,37 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     result.last_clicked_at = props.last_clicked_at
     result.last_click_valid = props.last_click_valid
     bounds: Rectangle = props.bounds
+    vertical: bool = props.placement == cast(TabBarPlacement)TabBarLeft ||
+        props.placement == cast(TabBarPlacement)TabBarRight
+    parent: Rectangle = TreeCurrentParentBounds(session)
+    bar_face: StyleFrame = TabBarFaceFor(props,
+        StyleKindTabBar(), false, props.disabled, false)
+    tab_extent: s32 = TabBarPolicyHeight(props.scale, bar_face)
+    auto_bounds: bool = bounds.width <= 0.0 || bounds.height <= 0.0
     if bounds.width <= 0.0 {
-        bounds.width = TreeCurrentParentBounds(session).width
+        if vertical {
+            bounds.width = cast(float32)TabBarDefaultMetrics(
+                props.min_tab_width, props.max_tab_width,
+                props.scale, bar_face, bar_face, bar_face).min_width
+        } else {
+            bounds.width = parent.width
+        }
     }
     if bounds.height <= 0.0 {
-        bar_face: StyleFrame = TabBarFaceFor(props,
-            StyleKindTabBar(), false, props.disabled, false)
-        bounds.height = cast(float32)TabBarPolicyHeight(props.scale,
-            bar_face)
+        if vertical {
+            bounds.height = parent.height
+        } else {
+            bounds.height = cast(float32)tab_extent
+        }
+    }
+    if auto_bounds {
+        bounds.x = parent.x
+        bounds.y = parent.y
+        if props.placement == cast(TabBarPlacement)TabBarBottom {
+            bounds.y = parent.y + parent.height - bounds.height
+        } else if props.placement == cast(TabBarPlacement)TabBarRight {
+            bounds.x = parent.x + parent.width - bounds.width
+        }
     }
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
     key: u64 = TabBarKey(session, props)
@@ -277,15 +299,23 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
         StyleKindTab(), false, props.disabled, false)
     total_width: s32 = TabBarTotalWidthFor(tabs, metrics,
         font, tab_face.value.typeface)
+    if vertical {
+        total_width = TabBarTotalWidth(tab_extent *
+            (cast(s32)tabs.count), (cast(s32)tabs.count), metrics.gap)
+    }
     requested_scroll: s32 = props.scroll_offset
     if !props.disabled { requested_scroll += props.input.scroll_delta }
-    scroll: TabBarScroll = TabBarScrollFor(bounds.width,
+    extent: float32 = bounds.width
+    if vertical { extent = bounds.height }
+    scroll: TabBarScroll = TabBarScrollFor(extent,
         total_width, requested_scroll)
     if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
         key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
             result.selected_index, (cast(s32)tabs.count),
-            props.input.left, props.input.right,
-            props.input.up, props.input.down,
+            props.input.left && !vertical,
+            props.input.right && !vertical,
+            props.input.up && vertical,
+            props.input.down && vertical,
             props.input.home, props.input.end,
             props.input.close, false)
         if key_input.direction != 0 {
@@ -325,9 +355,15 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
             if !props.disabled && !tab.disabled &&
                 props.reorder_enabled &&
                 (drag.active || drag.ended) {
-                origin_x: float32 = TreeNodeAt(session, previous).bounds.x +
+                origin: float32 = TreeNodeAt(session, previous).bounds.x +
                     drag.grab_x
-                dx: s32 = cast(s32)(drag.x - origin_x)
+                position: float32 = drag.x
+                if vertical {
+                    origin = TreeNodeAt(session, previous).bounds.y +
+                        drag.grab_y
+                    position = drag.y
+                }
+                dx: s32 = cast(s32)(position - origin)
                 was_dragging: bool = props.dragging &&
                     props.drag_from == index
                 decision: TabBarReorderDragDecision =
@@ -346,9 +382,10 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
                 }
                 if reorder {
                     target: s32 = TabBarReorderTargetFor(
-                        bounds, tabs, index, drag.x,
+                        bounds, tabs, index, position,
                         metrics, font,
-                        tab_face.value.typeface, scroll)
+                        tab_face.value.typeface, scroll,
+                        vertical, tab_extent)
                     if drag.active {
                         result.dragging = true
                         result.drag_from = index
@@ -383,10 +420,19 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
             result.selected_index != props.selected_index) {
         selected_bounds: Rectangle = TabBarBoundsAt(bounds, tabs,
             result.selected_index, metrics, font,
-            tab_face.value.typeface, scroll)
+            tab_face.value.typeface, scroll, vertical, tab_extent)
+        axis_bounds: Rectangle = bounds
+        axis_position: float32 = selected_bounds.x
+        axis_extent: float32 = selected_bounds.width
+        if vertical {
+            axis_bounds.x = bounds.y
+            axis_bounds.width = bounds.height
+            axis_position = selected_bounds.y
+            axis_extent = selected_bounds.height
+        }
         result.scroll_offset = TabBarRevealScroll(
-            selected_bounds.x, selected_bounds.width,
-            bounds, scroll.scroll, scroll.max_scroll)
+            axis_position, axis_extent,
+            axis_bounds, scroll.scroll, scroll.max_scroll)
     } else {
         result.scroll_offset = scroll.scroll
     }
@@ -394,10 +440,8 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     if result.selected_index >= 0 {
         result.selected_tab_bounds = TabBarBoundsAt(bounds, tabs,
             result.selected_index, metrics, font,
-            tab_face.value.typeface, scroll)
+            tab_face.value.typeface, scroll, vertical, tab_extent)
     }
-    bar_face: StyleFrame = TabBarFaceFor(props,
-        StyleKindTabBar(), false, props.disabled, false)
     if TreeIsBuilding(session) {
         result.node = TreeSubmitCurrent(session, key,
             WidgetKindTabBar, bounds)
@@ -425,7 +469,7 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
         tab_key: u64 = TabBarTabKey(key, tab, index)
         rect: Rectangle = TabBarBoundsAt(bounds, tabs,
             index, metrics, font, tab_face.value.typeface,
-            scroll)
+            scroll, vertical, tab_extent)
         visible: Rectangle = RectangleIntersection(rect, bounds)
         if visible.width > 0.0 && visible.height > 0.0 {
             previous: s32 = -1
@@ -462,8 +506,6 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     ColorFromPacked(Opacity(face.value.border,
                         opacity)))
             }
-            has_image: bool = tab.image.asset_path != "" ||
-                tab.image.texture.id != cast(u32)0
             label_width: s32 = 0
             if tab.label != "" {
                 label_width = GlyphWidth(tab.label, font,
@@ -481,12 +523,7 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
                 face, close_face, scale)
             content: TabBarContentLayout =
                 TabBarContentLayoutFor(rect, label_width,
-                    tab.label != "", has_image,
-                    tab.closeable, paint)
-            if has_image {
-                TabBarPaintImage(session, node, tab.image,
-                    content.icon_bounds, visible, opacity)
-            }
+                    tab.label != "", tab.closeable, paint)
             if tab.label != "" {
                 text_clip: Rectangle = RectangleIntersection(
                     content.text_bounds, visible)
@@ -564,12 +601,21 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     if result.dragging && result.drag_to >= 0 {
         marker_tab: Rectangle = TabBarBoundsAt(bounds, tabs,
             result.drag_to, metrics, font,
-            tab_face.value.typeface, scroll)
+            tab_face.value.typeface, scroll, vertical, tab_extent)
         marker: Rectangle = TabBarDragMarkerBounds(
             cast(s32)marker_tab.x, cast(s32)marker_tab.width,
             cast(s32)bounds.y, cast(s32)bounds.height,
             result.drag_to > result.drag_from,
             props.scale)
+        if vertical {
+            marker.y = marker_tab.y
+            if result.drag_to > result.drag_from {
+                marker.y += marker_tab.height
+            }
+            marker.x = bounds.x + 4.0
+            marker.width = bounds.width - 8.0
+            marker.height = 2.0
+        }
         marker = RectangleIntersection(marker, bounds)
         if marker.width > 0.0 && marker.height > 0.0 {
             PaintRoundedFill(session, result.node, marker, 0.0, 1,

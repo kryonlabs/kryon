@@ -138,13 +138,13 @@ OpenDesktop :: () -> bool {
     title: [32]u8
     if !CopyCString("Kryon Ziran", title[:]) { return false }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
-        cast(s32)0x2fff0000, 320, 160, cast(u32)0)
+        cast(s32)0x2fff0000, 960, 600, cast(u32)0)
     if window == null { return false }
     renderer = CreateRenderer(window, -1, cast(u32)1)
     if renderer == null { return false }
-    texture = CreateTexture(renderer, cast(u32)0x16362004, 1, 320, 160)
+    texture = CreateTexture(renderer, cast(u32)0x16362004, 1, 960, 600)
     if texture == null { return false }
-    surface = ImageSurfaceCreate(0, 320, 160)
+    surface = ImageSurfaceCreate(0, 960, 600)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
     return paint != null && Status(paint) == 0

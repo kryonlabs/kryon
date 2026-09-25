@@ -9,7 +9,7 @@ import sys
 
 
 project = pathlib.Path.cwd().resolve()
-generated = (project / "build/generated/c").resolve()
+generated = (project / sys.argv[3]).resolve()
 ziran_include = pathlib.Path(sys.argv[1]).resolve()
 compiler = shlex.split(sys.argv[2])
 compiler[0] = shutil.which(compiler[0]) or compiler[0]
@@ -30,7 +30,7 @@ commands = [
     }
     for source in sorted(generated.glob("*.c"))
 ]
-destination = project / "build/generated/compile_commands.json"
+destination = project / sys.argv[4]
 temporary = destination.with_suffix(".json.tmp")
 temporary.write_text(json.dumps(commands, indent=2) + "\n")
 temporary.replace(destination)

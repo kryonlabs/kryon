@@ -115,16 +115,31 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
     marker: Cell
+    x0: s32 = cast(s32)line.x
+    y0: s32 = cast(s32)line.y
+    dx: s32 = cast(s32)(line.x + line.width) - x0
+    dy: s32 = cast(s32)(line.y + line.height) - y0
+    steps: s32 = dx
+    if steps < 0 { steps = -steps }
+    rise: s32 = dy
+    if rise < 0 { rise = -rise }
+    if rise > steps { steps = rise }
     marker.glyph = cast(u32)45
-    x: s32 = cast(s32)line.x
-    y: s32 = cast(s32)line.y
-    length: s32 = cast(s32)line.width
-    if length < 1 { length = 1 }
-    col: s32 = 0
-    while col < length {
+    if dx == 0 && dy != 0 { marker.glyph = cast(u32)124 }
+    if dx != 0 && dy > 0 { marker.glyph = cast(u32)92 }
+    if dx != 0 && dy < 0 { marker.glyph = cast(u32)47 }
+    if steps == 0 {
         CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
-            x + col, y, marker)
-        col += 1
+            x0, y0, marker)
+        return
+    }
+    step: s32 = 0
+    while step <= steps {
+        x: s32 = x0 + dx * step / steps
+        y: s32 = y0 + dy * step / steps
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x, y, marker)
+        step += 1
     }
 }
 

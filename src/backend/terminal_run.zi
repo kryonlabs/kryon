@@ -4,30 +4,137 @@
 #import "terminal"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
 
 using FrameStatus;
 
+libc :: #system_library "libc";
+RunRead :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
+RunWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+RunIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
+RunGetAttributes :: (fd: s32, output: *u8) -> s32 #foreign libc "tcgetattr";
+RunSetAttributes :: (fd: s32, action: s32, input: *u8) -> s32 #foreign libc "tcsetattr";
+RunMakeRaw :: (input: *u8) -> void #foreign libc "cfmakeraw";
+TerminalPollDescriptor :: struct {
+    fd: s32
+    events: s16
+    revents: s16
+}
+RunPoll :: (fds: *TerminalPollDescriptor, count: u64,
+    timeout_ms: s32) -> s32 #foreign libc "poll";
+
+TerminalState :: struct {
+    active: bool
+    original: [128]u8
+}
+
+WriteControl :: (value: string) -> bool {
+    bytes: [64]u8
+    if value.count > 64 { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        bytes[at] = value[at]
+        at += 1
+    }
+    at = 0
+    while at < cast(s32)value.count {
+        written: s64 = RunWrite(1, *bytes[at], cast(u64)(cast(s32)value.count - at))
+        if written <= 0 { return false }
+        at += cast(s32)written
+    }
+    return true
+}
+
+EnterTerminal :: (state: *TerminalState) -> bool {
+    if RunGetAttributes(0, *state.original[0]) != 0 { return false }
+    raw: [128]u8
+    at: s32 = 0
+    while at < 128 {
+        raw[at] = state.original[at]
+        at += 1
+    }
+    RunMakeRaw(*raw[0])
+    if RunSetAttributes(0, 0, *raw[0]) != 0 { return false }
+    state.active = true
+    if !WriteControl("\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H") {
+        WriteControl("\x1b[?25h\x1b[?1049l")
+        RunSetAttributes(0, 0, *state.original[0])
+        state.active = false
+        return false
+    }
+    return true
+}
+
+LeaveTerminal :: (state: *TerminalState) {
+    if !state.active { return }
+    WriteControl("\x1b[?25h\x1b[?1049l")
+    RunSetAttributes(0, 0, *state.original[0])
+    state.active = false
+}
+
 // The application supplies Frame(session, viewport). The Kryon host owns
 // entry, screen storage, rendering effects, and presentation.
-#program_export
-main :: () -> s32 {
-    session: Session = SessionOpen()
-    if !SessionValid(session) { return 1 }
+RenderFrame :: (session: Session, viewport: Rectangle, interactive: bool) -> s32 {
     TerminalBegin(80, 24)
-    viewport: Rectangle = Rectangle.{0.0, 0.0, 80.0, 24.0}
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk {
-        CloseSession(session)
         return 1
     }
     result: s32 = Frame(session, viewport)
     if result != 0 {
         TreeCancel(session)
-        CloseSession(session)
         return result
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk { result = 1 }
+    if result == 0 && interactive && !WriteControl("\x1b[2J\x1b[H") {
+        result = 1
+    }
     if result == 0 && !TerminalPresent() { result = 1 }
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    session: Session = SessionOpen()
+    if !SessionValid(session) { return 1 }
+    viewport: Rectangle = Rectangle.{0.0, 0.0, 80.0, 24.0}
+    interactive: bool = RunIsTty(0) == 1 && RunIsTty(1) == 1
+    state: TerminalState
+    if interactive && !EnterTerminal(*state) {
+        CloseSession(session)
+        return 1
+    }
+    result: s32 = RenderFrame(session, viewport, interactive)
+    if interactive {
+        input: TerminalPollDescriptor
+        input.fd = 0
+        input.events = 1
+        while result == 0 {
+            ready: s32 = RunPoll(*input, 1, 30000)
+            if ready < 0 {
+                result = 1
+                break
+            }
+            if ready == 0 {
+                result = RenderFrame(session, viewport, true)
+                continue
+            }
+            key: u8 = 0
+            count: s64 = RunRead(0, *key, 1)
+            if count == 0 { break }
+            if count < 0 {
+                result = 1
+                break
+            }
+            if key == cast(u8)3 { break }
+            if key == cast(u8)49 || key == cast(u8)50 ||
+                key == cast(u8)114 || key == cast(u8)82 {
+                KeyboardSend(session, cast(s32)key)
+                result = RenderFrame(session, viewport, true)
+            }
+        }
+        LeaveTerminal(*state)
+    }
     CloseSession(session)
     return result
 }

@@ -40,6 +40,25 @@ PointerDrag :: struct {
 }
 
 active_pointer: [9]PointerState;
+active_key: [9]s32;
+
+// Hosts submit one keyboard event before the next frame. The application
+// consumes it while composing widget props for that frame.
+#program_export
+KeyboardSend :: (session: Session, key: s32) -> bool {
+    if !SessionValid(session) { return false }
+    active_key[SessionIndex(session)] = key
+    return true
+}
+
+#program_export
+KeyboardTake :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    index: s32 = SessionIndex(session)
+    key: s32 = active_key[index]
+    active_key[index] = 0
+    return key
+}
 
 #program_export
 PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
@@ -227,4 +246,5 @@ TreeInputReset :: (session: Session) {
     if !SessionValid(session) { return }
     empty: PointerState
     active_pointer[session.slot] = empty
+    active_key[session.slot] = 0
 }

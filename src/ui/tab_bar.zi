@@ -8,7 +8,6 @@ using StyleField;
 TabBarMetrics :: struct {
     min_width: s32
     max_width: s32
-    icon_width: s32
     gap: s32
     close_width: s32
     label_padding: s32
@@ -57,15 +56,12 @@ TabBarPaint :: struct {
     tab_color: u32
     tab_border_color: u32
     text_color: u32
-    icon_color: u32
     close_color: u32
     focus_color: u32
     radius: float32
     border_width: float32
     opacity: float32
     text_padding: s32
-    icon_size: s32
-    icon_gap: s32
     content_inset_y: s32
     close_size: s32
     close_gap: s32
@@ -73,7 +69,6 @@ TabBarPaint :: struct {
 }
 
 TabBarContentLayout :: struct {
-    icon_bounds: Rectangle
     text_bounds: Rectangle
     close_bounds: Rectangle
 }
@@ -96,7 +91,6 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     paint.tab_color = tab.value.background
     paint.tab_border_color = tab.value.border
     paint.text_color = tab.value.foreground
-    paint.icon_color = tab.value.foreground
     paint.close_color = close.value.foreground
     paint.focus_color = tab.value.focus
     paint.radius = tab.value.radius
@@ -104,10 +98,6 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     paint.opacity = tab.value.opacity
     paint.text_padding = TabBarMetric(tab.value.fields,
         cast(u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
-    paint.icon_size = TabBarMetric(tab.value.fields,
-        cast(u32)StyleIconSize, tab.value.icon_size, 16.0, scale, true)
-    paint.icon_gap = TabBarMetric(tab.value.fields,
-        cast(u32)StyleGap, tab.value.gap, 4.0, scale, true)
     paint.content_inset_y = TabBarMetric(tab.value.fields,
         cast(u32)StylePaddingY, tab.value.padding_y, 8.0, scale, true)
     paint.close_size = TabBarMetric(close.value.fields,
@@ -158,8 +148,6 @@ TabBarDefaultMetrics :: (min_width: s32, max_width: s32, scale: float32,
     if metrics.max_width < metrics.min_width {
         metrics.max_width = metrics.min_width
     }
-    metrics.icon_width = TabBarMetric(tab.value.fields,
-        cast(u32)StyleIconSize, tab.value.icon_size, 44.0, scale, true)
     metrics.gap = TabBarMetric(bar.value.fields, cast(u32)StyleGap,
         bar.value.gap, 0.0, scale, true)
     metrics.close_width = TabBarMetric(close.value.fields,
@@ -170,11 +158,8 @@ TabBarDefaultMetrics :: (min_width: s32, max_width: s32, scale: float32,
 }
 
 #program_export
-TabBarTabWidth :: (label_width: s32, has_label: bool, has_icon: bool,
+TabBarTabWidth :: (label_width: s32, has_label: bool,
     closeable: bool, metrics: TabBarMetrics) -> s32 {
-    if !has_label && has_icon {
-        return metrics.icon_width
-    }
     if !has_label {
         return metrics.min_width
     }
@@ -193,7 +178,7 @@ TabBarTabWidth :: (label_width: s32, has_label: bool, has_icon: bool,
 
 #program_export
 TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
-    has_label: bool, has_icon: bool, closeable: bool,
+    has_label: bool, closeable: bool,
     paint: TabBarPaint) -> TabBarContentLayout {
     layout: TabBarContentLayout
     tab_x: s32 = cast(s32)tab_bounds.x
@@ -201,39 +186,17 @@ TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
     tab_w: s32 = cast(s32)tab_bounds.width
     tab_h: s32 = cast(s32)tab_bounds.height
     text_pad: s32 = paint.text_padding
-    icon_size: s32 = paint.icon_size
     close_size: s32 = paint.close_size
     close_gap: s32 = paint.close_gap
     content_h: s32 = tab_h - paint.content_inset_y
     if content_h < 0 { content_h = 0 }
     content_y: s32 = tab_y + (tab_h - content_h) / 2
-    icon_x: s32 = tab_x + text_pad
-    text_x: s32 = icon_x + icon_size + paint.icon_gap
+    text_x: s32 = tab_x + text_pad
 
     layout.close_bounds.x = cast(float32)(tab_x + tab_w - text_pad - close_size)
     layout.close_bounds.y = cast(float32)(tab_y + (tab_h - close_size) / 2)
     layout.close_bounds.width = cast(float32)close_size
     layout.close_bounds.height = cast(float32)close_size
-
-    if has_icon && icon_size > 0 {
-        if !has_label {
-            icon_x = tab_x + (tab_w - icon_size) / 2
-        } else {
-            gap: s32 = paint.icon_gap
-            content_w: s32 = icon_size + gap + label_width
-            available_w: s32 = tab_w - text_pad * 2
-            if content_w > available_w { content_w = available_w }
-            icon_x = tab_x + (tab_w - content_w) / 2
-            text_x = icon_x + icon_size + gap
-        }
-        layout.icon_bounds.x = cast(float32)icon_x
-        layout.icon_bounds.y = cast(float32)(tab_y + (tab_h - icon_size) / 2)
-        layout.icon_bounds.width = cast(float32)icon_size
-        layout.icon_bounds.height = cast(float32)icon_size
-        text_x = icon_x + icon_size + paint.icon_gap
-    } else {
-        text_x = tab_x + text_pad
-    }
 
     layout.text_bounds.x = cast(float32)text_x
     layout.text_bounds.y = cast(float32)content_y

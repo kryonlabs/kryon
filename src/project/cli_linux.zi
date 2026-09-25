@@ -7,6 +7,7 @@ RawOpen :: (path: *u8, flags: s32) -> s32 #foreign libc "open";
 RawRead :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
 RawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 RawClose :: (fd: s32) -> s32 #foreign libc "close";
+RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
 RawGetCwd :: (output: *u8, size: u64) -> *u8 #foreign libc "getcwd";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
 CopyDescriptor :: (source: *TextDescriptor, destination: *string,
@@ -179,6 +180,42 @@ Execute :: (arguments: []string) -> s32 {
     return 127
 }
 
+ChooseProfile :: (config: ProjectConfig) -> string {
+    PrintFd(1, "Choose a profile:\n")
+    index: s32 = 0
+    while index < config.profile_count {
+        digit: [1]u8
+        digit[0] = cast(u8)(49 + index)
+        PrintFd(1, "  ")
+        PrintFd(1, TextFromBuffer(digit[:], 1))
+        PrintFd(1, ") ")
+        PrintFd(1, config.profiles[index].name)
+        if config.profiles[index].backend == "desktop" {
+            PrintFd(1, " (SDL2/Cairo window)")
+        }
+        PrintFd(1, "\n")
+        index += 1
+    }
+    PrintFd(1, "Selection: ")
+    chosen: u8 = cast(u8)0
+    extra: bool = false
+    while true {
+        byte: u8 = cast(u8)0
+        if RawRead(0, *byte, 1) != 1 { break }
+        if byte == cast(u8)10 || byte == cast(u8)13 { break }
+        if chosen == cast(u8)0 {
+            chosen = byte
+        } else {
+            extra = true
+        }
+    }
+    if RawIsTty(0) == 0 { PrintFd(1, "\n") }
+    if extra { return "" }
+    index = cast(s32)chosen - 49
+    if index < 0 || index >= config.profile_count { return "" }
+    return config.profiles[index].name
+}
+
 #program_export
 main :: () -> s32 {
     command_bytes: [8192]u8
@@ -223,10 +260,18 @@ main :: () -> s32 {
             return Error("project directory needs a simple name or project.name")
         }
     }
-    if profile_name == "" { profile_name = config.default_profile }
+    if profile_name == "" {
+        if verb == "run" && config.profile_count > 1 {
+            profile_name = ChooseProfile(config)
+            if profile_name == "" { return Error("invalid profile selection") }
+        } else {
+            profile_name = config.default_profile
+        }
+    }
     profile: ProjectProfile = ProjectProfileNamed(config, profile_name)
     if profile.name == "" { return Error("unknown profile") }
-    if profile.backend != "terminal" || profile.codegen != "c99" {
+    if (profile.backend != "terminal" && profile.backend != "desktop") ||
+        profile.codegen != "c99" {
         return Error("this backend/codegen pair is not available yet")
     }
     makefile_bytes: [4096]u8

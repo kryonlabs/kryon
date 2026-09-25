@@ -77,21 +77,21 @@ $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
 test: all $(BUILD_DIR)/hello-saved.zib
 	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
 
-$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi desktop_runtime.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backend/desktop_runtime.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/desktop-hello-native
-	$(ZI2C_BIN) --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
 		-o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
 
-$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi desktop_runtime.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/desktop-image-native
-	$(ZI2C_BIN) --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
 		-o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 
-$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi desktop_runtime.zi text_hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/desktop_runtime.zi text_hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/desktop-text-native
-	$(ZI2C_BIN) --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
 		-o $(BUILD_DIR)/desktop-text-native desktop_text.zi
 
