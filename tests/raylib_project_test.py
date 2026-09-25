@@ -30,7 +30,7 @@ def solid_png(path, width, height, color):
 
 def quadrant_png(path):
     scan = bytearray()
-    colors = ((230, 30, 40, 255), (30, 200, 40, 255),
+    colors = ((30, 200, 40, 255), (230, 30, 40, 255),
               (30, 40, 220, 255), (230, 200, 40, 255))
     for y in range(64):
         scan.append(0)
@@ -139,6 +139,7 @@ def main():
             '    cropped.key = cast(u64)2\n'
             '    cropped.bounds = Rectangle.{720.0, 80.0, 160.0, 160.0}\n'
             '    cropped.source = Rectangle.{0.0, 0.0, 32.0, 32.0}\n'
+            '    cropped.asset_path = "test.png"\n'
             '    cropped.texture = sample_texture\n'
             '    Image(session, cropped)\n'
             '    RasterImage("test.png", cast(u32)0,\n'
@@ -162,7 +163,7 @@ def main():
         png = png_pixels(capture)
         assert png[:2] == (960, 600), png[:2]
         assert rgb(png, 200, 200) == (230, 30, 40), "Image(ImageProps) asset failed"
-        assert rgb(png, 800, 160) == (230, 30, 40), "cropped Texture2D UVs failed"
+        assert rgb(png, 800, 160) == (30, 200, 40), "cropped Texture2D UVs failed"
         assert rgb(png, 570, 200) == (230, 30, 40), "raylib image center failed"
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"
         assert rgb(png, 480, 85) == (230, 30, 40), "rounded image arc missing"

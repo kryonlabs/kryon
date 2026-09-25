@@ -371,14 +371,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         return
     }
     texture: Texture2D
-    if asset_path.count > 0 {
-        index: s32 = RaylibAssetIndex(asset_path)
-        if index < 0 {
-            raylib_image_error = true
-            return
-        }
-        texture = raylib_assets[index].texture
-    } else if texture_id != cast(u32)0 {
+    if texture_id != cast(u32)0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             // Keep direct calls to the low-level raster effect usable.
@@ -386,6 +379,13 @@ RasterImage :: (asset_path: string, texture_id: u32,
             texture.width = cast(s32)(source.x + source.width)
             texture.height = cast(s32)(source.y + source.height)
         }
+    } else if asset_path.count > 0 {
+        index: s32 = RaylibAssetIndex(asset_path)
+        if index < 0 {
+            raylib_image_error = true
+            return
+        }
+        texture = raylib_assets[index].texture
     } else {
         raylib_image_error = true
         return
