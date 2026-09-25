@@ -60,6 +60,7 @@ Frame :: () -> s32 {
     line_props.key = cast(u64)11
     line_props.bounds = Rectangle.{10.0, 10.0, 100.0, 60.0}
     line_props.label = "Trend"
+    line_props.semantic_label = "XMR price trend"
     line_props.overlay = "Now"
     line_props.scale_min = 0.0
     line_props.scale_max = 1.0
@@ -78,7 +79,7 @@ Frame :: () -> s32 {
         !TreeFinish(TestSession()) || TreeCount(TestSession()) != 3 ||
         TreeNodeAt(TestSession(), 1).kind != WidgetKindPlot ||
         TreeNodeAt(TestSession(), 2).kind != WidgetKindPlot ||
-        TreeNodeAt(TestSession(), 1).semantic_label != "Trend" ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "XMR price trend" ||
         TreeNodeAt(TestSession(), 2).semantic_label != "Bars" { return -1 }
     PaintFlush(TestSession())
     old: s32 = phase

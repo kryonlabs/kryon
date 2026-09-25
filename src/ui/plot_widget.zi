@@ -102,7 +102,11 @@ Plot :: (session: Session, props: PlotProps, values: []float32) -> s32 {
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, key, WidgetKindPlot, bounds)
         if node < 0 { return -1 }
-        TreeSetLabel(session, node, props.label)
+        semantic_label: string = props.label
+        if props.semantic_label != "" {
+            semantic_label = props.semantic_label
+        }
+        TreeSetLabel(session, node, semantic_label)
         bounds = TreeSubmittedNodeAt(session, node).bounds
     }
     faces: PlotFaces = PlotFacesFor(ActiveStyleRules(), props,
