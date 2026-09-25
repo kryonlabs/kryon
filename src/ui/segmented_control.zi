@@ -1,6 +1,8 @@
 #import "style"
 #import "control_props"
 
+using StyleField;
+
 SegmentedMetrics :: struct {
     gap: s32
     row_height: s32

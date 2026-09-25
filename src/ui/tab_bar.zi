@@ -3,6 +3,8 @@
 #import "style"
 #import "control_props"
 
+using StyleField;
+
 TabBarMetrics :: struct {
     min_width: s32
     max_width: s32

@@ -3,6 +3,8 @@ ThemePolicy :: enum {
     ThemePolicyLight :: 1
     ThemePolicyDark :: 2
 }
+using ThemePolicy;
+
 
 #program_export
 ResolveDark :: (policy: ThemePolicy, system_dark: bool) -> bool {

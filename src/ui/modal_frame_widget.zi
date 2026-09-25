@@ -16,6 +16,13 @@
 #import "surface"
 #import "tree"
 
+using ArrowDirection;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 ModalFrameDefaultFace :: (role: s32) -> StyleData {
     face: StyleData

@@ -6,6 +6,8 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 LayoutContainer :: struct {
     node: s32
     opened: bool

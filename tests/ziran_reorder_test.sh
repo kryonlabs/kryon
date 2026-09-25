@@ -14,6 +14,8 @@ cat > "$work/use_reorder.zi" <<'EOF'
 #import "reorder_props"
 #import "style"
 
+using StyleField;
+
 #program_export
 Answer :: () -> s32 {
     handle: StyleFrame

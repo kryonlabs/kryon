@@ -4,6 +4,12 @@
 #import "style"
 #import "style_sheet"
 
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 ScrollMetrics :: struct {
     scrollbar_width: s32
     reserved_width: s32

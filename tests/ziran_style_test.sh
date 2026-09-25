@@ -14,6 +14,9 @@ cat > "$work/use_style.zi" <<'EOF'
 #import "progress"
 #import "geometry"
 
+using ButtonState;
+using StyleField;
+
 #program_export
 Answer :: () -> s32 {
     if (DefaultFields() & cast(u32)StyleBackground) == cast(u32)0 { return 0 }

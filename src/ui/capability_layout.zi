@@ -10,6 +10,8 @@ Capability :: enum {
     Wakelock :: 64
     Clipboard :: 128
 }
+using Capability;
+
 
 SafeArea :: struct {
     left: s32

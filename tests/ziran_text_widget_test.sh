@@ -26,6 +26,12 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "widget_kind"
 
+using TextAlign;
+using TextWrap;
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
 phase: s32;
 
 #program_export

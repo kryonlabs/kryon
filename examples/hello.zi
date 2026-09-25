@@ -8,6 +8,9 @@
 #import "tree_draw"
 #import "tree_input"
 
+using ButtonTone;
+using FrameStatus;
+
 clicks: s32;
 session: Session;
 

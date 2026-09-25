@@ -4,6 +4,8 @@
 #import "tree"
 #import "tree_input"
 
+using FrameStatus;
+
 // A frame commits its tree before any queued raster effects are emitted.
 #program_export
 BeginFrame :: (session: Session, screen_key: u64,

@@ -7,6 +7,8 @@
 #import "text_widget"
 #import "tree"
 
+using SemanticKind;
+
 #program_export
 Heading :: (session: Session, props: HeadingProps) {
     text: TextProps

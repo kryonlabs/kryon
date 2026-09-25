@@ -23,6 +23,9 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using PlotMode;
+using WidgetKind;
+
 phase: s32;
 
 #program_export

@@ -8,6 +8,8 @@
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+
 #program_export
 OverlayScrimKey :: () -> u64 {
     return cast(u64)1

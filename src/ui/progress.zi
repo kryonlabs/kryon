@@ -3,6 +3,8 @@
 #import "style"
 #import "surface"
 
+using StyleField;
+
 ProgressLayout :: struct {
     ratio: float32
     fill_bounds: Rectangle

@@ -4,6 +4,9 @@
 #import "surface"
 #import "control_props"
 
+using ButtonState;
+using StyleField;
+
 // Roles select semantic facts for host-side style resolution. They do not
 // manufacture color, material, gradient, radius, or border recipes.
 // 0: trigger, 2: floating panel, 26: option row, 27: scrollbar.

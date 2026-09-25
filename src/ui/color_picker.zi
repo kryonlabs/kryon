@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 ColorPickerLayout :: struct {
     row_height: float32
     swatch_bounds: Rectangle

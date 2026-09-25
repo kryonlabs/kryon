@@ -25,6 +25,9 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+
 phase: s32;
 open_state: bool;
 hidden_state: bool;

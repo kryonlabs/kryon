@@ -10,6 +10,8 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 // Resolved faces are values supplied by Kryon's style cascade. The platform
 // only measures glyphs and rasterizes commands.
 PreparedProgress :: struct {

@@ -15,6 +15,10 @@ cat > "$work/use_layout.zi" <<'EOF'
 #import "geometry"
 #import "layout"
 #import "group"
+
+using FlexDirection;
+using JustifyContent;
+using AlignItems;
 #program_export
 Answer :: () -> s32 {
     if KeyHash("") != cast(u64)1469598103934665603 { return 0 }

@@ -3,6 +3,8 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 // Raw device observations are supplied by the platform. Kryon owns hit order,
 // capture, eligibility, and activation across retained frames.
 PointerFrame :: struct {

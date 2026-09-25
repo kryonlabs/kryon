@@ -5,6 +5,8 @@
 #import "semantic"
 #import "tree"
 #import "tree_draw"
+
+using FrameStatus;
 host_api :: #system_library "host_api";
 
 // These records deliberately expose values useful for comparing frames, not

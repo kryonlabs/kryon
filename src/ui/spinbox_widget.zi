@@ -14,6 +14,13 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 SpinboxDefaultFace :: (value_face: bool, disabled: bool) -> StyleData {
     face: StyleData

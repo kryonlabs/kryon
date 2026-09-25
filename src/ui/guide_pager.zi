@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 GuidePagerMetrics :: struct {
     pad: s32
     gap: s32

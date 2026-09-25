@@ -1,5 +1,7 @@
 #import "kss_parser"
 
+using KssStatus;
+
 // The KSS formatter lives here once and lowers to C, Go, and JavaScript with
 // the shared transpilers. Formatting is structural re-layout: the shared
 // parser supplies every construct's span, and construct text is copied

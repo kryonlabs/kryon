@@ -52,6 +52,10 @@ AlignItems :: enum {
     AlignEnd
     AlignStretch
 }
+using FlexDirection;
+using JustifyContent;
+using AlignItems;
+
 
 FlexProps :: struct {
     bounds: Rectangle

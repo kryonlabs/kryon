@@ -4,6 +4,8 @@
 #import "raster"
 #import "style"
 
+using StyleField;
+
 SeparatorLine :: struct {
     line: Rectangle
     color: u32

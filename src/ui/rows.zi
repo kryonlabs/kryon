@@ -2,6 +2,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 InfoRowsMetrics :: struct {
     row_height: s32
     padding_x: s32

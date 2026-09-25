@@ -28,6 +28,10 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
 phase: s32;
 
 #program_export

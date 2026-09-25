@@ -13,6 +13,13 @@
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 SliderDefaultFace :: (kind: s32, role: s32,
     disabled: bool) -> StyleData {

@@ -1,6 +1,8 @@
 #import "swipe_props"
 #import "geometry"
 
+using SwipeDirection;
+
 SwipeDragState :: struct {
     dragging: bool
     cancelled: bool

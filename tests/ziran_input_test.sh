@@ -16,6 +16,8 @@ cat > "$work/use_input.zi" <<'EOF'
 #import "input_props"
 #import "geometry"
 
+using NumericValueKind;
+
 #program_export
 Answer :: () -> s32 {
     if InputDefaultStepButtonWidth(2.0) != 48 { return 0 }

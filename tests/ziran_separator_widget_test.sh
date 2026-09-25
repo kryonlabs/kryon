@@ -25,6 +25,9 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 
+using StyleField;
+using FrameStatus;
+
 phase: s32;
 
 #program_export
@@ -112,6 +115,8 @@ TestSession :: () -> Session {
 #import "separator_widget"
 #import "style"
 #import "style_sheet"
+
+using StyleField;
 
 #program_export
 Answer :: () -> s32 {

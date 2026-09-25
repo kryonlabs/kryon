@@ -9,6 +9,8 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+
+using ButtonTone;
 host_api :: #system_library "host_api";
 
 PollPointer :: () -> PointerFrame #foreign host_api;

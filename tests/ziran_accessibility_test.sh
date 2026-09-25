@@ -15,6 +15,9 @@ cat > "$work/use_accessibility.zi" <<'EOF'
 #import "accessibility_props"
 #import "accessibility_policy"
 
+using AccessibilityAction;
+using WidgetKind;
+
 #program_export
 Answer :: () -> s32 {
     button: u32 = AccessibilityActionsFor(cast(s32)WidgetKindButton, 7,

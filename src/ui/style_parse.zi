@@ -1,6 +1,8 @@
 #import "kss_parser"
 #import "style_sheet"
 
+using KssStatus;
+
 // The parser and its rule table are owned values. An application may pause at
 // NeedImport, provide the requested source, then keep parsing the same table.
 StyleRulesParse :: struct {

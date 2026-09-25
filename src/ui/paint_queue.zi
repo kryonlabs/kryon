@@ -16,6 +16,8 @@ PaintKind :: enum {
     PaintKindImage :: 5
     PaintKindClippedText :: 6
 }
+using PaintKind;
+
 
 PaintCommand :: struct {
     node: s32

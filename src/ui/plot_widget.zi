@@ -12,6 +12,14 @@
 #import "tree"
 #import "widget_kind"
 
+using PlotMode;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 PlotFaces :: struct {
     plot: StyleFrame
     mark: StyleFrame

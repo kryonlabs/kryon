@@ -18,6 +18,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 #program_export
 Check :: () -> s32 {
     bounds: Rectangle = Rectangle.{0.0, 0.0, 100.0, 20.0}

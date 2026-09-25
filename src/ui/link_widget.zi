@@ -14,6 +14,11 @@
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using ButtonState;
+using StyleField;
+
 #program_export
 LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
     base: StyleData

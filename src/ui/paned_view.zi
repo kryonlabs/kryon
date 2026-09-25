@@ -11,6 +11,14 @@
 #import "tree_input"
 #import "widget_kind"
 
+using DropZone;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 PanedViewMetrics :: struct {
     grip: s32
     drop_edge: s32

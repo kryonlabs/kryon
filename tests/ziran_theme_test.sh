@@ -11,6 +11,8 @@ cp "$repo/src/ui/theme.zi" "$work/theme.zi"
 cat > "$work/use_theme.zi" <<'EOF'
 #import "theme"
 
+using ThemePolicy;
+
 #program_export
 Answer :: () -> s32 {
     if ResolveDark(cast(ThemePolicy)ThemePolicyLight, true) { return 0 }

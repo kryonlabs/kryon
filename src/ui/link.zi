@@ -7,6 +7,9 @@ LinkVisualState :: enum {
     LinkStateHover :: 1
     LinkStateDisabled :: 2
 }
+using ButtonState;
+using LinkVisualState;
+
 
 LinkAppearance :: struct {
     color: u32

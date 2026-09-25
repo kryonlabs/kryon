@@ -2,6 +2,9 @@
 #import "text_align"
 #import "text_props"
 
+using TextAlign;
+using TextWrap;
+
 TextLinePlan :: struct {
     start: s32
     end: s32

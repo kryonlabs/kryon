@@ -11,6 +11,8 @@ cp "$repo/src/ui/transition.zi" "$work/transition.zi"
 cat > "$work/use_transition.zi" <<'EOF'
 #import "transition"
 
+using TransitionPhase;
+
 #program_export
 Answer :: () -> s32 {
     if TransitionClampProgress(-2.0) != 0.0 { return 0 }

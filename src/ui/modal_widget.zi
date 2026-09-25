@@ -17,6 +17,10 @@
 #import "tree"
 #import "widget_kind"
 
+using SemanticKind;
+using TextWrap;
+using WidgetKind;
+
 #program_export
 ActionModalKey :: (session: Session, props: ActionModalProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }

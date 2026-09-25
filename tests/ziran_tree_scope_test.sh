@@ -18,6 +18,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 Frame :: (bounds: Rectangle) -> bool {
     TreeStart(TestSession(), cast(u64)9, bounds)
     if TreeCurrentParent(TestSession()) != 0 ||

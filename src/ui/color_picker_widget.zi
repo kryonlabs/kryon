@@ -15,6 +15,13 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 ColorPickerDefaultFace :: (swatch: bool,
     disabled: bool) -> StyleData {

@@ -8,6 +8,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
 #import "notification"
+
+using NotificationPriority;
 provider :: #import "provider";
 
 #program_export
@@ -43,6 +45,8 @@ Answer :: () -> s32 {
 ZI
 cat > "$work/provider.zi" <<'ZI'
 #import "notification"
+
+using NotificationPriority;
 
 focused: bool;
 

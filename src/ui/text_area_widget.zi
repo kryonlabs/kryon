@@ -18,6 +18,17 @@
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+using CompositionPhase;
+using SyntaxMode;
+using SyntaxTokenKind;
+
 TextAreaRow :: struct {
     start: s32
     end: s32

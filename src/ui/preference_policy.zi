@@ -50,6 +50,10 @@ OrientationAction :: enum {
     OrientationActionResize :: 1
     OrientationActionSetMode :: 2
 }
+using ThemeSource;
+using OrientationAction;
+using ThemePolicy;
+
 
 OrientationDecision :: struct {
     action: OrientationAction

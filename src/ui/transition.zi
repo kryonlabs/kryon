@@ -4,6 +4,8 @@ TransitionPhase :: enum {
     TransitionOut :: 1
     TransitionIn :: 2
 }
+using TransitionPhase;
+
 
 TransitionState :: struct {
     active: bool

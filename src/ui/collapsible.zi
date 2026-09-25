@@ -10,6 +10,9 @@ CollapsibleMarkerKind :: enum {
     CollapsibleMarkerOpen :: 1
     CollapsibleMarkerLeaf :: 2
 }
+using CollapsibleMarkerKind;
+using StyleField;
+
 
 CollapsibleMetrics :: struct {
     header_height: s32

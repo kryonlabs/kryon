@@ -1,5 +1,7 @@
 #import "control_props"
 
+using MaterialKind;
+
 // Shared visual primitives returned as data. Hosts execute these instructions;
 // material geometry, layer order, colors and motion are defined here.
 #program_export

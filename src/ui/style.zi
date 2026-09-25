@@ -2,6 +2,9 @@
 #import "geometry"
 #import "surface"
 
+using ButtonState;
+using StyleField;
+
 StateFlags :: struct {
     disabled: bool
     loading: bool

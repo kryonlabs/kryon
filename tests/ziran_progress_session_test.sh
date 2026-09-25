@@ -28,6 +28,11 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using StyleField;
+using FrameStatus;
+
 frame_index: s32;
 progress_identity: u64;
 

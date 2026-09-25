@@ -12,6 +12,13 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 SeparatorFaces :: struct {
     line: StyleFrame
     label: StyleFrame

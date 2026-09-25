@@ -16,6 +16,15 @@
 #import "tree_input"
 #import "widget_kind"
 
+using ArrowDirection;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using IconPlacement;
+using ButtonState;
+using StyleField;
+
 #program_export
 ButtonDefaultFace :: (props: ButtonProps, state: s32) -> StyleData {
     face: StyleData

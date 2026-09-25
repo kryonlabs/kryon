@@ -2,6 +2,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 FocusPaint :: struct {
     bounds: Rectangle
     stroke_width: s32

@@ -160,7 +160,7 @@ tab_bar_widget.zi
 table_view.zi
 table_view_props.zi
 terminal_list.zi
-text.zi
+text_behavior.zi
 typeface_source.zi
 text_align.zi
 text_area_widget.zi

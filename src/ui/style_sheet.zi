@@ -2,6 +2,9 @@
 #import "control_props"
 #import "text_style"
 
+using ButtonState;
+using StyleField;
+
 // KSS is the text format. The runtime API uses plain Style* names.
 // Compilers and parsers lower .kss files into these typed rule tables.
 

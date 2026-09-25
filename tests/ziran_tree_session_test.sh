@@ -17,6 +17,9 @@ cat > "$work/app.zi" <<'ZI'
 #import "tree_draw"
 #import "widget_kind"
 
+using WidgetKind;
+using FrameStatus;
+
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {}
 #program_export

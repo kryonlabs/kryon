@@ -26,6 +26,12 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "tree_input"
 
+using ImageFit;
+using ButtonTone;
+using IconPlacement;
+using StyleField;
+using FrameStatus;
+
 phase: s32;
 
 #program_export

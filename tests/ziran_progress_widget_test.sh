@@ -26,6 +26,10 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 
+using ButtonTone;
+using StyleField;
+using FrameStatus;
+
 #program_export
 Answer :: () -> s32 {
     props: ProgressProps

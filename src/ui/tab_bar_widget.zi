@@ -17,6 +17,14 @@
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 TabBarDefaultFace :: (kind: s32, selected: bool,
     disabled: bool) -> StyleData {

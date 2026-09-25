@@ -24,6 +24,8 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+
 phase: s32;
 selected: s32;
 

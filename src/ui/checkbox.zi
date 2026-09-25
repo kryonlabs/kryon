@@ -4,6 +4,9 @@
 #import "style"
 #import "surface"
 
+using ButtonTone;
+using StyleField;
+
 CheckboxSpec :: struct {
     bounds: Rectangle
     checked: bool

@@ -13,6 +13,10 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonState;
+using StyleField;
+
 ToastDisplay :: struct {
     prefix: string
     ellipsis: bool

@@ -25,6 +25,10 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "widget_kind"
 
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
 #program_export
 Frame :: () -> s32 {
     rules: StyleRules

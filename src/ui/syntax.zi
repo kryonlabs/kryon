@@ -15,6 +15,9 @@ SyntaxTokenKind :: enum {
     SyntaxPath :: 5
     SyntaxComment :: 6
 }
+using SyntaxMode;
+using SyntaxTokenKind;
+
 
 SyntaxToken :: struct {
     length: s32

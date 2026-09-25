@@ -12,6 +12,8 @@ cat > "$work/use_image.zi" <<'EOF'
 #import "image_props"
 #import "geometry"
 
+using ImageFit;
+
 #program_export
 Answer :: () -> s32 {
     bounds: Rectangle

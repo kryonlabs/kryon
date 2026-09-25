@@ -10,6 +10,13 @@ CompositionPhase :: enum {
     CompositionCommit :: 3
     CompositionCancel :: 4
 }
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+using CompositionPhase;
+
 
 CompositionEvent :: struct {
     phase: CompositionPhase

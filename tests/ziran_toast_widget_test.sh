@@ -23,6 +23,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 phase: s32;
 state: ToastState;
 

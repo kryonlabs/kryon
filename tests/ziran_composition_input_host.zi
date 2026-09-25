@@ -1,6 +1,8 @@
 #import "composition_input"
 #import "text_input"
 
+using CompositionPhase;
+
 host_frame: s32;
 host_poll: s32;
 

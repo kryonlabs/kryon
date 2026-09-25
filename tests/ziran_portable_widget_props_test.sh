@@ -22,10 +22,12 @@ cat > "$work/app.zi" <<'EOF'
 #import "separator"
 #import "separator_props"
 #import "style"
-#import "text"
+#import "text_behavior"
 #import "text_props"
 #import "toast"
 #import "toast_props"
+
+using TextWrap;
 
 #program_export
 Answer :: () -> s32 {

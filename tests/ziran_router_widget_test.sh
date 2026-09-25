@@ -20,6 +20,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 Matches :: (bytes: []u8, length: s32, text: string) -> bool {
     if length != cast(s32)text.count { return false }
     index: s32 = 0

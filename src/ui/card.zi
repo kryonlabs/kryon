@@ -3,6 +3,8 @@
 #import "control_props"
 #import "geometry"
 
+using ControlSize;
+
 #program_export
 CardButtonProps :: (card: CardProps) -> ButtonProps {
     button: ButtonProps

@@ -23,6 +23,9 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using ButtonTone;
+using ButtonEmphasis;
+
 phase: s32;
 
 FindLabel :: (label: string) -> s32 {

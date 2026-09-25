@@ -11,6 +11,8 @@ cp "$repo/src/ui/dpi.zi" "$work/dpi.zi"
 cat > "$work/use_dpi.zi" <<'EOF'
 #import "dpi"
 
+using DPIPlatform;
+
 #program_export
 Answer :: () -> s32 {
     state: DPIState = InitialDPI()

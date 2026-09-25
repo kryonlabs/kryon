@@ -5,6 +5,12 @@
 #import "style"
 #import "style_sheet"
 
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 NavigationBarSpec :: struct {
     view_width: s32
     view_height: s32

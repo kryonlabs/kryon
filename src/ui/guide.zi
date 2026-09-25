@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 GuideMetrics :: struct {
     margin: s32
     anchor_padding: s32

@@ -10,6 +10,8 @@ cat > "$work/app.zi" <<'EOF'
 #import "window_flags"
 #import "window_policy"
 
+using NativeWindowFlags;
+
 #program_export
 Answer :: () -> s32 {
     point: WindowPoint = WindowInitialPosition(11, 12, 100, 50,

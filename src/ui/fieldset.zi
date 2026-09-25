@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 FieldsetPaint :: struct {
     frame: Rectangle
     title_background: Rectangle

@@ -11,6 +11,11 @@
 #import "tree"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using ButtonState;
+using StyleField;
+
 #program_export
 PageBoundsOrParent :: (session: Session, bounds: Rectangle) -> Rectangle {
     parent: Rectangle = TreeCurrentParentBounds(session)

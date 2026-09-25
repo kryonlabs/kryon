@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 TitleBarMetrics :: struct {
     side_margin: s32
     leading_reserved: s32

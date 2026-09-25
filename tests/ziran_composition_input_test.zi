@@ -2,6 +2,8 @@
 #import "text_input"
 #import "ziran_composition_input_host"
 
+using CompositionPhase;
+
 phase: s32;
 state: CompositionState;
 

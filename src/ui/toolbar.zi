@@ -4,6 +4,8 @@
 #import "style"
 #import "toolbar_props"
 
+using StyleField;
+
 ToolbarSpec :: struct {
     x: s32
     y: s32

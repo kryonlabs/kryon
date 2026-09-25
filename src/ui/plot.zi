@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 PlotRange :: struct {
     min_value: float32
     max_value: float32

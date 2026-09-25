@@ -60,6 +60,10 @@ FrameStatus :: enum {
     FrameIdentityOverflow :: 7
     FramePaintOverflow :: 8
 }
+using SemanticKind;
+using WidgetKind;
+using FrameStatus;
+
 
 // During activation, a partial submission must preserve the committed tree
 // and defer input until the replacement tree is complete.

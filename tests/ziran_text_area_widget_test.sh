@@ -25,6 +25,12 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "tree_input"
 
+using SemanticKind;
+using CompositionPhase;
+using SyntaxMode;
+using SyntaxTokenKind;
+using FrameStatus;
+
 phase: s32;
 value: string;
 cursor: s32;

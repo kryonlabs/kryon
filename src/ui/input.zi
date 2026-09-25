@@ -1,6 +1,8 @@
 #import "input_props"
 #import "geometry"
 
+using NumericValueKind;
+
 InputContinuousStep :: struct {
     value: float32
     changed: bool

@@ -11,6 +11,8 @@ cat > "$work/use_swipe.zi" <<'EOF'
 #import "swipe_props"
 #import "geometry"
 
+using SwipeDirection;
+
 #program_export
 Answer :: () -> s32 {
     if SwipeDirectionsFor(cast(u32)0) != cast(u32)SwipeAll { return 0 }

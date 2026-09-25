@@ -26,6 +26,10 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 
+using ImageFit;
+using StyleField;
+using FrameStatus;
+
 phase: s32;
 
 #program_export
@@ -115,6 +119,8 @@ TestSession :: () -> Session {
 #import "geometry"
 #import "image_props"
 #import "image_widget"
+
+using ImageFit;
 
 #program_export
 Answer :: () -> s32 {

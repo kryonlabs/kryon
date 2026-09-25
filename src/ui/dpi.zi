@@ -4,6 +4,8 @@ DPIPlatform :: enum {
     DPIPlatformAndroid :: 1
     DPIPlatformWeb :: 2
 }
+using DPIPlatform;
+
 
 DPIState :: struct {
     physical_width: s32

@@ -23,6 +23,8 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}

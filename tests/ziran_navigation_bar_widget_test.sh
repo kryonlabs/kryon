@@ -28,6 +28,10 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using StyleField;
+
 phase: s32;
 
 #program_export

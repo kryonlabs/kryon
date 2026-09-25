@@ -9,6 +9,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #import "cursor"
 
+using CursorShape;
+
 #program_export
 Answer :: () -> s32 {
     state: CursorFrame

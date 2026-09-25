@@ -10,6 +10,10 @@
 #import "tree"
 #import "tree_draw"
 
+using ImageFit;
+using StyleField;
+using FrameStatus;
+
 session: Session;
 
 #program_export

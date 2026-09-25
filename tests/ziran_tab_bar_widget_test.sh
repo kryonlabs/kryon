@@ -22,6 +22,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_input"
 
+using SemanticKind;
+
 phase: s32;
 selected: s32;
 scroll_offset: s32;

@@ -32,13 +32,20 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "style_sheet"
 #import "surface"
 #import "table_view"
-#import "text"
+#import "text_behavior"
 #import "text_align"
 #import "text_layout"
 #import "text_input"
 #import "toast"
 #import "tree"
 #import "widget_kind"
+
+using ArrowDirection;
+using TextAlign;
+using WidgetKind;
+using ButtonState;
+using MaterialKind;
+using StyleField;
 
 #program_export
 Answer :: () -> s32 {

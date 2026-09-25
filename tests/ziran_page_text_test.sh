@@ -29,6 +29,9 @@ TestSession :: () -> Session {
 #import "text_widget"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+
 #program_export
 Answer :: () -> s32 {
     bounds: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}

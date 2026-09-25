@@ -22,6 +22,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 AutoAnswer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 100.0, 80.0}
     TreeStart(TestSession(), cast(u64)101, root)

@@ -4,6 +4,8 @@
 #import "control_props"
 #import "surface"
 
+using StyleField;
+
 // A resolved surface and its retained interaction sample. Lengths in StyleData
 // are logical; bounds and segment coordinates are physical.
 MaterialPaint :: struct {

@@ -10,6 +10,10 @@ cat > "$work/app.zi" <<'ZI'
 #import "preference_policy"
 #import "theme"
 
+using ThemeSource;
+using OrientationAction;
+using ThemePolicy;
+
 #program_export
 Answer :: () -> s32 {
     theme: ThemePreference

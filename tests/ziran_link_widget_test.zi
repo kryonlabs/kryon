@@ -17,6 +17,10 @@ TestSession :: () -> Session {
 #import "widget_kind"
 #import "ziran_link_widget_host"
 
+using SemanticKind;
+using WidgetKind;
+using FrameStatus;
+
 phase: s32;
 
 Frame :: () -> s32 {

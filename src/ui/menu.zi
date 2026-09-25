@@ -3,6 +3,8 @@
 #import "style"
 #import "control_props"
 
+using StyleField;
+
 MenuMetrics :: struct {
     row_height: s32
     panel_min_width: s32

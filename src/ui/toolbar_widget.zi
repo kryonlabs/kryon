@@ -16,6 +16,13 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 ToolbarDefaultFace :: (role: s32) -> StyleData {
     face: StyleData

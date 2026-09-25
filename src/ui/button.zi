@@ -11,6 +11,12 @@
 #import "paint"
 #import "material"
 
+using ArrowDirection;
+using DrawingKind;
+using IconPlacement;
+using ButtonState;
+using StyleField;
+
 ButtonInput :: struct {
     flags: StateFlags
     interaction: InteractionState

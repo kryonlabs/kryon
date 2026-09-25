@@ -7,6 +7,10 @@ ClipboardSource :: enum {
     ClipboardPrimaryOrSystem :: 2
 }
 
+
+
+using ClipboardSource;
+
 ClipboardState :: struct {
     system: string
     primary: string

@@ -6,6 +6,8 @@
 #import "style"
 #import "surface"
 
+using StyleField;
+
 ToggleSpec :: struct {
     bounds: Rectangle
     checked: bool

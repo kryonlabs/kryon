@@ -24,6 +24,10 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using StyleField;
+
 #program_export
 Answer :: () -> s32 {
     bounds: Rectangle = Rectangle.{0.0, 0.0, 320.0, 240.0}

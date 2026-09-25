@@ -4,6 +4,12 @@
 #import "style_sheet"
 #import "surface"
 
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 ProgressFaces :: struct {
     track: StyleFrame
     fill: StyleFrame

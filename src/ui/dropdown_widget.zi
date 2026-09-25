@@ -21,6 +21,14 @@
 #import "tree_input"
 #import "widget_kind"
 
+using SemanticKind;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
 #program_export
 DropdownDefaultFace :: (role: s32, state: s32,
     selected: bool) -> StyleData {

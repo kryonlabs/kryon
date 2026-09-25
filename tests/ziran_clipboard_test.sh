@@ -10,6 +10,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/app.zi" <<'ZI'
 #import "clipboard"
 
+using ClipboardSource;
+
 #program_export
 Answer :: () -> s32 {
     state: ClipboardState

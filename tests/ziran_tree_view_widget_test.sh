@@ -24,6 +24,10 @@ TestSession :: () -> Session {
 #import "tree_view_props"
 #import "widget_kind"
 
+using SemanticKind;
+using TreeViewNavigation;
+using WidgetKind;
+
 phase: s32;
 selected: s32;
 scroll: s32;

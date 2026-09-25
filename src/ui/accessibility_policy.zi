@@ -1,6 +1,9 @@
 #import "accessibility_props"
 #import "widget_kind"
 
+using AccessibilityAction;
+using WidgetKind;
+
 #program_export
 AccessibilityActionsFor :: (kind: s32, focus_id: s32, disabled: bool,
 captured: bool, read_only: bool) -> u32 {

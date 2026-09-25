@@ -4,6 +4,8 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 // Router owns navigation and URL decisions. Applications own the route table
 // and state value; a platform host applies a requested URL effect.
 #program_export

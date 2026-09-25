@@ -3,6 +3,8 @@
 #import "geometry"
 #import "style"
 
+using StyleField;
+
 ModalMetrics :: struct {
     screen_pad: s32
     min_width: s32

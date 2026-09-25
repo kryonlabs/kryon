@@ -20,6 +20,8 @@ TestSession :: () -> Session {
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+
 #program_export
 Frame :: () -> s32 {
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})

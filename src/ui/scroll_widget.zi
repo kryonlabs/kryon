@@ -11,6 +11,9 @@
 #import "tree"
 #import "widget_kind"
 
+using WidgetKind;
+using ButtonState;
+
 // A value based scroll viewport. The caller supplies wheel or keyboard
 // movement, keeps the returned offset, and positions children in content.
 // Close the child scope with End(session).

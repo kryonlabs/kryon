@@ -5,6 +5,9 @@
 #import "style"
 #import "surface"
 
+using MaterialKind;
+using StyleField;
+
 SliderSpec :: struct {
     bounds: Rectangle
     ratio: float32

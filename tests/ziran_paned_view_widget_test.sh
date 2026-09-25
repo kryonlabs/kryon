@@ -23,6 +23,9 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using DropZone;
+using WidgetKind;
+
 phase: s32;
 split: s32;
 

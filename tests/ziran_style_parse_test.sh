@@ -15,6 +15,8 @@ cat > "$work/app.zi" <<'ZI'
 #import "style"
 #import "style_sheet"
 
+using KssStatus;
+
 #program_export
 Answer :: () -> s32 {
     parsed: StyleRulesParse = BeginStyleRules(

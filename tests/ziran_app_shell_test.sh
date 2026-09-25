@@ -11,6 +11,8 @@ cat > "$work/app.zi" <<'EOF'
 #import "capability_layout"
 #import "geometry"
 
+using Capability;
+
 #program_export
 Answer :: () -> s32 {
     spec: AppShellLayoutSpec

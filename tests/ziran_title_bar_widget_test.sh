@@ -28,6 +28,9 @@ TestSession :: () -> Session {
 #import "tree_input"
 #import "widget_kind"
 
+using WidgetKind;
+using StyleField;
+
 phase: s32;
 open_state: bool;
 selected_state: s32;

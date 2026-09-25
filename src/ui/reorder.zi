@@ -3,6 +3,8 @@
 #import "reorder_props"
 #import "style"
 
+using StyleField;
+
 ReorderDragMotion :: struct {
     dragging: s32
     scroll_offset: s32
