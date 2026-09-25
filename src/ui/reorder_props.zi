@@ -1,5 +1,4 @@
 #import "geometry"
-host_api :: #system_library "host_api";
 
 ReorderItem :: struct {
     id: s32
@@ -10,12 +9,10 @@ ReorderItem :: struct {
 ReorderList :: struct {
     id: s32
     bounds: Rectangle
-    items: *ReorderItem
-    item_count: s32
     handle_width: s32
     handle_height: s32
     drag_threshold: s32
-    scroll_offset: *s32
+    scroll_offset: s32
     max_scroll: s32
     viewport_top: s32
     viewport_bottom: s32
@@ -71,8 +68,5 @@ ReorderListResult :: struct {
     active_id: s32
     pointer_y: s32
     drag_delta_y: s32
+    scroll_offset: s32
 }
-
-// The host applies the user's pointer motion and scrolling to the list.
-#program_export
-UpdateReorderList :: (list: ReorderList) -> ReorderListResult #foreign host_api;

@@ -120,6 +120,7 @@ raster_shape.zi
 raster_text.zi
 reorder.zi
 reorder_props.zi
+reorder_widget.zi
 route.zi
 router.zi
 rows.zi

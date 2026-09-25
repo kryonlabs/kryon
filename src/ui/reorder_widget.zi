@@ -1,0 +1,185 @@
+#import "control_props";
+#import "drawing_props";
+#import "geometry";
+#import "paint_queue";
+#import "reorder";
+#import "reorder_props";
+#import "session";
+#import "style";
+#import "style_sheet";
+#import "tree";
+#import "tree_input";
+#import "widget_kind";
+
+using ButtonEmphasis;
+using ButtonState;
+using ButtonTone;
+using ControlSize;
+using StyleField;
+using WidgetKind;
+
+ReorderHandleKey :: (list_id: s32, item_id: s32) -> u64 {
+    return cast(u64)cast(u32)list_id * cast(u64)65599 +
+        cast(u64)cast(u32)item_id + cast(u64)1
+}
+
+ReorderHandleFace :: () -> StyleFrame {
+    fallback: StyleData
+    fallback.fields = cast(u32)StyleForeground |
+        cast(u32)StyleIconSize | cast(u32)StyleGap |
+        cast(u32)StylePaddingX
+    fallback.foreground = cast(u32)0x64748bff
+    fallback.icon_size = 3.0
+    fallback.gap = 4.0
+    fallback.padding_x = 8.0
+    facts := StyleControlRoleFacts(StyleKindReorder(), 0, 0,
+        StyleAny(), cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisGhost,
+        cast(s32)ControlSizeSmall,
+        cast(s32)ButtonStateNormal)
+    result: StyleFrame
+    result.value = ResolveStyleRules(ActiveStyleRules(), fallback,
+        facts, cast(s32)ButtonStateNormal)
+    return result
+}
+
+ReorderPaintHandle :: (session: Session, node: s32,
+    bounds: Rectangle, face: StyleFrame) {
+    paint := ReorderHandlePaintFor(bounds, 1.0, face)
+    color := ColorFromPacked(face.value.foreground)
+    if paint.dot_count < 6 {
+        return
+    }
+    PaintRoundedFill(session, node, paint.dot0, 1.0, 6, color)
+    PaintRoundedFill(session, node, paint.dot1, 1.0, 6, color)
+    PaintRoundedFill(session, node, paint.dot2, 1.0, 6, color)
+    PaintRoundedFill(session, node, paint.dot3, 1.0, 6, color)
+    PaintRoundedFill(session, node, paint.dot4, 1.0, 6, color)
+    PaintRoundedFill(session, node, paint.dot5, 1.0, 6, color)
+}
+
+ReorderDragTarget :: (items: []ReorderItem, from_index: s32,
+    center_y: float32) -> s32 {
+    target: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)items.count {
+        if index != from_index &&
+            center_y > items[index].bounds.y +
+                items[index].bounds.height * 0.5 {
+            target += 1
+        }
+        index += 1
+    }
+    return ReorderTargetIndexFor(target, cast(s32)items.count)
+}
+
+ReorderAutoScroll :: (list: ReorderList, pointer_y: s32) -> s32 {
+    offset := list.scroll_offset
+    if list.max_scroll <= 0 {
+        return offset
+    }
+    margin := list.auto_scroll_margin
+    if margin <= 0 {
+        margin = 34
+    }
+    step := list.auto_scroll_step
+    if step <= 0 {
+        step = 12
+    }
+    if pointer_y < list.viewport_top + margin {
+        offset -= step
+    } else if pointer_y > list.viewport_bottom - margin {
+        offset += step
+    }
+    if offset < 0 {
+        offset = 0
+    }
+    if offset > list.max_scroll {
+        offset = list.max_scroll
+    }
+    return offset
+}
+
+// Each handle is an ordinary retained Button. Kryon owns the gesture and
+// returns a route independent move; the caller applies it to its data.
+#program_export
+Reorder :: (session: Session, list: ReorderList,
+    items: []ReorderItem) -> ReorderListResult {
+    result: ReorderListResult = ReorderListResultDefault(0)
+    result.scroll_offset = list.scroll_offset
+    if !SessionValid(session) || list.id == 0 ||
+        items.count == 0 {
+        return result
+    }
+    face := ReorderHandleFace()
+    width := list.handle_width
+    if width <= 0 {
+        width = 40
+    }
+    threshold := list.drag_threshold
+    if threshold <= 0 {
+        threshold = 5
+    }
+    parent := TreeCurrentParent(session)
+    index: s32 = 0
+    while index < cast(s32)items.count {
+        item := items[index]
+        key := ReorderHandleKey(list.id, item.id)
+        previous := TreePrevious(session, parent, key,
+            cast(s32)WidgetKindButton)
+        drag := TreeTakeDragAt(session, previous)
+        handle_bounds := ReorderHandleBounds(item.bounds,
+            width, list.handle_height)
+        if TreeIsBuilding(session) {
+            node := TreeSubmitCurrent(session, key,
+                WidgetKindButton, handle_bounds)
+            if node >= 0 {
+                TreeSetInteractive(session, node, item.disabled != 0,
+                    false, item.id)
+                TreeSetLabel(session, node, "Reorder")
+                ReorderPaintHandle(session, node,
+                    handle_bounds, face)
+            }
+        }
+        if (drag.active || drag.ended) &&
+            item.disabled == 0 {
+            origin_y := item.bounds.y + drag.grab_y
+            delta := drag.y - origin_y
+            distance := delta
+            if distance < 0.0 {
+                distance = -distance
+            }
+            result.active = 1
+            result.active_index = index
+            result.from_index = index
+            result.active_id = item.id
+            result.pointer_y = cast(s32)drag.y
+            result.drag_delta_y = cast(s32)delta
+            result.dragging = cast(s32)(drag.active &&
+                distance >= cast(float32)threshold)
+            center := item.bounds.y +
+                item.bounds.height * 0.5 + delta
+            result.target_index = ReorderDragTarget(items,
+                index, center)
+            result.to_index = result.target_index
+            if drag.ended && distance >=
+                cast(float32)threshold &&
+                result.to_index != index {
+                result.committed = 1
+            }
+            if drag.active && result.dragging != 0 {
+                result.scroll_offset = ReorderAutoScroll(list,
+                    result.pointer_y)
+            }
+        }
+        index += 1
+    }
+    if result.dragging != 0 &&
+        result.target_index >= 0 &&
+        result.target_index < cast(s32)items.count {
+        bounds := items[result.target_index].bounds
+        PaintRoundedOutline(session, -1, bounds, 4.0, 8, 2.0,
+            ColorFromPacked(face.value.foreground))
+    }
+    return result
+}

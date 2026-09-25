@@ -1,0 +1,68 @@
+#import "geometry";
+#import "reorder_props";
+#import "reorder_widget";
+#import "session";
+#import "tree";
+#import "tree_input";
+
+test_session: Session;
+
+ReorderFrame :: () -> ReorderListResult {
+    items: [3]ReorderItem
+    items[0].id = 10
+    items[0].bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}
+    items[1].id = 11
+    items[1].bounds = Rectangle.{10.0, 70.0, 180.0, 50.0}
+    items[2].id = 12
+    items[2].bounds = Rectangle.{10.0, 130.0, 180.0, 50.0}
+    list: ReorderList
+    list.id = 5
+    list.bounds = Rectangle.{10.0, 10.0, 180.0, 170.0}
+    list.handle_width = 40
+    list.viewport_top = 10
+    list.viewport_bottom = 180
+    TreeStart(test_session, cast(u64)1,
+        Rectangle.{0.0, 0.0, 220.0, 200.0})
+    result := Reorder(test_session, list, items[:])
+    unused TreeFinish(test_session)
+    return result
+}
+
+#program_export
+Answer :: () -> s32 {
+    test_session = SessionOpen()
+    if !SessionValid(test_session) {
+        return 1
+    }
+    first := ReorderFrame()
+    if first.active != 0 || first.committed != 0 {
+        return 2
+    }
+    TreePointerUpdate(test_session, PointerFrame.{
+        20.0, 30.0, true, true, false})
+    pressed := ReorderFrame()
+    if pressed.active == 0 || pressed.active_index != 0 ||
+        pressed.dragging != 0 {
+        return 3
+    }
+    TreePointerUpdate(test_session, PointerFrame.{
+        20.0, 160.0, true, false, false})
+    moved := ReorderFrame()
+    if moved.dragging == 0 || moved.active_index != 0 ||
+        moved.target_index != 2 || moved.committed != 0 {
+        return 4
+    }
+    TreePointerUpdate(test_session, PointerFrame.{
+        20.0, 160.0, false, false, true})
+    released := ReorderFrame()
+    if released.committed == 0 ||
+        released.from_index != 0 || released.to_index != 2 {
+        return 5
+    }
+    after := ReorderFrame()
+    if after.active != 0 || after.committed != 0 {
+        return 6
+    }
+    unused SessionClose(test_session)
+    return 42
+}
