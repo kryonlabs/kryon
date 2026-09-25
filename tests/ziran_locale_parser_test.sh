@@ -52,6 +52,19 @@ Answer :: () -> s32 {
         LocaleParseLanguages("en|English", languages[:], short_data).complete {
         return -5
     }
+    found: LocaleTextResult = LocaleFindText(
+        "[hello]\nWorld\n---\n[bye]\nBye\n---\n[hello]\nNew\n---\n",
+        "hello")
+    if !found.found || found.text != "New" { return -6 }
+    found = LocaleFindText("[empty]\n---\n", "empty")
+    if !found.found || found.text != "" { return -7 }
+    found = LocaleFindText("[discard]\nLost\n[keep]\nFirst\n\nLast",
+        "keep")
+    if !found.found || found.text != "First\n\nLast" { return -8 }
+    found = LocaleFindText("[missing]\nvalue\n---", "absent")
+    if found.found || found.text != "" { return -9 }
+    found = LocaleFindText("[line]\nOne\r\nTwo\n---", "line")
+    if !found.found || found.text != "One\r\nTwo" { return -10 }
     return 42
 }
 ZI

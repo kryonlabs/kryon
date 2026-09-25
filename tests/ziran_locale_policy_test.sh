@@ -35,6 +35,14 @@ Answer :: () -> s32 {
         LocaleResolveValue(active[:], base[:], "missing") != "missing" {
         return -2
     }
+    active_text: string = "[greeting]\nOlá\n---\n[empty]\n---\n"
+    base_text: string = "[greeting]\nHello\n---\n[bye]\nGoodbye\n---\n"
+    if LocaleResolveCatalog(active_text, base_text, "greeting") != "Olá" ||
+        LocaleResolveCatalog(active_text, base_text, "bye") != "Goodbye" ||
+        LocaleResolveCatalog(active_text, base_text, "empty") != "" ||
+        LocaleResolveCatalog(active_text, base_text, "missing") != "missing" {
+        return -5
+    }
 
     if LocalePreferredCode(languages[:], "C:fr_FR.UTF-8;pt_BR@foo") != "fr" ||
         LocalePreferredCode(languages[:], "POSIX,pt_BR.UTF-8") != "pt-BR" ||

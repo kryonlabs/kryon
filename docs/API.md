@@ -134,6 +134,11 @@ caller owns catalog loading and adds English when `LocaleHasEnglish` is false.
 caller owned `[]u8` storage and span tables. `LocaleParseResult.complete` is
 false when either table or byte storage is too small. `LocaleSpanEquals`
 compares a stored span with a string without a C string allocation.
+`LocaleFindText` returns a borrowed value directly from immutable catalog
+text, with the last complete duplicate key taking precedence.
+`LocaleResolveCatalog` checks the active catalog, then the English catalog,
+and returns the key when neither contains it. Applications keep both catalog
+texts alive while using returned values.
 
 [`modules.txt`](../src/ui/modules.txt) is the
 precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.sh)

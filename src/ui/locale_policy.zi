@@ -1,4 +1,6 @@
 
+#import "locale_parser"
+
 // Locale catalogs own their strings. Policy only reads caller-owned slices;
 // loading files and applying a chosen locale belong to the host or app.
 LocaleEntry :: struct {
@@ -51,6 +53,18 @@ LocaleResolveValue :: (active: []LocaleEntry, base: []LocaleEntry,
         if base[index].key == key { return base[index].value }
         index += 1
     }
+    return key
+}
+
+// Resolve directly from immutable catalog text without copying translated
+// values. The application owns both catalogs and keeps them alive.
+#program_export
+LocaleResolveCatalog :: (active: string, base: string,
+    key: string) -> string {
+    found: LocaleTextResult = LocaleFindText(active, key)
+    if found.found { return found.text }
+    found = LocaleFindText(base, key)
+    if found.found { return found.text }
     return key
 }
 
