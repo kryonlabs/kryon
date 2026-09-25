@@ -78,6 +78,9 @@ json_value(FILE *out, const VmHostValue *value, int depth)
                !json_value(out, &value->elements[i], depth + 1)) return 0;
         }
         return fputc(']', out) != EOF;
+    case VM_HOST_POINTER:
+        return fprintf(out, "\"@%llx\"",
+                       (unsigned long long)(uintptr_t)value->pointer) >= 0;
     }
     return 0;
 }
