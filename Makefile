@@ -120,7 +120,11 @@ source-check:
 	sh tools/check-ziran-source.sh
 
 check: all ziran-test header-check project-test
-test: check
+.PHONY: typeface-source-test
+typeface-source-test: $(ZI2C_BIN)
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh
+
+test: check typeface-source-test
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -1,0 +1,58 @@
+host_api :: #system_library "host_api";
+
+// Sources and seed points are borrowed for each call. The host owns font
+// decoding, glyph atlases and any copy needed after registration returns.
+LoadTypefaceData :: (name: string, extension: string, data: string,
+    seed: *s32, seed_count: s32) -> bool #foreign host_api;
+LoadTypefaceFile :: (name: string, path: string,
+    seed: *s32, seed_count: s32) -> bool #foreign host_api;
+LoadSystemTypeface :: (name: string) -> bool #foreign host_api;
+SelectTypeface :: (name: string) -> bool #foreign host_api;
+ReleaseTypefaces :: () #foreign host_api;
+ReleaseTypefaceCpu :: () #foreign host_api;
+
+#program_export
+RegisterTypefaceData :: (name: string, extension: string, data: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name.count <= 0 || extension.count <= 0 || data.count <= 0 {
+        return false
+    }
+    if seed_count < 0 || (seed_count > 0 && seed == null) {
+        return false
+    }
+    return LoadTypefaceData(name, extension, data, seed, seed_count)
+}
+
+#program_export
+RegisterTypefaceFile :: (name: string, path: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name.count <= 0 || path.count <= 0 {
+        return false
+    }
+    if seed_count < 0 || (seed_count > 0 && seed == null) {
+        return false
+    }
+    return LoadTypefaceFile(name, path, seed, seed_count)
+}
+
+#program_export
+RegisterSystemTypeface :: (name: string) -> bool {
+    if name.count <= 0 { return false }
+    return LoadSystemTypeface(name)
+}
+
+#program_export
+UseTypeface :: (name: string) -> bool {
+    if name.count <= 0 { return false }
+    return SelectTypeface(name)
+}
+
+#program_export
+ClearTypefaces :: () {
+    ReleaseTypefaces()
+}
+
+#program_export
+DiscardTypefaceCpu :: () {
+    ReleaseTypefaceCpu()
+}

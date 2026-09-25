@@ -1,0 +1,17 @@
+#import "typeface_source"
+
+#program_export
+Answer :: () -> s32 {
+    if RegisterTypefaceData("", ".ttf", "font", null, 0) { return 1 }
+    if RegisterTypefaceData("ui", ".ttf", "", null, 0) { return 2 }
+    if RegisterTypefaceData("ui", ".ttf", "font", null, 1) { return 3 }
+    if !RegisterTypefaceData("ui", ".ttf", "font", null, 0) { return 4 }
+    if RegisterTypefaceFile("", "/font.ttf", null, 0) { return 5 }
+    if !RegisterTypefaceFile("fallback", "/font.ttf", null, 0) { return 6 }
+    if !RegisterSystemTypeface("ui") { return 7 }
+    if UseTypeface("") { return 8 }
+    if !UseTypeface("ui") { return 9 }
+    ClearTypefaces()
+    DiscardTypefaceCpu()
+    return 42
+}
