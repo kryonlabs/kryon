@@ -12,10 +12,12 @@ fi
 make -C "$repo" ZIRAN_DIR="$(dirname "$ziran_include")" \
     ZIRAN_BUILD_DIR="$(dirname "$ziran_lib")" \
     build/ziran/libkryon_host.a
+replay=$(mktemp)
+trap 'rm -f "$replay"' EXIT HUP INT TERM
 "${CC:-cc}" -std=c11 -Wall -Wextra -Werror \
-    -I"$repo/build/ziran/c" -I"$ziran_include" \
-    "$repo/tools/frame_replay.c" "$repo/build/ziran/libkryon_host.a" \
+    -iquote "$repo/build/ziran/c" -I"$ziran_include" \
+    "$repo/tests/support/frame_replay.c" "$repo/build/ziran/libkryon_host.a" \
     "$ziran_lib" \
-    -o "$repo/build/ziran/frame-replay"
+    -o "$replay"
 env -u DISPLAY -u WAYLAND_DISPLAY \
-    "$repo/build/ziran/frame-replay" "$@"
+    "$replay" "$@"

@@ -4,9 +4,9 @@
 #import "surface"
 #import "control_props"
 
-# Roles select semantic facts for host-side style resolution. They do not
-# manufacture color, material, gradient, radius, or border recipes.
-# 0: trigger, 2: floating panel, 26: option row, 27: scrollbar.
+// Roles select semantic facts for host-side style resolution. They do not
+// manufacture color, material, gradient, radius, or border recipes.
+// 0: trigger, 2: floating panel, 26: option row, 27: scrollbar.
 #program_export
 DropdownPanelRole :: () -> s32 {
     return 2
@@ -77,8 +77,8 @@ DropdownOpenDecision :: struct {
     closed: bool
 }
 
-# Both native hosts consume Button's resolved content metrics. Geometry does
-# not silently select another size: the standard dropdown uses medium tokens.
+// Both native hosts consume Button's resolved content metrics. Geometry does
+// not silently select another size: the standard dropdown uses medium tokens.
 #program_export
 Content :: (paint: StyleData, scale: float32) -> ContentMetrics {
     if scale <= 0.0 { scale = 1.0 }
@@ -173,8 +173,8 @@ DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
     return layout
 }
 
-# Portable input and popup policy. Hosts supply input samples and option
-# availability; no host reimplements navigation, dismissal, or geometry.
+// Portable input and popup policy. Hosts supply input samples and option
+// availability; no host reimplements navigation, dismissal, or geometry.
 #program_export
 ClampIndex :: (value: s32, count: s32) -> s32 {
     if count <= 0 {
@@ -316,8 +316,8 @@ StartNavigation :: (current: s32, count: s32, up: bool, down: bool,
     return nav
 }
 
-# The host only looks up the availability of nav.index. This bounded scan
-# includes boundary fallback and handles all-disabled lists without activation.
+// The host only looks up the availability of nav.index. This bounded scan
+// includes boundary fallback and handles all-disabled lists without activation.
 #program_export
 ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation {
     if !nav.searching {

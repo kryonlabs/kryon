@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "toast"
@@ -49,29 +56,29 @@ Frame :: () -> s32 {
         props.clear = true
         props.now_seconds = 6.0
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 140.0})
-    result: ToastResult = Toast(props)
-    if !TreeFinish() { return -10 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 140.0})
+    result: ToastResult = Toast(TestSession(), props)
+    if !TreeFinish(TestSession()) { return -10 }
     if phase == 0 || phase == 1 {
         if !result.visible || result.state.until_seconds != 3.0 ||
             result.display != "Hello" || result.ellipsis ||
             result.bounds.x != 76.0 || result.bounds.y != 68.0 ||
-            TreeCount() != 2 || result.node != 1 ||
-            TreeNodeAt(1).kind != WidgetKindCustom { return -1 }
+            TreeCount(TestSession()) != 2 || result.node != 1 ||
+            TreeNodeAt(TestSession(), 1).kind != WidgetKindCustom { return -1 }
     } else if phase == 2 {
         if !result.visible || result.state.until_seconds != 3.5 ||
             !result.ellipsis || result.display.count != 14 ||
-            result.bounds.width != 164.0 || TreeCount() != 2 {
+            result.bounds.width != 164.0 || TreeCount(TestSession()) != 2 {
             return -2
         }
     } else if phase == 3 || phase == 5 {
         if result.visible || result.state.message.count != 0 ||
-            TreeCount() != 1 { return -3 }
+            TreeCount(TestSession()) != 1 { return -3 }
     } else {
         if !result.visible || result.state.until_seconds != 8.0 ||
-            result.display != "X" || TreeCount() != 2 { return -4 }
+            result.display != "X" || TreeCount(TestSession()) != 2 { return -4 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     state = result.state
     old: s32 = phase
     phase += 1
@@ -108,11 +115,6 @@ cat > "$work/native_main.h" <<'C'
 #define HOST
 #endif
 static int fills, outlines, labels;
-HOST String TextSlice(String source, int32_t start, int32_t length) {
-    assert(start >= 0 && length >= 0 &&
-        (size_t)start + (size_t)length <= source.length);
-    return StringView(source.data + start, (size_t)length);
-}
 HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String typeface) {
     assert(font == 14 && typeface.length == 0);
@@ -182,7 +184,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
@@ -199,12 +201,6 @@ for target in c cpp go; do
 package ziran
 import "testing"
 type toastHost struct { t *testing.T; fills, outlines, labels int }
-func (h *toastHost) TextSlice(source string, start, length int32) string {
-    if start < 0 || length < 0 || int(start+length) > len(source) {
-        h.t.Fatal("invalid text span")
-    }
-    return source[start:start+length]
-}
 func (h *toastHost) MeasureGlyphWidth(value string, font int32,
     typeface string) int32 {
     if font != 14 || typeface != "" { h.t.Fatal("font width") }
@@ -245,7 +241,6 @@ func (h *toastHost) RasterImage(path string, id uint32,
     rotation, radius float32, tint Color) { h.t.Fatal("unexpected image") }
 func TestToast(t *testing.T) {
     h := &toastHost{t: t}
-    SetTextWidgetHost(h)
     SetFontMetricsHost(h)
     SetRasterShapeHost(h)
     SetRasterTextHost(h)

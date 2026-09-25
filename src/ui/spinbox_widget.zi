@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -91,7 +92,7 @@ SpinboxIntegerWidth :: (value: s32, font: s32,
 }
 
 #program_export
-SpinboxPaintInteger :: (node: s32, value: s32,
+SpinboxPaintInteger :: (session: Session, node: s32, value: s32,
     bounds: Rectangle, font: s32, typeface: string,
     color: Color) {
     width: s32 = SpinboxIntegerWidth(value, font, typeface)
@@ -99,56 +100,56 @@ SpinboxPaintInteger :: (node: s32, value: s32,
     x: s32 = cast(s32)(bounds.x + (bounds.width - cast(float32)width) * 0.5)
     y: s32 = cast(s32)(bounds.y + (bounds.height - cast(float32)height) * 0.5)
     if value < 0 {
-        PaintClippedLabel(node, "-", x, y, font, color, bounds)
+        PaintClippedLabel(session, node, "-", x, y, font, color, bounds)
         x += GlyphWidth("-", font, typeface)
     }
     magnitude: u32 = SpinboxMagnitude(value)
     place: u32 = SpinboxPlace(magnitude)
     while place > cast(u32)0 {
         digit: string = SpinboxDigitText((magnitude / place) % cast(u32)10)
-        PaintClippedLabel(node, digit, x, y, font, color, bounds)
+        PaintClippedLabel(session, node, digit, x, y, font, color, bounds)
         x += GlyphWidth(digit, font, typeface)
         place /= cast(u32)10
     }
 }
 
 #program_export
-SpinboxPaintFace :: (node: s32, bounds: Rectangle,
+SpinboxPaintFace :: (session: Session, node: s32, bounds: Rectangle,
     face: StyleData) {
     opacity: float32 = StyleOpacityValue(face.fields, face.opacity)
-    PaintRoundedFill(node, bounds, face.radius, 12,
+    PaintRoundedFill(session, node, bounds, face.radius, 12,
         ColorFromPacked(Opacity(face.background, opacity)))
     if face.border_width > 0.0 {
-        PaintRoundedOutline(node, bounds, face.radius, 12,
+        PaintRoundedOutline(session, node, bounds, face.radius, 12,
             face.border_width,
             ColorFromPacked(Opacity(face.border, opacity)))
     }
 }
 
 #program_export
-Spinbox :: (props: SpinboxProps) -> SpinboxStepResult {
+Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 { bounds.width = 120.0 }
     if bounds.height <= 0.0 { bounds.height = 36.0 }
     layout: SpinboxLayout = SpinboxLayoutFor(bounds,
         SpinboxDefaultButtonWidth(1.0))
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindSpinbox, bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindSpinbox, bounds)
         if node < 0 {
             empty: SpinboxStepResult
             empty.value = props.value
             return empty
         }
-        TreeSetLabel(node, props.label)
+        TreeSetLabel(session, node, props.label)
     }
     face: StyleData = SpinboxFaceFor(props, false)
     value_face: StyleData = SpinboxFaceFor(props, true)
-    SpinboxPaintFace(node, bounds, face)
-    SpinboxPaintFace(node, layout.text, value_face)
+    SpinboxPaintFace(session, node, bounds, face)
+    SpinboxPaintFace(session, node, layout.text, value_face)
     decrement: ButtonProps
     decrement.key = cast(u64)1
     decrement.bounds = layout.left
@@ -162,8 +163,8 @@ Spinbox :: (props: SpinboxProps) -> SpinboxStepResult {
     increment.bounds = layout.right
     increment.label = "+"
     increment.id = SpinboxIncrementIdFor(props.id)
-    dec: bool = SubmitButton(decrement, node, key) != 0
-    inc: bool = SubmitButton(increment, node, key) != 0
+    dec: bool = SubmitButton(session, decrement, node) != 0
+    inc: bool = SubmitButton(session, increment, node) != 0
     result: SpinboxStepResult
     result.value = props.value
     if !props.disabled {
@@ -182,10 +183,10 @@ Spinbox :: (props: SpinboxProps) -> SpinboxStepResult {
             (layout.text.width - cast(float32)width) * 0.5)
         y: s32 = cast(s32)(layout.text.y +
             (layout.text.height - cast(float32)height) * 0.5)
-        PaintClippedLabel(node, props.value_text, x, y, font,
+        PaintClippedLabel(session, node, props.value_text, x, y, font,
             color, layout.text)
     } else {
-        SpinboxPaintInteger(node, result.value, layout.text, font,
+        SpinboxPaintInteger(session, node, result.value, layout.text, font,
             value_face.typeface, color)
     }
     return result

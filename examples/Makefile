@@ -9,7 +9,7 @@ ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 BUILD_DIR ?= ../build/examples/ziran
 NATIVE_LIB := ../build/ziran/libkryon.a
 
-.PHONY: all test desktop desktop-test desktop-image-test clean
+.PHONY: all test desktop desktop-test desktop-image-test desktop-text-test clean
 all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zib
 
 $(ZI2ZIB_BIN):
@@ -47,9 +47,22 @@ $(BUILD_DIR)/image-saved.zib: $(BUILD_DIR)/image.zib
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
 	cmp $(BUILD_DIR)/image.zib $@
 
+$(BUILD_DIR)/text.zib: text_hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
+	mkdir -p $(BUILD_DIR)
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
+		--entry text_hello:Frame -o $@ text_hello.zi
+
+$(BUILD_DIR)/text-saved.zib: $(BUILD_DIR)/text.zib
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
+		-o $(BUILD_DIR)/text-ir text_hello.zi
+	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/text-ir \
+		--module-path $(BUILD_DIR)/text-ir --entry text_hello:Frame \
+		-o $@ $(BUILD_DIR)/text-ir/text_hello.zir
+	cmp $(BUILD_DIR)/text.zib $@
+
 $(BUILD_DIR)/native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/native
-	$(ZI2C_BIN) --strict --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui \
 		-o $(BUILD_DIR)/native hello_host.zi
 
 $(BUILD_DIR)/hello-host: $(BUILD_DIR)/native/hello_host.c $(NATIVE_LIB) Makefile
@@ -66,15 +79,21 @@ test: all $(BUILD_DIR)/hello-saved.zib
 
 $(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi desktop_runtime.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/desktop-hello-native
-	$(ZI2C_BIN) --strict --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui \
 		--module-path $(ZIRAN_DIR)/std \
 		-o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
 
 $(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi desktop_runtime.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/desktop-image-native
-	$(ZI2C_BIN) --strict --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui \
 		--module-path $(ZIRAN_DIR)/std \
 		-o $(BUILD_DIR)/desktop-image-native desktop_image.zi
+
+$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi desktop_runtime.zi text_hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN)
+	mkdir -p $(BUILD_DIR)/desktop-text-native
+	$(ZI2C_BIN) --root . --module-path ../src/ui \
+		--module-path $(ZIRAN_DIR)/std \
+		-o $(BUILD_DIR)/desktop-text-native desktop_text.zi
 
 $(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
@@ -88,6 +107,12 @@ $(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Ma
 		$(BUILD_DIR)/desktop-image-native/*.c \
 		$$(pkg-config --libs sdl2 cairo) -lm -o $@
 
+$(BUILD_DIR)/text-desktop: $(BUILD_DIR)/desktop-text-native/desktop_text.c Makefile
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
+		-I$(BUILD_DIR)/desktop-text-native \
+		$(BUILD_DIR)/desktop-text-native/*.c \
+		$$(pkg-config --libs sdl2 cairo) -lm -o $@
+
 desktop: $(BUILD_DIR)/hello-desktop
 
 desktop-test: desktop
@@ -99,6 +124,11 @@ desktop-image-test: $(BUILD_DIR)/image-saved.zib $(BUILD_DIR)/image-desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/image-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/image-desktop
+
+desktop-text-test: $(BUILD_DIR)/text-saved.zib $(BUILD_DIR)/text-desktop
+	env -u DISPLAY -u WAYLAND_DISPLAY \
+		KRYON_CAPTURE_PATH=$(BUILD_DIR)/text-desktop.png \
+		xvfb-run -a $(BUILD_DIR)/text-desktop
 
 clean:
 	$(RM) -r $(BUILD_DIR)

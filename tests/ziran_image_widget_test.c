@@ -8,7 +8,7 @@ static int images;
 static int labels;
 static int metrics;
 
-static int size(void *context, const char *path, size_t length,
+static int size(void *context, uint8_t *path, size_t length,
                 int *width, int *height)
 {
     (void)context;
@@ -23,11 +23,11 @@ static int size(void *context, const char *path, size_t length,
     return 0;
 }
 
-static void image(void *context, const char *path, size_t length,
-                  uint32_t texture_id, const float source[4],
-                  const float destination[4], const float clip[4],
-                  const float origin[2], float rotation, float radius,
-                  const uint8_t tint[4])
+static void image(void *context, uint8_t *path, size_t length,
+                  uint32_t texture_id, float source[4],
+                  float destination[4], float clip[4],
+                  float origin[2], float rotation, float radius,
+                  uint8_t tint[4])
 {
     (void)context;
     assert(tint[0] == 0x10 && tint[1] == 0x20 &&
@@ -85,7 +85,7 @@ static void unexpected_outline(void *context, float x, float y,
     assert(0 && "Image should not draw an outline");
 }
 
-static void text(void *context, const char *value, size_t length,
+static void text(void *context, uint8_t *value, size_t length,
                  int x, int y, int font, uint8_t r, uint8_t g,
                  uint8_t b, uint8_t a)
 {
@@ -96,8 +96,8 @@ static void text(void *context, const char *value, size_t length,
     labels++;
 }
 
-static int width(void *context, const char *value, size_t length,
-                 int font, const char *typeface, size_t typeface_length)
+static int width(void *context, uint8_t *value, size_t length,
+                 int font, uint8_t *typeface, size_t typeface_length)
 {
     (void)context; (void)typeface; (void)typeface_length;
     assert(length == 12 && memcmp(value, "Missing hero", length) == 0);
@@ -106,7 +106,7 @@ static int width(void *context, const char *value, size_t length,
     return 60;
 }
 
-static int height(void *context, int font, const char *typeface,
+static int height(void *context, int font, uint8_t *typeface,
                   size_t typeface_length)
 {
     (void)context; (void)typeface; (void)typeface_length;

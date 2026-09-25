@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "dropdown"
 #import "geometry"
 #import "navigation_bar_config_props"
@@ -26,8 +33,8 @@ menu_scroll: s32;
 
 FindLabel :: (label: string) -> s32 {
     index: s32 = 0
-    while index < TreeCount() {
-        if TreeNodeAt(index).semantic_label == label {
+    while index < TreeCount(TestSession()) {
+        if TreeNodeAt(TestSession(), index).semantic_label == label {
             return index
         }
         index += 1
@@ -37,11 +44,11 @@ FindLabel :: (label: string) -> s32 {
 
 Click :: (index: s32) -> bool {
     if index < 0 { return false }
-    bounds: Rectangle = TreeNodeAt(index).bounds
+    bounds: Rectangle = TreeNodeAt(TestSession(), index).bounds
     x: float32 = bounds.x + bounds.width * 0.5
     y: float32 = bounds.y + bounds.height * 0.5
-    TreePointerUpdate(PointerFrame.{x, y, true, true, false})
-    TreePointerUpdate(PointerFrame.{x, y, false, false, true})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
     return true
 }
 
@@ -86,10 +93,10 @@ Frame :: () -> s32 {
     props.reset_label = "Reset"
     props.cancel_label = "Cancel"
     props.save_label = "Save"
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
-    result: NavigationBarConfigResult = NavigationBarConfig(
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
+    result: NavigationBarConfigResult = NavigationBarConfig(TestSession(),
         props, routes[0:4], labels[0:4], options[0:2])
-    if !TreeFinish() || result.node != 1 ||
+    if !TreeFinish(TestSession()) || result.node != 1 ||
         FindLabel("Add") < 0 || FindLabel("Save") < 0 {
         return -20
     }
@@ -206,7 +213,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

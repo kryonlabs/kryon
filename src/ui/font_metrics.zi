@@ -1,6 +1,6 @@
 host_api :: #system_library "host_api";
 
-# Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
+// Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 #foreign host_api;
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #foreign host_api;

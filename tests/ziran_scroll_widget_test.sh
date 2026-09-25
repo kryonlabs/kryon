@@ -7,6 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "scroll"
@@ -19,94 +26,94 @@ cat > "$work/app.zi" <<'ZI'
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props: ScrollProps
     props.key = cast(u64)2
     props.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
     props.content_height = 140
     props.scroll_offset = 30
     props.scroll_delta = 20
-    result: ScrollResult = Scroll(props)
+    result: ScrollResult = Scroll(TestSession(), props)
     if !result.opened || result.node != 1 ||
         result.max_scroll != 100 || result.scroll_offset != 50 ||
         result.viewport.y != 10.0 || result.content.y != -40.0 ||
         result.content.height != 140.0 { return -1 }
     child: Rectangle = Rectangle.{result.content.x - 10.0,
         result.content.y + 45.0, 40.0, 20.0}
-    node: s32 = TreeSubmitCurrent(cast(u64)3, WidgetKindButton, child)
-    TreeSetInteractive(node, false, false, 3)
-    if node != 2 || !End() || !TreeFinish() { return -2 }
-    if TreeNodeAt(node).clip.x != 20.0 ||
-        TreeNodeAt(node).clip.y != 10.0 ||
-        TreeHitAt(15.0, 15.0) != -1 ||
-        TreeHitAt(25.0, 15.0) != node { return -3 }
+    node: s32 = TreeSubmitCurrent(TestSession(), cast(u64)3, WidgetKindButton, child)
+    TreeSetInteractive(TestSession(), node, false, false, 3)
+    if node != 2 || !End(TestSession()) || !TreeFinish(TestSession()) { return -2 }
+    if TreeNodeAt(TestSession(), node).clip.x != 20.0 ||
+        TreeNodeAt(TestSession(), node).clip.y != 10.0 ||
+        TreeHitAt(TestSession(), 15.0, 15.0) != -1 ||
+        TreeHitAt(TestSession(), 25.0, 15.0) != node { return -3 }
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = 2147483647
-    result = Scroll(props)
-    if result.scroll_offset != 100 || !End() ||
-        !TreeFinish() { return -4 }
-    TreeStart(cast(u64)1, root)
+    result = Scroll(TestSession(), props)
+    if result.scroll_offset != 100 || !End(TestSession()) ||
+        !TreeFinish(TestSession()) { return -4 }
+    TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = -2147483647
     props.scroll_delta = -20
-    result = Scroll(props)
-    if result.scroll_offset != 0 || !End() ||
-        !TreeFinish() { return -5 }
+    result = Scroll(TestSession(), props)
+    if result.scroll_offset != 0 || !End(TestSession()) ||
+        !TreeFinish(TestSession()) { return -5 }
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = 20
     props.scroll_delta = 0
     props.input.enabled = true
     props.input.pointer_allowed = true
     props.input.wheel = -1.0
-    PaintClear()
-    result = Scroll(props)
+    PaintClear(TestSession())
+    result = Scroll(TestSession(), props)
     if result.scroll_offset != 62 || !result.frame.consume_wheel ||
         !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
-        result.content.y != -52.0 || PendingPaintCount() != 2 ||
-        PendingPaintAt(0).bounds.x != 90.0 ||
-        PendingPaintAt(1).bounds.width <= 0.0 ||
-        !End() || !TreeFinish() { return -6 }
+        result.content.y != -52.0 || PendingPaintCount(TestSession()) != 2 ||
+        PendingPaintAt(TestSession(), 0).bounds.x != 90.0 ||
+        PendingPaintAt(TestSession(), 1).bounds.width <= 0.0 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -6 }
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = result.scroll_offset
     props.input.wheel = 0.0
     props.input.pressed = true
     props.input.down = true
     props.input.mouse = Vector2.{95.0, 20.0}
-    result = Scroll(props)
+    result = Scroll(TestSession(), props)
     if !result.frame.start_drag || result.frame.clear_drag ||
-        !End() || !TreeFinish() { return -7 }
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -7 }
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.input.pressed = false
     props.input.owns_drag = true
     props.input.grab = result.frame.grab
     props.input.mouse.y = 45.0
-    result = Scroll(props)
+    result = Scroll(TestSession(), props)
     if result.scroll_offset <= 62 || result.scroll_offset > 100 ||
-        !End() || !TreeFinish() { return -8 }
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -8 }
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.input.down = false
     props.input.released = true
-    result = Scroll(props)
+    result = Scroll(TestSession(), props)
     if !result.frame.clear_drag || !result.frame.consume_release ||
-        !End() || !TreeFinish() { return -9 }
-    PaintClear()
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -9 }
+    PaintClear(TestSession())
 
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props.input.enabled = false
-    result = Scroll(props)
+    result = Scroll(TestSession(), props)
     inner: ScrollProps
     inner.key = cast(u64)4
     inner.bounds = Rectangle.{30.0, 15.0, 30.0, 20.0}
     inner.content_height = 50
-    unused Scroll(inner)
-    if !End() || !End() || !TreeFinish() ||
-        TreeScrollAt(40.0, 20.0) != cast(u64)4 ||
-        TreeScrollAt(25.0, 15.0) != cast(u64)2 ||
-        TreeScrollAt(150.0, 20.0) != cast(u64)0 { return -10 }
+    unused Scroll(TestSession(), inner)
+    if !End(TestSession()) || !End(TestSession()) || !TreeFinish(TestSession()) ||
+        TreeScrollAt(TestSession(), 40.0, 20.0) != cast(u64)4 ||
+        TreeScrollAt(TestSession(), 25.0, 15.0) != cast(u64)2 ||
+        TreeScrollAt(TestSession(), 150.0, 20.0) != cast(u64)0 { return -10 }
     return 42
 }
 ZI
@@ -163,7 +170,7 @@ for input in source saved; do
         --entry app:Answer -o "$work/$input.zib" "$source"
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict \
+        "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then

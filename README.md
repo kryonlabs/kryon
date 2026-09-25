@@ -25,8 +25,11 @@ source headers. Portable platform bindings are in
 `build/ziran/libkryon_host.a`: shared raster lines use a caller-supplied line
 renderer, and `CompositionQueue` carries raw IME events to the checked text
 widgets.
-`make test` temporarily builds that C test host and runs the Ziran source,
-saved-IR, and portable bundle tests. No display is started.
+`make test` builds the test host and runs the Ziran source, saved-IR, and
+portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
+serially or `TEST_JOBS=8` on a larger machine. For a quick edit loop, use
+`make test-focus TEST=link_widget`; the filter matches test script names and
+skips the full library rebuild. Test subprocesses have no display access.
 See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
 contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform
@@ -39,6 +42,10 @@ with scripted input on a headless host.
 The [Ziran example](examples/README.md) builds a `.zib` that imports Kryon and
 runs a retained `Button` press and release through a separate Ziran SVG host
 without a display.
+The same directory also has a plain `Text(TextProps)` hello world desktop
+example; `make -C examples desktop-text-test` renders it on a private display.
+For Ziran app manifests, the terminal backend, and `kryon run`, see
+[Ziran projects](docs/PROJECTS.md).
 
 ## Migration status
 
@@ -75,9 +82,11 @@ The current archive includes selected widget behavior and shared line rendering
 path. Complete widget composition and rendering,
 remaining platform host adapters, full `.zib` capability execution, and
 downstream app builds are still migration work. Kryon's implementation target
-is 100% current Ziran source. The C files under `src/backend/` and the C frame
-replay tool are migration debt still used by the present test harness; they
-must be replaced in Ziran rather than extended. The unused handwritten Go
+is 100% current Ziran source. The C files under `src/backend/`, the C frame
+replay tool, and the Java files under `src/platform/android/` are migration
+debt; the source inventory tracks them until they can be replaced. The C
+hosts and replay tool are still used by the present test harness and must
+be replaced in Ziran rather than extended. The unused handwritten Go
 runtime has been removed. The old KRB renderer and static C package were
 removed with their header-dependent implementation.
 

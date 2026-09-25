@@ -1,0 +1,29 @@
+#import "style"
+
+// A widget can use its default face without carrying a rule table. Installing
+// a style sheet supplies the optional resolver for later Text calls.
+TextStyleRequest :: struct {
+    kind: s32
+    class_name: s32
+    disabled: bool
+}
+
+TextStyleResolver :: #type (request: TextStyleRequest,
+    base: StyleData) -> StyleData;
+
+active_text_style_callback: TextStyleResolver;
+has_text_style_resolver: bool;
+
+#program_export
+SetTextStyleResolver :: (resolver: TextStyleResolver) {
+    active_text_style_callback = resolver
+    has_text_style_resolver = true
+}
+
+#program_export
+TextStyleFor :: (request: TextStyleRequest,
+    base: StyleData) -> StyleData {
+    if !has_text_style_resolver { return base }
+    resolver: TextStyleResolver = active_text_style_callback
+    return resolver(request, base)
+}

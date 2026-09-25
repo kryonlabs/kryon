@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "drawing_props"
 #import "geometry"
 #import "layout"
@@ -25,74 +32,74 @@ cat > "$work/app.zi" <<'ZI'
 #program_export
 Answer :: () -> s32 {
     bounds: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
-    TreeStart(cast(u64)1, bounds)
+    TreeStart(TestSession(), cast(u64)1, bounds)
     page_props: PageProps
     page_props.key = cast(u64)10
     page_props.title = "Document"
-    page: PageResult = Page(page_props)
+    page: PageResult = Page(TestSession(), page_props)
     heading: HeadingProps
     heading.key = cast(u64)11
     heading.bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}
     heading.text = "Title"
     heading.level = 9
-    Heading(heading)
+    Heading(TestSession(), heading)
     paragraph: ParagraphTextProps
     paragraph.key = cast(u64)12
     paragraph.bounds = Rectangle.{10.0, 40.0, 0.0, 0.0}
     paragraph.text = "Body"
-    ParagraphText(paragraph)
-    if !page.opened || !End() || !TreeFinish() ||
-        TreeCount() != 4 ||
-        TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticPage ||
-        TreeNodeAt(2).parent != 1 ||
-        TreeNodeAt(2).kind != WidgetKindText ||
-        TreeNodeAt(2).semantic_kind != cast(SemanticKind)SemanticHeading ||
-        TreeNodeAt(2).heading_level != 6 ||
-        TreeNodeAt(2).semantic_label != "Title" ||
-        TreeNodeAt(2).bounds.width != 50.0 ||
-        TreeNodeAt(3).parent != 1 ||
-        TreeNodeAt(3).semantic_kind != cast(SemanticKind)SemanticParagraph ||
-        TreeNodeAt(3).heading_level != 0 ||
-        TreeNodeAt(3).bounds.width != 190.0 { return -1 }
-    PaintFlush()
-    TreeStart(cast(u64)20, bounds)
+    ParagraphText(TestSession(), paragraph)
+    if !page.opened || !End(TestSession()) || !TreeFinish(TestSession()) ||
+        TreeCount(TestSession()) != 4 ||
+        TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticPage ||
+        TreeNodeAt(TestSession(), 2).parent != 1 ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindText ||
+        TreeNodeAt(TestSession(), 2).semantic_kind != cast(SemanticKind)SemanticHeading ||
+        TreeNodeAt(TestSession(), 2).heading_level != 6 ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Title" ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 50.0 ||
+        TreeNodeAt(TestSession(), 3).parent != 1 ||
+        TreeNodeAt(TestSession(), 3).semantic_kind != cast(SemanticKind)SemanticParagraph ||
+        TreeNodeAt(TestSession(), 3).heading_level != 0 ||
+        TreeNodeAt(TestSession(), 3).bounds.width != 190.0 { return -1 }
+    PaintFlush(TestSession())
+    TreeStart(TestSession(), cast(u64)20, bounds)
     column_props: ColumnProps
     column_props.key = cast(u64)21
     column_props.bounds = bounds
     column_props.padding = 5
     column_props.gap = 3
-    column: LayoutContainer = Column(column_props)
+    column: LayoutContainer = Column(TestSession(), column_props)
     first: TextProps
     first.key = cast(u64)22
     first.text = "A"
-    Text(first)
+    Text(TestSession(), first)
     first.key = cast(u64)23
     first.text = "BB"
-    Text(first)
-    if !column.opened || !End() || !TreeFinish() ||
-        TreeNodeAt(2).bounds.x != 5.0 ||
-        TreeNodeAt(2).bounds.y != 5.0 ||
-        TreeNodeAt(3).bounds.x != 5.0 ||
-        TreeNodeAt(3).bounds.y != 20.0 { return -2 }
-    PaintFlush()
-    TreeStart(cast(u64)30, bounds)
-    viewport: s32 = TreeSubmit(cast(u64)31, 0, WidgetKindCard,
+    Text(TestSession(), first)
+    if !column.opened || !End(TestSession()) || !TreeFinish(TestSession()) ||
+        TreeNodeAt(TestSession(), 2).bounds.x != 5.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.y != 5.0 ||
+        TreeNodeAt(TestSession(), 3).bounds.x != 5.0 ||
+        TreeNodeAt(TestSession(), 3).bounds.y != 20.0 { return -2 }
+    PaintFlush(TestSession())
+    TreeStart(TestSession(), cast(u64)30, bounds)
+    viewport: s32 = TreeSubmit(TestSession(), cast(u64)31, 0, WidgetKindCard,
         Rectangle.{0.0, 0.0, 100.0, 100.0})
-    TreeSetChildClip(viewport,
+    TreeSetChildClip(TestSession(), viewport,
         Rectangle.{20.0, 20.0, 40.0, 40.0})
-    child: s32 = TreeSubmit(cast(u64)32, viewport, WidgetKindText,
+    child: s32 = TreeSubmit(TestSession(), cast(u64)32, viewport, WidgetKindText,
         Rectangle.{10.0, 10.0, 70.0, 70.0})
     ink: Color = ColorFromPacked(cast(u32)0x171717ff)
-    PaintLabel(child, "Plain", 10, 10, 16, ink)
-    PaintClippedLabel(child, "Clipped", 30, 30, 16, ink,
+    PaintLabel(TestSession(), child, "Plain", 10, 10, 16, ink)
+    PaintClippedLabel(TestSession(), child, "Clipped", 30, 30, 16, ink,
         Rectangle.{30.0, 30.0, 50.0, 50.0})
-    PaintImage(child, "", cast(u32)7,
+    PaintImage(TestSession(), child, "", cast(u32)7,
         Rectangle.{0.0, 0.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Vector2.{0.0, 0.0}, 0.0, 0.0, ink)
-    if !TreeFinish() { return -3 }
-    PaintFlush()
+    if !TreeFinish(TestSession()) { return -3 }
+    PaintFlush(TestSession())
     return 42
 }
 ZI

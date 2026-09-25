@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -24,8 +31,8 @@ phase: s32;
 #program_export
 Frame :: () -> s32 {
     if phase == 1 {
-        if !EndTree() || TreeCount() != 2 ||
-            TreeNodeAt(1).semantic_label != "Hero image" { return -1 }
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Hero image" { return -1 }
         phase = 2
         return 1
     }
@@ -51,8 +58,8 @@ Frame :: () -> s32 {
         image.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
         image.fit = cast(ImageFit)ImageFitContain
         image.rotation = 15.0
-        BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-        Image(image)
+        BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+        Image(TestSession(), image)
         phase = 1
         return 0
     }
@@ -63,16 +70,16 @@ Frame :: () -> s32 {
         image.texture.id = cast(u32)77
         image.texture.width = 40
         image.texture.height = 40
-        Image(image)
+        Image(TestSession(), image)
         phase = 3
         return 2
     }
     image.asset_path = "missing.png"
     image.alt_text = "Missing hero"
     image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
-    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-    Image(image)
-    if !EndTree() || TreeNodeAt(1).semantic_label != "Missing hero" {
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+    Image(TestSession(), image)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeNodeAt(TestSession(), 1).semantic_label != "Missing hero" {
         return -1
     }
     phase = 4
@@ -97,6 +104,13 @@ cmp "$work/source.zib" "$work/saved.zib"
 "$work/host-test" "$work/saved.zib"
 
 cat > "$work/native.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
@@ -111,7 +125,7 @@ Answer :: () -> s32 {
     image.texture.id = cast(u32)77
     image.texture.width = 40
     image.texture.height = 40
-    Image(image)
+    Image(TestSession(), image)
     return 42
 }
 ZI
@@ -192,7 +206,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/native.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

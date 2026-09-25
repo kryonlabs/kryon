@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -59,10 +60,10 @@ TitleBarFaceFor :: (props: TitleBarProps,
 }
 
 #program_export
-TitleBarKey :: (props: TitleBarProps) -> u64 {
+TitleBarKey :: (session: Session, props: TitleBarProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -83,10 +84,10 @@ TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
     return layout
 }
 
-# A TitleBar is ordinary checked UI composition. A caller retains the
-# dropdown result and passes it back through props.dropdown next frame.
+// A TitleBar is ordinary checked UI composition. A caller retains the
+// dropdown result and passes it back through props.dropdown next frame.
 #program_export
-TitleBar :: (props: TitleBarProps,
+TitleBar :: (session: Session, props: TitleBarProps,
     options: []DropdownOption) -> TitleBarResult {
     result: TitleBarResult
     result.node = -1
@@ -114,7 +115,7 @@ TitleBar :: (props: TitleBarProps,
     result.height = state.height
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 {
-        parent: Rectangle = TreeCurrentParentBounds()
+        parent: Rectangle = TreeCurrentParentBounds(session)
         bounds.x = parent.x
         bounds.width = parent.width
     }
@@ -122,13 +123,13 @@ TitleBar :: (props: TitleBarProps,
     if bounds.width <= 0.0 || bounds.height <= 0.0 {
         return result
     }
-    key: u64 = TitleBarKey(props)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindTitleBar,
+    key: u64 = TitleBarKey(session, props)
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindTitleBar,
             bounds)
         if result.node < 0 { return result }
-        TreeSetLabel(result.node, props.title)
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        TreeSetLabel(session, result.node, props.title)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     layout: TitleBarLayout = TitleBarLayoutAt(bounds,
         state.has_leading, state.has_dropdown,
@@ -136,14 +137,14 @@ TitleBar :: (props: TitleBarProps,
         metrics)
     opacity: float32 = StyleOpacityValue(bar.value.fields,
         bar.value.opacity)
-    PaintRoundedFill(result.node, bounds, bar.value.radius, 12,
+    PaintRoundedFill(session, result.node, bounds, bar.value.radius, 12,
         ColorFromPacked(Opacity(bar.value.background, opacity)))
     if bar.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, bounds, bar.value.radius,
+        PaintRoundedOutline(session, result.node, bounds, bar.value.radius,
             12, bar.value.border_width,
             ColorFromPacked(Opacity(bar.value.border, opacity)))
     }
-    PaintLine(result.node, Rectangle.{bounds.x,
+    PaintLine(session, result.node, Rectangle.{bounds.x,
         bounds.y + bounds.height - 1.0, bounds.width, 0.0},
         ColorFromPacked(Opacity(bar.value.border, opacity)))
     if state.has_leading {
@@ -163,8 +164,8 @@ TitleBar :: (props: TitleBarProps,
         button.arrow = props.leading_image.asset_path == "" &&
             props.leading_image.texture.id == cast(u32)0
         button.direction = cast(ArrowDirection)ArrowLeft
-        result.clicked_leading = SubmitButton(button,
-            result.node, key) != 0
+        result.clicked_leading = SubmitButton(session, button,
+            result.node) != 0
     }
     if state.has_dropdown {
         dropdown: DropdownProps = props.dropdown
@@ -177,7 +178,7 @@ TitleBar :: (props: TitleBarProps,
             dropdown.class_name = props.class_name
         }
         if dropdown.scale <= 0.0 { dropdown.scale = scale }
-        result.dropdown = Dropdown(dropdown, options)
+        result.dropdown = Dropdown(session, dropdown, options)
         return result
     }
     if props.title != "" {
@@ -197,7 +198,7 @@ TitleBar :: (props: TitleBarProps,
             title.value.typeface)
         paint: TitleBarTitlePaint = TitleBarTitlePaintFor(
             layout, width, line_height)
-        PaintClippedLabel(result.node, props.title, paint.x,
+        PaintClippedLabel(session, result.node, props.title, paint.x,
             paint.y, font, ColorFromPacked(Opacity(
                 title.value.foreground,
                 StyleOpacityValue(title.value.fields,

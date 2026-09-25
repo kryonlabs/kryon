@@ -1,0 +1,32 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+failed: bool;
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.x != 2.0 || bounds.y != 3.0 ||
+        bounds.width != 40.0 || bounds.height != 20.0 ||
+        radius != 0.0 || segments != 0 ||
+        color.r != cast(u8)10 || color.g != cast(u8)20 ||
+        color.b != cast(u8)30 ||
+        (fills == 0 && color.a != cast(u8)99) ||
+        (fills == 1 && color.a != cast(u8)200) || fills > 1 {
+        failed = true
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    failed = true
+}
+
+#program_export
+FadeFillCount :: () -> s32 { return fills }
+
+#program_export
+FadeHostFailed :: () -> bool { return failed }

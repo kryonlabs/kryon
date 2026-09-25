@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -263,14 +264,14 @@ PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float32,
     return cast(DropZone)PanedViewDropZoneFor(bounds, mouse, metrics)
 }
 
-# The caller stores the returned split and places its pane content in the
-# returned rectangles. The handle uses the retained pointer drag route.
+// The caller stores the returned split and places its pane content in the
+// returned rectangles. The handle uses the retained pointer drag route.
 #program_export
-PanedView :: (props: PanedViewProps) -> PanedViewResult {
+PanedView :: (session: Session, props: PanedViewProps) -> PanedViewResult {
     result: PanedViewResult
     result.node = -1
     bounds: Rectangle = props.bounds
-    parent: Rectangle = TreeCurrentParentBounds()
+    parent: Rectangle = TreeCurrentParentBounds(session)
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
     scale: float32 = props.scale
@@ -279,19 +280,21 @@ PanedView :: (props: PanedViewProps) -> PanedViewResult {
     metrics: PanedViewMetrics = PanedViewMetricsFor(scale, face)
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindPanedView, bounds)
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindPanedView, bounds)
         if result.node < 0 { return result }
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     layout: PanedViewLayout = PanedViewLayoutFor(bounds, props.vertical,
         props.split, props.has_split, props.min_first,
         props.min_second, metrics)
-    if TreeIsBuilding() && props.has_split && !props.disabled {
-        previous: s32 = TreeFind(PanedViewHandleKey(), key,
-            WidgetKindSlider)
-        drag: PointerDrag = TreeTakeDragAt(previous)
+    if TreeIsBuilding(session) && props.has_split && !props.disabled {
+        previous_view: s32 = TreePrevious(session,
+            TreeCurrentParent(session), key, WidgetKindPanedView)
+        previous: s32 = TreePreviousCommitted(session, previous_view,
+            PanedViewHandleKey(), WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(session, previous)
         if drag.active || drag.ended {
             pointer_x: float32 = drag.x - drag.grab_x +
                 cast(float32)metrics.grip * 0.5
@@ -313,14 +316,14 @@ PanedView :: (props: PanedViewProps) -> PanedViewResult {
     result.first = panes.first
     result.second = panes.second
     handle_node: s32 = -1
-    if TreeIsBuilding() {
-        handle_node = TreeSubmit(PanedViewHandleKey(), result.node,
+    if TreeIsBuilding(session) {
+        handle_node = TreeSubmit(session, PanedViewHandleKey(), result.node,
             WidgetKindSlider, result.handle)
-        TreeSetInteractive(handle_node,
+        TreeSetInteractive(session, handle_node,
             props.disabled || !props.has_split, false, props.id)
     }
     if result.handle.width > 0.0 && result.handle.height > 0.0 {
-        PaintRoundedFill(handle_node, result.handle,
+        PaintRoundedFill(session, handle_node, result.handle,
             face.value.radius, 12,
             ColorFromPacked(Opacity(face.value.background,
                 StyleOpacityValue(face.value.fields,

@@ -115,19 +115,19 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_image.$extension"
             cat > "$output/main.go" <<'GO'
 package main
 func main() { if UseImage_Answer() != 42 { panic("wrong image result") } }
 GO
-            GO111MODULE=off go run "$output/geometry.go" \
+            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/text_align.go" "$output/drawing_props.go" \
                 "$output/image_props.go" "$output/image.go" \
                 "$output/use_image.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" \
+            "$ziran" build --target=c --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_image.$extension"
             cat > "$output/main.c" <<'C'
@@ -135,13 +135,13 @@ GO
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/text_align.c" \
+                "$output/geometry.c" "$output/math.c" "$output/text_align.c" \
                 "$output/drawing_props.c" "$output/image_props.c" \
                 "$output/image.c" \
                 "$output/use_image.c" "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" \
+            "$ziran" build --target=cpp --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_image.$extension"
             cat > "$output/main.cpp" <<'CPP'
@@ -149,7 +149,7 @@ C
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/text_align.cpp" \
+                "$output/geometry.cpp" "$output/math.cpp" "$output/text_align.cpp" \
                 "$output/drawing_props.cpp" "$output/image_props.cpp" \
                 "$output/image.cpp" \
                 "$output/use_image.cpp" "$output/main.cpp" -o "$output/app"

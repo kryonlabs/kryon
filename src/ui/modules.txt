@@ -45,6 +45,7 @@ flow.zi
 frame_capture.zi
 frame_pacing.zi
 geometry.zi
+math.zi
 grid.zi
 grid_props.zi
 group.zi
@@ -85,6 +86,7 @@ navigation_bar_config_props.zi
 navigation_bar_config_widget.zi
 navigation_bar_props.zi
 navigation_bar_widget.zi
+notification.zi
 overlay.zi
 overlay_props.zi
 overlay_widget.zi
@@ -125,6 +127,7 @@ router_props.zi
 scroll.zi
 scroll_props.zi
 scroll_widget.zi
+session.zi
 scene_tree_props.zi
 semantic.zi
 segmented_control.zi
@@ -163,7 +166,9 @@ text_area_widget.zi
 text_field_widget.zi
 text_input.zi
 text_input_props.zi
+text_layout.zi
 text_props.zi
+text_style.zi
 text_widget.zi
 paragraph.zi
 text_rows.zi
@@ -187,6 +192,7 @@ tree_draw.zi
 tree_input.zi
 tree_view.zi
 tree_view_props.zi
+vec.zi
 widget_kind.zi
 window_flags.zi
 window_policy.zi

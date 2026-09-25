@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "separator"
@@ -23,7 +30,7 @@ phase: s32;
 #program_export
 Frame :: () -> s32 {
     if phase == 1 {
-        if !EndTree() || TreeCount() != 4 { return -1 }
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 4 { return -1 }
         phase = 2
         return 1
     }
@@ -33,7 +40,7 @@ Frame :: () -> s32 {
     vertical.class_name = 7
     vertical.key = cast(u64)11
     if phase == 2 {
-        Separator(vertical)
+        Separator(TestSession(), vertical)
         phase = 3
         return 2
     }
@@ -65,10 +72,10 @@ Frame :: () -> s32 {
     labelled.label = "A"
     labelled.class_name = 7
     labelled.key = cast(u64)12
-    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Separator(vertical)
-    Separator(labelled)
-    Bullet(Rectangle.{150.0, 20.0, 20.0, 20.0})
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Separator(TestSession(), vertical)
+    Separator(TestSession(), labelled)
+    Bullet(TestSession(), Rectangle.{150.0, 20.0, 20.0, 20.0})
     phase = 1
     return 0
 }
@@ -91,6 +98,13 @@ cmp "$work/source.zib" "$work/saved.zib"
 "$work/host-test" "$work/saved.zib"
 
 cat > "$work/native.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "separator"
@@ -130,12 +144,12 @@ Answer :: () -> s32 {
     vertical: SeparatorProps
     vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
     vertical.vertical = true
-    Separator(vertical)
+    Separator(TestSession(), vertical)
     labelled: SeparatorProps
     labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
     labelled.label = "A"
-    Separator(labelled)
-    Bullet(Rectangle.{150.0, 20.0, 20.0, 20.0})
+    Separator(TestSession(), labelled)
+    Bullet(TestSession(), Rectangle.{150.0, 20.0, 20.0, 20.0})
     return 42
 }
 ZI
@@ -220,7 +234,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/native.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

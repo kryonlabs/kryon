@@ -1,5 +1,3 @@
-#import "text_align"
-
 ParagraphMetrics :: struct {
     font: s32
     line_gap: s32
@@ -15,15 +13,6 @@ ParagraphLayoutPolicy :: struct {
     line_gap: s32
 }
 
-ParagraphToken :: struct {
-    start: s32
-    end: s32
-    next: s32
-    valid: bool
-    line_break: bool
-    icon: bool
-}
-
 ParagraphLine :: struct {
     start: s32
     end: s32
@@ -37,59 +26,6 @@ ParagraphLineDecision :: struct {
     emit: bool
 }
 
-# Hosts copy these borrowed byte ranges and measure their text. Whitespace,
-# explicit line breaks and inline icon recognition are shared language policy.
-# Non-breaking spaces and other UTF-8 sequences remain inside their word.
-ParagraphIsSpace :: (value: u8) -> bool {
-    return value == cast(u8)32 || value == cast(u8)9 ||
-    value == cast(u8)11 || value == cast(u8)12
-}
-
-#program_export
-ParagraphTokenNext :: (text: string, offset: s32, icons: bool) -> ParagraphToken {
-    token: ParagraphToken
-    if offset < 0 {
-        offset = 0
-    }
-    while offset < (cast(s32)text.count) && ParagraphIsSpace(text[offset]) {
-        offset += 1
-    }
-    token.start = offset
-    token.end = offset
-    token.next = offset
-    if offset >= (cast(s32)text.count) {
-        return token
-    }
-    token.valid = true
-    value: u8 = text[offset]
-    if value == cast(u8)10 || value == cast(u8)13 {
-        token.line_break = true
-        offset += 1
-        if value == cast(u8)13 && offset < (cast(s32)text.count) && text[offset] == cast(u8)10 {
-            offset += 1
-        }
-    } else if icons && value == cast(u8)37 && offset + 1 < (cast(s32)text.count) &&
-    text[offset + 1] == cast(u8)105 {
-        token.icon = true
-        offset += 2
-    } else {
-        while offset < (cast(s32)text.count) {
-            value = text[offset]
-            if ParagraphIsSpace(value) || value == cast(u8)10 || value == cast(u8)13 {
-                break
-            }
-            if icons && value == cast(u8)37 && offset + 1 < (cast(s32)text.count) &&
-            text[offset + 1] == cast(u8)105 {
-                break
-            }
-            offset += 1
-        }
-    }
-    token.end = offset
-    token.next = offset
-    return token
-}
-
 #program_export
 ParagraphTextSeparator :: (line: ParagraphLine) -> string {
     if line.has_content {
@@ -98,9 +34,9 @@ ParagraphTextSeparator :: (line: ParagraphLine) -> string {
     return ""
 }
 
-# The host supplies both the standalone element width and the measured joined
-# candidate (including shaping/letter spacing). No renderer chooses wrap points.
-# An oversized first element stays on its line; it never emits a phantom blank.
+// The host supplies both the standalone element width and the measured joined
+// candidate (including shaping/letter spacing). No renderer chooses wrap points.
+// An oversized first element stays on its line; it never emits a phantom blank.
 #program_export
 ParagraphLineAdvance :: (line: ParagraphLine, index: s32,
 line_break: bool, end: bool, element_width: float32, candidate_width: float32,
@@ -172,12 +108,6 @@ ParagraphCanLayout :: (width: s32) -> bool {
 }
 
 #program_export
-ParagraphDefaultLineGap :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(4.0 * scale)
-}
-
-#program_export
 ParagraphLayoutPolicyFor :: (space_text_width: s32, letter_spacing: s32, requested_line_gap: s32, default_line_gap: s32, scale: float32) -> ParagraphLayoutPolicy {
     policy: ParagraphLayoutPolicy
     policy.space_width = space_text_width + 2 * letter_spacing
@@ -186,24 +116,6 @@ ParagraphLayoutPolicyFor :: (space_text_width: s32, letter_spacing: s32, request
     policy.line_gap = requested_line_gap
     if policy.line_gap <= 0 { policy.line_gap = default_line_gap }
     return policy
-}
-
-#program_export
-ParagraphLayoutTotalHeight :: (line_count: s32, drawn_line_height: s32,
-line_gap: s32) -> s32 {
-    if line_count <= 0 { return 0 }
-    height: s32 = line_count * drawn_line_height
-    if line_count > 1 { height += (line_count - 1) * line_gap }
-    if height < 0 { return 0 }
-    return height
-}
-
-#program_export
-ParagraphLineXFor :: (x: s32, width: s32, line_width: s32, align: s32) -> s32 {
-    spare: s32 = width - line_width
-    if align == TextAlignCenter { return x + spare / 2 }
-    if align == TextAlignEnd { return x + spare }
-    return x
 }
 
 #program_export

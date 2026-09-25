@@ -1,0 +1,133 @@
+#import "drawing_props"
+#import "geometry"
+#import "math"
+
+// A portable RGBA8 raster primitive. The host resolves asset paths and texture
+// handles, then lends pixel buffers to this function for one synchronous draw.
+#program_export
+ValidRGBA :: (pixels: []u8, width: s32, height: s32, stride: s32) -> bool {
+    if width <= 0 || height <= 0 || width > 536870911 ||
+        stride < width * 4 { return false }
+    return cast(s64)stride * cast(s64)height <= pixels.count
+}
+
+InsideRoundedClip :: (x: float32, y: float32, clip: Rectangle,
+    requested_radius: float32) -> bool {
+    right: float32 = clip.x + clip.width
+    bottom: float32 = clip.y + clip.height
+    if x < clip.x || x >= right || y < clip.y || y >= bottom {
+        return false
+    }
+    radius: float32 = requested_radius
+    if radius <= 0.0 { return true }
+    if radius > clip.width * 0.5 { radius = clip.width * 0.5 }
+    if radius > clip.height * 0.5 { radius = clip.height * 0.5 }
+    cx: float32 = x
+    cy: float32 = y
+    if x < clip.x + radius { cx = clip.x + radius }
+    if x > right - radius { cx = right - radius }
+    if y < clip.y + radius { cy = clip.y + radius }
+    if y > bottom - radius { cy = bottom - radius }
+    dx: float32 = x - cx
+    dy: float32 = y - cy
+    return dx * dx + dy * dy <= radius * radius
+}
+
+BlendRGBA :: (canvas: []u8, destination_index: s64,
+    asset: []u8, source_index: s64, tint: Color) {
+    alpha: u32 = cast(u32)asset[source_index + 3] * cast(u32)tint.a /
+        cast(u32)255
+    if alpha == 0 { return }
+    background: u32 = cast(u32)canvas[destination_index + 3] *
+        (cast(u32)255 - alpha)
+    total: u32 = alpha * cast(u32)255 + background
+    red: u32 = cast(u32)asset[source_index] * cast(u32)tint.r /
+        cast(u32)255
+    green: u32 = cast(u32)asset[source_index + 1] * cast(u32)tint.g /
+        cast(u32)255
+    blue: u32 = cast(u32)asset[source_index + 2] * cast(u32)tint.b /
+        cast(u32)255
+    canvas[destination_index] = cast(u8)((red * alpha * cast(u32)255 +
+        cast(u32)canvas[destination_index] * background) / total)
+    canvas[destination_index + 1] = cast(u8)((green * alpha * cast(u32)255 +
+        cast(u32)canvas[destination_index + 1] * background) / total)
+    canvas[destination_index + 2] = cast(u8)((blue * alpha * cast(u32)255 +
+        cast(u32)canvas[destination_index + 2] * background) / total)
+    canvas[destination_index + 3] = cast(u8)(total / cast(u32)255)
+}
+
+#program_export
+RasterImageRGBA :: (canvas: []u8, canvas_width: s32,
+    canvas_height: s32, canvas_stride: s32, asset: []u8,
+    asset_width: s32, asset_height: s32, asset_stride: s32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) -> bool {
+    if !ValidRGBA(canvas, canvas_width, canvas_height, canvas_stride) ||
+        !ValidRGBA(asset, asset_width, asset_height, asset_stride) ||
+        tint.a == cast(u8)0 { return false }
+    if !Finite32(source.x) || !Finite32(source.y) ||
+        !Finite32(source.width) || !Finite32(source.height) ||
+        !Finite32(destination.x) || !Finite32(destination.y) ||
+        !Finite32(destination.width) || !Finite32(destination.height) ||
+        !Finite32(clip.x) || !Finite32(clip.y) ||
+        !Finite32(clip.width) || !Finite32(clip.height) ||
+        !Finite32(origin.x) || !Finite32(origin.y) ||
+        !Finite32(rotation) || !Finite32(radius) ||
+        destination.width <= 0.0 || destination.height <= 0.0 ||
+        clip.width <= 0.0 || clip.height <= 0.0 { return false }
+    right: float32 = clip.x + clip.width
+    bottom: float32 = clip.y + clip.height
+    if !Finite32(right) || !Finite32(bottom) ||
+        right <= 0.0 || bottom <= 0.0 ||
+        clip.x >= cast(float32)canvas_width ||
+        clip.y >= cast(float32)canvas_height { return false }
+    x0: s32 = 0
+    y0: s32 = 0
+    if clip.x > 0.0 { x0 = FloorInteger(clip.x) }
+    if clip.y > 0.0 { y0 = FloorInteger(clip.y) }
+    x1: s32 = canvas_width
+    y1: s32 = canvas_height
+    if right < cast(float32)canvas_width { x1 = CeilInteger(right) }
+    if bottom < cast(float32)canvas_height { y1 = CeilInteger(bottom) }
+    cosine: float32 = CosineDegrees(rotation)
+    sine: float32 = SineDegrees(rotation)
+    y: s32 = y0
+    while y < y1 {
+        x: s32 = x0
+        while x < x1 {
+            px: float32 = cast(float32)x + 0.5
+            py: float32 = cast(float32)y + 0.5
+            if InsideRoundedClip(px, py, clip, radius) {
+                dx: float32 = px - destination.x
+                dy: float32 = py - destination.y
+                local_x: float32 = dx * cosine + dy * sine + origin.x
+                local_y: float32 = -dx * sine + dy * cosine + origin.y
+                if local_x >= 0.0 && local_y >= 0.0 &&
+                    local_x < destination.width &&
+                    local_y < destination.height {
+                    source_x: float32 = source.x + local_x *
+                        source.width / destination.width
+                    source_y: float32 = source.y + local_y *
+                        source.height / destination.height
+                    if Finite32(source_x) && Finite32(source_y) &&
+                        source_x >= 0.0 && source_y >= 0.0 &&
+                        source_x < cast(float32)asset_width &&
+                        source_y < cast(float32)asset_height {
+                        sx: s32 = FloorInteger(source_x)
+                        sy: s32 = FloorInteger(source_y)
+                        source_index: s64 = cast(s64)sy *
+                            cast(s64)asset_stride + cast(s64)sx * 4
+                        destination_index: s64 = cast(s64)y *
+                            cast(s64)canvas_stride + cast(s64)x * 4
+                        BlendRGBA(canvas, destination_index, asset,
+                            source_index, tint)
+                    }
+                }
+            }
+            x += 1
+        }
+        y += 1
+    }
+    return true
+}

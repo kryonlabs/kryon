@@ -1,3 +1,4 @@
+#import "session"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -6,9 +7,9 @@
 #import "tree_draw"
 host_api :: #system_library "host_api";
 
-# These records deliberately expose values useful for comparing frames, not
-# the tree's internal links or queue storage. They also cross the portable
-# host boundary without importing internal record types into the host ABI.
+// These records deliberately expose values useful for comparing frames, not
+// the tree's internal links or queue storage. They also cross the portable
+// host boundary without importing internal record types into the host ABI.
 FrameNode :: struct {
     key: u64
     parent_key: u64
@@ -20,7 +21,7 @@ FrameNode :: struct {
     label: string
     semantic_kind: s32
     heading_level: s32
-    identity_generation: s32
+    identity_generation: u64
     interactive: bool
     disabled: bool
     loading: bool
@@ -117,32 +118,32 @@ FramePaintFrom :: (command: PaintCommand) -> FramePaint {
     return paint
 }
 
-# These effects belong to an opt-in inspection host. Ordinary EndTree does
-# not require them. A host may record the values without opening a display.
+// These effects belong to an opt-in inspection host. Ordinary EndFrame does
+// not require them. A host may record the values without opening a display.
 RecordFrameStart :: (node_count: s32, paint_count: s32) #foreign host_api;
 RecordNode :: (index: s32, node: FrameNode) #foreign host_api;
 RecordPaint :: (index: s32, command: FramePaint) #foreign host_api;
 RecordFrameEnd :: () #foreign host_api;
 
-# Capture only a complete, committed frame. All values are sent before paint
-# is flushed, while the queue still contains the commands chosen by widgets.
+// Capture only a complete, committed frame. All values are sent before paint
+// is flushed, while the queue still contains the commands chosen by widgets.
 #program_export
-EndTreeCapture :: () -> bool {
-    if !CommitTree() { return false }
-    node_count: s32 = TreeCount()
-    paint_count: s32 = PendingPaintCount()
+EndFrameCapture :: (session: Session) -> bool {
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    node_count: s32 = TreeCount(session)
+    paint_count: s32 = PendingPaintCount(session)
     RecordFrameStart(node_count, paint_count)
     index: s32 = 0
     while index < node_count {
-        RecordNode(index, FrameNodeFrom(TreeNodeAt(index)))
+        RecordNode(index, FrameNodeFrom(TreeNodeAt(session, index)))
         index += 1
     }
     index = 0
     while index < paint_count {
-        RecordPaint(index, FramePaintFrom(PendingPaintAt(index)))
+        RecordPaint(index, FramePaintFrom(PendingPaintAt(session, index)))
         index += 1
     }
     RecordFrameEnd()
-    PaintFlush()
+    PaintFlush(session)
     return true
 }

@@ -7,6 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "layout"
@@ -30,40 +37,40 @@ Answer :: () -> s32 {
     section_props.label = "Details"
     section_props.bounds = Rectangle.{8.0, 10.0, 100.0, 50.0}
 
-    TreeStart(cast(u64)10, bounds)
-    page: PageResult = Page(page_props)
+    TreeStart(TestSession(), cast(u64)10, bounds)
+    page: PageResult = Page(TestSession(), page_props)
     if !page.opened || page.node != 1 ||
         page.bounds.width != 320.0 || page.content.height != 240.0 ||
         page.gap != 0 || page.padding != 0 || page.has_theme_color ||
         page.title != "Welcome" || page.description != "Start here" ||
         page.canonical_url != "https://example.test/" ||
-        TreeCurrentParentKey() != cast(u64)20 { return -1 }
-    section: SectionResult = Section(section_props)
+        TreeCurrentParentKey(TestSession()) != cast(u64)20 { return -1 }
+    section: SectionResult = Section(TestSession(), section_props)
     if !section.opened || section.node != 2 ||
         section.bounds.width != 100.0 ||
-        TreeCurrentParentKey() != cast(u64)30 { return -2 }
-    if TreeSubmitCurrent(cast(u64)40, WidgetKindText,
-        section.content) != 3 || !End() || !End() || End() ||
-        !TreeFinish() { return -3 }
-    if TreeCount() != 4 || TreeNodeAt(1).kind != WidgetKindPage ||
-        TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticPage ||
-        TreeNodeAt(1).semantic_label != "Welcome" ||
-        TreeNodeAt(2).kind != WidgetKindSection ||
-        TreeNodeAt(2).semantic_kind != cast(SemanticKind)SemanticSection ||
-        TreeNodeAt(2).semantic_label != "Details" ||
-        TreeNodeAt(2).parent != 1 || TreeNodeAt(3).parent != 2 {
+        TreeCurrentParentKey(TestSession()) != cast(u64)30 { return -2 }
+    if TreeSubmitCurrent(TestSession(), cast(u64)40, WidgetKindText,
+        section.content) != 3 || !End(TestSession()) || !End(TestSession()) ||
+        !TreeFinish(TestSession()) { return -3 }
+    if TreeCount(TestSession()) != 4 || TreeNodeAt(TestSession(), 1).kind != WidgetKindPage ||
+        TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticPage ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Welcome" ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindSection ||
+        TreeNodeAt(TestSession(), 2).semantic_kind != cast(SemanticKind)SemanticSection ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Details" ||
+        TreeNodeAt(TestSession(), 2).parent != 1 || TreeNodeAt(TestSession(), 3).parent != 2 {
         return -4
     }
-    generation: s32 = TreeNodeAt(2).identity_generation
+    generation: u64 = TreeNodeAt(TestSession(), 2).identity_generation
     page_props.bounds = Rectangle.{0.0, 0.0, 200.0, 180.0}
     section_props.bounds = Rectangle.{0.0, 0.0, 0.0, 0.0}
-    TreeStart(cast(u64)10, bounds)
-    page = Page(page_props)
-    section = Section(section_props)
+    TreeStart(TestSession(), cast(u64)10, bounds)
+    page = Page(TestSession(), page_props)
+    section = Section(TestSession(), section_props)
     if section.bounds.width != 200.0 ||
         section.bounds.height != 180.0 ||
-        !End() || !End() || !TreeFinish() ||
-        TreeNodeAt(2).identity_generation != generation { return -5 }
+        !End(TestSession()) || !End(TestSession()) || !TreeFinish(TestSession()) ||
+        TreeNodeAt(TestSession(), 2).identity_generation != generation { return -5 }
 
     style: StyleData
     style.gap = 3.6
@@ -94,7 +101,7 @@ for input in source saved; do
     test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict \
+        "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then

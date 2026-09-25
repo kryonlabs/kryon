@@ -1,0 +1,88 @@
+#import "drawing_props"
+#import "geometry"
+#import "image_canvas"
+
+Clear :: (pixels: []u8) {
+    index: s64 = 0
+    while index < pixels.count {
+        pixels[index] = cast(u8)0
+        index += 1
+    }
+}
+
+PixelIs :: (pixels: []u8, x: s32, y: s32, expected: Color) -> bool {
+    index: s32 = (y * 4 + x) * 4
+    return pixels[index] == expected.r &&
+        pixels[index + 1] == expected.g &&
+        pixels[index + 2] == expected.b &&
+        pixels[index + 3] == expected.a
+}
+
+Draw :: (canvas: []u8, asset: []u8, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, rotation: float32,
+    radius: float32, tint: Color) -> bool {
+    return RasterImageRGBA(canvas, 4, 4, 16, asset, 2, 2, 8,
+        source, destination, clip, Vector2.{0.0, 0.0}, rotation,
+        radius, tint)
+}
+
+#program_export
+main :: () -> s32 {
+    canvas: [64]u8
+    asset: [16]u8
+    asset[0] = cast(u8)255
+    asset[3] = cast(u8)255
+    asset[5] = cast(u8)255
+    asset[7] = cast(u8)255
+    asset[10] = cast(u8)255
+    asset[11] = cast(u8)255
+    asset[12] = cast(u8)255
+    asset[13] = cast(u8)255
+    asset[14] = cast(u8)255
+    asset[15] = cast(u8)255
+    source: Rectangle = Rectangle.{0.0, 0.0, 2.0, 2.0}
+    destination: Rectangle = Rectangle.{0.0, 0.0, 4.0, 4.0}
+    clip: Rectangle = Rectangle.{1.0, 1.0, 2.0, 2.0}
+    full: Rectangle = Rectangle.{0.0, 0.0, 4.0, 4.0}
+    white: Color = Color.{255, 255, 255, 255}
+    half_red: Color = Color.{255, 128, 128, 128}
+    transparent: Color = Color.{0, 0, 0, 0}
+    if !Draw(canvas[:], asset[:], source, destination, clip, 0.0,
+        0.0, white) { return 1 }
+    if !PixelIs(canvas[:], 0, 0, transparent) ||
+        !PixelIs(canvas[:], 1, 1, Color.{255, 0, 0, 255}) ||
+        !PixelIs(canvas[:], 2, 2, white) ||
+        !PixelIs(canvas[:], 3, 3, transparent) { return 2 }
+    Clear(canvas[:])
+    if !Draw(canvas[:], asset[:], source, destination, full, 0.0,
+        2.0, white) { return 3 }
+    if !PixelIs(canvas[:], 0, 0, transparent) ||
+        !PixelIs(canvas[:], 1, 1, Color.{255, 0, 0, 255}) ||
+        !PixelIs(canvas[:], 3, 3, transparent) { return 4 }
+    Clear(canvas[:])
+    rotated: Rectangle = Rectangle.{2.0, 0.0, 2.0, 2.0}
+    if !Draw(canvas[:], asset[:], source, rotated, full, 90.0,
+        0.0, white) { return 5 }
+    if !PixelIs(canvas[:], 1, 0, Color.{255, 0, 0, 255}) ||
+        !PixelIs(canvas[:], 0, 0, Color.{0, 0, 255, 255}) { return 6 }
+    Clear(canvas[:])
+    if !Draw(canvas[:], asset[:], source, destination, full, 0.0,
+        0.0, half_red) { return 7 }
+    if !PixelIs(canvas[:], 0, 0, Color.{255, 0, 0, 128}) { return 8 }
+    index: s32 = 0
+    while index < 64 {
+        canvas[index] = cast(u8)100
+        canvas[index + 1] = cast(u8)100
+        canvas[index + 2] = cast(u8)100
+        canvas[index + 3] = cast(u8)255
+        index += 4
+    }
+    if !Draw(canvas[:], asset[:], source, destination, full, 0.0,
+        0.0, half_red) { return 9 }
+    if !PixelIs(canvas[:], 0, 0, Color.{177, 49, 49, 255}) { return 10 }
+    short: [4]u8
+    if RasterImageRGBA(short[:], 4, 4, 16, asset[:], 2, 2, 8,
+        source, destination, full, Vector2.{0.0, 0.0}, 0.0, 0.0,
+        white) { return 11 }
+    return 0
+}

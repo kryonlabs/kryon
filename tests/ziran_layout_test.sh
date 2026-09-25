@@ -8,6 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
+cp "$repo/src/ui/math.zi" "$work/math.zi"
 cp "$repo/src/ui/layout.zi" "$work/layout.zi"
 cp "$repo/src/ui/group.zi" "$work/group.zi"
 cat > "$work/use_layout.zi" <<'EOF'
@@ -212,36 +213,36 @@ for input in source ir; do
         group="$work/ir/group.zir"
         use_layout="$work/ir/use_layout.zir"
     fi
-    "$ziran" build --target=c --strict --root "$work" \
+    "$ziran" build --target=c --root "$work" \
         -o "$work/c-$input" "$geometry" "$layout" "$group" "$use_layout"
     cat > "$work/c-$input/main.c" <<'EOF'
 #include "use_layout.h"
 int main(void) { return Answer() == 42 ? 0 : 1; }
 EOF
     ${CC:-cc} -I"$ziran_include" -I"$work/c-$input" \
-        "$work/c-$input/geometry.c" "$work/c-$input/layout.c" \
+        "$work/c-$input/geometry.c" "$work/c-$input/math.c" "$work/c-$input/layout.c" \
         "$work/c-$input/group.c" \
         "$work/c-$input/use_layout.c" "$work/c-$input/main.c" \
         -o "$work/c-$input/app"
     "$work/c-$input/app"
 
-    "$ziran" build --target=cpp --strict --root "$work" \
+    "$ziran" build --target=cpp --root "$work" \
         -o "$work/cpp-$input" "$geometry" "$layout" "$group" "$use_layout"
     cat > "$work/cpp-$input/main.cpp" <<'EOF'
 #include "use_layout.hpp"
 int main() { return Answer() == 42 ? 0 : 1; }
 EOF
     ${CXX:-c++} -I"$ziran_include" -I"$work/cpp-$input" \
-        "$work/cpp-$input/geometry.cpp" "$work/cpp-$input/layout.cpp" \
+        "$work/cpp-$input/geometry.cpp" "$work/cpp-$input/math.cpp" "$work/cpp-$input/layout.cpp" \
         "$work/cpp-$input/group.cpp" \
         "$work/cpp-$input/use_layout.cpp" "$work/cpp-$input/main.cpp" \
         -o "$work/cpp-$input/app"
     "$work/cpp-$input/app"
 
-    "$ziran" build --target=go --strict --pkg main --root "$work" \
+    "$ziran" build --target=go --pkg main --root "$work" \
         -o "$work/go-$input" "$geometry" "$layout" "$group" "$use_layout"
     if grep -Fq 'github.com/waozixyz/kryon/go/kryon' \
-        "$work/go-$input/geometry.go" "$work/go-$input/layout.go" \
+        "$work/go-$input/geometry.go" "$work/go-$input/math.go" "$work/go-$input/layout.go" \
         "$work/go-$input/group.go" "$work/go-$input/use_layout.go"; then
         echo 'ordinary imported layout code pulled in the legacy Go runtime' >&2
         exit 1
@@ -250,7 +251,7 @@ EOF
 package main
 func main() { if UseLayout_Answer() != 42 { panic("wrong layout result") } }
 EOF
-    GO111MODULE=off go run "$work/go-$input/geometry.go" \
+    GO111MODULE=off go run "$work/go-$input/geometry.go" "$work/go-$input/math.go" \
         "$work/go-$input/layout.go" \
         "$work/go-$input/group.go" \
         "$work/go-$input/use_layout.go" "$work/go-$input/main.go"

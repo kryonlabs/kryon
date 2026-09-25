@@ -1,36 +1,37 @@
+#import "session"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "progress"
 
-# The host rasterizes these primitives; draw order and color choices are Ziran.
+// The host rasterizes these primitives; draw order and color choices are Ziran.
 #program_export
-PaintProgressForNode :: (node: s32, bounds: Rectangle,
+PaintProgressForNode :: (session: Session, node: s32, bounds: Rectangle,
     paint: ProgressPaint, label: string, font: s32,
     label_opacity: float32) {
     plan: ProgressDrawPlan = ProgressDrawPlanFor(bounds, paint,
         label != "", label_opacity)
-    PaintRoundedFill(node, bounds, plan.radius, 12,
+    PaintRoundedFill(session, node, bounds, plan.radius, 12,
         ColorFromPacked(paint.track_color))
     if plan.draw_fill {
-        PaintRoundedFill(node, paint.layout.fill_bounds, plan.radius, 12,
+        PaintRoundedFill(session, node, paint.layout.fill_bounds, plan.radius, 12,
             ColorFromPacked(paint.fill_color))
     }
     if plan.draw_border {
-        PaintRoundedOutline(node, bounds, plan.radius, 12,
+        PaintRoundedOutline(session, node, bounds, plan.radius, 12,
             paint.border_width,
             ColorFromPacked(paint.border_color))
     }
     if plan.draw_label {
-        PaintLabel(node, label, cast(s32)paint.layout.label_x,
+        PaintLabel(session, node, label, cast(s32)paint.layout.label_x,
             cast(s32)paint.layout.label_y, font,
             ColorFromPacked(plan.label_color))
     }
 }
 
 #program_export
-PaintProgress :: (bounds: Rectangle, paint: ProgressPaint,
+PaintProgress :: (session: Session, bounds: Rectangle, paint: ProgressPaint,
     label: string, font: s32, label_opacity: float32) {
-    PaintProgressForNode(-1, bounds, paint, label,
+    PaintProgressForNode(session, -1, bounds, paint, label,
         font, label_opacity)
 }

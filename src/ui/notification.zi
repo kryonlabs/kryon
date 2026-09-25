@@ -1,0 +1,56 @@
+host_api :: #system_library "host_api";
+
+NotificationPriority :: enum {
+    NotificationPriorityDefault :: 0
+    NotificationPriorityLow :: 1
+    NotificationPriorityHigh :: 2
+}
+
+NotificationProps :: struct {
+    title: string
+    body: string
+    tag: string
+    id: s32
+    priority: NotificationPriority
+    suppress_when_focused: bool
+}
+
+// Notification delivery and permission prompts are host effects. The host
+// owns platform-specific transport; applications own their scheduling rules.
+NotificationSetAppNameHost :: (name: string) #foreign host_api;
+NotificationSupportedHost :: () -> bool #foreign host_api;
+NotificationAllowedHost :: () -> bool #foreign host_api;
+NotificationRequestHost :: () -> bool #foreign host_api;
+NotificationWindowFocusedHost :: () -> bool #foreign host_api;
+NotificationSendHost :: (props: NotificationProps) -> bool #foreign host_api;
+
+#program_export
+SetNotificationAppName :: (name: string) {
+    NotificationSetAppNameHost(name)
+}
+
+#program_export
+NotificationsSupported :: () -> bool {
+    return NotificationSupportedHost()
+}
+
+#program_export
+NotificationsAllowed :: () -> bool {
+    return NotificationAllowedHost()
+}
+
+#program_export
+RequestNotifications :: () -> bool {
+    return NotificationRequestHost()
+}
+
+#program_export
+Notify :: (props: NotificationProps) -> bool {
+    if props.title.count == 0 || props.body.count == 0 {
+        return false
+    }
+    if props.suppress_when_focused && NotificationWindowFocusedHost() {
+        return false
+    }
+    return NotificationSendHost(props)
+}

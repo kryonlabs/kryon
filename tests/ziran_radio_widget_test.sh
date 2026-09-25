@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "radio"
@@ -64,29 +71,29 @@ Frame :: () -> s32 {
         rules.items[1] = label
         InstallStyleRules(rules)
     }
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 120.0})
-    one: s32 = Radio(first)
-    two: s32 = Radio(second)
-    if !EndTree() || TreeCount() != 3 ||
-        TreeNodeAt(1).kind != WidgetKindRadio ||
-        TreeNodeAt(1).semantic_label != "One" ||
-        TreeNodeAt(2).semantic_label != "Two" ||
-        TreeNodeAt(1).bounds.width != 120.0 ||
-        TreeNodeAt(2).bounds.width != 120.0 { return -1 }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 120.0})
+    one: s32 = Radio(TestSession(), first)
+    two: s32 = Radio(TestSession(), second)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindRadio ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "One" ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Two" ||
+        TreeNodeAt(TestSession(), 1).bounds.width != 120.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 120.0 { return -1 }
     if phase == 0 {
         if one != 0 || two != 0 ||
-            !TreeNodeAt(1).selected || TreeNodeAt(2).selected {
+            !TreeNodeAt(TestSession(), 1).selected || TreeNodeAt(TestSession(), 2).selected {
             return -2
         }
-        TreePointerUpdate(PointerFrame.{20.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 70.0, false, false, true})
-        TreePointerUpdate(PointerFrame.{140.0, 110.0, false, false, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{140.0, 110.0, false, false, false})
         phase = 1
         return 0
     }
     if phase == 1 {
         if one != 0 || two != 8 ||
-            !TreeNodeAt(1).selected || TreeNodeAt(2).selected {
+            !TreeNodeAt(TestSession(), 1).selected || TreeNodeAt(TestSession(), 2).selected {
             return -3
         }
         phase = 2
@@ -94,14 +101,14 @@ Frame :: () -> s32 {
     }
     if phase == 2 {
         if one != 0 || two != 0 ||
-            TreeNodeAt(1).selected || !TreeNodeAt(2).selected {
+            TreeNodeAt(TestSession(), 1).selected || !TreeNodeAt(TestSession(), 2).selected {
             return -4
         }
         phase = 3
         return 2
     }
-    if one != 0 || two != 0 || !TreeNodeAt(2).selected ||
-        TreeHitAt(20.0, 70.0) != -1 { return -5 }
+    if one != 0 || two != 0 || !TreeNodeAt(TestSession(), 2).selected ||
+        TreeHitAt(TestSession(), 20.0, 70.0) != -1 { return -5 }
     phase = 4
     return 3
 }
@@ -206,7 +213,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

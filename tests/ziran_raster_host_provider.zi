@@ -1,0 +1,49 @@
+#import "drawing_props"
+#import "geometry"
+
+calls: s32;
+failed: bool;
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    valid: bool = false
+    if calls == 0 {
+        valid = line.x == 10.0 && line.y == 20.0 &&
+            line.width == 4.0 && line.height == 0.0 &&
+            color.r == cast(u8)10 && color.g == cast(u8)20 &&
+            color.b == cast(u8)30 && color.a == cast(u8)40
+    } else if calls == 1 {
+        valid = line.x == 10.0 && line.y == 20.0 &&
+            line.width == 0.0 && line.height == 3.0 &&
+            color.r == cast(u8)10 && color.g == cast(u8)20 &&
+            color.b == cast(u8)30 && color.a == cast(u8)40
+    } else if calls == 2 {
+        valid = line.x == 10.0 && line.y == 23.0 &&
+            line.width == 4.0 && line.height == 0.0 &&
+            color.r == cast(u8)50 && color.g == cast(u8)60 &&
+            color.b == cast(u8)70 && color.a == cast(u8)80
+    } else if calls == 3 {
+        valid = line.x == 14.0 && line.y == 20.0 &&
+            line.width == 0.0 && line.height == 3.0 &&
+            color.r == cast(u8)50 && color.g == cast(u8)60 &&
+            color.b == cast(u8)70 && color.a == cast(u8)80
+    } else if calls == 4 {
+        valid = line.x == 7.0 && line.y == 3.0 &&
+            line.width == 0.0 && line.height == 6.0 &&
+            color.r == cast(u8)0x11 && color.g == cast(u8)0x22 &&
+            color.b == cast(u8)0x33 && color.a == cast(u8)0x44
+    } else if calls == 5 {
+        valid = line.x == 2.0 && line.y == 6.0 &&
+            line.width == 10.0 && line.height == 0.0 &&
+            color.r == cast(u8)0x55 && color.g == cast(u8)0x66 &&
+            color.b == cast(u8)0x77 && color.a == cast(u8)0x88
+    }
+    if !valid { failed = true }
+    calls += 1
+}
+
+#program_export
+RasterCallCount :: () -> s32 { return calls }
+
+#program_export
+RasterHostFailed :: () -> bool { return failed }

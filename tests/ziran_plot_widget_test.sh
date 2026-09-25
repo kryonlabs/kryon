@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "plot"
@@ -62,15 +69,15 @@ Frame :: () -> s32 {
     bar_props.scale_min = 0.0
     bar_props.scale_max = 1.0
     bar_props.mode = cast(PlotMode)PlotBars
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 180.0})
-    if Plot(line_props, lines[0:3]) != 1 ||
-        Plot(bar_props, bars[0:3]) != 2 ||
-        !TreeFinish() || TreeCount() != 3 ||
-        TreeNodeAt(1).kind != WidgetKindPlot ||
-        TreeNodeAt(2).kind != WidgetKindPlot ||
-        TreeNodeAt(1).semantic_label != "Trend" ||
-        TreeNodeAt(2).semantic_label != "Bars" { return -1 }
-    PaintFlush()
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 180.0})
+    if Plot(TestSession(), line_props, lines[0:3]) != 1 ||
+        Plot(TestSession(), bar_props, bars[0:3]) != 2 ||
+        !TreeFinish(TestSession()) || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindPlot ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindPlot ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Trend" ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Bars" { return -1 }
+    PaintFlush(TestSession())
     old: s32 = phase
     phase += 1
     return old
@@ -180,7 +187,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

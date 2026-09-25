@@ -1,0 +1,44 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+failed: bool;
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.x != 0.0 || bounds.y != 0.0 ||
+        bounds.width != 240.0 || bounds.height != 120.0 ||
+        radius != 0.0 || segments != 4 ||
+        color.r != cast(u8)0 || color.g != cast(u8)0 ||
+        color.b != cast(u8)0 || color.a != cast(u8)160 {
+        failed = true
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) { failed = true }
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { failed = true }
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) { failed = true }
+
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) { failed = true }
+
+#program_export
+OverlayFillCount :: () -> s32 { return fills }
+
+#program_export
+OverlayHostFailed :: () -> bool { return failed }

@@ -1,3 +1,4 @@
+#import "session"
 #import "geometry"
 #import "layout"
 #import "layout_widget"
@@ -18,16 +19,16 @@ FlowResult :: struct {
     padding: s32
 }
 
-# Flow places its children along a row. The caller uses FlowChildBounds before
-# submitting each child, then closes the retained scope with End().
+// Flow places its children along a row. The caller uses FlowChildBounds before
+// submitting each child, then closes the retained scope with End(session).
 #program_export
-Flow :: (props: FlowProps) -> FlowResult {
+Flow :: (session: Session, props: FlowProps) -> FlowResult {
     row: ColumnProps
     row.bounds = props.bounds
     row.gap = props.gap
     row.padding = props.padding
     row.key = props.key
-    container: LayoutContainer = Row(row)
+    container: LayoutContainer = Row(session, row)
     result: FlowResult
     result.node = container.node
     result.opened = container.opened

@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "color_picker"
 #import "color_picker_props"
 #import "color_picker_widget"
@@ -43,20 +50,20 @@ Frame :: () -> s32 {
     expanded.values[1] = 0.5
     expanded.values[2] = 0.75
     expanded.values[3] = alpha
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 270.0})
-    one: ColorPickerResult = ColorPicker(compact)
-    two: ColorPickerResult = ColorPicker(expanded)
-    if !TreeFinish() || TreeCount() != 19 ||
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 270.0})
+    one: ColorPickerResult = ColorPicker(TestSession(), compact)
+    two: ColorPickerResult = ColorPicker(TestSession(), expanded)
+    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 19 ||
         one.node != 1 || two.node != 9 ||
-        TreeNodeAt(2).kind != WidgetKindText ||
-        TreeNodeAt(18).kind != WidgetKindCustom { return -10 }
-    red_slider: s32 = TreeFind(cast(u64)1, cast(u64)20,
-        WidgetKindSlider)
-    alpha_slider: s32 = TreeFind(cast(u64)4, cast(u64)30,
-        WidgetKindSlider)
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindText ||
+        TreeNodeAt(TestSession(), 18).kind != WidgetKindCustom { return -10 }
+    red_slider: s32 = TreeChild(TestSession(), one.node,
+        cast(u64)1, WidgetKindSlider)
+    alpha_slider: s32 = TreeChild(TestSession(), two.node,
+        cast(u64)4, WidgetKindSlider)
     if red_slider < 0 || alpha_slider < 0 { return -14 }
-    if TreeNodeAt(red_slider).semantic_label != "R" ||
-        TreeNodeAt(alpha_slider).semantic_label != "A" {
+    if TreeNodeAt(TestSession(), red_slider).semantic_label != "R" ||
+        TreeNodeAt(TestSession(), alpha_slider).semantic_label != "A" {
         return -15
     }
     swatch: Color = ColorPickerColorFor(two.values[0],
@@ -66,38 +73,38 @@ Frame :: () -> s32 {
     if phase == 0 {
         if one.changed || two.changed ||
             one.values[0] != 0.0 { return -1 }
-        if TreeHitAt(40.0, 45.0) != red_slider { return -12 }
-        TreePointerUpdate(PointerFrame.{40.0, 45.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{65.0, 45.0, true, false, false})
+        if TreeHitAt(TestSession(), 40.0, 45.0) != red_slider { return -12 }
+        TreePointerUpdate(TestSession(), PointerFrame.{40.0, 45.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0, true, false, false})
     } else if phase == 1 {
         if !one.changed || one.values[0] < 0.6 ||
             two.changed { return -2 }
-        TreePointerUpdate(PointerFrame.{65.0, 45.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0, false, false, true})
     } else if phase == 2 {
         if one.values[0] < 0.6 || two.changed { return -3 }
-        if TreeHitAt(100.0, 190.0) != alpha_slider { return -13 }
-        TreePointerUpdate(PointerFrame.{100.0, 190.0,
+        if TreeHitAt(TestSession(), 100.0, 190.0) != alpha_slider { return -13 }
+        TreePointerUpdate(TestSession(), PointerFrame.{100.0, 190.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{175.0, 190.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{175.0, 190.0,
             true, false, false})
     } else if phase == 3 {
         if one.changed || !two.changed ||
             two.values[3] < 0.7 || swatch.a < cast(u8)178 {
             return -4
         }
-        TreePointerUpdate(PointerFrame.{175.0, 190.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{175.0, 190.0,
             false, false, true})
-        TreePointerUpdate(PointerFrame.{40.0, 45.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{40.0, 45.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{65.0, 45.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0,
             true, false, false})
     } else {
         if one.changed || one.values[0] != compact_red ||
             two.values[3] != alpha { return -5 }
-        TreePointerUpdate(PointerFrame.{65.0, 45.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0,
             false, false, true})
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     compact_red = one.values[0]
     alpha = two.values[3]
     old: s32 = phase
@@ -191,7 +198,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

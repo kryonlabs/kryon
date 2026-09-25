@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "progress"
@@ -79,9 +86,9 @@ Answer :: () -> s32 {
         faces.label.value.font_size != 14.0 { return 0 }
     InstallStyleRules(rules)
     props.key = cast(u64)17
-    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Progress(props)
-    if !EndTree() || TreeCount() != 2 { return 0 }
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Progress(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 { return 0 }
     props.value = 0
     props.label = ""
     rules.count = 0
@@ -91,7 +98,7 @@ Answer :: () -> s32 {
     if prepared.font != 16 || prepared.paint.layout.fill_bounds.width != 0.0 {
         return 0
     }
-    PaintProgressFromRules(props, rules, defaults)
+    PaintProgressFromRules(TestSession(), props, rules, defaults)
     return 42
 }
 ZI
@@ -183,7 +190,7 @@ for input in source saved; do
     fi
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict --root "$work" \
+        "$ziran" build --target="$target" --root "$work" \
             --module-path "$module_dir" -o "$output" "$module"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"

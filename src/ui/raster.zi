@@ -2,7 +2,7 @@
 #import "geometry"
 host_api :: #system_library "host_api";
 
-# The platform supplies rasterization; widgets decide what to draw.
+// The platform supplies rasterization; widgets decide what to draw.
 RasterLine :: (line: Rectangle, color: Color) #foreign host_api;
 
 #program_export

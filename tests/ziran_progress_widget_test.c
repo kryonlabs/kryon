@@ -17,8 +17,8 @@ line(void *context, float x1, float y1, float x2, float y2,
 }
 
 static int
-width(void *context, const char *text, size_t text_length, int font,
-      const char *typeface, size_t typeface_length)
+width(void *context, uint8_t *text, size_t text_length, int font,
+      uint8_t *typeface, size_t typeface_length)
 {
     (void)context;
     assert(measures++ == 0 && font == 14);
@@ -29,7 +29,7 @@ width(void *context, const char *text, size_t text_length, int font,
 
 static int
 line_height(void *context, int font,
-            const char *typeface, size_t typeface_length)
+            uint8_t *typeface, size_t typeface_length)
 {
     (void)context;
     assert(measures++ == 1 && font == 14);
@@ -67,7 +67,7 @@ outline(void *context, float x, float y, float width, float height,
 }
 
 static void
-text(void *context, const char *value, size_t length, int x, int y,
+text(void *context, uint8_t *value, size_t length, int x, int y,
      int font, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)context;
@@ -82,11 +82,10 @@ main(int argc, char **argv)
 {
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
-    assert(bundle != NULL && BundleCapabilityCount(bundle) == 8);
+    assert(bundle != NULL && BundleCapabilityCount(bundle) == 6);
     FontMeasurer fonts = {width, line_height, NULL};
     RoundedRectangleRenderer shapes = {fill, outline, NULL};
     TextRenderer labels = {text, NULL};
-    LineRenderer lines = {line, NULL};
     HostBinding bindings[] = {
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
@@ -94,14 +93,12 @@ main(int argc, char **argv)
         RasterRoundedRectangleOutlineBinding(&shapes),
         RasterTextBinding(&labels),
         RasterTextClippedBinding(&labels),
-        RasterLineBinding(&lines),
-        RasterImageBinding(&unused_image_renderer),
     };
     long long result = 0;
     int has_result = 0;
-    assert(!BundleRun(bundle, bindings, 6, &result, &has_result));
+    assert(!BundleRun(bundle, bindings, 5, &result, &has_result));
     assert(measures == 0 && draws == 0);
-    assert(BundleRun(bundle, bindings, 8, &result, &has_result));
+    assert(BundleRun(bundle, bindings, 6, &result, &has_result));
     assert(has_result && result == 42 && measures == 2 && draws == 5);
     BundleClose(bundle);
     return 0;

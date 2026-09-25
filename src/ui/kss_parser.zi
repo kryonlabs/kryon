@@ -1,16 +1,11 @@
 #import "style"
 #import "style_sheet"
 #import "control_props"
-host_api :: #system_library "host_api";
 
-# Host-provided borrowed substring view; backends slice their native strings.
-
-StringSlice :: (source: string, start: s32, length: s32) -> string #foreign host_api;
-
-# KSS is the text style format; this module is the one shared implementation.
-# Backends lower it to C, Go, and JavaScript, so the grammar, environment
-# axes, theme overlays, imports, and provenance rules exist exactly once.
-# Hosts own I/O: they feed source text in and resolve import requests.
+// KSS is the text style format; this module is the one shared implementation.
+// Backends lower it to C, Go, and JavaScript, so the grammar, environment
+// axes, theme overlays, imports, and provenance rules exist exactly once.
+// Hosts own I/O: they feed source text in and resolve import requests.
 
 KssTokenKind :: enum {
     KssTokenColor :: 0
@@ -79,7 +74,7 @@ KssDefaultEnvironment :: () -> KssEnvironment {
     return env
 }
 
-# Hosts supply platform defaults; interpretation of KSS names stays here.
+// Hosts supply platform defaults; interpretation of KSS names stays here.
 #program_export
 KssEnvironmentWithNames :: (env: KssEnvironment, theme: string,
     contrast: string, density: string, pointer: string, platform: string,
@@ -173,8 +168,8 @@ KssOrigin :: struct {
     column: s32
 }
 
-# Source spans let hosts map typed rules back to their original text (the web
-# CSS layer builds selectors and declarations from these byte ranges).
+// Source spans let hosts map typed rules back to their original text (the web
+// CSS layer builds selectors and declarations from these byte ranges).
 
 KssRuleSpan :: struct {
     file: s32
@@ -186,10 +181,10 @@ KssRuleSpan :: struct {
     end: s32
 }
 
-# Declarative hosts (the web CSS mapping) consume raw declaration text and
-# foreign blocks instead of the closed property vocabulary. Structure lexing
-# stays here; only value interpretation lives in the host. Entries are spans
-# into the owning rule's source unit.
+// Declarative hosts (the web CSS mapping) consume raw declaration text and
+// foreign blocks instead of the closed property vocabulary. Structure lexing
+// stays here; only value interpretation lives in the host. Entries are spans
+// into the owning rule's source unit.
 
 KssDeclaration :: struct {
     rule: s32
@@ -222,9 +217,9 @@ KssVariantDecl :: struct {
     label: KssName
 }
 
-# Structural block spans: every top-level construct records the source range
-# it occupies so tooling (the KSS formatter) can re-layout without re-parsing
-# in the host. Kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive.
+// Structural block spans: every top-level construct records the source range
+// it occupies so tooling (the KSS formatter) can re-layout without re-parsing
+// in the host. Kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive.
 
 KssBlockSpan :: struct {
     kind: s32
@@ -309,8 +304,8 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser {
     return p
 }
 
-# Declarative hosts consume raw declarations and foreign blocks instead of the
-# closed property vocabulary; grammar and structure stay identical.
+// Declarative hosts consume raw declarations and foreign blocks instead of the
+// closed property vocabulary; grammar and structure stay identical.
 
 #program_export
 KssBeginDeclarative :: (source: string, path: string, env: KssEnvironment) -> KssParser {
@@ -329,8 +324,8 @@ KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser {
     return p
 }
 
-# Byte helpers over the borrowed source view. Every advance keeps the
-# line/column provenance current so diagnostics and rule origins stay exact.
+// Byte helpers over the borrowed source view. Every advance keeps the
+// line/column provenance current so diagnostics and rule origins stay exact.
 
 KssAtEnd :: (c: KssCursor) -> bool {
     return c.pos >= (cast(s32)c.source.count)
@@ -456,7 +451,7 @@ KssNameAppend :: (destination: KssName, byte: u8) -> KssName {
     return destination
 }
 
-# Skip whitespace and // plus /* */ comments, keeping provenance current.
+// Skip whitespace and // plus /* */ comments, keeping provenance current.
 
 KssSkipSpace :: (c: KssCursor) -> KssCursor {
     while !KssAtEnd(c) {
@@ -571,7 +566,7 @@ KssExpect :: (c: KssCursor, byte: u8) -> KssExpectResult {
     return result
 }
 
-# Diagnostics carry the message plus the exact file, line, and column.
+// Diagnostics carry the message plus the exact file, line, and column.
 
 KssDiagnosticAppend :: (p: KssParser, text: string) -> KssParser {
     index: s32 = 0
@@ -799,8 +794,8 @@ KssReadScalar :: (c: KssCursor) -> KssScalarResult {
     return result
 }
 
-# Durations convert to milliseconds with exact decimal shifting so '0.14s'
-# yields exactly 140 instead of a float rounding artifact.
+// Durations convert to milliseconds with exact decimal shifting so '0.14s'
+// yields exactly 140 instead of a float rounding artifact.
 
 KssReadDuration :: (c: KssCursor) -> KssNumberResult {
     result: KssNumberResult
@@ -891,9 +886,9 @@ KssReadDuration :: (c: KssCursor) -> KssNumberResult {
     return result
 }
 
-# Token table. Later entries shadow earlier ones; overlays update in place so
-# provenance always reflects the winning value. Variant color overrides are
-# applied on add, matching the highest precedence layer.
+// Token table. Later entries shadow earlier ones; overlays update in place so
+// provenance always reflects the winning value. Variant color overrides are
+// applied on add, matching the highest precedence layer.
 
 KssFindToken :: (p: KssParser, name: KssName, kind: s32) -> s32 {
     index: s32 = p.token_count - 1
@@ -941,8 +936,8 @@ KssAddToken :: (p: KssParser, token: KssToken) -> KssParser {
     return p
 }
 
-# Update an existing token in place: theme overlays and matching environment
-# overlays win over base and imported values but keep a single entry.
+// Update an existing token in place: theme overlays and matching environment
+// overlays win over base and imported values but keep a single entry.
 
 KssOverlayToken :: (p: KssParser, name: KssName, kind: s32, color: u32,
     number: float32, material: s32, origin: s32) -> KssParser {
@@ -1013,7 +1008,7 @@ KssMaterialValue :: (name: KssName) -> s32 {
     return -999999
 }
 
-# Stable class ids match StyleClassId in the C and Go pack registries.
+// Stable class ids match StyleClassId in the C and Go pack registries.
 
 KssClassId :: (name: KssName) -> s32 {
     hash: u32 = 2166136261
@@ -1416,7 +1411,7 @@ KssRoleValue :: (name: KssName) -> s32 {
     return -999999
 }
 
-# Selector: Kind[attr=value].class:state chains filling a StyleRule selector.
+// Selector: Kind[attr=value].class:state chains filling a StyleRule selector.
 
 KssRuleResult :: struct {
     parser: KssParser
@@ -1589,10 +1584,10 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
     return result
 }
 
-# Property declarations. Token references resolve immediately against the
-# current token table, so overlays applied earlier win as intended. Declarative
-# hosts capture source spans and resolve them with KssResolveCSSValue when the
-# rule is yielded, before subsequent overlays change the table.
+// Property declarations. Token references resolve immediately against the
+// current token table, so overlays applied earlier win as intended. Declarative
+// hosts capture source spans and resolve them with KssResolveCSSValue when the
+// rule is yielded, before subsequent overlays change the table.
 
 KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
     name_start: s32, name_end: s32) -> KssRuleResult {
@@ -1671,8 +1666,8 @@ KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
     return result
 }
 
-# Unknown foreign blocks are structure-lexed here. Recognized conditional
-# groups and keyframes use the shared rule/declaration stream instead.
+// Unknown foreign blocks are structure-lexed here. Recognized conditional
+// groups and keyframes use the shared rule/declaration stream instead.
 
 KssCaptureForeign :: (p: KssParser, name: KssName) -> KssParser {
     c: KssCursor = p.cursor
@@ -1719,9 +1714,9 @@ KssCaptureForeign :: (p: KssParser, name: KssName) -> KssParser {
     return p
 }
 
-# Conditional groups ('@media (query) { rules }' and friends) contain rules;
-# declarative hosts get them lexed here with per-rule group tags. The query
-# text stays opaque to the grammar.
+// Conditional groups ('@media (query) { rules }' and friends) contain rules;
+// declarative hosts get them lexed here with per-rule group tags. The query
+// text stays opaque to the grammar.
 
 KssIsGroupName :: (name: KssName) -> bool {
     return KssNameEquals(name, "media") || KssNameEquals(name, "supports") ||
@@ -1810,8 +1805,8 @@ KssReadColorValue :: (p: KssParser) -> KssColorResult {
             hex.parser = reference.parser
             return hex
         }
-        # Closed set of named colors from the value-set proposal. Tokens win
-        # over builtins so packs keep full control of their palette.
+        // Closed set of named colors from the value-set proposal. Tokens win
+        // over builtins so packs keep full control of their palette.
         if KssNameEquals(reference.name, "transparent") {
             hex.value = 0x00000000
             hex.ok = true
@@ -1892,8 +1887,8 @@ KssReadMaterialValue :: (p: KssParser) -> KssIntResult {
     return result
 }
 
-# One declaration into the rule's StyleData. Field flags come from
-# control_props; every property stores presence explicitly.
+// One declaration into the rule's StyleData. Field flags come from
+// control_props; every property stores presence explicitly.
 
 KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
     c: KssCursor = p.cursor
@@ -2143,7 +2138,7 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
             return result
         }
         rule.style.fields = rule.style.fields | cast(u32)StyleTypeface
-        rule.style.typeface = StringSlice(scan.source, start, length)
+        rule.style.typeface = scan.source[start:start + length]
         c = scan
     } else {
         result.parser = KssFailName(p, "unknown property '", name)
@@ -2162,9 +2157,9 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
     return result
 }
 
-# Rules: selector, declaration block, layer and order bookkeeping. Strict
-# mode parses the typed selector grammar; declarative mode records the
-# selector as a raw span consumed by the shared declarative selector lexer.
+// Rules: selector, declaration block, layer and order bookkeeping. Strict
+// mode parses the typed selector grammar; declarative mode records the
+// selector as a raw span consumed by the shared declarative selector lexer.
 
 KssParseRule :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
@@ -2276,8 +2271,8 @@ KssParseRule :: (p: KssParser) -> KssParser {
     return p
 }
 
-# Environment axes are closed and typed. Blocks match the active environment
-# only; values are validated regardless of the match.
+// Environment axes are closed and typed. Blocks match the active environment
+// only; values are validated regardless of the match.
 
 KssEnvAxisValid :: (axis: KssName) -> bool {
     return KssNameEquals(axis, "theme") || KssNameEquals(axis, "contrast") ||
@@ -2365,8 +2360,8 @@ KssThemeActive :: (p: KssParser, name: KssName) -> bool {
     return false
 }
 
-# Skip the remainder of a block whose '{' is already consumed. Used for
-# non-matching environment overlays.
+// Skip the remainder of a block whose '{' is already consumed. Used for
+// non-matching environment overlays.
 
 KssSkipBlockRemainder :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
@@ -2386,8 +2381,8 @@ KssSkipBlockRemainder :: (p: KssParser) -> KssParser {
     return p
 }
 
-# One 'name: value;' overlay entry. The existing token fixes the value type;
-# unknown names and value/type mismatches are errors.
+// One 'name: value;' overlay entry. The existing token fixes the value type;
+// unknown names and value/type mismatches are errors.
 
 KssOverlayOutcome :: struct {
     parser: KssParser
@@ -2499,7 +2494,7 @@ KssTryOverlayEntry :: (p: KssParser, origin_kind: s32) -> KssOverlayOutcome {
     return outcome
 }
 
-# '@theme name { entry... }': always validated, applied only when active.
+// '@theme name { entry... }': always validated, applied only when active.
 
 KssParseThemeBlock :: (p: KssParser, name: KssName) -> KssParser {
     c: KssCursor = p.cursor
@@ -2545,9 +2540,9 @@ KssParseThemeBlock :: (p: KssParser, name: KssName) -> KssParser {
     return p
 }
 
-# '@env axis(value) { rules and token overlays }'. Matching blocks yield each
-# rule to the host and resume inside the block on the next step; non-matching
-# blocks are validated by shape and skipped.
+// '@env axis(value) { rules and token overlays }'. Matching blocks yield each
+// rule to the host and resume inside the block on the next step; non-matching
+// blocks are validated by shape and skipped.
 
 KssParseEnvBlock :: (p: KssParser, axis: KssName, value: KssName) -> KssParser {
     c: KssCursor = p.cursor
@@ -2605,11 +2600,11 @@ KssContinueEnvBlock :: (p: KssParser) -> KssParser {
 }
 
 
-# '@variant name "Label" { token overlays and rules }'. Variants are pack
-# options declared in the sheet itself: every declaration is recorded (name
-# and label) for host enumeration, and only the variant named by the parse
-# environment contributes rules and token overlays. Overlay entries apply
-# with the variant origin, above theme and environment.
+// '@variant name "Label" { token overlays and rules }'. Variants are pack
+// options declared in the sheet itself: every declaration is recorded (name
+// and label) for host enumeration, and only the variant named by the parse
+// environment contributes rules and token overlays. Overlay entries apply
+// with the variant origin, above theme and environment.
 
 KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
     result: KssNameResult
@@ -2719,7 +2714,7 @@ KssContinueVariantBlock :: (p: KssParser) -> KssParser {
     return p
 }
 
-# 'tokens { group { name: value; ... } ... }'
+// 'tokens { group { name: value; ... } ... }'
 
 KssParseTokenGroup :: (p: KssParser, origin_kind: s32) -> KssParser {
     c: KssCursor = p.cursor
@@ -2861,7 +2856,7 @@ KssParseTokensBlock :: (p: KssParser, origin_kind: s32) -> KssParser {
     return p
 }
 
-# Directives: @pack, @version, @layer, @import, @theme, @env.
+// Directives: @pack, @version, @layer, @import, @theme, @env.
 
 KssParseLayerName :: (p: KssParser, name: KssName) -> KssParser {
     index: s32 = 0
@@ -3170,8 +3165,8 @@ KssParseDirective :: (p: KssParser) -> KssParser {
     return KssFailName(p, "unknown directive '@", keyword.name)
 }
 
-# Import resolution. The host supplies sources; the parser tracks ordering,
-# cycles, and per-file provenance.
+// Import resolution. The host supplies sources; the parser tracks ordering,
+// cycles, and per-file provenance.
 
 KssImportNameOnStack :: (p: KssParser, name: KssName) -> bool {
     index: s32 = 0
@@ -3229,8 +3224,8 @@ KssPopImport :: (p: KssParser) -> KssParser {
     return p
 }
 
-# One parse step. Statuses: Rule (collect p.rule), NeedImport (feed via
-# KssProvideImport/KssFailImport), Done, Error (read p.diagnostic).
+// One parse step. Statuses: Rule (collect p.rule), NeedImport (feed via
+// KssProvideImport/KssFailImport), Done, Error (read p.diagnostic).
 
 #program_export
 KssStep :: (p: KssParser) -> KssParser {
@@ -3299,9 +3294,9 @@ KssStep :: (p: KssParser) -> KssParser {
     return KssParseRule(p)
 }
 
-# CSS export values use the shared KSS vocabulary and numeric/token grammar.
-# Native-only StyleData consumers retain their closed set of fields; CSS-only
-# properties stay opaque after classification instead of becoming native fields.
+// CSS export values use the shared KSS vocabulary and numeric/token grammar.
+// Native-only StyleData consumers retain their closed set of fields; CSS-only
+// properties stay opaque after classification instead of becoming native fields.
 
 KssCSSValueKind :: enum {
     KssCSSLiteral :: 0
@@ -3878,8 +3873,8 @@ KssCSSPropertyKind :: (name: KssName) -> s32 {
     return -1
 }
 
-# CSS property vocabulary reuses declaration classification. These names are
-# canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
+// CSS property vocabulary reuses declaration classification. These names are
+// canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
 #program_export
 KssCSSPropertyName :: (name: string) -> string {
     if name.count >= 2 && name[0] == 45 && name[1] == 45 {
@@ -3933,7 +3928,7 @@ KssCSSPropertyName :: (name: string) -> string {
     return name
 }
 
-# Whether a numeric host value receives px. String values keep their units.
+// Whether a numeric host value receives px. String values keep their units.
 #program_export
 KssCSSNeedsPixels :: (name: string) -> bool {
     if name == "opacity" ||
@@ -3995,7 +3990,7 @@ KssCSSNeedsPixels :: (name: string) -> bool {
     return true
 }
 
-# UTF-8 whitespace accepted by the existing CSS text adapter.
+// UTF-8 whitespace accepted by the existing CSS text adapter.
 KssCSSSpaceLength :: (value: string, index: s32) -> s32 {
     if KssIsSpace(value[index]) {
         return 1
@@ -4028,7 +4023,7 @@ KssCSSSpaceLength :: (value: string, index: s32) -> s32 {
     return 0
 }
 
-# Preserve KSS border's color alias unless its trimmed value has whitespace.
+// Preserve KSS border's color alias unless its trimmed value has whitespace.
 #program_export
 KssCSSBorderShorthand :: (value: string) -> bool {
     index: s32 = 0
@@ -4052,8 +4047,8 @@ KssCSSBorderShorthand :: (value: string) -> bool {
     return false
 }
 
-# Declaration expansion returns borrowed property names. Hosts emit the value
-# for each nonempty name, using the shared numeric-unit policy.
+// Declaration expansion returns borrowed property names. Hosts emit the value
+// for each nonempty name, using the shared numeric-unit policy.
 KssCSSExpansion :: struct {
     first: string
     second: string
@@ -4097,8 +4092,8 @@ KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> K
     return result
 }
 
-# An authored nonzero border width or border paint requests a visible border.
-# Emit this before authored declarations so explicit styles and sides win.
+// An authored nonzero border width or border paint requests a visible border.
+// Emit this before authored declarations so explicit styles and sides win.
 #program_export
 KssCSSBorderDefault :: (border: string, width: string) -> string {
     paint: KssCSSValue = KssCSSValueFromText(border)
@@ -4110,7 +4105,7 @@ KssCSSBorderDefault :: (border: string, width: string) -> string {
     return ""
 }
 
-# Values already have their CSS units. Empty text means absent, not zero.
+// Values already have their CSS units. Empty text means absent, not zero.
 KssCSSEffectFacts :: struct {
     background: string
     background_end: string
@@ -4120,8 +4115,8 @@ KssCSSEffectFacts :: struct {
     transform: string
 }
 
-# A borrowed-fragment output recipe avoids a fixed output buffer or allocation.
-# Emit name: prefix + first + separator + second + suffix when name is nonempty.
+// A borrowed-fragment output recipe avoids a fixed output buffer or allocation.
+// Emit name: prefix + first + separator + second + suffix when name is nonempty.
 KssCSSOutput :: struct {
     name: string
     prefix: string
@@ -4136,8 +4131,8 @@ KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool {
     return facts.offset_x != "" || facts.offset_y != ""
 }
 
-# Slots 0..3 follow ordinary declarations: gradient, x, y, then transform.
-# An absent or out-of-range slot produces no output.
+// Slots 0..3 follow ordinary declarations: gradient, x, y, then transform.
+// An absent or out-of-range slot produces no output.
 #program_export
 KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: s32) -> KssCSSOutput {
     result: KssCSSOutput
@@ -4177,7 +4172,7 @@ KssCSSValueFromText :: (source: string) -> KssCSSValue {
     while end > start && KssIsSpace(source[end - 1]) {
         end = end - 1
     }
-    result.text = StringSlice(source, start, end - start)
+    result.text = source[start:end]
     c: KssCursor
     c.source = result.text
     scalar: KssScalarResult = KssReadScalar(c)
@@ -4250,8 +4245,8 @@ KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool)
     return value
 }
 
-# Selector predicates operate on borrowed UTF-8 bytes. Hosts supply attribute
-# values and sibling positions; matching semantics stay shared.
+// Selector predicates operate on borrowed UTF-8 bytes. Hosts supply attribute
+// values and sibling positions; matching semantics stay shared.
 KssTextAt :: (value: string, needle: string, start: s32) -> bool {
     if start < 0 || start > (cast(s32)value.count) || (cast(s32)needle.count) > (cast(s32)value.count) - start {
         return false
@@ -4447,7 +4442,7 @@ KssNthAppendInteger :: (text: KssName, value: s64) -> KssName {
     return text
 }
 
-# A bounded canonical CSS An+B spelling; invalid formulas produce empty text.
+// A bounded canonical CSS An+B spelling; invalid formulas produce empty text.
 #program_export
 KssNthText :: (source: string) -> KssName {
     text: KssName
@@ -4616,8 +4611,8 @@ KssStructuralFacts :: struct {
     target: bool
 }
 
-# -1 means the name is not a basic structural pseudo. KssPseudoMatch handles
-# further dispatch; zero and one are complete decisions from these facts.
+// -1 means the name is not a basic structural pseudo. KssPseudoMatch handles
+// further dispatch; zero and one are complete decisions from these facts.
 #program_export
 KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> s32 {
     matched: bool = false
@@ -4674,8 +4669,8 @@ KssPseudoFunctionInfo :: (name: string) -> KssPseudoFunction {
     return result
 }
 
-# Names and arguments come from selector atoms. -1 requests relative :has
-# traversal; all other supported/unknown cases resolve to zero or one here.
+// Names and arguments come from selector atoms. -1 requests relative :has
+// traversal; all other supported/unknown cases resolve to zero or one here.
 #program_export
 KssPseudoMatch :: (name: string, argument: string, functional: bool,
     facts: KssStructuralFacts) -> s32 {
@@ -4706,8 +4701,8 @@ KssPseudoMatch :: (name: string, argument: string, functional: bool,
     return 0
 }
 
-# Declarative selector lexing. Results borrow spans from the input; the host
-# stores the resulting selector objects but does not parse their syntax.
+// Declarative selector lexing. Results borrow spans from the input; the host
+// stores the resulting selector objects but does not parse their syntax.
 KssSelectorStack :: struct {
     bytes: [64]u8
 }
@@ -4934,9 +4929,9 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     return result
 }
 
-# The host retains a stack of frames and supplies relationships for cursor.
-# A popped child means that candidate failed, so the resumed frame tries the
-# next ancestor/sibling only for descendant and general-sibling combinators.
+// The host retains a stack of frames and supplies relationships for cursor.
+// A popped child means that candidate failed, so the resumed frame tries the
+// next ancestor/sibling only for descendant and general-sibling combinators.
 KssSelectorChainAction :: enum {
     KssSelectorPop :: 0
     KssSelectorPush :: 1
@@ -5023,7 +5018,7 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
     return result
 }
 
-# Hosts count matching alternatives; this policy owns selector-list negation.
+// Hosts count matching alternatives; this policy owns selector-list negation.
 #program_export
 KssSelectorGroupMatches :: (name: string, count: s32, matching: s32) -> bool {
     if count <= 0 || matching < 0 || matching > count {
@@ -5120,7 +5115,7 @@ KssPseudoState :: (name: KssName) -> KssName {
 
 KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) -> KssSelectorAtom {
     c: KssCursor
-    c.source = StringSlice(group.parser.source, group.start, group.length)
+    c.source = group.parser.source[group.start:group.start + group.length]
     skipped: KssExpectResult = KssSelectorSpace(c)
     c = skipped.parser
     start: s32 = c.pos
@@ -5128,7 +5123,7 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
     if !skipped.ok || !key.ok {
         return result
     }
-    result.name = StringSlice(c.source, start, key.parser.pos - start)
+    result.name = c.source[start:key.parser.pos]
     skipped = KssSelectorSpace(key.parser)
     c = skipped.parser
     if !skipped.ok {
@@ -5147,7 +5142,7 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
         return result
     }
     c = KssAdvance(c, 1)
-    result.operation = StringSlice(c.source, start, c.pos - start)
+    result.operation = c.source[start:c.pos]
     skipped = KssSelectorSpace(c)
     c = skipped.parser
     if !skipped.ok || KssAtEnd(c) {
@@ -5187,14 +5182,14 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
             return result
         }
     }
-    result.value = StringSlice(c.source, start, end - start)
+    result.value = c.source[start:end]
     result.has_value = true
     result.ok = true
     return result
 }
 
-# Nested :has is outside the supported selector language. Inspect tokens,
-# excluding quoted values, attributes, and comments, rather than searching text.
+// Nested :has is outside the supported selector language. Inspect tokens,
+// excluding quoted values, attributes, and comments, rather than searching text.
 KssHasArgumentAllowed :: (source: string) -> bool {
     c: KssCursor
     c.source = source
@@ -5232,7 +5227,7 @@ KssHasArgumentAllowed :: (source: string) -> bool {
                 return false
             }
             c = name.parser
-            canonical: KssName = KssPseudoName(StringSlice(source, start, c.pos - start))
+            canonical: KssName = KssPseudoName(source[start:c.pos])
             if KssNameEquals(canonical, "has") && KssPeek(c, 0) == 40 {
                 return false
             }
@@ -5281,7 +5276,7 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom {
             return result
         }
         c = name.parser
-        result.name = StringSlice(c.source, start, c.pos - start)
+        result.name = c.source[start:c.pos]
         if byte == 35 {
             result.kind = cast(s32)KssSelectorId
             result.parser.specificity = result.parser.specificity + StyleSpecificity(0, 0, 0, 1)
@@ -5302,7 +5297,7 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom {
                     return result
                 }
                 result.has_argument = true
-                result.argument = StringSlice(c.source, group.start, group.length)
+                result.argument = c.source[group.start:group.start + group.length]
                 c = group.parser
                 if KssNameEquals(result.canonical, "not") || KssNameEquals(result.canonical, "is") ||
                     KssNameEquals(result.canonical, "where") || KssNameEquals(result.canonical, "has") {
@@ -5346,7 +5341,7 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom {
             }
             c = KssAdvance(c, 1)
         }
-        result.name = StringSlice(c.source, start, c.pos - start)
+        result.name = c.source[start:c.pos]
         result.kind = cast(s32)KssSelectorKind
         result.parser.has_kind = true
         if result.name != "*" {

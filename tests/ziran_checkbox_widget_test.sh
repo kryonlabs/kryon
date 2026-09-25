@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "checkbox"
 #import "checkbox_props"
 #import "checkbox_widget"
@@ -44,24 +51,24 @@ Frame :: () -> s32 {
         rule.style.border = cast(u32)0x123456ff
         rules.items[0] = rule
         InstallStyleRules(rules)
-        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
-        result: CheckboxValueResult = Checkbox(props)
-        if result.checked || result.changed || !EndTree() ||
-            TreeCount() != 2 ||
-            TreeNodeAt(1).kind != WidgetKindCheckbox ||
-            TreeNodeAt(1).selected ||
-            TreeNodeAt(1).semantic_label != "Agree" { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
-        TreePointerUpdate(PointerFrame.{140.0, 80.0, false, false, false})
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
+        result: CheckboxValueResult = Checkbox(TestSession(), props)
+        if result.checked || result.changed || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+            TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).kind != WidgetKindCheckbox ||
+            TreeNodeAt(TestSession(), 1).selected ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Agree" { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{140.0, 80.0, false, false, false})
         phase = 1
         return 0
     }
     if phase == 1 {
-        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
-        result: CheckboxValueResult = Checkbox(props)
-        if !result.checked || !result.changed || !EndTree() ||
-            !TreeNodeAt(1).selected {
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
+        result: CheckboxValueResult = Checkbox(TestSession(), props)
+        if !result.checked || !result.changed || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+            !TreeNodeAt(TestSession(), 1).selected {
             return -2
         }
         phase = 2
@@ -69,12 +76,12 @@ Frame :: () -> s32 {
     }
     props.checked = true
     props.disabled = true
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
-    result: CheckboxValueResult = Checkbox(props)
-    if !result.checked || result.changed || !EndTree() ||
-        !TreeNodeAt(1).selected { return -3 }
-    TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-    TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 100.0})
+    result: CheckboxValueResult = Checkbox(TestSession(), props)
+    if !result.checked || result.changed || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+        !TreeNodeAt(TestSession(), 1).selected { return -3 }
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
     phase = 3
     return 2
 }
@@ -175,7 +182,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

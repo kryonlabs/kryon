@@ -12,8 +12,9 @@ its portable loader recognizes widget names.
 | --- | --- |
 | `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
 | `src/ui/modules.txt` | Complete maintained UI module inventory |
-| `src/backend/*.zi` | Host ABI declarations that generate C headers during the build |
-| `src/backend/*_host.c`, `image_software.c` | Existing non-Ziran host debt used by tests; slated for removal |
+| `src/backend/*.zi` | Portable host primitives and ABI declarations |
+| `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
+| `src/platform/android/java/` | Remaining Android bridge debt; application-specific launch activities belong in their applications |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
 Every maintained UI source is in `modules.txt`. The checked build has no
@@ -24,7 +25,9 @@ Widget state, policy, layout, and draw decisions belong in `.zi`, including for
 desktop, browser, and portable hosts. Kryon's maintained implementation and
 platform integration must use current Ziran directly. Generic OS access that
 Ziran lacks belongs in the Ziran project, without Kryon-specific compiler or
-runtime branches. The current handwritten C adapters remain migration debt.
+runtime branches. The current Android Java bridges remain migration debt. The
+C ABI fixtures under `tests/support/` are test-only and are never linked into
+`libkryon.a`.
 
 ## Current build
 
@@ -43,6 +46,8 @@ Flow row scope and child placement, and Link paint, pointer activation, and
 returned URL effects,
 checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
 automatic placement for zero-positioned children and explicit placement otherwise,
+with each container installing its own placement procedure on the retained
+node; the tree core does not import specific layout algorithms,
 checked Scroll viewport scopes with caller owned offsets and deltas, content
 bounds, and inherited child paint and input clipping,
 checked TreeView row composition, selection, keyboard navigation, scroll values,
@@ -155,8 +160,8 @@ The checked `Image(ImageProps)` composition now resolves KSS class styles,
 uses asset dimensions or a supplied texture handle, selects source and fit,
 and queues an image command with clip, radius, tint, origin, and rotation.
 The platform host measures asset dimensions and rasterizes that command;
-`ImageCanvasRasterizer()` is a headless RGBA8 implementation of that contract
-using caller-supplied assets. The optional SDL2/Cairo example now renders an
+`RasterImageRGBA()` is the portable headless RGBA8 primitive for caller-owned
+pixel buffers. The optional SDL2/Cairo example now renders an
 asset-backed PNG through `Image(ImageProps)`; production desktop and browser
 adapters remain to be connected.
 Progress can also emit its rounded track, fill, border, and text through
@@ -171,10 +176,18 @@ default faces. A persistent `.zib` instance keeps that rule table across
 frames. Separator resolves its Line and Label roles, measures labels, and
 emits line and text effects from checked Ziran. The portable retained tree
 now owns node identity and Progress and Separator submissions through
-`BeginTree()` and `EndTree()`. Widgets lower their paint decisions to a
-checked generic command queue during submission. EndTree rejects an overfull
-tree or paint queue before committing and emits raster effects only after
-commit; it does not import individual widget painters.
+`BeginFrame(session, ...)` and `EndFrame(session)`. Widgets lower their paint decisions to a
+checked generic command queue during submission. Each queued painter carries
+its own emitter and clip procedure, so a Text-only link omits image raster
+effects. The retained tree and paint queue use growable Ziran vectors instead
+of fixed node and paint arrays. Each session has independent tree, input, and
+paint state. The retained node core is 128 bytes on x86-64; semantic and
+interaction data occupy side tables only when used. Parent identity, key, and
+kind index the previous committed tree for reconciliation. Parent-local layout
+cursors place row, column, and grid children without walking older siblings.
+Allocation failure rejects a submission while preserving the committed tree.
+`EndFrame` emits raster effects only after commit; it does not import
+individual widget painters.
 `tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
 identity across tree reordering, and emits consumable activation on release.
 `pointer_input.zi` imports raw pointer samples through the reusable host
@@ -213,8 +226,8 @@ line renderer. `raster_shape.zi` and `raster_text.zi` declare rounded rectangle
 and UTF-8 text effects for Progress; their adapters pass draw calls to the
 embedding renderer. `font_metrics.zi` declares width and line height effects
 for the platform font rasterizer. `pointer_input.zi` declares the raw pointer
-sample capability; `PointerBinding()` accepts current device coordinates and
-button transitions. Other input and rendering capabilities still need host
+sample capability; a portable host binds `PollPointer` with current device
+coordinates and button transitions. Other input and rendering capabilities still need host
 adapters.
 
 ## Completion requirements

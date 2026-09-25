@@ -9,8 +9,8 @@ NavigationBarOption :: struct {
     image: ImageProps
 }
 
-# Routes are a caller owned mutable slice. The returned count and dropdown
-# state must be passed back on the next frame.
+// Routes are a caller owned mutable slice. The returned count and dropdown
+// state must be passed back on the next frame.
 NavigationBarConfigProps :: struct {
     key: u64
     id: s32
@@ -27,7 +27,7 @@ NavigationBarConfigProps :: struct {
     dropdown_highlight_index: s32
     dropdown_scroll_offset: s32
     dropdown_wheel: float32
-    # Route keyboard samples to focused_row; the caller owns focus.
+    // Route keyboard samples to focused_row; the caller owns focus.
     focused_row: s32
     trigger_input: DropdownTriggerInput
     menu_input: DropdownMenuInput

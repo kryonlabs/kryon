@@ -114,7 +114,7 @@ ListBoxRevealScroll :: (selected: s32, scroll: s32, row_height: s32,
     return ListBoxClampScroll(scroll, max_scroll)
 }
 
-# key: 1 home, 2 end, 3 up, 4 down.
+// key: 1 home, 2 end, 3 up, 4 down.
 #program_export
 ListBoxKeyNone :: () -> s32 {
     return 0

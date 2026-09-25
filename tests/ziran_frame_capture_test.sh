@@ -3,8 +3,8 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-output="$repo/build/ziran/frame-capture-test"
-mkdir -p "$output"
+output=$(mktemp -d)
+trap 'rm -rf "$output"' EXIT HUP INT TERM
 
 "$ziran" ir --root "$repo/tests/fixtures" \
     --module-path "$repo/src/ui" -o "$output/ir" \

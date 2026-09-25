@@ -1,0 +1,74 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "accessibility_policy"
+#import "accessibility_props"
+#import "geometry"
+#import "link_props"
+#import "link_widget"
+#import "semantic"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_link_widget_host"
+
+phase: s32;
+
+Frame :: () -> s32 {
+    props: LinkProps
+    props.key = cast(u64)7
+    props.focus_id = 7
+    props.bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}
+    props.text = "Docs"
+    props.link = "https://example.test/docs"
+    props.focus_activate = phase == 2 || phase == 3
+    props.disabled = phase == 3
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 60.0})
+    result: LinkResult = Link(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindLink ||
+        TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticLink ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Docs" ||
+        TreeNodeAt(TestSession(), 1).bounds.width != 40.0 ||
+        TreeNodeAt(TestSession(), 1).bounds.height != 12.0 { return -10 }
+    if phase == 0 {
+        if result.activated || result.open_url || result.url != "" ||
+            AccessibilityActionsFor(WidgetKindLink, 7,
+                false, false, false) == cast(u32)0 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{15.0, 25.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{15.0, 25.0,
+            false, false, true})
+    } else if phase == 1 {
+        if !result.activated || !result.open_url ||
+            result.url != "https://example.test/docs" { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{0.0, 0.0,
+            false, false, false})
+    } else if phase == 2 {
+        if !result.activated || !result.open_url { return -3 }
+    } else {
+        if result.activated || result.open_url ||
+            TreeHitAt(TestSession(), 15.0, 25.0) != -1 { return -4 }
+    }
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#program_export
+main :: () -> s32 {
+    while phase < 4 {
+        expected: s32 = phase
+        if Frame() != expected || LinkHostFailed() ||
+            LinkTextCount() != expected + 1 { return 1 }
+        expected_lines: s32 = 0
+        if expected >= 1 { expected_lines = 1 }
+        if LinkLineCount() != expected_lines { return 2 }
+    }
+    return 0
+}

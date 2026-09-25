@@ -21,7 +21,7 @@ static void line(void *context, float x1, float y1, float x2, float y2,
     lines++;
 }
 
-static void text(void *context, const char *value, size_t length,
+static void text(void *context, uint8_t *value, size_t length,
                  int x, int y, int font, uint8_t r, uint8_t g,
                  uint8_t b, uint8_t a)
 {
@@ -32,8 +32,8 @@ static void text(void *context, const char *value, size_t length,
     labels++;
 }
 
-static int width(void *context, const char *value, size_t length,
-                 int font, const char *typeface, size_t typeface_length)
+static int width(void *context, uint8_t *value, size_t length,
+                 int font, uint8_t *typeface, size_t typeface_length)
 {
     (void)context; (void)typeface; (void)typeface_length;
     assert(length == 1 && memcmp(value, "A", length) == 0 && font == 14);
@@ -41,7 +41,7 @@ static int width(void *context, const char *value, size_t length,
     return 10;
 }
 
-static int height(void *context, int font, const char *typeface,
+static int height(void *context, int font, uint8_t *typeface,
                   size_t typeface_length)
 {
     (void)context; (void)font; (void)typeface; (void)typeface_length;
@@ -83,10 +83,8 @@ static void run(Bundle *bundle)
         RasterTextClippedBinding(&text_host),
         MeasureGlyphWidthBinding(&font_host),
         RasterRoundedRectangleBinding(&shape_host),
-        RasterRoundedRectangleOutlineBinding(&shape_host),
-        RasterImageBinding(&unused_image_renderer),
     };
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 7);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, 5);
     assert(instance != NULL);
     long long value = -1;
     int has_value = 0;
@@ -107,7 +105,7 @@ int main(int argc, char **argv)
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
     assert(bundle != NULL);
-    assert(BundleCapabilityCount(bundle) == 7);
+    assert(BundleCapabilityCount(bundle) == 5);
     run(bundle);
     BundleClose(bundle);
     return 0;

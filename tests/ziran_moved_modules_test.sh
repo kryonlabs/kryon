@@ -34,6 +34,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "table_view"
 #import "text"
 #import "text_align"
+#import "text_layout"
 #import "text_input"
 #import "toast"
 #import "tree"
@@ -53,8 +54,6 @@ Answer :: () -> s32 {
     selection: SegmentedSelectionResult = SegmentedSelectionFor(1, 2, true)
     if !selection.changed || selection.selected_index != 2 { return 0 }
     if SegmentedNextRowWidth(20, 30, 5) != 55 { return 0 }
-    if !TreeSameIdentity(1, 2, 3, 1, 2, 3) { return 0 }
-    if TreeSameIdentity(1, 2, 3, 1, 2, 4) { return 0 }
     if !TreeInteractiveButtonLike(WidgetKindButton, 0, false, false) {
         return 0
     }
@@ -106,12 +105,12 @@ Answer :: () -> s32 {
     if ListBoxClampScroll(99, 15) != 15 { return 0 }
     if PanedViewClampSplit(5, 10, 90) != 10 { return 0 }
     if TableViewSelectedRowFor(8, 3) != 2 { return 0 }
-    if ParagraphDefaultLineGap(1.5) != 6 { return 0 }
-    if ParagraphLineXFor(10, 100, 40, TextAlignCenter) != 40 {
+    if TextDefaultLineGap(1.5) != 6 { return 0 }
+    if TextLineXFor(10, 100, 40, TextAlignCenter) != 40 {
         return 0
     }
     if ParagraphLineIndexFor(85.0, 10.0, 20, 3) != 2 { return 0 }
-    token: ParagraphToken = ParagraphTokenNext("  one two", 0, false)
+    token: TextToken = TextTokenNext("  one two", 0, false)
     if !token.valid || token.start != 2 || token.end != 5 { return 0 }
     paragraph_line: ParagraphLine
     paragraph_line.start = 0

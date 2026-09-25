@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -33,10 +34,10 @@ TextAreaCaret :: struct {
 }
 
 #program_export
-TextAreaKey :: (props: TextAreaProps) -> u64 {
+TextAreaKey :: (session: Session, props: TextAreaProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.focus_id > 0 { return cast(u64)cast(u32)props.focus_id }
-    return TreeNextKey()
+    return cast(u64)0
 }
 
 #program_export
@@ -79,8 +80,8 @@ TextAreaFaceFor :: (props: TextAreaProps,
     return frame
 }
 
-# Rows preserve every byte, including spaces at wrap boundaries. The cursor
-# can therefore address the original value without a shadow text buffer.
+// Rows preserve every byte, including spaces at wrap boundaries. The cursor
+// can therefore address the original value without a shadow text buffer.
 #program_export
 TextAreaNextRow :: (value: string, start: s32,
     wrap_width: s32, font: s32,
@@ -169,8 +170,8 @@ TextAreaCaretFor :: (value: string, cursor: s32,
     return caret
 }
 
-# A composition replaces the current selection only in the painted view.
-# The committed value remains borrowed and unchanged until an edit is returned.
+// A composition replaces the current selection only in the painted view.
+// The committed value remains borrowed and unchanged until an edit is returned.
 TextAreaView :: struct {
     value: string
     preedit: string
@@ -378,7 +379,7 @@ TextAreaViewCaretFor :: (view: TextAreaView,
 }
 
 #program_export
-TextAreaViewPaintRow :: (node: s32, view: TextAreaView,
+TextAreaViewPaintRow :: (session: Session, node: s32, view: TextAreaView,
     row: TextAreaRow, x: s32, y: s32, font: s32,
     typeface: string, color: Color,
     clip: Rectangle) {
@@ -391,7 +392,7 @@ TextAreaViewPaintRow :: (node: s32, view: TextAreaView,
         right: s32 = row.end
         if right > segment.end { right = segment.end }
         if right > left {
-            PaintClippedLabel(node,
+            PaintClippedLabel(session, node,
                 TextSpan(segment.source,
                     segment.source_start + left - segment.start,
                     right - left),
@@ -503,10 +504,10 @@ TextAreaEditFor :: (props: TextAreaProps,
     return edit
 }
 
-# The caller stores text, focus, selection, and scroll state. Kryon returns
-# UTF-8 byte edits and paints from the immutable value for this frame.
+// The caller stores text, focus, selection, and scroll state. Kryon returns
+// UTF-8 byte edits and paints from the immutable value for this frame.
 #program_export
-TextArea :: (props: TextAreaProps) -> TextAreaResult {
+TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
@@ -521,14 +522,13 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
     result.preferred_x_valid = props.preferred_x_valid
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
-    key: u64 = TextAreaKey(props)
+    key: u64 = TextAreaKey(session, props)
     previous: s32 = -1
-    if TreeIsBuilding() {
-        previous = TreeFind(key, TreeCurrentParentKey(),
-            WidgetKindTextArea)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextArea)
     }
-    activated: bool = TreeTakeActivationAt(previous)
-    drag: PointerDrag = TreeTakeDragAt(previous)
+    activated: bool = TreeTakeActivationAt(session, previous)
+    drag: PointerDrag = TreeTakeDragAt(session, previous)
     if props.disabled || props.input.blur { result.focused = false }
     if !props.disabled && props.input.focus { result.focused = true }
     face: StyleFrame = TextAreaFaceFor(props, result.focused)
@@ -582,7 +582,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
     if !props.disabled && previous >= 0 &&
         (drag.started || drag.active || drag.ended || activated) {
         result.focused = true
-        prior: Rectangle = TreeNodeAt(previous).bounds
+        prior: Rectangle = TreeNodeAt(session, previous).bounds
         origin_x: float32 = prior.x + drag.grab_x
         origin_y: float32 = prior.y + drag.grab_y
         sample_x: float32 = drag.x
@@ -839,26 +839,26 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
     face = TextAreaFaceFor(props, result.focused)
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindTextArea, bounds)
         if result.node < 0 { return result }
-        TreeSetInteractive(result.node, props.disabled,
+        TreeSetInteractive(session, result.node, props.disabled,
             false, props.focus_id)
-        TreeSetSemantic(result.node,
+        TreeSetSemantic(session, result.node,
             cast(SemanticKind)SemanticTextArea, 0)
-        TreeSetLabel(result.node, props.label)
-        TreeSetSelected(result.node, result.focused)
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        TreeSetLabel(session, result.node, props.label)
+        TreeSetSelected(session, result.node, result.focused)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
-    PaintRoundedFill(result.node, bounds,
+    PaintRoundedFill(session, result.node, bounds,
         face.value.radius, 12,
         ColorFromPacked(Opacity(face.value.background,
             opacity)))
     border: u32 = face.value.border
     if result.focused { border = face.value.focus }
     if face.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, bounds,
+        PaintRoundedOutline(session, result.node, bounds,
             face.value.radius, 12,
             face.value.border_width,
             ColorFromPacked(Opacity(border, opacity)))
@@ -869,7 +869,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
         TextAreaMinWrapWidth(scale))
     if view.length == 0 && props.placeholder != "" &&
         !view.composing {
-        PaintClippedLabel(result.node, props.placeholder,
+        PaintClippedLabel(session, result.node, props.placeholder,
             paint.placeholder_x, paint.placeholder_y,
             font, ColorFromPacked(Opacity(
                 cast(u32)0x64748bff, opacity)),
@@ -929,7 +929,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
                         paint.clip_bounds)
                     if highlight.width > 0.0 &&
                         highlight.height > 0.0 {
-                        PaintRoundedFill(result.node,
+                        PaintRoundedFill(session, result.node,
                             highlight, 0.0, 1,
                             ColorFromPacked(Opacity(
                                 cast(u32)0x93c5fd88, opacity)))
@@ -940,7 +940,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
         if row.end > row.start {
             if view.composing {
                 if row_visible {
-                    TextAreaViewPaintRow(result.node, view,
+                    TextAreaViewPaintRow(session, result.node, view,
                         row, cast(s32)paint.clip_bounds.x,
                         y, font, face.value.typeface,
                         ColorFromPacked(Opacity(
@@ -949,7 +949,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
                 }
             } else if props.syntax == cast(SyntaxMode)SyntaxNone {
                 if row_visible {
-                PaintClippedLabel(result.node,
+                PaintClippedLabel(session, result.node,
                     TextSpan(props.value, row.start,
                         row.end - row.start),
                     cast(s32)paint.clip_bounds.x, y,
@@ -971,7 +971,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
                         token_x: s32 = cast(s32)paint.clip_bounds.x +
                             GlyphWidth(prefix, font,
                                 face.value.typeface)
-                        PaintClippedLabel(result.node,
+                        PaintClippedLabel(session, result.node,
                             TextSpan(props.value,
                                 token_start, token.length),
                             token_x, y, font,
@@ -1022,7 +1022,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
                     paint.clip_bounds)
                 if underline.width > 0.0 &&
                     underline.height > 0.0 {
-                    PaintRoundedFill(result.node, underline,
+                    PaintRoundedFill(session, result.node, underline,
                         0.0, 1,
                         ColorFromPacked(Opacity(
                             face.value.focus, opacity)))
@@ -1044,7 +1044,7 @@ TextArea :: (props: TextAreaProps) -> TextAreaResult {
             y + line_height > cast(s32)paint.clip_bounds.y &&
             y < cast(s32)(paint.clip_bounds.y +
                 paint.clip_bounds.height) {
-            PaintLine(result.node,
+            PaintLine(session, result.node,
                 Rectangle.{cast(float32)x, cast(float32)y,
                     0.0, cast(float32)line_height},
                 ColorFromPacked(Opacity(

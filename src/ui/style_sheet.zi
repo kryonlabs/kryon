@@ -1,8 +1,9 @@
 #import "style"
 #import "control_props"
+#import "text_style"
 
-# KSS is the text format. The runtime API uses plain Style* names.
-# Compilers and parsers lower .kss files into these typed rule tables.
+// KSS is the text format. The runtime API uses plain Style* names.
+// Compilers and parsers lower .kss files into these typed rule tables.
 
 #program_export
 StyleAny :: () -> s32 {
@@ -375,8 +376,8 @@ StyleSheet :: struct {
     rule_count: s32
 }
 
-# Owned rule storage for portable programs. The pointer-based StyleSheet above
-# remains the input shape of the old native loader during migration.
+// Owned rule storage for portable programs. The pointer-based StyleSheet above
+// remains the input shape of the old native loader during migration.
 StyleRules :: struct {
     items: [320]StyleRule
     count: s32
@@ -387,11 +388,23 @@ installed_rules: StyleRules;
 #program_export
 InstallStyleRules :: (rules: StyleRules) {
     installed_rules = rules
+    resolver: TextStyleResolver = ResolveInstalledTextStyle
+    SetTextStyleResolver(resolver)
 }
 
 #program_export
 ActiveStyleRules :: () -> StyleRules {
     return installed_rules
+}
+
+ResolveInstalledTextStyle :: (request: TextStyleRequest,
+    base: StyleData) -> StyleData {
+    state: s32 = cast(s32)ButtonStateNormal
+    if request.disabled { state = cast(s32)ButtonStateDisabled }
+    kind: s32 = request.kind
+    if kind <= 0 { kind = StyleKindText() }
+    return ResolveStyleRules(installed_rules, base,
+        StyleTextFacts(0, request.class_name, kind, state), state)
 }
 
 StylePriority :: struct {
@@ -544,8 +557,8 @@ StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool {
     return true
 }
 
-# Selector parsers provide counts; weights and cascade ordering live here for
-# typed native selectors and the richer declarative web selector surface.
+// Selector parsers provide counts; weights and cascade ordering live here for
+// typed native selectors and the richer declarative web selector surface.
 #program_export
 StyleSpecificity :: (kinds: s32, attributes: s32, classes: s32, names: s32) -> s32 {
     return kinds + attributes * 10 + classes * 20 + names * 100
@@ -675,8 +688,8 @@ StyleRuleFieldDecision :: (current: StylePriority, rule: StyleRule,
     return decision
 }
 
-# A scalar score is useful for display but cannot order arbitrary selector
-# counts or source positions without collisions. Compare each tier directly.
+// A scalar score is useful for display but cannot order arbitrary selector
+// counts or source positions without collisions. Compare each tier directly.
 #program_export
 StylePriorityWins :: (priority: StylePriority, current: StylePriority) -> bool {
     if !priority.present {

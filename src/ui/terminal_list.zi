@@ -1,6 +1,6 @@
 
-# Keyboard navigation for a list presented as terminal rows. The application
-# owns its items; a terminal host supplies key events and viewport height.
+// Keyboard navigation for a list presented as terminal rows. The application
+// owns its items; a terminal host supplies key events and viewport height.
 TerminalListState :: struct {
     selected: s32
     first: s32
@@ -18,7 +18,7 @@ TerminalListMove :: (state: TerminalListState, count: s32,
     if state.selected < 0 { state.selected = 0 }
     if state.selected >= count { state.selected = count - 1 }
 
-    # 1/2 move by one row, 3/4 by a page, 5/6 jump to an edge.
+    // 1/2 move by one row, 3/4 by a page, 5/6 jump to an edge.
     if key == 1 { state.selected -= 1 }
     if key == 2 { state.selected += 1 }
     if key == 3 { state.selected -= visible_rows }

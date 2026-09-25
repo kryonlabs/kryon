@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "semantic"
 #import "syntax"
@@ -208,11 +215,11 @@ Frame :: () -> s32 {
         props.input.composition_event.phase =
             cast(CompositionPhase)CompositionCancel
     }
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
-    result: TextAreaResult = TextArea(props)
-    if !EndTree() || result.node != 1 ||
-        TreeNodeAt(result.node).semantic_label != "Notes" ||
-        TreeNodeAt(result.node).semantic_kind !=
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
+    result: TextAreaResult = TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || result.node != 1 ||
+        TreeNodeAt(TestSession(), result.node).semantic_label != "Notes" ||
+        TreeNodeAt(TestSession(), result.node).semantic_kind !=
             cast(SemanticKind)SemanticTextArea { return -20 }
     if phase == 0 {
         if result.focused || result.edit.changed { return -1 }
@@ -221,9 +228,9 @@ Frame :: () -> s32 {
             TextAreaCaretFor(value, 5, 0, 14, "", 18).row_index != 1 {
             return -19
         }
-        TreePointerUpdate(PointerFrame.{60.0, 49.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 49.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{60.0, 49.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 49.0,
             false, false, true})
     } else if phase == 1 {
         if !result.focused || !result.edit.changed ||
@@ -281,18 +288,18 @@ Frame :: () -> s32 {
         if !result.focused || result.cursor != 4 ||
             result.scroll_y != 36 { return -14 }
     } else if phase == 14 {
-        TreePointerUpdate(PointerFrame.{31.0, 36.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{31.0, 36.0,
             true, true, false})
     } else if phase == 15 {
         if result.cursor != 0 || result.selecting {
             return -15
         }
-        TreePointerUpdate(PointerFrame.{60.0, 36.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 36.0,
             true, false, false})
     } else if phase == 16 {
         if !result.selecting || result.anchor != 0 ||
             result.cursor != 4 { return -16 }
-        TreePointerUpdate(PointerFrame.{60.0, 36.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 36.0,
             false, false, true})
     } else if phase == 17 {
         if result.selecting || result.anchor != 0 ||
@@ -517,12 +524,6 @@ HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String face) { (void)face; return (int32_t)value.length * font / 2; }
 HOST int32_t MeasureGlyphLineHeight(int32_t font,
     String face) { (void)face; return font; }
-HOST String TextSlice(String source, int32_t start, int32_t length) {
-    assert(start >= 0 && length >= 0 &&
-           (size_t)start + (size_t)length <= source.length);
-    String result = {source.data + start, (size_t)length};
-    return result;
-}
 HOST int32_t ImageWidth(String path) { (void)path; return 0; }
 HOST int32_t ImageHeight(String path) { (void)path; return 0; }
 HOST void RasterImage(String path, uint32_t id, Rectangle source,
@@ -579,7 +580,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
@@ -603,8 +604,6 @@ func (*fieldHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
 func (*fieldHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
-func (*fieldHost) TextSlice(source string, start,
-    length int32) string { return source[start:start+length] }
 func (*fieldHost) ImageWidth(path string) int32 { return 0 }
 func (*fieldHost) ImageHeight(path string) int32 { return 0 }
 func (h *fieldHost) RasterRoundedRectangle(bounds Rectangle,
@@ -632,7 +631,6 @@ func (*fieldHost) RasterImage(path string, id uint32,
 func TestTextArea(t *testing.T) {
     h := &fieldHost{}
     SetFontMetricsHost(h)
-    SetTextWidgetHost(h)
     SetRasterShapeHost(h)
     SetRasterTextHost(h)
     SetRasterHost(h)

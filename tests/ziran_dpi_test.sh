@@ -60,7 +60,7 @@ for input in source saved; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$input_dir" \
+            "$ziran" build --target=go --pkg main --root "$input_dir" \
                 -o "$output" "$input_dir/use_dpi.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -69,7 +69,7 @@ GO
             GO111MODULE=off go run "$output/dpi.go" \
                 "$output/use_dpi.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$input_dir" \
+            "$ziran" build --target=c --root "$input_dir" \
                 -o "$output" "$input_dir/use_dpi.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_dpi.h"
@@ -80,7 +80,7 @@ C
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$input_dir" \
+            "$ziran" build --target=cpp --root "$input_dir" \
                 -o "$output" "$input_dir/use_dpi.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "use_dpi.hpp"

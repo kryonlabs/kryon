@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "modal"
@@ -52,51 +59,51 @@ Frame :: () -> s32 {
         props.has_left_action = true
         props.left_label = "Back"
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
-    result: ModalFrameResult = ModalFrame(props)
-    if !TreeFinish() || result.node != 1 ||
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
+    result: ModalFrameResult = ModalFrame(TestSession(), props)
+    if !TreeFinish(TestSession()) || result.node != 1 ||
         result.panel_node != 3 ||
-        TreeNodeAt(1).kind != WidgetKindModal ||
-        TreeNodeAt(3).kind != WidgetKindCustom { return -20 }
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindModal ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindCustom { return -20 }
     if phase == 0 {
         if result.dismissed || result.right_clicked ||
-            TreeCount() != 5 ||
+            TreeCount(TestSession()) != 5 ||
             result.layout.panel.x != 50.0 ||
             result.layout.panel.y != 40.0 ||
             result.layout.content.x != 68.0 ||
-            TreeNodeAt(4).semantic_label != "Close" ||
-            TreeHitAt(220.0, 60.0) != 4 { return -1 }
-        TreePointerUpdate(PointerFrame.{220.0, 60.0,
+            TreeNodeAt(TestSession(), 4).semantic_label != "Close" ||
+            TreeHitAt(TestSession(), 220.0, 60.0) != 4 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{220.0, 60.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{220.0, 60.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{220.0, 60.0,
             false, false, true})
     } else if phase == 1 {
         if !result.right_clicked || result.dismissed ||
-            TreeCount() != 5 { return -2 }
-        TreePointerUpdate(PointerFrame.{10.0, 10.0,
+            TreeCount(TestSession()) != 5 { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{10.0, 10.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{10.0, 10.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{10.0, 10.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dismissed || result.right_clicked ||
-            TreeCount() != 4 { return -3 }
+            TreeCount(TestSession()) != 4 { return -3 }
     } else if phase == 3 {
         if result.dismissed || result.left_clicked ||
-            TreeCount() != 5 ||
+            TreeCount(TestSession()) != 5 ||
             result.layout.panel.x != 60.0 ||
             result.layout.panel.y != 20.0 ||
             result.layout.content.x != 78.0 ||
-            TreeNodeAt(4).semantic_label != "Back" ||
-            TreeHitAt(80.0, 40.0) != 4 { return -4 }
-        TreePointerUpdate(PointerFrame.{80.0, 40.0,
+            TreeNodeAt(TestSession(), 4).semantic_label != "Back" ||
+            TreeHitAt(TestSession(), 80.0, 40.0) != 4 { return -4 }
+        TreePointerUpdate(TestSession(), PointerFrame.{80.0, 40.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{80.0, 40.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{80.0, 40.0,
             false, false, true})
     } else if phase == 4 {
         if !result.left_clicked || result.dismissed ||
-            TreeCount() != 5 { return -5 }
+            TreeCount(TestSession()) != 5 { return -5 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     old: s32 = phase
     phase += 1
     return old
@@ -210,7 +217,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

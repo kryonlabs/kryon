@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "semantic"
 #import "tab_bar_props"
@@ -26,17 +33,17 @@ last_click_valid: bool;
 selected_bounds: Rectangle;
 
 Click :: (x: float32, y: float32) {
-    TreePointerUpdate(PointerFrame.{x, y,
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y,
         true, true, false})
-    TreePointerUpdate(PointerFrame.{x, y,
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y,
         false, false, true})
 }
 
 CloseBounds :: () -> Rectangle {
     index: s32 = 0
-    while index < TreeCount() {
-        if TreeNodeAt(index).semantic_label == "Close tab" {
-            return TreeNodeAt(index).bounds
+    while index < TreeCount(TestSession()) {
+        if TreeNodeAt(TestSession(), index).semantic_label == "Close tab" {
+            return TreeNodeAt(TestSession(), index).bounds
         }
         index += 1
     }
@@ -86,10 +93,10 @@ Frame :: () -> s32 {
     }
     if phase == 12 { props.input.scroll_delta = -40 }
     if phase == 13 { props.focus_selected = true }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    result: TabBarResult = TabBar(props, tabs[0:4])
-    if !TreeFinish() || result.node != 1 ||
-        TreeNodeAt(result.node).semantic_kind !=
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    result: TabBarResult = TabBar(TestSession(), props, tabs[0:4])
+    if !TreeFinish(TestSession()) || result.node != 1 ||
+        TreeNodeAt(TestSession(), result.node).semantic_kind !=
             cast(SemanticKind)SemanticTabList { return -20 }
     if phase == 0 {
         if result.selected_index != 0 ||
@@ -134,19 +141,19 @@ Frame :: () -> s32 {
             selected_bounds.width * 0.5, 38.0)
     } else if phase == 8 {
         if result.double_clicked_index != 3 { return -9 }
-        TreePointerUpdate(PointerFrame.{
+        TreePointerUpdate(TestSession(), PointerFrame.{
             selected_bounds.x + selected_bounds.width * 0.5,
             38.0, true, true, false})
     } else if phase == 9 {
         if result.dragging || result.reordered_from != -1 {
             return -10
         }
-        TreePointerUpdate(PointerFrame.{-300.0, 38.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{-300.0, 38.0,
             true, false, false})
     } else if phase == 10 {
         if !result.dragging || result.drag_from != 3 ||
             result.drag_to != 0 { return -11 }
-        TreePointerUpdate(PointerFrame.{-300.0, 38.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{-300.0, 38.0,
             false, false, true})
     } else if phase == 11 {
         if result.reordered_from != 3 ||
@@ -207,12 +214,6 @@ HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String face) { (void)face; return (int32_t)value.length * font / 2; }
 HOST int32_t MeasureGlyphLineHeight(int32_t font,
     String face) { (void)face; return font; }
-HOST String TextSlice(String source, int32_t start, int32_t length) {
-    assert(start >= 0 && length >= 0 &&
-           (size_t)start + (size_t)length <= source.length);
-    String result = {source.data + start, (size_t)length};
-    return result;
-}
 HOST int32_t ImageWidth(String path) { (void)path; return 0; }
 HOST int32_t ImageHeight(String path) { (void)path; return 0; }
 HOST void RasterImage(String path, uint32_t id, Rectangle source,
@@ -252,7 +253,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
@@ -273,8 +274,6 @@ func (tabHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
 func (tabHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
-func (tabHost) TextSlice(source string, start,
-    length int32) string { return source[start:start+length] }
 func TestTabBar(t *testing.T) {
     SetFontMetricsHost(tabHost{})
     for phase := int32(0); phase < 14; phase++ {

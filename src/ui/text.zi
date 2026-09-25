@@ -1,8 +1,8 @@
 #import "geometry"
 #import "style"
 
-# Typeface lookup, shaping and glyph measurement remain host services.
-# Inheritance and layout policy must not differ between renderers.
+// Typeface lookup, shaping and glyph measurement remain host services.
+// Inheritance and layout policy must not differ between renderers.
 #program_export
 TextContentColorFor :: (fields: u32, field: u32, color: u32,
     fallback: u32) -> u32 {
@@ -32,17 +32,17 @@ ResolveTextStyle :: (font: s32, inherited_font: s32, default_font: s32,
     style: TextAppearance
     style.font = ResolveFont(font, inherited_font, default_font)
     style.color = color
-    # Both explicit and inherited foregrounds may intentionally be transparent.
-    # Presence is independent of alpha; only absent colors use the minimal
-    # fallback supplied by the host.
+    // Both explicit and inherited foregrounds may intentionally be transparent.
+    // Presence is independent of alpha; only absent colors use the minimal
+    // fallback supplied by the host.
     if !color_set {
         style.color = fallback_color
         if inherited_color_set {
             style.color = inherited_color
         }
     }
-    # A parent's resolved foreground already includes its disabled style.
-    # An explicit child color still needs disabled presentation of its own.
+    // A parent's resolved foreground already includes its disabled style.
+    // An explicit child color still needs disabled presentation of its own.
     if (disabled || inherited_disabled) &&
        (color_set || !inherited_color_set || !inherited_disabled) {
         alpha: u32 = cast(u32)(cast(float32)(style.color & cast(u32)255) * 0.45)
@@ -247,7 +247,7 @@ TextAlignmentOffset :: (available: float32, measured: float32, alignment: s32) -
     return 0.0
 }
 
-# Decorations use the same measured line geometry as the glyphs.
+// Decorations use the same measured line geometry as the glyphs.
 #program_export
 TextStrikethroughBounds :: (x: float32, y: float32, width: float32,
     line_height: float32, scale: float32) -> Rectangle {

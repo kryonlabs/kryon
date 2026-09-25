@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -47,18 +54,18 @@ Frame :: () -> s32 {
         rule.style.font_size = 14.0
         rules.items[0] = rule
         InstallStyleRules(rules)
-        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        if Button(props) != 0 || !EndTree() || TreeCount() != 2 ||
-            TreeNodeAt(1).semantic_label != "Run" { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
         phase = 1
         return 0
     }
     if phase == 1 {
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
-        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        clicked: s32 = Button(props)
-        if !EndTree() || clicked != 1 { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        clicked: s32 = Button(TestSession(), props)
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 1 { return -2 }
         phase = 2
         return 42
     }
@@ -66,18 +73,18 @@ Frame :: () -> s32 {
         props.image.asset_path = "badge.png"
         props.image.fit = cast(ImageFit)ImageFitContain
         props.icon_placement = cast(IconPlacement)IconPlacementTrailing
-        BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        if Button(props) != 0 || !EndTree() ||
-            TreeNodeAt(1).semantic_label != "Run" { return -4 }
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -4 }
         phase = 4
         return 44
     }
     props.disabled = true
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    clicked: s32 = Button(props)
-    if !EndTree() || clicked != 0 { return -3 }
-    TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-    TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    clicked: s32 = Button(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 0 { return -3 }
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
     phase = 3
     return 43
 }
@@ -190,7 +197,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

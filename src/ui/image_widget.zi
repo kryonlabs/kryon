@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -54,8 +55,8 @@ ImageTextureFor :: (image: ImageProps) -> Texture2D {
     texture.width = AssetWidth(image.asset_path)
     texture.height = AssetHeight(image.asset_path)
     if texture.width > 0 && texture.height > 0 {
-        # This marker makes the pure fit policy treat a host-backed asset as
-        # available. RasterImage receives the original id 0 and asset path.
+        // This marker makes the pure fit policy treat a host-backed asset as
+        // available. RasterImage receives the original id 0 and asset path.
         texture.id = cast(u32)1
     }
     return texture
@@ -72,7 +73,7 @@ ImageTint :: (surface: StyleData) -> Color {
 }
 
 #program_export
-PaintImagePlaceholder :: (node: s32, image: ImageProps,
+PaintImagePlaceholder :: (session: Session, node: s32, image: ImageProps,
     label_style: StyleData) {
     label: string = image.alt_text
     if label == "" { label = "Missing image" }
@@ -82,19 +83,19 @@ PaintImagePlaceholder :: (node: s32, image: ImageProps,
     height: s32 = GlyphLineHeight(font, label_style.typeface)
     layout: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(image.bounds,
         width, height)
-    PaintLabel(node, label, layout.label_x, layout.label_y,
+    PaintLabel(session, node, label, layout.label_x, layout.label_y,
         font, ColorFromPacked(Opacity(label_style.foreground,
             StyleOpacityValue(label_style.fields,
                 label_style.opacity))))
 }
 
 #program_export
-Image :: (image: ImageProps) {
+Image :: (session: Session, image: ImageProps) {
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(image.key, WidgetKindImage, image.bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, image.key, WidgetKindImage, image.bounds)
         if node < 0 { return }
-        TreeSetLabel(node, image.alt_text)
+        TreeSetLabel(session, node, image.alt_text)
     }
     faces: ImageFaces = ImageFacesFor(ActiveStyleRules(), image,
         DefaultImageFaces())
@@ -103,22 +104,22 @@ Image :: (image: ImageProps) {
         radius = faces.surface.radius
     }
     if (faces.surface.fields & cast(u32)StyleBackground) != cast(u32)0 {
-        PaintRoundedFill(node, image.bounds, radius, 12,
+        PaintRoundedFill(session, node, image.bounds, radius, 12,
             ColorFromPacked(faces.surface.background))
     }
     texture: Texture2D = ImageTextureFor(image)
     tint: Color = ImageTint(faces.surface)
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
     if plan.draw && tint.a > cast(u8)0 {
-        PaintImage(node, image.asset_path, image.texture.id,
+        PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint)
     } else if !plan.draw {
-        PaintImagePlaceholder(node, image, faces.label)
+        PaintImagePlaceholder(session, node, image, faces.label)
     }
     if (faces.surface.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
         faces.surface.border_width > 0.0 {
-        PaintRoundedOutline(node, image.bounds, radius, 12,
+        PaintRoundedOutline(session, node, image.bounds, radius, 12,
             faces.surface.border_width,
             ColorFromPacked(faces.surface.border))
     }

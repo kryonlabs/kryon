@@ -21,7 +21,7 @@ read_rectangle(const VmHostValue *value, float out[4])
        value->field_count != 4)
         return 0;
     for(size_t i = 0; i < 4; i++) {
-        if(!record_field(value, i, fields[i], "float", VM_HOST_REAL))
+        if(!record_field(value, i, fields[i], "float32", VM_HOST_REAL))
             return 0;
         out[i] = (float)value->fields[i].value.real;
     }
@@ -46,7 +46,7 @@ read_color(const VmHostValue *value, uint8_t out[4])
 static int
 read_real(const VmHostValue *value, float *out)
 {
-    if(value->kind != VM_HOST_REAL || strcmp(value->type, "float") != 0)
+    if(value->kind != VM_HOST_REAL || strcmp(value->type, "float32") != 0)
         return 0;
     *out = (float)value->real;
     return 1;
@@ -55,7 +55,7 @@ read_real(const VmHostValue *value, float *out)
 static int
 read_i32(const VmHostValue *value, int *out)
 {
-    if(value->kind != VM_HOST_INTEGER || strcmp(value->type, "i32") != 0)
+    if(value->kind != VM_HOST_INTEGER || strcmp(value->type, "s32") != 0)
         return 0;
     *out = (int)value->integer;
     return 1;
@@ -159,11 +159,11 @@ draw_raster_text(void *context, const char *module, const char *function,
         return 0;
     if(clipped)
         renderer->draw_clipped(renderer->context,
-                               (const char *)args[0].data,
+                               (uint8_t *)args[0].data,
                                args[0].length, x, y, font, clip,
                                color[0], color[1], color[2], color[3]);
     else
-        renderer->draw(renderer->context, (const char *)args[0].data,
+        renderer->draw(renderer->context, (uint8_t *)args[0].data,
                        args[0].length, x, y, font,
                        color[0], color[1], color[2], color[3]);
     result->kind = VM_HOST_VOID;

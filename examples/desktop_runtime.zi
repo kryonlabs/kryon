@@ -6,8 +6,8 @@
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
 
-# SDL_Event is 56 bytes on the supported SDL2 ABI. SDL_MouseButtonEvent's
-# button byte is at offset 16; the remaining union storage is opaque.
+// SDL_Event is 56 bytes on the supported SDL2 ABI. SDL_MouseButtonEvent's
+// button byte is at offset 16; the remaining union storage is opaque.
 Event :: struct {
     kind: u32
     timestamp: u32

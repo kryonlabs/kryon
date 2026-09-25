@@ -68,7 +68,7 @@ for input in source ir; do
         extension=zir
         input_dir=$work/ir
     fi
-    "$ziran" build --target=c --strict --root "$work" -o "$work/c-$input" \
+    "$ziran" build --target=c --root "$work" -o "$work/c-$input" \
         "$input_dir/widget_kind.$extension" \
         "$input_dir/accessibility_props.$extension" \
         "$input_dir/accessibility_policy.$extension" \
@@ -85,7 +85,7 @@ EOF
         "$work/c-$input/main.c" -o "$work/c-$input/app"
     "$work/c-$input/app"
 
-    "$ziran" build --target=cpp --strict --root "$work" -o "$work/cpp-$input" \
+    "$ziran" build --target=cpp --root "$work" -o "$work/cpp-$input" \
         "$input_dir/widget_kind.$extension" \
         "$input_dir/accessibility_props.$extension" \
         "$input_dir/accessibility_policy.$extension" \
@@ -102,7 +102,7 @@ EOF
         "$work/cpp-$input/main.cpp" -o "$work/cpp-$input/app"
     "$work/cpp-$input/app"
 
-    "$ziran" build --target=go --strict --pkg main --root "$work" \
+    "$ziran" build --target=go --pkg main --root "$work" \
         -o "$work/go-$input" \
         "$input_dir/widget_kind.$extension" \
         "$input_dir/accessibility_props.$extension" \

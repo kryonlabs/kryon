@@ -454,8 +454,8 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
         cast(u32)StyleGap, spec.base.value.gap, 4.0, scale, true)
     edge_inset: s32 = NavigationBarMetric(spec.base.value.fields,
         cast(u32)StylePaddingY, spec.base.value.padding_y, 2.0, scale, true)
-    # Reserve the font's descent and atlas padding inside the label box.
-    # The nominal line height alone clips glyphs at enlarged UI scales.
+    // Reserve the font's descent and atlas padding inside the label box.
+    // The nominal line height alone clips glyphs at enlarged UI scales.
     label_paint_h: s32 = spec.label_height + cast(s32)(8.0 * scale + 0.5)
     stack_h: s32 = state_h + label_gap + label_paint_h
     state_y: s32 = spec.bar.y + (spec.bar.height - stack_h) / 2

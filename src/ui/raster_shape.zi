@@ -2,7 +2,7 @@
 #import "geometry"
 host_api :: #system_library "host_api";
 
-# The platform only rasterizes the shapes selected by a Kryon widget.
+// The platform only rasterizes the shapes selected by a Kryon widget.
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) #foreign host_api;
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,

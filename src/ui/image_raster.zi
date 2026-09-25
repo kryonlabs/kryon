@@ -1,6 +1,6 @@
 host_api :: #system_library "host_api";
-# The platform supplies asset dimensions. Kryon chooses source,
-# destination, clipping, tint, and placeholder behavior.
+// The platform supplies asset dimensions. Kryon chooses source,
+// destination, clipping, tint, and placeholder behavior.
 ImageWidth :: (asset_path: string) -> s32 #foreign host_api;
 ImageHeight :: (asset_path: string) -> s32 #foreign host_api;
 

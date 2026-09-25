@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -53,20 +54,19 @@ SelectableFaceFor :: (props: SelectableProps,
 }
 
 #program_export
-Selectable :: (props: SelectableProps) -> SelectableToggleResult {
+Selectable :: (session: Session, props: SelectableProps) -> SelectableToggleResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
     previous: s32 = -1
-    if TreeIsBuilding() && key != cast(u64)0 {
-        previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindSelectable)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindSelectable)
     }
-    activated: bool = TreeTakeActivationAt(previous)
+    activated: bool = TreeTakeActivationAt(session, previous)
     result: SelectableToggleResult = SelectableToggleFor(
         props.selected, activated && !props.disabled)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto,
-        props.disabled, false, TreePressedAt(previous),
-        TreeHoveredAt(previous), false, result.selected)
+        props.disabled, false, TreePressedAt(session, previous),
+        TreeHoveredAt(session, previous), false, result.selected)
     face: StyleFrame = SelectableFaceFor(props, state)
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 { bounds.width = 120.0 }
@@ -74,28 +74,28 @@ Selectable :: (props: SelectableProps) -> SelectableToggleResult {
     spec: SelectableSpec
     spec.bounds = bounds
     spec.selected = result.selected
-    spec.hovered = TreeHoveredAt(previous)
-    spec.pressed = TreePressedAt(previous)
+    spec.hovered = TreeHoveredAt(session, previous)
+    spec.pressed = TreePressedAt(session, previous)
     spec.disabled = props.disabled
     spec.face = face
     spec.label_inset = SelectableLabelInset(1.0, face)
     paint: SelectablePaint = SelectablePaintFor(spec)
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindSelectable, bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindSelectable, bounds)
         if node < 0 { return result }
-        TreeSetInteractive(node, props.disabled, false, props.id)
-        TreeSetSelected(node, result.selected)
-        TreeSetLabel(node, props.label)
+        TreeSetInteractive(session, node, props.disabled, false, props.id)
+        TreeSetSelected(session, node, result.selected)
+        TreeSetLabel(session, node, props.label)
     }
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     if paint.draw_fill {
-        PaintRoundedFill(node, paint.bounds, face.value.radius, 12,
+        PaintRoundedFill(session, node, paint.bounds, face.value.radius, 12,
             ColorFromPacked(Opacity(paint.fill_color, opacity)))
     }
     if face.value.border_width > 0.0 {
-        PaintRoundedOutline(node, paint.bounds, face.value.radius, 12,
+        PaintRoundedOutline(session, node, paint.bounds, face.value.radius, 12,
             face.value.border_width,
             ColorFromPacked(Opacity(face.value.border, opacity)))
     }
@@ -105,7 +105,7 @@ Selectable :: (props: SelectableProps) -> SelectableToggleResult {
         line_height: s32 = GlyphLineHeight(font, face.value.typeface)
         y: s32 = cast(s32)(paint.bounds.y +
             (paint.bounds.height - cast(float32)line_height) * 0.5)
-        PaintClippedLabel(node, props.label, cast(s32)paint.label_x,
+        PaintClippedLabel(session, node, props.label, cast(s32)paint.label_x,
             y, font,
             ColorFromPacked(Opacity(paint.text_color, opacity)),
             paint.bounds)

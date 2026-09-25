@@ -1,16 +1,16 @@
 #import "kss_parser"
 
-# The KSS formatter lives here once and lowers to C, Go, and JavaScript with
-# the shared transpilers. Formatting is structural re-layout: the shared
-# parser supplies every construct's span, and construct text is copied
-# verbatim so the output is semantically identical to the input - only
-# indentation, line breaks, and blank-line placement change. Comments inside
-# constructs travel with them; comments between constructs are preserved as
-# their own constructs.
+// The KSS formatter lives here once and lowers to C, Go, and JavaScript with
+// the shared transpilers. Formatting is structural re-layout: the shared
+// parser supplies every construct's span, and construct text is copied
+// verbatim so the output is semantically identical to the input - only
+// indentation, line breaks, and blank-line placement change. Comments inside
+// constructs travel with them; comments between constructs are preserved as
+// their own constructs.
 
-# Output is segment-based so .kry needs no allocator: hosts stitch kind 0
-# (copy source[start..start+length]), kind 1 (emit the single atom byte), and
-# kind 2 (emit a newline followed by `length` spaces).
+// Output is segment-based so .kry needs no allocator: hosts stitch kind 0
+// (copy source[start..start+length]), kind 1 (emit the single atom byte), and
+// kind 2 (emit a newline followed by `length` spaces).
 
 KssFormatSegment :: struct {
     kind: s32
@@ -27,8 +27,8 @@ KssFormatResult :: struct {
     diagnostic_length: s32
 }
 
-# Construct kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive, 6 rule,
-# 7 foreign block, 8 comment. Mirrors the parser's block kinds.
+// Construct kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive, 6 rule,
+// 7 foreign block, 8 comment. Mirrors the parser's block kinds.
 
 KssFormatConstruct :: struct {
     kind: s32
@@ -112,9 +112,9 @@ KssFormatAddConstruct :: (state: KssFormatState, kind: s32, start: s32, end: s32
     return state
 }
 
-# Collect every construct by running the shared parser in declarative mode.
-# Imports resolve to empty modules: formatting re-layouts one file's text and
-# never follows imports.
+// Collect every construct by running the shared parser in declarative mode.
+// Imports resolve to empty modules: formatting re-layouts one file's text and
+// never follows imports.
 
 KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
     env: KssEnvironment = KssDefaultEnvironment()
@@ -135,8 +135,8 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
         }
         p = KssStep(p)
         if p.status == cast(s32)KssStatusNeedImport {
-            # Formatting re-layouts one file; imports resolve to empty modules
-            # and the resolved name is irrelevant to the layout.
+            // Formatting re-layouts one file; imports resolve to empty modules
+            // and the resolved name is irrelevant to the layout.
             p = KssProvideImport(p, "", "import")
         }
     }
@@ -159,7 +159,7 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
     return state
 }
 
-# Comments between constructs are preserved as standalone constructs.
+// Comments between constructs are preserved as standalone constructs.
 
 KssFormatScanGaps :: (state: KssFormatState) -> KssFormatState {
     cursor: s32 = 0
@@ -211,7 +211,7 @@ KssFormatScanRange :: (state: KssFormatState, from: s32, to: s32) -> KssFormatSt
     return state
 }
 
-# Sort constructs by start (insertion sort; sheets are small).
+// Sort constructs by start (insertion sort; sheets are small).
 
 KssFormatSortConstructs :: (state: KssFormatState) -> KssFormatState {
     index: s32 = 1
@@ -228,8 +228,8 @@ KssFormatSortConstructs :: (state: KssFormatState) -> KssFormatState {
     return state
 }
 
-# Rules inside container blocks (env, variant) are covered by the block's own
-# span; drop them so their text is not emitted twice.
+// Rules inside container blocks (env, variant) are covered by the block's own
+// span; drop them so their text is not emitted twice.
 
 KssFormatDropNested :: (state: KssFormatState) -> KssFormatState {
     kept: s32 = 0
@@ -258,9 +258,9 @@ KssFormatDropNested :: (state: KssFormatState) -> KssFormatState {
     return state
 }
 
-# Emit one construct with its lines re-indented by brace depth. Construct
-# text is copied verbatim per line; only leading whitespace is dropped unless a
-# single-line declaration block can be reflowed structurally.
+// Emit one construct with its lines re-indented by brace depth. Construct
+// text is copied verbatim per line; only leading whitespace is dropped unless a
+// single-line declaration block can be reflowed structurally.
 
 KssFormatTrimStart :: (state: KssFormatState, start: s32, end: s32) -> s32 {
     pos: s32 = start
@@ -439,9 +439,9 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
     return state
 }
 
-# Format a style sheet. Output assembles from segments; hosts emit kind 0 as
-# source.slice(start, start + length), kind 1 as the atom byte, and kind 2 as
-# a newline plus `length` spaces.
+// Format a style sheet. Output assembles from segments; hosts emit kind 0 as
+// source.slice(start, start + length), kind 1 as the atom byte, and kind 2 as
+// a newline plus `length` spaces.
 
 #program_export
 KssFormat :: (source: string) -> KssFormatResult {

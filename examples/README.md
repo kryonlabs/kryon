@@ -40,3 +40,10 @@ desktop display. `make -C examples desktop-image-test` renders the canonical
 `build/examples/ziran/image-desktop.png`. The host imports Ziran's generic
 `c_string` module for safe C string arguments. It handles shapes, text, and
 path-backed PNG images. Texture handles and other image formats remain open.
+
+`make -C examples desktop-text-test` renders the plain `Text(TextProps)`
+example under a private display and saves
+`build/examples/ziran/text-desktop.png`. It also checks that source and saved
+`.zir` produce the same portable `text.zib`. Run
+`../build/examples/ziran/text-desktop` from `examples/` to open the interactive
+window, or open `examples/text_hello.zi` in an editor to see its Ziran source.

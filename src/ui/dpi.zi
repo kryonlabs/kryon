@@ -51,8 +51,8 @@ InvalidateDPI :: (state: DPIState) -> DPIState {
     return state
 }
 
-# The host passes platform and density observations. Ziran owns the scale and
-# layout decision; every backend receives the same resulting state.
+// The host passes platform and density observations. Ziran owns the scale and
+// layout decision; every backend receives the same resulting state.
 #program_export
 ResolveDPI :: (state: DPIState, view_width: s32, view_height: s32,
     platform: DPIPlatform, device_density: float32,

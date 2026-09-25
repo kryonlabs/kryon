@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "dropdown"
 #import "dropdown_props"
@@ -88,44 +95,44 @@ Frame :: () -> s32 {
         if phase == 10 { props.wheel = -1.0 }
         if phase == 13 { props.open = false }
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult
     if phase >= 10 && phase <= 12 {
-        result = Dropdown(props, long_options[0:8])
+        result = Dropdown(TestSession(), props, long_options[0:8])
     } else {
-        result = Dropdown(props, options[0:3])
+        result = Dropdown(TestSession(), props, options[0:3])
     }
-    if !TreeFinish() || result.node != 1 ||
-        TreeNodeAt(1).kind != WidgetKindDropdown ||
-        TreeNodeAt(1).semantic_kind !=
+    if !TreeFinish(TestSession()) || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindDropdown ||
+        TreeNodeAt(TestSession(), 1).semantic_kind !=
             cast(SemanticKind)SemanticComboBox { return -20 }
     if phase == 0 {
-        if result.open || result.changed || TreeCount() != 2 ||
-            TreeHitAt(20.0, 20.0) != 1 { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        if result.open || result.changed || TreeCount(TestSession()) != 2 ||
+            TreeHitAt(TestSession(), 20.0, 20.0) != 1 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 1 {
         if !result.open { return -21 }
         if !result.opened { return -22 }
         if result.highlight_index != 0 { return -23 }
-        if TreeCount() != 8 { return -24 }
-        TreePointerUpdate(PointerFrame.{20.0, 88.0,
+        if TreeCount(TestSession()) != 8 { return -24 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 88.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
             false, false, true})
     } else if phase == 2 {
         if !result.open || result.changed ||
-            TreeCount() != 8 { return -3 }
-        TreePointerUpdate(PointerFrame.{20.0, 115.0,
+            TreeCount(TestSession()) != 8 { return -3 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 115.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
             false, false, true})
     } else if phase == 3 {
         if result.open || !result.changed || !result.closed ||
-            result.selected_index != 2 || TreeCount() != 2 ||
-            TreeNodeAt(1).semantic_label != "Third" { return -4 }
+            result.selected_index != 2 || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Third" { return -4 }
     } else if phase == 4 {
         if !result.open || !result.opened ||
             result.highlight_index != 2 { return -5 }
@@ -136,40 +143,40 @@ Frame :: () -> s32 {
         if result.open || !result.closed || !result.changed ||
             result.selected_index != 0 { return -7 }
     } else if phase == 7 {
-        if !result.open || TreeCount() != 8 { return -8 }
-        TreePointerUpdate(PointerFrame.{180.0, 180.0,
+        if !result.open || TreeCount(TestSession()) != 8 { return -8 }
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{180.0, 180.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
             false, false, true})
     } else if phase == 8 {
         if result.open || !result.closed || result.changed ||
-            TreeCount() != 2 { return -9 }
+            TreeCount(TestSession()) != 2 { return -9 }
     } else if phase == 9 {
         if result.open || !result.closed ||
-            TreeCount() != 2 ||
-            TreeHitAt(20.0, 20.0) != -1 { return -10 }
+            TreeCount(TestSession()) != 2 ||
+            TreeHitAt(TestSession(), 20.0, 20.0) != -1 { return -10 }
     } else if phase == 10 {
         if !result.open || result.scroll_offset != 28 ||
-            TreeCount() != 11 ||
-            TreeNodeAt(10).kind != WidgetKindSlider ||
-            TreeHitAt(126.0, 80.0) != 10 { return -11 }
-        TreePointerUpdate(PointerFrame.{126.0, 80.0,
+            TreeCount(TestSession()) != 11 ||
+            TreeNodeAt(TestSession(), 10).kind != WidgetKindSlider ||
+            TreeHitAt(TestSession(), 126.0, 80.0) != 10 { return -11 }
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 80.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{126.0, 160.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
             true, false, false})
     } else if phase == 11 {
         if !result.open || result.scroll_offset != 84 ||
-            TreeCount() != 11 { return -12 }
-        TreePointerUpdate(PointerFrame.{126.0, 160.0,
+            TreeCount(TestSession()) != 11 { return -12 }
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
             false, false, true})
     } else if phase == 12 {
         if !result.open || result.scroll_offset != 84 ||
-            TreeCount() != 11 { return -13 }
+            TreeCount(TestSession()) != 11 { return -13 }
     } else if phase == 13 {
-        if result.open || TreeCount() != 2 ||
-            TreeNodeAt(1).semantic_label != "First" { return -14 }
+        if result.open || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "First" { return -14 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     open_state = result.open
     selected_state = result.selected_index
     highlight_state = result.highlight_index
@@ -294,7 +301,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

@@ -3,7 +3,7 @@
 #import "surface"
 #import "material"
 
-# Device-independent drawing commands. Hosts rasterize; widgets choose commands.
+// Device-independent drawing commands. Hosts rasterize; widgets choose commands.
 DrawingKind :: enum {
     DrawingNone :: 0
     DrawingText :: 1
@@ -24,6 +24,6 @@ Drawing :: struct {
     ring: LoadingRingSpec
 }
 
-# Synchronous rasterizer endpoints. The widget owns command order and content.
+// Synchronous rasterizer endpoints. The widget owns command order and content.
 Painter :: #type (Drawing) -> ();
 SurfacePainter :: #type (SurfaceDrawing) -> ();

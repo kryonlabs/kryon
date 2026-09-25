@@ -179,9 +179,9 @@ PopupBackdropAlpha :: (decision: PopupDecision) -> s32 {
     return 0
 }
 
-# Native hosts supply sampled input and apply these transitions to their
-# caller-owned open value, paint layers and input registry. Keyboard ownership
-# must be sampled after entering the input scope, including on the first frame.
+// Native hosts supply sampled input and apply these transitions to their
+// caller-owned open value, paint layers and input registry. Keyboard ownership
+// must be sampled after entering the input scope, including on the first frame.
 PopupFrameInput :: struct {
     id: s32
     bounds: Rectangle
@@ -254,8 +254,8 @@ close_requested: bool) -> PopupLifecycle {
     return result
 }
 
-# Consume exactly the release that dismisses an open popup. Hosts with queues
-# feed releases in order; an already closed popup cannot consume later taps.
+// Consume exactly the release that dismisses an open popup. Hosts with queues
+// feed releases in order; an already closed popup cannot consume later taps.
 #program_export
 PopupLifecycleRelease :: (state: PopupLifecycle, released: bool,
 consumed: bool, inside: bool) -> PopupLifecycle {

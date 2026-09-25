@@ -81,8 +81,8 @@ SliderTextPaint :: struct {
     text_y: float32
 }
 
-# The header belongs to the widget. Only the interaction row is inset for
-# optional step buttons; labels always start at the outer bounds.
+// The header belongs to the widget. Only the interaction row is inset for
+// optional step buttons; labels always start at the outer bounds.
 SliderLayout :: struct {
     bounds: Rectangle
     label: Rectangle
@@ -132,7 +132,7 @@ SliderLayoutFor :: (bounds: Rectangle, line_height: float32, label_height: float
     layout.track.width = bounds.width
     layout.track.height = bounds.height - header - gap - footer - extra
     if !vertical && step_buttons {
-        # At very narrow widths retain useful controls and grow vertically.
+        // At very narrow widths retain useful controls and grow vertically.
         if bounds.width < target * 3.0 + gap * 2.0 {
             layout.decrement.x = bounds.x
             layout.decrement.y = layout.track.y

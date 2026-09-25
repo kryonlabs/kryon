@@ -1,6 +1,6 @@
 
-# Locale catalogs own their strings. Policy only reads caller-owned slices;
-# loading files and applying a chosen locale belong to the host or app.
+// Locale catalogs own their strings. Policy only reads caller-owned slices;
+// loading files and applying a chosen locale belong to the host or app.
 LocaleEntry :: struct {
     key: string
     value: string

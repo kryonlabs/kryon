@@ -22,7 +22,7 @@ modules call.
 ## Current implementation
 
 Every maintained `.zi` module in `src/ui/` appears in
-[`src/ui/modules.txt`](../src/ui/modules.txt). All 192 modules use current
+[`src/ui/modules.txt`](../src/ui/modules.txt). All 198 modules use current
 Ziran syntax. `make all` passes source checking, checked `.zir` output,
 strict C, C++, and Go generation, native C/C++ compilation, and Go package
 compilation. The default build emits only the library generated from Ziran;
@@ -31,11 +31,11 @@ host declarations also compile with the current Ziran toolchain. Platform
 hosts and downstream applications have not yet completed
 their integration with the library.
 
-The unused handwritten Go runtime has been removed. The current archives
-contain all checked UI modules and C portable host adapters. Those C adapters
-and the C frame replay tool are migration debt: they still support today's
-tests and must be replaced with current Ziran source. Application integration
-and supported renderer paths still need completion.
+The unused handwritten Go runtime has been removed. The product archive
+contains only checked UI modules generated from Ziran. C ABI fixtures for
+portable tests and frame replay live in `tests/support/` and are linked only
+by the test gate. Application integration and supported renderer paths still
+need completion.
 
 The optional SDL2/Cairo example links ordinary Ziran source in a private-display
 desktop test. Its checks capture a clicked button and a tinted, asset-backed

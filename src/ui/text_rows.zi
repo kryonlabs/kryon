@@ -1,6 +1,6 @@
 
-# Byte ranges remain borrowed from the host. Grapheme boundaries and measured
-# prefix widths come from its Unicode/font services.
+// Byte ranges remain borrowed from the host. Grapheme boundaries and measured
+// prefix widths come from its Unicode/font services.
 TextLogicalLine :: struct {
     start: s32
     end: s32

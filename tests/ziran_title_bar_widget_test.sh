@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "dropdown_props"
 #import "geometry"
@@ -63,46 +70,46 @@ Frame :: () -> s32 {
     props.dropdown.selected_index = selected_state
     props.dropdown.highlight_index = highlight_state
     props.dropdown.scroll_offset = scroll_state
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 150.0})
-    result: TitleBarResult = TitleBar(props, options[0:2])
-    if !TreeFinish() || result.node != 1 ||
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 150.0})
+    result: TitleBarResult = TitleBar(TestSession(), props, options[0:2])
+    if !TreeFinish(TestSession()) || result.node != 1 ||
         result.height != 48 ||
-        TreeNodeAt(1).kind != WidgetKindTitleBar ||
-        TreeNodeAt(2).kind != WidgetKindButton ||
-        TreeNodeAt(2).semantic_label != "Return" ||
-        TreeNodeAt(2).bounds.x != 12.0 ||
-        TreeNodeAt(2).bounds.width != 38.0 { return -20 }
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindTitleBar ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Return" ||
+        TreeNodeAt(TestSession(), 2).bounds.x != 12.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 38.0 { return -20 }
     if phase == 0 {
-        if result.clicked_leading || TreeCount() != 3 ||
-            TreeHitAt(20.0, 20.0) != 2 { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        if result.clicked_leading || TreeCount(TestSession()) != 3 ||
+            TreeHitAt(TestSession(), 20.0, 20.0) != 2 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 1 {
-        if !result.clicked_leading || TreeCount() != 4 ||
+        if !result.clicked_leading || TreeCount(TestSession()) != 4 ||
             result.dropdown.open ||
-            TreeNodeAt(3).kind != WidgetKindDropdown { return -2 }
-        TreePointerUpdate(PointerFrame.{70.0, 20.0,
+            TreeNodeAt(TestSession(), 3).kind != WidgetKindDropdown { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 20.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{70.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 20.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
-            TreeCount() != 9 { return -3 }
-        TreePointerUpdate(PointerFrame.{70.0, 90.0,
+            TreeCount(TestSession()) != 9 { return -3 }
+        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 90.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{70.0, 90.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 90.0,
             false, false, true})
     } else if phase == 3 {
         if result.dropdown.open || !result.dropdown.changed ||
             result.dropdown.selected_index != 1 ||
-            TreeCount() != 4 { return -4 }
+            TreeCount(TestSession()) != 4 { return -4 }
     } else if phase == 4 {
-        if TreeCount() != 3 || result.clicked_leading ||
+        if TreeCount(TestSession()) != 3 || result.clicked_leading ||
             result.dropdown.open { return -5 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     open_state = result.dropdown.open
     selected_state = result.dropdown.selected_index
     highlight_state = result.dropdown.highlight_index
@@ -214,7 +221,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

@@ -16,7 +16,7 @@ ImageProps :: struct {
     rotation: float32
     fit: ImageFit
     class_name: s32
-    # Runtime texture: honored instead of asset_path when set.
+    // Runtime texture: honored instead of asset_path when set.
     texture: Texture2D
     key: u64
 }

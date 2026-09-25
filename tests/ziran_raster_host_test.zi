@@ -1,0 +1,28 @@
+#import "bevel"
+#import "drawing_props"
+#import "geometry"
+#import "separator"
+#import "style"
+#import "ziran_raster_host_provider"
+
+#program_export
+Answer :: () -> s32 {
+    light: Color = Color.{cast(u8)10, cast(u8)20, cast(u8)30, cast(u8)40}
+    dark: Color = Color.{cast(u8)50, cast(u8)60, cast(u8)70, cast(u8)80}
+    RenderBevel(10, 20, 5, 4, light, dark)
+    bounds: Rectangle = Rectangle.{2.0, 3.0, 10.0, 6.0}
+    frame: StyleFrame
+    frame.value.background = cast(u32)0x11223344
+    RenderSeparatorLine(bounds, true, frame)
+    frame.value.background = cast(u32)0x55667788
+    RenderSeparatorLine(bounds, false, frame)
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 || RasterCallCount() != 6 || RasterHostFailed() {
+        return 1
+    }
+    return 0
+}

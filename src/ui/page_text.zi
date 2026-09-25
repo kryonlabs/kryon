@@ -1,3 +1,4 @@
+#import "session"
 #import "geometry"
 #import "page_props"
 #import "semantic"
@@ -7,7 +8,7 @@
 #import "tree"
 
 #program_export
-Heading :: (props: HeadingProps) {
+Heading :: (session: Session, props: HeadingProps) {
     text: TextProps
     text.bounds = props.bounds
     text.text = props.text
@@ -17,11 +18,11 @@ Heading :: (props: HeadingProps) {
     text.style_kind = StyleKindHeading()
     text.semantic_kind = cast(SemanticKind)SemanticHeading
     text.heading_level = props.level
-    Text(text)
+    Text(session, text)
 }
 
 #program_export
-ParagraphText :: (props: ParagraphTextProps) {
+ParagraphText :: (session: Session, props: ParagraphTextProps) {
     text: TextProps
     text.bounds = props.bounds
     text.text = props.text
@@ -31,11 +32,11 @@ ParagraphText :: (props: ParagraphTextProps) {
     text.style_kind = StyleKindParagraphText()
     text.semantic_kind = cast(SemanticKind)SemanticParagraph
     if text.bounds.width <= 0.0 {
-        parent: Rectangle = TreeCurrentParentBounds()
+        parent: Rectangle = TreeCurrentParentBounds(session)
         offset: float32 = text.bounds.x - parent.x
         if offset < 0.0 { offset = 0.0 }
         text.bounds.width = parent.width - offset
         if text.bounds.width < 0.0 { text.bounds.width = 0.0 }
     }
-    Text(text)
+    Text(session, text)
 }

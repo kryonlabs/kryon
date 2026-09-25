@@ -10,7 +10,7 @@ ArrowDirection :: enum {
     ArrowDown :: 3
 }
 
-# Shared public contract. The host renders the declared values.
+// Shared public contract. The host renders the declared values.
 ButtonProps :: struct {
     key: u64
     bounds: Rectangle

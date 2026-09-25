@@ -1,0 +1,31 @@
+#import "session"
+#import "app"
+#import "geometry"
+#import "terminal"
+#import "tree"
+#import "tree_draw"
+
+// The application supplies Frame(session, viewport). The Kryon host owns
+// entry, screen storage, rendering effects, and presentation.
+#program_export
+main :: () -> s32 {
+    session: Session = SessionOpen()
+    if !SessionValid(session) { return 1 }
+    TerminalBegin(80, 24)
+    viewport: Rectangle = Rectangle.{0.0, 0.0, 80.0, 24.0}
+    if BeginFrame(session, cast(u64)1, viewport) !=
+        cast(FrameStatus)FrameOk {
+        CloseSession(session)
+        return 1
+    }
+    result: s32 = Frame(session, viewport)
+    if result != 0 {
+        TreeCancel(session)
+        CloseSession(session)
+        return result
+    }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { result = 1 }
+    if result == 0 && !TerminalPresent() { result = 1 }
+    CloseSession(session)
+    return result
+}

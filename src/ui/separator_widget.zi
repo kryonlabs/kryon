@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -95,46 +96,46 @@ PrepareSeparator :: (props: SeparatorProps,
 }
 
 #program_export
-PaintSeparatorForNode :: (node: s32, props: SeparatorProps,
+PaintSeparatorForNode :: (session: Session, node: s32, props: SeparatorProps,
     faces: SeparatorFaces) {
     prepared: PreparedSeparator = PrepareSeparator(props, faces)
     if prepared.show_text {
-        PaintLabel(node, props.label, cast(s32)prepared.text.x,
+        PaintLabel(session, node, props.label, cast(s32)prepared.text.x,
             cast(s32)prepared.text.y, prepared.font,
             ColorFromPacked(prepared.text_color))
     }
     if prepared.show_line {
-        PaintLine(node, prepared.line,
+        PaintLine(session, node, prepared.line,
             ColorFromPacked(prepared.line_color))
     }
 }
 
 #program_export
-PaintSeparatorProps :: (props: SeparatorProps,
+PaintSeparatorProps :: (session: Session, props: SeparatorProps,
     faces: SeparatorFaces) {
-    PaintSeparatorForNode(-1, props, faces)
+    PaintSeparatorForNode(session, -1, props, faces)
 }
 
 #program_export
-PaintSeparatorFromRules :: (props: SeparatorProps, rules: StyleRules,
+PaintSeparatorFromRules :: (session: Session, props: SeparatorProps, rules: StyleRules,
     defaults: SeparatorFaces) {
-    PaintSeparatorProps(props, SeparatorFacesFor(rules, props, defaults))
+    PaintSeparatorProps(session, props, SeparatorFacesFor(rules, props, defaults))
 }
 
 #program_export
-Separator :: (props: SeparatorProps) {
+Separator :: (session: Session, props: SeparatorProps) {
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(props.key, WidgetKindSeparator, props.bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, props.bounds)
         if node < 0 { return }
     }
     faces: SeparatorFaces = SeparatorFacesFor(ActiveStyleRules(),
         props, DefaultSeparatorFaces())
-    PaintSeparatorForNode(node, props, faces)
+    PaintSeparatorForNode(session, node, props, faces)
 }
 
 #program_export
-Bullet :: (bounds: Rectangle) {
+Bullet :: (session: Session, bounds: Rectangle) {
     defaults: StyleData
     defaults.fields = cast(u32)StyleForeground
     defaults.foreground = cast(u32)0x171717ff
@@ -147,11 +148,11 @@ Bullet :: (bounds: Rectangle) {
         facts, cast(s32)ButtonStateNormal)
     paint: BulletPaint = BulletPaintFor(bounds, frame)
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(TreeNextKey(), WidgetKindBullet, bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, TreeNextKey(session), WidgetKindBullet, bounds)
         if node < 0 { return }
     }
-    PaintRoundedFill(node, paint.bounds, 0.5, 32,
+    PaintRoundedFill(session, node, paint.bounds, 0.5, 32,
         ColorFromPacked(Opacity(paint.color,
             StyleOpacityValue(frame.value.fields, frame.value.opacity))))
 }

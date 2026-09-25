@@ -1,6 +1,6 @@
 
-# Catalog text remains immutable. Callers supply entry and byte storage;
-# returned spans address the byte storage, never a host pointer.
+// Catalog text remains immutable. Callers supply entry and byte storage;
+// returned spans address the byte storage, never a host pointer.
 LocaleSpan :: struct {
     start: s32
     length: s32
@@ -119,8 +119,8 @@ LocaleCommitEntry :: (text: string, key_start: s32, key_end: s32,
     return state
 }
 
-# A new [key] before a --- separator discards the unfinished entry, matching
-# the catalog format. Duplicate keys keep their original slot and latest value.
+// A new [key] before a --- separator discards the unfinished entry, matching
+// the catalog format. Duplicate keys keep their original slot and latest value.
 #program_export
 LocaleParseEntries :: (text: string, entries: []LocaleEntrySpan,
     bytes: []u8) -> LocaleParseResult {

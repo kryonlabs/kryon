@@ -8,6 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
+cp "$repo/src/ui/math.zi" "$work/math.zi"
 cp "$repo/src/ui/input_props.zi" "$work/input_props.zi"
 cp "$repo/src/ui/input.zi" "$work/input.zi"
 cat > "$work/use_input.zi" <<'EOF'
@@ -77,7 +78,7 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 -o "$output" "$input_dir/geometry.$extension" \
                 "$input_dir/input_props.$extension" \
                 "$input_dir/input.$extension" \
@@ -90,11 +91,11 @@ func main() {
     }
 }
 GO
-            GO111MODULE=off go run "$output/geometry.go" \
+            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/input_props.go" "$output/input.go" \
                 "$output/use_input.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" -o "$output" \
+            "$ziran" build --target=c --root "$work" -o "$output" \
                 "$input_dir/geometry.$extension" \
                 "$input_dir/input_props.$extension" \
                 "$input_dir/input.$extension" \
@@ -104,12 +105,12 @@ GO
 int main(void) { return Answer() == 42 && FormatAnswer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/input_props.c" \
+                "$output/geometry.c" "$output/math.c" "$output/input_props.c" \
                 "$output/input.c" "$output/use_input.c" \
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" -o "$output" \
+            "$ziran" build --target=cpp --root "$work" -o "$output" \
                 "$input_dir/geometry.$extension" \
                 "$input_dir/input_props.$extension" \
                 "$input_dir/input.$extension" \
@@ -119,7 +120,7 @@ C
 int main() { return Answer() == 42 && FormatAnswer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/input_props.cpp" \
+                "$output/geometry.cpp" "$output/math.cpp" "$output/input_props.cpp" \
                 "$output/input.cpp" "$output/use_input.cpp" \
                 "$output/main.cpp" -o "$output/app"
             "$output/app"

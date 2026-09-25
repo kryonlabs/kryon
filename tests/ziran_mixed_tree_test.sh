@@ -3,51 +3,100 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+source=$repo/tests/ziran_mixed_tree_test.zi
 
-cat > "$work/app.zi" <<'ZI'
-#import "geometry"
-#import "progress_props"
-#import "progress_widget"
-#import "separator_props"
-#import "separator_widget"
-#import "tree"
-#import "tree_draw"
+set -- \
+    --bind raster:RasterLine=ziran_mixed_tree_host:RasterLine \
+    --bind raster_shape:RasterRoundedRectangle=ziran_mixed_tree_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_mixed_tree_host:RasterRoundedRectangleOutline \
+    --bind raster_text:RasterText=ziran_mixed_tree_host:RasterText \
+    --bind raster_text:RasterTextClipped=ziran_mixed_tree_host:RasterTextClipped \
+    --bind font_metrics:MeasureGlyphWidth=ziran_mixed_tree_host:MeasureGlyphWidth \
+    --bind font_metrics:MeasureGlyphLineHeight=ziran_mixed_tree_host:MeasureGlyphLineHeight \
+    --bind paint_queue:RasterImage=ziran_mixed_tree_host:RasterImage
 
-#program_export
-Frame :: () -> s32 {
-    progress: ProgressProps
-    progress.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
-    progress.min = 0
-    progress.max = 100
-    progress.value = 50
-    separator: SeparatorProps
-    separator.bounds = Rectangle.{20.0, 50.0, 20.0, 40.0}
-    separator.vertical = true
-    BeginTree(cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-    Progress(progress)
-    Separator(separator)
-    progress.bounds.y = 100.0
-    Progress(progress)
-    if !EndTree() { return -1 }
-    return TreeCount()
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+    -o "$work/ir" "$source"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+    "$@" --entry ziran_mixed_tree_test:main \
+    -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry ziran_mixed_tree_test:main \
+    -o "$work/saved.zib" "$work/ir/ziran_mixed_tree_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_mixed_tree_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+"$ziran" build --target=c --root "$repo/tests" \
+    --module-path "$repo/src/ui" -o "$work/c" "$source"
+"${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
+    "$work/c"/*.c -o "$work/c/app"
+"$work/c/app"
+
+"$ziran" build --target=cpp --root "$repo/tests" \
+    --module-path "$repo/src/ui" -o "$work/cpp" "$source"
+"${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
+    "$work/cpp"/*.cpp -o "$work/cpp/app"
+"$work/cpp/app"
+
+"$ziran" build --target=go --pkg main --root "$repo/tests" \
+    --module-path "$repo/src/ui" -o "$work/go" "$source"
+mv "$work/go/ziran_mixed_tree_test.go" "$work/go/mixed_case.go"
+cat > "$work/go/main.go" <<'GO'
+package main
+
+type mixedHost struct{}
+
+func (mixedHost) RasterLine(bounds Rectangle, color Color) {
+    ZiranMixedTreeHost_RasterLine(bounds, color)
+}
+
+func (mixedHost) RasterRoundedRectangle(bounds Rectangle, radius float32,
+    segments int32, color Color) {
+    ZiranMixedTreeHost_RasterRoundedRectangle(bounds, radius, segments, color)
+}
+
+func (mixedHost) RasterRoundedRectangleOutline(bounds Rectangle,
+    radius float32, segments int32, width float32, color Color) {
+    ZiranMixedTreeHost_RasterRoundedRectangleOutline(bounds, radius,
+        segments, width, color)
+}
+
+func (mixedHost) RasterText(value string, x, y, font int32, color Color) {
+    ZiranMixedTreeHost_RasterText(value, x, y, font, color)
+}
+
+func (mixedHost) RasterTextClipped(value string, x, y, font int32,
+    color Color, clip Rectangle) {
+    ZiranMixedTreeHost_RasterTextClipped(value, x, y, font, color, clip)
+}
+
+func (mixedHost) MeasureGlyphWidth(value string, font int32,
+    face string) int32 {
+    return ZiranMixedTreeHost_MeasureGlyphWidth(value, font, face)
+}
+
+func (mixedHost) MeasureGlyphLineHeight(font int32, face string) int32 {
+    return ZiranMixedTreeHost_MeasureGlyphLineHeight(font, face)
+}
+
+func (mixedHost) RasterImage(path string, textureID uint32,
+    source, destination, clip Rectangle, origin Vector2,
+    rotation, radius float32, tint Color) {
+    ZiranMixedTreeHost_RasterImage(path, textureID, source, destination,
+        clip, origin, rotation, radius, tint)
+}
+
+func main() {
+    host := mixedHost{}
+    SetRasterHost(host)
+    SetRasterShapeHost(host)
+    SetRasterTextHost(host)
+    SetFontMetricsHost(host)
+    SetPaintQueueHost(host)
+    if ZiranMixedTreeTest_Main() != 0 { panic("mixed tree behavior failed") }
+}
+GO
+GO111MODULE=off go run "$work/go"/*.go

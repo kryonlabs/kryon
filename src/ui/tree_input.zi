@@ -1,9 +1,10 @@
 #import "geometry"
+#import "session"
 #import "tree"
 #import "widget_kind"
 
-# Raw device observations are supplied by the platform. Kryon owns hit order,
-# capture, eligibility, and activation across retained frames.
+// Raw device observations are supplied by the platform. Kryon owns hit order,
+// capture, eligibility, and activation across retained frames.
 PointerFrame :: struct {
     x: float32
     y: float32
@@ -13,11 +14,11 @@ PointerFrame :: struct {
 }
 
 PointerState :: struct {
-    hovered_generation: s32
-    held_generation: s32
-    activation_generation: s32
-    pressed_generation: s32
-    released_generation: s32
+    hovered_generation: u64
+    held_generation: u64
+    activation_generation: u64
+    pressed_generation: u64
+    released_generation: u64
     held_x: float32
     held_y: float32
     grab_x: float32
@@ -36,7 +37,7 @@ PointerDrag :: struct {
     grab_y: float32
 }
 
-active_pointer: PointerState;
+active_pointer: [9]PointerState;
 
 #program_export
 PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
@@ -46,12 +47,12 @@ PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
 }
 
 #program_export
-TreeHitAt :: (x: float32, y: float32) -> s32 {
-    if TreeCount() == 0 ||
-        !PointInBounds(x, y, TreeNodeAt(0).bounds) { return -1 }
-    index: s32 = TreeCount() - 1
+TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
+    if TreeCount(session) == 0 ||
+        !PointInBounds(x, y, TreeInputAt(session, 0).bounds) { return -1 }
+    index: s32 = TreeCount(session) - 1
     while index > 0 {
-        entry: TreeEntry = TreeNodeAt(index)
+        entry: NodeInput = TreeInputAt(session, index)
         if entry.interactive &&
             (TreeButtonLike(entry.kind) ||
                 entry.kind == WidgetKindCheckbox ||
@@ -75,13 +76,13 @@ TreeHitAt :: (x: float32, y: float32) -> s32 {
     return -1
 }
 
-# The most recently submitted scroll viewport under the pointer wins. A
-# child scroll clips to its parent, so an outer page cannot consume its wheel.
+// The most recently submitted scroll viewport under the pointer wins. A
+// child scroll clips to its parent, so an outer page cannot consume its wheel.
 #program_export
-TreeScrollAt :: (x: float32, y: float32) -> u64 {
-    index: s32 = TreeCount() - 1
+TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
+    index: s32 = TreeCount(session) - 1
     while index > 0 {
-        entry: TreeEntry = TreeNodeAt(index)
+        entry: NodeInput = TreeInputAt(session, index)
         if entry.kind == WidgetKindScroll &&
             PointInBounds(x, y, entry.bounds) &&
             (!entry.clipped || PointInBounds(x, y, entry.clip)) {
@@ -93,128 +94,135 @@ TreeScrollAt :: (x: float32, y: float32) -> u64 {
 }
 
 #program_export
-TreePointerUpdate :: (frame: PointerFrame) -> s32 {
-    if TreeIsBuilding() { return -1 }
-    hit: s32 = TreeHitAt(frame.x, frame.y)
-    active_pointer.hovered_generation = 0
+TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
+    if TreeIsBuilding(session) { return -1 }
+    hit: s32 = TreeHitAt(session, frame.x, frame.y)
+    active_pointer[SessionIndex(session)].hovered_generation = 0
     if hit >= 0 {
-        active_pointer.hovered_generation =
-            TreeNodeAt(hit).identity_generation
+        active_pointer[SessionIndex(session)].hovered_generation =
+            TreeInputAt(session, hit).identity_generation
     }
     if frame.pressed {
-        active_pointer.held_generation = 0
-        active_pointer.pressed_generation = 0
-        active_pointer.released_generation = 0
+        active_pointer[SessionIndex(session)].held_generation = 0
+        active_pointer[SessionIndex(session)].pressed_generation = 0
+        active_pointer[SessionIndex(session)].released_generation = 0
         if frame.down && hit >= 0 {
-            active_pointer.held_generation =
-                TreeNodeAt(hit).identity_generation
-            active_pointer.pressed_generation =
-                active_pointer.held_generation
-            active_pointer.grab_x = frame.x - TreeNodeAt(hit).bounds.x
-            active_pointer.grab_y = frame.y - TreeNodeAt(hit).bounds.y
+            active_pointer[SessionIndex(session)].held_generation =
+                TreeInputAt(session, hit).identity_generation
+            active_pointer[SessionIndex(session)].pressed_generation =
+                active_pointer[SessionIndex(session)].held_generation
+            active_pointer[SessionIndex(session)].grab_x = frame.x - TreeInputAt(session, hit).bounds.x
+            active_pointer[SessionIndex(session)].grab_y = frame.y - TreeInputAt(session, hit).bounds.y
         }
     }
-    if frame.down && active_pointer.held_generation != 0 {
-        active_pointer.held_x = frame.x
-        active_pointer.held_y = frame.y
+    if frame.down && active_pointer[SessionIndex(session)].held_generation != 0 {
+        active_pointer[SessionIndex(session)].held_x = frame.x
+        active_pointer[SessionIndex(session)].held_y = frame.y
     }
     if frame.released {
-        if active_pointer.held_generation != 0 {
-            active_pointer.released_generation =
-                active_pointer.held_generation
-            active_pointer.released_x = frame.x
-            active_pointer.released_y = frame.y
-            if hit >= 0 && active_pointer.held_generation ==
-                TreeNodeAt(hit).identity_generation {
-                active_pointer.activation_generation =
-                    active_pointer.held_generation
+        if active_pointer[SessionIndex(session)].held_generation != 0 {
+            active_pointer[SessionIndex(session)].released_generation =
+                active_pointer[SessionIndex(session)].held_generation
+            active_pointer[SessionIndex(session)].released_x = frame.x
+            active_pointer[SessionIndex(session)].released_y = frame.y
+            if hit >= 0 && active_pointer[SessionIndex(session)].held_generation ==
+                TreeInputAt(session, hit).identity_generation {
+                active_pointer[SessionIndex(session)].activation_generation =
+                    active_pointer[SessionIndex(session)].held_generation
             }
         }
-        active_pointer.held_generation = 0
+        active_pointer[SessionIndex(session)].held_generation = 0
     } else if !frame.down {
-        active_pointer.held_generation = 0
-        active_pointer.pressed_generation = 0
+        active_pointer[SessionIndex(session)].held_generation = 0
+        active_pointer[SessionIndex(session)].pressed_generation = 0
     }
     return hit
 }
 
-# A drag keeps its original node identity while held, including when the
-# pointer leaves that node or the root. The release sample is consumed once.
+// A drag keeps its original node identity while held, including when the
+// pointer leaves that node or the root. The release sample is consumed once.
 #program_export
-TreeTakeDragAt :: (index: s32) -> PointerDrag {
+TreeTakeDragAt :: (session: Session, index: s32) -> PointerDrag {
     drag: PointerDrag
-    if index < 0 || index >= TreeCount() { return drag }
-    entry: TreeEntry = TreeNodeAt(index)
-    generation: s32 = entry.identity_generation
+    if index < 0 || index >= TreeCount(session) { return drag }
+    entry: NodeInput = TreeInputAt(session, index)
+    generation: u64 = entry.identity_generation
     if !entry.interactive ||
         !TreePointerActivatable(entry.kind, entry.focus_id,
             entry.disabled, entry.loading) {
-        if active_pointer.held_generation == generation {
-            active_pointer.held_generation = 0
+        if active_pointer[SessionIndex(session)].held_generation == generation {
+            active_pointer[SessionIndex(session)].held_generation = 0
         }
-        if active_pointer.pressed_generation == generation {
-            active_pointer.pressed_generation = 0
+        if active_pointer[SessionIndex(session)].pressed_generation == generation {
+            active_pointer[SessionIndex(session)].pressed_generation = 0
         }
-        if active_pointer.released_generation == generation {
-            active_pointer.released_generation = 0
+        if active_pointer[SessionIndex(session)].released_generation == generation {
+            active_pointer[SessionIndex(session)].released_generation = 0
         }
-        if active_pointer.activation_generation == generation {
-            active_pointer.activation_generation = 0
+        if active_pointer[SessionIndex(session)].activation_generation == generation {
+            active_pointer[SessionIndex(session)].activation_generation = 0
         }
         return drag
     }
     drag.active = generation != 0 &&
-        active_pointer.held_generation == generation
+        active_pointer[SessionIndex(session)].held_generation == generation
     drag.started = generation != 0 &&
-        active_pointer.pressed_generation == generation
+        active_pointer[SessionIndex(session)].pressed_generation == generation
     drag.ended = generation != 0 &&
-        active_pointer.released_generation == generation
+        active_pointer[SessionIndex(session)].released_generation == generation
     if drag.active || drag.ended {
-        drag.grab_x = active_pointer.grab_x
-        drag.grab_y = active_pointer.grab_y
+        drag.grab_x = active_pointer[SessionIndex(session)].grab_x
+        drag.grab_y = active_pointer[SessionIndex(session)].grab_y
     }
     if drag.active {
-        drag.x = active_pointer.held_x
-        drag.y = active_pointer.held_y
+        drag.x = active_pointer[SessionIndex(session)].held_x
+        drag.y = active_pointer[SessionIndex(session)].held_y
     }
     if drag.ended {
-        drag.x = active_pointer.released_x
-        drag.y = active_pointer.released_y
-        active_pointer.released_generation = 0
-        if active_pointer.activation_generation == generation {
-            active_pointer.activation_generation = 0
+        drag.x = active_pointer[SessionIndex(session)].released_x
+        drag.y = active_pointer[SessionIndex(session)].released_y
+        active_pointer[SessionIndex(session)].released_generation = 0
+        if active_pointer[SessionIndex(session)].activation_generation == generation {
+            active_pointer[SessionIndex(session)].activation_generation = 0
         }
     }
-    if drag.started { active_pointer.pressed_generation = 0 }
+    if drag.started { active_pointer[SessionIndex(session)].pressed_generation = 0 }
     return drag
 }
 
 #program_export
-TreeHoveredAt :: (index: s32) -> bool {
-    if index < 0 || index >= TreeCount() { return false }
-    return active_pointer.hovered_generation != 0 &&
-        TreeNodeAt(index).identity_generation ==
-            active_pointer.hovered_generation
+TreeHoveredAt :: (session: Session, index: s32) -> bool {
+    if index < 0 || index >= TreeCount(session) { return false }
+    return active_pointer[SessionIndex(session)].hovered_generation != 0 &&
+        TreeInputAt(session, index).identity_generation ==
+            active_pointer[SessionIndex(session)].hovered_generation
 }
 
 #program_export
-TreePressedAt :: (index: s32) -> bool {
-    if !TreeHoveredAt(index) { return false }
-    return active_pointer.held_generation ==
-        TreeNodeAt(index).identity_generation
+TreePressedAt :: (session: Session, index: s32) -> bool {
+    if !TreeHoveredAt(session, index) { return false }
+    return active_pointer[SessionIndex(session)].held_generation ==
+        TreeInputAt(session, index).identity_generation
 }
 
 #program_export
-TreeTakeActivationAt :: (index: s32) -> bool {
-    if index < 0 || index >= TreeCount() { return false }
-    entry: TreeEntry = TreeNodeAt(index)
+TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
+    if index < 0 || index >= TreeCount(session) { return false }
+    entry: NodeInput = TreeInputAt(session, index)
     if !entry.interactive ||
         !TreePointerActivatable(entry.kind, entry.focus_id,
         entry.disabled, entry.loading) ||
-        active_pointer.activation_generation == 0 ||
-        active_pointer.activation_generation != entry.identity_generation {
+        active_pointer[SessionIndex(session)].activation_generation == 0 ||
+        active_pointer[SessionIndex(session)].activation_generation != entry.identity_generation {
         return false
     }
-    active_pointer.activation_generation = 0
+    active_pointer[SessionIndex(session)].activation_generation = 0
     return true
+}
+
+#program_export
+TreeInputReset :: (session: Session) {
+    if !SessionValid(session) { return }
+    empty: PointerState
+    active_pointer[session.slot] = empty
 }

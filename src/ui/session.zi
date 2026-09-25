@@ -1,0 +1,47 @@
+// A value handle is portable across native code and Ziran bundles.
+// Slot zero is invalid; an epoch rejects handles after their slot closes.
+Session :: struct {
+    slot: s32
+    epoch: u64
+}
+
+session_active: [9]bool;
+session_epochs: [9]u64;
+
+#program_export
+SessionValid :: (session: Session) -> bool {
+    return session.slot > 0 && session.slot < 9 &&
+        session_active[session.slot] &&
+        session_epochs[session.slot] == session.epoch
+}
+
+#program_export
+SessionIndex :: (session: Session) -> s32 {
+    if SessionValid(session) { return session.slot }
+    return 0
+}
+
+#program_export
+SessionOpen :: () -> Session {
+    result: Session
+    slot: s32 = 1
+    while slot < 9 {
+        if !session_active[slot] &&
+            session_epochs[slot] != cast(u64)18446744073709551615 {
+            session_epochs[slot] += cast(u64)1
+            session_active[slot] = true
+            result.slot = slot
+            result.epoch = session_epochs[slot]
+            return result
+        }
+        slot += 1
+    }
+    return result
+}
+
+#program_export
+SessionClose :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    session_active[session.slot] = false
+    return true
+}

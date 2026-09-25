@@ -2,8 +2,8 @@
 #import "semantic"
 #import "text_align"
 
-# Common font sizes used by the Ziran Text widget. A host supplies glyph
-# measurements and rasterization through font_metrics and raster_text.
+// Common font sizes used by the Ziran Text widget. A host supplies glyph
+// measurements and rasterization through font_metrics and raster_text.
 Text8 :: 8
 Text12 :: 12
 Text14 :: 14

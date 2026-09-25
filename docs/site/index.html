@@ -10,8 +10,8 @@
 ...
 button: ButtonProps
 button.label = "Hello, Ziran"
-clicks += Button(button)
-if !EndTree() { return -1 }</code></pre><p class="example-note">Excerpt from the tested source. <a href="https://github.com/kryonlabs/kryon/blob/master/examples/hello.zi">Read the complete example ↗</a></p></div></section>
+clicks += Button(session, button)
+if EndFrame(session) != FrameOk { return -1 }</code></pre><p class="example-note">Excerpt from the tested source. <a href="https://github.com/kryonlabs/kryon/blob/master/examples/hello.zi">Read the complete example ↗</a></p></div></section>
 <section class="split-section"><div><p class="eyebrow">Current state</p><h2>Checked source.<br><em>Ongoing integration.</em></h2></div><div><p><code>make</code> checks the maintained UI modules, writes <code>.zir</code>, generates C, C++, and Go, and compiles native outputs. <code>make test</code> exercises source, saved IR, and portable bundle behavior without a display.</p><p>Complete widget composition and rendering, platform adapters, full portable capability execution, and downstream application builds are still migration work.</p><a class="text-link" href="renderers.html">Read the platform status →</a></div></section>
 <section class="status-callout"><div><p class="eyebrow">The language behind Kryon</p><h2>Meet <em>Ziran.</em></h2></div><div><p>Write non-graphical programs with Ziran alone. Import Kryon only for UI. The language site has the current toolchain guide, source reference, API, and implementation status.</p><a class="btn btn-primary" href="https://ziran.kryonlabs.com/">Explore Ziran ↗</a></div></section>
 </main><footer><div class="footer-top"><a class="brand" href="index.html"><img class="brand-icon kryon-icon" src="icons/proj/kryon.png" alt="" width="36" height="36"><span>Kryon</span></a><nav aria-label="Footer"><a href="getting-started.html">Get started</a><a href="docs.html">Docs</a><a href="showcase.html">Projects</a><a href="https://ziran.kryonlabs.com/">Ziran ↗</a></nav></div><div class="footer-bottom"><p>Useful interfaces. Clear foundations.</p><p>© 2026 Kryon Labs · <a href="https://waozi.xyz/">Made by Waozi</a></p></div></footer></body></html>

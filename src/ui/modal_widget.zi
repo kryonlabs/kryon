@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -17,10 +18,10 @@
 #import "widget_kind"
 
 #program_export
-ActionModalKey :: (props: ActionModalProps) -> u64 {
+ActionModalKey :: (session: Session, props: ActionModalProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -55,7 +56,7 @@ ActionModalRows :: (actions: []ActionModalAction,
 }
 
 #program_export
-ActionModalDrawRow :: (props: ActionModalProps, modal_key: u64,
+ActionModalDrawRow :: (session: Session, props: ActionModalProps, modal_key: u64,
     actions: []ActionModalAction, first: s32, end: s32,
     row_width: s32, content_x: s32, content_width: s32,
     y: s32, font: s32, typeface: string,
@@ -83,27 +84,27 @@ ActionModalDrawRow :: (props: ActionModalProps, modal_key: u64,
         button.disabled = item.disabled
         button.style_kind = StyleKindModal()
         button.style_role = ModalActionRole()
-        if Button(button) != 0 { result = index + 1 }
+        if Button(session, button) != 0 { result = index + 1 }
         x += width + metrics.button_gap
         index += 1
     }
     return result
 }
 
-# A checked message/action dialog. The caller receives a one-based action
-# index, or -1 for backdrop/close dismissal. Prompt editing is a separate
-# composition because it requires retained text-input state.
+// A checked message/action dialog. The caller receives a one-based action
+// index, or -1 for backdrop/close dismissal. Prompt editing is a separate
+// composition because it requires retained text-input state.
 #program_export
-ActionModal :: (props: ActionModalProps,
+ActionModal :: (session: Session, props: ActionModalProps,
     actions: []ActionModalAction) -> ActionModalResult {
     result: ActionModalResult
     result.node = -1
-    viewport: Rectangle = TreeRootBounds()
+    viewport: Rectangle = TreeRootBounds(session)
     if viewport.width <= 0.0 || viewport.height <= 0.0 {
         return result
     }
     frame_props: ModalFrameProps
-    frame_props.key = ActionModalKey(props)
+    frame_props.key = ActionModalKey(session, props)
     frame_props.id = props.id
     frame_props.class_name = props.class_name
     frame_props.title = props.title
@@ -157,13 +158,13 @@ ActionModal :: (props: ActionModalProps,
     frame_props.bounds = layout.panel
     frame_props.width = cast(s32)layout.panel.width
     frame_props.height = cast(s32)layout.panel.height
-    frame: ModalFrameResult = ModalFrame(frame_props)
+    frame: ModalFrameResult = ModalFrame(session, frame_props)
     result.node = frame.node
     if frame.dismissed || frame.right_clicked {
         result.action = -1
         return result
     }
-    if frame.panel_node < 0 || !TreePushScope(frame.panel_node) {
+    if frame.panel_node < 0 || !TreePushScope(session, frame.panel_node) {
         return result
     }
     if props.message != "" {
@@ -183,13 +184,13 @@ ActionModal :: (props: ActionModalProps,
             message_props.bounds.height = cast(float32)available
         }
         prepared.bounds = message_props.bounds
-        message_node: s32 = TreeSubmitCurrent(message_props.key,
+        message_node: s32 = TreeSubmitCurrent(session, message_props.key,
             WidgetKindText, prepared.bounds)
         if message_node >= 0 {
-            TreeSetLabel(message_node, props.message)
-            TreeSetSemantic(message_node,
+            TreeSetLabel(session, message_node, props.message)
+            TreeSetSemantic(session, message_node,
                 cast(SemanticKind)SemanticParagraph, 0)
-            PaintTextLines(message_node, message_props, prepared)
+            PaintTextLines(session, message_node, message_props, prepared)
         }
     }
     row_start: s32 = 0
@@ -209,7 +210,7 @@ ActionModal :: (props: ActionModalProps,
             next_width == width &&
             row_width + metrics.button_gap + width > content_width) {
             if index > row_start {
-                chosen: s32 = ActionModalDrawRow(props,
+                chosen: s32 = ActionModalDrawRow(session, props,
                     frame_props.key, actions,
                     row_start, index, row_width, layout.message_x,
                     content_width, row_y, font,
@@ -229,6 +230,6 @@ ActionModal :: (props: ActionModalProps,
         }
         index += 1
     }
-    End()
+    End(session)
     return result
 }

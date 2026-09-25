@@ -1,3 +1,4 @@
+#import "session"
 #import "collapsible"
 #import "collapsible_props"
 #import "control_props"
@@ -75,10 +76,10 @@ CollapsibleCloseKey :: () -> u64 {
     return cast(u64)1
 }
 
-# The caller owns open, hidden, and focus state. The ordered header slice
-# supplies tree navigation without a host side registration list.
+// The caller owns open, hidden, and focus state. The ordered header slice
+// supplies tree navigation without a host side registration list.
 #program_export
-Collapsible :: (props: CollapsibleProps,
+Collapsible :: (session: Session, props: CollapsibleProps,
     headers: []CollapsibleHeader) -> CollapsibleResult {
     result: CollapsibleResult
     result.node = -1
@@ -87,18 +88,19 @@ Collapsible :: (props: CollapsibleProps,
     if props.hidden { return result }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
-    parent_key: u64 = TreeCurrentParentKey()
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    parent_key: u64 = TreeCurrentParentKey(session)
     previous: s32 = -1
     close_previous: s32 = -1
-    if TreeIsBuilding() {
-        previous = TreeFind(key, parent_key, WidgetKindCollapsible)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session),
+            key, WidgetKindCollapsible)
         if props.closable {
-            close_previous = TreeFind(CollapsibleCloseKey(), key,
-                WidgetKindButton)
+            close_previous = TreePreviousCommitted(session, previous,
+                CollapsibleCloseKey(), WidgetKindButton)
         }
     }
-    close_clicked: bool = TreeTakeActivationAt(close_previous) &&
+    close_clicked: bool = TreeTakeActivationAt(session, close_previous) &&
         !props.disabled && props.closable
     close_decision: CollapsibleCloseDecision =
         CollapsibleCloseDecisionFor(!props.disabled,
@@ -109,7 +111,7 @@ Collapsible :: (props: CollapsibleProps,
         result.changed = true
         return result
     }
-    clicked: bool = TreeTakeActivationAt(previous) && !props.disabled
+    clicked: bool = TreeTakeActivationAt(session, previous) && !props.disabled
     pointer: CollapsiblePointerDecision =
         CollapsiblePointerDecisionFor(!props.disabled,
             false, clicked, clicked, props.leaf, props.has_open)
@@ -146,8 +148,8 @@ Collapsible :: (props: CollapsibleProps,
     if pointer.focus && props.id > 0 { focused_now = true }
     state: s32 = ButtonStateNormal
     if props.selected { state = ButtonStateSelected }
-    if TreeHoveredAt(previous) { state = ButtonStateHover }
-    if TreePressedAt(previous) { state = ButtonStatePressed }
+    if TreeHoveredAt(session, previous) { state = ButtonStateHover }
+    if TreePressedAt(session, previous) { state = ButtonStatePressed }
     if focused_now { state = ButtonStateFocus }
     if props.disabled { state = ButtonStateDisabled }
     role: s32 = CollapsibleHeaderRoleFor(props.tree)
@@ -155,7 +157,7 @@ Collapsible :: (props: CollapsibleProps,
     tree_face: StyleFrame = CollapsibleFaceFor(props,
         CollapsibleTreeHeaderRole(), state)
     close_state: s32 = ButtonStateNormal
-    if TreeHoveredAt(close_previous) { close_state = ButtonStateHover }
+    if TreeHoveredAt(session, close_previous) { close_state = ButtonStateHover }
     if props.disabled { close_state = ButtonStateDisabled }
     close_face: StyleFrame = CollapsibleFaceFor(props,
         CollapsibleCloseRole(), close_state)
@@ -165,28 +167,28 @@ Collapsible :: (props: CollapsibleProps,
         face, tree_face, close_face)
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 {
-        bounds.width = TreeCurrentParentBounds().width
+        bounds.width = TreeCurrentParentBounds(session).width
     }
     layout: CollapsibleLayout = CollapsibleLayoutFor(bounds,
         props.tree, props.depth, props.closable, metrics)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindCollapsible, layout.header)
         if result.node < 0 { return result }
-        submitted: Rectangle = TreeSubmittedNodeAt(result.node).bounds
+        submitted: Rectangle = TreeSubmittedNodeAt(session, result.node).bounds
         bounds.x += submitted.x - layout.header.x
         bounds.y += submitted.y - layout.header.y
         layout = CollapsibleLayoutFor(bounds, props.tree, props.depth,
             props.closable, metrics)
-        TreeSetInteractive(result.node, props.disabled,
+        TreeSetInteractive(session, result.node, props.disabled,
             false, props.id)
-        TreeSetSelected(result.node, props.selected)
-        TreeSetLabel(result.node, props.label)
+        TreeSetSelected(session, result.node, props.selected)
+        TreeSetLabel(session, result.node, props.label)
         semantic: SemanticKind = cast(SemanticKind)SemanticButton
         if props.tree {
             semantic = cast(SemanticKind)SemanticTreeItem
         }
-        TreeSetSemantic(result.node, semantic, 0)
+        TreeSetSemantic(session, result.node, semantic, 0)
     }
     result.header = layout.header
     result.body = layout.body
@@ -200,31 +202,31 @@ Collapsible :: (props: CollapsibleProps,
         }
     }
     close_node: s32 = -1
-    if props.closable && TreeIsBuilding() {
-        close_node = TreeSubmit(CollapsibleCloseKey(), result.node,
+    if props.closable && TreeIsBuilding(session) {
+        close_node = TreeSubmit(session, CollapsibleCloseKey(), result.node,
             WidgetKindButton, layout.close_bounds)
-        TreeSetInteractive(close_node, props.disabled, false, 0)
+        TreeSetInteractive(session, close_node, props.disabled, false, 0)
         close_label: string = props.close_label
         if close_label == "" { close_label = "Close" }
-        TreeSetLabel(close_node, close_label)
-        TreeSetSemantic(close_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, close_node, close_label)
+        TreeSetSemantic(session, close_node, cast(SemanticKind)SemanticButton, 0)
     }
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     background: Color = ColorFromPacked(Opacity(
         face.value.background, opacity))
     if (!props.tree || props.selected) && background.a > cast(u8)0 {
-        PaintRoundedFill(result.node, layout.header,
+        PaintRoundedFill(session, result.node, layout.header,
             face.value.radius, 12, background)
     }
     border: Color = ColorFromPacked(Opacity(face.value.border, opacity))
     if (!props.tree || props.selected) &&
         face.value.border_width > 0.0 && border.a > cast(u8)0 {
-        PaintRoundedOutline(result.node, layout.header,
+        PaintRoundedOutline(session, result.node, layout.header,
             face.value.radius, 12, face.value.border_width, border)
     }
     if focused_now {
-        PaintRoundedOutline(result.node, layout.header,
+        PaintRoundedOutline(session, result.node, layout.header,
             face.value.radius, 12, 2.0,
             ColorFromPacked(Opacity(face.value.focus, opacity)))
     }
@@ -235,7 +237,7 @@ Collapsible :: (props: CollapsibleProps,
         (layout.header.height - cast(float32)line_height) * 0.5)
     text_color: Color = ColorFromPacked(Opacity(
         face.value.foreground, opacity))
-    PaintClippedLabel(result.node,
+    PaintClippedLabel(session, result.node,
         CollapsibleMarkerText(CollapsibleMarkerFor(result.open,
             props.leaf)),
         cast(s32)layout.header.x + metrics.icon_offset,
@@ -245,7 +247,7 @@ Collapsible :: (props: CollapsibleProps,
     label_clip.width = layout.body.x + layout.body.width - label_clip.x
     if label_clip.width < 0.0 { label_clip.width = 0.0 }
     if props.label != "" {
-        PaintClippedLabel(result.node, props.label,
+        PaintClippedLabel(session, result.node, props.label,
             cast(s32)label_clip.x, text_y, font, text_color, label_clip)
     }
     if props.closable {
@@ -262,7 +264,7 @@ Collapsible :: (props: CollapsibleProps,
             (layout.close_bounds.height - cast(float32)close_height) * 0.5)
         close_opacity: float32 = StyleOpacityValue(
             close_face.value.fields, close_face.value.opacity)
-        PaintClippedLabel(close_node, "x", close_x, close_y,
+        PaintClippedLabel(session, close_node, "x", close_x, close_y,
             close_font, ColorFromPacked(Opacity(
                 close_face.value.foreground, close_opacity)),
             layout.close_bounds)

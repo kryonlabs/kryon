@@ -1,0 +1,271 @@
+#import "manifest"
+
+// Linux command-line host for Kryon projects. Configuration and command
+// selection are Ziran; libc supplies only file, stdout, and process effects.
+libc :: #system_library "libc";
+RawOpen :: (path: *u8, flags: s32) -> s32 #foreign libc "open";
+RawRead :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
+RawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+RawClose :: (fd: s32) -> s32 #foreign libc "close";
+RawGetCwd :: (output: *u8, size: u64) -> *u8 #foreign libc "getcwd";
+RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
+CopyDescriptor :: (source: *TextDescriptor, destination: *string,
+    count: u64) -> void #foreign libc "bcopy";
+
+TextDescriptor :: struct {
+    data: *u8
+    length: u64
+}
+
+PointerSlot :: struct {
+    value: *u8
+}
+
+ArgumentBytes :: struct {
+    data: [4096]u8
+}
+
+FileContents :: struct {
+    text: string
+    ok: bool
+}
+
+TextFromBuffer :: (bytes: []u8, length: s32) -> string {
+    if length < 0 || length > cast(s32)bytes.count { return "" }
+    descriptor: TextDescriptor
+    descriptor.data = *bytes[0]
+    descriptor.length = cast(u64)length
+    result: string = ""
+    CopyDescriptor(*descriptor, *result, size_of(TextDescriptor))
+    return result
+}
+
+CString :: (value: string, output: []u8) -> bool {
+    if value.count >= output.count { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        output[at] = value[at]
+        at += 1
+    }
+    output[at] = cast(u8)0
+    return true
+}
+
+Join :: (first: string, second: string, output: []u8) -> string {
+    count: s32 = cast(s32)first.count + cast(s32)second.count
+    if count >= cast(s32)output.count { return "" }
+    at: s32 = 0
+    while at < cast(s32)first.count {
+        output[at] = first[at]
+        at += 1
+    }
+    index: s32 = 0
+    while index < cast(s32)second.count {
+        output[at] = second[index]
+        at += 1
+        index += 1
+    }
+    return TextFromBuffer(output, count)
+}
+
+PrintFd :: (fd: s32, value: string) -> bool {
+    bytes: [4096]u8
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        count: s32 = cast(s32)value.count - at
+        if count > 4096 { count = 4096 }
+        index: s32 = 0
+        while index < count {
+            bytes[index] = value[at + index]
+            index += 1
+        }
+        written: s64 = RawWrite(fd, *bytes[0], cast(u64)count)
+        if written <= 0 { return false }
+        at += cast(s32)written
+    }
+    return true
+}
+
+Error :: (message: string) -> s32 {
+    PrintFd(2, "kryon: ")
+    PrintFd(2, message)
+    PrintFd(2, "\n")
+    return 2
+}
+
+ReadFile :: (path: string, output: []u8) -> FileContents {
+    result: FileContents
+    name: [4096]u8
+    if !CString(path, name[:]) { return result }
+    fd: s32 = RawOpen(*name[0], 0)
+    if fd < 0 { return result }
+    length: s32 = 0
+    while length < cast(s32)output.count {
+        count: s64 = RawRead(fd, *output[length],
+            cast(u64)(cast(s32)output.count - length))
+        if count < 0 {
+            RawClose(fd)
+            return result
+        }
+        if count == 0 {
+            result.ok = true
+            break
+        }
+        length += cast(s32)count
+    }
+    if length == cast(s32)output.count {
+        extra: u8 = cast(u8)0
+        result.ok = RawRead(fd, *extra, 1) == 0
+    }
+    RawClose(fd)
+    if result.ok { result.text = TextFromBuffer(output, length) }
+    return result
+}
+
+Exists :: (path: string) -> bool {
+    name: [4096]u8
+    if !CString(path, name[:]) { return false }
+    fd: s32 = RawOpen(*name[0], 0)
+    if fd < 0 { return false }
+    RawClose(fd)
+    return true
+}
+
+Argument :: (command_line: string, wanted: s32, output: []u8) -> string {
+    current: s32 = 0
+    length: s32 = 0
+    at: s32 = 0
+    while at < cast(s32)command_line.count {
+        ch: u8 = command_line[at]
+        if ch == cast(u8)0 {
+            if current == wanted { return TextFromBuffer(output, length) }
+            current += 1
+            length = 0
+        } else if current == wanted {
+            if length >= cast(s32)output.count { return "" }
+            output[length] = ch
+            length += 1
+        }
+        at += 1
+    }
+    return ""
+}
+
+ProjectDirectoryName :: (output: []u8) -> string {
+    if output.count == 0 ||
+        RawGetCwd(*output[0], cast(u64)output.count) == null { return "" }
+    end: s32 = 0
+    start: s32 = 0
+    while end < cast(s32)output.count && output[end] != cast(u8)0 {
+        if output[end] == cast(u8)47 { start = end + 1 }
+        end += 1
+    }
+    if end == cast(s32)output.count || start == end { return "" }
+    return TextFromBuffer(output[start:end], end - start)
+}
+
+Execute :: (arguments: []string) -> s32 {
+    if arguments.count == 0 || arguments.count > 16 { return 127 }
+    storage: [17]ArgumentBytes
+    pointers: [18]PointerSlot
+    at: s32 = 0
+    while at < cast(s32)arguments.count {
+        if !CString(arguments[at], storage[at].data[:]) { return 127 }
+        pointers[at].value = *storage[at].data[0]
+        at += 1
+    }
+    pointers[at].value = null
+    RawExec(*storage[0].data[0], *pointers[0])
+    return 127
+}
+
+#program_export
+main :: () -> s32 {
+    command_bytes: [8192]u8
+    command_line: FileContents = ReadFile("/proc/self/cmdline", command_bytes[:])
+    if !command_line.ok { return Error("cannot read command arguments") }
+    verb_bytes: [128]u8
+    verb: string = Argument(command_line.text, 1, verb_bytes[:])
+    if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
+        PrintFd(1, "usage: kryon run|build|check [--profile NAME]\n")
+        return 0
+    }
+    if verb != "run" && verb != "build" && verb != "check" {
+        return Error("unknown command; use run, build, or check")
+    }
+    profile_bytes: [128]u8
+    option_bytes: [128]u8
+    profile_name: string = ""
+    option: string = Argument(command_line.text, 2, option_bytes[:])
+    if option == "--profile" {
+        profile_name = Argument(command_line.text, 3, profile_bytes[:])
+        if profile_name == "" || Argument(command_line.text, 4, profile_bytes[:]) != "" {
+            return Error("expected exactly one profile name")
+        }
+    } else if ProjectStarts(option, "--profile=") {
+        profile_name = option[10:cast(s32)option.count]
+        if profile_name == "" || Argument(command_line.text, 3, profile_bytes[:]) != "" {
+            return Error("expected exactly one profile name")
+        }
+    } else if option != "" {
+        return Error("unknown option")
+    }
+
+    manifest_bytes: [32768]u8
+    file: FileContents = ReadFile("kryon.toml", manifest_bytes[:])
+    if !file.ok { return Error("cannot read kryon.toml in this directory") }
+    config: ProjectConfig = ParseProject(file.text)
+    if !config.ok { return Error(config.error) }
+    directory_bytes: [4096]u8
+    if config.name == "" {
+        config.name = ProjectDirectoryName(directory_bytes[:])
+        if !ProjectNameValid(config.name) {
+            return Error("project directory needs a simple name or project.name")
+        }
+    }
+    if profile_name == "" { profile_name = config.default_profile }
+    profile: ProjectProfile = ProjectProfileNamed(config, profile_name)
+    if profile.name == "" { return Error("unknown profile") }
+    if profile.backend != "terminal" || profile.codegen != "c99" {
+        return Error("this backend/codegen pair is not available yet")
+    }
+    makefile_bytes: [4096]u8
+    makefile: string = Join(config.kryon_path,
+        "/mk/ziran-project.mk", makefile_bytes[:])
+    if makefile == "" || !Exists(makefile) { return Error("Kryon build rules not found") }
+    ziran_tool_bytes: [4096]u8
+    ziran_tool: string = Join(config.ziran_path,
+        "/Makefile", ziran_tool_bytes[:])
+    if ziran_tool == "" || !Exists(ziran_tool) {
+        return Error("Ziran checkout not found")
+    }
+    if !Exists(config.entry) { return Error("project entry not found") }
+
+    name_bytes: [4096]u8
+    entry_bytes: [4096]u8
+    backend_bytes: [4096]u8
+    codegen_bytes: [4096]u8
+    selected_bytes: [4096]u8
+    kryon_bytes: [4096]u8
+    ziran_bytes: [4096]u8
+    args: [13]string
+    args[0] = "make"
+    args[1] = "--silent"
+    args[2] = "--no-print-directory"
+    args[3] = "-f"
+    args[4] = makefile
+    args[5] = verb
+    args[6] = Join("PROJECT_NAME=", config.name, name_bytes[:])
+    args[7] = Join("PROJECT_ENTRY=", config.entry, entry_bytes[:])
+    args[8] = Join("PROJECT_BACKEND=", profile.backend, backend_bytes[:])
+    args[9] = Join("PROJECT_CODEGEN=", profile.codegen, codegen_bytes[:])
+    args[10] = Join("PROJECT_PROFILE=", profile.name, selected_bytes[:])
+    args[11] = Join("KRYON_DIR=", config.kryon_path, kryon_bytes[:])
+    args[12] = Join("ZIRAN_DIR=", config.ziran_path, ziran_bytes[:])
+    at: s32 = 6
+    while at < 13 {
+        if args[at] == "" { return Error("project path or value is too long") }
+        at += 1
+    }
+    return Execute(args[:])
+}

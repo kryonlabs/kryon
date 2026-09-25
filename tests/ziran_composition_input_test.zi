@@ -1,0 +1,62 @@
+#import "composition_input"
+#import "text_input"
+#import "ziran_composition_input_host"
+
+phase: s32;
+state: CompositionState;
+
+#program_export
+Frame :: () -> s32 {
+    sample: CompositionSample = SampleComposition()
+    transition: CompositionTransition = CompositionTransitionFor(
+        state, CompositionEventForSample(sample), true, false)
+    state = transition.state
+    if phase == 0 {
+        if !sample.available ||
+            sample.phase != cast(CompositionPhase)CompositionStart ||
+            !state.active || state.text != "é" ||
+            state.cursor != 0 || state.selection_length != 2 {
+            return -1
+        }
+    } else if phase == 1 {
+        if sample.available || !state.active ||
+            state.text != "é" || transition.changed {
+            return -2
+        }
+    } else if phase == 2 {
+        if !sample.available || !state.active ||
+            state.text != "éx" || state.cursor != 3 {
+            return -3
+        }
+    } else if phase == 3 {
+        if !sample.available || !transition.commit ||
+            transition.commit_text != "Q" ||
+            state.active { return -4 }
+    } else if phase == 4 {
+        if !sample.available || !state.active ||
+            state.text != "A" { return -5 }
+        canceled: CompositionSample = SampleComposition()
+        if !canceled.available ||
+            canceled.phase != cast(CompositionPhase)CompositionCancel {
+            return -6
+        }
+        after: CompositionTransition = CompositionTransitionFor(
+            state, CompositionEventForSample(canceled), true, false)
+        state = after.state
+        if state.active || !after.changed { return -7 }
+    }
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#program_export
+main :: () -> s32 {
+    frame: s32 = 0
+    while frame < 5 {
+        SetCompositionHostFrame(frame)
+        if Frame() != frame { return frame + 1 }
+        frame += 1
+    }
+    return 0
+}

@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -78,10 +79,10 @@ TabBarFaceFor :: (props: TabBarProps, kind: s32,
 }
 
 #program_export
-TabBarKey :: (props: TabBarProps) -> u64 {
+TabBarKey :: (session: Session, props: TabBarProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -214,7 +215,7 @@ TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
 }
 
 #program_export
-TabBarPaintImage :: (node: s32, image: ImageProps,
+TabBarPaintImage :: (session: Session, node: s32, image: ImageProps,
     bounds: Rectangle, clip: Rectangle,
     opacity: float32) {
     if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
@@ -223,16 +224,16 @@ TabBarPaintImage :: (node: s32, image: ImageProps,
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
         ColorFromPacked(Opacity(cast(u32)0xffffffff, opacity)))
     if plan.draw {
-        PaintImage(node, image.asset_path, image.texture.id,
+        PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, clip,
             image.origin, image.rotation, 0.0, plan.tint)
     }
 }
 
-# Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
-# callers apply the returned selection, close, and reorder events.
+// Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
+// callers apply the returned selection, close, and reorder events.
 #program_export
-TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
+TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     result: TabBarResult
     result.node = -1
     result.activated_index = -1
@@ -250,7 +251,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
     result.last_click_valid = props.last_click_valid
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 {
-        bounds.width = TreeCurrentParentBounds().width
+        bounds.width = TreeCurrentParentBounds(session).width
     }
     if bounds.height <= 0.0 {
         bar_face: StyleFrame = TabBarFaceFor(props,
@@ -259,7 +260,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
             bar_face)
     }
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
-    key: u64 = TabBarKey(props)
+    key: u64 = TabBarKey(session, props)
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     metrics: TabBarMetrics = TabBarMetricsFor(props)
@@ -294,28 +295,29 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
             result.closed_index = result.selected_index
         }
     }
-    if TreeIsBuilding() {
+    if TreeIsBuilding(session) {
+        previous_bar: s32 = TreePrevious(session,
+            TreeCurrentParent(session), key, WidgetKindTabBar)
         index: s32 = 0
         while index < (cast(s32)tabs.count) {
             tab: Tab = tabs[index]
             tab_key: u64 = TabBarTabKey(key, tab, index)
-            previous: s32 = TreeFind(tab_key, key,
-                WidgetKindButton)
-            close_previous: s32 = TreeFind(
-                TabBarCloseKey(tab_key), tab_key,
-                WidgetKindButton)
+            previous: s32 = TreePreviousCommitted(session,
+                previous_bar, tab_key, WidgetKindButton)
+            close_previous: s32 = TreePreviousCommitted(session,
+                previous, TabBarCloseKey(tab_key), WidgetKindButton)
             if !props.disabled && !tab.disabled &&
                 tab.closeable &&
-                TreeTakeActivationAt(close_previous) {
+                TreeTakeActivationAt(session, close_previous) {
                 result.closed_index = index
             }
-            activated: bool = TreeTakeActivationAt(previous)
-            drag: PointerDrag = TreeTakeDragAt(previous)
+            activated: bool = TreeTakeActivationAt(session, previous)
+            drag: PointerDrag = TreeTakeDragAt(session, previous)
             reorder: bool = false
             if !props.disabled && !tab.disabled &&
                 props.reorder_enabled &&
                 (drag.active || drag.ended) {
-                origin_x: float32 = TreeNodeAt(previous).bounds.x +
+                origin_x: float32 = TreeNodeAt(session, previous).bounds.x +
                     drag.grab_x
                 dx: s32 = cast(s32)(drag.x - origin_x)
                 was_dragging: bool = props.dragging &&
@@ -388,22 +390,22 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
     }
     bar_face: StyleFrame = TabBarFaceFor(props,
         StyleKindTabBar(), false, props.disabled, false)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindTabBar, bounds)
         if result.node < 0 { return result }
-        TreeSetSemantic(result.node,
+        TreeSetSemantic(session, result.node,
             cast(SemanticKind)SemanticTabList, 0)
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     bar_opacity: float32 = StyleOpacityValue(bar_face.value.fields,
         bar_face.value.opacity)
-    PaintRoundedFill(result.node, bounds,
+    PaintRoundedFill(session, result.node, bounds,
         bar_face.value.radius, 12,
         ColorFromPacked(Opacity(bar_face.value.background,
             bar_opacity)))
     if bar_face.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, bounds,
+        PaintRoundedOutline(session, result.node, bounds,
             bar_face.value.radius, 12,
             bar_face.value.border_width,
             ColorFromPacked(Opacity(bar_face.value.border,
@@ -419,35 +421,35 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
         visible: Rectangle = RectangleIntersection(rect, bounds)
         if visible.width > 0.0 && visible.height > 0.0 {
             previous: s32 = -1
-            if TreeIsBuilding() {
-                previous = TreeFind(tab_key, key,
+            if TreeIsBuilding(session) {
+                previous = TreePrevious(session, result.node, tab_key,
                     WidgetKindButton)
             }
             selected: bool = index == result.selected_index
             disabled: bool = props.disabled || tab.disabled
             face: StyleFrame = TabBarFaceFor(props,
                 StyleKindTab(), selected, disabled,
-                TreeHoveredAt(previous))
+                TreeHoveredAt(session, previous))
             opacity: float32 = StyleOpacityValue(face.value.fields,
                 face.value.opacity)
             node: s32 = -1
-            if TreeIsBuilding() {
-                node = TreeSubmit(tab_key, result.node,
+            if TreeIsBuilding(session) {
+                node = TreeSubmit(session, tab_key, result.node,
                     WidgetKindButton, visible)
                 if node < 0 { return result }
-                TreeSetInteractive(node, disabled, false, props.id)
-                TreeSetSemantic(node,
+                TreeSetInteractive(session, node, disabled, false, props.id)
+                TreeSetSemantic(session, node,
                     cast(SemanticKind)SemanticTab, index)
-                TreeSetLabel(node, tab.label)
-                TreeSetSelected(node, selected)
+                TreeSetLabel(session, node, tab.label)
+                TreeSetSelected(session, node, selected)
             }
             radius: float32 = face.value.radius
             if visible.width < rect.width { radius = 0.0 }
-            PaintRoundedFill(node, visible, radius, 12,
+            PaintRoundedFill(session, node, visible, radius, 12,
                 ColorFromPacked(Opacity(face.value.background,
                     opacity)))
             if face.value.border_width > 0.0 {
-                PaintRoundedOutline(node, visible, radius, 12,
+                PaintRoundedOutline(session, node, visible, radius, 12,
                     face.value.border_width,
                     ColorFromPacked(Opacity(face.value.border,
                         opacity)))
@@ -460,14 +462,13 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     face.value.typeface)
             }
             close_previous: s32 = -1
-            if TreeIsBuilding() {
-                close_previous = TreeFind(
-                    TabBarCloseKey(tab_key), tab_key,
-                    WidgetKindButton)
+            if TreeIsBuilding(session) {
+                close_previous = TreePrevious(session, node,
+                    TabBarCloseKey(tab_key), WidgetKindButton)
             }
             close_face: StyleFrame = TabBarFaceFor(props,
                 StyleKindTabClose(), false, disabled,
-                TreeHoveredAt(close_previous))
+                TreeHoveredAt(session, close_previous))
             paint: TabBarPaint = TabBarPaintFor(bar_face,
                 face, close_face, scale)
             content: TabBarContentLayout =
@@ -475,7 +476,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     tab.label != "", has_image,
                     tab.closeable, paint)
             if has_image {
-                TabBarPaintImage(node, tab.image,
+                TabBarPaintImage(session, node, tab.image,
                     content.icon_bounds, visible, opacity)
             }
             if tab.label != "" {
@@ -487,7 +488,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                         face.value.typeface)
                     text_y: s32 = cast(s32)(rect.y +
                         (rect.height - cast(float32)line_height) * 0.5)
-                    PaintClippedLabel(node, tab.label,
+                    PaintClippedLabel(session, node, tab.label,
                         cast(s32)content.text_bounds.x,
                         text_y, font,
                         ColorFromPacked(Opacity(
@@ -502,15 +503,15 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     close_bounds.height > 0.0 {
                     close_key: u64 = TabBarCloseKey(tab_key)
                     close_node: s32 = -1
-                    if TreeIsBuilding() {
-                        close_node = TreeSubmit(close_key, node,
+                    if TreeIsBuilding(session) {
+                        close_node = TreeSubmit(session, close_key, node,
                             WidgetKindButton, close_bounds)
                         if close_node < 0 { return result }
-                        TreeSetInteractive(close_node, disabled,
+                        TreeSetInteractive(session, close_node, disabled,
                             false, 0)
-                        TreeSetSemantic(close_node,
+                        TreeSetSemantic(session, close_node,
                             cast(SemanticKind)SemanticButton, 0)
-                        TreeSetLabel(close_node, "Close tab")
+                        TreeSetLabel(session, close_node, "Close tab")
                     }
                     close_opacity: float32 = StyleOpacityValue(
                         close_face.value.fields,
@@ -519,7 +520,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                         close_face.value.background,
                         close_opacity))
                     if close_color.a > cast(u8)0 {
-                        PaintRoundedFill(close_node, close_bounds,
+                        PaintRoundedFill(session, close_node, close_bounds,
                             close_face.value.radius, 8,
                             close_color)
                     }
@@ -534,11 +535,11 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
                     color: Color = ColorFromPacked(Opacity(
                         close_face.value.foreground,
                         close_opacity))
-                    PaintLine(close_node,
+                    PaintLine(session, close_node,
                         Rectangle.{center_x - half,
                             center_y - half, half * 2.0,
                             half * 2.0}, color)
-                    PaintLine(close_node,
+                    PaintLine(session, close_node,
                         Rectangle.{center_x + half,
                             center_y - half, -half * 2.0,
                             half * 2.0}, color)
@@ -563,7 +564,7 @@ TabBar :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
             props.scale)
         marker = RectangleIntersection(marker, bounds)
         if marker.width > 0.0 && marker.height > 0.0 {
-            PaintRoundedFill(result.node, marker, 0.0, 1,
+            PaintRoundedFill(session, result.node, marker, 0.0, 1,
                 ColorFromPacked(cast(u32)0x2563ebff))
         }
     }

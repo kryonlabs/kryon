@@ -1,8 +1,8 @@
 #import "geometry"
 #import "text_align"
 
-# The public value records have the same layout on every generated target.
-# A platform host may adapt them to its own graphics library.
+// The public value records have the same layout on every generated target.
+// A platform host may adapt them to its own graphics library.
 Color :: struct {
     r: u8
     g: u8
@@ -40,8 +40,8 @@ ParagraphSpec :: struct {
     class_name: s32
 }
 
-# Shared color math. The lightness decision is identical on every target, so it
-# lives in the cross-target runtime instead of a C-only host shim.
+// Shared color math. The lightness decision is identical on every target, so it
+// lives in the cross-target runtime instead of a C-only host shim.
 #scope_file
 color_min :: (a: float32, b: float32) -> float32 {
     if a < b { return a }
@@ -96,7 +96,7 @@ color_from_hsl :: (hue: float32, saturation: float32, lightness: float32,
     return Color.{color_byte(red), color_byte(green), color_byte(blue), alpha}
 }
 
-# Shift a color's HSL lightness by amount/255 and preserve its alpha.
+// Shift a color's HSL lightness by amount/255 and preserve its alpha.
 AdjustedColorLightness :: (color: Color, amount: s32) -> Color {
     red: float32 = cast(float32)color.r / 255.0
     green: float32 = cast(float32)color.g / 255.0
@@ -138,7 +138,7 @@ DarkenColor :: (color: Color, amount: s32) -> Color {
     return AdjustedColorLightness(color, -amount)
 }
 
-# Clip calculations are values; paint commands carry explicit clip rectangles.
+// Clip calculations are values; paint commands carry explicit clip rectangles.
 #program_export
 GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     return RectangleIntersection(a, b)

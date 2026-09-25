@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -50,54 +51,53 @@ RadioFaceFor :: (rules: StyleRules, props: RadioProps,
 }
 
 #program_export
-PaintRadioForNode :: (node: s32, props: RadioProps,
+PaintRadioForNode :: (session: Session, node: s32, props: RadioProps,
     paint: RadioPaint, label: StyleFrame, font: s32,
     label_height: s32, hovered: bool, pressed: bool) {
     layer_alpha: s32 = RadioStateLayerAlpha(hovered, pressed, 0.0)
     if layer_alpha > 0 {
         layer: Color = ColorFromPacked(paint.ring_color)
         layer.a = cast(u8)layer_alpha
-        PaintRoundedFill(node, Rectangle.{
+        PaintRoundedFill(session, node, Rectangle.{
             paint.center.x - paint.touch * 0.5,
             paint.center.y - paint.touch * 0.5,
             paint.touch, paint.touch}, 0.5, 32, layer)
     }
     if paint.fill_radius > 0.2 {
-        PaintRoundedFill(node, Rectangle.{
+        PaintRoundedFill(session, node, Rectangle.{
             paint.center.x - paint.fill_radius,
             paint.center.y - paint.fill_radius,
             paint.fill_radius * 2.0, paint.fill_radius * 2.0},
             0.5, 32, ColorFromPacked(paint.fill_color))
     }
     if paint.stroke_width > 0.0 {
-        PaintRoundedOutline(node, paint.mark_bounds, 0.5, 32,
+        PaintRoundedOutline(session, node, paint.mark_bounds, 0.5, 32,
             paint.stroke_width, ColorFromPacked(paint.ring_color))
     }
     if props.label != "" {
         y: s32 = cast(s32)(paint.hit_bounds.y +
             (paint.hit_bounds.height - cast(float32)label_height) * 0.5)
-        PaintClippedLabel(node, props.label, cast(s32)paint.label_x,
+        PaintClippedLabel(session, node, props.label, cast(s32)paint.label_x,
             y, font, ColorFromPacked(Opacity(paint.label_color,
                 StyleOpacityValue(label.value.fields,
                     label.value.opacity))), paint.hit_bounds)
     }
 }
 
-# A Radio reports its id on activation; the caller chooses which option in a
-# group is checked on the next frame. The checked value stays caller-owned.
+// A Radio reports its id on activation; the caller chooses which option in a
+// group is checked on the next frame. The checked value stays caller-owned.
 #program_export
-Radio :: (props: RadioProps) -> s32 {
+Radio :: (session: Session, props: RadioProps) -> s32 {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
     previous: s32 = -1
-    if TreeIsBuilding() && key != cast(u64)0 {
-        previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindRadio)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindRadio)
     }
     activated: s32 = RadioActivationFor(props.id,
-        TreeTakeActivationAt(previous), props.disabled)
-    hovered: bool = TreeHoveredAt(previous)
-    pressed: bool = TreePressedAt(previous)
+        TreeTakeActivationAt(session, previous), props.disabled)
+    hovered: bool = TreeHoveredAt(session, previous)
+    pressed: bool = TreePressedAt(session, previous)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
         false, pressed, hovered, false, props.checked)
     rules: StyleRules = ActiveStyleRules()
@@ -152,14 +152,14 @@ Radio :: (props: RadioProps) -> s32 {
     paint.fill_color = Opacity(paint.fill_color, mark_opacity)
     paint.label_color = label.value.foreground
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindRadio, paint.hit_bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindRadio, paint.hit_bounds)
         if node < 0 { return activated }
-        TreeSetInteractive(node, props.disabled, false, props.id)
-        TreeSetSelected(node, props.checked)
-        TreeSetLabel(node, props.label)
+        TreeSetInteractive(session, node, props.disabled, false, props.id)
+        TreeSetSelected(session, node, props.checked)
+        TreeSetLabel(session, node, props.label)
     }
-    PaintRadioForNode(node, props, paint, label, font,
+    PaintRadioForNode(session, node, props, paint, label, font,
         label_height, hovered && !props.disabled,
         pressed && !props.disabled)
     return activated

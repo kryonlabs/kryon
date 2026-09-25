@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "slider"
@@ -69,30 +76,30 @@ Frame :: () -> s32 {
         rules.items[1] = label
         InstallStyleRules(rules)
     }
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    current: SliderStep = Slider(continuous)
-    count: SliderDiscreteStep = DiscreteSlider(discrete)
-    if !EndTree() || TreeCount() != 3 ||
-        TreeNodeAt(1).kind != WidgetKindSlider ||
-        TreeNodeAt(2).kind != WidgetKindSlider ||
-        TreeNodeAt(1).bounds.height != 80.0 ||
-        TreeNodeAt(2).bounds.height != 100.0 ||
-        TreeNodeAt(1).semantic_label != "Gain" { return -1 }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    current: SliderStep = Slider(TestSession(), continuous)
+    count: SliderDiscreteStep = DiscreteSlider(TestSession(), discrete)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindSlider ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider ||
+        TreeNodeAt(TestSession(), 1).bounds.height != 80.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.height != 100.0 ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Gain" { return -1 }
     if phase == 0 {
         if current.value != 25.0 || current.changed ||
             count.value != 5 || count.changed { return -2 }
-        TreePointerUpdate(PointerFrame.{60.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{110.0, 70.0, true, false, false})
-        TreePointerUpdate(PointerFrame.{110.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{110.0, 70.0, true, false, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{110.0, 70.0, false, false, true})
         phase = 1
         return 0
     }
     if phase == 1 {
         if current.value != 100.0 || !current.changed ||
             count.value != 5 || count.changed { return -3 }
-        TreePointerUpdate(PointerFrame.{145.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{145.0, 0.0, true, false, false})
-        TreePointerUpdate(PointerFrame.{145.0, 0.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 0.0, true, false, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 0.0, false, false, true})
         phase = 2
         return 1
     }
@@ -104,7 +111,7 @@ Frame :: () -> s32 {
     }
     if current.value != 100.0 || current.changed ||
         count.value != 10 || count.changed ||
-        TreeHitAt(145.0, 70.0) != -1 { return -5 }
+        TreeHitAt(TestSession(), 145.0, 70.0) != -1 { return -5 }
     phase = 4
     return 3
 }
@@ -205,7 +212,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

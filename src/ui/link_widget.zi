@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -30,30 +31,28 @@ LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
     return frame
 }
 
-# Navigation is a returned effect. The host opens result.url when open_url is
-# true; neither a browser nor a window is required to run this widget.
+// Navigation is a returned effect. The host opens result.url when open_url is
+// true; neither a browser nor a window is required to run this widget.
 #program_export
-Link :: (props: LinkProps) -> LinkResult {
+Link :: (session: Session, props: LinkProps) -> LinkResult {
     result: LinkResult
     result.node = -1
     key: u64 = props.key
     if key == cast(u64)0 && props.focus_id > 0 {
         key = cast(u64)cast(u32)props.focus_id
     }
-    if key == cast(u64)0 { key = TreeNextKey() }
     previous: s32 = -1
-    if TreeIsBuilding() && key != cast(u64)0 {
-        previous = TreeFind(key, TreeCurrentParentKey(),
-            WidgetKindLink)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindLink)
     }
-    pointer_activate: bool = TreeTakeActivationAt(previous)
+    pointer_activate: bool = TreeTakeActivationAt(session, previous)
     result.activated = LinkActivated(props.disabled,
         pointer_activate, props.focus_activate)
     result.open_url = result.activated && props.link != ""
     if result.open_url { result.url = props.link }
-    hovered: bool = TreeHoveredAt(previous)
+    hovered: bool = TreeHoveredAt(session, previous)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto,
-        props.disabled, false, TreePressedAt(previous), hovered,
+        props.disabled, false, TreePressedAt(session, previous), hovered,
         false, false)
     face: StyleFrame = LinkFaceFor(props, state)
     font: s32 = ResolveFont(0,
@@ -62,13 +61,13 @@ Link :: (props: LinkProps) -> LinkResult {
     text_height: s32 = GlyphLineHeight(font, face.value.typeface)
     bounds: Rectangle = LinkBoundsFor(props.bounds, text_width,
         text_height, font)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindLink, bounds)
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindLink, bounds)
         if result.node < 0 { return result }
-        TreeSetInteractive(result.node, props.disabled, false,
+        TreeSetInteractive(session, result.node, props.disabled, false,
             props.focus_id)
-        TreeSetLabel(result.node, props.text)
-        TreeSetSemantic(result.node, cast(SemanticKind)SemanticLink, 0)
+        TreeSetLabel(session, result.node, props.text)
+        TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticLink, 0)
     }
     appearance: LinkAppearance = ResolveLinkAppearance(face,
         hovered, props.disabled)
@@ -77,12 +76,12 @@ Link :: (props: LinkProps) -> LinkResult {
     if props.text != "" {
         y: s32 = cast(s32)(bounds.y +
             (bounds.height - cast(float32)text_height) * 0.5)
-        PaintClippedLabel(result.node, props.text,
+        PaintClippedLabel(session, result.node, props.text,
             cast(s32)bounds.x, y, font, color, bounds)
     }
     if appearance.underline && text_width > 0 {
         underline_y: s32 = LinkUnderlineYFor(bounds, 1.0)
-        PaintLine(result.node,
+        PaintLine(session, result.node,
             Rectangle.{bounds.x, cast(float32)underline_y,
                 cast(float32)text_width, 0.0}, color)
     }

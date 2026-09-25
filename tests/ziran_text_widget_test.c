@@ -3,14 +3,14 @@
 #include <assert.h>
 #include <string.h>
 
-static const char *expected[] = {"Alpha", "beta", "Gamma"};
+static char *expected[] = {"Alpha", "beta", "Gamma"};
 static const int expected_x[] = {10, 15, 10};
 static const int expected_y[] = {20, 36, 52};
 static const int expected_width[] = {50, 40, 50};
 static int texts, fills;
 
-static int width(void *context, const char *value, size_t length,
-                 int font, const char *typeface, size_t typeface_length)
+static int width(void *context, uint8_t *value, size_t length,
+                 int font, uint8_t *typeface, size_t typeface_length)
 {
     (void)context; (void)value; (void)typeface;
     assert(font == 14 && typeface_length == 0);
@@ -18,16 +18,16 @@ static int width(void *context, const char *value, size_t length,
 }
 
 static int line_height(void *context, int font,
-                       const char *typeface, size_t typeface_length)
+                       uint8_t *typeface, size_t typeface_length)
 {
     (void)context; (void)typeface;
     assert(font == 14 && typeface_length == 0);
     return 12;
 }
 
-static void draw_text_clipped(void *context, const char *value,
+static void draw_text_clipped(void *context, uint8_t *value,
                               size_t length, int x, int y, int font,
-                              const float clip[4], uint8_t r, uint8_t g,
+                              float clip[4], uint8_t r, uint8_t g,
                               uint8_t b, uint8_t a)
 {
     (void)context;
@@ -77,13 +77,13 @@ static void unexpected_outline(void *context, float x, float y, float w,
     assert(0 && "Text should not draw an outline");
 }
 
-static void unexpected_image(void *context, const char *path,
+static void unexpected_image(void *context, uint8_t *path,
                              size_t length, uint32_t texture_id,
-                             const float source[4],
-                             const float destination[4],
-                             const float clip[4], const float origin[2],
+                             float source[4],
+                             float destination[4],
+                             float clip[4], float origin[2],
                              float rotation, float radius,
-                             const uint8_t tint[4])
+                             uint8_t tint[4])
 {
     (void)context; (void)path; (void)length; (void)texture_id;
     (void)source; (void)destination; (void)clip; (void)origin;
@@ -91,7 +91,7 @@ static void unexpected_image(void *context, const char *path,
     assert(0 && "Text should not draw an image");
 }
 
-static int unexpected_size(void *context, const char *path,
+static int unexpected_size(void *context, uint8_t *path,
                            size_t length, int *width_out, int *height_out)
 {
     (void)context; (void)path; (void)length;
@@ -111,7 +111,6 @@ int main(int argc, char **argv)
     LineRenderer line = {unexpected_line, NULL};
     ImageRasterizer image = {unexpected_size, unexpected_image, NULL};
     HostBinding bindings[] = {
-        TextSliceBinding(),
         MeasureGlyphWidthBinding(&fonts),
         MeasureGlyphLineHeightBinding(&fonts),
         RasterTextBinding(&text),
@@ -121,7 +120,7 @@ int main(int argc, char **argv)
         RasterLineBinding(&line),
         RasterImageBinding(&image),
     };
-    BundleInstance *instance = BundleInstantiate(bundle, bindings, 9);
+    BundleInstance *instance = BundleInstantiate(bundle, bindings, sizeof(bindings) / sizeof(bindings[0]));
     assert(instance != NULL);
     long long result = 0;
     int has_result = 0;

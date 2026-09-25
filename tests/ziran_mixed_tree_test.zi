@@ -1,0 +1,42 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "geometry"
+#import "progress_props"
+#import "progress_widget"
+#import "separator_props"
+#import "separator_widget"
+#import "tree"
+#import "tree_draw"
+#import "ziran_mixed_tree_host"
+
+#program_export
+Frame :: () -> s32 {
+    progress: ProgressProps
+    progress.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
+    progress.min = 0
+    progress.max = 100
+    progress.value = 50
+    separator: SeparatorProps
+    separator.bounds = Rectangle.{20.0, 50.0, 20.0, 40.0}
+    separator.vertical = true
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+    Progress(TestSession(), progress)
+    Separator(TestSession(), separator)
+    progress.bounds.y = 100.0
+    Progress(TestSession(), progress)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return -1 }
+    return TreeCount(TestSession())
+}
+
+#program_export
+main :: () -> s32 {
+    if Frame() != 4 || MixedEventCount() != 7 || MixedHostFailed() {
+        return 1
+    }
+    return 0
+}

@@ -1,8 +1,8 @@
 #import "text_input"
 host_api :: #system_library "host_api";
 
-# The platform supplies raw events. The focused widget decides how they
-# change composition state, committed text, and paint.
+// The platform supplies raw events. The focused widget decides how they
+// change composition state, committed text, and paint.
 CompositionSample :: struct {
     available: bool
     phase: CompositionPhase

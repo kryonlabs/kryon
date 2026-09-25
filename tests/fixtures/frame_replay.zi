@@ -5,6 +5,8 @@
 #import "frame_capture"
 #import "geometry"
 #import "paint_queue"
+#import "session"
+#import "tree"
 #import "tree_draw"
 #import "tree_input"
 host_api :: #system_library "host_api";
@@ -12,21 +14,25 @@ host_api :: #system_library "host_api";
 PollPointer :: () -> PointerFrame #foreign host_api;
 
 clicks: s32;
+session: Session;
 
 #program_export
 Frame :: () -> s32 {
+    if !SessionValid(session) { session = SessionOpen() }
+    if !SessionValid(session) { return -1 }
     pointer: PointerFrame = PollPointer()
-    TreePointerUpdate(pointer)
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
+    TreePointerUpdate(session, pointer)
+    BeginFrame(session, cast(u64)1,
+        Rectangle.{0.0, 0.0, 320.0, 160.0})
     button: ButtonProps
     button.key = cast(u64)2
     button.bounds = Rectangle.{40.0, 48.0, 240.0, 64.0}
     button.label = "Hello, Ziran"
     if clicks > 0 { button.label = "Clicked!" }
     button.tone = cast(ButtonTone)ButtonToneAccent
-    clicks += Button(button)
-    PaintLine(-1, Rectangle.{0.0, 159.0, 320.0, 159.0},
+    clicks += Button(session, button)
+    PaintLine(session, -1, Rectangle.{0.0, 159.0, 320.0, 159.0},
         Color.{1, 2, 3, 255})
-    if !EndTreeCapture() { return -1 }
+    if !EndFrameCapture(session) { return -1 }
     return clicks
 }

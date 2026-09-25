@@ -1,0 +1,60 @@
+#import "drawing_props"
+#import "geometry"
+
+texts: s32;
+lines: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    if font != 16 || typeface != "" { failed = true }
+    return (cast(s32)value.count) * 10
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 16 || typeface != "" { failed = true }
+    return 12
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if texts >= 4 || value != "Docs" || x != 10 || y != 20 || font != 16 ||
+        clip.x != 10.0 || clip.y != 20.0 ||
+        clip.width != 40.0 || clip.height != 12.0 { failed = true }
+    texts += 1
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) { failed = true }
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) { failed = true }
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    if lines != 0 || line.x != 10.0 || line.y != 30.0 ||
+        line.width != 40.0 || line.height != 0.0 { failed = true }
+    lines += 1
+}
+
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) { failed = true }
+
+#program_export
+LinkTextCount :: () -> s32 { return texts }
+
+#program_export
+LinkLineCount :: () -> s32 { return lines }
+
+#program_export
+LinkHostFailed :: () -> bool { return failed }

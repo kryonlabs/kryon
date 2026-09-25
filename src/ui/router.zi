@@ -1,10 +1,11 @@
+#import "session"
 #import "geometry"
 #import "router_props"
 #import "tree"
 #import "widget_kind"
 
-# Router owns navigation and URL decisions. Applications own the route table
-# and state value; a platform host applies a requested URL effect.
+// Router owns navigation and URL decisions. Applications own the route table
+// and state value; a platform host applies a requested URL effect.
 #program_export
 RouterFindRoute :: (routes: []RouterRoute, route_id: s32) -> s32 {
     index: s32 = 0
@@ -140,7 +141,7 @@ RouterSetRoute :: (props: RouterProps, state: RouterState,
 }
 
 #program_export
-Router :: (props: RouterProps, state: RouterState,
+Router :: (session: Session, props: RouterProps, state: RouterState,
     routes: []RouterRoute, hash: string,
     base_path: string, route_version: s32) -> RouterResult {
     write_on_init: bool = false
@@ -187,18 +188,18 @@ Router :: (props: RouterProps, state: RouterState,
     } else if write_on_init {
         result = RouterUrlFor(result, props, routes, base_path, false)
     }
-    if TreeIsBuilding() {
+    if TreeIsBuilding(session) {
         key: u64 = props.key
-        if key == cast(u64)0 { key = TreeNextKey() }
+        if key == cast(u64)0 { key = TreeNextKey(session) }
         bounds: Rectangle = props.bounds
-        node: s32 = TreeSubmitCurrent(key, WidgetKindRouter, bounds)
+        node: s32 = TreeSubmitCurrent(session, key, WidgetKindRouter, bounds)
         result.node = node
     }
     return result
 }
 
-# Formats the URL effect into caller storage. A negative result means no URL
-# effect or insufficient capacity; the host may then push or replace it.
+// Formats the URL effect into caller storage. A negative result means no URL
+// effect or insufficient capacity; the host may then push or replace it.
 #program_export
 RouterFormatUrl :: (result: RouterResult,
     output: []u8) -> s32 {

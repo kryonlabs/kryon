@@ -11,14 +11,14 @@ FramePacingDecision :: struct {
     apply_target: bool
 }
 
-# The caller applies target_fps to its timer when apply_target is true.
+// The caller applies target_fps to its timer when apply_target is true.
 
 FramePacingSanitizeFPS :: (fps: s32) -> s32 {
     if fps > 0 { return fps }
     return 0
 }
 
-# The host applies target_fps only when apply_target is true.
+// The host applies target_fps only when apply_target is true.
 #program_export
 UpdateFramePacing :: (state: FramePacing) -> FramePacingDecision {
     decision: FramePacingDecision

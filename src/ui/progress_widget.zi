@@ -1,3 +1,4 @@
+#import "session"
 #import "font_metrics"
 #import "geometry"
 #import "progress"
@@ -9,8 +10,8 @@
 #import "tree"
 #import "widget_kind"
 
-# Resolved faces are values supplied by Kryon's style cascade. The platform
-# only measures glyphs and rasterizes commands.
+// Resolved faces are values supplied by Kryon's style cascade. The platform
+// only measures glyphs and rasterizes commands.
 PreparedProgress :: struct {
     paint: ProgressPaint
     font: s32
@@ -41,29 +42,29 @@ PrepareProgress :: (props: ProgressProps,
 }
 
 #program_export
-PaintProgressProps :: (props: ProgressProps, faces: ProgressFaces) {
+PaintProgressProps :: (session: Session, props: ProgressProps, faces: ProgressFaces) {
     prepared: PreparedProgress = PrepareProgress(props, faces)
-    PaintProgress(props.bounds, prepared.paint, props.label,
+    PaintProgress(session, props.bounds, prepared.paint, props.label,
         prepared.font, prepared.label_opacity)
 }
 
 #program_export
-PaintProgressFromRules :: (props: ProgressProps, rules: StyleRules,
+PaintProgressFromRules :: (session: Session, props: ProgressProps, rules: StyleRules,
     defaults: ProgressFaces) {
     faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
-    PaintProgressProps(props, faces)
+    PaintProgressProps(session, props, faces)
 }
 
 #program_export
-Progress :: (props: ProgressProps) {
+Progress :: (session: Session, props: ProgressProps) {
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(props.key, WidgetKindProgress, props.bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, props.key, WidgetKindProgress, props.bounds)
         if node < 0 { return }
     }
     faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(),
         props.class_name, DefaultProgressFaces())
     prepared: PreparedProgress = PrepareProgress(props, faces)
-    PaintProgressForNode(node, props.bounds, prepared.paint,
+    PaintProgressForNode(session, node, props.bounds, prepared.paint,
         props.label, prepared.font, prepared.label_opacity)
 }

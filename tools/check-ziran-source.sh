@@ -3,18 +3,13 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-# This list only shrinks as the remaining hosts move to current Ziran.
-expected='src/backend/composition_host.c
-src/backend/font_metrics_host.c
-src/backend/image_host.c
-src/backend/image_software.c
-src/backend/kss_string_host.c
-src/backend/pointer_host.c
-src/backend/raster_host.c
-tools/frame_replay.c'
+# This list only shrinks as the remaining platform bridges move to current Ziran.
+expected='src/platform/android/java/com/kryonlabs/kryon/KryonActivity.java
+src/platform/android/java/com/kryonlabs/kryon/SecureStore.java
+src/platform/android/java/com/kryonlabs/kryon/TextInputBridge.java'
 
 actual=$(cd "$repo" &&
-    rg --files src examples tools -g '*.c' -g '*.cc' -g '*.cpp' -g '*.go' |
+    rg --files src examples tools -g '*.c' -g '*.cc' -g '*.cpp' -g '*.go' -g '*.java' |
     LC_ALL=C sort)
 
 if test "$actual" != "$expected"; then

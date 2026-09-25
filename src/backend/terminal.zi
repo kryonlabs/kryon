@@ -1,0 +1,217 @@
+#import "cell"
+#import "drawing_props"
+#import "geometry"
+
+// The Text widget uses cell coordinates on this host: one glyph is one cell.
+// This first terminal surface supports up to 80 columns and 24 rows.
+libc :: #system_library "libc";
+TerminalWrite :: (fd: s32, source: *u8, count: u64) -> s64 #foreign libc "write";
+
+terminal_buffer: [1920]Cell;
+terminal_columns: s32;
+terminal_rows: s32;
+
+#program_export
+TerminalBegin :: (columns: s32, rows: s32) {
+    if columns < 1 { columns = 1 }
+    if rows < 1 { rows = 1 }
+    if columns > 80 { columns = 80 }
+    if rows > 24 { rows = 24 }
+    terminal_columns = columns
+    terminal_rows = rows
+    empty: Cell
+    empty.glyph = cast(u32)32
+    CellFill(terminal_buffer[0:1920], columns, rows,
+        0, 0, columns, rows, empty)
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    at: s32 = 0
+    width: s32 = 0
+    while at < cast(s32)value.count {
+        point: CellCodepointResult = CellCodepoint(value, at)
+        if point.after <= at { break }
+        at = point.after
+        width += 1
+    }
+    return width
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    return 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32,
+    font: s32, color: Color) {
+    CellWrite(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+        x, y, value, cast(u32)0, cast(u32)0, cast(u32)0)
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    if y < cast(s32)clip.y || y >= cast(s32)(clip.y + clip.height) {
+        return
+    }
+    at: s32 = 0
+    col: s32 = x
+    while at < cast(s32)value.count {
+        point: CellCodepointResult = CellCodepoint(value, at)
+        if point.after <= at { break }
+        if col >= cast(s32)clip.x &&
+            col < cast(s32)(clip.x + clip.width) {
+            cell: Cell
+            cell.glyph = point.value
+            CellPut(terminal_buffer[0:1920], terminal_columns,
+                terminal_rows, col, y, cell)
+        }
+        col += 1
+        at = point.after
+    }
+}
+
+// These are the paint effects reached by the shared Kryon paint queue. The
+// terminal maps geometry to cells; image content currently has a text fallback.
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    fill: Cell
+    fill.glyph = cast(u32)32
+    CellFill(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+        cast(s32)bounds.x, cast(s32)bounds.y,
+        cast(s32)bounds.width, cast(s32)bounds.height, fill)
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    edge: Cell
+    edge.glyph = cast(u32)35
+    x: s32 = cast(s32)bounds.x
+    y: s32 = cast(s32)bounds.y
+    w: s32 = cast(s32)bounds.width
+    h: s32 = cast(s32)bounds.height
+    col: s32 = 0
+    while col < w {
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x + col, y, edge)
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x + col, y + h - 1, edge)
+        col += 1
+    }
+    row: s32 = 0
+    while row < h {
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x, y + row, edge)
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x + w - 1, y + row, edge)
+        row += 1
+    }
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    marker: Cell
+    marker.glyph = cast(u32)45
+    x: s32 = cast(s32)line.x
+    y: s32 = cast(s32)line.y
+    length: s32 = cast(s32)line.width
+    if length < 1 { length = 1 }
+    col: s32 = 0
+    while col < length {
+        CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+            x + col, y, marker)
+        col += 1
+    }
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    marker: Cell
+    marker.glyph = cast(u32)63
+    CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+        cast(s32)destination.x, cast(s32)destination.y, marker)
+}
+
+TerminalAppendGlyph :: (output: []u8, at: s32, glyph: u32) -> s32 {
+    if glyph == cast(u32)0 { glyph = cast(u32)32 }
+    if glyph > cast(u32)1114111 ||
+        (glyph >= cast(u32)55296 && glyph <= cast(u32)57343) {
+        glyph = cast(u32)65533
+    }
+    if glyph < cast(u32)128 {
+        output[at] = cast(u8)glyph
+        return at + 1
+    }
+    if glyph < cast(u32)2048 {
+        output[at] = cast(u8)(cast(u32)192 | (glyph >> cast(u32)6))
+        output[at + 1] = cast(u8)(cast(u32)128 | (glyph & cast(u32)63))
+        return at + 2
+    }
+    if glyph < cast(u32)65536 {
+        output[at] = cast(u8)(cast(u32)224 | (glyph >> cast(u32)12))
+        output[at + 1] = cast(u8)(cast(u32)128 |
+            ((glyph >> cast(u32)6) & cast(u32)63))
+        output[at + 2] = cast(u8)(cast(u32)128 | (glyph & cast(u32)63))
+        return at + 3
+    }
+    output[at] = cast(u8)(cast(u32)240 | (glyph >> cast(u32)18))
+    output[at + 1] = cast(u8)(cast(u32)128 |
+        ((glyph >> cast(u32)12) & cast(u32)63))
+    output[at + 2] = cast(u8)(cast(u32)128 |
+        ((glyph >> cast(u32)6) & cast(u32)63))
+    output[at + 3] = cast(u8)(cast(u32)128 | (glyph & cast(u32)63))
+    return at + 4
+}
+
+#program_export
+TerminalPresent :: () -> bool {
+    output: [8192]u8
+    length: s32 = 0
+    last_row: s32 = 0
+    row: s32 = 0
+    while row < terminal_rows {
+        col: s32 = 0
+        while col < terminal_columns {
+            if terminal_buffer[row * terminal_columns + col].glyph != cast(u32)32 {
+                last_row = row
+            }
+            col += 1
+        }
+        row += 1
+    }
+    row = 0
+    while row <= last_row {
+        last_col: s32 = -1
+        col: s32 = 0
+        while col < terminal_columns {
+            if terminal_buffer[row * terminal_columns + col].glyph != cast(u32)32 {
+                last_col = col
+            }
+            col += 1
+        }
+        col = 0
+        while col <= last_col {
+            length = TerminalAppendGlyph(output[:], length,
+                terminal_buffer[row * terminal_columns + col].glyph)
+            col += 1
+        }
+        output[length] = cast(u8)10
+        length += 1
+        row += 1
+    }
+    written: s32 = 0
+    while written < length {
+        count: s64 = TerminalWrite(1, *output[written],
+            cast(u64)(length - written))
+        if count <= 0 { return false }
+        written += cast(s32)count
+    }
+    return true
+}

@@ -2,13 +2,13 @@
 
 #include <assert.h>
 
-static void unused_image_draw(void *context, const char *path,
+static void unused_image_draw(void *context, uint8_t *path,
                               size_t path_length, uint32_t texture_id,
-                              const float source[4],
-                              const float destination[4],
-                              const float clip[4], const float origin[2],
+                              float source[4],
+                              float destination[4],
+                              float clip[4], float origin[2],
                               float rotation, float radius,
-                              const uint8_t tint[4])
+                              uint8_t tint[4])
 {
     (void)context; (void)path; (void)path_length; (void)texture_id;
     (void)source; (void)destination; (void)clip; (void)origin;

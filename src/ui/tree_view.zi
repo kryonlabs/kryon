@@ -1,3 +1,4 @@
+#import "session"
 #import "drawing_props"
 #import "geometry"
 #import "style"
@@ -338,15 +339,15 @@ TreeViewRevealScroll :: (index: s32, row_height: s32,
     return cast(s32)next
 }
 
-# Items and view state are application values. Each visible row is a retained
-# selectable node whose bounds are clipped to the viewport for pointer input.
+// Items and view state are application values. Each visible row is a retained
+// selectable node whose bounds are clipped to the viewport for pointer input.
 #program_export
-TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
+TreeView :: (session: Session, props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     result: TreeViewResult
     result.node = -1
     result.selected_id = props.selected_id
     bounds: Rectangle = props.bounds
-    parent: Rectangle = TreeCurrentParentBounds()
+    parent: Rectangle = TreeCurrentParentBounds(session)
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
     measured_bounds: Rectangle = bounds
@@ -370,13 +371,13 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     result.scroll_offset = cast(s32)scroll
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindTreeView, bounds)
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindTreeView, bounds)
         if result.node < 0 { return result }
-        bounds = TreeSubmittedNodeAt(result.node).bounds
-        if !TreePushScope(result.node) { return result }
-        TreeSetSemantic(result.node, cast(SemanticKind)SemanticTree, 0)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
+        if !TreePushScope(session, result.node) { return result }
+        TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticTree, 0)
     }
     track_face: StyleFrame = TreeViewScrollFace(StyleKindScroll(),
         props.class_name, props.disabled)
@@ -386,10 +387,10 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
         track_face, thumb_face)
     scroll_metrics.scrollbar_width = metrics.scrollbar_width
     has_scrollbar: bool = max_scroll > 0 && metrics.scrollbar_width > 0
-    if has_scrollbar && TreeIsBuilding() && !props.disabled {
-        previous_thumb: s32 = TreeFind(TreeViewThumbKey(), key,
-            WidgetKindSlider)
-        drag: PointerDrag = TreeTakeDragAt(previous_thumb)
+    if has_scrollbar && TreeIsBuilding(session) && !props.disabled {
+        previous_thumb: s32 = TreePrevious(session, result.node,
+            TreeViewThumbKey(), WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(session, previous_thumb)
         if drag.active || drag.ended {
             initial_paint: ScrollBarPaint = ScrollBarPaintFor(
                 cast(s32)(bounds.x + bounds.width) - metrics.scrollbar_width,
@@ -412,10 +413,10 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
     }
     opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
-    PaintRoundedFill(result.node, measured_bounds, panel.value.radius, 12,
+    PaintRoundedFill(session, result.node, measured_bounds, panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background, opacity)))
     if panel.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, measured_bounds,
+        PaintRoundedOutline(session, result.node, measured_bounds,
             panel.value.radius, 12, panel.value.border_width,
             ColorFromPacked(Opacity(panel.value.border, opacity)))
     }
@@ -433,10 +434,11 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
         if clipped.height > 0.0 && clipped.width > 0.0 {
             item_key: u64 = TreeViewRowKey(item, index)
             previous: s32 = -1
-            if TreeIsBuilding() {
-                previous = TreeFind(item_key, key, WidgetKindSelectable)
+            if TreeIsBuilding(session) {
+                previous = TreePrevious(session, result.node, item_key,
+                    WidgetKindSelectable)
             }
-            activated: bool = TreeTakeActivationAt(previous)
+            activated: bool = TreeTakeActivationAt(session, previous)
             if activated && !props.disabled && item.selectable {
                 result.changed = result.selected_id != item.id
                 result.selected_id = item.id
@@ -444,25 +446,25 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
             selected: bool = result.selected_id == item.id
             state: s32 = ResolveState(cast(s32)ButtonStateAuto,
                 props.disabled || !item.selectable, false,
-                TreePressedAt(previous), TreeHoveredAt(previous),
+                TreePressedAt(session, previous), TreeHoveredAt(session, previous),
                 false, selected)
             face: StyleFrame = TreeViewFace(StyleKindTreeViewItem(),
                 item.id, props.class_name, state)
             node: s32 = -1
-            if TreeIsBuilding() {
-                node = TreeSubmitCurrent(item_key, WidgetKindSelectable,
+            if TreeIsBuilding(session) {
+                node = TreeSubmitCurrent(session, item_key, WidgetKindSelectable,
                     clipped)
                 if node < 0 { break }
-                TreeSetInteractive(node, props.disabled || !item.selectable,
+                TreeSetInteractive(session, node, props.disabled || !item.selectable,
                     false, item.id)
-                TreeSetSelected(node, selected)
-                TreeSetLabel(node, item.label)
-                TreeSetSemantic(node, cast(SemanticKind)SemanticTreeItem, 0)
+                TreeSetSelected(session, node, selected)
+                TreeSetLabel(session, node, item.label)
+                TreeSetSemantic(session, node, cast(SemanticKind)SemanticTreeItem, 0)
             }
             item_opacity: float32 = StyleOpacityValue(face.value.fields,
                 face.value.opacity)
             if face.value.background != cast(u32)0 {
-                PaintRoundedFill(node, clipped, face.value.radius, 12,
+                PaintRoundedFill(session, node, clipped, face.value.radius, 12,
                     ColorFromPacked(Opacity(face.value.background,
                         item_opacity)))
             }
@@ -478,10 +480,10 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
                 face.value.foreground, item_opacity))
             marker_clip: Rectangle = RectangleIntersection(marker, bounds)
             label_clip: Rectangle = RectangleIntersection(label, bounds)
-            PaintClippedLabel(node, TreeViewMarkerText(item.expanded),
+            PaintClippedLabel(session, node, TreeViewMarkerText(item.expanded),
                 paint.marker_x, paint.marker_y, font, text_color,
                 marker_clip)
-            PaintClippedLabel(node, item.label, paint.text_x,
+            PaintClippedLabel(session, node, item.label, paint.text_x,
                 paint.text_y, font, text_color, label_clip)
         }
         visible_index += 1
@@ -493,25 +495,25 @@ TreeView :: (props: TreeViewProps, items: []TreeItem) -> TreeViewResult {
             result.scroll_offset, max_scroll, scroll_metrics)
         track_node: s32 = -1
         thumb_node: s32 = -1
-        if TreeIsBuilding() {
-            track_node = TreeSubmitCurrent(TreeViewThumbKey() + cast(u64)1,
+        if TreeIsBuilding(session) {
+            track_node = TreeSubmitCurrent(session, TreeViewThumbKey() + cast(u64)1,
                 WidgetKindCustom, bar.track_bounds)
-            thumb_node = TreeSubmitCurrent(TreeViewThumbKey(),
+            thumb_node = TreeSubmitCurrent(session, TreeViewThumbKey(),
                 WidgetKindSlider, bar.thumb_bounds)
-            TreeSetInteractive(thumb_node, props.disabled, false, props.id)
+            TreeSetInteractive(session, thumb_node, props.disabled, false, props.id)
         }
-        PaintRoundedFill(track_node, bar.track_bounds,
+        PaintRoundedFill(session, track_node, bar.track_bounds,
             track_face.value.radius, 12,
             ColorFromPacked(Opacity(track_face.value.background,
                 StyleOpacityValue(track_face.value.fields,
                     track_face.value.opacity))))
-        PaintRoundedFill(thumb_node, bar.thumb_bounds,
+        PaintRoundedFill(session, thumb_node, bar.thumb_bounds,
             thumb_face.value.radius, 12,
             ColorFromPacked(Opacity(thumb_face.value.background,
                 StyleOpacityValue(thumb_face.value.fields,
                     thumb_face.value.opacity))))
     }
-    if TreeIsBuilding() { End() }
+    if TreeIsBuilding(session) { End(session) }
     result.changed = result.selected_id != props.selected_id
     return result
 }

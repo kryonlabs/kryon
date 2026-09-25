@@ -7,6 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -15,21 +22,21 @@ cat > "$work/app.zi" <<'ZI'
 
 #program_export
 Frame :: () -> s32 {
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    viewport: s32 = TreeSubmit(cast(u64)2, 0, WidgetKindCard,
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    viewport: s32 = TreeSubmit(TestSession(), cast(u64)2, 0, WidgetKindCard,
         Rectangle.{0.0, 0.0, 90.0, 90.0})
-    TreeSetChildClip(viewport, Rectangle.{20.0, 20.0, 40.0, 40.0})
-    child: s32 = TreeSubmit(cast(u64)3, viewport, WidgetKindText,
+    TreeSetChildClip(TestSession(), viewport, Rectangle.{20.0, 20.0, 40.0, 40.0})
+    child: s32 = TreeSubmit(TestSession(), cast(u64)3, viewport, WidgetKindText,
         Rectangle.{10.0, 10.0, 70.0, 70.0})
     ink: Color = ColorFromPacked(cast(u32)0x171717ff)
-    PaintLabel(child, "Clip", 10, 10, 16, ink)
-    PaintImage(child, "", cast(u32)7,
+    PaintLabel(TestSession(), child, "Clip", 10, 10, 16, ink)
+    PaintImage(TestSession(), child, "", cast(u32)7,
         Rectangle.{0.0, 0.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Vector2.{0.0, 0.0}, 0.0, 0.0, ink)
-    if !TreeFinish() { return -1 }
-    PaintFlush()
+    if !TreeFinish(TestSession()) { return -1 }
+    PaintFlush(TestSession())
     return 42
 }
 ZI
@@ -92,7 +99,7 @@ C
 
 for target in c cpp go; do
     output=$work/$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

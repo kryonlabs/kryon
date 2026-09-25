@@ -1,0 +1,62 @@
+#import "drawing_props"
+#import "geometry"
+
+events: s32;
+failed: bool;
+
+RecordEvent :: (code: u8) {
+    expected: string = "FFOLFFO"
+    if events >= cast(s32)expected.count ||
+        expected[events] != code { failed = true }
+    events += 1
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) {
+    if bounds.x != 30.0 || bounds.y != 50.0 ||
+        bounds.width != 0.0 || bounds.height != 40.0 {
+        failed = true
+    }
+    RecordEvent(cast(u8)76)
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) { RecordEvent(cast(u8)70) }
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    RecordEvent(cast(u8)79)
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) { failed = true }
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, face: string) -> s32 {
+    failed = true
+    return 0
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, face: string) -> s32 {
+    failed = true
+    return 0
+}
+
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) { failed = true }
+
+#program_export
+MixedEventCount :: () -> s32 { return events }
+
+#program_export
+MixedHostFailed :: () -> bool { return failed }

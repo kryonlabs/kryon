@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -56,20 +57,20 @@ ModalFrameFaceFor :: (props: ModalFrameProps,
 }
 
 #program_export
-ModalFrameKey :: (props: ModalFrameProps) -> u64 {
+ModalFrameKey :: (session: Session, props: ModalFrameProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
-# Returns the checked panel and content rectangles. The caller may submit
-# content under panel_node using TreePushScope, then End that scope.
+// Returns the checked panel and content rectangles. The caller may submit
+// content under panel_node using TreePushScope, then End that scope.
 #program_export
-ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
+ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
     result: ModalFrameResult
     result.node = -1
     result.panel_node = -1
-    viewport: Rectangle = TreeRootBounds()
+    viewport: Rectangle = TreeRootBounds(session)
     if viewport.width <= 0.0 || viewport.height <= 0.0 {
         return result
     }
@@ -102,7 +103,7 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
     }
     result.layout = ModalFrameLayoutFor(bounds, metrics)
     overlay_props: DismissibleOverlayProps
-    overlay_props.key = ModalFrameKey(props)
+    overlay_props.key = ModalFrameKey(session, props)
     overlay_props.bounds = result.layout.panel
     overlay_props.dismiss_disabled = props.dismiss_disabled
     overlay_props.scrim = ColorFromPacked(Opacity(
@@ -110,18 +111,18 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
         StyleOpacityValue(scrim.value.fields,
             scrim.value.opacity)))
     overlay: DismissibleOverlayResult =
-        DismissibleOverlay(overlay_props)
+        DismissibleOverlay(session, overlay_props)
     result.node = overlay.node
     result.panel_node = overlay.panel_node
     result.dismissed = overlay.closed
     if overlay.closed || result.panel_node < 0 { return result }
     opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
-    PaintRoundedFill(result.panel_node, result.layout.panel,
+    PaintRoundedFill(session, result.panel_node, result.layout.panel,
         panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background, opacity)))
     if panel.value.border_width > 0.0 {
-        PaintRoundedOutline(result.panel_node,
+        PaintRoundedOutline(session, result.panel_node,
             result.layout.panel, panel.value.radius, 12,
             panel.value.border_width,
             ColorFromPacked(Opacity(panel.value.border, opacity)))
@@ -143,7 +144,7 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
         title_clip.x += cast(float32)metrics.frame_title_side_padding
         title_clip.width -= cast(float32)(metrics.frame_title_side_padding * 2)
         if title_clip.width < 0.0 { title_clip.width = 0.0 }
-        PaintClippedLabel(result.panel_node, props.title,
+        PaintClippedLabel(session, result.panel_node, props.title,
             title_x, result.layout.title_y, font,
             ColorFromPacked(Opacity(title.value.foreground,
                 StyleOpacityValue(title.value.fields,
@@ -165,8 +166,8 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
         button.arrow = props.left_image.asset_path == "" &&
             props.left_image.texture.id == cast(u32)0
         button.direction = cast(ArrowDirection)ArrowLeft
-        result.left_clicked = SubmitButton(button,
-            result.panel_node, OverlayPanelKey()) != 0
+        result.left_clicked = SubmitButton(session, button,
+            result.panel_node) != 0
     }
     if props.has_right_action {
         button: ButtonProps
@@ -181,8 +182,8 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
         button.label = props.right_label
         button.image = props.right_image
         button.icon_only = true
-        result.right_clicked = SubmitButton(button,
-            result.panel_node, OverlayPanelKey()) != 0
+        result.right_clicked = SubmitButton(session, button,
+            result.panel_node) != 0
         if button.image.asset_path == "" &&
             button.image.texture.id == cast(u32)0 {
             cx: float32 = button.bounds.x + button.bounds.width * 0.5
@@ -192,10 +193,10 @@ ModalFrame :: (props: ModalFrameProps) -> ModalFrameResult {
                 close.value.foreground,
                 StyleOpacityValue(close.value.fields,
                     close.value.opacity)))
-            PaintLine(result.panel_node,
+            PaintLine(session, result.panel_node,
                 Rectangle.{cx - span, cy - span,
                     span * 2.0, span * 2.0}, color)
-            PaintLine(result.panel_node,
+            PaintLine(session, result.panel_node,
                 Rectangle.{cx + span, cy - span,
                     -span * 2.0, span * 2.0}, color)
         }

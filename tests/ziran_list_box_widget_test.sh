@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "list_box"
 #import "list_box_multi"
@@ -68,43 +75,43 @@ Frame :: () -> s32 {
         multi.navigation.end = true
         multi.scroll_delta = 100
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 100.0})
-    one: ListBoxResult = ListBox(single, items[0:4])
-    many: ListBoxMultiResult = ListBoxMulti(multi,
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 100.0})
+    one: ListBoxResult = ListBox(TestSession(), single, items[0:4])
+    many: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
         items[0:4], selected[0:4])
-    if !TreeFinish() { return -10 }
-    if TreeCount() != 13 { return -11 }
+    if !TreeFinish(TestSession()) { return -10 }
+    if TreeCount(TestSession()) != 13 { return -11 }
     if one.node != 1 || many.node != 7 || !many.valid { return -12 }
-    if TreeNodeAt(2).kind != WidgetKindSelectable ||
-        TreeNodeAt(6).kind != WidgetKindSlider ||
-        TreeNodeAt(12).kind != WidgetKindSlider { return -13 }
-    if phase < 2 && TreeNodeAt(2).semantic_label != "A" {
+    if TreeNodeAt(TestSession(), 2).kind != WidgetKindSelectable ||
+        TreeNodeAt(TestSession(), 6).kind != WidgetKindSlider ||
+        TreeNodeAt(TestSession(), 12).kind != WidgetKindSlider { return -13 }
+    if phase < 2 && TreeNodeAt(TestSession(), 2).semantic_label != "A" {
         return -14
     }
-    if TreeHitAt(20.0, 53.0) != -1 { return -15 }
+    if TreeHitAt(TestSession(), 20.0, 53.0) != -1 { return -15 }
     if phase == 0 {
         if one.selected_index != 0 || one.scroll_offset != 0 ||
             one.changed || many.selected_count != 0 ||
             many.anchor != -1 || many.clicked_index != -1 {
             return -1
         }
-        TreePointerUpdate(PointerFrame.{20.0, 35.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 35.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, false, false, true})
     } else if phase == 1 {
         if one.selected_index != 1 || !one.changed ||
             one.scroll_offset != 10 || many.selected_count != 0 {
             return -2
         }
-        TreePointerUpdate(PointerFrame.{130.0, 35.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{130.0, 35.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 35.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 35.0, false, false, true})
     } else if phase == 2 {
         if one.selected_index != 3 || one.scroll_offset != 38 ||
             !one.changed || !selected[1] || many.selected_count != 1 ||
             many.anchor != 1 || many.clicked_index != 1 {
             return -3
         }
-        TreePointerUpdate(PointerFrame.{130.0, 55.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{130.0, 55.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 55.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 55.0, false, false, true})
     } else if phase == 3 {
         if one.selected_index != 3 || one.changed ||
             one.scroll_offset != 38 { return -41 }
@@ -123,13 +130,13 @@ Frame :: () -> s32 {
             one.selected_index != 3 || one.scroll_offset != 38 {
             return -7
         }
-        if TreeHitAt(130.0, 35.0) != -1 { return -8 }
+        if TreeHitAt(TestSession(), 130.0, 35.0) != -1 { return -8 }
         short_selection: [2]bool
-        bad: ListBoxMultiResult = ListBoxMulti(multi,
+        bad: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
             items[0:4], short_selection[0:2])
         if bad.valid || bad.node != -1 { return -6 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     single_selected = one.selected_index
     single_scroll = one.scroll_offset
     multi_scroll = many.scroll_offset
@@ -227,7 +234,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

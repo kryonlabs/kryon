@@ -6,15 +6,15 @@
 
 static int fills, outlines, strokes, labels, image_draws;
 
-static int width(void *context, const char *value, size_t length,
-                 int font, const char *face, size_t face_length)
+static int width(void *context, uint8_t *value, size_t length,
+                 int font, uint8_t *face, size_t face_length)
 {
     (void)context; (void)value; (void)face;
     assert(font == 14 && face_length == 0);
     return (int)length * 8;
 }
 
-static int image_size(void *context, const char *path, size_t length,
+static int image_size(void *context, uint8_t *path, size_t length,
                       int *width_out, int *height_out)
 {
     (void)context;
@@ -24,7 +24,7 @@ static int image_size(void *context, const char *path, size_t length,
     return 1;
 }
 
-static int height(void *context, int font, const char *face,
+static int height(void *context, int font, uint8_t *face,
                   size_t face_length)
 {
     (void)context; (void)face;
@@ -66,7 +66,7 @@ static void line(void *context, float x1, float y1, float x2, float y2,
     strokes++;
 }
 
-static void text(void *context, const char *value, size_t bytes,
+static void text(void *context, uint8_t *value, size_t bytes,
                  int x, int y, int font,
                  uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
@@ -75,8 +75,8 @@ static void text(void *context, const char *value, size_t bytes,
     assert(0);
 }
 
-static void clipped(void *context, const char *value, size_t bytes,
-                    int x, int y, int font, const float clip[4],
+static void clipped(void *context, uint8_t *value, size_t bytes,
+                    int x, int y, int font, float clip[4],
                     uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)context; (void)value; (void)r; (void)g; (void)b;
@@ -86,11 +86,11 @@ static void clipped(void *context, const char *value, size_t bytes,
     labels++;
 }
 
-static void image(void *context, const char *path, size_t bytes,
-                  uint32_t texture_id, const float source[4],
-                  const float destination[4], const float clip[4],
-                  const float origin[2], float rotation, float radius,
-                  const uint8_t tint[4])
+static void image(void *context, uint8_t *path, size_t bytes,
+                  uint32_t texture_id, float source[4],
+                  float destination[4], float clip[4],
+                  float origin[2], float rotation, float radius,
+                  uint8_t tint[4])
 {
     (void)context; (void)origin; (void)rotation; (void)radius;
     assert(bytes == 9 && memcmp(path, "badge.png", 9) == 0 &&

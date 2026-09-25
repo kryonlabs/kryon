@@ -1,6 +1,6 @@
 
-# Clipboard bytes are owned by the caller. The host supplies observations and
-# applies writes; this module selects which value is visible to a widget.
+// Clipboard bytes are owned by the caller. The host supplies observations and
+// applies writes; this module selects which value is visible to a widget.
 ClipboardSource :: enum {
     ClipboardSystem :: 0
     ClipboardPrimary :: 1

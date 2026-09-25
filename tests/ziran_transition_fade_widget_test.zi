@@ -1,0 +1,48 @@
+#import "drawing_props"
+#import "geometry"
+#import "transition"
+#import "transition_widget"
+#import "ziran_transition_fade_host"
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    state: TransitionState = TransitionStart(1.0)
+    color: Color = Color.{10, 20, 30, 200}
+    bounds: Rectangle = Rectangle.{2.0, 3.0, 40.0, 20.0}
+    if phase == 0 {
+        if TransitionFadeColor(state, color).a != cast(u8)0 { return -1 }
+        PaintTransitionFade(state, bounds, color)
+    } else if phase == 1 {
+        state = TransitionAdvance(state, 0.5).state
+        if TransitionFadeColor(state, color).a != cast(u8)99 { return -2 }
+        PaintTransitionFade(state, bounds, color)
+    } else if phase == 2 {
+        state = TransitionAdvance(state, 1.0).state
+        if TransitionFadeColor(state, color).a != cast(u8)200 { return -3 }
+        PaintTransitionFade(state, bounds, color)
+        bounds.width = 0.0
+        PaintTransitionFade(state, bounds, color)
+    } else {
+        state = TransitionReset()
+        PaintTransitionFade(state, bounds, color)
+    }
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#program_export
+main :: () -> s32 {
+    expected: s32 = 0
+    while expected < 4 {
+        if Frame() != expected { return expected + 1 }
+        want: s32 = 2
+        if expected == 0 { want = 0 }
+        if expected == 1 { want = 1 }
+        if FadeFillCount() != want || FadeHostFailed() { return expected + 5 }
+        expected += 1
+    }
+    return 0
+}

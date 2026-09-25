@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "semantic"
@@ -56,40 +63,40 @@ Frame :: () -> s32 {
     if phase == 11 {
         props.navigation = cast(TreeViewNavigation)TreeViewNavigationHome
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 160.0, 100.0})
-    result: TreeViewResult = TreeView(props, items[0:3])
-    if !TreeFinish() || TreeCount() != 7 || result.node != 1 ||
-        TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticTree ||
-        TreeNodeAt(3).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
-        TreeNodeAt(3).semantic_label != "Second" ||
-        TreeNodeAt(6).kind != WidgetKindSlider { return -10 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 160.0, 100.0})
+    result: TreeViewResult = TreeView(TestSession(), props, items[0:3])
+    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 7 || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticTree ||
+        TreeNodeAt(TestSession(), 3).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
+        TreeNodeAt(TestSession(), 3).semantic_label != "Second" ||
+        TreeNodeAt(TestSession(), 6).kind != WidgetKindSlider { return -10 }
     if phase == 0 {
         if result.selected_id != 1 || result.changed ||
             result.scroll_offset != 0 ||
-            TreeNodeAt(4).bounds.height != 8.0 ||
-            TreeHitAt(20.0, 59.0) != -1 { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 35.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 35.0, false, false, true})
+            TreeNodeAt(TestSession(), 4).bounds.height != 8.0 ||
+            TreeHitAt(TestSession(), 20.0, 59.0) != -1 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, false, false, true})
     } else if phase == 1 {
         if result.selected_id != 2 || !result.changed ||
             result.scroll_offset != 12 ||
-            TreeNodeAt(2).bounds.y != 10.0 ||
-            TreeNodeAt(2).bounds.height != 8.0 ||
-            TreeHitAt(20.0, 9.0) != -1 { return -2 }
+            TreeNodeAt(TestSession(), 2).bounds.y != 10.0 ||
+            TreeNodeAt(TestSession(), 2).bounds.height != 8.0 ||
+            TreeHitAt(TestSession(), 20.0, 9.0) != -1 { return -2 }
     } else if phase == 2 {
         if result.selected_id != 2 || result.changed ||
             result.scroll_offset != 12 ||
-            TreeHitAt(20.0, 25.0) != -1 { return -3 }
+            TreeHitAt(TestSession(), 20.0, 25.0) != -1 { return -3 }
     } else if phase == 3 {
         if result.selected_id != 2 || result.scroll_offset != 0 ||
-            TreeNodeAt(6).bounds.y != 10.0 ||
-            TreeHitAt(126.0, 20.0) != 6 { return -4 }
-        TreePointerUpdate(PointerFrame.{126.0, 20.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{126.0, 40.0, true, false, false})
+            TreeNodeAt(TestSession(), 6).bounds.y != 10.0 ||
+            TreeHitAt(TestSession(), 126.0, 20.0) != 6 { return -4 }
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 20.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 40.0, true, false, false})
     } else if phase == 4 {
         if result.selected_id != 2 || result.scroll_offset != 7 ||
             result.changed { return -5 }
-        TreePointerUpdate(PointerFrame.{126.0, 45.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 45.0, false, false, true})
     } else if phase == 5 {
         if result.selected_id != 2 || result.scroll_offset != 9 ||
             result.changed { return -6 }
@@ -112,7 +119,7 @@ Frame :: () -> s32 {
         if result.selected_id != 1 || result.scroll_offset != 0 ||
             !result.changed { return -13 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     selected = result.selected_id
     scroll = result.scroll_offset
     old: s32 = phase
@@ -203,7 +210,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

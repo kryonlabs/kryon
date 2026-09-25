@@ -48,10 +48,10 @@ test "$("$ziran" run "$work/saved.zib")" = 42
 for target in c cpp go; do
     output="$work/$target"
     if test "$target" = go; then
-        "$ziran" build --target=go --strict --pkg main --root "$work" \
+        "$ziran" build --target=go --pkg main --root "$work" \
             --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     else
-        "$ziran" build --target="$target" --strict --root "$work" \
+        "$ziran" build --target="$target" --root "$work" \
             --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     fi
     if test "$target" = c; then

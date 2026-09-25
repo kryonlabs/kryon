@@ -1,0 +1,45 @@
+#import "composition_input"
+#import "text_input"
+
+host_frame: s32;
+host_poll: s32;
+
+#program_export
+SetCompositionHostFrame :: (frame: s32) {
+    host_frame = frame
+    host_poll = 0
+}
+
+#program_export
+PollComposition :: () -> CompositionSample {
+    sample: CompositionSample
+    poll: s32 = host_poll
+    host_poll += 1
+    if poll > 0 && (host_frame != 4 || poll > 1) { return sample }
+    if host_frame == 0 && poll == 0 {
+        sample.available = true
+        sample.phase = cast(CompositionPhase)CompositionStart
+        sample.text = "é"
+        sample.cursor = 1
+        sample.selection_length = 99
+    } else if host_frame == 2 && poll == 0 {
+        sample.available = true
+        sample.phase = cast(CompositionPhase)CompositionUpdate
+        sample.text = "éx"
+        sample.cursor = 3
+    } else if host_frame == 3 && poll == 0 {
+        sample.available = true
+        sample.phase = cast(CompositionPhase)CompositionCommit
+        sample.text = "Q"
+    } else if host_frame == 4 {
+        sample.available = true
+        if poll == 0 {
+            sample.phase = cast(CompositionPhase)CompositionStart
+            sample.text = "A"
+            sample.cursor = 1
+        } else {
+            sample.phase = cast(CompositionPhase)CompositionCancel
+        }
+    }
+    return sample
+}

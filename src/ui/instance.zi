@@ -1,6 +1,6 @@
 
-# Frames belong to the render host that owns the instance. A short absence
-# preserves interaction continuity; removed instances eventually release storage.
+// Frames belong to the render host that owns the instance. A short absence
+// preserves interaction continuity; removed instances eventually release storage.
 #program_export
 InstanceExpired :: (age: s64) -> bool {
     return age < 0 || age > 12

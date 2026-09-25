@@ -73,6 +73,6 @@ ReorderListResult :: struct {
     drag_delta_y: s32
 }
 
-# The host applies the user's pointer motion and scrolling to the list.
+// The host applies the user's pointer motion and scrolling to the list.
 #program_export
 UpdateReorderList :: (list: ReorderList) -> ReorderListResult #foreign host_api;

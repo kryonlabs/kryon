@@ -1,3 +1,4 @@
+#import "session"
 #import "checkbox"
 #import "checkbox_props"
 #import "control_props"
@@ -52,7 +53,7 @@ CheckboxFaceFor :: (rules: StyleRules, props: CheckboxProps,
 }
 
 #program_export
-PaintCheckboxSegment :: (node: s32, start: Vector2, end: Vector2,
+PaintCheckboxSegment :: (session: Session, node: s32, start: Vector2, end: Vector2,
     width: float32, color: Color) {
     strokes: s32 = cast(s32)(width + 0.5)
     if strokes < 1 { strokes = 1 }
@@ -60,14 +61,14 @@ PaintCheckboxSegment :: (node: s32, start: Vector2, end: Vector2,
     index: s32 = 0
     while index < strokes {
         offset: float32 = cast(float32)index - cast(float32)(strokes - 1) * 0.5
-        PaintLine(node, Rectangle.{start.x, start.y + offset,
+        PaintLine(session, node, Rectangle.{start.x, start.y + offset,
             end.x - start.x, end.y - start.y}, color)
         index += 1
     }
 }
 
 #program_export
-PaintCheckboxForNode :: (node: s32, props: CheckboxProps,
+PaintCheckboxForNode :: (session: Session, node: s32, props: CheckboxProps,
     paint: CheckboxPaint, label: StyleFrame, font: s32,
     label_height: s32) {
     box_opacity: float32 = StyleOpacityValue(paint.box.value.fields,
@@ -75,32 +76,32 @@ PaintCheckboxForNode :: (node: s32, props: CheckboxProps,
     active_opacity: float32 = StyleOpacityValue(paint.active.value.fields,
         paint.active.value.opacity)
     if paint.show_state {
-        PaintRoundedFill(node, paint.state_bounds,
+        PaintRoundedFill(session, node, paint.state_bounds,
             paint.state_radius, 8,
             ColorFromPacked(Opacity(paint.state_color, box_opacity)))
     }
     if paint.show_focus {
-        PaintRoundedOutline(node, paint.focus_bounds,
+        PaintRoundedOutline(session, node, paint.focus_bounds,
             paint.focus_radius, 8, paint.border_width,
             ColorFromPacked(Opacity(paint.focus_color, box_opacity)))
     }
     if paint.show_fill {
-        PaintRoundedFill(node, paint.box_bounds, paint.radius, 8,
+        PaintRoundedFill(session, node, paint.box_bounds, paint.radius, 8,
             ColorFromPacked(Opacity(paint.fill_color, active_opacity)))
     }
     if paint.border_width > 0.0 {
         opacity: float32 = box_opacity
         if paint.show_fill { opacity = active_opacity }
-        PaintRoundedOutline(node, paint.box_bounds, paint.radius, 8,
+        PaintRoundedOutline(session, node, paint.box_bounds, paint.radius, 8,
             paint.border_width,
             ColorFromPacked(Opacity(paint.border_color, opacity)))
     }
     if paint.show_mark {
         mark: Color = ColorFromPacked(Opacity(paint.mark_color,
             active_opacity))
-        PaintCheckboxSegment(node, paint.check_start, paint.check_middle,
+        PaintCheckboxSegment(session, node, paint.check_start, paint.check_middle,
             paint.mark_width, mark)
-        PaintCheckboxSegment(node, paint.check_middle, paint.check_end,
+        PaintCheckboxSegment(session, node, paint.check_middle, paint.check_end,
             paint.mark_width, mark)
     }
     if props.label != "" {
@@ -110,28 +111,27 @@ PaintCheckboxForNode :: (node: s32, props: CheckboxProps,
             cast(float32)label_height)
         label_opacity: float32 = StyleOpacityValue(label.value.fields,
             label.value.opacity)
-        PaintClippedLabel(node, props.label, x, y, font,
+        PaintClippedLabel(session, node, props.label, x, y, font,
             ColorFromPacked(Opacity(paint.label_color,
                 label_opacity)), paint.bounds)
     }
 }
 
-# The caller owns the current value. A release routed from the previous tree
-# returns a proposed value, without a platform pointer or mutable host state.
+// The caller owns the current value. A release routed from the previous tree
+// returns a proposed value, without a platform pointer or mutable host state.
 #program_export
-Checkbox :: (props: CheckboxProps) -> CheckboxValueResult {
+Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
     previous: s32 = -1
-    if TreeIsBuilding() && key != cast(u64)0 {
-        previous = TreeFind(key, TreeCurrentParentKey(), WidgetKindCheckbox)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindCheckbox)
     }
-    clicked: bool = TreeTakeActivationAt(previous)
+    clicked: bool = TreeTakeActivationAt(session, previous)
     result: CheckboxValueResult = CheckboxValueApply(props.checked,
         clicked && !props.disabled, true)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
-        false, TreePressedAt(previous), TreeHoveredAt(previous),
+        false, TreePressedAt(session, previous), TreeHoveredAt(session, previous),
         false, result.checked)
     rules: StyleRules = ActiveStyleRules()
     box: StyleFrame = CheckboxFaceFor(rules, props,
@@ -158,25 +158,25 @@ Checkbox :: (props: CheckboxProps) -> CheckboxValueResult {
     if props.bounds.width > 0.0 { bounds.width = props.bounds.width }
     if props.bounds.height > 0.0 { bounds.height = props.bounds.height }
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindCheckbox, bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindCheckbox, bounds)
         if node < 0 { return result }
-        TreeSetInteractive(node, props.disabled, false, props.id)
-        TreeSetSelected(node, result.checked)
-        TreeSetLabel(node, props.label)
+        TreeSetInteractive(session, node, props.disabled, false, props.id)
+        TreeSetSelected(session, node, result.checked)
+        TreeSetLabel(session, node, props.label)
     }
     spec: CheckboxSpec
     spec.bounds = bounds
     spec.checked = result.checked
     spec.enabled = !props.disabled
-    spec.hovered = TreeHoveredAt(previous)
-    spec.pressed = TreePressedAt(previous)
+    spec.hovered = TreeHoveredAt(session, previous)
+    spec.pressed = TreePressedAt(session, previous)
     spec.scale = 1.0
     spec.box = box
     spec.active = active
     spec.label = label
     paint: CheckboxPaint = CheckboxPaintFor(spec)
-    PaintCheckboxForNode(node, props, paint, label, font,
+    PaintCheckboxForNode(session, node, props, paint, label, font,
         label_height)
     return result
 }

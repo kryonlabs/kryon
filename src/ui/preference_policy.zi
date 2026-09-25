@@ -19,8 +19,8 @@ ThemeDecision :: struct {
     dark: bool
 }
 
-# The host reports the system preference. Kryon chooses the effective palette
-# and returns a value for native, browser, or portable presentation.
+// The host reports the system preference. Kryon chooses the effective palette
+// and returns a value for native, browser, or portable presentation.
 #program_export
 ThemeDecisionFor :: (preference: ThemePreference) -> ThemeDecision {
     decision: ThemeDecision
@@ -58,8 +58,8 @@ OrientationDecision :: struct {
     mode: s32
 }
 
-# Capabilities are observations supplied by the host. The policy decides
-# whether to request a resize or a platform orientation change.
+// Capabilities are observations supplied by the host. The policy decides
+// whether to request a resize or a platform orientation change.
 #program_export
 OrientationDecisionFor :: (preference: OrientationPreference,
     width: s32, height: s32, can_resize: bool,

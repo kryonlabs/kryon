@@ -1,3 +1,4 @@
+#import "math"
 
 Vector2 :: struct {
     x: float32
@@ -9,6 +10,34 @@ Rectangle :: struct {
     y: float32
     width: float32
     height: float32
+}
+
+Camera :: struct {
+    offset: Vector2
+    target: Vector2
+    rotation: float32
+    zoom: float32
+}
+
+#program_export
+WorldToScreen :: (point: Vector2, camera: Camera) -> Vector2 {
+    sine: float32 = SineDegrees(camera.rotation)
+    cosine: float32 = CosineDegrees(camera.rotation)
+    x: float32 = (point.x - camera.target.x) * camera.zoom
+    y: float32 = (point.y - camera.target.y) * camera.zoom
+    return Vector2.{camera.offset.x + x * cosine - y * sine,
+                    camera.offset.y + x * sine + y * cosine}
+}
+
+#program_export
+ScreenToWorld :: (point: Vector2, camera: Camera) -> Vector2 {
+    if camera.zoom == 0.0 { return camera.target }
+    sine: float32 = SineDegrees(camera.rotation)
+    cosine: float32 = CosineDegrees(camera.rotation)
+    x: float32 = (point.x - camera.offset.x) / camera.zoom
+    y: float32 = (point.y - camera.offset.y) / camera.zoom
+    return Vector2.{camera.target.x + x * cosine + y * sine,
+                    camera.target.y - x * sine + y * cosine}
 }
 
 #program_export

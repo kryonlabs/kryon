@@ -2,7 +2,7 @@
 #import "geometry"
 host_api :: #system_library "host_api";
 
-# Text bytes are borrowed for the call; the platform owns glyph rasterization.
+// Text bytes are borrowed for the call; the platform owns glyph rasterization.
 RasterText :: (value: string, x: s32, y: s32, font: s32,
     color: Color) #foreign host_api;
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,

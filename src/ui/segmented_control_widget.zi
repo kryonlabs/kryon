@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -62,12 +63,12 @@ SegmentedControlMetricsFor :: (props: SegmentedControlProps) -> SegmentedMetrics
 }
 
 #program_export
-SegmentedControlHeight :: (props: SegmentedControlProps,
+SegmentedControlHeight :: (session: Session, props: SegmentedControlProps,
     options: []SegmentOption) -> s32 {
     metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
     if (cast(s32)options.count) <= 0 || metrics.row_height <= 0 { return 0 }
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
+    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds(session).width }
     if bounds.width <= 0.0 || !props.wrap { return metrics.row_height }
     segment: StyleFrame = SegmentedControlFaceFor(props,
         StyleKindSegment())
@@ -91,33 +92,36 @@ SegmentedControlHeight :: (props: SegmentedControlProps,
         metrics.gap)
 }
 
-# A segment is a checked Button with the Segment style kind. Option keys
-# preserve identity when caller owned options move between rows or positions.
+// A segment is a checked Button with the Segment style kind. Option keys
+// preserve identity when caller owned options move between rows or positions.
 #program_export
-SegmentedControl :: (props: SegmentedControlProps,
+SegmentedControl :: (session: Session, props: SegmentedControlProps,
     options: []SegmentOption) -> SegmentedControlResult {
     result: SegmentedControlResult
     result.node = -1
     result.clicked_index = -1
     result.selected_index = -1
     if props.has_selection { result.selected_index = props.selected_index }
-    result.height = SegmentedControlHeight(props, options)
+    result.height = SegmentedControlHeight(session, props, options)
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds().width }
+    if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds(session).width }
     if (cast(s32)options.count) <= 0 || bounds.width <= 0.0 ||
         result.height <= 0 { return result }
     bounds.height = cast(float32)result.height
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
-    if TreeIsBuilding() {
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if TreeIsBuilding(session) {
+        previous_control: s32 = TreePrevious(session,
+            TreeCurrentParent(session), key, WidgetKindSegmentedControl)
         index: s32 = 0
         while index < (cast(s32)options.count) {
             if !props.disabled && !options[index].disabled {
-                previous: s32 = TreeFind(
-                    SegmentedOptionKey(options[index], index), key,
+                previous: s32 = TreePreviousCommitted(session,
+                    previous_control,
+                    SegmentedOptionKey(options[index], index),
                     WidgetKindButton)
-                if TreeTakeActivationAt(previous) {
+                if TreeTakeActivationAt(session, previous) {
                     result.clicked_index = index
                 }
             }
@@ -129,11 +133,11 @@ SegmentedControl :: (props: SegmentedControlProps,
         props.has_selection)
     result.selected_index = selection.selected_index
     result.changed = selection.changed
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindSegmentedControl, bounds)
         if result.node < 0 { return result }
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
     segment: StyleFrame = SegmentedControlFaceFor(props,
@@ -187,7 +191,7 @@ SegmentedControl :: (props: SegmentedControlProps,
                 button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
                 button.selected = item_index == result.selected_index
                 button.disabled = props.disabled || option.disabled
-                SubmitButton(button, result.node, key)
+                SubmitButton(session, button, result.node)
                 item_x += row.button_width + metrics.gap
                 row_item += 1
             }

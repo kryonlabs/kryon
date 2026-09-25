@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "modal_props"
@@ -20,8 +27,8 @@ phase: s32;
 
 FindLabel :: (label: string) -> s32 {
     index: s32 = 0
-    while index < TreeCount() {
-        if TreeNodeAt(index).semantic_label == label {
+    while index < TreeCount(TestSession()) {
+        if TreeNodeAt(TestSession(), index).semantic_label == label {
             return index
         }
         index += 1
@@ -31,11 +38,11 @@ FindLabel :: (label: string) -> s32 {
 
 Click :: (index: s32) -> bool {
     if index < 0 { return false }
-    bounds: Rectangle = TreeNodeAt(index).bounds
+    bounds: Rectangle = TreeNodeAt(TestSession(), index).bounds
     x: float32 = bounds.x + bounds.width * 0.5
     y: float32 = bounds.y + bounds.height * 0.5
-    TreePointerUpdate(PointerFrame.{x, y, true, true, false})
-    TreePointerUpdate(PointerFrame.{x, y, false, false, true})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
     return true
 }
 
@@ -56,18 +63,18 @@ Frame :: () -> s32 {
     props.message = "Delete the selected file and every associated version?"
     props.show_close = true
     props.close_label = "Close"
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 280.0})
-    result: ActionModalResult = ActionModal(props, actions[0:3])
-    if !TreeFinish() || result.node != 1 { return -20 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 280.0})
+    result: ActionModalResult = ActionModal(TestSession(), props, actions[0:3])
+    if !TreeFinish(TestSession()) || result.node != 1 { return -20 }
     if phase != 3 && phase != 5 && (
         FindLabel("Delete the selected file and every associated version?") < 0 ||
-        TreeNodeAt(FindLabel("Delete the selected file and every associated version?")).bounds.height <= 14.0 ||
+        TreeNodeAt(TestSession(), FindLabel("Delete the selected file and every associated version?")).bounds.height <= 14.0 ||
         FindLabel("Cancel") < 0 ||
         FindLabel("Delete") < 0 ||
         FindLabel("Details") < 0 ||
         FindLabel("Close") < 0 ||
-        TreeNodeAt(FindLabel("Details")).bounds.y <=
-            TreeNodeAt(FindLabel("Cancel")).bounds.y) {
+        TreeNodeAt(TestSession(), FindLabel("Details")).bounds.y <=
+            TreeNodeAt(TestSession(), FindLabel("Cancel")).bounds.y) {
         return -20
     }
     if phase == 0 {
@@ -78,9 +85,9 @@ Frame :: () -> s32 {
             !Click(FindLabel("Details")) { return -2 }
     } else if phase == 2 {
         if result.action != 0 { return -3 }
-        TreePointerUpdate(PointerFrame.{5.0, 5.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{5.0, 5.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{5.0, 5.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{5.0, 5.0,
             false, false, true})
     } else if phase == 3 {
         if result.action != -1 { return -4 }
@@ -126,12 +133,6 @@ HOST int32_t MeasureGlyphWidth(String value, int32_t font,
     String face) { (void)face; return (int32_t)value.length * font / 2; }
 HOST int32_t MeasureGlyphLineHeight(int32_t font,
     String face) { (void)face; return font; }
-HOST String TextSlice(String source, int32_t start, int32_t length) {
-    assert(start >= 0 && length >= 0 &&
-           (size_t)start + (size_t)length <= source.length);
-    String result = {source.data + start, (size_t)length};
-    return result;
-}
 HOST int32_t ImageWidth(String path) { (void)path; return 0; }
 HOST int32_t ImageHeight(String path) { (void)path; return 0; }
 HOST void RasterImage(String path, uint32_t id, Rectangle source,
@@ -171,7 +172,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
@@ -192,11 +193,8 @@ func (modalHost) MeasureGlyphWidth(value string, font int32,
     face string) int32 { return int32(len(value)) * font / 2 }
 func (modalHost) MeasureGlyphLineHeight(font int32,
     face string) int32 { return font }
-func (modalHost) TextSlice(source string, start,
-    length int32) string { return source[start:start+length] }
 func TestActionModal(t *testing.T) {
     SetFontMetricsHost(modalHost{})
-    SetTextWidgetHost(modalHost{})
     for phase := int32(0); phase < 6; phase++ {
         if got := App_Frame(); got != phase {
             t.Fatalf("phase %d returned %d", phase, got)

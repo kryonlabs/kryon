@@ -1,0 +1,47 @@
+#import "composition_queue"
+
+#program_export
+main :: () -> s32 {
+    queue: CompositionQueueState
+    long_text: string = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaé"
+    BeginCompositionFrame(*queue)
+    if !SubmitComposition(*queue, 2, long_text, -1, -1) { return 1 }
+    slot: s32 = TakeComposition(*queue)
+    if slot != 0 || queue.pinned[slot].length != 254 ||
+        queue.pinned[slot].cursor != 0 ||
+        queue.pinned[slot].selection_length != 0 ||
+        queue.pinned[slot].text[253] != cast(u8)97 ||
+        queue.pinned[slot].text[254] != cast(u8)0 { return 2 }
+    if TakeComposition(*queue) != -1 { return 3 }
+
+    BeginCompositionFrame(*queue)
+    if SubmitComposition(*queue, 0, "", 0, 0) { return 4 }
+    index: s32 = 0
+    while index < 16 {
+        if !SubmitComposition(*queue, 1, "x", 0, 0) { return 5 }
+        index += 1
+    }
+    if SubmitComposition(*queue, 1, "x", 0, 0) { return 6 }
+    index = 0
+    while index < 16 {
+        slot = TakeComposition(*queue)
+        if slot != index || queue.pinned[slot].length != 1 ||
+            queue.pinned[slot].text[0] != cast(u8)120 { return 7 }
+        index += 1
+    }
+    if TakeComposition(*queue) != -1 { return 8 }
+
+    BeginCompositionFrame(*queue)
+    if !SubmitComposition(*queue, 1, "first", 0, 0) ||
+        !SubmitComposition(*queue, 2, "second", 0, 0) { return 9 }
+    first: s32 = TakeComposition(*queue)
+    second: s32 = TakeComposition(*queue)
+    if first != 0 || second != 1 ||
+        queue.pinned[first].length != 5 ||
+        queue.pinned[first].text[0] != cast(u8)102 ||
+        queue.pinned[first].text[4] != cast(u8)116 ||
+        queue.pinned[second].length != 6 ||
+        queue.pinned[second].text[0] != cast(u8)115 ||
+        queue.pinned[second].text[5] != cast(u8)100 { return 10 }
+    return 0
+}

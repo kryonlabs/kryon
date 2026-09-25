@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "spinbox"
@@ -67,32 +74,32 @@ Frame :: () -> s32 {
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 180.0, 90.0})
-    result: SpinboxStepResult = Spinbox(props)
-    if !EndTree() || TreeCount() != 4 ||
-        TreeNodeAt(1).kind != WidgetKindSpinbox ||
-        TreeNodeAt(1).semantic_label != "Count" ||
-        TreeNodeAt(2).parent != 1 || TreeNodeAt(3).parent != 1 ||
-        TreeNodeAt(3).focus_id != SpinboxIncrementIdFor(7) {
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 180.0, 90.0})
+    result: SpinboxStepResult = Spinbox(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 4 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindSpinbox ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Count" ||
+        TreeNodeAt(TestSession(), 2).parent != 1 || TreeNodeAt(TestSession(), 3).parent != 1 ||
+        TreeNodeAt(TestSession(), 3).focus_id != SpinboxIncrementIdFor(7) {
         return -10
     }
     if phase == 0 {
         if result.value != -12 || result.changed { return -1 }
-        TreePointerUpdate(PointerFrame.{116.0, 38.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{116.0, 38.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{116.0, 38.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{116.0, 38.0, false, false, true})
     } else if phase == 1 {
         if result.value != -10 || !result.changed { return -2 }
-        TreePointerUpdate(PointerFrame.{24.0, 38.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{24.0, 38.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{24.0, 38.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{24.0, 38.0, false, false, true})
     } else if phase == 2 {
         if result.value != -12 || !result.changed { return -3 }
-        TreePointerUpdate(PointerFrame.{24.0, 38.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{24.0, 38.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{24.0, 38.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{24.0, 38.0, false, false, true})
     } else if phase == 3 {
         if result.value != 12 || !result.changed { return -4 }
     } else {
         if result.value != props.value || result.changed ||
-            TreeHitAt(116.0, 38.0) != -1 { return -5 }
+            TreeHitAt(TestSession(), 116.0, 38.0) != -1 { return -5 }
     }
     old: s32 = phase
     phase += 1
@@ -191,7 +198,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

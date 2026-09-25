@@ -54,7 +54,7 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 -o "$output" "$input_dir/drag_drop.$extension" \
                 "$input_dir/use_drag_drop.$extension"
             if rg -q 'github.com/waozixyz/kryon' "$output"; then
@@ -68,7 +68,7 @@ GO
             GO111MODULE=off go run "$output/drag_drop.go" \
                 "$output/use_drag_drop.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" -o "$output" \
+            "$ziran" build --target=c --root "$work" -o "$output" \
                 "$input_dir/drag_drop.$extension" \
                 "$input_dir/use_drag_drop.$extension"
             cat > "$output/main.c" <<'C'
@@ -80,7 +80,7 @@ C
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" -o "$output" \
+            "$ziran" build --target=cpp --root "$work" -o "$output" \
                 "$input_dir/drag_drop.$extension" \
                 "$input_dir/use_drag_drop.$extension"
             cat > "$output/main.cpp" <<'CPP'

@@ -43,7 +43,7 @@ for input in source saved; do
     fi
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict --root "$work" \
+        "$ziran" build --target="$target" --root "$work" \
             --module-path "$module_dir" -o "$output" "$module"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'

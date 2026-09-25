@@ -74,9 +74,9 @@ current_index: s32) -> s32 {
     return -1
 }
 
-# Host stacks store these values alongside their backend state. An omitted
-# camera inherits its parent; an explicit camera replaces it and is restored
-# when the lexical scope exits.
+// Host stacks store these values alongside their backend state. An omitted
+// camera inherits its parent; an explicit camera replaces it and is restored
+// when the lexical scope exits.
 CanvasTransform :: struct {
     scale: float32
     x: float32

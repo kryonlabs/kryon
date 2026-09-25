@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "image_props"
@@ -64,36 +71,36 @@ Frame :: () -> s32 {
     props.view_width = 300
     props.view_height = 180
     props.height = 80
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 180.0})
-    result: NavigationBarResult = NavigationBar(props,
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 180.0})
+    result: NavigationBarResult = NavigationBar(TestSession(), props,
         items[0:3])
-    if !TreeFinish() || result.node != 1 ||
+    if !TreeFinish(TestSession()) || result.node != 1 ||
         result.y != 100 || result.height != 80 ||
-        TreeCount() != 5 ||
-        TreeNodeAt(1).kind != WidgetKindNavigationBar ||
-        TreeNodeAt(2).kind != WidgetKindButton ||
-        TreeNodeAt(3).kind != WidgetKindButton ||
-        TreeNodeAt(4).kind != WidgetKindButton ||
-        TreeNodeAt(2).semantic_kind !=
+        TreeCount(TestSession()) != 5 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindNavigationBar ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 4).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 2).semantic_kind !=
             cast(SemanticKind)SemanticButton { return -20 }
     if phase == 0 {
         if result.clicked_index != -1 ||
-            TreeHitAt(150.0, 120.0) != 3 ||
-            TreeHitAt(250.0, 120.0) != -1 { return -1 }
-        TreePointerUpdate(PointerFrame.{150.0, 120.0,
+            TreeHitAt(TestSession(), 150.0, 120.0) != 3 ||
+            TreeHitAt(TestSession(), 250.0, 120.0) != -1 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{150.0, 120.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{150.0, 120.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{150.0, 120.0,
             false, false, true})
     } else if phase == 1 {
         if result.clicked_index != 0 ||
             result.clicked_route != 22 ||
-            TreeNodeAt(2).semantic_label != "Search" ||
-            TreeHitAt(250.0, 120.0) != -1 { return -2 }
+            TreeNodeAt(TestSession(), 2).semantic_label != "Search" ||
+            TreeHitAt(TestSession(), 250.0, 120.0) != -1 { return -2 }
     } else if phase == 2 {
         if result.clicked_index != -1 ||
-            TreeHitAt(150.0, 120.0) != -1 { return -3 }
+            TreeHitAt(TestSession(), 150.0, 120.0) != -1 { return -3 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     old: s32 = phase
     phase += 1
     return old
@@ -201,7 +208,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

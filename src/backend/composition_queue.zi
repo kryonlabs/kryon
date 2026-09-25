@@ -1,6 +1,6 @@
-# The host owns this state while the platform supplies raw IME events.
-# Event ordering, capacity, text retention, and UTF-8 trimming are Ziran
-# behavior shared by native and bundled hosts.
+// The host owns this state while the platform supplies raw IME events.
+// Event ordering, capacity, text retention, and UTF-8 trimming are Ziran
+// behavior shared by native and bundled hosts.
 QueuedComposition :: struct {
     phase: s32
     cursor: s32

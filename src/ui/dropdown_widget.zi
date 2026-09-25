@@ -1,3 +1,4 @@
+#import "session"
 #import "button"
 #import "control_props"
 #import "drawing_props"
@@ -90,10 +91,10 @@ DropdownFaceFor :: (props: DropdownProps, role: s32,
 }
 
 #program_export
-DropdownKey :: (props: DropdownProps) -> u64 {
+DropdownKey :: (session: Session, props: DropdownProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -131,7 +132,7 @@ DropdownThumbBounds :: (track: Rectangle, viewport: float32,
 }
 
 #program_export
-DropdownPaintImage :: (node: s32, image: ImageProps,
+DropdownPaintImage :: (session: Session, node: s32, image: ImageProps,
     bounds: Rectangle, clip: Rectangle) {
     if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
     image.bounds = bounds
@@ -139,23 +140,23 @@ DropdownPaintImage :: (node: s32, image: ImageProps,
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
         Color.{255, 255, 255, 255})
     if plan.draw {
-        PaintImage(node, image.asset_path, image.texture.id,
+        PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, clip, image.origin,
             image.rotation, 0.0, plan.tint)
     }
 }
 
 #program_export
-DropdownPaintTrigger :: (node: s32, bounds: Rectangle,
+DropdownPaintTrigger :: (session: Session, node: s32, bounds: Rectangle,
     props: DropdownProps, options: []DropdownOption,
     face: StyleFrame, selected_index: s32,
     open: bool) {
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
-    PaintRoundedFill(node, bounds, face.value.radius, 12,
+    PaintRoundedFill(session, node, bounds, face.value.radius, 12,
         ColorFromPacked(Opacity(face.value.background, opacity)))
     if face.value.border_width > 0.0 {
-        PaintRoundedOutline(node, bounds, face.value.radius, 12,
+        PaintRoundedOutline(session, node, bounds, face.value.radius, 12,
             face.value.border_width,
             ColorFromPacked(Opacity(face.value.border, opacity)))
     }
@@ -176,7 +177,7 @@ DropdownPaintTrigger :: (node: s32, bounds: Rectangle,
     color: Color = ColorFromPacked(Opacity(face.value.foreground,
         opacity))
     if has_image {
-        DropdownPaintImage(node, options[index].image,
+        DropdownPaintImage(session, node, options[index].image,
             content.icon_bounds, bounds)
     }
     if label != "" {
@@ -186,23 +187,23 @@ DropdownPaintTrigger :: (node: s32, bounds: Rectangle,
         height: s32 = GlyphLineHeight(font, face.value.typeface)
         y: s32 = cast(s32)(bounds.y +
             (bounds.height - cast(float32)height) * 0.5)
-        PaintClippedLabel(node, label,
+        PaintClippedLabel(session, node, label,
             cast(s32)content.text_bounds.x, y, font, color,
             content.clip_bounds)
     }
     indicator: DropdownIndicator = DropdownIndicatorFor(
         content.indicator_center_x, content.indicator_center_y,
         metrics.indicator_size, open)
-    PaintLine(node, Rectangle.{cast(float32)indicator.x1,
+    PaintLine(session, node, Rectangle.{cast(float32)indicator.x1,
         cast(float32)indicator.y1, cast(float32)(indicator.x2 - indicator.x1),
         cast(float32)(indicator.y2 - indicator.y1)}, color)
-    PaintLine(node, Rectangle.{cast(float32)indicator.x3,
+    PaintLine(session, node, Rectangle.{cast(float32)indicator.x3,
         cast(float32)indicator.y3, cast(float32)(indicator.x4 - indicator.x3),
         cast(float32)(indicator.y4 - indicator.y3)}, color)
 }
 
 #program_export
-DropdownPaintRow :: (node: s32, props: DropdownProps,
+DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     option: DropdownOption, row: Rectangle, visible: Rectangle,
     selected: bool, highlighted: bool, metrics: DropdownMenuMetrics,
     face: StyleFrame) {
@@ -218,7 +219,7 @@ DropdownPaintRow :: (node: s32, props: DropdownProps,
         highlight.height -= cast(float32)(metrics.highlight_inset_y * 2)
         highlight = RectangleIntersection(highlight, visible)
         if highlight.width > 0.0 && highlight.height > 0.0 {
-            PaintRoundedFill(node, highlight, face.value.radius, 8,
+            PaintRoundedFill(session, node, highlight, face.value.radius, 8,
                 ColorFromPacked(Opacity(face.value.background, opacity)))
         }
     }
@@ -229,11 +230,11 @@ DropdownPaintRow :: (node: s32, props: DropdownProps,
         row, visible, content, metrics, has_image)
     if option.separator_before {
         separator: Rectangle = layout.separator_bounds
-        PaintLine(node, separator,
+        PaintLine(session, node, separator,
             ColorFromPacked(Opacity(face.value.foreground, 0.18)))
     }
     if has_image {
-        DropdownPaintImage(node, option.image,
+        DropdownPaintImage(session, node, option.image,
             layout.icon_bounds, visible)
     }
     if option.label != "" {
@@ -243,27 +244,27 @@ DropdownPaintRow :: (node: s32, props: DropdownProps,
         height: s32 = GlyphLineHeight(font, face.value.typeface)
         y: s32 = cast(s32)(row.y +
             (row.height - cast(float32)height) * 0.5)
-        PaintClippedLabel(node, option.label,
+        PaintClippedLabel(session, node, option.label,
             cast(s32)layout.text_bounds.x, y, font, color,
             layout.clip_bounds)
     }
     if selected {
         check: Rectangle = layout.check_bounds
-        PaintLine(node, Rectangle.{check.x, check.y +
+        PaintLine(session, node, Rectangle.{check.x, check.y +
             check.height * 0.55, check.width * 0.4,
             check.height * 0.3}, color)
-        PaintLine(node, Rectangle.{check.x + check.width * 0.4,
+        PaintLine(session, node, Rectangle.{check.x + check.width * 0.4,
             check.y + check.height * 0.85,
             check.width * 0.6, -check.height * 0.7}, color)
     }
 }
 
-# The caller retains the returned open, selection, highlight, and scroll
-# values. Keyboard and wheel samples are ordinary props; pointer ownership
-# comes from the retained tree. Call Dropdown after earlier page controls so
-# the menu is submitted above them in hit and paint order.
+// The caller retains the returned open, selection, highlight, and scroll
+// values. Keyboard and wheel samples are ordinary props; pointer ownership
+// comes from the retained tree. Call Dropdown after earlier page controls so
+// the menu is submitted above them in hit and paint order.
 #program_export
-Dropdown :: (props: DropdownProps,
+Dropdown :: (session: Session, props: DropdownProps,
     options: []DropdownOption) -> DropdownResult {
     result: DropdownResult
     result.node = -1
@@ -273,13 +274,18 @@ Dropdown :: (props: DropdownProps,
     result.open = props.open
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
-    key: u64 = DropdownKey(props)
+    key: u64 = DropdownKey(session, props)
     previous: s32 = -1
-    if TreeIsBuilding() {
-        previous = TreeFind(key, TreeCurrentParentKey(),
-            WidgetKindDropdown)
+    previous_overlay: s32 = -1
+    previous_panel: s32 = -1
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindDropdown)
+        previous_overlay = TreePrevious(session, TreeCurrentParent(session),
+            DropdownOverlayKey(key), WidgetKindModal)
+        previous_panel = TreePreviousCommitted(session, previous_overlay,
+            OverlayPanelKey(), WidgetKindCustom)
     }
-    activated: bool = TreeTakeActivationAt(previous)
+    activated: bool = TreeTakeActivationAt(session, previous)
     decision: DropdownOpenDecision = DropdownOpenDecisionFor(
         props.open, props.disabled, (cast(s32)options.count),
         props.focused, true, activated,
@@ -291,10 +297,10 @@ Dropdown :: (props: DropdownProps,
         result.highlight_index = props.selected_index
         result.scroll_offset = 0
     }
-    if result.open && TreeIsBuilding() {
-        scrim: s32 = TreeFind(OverlayScrimKey(),
-            DropdownOverlayKey(key), WidgetKindButton)
-        release: PointerDrag = TreeTakeDragAt(scrim)
+    if result.open && TreeIsBuilding(session) {
+        scrim: s32 = TreePreviousCommitted(session, previous_overlay,
+            OverlayScrimKey(), WidgetKindButton)
+        release: PointerDrag = TreeTakeDragAt(session, scrim)
         if release.ended {
             panel_face: StyleFrame = DropdownFaceFor(props,
                 DropdownPanelRole(), cast(s32)ButtonStateNormal,
@@ -302,7 +308,7 @@ Dropdown :: (props: DropdownProps,
             scale: float32 = props.scale
             if scale <= 0.0 { scale = 1.0 }
             panel_bounds: Rectangle = PopupBounds(bounds,
-                TreeRootBounds(), (cast(s32)options.count), scale, panel_face)
+                TreeRootBounds(session), (cast(s32)options.count), scale, panel_face)
             dismissal: DismissibleOverlayPolicy =
                 DismissibleOverlayPolicyFor(true, false, false,
                     PointInBounds(release.x, release.y, panel_bounds))
@@ -342,10 +348,11 @@ Dropdown :: (props: DropdownProps,
                 option_index: s32 = 0
                 while option_index < (cast(s32)options.count) {
                     if !options[option_index].disabled {
-                        old: s32 = TreeFind(DropdownOptionKey(key,
-                            options[option_index], option_index),
-                            OverlayPanelKey(), WidgetKindSelectable)
-                        if TreeTakeActivationAt(old) {
+                        old: s32 = TreePreviousCommitted(session,
+                            previous_panel, DropdownOptionKey(key,
+                                options[option_index], option_index),
+                            WidgetKindSelectable)
+                        if TreeTakeActivationAt(session, old) {
                             result.changed = result.selected_index !=
                                 option_index
                             result.selected_index = option_index
@@ -363,29 +370,29 @@ Dropdown :: (props: DropdownProps,
     state: s32 = cast(s32)ButtonStateNormal
     if props.disabled { state = cast(s32)ButtonStateDisabled }
     if result.open { state = cast(s32)ButtonStateSelected }
-    if TreePressedAt(previous) { state = cast(s32)ButtonStatePressed }
-    if TreeHoveredAt(previous) && !props.disabled && !result.open {
+    if TreePressedAt(session, previous) { state = cast(s32)ButtonStatePressed }
+    if TreeHoveredAt(session, previous) && !props.disabled && !result.open {
         state = cast(s32)ButtonStateHover
     }
     face: StyleFrame = DropdownFaceFor(props, 0, state, result.open)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindDropdown,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindDropdown,
             bounds)
         if result.node < 0 { return result }
-        TreeSetInteractive(result.node, props.disabled, false,
+        TreeSetInteractive(session, result.node, props.disabled, false,
             props.id)
-        TreeSetSemantic(result.node,
+        TreeSetSemantic(session, result.node,
             cast(SemanticKind)SemanticComboBox, 0)
-        TreeSetSelected(result.node, result.open)
+        TreeSetSelected(session, result.node, result.open)
         label: string = props.placeholder
         if result.selected_index >= 0 &&
             result.selected_index < (cast(s32)options.count) {
             label = options[result.selected_index].label
         }
-        TreeSetLabel(result.node, label)
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        TreeSetLabel(session, result.node, label)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
-    DropdownPaintTrigger(result.node, bounds, props, options,
+    DropdownPaintTrigger(session, result.node, bounds, props, options,
         face, result.selected_index, result.open)
     if !result.open { return result }
 
@@ -397,7 +404,7 @@ Dropdown :: (props: DropdownProps,
         DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
-    menu: Rectangle = PopupBounds(bounds, TreeRootBounds(),
+    menu: Rectangle = PopupBounds(bounds, TreeRootBounds(session),
         (cast(s32)options.count), scale, panel)
     if menu.width <= 0.0 || menu.height <= 0.0 {
         result.open = false
@@ -422,10 +429,10 @@ Dropdown :: (props: DropdownProps,
     thumb: Rectangle = DropdownThumbBounds(track, menu.height,
         layout.content_height, result.scroll_offset,
         layout.max_scroll)
-    if layout.max_scroll > 0 && TreeIsBuilding() {
-        old_thumb: s32 = TreeFind(DropdownScrollbarKey(key),
-            OverlayPanelKey(), WidgetKindSlider)
-        drag: PointerDrag = TreeTakeDragAt(old_thumb)
+    if layout.max_scroll > 0 && TreeIsBuilding(session) {
+        old_thumb: s32 = TreePreviousCommitted(session, previous_panel,
+            DropdownScrollbarKey(key), WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(session, old_thumb)
         travel: float32 = track.height - thumb.height
         if (drag.active || drag.ended) && travel > 0.0 {
             top: float32 = drag.y - drag.grab_y - track.y
@@ -442,7 +449,7 @@ Dropdown :: (props: DropdownProps,
     overlay_props.key = DropdownOverlayKey(key)
     overlay_props.bounds = menu
     overlay: DismissibleOverlayResult =
-        DismissibleOverlay(overlay_props)
+        DismissibleOverlay(session, overlay_props)
     if overlay.closed {
         result.open = false
         result.closed = true
@@ -452,16 +459,16 @@ Dropdown :: (props: DropdownProps,
     if panel_node < 0 { return result }
     panel_opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
-    PaintRoundedFill(panel_node, menu, panel.value.radius, 12,
+    PaintRoundedFill(session, panel_node, menu, panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background,
             panel_opacity)))
     if panel.value.border_width > 0.0 {
-        PaintRoundedOutline(panel_node, menu, panel.value.radius, 12,
+        PaintRoundedOutline(session, panel_node, menu, panel.value.radius, 12,
             panel.value.border_width,
             ColorFromPacked(Opacity(panel.value.border,
                 panel_opacity)))
     }
-    if !TreePushScope(panel_node) { return result }
+    if !TreePushScope(session, panel_node) { return result }
     rows: VisibleRows = Rows((cast(s32)options.count), result.scroll_offset,
         layout.content_bounds.height, cast(float32)row_height)
     index: s32 = rows.first
@@ -477,20 +484,21 @@ Dropdown :: (props: DropdownProps,
             row: Rectangle = Rectangle.{menu.x,
                 cast(float32)paint.option_y,
                 cast(float32)layout.option_width, cast(float32)row_height}
-            item_node: s32 = TreeSubmitCurrent(
+            item_node: s32 = TreeSubmitCurrent(session,
                 DropdownOptionKey(key, item, index),
                 WidgetKindSelectable, visible)
             if item_node >= 0 {
-                TreeSetInteractive(item_node, item.disabled,
+                TreeSetInteractive(session, item_node, item.disabled,
                     false, 0)
-                TreeSetSemantic(item_node,
+                TreeSetSemantic(session, item_node,
                     cast(SemanticKind)SemanticOption, 0)
-                TreeSetLabel(item_node, item.label)
-                TreeSetSelected(item_node,
+                TreeSetLabel(session, item_node, item.label)
+                TreeSetSelected(session, item_node,
                     result.selected_index == index)
-                hovered: bool = TreeHoveredAt(TreeFind(
-                    DropdownOptionKey(key, item, index),
-                    OverlayPanelKey(), WidgetKindSelectable))
+                hovered: bool = TreeHoveredAt(session,
+                    TreePrevious(session, panel_node,
+                        DropdownOptionKey(key, item, index),
+                        WidgetKindSelectable))
                 row_state: s32 = cast(s32)ButtonStateNormal
                 if item.disabled {
                     row_state = cast(s32)ButtonStateDisabled
@@ -500,7 +508,7 @@ Dropdown :: (props: DropdownProps,
                 face = DropdownFaceFor(props,
                     DropdownOptionRole(), row_state,
                     result.selected_index == index)
-                DropdownPaintRow(item_node, props, item, row,
+                DropdownPaintRow(session, item_node, props, item, row,
                     visible, result.selected_index == index,
                     hovered || result.highlight_index == index,
                     metrics, face)
@@ -509,15 +517,15 @@ Dropdown :: (props: DropdownProps,
         index += 1
     }
     if layout.max_scroll > 0 && thumb.height > 0.0 {
-        scrollbar_node: s32 = TreeSubmitCurrent(
+        scrollbar_node: s32 = TreeSubmitCurrent(session,
             DropdownScrollbarKey(key), WidgetKindSlider, thumb)
         if scrollbar_node >= 0 {
-            TreeSetInteractive(scrollbar_node, false, false, 0)
-            PaintRoundedFill(scrollbar_node, track,
+            TreeSetInteractive(session, scrollbar_node, false, false, 0)
+            PaintRoundedFill(session, scrollbar_node, track,
                 scrollbar_face.value.radius, 8,
                 ColorFromPacked(Opacity(cast(u32)0xe5e7ebff,
                     panel_opacity)))
-            PaintRoundedFill(scrollbar_node, thumb,
+            PaintRoundedFill(session, scrollbar_node, thumb,
                 scrollbar_face.value.radius, 8,
                 ColorFromPacked(Opacity(
                     scrollbar_face.value.background,
@@ -525,6 +533,6 @@ Dropdown :: (props: DropdownProps,
                         scrollbar_face.value.opacity))))
         }
     }
-    End()
+    End(session)
     return result
 }

@@ -206,8 +206,8 @@ SwipeInside :: (bounds: Rectangle, point: Vector2) -> bool {
         point.y <= bounds.y + bounds.height
 }
 
-# The host supplies pointer observations and applies the returned ownership
-# effects. The caller stores result.gesture for the next frame.
+// The host supplies pointer observations and applies the returned ownership
+// effects. The caller stores result.gesture for the next frame.
 #program_export
 Swipe :: (spec: SwipeSpec, gesture: SwipeGesture,
     frame: SwipeFrame) -> SwipeResult {

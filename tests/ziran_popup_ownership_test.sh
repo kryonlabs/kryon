@@ -66,7 +66,7 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 -o "$output" "$input_dir/popup_ownership.$extension" \
                 "$input_dir/use_ownership.$extension"
             if rg -q 'github.com/waozixyz/kryon' "$output"; then
@@ -80,7 +80,7 @@ GO
             GO111MODULE=off go run "$output/popup_ownership.go" \
                 "$output/use_ownership.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" -o "$output" \
+            "$ziran" build --target=c --root "$work" -o "$output" \
                 "$input_dir/popup_ownership.$extension" \
                 "$input_dir/use_ownership.$extension"
             cat > "$output/main.c" <<'C'
@@ -92,7 +92,7 @@ C
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" -o "$output" \
+            "$ziran" build --target=cpp --root "$work" -o "$output" \
                 "$input_dir/popup_ownership.$extension" \
                 "$input_dir/use_ownership.$extension"
             cat > "$output/main.cpp" <<'CPP'

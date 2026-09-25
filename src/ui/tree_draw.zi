@@ -1,32 +1,48 @@
 #import "geometry"
 #import "paint_queue"
+#import "session"
 #import "tree"
+#import "tree_input"
 
-# Committing and painting are one frame boundary. Raster effects are emitted
-# only after the submitted tree is accepted.
+// A frame commits its tree before any queued raster effects are emitted.
 #program_export
-BeginTree :: (screen_key: u64, bounds: Rectangle) {
-    PaintClear()
-    TreeStart(screen_key, bounds)
+BeginFrame :: (session: Session, screen_key: u64,
+    bounds: Rectangle) -> FrameStatus {
+    if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    PaintClear(session)
+    TreeStart(session, screen_key, bounds)
+    return TreeFrameStatus(session)
 }
 
 #program_export
-CommitTree :: () -> bool {
-    if PaintOverflow() {
-        TreeCancel()
-        PaintClear()
-        return false
+CommitFrame :: (session: Session) -> FrameStatus {
+    if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    if PaintOverflow(session) {
+        TreeCancel(session)
+        PaintClear(session)
+        return cast(FrameStatus)FramePaintOverflow
     }
-    if !TreeFinish() {
-        PaintClear()
-        return false
+    if !TreeFinish(session) {
+        status: FrameStatus = TreeFrameStatus(session)
+        PaintClear(session)
+        return status
     }
-    return true
+    return cast(FrameStatus)FrameOk
 }
 
 #program_export
-EndTree :: () -> bool {
-    if !CommitTree() { return false }
-    PaintFlush()
-    return true
+EndFrame :: (session: Session) -> FrameStatus {
+    status: FrameStatus = CommitFrame(session)
+    if status != cast(FrameStatus)FrameOk { return status }
+    PaintFlush(session)
+    return cast(FrameStatus)FrameOk
+}
+
+#program_export
+CloseSession :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    TreeDispose(session)
+    PaintDispose(session)
+    TreeInputReset(session)
+    return SessionClose(session)
 }

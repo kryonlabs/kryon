@@ -1,6 +1,6 @@
 #import "widget_kind"
 
-# The shape is a UI decision. The platform only applies the selected shape.
+// The shape is a UI decision. The platform only applies the selected shape.
 CursorShape :: enum {
     CursorDefault :: 0
     CursorArrow :: 1

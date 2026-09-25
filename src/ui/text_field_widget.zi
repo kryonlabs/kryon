@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -15,10 +16,10 @@
 #import "widget_kind"
 
 #program_export
-TextFieldKey :: (props: TextFieldProps) -> u64 {
+TextFieldKey :: (session: Session, props: TextFieldProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.focus_id > 0 { return cast(u64)cast(u32)props.focus_id }
-    return TreeNextKey()
+    return cast(u64)0
 }
 
 #program_export
@@ -199,10 +200,10 @@ TextFieldEditFor :: (props: TextFieldProps,
     return edit
 }
 
-# The caller supplies current text and raw input samples. Kryon returns the
-# replacement range and next selection; the caller owns text storage.
+// The caller supplies current text and raw input samples. Kryon returns the
+// replacement range and next selection; the caller owns text storage.
 #program_export
-TextField :: (props: TextFieldProps) -> TextFieldResult {
+TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
     result: TextFieldResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
@@ -214,14 +215,13 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     result.composition = props.composition
     if props.bounds.width <= 0.0 ||
         props.bounds.height <= 0.0 { return result }
-    key: u64 = TextFieldKey(props)
+    key: u64 = TextFieldKey(session, props)
     previous: s32 = -1
-    if TreeIsBuilding() {
-        previous = TreeFind(key, TreeCurrentParentKey(),
-            WidgetKindTextField)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextField)
     }
-    activated: bool = TreeTakeActivationAt(previous)
-    drag: PointerDrag = TreeTakeDragAt(previous)
+    activated: bool = TreeTakeActivationAt(session, previous)
+    drag: PointerDrag = TreeTakeDragAt(session, previous)
     if props.disabled || props.input.blur { result.focused = false }
     if !props.disabled && props.input.focus { result.focused = true }
     face: StyleFrame = TextFieldFaceFor(props, result.focused)
@@ -450,26 +450,26 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     bounds: Rectangle = props.bounds
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindTextField, bounds)
         if result.node < 0 { return result }
-        TreeSetInteractive(result.node, props.disabled,
+        TreeSetInteractive(session, result.node, props.disabled,
             false, props.focus_id)
-        TreeSetSemantic(result.node,
+        TreeSetSemantic(session, result.node,
             cast(SemanticKind)SemanticTextField, 0)
-        TreeSetLabel(result.node, props.label)
-        TreeSetSelected(result.node, result.focused)
-        bounds = TreeSubmittedNodeAt(result.node).bounds
+        TreeSetLabel(session, result.node, props.label)
+        TreeSetSelected(session, result.node, result.focused)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
-    PaintRoundedFill(result.node, bounds,
+    PaintRoundedFill(session, result.node, bounds,
         face.value.radius, 12,
         ColorFromPacked(Opacity(face.value.background,
             opacity)))
     border: u32 = face.value.border
     if result.focused { border = face.value.focus }
     if face.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, bounds,
+        PaintRoundedOutline(session, result.node, bounds,
             face.value.radius, 12,
             face.value.border_width,
             ColorFromPacked(Opacity(border, opacity)))
@@ -519,7 +519,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
         if left < clip_left { left = clip_left }
         if right > clip_right { right = clip_right }
         if right > left {
-            PaintRoundedFill(result.node,
+            PaintRoundedFill(session, result.node,
                 Rectangle.{cast(float32)left, cast(float32)text_y,
                     cast(float32)(right - left), cast(float32)line_height},
                 0.0, 1,
@@ -530,14 +530,14 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
     if composing {
         foreground = face.value.foreground
         if composition_prefix != "" {
-            PaintClippedLabel(result.node,
+            PaintClippedLabel(session, result.node,
                 composition_prefix, paint.text_x,
                 text_y, font,
                 ColorFromPacked(Opacity(foreground,
                     opacity)), paint.clip_bounds)
         }
         if result.composition.text != "" {
-            PaintClippedLabel(result.node,
+            PaintClippedLabel(session, result.node,
                 result.composition.text,
                 paint.text_x + prefix_width,
                 text_y, font,
@@ -545,7 +545,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
                     opacity)), paint.clip_bounds)
         }
         if composition_suffix != "" {
-            PaintClippedLabel(result.node,
+            PaintClippedLabel(session, result.node,
                 composition_suffix,
                 paint.text_x + prefix_width +
                     preedit_width,
@@ -564,13 +564,13 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
                 cast(float32)stroke}, paint.clip_bounds)
         if underline.width > 0.0 &&
             underline.height > 0.0 {
-            PaintRoundedFill(result.node, underline,
+            PaintRoundedFill(session, result.node, underline,
                 0.0, 1,
                 ColorFromPacked(Opacity(face.value.focus,
                     opacity)))
         }
     } else if value_to_paint != "" {
-        PaintClippedLabel(result.node, value_to_paint,
+        PaintClippedLabel(session, result.node, value_to_paint,
             paint.text_x, text_y, font,
             ColorFromPacked(Opacity(foreground, opacity)),
             paint.clip_bounds)
@@ -580,7 +580,7 @@ TextField :: (props: TextFieldProps) -> TextFieldResult {
         if x >= cast(s32)paint.clip_bounds.x &&
             x <= cast(s32)(paint.clip_bounds.x +
                 paint.clip_bounds.width) {
-            PaintLine(result.node,
+            PaintLine(session, result.node,
                 Rectangle.{cast(float32)x, cast(float32)paint.cursor_y,
                     0.0, cast(float32)paint.cursor_height},
                 ColorFromPacked(Opacity(face.value.foreground,

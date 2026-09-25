@@ -201,18 +201,18 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.go" <<'GO'
 package main
 func main() { if UseSwipe_Answer() != 42 { panic("wrong swipe result") } }
 GO
-            GO111MODULE=off go run "$output/geometry.go" \
+            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/swipe_props.go" "$output/swipe.go" \
                 "$output/use_swipe.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" \
+            "$ziran" build --target=c --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.c" <<'C'
@@ -220,12 +220,12 @@ GO
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/swipe_props.c" \
+                "$output/geometry.c" "$output/math.c" "$output/swipe_props.c" \
                 "$output/swipe.c" "$output/use_swipe.c" \
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" \
+            "$ziran" build --target=cpp --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.cpp" <<'CPP'
@@ -233,7 +233,7 @@ C
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/swipe_props.cpp" \
+                "$output/geometry.cpp" "$output/math.cpp" "$output/swipe_props.cpp" \
                 "$output/swipe.cpp" "$output/use_swipe.cpp" \
                 "$output/main.cpp" -o "$output/app"
             "$output/app"

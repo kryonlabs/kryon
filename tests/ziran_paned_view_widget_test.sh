@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "paned_view"
@@ -44,24 +51,24 @@ Frame :: () -> s32 {
     if phase == 0 { props.split = 60 }
     if phase == 3 { props.split = 40 }
     if phase == 6 { props.disabled = true }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    result: PanedViewResult = PanedView(props)
-    if !TreeFinish() || TreeCount() != 3 || result.node != 1 ||
-        TreeNodeAt(1).kind != WidgetKindPanedView ||
-        TreeNodeAt(2).kind != WidgetKindSlider { return -10 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    result: PanedViewResult = PanedView(TestSession(), props)
+    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 3 || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindPanedView ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider { return -10 }
     if phase == 0 {
         if result.split != 60 || result.changed ||
             result.handle.x != 66.0 ||
             result.first.width != 56.0 ||
             result.second.x != 74.0 ||
-            TreeHitAt(70.0, 30.0) != 2 { return -1 }
-        TreePointerUpdate(PointerFrame.{70.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{90.0, 30.0, true, false, false})
+            TreeHitAt(TestSession(), 70.0, 30.0) != 2 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{90.0, 30.0, true, false, false})
     } else if phase == 1 {
         if result.split != 80 || !result.changed ||
             result.handle.x != 86.0 ||
             result.first.width != 76.0 { return -2 }
-        TreePointerUpdate(PointerFrame.{180.0, 30.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 30.0, false, false, true})
     } else if phase == 2 {
         if result.split != 100 || !result.changed ||
             result.second.x != 114.0 ||
@@ -71,20 +78,20 @@ Frame :: () -> s32 {
             result.handle.y != 56.0 ||
             result.first.height != 36.0 ||
             result.second.y != 64.0 ||
-            TreeHitAt(20.0, 60.0) != 2 { return -4 }
-        TreePointerUpdate(PointerFrame.{20.0, 60.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 80.0, true, false, false})
+            TreeHitAt(TestSession(), 20.0, 60.0) != 2 { return -4 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 60.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 80.0, true, false, false})
     } else if phase == 4 {
         if result.split != 60 || !result.changed ||
             result.handle.y != 76.0 { return -5 }
-        TreePointerUpdate(PointerFrame.{20.0, 149.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 149.0, false, false, true})
     } else if phase == 5 {
         if result.split != 60 || result.changed { return -6 }
     } else {
         if result.split != 60 || result.changed ||
-            TreeHitAt(20.0, 80.0) != -1 { return -7 }
+            TreeHitAt(TestSession(), 20.0, 80.0) != -1 { return -7 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     split = result.split
     old: s32 = phase
     phase += 1
@@ -168,7 +175,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

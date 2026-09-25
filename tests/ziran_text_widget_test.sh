@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "style"
@@ -24,8 +31,8 @@ phase: s32;
 #program_export
 Frame :: () -> s32 {
     if phase == 1 {
-        if !EndTree() || TreeCount() != 2 { return -1 }
-        node: TreeEntry = TreeNodeAt(1)
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 { return -1 }
+        node: TreeEntry = TreeNodeAt(TestSession(), 1)
         if node.kind != WidgetKindText || node.key != cast(u64)7 ||
             node.bounds.width != 50.0 || node.bounds.height != 24.0 ||
             node.semantic_label != "Alpha beta\nGamma" { return -2 }
@@ -53,8 +60,8 @@ Frame :: () -> s32 {
     props.wrap = cast(TextWrap)TextWrapAuto
     props.align = cast(TextAlign)TextAlignCenter
     props.strikethrough = true
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Text(props)
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Text(TestSession(), props)
     phase = 1
     return 0
 }

@@ -1,0 +1,119 @@
+#import "font_metrics"
+#import "text_align"
+#import "text_props"
+
+TextLinePlan :: struct {
+    start: s32
+    end: s32
+    next: s32
+    width: s32
+}
+
+TextToken :: struct {
+    start: s32
+    end: s32
+    next: s32
+    valid: bool
+    line_break: bool
+    icon: bool
+}
+
+TextIsSpace :: (value: u8) -> bool {
+    return value == cast(u8)32 || value == cast(u8)9 ||
+    value == cast(u8)11 || value == cast(u8)12
+}
+
+// Whitespace and line breaks delimit borrowed UTF-8 byte ranges. Optional
+// inline icon markers are used by richer text layouts.
+#program_export
+TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
+    token: TextToken
+    if offset < 0 { offset = 0 }
+    while offset < cast(s32)value.count && TextIsSpace(value[offset]) {
+        offset += 1
+    }
+    token.start = offset
+    token.end = offset
+    token.next = offset
+    if offset >= cast(s32)value.count { return token }
+    token.valid = true
+    current: u8 = value[offset]
+    if current == cast(u8)10 || current == cast(u8)13 {
+        token.line_break = true
+        offset += 1
+        if current == cast(u8)13 && offset < cast(s32)value.count &&
+            value[offset] == cast(u8)10 { offset += 1 }
+    } else if icons && current == cast(u8)37 &&
+        offset + 1 < cast(s32)value.count && value[offset + 1] == cast(u8)105 {
+        token.icon = true
+        offset += 2
+    } else {
+        while offset < cast(s32)value.count {
+            current = value[offset]
+            if TextIsSpace(current) || current == cast(u8)10 ||
+                current == cast(u8)13 { break }
+            if icons && current == cast(u8)37 &&
+                offset + 1 < cast(s32)value.count &&
+                value[offset + 1] == cast(u8)105 { break }
+            offset += 1
+        }
+    }
+    token.end = offset
+    token.next = offset
+    return token
+}
+
+// A word wider than the available width stays intact on its own line.
+#program_export
+NextTextLine :: (value: string, start: s32, max_width: float32,
+    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
+    line: TextLinePlan
+    line.start = start
+    line.end = start
+    line.next = cast(s32)value.count + 1
+    if start >= cast(s32)value.count { return line }
+    offset: s32 = start
+    while offset < cast(s32)value.count {
+        token: TextToken = TextTokenNext(value, offset, false)
+        if !token.valid { break }
+        if token.line_break {
+            line.next = token.next
+            return line
+        }
+        candidate: string = value[line.start:token.end]
+        width: s32 = GlyphWidth(candidate, font, typeface)
+        if wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0 &&
+            line.end > line.start && cast(float32)width > max_width {
+            line.next = token.start
+            return line
+        }
+        line.end = token.end
+        line.width = width
+        offset = token.next
+    }
+    return line
+}
+
+#program_export
+TextDefaultLineGap :: (scale: float32) -> s32 {
+    if scale <= 0.0 { scale = 1.0 }
+    return cast(s32)(4.0 * scale)
+}
+
+#program_export
+TextLayoutTotalHeight :: (line_count: s32, drawn_line_height: s32,
+    line_gap: s32) -> s32 {
+    if line_count <= 0 { return 0 }
+    height: s32 = line_count * drawn_line_height
+    if line_count > 1 { height += (line_count - 1) * line_gap }
+    if height < 0 { return 0 }
+    return height
+}
+
+#program_export
+TextLineXFor :: (x: s32, width: s32, line_width: s32, align: s32) -> s32 {
+    spare: s32 = width - line_width
+    if align == TextAlignCenter { return x + spare / 2 }
+    if align == TextAlignEnd { return x + spare }
+    return x
+}

@@ -7,6 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "grid"
 #import "grid_props"
@@ -17,37 +24,37 @@ cat > "$work/app.zi" <<'ZI'
 
 AutoAnswer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 100.0, 80.0}
-    TreeStart(cast(u64)101, root)
+    TreeStart(TestSession(), cast(u64)101, root)
     props: ColumnProps
     props.key = cast(u64)102
     props.bounds = root
     props.gap = 3
     props.padding = 5
-    column: LayoutContainer = Column(props)
+    column: LayoutContainer = Column(TestSession(), props)
     child: Rectangle = Rectangle.{0.0, 0.0, 10.0, 12.0}
-    first: s32 = TreeSubmitCurrent(cast(u64)103, WidgetKindText, child)
-    second: s32 = TreeSubmitCurrent(cast(u64)104, WidgetKindText, child)
-    if !column.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
-        TreeSubmittedNodeAt(first).bounds.y != 5.0 ||
-        TreeSubmittedNodeAt(second).bounds.y != 20.0 || !End() {
+    first: s32 = TreeSubmitCurrent(TestSession(), cast(u64)103, WidgetKindText, child)
+    second: s32 = TreeSubmitCurrent(TestSession(), cast(u64)104, WidgetKindText, child)
+    if !column.opened || TreeSubmittedNodeAt(TestSession(), first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(TestSession(), first).bounds.y != 5.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.y != 20.0 || !End(TestSession()) {
         return -20
     }
     props.key = cast(u64)105
-    row: LayoutContainer = Row(props)
-    first = TreeSubmitCurrent(cast(u64)106, WidgetKindText, child)
-    second = TreeSubmitCurrent(cast(u64)107, WidgetKindText, child)
-    if !row.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
-        TreeSubmittedNodeAt(second).bounds.x != 18.0 ||
-        TreeSubmittedNodeAt(second).bounds.y != 5.0 || !End() {
+    row: LayoutContainer = Row(TestSession(), props)
+    first = TreeSubmitCurrent(TestSession(), cast(u64)106, WidgetKindText, child)
+    second = TreeSubmitCurrent(TestSession(), cast(u64)107, WidgetKindText, child)
+    if !row.opened || TreeSubmittedNodeAt(TestSession(), first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.x != 18.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.y != 5.0 || !End(TestSession()) {
         return -21
     }
     props.key = cast(u64)108
-    stack: LayoutContainer = Stack(props)
-    first = TreeSubmitCurrent(cast(u64)109, WidgetKindText, child)
-    second = TreeSubmitCurrent(cast(u64)110, WidgetKindText, child)
-    if !stack.opened || TreeSubmittedNodeAt(first).bounds.x != 5.0 ||
-        TreeSubmittedNodeAt(second).bounds.x != 5.0 ||
-        TreeSubmittedNodeAt(second).bounds.y != 5.0 || !End() {
+    stack: LayoutContainer = Stack(TestSession(), props)
+    first = TreeSubmitCurrent(TestSession(), cast(u64)109, WidgetKindText, child)
+    second = TreeSubmitCurrent(TestSession(), cast(u64)110, WidgetKindText, child)
+    if !stack.opened || TreeSubmittedNodeAt(TestSession(), first).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.x != 5.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.y != 5.0 || !End(TestSession()) {
         return -22
     }
     grid_props: GridProps
@@ -56,27 +63,27 @@ AutoAnswer :: () -> s32 {
     grid_props.columns = 2
     grid_props.gap = 4
     grid_props.padding = 2
-    grid: GridResult = Grid(grid_props)
-    first = TreeSubmitCurrent(cast(u64)112, WidgetKindText, child)
-    second = TreeSubmitCurrent(cast(u64)113, WidgetKindText, child)
-    third: s32 = TreeSubmitCurrent(cast(u64)114, WidgetKindText, child)
+    grid: GridResult = Grid(TestSession(), grid_props)
+    first = TreeSubmitCurrent(TestSession(), cast(u64)112, WidgetKindText, child)
+    second = TreeSubmitCurrent(TestSession(), cast(u64)113, WidgetKindText, child)
+    third: s32 = TreeSubmitCurrent(TestSession(), cast(u64)114, WidgetKindText, child)
     if !grid.container.opened ||
-        TreeSubmittedNodeAt(first).bounds.x != 2.0 ||
-        TreeSubmittedNodeAt(first).bounds.width != 46.0 ||
-        TreeSubmittedNodeAt(second).bounds.x != 52.0 ||
-        TreeSubmittedNodeAt(third).bounds.x != 2.0 ||
-        TreeSubmittedNodeAt(third).bounds.y != 18.0 ||
-        !End() || !TreeFinish() { return -23 }
+        TreeSubmittedNodeAt(TestSession(), first).bounds.x != 2.0 ||
+        TreeSubmittedNodeAt(TestSession(), first).bounds.width != 46.0 ||
+        TreeSubmittedNodeAt(TestSession(), second).bounds.x != 52.0 ||
+        TreeSubmittedNodeAt(TestSession(), third).bounds.x != 2.0 ||
+        TreeSubmittedNodeAt(TestSession(), third).bounds.y != 18.0 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -23 }
     return 42
 }
 
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 300.0, 200.0}
-    TreeStart(cast(u64)1, root)
+    TreeStart(TestSession(), cast(u64)1, root)
     props: ColumnProps
     props.key = cast(u64)10
-    screen: LayoutContainer = Screen(props)
+    screen: LayoutContainer = Screen(TestSession(), props)
     if !screen.opened || screen.node != 1 ||
         screen.bounds.width != 300.0 ||
         screen.kind != WidgetKindGroup { return -1 }
@@ -84,7 +91,7 @@ Answer :: () -> s32 {
     props.key = cast(u64)11
     props.gap = 4
     props.padding = 5
-    column: LayoutContainer = Column(props)
+    column: LayoutContainer = Column(TestSession(), props)
     if !column.opened || column.node != 2 ||
         column.content.width != 290.0 { return -2 }
     empty: Rectangle
@@ -96,22 +103,22 @@ Answer :: () -> s32 {
         first.width != 290.0 || first.height != 12.0 ||
         second.x != 5.0 || second.y != 21.0 ||
         second.width != 20.0 { return -3 }
-    if TreeSubmitCurrent(cast(u64)12, WidgetKindText, first) != 3 {
+    if TreeSubmitCurrent(TestSession(), cast(u64)12, WidgetKindText, first) != 3 {
         return -4
     }
     props.key = cast(u64)13
     props.bounds = Rectangle.{5.0, 21.0, 200.0, 40.0}
     props.gap = 0
     props.padding = 0
-    row: LayoutContainer = Row(props)
+    row: LayoutContainer = Row(TestSession(), props)
     if !row.opened || row.node != 4 ||
         row.kind != WidgetKindRow { return -5 }
     item: Rectangle = RowChildBounds(row, empty,
         Rectangle.{0.0, 0.0, 20.0, 0.0}, 0, 0.0)
     if item.x != 5.0 || item.y != 21.0 ||
         item.height != 40.0 ||
-        TreeSubmitCurrent(cast(u64)14, WidgetKindImage, item) != 5 ||
-        !End() || !End() { return -6 }
+        TreeSubmitCurrent(TestSession(), cast(u64)14, WidgetKindImage, item) != 5 ||
+        !End(TestSession()) || !End(TestSession()) { return -6 }
 
     grid_props: GridProps
     grid_props.key = cast(u64)15
@@ -119,37 +126,37 @@ Answer :: () -> s32 {
     grid_props.columns = 2
     grid_props.gap = 4
     grid_props.padding = 2
-    grid: GridResult = Grid(grid_props)
+    grid: GridResult = Grid(TestSession(), grid_props)
     if !grid.container.opened || grid.container.node != 6 ||
         grid.cursor.metrics.columns != 2 ||
         grid.cursor.metrics.cell_width != 56 { return -7 }
     cursor: GridCursor = GridStep(grid.cursor, 10, 1)
     if cursor.item.x != 2.0 || cursor.item.y != 2.0 ||
         cursor.item.width != 56.0 ||
-        TreeSubmitCurrent(cast(u64)16, WidgetKindText,
+        TreeSubmitCurrent(TestSession(), cast(u64)16, WidgetKindText,
             cursor.item) != 7 { return -8 }
     cursor = GridStep(cursor, 15, 1)
     if cursor.item.x != 62.0 || cursor.item.y != 2.0 ||
-        TreeSubmitCurrent(cast(u64)17, WidgetKindText,
-            cursor.item) != 8 || !End() { return -9 }
+        TreeSubmitCurrent(TestSession(), cast(u64)17, WidgetKindText,
+            cursor.item) != 8 || !End(TestSession()) { return -9 }
 
     props.key = cast(u64)18
     props.bounds = Rectangle.{0.0, 0.0, 80.0, 60.0}
     props.gap = 0
     props.padding = 3
-    stack: LayoutContainer = Stack(props)
+    stack: LayoutContainer = Stack(TestSession(), props)
     item = StackChildBoundsFor(stack, empty, empty)
     if !stack.opened || stack.node != 9 ||
         item.x != 3.0 || item.y != 3.0 ||
         item.width != 74.0 || item.height != 54.0 ||
-        TreeSubmitCurrent(cast(u64)19, WidgetKindBox, item) != 10 ||
-        !End() { return -11 }
+        TreeSubmitCurrent(TestSession(), cast(u64)19, WidgetKindBox, item) != 10 ||
+        !End(TestSession()) { return -11 }
     props.key = cast(u64)20
-    group: LayoutContainer = Group(props)
-    if !group.opened || group.node != 11 || !End() ||
-        !End() || !TreeFinish() || TreeCount() != 12 ||
-        TreeNodeAt(5).parent != 4 || TreeNodeAt(8).parent != 6 ||
-        TreeNodeAt(11).parent != 1 { return -12 }
+    group: LayoutContainer = Group(TestSession(), props)
+    if !group.opened || group.node != 11 || !End(TestSession()) ||
+        !End(TestSession()) || !TreeFinish(TestSession()) || TreeCount(TestSession()) != 12 ||
+        TreeNodeAt(TestSession(), 5).parent != 4 || TreeNodeAt(TestSession(), 8).parent != 6 ||
+        TreeNodeAt(TestSession(), 11).parent != 1 { return -12 }
     return AutoAnswer()
 }
 ZI
@@ -171,7 +178,7 @@ for input in source saved; do
     test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict \
+        "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then

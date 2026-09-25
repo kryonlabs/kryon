@@ -13,8 +13,8 @@ ColumnProps :: struct {
     key: u64
 }
 
-# Stable widget identity from UTF-8 bytes. This matches the native Key
-# helper, including its historical offset basis and zero sentinel.
+// Stable widget identity from UTF-8 bytes. This matches the native Key
+// helper, including its historical offset basis and zero sentinel.
 #program_export
 KeyHash :: (text: string) -> u64 {
     hash: u64 = cast(u64)1469598103934665603

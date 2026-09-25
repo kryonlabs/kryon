@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -53,10 +54,10 @@ NavigationBarConfigFaceFor :: (props: NavigationBarConfigProps,
 }
 
 #program_export
-NavigationBarConfigKey :: (props: NavigationBarConfigProps) -> u64 {
+NavigationBarConfigKey :: (session: Session, props: NavigationBarConfigProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -73,7 +74,7 @@ NavigationBarConfigOptionIndex :: (
 }
 
 #program_export
-NavigationBarConfigButton :: (key: u64, id: s32,
+NavigationBarConfigButton :: (session: Session, key: u64, id: s32,
     class_name: s32, bounds: Rectangle, label: string,
     disabled: bool, icon_only: bool) -> bool {
     button: ButtonProps
@@ -89,13 +90,13 @@ NavigationBarConfigButton :: (key: u64, id: s32,
     button.size = cast(ControlSize)ControlSizeSmall
     button.style_kind = StyleKindNavigationBar()
     button.style_role = NavigationBarActionRole()
-    return Button(button) != 0
+    return Button(session, button) != 0
 }
 
-# This editor mutates only the borrowed route slice and returns all retained
-# UI state. The caller owns save/cancel/reset effects and route persistence.
+// This editor mutates only the borrowed route slice and returns all retained
+// UI state. The caller owns save/cancel/reset effects and route persistence.
 #program_export
-NavigationBarConfig :: (props: NavigationBarConfigProps,
+NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
     routes: []s32, slot_labels: []string,
     options: []NavigationBarOption) -> NavigationBarConfigResult {
     result: NavigationBarConfigResult
@@ -116,7 +117,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
         counts.route_count = counts.max_route_count
     }
     result.route_count = counts.route_count
-    key: u64 = NavigationBarConfigKey(props)
+    key: u64 = NavigationBarConfigKey(session, props)
     panel: StyleFrame = NavigationBarConfigFaceFor(props,
         NavigationBarPanelRole())
     row_face: StyleFrame = NavigationBarConfigFaceFor(props,
@@ -142,7 +143,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
     modal.scale = scale
     modal.has_right_action = true
     modal.right_label = props.close_label
-    frame: ModalFrameResult = ModalFrame(modal)
+    frame: ModalFrameResult = ModalFrame(session, modal)
     result.node = frame.node
     if frame.dismissed || frame.right_clicked {
         result.action = 1
@@ -162,7 +163,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
             result.scroll_offset, props.wheel,
             max_scroll, metrics.row_height)
     }
-    if !TreePushScope(frame.panel_node) { return result }
+    if !TreePushScope(session, frame.panel_node) { return result }
     if max_scroll > 0 {
         scroll_metrics: ScrollMetrics
         scroll_metrics.scrollbar_width = metrics.scrollbar_width
@@ -173,9 +174,9 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
             cast(s32)layout.route_bounds.height,
             layout.route_content_height, result.scroll_offset,
             max_scroll, scroll_metrics)
-        old: s32 = TreeFind(key * cast(u64)65599 + cast(u64)5,
-            OverlayPanelKey(), WidgetKindSlider)
-        drag: PointerDrag = TreeTakeDragAt(old)
+        old: s32 = TreePrevious(session, frame.panel_node,
+            key * cast(u64)65599 + cast(u64)5, WidgetKindSlider)
+        drag: PointerDrag = TreeTakeDragAt(session, old)
         if drag.active || drag.ended {
             result.scroll_offset = ScrollDragOffsetFor(drag.y,
                 bar.track_bounds.y, drag.grab_y,
@@ -186,14 +187,14 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                 layout.route_content_height,
                 result.scroll_offset, max_scroll, scroll_metrics)
         }
-        thumb_node: s32 = TreeSubmitCurrent(
+        thumb_node: s32 = TreeSubmitCurrent(session,
             key * cast(u64)65599 + cast(u64)5,
             WidgetKindSlider, bar.thumb_bounds)
         if thumb_node >= 0 {
-            TreeSetInteractive(thumb_node, false, false, 0)
-            PaintRoundedFill(thumb_node, bar.track_bounds,
+            TreeSetInteractive(session, thumb_node, false, false, 0)
+            PaintRoundedFill(session, thumb_node, bar.track_bounds,
                 4.0, 8, ColorFromPacked(cast(u32)0xe2e8f0ff))
-            PaintRoundedFill(thumb_node, bar.thumb_bounds,
+            PaintRoundedFill(session, thumb_node, bar.thumb_bounds,
                 4.0, 8, ColorFromPacked(cast(u32)0x94a3b8ff))
         }
     }
@@ -222,7 +223,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                     row_content, y, line_height, metrics)
             if index < cast(s32)slot_labels.count &&
                 slot_labels[index] != "" {
-                PaintClippedLabel(frame.panel_node,
+                PaintClippedLabel(session, frame.panel_node,
                     slot_labels[index],
                     cast(s32)row.label_bounds.x,
                     cast(s32)row.label_bounds.y, font,
@@ -232,7 +233,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                             row_face.value.opacity))),
                     layout.route_bounds)
             }
-            if NavigationBarConfigButton(
+            if NavigationBarConfigButton(session,
                 key * cast(u64)131071 + cast(u64)cast(u32)(index + 1) *
                     cast(u64)17 + cast(u64)1,
                 props.id + index + 1, props.class_name,
@@ -244,7 +245,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                 row.remove_bounds.width * 0.5
             cy: float32 = row.remove_bounds.y +
                 row.remove_bounds.height * 0.5
-            PaintLine(frame.panel_node,
+            PaintLine(session, frame.panel_node,
                 Rectangle.{cx - 5.0, cy, 10.0, 0.0},
                 ColorFromPacked(cast(u32)0x334155ff))
         }
@@ -265,7 +266,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                 cast(s32)layout.route_bounds.height))
     }
     if result.route_count < counts.max_route_count {
-        if NavigationBarConfigButton(key * cast(u64)65599 +
+        if NavigationBarConfigButton(session, key * cast(u64)65599 +
             cast(u64)10, props.id, props.class_name,
             layout.add_bounds, props.add_label, false, false) {
             default_route: s32 = 0
@@ -279,15 +280,15 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
             result.changed = true
         }
     }
-    if NavigationBarConfigButton(key * cast(u64)65599 +
+    if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)11, props.id, props.class_name,
         layout.reset_bounds, props.reset_label,
         false, false) { result.action = 3 }
-    if NavigationBarConfigButton(key * cast(u64)65599 +
+    if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)12, props.id, props.class_name,
         layout.cancel_bounds, props.cancel_label,
         false, false) { result.action = 1 }
-    if NavigationBarConfigButton(key * cast(u64)65599 +
+    if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)13, props.id, props.class_name,
         layout.save_bounds, props.save_label,
         false, false) { result.action = 2 }
@@ -340,7 +341,7 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
                     result.dropdown_scroll_offset
                 dropdown.wheel = props.dropdown_wheel
             }
-            selection: DropdownResult = Dropdown(dropdown,
+            selection: DropdownResult = Dropdown(session, dropdown,
                 dropdown_options[0:counts.option_count])
             if selection.changed && selection.selected_index >= 0 &&
                 selection.selected_index < counts.option_count {
@@ -369,6 +370,6 @@ NavigationBarConfig :: (props: NavigationBarConfigProps,
         result.dropdown_open = false
         result.dropdown_row = -1
     }
-    End()
+    End(session)
     return result
 }

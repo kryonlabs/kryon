@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -65,7 +66,7 @@ SliderPrepared :: struct {
 }
 
 #program_export
-PrepareSlider :: (key: u64, bounds: Rectangle, id: s32,
+PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
     label_text: string, vertical: bool, disabled: bool,
     class_name: s32) -> SliderPrepared {
     prepared: SliderPrepared
@@ -73,15 +74,13 @@ PrepareSlider :: (key: u64, bounds: Rectangle, id: s32,
     if prepared.key == cast(u64)0 && id > 0 {
         prepared.key = cast(u64)cast(u32)id
     }
-    if prepared.key == cast(u64)0 { prepared.key = TreeNextKey() }
     previous: s32 = -1
-    if TreeIsBuilding() && prepared.key != cast(u64)0 {
-        previous = TreeFind(prepared.key, TreeCurrentParentKey(),
-            WidgetKindSlider)
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), prepared.key, WidgetKindSlider)
     }
-    prepared.drag = TreeTakeDragAt(previous)
-    hovered: bool = TreeHoveredAt(previous)
-    pressed: bool = prepared.drag.active || TreePressedAt(previous)
+    prepared.drag = TreeTakeDragAt(session, previous)
+    hovered: bool = TreeHoveredAt(session, previous)
+    pressed: bool = prepared.drag.active || TreePressedAt(session, previous)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, disabled,
         false, pressed, hovered, false, false)
     rules: StyleRules = ActiveStyleRules()
@@ -146,17 +145,17 @@ SliderDragRatio :: (prepared: SliderPrepared) -> float32 {
 }
 
 #program_export
-PaintSliderForNode :: (node: s32, paint: SliderPaint,
+PaintSliderForNode :: (session: Session, node: s32, paint: SliderPaint,
     label_text: string, layout: SliderLayout,
     label: StyleFrame, font: s32,
     line_height: s32) {
     track_opacity: float32 = StyleOpacityValue(
         paint.track.value.fields, paint.track.value.opacity)
-    PaintRoundedFill(node, paint.track_bounds, 0.5, 16,
+    PaintRoundedFill(session, node, paint.track_bounds, 0.5, 16,
         ColorFromPacked(Opacity(paint.track.value.background,
             track_opacity)))
     if paint.track.value.border_width > 0.0 {
-        PaintRoundedOutline(node, paint.track_bounds, 0.5, 16,
+        PaintRoundedOutline(session, node, paint.track_bounds, 0.5, 16,
             paint.track.value.border_width,
             ColorFromPacked(Opacity(paint.track.value.border,
                 track_opacity)))
@@ -166,7 +165,7 @@ PaintSliderForNode :: (node: s32, paint: SliderPaint,
         active_opacity: float32 = StyleOpacityValue(
             paint.active_track.value.fields,
             paint.active_track.value.opacity)
-        PaintRoundedFill(node, paint.active_bounds, 0.5, 16,
+        PaintRoundedFill(session, node, paint.active_bounds, 0.5, 16,
             ColorFromPacked(Opacity(
                 paint.active_track.value.background,
                 active_opacity)))
@@ -175,10 +174,10 @@ PaintSliderForNode :: (node: s32, paint: SliderPaint,
         paint.thumb_x - paint.thumb_radius,
         paint.thumb_y - paint.thumb_radius,
         paint.thumb_radius * 2.0, paint.thumb_radius * 2.0}
-    PaintRoundedFill(node, thumb, 0.5, 16,
+    PaintRoundedFill(session, node, thumb, 0.5, 16,
         ColorFromPacked(paint.thumb_fill_color))
     if paint.thumb.value.border_width > 0.0 {
-        PaintRoundedOutline(node, thumb, 0.5, 16,
+        PaintRoundedOutline(session, node, thumb, 0.5, 16,
             paint.thumb.value.border_width,
             ColorFromPacked(paint.thumb_edge_color))
     }
@@ -189,38 +188,38 @@ PaintSliderForNode :: (node: s32, paint: SliderPaint,
             SliderLabelInsetForStyle(label, 1.0))
         y: s32 = cast(s32)(layout.label.y +
             (layout.label.height - cast(float32)line_height) * 0.5)
-        PaintClippedLabel(node, label_text, x, y, font,
+        PaintClippedLabel(session, node, label_text, x, y, font,
             ColorFromPacked(Opacity(label.value.foreground,
                 label_opacity)), layout.label)
     }
 }
 
 #program_export
-SubmitSlider :: (prepared: SliderPrepared, ratio: float32,
+SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
     id: s32, label_text: string, semantic_label: string,
     disabled: bool) {
     spec: SliderSpec = prepared.spec
     spec.ratio = ratio
     paint: SliderPaint = SliderPaintFor(spec)
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(prepared.key, WidgetKindSlider,
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, prepared.key, WidgetKindSlider,
             prepared.layout.bounds)
         if node < 0 { return }
-        TreeSetInteractive(node, disabled, false, id)
+        TreeSetInteractive(session, node, disabled, false, id)
         if semantic_label == "" { semantic_label = label_text }
-        TreeSetLabel(node, semantic_label)
+        TreeSetLabel(session, node, semantic_label)
     }
-    PaintSliderForNode(node, paint, label_text,
+    PaintSliderForNode(session, node, paint, label_text,
         prepared.layout, prepared.label, prepared.font,
         prepared.line_height)
 }
 
-# The caller stores the proposed value for the next frame. Multiple values
-# are ordinary compositions of this scalar control and SliderCellBoundsFor.
+// The caller stores the proposed value for the next frame. Multiple values
+// are ordinary compositions of this scalar control and SliderCellBoundsFor.
 #program_export
-Slider :: (props: SliderProps) -> SliderStep {
-    prepared: SliderPrepared = PrepareSlider(props.key, props.bounds,
+Slider :: (session: Session, props: SliderProps) -> SliderStep {
+    prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
         props.id, props.label, props.vertical, props.disabled,
         props.class_name)
     result: SliderStep
@@ -232,15 +231,15 @@ Slider :: (props: SliderProps) -> SliderStep {
             SliderDragRatio(prepared))
         result.changed = result.value != props.value
     }
-    SubmitSlider(prepared, SliderRatio(result.value,
+    SubmitSlider(session, prepared, SliderRatio(result.value,
         props.min, props.max), props.id, props.label,
         props.semantic_label, props.disabled)
     return result
 }
 
 #program_export
-DiscreteSlider :: (props: DiscreteSliderProps) -> SliderDiscreteStep {
-    prepared: SliderPrepared = PrepareSlider(props.key, props.bounds,
+DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+    prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
         props.id, props.label, props.vertical, props.disabled,
         props.class_name)
     result: SliderDiscreteStep
@@ -252,7 +251,7 @@ DiscreteSlider :: (props: DiscreteSliderProps) -> SliderDiscreteStep {
             SliderDragRatio(prepared))
         result.changed = result.value != props.value
     }
-    SubmitSlider(prepared, SliderDiscreteRatio(result.value,
+    SubmitSlider(session, prepared, SliderDiscreteRatio(result.value,
         props.min, props.max), props.id, props.label,
         props.semantic_label, props.disabled)
     return result

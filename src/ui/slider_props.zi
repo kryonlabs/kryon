@@ -1,7 +1,7 @@
 #import "geometry"
 
-# Each control owns one value. Applications compose any number of controls
-# with their own arrays and SliderCellBoundsFor; no C pointer crosses the API.
+// Each control owns one value. Applications compose any number of controls
+// with their own arrays and SliderCellBoundsFor; no C pointer crosses the API.
 SliderProps :: struct {
     key: u64
     bounds: Rectangle

@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "collapsible"
 #import "collapsible_props"
 #import "collapsible_widget"
@@ -72,62 +79,62 @@ Frame :: () -> s32 {
         props.activate = true
         props.selected = true
     }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    result: CollapsibleResult = Collapsible(props, headers[0:4])
-    if !TreeFinish() { return -10 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    result: CollapsibleResult = Collapsible(TestSession(), props, headers[0:4])
+    if !TreeFinish(TestSession()) { return -10 }
     if phase == 0 {
         if result.open || result.hidden || result.changed ||
             result.header.height != 32.0 ||
             result.body.width != 112.0 ||
             result.close_bounds.x != 122.0 ||
             result.content.height != 0.0 ||
-            TreeCount() != 3 || result.node != 1 ||
-            TreeNodeAt(1).kind != WidgetKindCollapsible ||
-            TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticButton ||
-            TreeNodeAt(2).kind != WidgetKindButton ||
-            TreeNodeAt(2).semantic_kind != cast(SemanticKind)SemanticButton ||
-            TreeHitAt(20.0, 30.0) != 1 ||
-            TreeHitAt(130.0, 30.0) != 2 { return -1 }
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+            TreeCount(TestSession()) != 3 || result.node != 1 ||
+            TreeNodeAt(TestSession(), 1).kind != WidgetKindCollapsible ||
+            TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticButton ||
+            TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+            TreeNodeAt(TestSession(), 2).semantic_kind != cast(SemanticKind)SemanticButton ||
+            TreeHitAt(TestSession(), 20.0, 30.0) != 1 ||
+            TreeHitAt(TestSession(), 130.0, 30.0) != 2 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
     } else if phase == 1 {
         if !result.open || !result.changed ||
             !result.focus_requested || result.focus_target != 20 ||
             result.content.y != 52.0 ||
             result.content.height != 58.0 { return -2 }
-        TreePointerUpdate(PointerFrame.{130.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{130.0, 30.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 30.0, false, false, true})
     } else if phase == 2 {
         if !result.hidden || !result.closed || !result.changed ||
-            result.node != -1 || TreeCount() != 1 { return -3 }
+            result.node != -1 || TreeCount(TestSession()) != 1 { return -3 }
     } else if phase == 3 {
         if !result.open || !result.changed || !result.key_handled ||
             result.focus_requested || result.header.x != 30.0 ||
             result.header.width != 120.0 ||
-            TreeNodeAt(1).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
-            TreeCount() != 2 || TreeHitAt(40.0, 30.0) != 1 {
+            TreeNodeAt(TestSession(), 1).semantic_kind != cast(SemanticKind)SemanticTreeItem ||
+            TreeCount(TestSession()) != 2 || TreeHitAt(TestSession(), 40.0, 30.0) != 1 {
             return -4
         }
     } else if phase == 4 {
         if !result.open || result.changed || !result.key_handled ||
             !result.focus_requested || result.focus_target != 21 ||
-            TreeCount() != 2 { return -5 }
+            TreeCount(TestSession()) != 2 { return -5 }
     } else if phase == 5 {
         if result.open || result.changed || !result.key_handled ||
             !result.focus_requested || result.focus_target != 19 {
             return -6
         }
     } else if phase == 6 {
-        if result.changed || TreeCount() != 3 ||
-            TreeHitAt(20.0, 30.0) != -1 ||
-            TreeHitAt(130.0, 30.0) != -1 { return -7 }
+        if result.changed || TreeCount(TestSession()) != 3 ||
+            TreeHitAt(TestSession(), 20.0, 30.0) != -1 ||
+            TreeHitAt(TestSession(), 130.0, 30.0) != -1 { return -7 }
     } else {
         if result.open || result.changed || result.key_handled ||
-            result.content.height != 0.0 || TreeCount() != 2 {
+            result.content.height != 0.0 || TreeCount(TestSession()) != 2 {
             return -8
         }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     open_state = result.open
     hidden_state = result.hidden
     old: s32 = phase
@@ -222,7 +229,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

@@ -11,7 +11,7 @@ ResolveDark :: (policy: ThemePolicy, system_dark: bool) -> bool {
     return system_dark
 }
 
-# Canonical light/dark palette. Hosts only unpack these RGBA values.
+// Canonical light/dark palette. Hosts only unpack these RGBA values.
 Palette :: struct {
     background: u32
     surface: u32
@@ -50,8 +50,8 @@ PackedColor :: (rgb: u32, alpha: u32) -> u32 {
     return (rgb << cast(u32)8) | alpha
 }
 
-# Derived roles for the existing native theme APIs. Hosts supply their current
-# palette and unpack the result; tone, contrast and fallback decisions live here.
+// Derived roles for the existing native theme APIs. Hosts supply their current
+// palette and unpack the result; tone, contrast and fallback decisions live here.
 Scheme :: struct {
     primary: u32
     on_primary: u32
@@ -91,7 +91,7 @@ ClampChannel :: (value: s32) -> u32 {
 ToneFor :: (base: u32, light_delta: s32, dark_delta: s32, dark: bool) -> u32 {
     delta: s32 = dark_delta
     if !dark { delta = light_delta }
-    # Clamp before negating or adding, including for extreme signed inputs.
+    // Clamp before negating or adding, including for extreme signed inputs.
     if delta < -255 { delta = -255 }
     if delta > 255 { delta = 255 }
     if !dark { delta = -delta }
@@ -172,8 +172,8 @@ DefaultPalette :: (dark: bool) -> Palette {
         palette.border = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
         palette.border_strong = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
         palette.divider = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
-        # A restrained violet-blue edge on pale material. Explicit focus
-        # overrides retain their own alpha in the shared surface policy.
+        // A restrained violet-blue edge on pale material. Explicit focus
+        // overrides retain their own alpha in the shared surface policy.
         palette.focus = PackedColor(cast(u32)0x064CFF, cast(u32)179)
         palette.selection = PackedColor(cast(u32)0xD8E9FF, cast(u32)255)
         palette.accent = PackedColor(cast(u32)0x006CFF, cast(u32)255)
@@ -188,7 +188,7 @@ DefaultPalette :: (dark: bool) -> Palette {
         palette.on_danger = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
         palette.info = PackedColor(cast(u32)0x087CBF, cast(u32)255)
         palette.on_info = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        # Link ink is a deeper blue than the luminous accent material.
+        // Link ink is a deeper blue than the luminous accent material.
         palette.link = PackedColor(cast(u32)0x0033FF, cast(u32)255)
         palette.link_hover = PackedColor(cast(u32)0x034BA9, cast(u32)255)
         palette.shadow = PackedColor(cast(u32)0x17324D, cast(u32)36)

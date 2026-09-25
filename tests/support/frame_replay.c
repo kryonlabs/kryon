@@ -14,7 +14,7 @@ typedef struct PointerSample {
 
 typedef struct ReplayHost {
     FILE *output;
-    const char *pointer_module;
+    char *pointer_module;
     PointerSample input;
     VmHostField pointer_fields[5];
     int pointer_calls;
@@ -93,9 +93,9 @@ poll_pointer(void *context, const char *module, const char *function,
        host->pointer_calls != 0) return 0;
     host->pointer_calls++;
     host->pointer_fields[0] = (VmHostField){"x",
-        {.kind = VM_HOST_REAL, .type = "float", .real = host->input.x}};
+        {.kind = VM_HOST_REAL, .type = "float32", .real = host->input.x}};
     host->pointer_fields[1] = (VmHostField){"y",
-        {.kind = VM_HOST_REAL, .type = "float", .real = host->input.y}};
+        {.kind = VM_HOST_REAL, .type = "float32", .real = host->input.y}};
     host->pointer_fields[2] = (VmHostField){"down",
         {.kind = VM_HOST_INTEGER, .type = "bool", .integer = host->input.down}};
     host->pointer_fields[3] = (VmHostField){"pressed",
@@ -191,15 +191,15 @@ record_frame_end(void *context, const char *module, const char *function,
 }
 
 static int
-width(void *context, const char *value, size_t length, int font,
-      const char *typeface, size_t typeface_length)
+width(void *context, uint8_t *value, size_t length, int font,
+      uint8_t *typeface, size_t typeface_length)
 {
     (void)context; (void)value; (void)typeface; (void)typeface_length;
     return (int)((double)length * font * 0.6);
 }
 
 static int
-line_height(void *context, int font, const char *typeface,
+line_height(void *context, int font, uint8_t *typeface,
             size_t typeface_length)
 {
     (void)context; (void)typeface; (void)typeface_length;
@@ -233,7 +233,7 @@ line(void *context, float x1, float y1, float x2, float y2,
 }
 
 static void
-draw_text(void *context, const char *value, size_t length,
+draw_text(void *context, uint8_t *value, size_t length,
           int x, int y, int font, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)value; (void)length;
@@ -241,8 +241,8 @@ draw_text(void *context, const char *value, size_t length,
 }
 
 static void
-draw_text_clipped(void *context, const char *value, size_t length,
-                  int x, int y, int font, const float clip[4],
+draw_text_clipped(void *context, uint8_t *value, size_t length,
+                  int x, int y, int font, float clip[4],
                   uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     (void)clip;
@@ -250,7 +250,7 @@ draw_text_clipped(void *context, const char *value, size_t length,
 }
 
 static int
-image_size(void *context, const char *path, size_t length,
+image_size(void *context, uint8_t *path, size_t length,
            int *width, int *height)
 {
     (void)context; (void)path; (void)length;
@@ -260,11 +260,11 @@ image_size(void *context, const char *path, size_t length,
 }
 
 static void
-image_draw(void *context, const char *path, size_t length,
-           uint32_t texture_id, const float source[4],
-           const float destination[4], const float clip[4],
-           const float origin[2], float rotation, float radius,
-           const uint8_t tint[4])
+image_draw(void *context, uint8_t *path, size_t length,
+           uint32_t texture_id, float source[4],
+           float destination[4], float clip[4],
+           float origin[2], float rotation, float radius,
+           uint8_t tint[4])
 {
     ReplayHost *host = context;
     (void)path; (void)length; (void)texture_id; (void)source;
@@ -274,7 +274,7 @@ image_draw(void *context, const char *path, size_t length,
 }
 
 static int
-read_samples(const char *path, PointerSample samples[MAX_FRAMES])
+read_samples(char *path, PointerSample samples[MAX_FRAMES])
 {
     FILE *file = fopen(path, "r");
     if(file == NULL) { perror(path); return -1; }
@@ -283,7 +283,7 @@ read_samples(const char *path, PointerSample samples[MAX_FRAMES])
     while(fgets(line, sizeof(line), file) != NULL) {
         line_number++;
         if(strchr(line, '\n') == NULL && !feof(file)) { valid = 0; break; }
-        const char *start = line;
+        char *start = line;
         while(*start == ' ' || *start == '\t') start++;
         if(*start == '#' || *start == '\n' || *start == '\0') continue;
         PointerSample sample;

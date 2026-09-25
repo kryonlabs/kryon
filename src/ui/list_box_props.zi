@@ -1,14 +1,14 @@
 #import "geometry"
 #import "list_box_multi"
 
-# Items are borrowed for one frame. Nonzero keys preserve row identity when
-# items move; zero keys use their current index.
+// Items are borrowed for one frame. Nonzero keys preserve row identity when
+// items move; zero keys use their current index.
 ListBoxItem :: struct {
     key: u64
     label: string
 }
 
-# The caller stores returned selection and scroll values between frames.
+// The caller stores returned selection and scroll values between frames.
 ListBoxProps :: struct {
     key: u64
     bounds: Rectangle
@@ -31,8 +31,8 @@ ListBoxResult :: struct {
     changed: bool
 }
 
-# Selection is a caller-owned mutable bool slice passed to ListBoxMulti.
-# It must contain one element per item. Anchor and scroll remain values.
+// Selection is a caller-owned mutable bool slice passed to ListBoxMulti.
+// It must contain one element per item. Anchor and scroll remain values.
 ListBoxMultiProps :: struct {
     key: u64
     bounds: Rectangle

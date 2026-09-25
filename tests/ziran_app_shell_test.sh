@@ -109,7 +109,7 @@ for input in source saved; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.go" <<'GO'
@@ -118,7 +118,7 @@ func main() { if App_Answer() != 42 { panic("app shell layout") } }
 GO
             GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" \
+            "$ziran" build --target=c --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.c" <<'C'
@@ -129,7 +129,7 @@ C
                 "$output"/*.c -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" \
+            "$ziran" build --target=cpp --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.cpp" <<'CPP'

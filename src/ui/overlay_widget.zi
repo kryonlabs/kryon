@@ -1,3 +1,4 @@
+#import "session"
 #import "drawing_props"
 #import "geometry"
 #import "overlay"
@@ -17,16 +18,16 @@ OverlayPanelKey :: () -> u64 {
     return cast(u64)2
 }
 
-# The full viewport backdrop sits above earlier controls in hit order. Panel
-# children can be submitted under result.panel_node with TreePushScope/End.
-# Pointer release is owned by the retained backdrop, including drags that
-# finish outside the viewport. The caller decides when to stop submitting it.
+// The full viewport backdrop sits above earlier controls in hit order. Panel
+// children can be submitted under result.panel_node with TreePushScope/End.
+// Pointer release is owned by the retained backdrop, including drags that
+// finish outside the viewport. The caller decides when to stop submitting it.
 #program_export
-DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResult {
+DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> DismissibleOverlayResult {
     result: DismissibleOverlayResult
     result.node = -1
     result.panel_node = -1
-    viewport: Rectangle = TreeRootBounds()
+    viewport: Rectangle = TreeRootBounds(session)
     if props.view_width > 0 {
         viewport.x = 0.0
         viewport.width = cast(float32)props.view_width
@@ -39,12 +40,14 @@ DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResu
         return result
     }
     key: u64 = props.key
-    if key == cast(u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
     scrim_node: s32 = -1
-    if TreeIsBuilding() {
-        previous: s32 = TreeFind(OverlayScrimKey(), key,
-            WidgetKindButton)
-        release: PointerDrag = TreeTakeDragAt(previous)
+    if TreeIsBuilding(session) {
+        previous_overlay: s32 = TreePrevious(session,
+            TreeCurrentParent(session), key, WidgetKindModal)
+        previous: s32 = TreePreviousCommitted(session, previous_overlay,
+            OverlayScrimKey(), WidgetKindButton)
+        release: PointerDrag = TreeTakeDragAt(session, previous)
         if release.ended {
             policy: DismissibleOverlayPolicy =
                 DismissibleOverlayPolicyFor(true, false,
@@ -54,18 +57,18 @@ DismissibleOverlay :: (props: DismissibleOverlayProps) -> DismissibleOverlayResu
             result.outside_released = policy.outside_released
             result.release_consumed = policy.release_consumed
         }
-        result.node = TreeSubmitCurrent(key, WidgetKindModal, viewport)
+        result.node = TreeSubmitCurrent(session, key, WidgetKindModal, viewport)
         if result.node < 0 { return result }
-        scrim_node = TreeSubmit(OverlayScrimKey(), result.node,
+        scrim_node = TreeSubmit(session, OverlayScrimKey(), result.node,
             WidgetKindButton, viewport)
         if scrim_node < 0 { return result }
-        TreeSetInteractive(scrim_node, false, false, 0)
-        result.panel_node = TreeSubmit(OverlayPanelKey(), result.node,
+        TreeSetInteractive(session, scrim_node, false, false, 0)
+        result.panel_node = TreeSubmit(session, OverlayPanelKey(), result.node,
             WidgetKindCustom, props.bounds)
         if result.panel_node < 0 { return result }
     }
     if props.scrim.a != cast(u8)0 {
-        PaintRoundedFill(scrim_node, viewport, 0.0, 4,
+        PaintRoundedFill(session, scrim_node, viewport, 0.0, 4,
             props.scrim)
     }
     return result

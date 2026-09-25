@@ -36,8 +36,8 @@ ButtonArrowGlyph :: (direction: ArrowDirection) -> s32 {
     return 60
 }
 
-# Both immediate input and retained painting use this interpretation. Painting
-# supplies its stored sample and must not poll or consume activation again.
+// Both immediate input and retained painting use this interpretation. Painting
+// supplies its stored sample and must not poll or consume activation again.
 #program_export
 ResolveButtonInput :: (state: s32, disabled: bool, loading: bool, selected: bool,
     sample: Activation) -> ButtonInput {
@@ -51,8 +51,8 @@ ResolveButtonInput :: (state: s32, disabled: bool, loading: bool, selected: bool
     return result
 }
 
-# Style facts for the generic control path. A zero style_kind falls back to the
-# Button kind so generic control callers keep one policy source.
+// Style facts for the generic control path. A zero style_kind falls back to the
+// Button kind so generic control callers keep one policy source.
 #program_export
 ButtonRoleFactsFor :: (style_kind: s32, name: s32, class_name: s32, role: s32,
     tone: s32, emphasis: s32, size: s32, state: s32) -> StyleFacts {
@@ -78,9 +78,9 @@ CanActivate :: (disabled: bool, loading: bool) -> bool {
 }
 
 
-# Hosts supply measured text and execute these bounds. All coordinates are
-# local logical pixels so scale, font rasterization and texture APIs stay out
-# of the widget definition.
+// Hosts supply measured text and execute these bounds. All coordinates are
+// local logical pixels so scale, font rasterization and texture APIs stay out
+// of the widget definition.
 ContentSize :: struct {
     width: float32
     text_width: float32
@@ -393,8 +393,8 @@ MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
         available_width, scale, disclosure)
 }
 
-# The host supplies physical glyph measurements, available space, and scale.
-# The declaration reads the real props and owns shape, label, and size policy.
+// The host supplies physical glyph measurements, available space, and scale.
+// The declaration reads the real props and owns shape, label, and size policy.
 #program_export
 MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     font: s32, label_width: float32, available_width: float32,
@@ -413,7 +413,7 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     width: float32 = ShapeWidth(bounds.width / scale, height, content.width,
         available_width / scale, props.full_width,
         props.square || props.icon_only, props.circle)
-    # Preserve explicit physical coordinates without a lossy scale roundtrip.
+    // Preserve explicit physical coordinates without a lossy scale roundtrip.
     if bounds.height <= 0.0 { bounds.height = height * scale }
     if props.square || props.circle || props.icon_only {
         bounds.width = bounds.height
@@ -423,17 +423,17 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     return bounds
 }
 
-# Measurement and placement share the same content rules. An absent label
-# consumes neither text width nor a gap; icons fit the available face height.
-# Style resolution already supplies theme defaults. Small sizes stay small;
-# zero hides the icon and its gap instead of restoring a font-sized fallback.
+// Measurement and placement share the same content rules. An absent label
+// consumes neither text width nor a gap; icons fit the available face height.
+// Style resolution already supplies theme defaults. Small sizes stay small;
+// zero hides the icon and its gap instead of restoring a font-sized fallback.
 #program_export
 MeasureContent :: (height: float32, label_width: float32,
     requested_icon_size: float32, gap: float32, padding_x: float32,
     has_icon: bool, icon_only: bool) -> ContentSize {
     result: ContentSize
-    # Match Style.ContentBounds: negative padding never shrinks the area
-    # required by content, while explicit zero remains a valid override.
+    // Match Style.ContentBounds: negative padding never shrinks the area
+    // required by content, while explicit zero remains a valid override.
     if padding_x < 0.0 { padding_x = 0.0 }
     icon_size: float32 = requested_icon_size
     if icon_size > height - 12.0 { icon_size = height - 12.0 }
@@ -491,8 +491,8 @@ ContentLayout :: (
 
 
 
-# Content selection, geometry, and ordering belong to the widget, not its host.
-# Bounds and glyph measurements are physical; style lengths are logical.
+// Content selection, geometry, and ordering belong to the widget, not its host.
+// Bounds and glyph measurements are physical; style lengths are logical.
 ContentDrawing :: struct {
     mark: Drawing
     label: Drawing
@@ -560,8 +560,8 @@ ButtonFrame :: struct {
     repaint: bool
 }
 
-# Finish the widget frame once; native backends only adapt this result to their
-# retained tree or operation stream. Rasterizers supply the physical font size.
+// Finish the widget frame once; native backends only adapt this result to their
+// retained tree or operation stream. Rasterizers supply the physical font size.
 #program_export
 BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     motion: InteractionMotion, surface: Rectangle, ambient: u32,
@@ -601,8 +601,8 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     return result
 }
 
-# Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
-# invoke this after layout; callbacks never outlive this paint pass.
+// Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
+// invoke this after layout; callbacks never outlive this paint pass.
 #program_export
 PaintButton :: (frame: ButtonFrame, label_width: float32, elapsed_ms: float64,
     disclosure: bool, surface: SurfacePainter, draw: Painter) {

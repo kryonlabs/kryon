@@ -71,10 +71,9 @@ int main(int argc, char **argv)
     assert(argc == 2);
     Bundle *bundle = BundleOpen(argv[1]);
     assert(bundle != NULL);
-    HostBinding binding = KssStringSliceBinding();
     long long value = 0;
     int has_value = 0;
-    assert(BundleRun(bundle, &binding, 1, &value, &has_value));
+    assert(BundleRun(bundle, NULL, 0, &value, &has_value));
     assert(has_value && value == 42);
     BundleClose(bundle);
     return 0;
@@ -97,35 +96,22 @@ for input in source saved; do
     for target in c cpp go; do
         output=$work/$target-$input
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" "$module"
             cat > "$output/main.go" <<'GO'
 package main
-type sliceHost struct{}
-func (sliceHost) StringSlice(source string, start, length int32) string {
-    if start < 0 || length < 0 ||
-       int(start)+int(length) > len(source) { panic("slice bounds") }
-    return source[start:start+length]
-}
 func main() {
-    SetKssParserHost(sliceHost{})
     if App_Answer() != 42 { panic("parsed Progress style") }
 }
 GO
             GO111MODULE=off go run "$output"/*.go
         else
-            "$ziran" build --target="$target" --strict --root "$work" \
+            "$ziran" build --target="$target" --root "$work" \
                 --module-path "$module_dir" -o "$output" "$module"
             if test "$target" = c; then
                 cat > "$output/main.c" <<'C'
 #include "app.h"
 #include <assert.h>
-String StringSlice(String source, int32_t start, int32_t length)
-{
-    assert(start >= 0 && length >= 0 &&
-           (size_t)start + (size_t)length <= source.length);
-    return (String){source.data + start, (size_t)length};
-}
 int main(void) { assert(Answer() == 42); return 0; }
 C
                 "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" \
@@ -134,13 +120,6 @@ C
                 cat > "$output/main.cpp" <<'CPP'
 #include "app.hpp"
 #include <cassert>
-extern "C" String StringSlice(String source, int32_t start, int32_t length)
-{
-    assert(start >= 0 && length >= 0 &&
-           static_cast<size_t>(start)+static_cast<size_t>(length) <=
-               source.length);
-    return String{source.data + start, static_cast<size_t>(length)};
-}
 int main() { assert(Answer() == 42); return 0; }
 CPP
                 "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \

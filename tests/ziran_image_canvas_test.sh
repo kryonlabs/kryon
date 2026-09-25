@@ -3,37 +3,43 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "geometry"
-#import "image_props"
-#import "image_widget"
+source=$repo/tests/ziran_image_canvas_test.zi
+set -- --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
+    --module-path "$repo/../ziran/std"
 
-#program_export
-Answer :: () -> s32 {
-    image: ImageProps
-    image.asset_path = "checker"
-    image.bounds = Rectangle.{0.0, 0.0, 4.0, 4.0}
-    Image(image)
-    return 42
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
-    --entry app:Answer -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" "$@" \
+    -o "$work/ir" "$source"
+"$ziran" bundle --root "$repo/tests" "$@" \
+    --entry ziran_image_canvas_test:main -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
+    --entry ziran_image_canvas_test:main -o "$work/saved.zib" \
+    "$work/ir/ziran_image_canvas_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" -I"$repo/build/ziran/c" \
-    "$repo/tests/ziran_image_canvas_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" -lm \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+"$ziran" build --target=c --root "$repo/tests" \
+    "$@" -o "$work/c" "$source"
+"${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
+    "$work/c"/*.c -lm -o "$work/c/app"
+"$work/c/app"
+
+"$ziran" build --target=cpp --root "$repo/tests" \
+    "$@" -o "$work/cpp" "$source"
+"${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
+    "$work/cpp"/*.cpp -lm -o "$work/cpp/app"
+"$work/cpp/app"
+
+"$ziran" build --target=go --pkg main --root "$repo/tests" \
+    "$@" -o "$work/go" "$source"
+mv "$work/go/ziran_image_canvas_test.go" "$work/go/canvas_case.go"
+cat > "$work/go/main.go" <<'GO'
+package main
+func main() {
+    if ZiranImageCanvasTest_Main() != 0 { panic("wrong image pixels") }
+}
+GO
+GO111MODULE=off go run "$work/go"/*.go

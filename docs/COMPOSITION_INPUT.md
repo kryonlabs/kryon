@@ -12,27 +12,17 @@ returns a `CompositionSample`. Convert an available sample with
 An unavailable sample converts to a no-op event. Events have the same phase
 numbers as the platform input phases: start 1, update 2, commit 3, cancel 4.
 
-The portable host supplies `CompositionQueue` in
-`libkryon_host.a`. Create a queue, submit platform events with
-`CompositionQueueSubmit`, call `CompositionQueueBeginFrame` before each
-`BundleInstanceRun`, and bind `PollCompositionBinding(queue)`. Native generated
-hosts can use `CompositionQueueTake` to implement their `PollComposition`
-function. The queue is single-threaded and holds up to 16 pending events;
-sampling consumes them in order.
+`src/backend/composition_queue.zi` implements a single-threaded queue for up
+to 16 pending events. `BeginCompositionFrame`, `SubmitComposition`, and
+`TakeComposition` manage ordering, owned byte copies, and UTF-8 truncation.
+The queue is tested from source and saved `.zir` on C, C++, and Go targets.
+Its pointer parameters are not yet supported by the portable VM.
 
-`src/backend/composition_queue.zi` implements queue ordering, event capacity,
-owned text copies, and UTF-8 truncation. `composition_host.c` allocates the
-queue and converts samples to the portable VM host-value ABI. The generated
-Ziran queue code is linked into `libkryon_host.a`.
-
-The VM currently registers host callbacks through a C ABI, so this adapter
-remains C until Ziran can declare and implement those callback records. It
-contains no composition ordering or widget policy.
-
-Polled text borrows queue storage through the current frame. A caller that
-retains `CompositionState.text` must copy the bytes into its own storage before
-the next `CompositionQueueBeginFrame`. The widget owns composition decisions,
-preedit paint, and commit ranges. Platform adapters own event delivery; the
-queue owns sampled text storage. Current Android and browser adapters still
-submit to the old runtime queue and need to be wired to this host queue during
-native host migration.
+Portable applications bind `composition_input:PollComposition` to an ordinary
+Ziran provider with `ziran bundle --bind`; the checked test uses this route for
+source and saved `.zib` execution. A native platform host may implement the
+same `PollComposition() -> CompositionSample` function directly. The returned
+text must stay alive while the caller uses it. A caller that retains
+`CompositionState.text` must copy the bytes into its own storage before the
+provider releases them. Kryon owns composition decisions, preedit paint, and
+commit ranges; platform adapters own event delivery.

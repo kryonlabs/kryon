@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -80,30 +81,30 @@ PlotObservedRange :: (values: []float32,
         observed_min, observed_max)
 }
 
-# Values are borrowed for this frame. The retained node keeps only its key,
-# bounds, and semantic label; the caller supplies the next frame's values.
+// Values are borrowed for this frame. The retained node keeps only its key,
+// bounds, and semantic label; the caller supplies the next frame's values.
 #program_export
-Plot :: (props: PlotProps, values: []float32) -> s32 {
+Plot :: (session: Session, props: PlotProps, values: []float32) -> s32 {
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return -1 }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindPlot, bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindPlot, bounds)
         if node < 0 { return -1 }
-        TreeSetLabel(node, props.label)
-        bounds = TreeSubmittedNodeAt(node).bounds
+        TreeSetLabel(session, node, props.label)
+        bounds = TreeSubmittedNodeAt(session, node).bounds
     }
     faces: PlotFaces = PlotFacesFor(ActiveStyleRules(), props,
         DefaultPlotFaces())
     opacity: float32 = StyleOpacityValue(faces.plot.value.fields,
         faces.plot.value.opacity)
-    PaintRoundedFill(node, bounds, faces.plot.value.radius, 12,
+    PaintRoundedFill(session, node, bounds, faces.plot.value.radius, 12,
         ColorFromPacked(Opacity(faces.plot.value.background, opacity)))
     if faces.plot.value.border_width > 0.0 {
-        PaintRoundedOutline(node, bounds, faces.plot.value.radius, 12,
+        PaintRoundedOutline(session, node, bounds, faces.plot.value.radius, 12,
             faces.plot.value.border_width,
             ColorFromPacked(Opacity(faces.plot.value.border, opacity)))
     }
@@ -121,14 +122,14 @@ Plot :: (props: PlotProps, values: []float32) -> s32 {
                     (cast(s32)values.count), values[(offset + index) % (cast(s32)values.count)],
                     value_range, faces.mark)
                 if mark.bounds.width > 0.0 && mark.bounds.height > 0.0 {
-                    PaintRoundedFill(node, mark.bounds, 0.0, 0, mark_color)
+                    PaintRoundedFill(session, node, mark.bounds, 0.0, 0, mark_color)
                 }
                 index += 1
             }
         } else if (cast(s32)values.count) == 1 {
             mark: PlotMark = PlotSingleLine(bounds, values[offset],
                 value_range, faces.mark)
-            PaintLine(node, mark.bounds, mark_color)
+            PaintLine(session, node, mark.bounds, mark_color)
         } else {
             index = 1
             while index < (cast(s32)values.count) {
@@ -136,7 +137,7 @@ Plot :: (props: PlotProps, values: []float32) -> s32 {
                 b: float32 = values[(offset + index) % (cast(s32)values.count)]
                 mark: PlotMark = PlotLineSegment(bounds, index,
                     (cast(s32)values.count), a, b, value_range, faces.mark)
-                PaintLine(node, mark.bounds, mark_color)
+                PaintLine(session, node, mark.bounds, mark_color)
                 index += 1
             }
         }
@@ -161,12 +162,12 @@ Plot :: (props: PlotProps, values: []float32) -> s32 {
         text_color: Color = ColorFromPacked(Opacity(paint.text_color,
             opacity))
         if paint.show_label {
-            PaintClippedLabel(node, props.label,
+            PaintClippedLabel(session, node, props.label,
                 cast(s32)paint.label_bounds.x,
                 cast(s32)paint.label_bounds.y, font, text_color, bounds)
         }
         if paint.show_overlay {
-            PaintClippedLabel(node, props.overlay,
+            PaintClippedLabel(session, node, props.overlay,
                 cast(s32)paint.overlay_bounds.x,
                 cast(s32)paint.overlay_bounds.y, font, text_color, bounds)
         }

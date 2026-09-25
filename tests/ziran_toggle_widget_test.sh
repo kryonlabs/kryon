@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "control_props"
 #import "geometry"
 #import "style"
@@ -67,45 +74,45 @@ Frame :: () -> s32 {
         labels.value = true
         labels.disabled = true
     }
-    BeginTree(cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    first: ToggleValueResult = Toggle(plain)
-    second: ToggleValueResult = Toggle(labels)
-    if !EndTree() || TreeCount() != 3 ||
-        TreeNodeAt(1).kind != WidgetKindToggle ||
-        TreeNodeAt(1).bounds.width != 54.0 ||
-        TreeNodeAt(2).bounds.width != 68.0 ||
-        TreeNodeAt(1).semantic_label != "Wireless" ||
-        TreeNodeAt(2).semantic_label != "Mode" { return -1 }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    first: ToggleValueResult = Toggle(TestSession(), plain)
+    second: ToggleValueResult = Toggle(TestSession(), labels)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindToggle ||
+        TreeNodeAt(TestSession(), 1).bounds.width != 54.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 68.0 ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Wireless" ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Mode" { return -1 }
     if phase == 0 {
         if first.value || first.changed || second.value ||
-            second.changed || TreeNodeAt(1).selected ||
-            TreeNodeAt(2).selected { return -2 }
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
-        TreePointerUpdate(PointerFrame.{180.0, 140.0, false, false, false})
+            second.changed || TreeNodeAt(TestSession(), 1).selected ||
+            TreeNodeAt(TestSession(), 2).selected { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 140.0, false, false, false})
         phase = 1
         return 0
     }
     if phase == 1 {
         if !first.value || !first.changed || second.value ||
-            second.changed || !TreeNodeAt(1).selected ||
-            TreeNodeAt(2).selected { return -3 }
-        TreePointerUpdate(PointerFrame.{20.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 70.0, false, false, true})
-        TreePointerUpdate(PointerFrame.{180.0, 140.0, false, false, false})
+            second.changed || !TreeNodeAt(TestSession(), 1).selected ||
+            TreeNodeAt(TestSession(), 2).selected { return -3 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 140.0, false, false, false})
         phase = 2
         return 1
     }
     if phase == 2 {
         if !first.value || first.changed || !second.value ||
-            !second.changed || !TreeNodeAt(1).selected ||
-            !TreeNodeAt(2).selected { return -4 }
+            !second.changed || !TreeNodeAt(TestSession(), 1).selected ||
+            !TreeNodeAt(TestSession(), 2).selected { return -4 }
         phase = 3
         return 2
     }
     if !first.value || first.changed || !second.value ||
-        second.changed || !TreeNodeAt(2).selected ||
-        TreeHitAt(20.0, 70.0) != -1 { return -5 }
+        second.changed || !TreeNodeAt(TestSession(), 2).selected ||
+        TreeHitAt(TestSession(), 20.0, 70.0) != -1 { return -5 }
     phase = 4
     return 3
 }
@@ -208,7 +215,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

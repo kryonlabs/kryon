@@ -3,7 +3,9 @@
 #import "raster"
 #import "raster_shape"
 #import "raster_text"
+#import "session"
 #import "tree"
+#import "vec"
 host_api :: #system_library "host_api";
 
 PaintKind :: enum {
@@ -16,8 +18,8 @@ PaintKind :: enum {
 }
 
 PaintCommand :: struct {
-    kind: s32
     node: s32
+    kind: s32
     bounds: Rectangle
     color: Color
     radius: float32
@@ -35,222 +37,284 @@ PaintCommand :: struct {
     rotation: float32
 }
 
+PaintEmitter :: #type (command: PaintCommand) -> ();
+PaintClipper :: #type (command: PaintCommand,
+    geometry: NodeGeometry) -> PaintCommand;
+
+QueuedPaint :: struct {
+    data: PaintCommand
+    emit: PaintEmitter
+    clip_for: PaintClipper
+    has_emitter: bool
+    clips: bool
+}
+
 PaintCommands :: struct {
-    items: [4096]PaintCommand
-    count: s32
+    items: Vec(QueuedPaint)
     overflow: bool
 }
 
-pending_paint: PaintCommands;
+pending_paint: [9]PaintCommands;
 
-# Raw rasterization; the queued source, clip, radius, and tint are chosen in
-# checked widget code before this device effect is called.
+// Raw rasterization; the queued source, clip, radius, and tint are chosen in
+// checked widget code before this device effect is called.
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) #foreign host_api;
 
 #program_export
-EmitPaint :: (command: PaintCommand) {
-    if command.kind == PaintKindLine {
-        StrokeLine(command.bounds, command.color)
-    } else if command.kind == PaintKindRoundedFill {
-        FillRoundedRectangle(command.bounds, command.radius,
-            command.segments, command.color)
-    } else if command.kind == PaintKindRoundedOutline {
-        StrokeRoundedRectangle(command.bounds, command.radius,
-            command.segments, command.line_width, command.color)
-    } else if command.kind == PaintKindText {
-        PaintText(command.value, command.x, command.y,
-            command.font, command.color)
-    } else if command.kind == PaintKindImage {
-        if command.clip.width > 0.0 && command.clip.height > 0.0 {
-            RasterImage(command.asset_path, command.texture_id,
-                command.source, command.bounds, command.clip,
-                command.origin, command.rotation, command.radius,
-                command.color)
-        }
-    } else if command.kind == PaintKindClippedText {
-        PaintTextClipped(command.value, command.x, command.y,
-            command.font, command.color, command.clip)
+EmitPaint :: (command: QueuedPaint) {
+    if command.has_emitter {
+        emit: PaintEmitter = command.emit
+        emit(command.data)
     }
 }
 
+EmitLine :: (command: PaintCommand) {
+    StrokeLine(command.bounds, command.color)
+}
+
+EmitRoundedFill :: (command: PaintCommand) {
+    FillRoundedRectangle(command.bounds, command.radius,
+        command.segments, command.color)
+}
+
+EmitRoundedOutline :: (command: PaintCommand) {
+    StrokeRoundedRectangle(command.bounds, command.radius,
+        command.segments, command.line_width, command.color)
+}
+
+EmitLabel :: (command: PaintCommand) {
+    if command.kind == PaintKindClippedText {
+        PaintTextClipped(command.value, command.x, command.y,
+            command.font, command.color, command.clip)
+    } else {
+        PaintText(command.value, command.x, command.y,
+            command.font, command.color)
+    }
+}
+
+EmitImage :: (command: PaintCommand) {
+    if command.clip.width > 0.0 && command.clip.height > 0.0 {
+        RasterImage(command.asset_path, command.texture_id,
+            command.source, command.bounds, command.clip,
+            command.origin, command.rotation, command.radius,
+            command.color)
+    }
+}
+
+ClipLabel :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
+    if command.kind == PaintKindText {
+        command.kind = PaintKindClippedText
+        command.clip = geometry.clip
+    } else {
+        command.clip = RectangleIntersection(command.clip, geometry.clip)
+    }
+    return command
+}
+
+ClipImage :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
+    command.clip = RectangleIntersection(command.clip, geometry.clip)
+    return command
+}
+
 #program_export
-SubmitPaint :: (command: PaintCommand) {
-    if command.node < 0 && !TreeIsBuilding() {
+SubmitPaint :: (session: Session, command: QueuedPaint) {
+    if command.data.node < 0 && !TreeIsBuilding(session) {
         EmitPaint(command)
         return
     }
-    if pending_paint.count >= 4096 {
-        pending_paint.overflow = true
-        return
-    }
-    if command.node >= 0 && TreeIsBuilding() {
-        entry: TreeEntry = TreeSubmittedNodeAt(command.node)
-        dx: float32 = entry.bounds.x - entry.measured_bounds.x
-        dy: float32 = entry.bounds.y - entry.measured_bounds.y
-        full_bounds: bool = command.bounds.x == entry.measured_bounds.x &&
-            command.bounds.y == entry.measured_bounds.y &&
-            command.bounds.width == entry.measured_bounds.width &&
-            command.bounds.height == entry.measured_bounds.height
-        full_clip: bool = command.clip.x == entry.measured_bounds.x &&
-            command.clip.y == entry.measured_bounds.y &&
-            command.clip.width == entry.measured_bounds.width &&
-            command.clip.height == entry.measured_bounds.height
-        command.bounds.x += dx
-        command.bounds.y += dy
-        command.clip.x += dx
-        command.clip.y += dy
-        command.x += cast(s32)dx
-        command.y += cast(s32)dy
+    if command.data.node >= 0 && TreeIsBuilding(session) {
+        geometry: NodeGeometry = TreeSubmittedGeometryAt(session,
+            command.data.node)
+        dx: float32 = geometry.bounds.x - geometry.measured_bounds.x
+        dy: float32 = geometry.bounds.y - geometry.measured_bounds.y
+        full_bounds: bool = command.data.bounds.x == geometry.measured_bounds.x &&
+            command.data.bounds.y == geometry.measured_bounds.y &&
+            command.data.bounds.width == geometry.measured_bounds.width &&
+            command.data.bounds.height == geometry.measured_bounds.height
+        full_clip: bool = command.data.clip.x == geometry.measured_bounds.x &&
+            command.data.clip.y == geometry.measured_bounds.y &&
+            command.data.clip.width == geometry.measured_bounds.width &&
+            command.data.clip.height == geometry.measured_bounds.height
+        command.data.bounds.x += dx
+        command.data.bounds.y += dy
+        command.data.clip.x += dx
+        command.data.clip.y += dy
+        command.data.x += cast(s32)dx
+        command.data.y += cast(s32)dy
         if full_bounds {
-            command.bounds.width = entry.bounds.width
-            command.bounds.height = entry.bounds.height
+            command.data.bounds.width = geometry.bounds.width
+            command.data.bounds.height = geometry.bounds.height
         }
         if full_clip {
-            command.clip.width = entry.bounds.width
-            command.clip.height = entry.bounds.height
+            command.data.clip.width = geometry.bounds.width
+            command.data.clip.height = geometry.bounds.height
         }
-        if entry.clipped {
-            if command.kind == PaintKindText {
-                command.kind = PaintKindClippedText
-                command.clip = entry.clip
-            } else if command.kind == PaintKindClippedText ||
-                command.kind == PaintKindImage {
-                command.clip = RectangleIntersection(command.clip,
-                    entry.clip)
-            }
+        if geometry.clipped && command.clips {
+            clip_for: PaintClipper = command.clip_for
+            command.data = clip_for(command.data, geometry)
         }
     }
-    pending_paint.items[pending_paint.count] = command
-    pending_paint.count += 1
+    if !VecPush(pending_paint[SessionIndex(session)].items, command) {
+        pending_paint[SessionIndex(session)].overflow = true
+    }
 }
 
 #program_export
-PaintLine :: (node: s32, bounds: Rectangle,
+PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     color: Color) {
-    command: PaintCommand
-    command.kind = PaintKindLine
-    command.node = node
-    command.bounds = bounds
-    command.color = color
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindLine
+    command.data.node = node
+    command.data.bounds = bounds
+    command.data.color = color
+    emit: PaintEmitter = EmitLine
+    command.emit = emit
+    command.has_emitter = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintRoundedFill :: (node: s32, bounds: Rectangle, radius: float32,
+PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
-    command: PaintCommand
-    command.kind = PaintKindRoundedFill
-    command.node = node
-    command.bounds = bounds
-    command.radius = radius
-    command.segments = segments
-    command.color = color
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindRoundedFill
+    command.data.node = node
+    command.data.bounds = bounds
+    command.data.radius = radius
+    command.data.segments = segments
+    command.data.color = color
+    emit: PaintEmitter = EmitRoundedFill
+    command.emit = emit
+    command.has_emitter = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintRoundedOutline :: (node: s32, bounds: Rectangle, radius: float32,
+PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: float32,
     segments: s32, line_width: float32, color: Color) {
-    command: PaintCommand
-    command.kind = PaintKindRoundedOutline
-    command.node = node
-    command.bounds = bounds
-    command.radius = radius
-    command.segments = segments
-    command.line_width = line_width
-    command.color = color
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindRoundedOutline
+    command.data.node = node
+    command.data.bounds = bounds
+    command.data.radius = radius
+    command.data.segments = segments
+    command.data.line_width = line_width
+    command.data.color = color
+    emit: PaintEmitter = EmitRoundedOutline
+    command.emit = emit
+    command.has_emitter = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintLabel :: (node: s32, value: string, x: s32, y: s32,
+PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     font: s32, color: Color) {
-    command: PaintCommand
-    command.kind = PaintKindText
-    command.node = node
-    command.value = value
-    command.x = x
-    command.y = y
-    command.font = font
-    command.color = color
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindText
+    command.data.node = node
+    command.data.value = value
+    command.data.x = x
+    command.data.y = y
+    command.data.font = font
+    command.data.color = color
+    emit: PaintEmitter = EmitLabel
+    clip_for: PaintClipper = ClipLabel
+    command.emit = emit
+    command.clip_for = clip_for
+    command.has_emitter = true
+    command.clips = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintClippedLabel :: (node: s32, value: string, x: s32, y: s32,
+PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
-    command: PaintCommand
-    command.kind = PaintKindClippedText
-    command.node = node
-    command.value = value
-    command.x = x
-    command.y = y
-    command.font = font
-    command.color = color
-    command.clip = clip
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindClippedText
+    command.data.node = node
+    command.data.value = value
+    command.data.x = x
+    command.data.y = y
+    command.data.font = font
+    command.data.color = color
+    command.data.clip = clip
+    emit: PaintEmitter = EmitLabel
+    clip_for: PaintClipper = ClipLabel
+    command.emit = emit
+    command.clip_for = clip_for
+    command.has_emitter = true
+    command.clips = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintImage :: (node: s32, asset_path: string, texture_id: u32,
+PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
-    command: PaintCommand
-    command.kind = PaintKindImage
-    command.node = node
-    command.asset_path = asset_path
-    command.texture_id = texture_id
-    command.source = source
-    command.bounds = destination
-    command.clip = clip
-    command.origin = origin
-    command.rotation = rotation
-    command.radius = radius
-    command.color = tint
-    SubmitPaint(command)
+    command: QueuedPaint
+    command.data.kind = PaintKindImage
+    command.data.node = node
+    command.data.asset_path = asset_path
+    command.data.texture_id = texture_id
+    command.data.source = source
+    command.data.bounds = destination
+    command.data.clip = clip
+    command.data.origin = origin
+    command.data.rotation = rotation
+    command.data.radius = radius
+    command.data.color = tint
+    emit: PaintEmitter = EmitImage
+    clip_for: PaintClipper = ClipImage
+    command.emit = emit
+    command.clip_for = clip_for
+    command.has_emitter = true
+    command.clips = true
+    SubmitPaint(session, command)
 }
 
 #program_export
-PaintClear :: () {
-    index: s32 = 0
-    while index < pending_paint.count {
-        empty: PaintCommand
-        pending_paint.items[index] = empty
-        index += 1
-    }
-    pending_paint.count = 0
-    pending_paint.overflow = false
+PaintClear :: (session: Session) {
+    VecClear(pending_paint[SessionIndex(session)].items)
+    pending_paint[SessionIndex(session)].overflow = false
 }
 
 #program_export
-PaintOverflow :: () -> bool {
-    return pending_paint.overflow
+PaintOverflow :: (session: Session) -> bool {
+    return pending_paint[SessionIndex(session)].overflow
 }
 
-# The pending commands are inspectable after the tree commits and before
-# PaintFlush clears them. A failed commit clears the queue instead.
+// The pending commands are inspectable after the tree commits and before
+// PaintFlush clears them. A failed commit clears the queue instead.
 #program_export
-PendingPaintCount :: () -> s32 {
-    return pending_paint.count
+PendingPaintCount :: (session: Session) -> s32 {
+    return cast(s32)pending_paint[SessionIndex(session)].items.count
 }
 
 #program_export
-PendingPaintAt :: (index: s32) -> PaintCommand {
+PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     empty: PaintCommand
-    if index < 0 || index >= pending_paint.count { return empty }
-    return pending_paint.items[index]
+    if index < 0 || cast(s64)index >= pending_paint[SessionIndex(session)].items.count { return empty }
+    return pending_paint[SessionIndex(session)].items[index].data
 }
 
 #program_export
-PaintFlush :: () {
+PaintFlush :: (session: Session) {
     index: s32 = 0
-    while index < pending_paint.count {
-        EmitPaint(pending_paint.items[index])
+    while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
+        command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
+        EmitPaint(command)
         index += 1
     }
-    PaintClear()
+    PaintClear(session)
+}
+
+#program_export
+PaintDispose :: (session: Session) {
+    if !SessionValid(session) { return }
+    VecFree(pending_paint[session.slot].items)
+    pending_paint[session.slot].overflow = false
 }

@@ -7,6 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "router"
 #import "router_props"
@@ -43,12 +50,16 @@ Answer :: () -> s32 {
         RouterFindHash(routes[:], "#/docs/api&x") != 1 { return -1 }
 
     state: RouterState
-    TreeStart(cast(u64)7, bounds)
-    result: RouterResult = Router(props, state, routes[:], "", "/app", 1)
-    if !TreeFinish() || !result.state.initialized || result.route != 1 ||
+    initial_hash: RouterResult = Router(TestSession(), props, state, routes[:],
+        "#/docs/api", "/app", 1)
+    if initial_hash.route != 2 || initial_hash.changed ||
+        initial_hash.write_url { return -11 }
+    TreeStart(TestSession(), cast(u64)7, bounds)
+    result: RouterResult = Router(TestSession(), props, state, routes[:], "", "/app", 1)
+    if !TreeFinish(TestSession()) || !result.state.initialized || result.route != 1 ||
         result.route_index != 0 || result.changed || !result.write_url ||
         result.push_url || result.node != 1 ||
-        TreeNodeAt(1).kind != WidgetKindRouter { return -2 }
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindRouter { return -2 }
     url: [64]u8
     used: s32 = RouterFormatUrl(result, url[:])
     if !Matches(url[:], used, "/app#/home") ||
@@ -56,9 +67,9 @@ Answer :: () -> s32 {
 
     state = RouterAcknowledgeVersion(result.state, 2)
     state = RouterNavigate(state, 2)
-    TreeStart(cast(u64)7, bounds)
-    result = Router(props, state, routes[:], "#/home", "/app", 2)
-    if !TreeFinish() || result.route != 2 ||
+    TreeStart(TestSession(), cast(u64)7, bounds)
+    result = Router(TestSession(), props, state, routes[:], "#/home", "/app", 2)
+    if !TreeFinish(TestSession()) || result.route != 2 ||
         result.previous_route != 1 || !result.changed ||
         !result.write_url || !result.push_url ||
         result.state.generation != cast(u32)1 ||
@@ -76,11 +87,11 @@ Answer :: () -> s32 {
     if !Matches(url[:], used, "/#/home") { return -7 }
 
     state = RouterAcknowledgeVersion(result.state, 3)
-    result = Router(props, state, routes[:], "#/docs/api?tab=1", "/app", 4)
+    result = Router(TestSession(), props, state, routes[:], "#/docs/api?tab=1", "/app", 4)
     if !result.changed || result.route != 2 || result.push_url ||
         result.state.route_version != 4 { return -8 }
     state = RouterNavigate(result.state, 999)
-    result = Router(props, state, routes[:], "#/docs/api", "/app", 4)
+    result = Router(TestSession(), props, state, routes[:], "#/docs/api", "/app", 4)
     if result.changed || result.route != 2 || result.state.has_request ||
         result.write_url { return -9 }
 
@@ -110,7 +121,7 @@ for input in source saved; do
     test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict \
+        "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then

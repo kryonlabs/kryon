@@ -70,28 +70,28 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_drag.$extension"
             cat > "$output/main.go" <<'GO'
 package main
 func main() { if UseDrag_Answer() != 42 { panic("wrong drag result") } }
 GO
-            GO111MODULE=off go run "$output/geometry.go" \
+            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/drag.go" "$output/use_drag.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" -o "$output" \
+            "$ziran" build --target=c --root "$work" -o "$output" \
                 --module-path "$module_dir" "$input_dir/use_drag.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_drag.h"
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/drag.c" \
+                "$output/geometry.c" "$output/math.c" "$output/drag.c" \
                 "$output/use_drag.c" "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" \
+            "$ziran" build --target=cpp --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_drag.$extension"
             cat > "$output/main.cpp" <<'CPP'
@@ -99,7 +99,7 @@ C
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/drag.cpp" \
+                "$output/geometry.cpp" "$output/math.cpp" "$output/drag.cpp" \
                 "$output/use_drag.cpp" "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi

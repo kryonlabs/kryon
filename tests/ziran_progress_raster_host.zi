@@ -1,0 +1,75 @@
+#import "drawing_props"
+#import "geometry"
+
+calls: s32;
+failed: bool;
+
+ColorIs :: (value: Color, r: u8, g: u8, b: u8, a: u8) -> bool {
+    return value.r == r && value.g == g && value.b == b && value.a == a
+}
+
+BoundsAre :: (bounds: Rectangle, x: float32, y: float32,
+    width: float32, height: float32) -> bool {
+    return bounds.x == x && bounds.y == y &&
+        bounds.width == width && bounds.height == height
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    valid: bool = radius == 0.25 && segments == 12
+    if calls == 0 || calls == 4 {
+        valid = valid && BoundsAre(bounds, 10.0, 20.0, 100.0, 20.0) &&
+            ColorIs(color, cast(u8)0x11, cast(u8)0x22,
+                cast(u8)0x33, cast(u8)0x44)
+    } else if calls == 1 {
+        valid = valid && BoundsAre(bounds, 10.0, 20.0, 25.0, 20.0) &&
+            ColorIs(color, cast(u8)0x55, cast(u8)0x66,
+                cast(u8)0x77, cast(u8)0x88)
+    } else {
+        valid = false
+    }
+    if !valid { failed = true }
+    calls += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if calls != 2 || !BoundsAre(bounds, 10.0, 20.0, 100.0, 20.0) ||
+        radius != 0.25 || segments != 12 || width != 2.0 ||
+        !ColorIs(color, cast(u8)0x99, cast(u8)0xaa,
+            cast(u8)0xbb, cast(u8)0xcc) { failed = true }
+    calls += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    if calls != 3 || value != "50%" || x != 40 || y != 25 || font != 14 ||
+        !ColorIs(color, cast(u8)0x10, cast(u8)0x20,
+            cast(u8)0x30, cast(u8)0x40) { failed = true }
+    calls += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    failed = true
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) { failed = true }
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    failed = true
+}
+
+#program_export
+RasterCallCount :: () -> s32 { return calls }
+
+#program_export
+RasterHostFailed :: () -> bool { return failed }

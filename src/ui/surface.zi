@@ -1,7 +1,7 @@
 #import "control_props"
 
-# Shared visual primitives returned as data. Hosts execute these instructions;
-# material geometry, layer order, colors and motion are defined here.
+// Shared visual primitives returned as data. Hosts execute these instructions;
+// material geometry, layer order, colors and motion are defined here.
 #program_export
 DefaultMotionEnabled :: () -> bool {
     return true
@@ -43,9 +43,9 @@ LoadingRing :: (width: float32, height: float32, icon_size: float32,
     if ring.outer_radius < 3.0 { ring.outer_radius = 3.0 }
     ring.inner_radius = ring.outer_radius - 2.5
     if light_surroundings { ring.inner_radius = ring.outer_radius - 2.0 }
-    # Keep the long-running clock wide until it has been reduced to one cycle.
-    # Geometry only needs a float; the original elapsed time must not lose its
-    # fractional milliseconds before this reduction.
+    // Keep the long-running clock wide until it has been reduced to one cycle.
+    // Geometry only needs a float; the original elapsed time must not lose its
+    // fractional milliseconds before this reduction.
     phase_ms: float32 = cast(float32)(elapsed_ms - cast(float64)(cast(s64)(elapsed_ms / 1500.0)) * 1500.0)
     angle: float32 = phase_ms * 0.24
     if !light_surroundings { angle += 110.0 }
@@ -60,16 +60,16 @@ LoadingRing :: (width: float32, height: float32, icon_size: float32,
     if light_surroundings { ring.tip_color = GradientColor(color, white, 0.88) }
     ring.trail_opacity = 0.55
     if !light_surroundings {
-        # Chromatic light stays visible around the dark ring. Neutral and
-        # pale-surface indicators retain a quieter trail beneath the bright tip.
+        // Chromatic light stays visible around the dark ring. Neutral and
+        // pale-surface indicators retain a quieter trail beneath the bright tip.
         ring.trail_opacity += 0.25 * Unit((cast(float32)ColorChroma(color) - 64.0) / 64.0)
         ring.glow_blur = 6.0 * Unit((cast(float32)ColorChroma(color) - 64.0) / 64.0)
     }
     return ring
 }
 
-# Light gathers at the leading end of the rotating arc. Distance-based
-# falloff is continuous across angle wrapping and needs no host trigonometry.
+// Light gathers at the leading end of the rotating arc. Distance-based
+// falloff is continuous across angle wrapping and needs no host trigonometry.
 #program_export
 LoadingArcColor :: (ring: LoadingRingSpec, x: float32, y: float32) -> u32 {
     radius: float32 = (ring.inner_radius + ring.outer_radius) * 0.5
@@ -80,8 +80,8 @@ LoadingArcColor :: (ring: LoadingRingSpec, x: float32, y: float32) -> u32 {
     near_tip: float32 = 0.0
     if radius > 0.0 { near_tip = Unit(1.0 - (dx * dx + dy * dy) / (radius * radius * 3.5)) }
     near_tip *= near_tip
-    # Bring the trail close to the specular cap before it reaches the tip.
-    # Color brightening and coverage remain separate, preserving source alpha.
+    // Bring the trail close to the specular cap before it reaches the tip.
+    // Color brightening and coverage remain separate, preserving source alpha.
     return Opacity(GradientColor(ring.color, ring.tip_color, near_tip * 0.75),
         ring.trail_opacity + (1.0 - ring.trail_opacity) * near_tip)
 }
@@ -98,14 +98,14 @@ LoadingTipCoverage :: (ring: LoadingRingSpec, x: float32, y: float32) -> float32
 
 #program_export
 LoadingPaintRadius :: (ring: LoadingRingSpec) -> float32 {
-    # Include the small specular cap beyond the nominal ring radius.
+    // Include the small specular cap beyond the nominal ring radius.
     extension: float32 = (ring.outer_radius - ring.inner_radius) * 0.125
     if ring.glow_blur > extension { extension = ring.glow_blur }
     return ring.outer_radius + extension
 }
 
-# Preserve separate source-over samples: combining them before the backend
-# blends would change rounding and partially transparent spinner colors.
+// Preserve separate source-over samples: combining them before the backend
+// blends would change rounding and partially transparent spinner colors.
 RingSample :: struct {
     glow: u32
     track: u32
@@ -117,8 +117,8 @@ RingSample :: struct {
 LoadingSample :: (ring: LoadingRingSpec, x: float32, y: float32) -> RingSample {
     sample: RingSample
     if ring.glow_blur > 0.0 {
-        # Only the rotating arc emits light; keep the unlit gap and central
-        # opening clear. Both hosts blend this before the crisp ring samples.
+        // Only the rotating arc emits light; keep the unlit gap and central
+        // opening clear. Both hosts blend this before the crisp ring samples.
         glow: float32 = BlurStrokeCoverage(x + ring.outer_radius, y + ring.outer_radius,
             ring.outer_radius * 2.0, ring.outer_radius * 2.0, ring.outer_radius,
             ring.outer_radius - ring.inner_radius, ring.glow_blur)
@@ -136,8 +136,8 @@ LoadingSample :: (ring: LoadingRingSpec, x: float32, y: float32) -> RingSample {
     return sample
 }
 
-# Portable sine for arc endpoints. Reduce to [-pi/2, pi/2] before the
-# Taylor polynomial so its error stays well below subpixel coverage.
+// Portable sine for arc endpoints. Reduce to [-pi/2, pi/2] before the
+// Taylor polynomial so its error stays well below subpixel coverage.
 #program_export
 SinDegrees :: (degrees: float32) -> float32 {
     degrees -= cast(float32)(cast(s32)(degrees / 360.0)) * 360.0
@@ -183,8 +183,8 @@ ArcCoverage :: (x: float32, y: float32, inner: float32, outer: float32,
     return coverage
 }
 
-# Each host stores this value by node identity and supplies elapsed frame time.
-# Retargeting starts at the currently displayed value, including mid-flight.
+// Each host stores this value by node identity and supplies elapsed frame time.
+// Retargeting starts at the currently displayed value, including mid-flight.
 #program_export
 AdvanceMotion :: (track: MotionTrack, target: float32, delta_ms: float32,
                   duration_ms: float32, immediate: bool) -> MotionTrack {
@@ -211,8 +211,8 @@ MotionActive :: (track: MotionTrack) -> bool {
     return track.value != track.target
 }
 
-# Channels are hover, press, focus. Hosts retain tracks by node identity;
-# target suppression, timing and snap policy are shared here.
+// Channels are hover, press, focus. Hosts retain tracks by node identity;
+// target suppression, timing and snap policy are shared here.
 #program_export
 AdvanceInteraction :: (track: MotionTrack, channel: s32,
     hovered: bool, pressed: bool, focused: bool, enabled: bool,
@@ -239,8 +239,8 @@ InteractionMotion :: struct {
     active: bool
 }
 
-# Advance the complete interaction state once per frame. Channel timing and
-# redraw eligibility belong together, not in each host's widget implementation.
+// Advance the complete interaction state once per frame. Channel timing and
+// redraw eligibility belong together, not in each host's widget implementation.
 #program_export
 AdvanceInteractionMotion :: (motion: InteractionMotion,
     hovered: bool, pressed: bool, focused: bool, enabled: bool,
@@ -273,14 +273,14 @@ SurfaceLayer :: struct {
     gradient_bias: float32
 }
 
-# Hosts supply normalized vertical position at the pixel center. Material
-# sampling, including transparent endpoints and clamping, belongs to .kry.
-# Coverage is separate so the same color policy works with any rasterizer.
+// Hosts supply normalized vertical position at the pixel center. Material
+// sampling, including transparent endpoints and clamping, belongs to .kry.
+// Coverage is separate so the same color policy works with any rasterizer.
 #program_export
 SampleColor :: (layer: SurfaceLayer, position: float32) -> u32 {
     if !layer.gradient { return layer.color }
-    # Zero is linear. One concentrates the endpoint near the lower edge.
-    # This monotonic quadratic keeps both endpoints exact throughout motion.
+    // Zero is linear. One concentrates the endpoint near the lower edge.
+    // This monotonic quadratic keeps both endpoints exact throughout motion.
     if layer.gradient_bias > 0.0 {
         position = Unit(position)
         position += Unit(layer.gradient_bias) * position * (position - 1.0)
@@ -288,8 +288,8 @@ SampleColor :: (layer: SurfaceLayer, position: float32) -> u32 {
     return GradientColor(layer.color, layer.end_color, position)
 }
 
-# Missing custom endpoints mean the live material, not transparent black.
-# Keep every state's presence through the fade, including when leaving it.
+// Missing custom endpoints mean the live material, not transparent black.
+// Keep every state's presence through the fade, including when leaving it.
 FillStates :: struct {
     normal: bool
     hover: bool
@@ -372,8 +372,8 @@ ApplyFillStates :: (layer: SurfaceLayer, states: FillStates, opacity: float32) -
     return layer
 }
 
-# A plain styled surface uses the same geometry as controls, without their
-# interaction lighting. Explicit transparent colors stay transparent.
+// A plain styled surface uses the same geometry as controls, without their
+// interaction lighting. Explicit transparent colors stay transparent.
 #program_export
 FlatLayer :: (index: s32, width: float32, height: float32, radius: float32,
               border_width: float32, background: u32, border: u32,
@@ -390,7 +390,7 @@ FlatLayer :: (index: s32, width: float32, height: float32, radius: float32,
     return layer
 }
 
-# Explicit fill endpoints replace the material fill, not its geometry.
+// Explicit fill endpoints replace the material fill, not its geometry.
 #program_export
 FillGradient :: (layer: SurfaceLayer, enabled: bool, start: u32, end: u32,
                  opacity: float32) -> SurfaceLayer {
@@ -403,8 +403,8 @@ FillGradient :: (layer: SurfaceLayer, enabled: bool, start: u32, end: u32,
     return layer
 }
 
-# Coordinates are in physical pixels. Coverage is shared by every renderer,
-# including fractional bounds and an inset stroke (never an outside stroke).
+// Coordinates are in physical pixels. Coverage is shared by every renderer,
+// including fractional bounds and an inset stroke (never an outside stroke).
 #program_export
 RoundedContains :: (x: float32, y: float32, width: float32, height: float32, radius: float32) -> bool {
     if width <= 0.0 || height <= 0.0 || x < 0.0 || y < 0.0 || x > width || y > height { return false }
@@ -451,8 +451,8 @@ LayerCoverage :: (x: float32, y: float32, width: float32, height: float32, radiu
     return Unit(coverage)
 }
 
-# Compact smooth falloff: zero slope at the source edge and at the support
-# boundary. Unlike concentric filled contours, this has no visible steps.
+// Compact smooth falloff: zero slope at the source edge and at the support
+// boundary. Unlike concentric filled contours, this has no visible steps.
 #program_export
 BlurFalloff :: (distance: float32, blur: float32) -> float32 {
     if distance <= 0.0 { return 1.0 }
@@ -481,8 +481,8 @@ RoundedDistance :: (x: float32, y: float32, width: float32, height: float32, rad
     largest: float32 = dx
     if dy > largest { largest = dy }
     if largest <= 0.0 { return inside - radius }
-    # Normalize before Newton iteration so every input lies in [1, 2].
-    # This keeps the distance calculation portable without a host math hook.
+    // Normalize before Newton iteration so every input lies in [1, 2].
+    // This keeps the distance calculation portable without a host math hook.
     nx: float32 = dx / largest
     ny: float32 = dy / largest
     square: float32 = nx * nx + ny * ny
@@ -502,8 +502,8 @@ BlurCoverage :: (x: float32, y: float32, width: float32, height: float32, radius
     return BlurFalloff(RoundedDistance(x, y, width, height, radius), blur)
 }
 
-# Light fades inward from the rounded boundary. Coverage clips every sample
-# to the face, including partially covered corner pixels; nothing spills out.
+// Light fades inward from the rounded boundary. Coverage clips every sample
+// to the face, including partially covered corner pixels; nothing spills out.
 #program_export
 InnerBlurCoverage :: (x: float32, y: float32, width: float32, height: float32, radius: float32, blur: float32) -> float32 {
     if width <= 0.0 || height <= 0.0 || blur <= 0.0 { return 0.0 }
@@ -512,9 +512,9 @@ InnerBlurCoverage :: (x: float32, y: float32, width: float32, height: float32, r
     return coverage * BlurFalloff(-RoundedDistance(x, y, width, height, radius), blur)
 }
 
-# A blurred stroke is a light band around the boundary, never a blurred fill.
-# Signed distance keeps the center clear and provides the same compact
-# falloff on either side of the stroke for every native renderer.
+// A blurred stroke is a light band around the boundary, never a blurred fill.
+// Signed distance keeps the center clear and provides the same compact
+// falloff on either side of the stroke for every native renderer.
 #program_export
 BlurStrokeCoverage :: (x: float32, y: float32, width: float32, height: float32,
                        radius: float32, stroke: float32, blur: float32) -> float32 {
@@ -525,8 +525,8 @@ BlurStrokeCoverage :: (x: float32, y: float32, width: float32, height: float32,
     return BlurFalloff(distance - stroke * 0.5, blur)
 }
 
-# Hosts provide sample coordinates relative to the layer in physical pixels.
-# Selecting the mask (especially inward vs outward blur) is surface policy.
+// Hosts provide sample coordinates relative to the layer in physical pixels.
+// Selecting the mask (especially inward vs outward blur) is surface policy.
 #program_export
 SampleCoverage :: (layer: SurfaceLayer, x: float32, y: float32, scale: float32) -> float32 {
     width: float32 = layer.width * scale
@@ -597,16 +597,16 @@ ChevronCoverage :: (x: float32, y: float32, size: float32) -> float32 {
     return coverage
 }
 
-# Focus establishes the resting material; hover and press take precedence as
-# their motion tracks advance. Releasing the pointer reveals focused material.
+// Focus establishes the resting material; hover and press take precedence as
+// their motion tracks advance. Releasing the pointer reveals focused material.
 MixValue :: (from: float32, to: float32, amount: float32) -> float32 {
     if amount <= 0.0 { return from }
     if amount >= 1.0 { return to }
     return from + (to - from) * amount
 }
 
-# Paint geometry follows the same precedence as color. Return exact endpoints
-# so a completed transition does not leave a fractional radius or opacity.
+// Paint geometry follows the same precedence as color. Return exact endpoints
+// so a completed transition does not leave a fractional radius or opacity.
 #program_export
 InteractionValue :: (normal: float32, hover: float32, press: float32, focus: float32,
                      hover_amount: float32, press_amount: float32, focus_amount: float32) -> float32 {
@@ -621,8 +621,8 @@ InteractionColor :: (normal: u32, hover: u32, press: u32, focus: u32,
     return GradientColor(GradientColor(resting, hover, hover_amount), press, press_amount)
 }
 
-# Common control symbols on a 24-unit grid: plus, play, trash, save.
-# Hosts map their catalog identifiers to these shapes; geometry stays here.
+// Common control symbols on a 24-unit grid: plus, play, trash, save.
+// Hosts map their catalog identifiers to these shapes; geometry stays here.
 #program_export
 IconContains :: (kind: s32, x: float32, y: float32) -> bool {
     if kind == 1 {
@@ -678,10 +678,10 @@ IconCoverage :: (kind: s32, x: float32, y: float32, width: float32, height: floa
     return coverage
 }
 
-# Absorption reduces secondary channels while retaining the strongest color
-# channel. Multiplying every channel by black makes luminous colors muddy.
-# Recover the hue for a luminous face tint without brightening label colors.
-# Neutral colors have no chroma and keep their original value and opacity.
+// Absorption reduces secondary channels while retaining the strongest color
+// channel. Multiplying every channel by black makes luminous colors muddy.
+// Recover the hue for a luminous face tint without brightening label colors.
+// Neutral colors have no chroma and keep their original value and opacity.
 #program_export
 ChromaColor :: (color: u32, peak: u32) -> u32 {
     r: u32 = (color >> cast(u32)24) & cast(u32)255
@@ -702,8 +702,8 @@ ChromaColor :: (color: u32, peak: u32) -> u32 {
     return (r << cast(u32)24) | (g << cast(u32)16) | (b << cast(u32)8) | (color & cast(u32)255)
 }
 
-# Lift intermediate channels toward the existing peak without introducing
-# white into an absent channel. Neutral colors and source opacity are stable.
+// Lift intermediate channels toward the existing peak without introducing
+// white into an absent channel. Neutral colors and source opacity are stable.
 #program_export
 LiftColor :: (color: u32, amount: float32) -> u32 {
     peak: float32 = 0.0
@@ -773,8 +773,8 @@ Opacity :: (color: u32, opacity: float32) -> u32 {
     return ((color >> cast(u32)8) << cast(u32)8) | alpha
 }
 
-# Cubic ease-out with an exact endpoint; elapsed is measured from the last
-# target change. Starting from the current value makes reversals continuous.
+// Cubic ease-out with an exact endpoint; elapsed is measured from the last
+// target change. Starting from the current value makes reversals continuous.
 #program_export
 Transition :: (from: float32, to: float32, elapsed_ms: float32, duration_ms: float32) -> float32 {
     if duration_ms <= 0.0 { return to }
@@ -796,8 +796,8 @@ MaterialLayerCount :: (material: MaterialKind) -> s32 {
     return 12
 }
 
-# Joined segments share one outer surface. Only interior seams clip the
-# paint; the outermost edges retain their complete external glow.
+// Joined segments share one outer surface. Only interior seams clip the
+// paint; the outermost edges retain their complete external glow.
 #program_export
 SegmentCoverage :: (pixel_x: float32, segment_x: float32, segment_width: float32, surface_width: float32) -> float32 {
     coverage: float32 = 1.0
@@ -954,15 +954,15 @@ LightfieldLayer :: (
         p = 0.0
     }
     broad_light: float32 = broad * Unit((cast(float32)ColorChroma(light) - 128.0) / 64.0) * (1.0 - p)
-    # Keep the outside field restrained: material light belongs inside the face.
+    // Keep the outside field restrained: material light belongs inside the face.
     if index == cast(s32)0 {
         layer.y += 3.0 + h
         layer.blur = 4.0 + 2.0 * h
         strength: float32 = (0.025 + 0.025 * broad + 0.08 * h + 0.06 * Unit(focused)) * (1.0 - p * 0.8)
         if !light_surroundings {
-            # Wide saturated faces emit a broader contact field. Muted
-            # material retains its quiet shadow; pressure extinguishes the
-            # added light continuously as the face meets the surface.
+            // Wide saturated faces emit a broader contact field. Muted
+            // material retains its quiet shadow; pressure extinguishes the
+            // added light continuously as the face meets the surface.
             strength += 0.25 * broad_light
         }
         if light_surroundings { strength *= 0.6 }
@@ -979,19 +979,19 @@ LightfieldLayer :: (
         alpha: float32 = 32.0 + 18.0 * h - 24.0 * p
         if light_surroundings {
             layer.blur = 5.0 + 2.0 * h
-            # Pale neutral material catches light on hover instead of adding
-            # a gray ledge. Colored or dark faces keep their grounding shadow;
-            # pressing restores contact along the same continuous track.
+            // Pale neutral material catches light on hover instead of adding
+            // a gray ledge. Colored or dark faces keep their grounding shadow;
+            // pressing restores contact along the same continuous track.
             brightness: u32 = ((background >> cast(u32)24) & cast(u32)255) +
                 ((background >> cast(u32)16) & cast(u32)255) + ((background >> cast(u32)8) & cast(u32)255)
             pale: float32 = Unit((32.0 - cast(float32)ColorChroma(background)) / 16.0) *
                 Unit((cast(float32)brightness - 576.0) / 96.0)
             alpha = 24.0 + 10.0 * h - 20.0 * h * (1.0 - p) * pale - 18.0 * p
-            # Focus light softens the neutral contact shadow continuously.
-            # Resting and pressed faces retain their grounding contrast.
+            // Focus light softens the neutral contact shadow continuously.
+            // Resting and pressed faces retain their grounding contrast.
             alpha *= 1.0 - 0.5 * Unit(focused)
-            # Borderless pale faces float on a lighter contact shadow. Restore
-            # contact as the face presses down, without changing raised edges.
+            // Borderless pale faces float on a lighter contact shadow. Restore
+            // contact as the face presses down, without changing raised edges.
             if (border & cast(u32)255) == cast(u32)0 {
                 alpha *= 0.5 + 0.5 * p
             }
@@ -1002,21 +1002,21 @@ LightfieldLayer :: (
     }
     if index == cast(s32)1 {
         layer.x = 1.0
-        # Hover pulls the contact light toward the face and softens its tail.
-        # Shifting a filled glow downward leaves a solid ledge before the blur.
+        // Hover pulls the contact light toward the face and softens its tail.
+        // Shifting a filled glow downward leaves a solid ledge before the blur.
         layer.y += 2.0 - h - 2.0 * p
         layer.width = width - 2.0
         layer.blur = 2.0 + 5.0 * h
         if !light_surroundings && !disabled && (border & cast(u32)255) != cast(u32)0 {
-            # Resting raised material casts a soft contact field. Press brings
-            # it back against the surface; hover retains the wider falloff.
+            // Resting raised material casts a soft contact field. Press brings
+            // it back against the surface; hover retains the wider falloff.
             layer.blur = 2.0 + (3.0 + 2.0 * h) * (1.0 - p)
         }
         alpha: float32 = 34.0 + 90.0 * h - 26.0 * p
         if !light_surroundings && !disabled && (border & cast(u32)255) != cast(u32)0 {
-            # Taller raised faces cast a broader lower reflection. Its
-            # quadratic onset preserves compact controls; pressure draws
-            # the light back into contact with the surface.
+            // Taller raised faces cast a broader lower reflection. Its
+            // quadratic onset preserves compact controls; pressure draws
+            // the light back into contact with the surface.
             raised: float32 = Unit((height - 40.0) / 8.0)
             raised *= raised * (1.0 - p)
             alpha += 70.0 * raised
@@ -1025,24 +1025,24 @@ LightfieldLayer :: (
         if disabled { alpha = 8.0 }
         rim_light: u32 = light
         if light_surroundings {
-            # A soft chromatic contact shadow replaces the hard white-gray
-            # ledge. The face covers its interior; only the lower falloff shows.
+            // A soft chromatic contact shadow replaces the hard white-gray
+            // ledge. The face covers its interior; only the lower falloff shows.
             layer.y = FaceOffset(hover, press, disabled) + 1.0
-            # Active light spreads while the resting contact remains compact.
-            # Blend the width on the same tracks as its color and opacity.
+            // Active light spreads while the resting contact remains compact.
+            // Blend the width on the same tracks as its color and opacity.
             layer.blur = 8.0 + 4.0 * Unit(h + focused)
-            # Hover spreads light inside the face while softening its contact
-            # shadow; it must not add a darker ledge beneath pale material.
-            # Taller controls carry more light beneath the face without
-            # deepening the contact band on compact state and icon controls.
+            // Hover spreads light inside the face while softening its contact
+            // shadow; it must not add a darker ledge beneath pale material.
+            // Taller controls carry more light beneath the face without
+            // deepening the contact band on compact state and icon controls.
             raised: float32 = Unit((height - 40.0) / 8.0)
-            # Focus supplies its own edge light; soften the underlying contact
-            # reflection along that same continuous track to avoid doubling it.
+            // Focus supplies its own edge light; soften the underlying contact
+            // reflection along that same continuous track to avoid doubling it.
             alpha = (110.0 + 40.0 * raised - 10.0 * h - 40.0 * Unit(focused)) * (1.0 - 0.85 * p) * (1.0 - 0.85 * broad)
             if (border & cast(u32)255) == cast(u32)0 { alpha *= 0.30 }
             if disabled { alpha = 8.0 }
-            # Active edge light brightens the contact reflection gradually;
-            # resting material keeps its deeper grounding color.
+            // Active edge light brightens the contact reflection gradually;
+            // resting material keeps its deeper grounding color.
             rim_light = DepthColor(light, 0.65 - 0.30 * Unit(h + focused))
         }
         layer.color = ((rim_light >> cast(u32)8) << cast(u32)8) | cast(u32)alpha
@@ -1055,14 +1055,14 @@ LightfieldLayer :: (
     }
     if index == cast(s32)2 {
         layer.is_face = true
-        # Focus concentrates light at the rim rather than washing the face.
-        # Hover and press retain their own material response while active.
+        // Focus concentrates light at the rim rather than washing the face.
+        // Hover and press retain their own material response while active.
         focus_depth: float32 = Unit(focused) * (1.0 - h) * (1.0 - p)
         if disabled { focus_depth = 0.0 }
         if !light_surroundings {
-            # Broad, low-chroma surfaces collect a little surrounding light
-            # inside their face. Saturated material retains its own hue;
-            # press and focus supply their own depth response.
+            // Broad, low-chroma surfaces collect a little surrounding light
+            // inside their face. Saturated material retains its own hue;
+            // press and focus supply their own depth response.
             if !disabled {
                 reflected: u32 = GradientColor(background, focus_color,
                     broad * 0.11 * (1.0 - cast(float32)ColorChroma(background) / 255.0) *
@@ -1070,39 +1070,39 @@ LightfieldLayer :: (
                     cast(float32)(focus_color & cast(u32)255) / 255.0)
                 background = ((reflected >> cast(u32)8) << cast(u32)8) | (background & cast(u32)255)
             }
-            # Retain the face's hue under focus; the inward rim provides the
-            # extra contrast without absorbing the center into a dark patch.
-            # Borderless faces keep their resting body instead of darkening
-            # further beneath a focus edge that is already restrained.
+            // Retain the face's hue under focus; the inward rim provides the
+            // extra contrast without absorbing the center into a dark patch.
+            // Borderless faces keep their resting body instead of darkening
+            // further beneath a focus edge that is already restrained.
             if (border & cast(u32)255) != cast(u32)0 {
                 background = DepthColor(background, 0.30 * focus_depth)
             }
         }
         white: u32 = (cast(u32)16777215 << cast(u32)8) | (background & cast(u32)255)
         black: u32 = background & cast(u32)255
-        # The upper face catches light; the lower face absorbs it. Keep the
-        # highlight in the material's hue instead of washing it with white.
+        // The upper face catches light; the lower face absorbs it. Keep the
+        // highlight in the material's hue instead of washing it with white.
         highlight: float32 = 0.38 - h * 0.06
         if light_surroundings {
             highlight = 0.50 - h * 0.40
-            # Broad saturated material keeps its hue at the crown instead of
-            # spreading a white wash across the face. Compact controls and
-            # hover retain their existing highlight response.
+            // Broad saturated material keeps its hue at the crown instead of
+            // spreading a white wash across the face. Compact controls and
+            // hover retain their existing highlight response.
             saturation: float32 = Unit((cast(float32)ColorChroma(background) - 128.0) / 64.0)
             highlight -= 0.50 * broad * saturation * (1.0 - h)
         }
         face_light: u32 = GradientColor(background, white, 0.30)
         if !light_surroundings {
-            # Dark faces reflect mostly their own hue. Too much white makes
-            # semantic colors look pastel before the narrow rim lights up.
+            // Dark faces reflect mostly their own hue. Too much white makes
+            // semantic colors look pastel before the narrow rim lights up.
             face_light = GradientColor(light, white, 0.06)
             face_light = ((face_light >> cast(u32)8) << cast(u32)8) | (background & cast(u32)255)
         }
         shade: float32 = 0.12 + p * 0.22
         brightness: u32 = ((background >> cast(u32)24) & cast(u32)255) +
             ((background >> cast(u32)16) & cast(u32)255) + ((background >> cast(u32)8) & cast(u32)255)
-        # Low-emphasis dark faces retain their depth. A focus-colored light
-        # must not turn an outline or ghost control into a filled blue tile.
+        // Low-emphasis dark faces retain their depth. A focus-colored light
+        // must not turn an outline or ghost control into a filled blue tile.
         if !light_surroundings {
             highlight *= Unit((cast(float32)brightness - 90.0) / 80.0)
             highlight *= 1.0 - 0.70 * focus_depth
@@ -1110,8 +1110,8 @@ LightfieldLayer :: (
         if brightness > cast(u32)600 {
             tint: float32 = 0.35
             if light_surroundings && (border & cast(u32)255) == cast(u32)0 {
-                # Pressing a borderless pale face removes part of the lower
-                # colored reflection while the upper inset shadow deepens.
+                // Pressing a borderless pale face removes part of the lower
+                // colored reflection while the upper inset shadow deepens.
                 tint -= 0.10 * p
             }
             black = GradientColor(background, light, tint)
@@ -1125,14 +1125,14 @@ LightfieldLayer :: (
         layer.color = GradientColor(background, face_light, highlight * (1.0 - p))
         depth: float32 = 0.48
         if light_surroundings {
-            # Compact saturated faces retain more light at their lower edge.
-            # Wide surfaces keep a deeper gradient across their larger body.
+            // Compact saturated faces retain more light at their lower edge.
+            // Wide surfaces keep a deeper gradient across their larger body.
             depth = 0.35 + 0.13 * broad
         }
         layer.end_color = GradientColor(DepthColor(background, depth + p * 0.24), black, p * 0.18)
         if !light_surroundings && !disabled {
-            # Hover gathers light in the lower face, rather than merely
-            # brightening the crown. Pressing extinguishes that light.
+            // Hover gathers light in the lower face, rather than merely
+            // brightening the crown. Pressing extinguishes that light.
             layer.end_color = GradientColor(layer.end_color, face_light,
                 h * 0.65 * Unit((cast(float32)brightness - 90.0) / 80.0) * (1.0 - p))
             layer.gradient_bias = h * (1.0 - p)
@@ -1143,20 +1143,20 @@ LightfieldLayer :: (
         if disabled && !light_surroundings && ColorChroma(background) > cast(u32)64 &&
            ((background >> cast(u32)8) & cast(u32)255) > ((background >> cast(u32)24) & cast(u32)255) &&
            ((background >> cast(u32)8) & cast(u32)255) > ((background >> cast(u32)16) & cast(u32)255) {
-            # Deep blue disabled material retains a quiet lower reflection,
-            # without restoring hover light or an active outer bloom.
+            // Deep blue disabled material retains a quiet lower reflection,
+            // without restoring hover light or an active outer bloom.
             layer.color = GradientColor(background, black, 0.15)
             layer.end_color = GradientColor(background, light, 0.30)
             layer.end_color = ((layer.end_color >> cast(u32)8) << cast(u32)8) | (background & cast(u32)255)
         }
         if light_surroundings && !disabled {
-            # Hover light spreads through pale material instead of making
-            # the lower face darker. Press keeps its recessed shading.
+            // Hover light spreads through pale material instead of making
+            // the lower face darker. Press keeps its recessed shading.
             layer.end_color = GradientColor(layer.end_color,
                 GradientColor(background, white, 0.12), h * (1.0 - p))
             if brightness > cast(u32)600 {
-                # Focus concentrates depth at the rim. Balance the pale face
-                # around its existing midpoint so its lower half stays clear.
+                // Focus concentrates depth at the rim. Balance the pale face
+                // around its existing midpoint so its lower half stays clear.
                 middle: u32 = GradientColor(layer.color, layer.end_color, 0.5)
                 balance: float32 = 0.75 * focus_depth
                 layer.color = GradientColor(layer.color, middle, balance)
@@ -1171,12 +1171,12 @@ LightfieldLayer :: (
         if border_width > 0.0 {
             layer.color = border
             if light_surroundings && !disabled {
-                # The focus edge replaces part of the resting hairline rather
-                # than stacking two equally strong outlines. Preserve its hue.
+                // The focus edge replaces part of the resting hairline rather
+                // than stacking two equally strong outlines. Preserve its hue.
                 focus_edge: float32 = Unit(focused) * cast(float32)(focus_color & cast(u32)255) / 255.0
-                # Hover softens the upper edge into the face while the lower
-                # rim catches light. Press restores the compact uniform edge.
-                # Both endpoints retain the caller's border alpha.
+                // Hover softens the upper edge into the face while the lower
+                // rim catches light. Press restores the compact uniform edge.
+                // Both endpoints retain the caller's border alpha.
                 edge_hover: float32 = h * (1.0 - p)
                 face_tint: u32 = ((background >> cast(u32)8) << cast(u32)8) | (border & cast(u32)255)
                 white: u32 = (cast(u32)16777215 << cast(u32)8) | (border & cast(u32)255)
@@ -1195,8 +1195,8 @@ LightfieldLayer :: (
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == cast(s32)4 {
-        # Hover raises the crown to the face edge without moving the lower
-        # bevel. Borderless and pale controls retain their softer silhouette.
+        // Hover raises the crown to the face edge without moving the lower
+        // bevel. Borderless and pale controls retain their softer silhouette.
         edge_hover: float32 = 0.0
         if !light_surroundings && !disabled && (border & cast(u32)255) != cast(u32)0 {
             edge_hover = h
@@ -1210,13 +1210,13 @@ LightfieldLayer :: (
         layer.stroke = 1.0
         white: u32 = (cast(u32)16777215 << cast(u32)8) | cast(u32)255
         top: float32 = (0.12 + 0.12 * h) * (1.0 - p * 0.8)
-        # The tall face catches an additional lower reflection above the
-        # standard control height, without brightening compact focus rings.
+        // The tall face catches an additional lower reflection above the
+        // standard control height, without brightening compact focus rings.
         raised: float32 = Unit((height - 40.0) / 8.0)
         raised *= raised
-        # Low-luminance chromatic light needs more reflection to read as a
-        # raised edge. Green/yellow and neutral material already carry that
-        # brightness; adding the same white rim would wash their hue away.
+        // Low-luminance chromatic light needs more reflection to read as a
+        // raised edge. Green/yellow and neutral material already carry that
+        // brightness; adding the same white rim would wash their hue away.
         luminance: float32 = cast(float32)((light >> cast(u32)24) & cast(u32)255) * 0.2126 +
             cast(float32)((light >> cast(u32)16) & cast(u32)255) * 0.7152 +
             cast(float32)((light >> cast(u32)8) & cast(u32)255) * 0.0722
@@ -1227,8 +1227,8 @@ LightfieldLayer :: (
             bottom = (0.08 + 0.28 * tall + 0.20 * h) * (1.0 - p)
         }
         if !light_surroundings && (border & cast(u32)255) == cast(u32)0 {
-            # Borderless material catches a faint reflection, not the bright
-            # white bevel used by raised controls. Keep its focus edge separate.
+            // Borderless material catches a faint reflection, not the bright
+            // white bevel used by raised controls. Keep its focus edge separate.
             top *= 0.25
             bottom *= 0.25 + 0.50 * h
         }
@@ -1240,8 +1240,8 @@ LightfieldLayer :: (
         rim_light: u32 = light
         whitening: float32 = 0.72
         if !light_surroundings && !disabled {
-            # The lower hover reflection gathers the material's chromatic
-            # light before catching white. Pressure returns it to rest.
+            // The lower hover reflection gathers the material's chromatic
+            // light before catching white. Pressure returns it to rest.
             hover_light: float32 = edge_hover * (1.0 - p)
             rim_light = GradientColor(light, ChromaColor(light, cast(u32)255), hover_light)
             rim_light = LiftColor(rim_light, hover_light)
@@ -1249,9 +1249,9 @@ LightfieldLayer :: (
             whitening -= 0.40 * broad_light
             bottom += 0.40 * broad_light
             if (border & cast(u32)255) == cast(u32)0 {
-                # Borderless hover collects a chromatic lower edge rather
-                # than a gray bevel. Pressure fades this reflection together
-                # with the existing edge strength; resting faces stay quiet.
+                // Borderless hover collects a chromatic lower edge rather
+                // than a gray bevel. Pressure fades this reflection together
+                // with the existing edge strength; resting faces stay quiet.
                 borderless_hover: float32 = h * (1.0 - p)
                 rim_light = GradientColor(rim_light, ChromaColor(light, cast(u32)255), borderless_hover)
                 whitening *= 1.0 - borderless_hover
@@ -1275,7 +1275,7 @@ LightfieldLayer :: (
         if disabled { strength = 0.0 }
         if index == cast(s32)5 { strength *= 0.28235294 }
         if light_surroundings {
-            # Pale material needs one crisp ring, not a second offset outline.
+            // Pale material needs one crisp ring, not a second offset outline.
             if index == cast(s32)5 { strength = 0.0 }
         }
         if index == cast(s32)5 && !light_surroundings {
@@ -1284,15 +1284,15 @@ LightfieldLayer :: (
             strength = Unit(focused) * (0.35 + 0.65 * Unit((cast(float32)brightness - 140.0) / 140.0))
             if (border & cast(u32)255) == cast(u32)0 { strength *= 0.35 }
             if disabled { strength = 0.0 }
-            # Keep the material volume inward. The separate crisp edge and
-            # restrained outside-only bloom must not blur this filled region.
+            // Keep the material volume inward. The separate crisp edge and
+            // restrained outside-only bloom must not blur this filled region.
             layer.stroke = 0.0
             layer.inner_blur = 12.0
         }
         rim_color: u32 = focus_color
         if index == cast(s32)5 && !light_surroundings {
-            # Semantic material keeps its own inward light. The focus color
-            # controls the separate outer edge, not the hue of the whole face.
+            // Semantic material keeps its own inward light. The focus color
+            // controls the separate outer edge, not the hue of the whole face.
             if ColorChroma(light) > cast(u32)64 &&
                (((light >> cast(u32)24) & cast(u32)255) > ((light >> cast(u32)8) & cast(u32)255) ||
                 ((light >> cast(u32)16) & cast(u32)255) > ((light >> cast(u32)8) & cast(u32)255)) {
@@ -1302,30 +1302,30 @@ LightfieldLayer :: (
             rim_color = DepthColor(DepthColor(rim_color, 1.0), 0.4)
         }
     if index == cast(s32)6 && !light_surroundings && (border & cast(u32)255) != cast(u32)0 && ColorChroma(border) > cast(u32)64 {
-            # Concentrated light on the inner edge; the outer field retains
-            # its hue. Preserve explicit alpha, including transparent focus.
+            // Concentrated light on the inner edge; the outer field retains
+            // its hue. Preserve explicit alpha, including transparent focus.
             white: u32 = (cast(u32)16777215 << cast(u32)8) | (focus_color & cast(u32)255)
-            # Saturated faces need a whiter highlight to separate the edge
-            # from the body; subdued faces keep more of the focus hue.
+            // Saturated faces need a whiter highlight to separate the edge
+            // from the body; subdued faces keep more of the focus hue.
             edge_white: float32 = 0.50 + 0.22 * Unit((cast(float32)ColorChroma(background) - 128.0) / 64.0)
             rim_color = GradientColor(focus_color, white, edge_white)
-            # A fractional inner edge catches light without becoming a solid
-            # two-pixel frame. The outer bounds and inward volume stay fixed.
+            // A fractional inner edge catches light without becoming a solid
+            // two-pixel frame. The outer bounds and inward volume stay fixed.
             layer.stroke = 1.5
         }
         layer.color = Opacity(rim_color, strength)
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    # A translucent light volume sits behind the content, inset from the rim.
-    # Its rounded coverage is the clip: no blur can leak onto the surroundings.
+    // A translucent light volume sits behind the content, inset from the rim.
+    // Its rounded coverage is the clip: no blur can leak onto the surroundings.
     if index == cast(s32)7 {
-        # Neutral borderless faces need more chromatic hover reflection than
-        # already-tinted faces. Fade the boost with chroma and press amount.
+        // Neutral borderless faces need more chromatic hover reflection than
+        // already-tinted faces. Fade the boost with chroma and press amount.
         borderless_hover: float32 = h * (1.0 - p) *
             Unit((64.0 - cast(float32)ColorChroma(background)) / 16.0)
         inset: float32 = 1.5
-        # Leave the rising hover bevel exposed instead of tinting over it.
-        # A fractional inset keeps the reflection's movement continuous.
+        // Leave the rising hover bevel exposed instead of tinting over it.
+        // A fractional inset keeps the reflection's movement continuous.
         if !light_surroundings { inset += 0.5 * h }
         layer.x = inset
         layer.y += inset
@@ -1333,18 +1333,18 @@ LightfieldLayer :: (
         layer.height -= 2.0 * inset
         layer.radius = radius - inset
         if layer.radius < 0.0 { layer.radius = 0.0 }
-        # Broad, inward-only falloff makes the rim feel embedded in the
-        # material instead of another outline drawn around a flat tile.
+        // Broad, inward-only falloff makes the rim feel embedded in the
+        // material instead of another outline drawn around a flat tile.
         layer.inner_blur = 18.0 + 6.0 * h + 4.0 * tall
         if !light_surroundings {
-            # Large faces and inward pressure/focus spread reflection through
-            # the body. Keep resting and raised-hover edges concentrated.
+            // Large faces and inward pressure/focus spread reflection through
+            // the body. Keep resting and raised-hover edges concentrated.
             layer.inner_blur += 12.0 * Unit(p + focused + Unit((height - 40.0) / 8.0))
         }
         strength: float32 = (0.38 + 0.32 * h + 0.05 * Unit(focused)) * (1.0 - p * 0.85)
         if !light_surroundings {
-            # Focus already supplies a chromatic inner volume. Attenuate the
-            # resting reflection beneath it instead of stacking two bright rims.
+            // Focus already supplies a chromatic inner volume. Attenuate the
+            // resting reflection beneath it instead of stacking two bright rims.
             strength *= 1.0 - 0.55 * Unit(focused) * (1.0 - h)
         }
         if (border & cast(u32)255) == cast(u32)0 {
@@ -1353,9 +1353,9 @@ LightfieldLayer :: (
             strength *= borderless_light
         }
         raised_light: float32 = 0.0
-        # Tall saturated faces gather a chromatic lower reflection in light
-        # surroundings. Pale material and compact controls retain their quiet
-        # volume; the existing pressure track extinguishes the added light.
+        // Tall saturated faces gather a chromatic lower reflection in light
+        // surroundings. Pale material and compact controls retain their quiet
+        // volume; the existing pressure track extinguishes the added light.
         if light_surroundings && (border & cast(u32)255) != cast(u32)0 {
             raised_light = Unit((height - 40.0) / 8.0)
             raised_light *= raised_light * Unit((cast(float32)ColorChroma(background) - 128.0) / 64.0)
@@ -1367,9 +1367,9 @@ LightfieldLayer :: (
         white: u32 = (cast(u32)16777215 << cast(u32)8) | (light & cast(u32)255)
         whitening: float32 = 0.22
         if !light_surroundings && (border & cast(u32)255) != cast(u32)0 {
-            # Resting compact faces reflect their hue rather than a pale wash.
-            # Active surfaces retain a stronger reflection; broad material
-            # receives its lifted hue below instead of extra white.
+            // Resting compact faces reflect their hue rather than a pale wash.
+            // Active surfaces retain a stronger reflection; broad material
+            // receives its lifted hue below instead of extra white.
             whitening *= 1.0 - 0.64 * Unit((cast(float32)ColorChroma(light) - 64.0) / 64.0) *
                 (1.0 - h) * (1.0 - p) * (1.0 - broad)
         }
@@ -1379,21 +1379,21 @@ LightfieldLayer :: (
         }
         if !light_surroundings && (border & cast(u32)255) == cast(u32)0 {
             whitening *= 1.0 - borderless_hover
-            # Remove the pale component as hover light enters neutral material,
-            # retaining the supplied hue and source alpha.
+            // Remove the pale component as hover light enters neutral material,
+            // retaining the supplied hue and source alpha.
             reflected_light = GradientColor(light, ChromaColor(light, cast(u32)255), borderless_hover)
         }
         if !light_surroundings && (border & cast(u32)255) != cast(u32)0 {
-            # Broad saturated material carries the lifted lower-rim hue
-            # through its inward reflection, without a milky white wash.
+            // Broad saturated material carries the lifted lower-rim hue
+            // through its inward reflection, without a milky white wash.
             reflected_light = LiftColor(LiftColor(reflected_light, broad_light), broad_light)
             whitening *= 1.0 - 0.5 * broad_light
         }
         layer.end_color = Opacity(GradientColor(reflected_light, white, whitening), strength)
         layer.gradient = true
-        # A chromatic edge around a subdued dark face gathers reflection at
-        # the base. Filled and borderless faces keep their broader volume;
-        # pressing removes the directional reflection continuously.
+        // A chromatic edge around a subdued dark face gathers reflection at
+        // the base. Filled and borderless faces keep their broader volume;
+        // pressing removes the directional reflection continuously.
         if !light_surroundings && (border & cast(u32)255) != cast(u32)0 {
             body_chroma: float32 = cast(float32)ColorChroma(background)
             edge_contrast: float32 = Unit((cast(float32)ColorChroma(border) - body_chroma - 64.0) / 64.0)
@@ -1401,8 +1401,8 @@ LightfieldLayer :: (
         }
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    # A broad crown reflection gives the face volume without a hard gloss
-    # stripe. It is clipped inside the same rounded face as the lower light.
+    // A broad crown reflection gives the face volume without a hard gloss
+    // stripe. It is clipped inside the same rounded face as the lower light.
     if index == cast(s32)8 {
         layer.x = 1.5
         layer.y += 1.5
@@ -1413,8 +1413,8 @@ LightfieldLayer :: (
         layer.inner_blur = 18.0 + 4.0 * h
         strength: float32 = (0.14 + 0.04 * h) * (1.0 - p)
         if !light_surroundings {
-            # Dark material catches a restrained crown reflection; a broad
-            # white rim makes the face look milky instead of luminous.
+            // Dark material catches a restrained crown reflection; a broad
+            // white rim makes the face look milky instead of luminous.
             strength *= 0.30
             strength *= 1.0 - 0.65 * Unit(focused) * (1.0 - h)
         }
@@ -1427,9 +1427,9 @@ LightfieldLayer :: (
         layer.gradient = true
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    # Pressing places the upper edge above the recessed face. This inward
-    # shadow follows the same continuous press track as the face displacement;
-    # it never adds a second drop shadow outside the control.
+    // Pressing places the upper edge above the recessed face. This inward
+    // shadow follows the same continuous press track as the face displacement;
+    // it never adds a second drop shadow outside the control.
     if index == cast(s32)9 {
         layer.x = 1.0
         layer.y += 1.0
@@ -1447,9 +1447,9 @@ LightfieldLayer :: (
         layer.gradient = true
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    # Optical bloom belongs to the narrow focus edge, not a blurred face.
-    # A stroked field leaves the label center clear; the material volume above
-    # remains clipped inward. Light surfaces retain their crisp focus outline.
+    // Optical bloom belongs to the narrow focus edge, not a blurred face.
+    // A stroked field leaves the label center clear; the material volume above
+    // remains clipped inward. Light surfaces retain their crisp focus outline.
     if index == cast(s32)10 && !light_surroundings && !disabled {
         layer.x -= 1.0
         layer.y -= 1.0
@@ -1461,8 +1461,8 @@ LightfieldLayer :: (
         layer.outside_only = true
         edge_light: float32 = 0.15
         if (border & cast(u32)255) != cast(u32)0 {
-            # A saturated rim casts a stronger optical field. Quiet and
-            # borderless surfaces retain their restrained focus treatment.
+            // A saturated rim casts a stronger optical field. Quiet and
+            // borderless surfaces retain their restrained focus treatment.
             edge_light += 0.15 * Unit((cast(float32)ColorChroma(border) - 128.0) / 64.0)
         }
         strength: float32 = Unit(focused) * edge_light

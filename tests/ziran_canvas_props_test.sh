@@ -18,7 +18,7 @@ for input in source saved; do
         entry="$work/ir/canvas_props.zir"
     fi
     output="$work/$input"
-    "$ziran" build --target=c --strict --root "$root" -o "$output" "$entry"
+    "$ziran" build --target=c --root "$root" -o "$output" "$entry"
     cat > "$work/main.c" <<'C'
 #include "canvas_props.h"
 

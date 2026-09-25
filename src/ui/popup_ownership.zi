@@ -1,7 +1,7 @@
 
-# Hosts provide parent links and opaque identity equality. This driver compares
-# whole branches: a child of an earlier sibling stays below the later sibling.
-# Parent cursors and their storage are owned by the host, not copied into `.zir`.
+// Hosts provide parent links and opaque identity equality. This driver compares
+// whole branches: a child of an earlier sibling stays below the later sibling.
+// Parent cursors and their storage are owned by the host, not copied into `.zir`.
 PopupOrder :: struct {
     phase: s32
     depth_a: s32

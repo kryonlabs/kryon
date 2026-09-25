@@ -1,0 +1,20 @@
+#import "geometry"
+
+Near :: (a: float32, b: float32) -> bool {
+    delta: float32 = a - b
+    return delta > -0.001 && delta < 0.001
+}
+
+#program_export
+Answer :: () -> s32 {
+    camera: Camera = Camera.{Vector2.{100.0, 50.0},
+                            Vector2.{10.0, 20.0}, 90.0, 2.0}
+    screen: Vector2 = WorldToScreen(Vector2.{11.0, 20.0}, camera)
+    if !Near(screen.x, 100.0) || !Near(screen.y, 52.0) { return 0 }
+    world: Vector2 = ScreenToWorld(screen, camera)
+    if !Near(world.x, 11.0) || !Near(world.y, 20.0) { return 0 }
+    camera.zoom = 0.0
+    world = ScreenToWorld(screen, camera)
+    if !Near(world.x, 10.0) || !Near(world.y, 20.0) { return 0 }
+    return 42
+}

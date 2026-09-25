@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "fieldset"
@@ -45,10 +46,10 @@ FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
 }
 
 #program_export
-Fieldset :: (props: FieldsetProps) {
+Fieldset :: (session: Session, props: FieldsetProps) {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
     face: StyleFrame = FieldsetFaceFor(props)
     font: s32 = ResolveFont(0,
         StyleFontValue(face.value.fields, face.value.font_size), 18)
@@ -59,28 +60,28 @@ Fieldset :: (props: FieldsetProps) {
     paint: FieldsetPaint = FieldsetPaintFor(props.bounds,
         cast(float32)title_width, props.title != "", 1.0, face)
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(key, WidgetKindFieldset, paint.frame)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, key, WidgetKindFieldset, paint.frame)
         if node < 0 { return }
-        TreeSetLabel(node, props.title)
+        TreeSetLabel(session, node, props.title)
     }
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     background: Color = ColorFromPacked(Opacity(
         paint.background_color, opacity))
     if background.a > cast(u8)0 {
-        PaintRoundedFill(node, paint.frame, face.value.radius,
+        PaintRoundedFill(session, node, paint.frame, face.value.radius,
             12, background)
     }
     if paint.border_width > 0.0 {
-        PaintRoundedOutline(node, paint.frame, face.value.radius,
+        PaintRoundedOutline(session, node, paint.frame, face.value.radius,
             12, paint.border_width,
             ColorFromPacked(Opacity(paint.border_color, opacity)))
     }
     if paint.show_title {
-        PaintRoundedFill(node, paint.title_background, 0.0, 4,
+        PaintRoundedFill(session, node, paint.title_background, 0.0, 4,
             background)
-        PaintClippedLabel(node, props.title, cast(s32)paint.title_text.x,
+        PaintClippedLabel(session, node, props.title, cast(s32)paint.title_text.x,
             cast(s32)paint.title_text.y, font,
             ColorFromPacked(Opacity(paint.text_color, opacity)),
             paint.title_text)

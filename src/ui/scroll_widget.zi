@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "geometry"
 #import "drawing_props"
@@ -10,28 +11,28 @@
 #import "tree"
 #import "widget_kind"
 
-# A value based scroll viewport. The caller supplies wheel or keyboard
-# movement, keeps the returned offset, and positions children in content.
-# Close the child scope with End().
+// A value based scroll viewport. The caller supplies wheel or keyboard
+// movement, keeps the returned offset, and positions children in content.
+// Close the child scope with End(session).
 #program_export
-Scroll :: (props: ScrollProps) -> ScrollResult {
+Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
     result: ScrollResult
     result.node = -1
     result.viewport = props.bounds
-    parent: Rectangle = TreeCurrentParentBounds()
+    parent: Rectangle = TreeCurrentParentBounds(session)
     if result.viewport.width <= 0.0 {
         result.viewport.width = parent.width
     }
     if result.viewport.height <= 0.0 {
         result.viewport.height = parent.height
     }
-    if TreeIsBuilding() {
+    if TreeIsBuilding(session) {
         key: u64 = props.key
-        if key == cast(u64)0 { key = TreeNextKey() }
-        result.node = TreeSubmitCurrent(key, WidgetKindScroll,
+        if key == cast(u64)0 { key = TreeNextKey(session) }
+        result.node = TreeSubmitCurrent(session, key, WidgetKindScroll,
             result.viewport)
         if result.node < 0 { return result }
-        result.viewport = TreeSubmittedNodeAt(result.node).bounds
+        result.viewport = TreeSubmittedNodeAt(session, result.node).bounds
     }
     result.max_scroll = ScrollMax(props.content_height,
         cast(s32)result.viewport.height)
@@ -77,12 +78,12 @@ Scroll :: (props: ScrollProps) -> ScrollResult {
             thumb = ScrollFace(StyleKindScrollThumb(),
                 props.class_name, props.input.disabled,
                 result.frame.thumb_state, 10.0)
-            PaintRoundedFill(result.node, result.frame.paint.track_bounds,
+            PaintRoundedFill(session, result.node, result.frame.paint.track_bounds,
                 track.value.radius, 12,
                 ColorFromPacked(Opacity(track.value.background,
                     StyleOpacityValue(track.value.fields,
                         track.value.opacity))))
-            PaintRoundedFill(result.node, result.frame.paint.thumb_bounds,
+            PaintRoundedFill(session, result.node, result.frame.paint.thumb_bounds,
                 thumb.value.radius, 12,
                 ColorFromPacked(Opacity(thumb.value.background,
                     StyleOpacityValue(thumb.value.fields,
@@ -92,8 +93,8 @@ Scroll :: (props: ScrollProps) -> ScrollResult {
     if result.node >= 0 {
         clip: Rectangle = result.viewport
         if props.input.enabled { clip = result.frame.clip }
-        TreeSetChildClip(result.node, clip)
-        result.opened = TreePushScope(result.node)
+        TreeSetChildClip(session, result.node, clip)
+        result.opened = TreePushScope(session, result.node)
     }
     return result
 }

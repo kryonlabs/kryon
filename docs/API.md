@@ -140,9 +140,8 @@ precise build inventory. [`ziran_*_test.sh`](../tests/ziran_moved_modules_test.s
 files show source, saved-IR, and bundle use of those modules.
 
 `build/ziran/libkryon.a` is the current C archive; generated headers are in
-`build/ziran/c/`. Portable host bindings are declared in
-`src/backend/kryon_portable_host.zi`, generated as
-`build/ziran/c/kryon_portable_host.h`, and built into
+`build/ziran/c/`. Native callback declarations for portable host bindings
+for C test fixtures are in `tests/support/kryon_portable_host.h` and built into
 `build/ziran/libkryon_host.a`.
 `FramePacingDecision` reports the target FPS; the application applies it to
 its own timer when `apply_target` is true.
@@ -155,28 +154,26 @@ line interface.
 `MeasureGlyphWidthBinding()` and `MeasureGlyphLineHeightBinding()` accept
 font metric callbacks for the checked Progress composition path. Both callbacks
 receive the requested typeface as borrowed UTF-8 bytes.
-`TextSliceBinding()` supplies borrowed byte ranges for checked `Text` line
-composition; the host does not choose wrap points or positions.
+Checked `Text` line composition takes borrowed byte ranges with Ziran string
+range syntax; the host does not choose wrap points or positions.
 `RasterTextClippedBinding()` supplies a glyph raster callback that must honor
 the clip rectangle selected by `Text`, Button, and Checkbox. Some other widget
 labels still use `RasterTextBinding()` without a clip.
-`pointer_input.zi` provides `SamplePointer()` and the corresponding
-`PointerBinding()` accepts current device coordinates and button transitions.
-Kryon resolves hit testing, capture, and activation in `tree_input.zi`.
-The caller passes required bindings to Ziran's `BundleRun`. Build and test
+`pointer_input.zi` provides `SamplePointer()` through the ordinary
+`PollPointer` host capability. A portable host supplies its own binding with
+current device coordinates and button transitions; the frame replay host is
+one example. Kryon resolves hit testing, capture, and activation in
+`tree_input.zi`. The caller passes required bindings to Ziran's `BundleRun`. Build and test
 with `make` and `make test` from the Kryon repository. No display is started.
 
-For a headless RGBA8 target, `src/backend/image_canvas_types.zi` defines
-`ImageAsset` and `ImageCanvas`, with a generated C header in `build/ziran/c/`.
-The generated `kryon_portable_host.h` declares `ImageCanvasRasterizer()`.
-The caller owns the straight-alpha
-pixel buffers and asset table, then binds the resulting `ImageRasterizer` with
-`ImageWidthBinding()`, `ImageHeightBinding()`, and `RasterImageBinding()`.
-Assets can be found by path or texture ID. The software host applies source
-crop, nearest-neighbor scaling, clip, rounded corners, rotation, and tint.
-Link it with `libkryon_host.a` and `-lm`; the
-[`ziran_image_canvas_test.sh`](../tests/ziran_image_canvas_test.sh) example runs
-the same widget from source and saved `.zir` bundles into an in-memory canvas.
+For a headless RGBA8 target, `src/backend/image_canvas.zi` exports
+`RasterImageRGBA()`. A host resolves asset paths or texture IDs and lends its
+straight-alpha pixel buffers to this portable function for one draw. It applies
+source crop, nearest-neighbor scaling, clip, rounded corners, rotation, tint,
+and alpha blending. The
+[`ziran_image_canvas_test.sh`](../tests/ziran_image_canvas_test.sh) example
+compares source and saved `.zir` bundles and runs the same pixel checks in
+native C, C++, and Go.
 
 ## Migration boundary
 
@@ -191,29 +188,36 @@ priority. `InstallStyleRules()` installs the owned table, and the checked
 one-argument `Progress(props)` paints from that table with Ziran-defined
 default faces. Lower-level `PaintProgressFromRules()` still accepts explicit
 defaults and rules. The pointer-backed style loader remains unfinished.
-`BeginTree(screen_key, bounds)` begins a portable retained submission, and
-`EndTree()` commits and paints it. During an open submission,
-`Progress(props)` registers a Progress node and queues its generic paint
-commands; raster effects are emitted only after the tree commits. Style
-resolution and glyph measurement happen during submission. Outside a tree,
-`Progress(props)` paints immediately.
-`ButtonProps.key`, `ProgressProps.key`, and `SeparatorProps.key` provide stable identity; zero
-uses the submission position. `TreeCount()` and `TreeNodeAt(index)` inspect
-committed nodes.
-Identity survives repeated `BundleInstanceRun()` calls, including bounds
-changes. Submission is limited to 1024 nodes; `EndTree()` returns false,
-preserves the previous tree, and emits no paint effects if that limit is
-exceeded. The generic queue holds 4096 paint commands and likewise rejects an
-overfull frame before commit. Progress, Separator, Text, and Image have portable
-retained paint paths. `TreeSetInteractive()` marks an eligible submitted node;
-after commit, `TreePointerUpdate(PointerFrame)` hit tests committed nodes in
-reverse paint order, blocks click-through at disabled controls, and owns press
-and release activation. `TreeHoveredAt()`,
-`TreePressedAt()`, and `TreeTakeActivationAt()` expose that state. The host
-supplies raw pointer samples. Button uses this path for retained pointer
-activation; retained layout, keyboard focus, wiring child viewport clips into
-widgets, and broader interaction routing remain unfinished.
-`EndTree()` links the generic line, rounded shape, and text raster effects;
+Open a `Session` with `SessionOpen()`, then call
+`BeginFrame(session, screen_key, bounds)` and `EndFrame(session)` for each
+retained frame. Both frame calls return `FrameStatus`; `FrameOk` means success.
+`CloseSession(session)` releases the tree, paint queue, and input state. Up to
+eight sessions may be open concurrently; an exhausted `SessionOpen()` returns
+an invalid handle. Closed handles remain invalid when their slot is reused.
+During an open frame, `Progress(session, props)` registers a node and queues
+paint commands. Raster effects are emitted only after the tree commits. Style
+resolution and glyph measurement happen during submission. Outside a frame,
+`Progress` paints immediately.
+
+`ButtonProps.key`, `ProgressProps.key`, and `SeparatorProps.key` provide stable
+identity among siblings of the same parent. Zero uses the next unkeyed
+position within that parent, independent of explicit siblings. Explicit
+duplicate keys under one parent reject the frame, even when kinds differ.
+`TreePrevious(session, parent_index, key, kind)` finds a prior child during
+submission; `TreeCount(session)` and `TreeNodeAt(session, index)` inspect
+committed nodes. Identity survives repeated `BundleInstanceRun()` calls and
+bounds changes. The tree and paint queue grow as needed. An allocation failure,
+invalid scope, duplicate key, or paint overflow rejects the frame, preserves
+the previous committed tree, and emits no paint effects. Progress, Separator,
+Text, and Image have portable retained paint paths.
+
+`TreeSetInteractive()` marks an eligible submitted node. After commit,
+`TreePointerUpdate(session, PointerFrame)` hit tests committed nodes in reverse
+paint order, blocks click-through at disabled controls, and owns press and
+release activation. `TreeHoveredAt()`, `TreePressedAt()`, and
+`TreeTakeActivationAt()` expose that state. The host supplies raw pointer
+samples. Button uses this path for retained pointer activation.
+`EndFrame()` links the generic line, rounded shape, and text raster effects;
 the image raster effect is also linked for generic paint commands. Glyph
 metric and asset dimension requirements follow the widgets the application
 imports.
@@ -225,8 +229,8 @@ node for deferred paint inside one.
 into that table. Parsing stops at `NeedImport` so the caller can use
 `ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.
 `StyleRulesParse.overflow` reports when a 321st rule would exceed the table.
-Portable hosts that import the KSS parser bind `KssStringSliceBinding()` for
-source byte ranges. A portable bundle's installed rules last for one
+The KSS parser takes borrowed source byte ranges directly in Ziran. A portable
+bundle's installed rules last for one
 `BundleRun`; another run begins with an empty rule table. A
 `BundleInstance` keeps those rules between runs, allowing a frame entry to
 install a style sheet once and paint subsequent frames from it.

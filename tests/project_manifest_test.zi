@@ -1,0 +1,33 @@
+#import "manifest"
+
+#program_export
+ProjectManifestTest :: () -> s32 {
+    source: string = "# app config\n[project]\nname = \"demo\"\nentry = \"src/custom.zi\"\ndefault_profile = \"tui\"\n[paths]\nkryon = \"../custom-kryon\"\nziran = \"../custom-ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n[profiles.other]\nbackend = \"terminal\"\ncodegen = \"c99\"\n"
+    config: ProjectConfig = ParseProject(source)
+    if !config.ok || config.name != "demo" ||
+        config.entry != "src/custom.zi" ||
+        config.kryon_path != "../custom-kryon" ||
+        config.ziran_path != "../custom-ziran" ||
+        config.profile_count != 2 ||
+        config.default_profile != "tui" { return 1 }
+    selected: ProjectProfile = ProjectProfileNamed(config, config.default_profile)
+    if selected.name != "tui" || selected.backend != "terminal" ||
+        selected.codegen != "c99" { return 2 }
+    if ProjectProfileNamed(config, "missing").name != "" { return 3 }
+
+    minimal: ProjectConfig = ParseProject("[profiles.tui]\nbackend = \"terminal\"\n")
+    if !minimal.ok || minimal.name != "" ||
+        minimal.entry != "src/app.zi" ||
+        minimal.kryon_path != "../kryon" ||
+        minimal.ziran_path != "../ziran" ||
+        minimal.default_profile != "tui" ||
+        minimal.profiles[0].codegen != "c99" { return 6 }
+
+    bad_path: ProjectConfig = ParseProject("[project]\nname = \"demo\"\nentry = \"src/$oops.zi\"\ndefault_profile = \"tui\"\n[paths]\nkryon = \"../kryon\"\nziran = \"../ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n")
+    if bad_path.ok { return 4 }
+    missing_default: ProjectConfig = ParseProject("[project]\nname = \"demo\"\nentry = \"src/app.zi\"\ndefault_profile = \"other\"\n[paths]\nkryon = \"../kryon\"\nziran = \"../ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n")
+    if missing_default.ok { return 5 }
+    ambiguous: ProjectConfig = ParseProject("[profiles.tui]\nbackend = \"terminal\"\n[profiles.other]\nbackend = \"terminal\"\n")
+    if ambiguous.ok { return 7 }
+    return 42
+}

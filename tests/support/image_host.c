@@ -22,7 +22,7 @@ rectangle(const VmHostValue *value, float out[4])
        value->field_count != 4)
         return 0;
     for(size_t i = 0; i < 4; i++) {
-        if(!field(value, i, names[i], "float", VM_HOST_REAL))
+        if(!field(value, i, names[i], "float32", VM_HOST_REAL))
             return 0;
         out[i] = (float)value->fields[i].value.real;
     }
@@ -35,8 +35,8 @@ vector(const VmHostValue *value, float out[2])
     if(value->kind != VM_HOST_RECORD ||
        strcmp(value->type, "Vector2") != 0 ||
        value->field_count != 2 ||
-       !field(value, 0, "x", "float", VM_HOST_REAL) ||
-       !field(value, 1, "y", "float", VM_HOST_REAL))
+       !field(value, 0, "x", "float32", VM_HOST_REAL) ||
+       !field(value, 1, "y", "float32", VM_HOST_REAL))
         return 0;
     out[0] = (float)value->fields[0].value.real;
     out[1] = (float)value->fields[1].value.real;
@@ -70,7 +70,7 @@ asset_size(void *context, const char *module, const char *function,
        strcmp(args[0].type, "string") != 0)
         return 0;
     int width = 0, height = 0;
-    if(!renderer->size(renderer->context, (const char *)args[0].data,
+    if(!renderer->size(renderer->context, (uint8_t *)args[0].data,
                        args[0].length, &width, &height))
         width = height = 0;
     result->kind = VM_HOST_INTEGER;
@@ -96,9 +96,9 @@ draw_image(void *context, const char *module, const char *function,
        args[1].kind != VM_HOST_UNSIGNED ||
        strcmp(args[1].type, "u32") != 0 ||
        args[6].kind != VM_HOST_REAL ||
-       strcmp(args[6].type, "float") != 0 ||
+       strcmp(args[6].type, "float32") != 0 ||
        args[7].kind != VM_HOST_REAL ||
-       strcmp(args[7].type, "float") != 0)
+       strcmp(args[7].type, "float32") != 0)
         return 0;
     float source[4], destination[4], clip[4], origin[2];
     uint8_t tint[4];
@@ -108,7 +108,7 @@ draw_image(void *context, const char *module, const char *function,
        !vector(&args[5], origin) || !color(&args[8], tint))
         return 0;
     renderer->draw(renderer->context,
-                   (const char *)args[0].data, args[0].length,
+                   (uint8_t *)args[0].data, args[0].length,
                    (uint32_t)args[1].bits, source, destination, clip,
                    origin, (float)args[6].real, (float)args[7].real,
                    tint);

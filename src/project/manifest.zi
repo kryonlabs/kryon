@@ -1,0 +1,233 @@
+// A deliberately small TOML project manifest: named tables and quoted string
+// values. Paths and profile selection are data; build behavior stays in Kryon.
+ProjectProfile :: struct {
+    name: string
+    backend: string
+    codegen: string
+}
+
+ProjectConfig :: struct {
+    name: string
+    entry: string
+    default_profile: string
+    kryon_path: string
+    ziran_path: string
+    profiles: [8]ProjectProfile
+    profile_count: s32
+    ok: bool
+    error: string
+}
+
+ProjectSpace :: (ch: u8) -> bool {
+    return ch == cast(u8)32 || ch == cast(u8)9 || ch == cast(u8)13
+}
+
+ProjectTrim :: (value: string) -> string {
+    first: s32 = 0
+    last: s32 = cast(s32)value.count
+    while first < last && ProjectSpace(value[first]) { first += 1 }
+    while last > first && ProjectSpace(value[last - 1]) { last -= 1 }
+    return value[first:last]
+}
+
+ProjectStarts :: (value: string, prefix: string) -> bool {
+    if value.count < prefix.count { return false }
+    return value[0:cast(s32)prefix.count] == prefix
+}
+
+ProjectNameValid :: (value: string) -> bool {
+    if value == "" { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        ch: u8 = value[at]
+        if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+            (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+            (ch >= cast(u8)48 && ch <= cast(u8)57) ||
+            ch == cast(u8)45 || ch == cast(u8)95) { return false }
+        at += 1
+    }
+    return true
+}
+
+// Paths are passed through make and shell build rules. Keep them to ordinary
+// filesystem characters so a manifest cannot inject build syntax or commands.
+ProjectPathValid :: (value: string) -> bool {
+    if value == "" { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        ch: u8 = value[at]
+        if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+            (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+            (ch >= cast(u8)48 && ch <= cast(u8)57) ||
+            ch == cast(u8)45 || ch == cast(u8)95 ||
+            ch == cast(u8)46 || ch == cast(u8)47) { return false }
+        at += 1
+    }
+    return true
+}
+
+ProjectValue :: struct {
+    text: string
+    ok: bool
+}
+
+ProjectQuoted :: (value: string) -> ProjectValue {
+    out: ProjectValue
+    if value.count < 2 || value[0] != cast(u8)34 { return out }
+    at: s32 = 1
+    while at < cast(s32)value.count && value[at] != cast(u8)34 {
+        if value[at] == cast(u8)92 || value[at] < cast(u8)32 { return out }
+        at += 1
+    }
+    if at >= cast(s32)value.count { return out }
+    tail: string = ProjectTrim(value[at + 1:cast(s32)value.count])
+    if tail != "" && tail[0] != cast(u8)35 { return out }
+    out.text = value[1:at]
+    out.ok = true
+    return out
+}
+
+#program_export
+ParseProject :: (source: string) -> ProjectConfig {
+    config: ProjectConfig
+    config.entry = "src/app.zi"
+    config.kryon_path = "../kryon"
+    config.ziran_path = "../ziran"
+    section: s32 = 0
+    selected: s32 = -1
+    cursor: s32 = 0
+    while cursor < cast(s32)source.count {
+        end: s32 = cursor
+        while end < cast(s32)source.count && source[end] != cast(u8)10 {
+            end += 1
+        }
+        line: string = ProjectTrim(source[cursor:end])
+        cursor = end + 1
+        if line == "" || line[0] == cast(u8)35 { continue }
+        if line[0] == cast(u8)91 {
+            if line.count < 3 || line[cast(s32)line.count - 1] != cast(u8)93 {
+                config.error = "invalid table header"
+                return config
+            }
+            table: string = line[1:cast(s32)line.count - 1]
+            if table == "project" {
+                section = 1
+            } else if table == "paths" {
+                section = 2
+            } else if ProjectStarts(table, "profiles.") {
+                name: string = table[9:cast(s32)table.count]
+                if !ProjectNameValid(name) || config.profile_count >= 8 {
+                    config.error = "invalid or excess profile"
+                    return config
+                }
+                index: s32 = 0
+                while index < config.profile_count {
+                    if config.profiles[index].name == name {
+                        config.error = "duplicate profile"
+                        return config
+                    }
+                    index += 1
+                }
+                selected = config.profile_count
+                config.profiles[selected].name = name
+                config.profile_count += 1
+                section = 3
+            } else {
+                config.error = "unknown table"
+                return config
+            }
+            continue
+        }
+        equal: s32 = 0
+        while equal < cast(s32)line.count && line[equal] != cast(u8)61 {
+            equal += 1
+        }
+        if equal == cast(s32)line.count {
+            config.error = "expected key = value"
+            return config
+        }
+        key: string = ProjectTrim(line[0:equal])
+        parsed: ProjectValue = ProjectQuoted(ProjectTrim(
+            line[equal + 1:cast(s32)line.count]))
+        if !parsed.ok {
+            config.error = "expected a quoted string value"
+            return config
+        }
+        value: string = parsed.text
+        if section == 1 {
+            if key == "name" {
+                config.name = value
+            } else if key == "entry" {
+                config.entry = value
+            } else if key == "default_profile" {
+                config.default_profile = value
+            } else {
+                config.error = "unknown project key"
+                return config
+            }
+        } else if section == 2 {
+            if key == "kryon" {
+                config.kryon_path = value
+            } else if key == "ziran" {
+                config.ziran_path = value
+            } else {
+                config.error = "unknown paths key"
+                return config
+            }
+        } else if section == 3 {
+            if key == "backend" {
+                config.profiles[selected].backend = value
+            } else if key == "codegen" {
+                config.profiles[selected].codegen = value
+            } else {
+                config.error = "unknown profile key"
+                return config
+            }
+        } else {
+            config.error = "key must be inside a table"
+            return config
+        }
+    }
+    if config.profile_count == 1 && config.default_profile == "" {
+        config.default_profile = config.profiles[0].name
+    }
+    if (config.name != "" && !ProjectNameValid(config.name)) ||
+        !ProjectPathValid(config.entry) ||
+        !ProjectNameValid(config.default_profile) ||
+        !ProjectPathValid(config.kryon_path) ||
+        !ProjectPathValid(config.ziran_path) || config.profile_count == 0 {
+        config.error = "missing profile or invalid project fields"
+        return config
+    }
+    found: bool = false
+    index: s32 = 0
+    while index < config.profile_count {
+        profile: ProjectProfile = config.profiles[index]
+        if profile.backend == "" {
+            config.error = "profile needs backend"
+            return config
+        }
+        if profile.codegen == "" {
+            config.profiles[index].codegen = "c99"
+        }
+        if profile.name == config.default_profile { found = true }
+        index += 1
+    }
+    if !found {
+        config.error = "default profile does not exist"
+        return config
+    }
+    config.ok = true
+    return config
+}
+
+#program_export
+ProjectProfileNamed :: (config: ProjectConfig, name: string) -> ProjectProfile {
+    index: s32 = 0
+    while index < config.profile_count {
+        if config.profiles[index].name == name { return config.profiles[index] }
+        index += 1
+    }
+    empty: ProjectProfile
+    return empty
+}

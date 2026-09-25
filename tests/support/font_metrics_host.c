@@ -16,7 +16,7 @@ read_string(const VmHostValue *value, const char **text, size_t *length)
 static int
 read_font(const VmHostValue *value, int *font)
 {
-    if(value->kind != VM_HOST_INTEGER || strcmp(value->type, "i32") != 0)
+    if(value->kind != VM_HOST_INTEGER || strcmp(value->type, "s32") != 0)
         return 0;
     *font = (int)value->integer;
     return 1;
@@ -38,8 +38,9 @@ measure_width(void *context, const char *module, const char *function,
        !read_string(&args[2], &typeface, &typeface_length))
         return 0;
     result->kind = VM_HOST_INTEGER;
-    result->integer = measurer->width(measurer->context, text, text_length,
-                                     font, typeface, typeface_length);
+    result->integer = measurer->width(measurer->context, (uint8_t *)text,
+                                     text_length, font, (uint8_t *)typeface,
+                                     typeface_length);
     return 1;
 }
 
@@ -60,7 +61,7 @@ measure_line_height(void *context, const char *module,
         return 0;
     result->kind = VM_HOST_INTEGER;
     result->integer = measurer->line_height(measurer->context, font,
-                                            typeface, typeface_length);
+                                            (uint8_t *)typeface, typeface_length);
     return 1;
 }
 

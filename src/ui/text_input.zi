@@ -20,7 +20,7 @@ CompositionEvent :: struct {
 
 CompositionState :: struct {
     active: bool
-    # The caller owns these bytes until the next state update or cancel.
+    // The caller owns these bytes until the next state update or cancel.
     text: string
     cursor: s32
     selection_length: s32
@@ -1506,8 +1506,8 @@ TextBufferCursorAfterDelete :: (cursor: s32, at: s32,
     return cursor
 }
 
-# The buffer has a trailing zero byte and length excludes it. Insert bytes
-# must come from storage separate from the destination buffer.
+// The buffer has a trailing zero byte and length excludes it. Insert bytes
+// must come from storage separate from the destination buffer.
 #program_export
 TextBufferInsertBytes :: (buffer: []u8, length: s32, at: s32,
     bytes: []u8) -> TextBufferEditResult {

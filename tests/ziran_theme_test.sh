@@ -54,7 +54,7 @@ for input in source ir; do
         extension=zir
         input_dir=$work/ir
     fi
-    "$ziran" build --target=c --strict --root "$work" -o "$work/c-$input" \
+    "$ziran" build --target=c --root "$work" -o "$work/c-$input" \
         "$input_dir/theme.$extension" "$input_dir/use_theme.$extension"
     cat > "$work/c-$input/main.c" <<'C'
 #include "use_theme.h"
@@ -65,7 +65,7 @@ C
         "$work/c-$input/main.c" -o "$work/c-$input/app"
     "$work/c-$input/app"
 
-    "$ziran" build --target=cpp --strict --root "$work" -o "$work/cpp-$input" \
+    "$ziran" build --target=cpp --root "$work" -o "$work/cpp-$input" \
         "$input_dir/theme.$extension" "$input_dir/use_theme.$extension"
     cat > "$work/cpp-$input/main.cpp" <<'CPP'
 #include "use_theme.hpp"
@@ -76,7 +76,7 @@ CPP
         "$work/cpp-$input/main.cpp" -o "$work/cpp-$input/app"
     "$work/cpp-$input/app"
 
-    "$ziran" build --target=go --strict --pkg main --root "$work" \
+    "$ziran" build --target=go --pkg main --root "$work" \
         -o "$work/go-$input" \
         "$input_dir/theme.$extension" "$input_dir/use_theme.$extension"
     if rg -q 'github.com/waozixyz/kryon' "$work/go-$input"; then

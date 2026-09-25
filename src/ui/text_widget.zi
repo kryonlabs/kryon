@@ -1,27 +1,22 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
 #import "paint_queue"
-#import "paragraph"
+#import "text_layout"
 #import "semantic"
 #import "style"
-#import "style_sheet"
 #import "surface"
 #import "text"
 #import "text_align"
 #import "text_props"
+#import "text_style"
 #import "tree"
 #import "widget_kind"
-host_api :: #system_library "host_api";
-
-# A raw byte-range view. The host only returns bytes; line breaking, layout,
-# style, and paint order are decided by this module.
-TextSlice :: (source: string, start: s32, length: s32) -> string #foreign host_api;
-
 #program_export
 TextSpan :: (source: string, start: s32, length: s32) -> string {
-    return TextSlice(source, start, length)
+    return source[start:start + length]
 }
 
 TextFace :: struct {
@@ -40,57 +35,14 @@ DefaultTextFace :: () -> TextFace {
 }
 
 #program_export
-TextFaceFor :: (rules: StyleRules, props: TextProps,
-    defaults: TextFace) -> TextFace {
+TextFaceFor :: (props: TextProps, defaults: TextFace) -> TextFace {
     face: TextFace = defaults
-    state: s32 = cast(s32)ButtonStateNormal
-    if props.disabled { state = cast(s32)ButtonStateDisabled }
-    kind: s32 = props.style_kind
-    if kind <= 0 { kind = StyleKindText() }
-    face.value = ResolveStyleRules(rules, defaults.value,
-        StyleTextFacts(0, props.class_name, kind, state), state)
+    request: TextStyleRequest
+    request.kind = props.style_kind
+    request.class_name = props.class_name
+    request.disabled = props.disabled
+    face.value = TextStyleFor(request, defaults.value)
     return face
-}
-
-TextLinePlan :: struct {
-    start: s32
-    end: s32
-    next: s32
-    width: s32
-}
-
-# A word that exceeds the available width stays intact on its own line.
-# ParagraphTokenNext keeps UTF-8 bytes together by splitting only at ASCII
-# whitespace and line breaks.
-#program_export
-NextTextLine :: (value: string, start: s32, max_width: float32,
-    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
-    line: TextLinePlan
-    line.start = start
-    line.end = start
-    line.next = (cast(s32)value.count) + 1
-    if start >= (cast(s32)value.count) { return line }
-    offset: s32 = start
-    while offset < (cast(s32)value.count) {
-        token: ParagraphToken = ParagraphTokenNext(value, offset, false)
-        if !token.valid { break }
-        if token.line_break {
-            line.next = token.next
-            return line
-        }
-        candidate: string = TextSlice(value, line.start,
-            token.end - line.start)
-        width: s32 = GlyphWidth(candidate, font, typeface)
-        if wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0 &&
-            line.end > line.start && cast(float32)width > max_width {
-            line.next = token.start
-            return line
-        }
-        line.end = token.end
-        line.width = width
-        offset = token.next
-    }
-    return line
 }
 
 PreparedText :: struct {
@@ -121,7 +73,7 @@ PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
     prepared.line_height = GlyphLineHeight(prepared.font,
         prepared.typeface)
     if prepared.line_height < 1 { prepared.line_height = prepared.font }
-    prepared.line_gap = ParagraphDefaultLineGap(1.0)
+    prepared.line_gap = TextDefaultLineGap(1.0)
     prepared.wrap = cast(TextWrap)TextWrapPolicy(props.bounds.width,
         cast(s32)props.wrap)
 
@@ -136,16 +88,16 @@ PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
         start = line.next
     }
     prepared.bounds.width = TextExtent(props.bounds.width, cast(float32)maximum)
-    height: s32 = ParagraphLayoutTotalHeight(prepared.line_count,
+    height: s32 = TextLayoutTotalHeight(prepared.line_count,
         prepared.line_height, prepared.line_gap)
     prepared.bounds.height = TextExtent(props.bounds.height, cast(float32)height)
     return prepared
 }
 
 #program_export
-PaintTextLines :: (node: s32, props: TextProps,
+PaintTextLines :: (session: Session, node: s32, props: TextProps,
     prepared: PreparedText) {
-    total_height: s32 = ParagraphLayoutTotalHeight(prepared.line_count,
+    total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
         prepared.line_height, prepared.line_gap)
     y: s32 = cast(s32)prepared.bounds.y +
         cast(s32)TextAlignmentOffset(prepared.bounds.height,
@@ -155,12 +107,12 @@ PaintTextLines :: (node: s32, props: TextProps,
         line: TextLinePlan = NextTextLine(props.text, start,
             prepared.bounds.width, prepared.wrap, prepared.font,
             prepared.typeface)
-        value: string = TextSlice(props.text, line.start,
+        value: string = TextSpan(props.text, line.start,
             line.end - line.start)
-        x: s32 = ParagraphLineXFor(cast(s32)prepared.bounds.x,
+        x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
             cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
         if value != "" {
-            PaintClippedLabel(node, value, x, y, prepared.font,
+            PaintClippedLabel(session, node, value, x, y, prepared.font,
                 prepared.color, prepared.bounds)
             if props.strikethrough {
                 strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
@@ -168,7 +120,7 @@ PaintTextLines :: (node: s32, props: TextProps,
                     cast(float32)prepared.line_height, 1.0)
                 strike = RectangleIntersection(strike, prepared.bounds)
                 if strike.width > 0.0 && strike.height > 0.0 {
-                    PaintRoundedFill(node, strike, 0.0, 1, prepared.color)
+                    PaintRoundedFill(session, node, strike, 0.0, 1, prepared.color)
                 }
             }
         }
@@ -178,20 +130,20 @@ PaintTextLines :: (node: s32, props: TextProps,
 }
 
 #program_export
-Text :: (props: TextProps) {
+Text :: (session: Session, props: TextProps) {
     defaults: TextFace = DefaultTextFace()
     if props.fallback_font > 0 {
         defaults.fallback_font = props.fallback_font
         defaults.value.font_size = cast(float32)props.fallback_font
     }
-    face: TextFace = TextFaceFor(ActiveStyleRules(), props, defaults)
+    face: TextFace = TextFaceFor(props, defaults)
     prepared: PreparedText = PrepareText(props, face)
     node: s32 = -1
-    if TreeIsBuilding() {
-        node = TreeSubmitCurrent(props.key, WidgetKindText, prepared.bounds)
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, props.key, WidgetKindText, prepared.bounds)
         if node < 0 { return }
-        TreeSetLabel(node, props.text)
-        TreeSetSemantic(node, props.semantic_kind, props.heading_level)
+        TreeSetLabel(session, node, props.text)
+        TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
     }
-    PaintTextLines(node, props, prepared)
+    PaintTextLines(session, node, props, prepared)
 }

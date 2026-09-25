@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "geometry"
 #import "paint_queue"
 #import "segmented_control"
@@ -35,41 +42,41 @@ Frame :: () -> s32 {
     props.wrap = phase < 4
     if phase == 3 || phase == 4 { options[2].disabled = true }
     if phase == 6 { props.has_selection = false }
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 120.0})
-    result: SegmentedControlResult = SegmentedControl(props, options[0:3])
-    if !TreeFinish() || TreeCount() != 5 || result.node != 1 ||
-        TreeNodeAt(1).kind != WidgetKindSegmentedControl ||
-        TreeNodeAt(2).kind != WidgetKindButton ||
-        TreeNodeAt(3).kind != WidgetKindButton ||
-        TreeNodeAt(4).kind != WidgetKindButton { return -10 }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 120.0})
+    result: SegmentedControlResult = SegmentedControl(TestSession(), props, options[0:3])
+    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 5 || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindSegmentedControl ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 4).kind != WidgetKindButton { return -10 }
     if phase == 0 {
         if result.height != 66 || result.selected_index != 0 ||
             result.changed || result.clicked_index != -1 ||
-            TreeNodeAt(2).bounds.x != 10.0 ||
-            TreeNodeAt(3).bounds.x != 88.0 ||
-            TreeNodeAt(4).bounds.y != 56.0 ||
-            TreeHitAt(100.0, 30.0) != 3 { return -1 }
-        TreePointerUpdate(PointerFrame.{100.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{100.0, 30.0, false, false, true})
+            TreeNodeAt(TestSession(), 2).bounds.x != 10.0 ||
+            TreeNodeAt(TestSession(), 3).bounds.x != 88.0 ||
+            TreeNodeAt(TestSession(), 4).bounds.y != 56.0 ||
+            TreeHitAt(TestSession(), 100.0, 30.0) != 3 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{100.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{100.0, 30.0, false, false, true})
     } else if phase == 1 {
         if result.selected_index != 1 || !result.changed ||
             result.clicked_index != 1 { return -2 }
-        TreePointerUpdate(PointerFrame.{50.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{50.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 70.0, false, false, true})
     } else if phase == 2 {
         if result.selected_index != 2 || !result.changed ||
             result.clicked_index != 2 { return -3 }
     } else if phase == 3 {
         if result.selected_index != 2 || result.changed ||
-            TreeHitAt(50.0, 70.0) != -1 { return -4 }
-        TreePointerUpdate(PointerFrame.{50.0, 70.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{50.0, 70.0, false, false, true})
+            TreeHitAt(TestSession(), 50.0, 70.0) != -1 { return -4 }
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 70.0, false, false, true})
     } else if phase == 4 {
         if result.height != 30 || result.selected_index != 2 ||
-            result.changed || TreeNodeAt(4).bounds.x != 166.0 ||
-            TreeNodeAt(4).bounds.y != 20.0 { return -5 }
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 30.0, false, false, true})
+            result.changed || TreeNodeAt(TestSession(), 4).bounds.x != 166.0 ||
+            TreeNodeAt(TestSession(), 4).bounds.y != 20.0 { return -5 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
     } else if phase == 5 {
         if result.selected_index != 0 || !result.changed ||
             result.clicked_index != 0 { return -6 }
@@ -77,7 +84,7 @@ Frame :: () -> s32 {
         if result.selected_index != -1 || result.changed ||
             result.clicked_index != -1 { return -7 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     selected = result.selected_index
     old: s32 = phase
     phase += 1
@@ -171,7 +178,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"

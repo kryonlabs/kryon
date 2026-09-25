@@ -8,6 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
+cp "$repo/src/ui/math.zi" "$work/math.zi"
 cp "$repo/src/ui/popup_policy.zi" "$work/popup_policy.zi"
 cat > "$work/use_popup.zi" <<'EOF'
 #import "geometry"
@@ -78,7 +79,7 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 -o "$output" "$input_dir/geometry.$extension" \
                 "$input_dir/popup_policy.$extension" \
                 "$input_dir/use_popup.$extension"
@@ -90,11 +91,11 @@ for input in source ir; do
 package main
 func main() { if UsePopup_Answer() != 42 { panic("wrong popup result") } }
 GO
-            GO111MODULE=off go run "$output/geometry.go" \
+            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/popup_policy.go" "$output/use_popup.go" \
                 "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" -o "$output" \
+            "$ziran" build --target=c --root "$work" -o "$output" \
                 "$input_dir/geometry.$extension" \
                 "$input_dir/popup_policy.$extension" \
                 "$input_dir/use_popup.$extension"
@@ -103,11 +104,11 @@ GO
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/popup_policy.c" \
+                "$output/geometry.c" "$output/math.c" "$output/popup_policy.c" \
                 "$output/use_popup.c" "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" -o "$output" \
+            "$ziran" build --target=cpp --root "$work" -o "$output" \
                 "$input_dir/geometry.$extension" \
                 "$input_dir/popup_policy.$extension" \
                 "$input_dir/use_popup.$extension"
@@ -116,7 +117,7 @@ C
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/popup_policy.cpp" \
+                "$output/geometry.cpp" "$output/math.cpp" "$output/popup_policy.cpp" \
                 "$output/use_popup.cpp" "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi

@@ -1,3 +1,4 @@
+#import "session"
 #import "button_props"
 #import "button_widget"
 #import "control_props"
@@ -55,10 +56,10 @@ ToolbarFaceFor :: (props: ToolbarProps,
 }
 
 #program_export
-ToolbarKey :: (props: ToolbarProps) -> u64 {
+ToolbarKey :: (session: Session, props: ToolbarProps) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey()
+    return TreeNextKey(session)
 }
 
 #program_export
@@ -68,10 +69,10 @@ ToolbarActionKey :: (toolbar_key: u64,
     return toolbar_key * cast(u64)131071 + cast(u64)cast(u32)(index + 1)
 }
 
-# Toolbar composes checked Button and Dropdown widgets. The caller owns the
-# returned dropdown state, and passes it back in props.dropdown next frame.
+// Toolbar composes checked Button and Dropdown widgets. The caller owns the
+// returned dropdown state, and passes it back in props.dropdown next frame.
 #program_export
-Toolbar :: (props: ToolbarProps, options: []DropdownOption,
+Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
     actions: []ToolbarAction) -> ToolbarResult {
     result: ToolbarResult
     result.node = -1
@@ -83,7 +84,7 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
     result.selected_menu_item = -1
     result.clicked_action = -1
     if props.width <= 0 || props.height <= 0 { return result }
-    key: u64 = ToolbarKey(props)
+    key: u64 = ToolbarKey(session, props)
     bar: StyleFrame = ToolbarFaceFor(props, ToolbarBarRole())
     divider: StyleFrame = ToolbarFaceFor(props, ToolbarDividerRole())
     action_face: StyleFrame = ToolbarFaceFor(props,
@@ -105,11 +106,11 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
     spec.bar = bar
     spec.action = action_face
     layout: ToolbarLayout = ToolbarLayoutFor(spec)
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key, WidgetKindToolbar,
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindToolbar,
             layout.bounds)
         if result.node < 0 { return result }
-        submitted: Rectangle = TreeSubmittedNodeAt(result.node).bounds
+        submitted: Rectangle = TreeSubmittedNodeAt(session, result.node).bounds
         if submitted.x != layout.bounds.x ||
             submitted.y != layout.bounds.y ||
             submitted.width != layout.bounds.width ||
@@ -123,18 +124,18 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
     }
     opacity: float32 = StyleOpacityValue(bar.value.fields,
         bar.value.opacity)
-    PaintRoundedFill(result.node, layout.bounds,
+    PaintRoundedFill(session, result.node, layout.bounds,
         bar.value.radius, 12,
         ColorFromPacked(Opacity(bar.value.background, opacity)))
     if bar.value.border_width > 0.0 {
-        PaintRoundedOutline(result.node, layout.bounds,
+        PaintRoundedOutline(session, result.node, layout.bounds,
             bar.value.radius, 12, bar.value.border_width,
             ColorFromPacked(Opacity(bar.value.border, opacity)))
     }
     line: ToolbarDividerLine = ToolbarDividerLineFor(
         cast(s32)layout.bounds.x, cast(s32)layout.bounds.y,
         cast(s32)layout.bounds.width, cast(s32)layout.bounds.height)
-    PaintLine(result.node, Rectangle.{cast(float32)line.x1,
+    PaintLine(session, result.node, Rectangle.{cast(float32)line.x1,
         cast(float32)line.y1, cast(float32)(line.x2 - line.x1), 0.0},
         ColorFromPacked(Opacity(divider.value.foreground,
             StyleOpacityValue(divider.value.fields,
@@ -158,7 +159,7 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
         button.icon_only = item.image.asset_path != "" ||
             item.image.texture.id != cast(u32)0
         button.disabled = item.disabled
-        if SubmitButton(button, result.node, key) != 0 {
+        if SubmitButton(session, button, result.node) != 0 {
             result.clicked_action = index
         }
         index += 1
@@ -174,7 +175,7 @@ Toolbar :: (props: ToolbarProps, options: []DropdownOption,
             dropdown.class_name = props.class_name
         }
         if dropdown.scale <= 0.0 { dropdown.scale = props.scale }
-        result.dropdown = Dropdown(dropdown, options)
+        result.dropdown = Dropdown(session, dropdown, options)
         if result.dropdown.changed {
             result.selected_menu_item = result.dropdown.selected_index
         }

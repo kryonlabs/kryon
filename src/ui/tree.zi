@@ -1,26 +1,18 @@
 #import "geometry"
-#import "grid"
-#import "grid_props"
-#import "layout"
 #import "semantic"
+#import "session"
 #import "widget_kind"
+#import "vec"
 
-# A retained node keeps its identity only when its key, kind, and parent key
-# match the previous committed tree. The portable tree owns this decision;
-# the old native tree host also calls these pure policy functions.
+// A retained node keeps its identity only when its key, kind, and parent key
+// match the previous committed tree. The portable tree owns this decision;
+// the old native tree host also calls these pure policy functions.
 #program_export
 TreeIdentityHash :: (parent: u64, key: u64, kind: s32) -> u64 {
     hash: u64 = key ^ (parent * cast(u64)16777619)
     hash = hash ^ (cast(u64)cast(u32)kind * cast(u64)2166136261)
     hash = (hash ^ (hash >> cast(u64)16)) * cast(u64)2246822519
     return hash ^ (hash >> cast(u64)16)
-}
-
-#program_export
-TreeSameIdentity :: (old_key: u64, old_kind: s32, old_parent_key: u64,
-    new_key: u64, new_kind: s32, new_parent_key: u64) -> bool {
-    return old_key == new_key && old_kind == new_kind &&
-        old_parent_key == new_parent_key
 }
 
 #program_export
@@ -36,8 +28,8 @@ TreeInteractiveButtonLike :: (kind: s32, focus_id: s32,
     return !disabled && !loading
 }
 
-# Checked value controls use the same retained press and release routing as
-# Buttons. Cards remain opt in through a positive focus id.
+// Checked value controls use the same retained press and release routing as
+// Buttons. Cards remain opt in through a positive focus id.
 #program_export
 TreePointerActivatable :: (kind: s32, focus_id: s32,
     disabled: bool, loading: bool) -> bool {
@@ -57,8 +49,20 @@ TreeCommitPlan :: struct {
     route_input: bool
 }
 
-# During activation, a partial submission must preserve the committed tree
-# and defer input until the replacement tree is complete.
+FrameStatus :: enum {
+    FrameOk :: 0
+    FrameInvalidSession :: 1
+    FrameNotBuilding :: 2
+    FrameInvalidParent :: 3
+    FrameInvalidScope :: 4
+    FrameDuplicateKey :: 5
+    FrameAllocationFailed :: 6
+    FrameIdentityOverflow :: 7
+    FramePaintOverflow :: 8
+}
+
+// During activation, a partial submission must preserve the committed tree
+// and defer input until the replacement tree is complete.
 #program_export
 TreeCommitFor :: (activation: bool, committed_count: s32,
     submitted_count: s32) -> TreeCommitPlan {
@@ -70,11 +74,15 @@ TreeCommitFor :: (activation: bool, committed_count: s32,
     return plan
 }
 
-# The portable tree owns node identity across bundle instance runs. Geometry
-# and widget data are values; platform hosts only consume the committed tree.
+TreePlacement :: #type (session: Session, parent_index: s32,
+    bounds: Rectangle) -> Rectangle;
+
 TreeEntry :: struct {
     key: u64
     parent_key: u64
+    auto_key: bool
+    auto_ordinal: s32
+    next_auto_ordinal: s32
     kind: s32
     bounds: Rectangle
     clip: Rectangle
@@ -83,6 +91,8 @@ TreeEntry :: struct {
     clips_children: bool
     measured_bounds: Rectangle
     auto_placed: bool
+    places_children: bool
+    placement: TreePlacement
     layout_gap: s32
     layout_padding: s32
     grid_columns: s32
@@ -95,8 +105,7 @@ TreeEntry :: struct {
     first_child: s32
     last_child: s32
     next_sibling: s32
-    identity_generation: s32
-    matched: bool
+    identity_generation: u64
     interactive: bool
     disabled: bool
     loading: bool
@@ -104,390 +113,900 @@ TreeEntry :: struct {
     focus_id: s32
 }
 
+NodeCore :: struct {
+    key: u64
+    identity_generation: u64
+    bounds: Rectangle
+    measured_bounds: Rectangle
+    clip: Rectangle
+    child_clip: Rectangle
+    kind: s32
+    parent: s32
+    first_child: s32
+    last_child: s32
+    next_sibling: s32
+    sibling_ordinal: s32
+    auto_ordinal: s32
+    next_auto_ordinal: s32
+    semantic_index: s32
+    interaction_index: s32
+    layout_index: s32
+    auto_key: bool
+    clipped: bool
+    clips_children: bool
+    auto_placed: bool
+}
+
+SemanticData :: struct {
+    label: string
+    kind: SemanticKind
+    heading_level: s32
+    selected: bool
+}
+
+InteractionData :: struct {
+    disabled: bool
+    loading: bool
+    focus_id: s32
+}
+
+LayoutProgress :: struct {
+    count: s32
+    extent: float32
+    grid_y: s32
+    grid_col: s32
+    grid_row_height: s32
+    grid_used_height: s32
+    grid_initialized: bool
+}
+
+LayoutData :: struct {
+    placement: TreePlacement
+    gap: s32
+    padding: s32
+    columns: s32
+    min_item_width: s32
+    max_columns: s32
+    progress: LayoutProgress
+    places_children: bool
+}
+
+NodeGeometry :: struct {
+    bounds: Rectangle
+    measured_bounds: Rectangle
+    clip: Rectangle
+    clipped: bool
+}
+
+NodeInput :: struct {
+    key: u64
+    identity_generation: u64
+    kind: s32
+    bounds: Rectangle
+    clip: Rectangle
+    clipped: bool
+    interactive: bool
+    disabled: bool
+    loading: bool
+    focus_id: s32
+}
+
+LayoutInfo :: struct {
+    bounds: Rectangle
+    gap: s32
+    padding: s32
+    columns: s32
+    min_item_width: s32
+    max_columns: s32
+}
+
 TreeStore :: struct {
-    committed: [1024]TreeEntry
-    submitted: [1024]TreeEntry
-    slots: [2048]s32
+    committed: Vec(NodeCore)
+    submitted: Vec(NodeCore)
+    committed_semantics: Vec(SemanticData)
+    submitted_semantics: Vec(SemanticData)
+    committed_interactions: Vec(InteractionData)
+    submitted_interactions: Vec(InteractionData)
+    layouts: Vec(LayoutData)
+    slots: Vec(s32)
+    new_slots: Vec(s32)
     scope: [64]s32
     scope_depth: s32
     committed_count: s32
     submitted_count: s32
-    next_identity_generation: s32
+    next_identity_generation: u64
+    staged_identity_generation: u64
     building: bool
-    overflow: bool
+    error: FrameStatus
 }
 
-active_tree: TreeStore;
+trees: [9]TreeStore;
 
-#program_export
-TreeStart :: (screen_key: u64, bounds: Rectangle) {
-    active_tree.submitted_count = 0
-    active_tree.scope_depth = 0
-    active_tree.building = true
-    active_tree.overflow = false
-    key: u64 = screen_key
-    if key == 0 { key = 1 }
-    if TreeSubmit(key, -1, WidgetKindScreen, bounds) == 0 {
-        active_tree.scope[0] = 0
-        active_tree.scope_depth = 1
+TreeParentGeneration :: (session: Session, index: s32,
+    committed: bool) -> u64 {
+    if index < 0 { return cast(u64)0 }
+    slot: s32 = SessionIndex(session)
+    if committed {
+        parent: s32 = trees[slot].committed[index].parent
+        if parent < 0 { return cast(u64)0 }
+        return trees[slot].committed[parent].identity_generation
     }
+    parent: s32 = trees[slot].submitted[index].parent
+    if parent < 0 { return cast(u64)0 }
+    return trees[slot].submitted[parent].identity_generation
 }
 
-# The root is the default scope. A container submits itself, pushes its node,
-# composes children, then pops it. Explicit TreeSubmit still accepts a parent
-# index for controls such as Spinbox that create their own child nodes.
+TreeBuildOldIndex :: (session: Session) -> bool {
+    slot: s32 = SessionIndex(session)
+    VecClear(trees[slot].slots)
+    if trees[slot].committed_count == 0 { return true }
+    capacity: s32 = 8
+    while cast(s64)capacity <= cast(s64)trees[slot].committed_count * 2 {
+        if capacity > 1073741824 { return false }
+        capacity *= 2
+    }
+    index: s32 = 0
+    while index < capacity {
+        if !VecPush(trees[slot].slots, -1) { return false }
+        index += 1
+    }
+    index = 0
+    while index < trees[slot].committed_count {
+        entry: NodeCore = trees[slot].committed[index]
+        parent: u64 = TreeParentGeneration(session, index, true)
+        hash: u64 = TreeIdentityHash(parent, entry.key, entry.kind)
+        position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
+        while trees[slot].slots[position] >= 0 {
+            position = (position + 1) & (capacity - 1)
+        }
+        trees[slot].slots[position] = index
+        index += 1
+    }
+    return true
+}
+
+TreeBuildNewIndex :: (session: Session, needed: s32) -> bool {
+    slot: s32 = SessionIndex(session)
+    if cast(s64)trees[slot].new_slots.count > cast(s64)needed * 2 {
+        return true
+    }
+    capacity: s32 = 8
+    while cast(s64)capacity <= cast(s64)needed * 2 {
+        if capacity > 1073741824 { return false }
+        capacity *= 2
+    }
+    VecClear(trees[slot].new_slots)
+    index: s32 = 0
+    while index < capacity {
+        if !VecPush(trees[slot].new_slots, -1) { return false }
+        index += 1
+    }
+    index = 0
+    while index < trees[slot].submitted_count {
+        entry: NodeCore = trees[slot].submitted[index]
+        if !entry.auto_key {
+            parent: u64 = TreeParentGeneration(session, index, false)
+            hash: u64 = TreeIdentityHash(parent, entry.key, 0)
+            position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
+            while trees[slot].new_slots[position] >= 0 {
+                position = (position + 1) & (capacity - 1)
+            }
+            trees[slot].new_slots[position] = index
+        }
+        index += 1
+    }
+    return true
+}
+
+TreeFindOld :: (session: Session, parent: u64, key: u64,
+    kind: s32, auto_key: bool, auto_ordinal: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    capacity: s32 = cast(s32)trees[slot].slots.count
+    if capacity == 0 { return -1 }
+    hash: u64 = TreeIdentityHash(parent, key, kind)
+    position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
+    while trees[slot].slots[position] >= 0 {
+        index: s32 = trees[slot].slots[position]
+        entry: NodeCore = trees[slot].committed[index]
+        if entry.key == key && entry.kind == kind &&
+            entry.auto_key == auto_key &&
+            (!auto_key || entry.auto_ordinal == auto_ordinal) &&
+            TreeParentGeneration(session, index, true) == parent {
+            return index
+        }
+        position = (position + 1) & (capacity - 1)
+    }
+    return -1
+}
+
+// Look up a child of a submitted parent in the previous committed frame.
+// Key zero names the next parent-local unkeyed position before submission.
 #program_export
-TreeCurrentParent :: () -> s32 {
-    if !active_tree.building || active_tree.scope_depth <= 0 {
+TreePrevious :: (session: Session, parent_index: s32,
+    key: u64, kind: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || parent_index < 0 ||
+        parent_index >= trees[slot].submitted_count { return -1 }
+    parent: NodeCore = trees[slot].submitted[parent_index]
+    auto_key: bool = key == cast(u64)0
+    ordinal: s32 = 0
+    if auto_key {
+        ordinal = parent.next_auto_ordinal + 1
+        key = cast(u64)ordinal
+    }
+    return TreeFindOld(session, parent.identity_generation, key,
+        kind, auto_key, ordinal)
+}
+
+// Use this when the current parent has not yet been submitted.
+#program_export
+TreePreviousCommitted :: (session: Session, parent_index: s32,
+    key: u64, kind: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    if parent_index < 0 || parent_index >= trees[slot].committed_count ||
+        key == cast(u64)0 { return -1 }
+    return TreeFindOld(session,
+        trees[slot].committed[parent_index].identity_generation,
+        key, kind, false, 0)
+}
+
+TreeExplicitExists :: (session: Session, parent: u64, key: u64) -> bool {
+    slot: s32 = SessionIndex(session)
+    capacity: s32 = cast(s32)trees[slot].new_slots.count
+    hash: u64 = TreeIdentityHash(parent, key, 0)
+    position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
+    while trees[slot].new_slots[position] >= 0 {
+        index: s32 = trees[slot].new_slots[position]
+        if trees[slot].submitted[index].key == key &&
+            TreeParentGeneration(session, index, false) == parent {
+            return true
+        }
+        position = (position + 1) & (capacity - 1)
+    }
+    return false
+}
+
+TreeRead :: (session: Session, index: s32,
+    committed: bool) -> TreeEntry {
+    entry: TreeEntry
+    slot: s32 = SessionIndex(session)
+    node: NodeCore
+    if committed {
+        if index < 0 || index >= trees[slot].committed_count { return entry }
+        node = trees[slot].committed[index]
+    } else {
+        if !trees[slot].building || index < 0 ||
+            index >= trees[slot].submitted_count { return entry }
+        node = trees[slot].submitted[index]
+    }
+    entry.key = node.key
+    if node.parent >= 0 {
+        if committed {
+            entry.parent_key = trees[slot].committed[node.parent].key
+        } else {
+            entry.parent_key = trees[slot].submitted[node.parent].key
+        }
+    }
+    entry.auto_key = node.auto_key
+    entry.auto_ordinal = node.auto_ordinal
+    entry.next_auto_ordinal = node.next_auto_ordinal
+    entry.kind = node.kind
+    entry.bounds = node.bounds
+    entry.clip = node.clip
+    entry.child_clip = node.child_clip
+    entry.clipped = node.clipped
+    entry.clips_children = node.clips_children
+    entry.measured_bounds = node.measured_bounds
+    entry.auto_placed = node.auto_placed
+    entry.parent = node.parent
+    entry.first_child = node.first_child
+    entry.last_child = node.last_child
+    entry.next_sibling = node.next_sibling
+    entry.identity_generation = node.identity_generation
+    if node.semantic_index >= 0 {
+        semantic: SemanticData
+        if committed {
+            semantic = trees[slot].committed_semantics[node.semantic_index]
+        } else {
+            semantic = trees[slot].submitted_semantics[node.semantic_index]
+        }
+        entry.semantic_label = semantic.label
+        entry.semantic_kind = semantic.kind
+        entry.heading_level = semantic.heading_level
+        entry.selected = semantic.selected
+    }
+    if node.interaction_index >= 0 {
+        interaction: InteractionData
+        if committed {
+            interaction = trees[slot].committed_interactions[node.interaction_index]
+        } else {
+            interaction = trees[slot].submitted_interactions[node.interaction_index]
+        }
+        entry.interactive = true
+        entry.disabled = interaction.disabled
+        entry.loading = interaction.loading
+        entry.focus_id = interaction.focus_id
+    }
+    if !committed && node.layout_index >= 0 {
+        layout: LayoutData = trees[slot].layouts[node.layout_index]
+        entry.placement = layout.placement
+        entry.places_children = layout.places_children
+        entry.layout_gap = layout.gap
+        entry.layout_padding = layout.padding
+        entry.grid_columns = layout.columns
+        entry.grid_min_item_width = layout.min_item_width
+        entry.grid_max_columns = layout.max_columns
+    }
+    return entry
+}
+
+#program_export
+TreeSubmittedGeometryAt :: (session: Session,
+    index: s32) -> NodeGeometry {
+    geometry: NodeGeometry
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return geometry }
+    node: NodeCore = trees[slot].submitted[index]
+    geometry.bounds = node.bounds
+    geometry.measured_bounds = node.measured_bounds
+    geometry.clip = node.clip
+    geometry.clipped = node.clipped
+    return geometry
+}
+
+#program_export
+TreeSubmittedBounds :: (session: Session, index: s32) -> Rectangle {
+    empty: Rectangle
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return empty }
+    return trees[slot].submitted[index].bounds
+}
+
+#program_export
+TreeInputAt :: (session: Session, index: s32) -> NodeInput {
+    input: NodeInput
+    slot: s32 = SessionIndex(session)
+    if index < 0 || index >= trees[slot].committed_count { return input }
+    node: NodeCore = trees[slot].committed[index]
+    input.key = node.key
+    input.identity_generation = node.identity_generation
+    input.kind = node.kind
+    input.bounds = node.bounds
+    input.clip = node.clip
+    input.clipped = node.clipped
+    if node.interaction_index >= 0 {
+        interaction: InteractionData =
+            trees[slot].committed_interactions[node.interaction_index]
+        input.interactive = true
+        input.disabled = interaction.disabled
+        input.loading = interaction.loading
+        input.focus_id = interaction.focus_id
+    }
+    return input
+}
+
+#program_export
+TreeLayoutAt :: (session: Session, index: s32) -> LayoutInfo {
+    info: LayoutInfo
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return info }
+    node: NodeCore = trees[slot].submitted[index]
+    info.bounds = node.bounds
+    if node.layout_index >= 0 {
+        layout: LayoutData = trees[slot].layouts[node.layout_index]
+        info.gap = layout.gap
+        info.padding = layout.padding
+        info.columns = layout.columns
+        info.min_item_width = layout.min_item_width
+        info.max_columns = layout.max_columns
+    }
+    return info
+}
+
+TreeEnsureSemantic :: (session: Session, index: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    existing: s32 = trees[slot].submitted[index].semantic_index
+    if existing >= 0 { return existing }
+    next: s32 = cast(s32)trees[slot].submitted_semantics.count
+    data: SemanticData
+    if !VecPush(trees[slot].submitted_semantics, data) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
         return -1
     }
-    return active_tree.scope[active_tree.scope_depth - 1]
+    trees[slot].submitted[index].semantic_index = next
+    return next
+}
+
+TreeEnsureInteraction :: (session: Session, index: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    existing: s32 = trees[slot].submitted[index].interaction_index
+    if existing >= 0 { return existing }
+    next: s32 = cast(s32)trees[slot].submitted_interactions.count
+    data: InteractionData
+    if !VecPush(trees[slot].submitted_interactions, data) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return -1
+    }
+    trees[slot].submitted[index].interaction_index = next
+    return next
+}
+
+TreeEnsureLayout :: (session: Session, index: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    existing: s32 = trees[slot].submitted[index].layout_index
+    if existing >= 0 { return existing }
+    next: s32 = cast(s32)trees[slot].layouts.count
+    data: LayoutData
+    if !VecPush(trees[slot].layouts, data) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return -1
+    }
+    trees[slot].submitted[index].layout_index = next
+    return next
 }
 
 #program_export
-TreeCurrentParentKey :: () -> u64 {
-    parent: s32 = TreeCurrentParent()
+TreeLayoutProgressAt :: (session: Session, index: s32) -> LayoutProgress {
+    empty: LayoutProgress
+    slot: s32 = SessionIndex(session)
+    if index < 0 || index >= trees[slot].submitted_count {
+        return empty
+    }
+    layout: s32 = trees[slot].submitted[index].layout_index
+    if layout < 0 { return empty }
+    return trees[slot].layouts[layout].progress
+}
+
+#program_export
+TreeSetLayoutProgress :: (session: Session, index: s32,
+    progress: LayoutProgress) {
+    slot: s32 = SessionIndex(session)
+    if index < 0 || index >= trees[slot].submitted_count { return }
+    layout: s32 = trees[slot].submitted[index].layout_index
+    if layout < 0 { return }
+    trees[slot].layouts[layout].progress = progress
+}
+
+#program_export
+TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
+    if !SessionValid(session) { return }
+    slot: s32 = session.slot
+    VecClear(trees[slot].submitted)
+    VecClear(trees[slot].submitted_semantics)
+    VecClear(trees[slot].submitted_interactions)
+    VecClear(trees[slot].layouts)
+    trees[slot].submitted_count = 0
+    trees[slot].scope_depth = 0
+    trees[slot].building = true
+    trees[slot].error = cast(FrameStatus)FrameOk
+    trees[slot].staged_identity_generation =
+        trees[slot].next_identity_generation
+    VecClear(trees[slot].new_slots)
+    if !TreeBuildOldIndex(session) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return
+    }
+    key: u64 = screen_key
+    if key == 0 { key = 1 }
+    if TreeSubmit(session, key, -1, WidgetKindScreen, bounds) == 0 {
+        trees[slot].scope[0] = 0
+        trees[slot].scope_depth = 1
+    }
+}
+
+// The root is the default scope. A container submits itself, pushes its node,
+// composes children, then pops it. Explicit TreeSubmit still accepts a parent
+// index for controls such as Spinbox that create their own child nodes.
+#program_export
+TreeCurrentParent :: (session: Session) -> s32 {
+    if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].scope_depth <= 0 {
+        return -1
+    }
+    return trees[SessionIndex(session)].scope[trees[SessionIndex(session)].scope_depth - 1]
+}
+
+#program_export
+TreeCurrentParentKey :: (session: Session) -> u64 {
+    parent: s32 = TreeCurrentParent(session)
     if parent < 0 { return cast(u64)0 }
-    return active_tree.submitted[parent].key
+    return trees[SessionIndex(session)].submitted[parent].key
 }
 
 #program_export
-TreeCurrentParentBounds :: () -> Rectangle {
-    parent: s32 = TreeCurrentParent()
+TreeCurrentParentBounds :: (session: Session) -> Rectangle {
+    parent: s32 = TreeCurrentParent(session)
     if parent < 0 {
         empty: Rectangle
         return empty
     }
-    return active_tree.submitted[parent].bounds
+    return trees[SessionIndex(session)].submitted[parent].bounds
 }
 
 #program_export
-TreeSubmitCurrent :: (key: u64, kind: s32,
+TreeSubmitCurrent :: (session: Session, key: u64, kind: s32,
     bounds: Rectangle) -> s32 {
-    parent: s32 = TreeCurrentParent()
+    parent: s32 = TreeCurrentParent(session)
     if parent < 0 { return -1 }
-    return TreeSubmit(key, parent, kind, bounds)
+    return TreeSubmit(session, key, parent, kind, bounds)
 }
 
 #program_export
-TreePushScope :: (index: s32) -> bool {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count ||
-        active_tree.scope_depth <= 0 ||
-        active_tree.scope_depth >= 64 { return false }
-    active_tree.scope[active_tree.scope_depth] = index
-    active_tree.scope_depth += 1
-    return true
-}
-
-#program_export
-TreePopScope :: () -> bool {
-    if !active_tree.building || active_tree.scope_depth <= 1 {
+TreePushScope :: (session: Session, index: s32) -> bool {
+    if !trees[SessionIndex(session)].building || index < 0 ||
+        index >= trees[SessionIndex(session)].submitted_count ||
+        trees[SessionIndex(session)].scope_depth <= 0 ||
+        trees[SessionIndex(session)].scope_depth >= 64 {
+        if SessionValid(session) && trees[session.slot].building {
+            trees[session.slot].error = cast(FrameStatus)FrameInvalidScope
+        }
         return false
     }
-    active_tree.scope_depth -= 1
+    trees[SessionIndex(session)].scope[trees[SessionIndex(session)].scope_depth] = index
+    trees[SessionIndex(session)].scope_depth += 1
     return true
 }
 
-# Close the innermost container opened by Page, Section, or another layout
-# widget. The root scope closes only through TreeFinish.
 #program_export
-End :: () -> bool {
-    return TreePopScope()
+TreePopScope :: (session: Session) -> bool {
+    if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].scope_depth <= 1 {
+        if SessionValid(session) && trees[session.slot].building {
+            trees[session.slot].error = cast(FrameStatus)FrameInvalidScope
+        }
+        return false
+    }
+    trees[SessionIndex(session)].scope_depth -= 1
+    return true
+}
+
+// Close the innermost container opened by Page, Section, or another layout
+// widget. The root scope closes only through TreeFinish.
+#program_export
+End :: (session: Session) -> bool {
+    return TreePopScope(session)
 }
 
 #program_export
-TreeSubmit :: (key: u64, parent_index: s32, kind: s32,
+TreeSubmit :: (session: Session, key: u64, parent_index: s32, kind: s32,
     bounds: Rectangle) -> s32 {
-    if !active_tree.building || active_tree.overflow { return -1 }
-    if active_tree.submitted_count >= 1024 {
-        active_tree.overflow = true
+    if !SessionValid(session) { return -1 }
+    slot: s32 = session.slot
+    if !trees[slot].building ||
+        trees[slot].error != cast(FrameStatus)FrameOk { return -1 }
+    if trees[slot].submitted_count == 2147483647 {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
         return -1
     }
-    if parent_index >= active_tree.submitted_count || parent_index < -1 {
+    if parent_index >= trees[slot].submitted_count || parent_index < -1 ||
+        (parent_index < 0 && trees[slot].submitted_count > 0) {
+        trees[slot].error = cast(FrameStatus)FrameInvalidParent
         return -1
     }
-    index: s32 = active_tree.submitted_count
-    entry: TreeEntry
-    entry.key = key
-    if key == 0 { entry.key = cast(u64)(index + 1) }
+    index: s32 = trees[slot].submitted_count
+    if !TreeBuildNewIndex(session, index + 1) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return -1
+    }
+    node: NodeCore
+    node.key = key
+    node.auto_key = key == cast(u64)0
+    node.semantic_index = -1
+    node.interaction_index = -1
+    node.layout_index = -1
+    parent_generation: u64 = cast(u64)0
     if parent_index >= 0 {
-        entry.parent_key = active_tree.submitted[parent_index].key
-        parent_clip: TreeEntry = active_tree.submitted[parent_index]
+        parent_generation = trees[slot].submitted[parent_index].identity_generation
+        if node.auto_key {
+            node.auto_ordinal = trees[slot].submitted[parent_index].next_auto_ordinal + 1
+            node.key = cast(u64)node.auto_ordinal
+        }
+        parent_clip: NodeCore = trees[slot].submitted[parent_index]
         if parent_clip.clips_children {
-            entry.clip = parent_clip.child_clip
-            entry.clipped = true
+            node.clip = parent_clip.child_clip
+            node.clipped = true
         } else if parent_clip.clipped {
-            entry.clip = parent_clip.clip
-            entry.clipped = true
+            node.clip = parent_clip.clip
+            node.clipped = true
         }
     }
-    entry.kind = kind
-    entry.measured_bounds = bounds
-    if parent_index >= 0 && bounds.x == 0.0 && bounds.y == 0.0 {
-        parent: TreeEntry = active_tree.submitted[parent_index]
-        metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
-            parent.layout_gap, parent.layout_padding)
-        horizontal: bool = parent.kind == WidgetKindRow
-        vertical: bool = parent.kind == WidgetKindColumn ||
-            parent.kind == WidgetKindPage ||
-            parent.kind == WidgetKindSection
-        if horizontal || vertical {
-            sibling: s32 = parent.first_child
-            count: s32 = 0
-            extent: float32 = 0.0
-            while sibling >= 0 {
-                prior: TreeEntry = active_tree.submitted[sibling]
-                if prior.auto_placed {
-                    count += 1
-                    if horizontal {
-                        extent += prior.bounds.width
-                    } else {
-                        extent += prior.bounds.height
-                    }
-                }
-                sibling = prior.next_sibling
-            }
-            cursor: float32 = LayoutCursorForChild(metrics, horizontal,
-                count, extent)
-            entry.bounds = LayoutChildBounds(bounds, bounds,
-                metrics, horizontal, cursor)
-            entry.auto_placed = true
-        } else if parent.kind == WidgetKindStack {
-            entry.bounds = StackChildBounds(bounds, bounds, metrics)
-            entry.auto_placed = true
-        } else if parent.kind == WidgetKindGrid {
-            props: GridProps
-            props.bounds = parent.bounds
-            props.gap = parent.layout_gap
-            props.padding = parent.layout_padding
-            props.columns = parent.grid_columns
-            props.min_item_width = parent.grid_min_item_width
-            props.max_columns = parent.grid_max_columns
-            grid: GridCursor = BeginGridCursor(props)
-            sibling: s32 = parent.first_child
-            while sibling >= 0 {
-                prior: TreeEntry = active_tree.submitted[sibling]
-                if prior.auto_placed {
-                    grid = GridStep(grid, cast(s32)prior.bounds.height, 1)
-                }
-                sibling = prior.next_sibling
-            }
-            grid = GridStep(grid, cast(s32)bounds.height, 1)
-            entry.bounds = grid.item
-            entry.auto_placed = true
+    if !node.auto_key && TreeExplicitExists(session, parent_generation, key) {
+        trees[slot].error = cast(FrameStatus)FrameDuplicateKey
+        return -1
+    }
+    node.kind = kind
+    node.measured_bounds = bounds
+    if parent_index >= 0 && bounds.x == 0.0 && bounds.y == 0.0 &&
+        trees[slot].submitted[parent_index].layout_index >= 0 {
+        layout: LayoutData = trees[slot].layouts[
+            trees[slot].submitted[parent_index].layout_index]
+        if layout.places_children {
+            placement: TreePlacement = layout.placement
+            node.bounds = placement(session, parent_index, bounds)
+            node.auto_placed = true
         }
     }
-    if !entry.auto_placed { entry.bounds = bounds }
-    entry.parent = parent_index
-    entry.first_child = -1
-    entry.last_child = -1
-    entry.next_sibling = -1
-    active_tree.submitted[index] = entry
+    if !node.auto_placed { node.bounds = bounds }
+    node.parent = parent_index
     if parent_index >= 0 {
-        last: s32 = active_tree.submitted[parent_index].last_child
-        if last < 0 {
-            active_tree.submitted[parent_index].first_child = index
-        } else {
-            active_tree.submitted[last].next_sibling = index
+        last_sibling: s32 = trees[slot].submitted[parent_index].last_child
+        node.sibling_ordinal = 1
+        if last_sibling >= 0 {
+            node.sibling_ordinal =
+                trees[slot].submitted[last_sibling].sibling_ordinal + 1
         }
-        active_tree.submitted[parent_index].last_child = index
     }
-    active_tree.submitted_count += 1
+    node.first_child = -1
+    node.last_child = -1
+    node.next_sibling = -1
+    old_index: s32 = TreeFindOld(session, parent_generation,
+        node.key, kind, node.auto_key, node.auto_ordinal)
+    if old_index >= 0 {
+        node.identity_generation = trees[slot].committed[old_index].identity_generation
+    } else {
+        if trees[slot].staged_identity_generation ==
+            cast(u64)18446744073709551615 {
+            trees[slot].error = cast(FrameStatus)FrameIdentityOverflow
+            return -1
+        }
+        trees[slot].staged_identity_generation += cast(u64)1
+        node.identity_generation = trees[slot].staged_identity_generation
+    }
+    if !VecPush(trees[slot].submitted, node) {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return -1
+    }
+    if parent_index >= 0 {
+        if node.auto_key {
+            trees[slot].submitted[parent_index].next_auto_ordinal =
+                node.auto_ordinal
+        }
+        last: s32 = trees[slot].submitted[parent_index].last_child
+        if last < 0 {
+            trees[slot].submitted[parent_index].first_child = index
+        } else {
+            trees[slot].submitted[last].next_sibling = index
+        }
+        trees[slot].submitted[parent_index].last_child = index
+    }
+    if !node.auto_key {
+        capacity: s32 = cast(s32)trees[slot].new_slots.count
+        hash: u64 = TreeIdentityHash(parent_generation, key, 0)
+        position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
+        while trees[slot].new_slots[position] >= 0 {
+            position = (position + 1) & (capacity - 1)
+        }
+        trees[slot].new_slots[position] = index
+    }
+    trees[slot].submitted_count += 1
     return index
 }
 
 #program_export
-TreeSetLayout :: (index: s32, gap: s32, padding: s32,
+TreeSetLayout :: (session: Session, index: s32, gap: s32, padding: s32,
     columns: s32, min_item_width: s32,
     max_columns: s32) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
-    active_tree.submitted[index].layout_gap = gap
-    active_tree.submitted[index].layout_padding = padding
-    active_tree.submitted[index].grid_columns = columns
-    active_tree.submitted[index].grid_min_item_width = min_item_width
-    active_tree.submitted[index].grid_max_columns = max_columns
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    layout: s32 = TreeEnsureLayout(session, index)
+    if layout < 0 { return }
+    trees[slot].layouts[layout].gap = gap
+    trees[slot].layouts[layout].padding = padding
+    trees[slot].layouts[layout].columns = columns
+    trees[slot].layouts[layout].min_item_width = min_item_width
+    trees[slot].layouts[layout].max_columns = max_columns
 }
 
-# A container sets this before submitting children. Its own input is not
-# clipped by the child viewport; descendants inherit the intersection.
 #program_export
-TreeSetChildClip :: (index: s32, bounds: Rectangle) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
-    entry: TreeEntry = active_tree.submitted[index]
-    if entry.clipped {
-        entry.child_clip = RectangleIntersection(bounds, entry.clip)
+TreeSetPlacement :: (session: Session, index: s32, placement: TreePlacement) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    layout: s32 = TreeEnsureLayout(session, index)
+    if layout < 0 { return }
+    trees[slot].layouts[layout].placement = placement
+    trees[slot].layouts[layout].places_children = true
+}
+
+// A container sets this before submitting children. Its own input is not
+// clipped by the child viewport; descendants inherit the intersection.
+#program_export
+TreeSetChildClip :: (session: Session, index: s32, bounds: Rectangle) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    if trees[slot].submitted[index].clipped {
+        trees[slot].submitted[index].child_clip =
+            RectangleIntersection(bounds, trees[slot].submitted[index].clip)
     } else {
-        entry.child_clip = bounds
+        trees[slot].submitted[index].child_clip = bounds
     }
-    entry.clips_children = true
-    active_tree.submitted[index] = entry
+    trees[slot].submitted[index].clips_children = true
 }
 
 #program_export
-TreeSubmittedNodeAt :: (index: s32) -> TreeEntry {
-    empty: TreeEntry
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return empty }
-    return active_tree.submitted[index]
+TreeSubmittedNodeAt :: (session: Session, index: s32) -> TreeEntry {
+    return TreeRead(session, index, false)
 }
 
 #program_export
-TreeFinish :: () -> bool {
-    if !active_tree.building { return false }
-    active_tree.building = false
-    if active_tree.overflow || active_tree.scope_depth != 1 {
-        active_tree.scope_depth = 0
+TreeFinish :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot: s32 = session.slot
+    if !trees[slot].building {
+        trees[slot].error = cast(FrameStatus)FrameNotBuilding
         return false
     }
-    active_tree.scope_depth = 0
-    slot: s32 = 0
-    while slot < 2048 {
-        active_tree.slots[slot] = -1
-        slot += 1
+    trees[slot].building = false
+    if trees[slot].scope_depth != 1 &&
+        trees[slot].error == cast(FrameStatus)FrameOk {
+        trees[slot].error = cast(FrameStatus)FrameInvalidScope
     }
-    old_index: s32 = 0
-    while old_index < active_tree.committed_count {
-        active_tree.committed[old_index].matched = false
-        old: TreeEntry = active_tree.committed[old_index]
-        slot = cast(s32)(TreeIdentityHash(old.parent_key, old.key, old.kind) &
-            cast(u64)2047)
-        while active_tree.slots[slot] >= 0 {
-            slot = (slot + 1) & 2047
-        }
-        active_tree.slots[slot] = old_index
-        old_index += 1
+    if trees[slot].error != cast(FrameStatus)FrameOk ||
+        trees[slot].scope_depth != 1 {
+        trees[slot].scope_depth = 0
+        return false
     }
-    index: s32 = 0
-    while index < active_tree.submitted_count {
-        next: TreeEntry = active_tree.submitted[index]
-        slot = cast(s32)(TreeIdentityHash(next.parent_key, next.key,
-            next.kind) & cast(u64)2047)
-        while active_tree.slots[slot] >= 0 {
-            old_index = active_tree.slots[slot]
-            old: TreeEntry = active_tree.committed[old_index]
-            if !old.matched && TreeSameIdentity(old.key, old.kind,
-                old.parent_key, next.key, next.kind, next.parent_key) {
-                next.identity_generation = old.identity_generation
-                active_tree.committed[old_index].matched = true
-                break
-            }
-            slot = (slot + 1) & 2047
-        }
-        if next.identity_generation == 0 {
-            active_tree.next_identity_generation += 1
-            next.identity_generation = active_tree.next_identity_generation
-        }
-        active_tree.submitted[index] = next
-        index += 1
-    }
-    index = 0
-    while index < active_tree.submitted_count {
-        active_tree.committed[index] = active_tree.submitted[index]
-        index += 1
-    }
-    active_tree.committed_count = active_tree.submitted_count
+    trees[slot].scope_depth = 0
+    VecSwap(trees[slot].committed, trees[slot].submitted)
+    VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
+    VecSwap(trees[slot].committed_interactions, trees[slot].submitted_interactions)
+    trees[slot].committed_count = trees[slot].submitted_count
+    trees[slot].next_identity_generation = trees[slot].staged_identity_generation
     return true
 }
 
 #program_export
-TreeCount :: () -> s32 {
-    return active_tree.committed_count
+TreeCount :: (session: Session) -> s32 {
+    return trees[SessionIndex(session)].committed_count
 }
 
 #program_export
-TreeIsBuilding :: () -> bool {
-    return active_tree.building
+TreeFrameStatus :: (session: Session) -> FrameStatus {
+    if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    return trees[session.slot].error
 }
 
 #program_export
-TreeNextKey :: () -> u64 {
-    if !active_tree.building { return cast(u64)0 }
-    return cast(u64)(active_tree.submitted_count + 1)
+TreeIsBuilding :: (session: Session) -> bool {
+    return trees[SessionIndex(session)].building
 }
 
 #program_export
-TreeRootKey :: () -> u64 {
-    if !active_tree.building || active_tree.submitted_count == 0 {
+TreeNextKey :: (session: Session) -> u64 {
+    parent: s32 = TreeCurrentParent(session)
+    if parent < 0 { return cast(u64)0 }
+    slot: s32 = SessionIndex(session)
+    ordinal: s32 = 1
+    last: s32 = trees[slot].submitted[parent].last_child
+    if last >= 0 { ordinal = trees[slot].submitted[last].sibling_ordinal + 1 }
+    return TreeIdentityHash(trees[slot].submitted[parent].identity_generation,
+        cast(u64)ordinal, 2147483647)
+}
+
+#program_export
+TreeRootKey :: (session: Session) -> u64 {
+    if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].submitted_count == 0 {
         return cast(u64)0
     }
-    return active_tree.submitted[0].key
+    return trees[SessionIndex(session)].submitted[0].key
 }
 
 #program_export
-TreeRootBounds :: () -> Rectangle {
+TreeRootBounds :: (session: Session) -> Rectangle {
     empty: Rectangle
-    if !active_tree.building || active_tree.submitted_count == 0 {
+    if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].submitted_count == 0 {
         return empty
     }
-    return active_tree.submitted[0].bounds
+    return trees[SessionIndex(session)].submitted[0].bounds
 }
 
 #program_export
-TreeCancel :: () {
-    active_tree.building = false
-    active_tree.submitted_count = 0
-    active_tree.scope_depth = 0
-    active_tree.overflow = false
+TreeCancel :: (session: Session) {
+    slot: s32 = SessionIndex(session)
+    trees[slot].building = false
+    VecClear(trees[slot].submitted)
+    VecClear(trees[slot].submitted_semantics)
+    VecClear(trees[slot].submitted_interactions)
+    VecClear(trees[slot].layouts)
+    trees[slot].submitted_count = 0
+    trees[slot].scope_depth = 0
+    trees[slot].error = cast(FrameStatus)FrameOk
 }
 
 #program_export
-TreeNodeAt :: (index: s32) -> TreeEntry {
-    empty: TreeEntry
-    if index < 0 || index >= active_tree.committed_count { return empty }
-    return active_tree.committed[index]
+TreeNodeAt :: (session: Session, index: s32) -> TreeEntry {
+    return TreeRead(session, index, true)
 }
 
 #program_export
-TreeSetLabel :: (index: s32, label: string) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
-    active_tree.submitted[index].semantic_label = label
+TreeSetLabel :: (session: Session, index: s32, label: string) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic < 0 { return }
+    trees[slot].submitted_semantics[semantic].label = label
 }
 
 #program_export
-TreeSetSemantic :: (index: s32, kind: SemanticKind,
+TreeSetSemantic :: (session: Session, index: s32, kind: SemanticKind,
     heading_level: s32) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
     if kind != cast(SemanticKind)SemanticHeading {
         heading_level = 0
     } else {
         if heading_level < 1 { heading_level = 1 }
         if heading_level > 6 { heading_level = 6 }
     }
-    active_tree.submitted[index].semantic_kind = kind
-    active_tree.submitted[index].heading_level = heading_level
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic < 0 { return }
+    trees[slot].submitted_semantics[semantic].kind = kind
+    trees[slot].submitted_semantics[semantic].heading_level = heading_level
 }
 
 #program_export
-TreeSetInteractive :: (index: s32, disabled: bool, loading: bool,
+TreeSetInteractive :: (session: Session, index: s32, disabled: bool, loading: bool,
     focus_id: s32) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
-    active_tree.submitted[index].disabled = disabled
-    active_tree.submitted[index].loading = loading
-    active_tree.submitted[index].focus_id = focus_id
-    active_tree.submitted[index].interactive = true
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    interaction: s32 = TreeEnsureInteraction(session, index)
+    if interaction < 0 { return }
+    trees[slot].submitted_interactions[interaction].disabled = disabled
+    trees[slot].submitted_interactions[interaction].loading = loading
+    trees[slot].submitted_interactions[interaction].focus_id = focus_id
 }
 
 #program_export
-TreeSetSelected :: (index: s32, selected: bool) {
-    if !active_tree.building || index < 0 ||
-        index >= active_tree.submitted_count { return }
-    active_tree.submitted[index].selected = selected
+TreeSetSelected :: (session: Session, index: s32, selected: bool) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic < 0 { return }
+    trees[slot].submitted_semantics[semantic].selected = selected
 }
 
 #program_export
-TreeFind :: (key: u64, parent_key: u64, kind: s32) -> s32 {
-    index: s32 = 0
-    while index < active_tree.committed_count {
-        entry: TreeEntry = active_tree.committed[index]
-        if TreeSameIdentity(entry.key, entry.kind, entry.parent_key,
-            key, kind, parent_key) { return index }
-        index += 1
+TreeChild :: (session: Session, parent_index: s32,
+    key: u64, kind: s32) -> s32 {
+    slot: s32 = SessionIndex(session)
+    if parent_index < 0 || parent_index >= trees[slot].committed_count {
+        return -1
+    }
+    child: s32 = trees[slot].committed[parent_index].first_child
+    while child >= 0 {
+        node: NodeCore = trees[slot].committed[child]
+        if !node.auto_key && node.key == key && node.kind == kind {
+            return child
+        }
+        child = node.next_sibling
     }
     return -1
+}
+
+#program_export
+TreeDispose :: (session: Session) {
+    if !SessionValid(session) { return }
+    slot: s32 = session.slot
+    VecFree(trees[slot].committed)
+    VecFree(trees[slot].submitted)
+    VecFree(trees[slot].committed_semantics)
+    VecFree(trees[slot].submitted_semantics)
+    VecFree(trees[slot].committed_interactions)
+    VecFree(trees[slot].submitted_interactions)
+    VecFree(trees[slot].layouts)
+    VecFree(trees[slot].slots)
+    VecFree(trees[slot].new_slots)
+    trees[slot].scope_depth = 0
+    trees[slot].committed_count = 0
+    trees[slot].submitted_count = 0
+    trees[slot].next_identity_generation = 0
+    trees[slot].staged_identity_generation = 0
+    trees[slot].building = false
 }

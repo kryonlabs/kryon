@@ -1,3 +1,4 @@
+#import "session"
 #import "dropdown_props"
 #import "dropdown_widget"
 #import "style_picker_props"
@@ -20,10 +21,10 @@ StylePickerSelectedId :: (packs: []StylePackOption,
     return packs[index].id
 }
 
-# The caller owns pack values and applies a returned selection to its style
-# store. The widget only composes a normal checked Dropdown.
+// The caller owns pack values and applies a returned selection to its style
+// store. The widget only composes a normal checked Dropdown.
 #program_export
-StylePicker :: (props: StylePickerProps,
+StylePicker :: (session: Session, props: StylePickerProps,
     packs: []StylePackOption) -> StylePickerResult {
     result: StylePickerResult
     count: s32 = StylePickerOptionCountFor((cast(s32)packs.count), 32)
@@ -44,7 +45,7 @@ StylePicker :: (props: StylePickerProps,
     }
     dropdown: DropdownProps = props.dropdown
     dropdown.selected_index = selected
-    result.dropdown = Dropdown(dropdown, options[0:count])
+    result.dropdown = Dropdown(session, dropdown, options[0:count])
     result.changed = result.dropdown.changed &&
         result.dropdown.selected_index >= 0 &&
         result.dropdown.selected_index < count

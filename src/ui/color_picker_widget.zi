@@ -1,3 +1,4 @@
+#import "session"
 #import "color_picker"
 #import "color_picker_props"
 #import "control_props"
@@ -96,10 +97,10 @@ ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float32,
     return row
 }
 
-# A zero key uses the containing tree's next key; child sliders use stable
-# per-channel keys. The returned values belong to the caller's next frame.
+// A zero key uses the containing tree's next key; child sliders use stable
+// per-channel keys. The returned values belong to the caller's next frame.
 #program_export
-ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
+ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult {
     result: ColorPickerResult
     result.node = -1
     index: s32 = 0
@@ -108,19 +109,19 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
         index += 1
     }
     bounds: Rectangle = props.bounds
-    parent: Rectangle = TreeCurrentParentBounds()
+    parent: Rectangle = TreeCurrentParentBounds(session)
     if bounds.width <= 0.0 { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey() }
-    if TreeIsBuilding() {
-        result.node = TreeSubmitCurrent(key,
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key,
             WidgetKindColorPicker, bounds)
         if result.node < 0 { return result }
-        bounds = TreeSubmittedNodeAt(result.node).bounds
-        if !TreePushScope(result.node) { return result }
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
+        if !TreePushScope(session, result.node) { return result }
     }
     channels: s32 = ColorPickerChannels(props.channels)
     scale: float32 = props.scale
@@ -148,12 +149,12 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
             title: Rectangle = bounds
             title.height = cast(float32)line_height
             title_node: s32 = -1
-            if TreeIsBuilding() {
-                title_node = TreeSubmitCurrent(cast(u64)10,
+            if TreeIsBuilding(session) {
+                title_node = TreeSubmitCurrent(session, cast(u64)10,
                     WidgetKindText, title)
-                TreeSetLabel(title_node, props.label)
+                TreeSetLabel(session, title_node, props.label)
             }
-            PaintClippedLabel(title_node, props.label,
+            PaintClippedLabel(session, title_node, props.label,
                 cast(s32)bounds.x, cast(s32)bounds.y, font,
                 ColorFromPacked(Opacity(frame.value.foreground,
                     StyleOpacityValue(frame.value.fields,
@@ -189,7 +190,7 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
         slider.max = 1.0
         slider.disabled = props.disabled
         slider.class_name = props.class_name
-        step: SliderStep = Slider(slider)
+        step: SliderStep = Slider(session, slider)
         result.values[index] = step.value
         if step.changed { result.changed = true }
         label_y: s32 = cast(s32)row.y
@@ -198,13 +199,13 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
                 (row.height - cast(float32)line_height) * 0.5)
         }
         label_node: s32 = -1
-        if TreeIsBuilding() {
-            label_node = TreeSubmitCurrent(cast(u64)(index + 6),
+        if TreeIsBuilding(session) {
+            label_node = TreeSubmitCurrent(session, cast(u64)(index + 6),
                 WidgetKindText, row)
-            TreeSetLabel(label_node,
+            TreeSetLabel(session, label_node,
                 ColorPickerChannelLabel(index))
         }
-        PaintClippedLabel(label_node,
+        PaintClippedLabel(session, label_node,
             ColorPickerChannelLabel(index),
             cast(s32)(row.x + 2.0 * scale), label_y,
             font, ColorFromPacked(Opacity(
@@ -216,10 +217,10 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
     if props.picker {
         swatch: Rectangle = layout.swatch_bounds
         node: s32 = -1
-        if TreeIsBuilding() {
-            node = TreeSubmitCurrent(cast(u64)5,
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, cast(u64)5,
                 WidgetKindCustom, swatch)
-            TreeSetLabel(node, props.label)
+            TreeSetLabel(session, node, props.label)
         }
         paint: ColorPickerSwatchPaint = ColorPickerSwatchPaintFor(
             swatch, ColorPickerSwatchLabelInset(scale, swatch_face),
@@ -227,10 +228,10 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
         color: Color = ColorPickerColorFor(result.values[0],
             result.values[1], result.values[2], result.values[3],
             channels)
-        PaintRoundedFill(node, paint.bounds,
+        PaintRoundedFill(session, node, paint.bounds,
             swatch_face.value.radius, 12, color)
         if swatch_face.value.border_width > 0.0 {
-            PaintRoundedOutline(node, paint.bounds,
+            PaintRoundedOutline(session, node, paint.bounds,
                 swatch_face.value.radius, 12,
                 swatch_face.value.border_width,
                 ColorFromPacked(Opacity(swatch_face.value.border,
@@ -246,7 +247,7 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
             paint = ColorPickerSwatchPaintFor(swatch,
                 ColorPickerSwatchLabelInset(scale, swatch_face),
                 cast(float32)line_height)
-            PaintClippedLabel(node, props.label,
+            PaintClippedLabel(session, node, props.label,
                 cast(s32)paint.label_x, cast(s32)paint.label_y,
                 font, ColorFromPacked(Opacity(
                     swatch_face.value.foreground,
@@ -254,6 +255,6 @@ ColorPicker :: (props: ColorPickerProps) -> ColorPickerResult {
                         swatch_face.value.opacity))), swatch)
         }
     }
-    if TreeIsBuilding() { End() }
+    if TreeIsBuilding(session) { End(session) }
     return result
 }

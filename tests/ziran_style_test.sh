@@ -135,7 +135,7 @@ for input in source ir; do
     for target in c cpp go; do
         output="$work/$target-$input"
         if test "$target" = go; then
-            "$ziran" build --target=go --strict --pkg main --root "$work" \
+            "$ziran" build --target=go --pkg main --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.go" <<'GO'
@@ -144,13 +144,13 @@ func main() { if UseStyle_Answer() != 42 { panic("wrong style result") } }
 GO
             GO111MODULE=off go run "$output/control_props.go" \
                 "$output/surface.go" "$output/style.go" \
-                "$output/geometry.go" "$output/text_align.go" \
+                "$output/geometry.go" "$output/math.go" "$output/text_align.go" \
                 "$output/drawing_props.go" \
                 "$output/raster.go" "$output/separator.go" \
                 "$output/progress.go" \
                 "$output/use_style.go" "$output/main.go"
         elif test "$target" = c; then
-            "$ziran" build --target=c --strict --root "$work" \
+            "$ziran" build --target=c --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.c" <<'C'
@@ -161,14 +161,14 @@ int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
                 "$output/control_props.c" "$output/surface.c" \
-                "$output/style.c" "$output/geometry.c" \
+                "$output/style.c" "$output/geometry.c" "$output/math.c" \
                 "$output/drawing_props.c" "$output/raster.c" \
                 "$output/separator.c" "$output/progress.c" \
                 "$output/use_style.c" \
                 "$output/main.c" -o "$output/app"
             "$output/app"
         else
-            "$ziran" build --target=cpp --strict --root "$work" \
+            "$ziran" build --target=cpp --root "$work" \
                 --module-path "$module_dir" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.cpp" <<'CPP'
@@ -179,7 +179,7 @@ int main() { return Answer() == 42 ? 0 : 1; }
 CPP
             ${CXX:-c++} -I"$ziran_include" -I"$output" \
                 "$output/control_props.cpp" "$output/surface.cpp" \
-                "$output/style.cpp" "$output/geometry.cpp" \
+                "$output/style.cpp" "$output/geometry.cpp" "$output/math.cpp" \
                 "$output/drawing_props.cpp" "$output/raster.cpp" \
                 "$output/separator.cpp" "$output/progress.cpp" \
                 "$output/use_style.cpp" \

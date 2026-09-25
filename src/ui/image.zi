@@ -2,7 +2,7 @@
 #import "geometry"
 #import "image_props"
 
-# Matches the ImageFit host contract without exporting a second public enum.
+// Matches the ImageFit host contract without exporting a second public enum.
 ImagePlaceholderLayout :: struct {
     bounds: Rectangle
     label_x: s32
@@ -98,8 +98,8 @@ ImagePlaceholderFontFor :: (default_font: s32, style_font: s32) -> s32 {
     return default_font
 }
 
-# Maps a clipped destination strip back to the corresponding texture source.
-# The image host uses this when drawing rounded or otherwise clipped images.
+// Maps a clipped destination strip back to the corresponding texture source.
+// The image host uses this when drawing rounded or otherwise clipped images.
 #program_export
 ImageStripSource :: (source_base: Rectangle, dst: Rectangle,
     strip: Rectangle) -> Rectangle {

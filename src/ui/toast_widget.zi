@@ -1,3 +1,4 @@
+#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -87,10 +88,10 @@ ToastLabelFace :: (class_name: s32) -> StyleFrame {
     return frame
 }
 
-# The caller passes the previous result.state on every frame. A nonempty
-# props.message starts or replaces the toast; props.clear removes it.
+// The caller passes the previous result.state on every frame. A nonempty
+// props.message starts or replaces the toast; props.clear removes it.
 #program_export
-Toast :: (props: ToastProps) -> ToastResult {
+Toast :: (session: Session, props: ToastProps) -> ToastResult {
     result: ToastResult
     result.node = -1
     state: ToastState = props.state
@@ -120,7 +121,7 @@ Toast :: (props: ToastProps) -> ToastResult {
         label.value.font_size), 14)
     viewport: Rectangle = props.viewport
     if viewport.width <= 0.0 || viewport.height <= 0.0 {
-        viewport = TreeRootBounds()
+        viewport = TreeRootBounds(session)
     }
     display: ToastDisplay = ToastDisplayFor(state.message,
         ToastContentWidth(cast(s32)viewport.width, metrics), font,
@@ -137,36 +138,36 @@ Toast :: (props: ToastProps) -> ToastResult {
     result.ellipsis = display.ellipsis
     result.visible = true
     key: u64 = props.key
-    if key == cast(u64)0 { key = TreeNextKey() }
-    if TreeIsBuilding() {
-        result.node = TreeSubmit(key, 0, WidgetKindCustom,
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmit(session, key, 0, WidgetKindCustom,
             layout.bounds)
         if result.node < 0 {
             result.visible = false
             return result
         }
-        TreeSetLabel(result.node, state.message)
+        TreeSetLabel(session, result.node, state.message)
     }
     opacity: float32 = StyleOpacityValue(surface.value.fields,
         surface.value.opacity)
     background: Color = ColorFromPacked(Opacity(
         surface.value.background, opacity))
-    PaintRoundedFill(result.node, layout.bounds,
+    PaintRoundedFill(session, result.node, layout.bounds,
         surface.value.radius, 12, background)
     border_width: float32 = surface.value.border_width
     if border_width > 0.0 {
-        PaintRoundedOutline(result.node, layout.bounds,
+        PaintRoundedOutline(session, result.node, layout.bounds,
             surface.value.radius, 12, border_width,
             ColorFromPacked(Opacity(surface.value.border, opacity)))
     }
     text_color: Color = ColorFromPacked(Opacity(
         label.value.foreground,
         StyleOpacityValue(label.value.fields, label.value.opacity)))
-    PaintClippedLabel(result.node, display.prefix,
+    PaintClippedLabel(session, result.node, display.prefix,
         cast(s32)layout.text_bounds.x, cast(s32)layout.text_bounds.y,
         font, text_color, layout.text_bounds)
     if display.ellipsis {
-        PaintClippedLabel(result.node, "...",
+        PaintClippedLabel(session, result.node, "...",
             cast(s32)layout.text_bounds.x + display.prefix_width,
             cast(s32)layout.text_bounds.y, font, text_color,
             layout.text_bounds)

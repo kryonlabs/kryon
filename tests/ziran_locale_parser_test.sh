@@ -73,7 +73,7 @@ for input in source saved; do
     test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --strict \
+        "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" \
             -o "$output" "$source"
         if test "$target" = c; then

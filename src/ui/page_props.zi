@@ -37,8 +37,8 @@ PageSpacing :: struct {
     padding: s32
 }
 
-# Page metadata is an effect request. The platform may apply it to a browser
-# document, desktop window, exported document, or ignore it entirely.
+// Page metadata is an effect request. The platform may apply it to a browser
+// document, desktop window, exported document, or ignore it entirely.
 PageResult :: struct {
     node: s32
     opened: bool

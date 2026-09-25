@@ -1,8 +1,8 @@
 #import "geometry"
 #import "scroll"
 
-# Device observations and drag ownership are supplied by the platform.
-# The caller retains grab and ownership from the returned frame.
+// Device observations and drag ownership are supplied by the platform.
+// The caller retains grab and ownership from the returned frame.
 ScrollInput :: struct {
     enabled: bool
     pointer_allowed: bool

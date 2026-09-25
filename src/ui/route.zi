@@ -1,7 +1,7 @@
 
-# Route arrays belong to the application. A slice supplies capacity; count
-# identifies its occupied prefix. All writes stay in that prefix or clear its
-# unused tail, so routing policy has no platform pointer or callback ABI.
+// Route arrays belong to the application. A slice supplies capacity; count
+// identifies its occupied prefix. All writes stay in that prefix or clear its
+// unused tail, so routing policy has no platform pointer or callback ABI.
 
 #program_export
 RouteCount :: (routes: []s32, count: s32) -> s32 {
@@ -58,7 +58,7 @@ RouteSanitizeSet :: (routes: []s32, count: s32,
     return write
 }
 
-# The application may compute each mask entry with any predicate it owns.
+// The application may compute each mask entry with any predicate it owns.
 #program_export
 RouteSanitizeMask :: (routes: []s32, count: s32,
     allowed: []bool, empty_route: s32) -> s32 {

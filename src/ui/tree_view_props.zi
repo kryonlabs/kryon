@@ -16,8 +16,8 @@ TreeViewNavigation :: enum {
     TreeViewNavigationDown :: 4
 }
 
-# Items are a borrowed slice passed to TreeView, not a pointer in this record.
-# The caller stores the returned selection and scroll value between frames.
+// Items are a borrowed slice passed to TreeView, not a pointer in this record.
+// The caller stores the returned selection and scroll value between frames.
 TreeViewProps :: struct {
     key: u64
     bounds: Rectangle

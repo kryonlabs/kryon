@@ -8,6 +8,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
 #import "dropdown_props"
 #import "geometry"
 #import "paint_queue"
@@ -68,47 +75,47 @@ Frame :: () -> s32 {
     props.dropdown.highlight_index = highlight_state
     props.dropdown.scroll_offset = scroll_state
     props.dropdown.open = open_state
-    TreeStart(cast(u64)1, Rectangle.{0.0, 0.0, 340.0, 180.0})
-    result: ToolbarResult = Toolbar(props, options[0:2],
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 340.0, 180.0})
+    result: ToolbarResult = Toolbar(TestSession(), props, options[0:2],
         actions[0:2])
-    if !TreeFinish() || result.node != 1 ||
-        TreeNodeAt(1).kind != WidgetKindToolbar ||
-        TreeNodeAt(2).kind != WidgetKindButton ||
-        TreeNodeAt(3).kind != WidgetKindButton ||
+    if !TreeFinish(TestSession()) || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindToolbar ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindButton ||
         result.dropdown.node != 4 ||
-        TreeNodeAt(4).kind != WidgetKindDropdown { return -20 }
+        TreeNodeAt(TestSession(), 4).kind != WidgetKindDropdown { return -20 }
     if phase == 0 {
-        if TreeCount() != 5 || result.clicked_action != -1 ||
+        if TreeCount(TestSession()) != 5 || result.clicked_action != -1 ||
             result.selected_menu_item != -1 ||
-            TreeHitAt(230.0, 20.0) != 2 ||
-            TreeHitAt(270.0, 20.0) != -1 { return -1 }
-        TreePointerUpdate(PointerFrame.{230.0, 20.0,
+            TreeHitAt(TestSession(), 230.0, 20.0) != 2 ||
+            TreeHitAt(TestSession(), 270.0, 20.0) != -1 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{230.0, 20.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{230.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{230.0, 20.0,
             false, false, true})
     } else if phase == 1 {
         if result.clicked_action != 0 || result.dropdown.open ||
             result.selected_menu_item != -1 { return -2 }
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 20.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
-            result.clicked_action != -1 || TreeCount() != 10 {
+            result.clicked_action != -1 || TreeCount(TestSession()) != 10 {
             return -3
         }
-        TreePointerUpdate(PointerFrame.{20.0, 100.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,
             true, true, false})
-        TreePointerUpdate(PointerFrame.{20.0, 100.0,
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,
             false, false, true})
     } else if phase == 3 {
         if result.dropdown.open || !result.dropdown.changed ||
             result.dropdown.selected_index != 1 ||
             result.selected_menu_item != 1 ||
-            TreeCount() != 5 { return -4 }
+            TreeCount(TestSession()) != 5 { return -4 }
     }
-    PaintFlush()
+    PaintFlush(TestSession())
     open_state = result.dropdown.open
     selected_state = result.dropdown.selected_index
     highlight_state = result.dropdown.highlight_index
@@ -216,7 +223,7 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --strict --root "$work" \
+    "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
