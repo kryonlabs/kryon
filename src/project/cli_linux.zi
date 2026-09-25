@@ -192,6 +192,8 @@ ChooseProfile :: (config: ProjectConfig) -> string {
         PrintFd(1, config.profiles[index].name)
         if config.profiles[index].backend == "desktop" {
             PrintFd(1, " (SDL2/Cairo window)")
+        } else if config.profiles[index].backend == "raylib" {
+            PrintFd(1, " (raylib window)")
         }
         PrintFd(1, "\n")
         index += 1
@@ -270,7 +272,8 @@ main :: () -> s32 {
     }
     profile: ProjectProfile = ProjectProfileNamed(config, profile_name)
     if profile.name == "" { return Error("unknown profile") }
-    if (profile.backend != "terminal" && profile.backend != "desktop") ||
+    if (profile.backend != "terminal" && profile.backend != "desktop" &&
+        profile.backend != "raylib") ||
         profile.codegen != "c99" {
         return Error("this backend/codegen pair is not available yet")
     }

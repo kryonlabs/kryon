@@ -1,0 +1,390 @@
+#import "c_string"
+#import "drawing_props"
+#import "geometry"
+#import "tree_input"
+
+raylib :: #system_library "raylib";
+sdl_library :: #system_library "SDL2";
+libm :: #system_library "m";
+RaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
+
+RaylibInitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "InitWindow";
+RaylibCloseWindow :: () #foreign raylib "CloseWindow";
+RaylibIsWindowReady :: () -> bool #foreign raylib "IsWindowReady";
+RaylibWindowShouldClose :: () -> bool #foreign raylib "WindowShouldClose";
+RaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
+RaylibSetTargetFPS :: (fps: s32) #foreign raylib "SetTargetFPS";
+RaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
+RaylibGetScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
+RaylibBeginDrawing :: () #foreign raylib "BeginDrawing";
+RaylibEndDrawing :: () #foreign raylib "EndDrawing";
+RaylibClearBackground :: (color: Color) #foreign raylib "ClearBackground";
+RaylibDrawRounded :: (bounds: Rectangle, roundness: float32,
+    segments: s32, color: Color) #foreign raylib "DrawRectangleRounded";
+RaylibDrawRoundedOutline :: (bounds: Rectangle, roundness: float32, segments: s32, width: float32, color: Color) #foreign raylib "DrawRectangleRoundedLinesEx";
+RaylibDrawLine :: (start: Vector2, end: Vector2, width: float32,
+    color: Color) #foreign raylib "DrawLineEx";
+RaylibDrawText :: (value: *u8, x: s32, y: s32, font: s32,
+    color: Color) #foreign raylib "DrawText";
+RaylibMeasureText :: (value: *u8, font: s32) -> s32 #foreign raylib "MeasureText";
+RaylibFont :: struct {
+    base_size: s32
+    glyph_count: s32
+    glyph_padding: s32
+    texture: Texture2D
+    recs: *Rectangle
+    glyphs: *void
+}
+RaylibLoadFont :: (path: *u8, size: s32, codepoints: *s32,
+    count: s32) -> RaylibFont #foreign raylib "LoadFontEx";
+RaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
+RaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
+    size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
+RaylibMeasureFontText :: (font: RaylibFont, value: *u8, size: float32,
+    spacing: float32) -> Vector2 #foreign raylib "MeasureTextEx";
+RaylibBeginScissor :: (x: s32, y: s32, width: s32, height: s32) #foreign raylib "BeginScissorMode";
+RaylibEndScissor :: () #foreign raylib "EndScissorMode";
+RaylibMouseX :: () -> s32 #foreign raylib "GetMouseX";
+RaylibMouseY :: () -> s32 #foreign raylib "GetMouseY";
+RaylibMousePressed :: (button: s32) -> bool #foreign raylib "IsMouseButtonPressed";
+RaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
+RaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
+RaylibKeyPressed :: (key: s32) -> bool #foreign raylib "IsKeyPressed";
+RaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
+RaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
+RaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
+RaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
+RaylibFileExists :: (path: *u8) -> bool #foreign raylib "FileExists";
+RaylibGetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
+
+RaylibAsset :: struct {
+    path: [1024]u8
+    length: s32
+    texture: Texture2D
+}
+
+raylib_assets: [32]RaylibAsset;
+raylib_assets_count: s32;
+raylib_assets_next: s32;
+raylib_pointer: PointerFrame;
+raylib_image_error: bool;
+raylib_font: RaylibFont;
+raylib_font_loaded: bool;
+
+RaylibTryFont :: (path: *u8) -> bool {
+    if path == null || !RaylibFileExists(path) { return false }
+    raylib_font = RaylibLoadFont(path, 32, null, 0)
+    raylib_font_loaded = raylib_font.texture.id != cast(u32)0
+    return raylib_font_loaded
+}
+
+RaylibRoundness :: (bounds: Rectangle, radius: float32) -> float32 {
+    edge: float32 = bounds.width
+    if bounds.height < edge { edge = bounds.height }
+    if edge <= 0.0 || radius <= 0.0 { return 0.0 }
+    roundness: float32 = radius * 2.0 / edge
+    if roundness > 1.0 { return 1.0 }
+    return roundness
+}
+
+RaylibDrawImageStrip :: (texture: Texture2D, source: Rectangle,
+    destination: Rectangle, origin: Vector2, rotation: float32,
+    tint: Color, x: s32, y: s32, width: s32, height: s32) {
+    if width <= 0 || height <= 0 { return }
+    RaylibBeginScissor(x, y, width, height)
+    RaylibDrawTexture(texture, source, destination, origin, rotation, tint)
+    RaylibEndScissor()
+}
+
+// Scissor strips preserve DrawTexturePro's rotation and source mapping while
+// following the same rounded clip boundary used by the Cairo host.
+RaylibDrawImageClipped :: (texture: Texture2D, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {
+    x: s32 = cast(s32)clip.x
+    y: s32 = cast(s32)clip.y
+    width: s32 = cast(s32)clip.width
+    height: s32 = cast(s32)clip.height
+    if width <= 0 || height <= 0 { return }
+    if radius <= 0.0 {
+        RaylibDrawImageStrip(texture, source, destination, origin,
+            rotation, tint, x, y, width, height)
+        return
+    }
+    if radius > cast(float32)width * 0.5 {
+        radius = cast(float32)width * 0.5
+    }
+    if radius > cast(float32)height * 0.5 {
+        radius = cast(float32)height * 0.5
+    }
+    rounded_rows: s32 = cast(s32)(radius + 0.5)
+    if rounded_rows < 1 { rounded_rows = 1 }
+    if rounded_rows * 2 > height { rounded_rows = height / 2 }
+    row: s32 = 0
+    while row < rounded_rows {
+        dy: float32 = radius - (cast(float32)row + 0.5)
+        inset: s32 = 0
+        if dy > 0.0 {
+            inset = cast(s32)(radius - RaylibSqrt(radius * radius -
+                dy * dy) + 0.5)
+        }
+        RaylibDrawImageStrip(texture, source, destination, origin,
+            rotation, tint, x + inset, y + row,
+            width - inset * 2, 1)
+        RaylibDrawImageStrip(texture, source, destination, origin,
+            rotation, tint, x + inset, y + height - 1 - row,
+            width - inset * 2, 1)
+        row += 1
+    }
+    RaylibDrawImageStrip(texture, source, destination, origin,
+        rotation, tint, x, y + rounded_rows,
+        width, height - rounded_rows * 2)
+}
+
+RaylibAssetIndex :: (path: string) -> s32 {
+    if path.count == 0 || path.count >= 1024 { return -1 }
+    index: s32 = 0
+    while index < raylib_assets_count {
+        if raylib_assets[index].length == cast(s32)path.count {
+            same: bool = true
+            at: s32 = 0
+            while at < cast(s32)path.count {
+                if raylib_assets[index].path[at] != path[at] {
+                    same = false
+                    break
+                }
+                at += 1
+            }
+            if same { return index }
+        }
+        index += 1
+    }
+    if raylib_assets_count < 32 {
+        index = raylib_assets_count
+        raylib_assets_count += 1
+    } else {
+        index = raylib_assets_next
+        RaylibUnloadTexture(raylib_assets[index].texture)
+        raylib_assets_next = (raylib_assets_next + 1) % 32
+    }
+    if !CopyCString(path, raylib_assets[index].path[:]) {
+        raylib_assets[index].length = 0
+        return -1
+    }
+    raylib_assets[index].length = cast(s32)path.count
+    raylib_assets[index].texture =
+        RaylibLoadTexture(*raylib_assets[index].path[0])
+    if raylib_assets[index].texture.id == cast(u32)0 {
+        raylib_assets[index].length = 0
+        return -1
+    }
+    return index
+}
+
+#program_export
+OpenRaylib :: () -> bool {
+    title: [32]u8
+    if !CopyCString("Kryon Ziran", title[:]) { return false }
+    RaylibSetConfigFlags(cast(u32)4)
+    RaylibInitWindow(960, 600, *title[0])
+    if !RaylibIsWindowReady() { return false }
+    RaylibSetTargetFPS(60)
+    name: [32]u8
+    if CopyCString("KRYON_FONT_PATH", name[:]) {
+        RaylibTryFont(RaylibGetEnvironment(*name[0]))
+    }
+    if !raylib_font_loaded {
+        path: [96]u8
+        if CopyCString("../kryon/assets/fonts/LiberationSans-Regular.ttf",
+            path[:]) { RaylibTryFont(*path[0]) }
+    }
+    if !raylib_font_loaded {
+        path: [96]u8
+        if CopyCString("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            path[:]) { RaylibTryFont(*path[0]) }
+    }
+    return true
+}
+
+#program_export
+CloseRaylib :: () {
+    index: s32 = 0
+    while index < raylib_assets_count {
+        if raylib_assets[index].texture.id != cast(u32)0 {
+            RaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        index += 1
+    }
+    raylib_assets_count = 0
+    if raylib_font_loaded { RaylibUnloadFont(raylib_font) }
+    raylib_font_loaded = false
+    if RaylibIsWindowReady() { RaylibCloseWindow() }
+}
+
+#program_export
+PollRaylib :: () -> bool {
+    if RaylibWindowShouldClose() { return false }
+    raylib_pointer.x = cast(float32)RaylibMouseX()
+    raylib_pointer.y = cast(float32)RaylibMouseY()
+    raylib_pointer.down = RaylibMouseDown(0)
+    raylib_pointer.pressed = RaylibMousePressed(0)
+    raylib_pointer.released = RaylibMouseReleased(0)
+    return true
+}
+
+#program_export
+RaylibViewport :: () -> Rectangle {
+    return Rectangle.{0.0, 0.0,
+        cast(float32)RaylibGetScreenWidth(),
+        cast(float32)RaylibGetScreenHeight()}
+}
+
+#program_export
+RaylibPressedKey :: () -> s32 {
+    if RaylibKeyPressed(49) { return 49 }
+    if RaylibKeyPressed(50) { return 50 }
+    if RaylibKeyPressed(82) { return 82 }
+    return 0
+}
+
+#program_export
+BeginRaylibFrame :: () {
+    raylib_image_error = false
+    RaylibBeginDrawing()
+    RaylibClearBackground(Color.{248, 250, 252, 255})
+}
+
+#program_export
+EndRaylibFrame :: () -> bool {
+    RaylibEndDrawing()
+    return !raylib_image_error
+}
+
+#program_export
+CaptureRequested :: () -> bool {
+    name: [32]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return false }
+    return RaylibGetEnvironment(*name[0]) != null
+}
+
+#program_export
+CaptureConfigured :: () -> bool {
+    name: [32]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return false }
+    path: *u8 = RaylibGetEnvironment(*name[0])
+    if path == null { return false }
+    RaylibTakeScreenshot(path)
+    return RaylibFileExists(path)
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    bytes: [4096]u8
+    if !CopyCString(value, bytes[:]) { return 0 }
+    if raylib_font_loaded {
+        extent: Vector2 = RaylibMeasureFontText(raylib_font, *bytes[0],
+            cast(float32)font, 0.0)
+        return cast(s32)(extent.x + 0.5)
+    }
+    return RaylibMeasureText(*bytes[0], font)
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    return font
+}
+
+#program_export
+PollPointer :: () -> PointerFrame { return raylib_pointer }
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    if segments < 4 { segments = 4 }
+    RaylibDrawRounded(bounds, RaylibRoundness(bounds, radius),
+        segments, color)
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 || width <= 0.0 { return }
+    if segments < 4 { segments = 4 }
+    RaylibDrawRoundedOutline(bounds, RaylibRoundness(bounds, radius),
+        segments, width, color)
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    RaylibDrawLine(Vector2.{line.x, line.y},
+        Vector2.{line.x + line.width, line.y + line.height}, 1.0, color)
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32,
+    font: s32, color: Color) {
+    bytes: [4096]u8
+    if !CopyCString(value, bytes[:]) { return }
+    if raylib_font_loaded {
+        RaylibDrawFontText(raylib_font, *bytes[0],
+            Vector2.{cast(float32)x, cast(float32)y},
+            cast(float32)font, 0.0, color)
+    } else {
+        RaylibDrawText(*bytes[0], x, y, font, color)
+    }
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    RaylibBeginScissor(cast(s32)clip.x, cast(s32)clip.y,
+        cast(s32)clip.width, cast(s32)clip.height)
+    RasterText(value, x, y, font, color)
+    RaylibEndScissor()
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    index: s32 = RaylibAssetIndex(asset_path)
+    if index < 0 { return 0 }
+    return raylib_assets[index].texture.width
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    index: s32 = RaylibAssetIndex(asset_path)
+    if index < 0 { return 0 }
+    return raylib_assets[index].texture.height
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    if source.width <= 0.0 || source.height <= 0.0 ||
+        destination.width <= 0.0 || destination.height <= 0.0 ||
+        clip.width <= 0.0 || clip.height <= 0.0 {
+        return
+    }
+    texture: Texture2D
+    if asset_path.count > 0 {
+        index: s32 = RaylibAssetIndex(asset_path)
+        if index < 0 {
+            raylib_image_error = true
+            return
+        }
+        texture = raylib_assets[index].texture
+    } else if texture_id != cast(u32)0 {
+        texture.id = texture_id
+        texture.width = cast(s32)(source.x + source.width)
+        texture.height = cast(s32)(source.y + source.height)
+    } else {
+        raylib_image_error = true
+        return
+    }
+    RaylibDrawImageClipped(texture, source, destination, clip, origin,
+        rotation, radius, tint)
+}

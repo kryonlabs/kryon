@@ -15,7 +15,7 @@ ifndef PROJECT_PROFILE
 $(error PROJECT_PROFILE is required; run this through kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -33,8 +33,34 @@ APP_SOURCES := $(wildcard src/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
+HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)
+endif
+ifeq ($(PROJECT_BACKEND),raylib)
+RAYLIB_SOURCE := $(KRYON_DIR)/vendor/raylib/src
+RAYLIB_BUILD := $(KRYON_DIR)/build/raylib-ziran
+RAYLIB_A := $(RAYLIB_BUILD)/libraylib.a
+RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
+RAYLIB_SDL_INCLUDE := $(shell pkg-config --variable=includedir sdl2)
+RAYLIB_CFLAGS := $(shell pkg-config --cflags sdl2 libdrm gbm egl glesv2)
+RAYLIB_LIBS := $(shell pkg-config --libs sdl2 libdrm gbm egl glesv2)
+HOST_DEPS := $(RAYLIB_A)
+HOST_LIBS := $(RAYLIB_A) $(RAYLIB_LIBS) -ldl -lpthread
+RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
+
+$(RAYLIB_A): $(RAYLIB_INPUTS)
+	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "Initialize Kryon's raylib submodule: git -C $(KRYON_DIR) submodule update --init vendor/raylib" >&2; exit 1; }
+	mkdir -p $(RAYLIB_BUILD)/source
+	cp -R $(RAYLIB_SOURCE)/. $(RAYLIB_BUILD)/source/
+	$(MAKE) -j4 -C $(RAYLIB_BUILD)/source \
+		RAYLIB_SRC_PATH=. RAYLIB_RELEASE_PATH=.. \
+		PLATFORM=PLATFORM_DESKTOP_SDL GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
+		RAYLIB_LIBTYPE=STATIC RAYLIB_MODULE_AUDIO=TRUE \
+		RAYLIB_MODULE_MODELS=TRUE \
+		SDL_INCLUDE_PATH=$(RAYLIB_SDL_INCLUDE) \
+		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAYLIB_CFLAGS) -O2 -ffunction-sections -fdata-sections"
+	@test -f $@
 endif
 
 .PHONY: run build check toolchain
@@ -69,7 +95,7 @@ $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/zir
 $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(KRYON_DIR)/tools/write-compile-commands.py
 	python3 $(KRYON_DIR)/tools/write-compile-commands.py $(ZIRAN_DIR)/include '$(CC)' $(C_DIR) $(GEN_DIR)/compile_commands.json
 
-$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json
+$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS)
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX); \
 		trap 'rm -f "$$temporary"' EXIT; \
 		$(CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
@@ -78,7 +104,7 @@ $(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 
 run: build
-	./$(PROGRAM)
+	$(RUN_ENV) ./$(PROGRAM)
 
 check: toolchain
 	$(ZIRAN) check --root $(KRYON_DIR)/src/backend \

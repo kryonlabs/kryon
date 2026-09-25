@@ -1,0 +1,78 @@
+#import "app"
+#import "geometry"
+#import "raylib_runtime"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+using FrameStatus;
+
+libc :: #system_library "libc";
+RaylibWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+
+RaylibError :: (message: string) -> s32 {
+    output: [256]u8
+    length: s32 = cast(s32)message.count
+    if length > 254 { length = 254 }
+    index: s32 = 0
+    while index < length {
+        output[index] = message[index]
+        index += 1
+    }
+    output[index] = cast(u8)10
+    RaylibWrite(2, *output[0], cast(u64)(length + 1))
+    return 1
+}
+
+DrawRaylibFrame :: (session: Session, viewport: Rectangle,
+    capture: bool) -> bool {
+    BeginRaylibFrame()
+    TreePointerUpdate(session, PollPointer())
+    if BeginFrame(session, cast(u64)1, viewport) !=
+        cast(FrameStatus)FrameOk {
+        EndRaylibFrame()
+        return false
+    }
+    if Frame(session, viewport) != 0 {
+        TreeCancel(session)
+        EndRaylibFrame()
+        return false
+    }
+    if EndFrame(session) != cast(FrameStatus)FrameOk {
+        EndRaylibFrame()
+        return false
+    }
+    if capture && !CaptureConfigured() {
+        EndRaylibFrame()
+        return false
+    }
+    return EndRaylibFrame()
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenRaylib() {
+        CloseRaylib()
+        return RaylibError("kryon: could not open the raylib window")
+    }
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        CloseRaylib()
+        return RaylibError("kryon: could not open a UI session")
+    }
+    ok: bool = true
+    if CaptureRequested() {
+        ok = DrawRaylibFrame(session, RaylibViewport(), true)
+    } else {
+        while ok && PollRaylib() {
+            key: s32 = RaylibPressedKey()
+            if key != 0 { KeyboardSend(session, key) }
+            ok = DrawRaylibFrame(session, RaylibViewport(), false)
+        }
+    }
+    CloseSession(session)
+    CloseRaylib()
+    if ok { return 0 }
+    return RaylibError("kryon: raylib frame rendering failed")
+}
