@@ -78,18 +78,22 @@ capability policy, safe area geometry, and window placement decisions.
 Every retained UI module is listed in `modules.txt`; the header-dependent
 legacy implementation has been deleted.
 
-The current archive includes selected widget behavior and shared line rendering
-path. Complete widget composition and rendering,
-remaining platform host adapters, full `.zib` capability execution, and
-downstream app builds are still migration work. Kryon's implementation source
-is 100% current Ziran: every file under `src/` is a checked `.zi` module or the
-module inventory, and the source inventory rejects any new handwritten
-implementation file. The C test hosts and the C frame
-replay tool are still used by the present test harness and must
-be replaced in Ziran rather than extended. The old KRB renderer and static C
-package were
-removed with their header-dependent implementation, and the Android Java
-launch bridge now belongs to the applications that need it.
+Kryon's implementation source is 100% current Ziran: every file under `src/`
+is a checked `.zi` module or the module inventory, the source inventory
+rejects any new handwritten implementation file, and `make test` verifies the
+library through source, saved IR, and portable bundle tests on C, C++, Go,
+and `.zib`. The C test hosts and the C frame replay tool are still used by
+the present test harness and must be replaced in Ziran rather than extended.
+The old KRB renderer and static C package were removed with their
+header-dependent implementation, and the Android Java launch bridge now
+belongs to the applications that need it.
+
+Downstream cutover status: the verified Kryon HEAD builds through a
+downstream app's vendored pointer (`vendor/kryon`) with its Ziran library
+gate and module-path link tests, exactly as this repository's `make test`
+does. Applications migrate their own sources and platform hosts at their own
+pace; Kryon commits land upstream first and apps move only the clean
+submodule pointer.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
 boundary and [Ziran's implementation status](https://github.com/kryonlabs/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
