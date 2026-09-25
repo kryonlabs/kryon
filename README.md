@@ -81,14 +81,15 @@ legacy implementation has been deleted.
 The current archive includes selected widget behavior and shared line rendering
 path. Complete widget composition and rendering,
 remaining platform host adapters, full `.zib` capability execution, and
-downstream app builds are still migration work. Kryon's implementation target
-is 100% current Ziran source. The C files under `src/backend/`, the C frame
-replay tool, and the Java files under `src/platform/android/` are migration
-debt; the source inventory tracks them until they can be replaced. The C
-hosts and replay tool are still used by the present test harness and must
-be replaced in Ziran rather than extended. The unused handwritten Go
-runtime has been removed. The old KRB renderer and static C package were
-removed with their header-dependent implementation.
+downstream app builds are still migration work. Kryon's implementation source
+is 100% current Ziran: every file under `src/` is a checked `.zi` module or the
+module inventory, and the source inventory rejects any new handwritten
+implementation file. The C test hosts and the C frame
+replay tool are still used by the present test harness and must
+be replaced in Ziran rather than extended. The old KRB renderer and static C
+package were
+removed with their header-dependent implementation, and the Android Java
+launch bridge now belongs to the applications that need it.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
 boundary and [Ziran's implementation status](https://github.com/kryonlabs/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)

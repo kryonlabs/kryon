@@ -14,7 +14,6 @@ its portable loader recognizes widget names.
 | `src/ui/modules.txt` | Complete maintained UI module inventory |
 | `src/backend/*.zi` | Portable host primitives and ABI declarations |
 | `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
-| `src/platform/android/java/` | Remaining Android bridge debt; application-specific launch activities belong in their applications |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
 Every maintained UI source is in `modules.txt`. The checked build has no
@@ -25,7 +24,8 @@ Widget state, policy, layout, and draw decisions belong in `.zi`, including for
 desktop, browser, and portable hosts. Kryon's maintained implementation and
 platform integration must use current Ziran directly. Generic OS access that
 Ziran lacks belongs in the Ziran project, without Kryon-specific compiler or
-runtime branches. The current Android Java bridges remain migration debt. The
+runtime branches. Android launch activities and secure-storage bridges belong
+to the applications that need them. The
 C ABI fixtures under `tests/support/` are test-only and are never linked into
 `libkryon.a`.
 
