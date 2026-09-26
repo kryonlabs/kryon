@@ -45,8 +45,11 @@ kss: $(BUILD_DIR)/libkryon_kss.a
 .PHONY: syntax
 syntax: $(BUILD_DIR)/libkryon_syntax.a
 
-.PHONY: raylib-game
-raylib-game: $(BUILD_DIR)/libkryon_raylib_game.a
+.PHONY: raylib-game raylib-game-abi-test
+raylib-game: $(BUILD_DIR)/libkryon_raylib_game.a raylib-game-abi-test
+
+raylib-game-abi-test: $(BUILD_DIR)/libkryon_raylib_game.a
+	sh tests/raylib_game_wave_abi_test.sh
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:

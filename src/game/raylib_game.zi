@@ -23,6 +23,14 @@ AudioStream :: struct {
     channels: u32
 }
 
+Wave :: struct {
+    frame_count: u32
+    sample_rate: u32
+    sample_size: u32
+    channels: u32
+    data: *void
+}
+
 Sound :: struct {
     stream: AudioStream
     frame_count: u32
@@ -243,6 +251,16 @@ EmptyTexture :: () -> Texture2D {
     return empty
 }
 
+EmptyWave :: () -> Wave {
+    empty: Wave
+    empty.frame_count = 0
+    empty.sample_rate = 0
+    empty.sample_size = 0
+    empty.channels = 0
+    empty.data = null
+    return empty
+}
+
 EmptySound :: () -> Sound {
     empty: Sound
     empty.stream.buffer = null
@@ -311,9 +329,19 @@ RaylibCloseAudioDevice :: () #foreign raylib "CloseAudioDevice";
 RaylibIsAudioDeviceReady :: () -> bool #foreign raylib "IsAudioDeviceReady";
 RaylibSetMasterVolume :: (volume: float32) #foreign raylib "SetMasterVolume";
 RaylibPlaySound :: (sound: Sound) #foreign raylib "PlaySound";
+RaylibStopSound :: (sound: Sound) #foreign raylib "StopSound";
+RaylibIsSoundPlaying :: (sound: Sound) -> bool #foreign raylib "IsSoundPlaying";
 RaylibUnloadSound :: (sound: Sound) #foreign raylib "UnloadSound";
 RaylibSetSoundVolume :: (sound: Sound, volume: float32) #foreign raylib "SetSoundVolume";
+RaylibSetSoundPitch :: (sound: Sound, pitch: float32) #foreign raylib "SetSoundPitch";
 RaylibIsSoundValid :: (sound: Sound) -> bool #foreign raylib "IsSoundValid";
+RaylibLoadWave :: (path: *u8) -> Wave #foreign raylib "LoadWave";
+RaylibLoadWaveFromMemory :: (file_type: *u8, data: *u8,
+    size: s32) -> Wave #foreign raylib "LoadWaveFromMemory";
+RaylibUnloadWave :: (wave: Wave) #foreign raylib "UnloadWave";
+RaylibWaveFormat :: (wave: *Wave, sample_rate: s32,
+    sample_size: s32, channels: s32) #foreign raylib "WaveFormat";
+RaylibLoadSoundFromWave :: (wave: Wave) -> Sound #foreign raylib "LoadSoundFromWave";
 RaylibPlayMusicStream :: (music: Music) #foreign raylib "PlayMusicStream";
 RaylibUpdateMusicStream :: (music: Music) #foreign raylib "UpdateMusicStream";
 RaylibStopMusicStream :: (music: Music) #foreign raylib "StopMusicStream";
@@ -329,11 +357,39 @@ CloseAudioDevice :: () { RaylibCloseAudioDevice() }
 IsAudioDeviceReady :: () -> bool { return RaylibIsAudioDeviceReady() }
 SetMasterVolume :: (volume: float32) { RaylibSetMasterVolume(volume) }
 PlaySound :: (sound: Sound) { RaylibPlaySound(sound) }
+StopSound :: (sound: Sound) { RaylibStopSound(sound) }
+IsSoundPlaying :: (sound: Sound) -> bool {
+    return RaylibIsSoundPlaying(sound)
+}
 UnloadSound :: (sound: Sound) { RaylibUnloadSound(sound) }
 SetSoundVolume :: (sound: Sound, volume: float32) {
     RaylibSetSoundVolume(sound, volume)
 }
+SetSoundPitch :: (sound: Sound, pitch: float32) {
+    RaylibSetSoundPitch(sound, pitch)
+}
 IsSoundValid :: (sound: Sound) -> bool { return RaylibIsSoundValid(sound) }
+LoadWave :: (path: string) -> Wave {
+    bytes: [1024]u8
+    if !CopyCString(path, bytes[:]) { return EmptyWave() }
+    return RaylibLoadWave(*bytes[0])
+}
+LoadWaveFromMemory :: (file_type: string, data: *u8,
+    size: s32) -> Wave {
+    extension: [32]u8
+    if data == null || size <= 0 ||
+        !CopyCString(file_type, extension[:]) { return EmptyWave() }
+    return RaylibLoadWaveFromMemory(*extension[0], data, size)
+}
+UnloadWave :: (wave: Wave) { RaylibUnloadWave(wave) }
+WaveFormat :: (wave: *Wave, sample_rate: s32,
+    sample_size: s32, channels: s32) {
+    if wave == null { return }
+    RaylibWaveFormat(wave, sample_rate, sample_size, channels)
+}
+LoadSoundFromWave :: (wave: Wave) -> Sound {
+    return RaylibLoadSoundFromWave(wave)
+}
 PlayMusicStream :: (music: Music) { RaylibPlayMusicStream(music) }
 UpdateMusicStream :: (music: Music) { RaylibUpdateMusicStream(music) }
 StopMusicStream :: (music: Music) { RaylibStopMusicStream(music) }
