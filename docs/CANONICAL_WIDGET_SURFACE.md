@@ -117,6 +117,8 @@ surface review:
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
 | `src/plot/plot.zi`, `src/plot/plot_widget.zi` | Plot range, marks, KSS styling, text, tree, and paint | Optional checked Plot package |
 | `src/plot/plot_props.zi` | Portable Plot props and mode names; values are borrowed through a slice argument | Optional checked Plot package |
+| `src/data_views/table_view.zi`, `src/data_views/table_view_props.zi` | Table layout, selection, resize, and clipboard intent policy | Optional checked data views package |
+| `src/data_views/tree_view.zi`, `src/data_views/tree_view_props.zi` | Retained tree rows, navigation, scrolling, and paint | Optional checked data views package |
 | `runtime/popup_policy.kry` | Popup mode/input record/open-state, tooltip visibility, outside-dismissal, and Escape-close policy | `.kry canonical` |
 | `runtime/popup_props.kry` | Popup props | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |

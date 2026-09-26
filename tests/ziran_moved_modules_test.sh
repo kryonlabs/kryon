@@ -165,10 +165,13 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" "$work/use_moved.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" check --root "$work" --module-path "$repo/src/data_views" \
+    --module-path "$repo/src/ui" "$work/use_moved.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/data_views" \
+    --module-path "$repo/src/ui" \
     -o "$work/ir" "$work/use_moved.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/data_views" \
+    --module-path "$repo/src/ui" \
     --entry use_moved:Answer -o "$work/source.zib" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_moved:Answer -o "$work/ir.zib" "$work/ir/use_moved.zir"

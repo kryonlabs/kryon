@@ -21,12 +21,18 @@ OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLOT_SOURCE := $(wildcard src/plot/*.zi)
 PLOT_MODULES := $(basename $(notdir $(PLOT_SOURCE)))
 PLOT_OBJECTS := $(addprefix $(BUILD_DIR)/plot/obj/,$(addsuffix .o,$(PLOT_MODULES)))
+DATA_VIEW_SOURCE := $(wildcard src/data_views/*.zi)
+DATA_VIEW_MODULES := $(basename $(notdir $(DATA_VIEW_SOURCE)))
+DATA_VIEW_OBJECTS := $(addprefix $(BUILD_DIR)/data_views/obj/,$(addsuffix .o,$(DATA_VIEW_MODULES)))
 
 .PHONY: all check test test-focus ziran-test header-check source-check clean project-toolchain project-test install-user
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
 plot: $(BUILD_DIR)/libkryon_plot.a
+
+.PHONY: data-views
+data-views: $(BUILD_DIR)/libkryon_data_views.a
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
@@ -109,6 +115,22 @@ $(BUILD_DIR)/libkryon_plot.a: $(PLOT_SOURCE) $(SOURCE) src/ui/modules.txt Makefi
 	rm -f $@
 	$(AR) rcs $@ $(PLOT_OBJECTS)
 
+# TableView and TreeView are optional collection widgets over the core tree.
+$(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
+	mkdir -p $(BUILD_DIR)/data_views/c $(BUILD_DIR)/data_views/cpp $(BUILD_DIR)/data_views/go $(BUILD_DIR)/data_views/obj $(BUILD_DIR)/data_views/obj-cpp
+	$(ZI2ZIR_BIN) --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/ir $(DATA_VIEW_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/c $(DATA_VIEW_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/cpp $(DATA_VIEW_SOURCE)
+	rm -f $(BUILD_DIR)/data_views/go/*.go
+	$(ZI2GO_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/go $(DATA_VIEW_SOURCE)
+	@for module in $(DATA_VIEW_MODULES); do \
+		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/c -c $(BUILD_DIR)/data_views/c/$$module.c -o $(BUILD_DIR)/data_views/obj/$$module.o || exit 1; \
+		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/cpp -c $(BUILD_DIR)/data_views/cpp/$$module.cpp -o $(BUILD_DIR)/data_views/obj-cpp/$$module.o || exit 1; \
+	done
+	cd $(BUILD_DIR)/data_views/go && GO111MODULE=off go test .
+	rm -f $@
+	$(AR) rcs $@ $(DATA_VIEW_OBJECTS)
+
 TEST_JOBS ?= 4
 TEST ?=
 ziran-test: $(BUILD_DIR)/libkryon_host.a
@@ -139,12 +161,12 @@ project-test: project-toolchain build/bin/kryon
 	$(ZIRAN_DIR)/build/bin/ziran build --target=go --root tests \
 		--module-path src/project -o build/project/go tests/project_manifest_test.zi
 	cd build/project/go && GO111MODULE=off go test .
-	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_plot_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
 
 source-check:
 	sh tools/check-ziran-source.sh
 
-check: all plot ziran-test header-check project-test
+check: all plot data-views ziran-test header-check project-test
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh

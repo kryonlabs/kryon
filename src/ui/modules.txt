@@ -155,8 +155,6 @@ swipe_props.zi
 tab_bar.zi
 tab_bar_props.zi
 tab_bar_widget.zi
-table_view.zi
-table_view_props.zi
 terminal_list.zi
 text_behavior.zi
 typeface_source.zi
@@ -189,8 +187,6 @@ transition_widget.zi
 tree.zi
 tree_draw.zi
 tree_input.zi
-tree_view.zi
-tree_view_props.zi
 vec.zi
 widget_kind.zi
 window_flags.zi

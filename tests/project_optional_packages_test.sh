@@ -23,6 +23,8 @@ cat > "$work/src/app.zi" <<'EOF'
 #import "plot"
 #import "plot_props"
 #import "session"
+#import "table_view"
+#import "tree_view"
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
@@ -34,10 +36,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if range.min_value != 0.0 || range.max_value != 10.0 {
         return 1
     }
+    if TableViewSelectedRowFor(8, 3) != 2 ||
+        TreeViewContentHeight(2, 20) != 40 {
+        return 1
+    }
     return 0
 }
 EOF
 
 (cd "$work" && "$repo/build/bin/kryon" build --profile tui)
 test -s "$work/build/generated/tui/ir/plot.zir"
+test -s "$work/build/generated/tui/ir/table_view.zir"
+test -s "$work/build/generated/tui/ir/tree_view.zir"
 test -x "$work/build/plot_probe-tui"

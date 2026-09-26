@@ -13,6 +13,7 @@ its portable loader recognizes widget names.
 | `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
 | `src/ui/modules.txt` | Maintained core UI module inventory |
 | `src/plot/*.zi` | Optional Plot package, which imports the core UI modules |
+| `src/data_views/*.zi` | Optional TableView and TreeView package |
 | `src/backend/*.zi` | Portable host primitives and ABI declarations |
 | `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
@@ -22,6 +23,8 @@ handwritten Kryon headers; C hosts include headers generated from `.zi`.
 The Plot package has its own `make plot` build and is included in `make test`.
 Core UI modules never import it; apps add `src/plot` to their module paths when
 they use Plot.
+The TableView and TreeView package follows the same dependency direction and
+has its own `make data-views` build.
 
 Host adapters provide observations and effects through declared interfaces.
 Widget state, policy, layout, and draw decisions belong in `.zi`, including for
