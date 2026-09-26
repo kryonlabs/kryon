@@ -41,6 +41,11 @@ package. `make kss` builds `build/ziran/libkryon_kss.a`; the core UI library
 keeps style resolution but does not import the parser. Ziran projects add the
 KSS module path automatically.
 
+The optional `src/syntax/` package tokenizes Ziran, C, and Make text into
+caller owned color spans for TextArea. `make syntax` builds
+`build/ziran/libkryon_syntax.a`; core TextArea paints spans without importing
+the tokenizer. Ziran projects add this module path automatically.
+
 The raylib game API lives in `src/game/raylib_game.zi`. `make raylib-game`
 checks and builds its C and C++ outputs without linking it into the UI
 library; Ziran projects add `src/game/` automatically. Native Go cannot use
@@ -74,7 +79,7 @@ The checked library currently covers geometry, layout, accessibility, focus,
 input and text input policy, portable clipboard state, text-buffer edits, and UTF-8 cursor
 boundaries, checked TextField and TextArea composition with caller-owned text
 and edit and clipboard intents, checked composition event decisions and
-TextField/TextArea preedit paint, Ziran/C/Make syntax coloring, canvas
+TextField/TextArea preedit paint, caller supplied TextArea color spans, canvas
 transforms, cursor shape and priority decisions, scroll, menu, color picker,
 and a caller-owned style picker composed from the checked Dropdown,
 value based swipe gesture state and pointer ownership effects,

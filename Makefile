@@ -27,6 +27,7 @@ DATA_VIEW_OBJECTS := $(addprefix $(BUILD_DIR)/data_views/obj/,$(addsuffix .o,$(D
 KSS_SOURCE := $(wildcard src/kss/*.zi)
 KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
+SYNTAX_SOURCE := src/syntax/syntax.zi
 GAME_SOURCE := src/game/raylib_game.zi
 
 .PHONY: all check test test-focus ziran-test header-check source-check clean project-toolchain project-test install-user
@@ -40,6 +41,9 @@ data-views: $(BUILD_DIR)/libkryon_data_views.a
 
 .PHONY: kss
 kss: $(BUILD_DIR)/libkryon_kss.a
+
+.PHONY: syntax
+syntax: $(BUILD_DIR)/libkryon_syntax.a
 
 .PHONY: raylib-game
 raylib-game: $(BUILD_DIR)/libkryon_raylib_game.a
@@ -158,6 +162,20 @@ $(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(SOURCE) src/ui/modules.txt Makefile
 	rm -f $@
 	$(AR) rcs $@ $(KSS_OBJECTS)
 
+# Syntax coloring is optional. Core TextArea paints caller supplied color spans.
+$(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
+	mkdir -p $(BUILD_DIR)/syntax/ir $(BUILD_DIR)/syntax/c $(BUILD_DIR)/syntax/cpp $(BUILD_DIR)/syntax/go
+	$(ZI2ZIR_BIN) --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/ir $(SYNTAX_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/c $(SYNTAX_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/cpp $(SYNTAX_SOURCE)
+	rm -f $(BUILD_DIR)/syntax/go/*.go
+	$(ZI2GO_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/go $(SYNTAX_SOURCE)
+	$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/c -c $(BUILD_DIR)/syntax/c/syntax.c -o $(BUILD_DIR)/syntax/syntax.o
+	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/cpp -c $(BUILD_DIR)/syntax/cpp/syntax.cpp -o $(BUILD_DIR)/syntax/syntax_cpp.o
+	cd $(BUILD_DIR)/syntax/go && GO111MODULE=off go test .
+	rm -f $@
+	$(AR) rcs $@ $(BUILD_DIR)/syntax/syntax.o
+
 # Raylib's game API is opt in and has a C ABI. Native Go deliberately rejects
 # those foreign C symbols; the C and C++ outputs share the same checked source.
 $(BUILD_DIR)/libkryon_raylib_game.a: $(GAME_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
@@ -205,7 +223,7 @@ project-test: project-toolchain build/bin/kryon
 source-check:
 	sh tools/check-ziran-source.sh
 
-check: all plot data-views kss raylib-game ziran-test header-check project-test
+check: all plot data-views kss syntax raylib-game ziran-test header-check project-test
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh

@@ -1,5 +1,4 @@
 #import "geometry"
-#import "syntax"
 #import "text_input"
 
 TextFieldInput :: struct {
@@ -97,6 +96,12 @@ TextAreaInput :: struct {
     wheel: float32
 }
 
+TextAreaColorSpan :: struct {
+    start: s32
+    end: s32
+    color: u32
+}
+
 TextAreaProps :: struct {
     key: u64
     bounds: Rectangle
@@ -114,7 +119,7 @@ TextAreaProps :: struct {
     max_bytes: s32
     max_codepoints: s32
     focus_id: s32
-    syntax: SyntaxMode
+    colors: []TextAreaColorSpan
     composition_start: s32
     composition_end: s32
     read_only: bool

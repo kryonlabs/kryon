@@ -1,3 +1,4 @@
+#import "text_input_props"
 
 SyntaxMode :: enum {
     SyntaxNone :: 0
@@ -283,4 +284,50 @@ SyntaxTokenAt :: (value: string, start: s32,
     }
     token.length = 1
     return token
+}
+
+SyntaxSpansResult :: struct {
+    count: s32
+    complete: bool
+}
+
+// The caller owns the output. TextArea consumes these absolute byte spans
+// without importing a language tokenizer into the core UI library.
+#program_export
+SyntaxColorSpans :: (value: string, mode: SyntaxMode,
+    background: u32, foreground: u32,
+    spans: []TextAreaColorSpan) -> SyntaxSpansResult {
+    result: SyntaxSpansResult
+    result.complete = true
+    if mode == cast(SyntaxMode)SyntaxNone { return result }
+    dark: bool = SyntaxDarkBackground(background)
+    line_start: s32 = 0
+    block_comment: bool = false
+    while line_start < cast(s32)value.count {
+        line_end: s32 = line_start
+        while line_end < cast(s32)value.count &&
+            value[line_end] != cast(u8)10 { line_end += 1 }
+        cursor: s32 = line_start
+        first_token: bool = true
+        while cursor < line_end {
+            token: SyntaxToken = SyntaxTokenAt(value, cursor,
+                line_end, mode, first_token, block_comment)
+            if token.length <= 0 ||
+                result.count >= cast(s32)spans.count {
+                result.complete = false
+                return result
+            }
+            spans[result.count] = TextAreaColorSpan.{
+                cursor, cursor + token.length,
+                SyntaxColorFor(token.kind, dark, foreground)}
+            result.count += 1
+            if token.kind != cast(SyntaxTokenKind)SyntaxWhitespace {
+                first_token = false
+            }
+            block_comment = token.block_comment
+            cursor += token.length
+        }
+        line_start = line_end + 1
+    }
+    return result
 }

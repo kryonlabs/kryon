@@ -110,6 +110,7 @@ Frame :: () -> s32 {
     props.focus_id = 77
     props.max_bytes = 8
     props.max_codepoints = 8
+    syntax_spans: [256]TextAreaColorSpan
     if phase == 1 { props.input.text = "Z" }
     if phase == 2 { props.input.left = true }
     if phase == 3 { props.input.backspace = true }
@@ -133,7 +134,12 @@ Frame :: () -> s32 {
     }
     if phase == 18 { props.input.text = "Y" }
     if phase == 19 {
-        props.syntax = cast(SyntaxMode)SyntaxZiran
+        spans_result: SyntaxSpansResult = SyntaxColorSpans(
+            props.value, cast(SyntaxMode)SyntaxZiran,
+            cast(u32)0xffffffff, cast(u32)0x172b4dff,
+            syntax_spans[:])
+        if !spans_result.complete { return -19 }
+        props.colors = syntax_spans[:spans_result.count]
         props.composition_start = 8
         props.composition_end = 13
     }
@@ -352,6 +358,25 @@ Frame :: () -> s32 {
                 false, cast(u32)0) != cast(u32)0x2448acff {
             return -21
         }
+        short: [1]TextAreaColorSpan
+        limited: SyntaxSpansResult = SyntaxColorSpans(
+            "return 42", cast(SyntaxMode)SyntaxZiran,
+            cast(u32)0xffffffff, cast(u32)0x172b4dff,
+            short[:])
+        if limited.complete || limited.count != 1 ||
+            short[0].start != 0 || short[0].end != 6 ||
+            short[0].color != cast(u32)0x2448acff {
+            return -45
+        }
+        full: [8]TextAreaColorSpan
+        painted: SyntaxSpansResult = SyntaxColorSpans(
+            "return 42", cast(SyntaxMode)SyntaxZiran,
+            cast(u32)0xffffffff, cast(u32)0x172b4dff,
+            full[:])
+        if !painted.complete || painted.count != 3 ||
+            full[2].start != 7 || full[2].end != 9 {
+            return -46
+        }
     } else if phase == 20 {
         if !result.clipboard_write ||
             result.clipboard_text != "é\nBC" ||
@@ -493,9 +518,9 @@ Frame :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/syntax" --module-path "$repo/src/ui" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/syntax" --module-path "$repo/src/ui" \
     --entry app:Frame -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
@@ -587,7 +612,7 @@ C
 for target in c cpp go; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
+        --module-path "$repo/src/syntax" --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" \

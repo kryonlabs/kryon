@@ -8,7 +8,6 @@
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "syntax"
 #import "text_field_widget"
 #import "text_input"
 #import "text_input_props"
@@ -26,8 +25,6 @@ using ControlSize;
 using ButtonState;
 using StyleField;
 using CompositionPhase;
-using SyntaxMode;
-using SyntaxTokenKind;
 
 TextAreaRow :: struct {
     start: s32
@@ -413,6 +410,47 @@ TextAreaViewPaintRow :: (session: Session, node: s32, view: TextAreaView,
         }
         part += 1
     }
+}
+
+TextAreaPaintSourceSpan :: (session: Session, node: s32,
+    value: string, row: TextAreaRow, start: s32, end: s32,
+    x: s32, y: s32, font: s32, typeface: string,
+    color: u32, opacity: float32, clip: Rectangle) {
+    if end <= start { return }
+    prefix: string = TextSpan(value, row.start, start - row.start)
+    PaintClippedLabel(session, node,
+        TextSpan(value, start, end - start),
+        x + GlyphWidth(prefix, font, typeface), y, font,
+        ColorFromPacked(Opacity(color, opacity)), clip)
+}
+
+TextAreaPaintColorRow :: (session: Session, node: s32,
+    value: string, row: TextAreaRow,
+    colors: []TextAreaColorSpan, x: s32, y: s32,
+    font: s32, typeface: string, foreground: u32,
+    opacity: float32, clip: Rectangle) {
+    cursor: s32 = row.start
+    index: s32 = 0
+    while index < cast(s32)colors.count && cursor < row.end {
+        span: TextAreaColorSpan = colors[index]
+        index += 1
+        if span.end <= cursor || span.start >= row.end ||
+            span.end <= span.start { continue }
+        left: s32 = span.start
+        if left < cursor { left = cursor }
+        right: s32 = span.end
+        if right > row.end { right = row.end }
+        TextAreaPaintSourceSpan(session, node, value, row,
+            cursor, left, x, y, font, typeface,
+            foreground, opacity, clip)
+        TextAreaPaintSourceSpan(session, node, value, row,
+            left, right, x, y, font, typeface,
+            span.color, opacity, clip)
+        cursor = right
+    }
+    TextAreaPaintSourceSpan(session, node, value, row,
+        cursor, row.end, x, y, font, typeface,
+        foreground, opacity, clip)
 }
 
 #program_export
@@ -900,10 +938,6 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     }
     offset: s32 = 0
     row_index: s32 = 0
-    first_token: bool = true
-    block_comment: bool = false
-    dark_syntax: bool = SyntaxDarkBackground(
-        face.value.background)
     while offset <= view.length {
         row: TextAreaRow = TextAreaNextRow(props.value,
             offset, wrap_width, font,
@@ -958,47 +992,13 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                             face.value.foreground, opacity)),
                         paint.clip_bounds)
                 }
-            } else if props.syntax == cast(SyntaxMode)SyntaxNone {
-                if row_visible {
-                PaintClippedLabel(session, result.node,
-                    TextSpan(props.value, row.start,
-                        row.end - row.start),
+            } else if row_visible {
+                TextAreaPaintColorRow(session, result.node,
+                    props.value, row, props.colors,
                     cast(s32)paint.clip_bounds.x, y,
-                    font, ColorFromPacked(Opacity(
-                        face.value.foreground, opacity)),
+                    font, face.value.typeface,
+                    face.value.foreground, opacity,
                     paint.clip_bounds)
-                }
-            } else {
-                token_start: s32 = row.start
-                while token_start < row.end {
-                    token: SyntaxToken = SyntaxTokenAt(
-                        props.value, token_start, row.end,
-                        props.syntax, first_token,
-                        block_comment)
-                    if token.length <= 0 { break }
-                    if row_visible {
-                        prefix: string = TextSpan(props.value,
-                            row.start, token_start - row.start)
-                        token_x: s32 = cast(s32)paint.clip_bounds.x +
-                            GlyphWidth(prefix, font,
-                                face.value.typeface)
-                        PaintClippedLabel(session, result.node,
-                            TextSpan(props.value,
-                                token_start, token.length),
-                            token_x, y, font,
-                            ColorFromPacked(Opacity(
-                                SyntaxColorFor(token.kind,
-                                    dark_syntax,
-                                    face.value.foreground),
-                                opacity)), paint.clip_bounds)
-                    }
-                    if token.kind !=
-                        cast(SyntaxTokenKind)SyntaxWhitespace {
-                        first_token = false
-                    }
-                    block_comment = token.block_comment
-                    token_start += token.length
-                }
             }
         }
         composition_start: s32 = props.composition_start
@@ -1040,7 +1040,6 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 }
             }
         }
-        if !row.soft_wrap { first_token = true }
         if row.next <= offset { break }
         offset = row.next
         row_index += 1

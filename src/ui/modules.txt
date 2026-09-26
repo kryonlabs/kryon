@@ -142,7 +142,6 @@ style_picker.zi
 style_picker_props.zi
 style_sheet.zi
 surface.zi
-syntax.zi
 swipe.zi
 swipe_props.zi
 tab_bar.zi

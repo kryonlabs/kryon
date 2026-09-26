@@ -214,9 +214,10 @@ platform text services and IME integration remain host and app work.
 
 The checked `TextArea(TextAreaProps)` also owns visual row wrapping, pointer
 selection, vertical and page navigation, scrolling, multiline replacement
-intents, Ziran/C/Make syntax coloring, composition underlines, and clipped
+intents, caller supplied color span paint, composition underlines, and clipped
 text, selection, and caret paint. The caller stores the string and editing
-state. IME event handling, clipboard commands, and native host integration
+state. Optional `src/syntax/` tokenizes Ziran, C, and Make source into those
+spans. IME event handling, clipboard commands, and native host integration
 remain migration work.
 
 Remaining input modes, including keyboard focus, still need migration.
