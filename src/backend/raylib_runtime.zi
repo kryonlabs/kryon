@@ -50,6 +50,7 @@ HostRaylibMouseY :: () -> s32 #foreign raylib "GetMouseY";
 HostRaylibMousePressed :: (button: s32) -> bool #foreign raylib "IsMouseButtonPressed";
 HostRaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
 HostRaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
+HostRaylibMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
@@ -68,6 +69,7 @@ raylib_assets: [32]RaylibAsset;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
 raylib_pointer: PointerFrame;
+raylib_wheel_move: float32;
 raylib_image_error: bool;
 raylib_font: RaylibFont;
 raylib_font_loaded: bool;
@@ -230,6 +232,7 @@ PollRaylib :: () -> bool {
     raylib_pointer.down = HostRaylibMouseDown(0)
     raylib_pointer.pressed = HostRaylibMousePressed(0)
     raylib_pointer.released = HostRaylibMouseReleased(0)
+    raylib_wheel_move = HostRaylibMouseWheelMove()
     return true
 }
 
@@ -243,6 +246,11 @@ RaylibViewport :: () -> Rectangle {
 #program_export
 RaylibPressedKey :: () -> s32 {
     return HostRaylibGetKeyPressed()
+}
+
+#program_export
+RaylibWheelMove :: () -> float32 {
+    return raylib_wheel_move
 }
 
 #program_export

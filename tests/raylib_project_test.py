@@ -131,6 +131,7 @@ def main():
             '    if KeyboardTake(session) == 65 {\n'
             '        return 1\n'
             '    }\n'
+            '    if RaylibWheelMove() > 0.0 { return 1 }\n'
             '    if sample_texture.id == cast(u32)0 {\n'
             '        sample_texture = LoadTexture("quadrants.png")\n'
             '    }\n'
@@ -198,13 +199,18 @@ def main():
                 "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
                 "    if sys.argv[1] == 'key':\n"
                 "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
-                "    else:\n"
+                "    elif sys.argv[1] == 'pointer':\n"
                 "        subprocess.run(['xdotool', 'mousemove', '--window', "
                 "window, '470', '432'], check=True)\n"
                 "        time.sleep(0.2)\n"
                 "        subprocess.run(['xdotool', 'mousedown', '1'], check=True)\n"
                 "        time.sleep(0.2)\n"
                 "        subprocess.run(['xdotool', 'mouseup', '1'], check=True)\n"
+                "    else:\n"
+                "        subprocess.run(['xdotool', 'mousemove', '--window', "
+                "window, '470', '432'], check=True)\n"
+                "        time.sleep(0.2)\n"
+                "        subprocess.run(['xdotool', 'click', '4'], check=True)\n"
                 "    stdout, stderr = app.communicate(timeout=10)\n"
                 "    assert app.returncode == 1, app.returncode\n"
                 "    assert 'raylib frame rendering failed' in stderr, stderr\n"
@@ -213,10 +219,10 @@ def main():
                 "        app.terminate()\n"
                 "        app.communicate(timeout=5)\n"
             )
-            for mode in ("key", "pointer"):
+            for mode in ("key", "pointer", "wheel"):
                 run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                     project, env)
-    print("raylib Ziran project: images, rounded clip, keyboard, and pointer passed")
+    print("raylib Ziran project: images, rounded clip, keyboard, pointer, and wheel passed")
 
 
 if __name__ == "__main__":

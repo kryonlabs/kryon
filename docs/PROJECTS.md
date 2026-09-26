@@ -47,7 +47,7 @@ active until Ctrl-C and sends key presses to the app through `KeyboardTake`.
 When standard input or output is redirected, it writes one frame and exits.
 The `desktop` host opens a 960 by 600 SDL2/Cairo window; it requires the SDL2
 and Cairo development packages. The `raylib` host opens a resizable 960 by 600
-raylib window. It implements the frame loop, keyboard and pointer input,
+raylib window. It implements the frame loop, keyboard, pointer, and wheel input,
 text, shapes, and asset-backed images in Ziran. The host uses raylib's SDL2
 platform and OpenGL ES 2 renderer. Initialize Kryon's dependency with
 `git -C ../kryon submodule update --init vendor/raylib` and install the SDL2,
@@ -55,8 +55,8 @@ libdrm, GBM, EGL, and GLESv2 development packages. The first raylib build
 compiles a static library in Kryon's `build/` directory; later builds reuse it.
 Games importing `raylib_game` use the optional source in `src/game/`. This
 module is separate from the UI host and builds for the raylib C ABI.
-`make -C ../kryon raylib-project-test` checks a captured frame on a private
-Xvfb display.
+`make -C ../kryon raylib-project-test` checks a captured frame and keyboard,
+pointer, and wheel input on private Xvfb displays.
 Project output is `build/<app-name>-<profile>`. The build saves checked Ziran
 modules in `build/generated/<profile>/ir/*.zir` before producing C99 source
 by module in `build/generated/<profile>/c/`. The linker removes unreachable
