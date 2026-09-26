@@ -49,8 +49,6 @@ math.zi
 grid.zi
 grid_props.zi
 group.zi
-guide.zi
-guide_pager.zi
 icon.zi
 image.zi
 image_props.zi
@@ -68,8 +66,6 @@ link.zi
 link_props.zi
 link_widget.zi
 locale_defaults.zi
-locale_parser.zi
-locale_policy.zi
 list_box.zi
 list_box_multi.zi
 list_box_props.zi

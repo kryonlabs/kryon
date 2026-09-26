@@ -467,10 +467,10 @@ def main() -> int:
     else:
         decision = guide_row.group("decision").strip()
         notes = guide_row.group("notes")
-        if decision != "`.kry canonical`":
-            errors.append(f"Guide must stay .kry canonical, found {decision}")
-        if "Guide(GuideProps)" not in notes:
-            errors.append("Guide row must name the clean Guide(GuideProps) surface")
+        if decision != "Inbe owned":
+            errors.append(f"Guide must be marked Inbe owned, found {decision}")
+        if "src/guide.zi" not in notes:
+            errors.append("Guide row must name its Inbe source")
     paragraph_node_row = re.search(r"^\| `WidgetKindParagraph` \| `Paragraph` \| (?P<decision>[^|]+) \|$", doc, re.M)
     if not paragraph_node_row:
         errors.append("missing WidgetKindParagraph retained node row")

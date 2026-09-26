@@ -125,7 +125,7 @@ predicates. Both compact unique routes and clear the unused tail. Move, search,
 first-unused, and stack push/pop/reset helpers return portable values. The old
 pointer records and C callback route ABI have been removed.
 
-The checked `locale_policy.zi` module accepts caller owned slices of
+Inbe owns the checked `locale_policy.zi` module. It accepts caller owned slices of
 `LocaleLanguage` and `LocaleEntry` records with portable strings. It selects
 preferred codes from a language catalog, including normalized region tags and
 base language fallback, and resolves active/base translation entries. The

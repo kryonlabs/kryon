@@ -14,6 +14,8 @@ portable format.
 | Kryon `src/plot/*.zi` | Optional Plot widget and range policy |
 | Kryon `src/data_views/*.zi` | Optional TableView and TreeView widgets |
 | Kryon `src/game/raylib_game.zi` | Optional raylib game API |
+| Inbe `src/guide.zi`, `src/guide_pager.zi` | Product guide layout and pager policy |
+| Inbe `src/locale_parser.zi`, `src/locale_policy.zi` | Inbe catalog format, language selection, and fallback |
 | Kryon Ziran platform modules | Operating system input, windows, font and image loading, rasterization, and storage effects through general Ziran capabilities |
 | Application repositories | Screens, product state, copy, assets, and app-specific workflows |
 
@@ -35,6 +37,9 @@ the C portable host archive is still built for the existing test gate. Backend
 host declarations also compile with the current Ziran toolchain. Platform
 hosts and downstream applications have not yet completed
 their integration with the library.
+
+Guide and catalog policy moved to Inbe because their only maintained consumer
+is Inbe. The library keeps reusable localized control defaults.
 
 The unused handwritten Go runtime has been removed. The product archive
 contains only checked UI modules generated from Ziran. C ABI fixtures for

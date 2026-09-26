@@ -282,8 +282,8 @@ surface review:
 | `src/ui/frame_pacing.kry` | Frame pacing policy (replaces `src/core/kryon_frame_pacing.c`) | `.kry canonical` |
 | `src/ui/kryon_test.kry` | Test and inspection helper surface | `.kry support` |
 | `src/ui/locale_defaults.kry` | Built-in theme-control fallback labels | `.kry canonical` |
-| `src/ui/locale_parser.zi` | Portable catalog entry and language-list parsing into caller owned spans | checked Ziran |
-| `src/ui/locale_policy.zi` | Portable locale-code selection, preferred-language matching, and catalog fallback | checked Ziran |
+| Inbe `src/locale_parser.zi` | Product catalog entry and language-list parsing into caller owned spans | checked Ziran in Inbe |
+| Inbe `src/locale_policy.zi` | Product locale-code selection, preferred-language matching, and catalog fallback | checked Ziran in Inbe |
 | `src/ui/node.kry` | Retained node initializer and property-value constructors (replaces `src/core/kryon_node.c`) | `.kry canonical` |
 | `src/ui/preference_policy.kry` | Theme and orientation preference decisions (replaces `src/core/device_preferences.c`) | `.kry canonical` |
 | `src/ui/screen_routes.kry` | App screen routing and callback dispatch (replaces `src/core/app_runtime.c`) | `.kry canonical` |
@@ -754,9 +754,9 @@ metrics and protocol support here.
 | `Modal` | migration pending | The old combined API still depends on the legacy host, including prompt input; checked message and action composition is available as `ActionModal`. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Style facts, request/render clear decisions, duration/deadline, layout, text-placement, and truncation policy are in `.kry`; host keeps message storage, clock source, text measurement, and drawing. |
 | `Focus` | Partly `.kry-backed` | Focus ring geometry and keyboard activation policy are in `.kry`; focus state, registration, key sampling, popup capture lookup, and drawing remain host support. |
-| `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. `src/ui/guide.kry` owns input, styling, layout, and drawing around `runtime/guide.kry` policy. Label typography uses resolved KSS font sizes directly. |
+| `Guide` | Inbe owned | Inbe owns guided overlay layout and step policy in `src/guide.zi`; it is no longer in Kryon's core archive. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
-| `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
+| `GuidePager` | Inbe owned | Inbe owns guide footer layout and page transition policy in `src/guide_pager.zi`. |
 | `StylePicker` | checked Ziran | The caller supplies pack values and applies the selected ID; checked Dropdown provides UI composition. Style-pack storage and native host integration remain. |
 
 ## Game2D Nodes
