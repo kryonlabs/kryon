@@ -19,6 +19,13 @@ Answer :: () -> s32 {
     if LocaleDefaultKeyAt(14) != "theme_color_label" { return 0 }
     if LocaleDefaultValueAt(28) != "Sweet" { return 0 }
     if LocaleDefaultKeyAt(-1) != "" || LocaleDefaultValueAt(29) != "" { return 0 }
+    index: s32 = 0
+    while index < LocaleDefaultCount() {
+        entry: LocaleDefaultEntry = LocaleDefaultAt(index)
+        if LocaleDefaultKeyAt(index) != entry.key ||
+            LocaleDefaultValueAt(index) != entry.value { return 0 }
+        index += 1
+    }
     return 42
 }
 EOF

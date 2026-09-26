@@ -22,6 +22,10 @@ ClipboardWrite :: struct {
     text: string
 }
 
+ClipboardReadResult :: struct {
+    text: string
+}
+
 #program_export
 ClipboardSetPrimary :: (state: ClipboardState,
     text: string) -> ClipboardState {
@@ -70,19 +74,23 @@ ClipboardWriteCompleted :: (state: ClipboardState) -> ClipboardState {
 
 #program_export
 ClipboardRead :: (state: ClipboardState,
-    source: ClipboardSource) -> string {
+    source: ClipboardSource) -> ClipboardReadResult {
+    result: ClipboardReadResult
     if source == cast(ClipboardSource)ClipboardPrimary {
-        return state.primary
+        result.text = state.primary
+        return result
     }
     if source == cast(ClipboardSource)ClipboardPrimaryOrSystem &&
         (cast(s32)state.primary.count) > 0 {
-        return state.primary
+        result.text = state.primary
+        return result
     }
-    return state.system
+    result.text = state.system
+    return result
 }
 
 #program_export
 ClipboardHasText :: (state: ClipboardState,
     source: ClipboardSource) -> bool {
-    return ClipboardRead(state, source).count > 0
+    return ClipboardRead(state, source).text.count > 0
 }

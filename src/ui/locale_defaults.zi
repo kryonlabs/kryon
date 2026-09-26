@@ -103,10 +103,68 @@ LocaleDefaultAt :: (index: s32) -> LocaleDefaultEntry {
 
 #program_export
 LocaleDefaultKeyAt :: (index: s32) -> string {
-    return LocaleDefaultAt(index).key
+    if index == 0 { return "theme_style_label" }
+    if index == 1 { return "theme_style_system" }
+    if index == 2 { return "theme_style_classic" }
+    if index == 3 { return "theme_style_default" }
+    if index == 4 { return "theme_style_fluent" }
+    if index == 5 { return "theme_style_adwaita" }
+    if index == 6 { return "theme_style_liquid_glass" }
+    if index == 7 { return "theme_label" }
+    if index == 8 { return "theme_app" }
+    if index == 9 { return "theme_system" }
+    if index == 10 { return "theme_mode_label" }
+    if index == 11 { return "theme_follow_device" }
+    if index == 12 { return "theme_light" }
+    if index == 13 { return "theme_dark" }
+    if index == 14 { return "theme_color_label" }
+    if index == 15 { return "theme_picker_title" }
+    if index == 16 { return "theme_sky" }
+    if index == 17 { return "theme_ocean" }
+    if index == 18 { return "theme_forest" }
+    if index == 19 { return "theme_sunset" }
+    if index == 20 { return "theme_lavender" }
+    if index == 21 { return "theme_cherry" }
+    if index == 22 { return "theme_dawn" }
+    if index == 23 { return "theme_sage" }
+    if index == 24 { return "theme_sepia" }
+    if index == 25 { return "theme_mono" }
+    if index == 26 { return "theme_mint" }
+    if index == 27 { return "theme_cobalt" }
+    if index == 28 { return "theme_sweet" }
+    return ""
 }
 
 #program_export
 LocaleDefaultValueAt :: (index: s32) -> string {
-    return LocaleDefaultAt(index).value
+    if index == 0 { return "Style" }
+    if index == 1 { return "System" }
+    if index == 2 { return "Classic" }
+    if index == 3 { return "Default" }
+    if index == 4 { return "Fluent" }
+    if index == 5 { return "Adwaita" }
+    if index == 6 { return "Liquid Glass" }
+    if index == 7 { return "Theme source" }
+    if index == 8 { return "Kryon" }
+    if index == 9 { return "System" }
+    if index == 10 { return "Mode" }
+    if index == 11 { return "Follow device" }
+    if index == 12 { return "Light" }
+    if index == 13 { return "Dark" }
+    if index == 14 { return "Color theme" }
+    if index == 15 { return "Color theme" }
+    if index == 16 { return "Sky" }
+    if index == 17 { return "Ocean" }
+    if index == 18 { return "Forest" }
+    if index == 19 { return "Sunset" }
+    if index == 20 { return "Lavender" }
+    if index == 21 { return "Cherry" }
+    if index == 22 { return "Dawn" }
+    if index == 23 { return "Sage" }
+    if index == 24 { return "Sepia" }
+    if index == 25 { return "Mono" }
+    if index == 26 { return "Mint" }
+    if index == 27 { return "Cobalt" }
+    if index == 28 { return "Sweet" }
+    return ""
 }
