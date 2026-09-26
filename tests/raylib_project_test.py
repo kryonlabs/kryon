@@ -119,6 +119,7 @@ def main():
             '[profiles.raylib]\nbackend = "raylib"\n'
         )
         (project / "src" / "app.zi").write_text(
+            '#import "button_props"\n#import "button_widget"\n'
             '#import "drawing_props"\n#import "geometry"\n'
             '#import "image_props"\n#import "image_widget"\n'
             '#import "raylib_game"\n'
@@ -152,6 +153,11 @@ def main():
             '        Rectangle.{450.0, 80.0, 240.0, 240.0},\n'
             '        Vector2.{0.0, 0.0}, 0.0, 32.0,\n'
             '        Color.{255, 255, 255, 255})\n'
+            '    button: ButtonProps\n'
+            '    button.key = cast(u64)3\n'
+            '    button.bounds = Rectangle.{350.0, 400.0, 240.0, 64.0}\n'
+            '    button.label = "Press me"\n'
+            '    if Button(session, button) > 0 { return 1 }\n'
             '    return 0\n}\n'
         )
         solid_png(project / "test.png", 64, 64, (230, 30, 40, 255))
@@ -172,8 +178,8 @@ def main():
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"
         assert rgb(png, 480, 85) == (230, 30, 40), "rounded image arc missing"
         if shutil.which("xdotool"):
-            (project / "key_check.py").write_text(
-                "import os\nimport subprocess\nimport time\n"
+            (project / "input_check.py").write_text(
+                "import os\nimport subprocess\nimport sys\nimport time\n"
                 "env = os.environ.copy()\nenv.pop('KRYON_CAPTURE_PATH', None)\n"
                 "app = subprocess.Popen(['./build/raylib_probe-raylib'], "
                 "env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n"
@@ -190,7 +196,15 @@ def main():
                 "    else:\n"
                 "        raise AssertionError('raylib window did not appear')\n"
                 "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
-                "    subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
+                "    if sys.argv[1] == 'key':\n"
+                "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
+                "    else:\n"
+                "        subprocess.run(['xdotool', 'mousemove', '--window', "
+                "window, '470', '432'], check=True)\n"
+                "        time.sleep(0.2)\n"
+                "        subprocess.run(['xdotool', 'mousedown', '1'], check=True)\n"
+                "        time.sleep(0.2)\n"
+                "        subprocess.run(['xdotool', 'mouseup', '1'], check=True)\n"
                 "    stdout, stderr = app.communicate(timeout=10)\n"
                 "    assert app.returncode == 1, app.returncode\n"
                 "    assert 'raylib frame rendering failed' in stderr, stderr\n"
@@ -199,8 +213,10 @@ def main():
                 "        app.terminate()\n"
                 "        app.communicate(timeout=5)\n"
             )
-            run(["xvfb-run", "-a", "python3", "key_check.py"], project, env)
-    print("raylib Ziran project: images, rounded clip, and keyboard input passed")
+            for mode in ("key", "pointer"):
+                run(["xvfb-run", "-a", "python3", "input_check.py", mode],
+                    project, env)
+    print("raylib Ziran project: images, rounded clip, keyboard, and pointer passed")
 
 
 if __name__ == "__main__":
