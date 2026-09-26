@@ -138,6 +138,11 @@ DarkenColor :: (color: Color, amount: s32) -> Color {
     return AdjustedColorLightness(color, -amount)
 }
 
+host_api :: #system_library "host_api";
+
+#program_export
+StyleTokenColor :: (name: string) -> Color #foreign host_api;
+
 // Clip calculations are values; paint commands carry explicit clip rectangles.
 #program_export
 GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
