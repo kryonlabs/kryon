@@ -131,6 +131,7 @@ def main():
             '    if KeyboardTake(session) == 65 {\n'
             '        return 1\n'
             '    }\n'
+            '    if RaylibTypedCodepoint() == 122 { return 1 }\n'
             '    if RaylibWheelMove() > 0.0 { return 1 }\n'
             '    if sample_texture.id == cast(u32)0 {\n'
             '        sample_texture = LoadTexture("quadrants.png")\n'
@@ -199,6 +200,8 @@ def main():
                 "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
                 "    if sys.argv[1] == 'key':\n"
                 "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
+                "    elif sys.argv[1] == 'text':\n"
+                "        subprocess.run(['xdotool', 'key', 'z'], check=True)\n"
                 "    elif sys.argv[1] == 'pointer':\n"
                 "        subprocess.run(['xdotool', 'mousemove', '--window', "
                 "window, '470', '432'], check=True)\n"
@@ -219,10 +222,10 @@ def main():
                 "        app.terminate()\n"
                 "        app.communicate(timeout=5)\n"
             )
-            for mode in ("key", "pointer", "wheel"):
+            for mode in ("key", "text", "pointer", "wheel"):
                 run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                     project, env)
-    print("raylib Ziran project: images, rounded clip, keyboard, pointer, and wheel passed")
+    print("raylib Ziran project: images, rounded clip, keyboard, text, pointer, and wheel passed")
 
 
 if __name__ == "__main__":

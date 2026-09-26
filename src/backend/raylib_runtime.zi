@@ -52,6 +52,7 @@ HostRaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown"
 HostRaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 HostRaylibMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
+HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
@@ -246,6 +247,11 @@ RaylibViewport :: () -> Rectangle {
 #program_export
 RaylibPressedKey :: () -> s32 {
     return HostRaylibGetKeyPressed()
+}
+
+#program_export
+RaylibTypedCodepoint :: () -> s32 {
+    return HostRaylibGetCharPressed()
 }
 
 #program_export
