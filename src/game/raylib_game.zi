@@ -44,6 +44,8 @@ Music :: struct {
     ctx_data: *void
 }
 
+AudioCallback :: #type (buffer: *void, frames: u32) -> void #c_call;
+
 RenderTexture2D :: struct {
     id: u32
     texture: Texture2D
@@ -330,6 +332,7 @@ RaylibIsAudioDeviceReady :: () -> bool #foreign raylib "IsAudioDeviceReady";
 RaylibSetMasterVolume :: (volume: float32) #foreign raylib "SetMasterVolume";
 RaylibPlaySound :: (sound: Sound) #foreign raylib "PlaySound";
 RaylibStopSound :: (sound: Sound) #foreign raylib "StopSound";
+RaylibPauseSound :: (sound: Sound) #foreign raylib "PauseSound";
 RaylibIsSoundPlaying :: (sound: Sound) -> bool #foreign raylib "IsSoundPlaying";
 RaylibUnloadSound :: (sound: Sound) #foreign raylib "UnloadSound";
 RaylibSetSoundVolume :: (sound: Sound, volume: float32) #foreign raylib "SetSoundVolume";
@@ -345,10 +348,15 @@ RaylibLoadSoundFromWave :: (wave: Wave) -> Sound #foreign raylib "LoadSoundFromW
 RaylibPlayMusicStream :: (music: Music) #foreign raylib "PlayMusicStream";
 RaylibUpdateMusicStream :: (music: Music) #foreign raylib "UpdateMusicStream";
 RaylibStopMusicStream :: (music: Music) #foreign raylib "StopMusicStream";
+RaylibPauseMusicStream :: (music: Music) #foreign raylib "PauseMusicStream";
+RaylibResumeMusicStream :: (music: Music) #foreign raylib "ResumeMusicStream";
+RaylibIsMusicStreamPlaying :: (music: Music) -> bool #foreign raylib "IsMusicStreamPlaying";
 RaylibSeekMusicStream :: (music: Music, position: float32) #foreign raylib "SeekMusicStream";
 RaylibSetMusicVolume :: (music: Music, volume: float32) #foreign raylib "SetMusicVolume";
 RaylibUnloadMusicStream :: (music: Music) #foreign raylib "UnloadMusicStream";
 RaylibIsMusicValid :: (music: Music) -> bool #foreign raylib "IsMusicValid";
+RaylibAttachAudioMixedProcessor :: (callback: AudioCallback) #foreign raylib "AttachAudioMixedProcessor";
+RaylibDetachAudioMixedProcessor :: (callback: AudioCallback) #foreign raylib "DetachAudioMixedProcessor";
 RaylibLoadSound :: (path: *u8) -> Sound #foreign raylib "LoadSound";
 RaylibLoadMusicStream :: (path: *u8) -> Music #foreign raylib "LoadMusicStream";
 
@@ -358,6 +366,7 @@ IsAudioDeviceReady :: () -> bool { return RaylibIsAudioDeviceReady() }
 SetMasterVolume :: (volume: float32) { RaylibSetMasterVolume(volume) }
 PlaySound :: (sound: Sound) { RaylibPlaySound(sound) }
 StopSound :: (sound: Sound) { RaylibStopSound(sound) }
+PauseSound :: (sound: Sound) { RaylibPauseSound(sound) }
 IsSoundPlaying :: (sound: Sound) -> bool {
     return RaylibIsSoundPlaying(sound)
 }
@@ -393,6 +402,11 @@ LoadSoundFromWave :: (wave: Wave) -> Sound {
 PlayMusicStream :: (music: Music) { RaylibPlayMusicStream(music) }
 UpdateMusicStream :: (music: Music) { RaylibUpdateMusicStream(music) }
 StopMusicStream :: (music: Music) { RaylibStopMusicStream(music) }
+PauseMusicStream :: (music: Music) { RaylibPauseMusicStream(music) }
+ResumeMusicStream :: (music: Music) { RaylibResumeMusicStream(music) }
+IsMusicStreamPlaying :: (music: Music) -> bool {
+    return RaylibIsMusicStreamPlaying(music)
+}
 SeekMusicStream :: (music: Music, position: float32) {
     RaylibSeekMusicStream(music, position)
 }
@@ -401,6 +415,12 @@ SetMusicVolume :: (music: Music, volume: float32) {
 }
 UnloadMusicStream :: (music: Music) { RaylibUnloadMusicStream(music) }
 IsMusicValid :: (music: Music) -> bool { return RaylibIsMusicValid(music) }
+AttachAudioMixedProcessor :: (callback: AudioCallback) {
+    RaylibAttachAudioMixedProcessor(callback)
+}
+DetachAudioMixedProcessor :: (callback: AudioCallback) {
+    RaylibDetachAudioMixedProcessor(callback)
+}
 LoadSound :: (path: string) -> Sound {
     bytes: [1024]u8
     if !CopyCString(path, bytes[:]) { return EmptySound() }
