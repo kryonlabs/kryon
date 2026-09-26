@@ -65,6 +65,7 @@ RaylibImage :: struct {
 // and palette colors the games use, with raylib's values.
 KEY_NULL :: 0;
 KEY_SPACE :: 32;
+KEY_KB_MENU :: 348;
 KEY_ESCAPE :: 256;
 KEY_ENTER :: 257;
 KEY_TAB :: 258;
@@ -89,6 +90,7 @@ TEXTURE_FILTER_POINT :: 0;
 BLEND_ALPHA :: 0;
 BLEND_ADDITIVE :: 1;
 FLAG_WINDOW_RESIZABLE :: 4;
+FLAG_WINDOW_HIDDEN :: 128;
 FLAG_WINDOW_ALWAYS_RUN :: 256;
 
 WHITE :: Color.{255, 255, 255, 255};
@@ -101,8 +103,12 @@ RaylibIsWindowReady :: () -> bool #foreign raylib "IsWindowReady";
 RaylibWindowShouldClose :: () -> bool #foreign raylib "WindowShouldClose";
 RaylibIsWindowHidden :: () -> bool #foreign raylib "IsWindowHidden";
 RaylibIsWindowMinimized :: () -> bool #foreign raylib "IsWindowMinimized";
+RaylibIsWindowFocused :: () -> bool #foreign raylib "IsWindowFocused";
 RaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
 RaylibSetWindowState :: (flags: u32) #foreign raylib "SetWindowState";
+RaylibClearWindowState :: (flags: u32) #foreign raylib "ClearWindowState";
+RaylibRestoreWindow :: () #foreign raylib "RestoreWindow";
+RaylibSetWindowFocused :: () #foreign raylib "SetWindowFocused";
 RaylibSetTargetFPS :: (fps: s32) #foreign raylib "SetTargetFPS";
 RaylibSetExitKey :: (key: s32) #foreign raylib "SetExitKey";
 RaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
@@ -110,6 +116,9 @@ RaylibGetScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
 RaylibGetRenderWidth :: () -> s32 #foreign raylib "GetRenderWidth";
 RaylibGetRenderHeight :: () -> s32 #foreign raylib "GetRenderHeight";
 RaylibGetWindowScaleDPI :: () -> Vector2 #foreign raylib "GetWindowScaleDPI";
+RaylibGetCurrentMonitor :: () -> s32 #foreign raylib "GetCurrentMonitor";
+RaylibGetMonitorWidth :: (monitor: s32) -> s32 #foreign raylib "GetMonitorWidth";
+RaylibGetMonitorHeight :: (monitor: s32) -> s32 #foreign raylib "GetMonitorHeight";
 RaylibBeginDrawing :: () #foreign raylib "BeginDrawing";
 RaylibEndDrawing :: () #foreign raylib "EndDrawing";
 
@@ -124,8 +133,12 @@ IsWindowReady :: () -> bool { return RaylibIsWindowReady() }
 WindowShouldClose :: () -> bool { return RaylibWindowShouldClose() }
 IsWindowHidden :: () -> bool { return RaylibIsWindowHidden() }
 IsWindowMinimized :: () -> bool { return RaylibIsWindowMinimized() }
+IsWindowFocused :: () -> bool { return RaylibIsWindowFocused() }
 SetConfigFlags :: (flags: u32) { RaylibSetConfigFlags(flags) }
 SetWindowState :: (flags: u32) { RaylibSetWindowState(flags) }
+ClearWindowState :: (flags: u32) { RaylibClearWindowState(flags) }
+RestoreWindow :: () { RaylibRestoreWindow() }
+SetWindowFocused :: () { RaylibSetWindowFocused() }
 SetTargetFPS :: (fps: s32) { RaylibSetTargetFPS(fps) }
 SetExitKey :: (key: s32) { RaylibSetExitKey(key) }
 GetScreenWidth :: () -> s32 { return RaylibGetScreenWidth() }
@@ -133,6 +146,9 @@ GetScreenHeight :: () -> s32 { return RaylibGetScreenHeight() }
 GetRenderWidth :: () -> s32 { return RaylibGetRenderWidth() }
 GetRenderHeight :: () -> s32 { return RaylibGetRenderHeight() }
 GetWindowScaleDPI :: () -> Vector2 { return RaylibGetWindowScaleDPI() }
+GetCurrentMonitor :: () -> s32 { return RaylibGetCurrentMonitor() }
+GetMonitorWidth :: (monitor: s32) -> s32 { return RaylibGetMonitorWidth(monitor) }
+GetMonitorHeight :: (monitor: s32) -> s32 { return RaylibGetMonitorHeight(monitor) }
 BeginDrawing :: () { RaylibBeginDrawing() }
 EndDrawing :: () { RaylibEndDrawing() }
 
@@ -156,6 +172,7 @@ RaylibIsMouseButtonPressed :: (button: s32) -> bool #foreign raylib "IsMouseButt
 RaylibIsMouseButtonDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
 RaylibIsMouseButtonReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 RaylibGetMousePosition :: () -> Vector2 #foreign raylib "GetMousePosition";
+RaylibGetMouseDelta :: () -> Vector2 #foreign raylib "GetMouseDelta";
 RaylibGetMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 RaylibGetTouchPointCount :: () -> s32 #foreign raylib "GetTouchPointCount";
 RaylibGetTouchPosition :: (index: s32) -> Vector2 #foreign raylib "GetTouchPosition";
@@ -172,6 +189,7 @@ IsMouseButtonReleased :: (button: s32) -> bool {
     return RaylibIsMouseButtonReleased(button)
 }
 GetMousePosition :: () -> Vector2 { return RaylibGetMousePosition() }
+GetMouseDelta :: () -> Vector2 { return RaylibGetMouseDelta() }
 GetMouseWheelMove :: () -> float32 { return RaylibGetMouseWheelMove() }
 GetTouchPointCount :: () -> s32 { return RaylibGetTouchPointCount() }
 GetTouchPosition :: (index: s32) -> Vector2 { return RaylibGetTouchPosition(index) }
