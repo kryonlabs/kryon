@@ -58,6 +58,8 @@ KEY_NULL :: 0;
 KEY_SPACE :: 32;
 KEY_ESCAPE :: 256;
 KEY_ENTER :: 257;
+KEY_TAB :: 258;
+KEY_BACKSPACE :: 259;
 KEY_RIGHT :: 262;
 KEY_LEFT :: 263;
 KEY_DOWN :: 264;
@@ -70,12 +72,15 @@ KEY_M :: 77;
 KEY_S :: 83;
 KEY_W :: 87;
 KEY_X :: 88;
+KEY_BACK :: 4;
 MOUSE_BUTTON_LEFT :: 0;
+MOUSE_BUTTON_RIGHT :: 1;
 MOUSE_LEFT_BUTTON :: 0;
 TEXTURE_FILTER_POINT :: 0;
 BLEND_ALPHA :: 0;
 BLEND_ADDITIVE :: 1;
 FLAG_WINDOW_RESIZABLE :: 4;
+FLAG_WINDOW_ALWAYS_RUN :: 256;
 
 WHITE :: Color.{255, 255, 255, 255};
 BLACK :: Color.{0, 0, 0, 255};
@@ -85,12 +90,16 @@ RaylibInitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "InitW
 RaylibCloseWindow :: () #foreign raylib "CloseWindow";
 RaylibIsWindowReady :: () -> bool #foreign raylib "IsWindowReady";
 RaylibWindowShouldClose :: () -> bool #foreign raylib "WindowShouldClose";
+RaylibIsWindowHidden :: () -> bool #foreign raylib "IsWindowHidden";
+RaylibIsWindowMinimized :: () -> bool #foreign raylib "IsWindowMinimized";
 RaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
 RaylibSetWindowState :: (flags: u32) #foreign raylib "SetWindowState";
 RaylibSetTargetFPS :: (fps: s32) #foreign raylib "SetTargetFPS";
 RaylibSetExitKey :: (key: s32) #foreign raylib "SetExitKey";
 RaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
 RaylibGetScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
+RaylibGetRenderWidth :: () -> s32 #foreign raylib "GetRenderWidth";
+RaylibGetRenderHeight :: () -> s32 #foreign raylib "GetRenderHeight";
 RaylibBeginDrawing :: () #foreign raylib "BeginDrawing";
 RaylibEndDrawing :: () #foreign raylib "EndDrawing";
 
@@ -103,12 +112,16 @@ InitWindow :: (width: s32, height: s32, title: string) {
 CloseWindow :: () { RaylibCloseWindow() }
 IsWindowReady :: () -> bool { return RaylibIsWindowReady() }
 WindowShouldClose :: () -> bool { return RaylibWindowShouldClose() }
+IsWindowHidden :: () -> bool { return RaylibIsWindowHidden() }
+IsWindowMinimized :: () -> bool { return RaylibIsWindowMinimized() }
 SetConfigFlags :: (flags: u32) { RaylibSetConfigFlags(flags) }
 SetWindowState :: (flags: u32) { RaylibSetWindowState(flags) }
 SetTargetFPS :: (fps: s32) { RaylibSetTargetFPS(fps) }
 SetExitKey :: (key: s32) { RaylibSetExitKey(key) }
 GetScreenWidth :: () -> s32 { return RaylibGetScreenWidth() }
 GetScreenHeight :: () -> s32 { return RaylibGetScreenHeight() }
+GetRenderWidth :: () -> s32 { return RaylibGetRenderWidth() }
+GetRenderHeight :: () -> s32 { return RaylibGetRenderHeight() }
 BeginDrawing :: () { RaylibBeginDrawing() }
 EndDrawing :: () { RaylibEndDrawing() }
 
@@ -129,7 +142,10 @@ GetRandomValue :: (minimum: s32, maximum: s32) -> s32 {
 RaylibIsKeyPressed :: (key: s32) -> bool #foreign raylib "IsKeyPressed";
 RaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 RaylibIsMouseButtonPressed :: (button: s32) -> bool #foreign raylib "IsMouseButtonPressed";
+RaylibIsMouseButtonDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
+RaylibIsMouseButtonReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 RaylibGetMousePosition :: () -> Vector2 #foreign raylib "GetMousePosition";
+RaylibGetMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 RaylibGetTouchPointCount :: () -> s32 #foreign raylib "GetTouchPointCount";
 RaylibGetTouchPosition :: (index: s32) -> Vector2 #foreign raylib "GetTouchPosition";
 
@@ -138,7 +154,14 @@ IsKeyDown :: (key: s32) -> bool { return RaylibIsKeyDown(key) }
 IsMouseButtonPressed :: (button: s32) -> bool {
     return RaylibIsMouseButtonPressed(button)
 }
+IsMouseButtonDown :: (button: s32) -> bool {
+    return RaylibIsMouseButtonDown(button)
+}
+IsMouseButtonReleased :: (button: s32) -> bool {
+    return RaylibIsMouseButtonReleased(button)
+}
 GetMousePosition :: () -> Vector2 { return RaylibGetMousePosition() }
+GetMouseWheelMove :: () -> float32 { return RaylibGetMouseWheelMove() }
 GetTouchPointCount :: () -> s32 { return RaylibGetTouchPointCount() }
 GetTouchPosition :: (index: s32) -> Vector2 { return RaylibGetTouchPosition(index) }
 
