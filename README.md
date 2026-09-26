@@ -25,6 +25,10 @@ source headers. Portable platform bindings are in
 `build/ziran/libkryon_host.a`: shared raster lines use a caller-supplied line
 renderer, and `CompositionQueue` carries raw IME events to the checked text
 widgets.
+Plot lives in the optional `src/plot/` package. `make plot` builds
+`build/ziran/libkryon_plot.a`; apps importing `plot_widget` add
+`src/plot/` to their Ziran module paths. The `kryon` project command adds
+this path automatically.
 `make test` builds the test host and runs the Ziran source, saved-IR, and
 portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
 serially or `TEST_JOBS=8` on a larger machine. For a quick edit loop, use

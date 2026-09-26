@@ -115,8 +115,8 @@ surface review:
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `src/ui/page.zi`, `src/ui/page_props.zi`, `src/ui/page_text.zi` | Checked Page and Section scopes, spacing, metadata effect, Heading, and ParagraphText | checked Ziran |
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
-| `src/ui/plot.zi`, `src/ui/plot_widget.zi` | Plot range, marks, KSS styling, text, tree, and paint | Checked Ziran library |
-| `src/ui/plot_props.zi` | Portable Plot props and mode names; values are borrowed through a slice argument | Checked Ziran library |
+| `src/plot/plot.zi`, `src/plot/plot_widget.zi` | Plot range, marks, KSS styling, text, tree, and paint | Optional checked Plot package |
+| `src/plot/plot_props.zi` | Portable Plot props and mode names; values are borrowed through a slice argument | Optional checked Plot package |
 | `runtime/popup_policy.kry` | Popup mode/input record/open-state, tooltip visibility, outside-dismissal, and Escape-close policy | `.kry canonical` |
 | `runtime/popup_props.kry` | Popup props | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
@@ -833,7 +833,7 @@ stays prefix-free.
 | `WidgetKindDragDrop` | `DragDrop` | `.kry canonical`; source/target lifecycle policy lives in `runtime/drag_drop.kry` |
 | `WidgetKindRadio` | `Radio` | `.kry canonical`; paint/layout/marker policy lives in `runtime/radio.kry` |
 | `WidgetKindProgress` | `Progress` | `.kry canonical`; track/fill/label layout policy lives in `runtime/progress.kry` |
-| `WidgetKindPlot` | `Plot` | Checked Ziran tree and paint; range/mark/text policy lives in `src/ui/plot.zi`. |
+| `WidgetKindPlot` | `Plot` | Optional checked Ziran Plot package; range/mark/text policy lives in `src/plot/plot.zi`. |
 | `WidgetKindFocus` | `Focus` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
 | `WidgetKindSpinbox` | `Spinbox` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
 | `WidgetKindFieldset` | `Fieldset` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |
