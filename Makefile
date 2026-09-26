@@ -24,6 +24,9 @@ PLOT_OBJECTS := $(addprefix $(BUILD_DIR)/plot/obj/,$(addsuffix .o,$(PLOT_MODULES
 DATA_VIEW_SOURCE := $(wildcard src/data_views/*.zi)
 DATA_VIEW_MODULES := $(basename $(notdir $(DATA_VIEW_SOURCE)))
 DATA_VIEW_OBJECTS := $(addprefix $(BUILD_DIR)/data_views/obj/,$(addsuffix .o,$(DATA_VIEW_MODULES)))
+KSS_SOURCE := $(wildcard src/kss/*.zi)
+KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
+KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 GAME_SOURCE := src/game/raylib_game.zi
 
 .PHONY: all check test test-focus ziran-test header-check source-check clean project-toolchain project-test install-user
@@ -34,6 +37,9 @@ plot: $(BUILD_DIR)/libkryon_plot.a
 
 .PHONY: data-views
 data-views: $(BUILD_DIR)/libkryon_data_views.a
+
+.PHONY: kss
+kss: $(BUILD_DIR)/libkryon_kss.a
 
 .PHONY: raylib-game
 raylib-game: $(BUILD_DIR)/libkryon_raylib_game.a
@@ -135,6 +141,23 @@ $(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules
 	rm -f $@
 	$(AR) rcs $@ $(DATA_VIEW_OBJECTS)
 
+# KSS text parsing, formatting, and installation are opt in. Runtime style
+# resolution stays in core; core modules never import this package.
+$(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
+	mkdir -p $(BUILD_DIR)/kss/ir $(BUILD_DIR)/kss/c $(BUILD_DIR)/kss/cpp $(BUILD_DIR)/kss/go $(BUILD_DIR)/kss/obj $(BUILD_DIR)/kss/obj-cpp
+	$(ZI2ZIR_BIN) --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/ir $(KSS_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/c $(KSS_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/cpp $(KSS_SOURCE)
+	rm -f $(BUILD_DIR)/kss/go/*.go
+	$(ZI2GO_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/go $(KSS_SOURCE)
+	@for module in $(KSS_MODULES); do \
+		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/c -c $(BUILD_DIR)/kss/c/$$module.c -o $(BUILD_DIR)/kss/obj/$$module.o || exit 1; \
+		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/cpp -c $(BUILD_DIR)/kss/cpp/$$module.cpp -o $(BUILD_DIR)/kss/obj-cpp/$$module.o || exit 1; \
+	done
+	cd $(BUILD_DIR)/kss/go && GO111MODULE=off go test .
+	rm -f $@
+	$(AR) rcs $@ $(KSS_OBJECTS)
+
 # Raylib's game API is opt in and has a C ABI. Native Go deliberately rejects
 # those foreign C symbols; the C and C++ outputs share the same checked source.
 $(BUILD_DIR)/libkryon_raylib_game.a: $(GAME_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
@@ -182,7 +205,7 @@ project-test: project-toolchain build/bin/kryon
 source-check:
 	sh tools/check-ziran-source.sh
 
-check: all plot data-views raylib-game ziran-test header-check project-test
+check: all plot data-views kss raylib-game ziran-test header-check project-test
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh

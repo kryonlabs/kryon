@@ -230,7 +230,8 @@ imports.
 positions an unlabeled vertical or horizontal line, or measures and paints a
 label followed by a line. It paints immediately outside a tree and submits a
 node for deferred paint inside one.
-`BeginStyleRules()` and `ParseStyleRules()` collect checked KSS parser output
+The optional `src/kss/` package provides `BeginStyleRules()` and
+`ParseStyleRules()` to collect checked KSS parser output
 into that table. Parsing stops at `NeedImport` so the caller can use
 `ProvideStyleRulesImport()` or `FailStyleRulesImport()` before continuing.
 `StyleRulesParse.overflow` reports when a 321st rule would exceed the table.

@@ -36,6 +36,11 @@ TableView and TreeView live in the optional `src/data_views/` package.
 directory to their Ziran module paths when importing either widget. The
 `kryon` project command adds the path automatically.
 
+KSS parsing, formatting, and installation live in the optional `src/kss/`
+package. `make kss` builds `build/ziran/libkryon_kss.a`; the core UI library
+keeps style resolution but does not import the parser. Ziran projects add the
+KSS module path automatically.
+
 The raylib game API lives in `src/game/raylib_game.zi`. `make raylib-game`
 checks and builds its C and C++ outputs without linking it into the UI
 library; Ziran projects add `src/game/` automatically. Native Go cannot use

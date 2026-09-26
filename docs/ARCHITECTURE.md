@@ -176,7 +176,7 @@ Progress can also emit its rounded track, fill, border, and text through
 separate generic raster shape and text capabilities. Its checked composition
 module selects the font and positions the label from raw glyph measurements;
 its checked style module resolves track, fill, and label roles from a portable
-rule table. A checked parser bridge collects KSS rules into that table and
+rule table. The optional `src/kss/` parser bridge collects KSS rules into that table and
 pauses for host-provided imports. The host only slices source bytes and
 supplies imported text; Kryon resolves selectors and widget styles. The
 one-argument Progress painter uses an installed Ziran rule table and Ziran

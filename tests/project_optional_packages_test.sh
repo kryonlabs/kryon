@@ -20,6 +20,7 @@ EOF
 
 cat > "$work/src/app.zi" <<'EOF'
 #import "geometry"
+#import "kss_parser"
 #import "raylib_game"
 #import "plot"
 #import "plot_props"
@@ -29,6 +30,8 @@ cat > "$work/src/app.zi" <<'EOF'
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    environment: KssEnvironment = KssDefaultEnvironment()
+    if environment.theme != 0 { return 1 }
     props: PlotProps
     props.scale_min = 0.0
     props.scale_max = 10.0
@@ -48,6 +51,7 @@ EOF
 
 (cd "$work" && "$repo/build/bin/kryon" build --profile tui)
 test -s "$work/build/generated/tui/ir/plot.zir"
+test -s "$work/build/generated/tui/ir/kss_parser.zir"
 test -s "$work/build/generated/tui/ir/table_view.zir"
 test -s "$work/build/generated/tui/ir/tree_view.zir"
 test -s "$work/build/generated/tui/ir/raylib_game.zir"

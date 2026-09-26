@@ -58,8 +58,6 @@ input.zi
 input_props.zi
 instance.zi
 inspect.zi
-kss_formatter.zi
-kss_parser.zi
 layout.zi
 layout_widget.zi
 link.zi
@@ -142,7 +140,6 @@ spinbox_widget.zi
 style.zi
 style_picker.zi
 style_picker_props.zi
-style_parse.zi
 style_sheet.zi
 surface.zi
 syntax.zi

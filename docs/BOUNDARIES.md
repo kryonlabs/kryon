@@ -13,6 +13,7 @@ portable format.
 | Kryon `src/ui/*.zi` | Widget APIs and reusable UI behavior |
 | Kryon `src/plot/*.zi` | Optional Plot widget and range policy |
 | Kryon `src/data_views/*.zi` | Optional TableView and TreeView widgets |
+| Kryon `src/kss/*.zi` | Optional KSS parsing, formatting, and installation |
 | Kryon `src/game/raylib_game.zi` | Optional raylib game API |
 | Inbe `src/guide.zi`, `src/guide_pager.zi` | Product guide layout and pager policy |
 | Inbe `src/locale_parser.zi`, `src/locale_policy.zi` | Inbe catalog format, language selection, and fallback |
@@ -27,8 +28,8 @@ modules call.
 ## Current implementation
 
 Every maintained `.zi` module in `src/ui/` appears in
-[`src/ui/modules.txt`](../src/ui/modules.txt). Plot and the data views package
-are built separately from `src/plot/` and `src/data_views/`; core modules do
+[`src/ui/modules.txt`](../src/ui/modules.txt). Plot, data views, and KSS
+are built separately from `src/plot/`, `src/data_views/`, and `src/kss/`; core modules do
 not import them. All modules use current Ziran syntax. `make all` passes source
 checking, checked `.zir` output,
 strict C, C++, and Go generation, native C/C++ compilation, and Go package

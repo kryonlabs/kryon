@@ -33,6 +33,7 @@ APP_SOURCES := $(wildcard src/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 PLOT_SOURCES := $(wildcard $(KRYON_DIR)/src/plot/*.zi)
 DATA_VIEW_SOURCES := $(wildcard $(KRYON_DIR)/src/data_views/*.zi)
+KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi)
 GAME_SOURCES := $(wildcard $(KRYON_DIR)/src/game/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
@@ -77,12 +78,13 @@ build: toolchain
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
 
-$(IR_STAMP): $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(GAME_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(IR_STAMP): $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(GAME_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(ZIRAN) ir --entry $(HOST_MODULE):main --root $(KRYON_DIR)/src/backend \
 		--module-path src --module-path $(KRYON_DIR)/src/plot \
 		--module-path $(KRYON_DIR)/src/data_views \
+		--module-path $(KRYON_DIR)/src/kss \
 		--module-path $(KRYON_DIR)/src/game \
 		--module-path $(KRYON_DIR)/src/ui \
 		--module-path $(ZIRAN_DIR)/std \
@@ -116,6 +118,7 @@ check: toolchain
 	$(ZIRAN) check --root $(KRYON_DIR)/src/backend \
 		--module-path src --module-path $(KRYON_DIR)/src/plot \
 		--module-path $(KRYON_DIR)/src/data_views \
+		--module-path $(KRYON_DIR)/src/kss \
 		--module-path $(KRYON_DIR)/src/game \
 		--module-path $(KRYON_DIR)/src/ui \
 		--module-path $(ZIRAN_DIR)/std $(HOST)

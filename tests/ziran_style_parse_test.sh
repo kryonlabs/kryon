@@ -79,9 +79,9 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/kss" --module-path "$repo/src/ui" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/kss" --module-path "$repo/src/ui" \
     --entry app:Answer -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
@@ -114,7 +114,7 @@ C
 for input in source saved; do
     if test "$input" = source; then
         module=$work/app.zi
-        module_dir=$repo/src/ui
+        module_dir=$repo/src/kss
     else
         module=$work/ir/app.zir
         module_dir=$work/ir
@@ -123,7 +123,7 @@ for input in source saved; do
         output=$work/$target-$input
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" -o "$output" "$module"
+                --module-path "$module_dir" --module-path "$repo/src/ui" -o "$output" "$module"
             cat > "$output/main.go" <<'GO'
 package main
 func main() {
@@ -133,7 +133,7 @@ GO
             GO111MODULE=off go run "$output"/*.go
         else
             "$ziran" build --target="$target" --root "$work" \
-                --module-path "$module_dir" -o "$output" "$module"
+                --module-path "$module_dir" --module-path "$repo/src/ui" -o "$output" "$module"
             if test "$target" = c; then
                 cat > "$output/main.c" <<'C'
 #include "app.h"
