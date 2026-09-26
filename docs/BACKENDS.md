@@ -2,10 +2,11 @@
 
 The C backend contract below is historical and does not describe the current
 Ziran project launcher. For current `kryon.toml` profiles, see
-[Ziran projects](PROJECTS.md): `terminal`, `desktop` (SDL2/Cairo), and `raylib`
-(raylib SDL2/OpenGL ES 2). The raylib window host and its rendering behavior
-are implemented in `src/backend/raylib_run.zi` and
-`src/backend/raylib_runtime.zi`.
+[Ziran projects](PROJECTS.md): `terminal`, `desktop` (SDL2/Cairo), `libdraw`
+(plan9port/devdraw with Cairo), and `raylib` (raylib SDL2/OpenGL ES 2).
+The current libdraw host is implemented in `src/backend/libdraw_run.zi` and
+`src/backend/libdraw_runtime.zi`. Its raster implementation is shared with
+the SDL desktop host in `src/backend/cairo_raster.zi`.
 
 How the graphics/input backend is selected, what a backend must implement, and
 how to add a new one. For the machine-readable backend inventory see

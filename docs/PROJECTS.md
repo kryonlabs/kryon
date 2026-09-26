@@ -41,12 +41,20 @@ From the app directory, use `kryon run`, `kryon build`, or `kryon check`.
 `kryon run --profile tui` selects a named profile without prompting. A `Makefile` may simply forward `run`,
 `build`, and `check` to these commands.
 
-The project route supports `terminal`, `desktop`, and `raylib` with C99 code
+The project route supports `terminal`, `desktop`, `libdraw`, and `raylib` with C99 code
 generation. On a terminal, the terminal host keeps its 80 by 24 cell display
 active until Ctrl-C and sends key presses to the app through `KeyboardTake`.
 When standard input or output is redirected, it writes one frame and exits.
 The `desktop` host opens a 960 by 600 SDL2/Cairo window; it requires the SDL2
-and Cairo development packages. The `raylib` host opens a resizable 960 by 600
+and Cairo development packages. The `libdraw` host opens a plan9port/devdraw
+window, takes its viewport from the actual window size, and uses the shared
+Cairo raster for text, shapes, and PNG assets. It needs Cairo and a built
+plan9port checkout next to Kryon. Set `PLAN9PORT_DIR` to another plan9port
+checkout when needed. `kryon run` starts devdraw from that checkout; a binary
+launched directly needs `PLAN9`, `DEVDRAW`, and plan9port's `bin` on `PATH`.
+`make libdraw-project-test` checks pixels from the real devdraw window, asset
+rendering, keyboard and pointer input, and resize on private Xvfb displays.
+The `raylib` host opens a resizable 960 by 600
 raylib window. It implements the frame loop, keyboard, typed character,
 pointer, and wheel input,
 text, shapes, and asset-backed images in Ziran. The host uses raylib's SDL2

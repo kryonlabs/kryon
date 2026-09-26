@@ -1,0 +1,214 @@
+#import "c_string"
+#import "cairo_raster"
+#import "geometry"
+#import "tree_input"
+
+draw_library :: #system_library "draw";
+dl_library :: #system_library "dl";
+libc :: #system_library "libc";
+
+DrawPoint :: struct {
+    x: s32
+    y: s32
+}
+DrawRectangle :: struct {
+    min: DrawPoint
+    max: DrawPoint
+}
+DrawImage :: struct {
+    display: *void
+    id: s32
+    r: DrawRectangle
+    clipr: DrawRectangle
+    depth: s32
+    chan: u32
+    repl: s32
+    screen: *void
+    next: *void
+}
+DrawMouse :: struct {
+    buttons: s32
+    xy: DrawPoint
+    msec: u64
+}
+DrawEvent :: struct {
+    kbdc: s32
+    mouse: DrawMouse
+    n: s32
+    v: *void
+    data: [8320]u8
+}
+
+InitDraw :: (error: *void, font: *u8, label: *u8) -> s32 #foreign draw_library "initdraw";
+CloseDisplay :: (display: *void) #foreign draw_library "closedisplay";
+GetWindow :: (display: *void, refresh: s32) -> s32 #foreign draw_library "getwindow";
+AllocImage :: (display: *void, bounds: DrawRectangle, channel: u32,
+    repl: s32, color: u32) -> *DrawImage #foreign draw_library "allocimage";
+FreeImage :: (image: *DrawImage) #foreign draw_library "freeimage";
+LoadImage :: (image: *DrawImage, bounds: DrawRectangle, data: *u8,
+    count: s32) -> s32 #foreign draw_library "loadimage";
+Draw :: (target: *DrawImage, bounds: DrawRectangle, source: *DrawImage,
+    mask: *void, point: DrawPoint) #foreign draw_library "draw";
+FlushImage :: (display: *void, visible: s32) -> s32 #foreign draw_library "flushimage";
+EventInit :: (keys: u64) #foreign draw_library "einit";
+EventCanRead :: (keys: u64) -> s32 #foreign draw_library "ecanread";
+EventRead :: (keys: u64, event: *DrawEvent) -> u64 #foreign draw_library "eread";
+LookupSymbol :: (handle: *void, symbol: *u8) -> *void #foreign dl_library "dlsym";
+Allocate :: (count: u64) -> *void #foreign libc "malloc";
+Release :: (data: *void) #foreign libc "free";
+PauseMicros :: (micros: u32) -> s32 #foreign libc "usleep";
+
+draw_display: *void;
+draw_screen: *DrawImage;
+draw_frame: *DrawImage;
+draw_pixels: *u8;
+draw_width: s32;
+draw_height: s32;
+draw_pointer: PointerFrame;
+draw_key: s32;
+draw_resize_pending: bool;
+
+// libdraw calls this only for a resize event from the display opened here.
+#program_export
+eresized :: (new_size: s32) {
+    if new_size != 0 { draw_resize_pending = true }
+}
+
+DrawBounds :: (width: s32, height: s32) -> DrawRectangle {
+    return DrawRectangle.{DrawPoint.{0, 0}, DrawPoint.{width, height}}
+}
+
+ReleaseFrame :: () {
+    if draw_frame != null { FreeImage(draw_frame) }
+    if draw_pixels != null { Release(cast(*void)draw_pixels) }
+    draw_frame = null
+    draw_pixels = null
+    CloseRaster()
+}
+
+OpenFrame :: () -> bool {
+    width: s32 = draw_screen.r.max.x - draw_screen.r.min.x
+    height: s32 = draw_screen.r.max.y - draw_screen.r.min.y
+    if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
+        return false
+    }
+    ReleaseFrame()
+    draw_width = width
+    draw_height = height
+    if !OpenRaster(width, height) { return false }
+    draw_pixels = cast(*u8)Allocate(cast(u64)width * cast(u64)height * cast(u64)4)
+    if draw_pixels == null { return false }
+    // Plan 9 channel words encode RGBA as 08 18 28 48.
+    draw_frame = AllocImage(draw_display, DrawBounds(width, height),
+        cast(u32)0x08182848, 0, cast(u32)0)
+    return draw_frame != null
+}
+
+#program_export
+OpenLibdraw :: () -> bool {
+    if size_of(DrawPoint) != 8 || size_of(DrawRectangle) != 16 ||
+        size_of(DrawMouse) != 24 || size_of(DrawEvent) != 8368 ||
+        size_of(DrawImage) != 72 { return false }
+    label: [32]u8
+    display_name: [16]u8
+    screen_name: [16]u8
+    if !CopyCString("Kryon Ziran", label[:]) ||
+        !CopyCString("display", display_name[:]) ||
+        !CopyCString("screen", screen_name[:]) { return false }
+    if InitDraw(null, null, *label[0]) < 0 { return false }
+    // plan9port exposes these as globals; dlsym avoids handwritten C shims.
+    display_slot: *void = LookupSymbol(null, *display_name[0])
+    screen_slot: *void = LookupSymbol(null, *screen_name[0])
+    if display_slot == null || screen_slot == null { return false }
+    display_ref: **void = cast(**void)display_slot
+    screen_ref: **DrawImage = cast(**DrawImage)screen_slot
+    draw_display = display_ref.*
+    draw_screen = screen_ref.*
+    if draw_display == null || draw_screen == null { return false }
+    if !OpenFrame() { return false }
+    // Keep the callback in the generated program for libdraw's event object.
+    eresized(0)
+    EventInit(cast(u64)3)
+    return true
+}
+
+#program_export
+CloseLibdraw :: () {
+    ReleaseFrame()
+    if draw_display != null { CloseDisplay(draw_display) }
+    draw_display = null
+    draw_screen = null
+}
+
+#program_export
+LibdrawViewport :: () -> Rectangle {
+    return Rectangle.{0.0, 0.0, cast(float32)draw_width,
+        cast(float32)draw_height}
+}
+
+#program_export
+LibdrawPressedKey :: () -> s32 { return draw_key }
+
+#program_export
+PollLibdraw :: () -> bool {
+    draw_pointer.pressed = false
+    draw_pointer.released = false
+    draw_key = 0
+    event: DrawEvent
+    if EventCanRead(cast(u64)3) != 0 {
+        kind: u64 = EventRead(cast(u64)3, *event)
+        if kind == cast(u64)1 {
+            down: bool = (event.mouse.buttons & 1) != 0
+            draw_pointer.pressed = draw_pointer.pressed ||
+                (down && !draw_pointer.down)
+            draw_pointer.released = draw_pointer.released ||
+                (!down && draw_pointer.down)
+            draw_pointer.down = down
+            draw_pointer.x = cast(float32)(event.mouse.xy.x - draw_screen.r.min.x)
+            draw_pointer.y = cast(float32)(event.mouse.xy.y - draw_screen.r.min.y)
+        } else if kind == cast(u64)2 {
+            draw_key = event.kbdc
+        }
+    }
+    if draw_resize_pending {
+        draw_resize_pending = false
+        if GetWindow(draw_display, 1) < 0 { return false }
+        if !OpenFrame() { return false }
+    }
+    return true
+}
+
+#program_export
+PollPointer :: () -> PointerFrame { return draw_pointer }
+
+#program_export
+BeginLibdrawFrame :: () { BeginRasterFrame() }
+
+#program_export
+EndLibdrawFrame :: () -> bool {
+    if !FinishRasterFrame() { return false }
+    source: *u8 = RasterSurfaceData()
+    stride: s32 = RasterSurfaceStride()
+    y: s32 = 0
+    while y < draw_height {
+        x: s32 = 0
+        while x < draw_width {
+            source_at: s32 = y * stride + x * 4
+            target_at: s32 = (y * draw_width + x) * 4
+            // RGBA32 occupies A, B, G, R bytes on this little endian ABI.
+            draw_pixels[target_at] = source[source_at + 3]
+            draw_pixels[target_at + 1] = source[source_at]
+            draw_pixels[target_at + 2] = source[source_at + 1]
+            draw_pixels[target_at + 3] = source[source_at + 2]
+            x += 1
+        }
+        y += 1
+    }
+    if LoadImage(draw_frame, DrawBounds(draw_width, draw_height),
+        draw_pixels, draw_width * draw_height * 4) < 0 { return false }
+    Draw(draw_screen, draw_screen.r, draw_frame, null, DrawPoint.{0, 0})
+    return FlushImage(draw_display, 1) >= 0
+}
+
+#program_export
+PauseLibdraw :: () { PauseMicros(cast(u32)16000) }

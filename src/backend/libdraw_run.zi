@@ -1,7 +1,7 @@
 #import "app"
 #import "cairo_raster"
-#import "desktop_runtime"
 #import "geometry"
+#import "libdraw_runtime"
 #import "session"
 #import "tree"
 #import "tree_draw"
@@ -10,9 +10,9 @@
 using FrameStatus;
 
 libc :: #system_library "libc";
-DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+LibdrawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 
-DesktopError :: (message: string) -> s32 {
+LibdrawError :: (message: string) -> s32 {
     output: [256]u8
     length: s32 = cast(s32)message.count
     if length > 254 { length = 254 }
@@ -22,12 +22,12 @@ DesktopError :: (message: string) -> s32 {
         index += 1
     }
     output[index] = cast(u8)10
-    DesktopWrite(2, *output[0], cast(u64)(length + 1))
+    LibdrawWrite(2, *output[0], cast(u64)(length + 1))
     return 1
 }
 
-DrawFrame :: (session: Session, viewport: Rectangle) -> bool {
-    BeginDesktopFrame()
+DrawLibdrawFrame :: (session: Session, viewport: Rectangle) -> bool {
+    BeginLibdrawFrame()
     TreePointerUpdate(session, PollPointer())
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
@@ -36,33 +36,35 @@ DrawFrame :: (session: Session, viewport: Rectangle) -> bool {
         return false
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk { return false }
-    return EndDesktopFrame()
+    if !EndLibdrawFrame() { return false }
+    if CaptureRequested() { return CaptureConfigured() }
+    return true
 }
 
 #program_export
 main :: () -> s32 {
-    if !OpenDesktop() {
-        CloseDesktop()
-        return DesktopError("kryon: could not open the desktop window")
+    if !OpenLibdraw() {
+        CloseLibdraw()
+        return LibdrawError("kryon: could not open the libdraw window")
     }
     session: Session = SessionOpen()
     if !SessionValid(session) {
-        CloseDesktop()
-        return DesktopError("kryon: could not open a UI session")
+        CloseLibdraw()
+        return LibdrawError("kryon: could not open a UI session")
     }
-    viewport: Rectangle = Rectangle.{0.0, 0.0, 960.0, 600.0}
     ok: bool = true
     if CaptureRequested() {
-        ok = DrawFrame(session, viewport)
-        if ok { ok = CaptureConfigured() }
+        ok = DrawLibdrawFrame(session, LibdrawViewport())
     } else {
-        while ok && PollDesktop() {
-            ok = DrawFrame(session, viewport)
-            if ok { PauseDesktop() }
+        while ok && PollLibdraw() {
+            key: s32 = LibdrawPressedKey()
+            if key != 0 { KeyboardSend(session, key) }
+            ok = DrawLibdrawFrame(session, LibdrawViewport())
+            if ok { PauseLibdraw() }
         }
     }
     CloseSession(session)
-    CloseDesktop()
+    CloseLibdraw()
     if ok { return 0 }
-    return DesktopError("kryon: desktop frame rendering failed")
+    return LibdrawError("kryon: libdraw frame rendering failed")
 }

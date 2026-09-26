@@ -15,7 +15,7 @@ ifndef PROJECT_PROFILE
 $(error PROJECT_PROFILE is required; run this through kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -37,10 +37,18 @@ KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi)
 SYNTAX_SOURCES := $(wildcard $(KRYON_DIR)/src/syntax/*.zi)
 GAME_SOURCES := $(wildcard $(KRYON_DIR)/src/game/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
+ifneq ($(filter $(PROJECT_BACKEND),desktop libdraw),)
+HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
+endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)
+endif
+ifeq ($(PROJECT_BACKEND),libdraw)
+PLAN9PORT_DIR ?= $(KRYON_DIR)/../plan9port
+HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo)
+RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
 RAYLIB_SOURCE := $(KRYON_DIR)/vendor/raylib/src
