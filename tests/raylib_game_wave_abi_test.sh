@@ -13,4 +13,4 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     "$repo/tests/raylib_game_wave_abi.c" -o "$work/raylib"
 
 test "$("$work/generated")" = "$("$work/raylib")"
-echo "raylib Wave and Sound Ziran ABI matches raylib.h"
+echo "raylib Wave, Sound, and Image Ziran ABI matches raylib.h"

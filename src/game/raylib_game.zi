@@ -52,6 +52,15 @@ RenderTexture2D :: struct {
     depth: Texture2D
 }
 
+// The raylib C image value is distinct from Kryon's Image widget.
+RaylibImage :: struct {
+    data: *void
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
+}
+
 // Keyboard keys, mouse buttons, texture filters, blend modes, window flags,
 // and palette colors the games use, with raylib's values.
 KEY_NULL :: 0;
@@ -100,6 +109,7 @@ RaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
 RaylibGetScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
 RaylibGetRenderWidth :: () -> s32 #foreign raylib "GetRenderWidth";
 RaylibGetRenderHeight :: () -> s32 #foreign raylib "GetRenderHeight";
+RaylibGetWindowScaleDPI :: () -> Vector2 #foreign raylib "GetWindowScaleDPI";
 RaylibBeginDrawing :: () #foreign raylib "BeginDrawing";
 RaylibEndDrawing :: () #foreign raylib "EndDrawing";
 
@@ -122,6 +132,7 @@ GetScreenWidth :: () -> s32 { return RaylibGetScreenWidth() }
 GetScreenHeight :: () -> s32 { return RaylibGetScreenHeight() }
 GetRenderWidth :: () -> s32 { return RaylibGetRenderWidth() }
 GetRenderHeight :: () -> s32 { return RaylibGetRenderHeight() }
+GetWindowScaleDPI :: () -> Vector2 { return RaylibGetWindowScaleDPI() }
 BeginDrawing :: () { RaylibBeginDrawing() }
 EndDrawing :: () { RaylibEndDrawing() }
 
@@ -250,6 +261,9 @@ MeasureText :: (value: string, font_size: s32) -> s32 {
 }
 
 // Textures and render targets.
+RaylibLoadImageFromScreen :: () -> RaylibImage #foreign raylib "LoadImageFromScreen";
+RaylibUnloadImage :: (image: RaylibImage) #foreign raylib "UnloadImage";
+RaylibExportImage :: (image: RaylibImage, path: *u8) -> bool #foreign raylib "ExportImage";
 RaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 RaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 RaylibSetTextureFilter :: (texture: Texture2D,
@@ -274,6 +288,14 @@ EmptyTexture :: () -> Texture2D {
     empty.mipmaps = 0
     empty.format = 0
     return empty
+}
+
+LoadImageFromScreen :: () -> RaylibImage { return RaylibLoadImageFromScreen() }
+UnloadImage :: (image: RaylibImage) { RaylibUnloadImage(image) }
+ExportImage :: (image: RaylibImage, path: string) -> bool {
+    bytes: [1024]u8
+    if !CopyCString(path, bytes[:]) { return false }
+    return RaylibExportImage(image, *bytes[0])
 }
 
 EmptyWave :: () -> Wave {
