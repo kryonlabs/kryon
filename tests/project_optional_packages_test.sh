@@ -20,6 +20,7 @@ EOF
 
 cat > "$work/src/app.zi" <<'EOF'
 #import "geometry"
+#import "raylib_game"
 #import "plot"
 #import "plot_props"
 #import "session"
@@ -40,6 +41,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         TreeViewContentHeight(2, 20) != 40 {
         return 1
     }
+    if KEY_SPACE != 32 { return 1 }
     return 0
 }
 EOF
@@ -48,4 +50,5 @@ EOF
 test -s "$work/build/generated/tui/ir/plot.zir"
 test -s "$work/build/generated/tui/ir/table_view.zir"
 test -s "$work/build/generated/tui/ir/tree_view.zir"
+test -s "$work/build/generated/tui/ir/raylib_game.zir"
 test -x "$work/build/plot_probe-tui"

@@ -53,6 +53,8 @@ platform and OpenGL ES 2 renderer. Initialize Kryon's dependency with
 `git -C ../kryon submodule update --init vendor/raylib` and install the SDL2,
 libdrm, GBM, EGL, and GLESv2 development packages. The first raylib build
 compiles a static library in Kryon's `build/` directory; later builds reuse it.
+Games importing `raylib_game` use the optional source in `src/game/`. This
+module is separate from the UI host and builds for the raylib C ABI.
 `make -C ../kryon raylib-project-test` checks a captured frame on a private
 Xvfb display.
 Project output is `build/<app-name>-<profile>`. The build saves checked Ziran

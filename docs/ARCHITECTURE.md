@@ -14,6 +14,7 @@ its portable loader recognizes widget names.
 | `src/ui/modules.txt` | Maintained core UI module inventory |
 | `src/plot/*.zi` | Optional Plot package, which imports the core UI modules |
 | `src/data_views/*.zi` | Optional TableView and TreeView package |
+| `src/game/raylib_game.zi` | Optional raylib game API, separate from UI hosts |
 | `src/backend/*.zi` | Portable host primitives and ABI declarations |
 | `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
 | [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
@@ -25,6 +26,9 @@ Core UI modules never import it; apps add `src/plot` to their module paths when
 they use Plot.
 The TableView and TreeView package follows the same dependency direction and
 has its own `make data-views` build.
+The raylib game API is built by `make raylib-game` and uses C and C++ foreign
+ABI declarations. It is absent from `libkryon.a` and does not participate in
+widget decisions.
 
 Host adapters provide observations and effects through declared interfaces.
 Widget state, policy, layout, and draw decisions belong in `.zi`, including for

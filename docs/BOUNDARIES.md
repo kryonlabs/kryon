@@ -13,6 +13,7 @@ portable format.
 | Kryon `src/ui/*.zi` | Widget APIs and reusable UI behavior |
 | Kryon `src/plot/*.zi` | Optional Plot widget and range policy |
 | Kryon `src/data_views/*.zi` | Optional TableView and TreeView widgets |
+| Kryon `src/game/raylib_game.zi` | Optional raylib game API |
 | Kryon Ziran platform modules | Operating system input, windows, font and image loading, rasterization, and storage effects through general Ziran capabilities |
 | Application repositories | Screens, product state, copy, assets, and app-specific workflows |
 
