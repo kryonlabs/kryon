@@ -68,6 +68,18 @@ PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
 }
 
 #program_export
+PointInCircleBounds :: (x: float32, y: float32,
+    bounds: Rectangle) -> bool {
+    if !PointInBounds(x, y, bounds) { return false }
+    radius: float32 = bounds.width * 0.5
+    center_x: float32 = bounds.x + radius
+    center_y: float32 = bounds.y + bounds.height * 0.5
+    distance_x: float32 = x - center_x
+    distance_y: float32 = y - center_y
+    return distance_x * distance_x + distance_y * distance_y <= radius * radius
+}
+
+#program_export
 TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
     if TreeCount(session) == 0 ||
         !PointInBounds(x, y, TreeInputAt(session, 0).bounds) { return -1 }
@@ -87,6 +99,7 @@ TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
                 entry.kind == WidgetKindTextField ||
                 entry.kind == WidgetKindTextArea) &&
             PointInBounds(x, y, entry.bounds) &&
+            (!entry.circle_hit || PointInCircleBounds(x, y, entry.bounds)) &&
             (!entry.clipped || PointInBounds(x, y, entry.clip)) {
             if TreePointerActivatable(entry.kind, entry.focus_id,
                 entry.disabled, entry.loading) { return index }

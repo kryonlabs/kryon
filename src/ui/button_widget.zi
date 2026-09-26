@@ -242,6 +242,7 @@ SubmitButton :: (session: Session, props: ButtonProps,
         node = TreeSubmit(session, key, parent_index, WidgetKindButton, bounds)
         if node < 0 { return 0 }
         TreeSetInteractive(session, node, flags.disabled, flags.loading, props.id)
+        TreeSetCircleHit(session, node, props.circle)
         TreeSetSelected(session, node, flags.selected)
         TreeSetLabel(session, node, props.label)
     }

@@ -228,6 +228,37 @@ Answer :: () -> s32 {
         TreeNodeAt(TestSession(), grandchild).clip.width != 10.0 {
         return -36
     }
+
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    circle: s32 = TreeSubmit(TestSession(), cast(u64)30, 0,
+        WidgetKindButton, Rectangle.{10.0, 10.0, 30.0, 30.0})
+    TreeSetInteractive(TestSession(), circle, false, false, 30)
+    TreeSetCircleHit(TestSession(), circle, true)
+    if !TreeFinish(TestSession()) ||
+        TreeHitAt(TestSession(), 11.0, 11.0) != -1 ||
+        TreeHitAt(TestSession(), 25.0, 25.0) != circle ||
+        TreeHitAt(TestSession(), 38.0, 25.0) != circle {
+        return -37
+    }
+    TreePointerUpdate(TestSession(), PointerFrame.{11.0, 11.0,
+        true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{25.0, 25.0,
+        false, false, true})
+    if TreeTakeActivationAt(TestSession(), circle) { return -38 }
+    TreePointerUpdate(TestSession(), PointerFrame.{25.0, 25.0,
+        true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{25.0, 25.0,
+        false, false, true})
+    if !TreeTakeActivationAt(TestSession(), circle) { return -39 }
+
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    circle = TreeSubmit(TestSession(), cast(u64)30, 0,
+        WidgetKindButton, Rectangle.{10.0, 10.0, 30.0, 30.0})
+    TreeSetInteractive(TestSession(), circle, false, false, 30)
+    if !TreeFinish(TestSession()) ||
+        TreeHitAt(TestSession(), 11.0, 11.0) != circle {
+        return -40
+    }
     return 42
 }
 ZI
