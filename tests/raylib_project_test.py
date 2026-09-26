@@ -123,9 +123,13 @@ def main():
             '#import "image_props"\n#import "image_widget"\n'
             '#import "raylib_game"\n'
             '#import "raylib_runtime"\n#import "session"\n'
+            '#import "tree_input"\n'
             'sample_texture: Texture2D;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+            '    if KeyboardTake(session) == 65 {\n'
+            '        return 1\n'
+            '    }\n'
             '    if sample_texture.id == cast(u32)0 {\n'
             '        sample_texture = LoadTexture("quadrants.png")\n'
             '    }\n'
@@ -167,7 +171,36 @@ def main():
         assert rgb(png, 570, 200) == (230, 30, 40), "raylib image center failed"
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"
         assert rgb(png, 480, 85) == (230, 30, 40), "rounded image arc missing"
-    print("raylib Ziran project: asset image, cropped texture, and rounded clip passed")
+        if shutil.which("xdotool"):
+            (project / "key_check.py").write_text(
+                "import os\nimport subprocess\nimport time\n"
+                "env = os.environ.copy()\nenv.pop('KRYON_CAPTURE_PATH', None)\n"
+                "app = subprocess.Popen(['./build/raylib_probe-raylib'], "
+                "env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n"
+                "try:\n"
+                "    for _ in range(100):\n"
+                "        found = subprocess.run(['xdotool', 'search', '--name', "
+                "'Kryon Ziran'], capture_output=True, text=True)\n"
+                "        if found.returncode == 0 and found.stdout.strip():\n"
+                "            window = found.stdout.splitlines()[0]\n"
+                "            break\n"
+                "        if app.poll() is not None:\n"
+                "            raise AssertionError('raylib window exited before key input')\n"
+                "        time.sleep(0.1)\n"
+                "    else:\n"
+                "        raise AssertionError('raylib window did not appear')\n"
+                "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
+                "    subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
+                "    stdout, stderr = app.communicate(timeout=10)\n"
+                "    assert app.returncode == 1, app.returncode\n"
+                "    assert 'raylib frame rendering failed' in stderr, stderr\n"
+                "finally:\n"
+                "    if app.poll() is None:\n"
+                "        app.terminate()\n"
+                "        app.communicate(timeout=5)\n"
+            )
+            run(["xvfb-run", "-a", "python3", "key_check.py"], project, env)
+    print("raylib Ziran project: images, rounded clip, and keyboard input passed")
 
 
 if __name__ == "__main__":
