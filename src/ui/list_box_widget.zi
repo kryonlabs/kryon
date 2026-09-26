@@ -191,6 +191,18 @@ ListBoxViewStart :: (session: Session, view: ListBoxView, item_count: s32,
     if scroll > cast(s64)result.max_scroll {
         scroll = cast(s64)result.max_scroll
     }
+    if !view.disabled && result.max_scroll > 0 && TreeIsBuilding(session) {
+        wheel: float32 = PointerWheelTake(session, result.bounds)
+        if wheel != 0.0 {
+            scroll = cast(s64)ScrollWheelOffsetFor(cast(s32)scroll,
+                wheel, result.max_scroll,
+                ScrollRowWheelStepFor(row_height, scale))
+        }
+    }
+    if scroll < 0 { scroll = 0 }
+    if scroll > cast(s64)result.max_scroll {
+        scroll = cast(s64)result.max_scroll
+    }
     result.scroll = cast(s32)scroll
     result.key = view.key
     if result.key == cast(u64)0 && view.id > 0 {

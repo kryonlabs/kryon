@@ -40,7 +40,16 @@ PointerDrag :: struct {
 }
 
 active_pointer: [9]PointerState;
+active_sample: [9]PointerFrame;
 active_key: [9]s32;
+
+PointerWheelState :: struct {
+    x: float32
+    y: float32
+    delta: float32
+}
+
+active_wheel: [9]PointerWheelState;
 
 // Hosts submit one keyboard event before the next frame. The application
 // consumes it while composing widget props for that frame.
@@ -61,10 +70,40 @@ KeyboardTake :: (session: Session) -> s32 {
 }
 
 #program_export
+PointerSample :: (session: Session) -> PointerFrame {
+    empty: PointerFrame
+    if !SessionValid(session) { return empty }
+    return active_sample[SessionIndex(session)]
+}
+
+#program_export
 PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
     return bounds.width > 0.0 && bounds.height > 0.0 &&
         x >= bounds.x && y >= bounds.y &&
         x < bounds.x + bounds.width && y < bounds.y + bounds.height
+}
+
+// Hosts submit one wheel sample per frame. A viewport under the pointer
+// consumes it once, so sibling lists cannot both move from one gesture.
+#program_export
+PointerWheelSend :: (session: Session, x: float32, y: float32,
+    delta: float32) {
+    if !SessionValid(session) { return }
+    index: s32 = SessionIndex(session)
+    active_wheel[index].x = x
+    active_wheel[index].y = y
+    active_wheel[index].delta = delta
+}
+
+#program_export
+PointerWheelTake :: (session: Session, bounds: Rectangle) -> float32 {
+    if !SessionValid(session) { return 0.0 }
+    index: s32 = SessionIndex(session)
+    if !PointInBounds(active_wheel[index].x,
+        active_wheel[index].y, bounds) { return 0.0 }
+    delta: float32 = active_wheel[index].delta
+    active_wheel[index].delta = 0.0
+    return delta
 }
 
 #program_export
@@ -130,6 +169,7 @@ TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
 #program_export
 TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     if TreeIsBuilding(session) { return -1 }
+    active_sample[SessionIndex(session)] = frame
     hit: s32 = TreeHitAt(session, frame.x, frame.y)
     active_pointer[SessionIndex(session)].hovered_generation = 0
     if hit >= 0 {

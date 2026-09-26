@@ -259,6 +259,13 @@ Answer :: () -> s32 {
         TreeHitAt(TestSession(), 11.0, 11.0) != circle {
         return -40
     }
+    PointerWheelSend(TestSession(), 25.0, 25.0, -2.0)
+    if PointerWheelTake(TestSession(), Rectangle.{60.0, 60.0,
+        20.0, 20.0}) != 0.0 ||
+        PointerWheelTake(TestSession(), Rectangle.{10.0, 10.0,
+        30.0, 30.0}) != -2.0 ||
+        PointerWheelTake(TestSession(), Rectangle.{10.0, 10.0,
+        30.0, 30.0}) != 0.0 { return -41 }
     return 42
 }
 ZI

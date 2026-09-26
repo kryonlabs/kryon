@@ -28,7 +28,9 @@ RaylibError :: (message: string) -> s32 {
 DrawRaylibFrame :: (session: Session, viewport: Rectangle,
     capture: bool) -> bool {
     BeginRaylibFrame()
-    TreePointerUpdate(session, PollPointer())
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, RaylibWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk {
         EndRaylibFrame()

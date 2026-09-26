@@ -28,7 +28,9 @@ DesktopError :: (message: string) -> s32 {
 
 DrawFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginDesktopFrame()
-    TreePointerUpdate(session, PollPointer())
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, DesktopWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {

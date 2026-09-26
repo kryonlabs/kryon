@@ -46,6 +46,7 @@ window: *void;
 renderer: *void;
 texture: *void;
 pointer: PointerFrame;
+desktop_wheel: float32;
 
 #program_export
 OpenDesktop :: () -> bool {
@@ -87,8 +88,17 @@ PollDesktop :: () -> bool {
     event: Event
     pressed: bool = false
     released: bool = false
+    desktop_wheel = 0.0
     while PollEvent(*event) != 0 {
         if event.kind == cast(u32)0x100 { return false }
+        if event.kind == cast(u32)0x403 {
+            // SDL_MouseWheelEvent.y occupies byte offset 20 in the event
+            // union, which is Event.x in the button-event layout above.
+            step: float32 = cast(float32)event.x
+            // SDL_MOUSEWHEEL_FLIPPED occupies byte offset 24.
+            if event.y == 1 { step = -step }
+            desktop_wheel += step
+        }
         if event.button == cast(u8)1 {
             if event.kind == cast(u32)0x401 { pressed = true }
             if event.kind == cast(u32)0x402 { released = true }
@@ -102,6 +112,9 @@ PollDesktop :: () -> bool {
         pressed, released)
     return true
 }
+
+#program_export
+DesktopWheelMove :: () -> float32 { return desktop_wheel }
 
 #program_export
 CheckPointerEvents :: () -> bool {
