@@ -4,6 +4,8 @@ accessibility_policy.zi
 accessibility_props.zi
 app_shell_layout.zi
 bevel.zi
+box_props.zi
+box_widget.zi
 button.zi
 button_props.zi
 button_widget.zi

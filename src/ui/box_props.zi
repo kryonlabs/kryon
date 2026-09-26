@@ -1,0 +1,10 @@
+#import "drawing_props"
+#import "geometry"
+
+BoxProps :: struct {
+    key: u64
+    bounds: Rectangle
+    fill: Color
+    border: Color
+    radius: float32
+}
