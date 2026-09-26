@@ -11,6 +11,19 @@ terminal_buffer: [1920]Cell;
 terminal_columns: s32;
 terminal_rows: s32;
 
+// Terminal widgets have no raster asset dimensions.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
 #program_export
 TerminalBegin :: (columns: s32, rows: s32) {
     if columns < 1 { columns = 1 }
