@@ -1,7 +1,9 @@
 #import "kss_parser"
 #import "style_sheet"
+#import "drawing_props"
 
 using KssStatus;
+using KssTokenKind;
 
 // The parser and its rule table are owned values. An application may pause at
 // NeedImport, provide the requested source, then keep parsing the same table.
@@ -62,4 +64,35 @@ FailStyleRulesImport :: (result: StyleRulesParse) -> StyleRulesParse {
         result.parser = KssFailImport(result.parser)
     }
     return result
+}
+
+// Commit rules and their resolved color tokens together. The parser has
+// already applied imports, theme overlays, and caller overrides to its table.
+#program_export
+InstallParsedStyleRules :: (result: StyleRulesParse) -> bool {
+    if result.overflow || result.parser.status != cast(s32)KssStatusDone {
+        return false
+    }
+    index: s32 = 0
+    while index < result.parser.token_count {
+        token: KssToken = result.parser.tokens[index]
+        if token.kind == cast(s32)KssTokenColor &&
+            (token.name.length <= 0 || token.name.length > 64) {
+            return false
+        }
+        index += 1
+    }
+    ClearStyleTokenColors()
+    index = 0
+    while index < result.parser.token_count {
+        token: KssToken = result.parser.tokens[index]
+        if token.kind == cast(s32)KssTokenColor &&
+            !SetStyleTokenColorBytes(
+                token.name.bytes[0:token.name.length], token.color) {
+            return false
+        }
+        index += 1
+    }
+    InstallStyleRules(result.rules)
+    return true
 }

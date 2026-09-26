@@ -138,13 +138,80 @@ DarkenColor :: (color: Color, amount: s32) -> Color {
     return AdjustedColorLightness(color, -amount)
 }
 
-host_api :: #system_library "host_api";
+#scope_file
+StyleColorToken :: struct {
+    name: [64]u8
+    length: s32
+    color: u32
+}
 
-StyleTokenColorHost :: (name: string) -> Color #foreign host_api;
+style_color_tokens: [128]StyleColorToken;
+style_color_token_count: s32;
+
+StyleTokenNameMatches :: (stored: StyleColorToken, name: []u8) -> bool {
+    if stored.length != cast(s32)name.count { return false }
+    index: s32 = 0
+    while index < stored.length {
+        if stored.name[index] != name[index] { return false }
+        index += 1
+    }
+    return true
+}
+
+#scope_export
+#program_export
+ClearStyleTokenColors :: () {
+    style_color_token_count = 0
+}
+
+#program_export
+SetStyleTokenColorBytes :: (name: []u8, color: u32) -> bool {
+    if name.count == 0 || name.count > 64 { return false }
+    index: s32 = 0
+    while index < style_color_token_count {
+        if StyleTokenNameMatches(style_color_tokens[index], name) {
+            style_color_tokens[index].color = color
+            return true
+        }
+        index += 1
+    }
+    if style_color_token_count >= 128 { return false }
+    index = style_color_token_count
+    style_color_tokens[index].length = cast(s32)name.count
+    style_color_tokens[index].color = color
+    at: s32 = 0
+    while at < cast(s32)name.count {
+        style_color_tokens[index].name[at] = name[at]
+        at += 1
+    }
+    style_color_token_count += 1
+    return true
+}
+
+#program_export
+StyleTokenColorOr :: (name: string, fallback: Color) -> Color {
+    index: s32 = style_color_token_count - 1
+    while index >= 0 {
+        if style_color_tokens[index].length == cast(s32)name.count {
+            same: bool = true
+            at: s32 = 0
+            while at < cast(s32)name.count {
+                if style_color_tokens[index].name[at] != name[at] {
+                    same = false
+                    break
+                }
+                at += 1
+            }
+            if same { return ColorFromPacked(style_color_tokens[index].color) }
+        }
+        index -= 1
+    }
+    return fallback
+}
 
 #program_export
 StyleTokenColor :: (name: string) -> Color {
-    return StyleTokenColorHost(name)
+    return StyleTokenColorOr(name, Color.{0, 0, 0, 255})
 }
 
 // Clip calculations are values; paint commands carry explicit clip rectangles.

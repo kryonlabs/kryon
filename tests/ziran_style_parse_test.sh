@@ -8,6 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
+#import "drawing_props"
 #import "kss_parser"
 #import "progress"
 #import "progress_style"
@@ -30,7 +31,7 @@ Answer :: () -> s32 {
     parsed = ParseStyleRules(parsed)
     if parsed.parser.status != cast(s32)KssStatusDone ||
         parsed.overflow || parsed.rules.count != 2 { return 0 }
-    InstallStyleRules(parsed.rules)
+    if !InstallParsedStyleRules(parsed) { return 0 }
     defaults: ProgressFaces
     faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(), 0, defaults)
     if faces.track.value.background != cast(u32)0x112233ff ||
@@ -38,6 +39,29 @@ Answer :: () -> s32 {
         faces.track.value.border_width != 2.0 ||
         faces.track.value.radius != 5.0 ||
         faces.fill.value.background != cast(u32)0x556677ff {
+        return 0
+    }
+    parsed = BeginStyleRules(
+        "@pack colors; tokens { color { canvas: #112233; } }",
+        "colors.kss", KssDefaultEnvironment())
+    parsed.parser = KssAddColorOverride(parsed.parser, "canvas",
+        cast(u32)0xaabbccdd)
+    parsed = ParseStyleRules(parsed)
+    if !InstallParsedStyleRules(parsed) { return 0 }
+    color: Color = StyleTokenColor("canvas")
+    if color.r != 0xaa || color.g != 0xbb || color.b != 0xcc ||
+        color.a != 0xdd { return 0 }
+    color = StyleTokenColorOr("missing", Color.{1, 2, 3, 4})
+    if color.r != 1 || color.g != 2 || color.b != 3 || color.a != 4 {
+        return 0
+    }
+    parsed = BeginStyleRules(
+        "@pack replacement; tokens { color { text: #445566; } }",
+        "replacement.kss", KssDefaultEnvironment())
+    parsed = ParseStyleRules(parsed)
+    if !InstallParsedStyleRules(parsed) { return 0 }
+    color = StyleTokenColor("canvas")
+    if color.r != 0 || color.g != 0 || color.b != 0 || color.a != 255 {
         return 0
     }
     parsed = BeginStyleRules("Progress { background: #112233; }",
