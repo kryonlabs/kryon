@@ -34,7 +34,11 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
+BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
+ifneq ($(BROWSER_BACKEND),)
+HOST_ID := $(HOST_MODULE)
+endif
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
@@ -46,14 +50,26 @@ KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi)
 SYNTAX_SOURCES := $(wildcard $(KRYON_DIR)/src/syntax/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
+KRYON_MODULE_PATHS := --module-path $(KRYON_DIR)/src/ui \
+	--module-path $(KRYON_DIR)/src/plot \
+	--module-path $(KRYON_DIR)/src/data_views \
+	--module-path $(KRYON_DIR)/src/kss \
+	--module-path $(KRYON_DIR)/src/syntax
+ifneq ($(BROWSER_BACKEND),)
+HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
+IR_COMMAND := $(ZIRAN_DIR)/build/bin/zi2zir --define PLATFORM_WEB \
+	--root $(KRYON_DIR)/src/backend --module-path src \
+	$(KRYON_MODULE_PATHS) --module-path $(ZIRAN_DIR)/std \
+	-o $(IR_DIR) $(HOST_ROOT_SOURCES)
+C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
+	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
+else
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
+	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
+endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop libdraw),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
-endif
-ifeq ($(PROJECT_BACKEND),canvas)
-HOST_ROOT_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/canvas_*.zi)
-else ifeq ($(PROJECT_BACKEND),dom)
-HOST_ROOT_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/canvas_*.zi)
-HOST_ROOT_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/dom_*.zi)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := $(foreach name,window draw input texture text os audio,--js-library $(KRYON_DIR)/web/canvas_$(name).js)
@@ -63,6 +79,7 @@ endif
 EMCC ?= /home/wao/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
+PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)
@@ -116,21 +133,17 @@ build: toolchain
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
 
-$(IR_STAMP): $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(IR_STAMP): $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --entry $(HOST_ID):main \
-		$(if $(filter canvas dom,$(PROJECT_BACKEND)),--define PLATFORM_WEB) \
-		-o $(IR_DIR) $(HOST_ROOT_SOURCES)
+	$(IR_COMMAND)
 	test -f $(IR_DIR)/$(HOST_ID).zir
 	touch $(IR_STAMP)
 
 $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(C_DIR)
 	rm -f $(C_DIR)/*.c $(C_DIR)/*.h $(C_STAMP) $(GEN_DIR)/*.c $(GEN_DIR)/*.h $(GEN_DIR)/.complete
-	$(ZIRAN) build --target=c --entry $(HOST_ID):main \
-		$(if $(filter canvas dom,$(PROJECT_BACKEND)),--define PLATFORM_WEB) \
-		--root $(IR_DIR) -o $(C_DIR) $(if $(filter canvas dom,$(PROJECT_BACKEND)),$(wildcard $(IR_DIR)/*.zir),$(IR_DIR)/$(HOST_ID).zir)
+	$(C_COMMAND)
 	test -f $(C_DIR)/$(HOST_ID).c
 	touch $(C_STAMP)
 

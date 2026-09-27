@@ -3,12 +3,15 @@
 using Core :: #import "Kryon";
 using SemanticModule :: #import "semantic";
 using PageModule :: #import "page";
+using PagePropsModule :: #import "page_props";
 using ControlPropsModule :: #import "control_props";
 using StyleModule :: #import "style";
 using StyleSheetModule :: #import "style_sheet";
 using TreeModule :: #import "tree";
+SemanticHeading :: () -> SemanticKind { return SemanticKind.SemanticHeading }
 using TreeInputModule :: #import "tree_input";
 using BoxPropsModule :: #import "box_props";
+
 using BoxWidgetModule :: #import "box_widget";
 using CheckboxPropsModule :: #import "checkbox_props";
 using CheckboxWidgetModule :: #import "checkbox_widget";

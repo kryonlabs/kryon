@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "paint_texture"
 #import "raster"
 #import "raster_shape"
 #import "raster_text"
@@ -60,12 +61,6 @@ PaintCommands :: struct {
 }
 
 pending_paint: [9]PaintCommands;
-emitting_texture: Texture2D;
-
-// The raylib host needs the complete handle for UV scaling when a widget
-// paints a cropped runtime texture. Paint emission is serial per frame.
-#program_export
-CurrentPaintTexture :: () -> Texture2D { return emitting_texture }
 
 // Raw rasterization; the queued source, clip, radius, and tint are chosen in
 // checked widget code before this device effect is called.

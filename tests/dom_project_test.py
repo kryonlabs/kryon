@@ -37,8 +37,8 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
     )
     (project / "src/app.zi").write_text(
         'using UI :: #import "Widgets";\n'
-        'using PageModule :: #import "Page";\n'
-        'using SemanticModule :: #import "Semantic";\n'
+        'host_api :: #system_library "host_api";\n'
+        'RequestWindowClose :: () #foreign host_api;\n'
         '#program_export\n'
         'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
         '    page: PageProps\n'
@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
         '    heading: TextProps\n'
         '    heading.bounds = Rectangle.{10.0, 10.0, 240.0, 32.0}\n'
         '    heading.text = "Semantic DOM"\n'
-        '    heading.semantic_kind = SemanticHeading\n'
+        '    heading.semantic_kind = SemanticHeading()\n'
         '    heading.heading_level = 1\n'
         '    Text(session, heading)\n'
         '    button: ButtonProps\n'
@@ -61,15 +61,16 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
         '    link.text = "Docs"\n'
         '    link.link = "https://example.test/docs"\n'
         '    Link(session, link)\n'
+        '    RequestWindowClose()\n'
         '    if opened.opened { End(session) }\n'
-        '    return 1\n'
+        '    return 0\n'
         '}\n'
     )
     run([ZIRAN, "lock"], project)
     run([ZIRAN, "tool", "Kryon", "build", "--profile", "web"], project)
     output = project / "build/dom_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
-    assert next((project / "build/generated/web/ir").glob("*_dom_run.zir"), None)
-    assert next((project / "build/generated/web/c").glob("*_dom_run.c"), None)
+    assert next((project / "build/generated/web/ir").glob("dom_run.zir"), None)
+    assert next((project / "build/generated/web/c").glob("dom_run.c"), None)
     run(["node", ROOT / "tests/dom_browser.mjs", output.as_uri(), project / "browser-profile"], project)
 print("Semantic DOM Ziran project: manifest, saved IR, generated C, Emscripten page, and browser semantics passed")

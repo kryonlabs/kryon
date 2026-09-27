@@ -22,7 +22,7 @@ addToLibrary({
         clipboard: "", clipboardGestureUntil: 0,
         gamepadPrev: [], gamepadNow: [], gamepadPressed: [],
         gamepadReleased: [], lastGamepadButton: -1,
-        frames: 0, lastOp: 'boot'
+        frames: 0, closeRequested: false, lastOp: 'boot'
     };
     K.listeners = [];
     K.listen = function(target, name, callback, options) {
@@ -30,9 +30,13 @@ addToLibrary({
         target.addEventListener(name, callback, options);
         K.listeners.push([target, name, callback, options]);
     };
+    K.requestClose = function() {
+        K.closeRequested = true;
+    };
     K.close = function() {
         if (K.closed) return;
         K.closed = true;
+        K.closeRequested = true;
         K.listeners.forEach(function(hook) { hook[0].removeEventListener(hook[1], hook[2], hook[3]); });
         K.listeners = [];
         if (K.ro) K.ro.disconnect();
@@ -408,7 +412,7 @@ addToLibrary({
     case 3: return K.renderH | 0;
     case 4: { var r = K.resized ? 1 : 0; K.resized = 0; return r; }
     case 5: return K.focused ? 1 : 0;
-    case 6: return K.closed ? 1 : 0;
+    case 6: return K.closed || K.closeRequested ? 1 : 0;
     }
     return 0;
   },
@@ -591,6 +595,11 @@ addToLibrary({
   js_canvas_now: function() { return performance.now(); },
   js_canvas_close__sig: 'v',
   js_canvas_close: function() { var K = globalThis.__kryCanvas; if (K && K.close) K.close(); },
+  js_canvas_request_close__sig: 'v',
+  js_canvas_request_close: function() {
+    var K = globalThis.__kryCanvas;
+    if (K && K.requestClose) K.requestClose();
+  },
   js_canvas_frame__sig: 'v',
   js_canvas_frame: function() { var K = globalThis.__kryCanvas; if (K) K.frames++; },
   js_canvas_sleep__async: true,

@@ -1,6 +1,37 @@
 // Raw browser effects; document policy and tree traversal live in dom_tree.zi.
 addToLibrary({
-  js_dom_begin__deps: [],
+  $domTagFor: function(semanticKind, widgetKind, headingLevel, detail, label) {
+    var text = label || "";
+    var uri = detail || "";
+    var level = Math.min(6, Math.max(1, headingLevel || 1));
+    if (semanticKind === 1) return {tag: "main", text: true};
+    if (semanticKind === 2) return {tag: "section", text: true};
+    if (semanticKind === 3) return {tag: "h" + level, text: true, level: level};
+    if (semanticKind === 4) return {tag: "p", text: true};
+    if (semanticKind === 5) {
+      return uri ? {tag: "a", text: true, href: uri} :
+        {tag: "a", text: true, role: "link"};
+    }
+    if (semanticKind === 6) {
+      return uri ? {tag: "img", alt: text, src: uri} :
+        {tag: "div", role: "img", alt: undefined};
+    }
+    if (semanticKind === 7 || widgetKind === 8) return {tag: "button", text: true};
+    if (semanticKind === 9) return {tag: "li", text: true, role: "treeitem"};
+    if (semanticKind === 10) return {tag: "input", role: "combobox"};
+    if (semanticKind === 11) return {tag: "option", text: true};
+    if (semanticKind === 12) return {tag: "input"};
+    if (semanticKind === 13) return {tag: "div", role: "tablist"};
+    if (semanticKind === 14) return {tag: "button", text: true, role: "tab"};
+    if (semanticKind === 15) return {tag: "textarea"};
+    if (widgetKind === 2 || widgetKind === 15) return {tag: "p", text: true};
+    if (widgetKind === 24) return {tag: "img", alt: text};
+    if (widgetKind === 51) return {tag: "main", text: true};
+    if (widgetKind === 52) return {tag: "section", text: true};
+    if (widgetKind === 53) return {tag: "a", text: true, role: "link"};
+    return {tag: "div"};
+  },
+  js_dom_begin__deps: ["$domTagFor"],
   js_dom_begin__sig: "vidd",
   js_dom_begin: function(count, width, height) {
     var g = globalThis;
@@ -8,7 +39,7 @@ addToLibrary({
     if (!canvasState || typeof document === "undefined") return;
     var dom = g.__kryDom;
     if (!dom || !dom.root) {
-      dom = g.__kryDom = {nodes: new Map(), seen: null, frame: 0};
+      dom = g.__kryDom = {nodes: new Map(), seen: null, frame: 0, tagFor: domTagFor};
       var box = canvasState.layoutBox ? canvasState.layoutBox() : null;
       var root = document.createElement("div");
       root.id = "kryon-dom-root";
@@ -121,10 +152,10 @@ addToLibrary({
         dom.nodes.delete(id);
       }
     });
-    if (dom.root.childElementCount > 0 && dom.root.firstChild &&
-        dom.root.firstChild.getAttribute("data-kryon-semantic") === "1") {
-      document.title = dom.root.firstChild.textContent ||
-        dom.root.firstChild.getAttribute("aria-label") || document.title;
+    var page = dom.root.querySelector('[data-kryon-semantic="1"]');
+    if (page) {
+      document.title = page.getAttribute("aria-label") ||
+        page.textContent || document.title;
     }
   },
 
@@ -155,38 +186,3 @@ addToLibrary({
     globalThis.__kryDom = null;
   }
 });
-
-globalThis.__kryDom = globalThis.__kryDom || {
-  nodes: new Map(), byIndex: [], seen: null, frame: 0,
-  tagFor: function(semanticKind, widgetKind, headingLevel, detail, label) {
-    var text = label || "";
-    var uri = detail || "";
-    var level = Math.min(6, Math.max(1, headingLevel || 1));
-    if (semanticKind === 1) return {tag: "main", text: true};
-    if (semanticKind === 2) return {tag: "section", text: true};
-    if (semanticKind === 3) return {tag: "h" + level, text: true, level: level};
-    if (semanticKind === 4) return {tag: "p", text: true};
-    if (semanticKind === 5) {
-      return uri ? {tag: "a", text: true, href: uri} :
-        {tag: "a", text: true, role: "link"};
-    }
-    if (semanticKind === 6) {
-      return uri ? {tag: "img", alt: text, src: uri} :
-        {tag: "div", role: "img", alt: undefined};
-    }
-    if (semanticKind === 7 || widgetKind === 8) return {tag: "button", text: true};
-    if (semanticKind === 9) return {tag: "li", text: true, role: "treeitem"};
-    if (semanticKind === 10) return {tag: "input", role: "combobox"};
-    if (semanticKind === 11) return {tag: "option", text: true};
-    if (semanticKind === 12) return {tag: "input"};
-    if (semanticKind === 13) return {tag: "div", role: "tablist"};
-    if (semanticKind === 14) return {tag: "button", text: true, role: "tab"};
-    if (semanticKind === 15) return {tag: "textarea"};
-    if (widgetKind === 2 || widgetKind === 15) return {tag: "p", text: true};
-    if (widgetKind === 24) return {tag: "img", alt: text};
-    if (widgetKind === 51) return {tag: "main", text: true};
-    if (widgetKind === 52) return {tag: "section", text: true};
-    if (widgetKind === 53) return {tag: "a", text: true, role: "link"};
-    return {tag: "div"};
-  }
-};

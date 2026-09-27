@@ -1,0 +1,8 @@
+#import "drawing_props"
+
+// Paint emission is serial per frame. Host rasterizers read the runtime
+// texture handle here without importing the widget paint queue.
+emitting_texture: Texture2D;
+
+#program_export
+CurrentPaintTexture :: () -> Texture2D { return emitting_texture }
