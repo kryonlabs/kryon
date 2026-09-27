@@ -3,6 +3,7 @@
 using Core :: #import "Kryon";
 using ControlPropsModule :: #import "control_props";
 using StyleModule :: #import "style";
+using StyleSheetModule :: #import "style_sheet";
 using TreeModule :: #import "tree";
 using TreeInputModule :: #import "tree_input";
 using BoxPropsModule :: #import "box_props";

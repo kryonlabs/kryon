@@ -8,7 +8,6 @@ RawRead :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
 RawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 RawClose :: (fd: s32) -> s32 #foreign libc "close";
 RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
-RawGetCwd :: (output: *u8, size: u64) -> *u8 #foreign libc "getcwd";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
 CopyDescriptor :: (source: *TextDescriptor, destination: *string,
     count: u64) -> void #foreign libc "bcopy";
@@ -179,19 +178,6 @@ Argument :: (command_line: string, wanted: s32, output: []u8) -> string {
     return ""
 }
 
-ProjectDirectoryName :: (output: []u8) -> string {
-    if output.count == 0 ||
-        RawGetCwd(*output[0], cast(u64)output.count) == null { return "" }
-    end: s32 = 0
-    start: s32 = 0
-    while end < cast(s32)output.count && output[end] != cast(u8)0 {
-        if output[end] == cast(u8)47 { start = end + 1 }
-        end += 1
-    }
-    if end == cast(s32)output.count || start == end { return "" }
-    return TextFromBuffer(output[start:end], end - start)
-}
-
 Execute :: (arguments: []string) -> s32 {
     if arguments.count == 0 || arguments.count > 16 { return 127 }
     storage: [17]ArgumentBytes
@@ -281,22 +267,17 @@ main :: () -> s32 {
 
     manifest_bytes: [32768]u8
     file: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
-    if !file.ok { file = ReadFile("kryon.toml", manifest_bytes[:]) }
     if !file.ok { return Error("cannot read ziran.toml in this directory") }
     config: ProjectConfig = ParseProject(file.text)
     if !config.ok { return Error(config.error) }
     installed_kryon_bytes: [4096]u8
     installed_ziran_bytes: [4096]u8
+    package_id_bytes: [128]u8
     installed_kryon: string = Environment("ZIRAN_PACKAGE_ROOT", installed_kryon_bytes[:])
     installed_ziran: string = Environment("ZIRAN_TOOLCHAIN_ROOT", installed_ziran_bytes[:])
-    if installed_kryon != "" { config.kryon_path = installed_kryon }
-    if installed_ziran != "" { config.ziran_path = installed_ziran }
-    directory_bytes: [4096]u8
-    if config.name == "" {
-        config.name = ProjectDirectoryName(directory_bytes[:])
-        if !ProjectNameValid(config.name) {
-            return Error("project directory needs a simple name or project.name")
-        }
+    package_id: string = Environment("ZIRAN_PACKAGE_ID", package_id_bytes[:])
+    if installed_kryon == "" || installed_ziran == "" || package_id == "" {
+        return Error("run this command through ziran tool Kryon")
     }
     if profile_name == "" {
         if verb == "run" && config.profile_count > 1 {
@@ -315,11 +296,11 @@ main :: () -> s32 {
         return Error("this backend/codegen pair is not available yet")
     }
     makefile_bytes: [4096]u8
-    makefile: string = Join(config.kryon_path,
+    makefile: string = Join(installed_kryon,
         "/mk/ziran-project.mk", makefile_bytes[:])
     if makefile == "" || !Exists(makefile) { return Error("Kryon build rules not found") }
     ziran_tool_bytes: [4096]u8
-    ziran_tool: string = Join(config.ziran_path,
+    ziran_tool: string = Join(installed_ziran,
         "/Makefile", ziran_tool_bytes[:])
     if ziran_tool == "" || !Exists(ziran_tool) {
         return Error("Ziran checkout not found")
@@ -346,8 +327,8 @@ main :: () -> s32 {
     args[8] = Join("PROJECT_BACKEND=", profile.backend, backend_bytes[:])
     args[9] = Join("PROJECT_CODEGEN=", profile.codegen, codegen_bytes[:])
     args[10] = Join("PROJECT_PROFILE=", profile.name, selected_bytes[:])
-    args[11] = Join("KRYON_DIR=", config.kryon_path, kryon_bytes[:])
-    args[12] = Join("ZIRAN_DIR=", config.ziran_path, ziran_bytes[:])
+    args[11] = Join("KRYON_DIR=", installed_kryon, kryon_bytes[:])
+    args[12] = Join("ZIRAN_DIR=", installed_ziran, ziran_bytes[:])
     args[13] = Join("PROJECT_LIBRARY=", profile.library, library_bytes[:])
     at: s32 = 6
     while at < 14 {

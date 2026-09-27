@@ -113,24 +113,40 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-raylib-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        (project / "kryon.toml").write_text(
-            f'[project]\nname = "raylib_probe"\n'
-            f'[paths]\nkryon = "{ROOT}"\nziran = "{ROOT.parent / "ziran"}"\n'
-            '[profiles.raylib]\nbackend = "raylib"\n'
+        (project / "ziran.toml").write_text(
+            '[package]\nname = "raylib_probe"\nentry = "src/app.zi"\n'
+            'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
+            '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
+            'ref = "master"\n\n'
+            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            'ref = "master"\n\n'
+            '[tool.kryon]\ndefault_profile = "raylib"\n\n'
+            '[tool.kryon.profiles.raylib]\nbackend = "raylib"\n'
+        )
+        (project / "ziran.local.toml").write_text(
+            f'[overrides]\nKryon = "{ROOT}"\n'
+            f'ziran = "{ROOT.parent / "ziran"}"\n'
         )
         (project / "src" / "app.zi").write_text(
-            '#import "button_props"\n#import "button_widget"\n'
-            '#import "drawing_props"\n#import "geometry"\n'
-            '#import "image_props"\n#import "image_widget"\n'
-            '#import "raylib_runtime"\n#import "session"\n'
-            '#import "tree_input"\n'
+            'using UI :: #import "Widgets";\n'
+            'using StyleField;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    if KeyboardTake(session) == 65 {\n'
             '        return 1\n'
             '    }\n'
-            '    if RaylibTypedCodepoint() == 122 { return 1 }\n'
-            '    if RaylibWheelMove() > 0.0 { return 1 }\n'
+            '    if TypedCodepointTake(session) == 122 { return 1 }\n'
+            '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
+            '    rules: StyleRules\n'
+            '    rules.count = 1\n'
+            '    rounded_style: StyleRule\n'
+            '    rounded_style.selector = StyleDefaultSelector()\n'
+            '    rounded_style.selector.kind = StyleKindImage()\n'
+            '    rounded_style.selector.class_name = 7\n'
+            '    rounded_style.style.fields = cast(u32)StyleRadius\n'
+            '    rounded_style.style.radius = 32.0\n'
+            '    rules.items[0] = rounded_style\n'
+            '    InstallStyleRules(rules)\n'
             '    image: ImageProps\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
@@ -142,12 +158,12 @@ def main():
             '    cropped.bounds = Rectangle.{720.0, 80.0, 160.0, 160.0}\n'
             '    cropped.asset_path = "quadrants.png"\n'
             '    Image(session, cropped)\n'
-            '    RasterImage("test.png", cast(u32)0,\n'
-            '        Rectangle.{0.0, 0.0, 64.0, 64.0},\n'
-            '        Rectangle.{450.0, 80.0, 240.0, 240.0},\n'
-            '        Rectangle.{450.0, 80.0, 240.0, 240.0},\n'
-            '        Vector2.{0.0, 0.0}, 0.0, 32.0,\n'
-            '        Color.{255, 255, 255, 255})\n'
+            '    rounded: ImageProps\n'
+            '    rounded.key = cast(u64)4\n'
+            '    rounded.bounds = Rectangle.{450.0, 80.0, 240.0, 240.0}\n'
+            '    rounded.asset_path = "test.png"\n'
+            '    rounded.class_name = 7\n'
+            '    Image(session, rounded)\n'
             '    button: ButtonProps\n'
             '    button.key = cast(u64)3\n'
             '    button.bounds = Rectangle.{350.0, 400.0, 240.0, 64.0}\n'
@@ -157,7 +173,9 @@ def main():
         )
         solid_png(project / "test.png", 64, 64, (230, 30, 40, 255))
         quadrant_png(project / "quadrants.png")
-        run([str(ROOT / "build/bin/kryon"), "build", "--profile", "raylib"], project)
+        ziran = str(ROOT.parent / "ziran/build/bin/ziran")
+        run([ziran, "lock"], project)
+        run([ziran, "tool", "Kryon", "build", "--profile", "raylib"], project)
         capture = project / "capture.png"
         env = os.environ.copy()
         for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):

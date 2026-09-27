@@ -100,29 +100,48 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-libdraw-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        (project / "kryon.toml").write_text(
-            '[project]\nname = "libdraw_probe"\n'
-            f'[paths]\nkryon = "{ROOT}"\nziran = "{ROOT.parent / "ziran"}"\n'
-            '[profiles.libdraw]\nbackend = "libdraw"\n'
+        (project / "ziran.toml").write_text(
+            '[package]\nname = "libdraw_probe"\nentry = "src/app.zi"\n'
+            'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
+            '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
+            'ref = "master"\n\n'
+            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            'ref = "master"\n\n'
+            '[tool.kryon]\ndefault_profile = "libdraw"\n\n'
+            '[tool.kryon.profiles.libdraw]\nbackend = "libdraw"\n'
+        )
+        (project / "ziran.local.toml").write_text(
+            f'[overrides]\nKryon = "{ROOT}"\n'
+            f'ziran = "{ROOT.parent / "ziran"}"\n'
         )
         (project / "src/app.zi").write_text(
-            '#import "button_props"\n#import "button_widget"\n'
-            '#import "cairo_raster"\n#import "drawing_props"\n'
-            '#import "geometry"\n#import "image_props"\n'
-            '#import "image_widget"\n#import "session"\n'
-            '#import "tree_input"\n'
+            'using UI :: #import "Widgets";\n'
+            'using StyleField;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    if KeyboardTake(session) == 97 { return 1 }\n'
             '    if viewport.width < 900.0 { return 1 }\n'
-            '    RasterRoundedRectangle(Rectangle.{40.0, 40.0, 200.0, 100.0},\n'
-            '        12.0, 0, Color.{230, 30, 40, 255})\n'
-            '    RasterImage("red.png", cast(u32)0,\n'
-            '        Rectangle.{0.0, 0.0, 32.0, 32.0},\n'
-            '        Rectangle.{700.0, 80.0, 160.0, 160.0},\n'
-            '        Rectangle.{700.0, 80.0, 160.0, 160.0},\n'
-            '        Vector2.{0.0, 0.0}, 0.0, 32.0,\n'
-            '        Color.{255, 255, 255, 255})\n'
+            '    rules: StyleRules\n'
+            '    rules.count = 1\n'
+            '    rounded_style: StyleRule\n'
+            '    rounded_style.selector = StyleDefaultSelector()\n'
+            '    rounded_style.selector.kind = StyleKindImage()\n'
+            '    rounded_style.selector.class_name = 7\n'
+            '    rounded_style.style.fields = cast(u32)StyleRadius\n'
+            '    rounded_style.style.radius = 32.0\n'
+            '    rules.items[0] = rounded_style\n'
+            '    InstallStyleRules(rules)\n'
+            '    box: BoxProps\n'
+            '    box.bounds = Rectangle.{40.0, 40.0, 200.0, 100.0}\n'
+            '    box.fill = Color.{230, 30, 40, 255}\n'
+            '    box.radius = 12.0\n'
+            '    Box(session, box)\n'
+            '    rounded: ImageProps\n'
+            '    rounded.key = cast(u64)3\n'
+            '    rounded.bounds = Rectangle.{700.0, 80.0, 160.0, 160.0}\n'
+            '    rounded.asset_path = "red.png"\n'
+            '    rounded.class_name = 7\n'
+            '    Image(session, rounded)\n'
             '    image: ImageProps\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{450.0, 80.0, 160.0, 160.0}\n'
@@ -139,12 +158,14 @@ def main():
         solid_png(project / "green.png", 32, 32, (30, 200, 40, 255))
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
-        run([str(ROOT / "build/bin/kryon"), "build", "--profile", "libdraw"],
+        ziran = str(ROOT.parent / "ziran/build/bin/ziran")
+        run([ziran, "lock"], project, env)
+        run([ziran, "tool", "Kryon", "build", "--profile", "libdraw"],
             project, env)
         capture = project / "capture.png"
         env["KRYON_CAPTURE_PATH"] = str(capture)
         run(["xvfb-run", "-a", "-n", "100",
-             str(ROOT / "build/bin/kryon"), "run", "--profile", "libdraw"],
+             ziran, "tool", "Kryon", "run", "--profile", "libdraw"],
             project, env)
         pixels = png_pixels(capture)
         assert pixels[0] > 900 and pixels[1] > 500, pixels[:2]

@@ -45,6 +45,10 @@ Build :: (reversed: bool, second_disabled: bool,
 
 #program_export
 Answer :: () -> s32 {
+    if TypedCodepointTake(TestSession()) != 0 ||
+        !TypedCodepointSend(TestSession(), 122) ||
+        TypedCodepointTake(TestSession()) != 122 ||
+        TypedCodepointTake(TestSession()) != 0 { return -35 }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     TreeSubmit(TestSession(), cast(u64)99, 0, WidgetKindButton,
         Rectangle.{10.0, 10.0, 30.0, 30.0})

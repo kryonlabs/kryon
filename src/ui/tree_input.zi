@@ -42,6 +42,7 @@ PointerDrag :: struct {
 active_pointer: [9]PointerState;
 active_sample: [9]PointerFrame;
 active_key: [9]s32;
+active_codepoint: [9]s32;
 
 PointerWheelState :: struct {
     x: float32
@@ -67,6 +68,24 @@ KeyboardTake :: (session: Session) -> s32 {
     key: s32 = active_key[index]
     active_key[index] = 0
     return key
+}
+
+// Hosts submit a typed Unicode codepoint independently of physical keys.
+// The application consumes it once while composing the next frame.
+#program_export
+TypedCodepointSend :: (session: Session, codepoint: s32) -> bool {
+    if !SessionValid(session) { return false }
+    active_codepoint[SessionIndex(session)] = codepoint
+    return true
+}
+
+#program_export
+TypedCodepointTake :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    index: s32 = SessionIndex(session)
+    codepoint: s32 = active_codepoint[index]
+    active_codepoint[index] = 0
+    return codepoint
 }
 
 #program_export

@@ -6,27 +6,41 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 mkdir -p "$work/src"
 
-cat > "$work/kryon.toml" <<EOF
-[project]
+cat > "$work/ziran.toml" <<EOF
+[package]
 name = "plot_probe"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
 
-[paths]
-kryon = "$repo"
-ziran = "$repo/../ziran"
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
 
-[profiles.tui]
+[dependencies.Kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[tool.kryon]
+default_profile = "tui"
+
+[tool.kryon.profiles.tui]
 backend = "terminal"
 EOF
 
+cat > "$work/ziran.local.toml" <<EOF
+[overrides]
+Kryon = "$repo"
+ziran = "$repo/../ziran"
+EOF
+
 cat > "$work/src/app.zi" <<'EOF'
-#import "geometry"
-#import "kss_parser"
-#import "plot"
-#import "plot_props"
-#import "session"
-#import "syntax"
-#import "table_view"
-#import "tree_view"
+using UI :: #import "Kryon";
+using Charts :: #import "PlotWidget";
+using Styles :: #import "Kss";
+using Coloring :: #import "Syntax";
+using Tables :: #import "TableView";
+using Trees :: #import "TreeView";
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
@@ -49,10 +63,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 }
 EOF
 
-(cd "$work" && "$repo/build/bin/kryon" build --profile tui)
-test -s "$work/build/generated/tui/ir/plot.zir"
-test -s "$work/build/generated/tui/ir/kss_parser.zir"
-test -s "$work/build/generated/tui/ir/syntax.zir"
-test -s "$work/build/generated/tui/ir/table_view.zir"
-test -s "$work/build/generated/tui/ir/tree_view.zir"
+(cd "$work" && "$repo/../ziran/build/bin/ziran" lock &&
+    "$repo/../ziran/build/bin/ziran" tool Kryon build --profile tui)
+test -s "$work/build/generated/tui/ir/"*_plot.zir
+test -s "$work/build/generated/tui/ir/"*_kss_parser.zir
+test -s "$work/build/generated/tui/ir/"*_syntax.zir
+test -s "$work/build/generated/tui/ir/"*_table_view.zir
+test -s "$work/build/generated/tui/ir/"*_tree_view.zir
 test -x "$work/build/plot_probe-tui"

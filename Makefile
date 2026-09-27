@@ -30,7 +30,7 @@ KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
 
-.PHONY: all check test test-focus ziran-test header-check source-check public-surface-check clean project-toolchain project-test install-user
+.PHONY: all check test test-focus ziran-test header-check source-check public-surface-check clean project-toolchain project-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -66,15 +66,6 @@ build/bin/kryon: build/project/gen/cli_linux.c Makefile
 		-I$(ZIRAN_INCLUDE) -Ibuild/project/gen build/project/gen/*.c \
 		-Wl,--gc-sections -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
-
-# The user command refreshes its own executable from this checkout on launch.
-USER_BIN ?= $(HOME)/.local/bin
-install-user: build/bin/kryon
-	mkdir -p $(USER_BIN)
-	printf '%s\n' '#!/bin/sh' 'set -eu' \
-		'make -s -C "$(CURDIR)" build/bin/kryon' \
-		'exec "$(CURDIR)/build/bin/kryon" "$$@"' > $(USER_BIN)/kryon
-	chmod 755 $(USER_BIN)/kryon
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all

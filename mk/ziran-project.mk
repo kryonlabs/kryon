@@ -1,18 +1,21 @@
 # Shared build route for a Ziran application configured by ziran.toml.
 ifndef PROJECT_NAME
-$(error PROJECT_NAME is required; run this through kryon)
+$(error PROJECT_NAME is required; run this through ziran tool Kryon)
 endif
 ifndef PROJECT_ENTRY
-$(error PROJECT_ENTRY is required; run this through kryon)
+$(error PROJECT_ENTRY is required; run this through ziran tool Kryon)
 endif
 ifndef KRYON_DIR
-$(error KRYON_DIR is required; run this through kryon)
+$(error KRYON_DIR is required; run this through ziran tool Kryon)
 endif
 ifndef ZIRAN_DIR
-$(error ZIRAN_DIR is required; run this through kryon)
+$(error ZIRAN_DIR is required; run this through ziran tool Kryon)
 endif
 ifndef PROJECT_PROFILE
-$(error PROJECT_PROFILE is required; run this through kryon)
+$(error PROJECT_PROFILE is required; run this through ziran tool Kryon)
+endif
+ifndef ZIRAN_PACKAGE_ID
+$(error ZIRAN_PACKAGE_ID is required; run this through ziran tool Kryon)
 endif
 
 ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
@@ -28,21 +31,9 @@ C_DIR := $(GEN_DIR)/c
 C_STAMP := $(C_DIR)/.complete
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
 HOST_MODULE := $(PROJECT_BACKEND)_run
-ifeq ($(ZIRAN_PACKAGE_ID),)
-HOST_ID := $(HOST_MODULE)
-PROJECT_CONFIG_FILES := kryon.toml
-ZIRAN_MODULE_ARGS := --root $(KRYON_DIR)/src/backend \
-	--module-path src --module-path $(KRYON_DIR)/src/plot \
-	--module-path $(KRYON_DIR)/src/data_views \
-	--module-path $(KRYON_DIR)/src/kss \
-	--module-path $(KRYON_DIR)/src/syntax \
-	--module-path $(KRYON_DIR)/src/ui \
-	--module-path $(ZIRAN_DIR)/std
-else
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
-endif
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 APP_SOURCES := $(wildcard src/*.zi src/*/module.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
