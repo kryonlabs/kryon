@@ -26,7 +26,6 @@ set -- \
     -o "$work/saved.zib" "$work/ir/progress_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
 
 # A bundle with one missing declared capability must fail before UI effects.
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \

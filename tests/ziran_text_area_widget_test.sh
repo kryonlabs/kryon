@@ -532,7 +532,6 @@ cmp "$work/source.zib" "$work/saved.zib"
     "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
     ${VM_LDFLAGS:-} -o "$work/host-test"
 "$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
