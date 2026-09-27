@@ -1,0 +1,143 @@
+#import,file "../src/backend/canvas_audio.zi";
+#import,file "../src/backend/canvas_types.zi";
+#import,file "../src/backend/canvas_os.zi";
+#import "c_string"
+browser :: #system_library "env";
+AudioCheckpoint :: (phase: s32) -> s32 #foreign browser "audio_test_checkpoint";
+callback_count: s32;
+processor_count: s32;
+AudioCallback :: (data: *void, frames: u32) {
+    callback_count += 1
+    samples := cast(*float32)data
+    index: u32 = 0
+    while index < frames { samples[index] = 0.25; index += 1 }
+}
+AudioProcessor :: (data: *void, frames: u32) {
+    unused data
+    unused frames
+    processor_count += 1
+}
+#program_export
+main :: () -> s32 {
+    InitAudioDevice()
+    if !IsAudioDeviceReady() { return 1 }
+    SetMasterVolume(0.5)
+    if GetMasterVolume() != 0.5 { return 2 }
+    pcm: [4]s16 = .[-32768, 0, 16384, 32767]
+    original := CanvasWave.{frame_count = 4, sample_rate = 22050,
+        sample_size = 16, channels = 1, data = cast(*void)*pcm[0]}
+    wave := WaveCopy(original)
+    if !IsWaveValid(wave) || wave.data == original.data { return 3 }
+    samples := LoadWaveSamples(wave)
+    if samples == null || samples[0] != -1.0 || samples[1] != 0.0 ||
+        samples[2] != 0.5 || samples[3] < 0.999 { return 4 }
+    UnloadWaveSamples(samples)
+    wave_path: [32]u8
+    code_path: [32]u8
+    unused CopyCString("/tmp/audio.wav", wave_path[:])
+    unused CopyCString("/tmp/audio.h", code_path[:])
+    if !ExportWave(wave, *wave_path[0]) ||
+        !ExportWaveAsCode(wave, *code_path[0]) { return 5 }
+    loaded := LoadWave(*wave_path[0])
+    if !IsWaveValid(loaded) || loaded.frame_count != 4 || loaded.channels != 1 ||
+        loaded.sample_size != 16 || loaded.sample_rate != 22050 { return 6 }
+    UnloadWave(loaded)
+    WaveFormat(*wave, 44100, 32, 2)
+    if wave.frame_count != 8 || wave.channels != 2 || wave.sample_size != 32 { return 7 }
+    samples = LoadWaveSamples(wave)
+    if samples[0] != -1.0 || samples[1] != -1.0 || samples[14] < 0.999 { return 8 }
+    UnloadWaveSamples(samples)
+    WaveCrop(*wave, 1, 3)
+    if wave.frame_count != 2 { return 9 }
+    WaveCrop(*wave, 100, 101)
+    if IsWaveValid(wave) || wave.data != null { return 10 }
+    // Packed 24-bit PCM must sign-extend before conversion to float.
+    packed: [50]u8
+    position: u32 = 0
+    AudioWriteText(*packed[0], *position, "RIFF")
+    AudioWrite32(*packed[4], 42)
+    position = 8
+    AudioWriteText(*packed[0], *position, "WAVEfmt ")
+    AudioWrite32(*packed[16], 16)
+    AudioWrite16(*packed[20], 1)
+    AudioWrite16(*packed[22], 1)
+    AudioWrite32(*packed[24], 44100)
+    AudioWrite16(*packed[34], 24)
+    position = 36
+    AudioWriteText(*packed[0], *position, "data")
+    AudioWrite32(*packed[40], 6)
+    packed[46] = 128
+    packed[47] = 255
+    packed[48] = 255
+    packed[49] = 127
+    wave = LoadWaveFromMemory(null, *packed[0], 50)
+    samples = LoadWaveSamples(wave)
+    if wave.frame_count != 2 || samples == null || samples[0] != -1.0 || samples[1] < 0.999 { return 11 }
+    UnloadWaveSamples(samples)
+    UnloadWave(wave)
+    AudioWrite32(*packed[40], 4294967295)
+    if IsWaveValid(AudioReadWave(*packed[0], 50)) { return 12 }
+    decoded := LoadWaveFromMemory(null, *packed[0], 4)
+    if !IsWaveValid(decoded) || decoded.sample_size != 32 ||
+        decoded.frame_count != 44100 { return 29 }
+    UnloadWave(decoded)
+    from_file := LoadSound(*wave_path[0])
+    if !IsSoundValid(from_file) { return 30 }
+    UnloadSound(from_file)
+    sound := LoadSoundFromWave(original)
+    alias := LoadSoundAlias(sound)
+    if !IsSoundValid(sound) { return 13 }
+    PlaySound(sound)
+    if !IsSoundPlaying(sound) { return 14 }
+    PauseSound(sound)
+    if IsSoundPlaying(sound) { return 15 }
+    ResumeSound(sound)
+    if !IsSoundPlaying(sound) { return 16 }
+    StopSound(sound)
+    UnloadSound(sound)
+    PlaySound(alias)
+    if !IsSoundPlaying(alias) { return 17 }
+    UnloadSoundAlias(alias)
+    music := LoadMusicStreamFromMemory(null, *packed[0], 4)
+    if !IsMusicValid(music) || GetMusicTimeLength(music) != 1.0 { return 18 }
+    PlayMusicStream(music)
+    if !IsMusicStreamPlaying(music) { return 19 }
+    SeekMusicStream(music, 0.25)
+    PauseMusicStream(music)
+    if IsMusicStreamPlaying(music) || GetMusicTimePlayed(music) != 0.25 { return 20 }
+    ResumeMusicStream(music)
+    if !IsMusicStreamPlaying(music) { return 21 }
+    StopMusicStream(music)
+    UnloadMusicStream(music)
+    stream := LoadAudioStream(44100, 32, 1)
+    if !IsAudioStreamValid(stream) { return 22 }
+    SetAudioStreamBufferSizeDefault(8)
+    SetAudioStreamCallback(stream, AudioCallback)
+    AttachAudioStreamProcessor(stream, AudioProcessor)
+    AttachAudioMixedProcessor(AudioProcessor)
+    PlayAudioStream(stream)
+    if !IsAudioStreamPlaying(stream) || AudioCheckpoint(1) != 0 ||
+        callback_count != 1 || processor_count != 2 { return 23 }
+    stream_samples: [8]float32
+    if !IsAudioStreamProcessed(stream) { return 31 }
+    UpdateAudioStream(stream, cast(*void)*stream_samples[0], 8)
+    UpdateAudioStream(stream, cast(*void)*stream_samples[0], 8)
+    if IsAudioStreamProcessed(stream) { return 32 }
+    UpdateAudioStream(stream, cast(*void)*stream_samples[0], 8)
+    if AudioCheckpoint(4) != 0 || !IsAudioStreamProcessed(stream) { return 33 }
+    PauseAudioStream(stream)
+    if IsAudioStreamPlaying(stream) { return 24 }
+    ResumeAudioStream(stream)
+    if !IsAudioStreamPlaying(stream) { return 25 }
+    DetachAudioStreamProcessor(stream, AudioProcessor)
+    DetachAudioMixedProcessor(AudioProcessor)
+    StopAudioStream(stream)
+    UnloadAudioStream(stream)
+    if AudioCheckpoint(2) != 0 { return 26 }
+    CloseAudioDevice()
+    if AudioCheckpoint(3) != 0 { return 27 }
+    InitAudioDevice()
+    if !IsAudioDeviceReady() { return 28 }
+    CloseAudioDevice()
+    return 0
+}

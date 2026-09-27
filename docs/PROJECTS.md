@@ -69,7 +69,7 @@ for lock, cache, and override details.
 
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, and `raylib`. Set `default_profile` under `[tool.kryon]` when there
+`libdraw`, `raylib`, and `canvas`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several and none is specified.
 
@@ -79,6 +79,7 @@ profile when there are several and none is specified.
 | `desktop` | SDL2 window with Cairo raster | SDL2 and Cairo development libraries |
 | `libdraw` | plan9port devdraw window with Cairo raster | Built plan9port and Cairo; set `PLAN9PORT_DIR` if it is outside the sibling directory |
 | `raylib` | raylib SDL2/OpenGL ES 2 window | Kryon's `vendor/raylib` submodule and SDL2, libdrm, GBM, EGL, GLESv2 development libraries |
+| `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas2D browser host](canvas.md) |
 
 The raylib profile builds its static raylib dependency in Kryon's `build/`
 directory. The Kryon host chooses and owns that backend. Game code belongs in
@@ -92,5 +93,6 @@ module.
 
 Kryon's `make desktop-project-test`, `make raylib-project-test`, and
 `make libdraw-project-test` exercise the graphical hosts on private Xvfb
-displays, including keyboard and Unicode text input. Do not run graphical
-tests on the developer's live display.
+displays, including keyboard and Unicode text input. `make canvas-project-test`
+builds a real Canvas2D project and loads it in private headless Chromium. Do
+not run graphical tests on the developer's live display.

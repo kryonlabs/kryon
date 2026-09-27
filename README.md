@@ -76,9 +76,9 @@ For Ziran app manifests, the terminal backend, and `kryon run`, see
 ## Current status
 
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
-The [open-work plan](plan/README.md) lists unfinished migration tasks,
-including the C portable test fixtures. Kryon does not currently offer a web
-backend; see [web host status](docs/WEB_STATUS.md).
+The Canvas2D browser host is covered by private headless Chromium, WebAudio,
+and Wasm tests. The [open-work plan](plan/README.md) lists the remaining
+platform-accessibility work.
 
 Downstream applications migrate their own sources and platform hosts at their
 own pace. Kryon commits land upstream first; apps then move only their clean

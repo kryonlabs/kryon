@@ -30,7 +30,7 @@ KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
 
-.PHONY: all check test test-focus ziran-test header-check source-check public-surface-check clean project-toolchain project-test
+.PHONY: all check test test-focus ziran-test header-check source-check public-surface-check clean project-toolchain project-test dom-project-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -199,6 +199,21 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
 check: all plot data-views kss syntax ziran-test header-check project-test public-surface-check
+.PHONY: canvas-test
+canvas-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
+		sh tests/canvas_text_os_wasm_test.sh
+
+.PHONY: canvas-project-test
+canvas-project-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_project_test.py
+
+.PHONY: dom-project-test
+dom-project-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/dom_project_test.py
+
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh
@@ -219,7 +234,7 @@ desktop-project-test: build/bin/kryon
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
 
-test: check typeface-source-test
+test: check canvas-test canvas-project-test dom-project-test typeface-source-test
 
 clean:
 	rm -rf $(BUILD_DIR)

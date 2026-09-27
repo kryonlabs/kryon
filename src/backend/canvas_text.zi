@@ -1,0 +1,486 @@
+#import, file "canvas_types.zi";
+#import "geometry"
+#import "drawing_props"
+#import "utf8"
+
+#if #defined(PLATFORM_WEB) {
+    c :: #system_library "c";
+    browser :: #system_library "env";
+    FontAllocate :: (size: usize) -> *void #foreign c "malloc";
+    FontAllocateZeroed :: (count: usize, size: usize) -> *void #foreign c "calloc";
+    FontResize :: (memory: *void, size: usize) -> *void #foreign c "realloc";
+    FontRelease :: (memory: *void) #foreign c "free";
+    FontCopy :: (destination: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+    FontZero :: (memory: *void, value: s32, size: usize) -> *void #foreign c "memset";
+    FontFaceLoad :: (data: *u8, length: s32) -> s32 #foreign browser "js_font_face_load";
+    FontFaceRelease :: (face: s32) #foreign browser "js_font_face_release";
+    FontGlyphMetrics :: (face: s32, codepoint: s32, size: s32,
+        advance: *s32, width: *s32, height: *s32, offset_x: *s32,
+        offset_y: *s32, pixels: *u8) -> s32 #foreign browser "js_glyph_metrics";
+    FontTexture :: (pixels: *u8, width: s32, height: s32) -> s32 #foreign browser "js_texture_from_rgba";
+    FontTextureRelease :: (texture: s32) #foreign browser "js_texture_free";
+    FontTransform :: (begin: s32, x: float64, y: float64, origin_x: float64,
+        origin_y: float64, rotation: float64) #foreign browser "js_text_transform";
+    FontLoadFile :: (path: *u8, length: *s32) -> *u8 #foreign c "LoadFileData";
+    FontDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
+        origin: Vector2, rotation: float32, tint: Color) #foreign c "DrawTexturePro";
+
+    #program_export
+    GetCodepointNext :: (text: *u8, length: *s32) -> s32 {
+        if length != null {
+            length.* = 0
+        }
+        if text == null {
+            return 0
+        }
+        bytes: [4]u8
+        count: s32 = 0
+        while count < 4 && text[count] != cast(u8)0 {
+            bytes[count] = text[count]
+            count += 1
+        }
+        if count == 0 {
+            if length != null {
+                length.* = 1
+            }
+            return 0
+        }
+        decoded := Decode(TextView(bytes[0:count]), 0)
+        if length != null {
+            length.* = decoded.after
+        }
+        if !decoded.valid {
+            return 63
+        }
+        return cast(s32)decoded.value
+    }
+
+    #program_export
+    GetCodepointCount :: (text: *u8) -> s32 {
+        if text == null {
+            return 0
+        }
+        count: s32 = 0
+        at: s32 = 0
+        while text[at] != cast(u8)0 {
+            bytes: s32 = 0
+            unused GetCodepointNext(*text[at], *bytes)
+            at += bytes
+            count += 1
+        }
+        return count
+    }
+
+    canvas_default_font: CanvasFont;
+    canvas_default_font_built: bool;
+    canvas_default_codepoints: [224]s32;
+
+    BuildCanvasFont :: (output: *CanvasFont, face: s32, size: s32,
+        codepoints: *s32, count: s32) -> bool {
+        if output == null || codepoints == null || count <= 0 || count > 65536 || size <= 0 {
+            return false
+        }
+        output.* = CanvasFont.{}
+        output.glyphs = cast(*CanvasGlyphInfo)FontAllocateZeroed(cast(usize)count, CanvasGlyphInfoSize())
+        output.recs = cast(*Rectangle)FontAllocateZeroed(cast(usize)count, CanvasRectangleSize())
+        width: s32 = 512
+        height: s32 = 64
+        pixels := cast(*u8)FontAllocateZeroed(cast(usize)(width * height), 4)
+        glyph_pixels := cast(*u8)FontAllocate(262144)
+        x: s32 = 1
+        y: s32 = 1
+        row_height: s32 = 0
+        if output.glyphs != null && output.recs != null && pixels != null && glyph_pixels != null {
+            index: s32 = 0
+            while index < count {
+                codepoint := codepoints[index]
+                index += 1
+                if codepoint < 32 || codepoint > 1114111 ||
+                    (codepoint >= 55296 && codepoint <= 57343) {
+                    continue
+                }
+                advance: s32 = 0
+                glyph_width: s32 = 0
+                glyph_height: s32 = 0
+                offset_x: s32 = 0
+                offset_y: s32 = 0
+                if FontGlyphMetrics(face, codepoint, size, *advance, *glyph_width,
+                    *glyph_height, *offset_x, *offset_y, glyph_pixels) == 0 ||
+                    glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
+                    continue
+                }
+                if x + glyph_width + 1 > width {
+                    x = 1
+                    y += row_height + 1
+                    row_height = 0
+                }
+                previous_height := height
+                while y + glyph_height + 1 > height && height < 4096 {
+                    height *= 2
+                }
+                if y + glyph_height + 1 > height {
+                    continue
+                }
+                if height > previous_height {
+                    grown := cast(*u8)FontResize(cast(*void)pixels, cast(usize)(width * height * 4))
+                    if grown == null {
+                        height = previous_height
+                        continue
+                    }
+                    pixels = grown
+                    FontZero(cast(*void)(*pixels[width * previous_height * 4]), 0,
+                        cast(usize)(width * (height - previous_height) * 4))
+                }
+                row: s32 = 0
+                while row < glyph_height {
+                    FontCopy(cast(*void)(*pixels[((y + row) * width + x) * 4]),
+                        cast(*void)(*glyph_pixels[row * glyph_width * 4]), cast(usize)(glyph_width * 4))
+                    row += 1
+                }
+                output.recs[index - 1] = Rectangle.{cast(float32)x, cast(float32)y,
+                    cast(float32)glyph_width, cast(float32)glyph_height}
+                output.glyphs[index - 1].value = codepoint
+                output.glyphs[index - 1].offset_x = offset_x
+                output.glyphs[index - 1].offset_y = offset_y
+                output.glyphs[index - 1].advance_x = advance
+                x += glyph_width + 1
+                if glyph_height > row_height {
+                    row_height = glyph_height
+                }
+            }
+            output.base_size = size
+            output.glyph_count = count
+            output.texture.id = cast(u32)FontTexture(pixels, width, height)
+            output.texture.width = width
+            output.texture.height = height
+            output.texture.mipmaps = 1
+            output.texture.format = 7
+        }
+        FontRelease(cast(*void)glyph_pixels)
+        FontRelease(cast(*void)pixels)
+        if output.texture.id == 0 {
+            FontRelease(cast(*void)output.glyphs)
+            FontRelease(cast(*void)output.recs)
+            output.* = CanvasFont.{}
+            return false
+        }
+        return true
+    }
+
+    #program_export
+    GetFontDefault :: () -> CanvasFont {
+        if !canvas_default_font_built {
+            index: s32 = 0
+            while index < 95 {
+                canvas_default_codepoints[index] = 32 + index
+                index += 1
+            }
+            canvas_default_font_built = BuildCanvasFont(*canvas_default_font, 0, 16,
+                *canvas_default_codepoints[0], 95)
+        }
+        return canvas_default_font
+    }
+
+    #program_export
+    LoadFontFromMemory :: (file_type: *u8, data: *u8, data_size: s32,
+        font_size: s32, codepoints: *s32, glyph_count: s32) -> CanvasFont {
+        unused file_type
+        font: CanvasFont
+        if data == null || data_size <= 0 || font_size <= 0 {
+            return font
+        }
+        face := FontFaceLoad(data, data_size)
+        if face == 0 {
+            return font
+        }
+        selected := codepoints
+        count := glyph_count
+        if selected == null || count <= 0 {
+            index: s32 = 0
+            while index < 224 {
+                canvas_default_codepoints[index] = 32 + index
+                index += 1
+            }
+            selected = *canvas_default_codepoints[0]
+            count = 224
+        }
+        unused BuildCanvasFont(*font, face, font_size, selected, count)
+        FontFaceRelease(face)
+        return font
+    }
+
+    #program_export
+    LoadFontEx :: (path: *u8, size: s32, codepoints: *s32, count: s32) -> CanvasFont {
+        length: s32 = 0
+        data := FontLoadFile(path, *length)
+        font: CanvasFont
+        if data != null {
+            font = LoadFontFromMemory(null, data, length, size, codepoints, count)
+            FontRelease(cast(*void)data)
+        }
+        return font
+    }
+
+    #program_export
+    LoadFont :: (path: *u8) -> CanvasFont {
+        return LoadFontEx(path, 16, null, 0)
+    }
+
+    #program_export
+    UnloadFont :: (font: CanvasFont) {
+        if canvas_default_font_built && font.texture.id == canvas_default_font.texture.id {
+            canvas_default_font = CanvasFont.{}
+            canvas_default_font_built = false
+        }
+        FontRelease(cast(*void)font.glyphs)
+        FontRelease(cast(*void)font.recs)
+        if font.texture.id != 0 {
+            FontTextureRelease(cast(s32)font.texture.id)
+        }
+    }
+
+    CloseCanvasText :: () {
+        if canvas_default_font_built {
+            UnloadFont(canvas_default_font)
+        }
+    }
+
+    #program_export
+    IsFontValid :: (font: CanvasFont) -> bool {
+        return font.base_size > 0 && font.glyph_count > 0 && font.glyphs != null &&
+            font.recs != null && font.texture.id != 0
+    }
+
+    #program_export
+    GetGlyphIndex :: (font: CanvasFont, codepoint: s32) -> s32 {
+        if font.glyphs == null {
+            return 0
+        }
+        question: s32 = 0
+        index: s32 = 0
+        while index < font.glyph_count {
+            if font.glyphs[index].value == codepoint {
+                return index
+            }
+            if font.glyphs[index].value == 63 {
+                question = index
+            }
+            index += 1
+        }
+        return question
+    }
+
+    #program_export
+    GetGlyphInfo :: (font: CanvasFont, codepoint: s32) -> CanvasGlyphInfo {
+        empty: CanvasGlyphInfo
+        if !IsFontValid(font) {
+            return empty
+        }
+        return font.glyphs[GetGlyphIndex(font, codepoint)]
+    }
+
+    #program_export
+    GetGlyphAtlasRec :: (font: CanvasFont, codepoint: s32) -> Rectangle {
+        empty: Rectangle
+        if !IsFontValid(font) {
+            return empty
+        }
+        return font.recs[GetGlyphIndex(font, codepoint)]
+    }
+
+    #program_export
+    LoadFontData :: (data: *u8, data_size: s32, size: s32, codepoints: *s32,
+        count: s32, raster_type: s32, glyph_count: *s32) -> *CanvasGlyphInfo {
+        unused raster_type
+        if glyph_count != null {
+            glyph_count.* = 0
+        }
+        font := LoadFontFromMemory(null, data, data_size, size, codepoints, count)
+        if !IsFontValid(font) {
+            return null
+        }
+        bytes := cast(usize)font.glyph_count * CanvasGlyphInfoSize()
+        copy := cast(*CanvasGlyphInfo)FontAllocate(bytes)
+        if copy != null {
+            FontCopy(cast(*void)copy, cast(*void)font.glyphs, bytes)
+            if glyph_count != null {
+                glyph_count.* = font.glyph_count
+            }
+        }
+        UnloadFont(font)
+        return copy
+    }
+
+    #program_export
+    UnloadFontData :: (glyphs: *CanvasGlyphInfo, glyph_count: s32) {
+        unused glyph_count
+        FontRelease(cast(*void)glyphs)
+    }
+
+    #program_export
+    DrawTextCodepoint :: (font: CanvasFont, codepoint: s32, position: Vector2,
+        size: float32, tint: Color) {
+        selected := font
+        if !IsFontValid(selected) {
+            selected = GetFontDefault()
+        }
+        if !IsFontValid(selected) {
+            return
+        }
+        glyph := GetGlyphInfo(selected, codepoint)
+        source := GetGlyphAtlasRec(selected, codepoint)
+        if source.width <= 0.0 || source.height <= 0.0 {
+            return
+        }
+        scale := size / cast(float32)selected.base_size
+        destination := Rectangle.{position.x + cast(float32)glyph.offset_x * scale,
+            position.y + cast(float32)glyph.offset_y * scale, source.width * scale,
+            source.height * scale}
+        FontDrawTexture(selected.texture, source, destination, Vector2.{0.0, 0.0}, 0.0, tint)
+    }
+
+    #program_export
+    DrawTextCodepoints :: (font: CanvasFont, codepoints: *s32, count: s32,
+        position: Vector2, size: float32, spacing: float32, tint: Color) {
+        selected := font
+        if !IsFontValid(selected) {
+            selected = GetFontDefault()
+        }
+        if !IsFontValid(selected) || codepoints == null || count <= 0 {
+            return
+        }
+        scale: float32 = 1.0
+        if size > 0.0 {
+            scale = size / cast(float32)selected.base_size
+        }
+        pen := position
+        index: s32 = 0
+        while index < count {
+            glyph := GetGlyphInfo(selected, codepoints[index])
+            DrawTextCodepoint(selected, codepoints[index], pen, size, tint)
+            pen.x += cast(float32)glyph.advance_x * scale + spacing
+            index += 1
+        }
+    }
+
+    #program_export
+    DrawTextEx :: (font: CanvasFont, text: *u8, position: Vector2,
+        size: float32, spacing: float32, tint: Color) {
+        selected := font
+        if !IsFontValid(selected) {
+            selected = GetFontDefault()
+        }
+        if !IsFontValid(selected) || text == null {
+            return
+        }
+        scale: float32 = 1.0
+        if size > 0.0 {
+            scale = size / cast(float32)selected.base_size
+        }
+        pen := position
+        at: s32 = 0
+        while text[at] != cast(u8)0 {
+            bytes: s32 = 0
+            codepoint := GetCodepointNext(*text[at], *bytes)
+            if bytes <= 0 {
+                bytes = 1
+            }
+            if codepoint == 10 {
+                pen.x = position.x
+                pen.y += size
+            } else {
+                glyph := GetGlyphInfo(selected, codepoint)
+                DrawTextCodepoint(selected, codepoint, pen, size, tint)
+                pen.x += cast(float32)glyph.advance_x * scale + spacing
+            }
+            at += bytes
+        }
+    }
+
+    #program_export
+    DrawTextPro :: (font: CanvasFont, text: *u8, position: Vector2,
+        origin: Vector2, rotation: float32, size: float32, spacing: float32, tint: Color) {
+        FontTransform(1, cast(float64)position.x, cast(float64)position.y,
+            cast(float64)origin.x, cast(float64)origin.y, cast(float64)rotation)
+        DrawTextEx(font, text, Vector2.{0.0, 0.0}, size, spacing, tint)
+        FontTransform(0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    #program_export
+    DrawText :: (text: *u8, x: s32, y: s32, size: s32, tint: Color) {
+        DrawTextEx(GetFontDefault(), text, Vector2.{cast(float32)x, cast(float32)y},
+            cast(float32)size, 0.0, tint)
+    }
+
+    #program_export
+    MeasureTextEx :: (font: CanvasFont, text: *u8, size: float32,
+        spacing: float32) -> Vector2 {
+        selected := font
+        if !IsFontValid(selected) {
+            selected = GetFontDefault()
+        }
+        if !IsFontValid(selected) || text == null {
+            return Vector2.{0.0, size}
+        }
+        scale: float32 = 1.0
+        if size > 0.0 {
+            scale = size / cast(float32)selected.base_size
+        }
+        width: float32 = 0.0
+        maximum: float32 = 0.0
+        lines: float32 = 1.0
+        at: s32 = 0
+        while text[at] != cast(u8)0 {
+            bytes: s32 = 0
+            codepoint := GetCodepointNext(*text[at], *bytes)
+            if bytes <= 0 {
+                bytes = 1
+            }
+            if codepoint == 10 {
+                if width > maximum {
+                    maximum = width
+                }
+                width = 0.0
+                lines += 1.0
+            } else {
+                glyph := GetGlyphInfo(selected, codepoint)
+                width += cast(float32)glyph.advance_x * scale + spacing
+            }
+            at += bytes
+        }
+        if width > maximum {
+            maximum = width
+        }
+        return Vector2.{maximum, size * lines}
+    }
+
+    #program_export
+    MeasureText :: (text: *u8, size: s32) -> s32 {
+        measured := MeasureTextEx(GetFontDefault(), text, cast(float32)size, 0.0)
+        return cast(s32)(measured.x + 0.5)
+    }
+
+    #program_export
+    MeasureTextCodepoints :: (font: CanvasFont, codepoints: *s32, count: s32,
+        size: float32, spacing: float32) -> Vector2 {
+        selected := font
+        if !IsFontValid(selected) {
+            selected = GetFontDefault()
+        }
+        if !IsFontValid(selected) || codepoints == null || count <= 0 {
+            return Vector2.{0.0, size}
+        }
+        scale: float32 = 1.0
+        if size > 0.0 {
+            scale = size / cast(float32)selected.base_size
+        }
+        width: float32 = 0.0
+        index: s32 = 0
+        while index < count {
+            glyph := GetGlyphInfo(selected, codepoints[index])
+            width += cast(float32)glyph.advance_x * scale + spacing
+            index += 1
+        }
+        return Vector2.{width, size}
+    }
+}

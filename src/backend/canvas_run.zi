@@ -1,0 +1,82 @@
+#import "app"
+#import "canvas_raster"
+#import "canvas_window"
+#import "canvas_draw"
+#import "canvas_input"
+#import "canvas_texture"
+#import "canvas_text"
+#import "canvas_os"
+#import "canvas_audio"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+using FrameStatus;
+
+libc :: #system_library "libc";
+CanvasWrite :: (fd: s32, input: *u8, count: usize) -> isize #foreign libc "write";
+
+CanvasError :: (message: string) -> s32 {
+    output: [256]u8
+    length: s32 = cast(s32)message.count
+    if length > 254 { length = 254 }
+    index: s32 = 0
+    while index < length {
+        output[index] = message[index]
+        index += 1
+    }
+    output[index] = cast(u8)10
+    CanvasWrite(2, *output[0], cast(usize)(length + 1))
+    return 1
+}
+
+DrawCanvasFrame :: (session: Session, viewport: Rectangle) -> bool {
+    BeginCanvasFrame()
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
+    if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    if Frame(session, viewport) != 0 {
+        TreeCancel(session)
+        EndCanvasFrame()
+        return false
+    }
+    if EndFrame(session) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    return EndCanvasFrame()
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenCanvas() {
+        CloseCanvas()
+        return CanvasError("kryon: could not open the browser canvas")
+    }
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        CloseCanvas()
+        return CanvasError("kryon: could not open a UI session")
+    }
+    ok: bool = true
+    while ok && PollCanvas() {
+        key: s32 = CanvasPressedKey()
+        if key != 0 { KeyboardSend(session, key) }
+        codepoint: s32 = CanvasTypedCodepoint()
+        while codepoint != 0 {
+            TypedCodepointSend(session, codepoint)
+            codepoint = CanvasTypedCodepoint()
+        }
+        ok = DrawCanvasFrame(session, CanvasViewport())
+    }
+    CloseSession(session)
+    CloseCanvas()
+    if ok { return 0 }
+    return CanvasError("kryon: browser frame rendering failed")
+}

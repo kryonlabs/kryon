@@ -1,0 +1,94 @@
+#import "geometry"
+#import "drawing_props"
+
+// Native layouts shared by the browser effects and generated host ABI.
+CanvasImage :: struct {
+    data: *void
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
+}
+CanvasRenderTexture :: struct {
+    id: u32
+    texture: Texture2D
+    depth: Texture2D
+}
+CanvasGlyphInfo :: struct {
+    value: s32
+    offset_x: s32
+    offset_y: s32
+    advance_x: s32
+    image: CanvasImage
+}
+CanvasFont :: struct {
+    base_size: s32
+    glyph_count: s32
+    glyph_padding: s32
+    texture: Texture2D
+    recs: *Rectangle
+    glyphs: *CanvasGlyphInfo
+}
+CanvasAudioStream :: struct {
+    buffer: *void
+    processor: *void
+    sample_rate: u32
+    sample_size: u32
+    channels: u32
+}
+CanvasSound :: struct {
+    stream: CanvasAudioStream
+    frame_count: u32
+}
+CanvasMusic :: struct {
+    stream: CanvasAudioStream
+    frame_count: u32
+    looping: bool
+    context_type: s32
+    context_data: *void
+}
+CanvasWave :: struct {
+    frame_count: u32
+    sample_rate: u32
+    sample_size: u32
+    channels: u32
+    data: *void
+}
+CanvasFilePathList :: struct {
+    capacity: u32
+    count: u32
+    paths: **u8
+}
+CanvasMatrix :: struct {
+    m0: float32
+    m4: float32
+    m8: float32
+    m12: float32
+    m1: float32
+    m5: float32
+    m9: float32
+    m13: float32
+    m2: float32
+    m6: float32
+    m10: float32
+    m14: float32
+    m3: float32
+    m7: float32
+    m11: float32
+    m15: float32
+}
+
+canvas_c :: #system_library "c";
+canvas_browser :: #system_library "env";
+HostCanvasAllocate :: (size: usize) -> *u8 #foreign canvas_c "malloc";
+HostCanvasRelease :: (data: *void) #foreign canvas_c "free";
+HostCanvasCopy :: (destination: *void, source: *void, size: usize) -> *void #foreign canvas_c "memcpy";
+HostCanvasStringLength :: (text: *u8) -> usize #foreign canvas_c "strlen";
+
+CanvasAllocate :: (size: u32) -> *u8 { return HostCanvasAllocate(cast(usize)size) }
+CanvasRelease :: (data: *void) { HostCanvasRelease(data) }
+CanvasCopy :: (destination: *void, source: *void, size: u32) -> *void { return HostCanvasCopy(destination, source, cast(usize)size) }
+CanvasStringLength :: (text: *u8) -> u32 { return cast(u32)HostCanvasStringLength(text) }
+
+CanvasGlyphInfoSize :: () -> usize { return size_of(CanvasGlyphInfo) }
+CanvasRectangleSize :: () -> usize { return cast(usize)4 * size_of(float32) }

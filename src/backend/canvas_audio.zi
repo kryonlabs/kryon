@@ -1,0 +1,838 @@
+// Browser sound, music, streams, and PCM wave operations.
+#if #defined(PLATFORM_WEB) {
+    #import "canvas_types"
+    CanvasAudioCallback :: #type (buffer: *void, frames: u32) #c_call;
+    canvas_browser :: #system_library "env";
+    js_audio_init :: () #foreign canvas_browser;
+    js_audio_close :: () #foreign canvas_browser;
+    js_audio_ready :: () -> s32 #foreign canvas_browser;
+    js_audio_set_master_volume :: (volume: float32) #foreign canvas_browser;
+    js_audio_get_master_volume :: () -> float32 #foreign canvas_browser;
+    js_audio_load_file :: (file_name: *u8) -> s32 #foreign canvas_browser;
+    js_audio_load_memory :: (data: *u8, data_size: s32) -> s32 #foreign canvas_browser;
+    js_audio_decode_wave_memory :: (data: *u8, data_size: s32, sr_out: *s32, ch_out: *s32, frames_out: *s32) -> *void #foreign canvas_browser;
+    js_audio_buffer_from_pcm :: (data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
+    js_audio_update_buffer_from_pcm :: (id: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
+    js_audio_ref :: (id: s32) #foreign canvas_browser;
+    js_audio_release :: (id: s32) #foreign canvas_browser;
+    js_audio_buffer_frames :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_buffer_rate :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_buffer_channels :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_sound_play :: (id: s32) #foreign canvas_browser;
+    js_audio_sound_stop :: (id: s32) #foreign canvas_browser;
+    js_audio_sound_pause :: (id: s32) #foreign canvas_browser;
+    js_audio_sound_resume :: (id: s32) #foreign canvas_browser;
+    js_audio_sound_playing :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_buffer_volume :: (id: s32, volume: float32) #foreign canvas_browser;
+    js_audio_buffer_pitch :: (id: s32, pitch: float32) #foreign canvas_browser;
+    js_audio_buffer_pan :: (id: s32, pan: float32) #foreign canvas_browser;
+    js_audio_music_play :: (id: s32, looping: s32) #foreign canvas_browser;
+    js_audio_music_stop :: (id: s32) #foreign canvas_browser;
+    js_audio_music_pause :: (id: s32) #foreign canvas_browser;
+    js_audio_music_resume :: (id: s32) #foreign canvas_browser;
+    js_audio_music_seek :: (id: s32, position: float32) #foreign canvas_browser;
+    js_audio_music_playing :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_music_length :: (id: s32) -> float32 #foreign canvas_browser;
+    js_audio_music_played :: (id: s32) -> float32 #foreign canvas_browser;
+    js_audio_stream_create :: (sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
+    js_audio_stream_free :: (id: s32) #foreign canvas_browser;
+    js_audio_stream_play :: (id: s32) #foreign canvas_browser;
+    js_audio_stream_stop :: (id: s32) #foreign canvas_browser;
+    js_audio_stream_pause :: (id: s32) #foreign canvas_browser;
+    js_audio_stream_resume :: (id: s32) #foreign canvas_browser;
+    js_audio_stream_playing :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_stream_processed :: (id: s32) -> s32 #foreign canvas_browser;
+    js_audio_stream_update :: (id: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
+    js_audio_stream_volume :: (id: s32, volume: float32) #foreign canvas_browser;
+    js_audio_stream_pitch :: (id: s32, pitch: float32) #foreign canvas_browser;
+    js_audio_stream_pan :: (id: s32, pan: float32) #foreign canvas_browser;
+    js_audio_stream_callback :: (id: s32, callback: CanvasAudioCallback, frames: s32) #foreign canvas_browser;
+    js_audio_stream_attach_processor :: (id: s32, callback: CanvasAudioCallback) #foreign canvas_browser;
+    js_audio_stream_detach_processor :: (id: s32, callback: CanvasAudioCallback) #foreign canvas_browser;
+    js_audio_attach_mixed_processor :: (callback: CanvasAudioCallback) #foreign canvas_browser;
+    js_audio_detach_mixed_processor :: (callback: CanvasAudioCallback) #foreign canvas_browser;
+    canvas_audio_c :: #system_library "c";
+    AudioLoadFile :: (path: *u8, length: *s32) -> *u8 #foreign canvas_audio_c "LoadFileData";
+    AudioFreeFile :: (data: *u8) #foreign canvas_audio_c "UnloadFileData";
+    AudioFileExtension :: (path: *u8) -> *u8 #foreign canvas_audio_c "GetFileExtension";
+    AudioSaveFile :: (path: *u8, data: *void, length: s32) -> bool #foreign canvas_audio_c "SaveFileData";
+    AudioSaveText :: (path: *u8, data: *u8) -> bool #foreign canvas_audio_c "SaveFileText";
+
+    audio_initialized: bool;
+    audio_stream_frames: s32 = 4096;
+
+    AudioEnsure :: () {
+        if !audio_initialized {
+            js_audio_init()
+            audio_initialized = true
+        }
+    }
+
+    AudioId :: (stream: CanvasAudioStream) -> s32 {
+        return cast(s32)(cast(usize)stream.buffer)
+    }
+
+    AudioStreamFromId :: (id: s32, rate: u32, size: u32,
+        channels: u32) -> CanvasAudioStream {
+        stream: CanvasAudioStream
+        stream.buffer = cast(*void)(cast(usize)id)
+        stream.sample_rate = rate
+        stream.sample_size = size
+        stream.channels = channels
+        return stream
+    }
+
+    AudioSoundFromId :: (id: s32) -> CanvasSound {
+        sound: CanvasSound
+        if id > 0 {
+            sound.stream = AudioStreamFromId(id,
+                cast(u32)js_audio_buffer_rate(id), 32,
+                cast(u32)js_audio_buffer_channels(id))
+            sound.frame_count = cast(u32)js_audio_buffer_frames(id)
+        }
+        return sound
+    }
+
+    AudioMusicFromId :: (id: s32) -> CanvasMusic {
+        music: CanvasMusic
+        if id > 0 {
+            music.stream = AudioStreamFromId(id,
+                cast(u32)js_audio_buffer_rate(id), 32,
+                cast(u32)js_audio_buffer_channels(id))
+            music.frame_count = cast(u32)js_audio_buffer_frames(id)
+            music.looping = true
+            music.context_data = cast(*void)(cast(usize)id)
+        }
+        return music
+    }
+
+    AudioSampleBytes :: (size: u32) -> u32 {
+        if size == 8 { return 1 }
+        if size == 16 { return 2 }
+        if size == 32 { return 4 }
+        return 0
+    }
+
+    AudioWaveBytes :: (wave: CanvasWave) -> u32 {
+        bytes := AudioSampleBytes(wave.sample_size)
+        count := cast(u64)wave.frame_count * cast(u64)wave.channels
+        if bytes == 0 || count == 0 ||
+            count > cast(u64)2147483647 / cast(u64)bytes {
+            return 0
+        }
+        return cast(u32)count * bytes
+    }
+
+    AudioRead16 :: (bytes: *u8) -> u32 {
+        return cast(u32)bytes[0] | (cast(u32)bytes[1] << 8)
+    }
+
+    AudioRead32 :: (bytes: *u8) -> u32 {
+        return AudioRead16(bytes) | (AudioRead16(*bytes[2]) << 16)
+    }
+
+    AudioWrite16 :: (bytes: *u8, value: u32) {
+        bytes[0] = cast(u8)value
+        bytes[1] = cast(u8)(value >> 8)
+    }
+
+    AudioWrite32 :: (bytes: *u8, value: u32) {
+        AudioWrite16(bytes, value)
+        AudioWrite16(*bytes[2], value >> 16)
+    }
+
+    AudioTag :: (bytes: *u8, text: string) -> bool {
+        index: s64 = 0
+        while index < text.count {
+            if bytes[index] != text[index] { return false }
+            index += 1
+        }
+        return true
+    }
+
+    AudioSample :: (data: *void, size: u32, index: u32) -> float32 {
+        if data == null { return 0.0 }
+        if size == 8 {
+            return (cast(float32)(cast(*u8)data)[index] - 128.0) / 128.0
+        }
+        if size == 16 {
+            return cast(float32)(cast(*s16)data)[index] / 32768.0
+        }
+        if size == 32 { return (cast(*float32)data)[index] }
+        return 0.0
+    }
+
+    AudioWriteSample :: (data: *void, size: u32, index: u32,
+        value: float32) {
+        if value > 1.0 { value = 1.0 }
+        if value < -1.0 { value = -1.0 }
+        if size == 8 {
+            samples := cast(*u8)data
+            samples[index] = cast(u8)(value * 127.0 + 128.0)
+        } else if size == 16 {
+            samples := cast(*s16)data
+            samples[index] = cast(s16)(value * 32767.0)
+        } else if size == 32 {
+            samples := cast(*float32)data
+            samples[index] = value
+        }
+    }
+
+    AudioReadWave :: (data: *u8, length: s32) -> CanvasWave {
+        wave: CanvasWave
+        if data == null || length < 44 || !AudioTag(data, "RIFF") ||
+            !AudioTag(*data[8], "WAVE") {
+            return wave
+        }
+        format: u32
+        channels: u32
+        bits: u32
+        rate: u32
+        pcm: *u8
+        pcm_size: u32
+        position: u64 = 12
+        while position + 8 <= cast(u64)length {
+            chunk := *data[position]
+            size := AudioRead32(*chunk[4])
+            next := position + 8 + cast(u64)size
+            if next > cast(u64)length { break }
+            if AudioTag(chunk, "fmt ") && size >= 16 {
+                format = AudioRead16(*chunk[8])
+                channels = AudioRead16(*chunk[10])
+                rate = AudioRead32(*chunk[12])
+                bits = AudioRead16(*chunk[22])
+            } else if AudioTag(chunk, "data") {
+                pcm = *chunk[8]
+                pcm_size = size
+            }
+            position = next + cast(u64)(size & 1)
+        }
+        if pcm == null || pcm_size == 0 || channels == 0 || rate == 0 ||
+            (format != 1 && format != 3) {
+            return wave
+        }
+        if format == 3 && bits != 32 { return wave }
+        bytes := bits / 8
+        if (bits != 8 && bits != 16 && bits != 24 && bits != 32) ||
+            pcm_size / channels < bytes {
+            return wave
+        }
+        wave.frame_count = pcm_size / channels / bytes
+        wave.channels = channels
+        wave.sample_rate = rate
+        wave.sample_size = ifx bits == 24 then cast(u32)32 else bits
+        total := AudioWaveBytes(wave)
+        if total == 0 { return CanvasWave.{} }
+        wave.data = cast(*void)CanvasAllocate(total)
+        if wave.data == null { return CanvasWave.{} }
+        if format == 1 && (bits == 24 || bits == 32) {
+            samples := cast(*float32)wave.data
+            count := wave.frame_count * wave.channels
+            index: u32 = 0
+            while index < count {
+                if bits == 24 {
+                    offset := index * 3
+                    sample := cast(s32)(AudioRead16(*pcm[offset]) |
+                        (cast(u32)pcm[offset + 2] << 16))
+                    if (sample & 8388608) != 0 { sample -= 16777216 }
+                    samples[index] = cast(float32)sample / 8388608.0
+                } else {
+                    sample := cast(s32)AudioRead32(*pcm[index * 4])
+                    samples[index] = cast(float32)(cast(float64)sample / 2147483648.0)
+                }
+                index += 1
+            }
+        } else {
+            unused CanvasCopy(wave.data, cast(*void)pcm, total)
+        }
+        return wave
+    }
+
+    #program_export
+    InitAudioDevice :: () {
+        AudioEnsure()
+        unused js_audio_ready()
+    }
+
+    #program_export
+    CloseAudioDevice :: () {
+        js_audio_close()
+        audio_initialized = false
+    }
+
+    #program_export
+    IsAudioDeviceReady :: () -> bool {
+        AudioEnsure()
+        return js_audio_ready() != 0
+    }
+
+    #program_export
+    SetMasterVolume :: (volume: float32) {
+        AudioEnsure()
+        js_audio_set_master_volume(volume)
+    }
+
+    #program_export
+    GetMasterVolume :: () -> float32 {
+        AudioEnsure()
+        return js_audio_get_master_volume()
+    }
+
+    #program_export
+    LoadWaveFromMemory :: (kind: *u8, data: *u8,
+        length: s32) -> CanvasWave {
+        unused kind
+        wave := AudioReadWave(data, length)
+        if wave.data != null || data == null || length <= 0 { return wave }
+        AudioEnsure()
+        rate: s32
+        channels: s32
+        frames: s32
+        decoded := js_audio_decode_wave_memory(data, length,
+            *rate, *channels, *frames)
+        if decoded == null { return wave }
+        wave.data = decoded
+        wave.frame_count = cast(u32)frames
+        wave.sample_rate = cast(u32)rate
+        wave.sample_size = 32
+        wave.channels = cast(u32)channels
+        if frames <= 0 || rate <= 0 || channels <= 0 || AudioWaveBytes(wave) == 0 {
+            CanvasRelease(decoded)
+            return CanvasWave.{}
+        }
+        return wave
+    }
+
+    #program_export
+    LoadWave :: (path: *u8) -> CanvasWave {
+        length: s32
+        data := AudioLoadFile(path, *length)
+        wave := LoadWaveFromMemory(AudioFileExtension(path), data, length)
+        AudioFreeFile(data)
+        return wave
+    }
+
+    #program_export
+    IsWaveValid :: (wave: CanvasWave) -> bool {
+        return wave.data != null && wave.sample_rate > 0 &&
+            AudioWaveBytes(wave) > 0
+    }
+
+    #program_export
+    UnloadWave :: (wave: CanvasWave) {
+        CanvasRelease(wave.data)
+    }
+
+    #program_export
+    WaveCopy :: (wave: CanvasWave) -> CanvasWave {
+        if !IsWaveValid(wave) { return CanvasWave.{} }
+        total := AudioWaveBytes(wave)
+        copy := wave
+        copy.data = cast(*void)CanvasAllocate(total)
+        if copy.data != null {
+            unused CanvasCopy(copy.data, wave.data, total)
+        } else {
+            copy = CanvasWave.{}
+        }
+        return copy
+    }
+
+    #program_export
+    WaveCrop :: (wave: *CanvasWave, first: s32, last: s32) {
+        if wave == null || !IsWaveValid(wave.*) { return }
+        if first < 0 { first = 0 }
+        if cast(u32)first > wave.frame_count { first = cast(s32)wave.frame_count }
+        if last < first { last = first }
+        if cast(u32)last > wave.frame_count { last = cast(s32)wave.frame_count }
+        cropped := wave.*
+        cropped.frame_count = cast(u32)(last - first)
+        if cropped.frame_count == 0 {
+            CanvasRelease(wave.data)
+            wave.* = CanvasWave.{}
+            return
+        }
+        total := AudioWaveBytes(cropped)
+        cropped.data = cast(*void)CanvasAllocate(total)
+        if cropped.data == null { return }
+        offset := cast(u32)first * wave.channels * AudioSampleBytes(wave.sample_size)
+        data := cast(*u8)wave.data
+        unused CanvasCopy(cropped.data, cast(*void)*data[offset], total)
+        CanvasRelease(wave.data)
+        wave.* = cropped
+    }
+
+    #program_export
+    WaveFormat :: (wave: *CanvasWave, rate: s32, size: s32, channels: s32) {
+        if wave == null || !IsWaveValid(wave.*) || rate <= 0 || channels <= 0 {
+            return
+        }
+        if size != 8 && size != 16 && size != 32 { size = 32 }
+        converted := wave.*
+        frames := (cast(u64)wave.frame_count * cast(u64)rate +
+            cast(u64)wave.sample_rate - 1) / cast(u64)wave.sample_rate
+        if frames == 0 || frames > 2147483647 { return }
+        converted.frame_count = cast(u32)frames
+        converted.sample_rate = cast(u32)rate
+        converted.sample_size = cast(u32)size
+        converted.channels = cast(u32)channels
+        total := AudioWaveBytes(converted)
+        if total == 0 { return }
+        converted.data = cast(*void)CanvasAllocate(total)
+        if converted.data == null { return }
+        index: u32 = 0
+        while index < converted.frame_count {
+            denominator := ifx converted.frame_count > 1 then converted.frame_count - 1 else cast(u32)1
+            position := cast(float64)index * cast(float64)(wave.frame_count - 1) /
+                cast(float64)denominator
+            first := cast(u32)position
+            next := ifx first + 1 < wave.frame_count then first + 1 else first
+            fraction := cast(float32)(position - cast(float64)first)
+            channel: u32 = 0
+            while channel < converted.channels {
+                source_channel := ifx channel < wave.channels then channel else cast(u32)0
+                a := AudioSample(wave.data, wave.sample_size,
+                    first * wave.channels + source_channel)
+                b := AudioSample(wave.data, wave.sample_size,
+                    next * wave.channels + source_channel)
+                AudioWriteSample(converted.data, converted.sample_size,
+                    index * converted.channels + channel, a + (b - a) * fraction)
+                channel += 1
+            }
+            index += 1
+        }
+        CanvasRelease(wave.data)
+        wave.* = converted
+    }
+
+    #program_export
+    LoadWaveSamples :: (wave: CanvasWave) -> *float32 {
+        if !IsWaveValid(wave) { return null }
+        count := wave.frame_count * wave.channels
+        if count > 536870911 { return null }
+        samples := cast(*float32)CanvasAllocate(count * 4)
+        if samples == null { return null }
+        index: u32 = 0
+        while index < count {
+            samples[index] = AudioSample(wave.data, wave.sample_size, index)
+            index += 1
+        }
+        return samples
+    }
+
+    #program_export
+    UnloadWaveSamples :: (samples: *float32) {
+        CanvasRelease(cast(*void)samples)
+    }
+
+    AudioWriteText :: (output: *u8, offset: *u32, text: string) {
+        index: s64 = 0
+        while index < text.count {
+            output[offset.*] = text[index]
+            offset.* += 1
+            index += 1
+        }
+    }
+
+    AudioWriteNumber :: (output: *u8, offset: *u32, value: u32) {
+        digits: [10]u8
+        length: s32 = 0
+        while value > 0 || length == 0 {
+            digits[length] = cast(u8)(48 + value % 10)
+            value /= 10
+            length += 1
+        }
+        while length > 0 {
+            length -= 1
+            output[offset.*] = digits[length]
+            offset.* += 1
+        }
+    }
+
+    #program_export
+    ExportWave :: (wave: CanvasWave, path: *u8) -> bool {
+        if path == null || !IsWaveValid(wave) { return false }
+        bytes := AudioWaveBytes(wave)
+        block := wave.channels * AudioSampleBytes(wave.sample_size)
+        byte_rate := cast(u64)wave.sample_rate * cast(u64)block
+        if bytes > 2147483603 || block > 65535 || wave.channels > 65535 ||
+            byte_rate > 4294967295 { return false }
+        output := CanvasAllocate(bytes + 44)
+        if output == null { return false }
+        position: u32 = 0
+        AudioWriteText(output, *position, "RIFF")
+        AudioWrite32(*output[4], bytes + 36)
+        position = 8
+        AudioWriteText(output, *position, "WAVEfmt ")
+        AudioWrite32(*output[16], 16)
+        AudioWrite16(*output[20], ifx wave.sample_size == 32 then cast(u32)3 else cast(u32)1)
+        AudioWrite16(*output[22], wave.channels)
+        AudioWrite32(*output[24], wave.sample_rate)
+        AudioWrite32(*output[28], cast(u32)byte_rate)
+        AudioWrite16(*output[32], block)
+        AudioWrite16(*output[34], wave.sample_size)
+        position = 36
+        AudioWriteText(output, *position, "data")
+        AudioWrite32(*output[40], bytes)
+        unused CanvasCopy(cast(*void)*output[44], wave.data, bytes)
+        success := AudioSaveFile(path, cast(*void)output, cast(s32)(bytes + 44))
+        CanvasRelease(cast(*void)output)
+        return success
+    }
+
+    #program_export
+    ExportWaveAsCode :: (wave: CanvasWave, path: *u8) -> bool {
+        if path == null || !IsWaveValid(wave) { return false }
+        bytes := AudioWaveBytes(wave)
+        if bytes > (2147483647 - 512) / 7 { return false }
+        output := CanvasAllocate(512 + bytes * 7)
+        if output == null { return false }
+        position: u32 = 0
+        AudioWriteText(output, *position, "/* Generated by Kryon ExportWaveAsCode */\nstatic const unsigned int wave_frame_count = ")
+        AudioWriteNumber(output, *position, wave.frame_count)
+        AudioWriteText(output, *position, ";\nstatic const unsigned int wave_sample_rate = ")
+        AudioWriteNumber(output, *position, wave.sample_rate)
+        AudioWriteText(output, *position, ";\nstatic const unsigned int wave_sample_size = ")
+        AudioWriteNumber(output, *position, wave.sample_size)
+        AudioWriteText(output, *position, ";\nstatic const unsigned int wave_channels = ")
+        AudioWriteNumber(output, *position, wave.channels)
+        AudioWriteText(output, *position, ";\nstatic const unsigned char wave_data[")
+        AudioWriteNumber(output, *position, bytes)
+        AudioWriteText(output, *position, "] = {\n")
+        raw := cast(*u8)wave.data
+        hex := "0123456789abcdef"
+        index: u32 = 0
+        while index < bytes {
+            AudioWriteText(output, *position, "0x")
+            output[position] = hex[raw[index] >> 4]
+            output[position + 1] = hex[raw[index] & 15]
+            position += 2
+            if index + 1 < bytes { AudioWriteText(output, *position, ",") }
+            if index % 12 == 11 || index + 1 == bytes {
+                AudioWriteText(output, *position, "\n")
+            } else {
+                AudioWriteText(output, *position, " ")
+            }
+            index += 1
+        }
+        AudioWriteText(output, *position, "};\n")
+        output[position] = 0
+        success := AudioSaveText(path, output)
+        CanvasRelease(cast(*void)output)
+        return success
+    }
+
+    #program_export
+    LoadSound :: (path: *u8) -> CanvasSound {
+        AudioEnsure()
+        return AudioSoundFromId(js_audio_load_file(path))
+    }
+
+    #program_export
+    LoadSoundFromWave :: (wave: CanvasWave) -> CanvasSound {
+        AudioEnsure()
+        if !IsWaveValid(wave) { return CanvasSound.{} }
+        return AudioSoundFromId(js_audio_buffer_from_pcm(wave.data,
+            cast(s32)wave.frame_count, cast(s32)wave.sample_rate,
+            cast(s32)wave.sample_size, cast(s32)wave.channels))
+    }
+
+    #program_export
+    LoadSoundAlias :: (source: CanvasSound) -> CanvasSound {
+        AudioEnsure()
+        id := AudioId(source.stream)
+        if id <= 0 { return CanvasSound.{} }
+        js_audio_ref(id)
+        return source
+    }
+
+    #program_export
+    IsSoundValid :: (sound: CanvasSound) -> bool {
+        return AudioId(sound.stream) > 0 && sound.frame_count > 0
+    }
+
+    #program_export
+    UpdateSound :: (sound: CanvasSound, data: *void, frames: s32) {
+        AudioEnsure()
+        id := AudioId(sound.stream)
+        if id <= 0 || data == null || frames <= 0 { return }
+        rate := ifx sound.stream.sample_rate > 0 then cast(s32)sound.stream.sample_rate else 44100
+        size := ifx sound.stream.sample_size > 0 then cast(s32)sound.stream.sample_size else 32
+        channels := ifx sound.stream.channels > 0 then cast(s32)sound.stream.channels else 2
+        unused js_audio_update_buffer_from_pcm(id, data, frames, rate, size, channels)
+    }
+
+    #program_export
+    UnloadSoundAlias :: (alias: CanvasSound) {
+        UnloadSound(alias)
+    }
+
+    #program_export
+    UnloadSound :: (sound: CanvasSound) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_release(id) }
+    }
+
+    #program_export
+    PlaySound :: (sound: CanvasSound) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_sound_play(id) }
+    }
+
+    #program_export
+    StopSound :: (sound: CanvasSound) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_sound_stop(id) }
+    }
+
+    #program_export
+    PauseSound :: (sound: CanvasSound) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_sound_pause(id) }
+    }
+
+    #program_export
+    ResumeSound :: (sound: CanvasSound) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_sound_resume(id) }
+    }
+
+    #program_export
+    IsSoundPlaying :: (sound: CanvasSound) -> bool {
+        id := AudioId(sound.stream)
+        return id > 0 && js_audio_sound_playing(id) != 0
+    }
+
+    #program_export
+    SetSoundVolume :: (sound: CanvasSound, value: float32) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_buffer_volume(id, value) }
+    }
+
+    #program_export
+    SetSoundPitch :: (sound: CanvasSound, value: float32) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_buffer_pitch(id, value) }
+    }
+
+    #program_export
+    SetSoundPan :: (sound: CanvasSound, value: float32) {
+        id := AudioId(sound.stream)
+        if id > 0 { js_audio_buffer_pan(id, value) }
+    }
+
+    #program_export
+    LoadMusicStream :: (path: *u8) -> CanvasMusic {
+        AudioEnsure()
+        return AudioMusicFromId(js_audio_load_file(path))
+    }
+
+    #program_export
+    LoadMusicStreamFromMemory :: (kind: *u8, data: *u8, length: s32) -> CanvasMusic {
+        unused kind
+        AudioEnsure()
+        if data == null || length <= 0 { return CanvasMusic.{} }
+        return AudioMusicFromId(js_audio_load_memory(data, length))
+    }
+
+    #program_export
+    IsMusicValid :: (music: CanvasMusic) -> bool {
+        return AudioId(music.stream) > 0 && music.frame_count > 0
+    }
+
+    #program_export
+    PlayMusicStream :: (music: CanvasMusic) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_music_play(id, ifx music.looping then 1 else 0) }
+    }
+
+    #program_export
+    UpdateMusicStream :: (music: CanvasMusic) {
+        // WebAudio advances its source nodes independently of the drawing loop.
+        unused music
+    }
+
+    #program_export
+    UnloadMusicStream :: (music: CanvasMusic) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_release(id) }
+    }
+
+    #program_export
+    StopMusicStream :: (music: CanvasMusic) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_music_stop(id) }
+    }
+
+    #program_export
+    PauseMusicStream :: (music: CanvasMusic) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_music_pause(id) }
+    }
+
+    #program_export
+    ResumeMusicStream :: (music: CanvasMusic) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_music_resume(id) }
+    }
+
+    #program_export
+    IsMusicStreamPlaying :: (music: CanvasMusic) -> bool {
+        id := AudioId(music.stream)
+        return id > 0 && js_audio_music_playing(id) != 0
+    }
+
+    #program_export
+    SeekMusicStream :: (music: CanvasMusic, value: float32) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_music_seek(id, value) }
+    }
+
+    #program_export
+    SetMusicVolume :: (music: CanvasMusic, value: float32) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_buffer_volume(id, value) }
+    }
+
+    #program_export
+    SetMusicPitch :: (music: CanvasMusic, value: float32) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_buffer_pitch(id, value) }
+    }
+
+    #program_export
+    SetMusicPan :: (music: CanvasMusic, value: float32) {
+        id := AudioId(music.stream)
+        if id > 0 { js_audio_buffer_pan(id, value) }
+    }
+
+    #program_export
+    GetMusicTimeLength :: (music: CanvasMusic) -> float32 {
+        id := AudioId(music.stream)
+        if id > 0 { return js_audio_music_length(id) }
+        return 0.0
+    }
+
+    #program_export
+    GetMusicTimePlayed :: (music: CanvasMusic) -> float32 {
+        id := AudioId(music.stream)
+        if id > 0 { return js_audio_music_played(id) }
+        return 0.0
+    }
+
+    #program_export
+    LoadAudioStream :: (rate: u32, size: u32, channels: u32) -> CanvasAudioStream {
+        AudioEnsure()
+        if rate == 0 || rate > 2147483647 || channels == 0 ||
+            channels > 2147483647 || AudioSampleBytes(size) == 0 {
+            return CanvasAudioStream.{}
+        }
+        id := js_audio_stream_create(cast(s32)rate, cast(s32)size, cast(s32)channels)
+        return AudioStreamFromId(id, rate, size, channels)
+    }
+
+    #program_export
+    IsAudioStreamValid :: (stream: CanvasAudioStream) -> bool {
+        return AudioId(stream) > 0
+    }
+
+    #program_export
+    UpdateAudioStream :: (stream: CanvasAudioStream, data: *void, frames: s32) {
+        id := AudioId(stream)
+        if id <= 0 || data == null || frames <= 0 { return }
+        unused js_audio_stream_update(id, data, frames, cast(s32)stream.sample_rate,
+            cast(s32)stream.sample_size, cast(s32)stream.channels)
+    }
+
+    #program_export
+    IsAudioStreamProcessed :: (stream: CanvasAudioStream) -> bool {
+        id := AudioId(stream)
+        return id > 0 && js_audio_stream_processed(id) != 0
+    }
+
+    #program_export
+    UnloadAudioStream :: (stream: CanvasAudioStream) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_free(id) }
+    }
+
+    #program_export
+    PlayAudioStream :: (stream: CanvasAudioStream) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_play(id) }
+    }
+
+    #program_export
+    StopAudioStream :: (stream: CanvasAudioStream) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_stop(id) }
+    }
+
+    #program_export
+    PauseAudioStream :: (stream: CanvasAudioStream) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_pause(id) }
+    }
+
+    #program_export
+    ResumeAudioStream :: (stream: CanvasAudioStream) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_resume(id) }
+    }
+
+    #program_export
+    IsAudioStreamPlaying :: (stream: CanvasAudioStream) -> bool {
+        id := AudioId(stream)
+        return id > 0 && js_audio_stream_playing(id) != 0
+    }
+
+    #program_export
+    SetAudioStreamVolume :: (stream: CanvasAudioStream, value: float32) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_volume(id, value) }
+    }
+
+    #program_export
+    SetAudioStreamPitch :: (stream: CanvasAudioStream, value: float32) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_pitch(id, value) }
+    }
+
+    #program_export
+    SetAudioStreamPan :: (stream: CanvasAudioStream, value: float32) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_pan(id, value) }
+    }
+
+    #program_export
+    SetAudioStreamBufferSizeDefault :: (frames: s32) {
+        if frames > 0 { audio_stream_frames = frames }
+    }
+
+    #program_export
+    SetAudioStreamCallback :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
+        id := AudioId(stream)
+        if id > 0 { js_audio_stream_callback(id, callback, audio_stream_frames) }
+    }
+
+    #program_export
+    AttachAudioStreamProcessor :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
+        id := AudioId(stream)
+        if id > 0 && callback != null { js_audio_stream_attach_processor(id, callback) }
+    }
+
+    #program_export
+    AttachAudioMixedProcessor :: (callback: CanvasAudioCallback) {
+        if callback != null { js_audio_attach_mixed_processor(callback) }
+    }
+
+    #program_export
+    DetachAudioStreamProcessor :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
+        id := AudioId(stream)
+        if id > 0 && callback != null { js_audio_stream_detach_processor(id, callback) }
+    }
+
+    #program_export
+    DetachAudioMixedProcessor :: (callback: CanvasAudioCallback) {
+        if callback != null { js_audio_detach_mixed_processor(callback) }
+    }
+}

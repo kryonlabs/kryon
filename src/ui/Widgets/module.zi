@@ -1,6 +1,8 @@
 // The complete core widget surface. Plot and other optional packages stay
 // separate so applications only load them when imported explicitly.
 using Core :: #import "Kryon";
+using SemanticModule :: #import "semantic";
+using PageModule :: #import "page";
 using ControlPropsModule :: #import "control_props";
 using StyleModule :: #import "style";
 using StyleSheetModule :: #import "style_sheet";

@@ -1,0 +1,409 @@
+#import "canvas_types"
+#import "canvas_text"
+#import "c_string"
+#import "geometry"
+#import "drawing_props"
+#if #defined(PLATFORM_WEB) {
+    canvas_browser :: #system_library "env";
+    js_canvas_boot :: (w: s32, h: s32, title: *u8) #foreign canvas_browser "js_canvas_boot";
+    js_canvas_resize :: (w: s32, h: s32) #foreign canvas_browser "js_canvas_resize";
+    js_canvas_dim :: (which: s32) -> s32 #foreign canvas_browser "js_canvas_dim";
+    js_canvas_dpi :: () -> float64 #foreign canvas_browser "js_canvas_dpi";
+    js_canvas_set_cursor :: (cursor: s32) #foreign canvas_browser "js_canvas_set_cursor";
+    js_canvas_set_title :: (title: *u8) #foreign canvas_browser "js_canvas_set_title";
+    js_canvas_focus :: () #foreign canvas_browser "js_canvas_focus";
+    js_canvas_fullscreen :: (enable: s32) #foreign canvas_browser "js_canvas_fullscreen";
+    js_canvas_fullscreen_state :: () -> s32 #foreign canvas_browser "js_canvas_fullscreen_state";
+    js_ctx_call :: (op: s32, a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g2: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_ctx_call";
+    js_canvas_wait_frame :: (min_delay_ms: float64, target_fps: s32) #foreign canvas_browser "js_canvas_wait_frame";
+
+    js_input_query :: (which: s32, code: s32) -> s32 #foreign canvas_browser "js_input_query";
+    js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
+    js_canvas_now :: () -> float64 #foreign canvas_browser "js_canvas_now";
+    js_canvas_close :: () #foreign canvas_browser "js_canvas_close";
+    js_canvas_frame :: () #foreign canvas_browser "js_canvas_frame";
+    js_canvas_sleep :: (milliseconds: s32) #foreign canvas_browser "js_canvas_sleep";
+    js_canvas_style :: (property: s32, value: float64) #foreign canvas_browser "js_canvas_style";
+    canvas_monitor_name: [32]u8;
+    canvas_empty: [1]u8;
+    canvas_width: s32;
+    canvas_height: s32;
+    canvas_ready: bool;
+    canvas_exit_key: s32 = 256;
+    canvas_window_state: u32;
+    canvas_last_frame: float64;
+    canvas_frame_time: float32;
+    canvas_target_fps: s32;
+    canvas_random_seed: u64 = 2864434397;
+    canvas_random_state: [4]u32;
+    canvas_random_seeded: bool;
+
+    #program_export
+    InitWindow :: (width: s32, height: s32, title: *u8) {
+        canvas_width = width
+        canvas_height = height
+        js_canvas_boot(width, height, title)
+        canvas_ready = true
+        canvas_last_frame = js_canvas_now() / 1000.0
+    }
+
+    #program_export
+    CloseWindow :: () {
+        CloseCanvasText()
+        js_canvas_close()
+        canvas_ready = false
+    }
+
+    #program_export
+    WindowShouldClose :: () -> bool {
+        if !canvas_ready || js_canvas_dim(6) != 0 { return true }
+        return canvas_exit_key != 0 && js_input_query(1, canvas_exit_key) != 0
+    }
+
+    #program_export
+    IsWindowReady :: () -> bool {
+        return canvas_ready
+    }
+
+    #program_export
+    IsWindowFocused :: () -> bool {
+        return canvas_ready && js_canvas_dim(5) != 0
+    }
+
+    #program_export
+    IsWindowFullscreen :: () -> bool {
+        return (canvas_window_state & cast(u32)2) != cast(u32)0 || js_canvas_fullscreen_state() != 0
+    }
+
+    #program_export
+    IsWindowHidden :: () -> bool {
+        return (canvas_window_state & cast(u32)128) != cast(u32)0
+    }
+
+    #program_export
+    IsWindowMinimized :: () -> bool {
+        return (canvas_window_state & cast(u32)512) != cast(u32)0
+    }
+
+    #program_export
+    IsWindowMaximized :: () -> bool {
+        return (canvas_window_state & cast(u32)1024) != cast(u32)0
+    }
+
+    #program_export
+    IsWindowResized :: () -> bool {
+        return js_canvas_dim(4) != 0
+    }
+
+    #program_export
+    IsWindowState :: (flag: u32) -> bool {
+        return (canvas_window_state & flag) != cast(u32)0
+    }
+
+    #program_export
+    SetConfigFlags :: (flags: u32) {
+        canvas_window_state |= flags
+    }
+
+    #program_export
+    SetWindowState :: (flags: u32) {
+        canvas_window_state |= flags
+        if (flags & cast(u32)2) != cast(u32)0 { js_canvas_fullscreen(1) }
+    }
+
+    #program_export
+    ClearWindowState :: (flags: u32) {
+        canvas_window_state &= ~flags
+        if (flags & cast(u32)2) != cast(u32)0 { js_canvas_fullscreen(0) }
+    }
+
+    #program_export
+    ToggleFullscreen :: () {
+        if IsWindowFullscreen() {
+            ClearWindowState(cast(u32)2)
+            return
+        }
+        SetWindowState(cast(u32)2)
+    }
+
+    #program_export
+    ToggleBorderlessWindowed :: () {
+        canvas_window_state ^= cast(u32)32768
+    }
+
+    #program_export
+    MaximizeWindow :: () {
+        canvas_window_state |= cast(u32)1024
+        canvas_window_state &= ~cast(u32)512
+    }
+
+    #program_export
+    MinimizeWindow :: () {
+        canvas_window_state |= cast(u32)512
+        canvas_window_state &= ~cast(u32)1024
+    }
+
+    #program_export
+    RestoreWindow :: () {
+        ClearWindowState(cast(u32)(512 | 1024 | 2 | 32768))
+    }
+
+    #program_export
+    SetTargetFPS :: (fps: s32) {
+        canvas_target_fps = fps
+        if fps < 0 { canvas_target_fps = 0 }
+    }
+
+    #program_export
+    SetWindowSize :: (width: s32, height: s32) {
+        canvas_width = width
+        canvas_height = height
+        js_canvas_resize(width, height)
+    }
+
+    #program_export
+    BeginDrawing :: () {
+        js_ctx_call(13, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
+    }
+
+    #program_export
+    EndDrawing :: () {
+        now := js_canvas_now() / 1000.0
+        elapsed := now - canvas_last_frame
+        canvas_frame_time = cast(float32)elapsed
+        if canvas_frame_time <= 0.0 { canvas_frame_time = 1.0 / 60.0 }
+        canvas_last_frame = now
+        js_canvas_frame()
+        code: s32 = 13
+        while code <= 18 {
+            js_input_query(code, 0)
+            code += 1
+        }
+        js_input_query(20, 0)
+        js_input_end_frame()
+        delay: float64 = 1.0
+        if canvas_target_fps > 0 {
+            target := 1.0 / cast(float64)canvas_target_fps
+            if elapsed < target { delay = (target - elapsed) * 1000.0 }
+        }
+        js_canvas_wait_frame(delay, canvas_target_fps)
+    }
+
+    #program_export
+    GetTime :: () -> float64 {
+        return js_canvas_now() / 1000.0
+    }
+
+    #program_export
+    GetFrameTime :: () -> float32 {
+        return canvas_frame_time
+    }
+
+    #program_export
+    GetScreenWidth :: () -> s32 {
+        value := js_canvas_dim(0)
+        if value > 0 { return value }
+        return canvas_width
+    }
+
+    #program_export
+    GetScreenHeight :: () -> s32 {
+        value := js_canvas_dim(1)
+        if value > 0 { return value }
+        return canvas_height
+    }
+
+    #program_export
+    GetRenderWidth :: () -> s32 {
+        value := js_canvas_dim(2)
+        if value > 0 { return value }
+        return GetScreenWidth()
+    }
+
+    #program_export
+    GetRenderHeight :: () -> s32 {
+        value := js_canvas_dim(3)
+        if value > 0 { return value }
+        return GetScreenHeight()
+    }
+
+    #program_export
+    GetWindowScaleDPI :: () -> Vector2 {
+        scale := cast(float32)js_canvas_dpi()
+        return Vector2.{scale, scale}
+    }
+
+    #program_export
+    SetMouseCursor :: (cursor: s32) {
+        js_canvas_set_cursor(cursor)
+    }
+
+    #program_export
+    SetWindowTitle :: (title: *u8) {
+        js_canvas_set_title(title)
+    }
+
+    #program_export
+    SetWindowFocused :: () {
+        js_canvas_focus()
+    }
+
+    #program_export
+    SetWindowOpacity :: (opacity: float32) {
+        js_canvas_style(0, cast(float64)opacity)
+    }
+
+    #program_export
+    SetWindowMinSize :: (width: s32, height: s32) {
+        js_canvas_style(1, cast(float64)width)
+        js_canvas_style(2, cast(float64)height)
+    }
+
+    #program_export
+    SetWindowMaxSize :: (width: s32, height: s32) {
+        js_canvas_style(3, cast(float64)width)
+        js_canvas_style(4, cast(float64)height)
+    }
+
+    #program_export
+    SetWindowIcon :: (image: CanvasImage) {
+        // This embedded canvas does not own browser window placement or chrome.
+    }
+
+    #program_export
+    SetWindowIcons :: (images: *CanvasImage, count: s32) {
+        // This embedded canvas does not own browser window placement or chrome.
+    }
+
+    #program_export
+    SetWindowPosition :: (x: s32, y: s32) {
+        // This embedded canvas does not own browser window placement or chrome.
+    }
+
+    #program_export
+    SetWindowMonitor :: (monitor: s32) {
+        // This embedded canvas does not own browser window placement or chrome.
+    }
+
+    #program_export
+    GetWindowHandle :: () -> *void {
+        return null
+    }
+
+    #program_export
+    GetMonitorCount :: () -> s32 {
+        return 1
+    }
+
+    #program_export
+    GetCurrentMonitor :: () -> s32 {
+        return 0
+    }
+
+    #program_export
+    GetMonitorPosition :: (monitor: s32) -> Vector2 {
+        return Vector2.{}
+    }
+
+    #program_export
+    GetMonitorWidth :: (monitor: s32) -> s32 {
+        return GetScreenWidth()
+    }
+
+    #program_export
+    GetMonitorHeight :: (monitor: s32) -> s32 {
+        return GetScreenHeight()
+    }
+
+    #program_export
+    GetMonitorPhysicalWidth :: (monitor: s32) -> s32 {
+        return 0
+    }
+
+    #program_export
+    GetMonitorPhysicalHeight :: (monitor: s32) -> s32 {
+        return 0
+    }
+
+    #program_export
+    GetMonitorRefreshRate :: (monitor: s32) -> s32 {
+        return 60
+    }
+
+    #program_export
+    GetWindowPosition :: () -> Vector2 {
+        return Vector2.{}
+    }
+
+    #program_export
+    GetMonitorName :: (monitor: s32) -> *u8 {
+        CopyCString("HTML5 Canvas", canvas_monitor_name[:])
+        return *canvas_monitor_name[0]
+    }
+
+    #program_export
+    SetExitKey :: (key: s32) {
+        canvas_exit_key = key
+    }
+
+    #program_export
+    WaitTime :: (seconds: float64) {
+        if seconds > 0.0 { js_canvas_sleep(cast(s32)(seconds * 1000.0)) }
+    }
+
+    #program_export
+    GetApplicationDirectory :: () -> *u8 {
+        return *canvas_empty[0]
+    }
+
+    #program_export
+    CanvasRotateLeft :: (value: u32, count: s32) -> u32 {
+        return (value << cast(u32)count) | (value >> cast(u32)(32 - count))
+    }
+
+    #program_export
+    CanvasSplitMix :: () -> u64 {
+        canvas_random_seed += cast(u64)11400714819323198485
+        z := canvas_random_seed
+        z = (z ^ (z >> 30)) * cast(u64)13787848793156543929
+        z = (z ^ (z >> 27)) * cast(u64)10723151780598845931
+        return z ^ (z >> 31)
+    }
+
+    #program_export
+    SetRandomSeed :: (seed: u32) {
+        canvas_random_seed = cast(u64)seed
+        canvas_random_state[0] = cast(u32)CanvasSplitMix()
+        canvas_random_state[1] = cast(u32)(CanvasSplitMix() >> 32)
+        canvas_random_state[2] = cast(u32)CanvasSplitMix()
+        canvas_random_state[3] = cast(u32)(CanvasSplitMix() >> 32)
+        canvas_random_seeded = true
+    }
+
+    #program_export
+    CanvasRandom :: () -> u32 {
+        result := CanvasRotateLeft(canvas_random_state[1] * cast(u32)5, 7) * cast(u32)9
+        temporary := canvas_random_state[1] << 9
+        canvas_random_state[2] ^= canvas_random_state[0]
+        canvas_random_state[3] ^= canvas_random_state[1]
+        canvas_random_state[1] ^= canvas_random_state[2]
+        canvas_random_state[0] ^= canvas_random_state[3]
+        canvas_random_state[2] ^= temporary
+        canvas_random_state[3] = CanvasRotateLeft(canvas_random_state[3], 11)
+        return result
+    }
+
+    #program_export
+    GetRandomValue :: (minimum: s32, maximum: s32) -> s32 {
+        low := minimum
+        high := maximum
+        if low > high {
+            low = maximum
+            high = minimum
+        }
+        if !canvas_random_seeded { SetRandomSeed(cast(u32)js_canvas_now() ^ cast(u32)2654435769) }
+        span := cast(s64)high - cast(s64)low + 1
+        return cast(s32)(cast(s64)low + cast(s64)(cast(u64)CanvasRandom() % cast(u64)span))
+    }
+
+}

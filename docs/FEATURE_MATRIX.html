@@ -35,7 +35,7 @@ li{margin:.25rem 0}
 <tr><td class="">Desktop</td><td class=""><code>src/backend/desktop_run.zi</code></td><td class="">Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
 <tr><td class="">Raylib</td><td class=""><code>src/backend/raylib_run.zi</code></td><td class="">Private Xvfb project test covers image capture and input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
 <tr><td class="">Libdraw</td><td class=""><code>src/backend/libdraw_run.zi</code></td><td class="">Private Xvfb project test covers capture and input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
-<tr><td class="">Web</td><td class="na">—</td><td class="">No current Ziran web target or Kryon web host</td><td class="no">✗ unavailable</td></tr>
+<tr><td class="">Web</td><td class=""><code>src/backend/canvas_run.zi</code></td><td class="">Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior</td><td class="ok">✅ supported through Emscripten on the tested browser</td></tr>
 </table>
 <p>The graphical project tests run separately from <code>make test</code> with <code>make desktop-project-test</code>, <code>make raylib-project-test</code>, and <code>make libdraw-project-test</code>. They must run on a private Xvfb display.</p>
 </body></html>

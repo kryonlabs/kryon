@@ -28,11 +28,14 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 | `desktop` | `src/backend/desktop_run.zi` | SDL2 window with Cairo raster |
 | `libdraw` | `src/backend/libdraw_run.zi` | plan9port devdraw window with the shared Cairo raster |
 | `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
+| `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
 
 The desktop and libdraw hosts share `cairo_raster.zi`. The raylib host uses
-`raylib_runtime.zi` and Kryon's `vendor/raylib` revision. Backend build
-dependencies and link flags live in `mk/ziran-project.mk`. Platform calls are
-declared with Ziran foreign imports; handwritten host implementation is Ziran.
+`raylib_runtime.zi` and Kryon's `vendor/raylib` revision. The canvas host uses
+its dedicated `canvas_raster.zi` provider over a Canvas2D browser ABI; see
+[Canvas2D browser host](canvas.md). Backend build dependencies and link flags
+live in `mk/ziran-project.mk`. Platform calls are declared with Ziran foreign
+imports; handwritten host implementation is Ziran.
 
 ## Frame and input ownership
 
