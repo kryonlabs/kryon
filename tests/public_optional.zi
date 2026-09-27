@@ -1,0 +1,17 @@
+using UI :: #import "Widgets";
+using Charts :: #import "PlotWidget";
+using Tables :: #import "TableView";
+using Trees :: #import "TreeView";
+using Styles :: #import "Kss";
+using Coloring :: #import "Syntax";
+
+PublicOptional :: () -> s32 {
+    environment: KssEnvironment = KssDefaultEnvironment()
+    if environment.theme != 0 { return 1 }
+    if !SyntaxDarkBackground(cast(u32)0x101010ff) { return 2 }
+    range: PlotRange = PlotRangeFor(0.0, 10.0, 2.0, 8.0)
+    if range.min_value != 0.0 || range.max_value != 10.0 { return 3 }
+    if TableViewSelectedRowFor(8, 3) != 2 { return 4 }
+    if TreeViewContentHeight(2, 20) != 40 { return 5 }
+    return 42
+}

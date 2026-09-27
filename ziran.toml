@@ -8,6 +8,10 @@ Widgets = "src/ui/Widgets/module.zi"
 geometry = "src/ui/geometry.zi"
 drawing_props = "src/ui/drawing_props.zi"
 PlotWidget = "src/plot/PlotWidget/module.zi"
+TableView = "src/data_views/TableView/module.zi"
+TreeView = "src/data_views/TreeView/module.zi"
+Kss = "src/kss/Kss/module.zi"
+Syntax = "src/syntax/Syntax/module.zi"
 
 [tool]
 project = "build/bin/kryon"

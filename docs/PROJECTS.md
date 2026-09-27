@@ -37,7 +37,8 @@ module with `using UI :: #import "Kryon";` and exports
 profile needs SDL2 and Cairo development libraries. Project builds can use
 `--locked` and `--offline` for exact, cached dependencies. Import `Widgets`
 for the complete core widget catalog and `PlotWidget` for the optional chart
-widget. Plot is the first app using this route and exports its own `Plot`
+widget. `TableView`, `TreeView`, `Kss`, and `Syntax` are separate optional
+imports. Plot is the first app using this route and exports its own `Plot`
 module; the names do not collide.
 
 The compiler resolves short imports inside the importing package and its

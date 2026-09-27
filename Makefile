@@ -214,6 +214,9 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
 	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/plot tests/public_plot.zi
+	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/data_views \
+		--module-path src/kss --module-path src/syntax --module-path src/ui $(ZIRAN_STD_PATH) \
+		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
 check: all plot data-views kss syntax ziran-test header-check project-test public-surface-check
 .PHONY: typeface-source-test

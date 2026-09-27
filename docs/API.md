@@ -9,6 +9,8 @@ Ziran package apps import `Kryon` for geometry, drawing values, sessions,
 Text, and Button, or `Widgets` for the full core widget catalog. The optional
 `PlotWidget` module is a separate import. These names are exported by
 [`ziran.toml`](../ziran.toml).
+The same package also exports optional `TableView`, `TreeView`, `Kss`, and
+`Syntax` modules. Applications import only the packages they use.
 
 ## Use a checked module
 
