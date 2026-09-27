@@ -1,0 +1,120 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+outlines: s32;
+labels: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if (value != "One" && value != "Two") || font != 14 ||
+        typeface.count != 0 { failed = true }
+    return 21
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return 12
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    expected_y: float32 = 27.0
+    if fills >= 2 { expected_y = 67.0 }
+    if radius != 0.5 || segments != 32 ||
+        bounds.x != 22.0 || bounds.y != expected_y ||
+        bounds.width != 16.0 || bounds.height != 16.0 ||
+        color.r != cast(u8)0x12 || color.g != cast(u8)0x34 ||
+        color.b != cast(u8)0x56 || color.a != cast(u8)127 {
+        failed = true
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    even: bool = outlines % 2 == 0
+    expected_y: float32 = 65.0
+    if even { expected_y = 25.0 }
+    red: u8 = cast(u8)0x73
+    alpha: u8 = cast(u8)255
+    if (outlines < 4 && even) || (outlines >= 4 && !even) {
+        red = cast(u8)0x12
+        alpha = cast(u8)127
+    }
+    if radius != 0.5 || segments != 32 || width != 2.0 ||
+        bounds.x != 20.0 || bounds.y != expected_y ||
+        bounds.width != 20.0 || bounds.height != 20.0 ||
+        color.r != red || color.a != alpha { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    expected: string = "Two"
+    expected_y: s32 = 69
+    if labels % 2 == 0 {
+        expected = "One"
+        expected_y = 29
+    }
+    if value != expected || x != 58 || y != expected_y || font != 14 ||
+        clip.x != 10.0 || clip.width != 120.0 ||
+        clip.height != 30.0 || color.r != cast(u8)0xaa ||
+        color.g != cast(u8)0xbb || color.b != cast(u8)0xcc {
+        failed = true
+    }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
+
+#program_export
+RadioHostFailed :: () -> bool { return failed }
+
+#program_export
+RadioFills :: () -> s32 { return fills }
+
+#program_export
+RadioOutlines :: () -> s32 { return outlines }
+
+#program_export
+RadioLabels :: () -> s32 { return labels }

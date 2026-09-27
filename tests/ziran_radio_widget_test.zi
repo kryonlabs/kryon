@@ -1,0 +1,122 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "radio"
+#import "radio_props"
+#import "radio_widget"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_radio_widget_host"
+
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    if RadioMarkText(true) != "◉" ||
+        RadioMarkText(false) != "○" { return -6 }
+    first: RadioProps
+    first.key = cast(u64)7
+    first.id = 7
+    first.class_name = 9
+    first.label = "One"
+    first.bounds = Rectangle.{10.0, 20.0, 120.0, 30.0}
+    first.checked = phase < 2
+    second: RadioProps
+    second.key = cast(u64)8
+    second.id = 8
+    second.class_name = 9
+    second.label = "Two"
+    second.bounds = Rectangle.{10.0, 60.0, 120.0, 30.0}
+    second.checked = phase >= 2
+    if phase >= 3 { second.disabled = true }
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 2
+        mark: StyleRule
+        mark.selector = StyleDefaultSelector()
+        mark.selector.kind = StyleKindRadio()
+        mark.selector.class_name = 9
+        mark.selector.role = RadioMarkRole()
+        mark.style.fields = cast(u32)StyleBackground | cast(u32)StyleOpacity
+        mark.style.background = cast(u32)0x123456ff
+        mark.style.opacity = 0.5
+        rules.items[0] = mark
+        label: StyleRule
+        label.selector = StyleDefaultSelector()
+        label.selector.kind = StyleKindRadio()
+        label.selector.class_name = 9
+        label.selector.role = RadioLabelRole()
+        label.style.fields = cast(u32)StyleForeground
+        label.style.foreground = cast(u32)0xaabbccff
+        rules.items[1] = label
+        InstallStyleRules(rules)
+    }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 150.0, 120.0})
+    one: s32 = Radio(TestSession(), first)
+    two: s32 = Radio(TestSession(), second)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindRadio ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "One" ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Two" ||
+        TreeNodeAt(TestSession(), 1).bounds.width != 120.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 120.0 { return -1 }
+    if phase == 0 {
+        if one != 0 || two != 0 ||
+            !TreeNodeAt(TestSession(), 1).selected || TreeNodeAt(TestSession(), 2).selected {
+            return -2
+        }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{140.0, 110.0, false, false, false})
+        phase = 1
+        return 0
+    }
+    if phase == 1 {
+        if one != 0 || two != 8 ||
+            !TreeNodeAt(TestSession(), 1).selected || TreeNodeAt(TestSession(), 2).selected {
+            return -3
+        }
+        phase = 2
+        return 1
+    }
+    if phase == 2 {
+        if one != 0 || two != 0 ||
+            TreeNodeAt(TestSession(), 1).selected || !TreeNodeAt(TestSession(), 2).selected {
+            return -4
+        }
+        phase = 3
+        return 2
+    }
+    if one != 0 || two != 0 || !TreeNodeAt(TestSession(), 2).selected ||
+        TreeHitAt(TestSession(), 20.0, 70.0) != -1 { return -5 }
+    phase = 4
+    return 3
+}
+
+#program_export
+main :: () -> s32 {
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != index || RadioHostFailed() ||
+            RadioFills() != index + 1 ||
+            RadioOutlines() != (index + 1) * 2 ||
+            RadioLabels() != (index + 1) * 2 { return 1 }
+        index += 1
+    }
+    return 0
+}
