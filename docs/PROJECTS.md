@@ -1,5 +1,51 @@
 # Ziran projects
 
+## Package route
+
+Install Ziran once with `make install-user` in a Ziran checkout. An app then
+declares its compiler, Kryon dependency, and Kryon profile in one
+`ziran.toml`:
+
+```toml
+[package]
+name = "Example"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.Kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[tool.kryon]
+default_profile = "cairo"
+
+[tool.kryon.profiles.cairo]
+backend = "desktop"
+```
+
+`ziran lock` writes exact Git commits to `ziran.lock`; commit that file with
+the app. `ziran fetch` fills the shared cache. App source imports the public
+module with `using UI :: #import "Kryon";` and exports
+`Frame(session: Session, viewport: Rectangle) -> s32`. Run
+`ziran tool Kryon check`, `ziran tool Kryon build`, or
+`ziran tool Kryon run --profile cairo` from the app directory. The Cairo
+profile needs SDL2 and Cairo development libraries. Project builds can use
+`--locked` and `--offline` for exact, cached dependencies. Plot is the first
+app using this route and also exports its own `Plot` module.
+
+The compiler resolves short imports inside the importing package and its
+direct dependencies. Kryon's host imports the app's `app` module through the
+explicit `bridge_modules` entry. No app submodule or sibling checkout is
+needed for this profile. See [Ziran packages](https://github.com/ziranlang/ziran/blob/master/docs/PACKAGES.md)
+for aliases, multiple dependency revisions, and local development overrides.
+
+## Legacy checkout route
+
 Install the `kryon` command from a Kryon checkout next to a Ziran checkout:
 
 ```sh
