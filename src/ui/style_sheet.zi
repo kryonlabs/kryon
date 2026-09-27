@@ -406,6 +406,16 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
     return result
 }
 
+CopyInstalledTypeface :: (typeface: string, output: []u8) -> bool {
+    if typeface.count > output.count { return false }
+    index: s64 = 0
+    while index < typeface.count {
+        output[index] = typeface[index]
+        index += 1
+    }
+    return true
+}
+
 #program_export
 InstallStyleRules :: (rules: StyleRules) -> bool {
     limit: s32 = rules.count
@@ -428,11 +438,9 @@ InstallStyleRules :: (rules: StyleRules) -> bool {
     index = 0
     while index < limit {
         typeface: string = rules.items[index].style.typeface
-        byte: s64 = 0
-        while byte < lengths[index] {
-            installed_typeface_bytes[starts[index] + byte] = typeface[byte]
-            byte += 1
-        }
+        if !CopyInstalledTypeface(typeface,
+                installed_typeface_bytes[starts[index]:
+                    starts[index] + lengths[index]]) { return false }
         installed_rules.items[index].selector = rules.items[index].selector
         installed_rules.items[index].state = rules.items[index].state
         installed_rules.items[index].layer = rules.items[index].layer
