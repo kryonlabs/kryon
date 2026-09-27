@@ -1,0 +1,126 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "toggle"
+#import "toggle_props"
+#import "toggle_widget"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_toggle_widget_host"
+
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    plain: ToggleProps
+    plain.key = cast(u64)7
+    plain.id = 7
+    plain.class_name = 9
+    plain.label = "Wireless"
+    plain.bounds.x = 10.0
+    plain.bounds.y = 20.0
+    labels: ToggleProps
+    labels.key = cast(u64)8
+    labels.id = 8
+    labels.class_name = 10
+    labels.label = "Mode"
+    labels.off_label = "Off"
+    labels.on_label = "On"
+    labels.bounds.x = 10.0
+    labels.bounds.y = 60.0
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 2
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = StyleKindToggle()
+        rule.selector.class_name = 9
+        rule.selector.role = ToggleFillRole()
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
+        rules.items[0] = rule
+        label_rule: StyleRule
+        label_rule.selector = StyleDefaultSelector()
+        label_rule.selector.kind = StyleKindToggle()
+        label_rule.selector.class_name = 10
+        label_rule.selector.role = ToggleLabelRole()
+        label_rule.style.fields = cast(u32)StyleForeground
+        label_rule.style.foreground = cast(u32)0xaabbccff
+        rules.items[1] = label_rule
+        InstallStyleRules(rules)
+    }
+    if phase >= 2 { plain.value = true }
+    if phase >= 3 {
+        labels.value = true
+        labels.disabled = true
+    }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    first: ToggleValueResult = Toggle(TestSession(), plain)
+    second: ToggleValueResult = Toggle(TestSession(), labels)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindToggle ||
+        TreeNodeAt(TestSession(), 1).bounds.width != 54.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.width != 68.0 ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Wireless" ||
+        TreeNodeAt(TestSession(), 2).semantic_label != "Mode" { return -1 }
+    if phase == 0 {
+        if first.value || first.changed || second.value ||
+            second.changed || TreeNodeAt(TestSession(), 1).selected ||
+            TreeNodeAt(TestSession(), 2).selected { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 140.0, false, false, false})
+        phase = 1
+        return 0
+    }
+    if phase == 1 {
+        if !first.value || !first.changed || second.value ||
+            second.changed || !TreeNodeAt(TestSession(), 1).selected ||
+            TreeNodeAt(TestSession(), 2).selected { return -3 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 70.0, false, false, true})
+        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 140.0, false, false, false})
+        phase = 2
+        return 1
+    }
+    if phase == 2 {
+        if !first.value || first.changed || !second.value ||
+            !second.changed || !TreeNodeAt(TestSession(), 1).selected ||
+            !TreeNodeAt(TestSession(), 2).selected { return -4 }
+        phase = 3
+        return 2
+    }
+    if !first.value || first.changed || !second.value ||
+        second.changed || !TreeNodeAt(TestSession(), 2).selected ||
+        TreeHitAt(TestSession(), 20.0, 70.0) != -1 { return -5 }
+    phase = 4
+    return 3
+}
+
+#program_export
+main :: () -> s32 {
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != index || ToggleHostFailed() ||
+            ToggleFills() != (index + 1) * 4 ||
+            ToggleOutlines() != index + 1 ||
+            ToggleLabels() != (index + 1) * 2 { return 1 }
+        index += 1
+    }
+    return 0
+}

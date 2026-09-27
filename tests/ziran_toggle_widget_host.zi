@@ -1,0 +1,109 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+outlines: s32;
+labels: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    if value == "Off" { return 21 }
+    if value != "On" { failed = true }
+    return 14
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused font
+    unused typeface
+    failed = true
+    return 0
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if radius != 0.5 || segments != 16 { failed = true }
+    if bounds.x == 10.0 && bounds.y == 20.0 &&
+        bounds.width == 54.0 {
+        expected: u8 = cast(u8)0x12
+        if fills < 4 { expected = cast(u8)0xd1 }
+        if color.r != expected { failed = true }
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if radius != 0.5 || segments != 16 || width != 1.0 ||
+        (bounds.width != 20.0 && bounds.width != 24.0) ||
+        color.r != cast(u8)0x94 { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if font != 14 || y != 69 || clip.x != 10.0 || clip.y != 60.0 ||
+        clip.width != 68.0 || clip.height != 32.0 { failed = true }
+    if !(value == "Off" && x == 16) && !(value == "On" && x == 54) {
+        failed = true
+    }
+    if (labels / 2 < 2 && value == "On") ||
+        (labels / 2 >= 2 && value == "Off") {
+        if color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
+            color.b != cast(u8)0xcc { failed = true }
+    }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
+
+#program_export
+ToggleHostFailed :: () -> bool { return failed }
+
+#program_export
+ToggleFills :: () -> s32 { return fills }
+
+#program_export
+ToggleOutlines :: () -> s32 { return outlines }
+
+#program_export
+ToggleLabels :: () -> s32 { return labels }
