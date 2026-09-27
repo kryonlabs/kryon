@@ -1,0 +1,345 @@
+// Android's native window size and Java-reported insets share one viewport.
+// Surface synchronization runs on the render thread; inset updates may arrive
+// on Java's UI thread and are copied under the Android mutex.
+#import "c_string"
+
+AndroidWindowInsets :: struct {
+    system_left: s32
+    system_top: s32
+    system_right: s32
+    system_bottom: s32
+    ime_bottom: s32
+    cutout_left: s32
+    cutout_top: s32
+    cutout_right: s32
+    cutout_bottom: s32
+}
+AndroidSafeArea :: struct {
+    left: s32
+    top: s32
+    right: s32
+    bottom: s32
+}
+AndroidViewport :: struct {
+    x: s32
+    y: s32
+    width: s32
+    height: s32
+    insets: AndroidSafeArea
+    ready: s32
+}
+AndroidViewportPolicy :: struct {
+    insets: s32
+    min_width: s32
+    min_height: s32
+}
+
+ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
+raylib :: #system_library "raylib";
+SurfaceScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
+SurfaceScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
+
+surface_width: s32;
+surface_height: s32;
+window_insets: AndroidWindowInsets;
+insets_ready: s32;
+viewport_policy: AndroidViewportPolicy;
+viewport_policy_set: bool;
+
+#if ANDROID_SURFACE {
+    c :: #system_library "c";
+    android :: #system_library "android";
+    dl :: #system_library "dl";
+    SurfaceMutexLock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
+    SurfaceMutexUnlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
+    SurfaceLookup :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+    SurfaceWindow :: () -> *void #foreign raylib "GetWindowHandle";
+    SurfaceFormat :: (window: *void) -> s32 #foreign android "ANativeWindow_getFormat";
+    SurfaceGeometry :: (window: *void, width: s32,
+        height: s32, format: s32) -> s32 #foreign android "ANativeWindow_setBuffersGeometry";
+    SurfaceWidth :: (window: *void) -> s32 #foreign android "ANativeWindow_getWidth";
+    SurfaceHeight :: (window: *void) -> s32 #foreign android "ANativeWindow_getHeight";
+    SurfaceViewport :: (x: s32, y: s32, width: s32,
+        height: s32) #foreign raylib "rlViewport";
+    SurfaceMatrixMode :: (mode: s32) #foreign raylib "rlMatrixMode";
+    SurfaceIdentity :: () #foreign raylib "rlLoadIdentity";
+    SurfaceOrtho :: (left: float64, right: float64, bottom: float64,
+        top: float64, near: float64, far: float64) #foreign raylib "rlOrtho";
+
+    // raylib exposes CORE as a global. This prefix matches its Window record
+    // through screenMax; later raylib fields are never read or written here.
+    RaylibWindowSize :: struct {
+        width: u32
+        height: u32
+    }
+    RaylibWindowPoint :: struct {
+        x: s32
+        y: s32
+    }
+    RaylibWindowState :: struct {
+        title: *u8
+        flags: u32
+        ready: bool
+        should_close: bool
+        resized_last_frame: bool
+        event_waiting: bool
+        using_fbo: bool
+        display: RaylibWindowSize
+        screen: RaylibWindowSize
+        position: RaylibWindowPoint
+        previous_screen: RaylibWindowSize
+        previous_position: RaylibWindowPoint
+        render: RaylibWindowSize
+        render_offset: RaylibWindowPoint
+        current_fbo: RaylibWindowSize
+        screen_min: RaylibWindowSize
+        screen_max: RaylibWindowSize
+    }
+    // PTHREAD_MUTEX_INITIALIZER is zero on bionic. Storage also fits glibc
+    // for the display-free native behavior test.
+    insets_mutex: [8]u64;
+    raylib_window_state: *RaylibWindowState;
+}
+
+NonnegativeInset :: (value: s32) -> s32 {
+    if value > 0 {
+        return value
+    }
+    return 0
+}
+MaxInset :: (left: s32, right: s32) -> s32 {
+    left = NonnegativeInset(left)
+    right = NonnegativeInset(right)
+    if left > right {
+        return left
+    }
+    return right
+}
+ContentSize :: (size: s32, leading: s32, trailing: s32,
+    minimum: s32) -> s32 {
+    content := cast(s64)size - cast(s64)leading - cast(s64)trailing
+    if content <= 0 || (minimum > 0 && content < cast(s64)minimum) {
+        return size
+    }
+    return cast(s32)content
+}
+
+#program_export
+AndroidViewportPolicyFull :: () -> AndroidViewportPolicy {
+    policy: AndroidViewportPolicy
+    return policy
+}
+#program_export
+AndroidViewportPolicySafeArea :: () -> AndroidViewportPolicy {
+    policy: AndroidViewportPolicy
+    policy.insets = 3
+    return policy
+}
+#program_export
+AndroidViewportPolicyResizeForIme :: () -> AndroidViewportPolicy {
+    policy: AndroidViewportPolicy
+    policy.insets = 7
+    return policy
+}
+
+SafeAreaForPolicy :: (insets: AndroidWindowInsets,
+    policy: AndroidViewportPolicy) -> AndroidSafeArea {
+    area: AndroidSafeArea
+    if (policy.insets & 1) != 0 {
+        area.left = MaxInset(area.left, insets.system_left)
+        area.top = MaxInset(area.top, insets.system_top)
+        area.right = MaxInset(area.right, insets.system_right)
+        area.bottom = MaxInset(area.bottom, insets.system_bottom)
+    }
+    if (policy.insets & 2) != 0 {
+        area.left = MaxInset(area.left, insets.cutout_left)
+        area.top = MaxInset(area.top, insets.cutout_top)
+        area.right = MaxInset(area.right, insets.cutout_right)
+        area.bottom = MaxInset(area.bottom, insets.cutout_bottom)
+    }
+    if (policy.insets & 4) != 0 {
+        area.bottom = MaxInset(area.bottom, insets.ime_bottom)
+    }
+    return area
+}
+
+ResolveViewport :: (width: s32, height: s32,
+    insets: AndroidWindowInsets, policy: AndroidViewportPolicy,
+    ready: s32) -> AndroidViewport {
+    area := SafeAreaForPolicy(insets, policy)
+    viewport: AndroidViewport
+    viewport.x = area.left
+    viewport.y = area.top
+    viewport.width = ContentSize(width, area.left, area.right, policy.min_width)
+    viewport.height = ContentSize(height, area.top, area.bottom, policy.min_height)
+    viewport.insets = area
+    viewport.ready = ready
+    if viewport.width == width || viewport.width <= 0 {
+        viewport.x = 0
+        viewport.width = width
+    }
+    if viewport.height == height || viewport.height <= 0 {
+        viewport.y = 0
+        viewport.height = height
+    }
+    return viewport
+}
+
+#program_export
+SetAndroidWindowInsets :: (system_left: s32, system_top: s32,
+    system_right: s32, system_bottom: s32, ime_bottom: s32,
+    cutout_left: s32, cutout_top: s32, cutout_right: s32,
+    cutout_bottom: s32) {
+    #if ANDROID_SURFACE {
+        SurfaceMutexLock(cast(*void)*insets_mutex[0])
+    }
+    window_insets.system_left = NonnegativeInset(system_left)
+    window_insets.system_top = NonnegativeInset(system_top)
+    window_insets.system_right = NonnegativeInset(system_right)
+    window_insets.system_bottom = NonnegativeInset(system_bottom)
+    window_insets.ime_bottom = NonnegativeInset(ime_bottom)
+    window_insets.cutout_left = NonnegativeInset(cutout_left)
+    window_insets.cutout_top = NonnegativeInset(cutout_top)
+    window_insets.cutout_right = NonnegativeInset(cutout_right)
+    window_insets.cutout_bottom = NonnegativeInset(cutout_bottom)
+    insets_ready = 1
+    #if ANDROID_SURFACE {
+        SurfaceMutexUnlock(cast(*void)*insets_mutex[0])
+    }
+}
+
+#program_export
+GetAndroidWindowInsets :: (output: *AndroidWindowInsets) -> s32 {
+    #if ANDROID_SURFACE {
+        SurfaceMutexLock(cast(*void)*insets_mutex[0])
+    }
+    if output != null {
+        output[0] = window_insets
+    }
+    ready := insets_ready
+    #if ANDROID_SURFACE {
+        SurfaceMutexUnlock(cast(*void)*insets_mutex[0])
+    }
+    return ready
+}
+
+#program_export
+GetAndroidSafeAreaInsets :: () -> AndroidSafeArea {
+    insets: AndroidWindowInsets
+    GetAndroidWindowInsets(*insets)
+    return SafeAreaForPolicy(insets, AndroidViewportPolicySafeArea())
+}
+
+#program_export
+SetAndroidViewportPolicy :: (policy: AndroidViewportPolicy) {
+    viewport_policy = policy
+    viewport_policy_set = true
+}
+
+#program_export
+GetAndroidViewportPolicy :: () -> AndroidViewportPolicy {
+    if !viewport_policy_set {
+        return AndroidViewportPolicySafeArea()
+    }
+    return viewport_policy
+}
+
+#program_export
+ResolveAndroidViewport :: (width: s32, height: s32,
+    policy: AndroidViewportPolicy, output: *AndroidViewport) -> s32 {
+    insets: AndroidWindowInsets
+    ready := GetAndroidWindowInsets(*insets)
+    if output != null {
+        output[0] = ResolveViewport(width, height, insets, policy, ready)
+    }
+    return ready
+}
+
+#program_export
+GetAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
+    w := surface_width
+    h := surface_height
+    if w <= 0 {
+        w = SurfaceScreenWidth()
+    }
+    if h <= 0 {
+        h = SurfaceScreenHeight()
+    }
+    if width != null {
+        width[0] = w
+    }
+    if height != null {
+        height[0] = h
+    }
+    if surface_width > 0 && surface_height > 0 {
+        return 1
+    }
+    return 0
+}
+
+#program_export
+SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
+    w := SurfaceScreenWidth()
+    h := SurfaceScreenHeight()
+    synced: s32 = 0
+    #if ANDROID_SURFACE {
+        window := SurfaceWindow()
+        if raylib_window_state == null {
+            symbol: [8]u8
+            CopyCString("CORE", symbol[:])
+            // Bionic uses a distinct RTLD_DEFAULT sentinel on 32-bit ABIs.
+            lookup_scope: *void
+            if size_of(*void) == 4 {
+                lookup_scope = cast(*void)cast(usize)4294967295
+            }
+            raylib_window_state = cast(*RaylibWindowState)SurfaceLookup(lookup_scope, *symbol[0])
+        }
+        if window != null && raylib_window_state != null {
+            format := SurfaceFormat(window)
+            if SurfaceGeometry(window, 0, 0, format) == 0 {
+                native_width := SurfaceWidth(window)
+                native_height := SurfaceHeight(window)
+                if native_width > 0 && native_height > 0 {
+                    w = native_width
+                    h = native_height
+                    state := raylib_window_state
+                    changed := surface_width != w || surface_height != h ||
+                        state.screen.width != cast(u32)w || state.screen.height != cast(u32)h ||
+                        state.render.width != cast(u32)w || state.render.height != cast(u32)h
+                    surface_width = w
+                    surface_height = h
+                    state.display.width = cast(u32)w
+                    state.display.height = cast(u32)h
+                    state.screen = state.display
+                    state.render = state.display
+                    if !state.using_fbo {
+                        state.current_fbo = state.display
+                    }
+                    state.resized_last_frame = changed
+                    SurfaceViewport(0, 0, w, h)
+                    SurfaceMatrixMode(0x1701)
+                    SurfaceIdentity()
+                    SurfaceOrtho(0.0, cast(float64)w, cast(float64)h, 0.0, 0.0, 1.0)
+                    SurfaceMatrixMode(0x1700)
+                    SurfaceIdentity()
+                    synced = 1
+                }
+            }
+        }
+    }
+    if width != null {
+        width[0] = w
+    }
+    if height != null {
+        height[0] = h
+    }
+    return synced
+}
+
+#program_export
+SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
+    width: s32
+    height: s32
+    SyncAndroidSurfaceSize(*width, *height)
+    return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
+}

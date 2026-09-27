@@ -1,0 +1,124 @@
+#import, file "../src/backend/android_surface.zi";
+#import, file "android_viewport_policy.zi";
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+core: RaylibWindowState;
+native_width: s32 = 1080;
+native_height: s32 = 1920;
+geometry_result: s32;
+viewport_width: s32;
+viewport_height: s32;
+projection_width: float64;
+projection_height: float64;
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+#program_export
+GetScreenWidth :: () -> s32 {
+    return cast(s32)core.screen.width
+}
+#program_export
+GetScreenHeight :: () -> s32 {
+    return cast(s32)core.screen.height
+}
+#program_export
+GetWindowHandle :: () -> *void {
+    return cast(*void)*core
+}
+#program_export
+dlsym :: (library: *void, symbol: *u8) -> *void {
+    unused library
+    Require(symbol[0] == #char "C" && symbol[1] == #char "O" &&
+        symbol[2] == #char "R" && symbol[3] == #char "E" && symbol[4] == 0, 10)
+    return cast(*void)*core
+}
+#program_export
+ANativeWindow_getFormat :: (window: *void) -> s32 {
+    unused window
+    return 1
+}
+#program_export
+ANativeWindow_setBuffersGeometry :: (window: *void, width: s32,
+    height: s32, format: s32) -> s32 {
+    unused window
+    Require(width == 0 && height == 0 && format == 1, 11)
+    return geometry_result
+}
+#program_export
+ANativeWindow_getWidth :: (window: *void) -> s32 {
+    unused window
+    return native_width
+}
+#program_export
+ANativeWindow_getHeight :: (window: *void) -> s32 {
+    unused window
+    return native_height
+}
+#program_export
+rlViewport :: (x: s32, y: s32, width: s32, height: s32) {
+    Require(x == 0 && y == 0, 12)
+    viewport_width = width
+    viewport_height = height
+}
+#program_export
+rlMatrixMode :: (mode: s32) {
+    Require(mode == 0x1701 || mode == 0x1700, 13)
+}
+#program_export
+rlLoadIdentity :: () {
+}
+#program_export
+rlOrtho :: (left: float64, right: float64, bottom: float64,
+    top: float64, near: float64, far: float64) {
+    Require(left == 0.0 && top == 0.0 && near == 0.0 && far == 1.0, 14)
+    projection_width = right
+    projection_height = bottom
+}
+
+#program_export
+main :: () -> s32 {
+    Require(PolicyCheck() == 42, 20)
+    core.screen.width = 320
+    core.screen.height = 560
+    width: s32
+    height: s32
+    Require(GetAndroidSurfaceSize(*width, *height) == 0 &&
+        width == 320 && height == 560, 21)
+    insets: AndroidWindowInsets
+    Require(GetAndroidWindowInsets(*insets) == 0, 22)
+    SetAndroidWindowInsets(-1, 53, 84, 24, 120, 4, 60, 80, 8)
+    Require(GetAndroidWindowInsets(*insets) == 1 && insets.system_left == 0, 23)
+    viewport: AndroidViewport
+    Require(SyncAndroidViewport(*viewport) == 1, 24)
+    Require(viewport.x == 4 && viewport.y == 60 && viewport.width == 992 &&
+        viewport.height == 1836, 25)
+    Require(core.screen.width == 1080 && core.screen.height == 1920 &&
+        core.render.width == 1080 && core.render.height == 1920 &&
+        core.current_fbo.width == 1080 && core.resized_last_frame, 26)
+    Require(viewport_width == 1080 && viewport_height == 1920 &&
+        projection_width == 1080.0 && projection_height == 1920.0, 27)
+    Require(GetAndroidSurfaceSize(*width, *height) == 1 && width == 1080 && height == 1920, 28)
+    SyncAndroidViewport(*viewport)
+    Require(!core.resized_last_frame, 29)
+    core.using_fbo = true
+    core.current_fbo.width = 640
+    core.current_fbo.height = 480
+    native_width = 1920
+    native_height = 1080
+    SyncAndroidViewport(*viewport)
+    Require(core.resized_last_frame && core.screen.width == 1920 &&
+        core.current_fbo.width == 640 && core.current_fbo.height == 480, 30)
+    SetAndroidViewportPolicy(AndroidViewportPolicyFull())
+    SyncAndroidViewport(*viewport)
+    Require(viewport.width == 1920 && viewport.height == 1080 && viewport.x == 0, 31)
+    geometry_result = -1
+    native_width = 700
+    Require(SyncAndroidSurfaceSize(*width, *height) == 0 && width == 1920, 32)
+    return 0
+}

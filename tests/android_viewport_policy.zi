@@ -1,0 +1,54 @@
+#import, file "../src/backend/android_surface.zi";
+
+PolicyCheck :: () -> s32 {
+    insets: AndroidWindowInsets
+    insets.system_left = -1
+    insets.system_top = 53
+    insets.system_right = 84
+    insets.system_bottom = 24
+    insets.ime_bottom = 120
+    insets.cutout_left = 4
+    insets.cutout_top = 60
+    insets.cutout_right = 80
+    insets.cutout_bottom = 8
+    viewport := ResolveViewport(320, 560, insets,
+        AndroidViewportPolicySafeArea(), 1)
+    if viewport.x != 4 || viewport.y != 60 || viewport.width != 232 ||
+        viewport.height != 476 || viewport.insets.bottom != 24 || viewport.ready != 1 {
+        return 1
+    }
+    viewport = ResolveViewport(320, 560, insets,
+        AndroidViewportPolicyFull(), 1)
+    if viewport.x != 0 || viewport.y != 0 || viewport.width != 320 ||
+        viewport.height != 560 || viewport.insets.bottom != 0 {
+        return 2
+    }
+    viewport = ResolveViewport(320, 560, insets,
+        AndroidViewportPolicyResizeForIme(), 1)
+    if viewport.insets.bottom != 120 || viewport.height != 380 {
+        return 3
+    }
+    policy := AndroidViewportPolicySafeArea()
+    policy.min_width = 260
+    viewport = ResolveViewport(320, 560, insets, policy, 1)
+    if viewport.x != 0 || viewport.width != 320 {
+        return 4
+    }
+    insets.system_left = 2147483647
+    insets.system_right = 2147483647
+    viewport = ResolveViewport(320, 560, insets, policy, 0)
+    if viewport.x != 0 || viewport.width != 320 || viewport.ready != 0 {
+        return 5
+    }
+    return 42
+}
+
+#if !#defined(ANDROID_BUILD) {
+    #program_export
+    main :: () -> s32 {
+        if PolicyCheck() != 42 {
+            return 1
+        }
+        return 0
+    }
+}
