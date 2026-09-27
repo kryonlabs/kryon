@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Kryon Labs mark">
+  <rect x="32" y="22" width="144" height="134" fill="#a65234"/>
+  <rect x="32" y="175" width="144" height="314" fill="#24302c"/>
+  <path d="M192 175 310 22h170L298 256H192Z" fill="#395e48"/>
+  <path d="M192 274h106l182 215H298L192 382Z" fill="#395e48"/>
+</svg>

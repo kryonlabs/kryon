@@ -5,9 +5,9 @@ Created for the approved website redesign on 2026-09-19.
 - `workshop.webp`: original ink-and-watercolor hero, generated with the built-in
   `image_gen` tool using the approved page mockup as a reference. Exact prompt:
   `workshop-prompt.txt`. WebP export: 1536 × 1024, quality 84.
-- Site-root `og.png`: generated social card, built-in `image_gen`, exact prompt
-  `social-card-prompt.txt`. Export: 1200 × 800, 192-color optimized PNG. The
-  original artwork has been preserved outside the deployment source.
+- Site-root `og.png`: current 1200 × 630 Kryon Labs social card rendered from
+  the site-root `og.svg`, using the new mark in `../brand/mark.svg`. The earlier
+  generated card prompt remains in `social-card-prompt.txt` for reference.
 - `hello.png`: actual 480 × 280 KRB software-renderer capture, not generated art.
   Recreate from the repository root with:
 

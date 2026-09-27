@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Kryon Labs — Useful interfaces. Clear foundations.">
+  <rect width="1200" height="630" fill="#f7f3eb"/>
+  <path d="M0 0h1200v630H0z" fill="none" stroke="#d7d9cd" stroke-width="16"/>
+  <path d="M812 0v630M936 0v630M1060 0v630M0 516h1200" fill="none" stroke="#d7d9cd" stroke-width="1"/>
+  <path d="M936 0h124v516H936z" fill="#eeeadf"/>
+  <path d="M1060 0h140v516h-140z" fill="#e4e9dc"/>
+  <g transform="translate(70 64) scale(.15)">
+    <rect x="32" y="22" width="144" height="134" fill="#a65234"/>
+    <rect x="32" y="175" width="144" height="314" fill="#24302c"/>
+    <path d="M192 175 310 22h170L298 256H192Z" fill="#395e48"/>
+    <path d="M192 274h106l182 215H298L192 382Z" fill="#395e48"/>
+  </g>
+  <text x="164" y="115" fill="#202c29" font-family="Noto Sans,Arial,sans-serif" font-size="36" font-weight="700">Kryon Labs</text>
+  <text x="70" y="270" fill="#202c29" font-family="Noto Serif,Georgia,serif" font-size="69" font-weight="600">Useful interfaces.</text>
+  <text x="70" y="356" fill="#315e48" font-family="Noto Serif,Georgia,serif" font-size="69" font-weight="600">Clear foundations.</text>
+  <text x="72" y="438" fill="#59645d" font-family="Noto Sans,Arial,sans-serif" font-size="27">A reusable UI library written in Ziran.</text>
+  <rect x="70" y="548" width="50" height="8" fill="#a65234"/>
+  <text x="140" y="563" fill="#59645d" font-family="Noto Sans,Arial,sans-serif" font-size="22">kryonlabs.com</text>
+</svg>
