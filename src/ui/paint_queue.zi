@@ -15,6 +15,7 @@ PaintKind :: enum {
     PaintKindText :: 4
     PaintKindImage :: 5
     PaintKindClippedText :: 6
+    PaintKindVerticalGradient :: 7
 }
 using PaintKind;
 
@@ -24,6 +25,7 @@ PaintCommand :: struct {
     kind: s32
     bounds: Rectangle
     color: Color
+    end_color: Color
     radius: float32
     segments: s32
     line_width: float32
@@ -87,6 +89,41 @@ EmitLine :: (command: PaintCommand) {
 EmitRoundedFill :: (command: PaintCommand) {
     FillRoundedRectangle(command.bounds, command.radius,
         command.segments, command.color)
+}
+
+GradientChannel :: (first: u8, second: u8, amount: float32) -> u8 {
+    value: float32 = cast(float32)first +
+        (cast(float32)second - cast(float32)first) * amount + 0.5
+    if value <= 0.0 { return cast(u8)0 }
+    if value >= 255.0 { return cast(u8)255 }
+    return cast(u8)value
+}
+
+#program_export
+GradientColorAt :: (first: Color, second: Color, amount: float32) -> Color {
+    if amount < 0.0 { amount = 0.0 }
+    if amount > 1.0 { amount = 1.0 }
+    return Color.{GradientChannel(first.r, second.r, amount),
+        GradientChannel(first.g, second.g, amount),
+        GradientChannel(first.b, second.b, amount),
+        GradientChannel(first.a, second.a, amount)}
+}
+
+// Backends rasterize only flat rectangles, so a gradient is drawn as one-pixel
+// rows sampled at their centers.
+EmitVerticalGradient :: (command: PaintCommand) {
+    bounds: Rectangle = command.bounds
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    bottom: float32 = bounds.y + bounds.height
+    top: float32 = bounds.y
+    while top < bottom {
+        height: float32 = 1.0
+        if top + height > bottom { height = bottom - top }
+        amount: float32 = (top + height * 0.5 - bounds.y) / bounds.height
+        FillRoundedRectangle(Rectangle.{bounds.x, top, bounds.width, height},
+            0.0, 0, GradientColorAt(command.color, command.end_color, amount))
+        top += height
+    }
 }
 
 EmitRoundedOutline :: (command: PaintCommand) {
@@ -206,6 +243,23 @@ PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: flo
     command.data.segments = segments
     command.data.color = color
     emit: PaintEmitter = EmitRoundedFill
+    command.emit = emit
+    command.has_emitter = true
+    SubmitPaint(session, command)
+}
+
+// Queued with the other paint so it lands above images submitted earlier in
+// the same frame.
+#program_export
+PaintVerticalGradient :: (session: Session, node: s32, bounds: Rectangle,
+    top: Color, bottom: Color) {
+    command: QueuedPaint
+    command.data.kind = PaintKindVerticalGradient
+    command.data.node = node
+    command.data.bounds = bounds
+    command.data.color = top
+    command.data.end_color = bottom
+    emit: PaintEmitter = EmitVerticalGradient
     command.emit = emit
     command.has_emitter = true
     SubmitPaint(session, command)
