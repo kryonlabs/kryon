@@ -1,0 +1,3 @@
+// Optional chart widget surface. Apps import this only when they use charts.
+using PlotPropsModule :: #import "plot_props";
+using PlotWidgetModule :: #import "plot_widget";

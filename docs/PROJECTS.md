@@ -35,8 +35,10 @@ module with `using UI :: #import "Kryon";` and exports
 `ziran tool Kryon check`, `ziran tool Kryon build`, or
 `ziran tool Kryon run --profile cairo` from the app directory. The Cairo
 profile needs SDL2 and Cairo development libraries. Project builds can use
-`--locked` and `--offline` for exact, cached dependencies. Plot is the first
-app using this route and also exports its own `Plot` module.
+`--locked` and `--offline` for exact, cached dependencies. Import `Widgets`
+for the complete core widget catalog and `PlotWidget` for the optional chart
+widget. Plot is the first app using this route and exports its own `Plot`
+module; the names do not collide.
 
 The compiler resolves short imports inside the importing package and its
 direct dependencies. Kryon's host imports the app's `app` module through the

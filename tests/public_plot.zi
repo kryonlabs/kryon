@@ -1,0 +1,7 @@
+using UI :: #import "Kryon";
+using Charts :: #import "PlotWidget";
+
+PublicPlot :: (session: Session, props: PlotProps,
+    values: []float32) -> s32 {
+    return Plot(session, props, values)
+}

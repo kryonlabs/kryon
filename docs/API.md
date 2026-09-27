@@ -5,6 +5,11 @@ application imports only the modules it needs. Every maintained UI module is
 listed in [`modules.txt`](../src/ui/modules.txt) and passes Kryon's C, C++,
 and Go build.
 
+Ziran package apps import `Kryon` for geometry, drawing values, sessions,
+Text, and Button, or `Widgets` for the full core widget catalog. The optional
+`PlotWidget` module is a separate import. These names are exported by
+[`ziran.toml`](../ziran.toml).
+
 ## Use a checked module
 
 Pass the Kryon source directory as an ordinary module path:

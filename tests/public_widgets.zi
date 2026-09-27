@@ -1,0 +1,8 @@
+using UI :: #import "Widgets";
+
+PublicWidgets :: (session: Session, button: ButtonProps,
+    image: ImageProps, checkbox: CheckboxProps, slider: SliderProps,
+    dropdown: DropdownProps) -> s32 {
+    Image(session, image)
+    return Button(session, button)
+}

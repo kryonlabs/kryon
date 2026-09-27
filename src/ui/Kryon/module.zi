@@ -8,5 +8,3 @@ using TextPropsModule :: #import "text_props";
 using TextWidgetModule :: #import "text_widget";
 using ButtonPropsModule :: #import "button_props";
 using ButtonWidgetModule :: #import "button_widget";
-using PlotPropsModule :: #import "plot_props";
-using PlotWidgetModule :: #import "plot_widget";

@@ -29,7 +29,7 @@ KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
 
-.PHONY: all check test test-focus ziran-test header-check source-check clean project-toolchain project-test install-user
+.PHONY: all check test test-focus ziran-test header-check source-check public-surface-check clean project-toolchain project-test install-user
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -207,7 +207,14 @@ project-test: project-toolchain build/bin/kryon
 source-check:
 	sh tools/check-ziran-source.sh
 
-check: all plot data-views kss syntax ziran-test header-check project-test
+public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
+	$(ZI2ZIR_BIN) --root src/ui -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
+	$(ZI2ZIR_BIN) --root tests --module-path src/ui \
+		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
+	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/ui \
+		-o $(BUILD_DIR)/public/plot tests/public_plot.zi
+
+check: all plot data-views kss syntax ziran-test header-check project-test public-surface-check
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh
