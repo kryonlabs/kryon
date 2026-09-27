@@ -7,7 +7,6 @@
 
 raylib :: #system_library "raylib";
 c :: #system_library "c";
-sdl_library :: #system_library "SDL2";
 libm :: #system_library "m";
 HostRaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
 
@@ -65,7 +64,7 @@ HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
 HostRaylibFileExists :: (path: *u8) -> bool #foreign raylib "FileExists";
-HostRaylibGetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
+HostRaylibGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
 
 RaylibAsset :: struct {
     path: [1024]u8
