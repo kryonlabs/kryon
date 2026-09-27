@@ -5,6 +5,7 @@
 #import "tree_input"
 
 raylib :: #system_library "raylib";
+c :: #system_library "c";
 sdl_library :: #system_library "SDL2";
 libm :: #system_library "m";
 HostRaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
@@ -38,7 +39,12 @@ RaylibFont :: struct {
 }
 HostRaylibLoadFont :: (path: *u8, size: s32, codepoints: *s32,
     count: s32) -> RaylibFont #foreign raylib "LoadFontEx";
+HostRaylibLoadFontFromMemory :: (extension: *u8, bytes: *u8,
+    byte_count: s32, size: s32, codepoints: *s32,
+    count: s32) -> RaylibFont #foreign raylib "LoadFontFromMemory";
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
+HostTypefaceAllocate :: (size: u64) -> *u8 #foreign c "malloc";
+HostTypefaceFree :: (bytes: *u8) #foreign c "free";
 HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
     size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
 HostRaylibMeasureFontText :: (font: RaylibFont, value: *u8, size: float32,
@@ -74,11 +80,180 @@ raylib_wheel_move: float32;
 raylib_image_error: bool;
 raylib_font: RaylibFont;
 raylib_font_loaded: bool;
+raylib_font_registered: bool;
+raylib_active_typeface_index: s32 = -1;
+
+RaylibTypeface :: struct {
+    name: [64]u8
+    name_length: s32
+    font: RaylibFont
+}
+
+raylib_typefaces: [16]RaylibTypeface;
+raylib_typeface_count: s32;
+
+RaylibTypefaceIndex :: (name: string) -> s32 {
+    if name.count == 0 || name.count >= 64 {
+        return -1
+    }
+    index: s32 = 0
+    while index < raylib_typeface_count {
+        if raylib_typefaces[index].name_length == cast(s32)name.count {
+            same: bool = true
+            at: s32 = 0
+            while at < cast(s32)name.count {
+                if raylib_typefaces[index].name[at] != name[at] {
+                    same = false
+                    break
+                }
+                at += 1
+            }
+            if same {
+                return index
+            }
+        }
+        index += 1
+    }
+    return -1
+}
+
+RaylibStoreTypeface :: (name: string, font: RaylibFont) -> bool {
+    if font.texture.id == cast(u32)0 || name.count == 0 ||
+    name.count >= 64 {
+        return false
+    }
+    name_bytes: [64]u8
+    if !CopyCString(name, name_bytes[:]) {
+        return false
+    }
+    index: s32 = RaylibTypefaceIndex(name)
+    if index < 0 {
+        if raylib_typeface_count == 16 {
+            return false
+        }
+        index = raylib_typeface_count
+        raylib_typeface_count += 1
+    } else {
+        HostRaylibUnloadFont(raylib_typefaces[index].font)
+    }
+    if !CopyCString(name, raylib_typefaces[index].name[:]) {
+        return false
+    }
+    raylib_typefaces[index].name_length = cast(s32)name.count
+    raylib_typefaces[index].font = font
+    if raylib_active_typeface_index == index {
+        raylib_font = font
+        raylib_font_loaded = true
+        raylib_font_registered = true
+    }
+    return true
+}
+
+#program_export
+LoadTypefaceData :: (name: string, extension: string, data: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name.count == 0 || extension.count == 0 || data.count == 0 ||
+    data.count > 2147483647 || seed_count < 0 ||
+    (seed_count > 0 && seed == null) {
+        return false
+    }
+    extension_bytes: [16]u8
+    if !CopyCString(extension, extension_bytes[:]) {
+        return false
+    }
+    bytes: *u8 = HostTypefaceAllocate(cast(u64)data.count)
+    if bytes == null {
+        return false
+    }
+    index: s32 = 0
+    while index < cast(s32)data.count {
+        bytes[index] = data[index]
+        index += 1
+    }
+    font := HostRaylibLoadFontFromMemory(*extension_bytes[0], bytes,
+        cast(s32)data.count, 64, seed, seed_count)
+    HostTypefaceFree(bytes)
+    if font.texture.id == cast(u32)0 {
+        return false
+    }
+    if !RaylibStoreTypeface(name, font) {
+        HostRaylibUnloadFont(font)
+        return false
+    }
+    return true
+}
+
+#program_export
+LoadTypefaceFile :: (name: string, path: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name.count == 0 || path.count == 0 || seed_count < 0 ||
+    (seed_count > 0 && seed == null) {
+        return false
+    }
+    path_bytes: [4096]u8
+    if !CopyCString(path, path_bytes[:]) {
+        return false
+    }
+    font := HostRaylibLoadFont(*path_bytes[0], 64, seed, seed_count)
+    if font.texture.id == cast(u32)0 {
+        return false
+    }
+    if !RaylibStoreTypeface(name, font) {
+        HostRaylibUnloadFont(font)
+        return false
+    }
+    return true
+}
+
+#program_export
+LoadSystemTypeface :: (name: string) -> bool {
+    return false
+}
+
+#program_export
+SelectTypeface :: (name: string) -> bool {
+    index: s32 = RaylibTypefaceIndex(name)
+    if index < 0 {
+        return false
+    }
+    if raylib_font_loaded && !raylib_font_registered {
+        HostRaylibUnloadFont(raylib_font)
+    }
+    raylib_font = raylib_typefaces[index].font
+    raylib_font_loaded = true
+    raylib_font_registered = true
+    raylib_active_typeface_index = index
+    return true
+}
+
+#program_export
+ReleaseTypefaces :: () {
+    if raylib_font_loaded && !raylib_font_registered {
+        HostRaylibUnloadFont(raylib_font)
+    }
+    index: s32 = 0
+    while index < raylib_typeface_count {
+        HostRaylibUnloadFont(raylib_typefaces[index].font)
+        raylib_typefaces[index] = RaylibTypeface.{}
+        index += 1
+    }
+    raylib_typeface_count = 0
+    raylib_active_typeface_index = -1
+    raylib_font = RaylibFont.{}
+    raylib_font_loaded = false
+    raylib_font_registered = false
+}
+
+#program_export
+ReleaseTypefaceCpu :: () {
+    // raylib owns glyph data until UnloadFont releases the atlas.
+}
 
 RaylibTryFont :: (path: *u8) -> bool {
     if path == null || !HostRaylibFileExists(path) { return false }
     raylib_font = HostRaylibLoadFont(path, 32, null, 0)
     raylib_font_loaded = raylib_font.texture.id != cast(u32)0
+    raylib_font_registered = false
     return raylib_font_loaded
 }
 
@@ -177,7 +352,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
     }
     raylib_assets[index].length = cast(s32)path.count
     raylib_assets[index].texture =
-        HostRaylibLoadTexture(*raylib_assets[index].path[0])
+    HostRaylibLoadTexture(*raylib_assets[index].path[0])
     if raylib_assets[index].texture.id == cast(u32)0 {
         raylib_assets[index].length = 0
         return -1
@@ -220,8 +395,7 @@ CloseRaylib :: () {
         index += 1
     }
     raylib_assets_count = 0
-    if raylib_font_loaded { HostRaylibUnloadFont(raylib_font) }
-    raylib_font_loaded = false
+    ReleaseTypefaces()
     if HostRaylibIsWindowReady() { HostRaylibCloseWindow() }
 }
 
@@ -377,8 +551,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     if source.width <= 0.0 || source.height <= 0.0 ||
-        destination.width <= 0.0 || destination.height <= 0.0 ||
-        clip.width <= 0.0 || clip.height <= 0.0 {
+    destination.width <= 0.0 || destination.height <= 0.0 ||
+    clip.width <= 0.0 || clip.height <= 0.0 {
         return
     }
     texture: Texture2D
