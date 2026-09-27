@@ -1,0 +1,144 @@
+#import "drawing_props"
+#import "geometry"
+
+texts: s32;
+images: s32;
+failed: bool;
+
+InkIsExpected :: (color: Color) -> bool {
+    return color.r == cast(u8)0x17 && color.g == cast(u8)0x17 &&
+        color.b == cast(u8)0x17 && color.a == cast(u8)255
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if (font != 24 && font != 16) || typeface.count != 0 {
+        failed = true
+    }
+    return (cast(s32)value.count) * 10
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if (font != 24 && font != 16) || typeface.count != 0 {
+        failed = true
+    }
+    return 12
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    expected: string
+    expected_x: s32
+    expected_y: s32
+    expected_clip: Rectangle
+    expected_font: s32 = 16
+    if texts == 0 {
+        expected = "Title"
+        expected_x = 10
+        expected_y = 20
+        expected_clip = Rectangle.{10.0, 20.0, 50.0, 12.0}
+        expected_font = 24
+    } else if texts == 1 {
+        expected = "Body"
+        expected_x = 10
+        expected_y = 40
+        expected_clip = Rectangle.{10.0, 40.0, 190.0, 12.0}
+    } else if texts == 2 {
+        expected = "A"
+        expected_x = 5
+        expected_y = 5
+        expected_clip = Rectangle.{5.0, 5.0, 10.0, 12.0}
+    } else if texts == 3 {
+        expected = "BB"
+        expected_x = 5
+        expected_y = 20
+        expected_clip = Rectangle.{5.0, 20.0, 20.0, 12.0}
+    } else if texts == 4 {
+        expected = "Plain"
+        expected_x = 10
+        expected_y = 10
+        expected_clip = Rectangle.{20.0, 20.0, 40.0, 40.0}
+    } else if texts == 5 {
+        expected = "Clipped"
+        expected_x = 30
+        expected_y = 30
+        expected_clip = Rectangle.{30.0, 30.0, 30.0, 30.0}
+    } else {
+        failed = true
+    }
+    if value != expected || x != expected_x || y != expected_y ||
+        font != expected_font || !InkIsExpected(color) ||
+        clip.x != expected_clip.x || clip.y != expected_clip.y ||
+        clip.width != expected_clip.width ||
+        clip.height != expected_clip.height { failed = true }
+    texts += 1
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused color
+    failed = true
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+    failed = true
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    if asset_path.count != 0 || texture_id != cast(u32)7 ||
+        source.x != 0.0 || source.y != 0.0 ||
+        source.width != 70.0 || source.height != 70.0 ||
+        destination.x != 10.0 || destination.y != 10.0 ||
+        destination.width != 70.0 || destination.height != 70.0 ||
+        clip.x != 20.0 || clip.y != 20.0 ||
+        clip.width != 40.0 || clip.height != 40.0 ||
+        origin.x != 0.0 || origin.y != 0.0 ||
+        rotation != 0.0 || radius != 0.0 ||
+        !InkIsExpected(tint) { failed = true }
+    images += 1
+}
+
+#program_export
+PageTextHostFailed :: () -> bool { return failed }
+
+#program_export
+PageTextCount :: () -> s32 { return texts }
+
+#program_export
+PageImageCount :: () -> s32 { return images }
