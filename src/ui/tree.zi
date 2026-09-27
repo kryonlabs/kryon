@@ -141,7 +141,8 @@ NodeCore :: struct {
 }
 
 SemanticData :: struct {
-    label: string
+    label_offset: s64
+    label_length: s64
     kind: SemanticKind
     heading_level: s32
     selected: bool
@@ -210,6 +211,9 @@ TreeStore :: struct {
     submitted: Vec(NodeCore)
     committed_semantics: Vec(SemanticData)
     submitted_semantics: Vec(SemanticData)
+    committed_labels: [65536]u8
+    submitted_labels: [65536]u8
+    submitted_label_count: s64
     committed_interactions: Vec(InteractionData)
     submitted_interactions: Vec(InteractionData)
     layouts: Vec(LayoutData)
@@ -415,7 +419,19 @@ TreeRead :: (session: Session, index: s32,
         } else {
             semantic = trees[slot].submitted_semantics[node.semantic_index]
         }
-        entry.semantic_label = semantic.label
+        if semantic.label_length > 0 {
+            if committed {
+                entry.semantic_label = TextView(
+                    trees[slot].committed_labels[
+                        semantic.label_offset:
+                        semantic.label_offset + semantic.label_length])
+            } else {
+                entry.semantic_label = TextView(
+                    trees[slot].submitted_labels[
+                        semantic.label_offset:
+                        semantic.label_offset + semantic.label_length])
+            }
+        }
         entry.semantic_kind = semantic.kind
         entry.heading_level = semantic.heading_level
         entry.selected = semantic.selected
@@ -582,6 +598,7 @@ TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
     slot: s32 = session.slot
     VecClear(trees[slot].submitted)
     VecClear(trees[slot].submitted_semantics)
+    trees[slot].submitted_label_count = 0
     VecClear(trees[slot].submitted_interactions)
     VecClear(trees[slot].layouts)
     trees[slot].submitted_count = 0
@@ -858,6 +875,11 @@ TreeFinish :: (session: Session) -> bool {
     trees[slot].scope_depth = 0
     VecSwap(trees[slot].committed, trees[slot].submitted)
     VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
+    byte: s64 = 0
+    while byte < trees[slot].submitted_label_count {
+        trees[slot].committed_labels[byte] = trees[slot].submitted_labels[byte]
+        byte += 1
+    }
     VecSwap(trees[slot].committed_interactions, trees[slot].submitted_interactions)
     trees[slot].committed_count = trees[slot].submitted_count
     trees[slot].next_identity_generation = trees[slot].staged_identity_generation
@@ -915,6 +937,7 @@ TreeCancel :: (session: Session) {
     trees[slot].building = false
     VecClear(trees[slot].submitted)
     VecClear(trees[slot].submitted_semantics)
+    trees[slot].submitted_label_count = 0
     VecClear(trees[slot].submitted_interactions)
     VecClear(trees[slot].layouts)
     trees[slot].submitted_count = 0
@@ -934,7 +957,20 @@ TreeSetLabel :: (session: Session, index: s32, label: string) {
         index >= trees[slot].submitted_count { return }
     semantic: s32 = TreeEnsureSemantic(session, index)
     if semantic < 0 { return }
-    trees[slot].submitted_semantics[semantic].label = label
+    start: s64 = trees[slot].submitted_label_count
+    if cast(s64)label.count > 65536 - start {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return
+    }
+    byte: s64 = 0
+    while byte < label.count {
+        trees[slot].submitted_labels[start + byte] = label[byte]
+        byte += 1
+    }
+    trees[slot].submitted_label_count = start + byte
+    trees[slot].submitted_semantics[semantic].label_offset = start
+    trees[slot].submitted_semantics[semantic].label_length =
+        cast(s64)label.count
 }
 
 #program_export
