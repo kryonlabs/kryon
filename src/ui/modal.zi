@@ -120,13 +120,6 @@ ModalMetric :: (fields: u32, field: u32, value: float32,
 }
 
 #program_export
-ModalActionButtonFrame :: (action: StyleFrame) -> StyleFrame {
-    action.value.offset_x = 0.0
-    action.value.offset_y = 0.0
-    return action
-}
-
-#program_export
 ModalMetricsFor :: (scale: float32, panel: StyleFrame, title: StyleFrame,
     message: StyleFrame, action: StyleFrame, close: StyleFrame) -> ModalMetrics {
     if scale <= 0.0 { scale = 1.0 }
