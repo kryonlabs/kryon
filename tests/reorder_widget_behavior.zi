@@ -1,6 +1,7 @@
 #import "geometry";
 #import "reorder_props";
 #import "reorder_widget";
+#import "reorder_widget_host";
 #import "session";
 #import "tree";
 #import "tree_input";
@@ -65,4 +66,10 @@ Answer :: () -> s32 {
     }
     unused SessionClose(test_session)
     return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
 }

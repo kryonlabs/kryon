@@ -1,0 +1,14 @@
+#import "drawing_props";
+#import "geometry";
+
+// The reorder behavior test commits tree state without presenting paint.
+// These bindings let the portable bundle resolve the same host surface.
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+}
