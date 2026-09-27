@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Ziran</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #f8fafc; }
+    #canvas-frame { width: 100%; height: 100%; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="canvas-frame"><canvas id="canvas"></canvas></div>
+  <pre id="result">pending</pre>
+  <script>
+    var Module = {
+      onExit: function(code) {
+        document.getElementById("result").textContent = code === 0 ? "PASS" : "FAIL " + code;
+      },
+      onAbort: function(reason) {
+        document.getElementById("result").textContent = "ABORT " + reason;
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

@@ -100,6 +100,7 @@ Image :: (session: Session, image: ImageProps) {
         node = TreeSubmitCurrent(session, image.key, WidgetKindImage, image.bounds)
         if node < 0 { return }
         TreeSetLabel(session, node, image.alt_text)
+        TreeSetSemanticDetail(session, node, image.asset_path)
     }
     faces: ImageFaces = ImageFacesFor(ActiveStyleRules(), image,
         DefaultImageFaces())

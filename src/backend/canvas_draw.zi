@@ -1,0 +1,268 @@
+#import "canvas_types"
+#import "geometry"
+#import "drawing_props"
+#if #defined(PLATFORM_WEB) {
+    canvas_browser :: #system_library "env";
+    js_draw_gradient_v :: (x: float64, y: float64, w: float64, h: float64, tr: s32, tg: s32, tb: s32, ta: s32, br: s32, bg: s32, bb: s32, ba: s32) #foreign canvas_browser "js_draw_gradient_v";
+    js_draw_gradient_h :: (x: float64, y: float64, w: float64, h: float64, lr: s32, lg: s32, lb: s32, la: s32, rr: s32, rg: s32, rb: s32, ra: s32) #foreign canvas_browser "js_draw_gradient_h";
+    js_draw_circle_gradient :: (x: float64, y: float64, radius: float64, ir: s32, ig: s32, ib: s32, ia: s32, or_: s32, og: s32, ob: s32, oa: s32) #foreign canvas_browser "js_draw_circle_gradient";
+    js_blend_mode :: (mode: s32, begin: s32) #foreign canvas_browser "js_blend_mode";
+    js_draw_gradient_ex :: (x: float64, y: float64, w: float64, h: float64, c1r: s32, c1g: s32, c1b: s32, c1a: s32, c2r: s32, c2g: s32, c2b: s32, c2a: s32, c3r: s32, c3g: s32, c3b: s32, c3a: s32, c4r: s32, c4g: s32, c4b: s32, c4a: s32) #foreign canvas_browser "js_draw_gradient_ex";
+    js_draw_rounded :: (op: s32, x: float64, y: float64, w: float64, h: float64, rad: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_rounded";
+    js_draw_rect_lines_ex :: (x: float64, y: float64, w: float64, h: float64, thick: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_rect_lines_ex";
+    js_draw_rect_pro :: (x: float64, y: float64, w: float64, h: float64, ox: float64, oy: float64, rot: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_rect_pro";
+    js_draw_circle_lines_ex :: (cx: float64, cy: float64, radius: float64, thick: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_circle_lines_ex";
+    js_draw_ring :: (cx: float64, cy: float64, inner: float64, outer: float64, start: float64, end: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_ring";
+    js_draw_ring_lines :: (cx: float64, cy: float64, inner: float64, outer: float64, start: float64, end: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_draw_ring_lines";
+    js_get_modelview :: (values: *float32) #foreign canvas_browser "js_get_modelview";
+    js_set_modelview :: (a: float64, b: float64, c: float64, d: float64, e: float64, f: float64) #foreign canvas_browser "js_set_modelview";
+
+    js_ctx_call :: (op: s32, a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g2: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_ctx_call";
+    #program_export
+    ColorToInt :: (color: Color) -> s32 {
+        return cast(s32)((cast(u32)color.r << 24) | (cast(u32)color.g << 16) | (cast(u32)color.b << 8) | cast(u32)color.a)
+    }
+
+    #program_export
+    GetColor :: (value: u32) -> Color {
+        return Color.{cast(u8)(value >> 24), cast(u8)(value >> 16), cast(u8)(value >> 8), cast(u8)value}
+    }
+
+    #program_export
+    ClearBackground :: (color: Color) {
+        js_ctx_call(0, cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangle :: (x: s32, y: s32, width: s32, height: s32, color: Color) {
+        js_ctx_call(1, cast(float64)(x), cast(float64)(y), cast(float64)(width), cast(float64)(height), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawPixel :: (x: s32, y: s32, color: Color) {
+        DrawRectangle(x, y, 1, 1, color)
+    }
+
+    #program_export
+    DrawPixelV :: (position: Vector2, color: Color) {
+        DrawPixel(cast(s32)position.x, cast(s32)position.y, color)
+    }
+
+    #program_export
+    DrawRectangleRec :: (rec: Rectangle, color: Color) {
+        js_ctx_call(1, cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangleV :: (position: Vector2, size: Vector2, color: Color) {
+        DrawRectangleRec(Rectangle.{position.x, position.y, size.x, size.y}, color)
+    }
+
+    #program_export
+    DrawRectangleLines :: (x: s32, y: s32, width: s32, height: s32, color: Color) {
+        js_ctx_call(2, cast(float64)(x), cast(float64)(y), cast(float64)(width), cast(float64)(height), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircle :: (x: s32, y: s32, radius: float32, color: Color) {
+        js_ctx_call(3, cast(float64)(x), cast(float64)(y), cast(float64)(radius), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircleV :: (center: Vector2, radius: float32, color: Color) {
+        js_ctx_call(3, cast(float64)(center.x), cast(float64)(center.y), cast(float64)(radius), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircleLines :: (x: s32, y: s32, radius: float32, color: Color) {
+        js_ctx_call(4, cast(float64)(x), cast(float64)(y), cast(float64)(radius), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircleLinesV :: (center: Vector2, radius: float32, color: Color) {
+        DrawCircleLines(cast(s32)center.x, cast(s32)center.y, radius, color)
+    }
+
+    #program_export
+    DrawLine :: (x1: s32, y1: s32, x2: s32, y2: s32, color: Color) {
+        js_ctx_call(5, cast(float64)(x1), cast(float64)(y1), cast(float64)(x2), cast(float64)(y2), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawLineV :: (start: Vector2, end: Vector2, color: Color) {
+        DrawLine(cast(s32)start.x, cast(s32)start.y, cast(s32)end.x, cast(s32)end.y, color)
+    }
+
+    #program_export
+    DrawLineEx :: (start: Vector2, end: Vector2, thick: float32, color: Color) {
+        js_ctx_call(6, cast(float64)(start.x), cast(float64)(start.y), cast(float64)(end.x), cast(float64)(end.y), cast(float64)(thick), cast(float64)(0), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawTriangle :: (v1: Vector2, v2: Vector2, v3: Vector2, color: Color) {
+        js_ctx_call(7, cast(float64)(v1.x), cast(float64)(v1.y), cast(float64)(v2.x), cast(float64)(v2.y), cast(float64)(v3.x), cast(float64)(v3.y), cast(float64)(0), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawTriangleLines :: (v1: Vector2, v2: Vector2, v3: Vector2, color: Color) {
+        DrawLineV(v1, v2, color)
+        DrawLineV(v2, v3, color)
+        DrawLineV(v3, v1, color)
+    }
+
+    #program_export
+    DrawLineStrip :: (points: *Vector2, count: s32, color: Color) {
+        if points == null || count < 2 { return }
+        i: s32 = 1
+        while i < count {
+            DrawLineV(points[i - 1], points[i], color)
+            i += 1
+        }
+    }
+
+    #program_export
+    DrawTriangleFan :: (points: *Vector2, count: s32, color: Color) {
+        if points == null || count < 3 { return }
+        i: s32 = 1
+        while i < count - 1 {
+            DrawTriangle(points[0], points[i], points[i + 1], color)
+            i += 1
+        }
+    }
+
+    #program_export
+    DrawTriangleStrip :: (points: *Vector2, count: s32, color: Color) {
+        if points == null || count < 3 { return }
+        i: s32 = 0
+        while i < count - 2 {
+            if (i & 1) == 0 { DrawTriangle(points[i], points[i + 1], points[i + 2], color) }
+            if (i & 1) != 0 { DrawTriangle(points[i + 1], points[i], points[i + 2], color) }
+            i += 1
+        }
+    }
+
+    #program_export
+    BeginScissorMode :: (x: s32, y: s32, width: s32, height: s32) {
+        js_ctx_call(9, cast(float64)(x), cast(float64)(y), cast(float64)(width), cast(float64)(height), cast(float64)(0), cast(float64)(0), cast(float64)(0), 0, 0, 0, 0)
+    }
+
+    #program_export
+    EndScissorMode :: () {
+        js_ctx_call(10, cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), 0, 0, 0, 0)
+    }
+
+    #program_export
+    BeginMode2D :: (camera: Camera) {
+        js_ctx_call(11, cast(float64)(camera.zoom), cast(float64)(camera.zoom), cast(float64)(camera.offset.x), cast(float64)(camera.offset.y), cast(float64)(camera.target.x), cast(float64)(camera.target.y), cast(float64)(camera.rotation), 0, 0, 0, 0)
+    }
+
+    #program_export
+    EndMode2D :: () {
+        js_ctx_call(12, cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), cast(float64)(0), 0, 0, 0, 0)
+    }
+
+    #program_export
+    BeginBlendMode :: (mode: s32) {
+        js_blend_mode(mode, 1)
+    }
+
+    #program_export
+    EndBlendMode :: () {
+        js_blend_mode(0, 0)
+    }
+
+    #program_export
+    CanvasRoundRadius :: (rec: Rectangle, roundness: float32) -> float32 {
+        if roundness < 0.0 { return 0.0 }
+        amount := roundness
+        if amount > 1.0 { amount = 1.0 }
+        extent := rec.width
+        if rec.height < extent { extent = rec.height }
+        return amount * extent * 0.5
+    }
+
+    #program_export
+    DrawRectanglePro :: (rec: Rectangle, origin: Vector2, rotation: float32, color: Color) {
+        js_draw_rect_pro(cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(float64)(origin.x), cast(float64)(origin.y), cast(float64)(rotation), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangleLinesEx :: (rec: Rectangle, thick: float32, color: Color) {
+        js_draw_rect_lines_ex(cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(float64)(thick), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircleLinesEx :: (center: Vector2, radius: float32, thick: float32, color: Color) {
+        js_draw_circle_lines_ex(cast(float64)(center.x), cast(float64)(center.y), cast(float64)(radius), cast(float64)(thick), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawCircleGradient :: (center: Vector2, radius: float32, inner: Color, outer: Color) {
+        js_draw_circle_gradient(cast(float64)(center.x), cast(float64)(center.y), cast(float64)(radius), cast(s32)inner.r, cast(s32)inner.g, cast(s32)inner.b, cast(s32)inner.a, cast(s32)outer.r, cast(s32)outer.g, cast(s32)outer.b, cast(s32)outer.a)
+    }
+
+    #program_export
+    DrawRectangleGradientV :: (x: s32, y: s32, width: s32, height: s32, first: Color, second: Color) {
+        js_draw_gradient_v(cast(float64)(x), cast(float64)(y), cast(float64)(width), cast(float64)(height), cast(s32)first.r, cast(s32)first.g, cast(s32)first.b, cast(s32)first.a, cast(s32)second.r, cast(s32)second.g, cast(s32)second.b, cast(s32)second.a)
+    }
+
+    #program_export
+    DrawRectangleGradientH :: (x: s32, y: s32, width: s32, height: s32, first: Color, second: Color) {
+        js_draw_gradient_h(cast(float64)(x), cast(float64)(y), cast(float64)(width), cast(float64)(height), cast(s32)first.r, cast(s32)first.g, cast(s32)first.b, cast(s32)first.a, cast(s32)second.r, cast(s32)second.g, cast(s32)second.b, cast(s32)second.a)
+    }
+
+    #program_export
+    DrawRectangleGradientEx :: (rec: Rectangle, c1: Color, c2: Color, c3: Color, c4: Color) {
+        js_draw_gradient_ex(cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(s32)c1.r, cast(s32)c1.g, cast(s32)c1.b, cast(s32)c1.a, cast(s32)c2.r, cast(s32)c2.g, cast(s32)c2.b, cast(s32)c2.a, cast(s32)c3.r, cast(s32)c3.g, cast(s32)c3.b, cast(s32)c3.a, cast(s32)c4.r, cast(s32)c4.g, cast(s32)c4.b, cast(s32)c4.a)
+    }
+
+    #program_export
+    DrawRing :: (center: Vector2, inner: float32, outer: float32, start: float32, end: float32, segments: s32, color: Color) {
+        js_draw_ring(cast(float64)(center.x), cast(float64)(center.y), cast(float64)(inner), cast(float64)(outer), cast(float64)(start), cast(float64)(end), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRingLines :: (center: Vector2, inner: float32, outer: float32, start: float32, end: float32, segments: s32, color: Color) {
+        js_draw_ring_lines(cast(float64)(center.x), cast(float64)(center.y), cast(float64)(inner), cast(float64)(outer), cast(float64)(start), cast(float64)(end), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangleRounded :: (rec: Rectangle, roundness: float32, segments: s32, color: Color) {
+        js_draw_rounded(0, cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(float64)(CanvasRoundRadius(rec, roundness)), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangleRoundedLines :: (rec: Rectangle, roundness: float32, segments: s32, color: Color) {
+        js_draw_rounded(1, cast(float64)(rec.x), cast(float64)(rec.y), cast(float64)(rec.width), cast(float64)(rec.height), cast(float64)(CanvasRoundRadius(rec, roundness)), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    DrawRectangleRoundedLinesEx :: (rec: Rectangle, roundness: float32, segments: s32, thick: float32, color: Color) {
+        js_draw_rounded(1, cast(float64)(rec.x - thick), cast(float64)(rec.y - thick), cast(float64)(rec.width + thick * 2.0), cast(float64)(rec.height + thick * 2.0), cast(float64)CanvasRoundRadius(rec, roundness), cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    }
+
+    #program_export
+    rlGetMatrixProjection :: () -> CanvasMatrix {
+        return CanvasMatrix.{m0 = 1.0, m5 = 1.0, m10 = 1.0, m15 = 1.0}
+    }
+
+    #program_export
+    rlSetMatrixProjection :: (projection: CanvasMatrix) {
+        // Canvas2D directly projects logical pixels.
+    }
+
+    #program_export
+    rlGetMatrixModelview :: () -> CanvasMatrix {
+        values: [6]float32
+        values[0] = 1.0
+        values[3] = 1.0
+        js_get_modelview(*values[0])
+        return CanvasMatrix.{m0 = values[0], m1 = values[1], m4 = values[2], m5 = values[3], m10 = 1.0, m12 = values[4], m13 = values[5], m15 = 1.0}
+    }
+
+    #program_export
+    rlSetMatrixModelview :: (matrix: CanvasMatrix) {
+        js_set_modelview(cast(float64)matrix.m0, cast(float64)matrix.m1, cast(float64)matrix.m4, cast(float64)matrix.m5, cast(float64)matrix.m12, cast(float64)matrix.m13)
+    }
+
+}

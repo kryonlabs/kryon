@@ -1,0 +1,590 @@
+#import, file "canvas_types.zi";
+#import "geometry"
+#import "drawing_props"
+
+#if #defined(PLATFORM_WEB) {
+    c :: #system_library "c";
+    browser :: #system_library "env";
+    OsAllocate :: (size: usize) -> *void #foreign c "malloc";
+    OsResize :: (memory: *void, size: usize) -> *void #foreign c "realloc";
+    OsRelease :: (memory: *void) #foreign c "free";
+    OsCopy :: (destination: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+    OsLength :: (text: *u8) -> usize #foreign c "strlen";
+    OsCompare :: (left: *u8, right: *u8) -> s32 #foreign c "strcmp";
+    OsOpen :: (path: *u8, mode: *u8) -> *void #foreign c "fopen";
+    OsClose :: (file: *void) -> s32 #foreign c "fclose";
+    OsRead :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign c "fread";
+    OsWrite :: (data: *void, size: usize, count: usize, file: *void) -> usize #foreign c "fwrite";
+    OsSeek :: (file: *void, offset: isize, origin: s32) -> s32 #foreign c "fseek";
+    OsTell :: (file: *void) -> isize #foreign c "ftell";
+    OsMkdir :: (path: *u8, mode: u32) -> s32 #foreign c "mkdir";
+    OsChdir :: (path: *u8) -> s32 #foreign c "chdir";
+    OsGetcwd :: (output: *u8, capacity: usize) -> *u8 #foreign c "getcwd";
+    OsFormat :: (output: *u8, capacity: usize, format: *u8,
+        arguments: *void) -> s32 #foreign c "vsnprintf";
+    OsFileKind :: (path: *u8) -> s32 #foreign browser "js_file_kind";
+    OsFileLength :: (path: *u8) -> s32 #foreign browser "js_file_length";
+    OsFileModTime :: (path: *u8) -> float64 #foreign browser "js_file_modtime";
+    OsClipboardPull :: (output: *u8, capacity: s32) #foreign browser "js_clipboard_pull";
+    OsClipboardPush :: (text: *u8) #foreign browser "js_clipboard_push";
+    OsDroppedCount :: () -> s32 #foreign browser "js_dropped_count";
+    OsDroppedPath :: (index: s32) -> *u8 #foreign browser "js_dropped_path";
+    OsDirectoryOpen :: (path: *u8) -> s32 #foreign browser "js_directory_open";
+    OsDirectoryCount :: (handle: s32) -> s32 #foreign browser "js_directory_count";
+    OsDirectoryEntry :: (handle: s32, index: s32,
+        output: *u8, capacity: s32) -> s32 #foreign browser "js_directory_entry";
+    OsDirectoryClose :: (handle: s32) #foreign browser "js_directory_close";
+
+    CanvasTraceCallback :: #type (level: s32, format: *u8, arguments: *void) -> void #c_call;
+    CanvasLoadDataCallback :: #type (path: *u8, size: *s32) -> *u8 #c_call;
+    CanvasSaveDataCallback :: #type (path: *u8, data: *void, size: s32) -> bool #c_call;
+    CanvasLoadTextCallback :: #type (path: *u8) -> *u8 #c_call;
+    CanvasSaveTextCallback :: #type (path: *u8, text: *u8) -> bool #c_call;
+    canvas_trace_callback: CanvasTraceCallback;
+    canvas_load_data_callback: CanvasLoadDataCallback;
+    canvas_save_data_callback: CanvasSaveDataCallback;
+    canvas_load_text_callback: CanvasLoadTextCallback;
+    canvas_save_text_callback: CanvasSaveTextCallback;
+    canvas_clipboard: [4096]u8;
+    canvas_directory: [1024]u8;
+    canvas_previous_directory: [1024]u8;
+    canvas_working_directory: [1024]u8;
+    canvas_file_name: [1024]u8;
+    canvas_empty: [1]u8;
+    canvas_current_directory: [2]u8;
+    CanvasFormatSlot :: struct {
+        bytes: [256]u8
+    }
+    canvas_format_slots: [16]CanvasFormatSlot;
+    canvas_format_next: s32;
+    canvas_log_buffer: [4096]u8;
+
+    OsCopyBounded :: (output: *u8, capacity: usize, text: *u8) -> bool {
+        if output == null || capacity == 0 || text == null {
+            return false
+        }
+        length := OsLength(text)
+        if length >= capacity {
+            length = capacity - 1
+        }
+        OsCopy(cast(*void)output, cast(*void)text, length)
+        output[length] = cast(u8)0
+        return true
+    }
+
+    OsCurrentDirectory :: () -> *u8 {
+        canvas_current_directory[0] = cast(u8)46
+        canvas_current_directory[1] = cast(u8)0
+        return *canvas_current_directory[0]
+    }
+
+    #program_export
+    GetClipboardText :: () -> *u8 {
+        OsClipboardPull(*canvas_clipboard[0], 4096)
+        return *canvas_clipboard[0]
+    }
+
+    #program_export
+    SetClipboardText :: (text: *u8) {
+        if text != null {
+            unused OsCopyBounded(*canvas_clipboard[0], 4096, text)
+            OsClipboardPush(text)
+        }
+    }
+
+    #program_export
+    FileExists :: (path: *u8) -> bool {
+        return path != null && OsFileKind(path) == 1
+    }
+
+    #program_export
+    DirectoryExists :: (path: *u8) -> bool {
+        return path != null && OsFileKind(path) == 2
+    }
+
+    #program_export
+    GetDirectoryPath :: (path: *u8) -> *u8 {
+        if path == null {
+            return OsCurrentDirectory()
+        }
+        length := OsLength(path)
+        slash: usize = 0
+        index: usize = 0
+        while index < length {
+            if path[index] == cast(u8)47 {
+                slash = index
+            }
+            index += 1
+        }
+        if slash == 0 {
+            return OsCurrentDirectory()
+        }
+        if slash >= 1024 {
+            slash = 1023
+        }
+        OsCopy(cast(*void)(*canvas_directory[0]), cast(*void)path, slash)
+        canvas_directory[slash] = cast(u8)0
+        return *canvas_directory[0]
+    }
+
+    #program_export
+    MakeDirectory :: (path: *u8) -> s32 {
+        if path == null || path[0] == cast(u8)0 || OsLength(path) >= 1024 {
+            return -1
+        }
+        temporary: [1024]u8
+        unused OsCopyBounded(*temporary[0], 1024, path)
+        length := OsLength(*temporary[0])
+        while length > 1 && temporary[length - 1] == cast(u8)47 {
+            length -= 1
+            temporary[length] = cast(u8)0
+        }
+        index: usize = 1
+        while index < length {
+            if temporary[index] == cast(u8)47 {
+                temporary[index] = cast(u8)0
+                if !DirectoryExists(*temporary[0]) && OsMkdir(*temporary[0], 511) != 0 {
+                    return -1
+                }
+                temporary[index] = cast(u8)47
+            }
+            index += 1
+        }
+        if !DirectoryExists(*temporary[0]) && OsMkdir(*temporary[0], 511) != 0 {
+            return -1
+        }
+        if DirectoryExists(*temporary[0]) {
+            return 0
+        }
+        return -1
+    }
+
+    #program_export
+    SetLoadFileDataCallback :: (callback: CanvasLoadDataCallback) {
+        canvas_load_data_callback = callback
+    }
+
+    #program_export
+    SetSaveFileDataCallback :: (callback: CanvasSaveDataCallback) {
+        canvas_save_data_callback = callback
+    }
+
+    #program_export
+    SetLoadFileTextCallback :: (callback: CanvasLoadTextCallback) {
+        canvas_load_text_callback = callback
+    }
+
+    #program_export
+    SetSaveFileTextCallback :: (callback: CanvasSaveTextCallback) {
+        canvas_save_text_callback = callback
+    }
+
+    #program_export
+    SaveFileData :: (path: *u8, data: *void, size: s32) -> bool {
+        if path == null || data == null || size < 0 {
+            return false
+        }
+        if canvas_save_data_callback != null {
+            return canvas_save_data_callback(path, data, size)
+        }
+        mode: [3]u8
+        mode[0] = cast(u8)119
+        mode[1] = cast(u8)98
+        file := OsOpen(path, *mode[0])
+        if file == null {
+            return false
+        }
+        written := OsWrite(data, 1, cast(usize)size, file)
+        closed := OsClose(file)
+        return written == cast(usize)size && closed == 0
+    }
+
+    #program_export
+    SaveFileText :: (path: *u8, text: *u8) -> bool {
+        if text == null {
+            return false
+        }
+        if canvas_save_text_callback != null {
+            return canvas_save_text_callback(path, text)
+        }
+        length := OsLength(text)
+        if length > 2147483647 {
+            return false
+        }
+        return SaveFileData(path, cast(*void)text, cast(s32)length)
+    }
+
+    #program_export
+    LoadFileData :: (path: *u8, size: *s32) -> *u8 {
+        if size != null {
+            size.* = 0
+        }
+        if path == null {
+            return null
+        }
+        if canvas_load_data_callback != null {
+            return canvas_load_data_callback(path, size)
+        }
+        mode: [3]u8
+        mode[0] = cast(u8)114
+        mode[1] = cast(u8)98
+        file := OsOpen(path, *mode[0])
+        if file == null {
+            return null
+        }
+        if OsSeek(file, cast(isize)0, 2) != 0 {
+            OsClose(file)
+            return null
+        }
+        length := OsTell(file)
+        if length <= cast(isize)0 || length > cast(isize)2147483647 ||
+            OsSeek(file, cast(isize)0, 0) != 0 {
+            OsClose(file)
+            return null
+        }
+        data := cast(*u8)OsAllocate(cast(usize)length)
+        if data == null {
+            OsClose(file)
+            return null
+        }
+        read := OsRead(data, 1, cast(usize)length, file)
+        closed := OsClose(file)
+        if read != cast(usize)length || closed != 0 {
+            OsRelease(cast(*void)data)
+            return null
+        }
+        if size != null {
+            size.* = cast(s32)length
+        }
+        return data
+    }
+
+    #program_export
+    UnloadFileData :: (data: *u8) {
+        OsRelease(cast(*void)data)
+    }
+
+    #program_export
+    LoadFileText :: (path: *u8) -> *u8 {
+        if canvas_load_text_callback != null {
+            return canvas_load_text_callback(path)
+        }
+        length: s32 = 0
+        data := LoadFileData(path, *length)
+        if data == null {
+            return null
+        }
+        text := cast(*u8)OsResize(cast(*void)data, cast(usize)length + 1)
+        if text == null {
+            OsRelease(cast(*void)data)
+            return null
+        }
+        text[length] = cast(u8)0
+        return text
+    }
+
+    #program_export
+    UnloadFileText :: (text: *u8) {
+        OsRelease(cast(*void)text)
+    }
+
+    #program_export
+    ChangeDirectory :: (path: *u8) -> s32 {
+        if path == null || OsChdir(path) != 0 {
+            return -1
+        }
+        return 0
+    }
+
+    #program_export
+    GetWorkingDirectory :: () -> *u8 {
+        if OsGetcwd(*canvas_working_directory[0], 1024) == null {
+            return OsCurrentDirectory()
+        }
+        return *canvas_working_directory[0]
+    }
+
+    #program_export
+    GetFileModTime :: (path: *u8) -> isize {
+        return cast(isize)OsFileModTime(path)
+    }
+
+    #program_export
+    GetFileLength :: (path: *u8) -> s32 {
+        return OsFileLength(path)
+    }
+
+    #program_export
+    GetFileName :: (path: *u8) -> *u8 {
+        if path == null {
+            return null
+        }
+        length := OsLength(path)
+        slash := length
+        index: usize = 0
+        while index < length {
+            if path[index] == cast(u8)47 {
+                slash = index
+            }
+            index += 1
+        }
+        if slash < length && slash + 1 < length {
+            return *path[slash + 1]
+        }
+        return path
+    }
+
+    #program_export
+    GetFileExtension :: (path: *u8) -> *u8 {
+        base := GetFileName(path)
+        extension := *canvas_empty[0]
+        if base != null {
+            index: usize = 0
+            while base[index] != cast(u8)0 {
+                if base[index] == cast(u8)46 {
+                    extension = *base[index]
+                }
+                index += 1
+            }
+        }
+        if extension[0] != cast(u8)0 && extension[1] == cast(u8)0 {
+            return *canvas_empty[0]
+        }
+        return extension
+    }
+
+    #program_export
+    IsFileExtension :: (path: *u8, extension: *u8) -> bool {
+        return extension != null && OsCompare(GetFileExtension(path), extension) == 0
+    }
+
+    #program_export
+    GetFileNameWithoutExt :: (path: *u8) -> *u8 {
+        base := GetFileName(path)
+        if base == null {
+            return *canvas_empty[0]
+        }
+        length := OsLength(base)
+        index: usize = 0
+        while base[index] != cast(u8)0 {
+            if base[index] == cast(u8)46 {
+                length = index
+            }
+            index += 1
+        }
+        if length > 1023 {
+            length = 1023
+        }
+        OsCopy(cast(*void)(*canvas_file_name[0]), cast(*void)base, length)
+        canvas_file_name[length] = cast(u8)0
+        return *canvas_file_name[0]
+    }
+
+    #program_export
+    GetPrevDirectoryPath :: (path: *u8) -> *u8 {
+        if path == null || path[0] == cast(u8)0 {
+            return OsCurrentDirectory()
+        }
+        unused OsCopyBounded(*canvas_previous_directory[0], 1024, path)
+        length := OsLength(*canvas_previous_directory[0])
+        while length > 1 && canvas_previous_directory[length - 1] == cast(u8)47 {
+            length -= 1
+            canvas_previous_directory[length] = cast(u8)0
+        }
+        index := length
+        while index > 0 {
+            index -= 1
+            if canvas_previous_directory[index] == cast(u8)47 {
+                if index == 0 {
+                    index = 1
+                }
+                canvas_previous_directory[index] = cast(u8)0
+                return *canvas_previous_directory[0]
+            }
+        }
+        return OsCurrentDirectory()
+    }
+
+    #program_export
+    IsPathFile :: (path: *u8) -> bool {
+        return FileExists(path)
+    }
+
+    #program_export
+    IsPathDirectory :: (path: *u8) -> bool {
+        return DirectoryExists(path)
+    }
+
+    #program_export
+    IsFileNameValid :: (name: *u8) -> bool {
+        return name != null && name[0] != cast(u8)0
+    }
+
+    FreeCanvasPaths :: (files: CanvasFilePathList) {
+        index: u32 = 0
+        while index < files.count {
+            OsRelease(cast(*void)files.paths[index])
+            index += 1
+        }
+        OsRelease(cast(*void)files.paths)
+    }
+
+    #program_export
+    LoadDroppedFiles :: () -> CanvasFilePathList {
+        files: CanvasFilePathList
+        count := OsDroppedCount()
+        if count <= 0 || count > 65536 {
+            return files
+        }
+        files.paths = cast(**u8)OsAllocate(cast(usize)count * size_of(*u8))
+        if files.paths == null {
+            return files
+        }
+        files.capacity = cast(u32)count
+        index: s32 = 0
+        while index < count {
+            path := OsDroppedPath(index)
+            if path == null {
+                break
+            }
+            files.paths[index] = path
+            files.count += 1
+            index += 1
+        }
+        return files
+    }
+
+    #program_export
+    IsFileDropped :: () -> bool {
+        return OsDroppedCount() > 0
+    }
+
+    #program_export
+    UnloadDroppedFiles :: (files: CanvasFilePathList) {
+        FreeCanvasPaths(files)
+    }
+
+    #program_export
+    LoadDirectoryFilesEx :: (base_path: *u8, filter: *u8,
+        scan_subdirs: bool) -> CanvasFilePathList {
+        unused scan_subdirs
+        files: CanvasFilePathList
+        root := base_path
+        if root == null {
+            root = OsCurrentDirectory()
+        }
+        handle := OsDirectoryOpen(root)
+        if handle == 0 {
+            return files
+        }
+        root_length := OsLength(root)
+        count := OsDirectoryCount(handle)
+        index: s32 = 0
+        while index < count {
+            name: [1024]u8
+            length := OsDirectoryEntry(handle, index, *name[0], 1024)
+            index += 1
+            if length <= 0 || (length == 1 && name[0] == cast(u8)46) ||
+                (length == 2 && name[0] == cast(u8)46 && name[1] == cast(u8)46) {
+                continue
+            }
+            if filter != null && filter[0] != cast(u8)0 &&
+                !(filter[0] == cast(u8)42 && filter[1] == cast(u8)46 &&
+                    filter[2] == cast(u8)42 && filter[3] == cast(u8)0) &&
+                !IsFileExtension(*name[0], filter) {
+                continue
+            }
+            if root_length + cast(usize)length + 2 > 1024 {
+                continue
+            }
+            if files.count == files.capacity {
+                capacity := files.capacity * 2
+                if capacity == 0 {
+                    capacity = 8
+                }
+                grown := cast(**u8)OsResize(cast(*void)files.paths,
+                    cast(usize)capacity * size_of(*u8))
+                if grown == null {
+                    break
+                }
+                files.paths = grown
+                files.capacity = capacity
+            }
+            path := cast(*u8)OsAllocate(root_length + cast(usize)length + 2)
+            if path == null {
+                break
+            }
+            OsCopy(cast(*void)path, cast(*void)root, root_length)
+            path[root_length] = cast(u8)47
+            OsCopy(cast(*void)(*path[root_length + 1]), cast(*void)(*name[0]), cast(usize)length + 1)
+            files.paths[files.count] = path
+            files.count += 1
+        }
+        OsDirectoryClose(handle)
+        return files
+    }
+
+    #program_export
+    LoadDirectoryFiles :: (path: *u8) -> CanvasFilePathList {
+        return LoadDirectoryFilesEx(path, null, false)
+    }
+
+    #program_export
+    UnloadDirectoryFiles :: (files: CanvasFilePathList) {
+        FreeCanvasPaths(files)
+    }
+
+    #program_export
+    GetDirectoryFileCountEx :: (path: *u8, filter: *u8, subdirs: bool) -> u32 {
+        files := LoadDirectoryFilesEx(path, filter, subdirs)
+        count := files.count
+        FreeCanvasPaths(files)
+        return count
+    }
+
+    #program_export
+    GetDirectoryFileCount :: (path: *u8) -> u32 {
+        return GetDirectoryFileCountEx(path, null, false)
+    }
+
+    #program_export
+    SetShapesTexture :: (texture: Texture2D, rectangle: Rectangle) {
+        unused texture
+        unused rectangle
+    }
+
+    #program_export
+    SetTraceLogCallback :: (callback: CanvasTraceCallback) {
+        canvas_trace_callback = callback
+    }
+
+    #program_export "canvas_trace_callback"
+    InvokeCanvasTraceCallback :: (level: s32, format: *u8, arguments: *void) -> s32 {
+        if canvas_trace_callback != null {
+            canvas_trace_callback(level, format, arguments)
+            return 1
+        }
+        return 0
+    }
+
+    #program_export "canvas_format_text"
+    FormatCanvasText :: (format: *u8, arguments: *void) -> *u8 {
+        slot := canvas_format_next
+        canvas_format_next = (canvas_format_next + 1) % 16
+        output := *canvas_format_slots[slot].bytes[0]
+        output[0] = cast(u8)0
+        if format != null {
+            unused OsFormat(output, 256, format, arguments)
+        }
+        return output
+    }
+
+    #program_export "canvas_format_log"
+    FormatCanvasLog :: (format: *u8, arguments: *void) -> *u8 {
+        canvas_log_buffer[0] = cast(u8)0
+        if format != null {
+            unused OsFormat(*canvas_log_buffer[0], 4096, format, arguments)
+        }
+        return *canvas_log_buffer[0]
+    }
+}

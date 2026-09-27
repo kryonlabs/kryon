@@ -5,6 +5,8 @@ module_roots = ["src/ui", "src/plot", "src/backend", "src/data_views", "src/kss"
 [exports]
 Kryon = "src/ui/Kryon/module.zi"
 Widgets = "src/ui/Widgets/module.zi"
+Page = "src/ui/page.zi"
+Semantic = "src/ui/semantic.zi"
 geometry = "src/ui/geometry.zi"
 drawing_props = "src/ui/drawing_props.zi"
 PlotWidget = "src/plot/PlotWidget/module.zi"

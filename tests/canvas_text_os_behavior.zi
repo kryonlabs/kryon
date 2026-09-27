@@ -1,0 +1,191 @@
+#import, file "../src/backend/canvas_text.zi";
+#import, file "../src/backend/canvas_os.zi";
+#import, file "../src/backend/canvas_types.zi";
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+c :: #system_library "c";
+TestAllocate :: (size: usize) -> *void #foreign c "malloc";
+TestFormat :: (format: *u8, values: ..any) -> *u8 #foreign c "TextFormat";
+TestLog :: (level: s32, format: *u8, values: ..any) #foreign c "TraceLog";
+TestHostFinished :: () -> s32 #foreign c "test_canvas_host_finished";
+
+draw_count: s32;
+last_draw: Rectangle;
+callback_count: s32;
+load_callback_count: s32;
+no_data_callback: CanvasLoadDataCallback;
+no_trace_callback: CanvasTraceCallback;
+
+TestText :: (actual: *u8, expected: string) -> bool {
+    if actual == null {
+        return false
+    }
+    index: s64 = 0
+    while index < cast(s64)expected.count {
+        if actual[index] == cast(u8)0 || actual[index] != expected[index] {
+            return false
+        }
+        index += 1
+    }
+    return actual[index] == cast(u8)0
+}
+
+#scope_export
+#program_export "DrawTexturePro"
+TestDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
+    origin: Vector2, rotation: float32, tint: Color) {
+    unused texture
+    unused source
+    unused origin
+    unused rotation
+    unused tint
+    draw_count += 1
+    last_draw = destination
+}
+
+#scope_export
+TestLoadFile :: (path: *u8, size: *s32) -> *u8 {
+    unused path
+    data := cast(*u8)TestAllocate(2)
+    data[0] = cast(u8)65
+    data[1] = cast(u8)66
+    size.* = 2
+    load_callback_count += 1
+    return data
+}
+
+#scope_export
+TestTrace :: (level: s32, format: *u8, arguments: *void) {
+    if level == 3 && TestText(FormatCanvasLog(format, arguments), "value 7 1.5") {
+        callback_count += 1
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    font := GetFontDefault()
+    if !IsFontValid(font) || font.glyph_count != 95 || font.texture.width != 512 ||
+        font.texture.format != 7 {
+        return 1
+    }
+    text: [32]u8
+    unused CopyCString("AA\nA", text[:])
+    measured := MeasureTextEx(font, *text[0], 16.0, 2.0)
+    if measured.x != 16.0 || measured.y != 32.0 || GetGlyphIndex(font, 1114111) != 31 {
+        diagnostic: [64]u8
+        unused CopyCString("measurement %f %f fallback %d", diagnostic[:])
+        TestLog(4, *diagnostic[0], cast(float64)measured.x, cast(float64)measured.y,
+            GetGlyphIndex(font, 1114111))
+        return 2
+    }
+    DrawTextEx(font, *text[0], Vector2.{10.0, 20.0}, 16.0, 2.0,
+        Color.{255, 255, 255, 255})
+    if draw_count != 3 || last_draw.x != 8.0 || last_draw.y != 36.0 {
+        return 3
+    }
+    unused CopyCString("A😀Z", text[:])
+    if GetCodepointCount(*text[0]) != 3 {
+        return 4
+    }
+    length: s32 = 0
+    if GetCodepointNext(*text[1], *length) != 128512 || length != 4 {
+        return 5
+    }
+    text[0] = cast(u8)255
+    text[1] = cast(u8)0
+    if GetCodepointNext(*text[0], *length) != 63 || length != 1 {
+        return 6
+    }
+    data: [4]u8
+    loaded := LoadFontFromMemory(null, *data[0], 4, 16, null, 0)
+    if !IsFontValid(loaded) || loaded.glyph_count != 224 || loaded.texture.height < 128 {
+        return 7
+    }
+    UnloadFont(loaded)
+    UnloadFont(font)
+    replacement := GetFontDefault()
+    if !IsFontValid(replacement) || replacement.texture.id == font.texture.id {
+        return 8
+    }
+    CloseCanvasText()
+    CloseCanvasText()
+    reopened := GetFontDefault()
+    if !IsFontValid(reopened) || reopened.texture.id == replacement.texture.id {
+        return 8
+    }
+    CloseCanvasText()
+
+    path: [128]u8
+    unused CopyCString("/tmp/canvas-files/nested", path[:])
+    if MakeDirectory(*path[0]) != 0 || !DirectoryExists(*path[0]) || FileExists(*path[0]) {
+        return 9
+    }
+    unused CopyCString("/tmp/canvas-files/nested/a.txt", path[:])
+    unused CopyCString("hello", text[:])
+    if !SaveFileText(*path[0], *text[0]) || !FileExists(*path[0]) || GetFileLength(*path[0]) != 5 {
+        return 10
+    }
+    body := LoadFileText(*path[0])
+    if body == null || !TestText(body, "hello") {
+        return 11
+    }
+    UnloadFileText(body)
+    if !TestText(GetFileName(*path[0]), "a.txt") ||
+        !TestText(GetFileNameWithoutExt(*path[0]), "a") ||
+        !TestText(GetDirectoryPath(*path[0]), "/tmp/canvas-files/nested") ||
+        !TestText(GetPrevDirectoryPath(*path[0]), "/tmp/canvas-files/nested") {
+        return 12
+    }
+    filter: [8]u8
+    unused CopyCString(".txt", filter[:])
+    unused CopyCString("/tmp/canvas-files/nested", path[:])
+    files := LoadDirectoryFilesEx(*path[0], *filter[0], false)
+    if files.count != 1 || files.capacity < files.count ||
+        !TestText(files.paths[0], "/tmp/canvas-files/nested/a.txt") {
+        return 13
+    }
+    UnloadDirectoryFiles(files)
+    SetLoadFileDataCallback(TestLoadFile)
+    loaded_data := LoadFileData(*path[0], *length)
+    SetLoadFileDataCallback(no_data_callback)
+    if load_callback_count != 1 || length != 2 || loaded_data == null || loaded_data[1] != cast(u8)66 {
+        return 14
+    }
+    UnloadFileData(loaded_data)
+    if !IsFileDropped() {
+        return 15
+    }
+    dropped := LoadDroppedFiles()
+    if dropped.count != 2 || !TestText(dropped.paths[1], "/tmp/drop-b.txt") {
+        return 16
+    }
+    UnloadDroppedFiles(dropped)
+    unused CopyCString("round trip", text[:])
+    SetClipboardText(*text[0])
+    if !TestText(GetClipboardText(), "round trip") {
+        return 17
+    }
+    format: [64]u8
+    unused CopyCString("%d", format[:])
+    first := TestFormat(*format[0], 0)
+    index: s32 = 1
+    while index < 17 {
+        result := TestFormat(*format[0], index)
+        if index == 16 && (result != first || !TestText(result, "16")) {
+            return 18
+        }
+        index += 1
+    }
+    unused CopyCString("%s %d %.1f", format[:])
+    unused CopyCString("value", text[:])
+    SetTraceLogCallback(TestTrace)
+    TestLog(3, *format[0], *text[0], 7, cast(float64)1.5)
+    SetTraceLogCallback(no_trace_callback)
+    if callback_count != 1 {
+        return 19
+    }
+    TestLog(3, *format[0], *text[0], 7, cast(float64)1.5)
+    return TestHostFinished()
+}

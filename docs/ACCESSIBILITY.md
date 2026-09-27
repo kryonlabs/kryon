@@ -6,8 +6,8 @@ values; `accessibility_policy.zi` decides which actions are allowed and how
 selection and editable-value limits apply. `make test` runs these decisions
 from source, saved `.zir`, and `.zib`.
 
-The current terminal, desktop, libdraw, and raylib hosts do not expose a
-verified operating-system accessibility tree. The removed C and native Go
+The current terminal, desktop, libdraw, raylib, and canvas hosts do not expose a
+verified platform accessibility tree. The removed C and native Go
 AT-SPI adapters are not part of this Ziran package. The policy tests do not
 establish screen-reader usability.
 

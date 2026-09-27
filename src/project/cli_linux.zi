@@ -209,6 +209,10 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
             PrintFd(1, " (raylib window)")
         } else if config.profiles[index].backend == "libdraw" {
             PrintFd(1, " (libdraw window)")
+        } else if config.profiles[index].backend == "canvas" {
+            PrintFd(1, " (Canvas2D browser)")
+        } else if config.profiles[index].backend == "dom" {
+            PrintFd(1, " (semantic DOM browser)")
         }
         PrintFd(1, "\n")
         index += 1
@@ -291,7 +295,8 @@ main :: () -> s32 {
     profile: ProjectProfile = ProjectProfileNamed(config, profile_name)
     if profile.name == "" { return Error("unknown profile") }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
-        profile.backend != "libdraw" && profile.backend != "raylib") ||
+        profile.backend != "libdraw" && profile.backend != "raylib" &&
+        profile.backend != "canvas" && profile.backend != "dom") ||
         profile.codegen != "c99" {
         return Error("this backend/codegen pair is not available yet")
     }

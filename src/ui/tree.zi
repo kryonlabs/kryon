@@ -102,6 +102,7 @@ TreeEntry :: struct {
     grid_min_item_width: s32
     grid_max_columns: s32
     semantic_label: string
+    semantic_detail: string
     semantic_kind: SemanticKind
     heading_level: s32
     parent: s32
@@ -143,6 +144,8 @@ NodeCore :: struct {
 SemanticData :: struct {
     label_offset: s64
     label_length: s64
+    detail_offset: s64
+    detail_length: s64
     kind: SemanticKind
     heading_level: s32
     selected: bool
@@ -430,6 +433,19 @@ TreeRead :: (session: Session, index: s32,
                     trees[slot].submitted_labels[
                         semantic.label_offset:
                         semantic.label_offset + semantic.label_length])
+            }
+        }
+        if semantic.detail_length > 0 {
+            if committed {
+                entry.semantic_detail = TextView(
+                    trees[slot].committed_labels[
+                        semantic.detail_offset:
+                        semantic.detail_offset + semantic.detail_length])
+            } else {
+                entry.semantic_detail = TextView(
+                    trees[slot].submitted_labels[
+                        semantic.detail_offset:
+                        semantic.detail_offset + semantic.detail_length])
             }
         }
         entry.semantic_kind = semantic.kind
@@ -989,6 +1005,29 @@ TreeSetLabel :: (session: Session, index: s32, label: string) {
     trees[slot].submitted_semantics[semantic].label_offset = start
     trees[slot].submitted_semantics[semantic].label_length =
         cast(s64)label.count
+}
+
+#program_export
+TreeSetSemanticDetail :: (session: Session, index: s32, detail: string) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic < 0 { return }
+    start: s64 = trees[slot].submitted_label_count
+    if cast(s64)detail.count > 65536 - start {
+        trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+        return
+    }
+    byte: s64 = 0
+    while byte < detail.count {
+        trees[slot].submitted_labels[start + byte] = detail[byte]
+        byte += 1
+    }
+    trees[slot].submitted_label_count = start + byte
+    trees[slot].submitted_semantics[semantic].detail_offset = start
+    trees[slot].submitted_semantics[semantic].detail_length =
+        cast(s64)detail.count
 }
 
 #program_export

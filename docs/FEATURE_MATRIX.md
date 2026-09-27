@@ -28,8 +28,10 @@ for a target; it does not prove that every native host runs on that target.
 | Desktop | `src/backend/desktop_run.zi` | Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input | ✅ supported on the tested Linux host |
 | Raylib | `src/backend/raylib_run.zi` | Private Xvfb project test covers image capture and input | ✅ supported on the tested Linux host |
 | Libdraw | `src/backend/libdraw_run.zi` | Private Xvfb project test covers capture and input | ✅ supported on the tested Linux host |
-| Web | — | No current Ziran web target or Kryon web host | ✗ unavailable |
+| Web | `src/backend/canvas_run.zi` | Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
 
-The graphical project tests run separately from `make test` with
+The desktop, raylib, and libdraw project tests run separately with
 `make desktop-project-test`, `make raylib-project-test`, and
-`make libdraw-project-test`. They must run on a private Xvfb display.
+`make libdraw-project-test`; they must use a private Xvfb display. The
+Canvas2D project test runs in `make test` and launches only private headless
+Chromium.

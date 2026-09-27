@@ -73,6 +73,7 @@ Link :: (session: Session, props: LinkProps) -> LinkResult {
             props.focus_id)
         TreeSetLabel(session, result.node, props.text)
         TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticLink, 0)
+        TreeSetSemanticDetail(session, result.node, props.link)
     }
     appearance: LinkAppearance = ResolveLinkAppearance(face,
         hovered, props.disabled)

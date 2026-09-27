@@ -1,0 +1,291 @@
+#import "canvas_types"
+#import "c_string"
+#import "geometry"
+#import "drawing_props"
+#if #defined(PLATFORM_WEB) {
+    canvas_browser :: #system_library "env";
+    js_input_query :: (which: s32, code: s32) -> s32 #foreign canvas_browser "js_input_query";
+    js_input_float :: (which: s32) -> float64 #foreign canvas_browser "js_input_float";
+    js_input_set_mouse :: (x: s32, y: s32) #foreign canvas_browser "js_input_set_mouse";
+    js_input_mouse_config :: (ox: float64, oy: float64, sx: float64, sy: float64) #foreign canvas_browser "js_input_mouse_config";
+    js_touch_query :: (index: s32, field: s32) -> s32 #foreign canvas_browser "js_touch_query";
+    js_gamepad_query :: (gamepad: s32, which: s32, index: s32) -> s32 #foreign canvas_browser "js_gamepad_query";
+    js_gamepad_axis :: (gamepad: s32, axis: s32) -> float64 #foreign canvas_browser "js_gamepad_axis";
+    js_gamepad_name :: (gamepad: s32) -> *u8 #foreign canvas_browser "js_gamepad_name";
+    js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
+
+    js_input_offset :: (x: s32, y: s32) #foreign canvas_browser "js_input_offset";
+    js_input_scale :: (x: float64, y: float64) #foreign canvas_browser "js_input_scale";
+    js_input_cursor :: (mode: s32) #foreign canvas_browser "js_input_cursor";
+    js_input_cursor_state :: (mode: s32) -> s32 #foreign canvas_browser "js_input_cursor_state";
+    js_gamepad_vibration :: (gamepad: s32, left: float64, right: float64, duration: float64) #foreign canvas_browser "js_gamepad_vibration";
+    canvas_gamepad_names: [512]u8;
+    canvas_gamepad_next: s32;
+    canvas_key_name: [16]u8;
+
+    #program_export
+    IsKeyPressed :: (code: s32) -> bool {
+        return js_input_query(1, code) != 0
+    }
+
+    #program_export
+    IsKeyPressedRepeat :: (code: s32) -> bool {
+        return js_input_query(19, code) != 0
+    }
+
+    #program_export
+    IsKeyDown :: (code: s32) -> bool {
+        return js_input_query(0, code) != 0
+    }
+
+    #program_export
+    IsKeyReleased :: (code: s32) -> bool {
+        return js_input_query(2, code) != 0
+    }
+
+    #program_export
+    IsMouseButtonPressed :: (code: s32) -> bool {
+        return js_input_query(6, code) != 0
+    }
+
+    #program_export
+    IsMouseButtonDown :: (code: s32) -> bool {
+        return js_input_query(5, code) != 0
+    }
+
+    #program_export
+    IsMouseButtonReleased :: (code: s32) -> bool {
+        return js_input_query(7, code) != 0
+    }
+
+    #program_export
+    IsKeyUp :: (key: s32) -> bool {
+        return !IsKeyDown(key)
+    }
+
+    #program_export
+    IsMouseButtonUp :: (button: s32) -> bool {
+        return !IsMouseButtonDown(button)
+    }
+
+    #program_export
+    GetKeyPressed :: () -> s32 {
+        return js_input_query(3, 0)
+    }
+
+    #program_export
+    GetCharPressed :: () -> s32 {
+        return js_input_query(4, 0)
+    }
+
+    #program_export
+    GetMouseX :: () -> s32 {
+        return js_input_query(8, 0)
+    }
+
+    #program_export
+    GetMouseY :: () -> s32 {
+        return js_input_query(9, 0)
+    }
+
+    #program_export
+    GetMousePosition :: () -> Vector2 {
+        return Vector2.{cast(float32)js_input_query(8, 0), cast(float32)js_input_query(9, 0)}
+    }
+
+    #program_export
+    GetMouseDelta :: () -> Vector2 {
+        return Vector2.{cast(float32)js_input_float(0), cast(float32)js_input_float(1)}
+    }
+
+    #program_export
+    GetMouseWheelMove :: () -> float32 {
+        return cast(float32)js_input_float(4)
+    }
+
+    #program_export
+    GetMouseWheelMoveV :: () -> Vector2 {
+        return Vector2.{cast(float32)js_input_float(2), cast(float32)js_input_float(3)}
+    }
+
+    #program_export
+    SetMousePosition :: (x: s32, y: s32) {
+        js_input_set_mouse(x, y)
+    }
+
+    #program_export
+    SetMouseOffset :: (x: s32, y: s32) {
+        js_input_offset(x, y)
+    }
+
+    #program_export
+    SetMouseScale :: (x: float32, y: float32) {
+        js_input_scale(cast(float64)x, cast(float64)y)
+    }
+
+    #program_export
+    ShowCursor :: () {
+        js_input_cursor(0)
+    }
+
+    #program_export
+    HideCursor :: () {
+        js_input_cursor(1)
+    }
+
+    #program_export
+    EnableCursor :: () {
+        js_input_cursor(2)
+    }
+
+    #program_export
+    DisableCursor :: () {
+        js_input_cursor(3)
+    }
+
+    #program_export
+    IsCursorHidden :: () -> bool {
+        return js_input_cursor_state(0) != 0
+    }
+
+    #program_export
+    IsCursorOnScreen :: () -> bool {
+        return js_input_cursor_state(1) != 0
+    }
+
+    #program_export
+    GetTouchX :: () -> s32 {
+        return js_touch_query(0, 0)
+    }
+
+    #program_export
+    GetTouchY :: () -> s32 {
+        return js_touch_query(0, 1)
+    }
+
+    #program_export
+    GetTouchPosition :: (index: s32) -> Vector2 {
+        return Vector2.{cast(float32)js_touch_query(index, 0), cast(float32)js_touch_query(index, 1)}
+    }
+
+    #program_export
+    GetTouchPointId :: (index: s32) -> s32 {
+        return js_touch_query(index, 2)
+    }
+
+    #program_export
+    GetTouchPointCount :: () -> s32 {
+        return js_touch_query(0, 3)
+    }
+
+    #program_export
+    IsGamepadAvailable :: (gamepad: s32) -> bool {
+        return js_gamepad_query(gamepad, 0, 0) != 0
+    }
+
+    #program_export
+    GetGamepadName :: (gamepad: s32) -> *u8 {
+        temporary := js_gamepad_name(gamepad)
+        offset := canvas_gamepad_next * 128
+        canvas_gamepad_next = (canvas_gamepad_next + 1) % 4
+        i: s32 = 0
+        if temporary != null {
+            while i < 127 && temporary[i] != cast(u8)0 {
+                canvas_gamepad_names[offset + i] = temporary[i]
+                i += 1
+            }
+            CanvasRelease(cast(*void)temporary)
+        }
+        canvas_gamepad_names[offset + i] = 0
+        return *canvas_gamepad_names[offset]
+    }
+
+    #program_export
+    IsGamepadButtonPressed :: (gamepad: s32, button: s32) -> bool {
+        return js_gamepad_query(gamepad, 1, button) != 0
+    }
+
+    #program_export
+    IsGamepadButtonDown :: (gamepad: s32, button: s32) -> bool {
+        return js_gamepad_query(gamepad, 2, button) != 0
+    }
+
+    #program_export
+    IsGamepadButtonReleased :: (gamepad: s32, button: s32) -> bool {
+        return js_gamepad_query(gamepad, 3, button) != 0
+    }
+
+    #program_export
+    IsGamepadButtonUp :: (gamepad: s32, button: s32) -> bool {
+        return !IsGamepadButtonDown(gamepad, button)
+    }
+
+    #program_export
+    GetGamepadButtonPressed :: () -> s32 {
+        return js_gamepad_query(0, 4, 0)
+    }
+
+    #program_export
+    GetGamepadAxisCount :: (gamepad: s32) -> s32 {
+        return js_gamepad_query(gamepad, 5, 0)
+    }
+
+    #program_export
+    GetGamepadAxisMovement :: (gamepad: s32, axis: s32) -> float32 {
+        return cast(float32)js_gamepad_axis(gamepad, axis)
+    }
+
+    #program_export
+    SetGamepadMappings :: (mappings: *u8) -> s32 {
+        // Browsers expose their own normalized gamepad mapping.
+        return 0
+    }
+
+    #program_export
+    SetGamepadVibration :: (gamepad: s32, left: float32, right: float32, duration: float32) {
+        js_gamepad_vibration(gamepad, cast(float64)left, cast(float64)right, cast(float64)duration)
+    }
+
+    #program_export
+    GetKeyName :: (key: s32) -> *u8 {
+        if key >= 32 && key <= 126 {
+            canvas_key_name[0] = cast(u8)key
+            canvas_key_name[1] = 0
+            return *canvas_key_name[0]
+        }
+        if key == 256 { return CanvasKeyName("escape") }
+        if key == 257 { return CanvasKeyName("enter") }
+        if key == 258 { return CanvasKeyName("tab") }
+        if key == 259 { return CanvasKeyName("backspace") }
+        if key == 260 { return CanvasKeyName("insert") }
+        if key == 261 { return CanvasKeyName("delete") }
+        if key == 262 { return CanvasKeyName("right") }
+        if key == 263 { return CanvasKeyName("left") }
+        if key == 264 { return CanvasKeyName("down") }
+        if key == 265 { return CanvasKeyName("up") }
+        if key == 266 { return CanvasKeyName("page up") }
+        if key == 267 { return CanvasKeyName("page down") }
+        if key == 268 { return CanvasKeyName("home") }
+        if key == 269 { return CanvasKeyName("end") }
+        if key >= 290 && key <= 301 {
+            number := key - 289
+            canvas_key_name[0] = 102
+            if number < 10 {
+                canvas_key_name[1] = cast(u8)(48 + number)
+                canvas_key_name[2] = 0
+            }
+            if number >= 10 {
+                canvas_key_name[1] = 49
+                canvas_key_name[2] = cast(u8)(48 + number % 10)
+                canvas_key_name[3] = 0
+            }
+            return *canvas_key_name[0]
+        }
+        return CanvasKeyName("")
+    }
+
+    CanvasKeyName :: (name: string) -> *u8 {
+        CopyCString(name, canvas_key_name[:])
+        return *canvas_key_name[0]
+    }
+}

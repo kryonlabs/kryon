@@ -1,0 +1,93 @@
+#import "canvas_window"
+#import "canvas_draw"
+#import "canvas_input"
+#import "canvas_texture"
+#import "canvas_types"
+#import "canvas_os"
+#import "canvas_text"
+#import "raylib_clip"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+browser :: #system_library "env";
+CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
+CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
+
+#program_export
+main :: () -> s32 {
+    title: [32]u8
+    CopyCString("Canvas Zi runtime", title[:])
+    InitWindow(160, 120, *title[0])
+    if !IsWindowReady() || GetScreenWidth() != 160 { return 1 }
+    SetRandomSeed(cast(u32)42)
+    first := GetRandomValue(-100, 100)
+    SetRandomSeed(cast(u32)42)
+    if first != GetRandomValue(-100, 100) { return 2 }
+    CanvasTestInput(0)
+    if !IsKeyPressed(65) || !IsKeyDown(65) || GetCharPressed() != 128512 { return 3 }
+    if !IsMouseButtonPressed(0) || GetMouseX() != 17 { return 4 }
+    CanvasTestInput(1)
+    if !IsKeyReleased(65) || IsKeyDown(65) { return 5 }
+    BeginDrawing()
+    ClearBackground(Color.{255, 255, 255, 255})
+    BeginMode2D(Camera.{offset = Vector2.{20.0, 10.0}, zoom = 2.0})
+    DrawRectangle(0, 0, 20, 20, Color.{255, 0, 0, 255})
+    clip := BeginRasterClip(Rectangle.{0.0, 0.0, 10.0, 10.0})
+    DrawRectangle(0, 0, 20, 20, Color.{0, 255, 0, 255})
+    inner := BeginRasterClip(Rectangle.{2.0, 2.0, 2.0, 2.0})
+    DrawRectangle(0, 0, 20, 20, Color.{0, 0, 255, 255})
+    EndRasterClip(inner)
+    DrawRectangle(6, 0, 20, 20, Color.{255, 255, 0, 255})
+    EndRasterClip(clip)
+    EndMode2D()
+    image := GenImageColor(8, 8, Color.{255, 0, 255, 255})
+    path: [32]u8
+    CopyCString("/test-image.png", path[:])
+    if !ExportImage(image, *path[0]) { return 9 }
+    decoded := LoadImage(*path[0])
+    if decoded.width != 8 || decoded.height != 8 || decoded.data == null { return 10 }
+    decoded_pixels := cast(*u8)decoded.data
+    if decoded_pixels[0] != cast(u8)255 || decoded_pixels[1] != cast(u8)0 || decoded_pixels[2] != cast(u8)255 { return 11 }
+    UnloadImage(decoded)
+    texture := LoadTextureFromImage(image)
+    UnloadImage(image)
+    if !IsTextureValid(texture) { return 6 }
+    DrawTexture(texture, 80, 10, Color.{255, 255, 255, 255})
+    // Updated pixels invalidate cached tints, including after texture release.
+    DrawTexture(texture, 90, 10, Color.{128, 255, 255, 255})
+    image = GenImageColor(8, 8, Color.{0, 255, 255, 255})
+    UpdateTexture(texture, image.data)
+    UnloadImage(image)
+    DrawTexture(texture, 100, 10, Color.{128, 255, 255, 255})
+    target := LoadRenderTexture(10, 10)
+    BeginTextureMode(target)
+    ClearBackground(Color.{0, 0, 0, 255})
+    DrawRectangle(0, 0, 10, 5, Color.{255, 128, 0, 255})
+    EndTextureMode()
+    DrawTexturePro(target.texture, Rectangle.{0.0, 0.0, 10.0, -10.0}, Rectangle.{80.0, 30.0, 10.0, 10.0}, Vector2.{}, 0.0, Color.{255, 255, 255, 255})
+    UnloadRenderTexture(target)
+    UnloadTexture(texture)
+    CopyCString("/test-font.ttf", path[:])
+    font := LoadFontEx(*path[0], 20, null, 0)
+    if !IsFontValid(font) { return 13 }
+    measured := MeasureTextEx(font, *title[0], 20.0, 0.0)
+    if measured.x <= 50.0 || measured.y <= 0.0 { return 14 }
+    DrawTextEx(font, *title[0], Vector2.{4.0, 70.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
+    UnloadFont(font)
+    result := CanvasTestFinish()
+    SetTargetFPS(120)
+    EndDrawing()
+    if IsKeyPressed(65) || IsKeyReleased(65) { return 12 }
+    BeginMode2D(Camera.{offset = Vector2.{30.0, 30.0}, zoom = 2.0})
+    BeginScissorMode(0, 0, 1, 1)
+    CloseWindow()
+    InitWindow(160, 120, *title[0])
+    BeginDrawing()
+    ClearBackground(Color.{0, 0, 0, 255})
+    if CanvasTestInput(2) != 0 { return 15 }
+    if !IsKeyPressed(66) || GetCharPressed() != 66 { return 7 }
+    CloseWindow()
+    if IsWindowReady() { return 8 }
+    return result
+}
