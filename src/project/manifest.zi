@@ -111,12 +111,20 @@ ParseProject :: (source: string) -> ProjectConfig {
                 return config
             }
             table: string = line[1:cast(s32)line.count - 1]
-            if table == "project" {
+            if table == "project" || table == "package" {
                 section = 1
             } else if table == "paths" {
+                section = 4
+            } else if table == "tool.kryon" {
                 section = 2
-            } else if ProjectStarts(table, "profiles.") {
-                name: string = table[9:cast(s32)table.count]
+            } else if ProjectStarts(table, "profiles.") ||
+                      ProjectStarts(table, "tool.kryon.profiles.") {
+                name: string = ""
+                if ProjectStarts(table, "tool.kryon.profiles.") {
+                    name = table[20:cast(s32)table.count]
+                } else {
+                    name = table[9:cast(s32)table.count]
+                }
                 if !ProjectNameValid(name) || config.profile_count >= 8 {
                     config.error = "invalid or excess profile"
                     return config
@@ -134,11 +142,11 @@ ParseProject :: (source: string) -> ProjectConfig {
                 config.profile_count += 1
                 section = 3
             } else {
-                config.error = "unknown table"
-                return config
+                section = 0
             }
             continue
         }
+        if section == 0 { continue }
         equal: s32 = 0
         while equal < cast(s32)line.count && line[equal] != cast(u8)61 {
             equal += 1
@@ -148,6 +156,9 @@ ParseProject :: (source: string) -> ProjectConfig {
             return config
         }
         key: string = ProjectTrim(line[0:equal])
+        if section == 1 && key != "name" && key != "entry" &&
+           key != "default_profile" { continue }
+        if section == 2 && key != "default_profile" { continue }
         parsed: ProjectValue = ProjectQuoted(ProjectTrim(
             line[equal + 1:cast(s32)line.count]))
         if !parsed.ok {
@@ -162,18 +173,16 @@ ParseProject :: (source: string) -> ProjectConfig {
                 config.entry = value
             } else if key == "default_profile" {
                 config.default_profile = value
-            } else {
-                config.error = "unknown project key"
-                return config
             }
         } else if section == 2 {
+            if key == "default_profile" {
+                config.default_profile = value
+            }
+        } else if section == 4 {
             if key == "kryon" {
                 config.kryon_path = value
             } else if key == "ziran" {
                 config.ziran_path = value
-            } else {
-                config.error = "unknown paths key"
-                return config
             }
         } else if section == 3 {
             if key == "backend" {

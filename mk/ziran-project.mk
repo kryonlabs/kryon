@@ -1,4 +1,4 @@
-# Shared build route for a Ziran application configured by kryon.toml.
+# Shared build route for a Ziran application configured by ziran.toml.
 ifndef PROJECT_NAME
 $(error PROJECT_NAME is required; run this through kryon)
 endif
@@ -28,8 +28,24 @@ C_DIR := $(GEN_DIR)/c
 C_STAMP := $(C_DIR)/.complete
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
 HOST_MODULE := $(PROJECT_BACKEND)_run
+ifeq ($(ZIRAN_PACKAGE_ID),)
+HOST_ID := $(HOST_MODULE)
+PROJECT_CONFIG_FILES := kryon.toml
+ZIRAN_MODULE_ARGS := --root $(KRYON_DIR)/src/backend \
+	--module-path src --module-path $(KRYON_DIR)/src/plot \
+	--module-path $(KRYON_DIR)/src/data_views \
+	--module-path $(KRYON_DIR)/src/kss \
+	--module-path $(KRYON_DIR)/src/syntax \
+	--module-path $(KRYON_DIR)/src/game \
+	--module-path $(KRYON_DIR)/src/ui \
+	--module-path $(ZIRAN_DIR)/std
+else
+HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
+PROJECT_CONFIG_FILES := ziran.toml ziran.lock
+ZIRAN_MODULE_ARGS := --project
+endif
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
-APP_SOURCES := $(wildcard src/*.zi)
+APP_SOURCES := $(wildcard src/*.zi src/*/module.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 PLOT_SOURCES := $(wildcard $(KRYON_DIR)/src/plot/*.zi)
 DATA_VIEW_SOURCES := $(wildcard $(KRYON_DIR)/src/data_views/*.zi)
@@ -91,27 +107,20 @@ build: toolchain
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
 
-$(IR_STAMP): $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(GAME_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(IR_STAMP): $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(GAME_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
-	$(ZIRAN) ir --entry $(HOST_MODULE):main --root $(KRYON_DIR)/src/backend \
-		--module-path src --module-path $(KRYON_DIR)/src/plot \
-		--module-path $(KRYON_DIR)/src/data_views \
-		--module-path $(KRYON_DIR)/src/kss \
-		--module-path $(KRYON_DIR)/src/syntax \
-		--module-path $(KRYON_DIR)/src/game \
-		--module-path $(KRYON_DIR)/src/ui \
-		--module-path $(ZIRAN_DIR)/std \
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --entry $(HOST_ID):main \
 		-o $(IR_DIR) $(HOST)
-	test -f $(IR_DIR)/$(HOST_MODULE).zir
+	test -f $(IR_DIR)/$(HOST_ID).zir
 	touch $(IR_STAMP)
 
 $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(C_DIR)
 	rm -f $(C_DIR)/*.c $(C_DIR)/*.h $(C_STAMP) $(GEN_DIR)/*.c $(GEN_DIR)/*.h $(GEN_DIR)/.complete
-	$(ZIRAN) build --target=c --entry $(HOST_MODULE):main \
-		--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_MODULE).zir
-	test -f $(C_DIR)/$(HOST_MODULE).c
+	$(ZIRAN) build --target=c --entry $(HOST_ID):main \
+		--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
+	test -f $(C_DIR)/$(HOST_ID).c
 	touch $(C_STAMP)
 
 $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(KRYON_DIR)/tools/write-compile-commands.py
@@ -129,11 +138,4 @@ run: build
 	$(RUN_ENV) ./$(PROGRAM)
 
 check: toolchain
-	$(ZIRAN) check --root $(KRYON_DIR)/src/backend \
-		--module-path src --module-path $(KRYON_DIR)/src/plot \
-		--module-path $(KRYON_DIR)/src/data_views \
-		--module-path $(KRYON_DIR)/src/kss \
-		--module-path $(KRYON_DIR)/src/syntax \
-		--module-path $(KRYON_DIR)/src/game \
-		--module-path $(KRYON_DIR)/src/ui \
-		--module-path $(ZIRAN_DIR)/std $(HOST)
+	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(HOST)

@@ -41,6 +41,33 @@ TextFromBuffer :: (bytes: []u8, length: s32) -> string {
     return result
 }
 
+Environment :: (name: string, output: []u8) -> string {
+    bytes: [32768]u8
+    file: FileContents = ReadFile("/proc/self/environ", bytes[:])
+    if !file.ok { return "" }
+    at: s32 = 0
+    while at < cast(s32)file.text.count {
+        start: s32 = at
+        while at < cast(s32)file.text.count &&
+              file.text[at] != cast(u8)0 { at += 1 }
+        if at - start > cast(s32)name.count &&
+           file.text[start:start + cast(s32)name.count] == name &&
+           file.text[start + cast(s32)name.count] == cast(u8)61 {
+            first: s32 = start + cast(s32)name.count + 1
+            length: s32 = at - first
+            if length >= cast(s32)output.count { return "" }
+            index: s32 = 0
+            while index < length {
+                output[index] = file.text[first + index]
+                index += 1
+            }
+            return TextFromBuffer(output, length)
+        }
+        at += 1
+    }
+    return ""
+}
+
 CString :: (value: string, output: []u8) -> bool {
     if value.count >= output.count { return false }
     at: s32 = 0
@@ -253,10 +280,17 @@ main :: () -> s32 {
     }
 
     manifest_bytes: [32768]u8
-    file: FileContents = ReadFile("kryon.toml", manifest_bytes[:])
-    if !file.ok { return Error("cannot read kryon.toml in this directory") }
+    file: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
+    if !file.ok { file = ReadFile("kryon.toml", manifest_bytes[:]) }
+    if !file.ok { return Error("cannot read ziran.toml in this directory") }
     config: ProjectConfig = ParseProject(file.text)
     if !config.ok { return Error(config.error) }
+    installed_kryon_bytes: [4096]u8
+    installed_ziran_bytes: [4096]u8
+    installed_kryon: string = Environment("ZIRAN_PACKAGE_ROOT", installed_kryon_bytes[:])
+    installed_ziran: string = Environment("ZIRAN_TOOLCHAIN_ROOT", installed_ziran_bytes[:])
+    if installed_kryon != "" { config.kryon_path = installed_kryon }
+    if installed_ziran != "" { config.ziran_path = installed_ziran }
     directory_bytes: [4096]u8
     if config.name == "" {
         config.name = ProjectDirectoryName(directory_bytes[:])

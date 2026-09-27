@@ -23,6 +23,12 @@ ProjectManifestTest :: () -> s32 {
         minimal.default_profile != "tui" ||
         minimal.profiles[0].codegen != "c99" { return 6 }
 
+    package: ProjectConfig = ParseProject(
+        "[package]\nname = \"plot\"\nentry = \"src/app.zi\"\nmodule_roots = [\"src\"]\n[toolchain]\ngit = \"https://example.com/ziran.git\"\n[dependencies.Kryon]\ngit = \"https://example.com/kryon.git\"\n[tool.kryon]\ndefault_profile = \"cairo\"\n[tool.kryon.profiles.cairo]\nbackend = \"desktop\"\n")
+    if !package.ok || package.name != "plot" ||
+        package.default_profile != "cairo" ||
+        package.profiles[0].backend != "desktop" { return 9 }
+
     bad_path: ProjectConfig = ParseProject("[project]\nname = \"demo\"\nentry = \"src/$oops.zi\"\ndefault_profile = \"tui\"\n[paths]\nkryon = \"../kryon\"\nziran = \"../ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n")
     if bad_path.ok { return 4 }
     missing_default: ProjectConfig = ParseProject("[project]\nname = \"demo\"\nentry = \"src/app.zi\"\ndefault_profile = \"other\"\n[paths]\nkryon = \"../kryon\"\nziran = \"../ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n")
