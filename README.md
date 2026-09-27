@@ -18,13 +18,13 @@ make test
 
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
 writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs
-from Ziran source. It does not build the handwritten C test host.
+from Ziran source.
 The current C archive is `build/ziran/libkryon.a`; C headers are generated
 from Ziran declarations into `build/ziran/c/`. Kryon has no handwritten
-source headers. Portable platform bindings are in
-`build/ziran/libkryon_host.a`: shared raster lines use a caller-supplied line
-renderer, and `CompositionQueue` carries raw IME events to the checked text
-widgets.
+source headers. `build/ziran/libkryon_host.a` contains C fixtures used only by
+the portable tests; it is not a platform library. Hosts provide declared
+effects such as raster lines, and `CompositionQueue` carries raw IME events to
+the checked text widgets.
 
 Plot lives in the optional `src/plot/` package. `make plot` builds
 `build/ziran/libkryon_plot.a`; apps importing `plot_widget` add

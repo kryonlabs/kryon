@@ -374,13 +374,6 @@ StyleRule :: struct {
     style: StyleData
 }
 
-StyleSheet :: struct {
-    rules: *StyleRule
-    rule_count: s32
-}
-
-// Owned rule storage for portable programs. The pointer-based StyleSheet above
-// remains the input shape of the old native loader during migration.
 StyleRules :: struct {
     items: [320]StyleRule
     count: s32

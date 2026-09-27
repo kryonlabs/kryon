@@ -5,8 +5,7 @@
 #import "vec"
 
 // A retained node keeps its identity only when its key, kind, and parent key
-// match the previous committed tree. The portable tree owns this decision;
-// the old native tree host also calls these pure policy functions.
+// match the previous committed tree.
 #program_export
 TreeIdentityHash :: (parent: u64, key: u64, kind: s32) -> u64 {
     hash: u64 = key ^ (parent * cast(u64)16777619)
