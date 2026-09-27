@@ -10,7 +10,7 @@ using KssStatus;
 // constructs travel with them; comments between constructs are preserved as
 // their own constructs.
 
-// Output is segment-based so .kry needs no allocator: hosts stitch kind 0
+// Output is segment-based so callers need no allocator: hosts stitch kind 0
 // (copy source[start..start+length]), kind 1 (emit the single atom byte), and
 // kind 2 (emit a newline followed by `length` spaces).
 

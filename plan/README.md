@@ -1,41 +1,28 @@
-# Plan Status
+# Remaining Kryon work
 
-Reviewed 2026-09-19. This index distinguishes unfinished work from completed
-implementation slices and deferred targets. It is not a fresh verification of
-every subsystem; the linked evidence and completion gates remain authoritative.
+Kryon is a Ziran UI package. All maintained implementation files under
+`src/` are `.zi`; the old `.kry` compiler, KIR, KRB loader, C widget runtime,
+and handwritten JavaScript web runtime have been removed. The current build
+and host contract is documented in [ARCHITECTURE.md](../docs/ARCHITECTURE.md),
+[PROJECTS.md](../docs/PROJECTS.md), and [BACKENDS.md](../docs/BACKENDS.md).
 
-| Area | Plans | Status |
-|---|---|---|
-| Overall completion | [Completion](COMPLETION.md), [ownership](OWNERSHIP_LEDGER.md) | Partial; requirement reconciliation and final evidence remain open. |
-| Long-term law refactor | [Ten-phase law plan](law/README.md) | Planned; per-phase usable checkpoints, proof-to-production connection, dependency-free user releases and time/token estimates. |
-| Native language | [Language completion](NATIVE_LANGUAGE_COMPLETION.md), [slices](SLICE_VALUES.md) | Slice implementation saved as a checkpoint with focused C/C++/Go tests passing; final slice verification/delivery, callable values and theme migrations remain. |
-| Fixed-array calls | [ABI contract and evidence](../docs/ARRAY_CALL_ABI.md) | Complete for ordinary functions; task plan removed, durable contract retained in docs. |
-| Native accessibility | [Accessibility completion](NATIVE_ACCESSIBILITY_COMPLETION.md) | Partial; Linux trees and list selection implemented, other controls and platform adapters remain. |
-| Shared widget policy | [Canonical index](canonical/README.md) | Partial; shipped policy slices coexist with ownership audits, native IME and platform verification. |
-| Styling | [Style index](style/00-status.md) | Partial; tooling, backend verification, migration and legacy removal remain. |
-| Style ownership | [KSS services](KSS_HOST_SERVICE_LEDGER.md), [style bridges](STYLE_BRIDGE_LEDGER.md) | Maintained inventories used by guards, not disposable completed task lists. |
-| Application rollout | [Consumers](DOWNSTREAM_CONSUMERS.md) | Partial; per-app migration and platform evidence remain. |
-| Browser-native DOM | [DOM index](dom/00-index.md) | Deferred future target, not completed or a current native release prerequisite. |
-| Website redesign | [Completion record](../docs/COMPLETION_EVIDENCE.md#website-redesign-completion-2026-09-19) | Completed plan removed; implementation and deployment evidence preserved. |
+This page records work that still has a current owner. Completed migrations
+and the former phase plans are retained only in Git history.
 
-## Priority
+| Open work | Completion evidence |
+| --- | --- |
+| Replace the C portable test host fixtures in `tests/support/` with Ziran test hosts or generic Ziran host capabilities | No handwritten Kryon test-host implementation remains; the same behavior tests pass from source, saved `.zir`, and `.zib` |
+| Verify public widget behavior through the packaged Ziran imports and supported hosts, including text editing, focus, accessibility, image loading, and optional packages | Focused executable tests pass for each affected path; `make test` and the relevant private-display project tests pass |
+| Add platform accessibility adapters only where a host can provide and test them | A real private-session accessibility test proves semantic tree, focus, action, and text behavior; documentation names unsupported platforms |
+| Retire remaining obsolete tests and generated artifacts that assume `.kry`, `k2*`, KIR, or the deleted web runtime | Active tests and documentation reference only maintained sources and commands |
+| Keep the public site and application instructions aligned with tested package behavior | Examples, links, and build commands resolve against the current `master` checkout |
 
-Prioritize correctness and regressions in supported native apps, safe language
-semantics needed by real callers, and focused downstream/platform verification.
-Finish Linux accessibility for controls used by those apps and verify actual
-keyboard/screen-reader workflows. This is usability work, not visual polish.
-Do not advertise full accessibility before those workflows pass.
+The web backend is unavailable. A future web host is separate work and must
+use Ziran as an ordinary language and Kryon as an imported library. Language
+features and `.zir`/`.zib` changes belong in the Ziran repository. Game APIs
+belong in Game2D; application screens and data migrations belong in the app
+repositories.
 
-Windows/macOS/mobile adapters become release requirements when shipping apps
-on those targets; they need native test environments. Until then they are
-target-dependent roadmap work. The paused DOM target and optional tooling
-conveniences should not delay current native correctness fixes.
-
-## Removal Rule
-
-Remove a plan only when all in-scope work is closed, its evidence and durable
-contracts are preserved in documentation/tests, and inbound references are
-updated. Deferred or unsupported work is not completed work. Leave files under
-concurrent edits intact. The KSS language implementation batch is shipped, but
-the detailed plan retains support/diagnostic reconciliation and links to open
-tooling work; the style index now distinguishes that from full completion.
+Never run a graphical or window-management test on the developer's live
+display. Use a private Xvfb/Xephyr display and scrub inherited display
+variables.

@@ -1,251 +1,51 @@
 # Kryon architecture
 
-Kryon is an ordinary Ziran library. Ziran owns the language, checker, `.zir`,
-native backends, `.zib` linker, and portable runtime. Kryon owns widget APIs,
-composition, layout, interaction, styling, accessibility, and rendering policy.
-Applications import Kryon modules from `src/ui/`. Neither Ziran's compiler nor
-its portable loader recognizes widget names.
+Kryon supplies reusable UI behavior as Ziran modules. Ziran owns the source
+language, checker, standard library, `.zir`, `.zib`, code generation, and
+portable execution. Applications import Kryon only when they need its UI
+library. The compiler and bundle loader have no Kryon-specific branches.
 
-## Source and host boundary
+## Source ownership
 
 | Location | Responsibility |
 | --- | --- |
-| `src/ui/*.zi` | Kryon declarations and reusable UI behavior |
-| `src/ui/modules.txt` | Maintained core UI module inventory |
-| `src/plot/*.zi` | Optional Plot package, which imports the core UI modules |
-| `src/data_views/*.zi` | Optional TableView and TreeView package |
-| [Game2D](https://github.com/kryonlabs/game2d) | Optional game package with a raylib adapter |
-| `src/backend/*.zi` | Portable host primitives and ABI declarations |
-| `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
-| [Ziran](https://github.com/ziranlang/ziran) checked out at `../ziran` | Language implementation and generic execution |
+| `src/ui/*.zi` | Widget APIs, retained tree, layout, input decisions, styling, text, accessibility policy, and paint commands |
+| `src/plot/*.zi`, `src/data_views/*.zi`, `src/kss/*.zi`, `src/syntax/*.zi` | Optional packages that depend on the core UI modules |
+| `src/backend/*.zi` | Terminal and window hosts: platform observations, native bindings, rasterization, and presentation |
+| `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
+| `tests/support/*_host.c` | Existing portable-test ABI fixtures; not part of the library or application hosts |
+| Application repositories | Screens, assets, translations, product data, and workflows |
+| Game2D repository | Optional game API; Kryon determines its shared raylib revision when both packages are used |
 
-Every maintained core UI source is in `modules.txt`. The checked build has no
-handwritten Kryon headers; C hosts include headers generated from `.zi`.
-The Plot package has its own `make plot` build and is included in `make test`.
-Core UI modules never import it; apps add `src/plot` to their module paths when
-they use Plot.
-The TableView and TreeView package follows the same dependency direction and
-has its own `make data-views` build.
-Game2D owns the raylib game API and depends on Kryon's public `geometry` and
-`drawing_props` modules. Kryon's raylib UI host remains here and does not
-participate in Game2D's game logic.
+All maintained implementation files under `src/` are `.zi`. The core module
+inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). The two public
+import modules, `Kryon` and `Widgets`, compose that surface. Optional packages
+have separate imports and build targets; the core UI does not import them.
 
-Host adapters provide observations and effects through declared interfaces.
-Widget state, policy, layout, and draw decisions belong in `.zi`, including for
-desktop, browser, and portable hosts. Kryon's maintained implementation and
-platform integration must use current Ziran directly. Generic OS access that
-Ziran lacks belongs in the Ziran project, without Kryon-specific compiler or
-runtime branches. Android launch activities and secure-storage bridges belong
-to the applications that need them. The
-C ABI fixtures under `tests/support/` are test-only and are never linked into
-`libkryon.a`.
+## Widget and host boundary
 
-## Current build
+The host observes input and submits it to a `Session`. Kryon widget modules
+decide focus, hit testing, layout, semantics, styling, and paint commands.
+The host supplies system effects such as windows, terminal output, font and
+image loading, rasterization, and storage. A host should not implement a
+second set of widget decisions.
 
-`make` compiles the [checked module list](../src/ui/modules.txt) to `.zir`, C,
-C++, and Go, then builds `build/ziran/libkryon.a` from Ziran source.
-`make test` also builds the temporary C portable host adapter
-`build/ziran/libkryon_host.a` for existing tests. It runs the current
-source, saved-IR, and portable bundle tests. The checked modules cover
-geometry, layout, DPI scaling decisions, accessibility, focus, canvas transforms, drag, checked swipe state and pointer ownership effects, and
-scroll interaction, frame pacing, retained tree commit and instance lifetime
-decisions, nested retained tree scopes, paragraph layout policy, text input and text row decisions,
-checked Page and Section containers with automatic or explicit child bounds and returned
-platform metadata, plus Heading and ParagraphText through the checked Text
-widget and retained semantic roles,
-Flow row scope and child placement, and Link paint, pointer activation, and
-returned URL effects,
-checked Column, Row, Stack, Group, Screen, and Grid retained scopes with
-automatic placement for zero-positioned children and explicit placement otherwise,
-with each container installing its own placement procedure on the retained
-node; the tree core does not import specific layout algorithms,
-checked Scroll viewport scopes with caller owned offsets and deltas, content
-bounds, and inherited child paint and input clipping,
-checked TreeView row composition, selection, keyboard navigation, scroll values,
-draggable scrollbar, viewport clipping, and semantic row nodes from a caller
-owned item slice,
-checked PanedView split state, retained handle drag, pane rectangles, and
-drop zone policy,
-checked Toast lifetime, UTF-8 safe truncation, styled layout, and paint from
-caller owned state and host time observations,
-checked Collapsible header and close interaction, caller owned open/hidden
-values, tree focus navigation from a borrowed ordered header slice, and paint,
-checked SegmentedControl layout from a borrowed option slice and checked Button
-children using the Segment KSS style kind,
-checked TabBar composition from borrowed tabs, caller owned selection and
-scroll state, retained pointer input, keyboard navigation, close and reorder
-intents, KSS Tab and TabClose roles, and queued icon and text paint,
-window placement and drag policy,
-caller owned route list and stack policy through portable slices,
-Router navigation, hash matching, and URL effect decisions through caller owned
-route and state values,
-text and accessibility contracts, keyboard accelerator contracts, theme and style values,
-theme and orientation preference decisions from host observations,
-portable built-in theme labels,
-Button, Checkbox, Slider, Toggle, menu, color picker, material layers, and
-selected Image and Progress paint decisions, plus Bevel and Separator line rendering.
-The checked standard `Button(ButtonProps)` composes KSS state styling, label
-measurement, retained pointer activation, and queued shape, clipped image, and
-clipped text paint. `ButtonProps.image` uses portable `ImageProps` asset or
-texture values and Ziran image fit policy. Glyph and raw texture icons, menu,
-split, loading animation, material layers, keyboard focus, and immediate input
-still need migration.
+An application exports `Frame(session: Session, viewport: Rectangle) -> s32`.
+The selected host calls it between `BeginFrame` and `EndFrame`. Package
+profiles choose the terminal, desktop, libdraw, or raylib host; see
+[BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can import a Kryon
+policy module without selecting any of these hosts.
 
-`Scroll(ScrollProps)` opens a clipped retained child scope and returns the
-viewport, shifted content bounds, and a clamped scroll offset. The caller
-stores that value and supplies keyboard deltas or explicit pointer and wheel
-observations. Kryon resolves KSS scrollbar faces, queues track and thumb
-paint, and returns drag ownership and consumption decisions. The platform
-still supplies observations and retains drag ownership between frames; native
-host integration remains open.
+## Build and verification
 
-The checked `Checkbox(CheckboxProps)` accepts and returns portable values,
-uses the retained pointer router, resolves KSS box and label roles, and queues
-the box, mark, and clipped label. Its committed tree node carries the selected
-state. The caller stores a returned value for the next frame; hosts supply raw
-input, glyph measurements, and raster effects. Keyboard focus and native host
-integration remain open.
+`make` checks the Ziran modules, writes `.zir`, generates C, C++, and Go,
+compiles native objects, and creates a C archive from generated source.
+`make test` exercises the checked library through source, saved `.zir`, and
+portable `.zib` behavior. It also builds C test-host fixtures that have not
+yet been migrated to Ziran. Graphical package tests run separately on private
+Xvfb displays. [FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what
+those checks cover.
 
-The checked `Radio(RadioProps)` returns the activated option id while the
-caller owns the checked value. It resolves KSS Ring, Mark, and Label roles,
-uses retained pointer input, records selected state, and queues ring, fill,
-hover layer, and clipped label paint. Selection animation, ripple, keyboard
-focus, and native host integration remain open.
-
-The checked `Slider(SliderProps)` and `DiscreteSlider(DiscreteSliderProps)`
-compose caller owned scalar values, horizontal or vertical track geometry,
-KSS Track, Fill, Label, and Thumb roles, retained drag input, and queued shape
-and clipped label paint. An app composes multiple values from its own arrays
-and `SliderCellBoundsFor()`. Angle editing, step buttons, numeric text editing,
-limit labels, keyboard control, richer materials, and native host integration
-remain open.
-
-The checked `Spinbox(SpinboxProps)` owns its parent/value styling, two retained
-Button child controls, step and wrap behavior, and decimal glyph layout in
-Ziran. The caller stores the returned value. Native text editing, locale
-formatting, and host integration remain open.
-
-The checked `Selectable(SelectableProps)` composes a caller owned boolean,
-retained pointer input, selected tree state, KSS styling, and queued row/text
-paint. Keyboard activation and native host integration remain open.
-
-The checked `TabBar(TabBarProps, []Tab)` accepts borrowed tab values with stable
-keys and optional `ImageProps` icons. It reports selection, close, middle and
-double click, and reorder events for the caller to apply. Scroll, drag, and
-double click history are caller owned; the host supplies raw input and time.
-Mouse drag panning and platform focus integration remain open.
-
-The checked `Fieldset(FieldsetProps)` resolves KSS frame style, measures its
-title from host supplied glyph metrics, and queues frame, title cover, and
-clipped text paint from Ziran. Retained child layout composition remains open.
-
-The checked `route.zi` module now owns list deduplication, allowed-set or
-per-item-mask filtering, first-unused selection, moving, and stack transitions.
-Applications keep route arrays and occupied counts; Ziran slices carry their
-capacity, and no C callback or route storage pointer crosses the API.
-
-Inbe owns its checked `locale_policy.zi` and `locale_parser.zi` modules. They
-match product language codes and parse its catalog format; Kryon's core UI
-library has no dependency on either module.
-
-The checked `Toggle(ToggleProps)` composes plain and labeled switches from
-portable values. It resolves track, fill, label, and thumb KSS styles, uses
-retained pointer activation, and queues rounded shapes and clipped labels.
-The caller owns the returned value; the committed tree exposes its selected
-state. Animated transitions, material layers, keyboard focus, and native host
-integration remain open.
-
-`Text(TextProps)` now resolves style, measures and wraps words, positions lines,
-and queues clipped text and strikethrough paint from Ziran. The platform
-provides raw byte slices, glyph metrics, and a raster callback that honors the
-chosen clip. Letter spacing, parent style inheritance, and selectable text
-interaction remain open.
-`text_props.zi` contains the value props and common font sizes. Its unused
-C-only layout and font-registration declarations were removed; the checked
-text path requests glyph measurements through `font_metrics.zi` and paint
-through `raster_text.zi`.
-The checked `Image(ImageProps)` composition now resolves KSS class styles,
-uses asset dimensions or a supplied texture handle, selects source and fit,
-and queues an image command with clip, radius, tint, origin, and rotation.
-The platform host measures asset dimensions and rasterizes that command;
-`RasterImageRGBA()` is the portable headless RGBA8 primitive for caller-owned
-pixel buffers. The optional SDL2/Cairo example now renders an
-asset-backed PNG through `Image(ImageProps)`; production desktop and browser
-adapters remain to be connected.
-Progress can also emit its rounded track, fill, border, and text through
-separate generic raster shape and text capabilities. Its checked composition
-module selects the font and positions the label from raw glyph measurements;
-its checked style module resolves track, fill, and label roles from a portable
-rule table. The optional `src/kss/` parser bridge collects KSS rules into that table and
-pauses for host-provided imports. The host only slices source bytes and
-supplies imported text; Kryon resolves selectors and widget styles. The
-one-argument Progress painter uses an installed Ziran rule table and Ziran
-default faces. A persistent `.zib` instance keeps that rule table across
-frames. Separator resolves its Line and Label roles, measures labels, and
-emits line and text effects from checked Ziran. The portable retained tree
-now owns node identity and Progress and Separator submissions through
-`BeginFrame(session, ...)` and `EndFrame(session)`. Widgets lower their paint decisions to a
-checked generic command queue during submission. Each queued painter carries
-its own emitter and clip procedure, so a Text-only link omits image raster
-effects. The retained tree and paint queue use growable Ziran vectors instead
-of fixed node and paint arrays. Each session has independent tree, input, and
-paint state. The retained node core is 128 bytes on x86-64; semantic and
-interaction data occupy side tables only when used. Parent identity, key, and
-kind index the previous committed tree for reconciliation. Parent-local layout
-cursors place row, column, and grid children without walking older siblings.
-Allocation failure rejects a submission while preserving the committed tree.
-`EndFrame` emits raster effects only after commit; it does not import
-individual widget painters.
-`tree_input.zi` now hit tests committed nodes, keeps press ownership by stable
-identity across tree reordering, and emits consumable activation on release.
-`pointer_input.zi` imports raw pointer samples through the reusable host
-binding. Button, Checkbox, Toggle, and Radio use this path for retained
-pointer activation. Slider nodes retain drag
-ownership across tree reordering and pointer movement outside their bounds;
-the route reports held and release coordinates with the original grab offset
-and cancels a disabled drag. PanedView uses this route for its handle and
-returns pane rectangles and the updated split to its caller.
-
-The checked `TextField(TextFieldProps)` consumes raw pointer and keyboard
-samples, resolves KSS styles, emits text, selection, and caret paint, and
-returns a UTF-8 byte replacement range plus cursor and focus state. The caller
-owns the string and applies edits. A secure field supplies its display mask;
-platform text services and IME integration remain host and app work.
-
-The checked `TextArea(TextAreaProps)` also owns visual row wrapping, pointer
-selection, vertical and page navigation, scrolling, multiline replacement
-intents, caller supplied color span paint, composition underlines, and clipped
-text, selection, and caret paint. The caller stores the string and editing
-state. Optional `src/syntax/` tokenizes Ziran, C, and Make source into those
-spans. IME event handling, clipboard commands, and native host integration
-remain migration work.
-
-Remaining input modes, including keyboard focus, still need migration.
-Ancestor viewport clipping works for retained child paint and input, but
-full widget and platform integration remains incomplete.
-
-All maintained `src/ui/*.zi` modules are in the checked build. Native window
-hosts, platform text services, and downstream app integration are incomplete.
-A `.zib` containing Kryon code links only the modules an application imports
-and requires host capabilities explicitly.
-`frame_pacing.zi` returns a pure `FramePacingDecision`; the application applies
-the target FPS to its timer when `apply_target` is true. `raster.zi` declares a
-typed record line capability shared by Bevel and Separator; its adapter calls the platform's
-line renderer. `raster_shape.zi` and `raster_text.zi` declare rounded rectangle
-and UTF-8 text effects for Progress; their adapters pass draw calls to the
-embedding renderer. `font_metrics.zi` declares width and line height effects
-for the platform font rasterizer. `pointer_input.zi` declares the raw pointer
-sample capability; a portable host binds `PollPointer` with current device
-coordinates and button transitions. Other input and rendering capabilities still need host
-adapters.
-
-## Completion requirements
-
-- Every maintained widget and its state, style, and layout behavior is a
-  checked `.zi` module and joins the build.
-- Native C, C++, Go, browser, and portable hosts execute equivalent supported
-  behavior through declared effects.
-- The public widget API is importable from applications without compiler rules
-  keyed to Kryon names.
-- Downstream applications build and pass their behavior gates with Ziran source,
-  saved `.zir`, and linked `.zib` where applicable.
+Ziran's generic capabilities should be added to Ziran and imported here.
+Kryon-specific compiler cases, compatibility runtimes, and app-specific
+screens do not belong in this repository.

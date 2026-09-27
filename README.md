@@ -109,18 +109,19 @@ Kryon's implementation source is 100% current Ziran: every file under `src/`
 is a checked `.zi` module or the module inventory, the source inventory
 rejects any new handwritten implementation file, and `make test` verifies the
 library through source, saved IR, and portable bundle tests on C, C++, Go,
-and `.zib`. The C test hosts and the C frame replay tool are still used by
-the present test harness and must be replaced in Ziran rather than extended.
+and `.zib`. The C portable test-host fixtures remain migration debt. The
+frame replay runner is Ziran source.
 The old KRB renderer and static C package were removed with their
 header-dependent implementation, and the Android Java launch bridge now
 belongs to the applications that need it.
+The paused handwritten JavaScript web widget runtime has also been removed;
+Kryon does not currently offer a web backend. See
+[web host status](docs/WEB_STATUS.md).
 
-Downstream cutover status: the verified Kryon HEAD builds through a
-downstream app's vendored pointer (`vendor/kryon`) with its Ziran library
-gate and module-path link tests, exactly as this repository's `make test`
-does. Applications migrate their own sources and platform hosts at their own
-pace; Kryon commits land upstream first and apps move only the clean
-submodule pointer.
+Downstream applications migrate their own sources and platform hosts at their
+own pace. Kryon commits land upstream first; apps then move only their clean
+`vendor/kryon` submodule pointer. This repository's tests verify Kryon itself,
+not every downstream application build.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
 boundary and [Ziran's implementation status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)

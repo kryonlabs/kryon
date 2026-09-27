@@ -8,15 +8,6 @@ Created for the approved website redesign on 2026-09-19.
 - Site-root `og.png`: current 1200 × 630 Kryon Labs social card rendered from
   the site-root `og.svg`, using the new mark in `../brand/mark.svg`. The earlier
   generated card prompt remains in `social-card-prompt.txt` for reference.
-- `hello.png`: actual 480 × 280 KRB software-renderer capture, not generated art.
-  Recreate from the repository root with:
-
-  ```sh
-  build/linux-x86_64/bin/kryon-preview cartridge \
-    --project "$PWD" --source docs/site/hello.kry \
-    --output docs/site/assets/editorial/hello.png --width 480 --height 280
-  ```
-
 - Manrope and Newsreader are served locally. Their OFL license texts are included.
 - Application screenshots and metadata come from the Kryon showcase registry via
   the existing `scripts/update-showcase.py` build step.

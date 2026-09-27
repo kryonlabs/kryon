@@ -276,7 +276,7 @@ SurfaceLayer :: struct {
 }
 
 // Hosts supply normalized vertical position at the pixel center. Material
-// sampling, including transparent endpoints and clamping, belongs to .kry.
+// sampling, including transparent endpoints and clamping, belongs here.
 // Coverage is separate so the same color policy works with any rasterizer.
 #program_export
 SampleColor :: (layer: SurfaceLayer, position: float32) -> u32 {

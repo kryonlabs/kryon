@@ -16,238 +16,28 @@ code{background:#eee;padding:.08rem .3rem;border-radius:3px;font-size:.85em}
 pre{background:#222;color:#ddd;padding:1rem;border-radius:6px;overflow-x:auto}
 li{margin:.25rem 0}
 </style></head><body>
-<h1>Kryon Feature Matrix</h1>
-<p>What every widget and feature supports, per compile target and per renderer backend. For how backends are selected and implemented see <code>docs/BACKENDS.md</code>; for the cartridge binary format see <code>docs/KRB_FORMAT.md</code>; for the language see <code>docs/KRY_LANGUAGE_SPEC.md</code>. Keep this file current with the code, and regenerate the browsable view after every change: <code>python3 scripts/feature-matrix-html.py</code> writes <code>docs/FEATURE_MATRIX.html</code>.</p>
-<p>Legend: ✅ available · ◐ partial (reason given) · ✗ not available · — not applicable. <b>C</b> is the <code>libkryon.a</code> C API; <b>k2c</b> is what <code>.kry</code> reaches through the C compiler — always equal to C, because the language is C-close and every library call is a legal statement (the widget-statement whitelist below only adds sugar). The other compilers lower subsets, which is where the columns diverge.</p>
-<h2>The pipeline</h2>
-<pre>.kry source
-   │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
-   ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
-   ├── k2cpp -&gt; .cpp/.hpp + kryon_project.c/.h (extern &quot;C&quot; decls; same lowering as k2c)
-   ├── k2go  -&gt; .go (kryon.&lt;Widget&gt; calls)  -&gt; go build + go/kryon -&gt; Go app
-   ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
-   └── k2kir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
+<h1>Kryon feature matrix</h1>
+<p>This table describes the maintained Ziran library and hosts. Kryon is imported by a Ziran application; it is not a language or a built-in Ziran runtime. Ziran owns compilation and portable <code>.zib</code> execution. See [ARCHITECTURE.md](ARCHITECTURE.md) and [BACKENDS.md](BACKENDS.md) for the module and host boundaries.</p>
+<h2>Library packages</h2>
 <table>
-<tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
-<tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use</td></tr>
-<tr><td class="">C++</td><td class=""><code>k2cpp</code></td><td class=""><code>c++</code> + <code>libkryon.a</code>; C++ codegen with C linkage, same lowering as <code>k2c</code></td><td class="">Parity port of the <code>k2c</code> backend</td></tr>
-<tr><td class="">Go</td><td class=""><code>k2go</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
-<tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class="">paused experimental code path</td><td class="">Future target: <code>.kry -&gt; HTML/DOM + KSS/CSS + small JS</code>; not shipped or release-gated</td></tr>
-<tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
-<tr><td class="">KIR</td><td class=""><code>k2kir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
+<tr><th>Package</th><th>Ziran source</th><th>Native code generation</th><th>Package verification</th></tr>
+<tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ 185 listed <code>.zi</code> modules and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zib</code> behavior tests</td></tr>
+<tr><td class="">Plot (<code>src/plot</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make plot</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
+<tr><td class="">TableView and TreeView (<code>src/data_views</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make data-views</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
+<tr><td class="">KSS (<code>src/kss</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make kss</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
+<tr><td class="">Syntax (<code>src/syntax</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make syntax</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
 </table>
-<p>Two backend tiers exist (see <code>docs/BACKENDS.md</code>):</p>
-<ul>
-<li><b>Tier A — surface backends</b>: implement the ~700-symbol raylib-compatible</li>
-</ul>
-<p>surface (<code>include/kryon_compat.generated.h</code>), selected at <b>link</b> time via <code>KRYON_BACKEND=raylib|null|canvas|libdraw</code>. The whole widget catalog runs on these.</p>
-<ul>
-<li><b>Tier B — cartridge hosts</b>: implement the ~20-function <code>KryBackend</code> vtable</li>
-</ul>
-<p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
-<h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
-<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 140 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2cpp</code> shares that lowering (C++ output, C linkage); <code>k2go</code> lowers the full whitelist onto its <code>Runtime</code> interface; <code>k2js</code> is paused and no longer part of the active widget conformance surface; future web lowering should target browser-native DOM/CSS/JS. <code>k2b</code> lowers a subset of the widget surface:</p>
-<p>`AppBackground Background Text Paragraph Abbreviation Address Area Article Aside Base Box Line Bevel Icon Image Button Card Selectable Audio BidirectionalIsolate BidirectionalOverride BlockQuote Bold Cite Code CodeBlock Data DataList Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Embed Emphasis Figcaption Figure Footer Form Header HGroup IFrame Inserted Italic ImageMap Keyboard Label Legend LineBreak ListItem Main Mark Meta Meter Navigation NoScript EmbeddedObject OrderedList OptionGroup Option Output Param Pre Quote Ruby RubyParenthesis RubyText Sample Script Search Select Slot Small Source Strong StyleElement Subscript Summary Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Template Time Title Track UnorderedList Variable Video WordBreakOpportunity Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll End Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid`</p>
-<p><code>Canvas</code> and <code>TableCell</code> are lexical <code>.kry</code> blocks rather than ordinary one-call widgets; <code>Scroll</code> is both a parser-recognized widget statement and a lexical block form for scroll content. The compiler lowers these to host support. The clean command-menu concept is <code>Menu</code>; bar, popup, and context behavior are selected by <code>MenuProps</code>.</p>
-<h2>Widget matrix</h2>
-<p>The upstream widget-family crosswalk and its remaining semantic gaps are kept in [<code>IMGUI_WIDGET_COVERAGE.md</code>](IMGUI_WIDGET_COVERAGE.md).</p>
-<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2cpp</b> = <code>.kry</code>→C++ codegen (mirrors <code>k2c</code>) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
-<p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, while the retained painter covers BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX. It routes retained interaction for BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
-<h3>Display</h3>
+<p>The generated C archive is a build output of Ziran source. The C ABI fixtures under <code>tests/support/</code> are test harness code and are not linked into Kryon. Code generation verifies that a module lowers for a target; it does not prove that every native host runs on that target.</p>
+<h2>Application hosts</h2>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Text properties (bounds, wrap, clip, color, alignment, disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text(TextProps)</code></td><td class="ok">✅</td></tr>
-<tr><td class="">Paragraph (rich text + inline icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Paragraph</code></td><td class="no">✗</td></tr>
-<tr><td class="">Box</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Box</code> (+ native <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
-<tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
-<tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
-<tr><td class="">Icon sheets (MingCute UI plus 6 full-color families)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>Icon</code></td><td class="no">✗</td></tr>
-<tr><td class="">Image</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Image(kryon.ImageProps)</code></td><td class="ok">✅ <code>kryon.Image</code></td><td class="ok">✅ node (embedded asset or PNG)</td></tr>
-<tr><td class="">Image style / image Button</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Plot</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Plot</code></td><td class="no">✗</td></tr>
+<tr><th>Backend</th><th>Implementation</th><th>Input and presentation verification</th><th>Current status</th></tr>
+<tr><td class="">Terminal</td><td class=""><code>src/backend/terminal_run.zi</code></td><td class="">Private PTY project test covers ASCII, UTF-8, invalid input, and escape sequences</td><td class="ok">✅ supported</td></tr>
+<tr><td class="">Desktop</td><td class=""><code>src/backend/desktop_run.zi</code></td><td class="">Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
+<tr><td class="">Raylib</td><td class=""><code>src/backend/raylib_run.zi</code></td><td class="">Private Xvfb project test covers image capture and input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
+<tr><td class="">Libdraw</td><td class=""><code>src/backend/libdraw_run.zi</code></td><td class="">Private Xvfb project test covers capture and input</td><td class="ok">✅ supported on the tested Linux host</td></tr>
+<tr><td class="">Web</td><td class="na">—</td><td class="">No current Ziran web target or Kryon web host</td><td class="no">✗ unavailable</td></tr>
 </table>
-<h3>Input</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Button(kryon.ButtonProps)</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Selectable / Checkbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Button options (small, arrow, info/help, menu, split)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Button(ButtonProps)</code></td><td class="part">◐ BUTTON style byte</td></tr>
-<tr><td class="">Link (open URL)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Link</code></td><td class="no">✗</td></tr>
-<tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.TextField(kryon.TextFieldProps)</code> / <code>kryon.TextField(&quot;Name&quot;, &amp;value)</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
-<tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code></td><td class="ok">✅ <code>Text(TextProps)</code></td><td class="no">✗</td></tr>
-<tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextArea</code></td><td class="no">✗</td></tr>
-<tr><td class="">Dropdown</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code></td><td class="ok">✅ <code>Dropdown</code></td><td class="ok">✅ DROPDOWN control</td></tr>
-<tr><td class="">SegmentedControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SegmentedControl</code></td><td class="ok">✅ <code>SegmentedControl</code></td><td class="no">✗</td></tr>
-<tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider(SliderProps)</code></td><td class="ok">✅ <code>Slider</code></td><td class="ok">✅ SLIDER/VSLIDER control</td></tr>
-<tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="ok">✅ <code>KRB_CTRL_RADIO</code></td></tr>
-<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="ok">✅ <code>KRB_CTRL_PROGRESS</code></td></tr>
-<tr><td class="">Spinbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Spinbox</code></td><td class="ok">✅ SPINBOX control</td></tr>
-<tr><td class="">ColorPicker (RGB sliders)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ColorPicker</code></td><td class="no">✗</td></tr>
-<tr><td class="">Drag values and ranges</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Drag(DragProps)</code></td><td class="no">✗</td></tr>
-<tr><td class="">Slider values, vertical sliders, and angle sliders</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider(SliderProps)</code></td><td class="no">✗</td></tr>
-<tr><td class="">Numeric keyboard inputs</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Input(InputProps)</code></td><td class="no">✗</td></tr>
-<tr><td class="">Button sizing/options plus invisible hit-test support</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Separator labels</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">ColorPicker / swatch Button</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-</table>
-<h3>Layout</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
-<tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
-<tr><td class="">Scroll block</td><td class="ok">✅ <code>Scroll</code></td><td class="ok">✅ <code>.kry</code> block lowering</td><td class="ok">✅ <code>.kry</code> block lowering</td><td class="ok">✅ generated wheel/drag/nested-child tests</td><td class="ok">✅ wheel scrolling, scrollbar dragging, and nested clipping via <code>Scroll</code></td><td class="ok">✅ SCROLL node</td></tr>
-<tr><td class="">Separator</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td></tr>
-<tr><td class="">Fieldset</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Fieldset</code></td><td class="ok">✅ rect/text lowering</td></tr>
-<tr><td class="">TabBar (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
-<tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
-<tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
-<tr><td class="">Geometry layout (<code>Rectangle</code>, <code>Grid</code>, <code>Column</code>, <code>Row</code>, <code>Stack</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ structural</td></tr>
-<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Canvas</code> block</td><td class="ok">✅ host canvas scope + hit-test</td><td class="no">✗</td></tr>
-</table>
-<h3>Collections</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">ListBox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
-<tr><td class="">TreeView (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TreeView</code></td><td class="part">◐ <code>TreeView</code></td><td class="no">✗</td></tr>
-<tr><td class="">TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard/clipboard, disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TableView</code></td><td class="no">✗</td></tr>
-<tr><td class="">CanvasGrid</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>CanvasGrid</code></td><td class="no">✗</td></tr>
-<tr><td class="">Selectable text</td><td class="ok">✅ <code>TextProps.selectable</code></td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code></td><td class="ok">✅ via <code>TextProps.Selectable</code></td><td class="no">✗</td></tr>
-<tr><td class="">ListBox multi-select props (focus, keyboard navigation, Ctrl/Shift range selection)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Nested disabled scope</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Disabled</code> block</td><td class="no">✗</td></tr>
-</table>
-<h3>Navigation</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Menu (bar, popup, and context modes)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Menu</code></td><td class="no">✗</td></tr>
-<tr><td class="">Popup scope (ordinary, hover-tooltip, modal arbitrary native content)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">TabBar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
-<tr><td class="">Button add-tab actions / closable tab items</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">DragDrop (typed source and target roles)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DragDrop</code></td><td class="no">✗</td></tr>
-<tr><td class="">NavigationBar (+ config modal)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NavigationBar</code></td><td class="part">◐ <code>NavButton</code> lowers to a BUTTON</td></tr>
-<tr><td class="">Toolbar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Toolbar</code> only</td><td class="ok">✅ <code>Toolbar</code></td><td class="no">✗</td></tr>
-<tr><td class="">TitleBar family</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TitleBar</code> only</td><td class="ok">✅ <code>TitleBar</code></td><td class="no">✗</td></tr>
-</table>
-<h3>Overlays</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Modal</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Modal</code></td><td class="ok">✅ <code>Modal</code></td><td class="no">✗</td></tr>
-<tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toast</code></td><td class="ok">✅ <code>Toast</code></td><td class="no">✗</td></tr>
-<tr><td class="">Transition/focus policy</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode drive animation</td></tr>
-</table>
-<h3>Composite And App Framework</h3>
-<table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Reorder (drag handle + placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Route stack / shell measurement</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Capabilities / safe content rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Setting normalization helpers</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-</table>
-<h3>Game2D (scene tree, <code>src/scene/</code>)</h3>
-<table>
-<tr><th>Node</th><th>C</th><th>✅</th><th>✅</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Scene / Node2D / Camera2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Sprite2D / AnimatedSprite2D / TileMap / Light2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">CollisionShape2D / Area2D / Body2D (box2d)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">AnimationPlayer / AudioSource</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Signals (<code>KrySignal</code>) / keyframe animation</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-</table>
-<h3>KRB cartridge vocabulary (no C widget equivalent)</h3>
-<table>
-<tr><th>Item</th><th>Notes</th></tr>
-<tr><td class="">DATA node</td><td class="">state-field mount read/written by bytecode</td></tr>
-<tr><td class="">CIRCLE / RING nodes</td><td class="">lowered from <code>DrawCircleV</code> / <code>DrawRing</code> calls</td></tr>
-<tr><td class=""><code>NavButton</code></td><td class=""><code>k2b</code>-only lowering; becomes a BUTTON with <code>KRB_FLAG_NAV</code></td></tr>
-<tr><td class=""><code>AnimNode</code></td><td class=""><code>k2b</code>-only; animated node driven by <code>TIME</code></td></tr>
-<tr><td class="">v2 logic bytecode</td><td class="">stack machine, node mutation, if-guards over node ranges</td></tr>
-<tr><td class="">Host capabilities</td><td class="">imported storage/http/audio/notify calls (<code>krb_caps.c</code>)</td></tr>
-</table>
-<h2>Cross-cutting features</h2>
-<table>
-<tr><th>Feature</th><th>C</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Theming</td><td class="ok">✅ 6 palettes × light/dark INI, scopes, vars, runtime loader</td><td class="ok">✅ <code>SetCurrentTheme</code>/<code>SetThemeDarkMode</code>/<code>GetTheme*</code></td><td class="part">◐ theme color slots (<code>KrySwSetTheme</code>); light/dark env knobs on hosts</td></tr>
-<tr><td class="">Style tokens</td><td class="ok">✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles</td><td class="ok">✅ <code>Get/SetThemeMetrics</code></td><td class="no">✗</td></tr>
-<tr><td class="">Animation</td><td class="ok">✅ transitions (smoothstep), ripple, keyframe scene anims</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode</td></tr>
-<tr><td class="">Text/fonts</td><td class="part">◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi</td><td class="ok">✅ <code>RegisterTextFont(Data)</code>, <code>Push/Pop/UseTextFont</code>, input queue</td><td class="part">◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization</td></tr>
-<tr><td class="">DPI/scaling</td><td class="ok">✅ viewport-derived scale, <code>Scale</code></td><td class="ok">✅ <code>Scale</code>, <code>GetWindowScaleDPI</code></td><td class="part">◐ per-mille UI scale (<code>KRB_RUN_UI_SCALE</code>)</td></tr>
-<tr><td class="">Clipping</td><td class="ok">✅ 16-deep scissor stack + input clip stack</td><td class="ok">✅ <code>Begin/EndScissorMode</code></td><td class="ok">✅ 16-deep <code>clip_push/pop</code> in <code>kry_sw</code></td></tr>
-<tr><td class="">Z-order/popups</td><td class="ok">✅ overlay paint pass, modal capture, input-capture stack</td><td class="part">◐ dropdown popups internal to <code>Dropdown</code></td><td class="part">◐ dropdown menus handled by the engine</td></tr>
-<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard, backend-neutral IME composition; no gamepad nav</td><td class="ok">✅ native host key/mouse/text queues</td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
-<tr><td class="">Accessibility</td><td class="part">◐ retained accessibility snapshots + host sink + DOM ARIA bridge; native screen-reader bridge pending</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenNativeWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
-<tr><td class="">3D rendering</td><td class="ok">✅ camera + mesh/shader tier incl. curated rlgl entry points and raymath-style math3d (GLSL 100); raylib backend implements it, others stub it</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>#ui</code> functions + retained events</td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
-<tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
-<tr><td class="">Debug tooling</td><td class="ok">✅ widget inspector, node registry + snippets</td><td class="no">✗</td><td class="part">◐ <code>KryBackendRec</code> call-stream recording</td></tr>
-</table>
-<h2>Renderer backends</h2>
-<h3>Tier A — surface backends (link-time, <code>KRYON_BACKEND</code>)</h3>
-<table>
-<tr><th>Backend</th><th>Graphics API</th><th>Platforms</th><th>CI</th><th>Notes</th></tr>
-<tr><td class=""><code>raylib</code> (default)</td><td class="">OpenGL ES 2.0 over SDL2</td><td class="">Linux, FreeBSD</td><td class="ok">✅ <code>ci.yml</code> (Linux + FreeBSD)</td><td class="">Default everywhere; dist/static SDK targets; implements the full 3D tier (camera/mesh/shader + rlgl entry points)</td></tr>
-<tr><td class=""><code>raylib</code> web</td><td class="">WebGL (ES2) over GLFW3</td><td class="">Emscripten</td><td class="ok">✅ web/app builds</td><td class=""><code>mk/web.mk</code>; present shim for WebKitGTK</td></tr>
-<tr><td class=""><code>raylib</code> windows <code>opengl</code></td><td class="">OpenGL 2.1</td><td class="">Windows (mingw)</td><td class="ok">✅ release builds</td><td class="">Default Windows flavor</td></tr>
-<tr><td class=""><code>raylib</code> windows <code>rlsw</code></td><td class="">raylib software renderer (no GPU)</td><td class="">Windows</td><td class="ok">✅ release builds</td><td class=""><code>WINDOWS_RENDERERS</code> second flavor</td></tr>
-<tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
-<tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
-<tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
-<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code>, <code>make canvas2d-parity-check</code>, <code>make web-canvas-matrix-check</code></td><td class="">No raylib/WebGL; HiDPI Canvas2D, 2D raylib aliases, touch/gamepad/drop-file hooks, glyph atlases, textures/render textures/tinting, WebAudio, and weak stubs for non-2D raylib areas</td></tr>
-<tr><td class=""><code>libdraw</code></td><td class=""><code>kry_sw</code> RGBA8 presented through plan9port libdraw/devdraw</td><td class="">plan9port on Unix/X11</td><td class="ok">✅ <code>make libdraw-test</code> (devdraw smoke + <code>9c</code>/<code>9l</code> clean-surface check)</td><td class="">No libraylib; widgets/drawing/screenshots through software backend; TTF/TrueType-outline glyph atlases via <code>stb_truetype</code>; rounded controls, alpha/tint texture blits, rotation, render textures, plan9port input/resize; non-UI raylib areas use weak null stubs</td></tr>
-</table>
-<h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
-<table>
-<tr><th>Host</th><th>Rendering</th><th>Input</th><th>Textures</th><th>Text</th><th>CI</th><th>Notes</th></tr>
-<tr><td class=""><code>KryBackendDraw</code></td><td class="">raylib surface</td><td class="">raylib</td><td class="ok">✅</td><td class="">full font stack</td><td class="ok">✅</td><td class="">Auto-installed via constructor; hooks cartridge audio; runs inside raylib apps and <code>kryon-preview</code></td></tr>
-<tr><td class=""><code>kry_sw</code></td><td class="">software RGBA8 rasterizer</td><td class="">injected (<code>KrySwMouse</code> etc.)</td><td class="ok">✅ + PNG decode</td><td class="">font8x8 or KFA1 atlas</td><td class="ok">✅</td><td class="">No GPU/libc deps; <code>KrySwToRGB565</code> for embedded panels; one-shot dirty-rect tracking</td></tr>
-<tr><td class=""><code>krb-run</code></td><td class=""><code>kry_sw</code> headless</td><td class="">injected</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ linux/windows/macos</td><td class="">PNG dump + <code>KryBackendRec</code> call log; conformance host</td></tr>
-<tr><td class=""><code>krb-sdl</code></td><td class=""><code>kry_sw</code> → SDL2 streaming texture</td><td class="">SDL2</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅</td><td class="">Template for the planned Android EGL host</td></tr>
-<tr><td class=""><code>krb-web</code></td><td class=""><code>kry_sw</code> → wasm, Canvas2D <code>putImageData</code></td><td class="">JS bridge exports</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ renderers.yml</td><td class="">Byte-identical to native; node-capture for tests</td></tr>
-<tr><td class=""><code>KryBackendRec</code></td><td class="">wraps any backend</td><td class="">passthrough</td><td class="">passthrough</td><td class="">passthrough</td><td class="ok">✅ exactness job</td><td class="">Records the vtable call stream for cross-engine comparison</td></tr>
-<tr><td class=""><code>KryBackendNull</code></td><td class="">stub vtable</td><td class="">none</td><td class="no">✗ (<code>texture_rgba</code> NULL)</td><td class="no">✗</td><td class="ok">✅ logic tests</td><td class="">Default until <code>KryBackendSelect</code></td></tr>
-</table>
-<h2>Known gaps</h2>
-<ul>
-<li>The <code>canvas</code> Tier A backend passes its node call-sequence gate and has</li>
-</ul>
-<p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), WebAudio playback depends on browser user-gesture unlock rules, and stream/mixed processors apply to Canvas-managed stream buffers, not decoded browser <code>AudioBuffer</code> playback that has already been handed to WebAudio.</p>
-<ul>
-<li>The <code>libdraw</code> Tier A backend passes the plan9port devdraw widget smoke and a</li>
-</ul>
-<p><code>9c</code>/<code>9l</code> clean-surface compile/link check. It is intended for C UI apps: windowing, input, resize, software drawing, widgets, rounded controls, thick lines, image loading, alpha/tint and source-rectangle texture blits, image rotation, render textures, TTF/TrueType-outline glyph-atlas text, screenshots, files, and clipboard mirror are covered. Advanced raylib areas outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.</p>
-<ul>
-<li><code>k2go</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
-</ul>
-<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>IconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
-<ul>
-<li>The old <code>k2js</code> recorder/runtime path is paused. It remains in the repository</li>
-</ul>
-<p>only as experimental reference material and is not a supported status target, package binary, or default test gate. The future web target should lower <code>.kry</code> to native HTML/DOM structure, KSS/CSS styling, and small JavaScript state/event glue instead of emulating every widget in JavaScript.</p>
-<ul>
-<li><code>k2b</code> drops unsupported widget calls and reports them per file; the</li>
-</ul>
-<p>cartridge widget set remains smaller than the C catalog (see matrix). <code>Dropdown</code> lowers to a dropdown-style control. <code>Progress</code> lowers to a read-only <code>KRB_CTRL_PROGRESS</code> control bound to an integer state field. <code>Radio</code> lowers to <code>KRB_CTRL_RADIO</code> for the common <code>selected == id</code> pattern and writes <code>id</code> into the mounted selection field on click. <code>Fieldset</code> lowers to border rectangles plus title background/text nodes.</p>
-<ul>
-<li>Retained tree paints 10 node kinds and routes interaction for 6 (see caveat</li>
-</ul>
-<p>above the widget matrix).</p>
-<ul>
-<li>No text shaping yet: no HarfBuzz, ligatures, bidi, or RTL mirroring. Android</li>
-</ul>
-<p>and DOM text controls do have backend-neutral IME preedit/commit; gamepad UI navigation remains absent.</p>
-<ul>
-<li>Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass</li>
-</ul>
-<p>labels in app-composed theme controls) fall back to SYSTEM tokens.</p>
-<ul>
-<li><code>kry_sw</code> tracks the dirty rectangle per call (<code>KrySwDirty</code> is one-shot);</li>
-</ul>
-<p>hosts that present full frames (<code>krb-sdl</code>, <code>krb-web</code>) do not use it yet.</p>
-<ul>
-<li>Plan 11 engines still to come: native Canvas2D fast path, Android EGL</li>
-</ul>
-<p>host, ESP32 RGB565 host. The Linux framebuffer host was removed again - raylib covers desktop presentation and the canvas backend covers native web, so it carried maintenance cost without a user.</p>
+<p>The graphical project tests run separately from <code>make test</code> with <code>make desktop-project-test</code>, <code>make raylib-project-test</code>, and <code>make libdraw-project-test</code>. They must run on a private Xvfb display.</p>
+<h2>Removed paths</h2>
+<p>The former <code>.kry</code> compiler, KIR, KRB loader, C widget runtime, and handwritten JavaScript widget runtime are not supported paths. Current applications use <code>.zi</code>, <code>.zir</code>, and <code>.zib</code>. Game2D is a separate package for game APIs; Kryon owns its UI hosts and widget behavior.</p>
 </body></html>
