@@ -13,7 +13,7 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | `src/plot/*.zi`, `src/data_views/*.zi`, `src/kss/*.zi`, `src/syntax/*.zi` | Optional packages that depend on the core UI modules |
 | `src/backend/*.zi` | Terminal and window hosts: platform observations, native bindings, rasterization, and presentation |
 | `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
-| `tests/support/*_host.c` | Existing portable-test ABI fixtures; not part of the library or application hosts |
+| `tests/*_host.zi` | Ziran behavior-test hosts; not part of the library or application hosts |
 | Application repositories | Screens, assets, translations, product data, and workflows |
 | Game2D repository | Optional game API; Kryon determines its shared raylib revision when both packages are used |
 

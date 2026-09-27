@@ -16,10 +16,9 @@ module and host boundaries.
 | KSS (`src/kss`) | ✅ optional `.zi` package | ✅ C, C++, and Go generation in `make kss` | ✅ imported by the terminal package project test |
 | Syntax (`src/syntax`) | ✅ optional `.zi` package | ✅ C, C++, and Go generation in `make syntax` | ✅ imported by the terminal package project test |
 
-The generated C archive is a build output of Ziran source. The C ABI fixtures
-under `tests/support/` are test harness code and are not linked into Kryon.
-Code generation verifies that a module lowers for a target; it does not prove
-that every native host runs on that target.
+The generated C archive is a build output of Ziran source. Behavior tests use
+Ziran hosts in `tests/*_host.zi`. Code generation verifies that a module lowers
+for a target; it does not prove that every native host runs on that target.
 
 ## Application hosts
 
