@@ -94,8 +94,15 @@ ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
     facts: StyleFacts = ButtonRoleFactsFor(kind, props.id,
         props.class_name, role, cast(s32)props.tone,
         cast(s32)props.emphasis, cast(s32)props.size, state)
-    return ResolveStyleRules(rules, ButtonDefaultFace(props, state),
+    face: StyleData = ResolveStyleRules(rules, ButtonDefaultFace(props, state),
         facts, state)
+    // Modal action and close faces use offset-x/offset-y as dialog layout
+    // sizes (see ModalMetricsFor), not as content offsets inside a button.
+    if kind == StyleKindModal() {
+        face.offset_x = 0.0
+        face.offset_y = 0.0
+    }
+    return face
 }
 
 #program_export
