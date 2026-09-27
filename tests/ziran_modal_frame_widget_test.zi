@@ -1,0 +1,116 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "modal"
+#import "modal_frame_widget"
+#import "modal_props"
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_modal_frame_widget_host"
+
+using WidgetKind;
+using StyleField;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 1
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = StyleKindModal()
+        rule.selector.role = ModalPanelRole()
+        rule.selector.class_name = 9
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
+        rules.items[0] = rule
+        InstallStyleRules(rules)
+    }
+    props: ModalFrameProps
+    props.key = cast(u64)11
+    props.id = 11
+    props.class_name = 9
+    props.title = "Settings"
+    if phase == 4 { props.title = "Interstellar Navigation" }
+    props.width = 200
+    props.height = 140
+    props.has_right_action = phase <= 2
+    props.right_label = "Close"
+    if phase >= 3 {
+        props.bounds = Rectangle.{60.0, 20.0, 180.0, 120.0}
+        props.has_left_action = true
+        props.left_label = "Back"
+    }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
+    result: ModalFrameResult = ModalFrame(TestSession(), props)
+    if !TreeFinish(TestSession()) || result.node != 1 ||
+        result.panel_node != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindModal ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindCustom { return -20 }
+    if phase == 0 {
+        if result.dismissed || result.right_clicked ||
+            TreeCount(TestSession()) != 5 ||
+            result.layout.panel.x != 50.0 ||
+            result.layout.panel.y != 40.0 ||
+            result.layout.content.x != 68.0 ||
+            TreeNodeAt(TestSession(), 4).semantic_label != "Close" ||
+            TreeHitAt(TestSession(), 220.0, 60.0) != 4 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{220.0, 60.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{220.0, 60.0,
+            false, false, true})
+    } else if phase == 1 {
+        if !result.right_clicked || result.dismissed ||
+            TreeCount(TestSession()) != 5 { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{10.0, 10.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{10.0, 10.0,
+            false, false, true})
+    } else if phase == 2 {
+        if !result.dismissed || result.right_clicked ||
+            TreeCount(TestSession()) != 4 { return -3 }
+    } else if phase == 3 {
+        if result.dismissed || result.left_clicked ||
+            TreeCount(TestSession()) != 5 ||
+            result.layout.panel.x != 60.0 ||
+            result.layout.panel.y != 20.0 ||
+            result.layout.content.x != 78.0 ||
+            TreeNodeAt(TestSession(), 4).semantic_label != "Back" ||
+            TreeHitAt(TestSession(), 80.0, 40.0) != 4 { return -4 }
+        TreePointerUpdate(TestSession(), PointerFrame.{80.0, 40.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{80.0, 40.0,
+            false, false, true})
+    } else if phase == 4 {
+        if !result.left_clicked || result.dismissed ||
+            TreeCount(TestSession()) != 5 { return -5 }
+    }
+    PaintFlush(TestSession())
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#program_export
+main :: () -> s32 {
+    index: s32 = 0
+    while index < 5 {
+        if Frame() != index || ModalHostFailed() { return 1 }
+        index += 1
+    }
+    if ModalPanels() != 4 || ModalScrims() != 5 ||
+        ModalLabels() != 4 || ModalStrokes() != 8 { return 2 }
+    return 0
+}
