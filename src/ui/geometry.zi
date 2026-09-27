@@ -12,6 +12,11 @@ Rectangle :: struct {
     height: float32
 }
 
+Circle :: struct {
+    center: Vector2
+    radius: float32
+}
+
 Camera :: struct {
     offset: Vector2
     target: Vector2
