@@ -111,12 +111,12 @@ NavigationBarItemKey :: (bar_key: u64, item: NavigationBarItem,
 
 #program_export
 NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
-    bounds: Rectangle, clip: Rectangle, opacity: float32) {
+    bounds: Rectangle, clip: Rectangle, color: u32, opacity: float32) {
     if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
     image.bounds = bounds
     texture: Texture2D = ImageTextureFor(image)
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
-        ColorFromPacked(Opacity(cast(u32)0xffffffff, opacity)))
+        ColorFromPacked(Opacity(color, opacity)))
     if plan.draw {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, clip, image.origin,
@@ -234,7 +234,8 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
         }
         image_opacity: float32 = cast(float32)layout.icon_alpha / 255.0
         NavigationBarPaintImage(session, node, item.image,
-            layout.icon_bounds, layout.bounds, image_opacity)
+            layout.icon_bounds, layout.bounds, layout.icon_color,
+            image_opacity)
         if item.label != "" {
             label_width: s32 = GlyphWidth(item.label, font,
                 face.value.typeface)
