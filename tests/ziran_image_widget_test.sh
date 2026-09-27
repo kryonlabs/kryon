@@ -3,258 +3,48 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+source=$repo/tests/ziran_image_widget_test.zi
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+set -- \
+    --bind font_metrics:MeasureGlyphWidth=ziran_image_widget_host:MeasureGlyphWidth \
+    --bind font_metrics:MeasureGlyphLineHeight=ziran_image_widget_host:MeasureGlyphLineHeight \
+    --bind raster_text:RasterText=ziran_image_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=ziran_image_widget_host:RasterTextClipped \
+    --bind raster_shape:RasterRoundedRectangle=ziran_image_widget_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_image_widget_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=ziran_image_widget_host:RasterLine \
+    --bind paint_queue:RasterImage=ziran_image_widget_host:RasterImage \
+    --bind image_raster:ImageWidth=ziran_image_widget_host:ImageWidth \
+    --bind image_raster:ImageHeight=ziran_image_widget_host:ImageHeight
 
-#import "control_props"
-#import "drawing_props"
-#import "geometry"
-#import "image"
-#import "image_props"
-#import "image_widget"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "tree_draw"
-
-using ImageFit;
-using StyleField;
-using FrameStatus;
-
-phase: s32;
-
-#program_export
-Frame :: () -> s32 {
-    if phase == 1 {
-        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "Hero image" { return -1 }
-        phase = 2
-        return 1
-    }
-    image: ImageProps
-    image.class_name = 7
-    image.key = cast(u64)17
-    if phase == 0 {
-        rules: StyleRules
-        rules.count = 1
-        tint: StyleRule
-        tint.selector = StyleDefaultSelector()
-        tint.selector.kind = StyleKindImage()
-        tint.selector.class_name = 7
-        tint.style.fields = cast(u32)StyleForeground |
-            cast(u32)StyleOpacity | cast(u32)StyleRadius
-        tint.style.foreground = cast(u32)0x102030ff
-        tint.style.opacity = 0.5
-        tint.style.radius = 6.0
-        rules.items[0] = tint
-        InstallStyleRules(rules)
-        image.asset_path = "assets/hero.png"
-        image.alt_text = "Hero image"
-        image.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
-        image.fit = cast(ImageFit)ImageFitContain
-        image.rotation = 15.0
-        BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-        Image(TestSession(), image)
-        phase = 1
-        return 0
-    }
-    if phase == 2 {
-        image.asset_path = "ignored.png"
-        image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
-        image.fit = cast(ImageFit)ImageFitCover
-        image.texture.id = cast(u32)77
-        image.texture.width = 40
-        image.texture.height = 40
-        Image(TestSession(), image)
-        phase = 3
-        return 2
-    }
-    image.asset_path = "missing.png"
-    image.alt_text = "Missing hero"
-    image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
-    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-    Image(TestSession(), image)
-    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeNodeAt(TestSession(), 1).semantic_label != "Missing hero" {
-        return -1
-    }
-    phase = 4
-    return 3
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+    --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+    --module-path "$repo/../ziran/std" "$@" \
+    --entry ziran_image_widget_test:main -o "$work/source.zib" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
+    --entry ziran_image_widget_test:main -o "$work/saved.zib" \
+    "$work/ir/ziran_image_widget_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_image_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-
-cat > "$work/native.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
-
-#import "drawing_props"
-#import "geometry"
-#import "image_props"
-#import "image_widget"
-
-using ImageFit;
-
-#program_export
-Answer :: () -> s32 {
-    image: ImageProps
-    image.asset_path = "ignored.png"
-    image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
-    image.fit = cast(ImageFit)ImageFitCover
-    image.texture.id = cast(u32)77
-    image.texture.width = 40
-    image.texture.height = 40
-    Image(TestSession(), image)
-    return 42
-}
-ZI
-
-cat > "$work/native_main.h" <<'C'
-#ifdef __cplusplus
-#include "native.hpp"
-#include <cassert>
-#define CHECK assert
-#define HOST extern "C"
-#else
-#include "native.h"
-#include <assert.h>
-#define CHECK assert
-#define HOST
-#endif
-static int draws;
-HOST int32_t ImageWidth(String path) {
-    (void)path;
-    CHECK(0 && "texture-backed Image should not load an asset");
-    return 0;
-}
-HOST int32_t ImageHeight(String path) {
-    (void)path;
-    CHECK(0 && "texture-backed Image should not load an asset");
-    return 0;
-}
-HOST void RasterImage(String path, uint32_t texture_id,
-    Rectangle source, Rectangle destination, Rectangle clip,
-    Vector2 origin, float rotation, float radius, Color tint) {
-    CHECK(path.length == 11 && texture_id == 77);
-    CHECK(source.width == 40 && source.height == 40);
-    CHECK(destination.x == 20 && destination.y == 20 &&
-          destination.width == 60 && destination.height == 60);
-    CHECK(clip.x == 20 && clip.y == 30 &&
-          clip.width == 60 && clip.height == 40);
-    CHECK(origin.x == 0 && origin.y == 0 && rotation == 0 && radius == 0);
-    CHECK(tint.r == 255 && tint.g == 255 &&
-          tint.b == 255 && tint.a == 255);
-    draws++;
-}
-HOST void RasterLine(Rectangle line, Color color) {
-    (void)line; (void)color; CHECK(0 && "unexpected line");
-}
-HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
-    int32_t segments, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)color;
-    CHECK(0 && "unexpected shape");
-}
-HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
-    int32_t segments, float width, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)width; (void)color;
-    CHECK(0 && "unexpected outline");
-}
-HOST void RasterText(String value, int32_t x, int32_t y,
-    int32_t font, Color color) {
-    (void)value; (void)x; (void)y; (void)font; (void)color;
-    CHECK(0 && "unexpected text");
-}
-HOST void RasterTextClipped(String value, int32_t x, int32_t y,
-    int32_t font, Color color, Rectangle clip) {
-    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
-    CHECK(0 && "unexpected clipped text");
-}
-HOST int32_t MeasureGlyphWidth(String value, int32_t font,
-    String typeface) {
-    (void)value; (void)font; (void)typeface;
-    CHECK(0 && "unexpected glyph measurement");
-    return 0;
-}
-HOST int32_t MeasureGlyphLineHeight(int32_t font, String typeface) {
-    (void)font; (void)typeface;
-    CHECK(0 && "unexpected line height measurement");
-    return 0;
-}
-int main(void) { CHECK(Answer() == 42 && draws == 1); return 0; }
-C
-
-for target in c cpp go; do
-    output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/native.zi"
-    if test "$target" = c; then
-        cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
-        "$output/app"
+for input in source saved; do
+    if test "$input" = source; then
+        module=$source
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
     else
-        cat > "$output/image_widget_test.go" <<'GO'
-package ziran
-import "testing"
-type imageHost struct { t *testing.T; draws int }
-func (h *imageHost) ImageWidth(path string) int32 {
-    h.t.Fatal("unexpected asset width"); return 0
-}
-func (h *imageHost) ImageHeight(path string) int32 {
-    h.t.Fatal("unexpected asset height"); return 0
-}
-func (h *imageHost) RasterImage(path string, id uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) {
-    if path != "ignored.png" || id != 77 ||
-       source.Width != 40 || source.Height != 40 ||
-       destination.X != 20 || destination.Y != 20 ||
-       destination.Width != 60 || destination.Height != 60 ||
-       clip.X != 20 || clip.Y != 30 ||
-       clip.Width != 60 || clip.Height != 40 ||
-       origin.X != 0 || origin.Y != 0 || rotation != 0 || radius != 0 ||
-       tint.R != 255 || tint.G != 255 ||
-       tint.B != 255 || tint.A != 255 { h.t.Fatal("image draw") }
-    h.draws++
-}
-func TestImageWidget(t *testing.T) {
-    host := &imageHost{t: t}
-    SetImageRasterHost(host)
-    SetPaintQueueHost(host)
-    if Native_Answer() != 42 || host.draws != 1 { t.Fatal("image") }
-}
-GO
-        GO111MODULE=off go test "$output"/*.go
+        module=$work/ir/ziran_image_widget_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
     fi
+    output=$work/go-$input
+    "$ziran" build --target=go --pkg main --exe \
+        --entry ziran_image_widget_test:main "$@" \
+        --root "$module_root" --module-path "$module_dir" \
+        --module-path "$repo/../ziran/std" -o "$output" "$module"
+    mv "$output/ziran_image_widget_test.go" "$output/image_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

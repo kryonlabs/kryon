@@ -1,0 +1,143 @@
+#import "drawing_props"
+#import "geometry"
+
+sizes: s32;
+images: s32;
+labels: s32;
+metrics: s32;
+failed: bool;
+
+MeasureImage :: (asset_path: string, width: bool) -> s32 {
+    sizes += 1
+    if asset_path == "assets/hero.png" {
+        if width { return 200 }
+        return 100
+    }
+    if asset_path != "missing.png" { failed = true }
+    return 0
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    return MeasureImage(asset_path, true)
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    return MeasureImage(asset_path, false)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    if tint.r != cast(u8)0x10 || tint.g != cast(u8)0x20 ||
+        tint.b != cast(u8)0x30 || tint.a != cast(u8)0x7f ||
+        radius != 6.0 || origin.x != 0.0 || origin.y != 0.0 {
+        failed = true
+    }
+    if images == 0 {
+        if texture_id != cast(u32)0 || asset_path != "assets/hero.png" ||
+            source.x != 0.0 || source.y != 0.0 ||
+            source.width != 200.0 || source.height != 100.0 ||
+            destination.x != 10.0 || destination.y != 45.0 ||
+            destination.width != 100.0 || destination.height != 50.0 ||
+            clip.x != 10.0 || clip.y != 20.0 ||
+            clip.width != 100.0 || clip.height != 100.0 ||
+            rotation != 15.0 { failed = true }
+    } else {
+        if images != 1 || texture_id != cast(u32)77 ||
+            asset_path != "ignored.png" ||
+            source.width != 40.0 || source.height != 40.0 ||
+            destination.x != 20.0 || destination.y != 20.0 ||
+            destination.width != 60.0 || destination.height != 60.0 ||
+            clip.x != 20.0 || clip.y != 30.0 ||
+            clip.width != 60.0 || clip.height != 40.0 ||
+            rotation != 0.0 { failed = true }
+    }
+    images += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused color
+    failed = true
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    if value != "Missing hero" || x != 20 || y != 5 || font != 14 ||
+        color.r != cast(u8)0x10 || color.g != cast(u8)0x20 ||
+        color.b != cast(u8)0x30 || color.a != cast(u8)0x7f {
+        failed = true
+    }
+    labels += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    unused clip
+    failed = true
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    unused typeface
+    if value != "Missing hero" || font != 14 { failed = true }
+    metrics += 1
+    return 60
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    if font != 14 { failed = true }
+    metrics += 1
+    return 10
+}
+
+#program_export
+ImageHostFailed :: () -> bool { return failed }
+
+#program_export
+ImageSizes :: () -> s32 { return sizes }
+
+#program_export
+ImageDraws :: () -> s32 { return images }
+
+#program_export
+ImageLabels :: () -> s32 { return labels }
+
+#program_export
+ImageMetrics :: () -> s32 { return metrics }

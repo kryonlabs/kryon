@@ -1,0 +1,97 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "image"
+#import "image_props"
+#import "image_widget"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+#import "ziran_image_widget_host"
+
+using ImageFit;
+using StyleField;
+using FrameStatus;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    if phase == 1 {
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Hero image" { return -1 }
+        phase = 2
+        return 1
+    }
+    image: ImageProps
+    image.class_name = 7
+    image.key = cast(u64)17
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 1
+        tint: StyleRule
+        tint.selector = StyleDefaultSelector()
+        tint.selector.kind = StyleKindImage()
+        tint.selector.class_name = 7
+        tint.style.fields = cast(u32)StyleForeground |
+            cast(u32)StyleOpacity | cast(u32)StyleRadius
+        tint.style.foreground = cast(u32)0x102030ff
+        tint.style.opacity = 0.5
+        tint.style.radius = 6.0
+        rules.items[0] = tint
+        InstallStyleRules(rules)
+        image.asset_path = "assets/hero.png"
+        image.alt_text = "Hero image"
+        image.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
+        image.fit = cast(ImageFit)ImageFitContain
+        image.rotation = 15.0
+        BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+        Image(TestSession(), image)
+        phase = 1
+        return 0
+    }
+    if phase == 2 {
+        image.asset_path = "ignored.png"
+        image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
+        image.fit = cast(ImageFit)ImageFitCover
+        image.texture.id = cast(u32)77
+        image.texture.width = 40
+        image.texture.height = 40
+        Image(TestSession(), image)
+        phase = 3
+        return 2
+    }
+    image.asset_path = "missing.png"
+    image.alt_text = "Missing hero"
+    image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+    Image(TestSession(), image)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeNodeAt(TestSession(), 1).semantic_label != "Missing hero" {
+        return -1
+    }
+    phase = 4
+    return 3
+}
+
+#program_export
+main :: () -> s32 {
+    expected_sizes: [4]s32 = .[2, 2, 2, 4]
+    expected_draws: [4]s32 = .[0, 1, 2, 2]
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != index || ImageHostFailed() ||
+            ImageSizes() != expected_sizes[index] ||
+            ImageDraws() != expected_draws[index] { return 1 }
+        index += 1
+    }
+    if ImageLabels() != 1 || ImageMetrics() != 2 { return 2 }
+    return 0
+}
