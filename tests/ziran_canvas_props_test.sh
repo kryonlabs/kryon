@@ -5,51 +5,51 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+source=$repo/tests/canvas_props_test.zi
 
-"$ziran" ir --root "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
-    "$repo/src/ui/canvas_props.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+    --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+    --module-path "$repo/../ziran/std" --entry canvas_props_test:Answer \
+    -o "$work/source.zib" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+    --entry canvas_props_test:Answer -o "$work/saved.zib" \
+    "$work/ir/canvas_props_test.zir"
+cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 42
+test "$("$ziran" run "$work/saved.zib")" = 42
 
 for input in source saved; do
     if test "$input" = source; then
-        root="$repo/src/ui"
-        entry="$repo/src/ui/canvas_props.zi"
+        module=$source
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
     else
-        root="$work/ir"
-        entry="$work/ir/canvas_props.zir"
+        module=$work/ir/canvas_props_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
     fi
-    output="$work/$input"
-    "$ziran" build --target=c --root "$root" \
-        --module-path "$repo/../ziran/std" -o "$output" "$entry"
-    cat > "$work/main.c" <<'C'
-#include "canvas_props.h"
-
-int main(void)
-{
-    Rectangle hits[3] = {
-        {0, 0, 20, 20}, {10, 10, 20, 20}, {100, 100, 10, 10}
-    };
-    Slice items = {hits, 3};
-    Vector2 point = {15, 15};
-    if(CanvasHitTest(point, items) != 1) return 1;
-    point.x = 80;
-    point.y = 80;
-    if(CanvasHitTest(point, items) != -1) return 2;
-    Canvas canvas = {0};
-    canvas.bounds = (Rectangle){10, 20, 100, 100};
-    canvas.scroll_x = 5;
-    canvas.scroll_y = 7;
-    canvas.zoom = 2;
-    point = (Vector2){20, 30};
-    Vector2 screen = CanvasToScreen(canvas, point);
-    if(screen.x != 20 || screen.y != 26) return 3;
-    Rectangle rect = CanvasRectToScreen(canvas,
-        (Rectangle){20, 30, 4, 6});
-    if(rect.x != 20 || rect.y != 26 || rect.width != 8 ||
-       rect.height != 12) return 4;
-    return 0;
-}
-C
-    "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
-        "$output"/*.c "$work/main.c" -o "$work/test"
-    "$work/test"
+    for target in c cpp go; do
+        output=$work/$target-$input
+        if test "$target" = go; then
+            "$ziran" build --target=go --pkg main --exe \
+                --entry canvas_props_test:main --root "$module_root" \
+                --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+            mv "$output/canvas_props_test.go" "$output/canvas_case.go"
+            env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+        else
+            "$ziran" build --target="$target" --root "$module_root" \
+                --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+            if test "$target" = c; then
+                "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+                    "$output"/*.c -o "$output/app"
+            else
+                "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
+                    -I"$output" "$output"/*.cpp -o "$output/app"
+            fi
+            env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+        fi
+    done
 done

@@ -39,53 +39,21 @@ test "$("$ziran" run "$work/saved.zib")" = 0
     "$work/cpp"/*.cpp -o "$work/cpp/app"
 "$work/cpp/app"
 
-"$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/go" "$source"
-mv "$work/go/ziran_progress_raster_test.go" "$work/go/progress_case.go"
-cat > "$work/go/main.go" <<'GO'
-package main
-
-type progressHost struct{}
-
-func (progressHost) RasterRoundedRectangle(bounds Rectangle, radius float32,
-    segments int32, color Color) {
-    ZiranProgressRasterHost_RasterRoundedRectangle(bounds, radius,
-        segments, color)
-}
-
-func (progressHost) RasterRoundedRectangleOutline(bounds Rectangle,
-    radius float32, segments int32, width float32, color Color) {
-    ZiranProgressRasterHost_RasterRoundedRectangleOutline(bounds, radius,
-        segments, width, color)
-}
-
-func (progressHost) RasterText(value string, x, y, font int32, color Color) {
-    ZiranProgressRasterHost_RasterText(value, x, y, font, color)
-}
-
-func (progressHost) RasterTextClipped(value string, x, y, font int32,
-    color Color, clip Rectangle) {
-    ZiranProgressRasterHost_RasterTextClipped(value, x, y, font, color, clip)
-}
-
-func (progressHost) RasterLine(line Rectangle, color Color) {
-    ZiranProgressRasterHost_RasterLine(line, color)
-}
-
-func (progressHost) RasterImage(path string, textureID uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) {
-    ZiranProgressRasterHost_RasterImage(path, textureID, source, destination,
-        clip, origin, rotation, radius, tint)
-}
-
-func main() {
-    host := progressHost{}
-    SetRasterShapeHost(host)
-    SetRasterTextHost(host)
-    SetRasterHost(host)
-    SetPaintQueueHost(host)
-    if ZiranProgressRasterTest_Main() != 0 { panic("progress paint failed") }
-}
-GO
-GO111MODULE=off go run "$work/go"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$source
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/ziran_progress_raster_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry ziran_progress_raster_test:main --root "$module_root" \
+        --module-path "$module_dir" --module-path "$repo/../ziran/std" \
+        "$@" -o "$output" "$module"
+    mv "$output/ziran_progress_raster_test.go" "$output/progress_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done

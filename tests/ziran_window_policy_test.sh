@@ -35,6 +35,12 @@ Answer :: () -> s32 {
     if point.x != 176 || point.y != 76 { return 0 }
     return 42
 }
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}
 EOF
 
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
@@ -47,36 +53,36 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 42
 test "$("$ziran" run "$work/saved.zib")" = 42
 
-for target in c cpp go; do
-    output="$work/$target"
-    if test "$target" = go; then
-        "$ziran" build --target=go --pkg main --root "$work" \
-            --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+for input in source saved; do
+    if test "$input" = source; then
+        module=$work/app.zi
+        module_root=$work
+        module_dir=$repo/src/ui
     else
-        "$ziran" build --target="$target" --root "$work" \
-            --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+        module=$work/ir/app.zir
+        module_root=$work/ir
+        module_dir=$work/ir
     fi
-    if test "$target" = c; then
-        cat > "$work/main.c" <<'C'
-#include "app.h"
-int main(void) { return Answer() == 42 ? 0 : 1; }
-C
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.c "$work/main.c" -o "$work/native"
-        "$work/native"
-    elif test "$target" = cpp; then
-        cat > "$work/main.cpp" <<'CPP'
-#include "app.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.cpp "$work/main.cpp" -o "$work/native"
-        "$work/native"
-    else
-        cat > "$output/main.go" <<'GO'
-package main
-func main() { if App_Answer() != 42 { panic("window policy") } }
-GO
-        GO111MODULE=off go run "$output"/*.go
-    fi
+    for target in c cpp go; do
+        output=$work/$target-$input
+        if test "$target" = go; then
+            "$ziran" build --target=go --pkg main --exe \
+                --entry app:main --root "$module_root" \
+                --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+            env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+        else
+            "$ziran" build --target="$target" --root "$module_root" \
+                --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+            if test "$target" = c; then
+                "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+                    "$output"/*.c -o "$output/app"
+            else
+                "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
+                    -I"$output" "$output"/*.cpp -o "$output/app"
+            fi
+            env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+        fi
+    done
 done

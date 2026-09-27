@@ -1,0 +1,34 @@
+#import "canvas_props"
+#import "geometry"
+
+#program_export
+Answer :: () -> s32 {
+    hits: [3]Rectangle
+    hits[0] = Rectangle.{0.0, 0.0, 20.0, 20.0}
+    hits[1] = Rectangle.{10.0, 10.0, 20.0, 20.0}
+    hits[2] = Rectangle.{100.0, 100.0, 10.0, 10.0}
+    point: Vector2 = Vector2.{15.0, 15.0}
+    if CanvasHitTest(point, hits[:]) != 1 { return 1 }
+    point = Vector2.{80.0, 80.0}
+    if CanvasHitTest(point, hits[:]) != -1 { return 2 }
+
+    canvas: Canvas
+    canvas.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
+    canvas.scroll_x = 5
+    canvas.scroll_y = 7
+    canvas.zoom = 2.0
+    point = Vector2.{20.0, 30.0}
+    screen: Vector2 = CanvasToScreen(canvas, point)
+    if screen.x != 20.0 || screen.y != 26.0 { return 3 }
+    rect: Rectangle = CanvasRectToScreen(canvas,
+        Rectangle.{20.0, 30.0, 4.0, 6.0})
+    if rect.x != 20.0 || rect.y != 26.0 ||
+        rect.width != 8.0 || rect.height != 12.0 { return 4 }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}

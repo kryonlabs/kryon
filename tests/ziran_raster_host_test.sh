@@ -32,21 +32,21 @@ test "$("$ziran" run "$work/saved.zib")" = 0
     "$work/cpp"/*.cpp -o "$work/cpp/app"
 "$work/cpp/app"
 
-"$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/go" "$source"
-mv "$work/go/ziran_raster_host_test.go" "$work/go/raster_case.go"
-cat > "$work/go/main.go" <<'GO'
-package main
-
-type testRasterHost struct{}
-
-func (testRasterHost) RasterLine(line Rectangle, color Color) {
-    ZiranRasterHostProvider_RasterLine(line, color)
-}
-
-func main() {
-    SetRasterHost(testRasterHost{})
-    if ZiranRasterHostTest_Main() != 0 { panic("raster behavior failed") }
-}
-GO
-GO111MODULE=off go run "$work/go"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$source
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/ziran_raster_host_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry ziran_raster_host_test:main --bind "$binding" \
+        --root "$module_root" --module-path "$module_dir" \
+        --module-path "$repo/../ziran/std" -o "$output" "$module"
+    mv "$output/ziran_raster_host_test.go" "$output/raster_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done
