@@ -1,0 +1,127 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+outlines: s32;
+labels: s32;
+images: s32;
+bar_fills: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    if font != 12 || typeface.count != 0 { failed = true }
+    return cast(s32)value.count * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 12 || typeface.count != 0 { failed = true }
+    return 12
+}
+
+#program_export
+ImageWidth :: (path: string) -> s32 {
+    if path != "icon.png" { failed = true }
+    return 24
+}
+
+#program_export
+ImageHeight :: (path: string) -> s32 {
+    if path != "icon.png" { failed = true }
+    return 24
+}
+
+#program_export
+RasterImage :: (path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    unused origin
+    unused rotation
+    unused radius
+    if path != "icon.png" || texture_id != cast(u32)0 ||
+        source.width != 24.0 || source.height != 24.0 ||
+        destination.x < 0.0 || destination.y < 100.0 ||
+        clip.y != 100.0 || clip.height != 80.0 || tint.a == cast(u8)0 {
+        failed = true
+    }
+    images += 1
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused radius
+    unused segments
+    if bounds.x < 0.0 || bounds.y < 100.0 ||
+        bounds.x + bounds.width > 300.0 ||
+        bounds.y + bounds.height > 180.0 || color.a == cast(u8)0 {
+        failed = true
+    }
+    if bounds.x == 1.0 && bounds.y == 101.0 &&
+        bounds.width == 298.0 && bounds.height == 78.0 {
+        if color.r != cast(u8)18 || color.g != cast(u8)52 ||
+            color.b != cast(u8)86 { failed = true }
+        bar_fills += 1
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius
+    unused segments
+    if bounds.x < 0.0 || bounds.y < 100.0 ||
+        bounds.x + bounds.width > 300.0 ||
+        bounds.y + bounds.height > 180.0 || width != 1.0 ||
+        color.a == cast(u8)0 { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if value.count == 0 || x < 0 || x > 300 || y < 100 || y > 180 ||
+        font != 12 || clip.y < 100.0 ||
+        clip.y + clip.height > 180.0 || color.a == cast(u8)0 {
+        failed = true
+    }
+    labels += 1
+}
+
+#program_export
+NavigationHostFailed :: () -> bool { return failed }
+
+#program_export
+NavigationFills :: () -> s32 { return fills }
+
+#program_export
+NavigationOutlines :: () -> s32 { return outlines }
+
+#program_export
+NavigationLabels :: () -> s32 { return labels }
+
+#program_export
+NavigationImages :: () -> s32 { return images }
+
+#program_export
+NavigationBarFills :: () -> s32 { return bar_fills }
