@@ -1,6 +1,7 @@
 #import "geometry"
 #import "icon"
 #import "image_props"
+using IconType;
 
 Check :: (id: s32, path: string, x: float32,
     y: float32) -> bool {
@@ -14,7 +15,7 @@ Check :: (id: s32, path: string, x: float32,
 
 #program_export
 main :: () -> s32 {
-    if !Check(5, "icons/ui.png", 256.0, 0.0) { return 1 }
+    if !Check(cast(s32)IconCalendar, "icons/ui.png", 256.0, 0.0) { return 1 }
     if !Check(16, "icons/language.png", 0.0, 0.0) { return 2 }
     if !Check(31, "icons/ui.png", 128.0, 448.0) { return 3 }
     if !Check(32, "icons/ui.png", 64.0, 448.0) { return 4 }
