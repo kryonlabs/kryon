@@ -172,6 +172,8 @@ RaylibIsMouseButtonPressed :: (button: s32) -> bool #foreign raylib "IsMouseButt
 RaylibIsMouseButtonDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
 RaylibIsMouseButtonReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 RaylibGetMousePosition :: () -> Vector2 #foreign raylib "GetMousePosition";
+RaylibCheckCollisionPointRec :: (point: Vector2,
+    rectangle: Rectangle) -> bool #foreign raylib "CheckCollisionPointRec";
 RaylibGetMouseDelta :: () -> Vector2 #foreign raylib "GetMouseDelta";
 RaylibGetMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 RaylibGetTouchPointCount :: () -> s32 #foreign raylib "GetTouchPointCount";
@@ -189,6 +191,9 @@ IsMouseButtonReleased :: (button: s32) -> bool {
     return RaylibIsMouseButtonReleased(button)
 }
 GetMousePosition :: () -> Vector2 { return RaylibGetMousePosition() }
+CheckCollisionPointRec :: (point: Vector2, rectangle: Rectangle) -> bool {
+    return RaylibCheckCollisionPointRec(point, rectangle)
+}
 GetMouseDelta :: () -> Vector2 { return RaylibGetMouseDelta() }
 GetMouseWheelMove :: () -> float32 { return RaylibGetMouseWheelMove() }
 GetTouchPointCount :: () -> s32 { return RaylibGetTouchPointCount() }
