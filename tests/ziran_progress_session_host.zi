@@ -1,0 +1,119 @@
+#import "drawing_props"
+#import "geometry"
+
+draws: s32;
+labels: s32;
+measured: s32;
+failure: s32;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    unused font
+    unused typeface
+    if value != "25%" { failure = 101 }
+    measured += 1
+    return 20
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused font
+    unused typeface
+    measured += 1
+    return 10
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.x != 10.0 || bounds.y != 20.0 ||
+        bounds.height != 20.0 || radius != cast(float32)0.2 ||
+        segments != 12 {
+        failure = 102
+    }
+    if draws % 3 == 0 {
+        if bounds.width != 100.0 || color.r != cast(u8)0x11 ||
+            color.g != cast(u8)0x22 || color.b != cast(u8)0x33 ||
+            color.a != cast(u8)0x44 { failure = 103 }
+    } else {
+        if draws % 3 != 1 || bounds.width != 25.0 ||
+            color.r != cast(u8)0x55 || color.g != cast(u8)0x66 ||
+            color.b != cast(u8)0x77 || color.a != cast(u8)0x88 {
+            failure = 104
+        }
+    }
+    draws += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if draws % 3 != 2 { failure = 201 }
+    if bounds.x != 10.0 { failure = 202 }
+    if bounds.y != 20.0 { failure = 203 }
+    if bounds.width != 100.0 { failure = 204 }
+    if bounds.height != 20.0 { failure = 205 }
+    if radius != cast(float32)0.2 { failure = 206 }
+    if segments != 12 { failure = 207 }
+    if width != 1.0 { failure = 208 }
+    if color.r != cast(u8)0x66 { failure = 209 }
+    if color.g != cast(u8)0x64 { failure = 210 }
+    if color.b != cast(u8)0x5f { failure = 211 }
+    if color.a != cast(u8)0xff { failure = 212 }
+    draws += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failure = 106
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused x
+    unused y
+    unused font
+    unused color
+    if value != "25%" { failure = 107 }
+    labels += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failure = 108
+}
+
+#program_export
+ProgressHostError :: () -> s32 { return failure }
+
+#program_export
+ProgressHostDraws :: () -> s32 { return draws }
+
+#program_export
+ProgressHostLabels :: () -> s32 { return labels }
+
+#program_export
+ProgressHostMeasured :: () -> s32 { return measured }

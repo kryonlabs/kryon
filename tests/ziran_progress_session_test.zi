@@ -1,0 +1,133 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "progress"
+#import "progress_props"
+#import "progress_widget"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+#import "widget_kind"
+#import "ziran_progress_session_host"
+
+using WidgetKind;
+using ButtonTone;
+using StyleField;
+using FrameStatus;
+
+frame_index: s32;
+progress_identity: u64;
+
+#program_export
+Frame :: () -> s32 {
+    if frame_index == 1 {
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).kind != WidgetKindProgress { return -1 }
+        progress_identity = TreeNodeAt(TestSession(), 1).identity_generation
+        if progress_identity <= 0 { return -1 }
+        frame_index = 2
+        return 1
+    }
+    if frame_index == 0 {
+        rules: StyleRules
+        rules.count = 2
+        track: StyleRule
+        track.selector = StyleDefaultSelector()
+        track.selector.kind = StyleKindProgress()
+        track.selector.role = ProgressTrackRole()
+        track.selector.tone = cast(s32)ButtonToneNeutral
+        track.style.fields = cast(u32)StyleBackground
+        track.style.background = cast(u32)0x11223344
+        rules.items[0] = track
+        fill: StyleRule
+        fill.selector = StyleDefaultSelector()
+        fill.selector.kind = StyleKindProgress()
+        fill.selector.role = ProgressFillRole()
+        fill.selector.tone = cast(s32)ButtonToneAccent
+        fill.style.fields = cast(u32)StyleBackground
+        fill.style.background = cast(u32)0x55667788
+        rules.items[1] = fill
+        InstallStyleRules(rules)
+    }
+    props: ProgressProps
+    props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
+    props.min = 0
+    props.max = 100
+    props.value = 25
+    props.label = "25%"
+    props.key = cast(u64)17
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Progress(TestSession(), props)
+    if frame_index == 4 {
+        color: Color = Color.{1, 2, 3, 4}
+        index: s32 = 0
+        // Cancellation must discard queued paint. The queue is a growable Vec,
+        // so the former fixed-capacity boundary is no longer meaningful.
+        while index < 32 {
+            PaintLine(TestSession(), 1, props.bounds, color)
+            index += 1
+        }
+        if PaintOverflow(TestSession()) { return -1 }
+        TreeCancel(TestSession())
+        if EndFrame(TestSession()) == cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).identity_generation != progress_identity {
+            return -1
+        }
+        frame_index = 5
+        return 4
+    }
+    if frame_index == 3 {
+        index: s32 = 0
+        // Retained identity must survive a canceled replacement tree.
+        while index < 32 {
+            if TreeSubmit(TestSession(), cast(u64)(index + 100), 0, WidgetKindBox,
+                props.bounds) < 0 { return -1 }
+            index += 1
+        }
+        TreeCancel(TestSession())
+        if EndFrame(TestSession()) == cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).identity_generation != progress_identity {
+            return -1
+        }
+        frame_index = 4
+        return 3
+    }
+    if frame_index == 0 {
+        frame_index = 1
+        return 0
+    }
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindProgress ||
+        TreeNodeAt(TestSession(), 1).identity_generation != progress_identity {
+        return -1
+    }
+    frame_index = 3
+    return 2
+}
+
+#program_export
+main :: () -> s32 {
+    expected_draws: [5]s32 = .[0, 3, 6, 6, 6]
+    expected_labels: [5]s32 = .[0, 1, 2, 2, 2]
+    expected_measured: [5]s32 = .[2, 2, 4, 6, 8]
+    index: s32 = 0
+    while index < 5 {
+        if Frame() != index { return 10 + index }
+        error: s32 = ProgressHostError()
+        if error != 0 { return error }
+        if ProgressHostDraws() != expected_draws[index] { return 30 + index }
+        if ProgressHostLabels() != expected_labels[index] { return 40 + index }
+        if ProgressHostMeasured() != expected_measured[index] { return 50 + index }
+        index += 1
+    }
+    return 0
+}
