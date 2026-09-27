@@ -21,7 +21,7 @@ li{margin:.25rem 0}
 <h2>Library packages</h2>
 <table>
 <tr><th>Package</th><th>Ziran source</th><th>Native code generation</th><th>Package verification</th></tr>
-<tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ 185 listed <code>.zi</code> modules and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zib</code> behavior tests</td></tr>
+<tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ <code>.zi</code> modules listed in <code>modules.txt</code> and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zib</code> behavior tests</td></tr>
 <tr><td class="">Plot (<code>src/plot</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make plot</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
 <tr><td class="">TableView and TreeView (<code>src/data_views</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make data-views</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
 <tr><td class="">KSS (<code>src/kss</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make kss</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
@@ -38,6 +38,4 @@ li{margin:.25rem 0}
 <tr><td class="">Web</td><td class="na">—</td><td class="">No current Ziran web target or Kryon web host</td><td class="no">✗ unavailable</td></tr>
 </table>
 <p>The graphical project tests run separately from <code>make test</code> with <code>make desktop-project-test</code>, <code>make raylib-project-test</code>, and <code>make libdraw-project-test</code>. They must run on a private Xvfb display.</p>
-<h2>Removed paths</h2>
-<p>The former <code>.kry</code> compiler, KIR, KRB loader, C widget runtime, and handwritten JavaScript widget runtime are not supported paths. Current applications use <code>.zi</code>, <code>.zir</code>, and <code>.zib</code>. Game2D is a separate package for game APIs; Kryon owns its UI hosts and widget behavior.</p>
 </body></html>

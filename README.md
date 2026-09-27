@@ -74,55 +74,18 @@ example; `make -C examples desktop-text-test` renders it on a private display.
 For Ziran app manifests, the terminal backend, and `kryon run`, see
 [Ziran projects](docs/PROJECTS.md).
 
-## Migration status
+## Current status
 
-The checked library currently covers geometry, layout, accessibility, focus,
-input and text input policy, portable clipboard state, text-buffer edits, and UTF-8 cursor
-boundaries, checked TextField and TextArea composition with caller-owned text
-and edit and clipboard intents, checked composition event decisions and
-TextField/TextArea preedit paint, caller supplied TextArea color spans, canvas
-transforms, cursor shape and priority decisions, scroll, menu, color picker,
-and a caller-owned style picker composed from the checked Dropdown,
-value based swipe gesture state and pointer ownership effects,
-Button, Checkbox, Slider, Toggle, Dropdown, Toolbar, TitleBar, NavigationBar,
-checked TabBar composition, keyboard selection, scrolling, close actions,
-middle and double click, and reorder intents,
-checked NavigationBar configuration editor composition, route editing, and
-keyboard selection,
-Bevel and Separator line rendering, material
-layers, theme, style values, built-in theme labels, and selected Image, Progress,
-checked ModalFrame layout, backdrop dismissal, title and close actions,
-checked ActionModal message layout, wrapped buttons, and dismissal,
-checked TreeView composition and row input from portable item values,
-checked Scroll child scopes with caller owned scroll values and viewport clips,
-checked PanedView composition and handle dragging with returned pane bounds,
-checked Toast lifetime, text truncation, layout, and paint,
-checked Collapsible header interaction and tree keyboard navigation,
-checked SegmentedControl layout, selection, and styled Button children,
-portable theme and orientation preference decisions,
-form row layout, app shell sizing,
-capability policy, safe area geometry, and window placement decisions.
-Every retained UI module is listed in `modules.txt`; the header-dependent
-legacy implementation has been deleted.
-
-Kryon's implementation source is 100% current Ziran: every file under `src/`
-is a checked `.zi` module or the module inventory, the source inventory
-rejects any new handwritten implementation file, and `make test` verifies the
-library through source, saved IR, and portable bundle tests on C, C++, Go,
-and `.zib`. The C portable test-host fixtures remain migration debt. The
-frame replay runner is Ziran source.
-The old KRB renderer and static C package were removed with their
-header-dependent implementation, and the Android Java launch bridge now
-belongs to the applications that need it.
-The paused handwritten JavaScript web widget runtime has also been removed;
-Kryon does not currently offer a web backend. See
-[web host status](docs/WEB_STATUS.md).
+The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
+The [open-work plan](plan/README.md) lists unfinished migration tasks,
+including the C portable test fixtures. Kryon does not currently offer a web
+backend; see [web host status](docs/WEB_STATUS.md).
 
 Downstream applications migrate their own sources and platform hosts at their
 own pace. Kryon commits land upstream first; apps then move only their clean
 `vendor/kryon` submodule pointer. This repository's tests verify Kryon itself,
 not every downstream application build.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the intended library
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library
 boundary and [Ziran's implementation status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
 for language and portable runtime gaps.

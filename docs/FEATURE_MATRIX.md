@@ -10,7 +10,7 @@ module and host boundaries.
 
 | Package | Ziran source | Native code generation | Package verification |
 | --- | --- | --- | --- |
-| Core UI (`src/ui`) | ✅ 185 listed `.zi` modules and two public import modules | ✅ C, C++, and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zib` behavior tests |
+| Core UI (`src/ui`) | ✅ `.zi` modules listed in `modules.txt` and two public import modules | ✅ C, C++, and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zib` behavior tests |
 | Plot (`src/plot`) | ✅ optional `.zi` package | ✅ C, C++, and Go generation in `make plot` | ✅ imported by the terminal package project test |
 | TableView and TreeView (`src/data_views`) | ✅ optional `.zi` package | ✅ C, C++, and Go generation in `make data-views` | ✅ imported by the terminal package project test |
 | KSS (`src/kss`) | ✅ optional `.zi` package | ✅ C, C++, and Go generation in `make kss` | ✅ imported by the terminal package project test |
@@ -34,10 +34,3 @@ that every native host runs on that target.
 The graphical project tests run separately from `make test` with
 `make desktop-project-test`, `make raylib-project-test`, and
 `make libdraw-project-test`. They must run on a private Xvfb display.
-
-## Removed paths
-
-The former `.kry` compiler, KIR, KRB loader, C widget runtime, and
-handwritten JavaScript widget runtime are not supported paths. Current
-applications use `.zi`, `.zir`, and `.zib`. Game2D is a separate package
-for game APIs; Kryon owns its UI hosts and widget behavior.
