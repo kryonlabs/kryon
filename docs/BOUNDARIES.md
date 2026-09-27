@@ -15,7 +15,7 @@ portable format.
 | Kryon `src/data_views/*.zi` | Optional TableView and TreeView widgets |
 | Kryon `src/kss/*.zi` | Optional KSS parsing, formatting, and installation |
 | Kryon `src/syntax/syntax.zi` | Optional source syntax coloring into caller owned TextArea spans |
-| Kryon `src/game/raylib_game.zi` | Optional raylib game API |
+| Game2D package | Optional 2D game API and raylib adapter |
 | Inbe `src/guide.zi`, `src/guide_pager.zi` | Product guide layout and pager policy |
 | Inbe `src/locale_parser.zi`, `src/locale_policy.zi` | Inbe catalog format, language selection, and fallback |
 | Kryon Ziran platform modules | Operating system input, windows, font and image loading, rasterization, and storage effects through general Ziran capabilities |

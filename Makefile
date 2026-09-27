@@ -28,7 +28,6 @@ KSS_SOURCE := $(wildcard src/kss/*.zi)
 KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
-GAME_SOURCE := src/game/raylib_game.zi
 
 .PHONY: all check test test-focus ziran-test header-check source-check clean project-toolchain project-test install-user
 all: source-check $(BUILD_DIR)/libkryon.a
@@ -44,12 +43,6 @@ kss: $(BUILD_DIR)/libkryon_kss.a
 
 .PHONY: syntax
 syntax: $(BUILD_DIR)/libkryon_syntax.a
-
-.PHONY: raylib-game raylib-game-abi-test
-raylib-game: $(BUILD_DIR)/libkryon_raylib_game.a raylib-game-abi-test
-
-raylib-game-abi-test: $(BUILD_DIR)/libkryon_raylib_game.a
-	sh tests/raylib_game_wave_abi_test.sh
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
@@ -179,18 +172,6 @@ $(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Ma
 	rm -f $@
 	$(AR) rcs $@ $(BUILD_DIR)/syntax/syntax.o
 
-# Raylib's game API is opt in and has a C ABI. Native Go deliberately rejects
-# those foreign C symbols; the C and C++ outputs share the same checked source.
-$(BUILD_DIR)/libkryon_raylib_game.a: $(GAME_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/game/ir $(BUILD_DIR)/game/c $(BUILD_DIR)/game/cpp
-	$(ZI2ZIR_BIN) --root src/game --module-path src/ui --module-path $(ZIRAN_DIR)/std -o $(BUILD_DIR)/game/ir $(GAME_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/game --module-path src/ui --module-path $(ZIRAN_DIR)/std -o $(BUILD_DIR)/game/c $(GAME_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/game --module-path src/ui --module-path $(ZIRAN_DIR)/std -o $(BUILD_DIR)/game/cpp $(GAME_SOURCE)
-	$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/game/c -c $(BUILD_DIR)/game/c/raylib_game.c -o $(BUILD_DIR)/game/raylib_game.o
-	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/game/cpp -c $(BUILD_DIR)/game/cpp/raylib_game.cpp -o $(BUILD_DIR)/game/raylib_game_cpp.o
-	rm -f $@
-	$(AR) rcs $@ $(BUILD_DIR)/game/raylib_game.o
-
 TEST_JOBS ?= 4
 TEST ?=
 ziran-test: $(BUILD_DIR)/libkryon_host.a
@@ -226,7 +207,7 @@ project-test: project-toolchain build/bin/kryon
 source-check:
 	sh tools/check-ziran-source.sh
 
-check: all plot data-views kss syntax raylib-game ziran-test header-check project-test
+check: all plot data-views kss syntax ziran-test header-check project-test
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh

@@ -21,8 +21,7 @@ while IFS= read -r module; do
     fi
 done < "$repo/src/ui/modules.txt"
 
-for source in "$repo"/src/plot/*.zi "$repo"/src/data_views/*.zi \
-    "$repo"/src/game/*.zi; do
+for source in "$repo"/src/plot/*.zi "$repo"/src/data_views/*.zi; do
     if rg -n '#import[[:space:]]+"[^\"]+\.h"' "$source"; then
         echo "optional Ziran module imports a C header: $source" >&2
         exit 1

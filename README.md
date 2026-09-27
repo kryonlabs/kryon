@@ -46,10 +46,11 @@ caller owned color spans for TextArea. `make syntax` builds
 `build/ziran/libkryon_syntax.a`; core TextArea paints spans without importing
 the tokenizer. Ziran projects add this module path automatically.
 
-The raylib game API lives in `src/game/raylib_game.zi`. `make raylib-game`
-checks and builds its C and C++ outputs without linking it into the UI
-library; Ziran projects add `src/game/` automatically. Native Go cannot use
-this C ABI surface.
+The optional [Game2D](https://github.com/kryonlabs/game2d) Ziran package owns
+the raylib game API. Kryon keeps its geometry, drawing values, UI primitives,
+and raylib UI host. Kryon exports `geometry` and `drawing_props` so Game2D can
+share their types without pulling in widget modules. The raylib game adapter
+uses a C ABI and does not support native Go.
 
 `make test` builds the test host and runs the Ziran source, saved-IR, and
 portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them

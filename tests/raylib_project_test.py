@@ -122,10 +122,8 @@ def main():
             '#import "button_props"\n#import "button_widget"\n'
             '#import "drawing_props"\n#import "geometry"\n'
             '#import "image_props"\n#import "image_widget"\n'
-            '#import "raylib_game"\n'
             '#import "raylib_runtime"\n#import "session"\n'
             '#import "tree_input"\n'
-            'sample_texture: Texture2D;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    if KeyboardTake(session) == 65 {\n'
@@ -133,9 +131,6 @@ def main():
             '    }\n'
             '    if RaylibTypedCodepoint() == 122 { return 1 }\n'
             '    if RaylibWheelMove() > 0.0 { return 1 }\n'
-            '    if sample_texture.id == cast(u32)0 {\n'
-            '        sample_texture = LoadTexture("quadrants.png")\n'
-            '    }\n'
             '    image: ImageProps\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
@@ -145,9 +140,7 @@ def main():
             '    cropped: ImageProps\n'
             '    cropped.key = cast(u64)2\n'
             '    cropped.bounds = Rectangle.{720.0, 80.0, 160.0, 160.0}\n'
-            '    cropped.source = Rectangle.{0.0, 0.0, 32.0, 32.0}\n'
-            '    cropped.asset_path = "test.png"\n'
-            '    cropped.texture = sample_texture\n'
+            '    cropped.asset_path = "quadrants.png"\n'
             '    Image(session, cropped)\n'
             '    RasterImage("test.png", cast(u32)0,\n'
             '        Rectangle.{0.0, 0.0, 64.0, 64.0},\n'
@@ -175,7 +168,7 @@ def main():
         png = png_pixels(capture)
         assert png[:2] == (960, 600), png[:2]
         assert rgb(png, 200, 200) == (230, 30, 40), "Image(ImageProps) asset failed"
-        assert rgb(png, 800, 160) == (30, 200, 40), "cropped Texture2D UVs failed"
+        assert rgb(png, 760, 120) == (30, 200, 40), "second Image asset failed"
         assert rgb(png, 570, 200) == (230, 30, 40), "raylib image center failed"
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"
         assert rgb(png, 480, 85) == (230, 30, 40), "rounded image arc missing"
