@@ -13,6 +13,11 @@ The public package imports are declared in [`ziran.toml`](../ziran.toml).
 | `Kss` | Optional style parsing and installation |
 | `Syntax` | Optional source coloring for TextArea spans |
 
+`InstallStyleRules` copies typeface text into Kryon-owned storage and returns
+`false` without replacing the active rules when the rule count is outside
+`0..320` or the combined typeface text exceeds 65,536 bytes.
+`InstallParsedStyleRules` reports the same storage failure.
+
 Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.

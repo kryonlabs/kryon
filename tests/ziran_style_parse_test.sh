@@ -74,6 +74,18 @@ Answer :: () -> s32 {
     if parsed.parser.status != cast(s32)KssStatusNeedImport { return 0 }
     parsed = FailStyleRulesImport(parsed)
     if parsed.parser.status != cast(s32)KssStatusError { return 0 }
+
+    bytes: [4]u8 = .[98, 111, 100, 121]
+    owned_rules: StyleRules
+    owned_rules.count = 1
+    owned_rules.items[0].style.typeface = TextView(bytes[:])
+    if !InstallStyleRules(owned_rules) { return 0 }
+    bytes[0] = cast(u8)120
+    installed: StyleRules = ActiveStyleRules()
+    if installed.items[0].style.typeface != "body" { return 0 }
+    owned_rules.count = 321
+    if InstallStyleRules(owned_rules) ||
+        ActiveStyleRules().items[0].style.typeface != "body" { return 0 }
     return 42
 }
 ZI

@@ -93,6 +93,5 @@ InstallParsedStyleRules :: (result: StyleRulesParse) -> bool {
         }
         index += 1
     }
-    InstallStyleRules(result.rules)
-    return true
+    return InstallStyleRules(result.rules)
 }

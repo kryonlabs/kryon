@@ -380,12 +380,72 @@ StyleRules :: struct {
 }
 
 installed_rules: StyleRules;
+// Installed rules own these bytes; typeface views never point into caller data.
+installed_typeface_bytes: [65536]u8;
+
+StyleWithoutTypeface :: (source: StyleData) -> StyleData {
+    result: StyleData
+    result.fields = source.fields
+    result.background = source.background
+    result.foreground = source.foreground
+    result.border = source.border
+    result.focus = source.focus
+    result.radius = source.radius
+    result.border_width = source.border_width
+    result.opacity = source.opacity
+    result.padding_x = source.padding_x
+    result.padding_y = source.padding_y
+    result.gap = source.gap
+    result.font_size = source.font_size
+    result.icon_size = source.icon_size
+    result.offset_x = source.offset_x
+    result.offset_y = source.offset_y
+    result.background_end = source.background_end
+    result.material = source.material
+    result.letter_spacing = source.letter_spacing
+    return result
+}
 
 #program_export
-InstallStyleRules :: (rules: StyleRules) {
-    installed_rules = rules
+InstallStyleRules :: (rules: StyleRules) -> bool {
+    limit: s32 = rules.count
+    if limit < 0 || limit > 320 { return false }
+    starts: [320]s64
+    lengths: [320]s64
+    total: s64 = 0
+    index: s32 = 0
+    while index < limit {
+        typeface: string = rules.items[index].style.typeface
+        if typeface.count > 65536 - total { return false }
+        starts[index] = total
+        lengths[index] = typeface.count
+        total += typeface.count
+        index += 1
+    }
+
+    installed_rules = StyleRules.{}
+    installed_rules.count = limit
+    index = 0
+    while index < limit {
+        typeface: string = rules.items[index].style.typeface
+        byte: s64 = 0
+        while byte < lengths[index] {
+            installed_typeface_bytes[starts[index] + byte] = typeface[byte]
+            byte += 1
+        }
+        installed_rules.items[index].selector = rules.items[index].selector
+        installed_rules.items[index].state = rules.items[index].state
+        installed_rules.items[index].layer = rules.items[index].layer
+        installed_rules.items[index].order = rules.items[index].order
+        installed_rules.items[index].style =
+            StyleWithoutTypeface(rules.items[index].style)
+        installed_rules.items[index].style.typeface = TextView(
+            installed_typeface_bytes[starts[index]:starts[index] + lengths[index]])
+        index += 1
+    }
     resolver: TextStyleResolver = ResolveInstalledTextStyle
     SetTextStyleResolver(resolver)
+    return true
 }
 
 #program_export
