@@ -3,109 +3,40 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/selectable_widget_behavior.zi
+portable=$repo/tests/selectable_widget_portable_test.zi
+set -- \
+    --bind font_metrics:MeasureGlyphLineHeight=selectable_widget_host:MeasureGlyphLineHeight \
+    --bind raster_shape:RasterRoundedRectangle=selectable_widget_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=selectable_widget_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=selectable_widget_host:RasterLine \
+    --bind raster_text:RasterText=selectable_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=selectable_widget_host:RasterTextClipped \
+    --bind paint_queue:RasterImage=selectable_widget_host:RasterImage
 
-#import "control_props"
-#import "geometry"
-#import "selectable"
-#import "selectable_props"
-#import "selectable_widget"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "tree_draw"
-#import "tree_input"
-#import "widget_kind"
-
-using WidgetKind;
-using StyleField;
-using FrameStatus;
-
-phase: s32;
-
-#program_export
-Frame :: () -> s32 {
-    props: SelectableProps
-    props.key = cast(u64)7
-    props.id = 7
-    props.class_name = 9
-    props.bounds = Rectangle.{10.0, 20.0, 100.0, 36.0}
-    props.label = "Alpha"
-    if phase == 2 { props.selected = true }
-    if phase == 3 { props.disabled = true }
-    if phase == 0 {
-        rules: StyleRules
-        rules.count = 1
-        rule: StyleRule
-        rule.selector = StyleDefaultSelector()
-        rule.selector.kind = StyleKindSelectable()
-        rule.selector.class_name = 9
-        rule.style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground
-        rule.style.background = cast(u32)0x123456ff
-        rule.style.foreground = cast(u32)0xaabbccff
-        rules.items[0] = rule
-        InstallStyleRules(rules)
-    }
-    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 80.0})
-    result: SelectableToggleResult = Selectable(TestSession(), props)
-    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
-        TreeNodeAt(TestSession(), 1).kind != WidgetKindSelectable ||
-        TreeNodeAt(TestSession(), 1).semantic_label != "Alpha" ||
-        TreeNodeAt(TestSession(), 1).selected != result.selected { return -10 }
-    if phase == 0 {
-        if result.selected || result.changed { return -1 }
-        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 38.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 38.0, false, false, true})
-    } else if phase == 1 {
-        if !result.selected || !result.changed { return -2 }
-        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 38.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 38.0, false, false, true})
-    } else if phase == 2 {
-        if result.selected || !result.changed { return -3 }
-    } else {
-        if result.selected || result.changed ||
-            TreeHitAt(TestSession(), 50.0, 38.0) != -1 { return -4 }
-    }
-    old: s32 = phase
-    phase += 1
-    return old
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry selectable_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry selectable_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/selectable_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_selectable_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "selectable_widget_behavior.hpp"
 #include <cassert>
 #include <cstring>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "selectable_widget_behavior.h"
 #include <assert.h>
 #include <string.h>
 #define HOST
@@ -168,8 +99,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -230,7 +161,7 @@ func TestSelectableWidget(t *testing.T) {
     SetPaintQueueHost(h)
     expectedFills := []int{0, 1, 2, 2}
     for phase := 0; phase < 4; phase++ {
-        if App_Frame() != int32(phase) || h.fills != expectedFills[phase] ||
+        if SelectableWidgetBehavior_Frame() != int32(phase) || h.fills != expectedFills[phase] ||
            h.labels != phase+1 { t.Fatal("selectable phase", phase) }
     }
 }

@@ -1,0 +1,11 @@
+#import "selectable_widget_behavior"
+#import "selectable_widget_host"
+
+#program_export
+main :: () -> s32 {
+    if Frame() != 0 || !HostCountsAre(0, 1) { return 1 }
+    if Frame() != 1 || !HostCountsAre(1, 2) { return 2 }
+    if Frame() != 2 || !HostCountsAre(2, 3) { return 3 }
+    if Frame() != 3 || !HostCountsAre(2, 4) { return 4 }
+    return 0
+}
