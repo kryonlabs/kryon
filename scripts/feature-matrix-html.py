@@ -26,7 +26,7 @@ def cell_class(c):
     t = c.strip()
     if '✅' in t:
         return 'ok'
-    if '◐' in t:
+    if '◐' in t or '🧪' in t:
         return 'part'
     if t.startswith('✗'):
         return 'no'
@@ -144,7 +144,7 @@ def main():
                 tofile='generated docs/FEATURE_MATRIX.html',
                 lineterm='')
             print('docs/FEATURE_MATRIX.html is stale; run '
-                  'tests/feature_matrix_docs_test.sh', file=sys.stderr)
+                  'python3 scripts/feature-matrix-html.py', file=sys.stderr)
             print('\n'.join(diff), file=sys.stderr)
             return 1
     else:
