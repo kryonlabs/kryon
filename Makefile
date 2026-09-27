@@ -219,6 +219,10 @@ typeface-source-test: $(ZI2C_BIN)
 raylib-project-test: build/bin/kryon
 	@python3 tests/raylib_project_test.py
 
+.PHONY: raylib-clip-test
+raylib-clip-test: $(ZI2C_BIN)
+	@ZI2C_BIN="$(ZI2C_BIN)" sh tests/raylib_clip_test.sh
+
 .PHONY: desktop-project-test
 desktop-project-test: build/bin/kryon
 	@python3 tests/desktop_project_test.py

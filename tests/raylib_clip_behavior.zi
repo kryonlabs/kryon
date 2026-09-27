@@ -1,0 +1,124 @@
+#import "raylib_runtime"
+#import "raylib_clip"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+test_raylib :: #system_library "raylib";
+TestHostInitWindow :: (width: s32, height: s32,
+    title: *u8) #foreign test_raylib "InitWindow";
+TestHostIsWindowReady :: () -> bool #foreign test_raylib "IsWindowReady";
+TestHostBeginDrawing :: () #foreign test_raylib "BeginDrawing";
+TestHostEndDrawing :: () #foreign test_raylib "EndDrawing";
+TestHostCloseWindow :: () #foreign test_raylib "CloseWindow";
+TestHostClearBackground :: (color: Color) #foreign test_raylib "ClearBackground";
+TestHostBeginScissor :: (x: s32, y: s32, width: s32,
+    height: s32) #foreign test_raylib "BeginScissorMode";
+TestHostEndScissor :: () #foreign test_raylib "EndScissorMode";
+TestClipEnabled :: (capability: u32) -> u8 #foreign test_raylib "glIsEnabled";
+TestClipRead :: (parameter: u32, values: *s32) #foreign test_raylib "glGetIntegerv";
+
+ClipTestImage :: struct {
+    data: *void
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
+}
+
+TestCameraBegin :: (camera: Camera) #foreign test_raylib "BeginMode2D";
+TestCameraEnd :: () #foreign test_raylib "EndMode2D";
+TestCapture :: () -> ClipTestImage #foreign test_raylib "LoadImageFromScreen";
+TestImageColor :: (image: ClipTestImage, x: s32,
+    y: s32) -> Color #foreign test_raylib "GetImageColor";
+TestImageFree :: (image: ClipTestImage) #foreign test_raylib "UnloadImage";
+
+RedAt :: (image: ClipTestImage, x: s32, y: s32) -> bool {
+    color := TestImageColor(image, x, y)
+    return color.r > 200 && color.g < 50 && color.b < 50
+}
+
+BlackAt :: (image: ClipTestImage, x: s32, y: s32) -> bool {
+    color := TestImageColor(image, x, y)
+    return color.r == 0 && color.g == 0 && color.b == 0
+}
+
+#program_export
+main :: () -> s32 {
+    title: [32]u8
+    CopyCString("Kryon clip test", title[:])
+    TestHostInitWindow(320, 240, *title[0])
+    if !TestHostIsWindowReady() {
+        return 1
+    }
+    TestHostBeginDrawing()
+    TestHostClearBackground(Color.{0, 0, 0, 255})
+    TestCameraBegin(Camera.{.{80.0, 40.0}, .{0.0, 0.0}, 0.0, 2.0})
+    RasterImage("red.png", 0, Rectangle.{0.0, 0.0, 16.0, 16.0},
+        Rectangle.{10.0, 10.0, 40.0, 40.0},
+        Rectangle.{15.0, 15.0, 20.0, 20.0},
+        Vector2.{0.0, 0.0}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    RasterTextClipped("Clip", 10, 60, 16, Color.{255, 255, 255, 255},
+        Rectangle.{10.0, 60.0, 80.0, 24.0})
+    if TestClipEnabled(cast(u32)0x0C11) != 0 {
+        TestHostCloseWindow()
+        return 2
+    }
+    TestCameraEnd()
+
+    // A caller's screen clip must survive both raster effects and limit them.
+    TestHostBeginScissor(210, 50, 12, 16)
+    before: [4]s32
+    TestClipRead(cast(u32)0x0C10, *before[0])
+    TestCameraBegin(Camera.{.{200.0, 40.0}, .{0.0, 0.0}, 0.0, 1.0})
+    RasterImage("red.png", 0, Rectangle.{0.0, 0.0, 16.0, 16.0},
+        Rectangle.{0.0, 0.0, 60.0, 60.0},
+        Rectangle.{0.0, 0.0, 60.0, 60.0},
+        Vector2.{0.0, 0.0}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    after: [4]s32
+    TestClipRead(cast(u32)0x0C10, *after[0])
+    if TestClipEnabled(cast(u32)0x0C11) == 0 {
+        TestHostCloseWindow()
+        return 3
+    }
+    index: s32 = 0
+    while index < 4 {
+        if before[index] != after[index] {
+            TestHostCloseWindow()
+            return 4
+        }
+        index += 1
+    }
+    TestCameraEnd()
+    TestHostEndScissor()
+    TestHostEndDrawing()
+    capture := TestCapture()
+    result: s32 = 0
+    if !RedAt(capture, 130, 90) || !BlackAt(capture, 105, 65) ||
+        !BlackAt(capture, 155, 90) {
+        result = 5
+    }
+    if !RedAt(capture, 215, 55) || !BlackAt(capture, 205, 55) ||
+        !BlackAt(capture, 225, 55) {
+        result = 6
+    }
+    text_pixels: s32 = 0
+    y: s32 = 160
+    while y < 208 {
+        x: s32 = 100
+        while x < 260 {
+            color := TestImageColor(capture, x, y)
+            if color.r > 200 && color.g > 200 && color.b > 200 {
+                text_pixels += 1
+            }
+            x += 1
+        }
+        y += 1
+    }
+    if text_pixels < 20 {
+        result = 7
+    }
+    TestImageFree(capture)
+    TestHostCloseWindow()
+    return result
+}

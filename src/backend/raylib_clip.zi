@@ -1,0 +1,136 @@
+#import "geometry"
+
+raylib_clip_host :: #system_library "raylib";
+raylib_clip_math :: #system_library "m";
+
+// raylib stores the named matrix fields by row, matching its public Matrix ABI.
+RaylibMatrix :: struct {
+    m0: float32
+    m4: float32
+    m8: float32
+    m12: float32
+    m1: float32
+    m5: float32
+    m9: float32
+    m13: float32
+    m2: float32
+    m6: float32
+    m10: float32
+    m14: float32
+    m3: float32
+    m7: float32
+    m11: float32
+    m15: float32
+}
+
+RasterClipState :: struct {
+    enabled: bool
+    bounds: [4]s32
+}
+
+ClipModelview :: () -> RaylibMatrix #foreign raylib_clip_host "rlGetMatrixModelview";
+ClipFloor :: (value: float32) -> float32 #foreign raylib_clip_math "floorf";
+ClipCeil :: (value: float32) -> float32 #foreign raylib_clip_math "ceilf";
+
+#if #defined(PLATFORM_WEB) {
+    canvas_clip_host :: #system_library "env";
+    CanvasClipPush :: (x: s32, y: s32, width: s32,
+        height: s32) #foreign canvas_clip_host "js_canvas_raster_clip_push";
+    CanvasClipPop :: () #foreign canvas_clip_host "js_canvas_raster_clip_pop";
+} else {
+    ClipEnabled :: (capability: u32) -> u8 #foreign raylib_clip_host "glIsEnabled";
+    ClipRead :: (parameter: u32, values: *s32) #foreign raylib_clip_host "glGetIntegerv";
+    ClipBegin :: (x: s32, y: s32, width: s32,
+        height: s32) #foreign raylib_clip_host "BeginScissorMode";
+    ClipEnd :: () #foreign raylib_clip_host "EndScissorMode";
+    ClipEnable :: () #foreign raylib_clip_host "rlEnableScissorTest";
+    ClipPixels :: (x: s32, y: s32, width: s32,
+        height: s32) #foreign raylib_clip_host "rlScissor";
+}
+
+ClipPoint :: (matrix: RaylibMatrix, x: float32, y: float32) -> Vector2 {
+    return Vector2.{matrix.m0 * x + matrix.m4 * y + matrix.m12,
+        matrix.m1 * x + matrix.m5 * y + matrix.m13}
+}
+
+// Scissors are screen-space effects. Widget clips share the modelview of
+// their text and image geometry, including camera translation and zoom.
+ClipScreenBounds :: (bounds: Rectangle) -> Rectangle {
+    matrix := ClipModelview()
+    points: [4]Vector2
+    points[0] = ClipPoint(matrix, bounds.x, bounds.y)
+    points[1] = ClipPoint(matrix, bounds.x + bounds.width, bounds.y)
+    points[2] = ClipPoint(matrix, bounds.x, bounds.y + bounds.height)
+    points[3] = ClipPoint(matrix, bounds.x + bounds.width,
+        bounds.y + bounds.height)
+    left := points[0].x
+    right := left
+    top := points[0].y
+    bottom := top
+    index: s32 = 1
+    while index < 4 {
+        if points[index].x < left {
+            left = points[index].x
+        }
+        if points[index].x > right {
+            right = points[index].x
+        }
+        if points[index].y < top {
+            top = points[index].y
+        }
+        if points[index].y > bottom {
+            bottom = points[index].y
+        }
+        index += 1
+    }
+    left = ClipFloor(left)
+    top = ClipFloor(top)
+    return Rectangle.{left, top, ClipCeil(right) - left,
+        ClipCeil(bottom) - top}
+}
+
+#scope_export
+BeginRasterClip :: (bounds: Rectangle) -> RasterClipState {
+    state: RasterClipState
+    screen := ClipScreenBounds(bounds)
+    #if #defined(PLATFORM_WEB) {
+        CanvasClipPush(cast(s32)screen.x, cast(s32)screen.y,
+            cast(s32)screen.width, cast(s32)screen.height)
+    } else {
+        state.enabled = ClipEnabled(cast(u32)0x0C11) != cast(u8)0
+        if state.enabled {
+            ClipRead(cast(u32)0x0C10, *state.bounds[0])
+        }
+        ClipBegin(cast(s32)screen.x, cast(s32)screen.y,
+            cast(s32)screen.width, cast(s32)screen.height)
+        if state.enabled {
+            pixels: [4]s32
+            ClipRead(cast(u32)0x0C10, *pixels[0])
+            prior := Rectangle.{cast(float32)state.bounds[0],
+                cast(float32)state.bounds[1], cast(float32)state.bounds[2],
+                cast(float32)state.bounds[3]}
+            current := Rectangle.{cast(float32)pixels[0],
+                cast(float32)pixels[1], cast(float32)pixels[2],
+                cast(float32)pixels[3]}
+            intersection := RectangleIntersection(prior, current)
+            ClipPixels(cast(s32)intersection.x, cast(s32)intersection.y,
+                cast(s32)intersection.width, cast(s32)intersection.height)
+        }
+    }
+    return state
+}
+
+#scope_export
+EndRasterClip :: (state: RasterClipState) {
+    #if #defined(PLATFORM_WEB) {
+        CanvasClipPop()
+        unused state
+    } else {
+        ClipEnd()
+        if state.enabled {
+            ClipEnable()
+            ClipPixels(state.bounds[0], state.bounds[1],
+                state.bounds[2], state.bounds[3])
+        }
+    }
+}
