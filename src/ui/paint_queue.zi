@@ -136,6 +136,14 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
         EmitPaint(command)
         return
     }
+    if command.data.node < 0 && TreeIsBuilding(session) &&
+        command.clips {
+        scope: NodeGeometry = TreeCurrentPaintGeometry(session)
+        if scope.clipped {
+            clip_for: PaintClipper = command.clip_for
+            command.data = clip_for(command.data, scope)
+        }
+    }
     if command.data.node >= 0 && TreeIsBuilding(session) {
         geometry: NodeGeometry = TreeSubmittedGeometryAt(session,
             command.data.node)

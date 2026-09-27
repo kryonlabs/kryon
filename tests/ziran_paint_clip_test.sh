@@ -37,6 +37,9 @@ Frame :: () -> s32 {
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Vector2.{0.0, 0.0}, 0.0, 0.0, ink)
+    if !TreePushScope(TestSession(), viewport) { return -2 }
+    PaintLabel(TestSession(), -1, "Scope", 10, 30, 16, ink)
+    TreePopScope(TestSession())
     if !TreeFinish(TestSession()) { return -1 }
     PaintFlush(TestSession())
     return 42
@@ -75,8 +78,11 @@ HOST void RasterText(String value, int32_t x, int32_t y,
 }
 HOST void RasterTextClipped(String value, int32_t x, int32_t y,
     int32_t font, Color color, Rectangle clip) {
-    assert(value.length == 4 && value.data[0] == 'C' &&
-           x == 10 && y == 10 && font == 16);
+    assert((value.length == 4 && value.data[0] == 'C' &&
+            x == 10 && y == 10) ||
+           (value.length == 5 && value.data[0] == 'S' &&
+            x == 10 && y == 30));
+    assert(font == 16);
     assert(color.r == 0x17 && color.a == 255);
     assert(clip.x == 20 && clip.y == 20 &&
            clip.width == 40 && clip.height == 40);
@@ -94,7 +100,7 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
 }
 int main(void) {
     assert(Frame() == 42);
-    assert(text_draws == 1 && image_draws == 1);
+    assert(text_draws == 2 && image_draws == 1);
     return 0;
 }
 C
@@ -131,7 +137,8 @@ func (h *clipHost) RasterText(value string, x, y, font int32,
     color Color) { h.t.Fatal("unexpected plain text") }
 func (h *clipHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
-    if value != "Clip" || x != 10 || y != 10 || font != 16 ||
+    if !((value == "Clip" && x == 10 && y == 10) ||
+         (value == "Scope" && x == 10 && y == 30)) || font != 16 ||
        clip.X != 20 || clip.Y != 20 ||
        clip.Width != 40 || clip.Height != 40 ||
        color.R != 0x17 || color.A != 255 { h.t.Fatal("text clip") }
@@ -152,7 +159,7 @@ func TestClip(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    if App_Frame() != 42 || h.texts != 1 || h.images != 1 {
+    if App_Frame() != 42 || h.texts != 2 || h.images != 1 {
         t.Fatal("clip paint calls", h.texts, h.images)
     }
 }

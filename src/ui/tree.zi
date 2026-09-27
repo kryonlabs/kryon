@@ -632,6 +632,24 @@ TreeCurrentParent :: (session: Session) -> s32 {
 }
 
 #program_export
+TreeCurrentPaintGeometry :: (session: Session) -> NodeGeometry {
+    geometry: NodeGeometry
+    parent: s32 = TreeCurrentParent(session)
+    if parent < 0 { return geometry }
+    node: NodeCore = trees[SessionIndex(session)].submitted[parent]
+    geometry.bounds = node.bounds
+    geometry.measured_bounds = node.measured_bounds
+    if node.clips_children {
+        geometry.clip = node.child_clip
+        geometry.clipped = true
+    } else if node.clipped {
+        geometry.clip = node.clip
+        geometry.clipped = true
+    }
+    return geometry
+}
+
+#program_export
 TreeCurrentParentKey :: (session: Session) -> u64 {
     parent: s32 = TreeCurrentParent(session)
     if parent < 0 { return cast(u64)0 }
