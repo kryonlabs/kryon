@@ -1,0 +1,36 @@
+#import "theme"
+
+using ThemePolicy;
+
+#program_export
+Answer :: () -> s32 {
+    if ResolveDark(cast(ThemePolicy)ThemePolicyLight, true) { return 1 }
+    if !ResolveDark(cast(ThemePolicy)ThemePolicySystem, true) { return 2 }
+    light: Palette = DefaultPalette(false)
+    dark: Palette = DefaultPalette(true)
+    if light.background != PackedColor(cast(u32)0xF8FBFF, cast(u32)255) {
+        return 3
+    }
+    if dark.background != PackedColor(cast(u32)0x001D38, cast(u32)255) {
+        return 4
+    }
+    if light.focus == dark.focus { return 5 }
+    if OnColor(cast(u32)0x000000FF) != cast(u32)0xFFFFFFFF { return 6 }
+    if OnColor(cast(u32)0xFFFFFFFF) != cast(u32)0x1D1B20FF { return 7 }
+    scheme: Scheme = SchemeFor(light.background, light.surface,
+        light.text, light.accent, light.info, false, cast(u8)96)
+    if scheme.disabled_content != ((light.text & ~cast(u32)255) | cast(u32)96) {
+        return 8
+    }
+    metrics: Metrics = DefaultMetrics()
+    if metrics.control_height_medium != 40.0 || metrics.disabled_opacity <= 0.0 {
+        return 9
+    }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}
