@@ -3,141 +3,39 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/color_picker_widget_behavior.zi
+portable=$repo/tests/color_picker_widget_portable_test.zi
+set -- \
+    --bind font_metrics:MeasureGlyphLineHeight=color_picker_widget_host:MeasureGlyphLineHeight \
+    --bind raster_shape:RasterRoundedRectangle=color_picker_widget_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=color_picker_widget_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=color_picker_widget_host:RasterLine \
+    --bind raster_text:RasterText=color_picker_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=color_picker_widget_host:RasterTextClipped \
+    --bind paint_queue:RasterImage=color_picker_widget_host:RasterImage
 
-#import "color_picker"
-#import "color_picker_props"
-#import "color_picker_widget"
-#import "drawing_props"
-#import "geometry"
-#import "paint_queue"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
-
-using WidgetKind;
-
-phase: s32;
-compact_red: float32;
-alpha: float32;
-
-#program_export
-Frame :: () -> s32 {
-    compact: ColorPickerProps
-    compact.key = cast(u64)20
-    compact.bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}
-    compact.label = "Color"
-    compact.channels = 3
-    compact.values[0] = compact_red
-    compact.values[1] = 0.5
-    compact.values[2] = 0.75
-    if phase >= 3 { compact.disabled = true }
-    expanded: ColorPickerProps
-    expanded.key = cast(u64)30
-    expanded.bounds = Rectangle.{10.0, 70.0, 180.0, 180.0}
-    expanded.label = "Preview"
-    expanded.channels = 4
-    expanded.picker = true
-    expanded.values[0] = 0.25
-    expanded.values[1] = 0.5
-    expanded.values[2] = 0.75
-    expanded.values[3] = alpha
-    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 270.0})
-    one: ColorPickerResult = ColorPicker(TestSession(), compact)
-    two: ColorPickerResult = ColorPicker(TestSession(), expanded)
-    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 19 ||
-        one.node != 1 || two.node != 9 ||
-        TreeNodeAt(TestSession(), 2).kind != WidgetKindText ||
-        TreeNodeAt(TestSession(), 18).kind != WidgetKindCustom { return -10 }
-    red_slider: s32 = TreeChild(TestSession(), one.node,
-        cast(u64)1, WidgetKindSlider)
-    alpha_slider: s32 = TreeChild(TestSession(), two.node,
-        cast(u64)4, WidgetKindSlider)
-    if red_slider < 0 || alpha_slider < 0 { return -14 }
-    if TreeNodeAt(TestSession(), red_slider).semantic_label != "R" ||
-        TreeNodeAt(TestSession(), alpha_slider).semantic_label != "A" {
-        return -15
-    }
-    swatch: Color = ColorPickerColorFor(two.values[0],
-        two.values[1], two.values[2], two.values[3], 4)
-    if swatch.r != cast(u8)64 || swatch.g != cast(u8)128 ||
-        swatch.b != cast(u8)191 { return -11 }
-    if phase == 0 {
-        if one.changed || two.changed ||
-            one.values[0] != 0.0 { return -1 }
-        if TreeHitAt(TestSession(), 40.0, 45.0) != red_slider { return -12 }
-        TreePointerUpdate(TestSession(), PointerFrame.{40.0, 45.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0, true, false, false})
-    } else if phase == 1 {
-        if !one.changed || one.values[0] < 0.6 ||
-            two.changed { return -2 }
-        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0, false, false, true})
-    } else if phase == 2 {
-        if one.values[0] < 0.6 || two.changed { return -3 }
-        if TreeHitAt(TestSession(), 100.0, 190.0) != alpha_slider { return -13 }
-        TreePointerUpdate(TestSession(), PointerFrame.{100.0, 190.0,
-            true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{175.0, 190.0,
-            true, false, false})
-    } else if phase == 3 {
-        if one.changed || !two.changed ||
-            two.values[3] < 0.7 || swatch.a < cast(u8)178 {
-            return -4
-        }
-        TreePointerUpdate(TestSession(), PointerFrame.{175.0, 190.0,
-            false, false, true})
-        TreePointerUpdate(TestSession(), PointerFrame.{40.0, 45.0,
-            true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0,
-            true, false, false})
-    } else {
-        if one.changed || one.values[0] != compact_red ||
-            two.values[3] != alpha { return -5 }
-        TreePointerUpdate(TestSession(), PointerFrame.{65.0, 45.0,
-            false, false, true})
-    }
-    PaintFlush(TestSession())
-    compact_red = one.values[0]
-    alpha = two.values[3]
-    old: s32 = phase
-    phase += 1
-    return old
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry color_picker_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry color_picker_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/color_picker_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_color_picker_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "color_picker_widget_behavior.hpp"
 #include <cassert>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "color_picker_widget_behavior.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -200,8 +98,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -261,7 +159,7 @@ func TestColorPicker(t *testing.T) {
     SetRasterHost(h)
     SetPaintQueueHost(h)
     for phase := int32(0); phase < 5; phase++ {
-        if App_Frame() != phase || h.swatches != int(phase+1) ||
+        if ColorPickerWidgetBehavior_Frame() != phase || h.swatches != int(phase+1) ||
            h.labels != int(phase+1)*9 { t.Fatal("phase", phase) }
     }
 }

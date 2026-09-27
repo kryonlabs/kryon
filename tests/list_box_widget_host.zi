@@ -1,0 +1,61 @@
+#import "drawing_props"
+#import "geometry"
+
+labels: s32;
+failed: bool;
+
+InsidePaintBounds :: (bounds: Rectangle) -> bool {
+    return bounds.width >= 0.0 && bounds.height >= 0.0 &&
+        bounds.x >= 10.0 && bounds.y >= 10.0 &&
+        bounds.x + bounds.width <= 220.0 &&
+        bounds.y + bounds.height <= 70.0
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface != "" { failed = true }
+    return 12
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if !InsidePaintBounds(bounds) { failed = true }
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if !InsidePaintBounds(bounds) { failed = true }
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { failed = true }
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    single_clip: bool = clip.x >= 10.0 &&
+        clip.x + clip.width <= 110.0 && clip.y >= 10.0 &&
+        clip.y + clip.height <= 52.0
+    multi_clip: bool = clip.x >= 120.0 &&
+        clip.x + clip.width <= 220.0 && clip.y >= 10.0 &&
+        clip.y + clip.height <= 70.0
+    if value.count != 1 || font != 14 ||
+        !(single_clip || multi_clip) { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) { failed = true }
+
+#program_export
+HostValid :: (want_labels: s32) -> bool {
+    return !failed && labels == want_labels
+}

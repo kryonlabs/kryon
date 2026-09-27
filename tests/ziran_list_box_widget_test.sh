@@ -3,175 +3,39 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/list_box_widget_behavior.zi
+portable=$repo/tests/list_box_widget_portable_test.zi
+set -- \
+    --bind font_metrics:MeasureGlyphLineHeight=list_box_widget_host:MeasureGlyphLineHeight \
+    --bind raster_shape:RasterRoundedRectangle=list_box_widget_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=list_box_widget_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=list_box_widget_host:RasterLine \
+    --bind raster_text:RasterText=list_box_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=list_box_widget_host:RasterTextClipped \
+    --bind paint_queue:RasterImage=list_box_widget_host:RasterImage
 
-#import "geometry"
-#import "list_box"
-#import "list_box_multi"
-#import "list_box_props"
-#import "list_box_widget"
-#import "paint_queue"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
-
-using WidgetKind;
-
-phase: s32;
-single_selected: s32;
-single_scroll: s32;
-multi_scroll: s32;
-anchor: s32;
-selected: [4]bool;
-
-#program_export
-Frame :: () -> s32 {
-    items: [4]ListBoxItem
-    items[0] = ListBoxItem.{cast(u64)11, "A"}
-    items[1] = ListBoxItem.{cast(u64)12, "B"}
-    items[2] = ListBoxItem.{cast(u64)13, "C"}
-    items[3] = ListBoxItem.{cast(u64)14, "D"}
-    single: ListBoxProps
-    single.key = cast(u64)20
-    single.bounds = Rectangle.{10.0, 10.0, 100.0, 42.0}
-    single.row_height = 20
-    single.selected_index = single_selected
-    single.scroll_offset = single_scroll
-    if phase == 1 { single.scroll_delta = 10 }
-    if phase == 2 {
-        single.focused = true
-        single.navigation = ListBoxKeyEnd()
-    }
-    if phase >= 3 {
-        single.disabled = true
-        single.focused = true
-        single.navigation = ListBoxKeyHome()
-        single.scroll_delta = -100
-    }
-    multi: ListBoxMultiProps
-    multi.key = cast(u64)30
-    multi.bounds = Rectangle.{120.0, 10.0, 100.0, 60.0}
-    multi.row_height = 20
-    multi.anchor = anchor
-    multi.scroll_offset = multi_scroll
-    if phase == 0 { multi.anchor = -1 }
-    if phase == 2 || phase == 3 { multi.control = true }
-    if phase == 4 {
-        multi.focused = true
-        multi.shift = true
-        multi.navigation.home = true
-    }
-    if phase == 5 {
-        multi.disabled = true
-        multi.focused = true
-        multi.navigation.end = true
-        multi.scroll_delta = 100
-    }
-    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 100.0})
-    one: ListBoxResult = ListBox(TestSession(), single, items[0:4])
-    many: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
-        items[0:4], selected[0:4])
-    if !TreeFinish(TestSession()) { return -10 }
-    if TreeCount(TestSession()) != 13 { return -11 }
-    if one.node != 1 || many.node != 7 || !many.valid { return -12 }
-    if TreeNodeAt(TestSession(), 2).kind != WidgetKindSelectable ||
-        TreeNodeAt(TestSession(), 6).kind != WidgetKindSlider ||
-        TreeNodeAt(TestSession(), 12).kind != WidgetKindSlider { return -13 }
-    if phase < 2 && TreeNodeAt(TestSession(), 2).semantic_label != "A" {
-        return -14
-    }
-    if TreeHitAt(TestSession(), 20.0, 53.0) != -1 { return -15 }
-    if phase == 0 {
-        if one.selected_index != 0 || one.scroll_offset != 0 ||
-            one.changed || many.selected_count != 0 ||
-            many.anchor != -1 || many.clicked_index != -1 {
-            return -1
-        }
-        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 35.0, false, false, true})
-    } else if phase == 1 {
-        if one.selected_index != 1 || !one.changed ||
-            one.scroll_offset != 10 || many.selected_count != 0 {
-            return -2
-        }
-        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 35.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 35.0, false, false, true})
-    } else if phase == 2 {
-        if one.selected_index != 3 || one.scroll_offset != 38 ||
-            !one.changed || !selected[1] || many.selected_count != 1 ||
-            many.anchor != 1 || many.clicked_index != 1 {
-            return -3
-        }
-        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 55.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{130.0, 55.0, false, false, true})
-    } else if phase == 3 {
-        if one.selected_index != 3 || one.changed ||
-            one.scroll_offset != 38 { return -41 }
-        if many.clicked_index != 2 { return -42 }
-        if many.anchor != 2 { return -43 }
-        if many.selected_count != 2 || !selected[1] ||
-            !selected[2] { return -44 }
-    } else if phase == 4 {
-        if many.clicked_index != 0 || many.anchor != 0 ||
-            many.selected_count != 3 || !selected[0] ||
-            !selected[1] || !selected[2] || selected[3] ||
-            many.scroll_offset != 0 { return -5 }
-    } else if phase == 5 {
-        if many.clicked_index != -1 || many.anchor != 0 ||
-            many.selected_count != 3 || many.scroll_offset != 0 ||
-            one.selected_index != 3 || one.scroll_offset != 38 {
-            return -7
-        }
-        if TreeHitAt(TestSession(), 130.0, 35.0) != -1 { return -8 }
-        short_selection: [2]bool
-        bad: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
-            items[0:4], short_selection[0:2])
-        if bad.valid || bad.node != -1 { return -6 }
-    }
-    PaintFlush(TestSession())
-    single_selected = one.selected_index
-    single_scroll = one.scroll_offset
-    multi_scroll = many.scroll_offset
-    anchor = many.anchor
-    old: s32 = phase
-    phase += 1
-    return old
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry list_box_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry list_box_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/list_box_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_list_box_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "list_box_widget_behavior.hpp"
 #include <cassert>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "list_box_widget_behavior.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -236,8 +100,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -301,7 +165,7 @@ func TestListBox(t *testing.T) {
     SetRasterHost(h)
     SetPaintQueueHost(h)
     for phase := int32(0); phase < 6; phase++ {
-        if App_Frame() != phase || h.labels != int(phase+1)*6 {
+        if ListBoxWidgetBehavior_Frame() != phase || h.labels != int(phase+1)*6 {
             t.Fatal("phase", phase)
         }
     }

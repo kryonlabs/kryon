@@ -1,0 +1,12 @@
+#import "list_box_widget_behavior"
+#import "list_box_widget_host"
+
+#program_export
+main :: () -> s32 {
+    phase: s32 = 0
+    while phase < 6 {
+        if Frame() != phase || !HostValid((phase + 1) * 6) { return 1 }
+        phase += 1
+    }
+    return 0
+}
