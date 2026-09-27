@@ -90,6 +90,7 @@ are saved in `build/generated/<profile>/ir/` as `.zir`; generated C is in
 `build/generated/<profile>/c/`. `ziran inspect FILE.zir` displays a saved
 module.
 
-Kryon's `make raylib-project-test` and `make libdraw-project-test` exercise
-those hosts on private Xvfb displays. Do not run graphical tests on the
-developer's live display.
+Kryon's `make desktop-project-test`, `make raylib-project-test`, and
+`make libdraw-project-test` exercise the graphical hosts on private Xvfb
+displays, including keyboard and Unicode text input. Do not run graphical
+tests on the developer's live display.

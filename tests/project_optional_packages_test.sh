@@ -71,3 +71,5 @@ test -s "$work/build/generated/tui/ir/"*_syntax.zir
 test -s "$work/build/generated/tui/ir/"*_table_view.zir
 test -s "$work/build/generated/tui/ir/"*_tree_view.zir
 test -x "$work/build/plot_probe-tui"
+"$work/build/plot_probe-tui" </dev/null > "$work/frame.txt"
+test -s "$work/frame.txt"

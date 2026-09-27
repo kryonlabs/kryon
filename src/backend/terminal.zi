@@ -1,6 +1,7 @@
 #import "cell"
 #import "drawing_props"
 #import "geometry"
+#import "utf8"
 
 // The Text widget uses cell coordinates on this host: one glyph is one cell.
 // This first terminal surface supports up to 80 columns and 24 rows.
@@ -43,7 +44,7 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     at: s32 = 0
     width: s32 = 0
     while at < cast(s32)value.count {
-        point: CellCodepointResult = CellCodepoint(value, at)
+        point: Decoded = Decode(value, at)
         if point.after <= at { break }
         at = point.after
         width += 1
@@ -72,7 +73,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     at: s32 = 0
     col: s32 = x
     while at < cast(s32)value.count {
-        point: CellCodepointResult = CellCodepoint(value, at)
+        point: Decoded = Decode(value, at)
         if point.after <= at { break }
         if col >= cast(s32)clip.x &&
             col < cast(s32)(clip.x + clip.width) {

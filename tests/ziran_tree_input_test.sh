@@ -56,9 +56,36 @@ Answer :: () -> s32 {
        TypedCodepointTake(TestSession()) != 0 { return -36 }
     if TypedCodepointSend(TestSession(), 0) ||
        TypedCodepointSend(TestSession(), 55296) { return -37 }
-    if !TypedCodepointSend(TestSession(), 121) { return -38 }
+    index: s32 = 0
+    while index < 32 {
+        if !TypedCodepointSend(TestSession(), 65 + index) { return -38 }
+        index += 1
+    }
+    if TypedCodepointSend(TestSession(), 120) { return -39 }
+    index = 0
+    while index < 16 {
+        if TypedCodepointTake(TestSession()) != 65 + index { return -40 }
+        index += 1
+    }
+    index = 0
+    while index < 16 {
+        if !TypedCodepointSend(TestSession(), 97 + index) { return -41 }
+        index += 1
+    }
+    index = 16
+    while index < 32 {
+        if TypedCodepointTake(TestSession()) != 65 + index { return -42 }
+        index += 1
+    }
+    index = 0
+    while index < 16 {
+        if TypedCodepointTake(TestSession()) != 97 + index { return -43 }
+        index += 1
+    }
+    if TypedCodepointTake(TestSession()) != 0 ||
+       !TypedCodepointSend(TestSession(), 121) { return -44 }
     TreeInputReset(TestSession())
-    if TypedCodepointTake(TestSession()) != 0 { return -39 }
+    if TypedCodepointTake(TestSession()) != 0 { return -45 }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     TreeSubmit(TestSession(), cast(u64)99, 0, WidgetKindButton,
         Rectangle.{10.0, 10.0, 30.0, 30.0})

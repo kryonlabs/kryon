@@ -135,7 +135,8 @@ def main():
             '    if KeyboardTake(session) == 65 {\n'
             '        return 1\n'
             '    }\n'
-            '    if TypedCodepointTake(session) == 122 { return 1 }\n'
+            '    typed: s32 = TypedCodepointTake(session)\n'
+            '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
             '    rules: StyleRules\n'
             '    rules.count = 1\n'
@@ -213,6 +214,8 @@ def main():
                 "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
                 "    elif sys.argv[1] == 'text':\n"
                 "        subprocess.run(['xdotool', 'key', 'z'], check=True)\n"
+                "    elif sys.argv[1] == 'unicode':\n"
+                "        subprocess.run(['xdotool', 'key', 'eacute'], check=True)\n"
                 "    elif sys.argv[1] == 'pointer':\n"
                 "        subprocess.run(['xdotool', 'mousemove', '--window', "
                 "window, '470', '432'], check=True)\n"
@@ -233,10 +236,10 @@ def main():
                 "        app.terminate()\n"
                 "        app.communicate(timeout=5)\n"
             )
-            for mode in ("key", "text", "pointer", "wheel"):
+            for mode in ("key", "text", "unicode", "pointer", "wheel"):
                 run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                     project, env)
-    print("raylib Ziran project: images, rounded clip, keyboard, text, pointer, and wheel passed")
+    print("raylib Ziran project: images, rounded clip, keyboard, Unicode text, pointer, and wheel passed")
 
 
 if __name__ == "__main__":

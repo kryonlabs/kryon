@@ -1,4 +1,5 @@
 #import "cell"
+#import "utf8"
 
 #program_export
 SelfTest :: () -> s32 {
@@ -18,7 +19,7 @@ SelfTest :: () -> s32 {
     if CellWrite(cells, 4, 3, 3, 2, "long", cast(u32)2, cast(u32)1, cast(u32)0) != 1 {
         return 4
     }
-    emoji: CellCodepointResult = CellCodepoint("\xf0\x9f\x92\xa1", 0)
+    emoji: Decoded = Decode("\xf0\x9f\x92\xa1", 0)
     if emoji.value != cast(u32)128161 {
         return 5
     }

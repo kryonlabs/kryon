@@ -58,7 +58,10 @@ main :: () -> s32 {
     } else {
         while ok && PollLibdraw() {
             key: s32 = LibdrawPressedKey()
-            if key != 0 { KeyboardSend(session, key) }
+            if key != 0 {
+                KeyboardSend(session, key)
+                if key >= 32 { TypedCodepointSend(session, key) }
+            }
             ok = DrawLibdrawFrame(session, LibdrawViewport())
             if ok { PauseLibdraw() }
         }

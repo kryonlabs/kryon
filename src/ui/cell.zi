@@ -36,26 +36,6 @@ CellFill :: (cells: []Cell, columns: s32, rows: s32,
     }
 }
 
-CellCodepointResult :: struct {
-    value: u32
-    after: s32
-}
-
-// Returns one Unicode scalar and the byte offset after it. Invalid UTF-8
-// consumes one byte and yields U+FFFD so the terminal renderer stays aligned.
-#program_export
-CellCodepoint :: (text: string, at: s32) -> CellCodepointResult {
-    result: CellCodepointResult
-    if at < 0 || at >= cast(s32)text.count {
-        result.after = at
-        return result
-    }
-    decoded: Decoded = Decode(text, at)
-    result.value = decoded.value
-    result.after = decoded.after
-    return result
-}
-
 // Write one scalar per cell. This primitive covers single-width text; a
 // complete terminal layout layer must resolve wide and combining clusters in
 // Ziran before submitting cells. The host only encodes and presents them.
@@ -67,7 +47,7 @@ CellWrite :: (cells: []Cell, columns: s32, rows: s32,
     col: s32 = x
     written: s32 = 0
     while at < (cast(s32)text.count) {
-        point: CellCodepointResult = CellCodepoint(text, at)
+        point: Decoded = Decode(text, at)
         if point.after <= at { break }
         cell: Cell
         cell.glyph = point.value

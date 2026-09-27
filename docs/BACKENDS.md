@@ -46,8 +46,9 @@ paint operations. Widget behavior stays in `src/ui/`.
 The terminal host renders one frame when input or output is redirected. The
 other hosts can capture a frame with `KRYON_CAPTURE_PATH`; the graphical
 integration tests run on private Xvfb displays. Run `make test` for the
-nonvisual library gate, `make raylib-project-test` for raylib capture and
-input, and `make libdraw-project-test` for the devdraw window and input.
+nonvisual library gate, plus `make desktop-project-test`,
+`make raylib-project-test`, and `make libdraw-project-test` for graphical
+capture and input.
 Never run graphical tests against the developer's live display.
 
 The old C backend contracts, generated compatibility headers, and

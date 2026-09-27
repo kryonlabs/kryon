@@ -75,6 +75,10 @@ def window_probe(project, mode):
         run(["xdotool", "windowfocus", window], project, env)
         if mode == "keyboard":
             run(["xdotool", "key", "a"], project, env)
+        elif mode == "text":
+            run(["xdotool", "key", "z"], project, env)
+        elif mode == "unicode":
+            run(["xdotool", "key", "eacute"], project, env)
         elif mode == "pointer":
             run(["xdotool", "mousemove", "--window", window,
                  "470", "432"], project, env)
@@ -120,6 +124,8 @@ def main():
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    if KeyboardTake(session) == 97 { return 1 }\n'
+            '    typed: s32 = TypedCodepointTake(session)\n'
+            '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if viewport.width < 900.0 { return 1 }\n'
             '    rules: StyleRules\n'
             '    rules.count = 1\n'
@@ -171,12 +177,12 @@ def main():
         assert pixels[0] > 900 and pixels[1] > 500, pixels[:2]
         assert rgb(pixels, 500, 130) == (30, 200, 40), "captured image failed"
         assert rgb(pixels, 10, 10) == (248, 250, 252), "captured background failed"
-        for mode in ("pixels", "keyboard", "pointer", "resize"):
+        for mode in ("pixels", "keyboard", "text", "unicode", "pointer", "resize"):
             probe_env = private_environment()
             probe_env["KRYON_PRIVATE_XVFB"] = "1"
             run(["xvfb-run", "-a", "-n", "100", sys.executable, __file__,
                  "--probe", str(project), mode], project, probe_env)
-    print("libdraw Ziran project: window pixels, image, keyboard, pointer, and resize passed")
+    print("libdraw Ziran project: pixels, image, keyboard, Unicode text, pointer, and resize passed")
 
 
 if __name__ == "__main__":
