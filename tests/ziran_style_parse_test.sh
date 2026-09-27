@@ -3,7 +3,6 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -86,30 +85,8 @@ ZI
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-cat > "$work/host.c" <<'C'
-#include "kryon_portable_host.h"
-
-#include <assert.h>
-
-int main(int argc, char **argv)
-{
-    assert(argc == 2);
-    Bundle *bundle = BundleOpen(argv[1]);
-    assert(bundle != NULL);
-    long long value = 0;
-    int has_value = 0;
-    assert(BundleRun(bundle, NULL, 0, &value, &has_value));
-    assert(has_value && value == 42);
-    BundleClose(bundle);
-    return 0;
-}
-C
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
-    "$work/host.c" "$repo/build/ziran/libkryon_host.a" \
-    "$ziran_lib" ${VM_LDFLAGS:-} -o "$work/host"
-"$work/host" "$work/source.zib"
-"$work/host" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 42
+test "$("$ziran" run "$work/saved.zib")" = 42
 
 for input in source saved; do
     if test "$input" = source; then
