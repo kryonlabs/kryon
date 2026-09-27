@@ -1,0 +1,30 @@
+#import "geometry"
+#import "icon"
+#import "image_props"
+
+Check :: (id: s32, path: string, x: float32,
+    y: float32) -> bool {
+    bounds := Rectangle.{1.0, 2.0, 24.0, 24.0}
+    image := ImageForIcon(id, bounds, "example")
+    return image.asset_path == path && image.alt_text == "example" &&
+        image.bounds.x == 1.0 && image.bounds.height == 24.0 &&
+        image.source.x == x && image.source.y == y &&
+        image.source.width == 64.0 && image.source.height == 64.0
+}
+
+#program_export
+main :: () -> s32 {
+    if !Check(5, "icons/ui.png", 256.0, 0.0) { return 1 }
+    if !Check(16, "icons/language.png", 0.0, 0.0) { return 2 }
+    if !Check(31, "icons/ui.png", 128.0, 448.0) { return 3 }
+    if !Check(32, "icons/ui.png", 64.0, 448.0) { return 4 }
+    if !Check(35, "icons/ui.png", 64.0, 192.0) { return 5 }
+    if !Check(41, "icons/pfp.png", 0.0, 0.0) { return 6 }
+    if !Check(89, "icons/ui.png", 256.0, 192.0) { return 7 }
+    if !Check(117, "icons/ui.png", 0.0, 448.0) { return 8 }
+    if !Check(124, "icons/pfp.png", 0.0, 320.0) { return 9 }
+    if !Check(126, "icons/pfp.png", 128.0, 320.0) { return 10 }
+    missing := ImageForIcon(127, Rectangle.{}, "missing")
+    if missing.asset_path != "" { return 11 }
+    return 0
+}

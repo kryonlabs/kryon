@@ -1,4 +1,92 @@
 #import "geometry"
+#import "image_props"
+
+// Icon IDs are stable across releases because applications persist them.
+// The atlas positions follow icons/*.json; callers render the returned props
+// through Image, including when the icon is decorative.
+#program_export
+ImageForIcon :: (icon_type: s32, bounds: Rectangle,
+    alt_text: string) -> ImageProps {
+    image: ImageProps
+    image.bounds = bounds
+    image.alt_text = alt_text
+    index: s32 = -1
+    columns: s32 = 1
+    if icon_type >= 1 && icon_type <= 15 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 1
+        columns = 8
+    } else if icon_type >= 16 && icon_type <= 20 {
+        image.asset_path = "icons/language.png"
+        index = icon_type - 16
+        columns = 5
+    } else if icon_type >= 21 && icon_type <= 30 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 6
+        columns = 8
+    } else if icon_type >= 31 && icon_type <= 35 {
+        image.asset_path = "icons/ui.png"
+        if icon_type == 31 { index = 58 }
+        if icon_type == 32 { index = 57 }
+        if icon_type == 33 { index = 59 }
+        if icon_type == 34 { index = 60 }
+        if icon_type == 35 { index = 25 }
+        columns = 8
+    } else if icon_type >= 36 && icon_type <= 38 {
+        image.asset_path = "icons/payments.png"
+        index = icon_type - 36
+        columns = 3
+    } else if icon_type >= 39 && icon_type <= 40 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 13
+        columns = 8
+    } else if icon_type >= 41 && icon_type <= 65 {
+        image.asset_path = "icons/pfp.png"
+        index = icon_type - 41
+        columns = 5
+    } else if icon_type >= 66 && icon_type <= 88 {
+        image.asset_path = "icons/platforms.png"
+        index = icon_type - 66
+        columns = 6
+    } else if icon_type >= 89 && icon_type <= 91 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 61
+        columns = 8
+    } else if icon_type >= 92 && icon_type <= 93 {
+        image.asset_path = "icons/logos.png"
+        index = icon_type - 92
+        columns = 2
+    } else if icon_type >= 94 && icon_type <= 108 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 63
+        columns = 8
+    } else if icon_type >= 109 && icon_type <= 112 {
+        image.asset_path = "icons/tiles.png"
+        index = icon_type - 109
+        columns = 4
+    } else if icon_type >= 113 && icon_type <= 116 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 67
+        columns = 8
+    } else if icon_type == 117 {
+        image.asset_path = "icons/ui.png"
+        index = 56
+        columns = 8
+    } else if icon_type >= 118 && icon_type <= 123 {
+        image.asset_path = "icons/ui.png"
+        index = icon_type - 68
+        columns = 8
+    } else if icon_type >= 124 && icon_type <= 126 {
+        image.asset_path = "icons/pfp.png"
+        index = icon_type - 99
+        columns = 5
+    }
+    if index >= 0 {
+        image.source = Rectangle.{cast(float32)((index % columns) * 64),
+            cast(float32)((index / columns) * 64), 64.0, 64.0}
+    }
+    return image
+}
 
 IconLayout :: struct {
     bounds: Rectangle
