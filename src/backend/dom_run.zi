@@ -1,12 +1,5 @@
 #import "app"
-#import "canvas_raster"
-#import "canvas_window"
-#import "canvas_draw"
-#import "canvas_input"
-#import "canvas_texture"
-#import "canvas_text"
-#import "canvas_os"
-#import "canvas_audio"
+#import "canvas_host"
 #import "dom_tree"
 #import "geometry"
 #import "session"
@@ -40,19 +33,26 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
     PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
+        DomError("kryon: browser document could not begin")
         return false
     }
     if Frame(session, viewport) != 0 {
         TreeCancel(session)
         EndCanvasFrame()
+        DomError("kryon: browser document frame failed")
         return false
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
+        DomError("kryon: browser document could not commit")
         return false
     }
     DomReconcile(session, viewport)
-    return EndCanvasFrame()
+    if !EndCanvasFrame() {
+        DomError("kryon: browser document raster failed")
+        return false
+    }
+    return true
 }
 
 #program_export

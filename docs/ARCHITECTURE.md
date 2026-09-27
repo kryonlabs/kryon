@@ -32,19 +32,19 @@ second set of widget decisions.
 
 An application exports `Frame(session: Session, viewport: Rectangle) -> s32`.
 The selected host calls it between `BeginFrame` and `EndFrame`. Package
-profiles choose the terminal, desktop, libdraw, raylib, or canvas host; see
-[BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can import a Kryon
-policy module without selecting any of these hosts.
+profiles choose the terminal, desktop, libdraw, raylib, Canvas2D, or semantic
+DOM host; see [BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can
+import a Kryon policy module without selecting any of these hosts.
 
 ## Build and verification
 
 `make` checks the Ziran modules, writes `.zir`, generates C, C++, and Go,
 compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
-portable `.zib` behavior, Canvas2D Wasm effects, and a packaged browser
-application in private headless Chromium. Desktop, raylib, and libdraw package
-tests run separately on private Xvfb displays. [FEATURE_MATRIX.md](FEATURE_MATRIX.md)
-states exactly what those checks cover.
+portable `.zib` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
+semantic DOM browser applications in private headless Chromium. Desktop,
+raylib, and libdraw package tests run separately on private Xvfb displays.
+[FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what those checks cover.
 
 Ziran's generic capabilities should be added to Ziran and imported here.
 Kryon-specific compiler cases, compatibility runtimes, and app-specific

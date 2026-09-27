@@ -572,7 +572,6 @@ ButtonFrame :: struct {
 BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     motion: InteractionMotion, surface: Rectangle, ambient: u32,
     scale: float32, style_font: s32, fallback_font: s32) -> ButtonFrame {
-    result: ButtonFrame
     props.disabled = input.flags.disabled
     props.loading = input.flags.loading
     props.selected = input.flags.selected
@@ -584,26 +583,36 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
         appearance.value.radius = props.bounds.height * 0.5 / shape_scale
         appearance.value.fields |= cast(u32)StyleRadius
     }
-    result.props = props
-    result.appearance = appearance
-    result.material.bounds = props.bounds
-    result.material.surface = surface
-    result.material.value = appearance.value
-    result.material.light = appearance.value.border
-    result.material.ambient = ambient
-    result.material.hover = motion.hover.value
-    result.material.press = motion.press.value
-    result.material.focus = motion.focus.value
-    result.material.disabled = props.disabled
-    result.material.fill = appearance.fill
-    result.material.fill_valid = true
-    result.material.scale = scale
-    result.material = PrepareMaterial(result.material)
+
+    material_scale: float32 = scale
+    if material_scale <= 0.0 { material_scale = 1.0 }
+    material_surface: Rectangle = surface
+    if material_surface.width <= 0.0 || material_surface.height <= 0.0 {
+        material_surface = props.bounds
+    }
+    material: MaterialPaint
+    material.bounds = props.bounds
+    material.surface = material_surface
+    material.light = appearance.value.border
+    material.ambient = ambient
+    material.hover = motion.hover.value
+    material.press = motion.press.value
+    material.focus = motion.focus.value
+    material.disabled = props.disabled
+    material.fill_valid = true
+    material.scale = material_scale
+    material.value = appearance.value
+    material.fill = appearance.fill
+
+    result: ButtonFrame
     result.content_bounds = InsetBounds(props.bounds, appearance.value.padding_x,
-        appearance.value.padding_y, result.material.scale)
+        appearance.value.padding_y, material.scale)
     result.font = ResolveFont(0, style_font, fallback_font)
     result.foreground = Opacity(appearance.value.foreground, appearance.value.opacity)
     result.repaint = motion.active || (props.loading && !props.disabled)
+    result.material = material
+    result.appearance = appearance
+    result.props = props
     return result
 }
 

@@ -29,13 +29,21 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 | `libdraw` | `src/backend/libdraw_run.zi` | plan9port devdraw window with the shared Cairo raster |
 | `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
+| `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
 
-The desktop and libdraw hosts share `cairo_raster.zi`. The raylib host uses
-`raylib_runtime.zi` and Kryon's `vendor/raylib` revision. The canvas host uses
-its dedicated `canvas_raster.zi` provider over a Canvas2D browser ABI; see
-[Canvas2D browser host](canvas.md). Backend build dependencies and link flags
-live in `mk/ziran-project.mk`. Platform calls are declared with Ziran foreign
-imports; handwritten host implementation is Ziran.
+The desktop and libdraw hosts share `cairo_raster.zi`. The DOM host reuses
+the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
+The raylib host uses `raylib_runtime.zi` and Kryon's `vendor/raylib`
+revision. The canvas host uses its dedicated `canvas_raster.zi` provider over
+a Canvas2D browser ABI; see [Canvas2D browser host](canvas.md). Backend build
+dependencies and link flags live in `mk/ziran-project.mk`. Platform calls are
+declared with Ziran foreign imports; handwritten host implementation is
+Ziran.
+
+Browser projects save the selected `_run` host and `canvas_raster.zi` as
+generation roots without entry pruning. This keeps both the host `main` and
+the raster adapters available to the paint queue. Native projects continue
+through the ordinary package entry route.
 
 ## Frame and input ownership
 
@@ -51,11 +59,7 @@ a TTY, it submits ASCII and UTF-8 text to the same session input API as the
 window hosts and ignores terminal escape sequences. The project test drives
 this through a private PTY. The other hosts can capture a frame with
 `KRYON_CAPTURE_PATH`; the graphical integration tests run on private Xvfb
-displays. Run `make test` for the nonvisual library gate, plus
-`make desktop-project-test`,
-`make raylib-project-test`, and `make libdraw-project-test` for graphical
-capture and input.
+displays. Run `make test` for the library, browser, and typeface gates, plus
+`make desktop-project-test`, `make raylib-project-test`, and
+`make libdraw-project-test` for graphical capture and input.
 Never run graphical tests against the developer's live display.
-
-The old C backend contracts, generated compatibility headers, and
-`KRYON_BACKEND` switch do not describe the current Ziran project route.

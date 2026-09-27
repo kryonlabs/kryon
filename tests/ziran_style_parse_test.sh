@@ -17,6 +17,19 @@ cat > "$work/app.zi" <<'ZI'
 
 using KssStatus;
 
+InstallBodyTypeface :: (bytes: []u8) -> bool {
+    rules: StyleRules
+    rules.count = 1
+    rules.items[0].style.typeface = TextView(bytes[:])
+    return InstallStyleRules(rules)
+}
+
+StyleRulesAtCapacity :: (count: s32) -> StyleRules {
+    result: StyleRules
+    if count >= 0 && count <= 320 { result.count = count }
+    return result
+}
+
 #program_export
 Answer :: () -> s32 {
     parsed: StyleRulesParse = BeginStyleRules(
@@ -63,9 +76,10 @@ Answer :: () -> s32 {
     if color.r != 0 || color.g != 0 || color.b != 0 || color.a != 255 {
         return 0
     }
+    full_rules: StyleRules = StyleRulesAtCapacity(320)
     parsed = BeginStyleRules("Progress { background: #112233; }",
         "full.kss", KssDefaultEnvironment())
-    parsed.rules.count = 320
+    parsed.rules = full_rules
     parsed = StepStyleRules(parsed)
     if !parsed.overflow || parsed.rules.count != 320 { return 0 }
     parsed = BeginStyleRules("@import <missing>;", "missing.kss",
@@ -76,16 +90,15 @@ Answer :: () -> s32 {
     if parsed.parser.status != cast(s32)KssStatusError { return 0 }
 
     bytes: [4]u8 = .[98, 111, 100, 121]
-    owned_rules: StyleRules
-    owned_rules.count = 1
-    owned_rules.items[0].style.typeface = TextView(bytes[:])
-    if !InstallStyleRules(owned_rules) { return 0 }
+    if !InstallBodyTypeface(bytes[:]) { return 0 }
     installed: StyleRules = ActiveStyleRules()
     if installed.items[0].style.typeface != "body" { return 0 }
+    bytes[0] = cast(u8)120
+    if installed.items[0].style.typeface != "body" { return 0 }
+    owned_rules: StyleRules
     owned_rules.count = 321
     if InstallStyleRules(owned_rules) ||
         ActiveStyleRules().items[0].style.typeface != "body" { return 0 }
-    bytes[0] = cast(u8)120
     return 42
 }
 ZI

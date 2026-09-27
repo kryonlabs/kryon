@@ -35,11 +35,24 @@ SurfaceDrawing :: struct {
 
 #program_export
 PrepareMaterial :: (paint: MaterialPaint) -> MaterialPaint {
-    if paint.scale <= 0.0 { paint.scale = 1.0 }
-    if paint.surface.width <= 0.0 || paint.surface.height <= 0.0 {
-        paint.surface = paint.bounds
-    }
-    return paint
+    scale: float32 = paint.scale
+    surface: Rectangle = paint.surface
+    if scale <= 0.0 { scale = 1.0 }
+    if surface.width <= 0.0 || surface.height <= 0.0 { surface = paint.bounds }
+    result: MaterialPaint
+    result.bounds = paint.bounds
+    result.surface = surface
+    result.light = paint.light
+    result.ambient = paint.ambient
+    result.hover = paint.hover
+    result.press = paint.press
+    result.focus = paint.focus
+    result.disabled = paint.disabled
+    result.fill_valid = paint.fill_valid
+    result.scale = scale
+    result.value = paint.value
+    result.fill = paint.fill
+    return result
 }
 
 #program_export

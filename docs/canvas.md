@@ -1,7 +1,8 @@
 # Canvas2D browser host
 
-Import `src/backend/canvas_raster.zi` with `PLATFORM_WEB` defined. Generate
-native sources with Ziran, then link them with Emscripten and these libraries:
+A browser integration roots `src/backend/canvas_raster.zi` with the selected
+host and defines `PLATFORM_WEB`. Generate native sources with Ziran, then link
+them with Emscripten and these libraries:
 
 ```
 --js-library web/canvas_window.js
@@ -17,7 +18,14 @@ native sources with Ziran, then link them with Emscripten and these libraries:
 The backend uses a visible Canvas2D context directly. It does not use WebGL or
 a separate presentation canvas. The dedicated `canvas_raster.zi` provider
 calls the Canvas modules directly, so retained widgets use the same paint
-queue, font selection, and clipping path as the native host.
+queue, font selection, and clipping path as the native host. Project builds do
+not pass an entry to IR or C generation: the selected `_run` module owns
+`main`, while `canvas_raster.zi` remains reachable as a second root for raster
+and typeface adapters.
+
+`RequestWindowClose` is currently a raw browser host capability. An application
+may declare it against `host_api`; the host records the request and observes it
+on the next poll so the current frame can finish committing.
 
 Ziran owns frame timing, image memory, font atlas packing, text layout, file
 callbacks, audio decoding and conversion, and resource APIs. JavaScript

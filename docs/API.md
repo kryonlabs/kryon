@@ -7,7 +7,8 @@ The public package imports are declared in [`ziran.toml`](../ziran.toml).
 | Import | Surface |
 | --- | --- |
 | `Kryon` | Geometry, drawing values, sessions, `Text(TextProps)`, and `Button(ButtonProps)` |
-| `Widgets` | The core widget catalog, including `Image(ImageProps)`, fields, controls, layout, and tree input |
+| `Widgets` | The core widget catalog, including `Image(ImageProps)`, page structure, fields, controls, layout, and tree input |
+| `Page`, `Semantic` | Direct page and semantic-kind exports for document-oriented applications |
 | `PlotWidget` | Optional plot widget |
 | `TableView`, `TreeView` | Optional data views |
 | `Kss` | Optional style parsing and installation |

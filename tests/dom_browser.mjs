@@ -37,8 +37,13 @@ try {
   let diagnostics = '';
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
-    if (message.method === 'Runtime.consoleAPICalled' || message.method === 'Runtime.exceptionThrown') {
-      diagnostics = (diagnostics + JSON.stringify(message.params || {})).slice(-4000);
+    if (message.method === 'Runtime.consoleAPICalled') {
+      const text = (message.params.args || []).map(arg => arg.value ?? '').join(' ');
+      diagnostics = (diagnostics + text).slice(-4000);
+    }
+    if (message.method === 'Runtime.exceptionThrown') {
+      const detail = message.params.exceptionDetails || {};
+      diagnostics = (diagnostics + (detail.exception?.description || detail.text || '')).slice(-4000);
     }
     if (pending.has(message.id)) {
       pending.get(message.id)(message);
@@ -53,17 +58,29 @@ try {
   }
   await command('Runtime.enable');
   let result = 'pending';
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && result !== 'PASS') {
     const response = await command('Runtime.evaluate', {
       expression: 'document.getElementById("result")?.textContent',
       returnByValue: true
     });
     result = response.result?.result?.value;
-    if (result === 'FAIL 1') break;
-    if (result && result !== 'pending') throw new Error(result + ' ' + diagnostics);
+    if (result && result !== 'pending' && result !== 'PASS') {
+      throw new Error(result + ' ' + diagnostics);
+    }
     await delay(50);
   }
-  if (result !== 'FAIL 1') throw new Error('DOM test timed out: ' + result + ' ' + errors + ' ' + diagnostics);
+  if (result !== 'PASS') {
+    const state = await command('Runtime.evaluate', {
+      expression: `JSON.stringify({
+        closeRequested: globalThis.__kryCanvas?.closeRequested,
+        closed: globalThis.__kryCanvas?.closed,
+        domNodes: globalThis.__kryDom?.root?.querySelectorAll('[data-kryon-id]').length
+      })`,
+      returnByValue: true
+    });
+    throw new Error('DOM test timed out: ' + result + ' ' +
+      state.result?.result?.value + ' ' + errors + ' ' + diagnostics);
+  }
   const validation = await command('Runtime.evaluate', {
     expression: `(() => {
       const snapshot = globalThis.__kryDomSnapshot;

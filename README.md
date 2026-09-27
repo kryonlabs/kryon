@@ -77,14 +77,16 @@ For Ziran app manifests, the terminal backend, and `kryon run`, see
 
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
 The Canvas2D browser host is covered by private headless Chromium, WebAudio,
-and Wasm tests. The [open-work plan](plan/README.md) lists the remaining
-platform-accessibility work.
+and Wasm tests. Its semantic DOM profile is covered by a separate private
+headless Chromium document test. The [open-work plan](plan/README.md) lists
+the remaining platform-accessibility work.
 
 Downstream applications migrate their own sources and platform hosts at their
 own pace. Kryon commits land upstream first; apps then move only their clean
 `vendor/kryon` submodule pointer. This repository's tests verify Kryon itself,
 not every downstream application build.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library
-boundary and [Ziran's implementation status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library boundary and
+[Ziran's implementation
+status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
 for language and portable runtime gaps.

@@ -7,7 +7,10 @@ small browser effect libraries. The Ziran host implementation remains in
 declare. See [BACKENDS.md](BACKENDS.md) and
 [Canvas2D browser host](canvas.md).
 
-The former `.kry` to JavaScript compiler and handwritten JavaScript widget
-runtime remain removed. They are not compatibility paths. Historical plans and
-test ledgers may still describe that old experiment; the files above are the
-current web support documentation.
+The semantic DOM profile adds a real browser document layer over that
+Canvas raster host; see [Semantic DOM browser host](dom.md). Both browser
+profiles generate from the selected host plus the Canvas raster adapter and
+without entry pruning. This is not a revival of the removed `.kry` compiler.
+
+Kryon has no separate JavaScript widget runtime or source-language compiler.
+The files above are the current web support documentation.

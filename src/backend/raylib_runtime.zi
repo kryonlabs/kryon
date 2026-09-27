@@ -1,7 +1,7 @@
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
-#import "paint_queue"
+#import "paint_texture"
 #import "tree_input"
 #import "raylib_clip"
 

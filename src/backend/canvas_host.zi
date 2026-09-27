@@ -1,0 +1,105 @@
+#import "c_string"
+#import "geometry"
+#import "drawing_props"
+#import "tree_input"
+#import "canvas_state"
+#import "canvas_window"
+#import "canvas_draw"
+#import "canvas_input"
+#import "canvas_texture"
+
+#program_export
+RequestWindowClose :: () {
+    RequestCanvasClose()
+}
+
+#program_export
+OpenCanvas :: () -> bool {
+    title: [32]u8
+    if !CopyCString("Kryon Ziran", title[:]) { return false }
+    SetConfigFlags(cast(u32)4)
+    InitWindow(960, 600, *title[0])
+    if !IsWindowReady() { return false }
+    SetTargetFPS(60)
+    if !canvas_font_loaded {
+        path: [96]u8
+        if CopyCString("/kryon-font.ttf", path[:]) {
+            CanvasTryFont(*path[0])
+        }
+    }
+    return true
+}
+
+#program_export
+CloseCanvas :: () {
+    index: s32 = 0
+    while index < canvas_assets_count {
+        if canvas_assets[index].texture.id != cast(u32)0 {
+            UnloadTexture(canvas_assets[index].texture)
+        }
+        index += 1
+    }
+    canvas_assets_count = 0
+    ReleaseTypefaces()
+    if IsWindowReady() { CloseWindow() }
+}
+
+#program_export
+PollCanvas :: () -> bool {
+    if WindowShouldClose() { return false }
+    canvas_pointer.x = cast(float32)GetMouseX()
+    canvas_pointer.y = cast(float32)GetMouseY()
+    canvas_pointer.down = IsMouseButtonDown(0)
+    canvas_pointer.pressed = IsMouseButtonPressed(0)
+    canvas_pointer.released = IsMouseButtonReleased(0)
+    canvas_wheel_move = GetMouseWheelMove()
+    return true
+}
+
+#program_export
+CanvasViewport :: () -> Rectangle {
+    return Rectangle.{0.0, 0.0,
+        cast(float32)GetScreenWidth(),
+        cast(float32)GetScreenHeight()}
+}
+
+#program_export
+CanvasPressedKey :: () -> s32 {
+    return GetKeyPressed()
+}
+
+#program_export
+CanvasTypedCodepoint :: () -> s32 {
+    return GetCharPressed()
+}
+
+#program_export
+CanvasWheelMove :: () -> float32 {
+    return canvas_wheel_move
+}
+
+#program_export
+BeginCanvasFrame :: () {
+    canvas_image_error = false
+    BeginDrawing()
+    ClearBackground(Color.{248, 250, 252, 255})
+}
+
+#program_export
+EndCanvasFrame :: () -> bool {
+    EndDrawing()
+    return !canvas_image_error
+}
+
+#program_export
+PollPointer :: () -> PointerFrame { return canvas_pointer }
+
+#program_export
+CaptureRequested :: () -> bool {
+    return false
+}
+
+#program_export
+CaptureConfigured :: () -> bool {
+    return false
+}

@@ -21,6 +21,7 @@
     js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
     js_canvas_now :: () -> float64 #foreign canvas_browser "js_canvas_now";
     js_canvas_close :: () #foreign canvas_browser "js_canvas_close";
+    js_canvas_request_close :: () #foreign canvas_browser "js_canvas_request_close";
     js_canvas_frame :: () #foreign canvas_browser "js_canvas_frame";
     js_canvas_sleep :: (milliseconds: s32) #foreign canvas_browser "js_canvas_sleep";
     js_canvas_style :: (property: s32, value: float64) #foreign canvas_browser "js_canvas_style";
@@ -52,6 +53,11 @@
         CloseCanvasText()
         js_canvas_close()
         canvas_ready = false
+    }
+
+    #program_export
+    RequestCanvasClose :: () {
+        js_canvas_request_close()
     }
 
     #program_export
