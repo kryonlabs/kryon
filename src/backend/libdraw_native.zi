@@ -145,6 +145,7 @@ InitializeDisplay :: (device: *s8, window_directory: *s8,
     error: *DrawErrorRoutine) -> *DrawDisplay #foreign draw_library "initdisplay";
 CloseDisplay :: (display: *DrawDisplay) #foreign draw_library "closedisplay";
 GetDefaultSubfont :: (display: *DrawDisplay) -> *DrawSubfont #foreign draw_library "getdefont";
+OpenFont :: (display: *DrawDisplay, name: *s8) -> *DrawFont #foreign draw_library "openfont";
 BuildFont :: (display: *DrawDisplay, description: *s8,
     name: *s8) -> *DrawFont #foreign draw_library "buildfont";
 GetWindow :: (display: *DrawDisplay, window_name: *s8,
@@ -249,28 +250,23 @@ OpenRaster :: (width: s32, height: s32) -> bool {
         native_display = null
         return false
     }
-    description: [128]u8
-    description_format: [64]u8
-    font_name: [32]u8
-    if !CopyCString("%d %d\n0 %d\t*default*\n", description_format[:]) ||
-        !CopyCString("*default*", font_name[:]) {
+    font_environment: [64]u8
+    if !CopyCString("font", font_environment[:]) {
         ReleaseSubfont(native_subfont)
         CloseDisplay(native_display)
         native_subfont = null
         native_display = null
         return false
     }
-    if FormatInteger(*description[0], cast(s32)description.count,
-        *description_format[0], cast(s32)native_subfont.height,
-        cast(s32)native_subfont.ascent,
-        cast(s32)(native_subfont.count - 1)) <= 0 {
+    font_path: *u8 = GetEnvironment(*font_environment[0])
+    if font_path == null {
         ReleaseSubfont(native_subfont)
         CloseDisplay(native_display)
         native_subfont = null
         native_display = null
         return false
     }
-    native_font = BuildFont(native_display, cast(*s8)*description[0], cast(*s8)*font_name[0])
+    native_font = OpenFont(native_display, cast(*s8)font_path)
     if native_font == null {
         ReleaseSubfont(native_subfont)
         CloseDisplay(native_display)
@@ -278,11 +274,16 @@ OpenRaster :: (width: s32, height: s32) -> bool {
         native_display = null
         return false
     }
+    offscreen_name: [32]u8
+    force_offscreen: bool = CopyCString("KRYON_OFFSCREEN",
+        offscreen_name[:]) && GetEnvironment(*offscreen_name[0]) != null
     window_name: [32]u8
-    if CopyCString("/dev/winname", window_name[:]) &&
+    if !force_offscreen &&
+        CopyCString("/dev/winname", window_name[:]) &&
         GetWindow(native_display, cast(*s8)*window_name[0], *native_window,
                   *native_screen, 0) >= 0 &&
         native_window != null {
+        native_offscreen = false
         native_width = native_window.bounds.max.x - native_window.bounds.min.x
         native_height = native_window.bounds.max.y - native_window.bounds.min.y
     } else {
