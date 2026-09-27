@@ -3,128 +3,41 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/paned_view_behavior.zi
+portable=$repo/tests/paned_view_portable_test.zi
+bind_fill=raster_shape:RasterRoundedRectangle=paned_view_host:RasterRoundedRectangle
+bind_outline=raster_shape:RasterRoundedRectangleOutline=paned_view_host:RasterRoundedRectangleOutline
+bind_line=raster:RasterLine=paned_view_host:RasterLine
+bind_text=raster_text:RasterText=paned_view_host:RasterText
+bind_clipped=raster_text:RasterTextClipped=paned_view_host:RasterTextClipped
+bind_image=paint_queue:RasterImage=paned_view_host:RasterImage
 
-#import "geometry"
-#import "paint_queue"
-#import "paned_view"
-#import "paned_view_props"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
-
-using DropZone;
-using WidgetKind;
-
-phase: s32;
-split: s32;
-
-#program_export
-Frame :: () -> s32 {
-    bounds: Rectangle = Rectangle.{10.0, 20.0, 120.0, 80.0}
-    if PaneDropZone(bounds, Vector2.{70.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropCenter ||
-        PaneDropZone(bounds, Vector2.{12.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropLeft ||
-        PaneDropZone(bounds, Vector2.{129.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropRight ||
-        PaneDropZone(bounds, Vector2.{70.0, 22.0}, 0.2, 0) !=
-            cast(DropZone)DropTop ||
-        PaneDropZone(bounds, Vector2.{70.0, 98.0}, 0.2, 0) !=
-            cast(DropZone)DropBottom { return -15 }
-    props: PanedViewProps
-    props.key = cast(u64)20
-    props.id = 20
-    props.bounds = bounds
-    props.vertical = phase < 3
-    props.has_split = true
-    props.split = split
-    props.min_first = 20
-    props.min_second = 20
-    if phase == 0 { props.split = 60 }
-    if phase == 3 { props.split = 40 }
-    if phase == 6 { props.disabled = true }
-    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    result: PanedViewResult = PanedView(TestSession(), props)
-    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 3 || result.node != 1 ||
-        TreeNodeAt(TestSession(), 1).kind != WidgetKindPanedView ||
-        TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider { return -10 }
-    if phase == 0 {
-        if result.split != 60 || result.changed ||
-            result.handle.x != 66.0 ||
-            result.first.width != 56.0 ||
-            result.second.x != 74.0 ||
-            TreeHitAt(TestSession(), 70.0, 30.0) != 2 { return -1 }
-        TreePointerUpdate(TestSession(), PointerFrame.{70.0, 30.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{90.0, 30.0, true, false, false})
-    } else if phase == 1 {
-        if result.split != 80 || !result.changed ||
-            result.handle.x != 86.0 ||
-            result.first.width != 76.0 { return -2 }
-        TreePointerUpdate(TestSession(), PointerFrame.{180.0, 30.0, false, false, true})
-    } else if phase == 2 {
-        if result.split != 100 || !result.changed ||
-            result.second.x != 114.0 ||
-            result.second.width != 16.0 { return -3 }
-    } else if phase == 3 {
-        if result.split != 40 || result.changed ||
-            result.handle.y != 56.0 ||
-            result.first.height != 36.0 ||
-            result.second.y != 64.0 ||
-            TreeHitAt(TestSession(), 20.0, 60.0) != 2 { return -4 }
-        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 60.0, true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 80.0, true, false, false})
-    } else if phase == 4 {
-        if result.split != 60 || !result.changed ||
-            result.handle.y != 76.0 { return -5 }
-        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 149.0, false, false, true})
-    } else if phase == 5 {
-        if result.split != 60 || result.changed { return -6 }
-    } else {
-        if result.split != 60 || result.changed ||
-            TreeHitAt(TestSession(), 20.0, 80.0) != -1 { return -7 }
-    }
-    PaintFlush(TestSession())
-    split = result.split
-    old: s32 = phase
-    phase += 1
-    return old
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    --bind "$bind_fill" --bind "$bind_outline" \
+    --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
+    --bind "$bind_image" --entry paned_view_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    --bind "$bind_fill" --bind "$bind_outline" \
+    --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
+    --bind "$bind_image" --entry paned_view_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/paned_view_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_paned_view_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "paned_view_behavior.hpp"
 #include <cassert>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "paned_view_behavior.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -178,8 +91,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -226,7 +139,7 @@ func TestPanedView(t *testing.T) {
     SetRasterHost(h)
     SetPaintQueueHost(h)
     for phase := 0; phase < 7; phase++ {
-        if App_Frame() != int32(phase) { t.Fatal("pane phase", phase) }
+        if PanedViewBehavior_Frame() != int32(phase) { t.Fatal("pane phase", phase) }
     }
     if h.fills != 7 { t.Fatal("pane fill count", h.fills) }
 }

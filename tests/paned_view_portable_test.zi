@@ -1,0 +1,13 @@
+#import "paned_view_behavior"
+#import "paned_view_host"
+
+#program_export
+main :: () -> s32 {
+    phase: s32 = 0
+    while phase < 7 {
+        if Frame() != phase { return 1 }
+        phase += 1
+    }
+    if !HostValid() { return 2 }
+    return 0
+}
