@@ -76,6 +76,17 @@ Frame :: () -> s32 {
         phase = 4
         return 44
     }
+    if phase == 4 {
+        // icon_type without an image draws the built-in icon atlas tile.
+        props.icon_type = 7
+        props.icon_only = true
+        ExpectIcon()
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -5 }
+        phase = 5
+        return 45
+    }
     props.disabled = true
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     clicked: s32 = Button(TestSession(), props)
@@ -97,5 +108,9 @@ main :: () -> s32 {
         index += 1
     }
     if ButtonImages() != 1 { return 2 }
+    if Frame() != 45 { return 30 }
+    if ButtonHostFailed() { return 31 }
+    if ButtonIcons() != 1 { return 32 }
+    if ButtonLabels() != 4 { return 33 }
     return 0
 }
