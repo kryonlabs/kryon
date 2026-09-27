@@ -89,6 +89,10 @@ DrawFont *buildfont(DrawDisplay *display, int8_t *description, int8_t *name) {
     (void)display; (void)description; (void)name;
     return &fake_font;
 }
+DrawFont *openfont(DrawDisplay *display, int8_t *name) {
+    (void)display; (void)name;
+    return &fake_font;
+}
 int gengetwindow(DrawDisplay *display, int8_t *name,
                  DrawImage **window, DrawScreen **screen, int refresh) {
     (void)display; (void)name; (void)refresh;
@@ -114,6 +118,7 @@ void draw(DrawImage *target, DrawRectangle bounds, DrawImage *source,
     (void)bounds; (void)mask; (void)point;
     if(target == NULL || source == NULL || source == &fake_window) return;
     fake_last_color = *(uint32_t *)((uint8_t *)source + sizeof(DrawImage));
+    *(uint32_t *)((uint8_t *)target + sizeof(DrawImage)) = fake_last_color;
 }
 DrawPoint string(DrawImage *target, DrawPoint point, DrawImage *color,
                  DrawPoint background, DrawFont *font, int8_t *text) {
@@ -179,7 +184,7 @@ H
 CC=${CC:-cc}
 "$CC" -std=c11 -I"$work/include" -I"$work/generated" \
     "$work/generated"/*.c "$work/fake.c" -o "$work/app"
-KRYON_CAPTURE_PATH="$capture" FAKE_TEXT_PATH="$text" "$work/app"
+font=/fake-font KRYON_OFFSCREEN=1 KRYON_CAPTURE_PATH="$capture" FAKE_TEXT_PATH="$text" "$work/app"
 python3 - "$capture" "$text" <<'PY'
 from pathlib import Path
 import sys

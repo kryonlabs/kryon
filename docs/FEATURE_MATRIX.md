@@ -28,7 +28,7 @@ for a target; it does not prove that every native host runs on that target.
 | Desktop | `src/backend/desktop_run.zi` | Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input | ✅ supported on the tested Linux host |
 | Raylib | `src/backend/raylib_run.zi` | Private Xvfb project test covers image capture and input | ✅ supported on the tested Linux host |
 | Libdraw | `src/backend/libdraw_run.zi` | Private Xvfb project test covers capture and input | ✅ supported on the tested Linux host |
-| Native Plan 9 libdraw | `src/backend/libdraw_native.zi` | `plan9-c` ABI fixture covers display setup, default fonts, rectangles, text metrics, flush, capture, and cleanup | 🧪 experimental raster provider; pointer input, image presentation, and a run profile remain pending |
+| Native Plan 9 libdraw | `src/backend/libdraw_native.zi` | `plan9-c` ABI fixture covers display setup, `font` loading, forced offscreen rendering, rectangles, text metrics, flush, capture, and cleanup | 🧪 experimental raster provider; pointer input, image presentation, and a run profile remain pending |
 | Web Canvas | `src/backend/canvas_run.zi` | Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
 | Web DOM | `src/backend/dom_run.zi` | Headless Chromium checks semantic tags, attributes, state, stable identity, and the hybrid Canvas raster layer | 🧪 first semantic-DOM host; CSS-native layout and KSS export remain future work |
 
