@@ -1,0 +1,130 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+outlines: s32;
+strokes: s32;
+labels: s32;
+images: s32;
+failed: bool;
+
+WithinDropdown :: (bounds: Rectangle) -> bool {
+    return bounds.x >= 10.0 && bounds.y >= 10.0 &&
+        bounds.x + bounds.width <= 130.0 &&
+        bounds.y + bounds.height <= 190.0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return (cast(s32)value.count) * 8
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return 14
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    if asset_path != "badge.png" { failed = true }
+    return 32
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    if asset_path != "badge.png" { failed = true }
+    return 16
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused radius
+    unused segments
+    if bounds.x == 10.0 && bounds.y == 10.0 &&
+        bounds.width == 120.0 && bounds.height == 28.0 &&
+        (color.r != cast(u8)18 || color.g != cast(u8)52 ||
+            color.b != cast(u8)86) { failed = true }
+    if !WithinDropdown(bounds) || color.a == cast(u8)0 { failed = true }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius
+    unused segments
+    if !WithinDropdown(bounds) || width != 1.0 ||
+        color.a == cast(u8)0 { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    if line.x < 10.0 || line.x > 130.0 ||
+        line.x + line.width < 10.0 ||
+        line.x + line.width > 130.0 ||
+        line.y < 10.0 || line.y > 190.0 ||
+        line.y + line.height < 10.0 ||
+        line.y + line.height > 190.0 ||
+        color.a == cast(u8)0 { failed = true }
+    strokes += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if value.count == 0 || x < 10 || x > 130 ||
+        y < 10 || y > 190 || font != 14 ||
+        clip.x < 10.0 || clip.x + clip.width > 130.0 ||
+        color.a == cast(u8)0 { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused origin
+    unused rotation
+    unused radius
+    if asset_path != "badge.png" || texture_id != cast(u32)0 ||
+        source.width != 32.0 || source.height != 16.0 ||
+        destination.x < 10.0 || destination.y < 10.0 ||
+        clip.x != 10.0 || clip.width != 120.0 ||
+        tint.a != cast(u8)255 { failed = true }
+    images += 1
+}
+
+#program_export
+DropdownHostFailed :: () -> bool { return failed }
+
+#program_export
+DropdownFills :: () -> s32 { return fills }
+
+#program_export
+DropdownOutlines :: () -> s32 { return outlines }
+
+#program_export
+DropdownStrokes :: () -> s32 { return strokes }
+
+#program_export
+DropdownLabels :: () -> s32 { return labels }
+
+#program_export
+DropdownImages :: () -> s32 { return images }
