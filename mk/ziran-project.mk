@@ -76,6 +76,10 @@ $(RAYLIB_A): $(RAYLIB_INPUTS)
 	@test -f $@
 endif
 
+ifneq ($(PROJECT_LIBRARY),)
+HOST_LIBS += -l$(PROJECT_LIBRARY)
+endif
+
 .PHONY: run build check toolchain
 
 toolchain:

@@ -2,7 +2,7 @@
 
 #program_export
 ProjectManifestTest :: () -> s32 {
-    source: string = "# app config\n[project]\nname = \"demo\"\nentry = \"src/custom.zi\"\ndefault_profile = \"tui\"\n[paths]\nkryon = \"../custom-kryon\"\nziran = \"../custom-ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\n[profiles.other]\nbackend = \"terminal\"\ncodegen = \"c99\"\n"
+    source: string = "# app config\n[project]\nname = \"demo\"\nentry = \"src/custom.zi\"\ndefault_profile = \"tui\"\n[paths]\nkryon = \"../custom-kryon\"\nziran = \"../custom-ziran\"\n[profiles.tui]\nbackend = \"terminal\"\ncodegen = \"c99\"\nlibrary = \"crypto\"\n[profiles.other]\nbackend = \"terminal\"\ncodegen = \"c99\"\n"
     config: ProjectConfig = ParseProject(source)
     if !config.ok || config.name != "demo" ||
         config.entry != "src/custom.zi" ||
@@ -12,7 +12,7 @@ ProjectManifestTest :: () -> s32 {
         config.default_profile != "tui" { return 1 }
     selected: ProjectProfile = ProjectProfileNamed(config, config.default_profile)
     if selected.name != "tui" || selected.backend != "terminal" ||
-        selected.codegen != "c99" { return 2 }
+        selected.codegen != "c99" || selected.library != "crypto" { return 2 }
     if ProjectProfileNamed(config, "missing").name != "" { return 3 }
 
     minimal: ProjectConfig = ParseProject("[profiles.tui]\nbackend = \"terminal\"\n")
@@ -29,5 +29,8 @@ ProjectManifestTest :: () -> s32 {
     if missing_default.ok { return 5 }
     ambiguous: ProjectConfig = ParseProject("[profiles.tui]\nbackend = \"terminal\"\n[profiles.other]\nbackend = \"terminal\"\n")
     if ambiguous.ok { return 7 }
+    unsafe_library: ProjectConfig = ParseProject(
+        "[profiles.tui]\nbackend = \"terminal\"\nlibrary = \"crypto;touch /tmp/unsafe\"\n")
+    if unsafe_library.ok { return 8 }
     return 42
 }

@@ -180,7 +180,7 @@ Execute :: (arguments: []string) -> s32 {
     return 127
 }
 
-ChooseProfile :: (config: ProjectConfig) -> string {
+ChooseProfile :: (config: ProjectConfig) -> s32 {
     PrintFd(1, "Choose a profile:\n")
     index: s32 = 0
     while index < config.profile_count {
@@ -214,10 +214,10 @@ ChooseProfile :: (config: ProjectConfig) -> string {
         }
     }
     if RawIsTty(0) == 0 { PrintFd(1, "\n") }
-    if extra { return "" }
+    if extra { return -1 }
     index = cast(s32)chosen - 49
-    if index < 0 || index >= config.profile_count { return "" }
-    return config.profiles[index].name
+    if index < 0 || index >= config.profile_count { return -1 }
+    return index
 }
 
 #program_export
@@ -266,8 +266,9 @@ main :: () -> s32 {
     }
     if profile_name == "" {
         if verb == "run" && config.profile_count > 1 {
-            profile_name = ChooseProfile(config)
-            if profile_name == "" { return Error("invalid profile selection") }
+            chosen_profile: s32 = ChooseProfile(config)
+            if chosen_profile < 0 { return Error("invalid profile selection") }
+            profile_name = config.profiles[chosen_profile].name
         } else {
             profile_name = config.default_profile
         }
@@ -298,7 +299,8 @@ main :: () -> s32 {
     selected_bytes: [4096]u8
     kryon_bytes: [4096]u8
     ziran_bytes: [4096]u8
-    args: [13]string
+    library_bytes: [4096]u8
+    args: [14]string
     args[0] = "make"
     args[1] = "--silent"
     args[2] = "--no-print-directory"
@@ -312,8 +314,9 @@ main :: () -> s32 {
     args[10] = Join("PROJECT_PROFILE=", profile.name, selected_bytes[:])
     args[11] = Join("KRYON_DIR=", config.kryon_path, kryon_bytes[:])
     args[12] = Join("ZIRAN_DIR=", config.ziran_path, ziran_bytes[:])
+    args[13] = Join("PROJECT_LIBRARY=", profile.library, library_bytes[:])
     at: s32 = 6
-    while at < 13 {
+    while at < 14 {
         if args[at] == "" { return Error("project path or value is too long") }
         at += 1
     }

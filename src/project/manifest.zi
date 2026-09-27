@@ -4,6 +4,7 @@ ProjectProfile :: struct {
     name: string
     backend: string
     codegen: string
+    library: string
 }
 
 ProjectConfig :: struct {
@@ -179,6 +180,8 @@ ParseProject :: (source: string) -> ProjectConfig {
                 config.profiles[selected].backend = value
             } else if key == "codegen" {
                 config.profiles[selected].codegen = value
+            } else if key == "library" {
+                config.profiles[selected].library = value
             } else {
                 config.error = "unknown profile key"
                 return config
@@ -205,6 +208,10 @@ ParseProject :: (source: string) -> ProjectConfig {
         profile: ProjectProfile = config.profiles[index]
         if profile.backend == "" {
             config.error = "profile needs backend"
+            return config
+        }
+        if profile.library != "" && !ProjectNameValid(profile.library) {
+            config.error = "invalid profile library"
             return config
         }
         if profile.codegen == "" {
