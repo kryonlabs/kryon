@@ -1,0 +1,21 @@
+measures: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if measures != 0 || value != "50%" || font != 14 ||
+        typeface != "body" { failed = true }
+    measures += 1
+    return 20
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if measures != 1 || font != 14 || typeface != "body" { failed = true }
+    measures += 1
+    return 10
+}
+
+#program_export
+MetricsValid :: () -> bool { return !failed && measures == 2 }

@@ -3,6 +3,10 @@
 
 calls: s32;
 failed: bool;
+widget_text_position: bool;
+
+#program_export
+UseWidgetTextPosition :: () { widget_text_position = true }
 
 ColorIs :: (value: Color, r: u8, g: u8, b: u8, a: u8) -> bool {
     return value.r == r && value.g == g && value.b == b && value.a == a
@@ -46,7 +50,9 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32,
     color: Color) {
-    if calls != 3 || value != "50%" || x != 40 || y != 25 || font != 14 ||
+    expected_x: s32 = 40
+    if widget_text_position { expected_x = 41 }
+    if calls != 3 || value != "50%" || x != expected_x || y != 25 || font != 14 ||
         !ColorIs(color, cast(u8)0x10, cast(u8)0x20,
             cast(u8)0x30, cast(u8)0x40) { failed = true }
     calls += 1

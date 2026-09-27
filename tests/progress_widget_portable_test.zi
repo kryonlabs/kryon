@@ -1,0 +1,11 @@
+#import "progress_widget_behavior"
+#import "progress_widget_metrics_host"
+#import "ziran_progress_raster_host"
+
+#program_export
+main :: () -> s32 {
+    UseWidgetTextPosition()
+    if Answer() != 42 || !MetricsValid() || RasterCallCount() != 5 ||
+        RasterHostFailed() { return 1 }
+    return 0
+}

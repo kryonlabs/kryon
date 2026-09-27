@@ -3,132 +3,52 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/progress_widget_behavior.zi
+portable=$repo/tests/progress_widget_portable_test.zi
+set -- \
+    --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
+    --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
+    --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
+    --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
+    --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped
 
-#import "control_props"
-#import "geometry"
-#import "progress"
-#import "progress_props"
-#import "progress_style"
-#import "progress_widget"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "tree_draw"
-
-using ButtonTone;
-using StyleField;
-using FrameStatus;
-
-#program_export
-Answer :: () -> s32 {
-    props: ProgressProps
-    props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
-    props.min = 0
-    props.max = 100
-    props.value = 25
-    props.label = "50%"
-    props.class_name = 7
-    defaults: ProgressFaces
-    defaults.scale = 1.0
-    defaults.fallback_font = 16
-    rules: StyleRules
-    rules.count = 320
-    track: StyleRule
-    track.selector = StyleDefaultSelector()
-    track.selector.kind = StyleKindProgress()
-    track.selector.class_name = 7
-    track.selector.role = ProgressTrackRole()
-    track.selector.tone = cast(s32)ButtonToneNeutral
-    track.style.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
-        cast(u32)StyleBorderWidth | cast(u32)StyleRadius
-    track.style.background = cast(u32)0x11223344
-    track.style.border = cast(u32)0x99aabbcc
-    track.style.border_width = 2.0
-    track.style.radius = 5.0
-    rules.items[0] = track
-    filled: StyleRule
-    filled.selector = StyleDefaultSelector()
-    filled.selector.kind = StyleKindProgress()
-    filled.selector.class_name = 7
-    filled.selector.role = ProgressFillRole()
-    filled.selector.tone = cast(s32)ButtonToneAccent
-    filled.style.fields = cast(u32)StyleBackground
-    filled.style.background = cast(u32)0x55667788
-    rules.items[1] = filled
-    label: StyleRule
-    label.selector = StyleDefaultSelector()
-    label.selector.kind = StyleKindProgress()
-    label.selector.class_name = 7
-    label.selector.role = ProgressLabelRole()
-    label.selector.tone = cast(s32)ButtonToneNeutral
-    label.style.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
-        cast(u32)StyleOpacity | cast(u32)StyleTypeface
-    label.style.foreground = cast(u32)0x10203080
-    label.style.font_size = 14.0
-    label.style.opacity = 0.5
-    label.style.typeface = "body"
-    rules.items[2] = label
-    ignored: StyleRule = track
-    ignored.selector.class_name = 99
-    ignored.layer = 100
-    ignored.style.background = cast(u32)0xdeadbeef
-    rules.items[3] = ignored
-    faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
-    if faces.track.value.background != cast(u32)0x11223344 ||
-        faces.fill.value.background != cast(u32)0x55667788 ||
-        faces.label.value.font_size != 14.0 { return 0 }
-    InstallStyleRules(rules)
-    props.key = cast(u64)17
-    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Progress(TestSession(), props)
-    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 { return 0 }
-    props.value = 0
-    props.label = ""
-    rules.count = 0
-    defaults.track.value.background = cast(u32)0x11223344
-    defaults.track.value.radius = 5.0
-    prepared: PreparedProgress = PrepareProgress(props, defaults)
-    if prepared.font != 16 || prepared.paint.layout.fill_bounds.width != 0.0 {
-        return 0
-    }
-    PaintProgressFromRules(TestSession(), props, rules, defaults)
-    return 42
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Answer -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry progress_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry progress_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/progress_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_progress_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+# A bundle with one missing declared capability must fail before UI effects.
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
+    --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
+    --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
+    --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
+    --entry progress_widget_portable_test:main -o "$work/missing.zib" "$portable"
+if "$ziran" run "$work/missing.zib" > "$work/missing.log" 2>&1; then
+    echo 'progress bundle ran without its clipped-text capability' >&2
+    exit 1
+fi
+rg -q 'missing host capability: raster_text:RasterTextClipped' "$work/missing.log"
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "progress_widget_behavior.hpp"
 #include <cassert>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "progress_widget_behavior.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -186,15 +106,17 @@ C
 
 for input in source saved; do
     if test "$input" = source; then
-        module=$work/app.zi
+        module=$source
+        module_root=$repo/tests
         module_dir=$repo/src/ui
     else
-        module=$work/ir/app.zir
+        module=$work/ir/progress_widget_behavior.zir
+        module_root=$work/ir
         module_dir=$work/ir
     fi
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --root "$work" \
+        "$ziran" build --target="$target" --root "$module_root" \
             --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" "$module"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
@@ -260,7 +182,7 @@ func TestProgressWidget(t *testing.T) {
     SetRasterTextHost(host)
     SetRasterHost(host)
     SetPaintQueueHost(host)
-    if App_Answer() != 42 || host.measures != 2 || host.draws != 5 {
+    if ProgressWidgetBehavior_Answer() != 42 || host.measures != 2 || host.draws != 5 {
         t.Fatal("progress composition")
     }
 }
