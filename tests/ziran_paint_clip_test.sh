@@ -102,7 +102,7 @@ C
 for target in c cpp go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" -o "$output" "$work/app.zi"
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \

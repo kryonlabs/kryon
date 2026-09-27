@@ -78,7 +78,7 @@ Send :: (props: NotificationProps) -> bool {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/app.zi" "$work/provider.zi"
 for source in source saved; do
     if test "$source" = source; then

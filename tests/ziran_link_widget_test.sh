@@ -17,9 +17,9 @@ set -- \
     --bind raster:RasterLine=ziran_link_widget_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_link_widget_host:RasterImage
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     "$@" --entry ziran_link_widget_test:main \
     -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -30,19 +30,19 @@ test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/c" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
     "$work/c"/*.c -lm -o "$work/c/app"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/c/app"
 
 "$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/cpp" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/cpp" "$source"
 "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
     "$work/cpp"/*.cpp -lm -o "$work/cpp/app"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/go" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/go" "$source"
 mv "$work/go/ziran_link_widget_test.go" "$work/go/link_case.go"
 cat > "$work/go/main.go" <<'GO'
 package main

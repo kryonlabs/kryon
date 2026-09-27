@@ -190,9 +190,9 @@ main :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry app:Check -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Check -o "$work/saved.zib" "$work/ir/app.zir"
@@ -200,7 +200,7 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 42
 test "$("$ziran" run "$work/saved.zib")" = 42
 "$ziran" build --target=c --root "$work" \
-    --module-path "$repo/src/ui" -o "$work/c" "$work/app.zi"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$work/app.zi"
 "${CC:-cc}" -std=c99 -I"$repo/../ziran/include" -I"$work/c" \
     "$work/c"/*.c -lm -o "$work/check"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/check"

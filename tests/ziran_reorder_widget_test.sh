@@ -7,10 +7,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 "$tool_dir/zi2zir" --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/ir" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
     "$repo/tests/reorder_widget_behavior.zi"
 "$tool_dir/zi2zib" bundle --root "$repo/tests" \
-    --module-path "$repo/src/ui" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry reorder_widget_behavior:Answer \
     -o "$work/source.zib" \
     "$repo/tests/reorder_widget_behavior.zi"
@@ -22,7 +22,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cmp "$work/source.zib" "$work/saved.zib"
 
 "$tool_dir/zi2c" --no-main --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/c" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" \
     "$repo/tests/reorder_widget_behavior.zi"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$repo/../ziran/include" -I"$work/c" \

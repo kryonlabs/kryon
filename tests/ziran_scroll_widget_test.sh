@@ -156,7 +156,7 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
@@ -168,12 +168,12 @@ for input in source saved; do
         root=$work/ir
         module_path=$work/ir
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" \
+    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
         --entry app:Answer -o "$work/$input.zib" "$source"
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" --module-path "$module_path" \
+            --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
             -o "$output" "$source"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"

@@ -7,7 +7,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 source=$repo/tests/ziran_image_canvas_test.zi
-set -- --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
+set -- --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --module-path "$repo/../ziran/std"
 
 "$ziran" ir --root "$repo/tests" "$@" \

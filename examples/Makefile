@@ -6,6 +6,7 @@ ZI2ZIR_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zir)
 ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
+ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 BUILD_DIR ?= ../build/examples/ziran
 NATIVE_LIB := ../build/ziran/libkryon.a
 
@@ -23,11 +24,11 @@ $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(wildcard ../src/ui/*.zi)
 
 $(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry hello:Frame -o $@ hello.zi
 
 $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/ir hello.zi
 	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/ir \
 		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
@@ -36,11 +37,11 @@ $(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
 
 $(BUILD_DIR)/image.zib: image_demo.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry image_demo:Frame -o $@ image_demo.zi
 
 $(BUILD_DIR)/image-saved.zib: $(BUILD_DIR)/image.zib
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/image-ir image_demo.zi
 	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/image-ir \
 		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
@@ -49,11 +50,11 @@ $(BUILD_DIR)/image-saved.zib: $(BUILD_DIR)/image.zib
 
 $(BUILD_DIR)/text.zib: text_hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui \
+	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry text_hello:Frame -o $@ text_hello.zi
 
 $(BUILD_DIR)/text-saved.zib: $(BUILD_DIR)/text.zib
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui \
+	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/text-ir text_hello.zi
 	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/text-ir \
 		--module-path $(BUILD_DIR)/text-ir --entry text_hello:Frame \
@@ -62,13 +63,14 @@ $(BUILD_DIR)/text-saved.zib: $(BUILD_DIR)/text.zib
 
 $(BUILD_DIR)/native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/native
-	$(ZI2C_BIN) --root . --module-path ../src/ui \
+	$(ZI2C_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/native hello_host.zi
 
 $(BUILD_DIR)/hello-host: $(BUILD_DIR)/native/hello_host.c $(NATIVE_LIB) Makefile
 	$(CC) -std=c11 -Wall -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/native $(BUILD_DIR)/native/hello_host.c \
-		$(BUILD_DIR)/native/hello.c $(NATIVE_LIB) -lm -o $@
+		$(BUILD_DIR)/native/hello.c $(BUILD_DIR)/native/math.c \
+		$(NATIVE_LIB) -lm -o $@
 
 $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
 	env -u DISPLAY -u WAYLAND_DISPLAY \

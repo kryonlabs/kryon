@@ -6,7 +6,7 @@ ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-"$ziran" ir --root "$repo/src/ui" -o "$work/ir" \
+"$ziran" ir --root "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
     "$repo/src/ui/canvas_props.zi"
 
 for input in source saved; do
@@ -18,7 +18,8 @@ for input in source saved; do
         entry="$work/ir/canvas_props.zir"
     fi
     output="$work/$input"
-    "$ziran" build --target=c --root "$root" -o "$output" "$entry"
+    "$ziran" build --target=c --root "$root" \
+        --module-path "$repo/../ziran/std" -o "$output" "$entry"
     cat > "$work/main.c" <<'C'
 #include "canvas_props.h"
 

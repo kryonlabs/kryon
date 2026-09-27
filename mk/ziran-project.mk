@@ -46,10 +46,6 @@ endif
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 APP_SOURCES := $(wildcard src/*.zi src/*/module.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
-ifneq ($(ZIRAN_PACKAGE_ID),)
-# Legacy links into a sibling Ziran checkout are absent from fetched packages.
-UI_SOURCES := $(filter-out $(KRYON_DIR)/src/ui/math.zi $(KRYON_DIR)/src/ui/vec.zi,$(UI_SOURCES))
-endif
 PLOT_SOURCES := $(wildcard $(KRYON_DIR)/src/plot/*.zi)
 DATA_VIEW_SOURCES := $(wildcard $(KRYON_DIR)/src/data_views/*.zi)
 KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi)

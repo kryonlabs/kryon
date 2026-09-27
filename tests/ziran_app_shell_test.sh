@@ -88,9 +88,9 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry app:Answer -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
@@ -112,7 +112,7 @@ for input in source saved; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -121,7 +121,7 @@ GO
             GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.c" <<'C'
 #include "app.h"
@@ -132,7 +132,7 @@ C
             "$output/app"
         else
             "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "app.hpp"

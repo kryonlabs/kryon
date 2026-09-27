@@ -8,7 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
-cp "$repo/src/ui/math.zi" "$work/math.zi"
+cp "$repo/../ziran/std/math.zi" "$work/math.zi"
 cp "$repo/src/ui/input_props.zi" "$work/input_props.zi"
 cp "$repo/src/ui/input.zi" "$work/input.zi"
 cat > "$work/use_input.zi" <<'EOF'

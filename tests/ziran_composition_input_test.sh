@@ -8,9 +8,9 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_composition_input_test.zi
 binding=composition_input:PollComposition=ziran_composition_input_host:PollComposition
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --bind "$binding" --entry ziran_composition_input_test:main \
     -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -21,19 +21,19 @@ test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/c" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 "$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/cpp" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/cpp" "$source"
 "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
     "$work/cpp"/*.cpp -o "$work/cpp/app"
 "$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" -o "$work/go" "$source"
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/go" "$source"
 mv "$work/go/ziran_composition_input_test.go" "$work/go/composition_case.go"
 cat > "$work/go/main.go" <<'GO'
 package main

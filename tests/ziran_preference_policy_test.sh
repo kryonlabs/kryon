@@ -68,7 +68,7 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
@@ -80,13 +80,13 @@ for input in source saved; do
         root=$work/ir
         module_path=$work/ir
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" \
+    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
         --entry app:Answer -o "$work/$input.zib" "$source"
     test "$("$ziran" run "$work/$input.zib")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" --module-path "$module_path" \
+            --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
             -o "$output" "$source"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'

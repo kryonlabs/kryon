@@ -11,9 +11,10 @@ ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
 ZI2CPP_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2cpp
 ZI2GO_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2go
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
+ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
     $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/include/*.h \
-    $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/Makefile)
+    $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/std/*.zi $(ZIRAN_DIR)/Makefile)
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE)))
@@ -95,11 +96,11 @@ $(BUILD_DIR)/libkryon_host.a: tests/support/raster_host.c tests/support/font_met
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
 $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj $(BUILD_DIR)/obj-cpp
-	$(ZI2ZIR_BIN) --root src/ui -o $(BUILD_DIR)/ir $(SOURCE)
-	$(ZI2C_BIN) --no-main --root src/ui -o $(BUILD_DIR)/c $(SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/ui -o $(BUILD_DIR)/cpp $(SOURCE)
+	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/ir $(SOURCE)
+	$(ZI2C_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/c $(SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/cpp $(SOURCE)
 	rm -f $(BUILD_DIR)/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/ui -o $(BUILD_DIR)/go $(SOURCE)
+	$(ZI2GO_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/go $(SOURCE)
 	@for module in $(MODULES); do \
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/cpp -c $(BUILD_DIR)/cpp/$$module.cpp -o $(BUILD_DIR)/obj-cpp/$$module.o || exit 1; \
@@ -112,11 +113,11 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 # not import it. Apps can also import these sources directly through Ziran.
 $(BUILD_DIR)/libkryon_plot.a: $(PLOT_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/plot/c $(BUILD_DIR)/plot/cpp $(BUILD_DIR)/plot/go $(BUILD_DIR)/plot/obj $(BUILD_DIR)/plot/obj-cpp
-	$(ZI2ZIR_BIN) --root src/plot --module-path src/ui -o $(BUILD_DIR)/plot/ir $(PLOT_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/plot --module-path src/ui -o $(BUILD_DIR)/plot/c $(PLOT_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/plot --module-path src/ui -o $(BUILD_DIR)/plot/cpp $(PLOT_SOURCE)
+	$(ZI2ZIR_BIN) --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/ir $(PLOT_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/c $(PLOT_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/cpp $(PLOT_SOURCE)
 	rm -f $(BUILD_DIR)/plot/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/plot --module-path src/ui -o $(BUILD_DIR)/plot/go $(PLOT_SOURCE)
+	$(ZI2GO_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/go $(PLOT_SOURCE)
 	@for module in $(PLOT_MODULES); do \
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/plot/c -c $(BUILD_DIR)/plot/c/$$module.c -o $(BUILD_DIR)/plot/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/plot/cpp -c $(BUILD_DIR)/plot/cpp/$$module.cpp -o $(BUILD_DIR)/plot/obj-cpp/$$module.o || exit 1; \
@@ -128,11 +129,11 @@ $(BUILD_DIR)/libkryon_plot.a: $(PLOT_SOURCE) $(SOURCE) src/ui/modules.txt Makefi
 # TableView and TreeView are optional collection widgets over the core tree.
 $(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/data_views/c $(BUILD_DIR)/data_views/cpp $(BUILD_DIR)/data_views/go $(BUILD_DIR)/data_views/obj $(BUILD_DIR)/data_views/obj-cpp
-	$(ZI2ZIR_BIN) --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/ir $(DATA_VIEW_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/c $(DATA_VIEW_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/cpp $(DATA_VIEW_SOURCE)
+	$(ZI2ZIR_BIN) --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/ir $(DATA_VIEW_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/c $(DATA_VIEW_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/cpp $(DATA_VIEW_SOURCE)
 	rm -f $(BUILD_DIR)/data_views/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/data_views --module-path src/ui -o $(BUILD_DIR)/data_views/go $(DATA_VIEW_SOURCE)
+	$(ZI2GO_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/go $(DATA_VIEW_SOURCE)
 	@for module in $(DATA_VIEW_MODULES); do \
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/c -c $(BUILD_DIR)/data_views/c/$$module.c -o $(BUILD_DIR)/data_views/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/cpp -c $(BUILD_DIR)/data_views/cpp/$$module.cpp -o $(BUILD_DIR)/data_views/obj-cpp/$$module.o || exit 1; \
@@ -145,11 +146,11 @@ $(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules
 # resolution stays in core; core modules never import this package.
 $(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/kss/ir $(BUILD_DIR)/kss/c $(BUILD_DIR)/kss/cpp $(BUILD_DIR)/kss/go $(BUILD_DIR)/kss/obj $(BUILD_DIR)/kss/obj-cpp
-	$(ZI2ZIR_BIN) --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/ir $(KSS_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/c $(KSS_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/cpp $(KSS_SOURCE)
+	$(ZI2ZIR_BIN) --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/ir $(KSS_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/c $(KSS_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/cpp $(KSS_SOURCE)
 	rm -f $(BUILD_DIR)/kss/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/kss --module-path src/ui -o $(BUILD_DIR)/kss/go $(KSS_SOURCE)
+	$(ZI2GO_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/go $(KSS_SOURCE)
 	@for module in $(KSS_MODULES); do \
 		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/c -c $(BUILD_DIR)/kss/c/$$module.c -o $(BUILD_DIR)/kss/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/cpp -c $(BUILD_DIR)/kss/cpp/$$module.cpp -o $(BUILD_DIR)/kss/obj-cpp/$$module.o || exit 1; \
@@ -161,11 +162,11 @@ $(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(SOURCE) src/ui/modules.txt Makefile
 # Syntax coloring is optional. Core TextArea paints caller supplied color spans.
 $(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/syntax/ir $(BUILD_DIR)/syntax/c $(BUILD_DIR)/syntax/cpp $(BUILD_DIR)/syntax/go
-	$(ZI2ZIR_BIN) --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/ir $(SYNTAX_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/c $(SYNTAX_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/cpp $(SYNTAX_SOURCE)
+	$(ZI2ZIR_BIN) --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/ir $(SYNTAX_SOURCE)
+	$(ZI2C_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/c $(SYNTAX_SOURCE)
+	$(ZI2CPP_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/cpp $(SYNTAX_SOURCE)
 	rm -f $(BUILD_DIR)/syntax/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/syntax --module-path src/ui -o $(BUILD_DIR)/syntax/go $(SYNTAX_SOURCE)
+	$(ZI2GO_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/go $(SYNTAX_SOURCE)
 	$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/c -c $(BUILD_DIR)/syntax/c/syntax.c -o $(BUILD_DIR)/syntax/syntax.o
 	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/cpp -c $(BUILD_DIR)/syntax/cpp/syntax.cpp -o $(BUILD_DIR)/syntax/syntax_cpp.o
 	cd $(BUILD_DIR)/syntax/go && GO111MODULE=off go test .
@@ -208,10 +209,10 @@ source-check:
 	sh tools/check-ziran-source.sh
 
 public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
-	$(ZI2ZIR_BIN) --root src/ui -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/ui \
+	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
+	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/ui \
+	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/plot tests/public_plot.zi
 
 check: all plot data-views kss syntax ziran-test header-check project-test public-surface-check

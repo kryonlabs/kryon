@@ -178,11 +178,11 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     "$work/use_swipe.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" -o "$work/ir" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
     "$work/use_swipe.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry use_swipe:Answer -o "$work/source.zib" "$work/use_swipe.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_swipe:Answer -o "$work/ir.zib" "$work/ir/use_swipe.zir"
@@ -204,7 +204,7 @@ for input in source ir; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -215,7 +215,7 @@ GO
                 "$output/use_swipe.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_swipe.h"
@@ -228,7 +228,7 @@ C
             "$output/app"
         else
             "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" -o "$output" \
+                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "use_swipe.hpp"

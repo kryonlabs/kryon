@@ -26,6 +26,10 @@ program can compile and run without importing Kryon. A program that imports
 Kryon links its imported modules and supplies only the host capabilities those
 modules call.
 
+Kryon imports `math` and `vec` from Ziran's standard library. Kryon does not
+keep local copies. Standalone builds pass Ziran's `std/` directory as a module
+path; package builds resolve it through the locked Ziran toolchain.
+
 ## Current implementation
 
 Every maintained `.zi` module in `src/ui/` appears in
