@@ -1,0 +1,62 @@
+#import "drawing_props"
+#import "geometry"
+
+lines: s32;
+labels: s32;
+measures: s32;
+bullets: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if measures != 0 || value != "A" || font != 14 { failed = true }
+    measures += 1
+    return 10
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    if color.r != cast(u8)0x11 || color.g != cast(u8)0x22 ||
+        color.b != cast(u8)0x33 || color.a != cast(u8)0x44 { failed = true }
+    if lines == 0 || lines == 2 {
+        if line.x != 20.0 || line.y != 20.0 ||
+            line.width != 0.0 || line.height != 40.0 { failed = true }
+    } else if lines == 1 {
+        if line.x != 58.0 || line.y != 30.0 ||
+            line.width != 82.0 || line.height != 0.0 { failed = true }
+    }
+    if lines > 2 { failed = true }
+    lines += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    if labels != 0 || value != "A" || x != 40 || y != 23 || font != 14 ||
+        color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
+        color.b != cast(u8)0xcc || color.a != cast(u8)0x6e { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) { failed = true }
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bullets != 0 || bounds.x != 155.0 || bounds.y != 25.0 ||
+        bounds.width != 10.0 || bounds.height != 10.0 ||
+        radius != 0.5 || segments != 32 ||
+        color.r != cast(u8)0x17 || color.g != cast(u8)0x17 ||
+        color.b != cast(u8)0x17 || color.a != cast(u8)0xff { failed = true }
+    bullets += 1
+}
+
+#program_export
+HostCountsAre :: (want_lines: s32, want_labels: s32,
+    want_measures: s32, want_bullets: s32) -> bool {
+    return !failed && lines == want_lines && labels == want_labels &&
+        measures == want_measures && bullets == want_bullets
+}

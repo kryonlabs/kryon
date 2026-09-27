@@ -1,0 +1,10 @@
+#import "separator_widget_behavior"
+#import "separator_widget_host"
+
+#program_export
+main :: () -> s32 {
+    if Frame() != 0 || !HostCountsAre(0, 0, 1, 0) { return 1 }
+    if Frame() != 1 || !HostCountsAre(2, 1, 1, 1) { return 2 }
+    if Frame() != 2 || !HostCountsAre(3, 1, 1, 1) { return 3 }
+    return 0
+}

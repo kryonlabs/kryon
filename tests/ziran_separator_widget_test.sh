@@ -3,170 +3,39 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+portable=$repo/tests/separator_widget_portable_test.zi
+set -- \
+    --bind raster:RasterLine=separator_widget_host:RasterLine \
+    --bind raster_text:RasterText=separator_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=separator_widget_host:RasterTextClipped \
+    --bind font_metrics:MeasureGlyphWidth=separator_widget_host:MeasureGlyphWidth \
+    --bind raster_shape:RasterRoundedRectangle=separator_widget_host:RasterRoundedRectangle
 
-#import "control_props"
-#import "geometry"
-#import "separator"
-#import "separator_props"
-#import "separator_widget"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "tree_draw"
-
-using StyleField;
-using FrameStatus;
-
-phase: s32;
-
-#program_export
-Frame :: () -> s32 {
-    if phase == 1 {
-        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 4 { return -1 }
-        phase = 2
-        return 1
-    }
-    vertical: SeparatorProps
-    vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
-    vertical.vertical = true
-    vertical.class_name = 7
-    vertical.key = cast(u64)11
-    if phase == 2 {
-        Separator(TestSession(), vertical)
-        phase = 3
-        return 2
-    }
-    rules: StyleRules
-    rules.count = 2
-    line: StyleRule
-    line.selector = StyleDefaultSelector()
-    line.selector.kind = StyleKindSeparator()
-    line.selector.class_name = 7
-    line.selector.role = SeparatorLineRole()
-    line.style.fields = cast(u32)StyleBackground
-    line.style.background = cast(u32)0x11223344
-    rules.items[0] = line
-    label_rule: StyleRule
-    label_rule.selector = StyleDefaultSelector()
-    label_rule.selector.kind = StyleKindSeparator()
-    label_rule.selector.class_name = 7
-    label_rule.selector.role = SeparatorLabelRole()
-    label_rule.style.fields = cast(u32)StyleForeground |
-        cast(u32)StyleFontSize | cast(u32)StyleGap | cast(u32)StyleOpacity
-    label_rule.style.foreground = cast(u32)0xaabbccdd
-    label_rule.style.font_size = 14.0
-    label_rule.style.gap = 8.0
-    label_rule.style.opacity = 0.5
-    rules.items[1] = label_rule
-    InstallStyleRules(rules)
-    labelled: SeparatorProps
-    labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
-    labelled.label = "A"
-    labelled.class_name = 7
-    labelled.key = cast(u64)12
-    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Separator(TestSession(), vertical)
-    Separator(TestSession(), labelled)
-    Bullet(TestSession(), Rectangle.{150.0, 20.0, 20.0, 20.0})
-    phase = 1
-    return 0
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry separator_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry separator_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/separator_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_separator_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
-
-cat > "$work/native.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
-
-#import "control_props"
-#import "geometry"
-#import "separator"
-#import "separator_props"
-#import "separator_widget"
-#import "style"
-#import "style_sheet"
-
-using StyleField;
-
-#program_export
-Answer :: () -> s32 {
-    rules: StyleRules
-    rules.count = 3
-    line: StyleRule
-    line.selector = StyleDefaultSelector()
-    line.selector.kind = StyleKindSeparator()
-    line.selector.role = SeparatorLineRole()
-    line.style.fields = cast(u32)StyleBackground
-    line.style.background = cast(u32)0x11223344
-    rules.items[0] = line
-    label: StyleRule
-    label.selector = StyleDefaultSelector()
-    label.selector.kind = StyleKindSeparator()
-    label.selector.role = SeparatorLabelRole()
-    label.style.fields = cast(u32)StyleForeground | cast(u32)StyleGap
-    label.style.foreground = cast(u32)0xaabbccdd
-    label.style.gap = 8.0
-    rules.items[1] = label
-    bullet: StyleRule
-    bullet.selector = StyleDefaultSelector()
-    bullet.selector.kind = StyleKindSeparator()
-    bullet.selector.role = SeparatorBulletRole()
-    bullet.style.fields = cast(u32)StyleForeground | cast(u32)StyleIconSize
-    bullet.style.foreground = cast(u32)0x123456ff
-    bullet.style.icon_size = 8.0
-    rules.items[2] = bullet
-    InstallStyleRules(rules)
-    vertical: SeparatorProps
-    vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
-    vertical.vertical = true
-    Separator(TestSession(), vertical)
-    labelled: SeparatorProps
-    labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
-    labelled.label = "A"
-    Separator(TestSession(), labelled)
-    Bullet(TestSession(), Rectangle.{150.0, 20.0, 20.0, 20.0})
-    return 42
-}
-ZI
+native=$repo/tests/separator_widget_native.zi
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "native.hpp"
+#include "separator_widget_native.hpp"
 #include <cassert>
 #include <cstring>
 #define HOST extern "C"
 #else
-#include "native.h"
+#include "separator_widget_native.h"
 #include <assert.h>
 #include <string.h>
 #define HOST
@@ -239,8 +108,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/native.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$native"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -310,7 +179,7 @@ func TestSeparatorWidget(t *testing.T) {
     SetRasterTextHost(host)
     SetRasterShapeHost(host)
     SetPaintQueueHost(host)
-    if Native_Answer() != 42 || host.lines != 2 ||
+    if SeparatorWidgetNative_Answer() != 42 || host.lines != 2 ||
        host.texts != 1 || host.measures != 1 || host.bullets != 1 {
         t.Fatal("separator composition")
     }

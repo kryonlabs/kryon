@@ -1,0 +1,56 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "separator"
+#import "separator_props"
+#import "separator_widget"
+#import "style"
+#import "style_sheet"
+
+using StyleField;
+
+#program_export
+Answer :: () -> s32 {
+    rules: StyleRules
+    rules.count = 3
+    line: StyleRule
+    line.selector = StyleDefaultSelector()
+    line.selector.kind = StyleKindSeparator()
+    line.selector.role = SeparatorLineRole()
+    line.style.fields = cast(u32)StyleBackground
+    line.style.background = cast(u32)0x11223344
+    rules.items[0] = line
+    label: StyleRule
+    label.selector = StyleDefaultSelector()
+    label.selector.kind = StyleKindSeparator()
+    label.selector.role = SeparatorLabelRole()
+    label.style.fields = cast(u32)StyleForeground | cast(u32)StyleGap
+    label.style.foreground = cast(u32)0xaabbccdd
+    label.style.gap = 8.0
+    rules.items[1] = label
+    bullet: StyleRule
+    bullet.selector = StyleDefaultSelector()
+    bullet.selector.kind = StyleKindSeparator()
+    bullet.selector.role = SeparatorBulletRole()
+    bullet.style.fields = cast(u32)StyleForeground | cast(u32)StyleIconSize
+    bullet.style.foreground = cast(u32)0x123456ff
+    bullet.style.icon_size = 8.0
+    rules.items[2] = bullet
+    InstallStyleRules(rules)
+    vertical: SeparatorProps
+    vertical.bounds = Rectangle.{10.0, 20.0, 20.0, 40.0}
+    vertical.vertical = true
+    Separator(TestSession(), vertical)
+    labelled: SeparatorProps
+    labelled.bounds = Rectangle.{40.0, 20.0, 100.0, 20.0}
+    labelled.label = "A"
+    Separator(TestSession(), labelled)
+    Bullet(TestSession(), Rectangle.{150.0, 20.0, 20.0, 20.0})
+    return 42
+}
