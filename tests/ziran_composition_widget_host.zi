@@ -1,0 +1,109 @@
+#import "drawing_props"
+#import "geometry"
+
+active_phase: s32;
+field_preedit: s32;
+field_underline: s32;
+area_keyword: s32;
+area_composition: s32;
+area_preedit: s32;
+area_underline: s32;
+
+#program_export
+SetCompositionPhase :: (phase: s32) { active_phase = phase }
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    unused typeface
+    return (cast(s32)value.count) * font / 2
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused segments
+    if color.r == cast(u8)59 && color.g == cast(u8)130 &&
+        color.b == cast(u8)246 {
+        if radius == 0.0 && bounds.height == 2.0 {
+            field_underline += 1
+        }
+        if bounds.height <= 3.0 {
+            area_composition += 1
+            if active_phase == 37 { area_underline += 1 }
+        }
+    }
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused width
+    RasterRoundedRectangle(bounds, radius, segments, color)
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused x
+    unused y
+    unused font
+    unused color
+    if value == "é" { field_preedit += 1 }
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    if color.r == cast(u8)36 && color.g == cast(u8)72 &&
+        color.b == cast(u8)172 { area_keyword += 1 }
+    if active_phase == 37 && value == "é" { area_preedit += 1 }
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+}
+
+#program_export
+FieldPreeditPaints :: () -> s32 { return field_preedit }
+
+#program_export
+FieldUnderlinePaints :: () -> s32 { return field_underline }
+
+#program_export
+AreaKeywordPaints :: () -> s32 { return area_keyword }
+
+#program_export
+AreaCompositionPaints :: () -> s32 { return area_composition }
+
+#program_export
+AreaPreeditPaints :: () -> s32 { return area_preedit }
+
+#program_export
+AreaUnderlinePaints :: () -> s32 { return area_underline }
