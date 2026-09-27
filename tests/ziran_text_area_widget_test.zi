@@ -28,8 +28,11 @@ cursor: s32;
 anchor: s32;
 scroll_y: s32;
 focused: bool;
-ime_state: CompositionState;
+ime_active: bool;
+ime_cursor: s32;
+ime_selection_length: s32;
 ime_text: [64]u8;
+ime_text_count: s64;
 selecting: bool;
 preferred_x: s32;
 preferred_x_valid: bool;
@@ -74,7 +77,10 @@ Frame :: () -> s32 {
         anchor = 1
         scroll_y = 0
         focused = true
-        ime_state = CompositionState.{}
+        ime_active = false
+        ime_cursor = 0
+        ime_selection_length = 0
+        ime_text_count = 0
     }
     if phase == 40 {
         value = ""
@@ -85,6 +91,11 @@ Frame :: () -> s32 {
     }
     if phase == 24 { anchor = 1 }
     if phase == 27 { anchor = 0 }
+    ime_state: CompositionState
+    ime_state.active = ime_active
+    ime_state.cursor = ime_cursor
+    ime_state.selection_length = ime_selection_length
+    ime_state.text = TextView(ime_text[:ime_text_count])
     props: TextAreaProps
     props.key = cast(u64)77
     props.bounds = Rectangle.{20.0, 20.0, 100.0, 52.0}
@@ -500,19 +511,26 @@ Frame :: () -> s32 {
     anchor = result.anchor
     scroll_y = result.scroll_y
     focused = result.focused
-    // A composition view may point into this frame's input. Keep the bytes
-    // in session-owned storage before carrying the state to the next frame.
+    // A composition view may point into this frame's input. Keep only owned
+    // bytes and scalar state in globals; build the view again next frame.
     if result.composition.text.count > 64 { return -45 }
+    incoming_text: [64]u8
+    incoming_count: s64 = result.composition.text.count
     byte: s64 = 0
-    while byte < result.composition.text.count {
-        ime_text[byte] = result.composition.text[byte]
+    while byte < incoming_count {
+        incoming_text[byte] = result.composition.text[byte]
         byte += 1
     }
-    ime_state = CompositionState.{}
-    ime_state.active = result.composition.active
-    ime_state.cursor = result.composition.cursor
-    ime_state.selection_length = result.composition.selection_length
-    ime_state.text = TextView(ime_text[:result.composition.text.count])
+    result.composition.text = ""
+    byte = 0
+    while byte < incoming_count {
+        ime_text[byte] = incoming_text[byte]
+        byte += 1
+    }
+    ime_text_count = incoming_count
+    ime_active = result.composition.active
+    ime_cursor = result.composition.cursor
+    ime_selection_length = result.composition.selection_length
     selecting = result.selecting
     preferred_x = result.preferred_x
     preferred_x_valid = result.preferred_x_valid
