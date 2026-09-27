@@ -39,6 +39,8 @@ def inline(s):
     s = html.escape(s)
     s = re.sub(r'`([^`]+)`', r'<code>\1</code>', s)
     s = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', s)
+    s = re.sub(r'\[([^\]]+)\]\(([^)]+)\)',
+               r'<a href="\2">\1</a>', s)
     return s
 
 
