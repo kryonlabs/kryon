@@ -1,0 +1,132 @@
+#import "drawing_props"
+#import "geometry"
+
+font_size: s32;
+max_x: float32;
+max_y: float32;
+check_outline: bool;
+fills: s32;
+outlines: s32;
+labels: s32;
+failed: bool;
+
+#program_export
+SetClipBounds :: (font: s32, width: float32, height: float32,
+    outline: bool) {
+    font_size = font
+    max_x = width
+    max_y = height
+    check_outline = outline
+}
+
+WithinBounds :: (bounds: Rectangle) -> bool {
+    return bounds.x >= 0.0 && bounds.y >= 0.0 &&
+        bounds.x + bounds.width <= max_x &&
+        bounds.y + bounds.height <= max_y
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if font != font_size || typeface.count != 0 { failed = true }
+    return (cast(s32)value.count) * 8
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != font_size || typeface.count != 0 { failed = true }
+    return font_size
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused radius
+    unused segments
+    unused color
+    if !WithinBounds(bounds) { failed = true }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius
+    unused segments
+    unused width
+    unused color
+    if check_outline && !WithinBounds(bounds) { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused value
+    unused x
+    unused y
+    unused color
+    if font != font_size || !WithinBounds(clip) { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
+
+#program_export
+ClipHostFailed :: () -> bool { return failed }
+
+#program_export
+ClipHostFills :: () -> s32 { return fills }
+
+#program_export
+ClipHostOutlines :: () -> s32 { return outlines }
+
+#program_export
+ClipHostLabels :: () -> s32 { return labels }
