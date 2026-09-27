@@ -1,0 +1,500 @@
+#import "c_string"
+#import "drawing_props"
+#import "geometry"
+
+draw_library :: #system_library "draw";
+libc :: #system_library "libc";
+
+DrawPoint :: struct {
+    x: s32
+    y: s32
+}
+
+DrawRectangle :: struct {
+    min: DrawPoint
+    max: DrawPoint
+}
+
+DrawLock :: struct {
+    key: s32
+    sem: s32
+}
+
+DrawQueueWaiter :: struct {
+    in_use: s32
+    next: *DrawQueueWaiter
+    state: s8
+}
+
+DrawQueueLock :: struct {
+    lock: DrawLock
+    locked: s32
+    head: *DrawQueueWaiter
+    tail: *DrawQueueWaiter
+}
+
+DrawDisplay :: struct {
+    queue_lock: DrawQueueLock
+    locking: s32
+    directory_number: s32
+    descriptor: s32
+    reference_descriptor: s32
+    control_descriptor: s32
+    image_id: s32
+    local: s32
+    error: *DrawErrorRoutine
+    device_directory: *s8
+    window_directory: *s8
+    old_label: [64]s8
+    data_query_id: u32
+    white: *DrawImage
+    black: *DrawImage
+    opaque: *DrawImage
+    transparent: *DrawImage
+    image: *DrawImage
+    buffer: *u8
+    buffer_size: s32
+    buffer_position: *u8
+    default_font: *DrawFont
+    default_subfont: *DrawSubfont
+    windows: *DrawImage
+    screen_image: *DrawImage
+    is_new_display: s32
+}
+
+DrawImage :: struct {
+    display: *DrawDisplay
+    id: s32
+    bounds: DrawRectangle
+    clip: DrawRectangle
+    depth: s32
+    channel: u32
+    replicate: s32
+    screen: *DrawScreen
+    next: *DrawImage
+}
+
+DrawScreen :: struct {
+    display: *DrawDisplay
+    id: s32
+    image: *DrawImage
+    fill: *DrawImage
+}
+
+DrawFontCharacter :: struct {
+    x: s32
+    top: u8
+    bottom: u8
+    left: s8
+    width: u8
+}
+
+DrawSubfont :: struct {
+    name: *s8
+    count: s16
+    height: u8
+    ascent: s8
+    info: *DrawFontCharacter
+    bits: *DrawImage
+    references: s32
+}
+
+DrawCacheFont :: struct {
+    minimum: u32
+    maximum: u32
+    offset: s32
+    name: *s8
+    subfont_name: *s8
+}
+
+DrawCacheInfo :: struct {
+    x: u16
+    width: u8
+    left: s8
+    value: u32
+    age: u16
+}
+
+DrawCachedSubfont :: struct {
+    age: u32
+    font: *DrawCacheFont
+    subfont: *DrawSubfont
+}
+
+DrawFont :: struct {
+    name: *s8
+    display: *DrawDisplay
+    height: s16
+    ascent: s16
+    width: s16
+    subfont_count: s16
+    age: u32
+    maximum_depth: s32
+    cache_count: s32
+    cached_subfont_count: s32
+    cache: *DrawCacheInfo
+    cached_subfonts: *DrawCachedSubfont
+    subfonts: **DrawCacheFont
+    cache_image: *DrawImage
+}
+
+DrawErrorRoutine :: #type (display: *DrawDisplay,
+    message: *s8) #c_call;
+
+InitializeDisplay :: (device: *s8, window_directory: *s8,
+    error: *DrawErrorRoutine) -> *DrawDisplay #foreign draw_library "initdisplay";
+CloseDisplay :: (display: *DrawDisplay) #foreign draw_library "closedisplay";
+GetDefaultSubfont :: (display: *DrawDisplay) -> *DrawSubfont #foreign draw_library "getdefont";
+BuildFont :: (display: *DrawDisplay, description: *s8,
+    name: *s8) -> *DrawFont #foreign draw_library "buildfont";
+GetWindow :: (display: *DrawDisplay, window_name: *s8,
+    window: **DrawImage, screen: **DrawScreen,
+    refresh: s32) -> s32 #foreign draw_library "gengetwindow";
+AllocateImage :: (display: *DrawDisplay, bounds: DrawRectangle,
+    channel: u32, replicate: s32, color: u32) -> *DrawImage #foreign draw_library "allocimage";
+ReleaseImage :: (image: *DrawImage) #foreign draw_library "freeimage";
+DrawImageRectangle :: (target: *DrawImage, bounds: DrawRectangle,
+    source: *DrawImage, mask: *void, point: DrawPoint) #foreign draw_library "draw";
+DrawText :: (target: *DrawImage, point: DrawPoint, color: *DrawImage,
+    background_point: DrawPoint, font: *DrawFont,
+    text: *s8) -> DrawPoint #foreign draw_library "string";
+TextWidth :: (font: *DrawFont, text: *s8) -> s32 #foreign draw_library "stringwidth";
+FlushImages :: (display: *DrawDisplay, visible: s32) -> s32 #foreign draw_library "flushimage";
+UnloadImage :: (image: *DrawImage, bounds: DrawRectangle, data: *u8,
+    count: s32) -> s32 #foreign draw_library "unloadimage";
+ReleaseScreen :: (screen: *DrawScreen) -> s32 #foreign draw_library "freescreen";
+ReleaseFont :: (font: *DrawFont) #foreign draw_library "freefont";
+ReleaseSubfont :: (subfont: *DrawSubfont) #foreign draw_library "freesubfont";
+NativeFormatInteger :: (output: *s8, capacity: s32, format: *s8,
+    first: s32, second: s32, third: s32) -> s32 #foreign libc "snprint";
+NativeGetEnvironment :: (name: *s8) -> *s8 #foreign libc "getenv";
+Allocate :: (count: usize) -> *void #foreign libc "malloc";
+Release :: (memory: *void) #foreign libc "free";
+NativeCreateFile :: (path: *s8, mode: s32,
+    permissions: isize) -> s32 #foreign libc "create";
+NativeWriteFile :: (descriptor: s32, data: *void,
+    count: isize) -> isize #foreign libc "write";
+CloseFile :: (descriptor: s32) -> s32 #foreign libc "close";
+
+FormatInteger :: (output: *u8, capacity: s32, format: *u8,
+    first: s32, second: s32, third: s32) -> s32 {
+    return NativeFormatInteger(cast(*s8)output, capacity,
+        cast(*s8)format, first, second, third)
+}
+GetEnvironment :: (name: *u8) -> *u8 {
+    return cast(*u8)NativeGetEnvironment(cast(*s8)name)
+}
+CreateFile :: (path: *u8, mode: s32, permissions: s32) -> s32 {
+    return NativeCreateFile(cast(*s8)path, mode,
+        cast(isize)permissions)
+}
+WriteFile :: (descriptor: s32, data: *u8, count: u64) -> s64 {
+    return cast(s64)NativeWriteFile(descriptor, cast(*void)data,
+        cast(isize)count)
+}
+
+native_display: *DrawDisplay;
+native_window: *DrawImage;
+native_screen: *DrawScreen;
+native_subfont: *DrawSubfont;
+native_font: *DrawFont;
+native_width: s32;
+native_height: s32;
+native_offscreen: bool;
+
+DrawBounds :: (width: s32, height: s32) -> DrawRectangle {
+    return DrawRectangle.{
+        DrawPoint.{0, 0},
+        DrawPoint.{width, height}
+    }
+}
+
+RectangleBounds :: (bounds: Rectangle) -> DrawRectangle {
+    return DrawRectangle.{
+        DrawPoint.{cast(s32)bounds.x, cast(s32)bounds.y},
+        DrawPoint.{cast(s32)(bounds.x + bounds.width),
+                   cast(s32)(bounds.y + bounds.height)}
+    }
+}
+
+ColorValue :: (color: Color) -> u32 {
+    red: u32 = cast(u32)color.r
+    green: u32 = cast(u32)color.g
+    blue: u32 = cast(u32)color.b
+    alpha: u32 = cast(u32)color.a
+    return (red << cast(u32)24) | (green << cast(u32)16) |
+        (blue << cast(u32)8) | alpha
+}
+
+DrawColor :: (bounds: DrawRectangle, color: Color) {
+    image: *DrawImage = AllocateImage(native_display,
+        DrawBounds(1, 1), cast(u32)0x08182848, 1, ColorValue(color))
+    if image == null { return }
+    DrawImageRectangle(native_window, bounds, image, null,
+        DrawPoint.{0, 0})
+    ReleaseImage(image)
+}
+
+#program_export
+OpenRaster :: (width: s32, height: s32) -> bool {
+    if native_display != null { return native_window != null }
+    if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
+        return false
+    }
+    native_display = InitializeDisplay(null, null, null)
+    if native_display == null { return false }
+    native_subfont = GetDefaultSubfont(native_display)
+    if native_subfont == null {
+        CloseDisplay(native_display)
+        native_display = null
+        return false
+    }
+    description: [128]u8
+    description_format: [64]u8
+    font_name: [32]u8
+    if !CopyCString("%d %d\n0 %d\t*default*\n", description_format[:]) ||
+        !CopyCString("*default*", font_name[:]) {
+        ReleaseSubfont(native_subfont)
+        CloseDisplay(native_display)
+        native_subfont = null
+        native_display = null
+        return false
+    }
+    if FormatInteger(*description[0], cast(s32)description.count,
+        *description_format[0], cast(s32)native_subfont.height,
+        cast(s32)native_subfont.ascent,
+        cast(s32)(native_subfont.count - 1)) <= 0 {
+        ReleaseSubfont(native_subfont)
+        CloseDisplay(native_display)
+        native_subfont = null
+        native_display = null
+        return false
+    }
+    native_font = BuildFont(native_display, cast(*s8)*description[0], cast(*s8)*font_name[0])
+    if native_font == null {
+        ReleaseSubfont(native_subfont)
+        CloseDisplay(native_display)
+        native_subfont = null
+        native_display = null
+        return false
+    }
+    window_name: [32]u8
+    if CopyCString("/dev/winname", window_name[:]) &&
+        GetWindow(native_display, cast(*s8)*window_name[0], *native_window,
+                  *native_screen, 0) >= 0 &&
+        native_window != null {
+        native_width = native_window.bounds.max.x - native_window.bounds.min.x
+        native_height = native_window.bounds.max.y - native_window.bounds.min.y
+    } else {
+        native_window = AllocateImage(native_display,
+            DrawBounds(width, height), cast(u32)0x08182848, 0,
+            cast(u32)0xffffffff)
+        native_screen = null
+        native_offscreen = true
+        native_width = width
+        native_height = height
+    }
+    if native_window == null || native_width <= 0 || native_height <= 0 {
+        ReleaseFont(native_font)
+        ReleaseSubfont(native_subfont)
+        CloseDisplay(native_display)
+        native_font = null
+        native_subfont = null
+        native_screen = null
+        native_window = null
+        native_display = null
+        return false
+    }
+    return true
+}
+
+#program_export
+CloseRaster :: () {
+    if native_window != null { ReleaseImage(native_window) }
+    if native_screen != null { ReleaseScreen(native_screen) }
+    if native_font != null { ReleaseFont(native_font) }
+    if native_subfont != null { ReleaseSubfont(native_subfont) }
+    if native_display != null { CloseDisplay(native_display) }
+    native_window = null
+    native_screen = null
+    native_font = null
+    native_subfont = null
+    native_display = null
+    native_width = 0
+    native_height = 0
+    native_offscreen = false
+}
+
+#program_export
+NativeLibdrawViewport :: () -> Rectangle {
+    return Rectangle.{0.0, 0.0, cast(float32)native_width,
+        cast(float32)native_height}
+}
+
+#program_export
+BeginRasterFrame :: () {}
+
+#program_export
+FinishRasterFrame :: () -> bool {
+    return FlushImages(native_display, 1) >= 0
+}
+
+#program_export
+CaptureRequested :: () -> bool {
+    name: [64]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return false }
+    return GetEnvironment(*name[0]) != null
+}
+
+#program_export
+CaptureConfigured :: () -> bool {
+    if native_window == null { return false }
+    name: [64]u8
+    if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return false }
+    path: *u8 = GetEnvironment(*name[0])
+    if path == null { return false }
+    bounds: DrawRectangle = DrawBounds(native_width, native_height)
+    capture: *DrawImage = AllocateImage(native_display, bounds,
+        cast(u32)0x08182848, 0, cast(u32)0xffffffff)
+    if capture == null { return false }
+    DrawImageRectangle(capture, bounds, native_window, null,
+        DrawPoint.{0, 0})
+    byte_count: s32 = native_width * native_height * 4
+    pixels: *u8 = cast(*u8)Allocate(cast(usize)byte_count)
+    rgba: *u8 = null
+    if pixels != null {
+        rgba = cast(*u8)Allocate(cast(usize)byte_count)
+    }
+    if rgba == null {
+        if pixels != null { Release(cast(*void)pixels) }
+        ReleaseImage(capture)
+        return false
+    }
+    if UnloadImage(capture, bounds, pixels, byte_count) != byte_count {
+        Release(cast(*void)pixels)
+        Release(cast(*void)rgba)
+        ReleaseImage(capture)
+        return false
+    }
+    index: s32 = 0
+    while index < byte_count {
+        at: s32 = index
+        rgba[at] = pixels[at + 3]
+        rgba[at + 1] = pixels[at + 2]
+        rgba[at + 2] = pixels[at + 1]
+        rgba[at + 3] = pixels[at]
+        index += 4
+    }
+    descriptor: s32 = CreateFile(path, 1, 438)
+    ok: bool = descriptor >= 0 &&
+        WriteFile(descriptor, rgba, cast(u64)byte_count) ==
+            cast(s64)byte_count
+    if descriptor >= 0 { CloseFile(descriptor) }
+    Release(cast(*void)pixels)
+    Release(cast(*void)rgba)
+    ReleaseImage(capture)
+    return ok
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    bytes: [4096]u8
+    if native_font == null || !CopyCString(value, bytes[:]) { return 0 }
+    return TextWidth(native_font, cast(*s8)*bytes[0])
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if native_font == null { return font }
+    return cast(s32)native_font.height
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    DrawColor(RectangleBounds(bounds), color)
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 || width <= 0.0 { return }
+    line_width: s32 = cast(s32)(width + 0.5)
+    if line_width < 1 { line_width = 1 }
+    top: Rectangle = Rectangle.{
+        bounds.x, bounds.y, bounds.width,
+        cast(float32)line_width
+    }
+    bottom: Rectangle = Rectangle.{
+        bounds.x, bounds.y + bounds.height - cast(float32)line_width,
+        bounds.width, cast(float32)line_width
+    }
+    left: Rectangle = Rectangle.{
+        bounds.x, bounds.y + cast(float32)line_width,
+        cast(float32)line_width,
+        bounds.height - cast(float32)(line_width * 2)
+    }
+    right: Rectangle = Rectangle.{
+        bounds.x + bounds.width - cast(float32)line_width,
+        bounds.y + cast(float32)line_width, cast(float32)line_width,
+        bounds.height - cast(float32)(line_width * 2)
+    }
+    DrawColor(RectangleBounds(top), color)
+    DrawColor(RectangleBounds(bottom), color)
+    DrawColor(RectangleBounds(left), color)
+    DrawColor(RectangleBounds(right), color)
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    width: s32 = cast(s32)(line.width + 0.5)
+    height: s32 = cast(s32)(line.height + 0.5)
+    if width < 1 { width = 1 }
+    if height < 1 { height = 1 }
+    DrawColor(DrawBoundsAt(cast(s32)line.x, cast(s32)line.y, width, height), color)
+}
+
+DrawBoundsAt :: (x: s32, y: s32, width: s32, height: s32) -> DrawRectangle {
+    return DrawRectangle.{
+        DrawPoint.{x, y},
+        DrawPoint.{x + width, y + height}
+    }
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32,
+    font: s32, color: Color) {
+    bytes: [4096]u8
+    if native_window == null || native_font == null ||
+        !CopyCString(value, bytes[:]) { return }
+    image: *DrawImage = AllocateImage(native_display,
+        DrawBounds(1, 1), cast(u32)0x08182848, 1, ColorValue(color))
+    if image == null { return }
+    baseline: s32 = y + cast(s32)native_font.ascent
+    DrawText(native_window, DrawPoint.{x, baseline}, image,
+        DrawPoint.{0, 0}, native_font, cast(*s8)*bytes[0])
+    ReleaseImage(image)
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    if cast(float32)x < clip.x || cast(float32)y < clip.y ||
+        cast(float32)x >= clip.x + clip.width ||
+        cast(float32)y >= clip.y + clip.height { return }
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {}
