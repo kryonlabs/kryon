@@ -43,7 +43,7 @@ HostRaylibLoadFontFromMemory :: (extension: *u8, bytes: *u8,
     byte_count: s32, size: s32, codepoints: *s32,
     count: s32) -> RaylibFont #foreign raylib "LoadFontFromMemory";
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
-HostTypefaceAllocate :: (size: u64) -> *u8 #foreign c "malloc";
+HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
 HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
     size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
@@ -161,7 +161,7 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
     if !CopyCString(extension, extension_bytes[:]) {
         return false
     }
-    bytes: *u8 = HostTypefaceAllocate(cast(u64)data.count)
+    bytes: *u8 = HostTypefaceAllocate(cast(usize)data.count)
     if bytes == null {
         return false
     }

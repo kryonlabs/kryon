@@ -54,7 +54,7 @@ EventInit :: (keys: u64) #foreign draw_library "einit";
 EventCanRead :: (keys: u64) -> s32 #foreign draw_library "ecanread";
 EventRead :: (keys: u64, event: *DrawEvent) -> u64 #foreign draw_library "eread";
 LookupSymbol :: (handle: *void, symbol: *u8) -> *void #foreign dl_library "dlsym";
-Allocate :: (count: u64) -> *void #foreign libc "malloc";
+Allocate :: (count: usize) -> *void #foreign libc "malloc";
 Release :: (data: *void) #foreign libc "free";
 PauseMicros :: (micros: u32) -> s32 #foreign libc "usleep";
 
@@ -96,7 +96,7 @@ OpenFrame :: () -> bool {
     draw_width = width
     draw_height = height
     if !OpenRaster(width, height) { return false }
-    draw_pixels = cast(*u8)Allocate(cast(u64)width * cast(u64)height * cast(u64)4)
+    draw_pixels = cast(*u8)Allocate(cast(usize)width * cast(usize)height * cast(usize)4)
     if draw_pixels == null { return false }
     // Plan 9 channel words encode RGBA as 08 18 28 48.
     draw_frame = AllocImage(draw_display, DrawBounds(width, height),
