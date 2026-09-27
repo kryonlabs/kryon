@@ -316,7 +316,12 @@ TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
 #program_export
 TreeInputReset :: (session: Session) {
     if !SessionValid(session) { return }
-    empty: PointerState
-    active_pointer[session.slot] = empty
+    pointer: PointerState
+    sample: PointerFrame
+    wheel: PointerWheelState
+    active_pointer[session.slot] = pointer
+    active_sample[session.slot] = sample
+    active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
+    active_codepoint[session.slot] = 0
 }
