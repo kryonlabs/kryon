@@ -1,0 +1,172 @@
+#import "session"
+host_api :: #system_library "host_api";
+SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) #foreign host_api;
+
+// The host synchronizes access when an OS callback runs on another thread.
+// A queue belongs to one live Session generation and preserves edit order.
+TextInputEvent :: struct {
+    kind: s32
+    codepoint: s32
+}
+TextInputCodepoint :: 1;
+TextInputBackspace :: 2;
+TextInputEnter :: 3;
+TextInputQueueCapacity :: 1024;
+
+TextInputQueueState :: struct {
+    owner: Session
+    events: [1024]TextInputEvent
+    head: s32
+    count: s32
+}
+
+TextKeyboardState :: struct {
+    owner: Session
+    visible: bool
+}
+
+text_input_queues: [9]TextInputQueueState;
+text_keyboards: [9]TextKeyboardState;
+
+#program_export
+TextInputOwnerMatches :: (owner: Session, session: Session) -> bool {
+    return owner.slot == session.slot && owner.epoch == session.epoch &&
+    SessionValid(session)
+}
+
+#program_export
+TextInputQueueBind :: (session: Session) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    text_input_queues[index].owner = session
+    text_input_queues[index].head = 0
+    text_input_queues[index].count = 0
+    return true
+}
+
+#program_export
+TextInputQueueReset :: (session: Session) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_input_queues[index].owner, session) {
+        return false
+    }
+    text_input_queues[index].head = 0
+    text_input_queues[index].count = 0
+    return true
+}
+
+#program_export
+TextInputQueueRelease :: (session: Session) -> bool {
+    index := session.slot
+    if index <= 0 || index >= 9 ||
+    text_input_queues[index].owner.epoch != session.epoch {
+        return false
+    }
+    text_input_queues[index].owner = .{}
+    text_input_queues[index].head = 0
+    text_input_queues[index].count = 0
+    return true
+}
+
+#program_export
+TextInputQueueSend :: (session: Session, event: TextInputEvent) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_input_queues[index].owner, session) ||
+    text_input_queues[index].count >= TextInputQueueCapacity {
+        return false
+    }
+    if event.kind == TextInputCodepoint {
+        if event.codepoint <= 0 || event.codepoint > 1114111 ||
+        (event.codepoint >= 55296 && event.codepoint <= 57343) {
+            return false
+        }
+    }
+    if event.kind != TextInputCodepoint && event.kind != TextInputBackspace &&
+    event.kind != TextInputEnter {
+        return false
+    }
+    tail := (text_input_queues[index].head +
+        text_input_queues[index].count) % TextInputQueueCapacity
+    text_input_queues[index].events[tail] = event
+    text_input_queues[index].count += 1
+    return true
+}
+
+#program_export
+TextInputQueuePeek :: (session: Session) -> TextInputEvent {
+    empty: TextInputEvent
+    if !SessionValid(session) {
+        return empty
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_input_queues[index].owner, session) ||
+    text_input_queues[index].count <= 0 {
+        return empty
+    }
+    return text_input_queues[index].events[text_input_queues[index].head]
+}
+
+#program_export
+TextInputQueueTake :: (session: Session) -> TextInputEvent {
+    event := TextInputQueuePeek(session)
+    if event.kind != 0 {
+        index := SessionIndex(session)
+        text_input_queues[index].head =
+        (text_input_queues[index].head + 1) % TextInputQueueCapacity
+        text_input_queues[index].count -= 1
+    }
+    return event
+}
+
+// Keyboard callbacks run on the host's UI/render thread. Register only the
+// platform keyboard associated with this Session's native window.
+#program_export
+TextKeyboardRelease :: (session: Session) -> bool {
+    index := session.slot
+    if index <= 0 || index >= 9 || text_keyboards[index].owner.epoch != session.epoch {
+        return false
+    }
+    visible := text_keyboards[index].visible
+    text_keyboards[index] = .{}
+    if visible {
+        SetPlatformTextKeyboardVisible(session, false)
+    }
+    return true
+}
+
+#program_export
+TextKeyboardBind :: (session: Session) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    previous := text_keyboards[index].owner
+    TextKeyboardRelease(previous)
+    text_keyboards[index].owner = session
+    return true
+}
+
+#program_export
+TextKeyboardSetVisible :: (session: Session, visible: bool) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_keyboards[index].owner, session) {
+        return false
+    }
+    if text_keyboards[index].visible == visible {
+        return true
+    }
+    text_keyboards[index].visible = visible
+    SetPlatformTextKeyboardVisible(session, visible)
+    return true
+}

@@ -1,0 +1,11 @@
+#import "session"
+callback_count: s32;
+callback_owner: Session;
+callback_visible: bool;
+
+#program_export
+SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
+    callback_count += 1
+    callback_owner = session
+    callback_visible = visible
+}

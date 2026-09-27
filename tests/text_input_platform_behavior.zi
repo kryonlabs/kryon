@@ -1,0 +1,82 @@
+#import "session"
+#import "text_input_platform"
+
+#import, file "text_input_platform_host.zi";
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    other := SessionOpen()
+    if !TextInputQueueBind(session) ||
+    !TextKeyboardBind(session) {
+        return 1
+    }
+    event: TextInputEvent = .{TextInputCodepoint, 128512}
+    if TextInputQueueSend(other, event) ||
+    !TextInputQueueSend(session, event) {
+        return 2
+    }
+    event.codepoint = 55296
+    if TextInputQueueSend(session, event) {
+        return 3
+    }
+    event = .{TextInputBackspace, 0}
+    if !TextInputQueueSend(session, event) ||
+    !TextInputQueueSend(session, event) {
+        return 4
+    }
+    event = .{TextInputEnter, 0}
+    if !TextInputQueueSend(session, event) ||
+    TextInputQueueTake(session).codepoint != 128512 ||
+    TextInputQueueTake(session).kind != TextInputBackspace ||
+    TextInputQueueTake(session).kind != TextInputBackspace ||
+    TextInputQueueTake(session).kind != TextInputEnter ||
+    TextInputQueueTake(session).kind != 0 {
+        return 5
+    }
+    index: s32 = 0
+    while index < TextInputQueueCapacity {
+        if !TextInputQueueSend(session, event) {
+            return 6
+        }
+        index += 1
+    }
+    if TextInputQueueSend(session, event) ||
+    !TextInputQueueReset(session) || TextInputQueuePeek(session).kind != 0 {
+        return 7
+    }
+    if !TextKeyboardSetVisible(session, true) ||
+    !TextKeyboardSetVisible(session, true) ||
+    callback_count != 1 || !callback_visible ||
+    callback_owner.epoch != session.epoch ||
+    TextKeyboardSetVisible(other, false) {
+        return 8
+    }
+    if !TextInputQueueSend(session, event) || !SessionClose(session) {
+        return 9
+    }
+    replacement := SessionOpen()
+    if replacement.slot != session.slot || replacement.epoch == session.epoch ||
+    TextInputQueueTake(session).kind != 0 ||
+    TextInputQueueTake(replacement).kind != 0 ||
+    TextInputQueueSend(replacement, event) ||
+    TextKeyboardSetVisible(replacement, false) {
+        return 10
+    }
+    if !TextKeyboardBind(replacement) ||
+    callback_count != 2 || callback_visible ||
+    callback_owner.epoch != session.epoch ||
+    !TextInputQueueBind(replacement) ||
+    TextInputQueueRelease(session) || TextInputQueuePeek(replacement).kind != 0 {
+        return 11
+    }
+    if !TextKeyboardSetVisible(replacement, true) ||
+    !TextKeyboardRelease(replacement) ||
+    callback_count != 4 || callback_visible ||
+    !TextInputQueueRelease(replacement) {
+        return 12
+    }
+    SessionClose(replacement)
+    SessionClose(other)
+    return 0
+}

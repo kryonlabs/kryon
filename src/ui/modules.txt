@@ -156,6 +156,7 @@ text_area_widget.zi
 text_field_widget.zi
 text_input.zi
 text_input_props.zi
+text_input_platform.zi
 text_layout.zi
 text_props.zi
 text_style.zi
