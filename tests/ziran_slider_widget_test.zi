@@ -1,0 +1,125 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "slider"
+#import "slider_props"
+#import "slider_widget"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_slider_widget_host"
+
+using WidgetKind;
+using StyleField;
+using FrameStatus;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    continuous: SliderProps
+    continuous.key = cast(u64)7
+    continuous.id = 7
+    continuous.class_name = 9
+    continuous.label = "Gain"
+    continuous.bounds = Rectangle.{10.0, 20.0, 100.0, 80.0}
+    continuous.value = 25.0
+    continuous.min = 0.0
+    continuous.max = 100.0
+    discrete: DiscreteSliderProps
+    discrete.key = cast(u64)8
+    discrete.id = 8
+    discrete.bounds = Rectangle.{130.0, 20.0, 30.0, 100.0}
+    discrete.value = 5
+    discrete.min = 0
+    discrete.max = 10
+    discrete.vertical = true
+    if phase >= 2 { continuous.value = 100.0 }
+    if phase >= 3 {
+        discrete.value = 10
+        discrete.disabled = true
+    }
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 2
+        track: StyleRule
+        track.selector = StyleDefaultSelector()
+        track.selector.kind = StyleKindSlider()
+        track.selector.class_name = 9
+        track.selector.role = SliderTrackRole()
+        track.style.fields = cast(u32)StyleBackground
+        track.style.background = cast(u32)0x123456ff
+        rules.items[0] = track
+        label: StyleRule
+        label.selector = StyleDefaultSelector()
+        label.selector.kind = StyleKindSlider()
+        label.selector.class_name = 9
+        label.selector.role = SliderLabelRole()
+        label.style.fields = cast(u32)StyleForeground | cast(u32)StyleOpacity
+        label.style.foreground = cast(u32)0xaabbccff
+        label.style.opacity = 0.5
+        rules.items[1] = label
+        InstallStyleRules(rules)
+    }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
+    current: SliderStep = Slider(TestSession(), continuous)
+    count: SliderDiscreteStep = DiscreteSlider(TestSession(), discrete)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindSlider ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider ||
+        TreeNodeAt(TestSession(), 1).bounds.height != 80.0 ||
+        TreeNodeAt(TestSession(), 2).bounds.height != 100.0 ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Gain" { return -1 }
+    if phase == 0 {
+        if current.value != 25.0 || current.changed ||
+            count.value != 5 || count.changed { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{110.0, 70.0, true, false, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{110.0, 70.0, false, false, true})
+        phase = 1
+        return 0
+    }
+    if phase == 1 {
+        if current.value != 100.0 || !current.changed ||
+            count.value != 5 || count.changed { return -3 }
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 70.0, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 0.0, true, false, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{145.0, 0.0, false, false, true})
+        phase = 2
+        return 1
+    }
+    if phase == 2 {
+        if current.value != 100.0 || current.changed ||
+            count.value != 10 || !count.changed { return -4 }
+        phase = 3
+        return 2
+    }
+    if current.value != 100.0 || current.changed ||
+        count.value != 10 || count.changed ||
+        TreeHitAt(TestSession(), 145.0, 70.0) != -1 { return -5 }
+    phase = 4
+    return 3
+}
+
+#program_export
+main :: () -> s32 {
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != index || SliderHostFailed() ||
+            SliderFills() != (index + 1) * 6 ||
+            SliderOutlines() != (index + 1) * 2 ||
+            SliderLabels() != index + 1 { return 1 }
+        index += 1
+    }
+    return 0
+}
