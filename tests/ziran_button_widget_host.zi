@@ -4,16 +4,20 @@
 fills: s32;
 labels: s32;
 images: s32;
+icons: s32;
+icon_phase: bool;
 failed: bool;
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
+    if asset_path == "icons/ui.png" { return 512 }
     if asset_path != "badge.png" { failed = true }
     return 32
 }
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
+    if asset_path == "icons/ui.png" { return 512 }
     if asset_path != "badge.png" { failed = true }
     return 16
 }
@@ -36,6 +40,11 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    // Icon-only buttons use their own face; the icon phase checks the atlas.
+    if icon_phase {
+        fills += 1
+        return
+    }
     if bounds.x != 10.0 || bounds.y != 20.0 ||
         bounds.width != 80.0 || bounds.height != 30.0 ||
         radius != 4.0 || segments != 12 ||
@@ -95,6 +104,16 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
+    if asset_path == "icons/ui.png" {
+        // IconEdit is the seventh tile of the eight-column UI atlas.
+        if source.x != 384.0 || source.y != 0.0 ||
+            source.width != 64.0 || source.height != 64.0 ||
+            destination.width <= 0.0 || destination.height <= 0.0 {
+            failed = true
+        }
+        icons += 1
+        return
+    }
     if asset_path != "badge.png" || texture_id != cast(u32)0 ||
         source.x != 0.0 || source.y != 0.0 ||
         source.width != 32.0 || source.height != 16.0 ||
@@ -122,3 +141,9 @@ ButtonLabels :: () -> s32 { return labels }
 
 #program_export
 ButtonImages :: () -> s32 { return images }
+
+#program_export
+ButtonIcons :: () -> s32 { return icons }
+
+#program_export
+ExpectIcon :: () { icon_phase = true }

@@ -5,6 +5,7 @@
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
+#import "icon"
 #import "image"
 #import "image_props"
 #import "image_widget"
@@ -123,15 +124,22 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
                 face.border_width, border)
         }
     }
-    has_image: bool = props.image.asset_path != "" ||
-        props.image.texture.id != cast(u32)0
+    // A built-in icon_type is drawn from the icon atlas unless the caller
+    // supplied its own image.
+    icon_image: ImageProps = props.image
+    if icon_image.asset_path == "" && icon_image.texture.id == cast(u32)0 &&
+        props.icon_type != 0 {
+        icon_image = ImageForIcon(props.icon_type, bounds, props.label)
+    }
+    has_image: bool = icon_image.asset_path != "" ||
+        icon_image.texture.id != cast(u32)0
     content: ButtonContent = ContentLayout(bounds.width, bounds.height,
         cast(float32)label_width, face.icon_size, face.gap, has_image,
         props.icon_only,
         cast(s32)props.icon_placement == IconPlacementTrailing,
         face.offset_x, face.offset_y)
     if has_image && content.icon_size > 0.0 {
-        image: ImageProps = props.image
+        image: ImageProps = icon_image
         image.bounds = Rectangle.{bounds.x + content.icon_x,
             bounds.y + content.icon_y, content.icon_size,
             content.icon_size}
