@@ -5,14 +5,47 @@
 using CompositionPhase;
 
 phase: s32;
-state: CompositionState;
+state_active: bool;
+state_cursor: s32;
+state_selection_length: s32;
+state_text: [64]u8;
+state_text_count: s64;
 
 #program_export
 Frame :: () -> s32 {
     sample: CompositionSample = SampleComposition()
+    previous: CompositionState
+    previous.active = state_active
+    previous.cursor = state_cursor
+    previous.selection_length = state_selection_length
+    previous.text = TextView(state_text[:state_text_count])
     transition: CompositionTransition = CompositionTransitionFor(
-        state, CompositionEventForSample(sample), true, false)
-    state = transition.state
+        previous, CompositionEventForSample(sample), true, false)
+    next: CompositionState = transition.state
+    incoming_text: [64]u8
+    incoming_count: s64 = next.text.count
+    if incoming_count > 64 { return -8 }
+    byte: s64 = 0
+    while byte < incoming_count {
+        incoming_text[byte] = next.text[byte]
+        byte += 1
+    }
+    next.text = ""
+    byte = 0
+    while byte < incoming_count {
+        state_text[byte] = incoming_text[byte]
+        byte += 1
+    }
+    state_text_count = incoming_count
+    state_active = next.active
+    state_cursor = next.cursor
+    state_selection_length = next.selection_length
+
+    state: CompositionState
+    state.active = state_active
+    state.cursor = state_cursor
+    state.selection_length = state_selection_length
+    state.text = TextView(state_text[:state_text_count])
     if phase == 0 {
         if !sample.available ||
             sample.phase != cast(CompositionPhase)CompositionStart ||
@@ -44,8 +77,7 @@ Frame :: () -> s32 {
         }
         after: CompositionTransition = CompositionTransitionFor(
             state, CompositionEventForSample(canceled), true, false)
-        state = after.state
-        if state.active || !after.changed { return -7 }
+        if after.state.active || !after.changed { return -7 }
     }
     old: s32 = phase
     phase += 1
