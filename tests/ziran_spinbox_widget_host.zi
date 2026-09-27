@@ -1,0 +1,122 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+letters: [64]u8;
+length: s64;
+failed: bool;
+
+#program_export
+ResetSpinLetters :: () { length = 0 }
+
+#program_export
+SpinLetters :: () -> string { return TextView(letters[:length]) }
+
+#program_export
+SpinFills :: () -> s32 { return fills }
+
+#program_export
+SpinHostFailed :: () -> bool { return failed }
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return (cast(s32)value.count) * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return 12
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    if fills % 4 == 1 &&
+        (color.r != cast(u8)0x12 || color.g != cast(u8)0x34 ||
+            color.b != cast(u8)0x56) { failed = true }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused x
+    unused y
+    unused color
+    unused clip
+    if font != 14 || length + value.count >= 64 {
+        failed = true
+        return
+    }
+    byte: s64 = 0
+    while byte < value.count {
+        letters[length + byte] = value[byte]
+        byte += 1
+    }
+    length += value.count
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
