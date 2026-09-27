@@ -1,0 +1,8 @@
+#import "fieldset_widget_behavior"
+#import "fieldset_widget_host"
+
+#program_export
+main :: () -> s32 {
+    if Frame() != 7 || !HostValid() { return 1 }
+    return 0
+}

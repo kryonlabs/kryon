@@ -3,92 +3,40 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cat > "$work/app.zi" <<'ZI'
-#import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+source=$repo/tests/fieldset_widget_behavior.zi
+portable=$repo/tests/fieldset_widget_portable_test.zi
+set -- \
+    --bind font_metrics:MeasureGlyphWidth=fieldset_widget_host:MeasureGlyphWidth \
+    --bind raster_shape:RasterRoundedRectangle=fieldset_widget_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=fieldset_widget_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=fieldset_widget_host:RasterLine \
+    --bind raster_text:RasterText=fieldset_widget_host:RasterText \
+    --bind raster_text:RasterTextClipped=fieldset_widget_host:RasterTextClipped \
+    --bind paint_queue:RasterImage=fieldset_widget_host:RasterImage
 
-#import "control_props"
-#import "fieldset_props"
-#import "fieldset_widget"
-#import "geometry"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "tree_draw"
-#import "widget_kind"
-
-using WidgetKind;
-using StyleField;
-using FrameStatus;
-
-#program_export
-Frame :: () -> s32 {
-    rules: StyleRules
-    rules.count = 1
-    rule: StyleRule
-    rule.selector = StyleDefaultSelector()
-    rule.selector.kind = StyleKindFieldset()
-    rule.selector.class_name = 9
-    rule.style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleOpacity
-    rule.style.background = cast(u32)0x123456ff
-    rule.style.foreground = cast(u32)0xaabbccff
-    rule.style.opacity = 0.5
-    rules.items[0] = rule
-    InstallStyleRules(rules)
-    first: FieldsetProps
-    first.key = cast(u64)7
-    first.id = 7
-    first.class_name = 9
-    first.bounds = Rectangle.{10.0, 30.0, 100.0, 50.0}
-    first.title = "Group"
-    second: FieldsetProps
-    second.key = cast(u64)8
-    second.bounds = Rectangle.{120.0, 30.0, 80.0, 50.0}
-    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 100.0})
-    Fieldset(TestSession(), first)
-    Fieldset(TestSession(), second)
-    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 3 ||
-        TreeNodeAt(TestSession(), 1).kind != WidgetKindFieldset ||
-        TreeNodeAt(TestSession(), 2).kind != WidgetKindFieldset ||
-        TreeNodeAt(TestSession(), 1).semantic_label != "Group" ||
-        TreeNodeAt(TestSession(), 2).semantic_label != "" { return -1 }
-    return 7
-}
-ZI
-
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    --entry app:Frame -o "$work/source.zib" "$work/app.zi"
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$work/ir" "$portable"
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    "$@" --entry fieldset_widget_portable_test:main \
+    -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Frame -o "$work/saved.zib" "$work/ir/app.zir"
+    "$@" --entry fieldset_widget_portable_test:main \
+    -o "$work/saved.zib" "$work/ir/fieldset_widget_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
-
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/build/ziran/c" -I"$repo/include" \
-    -I"$repo/../ziran/include" \
-    "$repo/tests/ziran_fieldset_widget_test.c" \
-    "$repo/build/ziran/libkryon_host.a" "$ziran_lib" \
-    ${VM_LDFLAGS:-} -o "$work/host-test"
-"$work/host-test" "$work/source.zib"
-"$work/host-test" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+test "$("$ziran" run "$work/saved.zib")" = 0
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "fieldset_widget_behavior.hpp"
 #include <cassert>
 #include <cstring>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "fieldset_widget_behavior.h"
 #include <assert.h>
 #include <string.h>
 #define HOST
@@ -156,8 +104,8 @@ C
 
 for target in c cpp go; do
     output=$work/native-$target
-    "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+    "$ziran" build --target="$target" --root "$repo/tests" \
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
@@ -224,7 +172,7 @@ func TestFieldsetWidget(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    if App_Frame() != 7 || h.fills != 3 || h.outlines != 2 || h.labels != 1 {
+    if FieldsetWidgetBehavior_Frame() != 7 || h.fills != 3 || h.outlines != 2 || h.labels != 1 {
         t.Fatal("fieldset frame")
     }
 }

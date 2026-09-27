@@ -1,0 +1,61 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+outlines: s32;
+labels: s32;
+failed: bool;
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if value != "Group" || font != 18 || typeface != "" { failed = true }
+    return 35
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if fills < 2 && (color.r != cast(u8)0x12 ||
+        color.g != cast(u8)0x34 || color.b != cast(u8)0x56 ||
+        color.a != cast(u8)127) { failed = true }
+    if fills == 1 && (bounds.x != 18.0 || bounds.y != 22.0 ||
+        bounds.width != 51.0 || bounds.height != 18.0 ||
+        radius != 0.0 || segments != 4) { failed = true }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    if radius != 6.0 || segments != 12 || width != 1.0 { failed = true }
+    outlines += 1
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { failed = true }
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if value != "Group" || x != 26 || y != 21 || font != 18 ||
+        clip.x != 26.0 || clip.y != 21.0 ||
+        clip.width != 35.0 || clip.height != 18.0 ||
+        color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
+        color.b != cast(u8)0xcc || color.a != cast(u8)127 { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) { failed = true }
+
+#program_export
+HostValid :: () -> bool {
+    return !failed && fills == 3 && outlines == 2 && labels == 1
+}
