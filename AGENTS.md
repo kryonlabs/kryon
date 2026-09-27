@@ -23,6 +23,9 @@ the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
 
 - Make changes in this upstream repository on `master`. Commit and push here
   before updating a downstream application's clean `vendor/kryon` pointer.
+- Never create or work in temporary Kryon or Ziran checkouts, clones, or
+  worktrees. Edit the root repositories on `master`; reserve temporary
+  directories for disposable test outputs only.
 - `src/ui/modules.txt` lists modules that pass the current C, C++, and Go
   build. Moved modules outside that list still need conversion; a checker pass
   alone does not establish native or portable readiness.
