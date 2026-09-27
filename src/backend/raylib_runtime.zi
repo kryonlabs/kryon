@@ -45,6 +45,7 @@ HostRaylibLoadFontFromMemory :: (extension: *u8, bytes: *u8,
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
+HostTypefaceReallocate :: (bytes: *u8, size: usize) -> *u8 #foreign c "realloc";
 HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
     size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
 HostRaylibMeasureFontText :: (font: RaylibFont, value: *u8, size: float32,
@@ -83,10 +84,21 @@ raylib_font_loaded: bool;
 raylib_font_registered: bool;
 raylib_active_typeface_index: s32 = -1;
 
+// A typeface keeps its source so glyphs can be added the first time text
+// uses them; raylib bakes a fixed codepoint list into each font atlas.
 RaylibTypeface :: struct {
     name: [64]u8
     name_length: s32
     font: RaylibFont
+    data: *u8
+    data_count: s32
+    extension: [16]u8
+    path: [1024]u8
+    from_file: bool
+    codepoints: *u8
+    codepoint_count: s32
+    codepoint_capacity: s32
+    loaded: [2048]u32
 }
 
 raylib_typefaces: [16]RaylibTypeface;
@@ -117,15 +129,129 @@ RaylibTypefaceIndex :: (name: string) -> s32 {
     return -1
 }
 
-RaylibStoreTypeface :: (name: string, font: RaylibFont) -> bool {
-    if font.texture.id == cast(u32)0 || name.count == 0 ||
+// Without an explicit seed a UI font starts with the scripts most locales
+// need; anything else is added on first use.
+raylib_default_glyph_ranges: [18]s32 = .[
+    0x0020, 0x007E, 0x00A0, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF,
+    0x2010, 0x205E, 0x20A0, 0x20C0, 0x2190, 0x21FF, 0x2212, 0x2212,
+    0xFFFD, 0xFFFD];
+
+RaylibHasGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
+    if codepoint < 0 || codepoint > 0xFFFF { return true }
+    word: u32 = typeface.loaded[codepoint >> 5]
+    return (word & (cast(u32)1 << cast(u32)(codepoint & 31))) != cast(u32)0
+}
+
+RaylibAddGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
+    if RaylibHasGlyph(typeface, codepoint) { return true }
+    if typeface.codepoint_count == typeface.codepoint_capacity {
+        capacity: s32 = typeface.codepoint_capacity * 2
+        if capacity < 256 { capacity = 256 }
+        grown: *u8 = HostTypefaceReallocate(typeface.codepoints,
+            cast(usize)capacity * cast(usize)4)
+        if grown == null { return false }
+        typeface.codepoints = grown
+        typeface.codepoint_capacity = capacity
+    }
+    at: *s32 = cast(*s32)(typeface.codepoints)
+    at[typeface.codepoint_count] = codepoint
+    typeface.codepoint_count += 1
+    typeface.loaded[codepoint >> 5] |= cast(u32)1 << cast(u32)(codepoint & 31)
+    return true
+}
+
+RaylibSeedGlyphs :: (typeface: *RaylibTypeface, seed: *s32,
+    seed_count: s32) -> bool {
+    if seed != null && seed_count > 0 {
+        index: s32 = 0
+        while index < seed_count {
+            if !RaylibAddGlyph(typeface, seed[index]) { return false }
+            index += 1
+        }
+        return true
+    }
+    range: s32 = 0
+    while range < 18 {
+        codepoint: s32 = raylib_default_glyph_ranges[range]
+        while codepoint <= raylib_default_glyph_ranges[range + 1] {
+            if !RaylibAddGlyph(typeface, codepoint) { return false }
+            codepoint += 1
+        }
+        range += 2
+    }
+    return true
+}
+
+RaylibBakeTypeface :: (typeface: *RaylibTypeface) -> RaylibFont {
+    codepoints: *s32 = cast(*s32)(typeface.codepoints)
+    if typeface.from_file {
+        return HostRaylibLoadFont(*typeface.path[0], 64, codepoints,
+            typeface.codepoint_count)
+    }
+    return HostRaylibLoadFontFromMemory(*typeface.extension[0],
+        typeface.data, typeface.data_count, 64, codepoints,
+        typeface.codepoint_count)
+}
+
+RaylibFreeTypefaceSource :: (typeface: *RaylibTypeface) {
+    if typeface.data != null { HostTypefaceFree(typeface.data) }
+    if typeface.codepoints != null { HostTypefaceFree(typeface.codepoints) }
+    typeface.data = null
+    typeface.codepoints = null
+}
+
+// Adds every codepoint of the text the active font has not baked yet and
+// rebakes it once. Text measured and drawn afterwards uses the same atlas.
+RaylibEnsureGlyphs :: (value: string) {
+    index: s32 = raylib_active_typeface_index
+    if index < 0 || index >= raylib_typeface_count { return }
+    typeface: *RaylibTypeface = *raylib_typefaces[index]
+    if typeface.codepoints == null { return }
+    missing: bool = false
+    at: s64 = 0
+    while at < cast(s64)value.count {
+        lead: s32 = cast(s32)value[at]
+        codepoint: s32 = lead
+        length: s64 = 1
+        if lead >= 0xF0 {
+            codepoint = lead & 0x07
+            length = 4
+        } else if lead >= 0xE0 {
+            codepoint = lead & 0x0F
+            length = 3
+        } else if lead >= 0xC0 {
+            codepoint = lead & 0x1F
+            length = 2
+        }
+        if at + length > cast(s64)value.count { break }
+        next: s64 = 1
+        while next < length {
+            codepoint = (codepoint << 6) | (cast(s32)value[at + next] & 0x3F)
+            next += 1
+        }
+        at += length
+        if codepoint >= 0x20 && !RaylibHasGlyph(typeface, codepoint) {
+            if !RaylibAddGlyph(typeface, codepoint) { return }
+            missing = true
+        }
+    }
+    if !missing { return }
+    font: RaylibFont = RaylibBakeTypeface(typeface)
+    if font.texture.id == cast(u32)0 { return }
+    HostRaylibUnloadFont(typeface.font)
+    typeface.font = font
+    raylib_font = font
+}
+
+RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
+    if staged.font.texture.id == cast(u32)0 || name.count == 0 ||
     name.count >= 64 {
         return false
     }
-    name_bytes: [64]u8
-    if !CopyCString(name, name_bytes[:]) {
+    if !CopyCString(name, staged.name[:]) {
         return false
     }
+    staged.name_length = cast(s32)name.count
     index: s32 = RaylibTypefaceIndex(name)
     if index < 0 {
         if raylib_typeface_count == 16 {
@@ -135,14 +261,11 @@ RaylibStoreTypeface :: (name: string, font: RaylibFont) -> bool {
         raylib_typeface_count += 1
     } else {
         HostRaylibUnloadFont(raylib_typefaces[index].font)
+        RaylibFreeTypefaceSource(*raylib_typefaces[index])
     }
-    if !CopyCString(name, raylib_typefaces[index].name[:]) {
-        return false
-    }
-    raylib_typefaces[index].name_length = cast(s32)name.count
-    raylib_typefaces[index].font = font
+    raylib_typefaces[index] = staged.*
     if raylib_active_typeface_index == index {
-        raylib_font = font
+        raylib_font = staged.font
         raylib_font_loaded = true
         raylib_font_registered = true
     }
@@ -157,27 +280,33 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
     (seed_count > 0 && seed == null) {
         return false
     }
-    extension_bytes: [16]u8
-    if !CopyCString(extension, extension_bytes[:]) {
+    staged: RaylibTypeface
+    if !CopyCString(extension, staged.extension[:]) {
         return false
     }
-    bytes: *u8 = HostTypefaceAllocate(cast(usize)data.count)
-    if bytes == null {
+    // The bytes stay with the typeface so later glyphs can be baked.
+    staged.data = HostTypefaceAllocate(cast(usize)data.count)
+    if staged.data == null {
         return false
     }
     index: s32 = 0
     while index < cast(s32)data.count {
-        bytes[index] = data[index]
+        staged.data[index] = data[index]
         index += 1
     }
-    font := HostRaylibLoadFontFromMemory(*extension_bytes[0], bytes,
-        cast(s32)data.count, 64, seed, seed_count)
-    HostTypefaceFree(bytes)
-    if font.texture.id == cast(u32)0 {
+    staged.data_count = cast(s32)data.count
+    if !RaylibSeedGlyphs(*staged, seed, seed_count) {
+        RaylibFreeTypefaceSource(*staged)
         return false
     }
-    if !RaylibStoreTypeface(name, font) {
-        HostRaylibUnloadFont(font)
+    staged.font = RaylibBakeTypeface(*staged)
+    if staged.font.texture.id == cast(u32)0 {
+        RaylibFreeTypefaceSource(*staged)
+        return false
+    }
+    if !RaylibStoreTypeface(name, *staged) {
+        HostRaylibUnloadFont(staged.font)
+        RaylibFreeTypefaceSource(*staged)
         return false
     }
     return true
@@ -190,16 +319,23 @@ LoadTypefaceFile :: (name: string, path: string,
     (seed_count > 0 && seed == null) {
         return false
     }
-    path_bytes: [4096]u8
-    if !CopyCString(path, path_bytes[:]) {
+    staged: RaylibTypeface
+    if !CopyCString(path, staged.path[:]) {
         return false
     }
-    font := HostRaylibLoadFont(*path_bytes[0], 64, seed, seed_count)
-    if font.texture.id == cast(u32)0 {
+    staged.from_file = true
+    if !RaylibSeedGlyphs(*staged, seed, seed_count) {
+        RaylibFreeTypefaceSource(*staged)
         return false
     }
-    if !RaylibStoreTypeface(name, font) {
-        HostRaylibUnloadFont(font)
+    staged.font = RaylibBakeTypeface(*staged)
+    if staged.font.texture.id == cast(u32)0 {
+        RaylibFreeTypefaceSource(*staged)
+        return false
+    }
+    if !RaylibStoreTypeface(name, *staged) {
+        HostRaylibUnloadFont(staged.font)
+        RaylibFreeTypefaceSource(*staged)
         return false
     }
     return true
@@ -234,6 +370,7 @@ ReleaseTypefaces :: () {
     index: s32 = 0
     while index < raylib_typeface_count {
         HostRaylibUnloadFont(raylib_typefaces[index].font)
+        RaylibFreeTypefaceSource(*raylib_typefaces[index])
         raylib_typefaces[index] = RaylibTypeface.{}
         index += 1
     }
@@ -470,6 +607,7 @@ MeasureGlyphWidth :: (value: string, font: s32,
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return 0 }
     if raylib_font_loaded {
+        RaylibEnsureGlyphs(value)
         extent: Vector2 = HostRaylibMeasureFontText(raylib_font, *bytes[0],
             cast(float32)font, 0.0)
         return cast(s32)(extent.x + 0.5)
@@ -515,6 +653,7 @@ RasterText :: (value: string, x: s32, y: s32,
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return }
     if raylib_font_loaded {
+        RaylibEnsureGlyphs(value)
         HostRaylibDrawFontText(raylib_font, *bytes[0],
             Vector2.{cast(float32)x, cast(float32)y},
             cast(float32)font, 0.0, color)
