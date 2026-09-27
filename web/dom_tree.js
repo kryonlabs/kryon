@@ -35,11 +35,11 @@ addToLibrary({
   js_dom_begin__sig: "vidd",
   js_dom_begin: function(count, width, height) {
     var g = globalThis;
-    var canvasState = g.__kryCanvas;
+    var canvasState = g.__kryonCanvas;
     if (!canvasState || typeof document === "undefined") return;
-    var dom = g.__kryDom;
+    var dom = g.__kryonDom;
     if (!dom || !dom.root) {
-      dom = g.__kryDom = {nodes: new Map(), seen: null, frame: 0, tagFor: domTagFor};
+      dom = g.__kryonDom = {nodes: new Map(), seen: null, frame: 0, tagFor: domTagFor};
       var box = canvasState.layoutBox ? canvasState.layoutBox() : null;
       var root = document.createElement("div");
       root.id = "kryon-dom-root";
@@ -67,7 +67,7 @@ addToLibrary({
   js_dom_node__sig: "viiiiiiddddiii",
   js_dom_node: function(index, parent, identity, widgetKind, semanticKind,
                          headingLevel, x, y, width, height, label, detail, flags) {
-    var dom = globalThis.__kryDom;
+    var dom = globalThis.__kryonDom;
     if (!dom || !dom.root) return;
     var id = String(identity);
     dom.seen.add(id);
@@ -144,7 +144,7 @@ addToLibrary({
   js_dom_finish__deps: [],
   js_dom_finish__sig: "v",
   js_dom_finish: function() {
-    var dom = globalThis.__kryDom;
+    var dom = globalThis.__kryonDom;
     if (!dom || !dom.root) return;
     dom.nodes.forEach(function(record, id) {
       if (!dom.seen.has(id)) {
@@ -162,15 +162,15 @@ addToLibrary({
   js_dom_close__deps: [],
   js_dom_close__sig: "v",
   js_dom_close: function() {
-    var dom = globalThis.__kryDom;
+    var dom = globalThis.__kryonDom;
     if (!dom) return;
-    globalThis.__kryDomSnapshot = {
+    globalThis.__kryonDomSnapshot = {
       title: document.title,
       nodes: []
     };
     dom.nodes.forEach(function(record, id) {
       var element = record.element;
-      globalThis.__kryDomSnapshot.nodes.push({
+      globalThis.__kryonDomSnapshot.nodes.push({
         id: id,
         parent: record.parent ? record.parent.getAttribute("data-kryon-id") : null,
         tag: element.tagName.toLowerCase(),
@@ -183,6 +183,6 @@ addToLibrary({
       });
     });
     if (dom.root && dom.root.parentNode) dom.root.parentNode.removeChild(dom.root);
-    globalThis.__kryDom = null;
+    globalThis.__kryonDom = null;
   }
 });

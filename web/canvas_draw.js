@@ -2,7 +2,7 @@
 addToLibrary({
   js_draw_gradient_v__sig: "vddddiiiiiiii",
   js_draw_gradient_v: function(x, y, w, h, tr, tg, tb, ta, br, bg, bb, ba) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     var gr = ctx.createLinearGradient(0, y, 0, y + h);
@@ -13,7 +13,7 @@ addToLibrary({
   },
   js_draw_gradient_h__sig: "vddddiiiiiiii",
   js_draw_gradient_h: function(x, y, w, h, lr, lg, lb, la, rr, rg, rb, ra) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     var gr = ctx.createLinearGradient(x, 0, x + w, 0);
@@ -24,7 +24,7 @@ addToLibrary({
   },
   js_draw_circle_gradient__sig: "vdddiiiiiiii",
   js_draw_circle_gradient: function(x, y, radius, ir, ig, ib, ia, or_, og, ob, oa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx || radius <= 0) return;
     var gr = ctx.createRadialGradient(x, y, 0, x, y, radius);
@@ -37,7 +37,7 @@ addToLibrary({
   },
   js_blend_mode__sig: "vii",
   js_blend_mode: function(mode, begin) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     if (!begin) { ctx.restore(); return; }
@@ -48,7 +48,7 @@ addToLibrary({
   },
   js_draw_gradient_ex__sig: "vddddiiiiiiiiiiiiiiii",
   js_draw_gradient_ex: function(x, y, w, h, c1r, c1g, c1b, c1a, c2r, c2g, c2b, c2a, c3r, c3g, c3b, c3a, c4r, c4g, c4b, c4a) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx || w <= 0 || h <= 0) return;
     var iw = Math.max(1, Math.ceil(w));
@@ -82,7 +82,7 @@ addToLibrary({
   },
   js_draw_rounded__sig: "vidddddiiii",
   js_draw_rounded: function(op, x, y, w, h, rad, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     var col = K.col(r, gg, bb, aa);
@@ -109,7 +109,7 @@ addToLibrary({
   },
   js_draw_rect_lines_ex__sig: "vdddddiiii",
   js_draw_rect_lines_ex: function(x, y, w, h, thick, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx || w <= 0 || h <= 0) return;
     thick = Math.max(1.0, thick);
@@ -122,7 +122,7 @@ addToLibrary({
   },
   js_draw_rect_pro__sig: "vdddddddiiii",
   js_draw_rect_pro: function(x, y, w, h, ox, oy, rot, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     ctx.save();
@@ -134,7 +134,7 @@ addToLibrary({
   },
   js_draw_circle_lines_ex__sig: "vddddiiii",
   js_draw_circle_lines_ex: function(cx, cy, radius, thick, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx || radius <= 0) return;
     ctx.save();
@@ -147,7 +147,7 @@ addToLibrary({
   },
   js_draw_ring__sig: "vddddddiiii",
   js_draw_ring: function(cx, cy, inner, outer, start, end, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     var s0 = start * Math.PI / 180.0;
@@ -168,7 +168,7 @@ addToLibrary({
   },
   js_draw_ring_lines__sig: "vddddddiiii",
   js_draw_ring_lines: function(cx, cy, inner, outer, start, end, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     var s0 = start * Math.PI / 180.0;
@@ -195,7 +195,7 @@ addToLibrary({
   },
   js_get_modelview__sig: "vi",
   js_get_modelview: function(values) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K && K.ctxNow();
     if (!ctx) return;
     var transform = ctx.getTransform();
@@ -209,7 +209,7 @@ addToLibrary({
   },
   js_set_modelview__sig: "vdddddd",
   js_set_modelview: function(a, b, c, d, e, f) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K && K.ctxNow();
     if (!ctx) return;
     var scale = K.target.length ? 1 : K.dpi;

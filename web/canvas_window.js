@@ -4,8 +4,8 @@ addToLibrary({
   js_canvas_boot__sig: "viii",
   js_canvas_boot: function(w, h, title) {
     var g = globalThis;
-    if (g.__kryCanvas && g.__kryCanvas.close) g.__kryCanvas.close();
-    var K = g.__kryCanvas = {
+    if (g.__kryonCanvas && g.__kryonCanvas.close) g.__kryonCanvas.close();
+    var K = g.__kryonCanvas = {
         w: w, h: h, renderW: w, renderH: h, dpi: 1,
         canvas: null, ctx: null,
         textures: {}, nextTex: 1,
@@ -147,8 +147,8 @@ addToLibrary({
             K.createdCanvas = true;
             doc.body.appendChild(K.canvas);
         }
-    } else if (g.__kryTestCanvas) {
-        K.canvas = g.__kryTestCanvas;    /* node test harness */
+    } else if (g.__kryonTestCanvas) {
+        K.canvas = g.__kryonTestCanvas;    /* node test harness */
     }
     if (K.canvas) K.resizeMainCanvas(w, h);
     if (doc && doc.title !== undefined) doc.title = title ? UTF8ToString(title) : "";
@@ -197,7 +197,7 @@ addToLibrary({
         K.mouseX = x; K.mouseY = y;
     };
     var claimEvent = function (e, name) {
-        var key = '__kryCanvasHandled_' + name;
+        var key = '__kryonCanvasHandled_' + name;
         if (!e || e[key]) return false;
         try { e[key] = 1; } catch (_) {}
         return true;
@@ -398,12 +398,12 @@ addToLibrary({
   },
   js_canvas_resize__sig: "vii",
   js_canvas_resize: function(w, h) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K && K.resizeMainCanvas) K.resizeMainCanvas(w, h);
   },
   js_canvas_dim__sig: "ii",
   js_canvas_dim: function(which) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return 0;
     switch (which) {
     case 0: return K.w | 0;
@@ -418,12 +418,12 @@ addToLibrary({
   },
   js_canvas_dpi__sig: "d",
   js_canvas_dpi: function() {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     return K ? K.dpi : 1.0;
   },
   js_canvas_set_cursor__sig: "vi",
   js_canvas_set_cursor: function(cursor) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return;
     var canvas = K && K.canvas;
     var value = 'default';
@@ -460,12 +460,12 @@ addToLibrary({
   },
   js_canvas_focus__sig: "v",
   js_canvas_focus: function() {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K && K.canvas && K.canvas.focus) K.canvas.focus();
   },
   js_canvas_fullscreen__sig: "vi",
   js_canvas_fullscreen: function(enable) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (typeof document === 'undefined' || !K || !K.canvas) return;
     if (enable) {
         if (!document.fullscreenElement && K.canvas.requestFullscreen)
@@ -478,12 +478,12 @@ addToLibrary({
   js_canvas_fullscreen_state__sig: "i",
   js_canvas_fullscreen_state: function() {
     if (typeof document === 'undefined') return 0;
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     return K && document.fullscreenElement === K.canvas ? 1 : 0;
   },
   js_ctx_call__sig: "vidddddddiiii",
   js_ctx_call: function(op, a, b, c, d, e, f, g2, r, gg, bb, aa) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || K.closed) return;
     var ctx = K.ctxNow();
     K.lastOp = 'ctx' + op;
@@ -566,7 +566,7 @@ addToLibrary({
   js_canvas_wait_frame__sig: "vdi",
   js_canvas_wait_frame: function(min_delay_ms, target_fps) {
     return Asyncify.handleAsync(async function() {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K) {
         K.targetFps = target_fps | 0;
         K.lastFrameDelayMs = min_delay_ms;
@@ -594,21 +594,21 @@ addToLibrary({
   js_canvas_now__sig: 'd',
   js_canvas_now: function() { return performance.now(); },
   js_canvas_close__sig: 'v',
-  js_canvas_close: function() { var K = globalThis.__kryCanvas; if (K && K.close) K.close(); },
+  js_canvas_close: function() { var K = globalThis.__kryonCanvas; if (K && K.close) K.close(); },
   js_canvas_request_close__sig: 'v',
   js_canvas_request_close: function() {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K && K.requestClose) K.requestClose();
   },
   js_canvas_frame__sig: 'v',
-  js_canvas_frame: function() { var K = globalThis.__kryCanvas; if (K) K.frames++; },
+  js_canvas_frame: function() { var K = globalThis.__kryonCanvas; if (K) K.frames++; },
   js_canvas_sleep__async: true,
   js_canvas_sleep__deps: ['$Asyncify'],
   js_canvas_sleep__sig: 'vi',
   js_canvas_sleep: function(milliseconds) { return Asyncify.handleAsync(async function() { await new Promise(function(resolve) { setTimeout(resolve, Math.max(0, milliseconds)); }); }); },
   js_canvas_style__sig: 'vid',
   js_canvas_style: function(property, value) {
-    var K = globalThis.__kryCanvas, style = K && K.canvas && K.canvas.style;
+    var K = globalThis.__kryonCanvas, style = K && K.canvas && K.canvas.style;
     if (!style) return;
     if (property === 0) style.opacity = Math.max(0, Math.min(1, value));
     else { var names = ['', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight'];
@@ -616,7 +616,7 @@ addToLibrary({
   },
   js_canvas_raster_clip_push__sig: 'viiii',
   js_canvas_raster_clip_push: function(x, y, width, height) {
-    var K = globalThis.__kryCanvas, ctx = K && K.ctxNow();
+    var K = globalThis.__kryonCanvas, ctx = K && K.ctxNow();
     if (!ctx) return;
     ctx.save();
     var transform = ctx.getTransform();
@@ -628,7 +628,7 @@ addToLibrary({
   },
   js_canvas_raster_clip_pop__sig: 'v',
   js_canvas_raster_clip_pop: function() {
-    var K = globalThis.__kryCanvas, ctx = K && K.ctxNow();
+    var K = globalThis.__kryonCanvas, ctx = K && K.ctxNow();
     if (ctx && K.rasterClips > 0) { ctx.restore(); K.rasterClips--; }
   },
 });

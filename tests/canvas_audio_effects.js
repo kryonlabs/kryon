@@ -1,7 +1,7 @@
 addToLibrary({
   audio_test_checkpoint__deps: ['$FS'],
   audio_test_checkpoint: function(phase) {
-    const A = globalThis.__kryAudio;
+    const A = globalThis.__kryonAudio;
     if (phase === 1) {
       for (const callback of Array.from(audioTestTimers.values())) callback();
       const stream = Object.values(A.streams)[0];

@@ -2,7 +2,7 @@
 addToLibrary({
   js_input_query__sig: "iii",
   js_input_query: function(which, code) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return 0;
     switch (which) {
     case 0: return K.keysDown[code] ? 1 : 0;
@@ -34,7 +34,7 @@ addToLibrary({
   },
   js_input_float__sig: "di",
   js_input_float: function(which) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return 0.0;
     switch (which) {
     case 0: return K.mouseDeltaX;
@@ -47,7 +47,7 @@ addToLibrary({
   },
   js_input_set_mouse__sig: "vii",
   js_input_set_mouse: function(x, y) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return;
     K.mouseDeltaX += x - K.mouseX;
     K.mouseDeltaY += y - K.mouseY;
@@ -56,7 +56,7 @@ addToLibrary({
   },
   js_input_mouse_config__sig: "vdddd",
   js_input_mouse_config: function(ox, oy, sx, sy) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return;
     K.mouseOffsetX = ox;
     K.mouseOffsetY = oy;
@@ -65,7 +65,7 @@ addToLibrary({
   },
   js_touch_query__sig: "iii",
   js_touch_query: function(index, field) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || index < 0 || index >= K.touches.length) return 0;
     var t = K.touches[index];
     switch (field) {
@@ -78,7 +78,7 @@ addToLibrary({
   },
   js_gamepad_query__sig: "iiii",
   js_gamepad_query: function(gamepad, which, index) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return 0;
     var pads = (typeof navigator !== 'undefined' && navigator.getGamepads) ?
         navigator.getGamepads() : [];
@@ -182,25 +182,25 @@ addToLibrary({
   },
   js_input_end_frame__sig: "v",
   js_input_end_frame: function() {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K) return;
     for (var i = 0; i < K.gamepadNow.length; i++)
         if (K.gamepadNow[i]) K.gamepadPrev[i] = K.gamepadNow[i].slice();
   },
   js_input_offset__sig: 'vii',
-  js_input_offset: function(x, y) { var K=globalThis.__kryCanvas; if(K) { K.mouseOffsetX=x; K.mouseOffsetY=y; } },
+  js_input_offset: function(x, y) { var K=globalThis.__kryonCanvas; if(K) { K.mouseOffsetX=x; K.mouseOffsetY=y; } },
   js_input_scale__sig: 'vdd',
-  js_input_scale: function(x, y) { var K=globalThis.__kryCanvas; if(K) { K.mouseScaleX=x; K.mouseScaleY=y; } },
+  js_input_scale: function(x, y) { var K=globalThis.__kryonCanvas; if(K) { K.mouseScaleX=x; K.mouseScaleY=y; } },
   js_input_cursor__sig: 'vi',
   js_input_cursor: function(mode) {
-    var K=globalThis.__kryCanvas, c=K && K.canvas; if(!c) return;
+    var K=globalThis.__kryonCanvas, c=K && K.canvas; if(!c) return;
     if(mode === 0 || mode === 2) { K.cursorHidden=false; if(c.style) c.style.cursor=K.cursor || 'default'; }
     if(mode === 1 || mode === 3) { K.cursorHidden=true; if(c.style) c.style.cursor='none'; }
     if(mode === 2 && typeof document !== 'undefined' && document.pointerLockElement === c && document.exitPointerLock) document.exitPointerLock();
     if(mode === 3 && c.requestPointerLock) { var result=c.requestPointerLock(); if(result && result.catch) result.catch(function(){}); }
   },
   js_input_cursor_state__sig: 'ii',
-  js_input_cursor_state: function(mode) { var K=globalThis.__kryCanvas; if(!K) return 0; return mode === 0 ? +!!K.cursorHidden : +(K.mouseX>=0 && K.mouseY>=0 && K.mouseX<K.w && K.mouseY<K.h); },
+  js_input_cursor_state: function(mode) { var K=globalThis.__kryonCanvas; if(!K) return 0; return mode === 0 ? +!!K.cursorHidden : +(K.mouseX>=0 && K.mouseY>=0 && K.mouseX<K.w && K.mouseY<K.h); },
   js_gamepad_vibration__sig: 'viddd',
   js_gamepad_vibration: function(index, left, right, seconds) {
     var pads=typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];

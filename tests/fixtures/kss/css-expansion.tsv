@@ -16,10 +16,10 @@ transform	rotate(10deg)	0	transform	<empty>
 transform	rotate(10deg)	1	<empty>	<empty>
 offset-x	0	0	<empty>	<empty>
 offset-y	3	1	<empty>	<empty>
-content-offset-x	3	0	--kry-content-offset-x	<empty>
-content-offset-y	0	0	--kry-content-offset-y	<empty>
-icon-size	12	0	--kry-icon-size	<empty>
-background-end	red	0	--kry-background-end	<empty>
+content-offset-x	3	0	--kryon-content-offset-x	<empty>
+content-offset-y	0	0	--kryon-content-offset-y	<empty>
+icon-size	12	0	--kryon-icon-size	<empty>
+background-end	red	0	--kryon-background-end	<empty>
 material	glass	0	<empty>	<empty>
 unknown	3	0	<empty>	<empty>
 --custom	0	0	--custom	<empty>

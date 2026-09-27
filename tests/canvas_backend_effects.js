@@ -16,14 +16,14 @@ addToLibrary({
     if(phase===2) {
       event('keydown',{code:'KeyB',key:'b'});
       event('keypress',{key:'B'});
-      var K=globalThis.__kryCanvas, pixel=K.ctx.getImageData(50*K.dpi,50*K.dpi,1,1).data;
+      var K=globalThis.__kryonCanvas, pixel=K.ctx.getImageData(50*K.dpi,50*K.dpi,1,1).data;
       if(pixel[0]!==0 || pixel[1]!==0 || pixel[2]!==0 || pixel[3]!==255) return 1;
     }
     return 0;
   },
   canvas_test_finish__sig: 'i',
   canvas_test_finish: function() {
-    var K=globalThis.__kryCanvas,ctx=K.canvas.getContext('2d');
+    var K=globalThis.__kryonCanvas,ctx=K.canvas.getContext('2d');
     var cases=[
       [1,1,[255,255,255,255]], [21,11,[0,255,0,255]],
       [25,15,[0,0,255,255]], [35,11,[255,255,0,255]],

@@ -1,14 +1,14 @@
 // Clipboard, console and MEMFS metadata effects; file and path policy stays in Zi.
 addToLibrary({
   js_dropped_count: () => {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K && K.droppedPending > 0) return 0;
     return K && K.dropped ? K.dropped.length : 0;
   },
 
   js_dropped_path__deps: ['malloc', '$lengthBytesUTF8', '$stringToUTF8'],
   js_dropped_path: (index) => {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var path = K && K.dropped && index >= 0 && index < K.dropped.length ?
         K.dropped[index] : "";
     var len = lengthBytesUTF8(path) + 1;
@@ -19,7 +19,7 @@ addToLibrary({
 
   js_clipboard_pull__deps: ['$stringToUTF8'],
   js_clipboard_pull: (dst, cap) => {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || !dst || cap <= 0) return;
     stringToUTF8(K.clipboard || "", dst, cap);
   },
@@ -27,7 +27,7 @@ addToLibrary({
   js_clipboard_push__deps: ['$UTF8ToString'],
   js_clipboard_push: (text) => {
     var value = text ? UTF8ToString(text) : "";
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (K) K.clipboard = value;
     var tryExecCommandCopy = function () {
         if (typeof document === 'undefined' || !document.execCommand)

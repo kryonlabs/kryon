@@ -30,7 +30,7 @@ globalThis.document = {
   fonts: {add: face => loadedFaces.add(face), delete: face => loadedFaces.delete(face)},
   createElement: () => ({width: 64, height: 64, getContext: () => glyphContext})
 };
-globalThis.__kryCanvas = { dropped: ['/tmp/drop-a.txt', '/tmp/drop-b.txt'], clipboard: '' };
+globalThis.__kryonCanvas = { dropped: ['/tmp/drop-a.txt', '/tmp/drop-b.txt'], clipboard: '' };
 Module.printErr = text => console.error(text);
 globalThis.__canvasTestFaces = loadedFaces;
 JS
