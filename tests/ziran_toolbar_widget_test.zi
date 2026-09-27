@@ -1,0 +1,133 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "dropdown_props"
+#import "geometry"
+#import "paint_queue"
+#import "control_props"
+#import "style"
+#import "style_sheet"
+#import "toolbar"
+#import "toolbar_props"
+#import "toolbar_widget"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using WidgetKind;
+using StyleField;
+
+phase: s32;
+open_state: bool;
+selected_state: s32;
+highlight_state: s32;
+scroll_state: s32;
+
+#program_export
+Frame :: () -> s32 {
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 1
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = StyleKindToolbar()
+        rule.selector.role = ToolbarActionRole()
+        rule.selector.class_name = 9
+        rule.style.fields = cast(u32)StyleBackground
+        rule.style.background = cast(u32)0x123456ff
+        rules.items[0] = rule
+        InstallStyleRules(rules)
+    }
+    options: [2]DropdownOption
+    options[0].key = cast(u64)41
+    options[0].label = "One"
+    options[1].key = cast(u64)42
+    options[1].label = "Two"
+    actions: [2]ToolbarAction
+    actions[0].key = cast(u64)51
+    actions[0].label = "Act"
+    actions[1].key = cast(u64)52
+    actions[1].label = "Off"
+    actions[1].disabled = true
+    props: ToolbarProps
+    props.key = cast(u64)10
+    props.id = 10
+    props.class_name = 9
+    props.x = 10
+    props.y = 10
+    props.width = 300
+    props.height = 40
+    props.draw_menu = true
+    props.dropdown.key = cast(u64)11
+    props.dropdown.id = 11
+    props.dropdown.selected_index = selected_state
+    props.dropdown.highlight_index = highlight_state
+    props.dropdown.scroll_offset = scroll_state
+    props.dropdown.open = open_state
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 340.0, 180.0})
+    result: ToolbarResult = Toolbar(TestSession(), props, options[0:2],
+        actions[0:2])
+    if !TreeFinish(TestSession()) || result.node != 1 ||
+        TreeNodeAt(TestSession(), 1).kind != WidgetKindToolbar ||
+        TreeNodeAt(TestSession(), 2).kind != WidgetKindButton ||
+        TreeNodeAt(TestSession(), 3).kind != WidgetKindButton ||
+        result.dropdown.node != 4 ||
+        TreeNodeAt(TestSession(), 4).kind != WidgetKindDropdown { return -20 }
+    if phase == 0 {
+        if TreeCount(TestSession()) != 5 || result.clicked_action != -1 ||
+            result.selected_menu_item != -1 ||
+            TreeHitAt(TestSession(), 230.0, 20.0) != 2 ||
+            TreeHitAt(TestSession(), 270.0, 20.0) != -1 { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{230.0, 20.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{230.0, 20.0,
+            false, false, true})
+    } else if phase == 1 {
+        if result.clicked_action != 0 || result.dropdown.open ||
+            result.selected_menu_item != -1 { return -2 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
+            false, false, true})
+    } else if phase == 2 {
+        if !result.dropdown.open || !result.dropdown.opened ||
+            result.clicked_action != -1 || TreeCount(TestSession()) != 10 {
+            return -3
+        }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,
+            true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,
+            false, false, true})
+    } else if phase == 3 {
+        if result.dropdown.open || !result.dropdown.changed ||
+            result.dropdown.selected_index != 1 ||
+            result.selected_menu_item != 1 ||
+            TreeCount(TestSession()) != 5 { return -4 }
+    }
+    PaintFlush(TestSession())
+    open_state = result.dropdown.open
+    selected_state = result.dropdown.selected_index
+    highlight_state = result.dropdown.highlight_index
+    scroll_state = result.dropdown.scroll_offset
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#import "ziran_toolbar_widget_host"
+
+#program_export
+main :: () -> s32 {
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != index || ToolbarHostFailed() { return 1 }
+        index += 1
+    }
+    if ToolbarFills() < 16 || ToolbarStrokes() < 12 ||
+        ToolbarLabels() < 12 || ToolbarActionFills() != 4 { return 2 }
+    return 0
+}
