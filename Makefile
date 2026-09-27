@@ -30,7 +30,7 @@ KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
 
-.PHONY: all check test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test
+.PHONY: all check test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -202,7 +202,7 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		--module-path src/kss --module-path src/syntax --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
-check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check
+check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test
 .PHONY: canvas-test
 canvas-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
@@ -237,6 +237,10 @@ desktop-project-test: build/bin/kryon
 .PHONY: libdraw-project-test
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
+
+.PHONY: libdraw-native-plan9-test
+libdraw-native-plan9-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
 test: check canvas-test canvas-project-test dom-project-test typeface-source-test
 

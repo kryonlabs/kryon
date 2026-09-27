@@ -1,0 +1,24 @@
+#import "drawing_props"
+#import "geometry"
+#import "libdraw_native"
+
+#program_export
+main :: () -> s32 {
+    if !OpenRaster(96, 64) { return 1 }
+    red: Color = Color.{255, 0, 0, 255}
+    RasterRoundedRectangle(Rectangle.{0.0, 0.0, 96.0, 64.0},
+        0.0, 0, red)
+    if !FinishRasterFrame() { CloseRaster(); return 2 }
+    if CaptureRequested() && !CaptureConfigured() {
+        CloseRaster()
+        return 3
+    }
+    if MeasureGlyphWidth("Kryon", 14, "") <= 0 {
+        CloseRaster()
+        return 4
+    }
+    RasterText("Kryon", 8, 8, 14,
+        Color.{255, 255, 255, 255})
+    CloseRaster()
+    return 0
+}

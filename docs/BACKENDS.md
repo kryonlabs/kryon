@@ -33,6 +33,11 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
 The desktop and libdraw hosts share `cairo_raster.zi`. The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
+`libdraw_native.zi` is a separate experimental native Plan 9 provider: it
+uses `initdisplay`, `gengetwindow`, `allocimage`, and `string` directly
+without plan9port, Cairo, or `dlsym`. It currently covers rectangles, text,
+font metrics, flush, and RGBA capture; pointer input, image presentation,
+and a selectable `_run` profile are still pending.
 The raylib host uses `raylib_runtime.zi` and Kryon's `vendor/raylib`
 revision. The canvas host uses its dedicated `canvas_raster.zi` provider over
 a Canvas2D browser ABI; see [Canvas2D browser host](canvas.md). Backend build

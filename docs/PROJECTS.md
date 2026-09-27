@@ -83,6 +83,10 @@ profile when there are several and none is specified.
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 
+The native Plan 9 libdraw raster is not a project profile yet; it is covered
+by the display-free `libdraw-native-plan9-test` ABI gate while its input and
+presentation surface are completed.
+
 The raylib profile builds its static raylib dependency in Kryon's `build/`
 directory. The Kryon host chooses and owns that backend. Game code belongs in
 the separate Game2D package; applications using both should rely on Kryon's
