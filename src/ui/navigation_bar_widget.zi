@@ -236,10 +236,14 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
         NavigationBarPaintImage(session, node, item.image,
             layout.icon_bounds, layout.bounds, image_opacity)
         if item.label != "" {
+            label_width: s32 = GlyphWidth(item.label, font,
+                face.value.typeface)
+            label_x: s32 = cast(s32)layout.label_bounds.x +
+                (cast(s32)layout.label_bounds.width - label_width) / 2
             text_opacity: float32 = StyleOpacityValue(
                 base.value.fields, base.value.opacity)
             PaintClippedLabel(session, node, item.label,
-                cast(s32)layout.label_bounds.x,
+                label_x,
                 cast(s32)layout.label_bounds.y, font,
                 ColorFromPacked(Opacity(
                     layout.text_color, text_opacity)),
