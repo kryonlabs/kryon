@@ -7,13 +7,13 @@ addToLibrary({
     if (typeof FontFace === 'undefined') return 0;
     try {
         var buf = new Uint8Array(HEAPU8.subarray(ptr, ptr + len));
-        var face = new FontFace('kry-face-' + (g.__kryFaceCount || 0), buf);
+        var face = new FontFace('kryon-face-' + (g.__kryonFaceCount || 0), buf);
         await face.load();
         if (g.document && g.document.fonts) g.document.fonts.add(face);
-        g.__kryFaceCount = (g.__kryFaceCount || 0) + 1;
-        if (!g.__kryFaces) g.__kryFaces = new Map();
-        g.__kryFaces.set(g.__kryFaceCount, face);
-        return g.__kryFaceCount;      /* 1-based face id */
+        g.__kryonFaceCount = (g.__kryonFaceCount || 0) + 1;
+        if (!g.__kryonFaces) g.__kryonFaces = new Map();
+        g.__kryonFaces.set(g.__kryonFaceCount, face);
+        return g.__kryonFaceCount;      /* 1-based face id */
     } catch (e) {
         return 0;
     }
@@ -21,17 +21,17 @@ addToLibrary({
 
   js_glyph_metrics: (face_id, cp, size, adv, w, h, offx, offy, ptr) => {
     var g = globalThis;
-    if (!g.__kryGlyphCv) {
+    if (!g.__kryonGlyphCv) {
         if (typeof document !== 'undefined')
-            g.__kryGlyphCv = document.createElement('canvas');
+            g.__kryonGlyphCv = document.createElement('canvas');
         else if (g.OffscreenCanvas)
-            g.__kryGlyphCv = new OffscreenCanvas(64, 64);
+            g.__kryonGlyphCv = new OffscreenCanvas(64, 64);
         else return 0;
     }
-    var cv = g.__kryGlyphCv;
+    var cv = g.__kryonGlyphCv;
     var ctx = cv.getContext('2d', {willReadFrequently: true});
     var spec = size + 'px ' + (face_id > 0
-        ? 'kry-face-' + (face_id - 1) : 'monospace');
+        ? 'kryon-face-' + (face_id - 1) : 'monospace');
     ctx.font = spec;
     ctx.textBaseline = 'alphabetic';
     var ch = String.fromCodePoint(cp);
@@ -79,7 +79,7 @@ addToLibrary({
   },
 
   js_text_transform: (begin, x, y, ox, oy, rotation) => {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var ctx = K.ctxNow();
     if (!ctx) return;
     if (begin) {
@@ -94,9 +94,9 @@ addToLibrary({
 
   js_font_face_release: id => {
     const g = globalThis;
-    const face = g.__kryFaces?.get(id);
+    const face = g.__kryonFaces?.get(id);
     if (!face) return;
     g.document?.fonts?.delete(face);
-    g.__kryFaces.delete(id);
+    g.__kryonFaces.delete(id);
   }
 });

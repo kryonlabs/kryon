@@ -72,9 +72,9 @@ try {
   if (result !== 'PASS') {
     const state = await command('Runtime.evaluate', {
       expression: `JSON.stringify({
-        closeRequested: globalThis.__kryCanvas?.closeRequested,
-        closed: globalThis.__kryCanvas?.closed,
-        domNodes: globalThis.__kryDom?.root?.querySelectorAll('[data-kryon-id]').length
+        closeRequested: globalThis.__kryonCanvas?.closeRequested,
+        closed: globalThis.__kryonCanvas?.closed,
+        domNodes: globalThis.__kryonDom?.root?.querySelectorAll('[data-kryon-id]').length
       })`,
       returnByValue: true
     });
@@ -83,7 +83,7 @@ try {
   }
   const validation = await command('Runtime.evaluate', {
     expression: `(() => {
-      const snapshot = globalThis.__kryDomSnapshot;
+      const snapshot = globalThis.__kryonDomSnapshot;
       const failures = [];
       if (!snapshot) failures.push('missing DOM snapshot');
       if (snapshot && snapshot.title !== 'DOM Probe') failures.push('title ' + snapshot.title);

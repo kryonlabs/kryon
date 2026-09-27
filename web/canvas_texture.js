@@ -2,7 +2,7 @@
 addToLibrary({
   js_draw_texture_pro__sig: "vidddddddddddiiiii",
   js_draw_texture_pro: function(id, sx, sy, sw, sh, dx, dy, dw, dh, ox, oy, rot, r, gg, bb, aa, filter) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || K.closed) return;
     var ctx = K.ctxNow();
     var tex = K.textures[id];
@@ -67,7 +67,7 @@ addToLibrary({
   },
   js_texture_from_rgba__sig: "iiii",
   js_texture_from_rgba: function(ptr, w, h) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var cv = K.makeCanvas(w, h);
     if (!cv) return 0;
     var c2 = cv.getContext('2d');
@@ -80,7 +80,7 @@ addToLibrary({
   },
   js_texture_free__sig: "vi",
   js_texture_free: function(id) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     delete K.textures[id];
     if (K.tints) Object.keys(K.tints).forEach(function(key) { if(key.indexOf(id + ':') === 0) delete K.tints[key]; });
     if (K.filters) delete K.filters[id];
@@ -88,7 +88,7 @@ addToLibrary({
   },
   js_texture_update_rgba__sig: "viiiiii",
   js_texture_update_rgba: function(id, ptr, x, y, w, h) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var cv = K && K.textures ? K.textures[id] : null;
     if (!cv || !cv.getContext || !ptr || w <= 0 || h <= 0) return;
     var c2 = cv.getContext('2d');
@@ -100,20 +100,20 @@ addToLibrary({
   },
   js_texture_filter__sig: "vii",
   js_texture_filter: function(id, filter) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || !K.textures[id]) return;
     if (!K.filters) K.filters = {};
     K.filters[id] = filter | 0;
   },
   js_texture_filter_for__sig: "ii",
   js_texture_filter_for: function(id) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     if (!K || !K.filters || K.filters[id] === undefined) return 0;
     return K.filters[id] | 0;
   },
   js_render_target__sig: "iii",
   js_render_target: function(w, h) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var cv = K.makeCanvas(w, h);
     if (!cv) return 0;
     var id = K.nextTex++;
@@ -124,7 +124,7 @@ addToLibrary({
   },
   js_target_select__sig: "vi",
   js_target_select: function(id) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var cv = K.textures[id];
     if (cv) {
         K.target.push({canvas:cv,ctx:cv.getContext('2d'),mode2D:K.mode2D,saved:K.saved,rasterClips:K.rasterClips||0});
@@ -135,14 +135,14 @@ addToLibrary({
   },
   js_target_deselect__sig: "v",
   js_target_deselect: function() {
-    var K=globalThis.__kryCanvas;
+    var K=globalThis.__kryonCanvas;
     if(!K || !K.target.length) return;
     var state=K.target.pop();
     K.mode2D=state.mode2D; K.saved=state.saved; K.rasterClips=state.rasterClips;
   },
   js_texture_read__sig: "iiii",
   js_texture_read: function(id, ptr, capacity) {
-    var K = globalThis.__kryCanvas;
+    var K = globalThis.__kryonCanvas;
     var cv = id === 0 ? K.canvas : K.textures[id];
     if (!cv || !cv.getContext) return 0;
     var d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
@@ -161,7 +161,7 @@ addToLibrary({
         bitmap=await createImageBitmap(new Blob([encoded]));
         var w=bitmap.width, h=bitmap.height;
         if(w<=0 || h<=0 || w>16384 || h>16384 || w*h*4>67108864) return 0;
-        var K=globalThis.__kryCanvas;
+        var K=globalThis.__kryonCanvas;
         var canvas=K && K.makeCanvas ? K.makeCanvas(w,h) : new OffscreenCanvas(w,h);
         var ctx=canvas.getContext('2d'); ctx.drawImage(bitmap,0,0);
         var pixels=ctx.getImageData(0,0,w,h).data, ptr=_malloc(pixels.length);
@@ -179,7 +179,7 @@ addToLibrary({
     var name=UTF8ToString(path), pixels=HEAPU8.slice(data,data+width*height*4);
     return Asyncify.handleAsync(async function() {
       try {
-        var K=globalThis.__kryCanvas, canvas=K.makeCanvas(width,height), ctx=canvas.getContext('2d');
+        var K=globalThis.__kryonCanvas, canvas=K.makeCanvas(width,height), ctx=canvas.getContext('2d');
         var image=ctx.createImageData(width,height); image.data.set(pixels); ctx.putImageData(image,0,0);
         var blob=canvas.convertToBlob ? await canvas.convertToBlob({type:'image/png'}) : await new Promise(function(resolve) { canvas.toBlob(resolve,'image/png'); });
         if(!blob) return 0;

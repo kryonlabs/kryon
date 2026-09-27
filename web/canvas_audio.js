@@ -3,8 +3,8 @@ addToLibrary({
   js_audio_init__deps: ['malloc', 'free', '$getWasmTableEntry', '$FS'],
   js_audio_init: function() {
     var g = globalThis;
-    if (g.__kryAudio && g.__kryAudio.version === 1) return;
-    var A = g.__kryAudio = {
+    if (g.__kryonAudio && g.__kryonAudio.version === 1) return;
+    var A = g.__kryonAudio = {
         version: 1, ctx: null, master: null, masterVolume: 1.0,
         nextId: 1, buffers: {}, streams: {}, mixedProcessors: []
     };
@@ -346,18 +346,18 @@ addToLibrary({
         return 1;
     };
     var unlock = function () {
-        var active = globalThis.__kryAudio;
+        var active = globalThis.__kryonAudio;
         if (active) active.resume();
     };
-    if (typeof document !== 'undefined' && !document.__kryAudioUnlock) {
-        document.__kryAudioUnlock = 1;
+    if (typeof document !== 'undefined' && !document.__kryonAudioUnlock) {
+        document.__kryonAudioUnlock = 1;
         ['pointerdown', 'keydown', 'touchstart'].forEach(function (name) {
             document.addEventListener(name, unlock, {passive: true});
         });
     }
   },
   js_audio_close: function() {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A) return;
     Object.keys(A.buffers).forEach(function(id) {
         A.stopSound(id);
@@ -376,27 +376,27 @@ addToLibrary({
         try { var close = A.ctx.close(); if (close && close.catch) close.catch(function() {}); } catch (e) {}
     }
     A.buffers = {}; A.streams = {}; A.mixedProcessors = [];
-    globalThis.__kryAudio = null;
+    globalThis.__kryonAudio = null;
   },
   js_audio_ready: function() {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     return A && A.ensure && A.ensure() ? 1 : 0;
   },
   js_audio_set_master_volume: function(volume) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A) return;
     A.masterVolume = A.clamp01(volume);
     if (A.master && A.master.gain) A.setParam(A.master.gain, A.masterVolume);
   },
   js_audio_get_master_volume: function() {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     return A ? A.masterVolume : 1.0;
   },
   js_audio_load_file__deps: ['$UTF8ToString', '$Asyncify'],
   js_audio_load_file__async: true,
   js_audio_load_file: function(file_name) {
     return Asyncify.handleAsync(async function () {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A) return 0;
     try { return await A.decodeBytes(await A.readFileBytes(UTF8ToString(file_name))); }
     catch (e) { return 0; }
@@ -406,7 +406,7 @@ addToLibrary({
   js_audio_load_memory__async: true,
   js_audio_load_memory: function(data, data_size) {
     return Asyncify.handleAsync(async function () {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A || !data || data_size <= 0) return 0;
     try { return await A.decodeBytes(HEAPU8.slice(data, data + data_size)); }
     catch (e) { return 0; }
@@ -416,7 +416,7 @@ addToLibrary({
   js_audio_decode_wave_memory__async: true,
   js_audio_decode_wave_memory: function(data, data_size, sr_out, ch_out, frames_out) {
     return Asyncify.handleAsync(async function () {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A || !data || data_size <= 0) return 0;
     try {
         var id = await A.decodeBytes(HEAPU8.slice(data, data + data_size));
@@ -444,7 +444,7 @@ addToLibrary({
     });
   },
   js_audio_buffer_from_pcm: function(data, frames, sample_rate, sample_size, channels) {
-    var A = globalThis.__kryAudio, ctx = A && A.ensure ? A.ensure() : null;
+    var A = globalThis.__kryonAudio, ctx = A && A.ensure ? A.ensure() : null;
     if (!A || !ctx || !data || frames <= 0 || sample_rate <= 0 || channels <= 0)
         return 0;
     try {
@@ -465,7 +465,7 @@ addToLibrary({
     }
   },
   js_audio_update_buffer_from_pcm: function(id, data, frames, sample_rate, sample_size, channels) {
-    var A = globalThis.__kryAudio, ctx = A && A.ensure ? A.ensure() : null;
+    var A = globalThis.__kryonAudio, ctx = A && A.ensure ? A.ensure() : null;
     var entry = A && A.buffers[id];
     if (!A || !ctx || !entry || !data || frames <= 0 || sample_rate <= 0 || channels <= 0)
         return 0;
@@ -490,11 +490,11 @@ addToLibrary({
     }
   },
   js_audio_ref: function(id) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (A && A.buffers[id]) A.buffers[id].ref++;
   },
   js_audio_release: function(id) {
-    var A = globalThis.__kryAudio, entry = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, entry = A && A.buffers[id];
     if (!entry) return;
     entry.ref--;
     if (entry.ref > 0) return;
@@ -503,37 +503,37 @@ addToLibrary({
     delete A.buffers[id];
   },
   js_audio_buffer_frames: function(id) {
-    var e = globalThis.__kryAudio && globalThis.__kryAudio.buffers[id];
+    var e = globalThis.__kryonAudio && globalThis.__kryonAudio.buffers[id];
     return e && e.buffer ? e.buffer.length | 0 : 0;
   },
   js_audio_buffer_rate: function(id) {
-    var e = globalThis.__kryAudio && globalThis.__kryAudio.buffers[id];
+    var e = globalThis.__kryonAudio && globalThis.__kryonAudio.buffers[id];
     return e && e.buffer ? e.buffer.sampleRate | 0 : 0;
   },
   js_audio_buffer_channels: function(id) {
-    var e = globalThis.__kryAudio && globalThis.__kryAudio.buffers[id];
+    var e = globalThis.__kryonAudio && globalThis.__kryonAudio.buffers[id];
     return e && e.buffer ? e.buffer.numberOfChannels | 0 : 0;
   },
   js_audio_sound_play: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.playSound(id, 0);
+    var A = globalThis.__kryonAudio; if (A) A.playSound(id, 0);
   },
   js_audio_sound_stop: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.stopSound(id);
+    var A = globalThis.__kryonAudio; if (A) A.stopSound(id);
   },
   js_audio_sound_pause: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.pauseSound(id);
+    var A = globalThis.__kryonAudio; if (A) A.pauseSound(id);
   },
   js_audio_sound_resume: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.resumeSound(id);
+    var A = globalThis.__kryonAudio; if (A) A.resumeSound(id);
   },
   js_audio_sound_playing: function(id) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     if (!e) return 0;
     A.prune(e);
     return e.sources.length > 0 ? 1 : 0;
   },
   js_audio_buffer_volume: function(id, volume) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     if (!e) return;
     e.volume = A.clamp01(volume);
     e.sources.forEach(function (s) {
@@ -543,7 +543,7 @@ addToLibrary({
         A.setParam(e.music.output.gain.gain, e.volume);
   },
   js_audio_buffer_pitch: function(id, pitch) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     if (!e) return;
     e.pitch = A.rate(pitch);
     e.sources.forEach(function (s) {
@@ -553,7 +553,7 @@ addToLibrary({
         A.setParam(e.music.source.playbackRate, e.pitch);
   },
   js_audio_buffer_pan: function(id, pan) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     if (!e) return;
     e.pan = A.clampPan(pan);
     e.sources.forEach(function (s) {
@@ -563,50 +563,50 @@ addToLibrary({
         A.setParam(e.music.output.panner.pan, e.pan);
   },
   js_audio_music_play: function(id, looping) {
-    var A = globalThis.__kryAudio; if (A) A.playMusic(id, looping);
+    var A = globalThis.__kryonAudio; if (A) A.playMusic(id, looping);
   },
   js_audio_music_stop: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.stopMusic(id);
+    var A = globalThis.__kryonAudio; if (A) A.stopMusic(id);
   },
   js_audio_music_pause: function(id) {
-    var A = globalThis.__kryAudio; if (A) A.pauseMusic(id);
+    var A = globalThis.__kryonAudio; if (A) A.pauseMusic(id);
   },
   js_audio_music_resume: function(id) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     if (A && e) A.playMusic(id, e.music ? e.music.looping : true);
   },
   js_audio_music_seek: function(id, position) {
-    var A = globalThis.__kryAudio; if (A) A.seekMusic(id, position);
+    var A = globalThis.__kryonAudio; if (A) A.seekMusic(id, position);
   },
   js_audio_music_playing: function(id) {
-    var e = globalThis.__kryAudio && globalThis.__kryAudio.buffers[id];
+    var e = globalThis.__kryonAudio && globalThis.__kryonAudio.buffers[id];
     return e && e.music && e.music.playing ? 1 : 0;
   },
   js_audio_music_length: function(id) {
-    var e = globalThis.__kryAudio && globalThis.__kryAudio.buffers[id];
+    var e = globalThis.__kryonAudio && globalThis.__kryonAudio.buffers[id];
     return e && e.buffer ? e.buffer.duration || 0 : 0;
   },
   js_audio_music_played: function(id) {
-    var A = globalThis.__kryAudio, e = A && A.buffers[id];
+    var A = globalThis.__kryonAudio, e = A && A.buffers[id];
     return A && e ? A.musicOffset(e) : 0;
   },
   js_audio_stream_create: function(sample_rate, sample_size, channels) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     return A ? A.streamCreate(sample_rate, sample_size, channels) : 0;
   },
   js_audio_stream_processed: function(id) {
-    var A = globalThis.__kryAudio, stream = A && A.streams[id];
+    var A = globalThis.__kryonAudio, stream = A && A.streams[id];
     return stream && stream.playing && stream.sources.length < 2 ? 1 : 0;
   },
   js_audio_stream_free: function(id) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.sources.forEach(function (s) { A.stopSource(s.source || s); A.disconnectOutput(s.output); });
     A.stopStreamCallback(st);
     delete A.streams[id];
   },
   js_audio_stream_play: function(id) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id], ctx = A && A.ensure ? A.ensure() : null;
+    var A = globalThis.__kryonAudio, st = A && A.streams[id], ctx = A && A.ensure ? A.ensure() : null;
     if (!st || !ctx) return;
     A.resume();
     st.playing = true;
@@ -614,7 +614,7 @@ addToLibrary({
     A.startStreamCallback(st);
   },
   js_audio_stream_stop: function(id) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.sources.forEach(function (s) { A.stopSource(s.source || s); A.disconnectOutput(s.output); });
     st.sources = [];
@@ -623,14 +623,14 @@ addToLibrary({
     A.stopStreamCallback(st);
   },
   js_audio_stream_pause: function(id) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (st) {
         st.playing = false;
         A.stopStreamCallback(st);
     }
   },
   js_audio_stream_resume: function(id) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id], ctx = A && A.ensure ? A.ensure() : null;
+    var A = globalThis.__kryonAudio, st = A && A.streams[id], ctx = A && A.ensure ? A.ensure() : null;
     if (!st || !ctx) return;
     A.resume();
     st.playing = true;
@@ -638,15 +638,15 @@ addToLibrary({
     A.startStreamCallback(st);
   },
   js_audio_stream_playing: function(id) {
-    var st = globalThis.__kryAudio && globalThis.__kryAudio.streams[id];
+    var st = globalThis.__kryonAudio && globalThis.__kryonAudio.streams[id];
     return st && st.playing ? 1 : 0;
   },
   js_audio_stream_update: function(id, data, frames, sample_rate, sample_size, channels) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     return A ? A.streamPush(id, data, frames, sample_rate, sample_size, channels) : 0;
   },
   js_audio_stream_volume: function(id, volume) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.volume = A.clamp01(volume);
     st.sources.forEach(function (s) {
@@ -654,7 +654,7 @@ addToLibrary({
     });
   },
   js_audio_stream_pitch: function(id, pitch) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.pitch = A.rate(pitch);
     st.sources.forEach(function (s) {
@@ -662,7 +662,7 @@ addToLibrary({
     });
   },
   js_audio_stream_pan: function(id, pan) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.pan = A.clampPan(pan);
     st.sources.forEach(function (s) {
@@ -670,7 +670,7 @@ addToLibrary({
     });
   },
   js_audio_stream_callback: function(id, callback, frames) {
-    var A = globalThis.__kryAudio, st = A && A.streams[id];
+    var A = globalThis.__kryonAudio, st = A && A.streams[id];
     if (!st) return;
     st.callback = callback;
     st.callbackFrames = frames > 0 ? frames : st.callbackFrames || 1024;
@@ -678,22 +678,22 @@ addToLibrary({
     else if (st.playing) A.startStreamCallback(st);
   },
   js_audio_stream_attach_processor: function(id, callback) {
-    var st = globalThis.__kryAudio && globalThis.__kryAudio.streams[id];
+    var st = globalThis.__kryonAudio && globalThis.__kryonAudio.streams[id];
     if (!st || !callback) return;
     if (st.processors.indexOf(callback) < 0) st.processors.push(callback);
   },
   js_audio_stream_detach_processor: function(id, callback) {
-    var st = globalThis.__kryAudio && globalThis.__kryAudio.streams[id];
+    var st = globalThis.__kryonAudio && globalThis.__kryonAudio.streams[id];
     if (!st || !callback) return;
     st.processors = st.processors.filter(function (p) { return p !== callback; });
   },
   js_audio_attach_mixed_processor: function(callback) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A || !callback) return;
     if (A.mixedProcessors.indexOf(callback) < 0) A.mixedProcessors.push(callback);
   },
   js_audio_detach_mixed_processor: function(callback) {
-    var A = globalThis.__kryAudio;
+    var A = globalThis.__kryonAudio;
     if (!A || !callback) return;
     A.mixedProcessors = A.mixedProcessors.filter(function (p) { return p !== callback; });
   },

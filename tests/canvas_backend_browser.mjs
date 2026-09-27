@@ -38,7 +38,7 @@ try {
     await delay(50);
   }
   if(result!=='PASS') {
-    const state=await command('Runtime.evaluate',{expression:'JSON.stringify({module:typeof Module,cap:globalThis.__kryCanvas,result:document.getElementById("result")?.textContent})',returnByValue:true});
+    const state=await command('Runtime.evaluate',{expression:'JSON.stringify({module:typeof Module,cap:globalThis.__kryonCanvas,result:document.getElementById("result")?.textContent})',returnByValue:true});
     pageDiagnostics+=' '+String(state.result?.result?.value);
     throw new Error('Canvas test timed out: '+result+' '+errors+' '+pageDiagnostics);
   }
