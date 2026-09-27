@@ -1,0 +1,40 @@
+name: Cloudflare Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - docs/site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-production:
+    name: Deploy Kryon Labs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Check static site assets
+        run: |
+          test -f docs/site/index.html
+          test -f docs/site/current.css
+          test -f docs/site/favicon.svg
+          test -f docs/site/favicon-32.png
+          test -f docs/site/og.png
+          test -f docs/site/assets/brand/mark.svg
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy docs/site --project-name=kryon --branch=master
