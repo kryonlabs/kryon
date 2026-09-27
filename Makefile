@@ -218,6 +218,10 @@ typeface-source-test: $(ZI2C_BIN)
 raylib-project-test: build/bin/kryon
 	@python3 tests/raylib_project_test.py
 
+.PHONY: desktop-project-test
+desktop-project-test: build/bin/kryon
+	@python3 tests/desktop_project_test.py
+
 .PHONY: libdraw-project-test
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py

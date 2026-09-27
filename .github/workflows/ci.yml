@@ -26,7 +26,7 @@ jobs:
       - name: Checkout Ziran
         uses: actions/checkout@v7
         with:
-          repository: kryonlabs/ziran
+          repository: ziranlang/ziran
           path: ziran
 
       - name: Install build tools

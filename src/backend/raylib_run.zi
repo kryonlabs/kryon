@@ -71,7 +71,10 @@ main :: () -> s32 {
             key: s32 = RaylibPressedKey()
             if key != 0 { KeyboardSend(session, key) }
             codepoint: s32 = RaylibTypedCodepoint()
-            if codepoint != 0 { TypedCodepointSend(session, codepoint) }
+            while codepoint != 0 {
+                TypedCodepointSend(session, codepoint)
+                codepoint = RaylibTypedCodepoint()
+            }
             ok = DrawRaylibFrame(session, RaylibViewport(), false)
         }
     }

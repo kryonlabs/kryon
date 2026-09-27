@@ -17,7 +17,7 @@ its portable loader recognizes widget names.
 | [Game2D](https://github.com/kryonlabs/game2d) | Optional game package with a raylib adapter |
 | `src/backend/*.zi` | Portable host primitives and ABI declarations |
 | `tests/support/*_host.c` | C ABI fixtures for existing portable widget tests; these are not linked into Kryon |
-| [Ziran](https://github.com/kryonlabs/ziran) checked out at `../ziran` | Language implementation and generic execution |
+| [Ziran](https://github.com/ziranlang/ziran) checked out at `../ziran` | Language implementation and generic execution |
 
 Every maintained core UI source is in `modules.txt`. The checked build has no
 handwritten Kryon headers; C hosts include headers generated from `.zi`.

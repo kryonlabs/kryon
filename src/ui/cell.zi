@@ -1,3 +1,4 @@
+#import "utf8"
 
 // A terminal cell is a character and resolved colors. A platform host may
 // compare successive buffers and emit ANSI, but it never decides layout.
@@ -45,46 +46,13 @@ CellCodepointResult :: struct {
 #program_export
 CellCodepoint :: (text: string, at: s32) -> CellCodepointResult {
     result: CellCodepointResult
-    result.after = at
-    if at < 0 || at >= (cast(s32)text.count) { return result }
-    first: u8 = text[at]
-    result.after = at + 1
-    if first < cast(u8)128 {
-        result.value = cast(u32)first
+    if at < 0 || at >= cast(s32)text.count {
+        result.after = at
         return result
     }
-    result.value = cast(u32)65533
-    count: s32 = 0
-    codepoint: u32 = cast(u32)0
-    minimum: u32 = cast(u32)0
-    if first >= cast(u8)194 && first <= cast(u8)223 {
-        count = 1
-        codepoint = cast(u32)(first & cast(u8)31)
-        minimum = cast(u32)128
-    } else if first >= cast(u8)224 && first <= cast(u8)239 {
-        count = 2
-        codepoint = cast(u32)(first & cast(u8)15)
-        minimum = cast(u32)2048
-    } else if first >= cast(u8)240 && first <= cast(u8)244 {
-        count = 3
-        codepoint = cast(u32)(first & cast(u8)7)
-        minimum = cast(u32)65536
-    }
-    if count == 0 { return result }
-    if at + count >= (cast(s32)text.count) { return result }
-    index: s32 = 1
-    while index <= count {
-        part: u8 = text[at + index]
-        if part < cast(u8)128 || part > cast(u8)191 { return result }
-        codepoint = (codepoint << cast(u32)6) | cast(u32)(part & cast(u8)63)
-        index += 1
-    }
-    if codepoint < minimum || codepoint > cast(u32)1114111 ||
-       (codepoint >= cast(u32)55296 && codepoint <= cast(u32)57343) {
-        return result
-    }
-    result.value = codepoint
-    result.after = at + count + 1
+    decoded: Decoded = Decode(text, at)
+    result.value = decoded.value
+    result.after = decoded.after
     return result
 }
 

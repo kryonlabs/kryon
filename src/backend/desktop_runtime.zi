@@ -1,7 +1,9 @@
+#import "byte_text_linux"
 #import "c_string"
 #import "cairo_raster"
 #import "geometry"
 #import "tree_input"
+#import "utf8"
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
@@ -39,6 +41,8 @@ RenderCopy :: (renderer: *void, texture: *void, source: *void,
 RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
 PollEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PollEvent";
 PushEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PushEvent";
+StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
+StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
 GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
 Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
 
@@ -47,6 +51,10 @@ renderer: *void;
 texture: *void;
 pointer: PointerFrame;
 desktop_wheel: float32;
+desktop_key: s32;
+desktop_codepoints: [32]s32;
+desktop_codepoint_count: s32;
+desktop_codepoint_next: s32;
 
 #program_export
 OpenDesktop :: () -> bool {
@@ -61,11 +69,13 @@ OpenDesktop :: () -> bool {
     if renderer == null { return false }
     texture = CreateTexture(renderer, cast(u32)0x16362004, 1, 960, 600)
     if texture == null { return false }
+    StartTextInput()
     return OpenRaster(960, 600)
 }
 
 #program_export
 CloseDesktop :: () {
+    StopTextInput()
     CloseRaster()
     if texture != null { DestroyTexture(texture) }
     if renderer != null { DestroyRenderer(renderer) }
@@ -89,8 +99,35 @@ PollDesktop :: () -> bool {
     pressed: bool = false
     released: bool = false
     desktop_wheel = 0.0
+    desktop_key = 0
+    desktop_codepoint_count = 0
+    desktop_codepoint_next = 0
     while PollEvent(*event) != 0 {
         if event.kind == cast(u32)0x100 { return false }
+        if event.kind == cast(u32)0x300 {
+            // SDL_KeyboardEvent.keysym.sym occupies byte offset 20.
+            desktop_key = event.x
+        }
+        if event.kind == cast(u32)0x303 {
+            // SDL_TextInputEvent.text is a NUL-terminated UTF-8 array at
+            // offset 12 in SDL_Event. The event storage lives through Decode.
+            bytes: []u8 = BytesFromPointer(cast(*u8)(*event), cast(u64)56)
+            end: s32 = 12
+            while end < 44 && bytes[end] != cast(u8)0 { end += 1 }
+            if end > 12 {
+                value: string = TextFromBytes(bytes[12:end])
+                at: s32 = 0
+                while at < cast(s32)value.count {
+                    decoded: Decoded = Decode(value, at)
+                    if desktop_codepoint_count < 32 {
+                        desktop_codepoints[desktop_codepoint_count] =
+                            cast(s32)decoded.value
+                        desktop_codepoint_count += 1
+                    }
+                    at = decoded.after
+                }
+            }
+        }
         if event.kind == cast(u32)0x403 {
             // SDL_MouseWheelEvent.y occupies byte offset 20 in the event
             // union, which is Event.x in the button-event layout above.
@@ -115,6 +152,21 @@ PollDesktop :: () -> bool {
 
 #program_export
 DesktopWheelMove :: () -> float32 { return desktop_wheel }
+
+#program_export
+DesktopPressedKey :: () -> s32 {
+    key: s32 = desktop_key
+    desktop_key = 0
+    return key
+}
+
+#program_export
+DesktopTypedCodepoint :: () -> s32 {
+    if desktop_codepoint_next >= desktop_codepoint_count { return 0 }
+    codepoint: s32 = desktop_codepoints[desktop_codepoint_next]
+    desktop_codepoint_next += 1
+    return codepoint
+}
 
 #program_export
 CheckPointerEvents :: () -> bool {
