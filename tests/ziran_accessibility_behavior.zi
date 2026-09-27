@@ -1,0 +1,37 @@
+#import "widget_kind"
+#import "accessibility_props"
+#import "accessibility_policy"
+
+using AccessibilityAction;
+using WidgetKind;
+
+#program_export
+Answer :: () -> s32 {
+    button: u32 = AccessibilityActionsFor(cast(s32)WidgetKindButton, 7,
+        false, false, false)
+    if button != cast(u32)3 { return 0 }
+    if !AccessibilityActionAllowed(button,
+        cast(AccessibilityAction)AccessibilityActionActivate) { return 0 }
+    if AccessibilityActionsFor(cast(s32)WidgetKindButton, 0,
+        false, false, false) != cast(u32)0 { return 0 }
+    field: u32 = AccessibilityActionsFor(cast(s32)WidgetKindTextField, 8,
+        false, false, false)
+    if field != cast(u32)13 { return 0 }
+    if AccessibilityActionsFor(cast(s32)WidgetKindListBox, 9,
+        false, false, true) != cast(u32)1 { return 0 }
+    if !AccessibilityItemSelectionFor(false, 3, 3,
+        cast(AccessibilityAction)AccessibilityActionSelectItem) { return 0 }
+    if AccessibilitySingleSelectionFor(3, 3,
+        cast(AccessibilityAction)AccessibilityActionDeselectItem) != -1 { return 0 }
+    if !AccessibilityValueCodepointAllowed(10, true) { return 0 }
+    if AccessibilityValueCodepointAllowed(10, false) { return 0 }
+    if !AccessibilityValueFits(5, 3, 6, 3) { return 0 }
+    if AccessibilityValueFits(6, 3, 6, 3) { return 0 }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}
