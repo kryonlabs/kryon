@@ -1,0 +1,126 @@
+#import "drawing_props"
+#import "geometry"
+
+texts: s32;
+fills: s32;
+failed: bool;
+
+InkIsExpected :: (color: Color) -> bool {
+    return color.r == cast(u8)0x11 && color.g == cast(u8)0x22 &&
+        color.b == cast(u8)0x33 && color.a == cast(u8)127
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return (cast(s32)value.count) * 10
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return 12
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    expected: string
+    expected_x: s32
+    expected_y: s32
+    if texts == 0 {
+        expected = "Alpha"
+        expected_x = 10
+        expected_y = 20
+    } else if texts == 1 {
+        expected = "beta"
+        expected_x = 15
+        expected_y = 36
+    } else if texts == 2 {
+        expected = "Gamma"
+        expected_x = 10
+        expected_y = 52
+    } else {
+        failed = true
+    }
+    if value != expected || x != expected_x || y != expected_y ||
+        font != 14 || !InkIsExpected(color) ||
+        clip.x != 10.0 || clip.y != 20.0 ||
+        clip.width != 50.0 || clip.height != 24.0 { failed = true }
+    texts += 1
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if fills >= 2 || texts != fills + 1 { failed = true }
+    expected_x: float32 = 10.0
+    expected_y: float32 = 26.0
+    expected_width: float32 = 50.0
+    if fills == 1 {
+        expected_x = 15.0
+        expected_y = 42.0
+        expected_width = 40.0
+    }
+    if bounds.x != expected_x || bounds.y != expected_y ||
+        bounds.width != expected_width || bounds.height != 1.0 ||
+        radius != 0.0 || segments != 1 ||
+        !InkIsExpected(color) { failed = true }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+    failed = true
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
+
+#program_export
+TextHostFailed :: () -> bool { return failed }
+
+#program_export
+TextHostLabels :: () -> s32 { return texts }
+
+#program_export
+TextHostFills :: () -> s32 { return fills }
