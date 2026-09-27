@@ -1,3 +1,4 @@
+#import "cairo_raster"
 #import "desktop_runtime"
 #import "image_demo"
 
