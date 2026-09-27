@@ -48,48 +48,24 @@ for target in c cpp; do
     env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
 done
 
-output=$work/native-go
-"$ziran" build --target=go --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$output" "$source"
-cat > "$output/paned_view_test.go" <<'GO'
-package ziran
-import "testing"
-type panedHost struct { t *testing.T; fills int }
-func (h *panedHost) MeasureGlyphWidth(value string, font int32,
-    typeface string) int32 { return 0 }
-func (h *panedHost) MeasureGlyphLineHeight(font int32,
-    typeface string) int32 { return 12 }
-func (h *panedHost) RasterRoundedRectangle(bounds Rectangle,
-    radius float32, segments int32, color Color) {
-    if bounds.X < 10 || bounds.Y < 20 || bounds.X+bounds.Width > 130 ||
-       bounds.Y+bounds.Height > 100 { h.t.Fatal("fill outside pane") }
-    h.fills++
-}
-func (h *panedHost) RasterRoundedRectangleOutline(bounds Rectangle,
-    radius float32, segments int32, width float32, color Color) {
-    h.t.Fatal("unexpected outline")
-}
-func (h *panedHost) RasterLine(bounds Rectangle, color Color) {
-    h.t.Fatal("unexpected line")
-}
-func (h *panedHost) RasterText(value string, x, y, font int32,
-    color Color) { h.t.Fatal("unexpected text") }
-func (h *panedHost) RasterTextClipped(value string, x, y, font int32,
-    color Color, clip Rectangle) { h.t.Fatal("unexpected text") }
-func (h *panedHost) RasterImage(path string, id uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) { h.t.Fatal("unexpected image") }
-func TestPanedView(t *testing.T) {
-    h := &panedHost{t: t}
-    SetRasterShapeHost(h)
-    SetRasterTextHost(h)
-    SetRasterHost(h)
-    SetPaintQueueHost(h)
-    for phase := 0; phase < 7; phase++ {
-        if PanedViewBehavior_Frame() != int32(phase) { t.Fatal("pane phase", phase) }
-    }
-    if h.fills != 7 { t.Fatal("pane fill count", h.fills) }
-}
-GO
-env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$portable
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/paned_view_portable_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry paned_view_portable_test:main --root "$module_root" \
+        --module-path "$module_dir" --module-path "$repo/../ziran/std" \
+        --bind "$bind_fill" --bind "$bind_outline" \
+        --bind "$bind_line" --bind "$bind_text" \
+        --bind "$bind_clipped" --bind "$bind_image" \
+        -o "$output" "$module"
+    mv "$output/paned_view_portable_test.go" "$output/paned_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done

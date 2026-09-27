@@ -46,66 +46,21 @@ for target in c cpp; do
     env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
 done
 
-output=$work/native-go
-"$ziran" build --target=go --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$output" "$source"
-cat > "$output/list_box_widget_test.go" <<'GO'
-package ziran
-import "testing"
-type listBoxHost struct { t *testing.T; labels int }
-func (h *listBoxHost) MeasureGlyphWidth(value string, font int32,
-    typeface string) int32 { h.t.Fatal("unexpected width"); return 0 }
-func (h *listBoxHost) MeasureGlyphLineHeight(font int32,
-    typeface string) int32 {
-    if font != 14 || typeface != "" { h.t.Fatal("glyph height") }
-    return 12
-}
-func (h *listBoxHost) RasterRoundedRectangle(bounds Rectangle,
-    radius float32, segments int32, color Color) {
-    if bounds.X < 10 || bounds.Y < 10 ||
-       bounds.X+bounds.Width > 220 ||
-       bounds.Y+bounds.Height > 70 { h.t.Fatal("fill bounds") }
-}
-func (h *listBoxHost) RasterRoundedRectangleOutline(bounds Rectangle,
-    radius float32, segments int32, width float32, color Color) {
-    if bounds.X < 10 || bounds.Y < 10 ||
-       bounds.X+bounds.Width > 220 ||
-       bounds.Y+bounds.Height > 70 { h.t.Fatal("outline bounds") }
-}
-func (h *listBoxHost) RasterLine(bounds Rectangle, color Color) {
-    h.t.Fatal("unexpected line")
-}
-func (h *listBoxHost) RasterText(value string, x, y, font int32,
-    color Color) { h.t.Fatal("unexpected unclipped text") }
-func (h *listBoxHost) RasterTextClipped(value string, x, y, font int32,
-    color Color, clip Rectangle) {
-    if len(value) != 1 || font != 14 ||
-       !((clip.X >= 10 && clip.X+clip.Width <= 110 &&
-          clip.Y >= 10 && clip.Y+clip.Height <= 52) ||
-         (clip.X >= 120 && clip.X+clip.Width <= 220 &&
-          clip.Y >= 10 && clip.Y+clip.Height <= 70)) {
-        h.t.Fatal("label clip")
-    }
-    h.labels++
-}
-func (h *listBoxHost) RasterImage(path string, id uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) {
-    h.t.Fatal("unexpected image")
-}
-func TestListBox(t *testing.T) {
-    h := &listBoxHost{t: t}
-    SetFontMetricsHost(h)
-    SetRasterShapeHost(h)
-    SetRasterTextHost(h)
-    SetRasterHost(h)
-    SetPaintQueueHost(h)
-    for phase := int32(0); phase < 6; phase++ {
-        if ListBoxWidgetBehavior_Frame() != phase || h.labels != int(phase+1)*6 {
-            t.Fatal("phase", phase)
-        }
-    }
-}
-GO
-env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$portable
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/list_box_widget_portable_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry list_box_widget_portable_test:main --root "$module_root" \
+        --module-path "$module_dir" --module-path "$repo/../ziran/std" \
+        "$@" -o "$output" "$module"
+    mv "$output/list_box_widget_portable_test.go" "$output/list_box_widget_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done

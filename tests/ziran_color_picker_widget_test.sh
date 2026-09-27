@@ -46,61 +46,21 @@ for target in c cpp; do
     env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
 done
 
-output=$work/native-go
-"$ziran" build --target=go --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$output" "$source"
-cat > "$output/color_picker_widget_test.go" <<'GO'
-package ziran
-import "testing"
-type colorPickerHost struct { t *testing.T; swatches, labels int }
-func (h *colorPickerHost) MeasureGlyphWidth(value string, font int32,
-    typeface string) int32 { return 0 }
-func (h *colorPickerHost) MeasureGlyphLineHeight(font int32,
-    typeface string) int32 {
-    if font != 14 || typeface != "" { h.t.Fatal("font") }
-    return 12
-}
-func (h *colorPickerHost) RasterRoundedRectangle(bounds Rectangle,
-    radius float32, segments int32, color Color) {
-    if bounds.X < 10 || bounds.Y < 10 ||
-       bounds.X+bounds.Width > 190 ||
-       bounds.Y+bounds.Height > 250 { h.t.Fatal("fill bounds") }
-    if bounds.Y == 214 && bounds.Height == 36 {
-        if color.R != 64 || color.G != 128 || color.B != 191 {
-            h.t.Fatal("swatch")
-        }
-        h.swatches++
-    }
-}
-func (h *colorPickerHost) RasterRoundedRectangleOutline(bounds Rectangle,
-    radius float32, segments int32, width float32, color Color) {}
-func (h *colorPickerHost) RasterLine(bounds Rectangle, color Color) {
-    h.t.Fatal("unexpected line")
-}
-func (h *colorPickerHost) RasterText(value string, x, y, font int32,
-    color Color) { h.t.Fatal("unexpected text") }
-func (h *colorPickerHost) RasterTextClipped(value string, x, y, font int32,
-    color Color, clip Rectangle) {
-    if len(value) == 0 || font != 14 || clip.X < 10 || clip.Y < 10 ||
-       clip.X+clip.Width > 190 ||
-       clip.Y+clip.Height > 250 { h.t.Fatal("label") }
-    h.labels++
-}
-func (h *colorPickerHost) RasterImage(path string, id uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) { h.t.Fatal("image") }
-func TestColorPicker(t *testing.T) {
-    h := &colorPickerHost{t: t}
-    SetFontMetricsHost(h)
-    SetRasterShapeHost(h)
-    SetRasterTextHost(h)
-    SetRasterHost(h)
-    SetPaintQueueHost(h)
-    for phase := int32(0); phase < 5; phase++ {
-        if ColorPickerWidgetBehavior_Frame() != phase || h.swatches != int(phase+1) ||
-           h.labels != int(phase+1)*9 { t.Fatal("phase", phase) }
-    }
-}
-GO
-env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$portable
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/color_picker_widget_portable_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry color_picker_widget_portable_test:main --root "$module_root" \
+        --module-path "$module_dir" --module-path "$repo/../ziran/std" \
+        "$@" -o "$output" "$module"
+    mv "$output/color_picker_widget_portable_test.go" "$output/color_picker_widget_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done

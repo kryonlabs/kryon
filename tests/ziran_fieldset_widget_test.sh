@@ -46,68 +46,21 @@ for target in c cpp; do
     env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
 done
 
-output=$work/native-go
-"$ziran" build --target=go --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
-    -o "$output" "$source"
-cat > "$output/fieldset_widget_test.go" <<'GO'
-package ziran
-import "testing"
-type fieldsetHost struct { t *testing.T; fills, outlines, labels int }
-func (h *fieldsetHost) MeasureGlyphWidth(value string, font int32,
-    typeface string) int32 {
-    if value != "Group" || font != 18 || typeface != "" {
-        h.t.Fatal("fieldset title measurement")
-    }
-    return 35
-}
-func (h *fieldsetHost) MeasureGlyphLineHeight(font int32,
-    typeface string) int32 { return 18 }
-func (h *fieldsetHost) RasterRoundedRectangle(bounds Rectangle,
-    radius float32, segments int32, color Color) {
-    if h.fills < 2 &&
-       (color.R != 0x12 || color.G != 0x34 ||
-        color.B != 0x56 || color.A != 127) { h.t.Fatal("fieldset KSS") }
-    if h.fills == 1 &&
-       (bounds.X != 18 || bounds.Y != 22 || bounds.Width != 51 ||
-        bounds.Height != 18 || radius != 0 || segments != 4) {
-        h.t.Fatal("fieldset title cover")
-    }
-    h.fills++
-}
-func (h *fieldsetHost) RasterRoundedRectangleOutline(bounds Rectangle,
-    radius float32, segments int32, width float32, color Color) {
-    if radius != 6 || segments != 12 || width != 1 {
-        h.t.Fatal("fieldset border")
-    }
-    h.outlines++
-}
-func (h *fieldsetHost) RasterLine(bounds Rectangle, color Color) {
-    h.t.Fatal("unexpected line")
-}
-func (h *fieldsetHost) RasterText(value string, x, y, font int32,
-    color Color) { h.t.Fatal("unclipped title") }
-func (h *fieldsetHost) RasterTextClipped(value string, x, y, font int32,
-    color Color, clip Rectangle) {
-    if value != "Group" || x != 26 || y != 21 || font != 18 ||
-       clip.X != 26 || clip.Y != 21 || clip.Width != 35 ||
-       clip.Height != 18 || color.R != 0xaa || color.G != 0xbb ||
-       color.B != 0xcc || color.A != 127 { h.t.Fatal("fieldset title") }
-    h.labels++
-}
-func (h *fieldsetHost) RasterImage(path string, id uint32,
-    source, destination, clip Rectangle, origin Vector2,
-    rotation, radius float32, tint Color) { h.t.Fatal("unexpected image") }
-func TestFieldsetWidget(t *testing.T) {
-    h := &fieldsetHost{t: t}
-    SetFontMetricsHost(h)
-    SetRasterShapeHost(h)
-    SetRasterTextHost(h)
-    SetRasterHost(h)
-    SetPaintQueueHost(h)
-    if FieldsetWidgetBehavior_Frame() != 7 || h.fills != 3 || h.outlines != 2 || h.labels != 1 {
-        t.Fatal("fieldset frame")
-    }
-}
-GO
-env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go
+for input in source saved; do
+    output=$work/go-$input
+    if test "$input" = source; then
+        module=$portable
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/fieldset_widget_portable_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    "$ziran" build --target=go --pkg main --exe \
+        --entry fieldset_widget_portable_test:main --root "$module_root" \
+        --module-path "$module_dir" --module-path "$repo/../ziran/std" \
+        "$@" -o "$output" "$module"
+    mv "$output/fieldset_widget_portable_test.go" "$output/fieldset_case.go"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done
