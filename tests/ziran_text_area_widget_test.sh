@@ -38,6 +38,7 @@ anchor: s32;
 scroll_y: s32;
 focused: bool;
 ime_state: CompositionState;
+ime_text: [64]u8;
 selecting: bool;
 preferred_x: s32;
 preferred_x_valid: bool;
@@ -508,7 +509,19 @@ Frame :: () -> s32 {
     anchor = result.anchor
     scroll_y = result.scroll_y
     focused = result.focused
-    ime_state = result.composition
+    // A composition view may point into this frame's input. Keep the bytes
+    // in session-owned storage before carrying the state to the next frame.
+    if result.composition.text.count > 64 { return -45 }
+    byte: s64 = 0
+    while byte < result.composition.text.count {
+        ime_text[byte] = result.composition.text[byte]
+        byte += 1
+    }
+    ime_state = CompositionState.{}
+    ime_state.active = result.composition.active
+    ime_state.cursor = result.composition.cursor
+    ime_state.selection_length = result.composition.selection_length
+    ime_state.text = TextView(ime_text[:result.composition.text.count])
     selecting = result.selecting
     preferred_x = result.preferred_x
     preferred_x_valid = result.preferred_x_valid
