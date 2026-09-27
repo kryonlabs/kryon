@@ -1,3 +1,4 @@
+#import "byte_text_linux"
 #import "session"
 #import "app"
 #import "geometry"
@@ -5,6 +6,7 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "utf8"
 
 using FrameStatus;
 
@@ -109,6 +111,10 @@ main :: () -> s32 {
         input: TerminalPollDescriptor
         input.fd = 0
         input.events = 1
+        pending: [4]u8
+        pending_count: s32 = 0
+        pending_needed: s32 = 0
+        escape_stage: s32 = 0
         while result == 0 {
             ready: s32 = RunPoll(*input, 1, 30000)
             if ready < 0 {
@@ -127,9 +133,65 @@ main :: () -> s32 {
                 break
             }
             if key == cast(u8)3 { break }
-            if key == cast(u8)49 || key == cast(u8)50 ||
-                key == cast(u8)114 || key == cast(u8)82 {
+            if key == cast(u8)27 {
+                escape_stage = 1
+                pending_count = 0
+                pending_needed = 0
+                continue
+            }
+            if escape_stage == 1 {
+                escape_stage = 0
+                if key == cast(u8)91 {
+                    escape_stage = 2
+                    continue
+                }
+            } else if escape_stage == 2 {
+                if key >= cast(u8)64 && key <= cast(u8)126 {
+                    escape_stage = 0
+                }
+                continue
+            }
+            if pending_needed > 0 {
+                if key >= cast(u8)128 && key <= cast(u8)191 {
+                    pending[pending_count] = key
+                    pending_count += 1
+                    if pending_count < pending_needed { continue }
+                    value: string = TextFromBytes(pending[0:pending_count])
+                    decoded: Decoded = Decode(value, 0)
+                    KeyboardSend(session, cast(s32)decoded.value)
+                    TypedCodepointSend(session, cast(s32)decoded.value)
+                    pending_count = 0
+                    pending_needed = 0
+                    result = RenderFrame(session, viewport, true)
+                    continue
+                }
+                KeyboardSend(session, 65533)
+                TypedCodepointSend(session, 65533)
+                pending_count = 0
+                pending_needed = 0
+            }
+            if key < cast(u8)128 {
                 KeyboardSend(session, cast(s32)key)
+                if key >= cast(u8)32 && key != cast(u8)127 {
+                    TypedCodepointSend(session, cast(s32)key)
+                }
+                result = RenderFrame(session, viewport, true)
+                continue
+            }
+            pending_needed = 0
+            if key >= cast(u8)194 && key <= cast(u8)223 {
+                pending_needed = 2
+            } else if key >= cast(u8)224 && key <= cast(u8)239 {
+                pending_needed = 3
+            } else if key >= cast(u8)240 && key <= cast(u8)244 {
+                pending_needed = 4
+            }
+            if pending_needed > 0 {
+                pending[0] = key
+                pending_count = 1
+            } else {
+                KeyboardSend(session, 65533)
+                TypedCodepointSend(session, 65533)
                 result = RenderFrame(session, viewport, true)
             }
         }

@@ -43,10 +43,13 @@ input such as `KeyboardTake`, `TypedCodepointTake`,
 `EndFrame` around application composition, then presents the resulting
 paint operations. Widget behavior stays in `src/ui/`.
 
-The terminal host renders one frame when input or output is redirected. The
-other hosts can capture a frame with `KRYON_CAPTURE_PATH`; the graphical
-integration tests run on private Xvfb displays. Run `make test` for the
-nonvisual library gate, plus `make desktop-project-test`,
+The terminal host renders one frame when input or output is redirected. With
+a TTY, it submits ASCII and UTF-8 text to the same session input API as the
+window hosts and ignores terminal escape sequences. The project test drives
+this through a private PTY. The other hosts can capture a frame with
+`KRYON_CAPTURE_PATH`; the graphical integration tests run on private Xvfb
+displays. Run `make test` for the nonvisual library gate, plus
+`make desktop-project-test`,
 `make raylib-project-test`, and `make libdraw-project-test` for graphical
 capture and input.
 Never run graphical tests against the developer's live display.

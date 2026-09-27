@@ -195,6 +195,7 @@ project-test: project-toolchain build/bin/kryon
 		--module-path src/project -o build/project/go tests/project_manifest_test.zi
 	cd build/project/go && GO111MODULE=off go test .
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
 
 source-check:
 	sh tools/check-ziran-source.sh
