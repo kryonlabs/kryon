@@ -1,0 +1,66 @@
+data_calls: s32;
+file_calls: s32;
+system_calls: s32;
+use_calls: s32;
+clear_calls: s32;
+discard_calls: s32;
+failed: bool;
+
+#program_export
+LoadTypefaceData :: (name: string, extension: string, data: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name != "ui" || extension != ".ttf" || data != "font" ||
+        seed != null || seed_count != 0 { failed = true }
+    data_calls += 1
+    return true
+}
+
+#program_export
+LoadTypefaceFile :: (name: string, path: string,
+    seed: *s32, seed_count: s32) -> bool {
+    if name != "fallback" || path != "/font.ttf" ||
+        seed != null || seed_count != 0 { failed = true }
+    file_calls += 1
+    return true
+}
+
+#program_export
+LoadSystemTypeface :: (name: string) -> bool {
+    if name != "ui" { failed = true }
+    system_calls += 1
+    return true
+}
+
+#program_export
+SelectTypeface :: (name: string) -> bool {
+    if name != "ui" { failed = true }
+    use_calls += 1
+    return true
+}
+
+#program_export
+ReleaseTypefaces :: () { clear_calls += 1 }
+
+#program_export
+ReleaseTypefaceCpu :: () { discard_calls += 1 }
+
+#program_export
+TypefaceHostFailed :: () -> bool { return failed }
+
+#program_export
+TypefaceDataCalls :: () -> s32 { return data_calls }
+
+#program_export
+TypefaceFileCalls :: () -> s32 { return file_calls }
+
+#program_export
+TypefaceSystemCalls :: () -> s32 { return system_calls }
+
+#program_export
+TypefaceUseCalls :: () -> s32 { return use_calls }
+
+#program_export
+TypefaceClearCalls :: () -> s32 { return clear_calls }
+
+#program_export
+TypefaceDiscardCalls :: () -> s32 { return discard_calls }

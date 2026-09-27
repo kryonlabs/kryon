@@ -72,18 +72,6 @@ $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	mkdir -p $(BUILD_DIR)
 	touch $@
 
-$(BUILD_DIR)/c/kryon_portable_host.h: tests/support/kryon_portable_host.h
-	mkdir -p $(BUILD_DIR)/c
-	cp $< $@
-
-$(BUILD_DIR)/libkryon_host.a: tests/support/raster_host.c tests/support/font_metrics_host.c tests/support/image_host.c $(BUILD_DIR)/c/kryon_portable_host.h $(ZIRAN_INCLUDE)/ziran_host.h Makefile
-	mkdir -p $(BUILD_DIR)
-	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c tests/support/raster_host.c -o $(BUILD_DIR)/raster_host.o
-	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c tests/support/font_metrics_host.c -o $(BUILD_DIR)/font_metrics_host.o
-	$(CC) -std=c11 -I$(BUILD_DIR)/c -I$(ZIRAN_INCLUDE) -c tests/support/image_host.c -o $(BUILD_DIR)/image_host.o
-	rm -f $@
-	$(AR) rcs $@ $(BUILD_DIR)/raster_host.o $(BUILD_DIR)/font_metrics_host.o $(BUILD_DIR)/image_host.o
-
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
 $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj $(BUILD_DIR)/obj-cpp
@@ -166,7 +154,7 @@ $(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Ma
 
 TEST_JOBS ?= 4
 TEST ?=
-ziran-test: $(BUILD_DIR)/libkryon_host.a
+ziran-test:
 	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
 		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \

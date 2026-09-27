@@ -1,4 +1,5 @@
 #import "typeface_source"
+#import "typeface_source_host"
 
 #program_export
 Answer :: () -> s32 {
@@ -14,4 +15,15 @@ Answer :: () -> s32 {
     ClearTypefaces()
     DiscardTypefaceCpu()
     return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 || TypefaceHostFailed() ||
+        TypefaceDataCalls() != 1 || TypefaceFileCalls() != 1 ||
+        TypefaceSystemCalls() != 1 || TypefaceUseCalls() != 1 ||
+        TypefaceClearCalls() != 1 || TypefaceDiscardCalls() != 1 {
+        return 1
+    }
+    return 0
 }
