@@ -31,80 +31,28 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
-cat > "$work/native_main.h" <<'C'
-#ifdef __cplusplus
-#include "paned_view_behavior.hpp"
-#include <cassert>
-#define HOST extern "C"
-#else
-#include "paned_view_behavior.h"
-#include <assert.h>
-#define HOST
-#endif
-static int fills;
-HOST int32_t MeasureGlyphWidth(String value, int32_t font,
-    String typeface) {
-    (void)value; (void)font; (void)typeface; return 0;
-}
-HOST int32_t MeasureGlyphLineHeight(int32_t font, String typeface) {
-    (void)font; (void)typeface; return 12;
-}
-HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
-    int32_t segments, Color color) {
-    (void)radius; (void)segments; (void)color;
-    assert(bounds.x >= 10 && bounds.y >= 20 &&
-        bounds.x + bounds.width <= 130 &&
-        bounds.y + bounds.height <= 100);
-    fills++;
-}
-HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
-    int32_t segments, float width, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)width; (void)color;
-    assert(0);
-}
-HOST void RasterLine(Rectangle bounds, Color color) {
-    (void)bounds; (void)color; assert(0);
-}
-HOST void RasterText(String value, int32_t x, int32_t y,
-    int32_t font, Color color) {
-    (void)value; (void)x; (void)y; (void)font; (void)color; assert(0);
-}
-HOST void RasterTextClipped(String value, int32_t x, int32_t y,
-    int32_t font, Color color, Rectangle clip) {
-    (void)clip; RasterText(value, x, y, font, color);
-}
-HOST void RasterImage(String path, uint32_t id, Rectangle source,
-    Rectangle destination, Rectangle clip, Vector2 origin,
-    float rotation, float radius, Color tint) {
-    (void)path; (void)id; (void)source; (void)destination;
-    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
-    assert(0);
-}
-int main(void) {
-    for (int phase = 0; phase < 7; phase++) {
-        assert(Frame() == phase);
-    }
-    assert(fills == 7);
-    return 0;
-}
-C
-
-for target in c cpp go; do
+for target in c cpp; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$repo/tests" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+        -o "$output" "$portable"
     if test "$target" = c; then
-        cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+        "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
             "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
-        "$output/app"
     else
-        cat > "$output/paned_view_test.go" <<'GO'
+        "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
+            "$output"/*.cpp -o "$output/app"
+    fi
+    env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+done
+
+output=$work/native-go
+"$ziran" build --target=go --root "$repo/tests" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$output" "$source"
+cat > "$output/paned_view_test.go" <<'GO'
 package ziran
 import "testing"
 type panedHost struct { t *testing.T; fills int }
@@ -144,6 +92,4 @@ func TestPanedView(t *testing.T) {
     if h.fills != 7 { t.Fatal("pane fill count", h.fills) }
 }
 GO
-        GO111MODULE=off go test "$output"/*.go
-    fi
-done
+env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go

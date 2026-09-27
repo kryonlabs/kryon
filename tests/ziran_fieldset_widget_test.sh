@@ -29,95 +29,28 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
-cat > "$work/native_main.h" <<'C'
-#ifdef __cplusplus
-#include "fieldset_widget_behavior.hpp"
-#include <cassert>
-#include <cstring>
-#define HOST extern "C"
-#else
-#include "fieldset_widget_behavior.h"
-#include <assert.h>
-#include <string.h>
-#define HOST
-#endif
-static int fills, outlines, labels;
-HOST int32_t MeasureGlyphWidth(String value, int32_t font,
-    String typeface) {
-    assert(value.length == 5 && memcmp(value.data, "Group", 5) == 0);
-    assert(font == 18 && typeface.length == 0);
-    return 35;
-}
-HOST int32_t MeasureGlyphLineHeight(int32_t font, String typeface) {
-    (void)font; (void)typeface;
-    return 18;
-}
-HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
-    int32_t segments, Color color) {
-    if(fills == 0 || fills == 1) {
-        assert(color.r == 0x12 && color.g == 0x34 &&
-            color.b == 0x56 && color.a == 127);
-    }
-    if(fills == 1) {
-        assert(bounds.x == 18 && bounds.y == 22 &&
-            bounds.width == 51 && bounds.height == 18);
-        assert(radius == 0 && segments == 4);
-    }
-    fills++;
-}
-HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
-    int32_t segments, float width, Color color) {
-    (void)bounds; (void)color;
-    assert(radius == 6 && segments == 12 && width == 1);
-    outlines++;
-}
-HOST void RasterLine(Rectangle bounds, Color color) {
-    (void)bounds; (void)color; assert(0);
-}
-HOST void RasterText(String value, int32_t x, int32_t y,
-    int32_t font, Color color) {
-    (void)value; (void)x; (void)y; (void)font; (void)color; assert(0);
-}
-HOST void RasterTextClipped(String value, int32_t x, int32_t y,
-    int32_t font, Color color, Rectangle clip) {
-    assert(value.length == 5 && memcmp(value.data, "Group", 5) == 0);
-    assert(x == 26 && y == 21 && font == 18);
-    assert(clip.x == 26 && clip.y == 21 &&
-        clip.width == 35 && clip.height == 18);
-    assert(color.r == 0xaa && color.g == 0xbb &&
-        color.b == 0xcc && color.a == 127);
-    labels++;
-}
-HOST void RasterImage(String path, uint32_t id, Rectangle source,
-    Rectangle destination, Rectangle clip, Vector2 origin,
-    float rotation, float radius, Color tint) {
-    (void)path; (void)id; (void)source; (void)destination;
-    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
-    assert(0);
-}
-int main(void) {
-    assert(Frame() == 7);
-    assert(fills == 3 && outlines == 2 && labels == 1);
-    return 0;
-}
-C
-
-for target in c cpp go; do
+for target in c cpp; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$repo/tests" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+        -o "$output" "$portable"
     if test "$target" = c; then
-        cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+        "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
             "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
-        "$output/app"
     else
-        cat > "$output/fieldset_widget_test.go" <<'GO'
+        "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
+            "$output"/*.cpp -o "$output/app"
+    fi
+    env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+done
+
+output=$work/native-go
+"$ziran" build --target=go --root "$repo/tests" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$output" "$source"
+cat > "$output/fieldset_widget_test.go" <<'GO'
 package ziran
 import "testing"
 type fieldsetHost struct { t *testing.T; fills, outlines, labels int }
@@ -177,6 +110,4 @@ func TestFieldsetWidget(t *testing.T) {
     }
 }
 GO
-        GO111MODULE=off go test "$output"/*.go
-    fi
-done
+env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go

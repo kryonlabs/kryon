@@ -29,89 +29,28 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
-cat > "$work/native_main.h" <<'C'
-#ifdef __cplusplus
-#include "color_picker_widget_behavior.hpp"
-#include <cassert>
-#define HOST extern "C"
-#else
-#include "color_picker_widget_behavior.h"
-#include <assert.h>
-#define HOST
-#endif
-static int swatches, labels;
-HOST int32_t MeasureGlyphWidth(String value, int32_t font,
-    String typeface) {
-    (void)value; (void)font; (void)typeface; return 0;
-}
-HOST int32_t MeasureGlyphLineHeight(int32_t font, String typeface) {
-    assert(font == 14 && typeface.length == 0);
-    return 12;
-}
-HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
-    int32_t segments, Color color) {
-    (void)radius; (void)segments;
-    assert(bounds.x >= 10 && bounds.y >= 10 &&
-           bounds.x + bounds.width <= 190 &&
-           bounds.y + bounds.height <= 250);
-    if (bounds.y == 214 && bounds.height == 36) {
-        assert(color.r == 64 && color.g == 128 && color.b == 191);
-        swatches++;
-    }
-}
-HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
-    int32_t segments, float width, Color color) {
-    (void)bounds; (void)radius; (void)segments;
-    (void)width; (void)color;
-}
-HOST void RasterLine(Rectangle bounds, Color color) {
-    (void)bounds; (void)color; assert(0);
-}
-HOST void RasterText(String value, int32_t x, int32_t y,
-    int32_t font, Color color) {
-    (void)value; (void)x; (void)y; (void)font; (void)color; assert(0);
-}
-HOST void RasterTextClipped(String value, int32_t x, int32_t y,
-    int32_t font, Color color, Rectangle clip) {
-    (void)x; (void)y; (void)color;
-    assert(value.length > 0 && font == 14);
-    assert(clip.x >= 10 && clip.y >= 10 &&
-           clip.x + clip.width <= 190 &&
-           clip.y + clip.height <= 250);
-    labels++;
-}
-HOST void RasterImage(String path, uint32_t id, Rectangle source,
-    Rectangle destination, Rectangle clip, Vector2 origin,
-    float rotation, float radius, Color tint) {
-    (void)path; (void)id; (void)source; (void)destination;
-    (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
-    assert(0);
-}
-int main(void) {
-    for (int phase = 0; phase < 5; phase++) {
-        assert(Frame() == phase);
-        assert(swatches == phase + 1 && labels == (phase + 1) * 9);
-    }
-    return 0;
-}
-C
-
-for target in c cpp go; do
+for target in c cpp; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$repo/tests" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$source"
+        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+        -o "$output" "$portable"
     if test "$target" = c; then
-        cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+        "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
             "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
-        "$output/app"
     else
-        cat > "$output/color_picker_widget_test.go" <<'GO'
+        "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
+            -Wl,--gc-sections -I"$repo/../ziran/include" -I"$output" \
+            "$output"/*.cpp -o "$output/app"
+    fi
+    env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+done
+
+output=$work/native-go
+"$ziran" build --target=go --root "$repo/tests" \
+    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+    -o "$output" "$source"
+cat > "$output/color_picker_widget_test.go" <<'GO'
 package ziran
 import "testing"
 type colorPickerHost struct { t *testing.T; swatches, labels int }
@@ -164,6 +103,4 @@ func TestColorPicker(t *testing.T) {
     }
 }
 GO
-        GO111MODULE=off go test "$output"/*.go
-    fi
-done
+env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go test "$output"/*.go
