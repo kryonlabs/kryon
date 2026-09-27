@@ -28,6 +28,12 @@ Answer :: () -> s32 {
     }
     return 42
 }
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}
 EOF
 
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
@@ -50,33 +56,24 @@ for input in source saved; do
     fi
     for target in c cpp go; do
         output=$work/$target-$input
-        "$ziran" build --target="$target" --root "$work" \
-            --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" "$module"
+        if test "$target" = go; then
+            "$ziran" build --target=go --pkg main --exe --entry app:main \
+                --root "$work" --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+            env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+        else
+            "$ziran" build --target="$target" --root "$work" \
+                --module-path "$module_dir" \
+                --module-path "$repo/../ziran/std" -o "$output" "$module"
+        fi
         if test "$target" = c; then
-            cat > "$output/main.c" <<'C'
-#include "app.h"
-int main(void) { return Answer() == 42 ? 0 : 1; }
-C
             "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
-            "$output/app"
+            env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         elif test "$target" = cpp; then
-            cat > "$output/main.cpp" <<'CPP'
-#include "app.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
             "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
-            "$output/app"
-        else
-            cat > "$output/locale_test.go" <<'GO'
-package ziran
-import "testing"
-func TestLocaleDefaults(t *testing.T) {
-    if App_Answer() != 42 { t.Fatal("locale defaults") }
-}
-GO
-            GO111MODULE=off go test "$output"/*.go
+            env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         fi
     done
 done
