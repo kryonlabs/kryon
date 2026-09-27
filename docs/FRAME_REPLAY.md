@@ -10,7 +10,8 @@ does not require capture bindings.
 `tools/frame-replay.sh` runs a portable `.zib` entry once per line of a pointer
 trace. The entry must take no arguments, return an integer, call a module-local
 `PollPointer() -> PointerFrame` exactly once, and call `EndFrameCapture(session)` once.
-The script binds fixed font measurements, a headless raster sink, and the four
+The script builds `tools/frame_replay.zi` as a native Linux runner and binds
+fixed font measurements, a headless raster sink, and the four
 capture capabilities. It removes `DISPLAY` and `WAYLAND_DISPLAY` from the
 runner environment. It writes JSON with each frame's input, committed tree,
 paint commands, result, and raster effect count.
@@ -29,8 +30,9 @@ tools/frame-replay.sh build/ziran/frame-capture-test/source.zib \
     build/ziran/frame-capture-test/source.json
 ```
 
-Trace lines contain `x y down pressed released`, with Boolean fields written
-as `0` or `1`. Blank lines and `#` comments are allowed. The included trace
+Trace lines contain `x y down pressed released`, with finite decimal or
+scientific notation for coordinates and Boolean fields written as `0` or `1`.
+Blank lines and `#` comments are allowed. The included trace
 moves a button through idle, press, release, and clicked frames. Run
 `tests/ziran_frame_capture_test.sh` to compare source and saved-IR bundles and
 check the recorded behavior.

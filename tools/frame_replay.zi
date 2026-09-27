@@ -1,0 +1,584 @@
+#import "bundle_host"
+#import "byte_text_linux"
+#import "c_string"
+#import "file_linux"
+
+using HostValueKind;
+
+libc :: #system_library "libc";
+FormatRealRaw :: (output: *u8, capacity: u64, format: *u8,
+                  value: float64) -> s32 #foreign libc "strfromd";
+
+Name :: struct { bytes: [128]u8 }
+
+PointerSample :: struct {
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+}
+
+ReplayState :: struct {
+    output: FileHandle
+    offset: s64
+    input: PointerSample
+    pointer_calls: s32
+    capture_calls: s32
+    phase: s32
+    nodes: s32
+    paints: s32
+    expected_nodes: s32
+    expected_paints: s32
+    effects: s32
+    failed: bool
+    pointer_fields: [5]HostField
+    labels: [8]Name
+    bindings: [15]HostBinding
+    binding_names: [30]Name
+    samples: [1024]PointerSample
+    sample_count: s32
+}
+
+WriteBytes :: (state: *ReplayState, data: []u8) -> bool {
+    if state.failed { return false }
+    count: s64 = WriteAt(state.output, data, state.offset)
+    if count != cast(s64)data.count {
+        state.failed = true
+        return false
+    }
+    state.offset += count
+    return true
+}
+
+WriteLiteral :: (state: *ReplayState, value: string) -> bool {
+    if state.failed { return false }
+    count: s64 = WriteTextAt(state.output, value, state.offset)
+    if count != cast(s64)value.count {
+        state.failed = true
+        return false
+    }
+    state.offset += count
+    return true
+}
+
+WriteByte :: (state: *ReplayState, value: u8) -> bool {
+    bytes: [1]u8
+    bytes[0] = value
+    return WriteBytes(state, bytes[:])
+}
+
+WriteUnsigned :: (state: *ReplayState, value: u64) -> bool {
+    digits: [20]u8
+    count: s32 = 0
+    number: u64 = value
+    while number > 0 {
+        digits[count] = cast(u8)48 + cast(u8)(number % cast(u64)10)
+        number /= cast(u64)10
+        count += 1
+    }
+    if count == 0 { digits[0] = cast(u8)48; count = 1 }
+    while count > 0 {
+        count -= 1
+        if !WriteByte(state, digits[count]) { return false }
+    }
+    return true
+}
+
+WriteSigned :: (state: *ReplayState, value: s64) -> bool {
+    if value >= 0 { return WriteUnsigned(state, cast(u64)value) }
+    if !WriteByte(state, cast(u8)45) { return false }
+    return WriteUnsigned(state, cast(u64)(-(value + 1)) + cast(u64)1)
+}
+
+WriteReal :: (state: *ReplayState, value: float64,
+              single_precision: bool) -> bool {
+    if value != value || value - value != 0.0 { return false }
+    format: [8]u8
+    if single_precision {
+        if !CopyCString("%.9g", format[:]) { return false }
+    } else {
+        if !CopyCString("%.17g", format[:]) { return false }
+    }
+    bytes: [64]u8
+    count: s32 = FormatRealRaw(*bytes[0], cast(u64)64, *format[0], value)
+    if count < 0 || count >= 64 { return false }
+    return WriteBytes(state, bytes[0:count])
+}
+
+HexDigit :: (value: u8) -> u8 {
+    if value < cast(u8)10 { return cast(u8)48 + value }
+    return cast(u8)97 + value - cast(u8)10
+}
+
+WriteHex :: (state: *ReplayState, value: u64) -> bool {
+    digits: [16]u8
+    count: s32 = 0
+    number: u64 = value
+    while number > 0 {
+        digits[count] = HexDigit(cast(u8)(number % cast(u64)16))
+        number /= cast(u64)16
+        count += 1
+    }
+    if count == 0 { digits[0] = cast(u8)48; count = 1 }
+    while count > 0 {
+        count -= 1
+        if !WriteByte(state, digits[count]) { return false }
+    }
+    return true
+}
+
+JsonString :: (state: *ReplayState, data: *u8, length: u64) -> bool {
+    if !WriteByte(state, cast(u8)34) { return false }
+    index: u64 = 0
+    while index < length {
+        byte: u8 = data[index]
+        if byte == cast(u8)34 || byte == cast(u8)92 {
+            if !WriteByte(state, cast(u8)92) || !WriteByte(state, byte) {
+                return false
+            }
+        } else if byte < cast(u8)32 {
+            if !WriteLiteral(state, "\\u00") ||
+               !WriteByte(state, HexDigit(byte / cast(u8)16)) ||
+               !WriteByte(state, HexDigit(byte % cast(u8)16)) { return false }
+        } else {
+            if !WriteByte(state, byte) { return false }
+        }
+        index += 1
+    }
+    return WriteByte(state, cast(u8)34)
+}
+
+JsonValue :: (state: *ReplayState, value: *HostValue, depth: s32) -> bool {
+    if depth > 32 { return false }
+    if value.kind == HostVoid { return WriteLiteral(state, "null") }
+    if value.kind == HostInteger {
+        if TextFromCString(value.type_name) == "bool" {
+            if value.integer != 0 { return WriteLiteral(state, "true") }
+            return WriteLiteral(state, "false")
+        }
+        return WriteSigned(state, value.integer)
+    }
+    if value.kind == HostUnsigned { return WriteUnsigned(state, value.bits) }
+    if value.kind == HostReal { return WriteReal(state, value.real, false) }
+    if value.kind == HostString {
+        if value.length > 0 && value.data == null { return false }
+        return JsonString(state, value.data, value.length)
+    }
+    if value.kind == HostRecord {
+        if value.field_count > 0 && value.fields == null { return false }
+        if !WriteByte(state, cast(u8)123) { return false }
+        index: u64 = 0
+        while index < value.field_count {
+            if index > 0 && !WriteByte(state, cast(u8)44) { return false }
+            field: *HostField = *value.fields[index]
+            name: string = TextFromCString(field.name)
+            if !JsonString(state, field.name, cast(u64)name.count) ||
+               !WriteByte(state, cast(u8)58) ||
+               !JsonValue(state, *field.value, depth + 1) { return false }
+            index += 1
+        }
+        return WriteByte(state, cast(u8)125)
+    }
+    if value.kind == HostSlice || value.kind == HostArray {
+        if value.length > 0 && value.elements == null { return false }
+        if !WriteByte(state, cast(u8)91) { return false }
+        index: u64 = 0
+        while index < value.length {
+            if index > 0 && !WriteByte(state, cast(u8)44) { return false }
+            if !JsonValue(state, *value.elements[index], depth + 1) {
+                return false
+            }
+            index += 1
+        }
+        return WriteByte(state, cast(u8)93)
+    }
+    if value.kind == HostPointer {
+        if !WriteLiteral(state, "\"@") ||
+           !WriteHex(state, cast(u64)value.pointer) { return false }
+        return WriteByte(state, cast(u8)34)
+    }
+    return false
+}
+
+SetBinding :: (state: *ReplayState, index: s32,
+               module: string, function: string, callback: HostCall) -> bool {
+    if !CopyCString(module, state.binding_names[index * 2].bytes[:]) ||
+       !CopyCString(function, state.binding_names[index * 2 + 1].bytes[:]) {
+        return false
+    }
+    state.bindings[index].module = *state.binding_names[index * 2].bytes[0]
+    state.bindings[index].function = *state.binding_names[index * 2 + 1].bytes[0]
+    state.bindings[index].call = callback
+    state.bindings[index].context = cast(*void)state
+    return true
+}
+
+PreparePointer :: (state: *ReplayState) -> bool {
+    if !CopyCString("x", state.labels[0].bytes[:]) ||
+       !CopyCString("y", state.labels[1].bytes[:]) ||
+       !CopyCString("down", state.labels[2].bytes[:]) ||
+       !CopyCString("pressed", state.labels[3].bytes[:]) ||
+       !CopyCString("released", state.labels[4].bytes[:]) ||
+       !CopyCString("float32", state.labels[5].bytes[:]) ||
+       !CopyCString("bool", state.labels[6].bytes[:]) ||
+       !CopyCString("PointerFrame", state.labels[7].bytes[:]) {
+        return false
+    }
+    index: s32 = 0
+    while index < 5 {
+        state.pointer_fields[index].name = *state.labels[index].bytes[0]
+        state.pointer_fields[index].value.kind = HostInteger
+        state.pointer_fields[index].value.type_name = *state.labels[6].bytes[0]
+        index += 1
+    }
+    state.pointer_fields[0].value.kind = HostReal
+    state.pointer_fields[1].value.kind = HostReal
+    state.pointer_fields[0].value.type_name = *state.labels[5].bytes[0]
+    state.pointer_fields[1].value.type_name = *state.labels[5].bytes[0]
+    return true
+}
+
+ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
+              arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    state: *ReplayState = cast(*ReplayState)context
+    module: string = TextFromCString(module_name)
+    function: string = TextFromCString(function_name)
+    result.kind = HostVoid
+    if module == "font_metrics" {
+        if function == "MeasureGlyphWidth" && count == 3 &&
+           arguments[0].kind == HostString &&
+           arguments[1].kind == HostInteger {
+            result.kind = HostInteger
+            result.integer = cast(s64)(cast(float64)arguments[0].length *
+                cast(float64)arguments[1].integer * 0.6)
+            return 1
+        }
+        if function == "MeasureGlyphLineHeight" && count == 2 &&
+           arguments[0].kind == HostInteger {
+            result.kind = HostInteger
+            result.integer = arguments[0].integer
+            return 1
+        }
+        return 0
+    }
+    if module == "image_raster" && count == 1 &&
+       (function == "ImageWidth" || function == "ImageHeight") {
+        result.kind = HostInteger
+        result.integer = 0
+        return 1
+    }
+    if (module == "raster" && function == "RasterLine") ||
+       (module == "raster_shape" &&
+        (function == "RasterRoundedRectangle" ||
+         function == "RasterRoundedRectangleOutline")) ||
+       (module == "raster_text" &&
+        (function == "RasterText" || function == "RasterTextClipped")) ||
+       (module == "paint_queue" && function == "RasterImage") {
+        state.effects += 1
+        return 1
+    }
+    if function == "PollPointer" && count == 0 &&
+       state.pointer_calls == 0 && module ==
+       TextFromCString(state.bindings[10].module) {
+        state.pointer_calls += 1
+        state.pointer_fields[0].value.real = cast(float64)state.input.x
+        state.pointer_fields[1].value.real = cast(float64)state.input.y
+        state.pointer_fields[2].value.integer = cast(s64)state.input.down
+        state.pointer_fields[3].value.integer = cast(s64)state.input.pressed
+        state.pointer_fields[4].value.integer = cast(s64)state.input.released
+        result.kind = HostRecord
+        result.type_name = *state.labels[7].bytes[0]
+        result.fields = *state.pointer_fields[0]
+        result.field_count = cast(u64)5
+        return 1
+    }
+    if module != "frame_capture" { return 0 }
+    if function == "RecordFrameStart" && count == 2 &&
+       state.phase == 0 && state.capture_calls == 0 &&
+       arguments[0].kind == HostInteger &&
+       arguments[1].kind == HostInteger &&
+       arguments[0].integer >= 0 && arguments[0].integer <= 1024 &&
+       arguments[1].integer >= 0 && arguments[1].integer <= 4096 {
+        state.expected_nodes = cast(s32)arguments[0].integer
+        state.expected_paints = cast(s32)arguments[1].integer
+        state.capture_calls += 1
+        state.phase = 1
+        if WriteLiteral(state, "\"capture\":{\"nodes\":[") { return 1 }
+        return 0
+    }
+    if function == "RecordNode" && count == 2 && state.phase == 1 &&
+       state.nodes < state.expected_nodes &&
+       arguments[0].kind == HostInteger &&
+       arguments[0].integer == cast(s64)state.nodes &&
+       arguments[1].kind == HostRecord {
+        if state.nodes > 0 && !WriteByte(state, cast(u8)44) { return 0 }
+        if !JsonValue(state, *arguments[1], 0) { return 0 }
+        state.nodes += 1
+        return 1
+    }
+    if function == "RecordPaint" && count == 2 &&
+       state.phase != 0 && state.nodes == state.expected_nodes &&
+       state.paints < state.expected_paints &&
+       arguments[0].kind == HostInteger &&
+       arguments[0].integer == cast(s64)state.paints &&
+       arguments[1].kind == HostRecord {
+        if state.phase == 1 {
+            if !WriteLiteral(state, "],\"paint\":[") { return 0 }
+            state.phase = 2
+        }
+        if state.paints > 0 && !WriteByte(state, cast(u8)44) { return 0 }
+        if !JsonValue(state, *arguments[1], 0) { return 0 }
+        state.paints += 1
+        return 1
+    }
+    if function == "RecordFrameEnd" && count == 0 &&
+       state.phase != 0 && state.nodes == state.expected_nodes &&
+       state.paints == state.expected_paints {
+        if state.phase == 1 &&
+           !WriteLiteral(state, "],\"paint\":[") { return 0 }
+        if !WriteLiteral(state, "]}") { return 0 }
+        state.phase = 3
+        return 1
+    }
+    return 0
+}
+
+SkipSpace :: (line: string, at: *s32) {
+    while at.* < cast(s32)line.count &&
+          (line[at.*] == cast(u8)32 || line[at.*] == cast(u8)9 ||
+           line[at.*] == cast(u8)13) { at.* += 1 }
+}
+
+ParseReal :: (line: string, at: *s32, result: *float32) -> bool {
+    SkipSpace(line, at)
+    sign: float64 = 1.0
+    if at.* < cast(s32)line.count && line[at.*] == cast(u8)45 {
+        sign = -1.0
+        at.* += 1
+    } else if at.* < cast(s32)line.count && line[at.*] == cast(u8)43 {
+        at.* += 1
+    }
+    value: float64 = 0.0
+    digits: s32 = 0
+    while at.* < cast(s32)line.count &&
+          line[at.*] >= cast(u8)48 && line[at.*] <= cast(u8)57 {
+        value = value * 10.0 + cast(float64)(line[at.*] - cast(u8)48)
+        at.* += 1
+        digits += 1
+    }
+    if at.* < cast(s32)line.count && line[at.*] == cast(u8)46 {
+        at.* += 1
+        scale: float64 = 0.1
+        while at.* < cast(s32)line.count &&
+              line[at.*] >= cast(u8)48 && line[at.*] <= cast(u8)57 {
+            value += cast(float64)(line[at.*] - cast(u8)48) * scale
+            scale *= 0.1
+            at.* += 1
+            digits += 1
+        }
+    }
+    if digits == 0 { return false }
+    if at.* < cast(s32)line.count &&
+       (line[at.*] == cast(u8)101 || line[at.*] == cast(u8)69) {
+        at.* += 1
+        negative_exponent: bool = false
+        if at.* < cast(s32)line.count && line[at.*] == cast(u8)45 {
+            negative_exponent = true
+            at.* += 1
+        } else {
+            if at.* < cast(s32)line.count &&
+               line[at.*] == cast(u8)43 { at.* += 1 }
+        }
+        exponent_digits: s32 = 0
+        exponent: s32 = 0
+        while at.* < cast(s32)line.count &&
+              line[at.*] >= cast(u8)48 && line[at.*] <= cast(u8)57 {
+            if exponent < 1000 {
+                exponent = exponent * 10 + cast(s32)(line[at.*] - cast(u8)48)
+                if exponent > 1000 { exponent = 1000 }
+            }
+            exponent_digits += 1
+            at.* += 1
+        }
+        if exponent_digits == 0 { return false }
+        if negative_exponent {
+            while exponent > 0 {
+                value /= 10.0
+                exponent -= 1
+            }
+        } else {
+            while exponent > 0 {
+                value *= 10.0
+                exponent -= 1
+            }
+        }
+    }
+    if value != value || value - value != 0.0 ||
+       value > 3.4028234663852886e38 { return false }
+    result.* = cast(float32)(value * sign)
+    return true
+}
+
+ParseFlag :: (line: string, at: *s32, result: *bool) -> bool {
+    SkipSpace(line, at)
+    if at.* >= cast(s32)line.count { return false }
+    if line[at.*] == cast(u8)48 { result.* = false }
+    else if line[at.*] == cast(u8)49 { result.* = true }
+    else { return false }
+    at.* += 1
+    if at.* < cast(s32)line.count &&
+       line[at.*] != cast(u8)32 && line[at.*] != cast(u8)9 &&
+       line[at.*] != cast(u8)13 { return false }
+    return true
+}
+
+ReadTrace :: (state: *ReplayState, path: string) -> bool {
+    file: FileHandle = OpenRead(path)
+    if !file.valid { return false }
+    length: s64 = FileSize(file)
+    if length <= 0 || length > 65536 { CloseFile(file); return false }
+    bytes: [65536]u8
+    read: s64 = ReadAt(file, bytes[0:length], 0)
+    CloseFile(file)
+    if read != length { return false }
+    start: s64 = 0
+    while start < length {
+        stop: s64 = start
+        while stop < length && bytes[stop] != cast(u8)10 { stop += 1 }
+        line: string = TextFromBytes(bytes[start:stop])
+        at: s32 = 0
+        SkipSpace(line, *at)
+        if at < cast(s32)line.count && line[at] != cast(u8)35 {
+            if state.sample_count >= 1024 { return false }
+            sample: PointerSample
+            if !ParseReal(line, *at, *sample.x) ||
+               !ParseReal(line, *at, *sample.y) ||
+               !ParseFlag(line, *at, *sample.down) ||
+               !ParseFlag(line, *at, *sample.pressed) ||
+               !ParseFlag(line, *at, *sample.released) { return false }
+            SkipSpace(line, *at)
+            if at != cast(s32)line.count { return false }
+            state.samples[state.sample_count] = sample
+            state.sample_count += 1
+        }
+        start = stop + 1
+    }
+    return state.sample_count > 0
+}
+
+InitializeBindings :: (state: *ReplayState, pointer_module: string) -> bool {
+    callback: HostCall = ReplayCall
+    if !PreparePointer(state) { return false }
+    return SetBinding(state, 0, "font_metrics", "MeasureGlyphWidth", callback) &&
+        SetBinding(state, 1, "font_metrics", "MeasureGlyphLineHeight", callback) &&
+        SetBinding(state, 2, "raster_shape", "RasterRoundedRectangle", callback) &&
+        SetBinding(state, 3, "raster_shape", "RasterRoundedRectangleOutline", callback) &&
+        SetBinding(state, 4, "raster_text", "RasterText", callback) &&
+        SetBinding(state, 5, "raster_text", "RasterTextClipped", callback) &&
+        SetBinding(state, 6, "raster", "RasterLine", callback) &&
+        SetBinding(state, 7, "paint_queue", "RasterImage", callback) &&
+        SetBinding(state, 8, "image_raster", "ImageWidth", callback) &&
+        SetBinding(state, 9, "image_raster", "ImageHeight", callback) &&
+        SetBinding(state, 10, pointer_module, "PollPointer", callback) &&
+        SetBinding(state, 11, "frame_capture", "RecordFrameStart", callback) &&
+        SetBinding(state, 12, "frame_capture", "RecordNode", callback) &&
+        SetBinding(state, 13, "frame_capture", "RecordPaint", callback) &&
+        SetBinding(state, 14, "frame_capture", "RecordFrameEnd", callback)
+}
+
+Replay :: (state: *ReplayState, bundle_path: string,
+           output_path: string) -> bool {
+    bundle_name: [4096]u8
+    if !CopyCString(bundle_path, bundle_name[:]) { return false }
+    bundle: *void = OpenBundle(*bundle_name[0])
+    if bundle == null { return false }
+    instance: *void = InstantiateBundle(bundle, *state.bindings[0],
+                                        cast(u64)15)
+    if instance == null { CloseBundle(bundle); return false }
+    state.output = OpenReplace(output_path)
+    if !state.output.valid {
+        CloseBundleInstance(instance)
+        CloseBundle(bundle)
+        return false
+    }
+    ok: bool = WriteLiteral(state, "{\"version\":1,\"frames\":[")
+    index: s32 = 0
+    while ok && index < state.sample_count {
+        state.input = state.samples[index]
+        state.pointer_calls = 0
+        state.capture_calls = 0
+        state.phase = 0
+        state.nodes = 0
+        state.paints = 0
+        state.effects = 0
+        if index > 0 { ok = WriteByte(state, cast(u8)44) }
+        sample: PointerSample = state.input
+        if ok { ok = WriteLiteral(state, "{\"input\":{\"x\":") }
+        if ok { ok = WriteReal(state, cast(float64)sample.x, true) }
+        if ok { ok = WriteLiteral(state, ",\"y\":") }
+        if ok { ok = WriteReal(state, cast(float64)sample.y, true) }
+        if ok { ok = WriteLiteral(state, ",\"down\":") }
+        if ok {
+            if sample.down { ok = WriteLiteral(state, "true") }
+            else { ok = WriteLiteral(state, "false") }
+        }
+        if ok { ok = WriteLiteral(state, ",\"pressed\":") }
+        if ok {
+            if sample.pressed { ok = WriteLiteral(state, "true") }
+            else { ok = WriteLiteral(state, "false") }
+        }
+        if ok { ok = WriteLiteral(state, ",\"released\":") }
+        if ok {
+            if sample.released { ok = WriteLiteral(state, "true") }
+            else { ok = WriteLiteral(state, "false") }
+        }
+        if ok { ok = WriteLiteral(state, "},") }
+        value: s64 = 0
+        has_value: s32 = 0
+        if ok { ok = RunBundleInstance(instance, *value, *has_value) != 0 }
+        ok = ok && has_value != 0 && state.pointer_calls == 1 &&
+             state.capture_calls == 1 && state.phase == 3
+        if ok { ok = WriteLiteral(state, ",\"result\":") }
+        if ok { ok = WriteSigned(state, value) }
+        if ok { ok = WriteLiteral(state, ",\"effects\":") }
+        if ok { ok = WriteSigned(state, cast(s64)state.effects) }
+        if ok { ok = WriteByte(state, cast(u8)125) }
+        index += 1
+    }
+    if ok { ok = WriteLiteral(state, "]}\n") }
+    if !CloseFile(state.output) { ok = false }
+    CloseBundleInstance(instance)
+    CloseBundle(bundle)
+    return ok && !state.failed
+}
+
+#program_export
+main :: () -> s32 {
+    arguments: [5]string
+    command_bytes: [8192]u8
+    file: FileHandle = OpenRead("/proc/self/cmdline")
+    if !file.valid { return 2 }
+    read: s64 = ReadAt(file, command_bytes[:], 0)
+    CloseFile(file)
+    if read <= 0 || read > 8192 { return 2 }
+    count: s32 = 0
+    start: s64 = 0
+    index: s64 = 0
+    while index < read {
+        if command_bytes[index] == cast(u8)0 {
+            if count >= 5 { return 2 }
+            arguments[count] = TextFromBytes(command_bytes[start:index])
+            count += 1
+            start = index + 1
+        }
+        index += 1
+    }
+    if count != 5 || start != read { return 2 }
+    if arguments[3] == arguments[4] { return 2 }
+    state: ReplayState
+    if !ReadTrace(*state, arguments[3]) ||
+       !InitializeBindings(*state, arguments[2]) { return 1 }
+    if !Replay(*state, arguments[1], arguments[4]) { return 1 }
+    return 0
+}
