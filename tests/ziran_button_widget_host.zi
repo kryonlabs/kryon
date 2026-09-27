@@ -1,0 +1,124 @@
+#import "drawing_props"
+#import "geometry"
+
+fills: s32;
+labels: s32;
+images: s32;
+failed: bool;
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    if asset_path != "badge.png" { failed = true }
+    return 32
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    if asset_path != "badge.png" { failed = true }
+    return 16
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    if value != "Run" || font != 14 || typeface.count != 0 {
+        failed = true
+    }
+    return 21
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font != 14 || typeface.count != 0 { failed = true }
+    return 12
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    if bounds.x != 10.0 || bounds.y != 20.0 ||
+        bounds.width != 80.0 || bounds.height != 30.0 ||
+        radius != 4.0 || segments != 12 ||
+        color.r != cast(u8)0x12 || color.g != cast(u8)0x34 ||
+        color.b != cast(u8)0x56 || color.a != cast(u8)127 {
+        failed = true
+    }
+    fills += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+    failed = true
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    expected_x: s32 = 39
+    if images > 0 { expected_x = 26 }
+    if value != "Run" || x != expected_x || y != 29 || font != 14 ||
+        clip.x != 10.0 || clip.y != 20.0 ||
+        clip.width != 80.0 || clip.height != 30.0 ||
+        color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
+        color.b != cast(u8)0xcc || color.a != cast(u8)127 {
+        failed = true
+    }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    if asset_path != "badge.png" || texture_id != cast(u32)0 ||
+        source.x != 0.0 || source.y != 0.0 ||
+        source.width != 32.0 || source.height != 16.0 ||
+        destination.x != 55.5 || destination.y != 30.5 ||
+        destination.width != 18.0 || destination.height != 9.0 ||
+        clip.x != 10.0 || clip.y != 20.0 ||
+        clip.width != 80.0 || clip.height != 30.0 ||
+        origin.x != 0.0 || origin.y != 0.0 ||
+        rotation != 0.0 || radius != 4.0 ||
+        tint.r != cast(u8)255 || tint.g != cast(u8)255 ||
+        tint.b != cast(u8)255 || tint.a != cast(u8)127 {
+        failed = true
+    }
+    images += 1
+}
+
+#program_export
+ButtonHostFailed :: () -> bool { return failed }
+
+#program_export
+ButtonFills :: () -> s32 { return fills }
+
+#program_export
+ButtonLabels :: () -> s32 { return labels }
+
+#program_export
+ButtonImages :: () -> s32 { return images }

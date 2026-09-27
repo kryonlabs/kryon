@@ -1,0 +1,101 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "geometry"
+#import "image_props"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_button_widget_host"
+
+using ImageFit;
+using ButtonTone;
+using IconPlacement;
+using StyleField;
+using FrameStatus;
+
+phase: s32;
+
+#program_export
+Frame :: () -> s32 {
+    props: ButtonProps
+    props.key = cast(u64)7
+    props.id = 7
+    props.class_name = 9
+    props.label = "Run"
+    props.bounds = Rectangle.{10.0, 20.0, 80.0, 30.0}
+    props.tone = cast(ButtonTone)ButtonToneAccent
+    if phase == 0 {
+        rules: StyleRules
+        rules.count = 1
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = StyleKindButton()
+        rule.selector.class_name = 9
+        rule.style.fields = cast(u32)StyleBackground |
+            cast(u32)StyleForeground | cast(u32)StyleRadius |
+            cast(u32)StyleOpacity | cast(u32)StyleFontSize
+        rule.style.background = cast(u32)0x123456ff
+        rule.style.foreground = cast(u32)0xaabbccff
+        rule.style.radius = 4.0
+        rule.style.opacity = 0.5
+        rule.style.font_size = 14.0
+        rules.items[0] = rule
+        InstallStyleRules(rules)
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -1 }
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+        phase = 1
+        return 0
+    }
+    if phase == 1 {
+        TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        clicked: s32 = Button(TestSession(), props)
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 1 { return -2 }
+        phase = 2
+        return 42
+    }
+    if phase == 3 {
+        props.image.asset_path = "badge.png"
+        props.image.fit = cast(ImageFit)ImageFitContain
+        props.icon_placement = cast(IconPlacement)IconPlacementTrailing
+        BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -4 }
+        phase = 4
+        return 44
+    }
+    props.disabled = true
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    clicked: s32 = Button(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 0 { return -3 }
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
+    phase = 3
+    return 43
+}
+
+#program_export
+main :: () -> s32 {
+    expected: [4]s32 = .[0, 42, 43, 44]
+    index: s32 = 0
+    while index < 4 {
+        if Frame() != expected[index] || ButtonHostFailed() ||
+            ButtonFills() != index + 1 ||
+            ButtonLabels() != index + 1 { return 1 }
+        index += 1
+    }
+    if ButtonImages() != 1 { return 2 }
+    return 0
+}
