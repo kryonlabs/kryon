@@ -33,6 +33,9 @@ cat > "$work/ziran.local.toml" <<EOF
 Kryon = "$repo"
 ziran = "$repo/../ziran"
 EOF
+if [ -n "${RAYLIB_SOURCE:-}" ]; then
+    printf 'raylib = "%s"\n' "$RAYLIB_SOURCE" >> "$work/ziran.local.toml"
+fi
 
 cat > "$work/src/app.zi" <<'EOF'
 using UI :: #import "Kryon";

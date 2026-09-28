@@ -87,7 +87,7 @@ HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -
 RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
-RAYLIB_SOURCE := $(KRYON_DIR)/vendor/raylib/src
+RAYLIB_SOURCE := $(shell $(ZIRAN) pkg path raylib)
 RAYLIB_BUILD := $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A := $(RAYLIB_BUILD)/libraylib.a
 RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
@@ -99,7 +99,8 @@ HOST_LIBS := $(RAYLIB_A) $(RAYLIB_LIBS) -ldl -lpthread
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
 $(RAYLIB_A): $(RAYLIB_INPUTS)
-	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "Initialize Kryon's raylib submodule: git -C $(KRYON_DIR) submodule update --init vendor/raylib" >&2; exit 1; }
+	@test -n "$(RAYLIB_SOURCE)" || { echo "Run ziran lock; Kryon needs the locked raylib source package" >&2; exit 1; }
+	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
 	mkdir -p $(RAYLIB_BUILD)/source
 	cp -R $(RAYLIB_SOURCE)/. $(RAYLIB_BUILD)/source/
 	$(MAKE) -j4 -C $(RAYLIB_BUILD)/source \

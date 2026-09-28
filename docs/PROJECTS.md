@@ -79,7 +79,7 @@ profile when there are several and none is specified.
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2 and Cairo development libraries |
 | `libdraw` | plan9port devdraw with Cairo | plan9port and Cairo; set `PLAN9PORT_DIR` if needed |
-| `raylib` | raylib SDL2/OpenGL ES 2 window | Kryon's raylib submodule and SDL2, DRM, EGL, GLESv2 |
+| `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 
