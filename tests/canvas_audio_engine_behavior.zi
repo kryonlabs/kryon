@@ -1,0 +1,335 @@
+#import "canvas_audio_engine"
+
+fake_host :: #system_library "c";
+FakeSetTime :: (seconds: float64) #foreign fake_host "fake_set_time";
+FakeEndSource :: (source: s32) #foreign fake_host "fake_end_source";
+FakeLiveSources :: () -> s32 #foreign fake_host "fake_live_sources";
+FakeSourceLive :: (source: s32) -> s32 #foreign fake_host "fake_source_live";
+FakeSourceField :: (source: s32, field: s32) -> float64 #foreign fake_host "fake_source_field";
+FakeLastSource :: () -> s32 #foreign fake_host "fake_last_source";
+FakeTimerInterval :: (handle: s32) -> s32 #foreign fake_host "fake_timer_interval";
+FakeFireTimer :: (handle: s32) #foreign fake_host "fake_fire_timer";
+FakeTimerCount :: () -> s32 #foreign fake_host "fake_timer_count";
+FakeBufferCount :: () -> s32 #foreign fake_host "fake_buffer_count";
+FakeContextOpen :: () -> s32 #foreign fake_host "fake_context_open";
+FakeMasterVolume :: () -> float64 #foreign fake_host "fake_master_volume";
+
+// Source fields the fake host records.
+SourceOffset :: 0
+SourceLoop :: 1
+SourceRate :: 2
+SourceVolume :: 3
+SourcePan :: 4
+SourceWhen :: 5
+
+pcm: [64]float32;
+no_callback: CanvasAudioCallback;
+callback_calls: s32;
+callback_frames_seen: u32;
+callback_first_sample: float32;
+order: s32;
+order_log: [8]s32;
+
+PcmData :: () -> *void {
+    return cast(*void)*pcm[0]
+}
+
+Sound :: () -> s32 {
+    return AudioEngineBufferFromPcm(PcmData(), 32, 8000, 32, 1)
+}
+
+// A full second of audio, so positions read as plain seconds.
+Second :: () -> s32 {
+    return AudioEngineBufferFromPcm(PcmData(), 8000, 8000, 32, 1)
+}
+
+Near :: (value: float64, expected: float64) -> bool {
+    difference: float64 = value - expected
+    if difference < 0.0 { difference = -difference }
+    return difference < 0.0001
+}
+
+Feed :: (buffer: *void, frames: u32) {
+    callback_calls += 1
+    callback_frames_seen = frames
+    samples: *float32 = cast(*float32)buffer
+    callback_first_sample = samples[0]
+}
+
+FirstProcessor :: (buffer: *void, frames: u32) {
+    unused buffer
+    unused frames
+    order_log[order] = 1
+    order += 1
+}
+
+MixedProcessor :: (buffer: *void, frames: u32) {
+    unused buffer
+    unused frames
+    order_log[order] = 2
+    order += 1
+}
+
+ClampChecks :: () -> s32 {
+    AudioEngineInit()
+    AudioEngineSetMasterVolume(5.0)
+    if AudioEngineGetMasterVolume() != 1.0 || !Near(FakeMasterVolume(), 1.0) { return 1 }
+    AudioEngineSetMasterVolume(-3.0)
+    if AudioEngineGetMasterVolume() != 0.0 || !Near(FakeMasterVolume(), 0.0) { return 2 }
+    AudioEngineSetMasterVolume(0.5)
+    if AudioEngineGetMasterVolume() != 0.5 { return 3 }
+    if AudioClampRate(100.0) != 16.0 || AudioClampRate(0.001) != 1.0 { return 4 }
+    if AudioClampRate(2.5) != 2.5 || AudioClampPan(-7.0) != -1.0 { return 5 }
+    if AudioClampPan(0.25) != 0.25 || AudioClamp01(0.75) != 0.75 { return 6 }
+    return 0
+}
+
+BufferChecks :: () -> s32 {
+    id: s32 = Sound()
+    if id <= 0 { return 1 }
+    if AudioEngineBufferFrames(id) != 32 || AudioEngineBufferRate(id) != 8000 { return 2 }
+    if AudioEngineBufferChannels(id) != 1 { return 3 }
+    // Bad input makes no buffer.
+    if AudioEngineBufferFromPcm(null, 4, 8000, 32, 1) != 0 { return 4 }
+    if AudioEngineBufferFromPcm(PcmData(), 0, 8000, 32, 1) != 0 { return 5 }
+    // A reference keeps the buffer alive through one release.
+    AudioEngineRef(id)
+    AudioEngineRelease(id)
+    if AudioEngineBufferFrames(id) != 32 { return 6 }
+    AudioEngineRelease(id)
+    if AudioEngineBufferFrames(id) != 0 || FakeBufferCount() != 0 { return 7 }
+    // A released or unknown id is inert.
+    AudioEngineSoundPlay(id)
+    if FakeLiveSources() != 0 { return 8 }
+    return 0
+}
+
+SoundChecks :: () -> s32 {
+    FakeSetTime(10.0)
+    id: s32 = Second()
+    AudioEngineBufferVolume(id, 0.5)
+    AudioEngineBufferPitch(id, 2.0)
+    AudioEngineBufferPan(id, -0.5)
+    AudioEngineSoundPlay(id)
+    source: s32 = FakeLastSource()
+    if FakeLiveSources() != 1 || AudioEngineSoundPlaying(id) != 1 { return 1 }
+    if !Near(FakeSourceField(source, SourceRate), 2.0) { return 2 }
+    if !Near(FakeSourceField(source, SourceVolume), 0.5) { return 3 }
+    if !Near(FakeSourceField(source, SourcePan), -0.5) { return 4 }
+    // Changing a setting reaches what is already playing.
+    AudioEngineBufferVolume(id, 0.25)
+    if !Near(FakeSourceField(source, SourceVolume), 0.25) { return 5 }
+    // Pause remembers where the sound was, at its playback rate.
+    FakeSetTime(10.5)
+    AudioEngineSoundPause(id)
+    if FakeLiveSources() != 0 || AudioEngineSoundPlaying(id) != 0 { return 6 }
+    AudioEngineSoundResume(id)
+    resumed: s32 = FakeLastSource()
+    if resumed == source || FakeLiveSources() != 1 { return 7 }
+    if !Near(FakeSourceField(resumed, SourceOffset), 1.0) { return 8 }
+    // A sound that finished on its own no longer counts as playing.
+    FakeEndSource(resumed)
+    if AudioEngineSoundPlaying(id) != 0 { return 9 }
+    // Resuming something that was not paused does nothing.
+    AudioEngineSoundResume(id)
+    if FakeLiveSources() != 0 { return 10 }
+    // Overlapping plays are bounded; the oldest is cut off.
+    index: s32 = 0
+    while index < 20 {
+        AudioEngineSoundPlay(id)
+        index += 1
+    }
+    if FakeLiveSources() != AUDIO_VOICE_MAX { return 11 }
+    AudioEngineSoundStop(id)
+    if FakeLiveSources() != 0 { return 12 }
+    AudioEngineRelease(id)
+    return 0
+}
+
+MusicChecks :: () -> s32 {
+    FakeSetTime(20.0)
+    id: s32 = Second()
+    AudioEngineBufferPitch(id, 2.0)
+    AudioEngineMusicPlay(id, 1)
+    source: s32 = FakeLastSource()
+    if AudioEngineMusicPlaying(id) != 1 { return 1 }
+    if !Near(FakeSourceField(source, SourceLoop), 1.0) { return 2 }
+    // The position advances with the clock, scaled by pitch.
+    FakeSetTime(20.25)
+    if !Near(cast(float64)AudioEngineMusicPlayed(id), 0.5) { return 3 }
+    AudioEngineMusicPause(id)
+    if AudioEngineMusicPlaying(id) != 0 || FakeLiveSources() != 0 { return 4 }
+    FakeSetTime(30.0)
+    if !Near(cast(float64)AudioEngineMusicPlayed(id), 0.5) { return 5 }
+    // Resume keeps looping and continues from the pause position.
+    AudioEngineMusicResume(id)
+    resumed: s32 = FakeLastSource()
+    if !Near(FakeSourceField(resumed, SourceOffset), 0.5) { return 6 }
+    if !Near(FakeSourceField(resumed, SourceLoop), 1.0) { return 7 }
+    // Seeking clamps to the track and restarts a playing one there.
+    AudioEngineMusicSeek(id, 99.0)
+    seeked: s32 = FakeLastSource()
+    if !Near(FakeSourceField(seeked, SourceOffset), 1.0) { return 8 }
+    if AudioEngineMusicPlaying(id) != 1 { return 9 }
+    AudioEngineMusicSeek(id, -4.0)
+    if !Near(FakeSourceField(FakeLastSource(), SourceOffset), 0.0) { return 10 }
+    if !Near(cast(float64)AudioEngineMusicLength(id), 1.0) { return 11 }
+    // Stopping rewinds.
+    AudioEngineMusicStop(id)
+    if AudioEngineMusicPlaying(id) != 0 || AudioEngineMusicPlayed(id) != 0.0 { return 12 }
+    // A track that plays once stops playing when it ends.
+    AudioEngineMusicPlay(id, 0)
+    if AudioEngineMusicPlaying(id) != 1 { return 13 }
+    FakeEndSource(FakeLastSource())
+    if AudioEngineMusicPlaying(id) != 0 { return 14 }
+    // A looping track keeps playing whatever the source reports.
+    AudioEngineMusicPlay(id, 1)
+    if AudioEngineMusicPlaying(id) != 1 { return 15 }
+    AudioEngineRelease(id)
+    if FakeLiveSources() != 0 { return 16 }
+    return 0
+}
+
+UpdateChecks :: () -> s32 {
+    id: s32 = Second()
+    AudioEngineSoundPlay(id)
+    AudioEngineMusicPlay(id, 1)
+    if FakeLiveSources() != 2 { return 1 }
+    // Replacing a buffer's samples stops what was playing it.
+    if AudioEngineUpdateBufferFromPcm(id, PcmData(), 16, 8000, 32, 1) != 1 { return 2 }
+    if FakeLiveSources() != 0 || AudioEngineBufferFrames(id) != 16 { return 3 }
+    if AudioEngineUpdateBufferFromPcm(9999, PcmData(), 16, 8000, 32, 1) != 0 { return 4 }
+    AudioEngineRelease(id)
+    return 0
+}
+
+StreamChecks :: () -> s32 {
+    FakeSetTime(100.0)
+    id: s32 = AudioEngineStreamCreate(0, 0, 0)
+    if id <= 0 { return 1 }
+    // Nothing plays until the stream does.
+    if AudioEngineStreamUpdate(id, PcmData(), 1000, 0, 0, 0) != 0 { return 2 }
+    AudioEngineStreamPlay(id)
+    if AudioEngineStreamPlaying(id) != 1 || AudioEngineStreamProcessed(id) != 1 { return 3 }
+    AudioEngineStreamPitch(id, 2.0)
+    AudioEngineStreamVolume(id, 0.5)
+    if AudioEngineStreamUpdate(id, PcmData(), 4000, 8000, 32, 1) != 1 { return 4 }
+    first: s32 = FakeLastSource()
+    if !Near(FakeSourceField(first, SourceWhen), 100.0) { return 5 }
+    if !Near(FakeSourceField(first, SourceRate), 2.0) { return 6 }
+    if !Near(FakeSourceField(first, SourceVolume), 0.5) { return 7 }
+    // The next block is scheduled after the first: 4000 / 8000 / 2 seconds.
+    if AudioEngineStreamUpdate(id, PcmData(), 4000, 8000, 32, 1) != 1 { return 8 }
+    if !Near(FakeSourceField(FakeLastSource(), SourceWhen), 100.25) { return 9 }
+    // Two blocks in flight is the limit.
+    if AudioEngineStreamProcessed(id) != 0 { return 10 }
+    if AudioEngineStreamUpdate(id, PcmData(), 4000, 8000, 32, 1) != 0 { return 11 }
+    FakeEndSource(first)
+    if AudioEngineStreamProcessed(id) != 1 { return 12 }
+    // Volume changes reach the blocks still playing.
+    AudioEngineStreamVolume(id, 0.25)
+    if !Near(FakeSourceField(FakeLastSource(), SourceVolume), 0.25) { return 13 }
+    AudioEngineStreamStop(id)
+    if FakeLiveSources() != 0 || AudioEngineStreamPlaying(id) != 0 { return 14 }
+    AudioEngineStreamFree(id)
+    if AudioEngineStreamPlaying(id) != 0 { return 15 }
+    return 0
+}
+
+CallbackChecks :: () -> s32 {
+    FakeSetTime(200.0)
+    id: s32 = AudioEngineStreamCreate(8000, 32, 1)
+    feed: CanvasAudioCallback = Feed
+    pcm[0] = 0.5
+    AudioEngineStreamCallback(id, feed, 800)
+    AudioEngineStreamPlay(id)
+    // The page's timer asks for a block every 800 / 8000 * 500 ms.
+    if FakeTimerInterval(id) != 50 { return 1 }
+    if FakeTimerCount() != 1 { return 2 }
+    FakeFireTimer(id)
+    if callback_calls != 1 || callback_frames_seen != 800 { return 3 }
+    // The block starts silent and reaches the stream.
+    if callback_first_sample != 0.0 { return 4 }
+    if FakeLiveSources() != 1 { return 5 }
+    FakeFireTimer(id)
+    if FakeLiveSources() != 2 { return 6 }
+    // With two blocks queued the timer does not ask for more.
+    FakeFireTimer(id)
+    if callback_calls != 2 { return 7 }
+    AudioEngineStreamPause(id)
+    if FakeTimerCount() != 0 { return 8 }
+    AudioEngineStreamResume(id)
+    if FakeTimerCount() != 1 { return 9 }
+    // A short block still waits at least eight milliseconds.
+    AudioEngineStreamCallback(id, feed, 10)
+    AudioEngineStreamStop(id)
+    AudioEngineStreamPlay(id)
+    if FakeTimerInterval(id) != 8 { return 10 }
+    AudioEngineStreamCallback(id, no_callback, 10)
+    if FakeTimerCount() != 0 { return 11 }
+    AudioEngineStreamFree(id)
+    return 0
+}
+
+ProcessorChecks :: () -> s32 {
+    FakeSetTime(300.0)
+    id: s32 = AudioEngineStreamCreate(8000, 32, 1)
+    first: CanvasAudioCallback = FirstProcessor
+    mixed: CanvasAudioCallback = MixedProcessor
+    AudioEngineStreamAttachProcessor(id, first)
+    AudioEngineStreamAttachProcessor(id, first)
+    AudioEngineAttachMixedProcessor(mixed)
+    AudioEngineAttachMixedProcessor(mixed)
+    AudioEngineStreamPlay(id)
+    order = 0
+    unused AudioEngineStreamUpdate(id, PcmData(), 100, 8000, 32, 1)
+    // The stream's processor runs before the mixed one, once each.
+    if order != 2 || order_log[0] != 1 || order_log[1] != 2 { return 1 }
+    AudioEngineStreamDetachProcessor(id, first)
+    AudioEngineDetachMixedProcessor(mixed)
+    AudioEngineStreamStop(id)
+    AudioEngineStreamPlay(id)
+    order = 0
+    unused AudioEngineStreamUpdate(id, PcmData(), 100, 8000, 32, 1)
+    if order != 0 { return 2 }
+    AudioEngineStreamFree(id)
+    return 0
+}
+
+CloseChecks :: () -> s32 {
+    id: s32 = Second()
+    AudioEngineSoundPlay(id)
+    AudioEngineMusicPlay(id, 1)
+    stream: s32 = AudioEngineStreamCreate(8000, 32, 1)
+    feed: CanvasAudioCallback = Feed
+    AudioEngineStreamCallback(stream, feed, 100)
+    AudioEngineStreamPlay(stream)
+    AudioEngineClose()
+    if FakeLiveSources() != 0 || FakeTimerCount() != 0 { return 1 }
+    if FakeBufferCount() != 0 || FakeContextOpen() != 0 { return 2 }
+    if AudioEngineStreamPlaying(stream) != 0 || AudioEngineBufferFrames(id) != 0 { return 3 }
+    return 0
+}
+
+#program_export
+Answer :: () -> s32 {
+    failed := ClampChecks()
+    if failed != 0 { return 100 + failed }
+    failed = BufferChecks()
+    if failed != 0 { return 200 + failed }
+    failed = SoundChecks()
+    if failed != 0 { return 300 + failed }
+    failed = MusicChecks()
+    if failed != 0 { return 400 + failed }
+    failed = UpdateChecks()
+    if failed != 0 { return 500 + failed }
+    failed = StreamChecks()
+    if failed != 0 { return 600 + failed }
+    failed = CallbackChecks()
+    if failed != 0 { return 700 + failed }
+    failed = ProcessorChecks()
+    if failed != 0 { return 800 + failed }
+    failed = CloseChecks()
+    if failed != 0 { return 900 + failed }
+    return 42
+}

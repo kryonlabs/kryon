@@ -1,56 +1,7 @@
 // Browser sound, music, streams, and PCM wave operations.
 #if #defined(PLATFORM_WEB) {
     #import "canvas_types"
-    CanvasAudioCallback :: #type (buffer: *void, frames: u32) #c_call;
-    canvas_browser :: #system_library "env";
-    js_audio_init :: () #foreign canvas_browser;
-    js_audio_close :: () #foreign canvas_browser;
-    js_audio_ready :: () -> s32 #foreign canvas_browser;
-    js_audio_set_master_volume :: (volume: float32) #foreign canvas_browser;
-    js_audio_get_master_volume :: () -> float32 #foreign canvas_browser;
-    js_audio_load_file :: (file_name: *u8) -> s32 #foreign canvas_browser;
-    js_audio_load_memory :: (data: *u8, data_size: s32) -> s32 #foreign canvas_browser;
-    js_audio_decode_wave_memory :: (data: *u8, data_size: s32, sr_out: *s32, ch_out: *s32, frames_out: *s32) -> *void #foreign canvas_browser;
-    js_audio_buffer_from_pcm :: (data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
-    js_audio_update_buffer_from_pcm :: (id: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
-    js_audio_ref :: (id: s32) #foreign canvas_browser;
-    js_audio_release :: (id: s32) #foreign canvas_browser;
-    js_audio_buffer_frames :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_buffer_rate :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_buffer_channels :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_sound_play :: (id: s32) #foreign canvas_browser;
-    js_audio_sound_stop :: (id: s32) #foreign canvas_browser;
-    js_audio_sound_pause :: (id: s32) #foreign canvas_browser;
-    js_audio_sound_resume :: (id: s32) #foreign canvas_browser;
-    js_audio_sound_playing :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_buffer_volume :: (id: s32, volume: float32) #foreign canvas_browser;
-    js_audio_buffer_pitch :: (id: s32, pitch: float32) #foreign canvas_browser;
-    js_audio_buffer_pan :: (id: s32, pan: float32) #foreign canvas_browser;
-    js_audio_music_play :: (id: s32, looping: s32) #foreign canvas_browser;
-    js_audio_music_stop :: (id: s32) #foreign canvas_browser;
-    js_audio_music_pause :: (id: s32) #foreign canvas_browser;
-    js_audio_music_resume :: (id: s32) #foreign canvas_browser;
-    js_audio_music_seek :: (id: s32, position: float32) #foreign canvas_browser;
-    js_audio_music_playing :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_music_length :: (id: s32) -> float32 #foreign canvas_browser;
-    js_audio_music_played :: (id: s32) -> float32 #foreign canvas_browser;
-    js_audio_stream_create :: (sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
-    js_audio_stream_free :: (id: s32) #foreign canvas_browser;
-    js_audio_stream_play :: (id: s32) #foreign canvas_browser;
-    js_audio_stream_stop :: (id: s32) #foreign canvas_browser;
-    js_audio_stream_pause :: (id: s32) #foreign canvas_browser;
-    js_audio_stream_resume :: (id: s32) #foreign canvas_browser;
-    js_audio_stream_playing :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_stream_processed :: (id: s32) -> s32 #foreign canvas_browser;
-    js_audio_stream_update :: (id: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_browser;
-    js_audio_stream_volume :: (id: s32, volume: float32) #foreign canvas_browser;
-    js_audio_stream_pitch :: (id: s32, pitch: float32) #foreign canvas_browser;
-    js_audio_stream_pan :: (id: s32, pan: float32) #foreign canvas_browser;
-    js_audio_stream_callback :: (id: s32, callback: CanvasAudioCallback, frames: s32) #foreign canvas_browser;
-    js_audio_stream_attach_processor :: (id: s32, callback: CanvasAudioCallback) #foreign canvas_browser;
-    js_audio_stream_detach_processor :: (id: s32, callback: CanvasAudioCallback) #foreign canvas_browser;
-    js_audio_attach_mixed_processor :: (callback: CanvasAudioCallback) #foreign canvas_browser;
-    js_audio_detach_mixed_processor :: (callback: CanvasAudioCallback) #foreign canvas_browser;
+    #import "canvas_audio_engine"
     canvas_audio_c :: #system_library "c";
     AudioLoadFile :: (path: *u8, length: *s32) -> *u8 #foreign canvas_audio_c "LoadFileData";
     AudioFreeFile :: (data: *u8) #foreign canvas_audio_c "UnloadFileData";
@@ -63,7 +14,7 @@
 
     AudioEnsure :: () {
         if !audio_initialized {
-            js_audio_init()
+            AudioEngineInit()
             audio_initialized = true
         }
     }
@@ -86,9 +37,9 @@
         sound: CanvasSound
         if id > 0 {
             sound.stream = AudioStreamFromId(id,
-                cast(u32)js_audio_buffer_rate(id), 32,
-                cast(u32)js_audio_buffer_channels(id))
-            sound.frame_count = cast(u32)js_audio_buffer_frames(id)
+                cast(u32)AudioEngineBufferRate(id), 32,
+                cast(u32)AudioEngineBufferChannels(id))
+            sound.frame_count = cast(u32)AudioEngineBufferFrames(id)
         }
         return sound
     }
@@ -97,9 +48,9 @@
         music: CanvasMusic
         if id > 0 {
             music.stream = AudioStreamFromId(id,
-                cast(u32)js_audio_buffer_rate(id), 32,
-                cast(u32)js_audio_buffer_channels(id))
-            music.frame_count = cast(u32)js_audio_buffer_frames(id)
+                cast(u32)AudioEngineBufferRate(id), 32,
+                cast(u32)AudioEngineBufferChannels(id))
+            music.frame_count = cast(u32)AudioEngineBufferFrames(id)
             music.looping = true
             music.context_data = cast(*void)(cast(usize)id)
         }
@@ -251,31 +202,31 @@
     #program_export
     InitAudioDevice :: () {
         AudioEnsure()
-        unused js_audio_ready()
+        unused AudioEngineReady()
     }
 
     #program_export
     CloseAudioDevice :: () {
-        js_audio_close()
+        AudioEngineClose()
         audio_initialized = false
     }
 
     #program_export
     IsAudioDeviceReady :: () -> bool {
         AudioEnsure()
-        return js_audio_ready() != 0
+        return AudioEngineReady() != 0
     }
 
     #program_export
     SetMasterVolume :: (volume: float32) {
         AudioEnsure()
-        js_audio_set_master_volume(volume)
+        AudioEngineSetMasterVolume(volume)
     }
 
     #program_export
     GetMasterVolume :: () -> float32 {
         AudioEnsure()
-        return js_audio_get_master_volume()
+        return AudioEngineGetMasterVolume()
     }
 
     #program_export
@@ -288,7 +239,7 @@
         rate: s32
         channels: s32
         frames: s32
-        decoded := js_audio_decode_wave_memory(data, length,
+        decoded := AudioEngineDecodeWaveMemory(data, length,
             *rate, *channels, *frames)
         if decoded == null { return wave }
         wave.data = decoded
@@ -524,14 +475,14 @@
     #program_export
     LoadSound :: (path: *u8) -> CanvasSound {
         AudioEnsure()
-        return AudioSoundFromId(js_audio_load_file(path))
+        return AudioSoundFromId(AudioEngineLoadFile(path))
     }
 
     #program_export
     LoadSoundFromWave :: (wave: CanvasWave) -> CanvasSound {
         AudioEnsure()
         if !IsWaveValid(wave) { return CanvasSound.{} }
-        return AudioSoundFromId(js_audio_buffer_from_pcm(wave.data,
+        return AudioSoundFromId(AudioEngineBufferFromPcm(wave.data,
             cast(s32)wave.frame_count, cast(s32)wave.sample_rate,
             cast(s32)wave.sample_size, cast(s32)wave.channels))
     }
@@ -541,7 +492,7 @@
         AudioEnsure()
         id := AudioId(source.stream)
         if id <= 0 { return CanvasSound.{} }
-        js_audio_ref(id)
+        AudioEngineRef(id)
         return source
     }
 
@@ -558,7 +509,7 @@
         rate := ifx sound.stream.sample_rate > 0 then cast(s32)sound.stream.sample_rate else 44100
         size := ifx sound.stream.sample_size > 0 then cast(s32)sound.stream.sample_size else 32
         channels := ifx sound.stream.channels > 0 then cast(s32)sound.stream.channels else 2
-        unused js_audio_update_buffer_from_pcm(id, data, frames, rate, size, channels)
+        unused AudioEngineUpdateBufferFromPcm(id, data, frames, rate, size, channels)
     }
 
     #program_export
@@ -569,61 +520,61 @@
     #program_export
     UnloadSound :: (sound: CanvasSound) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_release(id) }
+        if id > 0 { AudioEngineRelease(id) }
     }
 
     #program_export
     PlaySound :: (sound: CanvasSound) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_sound_play(id) }
+        if id > 0 { AudioEngineSoundPlay(id) }
     }
 
     #program_export
     StopSound :: (sound: CanvasSound) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_sound_stop(id) }
+        if id > 0 { AudioEngineSoundStop(id) }
     }
 
     #program_export
     PauseSound :: (sound: CanvasSound) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_sound_pause(id) }
+        if id > 0 { AudioEngineSoundPause(id) }
     }
 
     #program_export
     ResumeSound :: (sound: CanvasSound) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_sound_resume(id) }
+        if id > 0 { AudioEngineSoundResume(id) }
     }
 
     #program_export
     IsSoundPlaying :: (sound: CanvasSound) -> bool {
         id := AudioId(sound.stream)
-        return id > 0 && js_audio_sound_playing(id) != 0
+        return id > 0 && AudioEngineSoundPlaying(id) != 0
     }
 
     #program_export
     SetSoundVolume :: (sound: CanvasSound, value: float32) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_buffer_volume(id, value) }
+        if id > 0 { AudioEngineBufferVolume(id, value) }
     }
 
     #program_export
     SetSoundPitch :: (sound: CanvasSound, value: float32) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_buffer_pitch(id, value) }
+        if id > 0 { AudioEngineBufferPitch(id, value) }
     }
 
     #program_export
     SetSoundPan :: (sound: CanvasSound, value: float32) {
         id := AudioId(sound.stream)
-        if id > 0 { js_audio_buffer_pan(id, value) }
+        if id > 0 { AudioEngineBufferPan(id, value) }
     }
 
     #program_export
     LoadMusicStream :: (path: *u8) -> CanvasMusic {
         AudioEnsure()
-        return AudioMusicFromId(js_audio_load_file(path))
+        return AudioMusicFromId(AudioEngineLoadFile(path))
     }
 
     #program_export
@@ -631,7 +582,7 @@
         unused kind
         AudioEnsure()
         if data == null || length <= 0 { return CanvasMusic.{} }
-        return AudioMusicFromId(js_audio_load_memory(data, length))
+        return AudioMusicFromId(AudioEngineLoadMemory(data, length))
     }
 
     #program_export
@@ -642,7 +593,7 @@
     #program_export
     PlayMusicStream :: (music: CanvasMusic) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_music_play(id, ifx music.looping then 1 else 0) }
+        if id > 0 { AudioEngineMusicPlay(id, ifx music.looping then 1 else 0) }
     }
 
     #program_export
@@ -654,68 +605,68 @@
     #program_export
     UnloadMusicStream :: (music: CanvasMusic) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_release(id) }
+        if id > 0 { AudioEngineRelease(id) }
     }
 
     #program_export
     StopMusicStream :: (music: CanvasMusic) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_music_stop(id) }
+        if id > 0 { AudioEngineMusicStop(id) }
     }
 
     #program_export
     PauseMusicStream :: (music: CanvasMusic) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_music_pause(id) }
+        if id > 0 { AudioEngineMusicPause(id) }
     }
 
     #program_export
     ResumeMusicStream :: (music: CanvasMusic) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_music_resume(id) }
+        if id > 0 { AudioEngineMusicResume(id) }
     }
 
     #program_export
     IsMusicStreamPlaying :: (music: CanvasMusic) -> bool {
         id := AudioId(music.stream)
-        return id > 0 && js_audio_music_playing(id) != 0
+        return id > 0 && AudioEngineMusicPlaying(id) != 0
     }
 
     #program_export
     SeekMusicStream :: (music: CanvasMusic, value: float32) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_music_seek(id, value) }
+        if id > 0 { AudioEngineMusicSeek(id, value) }
     }
 
     #program_export
     SetMusicVolume :: (music: CanvasMusic, value: float32) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_buffer_volume(id, value) }
+        if id > 0 { AudioEngineBufferVolume(id, value) }
     }
 
     #program_export
     SetMusicPitch :: (music: CanvasMusic, value: float32) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_buffer_pitch(id, value) }
+        if id > 0 { AudioEngineBufferPitch(id, value) }
     }
 
     #program_export
     SetMusicPan :: (music: CanvasMusic, value: float32) {
         id := AudioId(music.stream)
-        if id > 0 { js_audio_buffer_pan(id, value) }
+        if id > 0 { AudioEngineBufferPan(id, value) }
     }
 
     #program_export
     GetMusicTimeLength :: (music: CanvasMusic) -> float32 {
         id := AudioId(music.stream)
-        if id > 0 { return js_audio_music_length(id) }
+        if id > 0 { return AudioEngineMusicLength(id) }
         return 0.0
     }
 
     #program_export
     GetMusicTimePlayed :: (music: CanvasMusic) -> float32 {
         id := AudioId(music.stream)
-        if id > 0 { return js_audio_music_played(id) }
+        if id > 0 { return AudioEngineMusicPlayed(id) }
         return 0.0
     }
 
@@ -726,7 +677,7 @@
             channels > 2147483647 || AudioSampleBytes(size) == 0 {
             return CanvasAudioStream.{}
         }
-        id := js_audio_stream_create(cast(s32)rate, cast(s32)size, cast(s32)channels)
+        id := AudioEngineStreamCreate(cast(s32)rate, cast(s32)size, cast(s32)channels)
         return AudioStreamFromId(id, rate, size, channels)
     }
 
@@ -739,68 +690,68 @@
     UpdateAudioStream :: (stream: CanvasAudioStream, data: *void, frames: s32) {
         id := AudioId(stream)
         if id <= 0 || data == null || frames <= 0 { return }
-        unused js_audio_stream_update(id, data, frames, cast(s32)stream.sample_rate,
+        unused AudioEngineStreamUpdate(id, data, frames, cast(s32)stream.sample_rate,
             cast(s32)stream.sample_size, cast(s32)stream.channels)
     }
 
     #program_export
     IsAudioStreamProcessed :: (stream: CanvasAudioStream) -> bool {
         id := AudioId(stream)
-        return id > 0 && js_audio_stream_processed(id) != 0
+        return id > 0 && AudioEngineStreamProcessed(id) != 0
     }
 
     #program_export
     UnloadAudioStream :: (stream: CanvasAudioStream) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_free(id) }
+        if id > 0 { AudioEngineStreamFree(id) }
     }
 
     #program_export
     PlayAudioStream :: (stream: CanvasAudioStream) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_play(id) }
+        if id > 0 { AudioEngineStreamPlay(id) }
     }
 
     #program_export
     StopAudioStream :: (stream: CanvasAudioStream) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_stop(id) }
+        if id > 0 { AudioEngineStreamStop(id) }
     }
 
     #program_export
     PauseAudioStream :: (stream: CanvasAudioStream) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_pause(id) }
+        if id > 0 { AudioEngineStreamPause(id) }
     }
 
     #program_export
     ResumeAudioStream :: (stream: CanvasAudioStream) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_resume(id) }
+        if id > 0 { AudioEngineStreamResume(id) }
     }
 
     #program_export
     IsAudioStreamPlaying :: (stream: CanvasAudioStream) -> bool {
         id := AudioId(stream)
-        return id > 0 && js_audio_stream_playing(id) != 0
+        return id > 0 && AudioEngineStreamPlaying(id) != 0
     }
 
     #program_export
     SetAudioStreamVolume :: (stream: CanvasAudioStream, value: float32) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_volume(id, value) }
+        if id > 0 { AudioEngineStreamVolume(id, value) }
     }
 
     #program_export
     SetAudioStreamPitch :: (stream: CanvasAudioStream, value: float32) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_pitch(id, value) }
+        if id > 0 { AudioEngineStreamPitch(id, value) }
     }
 
     #program_export
     SetAudioStreamPan :: (stream: CanvasAudioStream, value: float32) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_pan(id, value) }
+        if id > 0 { AudioEngineStreamPan(id, value) }
     }
 
     #program_export
@@ -811,28 +762,28 @@
     #program_export
     SetAudioStreamCallback :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
         id := AudioId(stream)
-        if id > 0 { js_audio_stream_callback(id, callback, audio_stream_frames) }
+        if id > 0 { AudioEngineStreamCallback(id, callback, audio_stream_frames) }
     }
 
     #program_export
     AttachAudioStreamProcessor :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
         id := AudioId(stream)
-        if id > 0 && callback != null { js_audio_stream_attach_processor(id, callback) }
+        if id > 0 && callback != null { AudioEngineStreamAttachProcessor(id, callback) }
     }
 
     #program_export
     AttachAudioMixedProcessor :: (callback: CanvasAudioCallback) {
-        if callback != null { js_audio_attach_mixed_processor(callback) }
+        if callback != null { AudioEngineAttachMixedProcessor(callback) }
     }
 
     #program_export
     DetachAudioStreamProcessor :: (stream: CanvasAudioStream, callback: CanvasAudioCallback) {
         id := AudioId(stream)
-        if id > 0 && callback != null { js_audio_stream_detach_processor(id, callback) }
+        if id > 0 && callback != null { AudioEngineStreamDetachProcessor(id, callback) }
     }
 
     #program_export
     DetachAudioMixedProcessor :: (callback: CanvasAudioCallback) {
-        if callback != null { js_audio_detach_mixed_processor(callback) }
+        if callback != null { AudioEngineDetachMixedProcessor(callback) }
     }
 }

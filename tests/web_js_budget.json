@@ -1,8 +1,8 @@
 {
   "files": {
     "canvas_audio.js": {
-      "lines": 701,
-      "entries": 48
+      "lines": 301,
+      "entries": 19
     },
     "canvas_draw.js": {
       "lines": 220,
@@ -35,9 +35,18 @@
   },
   "forbidden": [
     "KEYMAP",
+    "clamp01",
+    "clampPan",
     "clipboardGestureUntil",
     "domTagFor",
     "keyOf",
+    "musicOffset",
+    "pauseSound",
+    "pausedOffset",
+    "playMusic",
+    "playSound",
+    "streamCreate",
+    "streamPush",
     "syncTouches",
     "tagFor"
   ]
