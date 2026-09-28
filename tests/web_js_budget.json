@@ -29,14 +29,16 @@
       "entries": 20
     },
     "dom_tree.js": {
-      "lines": 189,
-      "entries": 4
+      "lines": 149,
+      "entries": 5
     }
   },
   "forbidden": [
     "KEYMAP",
+    "clipboardGestureUntil",
+    "domTagFor",
     "keyOf",
     "syncTouches",
-    "clipboardGestureUntil"
+    "tagFor"
   ]
 }

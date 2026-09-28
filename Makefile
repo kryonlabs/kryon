@@ -204,6 +204,10 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
 check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test
+.PHONY: dom-spec-test
+dom-spec-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/dom_spec_zi_test.sh
+
 .PHONY: canvas-events-test
 canvas-events-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_events_zi_test.sh
@@ -213,7 +217,7 @@ web-js-boundary-test:
 	@python3 tests/web_js_boundary_test.py
 
 .PHONY: canvas-test
-canvas-test: web-js-boundary-test canvas-events-test
+canvas-test: web-js-boundary-test canvas-events-test dom-spec-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
