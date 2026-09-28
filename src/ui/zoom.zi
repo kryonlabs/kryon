@@ -145,14 +145,19 @@ ZoomFactor :: (session: Session) -> float32 {
 }
 
 // Set the factor, for example from a saved preference. Returns the factor
-// after clamping to the range and snapping to a step.
+// after clamping to the range and snapping to a step. Setting the factor it
+// already has changes nothing, so an application may set it every frame
+// without losing the part of a notch a touchpad has moved so far.
 #program_export
 ZoomSet :: (session: Session, factor: float32) -> float32 {
     index: s32 = ZoomSlot(session)
     if index == 0 { return 1.0 }
-    zoom_sessions[index].factor = ZoomClamp(zoom_sessions[index].props, factor)
-    zoom_sessions[index].carry = 0.0
-    return zoom_sessions[index].factor
+    next: float32 = ZoomClamp(zoom_sessions[index].props, factor)
+    if next != zoom_sessions[index].factor {
+        zoom_sessions[index].factor = next
+        zoom_sessions[index].carry = 0.0
+    }
+    return next
 }
 
 #program_export
