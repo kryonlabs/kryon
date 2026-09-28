@@ -186,3 +186,4 @@ tree_input.zi
 widget_kind.zi
 window_flags.zi
 window_policy.zi
+zoom.zi
