@@ -27,6 +27,15 @@ rg -q '^DrawDisplay\* initdisplay\(' "$work/generated/libdraw_native.h"
 rg -q '^int32_t gengetwindow\(' "$work/generated/libdraw_native.h"
 rg -q '^DrawImage\* allocimage\(' "$work/generated/libdraw_native.h"
 rg -q '^DrawPoint string\(' "$work/generated/libdraw_native.h"
+rg -q 'ptrdiff_t key;' "$work/generated/libdraw_native.h"
+rg -q 'ptrdiff_t sem;' "$work/generated/libdraw_native.h"
+rg -q 'size_t data_query_id;' "$work/generated/libdraw_native.h"
+rg -q 'size_t channel;' "$work/generated/libdraw_native.h"
+rg -q 'size_t age;' "$work/generated/libdraw_native.h"
+rg -q 'DrawErrorRoutine error;' "$work/generated/libdraw_native.h"
+rg -q 'size_t channel, int32_t replicate, size_t color' "$work/generated/libdraw_native.h"
+rg -qF 'int32_t freeimage(DrawImage* image);' "$work/generated/libdraw_native.h"
+rg -qF 'DrawImage* mask, DrawPoint point' "$work/generated/libdraw_native.h"
 
 mkdir "$work/include"
 cat > "$work/include/u.h" <<'H'
@@ -79,7 +88,7 @@ static DrawSubfont fake_subfont = {
 static DrawFont fake_font = {NULL, NULL, 16, 12};
 static uint32_t fake_last_color;
 
-DrawDisplay *initdisplay(int8_t *device, int8_t *window, DrawErrorRoutine *error) {
+DrawDisplay *initdisplay(int8_t *device, int8_t *window, DrawErrorRoutine error) {
     (void)device; (void)window; (void)error;
     return (void *)1;
 }
@@ -103,18 +112,19 @@ int gengetwindow(DrawDisplay *display, int8_t *name,
     return 1;
 }
 DrawImage *allocimage(DrawDisplay *display, DrawRectangle bounds,
-                      uint32_t channel, int replicate, uint32_t color) {
+                      size_t channel, int replicate, size_t color) {
     (void)display; (void)bounds; (void)channel; (void)replicate;
     uint8_t *memory = calloc(1, sizeof(DrawImage) + sizeof(uint32_t));
     if(memory == NULL) return NULL;
     *(uint32_t *)(memory + sizeof(DrawImage)) = color;
     return (DrawImage *)memory;
 }
-void freeimage(DrawImage *image) {
+int freeimage(DrawImage *image) {
     if(image != &fake_window) free(image);
+    return 0;
 }
 void draw(DrawImage *target, DrawRectangle bounds, DrawImage *source,
-          void *mask, DrawPoint point) {
+          DrawImage *mask, DrawPoint point) {
     (void)bounds; (void)mask; (void)point;
     if(target == NULL || source == NULL || source == &fake_window) return;
     fake_last_color = *(uint32_t *)((uint8_t *)source + sizeof(DrawImage));
