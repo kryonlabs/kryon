@@ -36,6 +36,10 @@ rg -q 'DrawErrorRoutine error;' "$work/generated/libdraw_native.h"
 rg -q 'size_t channel, int32_t replicate, size_t color' "$work/generated/libdraw_native.h"
 rg -qF 'int32_t freeimage(DrawImage* image);' "$work/generated/libdraw_native.h"
 rg -qF 'DrawImage* mask, DrawPoint point' "$work/generated/libdraw_native.h"
+rg -q '^void einit\(' "$work/generated/libdraw_native.h"
+rg -q '^int32_t ecanread\(' "$work/generated/libdraw_native.h"
+rg -q '^size_t eread\(' "$work/generated/libdraw_native.h"
+rg -q 'uint8_t data\[16512\];' "$work/generated/libdraw_native.h"
 
 mkdir "$work/include"
 cat > "$work/include/u.h" <<'H'
@@ -87,6 +91,8 @@ static DrawSubfont fake_subfont = {
 };
 static DrawFont fake_font = {NULL, NULL, 16, 12};
 static uint32_t fake_last_color;
+static int fake_next_event;
+static const int fake_event_count = 3;
 
 DrawDisplay *initdisplay(int8_t *device, int8_t *window, DrawErrorRoutine error) {
     (void)device; (void)window; (void)error;
@@ -105,12 +111,35 @@ DrawFont *openfont(DrawDisplay *display, int8_t *name) {
 int gengetwindow(DrawDisplay *display, int8_t *name,
                  DrawImage **window, DrawScreen **screen, int refresh) {
     (void)display; (void)name; (void)refresh;
-    fake_window.bounds.max.x = 96;
-    fake_window.bounds.max.y = 64;
+    fake_window.bounds.max.x = 128;
+    fake_window.bounds.max.y = 80;
     *window = &fake_window;
     *screen = &fake_screen;
     return 1;
 }
+void einit(usize keys) { (void)keys; }
+int ecanread(usize keys) {
+    (void)keys;
+    return fake_next_event < fake_event_count;
+}
+usize eread(usize keys, DrawEvent *event) {
+    (void)keys;
+    if(event == NULL || fake_next_event >= fake_event_count) return 0;
+    memset(event, 0, sizeof(*event));
+    if(fake_next_event == 0) {
+        event->mouse.buttons = 1;
+        event->mouse.xy.x = 24;
+        event->mouse.xy.y = 12;
+    } else if(fake_next_event == 1) {
+        event->kbdc = 65;
+    } else {
+        event->mouse.xy.x = 32;
+        event->mouse.xy.y = 18;
+    }
+    fake_next_event++;
+    return fake_next_event == 2 ? 2 : 1;
+}
+
 DrawImage *allocimage(DrawDisplay *display, DrawRectangle bounds,
                       size_t channel, int replicate, size_t color) {
     (void)display; (void)bounds; (void)channel; (void)replicate;
