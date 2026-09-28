@@ -52,7 +52,7 @@ project-toolchain:
 $(ZIRAN_DIR)/build/bin/zi2c:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/manifest.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran | project-toolchain
+build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran | project-toolchain
 	mkdir -p build/project/gen
 	rm -f build/project/gen/*.c build/project/gen/*.h
 	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root src/project \
@@ -172,16 +172,16 @@ header-check:
 project-test: project-toolchain build/bin/kryon
 	mkdir -p build/project
 	$(ZIRAN_DIR)/build/bin/ziran bundle --root tests --module-path src/project \
-		--entry project_manifest_test:ProjectManifestTest \
-		-o build/project/manifest-test.zib tests/project_manifest_test.zi
-	test "$$($(ZIRAN_DIR)/build/bin/ziran run build/project/manifest-test.zib)" = 42
+		--entry project_options_test:ProjectOptionsTest \
+		-o build/project/options-test.zib tests/project_options_test.zi
+	test "$$($(ZIRAN_DIR)/build/bin/ziran run build/project/options-test.zib)" = 42
 	$(ZIRAN_DIR)/build/bin/ziran build --target=cpp --root tests \
-		--module-path src/project -o build/project/cpp tests/project_manifest_test.zi
+		--module-path src/project -o build/project/cpp tests/project_options_test.zi
 	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -Ibuild/project/cpp \
-		-c build/project/cpp/project_manifest_test.cpp \
-		-o build/project/manifest-test.o
+		-c build/project/cpp/project_options_test.cpp \
+		-o build/project/options-test.o
 	$(ZIRAN_DIR)/build/bin/ziran build --target=go --root tests \
-		--module-path src/project -o build/project/go tests/project_manifest_test.zi
+		--module-path src/project -o build/project/go tests/project_options_test.zi
 	cd build/project/go && GO111MODULE=off go test .
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py

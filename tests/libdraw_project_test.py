@@ -111,8 +111,8 @@ def main():
             'ref = "master"\n\n'
             '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.kryon]\ndefault_profile = "libdraw"\n\n'
-            '[tool.kryon.profiles.libdraw]\nbackend = "libdraw"\n'
+            '[tool.Kryon]\ndefault_profile = "libdraw"\n\n'
+            '[tool.Kryon.profiles.libdraw]\nbackend = "libdraw"\n'
         )
         (project / "ziran.local.toml").write_text(
             f'[overrides]\nKryon = "{ROOT}"\n'

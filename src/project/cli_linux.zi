@@ -1,4 +1,4 @@
-#import "manifest"
+#import "options"
 
 // Linux command-line host for Kryon projects. Configuration and command
 // selection are Ziran; libc supplies only file, stdout, and process effects.
@@ -9,6 +9,7 @@ RawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 RawClose :: (fd: s32) -> s32 #foreign libc "close";
 RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
+RawSetenv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
 CopyDescriptor :: (source: *TextDescriptor, destination: *string,
     count: u64) -> void #foreign libc "bcopy";
 
@@ -149,6 +150,13 @@ ReadFile :: (path: string, output: []u8) -> FileContents {
     return result
 }
 
+SetEnvironment :: (name: string, value: string) -> bool {
+    name_bytes: [128]u8
+    value_bytes: [4096]u8
+    if !CString(name, name_bytes[:]) || !CString(value, value_bytes[:]) { return false }
+    return RawSetenv(*name_bytes[0], *value_bytes[0], 1) == 0
+}
+
 Exists :: (path: string) -> bool {
     name: [4096]u8
     if !CString(path, name[:]) { return false }
@@ -245,11 +253,11 @@ main :: () -> s32 {
     verb_bytes: [128]u8
     verb: string = Argument(command_line.text, 1, verb_bytes[:])
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
-        PrintFd(1, "usage: kryon run|build|check [--profile NAME]\n")
+        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n")
         return 0
     }
-    if verb != "run" && verb != "build" && verb != "check" {
-        return Error("unknown command; use run, build, or check")
+    if verb != "run" && verb != "build" && verb != "check" && verb != "install" {
+        return Error("unknown command; use run, build, check, or install")
     }
     profile_bytes: [128]u8
     option_bytes: [128]u8
@@ -269,10 +277,17 @@ main :: () -> s32 {
         return Error("unknown option")
     }
 
-    manifest_bytes: [32768]u8
-    file: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
-    if !file.ok { return Error("cannot read ziran.toml in this directory") }
-    config: ProjectConfig = ParseProject(file.text)
+    options_path_bytes: [4096]u8
+    name_env_bytes: [128]u8
+    entry_env_bytes: [4096]u8
+    options_path: string = Environment("ZIRAN_TOOL_OPTIONS", options_path_bytes[:])
+    if options_path == "" { return Error("run this command through ziran tool Kryon") }
+    options_bytes: [32768]u8
+    file: FileContents = ReadFile(options_path, options_bytes[:])
+    if !file.ok { return Error("cannot read the options ziran resolved") }
+    config: ProjectConfig = ParseProject(file.text,
+        Environment("ZIRAN_PROJECT_NAME", name_env_bytes[:]),
+        Environment("ZIRAN_PROJECT_ENTRY", entry_env_bytes[:]))
     if !config.ok { return Error(config.error) }
     installed_kryon_bytes: [4096]u8
     installed_ziran_bytes: [4096]u8
@@ -283,6 +298,9 @@ main :: () -> s32 {
     if installed_kryon == "" || installed_ziran == "" || package_id == "" {
         return Error("run this command through ziran tool Kryon")
     }
+    if profile_name == "" && verb == "install" {
+        profile_name = config.install.profile
+    }
     if profile_name == "" {
         if verb == "run" && config.profile_count > 1 {
             chosen_profile: s32 = ChooseProfile(config)
@@ -290,6 +308,31 @@ main :: () -> s32 {
             profile_name = config.profiles[chosen_profile].name
         } else {
             profile_name = config.default_profile
+        }
+    }
+    if verb == "install" {
+        prefix_bytes: [4096]u8
+        bin_bytes: [128]u8
+        if Environment("ZIRAN_INSTALL_PREFIX", prefix_bytes[:]) == "" {
+            return Error("run this command through ziran install")
+        }
+        if !ProjectNameValid(Environment("ZIRAN_INSTALL_BIN", bin_bytes[:])) {
+            return Error("invalid install bin name")
+        }
+        // The install rule reads these as shell variables, never as make
+        // syntax, so desktop text cannot change the recipe.
+        autostart: string = "false"
+        if config.install.autostart { autostart = "true" }
+        if !SetEnvironment("KRYON_INSTALL_NAME", config.install.name) ||
+            !SetEnvironment("KRYON_INSTALL_COMMENT", config.install.comment) ||
+            !SetEnvironment("KRYON_INSTALL_ICON", config.install.icon) ||
+            !SetEnvironment("KRYON_INSTALL_CATEGORIES", config.install.categories) ||
+            !SetEnvironment("KRYON_INSTALL_DIRECTORY",
+                config.install.working_directory) ||
+            !SetEnvironment("KRYON_INSTALL_AUTOSTART", autostart) ||
+            !SetEnvironment("KRYON_INSTALL_AUTOSTART_ENV",
+                config.install.autostart_env) {
+            return Error("cannot pass install options")
         }
     }
     profile: ProjectProfile = ProjectProfileNamed(config, profile_name)

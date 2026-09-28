@@ -28,8 +28,8 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
         'ref = "master"\n\n'
         '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
         'ref = "master"\n\n'
-        '[tool.kryon]\ndefault_profile = "web"\n\n'
-        '[tool.kryon.profiles.web]\nbackend = "dom"\n'
+        '[tool.Kryon]\ndefault_profile = "web"\n\n'
+        '[tool.Kryon.profiles.web]\nbackend = "dom"\n'
     )
     (project / "ziran.local.toml").write_text(
         f'[overrides]\nKryon = "{ROOT}"\n'

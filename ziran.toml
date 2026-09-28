@@ -19,3 +19,23 @@ Syntax = "src/syntax/Syntax/module.zi"
 
 [tool]
 project = "build/bin/kryon"
+
+# Settings an application gives the kryon tool under [tool.Kryon].
+[options]
+default_profile = "string"
+
+[options.profiles."*"]
+backend = "string!"
+codegen = "string=c99"
+library = "string"
+
+# Used by `ziran install` to build one profile and add it to the desktop.
+[options.install]
+profile = "string"
+name = "string"
+comment = "string"
+icon = "string"
+categories = "string"
+working_directory = "string"
+autostart = "bool=false"
+autostart_env = "string"
