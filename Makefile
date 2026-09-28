@@ -68,7 +68,8 @@ build/bin/kryon: build/project/gen/cli_linux.c Makefile
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
-	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all
+	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) \
+		$(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2CPP_BIN) $(ZI2GO_BIN)
 	mkdir -p $(BUILD_DIR)
 	touch $@
 
