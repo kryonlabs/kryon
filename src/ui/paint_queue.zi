@@ -41,6 +41,11 @@ PaintCommand :: struct {
     clip: Rectangle
     origin: Vector2
     rotation: float32
+    // Queued text is copied into the session's frame text so a caller may
+    // pass a label formatted into its own short-lived buffer.
+    text_start: s64
+    text_count: s64
+    owns_text: bool
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
@@ -61,6 +66,29 @@ PaintCommands :: struct {
 }
 
 pending_paint: [9]PaintCommands;
+PAINT_TEXT_CAPACITY :: 32768
+pending_text: [9][PAINT_TEXT_CAPACITY]u8;
+pending_text_count: [9]s64;
+
+// Copies a queued command's text into the session's frame text. Text that
+// does not fit keeps the caller's view, which must then outlive the flush.
+KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
+    if data.value.count == 0 { return data }
+    start: s64 = pending_text_count[slot]
+    if start + cast(s64)data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
+        return data
+    }
+    at: s64 = 0
+    while at < cast(s64)data.value.count {
+        pending_text[slot][start + at] = data.value[at]
+        at += 1
+    }
+    pending_text_count[slot] = start + at
+    data.text_start = start
+    data.text_count = cast(s64)data.value.count
+    data.owns_text = true
+    return data
+}
 
 // Raw rasterization; the queued source, clip, radius, and tint are chosen in
 // checked widget code before this device effect is called.
@@ -208,6 +236,7 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
             command.data = clip_for(command.data, geometry)
         }
     }
+    command.data = KeepPaintText(SessionIndex(session), command.data)
     if !VecPush(pending_paint[SessionIndex(session)].items, command) {
         pending_paint[SessionIndex(session)].overflow = true
     }
@@ -358,6 +387,7 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
 #program_export
 PaintClear :: (session: Session) {
     VecClear(pending_paint[SessionIndex(session)].items)
+    pending_text_count[SessionIndex(session)] = 0
     pending_paint[SessionIndex(session)].overflow = false
 }
 
@@ -377,7 +407,13 @@ PendingPaintCount :: (session: Session) -> s32 {
 PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     empty: PaintCommand
     if index < 0 || cast(s64)index >= pending_paint[SessionIndex(session)].items.count { return empty }
-    return pending_paint[SessionIndex(session)].items[index].data
+    data: PaintCommand = pending_paint[SessionIndex(session)].items[index].data
+    if data.owns_text {
+        slot: s32 = SessionIndex(session)
+        data.value = TextView(pending_text[slot][data.text_start:
+            data.text_start + data.text_count])
+    }
+    return data
 }
 
 #program_export
@@ -385,6 +421,12 @@ PaintFlush :: (session: Session) {
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
         command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
+        if command.data.owns_text {
+            slot: s32 = SessionIndex(session)
+            command.data.value = TextView(pending_text[slot][
+                command.data.text_start:
+                command.data.text_start + command.data.text_count])
+        }
         EmitPaint(command)
         index += 1
     }
@@ -395,5 +437,6 @@ PaintFlush :: (session: Session) {
 PaintDispose :: (session: Session) {
     if !SessionValid(session) { return }
     VecFree(pending_paint[session.slot].items)
+    pending_text_count[session.slot] = 0
     pending_paint[session.slot].overflow = false
 }
