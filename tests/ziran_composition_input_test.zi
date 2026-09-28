@@ -14,11 +14,19 @@ state_text_count: s64;
 #program_export
 Frame :: () -> s32 {
     sample: CompositionSample = SampleComposition()
+    previous_text: [64]u8
+    previous_count: s64 = state_text_count
+    if previous_count > 64 { return -9 }
+    previous_byte: s64 = 0
+    while previous_byte < previous_count {
+        previous_text[previous_byte] = state_text[previous_byte]
+        previous_byte += 1
+    }
     previous: CompositionState
     previous.active = state_active
     previous.cursor = state_cursor
     previous.selection_length = state_selection_length
-    previous.text = TextView(state_text[:state_text_count])
+    previous.text = TextView(previous_text[:previous_count])
     transition: CompositionTransition = CompositionTransitionFor(
         previous, CompositionEventForSample(sample), true, false)
     next: CompositionState = transition.state
