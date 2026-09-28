@@ -6,3 +6,10 @@ PublicWidgets :: (session: Session, button: ButtonProps,
     Image(session, image)
     return Button(session, button)
 }
+
+// A text field's props and result carry composition state, so an application
+// gets that type from the same import as the field.
+PublicTextField :: (session: Session, props: TextFieldProps) -> CompositionState {
+    result: TextFieldResult = TextField(session, props)
+    return result.composition
+}

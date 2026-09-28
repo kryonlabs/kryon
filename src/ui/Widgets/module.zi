@@ -62,6 +62,8 @@ using SpinboxWidgetModule :: #import "spinbox_widget";
 using TabBarPropsModule :: #import "tab_bar_props";
 using TabBarWidgetModule :: #import "tab_bar_widget";
 using TextInputPropsModule :: #import "text_input_props";
+// Text field and area props carry composition state and events from here.
+using TextInputModule :: #import "text_input";
 using TextAreaWidgetModule :: #import "text_area_widget";
 using TextFieldWidgetModule :: #import "text_field_widget";
 using TitleBarPropsModule :: #import "title_bar_props";
