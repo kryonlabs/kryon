@@ -36,6 +36,7 @@ globalThis.__canvasTestFaces = loadedFaces;
 JS
 cat > "$work/effects.js" <<'JS'
 addToLibrary({
+  js_canvas_now: () => 0,
   $CanvasTestTextures: { next: 1, live: null },
   js_texture_from_rgba__deps: ['$CanvasTestTextures'],
   js_texture_from_rgba: (pointer, width, height) => {

@@ -1,3 +1,4 @@
+#import "canvas_events"
 #import, file "canvas_types.zi";
 #import "geometry"
 #import "drawing_props"
@@ -25,8 +26,8 @@
     OsFileKind :: (path: *u8) -> s32 #foreign browser "js_file_kind";
     OsFileLength :: (path: *u8) -> s32 #foreign browser "js_file_length";
     OsFileModTime :: (path: *u8) -> float64 #foreign browser "js_file_modtime";
-    OsClipboardPull :: (output: *u8, capacity: s32) #foreign browser "js_clipboard_pull";
-    OsClipboardPush :: (text: *u8) #foreign browser "js_clipboard_push";
+    OsClipboardPush :: (text: *u8, gesture: s32) #foreign browser "js_clipboard_push";
+    OsNow :: () -> float64 #foreign browser "js_canvas_now";
     OsDroppedCount :: () -> s32 #foreign browser "js_dropped_count";
     OsDroppedPath :: (index: s32) -> *u8 #foreign browser "js_dropped_path";
     OsDirectoryOpen :: (path: *u8) -> s32 #foreign browser "js_directory_open";
@@ -45,7 +46,6 @@
     canvas_save_data_callback: CanvasSaveDataCallback;
     canvas_load_text_callback: CanvasLoadTextCallback;
     canvas_save_text_callback: CanvasSaveTextCallback;
-    canvas_clipboard: [4096]u8;
     canvas_directory: [1024]u8;
     canvas_previous_directory: [1024]u8;
     canvas_working_directory: [1024]u8;
@@ -80,15 +80,16 @@
 
     #program_export
     GetClipboardText :: () -> *u8 {
-        OsClipboardPull(*canvas_clipboard[0], 4096)
-        return *canvas_clipboard[0]
+        return *canvas_clipboard_text[0]
     }
 
     #program_export
     SetClipboardText :: (text: *u8) {
         if text != null {
-            unused OsCopyBounded(*canvas_clipboard[0], 4096, text)
-            OsClipboardPush(text)
+            unused OsCopyBounded(*canvas_clipboard_text[0], CANVAS_CLIPBOARD_SIZE, text)
+            gesture: s32 = 0
+            if OsNow() <= canvas_clipboard_gesture_until { gesture = 1 }
+            OsClipboardPush(text, gesture)
         }
     }
 

@@ -1,23 +1,16 @@
 #import "canvas_types"
+#import "canvas_events"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
 #if #defined(PLATFORM_WEB) {
     canvas_browser :: #system_library "env";
-    js_input_query :: (which: s32, code: s32) -> s32 #foreign canvas_browser "js_input_query";
-    js_input_float :: (which: s32) -> float64 #foreign canvas_browser "js_input_float";
-    js_input_set_mouse :: (x: s32, y: s32) #foreign canvas_browser "js_input_set_mouse";
-    js_input_mouse_config :: (ox: float64, oy: float64, sx: float64, sy: float64) #foreign canvas_browser "js_input_mouse_config";
-    js_touch_query :: (index: s32, field: s32) -> s32 #foreign canvas_browser "js_touch_query";
     js_gamepad_query :: (gamepad: s32, which: s32, index: s32) -> s32 #foreign canvas_browser "js_gamepad_query";
     js_gamepad_axis :: (gamepad: s32, axis: s32) -> float64 #foreign canvas_browser "js_gamepad_axis";
     js_gamepad_name :: (gamepad: s32) -> *u8 #foreign canvas_browser "js_gamepad_name";
     js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
 
-    js_input_offset :: (x: s32, y: s32) #foreign canvas_browser "js_input_offset";
-    js_input_scale :: (x: float64, y: float64) #foreign canvas_browser "js_input_scale";
     js_input_cursor :: (mode: s32) #foreign canvas_browser "js_input_cursor";
-    js_input_cursor_state :: (mode: s32) -> s32 #foreign canvas_browser "js_input_cursor_state";
     js_gamepad_vibration :: (gamepad: s32, left: float64, right: float64, duration: float64) #foreign canvas_browser "js_gamepad_vibration";
     canvas_gamepad_names: [512]u8;
     canvas_gamepad_next: s32;
@@ -25,37 +18,37 @@
 
     #program_export
     IsKeyPressed :: (code: s32) -> bool {
-        return js_input_query(1, code) != 0
+        return CanvasQueueHas(*canvas_keys_pressed[0], canvas_keys_pressed_count, code)
     }
 
     #program_export
     IsKeyPressedRepeat :: (code: s32) -> bool {
-        return js_input_query(19, code) != 0
+        return CanvasQueueHas(*canvas_keys_repeated[0], canvas_keys_repeated_count, code)
     }
 
     #program_export
     IsKeyDown :: (code: s32) -> bool {
-        return js_input_query(0, code) != 0
+        return code >= 0 && code < CANVAS_KEY_LIMIT && canvas_keys_down[code]
     }
 
     #program_export
     IsKeyReleased :: (code: s32) -> bool {
-        return js_input_query(2, code) != 0
+        return CanvasQueueHas(*canvas_keys_released[0], canvas_keys_released_count, code)
     }
 
     #program_export
     IsMouseButtonPressed :: (code: s32) -> bool {
-        return js_input_query(6, code) != 0
+        return CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, code)
     }
 
     #program_export
     IsMouseButtonDown :: (code: s32) -> bool {
-        return js_input_query(5, code) != 0
+        return code >= 0 && code < CANVAS_BUTTON_LIMIT && canvas_buttons_down[code]
     }
 
     #program_export
     IsMouseButtonReleased :: (code: s32) -> bool {
-        return js_input_query(7, code) != 0
+        return CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, code)
     }
 
     #program_export
@@ -70,112 +63,120 @@
 
     #program_export
     GetKeyPressed :: () -> s32 {
-        return js_input_query(3, 0)
+        return CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count)
     }
 
     #program_export
     GetCharPressed :: () -> s32 {
-        return js_input_query(4, 0)
+        return CanvasQueuePop(*canvas_chars[0], *canvas_chars_count)
     }
 
     #program_export
     GetMouseX :: () -> s32 {
-        return js_input_query(8, 0)
+        return cast(s32)canvas_mouse_x
     }
 
     #program_export
     GetMouseY :: () -> s32 {
-        return js_input_query(9, 0)
+        return cast(s32)canvas_mouse_y
     }
 
     #program_export
     GetMousePosition :: () -> Vector2 {
-        return Vector2.{cast(float32)js_input_query(8, 0), cast(float32)js_input_query(9, 0)}
+        return Vector2.{cast(float32)cast(s32)canvas_mouse_x, cast(float32)cast(s32)canvas_mouse_y}
     }
 
     #program_export
     GetMouseDelta :: () -> Vector2 {
-        return Vector2.{cast(float32)js_input_float(0), cast(float32)js_input_float(1)}
+        return Vector2.{cast(float32)canvas_mouse_delta_x, cast(float32)canvas_mouse_delta_y}
     }
 
     #program_export
     GetMouseWheelMove :: () -> float32 {
-        return cast(float32)js_input_float(4)
+        return cast(float32)CanvasWheelDominant()
     }
 
     #program_export
     GetMouseWheelMoveV :: () -> Vector2 {
-        return Vector2.{cast(float32)js_input_float(2), cast(float32)js_input_float(3)}
+        return Vector2.{cast(float32)canvas_wheel_x, cast(float32)canvas_wheel_y}
     }
 
     #program_export
     SetMousePosition :: (x: s32, y: s32) {
-        js_input_set_mouse(x, y)
+        CanvasSetMouse(cast(float64)x, cast(float64)y)
     }
 
     #program_export
     SetMouseOffset :: (x: s32, y: s32) {
-        js_input_offset(x, y)
+        canvas_mouse_offset_x = cast(float64)x
+        canvas_mouse_offset_y = cast(float64)y
     }
 
     #program_export
     SetMouseScale :: (x: float32, y: float32) {
-        js_input_scale(cast(float64)x, cast(float64)y)
+        canvas_mouse_scale_x = cast(float64)x
+        canvas_mouse_scale_y = cast(float64)y
     }
 
     #program_export
     ShowCursor :: () {
+        canvas_cursor_hidden = false
         js_input_cursor(0)
     }
 
     #program_export
     HideCursor :: () {
+        canvas_cursor_hidden = true
         js_input_cursor(1)
     }
 
     #program_export
     EnableCursor :: () {
+        canvas_cursor_hidden = false
         js_input_cursor(2)
     }
 
     #program_export
     DisableCursor :: () {
+        canvas_cursor_hidden = true
         js_input_cursor(3)
     }
 
     #program_export
     IsCursorHidden :: () -> bool {
-        return js_input_cursor_state(0) != 0
+        return canvas_cursor_hidden
     }
 
     #program_export
     IsCursorOnScreen :: () -> bool {
-        return js_input_cursor_state(1) != 0
+        return canvas_mouse_x >= 0.0 && canvas_mouse_y >= 0.0 &&
+            canvas_mouse_x < cast(float64)CanvasPageWidth() &&
+            canvas_mouse_y < cast(float64)CanvasPageHeight()
     }
 
     #program_export
     GetTouchX :: () -> s32 {
-        return js_touch_query(0, 0)
+        return CanvasTouchField(0, 0)
     }
 
     #program_export
     GetTouchY :: () -> s32 {
-        return js_touch_query(0, 1)
+        return CanvasTouchField(0, 1)
     }
 
     #program_export
     GetTouchPosition :: (index: s32) -> Vector2 {
-        return Vector2.{cast(float32)js_touch_query(index, 0), cast(float32)js_touch_query(index, 1)}
+        return Vector2.{cast(float32)CanvasTouchField(index, 0), cast(float32)CanvasTouchField(index, 1)}
     }
 
     #program_export
     GetTouchPointId :: (index: s32) -> s32 {
-        return js_touch_query(index, 2)
+        return CanvasTouchField(index, 2)
     }
 
     #program_export
     GetTouchPointCount :: () -> s32 {
-        return js_touch_query(0, 3)
+        return canvas_touch_count
     }
 
     #program_export

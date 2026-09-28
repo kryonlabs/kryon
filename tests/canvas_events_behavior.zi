@@ -1,0 +1,193 @@
+#import "canvas_events"
+#import "c_string"
+#import "byte_text_linux"
+
+code_buffer: [64]u8;
+key_buffer: [64]u8;
+
+Send :: (kind: s32, a: s32, b: s32, x: float64, y: float64,
+    code: string, key: string) -> s32 {
+    unused CopyCString(code, code_buffer[:])
+    unused CopyCString(key, key_buffer[:])
+    return CanvasEvent(kind, a, b, x, y, *code_buffer[0], *key_buffer[0])
+}
+
+KeyMapChecks :: () -> s32 {
+    if CanvasKeyOf("KeyA", "a") != 65 { return 1 }
+    if CanvasKeyOf("KeyZ", "z") != 90 { return 2 }
+    if CanvasKeyOf("Digit5", "5") != 53 { return 3 }
+    if CanvasKeyOf("Numpad7", "7") != 55 { return 4 }
+    if CanvasKeyOf("ArrowLeft", "") != 263 { return 5 }
+    if CanvasKeyOf("F12", "") != 301 { return 6 }
+    if CanvasKeyOf("Space", " ") != 32 { return 7 }
+    if CanvasKeyOf("NumpadEnter", "") != 257 { return 8 }
+    if CanvasKeyOf("MetaRight", "") != 347 { return 9 }
+    if CanvasKeyOf("Unknown", "") != 0 { return 10 }
+    // Without a code the key text stands in for it.
+    if CanvasKeyOf("", "a") != 65 { return 11 }
+    if CanvasKeyOf("", "?") != 63 { return 12 }
+    if CanvasKeyOf("", "Escape") != 256 { return 13 }
+    if CanvasKeyOf("", "") != 0 { return 14 }
+    return 0
+}
+
+CodepointChecks :: () -> s32 {
+    if CanvasSingleCodepoint("a") != 97 { return 1 }
+    if CanvasSingleCodepoint("é") != 233 { return 2 }
+    if CanvasSingleCodepoint("€") != 8364 { return 3 }
+    if CanvasSingleCodepoint("😀") != 128512 { return 4 }
+    if CanvasSingleCodepoint("ab") != 0 { return 5 }
+    if CanvasSingleCodepoint("") != 0 { return 6 }
+    return 0
+}
+
+KeyChecks :: () -> s32 {
+    CanvasEventsReset()
+    // A press queues once; repeating keydowns queue as repeats.
+    if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyA", "a") != 0 { return 1 }
+    if !CanvasQueueHas(*canvas_keys_pressed[0], canvas_keys_pressed_count, 65) { return 2 }
+    if !canvas_keys_down[65] { return 3 }
+    unused Send(CanvasEventKeyDown, 1, 0, 0.0, 0.0, "KeyA", "a")
+    if canvas_keys_pressed_count != 1 { return 4 }
+    if !CanvasQueueHas(*canvas_keys_repeated[0], canvas_keys_repeated_count, 65) { return 5 }
+    unused Send(CanvasEventKeyUp, 0, 0, 0.0, 0.0, "KeyA", "a")
+    if canvas_keys_down[65] { return 6 }
+    if !CanvasQueueHas(*canvas_keys_released[0], canvas_keys_released_count, 65) { return 7 }
+    // Keys the page would scroll with are claimed; letters are not.
+    if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "Space", " ") != CanvasEventPreventDefault { return 8 }
+    if Send(CanvasEventKeyUp, 0, 0, 0.0, 0.0, "ArrowDown", "") != CanvasEventPreventDefault { return 9 }
+    if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "F5", "") != 0 { return 10 }
+    // A copy or paste shortcut opens the clipboard gesture window.
+    if Send(CanvasEventKeyDown, 0, 1, 0.0, 0.0, "KeyC", "c") != CanvasEventPreventDefault { return 11 }
+    if canvas_clipboard_gesture_until != 2000.0 { return 12 }
+    if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyV", "v") != 0 { return 13 }
+    // Unmapped keys do nothing.
+    if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "Unknown", "") != 0 { return 14 }
+    // The frame's pressed queue pops in order.
+    CanvasEventsEndFrame()
+    if canvas_keys_pressed_count != 0 || canvas_keys_released_count != 0 { return 15 }
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyB", "b")
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyD", "d")
+    // A key that is still held from an earlier press does not press again.
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyC", "c")
+    if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 66 { return 16 }
+    if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 68 { return 17 }
+    if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 0 { return 18 }
+    return 0
+}
+
+CharChecks :: () -> s32 {
+    CanvasEventsReset()
+    unused Send(CanvasEventKeyChar, 0, 0, 0.0, 0.0, "", "😀")
+    unused Send(CanvasEventKeyChar, 0, 0, 0.0, 0.0, "", "Enter")
+    unused Send(CanvasEventKeyChar, 0, 0, 0.0, 0.0, "", "x")
+    if canvas_chars_count != 2 { return 1 }
+    if CanvasQueuePop(*canvas_chars[0], *canvas_chars_count) != 128512 { return 2 }
+    if CanvasQueuePop(*canvas_chars[0], *canvas_chars_count) != 120 { return 3 }
+    return 0
+}
+
+PointerChecks :: () -> s32 {
+    CanvasEventsReset()
+    canvas_mouse_offset_x = 10.0
+    canvas_mouse_offset_y = 20.0
+    canvas_mouse_scale_x = 2.0
+    canvas_mouse_scale_y = 0.5
+    unused Send(CanvasEventMouseMove, 0, 0, 30.0, 60.0, "", "")
+    if canvas_mouse_x != 40.0 || canvas_mouse_y != 20.0 { return 1 }
+    if canvas_mouse_delta_x != 40.0 || canvas_mouse_delta_y != 20.0 { return 2 }
+    flags := Send(CanvasEventMouseDown, 2, 0, 30.0, 60.0, "", "")
+    if flags != (CanvasEventFocusCanvas | CanvasEventCapturePointer) { return 3 }
+    if !canvas_buttons_down[2] { return 4 }
+    if !CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, 2) { return 5 }
+    unused Send(CanvasEventMouseUp, 2, 0, 30.0, 60.0, "", "")
+    if canvas_buttons_down[2] { return 6 }
+    if !CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, 2) { return 7 }
+    // A button beyond the supported range is ignored.
+    unused Send(CanvasEventMouseDown, 9, 0, 0.0, 0.0, "", "")
+    if canvas_buttons_pressed_count != 1 { return 8 }
+    return 0
+}
+
+WheelChecks :: () -> s32 {
+    CanvasEventsReset()
+    // Pixel deltas divide by 120, lines by 16, pages by the canvas height.
+    if Send(CanvasEventWheel, 0, 0, 0.0, 240.0, "", "") != CanvasEventPreventDefault { return 1 }
+    if canvas_wheel_y != -2.0 { return 2 }
+    unused Send(CanvasEventWheel, 1, 0, 32.0, 0.0, "", "")
+    if canvas_wheel_x != -2.0 { return 3 }
+    unused Send(CanvasEventWheel, 2, 0, 0.0, -150.0, "", "")
+    if canvas_wheel_y != -1.5 { return 4 }
+    CanvasEventsEndFrame()
+    if canvas_wheel_x != 0.0 || canvas_wheel_y != 0.0 { return 5 }
+    return 0
+}
+
+TouchChecks :: () -> s32 {
+    CanvasEventsReset()
+    // The first finger down acts as the left button.
+    unused Send(CanvasEventTouchBegin, 2, 0, 0.0, 0.0, "", "")
+    unused Send(CanvasEventTouchPoint, 7, 0, 15.0, 25.0, "", "")
+    unused Send(CanvasEventTouchPoint, 8, 0, 45.0, 55.0, "", "")
+    if Send(CanvasEventTouchEnd, 0, 0, 0.0, 0.0, "", "") != CanvasEventPreventDefault { return 1 }
+    if canvas_touch_count != 2 || canvas_touch_id[1] != 8 { return 2 }
+    if CanvasTouchField(0, 0) != 15 || CanvasTouchField(1, 1) != 55 { return 3 }
+    if CanvasTouchField(2, 0) != 0 { return 4 }
+    if !canvas_buttons_down[0] || canvas_mouse_x != 15.0 { return 5 }
+    if !CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, 0) { return 6 }
+    // Lifting every finger releases it.
+    unused Send(CanvasEventTouchBegin, 0, 0, 0.0, 0.0, "", "")
+    unused Send(CanvasEventTouchEnd, 0, 0, 0.0, 0.0, "", "")
+    if canvas_touch_count != 0 || canvas_buttons_down[0] { return 7 }
+    if !CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, 0) { return 8 }
+    return 0
+}
+
+FocusChecks :: () -> s32 {
+    CanvasEventsReset()
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyA", "a")
+    unused Send(CanvasEventMouseDown, 0, 0, 1.0, 1.0, "", "")
+    // Losing focus releases everything that is held.
+    unused Send(CanvasEventBlur, 0, 0, 0.0, 0.0, "", "")
+    if canvas_focused || canvas_keys_down[65] || canvas_buttons_down[0] { return 1 }
+    unused Send(CanvasEventFocus, 0, 0, 0.0, 0.0, "", "")
+    if !canvas_focused { return 2 }
+    return 0
+}
+
+ClipboardChecks :: () -> s32 {
+    CanvasEventsReset()
+    canvas_clipboard_text[0] = cast(u8)0
+    if Send(CanvasEventCopy, 0, 0, 0.0, 0.0, "", "") != 0 { return 1 }
+    unused Send(CanvasEventPaste, 0, 0, 0.0, 0.0, "", "pasted")
+    if TextFromCString(*canvas_clipboard_text[0]) != "pasted" { return 2 }
+    if Send(CanvasEventCopy, 0, 0, 0.0, 0.0, "", "") !=
+        (CanvasEventClipboardWritten | CanvasEventPreventDefault) { return 3 }
+    // Pasting nothing keeps what was there.
+    unused Send(CanvasEventPaste, 0, 0, 0.0, 0.0, "", "")
+    if TextFromCString(*canvas_clipboard_text[0]) != "pasted" { return 4 }
+    return 0
+}
+
+#program_export
+Answer :: () -> s32 {
+    failed := KeyMapChecks()
+    if failed != 0 { return 100 + failed }
+    failed = CodepointChecks()
+    if failed != 0 { return 200 + failed }
+    failed = KeyChecks()
+    if failed != 0 { return 300 + failed }
+    failed = CharChecks()
+    if failed != 0 { return 400 + failed }
+    failed = PointerChecks()
+    if failed != 0 { return 500 + failed }
+    failed = WheelChecks()
+    if failed != 0 { return 600 + failed }
+    failed = TouchChecks()
+    if failed != 0 { return 700 + failed }
+    failed = FocusChecks()
+    if failed != 0 { return 800 + failed }
+    failed = ClipboardChecks()
+    if failed != 0 { return 900 + failed }
+    return 42
+}

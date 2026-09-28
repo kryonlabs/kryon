@@ -1,5 +1,6 @@
 #import "canvas_types"
 #import "canvas_text"
+#import "canvas_events"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
@@ -17,7 +18,6 @@
     js_ctx_call :: (op: s32, a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g2: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_ctx_call";
     js_canvas_wait_frame :: (min_delay_ms: float64, target_fps: s32) #foreign canvas_browser "js_canvas_wait_frame";
 
-    js_input_query :: (which: s32, code: s32) -> s32 #foreign canvas_browser "js_input_query";
     js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
     js_canvas_now :: () -> float64 #foreign canvas_browser "js_canvas_now";
     js_canvas_close :: () #foreign canvas_browser "js_canvas_close";
@@ -44,6 +44,7 @@
         canvas_width = width
         canvas_height = height
         js_canvas_boot(width, height, title)
+        CanvasEventsOpen()
         canvas_ready = true
         canvas_last_frame = js_canvas_now() / 1000.0
     }
@@ -63,7 +64,8 @@
     #program_export
     WindowShouldClose :: () -> bool {
         if !canvas_ready || js_canvas_dim(6) != 0 { return true }
-        return canvas_exit_key != 0 && js_input_query(1, canvas_exit_key) != 0
+        return canvas_exit_key != 0 && CanvasQueueHas(*canvas_keys_pressed[0],
+            canvas_keys_pressed_count, canvas_exit_key)
     }
 
     #program_export
@@ -73,7 +75,7 @@
 
     #program_export
     IsWindowFocused :: () -> bool {
-        return canvas_ready && js_canvas_dim(5) != 0
+        return canvas_ready && canvas_focused
     }
 
     #program_export
@@ -180,12 +182,7 @@
         if canvas_frame_time <= 0.0 { canvas_frame_time = 1.0 / 60.0 }
         canvas_last_frame = now
         js_canvas_frame()
-        code: s32 = 13
-        while code <= 18 {
-            js_input_query(code, 0)
-            code += 1
-        }
-        js_input_query(20, 0)
+        CanvasEventsEndFrame()
         js_input_end_frame()
         delay: float64 = 1.0
         if canvas_target_fps > 0 {
