@@ -1,0 +1,30 @@
+// Stands in for the browser's textures so a test can check the pixels a font
+// atlas uploads and that every texture is freed.
+fake_texture_next: s32 = 1;
+fake_texture_live: s32;
+fake_texture_bad_atlas: bool;
+
+PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
+    if width != 512 || height < 64 || pixels[0] != cast(u8)0 ||
+        pixels[(width + 1) * 4 + 3] != cast(u8)255 {
+        fake_texture_bad_atlas = true
+        return 0
+    }
+    id: s32 = fake_texture_next
+    fake_texture_next += 1
+    fake_texture_live += 1
+    return id
+}
+
+PageTextureFree :: (id: s32) {
+    unused id
+    fake_texture_live -= 1
+}
+
+FakeTexturesLive :: () -> s32 {
+    return fake_texture_live
+}
+
+FakeAtlasWasBad :: () -> bool {
+    return fake_texture_bad_atlas
+}

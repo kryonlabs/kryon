@@ -1,0 +1,10 @@
+// Stands in for the browser page so the input policy runs as native code:
+// a 400 by 300 page and a clock that never moves.
+PageDimension :: (which: s32) -> s32 {
+    if which == 1 { return 300 }
+    return 400
+}
+
+PageNow :: () -> float64 {
+    return 1000.0
+}

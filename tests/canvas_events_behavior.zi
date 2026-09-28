@@ -1,3 +1,5 @@
+// Loaded first so the fake page stands in for the browser.
+#import "page_core"
 #import "canvas_events"
 #import "c_string"
 #import "byte_text_linux"

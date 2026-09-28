@@ -1,0 +1,217 @@
+// Browser fonts for the canvas backend: loading a font file as a FontFace and
+// rasterising one glyph at a time. Which glyphs are needed and how they are
+// laid out in an atlas is decided in canvas_text.zi.
+#import "page_core"
+#import "number_text"
+#import "text_buffer"
+#import "web"
+
+PAGE_FONT_MAX :: 256
+
+page_faces: [PAGE_FONT_MAX]s32;
+page_face_count: s32;
+page_glyph_canvas: s32;
+page_glyph_context: s32;
+page_glyph_options: s32;
+page_font_bytes: [96]u8;
+
+PageFontAppend :: (index: s32, text: string) -> s32 {
+    at: s32 = index
+    digit: s64 = 0
+    while digit < text.count {
+        page_font_bytes[at] = text[digit]
+        at += 1
+        digit += 1
+    }
+    return at
+}
+
+// A font-family-and-size shorthand such as "16px kryon-face-0"; monospace
+// stands in when there is no face.
+PageFontSpec :: (size: s32, face_id: s32) -> string {
+    part: [24]u8
+    index: s32 = PageFontAppend(0, FormatInteger(cast(s64)size, part[:]))
+    if face_id > 0 {
+        index = PageFontAppend(index, "px ")
+        index = PageFontAppend(index, PageFaceFamily(face_id))
+    } else {
+        index = PageFontAppend(index, "px monospace")
+    }
+    page_font_bytes[index] = cast(u8)0
+    return TextUntilNul(page_font_bytes[0:index + 1])
+}
+
+page_family_bytes: [40]u8;
+
+// The family name a face id was registered under.
+PageFaceFamily :: (face_id: s32) -> string {
+    part: [24]u8
+    prefix: string = "kryon-face-"
+    index: s32 = 0
+    while index < 11 {
+        page_family_bytes[index] = prefix[index]
+        index += 1
+    }
+    number: string = FormatInteger(cast(s64)(face_id - 1), part[:])
+    digit: s64 = 0
+    while digit < number.count {
+        page_family_bytes[index] = number[digit]
+        index += 1
+        digit += 1
+    }
+    page_family_bytes[index] = cast(u8)0
+    return TextUntilNul(page_family_bytes[0:index + 1])
+}
+
+// Registers a font file with the page. Returns a 1-based face id, or 0.
+PageFontFaceLoad :: (data: *u8, length: s32) -> s32 {
+    PageInitNames()
+    if page_face_count >= PAGE_FONT_MAX { return 0 }
+    constructor: s32 = WebGetObject(WebGlobal, WebName("FontFace"))
+    if constructor == 0 { return 0 }
+    scope: s32 = WebScope()
+    result: s32 = 0
+    bytes: s32 = WebBytes(0, cast(*void)data, length)
+    face: s32 = WebNew2(constructor, WebText(PageFaceFamily(page_face_count + 1)),
+        WebObject(bytes))
+    if face != 0 {
+        loaded: WebValue
+        promise: s32 = WebAsObject(WebCall0(face, WebName("load")))
+        if promise != 0 && WebAwait(promise, *loaded) {
+            fonts: s32 = WebGetObject(PageDocument(), WebName("fonts"))
+            if fonts != 0 { unused WebCall1(fonts, WebName("add"), WebObject(face)) }
+            page_faces[page_face_count] = WebKeep(face)
+            page_face_count += 1
+            result = page_face_count
+        }
+    }
+    WebEnd(scope)
+    return result
+}
+
+PageFontFaceRelease :: (id: s32) {
+    if id <= 0 || id > page_face_count || page_faces[id - 1] == 0 { return }
+    scope: s32 = WebScope()
+    fonts: s32 = WebGetObject(PageDocument(), WebName("fonts"))
+    if fonts != 0 {
+        unused WebCall1(fonts, WebName("delete"), WebObject(page_faces[id - 1]))
+    }
+    WebRelease(page_faces[id - 1])
+    page_faces[id - 1] = 0
+    WebEnd(scope)
+}
+
+PageGlyphSurface :: () -> bool {
+    if page_glyph_canvas != 0 { return true }
+    canvas: s32 = 0
+    document: s32 = PageDocument()
+    if document != 0 {
+        canvas = WebAsObject(WebCall1(document, page_names.create_element,
+            WebText("canvas")))
+    } else {
+        canvas = PageMakeCanvas(64, 64)
+    }
+    if canvas == 0 { return false }
+    page_glyph_canvas = WebKeep(canvas)
+    options: s32 = WebNewObject()
+    WebSet(options, WebName("willReadFrequently"), WebBool(true))
+    page_glyph_options = WebKeep(options)
+    return true
+}
+
+PageGlyphContext :: () -> s32 {
+    context: s32 = WebAsObject(WebCall2(page_glyph_canvas, page_names.get_context,
+        WebText("2d"), WebObject(page_glyph_options)))
+    return context
+}
+
+// A measurement the browser reports, or `fallback` when it does not.
+PageMeasured :: (metrics: s32, name: s32, fallback: float64) -> float64 {
+    value: WebValue = WebGet(metrics, name)
+    if WebIsUndefined(value) { return fallback }
+    return WebAsNumber(value)
+}
+
+PageCeil :: (value: float64) -> s32 {
+    whole: s32 = cast(s32)value
+    if cast(float64)whole < value { whole += 1 }
+    return whole
+}
+
+PageMaxOf :: (left: s32, right: s32) -> s32 {
+    if left > right { return left }
+    return right
+}
+
+// Rasterises one glyph as white-on-transparent RGBA into `pixels`. Returns 1
+// and fills the metrics, or 0 when the glyph does not fit.
+PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
+    width: *s32, height: *s32, offset_x: *s32, offset_y: *s32, pixels: *u8) -> s32 {
+    PageInitNames()
+    if !PageGlyphSurface() { return 0 }
+    scope: s32 = WebScope()
+    ok: s32 = 0
+    context: s32 = PageGlyphContext()
+    if context != 0 {
+        font: string = PageFontSpec(size, face_id)
+        WebSet(context, WebName("font"), WebText(font))
+        WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
+        character: s32 = WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("String")),
+            WebName("fromCodePoint"), WebNumber(cast(float64)codepoint)))
+        metrics: s32 = WebAsObject(WebCall1(context, WebName("measureText"),
+            WebObject(character)))
+        size_value: float64 = cast(float64)size
+        measured_width: float64 = WebGetNumber(metrics, WebName("width"))
+        advance_x: s32 = PageCeil(measured_width)
+        glyph_ascent: s32 = PageCeil(PageMeasured(metrics,
+            WebName("actualBoundingBoxAscent"), size_value * 0.8))
+        glyph_descent: s32 = PageCeil(PageMeasured(metrics,
+            WebName("actualBoundingBoxDescent"), 2.0))
+        font_ascent: s32 = PageCeil(PageMeasured(metrics,
+            WebName("fontBoundingBoxAscent"), size_value * 0.8))
+        fallback_descent: float64 = size_value * 0.2
+        if fallback_descent < 2.0 { fallback_descent = 2.0 }
+        font_descent: s32 = PageCeil(PageMeasured(metrics,
+            WebName("fontBoundingBoxDescent"), fallback_descent))
+        baseline: s32 = PageMaxOf(font_ascent, glyph_ascent) + 1
+        left: s32 = PageCeil(PageMeasured(metrics, WebName("actualBoundingBoxLeft"), 0.0))
+        right: s32 = PageCeil(PageMeasured(metrics, WebName("actualBoundingBoxRight"),
+            measured_width))
+        glyph_width: s32 = PageMaxOf(right + left + 2, 1)
+        glyph_height: s32 = PageMaxOf(baseline + PageMaxOf(font_descent, glyph_descent) + 1, 1)
+        if glyph_width <= 256 && glyph_height <= 256 {
+            surface_width: s32 = cast(s32)WebGetNumber(page_glyph_canvas, page_names.width)
+            surface_height: s32 = cast(s32)WebGetNumber(page_glyph_canvas, page_names.height)
+            if surface_width < glyph_width || surface_height < glyph_height {
+                WebSet(page_glyph_canvas, page_names.width,
+                    WebNumber(cast(float64)PageMaxOf(surface_width, glyph_width)))
+                WebSet(page_glyph_canvas, page_names.height,
+                    WebNumber(cast(float64)PageMaxOf(surface_height, glyph_height)))
+                context = PageGlyphContext()
+                WebSet(context, WebName("font"), WebText(font))
+                WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
+            }
+            unused WebCall4(context, WebName("clearRect"), WebNumber(0.0),
+                WebNumber(0.0), WebNumber(cast(float64)glyph_width),
+                WebNumber(cast(float64)glyph_height))
+            WebSet(context, page_names.fill_style, WebText("#fff"))
+            unused WebCall3(context, WebName("fillText"), WebObject(character),
+                WebNumber(cast(float64)(left + 1)), WebNumber(cast(float64)baseline))
+            image: s32 = WebAsObject(WebCall4(context, WebName("getImageData"),
+                WebNumber(0.0), WebNumber(0.0), WebNumber(cast(float64)glyph_width),
+                WebNumber(cast(float64)glyph_height)))
+            if image != 0 && !WebFailed() {
+                data: s32 = WebGetObject(image, WebName("data"))
+                unused WebCopyOut(data, cast(*void)pixels, glyph_width * glyph_height * 4)
+                advance.* = advance_x
+                width.* = glyph_width
+                height.* = glyph_height
+                offset_x.* = 0 - (left + 1)
+                offset_y.* = 0
+                ok = 1
+            }
+        }
+    }
+    WebEnd(scope)
+    return ok
+}

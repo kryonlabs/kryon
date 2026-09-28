@@ -72,8 +72,8 @@ ifneq ($(filter $(PROJECT_BACKEND),desktop libdraw),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
-CANVAS_LIBS := $(foreach name,window draw input texture text os,--js-library $(KRYON_DIR)/web/canvas_$(name).js)
-CANVAS_LIBS += --js-library $(ZIRAN_DIR)/web/ziran_web.js
+CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
+CANVAS_LIBS += $(KRYON_DIR)/src/backend/canvas_varargs.c
 EMCC ?= /home/wao/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)

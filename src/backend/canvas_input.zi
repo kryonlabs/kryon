@@ -3,15 +3,10 @@
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
+#import "page_core"
+#import "page_input"
 #if #defined(PLATFORM_WEB) {
-    canvas_browser :: #system_library "env";
-    js_gamepad_query :: (gamepad: s32, which: s32, index: s32) -> s32 #foreign canvas_browser "js_gamepad_query";
-    js_gamepad_axis :: (gamepad: s32, axis: s32) -> float64 #foreign canvas_browser "js_gamepad_axis";
-    js_gamepad_name :: (gamepad: s32) -> *u8 #foreign canvas_browser "js_gamepad_name";
-    js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
 
-    js_input_cursor :: (mode: s32) #foreign canvas_browser "js_input_cursor";
-    js_gamepad_vibration :: (gamepad: s32, left: float64, right: float64, duration: float64) #foreign canvas_browser "js_gamepad_vibration";
     canvas_gamepad_names: [512]u8;
     canvas_gamepad_next: s32;
     canvas_key_name: [16]u8;
@@ -121,25 +116,25 @@
     #program_export
     ShowCursor :: () {
         canvas_cursor_hidden = false
-        js_input_cursor(0)
+        PageInputCursor(0)
     }
 
     #program_export
     HideCursor :: () {
         canvas_cursor_hidden = true
-        js_input_cursor(1)
+        PageInputCursor(1)
     }
 
     #program_export
     EnableCursor :: () {
         canvas_cursor_hidden = false
-        js_input_cursor(2)
+        PageInputCursor(2)
     }
 
     #program_export
     DisableCursor :: () {
         canvas_cursor_hidden = true
-        js_input_cursor(3)
+        PageInputCursor(3)
     }
 
     #program_export
@@ -181,12 +176,12 @@
 
     #program_export
     IsGamepadAvailable :: (gamepad: s32) -> bool {
-        return js_gamepad_query(gamepad, 0, 0) != 0
+        return PageGamepadQuery(gamepad, 0, 0) != 0
     }
 
     #program_export
     GetGamepadName :: (gamepad: s32) -> *u8 {
-        temporary := js_gamepad_name(gamepad)
+        temporary := PageGamepadName(gamepad)
         offset := canvas_gamepad_next * 128
         canvas_gamepad_next = (canvas_gamepad_next + 1) % 4
         i: s32 = 0
@@ -203,17 +198,17 @@
 
     #program_export
     IsGamepadButtonPressed :: (gamepad: s32, button: s32) -> bool {
-        return js_gamepad_query(gamepad, 1, button) != 0
+        return PageGamepadQuery(gamepad, 1, button) != 0
     }
 
     #program_export
     IsGamepadButtonDown :: (gamepad: s32, button: s32) -> bool {
-        return js_gamepad_query(gamepad, 2, button) != 0
+        return PageGamepadQuery(gamepad, 2, button) != 0
     }
 
     #program_export
     IsGamepadButtonReleased :: (gamepad: s32, button: s32) -> bool {
-        return js_gamepad_query(gamepad, 3, button) != 0
+        return PageGamepadQuery(gamepad, 3, button) != 0
     }
 
     #program_export
@@ -223,17 +218,17 @@
 
     #program_export
     GetGamepadButtonPressed :: () -> s32 {
-        return js_gamepad_query(0, 4, 0)
+        return PageGamepadQuery(0, 4, 0)
     }
 
     #program_export
     GetGamepadAxisCount :: (gamepad: s32) -> s32 {
-        return js_gamepad_query(gamepad, 5, 0)
+        return PageGamepadQuery(gamepad, 5, 0)
     }
 
     #program_export
     GetGamepadAxisMovement :: (gamepad: s32, axis: s32) -> float32 {
-        return cast(float32)js_gamepad_axis(gamepad, axis)
+        return cast(float32)PageGamepadAxis(gamepad, axis)
     }
 
     #program_export
@@ -244,7 +239,7 @@
 
     #program_export
     SetGamepadVibration :: (gamepad: s32, left: float32, right: float32, duration: float32) {
-        js_gamepad_vibration(gamepad, cast(float64)left, cast(float64)right, cast(float64)duration)
+        PageGamepadVibration(gamepad, cast(float64)left, cast(float64)right, cast(float64)duration)
     }
 
     #program_export

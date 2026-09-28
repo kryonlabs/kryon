@@ -2,18 +2,8 @@
 // here; which keys exist, how presses, repeats, touches, and wheels turn into
 // state, and what the page must do about each event is decided in this module.
 #import "byte_text_linux"
+#import "page_core"
 #if #defined(PLATFORM_WEB) {
-    canvas_browser :: #system_library "env";
-
-    // One raw DOM event: what happened, its numbers, and its key strings.
-    CanvasEventCallback :: #type (kind: s32, a: s32, b: s32, x: float64,
-        y: float64, code: *u8, key: *u8) -> s32 #c_call;
-
-    js_canvas_dim :: (which: s32) -> s32 #foreign canvas_browser "js_canvas_dim";
-    js_canvas_now :: () -> float64 #foreign canvas_browser "js_canvas_now";
-    js_input_bind :: (handler: CanvasEventCallback, code: *u8, key: *u8,
-        clipboard: *u8, clipboard_size: s32) #foreign canvas_browser "js_input_bind";
-
     CanvasEventMouseMove :: 0
     CanvasEventMouseDown :: 1
     CanvasEventMouseUp :: 2
@@ -117,8 +107,6 @@
     canvas_cursor_hidden: bool;
     canvas_clipboard_gesture_until: float64;
     canvas_clipboard_text: [CANVAS_CLIPBOARD_SIZE]u8;
-    canvas_scratch_code: [64]u8;
-    canvas_scratch_key: [64]u8;
 
     CanvasQueuePush :: (items: *s32, count: *s32, value: s32) {
         if count.* < CANVAS_QUEUE_LIMIT {
@@ -278,7 +266,7 @@
         if shortcut && (mapped == 65 || mapped == 67 || mapped == 86 ||
             mapped == 88) {
             // The browser only allows a clipboard write inside a gesture.
-            canvas_clipboard_gesture_until = js_canvas_now() + 1000.0
+            canvas_clipboard_gesture_until = PageNow() + 1000.0
             flags |= CanvasEventPreventDefault
         }
         if CanvasKeyIsPageKey(mapped) { flags |= CanvasEventPreventDefault }
@@ -324,7 +312,7 @@
         if kind == CanvasEventWheel {
             unit: float64 = 120.0
             if a == 1 { unit = 16.0 }
-            if a == 2 { unit = cast(float64)js_canvas_dim(1) }
+            if a == 2 { unit = cast(float64)PageDimension(1) }
             canvas_wheel_x += -x / unit
             canvas_wheel_y += -y / unit
             return CanvasEventPreventDefault
@@ -424,12 +412,9 @@
         canvas_clipboard_gesture_until = 0.0
     }
 
-    // Start with clean input and route the page's events to CanvasEvent.
+    // Start with clean input.
     CanvasEventsOpen :: () {
         CanvasEventsReset()
-        handler: CanvasEventCallback = CanvasEvent
-        js_input_bind(handler, *canvas_scratch_code[0], *canvas_scratch_key[0],
-            *canvas_clipboard_text[0], CANVAS_CLIPBOARD_SIZE)
     }
 
     // Called once per frame after the app has read its input.
@@ -446,11 +431,11 @@
     }
 
     CanvasPageWidth :: () -> s32 {
-        return js_canvas_dim(0)
+        return PageDimension(0)
     }
 
     CanvasPageHeight :: () -> s32 {
-        return js_canvas_dim(1)
+        return PageDimension(1)
     }
 
     // One field of touch point `index`: 0 x, 1 y, 2 id; 0 when it is absent.

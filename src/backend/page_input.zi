@@ -1,0 +1,234 @@
+// Gamepads, pointer visibility, and rumble for the canvas backend. Buttons
+// are compared with the previous frame here; which raylib button each browser
+// button stands for is a table in this module.
+#import "page_core"
+#import "byte_text_linux"
+#import "web"
+
+page_input_c :: #system_library "c";
+PageInputAllocate :: (size: usize) -> *void #foreign page_input_c "malloc";
+
+PAGE_PAD_MAX :: 4
+PAGE_PAD_BUTTONS :: 32
+
+page_pad_now: [PAGE_PAD_MAX][PAGE_PAD_BUTTONS]bool;
+page_pad_previous: [PAGE_PAD_MAX][PAGE_PAD_BUTTONS]bool;
+page_pad_pressed: [PAGE_PAD_MAX][PAGE_PAD_BUTTONS]bool;
+page_pad_released: [PAGE_PAD_MAX][PAGE_PAD_BUTTONS]bool;
+page_pad_seen: [PAGE_PAD_MAX]bool;
+page_pad_last: s32 = -1;
+
+// The browser button that a raylib gamepad button (1 to 17) is, or -1.
+PageBrowserButton :: (button: s32) -> s32 {
+    if button == 1 { return 12 }
+    if button == 2 { return 15 }
+    if button == 3 { return 13 }
+    if button == 4 { return 14 }
+    if button == 5 { return 3 }
+    if button == 6 { return 1 }
+    if button == 7 { return 0 }
+    if button == 8 { return 2 }
+    if button == 9 { return 4 }
+    if button == 10 { return 6 }
+    if button == 11 { return 5 }
+    if button == 12 { return 7 }
+    if button == 13 { return 8 }
+    if button == 14 { return 16 }
+    if button == 15 { return 9 }
+    if button == 16 { return 10 }
+    if button == 17 { return 11 }
+    return -1
+}
+
+// The raylib gamepad button for a browser button, or 0.
+PageRaylibButton :: (button: s32) -> s32 {
+    if button == 12 { return 1 }
+    if button == 15 { return 2 }
+    if button == 13 { return 3 }
+    if button == 14 { return 4 }
+    if button == 3 { return 5 }
+    if button == 1 { return 6 }
+    if button == 0 { return 7 }
+    if button == 2 { return 8 }
+    if button == 4 { return 9 }
+    if button == 6 { return 10 }
+    if button == 5 { return 11 }
+    if button == 7 { return 12 }
+    if button == 8 { return 13 }
+    if button == 16 { return 14 }
+    if button == 9 { return 15 }
+    if button == 10 { return 16 }
+    if button == 11 { return 17 }
+    return 0
+}
+
+// The connected gamepad at `index`, or 0. The handle is temporary.
+PagePad :: (index: s32) -> s32 {
+    if index < 0 { return 0 }
+    navigator: s32 = WebGetObject(WebGlobal, WebName("navigator"))
+    if navigator == 0 { return 0 }
+    if WebTypeOf(WebGetObject(navigator, WebName("getGamepads"))) != WebTypeFunction {
+        return 0
+    }
+    pads: s32 = WebAsObject(WebCall0(navigator, WebName("getGamepads")))
+    if pads == 0 { return 0 }
+    return WebAsObject(WebAt(pads, index))
+}
+
+// One fact about a gamepad: 0 connected, 1 button pressed this frame, 2 held,
+// 3 released this frame, 4 the last button pressed, 5 the axis count.
+PageGamepadQuery :: (gamepad: s32, which: s32, index: s32) -> s32 {
+    if !page_names.ready { PageInitNames() }
+    if gamepad < 0 || gamepad >= PAGE_PAD_MAX { return 0 }
+    scope: s32 = WebScope()
+    result: s32 = 0
+    pad: s32 = PagePad(gamepad)
+    if pad != 0 {
+        buttons: s32 = WebGetObject(pad, WebName("buttons"))
+        count: s32 = 0
+        if buttons != 0 { count = cast(s32)WebGetNumber(buttons, WebName("length")) }
+        if count > PAGE_PAD_BUTTONS { count = PAGE_PAD_BUTTONS }
+        button: s32 = 0
+        while button < PAGE_PAD_BUTTONS {
+            page_pad_now[gamepad][button] = false
+            page_pad_pressed[gamepad][button] = false
+            page_pad_released[gamepad][button] = false
+            button += 1
+        }
+        button = 0
+        while button < count {
+            entry: s32 = WebAsObject(WebAt(buttons, button))
+            if entry != 0 {
+                page_pad_now[gamepad][button] = WebAsBool(WebGet(entry, WebName("pressed")))
+            }
+            button += 1
+        }
+        page_pad_seen[gamepad] = true
+        button = 0
+        while button < PAGE_PAD_BUTTONS {
+            now: bool = page_pad_now[gamepad][button]
+            before: bool = page_pad_previous[gamepad][button]
+            if now && !before {
+                page_pad_pressed[gamepad][button] = true
+                page_pad_last = button
+            } else if !now && before {
+                page_pad_released[gamepad][button] = true
+            }
+            button += 1
+        }
+        mapped: s32 = PageBrowserButton(index)
+        valid: bool = mapped >= 0 && mapped < PAGE_PAD_BUTTONS
+        if which == 0 { result = 1 }
+        if which == 1 && valid && page_pad_pressed[gamepad][mapped] { result = 1 }
+        if which == 2 && valid && page_pad_now[gamepad][mapped] { result = 1 }
+        if which == 3 && valid && page_pad_released[gamepad][mapped] { result = 1 }
+        if which == 4 { result = PageRaylibButton(page_pad_last) }
+        if which == 5 {
+            axes: s32 = WebGetObject(pad, WebName("axes"))
+            if axes != 0 { result = cast(s32)WebGetNumber(axes, WebName("length")) }
+        }
+    }
+    WebEnd(scope)
+    return result
+}
+
+PageGamepadAxis :: (gamepad: s32, axis: s32) -> float64 {
+    if !page_names.ready { PageInitNames() }
+    scope: s32 = WebScope()
+    value: float64 = 0.0
+    pad: s32 = PagePad(gamepad)
+    if pad != 0 {
+        axes: s32 = WebGetObject(pad, WebName("axes"))
+        buttons: s32 = WebGetObject(pad, WebName("buttons"))
+        if axis >= 0 && axis < 4 && axes != 0 &&
+            cast(float64)axis < WebGetNumber(axes, WebName("length")) {
+            value = WebAsNumber(WebAt(axes, axis))
+        } else if (axis == 4 || axis == 5) && buttons != 0 {
+            trigger: s32 = WebAsObject(WebAt(buttons, axis + 2))
+            if trigger != 0 {
+                value = WebGetNumber(trigger, WebName("value")) * 2.0 - 1.0
+            }
+        }
+    }
+    WebEnd(scope)
+    return value
+}
+
+// A copy of the gamepad's name that the caller frees.
+PageGamepadName :: (gamepad: s32) -> *u8 {
+    if !page_names.ready { PageInitNames() }
+    scope: s32 = WebScope()
+    name_bytes: [256]u8
+    name_bytes[0] = cast(u8)0
+    pad: s32 = PagePad(gamepad)
+    if pad != 0 {
+        id: WebValue = WebGet(pad, WebName("id"))
+        if id.tag == WebStringTag { unused WebCopyString(WebAsObject(id), name_bytes[:]) }
+    }
+    length: s32 = 0
+    while name_bytes[length] != cast(u8)0 { length += 1 }
+    copy: *u8 = cast(*u8)PageInputAllocate(cast(usize)(length + 1))
+    if copy != null {
+        index: s32 = 0
+        while index <= length {
+            copy[index] = name_bytes[index]
+            index += 1
+        }
+    }
+    WebEnd(scope)
+    return copy
+}
+
+PageInputEndFrame :: () {
+    pad: s32 = 0
+    while pad < PAGE_PAD_MAX {
+        if page_pad_seen[pad] {
+            button: s32 = 0
+            while button < PAGE_PAD_BUTTONS {
+                page_pad_previous[pad][button] = page_pad_now[pad][button]
+                button += 1
+            }
+        }
+        pad += 1
+    }
+}
+
+// 0 show, 1 hide, 2 show and release the pointer, 3 hide and capture it.
+PageInputCursor :: (mode: s32) {
+    if mode == 0 { PageShowPointer(true, false, false) }
+    if mode == 2 { PageShowPointer(true, false, true) }
+    if mode == 1 { PageShowPointer(false, false, false) }
+    if mode == 3 { PageShowPointer(false, true, false) }
+}
+
+PageGamepadVibration :: (gamepad: s32, left: float64, right: float64, seconds: float64) {
+    if !page_names.ready { PageInitNames() }
+    scope: s32 = WebScope()
+    pad: s32 = PagePad(gamepad)
+    if pad != 0 {
+        actuator: s32 = WebGetObject(pad, WebName("vibrationActuator"))
+        if actuator != 0 &&
+            WebTypeOf(WebGetObject(actuator, WebName("playEffect"))) == WebTypeFunction {
+            effect: s32 = WebNewObject()
+            duration: float64 = seconds * 1000.0
+            if duration < 0.0 { duration = 0.0 }
+            WebSet(effect, WebName("startDelay"), WebNumber(0.0))
+            WebSet(effect, WebName("duration"), WebNumber(duration))
+            WebSet(effect, WebName("weakMagnitude"), WebNumber(PageUnit(right)))
+            WebSet(effect, WebName("strongMagnitude"), WebNumber(PageUnit(left)))
+            promise: s32 = WebAsObject(WebCall2(actuator, WebName("playEffect"),
+                WebText("dual-rumble"), WebObject(effect)))
+            if promise != 0 {
+                unused WebCall1(promise, page_names.catch_method,
+                    WebObject(PageIgnoreFunction()))
+            }
+        }
+    }
+    WebEnd(scope)
+}
+
+PageUnit :: (value: float64) -> float64 {
+    if value < 0.0 { return 0.0 }
+    if value > 1.0 { return 1.0 }
+    return value
+}

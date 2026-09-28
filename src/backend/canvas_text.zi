@@ -2,6 +2,10 @@
 #import "geometry"
 #import "drawing_props"
 #import "utf8"
+#import "page_core"
+#import "page_font"
+#import "page_paint"
+#import "page_texture"
 
 #if #defined(PLATFORM_WEB) {
     c :: #system_library "c";
@@ -12,15 +16,6 @@
     FontRelease :: (memory: *void) #foreign c "free";
     FontCopy :: (destination: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
     FontZero :: (memory: *void, value: s32, size: usize) -> *void #foreign c "memset";
-    FontFaceLoad :: (data: *u8, length: s32) -> s32 #foreign browser "js_font_face_load";
-    FontFaceRelease :: (face: s32) #foreign browser "js_font_face_release";
-    FontGlyphMetrics :: (face: s32, codepoint: s32, size: s32,
-        advance: *s32, width: *s32, height: *s32, offset_x: *s32,
-        offset_y: *s32, pixels: *u8) -> s32 #foreign browser "js_glyph_metrics";
-    FontTexture :: (pixels: *u8, width: s32, height: s32) -> s32 #foreign browser "js_texture_from_rgba";
-    FontTextureRelease :: (texture: s32) #foreign browser "js_texture_free";
-    FontTransform :: (begin: s32, x: float64, y: float64, origin_x: float64,
-        origin_y: float64, rotation: float64) #foreign browser "js_text_transform";
     FontLoadFile :: (path: *u8, length: *s32) -> *u8 #foreign c "LoadFileData";
     FontDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
         origin: Vector2, rotation: float32, tint: Color) #foreign c "DrawTexturePro";
@@ -104,7 +99,7 @@
                 glyph_height: s32 = 0
                 offset_x: s32 = 0
                 offset_y: s32 = 0
-                if FontGlyphMetrics(face, codepoint, size, *advance, *glyph_width,
+                if PageGlyphMetrics(face, codepoint, size, *advance, *glyph_width,
                     *glyph_height, *offset_x, *offset_y, glyph_pixels) == 0 ||
                     glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
                     continue
@@ -150,7 +145,7 @@
             }
             output.base_size = size
             output.glyph_count = count
-            output.texture.id = cast(u32)FontTexture(pixels, width, height)
+            output.texture.id = cast(u32)PageTextureFromRgba(pixels, width, height)
             output.texture.width = width
             output.texture.height = height
             output.texture.mipmaps = 1
@@ -189,7 +184,7 @@
         if data == null || data_size <= 0 || font_size <= 0 {
             return font
         }
-        face := FontFaceLoad(data, data_size)
+        face := PageFontFaceLoad(data, data_size)
         if face == 0 {
             return font
         }
@@ -205,7 +200,7 @@
             count = 224
         }
         unused BuildCanvasFont(*font, face, font_size, selected, count)
-        FontFaceRelease(face)
+        PageFontFaceRelease(face)
         return font
     }
 
@@ -235,7 +230,7 @@
         FontRelease(cast(*void)font.glyphs)
         FontRelease(cast(*void)font.recs)
         if font.texture.id != 0 {
-            FontTextureRelease(cast(s32)font.texture.id)
+            PageTextureFree(cast(s32)font.texture.id)
         }
     }
 
@@ -400,10 +395,10 @@
     #program_export
     DrawTextPro :: (font: CanvasFont, text: *u8, position: Vector2,
         origin: Vector2, rotation: float32, size: float32, spacing: float32, tint: Color) {
-        FontTransform(1, cast(float64)position.x, cast(float64)position.y,
+        PageTextTransform(true, cast(float64)position.x, cast(float64)position.y,
             cast(float64)origin.x, cast(float64)origin.y, cast(float64)rotation)
         DrawTextEx(font, text, Vector2.{0.0, 0.0}, size, spacing, tint)
-        FontTransform(0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        PageTextTransform(false, 0.0, 0.0, 0.0, 0.0, 0.0)
     }
 
     #program_export

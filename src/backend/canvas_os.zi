@@ -1,11 +1,13 @@
 #import "canvas_events"
+#import "byte_text_linux"
+#import "page_core"
+#import "page_files"
 #import, file "canvas_types.zi";
 #import "geometry"
 #import "drawing_props"
 
 #if #defined(PLATFORM_WEB) {
     c :: #system_library "c";
-    browser :: #system_library "env";
     OsAllocate :: (size: usize) -> *void #foreign c "malloc";
     OsResize :: (memory: *void, size: usize) -> *void #foreign c "realloc";
     OsRelease :: (memory: *void) #foreign c "free";
@@ -23,18 +25,39 @@
     OsGetcwd :: (output: *u8, capacity: usize) -> *u8 #foreign c "getcwd";
     OsFormat :: (output: *u8, capacity: usize, format: *u8,
         arguments: *void) -> s32 #foreign c "vsnprintf";
-    OsFileKind :: (path: *u8) -> s32 #foreign browser "js_file_kind";
-    OsFileLength :: (path: *u8) -> s32 #foreign browser "js_file_length";
-    OsFileModTime :: (path: *u8) -> float64 #foreign browser "js_file_modtime";
-    OsClipboardPush :: (text: *u8, gesture: s32) #foreign browser "js_clipboard_push";
-    OsNow :: () -> float64 #foreign browser "js_canvas_now";
-    OsDroppedCount :: () -> s32 #foreign browser "js_dropped_count";
-    OsDroppedPath :: (index: s32) -> *u8 #foreign browser "js_dropped_path";
-    OsDirectoryOpen :: (path: *u8) -> s32 #foreign browser "js_directory_open";
-    OsDirectoryCount :: (handle: s32) -> s32 #foreign browser "js_directory_count";
-    OsDirectoryEntry :: (handle: s32, index: s32,
-        output: *u8, capacity: s32) -> s32 #foreign browser "js_directory_entry";
-    OsDirectoryClose :: (handle: s32) #foreign browser "js_directory_close";
+    OsFileKind :: (path: *u8) -> s32 {
+        return PageFileKind(TextFromCString(path))
+    }
+    OsFileLength :: (path: *u8) -> s32 {
+        return PageFileLength(TextFromCString(path))
+    }
+    OsFileModTime :: (path: *u8) -> float64 {
+        return PageFileModTime(TextFromCString(path))
+    }
+    OsClipboardPush :: (text: *u8, gesture: s32) {
+        PageClipboardPush(TextFromCString(text), gesture != 0)
+    }
+    OsNow :: () -> float64 {
+        return PageNow()
+    }
+    OsDroppedCount :: () -> s32 {
+        return PageDroppedCount()
+    }
+    OsDroppedPath :: (index: s32) -> *u8 {
+        return PageDroppedPath(index)
+    }
+    OsDirectoryOpen :: (path: *u8) -> s32 {
+        return PageDirectoryOpen(TextFromCString(path))
+    }
+    OsDirectoryCount :: (handle: s32) -> s32 {
+        return PageDirectoryCount(handle)
+    }
+    OsDirectoryEntry :: (handle: s32, index: s32, output: *u8, capacity: s32) -> s32 {
+        return PageDirectoryEntry(handle, index, output, capacity)
+    }
+    OsDirectoryClose :: (handle: s32) {
+        PageDirectoryClose(handle)
+    }
 
     CanvasTraceCallback :: #type (level: s32, format: *u8, arguments: *void) -> void #c_call;
     CanvasLoadDataCallback :: #type (path: *u8, size: *s32) -> *u8 #c_call;

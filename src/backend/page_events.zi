@@ -1,0 +1,332 @@
+// Connects the page's DOM events to the canvas input policy in
+// canvas_events.zi. This module forwards what the browser reports (positions,
+// keys, touches, clipboard text, dropped files) and applies the answer the
+// policy gives: whether to cancel the event, focus the canvas, or capture the
+// pointer. It decides nothing about the input itself.
+#import "page_core"
+#import "page_files"
+#import "canvas_events"
+#import "byte_text_linux"
+#import "web"
+
+page_events_c :: #system_library "c";
+PageEventsAllocate :: (size: usize) -> *void #foreign page_events_c "malloc";
+PageEventsRelease :: (memory: *void) #foreign page_events_c "free";
+
+PageEventMouseMove :: 0
+PageEventMouseDown :: 1
+PageEventMouseUp :: 2
+PageEventWheel :: 3
+PageEventKeyDown :: 4
+PageEventKeyUp :: 5
+PageEventKeyPress :: 6
+PageEventTouchStart :: 7
+PageEventTouchMove :: 8
+PageEventTouchEnd :: 9
+PageEventTouchCancel :: 10
+PageEventDragOver :: 11
+PageEventDrop :: 12
+PageEventFocus :: 13
+PageEventBlur :: 14
+PageEventPaste :: 15
+PageEventCopy :: 16
+PageEventCut :: 17
+
+page_event_code: [64]u8;
+page_event_key: [64]u8;
+page_event_claims: [18]s32;
+page_event_names: PageEventNames;
+
+PageEventNames :: struct {
+    ready: bool
+    client_x: s32
+    client_y: s32
+    left: s32
+    top: s32
+    button: s32
+    pointer_id: s32
+    delta_mode: s32
+    delta_x: s32
+    delta_y: s32
+    repeat: s32
+    ctrl_key: s32
+    meta_key: s32
+    code: s32
+    key: s32
+    touches: s32
+    identifier: s32
+    cancelable: s32
+    prevent_default: s32
+    set_pointer_capture: s32
+    clipboard_data: s32
+    get_data: s32
+    set_data: s32
+    data_transfer: s32
+    files: s32
+}
+
+PageEventsInit :: () {
+    if page_event_names.ready { return }
+    page_event_names.ready = true
+    page_event_names.client_x = WebName("clientX")
+    page_event_names.client_y = WebName("clientY")
+    page_event_names.left = WebName("left")
+    page_event_names.top = WebName("top")
+    page_event_names.button = WebName("button")
+    page_event_names.pointer_id = WebName("pointerId")
+    page_event_names.delta_mode = WebName("deltaMode")
+    page_event_names.delta_x = WebName("deltaX")
+    page_event_names.delta_y = WebName("deltaY")
+    page_event_names.repeat = WebName("repeat")
+    page_event_names.ctrl_key = WebName("ctrlKey")
+    page_event_names.meta_key = WebName("metaKey")
+    page_event_names.code = WebName("code")
+    page_event_names.key = WebName("key")
+    page_event_names.touches = WebName("touches")
+    page_event_names.identifier = WebName("identifier")
+    page_event_names.cancelable = WebName("cancelable")
+    page_event_names.prevent_default = WebName("preventDefault")
+    page_event_names.set_pointer_capture = WebName("setPointerCapture")
+    page_event_names.clipboard_data = WebName("clipboardData")
+    page_event_names.get_data = WebName("getData")
+    page_event_names.set_data = WebName("setData")
+    page_event_names.data_transfer = WebName("dataTransfer")
+    page_event_names.files = WebName("files")
+    page_event_claims[PageEventMouseMove] = WebName("__kryonCanvasHandled_mousemove")
+    page_event_claims[PageEventMouseDown] = WebName("__kryonCanvasHandled_mousedown")
+    page_event_claims[PageEventMouseUp] = WebName("__kryonCanvasHandled_mouseup")
+    page_event_claims[PageEventWheel] = WebName("__kryonCanvasHandled_wheel")
+    page_event_claims[PageEventKeyDown] = WebName("__kryonCanvasHandled_keydown")
+    page_event_claims[PageEventKeyUp] = WebName("__kryonCanvasHandled_keyup")
+    page_event_claims[PageEventKeyPress] = WebName("__kryonCanvasHandled_keypress")
+    page_event_claims[PageEventTouchStart] = WebName("__kryonCanvasHandled_touchstart")
+    page_event_claims[PageEventTouchMove] = WebName("__kryonCanvasHandled_touchmove")
+    page_event_claims[PageEventTouchEnd] = WebName("__kryonCanvasHandled_touchend")
+    page_event_claims[PageEventTouchCancel] = WebName("__kryonCanvasHandled_touchcancel")
+    page_event_claims[PageEventDrop] = WebName("__kryonCanvasHandled_drop")
+}
+
+// The same DOM event reaches the document and the window; only the first to
+// see it handles it.
+PageEventClaim :: (event: s32, kind: s32) -> bool {
+    name: s32 = page_event_claims[kind]
+    if name == 0 { return true }
+    if WebAsBool(WebGet(event, name)) { return false }
+    WebSet(event, name, WebBool(true))
+    return true
+}
+
+PageEventSettle :: (event: s32, flags: s32) {
+    if (flags & CanvasEventPreventDefault) != 0 &&
+        WebAsBool(WebGet(event, page_event_names.cancelable)) {
+        unused WebCall0(event, page_event_names.prevent_default)
+    }
+}
+
+PageEventString :: (event: s32, name: s32, output: []u8) {
+    output[0] = cast(u8)0
+    value: WebValue = WebGet(event, name)
+    if value.tag == WebStringTag { unused WebCopyString(WebAsObject(value), output) }
+}
+
+// Sends one event to the input policy. `code` and `key` are the event's
+// strings, or 0 for none.
+PageEventSend :: (kind: s32, a: s32, b: s32, x: float64, y: float64,
+    code: s32, key: s32, event: s32) -> s32 {
+    page_event_code[0] = cast(u8)0
+    page_event_key[0] = cast(u8)0
+    if code != 0 { PageEventString(event, code, page_event_code[:]) }
+    if key != 0 { PageEventString(event, key, page_event_key[:]) }
+    return CanvasEvent(kind, a, b, x, y, *page_event_code[0], *page_event_key[0])
+}
+
+PageEventPointX :: (event: s32) -> float64 {
+    rect: s32 = WebAsObject(WebCall0(page_canvas, page_names.get_bounding_client_rect))
+    left: float64 = 0.0
+    if rect != 0 { left = WebGetNumber(rect, page_event_names.left) }
+    return WebGetNumber(event, page_event_names.client_x) - left
+}
+
+PageEventPointY :: (event: s32) -> float64 {
+    rect: s32 = WebAsObject(WebCall0(page_canvas, page_names.get_bounding_client_rect))
+    top: float64 = 0.0
+    if rect != 0 { top = WebGetNumber(rect, page_event_names.top) }
+    return WebGetNumber(event, page_event_names.client_y) - top
+}
+
+PageEventTouches :: (event: s32) {
+    list: s32 = WebGetObject(event, page_event_names.touches)
+    count: s32 = 0
+    if list != 0 { count = cast(s32)WebGetNumber(list, WebName("length")) }
+    if count > 8 { count = 8 }
+    page_event_code[0] = cast(u8)0
+    page_event_key[0] = cast(u8)0
+    unused CanvasEvent(CanvasEventTouchBegin, count, 0, 0.0, 0.0,
+        *page_event_code[0], *page_event_key[0])
+    index: s32 = 0
+    while index < count {
+        touch: s32 = WebAsObject(WebAt(list, index))
+        if touch != 0 {
+            unused CanvasEvent(CanvasEventTouchPoint,
+                cast(s32)WebGetNumber(touch, page_event_names.identifier), 0,
+                PageEventPointX(touch), PageEventPointY(touch),
+                *page_event_code[0], *page_event_key[0])
+        }
+        index += 1
+    }
+    flags: s32 = CanvasEvent(CanvasEventTouchEnd, 0, 0, 0.0, 0.0,
+        *page_event_code[0], *page_event_key[0])
+    PageEventSettle(event, flags)
+}
+
+// Text the page holds for a clipboard event, or "" when there is none.
+PageEventClipboard :: (event: s32) -> s32 {
+    data: s32 = WebGetObject(event, page_event_names.clipboard_data)
+    if data == 0 { data = WebGetObject(WebGlobal, page_event_names.clipboard_data) }
+    return data
+}
+
+PageEventPaste :: (event: s32) {
+    data: s32 = PageEventClipboard(event)
+    if data == 0 { return }
+    text: WebValue = WebCall1(data, page_event_names.get_data, WebText("text"))
+    if text.tag != WebStringTag { return }
+    handle: s32 = WebAsObject(text)
+    length: s32 = WebStringLength(handle)
+    if length <= 0 { return }
+    buffer: *u8 = cast(*u8)PageEventsAllocate(cast(usize)(length + 1))
+    if buffer == null { return }
+    unused WebCopyString(handle, BytesFromPointer(buffer, cast(u64)(length + 1)))
+    page_event_code[0] = cast(u8)0
+    // The text travels in place of the key string.
+    unused CanvasEvent(CanvasEventPaste, 0, 0, 0.0, 0.0, *page_event_code[0], buffer)
+    PageEventsRelease(cast(*void)buffer)
+}
+
+PageEventCopy :: (event: s32) {
+    data: s32 = PageEventClipboard(event)
+    page_event_code[0] = cast(u8)0
+    page_event_key[0] = cast(u8)0
+    flags: s32 = CanvasEvent(CanvasEventCopy, 0, 0, 0.0, 0.0,
+        *page_event_code[0], *page_event_key[0])
+    if (flags & CanvasEventClipboardWritten) == 0 || data == 0 { return }
+    if WebTypeOf(WebGetObject(data, page_event_names.set_data)) != WebTypeFunction { return }
+    unused WebCall2(data, page_event_names.set_data, WebText("text/plain"),
+        WebText(TextFromCString(*canvas_clipboard_text[0])))
+    PageEventSettle(event, flags)
+}
+
+PageEventDropped :: (event: s32) {
+    unused WebCall0(event, page_event_names.prevent_default)
+    transfer: s32 = WebGetObject(event, page_event_names.data_transfer)
+    if transfer == 0 { return }
+    files: s32 = WebGetObject(transfer, page_event_names.files)
+    if files != 0 { PageDropFiles(files) }
+}
+
+// Every listener runs this; `context` says which event it is.
+PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
+    unused second
+    unused third
+    if event == 0 || !PageIsOpen() { return }
+    PageEventsInit()
+    scope: s32 = WebScope()
+    if context == PageEventDragOver {
+        unused WebCall0(event, page_event_names.prevent_default)
+    } else if context == PageEventDrop {
+        if PageEventClaim(event, context) { PageEventDropped(event) }
+    } else if context == PageEventFocus {
+        unused PageEventSend(CanvasEventFocus, 0, 0, 0.0, 0.0, 0, 0, event)
+    } else if context == PageEventBlur {
+        unused PageEventSend(CanvasEventBlur, 0, 0, 0.0, 0.0, 0, 0, event)
+    } else if context == PageEventPaste {
+        PageEventPaste(event)
+    } else if context == PageEventCopy || context == PageEventCut {
+        PageEventCopy(event)
+    } else if !PageEventClaim(event, context) {
+        WebEnd(scope)
+        return
+    } else if context == PageEventMouseMove {
+        unused PageEventSend(CanvasEventMouseMove, 0, 0, PageEventPointX(event),
+            PageEventPointY(event), 0, 0, event)
+    } else if context == PageEventMouseDown {
+        button: s32 = cast(s32)WebGetNumber(event, page_event_names.button)
+        flags: s32 = PageEventSend(CanvasEventMouseDown, button, 0,
+            PageEventPointX(event), PageEventPointY(event), 0, 0, event)
+        if (flags & CanvasEventFocusCanvas) != 0 { PageFocusQuietly() }
+        pointer: WebValue = WebGet(event, page_event_names.pointer_id)
+        if (flags & CanvasEventCapturePointer) != 0 && !WebIsUndefined(pointer) &&
+            WebTypeOf(WebGetObject(page_canvas, page_event_names.set_pointer_capture)) == WebTypeFunction {
+            unused WebCall1(page_canvas, page_event_names.set_pointer_capture, pointer)
+        }
+    } else if context == PageEventMouseUp {
+        button: s32 = cast(s32)WebGetNumber(event, page_event_names.button)
+        unused PageEventSend(CanvasEventMouseUp, button, 0, PageEventPointX(event),
+            PageEventPointY(event), 0, 0, event)
+    } else if context == PageEventWheel {
+        flags: s32 = PageEventSend(CanvasEventWheel,
+            cast(s32)WebGetNumber(event, page_event_names.delta_mode), 0,
+            WebGetNumber(event, page_event_names.delta_x),
+            WebGetNumber(event, page_event_names.delta_y), 0, 0, event)
+        PageEventSettle(event, flags)
+    } else if context == PageEventKeyDown {
+        repeat: s32 = 0
+        if WebAsBool(WebGet(event, page_event_names.repeat)) { repeat = 1 }
+        command: s32 = 0
+        if WebAsBool(WebGet(event, page_event_names.ctrl_key)) ||
+            WebAsBool(WebGet(event, page_event_names.meta_key)) { command = 1 }
+        flags: s32 = PageEventSend(CanvasEventKeyDown, repeat, command, 0.0, 0.0,
+            page_event_names.code, page_event_names.key, event)
+        PageEventSettle(event, flags)
+    } else if context == PageEventKeyUp {
+        flags: s32 = PageEventSend(CanvasEventKeyUp, 0, 0, 0.0, 0.0,
+            page_event_names.code, page_event_names.key, event)
+        PageEventSettle(event, flags)
+    } else if context == PageEventKeyPress {
+        unused PageEventSend(CanvasEventKeyChar, 0, 0, 0.0, 0.0, 0,
+            page_event_names.key, event)
+    } else {
+        PageEventTouches(event)
+    }
+    WebEnd(scope)
+}
+
+PageEventsHook :: (target: s32) {
+    if target == 0 { return }
+    PageListen(target, "mousemove", PageEventHandle, PageEventMouseMove, false)
+    PageListen(target, "mousedown", PageEventHandle, PageEventMouseDown, false)
+    PageListen(target, "mouseup", PageEventHandle, PageEventMouseUp, false)
+    PageListen(target, "wheel", PageEventHandle, PageEventWheel, false)
+    PageListen(target, "keydown", PageEventHandle, PageEventKeyDown, false)
+    PageListen(target, "keyup", PageEventHandle, PageEventKeyUp, false)
+    PageListen(target, "keypress", PageEventHandle, PageEventKeyPress, false)
+    PageListen(target, "touchstart", PageEventHandle, PageEventTouchStart, true)
+    PageListen(target, "touchmove", PageEventHandle, PageEventTouchMove, true)
+    PageListen(target, "touchend", PageEventHandle, PageEventTouchEnd, true)
+    PageListen(target, "touchcancel", PageEventHandle, PageEventTouchCancel, true)
+}
+
+PageEventsHookDrop :: (target: s32) {
+    if target == 0 { return }
+    PageListen(target, "dragover", PageEventHandle, PageEventDragOver, false)
+    PageListen(target, "drop", PageEventHandle, PageEventDrop, false)
+}
+
+// Starts forwarding the page's events. Call after PageBoot.
+PageEventsBind :: () {
+    PageInitNames()
+    PageEventsInit()
+    scope: s32 = WebScope()
+    document: s32 = PageDocument()
+    if document != 0 { PageEventsHook(document) }
+    PageEventsHook(WebGlobal)
+    PageEventsHookDrop(page_canvas)
+    PageEventsHookDrop(document)
+    PageListen(WebGlobal, "focus", PageEventHandle, PageEventFocus, false)
+    PageListen(WebGlobal, "blur", PageEventHandle, PageEventBlur, false)
+    PageListen(WebGlobal, "paste", PageEventHandle, PageEventPaste, false)
+    PageListen(WebGlobal, "copy", PageEventHandle, PageEventCopy, false)
+    PageListen(WebGlobal, "cut", PageEventHandle, PageEventCut, false)
+    PageBindResize()
+    WebEnd(scope)
+}

@@ -3,6 +3,7 @@
 // updates, orders, and removes those elements.
 #import "web"
 #import "number_text"
+#import "page_core"
 #import "text_buffer"
 
 DOM_HOST_MAX :: 8192
@@ -12,8 +13,6 @@ DomHostNames :: struct {
     document: s32
     body: s32
     title: s32
-    kryon_canvas: s32
-    layout_box: s32
     create_element: s32
     set_attribute: s32
     get_attribute: s32
@@ -91,8 +90,6 @@ DomHostInitNames :: () {
     dom_names.document = WebName("document")
     dom_names.body = WebName("body")
     dom_names.title = WebName("title")
-    dom_names.kryon_canvas = WebName("__kryonCanvas")
-    dom_names.layout_box = WebName("layoutBox")
     dom_names.create_element = WebName("createElement")
     dom_names.set_attribute = WebName("setAttribute")
     dom_names.get_attribute = WebName("getAttribute")
@@ -213,9 +210,8 @@ DomHostFind :: (identity: float64) -> s32 {
 DomHostBegin :: (count: s32, width: float64, height: float64) {
     DomHostInitNames()
     scope: s32 = WebScope()
-    canvas: s32 = WebGetObject(WebGlobal, dom_names.kryon_canvas)
     document: s32 = WebGetObject(WebGlobal, dom_names.document)
-    if canvas != 0 && document != 0 && dom_root == 0 {
+    if PageIsOpen() && document != 0 && dom_root == 0 {
         root: s32 = WebAsObject(WebCall1(document, dom_names.create_element,
             WebText("div")))
         DomSetAttribute(root, "id", "kryon-dom-root")
@@ -229,10 +225,7 @@ DomHostBegin :: (count: s32, width: float64, height: float64) {
         DomStyle(style, dom_names.font_family, "system-ui, sans-serif")
         DomStyle(style, dom_names.font_size, "16px")
         DomStyle(style, dom_names.line_height, "1.4")
-        box: s32 = 0
-        if WebTypeOf(WebGetObject(canvas, dom_names.layout_box)) == WebTypeFunction {
-            box = WebAsObject(WebCall0(canvas, dom_names.layout_box))
-        }
+        box: s32 = PageLayoutBoxHandle()
         if box == 0 { box = WebGetObject(document, dom_names.body) }
         unused WebCall1(box, dom_names.append_child, WebObject(root))
         dom_root = WebKeep(root)

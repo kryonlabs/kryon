@@ -1,0 +1,490 @@
+// Textures, render targets, and images for the canvas backend. A texture is
+// an offscreen canvas the page holds; the numbers the application sees are
+// small ids that this module hands out and looks up. Tinted copies of
+// textures are cached here too, within a fixed count and pixel budget.
+#import "page_core"
+#import "web"
+
+page_texture_c :: #system_library "c";
+PageTextureAllocate :: (size: usize) -> *void #foreign page_texture_c "malloc";
+PageTextureRelease :: (memory: *void) #foreign page_texture_c "free";
+
+PAGE_TEXTURE_MAX :: 4096
+PAGE_TINT_MAX :: 32
+PAGE_TINT_BYTES :: 16777216
+
+PageTexture :: struct {
+    id: s32
+    canvas: s32
+    target: bool
+    filter: s32
+}
+
+// A copy of a texture multiplied by a colour. `order` is when it was made,
+// so the oldest goes first when the cache is full.
+PageTint :: struct {
+    texture: s32
+    r: s32
+    g: s32
+    b: s32
+    canvas: s32
+    bytes: float64
+    order: s32
+}
+
+page_textures: [PAGE_TEXTURE_MAX]PageTexture;
+page_next_texture: s32 = 1;
+page_tints: [PAGE_TINT_MAX]PageTint;
+page_tint_count: s32;
+page_tint_order: s32;
+page_export_canvas: s32;
+
+PageTextureFind :: (id: s32) -> s32 {
+    if id <= 0 { return -1 }
+    slot: s32 = id % PAGE_TEXTURE_MAX
+    if page_textures[slot].id == id { return slot }
+    return -1
+}
+
+// Registers a canvas and returns its id; 0 when the table is full.
+PageTextureRegister :: (canvas: s32, target: bool) -> s32 {
+    tries: s32 = 0
+    while tries < PAGE_TEXTURE_MAX {
+        id: s32 = page_next_texture
+        page_next_texture += 1
+        if page_next_texture >= 2147483000 { page_next_texture = 1 }
+        slot: s32 = id % PAGE_TEXTURE_MAX
+        if page_textures[slot].id == 0 {
+            page_textures[slot] = PageTexture.{id, WebKeep(canvas), target, 0}
+            return id
+        }
+        tries += 1
+    }
+    return 0
+}
+
+PageTintDrop :: (index: s32) {
+    WebRelease(page_tints[index].canvas)
+    page_tint_count -= 1
+    page_tints[index] = page_tints[page_tint_count]
+}
+
+PageTintsClear :: () {
+    while page_tint_count > 0 { PageTintDrop(page_tint_count - 1) }
+}
+
+PageTintsClearFor :: (id: s32) {
+    index: s32 = 0
+    while index < page_tint_count {
+        if page_tints[index].texture == id {
+            PageTintDrop(index)
+        } else {
+            index += 1
+        }
+    }
+}
+
+PageTintOldest :: () -> s32 {
+    oldest: s32 = 0
+    index: s32 = 1
+    while index < page_tint_count {
+        if page_tints[index].order < page_tints[oldest].order { oldest = index }
+        index += 1
+    }
+    return oldest
+}
+
+PageTintFind :: (id: s32, r: s32, g: s32, b: s32) -> s32 {
+    index: s32 = 0
+    while index < page_tint_count {
+        tint: PageTint = page_tints[index]
+        if tint.texture == id && tint.r == r && tint.g == g && tint.b == b {
+            return index
+        }
+        index += 1
+    }
+    return -1
+}
+
+PageTintBytes :: () -> float64 {
+    total: float64 = 0.0
+    index: s32 = 0
+    while index < page_tint_count {
+        total += page_tints[index].bytes
+        index += 1
+    }
+    return total
+}
+
+// Frees every texture and tint: the page is closing or starting over.
+PageTexturesReset :: () {
+    PageTintsClear()
+    index: s32 = 0
+    while index < PAGE_TEXTURE_MAX {
+        if page_textures[index].id != 0 {
+            WebRelease(page_textures[index].canvas)
+            page_textures[index] = PageTexture.{0, 0, false, 0}
+        }
+        index += 1
+    }
+}
+
+// How many textures and tinted copies are alive, for leak checks.
+PageTextureCount :: () -> s32 {
+    count: s32 = page_tint_count
+    index: s32 = 0
+    while index < PAGE_TEXTURE_MAX {
+        if page_textures[index].id != 0 { count += 1 }
+        index += 1
+    }
+    return count
+}
+
+PageMakeTint :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> s32 {
+    source: s32 = page_textures[slot].canvas
+    width: float64 = WebGetNumber(source, page_names.width)
+    height: float64 = WebGetNumber(source, page_names.height)
+    copy: s32 = PageMakeCanvas(cast(s32)width, cast(s32)height)
+    if copy == 0 { return -1 }
+    context: s32 = PageContext2D(copy)
+    draw: s32 = WebName("drawImage")
+    WebSet(context, WebName("imageSmoothingEnabled"), WebBool(false))
+    unused WebCall3(context, draw, WebObject(source), WebNumber(0.0), WebNumber(0.0))
+    WebSet(context, page_names.global_composite, WebText("multiply"))
+    WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, 255)))
+    unused WebCall4(context, page_names.fill_rect, WebNumber(0.0), WebNumber(0.0),
+        WebNumber(width), WebNumber(height))
+    WebSet(context, page_names.global_composite, WebText("destination-in"))
+    unused WebCall3(context, draw, WebObject(source), WebNumber(0.0), WebNumber(0.0))
+    if page_tint_count >= PAGE_TINT_MAX { PageTintDrop(PageTintOldest()) }
+    index: s32 = page_tint_count
+    page_tint_count += 1
+    page_tint_order += 1
+    page_tints[index] = PageTint.{id, r, g, b, WebKeep(copy), width * height * 4.0,
+        page_tint_order}
+    return index
+}
+
+PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
+    dx: float64, dy: float64, dw: float64, dh: float64, ox: float64, oy: float64,
+    rotation: float64, r: s32, g: s32, b: s32, a: s32, filter: s32) {
+    if !PageIsOpen() { return }
+    ctx: s32 = PageContext()
+    slot: s32 = PageTextureFind(id)
+    if ctx == 0 || slot < 0 { return }
+    scope: s32 = WebScope()
+    flip_x: bool = false
+    flip_y: bool = false
+    source_x: float64 = sx
+    source_y: float64 = sy
+    source_w: float64 = sw
+    source_h: float64 = sh
+    dest_w: float64 = dw
+    dest_h: float64 = dh
+    // Raylib re-anchors a negative source extent at the far corner and
+    // mirrors it. Canvas textures are stored upright, so sprites mirror via
+    // the flip transform below. Render targets are the exception: raylib
+    // stores them bottom-up and the {0,0,w,-h} idiom exists to draw them
+    // upright, which here is a plain copy of |sh| rows starting at sy.
+    if source_w < 0.0 {
+        source_x += source_w
+        source_w = 0.0 - source_w
+        flip_x = true
+    }
+    if source_h < 0.0 {
+        source_h = 0.0 - source_h
+        if !page_textures[slot].target {
+            source_y -= source_h
+            flip_y = true
+        }
+    }
+    if dest_w < 0.0 {
+        dest_w = 0.0 - dest_w
+        flip_x = !flip_x
+    }
+    if dest_h < 0.0 {
+        dest_h = 0.0 - dest_h
+        flip_y = !flip_y
+    }
+    texture: s32 = page_textures[slot].canvas
+    drop_after: s32 = 0
+    if !(r == 255 && g == 255 && b == 255 && a == 255) {
+        // Tinted copies are cached per (texture, tint): multiply the colour
+        // channels, then restore the source alpha with destination-in.
+        found: s32 = PageTintFind(id, r, g, b)
+        if found < 0 { found = PageMakeTint(slot, id, r, g, b) }
+        if found >= 0 {
+            texture = page_tints[found].canvas
+            // Bound the retained tint pixels as well as their count. A large
+            // image may still be drawn once without pinning another copy.
+            while PageTintBytes() > cast(float64)PAGE_TINT_BYTES && page_tint_count > 0 {
+                oldest: s32 = PageTintOldest()
+                if page_tints[oldest].canvas == texture {
+                    // Still needed for this draw: released afterwards.
+                    drop_after = texture
+                    page_tint_count -= 1
+                    page_tints[oldest] = page_tints[page_tint_count]
+                } else {
+                    PageTintDrop(oldest)
+                }
+            }
+        }
+    }
+    unused WebCall0(ctx, page_names.save)
+    WebSet(ctx, WebName("imageSmoothingEnabled"), WebBool(filter != 0))
+    if a < 255 {
+        WebSet(ctx, WebName("globalAlpha"), WebNumber(cast(float64)a / 255.0))
+    }
+    unused WebCall2(ctx, page_names.translate, WebNumber(dx + ox), WebNumber(dy + oy))
+    if rotation != 0.0 {
+        unused WebCall1(ctx, page_names.rotate, WebNumber(rotation * 3.14159265359 / 180.0))
+    }
+    if flip_x || flip_y {
+        scale_x: float64 = 1.0
+        scale_y: float64 = 1.0
+        if flip_x { scale_x = -1.0 }
+        if flip_y { scale_y = -1.0 }
+        unused WebCall2(ctx, page_names.scale, WebNumber(scale_x), WebNumber(scale_y))
+    }
+    target_x: float64 = 0.0 - ox
+    target_y: float64 = 0.0 - oy
+    if flip_x { target_x = ox - dest_w }
+    if flip_y { target_y = oy - dest_h }
+    args: [9]WebValue
+    args[0] = WebObject(texture)
+    args[1] = WebNumber(source_x)
+    args[2] = WebNumber(source_y)
+    args[3] = WebNumber(source_w)
+    args[4] = WebNumber(source_h)
+    args[5] = WebNumber(target_x)
+    args[6] = WebNumber(target_y)
+    args[7] = WebNumber(dest_w)
+    args[8] = WebNumber(dest_h)
+    unused WebCall(ctx, WebName("drawImage"), *args[0], 9)
+    unused WebCall0(ctx, page_names.restore)
+    if drop_after != 0 { WebRelease(drop_after) }
+    WebEnd(scope)
+}
+
+// Copies `width` by `height` RGBA pixels from memory into a canvas's image
+// at (x, y).
+PageWritePixels :: (canvas: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+    context: s32 = PageContext2D(canvas)
+    if context == 0 { return }
+    image: s32 = WebAsObject(WebCall2(context, WebName("createImageData"),
+        WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
+    if image == 0 { return }
+    unused WebCopyIn(WebGetObject(image, WebName("data")), cast(*void)pixels,
+        width * height * 4)
+    unused WebCall3(context, WebName("putImageData"), WebObject(image),
+        WebNumber(cast(float64)x), WebNumber(cast(float64)y))
+}
+
+PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    canvas: s32 = PageMakeCanvas(width, height)
+    id: s32 = 0
+    if canvas != 0 {
+        PageWritePixels(canvas, pixels, 0, 0, width, height)
+        id = PageTextureRegister(canvas, false)
+    }
+    WebEnd(scope)
+    return id
+}
+
+PageTextureFree :: (id: s32) {
+    slot: s32 = PageTextureFind(id)
+    if slot >= 0 {
+        WebRelease(page_textures[slot].canvas)
+        page_textures[slot] = PageTexture.{0, 0, false, 0}
+    }
+    PageTintsClearFor(id)
+}
+
+PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
+    scope: s32 = WebScope()
+    PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
+    // Tinted copies hold pixels from the previous contents.
+    PageTintsClear()
+    WebEnd(scope)
+}
+
+PageTextureFilter :: (id: s32, filter: s32) {
+    slot: s32 = PageTextureFind(id)
+    if slot >= 0 { page_textures[slot].filter = filter }
+}
+
+PageTextureFilterFor :: (id: s32) -> s32 {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 { return 0 }
+    return page_textures[slot].filter
+}
+
+PageRenderTarget :: (width: s32, height: s32) -> s32 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    canvas: s32 = PageMakeCanvas(width, height)
+    id: s32 = 0
+    if canvas != 0 { id = PageTextureRegister(canvas, true) }
+    WebEnd(scope)
+    return id
+}
+
+// Draws into a texture until PageTargetDeselect, keeping the camera and clip
+// state of what was being drawn to.
+PageTargetSelect :: (id: s32) {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 || page_target_count >= PAGE_TARGET_MAX { return }
+    scope: s32 = WebScope()
+    context: s32 = PageContext2D(page_textures[slot].canvas)
+    if context != 0 {
+        page_targets[page_target_count] = PageTarget.{
+            WebKeep(page_textures[slot].canvas), WebKeep(context),
+            page_mode, page_saved, page_raster_clips}
+        page_target_count += 1
+        page_mode.active = false
+        page_saved = 0
+        page_raster_clips = 0
+        // Cached tints go stale as soon as a target is written.
+        PageTintsClearFor(id)
+    }
+    WebEnd(scope)
+}
+
+PageTargetDeselect :: () {
+    if page_target_count <= 0 { return }
+    page_target_count -= 1
+    state: PageTarget = page_targets[page_target_count]
+    WebRelease(state.canvas)
+    WebRelease(state.ctx)
+    page_mode = state.mode
+    page_saved = state.saved
+    page_raster_clips = state.raster_clips
+}
+
+// Copies a texture's pixels (0 is the page's canvas) into `pixels`. Returns
+// 1 when they all fit.
+PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
+    canvas: s32 = 0
+    if id == 0 {
+        canvas = page_canvas
+    } else {
+        slot: s32 = PageTextureFind(id)
+        if slot >= 0 { canvas = page_textures[slot].canvas }
+    }
+    if canvas == 0 || pixels == null { return 0 }
+    scope: s32 = WebScope()
+    context: s32 = PageContext2D(canvas)
+    width: float64 = WebGetNumber(canvas, page_names.width)
+    height: float64 = WebGetNumber(canvas, page_names.height)
+    image: s32 = WebAsObject(WebCall4(context, WebName("getImageData"),
+        WebNumber(0.0), WebNumber(0.0), WebNumber(width), WebNumber(height)))
+    data: s32 = WebGetObject(image, WebName("data"))
+    length: float64 = WebGetNumber(data, WebName("length"))
+    ok: s32 = 0
+    if data != 0 && length <= cast(float64)capacity {
+        copied: s32 = WebCopyOut(data, cast(*void)pixels, cast(s32)capacity)
+        if cast(float64)copied == length { ok = 1 }
+    }
+    WebEnd(scope)
+    return ok
+}
+
+// Decodes an image file's bytes. Returns malloc'd RGBA pixels the caller
+// frees, or null.
+PageImageDecode :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> *u8 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    result: *u8 = null
+    array: s32 = WebBytes(0, cast(*void)bytes, size)
+    parts: s32 = WebNewArray()
+    unused WebCall1(parts, WebName("push"), WebObject(array))
+    blob: s32 = WebNew1(WebGetObject(WebGlobal, WebName("Blob")), WebObject(parts))
+    promise: s32 = WebAsObject(WebCall1(WebGlobal, WebName("createImageBitmap"),
+        WebObject(blob)))
+    bitmap_value: WebValue
+    if promise != 0 && WebAwait(promise, *bitmap_value) {
+        bitmap: s32 = WebAsObject(bitmap_value)
+        w: float64 = WebGetNumber(bitmap, page_names.width)
+        h: float64 = WebGetNumber(bitmap, page_names.height)
+        if w > 0.0 && h > 0.0 && w <= 16384.0 && h <= 16384.0 && w * h * 4.0 <= 67108864.0 {
+            canvas: s32 = PageMakeCanvas(cast(s32)w, cast(s32)h)
+            if canvas != 0 {
+                context: s32 = PageContext2D(canvas)
+                unused WebCall3(context, WebName("drawImage"), WebObject(bitmap),
+                    WebNumber(0.0), WebNumber(0.0))
+                image: s32 = WebAsObject(WebCall4(context, WebName("getImageData"),
+                    WebNumber(0.0), WebNumber(0.0), WebNumber(w), WebNumber(h)))
+                data: s32 = WebGetObject(image, WebName("data"))
+                length: s32 = cast(s32)WebGetNumber(data, WebName("length"))
+                memory: *u8 = cast(*u8)PageTextureAllocate(cast(usize)length)
+                if memory != null {
+                    unused WebCopyOut(data, cast(*void)memory, length)
+                    width.* = cast(s32)w
+                    height.* = cast(s32)h
+                    result = memory
+                }
+            }
+        }
+        unused WebCall0(bitmap, WebName("close"))
+    }
+    WebEnd(scope)
+    return result
+}
+
+// Resolves the promise that wraps a canvas's toBlob callback.
+PageExportExecutor :: (context: s32, resolve: s32, second: s32, third: s32) {
+    unused context
+    unused second
+    unused third
+    unused WebCall2(page_export_canvas, WebName("toBlob"), WebObject(resolve),
+        WebText("image/png"))
+}
+
+// Writes `width` by `height` RGBA pixels to `path` as a PNG. Returns 1 on
+// success.
+PageImageExport :: (path: string, pixels: *u8, width: s32, height: s32) -> s32 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    ok: s32 = 0
+    canvas: s32 = PageMakeCanvas(width, height)
+    if canvas != 0 {
+        PageWritePixels(canvas, pixels, 0, 0, width, height)
+        blob_promise: s32 = 0
+        if WebTypeOf(WebGetObject(canvas, WebName("convertToBlob"))) == WebTypeFunction {
+            options: s32 = WebNewObject()
+            WebSet(options, WebName("type"), WebText("image/png"))
+            blob_promise = WebAsObject(WebCall1(canvas, WebName("convertToBlob"),
+                WebObject(options)))
+        } else {
+            page_export_canvas = canvas
+            executor: s32 = WebFunction(PageExportExecutor, 0)
+            blob_promise = WebNew1(WebGetObject(WebGlobal, WebName("Promise")),
+                WebObject(executor))
+            WebRelease(executor)
+        }
+        blob_value: WebValue
+        if blob_promise != 0 && WebAwait(blob_promise, *blob_value) {
+            blob: s32 = WebAsObject(blob_value)
+            if blob != 0 {
+                buffer_promise: s32 = WebAsObject(WebCall0(blob, WebName("arrayBuffer")))
+                buffer_value: WebValue
+                if buffer_promise != 0 && WebAwait(buffer_promise, *buffer_value) {
+                    view: s32 = WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")),
+                        buffer_value)
+                    files: s32 = WebGetObject(WebModule, WebName("FS"))
+                    if view != 0 && files != 0 {
+                        unused WebCall2(files, WebName("writeFile"), WebText(path),
+                            WebObject(view))
+                        if !WebFailed() { ok = 1 }
+                    }
+                }
+            }
+        }
+    }
+    WebEnd(scope)
+    return ok
+}

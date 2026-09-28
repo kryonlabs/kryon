@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='canvas-audio-', dir=ROOT / 'build') as 
     includes += ['-iquote' + str(p) for p in sorted({p.parent for p in generated.rglob('*.h')})]
     run([os.environ.get('EMCC', str(Path.home() / 'emsdk/upstream/emscripten/emcc')), '-O1',
          *includes, *sorted(generated.rglob('*.c')), '--js-library', ZIRAN / 'web/ziran_web.js',
-         '--js-library', ROOT / 'web/canvas_os.js', '--js-library', ROOT / 'tests/canvas_audio_effects.js',
+         ROOT / 'src/backend/canvas_varargs.c', '--js-library', ROOT / 'tests/canvas_audio_effects.js',
          '--pre-js', ROOT / 'tests/canvas_audio_fixture.js', '-sASYNCIFY', '-sEXIT_RUNTIME=1', '-sEXPORTED_RUNTIME_METHODS=FS',
          '-sENVIRONMENT=node', '-sWASM_ASYNC_COMPILATION=0', '-o', work / 'test.js'])
     run(['node', work / 'test.js'])
