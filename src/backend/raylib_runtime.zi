@@ -93,6 +93,7 @@ RaylibTypeface :: struct {
     name: [64]u8
     name_length: s32
     font: RaylibFont
+    compact_font: RaylibFont
     small_font: RaylibFont
     medium_font: RaylibFont
     data: *u8
@@ -201,6 +202,9 @@ RaylibBakeTypeface :: (typeface: *RaylibTypeface,
 
 RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
     HostRaylibUnloadFont(typeface.font)
+    if typeface.compact_font.texture.id != cast(u32)0 {
+        HostRaylibUnloadFont(typeface.compact_font)
+    }
     if typeface.small_font.texture.id != cast(u32)0 {
         HostRaylibUnloadFont(typeface.small_font)
     }
@@ -215,7 +219,14 @@ RaylibFontForSize :: (size: s32) -> RaylibFont {
         return raylib_font
     }
     typeface: *RaylibTypeface = *raylib_typefaces[index]
-    if size <= 18 {
+    if size <= 14 {
+        if typeface.compact_font.texture.id == cast(u32)0 {
+            typeface.compact_font = RaylibBakeTypeface(typeface, 14)
+        }
+        if typeface.compact_font.texture.id != cast(u32)0 {
+            return typeface.compact_font
+        }
+    } else if size <= 18 {
         if typeface.small_font.texture.id == cast(u32)0 {
             typeface.small_font = RaylibBakeTypeface(typeface, 16)
         }
@@ -281,6 +292,11 @@ RaylibEnsureGlyphs :: (value: string) {
     HostRaylibUnloadFont(typeface.font)
     typeface.font = font
     raylib_font = font
+    if typeface.compact_font.texture.id != cast(u32)0 {
+        font = RaylibBakeTypeface(typeface, 14)
+        HostRaylibUnloadFont(typeface.compact_font)
+        typeface.compact_font = font
+    }
     if typeface.small_font.texture.id != cast(u32)0 {
         font = RaylibBakeTypeface(typeface, 16)
         HostRaylibUnloadFont(typeface.small_font)
