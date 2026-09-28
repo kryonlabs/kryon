@@ -1,19 +1,8 @@
-#import "c_string"
+#import "dom_host"
 #import "geometry"
 #import "semantic"
 #import "session"
 #import "tree"
-
-dom_browser :: #system_library "dom_browser";
-
-js_dom_begin :: (count: s32, width: float64, height: float64) #foreign dom_browser;
-js_dom_node :: (index: s32, parent: s32, identity: float64,
-    widget_kind: s32, semantic: s32, level: s32,
-    x: float64, y: float64, width: float64, height: float64,
-    tag: *u8, role: *u8, label: *u8, url: *u8, flags: s32) #foreign dom_browser;
-js_dom_title :: (title: *u8) #foreign dom_browser;
-js_dom_finish :: () #foreign dom_browser;
-js_dom_close :: () #foreign dom_browser;
 
 // What the page shows for one node: its element, and which attributes and
 // text it carries. The page applies this; it decides none of it.
@@ -138,24 +127,12 @@ DomNodeFlags :: (spec: DomSpec, interactive: bool, disabled: bool,
     return flags
 }
 
-DomPointer :: (value: string, bytes: []u8) -> *u8 {
-    bytes[0] = cast(u8)0
-    if value.count == 0 || !CopyCString(value, bytes) { return *bytes[0] }
-    return *bytes[0]
-}
-
 #program_export
 DomReconcile :: (session: Session, viewport: Rectangle) {
     if !SessionValid(session) { return }
     count: s32 = TreeCount(session)
-    js_dom_begin(count, cast(float64)viewport.width,
-        cast(float64)viewport.height)
+    DomHostBegin(count, cast(float64)viewport.width, cast(float64)viewport.height)
     index: s32 = 0
-    label_bytes: [1024]u8
-    url_bytes: [1024]u8
-    tag_bytes: [16]u8
-    role_bytes: [16]u8
-    title_bytes: [1024]u8
     title_found: bool = false
     while index < count {
         node: TreeEntry = TreeNodeAt(session, index)
@@ -164,26 +141,23 @@ DomReconcile :: (session: Session, viewport: Rectangle) {
             node.semantic_detail)
         flags: s32 = DomNodeFlags(spec, node.interactive, node.disabled,
             node.loading, node.selected)
-        label: *u8 = DomPointer(node.semantic_label, label_bytes[:])
         // The first page node names the document.
         if semantic == 1 && !title_found && node.semantic_label.count > 0 {
             title_found = true
-            js_dom_title(DomPointer(node.semantic_label, title_bytes[:]))
+            DomHostTitle(node.semantic_label)
         }
-        js_dom_node(index, node.parent,
+        DomHostNode(index, node.parent,
             cast(float64)node.identity_generation, node.kind,
             semantic, spec.level,
             cast(float64)node.bounds.x, cast(float64)node.bounds.y,
             cast(float64)node.bounds.width, cast(float64)node.bounds.height,
-            DomPointer(spec.tag, tag_bytes[:]),
-            DomPointer(spec.role, role_bytes[:]), label,
-            DomPointer(node.semantic_detail, url_bytes[:]), flags)
+            spec.tag, spec.role, node.semantic_label, node.semantic_detail, flags)
         index += 1
     }
-    js_dom_finish()
+    DomHostFinish()
 }
 
 #program_export
 DomClose :: () {
-    js_dom_close()
+    DomHostClose()
 }

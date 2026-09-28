@@ -1,3 +1,5 @@
+// Loaded first so the fake page stands in for the real one dom_tree imports.
+#import "dom_host"
 #import "dom_tree"
 
 SpecIs :: (spec: DomSpec, tag: string, role: string, level: s32,

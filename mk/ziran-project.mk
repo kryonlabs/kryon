@@ -74,9 +74,6 @@ endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := $(foreach name,window draw input texture text os,--js-library $(KRYON_DIR)/web/canvas_$(name).js)
 CANVAS_LIBS += --js-library $(ZIRAN_DIR)/web/ziran_web.js
-ifeq ($(PROJECT_BACKEND),dom)
-CANVAS_LIBS += --js-library $(KRYON_DIR)/web/dom_tree.js
-endif
 EMCC ?= /home/wao/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
