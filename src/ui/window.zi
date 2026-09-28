@@ -1,0 +1,44 @@
+host_api :: #system_library "host_api";
+
+// The host owns the app's window. An app that keeps working in the
+// background (for example behind a tray icon) hides the window instead of
+// quitting, and the host keeps calling its Frame without presenting it.
+WindowSetVisibleHost :: (visible: bool) #foreign host_api;
+WindowVisibleHost :: () -> bool #foreign host_api;
+WindowInterceptCloseHost :: (enabled: bool) -> bool #foreign host_api;
+WindowTakeCloseRequestHost :: () -> bool #foreign host_api;
+WindowQuitHost :: () #foreign host_api;
+
+#program_export
+WindowShow :: () {
+    WindowSetVisibleHost(true)
+}
+
+#program_export
+WindowHide :: () {
+    WindowSetVisibleHost(false)
+}
+
+#program_export
+WindowVisible :: () -> bool {
+    return WindowVisibleHost()
+}
+
+// With interception on, closing the window no longer quits: it is reported
+// once through WindowTakeCloseRequest and the app decides. Returns false when
+// the host cannot intercept closing, in which case closing still quits.
+#program_export
+WindowInterceptClose :: (enabled: bool) -> bool {
+    return WindowInterceptCloseHost(enabled)
+}
+
+#program_export
+WindowTakeCloseRequest :: () -> bool {
+    return WindowTakeCloseRequestHost()
+}
+
+// Ends the host loop after the current frame.
+#program_export
+WindowQuit :: () {
+    WindowQuitHost()
+}

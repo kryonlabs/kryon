@@ -1,0 +1,3 @@
+// The system tray surface: TrayOpen and friends with their menu types.
+using TrayModule :: #import "tray";
+using TrayPropsModule :: #import "tray_props";

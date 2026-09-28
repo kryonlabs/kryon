@@ -45,6 +45,10 @@ StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
 StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
 GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
 Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
+ShowWindow :: (window: *void) #foreign sdl_library "SDL_ShowWindow";
+HideWindow :: (window: *void) #foreign sdl_library "SDL_HideWindow";
+RaiseWindow :: (window: *void) #foreign sdl_library "SDL_RaiseWindow";
+GetWindowFlags :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowFlags";
 
 window: *void;
 renderer: *void;
@@ -55,6 +59,9 @@ desktop_key: s32;
 desktop_codepoints: [32]s32;
 desktop_codepoint_count: s32;
 desktop_codepoint_next: s32;
+desktop_intercept_close: bool;
+desktop_close_requested: bool;
+desktop_quit: bool;
 
 #program_export
 OpenDesktop :: () -> bool {
@@ -103,7 +110,11 @@ PollDesktop :: () -> bool {
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
     while PollEvent(*event) != 0 {
-        if event.kind == cast(u32)0x100 { return false }
+        // SDL_QUIT
+        if event.kind == cast(u32)0x100 {
+            if !desktop_intercept_close { return false }
+            desktop_close_requested = true
+        }
         if event.kind == cast(u32)0x300 {
             // SDL_KeyboardEvent.keysym.sym occupies byte offset 20.
             desktop_key = event.x
@@ -147,7 +158,7 @@ PollDesktop :: () -> bool {
     down: bool = (buttons & cast(u32)1) != cast(u32)0
     SetPointerFrame(cast(float32)x, cast(float32)y, down,
         pressed, released)
-    return true
+    return !desktop_quit
 }
 
 #program_export
@@ -189,6 +200,8 @@ BeginDesktopFrame :: () {
 #program_export
 EndDesktopFrame :: () -> bool {
     if !FinishRasterFrame() { return false }
+    // A hidden window keeps running the app's frames without presenting.
+    if !WindowVisibleHost() { return true }
     if UpdateTexture(texture, null, RasterSurfaceData(),
         RasterSurfaceStride()) != 0 { return false }
     if RenderCopy(renderer, texture, null, null) != 0 { return false }
@@ -197,7 +210,49 @@ EndDesktopFrame :: () -> bool {
 }
 
 #program_export
-PauseDesktop :: () { Delay(cast(u32)16) }
+PauseDesktop :: () {
+    if WindowVisibleHost() {
+        Delay(cast(u32)16)
+    } else {
+        Delay(cast(u32)100)
+    }
+}
+
+// SDL_WINDOW_HIDDEN
+#program_export
+WindowVisibleHost :: () -> bool {
+    if window == null { return false }
+    return (GetWindowFlags(window) & cast(u32)0x8) == cast(u32)0
+}
+
+#program_export
+WindowSetVisibleHost :: (visible: bool) {
+    if window == null { return }
+    if visible {
+        ShowWindow(window)
+        RaiseWindow(window)
+    } else {
+        HideWindow(window)
+    }
+}
+
+#program_export
+WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    desktop_intercept_close = enabled
+    return true
+}
+
+#program_export
+WindowTakeCloseRequestHost :: () -> bool {
+    requested: bool = desktop_close_requested
+    desktop_close_requested = false
+    return requested
+}
+
+#program_export
+WindowQuitHost :: () {
+    desktop_quit = true
+}
 
 #program_export
 PollPointer :: () -> PointerFrame { return pointer }
