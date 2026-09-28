@@ -60,6 +60,7 @@ input_props.zi
 instance.zi
 inspect.zi
 layout.zi
+layout_props.zi
 layout_widget.zi
 link.zi
 link_props.zi
