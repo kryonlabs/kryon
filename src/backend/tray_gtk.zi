@@ -49,6 +49,7 @@ FnObject :: #type (*void) -> void #c_call;
 FnVoid :: #type () -> void #c_call;
 FnMenuPopup :: #type (*void, *void, *void, *void, *void, u32, u32) -> void #c_call;
 FnIdleAdd :: #type (*void, *void) -> u32 #c_call;
+FnTimeoutAdd :: #type (u32, *void, *void) -> u32 #c_call;
 FnConnect :: #type (*void, *u8, *void, *void, *void, s32) -> usize #c_call;
 FnFileTest :: #type (*u8, s32) -> s32 #c_call;
 FnCanonicalize :: #type (*u8, *u8) -> *u8 #c_call;
@@ -78,6 +79,7 @@ gtk_status_icon_set_from_icon_name: FnSetText;
 gtk_main: FnVoid;
 gtk_main_quit: FnVoid;
 g_idle_add: FnIdleAdd;
+g_timeout_add: FnTimeoutAdd;
 g_signal_connect_data: FnConnect;
 g_file_test: FnFileTest;
 g_canonicalize_filename: FnCanonicalize;
@@ -182,6 +184,7 @@ LoadLibraries :: () {
     ok = ok && Resolve(handle, cast(*void)*gtk_main, "gtk_main")
     ok = ok && Resolve(handle, cast(*void)*gtk_main_quit, "gtk_main_quit")
     ok = ok && Resolve(handle, cast(*void)*g_idle_add, "g_idle_add")
+    ok = ok && Resolve(handle, cast(*void)*g_timeout_add, "g_timeout_add")
     ok = ok && Resolve(handle, cast(*void)*g_signal_connect_data,
         "g_signal_connect_data")
     ok = ok && Resolve(handle, cast(*void)*g_file_test, "g_file_test")
@@ -214,7 +217,6 @@ started: bool;
 state: s32 = STOPPED;
 pending_action: s32;
 activate_action: s32;
-use_indicator: bool;
 visible: bool;
 menu_mapped: bool;
 menu_pending: bool;
@@ -256,6 +258,11 @@ Unlock :: () {
 Idle :: (routine: GtkIdleCallback) {
     raw: **void = cast(**void)*routine
     g_idle_add(raw[0], null)
+}
+
+After :: (milliseconds: u32, routine: GtkIdleCallback) {
+    raw: **void = cast(**void)*routine
+    g_timeout_add(milliseconds, raw[0], null)
 }
 
 ConnectRaw :: (object: *void, signal: string, callback: *void, data: *void) {
@@ -638,6 +645,36 @@ OpenStatusIcon :: (icon: *u8) -> bool {
     return true
 }
 
+// Start with XEmbed, which is supported by classic desktop panels. If no
+// panel embeds the status icon, switch to StatusNotifierItem after GTK has
+// had time to process the XEmbed handshake.
+OpenIndicatorIfUnembedded :: (data: *void) -> s32 {
+    unused data
+    if status_icon == null || indicator != null ||
+        gtk_status_icon_is_embedded(status_icon) != 0 {
+        return 0
+    }
+    gtk_status_icon_set_visible(status_icon, 0)
+    g_object_unref(status_icon)
+    status_icon = null
+    Lock()
+    visible = false
+    Unlock()
+    if menu != null {
+        gtk_widget_destroy(menu)
+    }
+    menu = CreateMenu()
+    if menu != null {
+        icon: *u8 = FindIcon()
+        if OpenIndicator(icon, *id_text[0]) {
+            return 0
+        }
+        gtk_widget_destroy(menu)
+        menu = null
+    }
+    return 0
+}
+
 id_text: [128]u8;
 
 Run :: (argument: *void) -> *void {
@@ -647,11 +684,9 @@ Run :: (argument: *void) -> *void {
     }
     menu = CreateMenu()
     icon: *u8 = FindIcon()
-    opened: bool = false
-    if use_indicator {
+    opened: bool = OpenStatusIcon(icon)
+    if !opened && indicator_ready {
         opened = OpenIndicator(icon, *id_text[0])
-    } else {
-        opened = OpenStatusIcon(icon)
     }
     if !opened {
         Release()
@@ -660,6 +695,10 @@ Run :: (argument: *void) -> *void {
     }
     ready_milliseconds = g_get_monotonic_time() / 1000
     SetState(READY)
+    if status_icon != null && indicator_ready {
+        routine: GtkIdleCallback = OpenIndicatorIfUnembedded
+        After(1500, routine)
+    }
     gtk_main()
     SetState(STOPPED)
     Release()
@@ -700,7 +739,6 @@ TrayGtkOpen :: (spec: TraySpec) -> bool {
     Lock()
     menu_snapshot = snapshot
     activate_action = spec.activate_action
-    use_indicator = indicator_ready
     state = STARTING
     visible = false
     menu_mapped = false
