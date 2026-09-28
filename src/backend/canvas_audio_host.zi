@@ -1,0 +1,706 @@
+// The browser's WebAudio nodes, driven through Ziran's Web bridge. The state
+// machines that decide when to play, pause, and schedule are in
+// canvas_audio_engine.zi; this module only creates, connects, and stops nodes
+// for the integer handles that module chooses.
+#import "web"
+#import "byte_text_linux"
+#if #defined(PLATFORM_WEB) {
+    CanvasAudioTimer :: #type (handle: s32) #c_call;
+
+    AUDIO_HOST_BUFFERS :: 256
+    AUDIO_HOST_SOURCES :: 512
+    AUDIO_HOST_TIMERS :: 64
+
+    AudioHostNames :: struct {
+        ready: bool
+        audio_context: s32
+        audio_context_webkit: s32
+        offline_context: s32
+        offline_context_webkit: s32
+        create_gain: s32
+        create_panner: s32
+        create_source: s32
+        create_buffer: s32
+        decode: s32
+        channel_data: s32
+        connect: s32
+        disconnect: s32
+        start: s32
+        stop: s32
+        set_value: s32
+        gain: s32
+        pan: s32
+        playback_rate: s32
+        current_time: s32
+        sample_rate: s32
+        resume: s32
+        state: s32
+        destination: s32
+        close: s32
+        buffer: s32
+        loop: s32
+        on_ended: s32
+        length: s32
+        number_of_channels: s32
+        duration: s32
+        catch_name: s32
+        add_listener: s32
+        set_interval: s32
+        clear_interval: s32
+        read_file: s32
+        fetch: s32
+        array_buffer: s32
+        ok: s32
+        FS: s32
+        document: s32
+        suspended: s32
+        passive: s32
+        byte_offset: s32
+        byte_length: s32
+        buffer_field: s32
+    }
+
+    audio_names: AudioHostNames;
+    audio_context: s32;
+    audio_master: s32;
+    audio_decoder: s32;
+    audio_host_master_volume: float64 = 1.0;
+    audio_unlock_installed: bool;
+    audio_ignore: s32;
+
+    // JS objects for the buffers the engine registered, by engine id.
+    audio_buffer_ids: [AUDIO_HOST_BUFFERS]s32;
+    audio_buffer_objects: [AUDIO_HOST_BUFFERS]s32;
+
+    AudioSourceRecord :: struct {
+        id: s32
+        source: s32
+        gain: s32
+        panner: s32
+        ended: s32
+        done: bool
+    }
+
+    audio_sources: [AUDIO_HOST_SOURCES]AudioSourceRecord;
+
+    AudioTimerRecord :: struct {
+        handle: s32
+        interval_id: float64
+        function: s32
+        tick: CanvasAudioTimer
+    }
+
+    audio_timers: [AUDIO_HOST_TIMERS]AudioTimerRecord;
+
+    AudioUsePanner :: () -> bool {
+        return audio_context != 0 &&
+            WebTypeOf(WebGetObject(audio_context, audio_names.create_panner)) == WebTypeFunction
+    }
+
+    AudioInitNames :: () {
+        if audio_names.ready { return }
+        audio_names.ready = true
+        audio_names.audio_context = WebName("AudioContext")
+        audio_names.audio_context_webkit = WebName("webkitAudioContext")
+        audio_names.offline_context = WebName("OfflineAudioContext")
+        audio_names.offline_context_webkit = WebName("webkitOfflineAudioContext")
+        audio_names.create_gain = WebName("createGain")
+        audio_names.create_panner = WebName("createStereoPanner")
+        audio_names.create_source = WebName("createBufferSource")
+        audio_names.create_buffer = WebName("createBuffer")
+        audio_names.decode = WebName("decodeAudioData")
+        audio_names.channel_data = WebName("getChannelData")
+        audio_names.connect = WebName("connect")
+        audio_names.disconnect = WebName("disconnect")
+        audio_names.start = WebName("start")
+        audio_names.stop = WebName("stop")
+        audio_names.set_value = WebName("setValueAtTime")
+        audio_names.gain = WebName("gain")
+        audio_names.pan = WebName("pan")
+        audio_names.playback_rate = WebName("playbackRate")
+        audio_names.current_time = WebName("currentTime")
+        audio_names.sample_rate = WebName("sampleRate")
+        audio_names.resume = WebName("resume")
+        audio_names.state = WebName("state")
+        audio_names.destination = WebName("destination")
+        audio_names.close = WebName("close")
+        audio_names.buffer = WebName("buffer")
+        audio_names.loop = WebName("loop")
+        audio_names.on_ended = WebName("onended")
+        audio_names.length = WebName("length")
+        audio_names.number_of_channels = WebName("numberOfChannels")
+        audio_names.duration = WebName("duration")
+        audio_names.catch_name = WebName("catch")
+        audio_names.add_listener = WebName("addEventListener")
+        audio_names.set_interval = WebName("setInterval")
+        audio_names.clear_interval = WebName("clearInterval")
+        audio_names.read_file = WebName("readFile")
+        audio_names.fetch = WebName("fetch")
+        audio_names.array_buffer = WebName("arrayBuffer")
+        audio_names.ok = WebName("ok")
+        audio_names.FS = WebName("FS")
+        audio_names.document = WebName("document")
+        audio_names.suspended = WebName("suspended")
+        audio_names.passive = WebName("passive")
+        audio_names.byte_offset = WebName("byteOffset")
+        audio_names.byte_length = WebName("byteLength")
+        audio_names.buffer_field = WebName("buffer")
+    }
+
+    // ---- small helpers ----
+
+    AudioNow :: () -> float64 {
+        if audio_context == 0 { return 0.0 }
+        return WebGetNumber(audio_context, audio_names.current_time)
+    }
+
+    AudioSetParam :: (param: s32, value: float64) {
+        if param == 0 { return }
+        unused WebCall2(param, audio_names.set_value, WebNumber(value),
+            WebNumber(AudioNow()))
+    }
+
+    AudioDisconnect :: (node: s32) {
+        if node != 0 { unused WebCall0(node, audio_names.disconnect) }
+    }
+
+    // ---- context ----
+
+    AudioUnlock :: (context: s32, first: s32, second: s32, third: s32) {
+        unused context
+        unused first
+        unused second
+        unused third
+        AudioHostResume()
+    }
+
+    // A refused resume is not an error worth reporting.
+    AudioIgnore :: (context: s32, first: s32, second: s32, third: s32) {
+        unused context
+        unused first
+        unused second
+        unused third
+    }
+
+    AudioInstallUnlock :: () {
+        if audio_unlock_installed { return }
+        audio_unlock_installed = true
+        document: s32 = WebGetObject(WebGlobal, audio_names.document)
+        if document == 0 { return }
+        options: s32 = WebNewObject()
+        WebSet(options, audio_names.passive, WebBool(true))
+        function: s32 = WebFunction(AudioUnlock, 0)
+        audio_ignore = WebFunction(AudioIgnore, 0)
+        unused WebCall3(document, audio_names.add_listener,
+            WebText("pointerdown"), WebObject(function), WebObject(options))
+        unused WebCall3(document, audio_names.add_listener,
+            WebText("keydown"), WebObject(function), WebObject(options))
+        unused WebCall3(document, audio_names.add_listener,
+            WebText("touchstart"), WebObject(function), WebObject(options))
+    }
+
+    AudioHostOpen :: () -> s32 {
+        AudioInitNames()
+        if audio_context != 0 { return 1 }
+        constructor: s32 = WebGetObject(WebGlobal, audio_names.audio_context)
+        if constructor == 0 {
+            constructor = WebGetObject(WebGlobal, audio_names.audio_context_webkit)
+        }
+        if constructor == 0 { return 0 }
+        created: s32 = WebNew0(constructor)
+        if created == 0 || WebFailed() { return 0 }
+        audio_context = WebKeep(created)
+        audio_master = WebKeep(WebAsObject(WebCall0(audio_context,
+            audio_names.create_gain)))
+        if audio_master != 0 {
+            AudioSetParam(WebGetObject(audio_master, audio_names.gain),
+                audio_host_master_volume)
+            unused WebCall1(audio_master, audio_names.connect,
+                WebObject(WebGetObject(audio_context, audio_names.destination)))
+        }
+        AudioInstallUnlock()
+        return 1
+    }
+
+    AudioHostResume :: () {
+        if audio_context == 0 { return }
+        state: WebValue = WebGet(audio_context, audio_names.state)
+        if state.tag != WebStringTag { return }
+        buffer: [16]u8
+        unused WebCopyString(WebAsObject(state), buffer[:])
+        if TextFromCString(*buffer[0]) != "suspended" { return }
+        // Resuming can be refused until the page has had a gesture.
+        promise: s32 = WebAsObject(WebCall0(audio_context, audio_names.resume))
+        if promise != 0 {
+            unused WebCall1(promise, audio_names.catch_name,
+                WebObject(audio_ignore))
+        }
+    }
+
+    AudioHostTime :: () -> float64 {
+        return AudioNow()
+    }
+
+    AudioHostRate :: () -> float64 {
+        if audio_context == 0 { return 0.0 }
+        return WebGetNumber(audio_context, audio_names.sample_rate)
+    }
+
+    AudioHostMaster :: (volume: float32) {
+        audio_host_master_volume = cast(float64)volume
+        if audio_master != 0 {
+            AudioSetParam(WebGetObject(audio_master, audio_names.gain),
+                audio_host_master_volume)
+        }
+    }
+
+    AudioHostClose :: () {
+        index: s32 = 0
+        while index < AUDIO_HOST_TIMERS {
+            if audio_timers[index].handle != 0 { AudioTimerDrop(index) }
+            index += 1
+        }
+        index = 0
+        while index < AUDIO_HOST_SOURCES {
+            if audio_sources[index].id != 0 { AudioSourceDrop(index) }
+            index += 1
+        }
+        index = 0
+        while index < AUDIO_HOST_BUFFERS {
+            if audio_buffer_ids[index] != 0 {
+                WebRelease(audio_buffer_objects[index])
+                audio_buffer_ids[index] = 0
+                audio_buffer_objects[index] = 0
+            }
+            index += 1
+        }
+        AudioDisconnect(audio_master)
+        if audio_context != 0 {
+            unused WebCall0(audio_context, audio_names.close)
+            WebRelease(audio_context)
+        }
+        if audio_master != 0 { WebRelease(audio_master) }
+        if audio_decoder != 0 { WebRelease(audio_decoder) }
+        audio_context = 0
+        audio_master = 0
+        audio_decoder = 0
+    }
+
+    // ---- buffers ----
+
+    AudioHostFindBuffer :: (id: s32) -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_BUFFERS {
+            if audio_buffer_ids[index] == id && id != 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
+    // Keeps `object` as buffer `id`, replacing an earlier one.
+    AudioStoreBuffer :: (id: s32, object: s32) -> s32 {
+        index: s32 = AudioHostFindBuffer(id)
+        if index < 0 {
+            index = AudioHostFindBuffer(0)
+            if index < 0 {
+                WebRelease(object)
+                return 0
+            }
+        } else {
+            WebRelease(audio_buffer_objects[index])
+        }
+        audio_buffer_ids[index] = id
+        audio_buffer_objects[index] = object
+        return 1
+    }
+
+    AudioHostBufferDrop :: (handle: s32) {
+        index: s32 = AudioHostFindBuffer(handle)
+        if index < 0 { return }
+        WebRelease(audio_buffer_objects[index])
+        audio_buffer_ids[index] = 0
+        audio_buffer_objects[index] = 0
+    }
+
+    AudioSample :: (data: *void, size: s32, index: s32) -> float32 {
+        value: float32 = 0.0
+        if size == 8 {
+            bytes: *u8 = cast(*u8)data
+            value = cast(float32)(cast(s32)bytes[index] - 128) / 128.0
+        } else if size == 16 {
+            shorts: *s16 = cast(*s16)data
+            value = cast(float32)shorts[index] / 32768.0
+        } else {
+            floats: *float32 = cast(*float32)data
+            value = floats[index]
+        }
+        if value < -1.0 { return -1.0 }
+        if value > 1.0 { return 1.0 }
+        return value
+    }
+
+    audio_host_c :: #system_library "c";
+    AudioAllocate :: (size: usize) -> *void #foreign audio_host_c "malloc";
+    AudioRelease :: (memory: *void) #foreign audio_host_c "free";
+
+    // Memory the engine hands to callbacks and receives exported samples in.
+    AudioHostAllocate :: (size: usize) -> *void {
+        return AudioAllocate(size)
+    }
+
+    AudioHostFree :: (memory: *void) {
+        AudioRelease(memory)
+    }
+
+    // A WebAudio buffer holding `frames` frames of interleaved PCM.
+    AudioPcmBuffer :: (data: *void, frames: s32, rate: s32, size: s32,
+        channels: s32) -> s32 {
+        if audio_context == 0 || data == null || frames <= 0 || rate <= 0 ||
+            channels <= 0 {
+            return 0
+        }
+        buffer: s32 = WebKeep(WebAsObject(WebCall3(audio_context,
+            audio_names.create_buffer, WebNumber(cast(float64)channels),
+            WebNumber(cast(float64)frames), WebNumber(cast(float64)rate))))
+        if buffer == 0 || WebFailed() { return 0 }
+        scratch: *float32 = cast(*float32)AudioAllocate(cast(usize)frames * 4)
+        if scratch == null {
+            WebRelease(buffer)
+            return 0
+        }
+        channel: s32 = 0
+        while channel < channels {
+            frame: s32 = 0
+            while frame < frames {
+                scratch[frame] = AudioSample(data, size, frame * channels + channel)
+                frame += 1
+            }
+            target: s32 = WebAsObject(WebCall1(buffer, audio_names.channel_data,
+                WebNumber(cast(float64)channel)))
+            unused WebCopyIn(target, cast(*void)scratch, frames * 4)
+            channel += 1
+        }
+        AudioRelease(cast(*void)scratch)
+        return buffer
+    }
+
+    AudioHostBufferPcm :: (handle: s32, data: *void, frames: s32,
+        sample_rate: s32, sample_size: s32, channels: s32) -> s32 {
+        buffer: s32 = AudioPcmBuffer(data, frames, sample_rate, sample_size, channels)
+        if buffer == 0 { return 0 }
+        return AudioStoreBuffer(handle, buffer)
+    }
+
+    // Decodes on an offline context, which never waits for a user gesture.
+    AudioDecoder :: () -> s32 {
+        if audio_decoder != 0 { return audio_decoder }
+        constructor: s32 = WebGetObject(WebGlobal, audio_names.offline_context)
+        if constructor == 0 {
+            constructor = WebGetObject(WebGlobal, audio_names.offline_context_webkit)
+        }
+        rate: float64 = AudioHostRate()
+        if rate <= 0.0 { rate = 44100.0 }
+        if constructor != 0 {
+            audio_decoder = WebKeep(WebNew3(constructor, WebNumber(1.0),
+                WebNumber(1.0), WebNumber(rate)))
+            if audio_decoder != 0 { return audio_decoder }
+        }
+        return audio_context
+    }
+
+    // Decodes encoded audio bytes (a Uint8Array handle) into buffer `handle`.
+    AudioDecode :: (handle: s32, bytes: s32) -> s32 {
+        decoder: s32 = AudioDecoder()
+        if decoder == 0 || bytes == 0 { return 0 }
+        AudioHostResume()
+        copy: s32 = WebAsObject(WebCall1(bytes, WebName("slice"), WebNumber(0.0)))
+        array_buffer: s32 = WebGetObject(copy, audio_names.buffer_field)
+        promise: WebValue = WebCall1(decoder, audio_names.decode,
+            WebObject(array_buffer))
+        result: WebValue
+        ok: bool = WebAsObject(promise) != 0 && WebAwait(WebAsObject(promise), *result)
+        if !ok { return 0 }
+        decoded: s32 = WebKeep(WebAsObject(result))
+        if decoded == 0 { return 0 }
+        return AudioStoreBuffer(handle, decoded)
+    }
+
+    AudioHostBufferMemory :: (handle: s32, data: *u8, size: s32) -> s32 {
+        if data == null || size <= 0 { return 0 }
+        return AudioDecode(handle, WebBytes(WebBytesUint8, cast(*void)data, size))
+    }
+
+    // Bytes of a file: the in-memory file system first, then the network.
+    AudioFileBytes :: (path: *u8) -> s32 {
+        text: [1024]u8
+        length: s32 = 0
+        while length < 1023 && path[length] != cast(u8)0 { length += 1 }
+        index: s32 = 0
+        while index < length {
+            text[index] = path[index]
+            index += 1
+        }
+        name: string = TextFromCString(*text[0])
+        files: s32 = WebGetObject(WebModule, audio_names.FS)
+        if files != 0 {
+            data: WebValue = WebCall1(files, audio_names.read_file, WebText(name))
+            if !WebFailed() && WebAsObject(data) != 0 { return WebAsObject(data) }
+        }
+        response: WebValue = WebCall1(WebGlobal, audio_names.fetch, WebText(name))
+        result: WebValue
+        if WebAsObject(response) == 0 || !WebAwait(WebAsObject(response), *result) {
+            return 0
+        }
+        reply: s32 = WebAsObject(result)
+        if !WebAsBool(WebGet(reply, audio_names.ok)) { return 0 }
+        body: WebValue = WebCall0(reply, audio_names.array_buffer)
+        if !WebAwait(WebAsObject(body), *result) { return 0 }
+        array_buffer: s32 = WebAsObject(result)
+        return WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")),
+            WebObject(array_buffer))
+    }
+
+    AudioHostBufferFile :: (handle: s32, path: *u8) -> s32 {
+        if path == null { return 0 }
+        bytes: s32 = AudioFileBytes(path)
+        if bytes == 0 { return 0 }
+        return AudioDecode(handle, bytes)
+    }
+
+    AudioHostBufferRead :: (handle: s32, field: s32) -> float64 {
+        index: s32 = AudioHostFindBuffer(handle)
+        if index < 0 { return 0.0 }
+        buffer: s32 = audio_buffer_objects[index]
+        if field == 0 { return WebGetNumber(buffer, audio_names.length) }
+        if field == 1 { return WebGetNumber(buffer, audio_names.sample_rate) }
+        if field == 2 { return WebGetNumber(buffer, audio_names.number_of_channels) }
+        return WebGetNumber(buffer, audio_names.duration)
+    }
+
+    // Decoded samples as interleaved floats owned by the caller.
+    AudioHostBufferExport :: (handle: s32, rate_out: *s32, channels_out: *s32,
+        frames_out: *s32) -> *void {
+        index: s32 = AudioHostFindBuffer(handle)
+        if index < 0 { return null }
+        buffer: s32 = audio_buffer_objects[index]
+        channels: s32 = cast(s32)WebGetNumber(buffer, audio_names.number_of_channels)
+        frames: s32 = cast(s32)WebGetNumber(buffer, audio_names.length)
+        if channels <= 0 { channels = 1 }
+        if frames <= 0 || frames > 0x7fffffff / 4 / channels { return null }
+        samples: *float32 = cast(*float32)AudioAllocate(cast(usize)frames *
+            cast(usize)channels * 4)
+        if samples == null { return null }
+        scratch: *float32 = cast(*float32)AudioAllocate(cast(usize)frames * 4)
+        if scratch == null {
+            AudioRelease(cast(*void)samples)
+            return null
+        }
+        channel: s32 = 0
+        while channel < channels {
+            source: s32 = WebAsObject(WebCall1(buffer, audio_names.channel_data,
+                WebNumber(cast(float64)channel)))
+            unused WebCopyOut(source, cast(*void)scratch, frames * 4)
+            frame: s32 = 0
+            while frame < frames {
+                samples[frame * channels + channel] = scratch[frame]
+                frame += 1
+            }
+            channel += 1
+        }
+        AudioRelease(cast(*void)scratch)
+        rate: s32 = cast(s32)WebGetNumber(buffer, audio_names.sample_rate)
+        if rate <= 0 { rate = 44100 }
+        rate_out.* = rate
+        channels_out.* = channels
+        frames_out.* = frames
+        return cast(*void)samples
+    }
+
+    // ---- sources ----
+
+    AudioFindSource :: (id: s32) -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_SOURCES {
+            if audio_sources[index].id == id && id != 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
+    AudioSourceDrop :: (index: s32) {
+        record: *AudioSourceRecord = *audio_sources[index]
+        if record.source != 0 {
+            unused WebCall0(record.source, audio_names.stop)
+            WebSet(record.source, audio_names.on_ended, WebNull())
+            AudioDisconnect(record.source)
+            WebRelease(record.source)
+        }
+        AudioDisconnect(record.gain)
+        AudioDisconnect(record.panner)
+        if record.gain != 0 { WebRelease(record.gain) }
+        if record.panner != 0 { WebRelease(record.panner) }
+        if record.ended != 0 { WebRelease(record.ended) }
+        empty: AudioSourceRecord
+        audio_sources[index] = empty
+    }
+
+    // A source ended by itself; the engine notices on its next check.
+    AudioSourceEnded :: (context: s32, first: s32, second: s32, third: s32) {
+        unused first
+        unused second
+        unused third
+        index: s32 = AudioFindSource(context)
+        if index >= 0 { audio_sources[index].done = true }
+    }
+
+    // Connects source -> gain -> panner -> master and starts it.
+    AudioPlay :: (id: s32, buffer: s32, loop: s32, rate: float64, volume: float64,
+        pan: float64, offset: float64, when: float64, use_offset: bool) -> s32 {
+        if buffer == 0 || audio_context == 0 { return 0 }
+        slot: s32 = AudioFindSource(0)
+        if slot < 0 { return 0 }
+        record: AudioSourceRecord
+        record.id = id
+        record.source = WebKeep(WebAsObject(WebCall0(audio_context,
+            audio_names.create_source)))
+        if record.source == 0 { return 0 }
+        WebSet(record.source, audio_names.buffer, WebObject(buffer))
+        WebSet(record.source, audio_names.loop, WebBool(loop != 0))
+        AudioSetParam(WebGetObject(record.source, audio_names.playback_rate), rate)
+        record.gain = WebKeep(WebAsObject(WebCall0(audio_context,
+            audio_names.create_gain)))
+        tail: s32 = record.gain
+        if record.gain != 0 {
+            AudioSetParam(WebGetObject(record.gain, audio_names.gain), volume)
+        }
+        if AudioUsePanner() {
+            record.panner = WebKeep(WebAsObject(WebCall0(audio_context,
+                audio_names.create_panner)))
+            AudioSetParam(WebGetObject(record.panner, audio_names.pan), pan)
+            if tail != 0 {
+                unused WebCall1(tail, audio_names.connect, WebObject(record.panner))
+            }
+            tail = record.panner
+        }
+        destination: s32 = audio_master
+        if destination == 0 {
+            destination = WebGetObject(audio_context, audio_names.destination)
+        }
+        if tail != 0 {
+            unused WebCall1(tail, audio_names.connect, WebObject(destination))
+        }
+        input: s32 = record.gain
+        if input == 0 { input = record.panner }
+        if input == 0 { input = destination }
+        unused WebCall1(record.source, audio_names.connect, WebObject(input))
+        audio_sources[slot] = record
+        record.ended = WebFunction(AudioSourceEnded, id)
+        audio_sources[slot].ended = record.ended
+        WebSet(record.source, audio_names.on_ended, WebObject(record.ended))
+        if use_offset {
+            unused WebCall2(record.source, audio_names.start, WebNumber(0.0),
+                WebNumber(offset))
+        } else {
+            unused WebCall1(record.source, audio_names.start, WebNumber(when))
+        }
+        if WebFailed() {
+            AudioSourceDrop(slot)
+            return 0
+        }
+        return 1
+    }
+
+    AudioHostSourceStart :: (source: s32, buffer: s32, offset: float64, loop: s32,
+        rate: float64, volume: float64, pan: float64) -> s32 {
+        index: s32 = AudioHostFindBuffer(buffer)
+        if index < 0 { return 0 }
+        return AudioPlay(source, audio_buffer_objects[index], loop, rate, volume,
+            pan, offset, 0.0, true)
+    }
+
+    AudioHostSourcePcm :: (source: s32, data: *void, frames: s32, sample_rate: s32,
+        sample_size: s32, channels: s32, when: float64, rate: float64,
+        volume: float64, pan: float64) -> s32 {
+        buffer: s32 = AudioPcmBuffer(data, frames, sample_rate, sample_size, channels)
+        if buffer == 0 { return 0 }
+        started: s32 = AudioPlay(source, buffer, 0, rate, volume, pan, 0.0, when,
+            false)
+        // The source holds the buffer it plays.
+        WebRelease(buffer)
+        return started
+    }
+
+    AudioHostSourceStop :: (source: s32) {
+        index: s32 = AudioFindSource(source)
+        if index >= 0 { AudioSourceDrop(index) }
+    }
+
+    AudioHostSourceSet :: (source: s32, volume: float64, pan: float64,
+        rate: float64) {
+        index: s32 = AudioFindSource(source)
+        if index < 0 { return }
+        record: *AudioSourceRecord = *audio_sources[index]
+        if record.gain != 0 {
+            AudioSetParam(WebGetObject(record.gain, audio_names.gain), volume)
+        }
+        if record.panner != 0 {
+            AudioSetParam(WebGetObject(record.panner, audio_names.pan), pan)
+        }
+        AudioSetParam(WebGetObject(record.source, audio_names.playback_rate), rate)
+    }
+
+    AudioHostSourceDone :: (source: s32) -> s32 {
+        index: s32 = AudioFindSource(source)
+        if index < 0 || audio_sources[index].done { return 1 }
+        return 0
+    }
+
+    // ---- timers ----
+
+    AudioFindTimer :: (handle: s32) -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_TIMERS {
+            if audio_timers[index].handle == handle && handle != 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
+    AudioTimerDrop :: (index: s32) {
+        timer: *AudioTimerRecord = *audio_timers[index]
+        unused WebCall1(WebGlobal, audio_names.clear_interval,
+            WebNumber(timer.interval_id))
+        if timer.function != 0 { WebRelease(timer.function) }
+        empty: AudioTimerRecord
+        audio_timers[index] = empty
+    }
+
+    AudioTimerFired :: (context: s32, first: s32, second: s32, third: s32) {
+        unused first
+        unused second
+        unused third
+        index: s32 = AudioFindTimer(context)
+        if index < 0 { return }
+        tick: CanvasAudioTimer = audio_timers[index].tick
+        tick(context)
+    }
+
+    AudioHostTimer :: (handle: s32, interval: s32, tick: CanvasAudioTimer) {
+        existing: s32 = AudioFindTimer(handle)
+        if existing >= 0 { AudioTimerDrop(existing) }
+        slot: s32 = AudioFindTimer(0)
+        if slot < 0 { return }
+        function: s32 = WebFunction(AudioTimerFired, handle)
+        result: WebValue = WebCall2(WebGlobal, audio_names.set_interval,
+            WebObject(function), WebNumber(cast(float64)interval))
+        audio_timers[slot].handle = handle
+        audio_timers[slot].function = function
+        audio_timers[slot].tick = tick
+        audio_timers[slot].interval_id = WebAsNumber(result)
+    }
+
+    AudioHostTimerStop :: (handle: s32) {
+        index: s32 = AudioFindTimer(handle)
+        if index >= 0 { AudioTimerDrop(index) }
+    }
+}

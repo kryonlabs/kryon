@@ -7,13 +7,16 @@ class AudioTestParam {
   constructor() { this.value = 0; }
   setValueAtTime(value) { this.value = value; }
 }
+// Every buffer source the page creates, so a test can see what played.
+globalThis.audioTestSources = [];
 class AudioTestNode {
-  constructor() { this.gain = new AudioTestParam(); this.pan = new AudioTestParam(); this.playbackRate = new AudioTestParam(); }
+  constructor() { this.gain = new AudioTestParam(); this.pan = new AudioTestParam(); this.playbackRate = new AudioTestParam(); this.started = false; this.stopped = false; }
   connect() {}
   disconnect() {}
-  start() {}
-  stop() {}
+  start() { this.started = true; }
+  stop() { this.stopped = true; }
 }
+globalThis.audioTestLive = () => audioTestSources.filter(source => source.started && !source.stopped);
 class AudioTestBuffer {
   constructor(channels, frames, rate) {
     this.numberOfChannels = channels; this.length = frames; this.sampleRate = rate;
@@ -26,11 +29,12 @@ globalThis.AudioContext = class {
   constructor() { this.sampleRate = 44100; this.currentTime = 0; this.state = 'running'; this.destination = {}; }
   createGain() { return new AudioTestNode(); }
   createStereoPanner() { return new AudioTestNode(); }
-  createBufferSource() { return new AudioTestNode(); }
+  createBufferSource() { const node = new AudioTestNode(); audioTestSources.push(node); return node; }
   createBuffer(channels, frames, rate) { return new AudioTestBuffer(channels, frames, rate); }
   decodeAudioData(_bytes, resolve) {
     const buffer = new AudioTestBuffer(1, 44100, 44100);
-    resolve(buffer);
+    // The promise form takes only the bytes; the callbacks are optional.
+    if (resolve) resolve(buffer);
     return Promise.resolve(buffer);
   }
   resume() { return Promise.resolve(); }

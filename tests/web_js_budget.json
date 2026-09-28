@@ -1,9 +1,5 @@
 {
   "files": {
-    "canvas_audio.js": {
-      "lines": 301,
-      "entries": 19
-    },
     "canvas_draw.js": {
       "lines": 220,
       "entries": 13

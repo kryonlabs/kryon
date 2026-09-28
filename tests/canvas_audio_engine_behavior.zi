@@ -1,18 +1,6 @@
 #import "canvas_audio_engine"
 
-fake_host :: #system_library "c";
-FakeSetTime :: (seconds: float64) #foreign fake_host "fake_set_time";
-FakeEndSource :: (source: s32) #foreign fake_host "fake_end_source";
-FakeLiveSources :: () -> s32 #foreign fake_host "fake_live_sources";
-FakeSourceLive :: (source: s32) -> s32 #foreign fake_host "fake_source_live";
-FakeSourceField :: (source: s32, field: s32) -> float64 #foreign fake_host "fake_source_field";
-FakeLastSource :: () -> s32 #foreign fake_host "fake_last_source";
-FakeTimerInterval :: (handle: s32) -> s32 #foreign fake_host "fake_timer_interval";
-FakeFireTimer :: (handle: s32) #foreign fake_host "fake_fire_timer";
-FakeTimerCount :: () -> s32 #foreign fake_host "fake_timer_count";
-FakeBufferCount :: () -> s32 #foreign fake_host "fake_buffer_count";
-FakeContextOpen :: () -> s32 #foreign fake_host "fake_context_open";
-FakeMasterVolume :: () -> float64 #foreign fake_host "fake_master_volume";
+#import "canvas_audio_host"
 
 // Source fields the fake host records.
 SourceOffset :: 0

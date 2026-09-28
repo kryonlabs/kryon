@@ -2,35 +2,12 @@
 // music positions, streams, callbacks, and every clamp live here. The page's
 // JavaScript only creates and connects WebAudio nodes for the integer handles
 // this module chooses, so it holds no audio state of its own.
+#import "canvas_audio_host"
 #if #defined(PLATFORM_WEB) {
     CanvasAudioCallback :: #type (buffer: *void, frames: u32) #c_call;
-    CanvasAudioTimer :: #type (handle: s32) #c_call;
 
-    canvas_audio_browser :: #system_library "env";
-    canvas_audio_c :: #system_library "c";
-    AudioAllocate :: (size: usize) -> *void #foreign canvas_audio_c "malloc";
-    AudioRelease :: (memory: *void) #foreign canvas_audio_c "free";
 
     // Raw WebAudio effects, addressed by handles chosen here.
-    js_wa_open :: () -> s32 #foreign canvas_audio_browser;
-    js_wa_close :: () #foreign canvas_audio_browser;
-    js_wa_resume :: () #foreign canvas_audio_browser;
-    js_wa_time :: () -> float64 #foreign canvas_audio_browser;
-    js_wa_rate :: () -> float64 #foreign canvas_audio_browser;
-    js_wa_master :: (volume: float32) #foreign canvas_audio_browser;
-    js_wa_buffer_pcm :: (handle: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32) -> s32 #foreign canvas_audio_browser;
-    js_wa_buffer_file :: (handle: s32, path: *u8) -> s32 #foreign canvas_audio_browser;
-    js_wa_buffer_memory :: (handle: s32, data: *u8, size: s32) -> s32 #foreign canvas_audio_browser;
-    js_wa_buffer_read :: (handle: s32, field: s32) -> float64 #foreign canvas_audio_browser;
-    js_wa_buffer_export :: (handle: s32, rate_out: *s32, channels_out: *s32, frames_out: *s32) -> *void #foreign canvas_audio_browser;
-    js_wa_buffer_drop :: (handle: s32) #foreign canvas_audio_browser;
-    js_wa_source_start :: (source: s32, buffer: s32, offset: float64, loop: s32, rate: float64, volume: float64, pan: float64) -> s32 #foreign canvas_audio_browser;
-    js_wa_source_pcm :: (source: s32, data: *void, frames: s32, sample_rate: s32, sample_size: s32, channels: s32, when: float64, rate: float64, volume: float64, pan: float64) -> s32 #foreign canvas_audio_browser;
-    js_wa_source_stop :: (source: s32) #foreign canvas_audio_browser;
-    js_wa_source_set :: (source: s32, volume: float64, pan: float64, rate: float64) #foreign canvas_audio_browser;
-    js_wa_source_done :: (source: s32) -> s32 #foreign canvas_audio_browser;
-    js_wa_timer :: (handle: s32, interval: s32, tick: CanvasAudioTimer) #foreign canvas_audio_browser;
-    js_wa_timer_stop :: (handle: s32) #foreign canvas_audio_browser;
 
     AUDIO_BUFFER_MAX :: 128
     AUDIO_STREAM_MAX :: 32
@@ -169,17 +146,17 @@
     // ---- context ----
 
     AudioEngineInit :: () {
-        unused js_wa_open()
-        js_wa_master(audio_master_volume)
+        unused AudioHostOpen()
+        AudioHostMaster(audio_master_volume)
     }
 
     AudioEngineReady :: () -> s32 {
-        return js_wa_open()
+        return AudioHostOpen()
     }
 
     AudioEngineSetMasterVolume :: (volume: float32) {
         audio_master_volume = AudioClamp01(volume)
-        js_wa_master(audio_master_volume)
+        AudioHostMaster(audio_master_volume)
     }
 
     AudioEngineGetMasterVolume :: () -> float32 {
@@ -192,7 +169,7 @@
             if audio_buffers[index].id != 0 {
                 AudioStopSound(index)
                 AudioStopMusic(index)
-                js_wa_buffer_drop(audio_buffers[index].id)
+                AudioHostBufferDrop(audio_buffers[index].id)
                 AudioForgetBuffer(index)
             }
             index += 1
@@ -203,16 +180,16 @@
             index += 1
         }
         audio_mixed_count = 0
-        js_wa_close()
+        AudioHostClose()
     }
 
     // ---- buffers ----
 
     AudioEngineLoadFile :: (path: *u8) -> s32 {
         id: s32 = AudioNewId()
-        if js_wa_buffer_file(id, path) == 0 { return 0 }
+        if AudioHostBufferFile(id, path) == 0 { return 0 }
         if !AudioRegisterBuffer(id) {
-            js_wa_buffer_drop(id)
+            AudioHostBufferDrop(id)
             return 0
         }
         return id
@@ -221,9 +198,9 @@
     AudioEngineLoadMemory :: (data: *u8, size: s32) -> s32 {
         if data == null || size <= 0 { return 0 }
         id: s32 = AudioNewId()
-        if js_wa_buffer_memory(id, data, size) == 0 { return 0 }
+        if AudioHostBufferMemory(id, data, size) == 0 { return 0 }
         if !AudioRegisterBuffer(id) {
-            js_wa_buffer_drop(id)
+            AudioHostBufferDrop(id)
             return 0
         }
         return id
@@ -235,9 +212,9 @@
         channels_out: *s32, frames_out: *s32) -> *void {
         if data == null || size <= 0 { return null }
         id: s32 = AudioNewId()
-        if js_wa_buffer_memory(id, data, size) == 0 { return null }
-        samples: *void = js_wa_buffer_export(id, rate_out, channels_out, frames_out)
-        js_wa_buffer_drop(id)
+        if AudioHostBufferMemory(id, data, size) == 0 { return null }
+        samples: *void = AudioHostBufferExport(id, rate_out, channels_out, frames_out)
+        AudioHostBufferDrop(id)
         return samples
     }
 
@@ -247,11 +224,11 @@
             return 0
         }
         id: s32 = AudioNewId()
-        if js_wa_buffer_pcm(id, data, frames, sample_rate, sample_size, channels) == 0 {
+        if AudioHostBufferPcm(id, data, frames, sample_rate, sample_size, channels) == 0 {
             return 0
         }
         if !AudioRegisterBuffer(id) {
-            js_wa_buffer_drop(id)
+            AudioHostBufferDrop(id)
             return 0
         }
         return id
@@ -264,7 +241,7 @@
             channels <= 0 {
             return 0
         }
-        if js_wa_buffer_pcm(id, data, frames, sample_rate, sample_size, channels) == 0 {
+        if AudioHostBufferPcm(id, data, frames, sample_rate, sample_size, channels) == 0 {
             return 0
         }
         AudioStopSound(index)
@@ -284,13 +261,13 @@
         if audio_buffers[index].ref > 0 { return }
         AudioStopSound(index)
         AudioStopMusic(index)
-        js_wa_buffer_drop(id)
+        AudioHostBufferDrop(id)
         AudioForgetBuffer(index)
     }
 
     AudioBufferField :: (id: s32, field: s32) -> float64 {
         if AudioFindBuffer(id) < 0 { return 0.0 }
-        return js_wa_buffer_read(id, field)
+        return AudioHostBufferRead(id, field)
     }
 
     AudioEngineBufferFrames :: (id: s32) -> s32 {
@@ -312,13 +289,13 @@
         kept: s32 = 0
         voice: s32 = 0
         while voice < entry.voice_count {
-            if js_wa_source_done(entry.voices[voice]) == 0 {
+            if AudioHostSourceDone(entry.voices[voice]) == 0 {
                 entry.voices[kept] = entry.voices[voice]
                 entry.voice_started[kept] = entry.voice_started[voice]
                 entry.voice_offset[kept] = entry.voice_offset[voice]
                 kept += 1
             } else {
-                js_wa_source_stop(entry.voices[voice])
+                AudioHostSourceStop(entry.voices[voice])
             }
             voice += 1
         }
@@ -329,7 +306,7 @@
         entry: *AudioBufferState = *audio_buffers[index]
         voice: s32 = 0
         while voice < entry.voice_count {
-            js_wa_source_stop(entry.voices[voice])
+            AudioHostSourceStop(entry.voices[voice])
             voice += 1
         }
         entry.voice_count = 0
@@ -337,11 +314,11 @@
 
     AudioPlaySound :: (index: s32, offset: float64) {
         entry: *AudioBufferState = *audio_buffers[index]
-        js_wa_resume()
+        AudioHostResume()
         AudioPruneVoices(index)
         if entry.voice_count >= AUDIO_VOICE_MAX {
             // Too many overlapping plays: the oldest one is cut off.
-            js_wa_source_stop(entry.voices[0])
+            AudioHostSourceStop(entry.voices[0])
             voice: s32 = 1
             while voice < entry.voice_count {
                 entry.voices[voice - 1] = entry.voices[voice]
@@ -353,8 +330,8 @@
         }
         if offset < 0.0 { offset = 0.0 }
         source: s32 = AudioNewSource()
-        started: float64 = js_wa_time()
-        ok: s32 = js_wa_source_start(source, entry.id, offset, 0,
+        started: float64 = AudioHostTime()
+        ok: s32 = AudioHostSourceStart(source, entry.id, offset, 0,
             cast(float64)AudioClampRate(entry.pitch),
             cast(float64)entry.volume, cast(float64)entry.pan)
         if ok == 0 { return }
@@ -382,7 +359,7 @@
         AudioPruneVoices(index)
         entry.paused_offset = 0.0
         if entry.voice_count > 0 {
-            elapsed: float64 = js_wa_time() - entry.voice_started[0]
+            elapsed: float64 = AudioHostTime() - entry.voice_started[0]
             if elapsed < 0.0 { elapsed = 0.0 }
             entry.paused_offset = entry.voice_offset[0] +
                 elapsed * cast(float64)AudioClampRate(entry.pitch)
@@ -412,12 +389,12 @@
         rate: float64 = cast(float64)AudioClampRate(entry.pitch)
         voice: s32 = 0
         while voice < entry.voice_count {
-            js_wa_source_set(entry.voices[voice], cast(float64)entry.volume,
+            AudioHostSourceSet(entry.voices[voice], cast(float64)entry.volume,
                 cast(float64)entry.pan, rate)
             voice += 1
         }
         if entry.has_music && entry.music_source > 0 {
-            js_wa_source_set(entry.music_source, cast(float64)entry.volume,
+            AudioHostSourceSet(entry.music_source, cast(float64)entry.volume,
                 cast(float64)entry.pan, rate)
         }
     }
@@ -452,9 +429,9 @@
             return
         }
         if entry.music_looping { return }
-        if js_wa_source_done(entry.music_source) != 0 {
+        if AudioHostSourceDone(entry.music_source) != 0 {
             entry.music_playing = false
-            js_wa_source_stop(entry.music_source)
+            AudioHostSourceStop(entry.music_source)
         }
     }
 
@@ -463,7 +440,7 @@
         if !entry.has_music { return 0.0 }
         AudioRefreshMusic(index)
         if entry.music_playing {
-            elapsed: float64 = js_wa_time() - entry.music_started
+            elapsed: float64 = AudioHostTime() - entry.music_started
             if elapsed < 0.0 { elapsed = 0.0 }
             return entry.music_offset +
                 elapsed * cast(float64)AudioClampRate(entry.pitch)
@@ -473,9 +450,9 @@
 
     AudioPlayMusic :: (index: s32, looping: bool) {
         entry: *AudioBufferState = *audio_buffers[index]
-        js_wa_resume()
+        AudioHostResume()
         if entry.has_music && entry.music_source > 0 {
-            js_wa_source_stop(entry.music_source)
+            AudioHostSourceStop(entry.music_source)
         }
         entry.has_music = true
         if entry.music_offset < 0.0 { entry.music_offset = 0.0 }
@@ -483,10 +460,10 @@
         loop: s32 = 0
         if looping { loop = 1 }
         entry.music_source = source
-        entry.music_started = js_wa_time()
+        entry.music_started = AudioHostTime()
         entry.music_playing = true
         entry.music_looping = looping
-        ok: s32 = js_wa_source_start(source, entry.id, entry.music_offset, loop,
+        ok: s32 = AudioHostSourceStart(source, entry.id, entry.music_offset, loop,
             cast(float64)AudioClampRate(entry.pitch),
             cast(float64)entry.volume, cast(float64)entry.pan)
         if ok == 0 { entry.music_playing = false }
@@ -497,13 +474,13 @@
         if !entry.has_music { return }
         entry.music_offset = AudioMusicOffset(index)
         entry.music_playing = false
-        js_wa_source_stop(entry.music_source)
+        AudioHostSourceStop(entry.music_source)
         entry.music_source = 0
     }
 
     AudioStopMusic :: (index: s32) {
         entry: *AudioBufferState = *audio_buffers[index]
-        if entry.has_music { js_wa_source_stop(entry.music_source) }
+        if entry.has_music { AudioHostSourceStop(entry.music_source) }
         entry.has_music = true
         entry.music_offset = 0.0
         entry.music_playing = false
@@ -549,7 +526,7 @@
             entry.music_looping = false
         }
         target: float64 = cast(float64)position
-        duration: float64 = js_wa_buffer_read(id, 3)
+        duration: float64 = AudioHostBufferRead(id, 3)
         if target > duration { target = duration }
         if target < 0.0 { target = 0.0 }
         entry.music_offset = target
@@ -583,11 +560,11 @@
         kept: s32 = 0
         slot: s32 = 0
         while slot < stream.source_count {
-            if js_wa_source_done(stream.sources[slot]) == 0 {
+            if AudioHostSourceDone(stream.sources[slot]) == 0 {
                 stream.sources[kept] = stream.sources[slot]
                 kept += 1
             } else {
-                js_wa_source_stop(stream.sources[slot])
+                AudioHostSourceStop(stream.sources[slot])
             }
             slot += 1
         }
@@ -598,7 +575,7 @@
         stream: *AudioStreamState = *audio_streams[index]
         slot: s32 = 0
         while slot < stream.source_count {
-            js_wa_source_stop(stream.sources[slot])
+            AudioHostSourceStop(stream.sources[slot])
             slot += 1
         }
         stream.source_count = 0
@@ -607,7 +584,7 @@
     AudioStopStreamTimer :: (index: s32) {
         stream: *AudioStreamState = *audio_streams[index]
         if stream.timer_running {
-            js_wa_timer_stop(stream.id)
+            AudioHostTimerStop(stream.id)
             stream.timer_running = false
         }
     }
@@ -621,7 +598,7 @@
 
     AudioEngineStreamCreate :: (sample_rate: s32, sample_size: s32,
         channels: s32) -> s32 {
-        if js_wa_open() == 0 { return 0 }
+        if AudioHostOpen() == 0 { return 0 }
         index: s32 = 0
         while index < AUDIO_STREAM_MAX {
             if audio_streams[index].id == 0 {
@@ -629,7 +606,7 @@
                 stream.id = AudioNewId()
                 stream.sample_rate = sample_rate
                 if stream.sample_rate <= 0 {
-                    stream.sample_rate = cast(s32)js_wa_rate()
+                    stream.sample_rate = cast(s32)AudioHostRate()
                 }
                 if stream.sample_rate <= 0 { stream.sample_rate = 44100 }
                 stream.sample_size = sample_size
@@ -673,11 +650,11 @@
         if sample_size <= 0 { sample_size = stream.sample_size }
         if sample_rate <= 0 { sample_rate = stream.sample_rate }
         AudioProcessBlock(stream, data, frames)
-        now: float64 = js_wa_time()
+        now: float64 = AudioHostTime()
         if stream.next_time < now { stream.next_time = now }
         rate: float64 = cast(float64)AudioClampRate(stream.pitch)
         source: s32 = AudioNewSource()
-        ok: s32 = js_wa_source_pcm(source, data, frames, sample_rate, sample_size,
+        ok: s32 = AudioHostSourcePcm(source, data, frames, sample_rate, sample_size,
             channels, stream.next_time, rate, cast(float64)stream.volume,
             cast(float64)stream.pan)
         if ok == 0 { return 0 }
@@ -697,7 +674,7 @@
         if stream.source_count >= AUDIO_STREAM_SOURCE_MAX { return }
         frames: s32 = stream.callback_frames
         bytes: s32 = frames * stream.channels * AudioSampleBytes(stream.sample_size)
-        block: *void = AudioAllocate(cast(usize)bytes)
+        block: *void = AudioHostAllocate(cast(usize)bytes)
         if block == null { return }
         zeroed: *u8 = cast(*u8)block
         byte: s32 = 0
@@ -709,7 +686,7 @@
         callback(block, cast(u32)frames)
         unused AudioStreamPush(index, block, frames, stream.sample_rate,
             stream.sample_size, stream.channels)
-        AudioRelease(block)
+        AudioHostFree(block)
     }
 
     AudioStartStreamTimer :: (index: s32) {
@@ -719,7 +696,7 @@
         if interval < 8 { interval = 8 }
         stream.timer_running = true
         tick: CanvasAudioTimer = AudioStreamTick
-        js_wa_timer(stream.id, interval, tick)
+        AudioHostTimer(stream.id, interval, tick)
     }
 
     AudioApplyStream :: (index: s32) {
@@ -727,7 +704,7 @@
         rate: float64 = cast(float64)AudioClampRate(stream.pitch)
         slot: s32 = 0
         while slot < stream.source_count {
-            js_wa_source_set(stream.sources[slot], cast(float64)stream.volume,
+            AudioHostSourceSet(stream.sources[slot], cast(float64)stream.volume,
                 cast(float64)stream.pan, rate)
             slot += 1
         }
@@ -748,10 +725,10 @@
 
     AudioEngineStreamPlay :: (id: s32) {
         index: s32 = AudioFindStream(id)
-        if index < 0 || js_wa_open() == 0 { return }
-        js_wa_resume()
+        if index < 0 || AudioHostOpen() == 0 { return }
+        AudioHostResume()
         audio_streams[index].playing = true
-        audio_streams[index].next_time = js_wa_time()
+        audio_streams[index].next_time = AudioHostTime()
         AudioStartStreamTimer(index)
     }
 
@@ -773,10 +750,10 @@
 
     AudioEngineStreamResume :: (id: s32) {
         index: s32 = AudioFindStream(id)
-        if index < 0 || js_wa_open() == 0 { return }
-        js_wa_resume()
+        if index < 0 || AudioHostOpen() == 0 { return }
+        AudioHostResume()
         audio_streams[index].playing = true
-        now: float64 = js_wa_time()
+        now: float64 = AudioHostTime()
         if audio_streams[index].next_time < now {
             audio_streams[index].next_time = now
         }
