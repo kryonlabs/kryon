@@ -1,0 +1,311 @@
+#import "c_string"
+#import "tray_props"
+
+// The Windows tray is a notification-area icon owned by a private message
+// window. No foreign window is enumerated, hidden, closed, or managed here.
+
+#scope_file
+
+user32 :: #system_library "user32";
+kernel32 :: #system_library "kernel32";
+shell32 :: #system_library "shell32";
+
+WindowProcedure :: #type (*void, u32, usize, isize) -> isize #c_call;
+
+WindowClass :: struct {
+    size: u32
+    style: u32
+    procedure: *void
+    class_extra: s32
+    window_extra: s32
+    instance: *void
+    icon: *void
+    cursor: *void
+    background: *void
+    menu_name: *u16
+    class_name: *u16
+    small_icon: *void
+}
+
+Guid :: struct {
+    first: u32
+    second: u16
+    third: u16
+    bytes: [8]u8
+}
+
+NotifyIconData :: struct {
+    size: u32
+    window: *void
+    id: u32
+    flags: u32
+    callback_message: u32
+    icon: *void
+    tip: [128]u16
+    state: u32
+    state_mask: u32
+    info: [256]u16
+    version: u32
+    info_title: [64]u16
+    info_flags: u32
+    guid: Guid
+    balloon_icon: *void
+}
+
+IconIdentifier :: struct {
+    size: u32
+    window: *void
+    id: u32
+    guid: Guid
+}
+
+Point :: struct {
+    x: s32
+    y: s32
+}
+
+Bounds :: struct {
+    left: s32
+    top: s32
+    right: s32
+    bottom: s32
+}
+
+Message :: struct {
+    window: *void
+    message: u32
+    wparam: usize
+    lparam: isize
+    time: u32
+    point: Point
+    private: u32
+}
+
+WideText :: (codepage: u32, flags: u32, source: *u8, bytes: s32,
+    output: *u16, capacity: s32) -> s32 #foreign kernel32 "MultiByteToWideChar";
+ModuleHandle :: (name: *u16) -> *void #foreign kernel32 "GetModuleHandleW";
+RegisterClass :: (window_class: *WindowClass) -> u16 #foreign user32 "RegisterClassExW";
+CreateWindow :: (extended_style: u32, class_name: *u16, title: *u16,
+    style: u32, x: s32, y: s32, width: s32, height: s32, parent: *void,
+    menu: *void, instance: *void, data: *void) -> *void #foreign user32 "CreateWindowExW";
+DestroyWindow :: (window: *void) -> s32 #foreign user32 "DestroyWindow";
+DefaultProcedure :: (window: *void, message: u32, wparam: usize,
+    lparam: isize) -> isize #foreign user32 "DefWindowProcW";
+LoadIcon :: (instance: *void, name: *u16) -> *void #foreign user32 "LoadIconW";
+NotifyIcon :: (message: u32, icon: *NotifyIconData) -> s32 #foreign shell32 "Shell_NotifyIconW";
+IconBounds :: (icon: *IconIdentifier, bounds: *Bounds) -> s32 #foreign shell32 "Shell_NotifyIconGetRect";
+CreatePopupMenu :: () -> *void #foreign user32 "CreatePopupMenu";
+AppendMenu :: (menu: *void, flags: u32, identifier: usize,
+    label: *u16) -> s32 #foreign user32 "AppendMenuW";
+CursorPosition :: (position: *Point) -> s32 #foreign user32 "GetCursorPos";
+SetForeground :: (window: *void) -> s32 #foreign user32 "SetForegroundWindow";
+TrackMenu :: (menu: *void, flags: u32, x: s32, y: s32, reserved: s32,
+    window: *void, bounds: *Bounds) -> s32 #foreign user32 "TrackPopupMenu";
+PostMessage :: (window: *void, message: u32, wparam: usize,
+    lparam: isize) -> s32 #foreign user32 "PostMessageW";
+DestroyMenu :: (menu: *void) -> s32 #foreign user32 "DestroyMenu";
+PeekMessage :: (message: *Message, window: *void, first: u32,
+    last: u32, remove: u32) -> s32 #foreign user32 "PeekMessageW";
+TranslateMessage :: (message: *Message) -> s32 #foreign user32 "TranslateMessage";
+DispatchMessage :: (message: *Message) -> isize #foreign user32 "DispatchMessageW";
+
+TRAY_MESSAGE :: 32844
+ICON_ID :: 19282
+COMMAND_BASE :: 20736
+
+window: *void;
+icon_data: NotifyIconData;
+menu_snapshot: TrayMenuSnapshot;
+activate_action: s32;
+pending_action: s32;
+title: [128]u8;
+
+ToWide :: (source: *u8, output: []u16) {
+    if output.count == 0 { return }
+    output[0] = 0
+    if source != null {
+        // CP_UTF8 with MB_ERR_INVALID_CHARS, then the ANSI code page.
+        if WideText(65001, 8, source, -1, *output[0],
+            cast(s32)output.count) == 0 {
+            WideText(0, 0, source, -1, *output[0], cast(s32)output.count)
+        }
+    }
+    output[output.count - 1] = 0
+}
+
+BuildMenu :: () -> *void {
+    root: *void = CreatePopupMenu()
+    if root == null { return null }
+    submenus: [64]*void
+    index: s32 = 0
+    while index < menu_snapshot.count {
+        entry: *TrayMenuEntry = *menu_snapshot.entries[index]
+        submenus[index] = null
+        container: *void = root
+        if entry.parent > 0 { container = submenus[entry.parent - 1] }
+        if container != null {
+            if entry.kind == cast(s32)TrayMenuItemKind.TrayMenuItemSeparator {
+                // MF_SEPARATOR
+                AppendMenu(container, 2048, 0, null)
+            } else {
+                label: [160]u16
+                ToWide(*entry.label[0], label[:])
+                // MF_GRAYED
+                flags: u32 = 0
+                if !entry.enabled { flags = 1 }
+                if entry.kind == cast(s32)TrayMenuItemKind.TrayMenuItemSubmenu {
+                    submenus[index] = CreatePopupMenu()
+                    // MF_POPUP
+                    AppendMenu(container, flags | 16,
+                        cast(usize)submenus[index], *label[0])
+                } else {
+                    AppendMenu(container, flags,
+                        cast(usize)(COMMAND_BASE + index), *label[0])
+                }
+            }
+        }
+        index += 1
+    }
+    return root
+}
+
+ShowMenu :: () {
+    menu: *void = BuildMenu()
+    if menu == null { return }
+    position: Point
+    CursorPosition(*position)
+    SetForeground(window)
+    // TPM_RIGHTBUTTON | TPM_BOTTOMALIGN
+    TrackMenu(menu, 34, position.x, position.y, 0, window, null)
+    PostMessage(window, 0, cast(usize)0, cast(isize)0)
+    DestroyMenu(menu)
+}
+
+WindowProc :: (target: *void, message: u32, wparam: usize,
+    lparam: isize) -> isize {
+    if target == window && message == TRAY_MESSAGE {
+        event: u32 = cast(u32)lparam
+        // WM_LBUTTONUP, NIN_SELECT, NIN_KEYSELECT
+        if event == 514 || event == 1024 || event == 1025 {
+            pending_action = activate_action
+        }
+        // WM_RBUTTONUP, WM_CONTEXTMENU
+        if event == 517 || event == 123 { ShowMenu() }
+        return cast(isize)0
+    }
+    // WM_COMMAND
+    if target == window && message == 273 {
+        command: s32 = cast(s32)(cast(u32)wparam & 65535) - COMMAND_BASE
+        if command >= 0 && command < menu_snapshot.count {
+            pending_action = menu_snapshot.entries[command].action
+        }
+        return cast(isize)0
+    }
+    return DefaultProcedure(target, message, wparam, lparam)
+}
+
+#scope_export
+
+TrayWindowsOpen :: (spec: TraySpec) -> bool {
+    if window != null { return true }
+    if !TrayMenuCapture(spec.menu, *menu_snapshot) { return false }
+    class_bytes: [32]u8
+    class_name: [32]u16
+    CopyCString("KryonTrayWindow", class_bytes[:])
+    ToWide(*class_bytes[0], class_name[:])
+    instance: *void = ModuleHandle(null)
+    window_class: WindowClass
+    window_class.size = cast(u32)size_of(WindowClass)
+    routine: WindowProcedure = WindowProc
+    raw_routine: **void = cast(**void)*routine
+    window_class.procedure = raw_routine[0]
+    window_class.instance = instance
+    window_class.class_name = *class_name[0]
+    RegisterClass(*window_class)
+    empty: [1]u16
+    // WS_EX_TOOLWINDOW, WS_POPUP: a hidden message window owned by the app.
+    window = CreateWindow(128, *class_name[0], *empty[0], 2147483648,
+        0, 0, 0, 0, null, null, instance, null)
+    if window == null { return false }
+    if !CopyCString(spec.title, title[:]) || title[0] == 0 {
+        CopyCString("App", title[:])
+    }
+    activate_action = spec.activate_action
+    icon_data = .{}
+    icon_data.size = cast(u32)size_of(NotifyIconData)
+    icon_data.window = window
+    icon_data.id = ICON_ID
+    // NIF_MESSAGE | NIF_ICON | NIF_TIP
+    icon_data.flags = 7
+    icon_data.callback_message = TRAY_MESSAGE
+    // The executable's first icon resource, else IDI_APPLICATION.
+    icon_data.icon = LoadIcon(instance, cast(*u16)cast(usize)32512)
+    if icon_data.icon == null {
+        icon_data.icon = LoadIcon(null, cast(*u16)cast(usize)32512)
+    }
+    ToWide(*title[0], icon_data.tip[:])
+    if NotifyIcon(0, *icon_data) == 0 {
+        TrayWindowsClose()
+        return false
+    }
+    // NOTIFYICON_VERSION_4 through NIM_SETVERSION
+    icon_data.version = 3
+    NotifyIcon(4, *icon_data)
+    return true
+}
+
+TrayWindowsVisible :: () -> bool {
+    if window == null { return false }
+    icon: IconIdentifier
+    bounds: Bounds
+    icon.size = cast(u32)size_of(IconIdentifier)
+    icon.window = window
+    icon.id = ICON_ID
+    return IconBounds(*icon, *bounds) >= 0
+}
+
+TrayWindowsTakeAction :: () -> s32 {
+    message: Message
+    while window != null && PeekMessage(*message, window, 0, 0, 1) != 0 {
+        TranslateMessage(*message)
+        DispatchMessage(*message)
+    }
+    action: s32 = pending_action
+    pending_action = 0
+    return action
+}
+
+TrayWindowsSetMenu :: (items: []TrayMenuItem) {
+    snapshot: TrayMenuSnapshot
+    if TrayMenuCapture(items, *snapshot) { menu_snapshot = snapshot }
+}
+
+TrayWindowsSetStatus :: (text: string) {
+    if window == null { return }
+    bytes: [128]u8
+    if !CopyCString(text, bytes[:]) || bytes[0] == 0 {
+        TrayCopyBytes(*title[0], bytes[:])
+    }
+    ToWide(*bytes[0], icon_data.tip[:])
+    // NIF_TIP through NIM_MODIFY
+    icon_data.flags = 4
+    NotifyIcon(1, *icon_data)
+}
+
+// The Windows tray keeps the executable's icon resource.
+TrayWindowsSetIcon :: (path: string) {}
+
+TrayWindowsSetActivateAction :: (action: s32) {
+    activate_action = action
+}
+
+TrayWindowsClose :: () {
+    // NIM_DELETE
+    if window != null { NotifyIcon(2, *icon_data) }
+    menu_snapshot.count = 0
+    if window != null {
+        DestroyWindow(window)
+        window = null
+    }
+    pending_action = 0
+}

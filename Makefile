@@ -238,6 +238,10 @@ desktop-project-test: build/bin/kryon
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
 
+.PHONY: tray-test
+tray-test: $(ZI2C_BIN)
+	@ZI2C_BIN="$(ZI2C_BIN)" sh tests/tray_test.sh
+
 .PHONY: libdraw-native-plan9-test
 libdraw-native-plan9-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh

@@ -1,0 +1,76 @@
+#import "c_string"
+#import "tray"
+#import "tray_props"
+
+c :: #system_library "c";
+TestGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
+
+Present :: () -> bool {
+    name: [32]u8
+    CopyCString("KRYON_TRAY_TEST_PRESENT", name[:])
+    return TestGetEnvironment(*name[0]) != null
+}
+
+#program_export
+main :: () -> s32 {
+    leaves: [2]TrayMenuItem
+    leaves[0].label = "Open"
+    leaves[0].action = 3
+    leaves[1].kind = TrayMenuItemKind.TrayMenuItemSeparator
+    menu: [2]TrayMenuItem
+    menu[0].kind = TrayMenuItemKind.TrayMenuItemSubmenu
+    menu[0].label = "More"
+    menu[0].children = leaves[:]
+    menu[1].label = "Quit"
+    menu[1].action = 7
+    snapshot: TrayMenuSnapshot
+    if !TrayMenuCapture(menu[:], *snapshot) { return 2 }
+    if snapshot.count != 4 { return 3 }
+    if snapshot.entries[1].parent != 1 || snapshot.entries[1].action != 3 {
+        return 4
+    }
+    if snapshot.entries[3].parent != 0 || !snapshot.entries[3].enabled {
+        return 5
+    }
+    too_long: [1]TrayMenuItem
+    too_long[0].label = "This label is longer than the fixed tray label capacity so the capture must reject it instead of silently truncating the visible text"
+    if TrayMenuCapture(too_long[:], *snapshot) { return 6 }
+
+    paths: [1]string
+    paths[0] = "missing/icon.png"
+    spec: TraySpec
+    spec.id = "kryon-tray-test"
+    spec.title = "Kryon tray test"
+    spec.icon_name = "kryon-tray-test"
+    spec.icon_paths = paths[:]
+    spec.activate_action = 11
+    spec.menu = menu[:]
+    ready: bool = TrayOpen(spec)
+    if !Present() {
+        // Without a display GTK cannot start, and nothing may claim to show.
+        visible: bool = TrayVisible()
+        TrayClose()
+        if ready || visible { return 8 }
+        return 0
+    }
+    if !ready { return 9 }
+    // No tray host runs on the private display, so the icon is not shown and
+    // the app must keep its own window.
+    if TrayVisible() {
+        TrayClose()
+        return 10
+    }
+    TraySetStatus("Testing")
+    TraySetMenu(leaves[:])
+    TraySetIcon("")
+    TraySetActivateAction(12)
+    if TrayTakeAction() != 0 {
+        TrayClose()
+        return 11
+    }
+    TrayClose()
+    if TrayVisible() { return 12 }
+    if !TrayOpen(spec) { return 13 }
+    TrayClose()
+    return 0
+}
