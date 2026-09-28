@@ -13,7 +13,7 @@ CPPFLAGS=-I$GEN
 CFLAGS=-FTVw
 
 gensrc=`{cat $genlist}
-genobj=`{cat $genlist | sed -e 's@^build/plan9/@@' -e 's@\.c$@.8@' -e 's@^@'$GEN'/@'}
+genobj=${gensrc:%.c=%.8}
 
 all:V: check $LIB
 check:V:
@@ -31,5 +31,5 @@ $LIB:V: $genobj
 clean:V:
 	rm -f $GEN/*.$O $GEN/*.i $LIB
 
-$GEN/%.8: $GEN/%.c
+build/plan9/%.8: build/plan9/%.c
 	cpp -+ $CPPFLAGS $prereq > $GEN/$stem.i && $CC $CFLAGS -o $target -c $GEN/$stem.i && rm -f $GEN/$stem.i
