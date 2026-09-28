@@ -1,0 +1,309 @@
+// Reads a desktop theme's colors from its GTK CSS, so an application can follow
+// the system theme. This file only parses text; system_theme_linux finds the
+// theme and reads its files.
+//
+// GTK themes name their palette with `@define-color theme_bg_color #161925;`.
+// Values are hex, rgb(), rgba(), a reference to another name (@name), or one
+// of shade(), alpha() and mix() around those. Packed colors are 0xRRGGBBAA.
+
+SystemPalette :: struct {
+    // The colors came from a theme's CSS; otherwise they are the fallback.
+    found: bool
+    dark: bool
+    background: u32
+    base: u32
+    text: u32
+    selected: u32
+    selected_text: u32
+    border: u32
+    danger: u32
+    warning: u32
+    success: u32
+}
+
+CssColor :: struct {
+    found: bool
+    color: u32
+}
+
+CSS_DEPTH :: 8;
+
+css_arg_start: [4]s32;
+css_arg_end: [4]s32;
+
+CssNone :: () -> CssColor {
+    return CssColor.{false, cast(u32)0}
+}
+
+CssPack :: (red: s32, green: s32, blue: s32, alpha: s32) -> u32 {
+    return (cast(u32)CssClamp(red) << cast(u32)24) | (cast(u32)CssClamp(green) << cast(u32)16) |
+        (cast(u32)CssClamp(blue) << cast(u32)8) | cast(u32)CssClamp(alpha)
+}
+
+CssClamp :: (value: s32) -> s32 {
+    if value < 0 { return 0 }
+    if value > 255 { return 255 }
+    return value
+}
+
+CssChannel :: (color: u32, shift: u32) -> s32 {
+    return cast(s32)((color >> shift) & cast(u32)255)
+}
+
+CssIsSpace :: (byte: u8) -> bool {
+    return byte == 32 || byte == 9 || byte == 10 || byte == 13
+}
+
+CssTrim :: (text: string) -> string {
+    start: s64 = 0
+    end: s64 = text.count
+    while start < end && CssIsSpace(text[start]) { start += 1 }
+    while end > start && CssIsSpace(text[end - 1]) { end -= 1 }
+    return text[start:end]
+}
+
+CssStartsWith :: (text: string, prefix: string) -> bool {
+    return text.count >= prefix.count && text[0:prefix.count] == prefix
+}
+
+CssHexDigit :: (byte: u8) -> s32 {
+    if byte >= 48 && byte <= 57 { return cast(s32)byte - 48 }
+    if byte >= 97 && byte <= 102 { return cast(s32)byte - 87 }
+    if byte >= 65 && byte <= 70 { return cast(s32)byte - 55 }
+    return -1
+}
+
+// #rgb, #rrggbb, or #rrggbbaa.
+CssHex :: (text: string) -> CssColor {
+    digits: s32 = cast(s32)text.count - 1
+    if digits != 3 && digits != 6 && digits != 8 { return CssNone() }
+    values: [8]s32
+    index: s32 = 0
+    while index < digits {
+        values[index] = CssHexDigit(text[index + 1])
+        if values[index] < 0 { return CssNone() }
+        index += 1
+    }
+    if digits == 3 {
+        return CssColor.{true, CssPack(values[0] * 17, values[1] * 17, values[2] * 17, 255)}
+    }
+    alpha: s32 = 255
+    if digits == 8 { alpha = values[6] * 16 + values[7] }
+    return CssColor.{true, CssPack(values[0] * 16 + values[1], values[2] * 16 + values[3],
+        values[4] * 16 + values[5], alpha)}
+}
+
+CssFloat :: (text: string) -> float32 {
+    value: float32 = 0.0
+    negative: bool = false
+    index: s64 = 0
+    if index < text.count && (text[index] == 45 || text[index] == 43) {
+        negative = text[index] == 45
+        index += 1
+    }
+    while index < text.count && text[index] >= 48 && text[index] <= 57 {
+        value = value * 10.0 + cast(float32)(cast(s32)text[index] - 48)
+        index += 1
+    }
+    if index < text.count && text[index] == 46 {
+        index += 1
+        scale: float32 = 0.1
+        while index < text.count && text[index] >= 48 && text[index] <= 57 {
+            value += cast(float32)(cast(s32)text[index] - 48) * scale
+            scale = scale * 0.1
+            index += 1
+        }
+    }
+    if negative { return -value }
+    return value
+}
+
+// Splits the arguments of a call such as `shade(#161925, 1.2)` at top-level
+// commas into css_arg_start / css_arg_end. Returns the argument count.
+CssArguments :: (call: string, open: s64) -> s32 {
+    count: s32 = 0
+    depth: s32 = 0
+    start: s64 = open + 1
+    index: s64 = open + 1
+    while index < call.count {
+        byte: u8 = call[index]
+        if byte == 40 { depth += 1 }
+        if byte == 41 {
+            if depth == 0 {
+                if count < 4 {
+                    css_arg_start[count] = cast(s32)start
+                    css_arg_end[count] = cast(s32)index
+                    count += 1
+                }
+                return count
+            }
+            depth -= 1
+        }
+        if byte == 44 && depth == 0 {
+            if count < 4 {
+                css_arg_start[count] = cast(s32)start
+                css_arg_end[count] = cast(s32)index
+                count += 1
+            }
+            start = index + 1
+        }
+        index += 1
+    }
+    return 0
+}
+
+CssScale :: (color: u32, factor: float32) -> u32 {
+    return CssPack(cast(s32)(cast(float32)CssChannel(color, cast(u32)24) * factor + 0.5),
+        cast(s32)(cast(float32)CssChannel(color, cast(u32)16) * factor + 0.5),
+        cast(s32)(cast(float32)CssChannel(color, cast(u32)8) * factor + 0.5),
+        CssChannel(color, cast(u32)0))
+}
+
+CssMix :: (first: u32, second: u32, amount: float32) -> u32 {
+    keep: float32 = 1.0 - amount
+    return CssPack(
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)24) * keep + cast(float32)CssChannel(second, cast(u32)24) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)16) * keep + cast(float32)CssChannel(second, cast(u32)16) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)8) * keep + cast(float32)CssChannel(second, cast(u32)8) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)0) * keep + cast(float32)CssChannel(second, cast(u32)0) * amount + 0.5))
+}
+
+// The color a CSS value stands for, looking @names up in css.
+CssValue :: (css: string, value: string, depth: s32) -> CssColor {
+    text: string = CssTrim(value)
+    if text.count == 0 || depth > CSS_DEPTH { return CssNone() }
+    if text[0] == 35 { return CssHex(text) }
+    if text[0] == 64 { return CssDefined(css, text[1:], depth + 1) }
+    if text == "black" { return CssColor.{true, CssPack(0, 0, 0, 255)} }
+    if text == "white" { return CssColor.{true, CssPack(255, 255, 255, 255)} }
+    if text == "transparent" { return CssColor.{true, CssPack(0, 0, 0, 0)} }
+    open: s64 = 0
+    while open < text.count && text[open] != 40 { open += 1 }
+    if open >= text.count { return CssNone() }
+    name: string = text[0:open]
+    count: s32 = CssArguments(text, open)
+    if count == 0 { return CssNone() }
+    first: string = text[css_arg_start[0]:css_arg_end[0]]
+    second: string = ""
+    third: string = ""
+    fourth: string = ""
+    if count > 1 { second = text[css_arg_start[1]:css_arg_end[1]] }
+    if count > 2 { third = text[css_arg_start[2]:css_arg_end[2]] }
+    if count > 3 { fourth = text[css_arg_start[3]:css_arg_end[3]] }
+    if name == "rgb" || name == "rgba" {
+        if count < 3 { return CssNone() }
+        alpha: s32 = 255
+        if count == 4 { alpha = cast(s32)(CssFloat(CssTrim(fourth)) * 255.0 + 0.5) }
+        return CssColor.{true, CssPack(cast(s32)CssFloat(CssTrim(first)),
+            cast(s32)CssFloat(CssTrim(second)), cast(s32)CssFloat(CssTrim(third)), alpha)}
+    }
+    if name == "shade" && count == 2 {
+        base: CssColor = CssValue(css, first, depth + 1)
+        if !base.found { return CssNone() }
+        return CssColor.{true, CssScale(base.color, CssFloat(CssTrim(second)))}
+    }
+    if name == "alpha" && count == 2 {
+        base: CssColor = CssValue(css, first, depth + 1)
+        if !base.found { return CssNone() }
+        factor: float32 = CssFloat(CssTrim(second))
+        return CssColor.{true, (base.color & cast(u32)0xFFFFFF00) |
+            cast(u32)CssClamp(cast(s32)(cast(float32)CssChannel(base.color, cast(u32)0) * factor + 0.5))}
+    }
+    if name == "mix" && count == 3 {
+        one: CssColor = CssValue(css, first, depth + 1)
+        two: CssColor = CssValue(css, second, depth + 1)
+        if !one.found || !two.found { return CssNone() }
+        return CssColor.{true, CssMix(one.color, two.color, CssFloat(CssTrim(third)))}
+    }
+    return CssNone()
+}
+
+// The color `@define-color name ...;` gives, the last definition winning.
+CssDefined :: (css: string, name: string, depth: s32) -> CssColor {
+    marker: string = "@define-color "
+    found: CssColor = CssNone()
+    at: s64 = 0
+    while at + marker.count < css.count {
+        if css[at] == 64 && css[at:at + marker.count] == marker {
+            start: s64 = at + marker.count
+            end: s64 = start
+            while end < css.count && !CssIsSpace(css[end]) { end += 1 }
+            if css[start:end] == name {
+                stop: s64 = end
+                while stop < css.count && css[stop] != 59 { stop += 1 }
+                candidate: CssColor = CssValue(css, css[end:stop], depth)
+                if candidate.found { found = candidate }
+                at = stop
+            }
+        }
+        at += 1
+    }
+    return found
+}
+
+CssLuminance :: (color: u32) -> s32 {
+    return (CssChannel(color, cast(u32)24) * 299 + CssChannel(color, cast(u32)16) * 587 +
+        CssChannel(color, cast(u32)8) * 114) / 1000
+}
+
+CssFirst :: (css: string, first: string, second: string, fallback: u32) -> u32 {
+    color: CssColor = CssDefined(css, first, 0)
+    if color.found { return color.color }
+    color = CssDefined(css, second, 0)
+    if color.found { return color.color }
+    return fallback
+}
+
+// The palette a light or dark desktop uses when no theme can be read.
+#program_export
+SystemPaletteFallback :: (dark: bool) -> SystemPalette {
+    palette: SystemPalette
+    palette.dark = dark
+    if dark {
+        palette.background = CssPack(0x24, 0x24, 0x28, 255)
+        palette.base = CssPack(0x1b, 0x1b, 0x1f, 255)
+        palette.text = CssPack(0xe8, 0xe8, 0xea, 255)
+        palette.border = CssPack(0x0c, 0x0c, 0x0e, 255)
+    } else {
+        palette.background = CssPack(0xf2, 0xf2, 0xf4, 255)
+        palette.base = CssPack(0xff, 0xff, 0xff, 255)
+        palette.text = CssPack(0x24, 0x24, 0x28, 255)
+        palette.border = CssPack(0xc4, 0xc4, 0xc8, 255)
+    }
+    palette.selected = CssPack(0x35, 0x84, 0xe4, 255)
+    palette.selected_text = CssPack(255, 255, 255, 255)
+    palette.danger = CssPack(0xe0, 0x1b, 0x24, 255)
+    palette.warning = CssPack(0xf5, 0xc2, 0x11, 255)
+    palette.success = CssPack(0x2e, 0xc2, 0x7e, 255)
+    return palette
+}
+
+// The palette a theme's GTK CSS defines. Names a theme leaves out fall back to
+// the light or dark palette; whether it is dark follows the theme's own
+// background when it has one, and dark_hint otherwise.
+#program_export
+SystemPaletteFromCss :: (css: string, dark_hint: bool) -> SystemPalette {
+    palette: SystemPalette = SystemPaletteFallback(dark_hint)
+    background: CssColor = CssDefined(css, "theme_bg_color", 0)
+    if !background.found { background = CssDefined(css, "bg_color", 0) }
+    text: CssColor = CssDefined(css, "theme_fg_color", 0)
+    if !text.found { text = CssDefined(css, "fg_color", 0) }
+    if !background.found || !text.found { return palette }
+    palette.found = true
+    palette.background = background.color
+    palette.text = text.color
+    palette.dark = CssLuminance(background.color) < 128
+    if !palette.dark && dark_hint && CssLuminance(text.color) > 128 { palette.dark = true }
+    palette = SystemPaletteFallback(palette.dark)
+    palette.found = true
+    palette.background = background.color
+    palette.text = text.color
+    palette.base = CssFirst(css, "theme_base_color", "base_color", background.color)
+    palette.selected = CssFirst(css, "theme_selected_bg_color", "selected_bg_color", palette.selected)
+    palette.selected_text = CssFirst(css, "theme_selected_fg_color", "selected_fg_color", palette.selected_text)
+    palette.border = CssFirst(css, "borders", "borders", palette.border)
+    palette.danger = CssFirst(css, "error_color", "error_color", palette.danger)
+    palette.warning = CssFirst(css, "warning_color", "warning_color", palette.warning)
+    palette.success = CssFirst(css, "success_color", "success_color", palette.success)
+    return palette
+}

@@ -1,0 +1,37 @@
+#import "system_theme"
+
+Sweet :: "@define-color theme_fg_color #C3C7D1;\n@define-color theme_bg_color #161925;\n@define-color theme_base_color #181b28;\n@define-color theme_selected_bg_color #c50ed2;\n@define-color theme_selected_fg_color #fefefe;\n@define-color borders #090a0f;\n@define-color error_color #e6133e;\n@define-color warning_color #cc5500;\n@define-color success_color #0096b1;\n@define-color wm_bg_a shade(#161925, 1.2);\n";
+
+#program_export
+main :: () -> s32 {
+    // A dark GTK theme: its own colors, and dark because its background is.
+    palette: SystemPalette = SystemPaletteFromCss(Sweet, false)
+    if !palette.found || !palette.dark { return 1 }
+    if palette.background != cast(u32)0x161925FF || palette.text != cast(u32)0xC3C7D1FF { return 2 }
+    if palette.base != cast(u32)0x181b28FF || palette.selected != cast(u32)0xc50ed2FF { return 3 }
+    if palette.selected_text != cast(u32)0xfefefeFF || palette.border != cast(u32)0x090a0fFF { return 4 }
+    if palette.danger != cast(u32)0xe6133eFF || palette.success != cast(u32)0x0096b1FF { return 5 }
+
+    // A light theme, whatever the hint says.
+    light: string = "@define-color theme_fg_color #2e3436;\n@define-color theme_bg_color #f6f5f4;\n"
+    palette = SystemPaletteFromCss(light, true)
+    if !palette.found || palette.dark || palette.background != cast(u32)0xf6f5f4FF { return 6 }
+    if palette.base != cast(u32)0xf6f5f4FF { return 7 }
+
+    // References, functions, and the last definition winning.
+    css: string = "@define-color a #808080;\n@define-color b shade(@a, 0.5);\n@define-color c alpha(black, 0.5);\n@define-color d mix(#000000, #ffffff, 0.5);\n@define-color e rgba(10, 20, 30, 0.5);\n@define-color f #123;\n@define-color f2 #112233;\n@define-color a #404040;\n@define-color g @missing;\n"
+    if CssDefined(css, "b", 0).color != cast(u32)0x202020FF { return 8 }
+    if CssDefined(css, "c", 0).color != cast(u32)0x00000080 { return 9 }
+    if CssDefined(css, "d", 0).color != cast(u32)0x808080FF { return 10 }
+    if CssDefined(css, "e", 0).color != cast(u32)0x0a141e80 { return 11 }
+    if CssDefined(css, "f", 0).color != cast(u32)0x112233FF { return 12 }
+    if CssDefined(css, "a", 0).color != cast(u32)0x404040FF { return 13 }
+    if CssDefined(css, "g", 0).found || CssDefined(css, "zzz", 0).found { return 14 }
+
+    // No theme colors: the fallback for the hint.
+    palette = SystemPaletteFromCss("body { color: red }", true)
+    if palette.found || !palette.dark { return 15 }
+    palette = SystemPaletteFromCss("", false)
+    if palette.found || palette.dark { return 16 }
+    return 0
+}

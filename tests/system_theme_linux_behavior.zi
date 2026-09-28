@@ -1,0 +1,41 @@
+#import "byte_text_linux"
+#import "c_string"
+#import "system_theme"
+#import "system_theme_linux"
+
+libc :: #system_library "libc";
+GetEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
+
+#program_export
+main :: () -> s32 {
+    key: [16]u8
+    CopyCString("SCENARIO", key[:])
+    scenario: *u8 = GetEnvironment(*key[0])
+    if scenario == null { return 90 }
+    which: string = TextFromCString(scenario)
+    palette: SystemPalette = SystemPaletteRead()
+    if which == "xfce-dark" {
+        // xfconf names the theme; its CSS gives the colors.
+        if SystemThemeName() != "Fake-Dark" { return 1 }
+        if !palette.found || !palette.dark { return 2 }
+        if palette.background != cast(u32)0x161925FF || palette.selected != cast(u32)0xc50ed2FF { return 3 }
+        return 0
+    }
+    if which == "gtk-light" {
+        // No xfconf: settings.ini names a light theme.
+        if SystemThemeName() != "Fake-Light" { return 4 }
+        if !palette.found || palette.dark || palette.background != cast(u32)0xf6f5f4FF { return 5 }
+        return 0
+    }
+    if which == "env-dark" {
+        // Only GTK_THEME, naming a theme that is not installed.
+        if SystemThemeName() != "Missing" { return 6 }
+        if palette.found || !palette.dark { return 7 }
+        return 0
+    }
+    if which == "none" {
+        if SystemThemeName() != "" || palette.found || palette.dark { return 8 }
+        return 0
+    }
+    return 91
+}

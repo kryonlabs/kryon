@@ -1,0 +1,212 @@
+// Finds the desktop's GTK theme on Linux and reads its palette. Xfce keeps its
+// theme in xfconf; other desktops use GTK's settings.ini or GTK_THEME.
+#import "byte_text_linux"
+#import "system_theme"
+#import "text_buffer"
+
+#scope_file
+libc :: #system_library "libc";
+GetEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
+// Private names: the standard file module's exports would clash with an
+// application that declares its own file calls.
+ThemeOpen :: (path: *u8, flags: s32, mode: ..any) -> s32 #foreign libc "open";
+ThemeClose :: (descriptor: s32) -> s32 #foreign libc "close";
+ThemeSeek :: (descriptor: s32, offset: s64, origin: s32) -> s64 #foreign libc "lseek";
+ThemeRead :: (descriptor: s32, output: *u8, count: usize, offset: s64) -> isize #foreign libc "pread";
+
+css_buffer: [1048576]u8;
+file_buffer: [65536]u8;
+path_buffer: [1024]u8;
+name_buffer: [128]u8;
+name_length: s32 = 0;
+
+Environment :: (name: string) -> string {
+    key: [64]u8
+    at: s32 = 0
+    while at < cast(s32)name.count && at < 63 {
+        key[at] = name[at]
+        at += 1
+    }
+    key[at] = 0
+    value: *u8 = GetEnvironment(*key[0])
+    if value == null { return "" }
+    return TextFromCString(value)
+}
+
+Append :: (output: []u8, at: s32, value: string) -> s32 {
+    index: s32 = 0
+    while index < cast(s32)value.count && at + index < cast(s32)output.count - 1 {
+        output[at + index] = value[index]
+        index += 1
+    }
+    output[at + index] = 0
+    return at + index
+}
+
+// Reads the NUL-terminated path in path_buffer into buffer[offset:]; returns
+// the bytes read, 0 when the file is missing or does not fit.
+ReadInto :: (buffer: []u8, offset: s32) -> s32 {
+    descriptor: s32 = ThemeOpen(*path_buffer[0], 0)
+    if descriptor < 0 { return 0 }
+    size: s64 = ThemeSeek(descriptor, 0, 2)
+    room: s64 = cast(s64)buffer.count - cast(s64)offset - 1
+    if size <= 0 || size > room {
+        ThemeClose(descriptor)
+        return 0
+    }
+    read: isize = ThemeRead(descriptor, *buffer[offset], cast(usize)size, 0)
+    ThemeClose(descriptor)
+    if cast(s64)read != size { return 0 }
+    return cast(s32)size
+}
+
+Find :: (text: string, needle: string, from: s64) -> s64 {
+    at: s64 = from
+    while at + needle.count <= text.count {
+        if text[at:at + needle.count] == needle { return at }
+        at += 1
+    }
+    return -1
+}
+
+// The characters after `key` up to the terminator byte.
+ValueAfter :: (text: string, key: string, terminator: u8) -> string {
+    start: s64 = Find(text, key, 0)
+    if start < 0 { return "" }
+    start += key.count
+    end: s64 = start
+    while end < text.count && text[end] != terminator && text[end] != 10 && text[end] != 13 { end += 1 }
+    return text[start:end]
+}
+
+ConfigFile :: (relative: string, buffer: []u8) -> string {
+    home: string = Environment("HOME")
+    config: string = Environment("XDG_CONFIG_HOME")
+    at: s32 = 0
+    if config.count > 0 {
+        at = Append(path_buffer[:], at, config)
+    } else {
+        at = Append(path_buffer[:], at, home)
+        at = Append(path_buffer[:], at, "/.config")
+    }
+    at = Append(path_buffer[:], at, "/")
+    at = Append(path_buffer[:], at, relative)
+    size: s32 = ReadInto(buffer, 0)
+    if size == 0 { return "" }
+    return TextFromBytes(buffer[0:size])
+}
+
+LowerContains :: (text: string, needle: string) -> bool {
+    at: s64 = 0
+    while at + needle.count <= text.count {
+        same: bool = true
+        index: s64 = 0
+        while index < needle.count {
+            byte: u8 = text[at + index]
+            if byte >= 65 && byte <= 90 { byte += cast(u8)32 }
+            if byte != needle[index] {
+                same = false
+                break
+            }
+            index += 1
+        }
+        if same { return true }
+        at += 1
+    }
+    return false
+}
+
+StoreName :: (name: string) -> string {
+    length: s32 = cast(s32)name.count
+    if length > 127 { length = 127 }
+    index: s32 = 0
+    while index < length {
+        name_buffer[index] = name[index]
+        index += 1
+    }
+    name_buffer[length] = 0
+    name_length = length
+    return TextView(name_buffer[0:length])
+}
+
+#scope_export
+
+// The name of the desktop's GTK theme, or "" when none is configured.
+#program_export
+SystemThemeName :: () -> string {
+    settings: string = ConfigFile("xfce4/xfconf/xfce-perchannel-xml/xsettings.xml", file_buffer[:])
+    if settings.count > 0 {
+        at: s64 = Find(settings, "name=\"ThemeName\"", 0)
+        if at >= 0 {
+            value: s64 = Find(settings, "value=\"", at)
+            if value >= 0 {
+                start: s64 = value + 7
+                end: s64 = start
+                while end < settings.count && settings[end] != 34 { end += 1 }
+                if end > start { return StoreName(settings[start:end]) }
+            }
+        }
+    }
+    ini: string = ConfigFile("gtk-3.0/settings.ini", file_buffer[:])
+    name: string = ValueAfter(ini, "gtk-theme-name=", 10)
+    if name.count > 0 { return StoreName(CssTrim(name)) }
+    forced: string = Environment("GTK_THEME")
+    if forced.count > 0 {
+        end: s64 = 0
+        while end < forced.count && forced[end] != 58 { end += 1 }
+        return StoreName(forced[0:end])
+    }
+    return ""
+}
+
+// The desktop's palette: the configured GTK theme's own colors, or the light
+// or dark fallback when the theme has none we can read.
+#program_export
+SystemPaletteRead :: () -> SystemPalette {
+    name: string = SystemThemeName()
+    hint: bool = LowerContains(name, "dark") || LowerContains(Environment("GTK_THEME"), ":dark")
+    ini: string = ConfigFile("gtk-3.0/settings.ini", file_buffer[:])
+    prefer: string = CssTrim(ValueAfter(ini, "gtk-application-prefer-dark-theme=", 10))
+    if prefer == "1" || prefer == "true" || prefer == "True" { hint = true }
+    if name.count == 0 { return SystemPaletteFallback(hint) }
+    home: string = Environment("HOME")
+    data: string = Environment("XDG_DATA_HOME")
+    bases: [4]s32
+    candidate: s32 = 0
+    while candidate < 4 {
+        at: s32 = 0
+        if candidate == 0 {
+            at = Append(path_buffer[:], at, home)
+            at = Append(path_buffer[:], at, "/.themes/")
+        } else if candidate == 1 {
+            if data.count > 0 {
+                at = Append(path_buffer[:], at, data)
+            } else {
+                at = Append(path_buffer[:], at, home)
+                at = Append(path_buffer[:], at, "/.local/share")
+            }
+            at = Append(path_buffer[:], at, "/themes/")
+        } else if candidate == 2 {
+            at = Append(path_buffer[:], at, "/usr/share/themes/")
+        } else {
+            at = Append(path_buffer[:], at, "/usr/local/share/themes/")
+        }
+        at = Append(path_buffer[:], at, name)
+        directory_length: s32 = at
+        at = Append(path_buffer[:], at, "/gtk-3.0/gtk.css")
+        size: s32 = ReadInto(css_buffer[:], 0)
+        if size > 0 {
+            if hint {
+                at = Append(path_buffer[:], directory_length, "/gtk-3.0/gtk-dark.css")
+                more: s32 = ReadInto(css_buffer[:], size + 1)
+                if more > 0 {
+                    css_buffer[size] = cast(u8)10
+                    size += 1 + more
+                }
+            }
+            return SystemPaletteFromCss(TextFromBytes(css_buffer[0:size]), hint)
+        }
+        candidate += 1
+    }
+    return SystemPaletteFallback(hint)
+}
