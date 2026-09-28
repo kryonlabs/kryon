@@ -1,0 +1,57 @@
+#import "text_layout"
+#import "text_props"
+#import "ziran_text_wrap_host"
+
+using TextWrap;
+
+wrapped: [8]string;
+
+// Wrap into `wrapped` and return the number of lines.
+Wrap :: (value: string, width: float32) -> s32 {
+    count: s32 = 0
+    start: s32 = 0
+    while start < cast(s32)value.count && count < 8 {
+        line: TextLinePlan = NextTextLine(value, start, width,
+            cast(TextWrap)TextWrapAuto, 14, "")
+        if line.end <= line.start { break }
+        wrapped[count] = value[line.start:line.end]
+        count += 1
+        start = line.next
+    }
+    return count
+}
+
+#program_export
+main :: () -> s32 {
+    // Spaced text wraps at its spaces, as before.
+    if Wrap("aa bb cc dd", 50.0) != 2 || wrapped[0] != "aa bb" ||
+        wrapped[1] != "cc dd" { return 1 }
+    // A word wider than the line stays whole.
+    if Wrap("abcdefghij", 30.0) != 1 || wrapped[0] != "abcdefghij" { return 2 }
+
+    // Japanese has no spaces: it wraps between characters.
+    if Wrap("あいうえおかきくけこ", 40.0) != 3 || wrapped[0] != "あいうえ" ||
+        wrapped[1] != "おかきく" || wrapped[2] != "けこ" { return 3 }
+    // Closing punctuation stays with the character before it.
+    if Wrap("あいう。えお", 30.0) != 3 || wrapped[0] != "あい" ||
+        wrapped[1] != "う。え" || wrapped[2] != "お" { return 4 }
+    // An opening bracket stays with the character after it.
+    if Wrap("あ「い」う", 20.0) != 3 || wrapped[0] != "あ" ||
+        wrapped[1] != "「い」" || wrapped[2] != "う" { return 5 }
+    // A small kana stays with the syllable before it.
+    if Wrap("あいうっえお", 30.0) != 3 || wrapped[0] != "あい" ||
+        wrapped[1] != "うっえ" || wrapped[2] != "お" { return 6 }
+    // Latin and Japanese together break where the script changes.
+    if Wrap("Trocadorを使って", 90.0) != 2 || wrapped[0] != "Trocadorを" ||
+        wrapped[1] != "使って" { return 7 }
+    // Chinese wraps the same way.
+    if Wrap("请输入公开标识", 40.0) != 2 || wrapped[0] != "请输入公" ||
+        wrapped[1] != "开标识" { return 8 }
+    // Korean is spaced, so it wraps at spaces.
+    if Wrap("가나 다라 마바", 40.0) != 3 || wrapped[0] != "가나" ||
+        wrapped[1] != "다라" || wrapped[2] != "마바" { return 9 }
+    // An explicit line break still ends a line.
+    if Wrap("あい\nうえ", 100.0) != 2 || wrapped[0] != "あい" ||
+        wrapped[1] != "うえ" { return 10 }
+    return 0
+}

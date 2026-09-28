@@ -1,0 +1,19 @@
+// Every character is ten pixels wide, whatever its script, so a test can say
+// exactly where a line must break.
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    count: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)value.count {
+        byte: u8 = value[index]
+        if byte < cast(u8)128 || byte >= cast(u8)192 { count += 1 }
+        index += 1
+    }
+    return count * 10
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    return 12
+}

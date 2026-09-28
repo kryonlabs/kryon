@@ -1,6 +1,7 @@
 #import "font_metrics"
 #import "text_align"
 #import "text_props"
+#import "utf8"
 
 using TextAlign;
 using TextWrap;
@@ -26,7 +27,59 @@ TextIsSpace :: (value: u8) -> bool {
     value == cast(u8)11 || value == cast(u8)12
 }
 
-// Whitespace and line breaks delimit borrowed UTF-8 byte ranges. Optional
+// Japanese and Chinese are written without spaces, so a line may break
+// between their characters. Kana, ideographs, and the fullwidth forms count;
+// Hangul is spaced and breaks at its spaces.
+TextIdeographic :: (point: u32) -> bool {
+    code: s32 = cast(s32)point
+    return (code >= 12288 && code <= 12543) ||
+        (code >= 13312 && code <= 19903) ||
+        (code >= 19968 && code <= 40959) ||
+        (code >= 63744 && code <= 64255) ||
+        (code >= 65280 && code <= 65519) ||
+        (code >= 131072 && code <= 262143)
+}
+
+// Closing punctuation, the prolonged sound mark, and small kana never start
+// a line.
+TextNoBreakBefore :: (point: u32) -> bool {
+    code: s32 = cast(s32)point
+    if code == 33 || code == 37 || code == 41 || code == 44 || code == 46 ||
+        code == 58 || code == 59 || code == 63 || code == 93 || code == 125 {
+        return true
+    }
+    if code == 12289 || code == 12290 || code == 12293 || code == 12297 ||
+        code == 12299 || code == 12301 || code == 12303 || code == 12305 ||
+        code == 12309 || code == 12539 || code == 12540 || code == 12443 ||
+        code == 12444 { return true }
+    if code == 65281 || code == 65289 || code == 65292 || code == 65294 ||
+        code == 65306 || code == 65307 || code == 65311 || code == 65341 ||
+        code == 65373 { return true }
+    if code == 12353 || code == 12355 || code == 12357 || code == 12359 ||
+        code == 12361 || code == 12387 || code == 12419 || code == 12421 ||
+        code == 12423 || code == 12430 || code == 12449 || code == 12451 ||
+        code == 12453 || code == 12455 || code == 12457 || code == 12483 ||
+        code == 12515 || code == 12517 || code == 12519 || code == 12526 ||
+        code == 12533 || code == 12534 { return true }
+    return false
+}
+
+// Opening brackets never end a line.
+TextNoBreakAfter :: (point: u32) -> bool {
+    code: s32 = cast(s32)point
+    return code == 40 || code == 91 || code == 123 || code == 12296 ||
+        code == 12298 || code == 12300 || code == 12302 || code == 12304 ||
+        code == 12308 || code == 65288 || code == 65339 || code == 65371
+}
+
+// Whether a line may break between two adjacent characters of one word.
+TextBreaksBetween :: (before: u32, after: u32) -> bool {
+    if !TextIdeographic(before) && !TextIdeographic(after) { return false }
+    return !TextNoBreakBefore(after) && !TextNoBreakAfter(before)
+}
+
+// Whitespace and line breaks delimit borrowed UTF-8 byte ranges, and so do
+// the places between characters where spaceless text may wrap. Optional
 // inline icon markers are used by richer text layouts.
 #program_export
 TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
@@ -51,6 +104,8 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
         token.icon = true
         offset += 2
     } else {
+        previous: u32 = cast(u32)0
+        have_previous: bool = false
         while offset < cast(s32)value.count {
             current = value[offset]
             if TextIsSpace(current) || current == cast(u8)10 ||
@@ -58,7 +113,13 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
             if icons && current == cast(u8)37 &&
                 offset + 1 < cast(s32)value.count &&
                 value[offset + 1] == cast(u8)105 { break }
-            offset += 1
+            point: Decoded = Decode(value, offset)
+            if have_previous && TextBreaksBetween(previous, point.value) {
+                break
+            }
+            previous = point.value
+            have_previous = true
+            offset = point.after
         }
     }
     token.end = offset
@@ -66,7 +127,8 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
     return token
 }
 
-// A word wider than the available width stays intact on its own line.
+// A word wider than the available width stays intact on its own line; text
+// written without spaces wraps between characters as TextTokenNext allows.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
     wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
