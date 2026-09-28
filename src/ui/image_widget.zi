@@ -114,6 +114,10 @@ Image :: (session: Session, image: ImageProps) {
     }
     texture: Texture2D = ImageTextureFor(image)
     tint: Color = ImageTint(faces.surface)
+    if image.tint != cast(u32)0 {
+        tint = ColorFromPacked(Opacity(image.tint,
+            StyleOpacityValue(faces.surface.fields, faces.surface.opacity)))
+    }
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
     if plan.draw && tint.a > cast(u8)0 {
         PaintImage(session, node, image.asset_path, image.texture.id,

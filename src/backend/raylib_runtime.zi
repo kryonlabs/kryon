@@ -90,6 +90,8 @@ RaylibTypeface :: struct {
     name: [64]u8
     name_length: s32
     font: RaylibFont
+    small_font: RaylibFont
+    medium_font: RaylibFont
     data: *u8
     data_count: s32
     extension: [16]u8
@@ -182,15 +184,50 @@ RaylibSeedGlyphs :: (typeface: *RaylibTypeface, seed: *s32,
     return true
 }
 
-RaylibBakeTypeface :: (typeface: *RaylibTypeface) -> RaylibFont {
+RaylibBakeTypeface :: (typeface: *RaylibTypeface,
+    size: s32) -> RaylibFont {
     codepoints: *s32 = cast(*s32)(typeface.codepoints)
     if typeface.from_file {
-        return HostRaylibLoadFont(*typeface.path[0], 64, codepoints,
+        return HostRaylibLoadFont(*typeface.path[0], size, codepoints,
             typeface.codepoint_count)
     }
     return HostRaylibLoadFontFromMemory(*typeface.extension[0],
-        typeface.data, typeface.data_count, 64, codepoints,
+        typeface.data, typeface.data_count, size, codepoints,
         typeface.codepoint_count)
+}
+
+RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
+    HostRaylibUnloadFont(typeface.font)
+    if typeface.small_font.texture.id != cast(u32)0 {
+        HostRaylibUnloadFont(typeface.small_font)
+    }
+    if typeface.medium_font.texture.id != cast(u32)0 {
+        HostRaylibUnloadFont(typeface.medium_font)
+    }
+}
+
+RaylibFontForSize :: (size: s32) -> RaylibFont {
+    index: s32 = raylib_active_typeface_index
+    if index < 0 || index >= raylib_typeface_count {
+        return raylib_font
+    }
+    typeface: *RaylibTypeface = *raylib_typefaces[index]
+    if size <= 18 {
+        if typeface.small_font.texture.id == cast(u32)0 {
+            typeface.small_font = RaylibBakeTypeface(typeface, 16)
+        }
+        if typeface.small_font.texture.id != cast(u32)0 {
+            return typeface.small_font
+        }
+    } else if size <= 36 {
+        if typeface.medium_font.texture.id == cast(u32)0 {
+            typeface.medium_font = RaylibBakeTypeface(typeface, 32)
+        }
+        if typeface.medium_font.texture.id != cast(u32)0 {
+            return typeface.medium_font
+        }
+    }
+    return typeface.font
 }
 
 RaylibFreeTypefaceSource :: (typeface: *RaylibTypeface) {
@@ -236,11 +273,21 @@ RaylibEnsureGlyphs :: (value: string) {
         }
     }
     if !missing { return }
-    font: RaylibFont = RaylibBakeTypeface(typeface)
+    font: RaylibFont = RaylibBakeTypeface(typeface, 64)
     if font.texture.id == cast(u32)0 { return }
     HostRaylibUnloadFont(typeface.font)
     typeface.font = font
     raylib_font = font
+    if typeface.small_font.texture.id != cast(u32)0 {
+        font = RaylibBakeTypeface(typeface, 16)
+        HostRaylibUnloadFont(typeface.small_font)
+        typeface.small_font = font
+    }
+    if typeface.medium_font.texture.id != cast(u32)0 {
+        font = RaylibBakeTypeface(typeface, 32)
+        HostRaylibUnloadFont(typeface.medium_font)
+        typeface.medium_font = font
+    }
 }
 
 RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
@@ -260,7 +307,7 @@ RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
         index = raylib_typeface_count
         raylib_typeface_count += 1
     } else {
-        HostRaylibUnloadFont(raylib_typefaces[index].font)
+        RaylibUnloadTypefaceFonts(*raylib_typefaces[index])
         RaylibFreeTypefaceSource(*raylib_typefaces[index])
     }
     raylib_typefaces[index] = staged.*
@@ -299,7 +346,7 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
         RaylibFreeTypefaceSource(*staged)
         return false
     }
-    staged.font = RaylibBakeTypeface(*staged)
+    staged.font = RaylibBakeTypeface(*staged, 64)
     if staged.font.texture.id == cast(u32)0 {
         RaylibFreeTypefaceSource(*staged)
         return false
@@ -328,7 +375,7 @@ LoadTypefaceFile :: (name: string, path: string,
         RaylibFreeTypefaceSource(*staged)
         return false
     }
-    staged.font = RaylibBakeTypeface(*staged)
+    staged.font = RaylibBakeTypeface(*staged, 64)
     if staged.font.texture.id == cast(u32)0 {
         RaylibFreeTypefaceSource(*staged)
         return false
@@ -369,7 +416,7 @@ ReleaseTypefaces :: () {
     }
     index: s32 = 0
     while index < raylib_typeface_count {
-        HostRaylibUnloadFont(raylib_typefaces[index].font)
+        RaylibUnloadTypefaceFonts(*raylib_typefaces[index])
         RaylibFreeTypefaceSource(*raylib_typefaces[index])
         raylib_typefaces[index] = RaylibTypeface.{}
         index += 1
@@ -608,7 +655,7 @@ MeasureGlyphWidth :: (value: string, font: s32,
     if !CopyCString(value, bytes[:]) { return 0 }
     if raylib_font_loaded {
         RaylibEnsureGlyphs(value)
-        extent: Vector2 = HostRaylibMeasureFontText(raylib_font, *bytes[0],
+        extent: Vector2 = HostRaylibMeasureFontText(RaylibFontForSize(font), *bytes[0],
             cast(float32)font, 0.0)
         return cast(s32)(extent.x + 0.5)
     }
@@ -654,7 +701,7 @@ RasterText :: (value: string, x: s32, y: s32,
     if !CopyCString(value, bytes[:]) { return }
     if raylib_font_loaded {
         RaylibEnsureGlyphs(value)
-        HostRaylibDrawFontText(raylib_font, *bytes[0],
+        HostRaylibDrawFontText(RaylibFontForSize(font), *bytes[0],
             Vector2.{cast(float32)x, cast(float32)y},
             cast(float32)font, 0.0, color)
     } else {
