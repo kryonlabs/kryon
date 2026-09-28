@@ -44,10 +44,15 @@ factor.
 
 ## Applying the factor
 
-An application that scales its own metrics reads `ZoomFactor` after each frame
-and stores it as its scale setting, so the wheel and a settings slider drive
-one value. Inbe does this: it sets the factor from its saved scale each frame,
-runs the wheel through `ZoomWheel`, and writes any change back to the setting.
+The factor scales the whole application, widget text included, so a host
+applies it as a render scale rather than asking each screen to scale itself.
+A host that lays out in logical units passes the factor to the DPI state:
+`ZoomDPI(state, factor)` makes the render scale the display density times the
+zoom, and the layout is the view divided by it. A zoom below 100% lays out a
+larger area and a zoom above it a smaller one, and `ResolveDPI` keeps the zoom
+across resizes and density changes. Inbe does this: it stores the factor as
+its UI scale setting, so the wheel and the Appearance slider drive one value,
+and hands that setting to `ZoomDPI` each frame.
 
 A host that draws an application unchanged applies the factor as a render
 scale and divides pointer positions and the viewport by it. Kryon's raylib

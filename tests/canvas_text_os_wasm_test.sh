@@ -38,7 +38,7 @@ JS
 find "$work/c" -type f -name '*.c' -exec \
     "$emcc" -O1 -I"$root/../ziran/include" -I"$work/c" -I"$work/c/tests" \
     --js-library "$root/../ziran/web/ziran_web.js" -sEXPORTED_RUNTIME_METHODS=FS \
-    "$root/src/backend/canvas_varargs.c" --pre-js "$work/fixture.js" \
+    --pre-js "$work/fixture.js" \
     -sASYNCIFY -sEXIT_RUNTIME=1 -sENVIRONMENT=node -sWASM_ASYNC_COMPILATION=0 \
     -o "$work/test.js" {} +
 env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY node "$work/test.js"

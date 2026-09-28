@@ -26,6 +26,46 @@ Answer :: () -> s32 {
     if ScalePixels(5, 1.5) != 8 || ClampPixels(20, 0, 10, 1.5) != 15 {
         return 5
     }
+
+    // Zoom multiplies the display density: it scales everything drawn and
+    // the layout is the view divided by the result.
+    state = InitialDPI()
+    state = ResolveDPI(state, 720, 1400,
+        cast(DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
+    state = ZoomDPI(state, 2.0)
+    if state.render_scale != 2.0 || state.camera_zoom != 2.0 ||
+        state.ui_scale != 1.0 || state.layout_width != 360 ||
+        state.layout_height != 700 || state.view_width != 360 { return 6 }
+    // Below 100% the layout grows instead.
+    state = ZoomDPI(state, 0.5)
+    if state.render_scale != 0.5 || state.layout_width != 1440 ||
+        state.layout_height != 2800 { return 7 }
+    // The zoom outlives a resize and a density change.
+    state = ResolveDPI(state, 800, 600,
+        cast(DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
+    if state.render_scale != 0.5 || state.layout_width != 1600 ||
+        state.layout_height != 1200 { return 8 }
+    state = InvalidateDPI(state)
+    state = ResolveDPI(state, 800, 600,
+        cast(DPIPlatform)DPIPlatformDesktop, 2.0, 1.0, 1.0)
+    state = ZoomDPI(state, 1.5)
+    if state.ui_scale != 2.0 || state.render_scale != 3.0 ||
+        state.layout_width != 267 || state.layout_height != 200 { return 9 }
+    // Setting the zoom it already has changes nothing.
+    state.needs_update = false
+    state = ZoomDPI(state, 1.5)
+    if state.needs_update { return 10 }
+    // A zoom given before the state is resolved is kept.
+    fresh: DPIState
+    fresh = ZoomDPI(fresh, 2.0)
+    fresh = ResolveDPI(fresh, 720, 1400,
+        cast(DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
+    if fresh.render_scale != 2.0 || fresh.layout_width != 360 { return 11 }
+    // Without a zoom the state is at 100%, as before.
+    plain: DPIState = InitialDPI()
+    plain = ResolveDPI(plain, 720, 1400,
+        cast(DPIPlatform)DPIPlatformDesktop, 0.0, 1.0, 1.0)
+    if plain.render_scale != 1.0 || plain.layout_width != 720 { return 12 }
     return 42
 }
 

@@ -582,16 +582,7 @@
         canvas_trace_callback = callback
     }
 
-    #program_export "canvas_trace_callback"
-    InvokeCanvasTraceCallback :: (level: s32, format: *u8, arguments: *void) -> s32 {
-        if canvas_trace_callback != null {
-            canvas_trace_callback(level, format, arguments)
-            return 1
-        }
-        return 0
-    }
-
-    #program_export "canvas_format_text"
+    #program_export "TextFormat"
     FormatCanvasText :: (format: *u8, arguments: *void) -> *u8 {
         slot := canvas_format_next
         canvas_format_next = (canvas_format_next + 1) % 16
@@ -603,12 +594,24 @@
         return output
     }
 
-    #program_export "canvas_format_log"
     FormatCanvasLog :: (format: *u8, arguments: *void) -> *u8 {
         canvas_log_buffer[0] = cast(u8)0
         if format != null {
             unused OsFormat(*canvas_log_buffer[0], 4096, format, arguments)
         }
         return *canvas_log_buffer[0]
+    }
+
+    CanvasConsoleError :: (message: *u8) #foreign c "emscripten_console_error";
+
+    // raylib's TraceLog: a C varargs call whose argument list arrives as one
+    // pointer, as with TextFormat.
+    #program_export "TraceLog"
+    TraceCanvasLog :: (level: s32, format: *u8, arguments: *void) {
+        if canvas_trace_callback != null {
+            canvas_trace_callback(level, format, arguments)
+            return
+        }
+        CanvasConsoleError(FormatCanvasLog(format, arguments))
     }
 }

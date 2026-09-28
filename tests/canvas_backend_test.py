@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
          '-o',gen,ROOT/'tests/canvas_backend_behavior.zi'])
     shell=work/'shell.html'
     shell.write_text('''<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}canvas{width:160px;height:120px}</style></head><body><div id="canvas-frame" style="width:160px;height:120px"><canvas id="canvas" width="160" height="120"></canvas></div><pre id="result">pending</pre><script>var Module={onExit:function(code){document.getElementById('result').textContent=code===0?'PASS':('FAIL '+code+' '+globalThis.canvasTestError)},onAbort:function(reason){document.getElementById('result').textContent='ABORT '+reason}};</script>{{{ SCRIPT }}}</body></html>''')
-    libs=['--js-library',ZIRAN/'web/ziran_web.js','-sEXPORTED_RUNTIME_METHODS=FS',ROOT/'src/backend/canvas_varargs.c']
+    libs=['--js-library',ZIRAN/'web/ziran_web.js','-sEXPORTED_RUNTIME_METHODS=FS']
     run([EMCC,'-O1','-I'+str(ZIRAN/'include'),'-iquote',gen,*sorted(gen.rglob('*.c')),
          *libs,'--embed-file',str(ROOT/'assets/fonts/LiberationSans-Regular.ttf')+'@/test-font.ttf','--js-library',ROOT/'tests/canvas_backend_effects.js','-sASYNCIFY','-sSINGLE_FILE=1',
          '-sEXIT_RUNTIME=1','-sENVIRONMENT=web','--shell-file',shell,'-o',work/'test.html'])
