@@ -42,7 +42,7 @@ endif
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
-APP_SOURCES := $(wildcard src/*.zi src/*/module.zi)
+APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 PLOT_SOURCES := $(wildcard $(KRYON_DIR)/src/plot/*.zi)
 DATA_VIEW_SOURCES := $(wildcard $(KRYON_DIR)/src/data_views/*.zi)
