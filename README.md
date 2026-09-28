@@ -61,6 +61,7 @@ contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform
 effect contract.
 See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
+See [zoom](docs/ZOOM.md) for Ctrl and mouse-wheel zoom of a whole application.
 See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
 See [frame replay](docs/FRAME_REPLAY.md) for committed UI and paint capture

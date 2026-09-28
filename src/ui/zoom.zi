@@ -1,0 +1,217 @@
+#import "dpi"
+#import "session"
+#import "tree_input"
+
+using DPIPlatform;
+
+// Zoom scales a whole application the way a browser page zoom does: Ctrl and
+// the mouse wheel step the factor, Ctrl with plus, minus, or zero step and
+// reset it. Kryon decides here; a host only reports the wheel movement and
+// the held modifiers each frame and applies the factor it gets back.
+//
+// The factor is one number for the whole session. An application that scales
+// its own metrics reads it and stores it as its scale setting; a host that
+// draws an application unchanged applies it as a render scale.
+
+ZoomMode :: enum {
+    // Zoom where the platform has a wheel and no native zoom of its own:
+    // on for desktop windows, off in a browser (which zooms the page itself)
+    // and on touch screens.
+    ZoomModeAuto :: 0
+    ZoomModeOn :: 1
+    ZoomModeOff :: 2
+}
+using ZoomMode;
+
+// The zoom prop. A zero value is the default: automatic mode, 100% to start,
+// 50% to 300%, in steps of 10%.
+ZoomProps :: struct {
+    mode: ZoomMode
+    factor: float32
+    minimum: float32
+    maximum: float32
+    step: float32
+}
+
+ZoomSession :: struct {
+    epoch: u64
+    props: ZoomProps
+    factor: float32
+    carry: float32
+}
+
+zoom_sessions: [9]ZoomSession;
+
+// Host key codes for the zoom shortcuts: the main row's equals, minus, and
+// zero keys and the keypad's add, subtract, and zero keys.
+ZoomKeyEqual :: 61;
+ZoomKeyMinus :: 45;
+ZoomKeyZero :: 48;
+ZoomKeyKeypadZero :: 320;
+ZoomKeyKeypadSubtract :: 333;
+ZoomKeyKeypadAdd :: 334;
+
+#scope_file
+ZoomMinimum :: (props: ZoomProps) -> float32 {
+    if props.minimum > 0.0 { return props.minimum }
+    return 0.5
+}
+
+ZoomMaximum :: (props: ZoomProps) -> float32 {
+    high: float32 = 3.0
+    if props.maximum > 0.0 { high = props.maximum }
+    low: float32 = ZoomMinimum(props)
+    if high < low { high = low }
+    return high
+}
+
+ZoomStep :: (props: ZoomProps) -> float32 {
+    if props.step > 0.0 { return props.step }
+    return 0.1
+}
+
+// Clamp to the range and land on a whole number of steps, so repeated
+// notches never drift and an application storing tenths sees exact values.
+ZoomClamp :: (props: ZoomProps, factor: float32) -> float32 {
+    low: float32 = ZoomMinimum(props)
+    high: float32 = ZoomMaximum(props)
+    step: float32 = ZoomStep(props)
+    if factor < low { factor = low }
+    if factor > high { factor = high }
+    steps: s32 = cast(s32)(factor / step + 0.5)
+    snapped: float32 = cast(float32)steps * step
+    if snapped < low { snapped = low }
+    if snapped > high { snapped = high }
+    return snapped
+}
+
+ZoomStart :: (props: ZoomProps) -> float32 {
+    if props.factor > 0.0 { return ZoomClamp(props, props.factor) }
+    return ZoomClamp(props, 1.0)
+}
+
+// A closed and reopened session slot starts over instead of inheriting the
+// previous session's factor.
+ZoomSlot :: (session: Session) -> s32 {
+    index: s32 = SessionIndex(session)
+    if index == 0 { return 0 }
+    if zoom_sessions[index].epoch != session.epoch {
+        fresh: ZoomSession
+        fresh.epoch = session.epoch
+        zoom_sessions[index] = fresh
+    }
+    return index
+}
+
+ZoomStepBy :: (index: s32, steps: s32) {
+    props: ZoomProps = zoom_sessions[index].props
+    factor: float32 = zoom_sessions[index].factor
+    if !(factor > 0.0) { factor = ZoomStart(props) }
+    zoom_sessions[index].factor =
+        ZoomClamp(props, factor + cast(float32)steps * ZoomStep(props))
+}
+
+#scope_export
+// Set the zoom prop for a session and start at its factor.
+#program_export
+ZoomConfigure :: (session: Session, props: ZoomProps) -> bool {
+    index: s32 = ZoomSlot(session)
+    if index == 0 { return false }
+    zoom_sessions[index].props = props
+    zoom_sessions[index].factor = ZoomStart(props)
+    zoom_sessions[index].carry = 0.0
+    return true
+}
+
+// Whether zoom is on for this platform under the session's mode.
+#program_export
+ZoomActive :: (session: Session, platform: DPIPlatform) -> bool {
+    index: s32 = ZoomSlot(session)
+    if index == 0 { return false }
+    mode: ZoomMode = zoom_sessions[index].props.mode
+    if mode == cast(ZoomMode)ZoomModeOff { return false }
+    if mode == cast(ZoomMode)ZoomModeOn { return true }
+    return platform == cast(DPIPlatform)DPIPlatformDesktop
+}
+
+// The current factor, 1.0 for 100%.
+#program_export
+ZoomFactor :: (session: Session) -> float32 {
+    index: s32 = ZoomSlot(session)
+    if index == 0 { return 1.0 }
+    factor: float32 = zoom_sessions[index].factor
+    if factor > 0.0 { return factor }
+    return ZoomStart(zoom_sessions[index].props)
+}
+
+// Set the factor, for example from a saved preference. Returns the factor
+// after clamping to the range and snapping to a step.
+#program_export
+ZoomSet :: (session: Session, factor: float32) -> float32 {
+    index: s32 = ZoomSlot(session)
+    if index == 0 { return 1.0 }
+    zoom_sessions[index].factor = ZoomClamp(zoom_sessions[index].props, factor)
+    zoom_sessions[index].carry = 0.0
+    return zoom_sessions[index].factor
+}
+
+#program_export
+ZoomReset :: (session: Session) -> float32 {
+    index: s32 = ZoomSlot(session)
+    if index == 0 { return 1.0 }
+    zoom_sessions[index].factor = ZoomStart(zoom_sessions[index].props)
+    zoom_sessions[index].carry = 0.0
+    return zoom_sessions[index].factor
+}
+
+// One frame's wheel movement with the held modifiers. Returns true when the
+// wheel belongs to zoom, so the application must not also scroll with it.
+// Positive movement zooms in; whole notches step the factor, and the small
+// movements of a touchpad add up until they reach one.
+#program_export
+ZoomWheel :: (session: Session, platform: DPIPlatform, wheel: float32,
+    modifiers: s32) -> bool {
+    index: s32 = ZoomSlot(session)
+    if index == 0 || !ZoomActive(session, platform) { return false }
+    if (modifiers & KeyModifierControl) == 0 {
+        zoom_sessions[index].carry = 0.0
+        return false
+    }
+    carry: float32 = zoom_sessions[index].carry + wheel
+    turns: s32 = 0
+    while carry >= 1.0 && turns < 64 {
+        ZoomStepBy(index, 1)
+        carry -= 1.0
+        turns += 1
+    }
+    while carry <= -1.0 && turns < 64 {
+        ZoomStepBy(index, -1)
+        carry += 1.0
+        turns += 1
+    }
+    zoom_sessions[index].carry = carry
+    return true
+}
+
+// A key press with the held modifiers: Ctrl with plus zooms in, with minus
+// zooms out, with zero resets. Returns true when the key was a zoom command.
+#program_export
+ZoomKey :: (session: Session, platform: DPIPlatform, key: s32,
+    modifiers: s32) -> bool {
+    index: s32 = ZoomSlot(session)
+    if index == 0 || !ZoomActive(session, platform) { return false }
+    if (modifiers & KeyModifierControl) == 0 { return false }
+    if key == ZoomKeyEqual || key == ZoomKeyKeypadAdd {
+        ZoomStepBy(index, 1)
+        return true
+    }
+    if key == ZoomKeyMinus || key == ZoomKeyKeypadSubtract {
+        ZoomStepBy(index, -1)
+        return true
+    }
+    if key == ZoomKeyZero || key == ZoomKeyKeypadZero {
+        unused ZoomReset(session)
+        return true
+    }
+    return false
+}

@@ -1,0 +1,127 @@
+#import "dpi"
+#import "session"
+#import "zoom"
+
+using DPIPlatform;
+using ZoomMode;
+
+Near :: (value: float32, expected: float32) -> bool {
+    difference: float32 = value - expected
+    if difference < 0.0 { difference = -difference }
+    return difference < 0.001
+}
+
+#program_export
+Answer :: () -> s32 {
+    desktop: DPIPlatform = cast(DPIPlatform)DPIPlatformDesktop
+    android: DPIPlatform = cast(DPIPlatform)DPIPlatformAndroid
+    web: DPIPlatform = cast(DPIPlatform)DPIPlatformWeb
+    control: s32 = 2
+    session: Session = SessionOpen()
+
+    // The default prop is automatic: zoom on desktop, not in a browser or on
+    // a touch screen, starting at 100%.
+    if !Near(ZoomFactor(session), 1.0) { return 1 }
+    if !ZoomActive(session, desktop) || ZoomActive(session, web) ||
+        ZoomActive(session, android) { return 2 }
+
+    // Wheel without Ctrl belongs to scrolling.
+    if ZoomWheel(session, desktop, 1.0, 0) { return 3 }
+    if !Near(ZoomFactor(session), 1.0) { return 4 }
+
+    // Ctrl and the wheel step by a tenth, up for positive movement.
+    if !ZoomWheel(session, desktop, 1.0, control) { return 5 }
+    if !Near(ZoomFactor(session), 1.1) { return 6 }
+    if !ZoomWheel(session, desktop, -2.0, control) { return 7 }
+    if !Near(ZoomFactor(session), 0.9) { return 8 }
+
+    // The wheel stays with zoom at the limits, and the factor stops there.
+    unused ZoomWheel(session, desktop, 40.0, control)
+    if !Near(ZoomFactor(session), 3.0) { return 9 }
+    if !ZoomWheel(session, desktop, 1.0, control) { return 10 }
+    if !Near(ZoomFactor(session), 3.0) { return 11 }
+    unused ZoomWheel(session, desktop, -40.0, control)
+    if !Near(ZoomFactor(session), 0.5) { return 12 }
+
+    // Small touchpad movements add up to a step.
+    unused ZoomReset(session)
+    unused ZoomWheel(session, desktop, 0.4, control)
+    unused ZoomWheel(session, desktop, 0.4, control)
+    if !Near(ZoomFactor(session), 1.0) { return 13 }
+    unused ZoomWheel(session, desktop, 0.4, control)
+    if !Near(ZoomFactor(session), 1.1) { return 14 }
+
+    // Setting a factor clamps and snaps to a step.
+    if !Near(ZoomSet(session, 1.234), 1.2) { return 15 }
+    if !Near(ZoomSet(session, 9.0), 3.0) { return 16 }
+    if !Near(ZoomSet(session, 0.01), 0.5) { return 17 }
+
+    // Keys: Ctrl with equals or keypad add zooms in, minus zooms out, zero
+    // resets. Without Ctrl they are ordinary keys.
+    unused ZoomSet(session, 1.0)
+    if ZoomKey(session, desktop, ZoomKeyEqual, 0) { return 18 }
+    if !ZoomKey(session, desktop, ZoomKeyEqual, control) { return 19 }
+    if !Near(ZoomFactor(session), 1.1) { return 20 }
+    if !ZoomKey(session, desktop, ZoomKeyKeypadAdd, control) { return 21 }
+    if !ZoomKey(session, desktop, ZoomKeyMinus, control) { return 22 }
+    if !ZoomKey(session, desktop, ZoomKeyKeypadSubtract, control) { return 23 }
+    if !Near(ZoomFactor(session), 1.0) { return 24 }
+    unused ZoomSet(session, 2.0)
+    if !ZoomKey(session, desktop, ZoomKeyZero, control) { return 25 }
+    if !Near(ZoomFactor(session), 1.0) { return 26 }
+    if ZoomKey(session, desktop, 65, control) { return 27 }
+
+    // Automatic mode leaves a browser and a touch screen alone.
+    if ZoomWheel(session, web, 1.0, control) || ZoomKey(session, web,
+        ZoomKeyEqual, control) { return 28 }
+    if ZoomWheel(session, android, 1.0, control) { return 29 }
+    if !Near(ZoomFactor(session), 1.0) { return 30 }
+
+    // Explicit modes override the platform.
+    props: ZoomProps
+    props.mode = cast(ZoomMode)ZoomModeOn
+    if !ZoomConfigure(session, props) { return 31 }
+    if !ZoomActive(session, web) || !ZoomWheel(session, web, 1.0, control) {
+        return 32
+    }
+    props.mode = cast(ZoomMode)ZoomModeOff
+    unused ZoomConfigure(session, props)
+    if ZoomActive(session, desktop) || ZoomWheel(session, desktop, 1.0,
+        control) { return 33 }
+
+    // Limits, step, and starting factor come from the prop.
+    props.mode = cast(ZoomMode)ZoomModeAuto
+    props.factor = 1.5
+    props.minimum = 0.5
+    props.maximum = 2.5
+    props.step = 0.25
+    unused ZoomConfigure(session, props)
+    if !Near(ZoomFactor(session), 1.5) { return 34 }
+    unused ZoomWheel(session, desktop, 1.0, control)
+    if !Near(ZoomFactor(session), 1.75) { return 35 }
+    unused ZoomWheel(session, desktop, 30.0, control)
+    if !Near(ZoomFactor(session), 2.5) { return 36 }
+    unused ZoomWheel(session, desktop, -30.0, control)
+    if !Near(ZoomFactor(session), 0.5) { return 37 }
+    unused ZoomReset(session)
+    if !Near(ZoomFactor(session), 1.5) { return 38 }
+
+    // A closed and reopened session starts over.
+    unused ZoomSet(session, 2.0)
+    unused SessionClose(session)
+    reopened: Session = SessionOpen()
+    if !Near(ZoomFactor(reopened), 1.0) { return 39 }
+    if !ZoomActive(reopened, desktop) || ZoomActive(reopened, web) { return 40 }
+
+    // A stale handle does nothing.
+    if ZoomWheel(session, desktop, 1.0, control) { return 41 }
+    if !Near(ZoomFactor(session), 1.0) { return 43 }
+    unused SessionClose(reopened)
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    if Answer() != 42 { return 1 }
+    return 0
+}
