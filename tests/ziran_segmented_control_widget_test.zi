@@ -84,8 +84,22 @@ Frame :: () -> s32 {
     return old
 }
 
+// A single row fills bounds wider than its content, and keeps its content
+// width when the bounds are narrower.
+SingleRowFillsBounds :: () -> bool {
+    metrics: SegmentedMetrics
+    metrics.gap = 6
+    wide: SegmentedRow = SegmentedRowFor(10.0, 306.0, 0, 0, 2, 166,
+        false, metrics)
+    narrow: SegmentedRow = SegmentedRowFor(10.0, 100.0, 0, 0, 2, 166,
+        false, metrics)
+    return wide.button_width == 150 && wide.x == 10 &&
+        narrow.button_width == 80 && narrow.x == 10
+}
+
 #program_export
 main :: () -> s32 {
+    if !SingleRowFillsBounds() { return 3 }
     SetClipBounds(14, 260.0, 120.0, false)
     index: s32 = 0
     while index < 7 {

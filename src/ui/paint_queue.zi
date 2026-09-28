@@ -227,6 +227,16 @@ PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     SubmitPaint(session, command)
 }
 
+// Corner radius that turns bounds into a pill, or a circle when square.
+// Rounded paints take the radius in pixels.
+#program_export
+PillRadius :: (bounds: Rectangle) -> float32 {
+    edge: float32 = bounds.width
+    if bounds.height < edge { edge = bounds.height }
+    if edge <= 0.0 { return 0.0 }
+    return edge * 0.5
+}
+
 #program_export
 PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {

@@ -68,17 +68,18 @@ PaintRadioForNode :: (session: Session, node: s32, props: RadioProps,
         PaintRoundedFill(session, node, Rectangle.{
             paint.center.x - paint.touch * 0.5,
             paint.center.y - paint.touch * 0.5,
-            paint.touch, paint.touch}, 0.5, 32, layer)
+            paint.touch, paint.touch}, paint.touch * 0.5, 32, layer)
     }
     if paint.fill_radius > 0.2 {
         PaintRoundedFill(session, node, Rectangle.{
             paint.center.x - paint.fill_radius,
             paint.center.y - paint.fill_radius,
             paint.fill_radius * 2.0, paint.fill_radius * 2.0},
-            0.5, 32, ColorFromPacked(paint.fill_color))
+            paint.fill_radius, 32, ColorFromPacked(paint.fill_color))
     }
     if paint.stroke_width > 0.0 {
-        PaintRoundedOutline(session, node, paint.mark_bounds, 0.5, 32,
+        PaintRoundedOutline(session, node, paint.mark_bounds,
+            PillRadius(paint.mark_bounds), 32,
             paint.stroke_width, ColorFromPacked(paint.ring_color))
     }
     if props.label != "" {

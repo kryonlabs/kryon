@@ -72,7 +72,7 @@ ToggleFaceFor :: (rules: StyleRules, props: ToggleProps,
 // corners follow the theme radius, never rounder than half its height.
 ToggleCornerRadius :: (bounds: Rectangle, style_radius: float32,
     has_labels: bool) -> float32 {
-    pill: float32 = bounds.height * 0.5
+    pill: float32 = PillRadius(bounds)
     if !has_labels || style_radius <= 0.0 || style_radius > pill {
         return pill
     }
