@@ -8,11 +8,135 @@ dom_browser :: #system_library "dom_browser";
 
 js_dom_begin :: (count: s32, width: float64, height: float64) #foreign dom_browser;
 js_dom_node :: (index: s32, parent: s32, identity: float64,
-    widget_kind: s32, semantic: s32, heading_level: s32,
+    widget_kind: s32, semantic: s32, level: s32,
     x: float64, y: float64, width: float64, height: float64,
-    label: *u8, detail: *u8, flags: s32) #foreign dom_browser;
+    tag: *u8, role: *u8, label: *u8, url: *u8, flags: s32) #foreign dom_browser;
+js_dom_title :: (title: *u8) #foreign dom_browser;
 js_dom_finish :: () #foreign dom_browser;
 js_dom_close :: () #foreign dom_browser;
+
+// What the page shows for one node: its element, and which attributes and
+// text it carries. The page applies this; it decides none of it.
+DomSpec :: struct {
+    tag: string
+    role: string
+    level: s32
+    text: bool
+    alt: bool
+    link: bool
+    source: bool
+}
+
+DomFlagInteractive :: 1
+DomFlagDisabled :: 2
+DomFlagSelected :: 8
+DomFlagText :: 16
+DomFlagAlt :: 32
+DomFlagLink :: 64
+DomFlagSource :: 128
+DomFlagNativeDisabled :: 256
+
+DomSpecFor :: (semantic: s32, widget_kind: s32, heading_level: s32,
+    detail: string) -> DomSpec {
+    spec: DomSpec
+    spec.tag = "div"
+    has_uri: bool = detail.count > 0
+    if semantic == 1 {
+        spec.tag = "main"
+        spec.text = true
+    } else if semantic == 2 {
+        spec.tag = "section"
+        spec.text = true
+    } else if semantic == 3 {
+        level: s32 = heading_level
+        if level < 1 { level = 1 }
+        if level > 6 { level = 6 }
+        spec.tag = DomHeadingTag(level)
+        spec.text = true
+        spec.level = level
+    } else if semantic == 4 {
+        spec.tag = "p"
+        spec.text = true
+    } else if semantic == 5 {
+        spec.tag = "a"
+        spec.text = true
+        if has_uri { spec.link = true } else { spec.role = "link" }
+    } else if semantic == 6 {
+        if has_uri {
+            spec.tag = "img"
+            spec.alt = true
+            spec.source = true
+        } else {
+            spec.role = "img"
+        }
+    } else if semantic == 7 || widget_kind == 8 {
+        spec.tag = "button"
+        spec.text = true
+    } else if semantic == 9 {
+        spec.tag = "li"
+        spec.role = "treeitem"
+        spec.text = true
+    } else if semantic == 10 {
+        spec.tag = "input"
+        spec.role = "combobox"
+    } else if semantic == 11 {
+        spec.tag = "option"
+        spec.text = true
+    } else if semantic == 12 {
+        spec.tag = "input"
+    } else if semantic == 13 {
+        spec.role = "tablist"
+    } else if semantic == 14 {
+        spec.tag = "button"
+        spec.role = "tab"
+        spec.text = true
+    } else if semantic == 15 {
+        spec.tag = "textarea"
+    } else if widget_kind == 2 || widget_kind == 15 {
+        spec.tag = "p"
+        spec.text = true
+    } else if widget_kind == 24 {
+        spec.tag = "img"
+        spec.alt = true
+    } else if widget_kind == 51 {
+        spec.tag = "main"
+        spec.text = true
+    } else if widget_kind == 52 {
+        spec.tag = "section"
+        spec.text = true
+    } else if widget_kind == 53 {
+        spec.tag = "a"
+        spec.role = "link"
+        spec.text = true
+    }
+    return spec
+}
+
+DomHeadingTag :: (level: s32) -> string {
+    if level == 1 { return "h1" }
+    if level == 2 { return "h2" }
+    if level == 3 { return "h3" }
+    if level == 4 { return "h4" }
+    if level == 5 { return "h5" }
+    return "h6"
+}
+
+DomNodeFlags :: (spec: DomSpec, interactive: bool, disabled: bool,
+    loading: bool, selected: bool) -> s32 {
+    flags: s32 = 0
+    if interactive { flags |= DomFlagInteractive }
+    if disabled { flags |= DomFlagDisabled }
+    if selected { flags |= DomFlagSelected }
+    if spec.text { flags |= DomFlagText }
+    if spec.alt { flags |= DomFlagAlt }
+    if spec.link { flags |= DomFlagLink }
+    if spec.source { flags |= DomFlagSource }
+    // A native button also refuses activation while loading.
+    if spec.tag == "button" && (disabled || loading) {
+        flags |= DomFlagNativeDisabled
+    }
+    return flags
+}
 
 DomPointer :: (value: string, bytes: []u8) -> *u8 {
     bytes[0] = cast(u8)0
@@ -28,22 +152,32 @@ DomReconcile :: (session: Session, viewport: Rectangle) {
         cast(float64)viewport.height)
     index: s32 = 0
     label_bytes: [1024]u8
-    detail_bytes: [1024]u8
+    url_bytes: [1024]u8
+    tag_bytes: [16]u8
+    role_bytes: [16]u8
+    title_bytes: [1024]u8
+    title_found: bool = false
     while index < count {
         node: TreeEntry = TreeNodeAt(session, index)
+        semantic: s32 = cast(s32)node.semantic_kind
+        spec: DomSpec = DomSpecFor(semantic, node.kind, node.heading_level,
+            node.semantic_detail)
+        flags: s32 = DomNodeFlags(spec, node.interactive, node.disabled,
+            node.loading, node.selected)
         label: *u8 = DomPointer(node.semantic_label, label_bytes[:])
-        detail: *u8 = DomPointer(node.semantic_detail, detail_bytes[:])
-        flags: s32 = 0
-        if node.interactive { flags |= 1 }
-        if node.disabled { flags |= 2 }
-        if node.loading { flags |= 4 }
-        if node.selected { flags |= 8 }
+        // The first page node names the document.
+        if semantic == 1 && !title_found && node.semantic_label.count > 0 {
+            title_found = true
+            js_dom_title(DomPointer(node.semantic_label, title_bytes[:]))
+        }
         js_dom_node(index, node.parent,
             cast(float64)node.identity_generation, node.kind,
-            cast(s32)node.semantic_kind, node.heading_level,
+            semantic, spec.level,
             cast(float64)node.bounds.x, cast(float64)node.bounds.y,
             cast(float64)node.bounds.width, cast(float64)node.bounds.height,
-            label, detail, flags)
+            DomPointer(spec.tag, tag_bytes[:]),
+            DomPointer(spec.role, role_bytes[:]), label,
+            DomPointer(node.semantic_detail, url_bytes[:]), flags)
         index += 1
     }
     js_dom_finish()

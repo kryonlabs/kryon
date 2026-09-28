@@ -1,0 +1,93 @@
+#import "dom_tree"
+
+SpecIs :: (spec: DomSpec, tag: string, role: string, level: s32,
+    text: bool, alt: bool, link: bool, source: bool) -> bool {
+    return spec.tag == tag && spec.role == role && spec.level == level &&
+        spec.text == text && spec.alt == alt && spec.link == link &&
+        spec.source == source
+}
+
+SemanticChecks :: () -> s32 {
+    if !SpecIs(DomSpecFor(1, 0, 0, ""), "main", "", 0, true, false, false, false) { return 1 }
+    if !SpecIs(DomSpecFor(2, 0, 0, ""), "section", "", 0, true, false, false, false) { return 2 }
+    if !SpecIs(DomSpecFor(4, 0, 0, ""), "p", "", 0, true, false, false, false) { return 3 }
+    if !SpecIs(DomSpecFor(9, 0, 0, ""), "li", "treeitem", 0, true, false, false, false) { return 4 }
+    if !SpecIs(DomSpecFor(10, 0, 0, ""), "input", "combobox", 0, false, false, false, false) { return 5 }
+    if !SpecIs(DomSpecFor(11, 0, 0, ""), "option", "", 0, true, false, false, false) { return 6 }
+    if !SpecIs(DomSpecFor(12, 0, 0, ""), "input", "", 0, false, false, false, false) { return 7 }
+    if !SpecIs(DomSpecFor(13, 0, 0, ""), "div", "tablist", 0, false, false, false, false) { return 8 }
+    if !SpecIs(DomSpecFor(14, 0, 0, ""), "button", "tab", 0, true, false, false, false) { return 9 }
+    if !SpecIs(DomSpecFor(15, 0, 0, ""), "textarea", "", 0, false, false, false, false) { return 10 }
+    return 0
+}
+
+HeadingChecks :: () -> s32 {
+    if !SpecIs(DomSpecFor(3, 0, 1, ""), "h1", "", 1, true, false, false, false) { return 1 }
+    if !SpecIs(DomSpecFor(3, 0, 4, ""), "h4", "", 4, true, false, false, false) { return 2 }
+    // Levels outside 1..6 clamp, and a missing level is the first.
+    if !SpecIs(DomSpecFor(3, 0, 0, ""), "h1", "", 1, true, false, false, false) { return 3 }
+    if !SpecIs(DomSpecFor(3, 0, 9, ""), "h6", "", 6, true, false, false, false) { return 4 }
+    if !SpecIs(DomSpecFor(3, 0, -2, ""), "h1", "", 1, true, false, false, false) { return 5 }
+    return 0
+}
+
+LinkAndImageChecks :: () -> s32 {
+    // A link with an address carries it; without one it is a link role.
+    if !SpecIs(DomSpecFor(5, 0, 0, "https://a.test"), "a", "", 0, true, false, true, false) { return 1 }
+    if !SpecIs(DomSpecFor(5, 0, 0, ""), "a", "link", 0, true, false, false, false) { return 2 }
+    // An image with a source is an img; without one a described div.
+    if !SpecIs(DomSpecFor(6, 0, 0, "a.png"), "img", "", 0, false, true, false, true) { return 3 }
+    if !SpecIs(DomSpecFor(6, 0, 0, ""), "div", "img", 0, false, false, false, false) { return 4 }
+    return 0
+}
+
+ButtonAndKindChecks :: () -> s32 {
+    if !SpecIs(DomSpecFor(7, 0, 0, ""), "button", "", 0, true, false, false, false) { return 1 }
+    // A widget of the button kind is a button even with no semantic kind.
+    if !SpecIs(DomSpecFor(0, 8, 0, ""), "button", "", 0, true, false, false, false) { return 2 }
+    if !SpecIs(DomSpecFor(0, 2, 0, ""), "p", "", 0, true, false, false, false) { return 3 }
+    if !SpecIs(DomSpecFor(0, 15, 0, ""), "p", "", 0, true, false, false, false) { return 4 }
+    if !SpecIs(DomSpecFor(0, 24, 0, ""), "img", "", 0, false, true, false, false) { return 5 }
+    if !SpecIs(DomSpecFor(0, 51, 0, ""), "main", "", 0, true, false, false, false) { return 6 }
+    if !SpecIs(DomSpecFor(0, 52, 0, ""), "section", "", 0, true, false, false, false) { return 7 }
+    if !SpecIs(DomSpecFor(0, 53, 0, ""), "a", "link", 0, true, false, false, false) { return 8 }
+    if !SpecIs(DomSpecFor(0, 99, 0, ""), "div", "", 0, false, false, false, false) { return 9 }
+    // The semantic kind wins over the widget kind.
+    if !SpecIs(DomSpecFor(4, 8, 0, ""), "p", "", 0, true, false, false, false) { return 10 }
+    return 0
+}
+
+FlagChecks :: () -> s32 {
+    button: DomSpec = DomSpecFor(7, 0, 0, "")
+    if DomNodeFlags(button, true, false, false, false) != (DomFlagInteractive | DomFlagText) { return 1 }
+    if DomNodeFlags(button, false, true, false, false) !=
+        (DomFlagDisabled | DomFlagText | DomFlagNativeDisabled) { return 2 }
+    // A loading button refuses activation without looking disabled.
+    if DomNodeFlags(button, true, false, true, false) !=
+        (DomFlagInteractive | DomFlagText | DomFlagNativeDisabled) { return 3 }
+    if DomNodeFlags(button, false, false, false, true) != (DomFlagSelected | DomFlagText) { return 4 }
+    // Only buttons carry the native disabled state.
+    paragraph: DomSpec = DomSpecFor(4, 0, 0, "")
+    if DomNodeFlags(paragraph, false, true, true, false) != (DomFlagDisabled | DomFlagText) { return 5 }
+    link: DomSpec = DomSpecFor(5, 0, 0, "x")
+    if DomNodeFlags(link, true, false, false, false) !=
+        (DomFlagInteractive | DomFlagText | DomFlagLink) { return 6 }
+    image: DomSpec = DomSpecFor(6, 0, 0, "x")
+    if DomNodeFlags(image, false, false, false, false) != (DomFlagAlt | DomFlagSource) { return 7 }
+    return 0
+}
+
+#program_export
+Answer :: () -> s32 {
+    failed := SemanticChecks()
+    if failed != 0 { return 100 + failed }
+    failed = HeadingChecks()
+    if failed != 0 { return 200 + failed }
+    failed = LinkAndImageChecks()
+    if failed != 0 { return 300 + failed }
+    failed = ButtonAndKindChecks()
+    if failed != 0 { return 400 + failed }
+    failed = FlagChecks()
+    if failed != 0 { return 500 + failed }
+    return 42
+}
