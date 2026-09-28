@@ -230,6 +230,9 @@ TreeStore :: struct {
     staged_identity_generation: u64
     building: bool
     error: FrameStatus
+    // The widget that made the frame fail, so hosts can report it.
+    error_key: u64
+    error_kind: s32
 }
 
 trees: [9]TreeStore;
@@ -621,6 +624,8 @@ TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
     trees[slot].scope_depth = 0
     trees[slot].building = true
     trees[slot].error = cast(FrameStatus)FrameOk
+    trees[slot].error_key = cast(u64)0
+    trees[slot].error_kind = 0
     trees[slot].staged_identity_generation =
         trees[slot].next_identity_generation
     VecClear(trees[slot].new_slots)
@@ -770,6 +775,8 @@ TreeSubmit :: (session: Session, key: u64, parent_index: s32, kind: s32,
     }
     if !node.auto_key && TreeExplicitExists(session, parent_generation, key) {
         trees[slot].error = cast(FrameStatus)FrameDuplicateKey
+        trees[slot].error_key = key
+        trees[slot].error_kind = kind
         return -1
     }
     node.kind = kind
@@ -929,6 +936,20 @@ TreeCount :: (session: Session) -> s32 {
 TreeFrameStatus :: (session: Session) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
     return trees[session.slot].error
+}
+
+// The key and kind of the widget that failed the frame, such as the second
+// widget submitted with an explicit key already used under the same parent.
+#program_export
+TreeFrameErrorKey :: (session: Session) -> u64 {
+    if !SessionValid(session) { return cast(u64)0 }
+    return trees[session.slot].error_key
+}
+
+#program_export
+TreeFrameErrorKind :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    return trees[session.slot].error_kind
 }
 
 #program_export
