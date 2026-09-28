@@ -12,6 +12,7 @@
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
+#import "svg_icon"
 #import "surface"
 #import "tree"
 #import "tree_input"
@@ -138,14 +139,20 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
         props.icon_type != 0 {
         icon_image = ImageForIcon(props.icon_type, bounds, props.label)
     }
+    has_shape: bool = props.icon_shape != ""
     has_image: bool = icon_image.asset_path != "" ||
-        icon_image.texture.id != cast(u32)0
+        icon_image.texture.id != cast(u32)0 || has_shape
     content: ButtonContent = ContentLayout(bounds.width, bounds.height,
         cast(float32)label_width, face.icon_size, face.gap, has_image,
         props.icon_only,
         cast(s32)props.icon_placement == IconPlacementTrailing,
         face.offset_x, face.offset_y)
-    if has_image && content.icon_size > 0.0 {
+    if has_shape && content.icon_size > 0.0 {
+        PaintSvgIcon(session, node, props.icon_shape,
+            Rectangle.{bounds.x + content.icon_x, bounds.y + content.icon_y,
+                content.icon_size, content.icon_size},
+            ColorFromPacked(Opacity(face.foreground, opacity)))
+    } else if has_image && content.icon_size > 0.0 {
         image: ImageProps = icon_image
         image.bounds = Rectangle.{bounds.x + content.icon_x,
             bounds.y + content.icon_y, content.icon_size,

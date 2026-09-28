@@ -145,6 +145,8 @@ style_picker.zi
 style_picker_props.zi
 style_sheet.zi
 surface.zi
+svg_icon.zi
+svg_shape.zi
 swipe.zi
 swipe_props.zi
 tab_bar.zi

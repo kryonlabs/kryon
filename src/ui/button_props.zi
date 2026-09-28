@@ -31,6 +31,8 @@ ButtonProps :: struct {
     circle: bool
     icon: Texture2D
     icon_type: s32
+    // A vector icon (a Shape from an icon package); drawn instead of icon_type.
+    icon_shape: string
     icon_placement: IconPlacement
     icon_only: bool
     square: bool

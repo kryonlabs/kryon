@@ -412,7 +412,7 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)
     has_icon: bool = disclosure || props.icon.id != cast(u32)0 ||
-        props.icon_type != 0 || props.image.asset_path != "" ||
+        props.icon_type != 0 || props.icon_shape != "" || props.image.asset_path != "" ||
         props.image.texture.id != cast(u32)0
     content: ContentSize = MeasureContent(height, label_width / scale,
         paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only)
@@ -510,7 +510,8 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
     scale: float32, elapsed_ms: float64, disclosure: bool) -> ContentDrawing {
     result: ContentDrawing
     if scale <= 0.0 { scale = 1.0 }
-    has_icon: bool = disclosure || props.icon.id != cast(u32)0 || props.icon_type != 0
+    has_icon: bool = disclosure || props.icon.id != cast(u32)0 || props.icon_type != 0 ||
+        props.icon_shape != ""
     content: ButtonContent = ContentLayout(bounds.width / scale, bounds.height / scale,
         label_width / scale, paint.icon_size, paint.gap, has_icon, props.icon_only,
         cast(s32)props.icon_placement == IconPlacementTrailing,

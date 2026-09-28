@@ -1,0 +1,557 @@
+// Rasterizes an icon Shape (see the mingcute package's scripts/generate.py)
+// into 8-bit coverage. Every host paints the result through the same queued
+// rectangles, so icons stay crisp at any size without a PNG atlas.
+//
+//   Shape = "<op>|<op>|..."   op = <kind> ":" <path data>
+//   kind:  F fill (nonzero)   E fill (even-odd)
+//          S<width><cap><join> stroke; cap b/r/s, join m/r/v
+//
+// Path data is absolute M, L, H, V, C and Z in a 24 x 24 view box.
+
+SHAPE_VIEW :: 24.0;
+SHAPE_MAX_SIZE :: 128;
+SHAPE_EDGES :: 24576;
+SHAPE_POINTS :: 4096;
+SHAPE_CROSSINGS :: 1024;
+SHAPE_SAMPLES :: 6;
+SHAPE_CURVE_STEPS :: 12;
+
+ShapeEdge :: struct {
+    ax: float32
+    ay: float32
+    bx: float32
+    by: float32
+}
+
+shape_edges: [SHAPE_EDGES]ShapeEdge;
+shape_edge_count: s32 = 0;
+shape_overflow: bool = false;
+
+shape_x: [SHAPE_POINTS]float32;
+shape_y: [SHAPE_POINTS]float32;
+shape_point_count: s32 = 0;
+
+crossing_x: [SHAPE_CROSSINGS]float32;
+crossing_direction: [SHAPE_CROSSINGS]s32;
+row_accumulator: [SHAPE_MAX_SIZE]float32;
+
+// The corners of a unit circle, 16 to a turn, for round joins and caps.
+circle_x: [16]float32 = .{1.0, 0.92388, 0.70711, 0.38268, 0.0, -0.38268, -0.70711, -0.92388,
+    -1.0, -0.92388, -0.70711, -0.38268, 0.0, 0.38268, 0.70711, 0.92388};
+circle_y: [16]float32 = .{0.0, 0.38268, 0.70711, 0.92388, 1.0, 0.92388, 0.70711, 0.38268,
+    0.0, -0.38268, -0.70711, -0.92388, -1.0, -0.92388, -0.70711, -0.38268};
+
+polygon_x: [8]float32;
+polygon_y: [8]float32;
+
+ShapeSqrt :: (value: float32) -> float32 {
+    if value <= 0.0 { return 0.0 }
+    guess: float32 = value
+    if guess < 1.0 { guess = 1.0 }
+    step: s32 = 0
+    while step < 24 {
+        guess = 0.5 * (guess + value / guess)
+        step += 1
+    }
+    return guess
+}
+
+ShapeAbs :: (value: float32) -> float32 {
+    if value < 0.0 { return -value }
+    return value
+}
+
+ShapeAddEdge :: (ax: float32, ay: float32, bx: float32, by: float32) {
+    if ay == by { return }
+    if shape_edge_count >= SHAPE_EDGES {
+        shape_overflow = true
+        return
+    }
+    shape_edges[shape_edge_count] = ShapeEdge.{ax, ay, bx, by}
+    shape_edge_count += 1
+}
+
+// Adds a closed polygon from polygon_x / polygon_y, wound the same way
+// whatever order the caller listed it in, so overlapping strokes union.
+ShapeAddPolygon :: (count: s32) {
+    area: float32 = 0.0
+    index: s32 = 0
+    while index < count {
+        next: s32 = (index + 1) % count
+        area += polygon_x[index] * polygon_y[next] - polygon_x[next] * polygon_y[index]
+        index += 1
+    }
+    index = 0
+    while index < count {
+        next: s32 = (index + 1) % count
+        if area >= 0.0 {
+            ShapeAddEdge(polygon_x[index], polygon_y[index], polygon_x[next], polygon_y[next])
+        } else {
+            ShapeAddEdge(polygon_x[next], polygon_y[next], polygon_x[index], polygon_y[index])
+        }
+        index += 1
+    }
+}
+
+ShapeAddCircle :: (cx: float32, cy: float32, radius: float32) {
+    index: s32 = 0
+    while index < 16 {
+        next: s32 = (index + 1) % 16
+        ShapeAddEdge(cx + circle_x[index] * radius, cy + circle_y[index] * radius,
+            cx + circle_x[next] * radius, cy + circle_y[next] * radius)
+        index += 1
+    }
+}
+
+ShapeQuad :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) {
+    polygon_x[0] = x0
+    polygon_y[0] = y0
+    polygon_x[1] = x1
+    polygon_y[1] = y1
+    polygon_x[2] = x2
+    polygon_y[2] = y2
+    polygon_x[3] = x3
+    polygon_y[3] = y3
+    ShapeAddPolygon(4)
+}
+
+ShapeTriangle :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32) {
+    polygon_x[0] = x0
+    polygon_y[0] = y0
+    polygon_x[1] = x1
+    polygon_y[1] = y1
+    polygon_x[2] = x2
+    polygon_y[2] = y2
+    ShapeAddPolygon(3)
+}
+
+// The filled outline of the current subpath.
+ShapeFillSubpath :: () {
+    if shape_point_count < 3 { return }
+    index: s32 = 0
+    while index < shape_point_count {
+        next: s32 = (index + 1) % shape_point_count
+        ShapeAddEdge(shape_x[index], shape_y[index], shape_x[next], shape_y[next])
+        index += 1
+    }
+}
+
+// Drops repeated points so every segment has a direction.
+ShapeCollapse :: () {
+    write: s32 = 0
+    read: s32 = 0
+    while read < shape_point_count {
+        keep: bool = write == 0
+        if !keep {
+            dx: float32 = shape_x[read] - shape_x[write - 1]
+            dy: float32 = shape_y[read] - shape_y[write - 1]
+            keep = dx * dx + dy * dy > 0.000001
+        }
+        if keep {
+            shape_x[write] = shape_x[read]
+            shape_y[write] = shape_y[read]
+            write += 1
+        }
+        read += 1
+    }
+    shape_point_count = write
+}
+
+// The stroke of the current subpath as a union of segment quads, joins, and
+// caps. half is half the stroke width in output pixels.
+ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
+    ShapeCollapse()
+    if closed && shape_point_count > 1 {
+        dx: float32 = shape_x[0] - shape_x[shape_point_count - 1]
+        dy: float32 = shape_y[0] - shape_y[shape_point_count - 1]
+        if dx * dx + dy * dy <= 0.000001 { shape_point_count -= 1 }
+    }
+    count: s32 = shape_point_count
+    if count == 0 { return }
+    if count == 1 {
+        if cap == 114 { ShapeAddCircle(shape_x[0], shape_y[0], half) }
+        return
+    }
+    segments: s32 = count - 1
+    if closed { segments = count }
+    index: s32 = 0
+    while index < segments {
+        next: s32 = (index + 1) % count
+        ax: float32 = shape_x[index]
+        ay: float32 = shape_y[index]
+        bx: float32 = shape_x[next]
+        by: float32 = shape_y[next]
+        length: float32 = ShapeSqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+        ux: float32 = (bx - ax) / length
+        uy: float32 = (by - ay) / length
+        if cap == 115 && !closed {
+            if index == 0 {
+                ax -= ux * half
+                ay -= uy * half
+            }
+            if index == segments - 1 {
+                bx += ux * half
+                by += uy * half
+            }
+        }
+        nx: float32 = -uy * half
+        ny: float32 = ux * half
+        ShapeQuad(ax + nx, ay + ny, bx + nx, by + ny, bx - nx, by - ny, ax - nx, ay - ny)
+        index += 1
+    }
+    if !closed && cap == 114 {
+        ShapeAddCircle(shape_x[0], shape_y[0], half)
+        ShapeAddCircle(shape_x[count - 1], shape_y[count - 1], half)
+    }
+    first: s32 = 1
+    last: s32 = count - 1
+    if closed {
+        first = 0
+        last = count
+    }
+    index = first
+    while index < last {
+        previous: s32 = (index + count - 1) % count
+        next: s32 = (index + 1) % count
+        vx: float32 = shape_x[index]
+        vy: float32 = shape_y[index]
+        d0x: float32 = vx - shape_x[previous]
+        d0y: float32 = vy - shape_y[previous]
+        d1x: float32 = shape_x[next] - vx
+        d1y: float32 = shape_y[next] - vy
+        l0: float32 = ShapeSqrt(d0x * d0x + d0y * d0y)
+        l1: float32 = ShapeSqrt(d1x * d1x + d1y * d1y)
+        d0x = d0x / l0
+        d0y = d0y / l0
+        d1x = d1x / l1
+        d1y = d1y / l1
+        cross: float32 = d0x * d1y - d0y * d1x
+        dot: float32 = d0x * d1x + d0y * d1y
+        if ShapeAbs(cross) > 0.00001 || dot < 0.0 {
+            if join == 114 {
+                ShapeAddCircle(vx, vy, half)
+            } else {
+                side: float32 = 1.0
+                if cross > 0.0 { side = -1.0 }
+                n0x: float32 = -d0y * half * side
+                n0y: float32 = d0x * half * side
+                n1x: float32 = -d1y * half * side
+                n1y: float32 = d1x * half * side
+                // A miter reaches (n0 + n1) / (1 + dot); past a limit of 4
+                // it falls back to a bevel, as SVG does.
+                if join == 109 && 1.0 + dot > 0.125 {
+                    mx: float32 = (n0x + n1x) / (1.0 + dot)
+                    my: float32 = (n0y + n1y) / (1.0 + dot)
+                    ShapeQuad(vx, vy, vx + n0x, vy + n0y, vx + mx, vy + my, vx + n1x, vy + n1y)
+                } else {
+                    ShapeTriangle(vx, vy, vx + n0x, vy + n0y, vx + n1x, vy + n1y)
+                }
+            }
+        }
+        index += 1
+    }
+}
+
+// ---------------------------------------------------------------- parsing
+
+ShapeIsDigit :: (byte: u8) -> bool {
+    return byte >= 48 && byte <= 57
+}
+
+ShapeIsSpace :: (byte: u8) -> bool {
+    return byte == 32 || byte == 44 || byte == 10 || byte == 13 || byte == 9
+}
+
+shape_after: s32 = 0;
+shape_bad: bool = false;
+
+// Reads a number starting at start; shape_after is left just past it.
+ShapeNumber :: (text: string, end: s32, start: s32) -> float32 {
+    index: s32 = start
+    saw_digit: bool = false
+    negative: bool = false
+    if index < end && (text[index] == 45 || text[index] == 43) {
+        negative = text[index] == 45
+        index += 1
+    }
+    value: float32 = 0.0
+    while index < end && ShapeIsDigit(text[index]) {
+        saw_digit = true
+        value = value * 10.0 + cast(float32)(cast(s32)text[index] - 48)
+        index += 1
+    }
+    if index < end && text[index] == 46 {
+        index += 1
+        scale: float32 = 0.1
+        while index < end && ShapeIsDigit(text[index]) {
+            saw_digit = true
+            value += cast(float32)(cast(s32)text[index] - 48) * scale
+            scale = scale * 0.1
+            index += 1
+        }
+    }
+    if index < end && (text[index] == 101 || text[index] == 69) {
+        index += 1
+        exponent_negative: bool = false
+        if index < end && (text[index] == 45 || text[index] == 43) {
+            exponent_negative = text[index] == 45
+            index += 1
+        }
+        exponent: s32 = 0
+        while index < end && ShapeIsDigit(text[index]) {
+            exponent = exponent * 10 + (cast(s32)text[index] - 48)
+            index += 1
+        }
+        while exponent > 0 {
+            if exponent_negative {
+                value = value * 0.1
+            } else {
+                value = value * 10.0
+            }
+            exponent -= 1
+        }
+    }
+    if !saw_digit { shape_bad = true }
+    shape_after = index
+    if negative { return -value }
+    return value
+}
+
+ShapeAddPoint :: (x: float32, y: float32) {
+    if shape_point_count >= SHAPE_POINTS {
+        shape_overflow = true
+        return
+    }
+    shape_x[shape_point_count] = x
+    shape_y[shape_point_count] = y
+    shape_point_count += 1
+}
+
+// Ends the current subpath as a fill or a stroke.
+ShapeFinishSubpath :: (stroke: bool, half: float32, cap: u8, join: u8, closed: bool) {
+    if stroke {
+        ShapeStrokeSubpath(half, cap, join, closed)
+    } else {
+        ShapeFillSubpath()
+    }
+    shape_point_count = 0
+}
+
+// Reads one op's path data, [start, end), into shape_edges at the given
+// scale. Returns false when the data is malformed.
+ShapeBuildPath :: (text: string, start: s32, end: s32, scale: float32,
+    stroke: bool, half: float32, cap: u8, join: u8) -> bool {
+    index: s32 = start
+    command: u8 = 0
+    x: float32 = 0.0
+    y: float32 = 0.0
+    while true {
+        while index < end && ShapeIsSpace(text[index]) { index += 1 }
+        if index >= end { break }
+        byte: u8 = text[index]
+        if (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122) {
+            command = byte
+            index += 1
+            if command == 90 {
+                ShapeFinishSubpath(stroke, half, cap, join, true)
+                continue
+            }
+        } else if command == 0 || command == 90 {
+            return false
+        }
+        if command == 77 {
+            ShapeFinishSubpath(stroke, half, cap, join, false)
+            x = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            while index < end && ShapeIsSpace(text[index]) { index += 1 }
+            y = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            ShapeAddPoint(x, y)
+            command = 76
+        } else if command == 76 {
+            x = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            while index < end && ShapeIsSpace(text[index]) { index += 1 }
+            y = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            ShapeAddPoint(x, y)
+        } else if command == 72 {
+            x = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            ShapeAddPoint(x, y)
+        } else if command == 86 {
+            y = ShapeNumber(text, end, index) * scale
+            index = shape_after
+            ShapeAddPoint(x, y)
+        } else if command == 67 {
+            values: [6]float32
+            count: s32 = 0
+            while count < 6 {
+                while index < end && ShapeIsSpace(text[index]) { index += 1 }
+                if index >= end { return false }
+                values[count] = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                count += 1
+            }
+            step: s32 = 1
+            while step <= SHAPE_CURVE_STEPS {
+                t: float32 = cast(float32)step / cast(float32)SHAPE_CURVE_STEPS
+                u: float32 = 1.0 - t
+                a: float32 = u * u * u
+                b: float32 = 3.0 * u * u * t
+                c: float32 = 3.0 * u * t * t
+                d: float32 = t * t * t
+                ShapeAddPoint(a * x + b * values[0] + c * values[2] + d * values[4],
+                    a * y + b * values[1] + c * values[3] + d * values[5])
+                step += 1
+            }
+            x = values[4]
+            y = values[5]
+        } else {
+            return false
+        }
+    }
+    ShapeFinishSubpath(stroke, half, cap, join, false)
+    return true
+}
+
+// ------------------------------------------------------------ rasterizing
+
+ShapeAddSpan :: (start: float32, stop: float32, width: s32, weight: float32) {
+    if start < 0.0 { start = 0.0 }
+    if stop > cast(float32)width { stop = cast(float32)width }
+    if stop <= start { return }
+    first: s32 = cast(s32)start
+    last: s32 = cast(s32)stop
+    if first == last {
+        row_accumulator[first] += (stop - start) * weight
+        return
+    }
+    row_accumulator[first] += (cast(float32)(first + 1) - start) * weight
+    index: s32 = first + 1
+    while index < last {
+        row_accumulator[index] += weight
+        index += 1
+    }
+    if last < width { row_accumulator[last] += (stop - cast(float32)last) * weight }
+}
+
+// Fills coverage (width x height, row major) from the edges gathered so far,
+// keeping the larger of the old and new value at each pixel.
+ShapeCoverEdges :: (even_odd: bool, width: s32, height: s32, coverage: []u8) {
+    weight: float32 = 1.0 / cast(float32)SHAPE_SAMPLES
+    row: s32 = 0
+    while row < height {
+        column: s32 = 0
+        while column < width {
+            row_accumulator[column] = 0.0
+            column += 1
+        }
+        sample: s32 = 0
+        while sample < SHAPE_SAMPLES {
+            sy: float32 = cast(float32)row + (cast(float32)sample + 0.5) * weight
+            count: s32 = 0
+            edge: s32 = 0
+            while edge < shape_edge_count {
+                e: ShapeEdge = shape_edges[edge]
+                low: float32 = e.ay
+                high: float32 = e.by
+                direction: s32 = 1
+                if e.by < e.ay {
+                    low = e.by
+                    high = e.ay
+                    direction = -1
+                }
+                if sy >= low && sy < high && count < SHAPE_CROSSINGS {
+                    x: float32 = e.ax + (sy - e.ay) * (e.bx - e.ax) / (e.by - e.ay)
+                    at: s32 = count
+                    while at > 0 && crossing_x[at - 1] > x {
+                        crossing_x[at] = crossing_x[at - 1]
+                        crossing_direction[at] = crossing_direction[at - 1]
+                        at -= 1
+                    }
+                    crossing_x[at] = x
+                    crossing_direction[at] = direction
+                    count += 1
+                }
+                edge += 1
+            }
+            winding: s32 = 0
+            at: s32 = 0
+            while at < count {
+                inside: bool = winding != 0
+                if even_odd { inside = (winding & 1) != 0 }
+                if inside && at > 0 {
+                    ShapeAddSpan(crossing_x[at - 1], crossing_x[at], width, weight)
+                }
+                winding += crossing_direction[at]
+                at += 1
+            }
+            sample += 1
+        }
+        column = 0
+        while column < width {
+            value: float32 = row_accumulator[column] * 255.0 + 0.5
+            if value > 255.0 { value = 255.0 }
+            level: u8 = cast(u8)value
+            if level > coverage[row * width + column] {
+                coverage[row * width + column] = level
+            }
+            column += 1
+        }
+        row += 1
+    }
+}
+
+// Rasterizes shape into a size x size coverage bitmap. Returns false when the
+// shape is malformed or too complex; the bitmap then holds what was drawn.
+#program_export
+ShapeRaster :: (shape: string, size: s32, coverage: []u8) -> bool {
+    if size < 1 || size > SHAPE_MAX_SIZE || cast(s32)coverage.count < size * size {
+        return false
+    }
+    index: s32 = 0
+    while index < size * size {
+        coverage[index] = cast(u8)0
+        index += 1
+    }
+    scale: float32 = cast(float32)size / SHAPE_VIEW
+    shape_overflow = false
+    shape_bad = false
+    length: s32 = cast(s32)shape.count
+    at: s32 = 0
+    ok: bool = true
+    while at < length {
+        end: s32 = at
+        while end < length && shape[end] != 124 { end += 1 }
+        kind: u8 = shape[at]
+        stroke: bool = kind == 83
+        even_odd: bool = kind == 69
+        half: float32 = 0.0
+        cap: u8 = 98
+        join: u8 = 109
+        cursor: s32 = at + 1
+        if stroke {
+            half = ShapeNumber(shape, end, cursor) * scale * 0.5
+            cursor = shape_after
+            cap = shape[cursor]
+            join = shape[cursor + 1]
+            cursor += 2
+        }
+        if cursor >= end || shape[cursor] != 58 || (!stroke && kind != 70 && kind != 69) {
+            ok = false
+            break
+        }
+        shape_edge_count = 0
+        shape_point_count = 0
+        if !ShapeBuildPath(shape, cursor + 1, end, scale, stroke, half, cap, join) {
+            ok = false
+            break
+        }
+        ShapeCoverEdges(even_odd, size, size, coverage)
+        at = end + 1
+    }
+    return ok && !shape_overflow && !shape_bad
+}
