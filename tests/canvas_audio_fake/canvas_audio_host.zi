@@ -1,0 +1,281 @@
+// A stand-in for the browser audio host with a clock the test controls, so
+// the audio engine's positions, scheduling, and limits are checked exactly.
+// It has the real host's interface; the test puts it ahead of the real one.
+#if #defined(PLATFORM_WEB) {
+    CanvasAudioTimer :: #type (handle: s32) #c_call;
+
+    FAKE_LIMIT :: 256
+
+    FakeBuffer :: struct {
+        used: bool
+        frames: s32
+        rate: s32
+        channels: s32
+    }
+
+    FakeSource :: struct {
+        used: bool
+        live: bool
+        offset: float64
+        loop: float64
+        rate: float64
+        volume: float64
+        pan: float64
+        when: float64
+    }
+
+    FakeTimer :: struct {
+        used: bool
+        interval: s32
+        tick: CanvasAudioTimer
+    }
+
+    fake_now: float64;
+    fake_open: bool;
+    fake_master: float64;
+    fake_last_source: s32;
+    fake_buffers: [FAKE_LIMIT]FakeBuffer;
+    fake_sources: [FAKE_LIMIT]FakeSource;
+    fake_timers: [FAKE_LIMIT]FakeTimer;
+
+    // ---- controls for the test ----
+
+    FakeSetTime :: (seconds: float64) {
+        fake_now = seconds
+    }
+
+    FakeEndSource :: (source: s32) {
+        if source > 0 && source < FAKE_LIMIT { fake_sources[source].live = false }
+    }
+
+    FakeLiveSources :: () -> s32 {
+        count: s32 = 0
+        index: s32 = 0
+        while index < FAKE_LIMIT {
+            if fake_sources[index].used && fake_sources[index].live { count += 1 }
+            index += 1
+        }
+        return count
+    }
+
+    // Source fields: 0 offset, 1 loop, 2 rate, 3 volume, 4 pan, 5 when.
+    FakeSourceField :: (source: s32, field: s32) -> float64 {
+        if source <= 0 || source >= FAKE_LIMIT { return 0.0 }
+        if field == 0 { return fake_sources[source].offset }
+        if field == 1 { return fake_sources[source].loop }
+        if field == 2 { return fake_sources[source].rate }
+        if field == 3 { return fake_sources[source].volume }
+        if field == 4 { return fake_sources[source].pan }
+        return fake_sources[source].when
+    }
+
+    FakeLastSource :: () -> s32 {
+        return fake_last_source
+    }
+
+    FakeTimerInterval :: (handle: s32) -> s32 {
+        if handle <= 0 || handle >= FAKE_LIMIT { return 0 }
+        return fake_timers[handle].interval
+    }
+
+    FakeFireTimer :: (handle: s32) {
+        if handle > 0 && handle < FAKE_LIMIT && fake_timers[handle].used {
+            tick: CanvasAudioTimer = fake_timers[handle].tick
+            tick(handle)
+        }
+    }
+
+    FakeTimerCount :: () -> s32 {
+        count: s32 = 0
+        index: s32 = 0
+        while index < FAKE_LIMIT {
+            if fake_timers[index].used { count += 1 }
+            index += 1
+        }
+        return count
+    }
+
+    FakeBufferCount :: () -> s32 {
+        count: s32 = 0
+        index: s32 = 0
+        while index < FAKE_LIMIT {
+            if fake_buffers[index].used { count += 1 }
+            index += 1
+        }
+        return count
+    }
+
+    FakeContextOpen :: () -> s32 {
+        if fake_open { return 1 }
+        return 0
+    }
+
+    FakeMasterVolume :: () -> float64 {
+        return fake_master
+    }
+
+    // ---- the host interface ----
+
+    AudioHostOpen :: () -> s32 {
+        fake_open = true
+        return 1
+    }
+
+    AudioHostClose :: () {
+        fake_open = false
+        index: s32 = 0
+        while index < FAKE_LIMIT {
+            fake_buffers[index].used = false
+            fake_sources[index].used = false
+            fake_timers[index].used = false
+            index += 1
+        }
+    }
+
+    AudioHostResume :: () {
+    }
+
+    AudioHostTime :: () -> float64 {
+        return fake_now
+    }
+
+    AudioHostRate :: () -> float64 {
+        return 48000.0
+    }
+
+    AudioHostMaster :: (volume: float32) {
+        fake_master = cast(float64)volume
+    }
+
+    AudioHostBufferPcm :: (handle: s32, data: *void, frames: s32, sample_rate: s32,
+        sample_size: s32, channels: s32) -> s32 {
+        unused sample_size
+        if data == null || handle <= 0 || handle >= FAKE_LIMIT { return 0 }
+        fake_buffers[handle].used = true
+        fake_buffers[handle].frames = frames
+        fake_buffers[handle].rate = sample_rate
+        fake_buffers[handle].channels = channels
+        return 1
+    }
+
+    AudioHostBufferFile :: (handle: s32, path: *u8) -> s32 {
+        unused handle
+        unused path
+        return 0
+    }
+
+    AudioHostBufferMemory :: (handle: s32, data: *u8, size: s32) -> s32 {
+        unused handle
+        unused data
+        unused size
+        return 0
+    }
+
+    AudioHostBufferRead :: (handle: s32, field: s32) -> float64 {
+        if handle <= 0 || handle >= FAKE_LIMIT || !fake_buffers[handle].used {
+            return 0.0
+        }
+        if field == 0 { return cast(float64)fake_buffers[handle].frames }
+        if field == 1 { return cast(float64)fake_buffers[handle].rate }
+        if field == 2 { return cast(float64)fake_buffers[handle].channels }
+        return cast(float64)fake_buffers[handle].frames /
+            cast(float64)fake_buffers[handle].rate
+    }
+
+    AudioHostBufferExport :: (handle: s32, rate_out: *s32, channels_out: *s32,
+        frames_out: *s32) -> *void {
+        unused handle
+        unused rate_out
+        unused channels_out
+        unused frames_out
+        return null
+    }
+
+    AudioHostBufferDrop :: (handle: s32) {
+        if handle > 0 && handle < FAKE_LIMIT { fake_buffers[handle].used = false }
+    }
+
+    FakeStart :: (source: s32, offset: float64, loop: float64, rate: float64,
+        volume: float64, pan: float64, when: float64) -> s32 {
+        if source <= 0 || source >= FAKE_LIMIT { return 0 }
+        fake_sources[source].used = true
+        fake_sources[source].live = true
+        fake_sources[source].offset = offset
+        fake_sources[source].loop = loop
+        fake_sources[source].rate = rate
+        fake_sources[source].volume = volume
+        fake_sources[source].pan = pan
+        fake_sources[source].when = when
+        fake_last_source = source
+        return 1
+    }
+
+    AudioHostSourceStart :: (source: s32, buffer: s32, offset: float64, loop: s32,
+        rate: float64, volume: float64, pan: float64) -> s32 {
+        if buffer <= 0 || buffer >= FAKE_LIMIT || !fake_buffers[buffer].used {
+            return 0
+        }
+        return FakeStart(source, offset, cast(float64)loop, rate, volume, pan, 0.0)
+    }
+
+    AudioHostSourcePcm :: (source: s32, data: *void, frames: s32, sample_rate: s32,
+        sample_size: s32, channels: s32, when: float64, rate: float64,
+        volume: float64, pan: float64) -> s32 {
+        unused data
+        unused frames
+        unused sample_rate
+        unused sample_size
+        unused channels
+        return FakeStart(source, 0.0, 0.0, rate, volume, pan, when)
+    }
+
+    AudioHostSourceStop :: (source: s32) {
+        if source > 0 && source < FAKE_LIMIT {
+            empty: FakeSource
+            fake_sources[source] = empty
+        }
+    }
+
+    AudioHostSourceSet :: (source: s32, volume: float64, pan: float64,
+        rate: float64) {
+        if source <= 0 || source >= FAKE_LIMIT || !fake_sources[source].used {
+            return
+        }
+        fake_sources[source].volume = volume
+        fake_sources[source].pan = pan
+        fake_sources[source].rate = rate
+    }
+
+    AudioHostSourceDone :: (source: s32) -> s32 {
+        if source > 0 && source < FAKE_LIMIT && fake_sources[source].used &&
+            fake_sources[source].live {
+            return 0
+        }
+        return 1
+    }
+
+    AudioHostTimer :: (handle: s32, interval: s32, tick: CanvasAudioTimer) {
+        if handle <= 0 || handle >= FAKE_LIMIT { return }
+        fake_timers[handle].used = true
+        fake_timers[handle].interval = interval
+        fake_timers[handle].tick = tick
+    }
+
+    AudioHostTimerStop :: (handle: s32) {
+        if handle > 0 && handle < FAKE_LIMIT { fake_timers[handle].used = false }
+    }
+
+    // The real host allocates exported samples; the fake exports none.
+    fake_c :: #system_library "c";
+    AudioAllocate :: (size: usize) -> *void #foreign fake_c "malloc";
+    AudioRelease :: (memory: *void) #foreign fake_c "free";
+
+    // Memory the engine hands to callbacks and receives exported samples in.
+    AudioHostAllocate :: (size: usize) -> *void {
+        return AudioAllocate(size)
+    }
+
+    AudioHostFree :: (memory: *void) {
+        AudioRelease(memory)
+    }
+}
