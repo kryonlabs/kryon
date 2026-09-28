@@ -349,7 +349,7 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
                 dropdown.wheel = props.dropdown_wheel
             }
             selection: DropdownResult = Dropdown(session, dropdown,
-                dropdown_options[0:counts.option_count])
+                dropdown_options[0:cast(s64)counts.option_count])
             if selection.changed && selection.selected_index >= 0 &&
                 selection.selected_index < counts.option_count {
                 routes[index] = options[selection.selected_index].route
