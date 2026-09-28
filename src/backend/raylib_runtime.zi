@@ -214,6 +214,18 @@ RaylibBakeTypeface :: (typeface: *RaylibTypeface,
         typeface.codepoint_count)
 }
 
+// Unload the fonts baked for particular sizes and keep the base font. Their
+// baked size depends on the zoom, so a new zoom starts a fresh set instead of
+// filling the fixed number of slots with sizes nothing draws at any more.
+RaylibDropSizedFonts :: (typeface: *RaylibTypeface) {
+    slot: s32 = 0
+    while slot < typeface.sized_count {
+        HostRaylibUnloadFont(typeface.sized_fonts[slot])
+        slot += 1
+    }
+    typeface.sized_count = 0
+}
+
 RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
     HostRaylibUnloadFont(typeface.font)
     slot: s32 = 0
@@ -635,7 +647,13 @@ RaylibViewport :: () -> Rectangle {
 // Draw the following frames at this zoom factor, 1.0 for 100%.
 #program_export
 RaylibSetZoom :: (factor: float32) {
-    if factor > 0.0 { raylib_zoom = factor }
+    if !(factor > 0.0) || factor == raylib_zoom { return }
+    raylib_zoom = factor
+    index: s32 = 0
+    while index < raylib_typeface_count {
+        RaylibDropSizedFonts(*raylib_typefaces[index])
+        index += 1
+    }
 }
 
 #program_export

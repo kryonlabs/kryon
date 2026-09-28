@@ -2,16 +2,15 @@
 
 A browser integration roots `src/backend/canvas_raster.zi` with the selected
 host and defines `PLATFORM_WEB`. Generate native sources with Ziran, then link
-them with Emscripten, Ziran's Web bridge, and the varargs shim:
+them with Emscripten, and Ziran's Web bridge:
 
 ```
 --js-library $ZIRAN_DIR/web/ziran_web.js
 -sEXPORTED_RUNTIME_METHODS=FS
-src/backend/canvas_varargs.c
 -sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web
 ```
 
-Kryon contains no JavaScript. The browser hosts (`page_core.zi`,
+Kryon contains no JavaScript or C. The browser hosts (`page_core.zi`,
 `page_paint.zi`, `page_texture.zi`, `page_font.zi`, `page_events.zi`,
 `page_files.zi`, `page_input.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript

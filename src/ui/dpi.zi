@@ -21,6 +21,7 @@ DPIState :: struct {
     base_width: s32
     base_height: s32
     needs_update: bool
+    zoom: float32
 }
 
 #program_export
@@ -38,8 +39,39 @@ InitialDPI :: () -> DPIState {
     state.camera_zoom = 1.0
     state.base_width = 320
     state.base_height = 560
+    state.zoom = 1.0
     return state
 }
+
+#scope_file
+// The zoom a state carries; a state that never set one is at 100%.
+DPIZoomOf :: (state: DPIState) -> float32 {
+    if state.zoom > 0.0 { return state.zoom }
+    return 1.0
+}
+
+// Derive the render scale and layout from the resolved display density and
+// the zoom. Everything is drawn at density times zoom, and the layout is the
+// view divided by that scale, so a zoom below 100% lays out a larger area
+// and a zoom above it a smaller one, as a browser does.
+DPIScaled :: (state: DPIState) -> DPIState {
+    scale: float32 = state.ui_scale_clamped * DPIZoomOf(state)
+    if scale < 0.1 { scale = 0.1 }
+    state.render_scale = scale
+    layout_width: s32 = cast(s32)(cast(float32)state.physical_width / scale + 0.5)
+    layout_height: s32 = cast(s32)(cast(float32)state.physical_height / scale + 0.5)
+    if layout_width < 1 { layout_width = 1 }
+    if layout_height < 1 { layout_height = 1 }
+    state.layout_width = layout_width
+    state.layout_height = layout_height
+    state.view_width = layout_width
+    state.view_height = layout_height
+    state.camera_zoom = scale
+    state.needs_update = true
+    return state
+}
+
+#scope_export
 
 #program_export
 InvalidateDPI :: (state: DPIState) -> DPIState {
@@ -59,7 +91,11 @@ InvalidateDPI :: (state: DPIState) -> DPIState {
 ResolveDPI :: (state: DPIState, view_width: s32, view_height: s32,
     platform: DPIPlatform, device_density: float32,
     window_scale_x: float32, window_scale_y: float32) -> DPIState {
-    if state.base_height <= 0 { state = InitialDPI() }
+    if state.base_height <= 0 {
+        zoom: float32 = state.zoom
+        state = InitialDPI()
+        if zoom > 0.0 { state.zoom = zoom }
+    }
     if state.physical_width == view_width &&
         state.physical_height == view_height {
         state.needs_update = false
@@ -88,23 +124,19 @@ ResolveDPI :: (state: DPIState, view_width: s32, view_height: s32,
     state.ui_scale = real_dpi
     state.ui_scale_clamped = real_dpi
     if state.ui_scale_clamped < 1.0 { state.ui_scale_clamped = 1.0 }
-    state.render_scale = state.ui_scale_clamped
+    return DPIScaled(state)
+}
 
-    layout_width: s32 = view_width
-    layout_height: s32 = view_height
-    if state.render_scale > 1.0 {
-        layout_width = cast(s32)(cast(float32)view_width / state.render_scale + 0.5)
-        layout_height = cast(s32)(cast(float32)view_height / state.render_scale + 0.5)
-    }
-    if layout_width < 1 { layout_width = 1 }
-    if layout_height < 1 { layout_height = 1 }
-    state.layout_width = layout_width
-    state.layout_height = layout_height
-    state.view_width = layout_width
-    state.view_height = layout_height
-    state.camera_zoom = state.render_scale
-    state.needs_update = true
-    return state
+// Apply the user's zoom on top of the resolved display density: 1.0 is 100%,
+// and the factor may go below 1.0 to zoom out. The next ResolveDPI keeps it.
+// A state that has not been resolved yet takes the zoom when it is.
+#program_export
+ZoomDPI :: (state: DPIState, zoom: float32) -> DPIState {
+    if !(zoom > 0.0) { zoom = 1.0 }
+    if DPIZoomOf(state) == zoom && state.zoom > 0.0 { return state }
+    state.zoom = zoom
+    if state.physical_width <= 0 || state.physical_height <= 0 { return state }
+    return DPIScaled(state)
 }
 
 #program_export
