@@ -93,9 +93,11 @@ RaylibTypeface :: struct {
     name: [64]u8
     name_length: s32
     font: RaylibFont
-    compact_font: RaylibFont
-    small_font: RaylibFont
-    medium_font: RaylibFont
+    // Atlases baked at the exact pixel sizes text asks for; scaling one
+    // atlas to another size blurs glyphs and bleeds their neighbours.
+    sized_fonts: [RAYLIB_SIZED_FONT_MAX]RaylibFont
+    sized_sizes: [RAYLIB_SIZED_FONT_MAX]s32
+    sized_count: s32
     data: *u8
     data_count: s32
     extension: [16]u8
@@ -106,6 +108,9 @@ RaylibTypeface :: struct {
     codepoint_capacity: s32
     loaded: [2048]u32
 }
+
+RAYLIB_SIZED_FONT_MAX :: 16
+RAYLIB_SIZED_FONT_LARGEST :: 96
 
 raylib_typefaces: [16]RaylibTypeface;
 raylib_typeface_count: s32;
@@ -202,15 +207,12 @@ RaylibBakeTypeface :: (typeface: *RaylibTypeface,
 
 RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
     HostRaylibUnloadFont(typeface.font)
-    if typeface.compact_font.texture.id != cast(u32)0 {
-        HostRaylibUnloadFont(typeface.compact_font)
+    slot: s32 = 0
+    while slot < typeface.sized_count {
+        HostRaylibUnloadFont(typeface.sized_fonts[slot])
+        slot += 1
     }
-    if typeface.small_font.texture.id != cast(u32)0 {
-        HostRaylibUnloadFont(typeface.small_font)
-    }
-    if typeface.medium_font.texture.id != cast(u32)0 {
-        HostRaylibUnloadFont(typeface.medium_font)
-    }
+    typeface.sized_count = 0
 }
 
 RaylibFontForSize :: (size: s32) -> RaylibFont {
@@ -219,29 +221,27 @@ RaylibFontForSize :: (size: s32) -> RaylibFont {
         return raylib_font
     }
     typeface: *RaylibTypeface = *raylib_typefaces[index]
-    if size <= 14 {
-        if typeface.compact_font.texture.id == cast(u32)0 {
-            typeface.compact_font = RaylibBakeTypeface(typeface, 14)
-        }
-        if typeface.compact_font.texture.id != cast(u32)0 {
-            return typeface.compact_font
-        }
-    } else if size <= 18 {
-        if typeface.small_font.texture.id == cast(u32)0 {
-            typeface.small_font = RaylibBakeTypeface(typeface, 16)
-        }
-        if typeface.small_font.texture.id != cast(u32)0 {
-            return typeface.small_font
-        }
-    } else if size <= 36 {
-        if typeface.medium_font.texture.id == cast(u32)0 {
-            typeface.medium_font = RaylibBakeTypeface(typeface, 32)
-        }
-        if typeface.medium_font.texture.id != cast(u32)0 {
-            return typeface.medium_font
-        }
+    if size <= 0 || size > RAYLIB_SIZED_FONT_LARGEST {
+        return typeface.font
     }
-    return typeface.font
+    slot: s32 = 0
+    while slot < typeface.sized_count {
+        if typeface.sized_sizes[slot] == size {
+            return typeface.sized_fonts[slot]
+        }
+        slot += 1
+    }
+    if typeface.sized_count >= RAYLIB_SIZED_FONT_MAX {
+        return typeface.font
+    }
+    font: RaylibFont = RaylibBakeTypeface(typeface, size)
+    if font.texture.id == cast(u32)0 {
+        return typeface.font
+    }
+    typeface.sized_fonts[typeface.sized_count] = font
+    typeface.sized_sizes[typeface.sized_count] = size
+    typeface.sized_count += 1
+    return font
 }
 
 RaylibFreeTypefaceSource :: (typeface: *RaylibTypeface) {
@@ -292,20 +292,14 @@ RaylibEnsureGlyphs :: (value: string) {
     HostRaylibUnloadFont(typeface.font)
     typeface.font = font
     raylib_font = font
-    if typeface.compact_font.texture.id != cast(u32)0 {
-        font = RaylibBakeTypeface(typeface, 14)
-        HostRaylibUnloadFont(typeface.compact_font)
-        typeface.compact_font = font
-    }
-    if typeface.small_font.texture.id != cast(u32)0 {
-        font = RaylibBakeTypeface(typeface, 16)
-        HostRaylibUnloadFont(typeface.small_font)
-        typeface.small_font = font
-    }
-    if typeface.medium_font.texture.id != cast(u32)0 {
-        font = RaylibBakeTypeface(typeface, 32)
-        HostRaylibUnloadFont(typeface.medium_font)
-        typeface.medium_font = font
+    slot: s32 = 0
+    while slot < typeface.sized_count {
+        font = RaylibBakeTypeface(typeface, typeface.sized_sizes[slot])
+        if font.texture.id != cast(u32)0 {
+            HostRaylibUnloadFont(typeface.sized_fonts[slot])
+            typeface.sized_fonts[slot] = font
+        }
+        slot += 1
     }
 }
 
