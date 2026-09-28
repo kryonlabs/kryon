@@ -1,81 +1,5 @@
 // Raw browser effects; state and exported host policy live in canvas_input.zi.
 addToLibrary({
-  js_input_query__sig: "iii",
-  js_input_query: function(which, code) {
-    var K = globalThis.__kryonCanvas;
-    if (!K) return 0;
-    switch (which) {
-    case 0: return K.keysDown[code] ? 1 : 0;
-    case 1: return K.keysPressed.indexOf(code) >= 0 ? 1 : 0;
-    case 2: return K.keysReleased.indexOf(code) >= 0 ? 1 : 0;
-    case 3: return K.keysPressed.length > 0 ? K.keysPressed.shift() : 0;
-    case 4: return K.chars.length > 0 ? K.chars.shift() : 0;
-    case 5: return K.buttonsDown[code] ? 1 : 0;
-    case 6: return K.buttonsPressed.indexOf(code) >= 0 ? 1 : 0;
-    case 7: return K.buttonsReleased.indexOf(code) >= 0 ? 1 : 0;
-    case 8: return K.mouseX;
-    case 9: return K.mouseY;
-    case 10: return K.mouseDeltaX;
-    case 11: return K.mouseDeltaY;
-    case 12: {
-        var w = Math.abs(K.wheelX) > Math.abs(K.wheelY) ? K.wheelX : K.wheelY;
-        return w < 0 ? Math.floor(w) : Math.ceil(w);
-    }
-    case 13: K.keysPressed = []; return 1;
-    case 14: K.keysReleased = []; return 1;
-    case 15: K.buttonsPressed = []; return 1;
-    case 16: K.buttonsReleased = []; return 1;
-    case 17: K.mouseDeltaX = 0; K.mouseDeltaY = 0; return 1;
-    case 18: K.wheelX = 0; K.wheelY = 0; return 1;
-    case 19: return K.keysRepeated.indexOf(code) >= 0 ? 1 : 0;
-    case 20: K.keysRepeated = []; return 1;
-    }
-    return 0;
-  },
-  js_input_float__sig: "di",
-  js_input_float: function(which) {
-    var K = globalThis.__kryonCanvas;
-    if (!K) return 0.0;
-    switch (which) {
-    case 0: return K.mouseDeltaX;
-    case 1: return K.mouseDeltaY;
-    case 2: return K.wheelX;
-    case 3: return K.wheelY;
-    case 4: return Math.abs(K.wheelX) > Math.abs(K.wheelY) ? K.wheelX : K.wheelY;
-    }
-    return 0.0;
-  },
-  js_input_set_mouse__sig: "vii",
-  js_input_set_mouse: function(x, y) {
-    var K = globalThis.__kryonCanvas;
-    if (!K) return;
-    K.mouseDeltaX += x - K.mouseX;
-    K.mouseDeltaY += y - K.mouseY;
-    K.mouseX = x;
-    K.mouseY = y;
-  },
-  js_input_mouse_config__sig: "vdddd",
-  js_input_mouse_config: function(ox, oy, sx, sy) {
-    var K = globalThis.__kryonCanvas;
-    if (!K) return;
-    K.mouseOffsetX = ox;
-    K.mouseOffsetY = oy;
-    K.mouseScaleX = sx;
-    K.mouseScaleY = sy;
-  },
-  js_touch_query__sig: "iii",
-  js_touch_query: function(index, field) {
-    var K = globalThis.__kryonCanvas;
-    if (!K || index < 0 || index >= K.touches.length) return 0;
-    var t = K.touches[index];
-    switch (field) {
-    case 0: return t.x | 0;
-    case 1: return t.y | 0;
-    case 2: return t.id | 0;
-    case 3: return K.touches.length | 0;
-    }
-    return 0;
-  },
   js_gamepad_query__sig: "iiii",
   js_gamepad_query: function(gamepad, which, index) {
     var K = globalThis.__kryonCanvas;
@@ -187,10 +111,6 @@ addToLibrary({
     for (var i = 0; i < K.gamepadNow.length; i++)
         if (K.gamepadNow[i]) K.gamepadPrev[i] = K.gamepadNow[i].slice();
   },
-  js_input_offset__sig: 'vii',
-  js_input_offset: function(x, y) { var K=globalThis.__kryonCanvas; if(K) { K.mouseOffsetX=x; K.mouseOffsetY=y; } },
-  js_input_scale__sig: 'vdd',
-  js_input_scale: function(x, y) { var K=globalThis.__kryonCanvas; if(K) { K.mouseScaleX=x; K.mouseScaleY=y; } },
   js_input_cursor__sig: 'vi',
   js_input_cursor: function(mode) {
     var K=globalThis.__kryonCanvas, c=K && K.canvas; if(!c) return;
@@ -199,8 +119,6 @@ addToLibrary({
     if(mode === 2 && typeof document !== 'undefined' && document.pointerLockElement === c && document.exitPointerLock) document.exitPointerLock();
     if(mode === 3 && c.requestPointerLock) { var result=c.requestPointerLock(); if(result && result.catch) result.catch(function(){}); }
   },
-  js_input_cursor_state__sig: 'ii',
-  js_input_cursor_state: function(mode) { var K=globalThis.__kryonCanvas; if(!K) return 0; return mode === 0 ? +!!K.cursorHidden : +(K.mouseX>=0 && K.mouseY>=0 && K.mouseX<K.w && K.mouseY<K.h); },
   js_gamepad_vibration__sig: 'viddd',
   js_gamepad_vibration: function(index, left, right, seconds) {
     var pads=typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];

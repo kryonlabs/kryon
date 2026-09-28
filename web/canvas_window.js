@@ -1,6 +1,6 @@
 // Raw browser effects; state and exported host policy live in canvas_window.zi.
 addToLibrary({
-  js_canvas_boot__deps: ["$UTF8ToString", "$FS"],
+  js_canvas_boot__deps: ["$UTF8ToString", "$FS", "$stringToUTF8", "$lengthBytesUTF8", "$getWasmTableEntry", "malloc", "free"],
   js_canvas_boot__sig: "viii",
   js_canvas_boot: function(w, h, title) {
     var g = globalThis;
@@ -12,14 +12,7 @@ addToLibrary({
         target: [],               /* render-target stack: {canvas,ctx} */
         saved: 0,                 /* active screen-space scissor save */
         mode2D: null,
-        keysDown: {}, keysPressed: [], keysReleased: [], keysRepeated: [],
-        chars: [],
-        mouseX: 0, mouseY: 0, mouseDeltaX: 0, mouseDeltaY: 0,
-        mouseOffsetX: 0, mouseOffsetY: 0, mouseScaleX: 1, mouseScaleY: 1,
-        buttonsDown: {}, buttonsPressed: [], buttonsReleased: [],
-        wheelX: 0, wheelY: 0,
-        touches: [], dropped: [], droppedPending: 0, focused: 1, resized: 0,
-        clipboard: "", clipboardGestureUntil: 0,
+        touches: [], dropped: [], droppedPending: 0, resized: 0,
         gamepadPrev: [], gamepadNow: [], gamepadPressed: [],
         gamepadReleased: [], lastGamepadButton: -1,
         frames: 0, closeRequested: false, lastOp: 'boot'
@@ -152,49 +145,21 @@ addToLibrary({
     }
     if (K.canvas) K.resizeMainCanvas(w, h);
     if (doc && doc.title !== undefined) doc.title = title ? UTF8ToString(title) : "";
-    var KEYMAP = {
-        Space: 32, Escape: 256, Enter: 257, NumpadEnter: 257, Tab: 258,
-        Backspace: 259, Insert: 260, Delete: 261, ArrowRight: 262,
-        ArrowLeft: 263, ArrowDown: 264, ArrowUp: 265, PageUp: 266,
-        PageDown: 267, Home: 268, End: 269, CapsLock: 280, ScrollLock: 281,
-        NumLock: 282, PrintScreen: 283, Pause: 284, F1: 290, F2: 291,
-        F3: 292, F4: 293, F5: 294, F6: 295, F7: 296, F8: 297, F9: 298,
-        F10: 299, F11: 300, F12: 301, ShiftLeft: 340, ShiftRight: 344,
-        ControlLeft: 341, ControlRight: 345, AltLeft: 342, AltRight: 346,
-        MetaLeft: 343, MetaRight: 347, Semicolon: 59, Equal: 61, Comma: 44,
-        Minus: 45, Period: 46, Slash: 47, Backquote: 96, BracketLeft: 91,
-        Backslash: 92, BracketRight: 93, Quote: 39, Digit0: 48, Digit1: 49,
-        Digit2: 50, Digit3: 51, Digit4: 52, Digit5: 53, Digit6: 54,
-        Digit7: 55, Digit8: 56, Digit9: 57
+    /* Raw DOM events go to the Zi handler (canvas_events.zi), which owns every
+     * input decision and answers with flags for what the page does next.
+     * Kinds and flags mirror the constants in that file. */
+    var sendEvent = function (kind, a, b, x, y, code, key) {
+        var A = K.eventScratch;
+        if (!K.eventHandler || !A) return 0;
+        stringToUTF8(code || "", A.code, 64);
+        stringToUTF8(key || "", A.key, 64);
+        try {
+            return getWasmTableEntry(K.eventHandler)(kind, a | 0, b | 0,
+                x, y, A.code, A.key) | 0;
+        } catch (_) { return 0; }
     };
-    var keyOf = function (code, key) {
-        if (!code && key) {
-            if (key.length === 1) {
-                var kc = key.toUpperCase().charCodeAt(0);
-                if (kc >= 32 && kc <= 126) return kc;
-            }
-            code = key;
-        }
-        if (code.startsWith('Key') && code.length === 4) {
-            var c = code.charCodeAt(3);
-            if (c >= 65 && c <= 90) return c;
-        }
-        if (code.startsWith('Numpad') && code.length === 7) {
-            var d = code.charCodeAt(6);
-            if (d >= 48 && d <= 57) return d;
-        }
-        return KEYMAP[code] !== undefined ? KEYMAP[code] : 0;
-    };
-    var localPoint = function (e) {
-        var r = K.canvas && K.canvas.getBoundingClientRect
-              ? K.canvas.getBoundingClientRect() : {left: 0, top: 0};
-        return {x: (e.clientX - r.left - K.mouseOffsetX) * K.mouseScaleX,
-                y: (e.clientY - r.top - K.mouseOffsetY) * K.mouseScaleY};
-    };
-    var setMouse = function (x, y) {
-        K.mouseDeltaX += x - K.mouseX;
-        K.mouseDeltaY += y - K.mouseY;
-        K.mouseX = x; K.mouseY = y;
+    var settle = function (e, flags) {
+        if ((flags & 1) && e.cancelable) e.preventDefault();
     };
     var claimEvent = function (e, name) {
         var key = '__kryonCanvasHandled_' + name;
@@ -202,114 +167,71 @@ addToLibrary({
         try { e[key] = 1; } catch (_) {}
         return true;
     };
-    var syncTouches = function (list) {
-        var hadTouches = K.touches.length > 0;
-        K.touches = [];
+    var canvasPoint = function (e) {
+        var r = K.canvas && K.canvas.getBoundingClientRect
+              ? K.canvas.getBoundingClientRect() : {left: 0, top: 0};
+        return {x: e.clientX - r.left, y: e.clientY - r.top};
+    };
+    var sendTouches = function (e) {
+        var list = e.touches || [];
+        sendEvent(7, Math.min(list.length, 8), 0, 0, 0);
         for (var i = 0; i < list.length && i < 8; i++) {
-            var t = list[i];
-            var p = localPoint(t);
-            K.touches.push({id: t.identifier | 0, x: p.x, y: p.y});
+            var p = canvasPoint(list[i]);
+            sendEvent(8, list[i].identifier | 0, 0, p.x, p.y);
         }
-        if (K.touches.length > 0) setMouse(K.touches[0].x, K.touches[0].y);
-        if (!hadTouches && K.touches.length > 0) {
-            K.buttonsDown[0] = 1;
-            K.enqueue(K.buttonsPressed, 0);
-        } else if (hadTouches && K.touches.length === 0) {
-            delete K.buttonsDown[0];
-            K.enqueue(K.buttonsReleased, 0);
-        }
+        settle(e, sendEvent(9, 0, 0, 0, 0));
     };
     var hook = function (target) {
         if (!target || !target.addEventListener)
             return;
         K.listen(target, 'mousemove', function (e) {
             if (!claimEvent(e, 'mousemove')) return;
-            var p = localPoint(e);
-            setMouse(p.x, p.y);
+            var p = canvasPoint(e);
+            sendEvent(0, 0, 0, p.x, p.y);
         });
         K.listen(target, 'mousedown', function (e) {
             if (!claimEvent(e, 'mousedown')) return;
-            var p = localPoint(e);
-            setMouse(p.x, p.y);
-            if (K.canvas && K.canvas.focus) {
+            var p = canvasPoint(e);
+            var flags = sendEvent(1, e.button, 0, p.x, p.y);
+            if ((flags & 2) && K.canvas && K.canvas.focus) {
                 try { K.canvas.focus({preventScroll: true}); } catch (_) {
                     try { K.canvas.focus(); } catch (_) {}
                 }
             }
-            K.buttonsDown[e.button] = 1;
-            K.enqueue(K.buttonsPressed, e.button);
-            if (K.canvas && K.canvas.setPointerCapture &&
+            if ((flags & 4) && K.canvas && K.canvas.setPointerCapture &&
                 e.pointerId !== undefined) {
                 try { K.canvas.setPointerCapture(e.pointerId); } catch (_) {}
             }
         });
         K.listen(target, 'mouseup', function (e) {
             if (!claimEvent(e, 'mouseup')) return;
-            var p = localPoint(e);
-            setMouse(p.x, p.y);
-            delete K.buttonsDown[e.button];
-            K.enqueue(K.buttonsReleased, e.button);
+            var p = canvasPoint(e);
+            sendEvent(2, e.button, 0, p.x, p.y);
         });
         K.listen(target, 'wheel', function (e) {
             if (!claimEvent(e, 'wheel')) return;
-            var unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? K.h : 120);
-            K.wheelX += -e.deltaX / unit;
-            K.wheelY += -e.deltaY / unit;
-            if (e.cancelable) e.preventDefault();
+            settle(e, sendEvent(3, e.deltaMode, 0, e.deltaX, e.deltaY));
         });
         K.listen(target, 'keydown', function (e) {
             if (!claimEvent(e, 'keydown')) return;
-            var k = keyOf(e.code || "", e.key || "");
-            if (k) {
-                if (K.keysDown[k] && e.repeat) K.enqueue(K.keysRepeated, k);
-                else if (!K.keysDown[k]) K.enqueue(K.keysPressed, k);
-                K.keysDown[k] = 1;
-                if ((e.ctrlKey || e.metaKey) &&
-                    (k === 65 || k === 67 || k === 86 || k === 88)) {
-                    var nowMs = (typeof performance !== 'undefined' &&
-                        performance.now) ? performance.now() : Date.now();
-                    K.clipboardGestureUntil = nowMs + 1000;
-                    if (e.cancelable) e.preventDefault();
-                }
-                if (k === 32 || (k >= 256 && k <= 269))
-                    e.preventDefault();
-            }
+            settle(e, sendEvent(4, e.repeat ? 1 : 0,
+                (e.ctrlKey || e.metaKey) ? 1 : 0, 0, 0, e.code, e.key));
         });
         K.listen(target, 'keyup', function (e) {
             if (!claimEvent(e, 'keyup')) return;
-            var k = keyOf(e.code || "", e.key || "");
-            if (k) {
-                delete K.keysDown[k];
-                K.enqueue(K.keysReleased, k);
-                if (k === 32 || (k >= 256 && k <= 269))
-                    e.preventDefault();
-            }
+            settle(e, sendEvent(5, 0, 0, 0, 0, e.code, e.key));
         });
         K.listen(target, 'keypress', function (e) {
             if (!claimEvent(e, 'keypress')) return;
-            if (e.key && Array.from(e.key).length === 1)
-                K.enqueue(K.chars, e.key.codePointAt(0));
+            sendEvent(6, 0, 0, 0, 0, "", e.key);
         });
-        K.listen(target, 'touchstart', function (e) {
-            if (!claimEvent(e, 'touchstart')) return;
-            syncTouches(e.touches || []);
-            if (e.cancelable) e.preventDefault();
-        }, {passive: false});
-        K.listen(target, 'touchmove', function (e) {
-            if (!claimEvent(e, 'touchmove')) return;
-            syncTouches(e.touches || []);
-            if (e.cancelable) e.preventDefault();
-        }, {passive: false});
-        K.listen(target, 'touchend', function (e) {
-            if (!claimEvent(e, 'touchend')) return;
-            syncTouches(e.touches || []);
-            if (e.cancelable) e.preventDefault();
-        }, {passive: false});
-        K.listen(target, 'touchcancel', function (e) {
-            if (!claimEvent(e, 'touchcancel')) return;
-            syncTouches(e.touches || []);
-            if (e.cancelable) e.preventDefault();
-        }, {passive: false});
+        ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(
+            function (name) {
+                K.listen(target, name, function (e) {
+                    if (!claimEvent(e, name)) return;
+                    sendTouches(e);
+                }, {passive: false});
+            });
     };
     var hookDrop = function (target) {
         if (!target || !target.addEventListener)
@@ -350,29 +272,33 @@ addToLibrary({
     hookDrop(K.canvas);
     hookDrop(doc);
     if (g.addEventListener) {
-        K.listen(g, 'focus', function () { K.focused = 1; });
-        K.listen(g, 'blur', function () { K.focused = 0; K.keysDown = {}; K.buttonsDown = {}; K.touches = []; });
+        K.listen(g, 'focus', function () { sendEvent(10, 0, 0, 0, 0); });
+        K.listen(g, 'blur', function () { sendEvent(11, 0, 0, 0, 0); });
         K.listen(g, 'paste', function (e) {
             var data = e.clipboardData || (g.clipboardData || null);
             var text = data && data.getData ? data.getData('text') : "";
-            if (text) K.clipboard = text;
-        });
-        K.listen(g, 'copy', function (e) {
-            if (!K.clipboard) return;
-            var data = e.clipboardData || (g.clipboardData || null);
-            if (data && data.setData) {
-                data.setData('text/plain', K.clipboard);
-                if (e.preventDefault) e.preventDefault();
+            if (!text) return;
+            var size = lengthBytesUTF8(text) + 1;
+            var buffer = _malloc(size);
+            stringToUTF8(text, buffer, size);
+            var A = K.eventScratch;
+            /* The text travels in place of the key string. */
+            if (K.eventHandler && A) {
+                try {
+                    getWasmTableEntry(K.eventHandler)(12, 0, 0, 0, 0, A.code, buffer);
+                } catch (_) {}
             }
+            _free(buffer);
         });
-        K.listen(g, 'cut', function (e) {
-            if (!K.clipboard) return;
+        var copyOut = function (e) {
             var data = e.clipboardData || (g.clipboardData || null);
-            if (data && data.setData) {
-                data.setData('text/plain', K.clipboard);
-                if (e.preventDefault) e.preventDefault();
-            }
-        });
+            var flags = sendEvent(13, 0, 0, 0, 0);
+            if (!(flags & 8) || !data || !data.setData) return;
+            data.setData('text/plain', UTF8ToString(K.eventScratch.clip));
+            settle(e, flags);
+        };
+        K.listen(g, 'copy', copyOut);
+        K.listen(g, 'cut', copyOut);
     }
     if (K.canvas && g.ResizeObserver) {
         K.ro = new ResizeObserver(function (entries) {
@@ -396,6 +322,12 @@ addToLibrary({
             K.listen(g.visualViewport, 'resize', scheduleResize);
     }
   },
+  js_input_bind: function(handler, code, key, clip, clipSize) {
+    var K = globalThis.__kryonCanvas;
+    if (!K) return;
+    K.eventHandler = handler;
+    K.eventScratch = {code: code, key: key, clip: clip, clipSize: clipSize};
+  },
   js_canvas_resize__sig: "vii",
   js_canvas_resize: function(w, h) {
     var K = globalThis.__kryonCanvas;
@@ -411,7 +343,6 @@ addToLibrary({
     case 2: return K.renderW | 0;
     case 3: return K.renderH | 0;
     case 4: { var r = K.resized ? 1 : 0; K.resized = 0; return r; }
-    case 5: return K.focused ? 1 : 0;
     case 6: return K.closed || K.closeRequested ? 1 : 0;
     }
     return 0;

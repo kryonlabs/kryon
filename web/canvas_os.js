@@ -17,18 +17,10 @@ addToLibrary({
     return ptr;
   },
 
-  js_clipboard_pull__deps: ['$stringToUTF8'],
-  js_clipboard_pull: (dst, cap) => {
-    var K = globalThis.__kryonCanvas;
-    if (!K || !dst || cap <= 0) return;
-    stringToUTF8(K.clipboard || "", dst, cap);
-  },
-
   js_clipboard_push__deps: ['$UTF8ToString'],
-  js_clipboard_push: (text) => {
+  js_clipboard_push: (text, gesture) => {
     var value = text ? UTF8ToString(text) : "";
     var K = globalThis.__kryonCanvas;
-    if (K) K.clipboard = value;
     var tryExecCommandCopy = function () {
         if (typeof document === 'undefined' || !document.execCommand)
             return false;
@@ -51,9 +43,7 @@ addToLibrary({
         }
         return ok;
     };
-    var nowMs = (typeof performance !== 'undefined' && performance.now) ?
-        performance.now() : Date.now();
-    var gestureActive = K && nowMs <= (K.clipboardGestureUntil || 0);
+    var gestureActive = !!gesture;
     if (gestureActive)
         tryExecCommandCopy();
     if (globalThis.navigator && globalThis.navigator.clipboard &&

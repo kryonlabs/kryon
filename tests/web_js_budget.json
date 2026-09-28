@@ -9,12 +9,12 @@
       "entries": 13
     },
     "canvas_input.js": {
-      "lines": 211,
-      "entries": 14
+      "lines": 129,
+      "entries": 6
     },
     "canvas_os.js": {
-      "lines": 129,
-      "entries": 5
+      "lines": 119,
+      "entries": 4
     },
     "canvas_text.js": {
       "lines": 103,
@@ -25,13 +25,18 @@
       "entries": 12
     },
     "canvas_window.js": {
-      "lines": 635,
-      "entries": 19
+      "lines": 566,
+      "entries": 20
     },
     "dom_tree.js": {
       "lines": 189,
       "entries": 4
     }
   },
-  "forbidden": []
+  "forbidden": [
+    "KEYMAP",
+    "keyOf",
+    "syncTouches",
+    "clipboardGestureUntil"
+  ]
 }
