@@ -89,6 +89,24 @@ try:
 except subprocess.TimeoutExpired:
     app.kill()
     sys.exit("probe did not quit through WindowQuit")
+if code != 0:
+    sys.exit(code)
+
+# Interception covers the close button only: the session ending (SIGTERM,
+# logout) still quits an app that would otherwise hide to its tray.
+app = subprocess.Popen(["./build/window_probe-desktop"])
+for _ in range(100):
+    if subprocess.run(["xdotool", "search", "--pid", str(app.pid)],
+                      capture_output=True).stdout.split():
+        break
+    time.sleep(0.1)
+time.sleep(0.5)
+app.terminate()
+try:
+    code = app.wait(timeout=5)
+except subprocess.TimeoutExpired:
+    app.kill()
+    sys.exit("SIGTERM was treated as a close request")
 sys.exit(code)
 '''
 

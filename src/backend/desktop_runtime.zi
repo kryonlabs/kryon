@@ -49,6 +49,7 @@ ShowWindow :: (window: *void) #foreign sdl_library "SDL_ShowWindow";
 HideWindow :: (window: *void) #foreign sdl_library "SDL_HideWindow";
 RaiseWindow :: (window: *void) #foreign sdl_library "SDL_RaiseWindow";
 GetWindowFlags :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowFlags";
+SetHint :: (name: *u8, value: *u8) -> s32 #foreign sdl_library "SDL_SetHint";
 
 window: *void;
 renderer: *void;
@@ -110,8 +111,13 @@ PollDesktop :: () -> bool {
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
     while PollEvent(*event) != 0 {
-        // SDL_QUIT
-        if event.kind == cast(u32)0x100 {
+        // SDL_QUIT comes from the last window closing or from the session
+        // ending (SIGTERM, logout); it always quits.
+        if event.kind == cast(u32)0x100 { return false }
+        // SDL_WINDOWEVENT_CLOSE; SDL_WindowEvent.event is the byte at
+        // offset 12, the low byte of Event.which here.
+        if event.kind == cast(u32)0x200 &&
+            (event.which & cast(u32)255) == cast(u32)14 {
             if !desktop_intercept_close { return false }
             desktop_close_requested = true
         }
@@ -238,6 +244,17 @@ WindowSetVisibleHost :: (visible: bool) {
 
 #program_export
 WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    // With interception on, closing the window must not also post SDL_QUIT,
+    // which is reserved for the session ending.
+    name: [48]u8
+    value: [2]u8
+    if !CopyCString("SDL_QUIT_ON_LAST_WINDOW_CLOSE", name[:]) { return false }
+    if enabled {
+        CopyCString("0", value[:])
+    } else {
+        CopyCString("1", value[:])
+    }
+    if SetHint(*name[0], *value[0]) == 0 { return false }
     desktop_intercept_close = enabled
     return true
 }
