@@ -129,6 +129,7 @@ def main():
         )
         (project / "src" / "app.zi").write_text(
             'using UI :: #import "Widgets";\n'
+            '#import "Zoom"\n'
             'using StyleField;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
@@ -138,6 +139,7 @@ def main():
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
+            '    if ZoomFactor(session) > 1.05 && ZoomFactor(session) < 1.5 { return 1 }\n'
             '    rules: StyleRules\n'
             '    rules.count = 1\n'
             '    rounded_style: StyleRule\n'
@@ -191,6 +193,19 @@ def main():
         assert rgb(png, 570, 200) == (230, 30, 40), "raylib image center failed"
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"
         assert rgb(png, 480, 85) == (230, 30, 40), "rounded image arc missing"
+        # Zoom scales everything drawn: at 200% the 240 pixel image spans 480
+        # screen pixels, and layout uses half the window, so the image that
+        # began at 80 now begins at 160.
+        zoomed = project / "zoomed.png"
+        zoom_env = env.copy()
+        zoom_env["KRYON_CAPTURE_PATH"] = str(zoomed)
+        zoom_env["KRYON_ZOOM"] = "2"
+        run(["xvfb-run", "-a", "./build/raylib_probe-raylib"], project, zoom_env)
+        big = png_pixels(zoomed)
+        assert big[:2] == (960, 600), big[:2]
+        assert rgb(big, 120, 120) == (248, 250, 252), "zoom left the image unscaled"
+        assert rgb(big, 400, 400) == (230, 30, 40), "zoomed image did not grow"
+        assert rgb(big, 700, 400) == (248, 250, 252), "zoomed image grew too far"
         if shutil.which("xdotool"):
             (project / "input_check.py").write_text(
                 "import os\nimport subprocess\nimport sys\nimport time\n"
@@ -216,6 +231,13 @@ def main():
                 "        subprocess.run(['xdotool', 'key', 'z'], check=True)\n"
                 "    elif sys.argv[1] == 'unicode':\n"
                 "        subprocess.run(['xdotool', 'key', 'eacute'], check=True)\n"
+                "    elif sys.argv[1] == 'zoom':\n"
+                "        subprocess.run(['xdotool', 'mousemove', '--window', "
+                "window, '470', '432'], check=True)\n"
+                "        time.sleep(0.2)\n"
+                "        subprocess.run(['xdotool', 'keydown', 'ctrl'], check=True)\n"
+                "        subprocess.run(['xdotool', 'click', '4'], check=True)\n"
+                "        subprocess.run(['xdotool', 'keyup', 'ctrl'], check=True)\n"
                 "    elif sys.argv[1] == 'pointer':\n"
                 "        subprocess.run(['xdotool', 'mousemove', '--window', "
                 "window, '470', '432'], check=True)\n"
@@ -236,10 +258,10 @@ def main():
                 "        app.terminate()\n"
                 "        app.communicate(timeout=5)\n"
             )
-            for mode in ("key", "text", "unicode", "pointer", "wheel"):
+            for mode in ("key", "text", "unicode", "pointer", "wheel", "zoom"):
                 run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                     project, env)
-    print("raylib Ziran project: images, rounded clip, keyboard, Unicode text, pointer, and wheel passed")
+    print("raylib Ziran project: images, rounded clip, zoom, keyboard, Unicode text, pointer, and wheel passed")
 
 
 if __name__ == "__main__":

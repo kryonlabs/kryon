@@ -1,10 +1,14 @@
 #import "app"
+#import "dpi"
 #import "geometry"
 #import "raylib_runtime"
 #import "session"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "zoom"
+
+using DPIPlatform;
 
 using FrameStatus;
 
@@ -25,12 +29,12 @@ RaylibError :: (message: string) -> s32 {
     return 1
 }
 
-DrawRaylibFrame :: (session: Session, viewport: Rectangle,
+DrawRaylibFrame :: (session: Session, viewport: Rectangle, wheel: float32,
     capture: bool) -> bool {
     BeginRaylibFrame()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)
-    PointerWheelSend(session, pointer.x, pointer.y, RaylibWheelMove())
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk {
         EndRaylibFrame()
@@ -64,19 +68,32 @@ main :: () -> s32 {
         return RaylibError("kryon: could not open a UI session")
     }
     ok: bool = true
+    // Ctrl and the wheel, or Ctrl with plus, minus, and zero, scale the whole
+    // application. The session's ZoomProps decide whether that is on; the
+    // default is automatic, which zooms a desktop window.
+    desktop: DPIPlatform = cast(DPIPlatform)DPIPlatformDesktop
+    initial_zoom: float32 = RaylibEnvironmentZoom()
+    if initial_zoom > 0.0 { unused ZoomSet(session, initial_zoom) }
+    RaylibSetZoom(ZoomFactor(session))
     if CaptureRequested() {
-        ok = DrawRaylibFrame(session, RaylibViewport(), true)
+        ok = DrawRaylibFrame(session, RaylibViewport(), 0.0, true)
     } else {
         while ok && PollRaylib() {
-            KeyboardModifiersSend(session, RaylibModifiers())
+            modifiers: s32 = RaylibModifiers()
+            KeyboardModifiersSend(session, modifiers)
+            wheel: float32 = RaylibWheelMove()
+            if ZoomWheel(session, desktop, wheel, modifiers) { wheel = 0.0 }
             key: s32 = RaylibPressedKey()
-            if key != 0 { KeyboardSend(session, key) }
+            if key != 0 && !ZoomKey(session, desktop, key, modifiers) {
+                KeyboardSend(session, key)
+            }
+            RaylibSetZoom(ZoomFactor(session))
             codepoint: s32 = RaylibTypedCodepoint()
             while codepoint != 0 {
                 TypedCodepointSend(session, codepoint)
                 codepoint = RaylibTypedCodepoint()
             }
-            ok = DrawRaylibFrame(session, RaylibViewport(), false)
+            ok = DrawRaylibFrame(session, RaylibViewport(), wheel, false)
         }
     }
     CloseSession(session)

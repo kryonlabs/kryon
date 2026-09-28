@@ -67,6 +67,8 @@ HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
+HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
+HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
 HostRaylibFileExists :: (path: *u8) -> bool #foreign raylib "FileExists";
 HostRaylibGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
@@ -81,6 +83,12 @@ raylib_assets: [32]RaylibAsset;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
 raylib_pointer: PointerFrame;
+
+// The zoom factor the frame is drawn at. Everything drawn after the frame
+// begins is scaled by it, so a single number scales the whole application;
+// the viewport and pointer are reported in the scaled space, and fonts are
+// baked at their scaled size so text stays sharp.
+raylib_zoom: float32 = 1.0;
 raylib_wheel_move: float32;
 raylib_image_error: bool;
 raylib_font: RaylibFont;
@@ -220,6 +228,12 @@ RaylibFontForSize :: (size: s32) -> RaylibFont {
     index: s32 = raylib_active_typeface_index
     if index < 0 || index >= raylib_typeface_count {
         return raylib_font
+    }
+    // The frame scales what is drawn by the zoom, so the glyphs are baked
+    // at the size they end up on screen.
+    if raylib_zoom != 1.0 {
+        size = cast(s32)(cast(float32)size * raylib_zoom + 0.5)
+        if size < 1 { size = 1 }
     }
     typeface: *RaylibTypeface = *raylib_typefaces[index]
     if size <= 0 || size > RAYLIB_SIZED_FONT_LARGEST {
@@ -601,6 +615,7 @@ CloseRaylib :: () {
 #program_export
 PollRaylib :: () -> bool {
     if raylib_quit || HostRaylibWindowShouldClose() { return false }
+    // Screen pixels; PollPointer reports them in zoomed space.
     raylib_pointer.x = cast(float32)HostRaylibMouseX()
     raylib_pointer.y = cast(float32)HostRaylibMouseY()
     raylib_pointer.down = HostRaylibMouseDown(0)
@@ -613,8 +628,29 @@ PollRaylib :: () -> bool {
 #program_export
 RaylibViewport :: () -> Rectangle {
     return Rectangle.{0.0, 0.0,
-        cast(float32)HostRaylibGetScreenWidth(),
-        cast(float32)HostRaylibGetScreenHeight()}
+        cast(float32)HostRaylibGetScreenWidth() / raylib_zoom,
+        cast(float32)HostRaylibGetScreenHeight() / raylib_zoom}
+}
+
+// Draw the following frames at this zoom factor, 1.0 for 100%.
+#program_export
+RaylibSetZoom :: (factor: float32) {
+    if factor > 0.0 { raylib_zoom = factor }
+}
+
+#program_export
+RaylibZoom :: () -> float32 {
+    return raylib_zoom
+}
+
+// The starting zoom from KRYON_ZOOM (for example 1.5), or 0 when unset.
+#program_export
+RaylibEnvironmentZoom :: () -> float32 {
+    name: [16]u8
+    if !CopyCString("KRYON_ZOOM", name[:]) { return 0.0 }
+    value: *u8 = HostRaylibGetEnvironment(*name[0])
+    if value == null { return 0.0 }
+    return cast(float32)HostRaylibParseFloat(value)
 }
 
 #program_export
@@ -648,6 +684,12 @@ BeginRaylibFrame :: () {
     raylib_image_error = false
     HostRaylibBeginDrawing()
     HostRaylibClearBackground(Color.{248, 250, 252, 255})
+    // Scale the modelview matrix itself rather than pushing a transform:
+    // the clip code reads the modelview to place scissors, and BeginDrawing
+    // resets it for the next frame.
+    if raylib_zoom != 1.0 {
+        HostRaylibScale(raylib_zoom, raylib_zoom, 1.0)
+    }
 }
 
 #program_export
@@ -693,7 +735,12 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 }
 
 #program_export
-PollPointer :: () -> PointerFrame { return raylib_pointer }
+PollPointer :: () -> PointerFrame {
+    pointer: PointerFrame = raylib_pointer
+    pointer.x = pointer.x / raylib_zoom
+    pointer.y = pointer.y / raylib_zoom
+    return pointer
+}
 
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
