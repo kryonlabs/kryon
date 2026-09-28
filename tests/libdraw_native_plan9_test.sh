@@ -73,6 +73,10 @@ extern char *getenv(const char *);
 extern int create(const char *, int, int);
 extern long write(int, const void *, unsigned long);
 extern int close(int);
+extern int isNaN(double);
+extern int isInf(double, int);
+extern double strtod(const char *, char **);
+extern int atoi(const char *);
 #endif
 H
 cat > "$work/fake.c" <<'H'
@@ -93,6 +97,18 @@ static DrawFont fake_font = {NULL, NULL, 16, 12};
 static uint32_t fake_last_color;
 static int fake_next_event;
 static const int fake_event_count = 3;
+
+int isNaN(double value) { return value != value; }
+int isInf(double value, int direction) { (void)value; (void)direction; return 0; }
+double strtod(const char *text, char **end) {
+    if(end != NULL) *end = (char *)text;
+    return 0.0;
+}
+int atoi(const char *text) {
+    int value = 0;
+    while(*text >= '0' && *text <= '9') value = value * 10 + *text++ - '0';
+    return value;
+}
 
 DrawDisplay *initdisplay(int8_t *device, int8_t *window, DrawErrorRoutine error) {
     (void)device; (void)window; (void)error;
