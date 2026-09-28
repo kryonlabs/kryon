@@ -1,0 +1,31 @@
+#import "drawing_props"
+#import "system_style"
+#import "system_theme"
+
+Sweet :: "@define-color theme_fg_color #C3C7D1;\n@define-color theme_bg_color #161925;\n@define-color theme_base_color #181b28;\n@define-color theme_selected_bg_color #c50ed2;\n@define-color theme_selected_fg_color #fefefe;\n@define-color error_color #e6133e;\n@define-color warning_color #cc5500;\n@define-color success_color #0096b1;\n";
+
+Same :: (name: string, expected: u32) -> bool {
+    color: Color = StyleTokenColor(name)
+    return color.r == cast(u8)((expected >> cast(u32)24) & cast(u32)255) &&
+        color.g == cast(u8)((expected >> cast(u32)16) & cast(u32)255) &&
+        color.b == cast(u8)((expected >> cast(u32)8) & cast(u32)255)
+}
+
+#program_export
+main :: () -> s32 {
+    // The system palette becomes the pack's color tokens.
+    if !StyleInstallSystem(SystemPaletteFromCss(Sweet, false)) { return 1 }
+    if !Same("canvas", cast(u32)0x161925FF) || !Same("text", cast(u32)0xC3C7D1FF) { return 2 }
+    if !Same("accent", cast(u32)0xc50ed2FF) || !Same("accent-ink", cast(u32)0xfefefeFF) { return 3 }
+    if !Same("danger", cast(u32)0xe6133eFF) { return 4 }
+
+    // Installing a light palette replaces them.
+    light: string = "@define-color theme_fg_color #2e3436;\n@define-color theme_bg_color #f6f5f4;\n"
+    if !StyleInstallSystem(SystemPaletteFromCss(light, false)) { return 5 }
+    if !Same("canvas", cast(u32)0xf6f5f4FF) || !Same("text", cast(u32)0x2e3436FF) { return 6 }
+
+    // Without a theme, the fallback still installs a full style.
+    if !StyleInstallSystem(SystemPaletteFallback(true)) { return 7 }
+    if StyleTokenColor("canvas").r == cast(u8)0xf6 { return 8 }
+    return 0
+}

@@ -1,0 +1,108 @@
+// Installs the classic style pack in the desktop's colors, so an application
+// looks like the system theme (light or dark) without carrying its own.
+#import "drawing_props"
+#import "kss_parser"
+#import "style_pack_classic"
+#import "style_parse"
+#import "system_theme"
+#import "theme"
+
+using KssStatus;
+
+// A color between two others; 0 is first and 1 is second.
+StyleBlend :: (first: u32, second: u32, amount: float32) -> u32 {
+    return CssMix(first, second, amount)
+}
+
+// The pack's color tokens, derived from the palette's few roles.
+SystemStyleOverrides :: (parser: KssParser, palette: SystemPalette) -> KssParser {
+    background: u32 = palette.background
+    text: u32 = palette.text
+    parser = KssAddColorOverride(parser, "canvas", background)
+    parser = KssAddColorOverride(parser, "text", text)
+    parser = KssAddColorOverride(parser, "muted", StyleBlend(text, background, 0.4))
+    parser = KssAddColorOverride(parser, "surface", StyleBlend(background, text, 0.05))
+    parser = KssAddColorOverride(parser, "card", palette.base)
+    parser = KssAddColorOverride(parser, "button", StyleBlend(background, text, 0.10))
+    parser = KssAddColorOverride(parser, "button-hover", StyleBlend(background, text, 0.16))
+    parser = KssAddColorOverride(parser, "button-pressed", StyleBlend(background, text, 0.04))
+    parser = KssAddColorOverride(parser, "button-disabled", background)
+    parser = KssAddColorOverride(parser, "border", StyleBlend(background, text, 0.30))
+    parser = KssAddColorOverride(parser, "border-soft", StyleBlend(background, text, 0.16))
+    parser = KssAddColorOverride(parser, "border-hover", StyleBlend(background, text, 0.55))
+    parser = KssAddColorOverride(parser, "border-disabled", StyleBlend(background, text, 0.12))
+    parser = KssAddColorOverride(parser, "focus-ring", palette.selected)
+    parser = KssAddColorOverride(parser, "outline-border", StyleBlend(background, text, 0.5))
+    parser = KssAddColorOverride(parser, "row", StyleBlend(background, text, 0.03))
+    parser = KssAddColorOverride(parser, "row-hover", StyleBlend(background, text, 0.07))
+    parser = KssAddColorOverride(parser, "row-pressed", StyleBlend(background, text, 0.10))
+    parser = KssAddColorOverride(parser, "thumb-ink", cast(u32)0xFFFFFFFF)
+    selected: u32 = palette.selected
+    parser = KssAddColorOverride(parser, "accent", selected)
+    parser = KssAddColorOverride(parser, "accent-end", selected)
+    parser = KssAddColorOverride(parser, "accent-hover", StyleBlend(selected, text, 0.15))
+    parser = KssAddColorOverride(parser, "accent-pressed", StyleBlend(selected, background, 0.2))
+    parser = KssAddColorOverride(parser, "accent-border", StyleBlend(selected, background, 0.35))
+    parser = KssAddColorOverride(parser, "accent-ink", palette.selected_text)
+    parser = KssAddColorOverride(parser, "accent-soft", StyleBlend(background, selected, 0.22))
+    parser = KssAddColorOverride(parser, "accent-soft-hover", StyleBlend(background, selected, 0.30))
+    parser = KssAddColorOverride(parser, "accent-soft-pressed", StyleBlend(background, selected, 0.38))
+    parser = SystemStyleStatus(parser, "danger", palette.danger, background, text)
+    parser = SystemStyleStatus(parser, "success", palette.success, background, text)
+    parser = SystemStyleStatus(parser, "warning", palette.warning, background, text)
+    return parser
+}
+
+// One status color and the variants the pack derives from it.
+SystemStyleStatus :: (parser: KssParser, name: string, color: u32, background: u32,
+    text: u32) -> KssParser {
+    if name == "danger" {
+        parser = KssAddColorOverride(parser, "danger", color)
+        parser = KssAddColorOverride(parser, "danger-hover", StyleBlend(color, text, 0.15))
+        parser = KssAddColorOverride(parser, "danger-pressed", StyleBlend(color, background, 0.2))
+        parser = KssAddColorOverride(parser, "danger-ink", OnColor(color))
+        parser = KssAddColorOverride(parser, "danger-soft", StyleBlend(background, color, 0.2))
+        parser = KssAddColorOverride(parser, "danger-soft-hover", StyleBlend(background, color, 0.28))
+        parser = KssAddColorOverride(parser, "danger-soft-pressed", StyleBlend(background, color, 0.36))
+    } else if name == "success" {
+        parser = KssAddColorOverride(parser, "success", color)
+        parser = KssAddColorOverride(parser, "success-hover", StyleBlend(color, text, 0.15))
+        parser = KssAddColorOverride(parser, "success-pressed", StyleBlend(color, background, 0.2))
+        parser = KssAddColorOverride(parser, "success-ink", OnColor(color))
+        parser = KssAddColorOverride(parser, "success-soft", StyleBlend(background, color, 0.2))
+        parser = KssAddColorOverride(parser, "success-soft-hover", StyleBlend(background, color, 0.28))
+        parser = KssAddColorOverride(parser, "success-soft-pressed", StyleBlend(background, color, 0.36))
+    } else {
+        parser = KssAddColorOverride(parser, "warning", color)
+        parser = KssAddColorOverride(parser, "warning-hover", StyleBlend(color, text, 0.15))
+        parser = KssAddColorOverride(parser, "warning-pressed", StyleBlend(color, background, 0.2))
+        parser = KssAddColorOverride(parser, "warning-ink", OnColor(color))
+        parser = KssAddColorOverride(parser, "warning-soft", StyleBlend(background, color, 0.2))
+        parser = KssAddColorOverride(parser, "warning-soft-hover", StyleBlend(background, color, 0.28))
+        parser = KssAddColorOverride(parser, "warning-soft-pressed", StyleBlend(background, color, 0.36))
+    }
+    return parser
+}
+
+// Installs the classic pack with the palette's colors. Returns false when the
+// pack does not parse; the previous style then stays.
+#program_export
+StyleInstallSystem :: (palette: SystemPalette) -> bool {
+    environment: KssEnvironment = KssEnvironmentWithNames(KssDefaultEnvironment(),
+        ifx palette.dark then "dark" else "light", "", "", "", "", "")
+    parsed: StyleRulesParse = BeginStyleRules("@import <classic>;", "system-theme",
+        environment)
+    parsed.parser = SystemStyleOverrides(parsed.parser, palette)
+    imports: s32 = 0
+    while imports < 2 {
+        parsed = ParseStyleRules(parsed)
+        if parsed.parser.status != cast(s32)KssStatusNeedImport { break }
+        if KssNameEquals(parsed.parser.pending_import, "classic") {
+            parsed = ProvideStyleRulesImport(parsed, StylePackClassic(), "classic")
+        } else {
+            parsed = FailStyleRulesImport(parsed)
+        }
+        imports += 1
+    }
+    return InstallParsedStyleRules(parsed)
+}
