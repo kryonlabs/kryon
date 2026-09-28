@@ -1,0 +1,129 @@
+// Paints an icon Shape (see svg_shape) as queued rectangles, so every host
+// draws it the same way at any size, tinted with the caller's color.
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "svg_shape"
+
+SVG_ICON_CACHE :: 48;
+SVG_ICON_MAX :: 64;
+SVG_ICON_LEVELS :: 32;
+
+SvgIconEntry :: struct {
+    hash: u64
+    size: s32
+    used: bool
+    coverage: [SVG_ICON_MAX * SVG_ICON_MAX]u8
+}
+
+svg_icon_cache: [SVG_ICON_CACHE]SvgIconEntry;
+svg_icon_next: s32 = 0;
+svg_icon_levels: [SVG_ICON_MAX * SVG_ICON_MAX]u8;
+
+// FNV-1a over the shape's bytes, so the cache is keyed by its drawing.
+SvgIconHash :: (shape: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    index: s32 = 0
+    while index < cast(s32)shape.count {
+        hash = (hash ^ cast(u64)shape[index]) * cast(u64)1099511628211
+        index += 1
+    }
+    return hash
+}
+
+// The cached coverage for shape at size, rasterizing it on first use. Returns
+// -1 when the shape cannot be drawn.
+SvgIconSlot :: (shape: string, size: s32) -> s32 {
+    hash: u64 = SvgIconHash(shape)
+    slot: s32 = 0
+    while slot < SVG_ICON_CACHE {
+        if svg_icon_cache[slot].used && svg_icon_cache[slot].hash == hash &&
+            svg_icon_cache[slot].size == size {
+            return slot
+        }
+        slot += 1
+    }
+    slot = svg_icon_next
+    svg_icon_next = (svg_icon_next + 1) % SVG_ICON_CACHE
+    svg_icon_cache[slot].used = false
+    if !ShapeRaster(shape, size, svg_icon_cache[slot].coverage[:]) { return -1 }
+    svg_icon_cache[slot].hash = hash
+    svg_icon_cache[slot].size = size
+    svg_icon_cache[slot].used = true
+    return slot
+}
+
+// Paints shape inside bounds in color. The icon is drawn square and centered.
+#program_export
+PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
+    color: Color) {
+    if shape.count == 0 || bounds.width <= 0.0 || bounds.height <= 0.0 || color.a == cast(u8)0 {
+        return
+    }
+    edge: float32 = bounds.width
+    if bounds.height < edge { edge = bounds.height }
+    size: s32 = cast(s32)(edge + 0.5)
+    if size < 1 { size = 1 }
+    if size > SVG_ICON_MAX { size = SVG_ICON_MAX }
+    slot: s32 = SvgIconSlot(shape, size)
+    if slot < 0 { return }
+    cell: float32 = edge / cast(float32)size
+    left: float32 = bounds.x + (bounds.width - edge) * 0.5
+    top: float32 = bounds.y + (bounds.height - edge) * 0.5
+    index: s32 = 0
+    while index < size * size {
+        svg_icon_levels[index] = cast(u8)((cast(s32)svg_icon_cache[slot].coverage[index] *
+            SVG_ICON_LEVELS + 127) / 255)
+        index += 1
+    }
+    // Greedy rectangles: each unpainted pixel grows right, then down, across
+    // equal levels, so solid areas are a few rectangles and edges keep their
+    // anti-aliasing.
+    row: s32 = 0
+    while row < size {
+        column: s32 = 0
+        while column < size {
+            level: s32 = cast(s32)svg_icon_levels[row * size + column]
+            if level == 0 {
+                column += 1
+                continue
+            }
+            width: s32 = 1
+            while column + width < size &&
+                cast(s32)svg_icon_levels[row * size + column + width] == level {
+                width += 1
+            }
+            height: s32 = 1
+            growing: bool = true
+            while growing && row + height < size {
+                across: s32 = 0
+                while across < width {
+                    if cast(s32)svg_icon_levels[(row + height) * size + column + across] != level {
+                        growing = false
+                        break
+                    }
+                    across += 1
+                }
+                if growing { height += 1 }
+            }
+            fill: Color = color
+            fill.a = cast(u8)((cast(s32)color.a * level) / SVG_ICON_LEVELS)
+            PaintRoundedFill(session, node,
+                Rectangle.{left + cast(float32)column * cell, top + cast(float32)row * cell,
+                    cast(float32)width * cell, cast(float32)height * cell},
+                0.0, 1, fill)
+            paint_row: s32 = 0
+            while paint_row < height {
+                across: s32 = 0
+                while across < width {
+                    svg_icon_levels[(row + paint_row) * size + column + across] = cast(u8)0
+                    across += 1
+                }
+                paint_row += 1
+            }
+            column += width
+        }
+        row += 1
+    }
+}

@@ -1,0 +1,65 @@
+#import "svg_shape"
+
+coverage: [48 * 48]u8;
+
+At :: (size: s32, x: s32, y: s32) -> s32 {
+    return cast(s32)coverage[y * size + x]
+}
+
+// Total coverage in whole pixels.
+Area :: (size: s32) -> s32 {
+    total: s32 = 0
+    index: s32 = 0
+    while index < size * size {
+        total += cast(s32)coverage[index]
+        index += 1
+    }
+    return total / 255
+}
+
+#program_export
+main :: () -> s32 {
+    // A pixel-aligned square is solid inside and empty outside.
+    if !ShapeRaster("F:M4 4H20V20H4Z", 24, coverage[:]) { return 1 }
+    if At(24, 12, 12) != 255 || At(24, 4, 10) != 255 || At(24, 19, 10) != 255 { return 2 }
+    if At(24, 0, 0) != 0 || At(24, 3, 10) != 0 || At(24, 20, 10) != 0 { return 3 }
+    if Area(24) != 256 { return 4 }
+
+    // The same shape at twice the size covers four times the pixels.
+    if !ShapeRaster("F:M4 4H20V20H4Z", 48, coverage[:]) { return 5 }
+    if At(48, 24, 24) != 255 || Area(48) != 1024 { return 6 }
+
+    // Nonzero fills a same-way hole; even-odd cuts it out.
+    hole: string = "M2 2H22V22H2ZM8 8H16V16H8Z"
+    if !ShapeRaster("F:M2 2H22V22H2ZM8 8H16V16H8Z", 24, coverage[:]) { return 7 }
+    if At(24, 12, 12) != 255 { return 8 }
+    if !ShapeRaster("E:M2 2H22V22H2ZM8 8H16V16H8Z", 24, coverage[:]) { return 9 }
+    if At(24, 12, 12) != 0 || At(24, 4, 12) != 255 || Area(24) != 336 { return 10 }
+
+    // A round-capped stroke of width 2 along y = 12 fills rows 11 and 12.
+    if !ShapeRaster("S2rr:M4 12H20", 24, coverage[:]) { return 11 }
+    if At(24, 12, 11) != 255 || At(24, 12, 12) != 255 { return 12 }
+    if At(24, 12, 9) != 0 || At(24, 12, 14) != 0 { return 13 }
+    if At(24, 3, 11) < 60 || At(24, 1, 11) != 0 { return 14 }
+
+    // A butt cap stops at the end point; a square cap runs half a width past.
+    if !ShapeRaster("S2bm:M4 12H20", 24, coverage[:]) { return 15 }
+    if At(24, 3, 11) != 0 || At(24, 4, 11) != 255 { return 16 }
+    if !ShapeRaster("S2sm:M4 12H20", 24, coverage[:]) { return 17 }
+    if At(24, 3, 11) != 255 { return 18 }
+
+    // A circle from cubic curves has about the area of pi r^2.
+    circle: string = "F:M12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3Z"
+    if !ShapeRaster(circle, 24, coverage[:]) { return 19 }
+    area: s32 = Area(24)
+    if area < 250 || area > 259 || At(24, 12, 12) != 255 || At(24, 4, 4) != 0 { return 20 }
+
+    // A closed stroke joins its corners.
+    if !ShapeRaster("S2rr:M6 6H18V18H6Z", 24, coverage[:]) { return 21 }
+    if At(24, 12, 5) != 255 || At(24, 12, 12) != 0 || At(24, 5, 5) < 100 { return 22 }
+
+    // Malformed data is reported, not drawn.
+    if ShapeRaster("X:M0 0", 24, coverage[:]) { return 23 }
+    if ShapeRaster("F:M4", 24, coverage[:]) { return 24 }
+    return 0
+}
