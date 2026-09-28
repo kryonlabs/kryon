@@ -51,6 +51,15 @@ Answer :: () -> s32 {
     unused ZoomWheel(session, desktop, 0.4, control)
     if !Near(ZoomFactor(session), 1.1) { return 14 }
 
+    // Setting the factor it already has keeps a partial notch.
+    unused ZoomReset(session)
+    unused ZoomWheel(session, desktop, 0.4, control)
+    unused ZoomSet(session, 1.0)
+    unused ZoomWheel(session, desktop, 0.4, control)
+    if !Near(ZoomFactor(session), 1.0) { return 44 }
+    unused ZoomWheel(session, desktop, 0.4, control)
+    if !Near(ZoomFactor(session), 1.1) { return 45 }
+
     // Setting a factor clamps and snaps to a step.
     if !Near(ZoomSet(session, 1.234), 1.2) { return 15 }
     if !Near(ZoomSet(session, 9.0), 3.0) { return 16 }
