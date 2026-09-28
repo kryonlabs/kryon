@@ -5,6 +5,7 @@
 #import "session"
 #import "tree"
 #import "widget_kind"
+#import "layout_props"
 
 using WidgetKind;
 

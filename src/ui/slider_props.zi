@@ -29,3 +29,13 @@ DiscreteSliderProps :: struct {
     vertical: bool
     class_name: s32
 }
+
+SliderStep :: struct {
+    value: float32
+    changed: bool
+}
+
+SliderDiscreteStep :: struct {
+    value: s32
+    changed: bool
+}

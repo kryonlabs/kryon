@@ -1,16 +1,10 @@
 #import "geometry"
+#import "layout_props"
 
 LayoutMetrics :: struct {
     content: Rectangle
     gap: s32
     padding: s32
-}
-
-ColumnProps :: struct {
-    bounds: Rectangle
-    gap: s32
-    padding: s32
-    key: u64
 }
 
 // Stable widget identity from UTF-8 bytes. This matches the native Key

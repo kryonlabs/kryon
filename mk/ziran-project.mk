@@ -124,8 +124,10 @@ endif
 
 .PHONY: run build check toolchain
 
+# Project builds run the driver, which shells out to zi2zir and zi2c.
 toolchain:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) \
+		build/bin/ziran build/bin/zi2zir build/bin/zi2c
 
 build: toolchain
 	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) \

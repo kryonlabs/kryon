@@ -10,6 +10,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "drawing_props"
 #import "geometry"
 #import "layout"
+#import "layout_props"
 #import "layout_widget"
 #import "paint_queue"
 #import "session"

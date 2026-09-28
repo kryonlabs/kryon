@@ -9,3 +9,8 @@ CheckboxProps :: struct {
     disabled: bool
     class_name: s32
 }
+
+CheckboxValueResult :: struct {
+    checked: bool
+    changed: bool
+}

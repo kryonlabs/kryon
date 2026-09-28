@@ -14,3 +14,8 @@ SpinboxProps :: struct {
     value_text: string
     wrap: bool
 }
+
+SpinboxStepResult :: struct {
+    value: s32
+    changed: bool
+}

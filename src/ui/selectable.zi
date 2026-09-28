@@ -2,6 +2,7 @@
 #import "geometry"
 #import "style"
 #import "control_props"
+#import "selectable_props"
 
 using StyleField;
 
@@ -21,11 +22,6 @@ SelectablePaint :: struct {
     text_color: u32
     label_x: float32
     draw_fill: bool
-}
-
-SelectableToggleResult :: struct {
-    selected: bool
-    changed: bool
 }
 
 #program_export

@@ -4,6 +4,7 @@
 #import "geometry"
 #import "style"
 #import "surface"
+#import "slider_props"
 
 using MaterialKind;
 using StyleField;
@@ -43,16 +44,6 @@ SliderPaint :: struct {
     track: StyleFrame
     active_track: StyleFrame
     thumb: StyleFrame
-}
-
-SliderStep :: struct {
-    value: float32
-    changed: bool
-}
-
-SliderDiscreteStep :: struct {
-    value: s32
-    changed: bool
 }
 
 SliderPointerDecision :: struct {

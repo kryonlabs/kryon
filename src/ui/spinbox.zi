@@ -1,16 +1,12 @@
 #import "drawing_props"
 #import "geometry"
+#import "spinbox_props"
 
 SpinboxLayout :: struct {
     left: Rectangle
     text: Rectangle
     right: Rectangle
     button_width: s32
-}
-
-SpinboxStepResult :: struct {
-    value: s32
-    changed: bool
 }
 
 #program_export

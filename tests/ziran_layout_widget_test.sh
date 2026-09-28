@@ -18,6 +18,7 @@ TestSession :: () -> Session {
 #import "grid"
 #import "grid_props"
 #import "layout"
+#import "layout_props"
 #import "layout_widget"
 #import "tree"
 #import "widget_kind"

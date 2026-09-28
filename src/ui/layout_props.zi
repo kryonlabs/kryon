@@ -1,0 +1,8 @@
+#import "geometry"
+
+ColumnProps :: struct {
+    bounds: Rectangle
+    gap: s32
+    padding: s32
+    key: u64
+}

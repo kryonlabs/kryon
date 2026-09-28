@@ -1,4 +1,5 @@
 #import "session"
+#import "layout_props"
 test_session: Session;
 TestSession :: () -> Session {
     if !SessionValid(test_session) { test_session = SessionOpen() }
