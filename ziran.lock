@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "packages": [
+    {
+      "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "dependencies": {},
+      "id": "p5a77c9c35110e925",
+      "name": "raylib",
+      "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "source": true,
+      "url": "https://github.com/raysan5/raylib.git"
+    }
+  ],
+  "root": {
+    "dependencies": {"raylib": "p5a77c9c35110e925"},
+    "name": "Kryon"
+  },
+  "toolchain": {
+    "commit": "d45f6e5093673c0c6cfbcd72f58b083486195c6f",
+    "ref": "master",
+    "url": "https://github.com/ziranlang/ziran.git"
+  }
+}

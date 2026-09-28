@@ -17,6 +17,11 @@ actual_programs=$(cd "$repo" &&
         -g '*.kry' -g '*.kir' -g '*.krb' |
     LC_ALL=C sort)
 
+if test -e "$repo/.gitmodules" || rg -n 'vendor/raylib' "$repo" -g '!build/**' -g '!tools/check-ziran-source.sh'; then
+    printf 'Kryon must use its locked Ziran raylib source package.\n' >&2
+    exit 1
+fi
+
 if test "$actual_src" != "$expected_src"; then
     printf 'Non-Ziran files remain under src. Maintained source must be .zi.\n' >&2
     printf 'Expected:\n%s\nActual:\n%s\n' "$expected_src" "$actual_src" >&2

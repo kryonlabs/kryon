@@ -31,9 +31,14 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
         '[tool.Kryon]\ndefault_profile = "web"\n\n'
         '[tool.Kryon.profiles.web]\nbackend = "dom"\n'
     )
+    overrides = {
+        "Kryon": str(ROOT),
+        "ziran": str(ROOT.parent / "ziran"),
+    }
+    if os.environ.get("RAYLIB_SOURCE"):
+        overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
     (project / "ziran.local.toml").write_text(
-        f'[overrides]\nKryon = "{ROOT}"\n'
-        f'ziran = "{ROOT.parent / "ziran"}"\n'
+        "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     )
     (project / "src/app.zi").write_text(
         'using UI :: #import "Widgets";\n'

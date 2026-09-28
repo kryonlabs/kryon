@@ -2,6 +2,15 @@
 name = "Kryon"
 module_roots = ["src/ui", "src/plot", "src/backend", "src/data_views", "src/kss", "src/syntax"]
 
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.raylib]
+git = "https://github.com/raysan5/raylib.git"
+ref = "fafa2cea97d0cb379d832086ba45a989fa6f9c8e"
+source = true
+
 [exports]
 Kryon = "src/ui/Kryon/module.zi"
 Widgets = "src/ui/Widgets/module.zi"

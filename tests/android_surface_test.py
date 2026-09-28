@@ -14,6 +14,13 @@ GEN.mkdir(parents=True, exist_ok=True)
 environment = dict(os.environ)
 for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY"):
     environment.pop(name, None)
+RAYLIB_SOURCE = Path(os.environ.get(
+    "RAYLIB_SOURCE",
+    subprocess.run(
+        [BIN / "ziran", "pkg", "path", "raylib"],
+        env=environment, text=True, capture_output=True, check=True,
+    ).stdout.strip(),
+))
 
 def run(arguments, **options):
     return subprocess.run(list(map(str, arguments)), env=environment, check=True, **options)
@@ -44,9 +51,9 @@ run([BIN / "ziran", "bundle", "--root", ROOT / "tests", "--module-path", ROOT / 
 result = run([BIN / "ziran", "run", WORK / "policy.zib"], capture_output=True, text=True)
 assert result.stdout.strip() == "42", result.stdout
 
-# Compare the accessed raylib prefix to the actual vendored definition on all
+# Compare the accessed raylib prefix to the actual package definition on all
 # four Android ABIs. The test declaration below is extracted from raylib itself.
-source = (ROOT / "vendor/raylib/src/rcore.c").read_text()
+source = (RAYLIB_SOURCE / "src/rcore.c").read_text()
 window = source.split("typedef struct CoreData {", 1)[1].split("} Window;", 1)[0] + "} Window;"
 point = re.search(r"typedef struct \{ int x; int y; \} Point;", source).group(0)
 size = re.search(r"typedef struct \{ unsigned int width; unsigned int height; \} Size;", source).group(0)
@@ -67,7 +74,7 @@ if ndks:
     clang = ndks[-1] / "bin/clang"
     for target in ("aarch64-linux-android24", "armv7a-linux-androideabi24", "i686-linux-android24", "x86_64-linux-android24"):
         command = [clang, "--target=" + target, "-std=c11", "-fsyntax-only", *includes,
-                   "-I" + str(ROOT / "vendor/raylib/src")]
+                   "-I" + str(RAYLIB_SOURCE / "src")]
         run([*command, "-x", "c", "-"], input="\n".join(assertions), text=True)
         for file in files:
             run([*command, file])

@@ -3,7 +3,10 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 compiler=${ZI2C_BIN:-"$root/../ziran/build/bin/zi2c"}
 standard=${ZIRAN_STD:-"$root/../ziran/std"}
-raylib=${RAYLIB_A:-"$root/vendor/raylib/src/libraylib.a"}
+ziran=${ZIRAN_BIN:-"$root/../ziran/build/bin/ziran"}
+raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
+raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
+raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
 work=$(mktemp -d "$root/build/raylib-clip.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 "$compiler" --no-main --root "$root/tests" \
@@ -12,7 +15,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     "$root/tests/raylib_clip_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$root/../ziran/include" -iquote "$work/c" \
-    "$work/c"/*.c "$raylib" ${RAYLIB_LIBS:--lGL -lX11 -lm -ldl -pthread} \
+    "$work/c"/*.c "$raylib" $raylib_libs \
     -o "$work/test"
 python3 - "$work/red.png" <<'PY'
 import struct

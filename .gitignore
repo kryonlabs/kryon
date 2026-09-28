@@ -6,6 +6,7 @@
 *~
 *.tmp
 __pycache__/
+ziran.local.toml
 .zcode
 .kryon-ide-state
 

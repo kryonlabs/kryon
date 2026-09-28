@@ -4,7 +4,7 @@ set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # UI modules cannot import C headers. Search from the repository root so
 # anchored exclusions match relative paths regardless of the caller's directory.
-headers=$(cd "$repo" && rg --files . -g '*.h' -g '!vendor/**' -g '!build/**' || true)
+headers=$(cd "$repo" && rg --files . -g '*.h' -g '!build/**' || true)
 if test -n "$headers"; then
     printf 'handwritten headers remain in Kryon:\n%s\n' "$headers" >&2
     exit 1
