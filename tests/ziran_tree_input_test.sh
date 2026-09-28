@@ -86,6 +86,14 @@ Answer :: () -> s32 {
        !TypedCodepointSend(TestSession(), 121) { return -44 }
     TreeInputReset(TestSession())
     if TypedCodepointTake(TestSession()) != 0 { return -45 }
+    if KeyboardModifiers(TestSession()) != 0 ||
+       !KeyboardModifiersSend(TestSession(), KeyModifierControl | KeyModifierShift) ||
+       KeyboardModifiers(TestSession()) != 3 ||
+       KeyboardModifiers(TestSession()) != 3 { return -46 }
+    if !KeyboardModifiersSend(TestSession(), KeyModifierAlt) ||
+       KeyboardModifiers(TestSession()) != 4 { return -47 }
+    TreeInputReset(TestSession())
+    if KeyboardModifiers(TestSession()) != 0 { return -48 }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     TreeSubmit(TestSession(), cast(u64)99, 0, WidgetKindButton,
         Rectangle.{10.0, 10.0, 30.0, 30.0})

@@ -42,6 +42,12 @@ PointerDrag :: struct {
 active_pointer: [9]PointerState;
 active_sample: [9]PointerFrame;
 active_key: [9]s32;
+active_modifiers: [9]s32;
+
+// Keyboard modifier bits reported by KeyboardModifiers.
+KeyModifierShift :: 1;
+KeyModifierControl :: 2;
+KeyModifierAlt :: 4;
 
 TypedInputQueue :: struct {
     values: [32]s32
@@ -75,6 +81,21 @@ KeyboardTake :: (session: Session) -> s32 {
     key: s32 = active_key[index]
     active_key[index] = 0
     return key
+}
+
+// Hosts submit the modifier keys held for the next frame as KeyModifier
+// bits. The state stays until the host sends a new one.
+#program_export
+KeyboardModifiersSend :: (session: Session, modifiers: s32) -> bool {
+    if !SessionValid(session) { return false }
+    active_modifiers[SessionIndex(session)] = modifiers
+    return true
+}
+
+#program_export
+KeyboardModifiers :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    return active_modifiers[SessionIndex(session)]
 }
 
 // Hosts submit a typed Unicode codepoint independently of physical keys.
@@ -339,6 +360,7 @@ TreeInputReset :: (session: Session) {
     active_sample[session.slot] = sample
     active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
+    active_modifiers[session.slot] = 0
     typed: TypedInputQueue
     active_codepoints[session.slot] = typed
 }

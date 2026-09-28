@@ -68,6 +68,7 @@ main :: () -> s32 {
         ok = DrawRaylibFrame(session, RaylibViewport(), true)
     } else {
         while ok && PollRaylib() {
+            KeyboardModifiersSend(session, RaylibModifiers())
             key: s32 = RaylibPressedKey()
             if key != 0 { KeyboardSend(session, key) }
             codepoint: s32 = RaylibTypedCodepoint()

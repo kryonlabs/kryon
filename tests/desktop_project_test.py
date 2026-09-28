@@ -44,7 +44,10 @@ def main():
             'using UI :: #import "Widgets";\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-            '    if KeyboardTake(session) == 97 { return 1 }\n'
+            '    key: s32 = KeyboardTake(session)\n'
+            '    if key == 97 { return 1 }\n'
+            '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
+            '    if key == 115 && control { return 1 }\n'
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
@@ -90,6 +93,8 @@ def main():
             "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
             "    if sys.argv[1] == 'key':\n"
             "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
+            "    elif sys.argv[1] == 'control':\n"
+            "        subprocess.run(['xdotool', 'key', 'ctrl+s'], check=True)\n"
             "    elif sys.argv[1] == 'text':\n"
             "        subprocess.run(['xdotool', 'key', 'z'], check=True)\n"
             "    elif sys.argv[1] == 'unicode':\n"
@@ -107,10 +112,10 @@ def main():
             "        app.terminate()\n"
             "        app.communicate(timeout=5)\n"
         )
-        for mode in ("key", "text", "unicode", "wheel"):
+        for mode in ("key", "control", "text", "unicode", "wheel"):
             run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                 project, env)
-    print("desktop Ziran project: image, keyboard, UTF-8 text, and wheel passed")
+    print("desktop Ziran project: image, keyboard, modifiers, UTF-8 text, and wheel passed")
 
 
 if __name__ == "__main__":
