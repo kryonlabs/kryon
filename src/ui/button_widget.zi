@@ -222,6 +222,23 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
     }
 }
 
+// The bounds a button takes for these props: an explicit width or height is
+// kept, and a zero one is measured from the label, icon, and style. An
+// application reserves room with this before placing a button, because a
+// label's width changes with the language.
+#program_export
+ButtonMeasure :: (props: ButtonProps) -> Rectangle {
+    face: StyleData = ButtonFaceFor(ActiveStyleRules(), props, 0)
+    font: s32 = ResolveFont(0,
+        StyleFontValue(face.fields, face.font_size), 14)
+    label_width: s32 = 0
+    if props.label != "" && !props.icon_only {
+        label_width = GlyphWidth(props.label, font, face.typeface)
+    }
+    return MeasureBounds(props, face, ButtonMinimumHeight(props.size), font,
+        cast(float32)label_width, 0.0, 1.0, false)
+}
+
 // A retained press is routed after the previous tree commits. The next
 // submission consumes its activation and paints from the latest input state.
 #program_export

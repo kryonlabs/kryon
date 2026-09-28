@@ -112,5 +112,18 @@ main :: () -> s32 {
     if ButtonHostFailed() { return 31 }
     if ButtonIcons() != 1 { return 32 }
     if ButtonLabels() != 4 { return 33 }
+
+    // A button with no width measures its label plus the style's padding;
+    // one with a width keeps it.
+    measured: ButtonProps
+    measured.class_name = 9
+    measured.label = "Run"
+    fit: Rectangle = ButtonMeasure(measured)
+    if fit.width != 45.0 || fit.height <= 0.0 || ButtonHostFailed() {
+        return 34
+    }
+    measured.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
+    fit = ButtonMeasure(measured)
+    if fit.width != 200.0 || fit.height != 40.0 { return 35 }
     return 0
 }
