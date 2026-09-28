@@ -10,10 +10,12 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$repo/../ziran/std/math.zi" "$work/math.zi"
 cp "$repo/src/ui/layout.zi" "$work/layout.zi"
+cp "$repo/src/ui/layout_props.zi" "$work/layout_props.zi"
 cp "$repo/src/ui/group.zi" "$work/group.zi"
 cat > "$work/use_layout.zi" <<'EOF'
 #import "geometry"
 #import "layout"
+#import "layout_props"
 #import "group"
 
 using FlexDirection;
@@ -121,6 +123,7 @@ Answer :: () -> s32 {
 EOF
 cat > "$work/scalar_layout.zi" <<'EOF'
 #import "layout"
+#import "layout_props"
 #program_export
 Answer :: () -> s32 {
     if PageSidePaddingFor(300) == 12 && IsDesktopWidth(750, 1.5) {
@@ -132,6 +135,7 @@ EOF
 cat > "$work/portable_layout.zi" <<'EOF'
 #import "geometry"
 #import "layout"
+#import "layout_props"
 #import "group"
 #program_export
 Answer :: () -> s32 {
@@ -158,13 +162,13 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" "$work/geometry.zi" "$work/layout.zi" \
+"$ziran" check --root "$work" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
     "$work/group.zi" "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" ir --root "$work" -o "$work/ir" \
-    "$work/geometry.zi" "$work/layout.zi" "$work/group.zi" \
+    "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
-    -o "$work/scalar-layout.zib" "$work/geometry.zi" "$work/layout.zi" \
+    -o "$work/scalar-layout.zib" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
     "$work/group.zi" "$work/scalar_layout.zi"
 test "$("$ziran" run "$work/scalar-layout.zib")" = 42
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
@@ -175,10 +179,10 @@ cmp "$work/scalar-layout.zib" "$work/scalar-layout-ir.zib"
 test "$("$ziran" run "$work/scalar-layout-ir.zib")" = 42
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
     -o "$work/portable-layout.zib" "$work/geometry.zi" \
-    "$work/layout.zi" "$work/group.zi" "$work/portable_layout.zi"
+    "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/portable_layout.zi"
 test "$("$ziran" run "$work/portable-layout.zib")" = 42
 "$ziran" ir --root "$work" -o "$work/portable-ir" \
-    "$work/geometry.zi" "$work/layout.zi" "$work/group.zi" \
+    "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/portable_layout.zi"
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
     -o "$work/portable-layout-ir.zib" "$work/portable-ir/geometry.zir" \
@@ -188,7 +192,7 @@ cmp "$work/portable-layout.zib" "$work/portable-layout-ir.zib"
 test "$("$ziran" run "$work/portable-layout-ir.zib")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
     -o "$work/full-layout.zib" "$work/geometry.zi" \
-    "$work/layout.zi" "$work/group.zi" "$work/use_layout.zi"
+    "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/use_layout.zi"
 test "$("$ziran" run "$work/full-layout.zib")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
     -o "$work/full-layout-ir.zib" "$work/ir/geometry.zir" \
@@ -209,16 +213,18 @@ for input in source ir; do
     if test "$input" = source; then
         geometry="$work/geometry.zi"
         layout="$work/layout.zi"
+        layout_props="$work/layout_props.zi"
         group="$work/group.zi"
         use_layout="$work/use_layout.zi"
     else
         geometry="$work/ir/geometry.zir"
         layout="$work/ir/layout.zir"
+        layout_props="$work/ir/layout_props.zir"
         group="$work/ir/group.zir"
         use_layout="$work/ir/use_layout.zir"
     fi
     "$ziran" build --target=c --root "$work" \
-        -o "$work/c-$input" "$geometry" "$layout" "$group" "$use_layout"
+        -o "$work/c-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"
     cat > "$work/c-$input/main.c" <<'EOF'
 #include "use_layout.h"
 int main(void) { return Answer() == 42 ? 0 : 1; }
@@ -231,7 +237,7 @@ EOF
     "$work/c-$input/app"
 
     "$ziran" build --target=cpp --root "$work" \
-        -o "$work/cpp-$input" "$geometry" "$layout" "$group" "$use_layout"
+        -o "$work/cpp-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"
     cat > "$work/cpp-$input/main.cpp" <<'EOF'
 #include "use_layout.hpp"
 int main() { return Answer() == 42 ? 0 : 1; }
@@ -244,7 +250,7 @@ EOF
     "$work/cpp-$input/app"
 
     "$ziran" build --target=go --pkg main --root "$work" \
-        -o "$work/go-$input" "$geometry" "$layout" "$group" "$use_layout"
+        -o "$work/go-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"
     if grep -Fq 'github.com/waozixyz/kryon/go/kryon' \
         "$work/go-$input/geometry.go" "$work/go-$input/math.go" "$work/go-$input/layout.go" \
         "$work/go-$input/group.go" "$work/go-$input/use_layout.go"; then
@@ -256,7 +262,7 @@ package main
 func main() { if UseLayout_Answer() != 42 { panic("wrong layout result") } }
 EOF
     GO111MODULE=off go run "$work/go-$input/geometry.go" "$work/go-$input/math.go" \
-        "$work/go-$input/layout.go" \
+        "$work/go-$input/layout.go" "$work/go-$input/layout_props.go" \
         "$work/go-$input/group.go" \
         "$work/go-$input/use_layout.go" "$work/go-$input/main.go"
 done

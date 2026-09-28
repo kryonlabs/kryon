@@ -3,6 +3,7 @@
 #import "geometry"
 #import "style"
 #import "surface"
+#import "checkbox_props"
 
 using ButtonTone;
 using StyleField;
@@ -57,11 +58,6 @@ CheckboxLayout :: struct {
 
 CheckboxFlagResult :: struct {
     flags: u32
-    checked: bool
-    changed: bool
-}
-
-CheckboxValueResult :: struct {
     checked: bool
     changed: bool
 }

@@ -11,3 +11,8 @@ ToggleProps :: struct {
     on_label: string
     disabled: bool
 }
+
+ToggleValueResult :: struct {
+    value: bool
+    changed: bool
+}

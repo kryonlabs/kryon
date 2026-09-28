@@ -9,3 +9,8 @@ SelectableProps :: struct {
     disabled: bool
     class_name: s32
 }
+
+SelectableToggleResult :: struct {
+    selected: bool
+    changed: bool
+}

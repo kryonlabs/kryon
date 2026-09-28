@@ -25,6 +25,8 @@ using FieldsetPropsModule :: #import "fieldset_props";
 using FieldsetWidgetModule :: #import "fieldset_widget";
 using ImagePropsModule :: #import "image_props";
 using ImageWidgetModule :: #import "image_widget";
+using LayoutPropsModule :: #import "layout_props";
+using GridPropsModule :: #import "grid_props";
 using LayoutWidgetModule :: #import "layout_widget";
 using LinkPropsModule :: #import "link_props";
 using LinkWidgetModule :: #import "link_widget";

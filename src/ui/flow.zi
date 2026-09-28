@@ -2,6 +2,7 @@
 #import "geometry"
 #import "layout"
 #import "layout_widget"
+#import "layout_props"
 
 FlowProps :: struct {
     bounds: Rectangle
