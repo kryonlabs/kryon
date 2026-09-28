@@ -10,10 +10,10 @@ no special knowledge of Kryon widgets.
 Select a host with a profile in the application's `ziran.toml`:
 
 ```toml
-[tool.kryon]
+[tool.Kryon]
 default_profile = "desktop"
 
-[tool.kryon.profiles.desktop]
+[tool.Kryon.profiles.desktop]
 backend = "desktop"
 ```
 

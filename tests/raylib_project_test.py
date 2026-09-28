@@ -120,8 +120,8 @@ def main():
             'ref = "master"\n\n'
             '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.kryon]\ndefault_profile = "raylib"\n\n'
-            '[tool.kryon.profiles.raylib]\nbackend = "raylib"\n'
+            '[tool.Kryon]\ndefault_profile = "raylib"\n\n'
+            '[tool.Kryon.profiles.raylib]\nbackend = "raylib"\n'
         )
         (project / "ziran.local.toml").write_text(
             f'[overrides]\nKryon = "{ROOT}"\n'

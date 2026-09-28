@@ -122,7 +122,7 @@ ifneq ($(PROJECT_LIBRARY),)
 HOST_LIBS += -l$(PROJECT_LIBRARY)
 endif
 
-.PHONY: run build check toolchain
+.PHONY: run build check install toolchain
 
 # Project builds run the driver, which shells out to zi2zir and zi2c.
 toolchain:
@@ -180,3 +180,60 @@ endif
 
 check: toolchain
 	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(HOST)
+
+# `ziran install` copies the built program to PREFIX/bin and describes it to
+# the desktop. The KRYON_INSTALL_* values come from [tool.Kryon.install] and
+# are only ever read as quoted shell variables. The program is replaced by
+# rename, so a running copy keeps its file and later builds never touch it.
+TERMINAL_APP := false
+ifeq ($(PROJECT_BACKEND),terminal)
+TERMINAL_APP := true
+endif
+
+install: build
+ifneq ($(BROWSER_BACKEND),)
+	@echo "kryon: browser profiles cannot be installed" >&2; exit 2
+else
+	@test -n "$$ZIRAN_INSTALL_PREFIX" && test -n "$$ZIRAN_INSTALL_BIN" || \
+		{ echo "kryon: run this through ziran install" >&2; exit 2; }
+	@set -e; \
+	prefix="$$ZIRAN_INSTALL_PREFIX"; bin="$$ZIRAN_INSTALL_BIN"; \
+	program="$$prefix/bin/$$bin"; \
+	mkdir -p "$$prefix/bin" "$$prefix/share/applications"; \
+	cp $(PROGRAM) "$$program.new"; chmod 755 "$$program.new"; \
+	mv -f "$$program.new" "$$program"; echo "$$program"; \
+	icon=""; \
+	if [ -n "$$KRYON_INSTALL_ICON" ]; then \
+		mkdir -p "$$prefix/share/pixmaps"; \
+		icon="$$prefix/share/pixmaps/$$bin.$${KRYON_INSTALL_ICON##*.}"; \
+		cp "$(CURDIR)/$$KRYON_INSTALL_ICON" "$$icon.new"; \
+		mv -f "$$icon.new" "$$icon"; echo "$$icon"; \
+	fi; \
+	directory=""; \
+	case "$$KRYON_INSTALL_DIRECTORY" in \
+		"") ;; .) directory="$(CURDIR)" ;; /*) directory="$$KRYON_INSTALL_DIRECTORY" ;; \
+		*) directory="$(CURDIR)/$$KRYON_INSTALL_DIRECTORY" ;; esac; \
+	entry() { \
+		echo "[Desktop Entry]"; echo "Type=Application"; \
+		echo "Name=$${KRYON_INSTALL_NAME:-$(PROJECT_NAME)}"; \
+		[ -z "$$KRYON_INSTALL_COMMENT" ] || echo "Comment=$$KRYON_INSTALL_COMMENT"; \
+		echo "Exec=$$1"; \
+		[ -z "$$directory" ] || echo "Path=$$directory"; \
+		[ -z "$$icon" ] || echo "Icon=$$icon"; \
+		echo "Terminal=$(TERMINAL_APP)"; \
+		[ -z "$$KRYON_INSTALL_CATEGORIES" ] || echo "Categories=$$KRYON_INSTALL_CATEGORIES"; \
+		echo "X-Kryon-Installed=true"; \
+	}; \
+	desktop="$$prefix/share/applications/$$bin.desktop"; \
+	entry "$$program" > "$$desktop.new"; mv -f "$$desktop.new" "$$desktop"; echo "$$desktop"; \
+	autostart="$${XDG_CONFIG_HOME:-$$HOME/.config}/autostart/$$bin.desktop"; \
+	if [ "$$KRYON_INSTALL_AUTOSTART" = true ]; then \
+		mkdir -p "$${autostart%/*}"; \
+		launch="$$program"; \
+		[ -z "$$KRYON_INSTALL_AUTOSTART_ENV" ] || launch="env $$KRYON_INSTALL_AUTOSTART_ENV $$program"; \
+		{ entry "$$launch"; echo "X-GNOME-Autostart-enabled=true"; } > "$$autostart.new"; \
+		mv -f "$$autostart.new" "$$autostart"; echo "$$autostart"; \
+	elif [ -f "$$autostart" ] && grep -qx "X-Kryon-Installed=true" "$$autostart"; then \
+		rm -f "$$autostart"; echo "removed $$autostart"; \
+	fi
+endif

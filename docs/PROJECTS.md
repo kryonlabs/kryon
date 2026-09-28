@@ -24,10 +24,10 @@ ref = "master"
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 
-[tool.kryon]
+[tool.Kryon]
 default_profile = "desktop"
 
-[tool.kryon.profiles.desktop]
+[tool.Kryon.profiles.desktop]
 backend = "desktop"
 ```
 
@@ -68,9 +68,9 @@ for lock, cache, and override details.
 
 ## Profiles and hosts
 
-Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
+Define each profile under `[tool.Kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, `raylib`, `canvas`, and `dom`. Set `default_profile` under `[tool.kryon]` when there
+`libdraw`, `raylib`, `canvas`, and `dom`. Set `default_profile` under `[tool.Kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several and none is specified.
 
@@ -82,6 +82,46 @@ profile when there are several and none is specified.
 | `raylib` | raylib SDL2/OpenGL ES 2 window | Kryon's raylib submodule and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
+
+These settings live only in `ziran.toml`. Kryon declares them under
+`[options]` in its own `ziran.toml`. Ziran checks the application's
+`[tool.Kryon]` tables against that declaration, merges `ziran.local.toml` over
+them, and hands the kryon tool the result, so a typo is reported with its file
+and line. To try another default profile on one machine, set it in the ignored
+`ziran.local.toml`:
+
+```toml
+[tool.Kryon]
+default_profile = "tui"
+```
+
+## Installing
+
+`ziran install` builds one profile and installs it for the current user:
+
+```toml
+[install]
+tool = "Kryon"
+bin = "example"
+
+[tool.Kryon.install]
+profile = "desktop"            # default: default_profile
+name = "Example"               # menu name; default: package name
+comment = "What it does"
+icon = "assets/icon.png"
+categories = "Utility;"
+working_directory = "."        # start in the project directory
+autostart = true               # also start at login
+autostart_env = "EXAMPLE_HIDDEN=1"
+```
+
+The program is copied to `~/.local/bin/example` (or `--prefix DIR`). The copy
+replaces the old file in one step, so a running copy is never touched and
+later builds in `build/` do not change the installed program. The icon goes to
+`share/pixmaps/`, the menu entry to `share/applications/example.desktop`, and
+with `autostart` the login entry to `~/.config/autostart/example.desktop`.
+Setting `autostart = false` removes an autostart entry that `ziran install`
+wrote earlier. Browser profiles cannot be installed.
 
 The native Plan 9 libdraw raster is not a project profile yet; it is covered
 by the display-free `libdraw-native-plan9-test` ABI gate while its input and

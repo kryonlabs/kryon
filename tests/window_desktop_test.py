@@ -131,9 +131,9 @@ def main():
             'ref = "master"\n\n'
             '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.kryon]\ndefault_profile = "desktop"\n\n'
-            '[tool.kryon.profiles.desktop]\nbackend = "desktop"\n\n'
-            '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
+            '[tool.Kryon]\ndefault_profile = "desktop"\n\n'
+            '[tool.Kryon.profiles.desktop]\nbackend = "desktop"\n\n'
+            '[tool.Kryon.profiles.tui]\nbackend = "terminal"\n'
         )
         (project / "ziran.local.toml").write_text(
             f'[overrides]\nKryon = "{ROOT}"\n'

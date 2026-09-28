@@ -21,10 +21,10 @@ ref = "master"
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 
-[tool.kryon]
+[tool.Kryon]
 default_profile = "tui"
 
-[tool.kryon.profiles.tui]
+[tool.Kryon.profiles.tui]
 backend = "terminal"
 EOF
 

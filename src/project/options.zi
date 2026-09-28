@@ -1,0 +1,250 @@
+// Kryon's project settings as resolved by `ziran tool Kryon`. Ziran reads
+// [tool.Kryon] from ziran.toml and ziran.local.toml, checks it against the
+// options Kryon declares in its own ziran.toml, and hands over KEY=VALUE
+// lines. Kryon checks only what is specific to its hosts.
+ProjectProfile :: struct {
+    name: string
+    backend: string
+    codegen: string
+    library: string
+}
+
+ProjectInstall :: struct {
+    profile: string
+    name: string
+    comment: string
+    icon: string
+    categories: string
+    working_directory: string
+    autostart: bool
+    autostart_env: string
+}
+
+ProjectConfig :: struct {
+    name: string
+    entry: string
+    default_profile: string
+    profiles: [8]ProjectProfile
+    profile_count: s32
+    install: ProjectInstall
+    ok: bool
+    error: string
+}
+
+ProjectStarts :: (value: string, prefix: string) -> bool {
+    if value.count < prefix.count { return false }
+    return value[0:cast(s32)prefix.count] == prefix
+}
+
+ProjectNameValid :: (value: string) -> bool {
+    if value == "" { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        ch: u8 = value[at]
+        if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+            (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+            (ch >= cast(u8)48 && ch <= cast(u8)57) ||
+            ch == cast(u8)45 || ch == cast(u8)95) { return false }
+        at += 1
+    }
+    return true
+}
+
+// Paths are passed through make and shell build rules. Keep them to ordinary
+// filesystem characters so project settings cannot inject build syntax or commands.
+ProjectPathValid :: (value: string) -> bool {
+    if value == "" { return false }
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        ch: u8 = value[at]
+        if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+            (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+            (ch >= cast(u8)48 && ch <= cast(u8)57) ||
+            ch == cast(u8)45 || ch == cast(u8)95 ||
+            ch == cast(u8)46 || ch == cast(u8)47) { return false }
+        at += 1
+    }
+    return true
+}
+
+// Desktop entry text: printable, without the characters a desktop entry or
+// shell would read as syntax.
+ProjectTextValid :: (value: string) -> bool {
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        ch: u8 = value[at]
+        if ch < cast(u8)32 || ch == cast(u8)127 || ch == cast(u8)34 ||
+            ch == cast(u8)36 || ch == cast(u8)92 || ch == cast(u8)96 { return false }
+        at += 1
+    }
+    return true
+}
+
+// Autostart environment: space-separated NAME=VALUE words.
+ProjectEnvironmentValid :: (value: string) -> bool {
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        start: s32 = at
+        equal: bool = false
+        while at < cast(s32)value.count && value[at] != cast(u8)32 {
+            ch: u8 = value[at]
+            if ch == cast(u8)61 && at > start { equal = true }
+            else if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+                (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+                (ch >= cast(u8)48 && ch <= cast(u8)57) ||
+                ch == cast(u8)95 || ch == cast(u8)45 || ch == cast(u8)46 ||
+                ch == cast(u8)47 || ch == cast(u8)58) { return false }
+            at += 1
+        }
+        if !equal { return false }
+        at += 1
+    }
+    return true
+}
+
+ProjectFindProfile :: (config: ProjectConfig, name: string) -> s32 {
+    index: s32 = 0
+    while index < config.profile_count {
+        if config.profiles[index].name == name { return index }
+        index += 1
+    }
+    return -1
+}
+
+#program_export
+ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig {
+    config: ProjectConfig
+    config.name = name
+    config.entry = entry
+    if config.entry == "" { config.entry = "src/app.zi" }
+    cursor: s32 = 0
+    while cursor < cast(s32)options.count {
+        end: s32 = cursor
+        while end < cast(s32)options.count && options[end] != cast(u8)10 {
+            end += 1
+        }
+        line: string = options[cursor:end]
+        cursor = end + 1
+        if line == "" { continue }
+        equal: s32 = 0
+        while equal < cast(s32)line.count && line[equal] != cast(u8)61 {
+            equal += 1
+        }
+        if equal == cast(s32)line.count {
+            config.error = "invalid tool options"
+            return config
+        }
+        key: string = line[0:equal]
+        value: string = line[equal + 1:cast(s32)line.count]
+        if key == "default_profile" {
+            config.default_profile = value
+        } else if key == "profiles" {
+            at: s32 = 0
+            while at < cast(s32)value.count {
+                start: s32 = at
+                while at < cast(s32)value.count && value[at] != cast(u8)32 { at += 1 }
+                profile: string = value[start:at]
+                at += 1
+                if !ProjectNameValid(profile) || config.profile_count >= 8 {
+                    config.error = "invalid or excess profile"
+                    return config
+                }
+                if ProjectFindProfile(config, profile) >= 0 {
+                    config.error = "duplicate profile"
+                    return config
+                }
+                config.profiles[config.profile_count].name = profile
+                config.profile_count += 1
+            }
+        } else if ProjectStarts(key, "profiles.") {
+            rest: string = key[9:cast(s32)key.count]
+            dot: s32 = 0
+            while dot < cast(s32)rest.count && rest[dot] != cast(u8)46 { dot += 1 }
+            selected: s32 = ProjectFindProfile(config, rest[0:dot])
+            if selected < 0 || dot == cast(s32)rest.count {
+                config.error = "tool option names an unknown profile"
+                return config
+            }
+            field: string = rest[dot + 1:cast(s32)rest.count]
+            if field == "backend" {
+                config.profiles[selected].backend = value
+            } else if field == "codegen" {
+                config.profiles[selected].codegen = value
+            } else if field == "library" {
+                config.profiles[selected].library = value
+            }
+        } else if key == "install.profile" {
+            config.install.profile = value
+        } else if key == "install.name" {
+            config.install.name = value
+        } else if key == "install.comment" {
+            config.install.comment = value
+        } else if key == "install.icon" {
+            config.install.icon = value
+        } else if key == "install.categories" {
+            config.install.categories = value
+        } else if key == "install.working_directory" {
+            config.install.working_directory = value
+        } else if key == "install.autostart" {
+            config.install.autostart = value == "true"
+        } else if key == "install.autostart_env" {
+            config.install.autostart_env = value
+        }
+    }
+    if config.profile_count == 1 && config.default_profile == "" {
+        config.default_profile = config.profiles[0].name
+    }
+    if !ProjectNameValid(config.name) ||
+        !ProjectPathValid(config.entry) ||
+        !ProjectNameValid(config.default_profile) ||
+        config.profile_count == 0 {
+        config.error = "missing profile or invalid project fields"
+        return config
+    }
+    found: bool = false
+    index: s32 = 0
+    while index < config.profile_count {
+        profile: ProjectProfile = config.profiles[index]
+        if profile.backend == "" {
+            config.error = "profile needs backend"
+            return config
+        }
+        if profile.library != "" && !ProjectNameValid(profile.library) {
+            config.error = "invalid profile library"
+            return config
+        }
+        if profile.codegen == "" {
+            config.profiles[index].codegen = "c99"
+        }
+        if profile.name == config.default_profile { found = true }
+        index += 1
+    }
+    if !found {
+        config.error = "default profile does not exist"
+        return config
+    }
+    install: ProjectInstall = config.install
+    if (install.profile != "" && ProjectFindProfile(config, install.profile) < 0) ||
+        (install.icon != "" && !ProjectPathValid(install.icon)) ||
+        (install.working_directory != "" &&
+            !ProjectPathValid(install.working_directory)) ||
+        !ProjectTextValid(install.name) || !ProjectTextValid(install.comment) ||
+        !ProjectTextValid(install.categories) ||
+        !ProjectEnvironmentValid(install.autostart_env) {
+        config.error = "invalid install options"
+        return config
+    }
+    config.ok = true
+    return config
+}
+
+#program_export
+ProjectProfileNamed :: (config: ProjectConfig, name: string) -> ProjectProfile {
+    index: s32 = 0
+    while index < config.profile_count {
+        if config.profiles[index].name == name { return config.profiles[index] }
+        index += 1
+    }
+    empty: ProjectProfile
+    return empty
+}
