@@ -32,8 +32,11 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
-    if tint.r != cast(u8)0x10 || tint.g != cast(u8)0x20 ||
-        tint.b != cast(u8)0x30 || tint.a != cast(u8)0x7f ||
+    expected_red: u8 = ifx images == 0 then cast(u8)0x10 else cast(u8)0x50
+    expected_green: u8 = ifx images == 0 then cast(u8)0x20 else cast(u8)0x60
+    expected_blue: u8 = ifx images == 0 then cast(u8)0x30 else cast(u8)0x70
+    if tint.r != expected_red || tint.g != expected_green ||
+        tint.b != expected_blue || tint.a != cast(u8)0x7f ||
         radius != 6.0 || origin.x != 0.0 || origin.y != 0.0 {
         failed = true
     }

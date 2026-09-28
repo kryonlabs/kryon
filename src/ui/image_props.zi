@@ -18,5 +18,7 @@ ImageProps :: struct {
     class_name: s32
     // Runtime texture: honored instead of asset_path when set.
     texture: Texture2D
+    // A nonzero packed RGBA color tints this image. Zero uses its style color.
+    tint: u32
     key: u64
 }

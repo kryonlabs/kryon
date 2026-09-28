@@ -151,7 +151,13 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
             bounds.y + content.icon_y, content.icon_size,
             content.icon_size}
         texture: Texture2D = ImageTextureFor(image)
-        tint: Color = ColorFromPacked(Opacity(cast(u32)0xffffffff, opacity))
+        tint_color: u32 = cast(u32)0xffffffff
+        if image.tint != cast(u32)0 {
+            tint_color = image.tint
+        } else if image.asset_path == "icons/ui.png" {
+            tint_color = face.foreground
+        }
+        tint: Color = ColorFromPacked(Opacity(tint_color, opacity))
         plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
         if plan.draw && tint.a > cast(u8)0 {
             PaintImage(session, node, image.asset_path, image.texture.id,

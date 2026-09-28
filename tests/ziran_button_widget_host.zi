@@ -108,7 +108,9 @@ RasterImage :: (asset_path: string, texture_id: u32,
         // IconEdit is the seventh tile of the eight-column UI atlas.
         if source.x != 384.0 || source.y != 0.0 ||
             source.width != 64.0 || source.height != 64.0 ||
-            destination.width <= 0.0 || destination.height <= 0.0 {
+            destination.width <= 0.0 || destination.height <= 0.0 ||
+            tint.r != cast(u8)0xaa || tint.g != cast(u8)0xbb ||
+            tint.b != cast(u8)0xcc || tint.a != cast(u8)127 {
             failed = true
         }
         icons += 1

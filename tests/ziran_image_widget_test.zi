@@ -60,6 +60,7 @@ Frame :: () -> s32 {
     }
     if phase == 2 {
         image.asset_path = "ignored.png"
+        image.tint = cast(u32)0x506070ff
         image.bounds = Rectangle.{20.0, 30.0, 60.0, 40.0}
         image.fit = cast(ImageFit)ImageFitCover
         image.texture.id = cast(u32)77
