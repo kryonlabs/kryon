@@ -1,3 +1,7 @@
+// Loaded first so the fake textures stand in for the browser's.
+#import "page_texture"
+#import "page_files"
+#import "web"
 #import, file "../src/backend/canvas_text.zi";
 #import, file "../src/backend/canvas_os.zi";
 #import, file "../src/backend/canvas_types.zi";
@@ -9,7 +13,6 @@ c :: #system_library "c";
 TestAllocate :: (size: usize) -> *void #foreign c "malloc";
 TestFormat :: (format: *u8, values: ..any) -> *u8 #foreign c "TextFormat";
 TestLog :: (level: s32, format: *u8, values: ..any) #foreign c "TraceLog";
-TestHostFinished :: () -> s32 #foreign c "test_canvas_host_finished";
 
 draw_count: s32;
 last_draw: Rectangle;
@@ -154,11 +157,18 @@ main :: () -> s32 {
         return 14
     }
     UnloadFileData(loaded_data)
+    // Drop two files on the page and wait for them to be saved.
+    PageDropFiles(WebGetObject(WebGlobal, WebName("__testDrop")))
+    waited: s32 = 0
+    while !IsFileDropped() && waited < 100 {
+        WebSleep(5)
+        waited += 1
+    }
     if !IsFileDropped() {
         return 15
     }
     dropped := LoadDroppedFiles()
-    if dropped.count != 2 || !TestText(dropped.paths[1], "/tmp/drop-b.txt") {
+    if dropped.count != 2 || !TestText(dropped.paths[1], "/dropped/drop-b.txt") {
         return 16
     }
     UnloadDroppedFiles(dropped)
@@ -187,5 +197,8 @@ main :: () -> s32 {
         return 19
     }
     TestLog(3, *format[0], *text[0], 7, cast(float64)1.5)
-    return TestHostFinished()
+    if FakeAtlasWasBad() || FakeTexturesLive() != 0 { return 20 }
+    faces: WebValue = WebGet(WebGetObject(WebGlobal, WebName("__canvasTestFaces")), WebName("size"))
+    if WebAsNumber(faces) != 0.0 { return 20 }
+    return 0
 }

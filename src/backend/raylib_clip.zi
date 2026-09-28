@@ -33,10 +33,13 @@ ClipFloor :: (value: float32) -> float32 #foreign raylib_clip_math "floorf";
 ClipCeil :: (value: float32) -> float32 #foreign raylib_clip_math "ceilf";
 
 #if #defined(PLATFORM_WEB) {
-    canvas_clip_host :: #system_library "env";
-    CanvasClipPush :: (x: s32, y: s32, width: s32,
-        height: s32) #foreign canvas_clip_host "js_canvas_raster_clip_push";
-    CanvasClipPop :: () #foreign canvas_clip_host "js_canvas_raster_clip_pop";
+    #import "page_paint"
+    CanvasClipPush :: (x: s32, y: s32, width: s32, height: s32) {
+        PageClipPush(x, y, width, height)
+    }
+    CanvasClipPop :: () {
+        PageClipPop()
+    }
 } else {
     ClipEnabled :: (capability: u32) -> u8 #foreign raylib_clip_host "glIsEnabled";
     ClipRead :: (parameter: u32, values: *s32) #foreign raylib_clip_host "glGetIntegerv";

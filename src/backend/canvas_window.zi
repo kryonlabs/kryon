@@ -1,30 +1,16 @@
 #import "canvas_types"
 #import "canvas_text"
 #import "canvas_events"
+#import "byte_text_linux"
+#import "page_core"
+#import "page_events"
+#import "page_input"
+#import "page_paint"
+#import "page_texture"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
 #if #defined(PLATFORM_WEB) {
-    canvas_browser :: #system_library "env";
-    js_canvas_boot :: (w: s32, h: s32, title: *u8) #foreign canvas_browser "js_canvas_boot";
-    js_canvas_resize :: (w: s32, h: s32) #foreign canvas_browser "js_canvas_resize";
-    js_canvas_dim :: (which: s32) -> s32 #foreign canvas_browser "js_canvas_dim";
-    js_canvas_dpi :: () -> float64 #foreign canvas_browser "js_canvas_dpi";
-    js_canvas_set_cursor :: (cursor: s32) #foreign canvas_browser "js_canvas_set_cursor";
-    js_canvas_set_title :: (title: *u8) #foreign canvas_browser "js_canvas_set_title";
-    js_canvas_focus :: () #foreign canvas_browser "js_canvas_focus";
-    js_canvas_fullscreen :: (enable: s32) #foreign canvas_browser "js_canvas_fullscreen";
-    js_canvas_fullscreen_state :: () -> s32 #foreign canvas_browser "js_canvas_fullscreen_state";
-    js_ctx_call :: (op: s32, a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g2: float64, r: s32, gg: s32, bb: s32, aa: s32) #foreign canvas_browser "js_ctx_call";
-    js_canvas_wait_frame :: (min_delay_ms: float64, target_fps: s32) #foreign canvas_browser "js_canvas_wait_frame";
-
-    js_input_end_frame :: () #foreign canvas_browser "js_input_end_frame";
-    js_canvas_now :: () -> float64 #foreign canvas_browser "js_canvas_now";
-    js_canvas_close :: () #foreign canvas_browser "js_canvas_close";
-    js_canvas_request_close :: () #foreign canvas_browser "js_canvas_request_close";
-    js_canvas_frame :: () #foreign canvas_browser "js_canvas_frame";
-    js_canvas_sleep :: (milliseconds: s32) #foreign canvas_browser "js_canvas_sleep";
-    js_canvas_style :: (property: s32, value: float64) #foreign canvas_browser "js_canvas_style";
     canvas_monitor_name: [32]u8;
     canvas_empty: [1]u8;
     canvas_width: s32;
@@ -43,27 +29,30 @@
     InitWindow :: (width: s32, height: s32, title: *u8) {
         canvas_width = width
         canvas_height = height
-        js_canvas_boot(width, height, title)
+        PageTexturesReset()
+        PageBoot(width, height, TextFromCString(title))
+        PageEventsBind()
         CanvasEventsOpen()
         canvas_ready = true
-        canvas_last_frame = js_canvas_now() / 1000.0
+        canvas_last_frame = PageNow() / 1000.0
     }
 
     #program_export
     CloseWindow :: () {
         CloseCanvasText()
-        js_canvas_close()
+        PageClose()
+        PageTexturesReset()
         canvas_ready = false
     }
 
     #program_export
     RequestCanvasClose :: () {
-        js_canvas_request_close()
+        PageRequestClose()
     }
 
     #program_export
     WindowShouldClose :: () -> bool {
-        if !canvas_ready || js_canvas_dim(6) != 0 { return true }
+        if !canvas_ready || PageDimension(6) != 0 { return true }
         return canvas_exit_key != 0 && CanvasQueueHas(*canvas_keys_pressed[0],
             canvas_keys_pressed_count, canvas_exit_key)
     }
@@ -80,7 +69,7 @@
 
     #program_export
     IsWindowFullscreen :: () -> bool {
-        return (canvas_window_state & cast(u32)2) != cast(u32)0 || js_canvas_fullscreen_state() != 0
+        return (canvas_window_state & cast(u32)2) != cast(u32)0 || PageFullscreenState()
     }
 
     #program_export
@@ -100,7 +89,7 @@
 
     #program_export
     IsWindowResized :: () -> bool {
-        return js_canvas_dim(4) != 0
+        return PageDimension(4) != 0
     }
 
     #program_export
@@ -116,13 +105,13 @@
     #program_export
     SetWindowState :: (flags: u32) {
         canvas_window_state |= flags
-        if (flags & cast(u32)2) != cast(u32)0 { js_canvas_fullscreen(1) }
+        if (flags & cast(u32)2) != cast(u32)0 { PageFullscreen(true) }
     }
 
     #program_export
     ClearWindowState :: (flags: u32) {
         canvas_window_state &= ~flags
-        if (flags & cast(u32)2) != cast(u32)0 { js_canvas_fullscreen(0) }
+        if (flags & cast(u32)2) != cast(u32)0 { PageFullscreen(false) }
     }
 
     #program_export
@@ -166,35 +155,35 @@
     SetWindowSize :: (width: s32, height: s32) {
         canvas_width = width
         canvas_height = height
-        js_canvas_resize(width, height)
+        PageResize(width, height)
     }
 
     #program_export
     BeginDrawing :: () {
-        js_ctx_call(13, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
+        PageContextCall(PageOpFrameReset, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
     }
 
     #program_export
     EndDrawing :: () {
-        now := js_canvas_now() / 1000.0
+        now := PageNow() / 1000.0
         elapsed := now - canvas_last_frame
         canvas_frame_time = cast(float32)elapsed
         if canvas_frame_time <= 0.0 { canvas_frame_time = 1.0 / 60.0 }
         canvas_last_frame = now
-        js_canvas_frame()
+        PageFrame()
         CanvasEventsEndFrame()
-        js_input_end_frame()
+        PageInputEndFrame()
         delay: float64 = 1.0
         if canvas_target_fps > 0 {
             target := 1.0 / cast(float64)canvas_target_fps
             if elapsed < target { delay = (target - elapsed) * 1000.0 }
         }
-        js_canvas_wait_frame(delay, canvas_target_fps)
+        PageWaitFrame(delay, canvas_target_fps)
     }
 
     #program_export
     GetTime :: () -> float64 {
-        return js_canvas_now() / 1000.0
+        return PageNow() / 1000.0
     }
 
     #program_export
@@ -204,68 +193,68 @@
 
     #program_export
     GetScreenWidth :: () -> s32 {
-        value := js_canvas_dim(0)
+        value := PageDimension(0)
         if value > 0 { return value }
         return canvas_width
     }
 
     #program_export
     GetScreenHeight :: () -> s32 {
-        value := js_canvas_dim(1)
+        value := PageDimension(1)
         if value > 0 { return value }
         return canvas_height
     }
 
     #program_export
     GetRenderWidth :: () -> s32 {
-        value := js_canvas_dim(2)
+        value := PageDimension(2)
         if value > 0 { return value }
         return GetScreenWidth()
     }
 
     #program_export
     GetRenderHeight :: () -> s32 {
-        value := js_canvas_dim(3)
+        value := PageDimension(3)
         if value > 0 { return value }
         return GetScreenHeight()
     }
 
     #program_export
     GetWindowScaleDPI :: () -> Vector2 {
-        scale := cast(float32)js_canvas_dpi()
+        scale := cast(float32)PageDpi()
         return Vector2.{scale, scale}
     }
 
     #program_export
     SetMouseCursor :: (cursor: s32) {
-        js_canvas_set_cursor(cursor)
+        PageSetCursor(cursor)
     }
 
     #program_export
     SetWindowTitle :: (title: *u8) {
-        js_canvas_set_title(title)
+        PageSetTitle(TextFromCString(title))
     }
 
     #program_export
     SetWindowFocused :: () {
-        js_canvas_focus()
+        PageFocus()
     }
 
     #program_export
     SetWindowOpacity :: (opacity: float32) {
-        js_canvas_style(0, cast(float64)opacity)
+        PageStyle(0, cast(float64)opacity)
     }
 
     #program_export
     SetWindowMinSize :: (width: s32, height: s32) {
-        js_canvas_style(1, cast(float64)width)
-        js_canvas_style(2, cast(float64)height)
+        PageStyle(1, cast(float64)width)
+        PageStyle(2, cast(float64)height)
     }
 
     #program_export
     SetWindowMaxSize :: (width: s32, height: s32) {
-        js_canvas_style(3, cast(float64)width)
-        js_canvas_style(4, cast(float64)height)
+        PageStyle(3, cast(float64)width)
+        PageStyle(4, cast(float64)height)
     }
 
     #program_export
@@ -351,7 +340,7 @@
 
     #program_export
     WaitTime :: (seconds: float64) {
-        if seconds > 0.0 { js_canvas_sleep(cast(s32)(seconds * 1000.0)) }
+        if seconds > 0.0 { PageSleep(cast(s32)(seconds * 1000.0)) }
     }
 
     #program_export
@@ -404,7 +393,7 @@
             low = maximum
             high = minimum
         }
-        if !canvas_random_seeded { SetRandomSeed(cast(u32)js_canvas_now() ^ cast(u32)2654435769) }
+        if !canvas_random_seeded { SetRandomSeed(cast(u32)PageNow() ^ cast(u32)2654435769) }
         span := cast(s64)high - cast(s64)low + 1
         return cast(s32)(cast(s64)low + cast(s64)(cast(u64)CanvasRandom() % cast(u64)span))
     }

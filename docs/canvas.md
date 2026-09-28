@@ -2,18 +2,20 @@
 
 A browser integration roots `src/backend/canvas_raster.zi` with the selected
 host and defines `PLATFORM_WEB`. Generate native sources with Ziran, then link
-them with Emscripten and these libraries:
+them with Emscripten, Ziran's Web bridge, and the varargs shim:
 
 ```
---js-library web/canvas_window.js
---js-library web/canvas_draw.js
---js-library web/canvas_input.js
---js-library web/canvas_texture.js
---js-library web/canvas_text.js
---js-library web/canvas_os.js
---js-library web/canvas_audio.js
+--js-library $ZIRAN_DIR/web/ziran_web.js
+-sEXPORTED_RUNTIME_METHODS=FS
+src/backend/canvas_varargs.c
 -sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web
 ```
+
+Kryon contains no JavaScript. The browser hosts (`page_core.zi`,
+`page_paint.zi`, `page_texture.zi`, `page_font.zi`, `page_events.zi`,
+`page_files.zi`, `page_input.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
+written in Ziran and reach the page through `std/web.zi`; the one JavaScript
+file is the generic, Kryon-agnostic bridge in the Ziran repository.
 
 The backend uses a visible Canvas2D context directly. It does not use WebGL or
 a separate presentation canvas. The dedicated `canvas_raster.zi` provider
@@ -28,9 +30,9 @@ may declare it against `host_api`; the host records the request and observes it
 on the next poll so the current frame can finish committing.
 
 Ziran owns frame timing, image memory, font atlas packing, text layout, file
-callbacks, audio decoding and conversion, and resource APIs. JavaScript
-provides browser events, Canvas2D rasterization, FontFace, WebAudio, clipboard,
-and Emscripten filesystem effects. Asynchronous browser calls carry
+callbacks, audio decoding and conversion, resource APIs, and every call into
+the browser's events, Canvas2D, FontFace, WebAudio, clipboard, and Emscripten
+filesystem. Asynchronous browser calls carry
 Emscripten async metadata and require Asyncify.
 
 The host finds `#canvas` and measures its `#canvas-frame` container when one is

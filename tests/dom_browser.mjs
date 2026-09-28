@@ -72,9 +72,7 @@ try {
   if (result !== 'PASS') {
     const state = await command('Runtime.evaluate', {
       expression: `JSON.stringify({
-        closeRequested: globalThis.__kryonCanvas?.closeRequested,
-        closed: globalThis.__kryonCanvas?.closed,
-        domNodes: globalThis.__kryonDom?.root?.querySelectorAll('[data-kryon-id]').length
+        domNodes: document.getElementById('kryon-dom-root')?.querySelectorAll('[data-kryon-id]').length
       })`,
       returnByValue: true
     });

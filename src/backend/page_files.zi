@@ -1,0 +1,332 @@
+// The page's file system and clipboard: metadata and directory listings for
+// the in-memory file system Emscripten provides, files dropped on the canvas,
+// and copying text out. Which paths the application may use and how it reads
+// them is decided in canvas_os.zi.
+#import "page_core"
+#import "byte_text_linux"
+#import "text_buffer"
+#import "web"
+
+page_files_c :: #system_library "c";
+PageFilesAllocate :: (size: usize) -> *void #foreign page_files_c "malloc";
+
+PAGE_DIRECTORY_MAX :: 8
+PAGE_DROP_MAX :: 64
+PAGE_DROP_PATH :: 256
+
+page_directory_handles: [PAGE_DIRECTORY_MAX]s32;
+page_directory_names: [PAGE_DIRECTORY_MAX]s32;
+page_directory_next: s32 = 1;
+page_dropped_paths: [PAGE_DROP_MAX][PAGE_DROP_PATH]u8;
+page_drop_names: [PAGE_DROP_MAX][PAGE_DROP_PATH]u8;
+page_dropped_count: s32;
+page_dropped_pending: s32;
+page_drop_function: s32;
+page_clip_value: s32;
+page_clip_function: s32;
+page_clip_gesture: bool;
+
+PageFileSystem :: () -> s32 {
+    return WebGetObject(WebModule, WebName("FS"))
+}
+
+PageIsDirectory :: (files: s32, stat: s32) -> bool {
+    return WebAsBool(WebCall1(files, WebName("isDir"),
+        WebGet(stat, WebName("mode"))))
+}
+
+// 0 when the path does not exist, 1 for a file, 2 for a directory.
+PageFileKind :: (path: string) -> s32 {
+    if path.count == 0 { return 0 }
+    scope: s32 = WebScope()
+    kind: s32 = 0
+    files: s32 = PageFileSystem()
+    stat: s32 = WebAsObject(WebCall1(files, WebName("stat"), WebText(path)))
+    if stat != 0 && !WebFailed() {
+        kind = 1
+        if PageIsDirectory(files, stat) { kind = 2 }
+    }
+    WebEnd(scope)
+    return kind
+}
+
+PageFileLength :: (path: string) -> s32 {
+    if path.count == 0 { return 0 }
+    scope: s32 = WebScope()
+    length: s32 = 0
+    files: s32 = PageFileSystem()
+    stat: s32 = WebAsObject(WebCall1(files, WebName("stat"), WebText(path)))
+    if stat != 0 && !WebFailed() && !PageIsDirectory(files, stat) {
+        size: float64 = WebGetNumber(stat, WebName("size"))
+        if size <= 2147483647.0 { length = cast(s32)size }
+    }
+    WebEnd(scope)
+    return length
+}
+
+// Seconds since the epoch, or 0.
+PageFileModTime :: (path: string) -> float64 {
+    if path.count == 0 { return 0.0 }
+    scope: s32 = WebScope()
+    seconds: float64 = 0.0
+    stat: s32 = WebAsObject(WebCall1(PageFileSystem(), WebName("stat"), WebText(path)))
+    if stat != 0 && !WebFailed() {
+        milliseconds: float64 = WebAsNumber(WebCall0(WebGetObject(stat,
+            WebName("mtime")), WebName("getTime")))
+        seconds = cast(float64)cast(s64)(milliseconds / 1000.0)
+    }
+    WebEnd(scope)
+    return seconds
+}
+
+PageDirectoryOpen :: (path: string) -> s32 {
+    slot: s32 = -1
+    index: s32 = 0
+    while index < PAGE_DIRECTORY_MAX {
+        if page_directory_handles[index] == 0 && slot < 0 { slot = index }
+        index += 1
+    }
+    if slot < 0 { return 0 }
+    scope: s32 = WebScope()
+    listing: string = path
+    if path.count == 0 { listing = "." }
+    names: s32 = WebAsObject(WebCall1(PageFileSystem(), WebName("readdir"),
+        WebText(listing)))
+    handle: s32 = 0
+    if names != 0 && !WebFailed() && WebGetNumber(names, WebName("length")) <= 65536.0 {
+        if page_directory_next >= 2147483647 { page_directory_next = 1 }
+        handle = page_directory_next
+        page_directory_next += 1
+        page_directory_handles[slot] = handle
+        page_directory_names[slot] = WebKeep(names)
+    }
+    WebEnd(scope)
+    return handle
+}
+
+PageDirectorySlot :: (handle: s32) -> s32 {
+    if handle <= 0 { return -1 }
+    index: s32 = 0
+    while index < PAGE_DIRECTORY_MAX {
+        if page_directory_handles[index] == handle { return index }
+        index += 1
+    }
+    return -1
+}
+
+PageDirectoryCount :: (handle: s32) -> s32 {
+    slot: s32 = PageDirectorySlot(handle)
+    if slot < 0 { return 0 }
+    scope: s32 = WebScope()
+    count: s32 = cast(s32)WebGetNumber(page_directory_names[slot], WebName("length"))
+    WebEnd(scope)
+    return count
+}
+
+// Copies entry `index` into `output` and returns its length; -1 when there is
+// no such entry or it does not fit.
+PageDirectoryEntry :: (handle: s32, index: s32, output: *u8, capacity: s32) -> s32 {
+    slot: s32 = PageDirectorySlot(handle)
+    if slot < 0 || index < 0 || output == null || capacity < 1 { return -1 }
+    scope: s32 = WebScope()
+    result: s32 = -1
+    entry: WebValue = WebAt(page_directory_names[slot], index)
+    if entry.tag == WebStringTag {
+        text: s32 = WebAsObject(entry)
+        length: s32 = WebStringLength(text)
+        if length < capacity {
+            unused WebCopyString(text, BytesFromPointer(output, cast(u64)capacity))
+            result = length
+        }
+    }
+    WebEnd(scope)
+    return result
+}
+
+PageDirectoryClose :: (handle: s32) {
+    slot: s32 = PageDirectorySlot(handle)
+    if slot < 0 { return }
+    WebRelease(page_directory_names[slot])
+    page_directory_names[slot] = 0
+    page_directory_handles[slot] = 0
+}
+
+// Copies with a hidden textarea and the legacy copy command. Needs the
+// user's gesture to be in progress.
+PageCopyWithCommand :: (value: WebValue) -> bool {
+    document: s32 = PageDocument()
+    if document == 0 { return false }
+    if WebTypeOf(WebGetObject(document, WebName("execCommand"))) != WebTypeFunction {
+        return false
+    }
+    input: s32 = WebAsObject(WebCall1(document, page_names.create_element,
+        WebText("textarea")))
+    if input == 0 { return false }
+    WebSet(input, WebName("value"), value)
+    unused WebCall2(input, WebName("setAttribute"), WebText("readonly"),
+        WebText("readonly"))
+    style: s32 = WebGetObject(input, page_names.style)
+    WebSet(style, WebName("position"), WebText("fixed"))
+    WebSet(style, WebName("left"), WebText("-10000px"))
+    WebSet(style, WebName("top"), WebText("-10000px"))
+    body: s32 = WebGetObject(document, page_names.body)
+    unused WebCall1(body, page_names.append_child, WebObject(input))
+    unused WebCall0(input, page_names.focus)
+    unused WebCall0(input, WebName("select"))
+    copied: bool = WebAsBool(WebCall1(document, WebName("execCommand"),
+        WebText("copy")))
+    if WebFailed() { copied = false }
+    unused WebCall0(input, WebName("remove"))
+    PageFocusQuietly()
+    return copied
+}
+
+// The write to the clipboard was refused; try the command instead unless
+// that was already done.
+PageClipboardRefused :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context
+    unused first
+    unused second
+    unused third
+    if page_clip_value == 0 { return }
+    if !page_clip_gesture { unused PageCopyWithCommand(WebObject(page_clip_value)) }
+    WebRelease(page_clip_value)
+    page_clip_value = 0
+}
+
+// Puts text on the system clipboard. `gesture` says a user gesture is in
+// progress, which the command needs.
+PageClipboardPush :: (text: string, gesture: bool) {
+    scope: s32 = WebScope()
+    value: WebValue = WebText(text)
+    if gesture { unused PageCopyWithCommand(value) }
+    navigator: s32 = WebGetObject(WebGlobal, WebName("navigator"))
+    clipboard: s32 = 0
+    if navigator != 0 { clipboard = WebGetObject(navigator, WebName("clipboard")) }
+    if clipboard != 0 &&
+        WebTypeOf(WebGetObject(clipboard, WebName("writeText"))) == WebTypeFunction {
+        if page_clip_value != 0 { WebRelease(page_clip_value) }
+        page_clip_value = WebKeep(WebAsObject(WebCall1(WebGlobal, WebName("String"), value)))
+        page_clip_gesture = gesture
+        if page_clip_function == 0 {
+            page_clip_function = WebFunction(PageClipboardRefused, 0)
+        }
+        promise: s32 = WebAsObject(WebCall1(clipboard, WebName("writeText"), value))
+        if promise != 0 {
+            unused WebCall1(promise, page_names.catch_method,
+                WebObject(page_clip_function))
+        }
+    }
+    WebEnd(scope)
+}
+
+PageDroppedCount :: () -> s32 {
+    if page_dropped_pending > 0 { return 0 }
+    return page_dropped_count
+}
+
+// A copy of a dropped file's path that the caller frees; "" when out of range.
+PageDroppedPath :: (index: s32) -> *u8 {
+    length: s32 = 0
+    if index >= 0 && index < page_dropped_count {
+        while page_dropped_paths[index][length] != cast(u8)0 { length += 1 }
+    }
+    copy: *u8 = cast(*u8)PageFilesAllocate(cast(usize)(length + 1))
+    if copy == null { return null }
+    position: s32 = 0
+    while position < length {
+        copy[position] = page_dropped_paths[index][position]
+        position += 1
+    }
+    copy[length] = cast(u8)0
+    return copy
+}
+
+PageDropFinished :: () {
+    if page_dropped_pending > 0 { page_dropped_pending -= 1 }
+}
+
+// A dropped file's bytes arrived (context 0 to 63) or reading failed (64 up).
+PageDropRead :: (context: s32, buffer: s32, second: s32, third: s32) {
+    unused second
+    unused third
+    if context >= PAGE_DROP_MAX {
+        PageDropFinished()
+        return
+    }
+    path: string = TextFromCString(*page_drop_names[context][0])
+    view: s32 = WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")),
+        WebObject(buffer))
+    files: s32 = PageFileSystem()
+    if view != 0 && files != 0 {
+        unused WebCall2(files, WebName("writeFile"), WebText(path), WebObject(view))
+        if !WebFailed() && page_dropped_count < PAGE_DROP_MAX {
+            // Paths are kept in the order the files finish arriving.
+            index: s32 = 0
+            while index < PAGE_DROP_PATH && page_drop_names[context][index] != cast(u8)0 {
+                page_dropped_paths[page_dropped_count][index] = page_drop_names[context][index]
+                index += 1
+            }
+            page_dropped_paths[page_dropped_count][index] = cast(u8)0
+            page_dropped_count += 1
+        }
+    }
+    PageDropFinished()
+}
+
+// "/dropped/" and the file's name, with path separators made harmless.
+PageDropPathText :: (name: string, output: []u8) {
+    prefix: string = "/dropped/"
+    index: s32 = 0
+    while index < 9 {
+        output[index] = prefix[index]
+        index += 1
+    }
+    position: s64 = 0
+    while position < name.count && index < cast(s32)output.count - 1 {
+        byte: u8 = name[position]
+        if byte == cast(u8)47 || byte == cast(u8)92 { byte = cast(u8)95 }
+        output[index] = byte
+        index += 1
+        position += 1
+    }
+    output[index] = cast(u8)0
+}
+
+// Starts saving the files of a drop event. Each file arrives later.
+PageDropFiles :: (files: s32) {
+    if files == 0 { return }
+    scope: s32 = WebScope()
+    count: s32 = cast(s32)WebGetNumber(files, WebName("length"))
+    page_dropped_count = 0
+    page_dropped_pending = count
+    unused WebCall1(PageFileSystem(), WebName("mkdir"), WebText("/dropped"))
+    if page_drop_function == 0 {
+        page_drop_function = WebFunction(PageDropRead, 0)
+    }
+    index: s32 = 0
+    while index < count && index < PAGE_DROP_MAX {
+        file: s32 = WebAsObject(WebAt(files, index))
+        name_value: WebValue = WebGet(file, WebName("name"))
+        name_bytes: [128]u8
+        name: string = "dropped-file"
+        if name_value.tag == WebStringTag && WebStringLength(WebAsObject(name_value)) > 0 {
+            unused WebCopyString(WebAsObject(name_value), name_bytes[:])
+            name = TextUntilNul(name_bytes[:])
+        }
+        PageDropPathText(name, page_drop_names[index][:])
+        if WebTypeOf(WebGetObject(file, WebName("arrayBuffer"))) == WebTypeFunction {
+            promise: s32 = WebAsObject(WebCall0(file, WebName("arrayBuffer")))
+            reader: s32 = WebFunction(PageDropRead, index)
+            failure: s32 = WebFunction(PageDropRead, index + PAGE_DROP_MAX)
+            unused WebCall2(promise, WebName("then"), WebObject(reader),
+                WebObject(failure))
+            WebRelease(reader)
+            WebRelease(failure)
+        } else {
+            PageDropFinished()
+        }
+        index += 1
+    }
+    WebEnd(scope)
+}

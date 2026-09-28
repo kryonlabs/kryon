@@ -9,6 +9,7 @@
 #import "geometry"
 #import "drawing_props"
 #import "c_string"
+#import "page_texture"
 
 browser :: #system_library "env";
 CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
@@ -76,6 +77,7 @@ main :: () -> s32 {
     DrawTextEx(font, *title[0], Vector2.{4.0, 70.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
     UnloadFont(font)
     result := CanvasTestFinish()
+    if result == 0 && PageTextureCount() != 0 { result = 21 }
     SetTargetFPS(120)
     EndDrawing()
     if IsKeyPressed(65) || IsKeyReleased(65) { return 12 }

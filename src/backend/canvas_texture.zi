@@ -1,22 +1,13 @@
 #import "canvas_types"
 #import "geometry"
 #import "drawing_props"
+#import "byte_text_linux"
+#import "page_core"
+#import "page_paint"
+#import "page_texture"
 #if #defined(PLATFORM_WEB) {
     canvas_browser :: #system_library "env";
-    js_draw_texture_pro :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64, dx: float64, dy: float64, dw: float64, dh: float64, ox: float64, oy: float64, rot: float64, r: s32, gg: s32, bb: s32, aa: s32, filter: s32) #foreign canvas_browser "js_draw_texture_pro";
-    js_texture_from_rgba :: (ptr: *u8, w: s32, h: s32) -> s32 #foreign canvas_browser "js_texture_from_rgba";
-    js_texture_free :: (id: s32) #foreign canvas_browser "js_texture_free";
-    js_texture_update_rgba :: (id: s32, ptr: *u8, x: s32, y: s32, w: s32, h: s32) #foreign canvas_browser "js_texture_update_rgba";
-    js_texture_filter :: (id: s32, filter: s32) #foreign canvas_browser "js_texture_filter";
-    js_texture_filter_for :: (id: s32) -> s32 #foreign canvas_browser "js_texture_filter_for";
-    js_render_target :: (w: s32, h: s32) -> s32 #foreign canvas_browser "js_render_target";
-    js_target_select :: (id: s32) #foreign canvas_browser "js_target_select";
-    js_target_deselect :: () #foreign canvas_browser "js_target_deselect";
-    js_texture_read :: (id: s32, ptr: *u8, capacity: u32) -> s32 #foreign canvas_browser "js_texture_read";
 
-    js_image_decode :: (data: *u8, size: s32, width: *s32, height: *s32) -> *u8 #foreign canvas_browser "js_image_decode";
-    js_image_export :: (path: *u8, data: *u8, width: s32, height: s32) -> s32 #foreign canvas_browser "js_image_export";
-    js_ctx_call :: (op: s32, a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g: float64, r: s32, green: s32, blue: s32, alpha: s32) #foreign canvas_browser "js_ctx_call";
     CanvasLoadFileData :: (path: *u8, size: *s32) -> *u8 #foreign canvas_browser "LoadFileData";
     CanvasRenderWidth :: () -> s32 #foreign canvas_browser "GetRenderWidth";
     CanvasRenderHeight :: () -> s32 #foreign canvas_browser "GetRenderHeight";
@@ -40,7 +31,7 @@
         if data == null || size <= 0 { return CanvasImage.{} }
         width: s32
         height: s32
-        pixels := js_image_decode(data, size, *width, *height)
+        pixels := PageImageDecode(data, size, *width, *height)
         return CanvasImageFromRgba(pixels, width, height)
     }
 
@@ -70,7 +61,7 @@
         if texture.id == cast(u32)0 || size == cast(u32)0 { return CanvasImage.{} }
         pixels := CanvasAllocate(size)
         if pixels == null { return CanvasImage.{} }
-        if js_texture_read(cast(s32)texture.id, pixels, size) == 0 {
+        if PageTextureRead(cast(s32)texture.id, pixels, size) == 0 {
             CanvasRelease(cast(*void)pixels)
             return CanvasImage.{}
         }
@@ -85,7 +76,7 @@
         if size == cast(u32)0 { return CanvasImage.{} }
         pixels := CanvasAllocate(size)
         if pixels == null { return CanvasImage.{} }
-        if js_texture_read(0, pixels, size) == 0 {
+        if PageTextureRead(0, pixels, size) == 0 {
             CanvasRelease(cast(*void)pixels)
             return CanvasImage.{}
         }
@@ -95,7 +86,7 @@
     #program_export
     LoadTextureFromImage :: (image: CanvasImage) -> Texture2D {
         if !IsImageValid(image) || image.format != 7 { return Texture2D.{} }
-        id := js_texture_from_rgba(cast(*u8)image.data, image.width, image.height)
+        id := PageTextureFromRgba(cast(*u8)image.data, image.width, image.height)
         if id == 0 { return Texture2D.{} }
         return Texture2D.{cast(u32)id, image.width, image.height, 1, 7}
     }
@@ -110,24 +101,24 @@
 
     #program_export
     UnloadTexture :: (texture: Texture2D) {
-        if texture.id != cast(u32)0 { js_texture_free(cast(s32)texture.id) }
+        if texture.id != cast(u32)0 { PageTextureFree(cast(s32)texture.id) }
     }
 
     #program_export
     UpdateTexture :: (texture: Texture2D, pixels: *void) {
         if !IsTextureValid(texture) || pixels == null { return }
-        js_texture_update_rgba(cast(s32)texture.id, cast(*u8)pixels, 0, 0, texture.width, texture.height)
+        PageTextureUpdateRgba(cast(s32)texture.id, cast(*u8)pixels, 0, 0, texture.width, texture.height)
     }
 
     #program_export
     UpdateTextureRec :: (texture: Texture2D, rec: Rectangle, pixels: *void) {
         if texture.id == cast(u32)0 || pixels == null || rec.width <= 0.0 || rec.height <= 0.0 { return }
-        js_texture_update_rgba(cast(s32)texture.id, cast(*u8)pixels, cast(s32)rec.x, cast(s32)rec.y, cast(s32)rec.width, cast(s32)rec.height)
+        PageTextureUpdateRgba(cast(s32)texture.id, cast(*u8)pixels, cast(s32)rec.x, cast(s32)rec.y, cast(s32)rec.width, cast(s32)rec.height)
     }
 
     #program_export
     SetTextureFilter :: (texture: Texture2D, filter: s32) {
-        if texture.id != cast(u32)0 { js_texture_filter(cast(s32)texture.id, filter) }
+        if texture.id != cast(u32)0 { PageTextureFilter(cast(s32)texture.id, filter) }
     }
 
     #program_export
@@ -143,30 +134,30 @@
     #program_export
     LoadRenderTexture :: (width: s32, height: s32) -> CanvasRenderTexture {
         if CanvasPixelBytes(width, height) == cast(u32)0 { return CanvasRenderTexture.{} }
-        id := js_render_target(width, height)
+        id := PageRenderTarget(width, height)
         if id == 0 { return CanvasRenderTexture.{} }
         return CanvasRenderTexture.{id = cast(u32)id, texture = Texture2D.{cast(u32)id, width, height, 1, 7}}
     }
 
     #program_export
     UnloadRenderTexture :: (target: CanvasRenderTexture) {
-        if target.id != cast(u32)0 { js_texture_free(cast(s32)target.id) }
+        if target.id != cast(u32)0 { PageTextureFree(cast(s32)target.id) }
     }
 
     #program_export
     BeginTextureMode :: (target: CanvasRenderTexture) {
-        js_target_select(cast(s32)target.id)
-        js_ctx_call(13, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
+        PageTargetSelect(cast(s32)target.id)
+        PageContextCall(PageOpFrameReset, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
     }
 
     #program_export
     EndTextureMode :: () {
-        js_target_deselect()
+        PageTargetDeselect()
     }
 
     #program_export
     DrawTexturePro :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) {
-        js_draw_texture_pro(cast(s32)texture.id, cast(float64)source.x, cast(float64)source.y, cast(float64)source.width, cast(float64)source.height, cast(float64)destination.x, cast(float64)destination.y, cast(float64)destination.width, cast(float64)destination.height, cast(float64)origin.x, cast(float64)origin.y, cast(float64)rotation, cast(s32)tint.r, cast(s32)tint.g, cast(s32)tint.b, cast(s32)tint.a, js_texture_filter_for(cast(s32)texture.id))
+        PageDrawTexture(cast(s32)texture.id, cast(float64)source.x, cast(float64)source.y, cast(float64)source.width, cast(float64)source.height, cast(float64)destination.x, cast(float64)destination.y, cast(float64)destination.width, cast(float64)destination.height, cast(float64)origin.x, cast(float64)origin.y, cast(float64)rotation, cast(s32)tint.r, cast(s32)tint.g, cast(s32)tint.b, cast(s32)tint.a, PageTextureFilterFor(cast(s32)texture.id))
     }
 
     #program_export
@@ -220,7 +211,7 @@
     #program_export
     ExportImage :: (image: CanvasImage, path: *u8) -> bool {
         if path == null || !IsImageValid(image) || image.format != 7 { return false }
-        return js_image_export(path, cast(*u8)image.data, image.width, image.height) != 0
+        return PageImageExport(TextFromCString(path), cast(*u8)image.data, image.width, image.height) != 0
     }
 
     #program_export

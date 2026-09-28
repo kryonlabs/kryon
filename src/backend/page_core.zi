@@ -1,0 +1,877 @@
+// The browser page a canvas application runs in, driven through Ziran's Web
+// bridge: the canvas element and its 2D context, its size and pixel ratio,
+// the render-target stack, the cursor, fullscreen, and frame timing. What the
+// application draws and how it reacts to input is decided elsewhere; this
+// module only holds the page objects those decisions act on.
+#import "web"
+#import "number_text"
+#import "text_buffer"
+#import "byte_text_linux"
+
+PAGE_TARGET_MAX :: 16
+PAGE_LISTENER_MAX :: 64
+
+PageNames :: struct {
+    ready: bool
+    document: s32
+    body: s32
+    document_element: s32
+    title: s32
+    get_element_by_id: s32
+    create_element: s32
+    append_child: s32
+    remove_child: s32
+    parent_node: s32
+    parent_element: s32
+    get_context: s32
+    get_bounding_client_rect: s32
+    client_width: s32
+    client_height: s32
+    width: s32
+    height: s32
+    style: s32
+    touch_action: s32
+    cursor: s32
+    opacity: s32
+    min_width: s32
+    min_height: s32
+    max_width: s32
+    max_height: s32
+    id: s32
+    device_pixel_ratio: s32
+    resize_observer: s32
+    observe: s32
+    disconnect: s32
+    add_event_listener: s32
+    remove_event_listener: s32
+    focus: s32
+    prevent_scroll: s32
+    request_fullscreen: s32
+    exit_fullscreen: s32
+    fullscreen_element: s32
+    exit_pointer_lock: s32
+    request_pointer_lock: s32
+    pointer_lock_element: s32
+    catch_method: s32
+    performance: s32
+    now: s32
+    set_timeout: s32
+    clear_timeout: s32
+    visual_viewport: s32
+    offscreen_canvas: s32
+    object: s32
+    is: s32
+    test_canvas: s32
+    content_rect: s32
+    set_transform: s32
+    save: s32
+    restore: s32
+    begin_path: s32
+    rect: s32
+    clip: s32
+    translate: s32
+    rotate: s32
+    scale: s32
+    global_composite: s32
+    fill_style: s32
+    stroke_style: s32
+    line_width: s32
+    line_cap: s32
+    fill_rect: s32
+    stroke_rect: s32
+    fill: s32
+    stroke: s32
+    arc: s32
+    move_to: s32
+    line_to: s32
+    close_path: s32
+    get_transform: s32
+    a: s32
+    b: s32
+    c: s32
+    d: s32
+    e: s32
+    f: s32
+}
+
+PageTarget :: struct {
+    canvas: s32
+    ctx: s32
+    mode: PageMode
+    saved: s32
+    raster_clips: s32
+}
+
+// The application's camera: raylib's Camera2D as applied to the context.
+PageMode :: struct {
+    active: bool
+    zoom_x: float64
+    zoom_y: float64
+    offset_x: float64
+    offset_y: float64
+    target_x: float64
+    target_y: float64
+    rotation: float64
+}
+
+PageListener :: struct {
+    target: s32
+    function: s32
+    options: s32
+    name: string
+}
+
+page_names: PageNames;
+page_canvas: s32;
+page_ctx: s32;
+page_created_canvas: bool;
+page_open: bool;
+page_closed: bool;
+page_close_requested: bool;
+page_width: s32;
+page_height: s32;
+page_render_width: s32;
+page_render_height: s32;
+page_dpi: float64 = 1.0;
+page_resized: bool;
+page_frames: s32;
+page_target_fps: s32;
+page_observer: s32;
+page_resize_timer: float64;
+page_resize_function: s32;
+page_observer_function: s32;
+page_ignore_function: s32;
+page_targets: [PAGE_TARGET_MAX]PageTarget;
+page_target_count: s32;
+page_mode: PageMode;
+page_saved: s32;
+page_raster_clips: s32;
+page_cursor: string = "default";
+page_cursor_hidden: bool;
+page_listeners: [PAGE_LISTENER_MAX]PageListener;
+page_listener_count: s32;
+page_color_bytes: [96]u8;
+
+PageInitNames :: () {
+    if page_names.ready { return }
+    page_names.ready = true
+    page_names.document = WebName("document")
+    page_names.body = WebName("body")
+    page_names.document_element = WebName("documentElement")
+    page_names.title = WebName("title")
+    page_names.get_element_by_id = WebName("getElementById")
+    page_names.create_element = WebName("createElement")
+    page_names.append_child = WebName("appendChild")
+    page_names.remove_child = WebName("removeChild")
+    page_names.parent_node = WebName("parentNode")
+    page_names.parent_element = WebName("parentElement")
+    page_names.get_context = WebName("getContext")
+    page_names.get_bounding_client_rect = WebName("getBoundingClientRect")
+    page_names.client_width = WebName("clientWidth")
+    page_names.client_height = WebName("clientHeight")
+    page_names.width = WebName("width")
+    page_names.height = WebName("height")
+    page_names.style = WebName("style")
+    page_names.touch_action = WebName("touchAction")
+    page_names.cursor = WebName("cursor")
+    page_names.opacity = WebName("opacity")
+    page_names.min_width = WebName("minWidth")
+    page_names.min_height = WebName("minHeight")
+    page_names.max_width = WebName("maxWidth")
+    page_names.max_height = WebName("maxHeight")
+    page_names.id = WebName("id")
+    page_names.device_pixel_ratio = WebName("devicePixelRatio")
+    page_names.resize_observer = WebName("ResizeObserver")
+    page_names.observe = WebName("observe")
+    page_names.disconnect = WebName("disconnect")
+    page_names.add_event_listener = WebName("addEventListener")
+    page_names.remove_event_listener = WebName("removeEventListener")
+    page_names.focus = WebName("focus")
+    page_names.prevent_scroll = WebName("preventScroll")
+    page_names.request_fullscreen = WebName("requestFullscreen")
+    page_names.exit_fullscreen = WebName("exitFullscreen")
+    page_names.fullscreen_element = WebName("fullscreenElement")
+    page_names.exit_pointer_lock = WebName("exitPointerLock")
+    page_names.request_pointer_lock = WebName("requestPointerLock")
+    page_names.pointer_lock_element = WebName("pointerLockElement")
+    page_names.catch_method = WebName("catch")
+    page_names.performance = WebName("performance")
+    page_names.now = WebName("now")
+    page_names.set_timeout = WebName("setTimeout")
+    page_names.clear_timeout = WebName("clearTimeout")
+    page_names.visual_viewport = WebName("visualViewport")
+    page_names.offscreen_canvas = WebName("OffscreenCanvas")
+    page_names.object = WebName("Object")
+    page_names.is = WebName("is")
+    page_names.test_canvas = WebName("__kryonTestCanvas")
+    page_names.content_rect = WebName("contentRect")
+    page_names.set_transform = WebName("setTransform")
+    page_names.save = WebName("save")
+    page_names.restore = WebName("restore")
+    page_names.begin_path = WebName("beginPath")
+    page_names.rect = WebName("rect")
+    page_names.clip = WebName("clip")
+    page_names.translate = WebName("translate")
+    page_names.rotate = WebName("rotate")
+    page_names.scale = WebName("scale")
+    page_names.global_composite = WebName("globalCompositeOperation")
+    page_names.fill_style = WebName("fillStyle")
+    page_names.stroke_style = WebName("strokeStyle")
+    page_names.line_width = WebName("lineWidth")
+    page_names.line_cap = WebName("lineCap")
+    page_names.fill_rect = WebName("fillRect")
+    page_names.stroke_rect = WebName("strokeRect")
+    page_names.fill = WebName("fill")
+    page_names.stroke = WebName("stroke")
+    page_names.arc = WebName("arc")
+    page_names.move_to = WebName("moveTo")
+    page_names.line_to = WebName("lineTo")
+    page_names.close_path = WebName("closePath")
+    page_names.get_transform = WebName("getTransform")
+    page_names.a = WebName("a")
+    page_names.b = WebName("b")
+    page_names.c = WebName("c")
+    page_names.d = WebName("d")
+    page_names.e = WebName("e")
+    page_names.f = WebName("f")
+}
+
+// What a callback does when the page has nothing to learn from its result.
+PageIgnore :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context
+    unused first
+    unused second
+    unused third
+}
+
+PageIgnoreFunction :: () -> s32 {
+    if page_ignore_function == 0 {
+        page_ignore_function = WebFunction(PageIgnore, 0)
+    }
+    return page_ignore_function
+}
+
+// Whether two handles name the same JS object.
+PageSame :: (left: s32, right: s32) -> bool {
+    if left == 0 || right == 0 { return false }
+    same: WebValue = WebCall2(WebGetObject(WebGlobal, page_names.object),
+        page_names.is, WebObject(left), WebObject(right))
+    return WebAsBool(same)
+}
+
+PageDocument :: () -> s32 {
+    return WebGetObject(WebGlobal, page_names.document)
+}
+
+PageCanvas :: () -> s32 {
+    return page_canvas
+}
+
+PageIsOpen :: () -> bool {
+    return page_open && !page_closed
+}
+
+PageDevicePixels :: () -> float64 {
+    return page_dpi
+}
+
+PageNow :: () -> float64 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    result: float64 = WebAsNumber(WebCall0(WebGetObject(WebGlobal,
+        page_names.performance), page_names.now))
+    WebEnd(scope)
+    return result
+}
+
+PageContext :: () -> s32 {
+    if page_target_count > 0 { return page_targets[page_target_count - 1].ctx }
+    return page_ctx
+}
+
+// The scale between the application's coordinates and the drawing surface.
+PageSurfaceScale :: () -> float64 {
+    if page_target_count > 0 { return 1.0 }
+    return page_dpi
+}
+
+// A canvas that is not on the page, for offscreen drawing.
+PageMakeCanvas :: (width: s32, height: s32) -> s32 {
+    PageInitNames()
+    constructor: s32 = WebGetObject(WebGlobal, page_names.offscreen_canvas)
+    if constructor != 0 {
+        made: s32 = WebNew2(constructor, WebNumber(cast(float64)width),
+            WebNumber(cast(float64)height))
+        if made != 0 { return made }
+    }
+    document: s32 = PageDocument()
+    if document == 0 { return 0 }
+    element: s32 = WebAsObject(WebCall1(document, page_names.create_element,
+        WebText("canvas")))
+    if element == 0 { return 0 }
+    WebSet(element, page_names.width, WebNumber(cast(float64)width))
+    WebSet(element, page_names.height, WebNumber(cast(float64)height))
+    return element
+}
+
+PageContext2D :: (canvas: s32) -> s32 {
+    return WebAsObject(WebCall1(canvas, page_names.get_context, WebText("2d")))
+}
+
+// "rgba(r,g,b,a)" for a colour whose alpha is 0 to 255. The text lives in a
+// shared buffer until the next call.
+PageColor :: (r: s32, g: s32, b: s32, a: s32) -> string {
+    part: [24]u8
+    index: s32 = 0
+    prefix: string = "rgba("
+    while index < 5 {
+        page_color_bytes[index] = prefix[index]
+        index += 1
+    }
+    fields: [3]s32
+    fields[0] = r
+    fields[1] = g
+    fields[2] = b
+    field: s32 = 0
+    while field < 3 {
+        text: string = FormatInteger(cast(s64)fields[field], part[:])
+        digit: s64 = 0
+        while digit < text.count {
+            page_color_bytes[index] = text[digit]
+            index += 1
+            digit += 1
+        }
+        page_color_bytes[index] = cast(u8)44
+        index += 1
+        field += 1
+    }
+    alpha: string = FormatDecimal(cast(float64)a / 255.0, 6, part[:])
+    digit: s64 = 0
+    while digit < alpha.count {
+        page_color_bytes[index] = alpha[digit]
+        index += 1
+        digit += 1
+    }
+    page_color_bytes[index] = cast(u8)41
+    index += 1
+    page_color_bytes[index] = cast(u8)0
+    return TextUntilNul(page_color_bytes[0:index + 1])
+}
+
+PageLength :: (value: float64, output: []u8) -> string {
+    part: [24]u8
+    number: string = FormatDecimal(value, 2, part[:])
+    index: s64 = 0
+    while index < number.count {
+        output[index] = number[index]
+        index += 1
+    }
+    output[index] = cast(u8)112
+    output[index + 1] = cast(u8)120
+    output[index + 2] = cast(u8)0
+    return TextUntilNul(output[0:index + 3])
+}
+
+// The element the canvas is laid out in: the page's frame, else the
+// canvas's parent, else the canvas itself.
+PageLayoutBox :: () -> s32 {
+    document: s32 = PageDocument()
+    if document != 0 {
+        frame: s32 = WebAsObject(WebCall1(document, page_names.get_element_by_id,
+            WebText("canvas-frame")))
+        if frame != 0 { return frame }
+    }
+    if page_canvas != 0 {
+        parent: s32 = WebGetObject(page_canvas, page_names.parent_element)
+        if parent != 0 { return parent }
+    }
+    return page_canvas
+}
+
+PageLayoutBoxHandle :: () -> s32 {
+    return PageLayoutBox()
+}
+
+PageRound :: (value: float64) -> s32 {
+    if value < 0.0 { return cast(s32)(value - 0.5) }
+    return cast(s32)(value + 0.5)
+}
+
+PageMaxOne :: (value: s32) -> s32 {
+    if value < 1 { return 1 }
+    return value
+}
+
+PageResizeMain :: (requested_width: s32, requested_height: s32) {
+    if page_closed || page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    ratio: float64 = WebGetNumber(WebGlobal, page_names.device_pixel_ratio)
+    if ratio < 1.0 { ratio = 1.0 }
+    canvas: s32 = page_canvas
+    style: s32 = WebGetObject(canvas, page_names.style)
+    box: s32 = PageLayoutBox()
+    fluid: bool = box != 0 && !PageSame(box, canvas)
+    width: float64 = cast(float64)requested_width
+    height: float64 = cast(float64)requested_height
+    if box != 0 && WebTypeOf(WebGetObject(box, page_names.get_bounding_client_rect)) == WebTypeFunction {
+        rect: s32 = WebAsObject(WebCall0(box, page_names.get_bounding_client_rect))
+        rect_width: float64 = WebGetNumber(rect, page_names.width)
+        rect_height: float64 = WebGetNumber(rect, page_names.height)
+        if rect_width > 0.0 && rect_height > 0.0 {
+            width = rect_width
+            height = rect_height
+        }
+    }
+    new_width: s32 = PageFirstSize(PageRound(width), requested_width, page_width)
+    new_height: s32 = PageFirstSize(PageRound(height), requested_height, page_height)
+    if style != 0 {
+        lengths: [32]u8
+        if fluid {
+            WebSet(style, page_names.width, WebText("100%"))
+            WebSet(style, page_names.height, WebText("100%"))
+        } else {
+            WebSet(style, page_names.width, WebText(PageLength(cast(float64)new_width, lengths[:])))
+            WebSet(style, page_names.height, WebText(PageLength(cast(float64)new_height, lengths[:])))
+        }
+        WebSet(style, page_names.touch_action, WebText("none"))
+    }
+    if !fluid {
+        client_width: float64 = WebGetNumber(canvas, page_names.client_width)
+        client_height: float64 = WebGetNumber(canvas, page_names.client_height)
+        if client_width > 0.0 && client_height > 0.0 {
+            new_width = cast(s32)client_width
+            new_height = cast(s32)client_height
+        }
+    }
+    new_width = PageMaxOne(new_width)
+    new_height = PageMaxOne(new_height)
+    surface_width: s32 = cast(s32)WebGetNumber(canvas, page_names.width)
+    surface_height: s32 = cast(s32)WebGetNumber(canvas, page_names.height)
+    if page_ctx != 0 && ratio == page_dpi && new_width == page_width &&
+        new_height == page_height && surface_width == page_render_width &&
+        surface_height == page_render_height {
+        WebEnd(scope)
+        return
+    }
+    page_width = new_width
+    page_height = new_height
+    page_dpi = ratio
+    page_render_width = PageMaxOne(PageRound(cast(float64)page_width * ratio))
+    page_render_height = PageMaxOne(PageRound(cast(float64)page_height * ratio))
+    // Assigning the width or height attribute clears the bitmap, so only do
+    // it when the size really changed.
+    if page_ctx == 0 || surface_width != page_render_width ||
+        surface_height != page_render_height {
+        page_resized = true
+        WebSet(canvas, page_names.width, WebNumber(cast(float64)page_render_width))
+        WebSet(canvas, page_names.height, WebNumber(cast(float64)page_render_height))
+    }
+    context: s32 = PageContext2D(canvas)
+    if context != 0 {
+        if page_ctx != 0 { WebRelease(page_ctx) }
+        page_ctx = WebKeep(context)
+    }
+    WebEnd(scope)
+}
+
+// The first of a size measured from the page, the size asked for, or the
+// size the canvas already had.
+PageFirstSize :: (measured: s32, requested: s32, current: s32) -> s32 {
+    if measured > 0 { return measured }
+    if requested > 0 { return requested }
+    if current > 0 { return current }
+    return 1
+}
+
+PageResizeLater :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context
+    unused first
+    unused second
+    unused third
+    page_resize_timer = 0.0
+    PageResizeMain(page_width, page_height)
+}
+
+PageObserved :: (context: s32, entries: s32, second: s32, third: s32) {
+    unused context
+    unused second
+    unused third
+    if entries == 0 { return }
+    first: s32 = WebAsObject(WebAt(entries, 0))
+    if first == 0 { return }
+    rect: s32 = WebGetObject(first, page_names.content_rect)
+    if rect == 0 { return }
+    width: float64 = WebGetNumber(rect, page_names.width)
+    height: float64 = WebGetNumber(rect, page_names.height)
+    if width > 0.0 && height > 0.0 &&
+        (PageRound(width) != page_width || PageRound(height) != page_height) {
+        PageResizeMain(PageRound(width), PageRound(height))
+    }
+}
+
+PageScheduleResize :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context
+    unused first
+    unused second
+    unused third
+    if page_resize_timer != 0.0 { return }
+    scope: s32 = WebScope()
+    if page_resize_function == 0 {
+        page_resize_function = WebFunction(PageResizeLater, 0)
+    }
+    page_resize_timer = WebAsNumber(WebCall2(WebGlobal, page_names.set_timeout,
+        WebObject(page_resize_function), WebNumber(0.0)))
+    WebEnd(scope)
+}
+
+// Adds a listener that stays until the page closes.
+PageListen :: (target: s32, name: string, callback: WebCallback, context: s32,
+    passive_false: bool) {
+    if target == 0 || page_listener_count >= PAGE_LISTENER_MAX { return }
+    scope: s32 = WebScope()
+    function: s32 = WebFunction(callback, context)
+    options: s32 = 0
+    kept_target: s32 = WebKeep(target)
+    if passive_false {
+        options = WebNewObject()
+        WebSet(options, WebName("passive"), WebBool(false))
+        options = WebKeep(options)
+        unused WebCall3(kept_target, page_names.add_event_listener,
+            WebText(name), WebObject(function), WebObject(options))
+    } else {
+        unused WebCall2(kept_target, page_names.add_event_listener,
+            WebText(name), WebObject(function))
+    }
+    page_listeners[page_listener_count] = PageListener.{kept_target, function,
+        options, name}
+    page_listener_count += 1
+    WebEnd(scope)
+}
+
+PageStopListening :: () {
+    scope: s32 = WebScope()
+    index: s32 = 0
+    while index < page_listener_count {
+        listener: PageListener = page_listeners[index]
+        args: [3]WebValue
+        args[0] = WebText(listener.name)
+        args[1] = WebObject(listener.function)
+        count: s32 = 2
+        if listener.options != 0 {
+            args[2] = WebObject(listener.options)
+            count = 3
+        }
+        unused WebCall(listener.target, page_names.remove_event_listener,
+            *args[0], count)
+        WebRelease(listener.function)
+        if listener.options != 0 { WebRelease(listener.options) }
+        WebRelease(listener.target)
+        index += 1
+    }
+    page_listener_count = 0
+    WebEnd(scope)
+}
+
+PageBoot :: (width: s32, height: s32, title: string) {
+    PageInitNames()
+    if page_open && !page_closed { PageClose() }
+    scope: s32 = WebScope()
+    page_open = true
+    page_closed = false
+    page_close_requested = false
+    page_width = width
+    page_height = height
+    page_render_width = width
+    page_render_height = height
+    page_dpi = 1.0
+    page_resized = false
+    page_frames = 0
+    page_target_count = 0
+    page_mode.active = false
+    page_saved = 0
+    page_raster_clips = 0
+    page_created_canvas = false
+    page_ctx = 0
+    document: s32 = PageDocument()
+    canvas: s32 = 0
+    if document != 0 {
+        canvas = WebAsObject(WebCall1(document, page_names.get_element_by_id,
+            WebText("canvas")))
+        if canvas == 0 {
+            canvas = WebAsObject(WebCall1(document, page_names.create_element,
+                WebText("canvas")))
+            WebSet(canvas, page_names.id, WebText("canvas"))
+            page_created_canvas = true
+            unused WebCall1(WebGetObject(document, page_names.body),
+                page_names.append_child, WebObject(canvas))
+        }
+    } else {
+        canvas = WebGetObject(WebGlobal, page_names.test_canvas)
+    }
+    page_canvas = 0
+    if canvas != 0 { page_canvas = WebKeep(canvas) }
+    if page_canvas != 0 { PageResizeMain(width, height) }
+    if document != 0 { WebSet(document, page_names.title, WebText(title)) }
+    if page_canvas != 0 {
+        observer_class: s32 = WebGetObject(WebGlobal, page_names.resize_observer)
+        if observer_class != 0 {
+            page_observer_function = WebFunction(PageObserved, 0)
+            page_observer = WebKeep(WebNew1(observer_class,
+                WebObject(page_observer_function)))
+            box: s32 = PageLayoutBox()
+            if page_observer != 0 && box != 0 {
+                unused WebCall1(page_observer, page_names.observe, WebObject(box))
+            }
+        }
+    }
+    WebEnd(scope)
+}
+
+// Listeners that need the page to exist call this after PageBoot.
+PageBindResize :: () {
+    scope: s32 = WebScope()
+    PageListen(WebGlobal, "resize", PageScheduleResize, 0, false)
+    viewport: s32 = WebGetObject(WebGlobal, page_names.visual_viewport)
+    if viewport != 0 {
+        PageListen(viewport, "resize", PageScheduleResize, 0, false)
+    }
+    WebEnd(scope)
+}
+
+PageResize :: (width: s32, height: s32) {
+    PageResizeMain(width, height)
+}
+
+PageDimension :: (which: s32) -> s32 {
+    if which == 0 { return page_width }
+    if which == 1 { return page_height }
+    if which == 2 { return page_render_width }
+    if which == 3 { return page_render_height }
+    if which == 4 {
+        if page_resized {
+            page_resized = false
+            return 1
+        }
+        return 0
+    }
+    if which == 6 {
+        if page_closed || page_close_requested { return 1 }
+        return 0
+    }
+    return 0
+}
+
+PageDpi :: () -> float64 {
+    return page_dpi
+}
+
+PageRequestClose :: () {
+    page_close_requested = true
+}
+
+PageFrame :: () {
+    page_frames += 1
+}
+
+PageClose :: () {
+    if !page_open || page_closed { return }
+    scope: s32 = WebScope()
+    page_closed = true
+    page_close_requested = true
+    PageStopListening()
+    if page_observer != 0 {
+        unused WebCall0(page_observer, page_names.disconnect)
+        WebRelease(page_observer)
+        page_observer = 0
+    }
+    if page_observer_function != 0 {
+        WebRelease(page_observer_function)
+        page_observer_function = 0
+    }
+    if page_resize_timer != 0.0 {
+        unused WebCall1(WebGlobal, page_names.clear_timeout,
+            WebNumber(page_resize_timer))
+        page_resize_timer = 0.0
+    }
+    index: s32 = 0
+    while index < page_target_count {
+        WebRelease(page_targets[index].canvas)
+        WebRelease(page_targets[index].ctx)
+        index += 1
+    }
+    page_target_count = 0
+    if page_ctx != 0 {
+        WebRelease(page_ctx)
+        page_ctx = 0
+    }
+    if page_created_canvas && page_canvas != 0 {
+        holder: s32 = WebGetObject(page_canvas, page_names.parent_node)
+        if holder != 0 {
+            unused WebCall1(holder, page_names.remove_child, WebObject(page_canvas))
+        }
+    }
+    if page_canvas != 0 {
+        WebRelease(page_canvas)
+        page_canvas = 0
+    }
+    WebEnd(scope)
+}
+
+PageSleep :: (milliseconds: s32) {
+    WebSleep(milliseconds)
+}
+
+PageWaitFrame :: (minimum_delay: float64, target_fps: s32) {
+    page_target_fps = target_fps
+    WebNextFrame(minimum_delay)
+}
+
+PageFocus :: () {
+    if page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    unused WebCall0(page_canvas, page_names.focus)
+    WebEnd(scope)
+}
+
+// Focus without scrolling the page to the canvas.
+PageFocusQuietly :: () {
+    if page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    options: s32 = WebNewObject()
+    WebSet(options, page_names.prevent_scroll, WebBool(true))
+    unused WebCall1(page_canvas, page_names.focus, WebObject(options))
+    if WebFailed() { unused WebCall0(page_canvas, page_names.focus) }
+    WebEnd(scope)
+}
+
+PageSetTitle :: (title: string) {
+    scope: s32 = WebScope()
+    document: s32 = PageDocument()
+    if document != 0 { WebSet(document, page_names.title, WebText(title)) }
+    WebEnd(scope)
+}
+
+PageCursorName :: (cursor: s32) -> string {
+    if cursor == 2 { return "text" }
+    if cursor == 3 { return "crosshair" }
+    if cursor == 4 { return "pointer" }
+    if cursor == 5 { return "ew-resize" }
+    if cursor == 6 { return "ns-resize" }
+    if cursor == 7 { return "nwse-resize" }
+    if cursor == 8 { return "nesw-resize" }
+    if cursor == 9 { return "move" }
+    if cursor == 10 { return "not-allowed" }
+    return "default"
+}
+
+PageApplyCursor :: (node: s32, value: string) {
+    if node == 0 { return }
+    style: s32 = WebGetObject(node, page_names.style)
+    if style != 0 { WebSet(style, page_names.cursor, WebText(value)) }
+}
+
+PageSetCursor :: (cursor: s32) {
+    if !page_open { return }
+    scope: s32 = WebScope()
+    page_cursor = PageCursorName(cursor)
+    PageApplyCursor(page_canvas, page_cursor)
+    if page_canvas != 0 {
+        PageApplyCursor(WebGetObject(page_canvas, page_names.parent_element), page_cursor)
+    }
+    document: s32 = PageDocument()
+    if document != 0 {
+        PageApplyCursor(WebGetObject(document, page_names.body), page_cursor)
+        PageApplyCursor(WebGetObject(document, page_names.document_element), page_cursor)
+    }
+    WebEnd(scope)
+}
+
+// Shows or hides the pointer over the canvas; `lock` also captures it.
+PageShowPointer :: (visible: bool, lock: bool, release: bool) {
+    if !page_open || page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    page_cursor_hidden = !visible
+    if visible {
+        PageApplyCursor(page_canvas, page_cursor)
+    } else {
+        PageApplyCursor(page_canvas, "none")
+    }
+    document: s32 = PageDocument()
+    if release && document != 0 &&
+        PageSame(WebGetObject(document, page_names.pointer_lock_element), page_canvas) {
+        unused WebCall0(document, page_names.exit_pointer_lock)
+    }
+    if lock && WebTypeOf(WebGetObject(page_canvas, page_names.request_pointer_lock)) == WebTypeFunction {
+        result: s32 = WebAsObject(WebCall0(page_canvas, page_names.request_pointer_lock))
+        if result != 0 {
+            unused WebCall1(result, page_names.catch_method,
+                WebObject(PageIgnoreFunction()))
+        }
+    }
+    WebEnd(scope)
+}
+
+PageFullscreen :: (enable: bool) {
+    if !page_open || page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    document: s32 = PageDocument()
+    if document == 0 {
+        WebEnd(scope)
+        return
+    }
+    current: s32 = WebGetObject(document, page_names.fullscreen_element)
+    if enable {
+        if current == 0 &&
+            WebTypeOf(WebGetObject(page_canvas, page_names.request_fullscreen)) == WebTypeFunction {
+            result: s32 = WebAsObject(WebCall0(page_canvas, page_names.request_fullscreen))
+            if result != 0 {
+                unused WebCall1(result, page_names.catch_method,
+                    WebObject(PageIgnoreFunction()))
+            }
+        }
+    } else if current != 0 && PageSame(current, page_canvas) {
+        result: s32 = WebAsObject(WebCall0(document, page_names.exit_fullscreen))
+        if result != 0 {
+            unused WebCall1(result, page_names.catch_method,
+                WebObject(PageIgnoreFunction()))
+        }
+    }
+    WebEnd(scope)
+}
+
+PageFullscreenState :: () -> bool {
+    if !page_open || page_canvas == 0 { return false }
+    scope: s32 = WebScope()
+    document: s32 = PageDocument()
+    state: bool = document != 0 &&
+        PageSame(WebGetObject(document, page_names.fullscreen_element), page_canvas)
+    WebEnd(scope)
+    return state
+}
+
+// Canvas CSS: 0 opacity, 1 to 4 the minimum and maximum width and height.
+PageStyle :: (property: s32, value: float64) {
+    if !page_open || page_canvas == 0 { return }
+    scope: s32 = WebScope()
+    style: s32 = WebGetObject(page_canvas, page_names.style)
+    if style == 0 {
+        WebEnd(scope)
+        return
+    }
+    if property == 0 {
+        opacity: float64 = value
+        if opacity < 0.0 { opacity = 0.0 }
+        if opacity > 1.0 { opacity = 1.0 }
+        WebSet(style, page_names.opacity, WebNumber(opacity))
+    } else {
+        length: float64 = value
+        if length < 0.0 { length = 0.0 }
+        lengths: [32]u8
+        text: string = PageLength(length, lengths[:])
+        if property == 1 { WebSet(style, page_names.min_width, WebText(text)) }
+        if property == 2 { WebSet(style, page_names.min_height, WebText(text)) }
+        if property == 3 { WebSet(style, page_names.max_width, WebText(text)) }
+        if property == 4 { WebSet(style, page_names.max_height, WebText(text)) }
+    }
+    WebEnd(scope)
+}
