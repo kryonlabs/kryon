@@ -594,6 +594,12 @@ SliderDiscreteKeyboardValue :: (value: s32, minimum: s32, maximum: s32,
     return result
 }
 
+// Half a thumb at each end of the track, when the length leaves room.
+SliderThumbInset :: (length: float32, thumb_size: float32) -> float32 {
+    if length <= thumb_size { return 0.0 }
+    return thumb_size * 0.5
+}
+
 #program_export
 SliderPaintFor :: (spec: SliderSpec) -> SliderPaint {
     paint: SliderPaint
@@ -608,10 +614,12 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint {
     if spec.vertical {
         if bounds.height < min_length { bounds.height = min_length }
         if bounds.width < thumb_size { bounds.width = thumb_size }
+        // The thumb travels between the track ends and stays inside bounds.
+        inset_y: float32 = SliderThumbInset(bounds.height, thumb_size)
         paint.track_bounds.x = bounds.x + (bounds.width - track_size) * 0.5
-        paint.track_bounds.y = bounds.y
+        paint.track_bounds.y = bounds.y + inset_y
         paint.track_bounds.width = track_size
-        paint.track_bounds.height = bounds.height
+        paint.track_bounds.height = bounds.height - inset_y * 2.0
         position_y: float32 = paint.track_bounds.y + paint.track_bounds.height * (1.0 - ratio)
         paint.active_bounds.x = paint.track_bounds.x
         paint.active_bounds.y = position_y
@@ -622,9 +630,10 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint {
     } else {
         if bounds.width < min_length { bounds.width = min_length }
         if bounds.height < thumb_size { bounds.height = thumb_size }
-        paint.track_bounds.x = bounds.x
+        inset_x: float32 = SliderThumbInset(bounds.width, thumb_size)
+        paint.track_bounds.x = bounds.x + inset_x
         paint.track_bounds.y = bounds.y + (bounds.height - track_size) * 0.5
-        paint.track_bounds.width = bounds.width
+        paint.track_bounds.width = bounds.width - inset_x * 2.0
         paint.track_bounds.height = track_size
         paint.active_bounds.x = paint.track_bounds.x
         paint.active_bounds.y = paint.track_bounds.y
