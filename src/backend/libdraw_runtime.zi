@@ -151,6 +151,7 @@ LibdrawPressedKey :: () -> s32 { return draw_key }
 
 #program_export
 PollLibdraw :: () -> bool {
+    if libdraw_quit { return false }
     draw_pointer.pressed = false
     draw_pointer.released = false
     draw_key = 0
@@ -212,3 +213,29 @@ EndLibdrawFrame :: () -> bool {
 
 #program_export
 PauseLibdraw :: () { PauseMicros(cast(u32)16000) }
+
+libdraw_quit: bool;
+
+// devdraw windows are shown for the life of the process.
+#program_export
+WindowVisibleHost :: () -> bool {
+    return true
+}
+
+#program_export
+WindowSetVisibleHost :: (visible: bool) {}
+
+#program_export
+WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    return false
+}
+
+#program_export
+WindowTakeCloseRequestHost :: () -> bool {
+    return false
+}
+
+#program_export
+WindowQuitHost :: () {
+    libdraw_quit = true
+}

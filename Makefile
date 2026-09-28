@@ -239,6 +239,10 @@ desktop-project-test: build/bin/kryon
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
 
+.PHONY: window-test
+window-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/window_desktop_test.py
+
 .PHONY: tray-test
 tray-test: $(ZI2C_BIN)
 	@ZI2C_BIN="$(ZI2C_BIN)" sh tests/tray_test.sh

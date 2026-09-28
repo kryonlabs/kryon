@@ -115,7 +115,7 @@ main :: () -> s32 {
         pending_count: s32 = 0
         pending_needed: s32 = 0
         escape_stage: s32 = 0
-        while result == 0 {
+        while result == 0 && !TerminalQuitRequested() {
             ready: s32 = RunPoll(*input, 1, 30000)
             if ready < 0 {
                 result = 1

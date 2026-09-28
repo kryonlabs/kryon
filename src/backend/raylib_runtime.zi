@@ -14,6 +14,9 @@ HostRaylibInitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "I
 HostRaylibCloseWindow :: () #foreign raylib "CloseWindow";
 HostRaylibIsWindowReady :: () -> bool #foreign raylib "IsWindowReady";
 HostRaylibWindowShouldClose :: () -> bool #foreign raylib "WindowShouldClose";
+HostRaylibSetWindowState :: (flags: u32) #foreign raylib "SetWindowState";
+HostRaylibClearWindowState :: (flags: u32) #foreign raylib "ClearWindowState";
+HostRaylibIsWindowHidden :: () -> bool #foreign raylib "IsWindowHidden";
 HostRaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
 HostRaylibSetTargetFPS :: (fps: s32) #foreign raylib "SetTargetFPS";
 HostRaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
@@ -586,7 +589,7 @@ CloseRaylib :: () {
 
 #program_export
 PollRaylib :: () -> bool {
-    if HostRaylibWindowShouldClose() { return false }
+    if raylib_quit || HostRaylibWindowShouldClose() { return false }
     raylib_pointer.x = cast(float32)HostRaylibMouseX()
     raylib_pointer.y = cast(float32)HostRaylibMouseY()
     raylib_pointer.down = HostRaylibMouseDown(0)
@@ -763,4 +766,37 @@ RasterImage :: (asset_path: string, texture_id: u32,
     }
     RaylibDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
+}
+
+raylib_quit: bool;
+
+// FLAG_WINDOW_HIDDEN
+#program_export
+WindowVisibleHost :: () -> bool {
+    return !HostRaylibIsWindowHidden()
+}
+
+#program_export
+WindowSetVisibleHost :: (visible: bool) {
+    if visible {
+        HostRaylibClearWindowState(cast(u32)128)
+    } else {
+        HostRaylibSetWindowState(cast(u32)128)
+    }
+}
+
+// raylib cannot cancel a close once requested, so closing always quits.
+#program_export
+WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    return false
+}
+
+#program_export
+WindowTakeCloseRequestHost :: () -> bool {
+    return false
+}
+
+#program_export
+WindowQuitHost :: () {
+    raylib_quit = true
 }
