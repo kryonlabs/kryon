@@ -1,6 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "libdraw_native"
+#import "tree_input"
 
 #program_export
 main :: () -> s32 {
@@ -19,6 +20,38 @@ main :: () -> s32 {
     }
     RasterText("Kryon", 8, 8, 14,
         Color.{255, 255, 255, 255})
+    if size_of(*void) == 4 &&
+        (size_of(DrawMouse) != 16 || size_of(DrawEvent) != 16540) {
+        CloseRaster()
+        return 10
+    }
+    if !InitializeNativeEvents() {
+        CloseRaster()
+        return 5
+    }
+    eresized(96)
+    if !PollNativeLibdraw() {
+        CloseRaster()
+        return 6
+    }
+    pointer: PointerFrame = PollPointer()
+    viewport: Rectangle = NativeLibdrawViewport()
+    if pointer.x != 32.0 || pointer.y != 18.0 ||
+        !pointer.pressed || !pointer.released || pointer.down ||
+        NativeLibdrawPressedKey() != 65 ||
+        viewport.width != 128.0 || viewport.height != 80.0 {
+        CloseRaster()
+        return 7
+    }
+    if WindowInterceptCloseHost(true) {
+        CloseRaster()
+        return 8
+    }
+    WindowQuitHost()
+    if PollNativeLibdraw() {
+        CloseRaster()
+        return 9
+    }
     CloseRaster()
     return 0
 }

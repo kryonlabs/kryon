@@ -1,6 +1,7 @@
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "tree_input"
 
 draw_library :: #system_library "draw";
 libc :: #system_library "libc";
@@ -138,6 +139,20 @@ DrawFont :: struct {
     cache_image: *DrawImage
 }
 
+DrawMouse :: struct {
+    buttons: s32
+    xy: DrawPoint
+    msec: usize
+}
+
+DrawEvent :: struct {
+    kbdc: s32
+    mouse: DrawMouse
+    n: s32
+    v: *void
+    data: [16512]u8
+}
+
 DrawErrorRoutine :: #type (display: *DrawDisplay,
     message: *s8) #c_call;
 
@@ -176,6 +191,9 @@ NativeCreateFile :: (path: *s8, mode: s32,
 NativeWriteFile :: (descriptor: s32, data: *void,
     count: isize) -> isize #foreign libc "write";
 CloseFile :: (descriptor: s32) -> s32 #foreign libc "close";
+EventInit :: (keys: usize) #foreign draw_library "einit";
+EventCanRead :: (keys: usize) -> s32 #foreign draw_library "ecanread";
+EventRead :: (keys: usize, event: *DrawEvent) -> usize #foreign draw_library "eread";
 
 FormatInteger :: (output: *u8, capacity: s32, format: *u8,
     first: s32, second: s32, third: s32) -> s32 {
@@ -202,6 +220,11 @@ native_font: *DrawFont;
 native_width: s32;
 native_height: s32;
 native_offscreen: bool;
+native_pointer: PointerFrame;
+native_key: s32;
+native_resize_pending: bool;
+native_quit: bool;
+native_events_initialized: bool;
 
 DrawBounds :: (width: s32, height: s32) -> DrawRectangle {
     return DrawRectangle.{
@@ -283,8 +306,7 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     force_offscreen: bool = CopyCString("KRYON_OFFSCREEN",
         offscreen_name[:]) && GetEnvironment(*offscreen_name[0]) != null
     window_name: [32]u8
-    if !force_offscreen &&
-        CopyCString("/dev/winname", window_name[:]) &&
+    if !force_offscreen && CopyCString("/dev/winname", window_name[:]) &&
         GetWindow(native_display, cast(*s8)*window_name[0], *native_window,
                   *native_screen, 0) >= 0 &&
         native_window != null {
@@ -329,6 +351,7 @@ CloseRaster :: () {
     native_width = 0
     native_height = 0
     native_offscreen = false
+    native_events_initialized = false
 }
 
 #program_export
@@ -336,6 +359,70 @@ NativeLibdrawViewport :: () -> Rectangle {
     return Rectangle.{0.0, 0.0, cast(float32)native_width,
         cast(float32)native_height}
 }
+
+#program_export
+InitializeNativeEvents :: () -> bool {
+    if native_display == null { return false }
+    if native_events_initialized { return true }
+    EventInit(cast(usize)3)
+    native_events_initialized = true
+    return true
+}
+
+#program_export
+eresized :: (new_size: s32) {
+    if new_size != 0 { native_resize_pending = true }
+}
+
+#program_export
+NativeLibdrawPressedKey :: () -> s32 { return native_key }
+
+#program_export
+PollNativeLibdraw :: () -> bool {
+    if native_quit || native_display == null { return false }
+    if !native_events_initialized && !InitializeNativeEvents() {
+        return false
+    }
+    native_pointer.pressed = false
+    native_pointer.released = false
+    native_key = 0
+    while EventCanRead(cast(usize)3) != 0 {
+        event: DrawEvent
+        kind: usize = EventRead(cast(usize)3, *event)
+        if kind == cast(usize)0 { break }
+        if kind == cast(usize)1 {
+            down: bool = (event.mouse.buttons & 1) != 0
+            native_pointer.pressed = native_pointer.pressed ||
+                (down && !native_pointer.down)
+            native_pointer.released = native_pointer.released ||
+                (!down && native_pointer.down)
+            native_pointer.down = down
+            native_pointer.x = cast(float32)(event.mouse.xy.x -
+                native_window.bounds.min.x)
+            native_pointer.y = cast(float32)(event.mouse.xy.y -
+                native_window.bounds.min.y)
+        } else if kind == cast(usize)2 {
+            native_key = event.kbdc
+        }
+    }
+    if native_resize_pending {
+        native_resize_pending = false
+        window_name: [32]u8
+        if !CopyCString("/dev/winname", window_name[:]) ||
+            GetWindow(native_display, cast(*s8)*window_name[0],
+                      *native_window, *native_screen, 1) < 0 {
+            return false
+        }
+        native_width = native_window.bounds.max.x -
+            native_window.bounds.min.x
+        native_height = native_window.bounds.max.y -
+            native_window.bounds.min.y
+    }
+    return native_window != null && native_width > 0 && native_height > 0
+}
+
+#program_export
+PollPointer :: () -> PointerFrame { return native_pointer }
 
 #program_export
 BeginRasterFrame :: () {}
@@ -504,3 +591,25 @@ ImageHeight :: (asset_path: string) -> s32 { return 0 }
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {}
+
+#program_export
+WindowVisibleHost :: () -> bool {
+    return native_display != null
+}
+
+#program_export
+WindowSetVisibleHost :: (visible: bool) { unused visible }
+
+#program_export
+WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    unused enabled
+    return false
+}
+
+#program_export
+WindowTakeCloseRequestHost :: () -> bool { return false }
+
+#program_export
+WindowQuitHost :: () {
+    native_quit = true
+}
