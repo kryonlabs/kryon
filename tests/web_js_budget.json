@@ -1,0 +1,37 @@
+{
+  "files": {
+    "canvas_audio.js": {
+      "lines": 701,
+      "entries": 48
+    },
+    "canvas_draw.js": {
+      "lines": 220,
+      "entries": 13
+    },
+    "canvas_input.js": {
+      "lines": 211,
+      "entries": 14
+    },
+    "canvas_os.js": {
+      "lines": 129,
+      "entries": 5
+    },
+    "canvas_text.js": {
+      "lines": 103,
+      "entries": 3
+    },
+    "canvas_texture.js": {
+      "lines": 191,
+      "entries": 12
+    },
+    "canvas_window.js": {
+      "lines": 635,
+      "entries": 19
+    },
+    "dom_tree.js": {
+      "lines": 189,
+      "entries": 4
+    }
+  },
+  "forbidden": []
+}
