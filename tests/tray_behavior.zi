@@ -4,6 +4,7 @@
 
 c :: #system_library "c";
 TestGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
+TestSleep :: (microseconds: u32) -> s32 #foreign c "usleep";
 
 Present :: () -> bool {
     name: [32]u8
@@ -54,6 +55,8 @@ main :: () -> s32 {
         return 0
     }
     if !ready { return 9 }
+    // Let the automatic fallback run; neither backend has a host here.
+    unused TestSleep(1750000)
     // No tray host runs on the private display, so the icon is not shown and
     // the app must keep its own window.
     if TrayVisible() {
