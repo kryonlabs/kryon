@@ -10,6 +10,7 @@ ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
 ZI2CPP_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2cpp
 ZI2GO_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2go
+ZIRAN_BIN ?= $(ZIRAN_BUILD_DIR)/bin/ziran
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
@@ -29,8 +30,10 @@ KSS_SOURCE := $(wildcard src/kss/*.zi)
 KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
+PLAN9_DIR := build/plan9
+PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all check test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
+.PHONY: all check plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -262,6 +265,18 @@ window-test: build/bin/kryon
 .PHONY: tray-test
 tray-test: $(ZI2C_BIN)
 	@ZI2C_BIN="$(ZI2C_BIN)" sh tests/tray_test.sh
+
+$(ZIRAN_DIR)/build/bin/ziran:
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+
+.PHONY: plan9-c
+plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.stamp
+	rm -rf $(PLAN9_DIR)
+	mkdir -p $(PLAN9_DIR)
+	$(ZIRAN_BIN) build --target=plan9-c --root src/ui $(ZIRAN_STD_PATH) \
+		-o $(PLAN9_DIR) $(SOURCE)
+	(cd $(PLAN9_DIR) && find . -type f -name '*.c' | \
+		sed -e 's@^\./@@') | LC_ALL=C sort > $(PLAN9_FILE_LIST)
 
 .PHONY: libdraw-native-plan9-test
 libdraw-native-plan9-test:
