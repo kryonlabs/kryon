@@ -16,6 +16,7 @@ gensrc=`{cat $genlist}
 genobj=${gensrc:%.c=%.8}
 
 all:V: check $LIB
+install:V: check $LIB
 check:V:
 	if(! test -f $genlist){
 		echo 'missing '^$genlist^'; run make plan9-c on the host first' >[1]2]
