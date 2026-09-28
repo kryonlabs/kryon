@@ -2,6 +2,7 @@
 // which element and attributes each node gets; this module only creates,
 // updates, orders, and removes those elements.
 #import "web"
+#import "number_text"
 #import "text_buffer"
 
 DOM_HOST_MAX :: 8192
@@ -147,71 +148,29 @@ DomHostInitNames :: () {
     dom_names.src = WebName("src")
 }
 
-// Whole numbers as decimal text; the page reads it while the call runs.
 DomWhole :: (value: s64) -> string {
-    end: s32 = 31
-    dom_text_bytes[end] = cast(u8)0
-    negative: bool = value < cast(s64)0
-    remaining: s64 = value
-    if negative { remaining = cast(s64)0 - value }
-    if remaining == cast(s64)0 {
-        end -= 1
-        dom_text_bytes[end] = cast(u8)48
-    }
-    while remaining > cast(s64)0 {
-        end -= 1
-        dom_text_bytes[end] = cast(u8)(48 + cast(s32)(remaining % cast(s64)10))
-        remaining = remaining / cast(s64)10
-    }
-    if negative {
-        end -= 1
-        dom_text_bytes[end] = cast(u8)45
-    }
-    return TextUntilNul(dom_text_bytes[end:32])
+    return FormatInteger(value, dom_text_bytes[:])
 }
 
 // A CSS length in pixels, kept to hundredths.
 DomPixels :: (value: float64, output: []u8) -> string {
-    scaled: s64 = cast(s64)(value * 100.0 + 0.5)
-    if value < 0.0 { scaled = cast(s64)(value * 100.0 - 0.5) }
-    negative: bool = scaled < cast(s64)0
-    remaining: s64 = scaled
-    if negative { remaining = cast(s64)0 - scaled }
-    whole: s64 = remaining / cast(s64)100
-    fraction: s32 = cast(s32)(remaining % cast(s64)100)
-    end: s32 = 31
-    output[end] = cast(u8)0
-    end -= 1
-    output[end] = cast(u8)120
-    end -= 1
-    output[end] = cast(u8)112
-    if fraction > 0 {
-        if fraction % 10 == 0 {
-            end -= 1
-            output[end] = cast(u8)(48 + fraction / 10)
-        } else {
-            end -= 1
-            output[end] = cast(u8)(48 + fraction % 10)
-            end -= 1
-            output[end] = cast(u8)(48 + fraction / 10)
-        }
-        end -= 1
-        output[end] = cast(u8)46
+    number: string = FormatDecimal(value, 2, output[0:24])
+    scratch: [24]u8
+    length: s64 = number.count
+    index: s64 = 0
+    while index < length {
+        scratch[index] = number[index]
+        index += 1
     }
-    if whole == cast(s64)0 {
-        end -= 1
-        output[end] = cast(u8)48
+    index = 0
+    while index < length {
+        output[index] = scratch[index]
+        index += 1
     }
-    while whole > cast(s64)0 {
-        end -= 1
-        output[end] = cast(u8)(48 + cast(s32)(whole % cast(s64)10))
-        whole = whole / cast(s64)10
-    }
-    if negative {
-        end -= 1
-        output[end] = cast(u8)45
-    }
-    return TextUntilNul(output[end:32])
+    output[length] = cast(u8)112
+    output[length + 1] = cast(u8)120
+    output[length + 2] = cast(u8)0
+    return TextUntilNul(output[0:length + 3])
 }
 
 DomStyle :: (style: s32, name: s32, value: string) {
