@@ -275,8 +275,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 	mkdir -p $(PLAN9_DIR)
 	$(ZIRAN_BIN) build --target=plan9-c --root src/ui $(ZIRAN_STD_PATH) \
 		-o $(PLAN9_DIR) $(SOURCE)
-	(cd $(PLAN9_DIR) && find . -type f -name '*.c' | \
-		sed -e 's@^\./@@') | LC_ALL=C sort > $(PLAN9_FILE_LIST)
+	find $(PLAN9_DIR) -type f -name '*.c' | LC_ALL=C sort > $(PLAN9_FILE_LIST)
 
 .PHONY: libdraw-native-plan9-test
 libdraw-native-plan9-test:
