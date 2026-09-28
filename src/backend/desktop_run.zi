@@ -59,6 +59,7 @@ main :: () -> s32 {
         if ok { ok = CaptureConfigured() }
     } else {
         while ok && PollDesktop() {
+            KeyboardModifiersSend(session, DesktopModifiers())
             key: s32 = DesktopPressedKey()
             if key != 0 { KeyboardSend(session, key) }
             codepoint: s32 = DesktopTypedCodepoint()

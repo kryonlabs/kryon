@@ -57,7 +57,12 @@ through the ordinary package entry route.
 A host polls platform input and submits it to the session before calling the
 application's `Frame`. The application and widgets consume generic session
 input such as `KeyboardTake`, `TypedCodepointTake`,
-`PointerWheelTake`, and pointer state. The host calls `BeginFrame` and
+`PointerWheelTake`, and pointer state. `KeyboardModifiers` reports the held
+Shift, Control, and Alt keys as `KeyModifierShift`, `KeyModifierControl`, and
+`KeyModifierAlt` bits, so a shortcut such as Ctrl+S is a key press read with
+the modifiers that were down. The desktop and raylib hosts submit them with
+`KeyboardModifiersSend` before each frame; the other hosts report none.
+The host calls `BeginFrame` and
 `EndFrame` around application composition, then presents the resulting
 paint operations. Widget behavior stays in `src/ui/`.
 

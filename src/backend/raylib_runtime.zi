@@ -62,6 +62,7 @@ HostRaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown"
 HostRaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 HostRaylibMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
+HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
@@ -619,6 +620,17 @@ RaylibViewport :: () -> Rectangle {
 #program_export
 RaylibPressedKey :: () -> s32 {
     return HostRaylibGetKeyPressed()
+}
+
+// The held modifier keys as KeyModifier bits, from raylib's left and right
+// shift (340, 344), control (341, 345), and alt (342, 346) keys.
+#program_export
+RaylibModifiers :: () -> s32 {
+    modifiers: s32 = 0
+    if HostRaylibIsKeyDown(340) || HostRaylibIsKeyDown(344) { modifiers |= 1 }
+    if HostRaylibIsKeyDown(341) || HostRaylibIsKeyDown(345) { modifiers |= 2 }
+    if HostRaylibIsKeyDown(342) || HostRaylibIsKeyDown(346) { modifiers |= 4 }
+    return modifiers
 }
 
 #program_export
