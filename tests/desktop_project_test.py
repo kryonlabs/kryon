@@ -1,5 +1,6 @@
 """Exercise the Ziran SDL/Cairo host as an imported Kryon package."""
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -64,6 +65,21 @@ def main():
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "Kryon", "build", "--profile", "desktop"],
             project, env)
+
+        # The build describes the generated C to editors, one entry for each
+        # file, with the flags it really compiles with.
+        generated = project / "build/generated/desktop"
+        commands = json.loads((generated / "compile_commands.json").read_text())
+        sources = sorted(path.name for path in (generated / "c").glob("*.c"))
+        assert sources, "no generated C"
+        assert [Path(entry["file"]).name for entry in commands] == sources
+        for entry in commands:
+            arguments = entry["arguments"]
+            assert entry["directory"] == str(project.resolve()), entry["directory"]
+            assert Path(arguments[0]).is_absolute(), arguments[0]
+            assert "-std=c99" in arguments and "-pedantic-errors" in arguments
+            assert f"-I{(generated / 'c').resolve()}" in arguments
+            assert arguments[-2:] == ["-c", entry["file"]], arguments[-2:]
 
         capture = project / "capture.png"
         env["KRYON_CAPTURE_PATH"] = str(capture)

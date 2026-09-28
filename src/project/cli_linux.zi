@@ -1,3 +1,4 @@
+#import "compile_commands_linux"
 #import "options"
 
 // Linux command-line host for Kryon projects. Configuration and command
@@ -49,10 +50,10 @@ Environment :: (name: string, output: []u8) -> string {
     while at < cast(s32)file.text.count {
         start: s32 = at
         while at < cast(s32)file.text.count &&
-              file.text[at] != cast(u8)0 { at += 1 }
+        file.text[at] != cast(u8)0 { at += 1 }
         if at - start > cast(s32)name.count &&
-           file.text[start:start + cast(s32)name.count] == name &&
-           file.text[start + cast(s32)name.count] == cast(u8)61 {
+        file.text[start:start + cast(s32)name.count] == name &&
+        file.text[start + cast(s32)name.count] == cast(u8)61 {
             first: s32 = start + cast(s32)name.count + 1
             length: s32 = at - first
             if length >= cast(s32)output.count { return "" }
@@ -245,6 +246,26 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
     return index
 }
 
+// `kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT`: the project build
+// asks the tool to describe the generated C compilation to editors.
+CompileCommands :: (command_line: string) -> s32 {
+    include_bytes: [4096]u8
+    compiler_bytes: [4096]u8
+    generated_bytes: [4096]u8
+    output_bytes: [4096]u8
+    include: string = Argument(command_line, 2, include_bytes[:])
+    compiler: string = Argument(command_line, 3, compiler_bytes[:])
+    generated: string = Argument(command_line, 4, generated_bytes[:])
+    output: string = Argument(command_line, 5, output_bytes[:])
+    if include == "" || compiler == "" || generated == "" || output == "" ||
+    Argument(command_line, 6, include_bytes[:]) != "" {
+        return Error("usage: kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT")
+    }
+    problem: string = WriteCompileCommands(include, compiler, generated, output)
+    if problem != "" { return Error(problem) }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     command_bytes: [8192]u8
@@ -253,9 +274,10 @@ main :: () -> s32 {
     verb_bytes: [128]u8
     verb: string = Argument(command_line.text, 1, verb_bytes[:])
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
-        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n")
+        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n       kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT\n")
         return 0
     }
+    if verb == "compile-commands" { return CompileCommands(command_line.text) }
     if verb != "run" && verb != "build" && verb != "check" && verb != "install" {
         return Error("unknown command; use run, build, check, or install")
     }
@@ -324,14 +346,14 @@ main :: () -> s32 {
         autostart: string = "false"
         if config.install.autostart { autostart = "true" }
         if !SetEnvironment("KRYON_INSTALL_NAME", config.install.name) ||
-            !SetEnvironment("KRYON_INSTALL_COMMENT", config.install.comment) ||
-            !SetEnvironment("KRYON_INSTALL_ICON", config.install.icon) ||
-            !SetEnvironment("KRYON_INSTALL_CATEGORIES", config.install.categories) ||
-            !SetEnvironment("KRYON_INSTALL_DIRECTORY",
-                config.install.working_directory) ||
-            !SetEnvironment("KRYON_INSTALL_AUTOSTART", autostart) ||
-            !SetEnvironment("KRYON_INSTALL_AUTOSTART_ENV",
-                config.install.autostart_env) {
+        !SetEnvironment("KRYON_INSTALL_COMMENT", config.install.comment) ||
+        !SetEnvironment("KRYON_INSTALL_ICON", config.install.icon) ||
+        !SetEnvironment("KRYON_INSTALL_CATEGORIES", config.install.categories) ||
+        !SetEnvironment("KRYON_INSTALL_DIRECTORY",
+            config.install.working_directory) ||
+        !SetEnvironment("KRYON_INSTALL_AUTOSTART", autostart) ||
+        !SetEnvironment("KRYON_INSTALL_AUTOSTART_ENV",
+            config.install.autostart_env) {
             return Error("cannot pass install options")
         }
     }
@@ -340,7 +362,7 @@ main :: () -> s32 {
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
         profile.backend != "libdraw" && profile.backend != "raylib" &&
         profile.backend != "canvas" && profile.backend != "dom") ||
-        profile.codegen != "c99" {
+    profile.codegen != "c99" {
         return Error("this backend/codegen pair is not available yet")
     }
     makefile_bytes: [4096]u8
