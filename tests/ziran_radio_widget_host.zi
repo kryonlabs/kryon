@@ -6,6 +6,12 @@ outlines: s32;
 labels: s32;
 failed: bool;
 
+// Pills and circles are painted with half their shorter side as radius.
+PillRadiusOf :: (bounds: Rectangle) -> float32 {
+    if bounds.height < bounds.width { return bounds.height * 0.5 }
+    return bounds.width * 0.5
+}
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
@@ -25,7 +31,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     expected_y: float32 = 27.0
     if fills >= 2 { expected_y = 67.0 }
-    if radius != 0.5 || segments != 32 ||
+    if radius != PillRadiusOf(bounds) || segments != 32 ||
         bounds.x != 22.0 || bounds.y != expected_y ||
         bounds.width != 16.0 || bounds.height != 16.0 ||
         color.r != cast(u8)0x12 || color.g != cast(u8)0x34 ||
@@ -47,7 +53,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
         red = cast(u8)0x12
         alpha = cast(u8)127
     }
-    if radius != 0.5 || segments != 32 || width != 2.0 ||
+    if radius != PillRadiusOf(bounds) || segments != 32 || width != 2.0 ||
         bounds.x != 20.0 || bounds.y != expected_y ||
         bounds.width != 20.0 || bounds.height != 20.0 ||
         color.r != red || color.a != alpha { failed = true }

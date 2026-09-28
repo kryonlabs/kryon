@@ -173,8 +173,15 @@ SegmentedRowFor :: (bounds_x: float32, bounds_width: float32, y: s32,
         row.x = cast(s32)bounds_x + (available -
             (row.button_width * row_count + metrics.gap * (row_count - 1))) / 2
     } else {
+        // A single row fills its bounds; content wider than the bounds
+        // keeps its own width.
         row.button_width = (row_width -
             metrics.gap * (row_count - 1)) / row_count
+        fill_width: s32 = (available -
+            metrics.gap * (row_count - 1)) / row_count
+        if fill_width > row.button_width {
+            row.button_width = fill_width
+        }
         row.x = cast(s32)bounds_x
     }
     if row.button_width < 0 {
