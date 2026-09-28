@@ -2059,7 +2059,7 @@ ToggleThumb {
 }
 
 ToggleThumb[tone=Accent] {
-  background: accent-ink;
+  background: thumb-ink;
   foreground: thumb-ink;
   border: accent-border;
   focus: accent;
