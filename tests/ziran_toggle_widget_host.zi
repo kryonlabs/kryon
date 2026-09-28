@@ -26,7 +26,8 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
-    if radius != 0.5 || segments != 16 { failed = true }
+    // Tracks, segments, and thumbs without a themed radius are pills.
+    if radius != bounds.height * 0.5 || segments != 16 { failed = true }
     if bounds.x == 10.0 && bounds.y == 20.0 &&
         bounds.width == 54.0 {
         expected: u8 = cast(u8)0x12
@@ -39,7 +40,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
-    if radius != 0.5 || segments != 16 || width != 1.0 ||
+    if radius != bounds.height * 0.5 || segments != 16 || width != 1.0 ||
         (bounds.width != 20.0 && bounds.width != 24.0) ||
         color.r != cast(u8)0x94 { failed = true }
     outlines += 1
