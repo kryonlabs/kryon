@@ -50,4 +50,15 @@ one value. Inbe does this: it sets the factor from its saved scale each frame,
 runs the wheel through `ZoomWheel`, and writes any change back to the setting.
 
 A host that draws an application unchanged applies the factor as a render
-scale and divides pointer positions and the viewport by it.
+scale and divides pointer positions and the viewport by it. Kryon's raylib
+runner does this for every application it runs, with no application code:
+`ZoomWheel` and `ZoomKey` run before each frame, the wheel and the shortcut
+keys they consume never reach the application, and `RaylibSetZoom` scales the
+frame, so layout reflows to the smaller viewport as a browser page does and
+text is rebaked at its scaled size to stay sharp. `KRYON_ZOOM=1.5` starts a
+window at 150%.
+
+An application imports the module as `Zoom` (and `DPI` for the platform enum)
+from the Kryon package. To opt out, or to force zoom on every platform, call
+`ZoomConfigure(session, props)` with `mode` set to `ZoomModeOff` or
+`ZoomModeOn`; the default `ZoomProps` is automatic.
