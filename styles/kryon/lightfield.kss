@@ -16,6 +16,7 @@ tokens {
     button-pressed: #171c25ee;
     button-pressed-end: #202734ee;
     dropdown-end: #242b38ee;
+    popup: #1c2230;
     border: #41495a;
     border-soft: #343c4c;
     card-border: #384252;
@@ -1822,8 +1823,8 @@ Dropdown:selected {
 }
 
 Dropdown[role=Panel] {
-  background: surface;
-  background-end: dropdown-end;
+  background: popup;
+  background-end: popup;
   border: border;
   padding-y: 4;
   gap: 4;
