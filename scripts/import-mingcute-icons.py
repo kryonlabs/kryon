@@ -48,7 +48,7 @@ MAPPING = {
     "pet": "paw.svg",
     "play": "play.svg",
     "plus": "add.svg",
-    "profile": "user_3.svg",
+    "profile": "user_4.svg",
     "return": "back_2.svg",
     "right": "arrow_right.svg",
     "rocket": "rocket_2.svg",
