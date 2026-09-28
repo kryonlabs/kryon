@@ -95,11 +95,26 @@ Frame :: () -> s32 {
     ime_state.active = ime_active
     ime_state.cursor = ime_cursor
     ime_state.selection_length = ime_selection_length
-    ime_state.text = TextView(ime_text[:ime_text_count])
+    frame_ime_text: [64]u8
+    if ime_text_count > 64 { return -47 }
+    frame_ime_byte: s64 = 0
+    while frame_ime_byte < ime_text_count {
+        frame_ime_text[frame_ime_byte] = ime_text[frame_ime_byte]
+        frame_ime_byte += 1
+    }
+    ime_state.text = TextView(frame_ime_text[:ime_text_count])
+    frame_value: [256]u8
+    frame_value_count: s64 = value.count
+    if frame_value_count > 256 { return -46 }
+    frame_byte: s64 = 0
+    while frame_byte < frame_value_count {
+        frame_value[frame_byte] = value[frame_byte]
+        frame_byte += 1
+    }
     props: TextAreaProps
     props.key = cast(u64)77
     props.bounds = Rectangle.{20.0, 20.0, 100.0, 52.0}
-    props.value = value
+    props.value = TextView(frame_value[:frame_value_count])
     props.label = "Notes"
     props.placeholder = "Write notes"
     props.cursor = cursor

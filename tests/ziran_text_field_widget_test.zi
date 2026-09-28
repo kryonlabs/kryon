@@ -25,7 +25,11 @@ cursor: s32;
 anchor: s32;
 scroll_x: s32;
 focused: bool;
-ime_state: CompositionState;
+ime_active: bool;
+ime_cursor: s32;
+ime_selection_length: s32;
+ime_text: [64]u8;
+ime_text_count: s64;
 
 #program_export
 Frame :: () -> s32 {
@@ -33,26 +37,55 @@ Frame :: () -> s32 {
         value = "AéB"
         cursor = 4
         anchor = 4
+        ime_active = false
+        ime_cursor = 0
+        ime_selection_length = 0
+        ime_text_count = 0
     }
     if phase == 8 {
         value = "AéB"
         cursor = 4
         anchor = 1
         focused = true
+        ime_active = false
+        ime_cursor = 0
+        ime_selection_length = 0
+        ime_text_count = 0
     }
     if phase == 13 { anchor = 1 }
     if phase == 17 { anchor = 0 }
+    frame_value: [256]u8
+    frame_value_count: s64 = value.count
+    if frame_value_count > 256 { return -28 }
+    frame_byte: s64 = 0
+    while frame_byte < frame_value_count {
+        frame_value[frame_byte] = value[frame_byte]
+        frame_byte += 1
+    }
+    frame_composition_text: [64]u8
+    frame_composition_count: s64 = ime_text_count
+    if frame_composition_count > 64 { return -29 }
+    frame_composition_byte: s64 = 0
+    while frame_composition_byte < frame_composition_count {
+        frame_composition_text[frame_composition_byte] = ime_text[frame_composition_byte]
+        frame_composition_byte += 1
+    }
+    frame_composition: CompositionState
+    frame_composition.active = ime_active
+    frame_composition.cursor = ime_cursor
+    frame_composition.selection_length = ime_selection_length
+    frame_composition.text = TextView(frame_composition_text[:frame_composition_count])
     props: TextFieldProps
     props.key = cast(u64)77
     props.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
-    props.value = value
+    props.value = TextView(frame_value[:frame_value_count])
     props.label = "Name"
     props.placeholder = "Enter name"
     props.cursor = cursor
     props.anchor = anchor
     props.scroll_x = scroll_x
     props.focused = focused
-    props.composition = ime_state
+    props.composition = frame_composition
     props.focus_id = 77
     props.max_bytes = 5
     props.max_codepoints = 4
@@ -285,7 +318,23 @@ Frame :: () -> s32 {
     anchor = result.anchor
     scroll_x = result.scroll_x
     focused = result.focused
-    ime_state = result.composition
+    if result.composition.text.count > 64 { return -30 }
+    incoming_composition: [64]u8
+    incoming_composition_count: s64 = result.composition.text.count
+    incoming_composition_byte: s64 = 0
+    while incoming_composition_byte < incoming_composition_count {
+        incoming_composition[incoming_composition_byte] = result.composition.text[incoming_composition_byte]
+        incoming_composition_byte += 1
+    }
+    incoming_composition_byte = 0
+    while incoming_composition_byte < incoming_composition_count {
+        ime_text[incoming_composition_byte] = incoming_composition[incoming_composition_byte]
+        incoming_composition_byte += 1
+    }
+    ime_text_count = incoming_composition_count
+    ime_active = result.composition.active
+    ime_cursor = result.composition.cursor
+    ime_selection_length = result.composition.selection_length
     old: s32 = phase
     phase += 1
     return old

@@ -17,7 +17,10 @@ TestSession :: () -> Session {
 using WidgetKind;
 
 phase: s32;
-state: ToastState;
+state_class_name: s32;
+state_until_seconds: float64;
+state_message: [64]u8;
+state_message_count: s64;
 
 #program_export
 Frame :: () -> s32 {
@@ -26,10 +29,22 @@ Frame :: () -> s32 {
         14, "")
     if !utf8.ellipsis || utf8.prefix != "aé" ||
         utf8.width != 48 { return -21 }
+    previous_message: [64]u8
+    previous_count: s64 = state_message_count
+    if previous_count > 64 { return -22 }
+    previous_byte: s64 = 0
+    while previous_byte < previous_count {
+        previous_message[previous_byte] = state_message[previous_byte]
+        previous_byte += 1
+    }
+    previous_state: ToastState
+    previous_state.class_name = state_class_name
+    previous_state.until_seconds = state_until_seconds
+    previous_state.message = TextView(previous_message[:previous_count])
     props: ToastProps
     props.key = cast(u64)17
     props.viewport = Rectangle.{10.0, 20.0, 200.0, 100.0}
-    props.state = state
+    props.state = previous_state
     if phase == 0 {
         props.message = "Hello"
         props.seconds = 2.0
@@ -72,7 +87,22 @@ Frame :: () -> s32 {
             result.display != "X" || TreeCount(TestSession()) != 2 { return -4 }
     }
     PaintFlush(TestSession())
-    state = result.state
+    if result.state.message.count > 64 { return -23 }
+    incoming_message: [64]u8
+    incoming_message_count: s64 = result.state.message.count
+    incoming_message_byte: s64 = 0
+    while incoming_message_byte < incoming_message_count {
+        incoming_message[incoming_message_byte] = result.state.message[incoming_message_byte]
+        incoming_message_byte += 1
+    }
+    incoming_message_byte = 0
+    while incoming_message_byte < incoming_message_count {
+        state_message[incoming_message_byte] = incoming_message[incoming_message_byte]
+        incoming_message_byte += 1
+    }
+    state_message_count = incoming_message_count
+    state_class_name = result.state.class_name
+    state_until_seconds = result.state.until_seconds
     old: s32 = phase
     phase += 1
     return old
