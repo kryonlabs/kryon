@@ -1,0 +1,18 @@
+// Stands in for the page so the element rules run as native code.
+DomHostBegin :: (count: s32, width: float64, height: float64) {
+}
+
+DomHostNode :: (index: s32, parent: s32, identity: float64,
+    widget_kind: s32, semantic: s32, level: s32,
+    x: float64, y: float64, width: float64, height: float64,
+    tag: string, role: string, label: string, url: string, flags: s32) {
+}
+
+DomHostTitle :: (title: string) {
+}
+
+DomHostFinish :: () {
+}
+
+DomHostClose :: () {
+}

@@ -23,10 +23,6 @@
     "canvas_window.js": {
       "lines": 566,
       "entries": 20
-    },
-    "dom_tree.js": {
-      "lines": 149,
-      "entries": 5
     }
   },
   "forbidden": [

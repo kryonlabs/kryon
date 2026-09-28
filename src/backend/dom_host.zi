@@ -1,0 +1,472 @@
+// The page's elements, driven through Ziran's Web bridge. dom_tree.zi decides
+// which element and attributes each node gets; this module only creates,
+// updates, orders, and removes those elements.
+#import "web"
+#import "text_buffer"
+
+DOM_HOST_MAX :: 8192
+
+DomHostNames :: struct {
+    ready: bool
+    document: s32
+    body: s32
+    title: s32
+    kryon_canvas: s32
+    layout_box: s32
+    create_element: s32
+    set_attribute: s32
+    get_attribute: s32
+    remove_attribute: s32
+    append_child: s32
+    replace_child: s32
+    remove_child: s32
+    parent_node: s32
+    style: s32
+    text_content: s32
+    tag_name: s32
+    disabled: s32
+    push: s32
+    position: s32
+    box_sizing: s32
+    margin: s32
+    padding: s32
+    border: s32
+    background: s32
+    color: s32
+    left: s32
+    top: s32
+    width: s32
+    height: s32
+    pointer_events: s32
+    cursor: s32
+    opacity: s32
+    inset: s32
+    overflow: s32
+    z_index: s32
+    font_family: s32
+    font_size: s32
+    line_height: s32
+    id: s32
+    nodes: s32
+    parent: s32
+    tag: s32
+    text: s32
+    semantic: s32
+    kind: s32
+    href: s32
+    role: s32
+    is_disabled: s32
+    data_id: s32
+    data_index: s32
+    data_kind: s32
+    data_semantic: s32
+    aria_label: s32
+    aria_level: s32
+    aria_disabled: s32
+    aria_selected: s32
+    alt: s32
+    src: s32
+}
+
+DomHostRecord :: struct {
+    identity: float64
+    element: s32
+    parent_element: s32
+    tag: s32
+    frame: s32
+}
+
+dom_names: DomHostNames;
+dom_records: [DOM_HOST_MAX]DomHostRecord;
+dom_by_index: [DOM_HOST_MAX]s32;
+dom_count: s32;
+dom_root: s32;
+dom_frame: s32;
+dom_text_bytes: [32]u8;
+
+DomHostInitNames :: () {
+    if dom_names.ready { return }
+    dom_names.ready = true
+    dom_names.document = WebName("document")
+    dom_names.body = WebName("body")
+    dom_names.title = WebName("title")
+    dom_names.kryon_canvas = WebName("__kryonCanvas")
+    dom_names.layout_box = WebName("layoutBox")
+    dom_names.create_element = WebName("createElement")
+    dom_names.set_attribute = WebName("setAttribute")
+    dom_names.get_attribute = WebName("getAttribute")
+    dom_names.remove_attribute = WebName("removeAttribute")
+    dom_names.append_child = WebName("appendChild")
+    dom_names.replace_child = WebName("replaceChild")
+    dom_names.remove_child = WebName("removeChild")
+    dom_names.parent_node = WebName("parentNode")
+    dom_names.style = WebName("style")
+    dom_names.text_content = WebName("textContent")
+    dom_names.tag_name = WebName("tagName")
+    dom_names.disabled = WebName("disabled")
+    dom_names.push = WebName("push")
+    dom_names.position = WebName("position")
+    dom_names.box_sizing = WebName("boxSizing")
+    dom_names.margin = WebName("margin")
+    dom_names.padding = WebName("padding")
+    dom_names.border = WebName("border")
+    dom_names.background = WebName("background")
+    dom_names.color = WebName("color")
+    dom_names.left = WebName("left")
+    dom_names.top = WebName("top")
+    dom_names.width = WebName("width")
+    dom_names.height = WebName("height")
+    dom_names.pointer_events = WebName("pointerEvents")
+    dom_names.cursor = WebName("cursor")
+    dom_names.opacity = WebName("opacity")
+    dom_names.inset = WebName("inset")
+    dom_names.overflow = WebName("overflow")
+    dom_names.z_index = WebName("zIndex")
+    dom_names.font_family = WebName("fontFamily")
+    dom_names.font_size = WebName("fontSize")
+    dom_names.line_height = WebName("lineHeight")
+    dom_names.id = WebName("id")
+    dom_names.nodes = WebName("nodes")
+    dom_names.parent = WebName("parent")
+    dom_names.tag = WebName("tag")
+    dom_names.text = WebName("text")
+    dom_names.semantic = WebName("semantic")
+    dom_names.kind = WebName("kind")
+    dom_names.href = WebName("href")
+    dom_names.role = WebName("role")
+    dom_names.is_disabled = WebName("disabled")
+    dom_names.data_id = WebName("data-kryon-id")
+    dom_names.data_index = WebName("data-kryon-index")
+    dom_names.data_kind = WebName("data-kryon-kind")
+    dom_names.data_semantic = WebName("data-kryon-semantic")
+    dom_names.aria_label = WebName("aria-label")
+    dom_names.aria_level = WebName("aria-level")
+    dom_names.aria_disabled = WebName("aria-disabled")
+    dom_names.aria_selected = WebName("aria-selected")
+    dom_names.alt = WebName("alt")
+    dom_names.src = WebName("src")
+}
+
+// Whole numbers as decimal text; the page reads it while the call runs.
+DomWhole :: (value: s64) -> string {
+    end: s32 = 31
+    dom_text_bytes[end] = cast(u8)0
+    negative: bool = value < cast(s64)0
+    remaining: s64 = value
+    if negative { remaining = cast(s64)0 - value }
+    if remaining == cast(s64)0 {
+        end -= 1
+        dom_text_bytes[end] = cast(u8)48
+    }
+    while remaining > cast(s64)0 {
+        end -= 1
+        dom_text_bytes[end] = cast(u8)(48 + cast(s32)(remaining % cast(s64)10))
+        remaining = remaining / cast(s64)10
+    }
+    if negative {
+        end -= 1
+        dom_text_bytes[end] = cast(u8)45
+    }
+    return TextUntilNul(dom_text_bytes[end:32])
+}
+
+// A CSS length in pixels, kept to hundredths.
+DomPixels :: (value: float64, output: []u8) -> string {
+    scaled: s64 = cast(s64)(value * 100.0 + 0.5)
+    if value < 0.0 { scaled = cast(s64)(value * 100.0 - 0.5) }
+    negative: bool = scaled < cast(s64)0
+    remaining: s64 = scaled
+    if negative { remaining = cast(s64)0 - scaled }
+    whole: s64 = remaining / cast(s64)100
+    fraction: s32 = cast(s32)(remaining % cast(s64)100)
+    end: s32 = 31
+    output[end] = cast(u8)0
+    end -= 1
+    output[end] = cast(u8)120
+    end -= 1
+    output[end] = cast(u8)112
+    if fraction > 0 {
+        if fraction % 10 == 0 {
+            end -= 1
+            output[end] = cast(u8)(48 + fraction / 10)
+        } else {
+            end -= 1
+            output[end] = cast(u8)(48 + fraction % 10)
+            end -= 1
+            output[end] = cast(u8)(48 + fraction / 10)
+        }
+        end -= 1
+        output[end] = cast(u8)46
+    }
+    if whole == cast(s64)0 {
+        end -= 1
+        output[end] = cast(u8)48
+    }
+    while whole > cast(s64)0 {
+        end -= 1
+        output[end] = cast(u8)(48 + cast(s32)(whole % cast(s64)10))
+        whole = whole / cast(s64)10
+    }
+    if negative {
+        end -= 1
+        output[end] = cast(u8)45
+    }
+    return TextUntilNul(output[end:32])
+}
+
+DomStyle :: (style: s32, name: s32, value: string) {
+    WebSet(style, name, WebText(value))
+}
+
+DomClearAttribute :: (element: s32, key: string) {
+    WebCall1(element, dom_names.remove_attribute, WebText(key))
+}
+
+DomSetAttribute :: (element: s32, key: string, value: string) {
+    WebCall2(element, dom_names.set_attribute, WebText(key), WebText(value))
+}
+
+DomMakeElement :: (tag: string, identity: string) -> s32 {
+    document: s32 = WebGetObject(WebGlobal, dom_names.document)
+    created: s32 = WebAsObject(WebCall1(document, dom_names.create_element,
+        WebText(tag)))
+    DomSetAttribute(created, "data-kryon-id", identity)
+    style: s32 = WebGetObject(created, dom_names.style)
+    DomStyle(style, dom_names.position, "absolute")
+    DomStyle(style, dom_names.box_sizing, "border-box")
+    DomStyle(style, dom_names.margin, "0")
+    DomStyle(style, dom_names.padding, "0")
+    DomStyle(style, dom_names.border, "0")
+    DomStyle(style, dom_names.background, "transparent")
+    DomStyle(style, dom_names.color, "transparent")
+    return created
+}
+
+DomHostFind :: (identity: float64) -> s32 {
+    index: s32 = 0
+    while index < dom_count {
+        if dom_records[index].identity == identity { return index }
+        index += 1
+    }
+    return -1
+}
+
+DomHostBegin :: (count: s32, width: float64, height: float64) {
+    DomHostInitNames()
+    scope: s32 = WebScope()
+    canvas: s32 = WebGetObject(WebGlobal, dom_names.kryon_canvas)
+    document: s32 = WebGetObject(WebGlobal, dom_names.document)
+    if canvas != 0 && document != 0 && dom_root == 0 {
+        root: s32 = WebAsObject(WebCall1(document, dom_names.create_element,
+            WebText("div")))
+        DomSetAttribute(root, "id", "kryon-dom-root")
+        DomSetAttribute(root, "data-kryon", "root")
+        style: s32 = WebGetObject(root, dom_names.style)
+        DomStyle(style, dom_names.position, "absolute")
+        DomStyle(style, dom_names.inset, "0")
+        DomStyle(style, dom_names.overflow, "hidden")
+        DomStyle(style, dom_names.pointer_events, "none")
+        DomStyle(style, dom_names.z_index, "2")
+        DomStyle(style, dom_names.font_family, "system-ui, sans-serif")
+        DomStyle(style, dom_names.font_size, "16px")
+        DomStyle(style, dom_names.line_height, "1.4")
+        box: s32 = 0
+        if WebTypeOf(WebGetObject(canvas, dom_names.layout_box)) == WebTypeFunction {
+            box = WebAsObject(WebCall0(canvas, dom_names.layout_box))
+        }
+        if box == 0 { box = WebGetObject(document, dom_names.body) }
+        unused WebCall1(box, dom_names.append_child, WebObject(root))
+        dom_root = WebKeep(root)
+    }
+    WebEnd(scope)
+    dom_frame += 1
+}
+
+DomHostNode :: (index: s32, parent: s32, identity: float64,
+    widget_kind: s32, semantic: s32, level: s32,
+    x: float64, y: float64, width: float64, height: float64,
+    tag: string, role: string, label: string, url: string, flags: s32) {
+    if dom_root == 0 || index < 0 || index >= DOM_HOST_MAX { return }
+    scope: s32 = WebScope()
+    key: s32 = DomHostFind(identity)
+    tag_name: s32 = WebName(tag)
+    identity_text: string = DomWhole(cast(s64)identity)
+    if key < 0 {
+        if dom_count >= DOM_HOST_MAX {
+            WebEnd(scope)
+            return
+        }
+        key = dom_count
+        dom_count += 1
+        dom_records[key].identity = identity
+        dom_records[key].element = WebKeep(DomMakeElement(tag, identity_text))
+        dom_records[key].parent_element = 0
+        dom_records[key].tag = tag_name
+    } else if dom_records[key].tag != tag_name {
+        replacement: s32 = DomMakeElement(tag, identity_text)
+        old: s32 = dom_records[key].element
+        holder: s32 = WebGetObject(old, dom_names.parent_node)
+        unused WebCall2(holder, dom_names.replace_child, WebObject(replacement),
+            WebObject(old))
+        WebRelease(old)
+        dom_records[key].element = WebKeep(replacement)
+        dom_records[key].parent_element = 0
+        dom_records[key].tag = tag_name
+    }
+    dom_records[key].frame = dom_frame
+    dom_by_index[index] = key
+    element: s32 = dom_records[key].element
+    DomSetAttribute(element, "data-kryon-index", DomWhole(cast(s64)index))
+    DomSetAttribute(element, "data-kryon-kind", DomWhole(cast(s64)widget_kind))
+    DomSetAttribute(element, "data-kryon-semantic", DomWhole(cast(s64)semantic))
+    style: s32 = WebGetObject(element, dom_names.style)
+    pixels: [32]u8
+    DomStyle(style, dom_names.left, DomPixels(x, pixels[:]))
+    DomStyle(style, dom_names.top, DomPixels(y, pixels[:]))
+    box_width: float64 = width
+    if box_width < 0.0 { box_width = 0.0 }
+    box_height: float64 = height
+    if box_height < 0.0 { box_height = 0.0 }
+    DomStyle(style, dom_names.width, DomPixels(box_width, pixels[:]))
+    DomStyle(style, dom_names.height, DomPixels(box_height, pixels[:]))
+    if (flags & 1) != 0 {
+        DomStyle(style, dom_names.pointer_events, "auto")
+        DomStyle(style, dom_names.cursor, "pointer")
+    } else {
+        DomStyle(style, dom_names.pointer_events, "none")
+        DomStyle(style, dom_names.cursor, "default")
+    }
+    if (flags & 2) != 0 {
+        DomStyle(style, dom_names.opacity, "0.45")
+    } else {
+        DomStyle(style, dom_names.opacity, "1")
+    }
+    if (flags & 16) != 0 { WebSet(element, dom_names.text_content, WebText(label)) }
+    if (flags & 64) != 0 { DomSetAttribute(element, "href", url) }
+    if (flags & 128) != 0 { DomSetAttribute(element, "src", url) }
+    if label.count > 0 {
+        DomSetAttribute(element, "aria-label", label)
+    } else {
+        DomClearAttribute(element, "aria-label")
+    }
+    if (flags & 32) != 0 { DomSetAttribute(element, "alt", label) }
+    if role.count > 0 { DomSetAttribute(element, "role", role) }
+    if level != 0 { DomSetAttribute(element, "aria-level", DomWhole(cast(s64)level)) }
+    if (flags & 2) != 0 {
+        DomSetAttribute(element, "aria-disabled", "true")
+    } else {
+        DomClearAttribute(element, "aria-disabled")
+    }
+    if (flags & 8) != 0 {
+        DomSetAttribute(element, "aria-selected", "true")
+    } else {
+        DomClearAttribute(element, "aria-selected")
+    }
+    if (flags & 256) != 0 {
+        WebSet(element, dom_names.disabled, WebBool(true))
+    } else if WebAsBool(WebGet(element, dom_names.disabled)) {
+        WebSet(element, dom_names.disabled, WebBool(false))
+    }
+    container: s32 = dom_root
+    if parent >= 0 && parent < DOM_HOST_MAX && dom_by_index[parent] >= 0 {
+        found: s32 = dom_by_index[parent]
+        if found < dom_count && dom_records[found].frame == dom_frame {
+            container = dom_records[found].element
+        }
+    }
+    dom_records[key].parent_element = container
+    // Appending moves the element, so children keep document order.
+    unused WebCall1(container, dom_names.append_child, WebObject(element))
+    WebEnd(scope)
+}
+
+DomHostTitle :: (title: string) {
+    scope: s32 = WebScope()
+    document: s32 = WebGetObject(WebGlobal, dom_names.document)
+    if document != 0 { WebSet(document, dom_names.title, WebText(title)) }
+    WebEnd(scope)
+}
+
+// Removes the elements that the frame no longer names.
+DomHostFinish :: () {
+    if dom_root == 0 { return }
+    scope: s32 = WebScope()
+    read: s32 = 0
+    write: s32 = 0
+    while read < dom_count {
+        record: DomHostRecord = dom_records[read]
+        if record.frame == dom_frame {
+            dom_records[write] = record
+            write += 1
+        } else {
+            holder: s32 = WebGetObject(record.element, dom_names.parent_node)
+            if holder != 0 {
+                unused WebCall1(holder, dom_names.remove_child,
+                    WebObject(record.element))
+            }
+            WebRelease(record.element)
+        }
+        read += 1
+    }
+    dom_count = write
+    WebEnd(scope)
+}
+
+DomHostAttribute :: (element: s32, key: string) -> WebValue {
+    value: WebValue = WebCall1(element, dom_names.get_attribute, WebText(key))
+    if value.tag == WebStringTag { return value }
+    return WebText("")
+}
+
+// Leaves a plain-data record of the page for the tests to read, then removes
+// the elements.
+DomHostClose :: () {
+    if dom_root == 0 { return }
+    scope: s32 = WebScope()
+    DomHostInitNames()
+    snapshot: s32 = WebNewObject()
+    document: s32 = WebGetObject(WebGlobal, dom_names.document)
+    WebSet(snapshot, dom_names.title, WebGet(document, dom_names.title))
+    list: s32 = WebNewArray()
+    WebSet(snapshot, dom_names.nodes, WebObject(list))
+    index: s32 = 0
+    while index < dom_count {
+        record: DomHostRecord = dom_records[index]
+        element: s32 = record.element
+        node: s32 = WebNewObject()
+        WebSet(node, dom_names.id, WebText(DomWhole(cast(s64)record.identity)))
+        if record.parent_element != 0 && record.parent_element != dom_root {
+            WebSet(node, dom_names.parent,
+                DomHostAttribute(record.parent_element, "data-kryon-id"))
+        } else {
+            WebSet(node, dom_names.parent, WebNull())
+        }
+        tag_text: WebValue = WebCall0(WebAsObject(WebGet(element,
+            dom_names.tag_name)), WebName("toLowerCase"))
+        WebSet(node, dom_names.tag, tag_text)
+        WebSet(node, dom_names.text, WebGet(element, dom_names.text_content))
+        WebSet(node, dom_names.semantic, DomHostAttribute(element, "data-kryon-semantic"))
+        WebSet(node, dom_names.kind, DomHostAttribute(element, "data-kryon-kind"))
+        WebSet(node, dom_names.href, DomHostAttribute(element, "href"))
+        WebSet(node, dom_names.role, DomHostAttribute(element, "role"))
+        disabled: WebValue = WebCall1(element, dom_names.get_attribute,
+            WebText("aria-disabled"))
+        WebSet(node, dom_names.is_disabled, WebBool(disabled.tag == WebStringTag))
+        unused WebCall1(list, dom_names.push, WebObject(node))
+        index += 1
+    }
+    index = 0
+    while index < dom_count {
+        WebRelease(dom_records[index].element)
+        index += 1
+    }
+    WebSet(WebGlobal, WebName("__kryonDomSnapshot"), WebObject(snapshot))
+    holder: s32 = WebGetObject(dom_root, dom_names.parent_node)
+    if holder != 0 {
+        unused WebCall1(holder, dom_names.remove_child, WebObject(dom_root))
+    }
+    WebRelease(dom_root)
+    dom_root = 0
+    dom_count = 0
+    WebEnd(scope)
+}
