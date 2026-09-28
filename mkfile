@@ -13,7 +13,7 @@ CPPFLAGS=-I$GEN
 CFLAGS=-FTVw
 
 gensrc=`{cat $genlist}
-genobj=${gensrc:%.c=$GEN/%.8}
+genobj=`{cat $genlist | sed -e 's@^build/plan9/@@' -e 's@\.c$@.8@' -e 's@^@'$GEN'/@'}
 
 all:V: check $LIB
 check:V:
