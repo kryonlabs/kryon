@@ -1,0 +1,98 @@
+#import "c_string"
+
+TrayMenuItemKind :: enum {
+    TrayMenuItemAction :: 0
+    TrayMenuItemSubmenu :: 1
+    TrayMenuItemSeparator :: 2
+}
+
+// Choosing an action item reports its `action` through TrayTakeAction; 0
+// means "no action". A submenu item shows `children`.
+TrayMenuItem :: struct {
+    kind: TrayMenuItemKind
+    label: string
+    action: s32
+    disabled: bool
+    children: []TrayMenuItem
+}
+
+// `icon_name` is looked up as `<name>.png` beside the executable, then in
+// `icon_paths`, then in hicolor icon themes. Activating the icon (a primary
+// click where the host supports it) reports `activate_action`.
+TraySpec :: struct {
+    id: string
+    title: string
+    icon_name: string
+    icon_paths: []string
+    activate_action: s32
+    menu: []TrayMenuItem
+}
+
+TRAY_MENU_CAPACITY :: 64
+TRAY_TEXT_CAPACITY :: 128
+TRAY_PATH_CAPACITY :: 512
+TRAY_ICON_PATH_CAPACITY :: 8
+
+// Hosts own their tray on a separate thread. They copy the menu into this
+// fixed, flattened snapshot so the app's strings never cross threads.
+// `parent` is the 1-based entry index of the containing submenu, or 0.
+TrayMenuEntry :: struct {
+    kind: s32
+    label: [128]u8
+    action: s32
+    enabled: bool
+    parent: s32
+}
+
+TrayMenuSnapshot :: struct {
+    entries: [64]TrayMenuEntry
+    count: s32
+}
+
+TrayMenuCaptureLevel :: (items: []TrayMenuItem, parent: s32,
+    snapshot: *TrayMenuSnapshot) -> bool {
+    index: s32 = 0
+    while index < cast(s32)items.count {
+        if snapshot.count >= TRAY_MENU_CAPACITY { return false }
+        item: TrayMenuItem = items[index]
+        entry: *TrayMenuEntry = *snapshot.entries[snapshot.count]
+        entry.kind = cast(s32)item.kind
+        entry.action = item.action
+        entry.enabled = !item.disabled
+        entry.parent = parent
+        if !CopyCString(item.label, entry.label[:]) { return false }
+        snapshot.count += 1
+        if entry.kind == cast(s32)TrayMenuItemKind.TrayMenuItemSubmenu {
+            if !TrayMenuCaptureLevel(item.children, snapshot.count,
+                snapshot) {
+                return false
+            }
+        }
+        index += 1
+    }
+    return true
+}
+
+#program_export
+TrayMenuCapture :: (items: []TrayMenuItem,
+    snapshot: *TrayMenuSnapshot) -> bool {
+    snapshot.count = 0
+    if !TrayMenuCaptureLevel(items, 0, snapshot) {
+        snapshot.count = 0
+        return false
+    }
+    return true
+}
+
+#program_export
+TrayCopyBytes :: (source: *u8, output: []u8) {
+    if output.count == 0 { return }
+    index: s32 = 0
+    if source != null {
+        while index + 1 < cast(s32)output.count && source[index] != 0 {
+            output[index] = source[index]
+            index += 1
+        }
+    }
+    output[index] = 0
+}

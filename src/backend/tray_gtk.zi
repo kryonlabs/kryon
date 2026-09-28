@@ -1,0 +1,809 @@
+#import "c_string"
+#import "tray_props"
+
+// The Linux and BSD tray runs GTK on its own thread. GTK and AppIndicator are
+// loaded with dlopen only when an app opens a tray, so apps that never do
+// carry no GTK dependency. When libayatana-appindicator (or libappindicator)
+// is installed the icon is a StatusNotifierItem; otherwise it is a GTK status
+// icon for XEmbed trays. KRYON_TRAY=status-icon forces the latter.
+
+#scope_file
+
+c :: #system_library "c";
+dl :: #system_library "dl";
+
+GtkIdleCallback :: #type (*void) -> s32 #c_call;
+GtkOnceCallback :: #type () -> void #c_call;
+GtkThreadCallback :: #type (*void) -> *void #c_call;
+GtkSignalCallback :: #type (*void, *void) -> void #c_call;
+GtkNotifyCallback :: #type (*void, *void, *void) -> void #c_call;
+GtkConnectedCallback :: #type (*void, s32, *void) -> void #c_call;
+GtkPopupCallback :: #type (*void, u32, u32, *void) -> void #c_call;
+
+DlOpen :: (path: *u8, flags: s32) -> *void #foreign dl "dlopen";
+DlSymbol :: (handle: *void, name: *u8) -> *void #foreign dl "dlsym";
+MemoryCopy :: (target: *void, source: *void, bytes: usize) -> *void #foreign c "memcpy";
+Allocate :: (count: usize, bytes: usize) -> *void #foreign c "calloc";
+GetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
+ReadLink :: (path: *u8, output: *u8, capacity: usize) -> isize #foreign c "readlink";
+Abort :: () #foreign c "abort";
+Once :: (state: *s32, routine: GtkOnceCallback) -> s32 #foreign c "pthread_once";
+MutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign c "pthread_mutex_init";
+MutexLock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
+MutexUnlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
+ConditionInit :: (condition: *void, attributes: *void) -> s32 #foreign c "pthread_cond_init";
+ConditionWait :: (condition: *void, mutex: *void) -> s32 #foreign c "pthread_cond_wait";
+ConditionSignal :: (condition: *void) -> s32 #foreign c "pthread_cond_signal";
+ThreadCreate :: (thread: *usize, attributes: *void,
+    routine: GtkThreadCallback, argument: *void) -> s32 #foreign c "pthread_create";
+ThreadJoin :: (thread: usize, result: **void) -> s32 #foreign c "pthread_join";
+
+FnInitCheck :: #type (*void, *void) -> s32 #c_call;
+FnNew :: #type () -> *void #c_call;
+FnNewWithText :: #type (*u8) -> *void #c_call;
+FnPair :: #type (*void, *void) -> void #c_call;
+FnSetFlag :: #type (*void, s32) -> void #c_call;
+FnGetFlag :: #type (*void) -> s32 #c_call;
+FnSetText :: #type (*void, *u8) -> void #c_call;
+FnObject :: #type (*void) -> void #c_call;
+FnVoid :: #type () -> void #c_call;
+FnMenuPopup :: #type (*void, *void, *void, *void, *void, u32, u32) -> void #c_call;
+FnIdleAdd :: #type (*void, *void) -> u32 #c_call;
+FnConnect :: #type (*void, *u8, *void, *void, *void, s32) -> usize #c_call;
+FnFileTest :: #type (*u8, s32) -> s32 #c_call;
+FnCanonicalize :: #type (*u8, *u8) -> *u8 #c_call;
+FnMonotonic :: #type () -> s64 #c_call;
+FnIndicatorNew :: #type (*u8, *u8, s32) -> *void #c_call;
+FnIndicatorIcon :: #type (*void, *u8, *u8) -> void #c_call;
+
+gtk_init_check: FnInitCheck;
+gtk_menu_new: FnNew;
+gtk_menu_item_new_with_label: FnNewWithText;
+gtk_menu_item_set_submenu: FnPair;
+gtk_separator_menu_item_new: FnNew;
+gtk_menu_shell_append: FnPair;
+gtk_widget_set_sensitive: FnSetFlag;
+gtk_widget_show_all: FnObject;
+gtk_widget_destroy: FnObject;
+gtk_menu_popup: FnMenuPopup;
+gtk_status_icon_position_menu: *void;
+gtk_status_icon_new_from_file: FnNewWithText;
+gtk_status_icon_new_from_icon_name: FnNewWithText;
+gtk_status_icon_set_title: FnSetText;
+gtk_status_icon_set_tooltip_text: FnSetText;
+gtk_status_icon_set_visible: FnSetFlag;
+gtk_status_icon_is_embedded: FnGetFlag;
+gtk_status_icon_set_from_file: FnSetText;
+gtk_status_icon_set_from_icon_name: FnSetText;
+gtk_main: FnVoid;
+gtk_main_quit: FnVoid;
+g_idle_add: FnIdleAdd;
+g_signal_connect_data: FnConnect;
+g_file_test: FnFileTest;
+g_canonicalize_filename: FnCanonicalize;
+g_free: FnObject;
+g_get_monotonic_time: FnMonotonic;
+g_object_unref: FnObject;
+app_indicator_new: FnIndicatorNew;
+app_indicator_set_status: FnSetFlag;
+app_indicator_set_menu: FnPair;
+app_indicator_set_title: FnSetText;
+app_indicator_set_icon_full: FnIndicatorIcon;
+
+library_once: s32;
+library_ready: bool;
+indicator_ready: bool;
+
+Resolve :: (handle: *void, slot: *void, name: string) -> bool {
+    bytes: [96]u8
+    if !CopyCString(name, bytes[:]) { return false }
+    symbol: *void = DlSymbol(handle, *bytes[0])
+    if symbol == null { return false }
+    MemoryCopy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+OpenLibrary :: (name: string) -> *void {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) { return null }
+    // RTLD_LAZY | RTLD_GLOBAL
+    return DlOpen(*bytes[0], 257)
+}
+
+ForcedStatusIcon :: () -> bool {
+    name: [16]u8
+    if !CopyCString("KRYON_TRAY", name[:]) { return false }
+    value: *u8 = GetEnvironment(*name[0])
+    if value == null { return false }
+    expected: [16]u8
+    if !CopyCString("status-icon", expected[:]) { return false }
+    index: s32 = 0
+    while expected[index] != 0 {
+        if value[index] != expected[index] { return false }
+        index += 1
+    }
+    return value[index] == 0
+}
+
+LoadIndicator :: () {
+    handle: *void = OpenLibrary("libayatana-appindicator3.so.1")
+    if handle == null { handle = OpenLibrary("libappindicator3.so.1") }
+    if handle == null { return }
+    ok: bool = Resolve(handle, cast(*void)*app_indicator_new, "app_indicator_new")
+    ok = ok && Resolve(handle, cast(*void)*app_indicator_set_status,
+        "app_indicator_set_status")
+    ok = ok && Resolve(handle, cast(*void)*app_indicator_set_menu,
+        "app_indicator_set_menu")
+    ok = ok && Resolve(handle, cast(*void)*app_indicator_set_title,
+        "app_indicator_set_title")
+    ok = ok && Resolve(handle, cast(*void)*app_indicator_set_icon_full,
+        "app_indicator_set_icon_full")
+    indicator_ready = ok
+}
+
+LoadLibraries :: () {
+    handle: *void = OpenLibrary("libgtk-3.so.0")
+    if handle == null { return }
+    ok: bool = Resolve(handle, cast(*void)*gtk_init_check, "gtk_init_check")
+    ok = ok && Resolve(handle, cast(*void)*gtk_menu_new, "gtk_menu_new")
+    ok = ok && Resolve(handle, cast(*void)*gtk_menu_item_new_with_label,
+        "gtk_menu_item_new_with_label")
+    ok = ok && Resolve(handle, cast(*void)*gtk_menu_item_set_submenu,
+        "gtk_menu_item_set_submenu")
+    ok = ok && Resolve(handle, cast(*void)*gtk_separator_menu_item_new,
+        "gtk_separator_menu_item_new")
+    ok = ok && Resolve(handle, cast(*void)*gtk_menu_shell_append,
+        "gtk_menu_shell_append")
+    ok = ok && Resolve(handle, cast(*void)*gtk_widget_set_sensitive,
+        "gtk_widget_set_sensitive")
+    ok = ok && Resolve(handle, cast(*void)*gtk_widget_show_all,
+        "gtk_widget_show_all")
+    ok = ok && Resolve(handle, cast(*void)*gtk_widget_destroy,
+        "gtk_widget_destroy")
+    ok = ok && Resolve(handle, cast(*void)*gtk_menu_popup, "gtk_menu_popup")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_position_menu,
+        "gtk_status_icon_position_menu")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_new_from_file,
+        "gtk_status_icon_new_from_file")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_new_from_icon_name,
+        "gtk_status_icon_new_from_icon_name")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_set_title,
+        "gtk_status_icon_set_title")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_set_tooltip_text,
+        "gtk_status_icon_set_tooltip_text")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_set_visible,
+        "gtk_status_icon_set_visible")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_is_embedded,
+        "gtk_status_icon_is_embedded")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_set_from_file,
+        "gtk_status_icon_set_from_file")
+    ok = ok && Resolve(handle, cast(*void)*gtk_status_icon_set_from_icon_name,
+        "gtk_status_icon_set_from_icon_name")
+    ok = ok && Resolve(handle, cast(*void)*gtk_main, "gtk_main")
+    ok = ok && Resolve(handle, cast(*void)*gtk_main_quit, "gtk_main_quit")
+    ok = ok && Resolve(handle, cast(*void)*g_idle_add, "g_idle_add")
+    ok = ok && Resolve(handle, cast(*void)*g_signal_connect_data,
+        "g_signal_connect_data")
+    ok = ok && Resolve(handle, cast(*void)*g_file_test, "g_file_test")
+    ok = ok && Resolve(handle, cast(*void)*g_canonicalize_filename,
+        "g_canonicalize_filename")
+    ok = ok && Resolve(handle, cast(*void)*g_free, "g_free")
+    ok = ok && Resolve(handle, cast(*void)*g_get_monotonic_time,
+        "g_get_monotonic_time")
+    ok = ok && Resolve(handle, cast(*void)*g_object_unref, "g_object_unref")
+    library_ready = ok
+    if ok && !ForcedStatusIcon() { LoadIndicator() }
+}
+
+LibrariesReady :: () -> bool {
+    routine: GtkOnceCallback = LoadLibraries
+    if Once(*library_once, routine) != 0 { return false }
+    return library_ready
+}
+
+STARTING :: 0
+READY :: 1
+FAILED :: 2
+STOPPED :: 3
+
+lock_once: s32;
+mutex: *void;
+condition: *void;
+thread: usize;
+started: bool;
+state: s32 = STOPPED;
+pending_action: s32;
+activate_action: s32;
+use_indicator: bool;
+visible: bool;
+menu_mapped: bool;
+menu_pending: bool;
+status_pending: bool;
+icon_pending: bool;
+ready_milliseconds: s64;
+title: [128]u8;
+status_text: [128]u8;
+icon_name: [128]u8;
+icon_override: [512]u8;
+icon_paths: [8][512]u8;
+icon_path_count: s32;
+icon_path: [512]u8;
+menu_snapshot: TrayMenuSnapshot;
+menu: *void;
+status_icon: *void;
+indicator: *void;
+
+InitializeLock :: () {
+    // pthread objects are opaque. This aligned storage accommodates the
+    // supported Linux and BSD pthread ABIs without depending on C headers.
+    mutex = Allocate(1, 128)
+    condition = Allocate(1, 128)
+    if mutex == null || condition == null { Abort() }
+    if MutexInit(mutex, null) != 0 || ConditionInit(condition, null) != 0 {
+        Abort()
+    }
+}
+
+Lock :: () {
+    routine: GtkOnceCallback = InitializeLock
+    if Once(*lock_once, routine) != 0 || MutexLock(mutex) != 0 { Abort() }
+}
+
+Unlock :: () {
+    if MutexUnlock(mutex) != 0 { Abort() }
+}
+
+Idle :: (routine: GtkIdleCallback) {
+    raw: **void = cast(**void)*routine
+    g_idle_add(raw[0], null)
+}
+
+ConnectRaw :: (object: *void, signal: string, callback: *void, data: *void) {
+    bytes: [64]u8
+    if CopyCString(signal, bytes[:]) {
+        g_signal_connect_data(object, *bytes[0], callback, data, null, 0)
+    }
+}
+
+Connect :: (object: *void, signal: string, routine: GtkSignalCallback,
+    data: *void) {
+    raw: **void = cast(**void)*routine
+    ConnectRaw(object, signal, raw[0], data)
+}
+
+SetState :: (next: s32) {
+    Lock()
+    state = next
+    ConditionSignal(condition)
+    Unlock()
+}
+
+SetAction :: (action: s32) {
+    Lock()
+    if state == READY { pending_action = action }
+    Unlock()
+}
+
+MenuMap :: (widget: *void, data: *void) {
+    Lock()
+    menu_mapped = true
+    Unlock()
+}
+
+MenuUnmap :: (widget: *void, data: *void) {
+    Lock()
+    menu_mapped = false
+    pending: bool = menu_pending && state == READY
+    Unlock()
+    // Keep the current popup while the user navigates it. The newest
+    // snapshot replaces it only after it has naturally closed.
+    if pending {
+        routine: GtkIdleCallback = ApplyMenu
+        Idle(routine)
+    }
+}
+
+MenuAction :: (widget: *void, data: *void) {
+    SetAction(cast(s32)cast(isize)data)
+}
+
+BuildMenu :: (snapshot: *TrayMenuSnapshot) -> *void {
+    root: *void = gtk_menu_new()
+    if root == null { return null }
+    // submenus[i] is the GtkMenu opened by entry i, which precedes its
+    // children in the flattened snapshot.
+    submenus: [64]*void
+    index: s32 = 0
+    while index < snapshot.count {
+        entry: *TrayMenuEntry = *snapshot.entries[index]
+        submenus[index] = null
+        container: *void = root
+        if entry.parent > 0 { container = submenus[entry.parent - 1] }
+        if container != null {
+            if entry.kind == cast(s32)TrayMenuItemKind.TrayMenuItemSeparator {
+                gtk_menu_shell_append(container, gtk_separator_menu_item_new())
+            } else {
+                item: *void = gtk_menu_item_new_with_label(*entry.label[0])
+                enabled: s32 = 0
+                if entry.enabled { enabled = 1 }
+                gtk_widget_set_sensitive(item, enabled)
+                if entry.kind == cast(s32)TrayMenuItemKind.TrayMenuItemSubmenu {
+                    submenus[index] = gtk_menu_new()
+                    gtk_menu_item_set_submenu(item, submenus[index])
+                } else {
+                    routine: GtkSignalCallback = MenuAction
+                    Connect(item, "activate", routine,
+                        cast(*void)cast(isize)entry.action)
+                }
+                gtk_menu_shell_append(container, item)
+            }
+        }
+        index += 1
+    }
+    gtk_widget_show_all(root)
+    return root
+}
+
+CreateMenu :: () -> *void {
+    snapshot: TrayMenuSnapshot
+    Lock()
+    snapshot = menu_snapshot
+    Unlock()
+    created: *void = BuildMenu(*snapshot)
+    if created == null { return null }
+    map: GtkSignalCallback = MenuMap
+    unmap: GtkSignalCallback = MenuUnmap
+    Connect(created, "map", map, null)
+    Connect(created, "unmap", unmap, null)
+    return created
+}
+
+ApplyMenu :: (data: *void) -> s32 {
+    Lock()
+    if state != READY || menu_mapped {
+        Unlock()
+        return 0
+    }
+    menu_pending = false
+    Unlock()
+    next: *void = CreateMenu()
+    previous: *void = menu
+    menu = next
+    if indicator != null {
+        // The indicator takes its own reference and releases the old menu.
+        app_indicator_set_menu(indicator, next)
+    } else {
+        if previous != null { gtk_widget_destroy(previous) }
+    }
+    return 0
+}
+
+ApplyStatus :: (data: *void) -> s32 {
+    text: [128]u8
+    Lock()
+    status_pending = false
+    ready: bool = state == READY
+    TrayCopyBytes(*status_text[0], text[:])
+    Unlock()
+    if !ready { return 0 }
+    if status_icon != null {
+        gtk_status_icon_set_title(status_icon, *text[0])
+        gtk_status_icon_set_tooltip_text(status_icon, *text[0])
+    }
+    if indicator != null { app_indicator_set_title(indicator, *text[0]) }
+    return 0
+}
+
+Append :: (output: []u8, text: *u8) -> bool {
+    length: s32 = 0
+    while length < cast(s32)output.count && output[length] != 0 { length += 1 }
+    if text == null { return length < cast(s32)output.count }
+    index: s32 = 0
+    while text[index] != 0 {
+        if length + 1 >= cast(s32)output.count { return false }
+        output[length] = text[index]
+        length += 1
+        index += 1
+    }
+    output[length] = 0
+    return true
+}
+
+AppendText :: (output: []u8, text: string) -> bool {
+    bytes: [128]u8
+    if !CopyCString(text, bytes[:]) { return false }
+    return Append(output, *bytes[0])
+}
+
+IconAt :: (directory: *u8) -> bool {
+    icon_path[0] = 0
+    if !Append(icon_path[:], directory) || !AppendText(icon_path[:], "/") ||
+        !Append(icon_path[:], *icon_name[0]) ||
+        !AppendText(icon_path[:], ".png") {
+        return false
+    }
+    return g_file_test(*icon_path[0], 1) != 0
+}
+
+ThemeIcon :: (directory: *u8, prefix: string) -> bool {
+    sizes: [11]string = .["512x512", "256x256", "192x192", "128x128",
+        "96x96", "64x64", "48x48", "32x32", "24x24", "16x16", "scalable"]
+    index: s32 = 0
+    while index < 11 {
+        path: [512]u8
+        if Append(path[:], directory) && AppendText(path[:], prefix) &&
+            AppendText(path[:], sizes[index]) && AppendText(path[:], "/apps") {
+            if IconAt(*path[0]) { return true }
+        }
+        index += 1
+    }
+    return false
+}
+
+ExecutableDirectory :: (output: []u8) -> bool {
+    link: [32]u8
+    #if #defined(__FreeBSD__) {
+        CopyCString("/proc/curproc/file", link[:])
+    }
+    #if !#defined(__FreeBSD__) {
+        CopyCString("/proc/self/exe", link[:])
+    }
+    capacity: s64 = cast(s64)output.count - 1
+    length: s64 = cast(s64)ReadLink(*link[0], *output[0], cast(usize)capacity)
+    if length <= 0 || length >= capacity {
+        output[0] = 0
+        return false
+    }
+    output[length] = 0
+    slash: s64 = length - 1
+    while slash >= 0 && output[slash] != #char "/" { slash -= 1 }
+    if slash < 0 {
+        output[0] = 0
+        return false
+    }
+    output[slash] = 0
+    return true
+}
+
+// Returns an absolute icon file, or null to use the theme icon name.
+FindIcon :: () -> *u8 {
+    executable: [384]u8
+    has_executable: bool = ExecutableDirectory(executable[:])
+    if has_executable && IconAt(*executable[0]) { return *icon_path[0] }
+    index: s32 = 0
+    while index < icon_path_count {
+        candidate: *u8 = *icon_paths[index][0]
+        if g_file_test(candidate, 1) != 0 {
+            absolute: *u8 = g_canonicalize_filename(candidate, null)
+            if absolute != null {
+                TrayCopyBytes(absolute, icon_path[:])
+                g_free(cast(*void)absolute)
+                return *icon_path[0]
+            }
+            return candidate
+        }
+        index += 1
+    }
+    if has_executable &&
+        ThemeIcon(*executable[0], "/../share/icons/hicolor/") {
+        return *icon_path[0]
+    }
+    name: [24]u8
+    CopyCString("XDG_DATA_DIRS", name[:])
+    directories: *u8 = GetEnvironment(*name[0])
+    defaults: [48]u8
+    if directories == null || directories[0] == 0 {
+        CopyCString("/usr/local/share:/usr/share", defaults[:])
+        directories = *defaults[0]
+    }
+    offset: s64 = 0
+    while directories[offset] != 0 {
+        directory: [512]u8
+        length: s32 = 0
+        overflow: bool = false
+        while directories[offset] != 0 && directories[offset] != #char ":" {
+            if length + 1 >= 512 { overflow = true }
+            if !overflow {
+                directory[length] = directories[offset]
+                length += 1
+            }
+            offset += 1
+        }
+        directory[length] = 0
+        if !overflow && length > 0 &&
+            ThemeIcon(*directory[0], "/icons/hicolor/") {
+            return *icon_path[0]
+        }
+        if directories[offset] == #char ":" { offset += 1 }
+    }
+    return null
+}
+
+ApplyIcon :: (data: *void) -> s32 {
+    path: [512]u8
+    Lock()
+    icon_pending = false
+    ready: bool = state == READY
+    TrayCopyBytes(*icon_override[0], path[:])
+    Unlock()
+    if !ready { return 0 }
+    source: *u8 = *path[0]
+    if path[0] == 0 { source = FindIcon() }
+    if status_icon != null {
+        if source != null {
+            gtk_status_icon_set_from_file(status_icon, source)
+        } else {
+            gtk_status_icon_set_from_icon_name(status_icon, *icon_name[0])
+        }
+    }
+    if indicator != null {
+        if source == null { source = *icon_name[0] }
+        app_indicator_set_icon_full(indicator, source, *title[0])
+    }
+    return 0
+}
+
+EmbeddedChanged :: (icon: *void, property: *void, data: *void) {
+    embedded: bool = gtk_status_icon_is_embedded(icon) != 0
+    Lock()
+    visible = embedded
+    Unlock()
+}
+
+IndicatorConnected :: (source: *void, connected: s32, data: *void) {
+    Lock()
+    visible = connected != 0
+    Unlock()
+}
+
+Activate :: (icon: *void, data: *void) {
+    if gtk_status_icon_is_embedded(icon) == 0 { return }
+    // Some hosts activate while embedding. Ignore that handshake so the app
+    // does not hide its own window immediately after launch.
+    elapsed: s64 = g_get_monotonic_time() / 1000 - ready_milliseconds
+    if ready_milliseconds != 0 && elapsed < 2000 { return }
+    Lock()
+    action: s32 = activate_action
+    Unlock()
+    if action != 0 { SetAction(action) }
+}
+
+Popup :: (icon: *void, button: u32, time: u32, data: *void) {
+    if menu != null {
+        gtk_menu_popup(menu, null, null, gtk_status_icon_position_menu, icon,
+            button, time)
+    }
+}
+
+QuitLoop :: (data: *void) -> s32 {
+    gtk_main_quit()
+    return 0
+}
+
+Release :: () {
+    if status_icon != null {
+        gtk_status_icon_set_visible(status_icon, 0)
+        g_object_unref(status_icon)
+        status_icon = null
+    }
+    if indicator != null {
+        // The indicator sank the menu's reference and releases it here.
+        app_indicator_set_status(indicator, 0)
+        g_object_unref(indicator)
+        indicator = null
+        menu = null
+    }
+    if menu != null {
+        gtk_widget_destroy(menu)
+        menu = null
+    }
+}
+
+OpenIndicator :: (icon: *u8, id: *u8) -> bool {
+    // APP_INDICATOR_CATEGORY_APPLICATION_STATUS
+    indicator = app_indicator_new(id, *icon_name[0], 0)
+    if indicator == null { return false }
+    connected: GtkConnectedCallback = IndicatorConnected
+    connected_raw: **void = cast(**void)*connected
+    ConnectRaw(indicator, "connection-changed", connected_raw[0], null)
+    // APP_INDICATOR_STATUS_ACTIVE
+    app_indicator_set_status(indicator, 1)
+    source: *u8 = icon
+    if source == null { source = *icon_name[0] }
+    app_indicator_set_icon_full(indicator, source, *title[0])
+    app_indicator_set_title(indicator, *title[0])
+    app_indicator_set_menu(indicator, menu)
+    return true
+}
+
+OpenStatusIcon :: (icon: *u8) -> bool {
+    if icon != null {
+        status_icon = gtk_status_icon_new_from_file(icon)
+    } else {
+        status_icon = gtk_status_icon_new_from_icon_name(*icon_name[0])
+    }
+    if status_icon == null { return false }
+    gtk_status_icon_set_title(status_icon, *title[0])
+    gtk_status_icon_set_tooltip_text(status_icon, *title[0])
+    gtk_status_icon_set_visible(status_icon, 1)
+    activate: GtkSignalCallback = Activate
+    Connect(status_icon, "activate", activate, null)
+    popup: GtkPopupCallback = Popup
+    popup_raw: **void = cast(**void)*popup
+    ConnectRaw(status_icon, "popup-menu", popup_raw[0], null)
+    embedded: GtkNotifyCallback = EmbeddedChanged
+    embedded_raw: **void = cast(**void)*embedded
+    ConnectRaw(status_icon, "notify::embedded", embedded_raw[0], null)
+    EmbeddedChanged(status_icon, null, null)
+    return true
+}
+
+id_text: [128]u8;
+
+Run :: (argument: *void) -> *void {
+    if gtk_init_check(null, null) == 0 {
+        SetState(FAILED)
+        return null
+    }
+    menu = CreateMenu()
+    icon: *u8 = FindIcon()
+    opened: bool = false
+    if use_indicator {
+        opened = OpenIndicator(icon, *id_text[0])
+    } else {
+        opened = OpenStatusIcon(icon)
+    }
+    if !opened {
+        Release()
+        SetState(FAILED)
+        return null
+    }
+    ready_milliseconds = g_get_monotonic_time() / 1000
+    SetState(READY)
+    gtk_main()
+    SetState(STOPPED)
+    Release()
+    return null
+}
+
+#scope_export
+
+TrayGtkOpen :: (spec: TraySpec) -> bool {
+    if started {
+        Lock()
+        ready: bool = state == READY
+        Unlock()
+        return ready
+    }
+    if !LibrariesReady() { return false }
+    snapshot: TrayMenuSnapshot
+    if !TrayMenuCapture(spec.menu, *snapshot) { return false }
+    if !CopyCString(spec.title, title[:]) || title[0] == 0 {
+        CopyCString("App", title[:])
+    }
+    if !CopyCString(spec.icon_name, icon_name[:]) || icon_name[0] == 0 {
+        CopyCString("application-x-executable", icon_name[:])
+    }
+    if !CopyCString(spec.id, id_text[:]) || id_text[0] == 0 {
+        TrayCopyBytes(*icon_name[0], id_text[:])
+    }
+    icon_path_count = 0
+    while icon_path_count < cast(s32)spec.icon_paths.count &&
+        icon_path_count < TRAY_ICON_PATH_CAPACITY {
+        if !CopyCString(spec.icon_paths[icon_path_count],
+            icon_paths[icon_path_count][:]) {
+            return false
+        }
+        icon_path_count += 1
+    }
+    TrayCopyBytes(*title[0], status_text[:])
+    Lock()
+    menu_snapshot = snapshot
+    activate_action = spec.activate_action
+    use_indicator = indicator_ready
+    state = STARTING
+    visible = false
+    menu_mapped = false
+    menu_pending = false
+    status_pending = false
+    icon_pending = false
+    icon_override[0] = 0
+    pending_action = 0
+    Unlock()
+    routine: GtkThreadCallback = Run
+    if ThreadCreate(*thread, null, routine, null) != 0 {
+        SetState(FAILED)
+        return false
+    }
+    started = true
+    Lock()
+    while state == STARTING { ConditionWait(condition, mutex) }
+    ready: bool = state == READY
+    Unlock()
+    if !ready {
+        ThreadJoin(thread, null)
+        started = false
+    }
+    return ready
+}
+
+// AppIndicator reports visibility once a StatusNotifierWatcher accepts the
+// item; a status icon reports it once an XEmbed tray embeds it.
+TrayGtkVisible :: () -> bool {
+    Lock()
+    result: bool = state == READY && visible
+    Unlock()
+    return result
+}
+
+TrayGtkTakeAction :: () -> s32 {
+    Lock()
+    action: s32 = pending_action
+    pending_action = 0
+    Unlock()
+    return action
+}
+
+TrayGtkSetMenu :: (items: []TrayMenuItem) {
+    snapshot: TrayMenuSnapshot
+    if !TrayMenuCapture(items, *snapshot) { return }
+    Lock()
+    menu_snapshot = snapshot
+    schedule: bool = state == READY && !menu_pending
+    if schedule { menu_pending = true }
+    Unlock()
+    if schedule {
+        routine: GtkIdleCallback = ApplyMenu
+        Idle(routine)
+    }
+}
+
+TrayGtkSetStatus :: (text: string) {
+    Lock()
+    if !CopyCString(text, status_text[:]) || status_text[0] == 0 {
+        TrayCopyBytes(*title[0], status_text[:])
+    }
+    schedule: bool = state == READY && !status_pending
+    if schedule { status_pending = true }
+    Unlock()
+    if schedule {
+        routine: GtkIdleCallback = ApplyStatus
+        Idle(routine)
+    }
+}
+
+TrayGtkSetIcon :: (path: string) {
+    Lock()
+    if !CopyCString(path, icon_override[:]) { icon_override[0] = 0 }
+    schedule: bool = state == READY && !icon_pending
+    if schedule { icon_pending = true }
+    Unlock()
+    if schedule {
+        routine: GtkIdleCallback = ApplyIcon
+        Idle(routine)
+    }
+}
+
+TrayGtkSetActivateAction :: (action: s32) {
+    Lock()
+    activate_action = action
+    Unlock()
+}
+
+TrayGtkClose :: () {
+    if !started { return }
+    Lock()
+    ready: bool = state == READY
+    Unlock()
+    if ready {
+        routine: GtkIdleCallback = QuitLoop
+        Idle(routine)
+    }
+    ThreadJoin(thread, null)
+    started = false
+    Lock()
+    pending_action = 0
+    visible = false
+    menu_snapshot.count = 0
+    Unlock()
+}

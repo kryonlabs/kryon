@@ -1,0 +1,104 @@
+#import "tray_props"
+
+// A notification-area (system tray) icon with a menu. The app polls
+// TrayTakeAction each frame and decides what an action means: showing its
+// window, quitting, or anything else. TrayVisible reports whether a tray host
+// is actually showing the icon, so an app hides its window to the tray only
+// when the user can get it back.
+
+TRAY_WINDOWS :: #defined(_WIN32) && !#defined(KRYON_BACKEND_TERMI)
+TRAY_GTK :: !#defined(_WIN32) && !#defined(KRYON_BACKEND_TERMI) && !#defined(PLATFORM_WEB) && !#defined(PLATFORM_ANDROID) && !#defined(ANDROID_BUILD) && !#defined(__ANDROID__)
+
+#if TRAY_WINDOWS {
+    #import "tray_windows"
+}
+#if TRAY_GTK {
+    #import "tray_gtk"
+}
+
+#program_export
+TrayOpen :: (spec: TraySpec) -> bool {
+    #if TRAY_WINDOWS {
+        return TrayWindowsOpen(spec)
+    }
+    #if TRAY_GTK {
+        return TrayGtkOpen(spec)
+    }
+    return false
+}
+
+#program_export
+TrayVisible :: () -> bool {
+    #if TRAY_WINDOWS {
+        return TrayWindowsVisible()
+    }
+    #if TRAY_GTK {
+        return TrayGtkVisible()
+    }
+    return false
+}
+
+// Returns the next chosen menu action or the activate action, else 0.
+#program_export
+TrayTakeAction :: () -> s32 {
+    #if TRAY_WINDOWS {
+        return TrayWindowsTakeAction()
+    }
+    #if TRAY_GTK {
+        return TrayGtkTakeAction()
+    }
+    return 0
+}
+
+// A menu that is open stays as it is; the new one appears when it closes.
+#program_export
+TraySetMenu :: (items: []TrayMenuItem) {
+    #if TRAY_WINDOWS {
+        TrayWindowsSetMenu(items)
+    }
+    #if TRAY_GTK {
+        TrayGtkSetMenu(items)
+    }
+}
+
+// The tooltip, or the title when `text` is empty.
+#program_export
+TraySetStatus :: (text: string) {
+    #if TRAY_WINDOWS {
+        TrayWindowsSetStatus(text)
+    }
+    #if TRAY_GTK {
+        TrayGtkSetStatus(text)
+    }
+}
+
+// An icon file, or "" to look the spec's icon name up again.
+#program_export
+TraySetIcon :: (path: string) {
+    #if TRAY_WINDOWS {
+        TrayWindowsSetIcon(path)
+    }
+    #if TRAY_GTK {
+        TrayGtkSetIcon(path)
+    }
+}
+
+#program_export
+TraySetActivateAction :: (action: s32) {
+    #if TRAY_WINDOWS {
+        TrayWindowsSetActivateAction(action)
+    }
+    #if TRAY_GTK {
+        TrayGtkSetActivateAction(action)
+    }
+}
+
+#program_export
+TrayClose :: () {
+    #if TRAY_WINDOWS {
+        TrayWindowsClose()
+    }
+    #if TRAY_GTK {
+        TrayGtkClose()
+    }
+}
