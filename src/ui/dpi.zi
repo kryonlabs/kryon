@@ -164,7 +164,11 @@ OffscreenDPI :: (state: DPIState, view_width: s32, view_height: s32,
 #program_export
 ScalePixels :: (px: s32, scale: float32) -> s32 {
     if !(scale > 0.0) { scale = 1.0 }
-    return cast(s32)(cast(float32)px * scale + 0.5)
+    // Round half away from zero; a cast truncates toward zero, so adding
+    // 0.5 alone would move every negative offset a pixel right.
+    scaled: float32 = cast(float32)px * scale
+    if scaled < 0.0 { return -cast(s32)(0.5 - scaled) }
+    return cast(s32)(scaled + 0.5)
 }
 
 #program_export

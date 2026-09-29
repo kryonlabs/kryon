@@ -33,7 +33,7 @@ SYNTAX_SOURCE := src/syntax/syntax.zi
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all check plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
+.PHONY: all check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
 .PHONY: plot
@@ -189,6 +189,16 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
 
+# Laws state policy independently of its implementation; `ziran check`
+# proves each over its whole listed domain.
+LAW_MODULES := $(wildcard src/ui/*_laws.zi)
+laws: $(BUILD_DIR)/ziran-toolchain.stamp
+	@for module in $(LAW_MODULES); do \
+		$(ZIRAN_DIR)/build/bin/ziran check --root src/ui $(ZIRAN_STD_PATH) $$module > /dev/null || exit 1; \
+	done
+	@echo "Kryon laws proved: $(words $(LAW_MODULES)) modules"
+	@ZIRAN_BIN=$(ZIRAN_DIR)/build/bin/ziran sh tests/law_mutation_test.sh
+
 source-check:
 	sh tools/check-ziran-source.sh
 	python3 tests/style_role_policy_test.py
@@ -206,7 +216,7 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		--module-path src/kss --module-path src/syntax --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
-check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test
+check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh
