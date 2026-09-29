@@ -27,6 +27,8 @@ DATA_VIEW_SOURCE := $(wildcard src/data_views/*.zi)
 DATA_VIEW_MODULES := $(basename $(notdir $(DATA_VIEW_SOURCE)))
 DATA_VIEW_OBJECTS := $(addprefix $(BUILD_DIR)/data_views/obj/,$(addsuffix .o,$(DATA_VIEW_MODULES)))
 KSS_SOURCE := $(wildcard src/kss/*.zi)
+# Files that kss_parser.zi loads into its module; not modules themselves.
+KSS_PARTS := $(wildcard src/kss/parser/*.zi)
 KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 SYNTAX_SOURCE := src/syntax/syntax.zi
@@ -127,7 +129,7 @@ $(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules
 
 # KSS text parsing, formatting, and installation are opt in. Runtime style
 # resolution stays in core; core modules never import this package.
-$(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
+$(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(KSS_PARTS) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/kss/ir $(BUILD_DIR)/kss/c $(BUILD_DIR)/kss/cpp $(BUILD_DIR)/kss/go $(BUILD_DIR)/kss/obj $(BUILD_DIR)/kss/obj-cpp
 	$(ZI2ZIR_BIN) --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/ir $(KSS_SOURCE)
 	$(ZI2C_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/c $(KSS_SOURCE)
