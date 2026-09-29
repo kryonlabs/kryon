@@ -40,6 +40,10 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     expected: string
     expected_x: s32
     expected_y: s32
+    // The second line starts inside the 24-high box but ends 4 below it,
+    // so it is drawn whole; the third starts below the box and is not.
+    expected_height: float32 = 24.0
+    if texts == 1 { expected_height = 28.0 }
     if texts == 0 {
         expected = "Alpha"
         expected_x = 10
@@ -58,7 +62,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     if value != expected || x != expected_x || y != expected_y ||
         font != 14 || !InkIsExpected(color) ||
         clip.x != 10.0 || clip.y != 20.0 ||
-        clip.width != 50.0 || clip.height != 24.0 { failed = true }
+        clip.width != 50.0 || clip.height != expected_height { failed = true }
     texts += 1
 }
 

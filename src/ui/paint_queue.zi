@@ -39,6 +39,8 @@ PaintCommand :: struct {
     texture: Texture2D
     source: Rectangle
     clip: Rectangle
+    // Shapes are clipped only when set; their clip stays unset otherwise.
+    clip_set: bool
     origin: Vector2
     rotation: float32
     // Queued text is copied into the session's frame text so a caller may
@@ -124,13 +126,173 @@ EmitPaint :: (command: QueuedPaint) {
     }
 }
 
+// Shapes inside a clipping node, such as cards in a scroll view, draw only
+// their visible part. Straight spans become rectangles, and only the rows of
+// a cut corner are drawn one at a time, so no backend clip is needed.
+ShapeVisible :: (command: PaintCommand) -> Rectangle {
+    if !command.clip_set { return command.bounds }
+    visible: Rectangle = RectangleIntersection(command.bounds, command.clip)
+    if visible.width <= 0.0 || visible.height <= 0.0 {
+        return Rectangle.{0.0, 0.0, 0.0, 0.0}
+    }
+    return visible
+}
+
+ShapeWhole :: (command: PaintCommand, visible: Rectangle) -> bool {
+    return visible.x == command.bounds.x && visible.y == command.bounds.y &&
+        visible.width == command.bounds.width &&
+        visible.height == command.bounds.height
+}
+
+ShapeRadius :: (bounds: Rectangle, radius: float32) -> float32 {
+    if radius < 0.0 { radius = 0.0 }
+    if radius > bounds.width * 0.5 { radius = bounds.width * 0.5 }
+    if radius > bounds.height * 0.5 { radius = bounds.height * 0.5 }
+    return radius
+}
+
+ShapeSquareRoot :: (value: float32) -> float32 {
+    if value <= 0.0 { return 0.0 }
+    root: float32 = value
+    if root < 1.0 { root = 1.0 }
+    step: s32 = 0
+    while step < 12 {
+        root = (root + value / root) * 0.5
+        step += 1
+    }
+    return root
+}
+
+// How far a corner of radius r curves in from the edge at distance dy from
+// the corner's center row; zero outside the corner.
+ShapeCornerInset :: (radius: float32, dy: float32) -> float32 {
+    if radius <= 0.0 || dy <= 0.0 { return 0.0 }
+    if dy >= radius { return radius }
+    return radius - ShapeSquareRoot(radius * radius - dy * dy)
+}
+
+FillClippedSpan :: (x0: float32, x1: float32, y: float32, height: float32,
+    visible: Rectangle, color: Color) {
+    left: float32 = x0
+    right: float32 = x1
+    top: float32 = y
+    bottom: float32 = y + height
+    if left < visible.x { left = visible.x }
+    if right > visible.x + visible.width { right = visible.x + visible.width }
+    if top < visible.y { top = visible.y }
+    if bottom > visible.y + visible.height { bottom = visible.y + visible.height }
+    if right <= left || bottom <= top { return }
+    FillRoundedRectangle(Rectangle.{left, top, right - left, bottom - top},
+        0.0, 0, color)
+}
+
+// Spans of a rounded rectangle, or of its outline when width > 0, for the
+// rows from top to bottom, clipped to visible.
+FillShapeRows :: (bounds: Rectangle, radius: float32, width: float32,
+    top: float32, bottom: float32, visible: Rectangle, color: Color) {
+    if top < visible.y { top = visible.y }
+    if bottom > visible.y + visible.height { bottom = visible.y + visible.height }
+    inner_radius: float32 = radius - width
+    if inner_radius < 0.0 { inner_radius = 0.0 }
+    y: float32 = top
+    while y < bottom {
+        height: float32 = 1.0
+        if y + height > bottom { height = bottom - y }
+        center: float32 = y + height * 0.5
+        dy: float32 = bounds.y + radius - center
+        if center > bounds.y + bounds.height * 0.5 {
+            dy = center - (bounds.y + bounds.height - radius)
+        }
+        outer: float32 = ShapeCornerInset(radius, dy)
+        left: float32 = bounds.x + outer
+        right: float32 = bounds.x + bounds.width - outer
+        inside: bool = width > 0.0 && center > bounds.y + width &&
+            center < bounds.y + bounds.height - width
+        if !inside {
+            FillClippedSpan(left, right, y, height, visible, color)
+        } else {
+            inner_dy: float32 = bounds.y + width + inner_radius - center
+            if center > bounds.y + bounds.height * 0.5 {
+                inner_dy = center - (bounds.y + bounds.height - width - inner_radius)
+            }
+            inner: float32 = width + ShapeCornerInset(inner_radius, inner_dy)
+            FillClippedSpan(left, bounds.x + inner, y, height, visible, color)
+            FillClippedSpan(bounds.x + bounds.width - inner, right, y, height,
+                visible, color)
+        }
+        y += height
+    }
+}
+
+FillShapeClipped :: (bounds: Rectangle, radius: float32, width: float32,
+    visible: Rectangle, color: Color) {
+    radius = ShapeRadius(bounds, radius)
+    band: float32 = radius
+    if width > band { band = width }
+    if band > bounds.height * 0.5 { band = bounds.height * 0.5 }
+    middle_top: float32 = bounds.y + band
+    middle_bottom: float32 = bounds.y + bounds.height - band
+    FillShapeRows(bounds, radius, width, bounds.y, middle_top, visible, color)
+    if middle_bottom > middle_top {
+        if width > 0.0 {
+            FillClippedSpan(bounds.x, bounds.x + width, middle_top,
+                middle_bottom - middle_top, visible, color)
+            FillClippedSpan(bounds.x + bounds.width - width,
+                bounds.x + bounds.width, middle_top,
+                middle_bottom - middle_top, visible, color)
+        } else {
+            FillClippedSpan(bounds.x, bounds.x + bounds.width, middle_top,
+                middle_bottom - middle_top, visible, color)
+        }
+    }
+    FillShapeRows(bounds, radius, width, middle_bottom,
+        bounds.y + bounds.height, visible, color)
+}
+
 EmitLine :: (command: PaintCommand) {
+    if command.clip_set {
+        clip: Rectangle = command.clip
+        line: Rectangle = command.bounds
+        if line.width != 0.0 && line.height != 0.0 {
+            // A diagonal line is drawn whole or not at all.
+            if line.x < clip.x || line.y < clip.y ||
+                line.x + line.width > clip.x + clip.width ||
+                line.y + line.height > clip.y + clip.height { return }
+        } else if line.height == 0.0 {
+            if line.y < clip.y || line.y > clip.y + clip.height { return }
+            x0: float32 = line.x
+            x1: float32 = line.x + line.width
+            if x0 < clip.x { x0 = clip.x }
+            if x1 > clip.x + clip.width { x1 = clip.x + clip.width }
+            if x1 <= x0 { return }
+            line.x = x0
+            line.width = x1 - x0
+        } else {
+            if line.x < clip.x || line.x > clip.x + clip.width { return }
+            y0: float32 = line.y
+            y1: float32 = line.y + line.height
+            if y0 < clip.y { y0 = clip.y }
+            if y1 > clip.y + clip.height { y1 = clip.y + clip.height }
+            if y1 <= y0 { return }
+            line.y = y0
+            line.height = y1 - y0
+        }
+        StrokeLine(line, command.color)
+        return
+    }
     StrokeLine(command.bounds, command.color)
 }
 
 EmitRoundedFill :: (command: PaintCommand) {
-    FillRoundedRectangle(command.bounds, command.radius,
-        command.segments, command.color)
+    visible: Rectangle = ShapeVisible(command)
+    if visible.width <= 0.0 { return }
+    if ShapeWhole(command, visible) {
+        FillRoundedRectangle(command.bounds, command.radius,
+            command.segments, command.color)
+        return
+    }
+    FillShapeClipped(command.bounds, command.radius, 0.0, visible,
+        command.color)
 }
 
 GradientChannel :: (first: u8, second: u8, amount: float32) -> u8 {
@@ -162,15 +324,26 @@ EmitVerticalGradient :: (command: PaintCommand) {
         height: float32 = 1.0
         if top + height > bottom { height = bottom - top }
         amount: float32 = (top + height * 0.5 - bounds.y) / bounds.height
-        FillRoundedRectangle(Rectangle.{bounds.x, top, bounds.width, height},
-            0.0, 0, GradientColorAt(command.color, command.end_color, amount))
+        row: Rectangle = Rectangle.{bounds.x, top, bounds.width, height}
+        if command.clip_set { row = RectangleIntersection(row, command.clip) }
+        if row.width > 0.0 && row.height > 0.0 {
+            FillRoundedRectangle(row, 0.0, 0,
+                GradientColorAt(command.color, command.end_color, amount))
+        }
         top += height
     }
 }
 
 EmitRoundedOutline :: (command: PaintCommand) {
-    StrokeRoundedRectangle(command.bounds, command.radius,
-        command.segments, command.line_width, command.color)
+    visible: Rectangle = ShapeVisible(command)
+    if visible.width <= 0.0 { return }
+    if ShapeWhole(command, visible) || command.line_width <= 0.0 {
+        StrokeRoundedRectangle(command.bounds, command.radius,
+            command.segments, command.line_width, command.color)
+        return
+    }
+    FillShapeClipped(command.bounds, command.radius, command.line_width,
+        visible, command.color)
 }
 
 EmitLabel :: (command: PaintCommand) {
@@ -200,6 +373,16 @@ ClipLabel :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
         command.clip = geometry.clip
     } else {
         command.clip = RectangleIntersection(command.clip, geometry.clip)
+    }
+    return command
+}
+
+ClipShape :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
+    if command.clip_set {
+        command.clip = RectangleIntersection(command.clip, geometry.clip)
+    } else {
+        command.clip = geometry.clip
+        command.clip_set = true
     }
     return command
 }
@@ -272,6 +455,9 @@ PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     emit: PaintEmitter = EmitLine
     command.emit = emit
     command.has_emitter = true
+    clip_for: PaintClipper = ClipShape
+    command.clip_for = clip_for
+    command.clips = true
     SubmitPaint(session, command)
 }
 
@@ -298,6 +484,9 @@ PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: flo
     emit: PaintEmitter = EmitRoundedFill
     command.emit = emit
     command.has_emitter = true
+    clip_for: PaintClipper = ClipShape
+    command.clip_for = clip_for
+    command.clips = true
     SubmitPaint(session, command)
 }
 
@@ -315,6 +504,9 @@ PaintVerticalGradient :: (session: Session, node: s32, bounds: Rectangle,
     emit: PaintEmitter = EmitVerticalGradient
     command.emit = emit
     command.has_emitter = true
+    clip_for: PaintClipper = ClipShape
+    command.clip_for = clip_for
+    command.clips = true
     SubmitPaint(session, command)
 }
 
@@ -332,6 +524,9 @@ PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: 
     emit: PaintEmitter = EmitRoundedOutline
     command.emit = emit
     command.has_emitter = true
+    clip_for: PaintClipper = ClipShape
+    command.clip_for = clip_for
+    command.clips = true
     SubmitPaint(session, command)
 }
 
@@ -521,7 +716,8 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     if current.clip.x != previous.data.clip.x ||
     current.clip.y != previous.data.clip.y ||
     current.clip.width != previous.data.clip.width ||
-    current.clip.height != previous.data.clip.height { return false }
+    current.clip.height != previous.data.clip.height ||
+    current.clip_set != previous.data.clip_set { return false }
     if current.origin.x != previous.data.origin.x ||
     current.origin.y != previous.data.origin.y ||
     current.rotation != previous.data.rotation { return false }

@@ -37,6 +37,14 @@ Frame :: () -> s32 {
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Rectangle.{10.0, 10.0, 70.0, 70.0},
         Vector2.{0.0, 0.0}, 0.0, 0.0, ink)
+    // Shapes cut by the clip reach the backend only inside it, and a shape
+    // wholly outside it is not drawn.
+    PaintRoundedFill(TestSession(), child, Rectangle.{30.0, 30.0, 50.0, 50.0},
+        8.0, 12, ink)
+    PaintRoundedOutline(TestSession(), child, Rectangle.{30.0, 30.0, 50.0, 50.0},
+        8.0, 12, 2.0, ink)
+    PaintRoundedFill(TestSession(), child, Rectangle.{62.0, 62.0, 10.0, 10.0},
+        4.0, 12, ink)
     if !TreePushScope(TestSession(), viewport) { return -2 }
     PaintLabel(TestSession(), -1, "Scope", 10, 30, 16, ink)
     TreePopScope(TestSession())
@@ -59,10 +67,15 @@ cat > "$work/native_main.h" <<'C'
 
 static int text_draws;
 static int image_draws;
+static int shape_draws;
 
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     int32_t segments, Color color) {
-    (void)bounds; (void)radius; (void)segments; (void)color; assert(0);
+    (void)segments; (void)color;
+    assert(radius == 0.0f);
+    assert(bounds.x >= 20 && bounds.y >= 20 &&
+           bounds.x + bounds.width <= 60 && bounds.y + bounds.height <= 60);
+    shape_draws++;
 }
 HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
     int32_t segments, float width, Color color) {
@@ -100,7 +113,7 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
 }
 int main(void) {
     assert(Frame() == 42);
-    assert(text_draws == 2 && image_draws == 1);
+    assert(text_draws == 2 && image_draws == 1 && shape_draws == 18);
     return 0;
 }
 C
@@ -124,10 +137,16 @@ for target in c cpp go; do
 package ziran
 import "testing"
 
-type clipHost struct { t *testing.T; texts int; images int }
+type clipHost struct { t *testing.T; texts int; images int; shapes int }
 
 func (h *clipHost) RasterRoundedRectangle(bounds Rectangle,
-    radius float32, segments int32, color Color) { h.t.Fatal("unexpected fill") }
+    radius float32, segments int32, color Color) {
+    if radius != 0 || bounds.X < 20 || bounds.Y < 20 ||
+       bounds.X+bounds.Width > 60 || bounds.Y+bounds.Height > 60 {
+        h.t.Fatal("shape outside clip")
+    }
+    h.shapes++
+}
 func (h *clipHost) RasterRoundedRectangleOutline(bounds Rectangle,
     radius float32, segments int32, width float32,
     color Color) { h.t.Fatal("unexpected outline") }
@@ -159,7 +178,7 @@ func TestClip(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    if App_Frame() != 42 || h.texts != 2 || h.images != 1 {
+    if App_Frame() != 42 || h.texts != 2 || h.images != 1 || h.shapes != 18 {
         t.Fatal("clip paint calls", h.texts, h.images)
     }
 }
