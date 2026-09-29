@@ -315,6 +315,20 @@ FUZZ_COUNT ?= 2000
 fuzz-kss: $(ZIRAN_DIR)/build/bin/ziran
 	@sh tests/kss_fuzz.sh $(FUZZ_SEED) $(FUZZ_COUNT)
 
+# The behavior tests again, with every C and C++ program they build compiled
+# under AddressSanitizer and UndefinedBehaviorSanitizer. The tests call
+# $$CC and $$CXX, so wrappers add the flags to each compile and link.
+SANITIZE_FLAGS := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+.PHONY: sanitize-test
+sanitize-test: $(BUILD_DIR)/ziran-toolchain.stamp
+	mkdir -p build/sanitize
+	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CC)' '$(SANITIZE_FLAGS)' > build/sanitize/cc
+	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CXX)' '$(SANITIZE_FLAGS)' > build/sanitize/c++
+	chmod 755 build/sanitize/cc build/sanitize/c++
+	@CC="$(abspath build/sanitize/cc)" CXX="$(abspath build/sanitize/c++)" \
+		ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 \
+		$(MAKE) --no-print-directory ziran-test
+
 # Directories under build/ that targets and tests write. Anything else there
 # is left from one-off experiments: put those in build/scratch/. clean-scratch
 # removes every other entry that nothing has written to for a day, so a build

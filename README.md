@@ -56,6 +56,15 @@ portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
 serially or `TEST_JOBS=8` on a larger machine. For a quick edit loop, use
 `make test-focus TEST=link_widget`; the filter matches test script names and
 skips the full library rebuild. Test subprocesses have no display access.
+`make test` also fuzzes KSS: `make fuzz-kss FUZZ_SEED=N FUZZ_COUNT=M` runs
+other sheets, and a failing sheet is kept in `build/kss-fuzz/` with a command
+that shrinks it (see [tests/kss_fuzz.zi](tests/kss_fuzz.zi)).
+`make sanitize-test` runs the behavior tests with AddressSanitizer and
+UndefinedBehaviorSanitizer. After editing `styles/kryon/classic.kss`, run
+`make style-packs` to regenerate its embedded module; `make test` fails while
+they differ. Keep one-off experiments in `build/scratch/`;
+`make clean-scratch` removes that and any other `build/` entry that no target
+writes, once it has been idle for a day.
 See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
 contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform

@@ -43,7 +43,10 @@ compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
 portable `.zib` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
 semantic DOM browser applications in private headless Chromium. Desktop,
-raylib, and libdraw package tests run separately on private Xvfb displays.
+raylib, and libdraw package tests run separately on private Xvfb displays;
+CI runs them too. `make fuzz-kss` runs generated and damaged style sheets
+through the KSS parser and formatter, and `make sanitize-test` repeats the
+behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
 [FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what those checks cover.
 
 Ziran's generic capabilities should be added to Ziran and imported here.
