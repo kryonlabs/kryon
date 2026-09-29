@@ -9,8 +9,6 @@ raylib :: #system_library "raylib";
 c :: #system_library "c";
 libm :: #system_library "m";
 HostRaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
-HostRaylibSin :: (value: float32) -> float32 #foreign libm "sinf";
-HostRaylibCos :: (value: float32) -> float32 #foreign libm "cosf";
 
 HostRaylibInitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "InitWindow";
 HostRaylibCloseWindow :: () #foreign raylib "CloseWindow";
@@ -80,14 +78,8 @@ HostRaylibUnloadRenderTexture :: (target: HostRaylibRenderTexture) #foreign rayl
 HostRaylibBeginTextureMode :: (target: HostRaylibRenderTexture) #foreign raylib "BeginTextureMode";
 HostRaylibEndTextureMode :: () #foreign raylib "EndTextureMode";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
+HostRaylibFlushBatch :: () #foreign raylib "rlDrawRenderBatchActive";
 HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
-HostRaylibSetTexture :: (id: u32) #foreign raylib "rlSetTexture";
-HostRaylibBegin :: (mode: s32) #foreign raylib "rlBegin";
-HostRaylibEnd :: () #foreign raylib "rlEnd";
-HostRaylibColor :: (r: u8, g: u8, b: u8, a: u8) #foreign raylib "rlColor4ub";
-HostRaylibTexCoord :: (u: float32, v: float32) #foreign raylib "rlTexCoord2f";
-HostRaylibVertex :: (x: float32, y: float32) #foreign raylib "rlVertex2f";
-HostRaylibCheckBatch :: (vertices: s32) -> bool #foreign raylib "rlCheckRenderBatchLimit";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
 HostRaylibFileExists :: (path: *u8) -> bool #foreign raylib "FileExists";
@@ -580,69 +572,49 @@ RaylibDrawImageClipped :: (texture: Texture2D, source: Rectangle,
         width, height - rounded_rows * 2)
 }
 
-// A texture point for a point of the destination, as DrawTexturePro maps it.
-RaylibImageTexCoord :: (texture: Texture2D, source: Rectangle,
-    destination: Rectangle, x: float32, y: float32) -> Vector2 {
-    u: float32 = source.x + (x - destination.x) / destination.width * source.width
-    v: float32 = source.y + (y - destination.y) / destination.height * source.height
-    return Vector2.{u / cast(float32)texture.width, v / cast(float32)texture.height}
+// Draws the part of an image inside a destination-space rectangle by
+// drawing that rectangle with the matching part of the source: clipping a
+// texture to a sub-rectangle needs no scissor.
+RaylibDrawImagePart :: (texture: Texture2D, source: Rectangle,
+    destination: Rectangle, part: Rectangle, tint: Color) {
+    part = RectangleIntersection(part, destination)
+    if part.width <= 0.0 || part.height <= 0.0 { return }
+    sub: Rectangle
+    sub.x = source.x + (part.x - destination.x) / destination.width * source.width
+    sub.y = source.y + (part.y - destination.y) / destination.height * source.height
+    sub.width = part.width / destination.width * source.width
+    sub.height = part.height / destination.height * source.height
+    HostRaylibDrawTexture(texture, sub, part, Vector2.{0.0, 0.0}, 0.0, tint)
 }
 
-RaylibImageVertex :: (texture: Texture2D, source: Rectangle,
-    destination: Rectangle, x: float32, y: float32) {
-    coord := RaylibImageTexCoord(texture, source, destination, x, y)
-    HostRaylibTexCoord(coord.x, coord.y)
-    HostRaylibVertex(x, y)
-}
-
-// The part of an image inside a rounded clip, drawn as one textured fan of
-// the rounded rectangle. Clipping it with a scissor per row instead flushed
-// the draw batch dozens of times for every rounded image.
+// The part of an image inside a rounded clip, drawn as source-mapped rows:
+// one per corner row and one for the straight middle. Clipping it with a
+// scissor per row instead flushed the draw batch dozens of times for every
+// rounded image.
 RaylibDrawImageRounded :: (texture: Texture2D, source: Rectangle,
     destination: Rectangle, clip: Rectangle, radius: float32, tint: Color) {
     region: Rectangle = RectangleIntersection(clip, destination)
     if region.width <= 0.0 || region.height <= 0.0 { return }
     if radius > region.width * 0.5 { radius = region.width * 0.5 }
     if radius > region.height * 0.5 { radius = region.height * 0.5 }
-    segments: s32 = RaylibCornerSegments(region, radius, 12)
-    points: [52]Vector2
-    count: s32 = 0
-    corner: s32 = 0
-    while corner < 4 {
-        cx: float32 = region.x + radius
-        cy: float32 = region.y + radius
-        if corner == 1 || corner == 2 { cx = region.x + region.width - radius }
-        if corner >= 2 { cy = region.y + region.height - radius }
-        // Top left, top right, bottom right, bottom left, clockwise on screen.
-        start: float32 = 3.14159265 + cast(float32)corner * 1.57079633
-        step: s32 = 0
-        while step <= segments {
-            angle: float32 = start + 1.57079633 * cast(float32)step / cast(float32)segments
-            points[count] = Vector2.{cx + radius * HostRaylibCos(angle),
-                cy + radius * HostRaylibSin(angle)}
-            count += 1
-            step += 1
-        }
-        corner += 1
+    rows: s32 = cast(s32)(radius + 0.5)
+    if rows < 1 { rows = 1 }
+    row_height: float32 = radius / cast(float32)rows
+    row: s32 = 0
+    while row < rows {
+        dy: float32 = radius - (cast(float32)row + 0.5) * row_height
+        inset: float32 = radius - HostRaylibSqrt(radius * radius - dy * dy)
+        top: float32 = region.y + cast(float32)row * row_height
+        bottom: float32 = region.y + region.height - cast(float32)(row + 1) * row_height
+        RaylibDrawImagePart(texture, source, destination,
+            Rectangle.{region.x + inset, top, region.width - inset * 2.0, row_height}, tint)
+        RaylibDrawImagePart(texture, source, destination,
+            Rectangle.{region.x + inset, bottom, region.width - inset * 2.0, row_height}, tint)
+        row += 1
     }
-    center: Vector2 = Vector2.{region.x + region.width * 0.5,
-        region.y + region.height * 0.5}
-    unused HostRaylibCheckBatch(count * 3)
-    HostRaylibSetTexture(texture.id)
-    HostRaylibBegin(4)
-    HostRaylibColor(tint.r, tint.g, tint.b, tint.a)
-    index: s32 = 0
-    while index < count {
-        next: s32 = index + 1
-        if next == count { next = 0 }
-        // raylib culls back faces: triangles run counter-clockwise on screen.
-        RaylibImageVertex(texture, source, destination, center.x, center.y)
-        RaylibImageVertex(texture, source, destination, points[next].x, points[next].y)
-        RaylibImageVertex(texture, source, destination, points[index].x, points[index].y)
-        index += 1
-    }
-    HostRaylibEnd()
-    HostRaylibSetTexture(cast(u32)0)
+    RaylibDrawImagePart(texture, source, destination,
+        Rectangle.{region.x, region.y + radius, region.width,
+            region.height - radius * 2.0}, tint)
 }
 
 RaylibAssetIndex :: (path: string) -> s32 {
@@ -843,6 +815,8 @@ CaptureConfigured :: () -> bool {
     if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return false }
     path: *u8 = HostRaylibGetEnvironment(*name[0])
     if path == null { return false }
+    // The capture reads the framebuffer, so draw what is still batched.
+    HostRaylibFlushBatch()
     HostRaylibTakeScreenshot(path)
     return HostRaylibFileExists(path)
 }
