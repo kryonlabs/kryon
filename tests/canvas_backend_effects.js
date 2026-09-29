@@ -27,6 +27,13 @@ addToLibrary({
     if(!globalThis.canvasTestFailure) globalThis.canvasTestFailure=code;
     globalThis.canvasTestError=globalThis.canvasTestError||('check '+code);
   },
+  // Whether the page's canvas shows this colour at (1, 1) right now.
+  canvas_test_front__sig: 'iiii',
+  canvas_test_front: function(r, g, b) {
+    var dpi=Math.max(1,globalThis.devicePixelRatio||1);
+    var got=document.getElementById('canvas').getContext('2d').getImageData(Math.round(dpi),Math.round(dpi),1,1).data;
+    return got[0]===r && got[1]===g && got[2]===b ? 1 : 0;
+  },
   canvas_test_finish__sig: 'i',
   canvas_test_finish: function() {
     // main's exit code is lost once Asyncify has suspended it (font loading

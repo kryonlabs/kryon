@@ -124,6 +124,11 @@ PageListener :: struct {
 page_names: PageNames;
 page_canvas: s32;
 page_ctx: s32;
+// Frames are drawn into a back canvas and copied to the page's canvas when
+// they end, so the page never shows a frame that is only partly drawn, for
+// instance while the application awaits an image decode or storage.
+page_back_canvas: s32;
+page_front_ctx: s32;
 page_created_canvas: bool;
 page_open: bool;
 page_closed: bool;
@@ -466,11 +471,45 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         WebSet(canvas, page_names.width, WebNumber(cast(float64)page_render_width))
         WebSet(canvas, page_names.height, WebNumber(cast(float64)page_render_height))
     }
-    context: s32 = PageContext2D(canvas)
+    front: s32 = PageContext2D(canvas)
+    if front != 0 {
+        if page_front_ctx != 0 { WebRelease(page_front_ctx) }
+        page_front_ctx = WebKeep(front)
+    }
+    if page_back_canvas == 0 {
+        back: s32 = PageMakeCanvas(page_render_width, page_render_height)
+        if back != 0 { page_back_canvas = WebKeep(back) }
+    } else if cast(s32)WebGetNumber(page_back_canvas, page_names.width) != page_render_width ||
+        cast(s32)WebGetNumber(page_back_canvas, page_names.height) != page_render_height {
+        WebSet(page_back_canvas, page_names.width, WebNumber(cast(float64)page_render_width))
+        WebSet(page_back_canvas, page_names.height, WebNumber(cast(float64)page_render_height))
+    }
+    context: s32 = front
+    if page_back_canvas != 0 { context = PageContext2D(page_back_canvas) }
     if context != 0 {
         if page_ctx != 0 { WebRelease(page_ctx) }
         page_ctx = WebKeep(context)
     }
+    WebEnd(scope)
+}
+
+// Shows the frame drawn so far by copying the back canvas to the page.
+PagePresent :: () {
+    if !PageIsOpen() || page_back_canvas == 0 || page_front_ctx == 0 { return }
+    scope: s32 = WebScope()
+    unused WebCall0(page_front_ctx, page_names.save)
+    args: [6]WebValue
+    args[0] = WebNumber(1.0)
+    args[1] = WebNumber(0.0)
+    args[2] = WebNumber(0.0)
+    args[3] = WebNumber(1.0)
+    args[4] = WebNumber(0.0)
+    args[5] = WebNumber(0.0)
+    unused WebCall(page_front_ctx, page_names.set_transform, *args[0], 6)
+    WebSet(page_front_ctx, WebName("globalCompositeOperation"), WebText("copy"))
+    unused WebCall3(page_front_ctx, WebName("drawImage"), WebObject(page_back_canvas),
+        WebNumber(0.0), WebNumber(0.0))
+    unused WebCall0(page_front_ctx, page_names.restore)
     WebEnd(scope)
 }
 
@@ -592,6 +631,8 @@ PageBoot :: (width: s32, height: s32, title: string) {
     page_raster_clips = 0
     page_created_canvas = false
     page_ctx = 0
+    page_front_ctx = 0
+    page_back_canvas = 0
     document: s32 = PageDocument()
     canvas: s32 = 0
     if document != 0 {
@@ -670,6 +711,7 @@ PageRequestClose :: () {
 }
 
 PageFrame :: () {
+    PagePresent()
     page_frames += 1
 }
 
@@ -703,6 +745,14 @@ PageClose :: () {
     if page_ctx != 0 {
         WebRelease(page_ctx)
         page_ctx = 0
+    }
+    if page_front_ctx != 0 {
+        WebRelease(page_front_ctx)
+        page_front_ctx = 0
+    }
+    if page_back_canvas != 0 {
+        WebRelease(page_back_canvas)
+        page_back_canvas = 0
     }
     if page_created_canvas && page_canvas != 0 {
         holder: s32 = WebGetObject(page_canvas, page_names.parent_node)
