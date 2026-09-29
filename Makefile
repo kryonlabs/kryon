@@ -234,6 +234,10 @@ canvas-test: web-js-boundary-test canvas-events-test dom-spec-test canvas-audio-
 canvas-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_project_test.py
 
+.PHONY: page-route-project-test
+page-route-project-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/page_route_project_test.py
+
 .PHONY: dom-project-test
 dom-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/dom_project_test.py
@@ -281,7 +285,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 libdraw-native-plan9-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
-test: check canvas-test canvas-project-test dom-project-test typeface-source-test
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test
 
 clean:
 	rm -rf $(BUILD_DIR)

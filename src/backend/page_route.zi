@@ -1,0 +1,170 @@
+// The browser location as an application route: the path, the hash, and a
+// version that changes whenever either does. The getters read the page each
+// time, so back and forward navigation and hash edits show up without page
+// listeners. Pushing or replacing a route writes the browser history and the
+// stored route together.
+#import "web"
+#import "byte_text_linux"
+
+PAGE_ROUTE_MAX :: 2049
+
+page_route_path: [PAGE_ROUTE_MAX]u8;
+page_route_hash: [PAGE_ROUTE_MAX]u8;
+page_route_version: s32;
+page_route_started: bool;
+
+PageRouteCopy :: (destination: []u8, source: []u8) {
+    index: s32 = 0
+    while index + 1 < cast(s32)destination.count && source[index] != cast(u8)0 {
+        destination[index] = source[index]
+        index += 1
+    }
+    destination[index] = cast(u8)0
+}
+
+PageRouteSame :: (first: []u8, second: []u8) -> bool {
+    index: s32 = 0
+    while first[index] == second[index] {
+        if first[index] == cast(u8)0 { return true }
+        index += 1
+    }
+    return false
+}
+
+PageRouteReadText :: (value: WebValue, buffer: []u8) {
+    buffer[0] = cast(u8)0
+    if value.tag == WebStringTag {
+        unused WebCopyString(WebAsObject(value), buffer)
+    }
+}
+
+// Reads the page's pathname and hash. False outside a page with a location.
+PageRouteRead :: (path: []u8, hash: []u8) -> bool {
+    scope: s32 = WebScope()
+    found: bool = false
+    location: s32 = WebGetObject(WebGlobal, WebName("location"))
+    if location != 0 && !WebFailed() {
+        PageRouteReadText(WebGet(location, WebName("pathname")), path)
+        PageRouteReadText(WebGet(location, WebName("hash")), hash)
+        found = true
+    }
+    WebEnd(scope)
+    return found
+}
+
+PageRouteSync :: () {
+    path: [PAGE_ROUTE_MAX]u8
+    hash: [PAGE_ROUTE_MAX]u8
+    if !PageRouteRead(path[:], hash[:]) {
+        if !page_route_started {
+            page_route_path[0] = cast(u8)47
+            page_route_path[1] = cast(u8)0
+            page_route_hash[0] = cast(u8)0
+            page_route_started = true
+        }
+        return
+    }
+    if path[0] == cast(u8)0 {
+        path[0] = cast(u8)47
+        path[1] = cast(u8)0
+    }
+    if !page_route_started || !PageRouteSame(path[:], page_route_path[:]) ||
+       !PageRouteSame(hash[:], page_route_hash[:]) {
+        PageRouteCopy(page_route_path[:], path[:])
+        PageRouteCopy(page_route_hash[:], hash[:])
+        page_route_version += 1
+        page_route_started = true
+    }
+}
+
+// Sets the browser history entry to `target` (a path with an optional hash)
+// and stores it as the current route.
+PageRouteUpdate :: (target: *u8, replace: bool) {
+    if target == null { return }
+    text: string = TextFromCString(target)
+    path: [PAGE_ROUTE_MAX]u8
+    hash: [PAGE_ROUTE_MAX]u8
+    path_length: s32 = 0
+    hash_length: s32 = 0
+    in_hash: bool = false
+    index: s32 = 0
+    while index < cast(s32)text.count && index < PAGE_ROUTE_MAX - 1 {
+        byte: u8 = text[index]
+        if byte == cast(u8)35 { in_hash = true }
+        if in_hash {
+            hash[hash_length] = byte
+            hash_length += 1
+        } else {
+            path[path_length] = byte
+            path_length += 1
+        }
+        index += 1
+    }
+    if path_length == 0 {
+        path[0] = cast(u8)47
+        path_length = 1
+    }
+    path[path_length] = cast(u8)0
+    hash[hash_length] = cast(u8)0
+
+    url: [PAGE_ROUTE_MAX * 2]u8
+    length: s32 = 0
+    index = 0
+    while path[index] != cast(u8)0 {
+        url[length] = path[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while hash[index] != cast(u8)0 {
+        url[length] = hash[index]
+        length += 1
+        index += 1
+    }
+    url[length] = cast(u8)0
+
+    scope: s32 = WebScope()
+    history: s32 = WebGetObject(WebGlobal, WebName("history"))
+    if history != 0 && !WebFailed() {
+        arguments: [3]WebValue
+        arguments[0] = WebNull()
+        arguments[1] = WebText("")
+        arguments[2] = WebText(TextFromCString(*url[0]))
+        unused WebCall(history,
+            WebName(ifx replace then "replaceState" else "pushState"),
+            *arguments[0], 3)
+    }
+    WebEnd(scope)
+    PageRouteCopy(page_route_path[:], path[:])
+    PageRouteCopy(page_route_hash[:], hash[:])
+    page_route_version += 1
+    page_route_started = true
+}
+
+#program_export
+GetRoutePath :: () -> *u8 {
+    PageRouteSync()
+    return *page_route_path[0]
+}
+
+#program_export
+GetRouteHash :: () -> *u8 {
+    PageRouteSync()
+    return *page_route_hash[0]
+}
+
+#program_export
+GetRouteVersion :: () -> s32 {
+    PageRouteSync()
+    return page_route_version
+}
+
+#program_export
+PushRoute :: (path: *u8) {
+    PageRouteUpdate(path, false)
+}
+
+#program_export
+ReplaceRoute :: (path: *u8) {
+    PageRouteUpdate(path, true)
+}
