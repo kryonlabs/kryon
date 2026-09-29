@@ -1,0 +1,3 @@
+@pack corpus;
+@import <base>;
+Button { gap: 1; }

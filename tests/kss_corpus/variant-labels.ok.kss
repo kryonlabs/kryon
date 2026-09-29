@@ -1,0 +1,5 @@
+@pack corpus;
+@variant e "{" { Button { gap: 1; } }
+@variant f "a; b" { Button { gap: 2; } }
+@variant g "close }" { Button { gap: 3; } }
+@variant h "/* not a comment" { Button { gap: 4; } }

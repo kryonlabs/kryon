@@ -283,6 +283,15 @@ tray-test: $(ZI2C_BIN)
 $(ZIRAN_DIR)/build/bin/ziran:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
+# Generated and damaged style sheets through the KSS parser, the rule table,
+# and the formatter, built with AddressSanitizer and UndefinedBehaviorSanitizer.
+# The same seed makes the same sheets; see tests/kss_fuzz.zi.
+FUZZ_SEED ?= 1
+FUZZ_COUNT ?= 2000
+.PHONY: fuzz-kss
+fuzz-kss: $(ZIRAN_DIR)/build/bin/ziran
+	@sh tests/kss_fuzz.sh $(FUZZ_SEED) $(FUZZ_COUNT)
+
 .PHONY: plan9-c
 plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.stamp
 	rm -rf $(PLAN9_DIR)
@@ -295,7 +304,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 libdraw-native-plan9-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test fuzz-kss
 
 clean:
 	rm -rf $(BUILD_DIR)
