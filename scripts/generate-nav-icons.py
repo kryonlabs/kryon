@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Kryon navigation SVG sources and raster atlas entries."""
+"""Generate SVG sources and atlas entries for Kryon's own drawn UI icons."""
 
 from __future__ import annotations
 
@@ -48,6 +48,13 @@ SVG_SOURCES = {
   <g fill="none" stroke="white" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M32 13l4 5 7-1 2 7 6 4-4 6 2 7-7 3-3 7-7-2-7 2-3-7-7-3 2-7-4-6 6-4 2-7 7 1z"/>
     <circle cx="32" cy="32" r="7.5"/>
+  </g>
+</svg>
+""",
+    "expand": """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="none" stroke="white" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M37 15h12v12M49 15 37 27"/>
+    <path d="M27 49H15V37M15 49l12-12"/>
   </g>
 </svg>
 """,
@@ -129,11 +136,29 @@ def draw_settings(draw: ImageDraw.ImageDraw) -> None:
     draw.ellipse([24.5 * SCALE, 24.5 * SCALE, 39.5 * SCALE, 39.5 * SCALE], outline=(255, 255, 255, 255), width=w)
 
 
+def draw_expand(draw: ImageDraw.ImageDraw) -> None:
+    w = 4.4
+    draw_path(draw, [(37, 15), (49, 15), (49, 27)], w)
+    draw_path(draw, [(49, 15), (37, 27)], w)
+    draw_path(draw, [(27, 49), (15, 49), (15, 37)], w)
+    draw_path(draw, [(15, 49), (27, 37)], w)
+
+
 DRAWERS = {
     "nav_list": draw_list,
     "nav_habits": draw_habits,
     "nav_practice": draw_practice,
     "nav_settings": draw_settings,
+    "expand": draw_expand,
+}
+
+# IconType values in src/ui/icon.zi; applications persist them.
+ICON_IDS = {
+    "nav_habits": 31,
+    "nav_list": 32,
+    "nav_practice": 33,
+    "nav_settings": 34,
+    "expand": 127,
 }
 
 
@@ -184,6 +209,7 @@ def main() -> None:
             "width": SIZE,
             "height": SIZE,
             "upstream": f"generated/nav/{name}.svg",
+            "id": ICON_IDS[name],
         })
 
     icons.sort(key=lambda icon: (icon["y"], icon["x"], icon["name"]))

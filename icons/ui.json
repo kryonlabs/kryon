@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sheet": "ui",
-  "icon_count": 61,
+  "icon_count": 62,
   "image": "ui.png",
   "cell_size": 64,
   "content_size": 48,
@@ -619,6 +619,16 @@
       "height": 64,
       "upstream": "generated/nav/nav_settings.svg",
       "id": 34
+    },
+    {
+      "index": 61,
+      "name": "expand",
+      "x": 320,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "generated/nav/expand.svg",
+      "id": 127
     }
   ],
   "style": "mingcute-core",
