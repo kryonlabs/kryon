@@ -91,6 +91,11 @@ main :: () -> s32 {
     }
     TestCameraEnd()
     TestHostEndScissor()
+    // A rounded image draws inside its rounded corners and not past them.
+    RasterImage("red.png", 0, Rectangle.{0.0, 0.0, 16.0, 16.0},
+        Rectangle.{270.0, 10.0, 40.0, 40.0},
+        Rectangle.{270.0, 10.0, 40.0, 40.0},
+        Vector2.{0.0, 0.0}, 0.0, 20.0, Color.{255, 255, 255, 255})
     // Text wider than its clip is still cut at the clip edge.
     RasterTextClipped("WWWWWWWWWW", 10, 215, 16, Color.{255, 255, 255, 255},
         Rectangle.{10.0, 215.0, 24.0, 20.0})
@@ -137,6 +142,11 @@ main :: () -> s32 {
     }
     if inside_pixels < 10 || outside_pixels != 0 {
         result = 8
+    }
+    if !RedAt(capture, 290, 30) || !RedAt(capture, 272, 30) ||
+        !RedAt(capture, 290, 48) || !BlackAt(capture, 272, 12) ||
+        !BlackAt(capture, 308, 48) {
+        result = 9
     }
     TestImageFree(capture)
     TestHostCloseWindow()
