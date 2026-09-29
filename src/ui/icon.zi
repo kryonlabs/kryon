@@ -130,6 +130,7 @@ IconType :: enum {
     IconPfpCat :: 124
     IconPfpTurtle :: 125
     IconPfpMoon :: 126
+    IconExpand :: 127
 }
 
 // Icon IDs are stable across releases because applications persist them.
@@ -211,6 +212,10 @@ ImageForIcon :: (icon_type: s32, bounds: Rectangle,
         image.asset_path = "icons/pfp.png"
         index = icon_type - 99
         columns = 5
+    } else if icon_type == 127 {
+        image.asset_path = "icons/ui.png"
+        index = 61
+        columns = 8
     }
     if index >= 0 {
         image.source = Rectangle.{cast(float32)((index % columns) * 64),

@@ -25,7 +25,8 @@ main :: () -> s32 {
     if !Check(117, "icons/ui.png", 0.0, 448.0) { return 8 }
     if !Check(124, "icons/pfp.png", 0.0, 320.0) { return 9 }
     if !Check(126, "icons/pfp.png", 128.0, 320.0) { return 10 }
-    missing := ImageForIcon(127, Rectangle.{}, "missing")
+    if !Check(cast(s32)IconExpand, "icons/ui.png", 320.0, 448.0) { return 12 }
+    missing := ImageForIcon(128, Rectangle.{}, "missing")
     if missing.asset_path != "" { return 11 }
     return 0
 }
