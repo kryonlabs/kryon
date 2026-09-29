@@ -20,19 +20,11 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE)))
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
-KSS_SOURCE := $(wildcard src/kss/*.zi)
-# Files that kss_parser.zi loads into its module; not modules themselves.
-KSS_PARTS := $(wildcard src/kss/parser/*.zi)
-KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
-KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
 .PHONY: all check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a
-
-.PHONY: kss
-kss: $(BUILD_DIR)/libkryon_kss.a
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
@@ -78,23 +70,6 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 	rm -f $@
 	$(AR) rcs $@ $(OBJECTS)
 
-# KSS text parsing, formatting, and installation are opt in. Runtime style
-# resolution stays in core; core modules never import this package.
-$(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(KSS_PARTS) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/kss/ir $(BUILD_DIR)/kss/c $(BUILD_DIR)/kss/cpp $(BUILD_DIR)/kss/go $(BUILD_DIR)/kss/obj $(BUILD_DIR)/kss/obj-cpp
-	$(ZI2ZIR_BIN) --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/ir $(KSS_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/c $(KSS_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/cpp $(KSS_SOURCE)
-	rm -f $(BUILD_DIR)/kss/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/kss --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/kss/go $(KSS_SOURCE)
-	@for module in $(KSS_MODULES); do \
-		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/c -c $(BUILD_DIR)/kss/c/$$module.c -o $(BUILD_DIR)/kss/obj/$$module.o || exit 1; \
-		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/kss/cpp -c $(BUILD_DIR)/kss/cpp/$$module.cpp -o $(BUILD_DIR)/kss/obj-cpp/$$module.o || exit 1; \
-	done
-	cd $(BUILD_DIR)/kss/go && GO111MODULE=off go test .
-	rm -f $@
-	$(AR) rcs $@ $(KSS_OBJECTS)
-
 TEST_JOBS ?= 4
 TEST ?=
 # The tests run the ziran command and link libziran.a; build them first.
@@ -126,7 +101,6 @@ project-test: project-toolchain build/bin/kryon
 	$(ZIRAN_DIR)/build/bin/ziran build --target=go --root tests \
 		--module-path src/project -o build/project/go tests/project_options_test.zi
 	cd build/project/go && GO111MODULE=off go test .
-	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
 
@@ -151,10 +125,8 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
 	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/kss --module-path src/ui $(ZIRAN_STD_PATH) \
-		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
-check: all kss ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
+check: all ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh
@@ -221,36 +193,6 @@ tray-test: $(ZI2C_BIN)
 $(ZIRAN_DIR)/build/bin/ziran:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-# Style packs apps can install without the .kss file. Their modules are
-# committed, because apps import Kryon as a package without running this
-# Makefile; style-pack-check fails when a module no longer matches its pack.
-STYLE_PACKS := classic
-STYLE_PACK_TOOL := build/tools/style_pack_module
-
-$(STYLE_PACK_TOOL): tools/style_pack_module.zi $(ZIRAN_DIR)/build/bin/ziran
-	rm -rf $@-c
-	mkdir -p $(dir $@)
-	$(ZIRAN_BIN) build --target=c --root tools $(ZIRAN_STD_PATH) \
-		--entry style_pack_module:main -o $@-c tools/style_pack_module.zi
-	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) -I$@-c $@-c/*.c -o $@
-
-.PHONY: style-packs style-pack-check
-style-packs: $(STYLE_PACK_TOOL)
-	@for pack in $(STYLE_PACKS); do $(STYLE_PACK_TOOL) write $$pack || exit 1; done
-
-style-pack-check: $(STYLE_PACK_TOOL)
-	@for pack in $(STYLE_PACKS); do $(STYLE_PACK_TOOL) check $$pack || exit 1; done
-	@echo "Style pack modules match: $(STYLE_PACKS)"
-
-# Generated and damaged style sheets through the KSS parser, the rule table,
-# and the formatter, built with AddressSanitizer and UndefinedBehaviorSanitizer.
-# The same seed makes the same sheets; see tests/kss_fuzz.zi.
-FUZZ_SEED ?= 1
-FUZZ_COUNT ?= 2000
-.PHONY: fuzz-kss
-fuzz-kss: $(ZIRAN_DIR)/build/bin/ziran
-	@sh tests/kss_fuzz.sh $(FUZZ_SEED) $(FUZZ_COUNT)
-
 # The behavior tests again, with every C and C++ program they build compiled
 # under AddressSanitizer and UndefinedBehaviorSanitizer. The tests call
 # $$CC and $$CXX, so wrappers add the flags to each compile and link.
@@ -270,7 +212,7 @@ sanitize-test: $(BUILD_DIR)/ziran-toolchain.stamp
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin plan9 tools test examples kss-fuzz sanitize raylib-ziran \
+BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran \
 	emscripten-cache android-surface-check text-input-platform-test
 .PHONY: clean-scratch
 clean-scratch:
@@ -297,7 +239,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 libdraw-native-plan9-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test style-pack-check fuzz-kss
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -22,7 +22,6 @@ li{margin:.25rem 0}
 <table>
 <tr><th>Package</th><th>Ziran source</th><th>Native code generation</th><th>Package verification</th></tr>
 <tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ <code>.zi</code> modules listed in <code>modules.txt</code> and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zib</code> behavior tests</td></tr>
-<tr><td class="">KSS (<code>src/kss</code>)</td><td class="ok">✅ optional <code>.zi</code> package</td><td class="ok">✅ C, C++, and Go generation in <code>make kss</code></td><td class="ok">✅ imported by the terminal package project test</td></tr>
 </table>
 <p>The generated C archive is a build output of Ziran source. Behavior tests use Ziran hosts in <code>tests/*_host.zi</code>. Code generation verifies that a module lowers for a target; it does not prove that every native host runs on that target.</p>
 <h2>Application hosts</h2>

@@ -35,8 +35,6 @@ the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
   top-level `build/` directories. `make clean-scratch` removes scratch output
   that has been idle for a day; `BUILD_OUTPUTS` in the Makefile lists the
   directories that targets and tests own.
-- After editing `styles/kryon/classic.kss`, run `make style-packs` and commit
-  the regenerated `src/kss/style_pack_classic.zi` with it.
 - Use direct domain names for APIs. Do not restore the removed KIR compiler,
   `.kry` runtime, or `.krb` loader as compatibility paths.
 

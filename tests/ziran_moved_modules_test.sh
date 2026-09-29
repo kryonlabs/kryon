@@ -17,7 +17,6 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "frame_pacing"
 #import "geometry"
 #import "input_props"
-#import "kss_parser"
 #import "list_box"
 #import "menu"
 #import "page"
@@ -135,7 +134,6 @@ Answer :: () -> s32 {
         2.0, 1.0, 1.0) { return 0 }
     if TextDoubleClickShouldSelectLine(true, false, 1.0, 1.2,
         2.0, 1.0, 1.0) { return 0 }
-    if !KssCSSNeedsPixels("width") { return 0 }
     if ButtonActionEnabled(true, false) { return 0 }
     if ButtonArrowGlyph(cast(ArrowDirection)ArrowRight) != 62 { return 0 }
     sample: Activation
@@ -163,13 +161,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/kss" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_moved.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/kss" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_moved.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/use_moved.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/kss" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry use_moved:Answer -o "$work/source.zib" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_moved:Answer -o "$work/ir.zib" "$work/ir/use_moved.zir"

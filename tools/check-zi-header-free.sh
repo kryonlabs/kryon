@@ -19,9 +19,3 @@ while IFS= read -r module; do
     fi
 done < "$repo/src/ui/modules.txt"
 
-for source in "$repo"/src/kss/*.zi; do
-    if rg -n '#import[[:space:]]+"[^\"]+\.h"' "$source"; then
-        echo "optional Ziran module imports a C header: $source" >&2
-        exit 1
-    fi
-done
