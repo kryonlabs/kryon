@@ -114,9 +114,23 @@ PaintTextLines :: (session: Session, node: s32, props: TextProps,
             line.end - line.start)
         x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
             cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
+        // A line that starts inside the box is drawn whole: a box a little
+        // shorter than the line must not cut off the bottoms of its glyphs.
+        // Lines that start below the box are still clipped away.
+        clip: Rectangle = prepared.bounds
+        if cast(float32)y < clip.y + clip.height {
+            if cast(float32)y < clip.y {
+                clip.height += clip.y - cast(float32)y
+                clip.y = cast(float32)y
+            }
+            line_bottom: float32 = cast(float32)(y + prepared.line_height)
+            if line_bottom > clip.y + clip.height {
+                clip.height = line_bottom - clip.y
+            }
+        }
         if value != "" {
             PaintClippedLabel(session, node, value, x, y, prepared.font,
-                prepared.color, prepared.bounds)
+                prepared.color, clip)
             if props.strikethrough {
                 strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
                     cast(float32)y, cast(float32)line.width,
