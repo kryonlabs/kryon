@@ -91,6 +91,9 @@ main :: () -> s32 {
     }
     TestCameraEnd()
     TestHostEndScissor()
+    // Text wider than its clip is still cut at the clip edge.
+    RasterTextClipped("WWWWWWWWWW", 10, 215, 16, Color.{255, 255, 255, 255},
+        Rectangle.{10.0, 215.0, 24.0, 20.0})
     TestHostEndDrawing()
     capture := TestCapture()
     result: s32 = 0
@@ -117,6 +120,23 @@ main :: () -> s32 {
     }
     if text_pixels < 20 {
         result = 7
+    }
+    inside_pixels: s32 = 0
+    outside_pixels: s32 = 0
+    y = 215
+    while y < 235 {
+        x: s32 = 10
+        while x < 140 {
+            color := TestImageColor(capture, x, y)
+            if color.r > 200 && color.g > 200 && color.b > 200 {
+                if x < 34 { inside_pixels += 1 } else { outside_pixels += 1 }
+            }
+            x += 1
+        }
+        y += 1
+    }
+    if inside_pixels < 10 || outside_pixels != 0 {
+        result = 8
     }
     TestImageFree(capture)
     TestHostCloseWindow()
