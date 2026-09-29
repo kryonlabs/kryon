@@ -52,9 +52,9 @@ tokens {
     space.5: 20;
     pad.control-y: 10;
     pad.field-y: 9;
-    font.sm: 14;
-    font.md: 16;
-    font.lg: 18;
+    font.sm: 15;
+    font.md: 18;
+    font.lg: 20;
     icon.md: 20;
   }
   material {
@@ -115,10 +115,10 @@ Canvas {
 }
 
 Card {
-  background: card;
+  background: surface;
   foreground: text;
-  border: divider;
-  radius: radius.md;
+  border: border;
+  radius: 16;
   border-width: border;
   padding-x: 18;
   padding-y: space.4;
@@ -129,14 +129,14 @@ Card {
 Image {
   font-size: font.md;
   icon-size: icon.md;
-  background: surface;
+  background: transparent;
   foreground: #ffffff;
-  border: border-soft;
+  border: transparent;
   focus: focus;
-  radius: radius.md;
-  border-width: border;
+  radius: 0;
+  border-width: border.none;
   opacity: 1;
-  material: default;
+  material: Flat;
 }
 
 Image[role=Label] {
@@ -189,13 +189,13 @@ Focus[role=Label]:focus {
 NavigationBar {
   background: surface;
   foreground: text;
-  border: border-soft;
-  radius: radius.lg;
-  border-width: border;
-  padding-x: space.4;
-  padding-y: space.3;
+  border: transparent;
+  radius: 0;
+  border-width: border.none;
+  padding-x: 0;
+  padding-y: 0;
   gap: space.3;
-  icon-size: 86;
+  icon-size: 80;
   offset-x: 96;
   offset-y: 56;
   opacity: 1;
@@ -233,17 +233,17 @@ NavigationBar[role=Divider] {
 
 NavigationBarItem {
   background: transparent;
-  foreground: muted;
+  foreground: text;
   border: transparent;
   focus: focus;
-  radius: radius.lg;
+  radius: 16;
   border-width: border.none;
   padding-x: 3;
-  padding-y: 2;
+  padding-y: 12;
   gap: 4;
-  font-size: font.sm;
-  icon-size: 32;
-  offset-x: 16;
+  font-size: font.md;
+  icon-size: 24;
+  offset-x: 8;
   opacity: 1;
   material: default;
 }
@@ -251,12 +251,16 @@ NavigationBarItem {
 NavigationBarItem:hover {
   background: panel;
   foreground: text;
+  padding-x: 64;
+  padding-y: 32;
 }
 
 NavigationBarItem:selected {
   background: accent;
   foreground: accent-ink;
   border: accent;
+  padding-x: 64;
+  padding-y: 32;
 }
 
 NavigationBarItem:disabled {
@@ -960,11 +964,11 @@ TitleBar {
 }
 
 TitleBar[role=Bar] {
-  background: surface;
+  background: canvas;
   foreground: text;
   border: border-soft;
   radius: 0;
-  border-width: border;
+  border-width: border.none;
   padding-x: 12;
   gap: 4;
   icon-size: 32;
@@ -985,19 +989,19 @@ TitleBar[role=Title] {
 }
 
 TitleBar[role=Action] {
-  background: transparent;
+  background: panel;
   foreground: text;
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
-  icon-size: 20;
+  icon-size: 24;
   padding-x: 10;
   opacity: 1;
   material: default;
 }
 
 TitleBar[role=Action]:hover {
-  background: panel;
+  background: panel-hover;
 }
 
 TitleBar[role=Action]:pressed {
@@ -1415,6 +1419,10 @@ Text {
   foreground: text;
   font-size: font.md;
   opacity: 1;
+}
+
+Text.muted {
+  foreground: muted;
 }
 
 Page {

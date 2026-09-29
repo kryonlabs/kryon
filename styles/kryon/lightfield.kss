@@ -133,15 +133,14 @@ Card {
 Image {
   font-size: font.md;
   icon-size: icon;
-  background: card;
-  background-end: card-end;
+  background: #00000000;
   foreground: #ffffff;
-  border: card-border;
+  border: #00000000;
   focus: focus;
-  radius: radius;
-  border-width: border;
+  radius: 0;
+  border-width: 0;
   opacity: 1;
-  material: premium;
+  material: Flat;
 }
 
 Image[role=Label] {

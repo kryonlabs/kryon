@@ -379,7 +379,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint {
     height: s32 = spec.height
     if height <= 0 {
         height = NavigationBarMetric(spec.bar.value.fields,
-            cast(u32)StyleIconSize, spec.bar.value.icon_size, 86.0, scale, false)
+            cast(u32)StyleIconSize, spec.bar.value.icon_size, 80.0, scale, false)
     }
     bottom_margin: s32 = spec.bottom_margin
     if bottom_margin < 0 {
@@ -437,7 +437,8 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint {
 NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemPaint {
     paint: NavigationBarItemPaint
     scale: float32 = 1.0
-    if spec.bar.height > 0 { scale = cast(float32)spec.bar.height / 86.0 }
+    // Item metrics are specified for Material's 80-unit bar.
+    if spec.bar.height > 0 { scale = cast(float32)spec.bar.height / 80.0 }
     index: s32 = spec.index
     if index < 0 { index = 0 }
     x: s32 = spec.bar.start_x + index * spec.bar.tab_width
@@ -503,7 +504,10 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.icon_color = spec.base.value.foreground
     paint.text_color = spec.base.value.foreground
     if spec.active {
+        // The icon sits on the indicator; the label beneath it reads as
+        // selected in the bar's own text color.
         paint.icon_color = paint.face.value.foreground
+        paint.text_color = spec.bar.bar.value.foreground
     }
     if !spec.active {
         paint.face.value.opacity = 0.45

@@ -65,6 +65,11 @@ Frame :: () -> s32 {
     props.view_width = 300
     props.view_height = 180
     props.height = 80
+    if NavigationBarHeight(props) != 80 { return -30 }
+    themed: NavigationBarProps = props
+    themed.height = 0
+    // Without an explicit height the bar takes the theme's.
+    if NavigationBarHeight(themed) != 32 { return -31 }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 180.0})
     result: NavigationBarResult = NavigationBar(TestSession(), props,
         items[0:3])
