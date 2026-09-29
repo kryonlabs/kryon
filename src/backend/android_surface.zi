@@ -38,6 +38,15 @@ ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #def
 raylib :: #system_library "raylib";
 SurfaceScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
 SurfaceScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
+SurfaceColor :: struct {
+    r: u8
+    g: u8
+    b: u8
+    a: u8
+}
+SurfaceClear :: (color: SurfaceColor) #foreign raylib "ClearBackground";
+SurfaceFill :: (x: s32, y: s32, width: s32, height: s32,
+    color: SurfaceColor) #foreign raylib "DrawRectangle";
 
 surface_width: s32;
 surface_height: s32;
@@ -342,4 +351,23 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     height: s32
     SyncAndroidSurfaceSize(*width, *height)
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
+}
+
+// Android draws the status and navigation bars light over whatever the app
+// leaves behind them, so the strips outside the viewport are black. The
+// viewport itself takes the app's canvas color, given as 0xRRGGBBAA.
+#program_export
+ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32) {
+    fill := SurfaceColor.{cast(u8)(canvas >> 24), cast(u8)(canvas >> 16),
+        cast(u8)(canvas >> 8), cast(u8)canvas}
+    width: s32
+    height: s32
+    GetAndroidSurfaceSize(*width, *height)
+    if viewport.x <= 0 && viewport.y <= 0 && viewport.width >= width &&
+        viewport.height >= height {
+        SurfaceClear(fill)
+        return
+    }
+    SurfaceClear(SurfaceColor.{0, 0, 0, 255})
+    SurfaceFill(viewport.x, viewport.y, viewport.width, viewport.height, fill)
 }
