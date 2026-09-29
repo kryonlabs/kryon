@@ -25,25 +25,19 @@ source headers. Hosts provide declared
 effects such as raster lines, and `CompositionQueue` carries raw IME events to
 the checked text widgets.
 
-Plot lives in the optional `src/plot/` package. `make plot` builds
-`build/ziran/libkryon_plot.a`; apps importing `plot_widget` add
-`src/plot/` to their Ziran module paths. The `kryon` project command adds
-this path automatically.
-
-TableView and TreeView live in the optional `src/data_views/` package.
-`make data-views` builds `build/ziran/libkryon_data_views.a`; apps add that
-directory to their Ziran module paths when importing either widget. The
-`kryon` project command adds the path automatically.
+Charts, tables, trees, and source coloring are separate Git packages that
+depend on Kryon: [Plot](https://github.com/kryonlabs/plot),
+[DataViews](https://github.com/kryonlabs/data-views) (`TableView` and
+`TreeView`), and [Syntax](https://github.com/ziranlang/syntax). Add one with
+`ziran add URL` and import it as `plot/Plot`, `data_views/TableView`, or
+`syntax/Syntax`. Kryon exports the building blocks such packages draw with
+(`session`, `tree`, `surface`, `paint_queue`, `style`, and the others listed
+in `ziran.toml`); see [writing a widget package](docs/API.md#widget-packages).
 
 KSS parsing, formatting, and installation live in the optional `src/kss/`
 package. `make kss` builds `build/ziran/libkryon_kss.a`; the core UI library
 keeps style resolution but does not import the parser. Ziran projects add the
 KSS module path automatically.
-
-The optional `src/syntax/` package tokenizes Ziran, C, and Make text into
-caller owned color spans for TextArea. `make syntax` builds
-`build/ziran/libkryon_syntax.a`; core TextArea paints spans without importing
-the tokenizer. Ziran projects add this module path automatically.
 
 The optional [Game2D](https://github.com/kryonlabs/game2d) Ziran package owns
 the raylib game API. Kryon keeps its geometry, drawing values, UI primitives,

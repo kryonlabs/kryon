@@ -1,6 +1,6 @@
 [package]
 name = "Kryon"
-module_roots = ["src/ui", "src/plot", "src/backend", "src/data_views", "src/kss", "src/syntax"]
+module_roots = ["src/ui", "src/backend", "src/kss"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -32,11 +32,21 @@ SystemTheme = "src/ui/system_theme.zi"
 SystemStyle = "src/kss/system_style.zi"
 SystemThemeLinux = "src/backend/system_theme_linux.zi"
 Tray = "src/backend/Tray/module.zi"
-PlotWidget = "src/plot/PlotWidget/module.zi"
-TableView = "src/data_views/TableView/module.zi"
-TreeView = "src/data_views/TreeView/module.zi"
 Kss = "src/kss/Kss/module.zi"
-Syntax = "src/syntax/Syntax/module.zi"
+# Building blocks for widget packages such as Plot and DataViews,
+# which draw into the retained tree with Kryon's own primitives.
+session = "src/ui/session.zi"
+control_props = "src/ui/control_props.zi"
+font_metrics = "src/ui/font_metrics.zi"
+paint_queue = "src/ui/paint_queue.zi"
+scroll = "src/ui/scroll.zi"
+semantic = "src/ui/semantic.zi"
+style = "src/ui/style.zi"
+style_sheet = "src/ui/style_sheet.zi"
+surface = "src/ui/surface.zi"
+tree = "src/ui/tree.zi"
+tree_input = "src/ui/tree_input.zi"
+widget_kind = "src/ui/widget_kind.zi"
 
 [tool]
 project = "build/bin/kryon"

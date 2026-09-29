@@ -20,9 +20,9 @@ set -- \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/syntax" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/syntax" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$repo/../ziran/std" "$@" \
     --entry ziran_text_area_widget_test:main -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
@@ -45,7 +45,6 @@ for input in source saved; do
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_text_area_widget_test:main "$@" \
         --root "$module_root" --module-path "$module_dir" \
-        --module-path "$repo/src/syntax" \
         --module-path "$repo/../ziran/std" -o "$output" "$module"
     mv "$output/ziran_text_area_widget_test.go" "$output/text_area_case.go"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go

@@ -1,9 +1,0 @@
-using UI :: #import "Kryon";
-using Charts :: #import "PlotWidget";
-
-PublicPlot :: (session: Session, props: PlotProps,
-    values: []float32) -> s32 {
-    range: PlotRange = PlotRangeFor(0.0, 10.0, 2.0, 8.0)
-    if range.min_value != 0.0 { return -1 }
-    return Plot(session, props, values)
-}

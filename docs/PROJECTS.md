@@ -46,9 +46,15 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 }
 ```
 
-Other public imports are `PlotWidget`, `TableView`, `TreeView`, `Kss`, and
-`Syntax`. Each is optional. Kryon exports `geometry` and `drawing_props` for
-code that needs those primitives without importing the widget catalog.
+`Kss` is an optional public import for style parsing. Charts, tables, trees,
+and source coloring are separate Git packages: add
+`https://github.com/kryonlabs/plot.git`,
+`https://github.com/kryonlabs/data-views.git`, or
+`https://github.com/ziranlang/syntax.git` with `ziran add` and import
+`plot/Plot`, `data_views/TableView`, `data_views/TreeView`, or
+`syntax/Syntax`. Kryon exports `geometry`, `drawing_props`, and the other
+building blocks listed in `ziran.toml` for code that needs those primitives
+without importing the widget catalog.
 
 From the app directory, run:
 
