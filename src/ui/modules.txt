@@ -26,6 +26,7 @@ collapsible_widget.zi
 color_picker.zi
 color_picker_props.zi
 color_picker_widget.zi
+context_menu_widget.zi
 composition_input.zi
 control_props.zi
 cursor.zi
@@ -123,6 +124,7 @@ router_props.zi
 scroll.zi
 scroll_props.zi
 scroll_widget.zi
+secondary_pointer.zi
 session.zi
 scene_tree_props.zi
 semantic.zi
@@ -150,6 +152,7 @@ svg_icon.zi
 svg_shape.zi
 swipe.zi
 swipe_props.zi
+system_clipboard.zi
 system_theme.zi
 tab_bar.zi
 tab_bar_props.zi

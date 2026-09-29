@@ -1,0 +1,188 @@
+// A context menu: a small list of commands that opens where the pointer was
+// when the secondary button was released. Like Dropdown, the caller retains
+// `open` and the position; the menu reports the command chosen and when it
+// closed. Call it after the page's other controls so it sits above them.
+#import "session"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "overlay"
+#import "overlay_props"
+#import "overlay_widget"
+#import "paint_queue"
+#import "semantic"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using SemanticKind;
+using WidgetKind;
+
+ContextMenuItem :: struct {
+    // A positive number the menu reports when this command is chosen.
+    id: s32
+    label: string
+    disabled: bool
+    // A divider line; the other fields are ignored.
+    separator: bool
+}
+
+ContextMenuProps :: struct {
+    key: u64
+    open: bool
+    // Where the menu opens: the pointer position, in layout coordinates.
+    x: float32
+    y: float32
+    // Set for the frame the Escape key was pressed.
+    escape: bool
+}
+
+ContextMenuResult :: struct {
+    open: bool
+    // The id of the command chosen this frame, 0 for none.
+    activated_id: s32
+    closed: bool
+}
+
+CONTEXT_MENU_FONT :: 14;
+CONTEXT_MENU_ROW :: 26;
+CONTEXT_MENU_SEPARATOR :: 9;
+CONTEXT_MENU_PADDING :: 4;
+CONTEXT_MENU_TEXT_INSET :: 12;
+CONTEXT_MENU_MINIMUM_WIDTH :: 168;
+
+#program_export
+ContextMenuOverlayKey :: (key: u64) -> u64 {
+    return key * cast(u64)65599 + cast(u64)13
+}
+
+#program_export
+ContextMenuRowKey :: (key: u64, index: s32) -> u64 {
+    return key * cast(u64)131071 + cast(u64)cast(u32)(index + 1) * cast(u64)19 + cast(u64)5
+}
+
+// The menu's panel: as wide as its longest label, kept inside the view.
+#program_export
+ContextMenuBounds :: (items: []ContextMenuItem, x: float32, y: float32,
+    view: Rectangle) -> Rectangle {
+    width: s32 = CONTEXT_MENU_MINIMUM_WIDTH
+    height: s32 = CONTEXT_MENU_PADDING * 2
+    index: s32 = 0
+    while index < cast(s32)items.count {
+        if items[index].separator {
+            height += CONTEXT_MENU_SEPARATOR
+        } else {
+            height += CONTEXT_MENU_ROW
+            label: s32 = GlyphWidth(items[index].label, CONTEXT_MENU_FONT, "") +
+                CONTEXT_MENU_TEXT_INSET * 2
+            if label > width { width = label }
+        }
+        index += 1
+    }
+    left: float32 = x
+    top: float32 = y
+    if left + cast(float32)width > view.x + view.width {
+        left = view.x + view.width - cast(float32)width
+    }
+    if top + cast(float32)height > view.y + view.height {
+        top = view.y + view.height - cast(float32)height
+    }
+    if left < view.x { left = view.x }
+    if top < view.y { top = view.y }
+    return Rectangle.{left, top, cast(float32)width, cast(float32)height}
+}
+
+#program_export
+ContextMenu :: (session: Session, props: ContextMenuProps,
+    items: []ContextMenuItem) -> ContextMenuResult {
+    result: ContextMenuResult
+    result.open = props.open
+    if !props.open || items.count == 0 { return result }
+    key: u64 = props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    if props.escape {
+        result.open = false
+        result.closed = true
+        return result
+    }
+    // The command a row's click chose comes from last frame's tree.
+    if TreeIsBuilding(session) {
+        previous_overlay: s32 = TreePrevious(session, TreeCurrentParent(session),
+            ContextMenuOverlayKey(key), WidgetKindModal)
+        previous_panel: s32 = TreePreviousCommitted(session, previous_overlay,
+            OverlayPanelKey(), WidgetKindCustom)
+        index: s32 = 0
+        while index < cast(s32)items.count {
+            if !items[index].separator && !items[index].disabled && items[index].id > 0 {
+                row: s32 = TreePreviousCommitted(session, previous_panel,
+                    ContextMenuRowKey(key, index), WidgetKindSelectable)
+                if TreeTakeActivationAt(session, row) {
+                    result.activated_id = items[index].id
+                    result.open = false
+                    result.closed = true
+                    return result
+                }
+            }
+            index += 1
+        }
+    }
+
+    panel: Rectangle = ContextMenuBounds(items, props.x, props.y, TreeRootBounds(session))
+    overlay_props: DismissibleOverlayProps
+    overlay_props.key = ContextMenuOverlayKey(key)
+    overlay_props.bounds = panel
+    overlay: DismissibleOverlayResult = DismissibleOverlay(session, overlay_props)
+    if overlay.closed {
+        result.open = false
+        result.closed = true
+        return result
+    }
+    panel_node: s32 = overlay.panel_node
+    if panel_node < 0 { return result }
+
+    fill: Color = StyleTokenColorOr("card", Color.{255, 255, 255, 255})
+    border: Color = StyleTokenColorOr("border", Color.{200, 204, 208, 255})
+    ink: Color = StyleTokenColorOr("text", Color.{30, 30, 30, 255})
+    muted: Color = StyleTokenColorOr("muted", Color.{154, 160, 166, 255})
+    highlight: Color = StyleTokenColorOr("accent-soft", Color.{219, 232, 255, 255})
+    PaintRoundedFill(session, panel_node, panel, 6.0, 8, fill)
+    PaintRoundedOutline(session, panel_node, panel, 6.0, 8, 1.0, border)
+    if !TreePushScope(session, panel_node) { return result }
+    line_height: s32 = GlyphLineHeight(CONTEXT_MENU_FONT, "")
+    top: float32 = panel.y + cast(float32)CONTEXT_MENU_PADDING
+    index: s32 = 0
+    while index < cast(s32)items.count {
+        item: ContextMenuItem = items[index]
+        if item.separator {
+            PaintLine(session, panel_node,
+                Rectangle.{panel.x + 8.0, top + cast(float32)CONTEXT_MENU_SEPARATOR * 0.5,
+                    panel.width - 16.0, 0.0}, border)
+            top += cast(float32)CONTEXT_MENU_SEPARATOR
+        } else {
+            row: Rectangle = Rectangle.{panel.x + 3.0, top, panel.width - 6.0,
+                cast(float32)CONTEXT_MENU_ROW}
+            node: s32 = TreeSubmitCurrent(session, ContextMenuRowKey(key, index),
+                WidgetKindSelectable, row)
+            if node >= 0 {
+                TreeSetInteractive(session, node, item.disabled, false, 0)
+                TreeSetSemantic(session, node, cast(SemanticKind)SemanticOption, 0)
+                TreeSetLabel(session, node, item.label)
+                hovered: bool = TreeHoveredAt(session, TreePrevious(session, panel_node,
+                    ContextMenuRowKey(key, index), WidgetKindSelectable))
+                if hovered && !item.disabled {
+                    PaintRoundedFill(session, node, row, 4.0, 8, highlight)
+                }
+                color: Color = ink
+                if item.disabled { color = muted }
+                PaintClippedLabel(session, node, item.label,
+                    cast(s32)(panel.x + cast(float32)CONTEXT_MENU_TEXT_INSET),
+                    cast(s32)(top + (cast(float32)CONTEXT_MENU_ROW - cast(float32)line_height) * 0.5),
+                    CONTEXT_MENU_FONT, color, row)
+            }
+            top += cast(float32)CONTEXT_MENU_ROW
+        }
+        index += 1
+    }
+    End(session)
+    return result
+}

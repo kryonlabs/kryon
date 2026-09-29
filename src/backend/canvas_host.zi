@@ -73,9 +73,13 @@ PollCanvas :: () -> bool {
     if WindowShouldClose() { return false }
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()
-    canvas_pointer.down = IsMouseButtonDown(0)
     canvas_pointer.pressed = IsMouseButtonPressed(0)
+    // A press and release inside one frame still counts as held for it.
+    canvas_pointer.down = IsMouseButtonDown(0) || canvas_pointer.pressed
     canvas_pointer.released = IsMouseButtonReleased(0)
+    canvas_secondary.down = IsMouseButtonDown(1)
+    canvas_secondary.pressed = IsMouseButtonPressed(1)
+    canvas_secondary.released = IsMouseButtonReleased(1)
     canvas_wheel_move = GetMouseWheelMove()
     return true
 }
@@ -119,11 +123,32 @@ EndCanvasFrame :: () -> bool {
 PollPointer :: () -> PointerFrame { return canvas_pointer }
 
 #program_export
+PollSecondaryPointer :: () -> SecondaryPointerFrame { return canvas_secondary }
+
+#program_export
 CaptureRequested :: () -> bool {
     return false
 }
 
 #program_export
 CaptureConfigured :: () -> bool {
+    return false
+}
+
+// This host has no system clipboard.
+#program_export
+SystemClipboardOpenHost :: () -> s32 {
+    return -1
+}
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    unused index
+    return -1
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    unused text
     return false
 }

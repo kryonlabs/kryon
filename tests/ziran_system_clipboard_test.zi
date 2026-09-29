@@ -1,0 +1,17 @@
+#import "system_clipboard"
+
+#program_export
+main :: () -> s32 {
+    buffer: [16]u8
+    // Nothing yet: the host reports no text.
+    if SystemClipboardText(buffer[:]) != "" { return 1 }
+    if !SystemClipboardSet("hello") { return 2 }
+    if SystemClipboardText(buffer[:]) != "hello" { return 3 }
+    // A longer text is cut to the caller's buffer.
+    if !SystemClipboardSet("0123456789abcdefghij") { return 4 }
+    if SystemClipboardText(buffer[:]) != "0123456789abcdef" { return 5 }
+    // Empty text clears it.
+    if !SystemClipboardSet("") { return 6 }
+    if SystemClipboardText(buffer[:]) != "" { return 7 }
+    return 0
+}

@@ -239,3 +239,28 @@ WindowTakeCloseRequestHost :: () -> bool {
 WindowQuitHost :: () {
     libdraw_quit = true
 }
+
+// This host has no system clipboard.
+#program_export
+SystemClipboardOpenHost :: () -> s32 {
+    return -1
+}
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    unused index
+    return -1
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    unused text
+    return false
+}
+
+// This host has no secondary button.
+#program_export
+PollSecondaryPointer :: () -> SecondaryPointerFrame {
+    empty: SecondaryPointerFrame
+    return empty
+}
