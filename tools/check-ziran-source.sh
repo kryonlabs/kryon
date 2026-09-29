@@ -17,7 +17,11 @@ actual_programs=$(cd "$repo" &&
         -g '*.kry' -g '*.kir' -g '*.krb' |
     LC_ALL=C sort)
 
-if test -e "$repo/.gitmodules" || rg -n 'vendor/raylib' "$repo" -g '!build/**' -g '!tools/check-ziran-source.sh'; then
+# Search from the repository with relative paths: when the checkout is reached
+# through a symbolic link, ripgrep cannot anchor the exclusions to an absolute
+# path and this script would find itself.
+if test -e "$repo/.gitmodules" || (cd "$repo" &&
+    rg -n 'vendor/raylib' . -g '!build/**' -g '!tools/check-ziran-source.sh'); then
     printf 'Kryon must use its locked Ziran raylib source package.\n' >&2
     exit 1
 fi
