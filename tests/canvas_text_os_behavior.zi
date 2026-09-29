@@ -108,6 +108,13 @@ main :: () -> s32 {
     if !IsFontValid(loaded) || loaded.glyph_count != 224 || loaded.texture.height < 128 {
         return 7
     }
+    // A character outside the atlas is rasterised into a glyph page on first
+    // use, once, and the page is freed with the font.
+    if GetGlyphInfo(loaded, 8250).value != 8250 || FakeTextureUpdates() != 1 ||
+        GetGlyphInfo(loaded, 8250).value != 8250 || FakeTextureUpdates() != 1 ||
+        FakeTexturesLive() != 3 {
+        return 21
+    }
     UnloadFont(loaded)
     UnloadFont(font)
     replacement := GetFontDefault()
