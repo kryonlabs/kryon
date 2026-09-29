@@ -165,9 +165,9 @@ RaylibTypefaceIndex :: (name: string) -> s32 {
 // Without an explicit seed a UI font starts with the scripts most locales
 // need; anything else is added on first use.
 raylib_default_glyph_ranges: [18]s32 = .[
-    0x0020, 0x007E, 0x00A0, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF,
-    0x2010, 0x205E, 0x20A0, 0x20C0, 0x2190, 0x21FF, 0x2212, 0x2212,
-    0xFFFD, 0xFFFD];
+0x0020, 0x007E, 0x00A0, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF,
+0x2010, 0x205E, 0x20A0, 0x20C0, 0x2190, 0x21FF, 0x2212, 0x2212,
+0xFFFD, 0xFFFD];
 
 RaylibHasGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
     if codepoint < 0 || codepoint > 0xFFFF { return true }
@@ -517,7 +517,7 @@ RaylibDrawImageStrip :: (texture: Texture2D, source: Rectangle,
         return
     }
     saved := BeginRasterClip(Rectangle.{cast(float32)x, cast(float32)y,
-        cast(float32)width, cast(float32)height})
+            cast(float32)width, cast(float32)height})
     HostRaylibDrawTexture(texture, source, destination, origin, rotation, tint)
     EndRasterClip(saved)
 }
@@ -1041,14 +1041,6 @@ ImageHeight :: (asset_path: string) -> s32 {
     return raylib_assets[index].texture.height
 }
 
-retained_frame_targets: [2]HostRaylibRenderTexture;
-retained_frame_ready: [2]bool;
-retained_frame_render_index: s32;
-retained_frame_previous_index: s32 = -1;
-retained_frame_width: s32;
-retained_frame_height: s32;
-retained_frame_active: bool;
-
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
@@ -1083,6 +1075,14 @@ RasterImage :: (asset_path: string, texture_id: u32,
     RaylibDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
 }
+
+retained_frame_targets: [2]HostRaylibRenderTexture;
+retained_frame_ready: [2]bool;
+retained_frame_render_index: s32;
+retained_frame_previous_index: s32 = -1;
+retained_frame_width: s32;
+retained_frame_height: s32;
+retained_frame_active: bool;
 
 raylib_quit: bool;
 
