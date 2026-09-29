@@ -162,6 +162,7 @@ text_behavior.zi
 typeface_source.zi
 text_align.zi
 text_area_widget.zi
+text_context_menu.zi
 text_field_widget.zi
 text_input.zi
 text_input_props.zi

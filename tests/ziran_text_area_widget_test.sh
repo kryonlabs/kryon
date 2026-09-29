@@ -15,7 +15,10 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_composition_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_composition_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_composition_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_composition_widget_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_composition_widget_host:RasterImage \
+    --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
+    --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
+    --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/syntax" --module-path "$repo/src/ui" \
     --module-path "$repo/../ziran/std" -o "$work/ir" "$source"

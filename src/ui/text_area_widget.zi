@@ -1,3 +1,5 @@
+#import "system_clipboard"
+#import "text_context_menu"
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -555,8 +557,7 @@ TextAreaEditFor :: (props: TextAreaProps,
 
 // The caller stores text, focus, selection, and scroll state. Kryon returns
 // UTF-8 byte edits and paints from the immutable value for this frame.
-#program_export
-TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult
     result.node = -1
     result.cursor = TextCursorForLength(props.cursor,
@@ -1060,6 +1061,35 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 ColorFromPacked(Opacity(
                     face.value.foreground, opacity)))
         }
+    }
+    return result
+}
+
+// The area with its context menu, as TextField has: a click of the secondary
+// button inside it opens Cut, Copy, Paste, and Select all on the system
+// clipboard, and the keyboard's Cut, Copy, and Paste reach it too.
+#program_export
+TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+    key: u64 = TextAreaKey(session, props)
+    editable: bool = !props.read_only
+    selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
+        props.cursor, (cast(s32)props.value.count))
+    command: s32 = TextMenuTakeCommand(key)
+    if command == TEXT_MENU_CUT { props.input.cut = true }
+    if command == TEXT_MENU_COPY { props.input.copy = true }
+    if command == TEXT_MENU_PASTE { props.input.paste = true }
+    if command == TEXT_MENU_SELECT_ALL { props.input.select_all = true }
+    if props.input.paste && props.input.paste_text.count == 0 {
+        props.input.paste_text = TextMenuPasteText()
+    }
+    opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
+    result: TextAreaResult = TextAreaCore(session, props)
+    if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
+    if opened { result.focused = true }
+    if TextMenuIsOpenFor(key) {
+        TextMenuShow(session, editable && selection.has_selection,
+            selection.has_selection, editable, props.value.count > 0,
+            props.input.escape)
     }
     return result
 }

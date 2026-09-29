@@ -1,0 +1,112 @@
+// The context menu shared by the text widgets: Cut, Copy, Paste, and Select
+// all on the system clipboard. One menu is open at a time; it belongs to a
+// field by key, opens where the secondary button was released inside the
+// field, and hands the command chosen back to that field, which runs it on its
+// next frame as if the key had been pressed.
+#import "context_menu_widget"
+#import "geometry"
+#import "session"
+#import "system_clipboard"
+#import "tree"
+#import "tree_input"
+
+TEXT_MENU_CUT :: 1;
+TEXT_MENU_COPY :: 2;
+TEXT_MENU_PASTE :: 3;
+TEXT_MENU_SELECT_ALL :: 4;
+
+text_menu_open: bool;
+text_menu_key: u64;
+text_menu_x: float32;
+text_menu_y: float32;
+text_menu_command: s32;
+text_menu_command_key: u64;
+text_menu_cut_enabled: bool;
+text_menu_copy_enabled: bool;
+text_menu_paste_enabled: bool;
+text_menu_select_enabled: bool;
+text_menu_escape: bool;
+text_menu_paste: [16384]u8;
+
+// The command chosen in the menu last frame for the field with this key, or 0.
+#program_export
+TextMenuTakeCommand :: (key: u64) -> s32 {
+    if key == cast(u64)0 || text_menu_command == 0 || text_menu_command_key != key {
+        return 0
+    }
+    command: s32 = text_menu_command
+    text_menu_command = 0
+    return command
+}
+
+// The clipboard's text, for a paste.
+#program_export
+TextMenuPasteText :: () -> string {
+    return SystemClipboardText(text_menu_paste[:])
+}
+
+// Opens the menu for the field when the secondary button was released inside
+// its bounds this frame. Returns whether it opened.
+#program_export
+TextMenuOpenRequested :: (session: Session, key: u64, bounds: Rectangle,
+    disabled: bool) -> bool {
+    if key == cast(u64)0 || disabled { return false }
+    secondary: SecondaryPointerFrame = SecondaryPointerSample(session)
+    pointer: PointerFrame = PointerSample(session)
+    if !secondary.released || !PointInBounds(pointer.x, pointer.y, bounds) {
+        return false
+    }
+    text_menu_open = true
+    text_menu_key = key
+    text_menu_x = pointer.x
+    text_menu_y = pointer.y
+    return true
+}
+
+#program_export
+TextMenuIsOpenFor :: (key: u64) -> bool {
+    return key != cast(u64)0 && text_menu_open && text_menu_key == key
+}
+
+TextMenuDraw :: (session: Session) {
+    if !text_menu_open { return }
+    items: [5]ContextMenuItem
+    items[0].id = TEXT_MENU_CUT
+    items[0].label = "Cut"
+    items[0].disabled = !text_menu_cut_enabled
+    items[1].id = TEXT_MENU_COPY
+    items[1].label = "Copy"
+    items[1].disabled = !text_menu_copy_enabled
+    items[2].id = TEXT_MENU_PASTE
+    items[2].label = "Paste"
+    items[2].disabled = !text_menu_paste_enabled || !SystemClipboardHasText()
+    items[3].separator = true
+    items[4].id = TEXT_MENU_SELECT_ALL
+    items[4].label = "Select all"
+    items[4].disabled = !text_menu_select_enabled
+    props: ContextMenuProps
+    props.key = text_menu_key * cast(u64)31 + cast(u64)17
+    props.open = true
+    props.x = text_menu_x
+    props.y = text_menu_y
+    props.escape = text_menu_escape
+    menu: ContextMenuResult = ContextMenu(session, props, items[0:5])
+    if menu.activated_id != 0 {
+        text_menu_command = menu.activated_id
+        text_menu_command_key = text_menu_key
+    }
+    if !menu.open { text_menu_open = false }
+}
+
+// Draws the open menu at the end of the frame, above everything else, with
+// which commands the field can run right now.
+#program_export
+TextMenuShow :: (session: Session, cut: bool, copy: bool, paste: bool,
+    select_all: bool, escape: bool) {
+    text_menu_cut_enabled = cut
+    text_menu_copy_enabled = copy
+    text_menu_paste_enabled = paste
+    text_menu_select_enabled = select_all
+    text_menu_escape = escape
+    TreeDefer(session, TextMenuDraw)
+}
