@@ -135,14 +135,14 @@ Card {
 Image {
   font-size: font;
   icon-size: icon;
-  background: card;
+  background: #00000000;
   foreground: #ffffff;
-  border: border-soft;
+  border: #00000000;
   focus: accent;
-  radius: radius;
-  border-width: border;
+  radius: 0;
+  border-width: 0;
   opacity: 1;
-  material: default;
+  material: Flat;
 }
 
 Image[role=Label] {

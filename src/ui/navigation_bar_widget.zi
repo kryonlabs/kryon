@@ -61,7 +61,7 @@ NavigationBarDefaultFace :: (item: bool, active: bool,
 #program_export
 NavigationBarFaceFor :: (props: NavigationBarProps) -> StyleFrame {
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         NavigationBarDefaultFace(false, false, false, false),
         StyleControlRoleFacts(StyleKindNavigationBar(),
             props.id, props.class_name, StyleAny(),
@@ -89,7 +89,7 @@ NavigationBarItemFaceFor :: (props: NavigationBarProps,
         StyleAny(), tone, emphasis,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         NavigationBarDefaultFace(true, item.active, hovered,
             item.disabled), facts, state)
     return frame
@@ -122,6 +122,23 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
             plan.source, plan.destination, clip, image.origin,
             image.rotation, 0.0, plan.tint, image.texture)
     }
+}
+
+// The height NavigationBar will take for these props, so a caller can
+// reserve the space before the bar is drawn.
+#program_export
+NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
+    if props.height > 0 { return props.height }
+    spec: NavigationBarSpec
+    spec.view_width = props.view_width
+    spec.view_height = props.view_height
+    spec.count = 1
+    spec.side_margin = -1
+    spec.bottom_margin = -1
+    spec.icon_size = -1
+    spec.scale = props.scale
+    spec.bar = NavigationBarFaceFor(props)
+    return NavigationBarPaintFor(spec).height
 }
 
 // Items are borrowed values. Each item owns a stable key when routes can
