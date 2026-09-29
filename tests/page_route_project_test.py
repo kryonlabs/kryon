@@ -71,11 +71,14 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         '        index += 1\n'
         '    }\n'
         '    target[length + index] = cast(u8)0\n'
+        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
         '    PushRoute(*target[0])\n'
         '    if !Same(GetRouteHash(), "#round") { return 0 }\n'
+        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
         '    if GetRouteVersion() <= before { return 0 }\n'
         '    ReplaceRoute(*target[0])\n'
         '    if !Same(GetRouteHash(), "#round") { return 0 }\n'
+        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
         '    RequestWindowClose()\n'
         '    return 0\n}\n'
     )
@@ -84,5 +87,5 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     output = project / "build/route_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
     run(["node", ROOT / "tests/canvas_backend_browser.mjs",
-         output.as_uri(), project / "browser-profile"], project)
-print("Browser route: path, hash, push, replace and version passed")
+         output.as_uri() + "?probe=1", project / "browser-profile"], project)
+print("Browser route: path, query, hash, push, replace and version passed")

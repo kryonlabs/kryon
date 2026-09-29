@@ -2,7 +2,8 @@
 // version that changes whenever either does. The getters read the page each
 // time, so back and forward navigation and hash edits show up without page
 // listeners. Pushing or replacing a route writes the browser history and the
-// stored route together.
+// stored route together. The query string is page configuration, not part of
+// the route: route writes keep it, and GetRouteQuery reads it.
 #import "web"
 #import "byte_text_linux"
 
@@ -10,6 +11,7 @@ PAGE_ROUTE_MAX :: 2049
 
 page_route_path: [PAGE_ROUTE_MAX]u8;
 page_route_hash: [PAGE_ROUTE_MAX]u8;
+page_route_query: [PAGE_ROUTE_MAX]u8;
 page_route_version: s32;
 page_route_started: bool;
 
@@ -50,6 +52,17 @@ PageRouteRead :: (path: []u8, hash: []u8) -> bool {
     }
     WebEnd(scope)
     return found
+}
+
+// Reads the page's query string, "?" included; empty when there is none.
+PageRouteReadQuery :: (query: []u8) {
+    query[0] = cast(u8)0
+    scope: s32 = WebScope()
+    location: s32 = WebGetObject(WebGlobal, WebName("location"))
+    if location != 0 && !WebFailed() {
+        PageRouteReadText(WebGet(location, WebName("search")), query)
+    }
+    WebEnd(scope)
 }
 
 PageRouteSync :: () {
@@ -107,11 +120,19 @@ PageRouteUpdate :: (target: *u8, replace: bool) {
     path[path_length] = cast(u8)0
     hash[hash_length] = cast(u8)0
 
-    url: [PAGE_ROUTE_MAX * 2]u8
+    query: [PAGE_ROUTE_MAX]u8
+    PageRouteReadQuery(query[:])
+    url: [PAGE_ROUTE_MAX * 3]u8
     length: s32 = 0
     index = 0
     while path[index] != cast(u8)0 {
         url[length] = path[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while query[index] != cast(u8)0 {
+        url[length] = query[index]
         length += 1
         index += 1
     }
@@ -157,6 +178,12 @@ GetRouteHash :: () -> *u8 {
 GetRouteVersion :: () -> s32 {
     PageRouteSync()
     return page_route_version
+}
+
+#program_export
+GetRouteQuery :: () -> *u8 {
+    PageRouteReadQuery(page_route_query[:])
+    return *page_route_query[0]
 }
 
 #program_export
