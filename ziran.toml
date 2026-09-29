@@ -12,6 +12,13 @@ ref = "fafa2cea97d0cb379d832086ba45a989fa6f9c8e"
 source = true
 
 [exports]
+Frame = "src/ui/tree_draw.zi"
+Desktop = "src/backend/Desktop/module.zi"
+Canvas = "src/backend/Canvas/module.zi"
+Raylib = "src/backend/raylib_runtime.zi"
+AndroidSurface = "src/backend/android_surface.zi"
+Theme = "src/ui/theme.zi"
+ScrollDevice = "src/ui/scroll_device.zi"
 Kryon = "src/ui/Kryon/module.zi"
 Widgets = "src/ui/Widgets/module.zi"
 Page = "src/ui/page.zi"

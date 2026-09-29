@@ -57,6 +57,9 @@ KeyChecks :: () -> s32 {
     if !CanvasQueueHas(*canvas_keys_released[0], canvas_keys_released_count, 65) { return 7 }
     // Keys the page would scroll with are claimed; letters are not.
     if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "Space", " ") != CanvasEventPreventDefault { return 8 }
+    if CanvasQueuePop(*canvas_chars[0], *canvas_chars_count) != 32 { return 19 }
+    unused Send(CanvasEventKeyChar, 0, 0, 0.0, 0.0, "Space", " ")
+    if canvas_chars_count != 0 { return 20 }
     if Send(CanvasEventKeyUp, 0, 0, 0.0, 0.0, "ArrowDown", "") != CanvasEventPreventDefault { return 9 }
     if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "F5", "") != 0 { return 10 }
     // A copy or paste shortcut opens the clipboard gesture window.
@@ -164,7 +167,7 @@ ClipboardChecks :: () -> s32 {
     unused Send(CanvasEventPaste, 0, 0, 0.0, 0.0, "", "pasted")
     if TextFromCString(*canvas_clipboard_text[0]) != "pasted" { return 2 }
     if Send(CanvasEventCopy, 0, 0, 0.0, 0.0, "", "") !=
-        (CanvasEventClipboardWritten | CanvasEventPreventDefault) { return 3 }
+    (CanvasEventClipboardWritten | CanvasEventPreventDefault) { return 3 }
     // Pasting nothing keeps what was there.
     unused Send(CanvasEventPaste, 0, 0, 0.0, 0.0, "", "")
     if TextFromCString(*canvas_clipboard_text[0]) != "pasted" { return 4 }

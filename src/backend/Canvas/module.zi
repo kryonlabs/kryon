@@ -1,0 +1,12 @@
+// Browser applications can compose their own lifecycle with this host.
+using Runtime :: #import "canvas_host";
+using Raster :: #import "canvas_raster";
+Input :: #import "canvas_input";
+// Match the modifier bitset accepted by KeyboardModifiersSend.
+CanvasModifiers :: () -> s32 {
+    value: s32 = 0
+    if Input.IsKeyDown(340) || Input.IsKeyDown(344) { value = value | 1 }
+    if Input.IsKeyDown(341) || Input.IsKeyDown(345) || Input.IsKeyDown(343) || Input.IsKeyDown(347) { value = value | 2 }
+    if Input.IsKeyDown(342) || Input.IsKeyDown(346) { value = value | 4 }
+    return value
+}
