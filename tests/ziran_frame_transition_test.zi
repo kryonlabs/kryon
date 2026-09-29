@@ -1,0 +1,46 @@
+#import "session"
+
+test_session: Session;
+
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "drawing_props"
+#import "frame_transition"
+#import "geometry"
+#import "image_props"
+#import "tree"
+#import "tree_draw"
+#import "ziran_frame_transition_host"
+
+using FrameStatus;
+using ImageFit;
+
+#program_export
+main :: () -> s32 {
+    if FrameTransitionAlpha(0.0, 0.12) != 1.0 { return 1 }
+    midpoint := FrameTransitionAlpha(0.06, 0.12)
+    if midpoint < 0.49 || midpoint > 0.51 { return 2 }
+    if FrameTransitionAlpha(0.12, 0.12) != 0.0 { return 3 }
+
+    surface: FrameSurface
+    surface.texture = Texture2D.{7, 20, 10, 1, 7}
+    image := FrameTransitionImage(surface,
+        Rectangle.{1.0, 2.0, 30.0, 20.0}, 0.0, 0.12)
+    if image.texture.id != cast(u32)7 { return 4 }
+    if cast(s32)image.fit != ImageFitStretch { return 5 }
+    if ColorFromPacked(image.tint).a != cast(u8)255 { return 6 }
+
+    if BeginFrame(TestSession(), cast(u64)19,
+        Rectangle.{0.0, 0.0, 40.0, 30.0}) != cast(FrameStatus)FrameOk { return 7 }
+    FrameTransition(TestSession(), surface,
+        Rectangle.{1.0, 2.0, 30.0, 20.0}, 0.0, 0.12)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 8 }
+    if FrameTransitionDraws() != 1 || FrameTransitionHostFailed() { return 9 }
+
+    surface = FrameSurfaceRelease(surface)
+    if FrameSurfaceValid(surface) || FrameTransitionDisposed() != 1 { return 10 }
+    return 0
+}

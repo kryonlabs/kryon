@@ -45,6 +45,7 @@ focus.zi
 font_metrics.zi
 flow.zi
 frame_capture.zi
+frame_transition.zi
 frame_pacing.zi
 geometry.zi
 grid.zi
