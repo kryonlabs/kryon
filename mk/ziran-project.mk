@@ -73,7 +73,7 @@ HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
-EMCC ?= /home/wao/emsdk/upstream/emscripten/emcc
+EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
 PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
@@ -87,7 +87,9 @@ HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -
 RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
-RAYLIB_SOURCE := $(shell $(ZIRAN) pkg path raylib)
+# raylib keeps its library sources and Makefile in src/ of the package.
+RAYLIB_PACKAGE := $(shell $(ZIRAN) pkg path raylib)
+RAYLIB_SOURCE := $(if $(RAYLIB_PACKAGE),$(RAYLIB_PACKAGE)/src)
 RAYLIB_BUILD := $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A := $(RAYLIB_BUILD)/libraylib.a
 RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)

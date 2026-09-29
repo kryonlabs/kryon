@@ -42,7 +42,26 @@ jobs:
       - name: Check submodule URLs
         run: sh scripts/check-submodule-urls.sh
 
+      # The Canvas2D and DOM tests compile to Wasm with emscripten and run
+      # in private headless Chrome; the tests look for ~/emsdk.
+      - name: Restore emsdk
+        id: emsdk
+        uses: actions/cache@v4
+        with:
+          path: ~/emsdk
+          key: emsdk-${{ runner.os }}-6.0.6
+
+      - name: Install emsdk
+        if: steps.emsdk.outputs.cache-hit != 'true'
+        working-directory: .
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+          ~/emsdk/emsdk install 6.0.6
+          ~/emsdk/emsdk activate 6.0.6
+
       - name: Build and test
+        env:
+          CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY make test
 
       - name: Fuzz KSS with this run's seed

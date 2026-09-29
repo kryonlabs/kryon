@@ -160,7 +160,8 @@ $(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Ma
 
 TEST_JOBS ?= 4
 TEST ?=
-ziran-test:
+# The tests run the ziran command and link libziran.a; build them first.
+ziran-test: project-toolchain
 	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
 		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
