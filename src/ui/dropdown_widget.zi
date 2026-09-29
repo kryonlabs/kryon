@@ -93,7 +93,7 @@ DropdownFaceFor :: (props: DropdownProps, role: s32,
         tone, cast(s32)ButtonEmphasisSoft,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         DropdownDefaultFace(role, state, selected), facts, state)
     return frame
 }

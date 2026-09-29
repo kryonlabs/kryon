@@ -74,7 +74,7 @@ CollapsibleFaceFor :: (props: CollapsibleProps, role: s32,
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         CollapsibleDefaultFace(role, state), facts, state)
     return frame
 }

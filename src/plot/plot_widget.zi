@@ -50,7 +50,7 @@ DefaultPlotFaces :: () -> PlotFaces {
 }
 
 #program_export
-PlotFacesFor :: (rules: StyleRules, props: PlotProps,
+PlotFacesFor :: (props: PlotProps,
     defaults: PlotFaces) -> PlotFaces {
     faces: PlotFaces = defaults
     plot_facts: StyleFacts = StyleControlRoleFacts(StyleKindPlot(),
@@ -61,9 +61,9 @@ PlotFacesFor :: (rules: StyleRules, props: PlotProps,
         props.id, props.class_name, StyleAny(),
         cast(s32)ButtonToneAccent, cast(s32)ButtonEmphasisFilled,
         cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
-    faces.plot.value = ResolveStyleRules(rules, defaults.plot.value,
+    faces.plot.value = ResolveInstalledStyleRules(defaults.plot.value,
         plot_facts, cast(s32)ButtonStateNormal)
-    faces.mark.value = ResolveStyleRules(rules, defaults.mark.value,
+    faces.mark.value = ResolveInstalledStyleRules(defaults.mark.value,
         mark_facts, cast(s32)ButtonStateNormal)
     return faces
 }
@@ -109,7 +109,7 @@ Plot :: (session: Session, props: PlotProps, values: []float32) -> s32 {
         TreeSetLabel(session, node, semantic_label)
         bounds = TreeSubmittedNodeAt(session, node).bounds
     }
-    faces: PlotFaces = PlotFacesFor(ActiveStyleRules(), props,
+    faces: PlotFaces = PlotFacesFor(props,
         DefaultPlotFaces())
     opacity: float32 = StyleOpacityValue(faces.plot.value.fields,
         faces.plot.value.opacity)

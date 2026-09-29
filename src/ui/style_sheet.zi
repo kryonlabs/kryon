@@ -467,7 +467,7 @@ ResolveInstalledTextStyle :: (request: TextStyleRequest,
     if request.disabled { state = cast(s32)ButtonStateDisabled }
     kind: s32 = request.kind
     if kind <= 0 { kind = StyleKindText() }
-    return ResolveStyleRules(installed_rules, base,
+    return ResolveInstalledStyleRules(base,
         StyleTextFacts(0, request.class_name, kind, state), state)
 }
 
@@ -778,116 +778,126 @@ BeginStyleCascade :: (base: StyleData) -> StyleCascade {
     return cascade
 }
 
+// Applies rules to a cascade. The rules are a borrowed view and are read in
+// place, so resolving a face copies neither the rule table nor a rule nor the
+// cascade per rule; resolution runs for every widget every frame.
 #program_export
-ApplyStyleRule :: (cascade: StyleCascade, rule: StyleRule,
+ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     facts: StyleFacts, active_state: s32) -> StyleCascade {
-    if !StyleRuleMatches(rule, facts, active_state) {
-        return cascade
-    }
-    priority: StylePriority = StyleRulePriority(rule)
-    style: StyleData = rule.style
-    if (style.fields & cast(u32)StyleBackground) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.background_priority) {
-        cascade.result.background = style.background
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleBackground
-        cascade.background_priority = priority
-    }
-    if (style.fields & cast(u32)StyleForeground) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.foreground_priority) {
-        cascade.result.foreground = style.foreground
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleForeground
-        cascade.foreground_priority = priority
-    }
-    if (style.fields & cast(u32)StyleBorder) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.border_priority) {
-        cascade.result.border = style.border
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleBorder
-        cascade.border_priority = priority
-    }
-    if (style.fields & cast(u32)StyleFocus) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.focus_priority) {
-        cascade.result.focus = style.focus
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleFocus
-        cascade.focus_priority = priority
-    }
-    if (style.fields & cast(u32)StyleRadius) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.radius_priority) {
-        cascade.result.radius = style.radius
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleRadius
-        cascade.radius_priority = priority
-    }
-    if (style.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.border_width_priority) {
-        cascade.result.border_width = style.border_width
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleBorderWidth
-        cascade.border_width_priority = priority
-    }
-    if (style.fields & cast(u32)StyleOpacity) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.opacity_priority) {
-        cascade.result.opacity = style.opacity
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleOpacity
-        cascade.opacity_priority = priority
-    }
-    if (style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.padding_x_priority) {
-        cascade.result.padding_x = style.padding_x
-        cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingX
-        cascade.padding_x_priority = priority
-    }
-    if (style.fields & cast(u32)StylePaddingY) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.padding_y_priority) {
-        cascade.result.padding_y = style.padding_y
-        cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingY
-        cascade.padding_y_priority = priority
-    }
-    if (style.fields & cast(u32)StyleGap) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.gap_priority) {
-        cascade.result.gap = style.gap
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleGap
-        cascade.gap_priority = priority
-    }
-    if (style.fields & cast(u32)StyleFontSize) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.font_size_priority) {
-        cascade.result.font_size = style.font_size
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleFontSize
-        cascade.font_size_priority = priority
-    }
-    if (style.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.letter_spacing_priority) {
-        cascade.result.letter_spacing = style.letter_spacing
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleLetterSpacing
-        cascade.letter_spacing_priority = priority
-    }
-    if (style.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.icon_size_priority) {
-        cascade.result.icon_size = style.icon_size
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleIconSize
-        cascade.icon_size_priority = priority
-    }
-    if (style.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.content_offset_priority) {
-        cascade.result.offset_x = style.offset_x
-        cascade.result.offset_y = style.offset_y
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleContentOffset
-        cascade.content_offset_priority = priority
-    }
-    if (style.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.background_end_priority) {
-        cascade.result.background_end = style.background_end
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleBackgroundEnd
-        cascade.background_end_priority = priority
-    }
-    if (style.fields & cast(u32)StyleMaterial) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.material_priority) {
-        cascade.result.material = style.material
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleMaterial
-        cascade.material_priority = priority
-    }
-    if (style.fields & cast(u32)StyleTypeface) != cast(u32)0 &&
-       StylePriorityWins(priority, cascade.typeface_priority) {
-        cascade.result.typeface = style.typeface
-        cascade.result.fields = cascade.result.fields | cast(u32)StyleTypeface
-        cascade.typeface_priority = priority
+    index: s64 = 0
+    while index < rules.count {
+        if StyleRuleMatchesState(rules[index].state, active_state) &&
+            StyleSelectorMatches(rules[index].selector, facts) {
+            priority: StylePriority
+            priority.present = true
+            priority.layer = rules[index].layer
+            priority.specificity = StyleSelectorSpecificity(rules[index].selector)
+            priority.order = rules[index].order
+            if (rules[index].style.fields & cast(u32)StyleBackground) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.background_priority) {
+                cascade.result.background = rules[index].style.background
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleBackground
+                cascade.background_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleForeground) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.foreground_priority) {
+                cascade.result.foreground = rules[index].style.foreground
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleForeground
+                cascade.foreground_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleBorder) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.border_priority) {
+                cascade.result.border = rules[index].style.border
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleBorder
+                cascade.border_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleFocus) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.focus_priority) {
+                cascade.result.focus = rules[index].style.focus
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleFocus
+                cascade.focus_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleRadius) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.radius_priority) {
+                cascade.result.radius = rules[index].style.radius
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleRadius
+                cascade.radius_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.border_width_priority) {
+                cascade.result.border_width = rules[index].style.border_width
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleBorderWidth
+                cascade.border_width_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleOpacity) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.opacity_priority) {
+                cascade.result.opacity = rules[index].style.opacity
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleOpacity
+                cascade.opacity_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.padding_x_priority) {
+                cascade.result.padding_x = rules[index].style.padding_x
+                cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingX
+                cascade.padding_x_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StylePaddingY) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.padding_y_priority) {
+                cascade.result.padding_y = rules[index].style.padding_y
+                cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingY
+                cascade.padding_y_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleGap) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.gap_priority) {
+                cascade.result.gap = rules[index].style.gap
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleGap
+                cascade.gap_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleFontSize) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.font_size_priority) {
+                cascade.result.font_size = rules[index].style.font_size
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleFontSize
+                cascade.font_size_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.letter_spacing_priority) {
+                cascade.result.letter_spacing = rules[index].style.letter_spacing
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleLetterSpacing
+                cascade.letter_spacing_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.icon_size_priority) {
+                cascade.result.icon_size = rules[index].style.icon_size
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleIconSize
+                cascade.icon_size_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.content_offset_priority) {
+                cascade.result.offset_x = rules[index].style.offset_x
+                cascade.result.offset_y = rules[index].style.offset_y
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleContentOffset
+                cascade.content_offset_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.background_end_priority) {
+                cascade.result.background_end = rules[index].style.background_end
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleBackgroundEnd
+                cascade.background_end_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMaterial) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.material_priority) {
+                cascade.result.material = rules[index].style.material
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMaterial
+                cascade.material_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleTypeface) != cast(u32)0 &&
+               StylePriorityWins(priority, cascade.typeface_priority) {
+                cascade.result.typeface = rules[index].style.typeface
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleTypeface
+                cascade.typeface_priority = priority
+            }
+        }
+        index += 1
     }
     return cascade
 }
@@ -897,26 +907,32 @@ FinishStyleCascade :: (cascade: StyleCascade) -> StyleData {
     return cascade.result
 }
 
-#program_export
-ResolveStyleRule :: (base: StyleData, facts: StyleFacts,
-    rule: StyleRule, active_state: s32) -> StyleData {
-    cascade: StyleCascade = BeginStyleCascade(base)
-    cascade = ApplyStyleRule(cascade, rule, facts, active_state)
-    return FinishStyleCascade(cascade)
-}
+// Caller-owned tables resolve from this copy; the installed table resolves
+// in place through ResolveInstalledStyleRules.
+resolve_rules: StyleRules;
 
 #program_export
 ResolveStyleRules :: (rules: StyleRules, base: StyleData,
     facts: StyleFacts, active_state: s32) -> StyleData {
-    cascade: StyleCascade = BeginStyleCascade(base)
-    limit: s32 = rules.count
+    resolve_rules = rules
+    limit: s32 = resolve_rules.count
     if limit < 0 { limit = 0 }
     if limit > 320 { limit = 320 }
-    index: s32 = 0
-    while index < limit {
-        cascade = ApplyStyleRule(cascade, rules.items[index],
-            facts, active_state)
-        index += 1
-    }
-    return FinishStyleCascade(cascade)
+    cascade: StyleCascade = ApplyStyleRules(BeginStyleCascade(base),
+        resolve_rules.items[0:limit], facts, active_state)
+    result: StyleData = cascade.result
+    return result
+}
+
+// Resolves against the installed rules without copying the rule table.
+#program_export
+ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
+    active_state: s32) -> StyleData {
+    limit: s32 = installed_rules.count
+    if limit < 0 { limit = 0 }
+    if limit > 320 { limit = 320 }
+    cascade: StyleCascade = ApplyStyleRules(BeginStyleCascade(base),
+        installed_rules.items[0:limit], facts, active_state)
+    result: StyleData = cascade.result
+    return result
 }

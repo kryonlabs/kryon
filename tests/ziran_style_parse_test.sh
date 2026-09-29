@@ -45,7 +45,7 @@ Answer :: () -> s32 {
         parsed.overflow || parsed.rules.count != 2 { return 0 }
     if !InstallParsedStyleRules(parsed) { return 0 }
     defaults: ProgressFaces
-    faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(), 0, defaults)
+    faces: ProgressFaces = ProgressFacesFor(0, defaults)
     if faces.track.value.background != cast(u32)0x112233ff ||
         faces.track.value.border != cast(u32)0x99aabbff ||
         faces.track.value.border_width != 2.0 ||

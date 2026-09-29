@@ -48,13 +48,13 @@ CheckboxDefaultFace :: (role: s32, disabled: bool) -> StyleData {
 }
 
 #program_export
-CheckboxFaceFor :: (rules: StyleRules, props: CheckboxProps,
+CheckboxFaceFor :: (props: CheckboxProps,
     role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindCheckbox(),
         props.id, props.class_name, role, cast(s32)tone,
         cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(rules,
+    frame.value = ResolveInstalledStyleRules(
         CheckboxDefaultFace(role, props.disabled), facts, state)
     return frame
 }
@@ -140,14 +140,13 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
         false, TreePressedAt(session, previous), TreeHoveredAt(session, previous),
         false, result.checked)
-    rules: StyleRules = ActiveStyleRules()
-    box: StyleFrame = CheckboxFaceFor(rules, props,
+    box: StyleFrame = CheckboxFaceFor(props,
         CheckboxBoxRoleForTone(cast(ButtonTone)ButtonToneNeutral),
         cast(ButtonTone)ButtonToneNeutral, state)
-    active: StyleFrame = CheckboxFaceFor(rules, props,
+    active: StyleFrame = CheckboxFaceFor(props,
         CheckboxBoxRoleForTone(cast(ButtonTone)ButtonToneAccent),
         cast(ButtonTone)ButtonToneAccent, state)
-    label: StyleFrame = CheckboxFaceFor(rules, props,
+    label: StyleFrame = CheckboxFaceFor(props,
         CheckboxLabelRole(), cast(ButtonTone)ButtonToneNeutral, state)
     font: s32 = ResolveFont(0,
         StyleFontValue(label.value.fields, label.value.font_size), 14)

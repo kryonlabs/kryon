@@ -47,16 +47,16 @@ ProgressFacts :: (class_name: s32, role: s32,
 }
 
 #program_export
-ProgressFacesFor :: (rules: StyleRules, class_name: s32,
+ProgressFacesFor :: (class_name: s32,
     defaults: ProgressFaces) -> ProgressFaces {
     faces: ProgressFaces = defaults
-    faces.track.value = ResolveStyleRules(rules, defaults.track.value,
+    faces.track.value = ResolveInstalledStyleRules(defaults.track.value,
         ProgressFacts(class_name, ProgressTrackRole(), ButtonToneNeutral),
         cast(s32)ButtonStateNormal)
-    faces.fill.value = ResolveStyleRules(rules, defaults.fill.value,
+    faces.fill.value = ResolveInstalledStyleRules(defaults.fill.value,
         ProgressFacts(class_name, ProgressFillRole(), ButtonToneAccent),
         cast(s32)ButtonStateNormal)
-    faces.label.value = ResolveStyleRules(rules, defaults.label.value,
+    faces.label.value = ResolveInstalledStyleRules(defaults.label.value,
         ProgressFacts(class_name, ProgressLabelRole(), ButtonToneNeutral),
         cast(s32)ButtonStateNormal)
     faces.track.fill = FillState(faces.track.value.fields,

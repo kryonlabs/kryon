@@ -55,7 +55,7 @@ SelectableFaceFor :: (props: SelectableProps,
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         SelectableDefaultFace(state), facts, state)
     return frame
 }

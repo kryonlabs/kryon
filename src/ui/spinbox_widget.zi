@@ -52,7 +52,7 @@ SpinboxFaceFor :: (props: SpinboxProps, value_face: bool) -> StyleData {
     facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
         props.class_name, StyleAny(), cast(s32)ButtonToneNeutral,
         cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
-    return ResolveStyleRules(ActiveStyleRules(),
+    return ResolveInstalledStyleRules(
         SpinboxDefaultFace(value_face, props.disabled), facts, state)
 }
 

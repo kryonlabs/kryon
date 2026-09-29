@@ -55,14 +55,14 @@ ToggleDefaultFace :: (kind: s32, role: s32,
 }
 
 #program_export
-ToggleFaceFor :: (rules: StyleRules, props: ToggleProps,
+ToggleFaceFor :: (props: ToggleProps,
     kind: s32, role: s32, tone: ButtonTone,
     state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
         props.class_name, role, cast(s32)tone,
         cast(s32)ButtonEmphasisSoft, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(rules,
+    frame.value = ResolveInstalledStyleRules(
         ToggleDefaultFace(kind, role, tone, props.disabled),
         facts, state)
     return frame
@@ -154,19 +154,18 @@ Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
         false, TreePressedAt(session, previous), TreeHoveredAt(session, previous),
         false, result.value)
-    rules: StyleRules = ActiveStyleRules()
     tone: ButtonTone = cast(ButtonTone)ButtonToneNeutral
     if result.value && !has_labels { tone = cast(ButtonTone)ButtonToneAccent }
-    track: StyleFrame = ToggleFaceFor(rules, props,
+    track: StyleFrame = ToggleFaceFor(props,
         StyleKindToggle(), ToggleTrackRoleFor(result.value,
             has_labels), tone, state)
-    active: StyleFrame = ToggleFaceFor(rules, props,
+    active: StyleFrame = ToggleFaceFor(props,
         StyleKindToggle(), ToggleFillRole(),
         cast(ButtonTone)ButtonToneAccent, state)
-    label: StyleFrame = ToggleFaceFor(rules, props,
+    label: StyleFrame = ToggleFaceFor(props,
         StyleKindToggle(), ToggleLabelRole(),
         cast(ButtonTone)ButtonToneNeutral, state)
-    thumb: StyleFrame = ToggleFaceFor(rules, props,
+    thumb: StyleFrame = ToggleFaceFor(props,
         StyleKindToggleThumb(), StyleAny(), tone, state)
     font: s32 = ResolveFont(0,
         StyleFontValue(label.value.fields, label.value.font_size), 14)

@@ -80,7 +80,7 @@ TextAreaFaceFor :: (props: TextAreaProps,
     if focused { state = cast(s32)ButtonStateFocus }
     if props.disabled { state = cast(s32)ButtonStateDisabled }
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         TextAreaDefaultFace(),
         StyleControlRoleFacts(StyleKindTextArea(),
             props.focus_id, props.class_name, 0,

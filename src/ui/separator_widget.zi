@@ -50,14 +50,14 @@ SeparatorFacts :: (props: SeparatorProps, role: s32,
 }
 
 #program_export
-SeparatorFacesFor :: (rules: StyleRules, props: SeparatorProps,
+SeparatorFacesFor :: (props: SeparatorProps,
     defaults: SeparatorFaces) -> SeparatorFaces {
     faces: SeparatorFaces = defaults
     state: s32 = cast(s32)ButtonStateNormal
     if props.disabled { state = cast(s32)ButtonStateDisabled }
-    faces.line.value = ResolveStyleRules(rules, defaults.line.value,
+    faces.line.value = ResolveInstalledStyleRules(defaults.line.value,
         SeparatorFacts(props, SeparatorLineRole(), state), state)
-    faces.label.value = ResolveStyleRules(rules, defaults.label.value,
+    faces.label.value = ResolveInstalledStyleRules(defaults.label.value,
         SeparatorFacts(props, SeparatorLabelRole(), state), state)
     return faces
 }
@@ -124,20 +124,13 @@ PaintSeparatorProps :: (session: Session, props: SeparatorProps,
 }
 
 #program_export
-PaintSeparatorFromRules :: (session: Session, props: SeparatorProps, rules: StyleRules,
-    defaults: SeparatorFaces) {
-    PaintSeparatorProps(session, props, SeparatorFacesFor(rules, props, defaults))
-}
-
-#program_export
 Separator :: (session: Session, props: SeparatorProps) {
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, props.bounds)
         if node < 0 { return }
     }
-    faces: SeparatorFaces = SeparatorFacesFor(ActiveStyleRules(),
-        props, DefaultSeparatorFaces())
+    faces: SeparatorFaces = SeparatorFacesFor(props, DefaultSeparatorFaces())
     PaintSeparatorForNode(session, node, props, faces)
 }
 
@@ -151,7 +144,7 @@ Bullet :: (session: Session, bounds: Rectangle) {
         cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium,
         cast(s32)ButtonStateNormal)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+    frame.value = ResolveInstalledStyleRules(defaults,
         facts, cast(s32)ButtonStateNormal)
     paint: BulletPaint = BulletPaintFor(bounds, frame)
     node: s32 = -1

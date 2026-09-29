@@ -31,7 +31,7 @@ LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleTextFacts(0, props.class_name,
         StyleKindLink(), state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), base,
+    frame.value = ResolveInstalledStyleRules(base,
         facts, state)
     return frame
 }

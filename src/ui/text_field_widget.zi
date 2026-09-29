@@ -65,7 +65,7 @@ TextFieldFaceFor :: (props: TextFieldProps,
         cast(s32)ButtonEmphasisSoft,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         TextFieldDefaultFace(), facts, state)
     return frame
 }

@@ -51,21 +51,13 @@ PaintProgressProps :: (session: Session, props: ProgressProps, faces: ProgressFa
 }
 
 #program_export
-PaintProgressFromRules :: (session: Session, props: ProgressProps, rules: StyleRules,
-    defaults: ProgressFaces) {
-    faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
-    PaintProgressProps(session, props, faces)
-}
-
-#program_export
 Progress :: (session: Session, props: ProgressProps) {
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, props.key, WidgetKindProgress, props.bounds)
         if node < 0 { return }
     }
-    faces: ProgressFaces = ProgressFacesFor(ActiveStyleRules(),
-        props.class_name, DefaultProgressFaces())
+    faces: ProgressFaces = ProgressFacesFor(props.class_name, DefaultProgressFaces())
     prepared: PreparedProgress = PrepareProgress(props, faces)
     PaintProgressForNode(session, node, props.bounds, prepared.paint,
         props.label, prepared.font, prepared.label_opacity)
