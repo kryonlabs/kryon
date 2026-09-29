@@ -606,12 +606,31 @@
 
     // raylib's TraceLog: a C varargs call whose argument list arrives as one
     // pointer, as with TextFormat.
+    canvas_trace_level: s32 = 0;
+
     #program_export "TraceLog"
     TraceCanvasLog :: (level: s32, format: *u8, arguments: *void) {
+        if level < canvas_trace_level { return }
         if canvas_trace_callback != null {
             canvas_trace_callback(level, format, arguments)
             return
         }
         CanvasConsoleError(FormatCanvasLog(format, arguments))
+    }
+
+    // raylib's memory and log-level entry points, for apps that still call them.
+    #program_export "MemAlloc"
+    CanvasMemAlloc :: (size: u32) -> *void {
+        return OsAllocate(cast(usize)size)
+    }
+
+    #program_export "MemFree"
+    CanvasMemFree :: (memory: *void) {
+        OsRelease(memory)
+    }
+
+    #program_export "SetTraceLogLevel"
+    SetCanvasTraceLevel :: (level: s32) {
+        canvas_trace_level = level
     }
 }
