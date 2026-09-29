@@ -152,11 +152,11 @@ $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/zir
 	test -f $(C_DIR)/$(HOST_ID).c
 	touch $(C_STAMP)
 
-# The kryon tool describes the generated C compilation to editors.
-KRYON_TOOL := $(KRYON_DIR)/build/bin/kryon
-
-$(GEN_DIR)/compile_commands.json: $(C_STAMP) $(KRYON_TOOL)
-	$(KRYON_TOOL) compile-commands $(ZIRAN_DIR)/include '$(CC)' $(C_DIR) $(GEN_DIR)/compile_commands.json
+# Editors read how the generated C is compiled from compile_commands.json.
+$(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
+	@$(ZIRAN) compile-commands --include $(ZIRAN_DIR)/include \
+		--compiler '$(CC) -O2 -ffunction-sections -fdata-sections' \
+		-o $@ $(C_DIR) || { echo "kryon: this Kryon needs a newer Ziran; run ziran update ziran" >&2; exit 1; }
 
 $(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS)
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)

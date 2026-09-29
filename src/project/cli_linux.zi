@@ -1,4 +1,3 @@
-#import "compile_commands_linux"
 #import "options"
 
 // Linux command-line host for Kryon projects. Configuration and command
@@ -246,26 +245,6 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
     return index
 }
 
-// `kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT`: the project build
-// asks the tool to describe the generated C compilation to editors.
-CompileCommands :: (command_line: string) -> s32 {
-    include_bytes: [4096]u8
-    compiler_bytes: [4096]u8
-    generated_bytes: [4096]u8
-    output_bytes: [4096]u8
-    include: string = Argument(command_line, 2, include_bytes[:])
-    compiler: string = Argument(command_line, 3, compiler_bytes[:])
-    generated: string = Argument(command_line, 4, generated_bytes[:])
-    output: string = Argument(command_line, 5, output_bytes[:])
-    if include == "" || compiler == "" || generated == "" || output == "" ||
-    Argument(command_line, 6, include_bytes[:]) != "" {
-        return Error("usage: kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT")
-    }
-    problem: string = WriteCompileCommands(include, compiler, generated, output)
-    if problem != "" { return Error(problem) }
-    return 0
-}
-
 #program_export
 main :: () -> s32 {
     command_bytes: [8192]u8
@@ -274,10 +253,9 @@ main :: () -> s32 {
     verb_bytes: [128]u8
     verb: string = Argument(command_line.text, 1, verb_bytes[:])
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
-        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n       kryon compile-commands INCLUDE COMPILER GENERATED OUTPUT\n")
+        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n")
         return 0
     }
-    if verb == "compile-commands" { return CompileCommands(command_line.text) }
     if verb != "run" && verb != "build" && verb != "check" && verb != "install" {
         return Error("unknown command; use run, build, check, or install")
     }

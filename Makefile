@@ -41,7 +41,7 @@ project-toolchain:
 $(ZIRAN_DIR)/build/bin/zi2c:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi src/project/compile_commands_linux.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran | project-toolchain
+build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran | project-toolchain
 	mkdir -p build/project/gen
 	rm -f build/project/gen/*.c build/project/gen/*.h
 	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root src/project \
