@@ -4,9 +4,13 @@ fake_texture_next: s32 = 1;
 fake_texture_live: s32;
 fake_texture_bad_atlas: bool;
 
+fake_texture_updates: s32;
+
 PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
-    if width != 512 || height < 64 || pixels[0] != cast(u8)0 ||
-        pixels[(width + 1) * 4 + 3] != cast(u8)255 {
+    // A page for glyphs added on first use starts transparent.
+    page: bool = width == 1024 && height == 1024 && pixels[(width + 1) * 4 + 3] == cast(u8)0
+    if !page && (width != 512 || height < 64 || pixels[0] != cast(u8)0 ||
+        pixels[(width + 1) * 4 + 3] != cast(u8)255) {
         fake_texture_bad_atlas = true
         return 0
     }
@@ -19,6 +23,19 @@ PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
 PageTextureFree :: (id: s32) {
     unused id
     fake_texture_live -= 1
+}
+
+PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+    if id <= 0 || pixels == null || x < 1 || y < 1 || width <= 0 || height <= 0 ||
+        pixels[3] != cast(u8)255 {
+        fake_texture_bad_atlas = true
+        return
+    }
+    fake_texture_updates += 1
+}
+
+FakeTextureUpdates :: () -> s32 {
+    return fake_texture_updates
 }
 
 FakeTexturesLive :: () -> s32 {
