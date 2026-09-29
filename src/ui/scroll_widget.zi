@@ -5,6 +5,7 @@
 #import "paint_queue"
 #import "scroll"
 #import "scroll_props"
+#import "scroll_device"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -29,13 +30,16 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
     if result.viewport.height <= 0.0 {
         result.viewport.height = parent.height
     }
+    key: u64 = props.key
     if TreeIsBuilding(session) {
-        key: u64 = props.key
         if key == cast(u64)0 { key = TreeNextKey(session) }
         result.node = TreeSubmitCurrent(session, key, WidgetKindScroll,
             result.viewport)
         if result.node < 0 { return result }
         result.viewport = TreeSubmittedNodeAt(session, result.node).bounds
+    }
+    if !props.input.enabled && ScrollDeviceSampled(session) {
+        props.input = ScrollObservationFor(key, result.viewport)
     }
     result.max_scroll = ScrollMax(props.content_height,
         cast(s32)result.viewport.height)
@@ -74,7 +78,18 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         input.owns_drag = props.input.owns_drag
         input.owner_captured = props.input.owner_captured
         input.grab = props.input.grab
+        input.content_drag = props.input.content_drag
+        input.drag_origin_y = props.input.drag_origin_y
+        input.drag_origin_offset = props.input.drag_origin_offset
+        input.drag_moving = props.input.drag_moving
+        input.now_seconds = props.input.now_seconds
+        input.sample_seconds = props.input.sample_seconds
+        input.velocity = props.input.velocity
+        input.flinging = props.input.flinging
+        input.gliding = props.input.gliding
+        input.glide_target = props.input.glide_target
         result.frame = ScrollFrameFor(input, metrics)
+        if props.input.device { CommitScroll(key, result.frame) }
         result.scroll_offset = result.frame.offset
         result.content = result.frame.content
         if result.frame.scrollbar {

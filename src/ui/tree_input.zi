@@ -343,6 +343,17 @@ TreeTakeDragAt :: (session: Session, index: s32) -> PointerDrag {
     return drag
 }
 
+// A gesture that another widget took over, such as a content drag that
+// scrolls, must not press or activate the node it started on.
+#program_export
+TreePointerCancel :: (session: Session) {
+    if !SessionValid(session) { return }
+    active_pointer[SessionIndex(session)].held_generation = 0
+    active_pointer[SessionIndex(session)].pressed_generation = 0
+    active_pointer[SessionIndex(session)].released_generation = 0
+    active_pointer[SessionIndex(session)].activation_generation = 0
+}
+
 #program_export
 TreeHoveredAt :: (session: Session, index: s32) -> bool {
     if index < 0 || index >= TreeCount(session) { return false }

@@ -122,6 +122,7 @@ router.zi
 rows.zi
 router_props.zi
 scroll.zi
+scroll_device.zi
 scroll_props.zi
 scroll_widget.zi
 secondary_pointer.zi
