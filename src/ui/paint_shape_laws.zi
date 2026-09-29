@@ -1,0 +1,25 @@
+#import "paint_queue"
+#import "dpi"
+
+// Laws for clipped shape painting and pixel scaling. Each states the
+// expected behavior independently of the implementation; `ziran check`
+// proves it over every listed input.
+
+Near :: (value: float32, expected: float32, tolerance: float32) -> bool {
+    return value >= expected - tolerance && value <= expected + tolerance
+}
+
+// A corner curves in by at most its radius, and not at all outside it.
+#law CornerInsetInRange forall radius: 0..40, dy: -10..50 => ShapeCornerInset(cast(float32)radius, cast(float32)dy) >= 0.0 && ShapeCornerInset(cast(float32)radius, cast(float32)dy) <= cast(float32)radius;
+#law CornerInsetZeroOutsideCorner forall radius: 0..40, dy: -10..0 => ShapeCornerInset(cast(float32)radius, cast(float32)dy) == 0.0;
+// Deeper into the corner, the edge curves in further.
+#law CornerInsetGrows forall radius: 1..40, dy: 0..39 => dy + 1 > radius || ShapeCornerInset(cast(float32)radius, cast(float32)(dy + 1)) >= ShapeCornerInset(cast(float32)radius, cast(float32)dy);
+// The square root used for corners is accurate to well under a pixel.
+#law SquareRootAccurate forall value: 0..2000 => Near(ShapeSquareRoot(cast(float32)value) * ShapeSquareRoot(cast(float32)value), cast(float32)value, 0.01 * cast(float32)value + 0.01);
+
+// Scaling pixels rounds to the nearest pixel and never shrinks a size
+// at 100% or more.
+#law ScaleIdentity forall px: -50..200 => ScalePixels(px, 1.0) == px;
+#law ScaleNeverShrinks forall px: 0..200, tenths: 10..30 => ScalePixels(px, cast(float32)tenths / 10.0) >= px;
+#law ScaleBadFactorIsIdentity forall px: 0..200, factor: -3..0 => ScalePixels(px, cast(float32)factor) == px;
+#law ClampPixelsInRange forall px: -20..120, low: 0..20, high: 20..60 => ClampPixels(px, low, high, 1.5) >= ScalePixels(low, 1.5) && ClampPixels(px, low, high, 1.5) <= ScalePixels(high, 1.5);
