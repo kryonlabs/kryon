@@ -1,8 +1,10 @@
 #import "geometry"
 #import "scroll"
 
-// Device observations and drag ownership are supplied by the platform.
-// The caller retains grab and ownership from the returned frame.
+// Device observations and drag ownership. Scroll observes the shared scroll
+// device itself when the host sampled it this frame and `enabled` is false;
+// a caller that supplies its own input retains grab and ownership from the
+// returned frame.
 ScrollInput :: struct {
     enabled: bool
     pointer_allowed: bool
@@ -15,6 +17,18 @@ ScrollInput :: struct {
     owns_drag: bool
     owner_captured: bool
     grab: float32
+    content_drag: bool
+    drag_origin_y: float32
+    drag_origin_offset: s32
+    drag_moving: bool
+    // Observed from the shared scroll device, which Scroll then updates.
+    device: bool
+    now_seconds: float64
+    sample_seconds: float64
+    velocity: float32
+    flinging: bool
+    gliding: bool
+    glide_target: s32
 }
 
 ScrollProps :: struct {

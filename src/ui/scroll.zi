@@ -503,6 +503,21 @@ ScrollFrameInput :: struct {
     owns_drag: bool
     owner_captured: bool
     grab: float32
+    // A held drag of the content itself rather than the scrollbar thumb.
+    content_drag: bool
+    drag_origin_y: float32
+    drag_origin_offset: s32
+    drag_moving: bool
+    // Seconds on the host clock, and the content velocity in pixels per
+    // second measured by the previous frame of a drag or fling.
+    now_seconds: float64
+    sample_seconds: float64
+    velocity: float32
+    // This scroll is coasting after a flicked content drag.
+    flinging: bool
+    // This scroll is gliding to the offset its wheel input asked for.
+    gliding: bool
+    glide_target: s32
 }
 
 ScrollFrame :: struct {
@@ -517,6 +532,85 @@ ScrollFrame :: struct {
     consume_release: bool
     consume_wheel: bool
     thumb_state: s32
+    content_drag: bool
+    drag_origin_y: float32
+    drag_origin_offset: s32
+    drag_moving: bool
+    // The drag moved the content; the press it began with is not a tap.
+    cancel_press: bool
+    sample_seconds: float64
+    velocity: float32
+    flinging: bool
+    gliding: bool
+    glide_target: s32
+}
+
+// A wheel glide covers this share of its remaining distance per second of
+// frame time, so it settles within about 150 ms at any frame rate.
+SCROLL_GLIDE_RATE :: 18.0
+
+// Moves a wheel glide toward its target by one frame.
+ScrollGlideStep :: (frame: ScrollFrame, input: ScrollFrameInput, target: s32,
+    elapsed: float32) -> ScrollFrame {
+    frame.glide_target = target
+    frame.sample_seconds = input.now_seconds
+    remaining: s32 = target - frame.offset
+    share: float32 = elapsed * cast(float32)SCROLL_GLIDE_RATE
+    if share > 1.0 { share = 1.0 }
+    moved: s32 = cast(s32)(cast(float32)remaining * share)
+    if moved == 0 && remaining > 0 { moved = 1 }
+    if moved == 0 && remaining < 0 { moved = -1 }
+    frame.offset += moved
+    frame.gliding = frame.offset != target
+    return frame
+}
+
+// A release faster than this, in pixels per second, starts a fling.
+SCROLL_FLING_START :: 150.0
+// A fling ends below this speed.
+SCROLL_FLING_STOP :: 20.0
+// The fraction of fling speed kept per second is about e^-SCROLL_FLING_DECAY.
+SCROLL_FLING_DECAY :: 3.5
+// Frames further apart than this are treated as this far apart, so a
+// stalled frame does not throw the content.
+SCROLL_FRAME_MAX_SECONDS :: 0.1
+
+ScrollElapsed :: (input: ScrollFrameInput) -> float32 {
+    if input.sample_seconds <= 0.0 || input.now_seconds <= input.sample_seconds {
+        return 0.0
+    }
+    elapsed: float64 = input.now_seconds - input.sample_seconds
+    if elapsed > SCROLL_FRAME_MAX_SECONDS { return cast(float32)SCROLL_FRAME_MAX_SECONDS }
+    return cast(float32)elapsed
+}
+
+ScrollSpeed :: (velocity: float32) -> float32 {
+    if velocity < 0.0 { return 0.0 - velocity }
+    return velocity
+}
+
+// Advances a fling by one frame: moves the offset by the velocity and slows
+// it down. The fling stops at either end of the content or when slow.
+ScrollFlingStep :: (frame: ScrollFrame, input: ScrollFrameInput, maximum: s32) -> ScrollFrame {
+    elapsed: float32 = ScrollElapsed(input)
+    frame.velocity = input.velocity
+    frame.sample_seconds = input.now_seconds
+    frame.flinging = true
+    if elapsed <= 0.0 { return frame }
+    moved: s64 = cast(s64)(input.velocity * elapsed)
+    offset: s64 = cast(s64)frame.offset + moved
+    if offset <= cast(s64)0 || offset >= cast(s64)maximum {
+        frame.flinging = false
+    }
+    frame.offset = ScrollClamp(cast(s32)offset, maximum)
+    keep: float32 = 1.0 - cast(float32)SCROLL_FLING_DECAY * elapsed
+    if keep < 0.0 { keep = 0.0 }
+    frame.velocity = input.velocity * keep
+    if ScrollSpeed(frame.velocity) < cast(float32)SCROLL_FLING_STOP {
+        frame.flinging = false
+    }
+    if !frame.flinging { frame.velocity = 0.0 }
+    return frame
 }
 
 ScrollPointInside :: (point: Vector2, bounds: Rectangle) -> bool {
@@ -531,21 +625,43 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
     frame.grab = input.grab
     frame.thumb_state = cast(s32)ButtonStateNormal
     maximum: s32 = ScrollMax(input.content_height, cast(s32)input.bounds.height)
-    active: bool = input.owns_drag
+    active: bool = input.owns_drag && !input.content_drag
+    content_active: bool = input.owns_drag && input.content_drag
+    frame.content_drag = content_active
+    frame.drag_origin_y = input.drag_origin_y
+    frame.drag_origin_offset = input.drag_origin_offset
+    frame.drag_moving = input.drag_moving
     if input.has_offset {
         frame.offset = ScrollClamp(input.offset, maximum)
         if input.pointer_allowed && !input.disabled && input.wheel != 0.0 {
-            frame.offset = ScrollWheelOffsetFor(frame.offset, input.wheel,
-            maximum, metrics.default_wheel_step)
+            if input.now_seconds > 0.0 {
+                // Wheel steps add to a target the content glides to; the
+                // first frame of a glide takes a frame's worth of it at once.
+                base: s32 = frame.offset
+                if input.gliding { base = ScrollClamp(input.glide_target, maximum) }
+                target: s32 = ScrollWheelOffsetFor(base, input.wheel,
+                    maximum, metrics.default_wheel_step)
+                elapsed: float32 = ScrollElapsed(input)
+                if !input.gliding || elapsed <= 0.0 { elapsed = 0.016 }
+                frame = ScrollGlideStep(frame, input, target, elapsed)
+            } else {
+                frame.offset = ScrollWheelOffsetFor(frame.offset, input.wheel,
+                maximum, metrics.default_wheel_step)
+            }
             frame.consume_wheel = true
+        } else if input.gliding && !input.disabled && !input.owns_drag {
+            frame = ScrollGlideStep(frame, input,
+                ScrollClamp(input.glide_target, maximum), ScrollElapsed(input))
         }
         frame.scrollbar = maximum > 0 &&
         input.bounds.width > cast(float32)metrics.scrollbar_width && input.bounds.height > 0.0
     }
     if !frame.scrollbar || input.disabled || input.owner_captured {
-        frame.clear_drag = active
-        frame.consume_release = active && input.released
+        frame.clear_drag = active || content_active
+        frame.consume_release = (active || content_active) && input.released
         active = false
+        content_active = false
+        frame.content_drag = false
     }
     if frame.scrollbar {
         x: s32 = cast(s32)(input.bounds.x + input.bounds.width) - metrics.scrollbar_width
@@ -560,6 +676,61 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
             if ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
                 frame.grab = input.mouse.y - frame.paint.thumb_bounds.y
             }
+        }
+        // Touch scrolls by dragging the content. A press anywhere in the
+        // content arms the drag; it moves the content once the pointer has
+        // travelled past the threshold, and a shorter press stays a tap.
+        if !active && !content_active && !input.disabled &&
+            !input.owner_captured && input.pointer_allowed && input.pressed &&
+            ScrollPointInside(input.mouse, input.bounds) {
+            frame.start_drag = true
+            frame.clear_drag = false
+            frame.content_drag = true
+            frame.drag_origin_y = input.mouse.y
+            frame.drag_origin_offset = frame.offset
+            frame.drag_moving = false
+            content_active = true
+        }
+        if content_active {
+            delta: s32 = cast(s32)(input.mouse.y - frame.drag_origin_y)
+            if input.down || input.pressed {
+                if !frame.drag_moving && (delta > metrics.drag_threshold ||
+                    delta < -metrics.drag_threshold) {
+                    frame.drag_moving = true
+                    frame.cancel_press = true
+                }
+                if frame.drag_moving {
+                    previous: s32 = frame.offset
+                    frame.offset = ScrollDragDeltaOffsetFor(
+                        frame.drag_origin_offset, delta, maximum)
+                    // Smooth the content's velocity over recent frames.
+                    elapsed: float32 = ScrollElapsed(input)
+                    frame.velocity = input.velocity
+                    if elapsed > 0.0 {
+                        now: float32 = cast(float32)(frame.offset - previous) / elapsed
+                        frame.velocity = now * 0.7 + input.velocity * 0.3
+                    }
+                    frame.sample_seconds = input.now_seconds
+                }
+            }
+            if input.released || !(input.down || input.pressed) {
+                frame.consume_release = frame.drag_moving && input.released
+                // A flick keeps the content moving. A drag that has come to
+                // rest before release has had no sample for a while.
+                if frame.drag_moving && input.released &&
+                    ScrollSpeed(input.velocity) >= cast(float32)SCROLL_FLING_START &&
+                    input.now_seconds - input.sample_seconds < SCROLL_FRAME_MAX_SECONDS {
+                    frame.flinging = true
+                    frame.velocity = input.velocity
+                    frame.sample_seconds = input.now_seconds
+                }
+                frame.clear_drag = true
+                frame.content_drag = false
+                content_active = false
+            }
+        } else if input.flinging && !active && !frame.consume_wheel &&
+            !input.disabled {
+            frame = ScrollFlingStep(frame, input, maximum)
         }
         if active {
             if frame.paint.track_span > 0 && (input.down || input.pressed) {

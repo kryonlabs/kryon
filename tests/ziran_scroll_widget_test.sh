@@ -104,6 +104,49 @@ Answer :: () -> s32 {
         !End(TestSession()) || !TreeFinish(TestSession()) { return -9 }
     PaintClear(TestSession())
 
+    // Dragging the content scrolls it once past the threshold, and the
+    // press it began with is cancelled so it is not taken as a tap.
+    TreeStart(TestSession(), cast(u64)1, root)
+    props.scroll_offset = 40
+    props.input.released = false
+    props.input.owns_drag = false
+    props.input.pressed = true
+    props.input.down = true
+    props.input.mouse = Vector2.{50.0, 40.0}
+    result = Scroll(TestSession(), props)
+    if !result.frame.start_drag || !result.frame.content_drag ||
+        result.frame.drag_moving || result.scroll_offset != 40 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -11 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    props.input.pressed = false
+    props.input.owns_drag = true
+    props.input.content_drag = true
+    props.input.drag_origin_y = result.frame.drag_origin_y
+    props.input.drag_origin_offset = result.frame.drag_origin_offset
+    props.input.mouse.y = 42.0
+    result = Scroll(TestSession(), props)
+    if result.frame.drag_moving || result.scroll_offset != 40 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -12 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    props.input.mouse.y = 20.0
+    result = Scroll(TestSession(), props)
+    if !result.frame.drag_moving || !result.frame.cancel_press ||
+        result.scroll_offset != 60 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -13 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    props.input.drag_moving = true
+    props.input.down = false
+    props.input.released = true
+    result = Scroll(TestSession(), props)
+    if !result.frame.clear_drag || !result.frame.consume_release ||
+        result.frame.content_drag ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -14 }
+    props.input.content_drag = false
+    props.input.drag_moving = false
+    props.input.owns_drag = false
+    props.input.released = false
+    PaintClear(TestSession())
+
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.enabled = false
     result = Scroll(TestSession(), props)
