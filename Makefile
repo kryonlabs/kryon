@@ -315,6 +315,26 @@ FUZZ_COUNT ?= 2000
 fuzz-kss: $(ZIRAN_DIR)/build/bin/ziran
 	@sh tests/kss_fuzz.sh $(FUZZ_SEED) $(FUZZ_COUNT)
 
+# Directories under build/ that targets and tests write. Anything else there
+# is left from one-off experiments: put those in build/scratch/. clean-scratch
+# removes every other entry that nothing has written to for a day, so a build
+# another session is running keeps its files. Go's module cache is read-only,
+# so write permission comes back first.
+BUILD_OUTPUTS := ziran project bin plan9 tools test examples kss-fuzz sanitize raylib-ziran \
+	emscripten-cache android-surface-check text-input-platform-test
+.PHONY: clean-scratch
+clean-scratch:
+	@for entry in build/* build/.[!.]*; do \
+		test -e "$$entry" || continue; \
+		case " $(BUILD_OUTPUTS) " in *" $${entry#build/} "*) continue ;; esac; \
+		if test -n "$$(find "$$entry" -newermt '-1 day' -print -quit 2>/dev/null)"; then \
+			echo "kept $$entry (written in the last day)"; continue; \
+		fi; \
+		chmod -R u+w -- "$$entry" 2>/dev/null; \
+		if rm -rf -- "$$entry" 2>/dev/null; then echo "removed $$entry"; \
+		else echo "could not remove all of $$entry"; fi; \
+	done
+
 .PHONY: plan9-c
 plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.stamp
 	rm -rf $(PLAN9_DIR)
