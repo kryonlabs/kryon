@@ -251,4 +251,12 @@
         PageSetModelview(cast(float64)matrix.m0, cast(float64)matrix.m1, cast(float64)matrix.m4, cast(float64)matrix.m5, cast(float64)matrix.m12, cast(float64)matrix.m13)
     }
 
+    // raylib's Fade: the color with its alpha set from a 0..1 fraction.
+    #program_export
+    Fade :: (color: Color, alpha: float32) -> Color {
+        amount: float32 = alpha
+        if amount < 0.0 { amount = 0.0 }
+        if amount > 1.0 { amount = 1.0 }
+        return Color.{color.r, color.g, color.b, cast(u8)(255.0 * amount)}
+    }
 }

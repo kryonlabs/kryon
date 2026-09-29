@@ -223,4 +223,9 @@
         }
     }
 
+    // A frame texture the retained transition no longer needs.
+    #program_export
+    DisposeFrameTexture :: (texture: Texture2D) {
+        if texture.id != cast(u32)0 { UnloadTexture(texture) }
+    }
 }
