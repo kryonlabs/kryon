@@ -1,0 +1,63 @@
+#import "drawing_props"
+#import "geometry"
+#import "image_props"
+#import "image_widget"
+#import "session"
+#import "transition"
+
+using ImageFit;
+host_api :: #system_library "host_api";
+DisposeFrameTexture :: (texture: Texture2D) #foreign host_api;
+
+// A retained frame is a runtime texture, so route transitions stay on the
+// declarative Image surface instead of leaking backend texture calls into apps.
+FrameSurface :: struct {
+    texture: Texture2D
+}
+
+#program_export
+FrameSurfaceValid :: (surface: FrameSurface) -> bool {
+    return surface.texture.id != cast(u32)0 &&
+    surface.texture.width > 0 && surface.texture.height > 0
+}
+
+#program_export
+FrameSurfaceRelease :: (surface: FrameSurface) -> FrameSurface {
+    if !FrameSurfaceValid(surface) { return surface }
+    DisposeFrameTexture(surface.texture)
+    surface.texture = Texture2D.{}
+    return surface
+}
+
+#program_export
+FrameTransitionAlpha :: (elapsed_seconds: float32,
+    duration_seconds: float32) -> float32 {
+    duration := TransitionDuration(duration_seconds)
+    progress := TransitionClampProgress(elapsed_seconds / duration)
+    return 1.0 - TransitionSmoothProgress(progress)
+}
+
+#program_export
+FrameTransitionImage :: (surface: FrameSurface, bounds: Rectangle,
+    elapsed_seconds: float32, duration_seconds: float32) -> ImageProps {
+    alpha := FrameTransitionAlpha(elapsed_seconds, duration_seconds)
+    alpha_byte := cast(u32)(alpha * 255.0 + 0.5)
+    image: ImageProps
+    image.bounds = bounds
+    image.fit = cast(ImageFit)ImageFitStretch
+    image.texture = surface.texture
+    image.alt_text = "Previous screen"
+    image.tint = (cast(u32)0xffffff << cast(u32)8) | alpha_byte
+    return image
+}
+
+#program_export
+FrameTransition :: (session: Session, surface: FrameSurface,
+    bounds: Rectangle, elapsed_seconds: float32,
+    duration_seconds: float32) {
+    if !FrameSurfaceValid(surface) { return }
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    if FrameTransitionAlpha(elapsed_seconds, duration_seconds) <= 0.0 { return }
+    Image(session, FrameTransitionImage(surface, bounds,
+        elapsed_seconds, duration_seconds))
+}

@@ -66,6 +66,15 @@ HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
+HostRaylibRenderTexture :: struct {
+    id: u32
+    texture: Texture2D
+    depth: Texture2D
+}
+HostRaylibLoadRenderTexture :: (width: s32, height: s32) -> HostRaylibRenderTexture #foreign raylib "LoadRenderTexture";
+HostRaylibUnloadRenderTexture :: (target: HostRaylibRenderTexture) #foreign raylib "UnloadRenderTexture";
+HostRaylibBeginTextureMode :: (target: HostRaylibRenderTexture) #foreign raylib "BeginTextureMode";
+HostRaylibEndTextureMode :: () #foreign raylib "EndTextureMode";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
 HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
@@ -613,6 +622,16 @@ OpenRaylib :: () -> bool {
 #program_export
 CloseRaylib :: () {
     index: s32 = 0
+    while index < 2 {
+        if retained_frame_ready[index] {
+            HostRaylibUnloadRenderTexture(retained_frame_targets[index])
+            retained_frame_ready[index] = false
+        }
+        index += 1
+    }
+    retained_frame_previous_index = -1
+    retained_frame_render_index = 0
+    index = 0
     while index < raylib_assets_count {
         if raylib_assets[index].texture.id != cast(u32)0 {
             HostRaylibUnloadTexture(raylib_assets[index].texture)
@@ -808,6 +827,69 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     EndRasterClip(saved)
 }
 
+// Renders into one of two retained targets. The previous target stays
+// sampleable through RetainedPreviousFrameTexture while the next frame renders.
+#program_export
+BeginRetainedFrame :: (width: s32, height: s32) -> bool {
+    if width <= 0 || height <= 0 { return false }
+    if retained_frame_width != width || retained_frame_height != height {
+        index: s32 = 0
+        while index < 2 {
+            if retained_frame_ready[index] {
+                HostRaylibUnloadRenderTexture(retained_frame_targets[index])
+                retained_frame_ready[index] = false
+            }
+            index += 1
+        }
+        retained_frame_previous_index = -1
+        retained_frame_render_index = 0
+        retained_frame_width = width
+        retained_frame_height = height
+    }
+    if !retained_frame_ready[retained_frame_render_index] {
+        retained_frame_targets[retained_frame_render_index] =
+        HostRaylibLoadRenderTexture(width, height)
+        retained_frame_ready[retained_frame_render_index] =
+        retained_frame_targets[retained_frame_render_index].id != cast(u32)0
+    }
+    if !retained_frame_ready[retained_frame_render_index] { return false }
+    HostRaylibBeginDrawing()
+    HostRaylibBeginTextureMode(retained_frame_targets[retained_frame_render_index])
+    retained_frame_active = true
+    return true
+}
+
+#program_export
+EndRetainedFrame :: () -> bool {
+    if !retained_frame_active { return false }
+    target := retained_frame_targets[retained_frame_render_index]
+    HostRaylibEndTextureMode()
+    source := Rectangle.{0.0, 0.0, cast(float32)target.texture.width,
+        -cast(float32)target.texture.height}
+    destination := Rectangle.{0.0, 0.0,
+        cast(float32)target.texture.width,
+        cast(float32)target.texture.height}
+    HostRaylibDrawTexture(target.texture, source, destination,
+        Vector2.{}, 0.0, Color.{255, 255, 255, 255})
+    HostRaylibEndDrawing()
+    retained_frame_active = false
+    rendered := retained_frame_render_index
+    retained_frame_previous_index = rendered
+    retained_frame_render_index = (rendered + 1) % 2
+    return true
+}
+
+#program_export
+RetainedPreviousFrameTexture :: () -> Texture2D {
+    if retained_frame_previous_index < 0 { return Texture2D.{} }
+    return retained_frame_targets[retained_frame_previous_index].texture
+}
+
+#program_export
+DisposeFrameTexture :: (texture: Texture2D) {
+    if texture.id != cast(u32)0 { HostRaylibUnloadTexture(texture) }
+}
+
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
     index: s32 = RaylibAssetIndex(asset_path)
@@ -821,6 +903,14 @@ ImageHeight :: (asset_path: string) -> s32 {
     if index < 0 { return 0 }
     return raylib_assets[index].texture.height
 }
+
+retained_frame_targets: [2]HostRaylibRenderTexture;
+retained_frame_ready: [2]bool;
+retained_frame_render_index: s32;
+retained_frame_previous_index: s32 = -1;
+retained_frame_width: s32;
+retained_frame_height: s32;
+retained_frame_active: bool;
 
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,
