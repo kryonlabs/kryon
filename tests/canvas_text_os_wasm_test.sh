@@ -20,6 +20,11 @@ cat > "$work/fixture.js" <<'JS'
 const loadedFaces = new Set();
 globalThis.FontFace = class { async load() { return this; } };
 const glyphContext = {
+  // A 16px line with this face's 12 + 3 ascent and descent is drawn at
+  // 16 * 16 / 15 CSS pixels.
+  set font(value) {
+    if (!/^(16\.00|17\.07)px /.test(value)) throw new Error(`unexpected glyph font ${value}`);
+  },
   measureText: () => ({width: 6, actualBoundingBoxLeft: 1, actualBoundingBoxRight: 6,
     actualBoundingBoxAscent: 12, actualBoundingBoxDescent: 3,
     fontBoundingBoxAscent: 12, fontBoundingBoxDescent: 3}),

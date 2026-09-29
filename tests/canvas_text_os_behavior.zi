@@ -85,7 +85,9 @@ main :: () -> s32 {
     }
     DrawTextEx(font, *text[0], Vector2.{10.0, 20.0}, 16.0, 2.0,
         Color.{255, 255, 255, 255})
-    if draw_count != 3 || last_draw.x != 8.0 || last_draw.y != 36.0 {
+    // The fake face's ascent is 12, so a bitmap with one row of padding starts
+    // one pixel above its line box.
+    if draw_count != 3 || last_draw.x != 8.0 || last_draw.y != 35.0 {
         return 3
     }
     unused CopyCString("A😀Z", text[:])

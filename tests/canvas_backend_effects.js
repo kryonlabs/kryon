@@ -23,6 +23,9 @@ addToLibrary({
   },
   canvas_test_finish__sig: 'i',
   canvas_test_finish: function() {
+    // main's exit code is lost once Asyncify has suspended it (font loading
+    // awaits), so a failure is also recorded for the page's onExit.
+    var code=(function() {
     var dpi=Math.max(1,globalThis.devicePixelRatio||1),ctx=document.getElementById('canvas').getContext('2d');
     var cases=[
       [1,1,[255,255,255,255]], [21,11,[0,255,0,255]],
@@ -41,6 +44,18 @@ addToLibrary({
     var textPixels=ctx.getImageData(0,70*dpi,160*dpi,35*dpi).data;
     var ink=0; for(var pixel=0;pixel<textPixels.length;pixel+=4) if(textPixels[pixel]<100) ink++;
     if(ink<40) {globalThis.canvasTestError='font atlas produced no text';return 22;}
+    function inkIn(x,y,width,height) {
+      var data=ctx.getImageData(x*dpi,y*dpi,width*dpi,height*dpi).data, count=0;
+      for(var at=0;at<data.length;at+=4) if(data[at]<100) count++;
+      return count;
+    }
+    if(inkIn(115,30,30,20)<10) {globalThis.canvasTestError='glyph missing from its line box';return 23;}
+    if(inkIn(115,51,30,9)!==0) {globalThis.canvasTestError='glyph drawn below its line box';return 24;}
+    if(inkIn(44,96,34,20)<10) {globalThis.canvasTestError='zoomed text clip is not scaled';return 25;}
+    if(inkIn(82,94,40,26)!==0) {globalThis.canvasTestError='zoomed text escaped its clip';return 26;}
     return 0;
+    })();
+    if(code) globalThis.canvasTestFailure=code;
+    return code;
   }
 });

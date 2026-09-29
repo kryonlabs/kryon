@@ -7,6 +7,7 @@
 #import "canvas_draw"
 #import "canvas_texture"
 #import "canvas_text"
+#import "raylib_clip"
 
 libm :: #system_library "m";
 CanvasSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
@@ -24,9 +25,11 @@ CanvasDrawImageStrip :: (texture: Texture2D, source: Rectangle,
     destination: Rectangle, origin: Vector2, rotation: float32,
     tint: Color, x: s32, y: s32, width: s32, height: s32) {
     if width <= 0 || height <= 0 { return }
-    BeginScissorMode(x, y, width, height)
+    // Clips are in the same camera space as the image, like the native host.
+    saved := BeginRasterClip(Rectangle.{cast(float32)x, cast(float32)y,
+        cast(float32)width, cast(float32)height})
     DrawTexturePro(texture, source, destination, origin, rotation, tint)
-    EndScissorMode()
+    EndRasterClip(saved)
 }
 
 // Scissor strips preserve DrawTexturePro's rotation and source mapping while
@@ -134,10 +137,9 @@ RasterText :: (value: string, x: s32, y: s32,
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
     if clip.width <= 0.0 || clip.height <= 0.0 { return }
-    BeginScissorMode(cast(s32)clip.x, cast(s32)clip.y,
-        cast(s32)clip.width, cast(s32)clip.height)
+    saved := BeginRasterClip(clip)
     RasterText(value, x, y, font, color)
-    EndScissorMode()
+    EndRasterClip(saved)
 }
 
 #program_export

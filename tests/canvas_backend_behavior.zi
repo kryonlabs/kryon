@@ -6,6 +6,7 @@
 #import "canvas_os"
 #import "canvas_text"
 #import "raylib_clip"
+#import "canvas_raster"
 #import "geometry"
 #import "drawing_props"
 #import "c_string"
@@ -75,7 +76,16 @@ main :: () -> s32 {
     measured := MeasureTextEx(font, *title[0], 20.0, 0.0)
     if measured.x <= 50.0 || measured.y <= 0.0 { return 14 }
     DrawTextEx(font, *title[0], Vector2.{4.0, 70.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
+    // A glyph stays inside its line box: a 20px "g" ends by y = 50.
+    CopyCString("g", path[:])
+    DrawTextEx(font, *path[0], Vector2.{120.0, 30.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
     UnloadFont(font)
+    // A text clip follows the camera like the text: at zoom 2 the 40-unit
+    // clip covers 80 screen pixels.
+    BeginMode2D(Camera.{offset = Vector2.{0.0, 94.0}, zoom = 2.0})
+    RasterTextClipped("MMMMMMMMMMMM", 0, 0, 10, Color.{0, 0, 0, 255},
+        Rectangle.{0.0, 0.0, 40.0, 12.0})
+    EndMode2D()
     result := CanvasTestFinish()
     if result == 0 && PageTextureCount() != 0 { result = 21 }
     SetTargetFPS(120)
