@@ -11,6 +11,9 @@
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
+#import "paint_queue"
+#import "drawing_props"
+#import "surface"
 
 using WidgetKind;
 using ButtonTone;
@@ -147,6 +150,19 @@ SegmentedControl :: (session: Session, props: SegmentedControlProps,
         bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
+    // A single-row control is one outlined group, as the theme styles it;
+    // the outline is painted after the segments so the selection sits in it.
+    control: StyleFrame = SegmentedControlFaceFor(props,
+        StyleKindSegmentedControl())
+    control_opacity: float32 = StyleOpacityValue(control.value.fields,
+        control.value.opacity)
+    outlined: bool = !props.wrap && (control.value.fields &
+        cast(u32)StyleBorderWidth) != cast(u32)0 &&
+        control.value.border_width > 0.0
+    if !props.wrap && (control.value.fields & cast(u32)StyleBackground) != cast(u32)0 {
+        PaintRoundedFill(session, result.node, bounds, control.value.radius, 12,
+            ColorFromPacked(Opacity(control.value.background, control_opacity)))
+    }
     segment: StyleFrame = SegmentedControlFaceFor(props,
         StyleKindSegment())
     font: s32 = ResolveFont(0,
@@ -213,6 +229,11 @@ SegmentedControl :: (session: Session, props: SegmentedControlProps,
             row_count = advance.row_count
         }
         index += 1
+    }
+    if outlined {
+        PaintRoundedOutline(session, result.node, bounds, control.value.radius,
+            12, control.value.border_width,
+            ColorFromPacked(Opacity(control.value.border, control_opacity)))
     }
     return result
 }
