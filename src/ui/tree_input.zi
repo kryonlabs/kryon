@@ -7,6 +7,14 @@ using WidgetKind;
 
 // Raw device observations are supplied by the platform. Kryon owns hit order,
 // capture, eligibility, and activation across retained frames.
+// The secondary (right) button, which opens context menus. It travels beside
+// PointerFrame so existing hosts and code keep their layout.
+SecondaryPointerFrame :: struct {
+    down: bool
+    pressed: bool
+    released: bool
+}
+
 PointerFrame :: struct {
     x: float32
     y: float32
@@ -41,6 +49,7 @@ PointerDrag :: struct {
 
 active_pointer: [9]PointerState;
 active_sample: [9]PointerFrame;
+active_secondary: [9]SecondaryPointerFrame;
 active_key: [9]s32;
 active_modifiers: [9]s32;
 
@@ -123,6 +132,20 @@ TypedCodepointTake :: (session: Session) -> s32 {
     active_codepoints[index].head = (head + 1) % 32
     active_codepoints[index].count -= 1
     return codepoint
+}
+
+#program_export
+TreeSecondaryPointerUpdate :: (session: Session, frame: SecondaryPointerFrame) {
+    if !SessionValid(session) { return }
+    active_secondary[SessionIndex(session)] = frame
+}
+
+// This frame's state of the secondary button.
+#program_export
+SecondaryPointerSample :: (session: Session) -> SecondaryPointerFrame {
+    empty: SecondaryPointerFrame
+    if !SessionValid(session) { return empty }
+    return active_secondary[SessionIndex(session)]
 }
 
 #program_export
@@ -355,9 +378,11 @@ TreeInputReset :: (session: Session) {
     if !SessionValid(session) { return }
     pointer: PointerState
     sample: PointerFrame
+    secondary: SecondaryPointerFrame
     wheel: PointerWheelState
     active_pointer[session.slot] = pointer
     active_sample[session.slot] = sample
+    active_secondary[session.slot] = secondary
     active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
     active_modifiers[session.slot] = 0

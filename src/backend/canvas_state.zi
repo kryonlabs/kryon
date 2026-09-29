@@ -20,6 +20,7 @@ canvas_assets: [32]CanvasAsset;
 canvas_assets_count: s32;
 canvas_assets_next: s32;
 canvas_pointer: PointerFrame;
+canvas_secondary: SecondaryPointerFrame;
 canvas_wheel_move: float32;
 canvas_image_error: bool;
 canvas_font: CanvasFont;

@@ -1,0 +1,6 @@
+#import "tree_input"
+host_api :: #system_library "host_api";
+
+// The host reports the secondary (right) button beside PollPointer. A host
+// without one reports all false.
+PollSecondaryPointer :: () -> SecondaryPointerFrame #foreign host_api;

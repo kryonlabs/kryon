@@ -1,0 +1,53 @@
+// The system clipboard. The host reads and writes it; text is UTF-8. Hosts
+// with no clipboard report that they cannot, and an application then keeps its
+// own copy (see clipboard.zi for that policy).
+host_api :: #system_library "host_api";
+
+// Takes a snapshot of the clipboard's text and returns its length in bytes, or
+// -1 when the host has no clipboard. The snapshot stays until the next call.
+SystemClipboardOpenHost :: () -> s32 #foreign host_api;
+// One byte (0 to 255) of the snapshot, or -1 past its end.
+SystemClipboardByteHost :: (index: s32) -> s32 #foreign host_api;
+// Replaces the clipboard's text; false when the host has no clipboard.
+SystemClipboardWriteHost :: (text: string) -> bool #foreign host_api;
+
+// The text on the system clipboard, read into buffer (which holds at most
+// buffer.count bytes; longer text is cut on a whole character). It is "" when
+// the clipboard is empty or the host has none.
+#program_export
+SystemClipboardText :: (buffer: []u8) -> string {
+    size: s32 = SystemClipboardOpenHost()
+    if size <= 0 || buffer.count < 2 { return "" }
+    length: s32 = size
+    limit: s32 = cast(s32)buffer.count
+    if length > limit { length = limit }
+    index: s32 = 0
+    while index < length {
+        byte: s32 = SystemClipboardByteHost(index)
+        if byte < 0 {
+            length = index
+            break
+        }
+        buffer[index] = cast(u8)byte
+        index += 1
+    }
+    if length < size {
+        // Cut short: drop a partial multi-byte character.
+        while length > 0 && (cast(s32)buffer[length - 1] & 192) == 128 { length -= 1 }
+        if length > 0 && (cast(s32)buffer[length - 1] & 192) == 192 { length -= 1 }
+    }
+    end: s64 = cast(s64)length
+    return TextView(buffer[0:end])
+}
+
+// Whether the system clipboard holds text.
+#program_export
+SystemClipboardHasText :: () -> bool {
+    return SystemClipboardOpenHost() > 0
+}
+
+// Puts text on the system clipboard. Returns false when the host has none.
+#program_export
+SystemClipboardSet :: (text: string) -> bool {
+    return SystemClipboardWriteHost(text)
+}

@@ -51,11 +51,15 @@ HideWindow :: (window: *void) #foreign sdl_library "SDL_HideWindow";
 RaiseWindow :: (window: *void) #foreign sdl_library "SDL_RaiseWindow";
 GetWindowFlags :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowFlags";
 SetHint :: (name: *u8, value: *u8) -> s32 #foreign sdl_library "SDL_SetHint";
+GetClipboardText :: () -> *u8 #foreign sdl_library "SDL_GetClipboardText";
+SetClipboardText :: (text: *u8) -> s32 #foreign sdl_library "SDL_SetClipboardText";
+FreeSdlMemory :: (memory: *void) #foreign sdl_library "SDL_free";
 
 window: *void;
 renderer: *void;
 texture: *void;
 pointer: PointerFrame;
+secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
 desktop_key: s32;
 // SDL modifier state recorded with the last key press, or -1 without one.
@@ -109,6 +113,8 @@ PollDesktop :: () -> bool {
     event: Event
     pressed: bool = false
     released: bool = false
+    right_pressed: bool = false
+    right_released: bool = false
     desktop_wheel = 0.0
     desktop_key = 0
     desktop_key_modifiers = -1
@@ -163,13 +169,24 @@ PollDesktop :: () -> bool {
             if event.kind == cast(u32)0x401 { pressed = true }
             if event.kind == cast(u32)0x402 { released = true }
         }
+        // SDL_BUTTON_RIGHT
+        if event.button == cast(u8)3 {
+            if event.kind == cast(u32)0x401 { right_pressed = true }
+            if event.kind == cast(u32)0x402 { right_released = true }
+        }
     }
     x: s32 = 0
     y: s32 = 0
     buttons: u32 = GetMouseState(*x, *y)
     down: bool = (buttons & cast(u32)1) != cast(u32)0
+    // A press and release inside one poll (a tap) still counts as held for
+    // this sample, so the press reaches the widget under it.
+    if pressed { down = true }
     SetPointerFrame(cast(float32)x, cast(float32)y, down,
         pressed, released)
+    secondary.down = (buttons & cast(u32)4) != cast(u32)0
+    secondary.pressed = right_pressed
+    secondary.released = right_released
     return !desktop_quit
 }
 
@@ -294,3 +311,50 @@ WindowQuitHost :: () {
 
 #program_export
 PollPointer :: () -> PointerFrame { return pointer }
+
+// The clipboard snapshot SystemClipboardOpenHost takes, and the text a write
+// hands to SDL, which needs it NUL-terminated.
+desktop_clipboard: [65536]u8;
+desktop_clipboard_length: s32;
+
+// Snapshots the text, cut on a whole character to fit.
+#program_export
+SystemClipboardOpenHost :: () -> s32 {
+    desktop_clipboard_length = 0
+    text: *u8 = GetClipboardText()
+    if text == null { return -1 }
+    length: s32 = 0
+    while text[length] != cast(u8)0 && length < 65535 {
+        desktop_clipboard[length] = text[length]
+        length += 1
+    }
+    if text[length] != cast(u8)0 {
+        while length > 0 && (cast(s32)desktop_clipboard[length - 1] & 192) == 128 { length -= 1 }
+        if length > 0 && (cast(s32)desktop_clipboard[length - 1] & 192) == 192 { length -= 1 }
+    }
+    FreeSdlMemory(cast(*void)text)
+    desktop_clipboard_length = length
+    return length
+}
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= desktop_clipboard_length { return -1 }
+    return cast(s32)desktop_clipboard[index]
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    length: s32 = cast(s32)text.count
+    if length > 65535 { length = 65535 }
+    index: s32 = 0
+    while index < length {
+        desktop_clipboard[index] = text[index]
+        index += 1
+    }
+    desktop_clipboard[length] = cast(u8)0
+    return SetClipboardText(*desktop_clipboard[0]) == 0
+}
+
+#program_export
+PollSecondaryPointer :: () -> SecondaryPointerFrame { return secondary }

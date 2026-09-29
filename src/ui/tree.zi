@@ -895,6 +895,35 @@ TreeSubmittedNodeAt :: (session: Session, index: s32) -> TreeEntry {
     return TreeRead(session, index, false)
 }
 
+// A widget that must sit above everything else the frame draws, such as a
+// context menu, registers a late callback while it runs. TreeFinish calls each
+// one after the page has been submitted, at the root, so its nodes and paint
+// come last and are on top in hit order.
+TreeLate :: #type (session: Session) -> ();
+
+TreeLateSlot :: struct {
+    run: TreeLate
+    used: bool
+}
+
+tree_late: [9][4]TreeLateSlot;
+
+// Runs run at the end of this frame. Returns false when four are pending.
+#program_export
+TreeDefer :: (session: Session, run: TreeLate) -> bool {
+    if !SessionValid(session) { return false }
+    index: s32 = 0
+    while index < 4 {
+        if !tree_late[session.slot][index].used {
+            tree_late[session.slot][index].run = run
+            tree_late[session.slot][index].used = true
+            return true
+        }
+        index += 1
+    }
+    return false
+}
+
 #program_export
 TreeFinish :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
@@ -902,6 +931,18 @@ TreeFinish :: (session: Session) -> bool {
     if !trees[slot].building {
         trees[slot].error = cast(FrameStatus)FrameNotBuilding
         return false
+    }
+    late: s32 = 0
+    while late < 4 {
+        if tree_late[slot][late].used {
+            tree_late[slot][late].used = false
+            if trees[slot].error == cast(FrameStatus)FrameOk &&
+                trees[slot].scope_depth == 1 {
+                run: TreeLate = tree_late[slot][late].run
+                run(session)
+            }
+        }
+        late += 1
     }
     trees[slot].building = false
     if trees[slot].scope_depth != 1 &&

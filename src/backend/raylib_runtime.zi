@@ -15,6 +15,8 @@ HostRaylibCloseWindow :: () #foreign raylib "CloseWindow";
 HostRaylibIsWindowReady :: () -> bool #foreign raylib "IsWindowReady";
 HostRaylibWindowShouldClose :: () -> bool #foreign raylib "WindowShouldClose";
 HostRaylibSetWindowState :: (flags: u32) #foreign raylib "SetWindowState";
+HostRaylibGetClipboardText :: () -> *u8 #foreign raylib "GetClipboardText";
+HostRaylibSetClipboardText :: (text: *u8) #foreign raylib "SetClipboardText";
 HostRaylibClearWindowState :: (flags: u32) #foreign raylib "ClearWindowState";
 HostRaylibIsWindowHidden :: () -> bool #foreign raylib "IsWindowHidden";
 HostRaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
@@ -92,6 +94,7 @@ raylib_assets: [32]RaylibAsset;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
 raylib_pointer: PointerFrame;
+raylib_secondary: SecondaryPointerFrame;
 
 // The zoom factor the frame is drawn at. Everything drawn after the frame
 // begins is scaled by it, so a single number scales the whole application;
@@ -649,9 +652,13 @@ PollRaylib :: () -> bool {
     // Screen pixels; PollPointer reports them in zoomed space.
     raylib_pointer.x = cast(float32)HostRaylibMouseX()
     raylib_pointer.y = cast(float32)HostRaylibMouseY()
-    raylib_pointer.down = HostRaylibMouseDown(0)
     raylib_pointer.pressed = HostRaylibMousePressed(0)
+    // A press and release inside one frame still counts as held for it.
+    raylib_pointer.down = HostRaylibMouseDown(0) || raylib_pointer.pressed
     raylib_pointer.released = HostRaylibMouseReleased(0)
+    raylib_secondary.down = HostRaylibMouseDown(1)
+    raylib_secondary.pressed = HostRaylibMousePressed(1)
+    raylib_secondary.released = HostRaylibMouseReleased(1)
     raylib_wheel_move = HostRaylibMouseWheelMove()
     return true
 }
@@ -979,3 +986,50 @@ WindowTakeCloseRequestHost :: () -> bool {
 WindowQuitHost :: () {
     raylib_quit = true
 }
+
+// The clipboard snapshot SystemClipboardOpenHost takes, and the text a write
+// hands to the host, which needs it NUL-terminated.
+raylib_clipboard: [65536]u8;
+raylib_clipboard_length: s32;
+
+// Snapshots the text, cut on a whole character to fit.
+#program_export
+SystemClipboardOpenHost :: () -> s32 {
+    raylib_clipboard_length = 0
+    text: *u8 = HostRaylibGetClipboardText()
+    if text == null { return -1 }
+    length: s32 = 0
+    while text[length] != cast(u8)0 && length < 65535 {
+        raylib_clipboard[length] = text[length]
+        length += 1
+    }
+    if text[length] != cast(u8)0 {
+        while length > 0 && (cast(s32)raylib_clipboard[length - 1] & 192) == 128 { length -= 1 }
+        if length > 0 && (cast(s32)raylib_clipboard[length - 1] & 192) == 192 { length -= 1 }
+    }
+    raylib_clipboard_length = length
+    return length
+}
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= raylib_clipboard_length { return -1 }
+    return cast(s32)raylib_clipboard[index]
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    length: s32 = cast(s32)text.count
+    if length > 65535 { length = 65535 }
+    index: s32 = 0
+    while index < length {
+        raylib_clipboard[index] = text[index]
+        index += 1
+    }
+    raylib_clipboard[length] = cast(u8)0
+    HostRaylibSetClipboardText(*raylib_clipboard[0])
+    return true
+}
+
+#program_export
+PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }

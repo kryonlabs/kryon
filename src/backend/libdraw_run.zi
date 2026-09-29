@@ -1,3 +1,4 @@
+#import "secondary_pointer"
 #import "app"
 #import "cairo_raster"
 #import "geometry"
@@ -29,6 +30,7 @@ LibdrawError :: (message: string) -> s32 {
 DrawLibdrawFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginLibdrawFrame()
     TreePointerUpdate(session, PollPointer())
+    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {

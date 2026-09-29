@@ -1,0 +1,104 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "context_menu_widget"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_context_menu_widget_host"
+
+using WidgetKind;
+
+phase: s32;
+open_state: bool;
+
+Click :: (x: float32, y: float32) {
+    // A quick click reaches the host as one sample with both edges.
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, true})
+}
+
+// A menu at (20, 20) with Cut, a disabled Copy, a divider, and Paste. The
+// panel is 168 wide and 95 tall: rows at y 24, 50, and 85.
+#program_export
+Frame :: () -> s32 {
+    items: [4]ContextMenuItem
+    items[0].id = 1
+    items[0].label = "Cut"
+    items[1].id = 2
+    items[1].label = "Copy"
+    items[1].disabled = true
+    items[2].separator = true
+    items[3].id = 3
+    items[3].label = "Paste"
+    props: ContextMenuProps
+    props.key = cast(u64)30
+    props.open = open_state
+    props.x = 20.0
+    props.y = 20.0
+    props.escape = phase == 9
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 160.0})
+    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:4])
+    if !TreeFinish(TestSession()) { return -1 }
+    if phase == 0 {
+        // Closed: nothing is submitted.
+        if result.open || TreeCount(TestSession()) != 1 { return -2 }
+        open_state = true
+    } else if phase == 1 {
+        // Open: the overlay, its panel, and the three commands.
+        if !result.open || result.activated_id != 0 { return -3 }
+        if TreeCount(TestSession()) != 7 { return -4 }
+        if TreeNodeAt(TestSession(), TreeHitAt(TestSession(), 40.0, 37.0)).kind !=
+            WidgetKindSelectable { return -5 }
+        Click(40.0, 37.0)
+    } else if phase == 2 {
+        // Cut was chosen; the menu closes.
+        if result.activated_id != 1 || result.open || !result.closed { return -6 }
+        open_state = true
+    } else if phase == 3 {
+        if !result.open { return -7 }
+        // The disabled Copy does nothing.
+        Click(40.0, 63.0)
+    } else if phase == 4 {
+        if result.activated_id != 0 || !result.open { return -8 }
+        // Paste, below the divider.
+        Click(40.0, 98.0)
+    } else if phase == 5 {
+        if result.activated_id != 3 || result.open { return -9 }
+        open_state = true
+    } else if phase == 6 {
+        if !result.open { return -10 }
+        // A click outside the panel dismisses it without choosing anything.
+        Click(220.0, 140.0)
+    } else if phase == 7 {
+        if result.open || !result.closed || result.activated_id != 0 { return -11 }
+        open_state = true
+    } else if phase == 8 {
+        if !result.open { return -12 }
+    } else if phase == 9 {
+        // Escape closes.
+        if result.open || !result.closed { return -13 }
+    }
+    PaintFlush(TestSession())
+    old: s32 = phase
+    phase += 1
+    return old
+}
+
+#program_export
+main :: () -> s32 {
+    expected: s32 = 0
+    while expected < 10 {
+        if Frame() != expected { return expected + 1 }
+        expected += 1
+    }
+    // Labels were drawn: three commands per frame the menu was open.
+    if ContextMenuLabelCount() < 9 { return 100 }
+    return 0
+}
