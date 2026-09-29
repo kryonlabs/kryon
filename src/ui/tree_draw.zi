@@ -12,6 +12,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     bounds: Rectangle) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
     PaintClear(session)
+    frame_paint_unchanged[SessionIndex(session)] = false
     TreeStart(session, screen_key, bounds)
     return TreeFrameStatus(session)
 }
@@ -32,12 +33,41 @@ CommitFrame :: (session: Session) -> FrameStatus {
     return cast(FrameStatus)FrameOk
 }
 
+FrameEndResult :: struct {
+    status: FrameStatus
+    paint_unchanged: bool
+    paint_count: s32
+}
+
 #program_export
 EndFrame :: (session: Session) -> FrameStatus {
     status: FrameStatus = CommitFrame(session)
     if status != cast(FrameStatus)FrameOk { return status }
     PaintFlush(session)
     return cast(FrameStatus)FrameOk
+}
+
+#program_export
+EndFrameRetained :: (session: Session) -> FrameEndResult {
+    result: FrameEndResult
+    result.status = CommitFrame(session)
+    if result.status != cast(FrameStatus)FrameOk {
+        PaintSnapshotInvalidate(session)
+        return result
+    }
+    result.paint_count = PendingPaintCount(session)
+    unchanged: bool = PaintPlanUnchanged(session)
+    stored: bool = PaintSnapshotStore(session)
+    result.paint_unchanged = unchanged && stored
+    slot: s32 = SessionIndex(session)
+    frame_paint_unchanged[slot] = result.paint_unchanged
+    if result.paint_unchanged {
+        PaintClear(session)
+    } else {
+        PaintFlush(session)
+    }
+    result.status = cast(FrameStatus)FrameOk
+    return result
 }
 
 #program_export

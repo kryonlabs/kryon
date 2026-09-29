@@ -70,6 +70,25 @@ PAINT_TEXT_CAPACITY :: 32768
 pending_text: [9][PAINT_TEXT_CAPACITY]u8;
 pending_text_count: [9]s64;
 
+// The previous committed paint plan is retained by value. Strings and asset
+// paths are copied byte-for-byte so equality does not depend on borrowed
+// pointers or addresses.
+PaintSnapshot :: struct {
+    data: PaintCommand
+    value_start: s64
+    value_count: s64
+    asset_start: s64
+    asset_count: s64
+}
+
+paint_snapshots: [9]Vec(PaintSnapshot);
+paint_snapshot_values: [9][PAINT_TEXT_CAPACITY]u8;
+paint_snapshot_assets: [9][PAINT_TEXT_CAPACITY]u8;
+paint_snapshot_value_counts: [9]s64;
+paint_snapshot_asset_counts: [9]s64;
+paint_snapshots_valid: [9]bool;
+frame_paint_unchanged: [9]bool;
+
 // Copies a queued command's text into the session's frame text. Text that
 // does not fit keeps the caller's view, which must then outlive the flush.
 KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
@@ -416,6 +435,162 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     return data
 }
 
+SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
+    if value.count == 0 { return 0 }
+    if cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+    start: s64
+    if values {
+        start = paint_snapshot_value_counts[slot]
+        if start + cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+        at: s64 = 0
+        while at < cast(s64)value.count {
+            paint_snapshot_values[slot][start + at] = value[at]
+            at += 1
+        }
+        paint_snapshot_value_counts[slot] = start + at
+        return start
+    }
+    start = paint_snapshot_asset_counts[slot]
+    if start + cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+    at: s64 = 0
+    while at < cast(s64)value.count {
+        paint_snapshot_assets[slot][start + at] = value[at]
+        at += 1
+    }
+    paint_snapshot_asset_counts[slot] = start + at
+    return start
+}
+
+SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
+    if cast(s64)value.count != count { return false }
+    at: s64 = 0
+    while at < count {
+        if value[at] != paint_snapshot_values[slot][start + at] { return false }
+        at += 1
+    }
+    return true
+}
+
+SnapshotAssetEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
+    if cast(s64)value.count != count { return false }
+    at: s64 = 0
+    while at < count {
+        if value[at] != paint_snapshot_assets[slot][start + at] { return false }
+        at += 1
+    }
+    return true
+}
+
+TextureEqual :: (left: Texture2D, right: Texture2D) -> bool {
+    return left.id == right.id && left.width == right.width &&
+    left.height == right.height && left.mipmaps == right.mipmaps &&
+    left.format == right.format
+}
+
+PaintCommandEqual :: (slot: s32, current: PaintCommand,
+    previous: PaintSnapshot) -> bool {
+    if slot <= 0 || slot >= 9 { return false }
+    if current.node != previous.data.node || current.kind != previous.data.kind { return false }
+    if current.bounds.x != previous.data.bounds.x ||
+    current.bounds.y != previous.data.bounds.y ||
+    current.bounds.width != previous.data.bounds.width ||
+    current.bounds.height != previous.data.bounds.height { return false }
+    if current.color.r != previous.data.color.r ||
+    current.color.g != previous.data.color.g ||
+    current.color.b != previous.data.color.b ||
+    current.color.a != previous.data.color.a { return false }
+    if current.end_color.r != previous.data.end_color.r ||
+    current.end_color.g != previous.data.end_color.g ||
+    current.end_color.b != previous.data.end_color.b ||
+    current.end_color.a != previous.data.end_color.a { return false }
+    if current.radius != previous.data.radius ||
+    current.segments != previous.data.segments ||
+    current.line_width != previous.data.line_width { return false }
+    if !SnapshotValueEqual(slot, current.value, previous.value_start,
+        previous.value_count) { return false }
+    if current.x != previous.data.x || current.y != previous.data.y ||
+    current.font != previous.data.font { return false }
+    if !SnapshotAssetEqual(slot, current.asset_path, previous.asset_start,
+        previous.asset_count) { return false }
+    if current.texture_id != previous.data.texture_id ||
+    !TextureEqual(current.texture, previous.data.texture) { return false }
+    if current.source.x != previous.data.source.x ||
+    current.source.y != previous.data.source.y ||
+    current.source.width != previous.data.source.width ||
+    current.source.height != previous.data.source.height { return false }
+    if current.clip.x != previous.data.clip.x ||
+    current.clip.y != previous.data.clip.y ||
+    current.clip.width != previous.data.clip.width ||
+    current.clip.height != previous.data.clip.height { return false }
+    if current.origin.x != previous.data.origin.x ||
+    current.origin.y != previous.data.origin.y ||
+    current.rotation != previous.data.rotation { return false }
+    return true
+}
+
+PaintSnapshotInvalidate :: (session: Session) {
+    if !SessionValid(session) { return }
+    slot: s32 = SessionIndex(session)
+    VecClear(paint_snapshots[slot])
+    paint_snapshot_value_counts[slot] = 0
+    paint_snapshot_asset_counts[slot] = 0
+    paint_snapshots_valid[slot] = false
+    frame_paint_unchanged[slot] = false
+}
+
+PaintSnapshotStore :: (session: Session) -> bool {
+    slot: s32 = SessionIndex(session)
+    VecClear(paint_snapshots[slot])
+    paint_snapshot_value_counts[slot] = 0
+    paint_snapshot_asset_counts[slot] = 0
+    index: s32 = 0
+    while cast(s64)index < pending_paint[slot].items.count {
+        current: PaintCommand = PendingPaintAt(session, index)
+        previous: PaintSnapshot
+        previous.data = current
+        previous.value_start = SnapshotTextAppend(slot, true, current.value)
+        if previous.value_start < 0 {
+            PaintSnapshotInvalidate(session)
+            return false
+        }
+        previous.value_count = cast(s64)current.value.count
+        previous.asset_start = SnapshotTextAppend(slot, false, current.asset_path)
+        if previous.asset_start < 0 {
+            PaintSnapshotInvalidate(session)
+            return false
+        }
+        previous.asset_count = cast(s64)current.asset_path.count
+        if !VecPush(paint_snapshots[slot], previous) {
+            PaintSnapshotInvalidate(session)
+            return false
+        }
+        index += 1
+    }
+    paint_snapshots_valid[slot] = true
+    return true
+}
+
+#program_export
+PaintPlanUnchanged :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot: s32 = SessionIndex(session)
+    if !paint_snapshots_valid[slot] { return false }
+    if pending_paint[slot].items.count != paint_snapshots[slot].count { return false }
+    index: s32 = 0
+    while cast(s64)index < pending_paint[slot].items.count {
+        if !PaintCommandEqual(slot, PendingPaintAt(session, index),
+            paint_snapshots[slot][index]) { return false }
+        index += 1
+    }
+    return true
+}
+
+#program_export
+FramePaintUnchanged :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    return frame_paint_unchanged[SessionIndex(session)]
+}
+
 #program_export
 PaintFlush :: (session: Session) {
     index: s32 = 0
@@ -437,6 +612,11 @@ PaintFlush :: (session: Session) {
 PaintDispose :: (session: Session) {
     if !SessionValid(session) { return }
     VecFree(pending_paint[session.slot].items)
+    VecFree(paint_snapshots[session.slot])
     pending_text_count[session.slot] = 0
     pending_paint[session.slot].overflow = false
+    paint_snapshot_value_counts[session.slot] = 0
+    paint_snapshot_asset_counts[session.slot] = 0
+    paint_snapshots_valid[session.slot] = false
+    frame_paint_unchanged[session.slot] = false
 }

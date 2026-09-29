@@ -1,0 +1,57 @@
+#import "drawing_props"
+#import "geometry"
+
+line_draws: s32;
+text_draws: s32;
+image_draws: s32;
+failed: bool;
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused color
+    if line.width <= 0.0 || line.height <= 0.0 { failed = true }
+    line_draws += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused x
+    unused y
+    unused font
+    unused color
+    if value.count == 0 { failed = true }
+    text_draws += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    if asset_path.count == 0 || texture_id == cast(u32)0 ||
+    source.width <= 0.0 || destination.width <= 0.0 ||
+    clip.width <= 0.0 { failed = true }
+    image_draws += 1
+}
+
+#program_export
+RetainedHostFailed :: () -> bool { return failed }
+
+#program_export
+RetainedLineDraws :: () -> s32 { return line_draws }
+
+#program_export
+RetainedTextDraws :: () -> s32 { return text_draws }
+
+#program_export
+RetainedImageDraws :: () -> s32 { return image_draws }
