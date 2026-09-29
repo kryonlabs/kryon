@@ -10,7 +10,7 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | Location | Responsibility |
 | --- | --- |
 | `src/ui/*.zi` | Widget APIs, retained tree, layout, input decisions, styling, text, accessibility policy, and paint commands |
-| `src/plot/*.zi`, `src/data_views/*.zi`, `src/kss/*.zi`, `src/syntax/*.zi` | Optional packages that depend on the core UI modules |
+| `src/kss/*.zi` | Optional style parsing package that depends on the core UI modules |
 | `src/backend/*.zi` | Terminal and window hosts: platform observations, native bindings, rasterization, and presentation |
 | `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
 | `tests/*_host.zi` | Ziran behavior-test hosts; not part of the library or application hosts |

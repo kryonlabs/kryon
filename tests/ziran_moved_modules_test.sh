@@ -31,7 +31,6 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "table_view"
 #import "text_behavior"
 #import "text_align"
 #import "text_layout"
@@ -111,7 +110,6 @@ Answer :: () -> s32 {
     }
     if ListBoxClampScroll(99, 15) != 15 { return 0 }
     if PanedViewClampSplit(5, 10, 90) != 10 { return 0 }
-    if TableViewSelectedRowFor(8, 3) != 2 { return 0 }
     if TextDefaultLineGap(1.5) != 6 { return 0 }
     if TextLineXFor(10, 100, 40, TextAlignCenter) != 40 {
         return 0
@@ -165,15 +163,12 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/data_views" \
-    --module-path "$repo/src/kss" \
+"$ziran" check --root "$work" --module-path "$repo/src/kss" \
     --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_moved.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/data_views" \
-    --module-path "$repo/src/kss" \
+"$ziran" ir --root "$work" --module-path "$repo/src/kss" \
     --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     -o "$work/ir" "$work/use_moved.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/data_views" \
-    --module-path "$repo/src/kss" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/kss" \
     --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
     --entry use_moved:Answer -o "$work/source.zib" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \

@@ -7,7 +7,6 @@ TestSession :: () -> Session {
 
 #import "geometry"
 #import "semantic"
-#import "syntax"
 #import "text_area_widget"
 #import "text_input"
 #import "text_input_props"
@@ -19,8 +18,6 @@ TestSession :: () -> Session {
 
 using SemanticKind;
 using CompositionPhase;
-using SyntaxMode;
-using SyntaxTokenKind;
 using FrameStatus;
 
 phase: s32;
@@ -153,12 +150,14 @@ Frame :: () -> s32 {
     }
     if phase == 18 { props.input.text = "Y" }
     if phase == 19 {
-        spans_result: SyntaxSpansResult = SyntaxColorSpans(
-            props.value, cast(SyntaxMode)SyntaxZiran,
-            cast(u32)0xffffffff, cast(u32)0x172b4dff,
-            syntax_spans[:])
-        if !spans_result.complete { return -19 }
-        props.colors = syntax_spans[:spans_result.count]
+        // The Syntax package's light colors for #import "app" / return 42.
+        syntax_spans[0] = TextAreaColorSpan.{0, 7, cast(u32)0x2448acff}
+        syntax_spans[1] = TextAreaColorSpan.{7, 8, cast(u32)0x172b4dff}
+        syntax_spans[2] = TextAreaColorSpan.{8, 13, cast(u32)0x227e52ff}
+        syntax_spans[3] = TextAreaColorSpan.{14, 20, cast(u32)0x2448acff}
+        syntax_spans[4] = TextAreaColorSpan.{20, 21, cast(u32)0x172b4dff}
+        syntax_spans[5] = TextAreaColorSpan.{21, 23, cast(u32)0x96487eff}
+        props.colors = syntax_spans[:6]
         props.composition_start = 8
         props.composition_end = 13
     }
@@ -341,61 +340,7 @@ Frame :: () -> s32 {
             result.edit.replacement != "Y" ||
             result.cursor != 1 { return -18 }
     } else if phase == 19 {
-        directive: SyntaxToken = SyntaxTokenAt(
-            "#import \"app\"", 0, 13,
-            cast(SyntaxMode)SyntaxZiran, true, false)
-        comment: SyntaxToken = SyntaxTokenAt(
-            "# note", 0, 6,
-            cast(SyntaxMode)SyntaxZiran, true, false)
-        keyword: SyntaxToken = SyntaxTokenAt(
-            "return 42", 0, 9,
-            cast(SyntaxMode)SyntaxZiran, true, false)
-        number: SyntaxToken = SyntaxTokenAt(
-            "return 42", 7, 9,
-            cast(SyntaxMode)SyntaxZiran, false, false)
-        open: SyntaxToken = SyntaxTokenAt(
-            "/* open", 0, 7,
-            cast(SyntaxMode)SyntaxC, true, false)
-        close: SyntaxToken = SyntaxTokenAt(
-            "close */x", 0, 9,
-            cast(SyntaxMode)SyntaxC, false, true)
-        make: SyntaxToken = SyntaxTokenAt(
-            "$(CC) file", 0, 10,
-            cast(SyntaxMode)SyntaxMake, true, false)
-        if directive.length != 7 ||
-            directive.kind != cast(SyntaxTokenKind)SyntaxKeyword ||
-            comment.kind != cast(SyntaxTokenKind)SyntaxComment ||
-            keyword.kind != cast(SyntaxTokenKind)SyntaxKeyword ||
-            number.kind != cast(SyntaxTokenKind)SyntaxNumber ||
-            !open.block_comment || close.block_comment ||
-            close.length != 8 ||
-            make.kind != cast(SyntaxTokenKind)SyntaxPath ||
-            make.length != 5 ||
-            !SyntaxDarkBackground(cast(u32)0x101820ff) ||
-            SyntaxDarkBackground(cast(u32)0xffffffff) ||
-            SyntaxColorFor(cast(SyntaxTokenKind)SyntaxKeyword,
-                false, cast(u32)0) != cast(u32)0x2448acff {
-            return -21
-        }
-        short: [1]TextAreaColorSpan
-        limited: SyntaxSpansResult = SyntaxColorSpans(
-            "return 42", cast(SyntaxMode)SyntaxZiran,
-            cast(u32)0xffffffff, cast(u32)0x172b4dff,
-            short[:])
-        if limited.complete || limited.count != 1 ||
-            short[0].start != 0 || short[0].end != 6 ||
-            short[0].color != cast(u32)0x2448acff {
-            return -45
-        }
-        full: [8]TextAreaColorSpan
-        painted: SyntaxSpansResult = SyntaxColorSpans(
-            "return 42", cast(SyntaxMode)SyntaxZiran,
-            cast(u32)0xffffffff, cast(u32)0x172b4dff,
-            full[:])
-        if !painted.complete || painted.count != 3 ||
-            full[2].start != 7 || full[2].end != 9 {
-            return -46
-        }
+        if result.edit.changed { return -19 }
     } else if phase == 20 {
         if !result.clipboard_write ||
             result.clipboard_text != "é\nBC" ||

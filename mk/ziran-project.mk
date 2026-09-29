@@ -44,17 +44,11 @@ ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
-PLOT_SOURCES := $(wildcard $(KRYON_DIR)/src/plot/*.zi)
-DATA_VIEW_SOURCES := $(wildcard $(KRYON_DIR)/src/data_views/*.zi)
 KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi $(KRYON_DIR)/src/kss/parser/*.zi)
-SYNTAX_SOURCES := $(wildcard $(KRYON_DIR)/src/syntax/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
 KRYON_MODULE_PATHS := --module-path $(KRYON_DIR)/src/ui \
-	--module-path $(KRYON_DIR)/src/plot \
-	--module-path $(KRYON_DIR)/src/data_views \
-	--module-path $(KRYON_DIR)/src/kss \
-	--module-path $(KRYON_DIR)/src/syntax
+	--module-path $(KRYON_DIR)/src/kss
 ifneq ($(BROWSER_BACKEND),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 IR_COMMAND := $(ZIRAN_DIR)/build/bin/zi2zir --define PLATFORM_WEB \
@@ -76,7 +70,7 @@ CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_MET
 EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
-PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(PLOT_SOURCES) $(DATA_VIEW_SOURCES) $(KSS_SOURCES) $(SYNTAX_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
+PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(KSS_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)

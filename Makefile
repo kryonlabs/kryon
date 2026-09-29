@@ -20,35 +20,19 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE)))
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
-PLOT_SOURCE := $(wildcard src/plot/*.zi)
-PLOT_MODULES := $(basename $(notdir $(PLOT_SOURCE)))
-PLOT_OBJECTS := $(addprefix $(BUILD_DIR)/plot/obj/,$(addsuffix .o,$(PLOT_MODULES)))
-DATA_VIEW_SOURCE := $(wildcard src/data_views/*.zi)
-DATA_VIEW_MODULES := $(basename $(notdir $(DATA_VIEW_SOURCE)))
-DATA_VIEW_OBJECTS := $(addprefix $(BUILD_DIR)/data_views/obj/,$(addsuffix .o,$(DATA_VIEW_MODULES)))
 KSS_SOURCE := $(wildcard src/kss/*.zi)
 # Files that kss_parser.zi loads into its module; not modules themselves.
 KSS_PARTS := $(wildcard src/kss/parser/*.zi)
 KSS_MODULES := $(basename $(notdir $(KSS_SOURCE)))
 KSS_OBJECTS := $(addprefix $(BUILD_DIR)/kss/obj/,$(addsuffix .o,$(KSS_MODULES)))
-SYNTAX_SOURCE := src/syntax/syntax.zi
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
 .PHONY: all check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a
 
-.PHONY: plot
-plot: $(BUILD_DIR)/libkryon_plot.a
-
-.PHONY: data-views
-data-views: $(BUILD_DIR)/libkryon_data_views.a
-
 .PHONY: kss
 kss: $(BUILD_DIR)/libkryon_kss.a
-
-.PHONY: syntax
-syntax: $(BUILD_DIR)/libkryon_syntax.a
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
@@ -94,39 +78,6 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 	rm -f $@
 	$(AR) rcs $@ $(OBJECTS)
 
-# Plot is an opt-in UI package. It depends on libkryon, but core modules do
-# not import it. Apps can also import these sources directly through Ziran.
-$(BUILD_DIR)/libkryon_plot.a: $(PLOT_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/plot/c $(BUILD_DIR)/plot/cpp $(BUILD_DIR)/plot/go $(BUILD_DIR)/plot/obj $(BUILD_DIR)/plot/obj-cpp
-	$(ZI2ZIR_BIN) --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/ir $(PLOT_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/c $(PLOT_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/cpp $(PLOT_SOURCE)
-	rm -f $(BUILD_DIR)/plot/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/plot --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/plot/go $(PLOT_SOURCE)
-	@for module in $(PLOT_MODULES); do \
-		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/plot/c -c $(BUILD_DIR)/plot/c/$$module.c -o $(BUILD_DIR)/plot/obj/$$module.o || exit 1; \
-		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/plot/cpp -c $(BUILD_DIR)/plot/cpp/$$module.cpp -o $(BUILD_DIR)/plot/obj-cpp/$$module.o || exit 1; \
-	done
-	cd $(BUILD_DIR)/plot/go && GO111MODULE=off go test .
-	rm -f $@
-	$(AR) rcs $@ $(PLOT_OBJECTS)
-
-# TableView and TreeView are optional collection widgets over the core tree.
-$(BUILD_DIR)/libkryon_data_views.a: $(DATA_VIEW_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/data_views/c $(BUILD_DIR)/data_views/cpp $(BUILD_DIR)/data_views/go $(BUILD_DIR)/data_views/obj $(BUILD_DIR)/data_views/obj-cpp
-	$(ZI2ZIR_BIN) --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/ir $(DATA_VIEW_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/c $(DATA_VIEW_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/cpp $(DATA_VIEW_SOURCE)
-	rm -f $(BUILD_DIR)/data_views/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/data_views --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/data_views/go $(DATA_VIEW_SOURCE)
-	@for module in $(DATA_VIEW_MODULES); do \
-		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/c -c $(BUILD_DIR)/data_views/c/$$module.c -o $(BUILD_DIR)/data_views/obj/$$module.o || exit 1; \
-		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/data_views/cpp -c $(BUILD_DIR)/data_views/cpp/$$module.cpp -o $(BUILD_DIR)/data_views/obj-cpp/$$module.o || exit 1; \
-	done
-	cd $(BUILD_DIR)/data_views/go && GO111MODULE=off go test .
-	rm -f $@
-	$(AR) rcs $@ $(DATA_VIEW_OBJECTS)
-
 # KSS text parsing, formatting, and installation are opt in. Runtime style
 # resolution stays in core; core modules never import this package.
 $(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(KSS_PARTS) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
@@ -143,20 +94,6 @@ $(BUILD_DIR)/libkryon_kss.a: $(KSS_SOURCE) $(KSS_PARTS) $(SOURCE) src/ui/modules
 	cd $(BUILD_DIR)/kss/go && GO111MODULE=off go test .
 	rm -f $@
 	$(AR) rcs $@ $(KSS_OBJECTS)
-
-# Syntax coloring is optional. Core TextArea paints caller supplied color spans.
-$(BUILD_DIR)/libkryon_syntax.a: $(SYNTAX_SOURCE) $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/syntax/ir $(BUILD_DIR)/syntax/c $(BUILD_DIR)/syntax/cpp $(BUILD_DIR)/syntax/go
-	$(ZI2ZIR_BIN) --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/ir $(SYNTAX_SOURCE)
-	$(ZI2C_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/c $(SYNTAX_SOURCE)
-	$(ZI2CPP_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/cpp $(SYNTAX_SOURCE)
-	rm -f $(BUILD_DIR)/syntax/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/syntax --module-path src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/syntax/go $(SYNTAX_SOURCE)
-	$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/c -c $(BUILD_DIR)/syntax/c/syntax.c -o $(BUILD_DIR)/syntax/syntax.o
-	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/syntax/cpp -c $(BUILD_DIR)/syntax/cpp/syntax.cpp -o $(BUILD_DIR)/syntax/syntax_cpp.o
-	cd $(BUILD_DIR)/syntax/go && GO111MODULE=off go test .
-	rm -f $@
-	$(AR) rcs $@ $(BUILD_DIR)/syntax/syntax.o
 
 TEST_JOBS ?= 4
 TEST ?=
@@ -213,13 +150,10 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
 	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/ui $(ZIRAN_STD_PATH) \
-		-o $(BUILD_DIR)/public/plot tests/public_plot.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/plot --module-path src/data_views \
-		--module-path src/kss --module-path src/syntax --module-path src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZIR_BIN) --root tests --module-path src/kss --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/optional tests/public_optional.zi
 
-check: all plot data-views kss syntax ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
+check: all kss ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh

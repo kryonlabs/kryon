@@ -9,10 +9,32 @@ The public package imports are declared in [`ziran.toml`](../ziran.toml).
 | `Kryon` | Geometry, drawing values, sessions, `Text(TextProps)`, and `Button(ButtonProps)` |
 | `Widgets` | The core widget catalog, including `Image(ImageProps)`, page structure, fields, controls, layout, and tree input |
 | `Page`, `Semantic` | Direct page and semantic-kind exports for document-oriented applications |
-| `PlotWidget` | Optional plot widget |
-| `TableView`, `TreeView` | Optional data views |
 | `Kss` | Optional style parsing and installation |
-| `Syntax` | Optional source coloring for TextArea spans |
+| `geometry`, `drawing_props`, `session`, `tree`, `surface`, `paint_queue`, `style`, `style_sheet`, `control_props`, `font_metrics`, `scroll`, `semantic`, `tree_input`, `widget_kind` | Building blocks for widget packages |
+
+## Widget packages
+
+A widget that is not part of the core catalog lives in its own Git package
+and depends on Kryon. [Plot](https://github.com/kryonlabs/plot) and
+[DataViews](https://github.com/kryonlabs/data-views) are examples. Import
+the building blocks by their package-qualified names, so a reader sees which
+package each name comes from:
+
+```zi
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/surface"
+#import "kryon/paint_queue"
+```
+
+Tests that need a host bind Kryon's internal capabilities the same way, for
+example `--bind kryon/raster_text:RasterText=my_test_host:RasterText` with
+`ziran bundle --project`.
+
+Source coloring is the separate [Syntax](https://github.com/ziranlang/syntax)
+package. Its `SyntaxColorSpan` has the same fields as `TextAreaColorSpan`.
+
+## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns
 `false` without replacing the active rules when the rule count is outside
