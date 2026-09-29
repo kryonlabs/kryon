@@ -385,7 +385,8 @@ main :: () -> s32 {
     kryon_bytes: [4096]u8
     ziran_bytes: [4096]u8
     library_bytes: [4096]u8
-    args: [14]string
+    static_archive_bytes: [4096]u8
+    args: [15]string
     args[0] = "make"
     args[1] = "--silent"
     args[2] = "--no-print-directory"
@@ -400,8 +401,10 @@ main :: () -> s32 {
     args[11] = Join("KRYON_DIR=", installed_kryon, kryon_bytes[:])
     args[12] = Join("ZIRAN_DIR=", installed_ziran, ziran_bytes[:])
     args[13] = Join("PROJECT_LIBRARY=", profile.library, library_bytes[:])
+    args[14] = Join("PROJECT_STATIC_ARCHIVE=", profile.static_archive,
+        static_archive_bytes[:])
     at: s32 = 6
-    while at < 14 {
+    while at < 15 {
         if args[at] == "" { return Error("project path or value is too long") }
         at += 1
     }

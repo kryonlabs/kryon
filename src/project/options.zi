@@ -7,6 +7,7 @@ ProjectProfile :: struct {
     backend: string
     codegen: string
     library: string
+    static_archive: string
 }
 
 ProjectInstall :: struct {
@@ -64,6 +65,27 @@ ProjectPathValid :: (value: string) -> bool {
             ch == cast(u8)46 || ch == cast(u8)47) { return false }
         at += 1
     }
+    return true
+}
+
+ProjectStaticArchiveValid :: (value: string) -> bool {
+    length: s32 = cast(s32)value.count
+    if length < 3 || !ProjectPathValid(value) { return false }
+    if value[0] == cast(u8)47 { return false }
+    if value[length - 2:length] != ".a" { return false }
+
+    segment_start: s32 = 0
+    at: s32 = 0
+    while at < length {
+        if value[at] == cast(u8)47 {
+            if at - segment_start == 2 &&
+                value[segment_start:segment_start + 2] == ".." { return false }
+            segment_start = at + 1
+        }
+        at += 1
+    }
+    if length - segment_start == 2 &&
+        value[segment_start:segment_start + 2] == ".." { return false }
     return true
 }
 
@@ -172,6 +194,8 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 config.profiles[selected].codegen = value
             } else if field == "library" {
                 config.profiles[selected].library = value
+            } else if field == "static_archive" {
+                config.profiles[selected].static_archive = value
             }
         } else if key == "install.profile" {
             config.install.profile = value
@@ -211,6 +235,11 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         }
         if profile.library != "" && !ProjectNameValid(profile.library) {
             config.error = "invalid profile library"
+            return config
+        }
+        if profile.static_archive != "" &&
+            !ProjectStaticArchiveValid(profile.static_archive) {
+            config.error = "invalid profile static archive"
             return config
         }
         if profile.codegen == "" {

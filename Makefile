@@ -128,6 +128,7 @@ project-test: project-toolchain build/bin/kryon
 	cd build/project/go && GO111MODULE=off go test .
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/project_optional_packages_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
 
 # Laws state policy independently of its implementation; `ziran check`
 # proves each over its whole listed domain.
