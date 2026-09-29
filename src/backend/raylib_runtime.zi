@@ -506,6 +506,15 @@ RaylibDrawImageStrip :: (texture: Texture2D, source: Rectangle,
     destination: Rectangle, origin: Vector2, rotation: float32,
     tint: Color, x: s32, y: s32, width: s32, height: s32) {
     if width <= 0 || height <= 0 { return }
+    // An unrotated image inside its strip needs no scissor, which would
+    // flush the draw batch.
+    if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 &&
+        destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
+        destination.x + destination.width <= cast(float32)(x + width) &&
+        destination.y + destination.height <= cast(float32)(y + height) {
+        HostRaylibDrawTexture(texture, source, destination, origin, rotation, tint)
+        return
+    }
     saved := BeginRasterClip(Rectangle.{cast(float32)x, cast(float32)y,
         cast(float32)width, cast(float32)height})
     HostRaylibDrawTexture(texture, source, destination, origin, rotation, tint)
@@ -759,6 +768,25 @@ CaptureConfigured :: () -> bool {
     return HostRaylibFileExists(path)
 }
 
+// The drawn size of text, including every line of multi-line text.
+RaylibTextExtent :: (value: string, font: s32) -> Vector2 {
+    bytes: [4096]u8
+    if !CopyCString(value, bytes[:]) { return Vector2.{0.0, 0.0} }
+    if raylib_font_loaded {
+        RaylibEnsureGlyphs(value)
+        return HostRaylibMeasureFontText(RaylibFontForSize(font), *bytes[0],
+            cast(float32)font, 0.0)
+    }
+    lines: s32 = 1
+    index: s64 = 0
+    while index < value.count {
+        if value[index] == #char "\n" { lines += 1 }
+        index += 1
+    }
+    return Vector2.{cast(float32)HostRaylibMeasureText(*bytes[0], font),
+        cast(float32)(font * lines)}
+}
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
@@ -790,16 +818,36 @@ PollPointer :: () -> PointerFrame {
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
-    if segments < 4 { segments = 4 }
     HostRaylibDrawRounded(bounds, RaylibRoundness(bounds, radius),
-        segments, color)
+        RaylibCornerSegments(bounds, radius, segments), color)
+}
+
+// Segments per corner for a curve within half a pixel of the true arc at
+// its on-screen radius, at most the caller's count. A quarter arc of radius r
+// in n chords errs by r(1 - cos(pi/4n)), under half a pixel once n reaches
+// about 0.79 sqrt(r). Small controls take a few segments, not a fixed dozen;
+// every vertex is built on the CPU and fills the draw batch.
+RaylibCornerSegments :: (bounds: Rectangle, radius: float32,
+    limit: s32) -> s32 {
+    edge: float32 = bounds.width
+    if bounds.height < edge { edge = bounds.height }
+    if radius > edge * 0.5 { radius = edge * 0.5 }
+    pixels: float32 = radius * raylib_zoom
+    segments: s32 = 4
+    if pixels > 0.0 {
+        segments = cast(s32)(0.79 * HostRaylibSqrt(pixels)) + 1
+    }
+    if segments > limit { segments = limit }
+    // raylib picks its own count below four.
+    if segments < 4 { segments = 4 }
+    return segments
 }
 
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 || width <= 0.0 { return }
-    if segments < 4 { segments = 4 }
+    segments = RaylibCornerSegments(bounds, radius, segments)
     HostRaylibDrawRoundedOutline(bounds, RaylibRoundness(bounds, radius),
         segments, width, color)
 }
@@ -829,6 +877,17 @@ RasterText :: (value: string, x: s32, y: s32,
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
     if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    // Most labels fit their clip. A scissor change flushes the draw batch and
+    // reads GL state, which costs a frame dozens of GPU round trips on phones,
+    // so text wholly inside the clip is drawn without one.
+    if cast(float32)x >= clip.x && cast(float32)y >= clip.y {
+        extent := RaylibTextExtent(value, font)
+        if cast(float32)x + extent.x <= clip.x + clip.width &&
+            cast(float32)y + extent.y <= clip.y + clip.height {
+            RasterText(value, x, y, font, color)
+            return
+        }
+    }
     saved := BeginRasterClip(clip)
     RasterText(value, x, y, font, color)
     EndRasterClip(saved)
