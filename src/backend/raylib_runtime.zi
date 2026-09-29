@@ -866,23 +866,41 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
     return true
 }
 
+RaylibPresentTexture :: (texture: Texture2D) {
+    source := Rectangle.{0.0, 0.0, cast(float32)texture.width,
+        -cast(float32)texture.height}
+    destination := Rectangle.{0.0, 0.0,
+        cast(float32)texture.width, cast(float32)texture.height}
+    HostRaylibDrawTexture(texture, source, destination,
+        Vector2.{}, 0.0, Color.{255, 255, 255, 255})
+}
+
 #program_export
 EndRetainedFrame :: () -> bool {
     if !retained_frame_active { return false }
     target := retained_frame_targets[retained_frame_render_index]
     HostRaylibEndTextureMode()
-    source := Rectangle.{0.0, 0.0, cast(float32)target.texture.width,
-        -cast(float32)target.texture.height}
-    destination := Rectangle.{0.0, 0.0,
-        cast(float32)target.texture.width,
-        cast(float32)target.texture.height}
-    HostRaylibDrawTexture(target.texture, source, destination,
-        Vector2.{}, 0.0, Color.{255, 255, 255, 255})
+    RaylibPresentTexture(target.texture)
     HostRaylibEndDrawing()
     retained_frame_active = false
     rendered := retained_frame_render_index
     retained_frame_previous_index = rendered
     retained_frame_render_index = (rendered + 1) % 2
+    return true
+}
+
+// An unchanged frame keeps the previous complete target as the presenter and
+// as the source for the next transition. The freshly rendered target may be
+// missing queued widget paint because the paint stream was unchanged.
+#program_export
+EndRetainedFrameReusePrevious :: () -> bool {
+    if !retained_frame_active { return false }
+    if retained_frame_previous_index < 0 { return EndRetainedFrame() }
+    previous := retained_frame_targets[retained_frame_previous_index]
+    HostRaylibEndTextureMode()
+    RaylibPresentTexture(previous.texture)
+    HostRaylibEndDrawing()
+    retained_frame_active = false
     return true
 }
 
