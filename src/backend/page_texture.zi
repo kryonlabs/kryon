@@ -371,6 +371,8 @@ PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
     canvas: s32 = 0
     if id == 0 {
         canvas = page_canvas
+        // The frame being drawn, which the page shows once it ends.
+        if page_back_canvas != 0 { canvas = page_back_canvas }
     } else {
         slot: s32 = PageTextureFind(id)
         if slot >= 0 { canvas = page_textures[slot].canvas }

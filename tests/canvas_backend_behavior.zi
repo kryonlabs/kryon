@@ -16,6 +16,7 @@ browser :: #system_library "env";
 CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
 CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
 CanvasTestFail :: (code: s32) #foreign browser "canvas_test_fail";
+CanvasTestFront :: (r: s32, g: s32, b: s32) -> s32 #foreign browser "canvas_test_front";
 
 #program_export
 main :: () -> s32 {
@@ -94,20 +95,29 @@ main :: () -> s32 {
     EndMode2D()
     // RasterText used the default font; release it before the leak check.
     UnloadFont(GetFontDefault())
-    result := CanvasTestFinish()
-    if result == 0 && PageTextureCount() != 0 { CanvasTestFail(21) }
+    if PageTextureCount() != 0 { CanvasTestFail(21) }
     SetTargetFPS(120)
+    // The page shows a frame once it ends, so its pixels are read after.
     EndDrawing()
-    if IsKeyPressed(65) || IsKeyReleased(65) { return 12 }
+    result := CanvasTestFinish()
+    if IsKeyPressed(65) || IsKeyReleased(65) { CanvasTestFail(12) }
+    // A frame in progress stays off the page until it ends.
+    BeginDrawing()
+    ClearBackground(Color.{255, 0, 255, 255})
+    if CanvasTestFront(255, 255, 255) == 0 { CanvasTestFail(28) }
+    EndDrawing()
+    if CanvasTestFront(255, 0, 255) == 0 { CanvasTestFail(29) }
     BeginMode2D(Camera.{offset = Vector2.{30.0, 30.0}, zoom = 2.0})
     BeginScissorMode(0, 0, 1, 1)
     CloseWindow()
     InitWindow(160, 120, *title[0])
     BeginDrawing()
     ClearBackground(Color.{0, 0, 0, 255})
-    if CanvasTestInput(2) != 0 { return 15 }
-    if !IsKeyPressed(66) || GetCharPressed() != 66 { return 7 }
+    EndDrawing()
+    // Failures after an await are recorded; main's exit code is lost.
+    if CanvasTestInput(2) != 0 { CanvasTestFail(15) }
+    if !IsKeyPressed(66) || GetCharPressed() != 66 { CanvasTestFail(7) }
     CloseWindow()
-    if IsWindowReady() { return 8 }
+    if IsWindowReady() { CanvasTestFail(8) }
     return result
 }
