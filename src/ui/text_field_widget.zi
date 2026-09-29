@@ -1,5 +1,4 @@
 #import "session"
-#import "context_menu_widget"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -10,6 +9,7 @@
 #import "style_sheet"
 #import "surface"
 #import "system_clipboard"
+#import "text_context_menu"
 #import "text_input"
 #import "text_input_props"
 #import "text_widget"
@@ -602,101 +602,32 @@ TextFieldCore :: (session: Session, props: TextFieldProps) -> TextFieldResult {
 
 // ------------------------------------------------------------ context menu
 
-// One context menu is open at a time: the field it belongs to, where it
-// opened, and the command chosen in it, which the field runs on its next frame.
-text_menu_open: bool;
-text_menu_key: u64;
-text_menu_x: float32;
-text_menu_y: float32;
-text_menu_command: s32;
-text_menu_command_key: u64;
-text_menu_paste: [16384]u8;
-
-TEXT_MENU_CUT :: 1;
-TEXT_MENU_COPY :: 2;
-TEXT_MENU_PASTE :: 3;
-TEXT_MENU_SELECT_ALL :: 4;
-
 // The field with its context menu: a click of the secondary button inside it
 // opens Cut, Copy, Paste, and Select all, working on the system clipboard, and
 // Cut, Copy, and Paste from the keyboard reach the system clipboard too.
 #program_export
 TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
     key: u64 = TextFieldKey(session, props)
-    mine: bool = key != cast(u64)0
     editable: bool = !props.read_only && !props.secure
     selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
         props.cursor, (cast(s32)props.value.count))
     // A command chosen in the menu last frame runs as if its key was pressed.
-    if mine && text_menu_command != 0 && text_menu_command_key == key {
-        if text_menu_command == TEXT_MENU_CUT { props.input.cut = true }
-        if text_menu_command == TEXT_MENU_COPY { props.input.copy = true }
-        if text_menu_command == TEXT_MENU_PASTE { props.input.paste = true }
-        if text_menu_command == TEXT_MENU_SELECT_ALL { props.input.select_all = true }
-        text_menu_command = 0
-    }
+    command: s32 = TextMenuTakeCommand(key)
+    if command == TEXT_MENU_CUT { props.input.cut = true }
+    if command == TEXT_MENU_COPY { props.input.copy = true }
+    if command == TEXT_MENU_PASTE { props.input.paste = true }
+    if command == TEXT_MENU_SELECT_ALL { props.input.select_all = true }
     if props.input.paste && props.input.paste_text.count == 0 {
-        props.input.paste_text = SystemClipboardText(text_menu_paste[:])
+        props.input.paste_text = TextMenuPasteText()
     }
-    secondary: SecondaryPointerFrame = SecondaryPointerSample(session)
-    pointer: PointerFrame = PointerSample(session)
-    opened: bool = false
-    if mine && !props.disabled && secondary.released &&
-        PointInBounds(pointer.x, pointer.y, props.bounds) {
-        text_menu_open = true
-        text_menu_key = key
-        text_menu_x = pointer.x
-        text_menu_y = pointer.y
-        opened = true
-    }
+    opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
     result: TextFieldResult = TextFieldCore(session, props)
     if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
     if opened { result.focused = true }
-    if !text_menu_open || text_menu_key != key || !mine { return result }
-    // The menu is drawn at the end of the frame, above everything else.
-    text_menu_cut_enabled = editable && selection.has_selection
-    text_menu_copy_enabled = !props.secure && selection.has_selection
-    text_menu_paste_enabled = editable
-    text_menu_select_enabled = props.value.count > 0
-    text_menu_escape = props.input.escape
-    TreeDefer(session, TextFieldMenuLate)
-    return result
-}
-
-text_menu_cut_enabled: bool;
-text_menu_copy_enabled: bool;
-text_menu_paste_enabled: bool;
-text_menu_select_enabled: bool;
-text_menu_escape: bool;
-
-// Called by TreeFinish once the page is submitted: Cut, Copy, Paste, and
-// Select all, and the command a click chooses for the field's next frame.
-TextFieldMenuLate :: (session: Session) {
-    if !text_menu_open { return }
-    items: [5]ContextMenuItem
-    items[0].id = TEXT_MENU_CUT
-    items[0].label = "Cut"
-    items[0].disabled = !text_menu_cut_enabled
-    items[1].id = TEXT_MENU_COPY
-    items[1].label = "Copy"
-    items[1].disabled = !text_menu_copy_enabled
-    items[2].id = TEXT_MENU_PASTE
-    items[2].label = "Paste"
-    items[2].disabled = !text_menu_paste_enabled || !SystemClipboardHasText()
-    items[3].separator = true
-    items[4].id = TEXT_MENU_SELECT_ALL
-    items[4].label = "Select all"
-    items[4].disabled = !text_menu_select_enabled
-    menu_props: ContextMenuProps
-    menu_props.key = text_menu_key * cast(u64)31 + cast(u64)17
-    menu_props.open = true
-    menu_props.x = text_menu_x
-    menu_props.y = text_menu_y
-    menu_props.escape = text_menu_escape
-    menu: ContextMenuResult = ContextMenu(session, menu_props, items[0:5])
-    if menu.activated_id != 0 {
-        text_menu_command = menu.activated_id
-        text_menu_command_key = text_menu_key
+    if TextMenuIsOpenFor(key) {
+        TextMenuShow(session, editable && selection.has_selection,
+            !props.secure && selection.has_selection, editable,
+            props.value.count > 0, props.input.escape)
     }
-    if !menu.open { text_menu_open = false }
+    return result
 }

@@ -1,0 +1,110 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "system_clipboard"
+#import "text_area_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_context_menu_widget_host"
+#import "ziran_system_clipboard_host"
+
+using WidgetKind;
+
+phase: s32;
+buffer: [64]u8;
+
+// A selected "hello" in "hello world"; the area is at (10, 10), 200 by 90.
+Field :: (copy: bool, paste: bool) -> TextAreaResult {
+    props: TextAreaProps
+    props.key = cast(u64)4
+    props.bounds = Rectangle.{10.0, 10.0, 200.0, 90.0}
+    props.value = "hello world"
+    props.anchor = 0
+    props.cursor = 5
+    props.focused = true
+    props.input.copy = copy
+    props.input.paste = paste
+    return TextArea(TestSession(), props)
+}
+
+Secondary :: (x: float32, y: float32) {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, false})
+    TreeSecondaryPointerUpdate(TestSession(), SecondaryPointerFrame.{false, false, true})
+}
+
+Click :: (x: float32, y: float32) {
+    TreeSecondaryPointerUpdate(TestSession(), SecondaryPointerFrame.{false, false, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+}
+
+Frame :: (copy: bool, paste: bool) -> TextAreaResult {
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    result: TextAreaResult = Field(copy, paste)
+    if !TreeFinish(TestSession()) { result.node = -99 }
+    PaintFlush(TestSession())
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    // No menu until the secondary button is released inside the field.
+    result: TextAreaResult = Frame(false, false)
+    if result.node < 0 || TreeCount(TestSession()) != 2 { return 1 }
+
+    // Ctrl+C reaches the system clipboard without any menu.
+    result = Frame(true, false)
+    if !result.clipboard_write || SystemClipboardText(buffer[:]) != "hello" { return 2 }
+
+    // A secondary release outside the field opens nothing.
+    Secondary(300.0, 200.0)
+    result = Frame(false, false)
+    if TreeCount(TestSession()) != 2 { return 3 }
+
+    // Inside the field it opens Cut, Copy, Paste, and Select all at the pointer.
+    Secondary(30.0, 20.0)
+    result = Frame(false, false)
+    if !result.focused || TreeCount(TestSession()) != 9 { return 4 }
+
+    // Copy: rows are Cut at y 24, Copy at 50, Paste at 76, Select all at 111.
+    SystemClipboardSet("stale")
+    Click(60.0, 63.0)
+    result = Frame(false, false)
+    if TreeCount(TestSession()) != 2 { return 5 }
+    result = Frame(false, false)
+    if !result.clipboard_write || result.clipboard_text != "hello" { return 6 }
+    if SystemClipboardText(buffer[:]) != "hello" { return 7 }
+
+    // Paste replaces the selection with the clipboard.
+    SystemClipboardSet("XY")
+    Secondary(30.0, 20.0)
+    result = Frame(false, false)
+    Click(60.0, 89.0)
+    result = Frame(false, false)
+    result = Frame(false, false)
+    if !result.edit.changed || result.edit.replacement != "XY" ||
+        result.edit.start != 0 || result.edit.end != 5 { return 8 }
+
+    // Select all takes the whole text.
+    Secondary(30.0, 20.0)
+    result = Frame(false, false)
+    Click(60.0, 124.0)
+    result = Frame(false, false)
+    result = Frame(false, false)
+    if result.anchor != 0 || result.cursor != 11 { return 9 }
+
+    // Ctrl+V pastes from the system clipboard.
+    SystemClipboardSet("Z")
+    result = Frame(false, true)
+    if !result.edit.changed || result.edit.replacement != "Z" { return 10 }
+    return 0
+}
