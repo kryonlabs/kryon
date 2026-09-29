@@ -259,7 +259,9 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
         active_pointer[SessionIndex(session)].held_generation = 0
         active_pointer[SessionIndex(session)].pressed_generation = 0
         active_pointer[SessionIndex(session)].released_generation = 0
-        if frame.down && hit >= 0 {
+        // A press released within the same frame, a quick tap during a
+        // slow frame, still presses the node so its release activates it.
+        if (frame.down || frame.released) && hit >= 0 {
             active_pointer[SessionIndex(session)].held_generation =
                 TreeInputAt(session, hit).identity_generation
             active_pointer[SessionIndex(session)].pressed_generation =

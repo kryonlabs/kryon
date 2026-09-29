@@ -117,6 +117,13 @@ Answer :: () -> s32 {
     if TreeTakeActivationAt(TestSession(), first) || !TreeTakeActivationAt(TestSession(), second) ||
         TreeTakeActivationAt(TestSession(), second) { return -6 }
 
+    // A tap pressed and released within one frame activates the node once.
+    TreePointerUpdate(TestSession(), PointerFrame.{25.0, 25.0, false, true, true})
+    if TreeTakeActivationAt(TestSession(), first) || !TreeTakeActivationAt(TestSession(), second) ||
+        TreeTakeActivationAt(TestSession(), second) { return -30 }
+    TreePointerUpdate(TestSession(), PointerFrame.{90.0, 90.0, false, true, true})
+    if TreeTakeActivationAt(TestSession(), second) { return -31 }
+
     TreePointerUpdate(TestSession(), PointerFrame.{25.0, 25.0, true, true, false})
     if !Build(true, false, true) { return -7 }
     second = TreeChild(TestSession(), 0, cast(u64)12, WidgetKindButton)
