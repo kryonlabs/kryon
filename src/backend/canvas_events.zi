@@ -37,37 +37,37 @@
     }
 
     canvas_key_table: [62]CanvasKeyEntry = .[
-        CanvasKeyEntry.{"Space", 32}, CanvasKeyEntry.{"Escape", 256},
-        CanvasKeyEntry.{"Enter", 257}, CanvasKeyEntry.{"NumpadEnter", 257},
-        CanvasKeyEntry.{"Tab", 258}, CanvasKeyEntry.{"Backspace", 259},
-        CanvasKeyEntry.{"Insert", 260}, CanvasKeyEntry.{"Delete", 261},
-        CanvasKeyEntry.{"ArrowRight", 262}, CanvasKeyEntry.{"ArrowLeft", 263},
-        CanvasKeyEntry.{"ArrowDown", 264}, CanvasKeyEntry.{"ArrowUp", 265},
-        CanvasKeyEntry.{"PageUp", 266}, CanvasKeyEntry.{"PageDown", 267},
-        CanvasKeyEntry.{"Home", 268}, CanvasKeyEntry.{"End", 269},
-        CanvasKeyEntry.{"CapsLock", 280}, CanvasKeyEntry.{"ScrollLock", 281},
-        CanvasKeyEntry.{"NumLock", 282}, CanvasKeyEntry.{"PrintScreen", 283},
-        CanvasKeyEntry.{"Pause", 284}, CanvasKeyEntry.{"F1", 290},
-        CanvasKeyEntry.{"F2", 291}, CanvasKeyEntry.{"F3", 292},
-        CanvasKeyEntry.{"F4", 293}, CanvasKeyEntry.{"F5", 294},
-        CanvasKeyEntry.{"F6", 295}, CanvasKeyEntry.{"F7", 296},
-        CanvasKeyEntry.{"F8", 297}, CanvasKeyEntry.{"F9", 298},
-        CanvasKeyEntry.{"F10", 299}, CanvasKeyEntry.{"F11", 300},
-        CanvasKeyEntry.{"F12", 301}, CanvasKeyEntry.{"ShiftLeft", 340},
-        CanvasKeyEntry.{"ShiftRight", 344}, CanvasKeyEntry.{"ControlLeft", 341},
-        CanvasKeyEntry.{"ControlRight", 345}, CanvasKeyEntry.{"AltLeft", 342},
-        CanvasKeyEntry.{"AltRight", 346}, CanvasKeyEntry.{"MetaLeft", 343},
-        CanvasKeyEntry.{"MetaRight", 347}, CanvasKeyEntry.{"Semicolon", 59},
-        CanvasKeyEntry.{"Equal", 61}, CanvasKeyEntry.{"Comma", 44},
-        CanvasKeyEntry.{"Minus", 45}, CanvasKeyEntry.{"Period", 46},
-        CanvasKeyEntry.{"Slash", 47}, CanvasKeyEntry.{"Backquote", 96},
-        CanvasKeyEntry.{"BracketLeft", 91}, CanvasKeyEntry.{"Backslash", 92},
-        CanvasKeyEntry.{"BracketRight", 93}, CanvasKeyEntry.{"Quote", 39},
-        CanvasKeyEntry.{"Digit0", 48}, CanvasKeyEntry.{"Digit1", 49},
-        CanvasKeyEntry.{"Digit2", 50}, CanvasKeyEntry.{"Digit3", 51},
-        CanvasKeyEntry.{"Digit4", 52}, CanvasKeyEntry.{"Digit5", 53},
-        CanvasKeyEntry.{"Digit6", 54}, CanvasKeyEntry.{"Digit7", 55},
-        CanvasKeyEntry.{"Digit8", 56}, CanvasKeyEntry.{"Digit9", 57}];
+    CanvasKeyEntry.{"Space", 32}, CanvasKeyEntry.{"Escape", 256},
+    CanvasKeyEntry.{"Enter", 257}, CanvasKeyEntry.{"NumpadEnter", 257},
+    CanvasKeyEntry.{"Tab", 258}, CanvasKeyEntry.{"Backspace", 259},
+    CanvasKeyEntry.{"Insert", 260}, CanvasKeyEntry.{"Delete", 261},
+    CanvasKeyEntry.{"ArrowRight", 262}, CanvasKeyEntry.{"ArrowLeft", 263},
+    CanvasKeyEntry.{"ArrowDown", 264}, CanvasKeyEntry.{"ArrowUp", 265},
+    CanvasKeyEntry.{"PageUp", 266}, CanvasKeyEntry.{"PageDown", 267},
+    CanvasKeyEntry.{"Home", 268}, CanvasKeyEntry.{"End", 269},
+    CanvasKeyEntry.{"CapsLock", 280}, CanvasKeyEntry.{"ScrollLock", 281},
+    CanvasKeyEntry.{"NumLock", 282}, CanvasKeyEntry.{"PrintScreen", 283},
+    CanvasKeyEntry.{"Pause", 284}, CanvasKeyEntry.{"F1", 290},
+    CanvasKeyEntry.{"F2", 291}, CanvasKeyEntry.{"F3", 292},
+    CanvasKeyEntry.{"F4", 293}, CanvasKeyEntry.{"F5", 294},
+    CanvasKeyEntry.{"F6", 295}, CanvasKeyEntry.{"F7", 296},
+    CanvasKeyEntry.{"F8", 297}, CanvasKeyEntry.{"F9", 298},
+    CanvasKeyEntry.{"F10", 299}, CanvasKeyEntry.{"F11", 300},
+    CanvasKeyEntry.{"F12", 301}, CanvasKeyEntry.{"ShiftLeft", 340},
+    CanvasKeyEntry.{"ShiftRight", 344}, CanvasKeyEntry.{"ControlLeft", 341},
+    CanvasKeyEntry.{"ControlRight", 345}, CanvasKeyEntry.{"AltLeft", 342},
+    CanvasKeyEntry.{"AltRight", 346}, CanvasKeyEntry.{"MetaLeft", 343},
+    CanvasKeyEntry.{"MetaRight", 347}, CanvasKeyEntry.{"Semicolon", 59},
+    CanvasKeyEntry.{"Equal", 61}, CanvasKeyEntry.{"Comma", 44},
+    CanvasKeyEntry.{"Minus", 45}, CanvasKeyEntry.{"Period", 46},
+    CanvasKeyEntry.{"Slash", 47}, CanvasKeyEntry.{"Backquote", 96},
+    CanvasKeyEntry.{"BracketLeft", 91}, CanvasKeyEntry.{"Backslash", 92},
+    CanvasKeyEntry.{"BracketRight", 93}, CanvasKeyEntry.{"Quote", 39},
+    CanvasKeyEntry.{"Digit0", 48}, CanvasKeyEntry.{"Digit1", 49},
+    CanvasKeyEntry.{"Digit2", 50}, CanvasKeyEntry.{"Digit3", 51},
+    CanvasKeyEntry.{"Digit4", 52}, CanvasKeyEntry.{"Digit5", 53},
+    CanvasKeyEntry.{"Digit6", 54}, CanvasKeyEntry.{"Digit7", 55},
+    CanvasKeyEntry.{"Digit8", 56}, CanvasKeyEntry.{"Digit9", 57}];
     canvas_key_table_count :: 62
 
     canvas_keys_down: [CANVAS_KEY_LIMIT]bool;
@@ -269,6 +269,11 @@
             canvas_clipboard_gesture_until = PageNow() + 1000.0
             flags |= CanvasEventPreventDefault
         }
+        // Preventing Space's page scroll also suppresses DOM keypress.
+        // Submit its character here so text fields retain typed spaces.
+        if mapped == 32 && key == " " {
+            CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, 32)
+        }
         if CanvasKeyIsPageKey(mapped) { flags |= CanvasEventPreventDefault }
         return flags
     }
@@ -326,7 +331,7 @@
         }
         if kind == CanvasEventKeyChar {
             typed: s32 = CanvasSingleCodepoint(TextFromCString(key))
-            if typed != 0 {
+            if typed != 0 && typed != 32 {
                 CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, typed)
             }
             return 0
