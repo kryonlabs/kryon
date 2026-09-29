@@ -278,6 +278,9 @@ KssParser :: struct {
     block_count: s32
     resume_group: s32
     declarative: bool
+    // Beside the other flag, in its padding: the parser travels by value,
+    // and a larger one overflows small thread stacks (Android render thread).
+    blocks_overflow: bool
     declarations: [1024]KssDeclaration
     declaration_count: s32
     foreign: [16]KssForeignBlock
@@ -318,6 +321,7 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser {
     p.resume_group = -1
     p.variant_count = 0
     p.block_count = 0
+    p.blocks_overflow = false
     p.diagnostic_length = 0
     return p
 }
@@ -376,6 +380,19 @@ KssAdvance :: (c: KssCursor, count: s32) -> KssCursor {
 
 KssIsSpace :: (byte: u8) -> bool {
     return byte == 32 || byte == 9 || byte == 13 || byte == 10 || byte == 11 || byte == 12
+}
+
+// Quoted text ends on its line, as CSS strings do, and an escape does not
+// carry it over; re-indenting a later line must not change what it says.
+KssIsLineBreak :: (byte: u8) -> bool {
+    return byte == 10 || byte == 13
+}
+
+// An import target names a pack or a path: no spaces, control bytes, quotes,
+// angle brackets, or the braces and semicolons that give a sheet structure.
+KssImportTargetByte :: (byte: u8) -> bool {
+    return byte > 32 && byte != 127 && byte != 34 && byte != 39 &&
+        byte != 59 && byte != 60 && byte != 62 && byte != 123 && byte != 125
 }
 
 KssIsDigit :: (byte: u8) -> bool {
@@ -1632,12 +1649,12 @@ KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
         }
         byte: u8 = c.source[c.pos]
         if quote != 0 {
-            if byte == 92 && KssPeek(c, 1) != 0 {
+            if byte == 92 && KssPeek(c, 1) != 0 && !KssIsLineBreak(KssPeek(c, 1)) {
                 c = KssAdvance(c, 2)
                 p.cursor = c
                 continue
             }
-            if byte == quote {
+            if byte == quote || KssIsLineBreak(byte) {
                 quote = 0
             }
         } else if byte == 34 || byte == 39 {
@@ -2203,12 +2220,12 @@ KssParseRule :: (p: KssParser) -> KssParser {
             }
             byte: u8 = p.cursor.source[p.cursor.pos]
             if quote != 0 {
-                if byte == 92 {
+                if byte == 92 && !KssIsLineBreak(KssPeek(c, 1)) {
                     c = KssAdvance(c, 2)
                     p.cursor = c
                     continue
                 }
-                if byte == quote {
+                if byte == quote || KssIsLineBreak(byte) {
                     quote = 0
                 }
             } else if byte == 47 && (KssPeek(c, 1) == 42 ||
@@ -2632,11 +2649,11 @@ KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
         return result
     }
     c = KssAdvance(c, 1)
-    while !KssAtEnd(c) && c.source[c.pos] != 34 {
+    while !KssAtEnd(c) && c.source[c.pos] != 34 && !KssIsLineBreak(c.source[c.pos]) {
         result.name = KssNameAppend(result.name, c.source[c.pos])
         c = KssAdvance(c, 1)
     }
-    if KssAtEnd(c) {
+    if KssAtEnd(c) || c.source[c.pos] != 34 {
         result.parser = c
         return result
     }
@@ -2646,9 +2663,16 @@ KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
     return result
 }
 
+// Spans are positions in the top-level source, so constructs read from an
+// import are not recorded. They serve tooling only: a full table marks the
+// overflow for the formatter and never stops a parse.
 KssRecordBlock :: (p: KssParser, kind: s32, start: s32, end_pos: s32) -> KssParser {
+    if p.import_depth > 0 {
+        return p
+    }
     if p.block_count >= 32 {
-        return KssFail(p, "style block capacity exceeded")
+        p.blocks_overflow = true
+        return p
     }
     p.blocks[p.block_count].kind = kind
     p.blocks[p.block_count].start = start
@@ -2950,11 +2974,11 @@ KssReadImportTarget :: (p: KssParser) -> KssNameResult {
     }
     if c.source[c.pos] == 60 {
         c = KssAdvance(c, 1)
-        while !KssAtEnd(c) && c.source[c.pos] != 62 {
+        while !KssAtEnd(c) && KssImportTargetByte(c.source[c.pos]) {
             result.name = KssNameAppend(result.name, c.source[c.pos])
             c = KssAdvance(c, 1)
         }
-        if KssAtEnd(c) {
+        if KssAtEnd(c) || c.source[c.pos] != 62 {
             result.parser = c
             return result
         }
@@ -2965,11 +2989,11 @@ KssReadImportTarget :: (p: KssParser) -> KssNameResult {
     }
     if c.source[c.pos] == 34 {
         c = KssAdvance(c, 1)
-        while !KssAtEnd(c) && c.source[c.pos] != 34 {
+        while !KssAtEnd(c) && KssImportTargetByte(c.source[c.pos]) {
             result.name = KssNameAppend(result.name, c.source[c.pos])
             c = KssAdvance(c, 1)
         }
-        if KssAtEnd(c) {
+        if KssAtEnd(c) || c.source[c.pos] != 34 {
             result.parser = c
             return result
         }
@@ -3102,6 +3126,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         }
         c = semicolon.parser
         p.cursor = c
+        p = KssRecordBlock(p, 5, directive_start, p.cursor.pos)
         p.pending_import = target.name
         p.status = cast(s32)KssStatusNeedImport
         return p
@@ -4816,12 +4841,12 @@ KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSele
     while !KssAtEnd(c) {
         byte: u8 = KssPeek(c, 0)
         if quote != 0 {
-            if byte == 92 {
+            if byte == 92 && !KssIsLineBreak(KssPeek(c, 1)) {
                 c = KssAdvance(c, 2)
                 end = c.pos
                 continue
             }
-            if byte == quote {
+            if byte == quote || KssIsLineBreak(byte) {
                 quote = 0
             }
         } else if byte == 34 || byte == 39 {
@@ -4903,11 +4928,11 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     while !KssAtEnd(c) {
         byte: u8 = KssPeek(c, 0)
         if quote != 0 {
-            if byte == 92 {
+            if byte == 92 && !KssIsLineBreak(KssPeek(c, 1)) {
                 c = KssAdvance(c, 2)
                 continue
             }
-            if byte == quote {
+            if byte == quote || KssIsLineBreak(byte) {
                 quote = 0
             }
         } else if byte == 34 || byte == 39 {
@@ -5172,14 +5197,14 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
     if quote == 34 || quote == 39 {
         c = KssAdvance(c, 1)
         start = c.pos
-        while !KssAtEnd(c) && KssPeek(c, 0) != quote {
-            if KssPeek(c, 0) == 92 {
+        while !KssAtEnd(c) && KssPeek(c, 0) != quote && !KssIsLineBreak(KssPeek(c, 0)) {
+            if KssPeek(c, 0) == 92 && !KssIsLineBreak(KssPeek(c, 1)) {
                 c = KssAdvance(c, 2)
             } else {
                 c = KssAdvance(c, 1)
             }
         }
-        if KssAtEnd(c) {
+        if KssAtEnd(c) || KssPeek(c, 0) != quote {
             return result
         }
         end = c.pos

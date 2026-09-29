@@ -114,6 +114,24 @@ KssFormatAddConstruct :: (state: KssFormatState, kind: s32, start: s32, end: s32
     return state
 }
 
+// The '@' of a foreign or group block: its query follows the directive name
+// and white space. The parser keeps only the query's position, so that its
+// by-value state stays small. -1 when a comment sits between the two.
+KssFormatDirectiveStart :: (source: string, query_start: s32, name_length: s32) -> s32 {
+    pos: s32 = query_start
+    while pos > 0 {
+        if !KssIsSpace(source[pos - 1]) {
+            break
+        }
+        pos = pos - 1
+    }
+    pos = pos - name_length - 1
+    if pos < 0 || source[pos] != 64 {
+        return -1
+    }
+    return pos
+}
+
 // Collect every construct by running the shared parser in declarative mode.
 // Imports resolve to empty modules: formatting re-layouts one file's text and
 // never follows imports.
@@ -142,20 +160,41 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
             p = KssProvideImport(p, "", "import")
         }
     }
+    // One failure call: each call copies the whole state onto the stack.
+    failure: string = ""
     if p.status != cast(s32)KssStatusDone {
-        return KssFormatFail(state, "style sheet did not parse")
+        failure = "style sheet did not parse"
+    } else if p.blocks_overflow {
+        failure = "format construct capacity exceeded"
     }
     index: s32 = 0
+    while failure.count == 0 && index < p.foreign_count {
+        if p.foreign[index].file == 0 && KssFormatDirectiveStart(state.source,
+            p.foreign[index].query_start, p.foreign[index].name.length) < 0 {
+            failure = "cannot place a block directive"
+        }
+        index = index + 1
+    }
+    if failure.count > 0 {
+        return KssFormatFail(state, failure)
+    }
+    index = 0
     while index < p.block_count {
         state = KssFormatAddConstruct(state, p.blocks[index].kind,
             p.blocks[index].start,
             p.blocks[index].start + p.blocks[index].length)
         index = index + 1
     }
+    // A foreign or group block runs from its '@' through its closing brace.
+    // Blocks read from imports hold positions in another source.
     index = 0
     while index < p.foreign_count {
-        end: s32 = p.foreign[index].body_start + p.foreign[index].body_length
-        state = KssFormatAddConstruct(state, 7, p.foreign[index].query_start, end)
+        if p.foreign[index].file == 0 {
+            start: s32 = KssFormatDirectiveStart(state.source,
+                p.foreign[index].query_start, p.foreign[index].name.length)
+            end: s32 = p.foreign[index].body_start + p.foreign[index].body_length + 1
+            state = KssFormatAddConstruct(state, 7, start, end)
+        }
         index = index + 1
     }
     return state
@@ -164,9 +203,12 @@ KssFormatCollect :: (state: KssFormatState) -> KssFormatState {
 // Comments between constructs are preserved as standalone constructs.
 
 KssFormatScanGaps :: (state: KssFormatState) -> KssFormatState {
+    // Comments found here are appended; scan only the gaps between the
+    // sorted constructs that existed before.
+    count: s32 = state.construct_count
     cursor: s32 = 0
     index: s32 = 0
-    while index < state.construct_count {
+    while index < count {
         start: s32 = state.constructs[index].start
         state = KssFormatScanRange(state, cursor, start)
         cursor = state.constructs[index].end
@@ -195,13 +237,15 @@ KssFormatScanRange :: (state: KssFormatState, from: s32, to: s32) -> KssFormatSt
                 continue
             }
             if next == 42 {
-                end: s32 = cursor + 2
-                while end + 1 < (cast(s32)state.source.count) {
-                    if state.source[end] == 42 && state.source[end + 1] == 47 {
-                        end = end + 2
+                // An unclosed comment runs to the end of the source.
+                end: s32 = cast(s32)state.source.count
+                scan: s32 = cursor + 2
+                while scan + 1 < (cast(s32)state.source.count) {
+                    if state.source[scan] == 42 && state.source[scan + 1] == 47 {
+                        end = scan + 2
                         break
                     }
-                    end = end + 1
+                    scan = scan + 1
                 }
                 state = KssFormatAddConstruct(state, 8, cursor, end)
                 cursor = end
@@ -290,38 +334,92 @@ KssFormatTrimEnd :: (state: KssFormatState, start: s32, end: s32) -> s32 {
     return pos
 }
 
-KssFormatLineHasComments :: (state: KssFormatState, start: s32, end: s32) -> bool {
-    pos: s32 = start
-    while pos + 1 < end {
-        if state.source[pos] == 47 {
-            next: u8 = state.source[pos + 1]
-            if next == 47 || next == 42 {
-                return true
-            }
+// Structure bytes count only outside quoted text and comments. A scan
+// stands in code (mode 0), inside a quote (34 or 39) that ends at its line as
+// in CSS, inside a block comment (42), or inside a line comment (47).
+
+KssFormatScan :: struct {
+    pos: s32
+    mode: s32
+    code: bool
+}
+
+// Steps over one unit: an escaped pair, a comment opener or closer, or one
+// byte. `code` says whether the unit was structure.
+KssFormatScanNext :: (source: string, scan: KssFormatScan, end: s32) -> KssFormatScan {
+    at: s32 = scan.pos
+    byte: u8 = source[at]
+    next: u8 = 0
+    if at + 1 < end {
+        next = source[at + 1]
+    }
+    scan.code = false
+    scan.pos = at + 1
+    if scan.mode == 0 {
+        if byte == 34 || byte == 39 {
+            scan.mode = cast(s32)byte
+        } else if byte == 47 && next == 42 {
+            scan.mode = 42
+            scan.pos = at + 2
+        } else if byte == 47 && next == 47 {
+            scan.mode = 47
+            scan.pos = at + 2
+        } else {
+            scan.code = true
         }
-        pos = pos + 1
+    } else if scan.mode == 42 {
+        if byte == 42 && next == 47 {
+            scan.mode = 0
+            scan.pos = at + 2
+        }
+    } else if scan.mode == 47 {
+        if byte == 10 {
+            scan.mode = 0
+        }
+    } else if byte == 10 || byte == 13 || cast(s32)byte == scan.mode {
+        scan.mode = 0
+    } else if byte == 92 && at + 1 < end && next != 10 && next != 13 {
+        scan.pos = at + 2
+    }
+    return scan
+}
+
+KssFormatLineHasComments :: (source: string, start: s32, end: s32) -> bool {
+    scan: KssFormatScan
+    scan.pos = start
+    scan.mode = 0
+    while scan.pos < end {
+        scan = KssFormatScanNext(source, scan, end)
+        if scan.mode == 42 || scan.mode == 47 {
+            return true
+        }
     }
     return false
 }
 
-KssFormatLineCanReflow :: (state: KssFormatState, start: s32, end: s32) -> bool {
-    if KssFormatLineHasComments(state, start, end) {
+KssFormatLineCanReflow :: (source: string, start: s32, end: s32) -> bool {
+    if KssFormatLineHasComments(source, start, end) {
         return false
     }
     open_seen: bool = false
     semicolon_seen: bool = false
     close_seen: bool = false
-    pos: s32 = start
-    while pos < end {
-        byte: u8 = state.source[pos]
-        if byte == 123 {
-            open_seen = true
-        } else if byte == 59 && open_seen {
-            semicolon_seen = true
-        } else if byte == 125 && semicolon_seen {
-            close_seen = true
+    scan: KssFormatScan
+    scan.pos = start
+    scan.mode = 0
+    while scan.pos < end {
+        at: s32 = scan.pos
+        scan = KssFormatScanNext(source, scan, end)
+        if scan.code {
+            byte: u8 = source[at]
+            if byte == 123 {
+                open_seen = true
+            } else if byte == 59 && open_seen {
+                semicolon_seen = true
+            } else if byte == 125 && semicolon_seen {
+                close_seen = true
+            }
         }
-        pos = pos + 1
     }
     return open_seen && semicolon_seen && close_seen
 }
@@ -348,16 +446,26 @@ KssFormatEmitTrimmedRange :: (state: KssFormatState, start: s32, end: s32) -> Ks
 
 KssFormatEmitReflowLine :: (state: KssFormatState, start: s32, end: s32,
     base_depth: s32, leading_break: bool, first_line: bool) -> KssFormatState {
-    cursor: s32 = start
     token_start: s32 = start
     depth: s32 = base_depth
     emitted: bool = false
-    while cursor < end {
-        byte: u8 = state.source[cursor]
+    scan: KssFormatScan
+    scan.pos = start
+    scan.mode = 0
+    while scan.pos < end {
+        cursor: s32 = scan.pos
+        scan = KssFormatScanNext(state.source, scan, end)
+        byte: u8 = 0
+        if scan.code {
+            byte = state.source[cursor]
+        }
         if byte == 123 {
             state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
-            state = KssFormatEmitTrimmedRange(state, token_start, cursor)
-            state = KssFormatEmitAtom(state, 32)
+            // A brace with nothing before it opens its own line, unspaced.
+            if KssFormatTrimStart(state, token_start, cursor) < KssFormatTrimEnd(state, token_start, cursor) {
+                state = KssFormatEmitTrimmedRange(state, token_start, cursor)
+                state = KssFormatEmitAtom(state, 32)
+            }
             state = KssFormatEmitAtom(state, 123)
             emitted = true
             depth = depth + 1
@@ -381,7 +489,6 @@ KssFormatEmitReflowLine :: (state: KssFormatState, start: s32, end: s32,
             emitted = true
             token_start = cursor + 1
         }
-        cursor = cursor + 1
     }
     if KssFormatTrimStart(state, token_start, end) < KssFormatTrimEnd(state, token_start, end) {
         state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
@@ -392,6 +499,7 @@ KssFormatEmitReflowLine :: (state: KssFormatState, start: s32, end: s32,
 
 KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct, leading_break: bool) -> KssFormatState {
     depth: s32 = 0
+    mode: s32 = 0
     pos: s32 = construct.start
     first: bool = true
     while pos < construct.end {
@@ -412,27 +520,42 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
             }
         }
         if trimmed < line_end {
+            copy_start: s32 = trimmed
             indent: s32 = depth
-            if state.source[trimmed] == 125 && depth > 0 {
+            if mode != 0 {
+                // Inside a block comment the line is text; keep it whole.
+                copy_start = pos
+                indent = 0
+            } else if state.source[trimmed] == 125 && depth > 0 {
                 indent = depth - 1
             }
-            if KssFormatLineCanReflow(state, trimmed, line_end) {
+            if mode == 0 && KssFormatLineCanReflow(state.source, trimmed, line_end) {
                 state = KssFormatEmitReflowLine(state, trimmed, line_end,
                     indent, leading_break, first)
             } else {
                 state = KssFormatEmitLineStart(state, leading_break, first,
                     indent * 4)
-                state = KssFormatEmitCopy(state, trimmed, line_end - trimmed)
+                state = KssFormatEmitCopy(state, copy_start, line_end - copy_start)
             }
-            scan: s32 = trimmed
-            while scan < line_end {
-                byte: u8 = state.source[scan]
-                if byte == 123 {
-                    depth = depth + 1
-                } else if byte == 125 && depth > 0 {
-                    depth = depth - 1
+            scan: KssFormatScan
+            scan.pos = trimmed
+            scan.mode = mode
+            while scan.pos < line_end {
+                at: s32 = scan.pos
+                scan = KssFormatScanNext(state.source, scan, line_end)
+                if scan.code {
+                    byte: u8 = state.source[at]
+                    if byte == 123 {
+                        depth = depth + 1
+                    } else if byte == 125 && depth > 0 {
+                        depth = depth - 1
+                    }
                 }
-                scan = scan + 1
+            }
+            // Quotes and line comments end with their line.
+            mode = 0
+            if scan.mode == 42 {
+                mode = 42
             }
             first = false
         }
