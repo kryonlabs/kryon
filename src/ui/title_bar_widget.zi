@@ -61,7 +61,7 @@ TitleBarFaceFor :: (props: TitleBarProps,
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
         cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         TitleBarDefaultFace(role), facts,
         cast(s32)ButtonStateNormal)
     return frame

@@ -64,7 +64,7 @@ ColorPickerFace :: (props: ColorPickerProps,
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         ColorPickerDefaultFace(swatch, props.disabled), facts, state)
     return frame
 }
@@ -137,8 +137,7 @@ ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult 
     swatch_face: StyleFrame = ColorPickerFace(props, true)
     slider_state: s32 = ButtonStateNormal
     if props.disabled { slider_state = ButtonStateDisabled }
-    thumb_face: StyleFrame = SliderFaceFor(ActiveStyleRules(),
-        props.id, props.class_name, props.disabled,
+    thumb_face: StyleFrame = SliderFaceFor(props.id, props.class_name, props.disabled,
         StyleKindSliderThumb(), StyleAny(),
         cast(ButtonTone)ButtonToneAccent, slider_state)
     thumb_radius: float32 = cast(float32)SliderThumbSizeForStyle(

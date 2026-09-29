@@ -47,7 +47,7 @@ FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
         cast(s32)ControlSizeMedium, ButtonStateNormal)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         FieldsetDefaultFace(), facts, ButtonStateNormal)
     return frame
 }

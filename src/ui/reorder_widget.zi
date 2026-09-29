@@ -38,7 +38,7 @@ ReorderHandleFace :: () -> StyleFrame {
         cast(s32)ControlSizeSmall,
         cast(s32)ButtonStateNormal)
     result: StyleFrame
-    result.value = ResolveStyleRules(ActiveStyleRules(), fallback,
+    result.value = ResolveInstalledStyleRules(fallback,
         facts, cast(s32)ButtonStateNormal)
     return result
 }

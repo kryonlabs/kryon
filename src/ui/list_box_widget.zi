@@ -104,7 +104,7 @@ ListBoxFace :: (kind: s32, id: s32, class_name: s32,
         class_name, StyleAny(), cast(s32)ButtonToneNeutral,
         cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         ListBoxDefaultFace(state, item), facts, state)
     return frame
 }

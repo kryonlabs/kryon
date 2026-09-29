@@ -50,14 +50,14 @@ SliderDefaultFace :: (kind: s32, role: s32,
 }
 
 #program_export
-SliderFaceFor :: (rules: StyleRules, id: s32,
+SliderFaceFor :: (id: s32,
     class_name: s32, disabled: bool, kind: s32,
     role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(kind, id, class_name,
         role, cast(s32)tone, cast(s32)ButtonEmphasisFilled,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(rules,
+    frame.value = ResolveInstalledStyleRules(
         SliderDefaultFace(kind, role, disabled), facts, state)
     return frame
 }
@@ -90,17 +90,16 @@ PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
     pressed: bool = prepared.drag.active || TreePressedAt(session, previous)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, disabled,
         false, pressed, hovered, false, false)
-    rules: StyleRules = ActiveStyleRules()
-    track: StyleFrame = SliderFaceFor(rules, id, class_name,
+    track: StyleFrame = SliderFaceFor(id, class_name,
         disabled, StyleKindSlider(), SliderTrackRole(),
         cast(ButtonTone)ButtonToneNeutral, state)
-    active: StyleFrame = SliderFaceFor(rules, id, class_name,
+    active: StyleFrame = SliderFaceFor(id, class_name,
         disabled, StyleKindSlider(), SliderFillRole(),
         cast(ButtonTone)ButtonToneAccent, state)
-    thumb: StyleFrame = SliderFaceFor(rules, id, class_name,
+    thumb: StyleFrame = SliderFaceFor(id, class_name,
         disabled, StyleKindSliderThumb(), StyleAny(),
         cast(ButtonTone)ButtonToneAccent, state)
-    prepared.label = SliderFaceFor(rules, id, class_name,
+    prepared.label = SliderFaceFor(id, class_name,
         disabled, StyleKindSlider(), SliderLabelRole(),
         cast(ButtonTone)ButtonToneNeutral, state)
     prepared.font = ResolveFont(0,

@@ -37,15 +37,15 @@ DefaultImageFaces :: () -> ImageFaces {
 }
 
 #program_export
-ImageFacesFor :: (rules: StyleRules, image: ImageProps,
+ImageFacesFor :: (image: ImageProps,
     defaults: ImageFaces) -> ImageFaces {
     faces: ImageFaces = defaults
     facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
     facts.class_name = image.class_name
-    faces.surface = ResolveStyleRules(rules, defaults.surface, facts,
+    faces.surface = ResolveInstalledStyleRules(defaults.surface, facts,
         cast(s32)ButtonStateNormal)
     facts.role = ImageLabelRole()
-    faces.label = ResolveStyleRules(rules, defaults.label, facts,
+    faces.label = ResolveInstalledStyleRules(defaults.label, facts,
         cast(s32)ButtonStateNormal)
     return faces
 }
@@ -102,7 +102,7 @@ Image :: (session: Session, image: ImageProps) {
         TreeSetLabel(session, node, image.alt_text)
         TreeSetSemanticDetail(session, node, image.asset_path)
     }
-    faces: ImageFaces = ImageFacesFor(ActiveStyleRules(), image,
+    faces: ImageFaces = ImageFacesFor(image,
         DefaultImageFaces())
     radius: float32 = 0.0
     if (faces.surface.fields & cast(u32)StyleRadius) != cast(u32)0 {

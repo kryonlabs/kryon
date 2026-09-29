@@ -46,7 +46,7 @@ SegmentedControlFaceFor :: (props: SegmentedControlProps,
         cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         SegmentedControlDefaultFace(kind), facts, state)
     return frame
 }

@@ -33,7 +33,7 @@ PageBoxStyle :: (kind: s32, class_name: s32) -> StyleData {
     facts: StyleFacts = StyleDefaultFacts(kind)
     facts.class_name = class_name
     facts.state = cast(s32)ButtonStateNormal
-    return ResolveStyleRules(ActiveStyleRules(), base, facts,
+    return ResolveInstalledStyleRules(base, facts,
         cast(s32)ButtonStateNormal)
 }
 

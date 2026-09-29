@@ -88,15 +88,30 @@ ButtonDefaultFace :: (props: ButtonProps, state: s32) -> StyleData {
 #program_export
 ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
     state: s32) -> StyleData {
+    return ButtonFaceFinish(props, ResolveStyleRules(rules,
+        ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
+}
+
+// The face under the installed style, without copying its rule table.
+#program_export
+ButtonInstalledFaceFor :: (props: ButtonProps, state: s32) -> StyleData {
+    return ButtonFaceFinish(props, ResolveInstalledStyleRules(
+        ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
+}
+
+ButtonFaceFacts :: (props: ButtonProps, state: s32) -> StyleFacts {
     kind: s32 = props.style_kind
     if kind <= 0 { kind = StyleKindButton() }
     role: s32 = StyleAny()
     if props.style_role > 0 { role = props.style_role }
-    facts: StyleFacts = ButtonRoleFactsFor(kind, props.id,
+    return ButtonRoleFactsFor(kind, props.id,
         props.class_name, role, cast(s32)props.tone,
         cast(s32)props.emphasis, cast(s32)props.size, state)
-    face: StyleData = ResolveStyleRules(rules, ButtonDefaultFace(props, state),
-        facts, state)
+}
+
+ButtonFaceFinish :: (props: ButtonProps, face: StyleData) -> StyleData {
+    kind: s32 = props.style_kind
+    if kind <= 0 { kind = StyleKindButton() }
     // Modal action and close faces use offset-x/offset-y as dialog layout
     // sizes (see ModalMetricsFor), not as content offsets inside a button.
     if kind == StyleKindModal() {
@@ -235,7 +250,7 @@ PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: 
 // label's width changes with the language.
 #program_export
 ButtonMeasure :: (props: ButtonProps) -> Rectangle {
-    face: StyleData = ButtonFaceFor(ActiveStyleRules(), props, 0)
+    face: StyleData = ButtonInstalledFaceFor(props, 0)
     font: s32 = ResolveFont(0,
         StyleFontValue(face.fields, face.font_size), 14)
     label_width: s32 = 0
@@ -265,7 +280,7 @@ SubmitButton :: (session: Session, props: ButtonProps,
     state: s32 = ResolveState(cast(s32)props.state,
         flags.disabled, flags.loading, TreePressedAt(session, previous),
         TreeHoveredAt(session, previous), false, flags.selected)
-    face: StyleData = ButtonFaceFor(ActiveStyleRules(), props, state)
+    face: StyleData = ButtonInstalledFaceFor(props, state)
     font: s32 = ResolveFont(0,
         StyleFontValue(face.fields, face.font_size), 14)
     label_width: s32 = 0

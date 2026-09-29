@@ -74,11 +74,11 @@ Answer :: () -> s32 {
     ignored.layer = 100
     ignored.style.background = cast(u32)0xdeadbeef
     rules.items[3] = ignored
-    faces: ProgressFaces = ProgressFacesFor(rules, props.class_name, defaults)
+    InstallStyleRules(rules)
+    faces: ProgressFaces = ProgressFacesFor(props.class_name, defaults)
     if faces.track.value.background != cast(u32)0x11223344 ||
         faces.fill.value.background != cast(u32)0x55667788 ||
         faces.label.value.font_size != 14.0 { return 0 }
-    InstallStyleRules(rules)
     props.key = cast(u64)17
     BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Progress(TestSession(), props)
@@ -92,6 +92,8 @@ Answer :: () -> s32 {
     if prepared.font != 16 || prepared.paint.layout.fill_bounds.width != 0.0 {
         return 0
     }
-    PaintProgressFromRules(TestSession(), props, rules, defaults)
+    InstallStyleRules(rules)
+    PaintProgressProps(TestSession(), props,
+        ProgressFacesFor(props.class_name, defaults))
     return 42
 }

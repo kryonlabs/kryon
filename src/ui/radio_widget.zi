@@ -46,13 +46,13 @@ RadioDefaultFace :: (role: s32, disabled: bool) -> StyleData {
 }
 
 #program_export
-RadioFaceFor :: (rules: StyleRules, props: RadioProps,
+RadioFaceFor :: (props: RadioProps,
     role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindRadio(),
         props.id, props.class_name, role, cast(s32)tone,
         cast(s32)ButtonEmphasisOutline, cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
-    frame.value = ResolveStyleRules(rules,
+    frame.value = ResolveInstalledStyleRules(
         RadioDefaultFace(role, props.disabled), facts, state)
     return frame
 }
@@ -108,12 +108,11 @@ Radio :: (session: Session, props: RadioProps) -> s32 {
     pressed: bool = TreePressedAt(session, previous)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
         false, pressed, hovered, false, props.checked)
-    rules: StyleRules = ActiveStyleRules()
-    ring: StyleFrame = RadioFaceFor(rules, props, RadioRingRole(),
+    ring: StyleFrame = RadioFaceFor(props, RadioRingRole(),
         cast(ButtonTone)ButtonToneNeutral, state)
-    mark: StyleFrame = RadioFaceFor(rules, props, RadioMarkRole(),
+    mark: StyleFrame = RadioFaceFor(props, RadioMarkRole(),
         cast(ButtonTone)ButtonToneAccent, state)
-    label: StyleFrame = RadioFaceFor(rules, props, RadioLabelRole(),
+    label: StyleFrame = RadioFaceFor(props, RadioLabelRole(),
         cast(ButtonTone)ButtonToneNeutral, state)
     font: s32 = ResolveFont(0,
         StyleFontValue(label.value.fields, label.value.font_size), 14)

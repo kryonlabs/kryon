@@ -73,7 +73,7 @@ TabBarFaceFor :: (props: TabBarProps, kind: s32,
     tone: s32 = cast(s32)ButtonToneNeutral
     if selected { tone = cast(s32)ButtonToneAccent }
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(),
+    frame.value = ResolveInstalledStyleRules(
         TabBarDefaultFace(kind, selected, disabled),
         StyleControlRoleFacts(kind, props.id,
             props.class_name, StyleAny(), tone,

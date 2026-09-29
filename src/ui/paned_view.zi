@@ -227,7 +227,7 @@ PanedViewFace :: (class_name: s32, disabled: bool) -> StyleFrame {
     state: s32 = ButtonStateNormal
     if disabled { state = ButtonStateDisabled }
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+    frame.value = ResolveInstalledStyleRules(defaults,
         PanedViewHandleFactsFor(class_name, state), state)
     return frame
 }

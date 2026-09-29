@@ -73,7 +73,7 @@ ToastSurfaceFace :: (class_name: s32) -> StyleFrame {
     defaults.padding_y = 10.0
     defaults.gap = 18.0
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+    frame.value = ResolveInstalledStyleRules(defaults,
         ToastSurfaceFactsFor(class_name), ButtonStateNormal)
     return frame
 }
@@ -87,7 +87,7 @@ ToastLabelFace :: (class_name: s32) -> StyleFrame {
     defaults.font_size = 14.0
     defaults.opacity = 1.0
     frame: StyleFrame
-    frame.value = ResolveStyleRules(ActiveStyleRules(), defaults,
+    frame.value = ResolveInstalledStyleRules(defaults,
         ToastLabelFactsFor(class_name), ButtonStateNormal)
     return frame
 }
