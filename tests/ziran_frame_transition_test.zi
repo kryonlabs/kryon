@@ -32,6 +32,8 @@ main :: () -> s32 {
     if image.texture.id != cast(u32)7 { return 4 }
     if cast(s32)image.fit != ImageFitStretch { return 5 }
     if ColorFromPacked(image.tint).a != cast(u8)255 { return 6 }
+    if image.source.x != 0.0 || image.source.y != 0.0 ||
+    image.source.width != 20.0 || image.source.height != -10.0 { return 11 }
 
     if BeginFrame(TestSession(), cast(u64)19,
         Rectangle.{0.0, 0.0, 40.0, 30.0}) != cast(FrameStatus)FrameOk { return 7 }

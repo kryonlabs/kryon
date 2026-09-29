@@ -46,6 +46,11 @@ FrameTransitionImage :: (surface: FrameSurface, bounds: Rectangle,
     image.bounds = bounds
     image.fit = cast(ImageFit)ImageFitStretch
     image.texture = surface.texture
+    // Raylib render targets store rows opposite to normal textures. The
+    // negative source height is the host's upright sampling convention.
+    image.source = Rectangle.{0.0, 0.0,
+        cast(float32)surface.texture.width,
+        -cast(float32)surface.texture.height}
     image.alt_text = "Previous screen"
     image.tint = (cast(u32)0xffffff << cast(u32)8) | alpha_byte
     return image

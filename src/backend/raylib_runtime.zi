@@ -916,7 +916,9 @@ retained_frame_active: bool;
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
-    if source.width <= 0.0 || source.height <= 0.0 ||
+    // A negative source height is valid: raylib render targets are sampled
+    // upright with a flipped source rectangle.
+    if source.width <= 0.0 || source.height == 0.0 ||
     destination.width <= 0.0 || destination.height <= 0.0 ||
     clip.width <= 0.0 || clip.height <= 0.0 {
         return
