@@ -26,11 +26,16 @@ PageFontAppend :: (index: s32, text: string) -> s32 {
     return at
 }
 
-// A font-family-and-size shorthand such as "16px kryon-face-0"; monospace
-// stands in when there is no face.
-PageFontSpec :: (size: s32, face_id: s32) -> string {
+// A font-family-and-size shorthand such as "16.25px kryon-face-0" for a size
+// in hundredths of a pixel; monospace stands in when there is no face.
+PageFontSpec :: (hundredths: s32, face_id: s32) -> string {
     part: [24]u8
-    index: s32 = PageFontAppend(0, FormatInteger(cast(s64)size, part[:]))
+    index: s32 = PageFontAppend(0, FormatInteger(cast(s64)(hundredths / 100), part[:]))
+    fraction: s32 = hundredths % 100
+    page_font_bytes[index] = cast(u8)46
+    page_font_bytes[index + 1] = cast(u8)(48 + fraction / 10)
+    page_font_bytes[index + 2] = cast(u8)(48 + fraction % 10)
+    index += 3
     if face_id > 0 {
         index = PageFontAppend(index, "px ")
         index = PageFontAppend(index, PageFaceFamily(face_id))
@@ -143,8 +148,32 @@ PageMaxOf :: (left: s32, right: s32) -> s32 {
     return right
 }
 
+// The CSS font size, in hundredths of a pixel, at which the face's ascent
+// plus descent spans `size` pixels. Kryon lays text out like raylib, whose
+// fonts are scaled to that pixel height, while a CSS size is the em size;
+// browsers also disagree on a face's ascent and descent, so this is measured.
+PageFontHundredths :: (context: s32, face_id: s32, size: s32) -> s32 {
+    WebSet(context, WebName("font"), WebText(PageFontSpec(size * 100, face_id)))
+    metrics: s32 = WebAsObject(WebCall1(context, WebName("measureText"),
+        WebText("H")))
+    size_value: float64 = cast(float64)size
+    line: float64 = PageMeasured(metrics, WebName("fontBoundingBoxAscent"), size_value * 0.8) +
+        PageMeasured(metrics, WebName("fontBoundingBoxDescent"), size_value * 0.2)
+    if line < 1.0 { return size * 100 }
+    hundredths: s32 = cast(s32)(size_value * size_value * 100.0 / line + 0.5)
+    if hundredths < 100 { hundredths = 100 }
+    return hundredths
+}
+
+PageRound :: (value: float64) -> s32 {
+    if value < 0.0 { return 0 - cast(s32)(0.5 - value) }
+    return cast(s32)(value + 0.5)
+}
+
 // Rasterises one glyph as white-on-transparent RGBA into `pixels`. Returns 1
-// and fills the metrics, or 0 when the glyph does not fit.
+// and fills the metrics, or 0 when the glyph does not fit. As in raylib, the
+// line box is `size` pixels tall with the baseline at the face's ascent, and
+// offset_y places the bitmap's top relative to the top of that box.
 PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
     width: *s32, height: *s32, offset_x: *s32, offset_y: *s32, pixels: *u8) -> s32 {
     PageInitNames()
@@ -153,7 +182,7 @@ PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
     ok: s32 = 0
     context: s32 = PageGlyphContext()
     if context != 0 {
-        font: string = PageFontSpec(size, face_id)
+        font: string = PageFontSpec(PageFontHundredths(context, face_id, size), face_id)
         WebSet(context, WebName("font"), WebText(font))
         WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
         character: s32 = WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("String")),
@@ -162,12 +191,12 @@ PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
             WebObject(character)))
         size_value: float64 = cast(float64)size
         measured_width: float64 = WebGetNumber(metrics, WebName("width"))
-        advance_x: s32 = PageCeil(measured_width)
+        advance_x: s32 = PageRound(measured_width)
         glyph_ascent: s32 = PageCeil(PageMeasured(metrics,
             WebName("actualBoundingBoxAscent"), size_value * 0.8))
         glyph_descent: s32 = PageCeil(PageMeasured(metrics,
             WebName("actualBoundingBoxDescent"), 2.0))
-        font_ascent: s32 = PageCeil(PageMeasured(metrics,
+        font_ascent: s32 = PageRound(PageMeasured(metrics,
             WebName("fontBoundingBoxAscent"), size_value * 0.8))
         fallback_descent: float64 = size_value * 0.2
         if fallback_descent < 2.0 { fallback_descent = 2.0 }
@@ -207,7 +236,7 @@ PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
                 width.* = glyph_width
                 height.* = glyph_height
                 offset_x.* = 0 - (left + 1)
-                offset_y.* = 0
+                offset_y.* = font_ascent - baseline
                 ok = 1
             }
         }
