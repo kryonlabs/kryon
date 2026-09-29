@@ -339,8 +339,8 @@ SegmentedControl {
   font-size: font.md;
   background: surface;
   foreground: text;
-  border: border-soft;
-  radius: radius.md;
+  border: border;
+  radius: 21;
   border-width: border;
   padding-x: 2;
   padding-y: 2;
@@ -354,10 +354,10 @@ SegmentedControl {
 
 Segment {
   background: transparent;
-  foreground: muted;
+  foreground: text;
   border: transparent;
   focus: focus;
-  radius: radius.sm;
+  radius: 19;
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
