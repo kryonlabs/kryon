@@ -36,9 +36,6 @@ endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
-ifneq ($(BROWSER_BACKEND),)
-HOST_ID := $(HOST_MODULE)
-endif
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
@@ -47,13 +44,11 @@ UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi $(KRYON_DIR)/src/kss/parser/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
-KRYON_MODULE_PATHS := --module-path $(KRYON_DIR)/src/ui \
-	--module-path $(KRYON_DIR)/src/kss
 ifneq ($(BROWSER_BACKEND),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
-IR_COMMAND := $(ZIRAN_DIR)/build/bin/zi2zir --define PLATFORM_WEB \
-	--root $(KRYON_DIR)/src/backend --module-path src \
-	$(KRYON_MODULE_PATHS) --module-path $(ZIRAN_DIR)/std \
+# Browser hosts resolve the app's packages like native ones; every saved
+# module is lowered because the browser runtime calls into the page.
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --define PLATFORM_WEB \
 	-o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
