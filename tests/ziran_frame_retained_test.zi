@@ -1,0 +1,93 @@
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "ziran_frame_retained_host"
+
+using FrameStatus;
+
+test_session: Session;
+
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+Frame :: (label: string, line_color: Color, image: bool) -> FrameEndResult {
+    BeginFrame(TestSession(), cast(u64)17, Rectangle.{0.0, 0.0, 100.0, 80.0})
+    PaintLine(TestSession(), -1, Rectangle.{4.0, 8.0, 96.0, 8.0},
+        line_color)
+    PaintLabel(TestSession(), -1, label, 12, 16, 14,
+        Color.{20, 30, 40, 255})
+    if image {
+        PaintImage(TestSession(), -1, "hero.png", cast(u32)7,
+            Rectangle.{0.0, 0.0, 20.0, 10.0},
+            Rectangle.{10.0, 30.0, 20.0, 10.0},
+            Rectangle.{0.0, 0.0, 100.0, 80.0}, Vector2.{}, 0.0, 0.0,
+            Color.{255, 255, 255, 255})
+    }
+    return EndFrameRetained(TestSession())
+}
+
+ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
+    BeginFrame(TestSession(), cast(u64)23, Rectangle.{0.0, 0.0, 100.0, 80.0})
+    PaintImage(TestSession(), -1, asset_path, texture_id,
+        Rectangle.{0.0, 0.0, 20.0, 10.0},
+        Rectangle.{10.0, 30.0, 20.0, 10.0},
+        Rectangle.{0.0, 0.0, 100.0, 80.0}, Vector2.{}, 0.0, 0.0,
+        Color.{255, 255, 255, 255},
+        Texture2D.{texture_id, 20, 10, 1, 7})
+    return EndFrameRetained(TestSession())
+}
+
+#program_export
+main :: () -> s32 {
+    first: [5]u8 = .[83, 97, 109, 101, 0]
+    second: [5]u8 = .[83, 97, 109, 101, 0]
+    changed: [5]u8 = .[78, 101, 120, 116, 0]
+    first_text := TextView(first[:4])
+    second_text := TextView(second[:4])
+    changed_text := TextView(changed[:4])
+
+    result := Frame(first_text, Color.{1, 2, 3, 255}, false)
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged ||
+    result.paint_count != 2 || FramePaintUnchanged(TestSession()) { return 1 }
+    if RetainedLineDraws() != 1 || RetainedTextDraws() != 1 { return 2 }
+
+    result = Frame(second_text, Color.{1, 2, 3, 255}, false)
+    if !result.paint_unchanged || result.paint_count != 2 ||
+    !FramePaintUnchanged(TestSession()) { return 3 }
+    if RetainedLineDraws() != 1 || RetainedTextDraws() != 1 { return 4 }
+
+    result = Frame(changed_text, Color.{1, 2, 3, 255}, false)
+    if result.paint_unchanged || FramePaintUnchanged(TestSession()) { return 5 }
+    if RetainedTextDraws() != 2 { return 6 }
+
+    result = Frame(changed_text, Color.{9, 2, 3, 255}, false)
+    if result.paint_unchanged || RetainedLineDraws() != 3 { return 7 }
+
+    result = Frame(changed_text, Color.{9, 2, 3, 255}, true)
+    if result.paint_unchanged || result.paint_count != 3 ||
+    RetainedImageDraws() != 1 { return 8 }
+
+    result = Frame(changed_text, Color.{9, 2, 3, 255}, true)
+    if !result.paint_unchanged || RetainedImageDraws() != 1 { return 9 }
+    first_path: [9]u8 = .[104, 101, 114, 111, 46, 112, 110, 103, 0]
+    second_path: [9]u8 = .[104, 101, 114, 111, 46, 112, 110, 103, 0]
+    hero_path := TextView(first_path[:8])
+    same_hero_path := TextView(second_path[:8])
+    result = ImageFrame(hero_path, cast(u32)7)
+    if result.paint_unchanged || RetainedImageDraws() != 2 { return 10 }
+    result = ImageFrame(same_hero_path, cast(u32)7)
+    if !result.paint_unchanged || RetainedImageDraws() != 2 { return 11 }
+    result = ImageFrame("hero.png", cast(u32)8)
+    if result.paint_unchanged || RetainedImageDraws() != 3 { return 12 }
+    result = ImageFrame("other.png", cast(u32)8)
+    if result.paint_unchanged || RetainedImageDraws() != 4 { return 13 }
+    result = ImageFrame("other.png", cast(u32)8)
+    if !result.paint_unchanged || RetainedImageDraws() != 4 { return 14 }
+    if RetainedHostFailed() { return 15 }
+    return 0
+}
