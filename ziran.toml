@@ -1,6 +1,6 @@
 [package]
 name = "Kryon"
-module_roots = ["src/ui", "src/backend", "src/kss"]
+module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -29,11 +29,9 @@ Window = "src/ui/window.zi"
 DPI = "src/ui/dpi.zi"
 Zoom = "src/ui/zoom.zi"
 SystemTheme = "src/ui/system_theme.zi"
-SystemStyle = "src/kss/system_style.zi"
 SystemThemeLinux = "src/backend/system_theme_linux.zi"
 Tray = "src/backend/Tray/module.zi"
 PageRoute = "src/backend/page_route.zi"
-Kss = "src/kss/Kss/module.zi"
 # Building blocks for widget packages such as Plot and DataViews,
 # which draw into the retained tree with Kryon's own primitives.
 session = "src/ui/session.zi"

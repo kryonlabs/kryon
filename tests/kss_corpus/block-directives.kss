@@ -1,8 +1,0 @@
-@pack corpus;
-@media (min-width: 10px) {
-  Button { gap: 1; }
-}
-@font-face {
-  src: x;
-}
-Text { gap: 2; }

@@ -67,21 +67,8 @@ jobs:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY make test
 
-      - name: Fuzz KSS with this run's seed
-        # make test covers seed 1; each run adds sheets no run made before.
-        # A failure names the seed; rerun it with make fuzz-kss FUZZ_SEED=N.
-        run: env -u DISPLAY -u WAYLAND_DISPLAY make fuzz-kss FUZZ_SEED=${{ github.run_number }} FUZZ_COUNT=10000
-
       - name: Test SVG example
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
-
-      - name: Keep a failing KSS sheet
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: kss-fuzz-failure
-          path: kryon/build/kss-fuzz/failure-*.kss
-          if-no-files-found: ignore
 
   test-sanitizers:
     name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer

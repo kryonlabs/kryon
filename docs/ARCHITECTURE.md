@@ -10,7 +10,6 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | Location | Responsibility |
 | --- | --- |
 | `src/ui/*.zi` | Widget APIs, retained tree, layout, input decisions, styling, text, accessibility policy, and paint commands |
-| `src/kss/*.zi` | Optional style parsing package that depends on the core UI modules |
 | `src/backend/*.zi` | Terminal and window hosts: platform observations, native bindings, rasterization, and presentation |
 | `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
 | `tests/*_host.zi` | Ziran behavior-test hosts; not part of the library or application hosts |
@@ -44,9 +43,7 @@ compiles native objects, and creates a C archive from generated source.
 portable `.zib` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
 semantic DOM browser applications in private headless Chromium. Desktop,
 raylib, and libdraw package tests run separately on private Xvfb displays;
-CI runs them too. `make fuzz-kss` runs generated and damaged style sheets
-through the KSS parser and formatter, and `make sanitize-test` repeats the
-behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
+CI runs them too. `make sanitize-test` repeats the behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
 [FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what those checks cover.
 
 Ziran's generic capabilities should be added to Ziran and imported here.

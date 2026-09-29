@@ -34,10 +34,10 @@ depend on Kryon: [Plot](https://github.com/kryonlabs/plot),
 (`session`, `tree`, `surface`, `paint_queue`, `style`, and the others listed
 in `ziran.toml`); see [writing a widget package](docs/API.md#widget-packages).
 
-KSS parsing, formatting, and installation live in the optional `src/kss/`
-package. `make kss` builds `build/ziran/libkryon_kss.a`; the core UI library
-keeps style resolution but does not import the parser. Ziran projects add the
-KSS module path automatically.
+Style sheets are the separate [KSS](https://github.com/kryonlabs/kss)
+package: it parses and formats `.kss` text, installs the rules, and ships the
+classic, lightfield, and material style packs. Kryon keeps the rule table and
+style resolution, so an app that builds its rules in code needs no parser.
 
 The optional [Game2D](https://github.com/kryonlabs/game2d) Ziran package owns
 the raylib game API. Kryon keeps its geometry, drawing values, UI primitives,
@@ -50,13 +50,8 @@ portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
 serially or `TEST_JOBS=8` on a larger machine. For a quick edit loop, use
 `make test-focus TEST=link_widget`; the filter matches test script names and
 skips the full library rebuild. Test subprocesses have no display access.
-`make test` also fuzzes KSS: `make fuzz-kss FUZZ_SEED=N FUZZ_COUNT=M` runs
-other sheets, and a failing sheet is kept in `build/kss-fuzz/` with a command
-that shrinks it (see [tests/kss_fuzz.zi](tests/kss_fuzz.zi)).
 `make sanitize-test` runs the behavior tests with AddressSanitizer and
-UndefinedBehaviorSanitizer. After editing `styles/kryon/classic.kss`, run
-`make style-packs` to regenerate its embedded module; `make test` fails while
-they differ. Keep one-off experiments in `build/scratch/`;
+UndefinedBehaviorSanitizer. Keep one-off experiments in `build/scratch/`;
 `make clean-scratch` removes that and any other `build/` entry that no target
 writes, once it has been idle for a day.
 See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event

@@ -41,7 +41,6 @@ ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
-KSS_SOURCES := $(wildcard $(KRYON_DIR)/src/kss/*.zi $(KRYON_DIR)/src/kss/parser/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
 ifneq ($(BROWSER_BACKEND),)
@@ -65,7 +64,7 @@ CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_MET
 EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
-PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(KSS_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
+PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)

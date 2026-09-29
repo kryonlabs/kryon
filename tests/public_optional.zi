@@ -1,8 +1,0 @@
-using UI :: #import "Widgets";
-using Styles :: #import "Kss";
-
-PublicOptional :: () -> s32 {
-    environment: KssEnvironment = KssDefaultEnvironment()
-    if environment.theme != 0 { return 1 }
-    return 42
-}

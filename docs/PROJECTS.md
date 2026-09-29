@@ -46,12 +46,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 }
 ```
 
-`Kss` is an optional public import for style parsing. Charts, tables, trees,
-and source coloring are separate Git packages: add
+Style sheets, charts, tables, trees, and source coloring are separate Git
+packages: add `https://github.com/kryonlabs/kss.git`,
 `https://github.com/kryonlabs/plot.git`,
 `https://github.com/kryonlabs/data-views.git`, or
 `https://github.com/ziranlang/syntax.git` with `ziran add` and import
-`plot/Plot`, `data_views/TableView`, `data_views/TreeView`, or
+`kss/Kss`, `plot/Plot`, `data_views/TableView`, `data_views/TreeView`, or
 `syntax/Syntax`. Kryon exports `geometry`, `drawing_props`, and the other
 building blocks listed in `ziran.toml` for code that needs those primitives
 without importing the widget catalog. Native and browser profiles resolve
