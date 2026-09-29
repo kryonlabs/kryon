@@ -34,6 +34,6 @@ for a target; it does not prove that every native host runs on that target.
 
 The desktop, raylib, and libdraw project tests run separately with
 `make desktop-project-test`, `make raylib-project-test`, and
-`make libdraw-project-test`; they must use a private Xvfb display. The
-Canvas2D and semantic DOM project tests run in `make test` and launch only
-private headless Chromium.
+`make libdraw-project-test`; they must use a private Xvfb display. CI runs
+all three on every push in their own job. The Canvas2D and semantic DOM
+project tests run in `make test` and launch only private headless Chromium.

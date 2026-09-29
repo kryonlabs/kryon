@@ -45,5 +45,107 @@ jobs:
       - name: Build and test
         run: env -u DISPLAY -u WAYLAND_DISPLAY make test
 
+      - name: Fuzz KSS with this run's seed
+        # make test covers seed 1; each run adds sheets no run made before.
+        # A failure names the seed; rerun it with make fuzz-kss FUZZ_SEED=N.
+        run: env -u DISPLAY -u WAYLAND_DISPLAY make fuzz-kss FUZZ_SEED=${{ github.run_number }} FUZZ_COUNT=10000
+
       - name: Test SVG example
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
+
+      - name: Keep a failing KSS sheet
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kss-fuzz-failure
+          path: kryon/build/kss-fuzz/failure-*.kss
+          if-no-files-found: ignore
+
+  test-sanitizers:
+    name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kryon
+    steps:
+      - name: Checkout Kryon
+        uses: actions/checkout@v7
+        with:
+          path: kryon
+
+      - name: Checkout Ziran
+        uses: actions/checkout@v7
+        with:
+          repository: ziranlang/ziran
+          path: ziran
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 ripgrep
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+
+      - name: Run the behavior tests with sanitized C and C++
+        run: env -u DISPLAY -u WAYLAND_DISPLAY make sanitize-test TEST_JOBS=4
+
+  test-desktop-hosts:
+    name: Desktop, raylib, and libdraw hosts on private Xvfb
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kryon
+    steps:
+      - name: Checkout Kryon
+        uses: actions/checkout@v7
+        with:
+          path: kryon
+
+      - name: Checkout Ziran
+        uses: actions/checkout@v7
+        with:
+          repository: ziranlang/ziran
+          path: ziran
+
+      - name: Install host libraries and X tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 pkg-config \
+            libsdl2-dev libcairo2-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
+            libegl-mesa0 libgl1-mesa-dri \
+            libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev \
+            xvfb xdotool x11-apps imagemagick
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+
+      - name: Restore plan9port
+        id: plan9port
+        uses: actions/cache@v4
+        with:
+          path: plan9port
+          key: plan9port-${{ runner.os }}-337c6acbfed51d8d9f08598c6cd398f53abcca7d
+
+      - name: Build plan9port for the libdraw host
+        if: steps.plan9port.outputs.cache-hit != 'true'
+        working-directory: .
+        run: |
+          git clone https://github.com/9fans/plan9port.git plan9port
+          git -C plan9port checkout 337c6acbfed51d8d9f08598c6cd398f53abcca7d
+          cd plan9port && ./INSTALL -b
+
+      # Each test starts its own display with xvfb-run -a; none may reach a
+      # real one.
+      - name: Desktop host
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make desktop-project-test
+
+      - name: Raylib host
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make raylib-project-test
+
+      - name: Libdraw host
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make libdraw-project-test
