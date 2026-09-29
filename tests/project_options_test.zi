@@ -2,7 +2,7 @@
 
 #program_export
 ProjectOptionsTest :: () -> s32 {
-    source: string = "default_profile=tui\nprofiles=tui other\nprofiles.tui.backend=terminal\nprofiles.tui.codegen=c99\nprofiles.tui.library=crypto\nprofiles.other.backend=terminal\ninstall.autostart=false\n"
+    source: string = "default_profile=tui\nprofiles=tui other\nprofiles.tui.backend=terminal\nprofiles.tui.codegen=c99\nprofiles.tui.library=crypto\nprofiles.tui.static_archive=build/libdemo.a\nprofiles.other.backend=terminal\ninstall.autostart=false\n"
     config: ProjectConfig = ParseProject(source, "demo", "src/custom.zi")
     if !config.ok || config.name != "demo" ||
         config.entry != "src/custom.zi" ||
@@ -10,7 +10,8 @@ ProjectOptionsTest :: () -> s32 {
         config.default_profile != "tui" { return 1 }
     selected: ProjectProfile = ProjectProfileNamed(config, config.default_profile)
     if selected.name != "tui" || selected.backend != "terminal" ||
-        selected.codegen != "c99" || selected.library != "crypto" { return 2 }
+        selected.codegen != "c99" || selected.library != "crypto" ||
+        selected.static_archive != "build/libdemo.a" { return 2 }
     if ProjectProfileNamed(config, "missing").name != "" { return 3 }
 
     minimal: ProjectConfig = ParseProject(
@@ -51,5 +52,13 @@ ProjectOptionsTest :: () -> s32 {
         "profiles=tui\nprofiles.tui.backend=terminal\ninstall.profile=cairo\n",
         "demo", "")
     if unknown_install_profile.ok { return 12 }
+    absolute_archive: ProjectConfig = ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.static_archive=/opt/libdemo.a\n",
+        "demo", "")
+    if absolute_archive.ok { return 13 }
+    escaping_archive: ProjectConfig = ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.static_archive=../libdemo.a\n",
+        "demo", "")
+    if escaping_archive.ok { return 14 }
     return 42
 }

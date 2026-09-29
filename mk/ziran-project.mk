@@ -110,6 +110,20 @@ endif
 ifneq ($(PROJECT_LIBRARY),)
 HOST_LIBS += -l$(PROJECT_LIBRARY)
 endif
+ifneq ($(PROJECT_STATIC_ARCHIVE),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+$(error static_archive requires a native profile)
+endif
+PROJECT_STATIC_ARCHIVE_PATH := $(shell realpath "$(PROJECT_STATIC_ARCHIVE)" 2>/dev/null)
+ifeq ($(filter $(CURDIR)/%,$(PROJECT_STATIC_ARCHIVE_PATH)),)
+$(error the profile static archive must stay inside the project directory)
+endif
+ifeq ($(shell test -f "$(PROJECT_STATIC_ARCHIVE_PATH)" && echo yes),)
+$(error the profile static archive must be a regular file)
+endif
+HOST_DEPS += $(PROJECT_STATIC_ARCHIVE)
+HOST_LIBS += $(PROJECT_STATIC_ARCHIVE_PATH)
+endif
 
 .PHONY: run build check install toolchain
 

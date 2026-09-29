@@ -60,6 +60,7 @@ default_profile = "string"
 backend = "string!"
 codegen = "string=c99"
 library = "string"
+static_archive = "string"
 
 # Used by `ziran install` to build one profile and add it to the desktop.
 [options.install]

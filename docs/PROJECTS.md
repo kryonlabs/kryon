@@ -98,6 +98,16 @@ them, and hands the kryon tool the result, so a typo is reported with its file
 and line. To try another default profile on one machine, set it in the ignored
 `ziran.local.toml`:
 
+`static_archive` links one project-relative `.a` file directly. The project's
+own build prepares the archive, and Kryon adds that exact path as both a build
+dependency and linker input. This is for reproducible source-package artifacts;
+it performs no `-l` lookup and never selects an operating-system package. The
+path cannot be absolute or lexically escape the project directory. Kryon also
+resolves the archive and rejects a symlink that leaves the project or a
+non-regular file. Browser profiles reject the setting instead of silently
+omitting it. `library` remains the existing system-library escape hatch and
+should be avoided by reproducible applications.
+
 ```toml
 [tool.Kryon]
 default_profile = "tui"
