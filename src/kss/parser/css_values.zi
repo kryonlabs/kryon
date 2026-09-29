@@ -1,0 +1,953 @@
+// Part of the kss_parser module, loaded by src/kss/kss_parser.zi.
+// CSS export values for declarative hosts.
+
+// CSS export values use the shared KSS vocabulary and numeric/token grammar.
+// Native-only StyleData consumers retain their closed set of fields; CSS-only
+// properties stay opaque after classification instead of becoming native fields.
+
+KssCSSValueKind :: enum {
+    KssCSSLiteral :: 0
+    KssCSSNumber :: 1
+    KssCSSColor :: 2
+    KssCSSMaterial :: 3
+}
+
+KssCSSValue :: struct {
+    valid: bool
+    kind: s32
+    number: float64
+    color: u32
+    material: s32
+    text: string
+    has_token: bool
+    token_name: KssName
+    token_origin: s32
+}
+
+#program_export
+KssCSSPropertyKind :: (name: KssName) -> s32 {
+    if name.length > 2 && name.bytes[0] == 45 && name.bytes[1] == 45 {
+        return -2
+    }
+    if KssNameEquals(name, "background") ||
+        KssNameEquals(name, "foreground") ||
+        KssNameEquals(name, "border") ||
+        KssNameEquals(name, "focus") ||
+        KssNameEquals(name, "background-end") ||
+        KssNameEquals(name, "color") ||
+        KssNameEquals(name, "background-color") ||
+        KssNameEquals(name, "accent-color") {
+        return 0
+    }
+    if KssNameEquals(name, "caret-color") ||
+        KssNameEquals(name, "border-color") ||
+        KssNameEquals(name, "border-top-color") ||
+        KssNameEquals(name, "border-right-color") ||
+        KssNameEquals(name, "border-bottom-color") ||
+        KssNameEquals(name, "border-left-color") ||
+        KssNameEquals(name, "border-inline-color") ||
+        KssNameEquals(name, "border-block-color") {
+        return 0
+    }
+    if KssNameEquals(name, "border-inline-start-color") ||
+        KssNameEquals(name, "border-inline-end-color") ||
+        KssNameEquals(name, "border-block-start-color") ||
+        KssNameEquals(name, "border-block-end-color") ||
+        KssNameEquals(name, "outline-color") ||
+        KssNameEquals(name, "text-decoration-color") ||
+        KssNameEquals(name, "text-emphasis-color") ||
+        KssNameEquals(name, "column-rule-color") {
+        return 0
+    }
+    if KssNameEquals(name, "radius") ||
+        KssNameEquals(name, "border-radius") ||
+        KssNameEquals(name, "border-width") ||
+        KssNameEquals(name, "opacity") ||
+        KssNameEquals(name, "border-top-width") ||
+        KssNameEquals(name, "border-right-width") ||
+        KssNameEquals(name, "border-bottom-width") ||
+        KssNameEquals(name, "border-left-width") {
+        return 1
+    }
+    if KssNameEquals(name, "border-inline-width") ||
+        KssNameEquals(name, "border-block-width") ||
+        KssNameEquals(name, "border-inline-start-width") ||
+        KssNameEquals(name, "border-inline-end-width") ||
+        KssNameEquals(name, "border-block-start-width") ||
+        KssNameEquals(name, "border-block-end-width") ||
+        KssNameEquals(name, "border-top-left-radius") ||
+        KssNameEquals(name, "border-top-right-radius") {
+        return 1
+    }
+    if KssNameEquals(name, "border-bottom-right-radius") ||
+        KssNameEquals(name, "border-bottom-left-radius") ||
+        KssNameEquals(name, "border-start-start-radius") ||
+        KssNameEquals(name, "border-start-end-radius") ||
+        KssNameEquals(name, "border-end-start-radius") ||
+        KssNameEquals(name, "border-end-end-radius") ||
+        KssNameEquals(name, "padding") ||
+        KssNameEquals(name, "padding-x") {
+        return 1
+    }
+    if KssNameEquals(name, "padding-y") ||
+        KssNameEquals(name, "padding-left") ||
+        KssNameEquals(name, "padding-right") ||
+        KssNameEquals(name, "padding-top") ||
+        KssNameEquals(name, "padding-bottom") ||
+        KssNameEquals(name, "padding-inline") ||
+        KssNameEquals(name, "padding-block") ||
+        KssNameEquals(name, "padding-inline-start") {
+        return 1
+    }
+    if KssNameEquals(name, "padding-inline-end") ||
+        KssNameEquals(name, "padding-block-start") ||
+        KssNameEquals(name, "padding-block-end") ||
+        KssNameEquals(name, "margin") ||
+        KssNameEquals(name, "margin-x") ||
+        KssNameEquals(name, "margin-y") ||
+        KssNameEquals(name, "margin-left") ||
+        KssNameEquals(name, "margin-right") {
+        return 1
+    }
+    if KssNameEquals(name, "margin-top") ||
+        KssNameEquals(name, "margin-bottom") ||
+        KssNameEquals(name, "margin-inline") ||
+        KssNameEquals(name, "margin-block") ||
+        KssNameEquals(name, "margin-inline-start") ||
+        KssNameEquals(name, "margin-inline-end") ||
+        KssNameEquals(name, "margin-block-start") ||
+        KssNameEquals(name, "margin-block-end") {
+        return 1
+    }
+    if KssNameEquals(name, "width") ||
+        KssNameEquals(name, "height") ||
+        KssNameEquals(name, "min-width") ||
+        KssNameEquals(name, "max-width") ||
+        KssNameEquals(name, "min-height") ||
+        KssNameEquals(name, "max-height") ||
+        KssNameEquals(name, "inline-size") ||
+        KssNameEquals(name, "block-size") {
+        return 1
+    }
+    if KssNameEquals(name, "min-inline-size") ||
+        KssNameEquals(name, "max-inline-size") ||
+        KssNameEquals(name, "min-block-size") ||
+        KssNameEquals(name, "max-block-size") ||
+        KssNameEquals(name, "inset") ||
+        KssNameEquals(name, "top") ||
+        KssNameEquals(name, "right") ||
+        KssNameEquals(name, "bottom") {
+        return 1
+    }
+    if KssNameEquals(name, "left") ||
+        KssNameEquals(name, "inset-inline") ||
+        KssNameEquals(name, "inset-block") ||
+        KssNameEquals(name, "inset-inline-start") ||
+        KssNameEquals(name, "inset-inline-end") ||
+        KssNameEquals(name, "inset-block-start") ||
+        KssNameEquals(name, "inset-block-end") ||
+        KssNameEquals(name, "gap") {
+        return 1
+    }
+    if KssNameEquals(name, "row-gap") ||
+        KssNameEquals(name, "column-gap") ||
+        KssNameEquals(name, "font-size") ||
+        KssNameEquals(name, "letter-spacing") ||
+        KssNameEquals(name, "line-height") ||
+        KssNameEquals(name, "flex-basis") ||
+        KssNameEquals(name, "text-indent") ||
+        KssNameEquals(name, "text-decoration-thickness") {
+        return 1
+    }
+    if KssNameEquals(name, "text-underline-offset") ||
+        KssNameEquals(name, "vertical-align") ||
+        KssNameEquals(name, "perspective") ||
+        KssNameEquals(name, "offset-distance") ||
+        KssNameEquals(name, "outline-width") ||
+        KssNameEquals(name, "outline-offset") ||
+        KssNameEquals(name, "tab-size") ||
+        KssNameEquals(name, "column-count") {
+        return 1
+    }
+    if KssNameEquals(name, "column-width") ||
+        KssNameEquals(name, "column-rule-width") ||
+        KssNameEquals(name, "border-spacing") ||
+        KssNameEquals(name, "contain-intrinsic-size") ||
+        KssNameEquals(name, "contain-intrinsic-width") ||
+        KssNameEquals(name, "contain-intrinsic-height") ||
+        KssNameEquals(name, "contain-intrinsic-inline-size") ||
+        KssNameEquals(name, "contain-intrinsic-block-size") {
+        return 1
+    }
+    if KssNameEquals(name, "overflow-clip-margin") ||
+        KssNameEquals(name, "shape-margin") ||
+        KssNameEquals(name, "scroll-margin") ||
+        KssNameEquals(name, "scroll-margin-top") ||
+        KssNameEquals(name, "scroll-margin-right") ||
+        KssNameEquals(name, "scroll-margin-bottom") ||
+        KssNameEquals(name, "scroll-margin-left") ||
+        KssNameEquals(name, "scroll-margin-inline") {
+        return 1
+    }
+    if KssNameEquals(name, "scroll-margin-block") ||
+        KssNameEquals(name, "scroll-margin-inline-start") ||
+        KssNameEquals(name, "scroll-margin-inline-end") ||
+        KssNameEquals(name, "scroll-margin-block-start") ||
+        KssNameEquals(name, "scroll-margin-block-end") ||
+        KssNameEquals(name, "scroll-padding") ||
+        KssNameEquals(name, "scroll-padding-top") ||
+        KssNameEquals(name, "scroll-padding-right") {
+        return 1
+    }
+    if KssNameEquals(name, "scroll-padding-bottom") ||
+        KssNameEquals(name, "scroll-padding-left") ||
+        KssNameEquals(name, "scroll-padding-inline") ||
+        KssNameEquals(name, "scroll-padding-block") ||
+        KssNameEquals(name, "scroll-padding-inline-start") ||
+        KssNameEquals(name, "scroll-padding-inline-end") ||
+        KssNameEquals(name, "scroll-padding-block-start") ||
+        KssNameEquals(name, "scroll-padding-block-end") {
+        return 1
+    }
+    if KssNameEquals(name, "icon-size") ||
+        KssNameEquals(name, "offset-x") ||
+        KssNameEquals(name, "offset-y") ||
+        KssNameEquals(name, "content-offset-x") ||
+        KssNameEquals(name, "content-offset-y") {
+        return 1
+    }
+    if KssNameEquals(name, "material") {
+        return 3
+    }
+    if KssNameEquals(name, "font") ||
+        KssNameEquals(name, "typeface") ||
+        KssNameEquals(name, "font-family") ||
+        KssNameEquals(name, "font-weight") ||
+        KssNameEquals(name, "font-style") ||
+        KssNameEquals(name, "font-variant") ||
+        KssNameEquals(name, "font-stretch") ||
+        KssNameEquals(name, "font-kerning") {
+        return -2
+    }
+    if KssNameEquals(name, "font-optical-sizing") ||
+        KssNameEquals(name, "font-feature-settings") ||
+        KssNameEquals(name, "font-variation-settings") ||
+        KssNameEquals(name, "font-size-adjust") ||
+        KssNameEquals(name, "font-synthesis") ||
+        KssNameEquals(name, "font-synthesis-weight") ||
+        KssNameEquals(name, "font-synthesis-style") ||
+        KssNameEquals(name, "font-synthesis-small-caps") {
+        return -2
+    }
+    if KssNameEquals(name, "font-synthesis-position") ||
+        KssNameEquals(name, "font-variant-alternates") ||
+        KssNameEquals(name, "font-variant-caps") ||
+        KssNameEquals(name, "font-variant-east-asian") ||
+        KssNameEquals(name, "font-variant-ligatures") ||
+        KssNameEquals(name, "font-variant-numeric") ||
+        KssNameEquals(name, "font-variant-position") ||
+        KssNameEquals(name, "font-language-override") {
+        return -2
+    }
+    if KssNameEquals(name, "font-palette") ||
+        KssNameEquals(name, "text-align") ||
+        KssNameEquals(name, "text-align-last") ||
+        KssNameEquals(name, "text-rendering") ||
+        KssNameEquals(name, "text-decoration") ||
+        KssNameEquals(name, "text-decoration-line") ||
+        KssNameEquals(name, "text-decoration-style") ||
+        KssNameEquals(name, "text-decoration-skip") {
+        return -2
+    }
+    if KssNameEquals(name, "text-decoration-skip-ink") ||
+        KssNameEquals(name, "text-underline-position") ||
+        KssNameEquals(name, "text-shadow") ||
+        KssNameEquals(name, "text-emphasis") ||
+        KssNameEquals(name, "text-emphasis-style") ||
+        KssNameEquals(name, "text-emphasis-position") ||
+        KssNameEquals(name, "text-transform") ||
+        KssNameEquals(name, "text-overflow") {
+        return -2
+    }
+    if KssNameEquals(name, "white-space") ||
+        KssNameEquals(name, "text-size-adjust") ||
+        KssNameEquals(name, "text-orientation") ||
+        KssNameEquals(name, "text-wrap") ||
+        KssNameEquals(name, "text-wrap-mode") ||
+        KssNameEquals(name, "text-wrap-style") ||
+        KssNameEquals(name, "text-justify") ||
+        KssNameEquals(name, "line-break") {
+        return -2
+    }
+    if KssNameEquals(name, "hanging-punctuation") ||
+        KssNameEquals(name, "text-combine-upright") ||
+        KssNameEquals(name, "ruby-align") ||
+        KssNameEquals(name, "ruby-position") ||
+        KssNameEquals(name, "text-spacing-trim") ||
+        KssNameEquals(name, "text-autospace") ||
+        KssNameEquals(name, "text-box-trim") ||
+        KssNameEquals(name, "text-box-edge") {
+        return -2
+    }
+    if KssNameEquals(name, "word-break") ||
+        KssNameEquals(name, "overflow-wrap") ||
+        KssNameEquals(name, "word-wrap") ||
+        KssNameEquals(name, "display") ||
+        KssNameEquals(name, "position") ||
+        KssNameEquals(name, "z-index") ||
+        KssNameEquals(name, "overflow") ||
+        KssNameEquals(name, "overflow-inline") {
+        return -2
+    }
+    if KssNameEquals(name, "overflow-block") ||
+        KssNameEquals(name, "border-top") ||
+        KssNameEquals(name, "border-right") ||
+        KssNameEquals(name, "border-bottom") ||
+        KssNameEquals(name, "border-left") ||
+        KssNameEquals(name, "border-inline") ||
+        KssNameEquals(name, "border-block") ||
+        KssNameEquals(name, "border-inline-start") {
+        return -2
+    }
+    if KssNameEquals(name, "border-inline-end") ||
+        KssNameEquals(name, "border-block-start") ||
+        KssNameEquals(name, "border-block-end") ||
+        KssNameEquals(name, "border-style") ||
+        KssNameEquals(name, "border-top-style") ||
+        KssNameEquals(name, "border-right-style") ||
+        KssNameEquals(name, "border-bottom-style") ||
+        KssNameEquals(name, "border-left-style") {
+        return -2
+    }
+    if KssNameEquals(name, "border-inline-style") ||
+        KssNameEquals(name, "border-block-style") ||
+        KssNameEquals(name, "border-inline-start-style") ||
+        KssNameEquals(name, "border-inline-end-style") ||
+        KssNameEquals(name, "border-block-start-style") ||
+        KssNameEquals(name, "border-block-end-style") ||
+        KssNameEquals(name, "border-image") ||
+        KssNameEquals(name, "border-image-source") {
+        return -2
+    }
+    if KssNameEquals(name, "border-image-slice") ||
+        KssNameEquals(name, "border-image-width") ||
+        KssNameEquals(name, "border-image-outset") ||
+        KssNameEquals(name, "border-image-repeat") ||
+        KssNameEquals(name, "overflow-x") ||
+        KssNameEquals(name, "overflow-y") ||
+        KssNameEquals(name, "box-sizing") ||
+        KssNameEquals(name, "direction") {
+        return -2
+    }
+    if KssNameEquals(name, "writing-mode") ||
+        KssNameEquals(name, "hyphens") ||
+        KssNameEquals(name, "line-clamp") ||
+        KssNameEquals(name, "list-style") ||
+        KssNameEquals(name, "list-style-type") ||
+        KssNameEquals(name, "list-style-position") ||
+        KssNameEquals(name, "list-style-image") ||
+        KssNameEquals(name, "counter-reset") {
+        return -2
+    }
+    if KssNameEquals(name, "counter-increment") ||
+        KssNameEquals(name, "counter-set") ||
+        KssNameEquals(name, "quotes") ||
+        KssNameEquals(name, "marker-side") ||
+        KssNameEquals(name, "marker-start") ||
+        KssNameEquals(name, "marker-end") ||
+        KssNameEquals(name, "orphans") ||
+        KssNameEquals(name, "widows") {
+        return -2
+    }
+    if KssNameEquals(name, "box-decoration-break") ||
+        KssNameEquals(name, "border-collapse") ||
+        KssNameEquals(name, "table-layout") ||
+        KssNameEquals(name, "caption-side") ||
+        KssNameEquals(name, "empty-cells") ||
+        KssNameEquals(name, "scroll-behavior") ||
+        KssNameEquals(name, "overscroll-behavior") ||
+        KssNameEquals(name, "overscroll-behavior-x") {
+        return -2
+    }
+    if KssNameEquals(name, "overscroll-behavior-y") ||
+        KssNameEquals(name, "overscroll-behavior-inline") ||
+        KssNameEquals(name, "overscroll-behavior-block") ||
+        KssNameEquals(name, "scroll-snap-type") ||
+        KssNameEquals(name, "scroll-snap-align") ||
+        KssNameEquals(name, "scroll-snap-stop") ||
+        KssNameEquals(name, "scrollbar-color") ||
+        KssNameEquals(name, "scrollbar-width") {
+        return -2
+    }
+    if KssNameEquals(name, "scrollbar-gutter") ||
+        KssNameEquals(name, "touch-action") ||
+        KssNameEquals(name, "align-items") ||
+        KssNameEquals(name, "justify-content") ||
+        KssNameEquals(name, "align-self") ||
+        KssNameEquals(name, "justify-self") ||
+        KssNameEquals(name, "flex-direction") ||
+        KssNameEquals(name, "flex-wrap") {
+        return -2
+    }
+    if KssNameEquals(name, "flex-flow") ||
+        KssNameEquals(name, "flex") ||
+        KssNameEquals(name, "flex-grow") ||
+        KssNameEquals(name, "flex-shrink") ||
+        KssNameEquals(name, "grid") ||
+        KssNameEquals(name, "grid-template") ||
+        KssNameEquals(name, "grid-template-columns") ||
+        KssNameEquals(name, "grid-template-rows") {
+        return -2
+    }
+    if KssNameEquals(name, "grid-template-areas") ||
+        KssNameEquals(name, "grid-auto-columns") ||
+        KssNameEquals(name, "grid-auto-rows") ||
+        KssNameEquals(name, "grid-auto-flow") ||
+        KssNameEquals(name, "grid-column") ||
+        KssNameEquals(name, "grid-column-start") ||
+        KssNameEquals(name, "grid-column-end") ||
+        KssNameEquals(name, "grid-area") {
+        return -2
+    }
+    if KssNameEquals(name, "grid-row") ||
+        KssNameEquals(name, "grid-row-start") ||
+        KssNameEquals(name, "grid-row-end") ||
+        KssNameEquals(name, "align-content") ||
+        KssNameEquals(name, "justify-items") ||
+        KssNameEquals(name, "place-items") ||
+        KssNameEquals(name, "place-content") ||
+        KssNameEquals(name, "place-self") {
+        return -2
+    }
+    if KssNameEquals(name, "align-tracks") ||
+        KssNameEquals(name, "justify-tracks") ||
+        KssNameEquals(name, "object-fit") ||
+        KssNameEquals(name, "object-position") ||
+        KssNameEquals(name, "object-view-box") ||
+        KssNameEquals(name, "aspect-ratio") ||
+        KssNameEquals(name, "image-rendering") ||
+        KssNameEquals(name, "image-orientation") {
+        return -2
+    }
+    if KssNameEquals(name, "image-resolution") ||
+        KssNameEquals(name, "background-image") ||
+        KssNameEquals(name, "background-size") ||
+        KssNameEquals(name, "background-position") ||
+        KssNameEquals(name, "background-position-x") ||
+        KssNameEquals(name, "background-position-y") ||
+        KssNameEquals(name, "background-repeat") ||
+        KssNameEquals(name, "background-repeat-x") {
+        return -2
+    }
+    if KssNameEquals(name, "background-repeat-y") ||
+        KssNameEquals(name, "background-clip") ||
+        KssNameEquals(name, "background-origin") ||
+        KssNameEquals(name, "background-attachment") ||
+        KssNameEquals(name, "background-blend-mode") ||
+        KssNameEquals(name, "visibility") ||
+        KssNameEquals(name, "transition") ||
+        KssNameEquals(name, "transition-property") {
+        return -2
+    }
+    if KssNameEquals(name, "transition-duration") ||
+        KssNameEquals(name, "transition-timing-function") ||
+        KssNameEquals(name, "transition-delay") ||
+        KssNameEquals(name, "transition-behavior") ||
+        KssNameEquals(name, "animation") ||
+        KssNameEquals(name, "animation-name") ||
+        KssNameEquals(name, "animation-duration") ||
+        KssNameEquals(name, "animation-timing-function") {
+        return -2
+    }
+    if KssNameEquals(name, "animation-delay") ||
+        KssNameEquals(name, "animation-iteration-count") ||
+        KssNameEquals(name, "animation-direction") ||
+        KssNameEquals(name, "animation-fill-mode") ||
+        KssNameEquals(name, "animation-play-state") ||
+        KssNameEquals(name, "animation-composition") ||
+        KssNameEquals(name, "animation-timeline") ||
+        KssNameEquals(name, "animation-range") {
+        return -2
+    }
+    if KssNameEquals(name, "animation-range-start") ||
+        KssNameEquals(name, "animation-range-end") ||
+        KssNameEquals(name, "scroll-timeline") ||
+        KssNameEquals(name, "scroll-timeline-name") ||
+        KssNameEquals(name, "scroll-timeline-axis") ||
+        KssNameEquals(name, "view-timeline") ||
+        KssNameEquals(name, "view-timeline-name") ||
+        KssNameEquals(name, "view-timeline-axis") {
+        return -2
+    }
+    if KssNameEquals(name, "view-timeline-inset") ||
+        KssNameEquals(name, "timeline-scope") ||
+        KssNameEquals(name, "transform") ||
+        KssNameEquals(name, "transform-origin") ||
+        KssNameEquals(name, "transform-box") ||
+        KssNameEquals(name, "transform-style") ||
+        KssNameEquals(name, "translate") ||
+        KssNameEquals(name, "rotate") {
+        return -2
+    }
+    if KssNameEquals(name, "scale") ||
+        KssNameEquals(name, "perspective-origin") ||
+        KssNameEquals(name, "backface-visibility") ||
+        KssNameEquals(name, "offset-path") ||
+        KssNameEquals(name, "offset-rotate") ||
+        KssNameEquals(name, "offset-anchor") ||
+        KssNameEquals(name, "offset-position") ||
+        KssNameEquals(name, "filter") {
+        return -2
+    }
+    if KssNameEquals(name, "backdrop-filter") ||
+        KssNameEquals(name, "clip-path") ||
+        KssNameEquals(name, "mask") ||
+        KssNameEquals(name, "mask-image") ||
+        KssNameEquals(name, "mask-size") ||
+        KssNameEquals(name, "mask-position") ||
+        KssNameEquals(name, "mask-repeat") ||
+        KssNameEquals(name, "mask-origin") {
+        return -2
+    }
+    if KssNameEquals(name, "mask-clip") ||
+        KssNameEquals(name, "mask-composite") ||
+        KssNameEquals(name, "mask-mode") ||
+        KssNameEquals(name, "cursor") ||
+        KssNameEquals(name, "pointer-events") ||
+        KssNameEquals(name, "appearance") ||
+        KssNameEquals(name, "user-select") ||
+        KssNameEquals(name, "resize") {
+        return -2
+    }
+    if KssNameEquals(name, "outline") ||
+        KssNameEquals(name, "outline-style") ||
+        KssNameEquals(name, "box-shadow") ||
+        KssNameEquals(name, "color-scheme") ||
+        KssNameEquals(name, "field-sizing") ||
+        KssNameEquals(name, "interpolate-size") ||
+        KssNameEquals(name, "overlay") ||
+        KssNameEquals(name, "forced-color-adjust") {
+        return -2
+    }
+    if KssNameEquals(name, "print-color-adjust") ||
+        KssNameEquals(name, "color-interpolation") ||
+        KssNameEquals(name, "color-interpolation-filters") ||
+        KssNameEquals(name, "paint-order") ||
+        KssNameEquals(name, "shape-outside") ||
+        KssNameEquals(name, "shape-image-threshold") ||
+        KssNameEquals(name, "contain") ||
+        KssNameEquals(name, "content-visibility") {
+        return -2
+    }
+    if KssNameEquals(name, "contain-intrinsic-size") ||
+        KssNameEquals(name, "contain-intrinsic-width") ||
+        KssNameEquals(name, "contain-intrinsic-height") ||
+        KssNameEquals(name, "contain-intrinsic-inline-size") ||
+        KssNameEquals(name, "contain-intrinsic-block-size") ||
+        KssNameEquals(name, "container") ||
+        KssNameEquals(name, "container-type") ||
+        KssNameEquals(name, "container-name") {
+        return -2
+    }
+    if KssNameEquals(name, "will-change") ||
+        KssNameEquals(name, "anchor-name") ||
+        KssNameEquals(name, "position-anchor") ||
+        KssNameEquals(name, "position-area") ||
+        KssNameEquals(name, "position-try") ||
+        KssNameEquals(name, "position-try-fallbacks") ||
+        KssNameEquals(name, "position-try-order") ||
+        KssNameEquals(name, "position-visibility") {
+        return -2
+    }
+    if KssNameEquals(name, "view-transition-name") ||
+        KssNameEquals(name, "isolation") ||
+        KssNameEquals(name, "mix-blend-mode") ||
+        KssNameEquals(name, "columns") ||
+        KssNameEquals(name, "column-fill") ||
+        KssNameEquals(name, "column-span") ||
+        KssNameEquals(name, "column-rule") ||
+        KssNameEquals(name, "column-rule-style") {
+        return -2
+    }
+    if KssNameEquals(name, "break-before") ||
+        KssNameEquals(name, "break-after") ||
+        KssNameEquals(name, "break-inside") ||
+        KssNameEquals(name, "float") ||
+        KssNameEquals(name, "clear") ||
+        KssNameEquals(name, "order") {
+        return -2
+    }
+    return -1
+}
+
+// CSS property vocabulary reuses declaration classification. These names are
+// canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
+#program_export
+KssCSSPropertyName :: (name: string) -> string {
+    if name.count >= 2 && name[0] == 45 && name[1] == 45 {
+        return name
+    }
+    if name.count > 64 {
+        return ""
+    }
+    index: s32 = 0
+    while index < cast(s32)name.count {
+        if name[index] != KssLower(name[index]) {
+            return ""
+        }
+        index = index + 1
+    }
+    if name == "foreground" {
+        return "color"
+    }
+    if name == "border" {
+        return "border-color"
+    }
+    if name == "radius" {
+        return "border-radius"
+    }
+    if name == "padding-x" {
+        return "padding-left"
+    }
+    if name == "padding-y" {
+        return "padding-top"
+    }
+    if name == "margin-x" {
+        return "margin-left"
+    }
+    if name == "margin-y" {
+        return "margin-top"
+    }
+    if name == "typeface" {
+        return "font-family"
+    }
+    if name == "focus" {
+        return "outline-color"
+    }
+    if name == "material" || name == "content-offset-x" ||
+        name == "content-offset-y" || name == "icon-size" ||
+        name == "background-end" || name == "offset-x" || name == "offset-y" {
+        return ""
+    }
+    if KssCSSPropertyKind(KssMakeName(name)) == -1 {
+        return ""
+    }
+    return name
+}
+
+// Whether a numeric host value receives px. String values keep their units.
+#program_export
+KssCSSNeedsPixels :: (name: string) -> bool {
+    if name == "opacity" ||
+        name == "font-weight" ||
+        name == "fontWeight" ||
+        name == "line-height" ||
+        name == "lineHeight" ||
+        name == "z-index" {
+        return false
+    }
+    if name == "zIndex" ||
+        name == "tab-size" ||
+        name == "tabSize" ||
+        name == "font-size-adjust" ||
+        name == "fontSizeAdjust" ||
+        name == "column-count" {
+        return false
+    }
+    if name == "columnCount" ||
+        name == "order" ||
+        name == "flex-grow" ||
+        name == "flexGrow" ||
+        name == "flex-shrink" ||
+        name == "flexShrink" {
+        return false
+    }
+    if name == "border-image-slice" ||
+        name == "borderImageSlice" ||
+        name == "border-image-width" ||
+        name == "borderImageWidth" ||
+        name == "border-image-outset" ||
+        name == "borderImageOutset" {
+        return false
+    }
+    if name == "grid-column-start" ||
+        name == "gridColumnStart" ||
+        name == "grid-column-end" ||
+        name == "gridColumnEnd" ||
+        name == "grid-row-start" ||
+        name == "gridRowStart" {
+        return false
+    }
+    if name == "grid-row-end" ||
+        name == "gridRowEnd" ||
+        name == "line-clamp" ||
+        name == "lineClamp" ||
+        name == "webkitLineClamp" || name == "-webkit-line-clamp" ||
+        name == "orphans" {
+        return false
+    }
+    if name == "widows" ||
+        name == "animation-iteration-count" ||
+        name == "animationIterationCount" ||
+        name == "shape-image-threshold" ||
+        name == "shapeImageThreshold" ||
+        name == "scale" {
+        return false
+    }
+    return true
+}
+
+// UTF-8 whitespace accepted by the existing CSS text adapter.
+KssCSSSpaceLength :: (value: string, index: s32) -> s32 {
+    if KssIsSpace(value[index]) {
+        return 1
+    }
+    if index + 1 < (cast(s32)value.count) && value[index] == 194 && value[index + 1] == 160 {
+        return 2
+    }
+    if index + 2 >= (cast(s32)value.count) {
+        return 0
+    }
+    first: u8 = value[index]
+    second: u8 = value[index + 1]
+    third: u8 = value[index + 2]
+    if first == 225 && second == 154 && third == 128 {
+        return 3
+    }
+    if first == 226 && second == 128 &&
+        ((third >= 128 && third <= 138) || third == 168 || third == 169 || third == 175) {
+        return 3
+    }
+    if first == 226 && second == 129 && third == 159 {
+        return 3
+    }
+    if first == 227 && second == 128 && third == 128 {
+        return 3
+    }
+    if first == 239 && second == 187 && third == 191 {
+        return 3
+    }
+    return 0
+}
+
+// Preserve KSS border's color alias unless its trimmed value has whitespace.
+#program_export
+KssCSSBorderShorthand :: (value: string) -> bool {
+    index: s32 = 0
+    content: bool = false
+    space_after_content: bool = false
+    while index < (cast(s32)value.count) {
+        space: s32 = KssCSSSpaceLength(value, index)
+        if space > 0 {
+            if content {
+                space_after_content = true
+            }
+            index = index + space
+        } else {
+            if space_after_content {
+                return true
+            }
+            content = true
+            index = index + 1
+        }
+    }
+    return false
+}
+
+// Declaration expansion returns borrowed property names. Hosts emit the value
+// for each nonempty name, using the shared numeric-unit policy.
+KssCSSExpansion :: struct {
+    first: string
+    second: string
+}
+
+#program_export
+KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> KssCSSExpansion {
+    result: KssCSSExpansion
+    if value == "" || name == "offset-x" || name == "offset-y" {
+        return result
+    }
+    if name == "transform" && has_offsets {
+        return result
+    }
+    if name == "content-offset-x" {
+        result.first = "--kryon-content-offset-x"
+    } else if name == "content-offset-y" {
+        result.first = "--kryon-content-offset-y"
+    } else if name == "icon-size" {
+        result.first = "--kryon-icon-size"
+    } else if name == "background-end" {
+        result.first = "--kryon-background-end"
+    } else if name == "border" && KssCSSBorderShorthand(value) {
+        result.first = "border"
+    } else {
+        result.first = KssCSSPropertyName(name)
+    }
+    if name == "padding-x" {
+        result.second = "padding-right"
+    } else if name == "padding-y" {
+        result.second = "padding-bottom"
+    } else if name == "margin-x" {
+        result.second = "margin-right"
+    } else if name == "margin-y" {
+        result.second = "margin-bottom"
+    } else if name == "line-clamp" {
+        result.second = "-webkit-line-clamp"
+    } else if name == "box-decoration-break" {
+        result.second = "-webkit-box-decoration-break"
+    }
+    return result
+}
+
+// An authored nonzero border width or border paint requests a visible border.
+// Emit this before authored declarations so explicit styles and sides win.
+#program_export
+KssCSSBorderDefault :: (border: string, width: string) -> string {
+    paint: KssCSSValue = KssCSSValueFromText(border)
+    size: KssCSSValue = KssCSSValueFromText(width)
+    if (paint.text != "" && (paint.kind != cast(s32)KssCSSNumber || paint.number != 0)) ||
+        (size.text != "" && (size.kind != cast(s32)KssCSSNumber || size.number != 0)) {
+        return "solid"
+    }
+    return ""
+}
+
+// Values already have their CSS units. Empty text means absent, not zero.
+KssCSSEffectFacts :: struct {
+    background: string
+    background_end: string
+    background_image: string
+    offset_x: string
+    offset_y: string
+    transform: string
+}
+
+// A borrowed-fragment output recipe avoids a fixed output buffer or allocation.
+// Emit name: prefix + first + separator + second + suffix when name is nonempty.
+KssCSSOutput :: struct {
+    name: string
+    prefix: string
+    first: string
+    separator: string
+    second: string
+    suffix: string
+}
+
+#program_export
+KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool {
+    return facts.offset_x != "" || facts.offset_y != ""
+}
+
+// Slots 0..3 follow ordinary declarations: gradient, x, y, then transform.
+// An absent or out-of-range slot produces no output.
+#program_export
+KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: s32) -> KssCSSOutput {
+    result: KssCSSOutput
+    if index == 0 && facts.background != "" && facts.background_end != "" && facts.background_image == "" {
+        result.name = "background-image"
+        result.prefix = "linear-gradient("
+        result.first = facts.background
+        result.separator = ", "
+        result.second = facts.background_end
+        result.suffix = ")"
+    } else if index == 1 && facts.offset_x != "" {
+        result.name = "--kryon-offset-x"
+        result.first = facts.offset_x
+    } else if index == 2 && facts.offset_y != "" {
+        result.name = "--kryon-offset-y"
+        result.first = facts.offset_y
+    } else if index == 3 && KssCSSHasOffsets(facts) {
+        result.name = "transform"
+        result.prefix = "translate(var(--kryon-offset-x, 0px), var(--kryon-offset-y, 0px))"
+        if facts.transform != "" {
+            result.separator = " "
+            result.second = facts.transform
+        }
+    }
+    return result
+}
+
+#program_export
+KssCSSValueFromText :: (source: string) -> KssCSSValue {
+    result: KssCSSValue
+    result.valid = true
+    start: s32 = 0
+    end: s32 = (cast(s32)source.count)
+    while start < end && KssIsSpace(source[start]) {
+        start = start + 1
+    }
+    while end > start && KssIsSpace(source[end - 1]) {
+        end = end - 1
+    }
+    result.text = source[start:end]
+    c: KssCursor
+    c.source = result.text
+    scalar: KssScalarResult = KssReadScalar(c)
+    if scalar.ok {
+        c = scalar.parser
+        if KssPeek(c, 0) == 112 && KssPeek(c, 1) == 120 {
+            c = KssAdvance(c, 2)
+        }
+        c = KssSkipSpace(c)
+        if KssAtEnd(c) {
+            result.kind = cast(s32)KssCSSNumber
+            result.number = scalar.value
+        }
+    }
+    return result
+}
+
+#program_export
+KssResolveCSSValue :: (p: KssParser, property: string, source: string) -> KssCSSValue {
+    result: KssCSSValue = KssCSSValueFromText(source)
+    property_kind: s32 = KssCSSPropertyKind(KssMakeName(property))
+    if property_kind == -1 {
+        result.valid = false
+        return result
+    }
+    if result.kind == cast(s32)KssCSSNumber || property_kind == -2 {
+        return result
+    }
+    c: KssCursor
+    c.source = result.text
+    reference: KssNameResult = KssReadName(c)
+    c = KssSkipSpace(reference.parser)
+    if !reference.ok || !KssAtEnd(c) {
+        return result
+    }
+    index: s32 = -1
+    if property_kind == cast(s32)KssTokenLength {
+        index = KssFindNumberToken(p, reference.name)
+    } else {
+        index = KssFindToken(p, reference.name, property_kind)
+    }
+    if index < 0 {
+        return result
+    }
+    result.has_token = true
+    result.token_name = p.tokens[index].name
+    result.token_origin = p.tokens[index].origin
+    if property_kind == cast(s32)KssTokenColor {
+        result.kind = cast(s32)KssCSSColor
+        result.color = p.tokens[index].color
+    } else if property_kind == cast(s32)KssTokenMaterial {
+        result.kind = cast(s32)KssCSSMaterial
+        result.material = p.tokens[index].material
+    } else {
+        result.kind = cast(s32)KssCSSNumber
+        result.number = cast(float64)p.tokens[index].number
+    }
+    return result
+}
+
+#program_export
+KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool) -> KssCSSValue {
+    if !provided || !value.has_token || value.kind != cast(s32)KssCSSColor {
+        return value
+    }
+    parsed: KssCSSValue = KssCSSValueFromText(replacement)
+    value.kind = parsed.kind
+    value.number = parsed.number
+    value.text = parsed.text
+    return value
+}
