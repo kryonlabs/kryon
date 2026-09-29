@@ -81,6 +81,30 @@ rlOrtho :: (left: float64, right: float64, bottom: float64,
     projection_height = bottom
 }
 
+clear_color: u32;
+fill_count: s32;
+fill_bounds: [4]s32;
+fill_color: u32;
+
+PackedColor :: (color: SurfaceColor) -> u32 {
+    return (cast(u32)color.r << 24) | (cast(u32)color.g << 16) |
+        (cast(u32)color.b << 8) | cast(u32)color.a
+}
+#program_export
+ClearBackground :: (color: SurfaceColor) {
+    clear_color = PackedColor(color)
+}
+#program_export
+DrawRectangle :: (x: s32, y: s32, width: s32, height: s32,
+    color: SurfaceColor) {
+    fill_count += 1
+    fill_bounds[0] = x
+    fill_bounds[1] = y
+    fill_bounds[2] = width
+    fill_bounds[3] = height
+    fill_color = PackedColor(color)
+}
+
 #program_export
 main :: () -> s32 {
     Require(PolicyCheck() == 42, 20)
@@ -104,6 +128,14 @@ main :: () -> s32 {
     Require(viewport_width == 1080 && viewport_height == 1920 &&
         projection_width == 1080.0 && projection_height == 1920.0, 27)
     Require(GetAndroidSurfaceSize(*width, *height) == 1 && width == 1080 && height == 1920, 28)
+    // The bar strips are black and the viewport takes the canvas color.
+    ClearAndroidFrame(viewport, cast(u32)0xE2EEFCFF)
+    Require(clear_color == cast(u32)0x000000FF && fill_count == 1 &&
+        fill_bounds[0] == 4 && fill_bounds[1] == 60 && fill_bounds[2] == 992 &&
+        fill_bounds[3] == 1836 && fill_color == cast(u32)0xE2EEFCFF, 33)
+    full := AndroidViewport.{0, 0, 1080, 1920, .{0, 0, 0, 0}, 1}
+    ClearAndroidFrame(full, cast(u32)0x182838FF)
+    Require(clear_color == cast(u32)0x182838FF && fill_count == 1, 34)
     SyncAndroidViewport(*viewport)
     Require(!core.resized_last_frame, 29)
     core.using_fbo = true
