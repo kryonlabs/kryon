@@ -32,7 +32,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     unused rotation
     unused radius
     if texture_id != cast(u32)7 || source.width != 20.0 ||
-    source.height != 10.0 || destination.x != 1.0 ||
+    source.height != -10.0 || destination.x != 1.0 ||
     destination.y != 2.0 || destination.width != 30.0 ||
     destination.height != 20.0 || clip.width != 30.0 ||
     tint.r != cast(u8)255 || tint.g != cast(u8)255 ||
