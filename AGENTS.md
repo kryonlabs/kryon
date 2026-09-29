@@ -31,6 +31,8 @@ the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
   alone does not establish native or portable readiness.
 - `make test` is the current Kryon gate. It builds the checked Ziran library
   and runs Ziran source, saved-IR, and bundle behavior tests without a display.
+- After editing `styles/kryon/classic.kss`, run `make style-packs` and commit
+  the regenerated `src/kss/style_pack_classic.zi` with it.
 - Use direct domain names for APIs. Do not restore the removed KIR compiler,
   `.kry` runtime, or `.krb` loader as compatibility paths.
 

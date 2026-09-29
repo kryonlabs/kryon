@@ -285,6 +285,27 @@ tray-test: $(ZI2C_BIN)
 $(ZIRAN_DIR)/build/bin/ziran:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
+# Style packs apps can install without the .kss file. Their modules are
+# committed, because apps import Kryon as a package without running this
+# Makefile; style-pack-check fails when a module no longer matches its pack.
+STYLE_PACKS := classic
+STYLE_PACK_TOOL := build/tools/style_pack_module
+
+$(STYLE_PACK_TOOL): tools/style_pack_module.zi $(ZIRAN_DIR)/build/bin/ziran
+	rm -rf $@-c
+	mkdir -p $(dir $@)
+	$(ZIRAN_BIN) build --target=c --root tools $(ZIRAN_STD_PATH) \
+		--entry style_pack_module:main -o $@-c tools/style_pack_module.zi
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) -I$@-c $@-c/*.c -o $@
+
+.PHONY: style-packs style-pack-check
+style-packs: $(STYLE_PACK_TOOL)
+	@for pack in $(STYLE_PACKS); do $(STYLE_PACK_TOOL) write $$pack || exit 1; done
+
+style-pack-check: $(STYLE_PACK_TOOL)
+	@for pack in $(STYLE_PACKS); do $(STYLE_PACK_TOOL) check $$pack || exit 1; done
+	@echo "Style pack modules match: $(STYLE_PACKS)"
+
 # Generated and damaged style sheets through the KSS parser, the rule table,
 # and the formatter, built with AddressSanitizer and UndefinedBehaviorSanitizer.
 # The same seed makes the same sheets; see tests/kss_fuzz.zi.
@@ -306,7 +327,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 libdraw-native-plan9-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test fuzz-kss
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test style-pack-check fuzz-kss
 
 clean:
 	rm -rf $(BUILD_DIR)
