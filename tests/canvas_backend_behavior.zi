@@ -15,6 +15,7 @@
 browser :: #system_library "env";
 CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
 CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
+CanvasTestFail :: (code: s32) #foreign browser "canvas_test_fail";
 
 #program_export
 main :: () -> s32 {
@@ -79,6 +80,11 @@ main :: () -> s32 {
     // A glyph stays inside its line box: a 20px "g" ends by y = 50.
     CopyCString("g", path[:])
     DrawTextEx(font, *path[0], Vector2.{120.0, 30.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
+    // Glyphs outside the first atlas are added on first use, not drawn as ?.
+    if GetGlyphInfo(font, 8250).value != 8250 || GetGlyphInfo(font, 8230).value != 8230 ||
+        GetGlyphInfo(font, 8250).advance_x <= 0 { CanvasTestFail(16) }
+    CopyCString("›…", path[:])
+    DrawTextEx(font, *path[0], Vector2.{130.0, 0.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
     UnloadFont(font)
     // A text clip follows the camera like the text: at zoom 2 the 40-unit
     // clip covers 80 screen pixels.
@@ -86,8 +92,10 @@ main :: () -> s32 {
     RasterTextClipped("MMMMMMMMMMMM", 0, 0, 10, Color.{0, 0, 0, 255},
         Rectangle.{0.0, 0.0, 40.0, 12.0})
     EndMode2D()
+    // RasterText used the default font; release it before the leak check.
+    UnloadFont(GetFontDefault())
     result := CanvasTestFinish()
-    if result == 0 && PageTextureCount() != 0 { result = 21 }
+    if result == 0 && PageTextureCount() != 0 { CanvasTestFail(21) }
     SetTargetFPS(120)
     EndDrawing()
     if IsKeyPressed(65) || IsKeyReleased(65) { return 12 }

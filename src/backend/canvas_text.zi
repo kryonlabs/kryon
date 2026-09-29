@@ -70,6 +70,213 @@
     canvas_default_font_built: bool;
     canvas_default_codepoints: [224]s32;
 
+    // Glyphs a font's first atlas lacks are rasterised on first use into
+    // extra atlas pages, as the native host adds them to its font. A font is
+    // passed around by value, so its extras live here under its texture id.
+    CANVAS_EXTRA_FONTS :: 32
+    CANVAS_EXTRA_GLYPHS :: 4096
+    CANVAS_PAGE_SIZE :: 1024
+
+    CanvasFontExtra :: struct {
+        texture_id: u32
+        face: s32
+        size: s32
+        glyphs: *CanvasGlyphInfo
+        recs: *Rectangle
+        pages: *s32
+        count: s32
+        page: s32
+        x: s32
+        y: s32
+        row_height: s32
+    }
+
+    CanvasGlyphRef :: struct {
+        glyph: CanvasGlyphInfo
+        source: Rectangle
+        texture: Texture2D
+    }
+
+    canvas_font_extras: [CANVAS_EXTRA_FONTS]CanvasFontExtra;
+    canvas_extra_glyph_pixels: *u8;
+
+    CanvasFontExtraIndex :: (texture_id: u32) -> s32 {
+        if texture_id == 0 { return -1 }
+        index: s32 = 0
+        while index < CANVAS_EXTRA_FONTS {
+            if canvas_font_extras[index].texture_id == texture_id { return index }
+            index += 1
+        }
+        return -1
+    }
+
+    CanvasFontExtraAdd :: (font: CanvasFont, face: s32) {
+        index: s32 = 0
+        while index < CANVAS_EXTRA_FONTS {
+            if canvas_font_extras[index].texture_id == 0 {
+                extra := CanvasFontExtra.{}
+                extra.texture_id = font.texture.id
+                extra.face = face
+                extra.size = font.base_size
+                canvas_font_extras[index] = extra
+                return
+            }
+            index += 1
+        }
+    }
+
+    CanvasFontExtraRelease :: (texture_id: u32) {
+        index := CanvasFontExtraIndex(texture_id)
+        if index < 0 { return }
+        extra := canvas_font_extras[index]
+        glyph: s32 = 0
+        last_page: s32 = 0
+        while glyph < extra.count {
+            page: s32 = extra.pages[glyph]
+            if page != 0 && page != last_page {
+                PageTextureFree(page)
+                last_page = page
+            }
+            glyph += 1
+        }
+        if extra.page != 0 && extra.page != last_page { PageTextureFree(extra.page) }
+        FontRelease(cast(*void)extra.glyphs)
+        FontRelease(cast(*void)extra.recs)
+        FontRelease(cast(*void)extra.pages)
+        if extra.face > 0 { PageFontFaceRelease(extra.face) }
+        canvas_font_extras[index] = CanvasFontExtra.{}
+    }
+
+    // A fresh transparent page for extra glyphs, or 0.
+    CanvasExtraPage :: () -> s32 {
+        bytes := cast(usize)(CANVAS_PAGE_SIZE * CANVAS_PAGE_SIZE * 4)
+        pixels := cast(*u8)FontAllocateZeroed(bytes, 1)
+        if pixels == null { return 0 }
+        page := PageTextureFromRgba(pixels, CANVAS_PAGE_SIZE, CANVAS_PAGE_SIZE)
+        FontRelease(cast(*void)pixels)
+        return page
+    }
+
+    // Rasterises codepoint into the font's extra pages. Records a glyph with
+    // an empty source rectangle when the face cannot draw it, so it is not
+    // tried again every frame.
+    CanvasExtraGlyphAdd :: (index: s32, codepoint: s32) -> s32 {
+        extra := *canvas_font_extras[index]
+        if extra.count >= CANVAS_EXTRA_GLYPHS { return -1 }
+        if extra.glyphs == null {
+            extra.glyphs = cast(*CanvasGlyphInfo)FontAllocateZeroed(
+                cast(usize)CANVAS_EXTRA_GLYPHS, CanvasGlyphInfoSize())
+            extra.recs = cast(*Rectangle)FontAllocateZeroed(
+                cast(usize)CANVAS_EXTRA_GLYPHS, CanvasRectangleSize())
+            extra.pages = cast(*s32)FontAllocateZeroed(cast(usize)CANVAS_EXTRA_GLYPHS, 4)
+            if extra.glyphs == null || extra.recs == null || extra.pages == null {
+                return -1
+            }
+        }
+        if canvas_extra_glyph_pixels == null {
+            canvas_extra_glyph_pixels = cast(*u8)FontAllocate(262144)
+            if canvas_extra_glyph_pixels == null { return -1 }
+        }
+        slot: s32 = extra.count
+        extra.count += 1
+        extra.glyphs[slot] = CanvasGlyphInfo.{}
+        extra.glyphs[slot].value = codepoint
+        extra.recs[slot] = Rectangle.{}
+        advance: s32 = 0
+        glyph_width: s32 = 0
+        glyph_height: s32 = 0
+        offset_x: s32 = 0
+        offset_y: s32 = 0
+        if codepoint < 32 || codepoint > 1114111 ||
+            (codepoint >= 55296 && codepoint <= 57343) ||
+            PageGlyphMetrics(extra.face, codepoint, extra.size, *advance, *glyph_width,
+                *glyph_height, *offset_x, *offset_y, canvas_extra_glyph_pixels) == 0 ||
+            glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
+            return slot
+        }
+        if extra.page == 0 || extra.x + glyph_width + 1 > CANVAS_PAGE_SIZE {
+            extra.x = 1
+            extra.y += extra.row_height + 1
+            extra.row_height = 0
+        }
+        if extra.page == 0 || extra.y + glyph_height + 1 > CANVAS_PAGE_SIZE {
+            extra.page = CanvasExtraPage()
+            extra.x = 1
+            extra.y = 1
+            extra.row_height = 0
+            if extra.page == 0 { return slot }
+        }
+        PageTextureUpdateRgba(extra.page, canvas_extra_glyph_pixels, extra.x, extra.y,
+            glyph_width, glyph_height)
+        extra.recs[slot] = Rectangle.{cast(float32)extra.x, cast(float32)extra.y,
+            cast(float32)glyph_width, cast(float32)glyph_height}
+        extra.pages[slot] = extra.page
+        extra.glyphs[slot].offset_x = offset_x
+        extra.glyphs[slot].offset_y = offset_y
+        extra.glyphs[slot].advance_x = advance
+        extra.x += glyph_width + 1
+        if glyph_height > extra.row_height { extra.row_height = glyph_height }
+        return slot
+    }
+
+    CanvasFontTexture :: (id: s32, width: s32, height: s32) -> Texture2D {
+        texture: Texture2D
+        texture.id = cast(u32)id
+        texture.width = width
+        texture.height = height
+        texture.mipmaps = 1
+        texture.format = 7
+        return texture
+    }
+
+    // The glyph that draws codepoint in font: from its atlas, from its extra
+    // pages, added to them now, or the font's '?' when the face has none.
+    CanvasGlyphFor :: (font: CanvasFont, codepoint: s32) -> CanvasGlyphRef {
+        ref: CanvasGlyphRef
+        question: s32 = 0
+        index: s32 = 0
+        while index < font.glyph_count {
+            if font.glyphs[index].value == codepoint {
+                ref.glyph = font.glyphs[index]
+                ref.source = font.recs[index]
+                ref.texture = font.texture
+                return ref
+            }
+            if font.glyphs[index].value == 63 { question = index }
+            index += 1
+        }
+        extra_index := CanvasFontExtraIndex(font.texture.id)
+        if extra_index >= 0 {
+            extra := canvas_font_extras[extra_index]
+            slot: s32 = -1
+            glyph: s32 = 0
+            while glyph < extra.count {
+                if extra.glyphs[glyph].value == codepoint {
+                    slot = glyph
+                    break
+                }
+                glyph += 1
+            }
+            if slot < 0 {
+                slot = CanvasExtraGlyphAdd(extra_index, codepoint)
+                extra = canvas_font_extras[extra_index]
+            }
+            if slot >= 0 && extra.recs[slot].width > 0.0 {
+                ref.glyph = extra.glyphs[slot]
+                ref.source = extra.recs[slot]
+                ref.texture = CanvasFontTexture(extra.pages[slot], CANVAS_PAGE_SIZE,
+                    CANVAS_PAGE_SIZE)
+                return ref
+            }
+        }
+        if font.glyph_count > 0 {
+            ref.glyph = font.glyphs[question]
+            ref.source = font.recs[question]
+            ref.texture = font.texture
+        }
+        return ref
+    }
+
     BuildCanvasFont :: (output: *CanvasFont, face: s32, size: s32,
         codepoints: *s32, count: s32) -> bool {
         if output == null || codepoints == null || count <= 0 || count > 65536 || size <= 0 {
@@ -172,6 +379,7 @@
             }
             canvas_default_font_built = BuildCanvasFont(*canvas_default_font, 0, 16,
                 *canvas_default_codepoints[0], 95)
+            if canvas_default_font_built { CanvasFontExtraAdd(canvas_default_font, 0) }
         }
         return canvas_default_font
     }
@@ -199,8 +407,12 @@
             selected = *canvas_default_codepoints[0]
             count = 224
         }
-        unused BuildCanvasFont(*font, face, font_size, selected, count)
-        PageFontFaceRelease(face)
+        if BuildCanvasFont(*font, face, font_size, selected, count) {
+            // The face stays registered to rasterise glyphs on first use.
+            CanvasFontExtraAdd(font, face)
+        } else {
+            PageFontFaceRelease(face)
+        }
         return font
     }
 
@@ -227,6 +439,7 @@
             canvas_default_font = CanvasFont.{}
             canvas_default_font_built = false
         }
+        CanvasFontExtraRelease(font.texture.id)
         FontRelease(cast(*void)font.glyphs)
         FontRelease(cast(*void)font.recs)
         if font.texture.id != 0 {
@@ -271,7 +484,7 @@
         if !IsFontValid(font) {
             return empty
         }
-        return font.glyphs[GetGlyphIndex(font, codepoint)]
+        return CanvasGlyphFor(font, codepoint).glyph
     }
 
     #program_export
@@ -322,8 +535,9 @@
         if !IsFontValid(selected) {
             return
         }
-        glyph := GetGlyphInfo(selected, codepoint)
-        source := GetGlyphAtlasRec(selected, codepoint)
+        ref := CanvasGlyphFor(selected, codepoint)
+        glyph := ref.glyph
+        source := ref.source
         if source.width <= 0.0 || source.height <= 0.0 {
             return
         }
@@ -331,7 +545,7 @@
         destination := Rectangle.{position.x + cast(float32)glyph.offset_x * scale,
             position.y + cast(float32)glyph.offset_y * scale, source.width * scale,
             source.height * scale}
-        FontDrawTexture(selected.texture, source, destination, Vector2.{0.0, 0.0}, 0.0, tint)
+        FontDrawTexture(ref.texture, source, destination, Vector2.{0.0, 0.0}, 0.0, tint)
     }
 
     #program_export
