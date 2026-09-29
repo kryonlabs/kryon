@@ -41,9 +41,9 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     )
     (project / "src/app.zi").write_text(
-        'using UI :: #import "Widgets";\n'
+        'using UI :: #import "Kryon/Widgets";\n'
         '#import "c_string"\n'
-        '#import "page_route"\n'
+        '#import "Kryon/PageRoute"\n'
         'host_api :: #system_library "host_api";\n'
         'RequestWindowClose :: () #foreign host_api;\n'
         'Same :: (left: *u8, right: string) -> bool {\n'

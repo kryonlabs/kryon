@@ -54,7 +54,9 @@ and source coloring are separate Git packages: add
 `plot/Plot`, `data_views/TableView`, `data_views/TreeView`, or
 `syntax/Syntax`. Kryon exports `geometry`, `drawing_props`, and the other
 building blocks listed in `ziran.toml` for code that needs those primitives
-without importing the widget catalog.
+without importing the widget catalog. Native and browser profiles resolve
+imports the same way, so an app's Git dependencies and package-qualified
+imports such as `Kryon/Widgets` work in Canvas and DOM builds too.
 
 From the app directory, run:
 

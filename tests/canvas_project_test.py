@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     )
     (project / "src/app.zi").write_text(
-        'using UI :: #import "Widgets";\n'
+        'using UI :: #import "Kryon/Widgets";\n'
         'host_api :: #system_library "host_api";\n'
         'RequestWindowClose :: () #foreign host_api;\n'
         '#program_export\n'
@@ -53,8 +53,8 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     run([ZIRAN, "tool", "Kryon", "build", "--profile", "web"], project)
     output = project / "build/canvas_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
-    assert next((project / "build/generated/web/ir").glob("canvas_run.zir"), None)
-    assert next((project / "build/generated/web/c").glob("canvas_run.c"), None)
+    assert next((project / "build/generated/web/ir").glob("*_canvas_run.zir"), None)
+    assert next((project / "build/generated/web/c").glob("*_canvas_run.c"), None)
     run(["node", ROOT / "tests/canvas_backend_browser.mjs",
          output.as_uri(), project / "browser-profile"], project)
 print("Canvas Ziran project: manifest, saved IR, generated C, Emscripten page, and browser exit passed")
