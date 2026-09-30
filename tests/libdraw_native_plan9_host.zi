@@ -21,7 +21,7 @@ main :: () -> s32 {
     RasterText("Kryon", 8, 8, 14,
         Color.{255, 255, 255, 255})
     if size_of(*void) == 4 &&
-        (size_of(DrawMouse) != 16 || size_of(DrawEvent) != 16540) {
+    (size_of(DrawMouse) != 16 || size_of(DrawEvent) != 16540) {
         CloseRaster()
         return 10
     }
@@ -36,12 +36,18 @@ main :: () -> s32 {
     }
     pointer: PointerFrame = PollPointer()
     viewport: Rectangle = NativeLibdrawViewport()
-    if pointer.x != 32.0 || pointer.y != 18.0 ||
-        !pointer.pressed || !pointer.released || pointer.down ||
-        NativeLibdrawPressedKey() != 65 ||
-        viewport.width != 128.0 || viewport.height != 80.0 {
+    if pointer.x != 24.0 || pointer.y != 12.0 ||
+    !pointer.pressed || pointer.released || !pointer.down ||
+    NativeLibdrawPressedKey() != 0 ||
+    viewport.width != 128.0 || viewport.height != 80.0 {
         CloseRaster()
         return 7
+    }
+    if !PollNativeLibdraw() { CloseRaster(); return 11 }
+    pointer = PollPointer()
+    if pointer.x != 32.0 || pointer.y != 18.0 || pointer.pressed ||
+    !pointer.released || pointer.down || NativeLibdrawPressedKey() != 65 {
+        CloseRaster(); return 12
     }
     if WindowInterceptCloseHost(true) {
         CloseRaster()

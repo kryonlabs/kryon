@@ -13,6 +13,7 @@ from raylib_project_test import png_pixels, rgb, solid_png
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN9 = Path(os.environ.get("PLAN9PORT_DIR", ROOT.parent / "plan9port"))
+ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT", ROOT.parent.parent / "ziranlang/ziran"))
 
 
 def run(command, cwd, env=None):
@@ -116,7 +117,7 @@ def main():
         )
         overrides = {
             "Kryon": str(ROOT),
-            "ziran": str(ROOT.parent / "ziran"),
+            "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
             overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
@@ -128,7 +129,7 @@ def main():
             'using StyleField;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-            '    if KeyboardTake(session) == 97 { return 1 }\n'
+            '    if KeyboardTake(session) == 65 { return 1 }\n'
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if viewport.width < 900.0 { return 1 }\n'
@@ -169,7 +170,7 @@ def main():
         solid_png(project / "green.png", 32, 32, (30, 200, 40, 255))
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
-        ziran = str(ROOT.parent / "ziran/build/bin/ziran")
+        ziran = str(ZIRAN_ROOT / "build/bin/ziran")
         run([ziran, "lock"], project, env)
         run([ziran, "tool", "Kryon", "build", "--profile", "libdraw"],
             project, env)

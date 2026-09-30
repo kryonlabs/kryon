@@ -2,9 +2,14 @@
 #import "drawing_props"
 #import "geometry"
 #import "tree_input"
+#import "libdraw_keys"
+#import "byte_text_linux"
+#import "math"
+Pixels :: #import "image_canvas";
 
 draw_library :: #system_library "draw";
 libc :: #system_library "libc";
+thread_library :: #system_library "thread";
 
 DrawPoint :: struct {
     x: s32
@@ -157,6 +162,7 @@ DrawEvent :: struct {
 DrawErrorRoutine :: #type (display: *DrawDisplay,
     message: *s8) #c_call;
 
+#scope_file
 InitializeDisplay :: (device: *s8, window_directory: *s8,
     error: DrawErrorRoutine) -> *DrawDisplay #foreign draw_library "initdisplay";
 CloseDisplay :: (display: *DrawDisplay) #foreign draw_library "closedisplay";
@@ -192,10 +198,58 @@ NativeCreateFile :: (path: *s8, mode: s32,
 NativeWriteFile :: (descriptor: s32, data: *void,
     count: isize) -> isize #foreign libc "write";
 CloseFile :: (descriptor: s32) -> s32 #foreign libc "close";
-EventInit :: (keys: usize) #foreign draw_library "einit";
-EventCanRead :: (keys: usize) -> s32 #foreign draw_library "ecanread";
-EventRead :: (keys: usize, event: *DrawEvent) -> usize #foreign draw_library "eread";
+// Controllers operate on this window and do not depend on libdraw's globals.
+#scope_export
+DrawChannel :: struct {
+    size: s32
+    first: u32
+    count: u32
+    element_size: s32
+    freed: s32
+    queue: **DrawChannelAlt
+    queue_count: s32
+    closed: s32
+    values: [1]u8
+}
+DrawChannelAlt :: struct {
+    channel: *DrawChannel
+    value: *void
+    operation: s32
+    error: *s8
+    tag: **DrawChannel
+    entry_number: s32
+}
+MouseController :: struct {
+    mouse: DrawMouse
+    channel: *DrawChannel
+    resize_channel: *DrawChannel
+    file: *s8
+    mouse_fd: s32
+    cursor_fd: s32
+    pid: s32
+    image: *DrawImage
+}
+KeyboardController :: struct {
+    channel: *DrawChannel
+    file: *s8
+    console_fd: s32
+    control_fd: s32
+    pid: s32
+}
+#scope_file
+OpenMouse :: (path: *s8, image: *DrawImage) -> *MouseController #foreign draw_library "initmouse";
+CloseMouse :: (controller: *MouseController) #foreign draw_library "closemouse";
+OpenKeyboard :: (path: *s8) -> *KeyboardController #foreign draw_library "initkeyboard";
+CloseKeyboard :: (controller: *KeyboardController) #foreign draw_library "closekeyboard";
+Receive :: (channel: *DrawChannel, value: *void) -> s32 #foreign thread_library "nbrecv";
+Pause :: (milliseconds: s32) -> s32 #foreign libc "sleep";
+NativeOpenFile :: (path: *s8, mode: s32) -> s32 #foreign libc "open";
+NativeReadFile :: (fd: s32, output: *void, count: isize) -> isize #foreign libc "read";
+ReadImage :: (display: *DrawDisplay, fd: s32, lock: s32) -> *DrawImage #foreign draw_library "readimage";
+LoadImage :: (image: *DrawImage, bounds: DrawRectangle, data: *u8, count: s32) -> s32 #foreign draw_library "loadimage";
+SetClip :: (image: *DrawImage, replicate: s32, bounds: DrawRectangle) #foreign draw_library "replclipr";
 
+#scope_export
 FormatInteger :: (output: *u8, capacity: s32, format: *u8,
     first: s32, second: s32, third: s32) -> s32 {
     return NativeFormatInteger(cast(*s8)output, capacity,
@@ -226,6 +280,13 @@ native_key: s32;
 native_resize_pending: bool;
 native_quit: bool;
 native_events_initialized: bool;
+native_mouse: *MouseController;
+native_keyboard: *KeyboardController;
+native_secondary: SecondaryPointerFrame;
+native_wheel: float32;
+native_rune: s32;
+native_clipboard: [65536]u8;
+native_clipboard_count: s32;
 
 DrawBounds :: (width: s32, height: s32) -> DrawRectangle {
     return DrawRectangle.{
@@ -238,7 +299,7 @@ RectangleBounds :: (bounds: Rectangle) -> DrawRectangle {
     return DrawRectangle.{
         DrawPoint.{cast(s32)bounds.x, cast(s32)bounds.y},
         DrawPoint.{cast(s32)(bounds.x + bounds.width),
-                   cast(s32)(bounds.y + bounds.height)}
+            cast(s32)(bounds.y + bounds.height)}
     }
 }
 
@@ -248,10 +309,15 @@ ColorValue :: (color: Color) -> usize {
     blue: usize = cast(usize)color.b
     alpha: usize = cast(usize)color.a
     return (red << cast(usize)24) | (green << cast(usize)16) |
-        (blue << cast(usize)8) | alpha
+    (blue << cast(usize)8) | alpha
 }
 
 DrawColor :: (bounds: DrawRectangle, color: Color) {
+    if native_window == null { return }
+    bounds.min.x += native_window.bounds.min.x
+    bounds.max.x += native_window.bounds.min.x
+    bounds.min.y += native_window.bounds.min.y
+    bounds.max.y += native_window.bounds.min.y
     image: *DrawImage = AllocateImage(native_display,
         DrawBounds(1, 1), cast(usize)0x08182848, 1, ColorValue(color))
     if image == null { return }
@@ -262,7 +328,10 @@ DrawColor :: (bounds: DrawRectangle, color: Color) {
 
 NativeDisplayError :: (display: *DrawDisplay, message: *s8) {
     unused display
-    unused message
+    if message != null {
+        text := TextFromCString(cast(*u8)message)
+        NativeWriteFile(2, cast(*void)message, cast(isize)text.count)
+    }
 }
 
 #program_export
@@ -271,6 +340,9 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
         return false
     }
+    native_quit = false
+    native_pointer = PointerFrame.{}
+    native_secondary = SecondaryPointerFrame.{}
     native_display = InitializeDisplay(null, null, NativeDisplayError)
     if native_display == null { return false }
     native_subfont = GetDefaultSubfont(native_display)
@@ -288,12 +360,9 @@ OpenRaster :: (width: s32, height: s32) -> bool {
         return false
     }
     font_path: *u8 = GetEnvironment(*font_environment[0])
-    if font_path == null {
-        ReleaseSubfont(native_subfont)
-        CloseDisplay(native_display)
-        native_subfont = null
-        native_display = null
-        return false
+    fallback: [128]u8
+    if font_path == null && CopyCString("/lib/font/bit/pelm/latin1.8.font", fallback[:]) {
+        font_path = *fallback[0]
     }
     native_font = OpenFont(native_display, cast(*s8)font_path)
     if native_font == null {
@@ -308,9 +377,9 @@ OpenRaster :: (width: s32, height: s32) -> bool {
         offscreen_name[:]) && GetEnvironment(*offscreen_name[0]) != null
     window_name: [32]u8
     if !force_offscreen && CopyCString("/dev/winname", window_name[:]) &&
-        GetWindow(native_display, cast(*s8)*window_name[0], *native_window,
-                  *native_screen, 0) >= 0 &&
-        native_window != null {
+    GetWindow(native_display, cast(*s8)*window_name[0], *native_window,
+        *native_screen, 0) >= 0 &&
+    native_window != null {
         native_offscreen = false
         native_width = native_window.bounds.max.x - native_window.bounds.min.x
         native_height = native_window.bounds.max.y - native_window.bounds.min.y
@@ -339,6 +408,9 @@ OpenRaster :: (width: s32, height: s32) -> bool {
 
 #program_export
 CloseRaster :: () {
+    if native_mouse != null { CloseMouse(native_mouse); native_mouse = null }
+    if native_keyboard != null { CloseKeyboard(native_keyboard); native_keyboard = null }
+    CloseAssets()
     if native_window != null { ReleaseImage(native_window) }
     if native_screen != null { ReleaseScreen(native_screen) }
     if native_font != null { ReleaseFont(native_font) }
@@ -365,7 +437,13 @@ NativeLibdrawViewport :: () -> Rectangle {
 InitializeNativeEvents :: () -> bool {
     if native_display == null { return false }
     if native_events_initialized { return true }
-    EventInit(cast(usize)3)
+    native_mouse = OpenMouse(null, native_window)
+    native_keyboard = OpenKeyboard(null)
+    if native_mouse == null || native_keyboard == null {
+        if native_mouse != null { CloseMouse(native_mouse); native_mouse = null }
+        if native_keyboard != null { CloseKeyboard(native_keyboard); native_keyboard = null }
+        return false
+    }
     native_events_initialized = true
     return true
 }
@@ -379,6 +457,19 @@ eresized :: (new_size: s32) {
 NativeLibdrawPressedKey :: () -> s32 { return native_key }
 
 #program_export
+LibdrawPressedKey :: () -> s32 { return native_key }
+#program_export
+LibdrawKeyboardModifiers :: () -> s32 { return LibdrawModifiers(native_rune) }
+#program_export
+LibdrawTypedCodepoint :: () -> s32 {
+    result := LibdrawCodepoint(native_rune)
+    native_rune = 0
+    return result
+}
+#program_export
+LibdrawWheelMove :: () -> float32 { return native_wheel }
+
+#program_export
 PollNativeLibdraw :: () -> bool {
     if native_quit || native_display == null { return false }
     if !native_events_initialized && !InitializeNativeEvents() {
@@ -387,37 +478,49 @@ PollNativeLibdraw :: () -> bool {
     native_pointer.pressed = false
     native_pointer.released = false
     native_key = 0
-    while EventCanRead(cast(usize)3) != 0 {
-        event: DrawEvent
-        kind: usize = EventRead(cast(usize)3, *event)
-        if kind == cast(usize)0 { break }
-        if kind == cast(usize)1 {
-            down: bool = (event.mouse.buttons & 1) != 0
-            native_pointer.pressed = native_pointer.pressed ||
-                (down && !native_pointer.down)
-            native_pointer.released = native_pointer.released ||
-                (!down && native_pointer.down)
-            native_pointer.down = down
-            native_pointer.x = cast(float32)(event.mouse.xy.x -
-                native_window.bounds.min.x)
-            native_pointer.y = cast(float32)(event.mouse.xy.y -
-                native_window.bounds.min.y)
-        } else if kind == cast(usize)2 {
-            native_key = event.kbdc
-        }
+    native_rune = 0
+    native_wheel = 0.0
+    native_secondary.pressed = false
+    native_secondary.released = false
+    mouse: DrawMouse
+    while Receive(native_mouse.channel, cast(*void)*mouse) > 0 {
+        down: bool = (mouse.buttons & 1) != 0
+        native_pointer.pressed = native_pointer.pressed ||
+        (down && !native_pointer.down)
+        native_pointer.released = native_pointer.released ||
+        (!down && native_pointer.down)
+        native_pointer.down = down
+        native_pointer.x = cast(float32)(mouse.xy.x -
+            native_window.bounds.min.x)
+        native_pointer.y = cast(float32)(mouse.xy.y -
+            native_window.bounds.min.y)
+        secondary := (mouse.buttons & 4) != 0
+        native_secondary.pressed = native_secondary.pressed || (secondary && !native_secondary.down)
+        native_secondary.released = native_secondary.released || (!secondary && native_secondary.down)
+        native_secondary.down = secondary
+        if (mouse.buttons & 8) != 0 { native_wheel += 1.0 }
+        if (mouse.buttons & 16) != 0 { native_wheel -= 1.0 }
+        // Deliver each button transition in its own frame, retaining its
+        // coordinates even when a quick click was queued during drawing.
+        if native_pointer.pressed || native_pointer.released ||
+        native_secondary.pressed || native_secondary.released || native_wheel != 0.0 { break }
     }
+    resized: s32
+    while Receive(native_mouse.resize_channel, cast(*void)*resized) > 0 { native_resize_pending = true }
+    // Take one key each frame so repeated keys and paste are never overwritten.
+    if Receive(native_keyboard.channel, cast(*void)*native_rune) > 0 { native_key = LibdrawKey(native_rune) }
     if native_resize_pending {
         native_resize_pending = false
         window_name: [32]u8
         if !CopyCString("/dev/winname", window_name[:]) ||
-            GetWindow(native_display, cast(*s8)*window_name[0],
-                      *native_window, *native_screen, 1) < 0 {
+        GetWindow(native_display, cast(*s8)*window_name[0],
+            *native_window, *native_screen, 1) < 0 {
             return false
         }
         native_width = native_window.bounds.max.x -
-            native_window.bounds.min.x
+        native_window.bounds.min.x
         native_height = native_window.bounds.max.y -
-            native_window.bounds.min.y
+        native_window.bounds.min.y
     }
     return native_window != null && native_width > 0 && native_height > 0
 }
@@ -452,7 +555,7 @@ CaptureConfigured :: () -> bool {
         cast(usize)0x08182848, 0, cast(usize)0xffffffff)
     if capture == null { return false }
     DrawImageRectangle(capture, bounds, native_window, null,
-        DrawPoint.{0, 0})
+        native_window.bounds.min)
     byte_count: s32 = native_width * native_height * 4
     pixels: *u8 = cast(*u8)Allocate(cast(usize)byte_count)
     rgba: *u8 = null
@@ -481,8 +584,8 @@ CaptureConfigured :: () -> bool {
     }
     descriptor: s32 = CreateFile(path, 1, 438)
     ok: bool = descriptor >= 0 &&
-        WriteFile(descriptor, rgba, cast(u64)byte_count) ==
-            cast(s64)byte_count
+    WriteFile(descriptor, rgba, cast(u64)byte_count) ==
+    cast(s64)byte_count
     if descriptor >= 0 { CloseFile(descriptor) }
     Release(cast(*void)pixels)
     Release(cast(*void)rgba)
@@ -508,13 +611,51 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
-    DrawColor(RectangleBounds(bounds), color)
+    PaintRounded(bounds, radius, 0.0, color)
+}
+
+PaintRounded :: (bounds: Rectangle, radius: float32, outline: float32, color: Color) {
+    if radius <= 0.0 && outline <= 0.0 { DrawColor(RectangleBounds(bounds), color); return }
+    brush := AllocateImage(native_display, DrawBounds(1, 1), cast(usize)0x08182848, 1, ColorValue(color))
+    if brush == null { return }
+    inner := Rectangle.{bounds.x + outline, bounds.y + outline,
+        bounds.width - outline * 2.0, bounds.height - outline * 2.0}
+    inner_radius := radius - outline
+    if inner_radius < 0.0 { inner_radius = 0.0 }
+    y := cast(s32)bounds.y
+    bottom := cast(s32)(bounds.y + bounds.height)
+    while y < bottom {
+        left := cast(s32)bounds.x
+        right := cast(s32)(bounds.x + bounds.width)
+        // Search only the corner, then draw the span in one libdraw command.
+        // Work is independent of widget width, including outlined fields.
+        inset: s32 = 0
+        while left + inset < right && !Pixels.InsideRoundedClip(cast(float32)(left + inset) + 0.5,
+            cast(float32)y + 0.5, bounds, radius) { inset += 1 }
+        left += inset; right -= inset
+        inner_left := right
+        inner_right := right
+        if outline > 0.0 && inner.width > 0.0 && inner.height > 0.0 &&
+        cast(float32)y + 0.5 >= inner.y && cast(float32)y + 0.5 < inner.y + inner.height {
+            inner_left = cast(s32)inner.x
+            inner_right = cast(s32)(inner.x + inner.width)
+            inset = 0
+            while inner_left + inset < inner_right && !Pixels.InsideRoundedClip(cast(float32)(inner_left + inset) + 0.5,
+                cast(float32)y + 0.5, inner, inner_radius) { inset += 1 }
+            inner_left += inset; inner_right -= inset
+        }
+        PaintRow(brush, left, inner_left, y)
+        if inner_right < right { PaintRow(brush, inner_right, right, y) }
+        y += 1
+    }
+    ReleaseImage(brush)
 }
 
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 || width <= 0.0 { return }
+    if radius > 0.0 { PaintRounded(bounds, radius, width, color); return }
     line_width: s32 = cast(s32)(width + 0.5)
     if line_width < 1 { line_width = 1 }
     top: Rectangle = Rectangle.{
@@ -543,11 +684,25 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
-    width: s32 = cast(s32)(line.width + 0.5)
-    height: s32 = cast(s32)(line.height + 0.5)
-    if width < 1 { width = 1 }
-    if height < 1 { height = 1 }
-    DrawColor(DrawBoundsAt(cast(s32)line.x, cast(s32)line.y, width, height), color)
+    // Rectangle carries a line's start and signed displacement.
+    x := cast(s32)line.x; y := cast(s32)line.y
+    end_x := cast(s32)(line.x + line.width)
+    end_y := cast(s32)(line.y + line.height)
+    dx := end_x - x; dy := end_y - y
+    step_x: s32 = 1; step_y: s32 = 1
+    if dx < 0 { dx = -dx; step_x = -1 }
+    if dy < 0 { dy = -dy; step_y = -1 }
+    error := dx - dy
+    brush := AllocateImage(native_display, DrawBounds(1, 1), cast(usize)0x08182848, 1, ColorValue(color))
+    if brush == null { return }
+    while true {
+        PaintRow(brush, x, x + 1, y)
+        if x == end_x && y == end_y { break }
+        doubled := error * 2
+        if doubled > -dy { error -= dy; x += step_x }
+        if doubled < dx { error += dx; y += step_y }
+    }
+    ReleaseImage(brush)
 }
 
 DrawBoundsAt :: (x: s32, y: s32, width: s32, height: s32) -> DrawRectangle {
@@ -562,12 +717,12 @@ RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     bytes: [4096]u8
     if native_window == null || native_font == null ||
-        !CopyCString(value, bytes[:]) { return }
+    !CopyCString(value, bytes[:]) { return }
     image: *DrawImage = AllocateImage(native_display,
         DrawBounds(1, 1), cast(usize)0x08182848, 1, ColorValue(color))
     if image == null { return }
-    baseline: s32 = y + cast(s32)native_font.ascent
-    DrawText(native_window, DrawPoint.{x, baseline}, image,
+    DrawText(native_window, DrawPoint.{x + native_window.bounds.min.x,
+            y + native_window.bounds.min.y}, image,
         DrawPoint.{0, 0}, native_font, cast(*s8)*bytes[0])
     ReleaseImage(image)
 }
@@ -575,23 +730,176 @@ RasterText :: (value: string, x: s32, y: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
-    if clip.width <= 0.0 || clip.height <= 0.0 { return }
-    if cast(float32)x < clip.x || cast(float32)y < clip.y ||
-        cast(float32)x >= clip.x + clip.width ||
-        cast(float32)y >= clip.y + clip.height { return }
+    if native_window == null || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    saved := native_window.clip
+    bounds := RectangleBounds(clip)
+    bounds.min.x += native_window.bounds.min.x; bounds.max.x += native_window.bounds.min.x
+    bounds.min.y += native_window.bounds.min.y; bounds.max.y += native_window.bounds.min.y
+    if bounds.min.x < saved.min.x { bounds.min.x = saved.min.x }
+    if bounds.min.y < saved.min.y { bounds.min.y = saved.min.y }
+    if bounds.max.x > saved.max.x { bounds.max.x = saved.max.x }
+    if bounds.max.y > saved.max.y { bounds.max.y = saved.max.y }
+    SetClip(native_window, 0, bounds)
     RasterText(value, x, y, font, color)
+    SetClip(native_window, 0, saved)
+}
+
+NativeAsset :: struct {
+    path: [4096]u8
+    pixels: *u8
+    width: s32
+    height: s32
+}
+native_assets: [16]NativeAsset;
+
+CloseAssets :: () {
+    for index: 0..15 {
+        if native_assets[index].pixels != null { Release(cast(*void)native_assets[index].pixels) }
+        native_assets[index].pixels = null
+        native_assets[index].path[0] = cast(u8)0
+    }
+}
+
+FindAsset :: (path: string) -> s32 {
+    if path.count == 0 || path.count >= 4096 || native_display == null { return -1 }
+    slot: s32 = -1
+    for index: 0..15 {
+        if native_assets[index].pixels == null {
+            if slot < 0 { slot = cast(s32)index }
+        } else {
+            same := native_assets[index].path[path.count] == cast(u8)0
+            at: s64 = 0
+            while same && at < path.count {
+                if native_assets[index].path[at] != path[at] { same = false }
+                at += 1
+            }
+            if same { return cast(s32)index }
+        }
+    }
+    if slot < 0 || !CopyCString(path, native_assets[slot].path[:]) { return -1 }
+    fd := NativeOpenFile(cast(*s8)*native_assets[slot].path[0], 0)
+    if fd < 0 { return -1 }
+    image := ReadImage(native_display, fd, 0)
+    CloseFile(fd)
+    if image == null { return -1 }
+    width := image.bounds.max.x - image.bounds.min.x
+    height := image.bounds.max.y - image.bounds.min.y
+    if width <= 0 || height <= 0 || width > 4096 || height > 4096 { ReleaseImage(image); return -1 }
+    converted := AllocateImage(native_display, DrawBounds(width, height), cast(usize)0x08182848, 0, cast(usize)0)
+    if converted == null { ReleaseImage(image); return -1 }
+    DrawImageRectangle(converted, converted.bounds, image, null, image.bounds.min)
+    ReleaseImage(image)
+    count := width * height * 4
+    pixels := cast(*u8)Allocate(cast(usize)count)
+    ok := pixels != null && UnloadImage(converted, converted.bounds, pixels, count) == count
+    ReleaseImage(converted)
+    if !ok { if pixels != null { Release(cast(*void)pixels) }; return -1 }
+    at: s32 = 0
+    while at < count {
+        alpha := cast(u32)pixels[at]
+        red := cast(u32)pixels[at + 3]
+        green := cast(u32)pixels[at + 2]
+        blue := cast(u32)pixels[at + 1]
+        if alpha > cast(u32)0 {
+            red = red * cast(u32)255 / alpha
+            green = green * cast(u32)255 / alpha
+            blue = blue * cast(u32)255 / alpha
+            if red > cast(u32)255 { red = cast(u32)255 }
+            if green > cast(u32)255 { green = cast(u32)255 }
+            if blue > cast(u32)255 { blue = cast(u32)255 }
+        }
+        pixels[at] = cast(u8)red; pixels[at + 1] = cast(u8)green
+        pixels[at + 2] = cast(u8)blue; pixels[at + 3] = cast(u8)alpha
+        at += 4
+    }
+    native_assets[slot].pixels = pixels
+    native_assets[slot].width = width
+    native_assets[slot].height = height
+    return slot
 }
 
 #program_export
-ImageWidth :: (asset_path: string) -> s32 { return 0 }
+ImageWidth :: (asset_path: string) -> s32 {
+    slot := FindAsset(asset_path)
+    if slot < 0 { return 0 }
+    return native_assets[slot].width
+}
 
 #program_export
-ImageHeight :: (asset_path: string) -> s32 { return 0 }
+ImageHeight :: (asset_path: string) -> s32 {
+    slot := FindAsset(asset_path)
+    if slot < 0 { return 0 }
+    return native_assets[slot].height
+}
 
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
-    origin: Vector2, rotation: float32, radius: float32, tint: Color) {}
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    if texture_id != cast(u32)0 { return }
+    slot := FindAsset(asset_path)
+    if slot < 0 { return }
+    // Intersect the clip with the rotated image's bounds. A small image inside
+    // a large scroll area must rasterize only its own pixels each frame.
+    if !Finite32(rotation) || !Finite32(destination.x) || !Finite32(destination.y) ||
+    !Finite32(destination.width) || !Finite32(destination.height) ||
+    !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(clip.x) || !Finite32(clip.y) ||
+    !Finite32(clip.width) || !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    cosine := CosineDegrees(rotation); sine := SineDegrees(rotation)
+    minimum_x: float32 = 3.402823e38; minimum_y: float32 = 3.402823e38
+    maximum_x: float32 = -3.402823e38; maximum_y: float32 = -3.402823e38
+    for corner: 0..3 {
+        dx := -origin.x; dy := -origin.y
+        if (corner & 1) != 0 { dx += destination.width }
+        if (corner & 2) != 0 { dy += destination.height }
+        x := destination.x + dx * cosine - dy * sine
+        y := destination.y + dx * sine + dy * cosine
+        if x < minimum_x { minimum_x = x }; if x > maximum_x { maximum_x = x }
+        if y < minimum_y { minimum_y = y }; if y > maximum_y { maximum_y = y }
+    }
+    if minimum_x < clip.x { minimum_x = clip.x }
+    if minimum_y < clip.y { minimum_y = clip.y }
+    if maximum_x > clip.x + clip.width { maximum_x = clip.x + clip.width }
+    if maximum_y > clip.y + clip.height { maximum_y = clip.y + clip.height }
+    if minimum_x < 0.0 { minimum_x = 0.0 }; if minimum_y < 0.0 { minimum_y = 0.0 }
+    if maximum_x > cast(float32)native_width { maximum_x = cast(float32)native_width }
+    if maximum_y > cast(float32)native_height { maximum_y = cast(float32)native_height }
+    if !Finite32(minimum_x) || !Finite32(minimum_y) || !Finite32(maximum_x) || !Finite32(maximum_y) ||
+    maximum_x <= minimum_x || maximum_y <= minimum_y { return }
+    x0 := FloorInteger(minimum_x); y0 := FloorInteger(minimum_y)
+    x1 := CeilInteger(maximum_x); y1 := CeilInteger(maximum_y)
+    width := x1 - x0; height := y1 - y0
+    if width <= 0 || height <= 0 { return }
+    count := width * height * 4
+    pixels := cast(*u8)Allocate(cast(usize)count)
+    if pixels == null { return }
+    for at: 0..cast(s64)(count - 1) { pixels[at] = cast(u8)0 }
+    asset := native_assets[slot]
+    destination.x -= cast(float32)x0; destination.y -= cast(float32)y0
+    clip.x -= cast(float32)x0; clip.y -= cast(float32)y0
+    ok := Pixels.RasterImageRGBA(BytesFromPointer(pixels, cast(u64)count), width, height, width * 4,
+        BytesFromPointer(asset.pixels, cast(u64)(asset.width * asset.height * 4)),
+        asset.width, asset.height, asset.width * 4, source, destination, clip, origin, rotation, radius, tint)
+    at: s32 = 0
+    while at < count {
+        alpha := cast(u32)pixels[at + 3]
+        red := cast(u8)(cast(u32)pixels[at] * alpha / cast(u32)255)
+        green := cast(u8)(cast(u32)pixels[at + 1] * alpha / cast(u32)255)
+        blue := cast(u8)(cast(u32)pixels[at + 2] * alpha / cast(u32)255)
+        pixels[at] = cast(u8)alpha; pixels[at + 1] = blue
+        pixels[at + 2] = green; pixels[at + 3] = red
+        at += 4
+    }
+    image := AllocateImage(native_display, DrawBounds(width, height), cast(usize)0x08182848, 0, cast(usize)0)
+    if image != null {
+        if ok && LoadImage(image, image.bounds, pixels, count) == count {
+            DrawImageRectangle(native_window, DrawBoundsAt(x0 + native_window.bounds.min.x,
+                y0 + native_window.bounds.min.y, width, height), image, null, DrawPoint.{0, 0})
+        }
+        ReleaseImage(image)
+    }
+    Release(cast(*void)pixels)
+}
 
 #program_export
 WindowVisibleHost :: () -> bool {
@@ -615,27 +923,82 @@ WindowQuitHost :: () {
     native_quit = true
 }
 
-// This host has no system clipboard.
 #program_export
 SystemClipboardOpenHost :: () -> s32 {
-    return -1
+    name: [32]u8
+    CopyCString("/dev/snarf", name[:])
+    fd := NativeOpenFile(cast(*s8)*name[0], 0)
+    if fd < 0 { return -1 }
+    native_clipboard_count = 0
+    ok: bool = true
+    while native_clipboard_count < 65536 {
+        count := NativeReadFile(fd, cast(*void)*native_clipboard[native_clipboard_count], cast(isize)(65536 - native_clipboard_count))
+        if count < 0 { ok = false; break }
+        if count == 0 { break }
+        native_clipboard_count += cast(s32)count
+    }
+    extra: u8
+    if native_clipboard_count == 65536 && NativeReadFile(fd, cast(*void)*extra, cast(isize)1) != 0 { ok = false }
+    if CloseFile(fd) < 0 { ok = false }
+    if !ok { return -1 }
+    return native_clipboard_count
 }
 
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
-    unused index
-    return -1
+    if index < 0 || index >= native_clipboard_count { return -1 }
+    return cast(s32)native_clipboard[index]
 }
 
 #program_export
 SystemClipboardWriteHost :: (text: string) -> bool {
-    unused text
-    return false
+    if text.count > 65536 { return false }
+    name: [32]u8
+    CopyCString("/dev/snarf", name[:])
+    fd := NativeOpenFile(cast(*s8)*name[0], 17)
+    if fd < 0 { return false }
+    at: s64 = 0
+    buffer: [4096]u8
+    while at < text.count {
+        count := text.count - at
+        if count > 4096 { count = 4096 }
+        for index: 0..count - 1 { buffer[index] = text[at + index] }
+        used: s64 = 0
+        while used < count {
+            written := NativeWriteFile(fd, cast(*void)*buffer[used], cast(isize)(count - used))
+            if written <= 0 { CloseFile(fd); return false }
+            used += cast(s64)written
+        }
+        at += count
+    }
+    return CloseFile(fd) == 0
 }
 
-// This host has no secondary button.
 #program_export
 PollSecondaryPointer :: () -> SecondaryPointerFrame {
-    empty: SecondaryPointerFrame
-    return empty
+    return native_secondary
+}
+
+#program_export
+OpenLibdrawSized :: (width: s32, height: s32) -> bool { return OpenRaster(width, height) }
+#program_export
+OpenLibdraw :: () -> bool { return OpenRaster(960, 600) }
+#program_export
+CloseLibdraw :: () { CloseRaster() }
+#program_export
+PollLibdraw :: () -> bool { return PollNativeLibdraw() }
+#program_export
+LibdrawViewport :: () -> Rectangle { return NativeLibdrawViewport() }
+#program_export
+BeginLibdrawFrame :: () { BeginRasterFrame() }
+#program_export
+EndLibdrawFrame :: () -> bool { return FinishRasterFrame() }
+#program_export
+PauseLibdraw :: () { Pause(16) }
+
+PaintRow :: (brush: *DrawImage, left: s32, right: s32, y: s32) {
+    if left >= right { return }
+    row := DrawBoundsAt(left + native_window.bounds.min.x,
+        y + native_window.bounds.min.y, right - left, 1)
+    DrawImageRectangle(native_window, row, brush, null, DrawPoint.{0, 0})
 }

@@ -1,0 +1,35 @@
+// Both native libdraw and plan9port deliver Plan 9 runes, rather than SDL keys.
+#program_export
+LibdrawKey :: (rune: s32) -> s32 {
+    if rune == 9 { return 258 }
+    if rune == 8 { return 259 }
+    if rune == 127 { return 261 }
+    if rune == 27 { return 256 }
+    if rune == 10 || rune == 13 { return 257 }
+    if rune == 0xf00d { return 268 }
+    if rune == 0xf018 { return 269 }
+    if rune == 0xf00e { return 265 }
+    if rune == 0xf800 { return 264 }
+    if rune == 0xf011 { return 263 }
+    if rune == 0xf012 { return 262 }
+    if rune == 0xf00f { return 266 }
+    if rune == 0xf013 { return 267 }
+    if rune == 0xf014 { return 260 }
+    if rune > 0 && rune < 27 { return rune + 64 }
+    if rune >= 97 && rune <= 122 { return rune - 32 }
+    if rune >= 0xf000 && rune <= 0xf8ff { return 0 }
+    return rune
+}
+
+#program_export
+LibdrawModifiers :: (rune: s32) -> s32 {
+    if rune > 0 && rune < 27 && rune != 8 && rune != 9 &&
+    rune != 10 && rune != 13 { return 2 }
+    return 0
+}
+
+#program_export
+LibdrawCodepoint :: (rune: s32) -> s32 {
+    if rune < 32 || rune == 127 || (rune >= 0xf000 && rune <= 0xf8ff) { return 0 }
+    return rune
+}
