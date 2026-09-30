@@ -49,7 +49,7 @@ ReadInto :: (buffer: []u8, offset: s32) -> s32 {
     descriptor: s32 = ThemeOpen(*path_buffer[0], 0)
     if descriptor < 0 { return 0 }
     size: s64 = ThemeSeek(descriptor, 0, 2)
-    room: s64 = cast(s64)buffer.count - cast(s64)offset - 1
+    room: s64 = buffer.count - cast(s64)offset - 1
     if size <= 0 || size > room {
         ThemeClose(descriptor)
         return 0

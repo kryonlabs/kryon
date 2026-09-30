@@ -455,7 +455,7 @@ ExecutableDirectory :: (output: []u8) -> bool {
     #if !#defined(__FreeBSD__) {
         CopyCString("/proc/self/exe", link[:])
     }
-    capacity: s64 = cast(s64)output.count - 1
+    capacity: s64 = output.count - 1
     length: s64 = cast(s64)ReadLink(*link[0], *output[0], cast(usize)capacity)
     if length <= 0 || length >= capacity {
         output[0] = 0
