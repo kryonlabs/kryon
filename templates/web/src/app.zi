@@ -1,0 +1,73 @@
+using UI :: #import "Widgets";
+#import "std/number_text"
+#import "layout"
+
+// {{name}}: a web page written with Kryon. On the DOM host each widget
+// becomes a real HTML element: headings, paragraphs, links, and buttons
+// that screen readers and search engines understand.
+//
+//   kryon build          build/{{name}}-web.html (needs Emscripten)
+//   kryon run canvas     the same page drawn on a canvas
+//   kryon run desktop    the same page in a window
+
+likes: s32;
+likes_text: [48]u8;
+
+Heading :: (session: Session, key: s32, text: string, level: s32, bounds: Rectangle, font: s32) {
+    props: TextProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.text = text
+    props.font = font
+    props.semantic_kind = SemanticKind.SemanticHeading
+    props.heading_level = level
+    Text(session, props)
+}
+
+Paragraph :: (session: Session, key: s32, text: string, bounds: Rectangle, font: s32) {
+    props: TextProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.text = text
+    props.font = font
+    props.semantic_kind = SemanticKind.SemanticParagraph
+    props.wrap = TextWrap.TextWrapAuto
+    Text(session, props)
+}
+
+WebLink :: (session: Session, key: s32, text: string, url: string, bounds: Rectangle) {
+    props: LinkProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.text = text
+    props.link = url
+    unused Link(session, props)
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    page: PageLayout = PageFor(viewport, 640.0)
+    Heading(session, 1, "{{name}}", 1, NextRow(*page, 44.0), FontSize(*page, 34))
+    Paragraph(session, 2, "This page is a Kryon application. The same Ziran source runs as semantic HTML, on a canvas, and in a desktop window.",
+        NextRow(*page, 48.0), FontSize(*page, 17))
+    Heading(session, 3, "Why Kryon", 2, NextRow(*page, 30.0), FontSize(*page, 22))
+    Paragraph(session, 4, "One interface, declared every frame from your state. No HTML templates, no JavaScript: the DOM host maps widgets to elements.",
+        NextRow(*page, 48.0), FontSize(*page, 17))
+    WebLink(session, 5, "Kryon on GitHub", "https://github.com/kryonlabs/kryon",
+        NextRow(*page, 24.0))
+    WebLink(session, 6, "The Ziran language", "https://github.com/ziranlang/ziran",
+        NextRow(*page, 24.0))
+
+    like: ButtonProps
+    like.key = cast(u64)7
+    like.id = 7
+    like.bounds = RowPart(*page, NextRow(*page, 40.0), 0, 3)
+    like.label = "Like"
+    like.tone = ButtonTone.ButtonToneAccent
+    like.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    if Button(session, like) == 1 { likes += 1 }
+    digits: [16]u8
+    Paragraph(session, 8, Joined(FormatInteger(cast(s64)likes, digits[:]), " likes so far",
+        likes_text[:]), NextRow(*page, 24.0), FontSize(*page, 16))
+    return 0
+}

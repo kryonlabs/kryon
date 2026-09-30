@@ -1,0 +1,92 @@
+using UI :: #import "Widgets";
+#import "std/number_text"
+#import "layout"
+
+// {{name}}: a Kryon application. Frame runs every frame and declares the
+// whole interface from the app's state; Kryon keeps the widgets between
+// frames and reports what the user did.
+//
+//   kryon run          the desktop window (ziran run does the same)
+//   kryon run tui      the same interface in a terminal
+//   kryon run web      a Canvas2D browser page (needs Emscripten)
+
+Goal :: 100;
+
+count: s32;
+step: s32 = 1;
+count_text: [32]u8;
+step_text: [48]u8;
+
+Action :: (session: Session, id: s32, label: string, bounds: Rectangle, accent: bool) -> bool {
+    props: ButtonProps
+    props.key = cast(u64)id
+    props.id = id
+    props.bounds = bounds
+    props.label = label
+    if accent {
+        props.tone = ButtonTone.ButtonToneAccent
+        props.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    }
+    return Button(session, props) == 1
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    page: PageLayout = PageFor(viewport, 520.0)
+    Label(session, 1, "{{name}}", NextRow(*page, 40.0), FontSize(*page, 32))
+    Label(session, 2, "Count up to the goal, one step at a time.", NextRow(*page, 24.0),
+        FontSize(*page, 16))
+    Label(session, 3, FormatInteger(cast(s64)count, count_text[:]), NextRow(*page, 64.0),
+        FontSize(*page, 56))
+
+    buttons: Rectangle = NextRow(*page, 40.0)
+    if Action(session, 10, "-", RowPart(*page, buttons, 0, 3), false) {
+        count -= step
+        if count < 0 { count = 0 }
+    }
+    if Action(session, 11, "+", RowPart(*page, buttons, 1, 3), true) {
+        count += step
+        if count > Goal { count = Goal }
+    }
+    if Action(session, 12, "Reset", RowPart(*page, buttons, 2, 3), false) {
+        count = 0
+    }
+
+    digits: [16]u8
+    Label(session, 20, Joined("Step: ", FormatInteger(cast(s64)step, digits[:]), step_text[:]),
+        NextRow(*page, 24.0), FontSize(*page, 16))
+    if page.cells {
+        // A terminal has no room for a slider's knob; two buttons step.
+        steps: Rectangle = NextRow(*page, 0.0)
+        if Action(session, 22, "Smaller step", RowPart(*page, steps, 0, 2), false) && step > 1 {
+            step -= 1
+        }
+        if Action(session, 23, "Bigger step", RowPart(*page, steps, 1, 2), false) && step < 10 {
+            step += 1
+        }
+    } else {
+        slider: DiscreteSliderProps
+        slider.key = cast(u64)21
+        slider.id = 21
+        slider.bounds = NextRow(*page, 28.0)
+        slider.semantic_label = "Step size"
+        slider.value = step
+        slider.min = 1
+        slider.max = 10
+        moved: SliderDiscreteStep = DiscreteSlider(session, slider)
+        if moved.changed { step = moved.value }
+    }
+
+    progress: ProgressProps
+    progress.key = cast(u64)30
+    progress.bounds = NextRow(*page, 20.0)
+    progress.min = 0
+    progress.max = Goal
+    progress.value = count
+    progress.label = "Progress to the goal"
+    Progress(session, progress)
+    if count == Goal {
+        Label(session, 31, "Goal reached!", NextRow(*page, 24.0), FontSize(*page, 18))
+    }
+    return 0
+}

@@ -1,0 +1,37 @@
+[package]
+name = "{{name}}"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+tool = "Kryon"
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.Kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[install]
+bin = "{{name}}"
+
+# `kryon run` opens the default profile; `kryon run tui` picks another.
+[tool.Kryon]
+default_profile = "desktop"
+entry = "src/app.zi"
+
+[tool.Kryon.profiles.desktop]
+backend = "desktop"
+
+[tool.Kryon.profiles.tui]
+backend = "terminal"
+
+[tool.Kryon.profiles.web]
+backend = "canvas"
+
+[tool.Kryon.install]
+profile = "desktop"
+name = "{{name}}"
+comment = "A Kryon application"
+categories = "Utility;"

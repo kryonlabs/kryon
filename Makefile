@@ -24,7 +24,7 @@ OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
+.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test install-user dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -112,6 +112,20 @@ project-test: project-toolchain build/bin/kryon
 	cd build/project/go && GO111MODULE=off go test .
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
+	@$(MAKE) --no-print-directory templates-test
+
+# `kryon new` for every template, built and rendered on the terminal host.
+templates-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
+		python3 tests/templates_test.py
+
+# Installs the kryon command. Outside `ziran tool Kryon` it forwards project
+# commands to ziran, which runs the Kryon each project's lock pins.
+PREFIX ?= $(HOME)/.local
+install-user: build/bin/kryon
+	mkdir -p $(PREFIX)/bin
+	cp build/bin/kryon $(PREFIX)/bin/kryon.new
+	mv -f $(PREFIX)/bin/kryon.new $(PREFIX)/bin/kryon
 
 # Laws state policy independently of its implementation; `ziran check`
 # proves each over its whole listed domain.

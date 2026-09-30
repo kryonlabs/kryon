@@ -4,10 +4,43 @@ Kryon is a Ziran package. Application source imports its public modules, and
 the selected Kryon host links the application's `Frame` function. No UI syntax
 or widget handling is built into the Ziran compiler.
 
+## Start a project
+
+Install `ziran` (`make install-user` in the Ziran repository) and the `kryon`
+command (`make install-user` here), then:
+
+```sh
+kryon new hello              # a desktop app; kryon new hello --template tui
+cd hello
+kryon run                    # the default profile; kryon run tui picks another
+```
+
+| Template | What it starts | Profiles |
+| --- | --- | --- |
+| `app` (default) | counter with buttons, a step slider, and progress | `desktop`, `tui`, `web` (canvas) |
+| `tui` | keyboard-driven task list | `tui`, `desktop` |
+| `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `tui`, `web` (canvas) |
+| `web` | semantic page: headings, paragraphs, links, a button | `web` (DOM), `canvas`, `desktop` |
+
+Each template's `src/layout.zi` stacks rows in pixels in a window or browser
+and in character cells on the terminal host, so one `Frame` serves every
+profile. `kryon init --template tui` adds a template to an existing package:
+Ziran merges it into `ziran.toml`, keeps the package's own values, and never
+overwrites a file, so a command-line program keeps its `main` and gains a
+window.
+
+`kryon` is a front door to `ziran`: `kryon new` and `kryon init` are
+`ziran new` and `ziran init` with Kryon's templates (`--template NAME` for
+Kryon's, or any `SOURCE[:NAME]`), `kryon run|build|check|profiles` is
+`ziran tool Kryon …`, and `kryon install` is `ziran install`. Each project
+therefore runs the Kryon its `ziran.lock` pins, whatever version of the
+`kryon` command is installed. `KRYON_TEMPLATES=DIR` takes the templates from
+a local Kryon checkout.
+
 ## Package manifest
 
-Install the Ziran command from the root Ziran repository with
-`make install-user`. In an application, create `ziran.toml`:
+A Kryon application is a Ziran package whose `ziran.toml` hands its program
+to Kryon:
 
 ```toml
 [package]
@@ -15,6 +48,7 @@ name = "Example"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
+tool = "Kryon"
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -31,8 +65,12 @@ default_profile = "desktop"
 backend = "desktop"
 ```
 
-`bridge_modules` exposes the app's `app` module to the selected host. The app
-imports `Kryon` for the small core surface or `Widgets` for all core widgets:
+`tool = "Kryon"` makes `ziran run`, `ziran build`, `ziran check`, and
+`ziran install` the same as the `kryon` commands. `bridge_modules` exposes
+the app's `app` module to the selected host. `[tool.Kryon] entry` names the
+module with `Frame` when it is not the package entry, as in a command-line
+package that also has a window. The app imports `Kryon` for the small core
+surface or `Widgets` for all core widgets:
 
 ```zi
 using UI :: #import "Widgets";
@@ -61,10 +99,10 @@ imports such as `Kryon/Widgets` work in Canvas and DOM builds too.
 From the app directory, run:
 
 ```sh
-ziran lock
-ziran tool Kryon check
-ziran tool Kryon build
-ziran tool Kryon run --profile desktop
+kryon check
+kryon build
+kryon run desktop            # or: kryon run --profile desktop, ziran run desktop
+kryon profiles               # the profiles, their hosts, and the default
 ```
 
 Commit `ziran.lock` to pin exact package and toolchain revisions. `ziran
@@ -80,7 +118,8 @@ Define each profile under `[tool.Kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
 `libdraw`, `raylib`, `canvas`, and `dom`. Set `default_profile` under `[tool.Kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
-profile when there are several and none is specified.
+profile when there are several, none is specified, and it runs in a
+terminal; otherwise it uses the default.
 
 | Backend | Host | Requirements |
 | --- | --- | --- |
@@ -115,11 +154,14 @@ default_profile = "tui"
 
 ## Installing
 
-`ziran install` builds one profile and installs it for the current user:
+`kryon install` (or `ziran install`) builds one profile and installs it for
+the current user:
 
 ```toml
-[install]
+[package]
 tool = "Kryon"
+
+[install]
 bin = "example"
 
 [tool.Kryon.install]

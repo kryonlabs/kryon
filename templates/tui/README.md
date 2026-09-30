@@ -1,0 +1,13 @@
+# {{name}}
+
+A [Kryon](https://github.com/kryonlabs/kryon) terminal application written
+in Ziran: a task list you drive from the keyboard.
+
+```sh
+kryon run            # in this terminal: Up/Down, Space, Ctrl+C
+kryon run desktop    # the same interface in a window
+kryon install        # ~/.local/bin/{{name}}
+```
+
+`src/layout.zi` sizes rows in character cells on the terminal host and in
+pixels in a window, so one `Frame` serves both.

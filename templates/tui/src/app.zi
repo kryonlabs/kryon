@@ -1,0 +1,91 @@
+using UI :: #import "Widgets";
+#import "std/number_text"
+#import "layout"
+
+// {{name}}: a keyboard-driven task list for the terminal.
+//
+//   kryon run            in this terminal (Up/Down move, Space toggles,
+//                        Ctrl+C quits)
+//   kryon run desktop    the same interface in a window
+//
+// Frame runs for every key and declares the interface from the tasks.
+
+Task :: struct {
+    label: string
+    done: bool
+}
+
+KeyDown :: 264;
+KeyUp :: 265;
+Space :: 32;
+
+tasks: [6]Task;
+started: bool;
+selected: s32;
+scroll: s32;
+rows: [6]ListBoxItem;
+row_text: [6][96]u8;
+summary_text: [64]u8;
+
+Start :: () {
+    tasks[0].label = "Read the Kryon widgets guide"
+    tasks[1].label = "Add a task list to the app"
+    tasks[1].done = true
+    tasks[2].label = "Try kryon run desktop"
+    tasks[3].label = "Style the app with KSS"
+    tasks[4].label = "Write a test for the tasks"
+    tasks[5].label = "Install it with kryon install"
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !started { Start(); started = true }
+    move: s32 = 0
+    key: s32 = KeyboardTake(session)
+    if key == KeyDown { move = 1 }
+    if key == KeyUp { move = -1 }
+    if TypedCodepointTake(session) == Space { tasks[selected].done = !tasks[selected].done }
+
+    page: PageLayout = PageFor(viewport, 560.0)
+    Label(session, 1, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
+    done: s32 = 0
+    index: s32 = 0
+    while index < 6 {
+        if tasks[index].done { done += 1 }
+        mark: string = "[ ] "
+        if tasks[index].done { mark = "[x] " }
+        rows[index].key = cast(u64)(100 + index)
+        rows[index].label = Joined(mark, tasks[index].label, row_text[index][:])
+        index += 1
+    }
+    digits: [16]u8
+    Label(session, 2, Joined(FormatInteger(cast(s64)done, digits[:]), " of 6 done",
+        summary_text[:]), NextRow(*page, 22.0), FontSize(*page, 16))
+
+    list: ListBoxProps
+    list.key = cast(u64)10
+    list.id = 10
+    list.bounds = NextRow(*page, 6.0 * 36.0)
+    if page.cells {
+        // Six one-cell rows; NextRow gave one.
+        list.bounds.height = 6.0
+        page.y += 5.0
+    }
+    list.row_height = 36
+    if page.cells {
+        // Kryon measures the list in pixels; a cell is eight of them.
+        list.row_height = 8
+        list.scale = 0.125
+    }
+    list.selected_index = selected
+    list.scroll_offset = scroll
+    list.focused = true
+    list.navigation = move
+    result: ListBoxResult = ListBox(session, list, rows[:])
+    selected = result.selected_index
+    scroll = result.scroll_offset
+
+    Label(session, 3, "Up/Down move  Space toggles  Ctrl+C quits", NextRow(*page, 22.0),
+        FontSize(*page, 14))
+    return 0
+}

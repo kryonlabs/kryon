@@ -53,9 +53,19 @@ theme = "src/ui/theme.zi"
 [tool]
 project = "build/bin/kryon"
 
+# Project templates: `kryon new hello` (or `ziran new hello --template
+# kryonlabs/kryon`) starts from the first; `kryon new hello --template tui`
+# from another.
+[templates]
+app = "templates/app"
+tui = "templates/tui"
+pages = "templates/pages"
+web = "templates/web"
+
 # Settings an application gives the kryon tool under [tool.Kryon].
 [options]
 default_profile = "string"
+entry = "string"
 
 [options.profiles."*"]
 backend = "string!"

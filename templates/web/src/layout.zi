@@ -1,0 +1,81 @@
+using UI :: #import "Widgets";
+
+// One layout for every Kryon host: windows and browser pages measure in
+// pixels, the terminal host in character cells (80 x 24). A PageLayout stacks
+// rows down a centered column and scales sizes to the host.
+PageLayout :: struct {
+    x: float32
+    y: float32
+    width: float32
+    gap: float32
+    // True on the terminal host, where one unit is one character cell.
+    cells: bool
+}
+
+PageFor :: (viewport: Rectangle, widest: float32) -> PageLayout {
+    page: PageLayout
+    page.cells = viewport.width <= 80.0
+    if page.cells {
+        page.x = 2.0
+        page.y = 1.0
+        page.width = viewport.width - 4.0
+        page.gap = 1.0
+        return page
+    }
+    page.width = viewport.width - 64.0
+    if page.width > widest { page.width = widest }
+    page.x = viewport.x + (viewport.width - page.width) / 2.0
+    page.y = viewport.y + 32.0
+    page.gap = 14.0
+    return page
+}
+
+// The next row: `pixels` tall in a window, one cell in a terminal.
+NextRow :: (page: *PageLayout, pixels: float32) -> Rectangle {
+    height: float32 = pixels
+    if page.cells { height = 1.0 }
+    bounds: Rectangle = Rectangle.{page.x, page.y, page.width, height}
+    page.y += height + page.gap
+    return bounds
+}
+
+// Part index of count equal parts across a row.
+RowPart :: (page: *PageLayout, row: Rectangle, index: s32, count: s32) -> Rectangle {
+    gap: float32 = 12.0
+    if page.cells { gap = 2.0 }
+    width: float32 = (row.width - gap * cast(float32)(count - 1)) / cast(float32)count
+    return Rectangle.{row.x + (width + gap) * cast(float32)index, row.y, width, row.height}
+}
+
+// A font size in pixels, or one cell in a terminal.
+FontSize :: (page: *PageLayout, pixels: s32) -> s32 {
+    if page.cells { return 1 }
+    return pixels
+}
+
+Label :: (session: Session, key: s32, text: string, bounds: Rectangle, font: s32) {
+    props: TextProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.text = text
+    props.font = font
+    Text(session, props)
+}
+
+// first followed by second, in output.
+Joined :: (first: string, second: string, output: []u8) -> string {
+    length: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)first.count && length < cast(s32)output.count {
+        output[length] = first[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while index < cast(s32)second.count && length < cast(s32)output.count {
+        output[length] = second[index]
+        length += 1
+        index += 1
+    }
+    return TextView(output[0:length])
+}

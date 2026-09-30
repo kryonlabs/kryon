@@ -1,0 +1,30 @@
+[package]
+name = "{{name}}"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+tool = "Kryon"
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.Kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+# `kryon build` writes build/{{name}}-web.html, a semantic HTML page;
+# `kryon run canvas` draws the same page on a Canvas2D element and
+# `kryon run desktop` in a window.
+[tool.Kryon]
+default_profile = "web"
+entry = "src/app.zi"
+
+[tool.Kryon.profiles.web]
+backend = "dom"
+
+[tool.Kryon.profiles.canvas]
+backend = "canvas"
+
+[tool.Kryon.profiles.desktop]
+backend = "desktop"
