@@ -115,6 +115,7 @@ project-test: project-toolchain build/bin/kryon
 	cd build/project/go && GO111MODULE=off go test .
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/terminal_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
 
 # `kryon new` for every template, built and rendered on the terminal host.

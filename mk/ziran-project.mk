@@ -39,6 +39,17 @@ HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
+ifneq ($(PROJECT_HOST),)
+PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
+ifeq ($(filter $(CURDIR)/%,$(PROJECT_HOST_PATH)),)
+$(error the profile host must stay inside the project directory)
+endif
+HOST := $(PROJECT_HOST)
+HOST_ID := $(basename $(notdir $(PROJECT_HOST)))
+# Ziran's byte-pointer argv has the C argv layout. GCC's hosted-main
+# spelling warning does not apply to that generated entry signature.
+HOST_CFLAGS := -Wno-main
+endif
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
@@ -200,7 +211,7 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 else
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \
-		$(CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
+		$(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(C_DIR) $(C_DIR)/*.c \
 		-Wl,--gc-sections $(HOST_LIBS) -lm -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@

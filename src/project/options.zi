@@ -1,11 +1,12 @@
 // Kryon's project settings as resolved by `ziran tool kryon`. Ziran reads
 // [tool.kryon] from ziran.toml and ziran.local.toml, checks it against the
-// options Kryon declares in its own ziran.toml, and hands over KEY=VALUE
+// options Kryon declares in its own ziran.toml, and hands over KEY = VALUE
 // lines. Kryon checks only what is specific to its hosts.
 ProjectProfile :: struct {
     name: string
     backend: string
     codegen: string
+    host: string
     library: string
     static_archive: string
 }
@@ -68,6 +69,25 @@ ProjectPathValid :: (value: string) -> bool {
     return true
 }
 
+ProjectHostValid :: (value: string) -> bool {
+    length: s32 = cast(s32)value.count
+    if length < 4 || !ProjectPathValid(value) { return false }
+    if value[0] == cast(u8)47 || value[length - 3:length] != ".zi" {
+        return false
+    }
+    start: s32 = 0
+    at: s32 = 0
+    while at <= length {
+        if at == length || value[at] == cast(u8)47 {
+            if at == start || value[start:at] == "." ||
+            value[start:at] == ".." { return false }
+            start = at + 1
+        }
+        at += 1
+    }
+    return true
+}
+
 ProjectStaticArchiveValid :: (value: string) -> bool {
     length: s32 = cast(s32)value.count
     if length < 3 || !ProjectPathValid(value) { return false }
@@ -79,13 +99,13 @@ ProjectStaticArchiveValid :: (value: string) -> bool {
     while at < length {
         if value[at] == cast(u8)47 {
             if at - segment_start == 2 &&
-                value[segment_start:segment_start + 2] == ".." { return false }
+            value[segment_start:segment_start + 2] == ".." { return false }
             segment_start = at + 1
         }
         at += 1
     }
     if length - segment_start == 2 &&
-        value[segment_start:segment_start + 2] == ".." { return false }
+    value[segment_start:segment_start + 2] == ".." { return false }
     return true
 }
 
@@ -96,13 +116,13 @@ ProjectTextValid :: (value: string) -> bool {
     while at < cast(s32)value.count {
         ch: u8 = value[at]
         if ch < cast(u8)32 || ch == cast(u8)127 || ch == cast(u8)34 ||
-            ch == cast(u8)36 || ch == cast(u8)92 || ch == cast(u8)96 { return false }
+        ch == cast(u8)36 || ch == cast(u8)92 || ch == cast(u8)96 { return false }
         at += 1
     }
     return true
 }
 
-// Autostart environment: space-separated NAME=VALUE words.
+// Autostart environment: space-separated NAME = VALUE words.
 ProjectEnvironmentValid :: (value: string) -> bool {
     at: s32 = 0
     while at < cast(s32)value.count {
@@ -196,6 +216,8 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 config.profiles[selected].backend = value
             } else if field == "codegen" {
                 config.profiles[selected].codegen = value
+            } else if field == "host" {
+                config.profiles[selected].host = value
             } else if field == "library" {
                 config.profiles[selected].library = value
             } else if field == "static_archive" {
@@ -223,9 +245,9 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         config.default_profile = config.profiles[0].name
     }
     if !ProjectNameValid(config.name) ||
-        !ProjectPathValid(config.entry) ||
-        !ProjectNameValid(config.default_profile) ||
-        config.profile_count == 0 {
+    !ProjectPathValid(config.entry) ||
+    !ProjectNameValid(config.default_profile) ||
+    config.profile_count == 0 {
         config.error = "missing profile or invalid project fields"
         return config
     }
@@ -241,8 +263,12 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
             config.error = "invalid profile library"
             return config
         }
+        if profile.host != "" && !ProjectHostValid(profile.host) {
+            config.error = "invalid profile host"
+            return config
+        }
         if profile.static_archive != "" &&
-            !ProjectStaticArchiveValid(profile.static_archive) {
+        !ProjectStaticArchiveValid(profile.static_archive) {
             config.error = "invalid profile static archive"
             return config
         }
@@ -258,12 +284,12 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
     }
     install: ProjectInstall = config.install
     if (install.profile != "" && ProjectFindProfile(config, install.profile) < 0) ||
-        (install.icon != "" && !ProjectPathValid(install.icon)) ||
-        (install.working_directory != "" &&
-            !ProjectPathValid(install.working_directory)) ||
-        !ProjectTextValid(install.name) || !ProjectTextValid(install.comment) ||
-        !ProjectTextValid(install.categories) ||
-        !ProjectEnvironmentValid(install.autostart_env) {
+    (install.icon != "" && !ProjectPathValid(install.icon)) ||
+    (install.working_directory != "" &&
+        !ProjectPathValid(install.working_directory)) ||
+    !ProjectTextValid(install.name) || !ProjectTextValid(install.comment) ||
+    !ProjectTextValid(install.categories) ||
+    !ProjectEnvironmentValid(install.autostart_env) {
         config.error = "invalid install options"
         return config
     }
