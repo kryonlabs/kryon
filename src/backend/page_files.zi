@@ -22,9 +22,6 @@ page_drop_names: [PAGE_DROP_MAX][PAGE_DROP_PATH]u8;
 page_dropped_count: s32;
 page_dropped_pending: s32;
 page_drop_function: s32;
-page_clip_value: s32;
-page_clip_function: s32;
-page_clip_gesture: bool;
 
 PageFileSystem :: () -> s32 {
     return WebGetObject(WebModule, WebName("FS"))
@@ -181,43 +178,48 @@ PageCopyWithCommand :: (value: WebValue) -> bool {
     return copied
 }
 
-// The write to the clipboard was refused; try the command instead unless
-// that was already done.
-PageClipboardRefused :: (context: s32, first: s32, second: s32, third: s32) {
-    unused context
-    unused first
-    unused second
-    unused third
-    if page_clip_value == 0 { return }
-    if !page_clip_gesture { unused PageCopyWithCommand(WebObject(page_clip_value)) }
-    WebRelease(page_clip_value)
-    page_clip_value = 0
-}
-
 // Puts text on the system clipboard. `gesture` says a user gesture is in
-// progress, which the command needs.
-PageClipboardPush :: (text: string, gesture: bool) {
+// progress, which the command needs. Wait for the browser's answer so a
+// refused write is reported to the application.
+PageClipboardPush :: (text: string, gesture: bool) -> bool {
     scope: s32 = WebScope()
     value: WebValue = WebText(text)
-    if gesture { unused PageCopyWithCommand(value) }
+    copied: bool = false
     navigator: s32 = WebGetObject(WebGlobal, WebName("navigator"))
     clipboard: s32 = 0
     if navigator != 0 { clipboard = WebGetObject(navigator, WebName("clipboard")) }
     if clipboard != 0 &&
-        WebTypeOf(WebGetObject(clipboard, WebName("writeText"))) == WebTypeFunction {
-        if page_clip_value != 0 { WebRelease(page_clip_value) }
-        page_clip_value = WebKeep(WebAsObject(WebCall1(WebGlobal, WebName("String"), value)))
-        page_clip_gesture = gesture
-        if page_clip_function == 0 {
-            page_clip_function = WebFunction(PageClipboardRefused, 0)
-        }
+    WebTypeOf(WebGetObject(clipboard, WebName("writeText"))) == WebTypeFunction {
         promise: s32 = WebAsObject(WebCall1(clipboard, WebName("writeText"), value))
-        if promise != 0 {
-            unused WebCall1(promise, page_names.catch_method,
-                WebObject(page_clip_function))
+        result: WebValue
+        if promise != 0 && !WebFailed() { copied = WebAwait(promise, *result) }
+    }
+    if !copied && gesture { copied = PageCopyWithCommand(value) }
+    WebEnd(scope)
+    return copied
+}
+
+// Read the actual system clipboard, rather than the last text the app
+// copied. This lets timed clearing preserve text copied by another app.
+// A refused read is -1, an empty clipboard is 0.
+PageClipboardRead :: (output: []u8) -> s32 {
+    if output.count == 0 { return -1 }
+    scope := WebScope()
+    length: s32 = -1
+    navigator := WebGetObject(WebGlobal, WebName("navigator"))
+    clipboard: s32 = 0
+    if navigator != 0 { clipboard = WebGetObject(navigator, WebName("clipboard")) }
+    if clipboard != 0 && WebTypeOf(WebGetObject(clipboard, WebName("readText"))) == WebTypeFunction {
+        promise := WebAsObject(WebCall0(clipboard, WebName("readText")))
+        result: WebValue
+        if promise != 0 && !WebFailed() && WebAwait(promise, *result) && result.tag == WebStringTag {
+            unused WebCopyString(WebAsObject(result), output)
+            length = 0
+            while cast(s64)length < output.count && output[length] != cast(u8)0 { length += 1 }
         }
     }
     WebEnd(scope)
+    return length
 }
 
 PageDroppedCount :: () -> s32 {

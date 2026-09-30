@@ -297,6 +297,7 @@
             return 0
         }
         if kind == CanvasEventMouseDown {
+            canvas_clipboard_gesture_until = PageNow() + 1000.0
             CanvasSetMouse(CanvasPointerX(x), CanvasPointerY(y))
             if a >= 0 && a < CANVAS_BUTTON_LIMIT {
                 canvas_buttons_down[a] = true
@@ -337,6 +338,7 @@
             return 0
         }
         if kind == CanvasEventTouchBegin {
+            if a > 0 { canvas_clipboard_gesture_until = PageNow() + 1000.0 }
             canvas_touch_pending = 0
             return 0
         }

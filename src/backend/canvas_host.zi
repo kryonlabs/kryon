@@ -7,6 +7,9 @@
 #import "canvas_draw"
 #import "canvas_input"
 #import "canvas_texture"
+#import "canvas_events"
+#import "page_core"
+#import "page_files"
 
 #program_export
 RequestWindowClose :: () {
@@ -135,20 +138,25 @@ CaptureConfigured :: () -> bool {
     return false
 }
 
-// This host has no system clipboard.
+// Clipboard access uses the browser's permission-controlled Web API.
 #program_export
 SystemClipboardOpenHost :: () -> s32 {
-    return -1
+    return PageClipboardRead(canvas_clipboard_text[:])
 }
 
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
-    unused index
-    return -1
+    if index < 0 || index >= CANVAS_CLIPBOARD_SIZE { return -1 }
+    return cast(s32)canvas_clipboard_text[index]
 }
 
 #program_export
 SystemClipboardWriteHost :: (text: string) -> bool {
-    unused text
-    return false
+    if text.count >= CANVAS_CLIPBOARD_SIZE { return false }
+    previous: [CANVAS_CLIPBOARD_SIZE]u8 = canvas_clipboard_text
+    CanvasClipboardFill(text)
+    copied := PageClipboardPush(text, PageNow() <= canvas_clipboard_gesture_until)
+    if !copied { canvas_clipboard_text = previous }
+    for index: 0..CANVAS_CLIPBOARD_SIZE - 1 { previous[index] = cast(u8)0 }
+    return copied
 }
