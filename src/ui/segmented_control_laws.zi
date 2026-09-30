@@ -7,3 +7,8 @@
 // A segment moves to a new row only when wrapping is on, the row already
 // holds something, and the segment does not fit.
 #law WrapRule forall wrap: 0..1, row: 0..3, next: 0..6, available: 0..6 => SegmentedShouldWrap(wrap != 0, row, next, available) == (wrap != 0 && row > 0 && next > available);
+
+// Clicking an option selects it. That is a change unless the option was
+// already selected; with no selection yet, any choice is one.
+#law ClickSelects forall selected: -1..2, clicked: 0..2, tracked: 0..1 => SegmentedSelectionFor(selected, clicked, tracked != 0).selected_index == clicked && SegmentedSelectionFor(selected, clicked, tracked != 0).changed == (tracked == 0 || selected != clicked);
+#law NoClickNoChange forall selected: -1..2, tracked: 0..1 => !SegmentedSelectionFor(selected, -1, tracked != 0).changed;
