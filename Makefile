@@ -178,6 +178,10 @@ raylib-clip-test: $(ZI2C_BIN)
 desktop-project-test: build/bin/kryon
 	@python3 tests/desktop_project_test.py
 
+.PHONY: desktop-size-test
+desktop-size-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_size_test.py
+
 .PHONY: libdraw-project-test
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
