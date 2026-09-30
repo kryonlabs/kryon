@@ -1,0 +1,49 @@
+#import "slider"
+#import "slider_props"
+
+// Laws for sliders. Each states the expected behavior independently of the
+// implementation; `ziran check` proves it over every listed input. An
+// implementation edit may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+Ratio :: (any: s32, active: s32, hot: s32, disabled: s32, captured: s32,
+    pressed: s32, down: s32, released: s32) -> SliderRatioDecision {
+    return SliderRatioDecisionFor(B(any), B(active), B(hot), B(disabled),
+        B(captured), B(pressed), B(down), B(released))
+}
+
+// Another widget capturing the pointer, or disabling an active slider,
+// ends its drag.
+#law CaptureClears forall active: 0..1, disabled: 0..1 => Ratio(1, active, 0, disabled, 1, 0, 0, 0).clear_active;
+#law DisabledActiveClears forall any: 0..1, captured: 0..1 => Ratio(any, 1, 0, 1, captured, 0, 0, 0).clear_active;
+
+// A press on the slider under the pointer starts a drag.
+#law HotPressStarts forall any: 0..1, active: 0..1, disabled: 0..1, captured: 0..1, down: 0..1, released: 0..1 => Ratio(any, active, 1, disabled, captured, 1, down, released).start_active;
+#law OnlyHotPressStarts forall hot: 0..1, pressed: 0..1 => Ratio(0, 0, hot, 0, 0, pressed, 0, 0).start_active == (B(hot) && B(pressed));
+
+// A disabled slider never moves its value.
+#law DisabledNeverUpdates forall any: 0..1, active: 0..1, hot: 0..1, captured: 0..1, pressed: 0..1, down: 0..1, released: 0..1 => !Ratio(any, active, hot, 1, captured, pressed, down, released).update_ratio;
+
+// The value follows the pointer only during a drag, while the pointer is
+// pressed or held, and a release ends that drag.
+#law UpdateNeedsDrag forall any: 0..1, captured: 0..1, down: 0..1, released: 0..1 => !Ratio(any, 0, 0, 0, captured, 0, down, released).update_ratio;
+#law PressUpdates custom Ratio(0, 0, 1, 0, 0, 1, 0, 0).update_ratio;
+#law HeldDragUpdates custom Ratio(1, 1, 0, 0, 0, 0, 1, 0).update_ratio;
+#law ReleaseFinishes custom Ratio(1, 1, 0, 0, 0, 0, 0, 1).finish_active;
+#law NoDragNoFinish forall captured: 0..1, released: 0..1 => !Ratio(0, 0, 0, 0, captured, 0, 0, released).finish_active;
+
+Step :: (value: s32, low: s32, high: s32, direction: s32, home: s32,
+    end: s32, alt: s32, shift: s32) -> SliderDiscreteStep {
+    return SliderDiscreteKeyboardValue(value, low, high, direction, B(home),
+        B(end), B(alt), B(shift))
+}
+
+// Keys keep the value within the range, Home and End jump to its ends, an
+// empty range never changes, and `changed` reports exactly a change.
+#law KeysStayInRange forall value: 0..20, direction: -1..1, alt: 0..1, shift: 0..1 => Step(value, 0, 20, direction, 0, 0, alt, shift).value >= 0 && Step(value, 0, 20, direction, 0, 0, alt, shift).value <= 20;
+#law HomeAndEnd forall value: 0..20 => Step(value, 0, 20, 0, 1, 0, 0, 0).value == 0 && Step(value, 0, 20, 0, 0, 1, 0, 0).value == 20;
+#law EmptyRangeKeeps forall value: -2..2, low: -2..2, direction: -1..1 => Step(value, low, low, direction, 0, 0, 0, 0).value == value && !Step(value, low, low, direction, 0, 0, 0, 0).changed;
+#law ArrowStepsOne forall value: 1..19, direction: -1..1 => Step(value, 0, 20, direction, 0, 0, 0, 0).value == value + direction;
+#law ShiftStepsTen forall value: 0..20, direction: -1..1 => Step(value, 0, 20, direction, 0, 0, 0, 1).value == (ifx value + direction * 10 < 0 then 0 else ifx value + direction * 10 > 20 then 20 else value + direction * 10);
+#law ChangedMeansChange forall value: 0..20, direction: -1..1, shift: 0..1 => Step(value, 0, 20, direction, 0, 0, 0, shift).changed == (Step(value, 0, 20, direction, 0, 0, 0, shift).value != value);

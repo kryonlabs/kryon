@@ -113,4 +113,10 @@ mutate layout.zi layout_laws.zi 's/    if out > max_value { out = max_value }/  
 mutate scroll.zi scroll_drag_laws.zi 's/    decision.consume_release = drag_active && mouse_released/    decision.consume_release = mouse_released/' ReleaseClearsDrag
 # Touch scrolling that starts at the threshold instead of past it.
 mutate scroll.zi scroll_drag_laws.zi 's/        if dragging || delta_y > drag_threshold || delta_y < -drag_threshold {/        if dragging || delta_y >= drag_threshold || delta_y < -drag_threshold {/' SmallMoveStaysArmed
+# A disabled slider following the pointer.
+mutate slider.zi slider_laws.zi 's/    decision.update_ratio = effective_active && !disabled && (pressed || down)/    decision.update_ratio = effective_active \&\& (pressed || down)/' DisabledNeverUpdates
+# Shift stepping a slider by five instead of ten.
+mutate slider.zi slider_laws.zi 's/        if shift { step = step \* 10 }/        if shift { step = step * 5 }/' ShiftStepsTen
+# A paned view divider that keeps dragging after the release.
+mutate paned_view.zi paned_view_laws.zi 's/    if has_active && !mouse_down {/    if has_active \&\& mouse_down {/' ReleaseEnds
 echo "Kryon laws reject all mutations"

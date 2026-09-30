@@ -1,0 +1,26 @@
+#import "paned_view"
+
+// Laws for dragging the divider of a paned view. Each states the expected
+// behavior independently of the implementation; `ziran check` proves it
+// over every listed input. An implementation edit may not change this
+// file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+Drag :: (has_active: s32, current: s32, captured: s32, down: s32,
+    disabled: s32, split: s32, hot: s32, pressed: s32) -> PanedViewDragDecision {
+    return PanedViewDragFor(B(has_active), B(current), B(captured), B(down),
+        B(disabled), B(split), B(hot), B(pressed))
+}
+
+// A drag ends when another widget captures the pointer, the pointer is
+// released, or the dragged view is disabled.
+#law CaptureEnds forall current: 0..1, down: 0..1, disabled: 0..1 => Drag(1, current, 1, down, disabled, 1, 0, 0).clear_active;
+#law ReleaseEnds forall current: 0..1, captured: 0..1, disabled: 0..1 => Drag(1, current, captured, 0, disabled, 1, 0, 0).clear_active;
+#law DisabledEnds forall has_active: 0..1, captured: 0..1, down: 0..1 => Drag(has_active, 1, captured, down, 1, 1, 0, 0).clear_active;
+
+// A drag starts only from a fresh press on the divider of an enabled view
+// that has a split.
+#law StartRule forall disabled: 0..1, split: 0..1, hot: 0..1, pressed: 0..1 => Drag(0, 0, 0, 1, disabled, split, hot, pressed).start_drag == (!B(disabled) && B(split) && B(hot) && B(pressed));
+#law HeldDragContinues custom Drag(1, 1, 0, 1, 0, 1, 0, 0).drag_active && !Drag(1, 1, 0, 1, 0, 1, 0, 0).clear_active;
+#law EndedDragInactive forall hot: 0..1 => !Drag(1, 1, 0, 0, 0, 1, hot, 0).drag_active;
