@@ -1,0 +1,65 @@
+#import "menu"
+
+// Laws for menus. Each states the expected behavior independently of the
+// implementation; `ziran check` proves it over every listed input. An
+// implementation edit may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// Escape closes a focused menu unless something else holds the focus.
+#law EscapeNeedsFocus forall captured: 0..1, escape: 0..1 => !MenuEscapeShouldClose(false, B(captured), B(escape));
+#law CapturedEscapeIgnored forall escape: 0..1 => !MenuEscapeShouldClose(true, true, B(escape));
+#law EscapeCloses forall escape: 0..1 => MenuEscapeShouldClose(true, false, B(escape)) == B(escape);
+
+// The click that opens a context menu, or its release over the trigger,
+// must not close it again.
+#law OpeningSuppressesClose forall trigger: 0..1, released: 0..1 => MenuContextShouldSuppressClose(true, B(trigger), B(released));
+#law TriggerReleaseSuppresses forall released: 0..1 => MenuContextShouldSuppressClose(false, true, B(released)) == B(released);
+#law ElsewhereDoesNotSuppress forall released: 0..1 => !MenuContextShouldSuppressClose(false, false, B(released));
+
+Fires :: (keyboard: s32, ctrl_required: s32, ctrl: s32, shift_required: s32,
+    shift: s32, alt_required: s32, alt: s32, key: s32) -> bool {
+    return MenuAcceleratorShouldFire(B(keyboard), B(ctrl_required), B(ctrl),
+        B(shift_required), B(shift), B(alt_required), B(alt), B(key))
+}
+
+// An accelerator fires exactly when the keyboard is enabled, its key is
+// pressed, and every modifier it requires is down.
+#law AcceleratorRule forall keyboard: 0..1, cr: 0..1, c: 0..1, sr: 0..1, s: 0..1, ar: 0..1, a: 0..1, key: 0..1 => Fires(keyboard, cr, c, sr, s, ar, a, key) == (B(keyboard) && B(key) && (!B(cr) || B(c)) && (!B(sr) || B(s)) && (!B(ar) || B(a)));
+#law ExtraModifiersAllowed forall c: 0..1, s: 0..1, a: 0..1 => Fires(1, 0, c, 0, s, 0, a, 1);
+
+// Opening and closing a context menu: nothing changes without an open
+// request state, a close request wins over an open request, and `changed`
+// reports exactly a change.
+#law WithoutStateKeepsOpen forall open: 0..1, opening: 0..1, closing: 0..1 => MenuContextOpenFor(B(open), B(opening), B(closing), false).open == B(open) && !MenuContextOpenFor(B(open), B(opening), B(closing), false).changed;
+#law CloseWins forall open: 0..1 => !MenuContextOpenFor(B(open), true, true, true).open;
+#law OpenRequestOpens custom MenuContextOpenFor(false, true, false, true).open && MenuContextOpenFor(false, true, false, true).changed;
+#law NoRequestKeeps forall open: 0..1 => MenuContextOpenFor(B(open), false, false, true).open == B(open) && !MenuContextOpenFor(B(open), false, false, true).changed;
+#law ChangedMeansChange forall open: 0..1, opening: 0..1, closing: 0..1 => MenuContextOpenFor(B(open), B(opening), B(closing), true).changed == (MenuContextOpenFor(B(open), B(opening), B(closing), true).open != B(open));
+
+// Arrow keys wrap around the items and always land on one of them.
+#law WrapStaysInRange forall start: 0..5, direction: -1..1, count: 1..6 => start >= count || (MenuWrappedItemIndex(start, direction, count) >= 0 && MenuWrappedItemIndex(start, direction, count) < count);
+#law WrapNeedsItems forall start: -1..3, direction: -1..1 => MenuWrappedItemIndex(start, direction, 0) == -1;
+#law DownFromLastWraps forall count: 1..6 => MenuWrappedItemIndex(count - 1, 1, count) == 0;
+#law UpFromFirstWraps forall count: 1..6 => MenuWrappedItemIndex(0, -1, count) == count - 1;
+
+// Separators and disabled items are never selected or activated.
+#law SeparatorNeverSelectable forall disabled: 0..1 => !MenuItemSelectable(MenuKindSeparator(), B(disabled)) && !MenuItemKeyboardActivates(MenuKindSeparator(), B(disabled), false) && !MenuItemPointerActivates(MenuKindSeparator(), B(disabled));
+#law DisabledNeverActivates forall kind: 0..3, submenu: 0..1 => !MenuItemSelectable(kind, true) && !MenuItemKeyboardActivates(kind, true, B(submenu)) && !MenuItemPointerActivates(kind, true);
+
+// A submenu opens only from an enabled submenu item with items of its own,
+// and never past the depth limit.
+#law SubmenuNeedsItems forall count: -1..0, depth: 0..2 => !MenuItemCanOpenSubmenu(MenuKindSubmenu(), false, true, count, depth, 4);
+#law SubmenuDepthLimit forall depth: 0..5, limit: 1..4 => MenuItemCanOpenSubmenu(MenuKindSubmenu(), false, true, 2, depth, limit) == (depth + 1 < limit);
+
+// A release outside an open menu bar and its panel closes the menu, clears
+// the submenu, and takes the release; a release inside does nothing.
+#law OutsideReleaseCloses forall valid: 0..1 => MenuOutsideCloseDecisionFor(3, true, false, B(valid), false).close_open && MenuOutsideCloseDecisionFor(3, true, false, B(valid), false).clear_submenu && MenuOutsideCloseDecisionFor(3, true, false, B(valid), false).consume_release;
+#law InsideReleaseKeeps forall bar: 0..1, panel: 0..1 => (!B(bar) && !B(panel)) || !MenuOutsideCloseDecisionFor(3, true, B(bar), true, B(panel)).close_open;
+#law ClosedMenuIgnoresRelease forall bar: 0..1, panel: 0..1 => !MenuOutsideCloseDecisionFor(0, true, B(bar), true, B(panel)).close_open && !MenuOutsideCloseDecisionFor(0, true, B(bar), true, B(panel)).consume_release;
+
+// A context menu closes on an outside release unless that release is
+// suppressed, and only the open menu reacts.
+#law ContextOutsideCloses custom MenuContextOutsideCloseDecisionFor(5, 5, false, true, true, false).close_open && MenuContextOutsideCloseDecisionFor(5, 5, false, true, true, false).consume_release;
+#law SuppressedKeepsContext forall panel: 0..1 => !MenuContextOutsideCloseDecisionFor(5, 5, true, true, true, B(panel)).close_open;
+#law OtherContextUntouched forall other: 0..4 => !MenuContextOutsideCloseDecisionFor(5, other, false, true, true, false).close_open;

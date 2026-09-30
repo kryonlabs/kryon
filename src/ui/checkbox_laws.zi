@@ -1,0 +1,26 @@
+#import "checkbox"
+#import "checkbox_props"
+
+// Laws for a checkbox's value. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+Result :: (checked: bool, changed: bool) -> CheckboxValueResult {
+    result: CheckboxValueResult
+    result.checked = checked
+    result.changed = changed
+    return result
+}
+
+Apply :: (checked: s32, pressed: s32, has_value: s32) -> CheckboxValueResult {
+    return CheckboxValueApply(checked != 0, pressed != 0, has_value != 0)
+}
+
+// Without a press the value never changes.
+#law UnpressedKeepsValue forall checked: 0..1, has_value: 0..1 => Apply(checked, 0, has_value) == Result(checked != 0, false);
+
+// A press without a stored value changes nothing.
+#law PressWithoutValueKeeps forall checked: 0..1 => Apply(checked, 1, 0) == Result(checked != 0, false);
+
+// A press with a stored value toggles it and reports the change.
+#law PressToggles forall checked: 0..1 => Apply(checked, 1, 1) == Result(checked == 0, true);

@@ -1,0 +1,59 @@
+#import "drag_drop"
+
+// Laws for drag and drop. Each states the expected behavior independently
+// of the implementation; `ziran check` proves it over every listed input.
+// An implementation edit may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// A source starts a drag only when it is valid, under the pointer, and
+// pressed.
+#law SourceNeedsValid forall hot: 0..1, pressed: 0..1 => !DragDropSourceStarts(false, B(hot), B(pressed));
+#law SourceNeedsHot forall pressed: 0..1 => !DragDropSourceStarts(true, false, B(pressed));
+#law SourceNeedsPress custom !DragDropSourceStarts(true, true, false);
+#law SourceStarts custom DragDropSourceStarts(true, true, true);
+
+// A disabled source, one without a type, one whose data is larger than its
+// limit or negative, or one that claims data it does not have is invalid.
+#law DisabledSourceInvalid forall content: 0..1, typed: 0..1, size: -2..4, limit: -1..4, data: 0..1 => !DragDropSourceValid(true, B(content), B(typed), size, limit, B(data));
+#law UntypedSourceInvalid forall size: -2..4, limit: -1..4, data: 0..1 => !DragDropSourceValid(false, false, false, size, limit, B(data));
+#law OversizedSourceInvalid forall size: 0..4, limit: 0..4, data: 0..1 => size <= limit || !DragDropSourceValid(false, false, true, size, limit, B(data));
+#law NegativeSizeInvalid forall size: -3..-1, limit: -1..4, data: 0..1 => !DragDropSourceValid(false, false, true, size, limit, B(data));
+#law MissingDataInvalid forall size: 1..4 => !DragDropSourceValid(false, false, true, size, -1, false);
+#law TypedSourceValid forall size: 0..4, data: 0..1 => (size > 0 && !B(data)) || DragDropSourceValid(false, false, true, size, 4, B(data));
+
+// A target matches only an active drag carrying its own type.
+#law TargetNeedsActive forall typed: 0..1, same: 0..1 => !DragDropTargetMatches(false, B(typed), B(same));
+#law TargetNeedsType forall same: 0..1 => !DragDropTargetMatches(true, false, B(same));
+#law TargetNeedsSameType custom !DragDropTargetMatches(true, true, false);
+#law TargetMatches custom DragDropTargetMatches(true, true, true);
+
+// A target is hot only when enabled and under the pointer.
+#law DisabledTargetCold forall content: 0..1, pointer: 0..1 => !DragDropTargetHot(true, B(content), B(pointer));
+#law ContentDisabledTargetCold forall pointer: 0..1 => !DragDropTargetHot(false, true, B(pointer));
+#law TargetColdAway custom !DragDropTargetHot(false, false, false);
+#law TargetHot custom DragDropTargetHot(false, false, true);
+
+// A target accepts only when enabled, matching, hot, and released over.
+#law DisabledTargetRefuses forall content: 0..1, matches: 0..1, hot: 0..1, released: 0..1 => !DragDropTargetAccepts(true, B(content), B(matches), B(hot), B(released));
+#law ContentDisabledRefuses forall matches: 0..1, hot: 0..1, released: 0..1 => !DragDropTargetAccepts(false, true, B(matches), B(hot), B(released));
+#law MismatchRefuses forall hot: 0..1, released: 0..1 => !DragDropTargetAccepts(false, false, false, B(hot), B(released));
+#law ColdTargetRefuses forall released: 0..1 => !DragDropTargetAccepts(false, false, true, false, B(released));
+#law UnreleasedRefuses custom !DragDropTargetAccepts(false, false, true, true, false);
+#law TargetAccepts custom DragDropTargetAccepts(false, false, true, true, true);
+
+// A drop copies no more than the data and the output hold, and never a
+// negative amount.
+#law CopyFitsBoth forall data: -2..6, output: -2..6 => DragDropCopySize(data, output) >= 0 && DragDropCopySize(data, output) <= (ifx data > 0 then data else 0) && DragDropCopySize(data, output) <= (ifx output > 0 then output else 0);
+#law CopyTakesSmaller forall data: 0..6, output: 0..6 => DragDropCopySize(data, output) == (ifx data < output then data else output);
+
+// A target that does not accept leaves the drag alone; one that accepts
+// ends it, takes the release, and copies what fits.
+#law RefusalChangesNothing forall disabled: 0..1, hot: 0..1, released: 0..1, data: 0..3, output: 0..3 => (!B(disabled) && B(hot) && B(released)) || (!DragDropTargetDecisionFor(B(disabled), false, true, true, true, B(hot), B(released), data, output).accepted && DragDropTargetDecisionFor(B(disabled), false, true, true, true, B(hot), B(released), data, output).copy_size == 0 && !DragDropTargetDecisionFor(B(disabled), false, true, true, true, B(hot), B(released), data, output).clear_source && !DragDropTargetDecisionFor(B(disabled), false, true, true, true, B(hot), B(released), data, output).consume_release);
+#law AcceptanceEndsDrag forall data: 0..3, output: 0..3 => DragDropTargetDecisionFor(false, false, true, true, true, true, true, data, output).clear_source && DragDropTargetDecisionFor(false, false, true, true, true, true, true, data, output).consume_release && DragDropTargetDecisionFor(false, false, true, true, true, true, true, data, output).copy_size == DragDropCopySize(data, output);
+
+// The dragged source is cleared once the pointer is up and was not just
+// released, and while the pointer is down or released it stays active.
+#law HeldSourceStaysActive forall down: 0..1, released: 0..1 => (!B(down) && !B(released)) || (DragDropSourceReturnsActive(true, 7, 7, B(down), B(released)) && !DragDropShouldClearSource(true, 7, 7, B(down), B(released)));
+#law DroppedSourceClears custom DragDropShouldClearSource(true, 7, 7, false, false) && !DragDropSourceReturnsActive(true, 7, 7, false, false);
+#law OtherSourceUntouched forall other: 0..6, down: 0..1, released: 0..1 => other == 7 || (!DragDropShouldClearSource(true, 7, other, B(down), B(released)) && !DragDropSourceReturnsActive(true, 7, other, B(down), B(released)));
