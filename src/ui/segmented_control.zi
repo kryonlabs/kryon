@@ -151,7 +151,7 @@ SegmentedSelectionFor :: (selected_index: s32, clicked_index: s32,
         return result
     }
     result.selected_index = clicked_index
-    result.changed = has_selected_index && selected_index != clicked_index
+    result.changed = !has_selected_index || selected_index != clicked_index
     return result
 }
 
