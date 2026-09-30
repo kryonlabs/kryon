@@ -1,0 +1,67 @@
+// A frame's keyboard input as a text field reads it: the key and modifiers a
+// host reported and the text typed since the last frame.
+#import "session"
+#import "text_input_props"
+#import "tree_input"
+
+// Appends a codepoint as UTF-8 and returns the new length, or the old length
+// when it does not fit.
+TypedTextAppend :: (output: []u8, length: s32, codepoint: s32) -> s32 {
+    size: s32 = 4
+    if codepoint < 0x80 { size = 1 }
+    else if codepoint < 0x800 { size = 2 }
+    else if codepoint < 0x10000 { size = 3 }
+    if length < 0 || length + size > cast(s32)output.count { return length }
+    if size == 1 {
+        output[length] = cast(u8)codepoint
+    } else if size == 2 {
+        output[length] = cast(u8)(0xC0 | (codepoint >> 6))
+        output[length + 1] = cast(u8)(0x80 | (codepoint & 0x3F))
+    } else if size == 3 {
+        output[length] = cast(u8)(0xE0 | (codepoint >> 12))
+        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        output[length + 2] = cast(u8)(0x80 | (codepoint & 0x3F))
+    } else {
+        output[length] = cast(u8)(0xF0 | (codepoint >> 18))
+        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
+        output[length + 2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        output[length + 3] = cast(u8)(0x80 | (codepoint & 0x3F))
+    }
+    return length + size
+}
+
+// Takes every codepoint typed since the last frame as UTF-8 text in output.
+// Codepoints that do not fit are dropped.
+#program_export
+TypedTextTake :: (session: Session, output: []u8) -> string {
+    length: s32 = 0
+    codepoint: s32 = TypedCodepointTake(session)
+    while codepoint != 0 {
+        length = TypedTextAppend(output, length, codepoint)
+        codepoint = TypedCodepointTake(session)
+    }
+    return TextView(output[0:length])
+}
+
+// The editing a focused text field does for this frame's key, modifiers, and
+// typed text. With Control held, typed letters are shortcuts, not text.
+#program_export
+TextFieldInputFor :: (key: s32, modifiers: s32, text: string) -> TextFieldInput {
+    input: TextFieldInput
+    control: bool = (modifiers & KeyModifierControl) != 0
+    input.shift = (modifiers & KeyModifierShift) != 0
+    input.left = key == KeyLeft
+    input.right = key == KeyRight
+    input.home = key == KeyHome
+    input.end = key == KeyEnd
+    input.backspace = key == KeyBackspace
+    input.delete_forward = key == KeyDelete
+    input.commit = key == KeyEnter
+    input.escape = key == KeyEscape
+    input.select_all = control && key == 65
+    input.copy = control && key == 67
+    input.cut = control && key == 88
+    input.paste = control && key == 86
+    if !control { input.text = text }
+    return input
+}

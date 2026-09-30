@@ -61,6 +61,7 @@ input.zi
 input_props.zi
 instance.zi
 inspect.zi
+key_input.zi
 layout.zi
 layout_props.zi
 layout_widget.zi

@@ -58,6 +58,23 @@ KeyModifierShift :: 1;
 KeyModifierControl :: 2;
 KeyModifierAlt :: 4;
 
+// The key codes every host reports through KeyboardTake. Letters are their
+// uppercase ASCII codes, and digits and punctuation their ASCII codes.
+KeyEscape :: 256;
+KeyEnter :: 257;
+KeyTab :: 258;
+KeyBackspace :: 259;
+KeyInsert :: 260;
+KeyDelete :: 261;
+KeyRight :: 262;
+KeyLeft :: 263;
+KeyDown :: 264;
+KeyUp :: 265;
+KeyPageUp :: 266;
+KeyPageDown :: 267;
+KeyHome :: 268;
+KeyEnd :: 269;
+
 TypedInputQueue :: struct {
     values: [32]s32
     head: s32

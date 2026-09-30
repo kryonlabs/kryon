@@ -1,0 +1,43 @@
+#import "session"
+#import "key_input"
+#import "text_input_props"
+#import "tree_input"
+
+#program_export
+main :: () -> s32 {
+    session: Session = SessionOpen()
+    if !SessionValid(session) { return 1 }
+    // Typed codepoints arrive as one UTF-8 text, then the queue is empty.
+    storage: [16]u8
+    TypedCodepointSend(session, 104)
+    TypedCodepointSend(session, 233)
+    TypedCodepointSend(session, 0x20AC)
+    TypedCodepointSend(session, 0x1F600)
+    typed: string = TypedTextTake(session, storage[:])
+    if typed != "hé€😀" { return 2 }
+    if TypedTextTake(session, storage[:]).count != 0 { return 3 }
+    // Text that does not fit stops at the last whole codepoint.
+    small: [3]u8
+    TypedCodepointSend(session, 97)
+    TypedCodepointSend(session, 0x20AC)
+    if TypedTextTake(session, small[:]) != "a" { return 4 }
+    // Keys map to the matching edits; typed text is inserted.
+    input: TextFieldInput = TextFieldInputFor(KeyBackspace, 0, "")
+    if !input.backspace || input.left || input.text.count != 0 { return 5 }
+    input = TextFieldInputFor(KeyLeft, KeyModifierShift, "")
+    if !input.left || !input.shift { return 6 }
+    input = TextFieldInputFor(KeyEnter, 0, "")
+    if !input.commit || input.escape { return 7 }
+    input = TextFieldInputFor(0, 0, "ab")
+    if input.text != "ab" || input.backspace { return 8 }
+    // Control turns letters into shortcuts and inserts no text.
+    input = TextFieldInputFor(86, KeyModifierControl, "v")
+    if !input.paste || input.text.count != 0 { return 9 }
+    input = TextFieldInputFor(65, KeyModifierControl, "")
+    if !input.select_all || input.copy { return 10 }
+    input = TextFieldInputFor(KeyDelete, 0, "")
+    if !input.delete_forward || !TextFieldInputFor(KeyHome, 0, "").home ||
+        !TextFieldInputFor(KeyEnd, 0, "").end ||
+        !TextFieldInputFor(KeyEscape, 0, "").escape { return 11 }
+    return 0
+}
