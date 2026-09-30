@@ -24,8 +24,8 @@ OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
-all: source-check $(BUILD_DIR)/libkryon.a
+.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test dom-project-test libdraw-native-plan9-test
+all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
@@ -57,19 +57,27 @@ $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
 $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
-	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj $(BUILD_DIR)/obj-cpp
+	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/obj
 	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/ir $(SOURCE)
 	$(ZI2C_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/c $(SOURCE)
+	@for module in $(MODULES); do \
+		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
+	done
+	rm -f $@
+	$(AR) rcs $@ $(OBJECTS)
+
+# The library also compiles as C++ and passes its Go tests. Apps that only
+# link the C library, and packaging builds without Go, skip this check.
+.PHONY: backends-check
+backends-check: $(BUILD_DIR)/libkryon.a
+	mkdir -p $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj-cpp
 	$(ZI2CPP_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/cpp $(SOURCE)
 	rm -f $(BUILD_DIR)/go/*.go
 	$(ZI2GO_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/go $(SOURCE)
 	@for module in $(MODULES); do \
-		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
 		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/cpp -c $(BUILD_DIR)/cpp/$$module.cpp -o $(BUILD_DIR)/obj-cpp/$$module.o || exit 1; \
 	done
 	cd $(BUILD_DIR)/go && GO111MODULE=off go test .
-	rm -f $@
-	$(AR) rcs $@ $(OBJECTS)
 
 TEST_JOBS ?= 4
 TEST ?=
