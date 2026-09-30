@@ -107,4 +107,10 @@ mutate selectable.zi selectable_laws.zi 's/        result.selected = !selected/ 
 mutate toggle.zi toggle_laws.zi 's/    if activated && enabled && has_value {/    if activated \&\& has_value {/' FlipRule
 # A swipe claiming the pointer again on every dragging frame.
 mutate swipe.zi swipe_laws.zi 's/    lifecycle.claim_pointer_owner = !was_dragging && next_dragging/    lifecycle.claim_pointer_owner = next_dragging/' ClaimOnStart
+# A layout clamp that lets values run one past the maximum.
+mutate layout.zi layout_laws.zi 's/    if out > max_value { out = max_value }/    if out > max_value + 1 { out = max_value }/' ClampStaysInRange
+# A scroll bar taking a release while nothing is dragged.
+mutate scroll.zi scroll_drag_laws.zi 's/    decision.consume_release = drag_active && mouse_released/    decision.consume_release = mouse_released/' ReleaseClearsDrag
+# Touch scrolling that starts at the threshold instead of past it.
+mutate scroll.zi scroll_drag_laws.zi 's/        if dragging || delta_y > drag_threshold || delta_y < -drag_threshold {/        if dragging || delta_y >= drag_threshold || delta_y < -drag_threshold {/' SmallMoveStaysArmed
 echo "Kryon laws reject all mutations"
