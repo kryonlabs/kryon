@@ -3,6 +3,11 @@ addToLibrary({
   canvas_test_text__sig: 'iiifii',
   canvas_test_text: function(face, size, zoom, width, dark) {
     var canvas = document.getElementById('canvas');
+    var dpi = Math.max(1, globalThis.devicePixelRatio || 1);
+    if (canvas.width !== Math.round(160 * dpi) || canvas.height !== Math.round(120 * dpi)) {
+      globalThis.canvasTestError = 'backing store did not follow display density ' + dpi;
+      return 0;
+    }
     var reference = typeof OffscreenCanvas === 'function'
       ? new OffscreenCanvas(canvas.width, canvas.height)
       : document.createElement('canvas');
@@ -23,7 +28,6 @@ addToLibrary({
     var ascent = context.measureText('H').fontBoundingBoxAscent;
     context.fillStyle = dark ? '#182238' : '#ffffff';
     context.fillRect(0, 0, reference.width, reference.height);
-    var dpi = Math.max(1, globalThis.devicePixelRatio || 1);
     context.setTransform(dpi, 0, 0, dpi, 0, 0);
     context.translate(3, 4);
     context.scale(zoom, zoom);
@@ -62,6 +66,10 @@ addToLibrary({
       event('keypress',{key:'B'});
       var dpi=Math.max(1,globalThis.devicePixelRatio||1), pixel=document.getElementById('canvas').getContext('2d').getImageData(50*dpi,50*dpi,1,1).data;
       if(pixel[0]!==0 || pixel[1]!==0 || pixel[2]!==0 || pixel[3]!==255) return 1;
+    }
+    if(phase===3) {
+      var density = globalThis.devicePixelRatio === 2 ? 1.25 : 2;
+      Object.defineProperty(globalThis, 'devicePixelRatio', {value:density, configurable:true});
     }
     return 0;
   },

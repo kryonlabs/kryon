@@ -150,6 +150,9 @@ main :: () -> s32 {
         CanvasTestFail(31)
     }
     TestTextResolution(true)
+    // Density can change while the CSS width and height stay identical.
+    CanvasTestInput(3)
+    TestTextResolution(true)
     ReleaseTypefaces()
     BeginMode2D(Camera.{offset = Vector2.{30.0, 30.0}, zoom = 2.0})
     BeginScissorMode(0, 0, 1, 1)
