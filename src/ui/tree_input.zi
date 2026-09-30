@@ -219,6 +219,8 @@ TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
     if TreeCount(session) == 0 ||
         !PointInBounds(x, y, TreeInputAt(session, 0).bounds) { return -1 }
     index: s32 = TreeCount(session) - 1
+    hit: s32 = -1
+    layer: s32 = -1
     while index > 0 {
         entry: NodeInput = TreeInputAt(session, index)
         if entry.interactive &&
@@ -236,13 +238,17 @@ TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
             PointInBounds(x, y, entry.bounds) &&
             (!entry.circle_hit || PointInCircleBounds(x, y, entry.bounds)) &&
             (!entry.clipped || PointInBounds(x, y, entry.clip)) {
-            if TreePointerActivatable(entry.kind, entry.focus_id,
-                entry.disabled, entry.loading) { return index }
-            return -1
+            candidate_layer := TreeOverlayLayerAt(session, index, true)
+            if candidate_layer > layer {
+                layer = candidate_layer
+                hit = -1
+                if TreePointerActivatable(entry.kind, entry.focus_id,
+                    entry.disabled, entry.loading) { hit = index }
+            }
         }
         index -= 1
     }
-    return -1
+    return hit
 }
 
 // The most recently submitted scroll viewport under the pointer wins. A
