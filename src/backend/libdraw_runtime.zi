@@ -2,6 +2,7 @@
 #import "cairo_raster"
 #import "geometry"
 #import "tree_input"
+#import "libdraw_keys"
 
 draw_library :: #system_library "draw";
 dl_library :: #system_library "dl";
@@ -57,6 +58,8 @@ LookupSymbol :: (handle: *void, symbol: *u8) -> *void #foreign dl_library "dlsym
 Allocate :: (count: usize) -> *void #foreign libc "malloc";
 Release :: (data: *void) #foreign libc "free";
 PauseMicros :: (micros: u32) -> s32 #foreign libc "usleep";
+GetSnarf :: () -> *s8 #foreign draw_library "getsnarf";
+PutSnarf :: (text: *s8) #foreign draw_library "putsnarf";
 
 draw_display: *void;
 draw_screen: *DrawImage;
@@ -67,6 +70,11 @@ draw_height: s32;
 draw_pointer: PointerFrame;
 draw_key: s32;
 draw_resize_pending: bool;
+draw_rune: s32;
+draw_secondary: SecondaryPointerFrame;
+draw_wheel: float32;
+draw_clipboard: *u8;
+draw_clipboard_count: s32;
 
 // libdraw calls this only for a resize event from the display opened here.
 #program_export
@@ -107,14 +115,14 @@ OpenFrame :: () -> bool {
 #program_export
 OpenLibdraw :: () -> bool {
     if size_of(DrawPoint) != 8 || size_of(DrawRectangle) != 16 ||
-        size_of(DrawMouse) != 24 || size_of(DrawEvent) != 8368 ||
-        size_of(DrawImage) != 72 { return false }
+    size_of(DrawMouse) != 24 || size_of(DrawEvent) != 8368 ||
+    size_of(DrawImage) != 72 { return false }
     label: [32]u8
     display_name: [16]u8
     screen_name: [16]u8
     if !CopyCString("Kryon Ziran", label[:]) ||
-        !CopyCString("display", display_name[:]) ||
-        !CopyCString("screen", screen_name[:]) { return false }
+    !CopyCString("display", display_name[:]) ||
+    !CopyCString("screen", screen_name[:]) { return false }
     if InitDraw(null, null, *label[0]) < 0 { return false }
     // plan9port exposes these as globals; dlsym avoids handwritten C shims.
     display_slot: *void = LookupSymbol(null, *display_name[0])
@@ -134,6 +142,7 @@ OpenLibdraw :: () -> bool {
 
 #program_export
 CloseLibdraw :: () {
+    if draw_clipboard != null { Release(cast(*void)draw_clipboard); draw_clipboard = null }
     ReleaseFrame()
     if draw_display != null { CloseDisplay(draw_display) }
     draw_display = null
@@ -147,7 +156,17 @@ LibdrawViewport :: () -> Rectangle {
 }
 
 #program_export
-LibdrawPressedKey :: () -> s32 { return draw_key }
+LibdrawPressedKey :: () -> s32 { return LibdrawKey(draw_key) }
+#program_export
+LibdrawKeyboardModifiers :: () -> s32 { return LibdrawModifiers(draw_rune) }
+#program_export
+LibdrawTypedCodepoint :: () -> s32 {
+    result := LibdrawCodepoint(draw_rune)
+    draw_rune = 0
+    return result
+}
+#program_export
+LibdrawWheelMove :: () -> float32 { return draw_wheel }
 
 #program_export
 PollLibdraw :: () -> bool {
@@ -155,20 +174,31 @@ PollLibdraw :: () -> bool {
     draw_pointer.pressed = false
     draw_pointer.released = false
     draw_key = 0
+    draw_rune = 0
+    draw_wheel = 0.0
+    draw_secondary.pressed = false
+    draw_secondary.released = false
     event: DrawEvent
     if EventCanRead(cast(u64)3) != 0 {
         kind: u64 = EventRead(cast(u64)3, *event)
         if kind == cast(u64)1 {
             down: bool = (event.mouse.buttons & 1) != 0
             draw_pointer.pressed = draw_pointer.pressed ||
-                (down && !draw_pointer.down)
+            (down && !draw_pointer.down)
             draw_pointer.released = draw_pointer.released ||
-                (!down && draw_pointer.down)
+            (!down && draw_pointer.down)
             draw_pointer.down = down
             draw_pointer.x = cast(float32)(event.mouse.xy.x - draw_screen.r.min.x)
             draw_pointer.y = cast(float32)(event.mouse.xy.y - draw_screen.r.min.y)
+            secondary := (event.mouse.buttons & 4) != 0
+            draw_secondary.pressed = secondary && !draw_secondary.down
+            draw_secondary.released = !secondary && draw_secondary.down
+            draw_secondary.down = secondary
+            if (event.mouse.buttons & 8) != 0 { draw_wheel = 1.0 }
+            if (event.mouse.buttons & 16) != 0 { draw_wheel = -1.0 }
         } else if kind == cast(u64)2 {
             draw_key = event.kbdc
+            draw_rune = event.kbdc
         }
     }
     if draw_resize_pending {
@@ -240,27 +270,32 @@ WindowQuitHost :: () {
     libdraw_quit = true
 }
 
-// This host has no system clipboard.
 #program_export
 SystemClipboardOpenHost :: () -> s32 {
-    return -1
+    if draw_clipboard != null { Release(cast(*void)draw_clipboard) }
+    draw_clipboard = cast(*u8)GetSnarf()
+    draw_clipboard_count = 0
+    if draw_clipboard == null { return -1 }
+    while draw_clipboard_count < 65536 && draw_clipboard[draw_clipboard_count] != cast(u8)0 { draw_clipboard_count += 1 }
+    if draw_clipboard_count == 65536 && draw_clipboard[draw_clipboard_count] != cast(u8)0 { return -1 }
+    return draw_clipboard_count
 }
 
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
-    unused index
-    return -1
+    if index < 0 || index >= draw_clipboard_count || draw_clipboard == null { return -1 }
+    return cast(s32)draw_clipboard[index]
 }
 
 #program_export
 SystemClipboardWriteHost :: (text: string) -> bool {
-    unused text
-    return false
+    bytes: [65537]u8
+    if !CopyCString(text, bytes[:]) { return false }
+    PutSnarf(cast(*s8)*bytes[0])
+    return true
 }
 
-// This host has no secondary button.
 #program_export
 PollSecondaryPointer :: () -> SecondaryPointerFrame {
-    empty: SecondaryPointerFrame
-    return empty
+    return draw_secondary
 }

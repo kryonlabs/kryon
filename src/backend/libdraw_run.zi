@@ -31,8 +31,10 @@ DrawLibdrawFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginLibdrawFrame()
     TreePointerUpdate(session, PollPointer())
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    pointer := PollPointer()
+    PointerWheelSend(session, pointer.x, pointer.y, LibdrawWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) !=
-        cast(FrameStatus)FrameOk { return false }
+    cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {
         TreeCancel(session)
         return false
@@ -59,11 +61,13 @@ main :: () -> s32 {
         ok = DrawLibdrawFrame(session, LibdrawViewport())
     } else {
         while ok && PollLibdraw() {
+            KeyboardModifiersSend(session, LibdrawKeyboardModifiers())
             key: s32 = LibdrawPressedKey()
             if key != 0 {
                 KeyboardSend(session, key)
-                if key >= 32 { TypedCodepointSend(session, key) }
             }
+            codepoint := LibdrawTypedCodepoint()
+            if codepoint != 0 { TypedCodepointSend(session, codepoint) }
             ok = DrawLibdrawFrame(session, LibdrawViewport())
             if ok { PauseLibdraw() }
         }

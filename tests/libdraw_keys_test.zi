@@ -1,0 +1,17 @@
+#import "libdraw_keys"
+
+#program_export
+main :: () -> s32 {
+    if LibdrawKey(9) != 258 || LibdrawKey(8) != 259 ||
+    LibdrawKey(127) != 261 || LibdrawKey(27) != 256 ||
+    LibdrawKey(10) != 257 { return 1 }
+    if LibdrawKey(0xf011) != 263 || LibdrawKey(0xf012) != 262 ||
+    LibdrawKey(0xf00d) != 268 || LibdrawKey(0xf018) != 269 { return 2 }
+    if LibdrawCodepoint(0xf800) != 0 || LibdrawCodepoint(9) != 0 ||
+    LibdrawCodepoint(127) != 0 || LibdrawCodepoint(233) != 233 ||
+    LibdrawCodepoint(32) != 32 { return 3 }
+    if LibdrawKey(97) != 65 || LibdrawCodepoint(97) != 97 ||
+    LibdrawKey(1) != 65 || LibdrawModifiers(1) != 2 ||
+    LibdrawModifiers(9) != 0 || LibdrawModifiers(233) != 0 { return 4 }
+    return 0
+}

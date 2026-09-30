@@ -2,7 +2,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+ziran_root=${ZIRAN_ROOT:-"$repo/../../ziranlang/ziran"}
+ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
 work=$repo/build/test/libdraw_native_plan9.$$
 mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -11,10 +12,10 @@ capture=$work/capture.rgba
 text=$work/text.log
 
 "$ziran" check --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$source"
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$source"
 "$ziran" build --target=plan9-c --root "$repo/tests" \
     --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" -o "$work/generated" "$source"
+    --module-path "$ziran_root/std" -o "$work/generated" "$source"
 if rg -n 'cairo|dlsym|usleep' "$work/generated"/*.c "$work/generated"/*.h; then
     echo 'native libdraw output retained a plan9port dependency' >&2
     exit 1
@@ -23,22 +24,22 @@ if rg -n '__asm__' "$work/generated"/*.c "$work/generated"/*.h; then
     echo 'native libdraw output retained unsupported assembler names' >&2
     exit 1
 fi
-rg -q '^DrawDisplay\* initdisplay\(' "$work/generated/libdraw_native.h"
-rg -q '^int32_t gengetwindow\(' "$work/generated/libdraw_native.h"
-rg -q '^DrawImage\* allocimage\(' "$work/generated/libdraw_native.h"
-rg -q '^DrawPoint string\(' "$work/generated/libdraw_native.h"
+rg -q '^DrawDisplay\* initdisplay\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^int32_t gengetwindow\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^DrawImage\* allocimage\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^DrawPoint string\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
 rg -q 'ptrdiff_t key;' "$work/generated/libdraw_native.h"
 rg -q 'ptrdiff_t sem;' "$work/generated/libdraw_native.h"
 rg -q 'size_t data_query_id;' "$work/generated/libdraw_native.h"
 rg -q 'size_t channel;' "$work/generated/libdraw_native.h"
 rg -q 'size_t age;' "$work/generated/libdraw_native.h"
 rg -q 'DrawErrorRoutine error;' "$work/generated/libdraw_native.h"
-rg -q 'size_t channel, int32_t replicate, size_t color' "$work/generated/libdraw_native.h"
-rg -qF 'int32_t freeimage(DrawImage* image);' "$work/generated/libdraw_native.h"
-rg -qF 'DrawImage* mask, DrawPoint point' "$work/generated/libdraw_native.h"
-rg -q '^void einit\(' "$work/generated/libdraw_native.h"
-rg -q '^int32_t ecanread\(' "$work/generated/libdraw_native.h"
-rg -q '^size_t eread\(' "$work/generated/libdraw_native.h"
+rg -q 'size_t channel, int32_t replicate, size_t color' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -qF 'int32_t freeimage(DrawImage* image);' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -qF 'DrawImage* mask, DrawPoint point' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^MouseController\* initmouse\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^KeyboardController\* initkeyboard\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
+rg -q '^int32_t nbrecv\(' "$work/generated/libdraw_native.c" "$work/generated/libdraw_native.h"
 rg -q 'uint8_t data\[16512\];' "$work/generated/libdraw_native.h"
 
 mkdir "$work/include"
@@ -73,6 +74,9 @@ extern char *getenv(const char *);
 extern int create(const char *, int, int);
 extern long write(int, const void *, unsigned long);
 extern int close(int);
+extern int open(const char *, int, ...);
+extern long read(int, void *, long);
+extern int sleep(int);
 extern int isNaN(double);
 extern int isInf(double, int);
 extern double strtod(const char *, char **);
@@ -84,6 +88,7 @@ cat > "$work/fake.c" <<'H'
 #include "libdraw_native.h"
 
 extern int vsnprintf(char *, usize, const char *, va_list);
+extern int dprintf(int, const char *, ...);
 extern void exit(int);
 extern usize strlen(const char *);
 extern int open(const char *, int, ...);
@@ -133,27 +138,47 @@ int gengetwindow(DrawDisplay *display, int8_t *name,
     *screen = &fake_screen;
     return 1;
 }
-void einit(usize keys) { (void)keys; }
-int ecanread(usize keys) {
-    (void)keys;
-    return fake_next_event < fake_event_count;
+static MouseController fake_mouse;
+static KeyboardController fake_keyboard;
+MouseController *initmouse(int8_t *path, DrawImage *image) {
+    (void)path; (void)image;
+    fake_mouse.channel = (void *)1;
+    fake_mouse.resize_channel = (void *)2;
+    return &fake_mouse;
 }
-usize eread(usize keys, DrawEvent *event) {
-    (void)keys;
-    if(event == NULL || fake_next_event >= fake_event_count) return 0;
-    memset(event, 0, sizeof(*event));
-    if(fake_next_event == 0) {
-        event->mouse.buttons = 1;
-        event->mouse.xy.x = 24;
-        event->mouse.xy.y = 12;
-    } else if(fake_next_event == 1) {
-        event->kbdc = 65;
-    } else {
-        event->mouse.xy.x = 32;
-        event->mouse.xy.y = 18;
+KeyboardController *initkeyboard(int8_t *path) {
+    (void)path;
+    fake_keyboard.channel = (void *)3;
+    return &fake_keyboard;
+}
+void closemouse(MouseController *controller) { (void)controller; }
+void closekeyboard(KeyboardController *controller) { (void)controller; }
+int nbrecv(DrawChannel *channel, void *value) {
+    if(channel == (void *)1 && fake_next_event < 2) {
+        DrawMouse *mouse = value;
+        memset(mouse, 0, sizeof(*mouse));
+        mouse->buttons = fake_next_event == 0 ? 1 : 0;
+        mouse->xy.x = fake_next_event == 0 ? 24 : 32;
+        mouse->xy.y = fake_next_event == 0 ? 12 : 18;
+        fake_next_event++;
+        return 1;
     }
-    fake_next_event++;
-    return fake_next_event == 2 ? 2 : 1;
+    if(channel == (void *)3 && fake_next_event == 2) {
+        *(int *)value = 65;
+        fake_next_event++;
+        return 1;
+    }
+    return 0;
+}
+int sleep(int milliseconds) { (void)milliseconds; return 0; }
+DrawImage *readimage(DrawDisplay *display, int fd, int locked) {
+    (void)display; (void)fd; (void)locked; return NULL;
+}
+int loadimage(DrawImage *image, DrawRectangle bounds, uint8_t *data, int count) {
+    (void)image; (void)bounds; (void)data; return count;
+}
+void replclipr(DrawImage *image, int replicated, DrawRectangle bounds) {
+    (void)replicated; image->clip = bounds;
 }
 
 DrawImage *allocimage(DrawDisplay *display, DrawRectangle bounds,
@@ -217,6 +242,7 @@ void freefont(DrawFont *font) { (void)font; }
 void freesubfont(DrawSubfont *font) { (void)font; }
 void exits(const char *status) {
     if(status == NULL) exit(0);
+    dprintf(2, "native libdraw fixture exited: %s\n", status);
     exit(status[0] == '4' && status[1] == '2' && status[2] == 0 ? 0 : 1);
 }
 int fprint(int fd, const char *format, ...) {

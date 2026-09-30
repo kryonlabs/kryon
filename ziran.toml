@@ -14,6 +14,7 @@ source = true
 [exports]
 Frame = "src/ui/tree_draw.zi"
 Desktop = "src/backend/Desktop/module.zi"
+Libdraw = "src/backend/Libdraw/module.zi"
 Canvas = "src/backend/Canvas/module.zi"
 Raylib = "src/backend/raylib_runtime.zi"
 AndroidSurface = "src/backend/android_surface.zi"
