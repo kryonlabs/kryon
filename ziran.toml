@@ -18,6 +18,8 @@ Libdraw = "src/backend/Libdraw/module.zi"
 Canvas = "src/backend/Canvas/module.zi"
 Raylib = "src/backend/raylib_runtime.zi"
 AndroidSurface = "src/backend/android_surface.zi"
+# Headless frames: paints into a pixel buffer on every target.
+pixmap = "src/backend/pixmap.zi"
 Theme = "src/ui/theme.zi"
 ScrollDevice = "src/ui/scroll_device.zi"
 Kryon = "src/ui/Kryon/module.zi"
