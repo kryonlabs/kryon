@@ -11,13 +11,79 @@ TestSession :: () -> Session {
 #import "overlay_widget"
 #import "paint_queue"
 #import "tree"
+#import "tree_draw"
 #import "tree_input"
 #import "widget_kind"
 #import "ziran_overlay_widget_host"
 
 using WidgetKind;
+using FrameStatus;
 
 phase: s32;
+paint_marks: [6]s32;
+paint_mark_count: s32;
+
+RecordPaintMark :: (command: PaintCommand) {
+    if paint_mark_count < 6 {
+        paint_marks[paint_mark_count] = cast(s32)command.color.r
+    }
+    paint_mark_count += 1
+}
+
+PaintMark :: (session: Session, node: s32, mark: s32) {
+    command: QueuedPaint
+    command.data.node = node
+    command.data.color.r = cast(u8)mark
+    command.emit = RecordPaintMark
+    command.has_emitter = true
+    SubmitPaint(session, command)
+}
+
+CheckOverlayOrder :: () -> s32 {
+    session := SessionOpen()
+    bounds := Rectangle.{0.0, 0.0, 240.0, 120.0}
+    BeginFrame(session, cast(u64)80, bounds)
+    first := TreeSubmitCurrent(session, cast(u64)81, WidgetKindButton, bounds)
+    TreeSetInteractive(session, first, false, false, 81)
+    PaintMark(session, first, 1)
+    props: DismissibleOverlayProps
+    props.key = cast(u64)82
+    props.bounds = bounds
+    overlay := DismissibleOverlay(session, props)
+    child := TreeSubmit(session, cast(u64)83, overlay.panel_node,
+        WidgetKindButton, bounds)
+    TreeSetInteractive(session, child, false, false, 83)
+    PaintMark(session, child, 2)
+    later := TreeSubmitCurrent(session, cast(u64)84, WidgetKindButton, bounds)
+    TreeSetInteractive(session, later, false, false, 84)
+    PaintMark(session, later, 3)
+    TreePushScope(session, overlay.panel_node)
+    PaintMark(session, -1, 4)
+    props.key = cast(u64)85
+    nested := DismissibleOverlay(session, props)
+    nested_child := TreeSubmit(session, cast(u64)86, nested.panel_node,
+        WidgetKindButton, bounds)
+    TreeSetInteractive(session, nested_child, false, false, 86)
+    PaintMark(session, nested_child, 5)
+    End(session)
+    PaintMark(session, -1, 6)
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return 10 }
+    if TreeHitAt(session, 20.0, 20.0) != nested_child { return 11 }
+    if PendingPaintCount(session) != 6 ||
+    PendingPaintAt(session, 0).color.r != cast(u8)1 ||
+    PendingPaintAt(session, 1).color.r != cast(u8)3 ||
+    PendingPaintAt(session, 2).color.r != cast(u8)6 ||
+    PendingPaintAt(session, 3).color.r != cast(u8)2 ||
+    PendingPaintAt(session, 4).color.r != cast(u8)4 ||
+    PendingPaintAt(session, 5).color.r != cast(u8)5 { return 12 }
+    PaintFlush(session)
+    if paint_mark_count != 6 || paint_marks[0] != 1 ||
+    paint_marks[1] != 3 || paint_marks[2] != 6 ||
+    paint_marks[3] != 2 || paint_marks[4] != 4 ||
+    paint_marks[5] != 5 { return 13 }
+    CloseSession(session)
+    return 0
+}
 
 #program_export
 Frame :: () -> s32 {
@@ -93,5 +159,5 @@ main :: () -> s32 {
             OverlayHostFailed() { return expected + 1 }
         expected += 1
     }
-    return 0
+    return CheckOverlayOrder()
 }

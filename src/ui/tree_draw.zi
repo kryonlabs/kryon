@@ -30,6 +30,10 @@ CommitFrame :: (session: Session) -> FrameStatus {
         PaintClear(session)
         return status
     }
+    if !PaintOrder(session) {
+        PaintClear(session)
+        return cast(FrameStatus)FramePaintOverflow
+    }
     return cast(FrameStatus)FrameOk
 }
 

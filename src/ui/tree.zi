@@ -1046,6 +1046,27 @@ TreeNodeAt :: (session: Session, index: s32) -> TreeEntry {
     return TreeRead(session, index, true)
 }
 
+// An overlay and its children share a layer above ordinary page content.
+// Later overlays, including nested ones, sit above earlier overlays.
+#program_export
+TreeOverlayLayerAt :: (session: Session, index: s32, committed: bool) -> s32 {
+    if !SessionValid(session) { return 0 }
+    slot := session.slot
+    count := trees[slot].submitted_count
+    if committed { count = trees[slot].committed_count }
+    while index > 0 && index < count {
+        node: NodeCore
+        if committed {
+            node = trees[slot].committed[index]
+        } else {
+            node = trees[slot].submitted[index]
+        }
+        if node.kind == WidgetKindModal { return index + 1 }
+        index = node.parent
+    }
+    return 0
+}
+
 #program_export
 TreeSetLabel :: (session: Session, index: s32, label: string) {
     slot: s32 = SessionIndex(session)

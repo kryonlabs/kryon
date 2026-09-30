@@ -23,6 +23,7 @@ using PaintKind;
 
 PaintCommand :: struct {
     node: s32
+    overlay_layer: s32
     kind: s32
     bounds: Rectangle
     color: Color
@@ -65,9 +66,12 @@ QueuedPaint :: struct {
 PaintCommands :: struct {
     items: Vec(QueuedPaint)
     overflow: bool
+    overlays: bool
+    ordered: bool
 }
 
 pending_paint: [9]PaintCommands;
+ordered_paint: [9]Vec(QueuedPaint);
 PAINT_TEXT_CAPACITY :: 32768
 pending_text: [9][PAINT_TEXT_CAPACITY]u8;
 pending_text_count: [9]s64;
@@ -398,6 +402,13 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
         EmitPaint(command)
         return
     }
+    layer_node := command.data.node
+    if layer_node < 0 { layer_node = TreeCurrentParent(session) }
+    command.data.overlay_layer = TreeOverlayLayerAt(session, layer_node,
+        !TreeIsBuilding(session))
+    slot := SessionIndex(session)
+    if command.data.overlay_layer > 0 { pending_paint[slot].overlays = true }
+    pending_paint[slot].ordered = false
     if command.data.node < 0 && TreeIsBuilding(session) &&
         command.clips {
         scope: NodeGeometry = TreeCurrentPaintGeometry(session)
@@ -603,6 +614,39 @@ PaintClear :: (session: Session) {
     VecClear(pending_paint[SessionIndex(session)].items)
     pending_text_count[SessionIndex(session)] = 0
     pending_paint[SessionIndex(session)].overflow = false
+    pending_paint[SessionIndex(session)].overlays = false
+    pending_paint[SessionIndex(session)].ordered = false
+}
+
+// Keep submission order within each layer, then draw overlays after the page.
+// The ordinary frame path needs no sorting or extra allocation.
+#program_export
+PaintOrder :: (session: Session) -> bool {
+    slot := SessionIndex(session)
+    if pending_paint[slot].ordered || !pending_paint[slot].overlays { return true }
+    VecClear(ordered_paint[slot])
+    layer: s32 = 0
+    while layer >= 0 {
+        next: s32 = -1
+        index: s64 = 0
+        while index < pending_paint[slot].items.count {
+            command := pending_paint[slot].items[index]
+            candidate := command.data.overlay_layer
+            if candidate == layer {
+                if !VecPush(ordered_paint[slot], command) {
+                    pending_paint[slot].overflow = true
+                    return false
+                }
+            } else if candidate > layer && (next < 0 || candidate < next) {
+                next = candidate
+            }
+            index += 1
+        }
+        layer = next
+    }
+    VecSwap(pending_paint[slot].items, ordered_paint[slot])
+    pending_paint[slot].ordered = true
+    return true
 }
 
 #program_export
@@ -686,6 +730,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     previous: PaintSnapshot) -> bool {
     if slot <= 0 || slot >= 9 { return false }
     if current.node != previous.data.node || current.kind != previous.data.kind { return false }
+    if current.overlay_layer != previous.data.overlay_layer { return false }
     if current.bounds.x != previous.data.bounds.x ||
     current.bounds.y != previous.data.bounds.y ||
     current.bounds.width != previous.data.bounds.width ||
@@ -789,6 +834,7 @@ FramePaintUnchanged :: (session: Session) -> bool {
 
 #program_export
 PaintFlush :: (session: Session) {
+    if !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
         command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
@@ -808,6 +854,7 @@ PaintFlush :: (session: Session) {
 PaintDispose :: (session: Session) {
     if !SessionValid(session) { return }
     VecFree(pending_paint[session.slot].items)
+    VecFree(ordered_paint[session.slot])
     VecFree(paint_snapshots[session.slot])
     pending_text_count[session.slot] = 0
     pending_paint[session.slot].overflow = false

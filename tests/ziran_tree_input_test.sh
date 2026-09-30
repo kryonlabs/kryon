@@ -3,6 +3,8 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
+std="${include%/include}/std"
 ziran_lib=${ZIRAN_LIB:-"$repo/../ziran/build/libziran.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -326,9 +328,9 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$std" \
     --entry app:Answer -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
@@ -349,7 +351,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 C
-"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$repo/../ziran/include" \
+"${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$include" \
     "$work/portable.c" "$ziran_lib" ${VM_LDFLAGS:-} -o "$work/portable"
 "$work/portable" "$work/source.zib"
 "$work/portable" "$work/saved.zib"
@@ -357,14 +359,14 @@ C
 for target in c cpp go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+        --module-path "$repo/src/ui" --module-path "$std" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cat > "$output/main.c" <<'C'
 #include "app.h"
 #include <assert.h>
 int main(void) { assert(Answer() == 42); return 0; }
 C
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+        "${CC:-cc}" -std=c11 -I"$include" -I"$output" \
             "$output"/*.c -o "$output/app"
         "$output/app"
     elif test "$target" = cpp; then
@@ -373,7 +375,7 @@ C
 #include <cassert>
 int main() { assert(Answer() == 42); return 0; }
 CPP
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+        "${CXX:-c++}" -std=c++17 -I"$include" -I"$output" \
             "$output"/*.cpp -o "$output/app"
         "$output/app"
     else
