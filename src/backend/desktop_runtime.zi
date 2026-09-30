@@ -428,7 +428,7 @@ SystemClipboardOpenHost :: () -> s32 {
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
     if index < 0 || index >= desktop_clipboard_length { return -1 }
-    return cast(s32)desktop_clipboard[index]
+    return desktop_clipboard[index]
 }
 
 #program_export

@@ -269,7 +269,7 @@ ButtonMeasure :: (props: ButtonProps) -> Rectangle {
 SubmitButton :: (session: Session, props: ButtonProps,
     parent_index: s32) -> s32 {
     key: u64 = props.key
-    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    if key == cast(u64)0 && props.id > 0 { key = cast(u32)props.id }
     previous: s32 = -1
     if TreeIsBuilding(session) {
         previous = TreePrevious(session, parent_index,

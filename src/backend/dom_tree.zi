@@ -131,7 +131,7 @@ DomNodeFlags :: (spec: DomSpec, interactive: bool, disabled: bool,
 DomReconcile :: (session: Session, viewport: Rectangle) {
     if !SessionValid(session) { return }
     count: s32 = TreeCount(session)
-    DomHostBegin(count, cast(float64)viewport.width, cast(float64)viewport.height)
+    DomHostBegin(count, viewport.width, viewport.height)
     index: s32 = 0
     title_found: bool = false
     while index < count {
@@ -149,8 +149,8 @@ DomReconcile :: (session: Session, viewport: Rectangle) {
         DomHostNode(index, node.parent,
             cast(float64)node.identity_generation, node.kind,
             semantic, spec.level,
-            cast(float64)node.bounds.x, cast(float64)node.bounds.y,
-            cast(float64)node.bounds.width, cast(float64)node.bounds.height,
+            node.bounds.x, node.bounds.y,
+            node.bounds.width, node.bounds.height,
             spec.tag, spec.role, node.semantic_label, node.semantic_detail, flags)
         index += 1
     }

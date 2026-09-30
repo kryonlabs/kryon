@@ -84,7 +84,7 @@ PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     while row < size {
         column: s32 = 0
         while column < size {
-            level: s32 = cast(s32)svg_icon_levels[row * size + column]
+            level: s32 = svg_icon_levels[row * size + column]
             if level == 0 {
                 column += 1
                 continue
