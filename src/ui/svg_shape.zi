@@ -361,56 +361,57 @@ ShapeBuildPath :: (text: string, start: s32, end: s32, scale: float32,
         } else if command == 0 || command == #char "Z" {
             return false
         }
-        if command == #char "M" {
-            ShapeFinishSubpath(stroke, half, cap, join, false)
-            x = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            while index < end && ShapeIsSpace(text[index]) { index += 1 }
-            y = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            ShapeAddPoint(x, y)
-            command = 76
-        } else if command == #char "L" {
-            x = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            while index < end && ShapeIsSpace(text[index]) { index += 1 }
-            y = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            ShapeAddPoint(x, y)
-        } else if command == #char "H" {
-            x = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            ShapeAddPoint(x, y)
-        } else if command == #char "V" {
-            y = ShapeNumber(text, end, index) * scale
-            index = shape_after
-            ShapeAddPoint(x, y)
-        } else if command == #char "C" {
-            values: [6]float32
-            count: s32 = 0
-            while count < 6 {
-                while index < end && ShapeIsSpace(text[index]) { index += 1 }
-                if index >= end { return false }
-                values[count] = ShapeNumber(text, end, index) * scale
+        if command == {
+            case #char "M";
+                ShapeFinishSubpath(stroke, half, cap, join, false)
+                x = ShapeNumber(text, end, index) * scale
                 index = shape_after
-                count += 1
-            }
-            step: s32 = 1
-            while step <= SHAPE_CURVE_STEPS {
-                t: float32 = cast(float32)step / cast(float32)SHAPE_CURVE_STEPS
-                u: float32 = 1.0 - t
-                a: float32 = u * u * u
-                b: float32 = 3.0 * u * u * t
-                c: float32 = 3.0 * u * t * t
-                d: float32 = t * t * t
-                ShapeAddPoint(a * x + b * values[0] + c * values[2] + d * values[4],
-                    a * y + b * values[1] + c * values[3] + d * values[5])
-                step += 1
-            }
-            x = values[4]
-            y = values[5]
-        } else {
-            return false
+                while index < end && ShapeIsSpace(text[index]) { index += 1 }
+                y = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                ShapeAddPoint(x, y)
+                command = 76
+            case #char "L";
+                x = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                while index < end && ShapeIsSpace(text[index]) { index += 1 }
+                y = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                ShapeAddPoint(x, y)
+            case #char "H";
+                x = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                ShapeAddPoint(x, y)
+            case #char "V";
+                y = ShapeNumber(text, end, index) * scale
+                index = shape_after
+                ShapeAddPoint(x, y)
+            case #char "C";
+                values: [6]float32
+                count: s32 = 0
+                while count < 6 {
+                    while index < end && ShapeIsSpace(text[index]) { index += 1 }
+                    if index >= end { return false }
+                    values[count] = ShapeNumber(text, end, index) * scale
+                    index = shape_after
+                    count += 1
+                }
+                step: s32 = 1
+                while step <= SHAPE_CURVE_STEPS {
+                    t: float32 = cast(float32)step / cast(float32)SHAPE_CURVE_STEPS
+                    u: float32 = 1.0 - t
+                    a: float32 = u * u * u
+                    b: float32 = 3.0 * u * u * t
+                    c: float32 = 3.0 * u * t * t
+                    d: float32 = t * t * t
+                    ShapeAddPoint(a * x + b * values[0] + c * values[2] + d * values[4],
+                        a * y + b * values[1] + c * values[3] + d * values[5])
+                    step += 1
+                }
+                x = values[4]
+                y = values[5]
+            case;
+                return false
         }
     }
     ShapeFinishSubpath(stroke, half, cap, join, false)

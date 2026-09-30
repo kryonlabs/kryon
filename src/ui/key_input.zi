@@ -12,20 +12,21 @@ TypedTextAppend :: (output: []u8, length: s32, codepoint: s32) -> s32 {
     else if codepoint < 0x800 { size = 2 }
     else if codepoint < 0x10000 { size = 3 }
     if length < 0 || length + size > cast(s32)output.count { return length }
-    if size == 1 {
-        output[length] = cast(u8)codepoint
-    } else if size == 2 {
-        output[length] = cast(u8)(0xC0 | (codepoint >> 6))
-        output[length + 1] = cast(u8)(0x80 | (codepoint & 0x3F))
-    } else if size == 3 {
-        output[length] = cast(u8)(0xE0 | (codepoint >> 12))
-        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
-        output[length + 2] = cast(u8)(0x80 | (codepoint & 0x3F))
-    } else {
-        output[length] = cast(u8)(0xF0 | (codepoint >> 18))
-        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
-        output[length + 2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
-        output[length + 3] = cast(u8)(0x80 | (codepoint & 0x3F))
+    if size == {
+        case 1;
+            output[length] = cast(u8)codepoint
+        case 2;
+            output[length] = cast(u8)(0xC0 | (codepoint >> 6))
+            output[length + 1] = cast(u8)(0x80 | (codepoint & 0x3F))
+        case 3;
+            output[length] = cast(u8)(0xE0 | (codepoint >> 12))
+            output[length + 1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+            output[length + 2] = cast(u8)(0x80 | (codepoint & 0x3F))
+        case;
+            output[length] = cast(u8)(0xF0 | (codepoint >> 18))
+            output[length + 1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
+            output[length + 2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+            output[length + 3] = cast(u8)(0x80 | (codepoint & 0x3F))
     }
     return length + size
 }

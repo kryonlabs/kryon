@@ -224,18 +224,19 @@ TextAreaViewFor :: (value: string, anchor: s32,
 TextAreaViewSegmentFor :: (view: TextAreaView,
     part: s32) -> TextAreaViewSegment {
     segment: TextAreaViewSegment
-    if part == 0 {
-        segment.source = view.value
-        segment.end = view.replace_start
-    } else if part == 1 {
-        segment.source = view.preedit
-        segment.start = view.replace_start
-        segment.end = segment.start + (cast(s32)view.preedit.count)
-    } else if part == 2 {
-        segment.source = view.value
-        segment.source_start = view.replace_end
-        segment.start = view.replace_start + (cast(s32)view.preedit.count)
-        segment.end = view.length
+    if part == {
+        case 0;
+            segment.source = view.value
+            segment.end = view.replace_start
+        case 1;
+            segment.source = view.preedit
+            segment.start = view.replace_start
+            segment.end = segment.start + (cast(s32)view.preedit.count)
+        case 2;
+            segment.source = view.value
+            segment.source_start = view.replace_end
+            segment.start = view.replace_start + (cast(s32)view.preedit.count)
+            segment.end = view.length
     }
     return segment
 }
