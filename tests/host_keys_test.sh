@@ -9,7 +9,7 @@ fi
 ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
 # Each host's key translation must agree across generated languages and the
 # portable VM.
-for host in libdraw desktop; do
+for host in libdraw desktop terminal; do
 work=$repo/build/test/$host-keys
 test_module=${host}_keys_test
 mkdir -p "$work"
@@ -33,4 +33,4 @@ done
     --entry $test_module:main -o "$work/keys.zib" "$repo/tests/$test_module.zi"
 test "$("$ziran" run "$work/keys.zib")" = 0
 done
-echo 'Libdraw and desktop keyboard: C, C++, Go and portable key codes passed'
+echo 'Libdraw, desktop, and terminal keyboard: C, C++, Go and portable key codes passed'

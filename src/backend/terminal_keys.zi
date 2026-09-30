@@ -1,0 +1,56 @@
+// A terminal delivers bytes: control characters, printable ASCII, and escape
+// sequences for the named keys. They are reported with the key codes every
+// Kryon host uses: letters as uppercase ASCII and named keys from 256
+// (Escape) upward.
+#program_export
+TerminalKey :: (byte: s32) -> s32 {
+    if byte == 9 { return 258 }
+    if byte == 10 || byte == 13 { return 257 }
+    if byte == 8 || byte == 127 { return 259 }
+    // Control+letter arrives as the letter's position in the alphabet.
+    if byte > 0 && byte < 27 { return byte + 64 }
+    if byte >= 97 && byte <= 122 { return byte - 32 }
+    if byte >= 32 && byte < 127 { return byte }
+    return 0
+}
+
+#program_export
+TerminalModifiers :: (byte: s32) -> s32 {
+    if byte > 0 && byte < 27 && byte != 8 && byte != 9 &&
+    byte != 10 && byte != 13 { return 2 }
+    return 0
+}
+
+// The key an "ESC [" or "ESC O" sequence names: its final byte, and for "~"
+// sequences the number before it.
+#program_export
+TerminalSequenceKey :: (final: s32, number: s32) -> s32 {
+    if final == 65 { return 265 }
+    if final == 66 { return 264 }
+    if final == 67 { return 262 }
+    if final == 68 { return 263 }
+    if final == 72 { return 268 }
+    if final == 70 { return 269 }
+    if final == 126 {
+        if number == 1 || number == 7 { return 268 }
+        if number == 2 { return 260 }
+        if number == 3 { return 261 }
+        if number == 4 || number == 8 { return 269 }
+        if number == 5 { return 266 }
+        if number == 6 { return 267 }
+    }
+    return 0
+}
+
+// xterm encodes held modifiers as one more than a bit set of Shift 1, Alt 2,
+// and Control 4, in a sequence's second number ("ESC [1;5D" is Control+Left).
+#program_export
+TerminalSequenceModifiers :: (number: s32) -> s32 {
+    if number < 2 || number > 16 { return 0 }
+    bits: s32 = number - 1
+    modifiers: s32 = 0
+    if (bits & 1) != 0 { modifiers |= 1 }
+    if (bits & 4) != 0 { modifiers |= 2 }
+    if (bits & 2) != 0 { modifiers |= 4 }
+    return modifiers
+}
