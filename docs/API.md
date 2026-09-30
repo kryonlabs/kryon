@@ -61,6 +61,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 
 The selected host owns the process entry point, calls `BeginFrame` and
 `EndFrame`, supplies input to the session, and presents paint operations.
+Every host reports the same key codes through `KeyboardTake`: letters as
+uppercase ASCII and named keys as `KeyEnter`, `KeyBackspace`, `KeyLeft`, and
+the other `Key` constants. `TypedTextTake` collects the text typed since the
+last frame, and `TextFieldInputFor(key, modifiers, text)` turns both into a
+focused `TextField`'s input.
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
 
