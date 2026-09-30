@@ -225,3 +225,19 @@ builds a real Canvas2D project and loads it in private headless Chromium.
 `make dom-project-test` builds a real semantic DOM project and checks its
 mounted tags and attributes in another private headless Chromium process. Do
 not run graphical tests on the developer's live display.
+
+### Application-owned hosts
+
+A profile can name an application's own Ziran host when it supplies additional
+platform capabilities, such as private storage or clipboard handling:
+
+```toml
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+host = "src/desktop.zi"
+```
+
+The host exports `main` and imports the application's widgets and platform
+modules. Kryon builds and runs that program with the profile's backend libraries.
+The host must be a `.zi` file inside the project, including when reached through
+a symlink. Profiles without `host` use Kryon's standard host.

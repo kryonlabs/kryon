@@ -5,27 +5,27 @@ ProjectOptionsTest :: () -> s32 {
     source: string = "default_profile=tui\nprofiles=tui other\nprofiles.tui.backend=terminal\nprofiles.tui.codegen=c99\nprofiles.tui.library=crypto\nprofiles.tui.static_archive=build/libdemo.a\nprofiles.other.backend=terminal\ninstall.autostart=false\n"
     config: ProjectConfig = ParseProject(source, "demo", "src/custom.zi")
     if !config.ok || config.name != "demo" ||
-        config.entry != "src/custom.zi" ||
-        config.profile_count != 2 ||
-        config.default_profile != "tui" { return 1 }
+    config.entry != "src/custom.zi" ||
+    config.profile_count != 2 ||
+    config.default_profile != "tui" { return 1 }
     selected: ProjectProfile = ProjectProfileNamed(config, config.default_profile)
     if selected.name != "tui" || selected.backend != "terminal" ||
-        selected.codegen != "c99" || selected.library != "crypto" ||
-        selected.static_archive != "build/libdemo.a" { return 2 }
+    selected.codegen != "c99" || selected.library != "crypto" ||
+    selected.static_archive != "build/libdemo.a" { return 2 }
     if ProjectProfileNamed(config, "missing").name != "" { return 3 }
 
     minimal: ProjectConfig = ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "")
     if !minimal.ok || minimal.entry != "src/app.zi" ||
-        minimal.default_profile != "tui" ||
-        minimal.profiles[0].codegen != "c99" { return 4 }
+    minimal.default_profile != "tui" ||
+    minimal.profiles[0].codegen != "c99" { return 4 }
 
     installed: ProjectConfig = ParseProject(
         "default_profile=cairo\nprofiles=cairo\nprofiles.cairo.backend=desktop\ninstall.profile=cairo\ninstall.name=Demo App\ninstall.icon=assets/icon.png\ninstall.working_directory=.\ninstall.autostart=true\ninstall.autostart_env=DEMO_HIDDEN=1\n",
         "demo", "src/app.zi")
     if !installed.ok || installed.install.profile != "cairo" ||
-        installed.install.name != "Demo App" || !installed.install.autostart ||
-        installed.install.autostart_env != "DEMO_HIDDEN=1" { return 5 }
+    installed.install.name != "Demo App" || !installed.install.autostart ||
+    installed.install.autostart_env != "DEMO_HIDDEN=1" { return 5 }
 
     bad_path: ProjectConfig = ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "src/$oops.zi")
@@ -69,5 +69,14 @@ ProjectOptionsTest :: () -> s32 {
         "entry=src/$(x).zi\nprofiles=tui\nprofiles.tui.backend=terminal\n",
         "demo", "src/main.zi")
     if unsafe_entry.ok { return 16 }
+    custom_host: ProjectConfig = ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.host=src/runner.zi\n",
+        "demo", "src/app.zi")
+    if !custom_host.ok || custom_host.profiles[0].host != "src/runner.zi" {
+        return 17
+    }
+    if ProjectHostValid("../runner.zi") || ProjectHostValid("src/../runner.zi") ||
+    ProjectHostValid("/tmp/runner.zi") || ProjectHostValid("src/runner.c") ||
+    ProjectHostValid("src/$(touch).zi") { return 18 }
     return 42
 }
