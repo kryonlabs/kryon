@@ -5,6 +5,7 @@
 #import "canvas_types"
 #import "canvas_os"
 #import "canvas_text"
+#import "canvas_state"
 #import "raylib_clip"
 #import "canvas_raster"
 #import "geometry"
@@ -17,6 +18,42 @@ CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
 CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
 CanvasTestFail :: (code: s32) #foreign browser "canvas_test_fail";
 CanvasTestFront :: (r: s32, g: s32, b: s32) -> s32 #foreign browser "canvas_test_front";
+CanvasTestText :: (face: s32, size: s32, zoom: float32, width: s32,
+    dark: bool) -> s32 #foreign browser "canvas_test_text";
+
+// Compare UI text with browser text drawn directly at the output resolution.
+// An atlas resized from its seed size cannot pass this pixel comparison.
+TestTextResolution :: (loaded: bool) {
+    sizes: [4]s32 = .[13, 17, 21, 32]
+    zooms: [3]float32 = .[1.0, 1.25, 2.0]
+    face: s32 = 0
+    if loaded { face = CanvasFontFace(canvas_font) }
+    for size: sizes {
+        width := MeasureGlyphWidth("AV café ›…", size, "")
+        for zoom: zooms {
+            for theme: 0..2 {
+                dark := theme == 1
+                background := Color.{255, 255, 255, 255}
+                ink := Color.{20, 30, 40, 255}
+                if dark {
+                    background = Color.{24, 34, 56, 255}
+                    ink = Color.{247, 249, 255, 190}
+                }
+                BeginDrawing()
+                ClearBackground(background)
+                BeginMode2D(Camera.{offset = Vector2.{3.0, 4.0}, zoom = zoom})
+                RasterTextClipped("AV café ›…", 4, 5, size, ink,
+                    Rectangle.{4.0, 5.0, 52.0, cast(float32)size})
+                EndMode2D()
+                EndDrawing()
+                if CanvasTestText(face, size, zoom, width, dark) == 0 {
+                    CanvasTestFail(30)
+                    return
+                }
+            }
+        }
+    }
+}
 
 #program_export
 main :: () -> s32 {
@@ -83,7 +120,7 @@ main :: () -> s32 {
     DrawTextEx(font, *path[0], Vector2.{120.0, 30.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
     // Glyphs outside the first atlas are added on first use, not drawn as ?.
     if GetGlyphInfo(font, 8250).value != 8250 || GetGlyphInfo(font, 8230).value != 8230 ||
-        GetGlyphInfo(font, 8250).advance_x <= 0 { CanvasTestFail(16) }
+    GetGlyphInfo(font, 8250).advance_x <= 0 { CanvasTestFail(16) }
     CopyCString("›…", path[:])
     DrawTextEx(font, *path[0], Vector2.{130.0, 0.0}, 20.0, 0.0, Color.{0, 0, 0, 255})
     UnloadFont(font)
@@ -107,6 +144,13 @@ main :: () -> s32 {
     if CanvasTestFront(255, 255, 255) == 0 { CanvasTestFail(28) }
     EndDrawing()
     if CanvasTestFront(255, 0, 255) == 0 { CanvasTestFail(29) }
+    TestTextResolution(false)
+    if !LoadTypefaceFile("test", "/test-font.ttf", null, 0) ||
+    !SelectTypeface("test") {
+        CanvasTestFail(31)
+    }
+    TestTextResolution(true)
+    ReleaseTypefaces()
     BeginMode2D(Camera.{offset = Vector2.{30.0, 30.0}, zoom = 2.0})
     BeginScissorMode(0, 0, 1, 1)
     CloseWindow()

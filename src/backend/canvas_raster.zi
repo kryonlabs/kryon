@@ -7,6 +7,7 @@
 #import "canvas_draw"
 #import "canvas_texture"
 #import "canvas_text"
+#import "page_font"
 #import "raylib_clip"
 
 libm :: #system_library "m";
@@ -27,7 +28,7 @@ CanvasDrawImageStrip :: (texture: Texture2D, source: Rectangle,
     if width <= 0 || height <= 0 { return }
     // Clips are in the same camera space as the image, like the native host.
     saved := BeginRasterClip(Rectangle.{cast(float32)x, cast(float32)y,
-        cast(float32)width, cast(float32)height})
+            cast(float32)width, cast(float32)height})
     DrawTexturePro(texture, source, destination, origin, rotation, tint)
     EndRasterClip(saved)
 }
@@ -80,14 +81,9 @@ CanvasDrawImageClipped :: (texture: Texture2D, source: Rectangle,
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    bytes: [4096]u8
-    if !CopyCString(value, bytes[:]) { return 0 }
-    if canvas_font_loaded {
-        extent: Vector2 = MeasureTextEx(canvas_font, *bytes[0],
-            cast(float32)font, 0.0)
-        return cast(s32)(extent.x + 0.5)
-    }
-    return MeasureText(*bytes[0], font)
+    face: s32 = 0
+    if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
+    return cast(s32)(PageTextWidth(face, value, font) + 0.5)
 }
 
 #program_export
@@ -122,15 +118,9 @@ RasterLine :: (line: Rectangle, color: Color) {
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
-    bytes: [4096]u8
-    if !CopyCString(value, bytes[:]) { return }
-    if canvas_font_loaded {
-        DrawTextEx(canvas_font, *bytes[0],
-            Vector2.{cast(float32)x, cast(float32)y},
-            cast(float32)font, 0.0, color)
-    } else {
-        DrawText(*bytes[0], x, y, font, color)
-    }
+    face: s32 = 0
+    if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
+    PageTextDraw(face, value, x, y, font, color.r, color.g, color.b, color.a)
 }
 
 #program_export

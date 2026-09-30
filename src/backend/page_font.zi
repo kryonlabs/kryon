@@ -1,6 +1,6 @@
-// Browser fonts for the canvas backend: loading a font file as a FontFace and
-// rasterising one glyph at a time. Which glyphs are needed and how they are
-// laid out in an atlas is decided in canvas_text.zi.
+// Browser fonts for the canvas backend. UI text is measured and rasterised
+// directly at its output size. The low-level glyph API can also rasterise
+// individual glyphs for the atlases owned by canvas_text.zi.
 #import "page_core"
 #import "number_text"
 #import "text_buffer"
@@ -14,6 +14,18 @@ page_glyph_canvas: s32;
 page_glyph_context: s32;
 page_glyph_options: s32;
 page_font_bytes: [96]u8;
+
+PageTextSize :: struct {
+    face: s32
+    size: s32
+    hundredths: s32
+    ascent: float64
+}
+
+PAGE_TEXT_SIZE_MAX :: 256
+page_text_sizes: [PAGE_TEXT_SIZE_MAX]PageTextSize;
+page_text_size_count: s32;
+page_text_size_next: s32;
 
 PageFontAppend :: (index: s32, text: string) -> s32 {
     at: s32 = index
@@ -158,11 +170,69 @@ PageFontHundredths :: (context: s32, face_id: s32, size: s32) -> s32 {
         WebText("H")))
     size_value: float64 = cast(float64)size
     line: float64 = PageMeasured(metrics, WebName("fontBoundingBoxAscent"), size_value * 0.8) +
-        PageMeasured(metrics, WebName("fontBoundingBoxDescent"), size_value * 0.2)
+    PageMeasured(metrics, WebName("fontBoundingBoxDescent"), size_value * 0.2)
     if line < 1.0 { return size * 100 }
     hundredths: s32 = cast(s32)(size_value * size_value * 100.0 / line + 0.5)
     if hundredths < 100 { hundredths = 100 }
     return hundredths
+}
+
+// Measure and draw with the same browser font at its final logical size.
+// The context's camera and device-pixel transform rasterise it directly at
+// the output resolution instead of resampling a glyph atlas.
+PageTextSizeFor :: (context: s32, face_id: s32, size: s32) -> PageTextSize {
+    index: s32 = 0
+    while index < page_text_size_count {
+        cached := page_text_sizes[index]
+        if cached.face == face_id && cached.size == size {
+            return cached
+        }
+        index += 1
+    }
+    result: PageTextSize
+    result.face = face_id
+    result.size = size
+    result.hundredths = PageFontHundredths(context, face_id, size)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(result.hundredths, face_id)))
+    metrics := WebAsObject(WebCall1(context, WebName("measureText"), WebText("H")))
+    result.ascent = PageMeasured(metrics, WebName("fontBoundingBoxAscent"),
+        cast(float64)size * 0.8)
+    if page_text_size_count < PAGE_TEXT_SIZE_MAX {
+        index = page_text_size_count
+        page_text_size_count += 1
+    } else {
+        index = page_text_size_next
+        page_text_size_next = (page_text_size_next + 1) % PAGE_TEXT_SIZE_MAX
+    }
+    page_text_sizes[index] = result
+    return result
+}
+
+PageTextWidth :: (face_id: s32, text: string, size: s32) -> float64 {
+    context := PageContext()
+    if context == 0 || size <= 0 || text.count == 0 { return 0.0 }
+    scope := WebScope()
+    style := PageTextSizeFor(context, face_id, size)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id)))
+    metrics := WebAsObject(WebCall1(context, WebName("measureText"), WebText(text)))
+    width := WebGetNumber(metrics, WebName("width"))
+    WebEnd(scope)
+    return width
+}
+
+PageTextDraw :: (face_id: s32, text: string, x: s32, y: s32, size: s32,
+    r: s32, g: s32, b: s32, a: s32) {
+    context := PageContext()
+    if context == 0 || size <= 0 || text.count == 0 { return }
+    scope := WebScope()
+    style := PageTextSizeFor(context, face_id, size)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id)))
+    WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
+    WebSet(context, WebName("textAlign"), WebText("left"))
+    WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, a)))
+    unused WebCall3(context, WebName("fillText"), WebText(text),
+        WebNumber(cast(float64)x), WebNumber(cast(float64)y + style.ascent))
+    WebEnd(scope)
 }
 
 PageRound :: (value: float64) -> s32 {
