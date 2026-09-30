@@ -27,8 +27,9 @@ DesktopError :: (message: string) -> s32 {
     return 1
 }
 
-DrawFrame :: (session: Session, viewport: Rectangle) -> bool {
+DrawFrame :: (session: Session) -> bool {
     BeginDesktopFrame()
+    viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
@@ -54,10 +55,9 @@ main :: () -> s32 {
         CloseDesktop()
         return DesktopError("kryon: could not open a UI session")
     }
-    viewport: Rectangle = Rectangle.{0.0, 0.0, 960.0, 600.0}
     ok: bool = true
     if CaptureRequested() {
-        ok = DrawFrame(session, viewport)
+        ok = DrawFrame(session)
         if ok { ok = CaptureConfigured() }
     } else {
         while ok && PollDesktop() {
@@ -69,7 +69,7 @@ main :: () -> s32 {
                 TypedCodepointSend(session, codepoint)
                 codepoint = DesktopTypedCodepoint()
             }
-            ok = DrawFrame(session, viewport)
+            ok = DrawFrame(session)
             if ok { PauseDesktop() }
         }
     }

@@ -29,6 +29,7 @@ Quit :: () #foreign sdl_library "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
     height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl_library "SDL_DestroyWindow";
+SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "SDL_SetWindowSize";
 CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
@@ -70,22 +71,86 @@ desktop_codepoint_next: s32;
 desktop_intercept_close: bool;
 desktop_close_requested: bool;
 desktop_quit: bool;
+desktop_width: s32;
+desktop_height: s32;
+// A size ResizeDesktop asked for, applied when the next frame begins.
+desktop_next_width: s32;
+desktop_next_height: s32;
+
+// SDL_PIXELFORMAT_ARGB8888, which matches Cairo's image surface.
+DESKTOP_PIXEL_FORMAT :: 0x16362004
 
 #program_export
 OpenDesktop :: () -> bool {
+    return OpenDesktopSized(960, 600)
+}
+
+// Opens the window with a drawing area of `width` by `height` pixels.
+#program_export
+OpenDesktopSized :: (width: s32, height: s32) -> bool {
+    if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x20) != 0 { return false }
     title: [32]u8
     if !CopyCString("Kryon Ziran", title[:]) { return false }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
-        cast(s32)0x2fff0000, 960, 600, cast(u32)0)
+        cast(s32)0x2fff0000, width, height, cast(u32)0)
     if window == null { return false }
     renderer = CreateRenderer(window, -1, cast(u32)1)
     if renderer == null { return false }
-    texture = CreateTexture(renderer, cast(u32)0x16362004, 1, 960, 600)
+    texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
+        height)
     if texture == null { return false }
+    desktop_width = width
+    desktop_height = height
     StartTextInput()
-    return OpenRaster(960, 600)
+    return OpenRaster(width, height)
+}
+
+// The drawing area of the window, in pixels.
+#program_export
+DesktopViewport :: () -> Rectangle {
+    return Rectangle.{0.0, 0.0, cast(float32)desktop_width,
+        cast(float32)desktop_height}
+}
+
+// Asks for a new window size. A frame in progress keeps drawing at the old
+// size; the next BeginDesktopFrame resizes the window and its surface, and
+// DesktopViewport then reports the new size. If the new surface cannot be
+// made, the window keeps its size.
+#program_export
+ResizeDesktop :: (width: s32, height: s32) -> bool {
+    if window == null || width <= 0 || height <= 0 { return false }
+    desktop_next_width = width
+    desktop_next_height = height
+    return true
+}
+
+DesktopApplyResize :: () -> bool {
+    width := desktop_next_width
+    height := desktop_next_height
+    desktop_next_width = 0
+    desktop_next_height = 0
+    if width <= 0 || (width == desktop_width && height == desktop_height) {
+        return true
+    }
+    next: *void = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
+        height)
+    if next == null { return false }
+    CloseRaster()
+    if !OpenRaster(width, height) {
+        DestroyTexture(next)
+        // Go back to the old size, which opened before.
+        CloseRaster()
+        unused OpenRaster(desktop_width, desktop_height)
+        return false
+    }
+    DestroyTexture(texture)
+    texture = next
+    SetWindowSize(window, width, height)
+    desktop_width = width
+    desktop_height = height
+    return true
 }
 
 #program_export
@@ -238,6 +303,7 @@ CheckPointerEvents :: () -> bool {
 
 #program_export
 BeginDesktopFrame :: () {
+    unused DesktopApplyResize()
     BeginRasterFrame()
 }
 
