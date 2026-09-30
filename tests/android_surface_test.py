@@ -68,6 +68,10 @@ assertions = ['#include <stddef.h>', '#include "raylib.h"', '#include "android_s
               "typedef struct {" + window + "} NativeRaylibCore;"]
 for field, native in fields.items():
     assertions.append(f'_Static_assert(offsetof(RaylibWindowState, {field}) == offsetof(NativeRaylibCore, Window.{native}), "{field}");')
+pruned = WORK / "pruned"
+run([BIN / "zi2c", "--define", "ANDROID_BUILD", "--entry", "android_surface_layout:main",
+     "--root", ROOT / "tests", "--module-path", ZIRAN / "std", "-o", pruned,
+     ROOT / "tests/android_surface_layout.zi"])
 ndk_base = Path(os.environ.get("ANDROID_HOME", str(Path.home() / "Android/Sdk"))) / "ndk"
 ndks = sorted(ndk_base.glob("*/toolchains/llvm/prebuilt/linux-x86_64"))
 if ndks:
@@ -76,6 +80,10 @@ if ndks:
         command = [clang, "--target=" + target, "-std=c11", "-fsyntax-only", *includes,
                    "-I" + str(RAYLIB_SOURCE / "src")]
         run([*command, "-x", "c", "-"], input="\n".join(assertions), text=True)
+        run([clang, "--target=" + target, "-std=c11", "-fsyntax-only",
+             "-I" + str(ZIRAN / "include"), "-I" + str(pruned),
+             "-I" + str(RAYLIB_SOURCE / "src"), "-x", "c", "-"],
+            input="\n".join(assertions), text=True)
         for file in files:
             run([*command, file])
 else:
