@@ -1,0 +1,24 @@
+#import "desktop_keys"
+
+#program_export
+main :: () -> s32 {
+    // The editing keys match the canvas, raylib, and libdraw hosts.
+    if DesktopKey(27) != 256 || DesktopKey(13) != 257 ||
+    DesktopKey(9) != 258 || DesktopKey(8) != 259 ||
+    DesktopKey(127) != 261 { return 1 }
+    if DesktopKey(0x4000004F) != 262 || DesktopKey(0x40000050) != 263 ||
+    DesktopKey(0x40000051) != 264 || DesktopKey(0x40000052) != 265 ||
+    DesktopKey(0x4000004A) != 268 || DesktopKey(0x4000004D) != 269 { return 2 }
+    if DesktopKey(0x4000004B) != 266 || DesktopKey(0x4000004E) != 267 ||
+    DesktopKey(0x40000058) != 257 || DesktopKey(0x40000049) != 260 { return 3 }
+    // Letters are uppercase; digits and punctuation keep their ASCII code.
+    if DesktopKey(97) != 65 || DesktopKey(122) != 90 ||
+    DesktopKey(48) != 48 || DesktopKey(61) != 61 ||
+    DesktopKey(32) != 32 { return 4 }
+    if DesktopKey(0x4000003A) != 290 || DesktopKey(0x40000045) != 301 ||
+    DesktopKey(0x400000E0) != 341 || DesktopKey(0x400000E5) != 344 { return 5 }
+    // A key with no shared code is not reported.
+    if DesktopKey(0x40000062) != 0 || DesktopKey(233) != 0 ||
+    DesktopKey(0) != 0 { return 6 }
+    return 0
+}

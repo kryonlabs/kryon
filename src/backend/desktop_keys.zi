@@ -1,0 +1,39 @@
+// SDL reports its own keycodes. Every Kryon host sends the same codes as the
+// canvas, raylib, and libdraw hosts: letters as uppercase ASCII and named keys
+// from 256 (Escape) upward, so an application reads keys the same way on any
+// host.
+#program_export
+DesktopKey :: (sdl: s32) -> s32 {
+    if sdl == 27 { return 256 }
+    if sdl == 13 || sdl == 0x40000058 { return 257 }
+    if sdl == 9 { return 258 }
+    if sdl == 8 { return 259 }
+    if sdl == 0x40000049 { return 260 }
+    if sdl == 127 { return 261 }
+    if sdl == 0x4000004F { return 262 }
+    if sdl == 0x40000050 { return 263 }
+    if sdl == 0x40000051 { return 264 }
+    if sdl == 0x40000052 { return 265 }
+    if sdl == 0x4000004B { return 266 }
+    if sdl == 0x4000004E { return 267 }
+    if sdl == 0x4000004A { return 268 }
+    if sdl == 0x4000004D { return 269 }
+    if sdl == 0x40000039 { return 280 }
+    if sdl == 0x40000047 { return 281 }
+    if sdl == 0x40000053 { return 282 }
+    if sdl == 0x40000046 { return 283 }
+    if sdl == 0x40000048 { return 284 }
+    // F1 through F12 are consecutive in both numberings.
+    if sdl >= 0x4000003A && sdl <= 0x40000045 { return sdl - 0x4000003A + 290 }
+    if sdl == 0x400000E0 { return 341 }
+    if sdl == 0x400000E1 { return 340 }
+    if sdl == 0x400000E2 { return 342 }
+    if sdl == 0x400000E3 { return 343 }
+    if sdl == 0x400000E4 { return 345 }
+    if sdl == 0x400000E5 { return 344 }
+    if sdl == 0x400000E6 { return 346 }
+    if sdl == 0x400000E7 { return 347 }
+    if sdl >= 97 && sdl <= 122 { return sdl - 32 }
+    if sdl >= 32 && sdl < 127 { return sdl }
+    return 0
+}
