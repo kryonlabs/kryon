@@ -13,3 +13,12 @@ PublicTextField :: (session: Session, props: TextFieldProps) -> CompositionState
     result: TextFieldResult = TextField(session, props)
     return result.composition
 }
+
+// TextProps.align and wrap take values an application names from the same
+// import as Text.
+PublicTextAlignment :: (session: Session, props: TextProps) {
+    props.align = TextAlign.TextAlignCenter
+    props.vertical_align = TextAlign.TextAlignEnd
+    props.wrap = TextWrap.TextWrapNone
+    Text(session, props)
+}

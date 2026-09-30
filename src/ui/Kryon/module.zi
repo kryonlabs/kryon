@@ -5,6 +5,7 @@ using Drawing :: #import "drawing_props";
 using SessionModule :: #import "session";
 using PaintQueue :: #import "paint_queue";
 using TextPropsModule :: #import "text_props";
+using TextAlignModule :: #import "text_align";
 using TextWidgetModule :: #import "text_widget";
 using ButtonPropsModule :: #import "button_props";
 using ButtonWidgetModule :: #import "button_widget";
