@@ -113,8 +113,10 @@ ButtonFaceFinish :: (props: ButtonProps, face: StyleData) -> StyleData {
     kind: s32 = props.style_kind
     if kind <= 0 { kind = StyleKindButton() }
     // Modal action and close faces use offset-x/offset-y as dialog layout
-    // sizes (see ModalMetricsFor), not as content offsets inside a button.
-    if kind == StyleKindModal() {
+    // sizes (see ModalMetricsFor), and a segment's offset-x is its label
+    // padding (see SegmentedDefaultMetrics); neither is a content offset
+    // inside a button.
+    if kind == StyleKindModal() || kind == StyleKindSegment() {
         face.offset_x = 0.0
         face.offset_y = 0.0
     }

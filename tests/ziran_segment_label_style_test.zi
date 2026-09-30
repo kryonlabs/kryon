@@ -1,0 +1,74 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "paint_queue"
+#import "segmented_control"
+#import "segmented_control_props"
+#import "segmented_control_widget"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "ziran_widget_noop_host"
+
+using StyleField;
+
+// A label is centered in its segment when the space left of it equals the
+// space right of it, measured with the host's glyph widths.
+LabelCentered :: (label: string, segment: Rectangle, font: s32) -> bool {
+    index: s32 = 0
+    while index < PendingPaintCount(TestSession()) {
+        command: PaintCommand = PendingPaintAt(TestSession(), index)
+        if (command.kind == 4 || command.kind == 6) && command.value == label {
+            width: float32 = cast(float32)MeasureGlyphWidth(label, font, "")
+            left: float32 = cast(float32)command.x - segment.x
+            right: float32 = segment.x + segment.width -
+                (cast(float32)command.x + width)
+            difference: float32 = left - right
+            return difference > -2.0 && difference < 2.0
+        }
+        index += 1
+    }
+    return false
+}
+
+// Style sheets give a segment offset-x as its label padding, which sizes the
+// segment; the label drawn inside it must still be centered.
+#program_export
+main :: () -> s32 {
+    rules: StyleRules
+    rules.count = 1
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindSegment()
+    rule.style.fields = cast(u32)StyleContentOffset | cast(u32)StyleFontSize
+    rule.style.offset_x = 20.0
+    rule.style.font_size = 14.0
+    rules.items[0] = rule
+    if !InstallStyleRules(rules) { return 1 }
+
+    options: [2]SegmentOption
+    options[0] = SegmentOption.{cast(u64)11, "Week", false}
+    options[1] = SegmentOption.{cast(u64)22, "Calendar", false}
+    props: SegmentedControlProps
+    props.key = cast(u64)20
+    props.id = 20
+    props.bounds = Rectangle.{10.0, 20.0, 300.0, 40.0}
+    props.has_selection = true
+    props.selected_index = 1
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 80.0})
+    unused SegmentedControl(TestSession(), props, options[0:2])
+    if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 4 { return 2 }
+    if !LabelCentered("Week", TreeNodeAt(TestSession(), 2).bounds, 14) {
+        return 3
+    }
+    if !LabelCentered("Calendar", TreeNodeAt(TestSession(), 3).bounds, 14) {
+        return 4
+    }
+    return 0
+}
