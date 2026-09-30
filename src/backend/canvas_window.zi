@@ -160,6 +160,7 @@
 
     #program_export
     BeginDrawing :: () {
+        PageRefreshPixelRatio()
         PageContextCall(PageOpFrameReset, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
     }
 

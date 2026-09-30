@@ -453,8 +453,8 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
     surface_width: s32 = cast(s32)WebGetNumber(canvas, page_names.width)
     surface_height: s32 = cast(s32)WebGetNumber(canvas, page_names.height)
     if page_ctx != 0 && ratio == page_dpi && new_width == page_width &&
-        new_height == page_height && surface_width == page_render_width &&
-        surface_height == page_render_height {
+    new_height == page_height && surface_width == page_render_width &&
+    surface_height == page_render_height {
         WebEnd(scope)
         return
     }
@@ -466,7 +466,7 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
     // Assigning the width or height attribute clears the bitmap, so only do
     // it when the size really changed.
     if page_ctx == 0 || surface_width != page_render_width ||
-        surface_height != page_render_height {
+    surface_height != page_render_height {
         page_resized = true
         WebSet(canvas, page_names.width, WebNumber(cast(float64)page_render_width))
         WebSet(canvas, page_names.height, WebNumber(cast(float64)page_render_height))
@@ -480,7 +480,7 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         back: s32 = PageMakeCanvas(page_render_width, page_render_height)
         if back != 0 { page_back_canvas = WebKeep(back) }
     } else if cast(s32)WebGetNumber(page_back_canvas, page_names.width) != page_render_width ||
-        cast(s32)WebGetNumber(page_back_canvas, page_names.height) != page_render_height {
+    cast(s32)WebGetNumber(page_back_canvas, page_names.height) != page_render_height {
         WebSet(page_back_canvas, page_names.width, WebNumber(cast(float64)page_render_width))
         WebSet(page_back_canvas, page_names.height, WebNumber(cast(float64)page_render_height))
     }
@@ -491,6 +491,16 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         page_ctx = WebKeep(context)
     }
     WebEnd(scope)
+}
+
+// A display-density change can leave the CSS layout unchanged, so neither
+// the resize observer nor a window resize event is guaranteed to report it.
+// Refresh before drawing, while clearing a resized backing store is safe.
+PageRefreshPixelRatio :: () {
+    if page_closed || page_canvas == 0 { return }
+    ratio := WebGetNumber(WebGlobal, page_names.device_pixel_ratio)
+    if ratio < 1.0 { ratio = 1.0 }
+    if ratio != page_dpi { PageResizeMain(page_width, page_height) }
 }
 
 // Shows the frame drawn so far by copying the back canvas to the page.
@@ -543,7 +553,7 @@ PageObserved :: (context: s32, entries: s32, second: s32, third: s32) {
     width: float64 = WebGetNumber(rect, page_names.width)
     height: float64 = WebGetNumber(rect, page_names.height)
     if width > 0.0 && height > 0.0 &&
-        (PageRound(width) != page_width || PageRound(height) != page_height) {
+    (PageRound(width) != page_width || PageRound(height) != page_height) {
         PageResizeMain(PageRound(width), PageRound(height))
     }
 }
@@ -848,7 +858,7 @@ PageShowPointer :: (visible: bool, lock: bool, release: bool) {
     }
     document: s32 = PageDocument()
     if release && document != 0 &&
-        PageSame(WebGetObject(document, page_names.pointer_lock_element), page_canvas) {
+    PageSame(WebGetObject(document, page_names.pointer_lock_element), page_canvas) {
         unused WebCall0(document, page_names.exit_pointer_lock)
     }
     if lock && WebTypeOf(WebGetObject(page_canvas, page_names.request_pointer_lock)) == WebTypeFunction {
@@ -872,7 +882,7 @@ PageFullscreen :: (enable: bool) {
     current: s32 = WebGetObject(document, page_names.fullscreen_element)
     if enable {
         if current == 0 &&
-            WebTypeOf(WebGetObject(page_canvas, page_names.request_fullscreen)) == WebTypeFunction {
+        WebTypeOf(WebGetObject(page_canvas, page_names.request_fullscreen)) == WebTypeFunction {
             result: s32 = WebAsObject(WebCall0(page_canvas, page_names.request_fullscreen))
             if result != 0 {
                 unused WebCall1(result, page_names.catch_method,
@@ -894,7 +904,7 @@ PageFullscreenState :: () -> bool {
     scope: s32 = WebScope()
     document: s32 = PageDocument()
     state: bool = document != 0 &&
-        PageSame(WebGetObject(document, page_names.fullscreen_element), page_canvas)
+    PageSame(WebGetObject(document, page_names.fullscreen_element), page_canvas)
     WebEnd(scope)
     return state
 }
