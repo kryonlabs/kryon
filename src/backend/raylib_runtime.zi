@@ -29,6 +29,12 @@ HostRaylibClearBackground :: (color: Color) #foreign raylib "ClearBackground";
 HostRaylibDrawRounded :: (bounds: Rectangle, roundness: float32,
     segments: s32, color: Color) #foreign raylib "DrawRectangleRounded";
 HostRaylibDrawRoundedOutline :: (bounds: Rectangle, roundness: float32, segments: s32, width: float32, color: Color) #foreign raylib "DrawRectangleRoundedLinesEx";
+HostRaylibBegin :: (mode: s32) #foreign raylib "rlBegin";
+HostRaylibEnd :: () #foreign raylib "rlEnd";
+HostRaylibVertexColor :: (r: u8, g: u8, b: u8, a: u8) #foreign raylib "rlColor4ub";
+HostRaylibVertex :: (x: float32, y: float32) #foreign raylib "rlVertex2f";
+HostRaylibSin :: (value: float32) -> float32 #foreign libm "sinf";
+HostRaylibCos :: (value: float32) -> float32 #foreign libm "cosf";
 HostRaylibDrawLine :: (start: Vector2, end: Vector2, width: float32,
     color: Color) #foreign raylib "DrawLineEx";
 HostRaylibDrawText :: (value: *u8, x: s32, y: s32, font: s32,
@@ -871,8 +877,176 @@ PollPointer :: () -> PointerFrame {
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
-    HostRaylibDrawRounded(bounds, RaylibRoundness(bounds, radius),
-        RaylibCornerSegments(bounds, radius, segments), color)
+    scale := RasterPixelScale()
+    if !RaylibSmoothable(bounds, radius, scale) {
+        HostRaylibDrawRounded(bounds, RaylibRoundness(bounds, radius),
+            RaylibCornerSegments(bounds, radius, segments), color)
+        return
+    }
+    half: float32 = 0.5 / scale
+    offsets: [4]float32
+    alphas: [4]float32
+    offsets[0] = -half
+    alphas[0] = 1.0
+    offsets[1] = half
+    alphas[1] = 0.0
+    RaylibSmoothShape(bounds, radius,
+        RaylibCornerSegments(bounds, radius, segments), 2, offsets, alphas,
+        true, color)
+}
+
+// raylib fills shapes without anti-aliasing, so a small rounded control such
+// as a 20 pixel dot shows stair-stepped edges. Curved shapes are drawn here
+// with a one-pixel edge whose alpha falls from the colour's to zero across
+// the true outline, which approximates each edge pixel's coverage. An edge on
+// a pixel boundary stays crisp: the pixel inside is solid, the one outside
+// empty. Square corners and shapes under two pixels across keep raylib's fill.
+RaylibSmoothable :: (bounds: Rectangle, radius: float32,
+    scale: float32) -> bool {
+    return radius > 0.0 && bounds.width * scale >= 2.0 &&
+        bounds.height * scale >= 2.0
+}
+
+// rlgl's mode for independent triangles.
+RaylibTriangles :: 4
+RaylibSmoothSegments :: 32
+RaylibSmoothPoints :: 132
+
+// A point on the outline moved `offset` outward. The rectangle grows by the
+// offset on every side and the corner radius grows with it, down to a sharp
+// corner, so the corner centres stay put while the radius is positive.
+RaylibOutlinePoint :: (bounds: Rectangle, radius: float32, offset: float32,
+    corner: s32, direction: Vector2) -> Vector2 {
+    left: float32 = bounds.x - offset
+    top: float32 = bounds.y - offset
+    width: float32 = bounds.width + offset * 2.0
+    height: float32 = bounds.height + offset * 2.0
+    if width < 0.0 {
+        left += width * 0.5
+        width = 0.0
+    }
+    if height < 0.0 {
+        top += height * 0.5
+        height = 0.0
+    }
+    arc: float32 = radius + offset
+    if arc < 0.0 { arc = 0.0 }
+    if arc > width * 0.5 { arc = width * 0.5 }
+    if arc > height * 0.5 { arc = height * 0.5 }
+    x: float32 = left + arc
+    if corner == 1 || corner == 2 { x = left + width - arc }
+    y: float32 = top + arc
+    if corner >= 2 { y = top + height - arc }
+    return Vector2.{x + direction.x * arc, y + direction.y * arc}
+}
+
+RaylibFaded :: (color: Color, alpha: float32) -> Color {
+    value: float32 = cast(float32)color.a * alpha + 0.5
+    if value <= 0.0 { value = 0.0 }
+    if value >= 255.0 { value = 255.0 }
+    return Color.{color.r, color.g, color.b, cast(u8)value}
+}
+
+RaylibVertex :: (point: Vector2, color: Color) {
+    HostRaylibVertexColor(color.r, color.g, color.b, color.a)
+    HostRaylibVertex(point.x, point.y)
+}
+
+// raylib culls triangles wound clockwise on screen, so each triangle is sent
+// in its front-facing order. Sharp corners repeat points; those triangles
+// have no area and are skipped.
+RaylibTriangle :: (a: Vector2, a_color: Color, b: Vector2, b_color: Color,
+    c: Vector2, c_color: Color) {
+    turn: float32 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+    if turn == 0.0 { return }
+    RaylibVertex(a, a_color)
+    if turn < 0.0 {
+        RaylibVertex(b, b_color)
+        RaylibVertex(c, c_color)
+    } else {
+        RaylibVertex(c, c_color)
+        RaylibVertex(b, b_color)
+    }
+}
+
+// Draws the rounded rectangle as rings of its outline at the given outward
+// offsets, each at its own fraction of the colour's alpha, with the colour
+// blending between neighbouring rings. A filled shape also covers the inside
+// of the first ring.
+RaylibSmoothShape :: (bounds: Rectangle, radius: float32, segments: s32,
+    rings: s32, offsets: [4]float32, alphas: [4]float32, filled: bool,
+    color: Color) {
+    if segments > RaylibSmoothSegments { segments = RaylibSmoothSegments }
+    edge: float32 = bounds.width
+    if bounds.height < edge { edge = bounds.height }
+    if radius > edge * 0.5 { radius = edge * 0.5 }
+    per_corner: s32 = segments + 1
+    count: s32 = per_corner * 4
+    directions: [RaylibSmoothPoints]Vector2
+    corner: s32 = 0
+    while corner < 4 {
+        step: s32 = 0
+        while step < per_corner {
+            // Corners run clockwise on screen from the top left, whose arc
+            // starts pointing left.
+            angle: float32 = 3.14159265 * (1.0 + cast(float32)corner * 0.5 +
+                cast(float32)step * 0.5 / cast(float32)segments)
+            directions[corner * per_corner + step] = Vector2.{
+                HostRaylibCos(angle), HostRaylibSin(angle)}
+            step += 1
+        }
+        corner += 1
+    }
+    inner: [RaylibSmoothPoints]Vector2
+    outer: [RaylibSmoothPoints]Vector2
+    index: s32 = 0
+    while index < count {
+        inner[index] = RaylibOutlinePoint(bounds, radius, offsets[0],
+            index / per_corner, directions[index])
+        index += 1
+    }
+    inner_color := RaylibFaded(color, alphas[0])
+    HostRaylibBegin(RaylibTriangles)
+    if filled {
+        center := Vector2.{bounds.x + bounds.width * 0.5,
+            bounds.y + bounds.height * 0.5}
+        index = 0
+        while index < count {
+            next: s32 = index + 1
+            if next == count { next = 0 }
+            RaylibTriangle(center, inner_color, inner[index], inner_color,
+                inner[next], inner_color)
+            index += 1
+        }
+    }
+    ring: s32 = 1
+    while ring < rings {
+        index = 0
+        while index < count {
+            outer[index] = RaylibOutlinePoint(bounds, radius, offsets[ring],
+                index / per_corner, directions[index])
+            index += 1
+        }
+        outer_color := RaylibFaded(color, alphas[ring])
+        index = 0
+        while index < count {
+            next: s32 = index + 1
+            if next == count { next = 0 }
+            RaylibTriangle(inner[index], inner_color, inner[next], inner_color,
+                outer[next], outer_color)
+            RaylibTriangle(inner[index], inner_color, outer[next], outer_color,
+                outer[index], outer_color)
+            index += 1
+        }
+        index = 0
+        while index < count {
+            inner[index] = outer[index]
+            index += 1
+        }
+        inner_color = outer_color
+        ring += 1
+    }
+    HostRaylibEnd()
 }
 
 // Segments per corner for a curve within half a pixel of the true arc at
@@ -901,8 +1075,40 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     if bounds.width <= 0.0 || bounds.height <= 0.0 || width <= 0.0 { return }
     segments = RaylibCornerSegments(bounds, radius, segments)
-    HostRaylibDrawRoundedOutline(bounds, RaylibRoundness(bounds, radius),
-        segments, width, color)
+    scale := RasterPixelScale()
+    if !RaylibSmoothable(bounds, radius, scale) {
+        HostRaylibDrawRoundedOutline(bounds, RaylibRoundness(bounds, radius),
+            segments, width, color)
+        return
+    }
+    // Like raylib's, the outline lies inside the bounds.
+    half: float32 = 0.5 / scale
+    pixels: float32 = width * scale
+    offsets: [4]float32
+    alphas: [4]float32
+    if pixels >= 1.0 {
+        offsets[0] = -width - half
+        alphas[0] = 0.0
+        offsets[1] = -width + half
+        alphas[1] = 1.0
+        offsets[2] = -half
+        alphas[2] = 1.0
+        offsets[3] = half
+        alphas[3] = 0.0
+        RaylibSmoothShape(bounds, radius, segments, 4, offsets, alphas,
+            false, color)
+        return
+    }
+    // A hairline spreads over one more pixel at the alpha that keeps its
+    // weight, meeting the wide profile at one pixel.
+    offsets[0] = -width - half
+    alphas[0] = 0.0
+    offsets[1] = -width * 0.5
+    alphas[1] = pixels * 2.0 / (pixels + 1.0)
+    offsets[2] = half
+    alphas[2] = 0.0
+    RaylibSmoothShape(bounds, radius, segments, 3, offsets, alphas, false,
+        color)
 }
 
 #program_export

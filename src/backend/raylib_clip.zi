@@ -137,3 +137,14 @@ EndRasterClip :: (state: RasterClipState) {
         }
     }
 }
+
+// Screen pixels per layout unit under the current modelview, so a 2D
+// camera's zoom counts as well as the frame zoom.
+#scope_export
+RasterPixelScale :: () -> float32 {
+    matrix := ClipModelview()
+    scale: float32 = matrix.m0
+    if scale < 0.0 { scale = -scale }
+    if !(scale > 0.0) { return 1.0 }
+    return scale
+}

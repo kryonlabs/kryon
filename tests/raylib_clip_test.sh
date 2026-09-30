@@ -1,9 +1,10 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-compiler=${ZI2C_BIN:-"$root/../ziran/build/bin/zi2c"}
-standard=${ZIRAN_STD:-"$root/../ziran/std"}
-ziran=${ZIRAN_BIN:-"$root/../ziran/build/bin/ziran"}
+ziran_dir=${ZIRAN_DIR:-"$root/../ziran"}
+compiler=${ZI2C_BIN:-"$ziran_dir/build/bin/zi2c"}
+standard=${ZIRAN_STD:-"$ziran_dir/std"}
+ziran=${ZIRAN_BIN:-"$ziran_dir/build/bin/ziran"}
 raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
 raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
@@ -14,7 +15,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     --module-path "$standard" -o "$work/c" \
     "$root/tests/raylib_clip_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
-    -Wl,--gc-sections -I"$root/../ziran/include" -iquote "$work/c" \
+    -Wl,--gc-sections -I"$ziran_dir/include" -iquote "$work/c" \
     "$work/c"/*.c "$raylib" $raylib_libs \
     -o "$work/test"
 python3 - "$work/red.png" <<'PY'
