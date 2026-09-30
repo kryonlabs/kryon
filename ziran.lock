@@ -13,7 +13,7 @@
   ],
   "root": {
     "dependencies": {"raylib": "p5a77c9c35110e925"},
-    "name": "Kryon"
+    "name": "kryon"
   },
   "toolchain": {
     "commit": "0e5348319fc8a81ad054733c6a30aeacadd21050",

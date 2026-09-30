@@ -74,13 +74,13 @@ def main():
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "tui"\n\n'
-            '[tool.Kryon.profiles.tui]\nbackend = "terminal"\n'
+            '[tool.kryon]\ndefault_profile = "tui"\n\n'
+            '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
@@ -109,7 +109,7 @@ def main():
             '    return 0\n}\n'
         )
         run([ZIRAN, "lock"], project)
-        run([ZIRAN, "tool", "Kryon", "build", "--profile", "tui"], project)
+        run([ZIRAN, "tool", "kryon", "build", "--profile", "tui"], project)
         binary = project / "build/terminal_probe-tui"
         exercise(binary, project, b"z", 42)
         exercise(binary, project, "é".encode(), 43)

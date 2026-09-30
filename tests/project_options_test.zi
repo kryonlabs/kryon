@@ -60,7 +60,7 @@ ProjectOptionsTest :: () -> s32 {
         "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.static_archive=../libdemo.a\n",
         "demo", "")
     if escaping_archive.ok { return 14 }
-    // [tool.Kryon] entry names the window's program over the package entry.
+    // [tool.kryon] entry names the window's program over the package entry.
     windowed: ProjectConfig = ParseProject(
         "entry=src/app.zi\nprofiles=tui\nprofiles.tui.backend=terminal\n",
         "demo", "src/main.zi")

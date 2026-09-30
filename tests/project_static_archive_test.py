@@ -80,14 +80,14 @@ def main():
             'bridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\n'
+            '[dependencies.kryon]\n'
             'git = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "tui"\n\n'
-            '[tool.Kryon.profiles.tui]\nbackend = "terminal"\n'
+            '[tool.kryon]\ndefault_profile = "tui"\n\n'
+            '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
             'codegen = "c99"\nstatic_archive = "build/escape.a"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
@@ -111,14 +111,14 @@ def main():
         (project / "build/escape.a").symlink_to(outside_archive)
         run([str(ZIRAN), "lock"], project)
         expect_failure(
-            [str(ZIRAN), "tool", "Kryon", "build", "--profile", "tui"], project
+            [str(ZIRAN), "tool", "kryon", "build", "--profile", "tui"], project
         )
         (project / "ziran.toml").write_text(
             (project / "ziran.toml").read_text().replace(
                 "build/escape.a", "build/libdemo.a"
             )
         )
-        run([str(ZIRAN), "tool", "Kryon", "build", "--profile", "tui"], project)
+        run([str(ZIRAN), "tool", "kryon", "build", "--profile", "tui"], project)
         request_exit(project / "build/static_archive_probe-tui", project, 77)
     print("Kryon project static archive link passed")
 

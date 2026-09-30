@@ -10,14 +10,14 @@ no special knowledge of Kryon widgets.
 Select a host with a profile in the application's `ziran.toml`:
 
 ```toml
-[tool.Kryon]
+[tool.kryon]
 default_profile = "desktop"
 
-[tool.Kryon.profiles.desktop]
+[tool.kryon.profiles.desktop]
 backend = "desktop"
 ```
 
-Run `ziran tool Kryon build` or `ziran tool Kryon run` from the application.
+Run `ziran tool kryon build` or `ziran tool kryon run` from the application.
 See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
 ## Available hosts

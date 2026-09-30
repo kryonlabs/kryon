@@ -3,13 +3,13 @@ name = "{{name}}"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
-tool = "Kryon"
+tool = "kryon"
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"
 
-[dependencies.Kryon]
+[dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 
@@ -17,24 +17,24 @@ ref = "master"
 bin = "{{name}}"
 
 # `kryon run` opens the default profile; `kryon run tui` picks another.
-[tool.Kryon]
+[tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"
 
-[tool.Kryon.profiles.desktop]
+[tool.kryon.profiles.desktop]
 backend = "desktop"
 
-[tool.Kryon.profiles.tui]
+[tool.kryon.profiles.tui]
 backend = "terminal"
 
-[tool.Kryon.profiles.web]
+[tool.kryon.profiles.web]
 backend = "canvas"
 
 # `kryon run shot > screen.ppm` renders one frame without a display.
-[tool.Kryon.profiles.shot]
+[tool.kryon.profiles.shot]
 backend = "pixmap"
 
-[tool.Kryon.install]
+[tool.kryon.install]
 profile = "desktop"
 name = "{{name}}"
 comment = "A Kryon application"

@@ -1,5 +1,5 @@
-// Kryon's project settings as resolved by `ziran tool Kryon`. Ziran reads
-// [tool.Kryon] from ziran.toml and ziran.local.toml, checks it against the
+// Kryon's project settings as resolved by `ziran tool kryon`. Ziran reads
+// [tool.kryon] from ziran.toml and ziran.local.toml, checks it against the
 // options Kryon declares in its own ziran.toml, and hands over KEY=VALUE
 // lines. Kryon checks only what is specific to its hosts.
 ProjectProfile :: struct {

@@ -36,13 +36,13 @@ def main():
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "desktop"\n\n'
-            '[tool.Kryon.profiles.desktop]\nbackend = "desktop"\n'
+            '[tool.kryon]\ndefault_profile = "desktop"\n\n'
+            '[tool.kryon.profiles.desktop]\nbackend = "desktop"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
@@ -77,7 +77,7 @@ def main():
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
         run([ZIRAN, "lock"], project, env)
-        run([ZIRAN, "tool", "Kryon", "build", "--profile", "desktop"],
+        run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)
 
         # The build describes the generated C to editors, one entry for each

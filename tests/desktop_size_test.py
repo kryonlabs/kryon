@@ -60,11 +60,11 @@ def main():
             'module_roots = ["src"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):

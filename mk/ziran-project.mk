@@ -1,21 +1,21 @@
 # Shared build route for a Ziran application configured by ziran.toml.
 ifndef PROJECT_NAME
-$(error PROJECT_NAME is required; run this through ziran tool Kryon)
+$(error PROJECT_NAME is required; run this through ziran tool kryon)
 endif
 ifndef PROJECT_ENTRY
-$(error PROJECT_ENTRY is required; run this through ziran tool Kryon)
+$(error PROJECT_ENTRY is required; run this through ziran tool kryon)
 endif
 ifndef KRYON_DIR
-$(error KRYON_DIR is required; run this through ziran tool Kryon)
+$(error KRYON_DIR is required; run this through ziran tool kryon)
 endif
 ifndef ZIRAN_DIR
-$(error ZIRAN_DIR is required; run this through ziran tool Kryon)
+$(error ZIRAN_DIR is required; run this through ziran tool kryon)
 endif
 ifndef PROJECT_PROFILE
-$(error PROJECT_PROFILE is required; run this through ziran tool Kryon)
+$(error PROJECT_PROFILE is required; run this through ziran tool kryon)
 endif
 ifndef ZIRAN_PACKAGE_ID
-$(error ZIRAN_PACKAGE_ID is required; run this through ziran tool Kryon)
+$(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
 ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
@@ -218,7 +218,7 @@ check: toolchain
 	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(if $(BROWSER_BACKEND),--define PLATFORM_WEB) $(HOST)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
-# the desktop. The KRYON_INSTALL_* values come from [tool.Kryon.install] and
+# the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and
 # are only ever read as quoted shell variables. The program is replaced by
 # rename, so a running copy keeps its file and later builds never touch it.
 TERMINAL_APP := false

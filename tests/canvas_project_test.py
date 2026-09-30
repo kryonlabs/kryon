@@ -26,13 +26,13 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
         'ref = "master"\n\n'
-        '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+        '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
         'ref = "master"\n\n'
-        '[tool.Kryon]\ndefault_profile = "web"\n\n'
-        '[tool.Kryon.profiles.web]\nbackend = "canvas"\n'
+        '[tool.kryon]\ndefault_profile = "web"\n\n'
+        '[tool.kryon.profiles.web]\nbackend = "canvas"\n'
     )
     overrides = {
-        "Kryon": str(ROOT),
+        "kryon": str(ROOT),
         "ziran": str(ROOT.parent / "ziran"),
     }
     if os.environ.get("RAYLIB_SOURCE"):
@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     )
     (project / "src/app.zi").write_text(
-        'using UI :: #import "Kryon/Widgets";\n'
+        'using UI :: #import "kryon/Widgets";\n'
         'host_api :: #system_library "host_api";\n'
         'RequestWindowClose :: () #foreign host_api;\n'
         '#program_export\n'
@@ -50,7 +50,7 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         '    return 0\n}\n'
     )
     run([ZIRAN, "lock"], project)
-    run([ZIRAN, "tool", "Kryon", "build", "--profile", "web"], project)
+    run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/canvas_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
     assert next((project / "build/generated/web/ir").glob("*_canvas_run.zir"), None)

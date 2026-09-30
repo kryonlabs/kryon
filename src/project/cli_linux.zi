@@ -284,13 +284,13 @@ TemplateSpec :: (value: string, base: string, output: []u8) -> string {
     return Join(joined, value, output)
 }
 
-// Outside `ziran tool Kryon`, kryon is a front door: project commands go
+// Outside `ziran tool kryon`, kryon is a front door: project commands go
 // through ziran, which runs the Kryon the project's ziran.lock pins, and
 // new and init start projects from Kryon's templates.
 FrontDoor :: (command_line: string, verb: string) -> s32 {
     guard_bytes: [8]u8
     if Environment("KRYON_FRONT_DOOR", guard_bytes[:]) == "1" {
-        return Error("ziran tool Kryon started kryon without project settings")
+        return Error("ziran tool kryon started kryon without project settings")
     }
     if !SetEnvironment("KRYON_FRONT_DOOR", "1") { return Error("cannot set the environment") }
     count: s32 = ArgumentCount(command_line)
@@ -334,7 +334,7 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
             used += 1
         } else {
             args[used] = "tool"
-            args[used + 1] = "Kryon"
+            args[used + 1] = "kryon"
             args[used + 2] = verb
             used += 3
         }
@@ -407,7 +407,7 @@ main :: () -> s32 {
     installed_ziran: string = Environment("ZIRAN_TOOLCHAIN_ROOT", installed_ziran_bytes[:])
     package_id: string = Environment("ZIRAN_PACKAGE_ID", package_id_bytes[:])
     if installed_kryon == "" || installed_ziran == "" || package_id == "" {
-        return Error("run this command through ziran tool Kryon")
+        return Error("run this command through ziran tool kryon")
     }
     if profile_name == "" && verb == "install" {
         profile_name = config.install.profile

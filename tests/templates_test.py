@@ -92,17 +92,17 @@ def main():
         for template, expected in rendered.items():
             name = f"demo-{template}"
             created = run([KRYON, "new", name, "--template", template], work, env)
-            assert f"created {name} from Kryon:{template}" in created, created
+            assert f"created {name} from kryon:{template}" in created, created
             project = work / name
             manifest = (project / "ziran.toml").read_text()
-            assert 'tool = "Kryon"' in manifest and "{{" not in manifest, manifest
+            assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
             local(project)
             # `kryon run PROFILE` goes through ziran to the locked Kryon; with
             # output redirected the terminal host renders one frame.
             output = screen(run([KRYON, "run", "tui"], project, env))
             for line in [name] + expected:
                 assert line in output, (template, line, output)
-            # tool = "Kryon" makes plain `ziran run` the same command.
+            # tool = "kryon" makes plain `ziran run` the same command.
             assert screen(run(["ziran", "run", "tui"], project, env)) == output
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
@@ -131,8 +131,8 @@ def main():
         merged = run([KRYON, "init", "--template", "tui"], tool, env)
         assert 'kept entry = "src/main.zi" in [package]' in merged, merged
         manifest = (tool / "ziran.toml").read_text()
-        assert 'entry = "src/main.zi"' in manifest and 'tool = "Kryon"' in manifest
-        assert "[tool.Kryon]" in manifest and 'entry = "src/app.zi"' in manifest
+        assert 'entry = "src/main.zi"' in manifest and 'tool = "kryon"' in manifest
+        assert "[tool.kryon]" in manifest and 'entry = "src/app.zi"' in manifest
         local(tool)
         assert "1 of 6 done" in screen(run([KRYON, "run"], tool, env))
 

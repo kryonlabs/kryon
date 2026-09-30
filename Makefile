@@ -138,7 +138,7 @@ pixmap-font: project-toolchain
 	echo assets/fonts/LiberationSans-Regular.ttf | python3 build/tools/outline_font > build/pixmap_font.zi
 	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
-# Installs the kryon command. Outside `ziran tool Kryon` it forwards project
+# Installs the kryon command. Outside `ziran tool kryon` it forwards project
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
 install-user: build/bin/kryon
