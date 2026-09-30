@@ -4,7 +4,8 @@ CC ?= cc
 CXX ?= c++
 AR ?= ar
 BUILD_DIR ?= build/ziran
-ZIRAN_DIR ?= ../ziran
+# The sibling checkout CI uses, else the org-grouped local layout.
+ZIRAN_DIR ?= $(firstword $(wildcard ../ziran ../../ziranlang/ziran) ../ziran)
 ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
 ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c

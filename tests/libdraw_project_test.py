@@ -13,7 +13,10 @@ from raylib_project_test import png_pixels, rgb, solid_png
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN9 = Path(os.environ.get("PLAN9PORT_DIR", ROOT.parent / "plan9port"))
-ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT", ROOT.parent.parent / "ziranlang/ziran"))
+# The sibling checkout CI uses, else the org-grouped local layout.
+ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
+    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
+     if path.is_dir()), ROOT.parent / "ziran"))
 
 
 def run(command, cwd, env=None):
