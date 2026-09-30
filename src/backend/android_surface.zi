@@ -61,7 +61,7 @@ viewport_policy_set: bool;
     dl :: #system_library "dl";
     SurfaceMutexLock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
     SurfaceMutexUnlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
-    SurfaceLookup :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+    SurfaceLookup :: (library: *void, name: *u8) -> *RaylibWindowState #foreign dl "dlsym";
     SurfaceWindow :: () -> *void #foreign raylib "GetWindowHandle";
     SurfaceFormat :: (window: *void) -> s32 #foreign android "ANativeWindow_getFormat";
     SurfaceGeometry :: (window: *void, width: s32,
@@ -104,6 +104,9 @@ viewport_policy_set: bool;
         screen_min: RaylibWindowSize
         screen_max: RaylibWindowSize
     }
+    // This record overlays raylib's native CORE.Window. Its unused fields
+    // are ABI padding and must survive executable field pruning.
+    #assert size_of(RaylibWindowState) >= 96
     // PTHREAD_MUTEX_INITIALIZER is zero on bionic. Storage also fits glibc
     // for the display-free native behavior test.
     insets_mutex: [8]u64;
@@ -313,8 +316,8 @@ SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
                     h = native_height
                     state := raylib_window_state
                     changed := surface_width != w || surface_height != h ||
-                        state.screen.width != cast(u32)w || state.screen.height != cast(u32)h ||
-                        state.render.width != cast(u32)w || state.render.height != cast(u32)h
+                    state.screen.width != cast(u32)w || state.screen.height != cast(u32)h ||
+                    state.render.width != cast(u32)w || state.render.height != cast(u32)h
                     surface_width = w
                     surface_height = h
                     state.display.width = cast(u32)w
@@ -364,7 +367,7 @@ ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32) {
     height: s32
     GetAndroidSurfaceSize(*width, *height)
     if viewport.x <= 0 && viewport.y <= 0 && viewport.width >= width &&
-        viewport.height >= height {
+    viewport.height >= height {
         SurfaceClear(fill)
         return
     }

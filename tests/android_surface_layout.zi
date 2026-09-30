@@ -1,0 +1,8 @@
+#import, file "../src/backend/android_surface.zi";
+
+// Entry pruning must retain the native CORE.Window prefix even though this
+// application only accesses its size and framebuffer fields.
+main :: () -> s32 {
+    width: s32; height: s32
+    return SyncAndroidSurfaceSize(*width, *height)
+}
