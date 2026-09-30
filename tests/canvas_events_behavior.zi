@@ -69,6 +69,7 @@ KeyChecks :: () -> s32 {
     // Unmapped keys do nothing.
     if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "Unknown", "") != 0 { return 14 }
     // The frame's pressed queue pops in order.
+    CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     if canvas_keys_pressed_count != 0 || canvas_keys_released_count != 0 { return 15 }
     unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyB", "b")
@@ -124,6 +125,7 @@ WheelChecks :: () -> s32 {
     if canvas_wheel_x != -2.0 { return 3 }
     unused Send(CanvasEventWheel, 2, 0, 0.0, -150.0, "", "")
     if canvas_wheel_y != -1.5 { return 4 }
+    CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     if canvas_wheel_x != 0.0 || canvas_wheel_y != 0.0 { return 5 }
     return 0

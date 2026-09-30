@@ -108,6 +108,20 @@
     canvas_clipboard_gesture_until: float64;
     canvas_clipboard_text: [CANVAS_CLIPBOARD_SIZE]u8;
 
+    CanvasFrameInput :: struct {
+        keys_pressed: s32
+        keys_released: s32
+        keys_repeated: s32
+        buttons_pressed: s32
+        buttons_released: s32
+        mouse_delta_x: float64
+        mouse_delta_y: float64
+        wheel_x: float64
+        wheel_y: float64
+    }
+
+    canvas_frame_input: CanvasFrameInput;
+
     CanvasQueuePush :: (items: *s32, count: *s32, value: s32) {
         if count.* < CANVAS_QUEUE_LIMIT {
             items[count.*] = value
@@ -133,7 +147,21 @@
             index += 1
         }
         count.* -= 1
+        if items == *canvas_keys_pressed[0] && canvas_frame_input.keys_pressed > 0 {
+            canvas_frame_input.keys_pressed -= 1
+        }
         return first
+    }
+
+    CanvasQueueDiscard :: (items: *s32, count: *s32, consumed: s32) {
+        if consumed > count.* { consumed = count.* }
+        remaining := count.* - consumed
+        index: s32 = 0
+        while index < remaining {
+            items[index] = items[index + consumed]
+            index += 1
+        }
+        count.* = remaining
     }
 
     CanvasHasPrefix :: (text: string, prefix: string) -> bool {
@@ -386,6 +414,7 @@
 
     // Forget all earlier input.
     CanvasEventsReset :: () {
+        canvas_frame_input = CanvasFrameInput.{}
         index: s32 = 0
         while index < CANVAS_KEY_LIMIT {
             canvas_keys_down[index] = false
@@ -424,17 +453,40 @@
         CanvasEventsReset()
     }
 
-    // Called once per frame after the app has read its input.
+    // Remember the input available to this frame. Drawing can await a font
+    // or image decode; events received during that await belong to the next
+    // frame and must survive its predecessor's cleanup.
+    CanvasEventsBeginFrame :: () {
+        canvas_frame_input = CanvasFrameInput.{
+            keys_pressed = canvas_keys_pressed_count,
+            keys_released = canvas_keys_released_count,
+            keys_repeated = canvas_keys_repeated_count,
+            buttons_pressed = canvas_buttons_pressed_count,
+            buttons_released = canvas_buttons_released_count,
+            mouse_delta_x = canvas_mouse_delta_x,
+            mouse_delta_y = canvas_mouse_delta_y,
+            wheel_x = canvas_wheel_x,
+            wheel_y = canvas_wheel_y
+        }
+    }
+
+    // Discard only this frame's input, preserving later arrivals.
     CanvasEventsEndFrame :: () {
-        canvas_keys_pressed_count = 0
-        canvas_keys_released_count = 0
-        canvas_keys_repeated_count = 0
-        canvas_buttons_pressed_count = 0
-        canvas_buttons_released_count = 0
-        canvas_mouse_delta_x = 0.0
-        canvas_mouse_delta_y = 0.0
-        canvas_wheel_x = 0.0
-        canvas_wheel_y = 0.0
+        CanvasQueueDiscard(*canvas_keys_pressed[0], *canvas_keys_pressed_count,
+            canvas_frame_input.keys_pressed)
+        CanvasQueueDiscard(*canvas_keys_released[0], *canvas_keys_released_count,
+            canvas_frame_input.keys_released)
+        CanvasQueueDiscard(*canvas_keys_repeated[0], *canvas_keys_repeated_count,
+            canvas_frame_input.keys_repeated)
+        CanvasQueueDiscard(*canvas_buttons_pressed[0], *canvas_buttons_pressed_count,
+            canvas_frame_input.buttons_pressed)
+        CanvasQueueDiscard(*canvas_buttons_released[0], *canvas_buttons_released_count,
+            canvas_frame_input.buttons_released)
+        canvas_mouse_delta_x -= canvas_frame_input.mouse_delta_x
+        canvas_mouse_delta_y -= canvas_frame_input.mouse_delta_y
+        canvas_wheel_x -= canvas_frame_input.wheel_x
+        canvas_wheel_y -= canvas_frame_input.wheel_y
+        canvas_frame_input = CanvasFrameInput.{}
     }
 
     CanvasPageWidth :: () -> s32 {
