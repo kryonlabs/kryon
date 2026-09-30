@@ -1,0 +1,112 @@
+using UI :: #import "kryon/Widgets";
+#import "std/number_text"
+
+clicks: s32;
+amount: float32 = 42.0;
+enabled: bool = true;
+highlighted: bool;
+counter_bytes: [48]u8;
+
+Label :: (session: Session, key: u64, bounds: Rectangle, text: string, size: s32) {
+    props: TextProps
+    props.key = key
+    props.bounds = bounds
+    props.text = text
+    props.font = size
+    Text(session, props)
+}
+
+CounterText :: () -> string {
+    digits: [16]u8
+    number: string = FormatInteger(cast(s64)clicks, digits[:])
+    length: s32 = 0
+    prefix: string = "Clicks: "
+    index: s32 = 0
+    while index < cast(s32)prefix.count {
+        counter_bytes[length] = prefix[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while index < cast(s32)number.count {
+        counter_bytes[length] = number[index]
+        length += 1
+        index += 1
+    }
+    return TextView(counter_bytes[0:length])
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    width: float32 = viewport.width - 40.0
+    if width > 500.0 { width = 500.0 }
+    left: float32 = (viewport.width - width) / 2.0
+    card: BoxProps
+    card.key = cast(u64)10
+    card.bounds = Rectangle.{0.0, 0.0, viewport.width, viewport.height}
+    card.fill = Color.{247, 243, 235, 255}
+    if highlighted { card.fill = Color.{220, 226, 212, 255} }
+    Box(session, card)
+
+    Label(session, cast(u64)11, Rectangle.{left, 24.0, width, 34.0}, "Made with Kryon", 26)
+    Label(session, cast(u64)12, Rectangle.{left, 62.0, width, 24.0}, "Click, slide, switch. Real widgets.", 14)
+
+    button: ButtonProps
+    button.key = cast(u64)20
+    button.id = 20
+    button.bounds = Rectangle.{left, 104.0, width * 0.6 - 6.0, 42.0}
+    button.label = "Click me"
+    button.tone = ButtonTone.ButtonToneAccent
+    button.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    button.disabled = !enabled
+    if Button(session, button) == 1 { clicks += 1 }
+
+    reset: ButtonProps
+    reset.key = cast(u64)21
+    reset.id = 21
+    reset.bounds = Rectangle.{left + width * 0.6 + 6.0, 104.0, width * 0.4 - 6.0, 42.0}
+    reset.label = "Reset"
+    if Button(session, reset) == 1 {
+        clicks = 0
+        amount = 42.0
+        enabled = true
+        highlighted = false
+    }
+    Label(session, cast(u64)22, Rectangle.{left, 158.0, width, 28.0}, CounterText(), 18)
+
+    check: CheckboxProps
+    check.key = cast(u64)30
+    check.id = 30
+    check.bounds = Rectangle.{left, 198.0, width, 32.0}
+    check.label = "Enable button"
+    check.checked = enabled
+    enabled = Checkbox(session, check).checked
+
+    slider: SliderProps
+    slider.key = cast(u64)40
+    slider.id = 40
+    slider.bounds = Rectangle.{left, 248.0, width, 38.0}
+    slider.label = "Progress"
+    slider.value = amount
+    slider.min = 0.0
+    slider.max = 100.0
+    amount = Slider(session, slider).value
+
+    progress: ProgressProps
+    progress.key = cast(u64)41
+    progress.bounds = Rectangle.{left, 302.0, width, 20.0}
+    progress.min = 0
+    progress.max = 100
+    progress.value = cast(s32)amount
+    Progress(session, progress)
+
+    toggle: ToggleProps
+    toggle.key = cast(u64)50
+    toggle.id = 50
+    toggle.bounds = Rectangle.{left, 346.0, width, 32.0}
+    toggle.label = "Highlight card"
+    toggle.value = highlighted
+    highlighted = Toggle(session, toggle).value
+    Label(session, cast(u64)60, Rectangle.{left, 398.0, width, 24.0}, "Ziran source. Canvas2D rendering.", 12)
+    return 0
+}
