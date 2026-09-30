@@ -96,17 +96,17 @@ frame_paint_unchanged: [9]bool;
 KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
     if data.value.count == 0 { return data }
     start: s64 = pending_text_count[slot]
-    if start + cast(s64)data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
+    if start + data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
         return data
     }
     at: s64 = 0
-    while at < cast(s64)data.value.count {
+    while at < data.value.count {
         pending_text[slot][start + at] = data.value[at]
         at += 1
     }
     pending_text_count[slot] = start + at
     data.text_start = start
-    data.text_count = cast(s64)data.value.count
+    data.text_count = data.value.count
     data.owns_text = true
     return data
 }
@@ -632,13 +632,13 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
 
 SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
     if value.count == 0 { return 0 }
-    if cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+    if value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
     start: s64
     if values {
         start = paint_snapshot_value_counts[slot]
-        if start + cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+        if start + value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
         at: s64 = 0
-        while at < cast(s64)value.count {
+        while at < value.count {
             paint_snapshot_values[slot][start + at] = value[at]
             at += 1
         }
@@ -646,9 +646,9 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
         return start
     }
     start = paint_snapshot_asset_counts[slot]
-    if start + cast(s64)value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
+    if start + value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
     at: s64 = 0
-    while at < cast(s64)value.count {
+    while at < value.count {
         paint_snapshot_assets[slot][start + at] = value[at]
         at += 1
     }
@@ -657,7 +657,7 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
 }
 
 SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
-    if cast(s64)value.count != count { return false }
+    if value.count != count { return false }
     at: s64 = 0
     while at < count {
         if value[at] != paint_snapshot_values[slot][start + at] { return false }
@@ -667,7 +667,7 @@ SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool
 }
 
 SnapshotAssetEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
-    if cast(s64)value.count != count { return false }
+    if value.count != count { return false }
     at: s64 = 0
     while at < count {
         if value[at] != paint_snapshot_assets[slot][start + at] { return false }
@@ -749,13 +749,13 @@ PaintSnapshotStore :: (session: Session) -> bool {
             PaintSnapshotInvalidate(session)
             return false
         }
-        previous.value_count = cast(s64)current.value.count
+        previous.value_count = current.value.count
         previous.asset_start = SnapshotTextAppend(slot, false, current.asset_path)
         if previous.asset_start < 0 {
             PaintSnapshotInvalidate(session)
             return false
         }
-        previous.asset_count = cast(s64)current.asset_path.count
+        previous.asset_count = current.asset_path.count
         if !VecPush(paint_snapshots[slot], previous) {
             PaintSnapshotInvalidate(session)
             return false

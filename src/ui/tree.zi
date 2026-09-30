@@ -282,7 +282,7 @@ TreeBuildOldIndex :: (session: Session) -> bool {
 
 TreeBuildNewIndex :: (session: Session, needed: s32) -> bool {
     slot: s32 = SessionIndex(session)
-    if cast(s64)trees[slot].new_slots.count > cast(s64)needed * 2 {
+    if trees[slot].new_slots.count > cast(s64)needed * 2 {
         return true
     }
     capacity: s32 = 8
@@ -1054,7 +1054,7 @@ TreeSetLabel :: (session: Session, index: s32, label: string) {
     semantic: s32 = TreeEnsureSemantic(session, index)
     if semantic < 0 { return }
     start: s64 = trees[slot].submitted_label_count
-    if cast(s64)label.count > 65536 - start {
+    if label.count > 65536 - start {
         trees[slot].error = cast(FrameStatus)FrameAllocationFailed
         return
     }
@@ -1066,7 +1066,7 @@ TreeSetLabel :: (session: Session, index: s32, label: string) {
     trees[slot].submitted_label_count = start + byte
     trees[slot].submitted_semantics[semantic].label_offset = start
     trees[slot].submitted_semantics[semantic].label_length =
-        cast(s64)label.count
+        label.count
 }
 
 #program_export
@@ -1077,7 +1077,7 @@ TreeSetSemanticDetail :: (session: Session, index: s32, detail: string) {
     semantic: s32 = TreeEnsureSemantic(session, index)
     if semantic < 0 { return }
     start: s64 = trees[slot].submitted_label_count
-    if cast(s64)detail.count > 65536 - start {
+    if detail.count > 65536 - start {
         trees[slot].error = cast(FrameStatus)FrameAllocationFailed
         return
     }
@@ -1089,7 +1089,7 @@ TreeSetSemanticDetail :: (session: Session, index: s32, detail: string) {
     trees[slot].submitted_label_count = start + byte
     trees[slot].submitted_semantics[semantic].detail_offset = start
     trees[slot].submitted_semantics[semantic].detail_length =
-        cast(s64)detail.count
+        detail.count
 }
 
 #program_export

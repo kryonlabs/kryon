@@ -300,7 +300,7 @@ RaylibEnsureGlyphs :: (value: string) {
     if typeface.codepoints == null { return }
     missing: bool = false
     at: s64 = 0
-    while at < cast(s64)value.count {
+    while at < value.count {
         lead: s32 = cast(s32)value[at]
         codepoint: s32 = lead
         length: s64 = 1
@@ -314,7 +314,7 @@ RaylibEnsureGlyphs :: (value: string) {
             codepoint = lead & 0x1F
             length = 2
         }
-        if at + length > cast(s64)value.count { break }
+        if at + length > value.count { break }
         next: s64 = 1
         while next < length {
             codepoint = (codepoint << 6) | (cast(s32)value[at + next] & 0x3F)
