@@ -1,0 +1,20 @@
+#import "swipe"
+
+// Laws for swipe gestures. Each states the expected behavior independently
+// of the implementation; `ziran check` proves it over every listed input.
+// An implementation edit may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// A swipe is cancelled when another widget owns the pointer or the drag
+// was cancelled, and then claims and captures nothing.
+#law ForeignOwnerCancels forall cancelled: 0..1, was: 0..1, next: 0..1 => SwipeDragLifecycleFor(false, B(cancelled), B(was), B(next)).cancel_active && !SwipeDragLifecycleFor(false, B(cancelled), B(was), B(next)).claim_pointer_owner && !SwipeDragLifecycleFor(false, B(cancelled), B(was), B(next)).capture_input;
+#law CancelledDragCancels forall was: 0..1, next: 0..1 => SwipeDragLifecycleFor(true, true, B(was), B(next)).cancel_active && !SwipeDragLifecycleFor(true, true, B(was), B(next)).dragging;
+
+// Otherwise the swipe claims the pointer when a drag begins, and captures
+// input while it drags.
+#law ClaimOnStart forall was: 0..1, next: 0..1 => SwipeDragLifecycleFor(true, false, B(was), B(next)).claim_pointer_owner == (!B(was) && B(next)) && SwipeDragLifecycleFor(true, false, B(was), B(next)).capture_input == B(next) && !SwipeDragLifecycleFor(true, false, B(was), B(next)).cancel_active;
+
+// Releasing a drag takes the release and the input; releasing without one
+// takes nothing.
+#law ReleaseRule forall was: 0..1 => SwipeReleaseLifecycleFor(B(was)).consume_release == B(was) && SwipeReleaseLifecycleFor(B(was)).capture_input == B(was);

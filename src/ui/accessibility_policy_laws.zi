@@ -1,0 +1,21 @@
+#import "accessibility_policy"
+#import "accessibility_props"
+
+// Laws for selection requested by assistive technology. Each states the
+// expected behavior independently of the implementation; `ziran check`
+// proves it over every listed input. An implementation edit may not change
+// this file.
+
+// Single selection: Select picks the item, Clear selects nothing, Deselect
+// clears only the item that is selected, and other actions keep it.
+#law SelectPicks forall selected: -1..2, item: -1..2 => AccessibilitySingleSelectionFor(selected, item, AccessibilityAction.AccessibilityActionSelectItem) == item;
+#law ClearEmpties forall selected: -1..2, item: -1..2 => AccessibilitySingleSelectionFor(selected, item, AccessibilityAction.AccessibilityActionClearSelection) == -1;
+#law DeselectOnlySelected forall selected: -1..2, item: -1..2 => AccessibilitySingleSelectionFor(selected, item, AccessibilityAction.AccessibilityActionDeselectItem) == (ifx selected == item then -1 else selected);
+#law OtherActionsKeep forall selected: -1..2, item: -1..2, action: AccessibilityAction => action == AccessibilityAction.AccessibilityActionSelectItem || action == AccessibilityAction.AccessibilityActionClearSelection || action == AccessibilityAction.AccessibilityActionDeselectItem || AccessibilitySingleSelectionFor(selected, item, action) == selected;
+
+// Multiple selection: Select All and Clear reach every row; Select and
+// Deselect change only the row they name.
+#law SelectAllSelects forall selected: 0..1, row: 0..2, item: 0..2 => AccessibilityItemSelectionFor(selected != 0, row, item, AccessibilityAction.AccessibilityActionSelectAll);
+#law ClearDeselects forall selected: 0..1, row: 0..2, item: 0..2 => !AccessibilityItemSelectionFor(selected != 0, row, item, AccessibilityAction.AccessibilityActionClearSelection);
+#law OtherRowsKeep forall selected: 0..1, row: 0..2, item: 0..2, action: AccessibilityAction => row == item || action == AccessibilityAction.AccessibilityActionSelectAll || action == AccessibilityAction.AccessibilityActionClearSelection || AccessibilityItemSelectionFor(selected != 0, row, item, action) == (selected != 0);
+#law NamedRowFollowsAction forall selected: 0..1, row: 0..2 => AccessibilityItemSelectionFor(selected != 0, row, row, AccessibilityAction.AccessibilityActionSelectItem) && !AccessibilityItemSelectionFor(selected != 0, row, row, AccessibilityAction.AccessibilityActionDeselectItem);

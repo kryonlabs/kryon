@@ -1,0 +1,18 @@
+#import "button"
+
+// Laws for buttons. Each states the expected behavior independently of the
+// implementation; `ziran check` proves it over every listed input. An
+// implementation edit may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// A button acts only when neither it nor its content is disabled, and
+// activates only when it is neither disabled nor loading.
+#law ActionNeedsEnabled forall disabled: 0..1, content: 0..1 => ButtonActionEnabled(B(disabled), B(content)) == (!B(disabled) && !B(content));
+#law ActivationNeedsReady forall disabled: 0..1, loading: 0..1 => CanActivate(B(disabled), B(loading)) == (!B(disabled) && !B(loading));
+
+// A click flips a menu button's menu, and nothing else changes it; picking
+// an item closes the menu.
+#law ClickFlipsMenu forall open: 0..1 => ButtonToggleMenuOpen(B(open), true) == !B(open);
+#law NoClickKeepsMenu forall open: 0..1 => ButtonToggleMenuOpen(B(open), false) == B(open);
+#law PickClosesMenu forall open: 0..1, id: -2..3 => ButtonCloseMenuAfterActivation(B(open), id) == (B(open) && id == 0);

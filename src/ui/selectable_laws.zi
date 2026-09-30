@@ -1,0 +1,11 @@
+#import "selectable"
+#import "selectable_props"
+
+// Laws for selectable items. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+// Activating flips the selection and reports the change; otherwise nothing
+// changes.
+#law ActivationFlips forall selected: 0..1 => SelectableToggleFor(selected != 0, true).selected == (selected == 0) && SelectableToggleFor(selected != 0, true).changed;
+#law IdleKeeps forall selected: 0..1 => SelectableToggleFor(selected != 0, false).selected == (selected != 0) && !SelectableToggleFor(selected != 0, false).changed;
