@@ -46,6 +46,8 @@ surface = "src/ui/surface.zi"
 tree = "src/ui/tree.zi"
 tree_input = "src/ui/tree_input.zi"
 widget_kind = "src/ui/widget_kind.zi"
+system_theme = "src/ui/system_theme.zi"
+theme = "src/ui/theme.zi"
 
 [tool]
 project = "build/bin/kryon"
