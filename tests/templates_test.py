@@ -107,8 +107,13 @@ def main():
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  tui  terminal",
-                                         "  web  Canvas2D browser page"], profiles
+                                         "  web  Canvas2D browser page",
+                                         "  shot  headless image, PPM on standard output"], profiles
         run([KRYON, "check", "desktop"], work / "demo-app", env)
+        # The shot profile draws a frame without any display.
+        shot = run([KRYON, "run", "shot"], work / "demo-app", env)
+        assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
+        assert len(shot.splitlines()) == 603, len(shot.splitlines())
 
         run([KRYON, "new", "demo-web", "--template", "web"], work, env)
         local(work / "demo-web")

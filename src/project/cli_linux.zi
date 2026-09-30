@@ -202,6 +202,7 @@ BackendDescription :: (backend: string) -> string {
     if backend == "canvas" { return "Canvas2D browser page" }
     if backend == "dom" { return "semantic DOM browser page" }
     if backend == "terminal" { return "terminal" }
+    if backend == "pixmap" { return "headless image, PPM on standard output" }
     return backend
 }
 
@@ -449,7 +450,8 @@ main :: () -> s32 {
     if profile.name == "" { return Error("unknown profile") }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
         profile.backend != "libdraw" && profile.backend != "raylib" &&
-        profile.backend != "canvas" && profile.backend != "dom") ||
+        profile.backend != "canvas" && profile.backend != "dom" &&
+        profile.backend != "pixmap") ||
     profile.codegen != "c99" {
         return Error("this backend/codegen pair is not available yet")
     }

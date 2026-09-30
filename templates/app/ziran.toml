@@ -30,6 +30,10 @@ backend = "terminal"
 [tool.Kryon.profiles.web]
 backend = "canvas"
 
+# `kryon run shot > screen.ppm` renders one frame without a display.
+[tool.Kryon.profiles.shot]
+backend = "pixmap"
+
 [tool.Kryon.install]
 profile = "desktop"
 name = "{{name}}"

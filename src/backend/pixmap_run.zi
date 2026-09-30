@@ -1,0 +1,37 @@
+#import "session"
+#import "app"
+#import "geometry"
+#import "pixmap"
+#import "tree"
+#import "tree_draw"
+
+using FrameStatus;
+
+// Runs the application headlessly for two frames, the second after any
+// layout the first settled, and prints that frame as a PPM image:
+//
+//   kryon run shot > frame.ppm
+#program_export
+main :: () -> s32 {
+    session: Session = SessionOpen()
+    if !SessionValid(session) { return 1 }
+    viewport: Rectangle = Rectangle.{0.0, 0.0, cast(float32)PixmapWidth,
+        cast(float32)PixmapHeight}
+    frame: s32 = 0
+    while frame < 2 {
+        PixmapBegin(cast(u32)PixmapBackground)
+        if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+            return 1
+        }
+        result: s32 = Frame(session, viewport)
+        if result != 0 {
+            TreeCancel(session)
+            return result
+        }
+        if EndFrame(session) != cast(FrameStatus)FrameOk { return 1 }
+        frame += 1
+    }
+    PixmapPresent()
+    CloseSession(session)
+    return 0
+}

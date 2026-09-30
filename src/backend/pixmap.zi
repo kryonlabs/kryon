@@ -1,0 +1,496 @@
+#import "drawing_props"
+#import "geometry"
+#import "utf8"
+#import "pixmap_font"
+
+// A headless host: Kryon paints a frame into this pixel buffer, and
+// PixmapPresent prints it as a PPM image on standard output. The raster is
+// integer arithmetic over the paint queue's values and text is drawn from
+// bitmap glyphs, so every Ziran target -- C, C++, Go, Rust, Python, and the
+// portable VM -- prints the same bytes for the same frame. That makes it both
+// a screenshot profile (`kryon run shot > frame.ppm`) and a cross-target
+// conformance check.
+
+PixmapWidth :: 960;
+PixmapHeight :: 600;
+// The desktop host's background, so screenshots of both line up.
+PixmapBackground :: 16317180;
+
+pixmap_pixels: [576000]u32;
+// Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
+pixmap_clip_left: s32;
+pixmap_clip_top: s32;
+pixmap_clip_right: s32 = PixmapWidth;
+pixmap_clip_bottom: s32 = PixmapHeight;
+
+PixmapFace :: struct {
+    index: s32
+    scale: s32
+}
+
+#program_export
+PixmapBegin :: (background: u32) {
+    index: s32 = 0
+    while index < PixmapWidth * PixmapHeight {
+        pixmap_pixels[index] = background
+        index += 1
+    }
+    PixmapClipAll()
+}
+
+PixmapClipAll :: () {
+    pixmap_clip_left = 0
+    pixmap_clip_top = 0
+    pixmap_clip_right = PixmapWidth
+    pixmap_clip_bottom = PixmapHeight
+}
+
+PixmapClipTo :: (clip: Rectangle) {
+    pixmap_clip_left = PixmapRound(clip.x)
+    pixmap_clip_top = PixmapRound(clip.y)
+    pixmap_clip_right = PixmapRound(clip.x + clip.width)
+    pixmap_clip_bottom = PixmapRound(clip.y + clip.height)
+    if pixmap_clip_left < 0 { pixmap_clip_left = 0 }
+    if pixmap_clip_top < 0 { pixmap_clip_top = 0 }
+    if pixmap_clip_right > PixmapWidth { pixmap_clip_right = PixmapWidth }
+    if pixmap_clip_bottom > PixmapHeight { pixmap_clip_bottom = PixmapHeight }
+}
+
+// Nearest integer, halves away from zero.
+PixmapRound :: (value: float32) -> s32 {
+    if value >= 0.0 { return cast(s32)(value + 0.5) }
+    return -cast(s32)(0.5 - value)
+}
+
+PixmapMix :: (source: s32, destination: s32, alpha: s32) -> s32 {
+    return (source * alpha + destination * (255 - alpha) + 127) / 255
+}
+
+// Blends color over one pixel; coverage is 0 to 255.
+PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
+    if x < pixmap_clip_left || y < pixmap_clip_top ||
+        x >= pixmap_clip_right || y >= pixmap_clip_bottom { return }
+    alpha: s32 = cast(s32)color.a * coverage / 255
+    if alpha <= 0 { return }
+    index: s32 = y * PixmapWidth + x
+    old: u32 = pixmap_pixels[index]
+    red: s32 = PixmapMix(cast(s32)color.r, cast(s32)((old >> cast(u32)16) & cast(u32)255), alpha)
+    green: s32 = PixmapMix(cast(s32)color.g, cast(s32)((old >> cast(u32)8) & cast(u32)255), alpha)
+    blue: s32 = PixmapMix(cast(s32)color.b, cast(s32)(old & cast(u32)255), alpha)
+    pixmap_pixels[index] = (cast(u32)red << cast(u32)16) | (cast(u32)green << cast(u32)8) |
+        cast(u32)blue
+}
+
+// Whether a point in eighths of a pixel lies in the rounded rectangle
+// [x0, x1) x [y0, y1) with corner radius r, all in whole pixels.
+PixmapInside :: (px: s32, py: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> bool {
+    left: s32 = x0 * 8
+    top: s32 = y0 * 8
+    right: s32 = x1 * 8
+    bottom: s32 = y1 * 8
+    if px < left || py < top || px >= right || py >= bottom { return false }
+    reach: s32 = r * 8
+    dx: s32 = 0
+    if px < left + reach { dx = left + reach - px }
+    else if px > right - reach { dx = px - (right - reach) }
+    dy: s32 = 0
+    if py < top + reach { dy = top + reach - py }
+    else if py > bottom - reach { dy = py - (bottom - reach) }
+    return dx * dx + dy * dy <= reach * reach
+}
+
+// How many of a pixel's 16 sample points lie in the rounded rectangle.
+PixmapSamples :: (x: s32, y: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> s32 {
+    count: s32 = 0
+    row: s32 = 0
+    while row < 4 {
+        column: s32 = 0
+        while column < 4 {
+            if PixmapInside(x * 8 + 1 + column * 2, y * 8 + 1 + row * 2,
+                x0, y0, x1, y1, r) { count += 1 }
+            column += 1
+        }
+        row += 1
+    }
+    return count
+}
+
+PixmapRadius :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32) -> s32 {
+    r: s32 = radius
+    if r < 0 { r = 0 }
+    if r * 2 > x1 - x0 { r = (x1 - x0) / 2 }
+    if r * 2 > y1 - y0 { r = (y1 - y0) / 2 }
+    return r
+}
+
+// Fills a rounded rectangle; corner pixels are anti-aliased from samples.
+PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) {
+    if x1 <= x0 || y1 <= y0 { return }
+    r: s32 = PixmapRadius(x0, y0, x1, y1, radius)
+    top: s32 = y0
+    if top < pixmap_clip_top { top = pixmap_clip_top }
+    bottom: s32 = y1
+    if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
+    left: s32 = x0
+    if left < pixmap_clip_left { left = pixmap_clip_left }
+    right: s32 = x1
+    if right > pixmap_clip_right { right = pixmap_clip_right }
+    y: s32 = top
+    while y < bottom {
+        corner_row: bool = y < y0 + r || y >= y1 - r
+        x: s32 = left
+        while x < right {
+            if corner_row && (x < x0 + r || x >= x1 - r) {
+                samples: s32 = PixmapSamples(x, y, x0, y0, x1, y1, r)
+                if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+            } else {
+                PixmapBlend(x, y, color, 255)
+            }
+            x += 1
+        }
+        y += 1
+    }
+}
+
+// Strokes a rounded rectangle's inside edge `width` pixels thick.
+PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
+    width: s32, color: Color) {
+    if x1 <= x0 || y1 <= y0 { return }
+    r: s32 = PixmapRadius(x0, y0, x1, y1, radius)
+    w: s32 = width
+    if w < 1 { w = 1 }
+    ix0: s32 = x0 + w
+    iy0: s32 = y0 + w
+    ix1: s32 = x1 - w
+    iy1: s32 = y1 - w
+    inner: bool = ix1 > ix0 && iy1 > iy0
+    ir: s32 = r - w
+    if ir < 0 { ir = 0 }
+    // Only pixels this close to an edge can be on the stroke.
+    band: s32 = r
+    if w > band { band = w }
+    band += 1
+    top: s32 = y0
+    if top < pixmap_clip_top { top = pixmap_clip_top }
+    bottom: s32 = y1
+    if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
+    y: s32 = top
+    while y < bottom {
+        edge_row: bool = y < y0 + band || y >= y1 - band
+        x: s32 = x0
+        while x < x1 {
+            if !edge_row && x >= x0 + band && x < x1 - band {
+                x = x1 - band
+                continue
+            }
+            if x >= pixmap_clip_left && x < pixmap_clip_right {
+                samples: s32 = PixmapSamples(x, y, x0, y0, x1, y1, r)
+                if inner && samples > 0 {
+                    samples -= PixmapSamples(x, y, ix0, iy0, ix1, iy1, ir)
+                }
+                if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+            }
+            x += 1
+        }
+        y += 1
+    }
+}
+
+PixmapFaceFor :: (font: s32) -> PixmapFace {
+    face: PixmapFace
+    face.scale = 1
+    best: s32 = 0
+    scale: s32 = 1
+    while scale <= 4 {
+        index: s32 = 0
+        while index < PixmapFontCount {
+            height: s32 = pixmap_font_heights[index] * scale
+            if height <= font && height > best {
+                best = height
+                face.index = index
+                face.scale = scale
+            }
+            index += 1
+        }
+        scale += 1
+    }
+    return face
+}
+
+// The glyph a code point is drawn with: ASCII as itself, common
+// typographic marks as their ASCII look-alikes, anything else as '?'.
+PixmapGlyph :: (point: u32) -> s32 {
+    value: s32 = cast(s32)point
+    if value >= PixmapFontFirst && value <= PixmapFontLast { return value }
+    if value == 8722 || value == 8211 || value == 8212 { return 45 }
+    if value == 8216 || value == 8217 { return 39 }
+    if value == 8220 || value == 8221 { return 34 }
+    if value == 183 || value == 8226 { return 42 }
+    if value == 8230 { return 46 }
+    if value == 8805 { return 62 }
+    if value == 8804 { return 60 }
+    if value == 215 { return 120 }
+    if value == 160 { return 32 }
+    return 63
+}
+
+PixmapGlyphCount :: (value: string) -> s32 {
+    count: s32 = 0
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        point: Decoded = Decode(value, at)
+        if point.after <= at { break }
+        at = point.after
+        count += 1
+    }
+    return count
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused typeface
+    face: PixmapFace = PixmapFaceFor(font)
+    return PixmapGlyphCount(value) * pixmap_font_widths[face.index] * face.scale
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    face: PixmapFace = PixmapFaceFor(font)
+    height: s32 = pixmap_font_heights[face.index] * face.scale
+    if font > height { return font }
+    return height
+}
+
+PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    face: PixmapFace = PixmapFaceFor(font)
+    width: s32 = pixmap_font_widths[face.index]
+    height: s32 = pixmap_font_heights[face.index]
+    glyph_bits: s32 = height * width
+    // Center the glyph cell in the line box.
+    line: s32 = MeasureGlyphLineHeight(font, "")
+    top: s32 = y + (line - height * face.scale) / 2
+    left: s32 = x
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        point: Decoded = Decode(value, at)
+        if point.after <= at { break }
+        at = point.after
+        glyph: s32 = PixmapGlyph(point.value)
+        start: s32 = pixmap_font_starts[face.index] + (glyph - PixmapFontFirst) * glyph_bits
+        row: s32 = 0
+        while row < height {
+            column: s32 = 0
+            while column < width {
+                if PixmapFontBit(start + row * width + column) {
+                    dy: s32 = 0
+                    while dy < face.scale {
+                        dx: s32 = 0
+                        while dx < face.scale {
+                            PixmapBlend(left + column * face.scale + dx,
+                                top + row * face.scale + dy, color, 255)
+                            dx += 1
+                        }
+                        dy += 1
+                    }
+                }
+                column += 1
+            }
+            row += 1
+        }
+        left += width * face.scale
+    }
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    PixmapDrawText(value, x, y, font, color)
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32, color: Color,
+    clip: Rectangle) {
+    PixmapClipTo(clip)
+    PixmapDrawText(value, x, y, font, color)
+    PixmapClipAll()
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32,
+    color: Color) {
+    unused segments
+    PixmapFillRounded(PixmapRound(bounds.x), PixmapRound(bounds.y),
+        PixmapRound(bounds.x + bounds.width), PixmapRound(bounds.y + bounds.height),
+        PixmapRound(radius), color)
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused segments
+    PixmapStrokeRounded(PixmapRound(bounds.x), PixmapRound(bounds.y),
+        PixmapRound(bounds.x + bounds.width), PixmapRound(bounds.y + bounds.height),
+        PixmapRound(radius), PixmapRound(width), color)
+}
+
+// A one-pixel line from (x, y) to (x + width, y + height).
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    x0: s32 = PixmapRound(line.x)
+    y0: s32 = PixmapRound(line.y)
+    x1: s32 = PixmapRound(line.x + line.width)
+    y1: s32 = PixmapRound(line.y + line.height)
+    dx: s32 = x1 - x0
+    if dx < 0 { dx = -dx }
+    dy: s32 = y1 - y0
+    if dy < 0 { dy = -dy }
+    step_x: s32 = 1
+    if x1 < x0 { step_x = -1 }
+    step_y: s32 = 1
+    if y1 < y0 { step_y = -1 }
+    error: s32 = dx - dy
+    x: s32 = x0
+    y: s32 = y0
+    while true {
+        PixmapBlend(x, y, color, 255)
+        if x == x1 && y == y1 { break }
+        twice: s32 = error * 2
+        if twice > -dy {
+            error -= dy
+            x += step_x
+        }
+        if twice < dx {
+            error += dx
+            y += step_y
+        }
+    }
+}
+
+// Images are not decoded here: the destination shows a checkerboard in
+// the tint, so layout and clipping stay visible and comparable.
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
+    radius: float32, tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused origin
+    unused rotation
+    PixmapClipTo(clip)
+    x0: s32 = PixmapRound(destination.x)
+    y0: s32 = PixmapRound(destination.y)
+    x1: s32 = PixmapRound(destination.x + destination.width)
+    y1: s32 = PixmapRound(destination.y + destination.height)
+    light: Color = Color.{229, 231, 235, 255}
+    PixmapFillRounded(x0, y0, x1, y1, PixmapRound(radius), light)
+    square: Color = tint
+    square.a = cast(u8)(cast(s32)tint.a / 4)
+    y: s32 = y0
+    while y < y1 {
+        x: s32 = x0
+        while x < x1 {
+            if ((x - x0) / 8 + (y - y0) / 8) % 2 == 0 {
+                PixmapFillRounded(x, y, x + 8, y + 8, 0, square)
+            }
+            x += 8
+        }
+        y += 8
+    }
+    PixmapClipAll()
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+PixmapDigits :: (value: s32, output: []u8, at: s32) -> s32 {
+    if value >= 100 {
+        output[at] = cast(u8)(48 + value / 100)
+        at += 1
+    }
+    if value >= 10 {
+        output[at] = cast(u8)(48 + (value / 10) % 10)
+        at += 1
+    }
+    output[at] = cast(u8)(48 + value % 10)
+    return at + 1
+}
+
+// Prints the frame as a plain (P3) PPM image, one pixel row per line.
+#program_export
+PixmapPresent :: () {
+    print("P3\n% %\n255\n", PixmapWidth, PixmapHeight)
+    row: [11520]u8
+    y: s32 = 0
+    while y < PixmapHeight {
+        length: s32 = 0
+        x: s32 = 0
+        while x < PixmapWidth {
+            pixel: u32 = pixmap_pixels[y * PixmapWidth + x]
+            if x > 0 {
+                row[length] = cast(u8)32
+                length += 1
+            }
+            length = PixmapDigits(cast(s32)((pixel >> cast(u32)16) & cast(u32)255), row[:], length)
+            row[length] = cast(u8)32
+            length = PixmapDigits(cast(s32)((pixel >> cast(u32)8) & cast(u32)255), row[:], length + 1)
+            row[length] = cast(u8)32
+            length = PixmapDigits(cast(s32)(pixel & cast(u32)255), row[:], length + 1)
+            x += 1
+        }
+        print("%\n", TextView(row[0:length]))
+        y += 1
+    }
+}
+
+// The frame is the whole display: always shown, nothing to close, no
+// clipboard.
+#program_export
+WindowVisibleHost :: () -> bool {
+    return true
+}
+
+#program_export
+WindowSetVisibleHost :: (visible: bool) {
+    unused visible
+}
+
+#program_export
+WindowInterceptCloseHost :: (enabled: bool) -> bool {
+    unused enabled
+    return false
+}
+
+#program_export
+WindowTakeCloseRequestHost :: () -> bool {
+    return false
+}
+
+#program_export
+WindowQuitHost :: () {}
+
+#program_export
+SystemClipboardOpenHost :: () -> s32 {
+    return -1
+}
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    unused index
+    return -1
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    unused text
+    return false
+}
