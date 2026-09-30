@@ -24,13 +24,15 @@ Event :: struct {
     y: s32
     payload: [28]u8
 }
-
 Init :: (flags: u32) -> s32 #foreign sdl_library "SDL_Init";
 Quit :: () #foreign sdl_library "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
     height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl_library "SDL_DestroyWindow";
 SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "SDL_SetWindowSize";
+SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_SetWindowPosition";
+GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
+GetWindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl_library "SDL_GetWindowSize";
 CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
@@ -95,7 +97,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     title: [32]u8
     if !CopyCString("Kryon Ziran", title[:]) { return false }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
-        cast(s32)0x2fff0000, width, height, cast(u32)0)
+        cast(s32)0x2fff0000, width, height, cast(u32)0x20)
     if window == null { return false }
     renderer = CreateRenderer(window, -1, cast(u32)1)
     if renderer == null { return false }
@@ -124,6 +126,14 @@ ResizeDesktop :: (width: s32, height: s32) -> bool {
     if window == null || width <= 0 || height <= 0 { return false }
     desktop_next_width = width
     desktop_next_height = height
+    return true
+}
+
+// Centers the window this desktop host created on its current display.
+#program_export
+CenterDesktop :: () -> bool {
+    if window == null { return false }
+    SetWindowPosition(window, cast(s32)0x2fff0000, cast(s32)0x2fff0000)
     return true
 }
 
@@ -187,6 +197,17 @@ PollDesktop :: () -> bool {
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
     while PollEvent(*event) != 0 {
+        // SDL_WINDOWEVENT_RESIZED / SIZE_CHANGED. Resize only our SDL window;
+        // its drawing surface follows the window manager at the next frame.
+        if event.kind == cast(u32)0x200 && window != null &&
+            event.window_id == GetWindowID(window) &&
+            ((event.which & cast(u32)255) == cast(u32)5 ||
+             (event.which & cast(u32)255) == cast(u32)6) {
+            width: s32
+            height: s32
+            GetWindowSize(window, *width, *height)
+            unused ResizeDesktop(width, height)
+        }
         // SDL_QUIT comes from the last window closing or from the session
         // ending (SIGTERM, logout); it always quits.
         if event.kind == cast(u32)0x100 { return false }
