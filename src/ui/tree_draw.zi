@@ -47,8 +47,13 @@ EndFrame :: (session: Session) -> FrameStatus {
     return cast(FrameStatus)FrameOk
 }
 
+// Ends a frame for a host that can present its previous frame again.
+// `reuse` says the host will do so when this frame's paint matches the last
+// one; the matching paint is then not emitted again. A host that repaints
+// anyway, because something it drew itself changed, passes false and gets
+// the paint emitted. paint_unchanged reports the comparison either way.
 #program_export
-EndFrameRetained :: (session: Session) -> FrameEndResult {
+EndFrameRetained :: (session: Session, reuse: bool) -> FrameEndResult {
     result: FrameEndResult
     result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk {
@@ -60,8 +65,8 @@ EndFrameRetained :: (session: Session) -> FrameEndResult {
     stored: bool = PaintSnapshotStore(session)
     result.paint_unchanged = unchanged && stored
     slot: s32 = SessionIndex(session)
-    frame_paint_unchanged[slot] = result.paint_unchanged
-    if result.paint_unchanged {
+    frame_paint_unchanged[slot] = result.paint_unchanged && reuse
+    if result.paint_unchanged && reuse {
         PaintClear(session)
     } else {
         PaintFlush(session)
