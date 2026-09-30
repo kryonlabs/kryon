@@ -1,5 +1,49 @@
 // Test-only browser effect bridge. Actual pixels come from the browser Canvas2D.
 addToLibrary({
+  canvas_test_text__sig: 'iiifii',
+  canvas_test_text: function(face, size, zoom, width, dark) {
+    var canvas = document.getElementById('canvas');
+    var reference = typeof OffscreenCanvas === 'function'
+      ? new OffscreenCanvas(canvas.width, canvas.height)
+      : document.createElement('canvas');
+    reference.width = canvas.width;
+    reference.height = canvas.height;
+    var context = reference.getContext('2d');
+    var family = face ? 'kryon-face-' + (face - 1) : 'monospace';
+    context.font = size + 'px ' + family;
+    var metrics = context.measureText('H');
+    var line = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+    var em = Math.max(100, Math.round(size * size * 100 / line)) / 100;
+    context.font = em.toFixed(2) + 'px ' + family;
+    var expectedWidth = Math.round(context.measureText('AV café ›…').width);
+    if (width !== expectedWidth) {
+      globalThis.canvasTestError = 'text width ' + width + ' expected ' + expectedWidth;
+      return 0;
+    }
+    var ascent = context.measureText('H').fontBoundingBoxAscent;
+    context.fillStyle = dark ? '#182238' : '#ffffff';
+    context.fillRect(0, 0, reference.width, reference.height);
+    var dpi = Math.max(1, globalThis.devicePixelRatio || 1);
+    context.setTransform(dpi, 0, 0, dpi, 0, 0);
+    context.translate(3, 4);
+    context.scale(zoom, zoom);
+    context.beginPath();
+    context.rect(4, 5, 52, size);
+    context.clip();
+    context.fillStyle = dark ? 'rgba(247,249,255,' + (190 / 255) + ')' : '#141e28';
+    context.fillText('AV café ›…', 4, 5 + ascent);
+    var actual = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    var expected = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (var index = 0; index < actual.length; index++) {
+      if (actual[index] !== expected[index]) {
+        globalThis.canvasTestError = 'text pixels differ at byte ' + index +
+          ', face=' + face + ', size=' + size + ', zoom=' + zoom + ', dpi=' + dpi +
+          ', dark=' + dark + ', actual=' + actual[index] + ', expected=' + expected[index];
+        return 0;
+      }
+    }
+    return 1;
+  },
   canvas_test_input__sig: 'ii',
   canvas_test_input: function(phase) {
     function event(name, values) {

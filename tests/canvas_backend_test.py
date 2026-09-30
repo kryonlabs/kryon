@@ -32,5 +32,8 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
     run([EMCC,'-O1','-I'+str(ZIRAN/'include'),'-iquote',gen,*sorted(gen.rglob('*.c')),
          *libs,'--embed-file',str(ROOT/'assets/fonts/LiberationSans-Regular.ttf')+'@/test-font.ttf','--js-library',ROOT/'tests/canvas_backend_effects.js','-sASYNCIFY','-sSINGLE_FILE=1',
          '-sEXIT_RUNTIME=1','-sENVIRONMENT=web','--shell-file',shell,'-o',work/'test.html'])
-    run(['node',ROOT/'tests/canvas_backend_browser.mjs',(work/'test.html').as_uri(),work/'profile'],timeout=35)
+    for dpi in ('1', '1.25', '2'):
+        environment['CANVAS_TEST_DPI'] = dpi
+        run(['node', ROOT/'tests/canvas_backend_browser.mjs',
+             (work/'test.html').as_uri(), work/('profile-' + dpi)], timeout=35)
 print('Canvas2D Zi/Wasm browser pixels, nested clips, input and lifecycle passed')

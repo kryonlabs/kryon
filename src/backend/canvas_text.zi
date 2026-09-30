@@ -110,6 +110,12 @@
         return -1
     }
 
+    CanvasFontFace :: (font: CanvasFont) -> s32 {
+        index := CanvasFontExtraIndex(font.texture.id)
+        if index < 0 { return 0 }
+        return canvas_font_extras[index].face
+    }
+
     CanvasFontExtraAdd :: (font: CanvasFont, face: s32) {
         index: s32 = 0
         while index < CANVAS_EXTRA_FONTS {
@@ -188,10 +194,10 @@
         offset_x: s32 = 0
         offset_y: s32 = 0
         if codepoint < 32 || codepoint > 1114111 ||
-            (codepoint >= 55296 && codepoint <= 57343) ||
-            PageGlyphMetrics(extra.face, codepoint, extra.size, *advance, *glyph_width,
-                *glyph_height, *offset_x, *offset_y, canvas_extra_glyph_pixels) == 0 ||
-            glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
+        (codepoint >= 55296 && codepoint <= 57343) ||
+        PageGlyphMetrics(extra.face, codepoint, extra.size, *advance, *glyph_width,
+            *glyph_height, *offset_x, *offset_y, canvas_extra_glyph_pixels) == 0 ||
+        glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
             return slot
         }
         if extra.page == 0 || extra.x + glyph_width + 1 > CANVAS_PAGE_SIZE {
@@ -298,7 +304,7 @@
                 codepoint := codepoints[index]
                 index += 1
                 if codepoint < 32 || codepoint > 1114111 ||
-                    (codepoint >= 55296 && codepoint <= 57343) {
+                (codepoint >= 55296 && codepoint <= 57343) {
                     continue
                 }
                 advance: s32 = 0
@@ -308,7 +314,7 @@
                 offset_y: s32 = 0
                 if PageGlyphMetrics(face, codepoint, size, *advance, *glyph_width,
                     *glyph_height, *offset_x, *offset_y, glyph_pixels) == 0 ||
-                    glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
+                glyph_width < 1 || glyph_width > 256 || glyph_height < 1 || glyph_height > 256 {
                     continue
                 }
                 if x + glyph_width + 1 > width {
@@ -456,7 +462,7 @@
     #program_export
     IsFontValid :: (font: CanvasFont) -> bool {
         return font.base_size > 0 && font.glyph_count > 0 && font.glyphs != null &&
-            font.recs != null && font.texture.id != 0
+        font.recs != null && font.texture.id != 0
     }
 
     #program_export
