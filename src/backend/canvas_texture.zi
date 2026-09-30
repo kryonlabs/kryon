@@ -93,10 +93,15 @@
 
     #program_export
     LoadTexture :: (path: *u8) -> Texture2D {
-        image := LoadImage(path)
-        texture := LoadTextureFromImage(image)
-        UnloadImage(image)
-        return texture
+        size: s32
+        data := CanvasLoadFileData(path, *size)
+        if data == null { return Texture2D.{} }
+        width: s32
+        height: s32
+        id := PageTextureFromEncoded(data, size, *width, *height)
+        CanvasRelease(cast(*void)data)
+        if id == 0 { return Texture2D.{} }
+        return Texture2D.{cast(u32)id, width, height, 1, 7}
     }
 
     #program_export

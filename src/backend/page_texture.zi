@@ -395,12 +395,8 @@ PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
     return ok
 }
 
-// Decodes an image file's bytes. Returns malloc'd RGBA pixels the caller
-// frees, or null.
-PageImageDecode :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> *u8 {
-    PageInitNames()
-    scope: s32 = WebScope()
-    result: *u8 = null
+// The bitmap is borrowed from the caller's Web scope and must be closed.
+PageDecodeBitmap :: (bytes: *u8, size: s32) -> s32 {
     array: s32 = WebBytes(0, cast(*void)bytes, size)
     parts: s32 = WebNewArray()
     unused WebCall1(parts, WebName("push"), WebObject(array))
@@ -408,8 +404,49 @@ PageImageDecode :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> *u8 {
     promise: s32 = WebAsObject(WebCall1(WebGlobal, WebName("createImageBitmap"),
         WebObject(blob)))
     bitmap_value: WebValue
-    if promise != 0 && WebAwait(promise, *bitmap_value) {
-        bitmap: s32 = WebAsObject(bitmap_value)
+    if promise == 0 || !WebAwait(promise, *bitmap_value) { return 0 }
+    return WebAsObject(bitmap_value)
+}
+
+// Keep decoded texture pixels in the browser. Loading an asset for drawing
+// needs no GPU readback, Wasm RGBA allocation, or second pixel upload.
+PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> s32 {
+    PageInitNames()
+    scope := WebScope()
+    id: s32 = 0
+    bitmap := PageDecodeBitmap(bytes, size)
+    if bitmap != 0 {
+        w := WebGetNumber(bitmap, page_names.width)
+        h := WebGetNumber(bitmap, page_names.height)
+        if w > 0.0 && h > 0.0 && w <= 16384.0 && h <= 16384.0 && w * h * 4.0 <= 67108864.0 {
+            canvas := PageMakeCanvas(cast(s32)w, cast(s32)h)
+            if canvas != 0 {
+                context := PageContext2D(canvas)
+                if context != 0 {
+                    unused WebCall3(context, WebName("drawImage"), WebObject(bitmap),
+                        WebNumber(0.0), WebNumber(0.0))
+                    if !WebFailed() { id = PageTextureRegister(canvas, false) }
+                    if id != 0 {
+                        width.* = cast(s32)w
+                        height.* = cast(s32)h
+                    }
+                }
+            }
+        }
+        unused WebCall0(bitmap, WebName("close"))
+    }
+    WebEnd(scope)
+    return id
+}
+
+// Decodes an image file's bytes for callers that need CPU pixels. Returns
+// malloc'd RGBA pixels the caller frees, or null.
+PageImageDecode :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> *u8 {
+    PageInitNames()
+    scope: s32 = WebScope()
+    result: *u8 = null
+    bitmap := PageDecodeBitmap(bytes, size)
+    if bitmap != 0 {
         w: float64 = WebGetNumber(bitmap, page_names.width)
         h: float64 = WebGetNumber(bitmap, page_names.height)
         if w > 0.0 && h > 0.0 && w <= 16384.0 && h <= 16384.0 && w * h * 4.0 <= 67108864.0 {
