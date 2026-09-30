@@ -1,0 +1,29 @@
+#import "terminal_keys"
+
+#program_export
+main :: () -> s32 {
+    // The editing keys match the other hosts.
+    if TerminalKey(9) != 258 || TerminalKey(13) != 257 ||
+    TerminalKey(10) != 257 || TerminalKey(127) != 259 ||
+    TerminalKey(8) != 259 { return 1 }
+    // Letters are uppercase; Control+letter reports the letter and Control.
+    if TerminalKey(97) != 65 || TerminalKey(65) != 65 ||
+    TerminalKey(49) != 49 || TerminalKey(32) != 32 { return 2 }
+    if TerminalKey(1) != 65 || TerminalModifiers(1) != 2 ||
+    TerminalKey(19) != 83 || TerminalModifiers(19) != 2 ||
+    TerminalModifiers(9) != 0 || TerminalModifiers(13) != 0 ||
+    TerminalModifiers(97) != 0 { return 3 }
+    if TerminalKey(0) != 0 || TerminalKey(200) != 0 { return 4 }
+    // Escape sequences name the arrows, Home, End, and the editing keys.
+    if TerminalSequenceKey(65, 0) != 265 || TerminalSequenceKey(66, 0) != 264 ||
+    TerminalSequenceKey(67, 0) != 262 || TerminalSequenceKey(68, 0) != 263 ||
+    TerminalSequenceKey(72, 0) != 268 || TerminalSequenceKey(70, 0) != 269 { return 5 }
+    if TerminalSequenceKey(126, 3) != 261 || TerminalSequenceKey(126, 1) != 268 ||
+    TerminalSequenceKey(126, 4) != 269 || TerminalSequenceKey(126, 5) != 266 ||
+    TerminalSequenceKey(126, 6) != 267 || TerminalSequenceKey(126, 2) != 260 ||
+    TerminalSequenceKey(126, 9) != 0 || TerminalSequenceKey(90, 0) != 0 { return 6 }
+    if TerminalSequenceModifiers(5) != 2 || TerminalSequenceModifiers(2) != 1 ||
+    TerminalSequenceModifiers(3) != 4 || TerminalSequenceModifiers(6) != 3 ||
+    TerminalSequenceModifiers(0) != 0 || TerminalSequenceModifiers(1) != 0 { return 7 }
+    return 0
+}

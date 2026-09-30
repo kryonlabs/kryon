@@ -3,6 +3,7 @@
 #import "app"
 #import "geometry"
 #import "terminal"
+#import "terminal_keys"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -115,13 +116,24 @@ main :: () -> s32 {
         pending_count: s32 = 0
         pending_needed: s32 = 0
         escape_stage: s32 = 0
+        sequence_number: s32 = 0
+        sequence_modifiers: s32 = 0
+        sequence_part: s32 = 0
         while result == 0 && !TerminalQuitRequested() {
-            ready: s32 = RunPoll(*input, 1, 30000)
+            // Escape alone is a key; a sequence's next byte follows at once.
+            timeout: s32 = 30000
+            if escape_stage == 1 { timeout = 25 }
+            ready: s32 = RunPoll(*input, 1, timeout)
             if ready < 0 {
                 result = 1
                 break
             }
             if ready == 0 {
+                if escape_stage == 1 {
+                    escape_stage = 0
+                    KeyboardModifiersSend(session, 0)
+                    KeyboardSend(session, 256)
+                }
                 result = RenderFrame(session, viewport, true)
                 continue
             }
@@ -134,6 +146,10 @@ main :: () -> s32 {
             }
             if key == cast(u8)3 { break }
             if key == cast(u8)27 {
+                if escape_stage == 1 {
+                    KeyboardModifiersSend(session, 0)
+                    KeyboardSend(session, 256)
+                }
                 escape_stage = 1
                 pending_count = 0
                 pending_needed = 0
@@ -141,13 +157,37 @@ main :: () -> s32 {
             }
             if escape_stage == 1 {
                 escape_stage = 0
-                if key == cast(u8)91 {
-                    escape_stage = 2
+                if key == cast(u8)91 || key == cast(u8)79 {
+                    escape_stage = ifx key == cast(u8)91 then 2 else 3
+                    sequence_number = 0
+                    sequence_modifiers = 0
+                    sequence_part = 0
                     continue
                 }
-            } else if escape_stage == 2 {
+            } else if escape_stage == 2 || escape_stage == 3 {
+                if escape_stage == 2 && key >= cast(u8)48 && key <= cast(u8)57 {
+                    digit: s32 = cast(s32)key - 48
+                    if sequence_part == 0 && sequence_number < 1000 {
+                        sequence_number = sequence_number * 10 + digit
+                    } else if sequence_part == 1 && sequence_modifiers < 1000 {
+                        sequence_modifiers = sequence_modifiers * 10 + digit
+                    }
+                    continue
+                }
+                if escape_stage == 2 && key == cast(u8)59 {
+                    sequence_part += 1
+                    continue
+                }
                 if key >= cast(u8)64 && key <= cast(u8)126 {
+                    named: s32 = TerminalSequenceKey(cast(s32)key, sequence_number)
+                    if escape_stage == 3 { named = TerminalSequenceKey(cast(s32)key, 0) }
                     escape_stage = 0
+                    if named != 0 {
+                        KeyboardModifiersSend(session,
+                            TerminalSequenceModifiers(sequence_modifiers))
+                        KeyboardSend(session, named)
+                        result = RenderFrame(session, viewport, true)
+                    }
                 }
                 continue
             }
@@ -158,6 +198,7 @@ main :: () -> s32 {
                     if pending_count < pending_needed { continue }
                     value: string = TextFromBytes(pending[0:pending_count])
                     decoded: Decoded = Decode(value, 0)
+                    KeyboardModifiersSend(session, 0)
                     KeyboardSend(session, cast(s32)decoded.value)
                     TypedCodepointSend(session, cast(s32)decoded.value)
                     pending_count = 0
@@ -171,7 +212,9 @@ main :: () -> s32 {
                 pending_needed = 0
             }
             if key < cast(u8)128 {
-                KeyboardSend(session, cast(s32)key)
+                KeyboardModifiersSend(session, TerminalModifiers(cast(s32)key))
+                named: s32 = TerminalKey(cast(s32)key)
+                if named != 0 { KeyboardSend(session, named) }
                 if key >= cast(u8)32 && key != cast(u8)127 {
                     TypedCodepointSend(session, cast(s32)key)
                 }

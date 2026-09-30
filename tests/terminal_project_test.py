@@ -10,7 +10,11 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = str(ROOT.parent / "ziran/build/bin/ziran")
+# The sibling checkout CI uses, else the org-grouped local layout.
+ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
+    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
+     if path.is_dir()), ROOT.parent / "ziran"))
+ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 
 def run(command, directory):
@@ -77,7 +81,7 @@ def main():
         )
         overrides = {
             "Kryon": str(ROOT),
-            "ziran": str(ROOT.parent / "ziran"),
+            "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
             overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
@@ -88,6 +92,15 @@ def main():
             'using UI :: #import "Widgets";\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+            '    key: s32 = KeyboardTake(session)\n'
+            '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
+            '    if key == 263 && control { return 51 }\n'
+            '    if key == 263 { return 46 }\n'
+            '    if key == 259 { return 47 }\n'
+            '    if key == 257 { return 48 }\n'
+            '    if key == 256 { return 49 }\n'
+            '    if key == 65 && control { return 50 }\n'
+            '    if key == 261 { return 52 }\n'
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 { return 42 }\n'
             '    if typed == 233 { return 43 }\n'
@@ -103,7 +116,16 @@ def main():
         exercise(binary, project, b"\x1b[Az", 42)
         exercise(binary, project, b"\xff", 45)
         exercise(binary, project, b"\xc3z", 45)
-    print("terminal Ziran project: ASCII, UTF-8, escape, and invalid input passed")
+        # Keys use the codes every Kryon host reports.
+        exercise(binary, project, b"\x1b[D", 46)
+        exercise(binary, project, b"\x7f", 47)
+        exercise(binary, project, b"\r", 48)
+        exercise(binary, project, b"\x1b", 49)
+        exercise(binary, project, b"\x01", 50)
+        exercise(binary, project, b"\x1b[1;5D", 51)
+        exercise(binary, project, b"\x1b[3~", 52)
+        exercise(binary, project, b"\x1bOD", 46)
+    print("terminal Ziran project: ASCII, UTF-8, escape, invalid input, and key codes passed")
 
 
 if __name__ == "__main__":
