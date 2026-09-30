@@ -1,7 +1,11 @@
 #!/bin/sh
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_root=${ZIRAN_ROOT:-"$repo/../../ziranlang/ziran"}
+ziran_root=${ZIRAN_ROOT:-"$repo/../ziran"}
+# The org-grouped local layout keeps Ziran under ziranlang/.
+if [ -z "${ZIRAN_ROOT:-}" ] && [ ! -d "$ziran_root" ]; then
+    ziran_root=$repo/../../ziranlang/ziran
+fi
 ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
 work=$repo/build/test/libdraw-keys
 mkdir -p "$work"
