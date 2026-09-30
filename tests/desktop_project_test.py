@@ -11,7 +11,11 @@ from raylib_project_test import png_pixels, rgb, run, solid_png
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = str(ROOT.parent / "ziran/build/bin/ziran")
+# The sibling checkout CI uses, else the org-grouped local layout.
+ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
+    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
+     if path.is_dir()), ROOT.parent / "ziran"))
+ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 
 def private_environment():
@@ -39,7 +43,7 @@ def main():
         )
         overrides = {
             "Kryon": str(ROOT),
-            "ziran": str(ROOT.parent / "ziran"),
+            "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
             overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
@@ -51,9 +55,9 @@ def main():
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    key: s32 = KeyboardTake(session)\n'
-            '    if key == 97 { return 1 }\n'
+            '    if key == 65 { return 1 }\n'
             '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
-            '    if key == 115 && control { return 1 }\n'
+            '    if key == 83 && control { return 1 }\n'
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'

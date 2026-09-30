@@ -1,6 +1,7 @@
 #import "byte_text_linux"
 #import "c_string"
 #import "cairo_raster"
+#import "desktop_keys"
 #import "geometry"
 #import "tree_input"
 #import "utf8"
@@ -199,7 +200,7 @@ PollDesktop :: () -> bool {
         if event.kind == cast(u32)0x300 {
             // SDL_KeyboardEvent.keysym.sym occupies byte offset 20 and
             // keysym.mod the low 16 bits at offset 24.
-            desktop_key = event.x
+            desktop_key = DesktopKey(event.x)
             desktop_key_modifiers = event.y & 65535
         }
         if event.kind == cast(u32)0x303 {

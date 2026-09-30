@@ -250,7 +250,7 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 
 .PHONY: libdraw-native-plan9-test
 libdraw-native-plan9-test:
-	sh tests/libdraw_keys_test.sh
+	sh tests/host_keys_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
 test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test
