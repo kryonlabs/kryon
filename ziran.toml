@@ -1,5 +1,5 @@
 [package]
-name = "Kryon"
+name = "kryon"
 module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
@@ -64,7 +64,7 @@ tui = "templates/tui"
 pages = "templates/pages"
 web = "templates/web"
 
-# Settings an application gives the kryon tool under [tool.Kryon].
+# Settings an application gives the kryon tool under [tool.kryon].
 [options]
 default_profile = "string"
 entry = "string"

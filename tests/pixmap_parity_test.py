@@ -72,7 +72,7 @@ def template_program(work, name, env):
     local(project)
     lock = (project / "ziran.lock").read_text()
     identity = next(package["id"] for package in json.loads(lock)["packages"]
-                    if package["name"] == "Kryon")
+                    if package["name"] == "kryon")
     ir = project / "build/parity-ir"
     host = ROOT / "src/backend/pixmap_run.zi"
     # The IR command Kryon's build rules use for a native profile.

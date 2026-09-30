@@ -133,11 +133,11 @@ def main():
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "desktop"\n\n'
-            '[tool.Kryon.profiles.desktop]\nbackend = "desktop"\n\n'
-            '[tool.Kryon.profiles.tui]\nbackend = "terminal"\n'
+            '[tool.kryon]\ndefault_profile = "desktop"\n\n'
+            '[tool.kryon.profiles.desktop]\nbackend = "desktop"\n\n'
+            '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
         )
         (project / "ziran.local.toml").write_text(
             f'[overrides]\nKryon = "{ROOT}"\n'
@@ -147,11 +147,11 @@ def main():
         (project / "driver.py").write_text(DRIVER)
         env = private_environment()
         run([ZIRAN, "lock"], project, env)
-        run([ZIRAN, "tool", "Kryon", "build", "--profile", "desktop"],
+        run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)
         run(["xvfb-run", "-a", sys.executable, "driver.py"], project, env)
         # The terminal host links the same window calls and ignores them.
-        run([ZIRAN, "tool", "Kryon", "build", "--profile", "tui"],
+        run([ZIRAN, "tool", "kryon", "build", "--profile", "tui"],
             project, env)
         result = subprocess.run(["./build/window_probe-tui"], cwd=project,
                                 env=env, capture_output=True, text=True,

@@ -117,13 +117,13 @@ def main():
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "libdraw"\n\n'
-            '[tool.Kryon.profiles.libdraw]\nbackend = "libdraw"\n'
+            '[tool.kryon]\ndefault_profile = "libdraw"\n\n'
+            '[tool.kryon.profiles.libdraw]\nbackend = "libdraw"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
@@ -179,12 +179,12 @@ def main():
         env = private_environment()
         ziran = str(ZIRAN_ROOT / "build/bin/ziran")
         run([ziran, "lock"], project, env)
-        run([ziran, "tool", "Kryon", "build", "--profile", "libdraw"],
+        run([ziran, "tool", "kryon", "build", "--profile", "libdraw"],
             project, env)
         capture = project / "capture.png"
         env["KRYON_CAPTURE_PATH"] = str(capture)
         run(["xvfb-run", "-a", "-n", "100",
-             ziran, "tool", "Kryon", "run", "--profile", "libdraw"],
+             ziran, "tool", "kryon", "run", "--profile", "libdraw"],
             project, env)
         pixels = png_pixels(capture)
         assert pixels[0] > 900 and pixels[1] > 500, pixels[:2]

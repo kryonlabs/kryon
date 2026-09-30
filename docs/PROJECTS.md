@@ -32,7 +32,7 @@ window.
 `kryon` is a front door to `ziran`: `kryon new` and `kryon init` are
 `ziran new` and `ziran init` with Kryon's templates (`--template NAME` for
 Kryon's, or any `SOURCE[:NAME]`), `kryon run|build|check|profiles` is
-`ziran tool Kryon …`, and `kryon install` is `ziran install`. Each project
+`ziran tool kryon …`, and `kryon install` is `ziran install`. Each project
 therefore runs the Kryon its `ziran.lock` pins, whatever version of the
 `kryon` command is installed. `KRYON_TEMPLATES=DIR` takes the templates from
 a local Kryon checkout.
@@ -48,26 +48,26 @@ name = "Example"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
-tool = "Kryon"
+tool = "kryon"
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"
 
-[dependencies.Kryon]
+[dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 
-[tool.Kryon]
+[tool.kryon]
 default_profile = "desktop"
 
-[tool.Kryon.profiles.desktop]
+[tool.kryon.profiles.desktop]
 backend = "desktop"
 ```
 
-`tool = "Kryon"` makes `ziran run`, `ziran build`, `ziran check`, and
+`tool = "kryon"` makes `ziran run`, `ziran build`, `ziran check`, and
 `ziran install` the same as the `kryon` commands. `bridge_modules` exposes
-the app's `app` module to the selected host. `[tool.Kryon] entry` names the
+the app's `app` module to the selected host. `[tool.kryon] entry` names the
 module with `Frame` when it is not the package entry, as in a command-line
 package that also has a window. The app imports `Kryon` for the small core
 surface or `Widgets` for all core widgets:
@@ -94,7 +94,7 @@ packages: add `https://github.com/kryonlabs/kss.git`,
 building blocks listed in `ziran.toml` for code that needs those primitives
 without importing the widget catalog. Native and browser profiles resolve
 imports the same way, so an app's Git dependencies and package-qualified
-imports such as `Kryon/Widgets` work in Canvas and DOM builds too.
+imports such as `kryon/Widgets` work in Canvas and DOM builds too.
 
 From the app directory, run:
 
@@ -114,9 +114,9 @@ for lock, cache, and override details.
 
 ## Profiles and hosts
 
-Define each profile under `[tool.Kryon.profiles.NAME]`. It requires `backend`;
+Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, `raylib`, `canvas`, `dom`, and `pixmap`. Set `default_profile` under `[tool.Kryon]` when there
+`libdraw`, `raylib`, `canvas`, `dom`, and `pixmap`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -133,7 +133,7 @@ terminal; otherwise it uses the default.
 
 These settings live only in `ziran.toml`. Kryon declares them under
 `[options]` in its own `ziran.toml`. Ziran checks the application's
-`[tool.Kryon]` tables against that declaration, merges `ziran.local.toml` over
+`[tool.kryon]` tables against that declaration, merges `ziran.local.toml` over
 them, and hands the kryon tool the result, so a typo is reported with its file
 and line. To try another default profile on one machine, set it in the ignored
 `ziran.local.toml`:
@@ -149,7 +149,7 @@ omitting it. `library` remains the existing system-library escape hatch and
 should be avoided by reproducible applications.
 
 ```toml
-[tool.Kryon]
+[tool.kryon]
 default_profile = "tui"
 ```
 
@@ -160,12 +160,12 @@ the current user:
 
 ```toml
 [package]
-tool = "Kryon"
+tool = "kryon"
 
 [install]
 bin = "example"
 
-[tool.Kryon.install]
+[tool.kryon.install]
 profile = "desktop"            # default: default_profile
 name = "Example"               # menu name; default: package name
 comment = "What it does"

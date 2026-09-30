@@ -11,5 +11,5 @@ kryon install        # ~/.local/bin/{{name}} and a menu entry
 ```
 
 `ziran run`, `ziran build`, and `ziran install` do the same, because
-`ziran.toml` sets `tool = "Kryon"`. `src/app.zi` holds the interface: its
+`ziran.toml` sets `tool = "kryon"`. `src/app.zi` holds the interface: its
 `Frame` runs every frame and declares every widget from the app's state.

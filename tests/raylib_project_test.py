@@ -118,13 +118,13 @@ def main():
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
-            '[dependencies.Kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
-            '[tool.Kryon]\ndefault_profile = "raylib"\n\n'
-            '[tool.Kryon.profiles.raylib]\nbackend = "raylib"\n'
+            '[tool.kryon]\ndefault_profile = "raylib"\n\n'
+            '[tool.kryon.profiles.raylib]\nbackend = "raylib"\n'
         )
         overrides = {
-            "Kryon": str(ROOT),
+            "kryon": str(ROOT),
             "ziran": str(ROOT.parent / "ziran"),
         }
         if os.environ.get("RAYLIB_SOURCE"):
@@ -183,7 +183,7 @@ def main():
         quadrant_png(project / "quadrants.png")
         ziran = str(ROOT.parent / "ziran/build/bin/ziran")
         run([ziran, "lock"], project)
-        run([ziran, "tool", "Kryon", "build", "--profile", "raylib"], project)
+        run([ziran, "tool", "kryon", "build", "--profile", "raylib"], project)
         capture = project / "capture.png"
         env = os.environ.copy()
         for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):

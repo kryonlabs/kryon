@@ -3,13 +3,13 @@ name = "{{name}}"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
-tool = "Kryon"
+tool = "kryon"
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"
 
-[dependencies.Kryon]
+[dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 
@@ -18,16 +18,16 @@ bin = "{{name}}"
 
 # A terminal program first; `kryon run desktop` opens the same interface in
 # a window.
-[tool.Kryon]
+[tool.kryon]
 default_profile = "tui"
 entry = "src/app.zi"
 
-[tool.Kryon.profiles.tui]
+[tool.kryon.profiles.tui]
 backend = "terminal"
 
-[tool.Kryon.profiles.desktop]
+[tool.kryon.profiles.desktop]
 backend = "desktop"
 
 # `kryon run shot > screen.ppm` renders one frame without a display.
-[tool.Kryon.profiles.shot]
+[tool.kryon.profiles.shot]
 backend = "pixmap"
