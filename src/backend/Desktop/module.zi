@@ -1,4 +1,4 @@
 // A desktop application owns its lifecycle while Kryon owns its window,
-// input sampling, rasterization, and clipboard integration.
+// input sampling, rasterization, clipboard integration, and URL opening.
 using Runtime :: #import "desktop_runtime";
 using Raster :: #import "cairo_raster";

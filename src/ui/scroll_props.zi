@@ -37,6 +37,8 @@ ScrollProps :: struct {
     scale: float32
     bounds: Rectangle
     content_height: s32
+    content_width: s32
+    horizontal: bool
     scroll_offset: s32
     scroll_delta: s32
     input: ScrollInput
