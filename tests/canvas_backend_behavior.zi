@@ -86,6 +86,21 @@ main :: () -> s32 {
     path: [32]u8
     CopyCString("/test-image.png", path[:])
     if !ExportImage(image, *path[0]) { return 9 }
+    direct := LoadTexture(*path[0])
+    if !IsTextureValid(direct) || direct.width != 8 || direct.height != 8 {
+        CanvasTestFail(34)
+    }
+    copied := LoadImageFromTexture(direct)
+    if copied.data == null { CanvasTestFail(35) }
+    if copied.data != null {
+        copied_pixels := cast(*u8)copied.data
+        if copied_pixels[0] != cast(u8)255 || copied_pixels[1] != cast(u8)0 ||
+        copied_pixels[2] != cast(u8)255 || copied_pixels[3] != cast(u8)255 {
+            CanvasTestFail(36)
+        }
+    }
+    UnloadImage(copied)
+    UnloadTexture(direct)
     decoded := LoadImage(*path[0])
     if decoded.width != 8 || decoded.height != 8 || decoded.data == null { return 10 }
     decoded_pixels := cast(*u8)decoded.data
