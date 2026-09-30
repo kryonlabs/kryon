@@ -13,7 +13,11 @@ from raylib_project_test import png_pixels, run
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = str(ROOT.parent / "ziran/build/bin/ziran")
+# The sibling checkout CI uses, else the org-grouped local layout.
+ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
+    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
+     if path.is_dir()), ROOT.parent / "ziran"))
+ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 APP = '''Desktop :: #import "Desktop";
 #import "geometry"
@@ -61,7 +65,7 @@ def main():
         )
         overrides = {
             "Kryon": str(ROOT),
-            "ziran": str(ROOT.parent / "ziran"),
+            "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
             overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
