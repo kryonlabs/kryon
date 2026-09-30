@@ -301,7 +301,7 @@ RaylibEnsureGlyphs :: (value: string) {
     missing: bool = false
     at: s64 = 0
     while at < value.count {
-        lead: s32 = cast(s32)value[at]
+        lead: s32 = value[at]
         codepoint: s32 = lead
         length: s64 = 1
         if lead >= 0xF0 {
@@ -1144,7 +1144,7 @@ SystemClipboardOpenHost :: () -> s32 {
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
     if index < 0 || index >= raylib_clipboard_length { return -1 }
-    return cast(s32)raylib_clipboard[index]
+    return raylib_clipboard[index]
 }
 
 #program_export

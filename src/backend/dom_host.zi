@@ -268,9 +268,9 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     dom_records[key].frame = dom_frame
     dom_by_index[index] = key
     element: s32 = dom_records[key].element
-    DomSetAttribute(element, "data-kryon-index", DomWhole(cast(s64)index))
-    DomSetAttribute(element, "data-kryon-kind", DomWhole(cast(s64)widget_kind))
-    DomSetAttribute(element, "data-kryon-semantic", DomWhole(cast(s64)semantic))
+    DomSetAttribute(element, "data-kryon-index", DomWhole(index))
+    DomSetAttribute(element, "data-kryon-kind", DomWhole(widget_kind))
+    DomSetAttribute(element, "data-kryon-semantic", DomWhole(semantic))
     style: s32 = WebGetObject(element, dom_names.style)
     pixels: [32]u8
     DomStyle(style, dom_names.left, DomPixels(x, pixels[:]))
@@ -303,7 +303,7 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     }
     if (flags & 32) != 0 { DomSetAttribute(element, "alt", label) }
     if role.count > 0 { DomSetAttribute(element, "role", role) }
-    if level != 0 { DomSetAttribute(element, "aria-level", DomWhole(cast(s64)level)) }
+    if level != 0 { DomSetAttribute(element, "aria-level", DomWhole(level)) }
     if (flags & 2) != 0 {
         DomSetAttribute(element, "aria-disabled", "true")
     } else {

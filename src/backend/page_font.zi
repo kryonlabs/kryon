@@ -30,7 +30,7 @@ PageFontAppend :: (index: s32, text: string) -> s32 {
 // in hundredths of a pixel; monospace stands in when there is no face.
 PageFontSpec :: (hundredths: s32, face_id: s32) -> string {
     part: [24]u8
-    index: s32 = PageFontAppend(0, FormatInteger(cast(s64)(hundredths / 100), part[:]))
+    index: s32 = PageFontAppend(0, FormatInteger((hundredths / 100), part[:]))
     fraction: s32 = hundredths % 100
     page_font_bytes[index] = cast(u8)46
     page_font_bytes[index + 1] = cast(u8)(48 + fraction / 10)
@@ -57,7 +57,7 @@ PageFaceFamily :: (face_id: s32) -> string {
         page_family_bytes[index] = prefix[index]
         index += 1
     }
-    number: string = FormatInteger(cast(s64)(face_id - 1), part[:])
+    number: string = FormatInteger((face_id - 1), part[:])
     digit: s64 = 0
     while digit < number.count {
         page_family_bytes[index] = number[digit]

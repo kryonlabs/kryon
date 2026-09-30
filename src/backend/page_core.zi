@@ -339,7 +339,7 @@ PageColor :: (r: s32, g: s32, b: s32, a: s32) -> string {
     fields[2] = b
     field: s32 = 0
     while field < 3 {
-        text: string = FormatInteger(cast(s64)fields[field], part[:])
+        text: string = FormatInteger(fields[field], part[:])
         digit: s64 = 0
         while digit < text.count {
             page_color_bytes[index] = text[digit]

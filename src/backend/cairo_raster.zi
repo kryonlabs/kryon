@@ -104,11 +104,11 @@ SetColor :: (color: Color) {
 }
 
 RoundBox :: (bounds: Rectangle, requested_radius: float32) {
-    x: float64 = cast(float64)bounds.x
-    y: float64 = cast(float64)bounds.y
-    width: float64 = cast(float64)bounds.width
-    height: float64 = cast(float64)bounds.height
-    radius: float64 = cast(float64)requested_radius
+    x: float64 = bounds.x
+    y: float64 = bounds.y
+    width: float64 = bounds.width
+    height: float64 = bounds.height
+    radius: float64 = requested_radius
     NewPath(paint)
     if width <= 0.0 || height <= 0.0 { return }
     if radius < 0.0 { radius = 0.0 }
@@ -232,15 +232,15 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     RoundBox(bounds, radius)
     SetColor(color)
-    SetLineWidth(paint, cast(float64)width)
+    SetLineWidth(paint, width)
     Stroke(paint)
 }
 
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
-    MoveTo(paint, cast(float64)line.x, cast(float64)line.y)
-    LineTo(paint, cast(float64)(line.x + line.width),
-        cast(float64)(line.y + line.height))
+    MoveTo(paint, line.x, line.y)
+    LineTo(paint, (line.x + line.width),
+        (line.y + line.height))
     SetColor(color)
     SetLineWidth(paint, 1.0)
     Stroke(paint)
@@ -261,8 +261,8 @@ RasterText :: (value: string, x: s32, y: s32,
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
     Save(paint)
-    CanvasRectangle(paint, cast(float64)clip.x, cast(float64)clip.y,
-        cast(float64)clip.width, cast(float64)clip.height)
+    CanvasRectangle(paint, clip.x, clip.y,
+        clip.width, clip.height)
     Clip(paint)
     RasterText(value, x, y, font, color)
     Restore(paint)
@@ -327,15 +327,15 @@ RasterImage :: (asset_path: string, texture_id: u32,
     Save(paint)
     RoundBox(clip, radius)
     Clip(paint)
-    Translate(paint, cast(float64)destination.x,
-        cast(float64)destination.y)
+    Translate(paint, destination.x,
+        destination.y)
     Rotate(paint, cast(float64)rotation *
         3.14159265358979323846 / 180.0)
     Translate(paint, -cast(float64)origin.x,
         -cast(float64)origin.y)
     CanvasRectangle(paint, 0.0, 0.0,
-        cast(float64)destination.width,
-        cast(float64)destination.height)
+        destination.width,
+        destination.height)
     Clip(paint)
     Scale(paint, cast(float64)destination.width /
         cast(float64)source.width,

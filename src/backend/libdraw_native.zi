@@ -304,10 +304,10 @@ RectangleBounds :: (bounds: Rectangle) -> DrawRectangle {
 }
 
 ColorValue :: (color: Color) -> usize {
-    red: usize = cast(usize)color.r
-    green: usize = cast(usize)color.g
-    blue: usize = cast(usize)color.b
-    alpha: usize = cast(usize)color.a
+    red: usize = color.r
+    green: usize = color.g
+    blue: usize = color.b
+    alpha: usize = color.a
     return (red << cast(usize)24) | (green << cast(usize)16) |
     (blue << cast(usize)8) | alpha
 }
@@ -604,7 +604,7 @@ MeasureGlyphWidth :: (value: string, font: s32,
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     if native_font == null { return font }
-    return cast(s32)native_font.height
+    return native_font.height
 }
 
 #program_export
@@ -947,7 +947,7 @@ SystemClipboardOpenHost :: () -> s32 {
 #program_export
 SystemClipboardByteHost :: (index: s32) -> s32 {
     if index < 0 || index >= native_clipboard_count { return -1 }
-    return cast(s32)native_clipboard[index]
+    return native_clipboard[index]
 }
 
 #program_export
