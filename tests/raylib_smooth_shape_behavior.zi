@@ -1,0 +1,158 @@
+#import "raylib_runtime"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+test_raylib :: #system_library "raylib";
+TestHostInitWindow :: (width: s32, height: s32,
+    title: *u8) #foreign test_raylib "InitWindow";
+TestHostIsWindowReady :: () -> bool #foreign test_raylib "IsWindowReady";
+TestHostBeginDrawing :: () #foreign test_raylib "BeginDrawing";
+TestHostEndDrawing :: () #foreign test_raylib "EndDrawing";
+TestHostCloseWindow :: () #foreign test_raylib "CloseWindow";
+TestHostClearBackground :: (color: Color) #foreign test_raylib "ClearBackground";
+
+SmoothTestImage :: struct {
+    data: *void
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
+}
+
+TestCameraBegin :: (camera: Camera) #foreign test_raylib "BeginMode2D";
+TestCameraEnd :: () #foreign test_raylib "EndMode2D";
+TestCapture :: () -> SmoothTestImage #foreign test_raylib "LoadImageFromScreen";
+TestImageColor :: (image: SmoothTestImage, x: s32,
+    y: s32) -> Color #foreign test_raylib "GetImageColor";
+TestImageFree :: (image: SmoothTestImage) #foreign test_raylib "UnloadImage";
+
+// White drawn on black, so red is coverage.
+Coverage :: (image: SmoothTestImage, x: s32, y: s32) -> s32 {
+    return cast(s32)TestImageColor(image, x, y).r
+}
+
+// Summed coverage of a region, in whole pixels.
+CoveredArea :: (image: SmoothTestImage, x: s32, y: s32, width: s32,
+    height: s32) -> float32 {
+    total: s32 = 0
+    row: s32 = y
+    while row < y + height {
+        column: s32 = x
+        while column < x + width {
+            total += Coverage(image, column, row)
+            column += 1
+        }
+        row += 1
+    }
+    return cast(float32)total / 255.0
+}
+
+// Pixels neither empty nor solid: an aliased edge has none.
+EdgePixels :: (image: SmoothTestImage, x: s32, y: s32, width: s32,
+    height: s32) -> s32 {
+    count: s32 = 0
+    row: s32 = y
+    while row < y + height {
+        column: s32 = x
+        while column < x + width {
+            value := Coverage(image, column, row)
+            if value > 16 && value < 239 { count += 1 }
+            column += 1
+        }
+        row += 1
+    }
+    return count
+}
+
+Solid :: (image: SmoothTestImage, x: s32, y: s32) -> bool {
+    return Coverage(image, x, y) >= 235
+}
+
+Empty :: (image: SmoothTestImage, x: s32, y: s32) -> bool {
+    return Coverage(image, x, y) <= 20
+}
+
+Near :: (value: float32, expected: float32, tolerance: float32) -> bool {
+    difference: float32 = value - expected
+    if difference < 0.0 { difference = -difference }
+    return difference <= tolerance
+}
+
+#program_export
+main :: () -> s32 {
+    title: [32]u8
+    CopyCString("Kryon smooth shape test", title[:])
+    TestHostInitWindow(320, 240, *title[0])
+    if !TestHostIsWindowReady() {
+        return 1
+    }
+    white := Color.{255, 255, 255, 255}
+    TestHostBeginDrawing()
+    TestHostClearBackground(Color.{0, 0, 0, 255})
+    // A dot the size of a habit day marker.
+    RasterRoundedRectangle(Rectangle.{20.0, 20.0, 20.0, 20.0}, 10.0, 12,
+        white)
+    // A card whose straight edges lie on pixel boundaries.
+    RasterRoundedRectangle(Rectangle.{60.0, 20.0, 40.0, 20.0}, 4.0, 12,
+        white)
+    // A two pixel ring inside its bounds, as raylib draws outlines.
+    RasterRoundedRectangleOutline(Rectangle.{120.0, 20.0, 30.0, 30.0}, 15.0,
+        12, 2.0, white)
+    // The same dot at half size under a doubling camera covers as much.
+    TestCameraBegin(Camera.{.{0.0, 0.0}, .{0.0, 0.0}, 0.0, 2.0})
+    RasterRoundedRectangle(Rectangle.{10.0, 40.0, 10.0, 10.0}, 5.0, 12,
+        white)
+    TestCameraEnd()
+    // A square rectangle keeps raylib's own fill.
+    RasterRoundedRectangle(Rectangle.{170.0, 20.0, 10.0, 10.0}, 0.0, 12,
+        white)
+    TestHostEndDrawing()
+    capture := TestCapture()
+    result: s32 = 0
+    // Corners are drawn in a few chords each, so a small dot covers a few
+    // percent less than the true circle.
+    circle: float32 = 3.14159265 * 100.0
+    dot := CoveredArea(capture, 16, 16, 28, 28)
+    if !Near(dot, circle, circle * 0.04) {
+        result = 2
+    }
+    if EdgePixels(capture, 16, 16, 28, 28) < 24 {
+        result = 3
+    }
+    if !Solid(capture, 30, 30) || !Empty(capture, 21, 21) {
+        result = 4
+    }
+    // Straight edges of the card stay crisp. Software GL samples a few
+    // hundredths of a pixel off centre, so solid allows a little less.
+    if !Solid(capture, 60, 30) || !Empty(capture, 59, 30) ||
+        !Solid(capture, 99, 30) || !Empty(capture, 100, 30) ||
+        !Solid(capture, 80, 20) || !Empty(capture, 80, 19) ||
+        !Solid(capture, 80, 39) || !Empty(capture, 80, 40) {
+        result = 5
+    }
+    if EdgePixels(capture, 60, 20, 8, 8) == 0 {
+        result = 6
+    }
+    // The ring: 2 pixels at radius 15, empty at its centre and outside it.
+    ring := CoveredArea(capture, 116, 16, 38, 38)
+    ring_area: float32 = 3.14159265 * (225.0 - 169.0)
+    if !Near(ring, ring_area, ring_area * 0.04) {
+        result = 7
+    }
+    if !Empty(capture, 135, 35) || !Empty(capture, 121, 21) ||
+        !Solid(capture, 135, 21) {
+        result = 8
+    }
+    zoomed := CoveredArea(capture, 16, 76, 28, 28)
+    if !Near(zoomed, circle, circle * 0.04) || EdgePixels(capture, 16, 76, 28, 28) < 24 {
+        result = 9
+    }
+    if CoveredArea(capture, 168, 18, 14, 14) != 100.0 ||
+        EdgePixels(capture, 168, 18, 14, 14) != 0 {
+        result = 10
+    }
+    TestImageFree(capture)
+    TestHostCloseWindow()
+    return result
+}

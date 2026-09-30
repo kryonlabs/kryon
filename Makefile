@@ -181,7 +181,13 @@ raylib-project-test: build/bin/kryon
 
 .PHONY: raylib-clip-test
 raylib-clip-test: $(ZI2C_BIN)
-	@ZI2C_BIN="$(ZI2C_BIN)" sh tests/raylib_clip_test.sh
+	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" \
+		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_clip_test.sh
+
+.PHONY: raylib-smooth-shape-test
+raylib-smooth-shape-test: $(ZI2C_BIN)
+	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" \
+		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_smooth_shape_test.sh
 
 .PHONY: desktop-project-test
 desktop-project-test: build/bin/kryon
