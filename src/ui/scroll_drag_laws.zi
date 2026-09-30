@@ -1,0 +1,39 @@
+#import "scroll"
+#import "drawing_props"
+
+// Laws for dragging a scroll bar and scrolling content by touch. Each
+// states the expected behavior independently of the implementation;
+// `ziran check` proves it over every listed input. An implementation edit
+// may not change this file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// A thumb drag ends when the pointer is released or the content is
+// disabled, and only a release is taken.
+#law ReleaseClearsDrag forall active: 0..1, released: 0..1, disabled: 0..1 => ScrollBarDragReleaseFor(B(active), B(released), B(disabled)).clear_drag == (B(active) && (B(released) || B(disabled))) && ScrollBarDragReleaseFor(B(active), B(released), B(disabled)).consume_release == (B(active) && B(released));
+
+Content :: (max_scroll: s32, pressed: s32, down: s32, inside: s32,
+    captured: s32, on_bar: s32, free: s32, owner: s32, blocked: s32,
+    active: s32, dragging: s32, delta: s32) -> ScrollContentDragDecision {
+    return ScrollContentDragFor(max_scroll, B(pressed), B(down), B(inside),
+        B(captured), B(on_bar), B(free), B(owner), B(blocked), B(active),
+        B(dragging), 5, 5, delta, 3)
+}
+
+// Another widget's drag leaves the content alone.
+#law OtherDragBlocks forall pressed: 0..1, down: 0..1, active: 0..1, dragging: 0..1 => !Content(10, pressed, down, 1, 0, 0, 1, 0, 1, active, dragging, 8).start_drag && !Content(10, pressed, down, 1, 0, 0, 1, 0, 1, active, dragging, 8).dragging;
+
+// A press inside scrollable content arms a drag unless the pointer is on
+// the scroll bar, captured, or owned elsewhere; content that cannot scroll
+// never arms one.
+#law PressArms custom Content(10, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0).start_drag;
+#law BarPressDoesNotArm forall captured: 0..1 => !Content(10, 1, 1, 1, captured, 1, 1, 0, 0, 0, 0, 0).start_drag;
+#law UnscrollableDoesNotArm forall max_scroll: -2..0 => !Content(max_scroll, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0).start_drag;
+
+// An armed drag starts moving only past the threshold, then claims the
+// pointer and captures input.
+#law SmallMoveStaysArmed forall delta: -3..3 => !Content(10, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, delta).dragging;
+#law LargeMoveDrags forall delta: 4..6 => Content(10, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, delta).dragging && Content(10, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, delta).claim_scroll_owner && Content(10, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, delta).capture_input;
+
+// Whatever happens, the offset stays within the scroll range.
+#law OffsetInRange forall max_scroll: 0..6, active: 0..1, dragging: 0..1, delta: -8..8 => Content(max_scroll, 0, 1, 1, 0, 0, 1, 0, 0, active, dragging, delta).scroll_offset >= 0 && Content(max_scroll, 0, 1, 1, 0, 0, 1, 0, 0, active, dragging, delta).scroll_offset <= max_scroll;
