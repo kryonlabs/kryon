@@ -103,7 +103,7 @@ LowerContains :: (text: string, needle: string) -> bool {
         index: s64 = 0
         while index < needle.count {
             byte: u8 = text[at + index]
-            if byte >= 65 && byte <= 90 { byte += cast(u8)32 }
+            if byte >= #char "A" && byte <= #char "Z" { byte += cast(u8)32 }
             if byte != needle[index] {
                 same = false
                 break
@@ -142,7 +142,7 @@ SystemThemeName :: () -> string {
             if value >= 0 {
                 start: s64 = value + 7
                 end: s64 = start
-                while end < settings.count && settings[end] != 34 { end += 1 }
+                while end < settings.count && settings[end] != #char "\"" { end += 1 }
                 if end > start { return StoreName(settings[start:end]) }
             }
         }
@@ -153,7 +153,7 @@ SystemThemeName :: () -> string {
     forced: string = Environment("GTK_THEME")
     if forced.count > 0 {
         end: s64 = 0
-        while end < forced.count && forced[end] != 58 { end += 1 }
+        while end < forced.count && forced[end] != #char ":" { end += 1 }
         return StoreName(forced[0:end])
     }
     return ""

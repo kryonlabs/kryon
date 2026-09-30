@@ -171,7 +171,7 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
     count: s32 = shape_point_count
     if count == 0 { return }
     if count == 1 {
-        if cap == 114 { ShapeAddCircle(shape_x[0], shape_y[0], half) }
+        if cap == #char "r" { ShapeAddCircle(shape_x[0], shape_y[0], half) }
         return
     }
     segments: s32 = count - 1
@@ -186,7 +186,7 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
         length: float32 = ShapeSqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
         ux: float32 = (bx - ax) / length
         uy: float32 = (by - ay) / length
-        if cap == 115 && !closed {
+        if cap == #char "s" && !closed {
             if index == 0 {
                 ax -= ux * half
                 ay -= uy * half
@@ -201,7 +201,7 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
         ShapeQuad(ax + nx, ay + ny, bx + nx, by + ny, bx - nx, by - ny, ax - nx, ay - ny)
         index += 1
     }
-    if !closed && cap == 114 {
+    if !closed && cap == #char "r" {
         ShapeAddCircle(shape_x[0], shape_y[0], half)
         ShapeAddCircle(shape_x[count - 1], shape_y[count - 1], half)
     }
@@ -230,7 +230,7 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
         cross: float32 = d0x * d1y - d0y * d1x
         dot: float32 = d0x * d1x + d0y * d1y
         if ShapeAbs(cross) > 0.00001 || dot < 0.0 {
-            if join == 114 {
+            if join == #char "r" {
                 ShapeAddCircle(vx, vy, half)
             } else {
                 side: float32 = 1.0
@@ -241,7 +241,7 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
                 n1y: float32 = d1x * half * side
                 // A miter reaches (n0 + n1) / (1 + dot); past a limit of 4
                 // it falls back to a bevel, as SVG does.
-                if join == 109 && 1.0 + dot > 0.125 {
+                if join == #char "m" && 1.0 + dot > 0.125 {
                     mx: float32 = (n0x + n1x) / (1.0 + dot)
                     my: float32 = (n0y + n1y) / (1.0 + dot)
                     ShapeQuad(vx, vy, vx + n0x, vy + n0y, vx + mx, vy + my, vx + n1x, vy + n1y)
@@ -257,11 +257,11 @@ ShapeStrokeSubpath :: (half: float32, cap: u8, join: u8, closed: bool) {
 // ---------------------------------------------------------------- parsing
 
 ShapeIsDigit :: (byte: u8) -> bool {
-    return byte >= 48 && byte <= 57
+    return byte >= #char "0" && byte <= #char "9"
 }
 
 ShapeIsSpace :: (byte: u8) -> bool {
-    return byte == 32 || byte == 44 || byte == 10 || byte == 13 || byte == 9
+    return byte == #char " " || byte == #char "," || byte == 10 || byte == 13 || byte == 9
 }
 
 shape_after: s32 = 0;
@@ -272,8 +272,8 @@ ShapeNumber :: (text: string, end: s32, start: s32) -> float32 {
     index: s32 = start
     saw_digit: bool = false
     negative: bool = false
-    if index < end && (text[index] == 45 || text[index] == 43) {
-        negative = text[index] == 45
+    if index < end && (text[index] == #char "-" || text[index] == #char "+") {
+        negative = text[index] == #char "-"
         index += 1
     }
     value: float32 = 0.0
@@ -282,7 +282,7 @@ ShapeNumber :: (text: string, end: s32, start: s32) -> float32 {
         value = value * 10.0 + cast(float32)(cast(s32)text[index] - 48)
         index += 1
     }
-    if index < end && text[index] == 46 {
+    if index < end && text[index] == #char "." {
         index += 1
         scale: float32 = 0.1
         while index < end && ShapeIsDigit(text[index]) {
@@ -292,11 +292,11 @@ ShapeNumber :: (text: string, end: s32, start: s32) -> float32 {
             index += 1
         }
     }
-    if index < end && (text[index] == 101 || text[index] == 69) {
+    if index < end && (text[index] == #char "e" || text[index] == #char "E") {
         index += 1
         exponent_negative: bool = false
-        if index < end && (text[index] == 45 || text[index] == 43) {
-            exponent_negative = text[index] == 45
+        if index < end && (text[index] == #char "-" || text[index] == #char "+") {
+            exponent_negative = text[index] == #char "-"
             index += 1
         }
         exponent: s32 = 0
@@ -351,17 +351,17 @@ ShapeBuildPath :: (text: string, start: s32, end: s32, scale: float32,
         while index < end && ShapeIsSpace(text[index]) { index += 1 }
         if index >= end { break }
         byte: u8 = text[index]
-        if (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122) {
+        if (byte >= #char "A" && byte <= #char "Z") || (byte >= #char "a" && byte <= #char "z") {
             command = byte
             index += 1
-            if command == 90 {
+            if command == #char "Z" {
                 ShapeFinishSubpath(stroke, half, cap, join, true)
                 continue
             }
-        } else if command == 0 || command == 90 {
+        } else if command == 0 || command == #char "Z" {
             return false
         }
-        if command == 77 {
+        if command == #char "M" {
             ShapeFinishSubpath(stroke, half, cap, join, false)
             x = ShapeNumber(text, end, index) * scale
             index = shape_after
@@ -370,22 +370,22 @@ ShapeBuildPath :: (text: string, start: s32, end: s32, scale: float32,
             index = shape_after
             ShapeAddPoint(x, y)
             command = 76
-        } else if command == 76 {
+        } else if command == #char "L" {
             x = ShapeNumber(text, end, index) * scale
             index = shape_after
             while index < end && ShapeIsSpace(text[index]) { index += 1 }
             y = ShapeNumber(text, end, index) * scale
             index = shape_after
             ShapeAddPoint(x, y)
-        } else if command == 72 {
+        } else if command == #char "H" {
             x = ShapeNumber(text, end, index) * scale
             index = shape_after
             ShapeAddPoint(x, y)
-        } else if command == 86 {
+        } else if command == #char "V" {
             y = ShapeNumber(text, end, index) * scale
             index = shape_after
             ShapeAddPoint(x, y)
-        } else if command == 67 {
+        } else if command == #char "C" {
             values: [6]float32
             count: s32 = 0
             while count < 6 {
@@ -525,10 +525,10 @@ ShapeRaster :: (shape: string, size: s32, coverage: []u8) -> bool {
     ok: bool = true
     while at < length {
         end: s32 = at
-        while end < length && shape[end] != 124 { end += 1 }
+        while end < length && shape[end] != #char "|" { end += 1 }
         kind: u8 = shape[at]
-        stroke: bool = kind == 83
-        even_odd: bool = kind == 69
+        stroke: bool = kind == #char "S"
+        even_odd: bool = kind == #char "E"
         half: float32 = 0.0
         cap: u8 = 98
         join: u8 = 109
@@ -540,7 +540,7 @@ ShapeRaster :: (shape: string, size: s32, coverage: []u8) -> bool {
             join = shape[cursor + 1]
             cursor += 2
         }
-        if cursor >= end || shape[cursor] != 58 || (!stroke && kind != 70 && kind != 69) {
+        if cursor >= end || shape[cursor] != #char ":" || (!stroke && kind != #char "F" && kind != #char "E") {
             ok = false
             break
         }
