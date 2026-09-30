@@ -67,6 +67,11 @@ def main():
             '    image.asset_path = "red.png"\n'
             '    image.alt_text = "Red image"\n'
             '    Image(session, image)\n'
+            '    label: TextProps\n'
+            '    label.bounds = Rectangle.{400.0, 100.0, 300.0, 200.0}\n'
+            '    label.text = "gjpqy"\n'
+            '    label.font = 40\n'
+            '    Text(session, label)\n'
             '    return 0\n}\n'
         )
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
@@ -97,6 +102,13 @@ def main():
         assert png[:2] == (960, 600), png[:2]
         assert rgb(png, 200, 200) == (230, 30, 40), "desktop image failed"
         assert rgb(png, 10, 10) == (248, 250, 252), "desktop background failed"
+        # A 40-pixel font's line box is 40 pixels tall, descenders included,
+        # as on the raylib and canvas hosts.
+        ink = [y for y in range(90, 300) if any(
+            sum(rgb(png, x, y)) < 400 for x in range(400, 700))]
+        assert ink, "desktop text failed"
+        assert ink[0] >= 100 and ink[-1] < 140, (ink[0], ink[-1])
+        assert ink[-1] >= 128, ("descenders missing", ink[-1])
 
         (project / "input_check.py").write_text(
             "import os\nimport subprocess\nimport sys\nimport time\n"
@@ -150,7 +162,7 @@ def main():
         for mode in ("key", "control", "text", "unicode", "wheel"):
             run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                 project, env)
-    print("desktop Ziran project: image, keyboard, modifiers, UTF-8 text, and wheel passed")
+    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, and wheel passed")
 
 
 if __name__ == "__main__":

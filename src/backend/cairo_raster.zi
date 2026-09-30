@@ -68,6 +68,23 @@ LineTo :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_l
 SetLineWidth :: (paint: *void, width: float64) #foreign cairo_library "cairo_set_line_width";
 SelectFontFace :: (paint: *void, family: *u8, slant: s32, weight: s32) #foreign cairo_library "cairo_select_font_face";
 SetFontSize :: (paint: *void, size: float64) #foreign cairo_library "cairo_set_font_size";
+FontExtents :: struct {
+    ascent: float64
+    descent: float64
+    height: float64
+    max_x_advance: float64
+    max_y_advance: float64
+}
+TextExtents :: struct {
+    x_bearing: float64
+    y_bearing: float64
+    width: float64
+    height: float64
+    x_advance: float64
+    y_advance: float64
+}
+FontExtentsOf :: (paint: *void, extents: *FontExtents) #foreign cairo_library "cairo_font_extents";
+TextExtentsOf :: (paint: *void, value: *u8, extents: *TextExtents) #foreign cairo_library "cairo_text_extents";
 ShowText :: (paint: *void, value: *u8) #foreign cairo_library "cairo_show_text";
 Translate :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_translate";
 Rotate :: (paint: *void, radians: float64) #foreign cairo_library "cairo_rotate";
@@ -169,10 +186,32 @@ CaptureConfigured :: () -> bool {
     return SurfaceWritePNG(surface, path) == 0
 }
 
+// Kryon's line box is `font` pixels from the top of the ascent to the bottom
+// of the descent, as the raylib and canvas hosts lay text out, while Cairo
+// sizes a font by its em. Selects the size whose ascent and descent fill the
+// line box and returns the baseline's offset from the top of the box.
+SelectLineFont :: (font: s32) -> float64 {
+    SetFontSize(paint, cast(float64)font)
+    extents: FontExtents
+    FontExtentsOf(paint, *extents)
+    total: float64 = extents.ascent + extents.descent
+    if total <= 0.0 { return cast(float64)font }
+    scale: float64 = cast(float64)font / total
+    SetFontSize(paint, cast(float64)font * scale)
+    return extents.ascent * scale
+}
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    return (cast(s32)value.count * font * 3) / 5
+    bytes: [1024]u8
+    if paint == null || !CopyCString(value, bytes[:]) {
+        return (cast(s32)value.count * font * 3) / 5
+    }
+    unused SelectLineFont(font)
+    extents: TextExtents
+    TextExtentsOf(paint, *bytes[0], *extents)
+    return cast(s32)(extents.x_advance + 0.5)
 }
 
 #program_export
@@ -212,8 +251,8 @@ RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     bytes: [1024]u8
     if !CopyCString(value, bytes[:]) { return }
-    SetFontSize(paint, cast(float64)font)
-    MoveTo(paint, cast(float64)x, cast(float64)(y + font))
+    baseline: float64 = SelectLineFont(font)
+    MoveTo(paint, cast(float64)x, cast(float64)y + baseline)
     SetColor(color)
     ShowText(paint, *bytes[0])
 }
