@@ -154,6 +154,21 @@ main :: () -> s32 {
     CanvasTestInput(3)
     TestTextResolution(true)
     ReleaseTypefaces()
+    // Input arriving after a frame starts is still available on the next
+    // frame, even when rendering suspended for a browser resource decode.
+    BeginDrawing()
+    CanvasTestInput(4)
+    EndDrawing()
+    if !IsMouseButtonPressed(0) || !IsMouseButtonReleased(0) ||
+    !IsKeyPressed(67) || !IsKeyReleased(67) || GetMouseWheelMove() != 1.0 {
+        CanvasTestFail(32)
+    }
+    BeginDrawing()
+    EndDrawing()
+    if IsMouseButtonPressed(0) || IsMouseButtonReleased(0) ||
+    IsKeyPressed(67) || IsKeyReleased(67) || GetMouseWheelMove() != 0.0 {
+        CanvasTestFail(33)
+    }
     BeginMode2D(Camera.{offset = Vector2.{30.0, 30.0}, zoom = 2.0})
     BeginScissorMode(0, 0, 1, 1)
     CloseWindow()

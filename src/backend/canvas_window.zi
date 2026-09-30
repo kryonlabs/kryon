@@ -160,6 +160,7 @@
 
     #program_export
     BeginDrawing :: () {
+        CanvasEventsBeginFrame()
         PageRefreshPixelRatio()
         PageContextCall(PageOpFrameReset, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
     }

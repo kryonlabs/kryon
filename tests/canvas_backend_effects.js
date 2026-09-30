@@ -71,6 +71,13 @@ addToLibrary({
       var density = globalThis.devicePixelRatio === 2 ? 1.25 : 2;
       Object.defineProperty(globalThis, 'devicePixelRatio', {value:density, configurable:true});
     }
+    if(phase===4) {
+      event('mousedown',{clientX:17,clientY:19,button:0});
+      event('mouseup',{clientX:17,clientY:19,button:0});
+      event('keydown',{code:'KeyC',key:'c'});
+      event('keyup',{code:'KeyC',key:'c'});
+      event('wheel',{deltaX:0,deltaY:-120,deltaMode:0});
+    }
     return 0;
   },
   // Records a failure found after main was suspended; see canvas_test_finish.
