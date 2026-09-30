@@ -1,0 +1,29 @@
+[package]
+name = "{{name}}"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+tool = "Kryon"
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.Kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[install]
+bin = "{{name}}"
+
+# A terminal program first; `kryon run desktop` opens the same interface in
+# a window.
+[tool.Kryon]
+default_profile = "tui"
+entry = "src/app.zi"
+
+[tool.Kryon.profiles.tui]
+backend = "terminal"
+
+[tool.Kryon.profiles.desktop]
+backend = "desktop"

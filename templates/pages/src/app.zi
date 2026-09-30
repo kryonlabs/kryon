@@ -1,0 +1,131 @@
+using UI :: #import "Widgets";
+#import "std/number_text"
+#import "layout"
+
+// {{name}}: a Kryon application with three pages behind a tab row. Each
+// page is a procedure; the state they share lives at the top of the file,
+// so a setting changed on one page shows on another.
+//
+//   kryon run          the desktop window
+//   kryon run tui      the same pages in a terminal
+//   kryon run web      a Canvas2D browser page (needs Emscripten)
+
+PageHome :: 0;
+PageLibrary :: 1;
+PageSettings :: 2;
+
+current: s32;
+selected_book: s32;
+book_scroll: s32;
+favorites_only: bool;
+show_authors: bool = true;
+books: [6]ListBoxItem;
+book_text: [6][96]u8;
+title_text: [96]u8;
+detail_text: [128]u8;
+
+titles: [6]string = .{"Ada's Notes", "The Cellar Door", "Kites at Dusk",
+    "Rivers of Light", "Small Engines", "The Quiet Grid"};
+authors: [6]string = .{"L. Byron", "M. Okafor", "S. Lind", "A. Ito", "R. Diaz", "K. Weiss"};
+favorite: [6]bool = .{true, false, true, false, false, true};
+
+Tab :: (session: Session, page: *PageLayout, row: Rectangle, index: s32, label: string) {
+    props: ButtonProps
+    props.key = cast(u64)(10 + index)
+    props.id = 10 + index
+    props.bounds = RowPart(page, row, index, 3)
+    props.label = label
+    props.selected = current == index
+    if current == index {
+        props.tone = ButtonTone.ButtonToneAccent
+        props.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    }
+    if Button(session, props) == 1 { current = index }
+}
+
+Home :: (session: Session, page: *PageLayout) {
+    Label(session, 20, "Welcome", NextRow(page, 30.0), FontSize(page, 24))
+    Label(session, 21, "Pick a book in the library. Settings change what it shows.",
+        NextRow(page, 22.0), FontSize(page, 16))
+    open: ButtonProps
+    open.key = cast(u64)22
+    open.id = 22
+    open.bounds = RowPart(page, NextRow(page, 40.0), 0, 2)
+    open.label = "Open the library"
+    open.tone = ButtonTone.ButtonToneAccent
+    open.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    if Button(session, open) == 1 { current = PageLibrary }
+}
+
+Library :: (session: Session, page: *PageLayout) {
+    count: s32 = 0
+    index: s32 = 0
+    while index < 6 {
+        if !favorites_only || favorite[index] {
+            label: string = Joined(titles[index], "", book_text[count][:])
+            if show_authors {
+                prefix: string = Joined(titles[index], " - ", title_text[:])
+                label = Joined(prefix, authors[index], book_text[count][:])
+            }
+            books[count].key = cast(u64)(200 + index)
+            books[count].label = label
+            count += 1
+        }
+        index += 1
+    }
+    if selected_book >= count { selected_book = 0 }
+    list: ListBoxProps
+    list.key = cast(u64)30
+    list.id = 30
+    list.bounds = NextRow(page, 6.0 * 34.0)
+    list.row_height = 34
+    if page.cells {
+        // Kryon measures the list in pixels; a cell is eight of them.
+        list.bounds.height = 6.0
+        list.row_height = 8
+        list.scale = 0.125
+        page.y += 5.0
+    }
+    list.selected_index = selected_book
+    list.scroll_offset = book_scroll
+    result: ListBoxResult = ListBox(session, list, books[0:count])
+    selected_book = result.selected_index
+    book_scroll = result.scroll_offset
+    if count > 0 {
+        Label(session, 31, Joined("Selected: ", books[selected_book].label, detail_text[:]),
+            NextRow(page, 22.0), FontSize(page, 16))
+    }
+}
+
+Settings :: (session: Session, page: *PageLayout) {
+    favorites: CheckboxProps
+    favorites.key = cast(u64)40
+    favorites.id = 40
+    favorites.bounds = NextRow(page, 32.0)
+    favorites.label = "Show favorites only"
+    favorites.checked = favorites_only
+    changed: CheckboxValueResult = Checkbox(session, favorites)
+    if changed.changed { favorites_only = changed.checked }
+    authors: CheckboxProps
+    authors.key = cast(u64)41
+    authors.id = 41
+    authors.bounds = NextRow(page, 32.0)
+    authors.label = "Show authors"
+    authors.checked = show_authors
+    changed = Checkbox(session, authors)
+    if changed.changed { show_authors = changed.checked }
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    page: PageLayout = PageFor(viewport, 560.0)
+    Label(session, 1, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
+    tabs: Rectangle = NextRow(*page, 40.0)
+    Tab(session, *page, tabs, PageHome, "Home")
+    Tab(session, *page, tabs, PageLibrary, "Library")
+    Tab(session, *page, tabs, PageSettings, "Settings")
+    if current == PageHome { Home(session, *page) }
+    if current == PageLibrary { Library(session, *page) }
+    if current == PageSettings { Settings(session, *page) }
+    return 0
+}

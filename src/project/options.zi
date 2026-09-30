@@ -160,6 +160,10 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         value: string = line[equal + 1:cast(s32)line.count]
         if key == "default_profile" {
             config.default_profile = value
+        } else if key == "entry" {
+            // The window's program when it is not the package entry, as in
+            // a command-line package that also has a Kryon interface.
+            config.entry = value
         } else if key == "profiles" {
             at: s32 = 0
             while at < cast(s32)value.count {

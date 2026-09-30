@@ -10,6 +10,7 @@ RawClose :: (fd: s32) -> s32 #foreign libc "close";
 RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
 RawSetenv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
+RawGetenv :: (name: *u8) -> *u8 #foreign libc "getenv";
 CopyDescriptor :: (source: *TextDescriptor, destination: *string,
     count: u64) -> void #foreign libc "bcopy";
 
@@ -42,30 +43,17 @@ TextFromBuffer :: (bytes: []u8, length: s32) -> string {
 }
 
 Environment :: (name: string, output: []u8) -> string {
-    bytes: [32768]u8
-    file: FileContents = ReadFile("/proc/self/environ", bytes[:])
-    if !file.ok { return "" }
-    at: s32 = 0
-    while at < cast(s32)file.text.count {
-        start: s32 = at
-        while at < cast(s32)file.text.count &&
-        file.text[at] != cast(u8)0 { at += 1 }
-        if at - start > cast(s32)name.count &&
-        file.text[start:start + cast(s32)name.count] == name &&
-        file.text[start + cast(s32)name.count] == cast(u8)61 {
-            first: s32 = start + cast(s32)name.count + 1
-            length: s32 = at - first
-            if length >= cast(s32)output.count { return "" }
-            index: s32 = 0
-            while index < length {
-                output[index] = file.text[first + index]
-                index += 1
-            }
-            return TextFromBuffer(output, length)
-        }
-        at += 1
+    name_bytes: [128]u8
+    if !CString(name, name_bytes[:]) { return "" }
+    value: *u8 = RawGetenv(*name_bytes[0])
+    if value == null { return "" }
+    length: s32 = 0
+    while value[length] != cast(u8)0 {
+        if length >= cast(s32)output.count { return "" }
+        output[length] = value[length]
+        length += 1
     }
-    return ""
+    return TextFromBuffer(output, length)
 }
 
 CString :: (value: string, output: []u8) -> bool {
@@ -166,26 +154,6 @@ Exists :: (path: string) -> bool {
     return true
 }
 
-Argument :: (command_line: string, wanted: s32, output: []u8) -> string {
-    current: s32 = 0
-    length: s32 = 0
-    at: s32 = 0
-    while at < cast(s32)command_line.count {
-        ch: u8 = command_line[at]
-        if ch == cast(u8)0 {
-            if current == wanted { return TextFromBuffer(output, length) }
-            current += 1
-            length = 0
-        } else if current == wanted {
-            if length >= cast(s32)output.count { return "" }
-            output[length] = ch
-            length += 1
-        }
-        at += 1
-    }
-    return ""
-}
-
 Execute :: (arguments: []string) -> s32 {
     if arguments.count == 0 || arguments.count > 16 { return 127 }
     storage: [17]ArgumentBytes
@@ -201,6 +169,42 @@ Execute :: (arguments: []string) -> s32 {
     return 127
 }
 
+// Argument index of a NUL-separated command line, as a view of it.
+ArgumentAt :: (command_line: string, wanted: s32) -> string {
+    current: s32 = 0
+    start: s32 = 0
+    at: s32 = 0
+    while at < cast(s32)command_line.count {
+        if command_line[at] == cast(u8)0 {
+            if current == wanted { return command_line[start:at] }
+            current += 1
+            start = at + 1
+        }
+        at += 1
+    }
+    return ""
+}
+
+ArgumentCount :: (command_line: string) -> s32 {
+    count: s32 = 0
+    at: s32 = 0
+    while at < cast(s32)command_line.count {
+        if command_line[at] == cast(u8)0 { count += 1 }
+        at += 1
+    }
+    return count
+}
+
+BackendDescription :: (backend: string) -> string {
+    if backend == "desktop" { return "SDL2/Cairo window" }
+    if backend == "raylib" { return "raylib window" }
+    if backend == "libdraw" { return "libdraw window" }
+    if backend == "canvas" { return "Canvas2D browser page" }
+    if backend == "dom" { return "semantic DOM browser page" }
+    if backend == "terminal" { return "terminal" }
+    return backend
+}
+
 ChooseProfile :: (config: ProjectConfig) -> s32 {
     PrintFd(1, "Choose a profile:\n")
     index: s32 = 0
@@ -211,18 +215,9 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
         PrintFd(1, TextFromBuffer(digit[:], 1))
         PrintFd(1, ") ")
         PrintFd(1, config.profiles[index].name)
-        if config.profiles[index].backend == "desktop" {
-            PrintFd(1, " (SDL2/Cairo window)")
-        } else if config.profiles[index].backend == "raylib" {
-            PrintFd(1, " (raylib window)")
-        } else if config.profiles[index].backend == "libdraw" {
-            PrintFd(1, " (libdraw window)")
-        } else if config.profiles[index].backend == "canvas" {
-            PrintFd(1, " (Canvas2D browser)")
-        } else if config.profiles[index].backend == "dom" {
-            PrintFd(1, " (semantic DOM browser)")
-        }
-        PrintFd(1, "\n")
+        PrintFd(1, " (")
+        PrintFd(1, BackendDescription(config.profiles[index].backend))
+        PrintFd(1, ")\n")
         index += 1
     }
     PrintFd(1, "Selection: ")
@@ -245,43 +240,157 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
     return index
 }
 
+ListProfiles :: (config: ProjectConfig) -> s32 {
+    index: s32 = 0
+    while index < config.profile_count {
+        profile: ProjectProfile = config.profiles[index]
+        if profile.name == config.default_profile { PrintFd(1, "* ") }
+        else { PrintFd(1, "  ") }
+        PrintFd(1, profile.name)
+        PrintFd(1, "  ")
+        PrintFd(1, BackendDescription(profile.backend))
+        PrintFd(1, "\n")
+        index += 1
+    }
+    return 0
+}
+
+Usage :: () -> s32 {
+    PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME]\n")
+    PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]]\n")
+    PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
+    PrintFd(1, "       kryon install [--prefix DIR]\n")
+    PrintFd(1, "       kryon profiles\n")
+    PrintFd(1, "Kryon templates: app (window), tui (terminal), pages (navigation), web (browser page)\n")
+    return 0
+}
+
+KryonTemplates :: "https://github.com/kryonlabs/kryon.git";
+
+// A bare template name is one of Kryon's; anything else names its own
+// package, as ziran new does.
+TemplateSpec :: (value: string, base: string, output: []u8) -> string {
+    at: s32 = 0
+    plain: bool = value.count > 0 && value[0] != cast(u8)46
+    while at < cast(s32)value.count {
+        if value[at] == cast(u8)47 || value[at] == cast(u8)58 { plain = false }
+        at += 1
+    }
+    if !plain { return value }
+    joined_bytes: [4096]u8
+    joined: string = Join(base, ":", joined_bytes[:])
+    if joined == "" { return "" }
+    return Join(joined, value, output)
+}
+
+// Outside `ziran tool Kryon`, kryon is a front door: project commands go
+// through ziran, which runs the Kryon the project's ziran.lock pins, and
+// new and init start projects from Kryon's templates.
+FrontDoor :: (command_line: string, verb: string) -> s32 {
+    guard_bytes: [8]u8
+    if Environment("KRYON_FRONT_DOOR", guard_bytes[:]) == "1" {
+        return Error("ziran tool Kryon started kryon without project settings")
+    }
+    if !SetEnvironment("KRYON_FRONT_DOOR", "1") { return Error("cannot set the environment") }
+    count: s32 = ArgumentCount(command_line)
+    if count > 14 { return Error("too many arguments") }
+    args: [16]string
+    used: s32 = 0
+    args[used] = "ziran"
+    used += 1
+    base_bytes: [4096]u8
+    base: string = Environment("KRYON_TEMPLATES", base_bytes[:])
+    if base == "" { base = KryonTemplates }
+    spec_bytes: [4096]u8
+    if verb == "new" || verb == "init" {
+        args[used] = verb
+        used += 1
+        templated: bool = false
+        index: s32 = 2
+        while index < count {
+            part: string = ArgumentAt(command_line, index)
+            args[used] = part
+            used += 1
+            if part == "--template" && index + 1 < count {
+                templated = true
+                args[used] = TemplateSpec(ArgumentAt(command_line, index + 1),
+                    base, spec_bytes[:])
+                if args[used] == "" { return Error("template name is too long") }
+                used += 1
+                index += 1
+            }
+            index += 1
+        }
+        if !templated {
+            args[used] = "--template"
+            used += 1
+            args[used] = TemplateSpec("app", base, spec_bytes[:])
+            used += 1
+        }
+    } else {
+        if verb == "install" {
+            args[used] = "install"
+            used += 1
+        } else {
+            args[used] = "tool"
+            args[used + 1] = "Kryon"
+            args[used + 2] = verb
+            used += 3
+        }
+        index: s32 = 2
+        while index < count {
+            args[used] = ArgumentAt(command_line, index)
+            used += 1
+            index += 1
+        }
+    }
+    Execute(args[0:used])
+    return Error("cannot run ziran; install it with make install-user in the Ziran repository")
+}
+
 #program_export
 main :: () -> s32 {
     command_bytes: [8192]u8
     command_line: FileContents = ReadFile("/proc/self/cmdline", command_bytes[:])
     if !command_line.ok { return Error("cannot read command arguments") }
-    verb_bytes: [128]u8
-    verb: string = Argument(command_line.text, 1, verb_bytes[:])
+    verb: string = ArgumentAt(command_line.text, 1)
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
-        PrintFd(1, "usage: kryon run|build|check|install [--profile NAME]\n")
-        return 0
+        return Usage()
     }
-    if verb != "run" && verb != "build" && verb != "check" && verb != "install" {
-        return Error("unknown command; use run, build, check, or install")
+    if verb != "run" && verb != "build" && verb != "check" && verb != "install" &&
+        verb != "profiles" && verb != "new" && verb != "init" {
+        return Error("unknown command; use new, init, run, build, check, install, or profiles")
     }
-    profile_bytes: [128]u8
-    option_bytes: [128]u8
+    options_path_bytes: [4096]u8
+    options_path: string = Environment("ZIRAN_TOOL_OPTIONS", options_path_bytes[:])
+    if options_path == "" { return FrontDoor(command_line.text, verb) }
+    if verb == "new" || verb == "init" {
+        return Error("kryon new and init start projects; run them outside ziran tool")
+    }
     profile_name: string = ""
-    option: string = Argument(command_line.text, 2, option_bytes[:])
+    option: string = ArgumentAt(command_line.text, 2)
     if option == "--profile" {
-        profile_name = Argument(command_line.text, 3, profile_bytes[:])
-        if profile_name == "" || Argument(command_line.text, 4, profile_bytes[:]) != "" {
+        profile_name = ArgumentAt(command_line.text, 3)
+        if profile_name == "" || ArgumentAt(command_line.text, 4) != "" {
             return Error("expected exactly one profile name")
         }
     } else if ProjectStarts(option, "--profile=") {
         profile_name = option[10:cast(s32)option.count]
-        if profile_name == "" || Argument(command_line.text, 3, profile_bytes[:]) != "" {
+        if profile_name == "" || ArgumentAt(command_line.text, 3) != "" {
+            return Error("expected exactly one profile name")
+        }
+    } else if option != "" && option[0] != cast(u8)45 && verb != "profiles" {
+        // kryon run desktop
+        profile_name = option
+        if ArgumentAt(command_line.text, 3) != "" {
             return Error("expected exactly one profile name")
         }
     } else if option != "" {
         return Error("unknown option")
     }
 
-    options_path_bytes: [4096]u8
     name_env_bytes: [128]u8
     entry_env_bytes: [4096]u8
-    options_path: string = Environment("ZIRAN_TOOL_OPTIONS", options_path_bytes[:])
-    if options_path == "" { return Error("run this command through ziran tool Kryon") }
     options_bytes: [32768]u8
     file: FileContents = ReadFile(options_path, options_bytes[:])
     if !file.ok { return Error("cannot read the options ziran resolved") }
@@ -289,6 +398,7 @@ main :: () -> s32 {
         Environment("ZIRAN_PROJECT_NAME", name_env_bytes[:]),
         Environment("ZIRAN_PROJECT_ENTRY", entry_env_bytes[:]))
     if !config.ok { return Error(config.error) }
+    if verb == "profiles" { return ListProfiles(config) }
     installed_kryon_bytes: [4096]u8
     installed_ziran_bytes: [4096]u8
     package_id_bytes: [128]u8
@@ -302,7 +412,7 @@ main :: () -> s32 {
         profile_name = config.install.profile
     }
     if profile_name == "" {
-        if verb == "run" && config.profile_count > 1 {
+        if verb == "run" && config.profile_count > 1 && RawIsTty(0) != 0 {
             chosen_profile: s32 = ChooseProfile(config)
             if chosen_profile < 0 { return Error("invalid profile selection") }
             profile_name = config.profiles[chosen_profile].name

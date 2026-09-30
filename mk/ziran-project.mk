@@ -183,8 +183,9 @@ else
 	$(RUN_ENV) ./$(PROGRAM)
 endif
 
+# Browser hosts are checked as they are built, for the web platform.
 check: toolchain
-	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(HOST)
+	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(if $(BROWSER_BACKEND),--define PLATFORM_WEB) $(HOST)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.Kryon.install] and
