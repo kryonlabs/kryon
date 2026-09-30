@@ -102,6 +102,7 @@ PointerChecks :: () -> s32 {
     if canvas_mouse_x != 40.0 || canvas_mouse_y != 20.0 { return 1 }
     if canvas_mouse_delta_x != 40.0 || canvas_mouse_delta_y != 20.0 { return 2 }
     flags := Send(CanvasEventMouseDown, 2, 0, 30.0, 60.0, "", "")
+    if canvas_clipboard_gesture_until != 2000.0 { return 6 }
     if flags != (CanvasEventFocusCanvas | CanvasEventCapturePointer) { return 3 }
     if !canvas_buttons_down[2] { return 4 }
     if !CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, 2) { return 5 }
@@ -132,6 +133,7 @@ TouchChecks :: () -> s32 {
     CanvasEventsReset()
     // The first finger down acts as the left button.
     unused Send(CanvasEventTouchBegin, 2, 0, 0.0, 0.0, "", "")
+    if canvas_clipboard_gesture_until != 2000.0 { return 9 }
     unused Send(CanvasEventTouchPoint, 7, 0, 15.0, 25.0, "", "")
     unused Send(CanvasEventTouchPoint, 8, 0, 45.0, 55.0, "", "")
     if Send(CanvasEventTouchEnd, 0, 0, 0.0, 0.0, "", "") != CanvasEventPreventDefault { return 1 }
