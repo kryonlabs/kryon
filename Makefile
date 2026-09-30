@@ -24,7 +24,7 @@ OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test install-user dom-project-test libdraw-native-plan9-test
+.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font install-user dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -118,6 +118,26 @@ project-test: project-toolchain build/bin/kryon
 templates-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/templates_test.py
+
+# Every Ziran target -- C, C++, Go, Rust, Python, and the portable runner --
+# renders each template and example on the headless pixmap host, and every
+# image must equal C's byte for byte. It needs go, cargo, and python3, and
+# writes build/pixmap-parity/grid.png to look at.
+pixmap-parity-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
+		python3 tests/pixmap_parity_test.py
+
+# Rebuilds the pixmap host's glyphs from the Terminus console fonts.
+PIXMAP_FONT_SIZES := 12x6 14 16 20x10 24x12 28x14 32x16
+pixmap-font: project-toolchain
+	mkdir -p build/fonts build/tools
+	for size in $(PIXMAP_FONT_SIZES); do \
+		zcat /usr/share/consolefonts/Lat15-Terminus$$size.psf.gz > build/fonts/terminus-$$size.psf || exit 1; \
+	done
+	$(ZIRAN_DIR)/build/bin/ziran build --target=py --exe --root tools \
+		$(ZIRAN_STD_PATH) --entry pixmap_glyphs:main -o build/tools/pixmap_glyphs tools/pixmap_glyphs.zi
+	ls build/fonts/terminus-*.psf | python3 build/tools/pixmap_glyphs > build/pixmap_font.zi
+	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
 # Installs the kryon command. Outside `ziran tool Kryon` it forwards project
 # commands to ziran, which runs the Kryon each project's lock pins.

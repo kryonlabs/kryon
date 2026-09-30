@@ -27,3 +27,7 @@ backend = "terminal"
 
 [tool.Kryon.profiles.desktop]
 backend = "desktop"
+
+# `kryon run shot > screen.ppm` renders one frame without a display.
+[tool.Kryon.profiles.shot]
+backend = "pixmap"

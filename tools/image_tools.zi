@@ -1,0 +1,519 @@
+#import "file"
+#import "pixmap_font"
+
+// Image checks for Kryon screenshots, written in Ziran and run as Python
+// (zi2py), so they need nothing beyond python3. Commands come one per line on
+// standard input, paths without spaces:
+//
+//   compare A.ppm B.ppm DIFF.ppm   same, or how many pixels differ and where;
+//                                  DIFF.ppm dims A and marks changes in red
+//   png IN.ppm OUT.png             converts a PPM image to PNG
+//   title TEXT...                  the heading of the next grid
+//   grid OUT.png COLUMNS SCALE LABEL=IMAGE.ppm ...
+//                                  a contact sheet: every image shrunk by
+//                                  SCALE, COLUMNS to a row, each labeled
+//
+// Each command prints one line of results.
+
+libc :: #system_library "libc";
+ReadRaw :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
+
+// Two input images of up to 960 x 600 and one output canvas; a fixed array
+// holds at most 1048576 elements.
+ImageArea :: 576000;
+CanvasArea :: 1048576;
+
+images: [2][576000]u32;
+image_widths: [2]s32;
+image_heights: [2]s32;
+canvas: [1048576]u32;
+grid_title: [256]u8;
+grid_title_length: s32;
+
+Line :: (output: []u8) -> s32 {
+    length: s32 = 0
+    while length < cast(s32)output.count {
+        byte: u8 = 0
+        if ReadRaw(0, *byte, 1) != 1 {
+            if length == 0 { return -1 }
+            break
+        }
+        if byte == cast(u8)10 { break }
+        output[length] = byte
+        length += 1
+    }
+    return length
+}
+
+// The index-th space-separated word of line.
+Word :: (line: string, index: s32) -> string {
+    at: s32 = 0
+    current: s32 = 0
+    while at < cast(s32)line.count {
+        while at < cast(s32)line.count && line[at] == cast(u8)32 { at += 1 }
+        start: s32 = at
+        while at < cast(s32)line.count && line[at] != cast(u8)32 { at += 1 }
+        if start < at {
+            if current == index { return line[start:at] }
+            current += 1
+        }
+    }
+    return ""
+}
+
+Number :: (text: string) -> s32 {
+    if text.count == 0 { return -1 }
+    value: s32 = 0
+    for index: 0..cast(s32)text.count - 1 {
+        digit: s32 = cast(s32)text[index] - 48
+        if digit < 0 || digit > 9 { return -1 }
+        value = value * 10 + digit
+    }
+    return value
+}
+
+Space :: (byte: u8) -> bool {
+    return byte == cast(u8)32 || byte == cast(u8)10 || byte == cast(u8)13 || byte == cast(u8)9
+}
+
+Digit :: (byte: u8) -> bool {
+    return byte >= cast(u8)48 && byte <= cast(u8)57
+}
+
+// Reads a plain (P3) or binary (P6) PPM image with 8-bit samples into slot.
+ReadImage :: (path: string, slot: s32) -> bool {
+    text, found := ReadEntireFile(path)
+    if !found || text.count < 3 || text[0] != cast(u8)80 { return false }
+    binary: bool = text[1] == cast(u8)54
+    if !binary && text[1] != cast(u8)51 { return false }
+    at: s64 = 2
+    fields: [3]s32
+    field: s32 = 0
+    while field < 3 {
+        while at < cast(s64)text.count && Space(text[at]) { at += 1 }
+        if at < cast(s64)text.count && text[at] == cast(u8)35 {
+            while at < cast(s64)text.count && text[at] != cast(u8)10 { at += 1 }
+            continue
+        }
+        value: s32 = 0
+        digits: s32 = 0
+        while at < cast(s64)text.count && Digit(text[at]) {
+            value = value * 10 + cast(s32)text[at] - 48
+            at += 1
+            digits += 1
+        }
+        if digits == 0 { return false }
+        fields[field] = value
+        field += 1
+    }
+    width: s32 = fields[0]
+    height: s32 = fields[1]
+    if width <= 0 || height <= 0 || fields[2] != 255 ||
+        cast(s64)width * cast(s64)height > cast(s64)ImageArea { return false }
+    count: s32 = width * height
+    if binary {
+        at += 1
+        if at + cast(s64)count * 3 > cast(s64)text.count { return false }
+        index: s32 = 0
+        while index < count {
+            images[slot][index] = (cast(u32)text[at] << cast(u32)16) |
+                (cast(u32)text[at + 1] << cast(u32)8) | cast(u32)text[at + 2]
+            at += 3
+            index += 1
+        }
+    } else {
+        index: s32 = 0
+        channel: s32 = 0
+        pixel: u32 = 0
+        while index < count {
+            while at < cast(s64)text.count && !Digit(text[at]) { at += 1 }
+            if at >= cast(s64)text.count { return false }
+            value: u32 = 0
+            while at < cast(s64)text.count && Digit(text[at]) {
+                value = value * cast(u32)10 + cast(u32)text[at] - cast(u32)48
+                at += 1
+            }
+            pixel = ((pixel << cast(u32)8) | (value & cast(u32)255)) & cast(u32)16777215
+            channel += 1
+            if channel == 3 {
+                images[slot][index] = pixel
+                pixel = 0
+                channel = 0
+                index += 1
+            }
+        }
+    }
+    image_widths[slot] = width
+    image_heights[slot] = height
+    return true
+}
+
+Red :: (pixel: u32) -> s32 { return cast(s32)((pixel >> cast(u32)16) & cast(u32)255) }
+Green :: (pixel: u32) -> s32 { return cast(s32)((pixel >> cast(u32)8) & cast(u32)255) }
+Blue :: (pixel: u32) -> s32 { return cast(s32)(pixel & cast(u32)255) }
+
+Pack :: (red: s32, green: s32, blue: s32) -> u32 {
+    return (cast(u32)red << cast(u32)16) | (cast(u32)green << cast(u32)8) | cast(u32)blue
+}
+
+Push :: (out: *Vec(u8), value: s32) {
+    unused VecPush(<<out, cast(u8)(value & 255))
+}
+
+PushText :: (out: *Vec(u8), text: string) {
+    for index: 0..cast(s32)text.count - 1 { unused VecPush(<<out, text[index]) }
+}
+
+PushDecimal :: (out: *Vec(u8), value: s32) {
+    digits: [12]u8
+    count: s32 = 0
+    if value == 0 {
+        digits[0] = cast(u8)48
+        count = 1
+    }
+    while value > 0 {
+        digits[count] = cast(u8)(48 + value % 10)
+        value = value / 10
+        count += 1
+    }
+    while count > 0 {
+        count -= 1
+        unused VecPush(<<out, digits[count])
+    }
+}
+
+// Writes the canvas's first width x height pixels as a binary PPM.
+WriteCanvasPpm :: (path: string, width: s32, height: s32) -> bool {
+    out: Vec(u8)
+    PushText(*out, "P6\n")
+    PushDecimal(*out, width)
+    PushText(*out, " ")
+    PushDecimal(*out, height)
+    PushText(*out, "\n255\n")
+    for index: 0..width * height - 1 {
+        pixel: u32 = canvas[index]
+        Push(*out, Red(pixel))
+        Push(*out, Green(pixel))
+        Push(*out, Blue(pixel))
+    }
+    return WriteEntireFile(path, BuilderFinish(out))
+}
+
+crc_table: [256]u32;
+crc_ready: bool;
+
+CrcTable :: () {
+    if crc_ready { return }
+    for n: 0..255 {
+        c: u32 = cast(u32)n
+        for k: 0..7 {
+            if (c & cast(u32)1) != cast(u32)0 { c = cast(u32)3988292384 ^ (c >> cast(u32)1) }
+            else { c = c >> cast(u32)1 }
+        }
+        crc_table[n] = c
+    }
+    crc_ready = true
+}
+
+// A PNG chunk being written: its CRC runs over the type and the data.
+Chunk :: struct {
+    crc: u32
+}
+
+ChunkByte :: (out: *Vec(u8), chunk: *Chunk, value: s32) {
+    byte: u32 = cast(u32)(value & 255)
+    chunk.crc = crc_table[cast(s32)((chunk.crc ^ byte) & cast(u32)255)] ^ (chunk.crc >> cast(u32)8)
+    Push(out, value)
+}
+
+ChunkWord :: (out: *Vec(u8), chunk: *Chunk, value: u32) {
+    ChunkByte(out, chunk, cast(s32)((value >> cast(u32)24) & cast(u32)255))
+    ChunkByte(out, chunk, cast(s32)((value >> cast(u32)16) & cast(u32)255))
+    ChunkByte(out, chunk, cast(s32)((value >> cast(u32)8) & cast(u32)255))
+    ChunkByte(out, chunk, cast(s32)(value & cast(u32)255))
+}
+
+PushWord :: (out: *Vec(u8), value: u32) {
+    Push(out, cast(s32)((value >> cast(u32)24) & cast(u32)255))
+    Push(out, cast(s32)((value >> cast(u32)16) & cast(u32)255))
+    Push(out, cast(s32)((value >> cast(u32)8) & cast(u32)255))
+    Push(out, cast(s32)(value & cast(u32)255))
+}
+
+StartChunk :: (out: *Vec(u8), length: s32, kind: string) -> Chunk {
+    chunk: Chunk
+    chunk.crc = cast(u32)4294967295
+    PushWord(out, cast(u32)length)
+    for index: 0..3 { ChunkByte(out, *chunk, cast(s32)kind[index]) }
+    return chunk
+}
+
+EndChunk :: (out: *Vec(u8), chunk: *Chunk) {
+    PushWord(out, chunk.crc ^ cast(u32)4294967295)
+}
+
+// The canvas's first width x height pixels as an RGB PNG. The zlib stream
+// uses stored blocks: no compression, only framing, so the writer stays small
+// and every byte is predictable.
+WriteCanvasPng :: (path: string, width: s32, height: s32) -> bool {
+    CrcTable()
+    out: Vec(u8)
+    signature: [8]s32 = .{137, 80, 78, 71, 13, 10, 26, 10}
+    for index: 0..7 { Push(*out, signature[index]) }
+    header: Chunk = StartChunk(*out, 13, "IHDR")
+    ChunkWord(*out, *header, cast(u32)width)
+    ChunkWord(*out, *header, cast(u32)height)
+    ChunkByte(*out, *header, 8)
+    ChunkByte(*out, *header, 2)
+    ChunkByte(*out, *header, 0)
+    ChunkByte(*out, *header, 0)
+    ChunkByte(*out, *header, 0)
+    EndChunk(*out, *header)
+    row: s32 = 1 + width * 3
+    total: s32 = row * height
+    blocks: s32 = (total + 65534) / 65535
+    data: Chunk = StartChunk(*out, 2 + blocks * 5 + total + 4, "IDAT")
+    ChunkByte(*out, *data, 120)
+    ChunkByte(*out, *data, 1)
+    a: u32 = cast(u32)1
+    b: u32 = cast(u32)0
+    written: s32 = 0
+    while written < total {
+        size: s32 = total - written
+        if size > 65535 { size = 65535 }
+        final: s32 = 0
+        if written + size == total { final = 1 }
+        ChunkByte(*out, *data, final)
+        ChunkByte(*out, *data, size & 255)
+        ChunkByte(*out, *data, size >> 8)
+        ChunkByte(*out, *data, (65535 - size) & 255)
+        ChunkByte(*out, *data, (65535 - size) >> 8)
+        index: s32 = written
+        while index < written + size {
+            // Byte index of the raw image: a filter byte, then RGB triples.
+            y: s32 = index / row
+            offset: s32 = index % row
+            value: s32 = 0
+            if offset > 0 {
+                pixel: u32 = canvas[y * width + (offset - 1) / 3]
+                channel: s32 = (offset - 1) % 3
+                if channel == 0 { value = Red(pixel) }
+                else if channel == 1 { value = Green(pixel) }
+                else { value = Blue(pixel) }
+            }
+            ChunkByte(*out, *data, value)
+            a = (a + cast(u32)value) % cast(u32)65521
+            b = (b + a) % cast(u32)65521
+            index += 1
+        }
+        written += size
+    }
+    ChunkWord(*out, *data, (b << cast(u32)16) | a)
+    EndChunk(*out, *data)
+    end: Chunk = StartChunk(*out, 0, "IEND")
+    EndChunk(*out, *end)
+    return WriteEntireFile(path, BuilderFinish(out))
+}
+
+Compare :: (first: string, second: string, diff_path: string) {
+    if !ReadImage(first, 0) || !ReadImage(second, 1) {
+        print("error cannot read % or %\n", first, second)
+        return
+    }
+    width: s32 = image_widths[0]
+    height: s32 = image_heights[0]
+    if width != image_widths[1] || height != image_heights[1] {
+        print("differ size %x% versus %x%\n", width, height, image_widths[1], image_heights[1])
+        return
+    }
+    differing: s32 = 0
+    largest: s32 = 0
+    left: s32 = width
+    top: s32 = height
+    right: s32 = -1
+    bottom: s32 = -1
+    for y: 0..height - 1 {
+        for x: 0..width - 1 {
+            pa: u32 = images[0][y * width + x]
+            pb: u32 = images[1][y * width + x]
+            delta: s32 = Red(pa) - Red(pb)
+            if delta < 0 { delta = -delta }
+            other: s32 = Green(pa) - Green(pb)
+            if other < 0 { other = -other }
+            if other > delta { delta = other }
+            other = Blue(pa) - Blue(pb)
+            if other < 0 { other = -other }
+            if other > delta { delta = other }
+            if delta == 0 {
+                gray: s32 = (Red(pa) + Green(pa) + Blue(pa)) / 3
+                faded: s32 = 160 + gray * 95 / 255
+                canvas[y * width + x] = Pack(faded, faded, faded)
+            } else {
+                differing += 1
+                if delta > largest { largest = delta }
+                if x < left { left = x }
+                if y < top { top = y }
+                if x > right { right = x }
+                if y > bottom { bottom = y }
+                canvas[y * width + x] = Pack(255, 96 - delta * 96 / 255, 0)
+            }
+        }
+    }
+    if diff_path.count > 0 && !WriteCanvasPpm(diff_path, width, height) {
+        print("error cannot write %\n", diff_path)
+        return
+    }
+    if differing == 0 {
+        print("same %x%\n", width, height)
+        return
+    }
+    print("differ % pixels, largest channel delta %, within x %..% y %..%\n",
+        differing, largest, left, right, top, bottom)
+}
+
+// Text on the canvas in the 16-pixel glyphs.
+DrawText :: (width: s32, height: s32, text: string, x: s32, y: s32, color: u32) {
+    face: s32 = 2
+    glyph_width: s32 = pixmap_font_widths[face]
+    glyph_height: s32 = pixmap_font_heights[face]
+    left: s32 = x
+    for index: 0..cast(s32)text.count - 1 {
+        glyph: s32 = cast(s32)text[index]
+        if glyph < PixmapFontFirst || glyph > PixmapFontLast { glyph = 63 }
+        start: s32 = pixmap_font_starts[face] +
+            (glyph - PixmapFontFirst) * glyph_width * glyph_height
+        for row: 0..glyph_height - 1 {
+            for column: 0..glyph_width - 1 {
+                px: s32 = left + column
+                py: s32 = y + row
+                if px >= 0 && py >= 0 && px < width && py < height &&
+                    PixmapFontBit(start + row * glyph_width + column) {
+                    canvas[py * width + px] = color
+                }
+            }
+        }
+        left += glyph_width
+    }
+}
+
+Grid :: (line: string) {
+    out_path: string = Word(line, 1)
+    columns: s32 = Number(Word(line, 2))
+    scale: s32 = Number(Word(line, 3))
+    if out_path.count == 0 || columns <= 0 || scale <= 0 {
+        print("error grid needs OUT.png COLUMNS SCALE LABEL=IMAGE...\n")
+        return
+    }
+    count: s32 = 0
+    while Word(line, 4 + count).count > 0 { count += 1 }
+    if count == 0 {
+        print("error grid needs images\n")
+        return
+    }
+    // The first image sets the cell size.
+    first: string = Word(line, 4)
+    equals: s32 = 0
+    while equals < cast(s32)first.count && first[equals] != cast(u8)61 { equals += 1 }
+    if !ReadImage(first[equals + 1:], 0) {
+        print("error cannot read %\n", first[equals + 1:])
+        return
+    }
+    gap: s32 = 8
+    label_height: s32 = 22
+    title_height: s32 = 0
+    if grid_title_length > 0 { title_height = 30 }
+    cell_width: s32 = image_widths[0] / scale
+    cell_height: s32 = image_heights[0] / scale
+    rows: s32 = (count + columns - 1) / columns
+    width: s32 = gap + columns * (cell_width + gap)
+    height: s32 = title_height + gap + rows * (cell_height + label_height + gap)
+    if cast(s64)width * cast(s64)height > cast(s64)CanvasArea {
+        print("error grid of %x% is too large\n", width, height)
+        return
+    }
+    for index: 0..width * height - 1 { canvas[index] = cast(u32)3158064 }
+    if title_height > 0 {
+        DrawText(width, height, TextView(grid_title[0:grid_title_length]), gap, 8,
+            cast(u32)16777215)
+    }
+    for item: 0..count - 1 {
+        entry: string = Word(line, 4 + item)
+        split: s32 = 0
+        while split < cast(s32)entry.count && entry[split] != cast(u8)61 { split += 1 }
+        cell_x: s32 = gap + (item % columns) * (cell_width + gap)
+        cell_y: s32 = title_height + gap + (item / columns) * (cell_height + label_height + gap)
+        DrawText(width, height, entry[0:split], cell_x, cell_y + 2, cast(u32)15132390)
+        top: s32 = cell_y + label_height
+        if !ReadImage(entry[split + 1:], 1) || image_widths[1] / scale != cell_width ||
+            image_heights[1] / scale != cell_height {
+            DrawText(width, height, "(missing or another size)", cell_x, top + 8,
+                cast(u32)16737095)
+            continue
+        }
+        source_width: s32 = image_widths[1]
+        area: s32 = scale * scale
+        // Each cell pixel averages a SCALE x SCALE block.
+        for y: 0..cell_height - 1 {
+            for x: 0..cell_width - 1 {
+                red: s32 = 0
+                green: s32 = 0
+                blue: s32 = 0
+                for dy: 0..scale - 1 {
+                    for dx: 0..scale - 1 {
+                        pixel: u32 = images[1][(y * scale + dy) * source_width + x * scale + dx]
+                        red += Red(pixel)
+                        green += Green(pixel)
+                        blue += Blue(pixel)
+                    }
+                }
+                canvas[(top + y) * width + cell_x + x] = Pack(red / area, green / area,
+                    blue / area)
+            }
+        }
+    }
+    if !WriteCanvasPng(out_path, width, height) {
+        print("error cannot write %\n", out_path)
+        return
+    }
+    print("wrote % (% images, %x%)\n", out_path, count, width, height)
+}
+
+main :: () -> s32 {
+    buffer: [65536]u8
+    while true {
+        length: s32 = Line(buffer[:])
+        if length < 0 { break }
+        line: string = TextView(buffer[0:length])
+        command: string = Word(line, 0)
+        if command == "compare" {
+            Compare(Word(line, 1), Word(line, 2), Word(line, 3))
+        } else if command == "png" {
+            if !ReadImage(Word(line, 1), 0) {
+                print("error cannot read %\n", Word(line, 1))
+            } else {
+                for index: 0..image_widths[0] * image_heights[0] - 1 {
+                    canvas[index] = images[0][index]
+                }
+                if WriteCanvasPng(Word(line, 2), image_widths[0], image_heights[0]) {
+                    print("wrote %\n", Word(line, 2))
+                } else {
+                    print("error cannot write %\n", Word(line, 2))
+                }
+            }
+        } else if command == "title" {
+            grid_title_length = 0
+            at: s32 = 6
+            while at < length && grid_title_length < 256 {
+                grid_title[grid_title_length] = buffer[at]
+                grid_title_length += 1
+                at += 1
+            }
+            print("title set\n")
+        } else if command == "grid" {
+            Grid(line)
+        } else if command.count > 0 {
+            print("error unknown command %\n", command)
+        }
+    }
+    return 0
+}

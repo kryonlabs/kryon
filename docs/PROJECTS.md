@@ -116,7 +116,7 @@ for lock, cache, and override details.
 
 Define each profile under `[tool.Kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, `raylib`, `canvas`, and `dom`. Set `default_profile` under `[tool.Kryon]` when there
+`libdraw`, `raylib`, `canvas`, `dom`, and `pixmap`. Set `default_profile` under `[tool.Kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -129,6 +129,7 @@ terminal; otherwise it uses the default.
 | `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
+| `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
 
 These settings live only in `ziran.toml`. Kryon declares them under
 `[options]` in its own `ziran.toml`. Ziran checks the application's
@@ -202,6 +203,15 @@ Canvas and DOM projects use short host modules such as `canvas_run.zir`,
 host plus `canvas_raster.zi` and emits every saved module; this preserves the
 host entry point and raster adapters that the paint queue reaches indirectly.
 Native profiles keep the package-qualified entry-pruned route.
+
+The `pixmap` host draws with integer arithmetic and bitmap glyphs (Terminus
+Font), so every Ziran target prints the same bytes for the same frame. It
+renders two frames and prints the second, for screenshots in documentation and
+CI without a display. `make pixmap-parity-test` builds every template and
+example for C, C++, Go, Rust, Python, and the portable runner and checks that
+all six images match; `build/pixmap-parity/grid.png` shows them side by side.
+`tools/image_tools.zi`, built for Python, compares two PPM images, converts
+them to PNG, and lays out such grids.
 
 Kryon's `make desktop-project-test`, `make raylib-project-test`, and
 `make libdraw-project-test` exercise the graphical hosts on private Xvfb
