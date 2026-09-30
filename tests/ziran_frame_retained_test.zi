@@ -16,6 +16,12 @@ TestSession :: () -> Session {
 }
 
 Frame :: (label: string, line_color: Color, image: bool) -> FrameEndResult {
+    return ReuseFrame(label, line_color, image, true)
+}
+
+// `reuse` is false when the host repaints the frame anyway.
+ReuseFrame :: (label: string, line_color: Color, image: bool,
+    reuse: bool) -> FrameEndResult {
     BeginFrame(TestSession(), cast(u64)17, Rectangle.{0.0, 0.0, 100.0, 80.0})
     PaintLine(TestSession(), -1, Rectangle.{4.0, 8.0, 96.0, 8.0},
         line_color)
@@ -28,7 +34,7 @@ Frame :: (label: string, line_color: Color, image: bool) -> FrameEndResult {
             Rectangle.{0.0, 0.0, 100.0, 80.0}, Vector2.{}, 0.0, 0.0,
             Color.{255, 255, 255, 255})
     }
-    return EndFrameRetained(TestSession())
+    return EndFrameRetained(TestSession(), reuse)
 }
 
 ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
@@ -39,7 +45,7 @@ ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
         Rectangle.{0.0, 0.0, 100.0, 80.0}, Vector2.{}, 0.0, 0.0,
         Color.{255, 255, 255, 255},
         Texture2D.{texture_id, 20, 10, 1, 7})
-    return EndFrameRetained(TestSession())
+    return EndFrameRetained(TestSession(), true)
 }
 
 #program_export
@@ -61,12 +67,21 @@ main :: () -> s32 {
     !FramePaintUnchanged(TestSession()) { return 3 }
     if RetainedLineDraws() != 1 || RetainedTextDraws() != 1 { return 4 }
 
+    // Unchanged paint is emitted again when the host repaints anyway,
+    // and the host is not told to present the previous frame.
+    result = ReuseFrame(second_text, Color.{1, 2, 3, 255}, false, false)
+    if !result.paint_unchanged || FramePaintUnchanged(TestSession()) { return 16 }
+    if RetainedLineDraws() != 2 || RetainedTextDraws() != 2 { return 17 }
+    result = Frame(second_text, Color.{1, 2, 3, 255}, false)
+    if !result.paint_unchanged || !FramePaintUnchanged(TestSession()) { return 18 }
+    if RetainedLineDraws() != 2 || RetainedTextDraws() != 2 { return 19 }
+
     result = Frame(changed_text, Color.{1, 2, 3, 255}, false)
     if result.paint_unchanged || FramePaintUnchanged(TestSession()) { return 5 }
-    if RetainedTextDraws() != 2 { return 6 }
+    if RetainedTextDraws() != 3 { return 6 }
 
     result = Frame(changed_text, Color.{9, 2, 3, 255}, false)
-    if result.paint_unchanged || RetainedLineDraws() != 3 { return 7 }
+    if result.paint_unchanged || RetainedLineDraws() != 4 { return 7 }
 
     result = Frame(changed_text, Color.{9, 2, 3, 255}, true)
     if result.paint_unchanged || result.paint_count != 3 ||
