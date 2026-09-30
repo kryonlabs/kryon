@@ -31,10 +31,13 @@ all: source-check $(BUILD_DIR)/libkryon.a backends-check
 project-toolchain:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
+# The kryon tool builds its Ziran toolchain only when it is missing, as ziran
+# builds a pinned one: a locked toolchain never changes, and a local one is
+# rebuilt in its own checkout.
 $(ZIRAN_DIR)/build/bin/zi2c:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran | project-toolchain
+build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran
 	mkdir -p build/project/gen
 	rm -f build/project/gen/*.c build/project/gen/*.h
 	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root src/project \
@@ -127,16 +130,12 @@ pixmap-parity-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/pixmap_parity_test.py
 
-# Rebuilds the pixmap host's glyphs from the Terminus console fonts.
-PIXMAP_FONT_SIZES := 12x6 14 16 20x10 24x12 28x14 32x16
+# Rebuilds the pixmap host's glyph outlines from Kryon's font.
 pixmap-font: project-toolchain
-	mkdir -p build/fonts build/tools
-	for size in $(PIXMAP_FONT_SIZES); do \
-		zcat /usr/share/consolefonts/Lat15-Terminus$$size.psf.gz > build/fonts/terminus-$$size.psf || exit 1; \
-	done
+	mkdir -p build/tools
 	$(ZIRAN_DIR)/build/bin/ziran build --target=py --exe --root tools \
-		$(ZIRAN_STD_PATH) --entry pixmap_glyphs:main -o build/tools/pixmap_glyphs tools/pixmap_glyphs.zi
-	ls build/fonts/terminus-*.psf | python3 build/tools/pixmap_glyphs > build/pixmap_font.zi
+		$(ZIRAN_STD_PATH) --entry outline_font:main -o build/tools/outline_font tools/outline_font.zi
+	echo assets/fonts/LiberationSans-Regular.ttf | python3 build/tools/outline_font > build/pixmap_font.zi
 	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
 # Installs the kryon command. Outside `ziran tool Kryon` it forwards project

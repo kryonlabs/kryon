@@ -104,19 +104,19 @@ $(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Ma
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-hello-native \
 		$(BUILD_DIR)/desktop-hello-native/*.c \
-		$$(pkg-config --libs sdl2 cairo) -lm -o $@
+		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
 
 $(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-image-native \
 		$(BUILD_DIR)/desktop-image-native/*.c \
-		$$(pkg-config --libs sdl2 cairo) -lm -o $@
+		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
 
 $(BUILD_DIR)/text-desktop: $(BUILD_DIR)/desktop-text-native/desktop_text.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-text-native \
 		$(BUILD_DIR)/desktop-text-native/*.c \
-		$$(pkg-config --libs sdl2 cairo) -lm -o $@
+		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
 
 desktop: $(BUILD_DIR)/hello-desktop
 

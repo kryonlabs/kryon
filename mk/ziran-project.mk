@@ -67,12 +67,24 @@ ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
 PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_LIBS := $(shell pkg-config --libs sdl2 cairo)
+HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2)
+RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),libdraw)
-PLAN9PORT_DIR ?= $(KRYON_DIR)/../plan9port
-HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo)
-RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw
+# plan9port is optional; only libdraw profiles use it. A project that pins it
+# as a source package (ziran add https://github.com/9fans/plan9port.git
+# --source) gets it built once in Kryon's build directory; otherwise the
+# installed plan9port that $PLAN9 names serves, as its installer sets up.
+PLAN9PORT_PACKAGE := $(shell $(ZIRAN) pkg path plan9port 2>/dev/null)
+ifneq ($(PLAN9PORT_PACKAGE),)
+PLAN9PORT_DIR ?= $(KRYON_DIR)/build/plan9port-ziran
+else
+PLAN9PORT_DIR ?= $(PLAN9)
+endif
+HOST_DEPS := $(PLAN9PORT_DIR)/lib/libdraw.a
+HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo freetype2)
+RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw \
+	KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
 # raylib keeps its library sources and Makefile in src/ of the package.
@@ -126,8 +138,26 @@ endif
 
 .PHONY: run build check install toolchain
 
+ifeq ($(PROJECT_BACKEND),libdraw)
+$(PLAN9PORT_DIR)/lib/libdraw.a:
+ifneq ($(PLAN9PORT_PACKAGE),)
+	rm -rf $(PLAN9PORT_DIR)
+	mkdir -p $(dir $(PLAN9PORT_DIR))
+	cp -R $(PLAN9PORT_PACKAGE) $(PLAN9PORT_DIR)
+	cd $(PLAN9PORT_DIR) && ./INSTALL
+	@test -f $@
+else
+	@echo "kryon: the libdraw backend needs plan9port. Install it and set PLAN9," >&2
+	@echo "or add it to this project: ziran add https://github.com/9fans/plan9port.git --source" >&2
+	@exit 1
+endif
+endif
+
 # Project builds run the driver, which shells out to zi2zir and zi2c.
-toolchain:
+# The pinned toolchain is built once; see the kryon tool's rule.
+toolchain: $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c
+
+$(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) \
 		build/bin/ziran build/bin/zi2zir build/bin/zi2c
 

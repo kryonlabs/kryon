@@ -28,6 +28,19 @@ RasterGetEnvironment :: (name: *u8) -> *u8 {
 }
 
 cairo_library :: #system_library "cairo";
+freetype_library :: #system_library "freetype";
+
+FreeTypeInit :: (library: **void) -> s32 #foreign freetype_library "FT_Init_FreeType";
+FreeTypeNewFace :: (library: *void, path: *u8, index: s64,
+    face: **void) -> s32 #foreign freetype_library "FT_New_Face";
+FontFaceFromFreeType :: (face: *void, flags: s32) -> *void #foreign cairo_library "cairo_ft_font_face_create_for_ft_face";
+SetFontFace :: (paint: *void, face: *void) #foreign cairo_library "cairo_set_font_face";
+FontOptionsCreate :: () -> *void #foreign cairo_library "cairo_font_options_create";
+FontOptionsDestroy :: (options: *void) #foreign cairo_library "cairo_font_options_destroy";
+FontOptionsSetAntialias :: (options: *void, antialias: s32) #foreign cairo_library "cairo_font_options_set_antialias";
+FontOptionsSetHintStyle :: (options: *void, style: s32) #foreign cairo_library "cairo_font_options_set_hint_style";
+FontOptionsSetHintMetrics :: (options: *void, metrics: s32) #foreign cairo_library "cairo_font_options_set_hint_metrics";
+SetFontOptions :: (paint: *void, options: *void) #foreign cairo_library "cairo_set_font_options";
 
 ImageSurfaceCreate :: (format: s32, width: s32, height: s32) -> *void #foreign cairo_library "cairo_image_surface_create";
 ImageSurfaceFromPNG :: (path: *u8) -> *void #foreign cairo_library "cairo_image_surface_create_from_png";
@@ -129,12 +142,57 @@ RoundBox :: (bounds: Rectangle, requested_radius: float32) {
     ClosePath(paint)
 }
 
+font_library: *void;
+font_face: *void;
+
+// Kryon's font, Liberation Sans, as the raylib, canvas, and pixmap hosts use:
+// the file KRYON_FONT_PATH names, else the system's copy, else whatever
+// fontconfig finds by that name. Glyphs are placed at their unhinted widths
+// and smoothed in gray, as a browser lays text out, so every host measures a
+// string alike.
+UseKryonFont :: () {
+    path: *u8 = null
+    key: [32]u8
+    if CopyCString("KRYON_FONT_PATH", key[:]) { path = RasterGetEnvironment(*key[0]) }
+    system: [128]u8
+    if path == null && CopyCString("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        system[:]) {
+        path = *system[0]
+    }
+    if font_face == null && path != null {
+        if font_library != null || FreeTypeInit(*font_library) == 0 {
+            face: *void = null
+            if FreeTypeNewFace(font_library, path, 0, *face) == 0 && face != null {
+                font_face = FontFaceFromFreeType(face, 0)
+            }
+        }
+    }
+    if font_face != null {
+        SetFontFace(paint, font_face)
+    } else {
+        family: [32]u8
+        if CopyCString("Liberation Sans", family[:]) {
+            SelectFontFace(paint, *family[0], 0, 0)
+        }
+    }
+    options: *void = FontOptionsCreate()
+    if options == null { return }
+    // Gray anti-aliasing, no hinting, unhinted metrics.
+    FontOptionsSetAntialias(options, 2)
+    FontOptionsSetHintStyle(options, 1)
+    FontOptionsSetHintMetrics(options, 1)
+    SetFontOptions(paint, options)
+    FontOptionsDestroy(options)
+}
+
 #program_export
 OpenRaster :: (width: s32, height: s32) -> bool {
     surface = ImageSurfaceCreate(0, width, height)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
-    return paint != null && Status(paint) == 0
+    if paint == null || Status(paint) != 0 { return false }
+    UseKryonFont()
+    return Status(paint) == 0
 }
 
 #program_export

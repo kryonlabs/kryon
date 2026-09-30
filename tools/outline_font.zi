@@ -1,0 +1,350 @@
+#import "file"
+
+// Writes src/backend/pixmap_font.zi: the outlines and advance widths of a
+// TrueType font's Latin glyphs, for the pixmap host to rasterize. Reads the
+// .ttf path on standard input and prints the module on standard output:
+//
+//   echo assets/fonts/LiberationSans-Regular.ttf | python3 build/tools/outline_font
+//
+// Built for Python with zi2py, like the other image tools here.
+
+// ASCII, Latin-1, and the typographic marks UI text uses most.
+extra_codes: [16]s32 = .{8211, 8212, 8216, 8217, 8220, 8221, 8226, 8230, 8364, 8722,
+    8804, 8805, 8592, 8594, 8593, 8595};
+
+MaxGlyphs :: 256;
+MaxValues :: 131072;
+// A declaration's text is limited, so values go out as base64 strings of
+// this many characters, three characters (18 bits) a value.
+ChunkCharacters :: 3840;
+
+font: string;
+table_cmap: s32;
+table_glyf: s32;
+table_head: s32;
+table_hhea: s32;
+table_hmtx: s32;
+table_loca: s32;
+long_offsets: bool;
+metrics_count: s32;
+
+codes: [256]s32;
+advances: [256]s32;
+starts: [256]s32;
+glyph_count: s32;
+// Per glyph: the contour count, each contour's last point index, then the
+// points as (x * 2 + on-curve, y), all offset by Bias.
+values: [131072]s32;
+value_count: s32;
+Bias :: 32768;
+
+// The outline being gathered for one output glyph.
+point_x: [4096]s32;
+point_y: [4096]s32;
+point_on: [4096]bool;
+point_count: s32;
+contour_ends: [512]s32;
+contour_count: s32;
+
+U8 :: (at: s32) -> s32 { return cast(s32)font[at] }
+U16 :: (at: s32) -> s32 { return U8(at) * 256 + U8(at + 1) }
+S16 :: (at: s32) -> s32 {
+    value: s32 = U16(at)
+    if value >= 32768 { return value - 65536 }
+    return value
+}
+U32 :: (at: s32) -> s32 { return U16(at) * 65536 + U16(at + 2) }
+
+libc :: #system_library "libc";
+ReadRaw :: (fd: s32, bytes: *u8, count: u64) -> s64 #foreign libc "read";
+
+Line :: (output: []u8) -> string {
+    length: s32 = 0
+    while length < cast(s32)output.count {
+        byte: u8 = 0
+        if ReadRaw(0, *byte, 1) != 1 { break }
+        if byte == cast(u8)10 { break }
+        output[length] = byte
+        length += 1
+    }
+    return TextView(output[0:length])
+}
+
+FindTables :: () -> bool {
+    if font.count < 12 { return false }
+    count: s32 = U16(4)
+    for index: 0..count - 1 {
+        record: s32 = 12 + index * 16
+        tag: string = font[record:record + 4]
+        offset: s32 = U32(record + 8)
+        if tag == "cmap" { table_cmap = offset }
+        if tag == "glyf" { table_glyf = offset }
+        if tag == "head" { table_head = offset }
+        if tag == "hhea" { table_hhea = offset }
+        if tag == "hmtx" { table_hmtx = offset }
+        if tag == "loca" { table_loca = offset }
+    }
+    if table_cmap == 0 || table_glyf == 0 || table_head == 0 || table_hhea == 0 ||
+        table_hmtx == 0 || table_loca == 0 { return false }
+    long_offsets = S16(table_head + 50) == 1
+    metrics_count = U16(table_hhea + 34)
+    return true
+}
+
+// The glyph index of a code point in the Windows Unicode (3, 1) format 4
+// subtable; 0 when the font has none.
+GlyphOf :: (code: s32) -> s32 {
+    count: s32 = U16(table_cmap + 2)
+    subtable: s32 = 0
+    for index: 0..count - 1 {
+        record: s32 = table_cmap + 4 + index * 8
+        if U16(record) == 3 && U16(record + 2) == 1 {
+            subtable = table_cmap + U32(record + 4)
+        }
+    }
+    if subtable == 0 || U16(subtable) != 4 { return 0 }
+    segments: s32 = U16(subtable + 6) / 2
+    ends: s32 = subtable + 14
+    begins: s32 = ends + segments * 2 + 2
+    deltas: s32 = begins + segments * 2
+    ranges: s32 = deltas + segments * 2
+    for segment: 0..segments - 1 {
+        if code <= U16(ends + segment * 2) {
+            first: s32 = U16(begins + segment * 2)
+            if code < first { return 0 }
+            range: s32 = U16(ranges + segment * 2)
+            if range == 0 { return (code + S16(deltas + segment * 2)) & 65535 }
+            at: s32 = ranges + segment * 2 + range + (code - first) * 2
+            glyph: s32 = U16(at)
+            if glyph == 0 { return 0 }
+            return (glyph + S16(deltas + segment * 2)) & 65535
+        }
+    }
+    return 0
+}
+
+GlyphOffset :: (glyph: s32) -> s32 {
+    if long_offsets { return U32(table_loca + glyph * 4) }
+    return U16(table_loca + glyph * 2) * 2
+}
+
+Advance :: (glyph: s32) -> s32 {
+    if glyph < metrics_count { return U16(table_hmtx + glyph * 4) }
+    return U16(table_hmtx + (metrics_count - 1) * 4)
+}
+
+// Appends a glyph's contours, moved by (dx, dy); composites add their parts.
+AddOutline :: (glyph: s32, dx: s32, dy: s32, depth: s32) -> bool {
+    if depth > 8 { return false }
+    start: s32 = GlyphOffset(glyph)
+    if GlyphOffset(glyph + 1) == start { return true }
+    at: s32 = table_glyf + start
+    contours: s32 = S16(at)
+    if contours < 0 {
+        component: s32 = at + 10
+        while true {
+            flags: s32 = U16(component)
+            part: s32 = U16(component + 2)
+            component += 4
+            x: s32 = 0
+            y: s32 = 0
+            if (flags & 1) != 0 {
+                x = S16(component)
+                y = S16(component + 2)
+                component += 4
+            } else {
+                x = U8(component)
+                y = U8(component + 1)
+                if x >= 128 { x -= 256 }
+                if y >= 128 { y -= 256 }
+                component += 2
+            }
+            // Point-matched placement is not used by these glyphs.
+            if (flags & 2) == 0 {
+                x = 0
+                y = 0
+            }
+            if (flags & 8) != 0 { component += 2 }
+            else if (flags & 64) != 0 { component += 4 }
+            else if (flags & 128) != 0 { component += 8 }
+            if !AddOutline(part, dx + x, dy + y, depth + 1) { return false }
+            if (flags & 32) == 0 { break }
+        }
+        return true
+    }
+    ends: s32 = at + 10
+    points: s32 = U16(ends + (contours - 1) * 2) + 1
+    if point_count + points > 4096 || contour_count + contours > 512 { return false }
+    for index: 0..contours - 1 {
+        contour_ends[contour_count] = point_count + U16(ends + index * 2)
+        contour_count += 1
+    }
+    cursor: s32 = ends + contours * 2
+    cursor += 2 + U16(cursor)
+    flags: [4096]s32
+    read: s32 = 0
+    while read < points {
+        flag: s32 = U8(cursor)
+        cursor += 1
+        repeat: s32 = 0
+        if (flag & 8) != 0 {
+            repeat = U8(cursor)
+            cursor += 1
+        }
+        for copy: 0..repeat {
+            if read < points {
+                flags[read] = flag
+                read += 1
+            }
+        }
+    }
+    x: s32 = 0
+    for index: 0..points - 1 {
+        flag: s32 = flags[index]
+        if (flag & 2) != 0 {
+            step: s32 = U8(cursor)
+            cursor += 1
+            if (flag & 16) != 0 { x += step } else { x -= step }
+        } else if (flag & 16) == 0 {
+            x += S16(cursor)
+            cursor += 2
+        }
+        point_x[point_count + index] = x + dx
+        point_on[point_count + index] = (flag & 1) != 0
+    }
+    y: s32 = 0
+    for index: 0..points - 1 {
+        flag: s32 = flags[index]
+        if (flag & 4) != 0 {
+            step: s32 = U8(cursor)
+            cursor += 1
+            if (flag & 32) != 0 { y += step } else { y -= step }
+        } else if (flag & 32) == 0 {
+            y += S16(cursor)
+            cursor += 2
+        }
+        point_y[point_count + index] = y + dy
+    }
+    point_count += points
+    return true
+}
+
+Push :: (value: s32) -> bool {
+    if value_count >= MaxValues { return false }
+    values[value_count] = value
+    value_count += 1
+    return true
+}
+
+AddCode :: (code: s32) -> bool {
+    glyph: s32 = GlyphOf(code)
+    if glyph == 0 || glyph_count >= MaxGlyphs { return true }
+    point_count = 0
+    contour_count = 0
+    if !AddOutline(glyph, 0, 0, 0) { return false }
+    codes[glyph_count] = code
+    advances[glyph_count] = Advance(glyph)
+    starts[glyph_count] = value_count
+    glyph_count += 1
+    if !Push(contour_count) { return false }
+    for index: 0..contour_count - 1 {
+        if !Push(contour_ends[index]) { return false }
+    }
+    for index: 0..point_count - 1 {
+        on: s32 = 0
+        if point_on[index] { on = 1 }
+        if !Push((point_x[index] + Bias) * 2 + on) || !Push(point_y[index] + Bias) {
+            return false
+        }
+    }
+    return true
+}
+
+Base64 :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+PrintList :: (name: string, list: []s32, count: s32) {
+    print("%: [%]s32 = .{", name, count)
+    for index: 0..count - 1 {
+        if index > 0 { print(",") }
+        if index % 16 == 0 { print("\n    ") } else if index > 0 { print(" ") }
+        print("%", list[index])
+    }
+    print("};\n")
+}
+
+main :: () -> s32 {
+    path_bytes: [4096]u8
+    path: string = Line(path_bytes[:])
+    text, found := ReadEntireFile(path)
+    if !found { print("outline_font: cannot read %\n", path); return 1 }
+    font = text
+    if !FindTables() { print("outline_font: % is not a TrueType font\n", path); return 1 }
+    for code: 32..126 { if !AddCode(cast(s32)code) { return 1 } }
+    for code: 160..255 { if !AddCode(cast(s32)code) { return 1 } }
+    for index: 0..15 { if !AddCode(extra_codes[index]) { return 1 } }
+    // Code points ascend, so the host can search them.
+    sorted: bool = false
+    while !sorted {
+        sorted = true
+        for index: 1..glyph_count - 1 {
+            if codes[index] < codes[index - 1] {
+                swap: s32 = codes[index]; codes[index] = codes[index - 1]; codes[index - 1] = swap
+                swap = advances[index]; advances[index] = advances[index - 1]; advances[index - 1] = swap
+                swap = starts[index]; starts[index] = starts[index - 1]; starts[index - 1] = swap
+                sorted = false
+            }
+        }
+    }
+    print("// Generated by tools/outline_font.zi; `make pixmap-font` rebuilds it.\n")
+    print("// Outlines and advance widths of Liberation Sans Regular (assets/fonts),\n")
+    print("// licensed under the SIL Open Font License 1.1\n")
+    print("// (assets/fonts/LICENSE-Liberation). Values are base64, three characters\n")
+    print("// each: per glyph the contour count, each contour's last point, and then\n")
+    print("// every point as x * 2 + on-curve and y, both offset by PixmapFontBias.\n\n")
+    print("PixmapFontUnits :: %;\n", U16(table_head + 18))
+    print("PixmapFontAscent :: %;\n", S16(table_hhea + 4))
+    print("PixmapFontDescent :: %;\n", -S16(table_hhea + 6))
+    print("PixmapFontBias :: %;\n", Bias)
+    print("PixmapFontGlyphs :: %;\n", glyph_count)
+    PrintList("pixmap_font_codes", codes[:], glyph_count)
+    PrintList("pixmap_font_advances", advances[:], glyph_count)
+    PrintList("pixmap_font_starts", starts[:], glyph_count)
+    characters: s32 = value_count * 3
+    chunks: s32 = (characters + ChunkCharacters - 1) / ChunkCharacters
+    print("PixmapFontChunk :: %;\n", ChunkCharacters)
+    one: [3]u8
+    for chunk: 0..chunks - 1 {
+        print("PixmapFontData% :: \"", chunk)
+        at: s32 = chunk * ChunkCharacters / 3
+        while at < value_count && at < (chunk + 1) * ChunkCharacters / 3 {
+            value: s32 = values[at]
+            one[0] = Base64[(value >> 12) & 63]
+            one[1] = Base64[(value >> 6) & 63]
+            one[2] = Base64[value & 63]
+            print("%", TextView(one[:]))
+            at += 1
+        }
+        print("\";\n")
+    }
+    print("\n// The index-th value of the outline data.\n")
+    print("PixmapFontValue :: (index: s32) -> s32 {\n")
+    print("    at: s32 = index * 3\n")
+    print("    chunk: s32 = at / PixmapFontChunk\n")
+    print("%", "    offset: s32 = at % PixmapFontChunk\n")
+    print("    text: string = PixmapFontData0\n")
+    for chunk: 1..chunks - 1 {
+        print("    if chunk == % { text = PixmapFontData% }\n", chunk, chunk)
+    }
+    print("    return PixmapFontSextet(text[offset]) * 4096 +\n")
+    print("        PixmapFontSextet(text[offset + 1]) * 64 + PixmapFontSextet(text[offset + 2])\n")
+    print("}\n\n")
+    print("PixmapFontSextet :: (character: u8) -> s32 {\n")
+    print("    code: s32 = cast(s32)character\n")
+    print("    if code >= 65 && code <= 90 { return code - 65 }\n")
+    print("    if code >= 97 && code <= 122 { return code - 71 }\n")
+    print("    if code >= 48 && code <= 57 { return code + 4 }\n")
+    print("    if code == 43 { return 62 }\n")
+    print("    return 63\n")
+    print("}\n")
+    return 0
+}
