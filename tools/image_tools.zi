@@ -1,5 +1,5 @@
 #import "file"
-#import "pixmap_font"
+#import "pixmap_text"
 
 // Image checks for Kryon screenshots, written in Ziran and run as Python
 // (zi2py), so they need nothing beyond python3. Commands come one per line on
@@ -371,28 +371,34 @@ Compare :: (first: string, second: string, diff_path: string) {
         differing, largest, left, right, top, bottom)
 }
 
-// Text on the canvas in the 16-pixel glyphs.
+Mix :: (source: s32, destination: s32, alpha: s32) -> s32 {
+    return (source * alpha + destination * (255 - alpha) + 127) / 255
+}
+
+// Text on the canvas in Kryon's font at 16 pixels, as the pixmap host draws.
 DrawText :: (width: s32, height: s32, text: string, x: s32, y: s32, color: u32) {
-    face: s32 = 2
-    glyph_width: s32 = pixmap_font_widths[face]
-    glyph_height: s32 = pixmap_font_heights[face]
-    left: s32 = x
+    font: s32 = 16
+    baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
+    pen: s64 = 0
+    mask: PixmapGlyphMask
     for index: 0..cast(s32)text.count - 1 {
-        glyph: s32 = cast(s32)text[index]
-        if glyph < PixmapFontFirst || glyph > PixmapFontLast { glyph = 63 }
-        start: s32 = pixmap_font_starts[face] +
-            (glyph - PixmapFontFirst) * glyph_width * glyph_height
-        for row: 0..glyph_height - 1 {
-            for column: 0..glyph_width - 1 {
-                px: s32 = left + column
-                py: s32 = y + row
-                if px >= 0 && py >= 0 && px < width && py < height &&
-                    PixmapFontBit(start + row * glyph_width + column) {
-                    canvas[py * width + px] = color
+        glyph: s32 = PixmapGlyphFor(cast(u32)text[index])
+        origin: s64 = cast(s64)x * 256 + PixmapUnits(pen, font)
+        if PixmapRasterGlyph(glyph, origin, baseline, font, *mask) {
+            for row: 0..mask.height - 1 {
+                for column: 0..mask.width - 1 {
+                    px: s32 = mask.left + cast(s32)column
+                    py: s32 = mask.top + cast(s32)row
+                    alpha: s32 = cast(s32)pixmap_mask[row * mask.width + column]
+                    if alpha > 0 && px >= 0 && py >= 0 && px < width && py < height {
+                        old: u32 = canvas[py * width + px]
+                        canvas[py * width + px] = Pack(Mix(Red(color), Red(old), alpha),
+                            Mix(Green(color), Green(old), alpha), Mix(Blue(color), Blue(old), alpha))
+                    }
                 }
             }
         }
-        left += glyph_width
+        pen += cast(s64)PixmapGlyphAdvance(glyph)
     }
 }
 

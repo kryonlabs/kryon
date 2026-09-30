@@ -124,8 +124,8 @@ terminal; otherwise it uses the default.
 | Backend | Host | Requirements |
 | --- | --- | --- |
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
-| `desktop` | SDL2 window with Cairo raster | SDL2 and Cairo development libraries |
-| `libdraw` | plan9port devdraw with Cairo | plan9port and Cairo; set `PLAN9PORT_DIR` if needed |
+| `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
+| `libdraw` | plan9port devdraw with Cairo | Cairo and plan9port: the one `$PLAN9` names, or `ziran add https://github.com/9fans/plan9port.git --source`, which Kryon then builds |
 | `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
@@ -204,8 +204,13 @@ host plus `canvas_raster.zi` and emits every saved module; this preserves the
 host entry point and raster adapters that the paint queue reaches indirectly.
 Native profiles keep the package-qualified entry-pruned route.
 
-The `pixmap` host draws with integer arithmetic and bitmap glyphs (Terminus
-Font), so every Ziran target prints the same bytes for the same frame. It
+Every host draws text in Kryon's font, Liberation Sans
+(`assets/fonts/LiberationSans-Regular.ttf`): a `font`-pixel line box from the
+top of the ascent to the bottom of the descent, glyphs at their unhinted
+widths. The desktop and libdraw hosts load it from `KRYON_FONT_PATH`, which
+`kryon run` sets, else from the system's copy. The `pixmap` host rasterizes
+the font's outlines with integer arithmetic, so every Ziran target prints the
+same bytes for the same frame, and its text matches the desktop window's. It
 renders two frames and prints the second, for screenshots in documentation and
 CI without a display. `make pixmap-parity-test` builds every template and
 example for C, C++, Go, Rust, Python, and the portable runner and checks that

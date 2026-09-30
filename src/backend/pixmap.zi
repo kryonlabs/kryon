@@ -1,12 +1,13 @@
 #import "drawing_props"
 #import "geometry"
 #import "utf8"
-#import "pixmap_font"
+#import "pixmap_text"
 
 // A headless host: Kryon paints a frame into this pixel buffer, and
 // PixmapPresent prints it as a PPM image on standard output. The raster is
 // integer arithmetic over the paint queue's values and text is drawn from
-// bitmap glyphs, so every Ziran target -- C, C++, Go, Rust, Python, and the
+// Kryon's font outlines (pixmap_text), so every Ziran target -- C, C++, Go,
+// Rust, Python, and the
 // portable VM -- prints the same bytes for the same frame. That makes it both
 // a screenshot profile (`kryon run shot > frame.ppm`) and a cross-target
 // conformance check.
@@ -22,11 +23,6 @@ pixmap_clip_left: s32;
 pixmap_clip_top: s32;
 pixmap_clip_right: s32 = PixmapWidth;
 pixmap_clip_bottom: s32 = PixmapHeight;
-
-PixmapFace :: struct {
-    index: s32
-    scale: s32
-}
 
 #program_export
 PixmapBegin :: (background: u32) {
@@ -196,109 +192,51 @@ PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
     }
 }
 
-PixmapFaceFor :: (font: s32) -> PixmapFace {
-    face: PixmapFace
-    face.scale = 1
-    best: s32 = 0
-    scale: s32 = 1
-    while scale <= 4 {
-        index: s32 = 0
-        while index < PixmapFontCount {
-            height: s32 = pixmap_font_heights[index] * scale
-            if height <= font && height > best {
-                best = height
-                face.index = index
-                face.scale = scale
-            }
-            index += 1
-        }
-        scale += 1
-    }
-    return face
-}
-
-// The glyph a code point is drawn with: ASCII as itself, common
-// typographic marks as their ASCII look-alikes, anything else as '?'.
-PixmapGlyph :: (point: u32) -> s32 {
-    value: s32 = cast(s32)point
-    if value >= PixmapFontFirst && value <= PixmapFontLast { return value }
-    if value == 8722 || value == 8211 || value == 8212 { return 45 }
-    if value == 8216 || value == 8217 { return 39 }
-    if value == 8220 || value == 8221 { return 34 }
-    if value == 183 || value == 8226 { return 42 }
-    if value == 8230 { return 46 }
-    if value == 8805 { return 62 }
-    if value == 8804 { return 60 }
-    if value == 215 { return 120 }
-    if value == 160 { return 32 }
-    return 63
-}
-
-PixmapGlyphCount :: (value: string) -> s32 {
-    count: s32 = 0
-    at: s32 = 0
-    while at < cast(s32)value.count {
-        point: Decoded = Decode(value, at)
-        if point.after <= at { break }
-        at = point.after
-        count += 1
-    }
-    return count
-}
-
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     unused typeface
-    face: PixmapFace = PixmapFaceFor(font)
-    return PixmapGlyphCount(value) * pixmap_font_widths[face.index] * face.scale
-}
-
-#program_export
-MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    unused typeface
-    face: PixmapFace = PixmapFaceFor(font)
-    height: s32 = pixmap_font_heights[face.index] * face.scale
-    if font > height { return font }
-    return height
-}
-
-PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
-    face: PixmapFace = PixmapFaceFor(font)
-    width: s32 = pixmap_font_widths[face.index]
-    height: s32 = pixmap_font_heights[face.index]
-    glyph_bits: s32 = height * width
-    // Center the glyph cell in the line box.
-    line: s32 = MeasureGlyphLineHeight(font, "")
-    top: s32 = y + (line - height * face.scale) / 2
-    left: s32 = x
+    units: s64 = 0
     at: s32 = 0
     while at < cast(s32)value.count {
         point: Decoded = Decode(value, at)
         if point.after <= at { break }
         at = point.after
-        glyph: s32 = PixmapGlyph(point.value)
-        start: s32 = pixmap_font_starts[face.index] + (glyph - PixmapFontFirst) * glyph_bits
-        row: s32 = 0
-        while row < height {
-            column: s32 = 0
-            while column < width {
-                if PixmapFontBit(start + row * width + column) {
-                    dy: s32 = 0
-                    while dy < face.scale {
-                        dx: s32 = 0
-                        while dx < face.scale {
-                            PixmapBlend(left + column * face.scale + dx,
-                                top + row * face.scale + dy, color, 255)
-                            dx += 1
-                        }
-                        dy += 1
+        units += cast(s64)PixmapGlyphAdvance(PixmapGlyphFor(point.value))
+    }
+    return PixmapTextWidth(units, font)
+}
+
+// The line box is the font size, as on the other hosts.
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    if font <= 0 { return }
+    baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
+    pen: s64 = 0
+    mask: PixmapGlyphMask
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        point: Decoded = Decode(value, at)
+        if point.after <= at { break }
+        at = point.after
+        glyph: s32 = PixmapGlyphFor(point.value)
+        origin: s64 = cast(s64)x * 256 + PixmapUnits(pen, font)
+        if PixmapRasterGlyph(glyph, origin, baseline, font, *mask) {
+            for row: 0..mask.height - 1 {
+                for column: 0..mask.width - 1 {
+                    coverage: u8 = pixmap_mask[row * mask.width + column]
+                    if coverage != cast(u8)0 {
+                        PixmapBlend(mask.left + cast(s32)column, mask.top + cast(s32)row,
+                            color, cast(s32)coverage)
                     }
                 }
-                column += 1
             }
-            row += 1
         }
-        left += width * face.scale
+        pen += cast(s64)PixmapGlyphAdvance(glyph)
     }
 }
 

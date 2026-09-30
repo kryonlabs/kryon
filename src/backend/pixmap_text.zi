@@ -1,0 +1,286 @@
+#import "pixmap_font"
+
+// Text for the pixmap host: Kryon's font, Liberation Sans, from its outlines.
+// It is laid out as the desktop, raylib, and canvas hosts lay text out: a
+// `font`-pixel line box runs from the top of the ascent to the bottom of the
+// descent, the baseline sits at the ascent, and glyphs advance by their
+// unhinted widths. Rasterizing uses only integer arithmetic -- positions in
+// 1/256 pixel, coverage from sub-scanlines with exact horizontal spans -- so
+// every Ziran target draws the same pixels.
+
+PixmapTextLine :: PixmapFontAscent + PixmapFontDescent;
+// Sub-scanlines per pixel row.
+PixmapTextSamples :: 5;
+// The largest glyph a mask holds, in pixels.
+PixmapMaskSide :: 160;
+
+PixmapGlyphMask :: struct {
+    left: s32
+    top: s32
+    width: s32
+    height: s32
+}
+
+// Coverage of the last rasterized glyph, 0 to 255, row by row.
+pixmap_mask: [25600]u8;
+pixmap_edge_x0: [4096]s64;
+pixmap_edge_y0: [4096]s64;
+pixmap_edge_x1: [4096]s64;
+pixmap_edge_y1: [4096]s64;
+pixmap_edge_count: s32;
+pixmap_contour_x: [2048]s64;
+pixmap_contour_y: [2048]s64;
+pixmap_contour_on: [2048]bool;
+pixmap_crossing_x: [1024]s64;
+pixmap_crossing_turn: [1024]s32;
+pixmap_row: [160]s64;
+
+// Division rounding toward negative infinity, for a positive divisor.
+PixmapFloorDiv :: (value: s64, divisor: s64) -> s64 {
+    if value >= 0 { return value / divisor }
+    return -((-value + divisor - 1) / divisor)
+}
+
+// Font units to 1/256 pixel at a font size.
+PixmapUnits :: (units: s64, font: s32) -> s64 {
+    return PixmapFloorDiv(units * cast(s64)font * 256, cast(s64)PixmapTextLine)
+}
+
+// The glyph for a code point, or the question mark's.
+PixmapGlyphFor :: (point: u32) -> s32 {
+    code: s32 = cast(s32)point
+    if point > cast(u32)1114111 { code = 63 }
+    low: s32 = 0
+    high: s32 = PixmapFontGlyphs - 1
+    while low <= high {
+        middle: s32 = (low + high) / 2
+        found: s32 = pixmap_font_codes[middle]
+        if found == code { return middle }
+        if found < code { low = middle + 1 } else { high = middle - 1 }
+    }
+    if code == 63 { return 0 }
+    return PixmapGlyphFor(cast(u32)63)
+}
+
+PixmapGlyphAdvance :: (glyph: s32) -> s32 {
+    return pixmap_font_advances[glyph]
+}
+
+// The width of text at a font size, in whole pixels.
+PixmapTextWidth :: (units: s64, font: s32) -> s32 {
+    line: s64 = cast(s64)PixmapTextLine
+    return cast(s32)((units * cast(s64)font * 2 + line) / (line * 2))
+}
+
+// The baseline's distance below the top of a font's line box, in 1/256 px.
+PixmapTextBaseline :: (font: s32) -> s64 {
+    return PixmapUnits(cast(s64)PixmapFontAscent, font)
+}
+
+PixmapAddEdge :: (x0: s64, y0: s64, x1: s64, y1: s64) {
+    if y0 == y1 || pixmap_edge_count >= 4096 { return }
+    pixmap_edge_x0[pixmap_edge_count] = x0
+    pixmap_edge_y0[pixmap_edge_count] = y0
+    pixmap_edge_x1[pixmap_edge_count] = x1
+    pixmap_edge_y1[pixmap_edge_count] = y1
+    pixmap_edge_count += 1
+}
+
+// A quadratic Bezier as `steps` lines.
+PixmapAddCurve :: (x0: s64, y0: s64, cx: s64, cy: s64, x1: s64, y1: s64, steps: s64) {
+    px: s64 = x0
+    py: s64 = y0
+    square: s64 = steps * steps
+    step: s64 = 1
+    while step <= steps {
+        rest: s64 = steps - step
+        nx: s64 = PixmapFloorDiv(x0 * rest * rest + cx * 2 * step * rest + x1 * step * step, square)
+        ny: s64 = PixmapFloorDiv(y0 * rest * rest + cy * 2 * step * rest + y1 * step * step, square)
+        PixmapAddEdge(px, py, nx, ny)
+        px = nx
+        py = ny
+        step += 1
+    }
+}
+
+// Adds one TrueType contour: on-curve points are corners, and an off-curve
+// point is a quadratic's control, with an implied on-curve point between
+// two controls in a row.
+PixmapAddContour :: (count: s32, steps: s64) {
+    if count < 2 { return }
+    start: s32 = -1
+    for index: 0..count - 1 {
+        if start < 0 && pixmap_contour_on[index] { start = cast(s32)index }
+    }
+    sx: s64 = 0
+    sy: s64 = 0
+    if start >= 0 {
+        sx = pixmap_contour_x[start]
+        sy = pixmap_contour_y[start]
+    } else {
+        // All controls: the contour starts between the first two.
+        start = 0
+        sx = PixmapFloorDiv(pixmap_contour_x[0] + pixmap_contour_x[1], 2)
+        sy = PixmapFloorDiv(pixmap_contour_y[0] + pixmap_contour_y[1], 2)
+    }
+    x: s64 = sx
+    y: s64 = sy
+    control: bool = false
+    cx: s64 = 0
+    cy: s64 = 0
+    for step: 1..count {
+        index: s32 = (start + cast(s32)step) % count
+        px: s64 = pixmap_contour_x[index]
+        py: s64 = pixmap_contour_y[index]
+        if pixmap_contour_on[index] {
+            if control { PixmapAddCurve(x, y, cx, cy, px, py, steps) }
+            else { PixmapAddEdge(x, y, px, py) }
+            x = px
+            y = py
+            control = false
+        } else if control {
+            mx: s64 = PixmapFloorDiv(cx + px, 2)
+            my: s64 = PixmapFloorDiv(cy + py, 2)
+            PixmapAddCurve(x, y, cx, cy, mx, my, steps)
+            x = mx
+            y = my
+            cx = px
+            cy = py
+        } else {
+            cx = px
+            cy = py
+            control = true
+        }
+    }
+    if control { PixmapAddCurve(x, y, cx, cy, sx, sy, steps) }
+    else { PixmapAddEdge(x, y, sx, sy) }
+}
+
+// Adds a span [from, to) of one sub-scanline, in 1/256 px relative to the
+// mask's left edge, to the row's coverage.
+PixmapAddSpan :: (from: s64, to: s64, width: s32) {
+    limit: s64 = cast(s64)width * 256
+    if from < 0 { from = 0 }
+    if to > limit { to = limit }
+    if to <= from { return }
+    first: s64 = from / 256
+    last: s64 = (to - 1) / 256
+    if first == last {
+        pixmap_row[first] += to - from
+        return
+    }
+    pixmap_row[first] += (first + 1) * 256 - from
+    column: s64 = first + 1
+    while column < last {
+        pixmap_row[column] += 256
+        column += 1
+    }
+    pixmap_row[last] += to - last * 256
+}
+
+// Rasterizes a glyph whose origin is (origin_x, baseline) in 1/256 px into
+// pixmap_mask; false when the glyph draws nothing.
+PixmapRasterGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
+    mask: *PixmapGlyphMask) -> bool {
+    pixmap_edge_count = 0
+    at: s32 = pixmap_font_starts[glyph]
+    contours: s32 = PixmapFontValue(at)
+    points: s32 = at + 1 + contours
+    steps: s64 = cast(s64)(font / 6)
+    if steps < 2 { steps = 2 }
+    if steps > 12 { steps = 12 }
+    first: s32 = 0
+    for contour: 0..contours - 1 {
+        last: s32 = PixmapFontValue(at + 1 + cast(s32)contour)
+        count: s32 = last - first + 1
+        if count > 0 && count <= 2048 {
+            for index: 0..count - 1 {
+                value: s32 = PixmapFontValue(points + (first + cast(s32)index) * 2)
+                y: s32 = PixmapFontValue(points + (first + cast(s32)index) * 2 + 1)
+                pixmap_contour_x[index] = origin_x +
+                    PixmapUnits(cast(s64)(value / 2 - PixmapFontBias), font)
+                pixmap_contour_y[index] = baseline -
+                    PixmapUnits(cast(s64)(y - PixmapFontBias), font)
+                pixmap_contour_on[index] = value % 2 == 1
+            }
+            PixmapAddContour(count, steps)
+        }
+        first = last + 1
+    }
+    if pixmap_edge_count == 0 { return false }
+    left: s64 = pixmap_edge_x0[0]
+    right: s64 = left
+    top: s64 = pixmap_edge_y0[0]
+    bottom: s64 = top
+    for edge: 0..pixmap_edge_count - 1 {
+        if pixmap_edge_x0[edge] < left { left = pixmap_edge_x0[edge] }
+        if pixmap_edge_x1[edge] < left { left = pixmap_edge_x1[edge] }
+        if pixmap_edge_x0[edge] > right { right = pixmap_edge_x0[edge] }
+        if pixmap_edge_x1[edge] > right { right = pixmap_edge_x1[edge] }
+        if pixmap_edge_y0[edge] < top { top = pixmap_edge_y0[edge] }
+        if pixmap_edge_y1[edge] < top { top = pixmap_edge_y1[edge] }
+        if pixmap_edge_y0[edge] > bottom { bottom = pixmap_edge_y0[edge] }
+        if pixmap_edge_y1[edge] > bottom { bottom = pixmap_edge_y1[edge] }
+    }
+    mask.left = cast(s32)PixmapFloorDiv(left, 256)
+    mask.top = cast(s32)PixmapFloorDiv(top, 256)
+    mask.width = cast(s32)(PixmapFloorDiv(right + 255, 256)) - mask.left
+    mask.height = cast(s32)(PixmapFloorDiv(bottom + 255, 256)) - mask.top
+    if mask.width > PixmapMaskSide { mask.width = PixmapMaskSide }
+    if mask.height > PixmapMaskSide { mask.height = PixmapMaskSide }
+    if mask.width <= 0 || mask.height <= 0 { return false }
+    origin: s64 = cast(s64)mask.left * 256
+    for row: 0..mask.height - 1 {
+        for column: 0..mask.width - 1 { pixmap_row[column] = 0 }
+        for sample: 0..PixmapTextSamples - 1 {
+            scan: s64 = (cast(s64)mask.top + cast(s64)row) * 256 +
+                (cast(s64)sample * 2 + 1) * 128 / cast(s64)PixmapTextSamples
+            crossings: s32 = 0
+            for edge: 0..pixmap_edge_count - 1 {
+                y0: s64 = pixmap_edge_y0[edge]
+                y1: s64 = pixmap_edge_y1[edge]
+                turn: s32 = 1
+                low: s64 = y0
+                high: s64 = y1
+                if y1 < y0 {
+                    turn = -1
+                    low = y1
+                    high = y0
+                }
+                if scan >= low && scan < high && crossings < 1024 {
+                    x0: s64 = pixmap_edge_x0[edge]
+                    x1: s64 = pixmap_edge_x1[edge]
+                    x: s64 = x0 + PixmapFloorDiv((x1 - x0) * (scan - y0), y1 - y0)
+                    // Insertion keeps the crossings in x order.
+                    place: s32 = crossings
+                    while place > 0 && pixmap_crossing_x[place - 1] > x {
+                        pixmap_crossing_x[place] = pixmap_crossing_x[place - 1]
+                        pixmap_crossing_turn[place] = pixmap_crossing_turn[place - 1]
+                        place -= 1
+                    }
+                    pixmap_crossing_x[place] = x
+                    pixmap_crossing_turn[place] = turn
+                    crossings += 1
+                }
+            }
+            // Non-zero winding: inside wherever the turns do not cancel.
+            winding: s32 = 0
+            span: s64 = 0
+            for index: 0..crossings - 1 {
+                before: s32 = winding
+                winding += pixmap_crossing_turn[index]
+                if before == 0 && winding != 0 { span = pixmap_crossing_x[index] }
+                if before != 0 && winding == 0 {
+                    PixmapAddSpan(span - origin, pixmap_crossing_x[index] - origin, mask.width)
+                }
+            }
+        }
+        full: s64 = cast(s64)PixmapTextSamples * 256
+        for column: 0..mask.width - 1 {
+            coverage: s64 = pixmap_row[column] * 255 / full
+            if coverage > 255 { coverage = 255 }
+            pixmap_mask[row * mask.width + cast(s32)column] = cast(u8)coverage
+        }
+    }
+    return true
+}
