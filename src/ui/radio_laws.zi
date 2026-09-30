@@ -1,0 +1,11 @@
+#import "radio"
+
+// Laws for choosing a radio button. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+// Only an activated, enabled radio reports its id; otherwise it reports 0,
+// which also means a radio with id 0 never selects anything.
+#law NoActivationReportsNothing forall id: -3..3, disabled: 0..1 => RadioActivationFor(id, false, disabled != 0) == 0;
+#law DisabledReportsNothing forall id: -3..3 => RadioActivationFor(id, true, true) == 0;
+#law ActivationReportsId forall id: -3..3 => RadioActivationFor(id, true, false) == id;

@@ -1,0 +1,33 @@
+#import "control_props"
+#import "link"
+
+// Laws for links. Each states the expected behavior independently of the
+// implementation; `ziran check` proves it over every listed input. An
+// implementation edit may not change this file.
+
+
+B :: (value: s32) -> bool { return value != 0 }
+
+// A disabled link never activates; an enabled one activates on a click or
+// on keyboard activation, and not otherwise.
+#law DisabledNeverActivates forall clicked: 0..1, keyed: 0..1 => !LinkActivated(true, B(clicked), B(keyed));
+#law EnabledActivatesOnInput forall clicked: 0..1, keyed: 0..1 => LinkActivated(false, B(clicked), B(keyed)) == (B(clicked) || B(keyed));
+
+Pointer :: (disabled: s32, captured: s32, inside: s32, hover: s32,
+    released: s32, consumed: s32, started: s32) -> LinkInteraction {
+    return LinkInteractionFor(B(disabled), B(captured), B(inside), B(hover),
+        B(released), B(consumed), B(started))
+}
+
+// The pointer affects a link only from inside it, uncaptured; a disabled
+// link shows its marker and its disabled state instead.
+#law OutsideInert forall disabled: 0..1, captured: 0..1, hover: 0..1, released: 0..1 => !Pointer(disabled, captured, 0, hover, released, 0, 1).active && !Pointer(disabled, captured, 0, hover, released, 0, 1).activated && !Pointer(disabled, captured, 0, hover, released, 0, 1).disabled_marker;
+#law DisabledMarked forall hover: 0..1, released: 0..1 => Pointer(1, 0, 1, hover, released, 0, 1).disabled_marker && !Pointer(1, 0, 1, hover, released, 0, 1).activated && Pointer(1, 0, 1, hover, released, 0, 1).state == ButtonState.ButtonStateDisabled;
+#law HoverShown forall hover: 0..1 => Pointer(0, 0, 1, hover, 0, 0, 0).hovered == B(hover) && Pointer(0, 0, 1, hover, 0, 0, 0).state == (ifx B(hover) then ButtonState.ButtonStateHover else ButtonState.ButtonStateNormal);
+
+// A release activates it once: only after a press that began inside, and
+// only when no one else took the release; activating takes the release.
+#law ReleaseActivates custom Pointer(0, 0, 1, 1, 1, 0, 1).activated && Pointer(0, 0, 1, 1, 1, 0, 1).consume_release;
+#law TakenReleaseIgnored forall started: 0..1 => !Pointer(0, 0, 1, 1, 1, 1, started).activated;
+#law OutsidePressIgnored custom !Pointer(0, 0, 1, 1, 1, 0, 0).activated;
+#law ConsumesOnlyWhenActivated forall disabled: 0..1, captured: 0..1, inside: 0..1, released: 0..1, consumed: 0..1, started: 0..1 => Pointer(disabled, captured, inside, 1, released, consumed, started).consume_release == Pointer(disabled, captured, inside, 1, released, consumed, started).activated;

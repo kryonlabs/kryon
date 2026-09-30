@@ -29,6 +29,20 @@ Answer :: () -> s32 {
         !pointer.consume_release { return 0 }
     if !InputTempEditActivationFor(true, false, true, true, true,
         0.2, 1.0, 1.0, 6) { return 0 }
+    // No press starts nothing; Control starts at once; travel past the
+    // slop, a late click, or another part of the widget does not start one.
+    if InputTempEditActivationFor(false, true, true, true, true,
+        0.0, 0.0, 0.0, 6) { return 0 }
+    if !InputTempEditActivationFor(true, true, false, false, false,
+        5.0, 40.0, 40.0, 6) { return 0 }
+    if InputTempEditActivationFor(true, false, true, true, true,
+        0.2, 7.0, 0.0, 6) { return 0 }
+    if InputTempEditActivationFor(true, false, true, true, true,
+        0.2, 0.0, -7.0, 6) { return 0 }
+    if InputTempEditActivationFor(true, false, true, true, true,
+        0.5, 0.0, 0.0, 6) { return 0 }
+    if InputTempEditActivationFor(true, false, true, false, true,
+        0.2, 0.0, 0.0, 6) { return 0 }
     bounds: Rectangle
     bounds.x = 10.0
     bounds.width = 100.0

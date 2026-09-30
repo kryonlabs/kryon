@@ -1,0 +1,21 @@
+#import "drag"
+
+// Laws for keyboard dragging. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+Runs :: (focused: s32, keyboard: s32, popup: s32) -> bool {
+    return DragKeyboardShouldRun(focused != 0, keyboard != 0, popup != 0)
+}
+
+// Keyboard drags need focus and keyboard input, and never run under a popup
+// that holds the keyboard.
+#law UnfocusedDoesNotRun forall keyboard: 0..1, popup: 0..1 => !Runs(0, keyboard, popup);
+#law KeyboardOffDoesNotRun forall popup: 0..1 => !Runs(1, 0, popup);
+#law PopupBlocks custom !Runs(1, 1, 1);
+#law FocusedKeyboardRuns custom Runs(1, 1, 0);
+
+// Right moves forward, Left backward, and Right wins when both are down.
+#law RightMovesForward forall left: 0..1 => DragKeyboardDirectionFor(true, left != 0) == 1;
+#law LeftMovesBackward custom DragKeyboardDirectionFor(false, true) == -1;
+#law NoArrowStays custom DragKeyboardDirectionFor(false, false) == 0;
