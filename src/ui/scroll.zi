@@ -491,6 +491,8 @@ scroll_offset: s32, max_scroll: s32, metrics: ScrollMetrics) -> ScrollBarPaint {
 ScrollFrameInput :: struct {
     bounds: Rectangle
     content_height: s32
+    content_width: s32
+    horizontal: bool
     has_offset: bool
     offset: s32
     pointer_allowed: bool
@@ -620,6 +622,20 @@ ScrollPointInside :: (point: Vector2, bounds: Rectangle) -> bool {
 
 #program_export
 ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFrame {
+    // Both axes share wheel, thumb, drag and momentum policy. Evaluate the
+    // horizontal axis in vertical coordinates, then return screen geometry.
+    if input.horizontal {
+        input.horizontal = false
+        input.bounds = ScrollSwapAxes(input.bounds)
+        input.mouse = Vector2.{input.mouse.y, input.mouse.x}
+        input.content_height = input.content_width
+        horizontal: ScrollFrame = ScrollFrameFor(input, metrics)
+        horizontal.clip = ScrollSwapAxes(horizontal.clip)
+        horizontal.content = ScrollSwapAxes(horizontal.content)
+        horizontal.paint.track_bounds = ScrollSwapAxes(horizontal.paint.track_bounds)
+        horizontal.paint.thumb_bounds = ScrollSwapAxes(horizontal.paint.thumb_bounds)
+        return horizontal
+    }
     frame: ScrollFrame
     frame.clip = input.bounds
     frame.grab = input.grab
@@ -758,4 +774,8 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
     frame.content.height = cast(float32)input.content_height
     if frame.content.height < 0.0 { frame.content.height = 0.0 }
     return frame
+}
+
+ScrollSwapAxes :: (bounds: Rectangle) -> Rectangle {
+    return Rectangle.{bounds.y, bounds.x, bounds.height, bounds.width}
 }

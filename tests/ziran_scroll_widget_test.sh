@@ -3,6 +3,8 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+standard=${ZIRAN_STD:-"$repo/../ziran/std"}
+include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -159,6 +161,62 @@ Answer :: () -> s32 {
         TreeScrollAt(TestSession(), 40.0, 20.0) != cast(u64)4 ||
         TreeScrollAt(TestSession(), 25.0, 15.0) != cast(u64)2 ||
         TreeScrollAt(TestSession(), 150.0, 20.0) != cast(u64)0 { return -10 }
+    // Horizontal scrolls retain the same clamping and drag policy, but move
+    // content on X and reserve a bottom scrollbar instead of a right one.
+    return HorizontalScrollTest()
+}
+
+HorizontalScrollTest :: () -> s32 {
+    root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
+    TreeStart(TestSession(), cast(u64)1, root)
+    sideways: ScrollProps
+    sideways.key = cast(u64)8
+    sideways.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
+    sideways.horizontal = true
+    sideways.content_width = 180
+    sideways.scroll_offset = 20
+    sideways.input.enabled = true
+    sideways.input.pointer_allowed = true
+    sideways.input.wheel = -1.0
+    PaintClear(TestSession())
+    result: ScrollResult = Scroll(TestSession(), sideways)
+    if result.max_scroll != 100 || result.scroll_offset != 62 ||
+        result.content.x != -42.0 || result.content.y != 10.0 ||
+        result.content.width != 180.0 || result.frame.clip.height != 30.0 ||
+        result.frame.paint.track_bounds.y != 40.0 ||
+        result.frame.paint.track_bounds.width != 80.0 ||
+        PendingPaintCount(TestSession()) != 2 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -15 }
+
+    TreeStart(TestSession(), cast(u64)1, root)
+    sideways.input.wheel = 0.0
+    sideways.input.pressed = true
+    sideways.input.down = true
+    sideways.input.mouse = Vector2.{35.0, 45.0}
+    result = Scroll(TestSession(), sideways)
+    if !result.frame.start_drag || result.frame.content_drag ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -16 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    sideways.input.pressed = false
+    sideways.input.owns_drag = true
+    sideways.input.grab = result.frame.grab
+    sideways.input.mouse.x = 95.0
+    result = Scroll(TestSession(), sideways)
+    if result.scroll_offset < 80 || result.scroll_offset > 100 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -17 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    sideways.input.down = false
+    sideways.input.released = true
+    result = Scroll(TestSession(), sideways)
+    if !result.frame.clear_drag || !result.frame.consume_release ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -18 }
+
+    TreeStart(TestSession(), cast(u64)1, root)
+    sideways.input.enabled = false
+    sideways.scroll_offset = 2147483647
+    result = Scroll(TestSession(), sideways)
+    if result.scroll_offset != 100 || result.content.x != -80.0 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -19 }
     return 42
 }
 ZI
@@ -199,7 +257,7 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$standard" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
@@ -211,21 +269,21 @@ for input in source saved; do
         root=$work/ir
         module_path=$work/ir
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
+    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$standard" \
         --entry app:Answer -o "$work/$input.zib" "$source"
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
+            --root "$root" --module-path "$module_path" --module-path "$standard" \
             -o "$output" "$source"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" \
+            "${CC:-cc}" -std=c11 -I"$include" \
                 -I"$output" "$output"/*.c -o "$output/app"
             "$output/app"
         elif test "$target" = cpp; then
             cp "$work/native_main.h" "$output/main.cpp"
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
+            "${CXX:-c++}" -std=c++17 -I"$include" \
                 -I"$output" "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
@@ -241,3 +299,29 @@ GO
     done
 done
 cmp "$work/source.zib" "$work/saved.zib"
+
+# Execute the same widget checks in the portable VM with the maintained
+# Ziran no-op raster host, including saved IR; a device is never opened.
+cat > "$work/portable.zi" <<'ZI'
+Case :: #import "app";
+#import "ziran_widget_noop_host"
+#program_export
+PortableCheck :: () -> s32 { return Case.Answer() }
+ZI
+set -- \
+    --bind raster_shape:RasterRoundedRectangle=ziran_widget_noop_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_widget_noop_host:RasterRoundedRectangleOutline \
+    --bind raster:RasterLine=ziran_widget_noop_host:RasterLine \
+    --bind raster_text:RasterText=ziran_widget_noop_host:RasterText \
+    --bind raster_text:RasterTextClipped=ziran_widget_noop_host:RasterTextClipped \
+    --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
+    --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
+    --module-path "$standard" "$@" --entry portable:PortableCheck \
+    -o "$work/portable-source.zib" "$work/portable.zi"
+"$ziran" bundle --root "$work/portable-ir" --module-path "$work/portable-ir" \
+    "$@" --entry portable:PortableCheck -o "$work/portable-saved.zib" "$work/portable-ir/portable.zir"
+cmp "$work/portable-source.zib" "$work/portable-saved.zib"
+test "$("$ziran" run "$work/portable-source.zib")" = 42
+test "$("$ziran" run "$work/portable-saved.zib")" = 42

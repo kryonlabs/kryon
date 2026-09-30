@@ -41,8 +41,10 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
     if !props.input.enabled && ScrollDeviceSampled(session) {
         props.input = ScrollObservationFor(key, result.viewport)
     }
-    result.max_scroll = ScrollMax(props.content_height,
-        cast(s32)result.viewport.height)
+    extent: s32 = props.content_height
+    viewport_extent: s32 = cast(s32)result.viewport.height
+    if props.horizontal { extent = props.content_width; viewport_extent = cast(s32)result.viewport.width }
+    result.max_scroll = ScrollMax(extent, viewport_extent)
     offset: s64 = cast(s64)props.scroll_offset + cast(s64)props.scroll_delta
     if offset < cast(s64)0 { offset = cast(s64)0 }
     if offset > cast(s64)result.max_scroll {
@@ -50,9 +52,12 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
     }
     result.scroll_offset = cast(s32)offset
     result.content = result.viewport
-    result.content.y -= cast(float32)result.scroll_offset
-    if props.content_height > cast(s32)result.viewport.height {
-        result.content.height = cast(float32)props.content_height
+    if props.horizontal {
+        result.content.x -= cast(float32)result.scroll_offset
+        if props.content_width > cast(s32)result.viewport.width { result.content.width = cast(float32)props.content_width }
+    } else {
+        result.content.y -= cast(float32)result.scroll_offset
+        if props.content_height > cast(s32)result.viewport.height { result.content.height = cast(float32)props.content_height }
     }
     if props.input.enabled {
         track: StyleFrame = ScrollFace(StyleKindScroll(),
@@ -66,6 +71,8 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         input: ScrollFrameInput
         input.bounds = result.viewport
         input.content_height = props.content_height
+        input.content_width = props.content_width
+        input.horizontal = props.horizontal
         input.has_offset = true
         input.offset = result.scroll_offset
         input.pointer_allowed = props.input.pointer_allowed

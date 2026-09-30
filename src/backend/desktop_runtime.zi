@@ -33,6 +33,7 @@ SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "
 SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_SetWindowPosition";
 GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
 GetWindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl_library "SDL_GetWindowSize";
+OpenURL :: (url: *u8) -> s32 #foreign sdl_library "SDL_OpenURL";
 CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
@@ -135,6 +136,21 @@ CenterDesktop :: () -> bool {
     if window == null { return false }
     SetWindowPosition(window, cast(s32)0x2fff0000, cast(s32)0x2fff0000)
     return true
+}
+
+// Open an absolute URL with the desktop's configured handler. No shell text
+// is evaluated, and embedded NULs must never truncate the destination.
+#program_export
+DesktopOpenURL :: (url: string) -> bool {
+    if url.count == 0 || url.count >= 8192 { return false }
+    index: s32 = 0
+    while index < url.count {
+        if url[index] < cast(u8)32 || url[index] == cast(u8)127 { return false }
+        index += 1
+    }
+    destination: [8192]u8
+    if !CopyCString(url, destination[:]) { return false }
+    return OpenURL(*destination[0]) == 0
 }
 
 DesktopApplyResize :: () -> bool {
