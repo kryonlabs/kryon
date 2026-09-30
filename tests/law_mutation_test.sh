@@ -89,4 +89,22 @@ mutate modal.zi modal_laws.zi 's/    if released && !release_consumed && !pointe
 mutate overlay.zi overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
 # An ownerless popup under another popup keeping the input.
 mutate popup_ownership.zi popup_ownership_laws.zi 's/    return has_top && (!has_owner || !same_top)/    return has_top \&\& !same_top/' OwnerlessTopCaptures
+# A reorder committed by a release that ended no drag.
+mutate reorder.zi reorder_laws.zi 's/    decision.commit = mouse_released && was_dragging/    decision.commit = was_dragging/' ReleaseRule
+# An empty row of segments wrapping.
+mutate segmented_control.zi segmented_control_laws.zi 's/    return wrap && row_width > 0 && next_width > available_width/    return wrap \&\& next_width > available_width/' WrapRule
+# An inverted spinbox range clamping the value anyway.
+mutate spinbox.zi spinbox_laws.zi 's/    if min_value > max_value { return value }//' InvertedRangeKeeps
+# Deselecting an item that is not selected clearing the selection.
+mutate accessibility_policy.zi accessibility_policy_laws.zi 's/ && selected == item) { return -1 }/) { return -1 }/' DeselectOnlySelected
+# A click that leaves a menu button's menu as it was.
+mutate button.zi button_laws.zi 's/    if clicked { return !open }/    if clicked { return open }/' ClickFlipsMenu
+# A leaf tree row toggling open.
+mutate collapsible.zi collapsible_laws.zi 's/    decision.toggle_open = !leaf && has_open/    decision.toggle_open = has_open/' ReleaseToggles
+# An activated selectable item keeping its selection.
+mutate selectable.zi selectable_laws.zi 's/        result.selected = !selected/        result.selected = selected/' ActivationFlips
+# A disabled toggle flipping.
+mutate toggle.zi toggle_laws.zi 's/    if activated && enabled && has_value {/    if activated \&\& has_value {/' FlipRule
+# A swipe claiming the pointer again on every dragging frame.
+mutate swipe.zi swipe_laws.zi 's/    lifecycle.claim_pointer_owner = !was_dragging && next_dragging/    lifecycle.claim_pointer_owner = next_dragging/' ClaimOnStart
 echo "Kryon laws reject all mutations"

@@ -1,0 +1,45 @@
+#import "collapsible"
+
+// Laws for collapsible sections and tree rows. Each states the expected
+// behavior independently of the implementation; `ziran check` proves it
+// over every listed input. An implementation edit may not change this
+// file.
+
+B :: (value: s32) -> bool { return value != 0 }
+
+Pointer :: (enabled: s32, closed: s32, hot: s32, released: s32, leaf: s32,
+    has_open: s32) -> CollapsiblePointerDecision {
+    return CollapsiblePointerDecisionFor(B(enabled), B(closed), B(hot),
+        B(released), B(leaf), B(has_open))
+}
+
+// A disabled or hidden header, or one not under the pointer, ignores it.
+#law InertHeaderIgnores forall enabled: 0..1, closed: 0..1, hot: 0..1, released: 0..1, leaf: 0..1, has_open: 0..1 => (B(enabled) && !B(closed) && B(hot)) || (!Pointer(enabled, closed, hot, released, leaf, has_open).mark_clickable && !Pointer(enabled, closed, hot, released, leaf, has_open).focus && !Pointer(enabled, closed, hot, released, leaf, has_open).toggle_open && !Pointer(enabled, closed, hot, released, leaf, has_open).consume_release);
+
+// Under the pointer it shows as clickable; a release focuses it, takes the
+// release, and toggles it unless it is a leaf or has no open state.
+#law HotHeaderClickable forall released: 0..1, leaf: 0..1, has_open: 0..1 => Pointer(1, 0, 1, released, leaf, has_open).mark_clickable;
+#law ReleaseFocusesAndTakes forall leaf: 0..1, has_open: 0..1 => Pointer(1, 0, 1, 1, leaf, has_open).focus && Pointer(1, 0, 1, 1, leaf, has_open).consume_release;
+#law ReleaseToggles forall leaf: 0..1, has_open: 0..1 => Pointer(1, 0, 1, 1, leaf, has_open).toggle_open == (!B(leaf) && B(has_open)) && Pointer(1, 0, 1, 1, leaf, has_open).changed == Pointer(1, 0, 1, 1, leaf, has_open).toggle_open;
+#law NoReleaseNoToggle forall leaf: 0..1, has_open: 0..1 => !Pointer(1, 0, 1, 0, leaf, has_open).toggle_open && !Pointer(1, 0, 1, 0, leaf, has_open).focus;
+
+// A close button hides a visible, enabled section when clicked.
+#law CloseRule forall enabled: 0..1, visible: 0..1, clicked: 0..1 => CollapsibleCloseDecisionFor(B(enabled), B(visible), B(clicked)).hide == (B(enabled) && B(visible) && B(clicked)) && CollapsibleCloseDecisionFor(B(enabled), B(visible), B(clicked)).changed == CollapsibleCloseDecisionFor(B(enabled), B(visible), B(clicked)).hide;
+
+// Opening: without an open state nothing changes; a set applies, then a
+// toggle flips the result; `changed` reports exactly a change.
+#law WithoutStateKeeps forall open: 0..1, toggle: 0..1, set: 0..1, next: 0..1 => CollapsibleOpenApply(B(open), B(toggle), B(set), B(next), false).open == B(open) && !CollapsibleOpenApply(B(open), B(toggle), B(set), B(next), false).changed;
+#law SetThenToggle forall open: 0..1, toggle: 0..1, set: 0..1, next: 0..1 => CollapsibleOpenApply(B(open), B(toggle), B(set), B(next), true).open == ((ifx B(set) then B(next) else B(open)) != B(toggle));
+#law ChangedMeansChange forall open: 0..1, toggle: 0..1, set: 0..1, next: 0..1 => CollapsibleOpenApply(B(open), B(toggle), B(set), B(next), true).changed == (CollapsibleOpenApply(B(open), B(toggle), B(set), B(next), true).open != B(open));
+
+// Keys reach only a focused header nobody else took them from.
+#law UnfocusedKeysIgnored forall captured: 0..1, handled: 0..1, tree: 0..1, key: 0..4, open: 0..1, activate: 0..1 => !CollapsibleKeyboardDecisionFor(false, B(captured), B(handled), B(tree), key, B(open), false, true, B(activate)).handled;
+#law CapturedKeysIgnored forall tree: 0..1, key: 0..4, open: 0..1, activate: 0..1 => !CollapsibleKeyboardDecisionFor(true, true, false, B(tree), key, B(open), false, true, B(activate)).handled;
+
+// In a section, Right opens it, Left closes it, and activating toggles it.
+#law RightOpens custom CollapsibleKeyboardDecisionFor(true, false, false, false, CollapsibleKeyRight(), false, false, true, false).set_open && CollapsibleKeyboardDecisionFor(true, false, false, false, CollapsibleKeyRight(), false, false, true, false).open;
+#law LeftCloses custom CollapsibleKeyboardDecisionFor(true, false, false, false, CollapsibleKeyLeft(), true, false, true, false).set_open && !CollapsibleKeyboardDecisionFor(true, false, false, false, CollapsibleKeyLeft(), true, false, true, false).open;
+#law ActivateToggles forall open: 0..1 => CollapsibleKeyboardDecisionFor(true, false, false, false, CollapsibleKeyNone(), B(open), false, true, true).toggle_open;
+
+// In a tree, Down and Up always move focus rather than change the row.
+#law TreeArrowsMoveFocus forall open: 0..1, leaf: 0..1 => CollapsibleKeyboardDecisionFor(true, false, false, true, CollapsibleKeyDown(), B(open), B(leaf), true, false).move_focus && !CollapsibleKeyboardDecisionFor(true, false, false, true, CollapsibleKeyUp(), B(open), B(leaf), true, false).set_open;
