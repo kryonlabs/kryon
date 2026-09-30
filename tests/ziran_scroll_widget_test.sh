@@ -91,8 +91,7 @@ Answer :: () -> s32 {
 
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.pressed = false
-    props.input.owns_drag = true
-    props.input.grab = result.frame.grab
+    props.input = ScrollInputAfter(props.input, result.frame)
     props.input.mouse.y = 45.0
     result = Scroll(TestSession(), props)
     if result.scroll_offset <= 62 || result.scroll_offset > 100 ||
@@ -121,10 +120,7 @@ Answer :: () -> s32 {
         !End(TestSession()) || !TreeFinish(TestSession()) { return -11 }
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.pressed = false
-    props.input.owns_drag = true
-    props.input.content_drag = true
-    props.input.drag_origin_y = result.frame.drag_origin_y
-    props.input.drag_origin_offset = result.frame.drag_origin_offset
+    props.input = ScrollInputAfter(props.input, result.frame)
     props.input.mouse.y = 42.0
     result = Scroll(TestSession(), props)
     if result.frame.drag_moving || result.scroll_offset != 40 ||
@@ -136,7 +132,7 @@ Answer :: () -> s32 {
         result.scroll_offset != 60 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -13 }
     TreeStart(TestSession(), cast(u64)1, root)
-    props.input.drag_moving = true
+    props.input = ScrollInputAfter(props.input, result.frame)
     props.input.down = false
     props.input.released = true
     result = Scroll(TestSession(), props)
