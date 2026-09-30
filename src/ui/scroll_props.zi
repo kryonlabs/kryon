@@ -54,3 +54,23 @@ ScrollResult :: struct {
     max_scroll: s32
     frame: ScrollFrame
 }
+
+// Retain the complete drag and momentum state between caller-supplied
+// frames. A content press must remain a content drag while held; retaining
+// only ownership and grab would reinterpret it as a scrollbar drag.
+#program_export
+ScrollInputAfter :: (input: ScrollInput, frame: ScrollFrame) -> ScrollInput {
+    if frame.start_drag { input.owns_drag = true }
+    if frame.clear_drag { input.owns_drag = false }
+    input.grab = frame.grab
+    input.content_drag = frame.content_drag
+    input.drag_origin_y = frame.drag_origin_y
+    input.drag_origin_offset = frame.drag_origin_offset
+    input.drag_moving = frame.drag_moving
+    input.sample_seconds = frame.sample_seconds
+    input.velocity = frame.velocity
+    input.flinging = frame.flinging
+    input.gliding = frame.gliding
+    input.glide_target = frame.glide_target
+    return input
+}
