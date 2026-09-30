@@ -175,21 +175,22 @@ SystemPaletteRead :: () -> SystemPalette {
     candidate: s32 = 0
     while candidate < 4 {
         at: s32 = 0
-        if candidate == 0 {
-            at = Append(path_buffer[:], at, home)
-            at = Append(path_buffer[:], at, "/.themes/")
-        } else if candidate == 1 {
-            if data.count > 0 {
-                at = Append(path_buffer[:], at, data)
-            } else {
+        if candidate == {
+            case 0;
                 at = Append(path_buffer[:], at, home)
-                at = Append(path_buffer[:], at, "/.local/share")
-            }
-            at = Append(path_buffer[:], at, "/themes/")
-        } else if candidate == 2 {
-            at = Append(path_buffer[:], at, "/usr/share/themes/")
-        } else {
-            at = Append(path_buffer[:], at, "/usr/local/share/themes/")
+                at = Append(path_buffer[:], at, "/.themes/")
+            case 1;
+                if data.count > 0 {
+                    at = Append(path_buffer[:], at, data)
+                } else {
+                    at = Append(path_buffer[:], at, home)
+                    at = Append(path_buffer[:], at, "/.local/share")
+                }
+                at = Append(path_buffer[:], at, "/themes/")
+            case 2;
+                at = Append(path_buffer[:], at, "/usr/share/themes/")
+            case;
+                at = Append(path_buffer[:], at, "/usr/local/share/themes/")
         }
         at = Append(path_buffer[:], at, name)
         directory_length: s32 = at

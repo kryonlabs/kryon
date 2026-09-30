@@ -117,15 +117,16 @@
         value: float32) {
         if value > 1.0 { value = 1.0 }
         if value < -1.0 { value = -1.0 }
-        if size == 8 {
-            samples := cast(*u8)data
-            samples[index] = cast(u8)(value * 127.0 + 128.0)
-        } else if size == 16 {
-            samples := cast(*s16)data
-            samples[index] = cast(s16)(value * 32767.0)
-        } else if size == 32 {
-            samples := cast(*float32)data
-            samples[index] = value
+        if size == {
+            case 8;
+                samples := cast(*u8)data
+                samples[index] = cast(u8)(value * 127.0 + 128.0)
+            case 16;
+                samples := cast(*s16)data
+                samples[index] = cast(s16)(value * 32767.0)
+            case 32;
+                samples := cast(*float32)data
+                samples[index] = value
         }
     }
 
