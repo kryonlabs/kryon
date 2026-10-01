@@ -297,11 +297,20 @@
         return -1
     }
 
+    AudioHostFreeBuffer :: () -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_BUFFERS {
+            if audio_buffer_ids[index] == 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
     // Keeps `object` as buffer `id`, replacing an earlier one.
     AudioStoreBuffer :: (id: s32, object: s32) -> s32 {
         index: s32 = AudioHostFindBuffer(id)
         if index < 0 {
-            index = AudioHostFindBuffer(0)
+            index = AudioHostFreeBuffer()
             if index < 0 {
                 WebRelease(object)
                 return 0
@@ -527,6 +536,15 @@
         return -1
     }
 
+    AudioFreeSource :: () -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_SOURCES {
+            if audio_sources[index].id == 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
     AudioSourceDrop :: (index: s32) {
         record: *AudioSourceRecord = *audio_sources[index]
         if record.source != 0 {
@@ -557,7 +575,7 @@
     AudioPlay :: (id: s32, buffer: s32, loop: s32, rate: float64, volume: float64,
         pan: float64, offset: float64, when: float64, use_offset: bool) -> s32 {
         if buffer == 0 || audio_context == 0 { return 0 }
-        slot: s32 = AudioFindSource(0)
+        slot: s32 = AudioFreeSource()
         if slot < 0 { return 0 }
         record: AudioSourceRecord
         record.id = id
@@ -666,6 +684,15 @@
         return -1
     }
 
+    AudioFreeTimer :: () -> s32 {
+        index: s32 = 0
+        while index < AUDIO_HOST_TIMERS {
+            if audio_timers[index].handle == 0 { return index }
+            index += 1
+        }
+        return -1
+    }
+
     AudioTimerDrop :: (index: s32) {
         timer: *AudioTimerRecord = *audio_timers[index]
         unused WebCall1(WebGlobal, audio_names.clear_interval,
@@ -688,7 +715,7 @@
     AudioHostTimer :: (handle: s32, interval: s32, tick: CanvasAudioTimer) {
         existing: s32 = AudioFindTimer(handle)
         if existing >= 0 { AudioTimerDrop(existing) }
-        slot: s32 = AudioFindTimer(0)
+        slot: s32 = AudioFreeTimer()
         if slot < 0 { return }
         function: s32 = WebFunction(AudioTimerFired, handle)
         result: WebValue = WebCall2(WebGlobal, audio_names.set_interval,
