@@ -78,11 +78,11 @@ def main():
         generated = project / "generated"
         run([ZIRAN, "build", "--project", "--target=c", "--entry", "app:main",
              "-o", str(generated), "src/app.zi"], project, env)
-        libraries = subprocess.run(["pkg-config", "--libs", "sdl2", "cairo"],
+        libraries = subprocess.run(["pkg-config", "--libs", "sdl2", "cairo", "freetype2", "fontconfig"],
                                    check=True, capture_output=True,
                                    text=True).stdout.split()
         run([os.environ.get("CC", "cc"), "-std=c99",
-             f"-I{ROOT.parent / 'ziran/include'}", f"-I{generated}",
+             f"-I{ZIRAN_ROOT / 'include'}", f"-I{generated}",
              *map(str, sorted(generated.glob("*.c"))), *libraries, "-lm",
              "-o", "probe"], project, env)
 
