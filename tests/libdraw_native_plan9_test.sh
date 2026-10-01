@@ -175,6 +175,12 @@ int nbrecv(DrawChannel *channel, void *value) {
     return 0;
 }
 int sleep(int milliseconds) { (void)milliseconds; return 0; }
+int inflateinit(void) { return 0; }
+int inflatezlib(void *output, int (*writer)(void *, void *, int),
+                void *input, int (*reader)(void *)) {
+    (void)output; (void)writer; (void)input; (void)reader;
+    return -2;
+}
 DrawImage *readimage(DrawDisplay *display, int fd, int locked) {
     (void)display; (void)fd; (void)locked; return NULL;
 }

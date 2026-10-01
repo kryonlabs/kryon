@@ -6,6 +6,8 @@
 #import "byte_text_linux"
 #import "math"
 Pixels :: #import "image_canvas";
+PNG :: #import "png";
+Inflate :: #import "inflate_plan9";
 
 draw_library :: #system_library "draw";
 libc :: #system_library "libc";
@@ -192,6 +194,7 @@ NativeFormatInteger :: (output: *s8, capacity: s32, format: *s8,
     first: s32, second: s32, third: s32) -> s32 #foreign libc "snprint";
 NativeGetEnvironment :: (name: *s8) -> *s8 #foreign libc "getenv";
 Allocate :: (count: usize) -> *void #foreign libc "malloc";
+Resize :: (memory: *void, count: usize) -> *void #foreign libc "realloc";
 Release :: (memory: *void) #foreign libc "free";
 NativeCreateFile :: (path: *s8, mode: s32,
     permissions: isize) -> s32 #foreign libc "create";
@@ -749,8 +752,10 @@ NativeAsset :: struct {
     pixels: *u8
     width: s32
     height: s32
+    seen: u64
 }
 native_assets: [16]NativeAsset;
+asset_clock: u64;
 
 CloseAssets :: () {
     for index: 0..15 {
@@ -760,9 +765,71 @@ CloseAssets :: () {
     }
 }
 
+ReadPNGAsset :: (fd: s32, signature: []u8, slot: s32) -> bool {
+    capacity: s64 = 65536
+    limit: s64 = 67108864
+    bytes := cast(*u8)Allocate(cast(usize)capacity)
+    if bytes == null { return false }
+    for index: 0..7 { bytes[index] = signature[index] }
+    count: s64 = 8
+    ok := true
+    while true {
+        if count == capacity {
+            if capacity == limit {
+                extra: u8
+                ok = NativeReadFile(fd, cast(*void)(*extra), 1) == 0
+                break
+            }
+            grown := cast(*u8)Resize(cast(*void)bytes, cast(usize)(capacity * 2))
+            if grown == null { ok = false; break }
+            bytes = grown
+            capacity *= 2
+        }
+        amount := NativeReadFile(fd, cast(*void)(*bytes[count]), cast(isize)(capacity - count))
+        if amount < 0 { ok = false; break }
+        if amount == 0 { break }
+        count += cast(s64)amount
+    }
+    compressed: *u8
+    scanlines: *u8
+    pixels: *u8
+    info: PNG.PNGInfo
+    if ok {
+        input := BytesFromPointer(bytes, cast(u64)count)
+        info = PNG.InspectPNG(input)
+        ok = info.valid
+        if ok {
+            compressed = cast(*u8)Allocate(cast(usize)info.compressed)
+            scanlines = cast(*u8)Allocate(cast(usize)info.scanlines)
+            pixels = cast(*u8)Allocate(cast(usize)(cast(s64)info.width * info.height * 4))
+            ok = compressed != null && scanlines != null && pixels != null
+            if ok {
+                packed := BytesFromPointer(compressed, cast(u64)info.compressed)
+                raw := BytesFromPointer(scanlines, cast(u64)info.scanlines)
+                rgba := BytesFromPointer(pixels, cast(u64)(cast(s64)info.width * info.height * 4))
+                ok = PNG.CollectPNGData(input, packed) && Inflate.DecompressZlib(packed, raw) &&
+                    PNG.DecodePNGScanlines(input, raw, rgba)
+            }
+        }
+    }
+    Release(cast(*void)bytes)
+    if compressed != null { Release(cast(*void)compressed) }
+    if scanlines != null { Release(cast(*void)scanlines) }
+    if !ok { if pixels != null { Release(cast(*void)pixels) }; return false }
+    native_assets[slot].pixels = pixels
+    native_assets[slot].width = info.width
+    native_assets[slot].height = info.height
+    return true
+}
+
 FindAsset :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 4096 || native_display == null { return -1 }
     slot: s32 = -1
+    asset_clock += cast(u64)1
+    if asset_clock == cast(u64)0 {
+        asset_clock = cast(u64)1
+        for index: 0..15 { native_assets[index].seen = cast(u64)0 }
+    }
     for index: 0..15 {
         if native_assets[index].pixels == null {
             if slot < 0 { slot = cast(s32)index }
@@ -773,11 +840,37 @@ FindAsset :: (path: string) -> s32 {
                 if native_assets[index].path[at] != path[at] { same = false }
                 at += 1
             }
-            if same { return cast(s32)index }
+            if same { native_assets[index].seen = asset_clock; return cast(s32)index }
         }
     }
-    if slot < 0 || !CopyCString(path, native_assets[slot].path[:]) { return -1 }
+    if slot < 0 {
+        slot = 0
+        for index: 1..15 {
+            if native_assets[index].seen < native_assets[slot].seen { slot = cast(s32)index }
+        }
+        Release(cast(*void)native_assets[slot].pixels)
+        native_assets[slot].pixels = null
+    }
+    native_assets[slot].seen = asset_clock
+    if !CopyCString(path, native_assets[slot].path[:]) { return -1 }
     fd := NativeOpenFile(cast(*s8)*native_assets[slot].path[0], 0)
+    if fd < 0 { return -1 }
+    signature: [8]u8
+    read: s32 = 0
+    while read < 8 {
+        amount := NativeReadFile(fd, cast(*void)(*signature[read]), cast(isize)(8 - read))
+        if amount <= 0 { break }
+        read += cast(s32)amount
+    }
+    if read == 8 && PNG.PNGSignature(signature[:]) {
+        ok := ReadPNGAsset(fd, signature[:], slot)
+        closed := CloseFile(fd) == 0
+        if ok && closed { return slot }
+        if native_assets[slot].pixels != null { Release(cast(*void)native_assets[slot].pixels); native_assets[slot].pixels = null }
+        return -1
+    }
+    CloseFile(fd)
+    fd = NativeOpenFile(cast(*s8)*native_assets[slot].path[0], 0)
     if fd < 0 { return -1 }
     image := ReadImage(native_display, fd, 0)
     CloseFile(fd)

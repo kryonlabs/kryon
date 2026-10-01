@@ -1,0 +1,150 @@
+using UI :: #import "Widgets";
+#import "libdraw_native"
+#import "c_string"
+#import "byte_text_linux"
+#import "tree_draw"
+File :: #import "file_plan9";
+using FrameStatus;
+
+#scope_file
+asset_path: [4096]u8;
+native_path: [4096]u8;
+capture_path: [4096]u8;
+pixels: [12288]u8;
+expected: [8192]u8;
+libc :: #system_library "libc";
+Free :: (memory: *void) #foreign libc "free";
+
+Path :: (root: string, stem: string, index: s32, suffix: string) -> string {
+    at: s64 = 0
+    for byte: root { asset_path[at] = byte; at += 1 }
+    asset_path[at] = cast(u8)47; at += 1
+    for byte: stem { asset_path[at] = byte; at += 1 }
+    if index >= 0 {
+        if index >= 10 { asset_path[at] = cast(u8)(48 + index / 10); at += 1 }
+        asset_path[at] = cast(u8)(48 + index % 10); at += 1
+    }
+    for byte: suffix { asset_path[at] = byte; at += 1 }
+    asset_path[at] = cast(u8)0
+    return TextView(asset_path[0:at])
+}
+
+Read :: (path: string, output: []u8) -> s64 {
+    file := File.OpenRead(path)
+    if !file.valid { return -1 }
+    count := File.Read(file, output)
+    if !File.CloseFile(file) { return -1 }
+    return count
+}
+
+Difference :: (left: s32, right: s32) -> s32 { value := left - right; if value < 0 { value = -value }; return value }
+
+Cases :: () -> s32 {
+    name: [32]u8
+    if !CopyCString("RILL_TEST_ROOT", name[:]) { return 99 }
+    base := GetEnvironment(*name[0])
+    if base == null { return 99 }
+    root := TextFromCString(base)
+    if root.count > 3500 || !OpenRaster(64, 48) { Free(cast(*void)base); return 1 }
+    index: s32 = 0
+    while index < 33 {
+        path := Path(root, "case", index, ".png")
+        width := ImageWidth(path); height := ImageHeight(path)
+        if width <= 0 || height <= 0 { print("PNG asset failed: %\n", index); CloseRaster(); Free(cast(*void)base); return 2 }
+        index += 1
+    }
+    // Loading more than sixteen assets must evict old pixels, not reject new
+    // icons. The first image must remain reloadable after eviction.
+    if ImageWidth(Path(root, "case", 0, ".png")) != 13 ||
+        ImageHeight(Path(root, "case", 0, ".png")) != 11 { return 3 }
+    index = 0
+    while index < 9 {
+        if ImageWidth(Path(root, "bad", index, ".png")) != 0 { return 4 }
+        index += 1
+    }
+    native := Path(root, "native", -1, ".img")
+    if ImageWidth(native) != 3 || ImageHeight(native) != 2 { return 12 }
+    if !CopyCString(native, native_path[:]) { return 12 }
+    native = TextFromCString(*native_path[0])
+    reference := Read(Path(root, "case", 26, ".rgba"), expected[:])
+    if reference != 13 * 11 * 4 + 8 { return 5 }
+    path := Path(root, "case", 26, ".png")
+    session := SessionOpen()
+    BeginRasterFrame()
+    RasterRoundedRectangle(Rectangle.{0.0, 0.0, 64.0, 48.0}, 0.0, 0, Color.{16, 24, 32, 255})
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 64.0, 48.0}) != cast(FrameStatus)FrameOk { return 6 }
+    Image(session, ImageProps.{key = cast(u64)2, asset_path = path, alt_text = "PNG reference", bounds = Rectangle.{5.0, 6.0, 13.0, 11.0}})
+    if EndFrame(session) != cast(FrameStatus)FrameOk || !FinishRasterFrame() || !CaptureConfigured() { return 7 }
+    if !CopyCString("KRYON_CAPTURE_PATH", name[:]) { return 8 }
+    configured := GetEnvironment(*name[0])
+    if configured == null { return 8 }
+    if !CopyCString(TextFromCString(configured), capture_path[:]) { return 8 }
+    Free(cast(*void)configured)
+    captured := Read(TextFromCString(*capture_path[0]), pixels[:])
+    if captured != 12288 { return 9 }
+    for y: 0..10 {
+        for x: 0..12 {
+            source := (y * 13 + x) * 4 + 8
+            target := ((y + 6) * 64 + x + 5) * 4
+            alpha := cast(s32)expected[source + 3]
+            background: [3]s32 = .[16, 24, 32]
+            for component: 0..2 {
+                wanted := (cast(s32)expected[source + component] * alpha + background[component] * (255 - alpha)) / 255
+                if Difference(cast(s32)pixels[target + component], wanted) > 3 {
+                    print("PNG raster mismatch: %, % component % got % expected %\n", x, y, component, pixels[target + component], wanted)
+                    return 10
+                }
+            }
+            if pixels[target + 3] != cast(u8)255 { return 11 }
+        }
+    }
+    BeginRasterFrame()
+    RasterRoundedRectangle(Rectangle.{0.0, 0.0, 64.0, 48.0}, 0.0, 0, Color.{16, 24, 32, 255})
+    if BeginFrame(session, cast(u64)2, Rectangle.{0.0, 0.0, 64.0, 48.0}) != cast(FrameStatus)FrameOk { return 14 }
+    Image(session, ImageProps.{key = cast(u64)3, asset_path = native, alt_text = "Plan 9 reference", bounds = Rectangle.{30.0, 6.0, 3.0, 2.0}})
+    if EndFrame(session) != cast(FrameStatus)FrameOk || !FinishRasterFrame() || !CaptureConfigured() { return 15 }
+    if Read(TextFromCString(*capture_path[0]), pixels[:]) != 12288 { return 16 }
+    for y: 0..1 {
+        for x: 0..2 {
+            target := ((y + 6) * 64 + x + 30) * 4
+            // Native image conversion has the same rounding allowance as
+            // the PNG compositing check above.
+            if Difference(cast(s32)pixels[target], 220) > 3 ||
+                Difference(cast(s32)pixels[target + 1], 40) > 3 ||
+                Difference(cast(s32)pixels[target + 2], 60) > 3 || pixels[target + 3] != cast(u8)255 {
+                print("Plan 9 image mismatch: %, % got %, %, %, %\n", x, y, pixels[target], pixels[target + 1], pixels[target + 2], pixels[target + 3])
+                return 13
+            }
+        }
+    }
+    CloseSession(session)
+    CloseRaster()
+    Free(cast(*void)base)
+    return 0
+}
+
+Report :: () -> s32 {
+    result := Cases()
+    if result == 0 { print("kryon-png-raster-test-ok\n") }
+    else { print("kryon-png-raster-test-failed: %\n", result) }
+    return result
+}
+
+#scope_export
+thread :: #system_library "thread";
+StartRoutine :: #type (value: *void) #c_call;
+ThreadCreate :: (start: StartRoutine, value: *void, stack: u32) -> s32 #foreign thread "threadcreate";
+ThreadExit :: (status: *s8) #foreign thread "threadexits";
+ExitAll :: (status: *s8) #foreign thread "threadexitsall";
+#program_export
+TestThread :: (value: *void) {
+    unused value
+    if Report() == 0 { ExitAll(null) }
+    else { status: [32]u8; CopyCString("PNG raster failed", status[:]); ExitAll(cast(*s8)(*status[0])) }
+}
+#program_export
+threadmain :: (argc: s32, argv: **s8) {
+    unused argc; unused argv
+    if ThreadCreate(TestThread, null, 1048576) < 0 { status: [32]u8; CopyCString("PNG raster failed", status[:]); ExitAll(cast(*s8)(*status[0])) }
+    ThreadExit(null)
+}

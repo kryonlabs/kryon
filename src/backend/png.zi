@@ -1,0 +1,253 @@
+// PNG byte and pixel rules, independent of file I/O and decompression.
+// The host supplies IDAT storage, exact inflated scanlines, and RGBA storage.
+CRC :: #import "zip";
+
+PNGInfo :: struct {
+    width: s32
+    height: s32
+    depth: s32
+    color: s32
+    channels: s32
+    interlaced: bool
+    compressed: s64
+    scanlines: s64
+    palette: [256][4]u8
+    palette_count: s32
+    transparent: bool
+    key: [3]u32
+    valid: bool
+}
+
+#scope_file
+Big32 :: (bytes: []u8, at: s64) -> u32 {
+    return (cast(u32)bytes[at] << 24) | (cast(u32)bytes[at + 1] << 16) |
+        (cast(u32)bytes[at + 2] << 8) | cast(u32)bytes[at + 3]
+}
+
+Big16 :: (bytes: []u8, at: s64) -> u32 { return (cast(u32)bytes[at] << 8) | cast(u32)bytes[at + 1] }
+
+Pass :: struct { x: s32; y: s32; dx: s32; dy: s32; width: s32; height: s32; }
+Grid :: (info: PNGInfo, pass: s32) -> Pass {
+    result: Pass = .{dx = 1, dy = 1, width = info.width, height = info.height}
+    if !info.interlaced { return result }
+    x: [7]s32 = .[0, 4, 0, 2, 0, 1, 0]
+    y: [7]s32 = .[0, 0, 4, 0, 2, 0, 1]
+    dx: [7]s32 = .[8, 8, 4, 4, 2, 2, 1]
+    dy: [7]s32 = .[8, 8, 8, 4, 4, 2, 2]
+    result.x = x[pass]; result.y = y[pass]; result.dx = dx[pass]; result.dy = dy[pass]
+    result.width = 0; result.height = 0
+    if info.width > result.x { result.width = (info.width - result.x + result.dx - 1) / result.dx }
+    if info.height > result.y { result.height = (info.height - result.y + result.dy - 1) / result.dy }
+    return result
+}
+
+RowSize :: (info: PNGInfo, width: s32) -> s64 { return (cast(s64)width * info.channels * info.depth + 7) / 8 }
+
+#scope_export
+#program_export
+PNGSignature :: (bytes: []u8) -> bool {
+    signature: [8]u8 = .[137, 80, 78, 71, 13, 10, 26, 10]
+    if bytes.count < 8 { return false }
+    for index: 0..7 { if bytes[index] != signature[index] { return false } }
+    return true
+}
+
+#program_export
+InspectPNG :: (bytes: []u8) -> PNGInfo {
+    info: PNGInfo
+    if !PNGSignature(bytes) || bytes.count > 67108864 { return info }
+    at: s64 = 8
+    header := false
+    palette := false
+    transparency := false
+    data := false
+    data_ended := false
+    while at <= bytes.count - 12 {
+        size := cast(s64)Big32(bytes, at)
+        if size > 2147483647 || size > bytes.count - at - 12 { return .{} }
+        // Chunk names are letters; the reserved third letter is uppercase.
+        for letter: 0..3 {
+            byte := bytes[at + 4 + letter]
+            if !((byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122)) { return .{} }
+        }
+        if (bytes[at + 6] & cast(u8)32) != 0 ||
+            CRC.ZipCRC32(bytes[at + 4:at + 8 + size]) != Big32(bytes, at + 8 + size) { return .{} }
+        kind := Big32(bytes, at + 4)
+        start := at + 8
+        if !header && kind != cast(u32)0x49484452 { return .{} }
+        if kind == cast(u32)0x49484452 {
+            if header || size != 13 { return .{} }
+            width := Big32(bytes, start); height := Big32(bytes, start + 4)
+            if width == cast(u32)0 || height == cast(u32)0 || width > cast(u32)4096 || height > cast(u32)4096 { return .{} }
+            info.width = cast(s32)width; info.height = cast(s32)height
+            info.depth = cast(s32)bytes[start + 8]; info.color = cast(s32)bytes[start + 9]
+            if bytes[start + 10] != cast(u8)0 || bytes[start + 11] != cast(u8)0 || bytes[start + 12] > cast(u8)1 { return .{} }
+            info.interlaced = bytes[start + 12] == cast(u8)1
+            allowed := false
+            if info.color == 0 { info.channels = 1; allowed = info.depth == 1 || info.depth == 2 || info.depth == 4 || info.depth == 8 || info.depth == 16 }
+            if info.color == 2 { info.channels = 3; allowed = info.depth == 8 || info.depth == 16 }
+            if info.color == 3 { info.channels = 1; allowed = info.depth == 1 || info.depth == 2 || info.depth == 4 || info.depth == 8 }
+            if info.color == 4 { info.channels = 2; allowed = info.depth == 8 || info.depth == 16 }
+            if info.color == 6 { info.channels = 4; allowed = info.depth == 8 || info.depth == 16 }
+            if !allowed { return .{} }
+            header = true
+        } else if kind == cast(u32)0x504c5445 {
+            if palette || data || transparency || info.color == 0 || info.color == 4 || size == 0 || size > 768 || size % 3 != 0 { return .{} }
+            info.palette_count = cast(s32)(size / 3)
+            if info.color == 3 && info.palette_count > (1 << info.depth) { return .{} }
+            index: s32 = 0
+            while index < info.palette_count {
+                for component: 0..2 { info.palette[index][component] = bytes[start + cast(s64)index * 3 + component] }
+                info.palette[index][3] = cast(u8)255
+                index += 1
+            }
+            palette = true
+        } else if kind == cast(u32)0x74524e53 {
+            if transparency || data { return .{} }
+            if info.color == 0 {
+                if size != 2 { return .{} }
+                info.key[0] = Big16(bytes, start)
+                if info.key[0] >= (cast(u32)1 << cast(u32)info.depth) { return .{} }
+            } else if info.color == 2 {
+                if size != 6 { return .{} }
+                for component: 0..2 {
+                    info.key[component] = Big16(bytes, start + component * 2)
+                    if info.key[component] >= (cast(u32)1 << cast(u32)info.depth) { return .{} }
+                }
+            } else if info.color == 3 {
+                if !palette || size == 0 || size > info.palette_count { return .{} }
+                index: s64 = 0
+                while index < size { info.palette[index][3] = bytes[start + index]; index += 1 }
+            } else { return .{} }
+            info.transparent = true
+            transparency = true
+        } else if kind == cast(u32)0x49444154 {
+            if data_ended || (info.color == 3 && !palette) { return .{} }
+            info.compressed += size
+            data = true
+        } else if kind == cast(u32)0x49454e44 {
+            if size != 0 || !data || info.compressed < 6 || at + 12 != bytes.count { return .{} }
+            passes: s32 = 1
+            if info.interlaced { passes = 7 }
+            pass: s32 = 0
+            while pass < passes {
+                grid := Grid(info, pass)
+                if grid.width > 0 && grid.height > 0 { info.scanlines += (RowSize(info, grid.width) + 1) * grid.height }
+                pass += 1
+            }
+            info.valid = true
+            return info
+        } else {
+            if (bytes[at + 4] & cast(u8)32) == 0 { return .{} }
+            if data { data_ended = true }
+        }
+        at += size + 12
+    }
+    return .{}
+}
+
+#program_export
+CollectPNGData :: (bytes: []u8, output: []u8) -> bool {
+    info := InspectPNG(bytes)
+    if !info.valid || output.count != info.compressed { return false }
+    at: s64 = 8
+    written: s64 = 0
+    while at < bytes.count {
+        size := cast(s64)Big32(bytes, at)
+        if Big32(bytes, at + 4) == cast(u32)0x49444154 {
+            index: s64 = 0
+            while index < size { output[written] = bytes[at + 8 + index]; written += 1; index += 1 }
+        }
+        at += size + 12
+    }
+    return written == output.count
+}
+
+#scope_file
+Paeth :: (left: s32, above: s32, corner: s32) -> s32 {
+    p := left + above - corner
+    a := p - left; b := p - above; c := p - corner
+    if a < 0 { a = -a }; if b < 0 { b = -b }; if c < 0 { c = -c }
+    if a <= b && a <= c { return left }
+    if b <= c { return above }
+    return corner
+}
+
+Sample :: (row: []u8, sample: s32, depth: s32) -> u32 {
+    if depth == 16 { return Big16(row, cast(s64)sample * 2) }
+    if depth == 8 { return cast(u32)row[sample] }
+    bit := sample * depth
+    shift := 8 - depth - bit % 8
+    return (cast(u32)row[bit / 8] >> cast(u32)shift) & ((cast(u32)1 << cast(u32)depth) - cast(u32)1)
+}
+
+ByteSample :: (sample: u32, depth: s32) -> u8 {
+    if depth == 16 { return cast(u8)(sample >> cast(u32)8) }
+    return cast(u8)(sample * cast(u32)255 / ((cast(u32)1 << cast(u32)depth) - cast(u32)1))
+}
+
+#scope_export
+// Unfilter in caller-owned scanline storage, then expand into straight RGBA.
+#program_export
+DecodePNGScanlines :: (bytes: []u8, scanlines: []u8, output: []u8) -> bool {
+    info := InspectPNG(bytes)
+    if !info.valid || scanlines.count != info.scanlines || output.count != cast(s64)info.width * info.height * 4 { return false }
+    passes: s32 = 1
+    if info.interlaced { passes = 7 }
+    stride := (info.channels * info.depth + 7) / 8
+    at: s64 = 0
+    pass: s32 = 0
+    while pass < passes {
+        grid := Grid(info, pass)
+        if grid.width == 0 || grid.height == 0 { pass += 1; continue }
+        length := RowSize(info, grid.width)
+        y: s32 = 0
+        while y < grid.height {
+            filter := cast(s32)scanlines[at]
+            if filter > 4 { return false }
+            at += 1
+            index: s64 = 0
+            while index < length {
+                left: s32 = 0; above: s32 = 0; corner: s32 = 0
+                if index >= stride { left = cast(s32)scanlines[at + index - stride] }
+                if y > 0 {
+                    above = cast(s32)scanlines[at + index - length - 1]
+                    if index >= stride { corner = cast(s32)scanlines[at + index - length - 1 - stride] }
+                }
+                prediction: s32 = 0
+                if filter == 1 { prediction = left }
+                if filter == 2 { prediction = above }
+                if filter == 3 { prediction = (left + above) / 2 }
+                if filter == 4 { prediction = Paeth(left, above, corner) }
+                scanlines[at + index] = cast(u8)((cast(s32)scanlines[at + index] + prediction) & 255)
+                index += 1
+            }
+            row := scanlines[at:at + length]
+            x: s32 = 0
+            while x < grid.width {
+                position := (cast(s64)(grid.y + y * grid.dy) * info.width + grid.x + x * grid.dx) * 4
+                start := x * info.channels
+                first := Sample(row, start, info.depth)
+                red := ByteSample(first, info.depth); green := red; blue := red; alpha: u8 = 255
+                if info.color == 3 {
+                    if first >= cast(u32)info.palette_count { return false }
+                    red = info.palette[first][0]; green = info.palette[first][1]
+                    blue = info.palette[first][2]; alpha = info.palette[first][3]
+                } else if info.color == 2 || info.color == 6 {
+                    second := Sample(row, start + 1, info.depth); third := Sample(row, start + 2, info.depth)
+                    green = ByteSample(second, info.depth); blue = ByteSample(third, info.depth)
+                    if info.color == 6 { alpha = ByteSample(Sample(row, start + 3, info.depth), info.depth) }
+                    else if info.transparent && first == info.key[0] && second == info.key[1] && third == info.key[2] { alpha = cast(u8)0 }
+                } else if info.color == 4 { alpha = ByteSample(Sample(row, start + 1, info.depth), info.depth) }
+                else if info.transparent && first == info.key[0] { alpha = cast(u8)0 }
+                output[position] = red; output[position + 1] = green
+                output[position + 2] = blue; output[position + 3] = alpha
+                x += 1
+            }
+            at += length
+            y += 1
+        }
+        pass += 1
+    }
+    return at == scanlines.count
+}
