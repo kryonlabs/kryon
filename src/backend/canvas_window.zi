@@ -21,6 +21,9 @@
     canvas_last_frame: float64;
     canvas_frame_time: float32;
     canvas_target_fps: s32;
+    canvas_external_frame_pacing: bool;
+    canvas_scheduler :: #system_library "c";
+    CanvasMainLoopTiming :: (mode: s32, value: s32) -> s32 #foreign canvas_scheduler "emscripten_set_main_loop_timing";
     canvas_random_seed: u64 = 2864434397;
     canvas_random_state: [4]u32;
     canvas_random_seeded: bool;
@@ -29,6 +32,7 @@
     InitWindow :: (width: s32, height: s32, title: *u8) {
         canvas_width = width
         canvas_height = height
+        canvas_external_frame_pacing = false
         PageTexturesReset()
         PageBoot(width, height, TextFromCString(title))
         PageEventsBind()
@@ -149,6 +153,20 @@
     SetTargetFPS :: (fps: s32) {
         canvas_target_fps = fps
         if fps < 0 { canvas_target_fps = 0 }
+        if canvas_external_frame_pacing {
+            interval: s32 = 1
+            if canvas_target_fps > 0 && canvas_target_fps < 60 {
+                interval = (60 + canvas_target_fps - 1) / canvas_target_fps
+            }
+            unused CanvasMainLoopTiming(1, interval)
+        }
+    }
+
+    // An Emscripten callback loop already schedules browser frames. Keep
+    // EndDrawing synchronous between callbacks instead of waiting twice.
+    #program_export
+    SetExternalFramePacing :: (enabled: bool) {
+        canvas_external_frame_pacing = enabled
     }
 
     #program_export
@@ -180,7 +198,9 @@
             target := 1.0 / cast(float64)canvas_target_fps
             if elapsed < target { delay = (target - elapsed) * 1000.0 }
         }
-        PageWaitFrame(delay, canvas_target_fps)
+        if !canvas_external_frame_pacing {
+            PageWaitFrame(delay, canvas_target_fps)
+        }
     }
 
     #program_export
