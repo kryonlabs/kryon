@@ -34,6 +34,11 @@ main>section.playground{padding:0;border:1px solid var(--line);border-radius:16p
 .preview-stage iframe{position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:var(--bg)}
 #live-preview{opacity:0;pointer-events:none}
 #live-preview.is-active{opacity:1;pointer-events:auto}
+.preview-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;background:var(--bg);color:var(--muted);font-size:12px;text-align:center}
+.preview-loading strong{color:var(--ink);font-size:14px;font-weight:600}
+.preview-spinner{width:24px;height:24px;margin-bottom:8px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:preview-spin .9s linear infinite}
+@keyframes preview-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.preview-spinner{animation:none}}
 .playground-status{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:35px;padding:7px 16px;border-top:1px solid var(--line);font-size:11px;line-height:1.5;color:var(--muted)}
 #status::before{content:'';display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:50%;background:var(--accent)}
 #status[data-state=busy]::before{background:#ac813d}
