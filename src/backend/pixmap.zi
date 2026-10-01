@@ -37,15 +37,26 @@ PixmapBegin :: (background: u32) {
 // Invalid dimensions/storage leave the current surface completely untouched.
 #program_export
 PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32) -> bool {
-    if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
-    count := cast(s64)width * cast(s64)height
-    if count > pixels.count { return false }
-    pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
+    if !PixmapResumeInto(width, height, pixels) { return false }
     index: s32 = 0
     while index < width * height {
         pixmap_surface[index] = background
         index += 1
     }
+    PixmapClipAll()
+    return true
+}
+
+// Rasterize into caller-owned storage that still holds the host's previous
+// frame, without clearing it. A frame that paints its own background can
+// then leave those pixels as they are when EndFrameRetained finds its paint
+// unchanged. Invalid dimensions/storage leave the current surface untouched.
+#program_export
+PixmapResumeInto :: (width: s32, height: s32, pixels: []u32) -> bool {
+    if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
+    count := cast(s64)width * cast(s64)height
+    if count > pixels.count { return false }
+    pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     PixmapClipAll()
     return true
 }
@@ -91,6 +102,12 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
     alpha: s32 = cast(s32)color.a * coverage / 255
     if alpha <= 0 { return }
     index: s32 = y * pixmap_width + x
+    // Full alpha mixes to the color itself.
+    if alpha >= 255 {
+        pixmap_surface[index] = (cast(u32)color.r << cast(u32)16) |
+            (cast(u32)color.g << cast(u32)8) | cast(u32)color.b
+        return
+    }
     old: u32 = pixmap_surface[index]
     red: s32 = PixmapMix(cast(s32)color.r, cast(s32)((old >> cast(u32)16) & cast(u32)255), alpha)
     green: s32 = PixmapMix(cast(s32)color.g, cast(s32)((old >> cast(u32)8) & cast(u32)255), alpha)
@@ -153,14 +170,20 @@ PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Co
     if left < pixmap_clip_left { left = pixmap_clip_left }
     right: s32 = x1
     if right > pixmap_clip_right { right = pixmap_clip_right }
+    opaque: bool = color.a == cast(u8)255
+    rgb: u32 = (cast(u32)color.r << cast(u32)16) | (cast(u32)color.g << cast(u32)8) |
+        cast(u32)color.b
     y: s32 = top
     while y < bottom {
         corner_row: bool = y < y0 + r || y >= y1 - r
+        row: s32 = y * pixmap_width
         x: s32 = left
         while x < right {
             if corner_row && (x < x0 + r || x >= x1 - r) {
                 samples: s32 = PixmapSamples(x, y, x0, y0, x1, y1, r)
                 if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+            } else if opaque {
+                pixmap_surface[row + x] = rgb
             } else {
                 PixmapBlend(x, y, color, 255)
             }
@@ -235,8 +258,35 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     return font
 }
 
+// Blends a glyph's coverage over the surface inside the clip.
+PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
+    top: s32 = mask.top
+    if top < pixmap_clip_top { top = pixmap_clip_top }
+    bottom: s32 = mask.top + mask.height
+    if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
+    left: s32 = mask.left
+    if left < pixmap_clip_left { left = pixmap_clip_left }
+    right: s32 = mask.left + mask.width
+    if right > pixmap_clip_right { right = pixmap_clip_right }
+    y: s32 = top
+    while y < bottom {
+        row: s32 = (y - mask.top) * mask.width - mask.left
+        x: s32 = left
+        while x < right {
+            value: u8 = coverage[row + x]
+            if value != cast(u8)0 { PixmapBlend(x, y, color, cast(s32)value) }
+            x += 1
+        }
+        y += 1
+    }
+}
+
 PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
     if font <= 0 { return }
+    // A glyph stays well within two font sizes of its line box and advance,
+    // so text past the clip draws nothing and is not rasterized.
+    reach: s32 = font * 2
+    if y + font + reach <= pixmap_clip_top || y - reach >= pixmap_clip_bottom { return }
     baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
     pen: s64 = 0
     mask: PixmapGlyphMask
@@ -247,18 +297,15 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
         at = point.after
         glyph: s32 = PixmapGlyphFor(point.value)
         origin: s64 = cast(s64)x * 256 + PixmapUnits(pen, font)
-        if PixmapRasterGlyph(glyph, origin, baseline, font, *mask) {
-            for row: 0..mask.height - 1 {
-                for column: 0..mask.width - 1 {
-                    coverage: u8 = pixmap_mask[row * mask.width + column]
-                    if coverage != cast(u8)0 {
-                        PixmapBlend(mask.left + cast(s32)column, mask.top + cast(s32)row,
-                            color, cast(s32)coverage)
-                    }
-                }
-            }
+        advance: s64 = cast(s64)PixmapGlyphAdvance(glyph)
+        whole: s32 = cast(s32)PixmapFloorDiv(origin, 256)
+        // Advances never move left, so no later glyph reaches the clip.
+        if whole - reach >= pixmap_clip_right { break }
+        if whole + PixmapTextWidth(advance, font) + reach > pixmap_clip_left {
+            coverage: []u8 = PixmapCachedGlyph(glyph, origin, baseline, font, *mask)
+            if coverage.count > 0 { PixmapBlendMask(mask, coverage, color) }
         }
-        pen += cast(s64)PixmapGlyphAdvance(glyph)
+        pen += advance
     }
 }
 

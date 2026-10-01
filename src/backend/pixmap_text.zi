@@ -35,6 +35,22 @@ pixmap_crossing_x: [1024]s64;
 pixmap_crossing_turn: [1024]s32;
 pixmap_row: [160]s64;
 
+// Rasterized glyphs, keyed by glyph, size and the sub-pixel part of their
+// origin. Whole pixels only move a mask, so a cached mask holds the bytes
+// rasterizing again would make. A full cache starts over.
+PixmapCacheSlots :: 16384;
+PixmapCacheProbes :: 32;
+PixmapCacheBytes :: 1048576;
+// Key plus one; zero marks a free slot.
+pixmap_cache_keys: [16384]s64;
+// Mask position relative to the origin's whole pixel.
+pixmap_cache_masks: [16384]PixmapGlyphMask;
+// Where the mask's coverage starts; -1 when the glyph draws nothing.
+pixmap_cache_starts: [16384]s32;
+pixmap_cache_bytes: [1048576]u8;
+pixmap_cache_used: s32;
+pixmap_cache_count: s32;
+
 // Division rounding toward negative infinity, for a positive divisor.
 PixmapFloorDiv :: (value: s64, divisor: s64) -> s64 {
     if value >= 0 { return value / divisor }
@@ -283,4 +299,69 @@ PixmapRasterGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
         }
     }
     return true
+}
+
+PixmapCacheClear :: () {
+    for slot: 0..PixmapCacheSlots - 1 { pixmap_cache_keys[slot] = 0 }
+    pixmap_cache_used = 0
+    pixmap_cache_count = 0
+}
+
+// The coverage of a glyph whose origin is (origin_x, baseline) in 1/256 px,
+// with its mask in pixels. Empty when the glyph draws nothing.
+PixmapCachedGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
+    mask: *PixmapGlyphMask) -> []u8 {
+    whole_x: s64 = PixmapFloorDiv(origin_x, 256)
+    whole_y: s64 = PixmapFloorDiv(baseline, 256)
+    part_x: s64 = origin_x - whole_x * 256
+    part_y: s64 = baseline - whole_y * 256
+    nothing: []u8 = pixmap_mask[0:0]
+    if font >= 65536 {
+        if !PixmapRasterGlyph(glyph, origin_x, baseline, font, mask) { return nothing }
+        return pixmap_mask[0:mask.width * mask.height]
+    }
+    key: s64 = ((cast(s64)glyph * 65536 + cast(s64)font) * 256 + part_x) * 256 + part_y + 1
+    home: s32 = cast(s32)((cast(s64)glyph * 7919 + cast(s64)font * 131 + part_x * 31 + part_y) % cast(s64)PixmapCacheSlots)
+    free: s32 = -1
+    for probe: 0..PixmapCacheProbes - 1 {
+        slot: s32 = (home + cast(s32)probe) % PixmapCacheSlots
+        if pixmap_cache_keys[slot] == key {
+            cached: PixmapGlyphMask = pixmap_cache_masks[slot]
+            if pixmap_cache_starts[slot] < 0 { return nothing }
+            mask.left = cached.left + cast(s32)whole_x
+            mask.top = cached.top + cast(s32)whole_y
+            mask.width = cached.width
+            mask.height = cached.height
+            start: s32 = pixmap_cache_starts[slot]
+            return pixmap_cache_bytes[start:start + cached.width * cached.height]
+        }
+        if pixmap_cache_keys[slot] == 0 {
+            free = slot
+            break
+        }
+    }
+    drawn: bool = PixmapRasterGlyph(glyph, origin_x, baseline, font, mask)
+    size: s32 = 0
+    if drawn { size = mask.width * mask.height }
+    if free < 0 || pixmap_cache_count >= PixmapCacheSlots * 3 / 4 ||
+        pixmap_cache_used + size > PixmapCacheBytes {
+        PixmapCacheClear()
+        free = home
+    }
+    pixmap_cache_keys[free] = key
+    pixmap_cache_count += 1
+    if !drawn {
+        pixmap_cache_starts[free] = -1
+        return nothing
+    }
+    stored: PixmapGlyphMask
+    stored.left = mask.left - cast(s32)whole_x
+    stored.top = mask.top - cast(s32)whole_y
+    stored.width = mask.width
+    stored.height = mask.height
+    pixmap_cache_masks[free] = stored
+    pixmap_cache_starts[free] = pixmap_cache_used
+    for index: 0..size - 1 { pixmap_cache_bytes[pixmap_cache_used + index] = pixmap_mask[index] }
+    pixmap_cache_used += size
+    return pixmap_mask[0:size]
 }
