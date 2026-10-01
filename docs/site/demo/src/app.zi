@@ -145,7 +145,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     slider: SliderProps
     slider.key = cast(u64)40
     slider.id = 40
-    slider.bounds = Rectangle.{left, 248.0, width, 38.0}
+    // A labeled slider includes its header, gap, and 48-pixel drag row.
+    slider.bounds = Rectangle.{left, 248.0, width, 80.0}
     slider.label = "Progress"
     slider.value = amount
     slider.min = 0.0
@@ -154,7 +155,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 
     progress: ProgressProps
     progress.key = cast(u64)41
-    progress.bounds = Rectangle.{left, 302.0, width, 20.0}
+    progress.bounds = Rectangle.{left, 340.0, width, 12.0}
     progress.min = 0
     progress.max = 100
     progress.value = cast(s32)amount
@@ -163,10 +164,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     toggle: ToggleProps
     toggle.key = cast(u64)50
     toggle.id = 50
-    toggle.bounds = Rectangle.{left, 346.0, width, 32.0}
+    toggle.bounds = Rectangle.{left, 368.0, width, 32.0}
     toggle.label = "Highlight card"
     toggle.value = highlighted
     highlighted = Toggle(session, toggle).value
-    Label(session, cast(u64)60, Rectangle.{left, 398.0, width, 24.0}, "Ziran source. Canvas2D rendering.", 12)
+    Label(session, cast(u64)60, Rectangle.{left, 408.0, width, 20.0}, "Ziran source. Canvas2D rendering.", 12)
     return 0
 }
