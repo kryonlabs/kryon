@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_root=${ZIRAN_ROOT:-"$repo/../../ziranlang/ziran"}
+ziran_include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
+ziran_root=${ZIRAN_ROOT:-"${ziran_include%/include}"}
 ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
 mkdir -p "$repo/build/scratch"
 work=$(mktemp -d "$repo/build/scratch/png-test.XXXXXX")
