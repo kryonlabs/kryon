@@ -12,6 +12,35 @@
 #import "drawing_props"
 #import "c_string"
 #import "page_texture"
+#import "web"
+
+scheduled_frames: s32;
+
+CountScheduledFrame :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context
+    unused first
+    unused second
+    unused third
+    scheduled_frames += 1
+}
+
+TestExternalFramePacing :: () -> bool {
+    scope := WebScope()
+    callback := WebFunction(CountScheduledFrame, 0)
+    unused WebCall1(WebGlobal, WebName("requestAnimationFrame"), WebObject(callback))
+    SetExternalFramePacing(true)
+    BeginDrawing()
+    EndDrawing()
+    // An externally scheduled frame must return before the next RAF.
+    synchronous := scheduled_frames == 0
+    SetExternalFramePacing(false)
+    BeginDrawing()
+    EndDrawing()
+    // Ordinary canvas loops still yield to the browser after presenting.
+    yielded := scheduled_frames > 0
+    WebEnd(scope)
+    return synchronous && yielded
+}
 
 browser :: #system_library "env";
 CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
@@ -61,6 +90,7 @@ main :: () -> s32 {
     CopyCString("Canvas Zi runtime", title[:])
     InitWindow(160, 120, *title[0])
     if !IsWindowReady() || GetScreenWidth() != 160 { return 1 }
+    if !TestExternalFramePacing() { return 31 }
     SetRandomSeed(cast(u32)42)
     first := GetRandomValue(-100, 100)
     SetRandomSeed(cast(u32)42)

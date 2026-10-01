@@ -34,6 +34,12 @@ the browser's events, Canvas2D, FontFace, WebAudio, clipboard, and Emscripten
 filesystem. Asynchronous browser calls carry
 Emscripten async metadata and require Asyncify.
 
+`EndDrawing` yields to the next browser frame for ordinary canvas loops. An
+application using `emscripten_set_main_loop` must call
+`SetExternalFramePacing(true)` before starting that loop, so only the callback
+scheduler waits for frames. `SetTargetFPS` then adjusts that scheduler's RAF
+interval; it does not suspend `EndDrawing`. Opening a window resets this mode.
+
 The host finds `#canvas` and measures its `#canvas-frame` container when one is
 present. Otherwise it measures the canvas parent. Include UTF-8 metadata in
 HTML shells, including shells using Emscripten's single-file Wasm output.
