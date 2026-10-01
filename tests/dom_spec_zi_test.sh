@@ -5,7 +5,7 @@ set -eu
 # page only applies it. The page is replaced by a fake module, so the rules run
 # as native code without a browser.
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 bin=$(CDPATH= cd -- "$(dirname -- "$ziran")" && pwd)
 ziran_dir=$(CDPATH= cd -- "$bin/../.." && pwd)
 work=$(mktemp -d)

@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$repo/build/test/segment_label_style.$$
 mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -21,9 +21,9 @@ set -- \
     --bind image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
+    --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" "$@" \
+    --module-path "$ziran_root/std" "$@" \
     --entry ziran_segment_label_style_test:main -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
     --entry ziran_segment_label_style_test:main -o "$work/saved.zib" \
@@ -45,7 +45,6 @@ for input in source saved; do
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_segment_label_style_test:main "$@" \
         --root "$module_root" --module-path "$module_dir" \
-        --module-path "$repo/../ziran/std" -o "$output" "$module"
-    mv "$output/ziran_segment_label_style_test.go" "$output/segment_label_style_case.go"
+        --module-path "$ziran_root/std" -o "$output" "$module"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

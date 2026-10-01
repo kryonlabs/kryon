@@ -18,8 +18,8 @@ CapabilityFunction :: (bundle: *void, index: u64) -> *u8 #foreign runtime "Bundl
 
 preview_bundle: *void;
 preview_instance: *void;
-preview_fields: [13]HostField;
-preview_names: [13][32]u8;
+preview_fields: [14]HostField;
+preview_names: [14][32]u8;
 preview_real: [16]u8;
 preview_bool: [16]u8;
 preview_integer: [16]u8;
@@ -70,7 +70,7 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostRecord
         result.type_name = *preview_input_type[0]
         result.fields = *preview_fields[0]
-        result.field_count = cast(u64)13
+        result.field_count = cast(u64)14
         return 1
     }
     if function == "ReadPreviewCodepoint" && count == 0 {
@@ -211,6 +211,7 @@ PrepareInput :: () {
     InputField(10, "key", *preview_integer[0], HostInteger)
     InputField(11, "modifiers", *preview_integer[0], HostInteger)
     InputField(12, "wheel", *preview_real[0], HostReal)
+    InputField(13, "theme", *preview_integer[0], HostInteger)
 }
 
 SampleInput :: () {
@@ -230,6 +231,9 @@ SampleInput :: () {
     preview_fields[10].value.integer = cast(s64)CanvasPressedKey()
     preview_fields[11].value.integer = cast(s64)CanvasModifiers()
     preview_fields[12].value.real = cast(float64)CanvasWheelMove()
+    scope := WebScope()
+    preview_fields[13].value.integer = cast(s64)WebGetNumber(WebModule, WebName("previewTheme"))
+    WebEnd(scope)
 }
 
 #program_export

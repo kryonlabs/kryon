@@ -2,6 +2,7 @@ using UI :: #import "kryon/Widgets";
 #import "kryon/tree_draw"
 #import "app"
 #import "preview_protocol"
+#import "preview_style"
 
 preview_session: Session;
 
@@ -10,6 +11,7 @@ Tick :: () -> s32 {
     if !SessionValid(preview_session) { preview_session = SessionOpen() }
     if !SessionValid(preview_session) { return 1 }
     input := PreviewInputRead()
+    SetPreviewTheme(input.theme)
     viewport := Rectangle.{0.0, 0.0, input.width, input.height}
     pointer := PointerFrame.{input.x, input.y, input.down, input.pressed, input.released}
     TreePointerUpdate(preview_session, pointer)

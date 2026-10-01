@@ -5,9 +5,9 @@ from pathlib import Path
 import re
 import subprocess
 
+from toolchain import BIN, ZIRAN_ROOT as ZIRAN
+
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = Path(os.environ.get("ZIRAN_DIR", str(ROOT.parent / "ziran")))
-BIN = Path(os.environ.get("ZIRAN_BUILD_DIR", str(ZIRAN / "build"))) / "bin"
 WORK = ROOT / "build/android-surface-check"
 GEN = WORK / "native"
 GEN.mkdir(parents=True, exist_ok=True)

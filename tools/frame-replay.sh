@@ -2,8 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_root=${ZIRAN_DIR:-"$repo/../ziran"}
-ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 ziran_lib=${ZIRAN_LIB:-"$ziran_root/build/libziran.a"}
 if test "$#" -ne 4; then
     echo "usage: $0 app.zib pointer-module input.trace output.json" >&2

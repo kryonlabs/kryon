@@ -2,8 +2,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
+. "$repo/tests/toolchain.sh"
+include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 std="${include%/include}/std"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -43,10 +43,6 @@ test "$("$ziran" run "$work/saved.zib")" = 0
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$std" -o "$work/go" "$source"
-for file in "$work/go"/*_test.go; do
-    [ -f "$file" ] || continue
-    mv "$file" "${file%_test.go}_case.go"
-done
 cat > "$work/go/main.go" <<'GO'
 package main
 

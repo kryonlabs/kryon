@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -104,9 +104,9 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
@@ -125,14 +125,14 @@ for input in source saved; do
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$work" \
-            --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" "$module"
+            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'
 #include "app.h"
 void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+            "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
             "$output/app"
         elif test "$target" = cpp; then
@@ -143,7 +143,7 @@ extern "C" void RasterLine(Rectangle line, Color color) {
 }
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
             "$output/app"
         else

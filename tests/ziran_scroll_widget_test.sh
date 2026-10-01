@@ -2,9 +2,9 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-standard=${ZIRAN_STD:-"$repo/../ziran/std"}
-include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
+. "$repo/tests/toolchain.sh"
+standard=${ZIRAN_STD:-"$ziran_root/std"}
+include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 

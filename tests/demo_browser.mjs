@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {inflateSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,6 +70,48 @@ async function pixelHash() {
   const {data} = await cdp('Page.captureScreenshot', {format: 'png', clip});
   return createHash('sha256').update(Buffer.from(data, 'base64')).digest('hex');
 }
+async function previewPixel(point, embedded = false) {
+  const clip = await evaluate(`(() => {
+    const parentFrame = ${embedded} ? document.querySelector('iframe[src="demo.html?mini"]') : null;
+    const page = parentFrame ? parentFrame.contentDocument : document;
+    const frame = page.querySelector('#live-preview.is-active') || page.getElementById('demo-preview');
+    const box = frame.getBoundingClientRect(), outer = parentFrame?.getBoundingClientRect();
+    const left = (box.width - Math.min(500, box.width - 40)) / 2;
+    return {x: Math.floor(scrollX + (outer?.x || 0) + box.x + (${JSON.stringify(point)} === 'button' ? left + 24 : 10)),
+      y: Math.floor(scrollY + (outer?.y || 0) + box.y + (${JSON.stringify(point)} === 'button' ? 120 : 10)), width: 1, height: 1, scale: 1};
+  })()`);
+  const {data} = await cdp('Page.captureScreenshot', {format: 'png', clip});
+  // Decode a single painted pixel, including cross-process sandboxed frames.
+  // With one pixel, every PNG filter's previous and neighboring bytes are zero.
+  const png = Buffer.from(data, 'base64'), parts = [];
+  let colorType;
+  for (let offset = 8; offset < png.length;) {
+    const length = png.readUInt32BE(offset), type = png.toString('ascii', offset + 4, offset + 8);
+    const chunk = png.subarray(offset + 8, offset + 8 + length);
+    if (type === 'IHDR') {
+      assert.equal(chunk.readUInt32BE(0), 1); assert.equal(chunk.readUInt32BE(4), 1);
+      assert.equal(chunk[8], 8); assert.equal(chunk[12], 0);
+      colorType = chunk[9];
+    }
+    if (type === 'IDAT') parts.push(chunk);
+    offset += length + 12;
+  }
+  assert.ok(colorType === 2 || colorType === 6, 'Screenshot is RGB or RGBA');
+  const scanline = inflateSync(Buffer.concat(parts));
+  return [...scanline.subarray(1, 4)];
+}
+async function expectPreviewColor(point, expected, label, embedded = false) {
+  let actual;
+  try {
+    await waitFor(async () => {
+      actual = await previewPixel(point, embedded);
+      return actual.every((component, index) => component === expected[index]);
+    }, label);
+  } catch (error) {
+    throw new Error(`${label}: expected RGB ${expected}, observed ${actual}`, {cause: error});
+  }
+  assert.deepEqual(actual, expected, label);
+}
 async function screenshot(name) {
   const {data} = await cdp('Page.captureScreenshot', {format: 'png'});
   await fs.writeFile(path.join(output, name + '.png'), Buffer.from(data, 'base64'));
@@ -98,6 +141,7 @@ try {
   console.log('Initial compile and rendering: ' + (Date.now() - started) + ' ms');
   assert.equal(await evaluate(`document.getElementById('workspace').dataset.view`), 'split');
   const original = await evaluate(`document.getElementById('source-editor').value`);
+  await expectPreviewColor('background', [247, 243, 235], 'The initial live preview uses the light palette');
   const initialPixels = await pixelHash();
   await screenshot('desktop');
   const edited = original.replace('"Made with Kryon"', '"Edited in the browser"');
@@ -124,6 +168,18 @@ try {
   await cdp('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
   await delay(400);
   assert.notEqual(await pixelHash(), beforeClick, 'The compiled button changes app state across VM frames');
+  await cdp('Input.dispatchMouseEvent', {type: 'mouseMoved', x: bounds.x + 5, y: bounds.y + 5});
+  await delay(150);
+  const beforeTheme = await pixelHash();
+  const lightEditor = await evaluate(`getComputedStyle(document.querySelector('.code-area')).backgroundColor`);
+  await evaluate(`document.querySelector('.theme-toggle').click()`);
+  await expectPreviewColor('background', [24, 34, 31], 'Switching to dark changes the rendered app background');
+  await expectPreviewColor('button', [181, 212, 169], 'Switching to dark changes rendered widget styles');
+  assert.notEqual(await evaluate(`getComputedStyle(document.querySelector('.code-area')).backgroundColor`), lightEditor, 'The source editor follows the theme too');
+  await screenshot('dark-preview');
+  await evaluate(`document.querySelector('.theme-toggle').click()`);
+  await expectPreviewColor('background', [247, 243, 235], 'Switching back restores the light palette');
+  assert.equal(await pixelHash(), beforeTheme, 'Theme changes preserve the running app state');
   const lastGoodPixels = await pixelHash();
   await edit(edited.replace('return 0', 'return missing_value'));
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'Compile error did not appear');
@@ -151,6 +207,25 @@ try {
   await evaluate(`document.getElementById('reset').click()`);
   await settled();
   assert.equal(await evaluate(`document.getElementById('source-editor').value`), original);
+  const styled = original.replace('    InstallPreviewStyle()', `    InstallPreviewStyle()
+    rules: StyleRules
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindButton()
+    rule.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleMaterial
+    rule.style.background = 0xb02a60ff
+    rule.style.border = 0xb02a60ff
+    rule.style.material = MaterialKind.MaterialFlat
+    rules.items[0] = rule
+    rules.count = 1
+    InstallStyleRules(rules)`);
+  await edit(styled);
+  await settled();
+  await expectPreviewColor('button', [176, 42, 96], 'StyleRules edited in source change the actual widget color');
+  await screenshot('source-style');
+  await edit(original);
+  await settled();
   await cdp('Emulation.setDeviceMetricsOverride', {width: 390, height: 640, deviceScaleFactor: 1, mobile: true});
   await delay(200);
   assert.equal(await evaluate(`document.getElementById('workspace').dataset.view`), 'preview');
@@ -160,19 +235,33 @@ try {
   await cdp('Page.navigate', {url: url + '?mini&theme=waozi'});
   await waitFor(() => evaluate(`document.readyState === 'complete'`), 'Embedded demo did not load');
   assert.equal(requests.some(request => /playground-runtime|preview\.html/.test(request)), false, 'Embedded preview loads the compiler only when source is opened');
+  await expectPreviewColor('button', [49, 94, 72], 'The prebuilt embedded demo uses the requested Waozi theme');
   await screenshot('embedded-preview');
   await evaluate(`document.querySelector('[data-view="source"]').click()`);
   await waitFor(() => evaluate(`document.getElementById('status').textContent === 'Compiled · open Preview'`), 'Embedded editor did not compile');
   await screenshot('embedded-source');
   await evaluate(`document.querySelector('[data-view="preview"]').click()`);
   await waitFor(() => evaluate(`document.getElementById('status').textContent === 'Live · changes compiled'`), 'The compiled embedded preview did not render');
+  await expectPreviewColor('button', [49, 94, 72], 'Compiling the embedded source preserves its Waozi widget theme');
   assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth`), true);
+  await cdp('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false});
   await cdp('Page.navigate', {url: new URL('index.html', url).href});
-  await waitFor(() => evaluate(`(() => {const frame=document.querySelector('iframe[src="demo.html?mini"]');return frame?.contentDocument?.readyState === 'complete';})()`), 'The homepage embed did not load');
+  await waitFor(() => evaluate(`(() => {const page=document.querySelector('iframe[src="demo.html?mini"]')?.contentDocument;return page?.readyState === 'complete' && !!page.getElementById('demo-preview');})()`), 'The homepage embed did not load');
   assert.equal(await evaluate(`(() => {const page=document.querySelector('iframe[src="demo.html?mini"]').contentDocument.documentElement;return page.scrollHeight <= page.clientHeight;})()`), true, 'The homepage embed shows its preview, status, and full-editor link without vertical overflow');
   assert.equal(await evaluate(`!!document.querySelector('.hero .actions a[href="demo.html"]')`), true, 'The homepage links directly to the live editor');
+  await evaluate(`document.querySelector('iframe[src="demo.html?mini"]').scrollIntoView()`);
+  await evaluate(`document.querySelector('.theme-toggle').click()`);
+  await waitFor(() => evaluate(`document.querySelector('iframe[src="demo.html?mini"]').contentDocument.documentElement.dataset.theme === 'dark'`), 'The embedded editor did not receive the homepage theme');
+  await expectPreviewColor('background', [24, 34, 31], 'The homepage theme reaches the embedded Canvas app', true);
+  await expectPreviewColor('button', [181, 212, 169], 'The homepage theme reaches embedded widget styles', true);
+  await evaluate(`window.beforeThemeReload = true`);
+  await cdp('Page.reload');
+  await waitFor(() => evaluate(`(() => {const page=document.querySelector('iframe[src="demo.html?mini"]')?.contentDocument;return !window.beforeThemeReload && page?.readyState === 'complete' && !!page.getElementById('demo-preview');})()`), 'The saved-theme homepage did not load');
+  assert.equal(await evaluate(`document.documentElement.dataset.theme`), 'dark', 'The saved theme survives reload');
+  await evaluate(`document.querySelector('iframe[src="demo.html?mini"]').scrollIntoView()`);
+  await expectPreviewColor('background', [24, 34, 31], 'The reloaded embedded preview follows the saved theme', true);
   assert.deepEqual(exceptions, [], 'There are no browser runtime exceptions');
-  console.log('Kryon live editor: real compilation, pixels, interaction, compile and parser errors, bounded execution, recovery, switching, cancellation, reset, escaped source, responsive layout, lazy embedded loading, and homepage integration passed');
+  console.log('Kryon live editor: compilation, rendered theme colors, source StyleRules, state-preserving theme switching, inherited and saved themes, interaction, errors, bounded execution, recovery, view switching, cancellation, reset, escaped source, responsive layout, lazy loading, and homepage integration passed');
 } finally {
   if (socket) socket.close();
   try { process.kill(-browser.pid, 'SIGTERM'); } catch {}

@@ -11,16 +11,14 @@ import time
 from raylib_project_test import png_pixels, rgb, solid_png
 
 
+from toolchain import ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
 # The plan9port libdraw uses: PLAN9PORT_DIR, else the installed one PLAN9
 # names, else a checkout at the top of the projects folder.
 PLAN9 = Path(os.environ.get("PLAN9PORT_DIR") or os.environ.get("PLAN9") or
              next((path for path in (ROOT.parent / "plan9port", ROOT.parent.parent / "plan9port")
                    if (path / "lib/libdraw.a").exists()), ROOT.parent / "plan9port"))
-# The sibling checkout CI uses, else the org-grouped local layout.
-ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
-    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
-     if path.is_dir()), ROOT.parent / "ziran"))
 
 
 def run(command, cwd, env=None):

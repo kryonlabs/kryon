@@ -28,7 +28,24 @@
   let successfulRevision = -1;
   let compiledRevision = -1;
 
-  if (mini && previewQuery.get('theme') === 'waozi') staticPreview.src = 'assets/widgets.html?mini&theme=waozi';
+  function selectedTheme() {
+    return document.documentElement.dataset.theme === 'dark' ? 2 : previewQuery.get('theme') === 'waozi' ? 1 : 0;
+  }
+  function previewURL(asset) {
+    const query = new URLSearchParams();
+    if (mini) query.set('mini', '');
+    if (previewQuery.get('theme') === 'waozi') query.set('theme', 'waozi');
+    if (document.documentElement.dataset.theme === 'dark') query.set('color', 'dark');
+    return asset + (query.size ? '?' + query : '');
+  }
+  function sendTheme() {
+    const message = {type: 'preview:theme', theme: selectedTheme()};
+    if (staticPreview.src !== 'about:blank') staticPreview.contentWindow?.postMessage(message, '*');
+    if (rendererReady) livePreview.contentWindow?.postMessage(message, '*');
+  }
+  staticPreview.addEventListener('load', sendTheme);
+  addEventListener('themechange', sendTheme);
+  staticPreview.src = previewURL('assets/widgets.html');
   function setStatus(message, state = 'ready') {
     status.textContent = message;
     status.dataset.state = state;
@@ -109,7 +126,7 @@
       livePreview.classList.remove('is-active');
       rendererReady = false;
       staticPreview.hidden = false;
-      staticPreview.src = 'assets/widgets.html';
+      staticPreview.src = previewURL('assets/widgets.html');
     }, 15000);
   }
   function postBundle() {
@@ -132,7 +149,7 @@
     pendingBundle = {bytes, revision: builtRevision};
     if (!livePreview.hasAttribute('src')) {
       livePreview.hidden = false;
-      livePreview.src = 'assets/preview.html';
+      livePreview.src = previewURL('assets/preview.html');
     }
     postBundle();
   }
@@ -199,6 +216,7 @@
     if (source !== livePreview.contentWindow || !data || typeof data !== 'object') return;
     if (data.type === 'preview:status' && data.state === 'ready') {
       rendererReady = true;
+      sendTheme();
       postBundle();
     } else if (data.revision === revision && data.type === 'preview:diagnostic') {
       if (rendererDiagnostics.join('\n').length < 32768) rendererDiagnostics.push(data.message);

@@ -2,15 +2,15 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/canvas_props_test.zi
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
+    --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" --entry canvas_props_test:Answer \
+    --module-path "$ziran_root/std" --entry canvas_props_test:Answer \
     -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry canvas_props_test:Answer -o "$work/saved.zib" \
@@ -35,18 +35,17 @@ for input in source saved; do
             "$ziran" build --target=go --pkg main --exe \
                 --entry canvas_props_test:main --root "$module_root" \
                 --module-path "$module_dir" \
-                --module-path "$repo/../ziran/std" -o "$output" "$module"
-            mv "$output/canvas_props_test.go" "$output/canvas_case.go"
+                --module-path "$ziran_root/std" -o "$output" "$module"
             env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
         else
             "$ziran" build --target="$target" --root "$module_root" \
                 --module-path "$module_dir" \
-                --module-path "$repo/../ziran/std" -o "$output" "$module"
+                --module-path "$ziran_root/std" -o "$output" "$module"
             if test "$target" = c; then
-                "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+                "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                     "$output"/*.c -o "$output/app"
             else
-                "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
+                "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" \
                     -I"$output" "$output"/*.cpp -o "$output/app"
             fi
             env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"

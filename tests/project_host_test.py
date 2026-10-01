@@ -5,9 +5,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from toolchain import ZIRAN, ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT", ROOT.parent.parent / "ziranlang/ziran"))
-ZIRAN = ZIRAN_ROOT / "build/bin/ziran"
 
 
 def run(arguments, project, success=True):

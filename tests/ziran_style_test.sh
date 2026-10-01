@@ -2,8 +2,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
+. "$repo/tests/toolchain.sh"
+ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_style.zi" <<'EOF'
@@ -114,10 +114,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_style.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_style.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_style.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --entry use_style:Answer -o "$work/source.zib" "$work/use_style.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_style:Answer -o "$work/ir.zib" "$work/ir/use_style.zir"
@@ -139,7 +139,7 @@ for input in source ir; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -154,7 +154,7 @@ GO
                 "$output/use_style.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_style.h"
@@ -172,7 +172,7 @@ C
             "$output/app"
         else
             "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "use_style.hpp"

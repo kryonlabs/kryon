@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -16,9 +16,9 @@ set -- \
     --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     "$@" --entry progress_widget_portable_test:main \
     -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -28,7 +28,7 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
 
 # A bundle with one missing declared capability must fail before UI effects.
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
     --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
@@ -116,15 +116,15 @@ for input in source saved; do
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$module_root" \
-            --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" "$module"
+            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+            "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
             "$output/app"
         elif test "$target" = cpp; then
             cp "$work/native_main.h" "$output/main.cpp"
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
             "$output/app"
         else

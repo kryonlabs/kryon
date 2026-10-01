@@ -1,0 +1,41 @@
+#import "kryon/PageRoute"
+#import "std/web"
+
+preview_query_theme: s32;
+preview_query_read: bool;
+
+// Raw page configuration for the prebuilt Canvas preview. The portable
+// editor receives the same number in PreviewInput instead of browser calls.
+#program_export
+PreviewThemeFromWeb :: () -> s32 {
+    scope := WebScope()
+    supplied := WebGet(WebModule, WebName("previewTheme"))
+    if supplied.tag == WebNumberTag {
+        theme := cast(s32)WebAsNumber(supplied)
+        WebEnd(scope)
+        return theme
+    }
+    WebEnd(scope)
+    if preview_query_read { return preview_query_theme }
+    preview_query_read = true
+    query: [2048]u8
+    PageRouteReadQuery(query[:])
+    length: s64 = 0
+    while length < query.count && query[length] != cast(u8)0 { length += 1 }
+    text := TextView(query[0:length])
+    start: s64 = 0
+    if length > 0 && text[0] == cast(u8)63 { start = 1 }
+    index := start
+    dark: bool
+    while index <= length {
+        if index == length || text[index] == cast(u8)38 {
+            parameter := text[start:index]
+            if parameter == "theme=waozi" { preview_query_theme = 1 }
+            if parameter == "color=dark" || parameter == "theme=dark" { dark = true }
+            start = index + 1
+        }
+        index += 1
+    }
+    if dark { preview_query_theme = 2 }
+    return preview_query_theme
+}

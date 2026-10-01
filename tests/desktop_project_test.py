@@ -10,11 +10,9 @@ import tempfile
 from raylib_project_test import png_pixels, rgb, run, solid_png
 
 
+from toolchain import ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
-# The sibling checkout CI uses, else the org-grouped local layout.
-ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
-    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
-     if path.is_dir()), ROOT.parent / "ziran"))
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 
@@ -28,7 +26,7 @@ def private_environment():
 
 
 def main():
-    for tool in ("xvfb-run", "xdotool", "xfwm4", "dbus-run-session", "xmessage"):
+    for tool in ("xvfb-run", "xdotool", "xprop", "xfwm4", "dbus-run-session", "xmessage"):
         assert shutil.which(tool), f"Install {tool} to test the desktop window"
     with tempfile.TemporaryDirectory(prefix="kryon-desktop-") as directory:
         project = Path(directory)
@@ -120,9 +118,20 @@ def main():
             "manager = None\nother = None\n"
             "if sys.argv[1] == 'secondary':\n"
             "    manager = subprocess.Popen(['xfwm4', '--sm-client-disable', "
-            "'--compositor=off'], env=env, stdout=subprocess.DEVNULL, "
-            "stderr=subprocess.DEVNULL)\n"
-            "    time.sleep(0.5)\n"
+            "'--compositor=off'], env=env, stdout=subprocess.PIPE, "
+            "stderr=subprocess.STDOUT, text=True)\n"
+            "    for _ in range(100):\n"
+            "        if manager.poll() is not None:\n"
+            "            raise AssertionError(('window manager exited', "
+            "manager.returncode, manager.communicate()[0]))\n"
+            "        supported = subprocess.run(['xprop', '-root', "
+            "'_NET_SUPPORTED'], capture_output=True, text=True)\n"
+            "        if supported.returncode == 0 and "
+            "'_NET_ACTIVE_WINDOW' in supported.stdout:\n"
+            "            break\n"
+            "        time.sleep(0.1)\n"
+            "    else:\n"
+            "        raise AssertionError('private window manager did not become ready')\n"
             "app = subprocess.Popen(['./build/desktop_probe-desktop'], "
             "env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n"
             "try:\n"

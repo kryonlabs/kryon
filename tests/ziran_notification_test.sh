@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -78,7 +78,7 @@ Send :: (props: NotificationProps) -> bool {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi" "$work/provider.zi"
 for source in source saved; do
     if test "$source" = source; then

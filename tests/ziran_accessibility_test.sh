@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_accessibility_behavior.zi
@@ -41,14 +41,14 @@ for input in source saved; do
             "$ziran" build --target=c --entry "$entry" \
                 --root "$module_root" --module-path "$module_dir" \
                 -o "$output" "$module"
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+            "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
             env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         else
             "$ziran" build --target=cpp --entry "$entry" \
                 --root "$module_root" --module-path "$module_dir" \
                 -o "$output" "$module"
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
             env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         fi

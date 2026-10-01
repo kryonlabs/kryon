@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_composition_queue_test.zi
@@ -30,15 +30,14 @@ for input in source saved; do
                 --module-path "$path" -o "$output" "$module"
         fi
         if test "$target" = c; then
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+            "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
             "$output/app"
         elif test "$target" = cpp; then
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" \
+            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" \
                 -I"$output" "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
-            mv "$output/ziran_composition_queue_test.go" "$output/queue_case.go"
             cat > "$output/main.go" <<'GO'
 package main
 

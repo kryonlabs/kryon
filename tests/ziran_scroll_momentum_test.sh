@@ -4,7 +4,7 @@ set -eu
 # Scroll observes the host-sampled scroll device by itself, and a flicked
 # content drag keeps coasting, slows down, and stops at a touch or the end.
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -208,7 +208,7 @@ C
 
 # Scroll paints its scrollbar through raster hosts, so run natively with
 # stub hosts; the bundle still has to build from source and saved IR.
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
@@ -220,14 +220,14 @@ for input in source saved; do
         root=$work/ir
         module_path=$work/ir
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
+    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
         --entry app:Answer -o "$work/$input.zib" "$source"
     output=$work/c-$input
     "$ziran" build --target=c \
-        --root "$root" --module-path "$module_path" --module-path "$repo/../ziran/std" \
+        --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
         -o "$output" "$source"
     cp "$work/native_main.h" "$output/main.c"
-    "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" \
+    "${CC:-cc}" -std=c11 -I"$ziran_root/include" \
         -I"$output" "$output"/*.c -o "$output/app"
     if ! "$output/app"; then
         echo "scroll momentum ($input) failed" >&2

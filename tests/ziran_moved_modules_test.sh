@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -161,10 +161,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_moved.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_moved.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/use_moved.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --entry use_moved:Answer -o "$work/source.zib" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_moved:Answer -o "$work/ir.zib" "$work/ir/use_moved.zir"

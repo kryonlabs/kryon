@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$repo/build/text-input-platform-test
 source=$repo/tests/text_input_platform_behavior.zi
 mkdir -p "$work"
@@ -22,10 +22,10 @@ for target in c cpp; do
     "$ziran" build --target="$target" --root "$repo/tests" \
         --module-path "$repo/src/ui" -o "$work/$target" "$source"
     if [ "$target" = c ]; then
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
+        "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
             "$work/c"/*.c -o "$work/c/test"
     else
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
+        "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
             "$work/cpp"/*.cpp -o "$work/cpp/test"
     fi
     env -u DISPLAY -u WAYLAND_DISPLAY "$work/$target/test"

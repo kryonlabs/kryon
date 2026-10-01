@@ -5,9 +5,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from toolchain import BIN, ZIRAN_ROOT as ZIRAN
+
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = Path(os.environ.get('ZIRAN_DIR', ROOT.parent / 'ziran'))
-BIN = Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN / 'build')) / 'bin'
 EMCC = os.environ.get('EMCC', str(Path.home() / 'emsdk/upstream/emscripten/emcc'))
 environment = dict(os.environ)
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY'):

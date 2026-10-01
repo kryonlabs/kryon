@@ -2,15 +2,15 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 output=$(mktemp -d)
 trap 'rm -rf "$output"' EXIT HUP INT TERM
 
 "$ziran" ir --root "$repo/tests/fixtures" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output/ir" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output/ir" \
     "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$repo/tests/fixtures" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" --entry frame_replay:Frame \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" --entry frame_replay:Frame \
     -o "$output/source.zib" "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$output/ir" --module-path "$output/ir" \
     --entry frame_replay:Frame -o "$output/saved.zib" \

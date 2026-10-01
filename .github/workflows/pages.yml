@@ -23,6 +23,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install private display tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
       - name: Check static site assets
         run: |
           test -f docs/site/index.html
@@ -34,11 +44,17 @@ jobs:
           test -f docs/site/demo.js
           test -f docs/site/demo.css
           test -f docs/site/demo-worker.js
+          test -f docs/site/demo-theme.js
           test -f docs/site/current.css
           test -f docs/site/favicon.svg
           test -f docs/site/favicon-32.png
           test -f docs/site/og.png
           test -f docs/site/assets/brand/mark.svg
+
+      - name: Test live preview and rendered themes
+        env:
+          CHROMIUM: google-chrome
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

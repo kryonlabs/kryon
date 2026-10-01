@@ -1,6 +1,7 @@
 using UI :: #import "kryon/Widgets";
+#import "preview_style"
 #if #defined(PLATFORM_WEB) {
-    #import "preview_style"
+    #import "preview_theme_web"
 }
 #import "std/number_text"
 
@@ -42,16 +43,16 @@ CounterText :: () -> string {
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     #if #defined(PLATFORM_WEB) {
-        InstallPreviewStyle()
+        SetPreviewTheme(PreviewThemeFromWeb())
     }
+    InstallPreviewStyle()
     width: float32 = viewport.width - 40.0
     if width > 500.0 { width = 500.0 }
     left: float32 = (viewport.width - width) / 2.0
     card: BoxProps
     card.key = cast(u64)10
     card.bounds = Rectangle.{0.0, 0.0, viewport.width, viewport.height}
-    card.fill = Color.{247, 243, 235, 255}
-    if highlighted { card.fill = Color.{220, 226, 212, 255} }
+    card.fill = PreviewBackground(highlighted)
     Box(session, card)
 
     Label(session, cast(u64)11, Rectangle.{left, 24.0, width, 34.0}, "Made with Kryon", 26)

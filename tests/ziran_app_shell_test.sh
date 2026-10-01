@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -88,9 +88,9 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
@@ -112,7 +112,7 @@ for input in source saved; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -121,24 +121,24 @@ GO
             GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.c" <<'C'
 #include "app.h"
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
-            "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+            "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
             "$output/app"
         else
             "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/app.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "app.hpp"
 int main() { return Answer() == 42 ? 0 : 1; }
 CPP
-            "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.cpp -o "$output/app"
             "$output/app"
         fi

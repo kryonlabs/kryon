@@ -2,9 +2,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
-ziran_root=${ZIRAN_ROOT:-"${ziran_include%/include}"}
-ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
+ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 mkdir -p "$repo/build/scratch"
 work=$(mktemp -d "$repo/build/scratch/slider-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -46,9 +45,5 @@ for input in source saved; do
         --entry ziran_slider_widget_test:main "$@" \
         --root "$module_root" --module-path "$module_dir" \
         --module-path "$ziran_root/std" -o "$output" "$module"
-    for file in "$output"/*_test.go; do
-        test -f "$file" || continue
-        mv "$file" "${file%_test.go}_case.go"
-    done
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

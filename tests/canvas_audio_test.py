@@ -6,9 +6,9 @@ import shlex
 import subprocess
 import tempfile
 
+from toolchain import BIN, ZIRAN_ROOT as ZIRAN
+
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = Path(os.environ.get('ZIRAN_DIR', ROOT.parent / 'ziran'))
-BIN = Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN / 'build')) / 'bin'
 RUNNER = shlex.split(os.environ.get('ZIRAN_RUNNER', ''))
 ENV = dict(os.environ)
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY'):

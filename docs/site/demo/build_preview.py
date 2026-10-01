@@ -38,6 +38,7 @@ run(['python3', ziran / 'scripts/build_playground.py', '--emcc', args.emcc,
      '--output-dir', assets,
      '--embed-file', f'{kryon / "src/ui"}@/kryon/ui',
      '--embed-file', f'{project / "src/preview_entry.zi"}@/preview_entry.zi',
+     '--embed-file', f'{project / "src/preview_style.zi"}@/preview_style.zi',
      '--embed-file', f'{project / "src/preview_protocol.zi"}@/preview_protocol.zi'])
 run([ziran / 'build/bin/zi2c', '--prune-stale', '--define', 'PLATFORM_WEB', '--root', project / 'src',
      '--module-path', kryon / 'src/ui', '--module-path', kryon / 'src/backend',

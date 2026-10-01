@@ -9,11 +9,12 @@
   <link rel="stylesheet" href="current.css">
   <link rel="stylesheet" href="demo.css">
   <script>const previewQuery = new URLSearchParams(location.search); if (previewQuery.has('mini')) document.documentElement.dataset.mini = 'true';</script>
+  <script defer src="current.js"></script>
   <script defer src="demo.js"></script>
 </head>
 <body>
   <main class="demo-page">
-    <header class="demo-header"><a href="/">Kryon Labs</a><a href="docs.html">Documentation ↗</a></header>
+    <header class="demo-header"><a href="/">Kryon Labs</a><div class="demo-navigation"><a href="docs.html">Documentation ↗</a><button class="theme-toggle" type="button" aria-label="Switch color theme"></button></div></header>
     <div class="demo-intro"><p class="eyebrow">Kryon / Live editor</p><h1>A small, <em>living interface.</em></h1><p>Edit the Ziran source. See your changes, then try the widgets.</p></div>
     <section class="playground" aria-label="Kryon live editor">
       <div class="playground-toolbar">
@@ -31,7 +32,7 @@
         </div>
         <div id="preview-panel" class="preview-panel">
           <div class="panel-heading"><span>Live preview</span><span>Interactive widgets</span></div>
-          <div class="preview-stage"><iframe id="demo-preview" src="assets/widgets.html" title="Kryon interactive widget demo"></iframe><iframe id="live-preview" title="Your compiled Kryon preview" sandbox="allow-scripts" aria-hidden="true" hidden></iframe></div>
+          <div class="preview-stage"><iframe id="demo-preview" title="Kryon interactive widget demo"></iframe><iframe id="live-preview" title="Your compiled Kryon preview" sandbox="allow-scripts" aria-hidden="true" hidden></iframe></div>
         </div>
       </div>
       <div class="playground-status"><span id="status" role="status" aria-live="polite" data-state="ready">Ready to explore</span><span id="editor-help">Compiled in your browser · Ctrl / ⌘ + Enter to run</span></div>
