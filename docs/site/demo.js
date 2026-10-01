@@ -4,6 +4,8 @@
   const workspace = document.getElementById('workspace');
   const sourcePanel = document.getElementById('source-panel');
   const previewPanel = document.getElementById('preview-panel');
+  const previewLoading = document.getElementById('preview-loading');
+  const previewLoadingMessage = document.getElementById('preview-loading-message');
   const staticPreview = document.getElementById('demo-preview');
   const livePreview = document.getElementById('live-preview');
   const status = document.getElementById('status');
@@ -43,12 +45,19 @@
     if (staticPreview.src !== 'about:blank') staticPreview.contentWindow?.postMessage(message, '*');
     if (rendererReady) livePreview.contentWindow?.postMessage(message, '*');
   }
-  staticPreview.addEventListener('load', sendTheme);
+  staticPreview.addEventListener('load', () => {
+    sendTheme();
+    if (status.textContent === 'Loading preview…') setStatus('Ready to explore');
+  });
   addEventListener('themechange', sendTheme);
   staticPreview.src = previewURL('assets/widgets.html');
   function setStatus(message, state = 'ready') {
     status.textContent = message;
     status.dataset.state = state;
+    const busy = state === 'busy';
+    previewPanel.setAttribute('aria-busy', String(busy));
+    previewLoading.hidden = !busy;
+    if (busy) previewLoadingMessage.textContent = message === 'Updating preview…' || message === 'Loading preview…' ? message : 'Compiling preview…';
   }
   function error(message) {
     setStatus('Check the source', 'error');

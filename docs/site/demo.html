@@ -30,12 +30,20 @@
           <div class="panel-heading"><label for="source-editor">app.zi</label><span>Edits compile automatically</span></div>
           <div class="code-area"><pre id="highlight" aria-hidden="true"><code></code></pre><textarea id="source-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" maxlength="65536" aria-describedby="editor-help" disabled></textarea></div>
         </div>
-        <div id="preview-panel" class="preview-panel">
+        <div id="preview-panel" class="preview-panel" aria-busy="true">
           <div class="panel-heading"><span>Live preview</span><span>Interactive widgets</span></div>
-          <div class="preview-stage"><iframe id="demo-preview" title="Kryon interactive widget demo"></iframe><iframe id="live-preview" title="Your compiled Kryon preview" sandbox="allow-scripts" aria-hidden="true" hidden></iframe></div>
+          <div class="preview-stage">
+            <iframe id="demo-preview" title="Kryon interactive widget demo"></iframe>
+            <iframe id="live-preview" title="Your compiled Kryon preview" sandbox="allow-scripts" aria-hidden="true" hidden></iframe>
+            <div id="preview-loading" class="preview-loading" aria-hidden="true">
+              <span class="preview-spinner"></span>
+              <strong id="preview-loading-message">Loading preview…</strong>
+              <span>This may take a moment.</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="playground-status"><span id="status" role="status" aria-live="polite" data-state="ready">Ready to explore</span><span id="editor-help">Compiled in your browser · Ctrl / ⌘ + Enter to run</span></div>
+      <div class="playground-status"><span id="status" role="status" aria-live="polite" data-state="busy">Loading preview…</span><span id="editor-help">Compiled in your browser · Ctrl / ⌘ + Enter to run</span></div>
       <pre id="diagnostics" class="diagnostics" tabindex="0" aria-label="Compiler diagnostics" hidden></pre>
     </section>
     <div class="demo-links"><a href="https://github.com/kryonlabs/kryon/blob/master/docs/site/demo/src/app.zi" target="_blank" rel="noopener">Source on GitHub ↗</a><a href="demo.html" target="_blank" rel="noopener">Open the full editor ↗</a></div>
