@@ -2,15 +2,15 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_raster_host_test.zi
 binding=raster:RasterLine=ziran_raster_host_provider:RasterLine
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --bind "$binding" --entry ziran_raster_host_test:main \
     -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -21,14 +21,14 @@ test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$source"
-"${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"
+"${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 "$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/cpp" "$source"
-"${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/cpp" "$source"
+"${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
     "$work/cpp"/*.cpp -o "$work/cpp/app"
 "$work/cpp/app"
 
@@ -46,7 +46,6 @@ for input in source saved; do
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_raster_host_test:main --bind "$binding" \
         --root "$module_root" --module-path "$module_dir" \
-        --module-path "$repo/../ziran/std" -o "$output" "$module"
-    mv "$output/ziran_raster_host_test.go" "$output/raster_case.go"
+        --module-path "$ziran_root/std" -o "$output" "$module"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

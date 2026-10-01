@@ -2,13 +2,13 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
+. "$repo/tests/toolchain.sh"
+ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
-cp "$repo/../ziran/std/math.zi" "$work/math.zi"
+cp "$ziran_root/std/math.zi" "$work/math.zi"
 cp "$repo/src/ui/layout.zi" "$work/layout.zi"
 cp "$repo/src/ui/layout_props.zi" "$work/layout_props.zi"
 cp "$repo/src/ui/group.zi" "$work/group.zi"

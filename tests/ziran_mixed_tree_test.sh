@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_mixed_tree_test.zi
@@ -17,9 +17,9 @@ set -- \
     --bind font_metrics:MeasureGlyphLineHeight=ziran_mixed_tree_host:MeasureGlyphLineHeight \
     --bind paint_queue:RasterImage=ziran_mixed_tree_host:RasterImage
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     "$@" --entry ziran_mixed_tree_test:main \
     -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -30,20 +30,19 @@ test "$("$ziran" run "$work/source.zib")" = 0
 test "$("$ziran" run "$work/saved.zib")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$source"
-"${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$work/c" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"
+"${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 "$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/cpp" "$source"
-"${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$work/cpp" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/cpp" "$source"
+"${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
     "$work/cpp"/*.cpp -o "$work/cpp/app"
 "$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/go" "$source"
-mv "$work/go/ziran_mixed_tree_test.go" "$work/go/mixed_case.go"
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/go" "$source"
 cat > "$work/go/main.go" <<'GO'
 package main
 

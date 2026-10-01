@@ -6,8 +6,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from toolchain import ZIRAN, ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = ROOT.parent / "ziran/build/bin/ziran"
 ENV = dict(os.environ)
 for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY"):
     ENV.pop(name, None)
@@ -33,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix="dom-project-", dir=ROOT / "build") as d
     )
     overrides = {
         "kryon": str(ROOT),
-        "ziran": str(ROOT.parent / "ziran"),
+        "ziran": str(ZIRAN_ROOT),
     }
     if os.environ.get("RAYLIB_SOURCE"):
         overrides["raylib"] = os.environ["RAYLIB_SOURCE"]

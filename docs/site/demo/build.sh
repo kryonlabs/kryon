@@ -9,5 +9,7 @@ fi
 python3 - <<'PY_BUILD'
 from pathlib import Path
 content = Path('build/widgets-web.html').read_text()
-Path('../assets/widgets.html').write_text(content.replace('</head>', '<style>#result{display:none}</style></head>', 1))
+content = content.replace('</head>', '<style>#result{display:none}</style></head>', 1)
+content = content.replace('</body>', '<script src="../demo-theme.js"></script></body>', 1)
+Path('../assets/widgets.html').write_text(content)
 PY_BUILD

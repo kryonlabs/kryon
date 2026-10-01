@@ -1,31 +1,27 @@
 #!/bin/sh
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_root=${ZIRAN_ROOT:-"$repo/../ziran"}
-# The org-grouped local layout keeps Ziran under ziranlang/.
-if [ -z "${ZIRAN_ROOT:-}" ] && [ ! -d "$ziran_root" ]; then
-    ziran_root=$repo/../../ziranlang/ziran
-fi
-ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
+mkdir -p "$repo/build/test"
+output=$(mktemp -d "$repo/build/test/host-keys.XXXXXX")
+trap 'rm -rf "$output"' EXIT HUP INT TERM
 # Each host's key translation must agree across generated languages and the
 # portable VM.
 for host in libdraw desktop terminal; do
-work=$repo/build/test/$host-keys
+work=$output/$host
 test_module=${host}_keys_test
 mkdir -p "$work"
 for target in c cpp go; do
-    "$ziran" build --target="$target" --root "$repo/tests" \
+    set --
+    if [ "$target" = go ]; then set -- --pkg main --exe; fi
+    "$ziran" build "$@" --target="$target" --root "$repo/tests" \
         --module-path "$repo/src/backend" --entry $test_module:main \
         -o "$work/$target" "$repo/tests/$test_module.zi"
     case "$target" in
         c) cc -std=c99 -I"$ziran_root/include" "$work/c"/*.c -o "$work/run-c"; "$work/run-c" ;;
         cpp) c++ -std=c++17 -I"$ziran_root/include" "$work/cpp"/*.cpp -o "$work/run-cpp"; "$work/run-cpp" ;;
         go)
-            mv "$work/go/$test_module.go" "$work/go/key_probe.go"
-            sed -i 's/^package ziran$/package main/' "$work/go"/*.go
-            entry=$(grep -o '^func [A-Za-z]*KeysTest_Main' "$work/go"/*.go | head -1 | sed 's/.*func //')
-            printf '%s\n' 'package main' "func main() { if $entry() != 0 { panic(\"$host keys\") } }" > "$work/go/main.go"
-            (cd "$work/go" && GOCACHE="$work/go-cache" go run *.go)
+            GO111MODULE=off go run "$work/go"/*.go
             ;;
     esac
 done

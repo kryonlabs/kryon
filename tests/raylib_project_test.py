@@ -9,6 +9,8 @@ import tempfile
 import zlib
 
 
+from toolchain import ZIRAN, ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -125,7 +127,7 @@ def main():
         )
         overrides = {
             "kryon": str(ROOT),
-            "ziran": str(ROOT.parent / "ziran"),
+            "ziran": str(ZIRAN_ROOT),
         }
         if os.environ.get("RAYLIB_SOURCE"):
             overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
@@ -181,7 +183,7 @@ def main():
         )
         solid_png(project / "test.png", 64, 64, (230, 30, 40, 255))
         quadrant_png(project / "quadrants.png")
-        ziran = str(ROOT.parent / "ziran/build/bin/ziran")
+        ziran = str(ZIRAN)
         run([ziran, "lock"], project)
         run([ziran, "tool", "kryon", "build", "--profile", "raylib"], project)
         capture = project / "capture.png"

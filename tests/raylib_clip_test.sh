@@ -1,10 +1,10 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_dir=${ZIRAN_DIR:-"$root/../ziran"}
+. "$root/tests/toolchain.sh"
+ziran_dir=$ziran_root
 compiler=${ZI2C_BIN:-"$ziran_dir/build/bin/zi2c"}
 standard=${ZIRAN_STD:-"$ziran_dir/std"}
-ziran=${ZIRAN_BIN:-"$ziran_dir/build/bin/ziran"}
 raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
 raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}

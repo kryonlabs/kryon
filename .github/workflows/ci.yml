@@ -13,6 +13,9 @@ concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  ZIRAN_ROOT: ${{ github.workspace }}/ziran
+
 jobs:
   test-linux:
     name: Ziran library and host tests
@@ -26,21 +29,38 @@ jobs:
         with:
           path: kryon
 
+      - name: Read locked toolchain
+        id: toolchain
+        run: |
+          git checkout -B master
+          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+
       - name: Checkout Ziran
         uses: actions/checkout@v7
         with:
           repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
           path: ziran
+
+      # Template tests serve this checkout through local Git URLs and use
+      # the manifest's master ref. Keep that ref at the locked commit.
+      - name: Prepare locked toolchain ref
+        run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 ripgrep
+          sudo apt-get install -y build-essential python3 ripgrep xvfb
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
 
       - name: Check submodule URLs
         run: sh scripts/check-submodule-urls.sh
@@ -70,6 +90,11 @@ jobs:
       - name: Test SVG example
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
 
+      - name: Test live preview and rendered themes
+        env:
+          CHROMIUM: google-chrome
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
+
   test-sanitizers:
     name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer
     runs-on: ubuntu-latest
@@ -82,11 +107,21 @@ jobs:
         with:
           path: kryon
 
+      - name: Read locked toolchain
+        id: toolchain
+        run: |
+          git checkout -B master
+          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+
       - name: Checkout Ziran
         uses: actions/checkout@v7
         with:
           repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
           path: ziran
+
+      - name: Prepare locked toolchain ref
+        run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install build tools
         run: |
@@ -113,11 +148,21 @@ jobs:
         with:
           path: kryon
 
+      - name: Read locked toolchain
+        id: toolchain
+        run: |
+          git checkout -B master
+          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+
       - name: Checkout Ziran
         uses: actions/checkout@v7
         with:
           repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
           path: ziran
+
+      - name: Prepare locked toolchain ref
+        run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install host libraries and X tools
         run: |

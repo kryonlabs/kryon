@@ -4,8 +4,9 @@ CC ?= cc
 CXX ?= c++
 AR ?= ar
 BUILD_DIR ?= build/ziran
-# The sibling checkout CI uses, else the org-grouped local layout.
-ZIRAN_DIR ?= $(firstword $(wildcard ../ziran ../../ziranlang/ziran) ../ziran)
+# Resolve the configured package; CI supplies its already checked-out source.
+ZIRAN_DIR ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell ziran pkg path ziran))
+export ZIRAN_ROOT := $(abspath $(ZIRAN_DIR))
 ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
 ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
@@ -29,7 +30,7 @@ all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all
 
 # The kryon tool builds its Ziran toolchain only when it is missing, as ziran
 # builds a pinned one: a locked toolchain never changes, and a local one is
@@ -86,6 +87,11 @@ TEST_JOBS ?= 4
 TEST ?=
 # The tests run the ziran command and link libziran.a; build them first.
 ziran-test: project-toolchain
+	@$(MAKE) --no-print-directory behavior-tests
+
+# Reuse the suite with instrumented host compilers without rebuilding Ziran.
+.PHONY: behavior-tests
+behavior-tests:
 	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
 		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
@@ -251,14 +257,15 @@ $(ZIRAN_DIR)/build/bin/ziran:
 # $$CC and $$CXX, so wrappers add the flags to each compile and link.
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 .PHONY: sanitize-test
-sanitize-test: $(BUILD_DIR)/ziran-toolchain.stamp
+sanitize-test: project-toolchain
+	@$(MAKE) --no-print-directory $(BUILD_DIR)/libkryon.a
 	mkdir -p build/sanitize
 	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CC)' '$(SANITIZE_FLAGS)' > build/sanitize/cc
 	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CXX)' '$(SANITIZE_FLAGS)' > build/sanitize/c++
 	chmod 755 build/sanitize/cc build/sanitize/c++
 	@CC="$(abspath build/sanitize/cc)" CXX="$(abspath build/sanitize/c++)" \
 		ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 \
-		$(MAKE) --no-print-directory ziran-test
+		$(MAKE) --no-print-directory behavior-tests
 
 # Directories under build/ that targets and tests write. Anything else there
 # is left from one-off experiments: put those in build/scratch/. clean-scratch

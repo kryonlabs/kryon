@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -191,9 +191,9 @@ main :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" \
+"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --entry app:Check -o "$work/source.zib" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Check -o "$work/saved.zib" "$work/ir/app.zir"
@@ -201,7 +201,7 @@ cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 42
 test "$("$ziran" run "$work/saved.zib")" = 42
 "$ziran" build --target=c --root "$work" \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/c" "$work/app.zi"
-"${CC:-cc}" -std=c99 -I"$repo/../ziran/include" -I"$work/c" \
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$work/app.zi"
+"${CC:-cc}" -std=c99 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -lm -o "$work/check"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/check"

@@ -2,8 +2,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-ziran_include=${ZIRAN_INCLUDE:-"$repo/../ziran/include"}
+. "$repo/tests/toolchain.sh"
+ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -46,11 +46,11 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" "$work/use_drag.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/ir" \
+"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_drag.zi"
+"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_drag.zi"
 "$ziran" bundle --root "$work" --entry use_drag:Answer \
-    --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$work/source.zib" "$work/use_drag.zi"
+    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/source.zib" "$work/use_drag.zi"
 "$ziran" bundle --root "$work" --entry use_drag:Answer \
     --module-path "$work/ir" -o "$work/ir.zib" "$work/ir/use_drag.zir"
 cmp "$work/source.zib" "$work/ir.zib"
@@ -71,7 +71,7 @@ for input in source ir; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_drag.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -81,7 +81,7 @@ GO
                 "$output/drag.go" "$output/use_drag.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" -o "$output" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" "$input_dir/use_drag.$extension"
+                --module-path "$module_dir" --module-path "$ziran_root/std" "$input_dir/use_drag.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_drag.h"
 int main(void) { return Answer() == 42 ? 0 : 1; }
@@ -92,7 +92,7 @@ C
             "$output/app"
         else
             "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" --module-path "$repo/../ziran/std" -o "$output" \
+                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_drag.$extension"
             cat > "$output/main.cpp" <<'CPP'
 #include "use_drag.hpp"

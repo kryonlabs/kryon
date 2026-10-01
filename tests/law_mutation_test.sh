@@ -4,8 +4,8 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-std=${ZIRAN_STD:-"$repo/../ziran/std"}
+. "$repo/tests/toolchain.sh"
+std=${ZIRAN_STD:-"$ziran_root/std"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 

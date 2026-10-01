@@ -5,7 +5,7 @@ set -eu
 # replaced by a fake page module, so every decision the page's
 # JavaScript used to make is checked without a browser.
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 bin=$(CDPATH= cd -- "$(dirname -- "$ziran")" && pwd)
 ziran_dir=$(CDPATH= cd -- "$bin/../.." && pwd)
 work=$(mktemp -d)

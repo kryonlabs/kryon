@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := all
 
 CC ?= cc
-ZIRAN_DIR ?= ../../ziran
+ZIRAN_DIR ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell ziran pkg path ziran))
 ZI2ZIR_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zir)
 ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-bin=${1:-"$root/../ziran/build/bin"}
+. "$root/tests/toolchain.sh"
+bin=${1:-"$(dirname "$ziran")"}
 emcc=${2:-"$HOME/emsdk/upstream/emscripten/emcc"}
 work=$(mktemp -d "$root/build/canvas-text-os-wasm.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -14,7 +15,7 @@ run_compiler() {
     fi
 }
 run_compiler "$bin/zi2c" --no-main --define PLATFORM_WEB --root "$root" \
-    --module-path "$root/tests/page_texture_fake" --module-path "$root/src/backend" --module-path "$root/src/ui" --module-path "$root/../ziran/std" \
+    --module-path "$root/tests/page_texture_fake" --module-path "$root/src/backend" --module-path "$root/src/ui" --module-path "$ziran_root/std" \
     -o "$work/c" "$root/tests/canvas_text_os_behavior.zi"
 cat > "$work/fixture.js" <<'JS'
 const loadedFaces = new Set();
@@ -41,8 +42,8 @@ Module.printErr = text => console.error(text);
 globalThis.__canvasTestFaces = loadedFaces;
 JS
 find "$work/c" -type f -name '*.c' -exec \
-    "$emcc" -O1 -I"$root/../ziran/include" -I"$work/c" -I"$work/c/tests" \
-    --js-library "$root/../ziran/web/ziran_web.js" -sEXPORTED_RUNTIME_METHODS=FS \
+    "$emcc" -O1 -I"$ziran_root/include" -I"$work/c" -I"$work/c/tests" \
+    --js-library "$ziran_root/web/ziran_web.js" -sEXPORTED_RUNTIME_METHODS=FS \
     --pre-js "$work/fixture.js" \
     -sASYNCIFY -sEXIT_RUNTIME=1 -sENVIRONMENT=node -sWASM_ASYNC_COMPILATION=0 \
     -o "$work/test.js" {} +

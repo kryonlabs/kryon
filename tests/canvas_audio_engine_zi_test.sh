@@ -7,7 +7,7 @@ set -eu
 # a browser or a sound card. The fake is found ahead of the real host on the
 # module path.
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 bin=$(CDPATH= cd -- "$(dirname -- "$ziran")" && pwd)
 ziran_dir=$(CDPATH= cd -- "$bin/../.." && pwd)
 work=$(mktemp -d)

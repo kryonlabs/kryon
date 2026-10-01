@@ -13,6 +13,7 @@
     var Module = {
       previewPending: false,
       previewRevision: 0,
+      previewTheme: 0,
       printErr: function (message) {
         parent.postMessage({type: 'preview:diagnostic', revision: Module.previewRevision, message: String(message)}, '*');
       },
@@ -21,7 +22,12 @@
       }
     };
     addEventListener('message', function (event) {
-      if (event.source !== parent || event.data.type !== 'preview:bundle') return;
+      if (event.source !== parent || !event.data) return;
+      if (event.data.type === 'preview:theme' && [0, 1, 2].includes(event.data.theme)) {
+        Module.previewTheme = event.data.theme;
+        return;
+      }
+      if (event.data.type !== 'preview:bundle') return;
       if (!(event.data.bundle instanceof ArrayBuffer) || event.data.bundle.byteLength > 16777216) return;
       Module.FS.writeFile('/preview.zib', new Uint8Array(event.data.bundle));
       Module.previewRevision = event.data.revision;

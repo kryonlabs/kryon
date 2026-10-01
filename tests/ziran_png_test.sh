@@ -1,9 +1,8 @@
 #!/bin/sh
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran_include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
-ziran_root=${ZIRAN_ROOT:-"${ziran_include%/include}"}
-ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
+ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 mkdir -p "$repo/build/scratch"
 work=$(mktemp -d "$repo/build/scratch/png-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM

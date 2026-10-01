@@ -3,9 +3,10 @@
 # scrubbed so the test cannot reach the developer's desktop or panel.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-compiler=${ZI2C_BIN:-"$root/../ziran/build/bin/zi2c"}
-standard=${ZIRAN_STD:-"$root/../ziran/std"}
-include=${ZIRAN_INCLUDE:-"$root/../ziran/include"}
+. "$root/tests/toolchain.sh"
+compiler=${ZI2C_BIN:-"$ziran_root/build/bin/zi2c"}
+standard=${ZIRAN_STD:-"$ziran_root/std"}
+include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 mkdir -p "$root/build"
 work=$(mktemp -d "$root/build/tray.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM

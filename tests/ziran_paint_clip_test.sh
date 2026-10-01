@@ -2,7 +2,7 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
+. "$repo/tests/toolchain.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
@@ -121,15 +121,15 @@ C
 for target in c cpp go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$repo/../ziran/std" -o "$output" "$work/app.zi"
+        --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
-        "${CC:-cc}" -std=c11 -I"$repo/../ziran/include" -I"$output" \
+        "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
             "$output"/*.c -o "$output/app"
         "$output/app"
     elif test "$target" = cpp; then
         cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$repo/../ziran/include" -I"$output" \
+        "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
             "$output"/*.cpp -o "$output/app"
         "$output/app"
     else

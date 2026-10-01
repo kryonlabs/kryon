@@ -14,11 +14,9 @@ import tempfile
 from raylib_project_test import run
 
 
+from toolchain import ZIRAN_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
-# The sibling checkout CI uses, else the org-grouped local layout.
-ZIRAN_ROOT = Path(os.environ.get("ZIRAN_ROOT") or next(
-    (path for path in (ROOT.parent / "ziran", ROOT.parent.parent / "ziranlang/ziran")
-     if path.is_dir()), ROOT.parent / "ziran"))
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 APP = '''using UI :: #import "Widgets";
