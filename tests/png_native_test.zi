@@ -1,0 +1,100 @@
+PNG :: #import "png";
+Inflate :: #import "inflate_plan9";
+File :: #import "file_plan9";
+#import "c_string"
+#import "byte_text_linux"
+
+#scope_file
+path: [4096]u8;
+input: [16384]u8;
+expected: [16384]u8;
+packed: [16384]u8;
+raw: [16384]u8;
+pixels: [16384]u8;
+libc :: #system_library "libc";
+Environment :: (name: *s8) -> *s8 #foreign libc "getenv";
+Free :: (pointer: *void) #foreign libc "free";
+
+Big32 :: (data: []u8) -> s32 {
+    if data.count < 4 { return -1 }
+    return cast(s32)((cast(u32)data[0] << 24) | (cast(u32)data[1] << 16) | (cast(u32)data[2] << 8) | cast(u32)data[3])
+}
+
+Read :: (base: string, name: string, index: s32, extension: string, output: []u8) -> s64 {
+    at: s64 = 0
+    for i: 0..base.count - 1 { path[at] = base[i]; at += 1 }
+    path[at] = cast(u8)47; at += 1
+    for i: 0..name.count - 1 { path[at] = name[i]; at += 1 }
+    if index >= 0 {
+        if index >= 10 { path[at] = cast(u8)(48 + index / 10); at += 1 }
+        path[at] = cast(u8)(48 + index % 10); at += 1
+    }
+    for i: 0..extension.count - 1 { path[at] = extension[i]; at += 1 }
+    path[at] = cast(u8)0
+    file := File.OpenRead(TextView(path[0:at]))
+    if !file.valid { error: [256]u8; print("PNG fixture open failed: % (%)\n", TextView(path[0:at]), File.LastError(error[:])); return -1 }
+    length := File.FileSize(file)
+    if length < 0 || length > output.count { print("PNG fixture size failed: % (%)\n", TextView(path[0:at]), length); File.CloseFile(file); return -1 }
+    count: s64 = 0
+    while count < length {
+        amount := File.Read(file, output[count:length])
+        if amount <= 0 { File.CloseFile(file); return -1 }
+        count += amount
+    }
+    if !File.CloseFile(file) { return -1 }
+    return count
+}
+
+Decode :: (count: s64) -> bool {
+    info := PNG.InspectPNG(input[0:count])
+    return info.valid && info.compressed <= packed.count && info.scanlines <= raw.count &&
+        cast(s64)info.width * info.height * 4 <= pixels.count &&
+        PNG.CollectPNGData(input[0:count], packed[0:info.compressed]) &&
+        Inflate.DecompressZlib(packed[0:info.compressed], raw[0:info.scanlines]) &&
+        PNG.DecodePNGScanlines(input[0:count], raw[0:info.scanlines], pixels[0:cast(s64)info.width * info.height * 4])
+}
+
+Cases :: (base: string) -> s32 {
+    found := Read(base, "cases", -1, ".count", expected[:])
+    if found != 4 { print("PNG fixture count read failed: % from %\n", found, base); return 1 }
+    cases := Big32(expected[:])
+    if cases != 33 { return 2 }
+    index: s32 = 0
+    while index < cases {
+        count := Read(base, "case", index, ".png", input[:])
+        reference := Read(base, "case", index, ".rgba", expected[:])
+        if count <= 0 || reference < 8 || !Decode(count) { print("PNG case failed: %\n", index); return 3 }
+        info := PNG.InspectPNG(input[0:count])
+        if info.width != Big32(expected[:]) || info.height != Big32(expected[4:]) || reference != cast(s64)info.width * info.height * 4 + 8 { return 4 }
+        for at: 0..reference - 9 { if pixels[at] != expected[at + 8] { print("PNG pixel failed: % at %\n", index, at); return 5 } }
+        // A short output must fail without writing outside its slice.
+        raw[0] = cast(u8)77; raw[info.scanlines] = cast(u8)88
+        if Inflate.DecompressZlib(packed[0:info.compressed], raw[1:info.scanlines]) ||
+            raw[0] != cast(u8)77 || raw[info.scanlines] != cast(u8)88 { return 6 }
+        index += 1
+    }
+    if Read(base, "bad", -1, ".count", expected[:]) != 4 { return 7 }
+    cases = Big32(expected[:])
+    if cases != 9 { return 8 }
+    index = 0
+    while index < cases {
+        count := Read(base, "bad", index, ".png", input[:])
+        if count <= 0 || Decode(count) { print("Bad PNG accepted: %\n", index); return 9 }
+        index += 1
+    }
+    return 0
+}
+
+#scope_export
+#program_export
+main :: () -> s32 {
+    name: [32]u8
+    if !CopyCString("RILL_TEST_ROOT", name[:]) { return 99 }
+    root := Environment(cast(*s8)(*name[0]))
+    if root == null { return 99 }
+    result := Cases(TextFromCString(cast(*u8)root))
+    Free(cast(*void)root)
+    if result == 0 { print("kryon-png-native-test-ok\n") }
+    else { print("kryon-png-native-test-failed: %\n", result) }
+    return result
+}

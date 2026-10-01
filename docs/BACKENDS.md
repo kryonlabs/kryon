@@ -37,9 +37,24 @@ the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
 uses `initdisplay`, `openfont`, `gengetwindow`, `allocimage`, and `string`
 directly without plan9port, Cairo, or `dlsym`. Fonts are selected with the
 Plan 9 `font` environment variable, and `KRYON_OFFSCREEN=1` forces an image
-with the requested raster dimensions. It currently covers rectangles, text,
-font metrics, flush, and RGBA capture; pointer input, image presentation,
-and a selectable `_run` profile are still pending.
+with the requested raster dimensions. Rill uses this provider for rectangles,
+text, font metrics, image presentation, flush, and RGBA capture. Its native
+application host submits keyboard and pointer input; held modifier state and
+a selectable `_run` profile remain pending.
+
+Asset-backed `Image` accepts PNG and native Plan 9 image files. The PNG byte
+and pixel rules are Ziran in `png.zi`; native decompression uses Ziran's
+bounded `std/inflate_plan9` adapter to `libflate`. PNG supports all standard
+color types and depths, transparency, all five filters, and Adam7 interlace.
+Files are limited to 64 MiB and dimensions to 4096 pixels per axis. Sixteen-bit
+samples use their high byte; ancillary color profiles and gamma are ignored.
+The sixteen-entry asset cache evicts the least recently used image.
+
+`tests/ziran_png_test.sh` compares independent reference pixels for 33 fixtures
+through source and saved IR in bundles, C, C++, and Go. Taiji's private native
+gate compiles the decoder and canonical `Image` rendering tests with `8c`/`8l`,
+checks malformed streams, cache eviction, alpha composition, and native image
+compatibility, and checks Rill's real PNG desktop icons.
 The raylib host uses `raylib_runtime.zi` and the raylib revision pinned as a
 Ziran source dependency. The canvas host uses its dedicated `canvas_raster.zi` provider over
 a Canvas2D browser ABI; see [Canvas2D browser host](canvas.md). Backend build

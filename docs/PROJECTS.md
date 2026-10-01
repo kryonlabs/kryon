@@ -184,9 +184,12 @@ with `autostart` the login entry to `~/.config/autostart/example.desktop`.
 Setting `autostart = false` removes an autostart entry that `ziran install`
 wrote earlier. Browser profiles cannot be installed.
 
-The native Plan 9 libdraw raster is not a project profile yet; it is covered
-by the display-free `libdraw-native-plan9-test` ABI gate while its input and
-presentation surface are completed.
+The native Plan 9 libdraw raster is not a project profile yet. Rill uses it
+through its Ziran application host and native `app/*.mk` recipes. The
+display-free `libdraw-native-plan9-test` gate checks its ABI, while Taiji's
+private native gate checks source/saved-IR screen rendering, PNG assets,
+native Plan 9 images, and the actual Rill executables. Held modifier input
+and selection through a project profile remain pending.
 
 The raylib profile builds its static raylib dependency in Kryon's `build/`
 directory. The Kryon host chooses and owns that backend. Game code belongs in
