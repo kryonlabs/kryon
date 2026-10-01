@@ -95,6 +95,13 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x20) != 0 { return false }
+    // The click that focuses this window must still reach its widgets.
+    // SDL's default swallows it, including the first right-click menu request.
+    hint: [32]u8
+    enabled: [2]u8
+    if !CopyCString("SDL_MOUSE_FOCUS_CLICKTHROUGH", hint[:]) ||
+        !CopyCString("1", enabled[:]) { return false }
+    unused SetHint(*hint[0], *enabled[0])
     title: [32]u8
     if !CopyCString("Kryon Ziran", title[:]) { return false }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,

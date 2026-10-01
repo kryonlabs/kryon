@@ -126,7 +126,7 @@ jobs:
             libsdl2-dev libcairo2-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
             libegl-mesa0 libgl1-mesa-dri \
             libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev \
-            xvfb xdotool x11-apps imagemagick
+            xvfb xdotool x11-apps x11-utils imagemagick xfwm4 dbus-x11
 
       - name: Set up Go
         uses: actions/setup-go@v6

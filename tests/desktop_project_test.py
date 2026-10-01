@@ -20,13 +20,15 @@ ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 def private_environment():
     env = os.environ.copy()
-    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY",
+                 "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER",
+                 "SDL_MOUSE_FOCUS_CLICKTHROUGH"):
         env.pop(name, None)
     return env
 
 
 def main():
-    for tool in ("xvfb-run", "xdotool"):
+    for tool in ("xvfb-run", "xdotool", "xfwm4", "dbus-run-session", "xmessage"):
         assert shutil.which(tool), f"Install {tool} to test the desktop window"
     with tempfile.TemporaryDirectory(prefix="kryon-desktop-") as directory:
         project = Path(directory)
@@ -61,6 +63,7 @@ def main():
             '    typed: s32 = TypedCodepointTake(session)\n'
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
+            '    if SecondaryPointerSample(session).released { return 1 }\n'
             '    image: ImageProps\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
@@ -76,6 +79,7 @@ def main():
         )
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
+        env["XDG_CONFIG_HOME"] = str(project / "config")
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)
@@ -113,6 +117,12 @@ def main():
         (project / "input_check.py").write_text(
             "import os\nimport subprocess\nimport sys\nimport time\n"
             "env = os.environ.copy()\nenv.pop('KRYON_CAPTURE_PATH', None)\n"
+            "manager = None\nother = None\n"
+            "if sys.argv[1] == 'secondary':\n"
+            "    manager = subprocess.Popen(['xfwm4', '--sm-client-disable', "
+            "'--compositor=off'], env=env, stdout=subprocess.DEVNULL, "
+            "stderr=subprocess.DEVNULL)\n"
+            "    time.sleep(0.5)\n"
             "app = subprocess.Popen(['./build/desktop_probe-desktop'], "
             "env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n"
             "try:\n"
@@ -127,7 +137,28 @@ def main():
             "        time.sleep(0.1)\n"
             "    else:\n"
             "        raise AssertionError('desktop window did not appear')\n"
-            "    subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
+            "    if sys.argv[1] == 'secondary':\n"
+            "        other = subprocess.Popen(['xmessage', '-title', "
+            "'KryonFocusProbe', '-geometry', '180x70+1050+900', "
+            "'Private focus test'], env=env, stdout=subprocess.DEVNULL, "
+            "stderr=subprocess.DEVNULL)\n"
+            "        for _ in range(100):\n"
+            "            found = subprocess.run(['xdotool', 'search', '--onlyvisible', "
+            "'--name', '^KryonFocusProbe$'], capture_output=True, text=True)\n"
+            "            if found.returncode == 0 and found.stdout.strip():\n"
+            "                other_window = found.stdout.splitlines()[0]\n"
+            "                break\n"
+            "            time.sleep(0.1)\n"
+            "        else:\n"
+            "            raise AssertionError('focus helper window did not appear')\n"
+            "        subprocess.run(['xdotool', 'windowactivate', '--sync', "
+            "other_window], check=True)\n"
+            "        subprocess.run(['xdotool', 'mousemove', '--window', "
+            "window, '470', '432'], check=True)\n"
+            "        time.sleep(0.2)\n"
+            "        subprocess.run(['xdotool', 'click', '3'], check=True)\n"
+            "    else:\n"
+            "        subprocess.run(['xdotool', 'windowfocus', window], check=True)\n"
             "    if sys.argv[1] == 'key':\n"
             "        subprocess.run(['xdotool', 'key', 'a'], check=True)\n"
             "    elif sys.argv[1] == 'control':\n"
@@ -146,7 +177,7 @@ def main():
             "                break\n"
             "            except subprocess.TimeoutExpired:\n"
             "                pass\n"
-            "    else:\n"
+            "    elif sys.argv[1] == 'wheel':\n"
             "        subprocess.run(['xdotool', 'mousemove', '--window', "
             "window, '470', '432'], check=True)\n"
             "        time.sleep(0.2)\n"
@@ -158,11 +189,23 @@ def main():
             "    if app.poll() is None:\n"
             "        app.terminate()\n"
             "        app.communicate(timeout=5)\n"
+            "    for child in (other, manager):\n"
+            "        if child is not None:\n"
+            "            child.terminate()\n"
+            "            try:\n"
+            "                child.wait(timeout=5)\n"
+            "            except subprocess.TimeoutExpired:\n"
+            "                child.kill()\n"
+            "                child.wait()\n"
         )
         for mode in ("key", "control", "text", "unicode", "wheel"):
             run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                 project, env)
-    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, and wheel passed")
+        # A real window manager activates an unfocused window on the click.
+        # Direct windowfocus above would hide SDL swallowing that first click.
+        run(["xvfb-run", "-a", "dbus-run-session", "--", "python3",
+             "input_check.py", "secondary"], project, env)
+    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, wheel, and first right-click passed")
 
 
 if __name__ == "__main__":
