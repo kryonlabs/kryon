@@ -5,6 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +30,7 @@ if (!targetURL) await new Promise(resolve => server.listen(0, '127.0.0.1', resol
 const url = targetURL || 'http://127.0.0.1:' + server.address().port + '/demo.html';
 const browser = spawn('xvfb-run', ['-a', process.env.CHROMIUM || 'chromium', '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-site-isolation-trials', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], {env, detached: true, stdio: ['ignore', 'ignore', 'pipe']});
 let browserLog = '', socket, sequence = 0;
-const pending = new Map(), contexts = new Map(), exceptions = [], requests = [], consoleLines = [];
+const pending = new Map(), exceptions = [], requests = [], consoleLines = [];
 browser.stderr.on('data', chunk => { browserLog = (browserLog + chunk).slice(-4000); });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitFor(check, label, timeout = 25000) {
@@ -62,16 +63,11 @@ async function settled() {
 async function edit(source) {
   await evaluate(`(() => {const editor=document.getElementById('source-editor');editor.value=${JSON.stringify(source)};editor.dispatchEvent(new Event('input'));})()`);
 }
-async function rendererContext() {
-  const {frameTree} = await cdp('Page.getFrameTree');
-  const frame = frameTree.childFrames?.find(item => item.frame.url.includes('/assets/preview.html'));
-  assert.ok(frame, 'The portable Canvas host is loaded');
-  const context = [...contexts.values()].find(item => item.auxData?.frameId === frame.frame.id && item.auxData?.isDefault);
-  assert.ok(context, 'The renderer has a browser execution context');
-  return context.id;
-}
-async function pixelHash(context) {
-  return evaluate(`(() => {const canvas=document.querySelector('canvas');const bytes=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let hash=2166136261;for(let i=0;i<bytes.length;i++)hash=Math.imul(hash^bytes[i],16777619);return hash>>>0;})()`, context);
+async function pixelHash() {
+  // Capture the painted preview across the browser's iframe process boundary.
+  const clip = await evaluate(`(() => {const box=document.getElementById('live-preview').getBoundingClientRect();return {x:box.x+scrollX,y:box.y+scrollY,width:box.width,height:box.height,scale:1};})()`);
+  const {data} = await cdp('Page.captureScreenshot', {format: 'png', clip});
+  return createHash('sha256').update(Buffer.from(data, 'base64')).digest('hex');
 }
 async function screenshot(name) {
   const {data} = await cdp('Page.captureScreenshot', {format: 'png'});
@@ -86,8 +82,6 @@ try {
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, {once: true}); socket.addEventListener('error', reject, {once: true}); });
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
-    if (message.method === 'Runtime.executionContextCreated') contexts.set(message.params.context.id, message.params.context);
-    if (message.method === 'Runtime.executionContextDestroyed') contexts.delete(message.params.executionContextId);
     if (message.method === 'Runtime.exceptionThrown') exceptions.push(message.params.exceptionDetails);
     if (message.method === 'Runtime.consoleAPICalled') { consoleLines.push(message.params.args.map(item => item.value || item.description).join(' ')); if (consoleLines.length > 30) consoleLines.shift(); }
     if (message.method === 'Network.requestWillBeSent') requests.push(message.params.request.url);
@@ -104,14 +98,13 @@ try {
   console.log('Initial compile and rendering: ' + (Date.now() - started) + ' ms');
   assert.equal(await evaluate(`document.getElementById('workspace').dataset.view`), 'split');
   const original = await evaluate(`document.getElementById('source-editor').value`);
-  const context = await rendererContext();
-  const initialPixels = await pixelHash(context);
+  const initialPixels = await pixelHash();
   await screenshot('desktop');
   const edited = original.replace('"Made with Kryon"', '"Edited in the browser"');
   const editedAt = Date.now();
   await edit(edited);
   await settled();
-  assert.notEqual(await pixelHash(context), initialPixels, 'Editing source changes actual rendered pixels');
+  assert.notEqual(await pixelHash(), initialPixels, 'Editing source changes actual rendered pixels');
   console.log('Live edit and rendering: ' + (Date.now() - editedAt) + ' ms');
   await edit('using UI :: #import "kryon/Widgets";\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { while true {} return 0; }');
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'The runaway frame did not stop');
@@ -122,7 +115,7 @@ try {
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'The parser error did not appear');
   await edit(edited);
   await settled();
-  const beforeClick = await pixelHash(context);
+  const beforeClick = await pixelHash();
   const bounds = await evaluate(`(() => {const box=document.getElementById('live-preview').getBoundingClientRect();return {x:box.x,y:box.y,width:box.width};})()`);
   const cardWidth = Math.min(500, bounds.width - 40);
   const x = bounds.x + (bounds.width - cardWidth) / 2 + 40, y = bounds.y + 125;
@@ -130,18 +123,18 @@ try {
   await delay(120);
   await cdp('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
   await delay(400);
-  assert.notEqual(await pixelHash(context), beforeClick, 'The compiled button changes app state across VM frames');
-  const lastGoodPixels = await pixelHash(context);
+  assert.notEqual(await pixelHash(), beforeClick, 'The compiled button changes app state across VM frames');
+  const lastGoodPixels = await pixelHash();
   await edit(edited.replace('return 0', 'return missing_value'));
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'Compile error did not appear');
   assert.match(await evaluate(`document.getElementById('diagnostics').textContent`), /missing_value/);
-  assert.equal(await pixelHash(context), lastGoodPixels, 'Compile errors preserve the last working preview');
+  assert.equal(await pixelHash(), lastGoodPixels, 'Compile errors preserve the last working preview');
   await screenshot('diagnostics');
   await edit('using UI :: #import "kryon/Widgets";\nhost_api :: #system_library "host_api";\nOtherCall :: () -> s32 #foreign host_api;\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { return OtherCall(); }');
   await waitFor(() => evaluate(`document.getElementById('diagnostics').textContent.includes('OtherCall')`), 'The unsupported capability was not reported');
   await delay(150);
   assert.equal(await evaluate(`document.getElementById('status').dataset.state`), 'error', 'Rendering the previous program must not mark a rejected bundle successful');
-  assert.equal(await pixelHash(context), lastGoodPixels, 'Unsupported capabilities preserve the working instance');
+  assert.equal(await pixelHash(), lastGoodPixels, 'Unsupported capabilities preserve the working instance');
   await edit(edited);
   await settled();
   await evaluate(`document.querySelector('[data-view="source"]').click()`);
