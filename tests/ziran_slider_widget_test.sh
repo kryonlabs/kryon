@@ -2,8 +2,11 @@
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ziran=${ZIRAN_BIN:-"$repo/../ziran/build/bin/ziran"}
-work=$(mktemp -d)
+ziran_include=${ZIRAN_INCLUDE:-"$repo/../../ziranlang/ziran/include"}
+ziran_root=${ZIRAN_ROOT:-"${ziran_include%/include}"}
+ziran=${ZIRAN_BIN:-"$ziran_root/build/bin/ziran"}
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/slider-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_slider_widget_test.zi
 
@@ -18,9 +21,9 @@ set -- \
     --bind paint_queue:RasterImage=ziran_slider_widget_host:RasterImage
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" -o "$work/ir" "$source"
+    --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/../ziran/std" "$@" \
+    --module-path "$ziran_root/std" "$@" \
     --entry ziran_slider_widget_test:main -o "$work/source.zib" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
     --entry ziran_slider_widget_test:main -o "$work/saved.zib" \
@@ -42,7 +45,10 @@ for input in source saved; do
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_slider_widget_test:main "$@" \
         --root "$module_root" --module-path "$module_dir" \
-        --module-path "$repo/../ziran/std" -o "$output" "$module"
-    mv "$output/ziran_slider_widget_test.go" "$output/slider_case.go"
+        --module-path "$ziran_root/std" -o "$output" "$module"
+    for file in "$output"/*_test.go; do
+        test -f "$file" || continue
+        mv "$file" "${file%_test.go}_case.go"
+    done
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done
