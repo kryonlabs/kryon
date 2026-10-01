@@ -300,7 +300,10 @@ libdraw-native-plan9-test:
 	sh tests/host_keys_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test
+pixmap-surface-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
+
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test
 
 clean:
 	rm -rf $(BUILD_DIR)

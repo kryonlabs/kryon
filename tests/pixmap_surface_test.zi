@@ -1,0 +1,28 @@
+#import "pixmap"
+#import "drawing_props"
+#import "geometry"
+
+pixels: [35]u32;
+portrait: [48]u32;
+
+#program_export
+main :: () -> s32 {
+    for i: 0..cast(s32)34 { pixels[i] = cast(u32)0xabcdef }
+    if !PixmapBeginInto(cast(u32)0x102030, 7, 4, pixels[:]) { return 1 }
+    for i: 0..cast(s32)27 { if pixels[i] != cast(u32)0x102030 { return 2 } }
+    for i: 28..cast(s32)34 { if pixels[i] != cast(u32)0xabcdef { return 3 } }
+    RasterLine(.{6.0, 0.0, 0.0, 3.0}, .{255, 0, 0, 255})
+    if pixels[6] != cast(u32)0xff0000 || pixels[27] != cast(u32)0xff0000 || pixels[26] != cast(u32)0x102030 { return 4 }
+    RasterRoundedRectangle(.{-2.0, 2.0, 4.0, 5.0}, 0.0, 1, .{0, 255, 0, 255})
+    if pixels[14] != cast(u32)0x00ff00 || pixels[21] != cast(u32)0x00ff00 || pixels[23] != cast(u32)0x102030 { return 5 }
+    if PixmapBeginInto(cast(u32)0, 8, 5, pixels[:]) || PixmapBeginInto(cast(u32)0, 0, 1, pixels[:]) || PixmapBeginInto(cast(u32)0, 16385, 1, pixels[:]) { return 6 }
+    if pixmap_width != 7 || pixmap_height != 4 || pixels[14] != cast(u32)0x00ff00 { return 7 }
+    if !PixmapBeginInto(cast(u32)0xffffff, 4, 12, portrait[:]) { return 8 }
+    RasterLine(.{3.0, 0.0, 0.0, 11.0}, .{0, 0, 255, 255})
+    if portrait[3] != cast(u32)0x0000ff || portrait[47] != cast(u32)0x0000ff || portrait[46] != cast(u32)0xffffff { return 9 }
+    PixmapEndInto()
+    PixmapBegin(cast(u32)0x123456)
+    RasterLine(.{959.0, 599.0, 0.0, 0.0}, .{1, 2, 3, 255})
+    if pixmap_pixels[575999] != cast(u32)0x010203 || portrait[47] != cast(u32)0x0000ff || pixels[28] != cast(u32)0xabcdef { return 10 }
+    print("Pixmap caller-owned surfaces passed\n"); return 0
+}
