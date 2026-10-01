@@ -24,8 +24,9 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, {'Content-Type': mime || 'application/octet-stream'}).end(data);
   } catch { response.writeHead(404).end(); }
 });
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const url = 'http://127.0.0.1:' + server.address().port + '/demo.html';
+const targetURL = process.argv[2];
+if (!targetURL) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const url = targetURL || 'http://127.0.0.1:' + server.address().port + '/demo.html';
 const browser = spawn('xvfb-run', ['-a', process.env.CHROMIUM || 'chromium', '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-site-isolation-trials', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], {env, detached: true, stdio: ['ignore', 'ignore', 'pipe']});
 let browserLog = '', socket, sequence = 0;
 const pending = new Map(), contexts = new Map(), exceptions = [], requests = [], consoleLines = [];
@@ -110,6 +111,8 @@ try {
   const editedAt = Date.now();
   await edit(edited);
   await settled();
+  assert.notEqual(await pixelHash(context), initialPixels, 'Editing source changes actual rendered pixels');
+  console.log('Live edit and rendering: ' + (Date.now() - editedAt) + ' ms');
   await edit('using UI :: #import "kryon/Widgets";\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { while true {} return 0; }');
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'The runaway frame did not stop');
   assert.match(await evaluate(`document.getElementById('diagnostics').textContent`), /stopped after 1000000 statements/);
@@ -119,8 +122,6 @@ try {
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'The parser error did not appear');
   await edit(edited);
   await settled();
-  assert.notEqual(await pixelHash(context), initialPixels, 'Editing source changes actual rendered pixels');
-  console.log('Live edit and rendering: ' + (Date.now() - editedAt) + ' ms');
   const beforeClick = await pixelHash(context);
   const bounds = await evaluate(`(() => {const box=document.getElementById('live-preview').getBoundingClientRect();return {x:box.x,y:box.y,width:box.width};})()`);
   const cardWidth = Math.min(500, bounds.width - 40);
@@ -173,12 +174,16 @@ try {
   await evaluate(`document.querySelector('[data-view="preview"]').click()`);
   await waitFor(() => evaluate(`document.getElementById('status').textContent === 'Live · changes compiled'`), 'The compiled embedded preview did not render');
   assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth`), true);
+  await cdp('Page.navigate', {url: new URL('index.html', url).href});
+  await waitFor(() => evaluate(`(() => {const frame=document.querySelector('iframe[src="demo.html?mini"]');return frame?.contentDocument?.readyState === 'complete';})()`), 'The homepage embed did not load');
+  assert.equal(await evaluate(`(() => {const page=document.querySelector('iframe[src="demo.html?mini"]').contentDocument.documentElement;return page.scrollHeight <= page.clientHeight;})()`), true, 'The homepage embed shows its preview, status, and full-editor link without vertical overflow');
+  assert.equal(await evaluate(`!!document.querySelector('.hero .actions a[href="demo.html"]')`), true, 'The homepage links directly to the live editor');
   assert.deepEqual(exceptions, [], 'There are no browser runtime exceptions');
-  console.log('Kryon live editor: real compilation, pixels, interaction, compile and parser errors, bounded execution, recovery, switching, cancellation, reset, escaped source, responsive layout, and lazy embedded loading passed');
+  console.log('Kryon live editor: real compilation, pixels, interaction, compile and parser errors, bounded execution, recovery, switching, cancellation, reset, escaped source, responsive layout, lazy embedded loading, and homepage integration passed');
 } finally {
   if (socket) socket.close();
   try { process.kill(-browser.pid, 'SIGTERM'); } catch {}
   await new Promise(resolve => { if (browser.exitCode !== null || browser.signalCode !== null) resolve(); else browser.once('exit', resolve); });
-  server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  if (server.listening) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
   await fs.rm(profile, {recursive: true, force: true});
 }

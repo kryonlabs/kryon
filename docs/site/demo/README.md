@@ -32,3 +32,8 @@ server and private Xvfb/Chromium display. It checks real compilation, rendered
 pixels, persistent button state, error recovery, source escaping, cancellation,
 view switching, reset, responsive layout, and lazy loading in embeds. Its
 screenshots and logs live in `build/scratch/web-preview/`.
+Pass a deployed editor URL to run the same checks against a live site:
+
+```sh
+node tests/demo_browser.mjs https://kryonlabs.com/demo.html
+```
