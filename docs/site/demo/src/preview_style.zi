@@ -1,0 +1,61 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/PageRoute"
+
+preview_style_ready: bool;
+
+#program_export
+InstallPreviewStyle :: () {
+    if preview_style_ready { return }
+    preview_style_ready = true
+    query: [2048]u8
+    PageRouteReadQuery(query[:])
+    length: s64 = 0
+    while length < query.count && query[length] != cast(u8)0 { length += 1 }
+    text := TextView(query[0:length])
+    start: s64 = 0
+    if length > 0 && text[0] == cast(u8)63 { start = 1 }
+    index := start
+    mini: bool
+    paper: bool
+    while index <= length {
+        if index == length || text[index] == cast(u8)38 {
+            parameter := text[start:index]
+            if parameter == "mini" || (parameter.count >= 5 && parameter[0:5] == "mini=") { mini = true }
+            if parameter == "theme=waozi" { paper = true }
+            start = index + 1
+        }
+        index += 1
+    }
+    if !mini || !paper { return }
+    rules: StyleRules
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.style.fields = cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleFocus
+    rule.style.foreground = 0x202c29ff
+    rule.style.focus = 0x315e48ff
+    rules.items[0] = rule
+    rules.count = 1
+    kinds: [7]s32 = .{StyleKindButton(), StyleKindCheckbox(), StyleKindSlider(), StyleKindSliderThumb(), StyleKindProgress(), StyleKindToggle(), StyleKindToggleThumb()}
+    for index: 0..6 {
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = kinds[index]
+        rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleRadius | cast(u32)StyleField.StyleMaterial
+        rule.style.background = ifx index == 0 || index == 3 || index == 6 then cast(u32)0xfcfaf5ff else cast(u32)0xdce2d4ff
+        rule.style.border = 0xd9d6caff
+        rule.style.radius = 8.0
+        rule.style.material = MaterialKind.MaterialFlat
+        rule.order = rules.count
+        rules.items[rules.count] = rule
+        rules.count += 1
+    }
+    rule.selector = StyleDefaultSelector()
+    rule.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = 0x315e48ff
+    rule.style.foreground = 0xfcfaf5ff
+    rule.style.border = 0x315e48ff
+    rule.order = rules.count
+    rules.items[rules.count] = rule
+    rules.count += 1
+    InstallStyleRules(rules)
+}

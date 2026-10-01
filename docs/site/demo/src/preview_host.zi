@@ -1,0 +1,269 @@
+// The editor runs ordinary portable bundles using Kryon's existing Canvas
+// rasterizer and input. All UI behavior remains in the edited Ziran app.
+using Canvas :: #import "kryon/Canvas";
+using Geometry :: #import "kryon/geometry";
+using Drawing :: #import "kryon/drawing_props";
+#import "kryon/canvas_window"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/web"
+
+using HostValueKind;
+
+runtime :: #system_library "ziran";
+CapabilityCount :: (bundle: *void) -> u64 #foreign runtime "BundleCapabilityCount";
+CapabilityModule :: (bundle: *void, index: u64) -> *u8 #foreign runtime "BundleCapabilityModule";
+CapabilityFunction :: (bundle: *void, index: u64) -> *u8 #foreign runtime "BundleCapabilityFunction";
+
+preview_bundle: *void;
+preview_instance: *void;
+preview_fields: [13]HostField;
+preview_names: [13][32]u8;
+preview_real: [16]u8;
+preview_bool: [16]u8;
+preview_integer: [16]u8;
+preview_input_type: [32]u8;
+preview_revision: float64;
+preview_load_error: string;
+preview_error_bytes: [256]u8;
+
+HostNumber :: (value: HostValue) -> float32 {
+    if value.kind == HostReal { return cast(float32)value.real }
+    if value.kind == HostUnsigned { return cast(float32)value.bits }
+    return cast(float32)value.integer
+}
+
+HostText :: (value: HostValue) -> string {
+    return TextView(BytesFromPointer(value.data, value.length))
+}
+
+HostRectangle :: (value: HostValue) -> Rectangle {
+    return Rectangle.{HostNumber(value.fields[0].value), HostNumber(value.fields[1].value),
+        HostNumber(value.fields[2].value), HostNumber(value.fields[3].value)}
+}
+
+HostVector :: (value: HostValue) -> Vector2 {
+    return Vector2.{HostNumber(value.fields[0].value), HostNumber(value.fields[1].value)}
+}
+
+HostColor :: (value: HostValue) -> Color {
+    return Color.{cast(u8)HostNumber(value.fields[0].value), cast(u8)HostNumber(value.fields[1].value),
+        cast(u8)HostNumber(value.fields[2].value), cast(u8)HostNumber(value.fields[3].value)}
+}
+
+SupportedCapability :: (function: string) -> bool {
+    return function == "ReadPreviewInput" || function == "ReadPreviewCodepoint" ||
+        function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight" ||
+        function == "RasterRoundedRectangle" || function == "RasterRoundedRectangleOutline" ||
+        function == "RasterLine" || function == "RasterText" || function == "RasterTextClipped" ||
+        function == "RasterImage" || function == "ImageWidth" || function == "ImageHeight" ||
+        function == "SystemClipboardOpenHost" || function == "SystemClipboardByteHost" ||
+        function == "SystemClipboardWriteHost"
+}
+
+PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    function := TextFromCString(function_name)
+    result.kind = HostVoid
+    if function == "ReadPreviewInput" && count == 0 {
+        result.kind = HostRecord
+        result.type_name = *preview_input_type[0]
+        result.fields = *preview_fields[0]
+        result.field_count = cast(u64)13
+        return 1
+    }
+    if function == "ReadPreviewCodepoint" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)CanvasTypedCodepoint()
+        return 1
+    }
+    if function == "MeasureGlyphWidth" && count == 3 {
+        result.kind = HostInteger
+        result.integer = cast(s64)MeasureGlyphWidth(HostText(args[0]), cast(s32)HostNumber(args[1]), HostText(args[2]))
+        return 1
+    }
+    if function == "MeasureGlyphLineHeight" && count == 2 {
+        result.kind = HostInteger
+        result.integer = cast(s64)MeasureGlyphLineHeight(cast(s32)HostNumber(args[0]), HostText(args[1]))
+        return 1
+    }
+    if function == "RasterRoundedRectangle" && count == 4 {
+        RasterRoundedRectangle(HostRectangle(args[0]), HostNumber(args[1]), cast(s32)HostNumber(args[2]), HostColor(args[3]))
+        return 1
+    }
+    if function == "RasterRoundedRectangleOutline" && count == 5 {
+        RasterRoundedRectangleOutline(HostRectangle(args[0]), HostNumber(args[1]), cast(s32)HostNumber(args[2]), HostNumber(args[3]), HostColor(args[4]))
+        return 1
+    }
+    if function == "RasterLine" && count == 2 {
+        RasterLine(HostRectangle(args[0]), HostColor(args[1]))
+        return 1
+    }
+    if function == "RasterText" && count == 5 {
+        RasterText(HostText(args[0]), cast(s32)HostNumber(args[1]), cast(s32)HostNumber(args[2]), cast(s32)HostNumber(args[3]), HostColor(args[4]))
+        return 1
+    }
+    if function == "RasterTextClipped" && count == 6 {
+        RasterTextClipped(HostText(args[0]), cast(s32)HostNumber(args[1]), cast(s32)HostNumber(args[2]), cast(s32)HostNumber(args[3]), HostColor(args[4]), HostRectangle(args[5]))
+        return 1
+    }
+    if function == "RasterImage" && count == 9 {
+        RasterImage(HostText(args[0]), cast(u32)args[1].bits, HostRectangle(args[2]), HostRectangle(args[3]),
+            HostRectangle(args[4]), HostVector(args[5]), HostNumber(args[6]), HostNumber(args[7]), HostColor(args[8]))
+        return 1
+    }
+    if (function == "ImageWidth" || function == "ImageHeight") && count == 1 {
+        result.kind = HostInteger
+        if function == "ImageWidth" { result.integer = cast(s64)ImageWidth(HostText(args[0])) }
+        else { result.integer = cast(s64)ImageHeight(HostText(args[0])) }
+        return 1
+    }
+    if function == "SystemClipboardOpenHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardOpenHost()
+        return 1
+    }
+    if function == "SystemClipboardByteHost" && count == 1 {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardByteHost(cast(s32)HostNumber(args[0]))
+        return 1
+    }
+    if function == "SystemClipboardWriteHost" && count == 1 {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardWriteHost(HostText(args[0]))
+        return 1
+    }
+    return 0
+}
+
+PreviewStatus :: (state: string, message: string) {
+    mark := WebScope()
+    parent := WebGetObject(WebGlobal, WebName("parent"))
+    event := WebNewObject()
+    WebSet(event, WebName("type"), WebText("preview:status"))
+    WebSet(event, WebName("state"), WebText(state))
+    WebSet(event, WebName("message"), WebText(message))
+    WebSet(event, WebName("revision"), WebNumber(preview_revision))
+    unused WebCall2(parent, WebName("postMessage"), WebObject(event), WebText("*"))
+    WebEnd(mark)
+}
+
+LoadPreview :: () -> bool {
+    preview_load_error = "Unable to load the compiled preview. Check the program and try again."
+    path: [32]u8
+    if !CopyCString("/preview.zib", path[:]) { return false }
+    bundle := OpenBundle(*path[0])
+    if bundle == null { return false }
+    count := CapabilityCount(bundle)
+    bindings: [128]HostBinding
+    if count > cast(u64)128 { CloseBundle(bundle); return false }
+    index: u64 = 0
+    while index < count {
+        bindings[index].module = CapabilityModule(bundle, index)
+        bindings[index].function = CapabilityFunction(bundle, index)
+        if !SupportedCapability(TextFromCString(bindings[index].function)) {
+            prefix := "Unavailable preview capability: "
+            preview_load_error = "Unavailable preview capability."
+            unused CopyCString(prefix, preview_error_bytes[:])
+            if CopyCString(TextFromCString(bindings[index].function),
+                preview_error_bytes[cast(s64)prefix.count:]) {
+                preview_load_error = TextFromCString(*preview_error_bytes[0])
+            }
+            CloseBundle(bundle)
+            return false
+        }
+        bindings[index].call = PreviewCall
+        index += cast(u64)1
+    }
+    instance := InstantiateBundle(bundle, *bindings[0], count)
+    if instance == null { CloseBundle(bundle); return false }
+    LimitBundleSteps(instance, 1000000)
+    if preview_instance != null { CloseBundleInstance(preview_instance) }
+    if preview_bundle != null { CloseBundle(preview_bundle) }
+    preview_instance = instance
+    preview_bundle = bundle
+    return true
+}
+
+InputField :: (index: s32, name: string, type_name: *u8, kind: s32) {
+    unused CopyCString(name, preview_names[index][:])
+    preview_fields[index].name = *preview_names[index][0]
+    preview_fields[index].value.kind = kind
+    preview_fields[index].value.type_name = type_name
+}
+
+PrepareInput :: () {
+    unused CopyCString("float32", preview_real[:])
+    unused CopyCString("bool", preview_bool[:])
+    unused CopyCString("s32", preview_integer[:])
+    unused CopyCString("PreviewInput", preview_input_type[:])
+    InputField(0, "width", *preview_real[0], HostReal)
+    InputField(1, "height", *preview_real[0], HostReal)
+    InputField(2, "x", *preview_real[0], HostReal)
+    InputField(3, "y", *preview_real[0], HostReal)
+    InputField(4, "down", *preview_bool[0], HostInteger)
+    InputField(5, "pressed", *preview_bool[0], HostInteger)
+    InputField(6, "released", *preview_bool[0], HostInteger)
+    InputField(7, "secondary_down", *preview_bool[0], HostInteger)
+    InputField(8, "secondary_pressed", *preview_bool[0], HostInteger)
+    InputField(9, "secondary_released", *preview_bool[0], HostInteger)
+    InputField(10, "key", *preview_integer[0], HostInteger)
+    InputField(11, "modifiers", *preview_integer[0], HostInteger)
+    InputField(12, "wheel", *preview_real[0], HostReal)
+}
+
+SampleInput :: () {
+    viewport := CanvasViewport()
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+    preview_fields[0].value.real = cast(float64)viewport.width
+    preview_fields[1].value.real = cast(float64)viewport.height
+    preview_fields[2].value.real = cast(float64)pointer.x
+    preview_fields[3].value.real = cast(float64)pointer.y
+    preview_fields[4].value.integer = cast(s64)pointer.down
+    preview_fields[5].value.integer = cast(s64)pointer.pressed
+    preview_fields[6].value.integer = cast(s64)pointer.released
+    preview_fields[7].value.integer = cast(s64)secondary.down
+    preview_fields[8].value.integer = cast(s64)secondary.pressed
+    preview_fields[9].value.integer = cast(s64)secondary.released
+    preview_fields[10].value.integer = cast(s64)CanvasPressedKey()
+    preview_fields[11].value.integer = cast(s64)CanvasModifiers()
+    preview_fields[12].value.real = cast(float64)CanvasWheelMove()
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenCanvas() { return 1 }
+    SetTargetFPS(30)
+    PrepareInput()
+    PreviewStatus("ready", "")
+    while PollCanvas() {
+        mark := WebScope()
+        changed := WebAsBool(WebGet(WebModule, WebName("previewPending")))
+        loaded: bool
+        if changed {
+            preview_revision = WebGetNumber(WebModule, WebName("previewRevision"))
+            WebSet(WebModule, WebName("previewPending"), WebBool(false))
+            loaded = LoadPreview()
+            if !loaded { PreviewStatus("error", preview_load_error) }
+        }
+        WebEnd(mark)
+        BeginCanvasFrame()
+        if preview_instance != null {
+            SampleInput()
+            value: s64
+            has_result: s32
+            if RunBundleInstance(preview_instance, *value, *has_result) == 0 || value != cast(s64)0 {
+                CloseBundleInstance(preview_instance)
+                preview_instance = null
+                PreviewStatus("error", "Preview execution stopped. Check the program and try again.")
+            } else if loaded { PreviewStatus("rendered", "") }
+        }
+        unused EndCanvasFrame()
+    }
+    if preview_instance != null { CloseBundleInstance(preview_instance) }
+    if preview_bundle != null { CloseBundle(preview_bundle) }
+    CloseCanvas()
+    return 0
+}

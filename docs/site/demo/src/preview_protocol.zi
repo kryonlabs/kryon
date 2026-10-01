@@ -1,0 +1,27 @@
+// Raw observations shared by the portable app and the Canvas host.
+#scope_export
+PreviewInput :: struct {
+    width: float32
+    height: float32
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+    secondary_down: bool
+    secondary_pressed: bool
+    secondary_released: bool
+    key: s32
+    modifiers: s32
+    wheel: float32
+}
+
+host_api :: #system_library "host_api";
+ReadPreviewInput :: () -> PreviewInput #foreign host_api;
+ReadPreviewCodepoint :: () -> s32 #foreign host_api;
+
+#program_export
+PreviewInputRead :: () -> PreviewInput { return ReadPreviewInput() }
+
+#program_export
+PreviewCodepointRead :: () -> s32 { return ReadPreviewCodepoint() }
