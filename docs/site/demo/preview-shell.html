@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon live preview</title>
+  <style>html,body{margin:0;width:100%;height:100%;background:#f7f3eb}#canvas-frame,canvas{width:100%;height:100%}canvas{display:block}#result{display:none}</style>
+</head>
+<body>
+  <div id="canvas-frame"><canvas id="canvas"></canvas></div>
+  <pre id="result">pending</pre>
+  <script>
+    var Module = {
+      previewPending: false,
+      previewRevision: 0,
+      printErr: function (message) {
+        parent.postMessage({type: 'preview:diagnostic', revision: Module.previewRevision, message: String(message)}, '*');
+      },
+      onAbort: function (message) {
+        parent.postMessage({type: 'preview:status', state: 'error', revision: Module.previewRevision, message: String(message)}, '*');
+      }
+    };
+    addEventListener('message', function (event) {
+      if (event.source !== parent || event.data.type !== 'preview:bundle') return;
+      if (!(event.data.bundle instanceof ArrayBuffer) || event.data.bundle.byteLength > 16777216) return;
+      Module.FS.writeFile('/preview.zib', new Uint8Array(event.data.bundle));
+      Module.previewRevision = event.data.revision;
+      Module.previewPending = true;
+    });
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

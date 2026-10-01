@@ -28,6 +28,12 @@ jobs:
           test -f docs/site/index.html
           test -f docs/site/demo.html
           test -f docs/site/assets/widgets.html
+          test -f docs/site/assets/preview.html
+          test -f docs/site/assets/playground-runtime.js
+          test -f docs/site/assets/playground-runtime.wasm
+          test -f docs/site/demo.js
+          test -f docs/site/demo.css
+          test -f docs/site/demo-worker.js
           test -f docs/site/current.css
           test -f docs/site/favicon.svg
           test -f docs/site/favicon-32.png

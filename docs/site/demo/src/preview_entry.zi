@@ -1,0 +1,30 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/tree_draw"
+#import "app"
+#import "preview_protocol"
+
+preview_session: Session;
+
+#program_export
+Tick :: () -> s32 {
+    if !SessionValid(preview_session) { preview_session = SessionOpen() }
+    if !SessionValid(preview_session) { return 1 }
+    input := PreviewInputRead()
+    viewport := Rectangle.{0.0, 0.0, input.width, input.height}
+    pointer := PointerFrame.{input.x, input.y, input.down, input.pressed, input.released}
+    TreePointerUpdate(preview_session, pointer)
+    TreeSecondaryPointerUpdate(preview_session,
+        SecondaryPointerFrame.{input.secondary_down, input.secondary_pressed, input.secondary_released})
+    KeyboardModifiersSend(preview_session, input.modifiers)
+    if input.key != 0 { KeyboardSend(preview_session, input.key) }
+    codepoint := PreviewCodepointRead()
+    while codepoint != 0 {
+        TypedCodepointSend(preview_session, codepoint)
+        codepoint = PreviewCodepointRead()
+    }
+    PointerWheelSend(preview_session, input.x, input.y, input.wheel)
+    if BeginFrame(preview_session, cast(u64)1, viewport) != FrameStatus.FrameOk { return 1 }
+    if Frame(preview_session, viewport) != 0 { return 1 }
+    if EndFrame(preview_session) != FrameStatus.FrameOk { return 1 }
+    return 0
+}

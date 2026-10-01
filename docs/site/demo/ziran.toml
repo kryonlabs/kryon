@@ -6,7 +6,7 @@ bridge_modules = ["app"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-ref = "c0e0e9847d9bf7c5e4368ec2745c3e7262323b50"
+ref = "master"
 
 [tool.kryon]
 default_profile = "web"
@@ -16,4 +16,4 @@ backend = "canvas"
 
 [dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
-ref = "eba5a07370e6fb8260274a867e8cc7edcd67b89c"
+ref = "master"
