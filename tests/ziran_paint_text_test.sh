@@ -3,7 +3,7 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-ziran_dir=$(CDPATH= cd -- "$(dirname -- "$ziran")/../.." && pwd)
+ziran_dir=$ziran_root
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
