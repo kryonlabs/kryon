@@ -1,0 +1,53 @@
+#import "raylib_runtime"
+#import "ziran_raylib_retained_host"
+
+#program_export
+main :: () -> s32 {
+    if BeginRetainedFrame(0, 100) || BeginRetainedFrame(100, -1) ||
+    EndRetainedFrame() || EndRetainedFrameReusePrevious() || loads != 0 {
+        return 1
+    }
+    // Partial attachments, incomplete framebuffers and mismatched sizes
+    // must fail before drawing and release each partial allocation once.
+    for mode: 1..3 {
+        allocation_mode = cast(s32)mode
+        if BeginRetainedFrame(100, 100) || begins != 0 ||
+        unloads != mode || RetainedPreviousFrameTexture().id != cast(u32)0 {
+            return 2
+        }
+    }
+    if completeness_checks != 1 { return 3 }
+    allocation_mode = 0
+    if !BeginRetainedFrame(100, 100) { return 4 }
+    if BeginRetainedFrame(200, 200) || loads != 4 || unloads != 3 { return 5 }
+    if !EndRetainedFrame() || EndRetainedFrame() ||
+    RetainedPreviousFrameTexture().id != cast(u32)104 ||
+    presented != cast(u32)104 || begins != 1 || ends != 1 {
+        return 6
+    }
+    // A failed second buffer keeps the last complete frame and can retry.
+    allocation_mode = 1
+    if BeginRetainedFrame(100, 100) || unloads != 4 ||
+    RetainedPreviousFrameTexture().id != cast(u32)104 || EndRetainedFrame() {
+        return 7
+    }
+    allocation_mode = 0
+    if !BeginRetainedFrame(100, 100) || !EndRetainedFrameReusePrevious() ||
+    RetainedPreviousFrameTexture().id != cast(u32)104 || presented != cast(u32)104 {
+        return 8
+    }
+    if !BeginRetainedFrame(100, 100) || loads != 6 || !EndRetainedFrame() ||
+    RetainedPreviousFrameTexture().id != cast(u32)106 {
+        return 9
+    }
+    if !BeginRetainedFrame(50, 50) || unloads != 6 || loads != 7 ||
+    RetainedPreviousFrameTexture().id != cast(u32)0 || !EndRetainedFrame() {
+        return 10
+    }
+    allocation_mode = 4
+    if BeginRetainedFrame(60, 60) || unloads != 7 ||
+    RetainedPreviousFrameTexture().id != cast(u32)0 || EndRetainedFrame() {
+        return 11
+    }
+    return 0
+}

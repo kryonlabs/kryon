@@ -80,6 +80,8 @@ HostRaylibRenderTexture :: struct {
     depth: Texture2D
 }
 HostRaylibLoadRenderTexture :: (width: s32, height: s32) -> HostRaylibRenderTexture #foreign raylib "LoadRenderTexture";
+HostRaylibRenderTextureValid :: (target: HostRaylibRenderTexture) -> bool #foreign raylib "IsRenderTextureValid";
+HostRaylibFramebufferComplete :: (id: u32) -> bool #foreign raylib "rlFramebufferComplete";
 HostRaylibUnloadRenderTexture :: (target: HostRaylibRenderTexture) #foreign raylib "UnloadRenderTexture";
 HostRaylibBeginTextureMode :: (target: HostRaylibRenderTexture) #foreign raylib "BeginTextureMode";
 HostRaylibEndTextureMode :: () #foreign raylib "EndTextureMode";
@@ -516,9 +518,9 @@ RaylibDrawImageStrip :: (texture: Texture2D, source: Rectangle,
     // An unrotated image inside its strip needs no scissor, which would
     // flush the draw batch.
     if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 &&
-        destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
-        destination.x + destination.width <= cast(float32)(x + width) &&
-        destination.y + destination.height <= cast(float32)(y + height) {
+    destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
+    destination.x + destination.width <= cast(float32)(x + width) &&
+    destination.y + destination.height <= cast(float32)(y + height) {
         HostRaylibDrawTexture(texture, source, destination, origin, rotation, tint)
         return
     }
@@ -550,7 +552,7 @@ RaylibDrawImageClipped :: (texture: Texture2D, source: Rectangle,
         radius = cast(float32)height * 0.5
     }
     if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 &&
-        texture.width > 0 && texture.height > 0 {
+    texture.width > 0 && texture.height > 0 {
         RaylibDrawImageRounded(texture, source, destination, clip, radius, tint)
         return
     }
@@ -904,7 +906,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 RaylibSmoothable :: (bounds: Rectangle, radius: float32,
     scale: float32) -> bool {
     return radius > 0.0 && bounds.width * scale >= 2.0 &&
-        bounds.height * scale >= 2.0
+    bounds.height * scale >= 2.0
 }
 
 // rlgl's mode for independent triangles.
@@ -1142,7 +1144,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     if cast(float32)x >= clip.x && cast(float32)y >= clip.y {
         extent := RaylibTextExtent(value, font)
         if cast(float32)x + extent.x <= clip.x + clip.width &&
-            cast(float32)y + extent.y <= clip.y + clip.height {
+        cast(float32)y + extent.y <= clip.y + clip.height {
             RasterText(value, x, y, font, color)
             return
         }
@@ -1156,7 +1158,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
 // sampleable through RetainedPreviousFrameTexture while the next frame renders.
 #program_export
 BeginRetainedFrame :: (width: s32, height: s32) -> bool {
-    if width <= 0 || height <= 0 { return false }
+    if retained_frame_active || width <= 0 || height <= 0 { return false }
     if retained_frame_width != width || retained_frame_height != height {
         index: s32 = 0
         while index < 2 {
@@ -1172,10 +1174,17 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
         retained_frame_height = height
     }
     if !retained_frame_ready[retained_frame_render_index] {
-        retained_frame_targets[retained_frame_render_index] =
-        HostRaylibLoadRenderTexture(width, height)
-        retained_frame_ready[retained_frame_render_index] =
-        retained_frame_targets[retained_frame_render_index].id != cast(u32)0
+        target := HostRaylibLoadRenderTexture(width, height)
+        // A framebuffer ID can survive a failed attachment allocation.
+        // Release partial targets and let the caller draw directly instead.
+        if !HostRaylibRenderTextureValid(target) ||
+        target.texture.width != width || target.texture.height != height ||
+        !HostRaylibFramebufferComplete(target.id) {
+            if target.id != cast(u32)0 { HostRaylibUnloadRenderTexture(target) }
+            return false
+        }
+        retained_frame_targets[retained_frame_render_index] = target
+        retained_frame_ready[retained_frame_render_index] = true
     }
     if !retained_frame_ready[retained_frame_render_index] { return false }
     HostRaylibBeginDrawing()

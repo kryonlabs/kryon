@@ -1,0 +1,63 @@
+#import "raylib_runtime"
+#import "paint_texture"
+#import "drawing_props"
+#import "geometry"
+
+allocation_mode: s32;
+loads: s32;
+unloads: s32;
+completeness_checks: s32;
+begins: s32;
+ends: s32;
+presented: u32;
+
+#program_export
+LoadRenderTexture :: (width: s32, height: s32) -> HostRaylibRenderTexture {
+    loads += 1
+    target: HostRaylibRenderTexture
+    if allocation_mode == 4 { return target }
+    target.id = cast(u32)loads
+    target.texture = Texture2D.{cast(u32)(100 + loads), width, height, 1, 7}
+    target.depth = Texture2D.{cast(u32)(200 + loads), width, height, 1, 19}
+    if allocation_mode == 1 { target.texture.id = cast(u32)0 }
+    if allocation_mode == 3 { target.texture.width = width + 1 }
+    return target
+}
+
+#program_export
+IsRenderTextureValid :: (target: HostRaylibRenderTexture) -> bool {
+    return target.id != cast(u32)0 && target.texture.id != cast(u32)0 &&
+    target.depth.id != cast(u32)0
+}
+
+#program_export
+rlFramebufferComplete :: (id: u32) -> bool {
+    unused id
+    completeness_checks += 1
+    return allocation_mode != 2
+}
+
+#program_export
+UnloadRenderTexture :: (target: HostRaylibRenderTexture) {
+    unused target
+    unloads += 1
+}
+
+#program_export
+BeginDrawing :: () { begins += 1 }
+#program_export
+EndDrawing :: () { ends += 1 }
+#program_export
+BeginTextureMode :: (target: HostRaylibRenderTexture) { unused target }
+#program_export
+EndTextureMode :: () {}
+#program_export
+DrawTexturePro :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
+    origin: Vector2, rotation: float32, tint: Color) {
+    unused source
+    unused destination
+    unused origin
+    unused rotation
+    unused tint
+    presented = texture.id
+}
