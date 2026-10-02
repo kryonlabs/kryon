@@ -76,6 +76,7 @@ list_box_widget.zi
 material.zi
 menu.zi
 menu_props.zi
+menu_widget.zi
 modal.zi
 modal_frame_widget.zi
 modal_props.zi

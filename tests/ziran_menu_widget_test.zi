@@ -1,0 +1,127 @@
+#import "session"
+#import "menu_props"
+#import "menu_widget"
+#import "menu"
+#import "geometry"
+#import "paint_queue"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+Drawing :: #import "tree_draw";
+Host :: #import "ziran_context_menu_widget_host";
+using MenuItemKind;
+using WidgetKind;
+
+state: MenuState;
+session: Session;
+result: MenuResult;
+disable_open: bool;
+
+Frame :: (input: MenuKeyboardInput, focus: bool = false, scale: float32 = 1.0) -> bool {
+    cursor: [3]MenuItem
+    cursor[0].label = "Block"; cursor[0].id = 10; cursor[0].checked = true; cursor[0].kind = MenuItemKind.MenuRadio
+    cursor[1].label = "Underline"; cursor[1].id = 11
+    deeper: [1]MenuItem
+    deeper[0].label = "Zoom"; deeper[0].id = 20
+    cursor[2].label = "More"; cursor[2].kind = MenuItemKind.MenuSubmenu; cursor[2].submenu = deeper[:]
+    file: [6]MenuItem
+    file[0].label = "Open"; file[0].accelerator = "Ctrl+O"; file[0].id = 1; file[0].disabled = disable_open
+    file[1].label = "Disabled"; file[1].id = 2; file[1].disabled = true
+    file[2].kind = MenuItemKind.MenuSeparator
+    file[3].label = "Cursor"; file[3].kind = MenuItemKind.MenuSubmenu; file[3].submenu = cursor[:]
+    file[4].label = "Quit"; file[4].id = 3
+    file[5].label = "Empty"; file[5].kind = MenuItemKind.MenuSubmenu
+    tools: [32]MenuItem
+    for index: 0..31 { tools[index].label = "Command"; tools[index].id = 1000 + cast(s32)index }
+    tools[31].label = "Last command"
+    groups: [2]MenuGroup
+    groups[0].label = "File"; groups[0].items = file[:]
+    groups[1].label = "Tools"; groups[1].items = tools[:]
+    props: MenuProps
+    props.key = cast(u64)1200; props.bounds = .{0.0, 0.0, 500.0, 34.0 * scale}
+    props.input = input; props.focus_requested = focus; props.scale = scale
+    if cast(s32)Drawing.BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 500.0, 320.0}) != 0 { return false }
+    background := TreeSubmitCurrent(session, cast(u64)99, WidgetKindButton, Rectangle.{0.0, 0.0, 500.0, 320.0})
+    TreeSetInteractive(session, background, false, false, 0)
+    result = Menu(session, props, groups[:], *state)
+    if cast(s32)Drawing.EndFrame(session) != 0 { return false }
+    return true
+}
+ClickKey :: (key: u64) -> bool {
+    for index: 0..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.key == key {
+            TreePointerUpdate(session, PointerFrame.{node.bounds.x + node.bounds.width * 0.5,
+                node.bounds.y + node.bounds.height * 0.5, true, true, true})
+            return true
+        }
+    }
+    return false
+}
+Row :: (depth: s32, index: s32) -> u64 {
+    return MenuRowKey(MenuPanelKey(cast(u64)1200, *state, depth), index)
+}
+Failure :: (message: string) -> s32 { print("%\n", message); return 1 }
+
+#program_export
+main :: () -> s32 {
+    session = SessionOpen()
+    if !SessionValid(session) { return 100 }
+    defer SessionClose(session)
+    empty: MenuKeyboardInput
+    if !Frame(empty) || state.open_index != -1 || result.activated_id != 0 { return Failure("Closed menu") }
+    if !ClickKey(MenuGroupKey(cast(u64)1200, 0)) || !Frame(empty) || state.open_index != 0 {
+        return Failure("Pointer opens group")
+    }
+    if !ClickKey(Row(0, 1)) || !Frame(empty) || result.activated_id != 0 || state.open_index != 0 {
+        return Failure("Disabled row does not activate or dismiss")
+    }
+    if !ClickKey(Row(0, 3)) || !Frame(empty) || state.depth != 1 { return Failure("Pointer opens submenu") }
+    if !ClickKey(Row(1, 1)) || !Frame(empty) || result.activated_id != 11 || state.open_index != -1 || state.focused {
+        return Failure("Submenu command closes and releases keyboard")
+    }
+    if !Frame(empty, true) || !state.focused || state.open_index != -1 { return Failure("Keyboard focus") }
+    down: MenuKeyboardInput; down.down = true
+    if !Frame(down) || state.open_index != 0 || state.selected[0] != 0 { return Failure("Keyboard opens group") }
+    if !Frame(down) || state.selected[0] != 3 { return Failure("Keyboard skips disabled and separator rows") }
+    right: MenuKeyboardInput; right.right = true
+    if !Frame(right) || state.depth != 1 || state.selected[1] != 0 { return Failure("Keyboard opens submenu") }
+    if !Frame(down) || !Frame(down) || state.selected[1] != 2 || !Frame(right) || state.depth != 2 {
+        return Failure("Nested submenu navigation")
+    }
+    left: MenuKeyboardInput; left.left = true
+    if !Frame(left) || state.depth != 1 || !Frame(right) || state.depth != 2 { return Failure("Submenu backtracking") }
+    enter: MenuKeyboardInput; enter.enter = true
+    if !Frame(enter) || result.activated_id != 20 || state.open_index != -1 { return Failure("Nested command activation") }
+    if !Frame(empty, true) || !Frame(down) { return Failure("Reopen keyboard menu") }
+    end: MenuKeyboardInput; end.end = true
+    if !Frame(end) || state.selected[0] != 5 || !Frame(enter) || result.activated_id != 0 || state.open_index != 0 {
+        return Failure("Empty submenu cannot activate")
+    }
+    if !Frame(right) || state.open_index != 1 || !Frame(end) || state.selected[0] != 31 || state.scroll[0] <= 0 {
+        return Failure("Overflow menu keyboard scrolling")
+    }
+    if !ClickKey(Row(0, 31)) || !Frame(empty) || result.activated_id != 1031 || state.open_index != -1 {
+        return Failure("Overflow menu last command is reachable")
+    }
+    if !ClickKey(MenuGroupKey(cast(u64)1200, 0)) || !Frame(empty) { return Failure("Reopen pointer menu") }
+    TreePointerUpdate(session, PointerFrame.{475.0, 310.0, true, true, true})
+    if !Frame(empty) || state.open_index != -1 || result.activated_id != 0 { return Failure("Outside dismissal") }
+    background := TreeChild(session, 0, cast(u64)99, WidgetKindButton)
+    if TreeTakeActivationAt(session, background) { return Failure("Outside click leaked to page") }
+    if !ClickKey(MenuGroupKey(cast(u64)1200, 0)) || !Frame(empty) { return Failure("Hover setup") }
+    group := TreeChild(session, TreeChild(session, 0, cast(u64)1200, WidgetKindMenu), MenuGroupKey(cast(u64)1200, 1), WidgetKindSelectable)
+    bounds := TreeNodeAt(session, group).bounds
+    TreePointerUpdate(session, PointerFrame.{bounds.x + 10.0, bounds.y + 10.0, false, false, false})
+    if !Frame(empty) || state.open_index != 1 { return Failure("Hover switches groups") }
+    escape: MenuKeyboardInput; escape.escape = true
+    if !Frame(escape) || state.open_index != -1 || state.focused { return Failure("Escape releases focus") }
+    if !Frame(empty, true) || !Frame(right) || state.top_index != 0 { return Failure("Closed bar keyboard wraps") }
+    if !Frame(empty, true) || state.focused { return Failure("Focus shortcut toggles off") }
+    if !ClickKey(MenuGroupKey(cast(u64)1200, 0)) || !Frame(empty) || !ClickKey(Row(0, 0)) { return Failure("Changed disabled state setup") }
+    disable_open = true
+    if !Frame(empty) || result.activated_id != 0 || state.open_index != 0 { return Failure("Current disabled state rejects a queued click") }
+    if !Frame(escape) || !Frame(empty, false, 2.0) { return Failure("Scaled menu") }
+    if Host.ContextMenuLabelCount() <= 0 { return Failure("Menu paint was not flushed") }
+    return 0
+}

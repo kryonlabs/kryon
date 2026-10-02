@@ -1,5 +1,5 @@
 #import "geometry"
-host_api :: #system_library "host_api";
+#import "menu"
 
 MenuItemKind :: enum {
     MenuCommand :: 0
@@ -9,12 +9,6 @@ MenuItemKind :: enum {
     MenuSubmenu :: 4
 }
 
-MenuMode :: enum {
-    MenuModeBar :: 0
-    MenuModePopup :: 1
-    MenuModeContext :: 2
-}
-
 MenuItem :: struct {
     kind: MenuItemKind
     label: string
@@ -22,37 +16,50 @@ MenuItem :: struct {
     id: s32
     disabled: bool
     checked: bool
-    submenu: *MenuItem
-    submenu_count: s32
+    submenu: []MenuItem
 }
 
 MenuGroup :: struct {
-    bounds: Rectangle
     label: string
-    items: *MenuItem
-    item_count: s32
+    items: []MenuItem
+}
+
+// The application retains navigation between frames, never the item slices.
+MenuState :: struct {
+    initialized: bool
+    open_index: s32
+    top_index: s32
+    focused: bool
+    depth: s32
+    selected: [4]s32
+    scroll: [4]s32
+    reveal: bool
+    pointer_valid: bool
+    pointer_x: float32
+    pointer_y: float32
 }
 
 MenuResult :: struct {
     activated_id: s32
     open_index: s32
+    focused: bool
 }
 
 MenuProps :: struct {
+    key: u64
     id: s32
     class_name: s32
-    mode: MenuMode
     bounds: Rectangle
-    trigger: Rectangle
-    menus: *MenuGroup
-    menu_count: s32
-    items: *MenuItem
-    item_count: s32
-    open_index: *s32
-    open: *s32
-    x: *s32
-    y: *s32
+    scale: float32
+    focus_requested: bool
+    input: MenuKeyboardInput
 }
 
 #program_export
-Menu :: (menu: MenuProps) -> MenuResult #foreign host_api;
+MenuStateInit :: (state: *MenuState) {
+    if state == null { return }
+    state.* = MenuState.{}
+    state.initialized = true
+    state.open_index = -1
+    for depth: 0..3 { state.selected[depth] = -1 }
+}
