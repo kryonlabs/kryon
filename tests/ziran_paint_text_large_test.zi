@@ -1,0 +1,83 @@
+#import "drawing_props";
+#import "geometry";
+#import "paint_queue";
+#import "session";
+#import "tree";
+#import "tree_draw";
+
+draws: s32;
+bad: bool;
+
+// Queue many glyph-sized buffers, reusing each immediately. The total text
+// exceeds the old frame limit, including thousands of temporary buffers.
+QueueLabels :: (session: Session) {
+    for index: 0..4999 {
+        bytes: [8]u8 = .[49, 50, 51, 52, 53, 54, 55, 56]
+        PaintClippedLabel(session, -1, TextView(bytes[:]), 0, 0, 14,
+            Color.{1, 2, 3, 255}, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        for at: 0..7 { bytes[at] = 88 }
+    }
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused x; unused y; unused font; unused color
+    if value != "12345678" { bad = true }
+    draws += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if clip.width != 100.0 { bad = true }
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { unused bounds; unused color }
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) { unused bounds; unused radius; unused segments; unused color }
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds; unused radius; unused segments; unused width; unused color
+}
+#program_export
+RasterImage :: (path: string, id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {
+    unused path; unused id; unused source; unused destination; unused clip
+    unused origin; unused rotation; unused radius; unused tint
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    for frame: 0..1 {
+        BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        QueueLabels(session)
+        if PendingPaintCount(session) != 5000 || PaintOverflow(session) { return 1 }
+        if PendingPaintAt(session, 0).value != "12345678" ||
+            PendingPaintAt(session, 4999).value != "12345678" { return 2 }
+        result := EndFrameRetained(session, true)
+        if cast(s32)result.status != 0 || result.paint_unchanged ||
+            result.paint_count != 5000 { return 3 }
+    }
+    if draws != 10000 || bad { return 4 }
+    // Overflow never emits partially borrowed or stale text, including a
+    // caller that flushes directly instead of committing through EndFrame.
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    oversized: [32769]u8
+    PaintLabel(session, -1, TextView(oversized[:]), 0, 0, 14, Color.{})
+    if !PaintOverflow(session) { return 6 }
+    PaintFlush(session)
+    if draws != 10000 || bad || PendingPaintCount(session) != 0 { return 7 }
+    TreeCancel(session)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    PaintLabel(session, -1, TextView(oversized[:]), 0, 0, 14, Color.{})
+    if cast(s32)EndFrame(session) != 8 || draws != 10000 { return 8 }
+    PaintDispose(session)
+    if !SessionClose(session) { return 5 }
+    return 0
+}

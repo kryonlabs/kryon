@@ -48,6 +48,7 @@ PaintCommand :: struct {
     // pass a label formatted into its own short-lived buffer.
     text_start: s64
     text_count: s64
+    text_block: s32
     owns_text: bool
 }
 
@@ -73,8 +74,8 @@ PaintCommands :: struct {
 pending_paint: [9]PaintCommands;
 ordered_paint: [9]Vec(QueuedPaint);
 PAINT_TEXT_CAPACITY :: 32768
-pending_text: [9][PAINT_TEXT_CAPACITY]u8;
-pending_text_count: [9]s64;
+PaintTextBlock :: struct { length: s32; bytes: [PAINT_TEXT_CAPACITY]u8; }
+pending_text: [9]Vec(PaintTextBlock);
 
 // The previous committed paint plan is retained by value. Strings and asset
 // paths are copied byte-for-byte so equality does not depend on borrowed
@@ -95,22 +96,35 @@ paint_snapshot_asset_counts: [9]s64;
 paint_snapshots_valid: [9]bool;
 frame_paint_unchanged: [9]bool;
 
-// Copies a queued command's text into the session's frame text. Text that
-// does not fit keeps the caller's view, which must then outlive the flush.
+// Every queued label owns its text, including large grids of short-lived
+// glyph buffers. Blocks grow with the frame's actual text. A label larger
+// than one block or an allocation failure cancels the frame before drawing.
 KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
     if data.value.count == 0 { return data }
-    start: s64 = pending_text_count[slot]
-    if start + data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
+    if data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
+        pending_paint[slot].overflow = true
         return data
     }
-    at: s64 = 0
-    while at < data.value.count {
-        pending_text[slot][start + at] = data.value[at]
+    block_index: s32 = cast(s32)pending_text[slot].count - 1
+    if block_index < 0 || data.value.count >
+        cast(s64)(PAINT_TEXT_CAPACITY - pending_text[slot][block_index].length) {
+        block: PaintTextBlock
+        if !VecPush(pending_text[slot], block) {
+            pending_paint[slot].overflow = true
+            return data
+        }
+        block_index += 1
+    }
+    start: s32 = pending_text[slot][block_index].length
+    at: s32 = 0
+    while at < cast(s32)data.value.count {
+        pending_text[slot][block_index].bytes[start + at] = data.value[at]
         at += 1
     }
-    pending_text_count[slot] = start + at
-    data.text_start = start
+    pending_text[slot][block_index].length = start + at
+    data.text_start = cast(s64)start
     data.text_count = data.value.count
+    data.text_block = block_index
     data.owns_text = true
     return data
 }
@@ -612,7 +626,7 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
 #program_export
 PaintClear :: (session: Session) {
     VecClear(pending_paint[SessionIndex(session)].items)
-    pending_text_count[SessionIndex(session)] = 0
+    VecClear(pending_text[SessionIndex(session)])
     pending_paint[SessionIndex(session)].overflow = false
     pending_paint[SessionIndex(session)].overlays = false
     pending_paint[SessionIndex(session)].ordered = false
@@ -668,7 +682,7 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     data: PaintCommand = pending_paint[SessionIndex(session)].items[index].data
     if data.owns_text {
         slot: s32 = SessionIndex(session)
-        data.value = TextView(pending_text[slot][data.text_start:
+        data.value = TextView(pending_text[slot][data.text_block].bytes[data.text_start:
             data.text_start + data.text_count])
     }
     return data
@@ -834,13 +848,13 @@ FramePaintUnchanged :: (session: Session) -> bool {
 
 #program_export
 PaintFlush :: (session: Session) {
-    if !PaintOrder(session) { PaintClear(session); return }
+    if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
         command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
         if command.data.owns_text {
             slot: s32 = SessionIndex(session)
-            command.data.value = TextView(pending_text[slot][
+            command.data.value = TextView(pending_text[slot][command.data.text_block].bytes[
                 command.data.text_start:
                 command.data.text_start + command.data.text_count])
         }
@@ -856,7 +870,7 @@ PaintDispose :: (session: Session) {
     VecFree(pending_paint[session.slot].items)
     VecFree(ordered_paint[session.slot])
     VecFree(paint_snapshots[session.slot])
-    pending_text_count[session.slot] = 0
+    VecFree(pending_text[session.slot])
     pending_paint[session.slot].overflow = false
     paint_snapshot_value_counts[session.slot] = 0
     paint_snapshot_asset_counts[session.slot] = 0
