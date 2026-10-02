@@ -30,6 +30,8 @@ ModalFrameResult :: struct {
     dismissed: bool
     left_clicked: bool
     right_clicked: bool
+    // The panel's content scope is open: submit the content, then End it.
+    opened: bool
 }
 
 // A message and action dialog. Actions are borrowed values supplied to

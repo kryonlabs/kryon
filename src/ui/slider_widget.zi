@@ -70,14 +70,16 @@ SliderPrepared :: struct {
     label: StyleFrame
     font: s32
     line_height: s32
+    value_text: string
 }
 
 #program_export
 PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
-    label_text: string, vertical: bool, disabled: bool,
+    label_text: string, value_text: string, vertical: bool, disabled: bool,
     class_name: s32) -> SliderPrepared {
     prepared: SliderPrepared
     prepared.key = key
+    prepared.value_text = value_text
     if prepared.key == cast(u64)0 && id > 0 {
         prepared.key = cast(u64)cast(u32)id
     }
@@ -105,7 +107,7 @@ PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
     prepared.font = ResolveFont(0,
         StyleFontValue(prepared.label.value.fields,
             prepared.label.value.font_size), 14)
-    if label_text != "" {
+    if label_text != "" || value_text != "" {
         prepared.line_height = GlyphLineHeight(prepared.font,
             prepared.label.value.typeface)
     }
@@ -118,13 +120,18 @@ PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
         if bounds.width < min_length { bounds.width = min_length }
         if bounds.height < thumb_size { bounds.height = thumb_size }
     }
-    if label_text == "" {
+    if label_text == "" && value_text == "" {
         prepared.layout.bounds = bounds
         prepared.layout.track = bounds
     } else {
+        value_width: float32 = 0.0
+        if value_text != "" {
+            value_width = cast(float32)GlyphWidth(value_text,
+                prepared.font, prepared.label.value.typeface)
+        }
         prepared.layout = SliderLayoutFor(bounds,
             cast(float32)prepared.line_height,
-            cast(float32)prepared.line_height, 0.0, 1.0,
+            cast(float32)prepared.line_height, value_width, 1.0,
             false, vertical, false, false)
     }
     prepared.spec.bounds = prepared.layout.track
@@ -152,7 +159,7 @@ SliderDragRatio :: (prepared: SliderPrepared) -> float32 {
 
 #program_export
 PaintSliderForNode :: (session: Session, node: s32, paint: SliderPaint,
-    label_text: string, layout: SliderLayout,
+    label_text: string, value_text: string, layout: SliderLayout,
     label: StyleFrame, font: s32,
     line_height: s32) {
     track_opacity: float32 = StyleOpacityValue(
@@ -203,6 +210,16 @@ PaintSliderForNode :: (session: Session, node: s32, paint: SliderPaint,
             ColorFromPacked(Opacity(label.value.foreground,
                 label_opacity)), layout.label)
     }
+    if value_text != "" {
+        value_opacity: float32 = StyleOpacityValue(label.value.fields,
+            label.value.opacity)
+        y: s32 = cast(s32)(layout.value.y +
+            (layout.value.height - cast(float32)line_height) * 0.5)
+        PaintClippedLabel(session, node, value_text,
+            cast(s32)layout.value.x, y, font,
+            ColorFromPacked(Opacity(label.value.foreground,
+                value_opacity)), layout.value)
+    }
 }
 
 #program_export
@@ -222,8 +239,8 @@ SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
         TreeSetLabel(session, node, semantic_label)
     }
     PaintSliderForNode(session, node, paint, label_text,
-        prepared.layout, prepared.label, prepared.font,
-        prepared.line_height)
+        prepared.value_text, prepared.layout, prepared.label,
+        prepared.font, prepared.line_height)
 }
 
 // The caller stores the proposed value for the next frame. Multiple values
@@ -231,8 +248,8 @@ SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
 #program_export
 Slider :: (session: Session, props: SliderProps) -> SliderStep {
     prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
-        props.id, props.label, props.vertical, props.disabled,
-        props.class_name)
+        props.id, props.label, props.value_text, props.vertical,
+        props.disabled, props.class_name)
     result: SliderStep
     result.value = props.value
     if !props.disabled && props.max > props.min &&
@@ -251,8 +268,8 @@ Slider :: (session: Session, props: SliderProps) -> SliderStep {
 #program_export
 DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
     prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
-        props.id, props.label, props.vertical, props.disabled,
-        props.class_name)
+        props.id, props.label, props.value_text, props.vertical,
+        props.disabled, props.class_name)
     result: SliderDiscreteStep
     result.value = props.value
     if !props.disabled && props.max > props.min &&

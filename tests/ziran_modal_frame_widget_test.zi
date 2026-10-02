@@ -55,13 +55,30 @@ Frame :: () -> s32 {
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
     result: ModalFrameResult = ModalFrame(TestSession(), props)
+    clicked: bool = result.left_clicked || result.right_clicked
+    if result.opened == (result.dismissed || clicked) { return -10 }
+    content: s32 = -1
+    if result.opened {
+        content = TreeSubmitCurrent(TestSession(), cast(u64)99,
+            WidgetKindCustom, result.layout.content)
+        if content < 0 || !End(TestSession()) { return -11 }
+    }
     if !TreeFinish(TestSession()) || result.node != 1 ||
         result.panel_node != 3 ||
         TreeNodeAt(TestSession(), 1).kind != WidgetKindModal ||
         TreeNodeAt(TestSession(), 3).kind != WidgetKindCustom { return -20 }
+    // Content follows the frame in the panel's overlay layer, so the opaque
+    // panel cannot cover it.
+    if content >= 0 && (TreeNodeAt(TestSession(), content).parent_key !=
+            TreeNodeAt(TestSession(), result.panel_node).key ||
+        TreeOverlayLayerAt(TestSession(), content, true) <= 0 ||
+        TreeOverlayLayerAt(TestSession(), content, true) !=
+            TreeOverlayLayerAt(TestSession(), result.panel_node, true)) {
+        return -12
+    }
     if phase == 0 {
         if result.dismissed || result.right_clicked ||
-            TreeCount(TestSession()) != 5 ||
+            TreeCount(TestSession()) != 6 ||
             result.layout.panel.x != 50.0 ||
             result.layout.panel.y != 40.0 ||
             result.layout.content.x != 68.0 ||
@@ -83,7 +100,7 @@ Frame :: () -> s32 {
             TreeCount(TestSession()) != 4 { return -3 }
     } else if phase == 3 {
         if result.dismissed || result.left_clicked ||
-            TreeCount(TestSession()) != 5 ||
+            TreeCount(TestSession()) != 6 ||
             result.layout.panel.x != 60.0 ||
             result.layout.panel.y != 20.0 ||
             result.layout.content.x != 78.0 ||

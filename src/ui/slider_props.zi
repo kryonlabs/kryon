@@ -7,6 +7,8 @@ SliderProps :: struct {
     bounds: Rectangle
     id: s32
     label: string
+    // Shown at the end of the label row, formatted by the caller.
+    value_text: string
     semantic_label: string
     value: float32
     min: float32
@@ -21,6 +23,8 @@ DiscreteSliderProps :: struct {
     bounds: Rectangle
     id: s32
     label: string
+    // Shown at the end of the label row, formatted by the caller.
+    value_text: string
     semantic_label: string
     value: s32
     min: s32
