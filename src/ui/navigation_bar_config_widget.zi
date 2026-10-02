@@ -157,7 +157,7 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
         result.dropdown_open = false
         return result
     }
-    if frame.panel_node < 0 { return result }
+    if !frame.opened { return result }
     layout: NavigationBarConfigLayout =
         NavigationBarConfigLayoutFor(frame.layout.panel,
             frame.layout.content, result.route_count, metrics)
@@ -170,7 +170,6 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
             result.scroll_offset, props.wheel,
             max_scroll, metrics.row_height)
     }
-    if !TreePushScope(session, frame.panel_node) { return result }
     if max_scroll > 0 {
         scroll_metrics: ScrollMetrics
         scroll_metrics.scrollbar_width = metrics.scrollbar_width

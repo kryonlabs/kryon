@@ -168,9 +168,7 @@ ActionModal :: (session: Session, props: ActionModalProps,
         result.action = -1
         return result
     }
-    if frame.panel_node < 0 || !TreePushScope(session, frame.panel_node) {
-        return result
-    }
+    if !frame.opened { return result }
     if props.message != "" {
         message_props.key = frame_props.key * cast(u64)65599 + cast(u64)3
         message_props.bounds.x = cast(float32)layout.message_x

@@ -32,6 +32,7 @@ Frame :: () -> s32 {
     continuous.id = 7
     continuous.class_name = 9
     continuous.label = "Gain"
+    continuous.value_text = "25%"
     continuous.bounds = Rectangle.{10.0, 20.0, 100.0, 80.0}
     continuous.value = 25.0
     continuous.min = 0.0
@@ -118,7 +119,8 @@ main :: () -> s32 {
         if Frame() != index || SliderHostFailed() ||
             SliderFills() != (index + 1) * 6 ||
             SliderOutlines() != (index + 1) * 2 ||
-            SliderLabels() != index + 1 { return 1 }
+            SliderLabels() != index + 1 ||
+            SliderValues() != index + 1 { return 1 }
         index += 1
     }
     return 0

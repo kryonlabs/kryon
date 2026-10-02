@@ -4,6 +4,7 @@
 fills: s32;
 outlines: s32;
 labels: s32;
+values: s32;
 failed: bool;
 
 // Pills and circles are painted with half their shorter side as radius.
@@ -15,9 +16,9 @@ PillRadiusOf :: (bounds: Rectangle) -> float32 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if value != "Gain" || font != 14 || typeface.count != 0 {
-        failed = true
-    }
+    if font != 14 || typeface.count != 0 { failed = true }
+    if value == "25%" { return 20 }
+    if value != "Gain" { failed = true }
     return 28
 }
 
@@ -71,13 +72,20 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
-    if value != "Gain" || x != 16 || y != 20 || font != 14 ||
-        clip.x != 10.0 || clip.y != 20.0 ||
-        clip.width != 88.0 || clip.height != 12.0 ||
+    if font != 14 || y != 20 || clip.y != 20.0 || clip.height != 12.0 ||
         color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
         color.b != cast(u8)0xcc || color.a != cast(u8)127 {
         failed = true
     }
+    // The value takes the end of the label row; the label keeps the rest
+    // less one gap.
+    if value == "25%" {
+        if x != 90 || clip.x != 90.0 || clip.width != 20.0 { failed = true }
+        values += 1
+        return
+    }
+    if value != "Gain" || x != 16 || clip.x != 10.0 ||
+        clip.width != 68.0 { failed = true }
     labels += 1
 }
 
@@ -109,3 +117,6 @@ SliderOutlines :: () -> s32 { return outlines }
 
 #program_export
 SliderLabels :: () -> s32 { return labels }
+
+#program_export
+SliderValues :: () -> s32 { return values }

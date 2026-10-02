@@ -70,8 +70,11 @@ ModalFrameKey :: (session: Session, props: ModalFrameProps) -> u64 {
     return TreeNextKey(session)
 }
 
-// Returns the checked panel and content rectangles. The caller may submit
-// content under panel_node using TreePushScope, then End that scope.
+// Returns the checked panel and content rectangles. Overlays paint above
+// page content, so content belongs inside the panel: while the panel stays
+// open, the frame opens the panel's scope and reports `opened`; the caller
+// submits the content and Ends the scope. A frame whose dismissal or action
+// fired opens no scope, and its caller acts on the result instead.
 #program_export
 ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
     result: ModalFrameResult
@@ -207,6 +210,9 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
                 Rectangle.{cx + span, cy - span,
                     -span * 2.0, span * 2.0}, color)
         }
+    }
+    if !result.left_clicked && !result.right_clicked {
+        result.opened = TreePushScope(session, result.panel_node)
     }
     return result
 }

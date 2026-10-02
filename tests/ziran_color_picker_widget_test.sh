@@ -9,6 +9,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/color_picker_widget_behavior.zi
 portable=$repo/tests/color_picker_widget_portable_test.zi
 set -- \
+    --bind font_metrics:MeasureGlyphWidth=color_picker_widget_host:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=color_picker_widget_host:MeasureGlyphLineHeight \
     --bind raster_shape:RasterRoundedRectangle=color_picker_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=color_picker_widget_host:RasterRoundedRectangleOutline \

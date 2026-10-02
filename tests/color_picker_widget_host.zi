@@ -11,6 +11,16 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     return 12
 }
 
+// The channel sliders show no value text, so nothing is measured.
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused value
+    unused font
+    unused typeface
+    failed = true
+    return 0
+}
+
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
