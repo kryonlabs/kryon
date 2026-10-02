@@ -16,6 +16,11 @@ dist/
 assets/fonts/*
 !assets/fonts/LiberationSans-Regular.ttf
 !assets/fonts/LICENSE-Liberation
+!assets/fonts/DejaVuSans.ttf
+!assets/fonts/LICENSE-DejaVu
+!assets/fonts/NotoSansSymbols-Regular.ttf
+!assets/fonts/NotoSansSymbols2-Regular.ttf
+!assets/fonts/LICENSE-Noto
 
 tools/otfchop/otfchop
 

@@ -243,10 +243,10 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     units: s64 = 0
     at: s32 = 0
     while at < cast(s32)value.count {
-        point: Decoded = Decode(value, at)
-        if point.after <= at { break }
-        at = point.after
-        units += cast(s64)PixmapGlyphAdvance(PixmapGlyphFor(point.value))
+        unit: PixmapTextUnit = PixmapNextUnit(value, at)
+        if unit.after <= at { break }
+        at = unit.after
+        units += unit.advance
     }
     return PixmapTextWidth(units, font)
 }
@@ -256,6 +256,26 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     unused typeface
     return font
+}
+
+// Draws a color emoji filling the size x size square at (x, y).
+PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
+    offset: s32 = PixmapEmojiPixelsFor(emoji, size)
+    if offset < 0 { return }
+    color: Color
+    color.a = cast(u8)255
+    for row: 0..size - 1 {
+        for column: 0..size - 1 {
+            pixel: u32 = pixmap_emoji_pool[offset + cast(s32)row * size + cast(s32)column]
+            alpha: s32 = cast(s32)(pixel >> cast(u32)24)
+            if alpha > 0 {
+                color.r = cast(u8)((pixel >> cast(u32)16) & cast(u32)255)
+                color.g = cast(u8)((pixel >> cast(u32)8) & cast(u32)255)
+                color.b = cast(u8)(pixel & cast(u32)255)
+                PixmapBlend(x + cast(s32)column, y + cast(s32)row, color, alpha)
+            }
+        }
+    }
 }
 
 // Blends a glyph's coverage over the surface inside the clip.
@@ -292,20 +312,22 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
     mask: PixmapGlyphMask
     at: s32 = 0
     while at < cast(s32)value.count {
-        point: Decoded = Decode(value, at)
-        if point.after <= at { break }
-        at = point.after
-        glyph: s32 = PixmapGlyphFor(point.value)
+        unit: PixmapTextUnit = PixmapNextUnit(value, at)
+        if unit.after <= at { break }
+        at = unit.after
         origin: s64 = cast(s64)x * 256 + PixmapUnits(pen, font)
-        advance: s64 = cast(s64)PixmapGlyphAdvance(glyph)
         whole: s32 = cast(s32)PixmapFloorDiv(origin, 256)
         // Advances never move left, so no later glyph reaches the clip.
         if whole - reach >= pixmap_clip_right { break }
-        if whole + PixmapTextWidth(advance, font) + reach > pixmap_clip_left {
-            coverage: []u8 = PixmapCachedGlyph(glyph, origin, baseline, font, *mask)
-            if coverage.count > 0 { PixmapBlendMask(mask, coverage, color) }
+        if whole + PixmapTextWidth(unit.advance, font) + reach > pixmap_clip_left {
+            if unit.emoji >= 0 {
+                PixmapDrawEmoji(unit.emoji, whole, y, font)
+            } else if unit.glyph >= 0 {
+                coverage: []u8 = PixmapCachedGlyph(unit.glyph, origin, baseline, font, *mask)
+                if coverage.count > 0 { PixmapBlendMask(mask, coverage, color) }
+            }
         }
-        pen += advance
+        pen += unit.advance
     }
 }
 

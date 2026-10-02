@@ -1,0 +1,417 @@
+#import "file"
+#import "png"
+
+// Writes src/backend/pixmap_emoji.zi: color emoji for the pixmap host, from a
+// CBDT/CBLC bitmap font such as Noto Color Emoji. Reads the .ttf path on
+// standard input and prints the module on standard output:
+//
+//   echo assets/fonts/NotoColorEmoji.ttf | build/tools/emoji_bitmaps
+//
+// Each emoji is shrunk to a Cell x Cell square and reduced to at most 62
+// colors of its own, so the module stays small and the host decodes it with
+// integer arithmetic only. Built for C; PNG data inflates with zlib.
+
+Cell :: 32;
+CellArea :: 1024;
+MaxEmoji :: 2048;
+// Two tables, as a fixed array holds at most 1048576 elements.
+MaxSymbols :: 2097152;
+HalfSymbols :: 1048576;
+// A declaration's text is limited, so symbols go out as base64 strings.
+ChunkCharacters :: 3840;
+// Pixel symbols: 0 is transparent, 1..62 a palette color, 63 starts a run
+// of RunMinimum or more copies of the next symbol.
+RunSymbol :: 63;
+RunMinimum :: 3;
+MaxColors :: 62;
+
+zlib :: #system_library "z";
+Uncompress :: (output: *u8, length: *u64, input: *u8, count: u64) -> s32 #foreign zlib "uncompress";
+
+font: string;
+table_cmap: s32;
+table_cblc: s32;
+table_cbdt: s32;
+
+codes: [2048]s32;
+starts: [2048]s32;
+emoji_count: s32;
+symbols_low: [1048576]u8;
+symbols_high: [1048576]u8;
+symbol_count: s32;
+
+png_bytes: [262144]u8;
+compressed: [262144]u8;
+scanlines: [524288]u8;
+image: [524288]u8;
+
+// The current emoji: straight RGBA cell pixels and their palette.
+cell_red: [1024]s32;
+cell_green: [1024]s32;
+cell_blue: [1024]s32;
+cell_alpha: [1024]s32;
+cell_index: [1024]s32;
+// Opaque pixels being split into boxes of similar colors.
+order: [1024]s32;
+sorted: [1024]s32;
+box_first: [64]s32;
+box_last: [64]s32;
+box_count: s32;
+palette: [64][4]s32;
+
+U8 :: (at: s32) -> s32 { return cast(s32)font[at] }
+U16 :: (at: s32) -> s32 { return U8(at) * 256 + U8(at + 1) }
+U32 :: (at: s32) -> s32 { return U16(at) * 65536 + U16(at + 2) }
+
+libc :: #system_library "libc";
+ReadRaw :: (fd: s32, bytes: *u8, count: u64) -> s64 #foreign libc "read";
+
+Line :: (output: []u8) -> string {
+    length: s32 = 0
+    while length < cast(s32)output.count {
+        byte: u8 = 0
+        if ReadRaw(0, *byte, 1) != 1 { break }
+        if byte == cast(u8)10 { break }
+        output[length] = byte
+        length += 1
+    }
+    return TextView(output[0:length])
+}
+
+FindTables :: () -> bool {
+    if font.count < 12 { return false }
+    count: s32 = U16(4)
+    for index: 0..count - 1 {
+        record: s32 = 12 + index * 16
+        tag: string = font[record:record + 4]
+        offset: s32 = U32(record + 8)
+        if tag == "cmap" { table_cmap = offset }
+        if tag == "CBLC" { table_cblc = offset }
+        if tag == "CBDT" { table_cbdt = offset }
+    }
+    return table_cmap != 0 && table_cblc != 0 && table_cbdt != 0
+}
+
+// The (3, 10) format 12 subtable, which maps every emoji code point.
+FullSubtable :: () -> s32 {
+    count: s32 = U16(table_cmap + 2)
+    for index: 0..count - 1 {
+        record: s32 = table_cmap + 4 + index * 8
+        subtable: s32 = table_cmap + U32(record + 4)
+        if U16(record) == 3 && U16(record + 2) == 10 && U16(subtable) == 12 { return subtable }
+    }
+    return 0
+}
+
+// Code points drawn as emoji. Keycap bases, digits and the copyright and
+// trademark signs stay text; joiners, variation selectors, skin tone
+// modifiers and tags only modify the emoji before them.
+Wanted :: (code: s32) -> bool {
+    if code < 8252 { return false }
+    if code == 8205 || code == 8419 || code == 65039 { return false }
+    if code >= 127995 && code <= 127999 { return false }
+    if code >= 917504 { return false }
+    return true
+}
+
+// Where the bitmap of a glyph starts in CBDT, in the first strike; 0 when
+// the glyph has none.
+BitmapOf :: (glyph: s32) -> s32 {
+    if U32(table_cblc + 4) < 1 { return 0 }
+    size: s32 = table_cblc + 8
+    array: s32 = table_cblc + U32(size)
+    tables: s32 = U32(size + 8)
+    for index: 0..tables - 1 {
+        entry: s32 = array + index * 8
+        first: s32 = U16(entry)
+        last: s32 = U16(entry + 2)
+        if glyph >= first && glyph <= last {
+            subtable: s32 = array + U32(entry + 4)
+            if U16(subtable) != 1 || U16(subtable + 2) != 17 { return 0 }
+            data: s32 = U32(subtable + 4)
+            at: s32 = subtable + 8 + (glyph - first) * 4
+            start: s32 = U32(at)
+            if U32(at + 4) == start { return 0 }
+            return table_cbdt + data + start
+        }
+    }
+    return 0
+}
+
+Decoded :: struct { width: s32; height: s32; valid: bool }
+
+// Decodes a format 17 bitmap into `image`.
+DecodeBitmap :: (at: s32) -> Decoded {
+    result: Decoded
+    length: s32 = U32(at + 5)
+    if length <= 0 || length > 262144 { return result }
+    for index: 0..length - 1 { png_bytes[index] = cast(u8)U8(at + 9 + index) }
+    bytes: []u8 = png_bytes[0:length]
+    info: PNGInfo = InspectPNG(bytes)
+    if !info.valid || info.compressed > 262144 || info.scanlines > 524288 ||
+        cast(s64)info.width * info.height * 4 > 524288 { return result }
+    if !CollectPNGData(bytes, compressed[0:info.compressed]) { return result }
+    inflated: u64 = cast(u64)info.scanlines
+    if Uncompress(*scanlines[0], *inflated, *compressed[0], cast(u64)info.compressed) != 0 ||
+        inflated != cast(u64)info.scanlines { return result }
+    pixels: s64 = cast(s64)info.width * info.height * 4
+    if !DecodePNGScanlines(bytes, scanlines[0:info.scanlines], image[0:pixels]) { return result }
+    result.width = info.width
+    result.height = info.height
+    result.valid = true
+    return result
+}
+
+// Shrinks the image into the cell, centered, averaging premultiplied color.
+Shrink :: (width: s32, height: s32) {
+    side: s32 = width
+    if height > side { side = height }
+    left: s32 = (side - width) / 2
+    top: s32 = (side - height) / 2
+    red: [1024]s32
+    green: [1024]s32
+    blue: [1024]s32
+    alpha: [1024]s32
+    count: [1024]s32
+    for y: 0..height - 1 {
+        row: s32 = (cast(s32)y + top) * Cell / side
+        for x: 0..width - 1 {
+            column: s32 = (cast(s32)x + left) * Cell / side
+            cell: s32 = row * Cell + column
+            at: s32 = (cast(s32)y * width + cast(s32)x) * 4
+            a: s32 = cast(s32)image[at + 3]
+            red[cell] += cast(s32)image[at] * a
+            green[cell] += cast(s32)image[at + 1] * a
+            blue[cell] += cast(s32)image[at + 2] * a
+            alpha[cell] += a
+            count[cell] += 1
+        }
+    }
+    for cell: 0..CellArea - 1 {
+        cell_red[cell] = 0
+        cell_green[cell] = 0
+        cell_blue[cell] = 0
+        cell_alpha[cell] = 0
+        if count[cell] > 0 && alpha[cell] > 0 {
+            cell_alpha[cell] = (alpha[cell] + count[cell] / 2) / count[cell]
+            cell_red[cell] = (red[cell] + alpha[cell] / 2) / alpha[cell]
+            cell_green[cell] = (green[cell] + alpha[cell] / 2) / alpha[cell]
+            cell_blue[cell] = (blue[cell] + alpha[cell] / 2) / alpha[cell]
+        }
+    }
+}
+
+Channel :: (pixel: s32, channel: s32) -> s32 {
+    if channel == 0 { return cell_red[pixel] }
+    if channel == 1 { return cell_green[pixel] }
+    if channel == 2 { return cell_blue[pixel] }
+    return cell_alpha[pixel]
+}
+
+// Sorts a box's pixels by one channel, stably, by counting.
+SortBox :: (box: s32, channel: s32) {
+    counts: [257]s32
+    first: s32 = box_first[box]
+    last: s32 = box_last[box]
+    for index: first..last { counts[Channel(order[index], channel) + 1] += 1 }
+    for value: 1..256 { counts[value] += counts[value - 1] }
+    for index: first..last {
+        value: s32 = Channel(order[index], channel)
+        sorted[first + counts[value]] = order[index]
+        counts[value] += 1
+    }
+    for index: first..last { order[index] = sorted[index] }
+}
+
+// Median cut: split the box with the widest channel until MaxColors boxes.
+Quantize :: (opaque: s32) {
+    box_count = 0
+    if opaque == 0 { return }
+    box_first[0] = 0
+    box_last[0] = opaque - 1
+    box_count = 1
+    while box_count < MaxColors {
+        best: s32 = -1
+        best_channel: s32 = 0
+        best_range: s32 = 0
+        for box: 0..box_count - 1 {
+            for channel: 0..3 {
+                low: s32 = 256
+                high: s32 = -1
+                for index: box_first[box]..box_last[box] {
+                    value: s32 = Channel(order[index], cast(s32)channel)
+                    if value < low { low = value }
+                    if value > high { high = value }
+                }
+                if high - low > best_range {
+                    best_range = high - low
+                    best = cast(s32)box
+                    best_channel = cast(s32)channel
+                }
+            }
+        }
+        if best < 0 { break }
+        SortBox(best, best_channel)
+        middle: s32 = (box_first[best] + box_last[best] + 1) / 2
+        box_first[box_count] = middle
+        box_last[box_count] = box_last[best]
+        box_last[best] = middle - 1
+        box_count += 1
+    }
+    for box: 0..box_count - 1 {
+        sum: [4]s32
+        weight: s32 = 0
+        for index: box_first[box]..box_last[box] {
+            pixel: s32 = order[index]
+            a: s32 = cell_alpha[pixel]
+            sum[0] += cell_red[pixel] * a
+            sum[1] += cell_green[pixel] * a
+            sum[2] += cell_blue[pixel] * a
+            sum[3] += a
+            weight += 1
+            cell_index[pixel] = cast(s32)box + 1
+        }
+        for channel: 0..2 { palette[box][channel] = (sum[channel] + sum[3] / 2) / sum[3] }
+        palette[box][3] = (sum[3] + weight / 2) / weight
+    }
+}
+
+Symbol :: (value: s32) -> bool {
+    if symbol_count >= MaxSymbols || value < 0 || value > 63 {
+        print("emoji_bitmaps: too many symbols\n")
+        return false
+    }
+    if symbol_count < HalfSymbols { symbols_low[symbol_count] = cast(u8)value }
+    else { symbols_high[symbol_count - HalfSymbols] = cast(u8)value }
+    symbol_count += 1
+    return true
+}
+
+SymbolAt :: (at: s32) -> u8 {
+    if at < HalfSymbols { return symbols_low[at] }
+    return symbols_high[at - HalfSymbols]
+}
+
+// The emoji record: color count, each color as RGBA in 6 symbols, then the
+// cell's pixel symbols with runs.
+Encode :: () -> bool {
+    if !Symbol(box_count) { return false }
+    for box: 0..box_count - 1 {
+        rgba: s32 = palette[box][0] * 65536 + palette[box][1] * 256 + palette[box][2]
+        if !Symbol((rgba >> 18) & 63) || !Symbol((rgba >> 12) & 63) || !Symbol((rgba >> 6) & 63) ||
+            !Symbol(rgba & 63) || !Symbol(palette[box][3] >> 2) || !Symbol(palette[box][3] & 3) { return false }
+    }
+    at: s32 = 0
+    while at < CellArea {
+        value: s32 = cell_index[at]
+        run: s32 = 1
+        while at + run < CellArea && cell_index[at + run] == value && run < RunMinimum + 62 { run += 1 }
+        if run >= RunMinimum {
+            if !Symbol(RunSymbol) || !Symbol(run - RunMinimum) || !Symbol(value) { return false }
+        } else {
+            for copy: 0..run - 1 { if !Symbol(value) { return false } }
+        }
+        at += run
+    }
+    return true
+}
+
+AddEmoji :: (code: s32, glyph: s32) -> bool {
+    at: s32 = BitmapOf(glyph)
+    if at == 0 { return true }
+    decoded: Decoded = DecodeBitmap(at)
+    if !decoded.valid {
+        print("emoji_bitmaps: cannot decode U+%\n", code)
+        return false
+    }
+    Shrink(decoded.width, decoded.height)
+    opaque: s32 = 0
+    for pixel: 0..CellArea - 1 {
+        cell_index[pixel] = 0
+        if cell_alpha[pixel] > 0 {
+            order[opaque] = cast(s32)pixel
+            opaque += 1
+        }
+    }
+    Quantize(opaque)
+    if emoji_count >= MaxEmoji { return false }
+    codes[emoji_count] = code
+    starts[emoji_count] = symbol_count
+    emoji_count += 1
+    return Encode()
+}
+
+Base64 :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+// Symbols of the header: three per code point, four per start.
+header: [16384]u8;
+header_count: s32;
+
+Header :: (value: s32, digits: s32) {
+    shift: s32 = (digits - 1) * 6
+    while shift >= 0 {
+        header[header_count] = cast(u8)((value >> shift) & 63)
+        header_count += 1
+        shift -= 6
+    }
+}
+
+main :: () -> s32 {
+    path_bytes: [4096]u8
+    path: string = Line(path_bytes[:])
+    text, found := ReadEntireFile(path)
+    if !found { print("emoji_bitmaps: cannot read %\n", path); return 1 }
+    font = text
+    if !FindTables() { print("emoji_bitmaps: % has no color bitmaps\n", path); return 1 }
+    subtable: s32 = FullSubtable()
+    if subtable == 0 { print("emoji_bitmaps: % has no full Unicode cmap\n", path); return 1 }
+    groups: s32 = U32(subtable + 12)
+    for group: 0..groups - 1 {
+        at: s32 = subtable + 16 + cast(s32)group * 12
+        first: s32 = U32(at)
+        last: s32 = U32(at + 4)
+        glyph: s32 = U32(at + 8)
+        code: s32 = first
+        while code <= last {
+            if Wanted(code) && !AddEmoji(code, glyph + code - first) { return 1 }
+            code += 1
+        }
+    }
+    for index: 0..emoji_count - 1 { Header(codes[index], 3) }
+    for index: 0..emoji_count - 1 { Header(starts[index], 4) }
+    total: s32 = header_count + symbol_count
+    chunks: s32 = (total + ChunkCharacters - 1) / ChunkCharacters
+    print("// Generated by tools/emoji_bitmaps.zi; `make pixmap-emoji` rebuilds it.\n")
+    print("// Color emoji from Noto Color Emoji (Debian fonts-noto-color-emoji, SIL\n")
+    print("// Open Font License 1.1, assets/fonts/LICENSE-Noto), each shrunk to a\n")
+    print("// % x % cell with at most % colors. Base64 symbols: every code point\n", Cell, Cell, MaxColors)
+    print("// (3 each, ascending), every record start (4 each), then per emoji its\n")
+    print("// color count, each color as RGBA (6 each) and the cell's pixels, where 0\n")
+    print("// is transparent and % starts a run of % or more copies.\n\n", RunSymbol, RunMinimum)
+    print("PixmapEmojiCount :: %;\n", emoji_count)
+    print("PixmapEmojiCell :: %;\n", Cell)
+    print("PixmapEmojiHeader :: %;\n", header_count)
+    print("PixmapEmojiChunk :: %;\n", ChunkCharacters)
+    print("PixmapEmojiChunks :: %;\n\n", chunks)
+    one: [1]u8
+    for chunk: 0..chunks - 1 {
+        print("PixmapEmojiData% :: \"", chunk)
+        at: s32 = cast(s32)chunk * ChunkCharacters
+        while at < total && at < (cast(s32)chunk + 1) * ChunkCharacters {
+            value: u8 = 0
+            if at < header_count { value = header[at] } else { value = SymbolAt(at - header_count) }
+            one[0] = Base64[value]
+            print("%", TextView(one[:]))
+            at += 1
+        }
+        print("\";\n")
+    }
+    print("\npixmap_emoji_codes: [%]s32;\n", emoji_count)
+    print("pixmap_emoji_starts: [%]s32;\n", emoji_count)
+    print("\n// The module's chunks, filled on first use.\n")
+    print("pixmap_emoji_chunks: [%]string;\n\n", chunks)
+    print("PixmapEmojiChunksFill :: () {\n")
+    for chunk: 0..chunks - 1 { print("    pixmap_emoji_chunks[%] = PixmapEmojiData%\n", chunk, chunk) }
+    print("}\n")
+    return 0
+}

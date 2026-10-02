@@ -25,7 +25,7 @@ OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font install-user dom-project-test libdraw-native-plan9-test
+.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user dom-project-test libdraw-native-plan9-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -142,7 +142,9 @@ pixmap-font: project-toolchain
 	mkdir -p build/tools
 	$(ZIRAN_DIR)/build/bin/ziran build --target=py --exe --root tools \
 		$(ZIRAN_STD_PATH) --entry outline_font:main -o build/tools/outline_font tools/outline_font.zi
-	echo assets/fonts/LiberationSans-Regular.ttf | python3 build/tools/outline_font > build/pixmap_font.zi
+	printf '%s\n' assets/fonts/LiberationSans-Regular.ttf assets/fonts/DejaVuSans.ttf \
+		assets/fonts/NotoSansSymbols-Regular.ttf assets/fonts/NotoSansSymbols2-Regular.ttf | \
+		python3 build/tools/outline_font > build/pixmap_font.zi
 	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
 # Installs the kryon command. Outside `ziran tool kryon` it forwards project
@@ -299,6 +301,16 @@ plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.
 libdraw-native-plan9-test:
 	sh tests/host_keys_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
+
+# Rebuilds the pixmap host's color emoji from Noto Color Emoji
+# (Debian: fonts-noto-color-emoji).
+EMOJI_FONT ?= /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
+pixmap-emoji: project-toolchain
+	mkdir -p build/tools
+	LDLIBS=-lz $(ZIRAN_DIR)/build/bin/ziran build --target=c --exe --root tools --module-path src/backend \
+		$(ZIRAN_STD_PATH) --entry emoji_bitmaps:main -o build/tools/emoji_bitmaps tools/emoji_bitmaps.zi
+	echo $(EMOJI_FONT) | build/tools/emoji_bitmaps/emoji_bitmaps > build/pixmap_emoji.zi
+	mv build/pixmap_emoji.zi src/backend/pixmap_emoji.zi
 
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
