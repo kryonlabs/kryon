@@ -1,0 +1,21 @@
+// NativeActivity's render thread runs Ziran value-based application code.
+// Configure its freshly initialized attributes with the desktop stack budget.
+// Other attributes, including detached state and guard size, stay intact.
+c :: #system_library "c";
+ThreadStackBytes :: 8 * 1024 * 1024;
+GetStackSize :: (attributes: *void, bytes: *usize) -> s32 #foreign c "pthread_attr_getstacksize";
+SetStackSize :: (attributes: *void, bytes: usize) -> s32 #foreign c "pthread_attr_setstacksize";
+SetDetachState :: (attributes: *void, state: s32) -> s32 #foreign c "pthread_attr_setdetachstate";
+
+#program_export
+ConfigureNativeThread :: (attributes: *void, state: s32) -> s32 {
+    if attributes == null { return 22 }
+    bytes: usize
+    result := GetStackSize(attributes, *bytes)
+    if result != 0 { return result }
+    if bytes < cast(usize)ThreadStackBytes {
+        result = SetStackSize(attributes, cast(usize)ThreadStackBytes)
+        if result != 0 { return result }
+    }
+    return SetDetachState(attributes, state)
+}
