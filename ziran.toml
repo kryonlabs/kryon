@@ -39,6 +39,8 @@ PageRoute = "src/backend/page_route.zi"
 # which draw into the retained tree with Kryon's own primitives.
 session = "src/ui/session.zi"
 control_props = "src/ui/control_props.zi"
+clipboard = "src/ui/clipboard.zi"
+system_clipboard = "src/ui/system_clipboard.zi"
 font_metrics = "src/ui/font_metrics.zi"
 paint_queue = "src/ui/paint_queue.zi"
 scroll = "src/ui/scroll.zi"
