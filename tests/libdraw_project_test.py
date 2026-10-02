@@ -181,7 +181,11 @@ def main():
             project, env)
         capture = project / "capture.png"
         env["KRYON_CAPTURE_PATH"] = str(capture)
-        run(["xvfb-run", "-a", "-n", "100",
+        # Short-lived xdotool clients must not reset the server while devdraw
+        # is opening its own connection to this private display.
+        server = ["xvfb-run", "-a", "-n", "100", "-s",
+                  "-screen 0 1280x1024x24 -nolisten tcp -noreset"]
+        run([*server,
              ziran, "tool", "kryon", "run", "--profile", "libdraw"],
             project, env)
         pixels = png_pixels(capture)
@@ -191,7 +195,7 @@ def main():
         for mode in ("pixels", "keyboard", "text", "unicode", "pointer", "resize"):
             probe_env = private_environment()
             probe_env["KRYON_PRIVATE_XVFB"] = "1"
-            run(["xvfb-run", "-a", "-n", "100", sys.executable, __file__,
+            run([*server, sys.executable, __file__,
                  "--probe", str(project), mode], project, probe_env)
     print("libdraw Ziran project: pixels, image, keyboard, Unicode text, pointer, and resize passed")
 

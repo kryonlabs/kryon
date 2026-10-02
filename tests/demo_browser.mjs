@@ -264,8 +264,20 @@ try {
   console.log('Kryon live editor: compilation, rendered theme colors, source StyleRules, state-preserving theme switching, inherited and saved themes, interaction, errors, bounded execution, recovery, view switching, cancellation, reset, escaped source, responsive layout, lazy loading, and homepage integration passed');
 } finally {
   if (socket) socket.close();
+  const exited = new Promise(resolve => {
+    if (browser.exitCode !== null || browser.signalCode !== null) resolve();
+    else browser.once('exit', resolve);
+  });
   try { process.kill(-browser.pid, 'SIGTERM'); } catch {}
-  await new Promise(resolve => { if (browser.exitCode !== null || browser.signalCode !== null) resolve(); else browser.once('exit', resolve); });
+  const stopped = await Promise.race([
+    exited.then(() => true),
+    delay(2000).then(() => false)
+  ]);
+  if (!stopped) {
+    try { process.kill(-browser.pid, 'SIGKILL'); } catch {}
+    await exited;
+  }
   if (server.listening) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
-  await fs.rm(profile, {recursive: true, force: true});
+  // xvfb-run can exit before Chromium's children finish closing profile files.
+  await fs.rm(profile, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});
 }
