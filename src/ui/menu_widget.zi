@@ -1,0 +1,330 @@
+// Submit the menu after the page content so its panels own pointer input.
+// Groups and nested items are borrowed only for this frame. Paint and semantic
+// labels are copied into the session; navigation stores indices, not pointers.
+#import "session"
+#import "menu_props"
+#import "menu"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "control_props"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using WidgetKind;
+using SemanticKind;
+using StyleField;
+
+#program_export
+MenuGroupKey :: (key: u64, index: s32) -> u64 {
+    return key * cast(u64)65599 + cast(u64)(index + 1) * cast(u64)19
+}
+#program_export
+MenuPanelKey :: (key: u64, state: *MenuState, depth: s32) -> u64 {
+    result := key * cast(u64)131071 + cast(u64)(state.open_index + 1)
+    for level: 0..depth - 1 {
+        result = result * cast(u64)65599 + cast(u64)(state.selected[level] + 1)
+    }
+    return result * cast(u64)19 + cast(u64)7
+}
+#program_export
+MenuRowKey :: (key: u64, index: s32) -> u64 {
+    return key * cast(u64)65599 + cast(u64)(index + 1) * cast(u64)23
+}
+
+#scope_file
+ScrimKey :: () -> u64 { return cast(u64)1 }
+ItemsAt :: (groups: []MenuGroup, state: *MenuState, depth: s32) -> []MenuItem {
+    empty: []MenuItem
+    if state.open_index < 0 || cast(s64)state.open_index >= groups.count { return empty }
+    items := groups[state.open_index].items
+    for level: 0..depth - 1 {
+        index := state.selected[level]
+        if index < 0 || cast(s64)index >= items.count ||
+            !MenuItemCanOpenSubmenu(cast(s32)items[index].kind, items[index].disabled,
+                items[index].submenu.count > 0, cast(s32)items[index].submenu.count, level, 4) { return empty }
+        items = items[index].submenu
+    }
+    return items
+}
+SelectableIndex :: (items: []MenuItem, start: s32, direction: s32) -> s32 {
+    if items.count <= 0 { return -1 }
+    count := cast(s32)items.count
+    index := start
+    for step: 0..count - 1 {
+        index = MenuWrappedItemIndex(index, direction, count)
+        if MenuItemSelectable(cast(s32)items[index].kind, items[index].disabled) { return index }
+    }
+    return -1
+}
+ResetPath :: (state: *MenuState) {
+    state.depth = 0; state.reveal = true
+    for depth: 0..3 { state.selected[depth] = -1; state.scroll[depth] = 0 }
+}
+Close :: (state: *MenuState) {
+    state.open_index = -1; state.focused = false; ResetPath(state)
+}
+OpenGroup :: (groups: []MenuGroup, state: *MenuState, index: s32) {
+    ResetPath(state)
+    state.open_index = index; state.top_index = index; state.focused = true
+    state.selected[0] = SelectableIndex(groups[index].items, -1, 1)
+}
+OpenChild :: (groups: []MenuGroup, state: *MenuState, depth: s32) -> bool {
+    items := ItemsAt(groups, state, depth)
+    index := state.selected[depth]
+    if index < 0 || cast(s64)index >= items.count { return false }
+    item := items[index]
+    if !MenuItemCanOpenSubmenu(cast(s32)item.kind, item.disabled, item.submenu.count > 0,
+        cast(s32)item.submenu.count, depth, 4) { return false }
+    if state.depth <= depth {
+        state.selected[depth + 1] = SelectableIndex(item.submenu, -1, 1)
+        state.scroll[depth + 1] = 0
+    }
+    state.depth = depth + 1; state.reveal = true
+    return true
+}
+Activate :: (state: *MenuState, item: MenuItem, result: *MenuResult) {
+    if MenuItemPointerActivates(cast(s32)item.kind, item.disabled) && item.id > 0 {
+        result.activated_id = item.id; Close(state)
+    }
+}
+Face :: (props: MenuProps, kind: s32, status: s32) -> StyleFrame {
+    facts := StyleControlRoleFacts(kind, props.id, props.class_name, StyleAny(), 0, 0, 0, status)
+    frame: StyleFrame
+    frame.value = ResolveInstalledStyleRules(StyleData.{}, facts, status)
+    return frame
+}
+ColorFor :: (face: StyleFrame, field: u32, value: u32, fallback: Color) -> Color {
+    if (face.value.fields & field) != cast(u32)0 { return ColorFromPacked(value) }
+    return fallback
+}
+PanelBounds :: (items: []MenuItem, origin: Vector2, view: Rectangle,
+    metrics: MenuMetrics, font: s32, parent: Rectangle, child: bool) -> Rectangle {
+    width := metrics.panel_min_width
+    for index: cast(s64)0..items.count - 1 {
+        item := items[index]
+        width = MenuPanelWidthStep(width, GlyphWidth(item.label, font, "") + metrics.label_inset,
+            GlyphWidth(item.accelerator, font, ""), item.accelerator.count > 0, metrics)
+    }
+    bounds := MenuPanelBounds(cast(s32)origin.x, cast(s32)origin.y, width, cast(s32)items.count, metrics)
+    if bounds.width > view.width { bounds.width = view.width }
+    if bounds.height > view.height { bounds.height = view.height }
+    if child && bounds.x + bounds.width > view.x + view.width { bounds.x = parent.x - bounds.width }
+    if bounds.x + bounds.width > view.x + view.width { bounds.x = view.x + view.width - bounds.width }
+    if bounds.y + bounds.height > view.y + view.height { bounds.y = view.y + view.height - bounds.height }
+    if bounds.x < view.x { bounds.x = view.x }
+    if bounds.y < view.y { bounds.y = view.y }
+    return bounds
+}
+Keyboard :: (groups: []MenuGroup, state: *MenuState, input: MenuKeyboardInput, result: *MenuResult) {
+    if !state.focused && state.open_index < 0 { return }
+    if input.escape { Close(state); return }
+    bar := MenuBarKeyboardDecisionFor(input, state.open_index >= 0, state.depth)
+    count := cast(s32)groups.count
+    if state.open_index < 0 {
+        if bar.move_top_delta != 0 { state.top_index = MenuBarMoveTopIndex(state.top_index, count, bar.move_top_delta) }
+        if bar.first_top { state.top_index = 0 }
+        if bar.last_top { state.top_index = count - 1 }
+        if bar.open_top { OpenGroup(groups, state, state.top_index) }
+        return
+    }
+    if bar.move_open_delta != 0 {
+        OpenGroup(groups, state, MenuBarMoveTopIndex(state.open_index, count, bar.move_open_delta)); return
+    }
+    depth := state.depth
+    items := ItemsAt(groups, state, depth)
+    selected := state.selected[depth]
+    decision := MenuKeyboardDecisionFor(input, depth, selected)
+    if decision.move_delta != 0 {
+        state.selected[depth] = SelectableIndex(items, selected, decision.move_delta); state.reveal = true
+    } else if decision.first {
+        state.selected[depth] = SelectableIndex(items, -1, 1); state.reveal = true
+    } else if decision.last {
+        state.selected[depth] = SelectableIndex(items, 0, -1); state.reveal = true
+    } else if decision.close_parent { state.depth -= 1 }
+    else if decision.open_or_activate && selected >= 0 && cast(s64)selected < items.count {
+        if !OpenChild(groups, state, depth) {
+            if input.right && depth == 0 { OpenGroup(groups, state, MenuBarMoveTopIndex(state.open_index, count, 1)) }
+            else if input.enter || input.space { Activate(state, items[selected], result) }
+        }
+    } else if bar.move_open_if_no_submenu_delta != 0 {
+        OpenGroup(groups, state, MenuBarMoveTopIndex(state.open_index, count, 1))
+    }
+}
+
+#scope_export
+#program_export
+Menu :: (session: Session, props: MenuProps, groups: []MenuGroup, state: *MenuState) -> MenuResult {
+    result: MenuResult
+    result.open_index = -1
+    if state == null { return result }
+    if !state.initialized { MenuStateInit(state) }
+    if groups.count <= 0 || groups.count > 2147483647 { Close(state); return result }
+    state.top_index = MenuBarTopIndexFor(state.top_index, cast(s32)groups.count)
+    if state.open_index >= cast(s32)groups.count { Close(state) }
+    if state.depth < 0 || state.depth > 3 { ResetPath(state) }
+    if props.focus_requested {
+        if state.focused || state.open_index >= 0 { Close(state) }
+        else { state.focused = true }
+    }
+    key := props.key
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)props.id }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    previous := TreePrevious(session, TreeCurrentParent(session), key, WidgetKindMenu)
+    pointer := PointerSample(session)
+    moved := !state.pointer_valid || pointer.x != state.pointer_x || pointer.y != state.pointer_y
+    state.pointer_valid = true; state.pointer_x = pointer.x; state.pointer_y = pointer.y
+    if state.open_index >= 0 {
+        scrim := TreePreviousCommitted(session, previous, ScrimKey(), WidgetKindButton)
+        if TreeTakeDragAt(session, scrim).ended { Close(state) }
+    }
+    for index: 0..cast(s32)groups.count - 1 {
+        node := TreePreviousCommitted(session, previous, MenuGroupKey(key, index), WidgetKindSelectable)
+        clicked := TreeTakeActivationAt(session, node)
+        hot := moved && TreeHoveredAt(session, node)
+        open_id := MenuBarOpenIdFor(1, state.open_index, cast(s32)groups.count)
+        decision := MenuGroupPointerDecisionFor(index + 2, index, open_id, clicked || hot, clicked)
+        if decision.changed_open {
+            if decision.next_open_id == 0 { Close(state) }
+            else { OpenGroup(groups, state, index) }
+        }
+    }
+    depth: s32 = 0
+    while state.open_index >= 0 && depth <= state.depth {
+        items := ItemsAt(groups, state, depth)
+        if items.count == 0 { state.depth = ifx depth > 0 then depth - 1 else 0; break }
+        if state.selected[depth] < 0 || cast(s64)state.selected[depth] >= items.count ||
+            !MenuItemSelectable(cast(s32)items[state.selected[depth]].kind, items[state.selected[depth]].disabled) {
+            state.selected[depth] = SelectableIndex(items, -1, 1)
+        }
+        panel_key := MenuPanelKey(key, state, depth)
+        panel := TreePreviousCommitted(session, previous, panel_key, WidgetKindCustom)
+        for index: 0..cast(s32)items.count - 1 {
+            item := items[index]
+            node := TreePreviousCommitted(session, panel, MenuRowKey(panel_key, index), WidgetKindSelectable)
+            clicked := TreeTakeActivationAt(session, node)
+            if MenuItemSelectable(cast(s32)item.kind, item.disabled) && (clicked || (moved && TreeHoveredAt(session, node))) {
+                if state.selected[depth] != index { state.depth = depth }
+                state.selected[depth] = index
+                if !OpenChild(groups, state, depth) { state.depth = depth }
+                if clicked { Activate(state, item, *result) }
+                break
+            }
+        }
+        depth += 1
+    }
+    Keyboard(groups, state, props.input, *result)
+
+    scale := props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    panel_face := Face(props, StyleKindMenu(), 0)
+    item_face := Face(props, StyleKindMenuItem(), 0)
+    metrics := MenuMetricsFor(scale, panel_face, item_face, panel_face)
+    font := cast(s32)(14.0 * scale)
+    if item_face.value.font_size > 0.0 { font = cast(s32)(item_face.value.font_size * scale) }
+    if font < 1 { font = 1 }
+    view := TreeRootBounds(session)
+    bounds := props.bounds
+    root_bounds := bounds
+    if state.open_index >= 0 { root_bounds = view }
+    root := TreeSubmitCurrent(session, key, WidgetKindMenu, root_bounds)
+    if root < 0 { return result }
+    fill := ColorFor(panel_face, cast(u32)StyleBackground, panel_face.value.background,
+        StyleTokenColorOr("card", Color.{255, 255, 255, 255}))
+    ink := ColorFor(item_face, cast(u32)StyleForeground, item_face.value.foreground,
+        StyleTokenColorOr("text", Color.{30, 30, 30, 255}))
+    muted := StyleTokenColorOr("muted", Color.{154, 160, 166, 255})
+    highlight := StyleTokenColorOr("accent-soft", Color.{219, 232, 255, 255})
+    border := ColorFor(panel_face, cast(u32)StyleBorder, panel_face.value.border,
+        StyleTokenColorOr("border", Color.{200, 204, 208, 255}))
+    if state.open_index >= 0 {
+        scrim := TreeSubmit(session, ScrimKey(), root, WidgetKindButton, view)
+        TreeSetInteractive(session, scrim, false, false, 0)
+    }
+    PaintRoundedFill(session, root, bounds, 0.0, 4, fill)
+    x := MenuBarFirstItemX(bounds, metrics)
+    origin: Vector2
+    for index: 0..cast(s32)groups.count - 1 {
+        width := MenuGroupItemWidth(GlyphWidth(groups[index].label, font, ""), metrics)
+        group_bounds := MenuGroupItemBounds(x, bounds, width, metrics)
+        node := TreeSubmit(session, MenuGroupKey(key, index), root, WidgetKindSelectable, group_bounds)
+        TreeSetInteractive(session, node, false, false, 0)
+        TreeSetLabel(session, node, groups[index].label)
+        if state.open_index == index || (state.focused && state.top_index == index) {
+            PaintRoundedFill(session, node, group_bounds, 4.0 * scale, 8, highlight)
+        }
+        PaintClippedLabel(session, node, groups[index].label, MenuBarLabelX(group_bounds, metrics),
+            MenuBarLabelY(group_bounds, GlyphLineHeight(font, "")), font, ink, group_bounds)
+        if state.open_index == index { origin = .{group_bounds.x, bounds.y + bounds.height} }
+        x = MenuBarNextItemX(x, width, metrics)
+    }
+    parent: Rectangle
+    depth = 0
+    while state.open_index >= 0 && depth <= state.depth {
+        items := ItemsAt(groups, state, depth)
+        if items.count == 0 { break }
+        panel_bounds := PanelBounds(items, origin, view, metrics, font, parent, depth > 0)
+        panel_key := MenuPanelKey(key, state, depth)
+        panel := TreeSubmit(session, panel_key, root, WidgetKindCustom, panel_bounds)
+        if panel < 0 { break }
+        PaintRoundedFill(session, panel, panel_bounds, 6.0 * scale, 8, fill)
+        PaintRoundedOutline(session, panel, panel_bounds, 6.0 * scale, 8, scale, border)
+        maximum := cast(s32)items.count * metrics.row_height + metrics.panel_margin * 2 - cast(s32)panel_bounds.height
+        if maximum < 0 { maximum = 0 }
+        selected := state.selected[depth]
+        if state.reveal && selected >= 0 {
+            first := selected * metrics.row_height
+            last := first + metrics.row_height + metrics.panel_margin * 2 - cast(s32)panel_bounds.height
+            if state.scroll[depth] > first { state.scroll[depth] = first }
+            if state.scroll[depth] < last { state.scroll[depth] = last }
+        }
+        wheel := PointerWheelTake(session, panel_bounds)
+        if wheel > 120.0 { wheel = 120.0 }
+        if wheel < -120.0 { wheel = -120.0 }
+        state.scroll[depth] -= cast(s32)(wheel * cast(float32)metrics.row_height)
+        if state.scroll[depth] < 0 { state.scroll[depth] = 0 }
+        if state.scroll[depth] > maximum { state.scroll[depth] = maximum }
+        for index: 0..cast(s32)items.count - 1 {
+            row := MenuRowBounds(panel_bounds, index, metrics)
+            row.y -= cast(float32)state.scroll[depth]
+            if selected == index { origin = MenuSubmenuOrigin(row) }
+            if row.y + row.height <= panel_bounds.y || row.y >= panel_bounds.y + panel_bounds.height { continue }
+            item := items[index]
+            if MenuItemIsSeparator(cast(s32)item.kind) {
+                line := MenuSeparatorLineFor(row, metrics)
+                PaintLine(session, panel, Rectangle.{cast(float32)line.x1, cast(float32)line.y1,
+                    cast(float32)(line.x2 - line.x1), 0.0}, border)
+                continue
+            }
+            node := TreeSubmit(session, MenuRowKey(panel_key, index), panel, WidgetKindSelectable, row)
+            TreeSetInteractive(session, node, item.disabled, false, 0)
+            TreeSetSemantic(session, node, cast(SemanticKind)SemanticOption, 0)
+            TreeSetSelected(session, node, item.checked)
+            TreeSetLabel(session, node, item.label)
+            TreeSetSemanticDetail(session, node, item.accelerator)
+            if selected == index && !item.disabled { PaintRoundedFill(session, node, row, 4.0 * scale, 8, highlight) }
+            color := ifx item.disabled then muted else ink
+            y := MenuTextY(row, GlyphLineHeight(font, ""))
+            if item.checked { PaintClippedLabel(session, node, "✓", MenuCheckedMarkX(row, metrics), y, font, color, row) }
+            PaintClippedLabel(session, node, item.label, MenuLabelX(row, metrics), y, font, color, row)
+            if item.accelerator.count > 0 {
+                PaintClippedLabel(session, node, item.accelerator,
+                    MenuAcceleratorX(row, GlyphWidth(item.accelerator, font, ""), metrics), y, font, muted, row)
+            }
+            if MenuItemShowsSubmenu(cast(s32)item.kind) {
+                PaintClippedLabel(session, node, "›", MenuSubmenuIndicatorX(row, metrics), y, font, color, row)
+            }
+        }
+        parent = panel_bounds
+        depth += 1
+    }
+    state.reveal = false
+    result.open_index = state.open_index; result.focused = state.focused
+    return result
+}

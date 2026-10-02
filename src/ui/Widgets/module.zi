@@ -34,6 +34,8 @@ using LinkPropsModule :: #import "link_props";
 using LinkWidgetModule :: #import "link_widget";
 using ListBoxPropsModule :: #import "list_box_props";
 using ListBoxWidgetModule :: #import "list_box_widget";
+using MenuPropsModule :: #import "menu_props";
+using MenuWidgetModule :: #import "menu_widget";
 using ModalPropsModule :: #import "modal_props";
 using ModalFrameWidgetModule :: #import "modal_frame_widget";
 using ModalWidgetModule :: #import "modal_widget";
