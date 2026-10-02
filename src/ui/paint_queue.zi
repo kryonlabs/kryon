@@ -50,6 +50,10 @@ PaintCommand :: struct {
     text_count: s64
     text_block: s32
     owns_text: bool
+    asset_start: s64
+    asset_count: s64
+    asset_block: s32
+    owns_asset: bool
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
@@ -126,6 +130,20 @@ KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
     data.text_count = data.value.count
     data.text_block = block_index
     data.owns_text = true
+    return data
+}
+
+// Asset paths have the same frame lifetime as labels. In particular, an
+// image may be composed from a caller's temporary or editable path buffer.
+KeepPaintAsset :: (slot: s32, data: PaintCommand) -> PaintCommand {
+    if data.asset_path.count == 0 { return data }
+    stored: PaintCommand
+    stored.value = data.asset_path
+    stored = KeepPaintText(slot, stored)
+    data.asset_start = stored.text_start
+    data.asset_count = stored.text_count
+    data.asset_block = stored.text_block
+    data.owns_asset = stored.owns_text
     return data
 }
 
@@ -464,6 +482,7 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
         }
     }
     command.data = KeepPaintText(SessionIndex(session), command.data)
+    command.data = KeepPaintAsset(SessionIndex(session), command.data)
     if !VecPush(pending_paint[SessionIndex(session)].items, command) {
         pending_paint[SessionIndex(session)].overflow = true
     }
@@ -685,6 +704,11 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
         data.value = TextView(pending_text[slot][data.text_block].bytes[data.text_start:
             data.text_start + data.text_count])
     }
+    if data.owns_asset {
+        slot: s32 = SessionIndex(session)
+        data.asset_path = TextView(pending_text[slot][data.asset_block].bytes[data.asset_start:
+            data.asset_start + data.asset_count])
+    }
     return data
 }
 
@@ -852,12 +876,7 @@ PaintFlush :: (session: Session) {
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
         command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
-        if command.data.owns_text {
-            slot: s32 = SessionIndex(session)
-            command.data.value = TextView(pending_text[slot][command.data.text_block].bytes[
-                command.data.text_start:
-                command.data.text_start + command.data.text_count])
-        }
+        command.data = PendingPaintAt(session, index)
         EmitPaint(command)
         index += 1
     }
