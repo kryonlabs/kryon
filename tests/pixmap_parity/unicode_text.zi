@@ -1,0 +1,37 @@
+#import "geometry"
+#import "control_props"
+#import "session"
+#import "style_sheet"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+#import "tree_draw"
+
+using TextWrap;
+using FrameStatus;
+
+// Text beyond Latin-1 on the pixmap host: fallback symbols, color emoji
+// with and without variation selectors, modifiers and joiners.
+session: Session;
+
+Line :: (key: u64, y: float32, text: string, font: s32) {
+    line: TextProps
+    line.key = key
+    line.bounds = Rectangle.{16.0, y, 288.0, 32.0}
+    line.text = text
+    line.font = font
+    line.wrap = cast(TextWrap)TextWrapNone
+    Text(session, line)
+}
+
+#program_export
+Frame :: () -> s32 {
+    if !SessionValid(session) { session = SessionOpen() }
+    if !SessionValid(session) { return -1 }
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
+    Line(cast(u64)2, 12.0, "“Quotes” … → ✓ ★ ● ⚠ € Ωλ Жж", 16)
+    Line(cast(u64)3, 44.0, "🙂 👍🏽 🔥 ✅ ❤ ❤️ ⚡ 👨‍👩‍👧", 20)
+    Line(cast(u64)4, 84.0, "Box ┌─┐ ░▒▓ 🎉🚀", 28)
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return -1 }
+    return TreeCount(session)
+}

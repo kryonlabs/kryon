@@ -1,4 +1,6 @@
 #import "pixmap_font"
+#import "pixmap_emoji"
+#import "utf8"
 
 // Text for the pixmap host: Kryon's font, Liberation Sans, from its outlines.
 // It is laid out as the desktop, raylib, and canvas hosts lay text out: a
@@ -62,10 +64,9 @@ PixmapUnits :: (units: s64, font: s32) -> s64 {
     return PixmapFloorDiv(units * cast(s64)font * 256, cast(s64)PixmapTextLine)
 }
 
-// The glyph for a code point, or the question mark's.
-PixmapGlyphFor :: (point: u32) -> s32 {
-    code: s32 = cast(s32)point
-    if point > cast(u32)1114111 { code = 63 }
+// The font's glyph for a code point; -1 when it has none.
+PixmapGlyphExact :: (code: s32) -> s32 {
+    PixmapFontReady()
     low: s32 = 0
     high: s32 = PixmapFontGlyphs - 1
     while low <= high {
@@ -74,11 +75,22 @@ PixmapGlyphFor :: (point: u32) -> s32 {
         if found == code { return middle }
         if found < code { low = middle + 1 } else { high = middle - 1 }
     }
-    if code == 63 { return 0 }
-    return PixmapGlyphFor(cast(u32)63)
+    return -1
+}
+
+// The glyph for a code point, or the question mark's.
+PixmapGlyphFor :: (point: u32) -> s32 {
+    code: s32 = cast(s32)point
+    if point > cast(u32)1114111 { code = 63 }
+    glyph: s32 = PixmapGlyphExact(code)
+    if glyph >= 0 { return glyph }
+    glyph = PixmapGlyphExact(63)
+    if glyph >= 0 { return glyph }
+    return 0
 }
 
 PixmapGlyphAdvance :: (glyph: s32) -> s32 {
+    PixmapFontReady()
     return pixmap_font_advances[glyph]
 }
 
@@ -198,6 +210,7 @@ PixmapAddSpan :: (from: s64, to: s64, width: s32) {
 // pixmap_mask; false when the glyph draws nothing.
 PixmapRasterGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
     mask: *PixmapGlyphMask) -> bool {
+    PixmapFontReady()
     pixmap_edge_count = 0
     at: s32 = pixmap_font_starts[glyph]
     contours: s32 = PixmapFontValue(at)
@@ -364,4 +377,233 @@ PixmapCachedGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
     for index: 0..size - 1 { pixmap_cache_bytes[pixmap_cache_used + index] = pixmap_mask[index] }
     pixmap_cache_used += size
     return pixmap_mask[0:size]
+}
+
+// Color emoji. A cell is decoded from pixmap_emoji on first use and shrunk
+// to the text size with integer box filtering, so every target draws the
+// same pixels. Shrunk emoji are cached by emoji and size like glyph masks.
+PixmapEmojiSlots :: 4096;
+PixmapEmojiProbes :: 32;
+PixmapEmojiPixels :: 262144;
+PixmapEmojiLargest :: 128;
+pixmap_emoji_ready: bool;
+pixmap_emoji_cell: [1024]u32;
+pixmap_emoji_keys: [4096]s32;
+pixmap_emoji_offsets: [4096]s32;
+pixmap_emoji_pool: [262144]u32;
+pixmap_emoji_used: s32;
+pixmap_emoji_count: s32;
+
+PixmapEmojiSymbol :: (at: s32) -> s32 {
+    chunk: s32 = at / PixmapEmojiChunk
+    text: string = pixmap_emoji_chunks[chunk]
+    return PixmapFontSextet(text[at - chunk * PixmapEmojiChunk])
+}
+
+PixmapEmojiReady :: () {
+    if pixmap_emoji_ready { return }
+    PixmapEmojiChunksFill()
+    for index: 0..PixmapEmojiCount - 1 {
+        at: s32 = cast(s32)index * 3
+        pixmap_emoji_codes[index] = PixmapEmojiSymbol(at) * 4096 +
+            PixmapEmojiSymbol(at + 1) * 64 + PixmapEmojiSymbol(at + 2)
+    }
+    for index: 0..PixmapEmojiCount - 1 {
+        at: s32 = PixmapEmojiCount * 3 + cast(s32)index * 4
+        pixmap_emoji_starts[index] = PixmapEmojiSymbol(at) * 262144 +
+            PixmapEmojiSymbol(at + 1) * 4096 + PixmapEmojiSymbol(at + 2) * 64 +
+            PixmapEmojiSymbol(at + 3)
+    }
+    pixmap_emoji_ready = true
+}
+
+// The color emoji for a code point; -1 when there is none.
+PixmapEmojiFor :: (code: s32) -> s32 {
+    if code < 8252 { return -1 }
+    PixmapEmojiReady()
+    low: s32 = 0
+    high: s32 = PixmapEmojiCount - 1
+    while low <= high {
+        middle: s32 = (low + high) / 2
+        found: s32 = pixmap_emoji_codes[middle]
+        if found == code { return middle }
+        if found < code { low = middle + 1 } else { high = middle - 1 }
+    }
+    return -1
+}
+
+// Code points shown as emoji without a variation selector: everything past
+// the Basic Multilingual Plane, and there the Emoji_Presentation symbols.
+PixmapEmojiDefault :: (code: s32) -> bool {
+    if code >= 65536 { return true }
+    if code == 8986 || code == 8987 || (code >= 9193 && code <= 9196) ||
+        code == 9200 || code == 9203 || code == 9725 || code == 9726 ||
+        code == 9748 || code == 9749 || (code >= 9800 && code <= 9811) ||
+        code == 9855 || code == 9875 || code == 9889 || code == 9898 ||
+        code == 9899 || code == 9917 || code == 9918 || code == 9924 ||
+        code == 9925 || code == 9934 || code == 9940 || code == 9962 ||
+        code == 9970 || code == 9971 || code == 9973 || code == 9978 ||
+        code == 9981 || code == 9989 || code == 9994 || code == 9995 ||
+        code == 10024 || code == 10060 || code == 10062 ||
+        (code >= 10067 && code <= 10069) || code == 10071 ||
+        (code >= 10133 && code <= 10135) || code == 10160 || code == 10175 ||
+        code == 11035 || code == 11036 || code == 11088 || code == 11093 { return true }
+    return false
+}
+
+// Skin tone modifiers, the keycap mark and tags only change the emoji
+// before them and take no room.
+PixmapEmojiModifier :: (code: s32) -> bool {
+    return (code >= 127995 && code <= 127999) || code == 8419 ||
+        (code >= 917504 && code <= 917631)
+}
+
+PixmapEmojiDecode :: (emoji: s32) {
+    palette: [64]u32
+    at: s32 = PixmapEmojiHeader + pixmap_emoji_starts[emoji]
+    colors: s32 = PixmapEmojiSymbol(at)
+    at += 1
+    for color: 1..colors {
+        rgb: s32 = PixmapEmojiSymbol(at) * 262144 + PixmapEmojiSymbol(at + 1) * 4096 +
+            PixmapEmojiSymbol(at + 2) * 64 + PixmapEmojiSymbol(at + 3)
+        alpha: s32 = PixmapEmojiSymbol(at + 4) * 4 + PixmapEmojiSymbol(at + 5)
+        palette[color] = (cast(u32)alpha << cast(u32)24) | cast(u32)rgb
+        at += 6
+    }
+    pixel: s32 = 0
+    while pixel < 1024 {
+        value: s32 = PixmapEmojiSymbol(at)
+        run: s32 = 1
+        at += 1
+        if value == 63 {
+            run = PixmapEmojiSymbol(at) + 3
+            value = PixmapEmojiSymbol(at + 1)
+            at += 2
+        }
+        while run > 0 && pixel < 1024 {
+            pixmap_emoji_cell[pixel] = palette[value]
+            pixel += 1
+            run -= 1
+        }
+    }
+}
+
+// Shrinks the decoded cell to size x size into the pool at `offset`,
+// averaging premultiplied color; larger sizes take the nearest cell pixel.
+PixmapEmojiScale :: (size: s32, offset: s32) {
+    cell: s32 = PixmapEmojiCell
+    if size > cell {
+        for y: 0..size - 1 {
+            for x: 0..size - 1 {
+                pixmap_emoji_pool[offset + cast(s32)y * size + cast(s32)x] =
+                    pixmap_emoji_cell[(cast(s32)y * cell / size) * cell + cast(s32)x * cell / size]
+            }
+        }
+        return
+    }
+    red: [1024]s32
+    green: [1024]s32
+    blue: [1024]s32
+    alpha: [1024]s32
+    count: [1024]s32
+    for y: 0..cell - 1 {
+        row: s32 = cast(s32)y * size / cell
+        for x: 0..cell - 1 {
+            target: s32 = row * size + cast(s32)x * size / cell
+            pixel: u32 = pixmap_emoji_cell[cast(s32)y * cell + cast(s32)x]
+            a: s32 = cast(s32)(pixel >> cast(u32)24)
+            red[target] += cast(s32)((pixel >> cast(u32)16) & cast(u32)255) * a
+            green[target] += cast(s32)((pixel >> cast(u32)8) & cast(u32)255) * a
+            blue[target] += cast(s32)(pixel & cast(u32)255) * a
+            alpha[target] += a
+            count[target] += 1
+        }
+    }
+    for target: 0..size * size - 1 {
+        result: u32 = 0
+        if alpha[target] > 0 {
+            a: s32 = (alpha[target] + count[target] / 2) / count[target]
+            r: s32 = (red[target] + alpha[target] / 2) / alpha[target]
+            g: s32 = (green[target] + alpha[target] / 2) / alpha[target]
+            b: s32 = (blue[target] + alpha[target] / 2) / alpha[target]
+            result = (cast(u32)a << cast(u32)24) | (cast(u32)r << cast(u32)16) |
+                (cast(u32)g << cast(u32)8) | cast(u32)b
+        }
+        pixmap_emoji_pool[offset + cast(s32)target] = result
+    }
+}
+
+// Where the emoji's size x size pixels start in the pool; -1 when the size
+// is not drawn.
+PixmapEmojiPixelsFor :: (emoji: s32, size: s32) -> s32 {
+    if size <= 0 || size > PixmapEmojiLargest { return -1 }
+    key: s32 = emoji * 256 + size + 1
+    home: s32 = (emoji * 7919 + size * 31) % PixmapEmojiSlots
+    free: s32 = -1
+    for probe: 0..PixmapEmojiProbes - 1 {
+        slot: s32 = (home + cast(s32)probe) % PixmapEmojiSlots
+        if pixmap_emoji_keys[slot] == key { return pixmap_emoji_offsets[slot] }
+        if pixmap_emoji_keys[slot] == 0 {
+            free = slot
+            break
+        }
+    }
+    area: s32 = size * size
+    if free < 0 || pixmap_emoji_count >= PixmapEmojiSlots * 3 / 4 ||
+        pixmap_emoji_used + area > PixmapEmojiPixels {
+        for slot: 0..PixmapEmojiSlots - 1 { pixmap_emoji_keys[slot] = 0 }
+        pixmap_emoji_used = 0
+        pixmap_emoji_count = 0
+        free = home
+    }
+    PixmapEmojiDecode(emoji)
+    offset: s32 = pixmap_emoji_used
+    PixmapEmojiScale(size, offset)
+    pixmap_emoji_keys[free] = key
+    pixmap_emoji_offsets[free] = offset
+    pixmap_emoji_used += area
+    pixmap_emoji_count += 1
+    return offset
+}
+
+// One unit of laid-out text: a glyph, a color emoji or nothing, and its
+// advance in font units.
+PixmapTextUnit :: struct {
+    after: s32
+    glyph: s32
+    emoji: s32
+    advance: s64
+}
+
+PixmapNextUnit :: (value: string, at: s32) -> PixmapTextUnit {
+    unit: PixmapTextUnit
+    unit.after = at
+    unit.glyph = -1
+    unit.emoji = -1
+    point: Decoded = Decode(value, at)
+    if point.after <= at { return unit }
+    unit.after = point.after
+    code: s32 = cast(s32)point.value
+    if point.value > cast(u32)1114111 { code = 63 }
+    if PixmapEmojiModifier(code) { return unit }
+    exact: s32 = PixmapGlyphExact(code)
+    emoji: s32 = PixmapEmojiFor(code)
+    if emoji >= 0 {
+        next: s32 = 0
+        if point.after < cast(s32)value.count {
+            following: Decoded = Decode(value, point.after)
+            if following.after > point.after { next = cast(s32)following.value }
+        }
+        shown: bool = next == 65039 || exact < 0 || PixmapEmojiDefault(code)
+        if next == 65038 && exact >= 0 { shown = false }
+        if shown {
+            unit.emoji = emoji
+            unit.advance = cast(s64)PixmapTextLine
+            return unit
+        }
+    }
+    unit.glyph = exact
+    if unit.glyph < 0 { unit.glyph = PixmapGlyphFor(cast(u32)63) }
+    unit.advance = cast(s64)PixmapGlyphAdvance(unit.glyph)
+    return unit
 }

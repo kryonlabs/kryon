@@ -33,6 +33,8 @@ ZIRAN = os.environ.get("ZIRAN_BIN") or str(ZIRAN_ROOT / "build/bin/ziran")
 TARGETS = ["c", "cpp", "go", "rust", "py", "zib"]
 TEMPLATES = ["app", "tui", "pages", "web"]
 EXAMPLES = ["hello", "text_hello", "image_demo"]
+# Test-only programs in tests/pixmap_parity, built like the examples.
+TEXT_CASES = ["unicode_text"]
 OUTPUT = ROOT / "build/pixmap-parity"
 
 
@@ -112,7 +114,8 @@ main :: () -> s32 {{
 ''')
     ir = directory / "ir"
     run([ZIRAN, "ir", "--root", directory,
-         "--module-path", ROOT / "examples", "--module-path", ROOT / "src/ui",
+         "--module-path", ROOT / "examples", "--module-path", ROOT / "tests/pixmap_parity",
+         "--module-path", ROOT / "src/ui",
          "--module-path", ROOT / "src/backend", "--module-path", ZIRAN_ROOT / "std",
          "--entry", f"{name}_shot:main", "-o", ir, directory / f"{name}_shot.zi"],
         directory, env)
@@ -201,7 +204,7 @@ def main():
         for name in TEMPLATES:
             if not selected or name in selected:
                 programs.append(template_program(work, name, env))
-        for name in EXAMPLES:
+        for name in EXAMPLES + TEXT_CASES:
             if not selected or name in selected:
                 programs.append(example_program(work, name, env))
         results = {}
