@@ -46,6 +46,13 @@ SystemClipboardHasText :: () -> bool {
     return SystemClipboardOpenHost() > 0
 }
 
+// Empty text and an unavailable host are distinct: callers can preserve
+// their own clipboard when the backend has no system clipboard.
+#program_export
+SystemClipboardAvailable :: () -> bool {
+    return SystemClipboardOpenHost() >= 0
+}
+
 // Puts text on the system clipboard. Returns false when the host has none.
 #program_export
 SystemClipboardSet :: (text: string) -> bool {
