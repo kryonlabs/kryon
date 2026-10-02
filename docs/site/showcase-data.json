@@ -99,10 +99,10 @@
       "name": "t9",
       "summary": "Terminal for Linux and Taiji with sessions, tabs, and focused developer workflows.",
       "author": {
-        "name": "kryonlabs",
-        "url": "https://kryonlabs.com"
+        "name": "taijiosnet",
+        "url": "https://github.com/taijiosnet"
       },
-      "repository": "https://github.com/kryonlabs/t9",
+      "repository": "https://github.com/taijiosnet/t9",
       "homepage": "https://ktrem.kryonlabs.com",
       "banner": "showcase/t9-faac79134e7e.png",
       "bannerAlt": "t9 terminal showcase banner",
@@ -120,10 +120,10 @@
       "name": "Rill",
       "summary": "Kryon-native desktop shell with panels, launchers, task windows, and embedded application hosts.",
       "author": {
-        "name": "kryonlabs",
-        "url": "https://kryonlabs.com"
+        "name": "taijiosnet",
+        "url": "https://github.com/taijiosnet"
       },
-      "repository": "https://github.com/kryonlabs/rill",
+      "repository": "https://github.com/taijiosnet/rill",
       "homepage": "https://rill.kryonlabs.com",
       "banner": "showcase/rill-6741684e2649.png",
       "bannerAlt": "Rill desktop shell showcase banner",
