@@ -6,6 +6,7 @@
 #import "tree_draw";
 
 draws: s32;
+images: s32;
 bad: bool;
 
 // Queue many glyph-sized buffers, reusing each immediately. The total text
@@ -17,6 +18,15 @@ QueueLabels :: (session: Session) {
             Color.{1, 2, 3, 255}, Rectangle.{0.0, 0.0, 100.0, 100.0})
         for at: 0..7 { bytes[at] = 88 }
     }
+}
+
+// A settings dialog may change the same buffer after Image was composed.
+QueueAsset :: (session: Session) {
+    path: [9]u8 = .[97, 115, 115, 101, 116, 46, 112, 110, 103]
+    bounds := Rectangle.{0.0, 0.0, 100.0, 100.0}
+    PaintImage(session, -1, TextView(path[:]), cast(u32)0,
+        bounds, bounds, bounds, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    for index: 0..8 { path[index] = 88 }
 }
 
 #program_export
@@ -47,8 +57,10 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 RasterImage :: (path: string, id: u32, source: Rectangle,
     destination: Rectangle, clip: Rectangle, origin: Vector2,
     rotation: float32, radius: float32, tint: Color) {
-    unused path; unused id; unused source; unused destination; unused clip
+    unused id; unused source; unused destination; unused clip
     unused origin; unused rotation; unused radius; unused tint
+    if path != "asset.png" { bad = true }
+    images += 1
 }
 
 #program_export
@@ -65,6 +77,14 @@ main :: () -> s32 {
             result.paint_count != 5000 { return 3 }
     }
     if draws != 10000 || bad { return 4 }
+    for frame: 0..1 {
+        BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        QueueAsset(session)
+        if PendingPaintAt(session, 0).asset_path != "asset.png" { return 9 }
+        result := EndFrameRetained(session, true)
+        if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 10 }
+    }
+    if images != 1 || bad { return 11 }
     // Overflow never emits partially borrowed or stale text, including a
     // caller that flushes directly instead of committing through EndFrame.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
@@ -77,6 +97,11 @@ main :: () -> s32 {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     PaintLabel(session, -1, TextView(oversized[:]), 0, 0, 14, Color.{})
     if cast(s32)EndFrame(session) != 8 || draws != 10000 { return 8 }
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    bounds := Rectangle.{0.0, 0.0, 100.0, 100.0}
+    PaintImage(session, -1, TextView(oversized[:]), cast(u32)0,
+        bounds, bounds, bounds, Vector2.{}, 0.0, 0.0, Color.{})
+    if cast(s32)EndFrame(session) != 8 || images != 1 { return 12 }
     PaintDispose(session)
     if !SessionClose(session) { return 5 }
     return 0

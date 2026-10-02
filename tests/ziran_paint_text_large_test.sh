@@ -45,4 +45,4 @@ for form in source saved; do
     test "$(timeout 30 "$ziran" run "$work/$form.zib")" = 0
 done
 cmp "$work/source.zib" "$work/saved.zib"
-echo 'Large Kryon paint labels retain their text across source, saved IR and native/portable targets'
+echo 'Kryon paint labels and image paths retain their bytes across source, saved IR and native/portable targets'
