@@ -2,6 +2,8 @@
 #import "geometry"
 #import "utf8"
 #import "pixmap_text"
+ImageCanvas :: #import "image_canvas";
+#import "math"
 
 // A headless host: Kryon paints a frame into this pixel buffer, and
 // PixmapPresent prints it as a PPM image on standard output. The raster is
@@ -21,6 +23,47 @@ pixmap_pixels: [576000]u32;
 pixmap_surface: []u32 = pixmap_pixels[:];
 pixmap_width: s32 = PixmapWidth;
 pixmap_height: s32 = PixmapHeight;
+// The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
+// clearing/replacing the slot. Image widgets still resolve an ordinary asset.
+PixmapImageLimit :: 256;
+pixmap_image_paths: [256][256]u8;
+pixmap_image_lengths: [256]s32;
+pixmap_image_widths: [256]s32;
+pixmap_image_heights: [256]s32;
+PixmapImagePixels :: struct { value: []u32 }
+pixmap_image_pixels: [256]PixmapImagePixels;
+
+#program_export
+PixmapClearImage :: (slot: s32) {
+    if slot < 0 || slot >= PixmapImageLimit { return }
+    pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
+    pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
+}
+
+PixmapImageIndex :: (path: string) -> s32 {
+    if path.count == 0 || path.count >= 256 { return -1 }
+    for slot: 0..PixmapImageLimit - 1 {
+        if pixmap_image_lengths[slot] != path.count { continue }
+        same := true
+        for i: 0..cast(s32)path.count - 1 { if pixmap_image_paths[slot][i] != path[i] { same = false; break } }
+        if same { return cast(s32)slot }
+    }
+    return -1
+}
+
+#program_export
+PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u32) -> bool {
+    if slot < 0 || slot >= PixmapImageLimit || path.count == 0 || path.count >= 256 ||
+        width <= 0 || height <= 0 || width > 16384 || height > 16384 ||
+        cast(s64)width * cast(s64)height > pixels.count { return false }
+    for i: 0..cast(s32)path.count - 1 { if path[i] == cast(u8)0 { return false } }
+    existing := PixmapImageIndex(path)
+    if existing >= 0 && existing != slot { return false }
+    for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
+    pixmap_image_lengths[slot] = cast(s32)path.count
+    pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
+    pixmap_image_pixels[slot].value = pixels; return true
+}
 // Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
 pixmap_clip_left: s32;
 pixmap_clip_top: s32;
@@ -395,17 +438,57 @@ RasterLine :: (line: Rectangle, color: Color) {
     }
 }
 
-// Images are not decoded here: the destination shows a checkerboard in
-// the tint, so layout and clipping stay visible and comparable.
+// Hosts supply decoded assets; absent assets retain the screenshot placeholder.
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
     destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
     radius: float32, tint: Color) {
-    unused asset_path
     unused texture_id
-    unused source
-    unused origin
-    unused rotation
+    slot := PixmapImageIndex(asset_path)
+    if slot >= 0 {
+        if !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
+            !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
+            !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
+            !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
+            destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+        // Clamp floats before converting them to pixel indexes.
+        left := clip.x; top := clip.y; right := clip.x + clip.width; bottom := clip.y + clip.height
+        if !Finite32(right) || !Finite32(bottom) { return }
+        if rotation == 0.0 {
+            if left < destination.x - origin.x { left = destination.x - origin.x }
+            if top < destination.y - origin.y { top = destination.y - origin.y }
+            if right > destination.x - origin.x + destination.width { right = destination.x - origin.x + destination.width }
+            if bottom > destination.y - origin.y + destination.height { bottom = destination.y - origin.y + destination.height }
+        }
+        if left < 0.0 { left = 0.0 }; if top < 0.0 { top = 0.0 }
+        if right > cast(float32)pixmap_width { right = cast(float32)pixmap_width }
+        if bottom > cast(float32)pixmap_height { bottom = cast(float32)pixmap_height }
+        if right <= left || bottom <= top { return }
+        cosine := CosineDegrees(rotation); sine := SineDegrees(rotation)
+        PixmapClipAll()
+        for y: FloorInteger(top)..CeilInteger(bottom) - 1 {
+            for x: FloorInteger(left)..CeilInteger(right) - 1 {
+                px := cast(float32)x + 0.5; py := cast(float32)y + 0.5
+                if !ImageCanvas.InsideRoundedClip(px, py, clip, radius) { continue }
+                dx := px - destination.x; dy := py - destination.y
+                local_x := dx * cosine + dy * sine + origin.x
+                local_y := -dx * sine + dy * cosine + origin.y
+                if local_x < 0.0 || local_y < 0.0 || local_x >= destination.width || local_y >= destination.height { continue }
+                sx := source.x + local_x * source.width / destination.width
+                sy := source.y + local_y * source.height / destination.height
+                if !Finite32(sx) || !Finite32(sy) || sx < 0.0 || sy < 0.0 ||
+                    sx >= cast(float32)pixmap_image_widths[slot] || sy >= cast(float32)pixmap_image_heights[slot] { continue }
+                packed := pixmap_image_pixels[slot].value[FloorInteger(sy) * pixmap_image_widths[slot] + FloorInteger(sx)]
+                color: Color
+                color.r = cast(u8)(((packed >> cast(u32)16) & cast(u32)255) * cast(u32)tint.r / cast(u32)255)
+                color.g = cast(u8)(((packed >> cast(u32)8) & cast(u32)255) * cast(u32)tint.g / cast(u32)255)
+                color.b = cast(u8)((packed & cast(u32)255) * cast(u32)tint.b / cast(u32)255)
+                color.a = cast(u8)((packed >> cast(u32)24) * cast(u32)tint.a / cast(u32)255)
+                PixmapBlend(x, y, color, 255)
+            }
+        }
+        return
+    }
     PixmapClipTo(clip)
     x0: s32 = PixmapRound(destination.x)
     y0: s32 = PixmapRound(destination.y)
@@ -431,13 +514,13 @@ RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
-    unused asset_path
+    slot := PixmapImageIndex(asset_path); if slot >= 0 { return pixmap_image_widths[slot] }
     return 0
 }
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
-    unused asset_path
+    slot := PixmapImageIndex(asset_path); if slot >= 0 { return pixmap_image_heights[slot] }
     return 0
 }
 

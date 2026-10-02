@@ -4,9 +4,12 @@
 
 pixels: [35]u32;
 portrait: [48]u32;
+image: [4]u32;
 
 #program_export
 main :: () -> s32 {
+    image[0] = cast(u32)0xffff0000; image[1] = cast(u32)0xff00ff00
+    image[2] = cast(u32)0x800000ff; image[3] = cast(u32)0x00ffffff
     for i: 0..cast(s32)34 { pixels[i] = cast(u32)0xabcdef }
     if !PixmapBeginInto(cast(u32)0x102030, 7, 4, pixels[:]) { return 1 }
     for i: 0..cast(s32)27 { if pixels[i] != cast(u32)0x102030 { return 2 } }
@@ -24,5 +27,16 @@ main :: () -> s32 {
     PixmapBegin(cast(u32)0x123456)
     RasterLine(.{959.0, 599.0, 0.0, 0.0}, .{1, 2, 3, 255})
     if pixmap_pixels[575999] != cast(u32)0x010203 || portrait[47] != cast(u32)0x0000ff || pixels[28] != cast(u32)0xabcdef { return 10 }
+    if !PixmapSetImage(0, "fixture", 2, 2, image[:]) || ImageWidth("fixture") != 2 || ImageHeight("fixture") != 2 { return 11 }
+    if PixmapSetImage(1, "fixture", 2, 2, image[:]) || PixmapSetImage(0, "bad", 3, 2, image[:]) || ImageWidth("fixture") != 2 { return 12 }
+    unused PixmapBeginInto(cast(u32)0, 4, 4, portrait[:])
+    RasterImage("fixture", cast(u32)0, .{0.0, 0.0, 2.0, 2.0}, .{0.0, 0.0, 4.0, 4.0}, .{0.0, 0.0, 4.0, 4.0}, .{}, 0.0, 0.0, .{255, 255, 255, 255})
+    if portrait[0] != cast(u32)0xff0000 || portrait[3] != cast(u32)0x00ff00 || portrait[12] != cast(u32)0x000080 || portrait[15] != cast(u32)0 { return 13 }
+    unused PixmapBeginInto(cast(u32)0, 4, 4, portrait[:])
+    RasterImage("fixture", cast(u32)0, .{0.0, 0.0, 2.0, 2.0}, .{0.0, 0.0, 4.0, 4.0}, .{0.0, 0.0, 4.0, 4.0}, .{}, 0.0, 2.0, .{255, 255, 255, 255})
+    if portrait[0] != cast(u32)0 || portrait[1] != cast(u32)0xff0000 || portrait[2] != cast(u32)0x00ff00 { return 14 }
+    PixmapClearImage(0)
+    if ImageWidth("fixture") != 0 || ImageHeight("fixture") != 0 || pixmap_image_pixels[0].value.count != 0 { return 15 }
+    PixmapEndInto()
     print("Pixmap caller-owned surfaces passed\n"); return 0
 }
