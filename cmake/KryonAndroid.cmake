@@ -44,7 +44,8 @@ function(kryon_android_raylib raylib_dir)
         SUPPORT_FILEFORMAT_PNG=1
         SUPPORT_FILEFORMAT_OGG=1
         SUPPORT_MODULE_RAUDIO=1)
-    target_compile_options(raylib PRIVATE -Oz -ffunction-sections -fdata-sections)
+    target_compile_options(raylib PRIVATE -Oz -ffunction-sections -fdata-sections
+        -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_include_directories(raylib PUBLIC
         "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
 endfunction()
@@ -52,18 +53,37 @@ endfunction()
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's
 # native_app_glue, size-optimize, keep symbols hidden, garbage-collect unused
 # sections, align for 16 KB page devices, route fopen() through raylib's APK
-# asset reader, strip release builds, and link raylib
+# asset reader, retain native crash symbols, and link raylib
 # with the Android system libraries it needs.
 function(kryon_android_app target)
+    if(NOT ZI2C_BIN)
+        find_program(ZI2C_BIN NAMES zi2c REQUIRED)
+    endif()
+    set(thread_source "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/backend/android_thread.zi")
+    set(thread_generated "${CMAKE_CURRENT_BINARY_DIR}/kryon-android-thread")
+    add_custom_command(
+        OUTPUT "${thread_generated}/android_thread.c" "${thread_generated}/android_thread.h"
+        COMMAND "${ZI2C_BIN}" --no-main
+            --root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/backend"
+            -o "${thread_generated}" "${thread_source}"
+        DEPENDS "${thread_source}" "${ZI2C_BIN}"
+        VERBATIM)
     target_sources(${target} PRIVATE
+        "${thread_generated}/android_thread.c"
         "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}/android_native_app_glue.c")
+    # Only the NativeActivity-owned app thread receives this stack policy.
+    # The generated configurator calls libc normally; other thread creators retain
+    # their own attributes and defaults.
+    set_property(SOURCE "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}/android_native_app_glue.c"
+        APPEND PROPERTY COMPILE_DEFINITIONS pthread_attr_setdetachstate=ConfigureNativeThread)
     target_include_directories(${target} PRIVATE
         "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
     target_compile_definitions(${target} PRIVATE
         PLATFORM_ANDROID ANDROID_BUILD=1 _DEFAULT_SOURCE _GNU_SOURCE
         _FILE_OFFSET_BITS=64)
     target_compile_options(${target} PRIVATE
-        -Oz -ffunction-sections -fdata-sections -fvisibility=hidden)
+        -Oz -ffunction-sections -fdata-sections -fvisibility=hidden
+        -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_link_options(${target} PRIVATE
         -Wl,--gc-sections
         -Wl,-z,max-page-size=16384
@@ -71,9 +91,8 @@ function(kryon_android_app target)
         # raylib's Android backend serves fopen() from APK assets through
         # __wrap_fopen; the linker must redirect every call site to it.
         -Wl,--wrap=fopen)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_link_options(${target} PRIVATE -Wl,--strip-all)
-    endif()
+    # Gradle strips the packaged library. Keep this original, with line
+    # information, so native startup failures can be symbolicated.
     target_link_libraries(${target}
         raylib android log OpenSLES EGL GLESv2 atomic dl m)
 endfunction()

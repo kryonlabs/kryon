@@ -1,0 +1,62 @@
+#import "android_thread"
+ThreadAttributes :: struct { words: [16]usize; }
+host :: #system_library "c";
+InitTestAttributes :: (attributes: *void) -> s32 #foreign host "pthread_attr_init";
+SetTestStackSize :: (attributes: *void, bytes: usize) -> s32 #foreign host "pthread_attr_setstacksize";
+DestroyTestAttributes :: (attributes: *void) -> s32 #foreign host "pthread_attr_destroy";
+CreateTestThread :: (thread: *usize, attributes: *void, entry: *void, data: *void) -> s32 #foreign host "pthread_create";
+SetTestGuard :: (attributes: *void, bytes: usize) -> s32 #foreign host "pthread_attr_setguardsize";
+GetTestGuard :: (attributes: *void, bytes: *usize) -> s32 #foreign host "pthread_attr_getguardsize";
+SetDefault :: (attributes: *void) -> s32 #foreign host "pthread_setattr_default_np";
+GetAttributes :: (thread: usize, attributes: *void) -> s32 #foreign host "pthread_getattr_np";
+ReadTestStackSize :: (attributes: *void, bytes: *usize) -> s32 #foreign host "pthread_attr_getstacksize";
+Self :: () -> usize #foreign host "pthread_self";
+Join :: (thread: usize, result: **void) -> s32 #foreign host "pthread_join";
+FindSymbol :: (handle: *void, name: *u8) -> *void #foreign host "dlsym";
+observed_bytes: usize;
+observed_error: s32;
+
+#program_export
+ObserveThread :: (data: *void) -> *void {
+    unused data
+    storage: ThreadAttributes
+    attributes := cast(*void)*storage
+    observed_error = GetAttributes(Self(), attributes)
+    if observed_error == 0 {
+        observed_error = ReadTestStackSize(attributes, *observed_bytes)
+        unused DestroyTestAttributes(attributes)
+    }
+    return null
+}
+
+#program_export
+main :: () -> s32 {
+    // Start with an Android-sized default, even on desktop libc.
+    storage: ThreadAttributes
+    attributes := cast(*void)*storage
+    if InitTestAttributes(attributes) != 0 ||
+    SetTestStackSize(attributes, cast(usize)1048576) != 0 ||
+    SetDefault(attributes) != 0 { return 1 }
+    name := "ObserveThread"
+    bytes: [32]u8
+    for index: 0..cast(s32)name.count - 1 { bytes[index] = name[index] }
+    entry := FindSymbol(null, *bytes[0])
+    if entry == null { return 2 }
+    thread: usize
+    if SetTestGuard(attributes, cast(usize)16384) != 0 ||
+    ConfigureNativeThread(attributes, 0) != 0 { return 3 }
+    guard: usize
+    if GetTestGuard(attributes, *guard) != 0 || guard != cast(usize)16384 { return 6 }
+    if CreateTestThread(*thread, attributes, entry, null) != 0 ||
+    Join(thread, null) != 0 || observed_error != 0 ||
+    observed_bytes != cast(usize)ThreadStackBytes { return 3 }
+    // A larger existing stack is preserved.
+    if SetTestStackSize(attributes, cast(usize)16777216) != 0 ||
+    ConfigureNativeThread(attributes, 0) != 0 { return 7 }
+    if CreateTestThread(*thread, attributes, entry, null) != 0 ||
+    Join(thread, null) != 0 || observed_error != 0 ||
+    observed_bytes != cast(usize)16777216 { return 4 }
+    if ConfigureNativeThread(null, 0) != 22 { return 5 }
+    unused DestroyTestAttributes(attributes)
+    return 0
+}
