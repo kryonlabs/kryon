@@ -100,7 +100,7 @@ static DrawSubfont fake_subfont = {
 static DrawFont fake_font = {NULL, NULL, 16, 12};
 static uint32_t fake_last_color;
 static int fake_next_event;
-static const int fake_event_count = 3;
+static int fake_keyboard_sent;
 
 int isNaN(double value) { return value != value; }
 int isInf(double value, int direction) { (void)value; (void)direction; return 0; }
@@ -153,18 +153,18 @@ KeyboardController *initkeyboard(int8_t *path) {
 void closemouse(MouseController *controller) { (void)controller; }
 void closekeyboard(KeyboardController *controller) { (void)controller; }
 int nbrecv(DrawChannel *channel, void *value) {
-    if(channel == (void *)1 && fake_next_event < 2) {
+    if(channel == (void *)1 && fake_next_event < 4) {
         DrawMouse *mouse = value;
         memset(mouse, 0, sizeof(*mouse));
-        mouse->buttons = fake_next_event == 0 ? 1 : 0;
+        mouse->buttons = fake_next_event == 0 ? 1 : (fake_next_event == 2 ? 2 : 0);
         mouse->xy.x = fake_next_event == 0 ? 24 : 32;
         mouse->xy.y = fake_next_event == 0 ? 12 : 18;
         fake_next_event++;
         return 1;
     }
-    if(channel == (void *)3 && fake_next_event == 2) {
+    if(channel == (void *)3 && fake_next_event == 2 && !fake_keyboard_sent) {
         *(int *)value = 65;
-        fake_next_event++;
+        fake_keyboard_sent = 1;
         return 1;
     }
     return 0;

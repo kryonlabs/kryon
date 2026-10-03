@@ -72,6 +72,7 @@ draw_key: s32;
 draw_resize_pending: bool;
 draw_rune: s32;
 draw_secondary: SecondaryPointerFrame;
+draw_middle: SecondaryPointerFrame;
 draw_wheel: float32;
 draw_clipboard: *u8;
 draw_clipboard_count: s32;
@@ -114,6 +115,7 @@ OpenFrame :: () -> bool {
 
 #program_export
 OpenLibdraw :: () -> bool {
+    draw_middle = SecondaryPointerFrame.{}
     if size_of(DrawPoint) != 8 || size_of(DrawRectangle) != 16 ||
     size_of(DrawMouse) != 24 || size_of(DrawEvent) != 8368 ||
     size_of(DrawImage) != 72 { return false }
@@ -178,6 +180,8 @@ PollLibdraw :: () -> bool {
     draw_wheel = 0.0
     draw_secondary.pressed = false
     draw_secondary.released = false
+    draw_middle.pressed = false
+    draw_middle.released = false
     event: DrawEvent
     if EventCanRead(cast(u64)3) != 0 {
         kind: u64 = EventRead(cast(u64)3, *event)
@@ -194,6 +198,10 @@ PollLibdraw :: () -> bool {
             draw_secondary.pressed = secondary && !draw_secondary.down
             draw_secondary.released = !secondary && draw_secondary.down
             draw_secondary.down = secondary
+            middle := (event.mouse.buttons & 2) != 0
+            draw_middle.pressed = middle && !draw_middle.down
+            draw_middle.released = !middle && draw_middle.down
+            draw_middle.down = middle
             if (event.mouse.buttons & 8) != 0 { draw_wheel = 1.0 }
             if (event.mouse.buttons & 16) != 0 { draw_wheel = -1.0 }
         } else if kind == cast(u64)2 {
@@ -299,3 +307,6 @@ SystemClipboardWriteHost :: (text: string) -> bool {
 PollSecondaryPointer :: () -> SecondaryPointerFrame {
     return draw_secondary
 }
+
+#program_export
+PollMiddlePointer :: () -> SecondaryPointerFrame { return draw_middle }
