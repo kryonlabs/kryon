@@ -11,6 +11,7 @@ window_height: s32;
 window_flags: u32;
 window_title: [512]u8;
 frame_rate: s32;
+font_loads: s32;
 exit_key: s32;
 focused: bool = true;
 middle_down: bool;
@@ -54,6 +55,14 @@ FileExists :: (path: *u8) -> bool { unused path; return false }
 #program_export
 LoadFontEx :: (path: *u8, size: s32, codepoints: *s32, count: s32) -> RaylibFont {
     unused path; unused size; unused codepoints; unused count
+    font_loads += 1
+    return RaylibFont.{}
+}
+#program_export
+LoadFontFromMemory :: (extension: *u8, bytes: *u8, byte_count: s32, size: s32,
+    codepoints: *s32, count: s32) -> RaylibFont {
+    unused extension; unused bytes; unused byte_count; unused size; unused codepoints; unused count
+    font_loads += 1
     return RaylibFont.{}
 }
 #program_export

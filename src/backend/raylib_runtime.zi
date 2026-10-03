@@ -437,6 +437,9 @@ LoadTypefaceFile :: (name: string, path: string,
     if !CopyCString(path, staged.path[:]) {
         return false
     }
+    // LoadFontEx returns raylib's default font for a missing file. That is
+    // not a registered file source and must not replace the selected face.
+    if !HostRaylibFileExists(*staged.path[0]) { return false }
     staged.from_file = true
     if !RaylibSeedGlyphs(*staged, seed, seed_count) {
         RaylibFreeTypefaceSource(*staged)
