@@ -380,7 +380,9 @@ TextFieldCore :: (session: Session, props: TextFieldProps) -> TextFieldResult {
                 result.clipboard_write = true
                 result.clipboard_text = props.value
             }
-            if decision.paste &&
+            if decision.paste && props.input.paste_text.count == 0 {
+                result.paste_without_text = true
+            } else if decision.paste &&
                 TextFieldInputTextAllowed(props.input.paste_text) &&
                 TextFieldReplacementAllowed(props, selection.start,
                     selection.end, props.input.paste_text) {

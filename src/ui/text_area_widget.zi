@@ -813,7 +813,9 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 result.clipboard_text = TextSpan(props.value,
                     selection.start, selection.end - selection.start)
             }
-            if decision.paste &&
+            if decision.paste && props.input.paste_text.count == 0 {
+                result.paste_without_text = true
+            } else if decision.paste &&
                 TextAreaInputTextAllowed(props.input.paste_text) &&
                 TextAreaReplacementAllowed(props, selection.start,
                     selection.end, props.input.paste_text) {

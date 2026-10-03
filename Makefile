@@ -244,6 +244,11 @@ desktop-project-test: build/bin/kryon
 desktop-size-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_size_test.py
 
+.PHONY: system-clipboard-linux-test
+system-clipboard-linux-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		python3 tests/system_clipboard_linux_test.py
+
 .PHONY: libdraw-project-test
 libdraw-project-test: build/bin/kryon
 	@python3 tests/libdraw_project_test.py
@@ -320,7 +325,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test
+test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)
