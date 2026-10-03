@@ -137,17 +137,20 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
     line.end = start
     line.next = cast(s32)value.count + 1
     if start >= cast(s32)value.count { return line }
+    wrapped: bool = wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0
     offset: s32 = start
     while offset < cast(s32)value.count {
         token: TextToken = TextTokenNext(value, offset, false)
         if !token.valid { break }
         if token.line_break {
             line.next = token.next
+            if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface) }
             return line
         }
         candidate: string = value[line.start:token.end]
-        width: s32 = GlyphWidth(candidate, font, typeface)
-        if wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0 &&
+        width: s32 = 0
+        if wrapped { width = GlyphWidth(candidate, font, typeface) }
+        if wrapped &&
             line.end > line.start && cast(float32)width > max_width {
             line.next = token.start
             return line
@@ -156,6 +159,9 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
         line.width = width
         offset = token.next
     }
+    // Without wrapping, measure the complete line once, preserving the same
+    // token boundaries and trailing-space policy as wrapped text.
+    if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface) }
     return line
 }
 
