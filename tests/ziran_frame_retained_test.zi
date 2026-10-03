@@ -48,8 +48,28 @@ ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
     return EndFrameRetained(TestSession(), true)
 }
 
+// Retained comparisons must include every byte, including NULs, and never
+// construct an out-of-bounds view for an invalid snapshot span.
+SnapshotSpanTest :: () -> bool {
+    bytes: [5]u8 = .[97, 0, 195, 169, 122]
+    for i: 0..cast(s32)4 {
+        paint_snapshot_values[1][101 + i] = bytes[i]
+        paint_snapshot_assets[1][101 + i] = bytes[i]
+    }
+    value := TextView(bytes[:])
+    if !SnapshotValueEqual(1, value, 101, 5) || !SnapshotAssetEqual(1, value, 101, 5) { return false }
+    changed: [5]u8 = .[97, 0, 195, 169, 120]
+    if SnapshotValueEqual(1, TextView(changed[:]), 101, 5) || SnapshotAssetEqual(1, TextView(changed[:]), 101, 5) { return false }
+    if !SnapshotValueEqual(1, "", 32768, 0) || !SnapshotAssetEqual(1, "", 32768, 0) { return false }
+    if SnapshotValueEqual(0, "", 0, 0) || SnapshotAssetEqual(9, "", 0, 0) ||
+        SnapshotValueEqual(1, "", -1, 0) || SnapshotAssetEqual(1, "", 32769, 0) ||
+        SnapshotValueEqual(1, "x", 32768, 1) || SnapshotAssetEqual(1, "x", 101, -1) { return false }
+    return true
+}
+
 #program_export
 main :: () -> s32 {
+    if !SnapshotSpanTest() { return 20 }
     first: [5]u8 = .[83, 97, 109, 101, 0]
     second: [5]u8 = .[83, 97, 109, 101, 0]
     changed: [5]u8 = .[78, 101, 120, 116, 0]
