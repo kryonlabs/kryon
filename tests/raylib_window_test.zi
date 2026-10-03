@@ -18,6 +18,8 @@ main :: () -> s32 {
         Text.TextFromCString(*Probe.window_title[0]) != "One 一" ||
         Runtime.RaylibSetTitle("bad\x00title") ||
         Text.TextFromCString(*Probe.window_title[0]) != "One 一" { return 4 }
+    if Runtime.LoadTypefaceFile("Missing", "/missing/typeface.ttf", null, 0) ||
+        Probe.font_loads != 0 { return 13 }
     Probe.middle_pressed = true; Probe.middle_released = true
     Probe.fresh_key = 65; Probe.repeated_key = 263
     if !Runtime.PollRaylib() { return 5 }
