@@ -324,3 +324,8 @@ test: check canvas-test canvas-project-test page-route-project-test dom-project-
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: pixmap-measure-test
+pixmap-measure-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_measure_test.sh
+test: pixmap-measure-test

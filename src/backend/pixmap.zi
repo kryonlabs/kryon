@@ -222,6 +222,14 @@ PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Co
         row: s32 = y * pixmap_width
         x: s32 = left
         while x < right {
+            // Opaque interiors are contiguous stores. Keep sampling and
+            // blending only at corners, outside this vectorizable span.
+            if opaque && (!corner_row || (x >= x0 + r && x < x1 - r)) {
+                end: s32 = right
+                if corner_row && end > x1 - r { end = x1 - r }
+                while x < end { pixmap_surface[row + x] = rgb; x += 1 }
+                continue
+            }
             if corner_row && (x < x0 + r || x >= x1 - r) {
                 samples: s32 = PixmapSamples(x, y, x0, y0, x1, y1, r)
                 if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
@@ -280,17 +288,57 @@ PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
     }
 }
 
+// Wrapping repeatedly measures growing prefixes. The pixmap font is fixed,
+// so keep owned bytes and font-independent advances, rather than decoding
+// each prefix from its beginning. Revisit the final four units: a newly
+// completed UTF-8 point or variation selector can change its preceding unit.
+// Large values use the ordinary path and never retain borrowed storage.
+PixmapMeasureBytes :: 32768;
+pixmap_measure_bytes: [32768]u8;
+pixmap_measure_count: s32 = -1;
+pixmap_measure_units: s64;
+pixmap_measure_restart: s32;
+pixmap_measure_before: s64;
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     unused typeface
+    bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
     at: s32 = 0
+    if bounded && pixmap_measure_count >= 0 {
+        if value.count == pixmap_measure_count &&
+            value == TextView(pixmap_measure_bytes[:pixmap_measure_count]) {
+            return PixmapTextWidth(pixmap_measure_units, font)
+        }
+        if value.count > pixmap_measure_count &&
+            value[:pixmap_measure_restart] == TextView(pixmap_measure_bytes[:pixmap_measure_restart]) {
+            at = pixmap_measure_restart
+            units = pixmap_measure_before
+        }
+    }
+    copied: s32 = at
+    starts: [4]s32
+    advances: [4]s64
+    count: s32 = 0
     while at < cast(s32)value.count {
+        starts[count % 4] = at
+        advances[count % 4] = units
+        count += 1
         unit: PixmapTextUnit = PixmapNextUnit(value, at)
         if unit.after <= at { break }
         at = unit.after
         units += unit.advance
     }
+    if bounded {
+        for i: copied..cast(s32)value.count - 1 { pixmap_measure_bytes[i] = value[i] }
+        pixmap_measure_count = cast(s32)value.count
+        pixmap_measure_units = units
+        index: s32 = 0
+        if count >= 4 { index = count % 4 }
+        pixmap_measure_restart = starts[index]
+        pixmap_measure_before = advances[index]
+    } else { pixmap_measure_count = -1 }
     return PixmapTextWidth(units, font)
 }
 

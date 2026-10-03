@@ -66,7 +66,10 @@ EndFrameRetained :: (session: Session, reuse: bool) -> FrameEndResult {
     }
     result.paint_count = PendingPaintCount(session)
     unchanged: bool = PaintPlanUnchanged(session)
-    stored: bool = PaintSnapshotStore(session)
+    // A matching plan already owns an identical snapshot. Rebuilding it
+    // copies every text/image path again without changing the next comparison.
+    stored: bool = unchanged
+    if !unchanged { stored = PaintSnapshotStore(session) }
     result.paint_unchanged = unchanged && stored
     slot: s32 = SessionIndex(session)
     frame_paint_unchanged[slot] = result.paint_unchanged && reuse

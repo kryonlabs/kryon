@@ -1,0 +1,84 @@
+#import "pixmap"
+#import "pixmap_text"
+#import "drawing_props"
+#import "geometry"
+
+ReferenceWidth :: (value: string, font: s32) -> s32 {
+    at: s32 = 0; units: s64 = 0
+    while at < cast(s32)value.count {
+        unit := PixmapNextUnit(value, at)
+        if unit.after <= at { break }; at = unit.after; units += unit.advance
+    }
+    return PixmapTextWidth(units, font)
+}
+
+CheckWidth :: (value: string) -> bool {
+    fonts: [3]s32 = .{11, 14, 23}
+    for pass: 0..cast(s32)1 {
+        for i: 0..cast(s32)value.count {
+            end := cast(s32)i
+            if pass == 1 { end = cast(s32)value.count - cast(s32)i }
+            part := value[:end]
+            for font: 0..cast(s32)2 {
+                if MeasureGlyphWidth(part, fonts[font], "") != ReferenceWidth(part, fonts[font]) { return false }
+            }
+        }
+    }
+    return true
+}
+
+pixels: [400]u32;
+expected: [400]u32;
+large_text: [32770]u8;
+mutable_text: [64]u8;
+
+// Compare opaque spans to sampled coverage over every pixel, including clipped
+// rounded corners and translucent fills. The reference deliberately has no
+// optimized spans or measurement cache.
+CheckFill :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) -> bool {
+    unused PixmapBeginInto(cast(u32)0x123456, 20, 20, pixels[:])
+    PixmapClipTo(.{3.0, 2.0, 14.0, 15.0})
+    PixmapFillRounded(x0, y0, x1, y1, radius, color)
+    for i: 0..cast(s32)399 { expected[i] = pixels[i] }
+    unused PixmapBeginInto(cast(u32)0x123456, 20, 20, pixels[:])
+    PixmapClipTo(.{3.0, 2.0, 14.0, 15.0})
+    r := PixmapRadius(x0, y0, x1, y1, radius)
+    for y: y0..y1 - 1 {
+        for x: x0..x1 - 1 {
+            coverage := PixmapSamples(cast(s32)x, cast(s32)y, x0, y0, x1, y1, r)
+            if coverage > 0 { PixmapBlend(cast(s32)x, cast(s32)y, color, coverage * 255 / 16) }
+        }
+    }
+    for i: 0..cast(s32)399 { if pixels[i] != expected[i] { return false } }
+    PixmapEndInto(); return true
+}
+
+#program_export
+main :: () -> s32 {
+    if !CheckWidth("A measured conversation with ordinary prose and spaces.") { return 1 }
+    if !CheckWidth("café 日本語 Á 🚀 ☀︎ ☀️ ❤️ 👍🏽") { return 2 }
+    if !CheckWidth("first\nsecond\r\nthird\tlast") { return 3 }
+    // Prefixes include incomplete Unicode and selectors. Mutable and aliased
+    // input must invalidate by content; font sizes share only raw advances.
+    for i: 0..cast(s32)63 { mutable_text[i] = cast(u8)97 }
+    for pass: 0..cast(s32)63 {
+        mutable_text[pass] = cast(u8)98
+        value := TextView(mutable_text[:])
+        if MeasureGlyphWidth(value, 14, "") != ReferenceWidth(value, 14) { return 4 }
+        if MeasureGlyphWidth(value[1:63], 19, "") != ReferenceWidth(value[1:63], 19) { return 5 }
+    }
+    for i: 0..cast(s32)32769 { large_text[i] = cast(u8)65 }
+    if MeasureGlyphWidth(TextView(large_text[:]), 14, "") != ReferenceWidth(TextView(large_text[:]), 14) { return 6 }
+    if !CheckWidth("after an over-capacity value") { return 7 }
+    radii: [5]s32 = .{0, 1, 3, 8, 100}
+    colors: [3]Color = .{.{12, 34, 56, 255}, .{200, 150, 100, 127}, .{1, 2, 3, 0}}
+    for radius: 0..cast(s32)4 {
+        for color: 0..cast(s32)2 {
+            if !CheckFill(-3, -2, 22, 23, radii[radius], colors[color]) { return 8 }
+            if !CheckFill(7, 5, 14, 13, radii[radius], colors[color]) { return 9 }
+            if !CheckFill(-2, 3, 4, 12, radii[radius], colors[color]) { return 10 }
+            if !CheckFill(16, 3, 22, 12, radii[radius], colors[color]) { return 11 }
+        }
+    }
+    print("Pixmap measurement and coverage parity passed\n"); return 0
+}
