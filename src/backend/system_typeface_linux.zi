@@ -1,0 +1,142 @@
+// Fontconfig selects an installed face that actually covers the requested
+// character. Loading it lazily keeps file/data typefaces usable without it.
+#scope_module
+CString :: #import "std/c_string";
+Text :: #import "std/byte_text_linux";
+dl :: #system_library "dl";
+c :: #system_library "c";
+Open :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
+Symbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+
+Create :: #type () -> *void #c_call;
+Destroy :: #type (*void) #c_call;
+AddString :: #type (*void, *u8, *u8) -> s32 #c_call;
+AddCharset :: #type (*void, *u8, *void) -> s32 #c_call;
+AddCharacter :: #type (*void, u32) -> s32 #c_call;
+HasCharacter :: #type (*void, u32) -> s32 #c_call;
+Substitute :: #type (*void, *void, s32) -> s32 #c_call;
+Defaults :: #type (*void) #c_call;
+Sort :: #type (*void, *void, s32, **void, *s32) -> *void #c_call;
+GetString :: #type (*void, *u8, s32, **u8) -> s32 #c_call;
+GetCharset :: #type (*void, *u8, s32, **void) -> s32 #c_call;
+GetInteger :: #type (*void, *u8, s32, *s32) -> s32 #c_call;
+FontSet :: struct { count: s32; capacity: s32; fonts: **void }
+
+create_pattern: Create;
+destroy_pattern: Destroy;
+add_string: AddString;
+add_charset: AddCharset;
+create_charset: Create;
+destroy_charset: Destroy;
+add_character: AddCharacter;
+has_character: HasCharacter;
+substitute: Substitute;
+defaults: Defaults;
+sort: Sort;
+destroy_set: Destroy;
+get_string: GetString;
+get_charset: GetCharset;
+get_integer: GetInteger;
+get_bool: GetInteger;
+tried: bool;
+ready: bool;
+
+Resolve :: (library: *void, slot: *void, name: string) -> bool {
+    bytes: [64]u8
+    if !CString.CopyCString(name, bytes[:]) { return false }
+    symbol := Symbol(library, *bytes[0])
+    if symbol == null { return false }
+    unused Copy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+Load :: () -> bool {
+    if tried { return ready }
+    tried = true
+    name: [32]u8
+    if !CString.CopyCString("libfontconfig.so.1", name[:]) { return false }
+    library := Open(*name[0], 1)
+    if library == null { return false }
+    ready = Resolve(library, cast(*void)*create_pattern, "FcPatternCreate") &&
+        Resolve(library, cast(*void)*destroy_pattern, "FcPatternDestroy") &&
+        Resolve(library, cast(*void)*add_string, "FcPatternAddString") &&
+        Resolve(library, cast(*void)*add_charset, "FcPatternAddCharSet") &&
+        Resolve(library, cast(*void)*create_charset, "FcCharSetCreate") &&
+        Resolve(library, cast(*void)*destroy_charset, "FcCharSetDestroy") &&
+        Resolve(library, cast(*void)*add_character, "FcCharSetAddChar") &&
+        Resolve(library, cast(*void)*has_character, "FcCharSetHasChar") &&
+        Resolve(library, cast(*void)*substitute, "FcConfigSubstitute") &&
+        Resolve(library, cast(*void)*defaults, "FcDefaultSubstitute") &&
+        Resolve(library, cast(*void)*sort, "FcFontSort") &&
+        Resolve(library, cast(*void)*destroy_set, "FcFontSetDestroy") &&
+        Resolve(library, cast(*void)*get_string, "FcPatternGetString") &&
+        Resolve(library, cast(*void)*get_charset, "FcPatternGetCharSet") &&
+        Resolve(library, cast(*void)*get_integer, "FcPatternGetInteger") &&
+        Resolve(library, cast(*void)*get_bool, "FcPatternGetBool")
+    return ready
+}
+
+#scope_export
+// Zero requests just a family. Otherwise reject Fontconfig's nearest match
+// when no installed font covers the character; a match alone is not proof.
+FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string {
+    if output.count == 0 || codepoint < 0 || codepoint > 0x10FFFF ||
+        (codepoint >= 0xD800 && codepoint <= 0xDFFF) { return "" }
+    bytes: [64]u8
+    if !CString.CopyCString(family, bytes[:]) || !Load() { return "" }
+    pattern := create_pattern()
+    if pattern == null { return "" }
+    defer destroy_pattern(pattern)
+    key: [16]u8
+    unused CString.CopyCString("family", key[:])
+    if add_string(pattern, *key[0], *bytes[0]) == 0 { return "" }
+    if codepoint != 0 {
+        charset := create_charset()
+        if charset == null { return "" }
+        defer destroy_charset(charset)
+        unused CString.CopyCString("charset", key[:])
+        if add_character(charset, cast(u32)codepoint) == 0 ||
+            add_charset(pattern, *key[0], charset) == 0 { return "" }
+    }
+    if substitute(null, pattern, 0) == 0 { return "" }
+    defaults(pattern)
+    result: s32
+    matches := sort(null, pattern, 0, null, *result)
+    if matches == null { return "" }
+    defer destroy_set(matches)
+    faces := cast(*FontSet)matches
+    for index: 0..faces.count - 1 {
+        selected := faces.fonts[index]
+        if codepoint != 0 {
+            charset: *void
+            unused CString.CopyCString("charset", key[:])
+            if get_charset(selected, *key[0], 0, *charset) != 0 ||
+                charset == null || has_character(charset, cast(u32)codepoint) == 0 {
+                continue
+            }
+        }
+        // Raylib supports outline TrueType/CFF. The host extracts collection
+        // faces; named variable-font instances and bitmap fonts are skipped.
+        face_index: s32
+        unused CString.CopyCString("index", key[:])
+        if get_integer(selected, *key[0], 0, *face_index) == 0 &&
+            (face_index < 0 || face_index > 65535) { continue }
+        format: *u8
+        unused CString.CopyCString("fontformat", key[:])
+        if get_string(selected, *key[0], 0, *format) != 0 || format == null { continue }
+        kind := Text.TextFromCString(format)
+        if kind != "TrueType" && kind != "CFF" { continue }
+        outline: s32
+        unused CString.CopyCString("outline", key[:])
+        if get_bool(selected, *key[0], 0, *outline) != 0 || outline == 0 { continue }
+        path: *u8
+        unused CString.CopyCString("file", key[:])
+        if get_string(selected, *key[0], 0, *path) == 0 && path != null &&
+            CString.CopyCString(Text.TextFromCString(path), output) {
+            if face != null { face.* = face_index }
+            return Text.TextFromCString(*output[0])
+        }
+    }
+    return ""
+}

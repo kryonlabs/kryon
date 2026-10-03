@@ -1,0 +1,188 @@
+// Run real Raylib font decoding and measurements without a window. Only the
+// texture upload, draw submission and texture disposal boundary is replaced.
+Runtime :: #import "raylib_runtime";
+SystemTypeface :: #import "system_typeface_linux";
+Collection :: #import "typeface_collection";
+Text :: #import "std/byte_text_linux";
+Geometry :: #import "geometry";
+Drawing :: #import "drawing_props";
+raylib :: #system_library "raylib";
+c :: #system_library "c";
+ReadFile :: (path: *u8, size: *s32) -> *u8 #foreign raylib "LoadFileData";
+FreeFile :: (bytes: *u8) #foreign raylib "UnloadFileData";
+DecodeFont :: (bytes: *u8, size: s32, pixels: s32, codepoints: *s32,
+    count: s32, kind: s32, actual: *s32) -> *Runtime.RaylibGlyphInfo #foreign raylib "LoadFontData";
+FreeGlyphs :: (glyphs: *Runtime.RaylibGlyphInfo, count: s32) #foreign raylib "UnloadFontData";
+NextCodepoint :: (text: *u8, length: *s32) -> s32 #foreign raylib "GetCodepointNext";
+MeasureFont :: (font: Runtime.RaylibFont, text: *u8, size: float32,
+    spacing: float32) -> Geometry.Vector2 #foreign raylib "MeasureTextEx";
+Allocate :: (bytes: usize) -> *void #foreign c "malloc";
+Free :: (bytes: *void) #foreign c "free";
+
+loaded: s32;
+released: s32;
+flushes: s32;
+Drawn :: struct { codepoint: s32; x: float32; y: float32; width: float32 }
+drawn: [32]Drawn;
+draw_count: s32;
+bad_glyph: bool;
+
+CollectionChecks :: () -> bool {
+    bytes: [64]u8
+    bytes[0] = 116; bytes[1] = 116; bytes[2] = 99; bytes[3] = 102
+    bytes[5] = 1; bytes[11] = 1; bytes[15] = 16
+    bytes[17] = 1; bytes[21] = 1
+    bytes[28] = 104; bytes[29] = 101; bytes[30] = 97; bytes[31] = 100
+    bytes[39] = 44; bytes[43] = 13; bytes[44] = 1; bytes[56] = 17
+    output: [44]u8
+    if Collection.FaceSize(bytes[:], 0) != 44 ||
+        Collection.FaceSize(bytes[:], 1) != 0 || Collection.FaceSize(bytes[:], -1) != 0 ||
+        Collection.FaceSize(bytes[0:0], 0) != 0 || Collection.FaceSize(bytes[0:56], 0) != 0 ||
+        Collection.Face(bytes[:], 0, output[0:43]).count != 0 { return false }
+    result := Collection.Face(bytes[:], 0, output[:])
+    if result.count != 44 || result[1] != 1 || result[4] != 0 || result[5] != 1 ||
+        result[23] != 28 || result[27] != 13 || result[28] != 1 || result[40] != 17 ||
+        result[41] != 0 || result[42] != 0 || result[43] != 0 || bytes[52] != 0 { return false }
+    // OpenType requires the whole reconstructed font to have this checksum.
+    sum: u32
+    for word: 0..10 {
+        at := word * 4
+        sum += (cast(u32)result[at] << cast(u32)24) |
+            (cast(u32)result[at + 1] << cast(u32)16) |
+            (cast(u32)result[at + 2] << cast(u32)8) | cast(u32)result[at + 3]
+    }
+    if sum != cast(u32)0xB1B0AFBA { return false }
+    bytes[36] = 255
+    if Collection.FaceSize(bytes[:], 0) != 0 { return false }
+    return true
+}
+
+CpuFont :: (bytes: *u8, count: s32, pixels: s32, codepoints: *s32,
+    glyph_count: s32) -> Runtime.RaylibFont {
+    result: Runtime.RaylibFont
+    actual: s32
+    glyphs := DecodeFont(bytes, count, pixels, codepoints, glyph_count, 0, *actual)
+    if glyphs == null || actual <= 0 { return result }
+    recs := cast(*Geometry.Rectangle)Allocate(cast(usize)actual * size_of(Geometry.Rectangle))
+    if recs == null { FreeGlyphs(glyphs, actual); return result }
+    for index: 0..actual - 1 {
+        recs[index] = .{0.0, 0.0, cast(float32)glyphs[index].image.width,
+            cast(float32)glyphs[index].image.height}
+    }
+    loaded += 1
+    result.base_size = pixels; result.glyph_count = actual
+    result.glyphs = cast(*void)glyphs; result.recs = recs
+    result.texture.id = cast(u32)loaded
+    return result
+}
+
+#program_export
+__wrap_LoadFontEx :: (path: *u8, pixels: s32, codepoints: *s32,
+    glyph_count: s32) -> Runtime.RaylibFont {
+    count: s32
+    bytes := ReadFile(path, *count)
+    if bytes == null { return Runtime.RaylibFont.{} }
+    defer FreeFile(bytes)
+    return CpuFont(bytes, count, pixels, codepoints, glyph_count)
+}
+#program_export
+__wrap_LoadFontFromMemory :: (extension: *u8, bytes: *u8, count: s32,
+    pixels: s32, codepoints: *s32, glyph_count: s32) -> Runtime.RaylibFont {
+    unused extension
+    return CpuFont(bytes, count, pixels, codepoints, glyph_count)
+}
+#program_export
+__wrap_UnloadFont :: (font: Runtime.RaylibFont) {
+    FreeGlyphs(cast(*Runtime.RaylibGlyphInfo)font.glyphs, font.glyph_count)
+    Free(cast(*void)font.recs)
+    released += 1
+}
+#program_export
+__wrap_rlDrawRenderBatchActive :: () { flushes += 1 }
+#program_export
+__wrap_DrawTextEx :: (font: Runtime.RaylibFont, text: *u8,
+    position: Geometry.Vector2, size: float32, spacing: float32, color: Drawing.Color) {
+    unused spacing; unused color
+    at: s32 = 0
+    while text[at] != 0 {
+        length: s32
+        codepoint := NextCodepoint(*text[at], *length)
+        if !Runtime.RaylibFontHasCodepoint(font, codepoint) { bad_glyph = true }
+        glyph: [5]u8
+        for index: 0..length - 1 { glyph[index] = text[at + index] }
+        glyph[length] = 0
+        extent := MeasureFont(font, *glyph[0], size, 0.0)
+        if draw_count < 32 { drawn[draw_count] = .{codepoint, position.x, position.y, extent.x} }
+        draw_count += 1
+        position.x += extent.x
+        at += length
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    if !CollectionChecks() { return 14 }
+    // Requested supplementary characters must be added and deduplicated.
+    staged: Runtime.RaylibTypeface
+    if !Runtime.RaylibAddGlyph(*staged, 0x1F642) ||
+        !Runtime.RaylibAddGlyph(*staged, 0x1F642) || staged.codepoint_count != 1 ||
+        !Runtime.RaylibHasGlyph(*staged, 0x1F642) ||
+        Runtime.RaylibAddGlyph(*staged, 0xD800) || Runtime.RaylibAddGlyph(*staged, 0x110000) { return 1 }
+    Runtime.RaylibFreeTypefaceSource(*staged)
+
+    path: [1024]u8
+    if SystemTypeface.FileFor("sans-serif", 0x4E2D, path[:], null) == "" { return 2 }
+    tiny: [1]u8
+    if SystemTypeface.FileFor("sans-serif", 0x4E2D, tiny[:], null) != "" ||
+        SystemTypeface.FileFor("sans-serif", 0x10FFFF, path[:], null) != "" ||
+        SystemTypeface.FileFor("sans-serif", 0xD800, path[:], null) != "" { return 3 }
+    if !Runtime.LoadTypefaceFile("Latin", "assets/fonts/LiberationSans-Regular.ttf", null, 0) ||
+        !Runtime.SelectTypeface("Latin") { return 4 }
+    defer Runtime.ReleaseTypefaces()
+    Runtime.RaylibEnsureGlyphs("中")
+    if Runtime.RaylibFontHasCodepoint(Runtime.RaylibFontForSize(20), 0x4E2D) { return 5 }
+
+    width := Runtime.MeasureGlyphWidth("A中B", 20, "Latin")
+    Runtime.RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
+    if bad_glyph || draw_count != 3 || drawn[0].codepoint != 65 ||
+        drawn[1].codepoint != 0x4E2D || drawn[2].codepoint != 66 { return 6 }
+    total := drawn[0].width + drawn[1].width + drawn[2].width
+    if width != cast(s32)(total + 0.5) || drawn[1].x != 7.0 + drawn[0].width ||
+        drawn[2].x != 7.0 + drawn[0].width + drawn[1].width { return 7 }
+    before := loaded
+    draw_count = 0
+    Runtime.RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
+    if loaded != before || Runtime.raylib_fallback_face_count != 1 { return 8 }
+    draw_count = 0
+    Runtime.RasterText("中\n文", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
+    if bad_glyph || draw_count != 2 || drawn[1].codepoint != 0x6587 ||
+        drawn[1].x != 7.0 || drawn[1].y <= drawn[0].y || flushes == 0 { return 9 }
+    if !Runtime.LoadSystemTypeface("monospace") || !Runtime.SelectTypeface("monospace") { return 10 }
+    draw_count = 0
+    Runtime.RasterText("中", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
+    if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x4E2D { return 11 }
+    // Replacing a registered face clears misses and keeps glyphs measurable.
+    if !Runtime.LoadTypefaceFile("monospace", "assets/fonts/DejaVuSans.ttf", null, 0) ||
+        Runtime.raylib_fallback_entry_count != 0 { return 12 }
+    draw_count = 0
+    Runtime.RasterText("😀", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
+    if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x1F600 { return 15 }
+    // Explicit collection data is retained after the caller frees its bytes.
+    cjk_path := Text.TextFromCString(*path[0])
+    if cjk_path.count >= 4 && cjk_path[cjk_path.count - 4:cjk_path.count] == ".ttc" {
+        count: s32
+        bytes := ReadFile(*path[0], *count)
+        if bytes == null { return 16 }
+        seed: [2]s32 = .[63, 0x4E2D]
+        ok := Runtime.LoadTypefaceData("Collection", ".ttc",
+            Text.TextFromBytes(Text.BytesFromPointer(bytes, cast(u64)count)), *seed[0], 2)
+        FreeFile(bytes)
+        if !ok || !Runtime.SelectTypeface("Collection") { return 17 }
+        draw_count = 0
+        Runtime.RasterText("中", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
+        if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x4E2D { return 18 }
+    }
+    Runtime.ReleaseTypefaces()
+    if loaded != released || Runtime.raylib_fallback_face_count != 0 { return 13 }
+    return 0
+}

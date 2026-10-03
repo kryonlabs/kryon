@@ -62,6 +62,22 @@ dependencies and link flags live in `mk/ziran-project.mk`. Platform calls are
 declared with Ziran foreign imports; handwritten host implementation is
 Ziran.
 
+On Linux, the Raylib host resolves system typefaces and missing characters
+through [Fontconfig](https://fontconfig.pages.freedesktop.org/fontconfig/fontconfig-devel/).
+Measurement and drawing use the same fallback face and advances. TrueType and
+OpenType collections are extracted into owned standalone font bytes following
+the [OpenType table and checksum rules](https://learn.microsoft.com/en-us/typography/opentype/spec/otff).
+Glyph atlases remain available for later frames, and queued text is flushed
+before replacing an atlas.
+
+`make raylib-typeface-test` decodes real fonts and checks mixed Latin/CJK text,
+supplementary characters, collection bounds and checksums, retained sources,
+and disposal in C/C++ from source and saved IR. It replaces only graphics
+submission and texture allocation, so it needs no display and does not verify
+rendered pixels. Supply `RAYLIB_A` for an existing Raylib archive (and
+`RAYLIB_LIBS` for its link flags); Fontconfig and an installed CJK outline font
+are required. Whole-application captures still require a private display.
+
 Browser projects save the selected `_run` host and `canvas_raster.zi` as
 generation roots without entry pruning. This keeps both the host `main` and
 the raster adapters available to the paint queue. Native projects continue
