@@ -1,0 +1,82 @@
+#import "session"
+#import "geometry"
+#import "text_area_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+using FrameStatus;
+
+Frame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    result := TextArea(session, props)
+    unused EndFrame(session)
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    props: TextAreaProps
+    props.key = cast(u64)77
+    props.focus_id = 77
+    props.bounds = Rectangle.{20.0, 20.0, 100.0, 52.0}
+    props.value = "abcd\nefgh\nijkl\nmnop\nqrst\nuvwx\nyzAB\nCDEF\nGHIJ\nKLMN"
+    props.read_only = true
+    unused Frame(session, props)
+    TreePointerUpdate(session, PointerFrame.{31.0, 36.0, true, true, false})
+    result := Frame(session, props)
+    if result.anchor != 0 || result.cursor != 0 { return 1 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.focused = result.focused
+    TreePointerUpdate(session, PointerFrame.{60.0, 36.0, true, false, false})
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 4 { return 2 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    // A read-only caller may not retain the optional selecting flag. The
+    // byte anchor still belongs to the press, not the scrolled pointer hit.
+    props.input.wheel = -1.0
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 19 || result.scroll_y != 54 { return 3 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.scroll_y = result.scroll_y; props.input.wheel = 0.0
+    props.selecting = result.selecting
+    // Redrawing at the same pointer position must not move the anchor.
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 19 { return 4 }
+    TreePointerUpdate(session, PointerFrame.{60.0, 36.0, false, false, true})
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 19 || result.selecting { return 5 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.selecting = result.selecting
+    // Once released, scrolling changes only the viewport, never the range.
+    props.input.wheel = -1.0
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 19 || result.scroll_y != 108 { return 6 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.scroll_y = result.scroll_y; props.input.wheel = 0.0
+    TreePointerUpdate(session, PointerFrame.{31.0, 36.0, true, true, false})
+    result = Frame(session, props)
+    if result.anchor != 30 || result.cursor != 30 { return 7 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    TreePointerUpdate(session, PointerFrame.{31.0, 36.0, false, false, true})
+    result = Frame(session, props)
+    if result.anchor != 30 || result.cursor != 30 { return 8 }
+    // A wheel arriving during a press must preserve the press's original
+    // text position, then extend the held selection into the scrolled text.
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.scroll_y = 0
+    unused Frame(session, props)
+    TreePointerUpdate(session, PointerFrame.{31.0, 36.0, true, true, false})
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 0 { return 9 }
+    props.anchor = result.anchor; props.cursor = result.cursor
+    props.input.wheel = -1.0
+    result = Frame(session, props)
+    if result.anchor != 0 || result.cursor != 15 || !result.selecting { return 10 }
+    unused SessionClose(session)
+    return 0
+}
