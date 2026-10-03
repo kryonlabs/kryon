@@ -23,9 +23,6 @@ tasks: [6]Task;
 started: bool;
 selected: s32;
 scroll: s32;
-rows: [6]ListBoxItem;
-row_text: [6][96]u8;
-summary_text: [64]u8;
 
 Start :: () {
     tasks[0].label = "Read the Kryon widgets guide"
@@ -45,6 +42,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if key == KeyDown { move = 1 }
     if key == KeyUp { move = -1 }
     if TypedCodepointTake(session) == Space { tasks[selected].done = !tasks[selected].done }
+    rows: [6]ListBoxItem
+    row_text: [6][96]u8
+    row_lengths: [6]s64
+    summary_text: [64]u8
 
     page: PageLayout = PageFor(viewport, 560.0)
     Label(session, 1, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
@@ -55,9 +56,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         mark: string = "[ ] "
         if tasks[index].done { mark = "[x] " }
         rows[index].key = cast(u64)(100 + index)
-        rows[index].label = Joined(mark, tasks[index].label, row_text[index][:])
+        label := Joined(mark, tasks[index].label, row_text[index][:])
+        row_lengths[index] = label.count
         index += 1
     }
+    // Fill every buffer before lending the row views to the widget.
+    for row: 0..5 { rows[row].label = TextView(row_text[row][0:row_lengths[row]]) }
     digits: [16]u8
     Label(session, 2, Joined(FormatInteger(cast(s64)done, digits[:]), " of 6 done",
         summary_text[:]), NextRow(*page, 22.0), FontSize(*page, 16))

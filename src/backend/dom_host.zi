@@ -151,18 +151,10 @@ DomWhole :: (value: s64) -> string {
 
 // A CSS length in pixels, kept to hundredths.
 DomPixels :: (value: float64, output: []u8) -> string {
-    number: string = FormatDecimal(value, 2, output[0:24])
-    scratch: [24]u8
-    length: s64 = number.count
-    index: s64 = 0
-    while index < length {
-        scratch[index] = number[index]
-        index += 1
-    }
-    index = 0
-    while index < length {
-        output[index] = scratch[index]
-        index += 1
+    length: s64
+    {
+        number: string = FormatDecimal(value, 2, output[0:24])
+        length = number.count
     }
     output[length] = cast(u8)112
     output[length + 1] = cast(u8)120

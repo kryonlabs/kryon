@@ -1,0 +1,36 @@
+#import "style_sheet"
+#import "style"
+#import "control_props"
+using StyleField;
+
+#program_export
+Answer :: () -> s32 {
+    bytes: [5]u8 = .[102, 105, 114, 115, 116]
+    earlier: StyleRules
+    {
+        rules: StyleRules
+        rules.count = 1
+        rules.items[0].style.fields = cast(u32)StyleTypeface
+        rules.items[0].style.typeface = TextView(bytes[:])
+        if !InstallStyleRules(rules) { return 1 }
+        earlier = ActiveStyleRules()
+    }
+    bytes[0] = 98
+    if earlier.items[0].style.typeface != "first" { return 2 }
+
+    replacement: StyleRules
+    replacement.count = 1
+    replacement.items[0].style.fields = cast(u32)StyleTypeface
+    replacement.items[0].style.typeface = "second 🙂"
+    if !InstallStyleRules(replacement) { return 3 }
+    current := ActiveStyleRules()
+    if current.items[0].style.typeface != "second 🙂" { return 4 }
+    if earlier.items[0].style.typeface != "first" { return 5 }
+
+    invalid: StyleRules
+    invalid.count = 321
+    if InstallStyleRules(invalid) { return 6 }
+    current = ActiveStyleRules()
+    if current.items[0].style.typeface != "second 🙂" { return 7 }
+    return 42
+}
