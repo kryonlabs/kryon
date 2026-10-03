@@ -53,6 +53,12 @@ IsWindowFocused :: () -> bool { return focused }
 #program_export
 FileExists :: (path: *u8) -> bool { unused path; return false }
 #program_export
+LoadFileData :: (path: *u8, count: *s32) -> *u8 {
+    unused path; count.* = 0; return null
+}
+#program_export
+UnloadFileData :: (bytes: *u8) { unused bytes }
+#program_export
 LoadFontEx :: (path: *u8, size: s32, codepoints: *s32, count: s32) -> RaylibFont {
     unused path; unused size; unused codepoints; unused count
     font_loads += 1

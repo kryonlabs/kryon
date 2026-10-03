@@ -171,6 +171,7 @@ jobs:
             libsdl2-dev libcairo2-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
             libegl-mesa0 libgl1-mesa-dri \
             libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev \
+            fonts-dejavu-core fonts-wqy-zenhei \
             xvfb xdotool x11-apps x11-utils imagemagick xfwm4 dbus-x11
 
       - name: Set up Go
@@ -200,6 +201,12 @@ jobs:
 
       - name: Raylib host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make raylib-project-test
+
+      - name: Raylib font coverage and collections
+        run: |
+          RAYLIB_A="$PWD/build/raylib-ziran/libraylib.a" \
+          RAYLIB_LIBS="$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm" \
+          make raylib-typeface-test
 
       - name: Libdraw host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make libdraw-project-test

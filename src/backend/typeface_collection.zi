@@ -1,0 +1,89 @@
+// Extract one SFNT face from a TrueType/OpenType collection for hosts whose
+// rasteriser accepts standalone fonts. Table contents and checksums are kept.
+#scope_module
+U16 :: (bytes: []u8, at: s32) -> s32 {
+    return (cast(s32)bytes[at] << 8) | cast(s32)bytes[at + 1]
+}
+U32 :: (bytes: []u8, at: s32) -> u32 {
+    return (cast(u32)bytes[at] << cast(u32)24) |
+        (cast(u32)bytes[at + 1] << cast(u32)16) |
+        (cast(u32)bytes[at + 2] << cast(u32)8) | cast(u32)bytes[at + 3]
+}
+Write32 :: (bytes: []u8, at: s32, value: u32) {
+    bytes[at] = cast(u8)(value >> cast(u32)24)
+    bytes[at + 1] = cast(u8)(value >> cast(u32)16)
+    bytes[at + 2] = cast(u8)(value >> cast(u32)8)
+    bytes[at + 3] = cast(u8)value
+}
+Layout :: struct { directory: s32; tables: s32; size: s32 }
+Inspect :: (bytes: []u8, face: s32) -> Layout {
+    invalid: Layout
+    if bytes.count < 16 || bytes.count > 2147483647 || face < 0 ||
+        U32(bytes, 0) != cast(u32)0x74746366 { return invalid }
+    version := U32(bytes, 4)
+    if version != cast(u32)0x10000 && version != cast(u32)0x20000 { return invalid }
+    faces := U32(bytes, 8)
+    if faces > cast(u32)((bytes.count - 12) / 4) || cast(u32)face >= faces { return invalid }
+    offset := U32(bytes, 12 + face * 4)
+    if offset > cast(u32)(bytes.count - 12) { return invalid }
+    directory := cast(s32)offset
+    signature := U32(bytes, directory)
+    if signature != cast(u32)0x10000 && signature != cast(u32)0x4F54544F &&
+        signature != cast(u32)0x74727565 { return invalid }
+    tables := U16(bytes, directory + 4)
+    if tables == 0 || tables > 4096 || directory > bytes.count - 12 - tables * 16 { return invalid }
+    size := 12 + tables * 16
+    heads: s32
+    for index: 0..tables - 1 {
+        record := directory + 12 + index * 16
+        start := U32(bytes, record + 8)
+        length := U32(bytes, record + 12)
+        if start > cast(u32)bytes.count || length > cast(u32)bytes.count - start ||
+            length > cast(u32)2147483644 { return invalid }
+        padded := (cast(s32)length + 3) & -4
+        if size > 2147483647 - padded { return invalid }
+        size += padded
+        if U32(bytes, record) == cast(u32)0x68656164 {
+            if length < cast(u32)12 { return invalid }
+            heads += 1
+        }
+    }
+    if heads != 1 { return invalid }
+    return .{directory, tables, size}
+}
+Checksum :: (bytes: []u8, start: s32, count: s32) -> u32 {
+    result: u32
+    at := start
+    while at < start + count { result += U32(bytes, at); at += 4 }
+    return result
+}
+#scope_export
+FaceSize :: (bytes: []u8, face: s32) -> s32 { return Inspect(bytes, face).size }
+// Output must be separate from the input collection; the returned view is
+// owned by the caller's output buffer.
+Face :: (bytes: []u8, face: s32, output: []u8) -> []u8 {
+    layout := Inspect(bytes, face)
+    if layout.size == 0 || output.count < layout.size { return output[0:0] }
+    result := output[0:layout.size]
+    for index: 0..layout.size - 1 { result[index] = 0 }
+    directory_size := 12 + layout.tables * 16
+    for index: 0..directory_size - 1 { result[index] = bytes[layout.directory + index] }
+    at := directory_size
+    head: s32 = -1
+    for index: 0..layout.tables - 1 {
+        record := 12 + index * 16
+        source := cast(s32)U32(result, record + 8)
+        length := cast(s32)U32(result, record + 12)
+        for byte: 0..length - 1 { result[at + byte] = bytes[source + byte] }
+        if U32(result, record) == cast(u32)0x68656164 {
+            head = at
+            Write32(result, head + 8, cast(u32)0)
+        }
+        padded := (length + 3) & -4
+        Write32(result, record + 8, cast(u32)at)
+        Write32(result, record + 4, Checksum(result, at, padded))
+        at += padded
+    }
+    Write32(result, head + 8, cast(u32)0xB1B0AFBA - Checksum(result, 0, layout.size))
+    return result
+}
