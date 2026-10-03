@@ -1,6 +1,7 @@
 #import "style"
 #import "control_props"
 #import "text_style"
+using Vectors :: #import "std/vec"
 
 using ButtonState;
 using StyleField;
@@ -380,8 +381,6 @@ StyleRules :: struct {
 }
 
 installed_rules: StyleRules;
-// Installed rules own these bytes; typeface views never point into caller data.
-installed_typeface_bytes: [65536]u8;
 
 StyleWithoutTypeface :: (source: StyleData) -> StyleData {
     result: StyleData
@@ -406,51 +405,38 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
     return result
 }
 
-CopyInstalledTypeface :: (typeface: string, output: []u8) -> bool {
-    if typeface.count > output.count { return false }
-    index: s64 = 0
-    while index < typeface.count {
-        output[index] = typeface[index]
-        index += 1
-    }
-    return true
-}
-
 #program_export
 InstallStyleRules :: (rules: StyleRules) -> bool {
     limit: s32 = rules.count
     if limit < 0 || limit > 320 { return false }
-    starts: [320]s64
-    lengths: [320]s64
     total: s64 = 0
     index: s32 = 0
     while index < limit {
         typeface: string = rules.items[index].style.typeface
         if typeface.count > 65536 - total { return false }
-        starts[index] = total
-        lengths[index] = typeface.count
         total += typeface.count
         index += 1
     }
 
-    installed_rules = StyleRules.{}
-    installed_rules.count = limit
+    // Publish only a complete snapshot. Earlier rule values retain immutable
+    // typeface bytes when another stylesheet is installed.
+    snapshot: StyleRules
+    snapshot.count = limit
     index = 0
     while index < limit {
         typeface: string = rules.items[index].style.typeface
-        if !CopyInstalledTypeface(typeface,
-                installed_typeface_bytes[starts[index]:
-                    starts[index] + lengths[index]]) { return false }
-        installed_rules.items[index].selector = rules.items[index].selector
-        installed_rules.items[index].state = rules.items[index].state
-        installed_rules.items[index].layer = rules.items[index].layer
-        installed_rules.items[index].order = rules.items[index].order
-        installed_rules.items[index].style =
+        builder: Vec(u8)
+        if !BuilderAppend(builder, typeface) { return false }
+        snapshot.items[index].selector = rules.items[index].selector
+        snapshot.items[index].state = rules.items[index].state
+        snapshot.items[index].layer = rules.items[index].layer
+        snapshot.items[index].order = rules.items[index].order
+        snapshot.items[index].style =
             StyleWithoutTypeface(rules.items[index].style)
-        installed_rules.items[index].style.typeface = TextView(
-            installed_typeface_bytes[starts[index]:starts[index] + lengths[index]])
+        snapshot.items[index].style.typeface = BuilderFinish(builder)
         index += 1
     }
+    installed_rules = snapshot
     resolver: TextStyleResolver = ResolveInstalledTextStyle
     SetTextStyleResolver(resolver)
     return true

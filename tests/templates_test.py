@@ -28,14 +28,16 @@ def environment(work):
     env["XDG_CACHE_HOME"] = str(work / "cache")
     env["KRYON_TEMPLATES"] = str(ROOT)
     env["ASAN_OPTIONS"] = "detect_leaks=0"
-    # Templates name the public repositories; serve them from here.
-    redirects = [("protocol.file.allow", "always"),
-                 (f"url.{ZIRAN_ROOT.as_uri()}.insteadOf", "https://github.com/ziranlang/ziran.git"),
-                 (f"url.{ROOT.as_uri()}.insteadOf", "https://github.com/kryonlabs/kryon.git")]
-    env["GIT_CONFIG_COUNT"] = str(len(redirects))
-    for index, (key, value) in enumerate(redirects):
-        env[f"GIT_CONFIG_KEY_{index}"] = key
-        env[f"GIT_CONFIG_VALUE_{index}"] = value
+    # Exercise the template commands against the canonical source checkouts,
+    # including their uncommitted changes, without copying/cloning them or
+    # fetching a new toolchain. Explicit overrides are installed before locking.
+    ziran = ZIRAN_ROOT / "build/bin/ziran"
+    raylib = subprocess.check_output(
+        [str(ziran), "pkg", "path", "raylib"], cwd=ROOT, env=env, text=True,
+    ).strip()
+    overrides = (f'[overrides]\nziran = "{ZIRAN_ROOT}"\n'
+                 f'Kryon = "{ROOT}"\nraylib = "{raylib}"\n')
+    (work / "overrides.toml").write_text(overrides)
     return env
 
 
@@ -47,11 +49,6 @@ def run(command, directory, env, succeed=True, stdin=subprocess.DEVNULL):
         raise AssertionError(f"{' '.join(map(str, command))} returned "
                              f"{result.returncode}:\n{result.stdout}")
     return result.stdout
-
-
-def local(project):
-    (project / "ziran.local.toml").write_text(
-        f'[overrides]\nziran = "{ZIRAN_ROOT}"\nKryon = "{ROOT}"\n')
 
 
 def screen(text):
@@ -89,12 +86,12 @@ def main():
         }
         for template, expected in rendered.items():
             name = f"demo-{template}"
-            created = run([KRYON, "new", name, "--template", template], work, env)
+            created = run([KRYON, "new", name, "--template", template,
+                           "--overrides", work / "overrides.toml"], work, env)
             assert f"created {name} from kryon:{template}" in created, created
             project = work / name
             manifest = (project / "ziran.toml").read_text()
             assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
-            local(project)
             # `kryon run PROFILE` goes through ziran to the locked Kryon; with
             # output redirected the terminal host renders one frame.
             output = screen(run([KRYON, "run", "tui"], project, env))
@@ -113,8 +110,8 @@ def main():
         assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
         assert len(shot.splitlines()) == 603, len(shot.splitlines())
 
-        run([KRYON, "new", "demo-web", "--template", "web"], work, env)
-        local(work / "demo-web")
+        run([KRYON, "new", "demo-web", "--template", "web", "--overrides",
+             work / "overrides.toml"], work, env)
         run([KRYON, "check"], work / "demo-web", env)
 
         missing = run([KRYON, "new", "other", "--template", "nosuch"], work, env,
@@ -124,14 +121,13 @@ def main():
 
         # kryon init turns a command-line package into a Kryon application:
         # the package keeps its own entry and gains the window's.
-        run(["ziran", "new", "tool"], work, env)
+        run(["ziran", "new", "tool", "--overrides", work / "overrides.toml"], work, env)
         tool = work / "tool"
         merged = run([KRYON, "init", "--template", "tui"], tool, env)
         assert 'kept entry = "src/main.zi" in [package]' in merged, merged
         manifest = (tool / "ziran.toml").read_text()
         assert 'entry = "src/main.zi"' in manifest and 'tool = "kryon"' in manifest
         assert "[tool.kryon]" in manifest and 'entry = "src/app.zi"' in manifest
-        local(tool)
         assert "1 of 6 done" in screen(run([KRYON, "run"], tool, env))
 
         # Without the settings ziran passes, the front door never loops.

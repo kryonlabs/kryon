@@ -19,10 +19,6 @@ selected_book: s32;
 book_scroll: s32;
 favorites_only: bool;
 show_authors: bool = true;
-books: [6]ListBoxItem;
-book_text: [6][96]u8;
-title_text: [96]u8;
-detail_text: [128]u8;
 
 titles: [6]string = .{"Ada's Notes", "The Cellar Door", "Kites at Dusk",
     "Rivers of Light", "Small Engines", "The Quiet Grid"};
@@ -58,20 +54,31 @@ Home :: (session: Session, page: *PageLayout) {
 }
 
 Library :: (session: Session, page: *PageLayout) {
+    books: [6]ListBoxItem
+    book_text: [6][96]u8
+    book_lengths: [6]s64
+    detail_text: [128]u8
     count: s32 = 0
     index: s32 = 0
     while index < 6 {
         if !favorites_only || favorite[index] {
-            label: string = Joined(titles[index], "", book_text[count][:])
             if show_authors {
+                title_text: [96]u8
                 prefix: string = Joined(titles[index], " - ", title_text[:])
-                label = Joined(prefix, authors[index], book_text[count][:])
+                label := Joined(prefix, authors[index], book_text[count][:])
+                book_lengths[count] = label.count
+            } else {
+                label := Joined(titles[index], "", book_text[count][:])
+                book_lengths[count] = label.count
             }
             books[count].key = cast(u64)(200 + index)
-            books[count].label = label
             count += 1
         }
         index += 1
+    }
+    // The labels borrow this frame's completed buffers, never a previous frame.
+    for book: 0..count - 1 {
+        books[book].label = TextView(book_text[book][0:book_lengths[book]])
     }
     if selected_book >= count { selected_book = 0 }
     list: ListBoxProps

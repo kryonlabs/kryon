@@ -134,16 +134,18 @@ StoreName :: (name: string) -> string {
 // The name of the desktop's GTK theme, or "" when none is configured.
 #program_export
 SystemThemeName :: () -> string {
-    settings: string = ConfigFile("xfce4/xfconf/xfce-perchannel-xml/xsettings.xml", file_buffer[:])
-    if settings.count > 0 {
-        at: s64 = Find(settings, "name=\"ThemeName\"", 0)
-        if at >= 0 {
-            value: s64 = Find(settings, "value=\"", at)
-            if value >= 0 {
-                start: s64 = value + 7
-                end: s64 = start
-                while end < settings.count && settings[end] != #char "\"" { end += 1 }
-                if end > start { return StoreName(settings[start:end]) }
+    {
+        settings: string = ConfigFile("xfce4/xfconf/xfce-perchannel-xml/xsettings.xml", file_buffer[:])
+        if settings.count > 0 {
+            at: s64 = Find(settings, "name=\"ThemeName\"", 0)
+            if at >= 0 {
+                value: s64 = Find(settings, "value=\"", at)
+                if value >= 0 {
+                    start: s64 = value + 7
+                    end: s64 = start
+                    while end < settings.count && settings[end] != #char "\"" { end += 1 }
+                    if end > start { return StoreName(settings[start:end]) }
+                }
             }
         }
     }

@@ -13,8 +13,10 @@ main :: () -> s32 {
     TypedCodepointSend(session, 233)
     TypedCodepointSend(session, 0x20AC)
     TypedCodepointSend(session, 0x1F600)
-    typed: string = TypedTextTake(session, storage[:])
-    if typed != "hé€😀" { return 2 }
+    {
+        typed: string = TypedTextTake(session, storage[:])
+        if typed != "hé€😀" { return 2 }
+    }
     if TypedTextTake(session, storage[:]).count != 0 { return 3 }
     // Text that does not fit stops at the last whole codepoint.
     small: [3]u8

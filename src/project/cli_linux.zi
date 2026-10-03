@@ -257,8 +257,8 @@ ListProfiles :: (config: ProjectConfig) -> s32 {
 }
 
 Usage :: () -> s32 {
-    PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME]\n")
-    PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]]\n")
+    PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME] [--overrides FILE]\n")
+    PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]] [--overrides FILE]\n")
     PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
