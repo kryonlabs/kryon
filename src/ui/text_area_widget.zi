@@ -643,9 +643,8 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             sample_y = origin_y
         }
         initial: s32 = TextAreaCursorAtPoint(props.value,
-            cast(s32)origin_x - (cast(s32)bounds.x + padding_x),
-            cast(s32)origin_y - (cast(s32)bounds.y + padding_y) +
-                result.scroll_y,
+            cast(s32)drag.grab_x - padding_x,
+            cast(s32)drag.grab_y - padding_y + props.scroll_y,
             wrap_width, font, face.value.typeface, advance)
         selected: s32 = TextAreaCursorAtPoint(props.value,
             cast(s32)sample_x - (cast(s32)bounds.x + padding_x),
@@ -656,20 +655,22 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         dy: float32 = sample_y - origin_y
         if dx < 0.0 { dx = -dx }
         if dy < 0.0 { dy = -dy }
-        pointer_moved = dx > 2.0 || dy > 2.0 ||
-            props.selecting
         if drag.started {
             result.anchor = initial
             result.cursor = initial
             result.selecting = false
         }
+        pointer_moved = dx > 2.0 || dy > 2.0 ||
+            result.scroll_y != props.scroll_y ||
+            (!drag.started && (props.selecting ||
+                result.anchor != result.cursor))
         if drag.active || drag.ended || activated {
             if pointer_moved {
-                if !props.selecting { result.anchor = initial }
+                // The press owns the byte anchor. Wheel scrolling, caret
+                // reveal and a moving parent change only the current hit.
                 result.cursor = selected
                 result.selecting = drag.active
             } else {
-                result.anchor = selected
                 result.cursor = selected
                 result.selecting = false
             }
