@@ -49,6 +49,19 @@ main :: () -> s32 {
     !pointer.released || pointer.down || NativeLibdrawPressedKey() != 65 {
         CloseRaster(); return 12
     }
+    // A queued middle click gets separate press/release frames, even with no
+    // primary-button transition to stop the mouse channel drain.
+    if !PollNativeLibdraw() { CloseRaster(); return 13 }
+    middle := PollMiddlePointer()
+    if !middle.down || !middle.pressed || middle.released ||
+        PollPointer().pressed || PollPointer().released {
+        CloseRaster(); return 14
+    }
+    if !PollNativeLibdraw() { CloseRaster(); return 15 }
+    middle = PollMiddlePointer()
+    if middle.down || middle.pressed || !middle.released {
+        CloseRaster(); return 16
+    }
     if WindowInterceptCloseHost(true) {
         CloseRaster()
         return 8

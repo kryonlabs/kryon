@@ -286,6 +286,7 @@ native_events_initialized: bool;
 native_mouse: *MouseController;
 native_keyboard: *KeyboardController;
 native_secondary: SecondaryPointerFrame;
+native_middle: SecondaryPointerFrame;
 native_wheel: float32;
 native_rune: s32;
 native_clipboard: [65536]u8;
@@ -346,6 +347,7 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     native_quit = false
     native_pointer = PointerFrame.{}
     native_secondary = SecondaryPointerFrame.{}
+    native_middle = SecondaryPointerFrame.{}
     native_display = InitializeDisplay(null, null, NativeDisplayError)
     if native_display == null { return false }
     native_subfont = GetDefaultSubfont(native_display)
@@ -485,6 +487,8 @@ PollNativeLibdraw :: () -> bool {
     native_wheel = 0.0
     native_secondary.pressed = false
     native_secondary.released = false
+    native_middle.pressed = false
+    native_middle.released = false
     mouse: DrawMouse
     while Receive(native_mouse.channel, cast(*void)*mouse) > 0 {
         down: bool = (mouse.buttons & 1) != 0
@@ -501,12 +505,17 @@ PollNativeLibdraw :: () -> bool {
         native_secondary.pressed = native_secondary.pressed || (secondary && !native_secondary.down)
         native_secondary.released = native_secondary.released || (!secondary && native_secondary.down)
         native_secondary.down = secondary
+        middle := (mouse.buttons & 2) != 0
+        native_middle.pressed = native_middle.pressed || (middle && !native_middle.down)
+        native_middle.released = native_middle.released || (!middle && native_middle.down)
+        native_middle.down = middle
         if (mouse.buttons & 8) != 0 { native_wheel += 1.0 }
         if (mouse.buttons & 16) != 0 { native_wheel -= 1.0 }
         // Deliver each button transition in its own frame, retaining its
         // coordinates even when a quick click was queued during drawing.
         if native_pointer.pressed || native_pointer.released ||
-        native_secondary.pressed || native_secondary.released || native_wheel != 0.0 { break }
+        native_secondary.pressed || native_secondary.released ||
+        native_middle.pressed || native_middle.released || native_wheel != 0.0 { break }
     }
     resized: s32
     while Receive(native_mouse.resize_channel, cast(*void)*resized) > 0 { native_resize_pending = true }
@@ -1071,6 +1080,9 @@ SystemClipboardWriteHost :: (text: string) -> bool {
 PollSecondaryPointer :: () -> SecondaryPointerFrame {
     return native_secondary
 }
+
+#program_export
+PollMiddlePointer :: () -> SecondaryPointerFrame { return native_middle }
 
 #program_export
 OpenLibdrawSized :: (width: s32, height: s32) -> bool { return OpenRaster(width, height) }
