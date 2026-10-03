@@ -1,0 +1,239 @@
+// Reads an image from the desktop clipboard on Linux. An X11 (or XWayland)
+// clipboard is a selection that its owner converts on request: this asks for
+// image/png and receives it whole or, for large images, in increments (INCR).
+// libX11 is loaded with dlopen on the first read, so an application that never
+// pastes an image carries no X11 dependency. Text stays with the host's
+// system_clipboard; an application asks for an image when a paste finds no
+// text (TextFieldResult.paste_without_text).
+#import "c_string"
+
+SystemClipboardImageResult :: struct {
+    // An X11 display and libX11 were reached.
+    available: bool
+    // The clipboard's owner offered a PNG.
+    found: bool
+    // The PNG in the caller's buffer; empty when it did not fit.
+    png: []u8
+    // Every byte the owner sent, which exceeds png.count when it did not fit.
+    size: s64
+}
+
+#scope_file
+
+c :: #system_library "c";
+dl :: #system_library "dl";
+
+DlOpen :: (path: *u8, flags: s32) -> *void #foreign dl "dlopen";
+DlSymbol :: (handle: *void, name: *u8) -> *void #foreign dl "dlsym";
+MemoryCopy :: (target: *void, source: *void, bytes: usize) -> *void #foreign c "memcpy";
+PauseMicros :: (micros: u32) -> s32 #foreign c "usleep";
+
+FnOpenDisplay :: #type (*u8) -> *void #c_call;
+FnRootWindow :: #type (*void) -> u64 #c_call;
+FnCreateSimpleWindow :: #type (*void, u64, s32, s32, u32, u32, u32,
+    u64, u64) -> u64 #c_call;
+FnSelectInput :: #type (*void, u64, s64) -> s32 #c_call;
+FnInternAtom :: #type (*void, *u8, s32) -> u64 #c_call;
+FnGetSelectionOwner :: #type (*void, u64) -> u64 #c_call;
+FnConvertSelection :: #type (*void, u64, u64, u64, u64, u64) -> s32 #c_call;
+FnCheckTypedWindowEvent :: #type (*void, u64, s32, *void) -> s32 #c_call;
+FnGetWindowProperty :: #type (*void, u64, u64, s64, s64, s32, u64, *u64,
+    *s32, *u64, *u64, **u8) -> s32 #c_call;
+FnDeleteProperty :: #type (*void, u64, u64) -> s32 #c_call;
+FnFlush :: #type (*void) -> s32 #c_call;
+FnFree :: #type (*void) -> s32 #c_call;
+
+x_open_display: FnOpenDisplay;
+x_default_root_window: FnRootWindow;
+x_create_simple_window: FnCreateSimpleWindow;
+x_select_input: FnSelectInput;
+x_intern_atom: FnInternAtom;
+x_get_selection_owner: FnGetSelectionOwner;
+x_convert_selection: FnConvertSelection;
+x_check_typed_window_event: FnCheckTypedWindowEvent;
+x_get_window_property: FnGetWindowProperty;
+x_delete_property: FnDeleteProperty;
+x_flush: FnFlush;
+x_free: FnFree;
+
+// Xlib event types and masks.
+SELECTION_NOTIFY :: 31;
+PROPERTY_NOTIFY :: 28;
+PROPERTY_NEW_VALUE :: 0;
+PROPERTY_CHANGE_MASK :: 4194304;
+// An owner that stops answering is abandoned after this long, per step.
+WAIT_MICROS :: 2000000;
+POLL_MICROS :: 1000;
+
+library_tried: bool;
+library_ready: bool;
+display: *void;
+window: u64;
+clipboard_atom: u64;
+png_atom: u64;
+incr_atom: u64;
+property_atom: u64;
+
+Resolve :: (handle: *void, slot: *void, name: string) -> bool {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) { return false }
+    symbol: *void = DlSymbol(handle, *bytes[0])
+    if symbol == null { return false }
+    MemoryCopy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+LoadLibrary :: () -> bool {
+    if library_tried { return library_ready }
+    library_tried = true
+    name: [32]u8
+    if !CopyCString("libX11.so.6", name[:]) { return false }
+    // RTLD_LAZY | RTLD_LOCAL
+    handle: *void = DlOpen(*name[0], 1)
+    if handle == null { return false }
+    ok: bool = Resolve(handle, cast(*void)*x_open_display, "XOpenDisplay")
+    ok = ok && Resolve(handle, cast(*void)*x_default_root_window,
+        "XDefaultRootWindow")
+    ok = ok && Resolve(handle, cast(*void)*x_create_simple_window,
+        "XCreateSimpleWindow")
+    ok = ok && Resolve(handle, cast(*void)*x_select_input, "XSelectInput")
+    ok = ok && Resolve(handle, cast(*void)*x_intern_atom, "XInternAtom")
+    ok = ok && Resolve(handle, cast(*void)*x_get_selection_owner,
+        "XGetSelectionOwner")
+    ok = ok && Resolve(handle, cast(*void)*x_convert_selection,
+        "XConvertSelection")
+    ok = ok && Resolve(handle, cast(*void)*x_check_typed_window_event,
+        "XCheckTypedWindowEvent")
+    ok = ok && Resolve(handle, cast(*void)*x_get_window_property,
+        "XGetWindowProperty")
+    ok = ok && Resolve(handle, cast(*void)*x_delete_property, "XDeleteProperty")
+    ok = ok && Resolve(handle, cast(*void)*x_flush, "XFlush")
+    ok = ok && Resolve(handle, cast(*void)*x_free, "XFree")
+    library_ready = ok
+    return ok
+}
+
+Atom :: (name: string) -> u64 {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) { return 0 }
+    return x_intern_atom(display, *bytes[0], 0)
+}
+
+// One connection and one unmapped window receive every conversion; the
+// application's own window system connection is left alone.
+Connect :: () -> bool {
+    if display != null { return true }
+    if !LoadLibrary() { return false }
+    display = x_open_display(null)
+    if display == null { return false }
+    window = x_create_simple_window(display, x_default_root_window(display),
+        0, 0, 1, 1, 0, 0, 0)
+    unused x_select_input(display, window, PROPERTY_CHANGE_MASK)
+    clipboard_atom = Atom("CLIPBOARD")
+    png_atom = Atom("image/png")
+    incr_atom = Atom("INCR")
+    property_atom = Atom("KRYON_CLIPBOARD")
+    return window != 0
+}
+
+// XEvent is 192 bytes: XSelectionEvent.property is its eighth word, and
+// XPropertyEvent keeps its atom in the sixth word and its state in the eighth.
+WaitForEvent :: (kind: s32, event: []s64) -> bool {
+    waited: s32 = 0
+    while waited < WAIT_MICROS {
+        if x_check_typed_window_event(display, window, kind,
+            cast(*void)*event[0]) != 0 {
+            if kind != PROPERTY_NOTIFY { return true }
+            // Only a new value of the transfer property continues INCR; the
+            // deletions this side makes arrive here too.
+            if cast(u64)event[5] == property_atom &&
+                cast(s32)(event[7] & 4294967295) == PROPERTY_NEW_VALUE {
+                return true
+            }
+            continue
+        }
+        unused PauseMicros(POLL_MICROS)
+        waited += POLL_MICROS
+    }
+    return false
+}
+
+// Reads the transfer property, appends its bytes after `at`, and deletes it.
+// Returns the byte count (0 ends an INCR transfer) or -1.
+TakeProperty :: (buffer: []u8, at: s64, kind: *u64) -> s64 {
+    actual_type: u64
+    format: s32
+    items: u64
+    after: u64
+    data: *u8
+    if x_get_window_property(display, window, property_atom, 0, 536870911, 1,
+        0, *actual_type, *format, *items, *after, *data) != 0 {
+        return -1
+    }
+    kind[0] = actual_type
+    count: s64 = cast(s64)items
+    if format != 8 || actual_type == incr_atom { count = 0 }
+    if count > 0 && at < buffer.count {
+        room: s64 = buffer.count - at
+        copied: s64 = count
+        if copied > room { copied = room }
+        MemoryCopy(cast(*void)*buffer[at], cast(*void)data, cast(usize)copied)
+    }
+    if data != null { unused x_free(cast(*void)data) }
+    return count
+}
+
+#scope_export
+
+// The clipboard's image as PNG bytes, read into buffer. found is false when
+// the clipboard is empty or holds something else, such as text; png is empty
+// when the image is larger than buffer, whose needed size is then `size`.
+#program_export
+SystemClipboardImage :: (buffer: []u8) -> SystemClipboardImageResult {
+    result: SystemClipboardImageResult
+    if !Connect() { return result }
+    result.available = true
+    if x_get_selection_owner(display, clipboard_atom) == 0 { return result }
+    event: [24]s64
+    // Drop events left over from an abandoned transfer.
+    while x_check_typed_window_event(display, window, PROPERTY_NOTIFY,
+        cast(*void)*event[0]) != 0 {}
+    while x_check_typed_window_event(display, window, SELECTION_NOTIFY,
+        cast(*void)*event[0]) != 0 {}
+    unused x_delete_property(display, window, property_atom)
+    // CurrentTime: the owner converts whatever it holds now.
+    unused x_convert_selection(display, clipboard_atom, png_atom,
+        property_atom, window, 0)
+    unused x_flush(display)
+    if !WaitForEvent(SELECTION_NOTIFY, event[:]) { return result }
+    // A refused conversion names no property.
+    if cast(u64)event[7] == 0 { return result }
+    kind: u64
+    size: s64 = TakeProperty(buffer, 0, *kind)
+    if size < 0 { return result }
+    if kind == incr_atom {
+        // Deleting the INCR announcement asks for the first increment; each
+        // later deletion asks for the next, and an empty one ends the image.
+        unused x_flush(display)
+        size = 0
+        while true {
+            if !WaitForEvent(PROPERTY_NOTIFY, event[:]) { return result }
+            count: s64 = TakeProperty(buffer, size, *kind)
+            unused x_flush(display)
+            if count < 0 { return result }
+            // The announcement's own notice is still queued; it names a
+            // property that no longer exists. An empty increment ends.
+            if kind == 0 { continue }
+            if count == 0 { break }
+            size += count
+        }
+    }
+    // Owners label the reply inconsistently; the bytes must be a PNG.
+    signature: [8]u8 = .{137, 80, 78, 71, 13, 10, 26, 10}
+    if size < 8 || buffer.count < 8 { return result }
+    for index: 0..7 { if buffer[index] != signature[index] { return result } }
+    result.found = true
+    result.size = size
+    if size <= buffer.count { result.png = buffer[0:size] }
+    return result
+}

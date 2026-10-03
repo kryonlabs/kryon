@@ -105,6 +105,13 @@ main :: () -> s32 {
     // Ctrl+V pastes from the system clipboard.
     SystemClipboardSet("Z")
     result = Frame(false, true)
-    if !result.edit.changed || result.edit.replacement != "Z" { return 10 }
+    if !result.edit.changed || result.edit.replacement != "Z" ||
+        result.paste_without_text { return 10 }
+
+    // With no text on the clipboard (an image, say) Ctrl+V keeps the
+    // selection and tells the application, which may attach the image.
+    SystemClipboardSet("")
+    result = Frame(false, true)
+    if result.edit.changed || !result.paste_without_text { return 11 }
     return 0
 }

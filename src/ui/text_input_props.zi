@@ -64,6 +64,9 @@ TextFieldResult :: struct {
     composition_changed: bool
     clipboard_write: bool
     clipboard_text: string
+    // Paste ran in an editable field while the clipboard held no text; the
+    // application may take an image or files from it instead.
+    paste_without_text: bool
     edit: TextFieldEdit
 }
 
@@ -152,5 +155,8 @@ TextAreaResult :: struct {
     composition_changed: bool
     clipboard_write: bool
     clipboard_text: string
+    // Paste ran in an editable area while the clipboard held no text; the
+    // application may take an image or files from it instead.
+    paste_without_text: bool
     edit: TextAreaEdit
 }
