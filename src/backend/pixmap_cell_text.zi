@@ -1,0 +1,65 @@
+// Fixed-pitch text for grids. Glyphs use the ordinary pixmap font, centered
+// in a cell; wide outlines are compressed to fit rather than clipped away.
+Pixels :: #import "pixmap";
+Glyphs :: #import "pixmap_text";
+Paint :: #import "paint_queue";
+Sessions :: #import "session";
+using Geometry :: #import "geometry";
+using Drawing :: #import "drawing_props";
+
+RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
+    color: Color, clip: Rectangle) {
+    if font <= 0 || bounds.width <= 1.0 || bounds.height <= 0.0 { return }
+    Pixels.PixmapClipTo(RectangleIntersection(bounds, clip))
+    baseline := cast(s64)bounds.y * 256 + Glyphs.PixmapTextBaseline(font)
+    at: s32
+    while at < cast(s32)value.count {
+        unit := Glyphs.PixmapNextUnit(value, at)
+        if unit.after <= at { break }; at = unit.after
+        if unit.emoji >= 0 {
+            size := font
+            if size > cast(s32)bounds.width - 1 { size = cast(s32)bounds.width - 1 }
+            Pixels.PixmapDrawEmoji(unit.emoji, cast(s32)bounds.x + (cast(s32)bounds.width - size) / 2,
+                cast(s32)bounds.y, size)
+            continue
+        }
+        if unit.glyph < 0 { continue }
+        mask: Glyphs.PixmapGlyphMask
+        coverage := Glyphs.PixmapCachedGlyph(unit.glyph, 0, baseline, font, *mask)
+        if mask.width <= 0 || mask.height <= 0 || coverage.count == 0 { continue }
+        width := mask.width
+        if width > cast(s32)bounds.width - 1 { width = cast(s32)bounds.width - 1 }
+        left := cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2
+        for row: 0..mask.height - 1 {
+            y := mask.top + row
+            if y < Pixels.pixmap_clip_top || y >= Pixels.pixmap_clip_bottom { continue }
+            for column: 0..width - 1 {
+                x := left + column
+                if x < Pixels.pixmap_clip_left || x >= Pixels.pixmap_clip_right { continue }
+                // Average each source span when a wide glyph is reduced.
+                start := column * mask.width / width
+                end := (column + 1) * mask.width / width
+                sum: s32
+                for source: start..end - 1 { sum += cast(s32)coverage[row * mask.width + source] }
+                Pixels.PixmapBlend(x, y, color, sum / (end - start))
+            }
+        }
+    }
+    Pixels.PixmapClipAll()
+}
+
+EmitTextCell :: (command: Paint.PaintCommand) {
+    RasterTextCell(command.value, command.bounds, command.font, command.color, command.clip)
+}
+
+PaintTextCell :: (session: Sessions.Session, node: s32, value: string,
+    bounds: Rectangle, font: s32, color: Color, clip: Rectangle) {
+    command: Paint.QueuedPaint
+    command.data.kind = cast(s32)Paint.PaintKind.PaintKindClippedText
+    command.data.node = node; command.data.value = value
+    command.data.bounds = bounds; command.data.font = font
+    command.data.color = color; command.data.clip = clip
+    command.emit = EmitTextCell; command.clip_for = Paint.ClipLabel
+    command.has_emitter = true; command.clips = true
+    Paint.SubmitPaint(session, command)
+}

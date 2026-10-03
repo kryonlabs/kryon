@@ -1,0 +1,52 @@
+Cells :: #import "pixmap_cell_text";
+Pixels :: #import "pixmap";
+Paint :: #import "paint_queue";
+Sessions :: #import "session";
+Frame :: #import "tree_draw";
+using Geometry :: #import "geometry";
+using Drawing :: #import "drawing_props";
+
+pixels: [2048]u32;
+white :: Color.{255, 255, 255, 255};
+Bounds :: Rectangle.{0.0, 0.0, 64.0, 32.0};
+
+CheckGlyph :: (text: string, cell: Rectangle, clip: Rectangle) -> bool {
+    unused Pixels.PixmapBeginInto(cast(u32)0, 64, 32, pixels[:])
+    Cells.RasterTextCell(text, cell, 20, white, clip)
+    painted: s32
+    for y: 0..31 {
+        for x: 0..63 {
+            if (pixels[y * 64 + x] & cast(u32)0xffffff) == 0 { continue }
+            visible := RectangleIntersection(cell, clip)
+            if cast(float32)x < visible.x || cast(float32)x >= visible.x + visible.width ||
+                cast(float32)y < visible.y || cast(float32)y >= visible.y + visible.height { return false }
+            painted += 1
+        }
+    }
+    Pixels.PixmapEndInto()
+    return painted > 0
+}
+
+#program_export
+main :: () -> s32 {
+    if !CheckGlyph("M", .{10.0, 0.0, 8.0, 24.0}, Bounds) { return 1 }
+    if !CheckGlyph("i", .{20.0, 0.0, 8.0, 24.0}, Bounds) { return 2 }
+    if !CheckGlyph("é", .{30.0, 0.0, 8.0, 24.0}, .{32.0, 0.0, 4.0, 24.0}) { return 3 }
+    if !CheckGlyph("Á", .{10.0, 0.0, 9.0, 24.0}, Bounds) { return 4 }
+    if !CheckGlyph("⏺", .{20.0, 0.0, 16.0, 24.0}, Bounds) { return 5 }
+    session := Sessions.SessionOpen()
+    unused Frame.BeginFrame(session, cast(u64)1, Bounds)
+    // Queued glyphs must own their temporary UTF-8 text until the frame paints.
+    bytes: [1]u8; bytes[0] = cast(u8)77
+    Cells.PaintTextCell(session, -1, TextView(bytes[:]), .{10.0, 0.0, 8.0, 24.0}, 20, white, Bounds)
+    bytes[0] = cast(u8)105
+    if Paint.PendingPaintAt(session, 0).value != "M" { return 6 }
+    unused Pixels.PixmapBeginInto(cast(u32)0, 64, 32, pixels[:])
+    unused Frame.EndFrame(session)
+    painted: s32
+    for i: 0..2047 { if (pixels[i] & cast(u32)0xffffff) != 0 { painted += 1 } }
+    if painted == 0 { return 7 }
+    Pixels.PixmapEndInto(); Sessions.SessionClose(session)
+    print("Fixed-pitch glyph fit, clipping, Unicode and queued text passed\n")
+    return 0
+}
