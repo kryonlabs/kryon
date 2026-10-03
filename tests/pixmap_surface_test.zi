@@ -43,6 +43,10 @@ main :: () -> s32 {
     if PixmapImageRevision() != version + cast(u64)3 { return 18 }
     PixmapClearImage(0); PixmapClearImage(-1)
     if PixmapImageRevision() != version + cast(u64)3 { return 19 }
+    if !PixmapSetImage(327, "late-fixture", 2, 2, image[:]) || ImageWidth("late-fixture") != 2 { return 20 }
+    if PixmapSetImage(PixmapImageLimit, "outside-fixture", 2, 2, image[:]) { return 21 }
+    PixmapClearImage(327)
+    if ImageWidth("late-fixture") != 0 { return 22 }
     PixmapEndInto()
     print("Pixmap caller-owned surfaces passed\n"); return 0
 }
