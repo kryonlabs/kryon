@@ -70,6 +70,16 @@ main :: () -> s32 {
     for i: 0..cast(s32)32769 { large_text[i] = cast(u8)65 }
     if MeasureGlyphWidth(TextView(large_text[:]), 14, "") != ReferenceWidth(TextView(large_text[:]), 14) { return 6 }
     if !CheckWidth("after an over-capacity value") { return 7 }
+    // Interleaving labels, cache collisions, mutable storage and font changes
+    // must preserve the reference width without relying on pointer identity.
+    for pass: 0..cast(s32)127 {
+        mutable_text[0] = cast(u8)(65 + pass % 26)
+        unused MeasureGlyphWidth(TextView(mutable_text[:]), 13, "")
+        if MeasureGlyphWidth("café 日本語 ❤️", 11 + pass % 19, "") !=
+            ReferenceWidth("café 日本語 ❤️", 11 + pass % 19) { return 12 }
+        if MeasureGlyphWidth(TextView(mutable_text[:]), 20, "") !=
+            ReferenceWidth(TextView(mutable_text[:]), 20) { return 13 }
+    }
     radii: [5]s32 = .{0, 1, 3, 8, 100}
     colors: [3]Color = .{.{12, 34, 56, 255}, .{200, 150, 100, 127}, .{1, 2, 3, 0}}
     for radius: 0..cast(s32)4 {
