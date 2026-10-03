@@ -21,6 +21,9 @@ HostRaylibClearWindowState :: (flags: u32) #foreign raylib "ClearWindowState";
 HostRaylibIsWindowHidden :: () -> bool #foreign raylib "IsWindowHidden";
 HostRaylibSetConfigFlags :: (flags: u32) #foreign raylib "SetConfigFlags";
 HostRaylibSetTargetFPS :: (fps: s32) #foreign raylib "SetTargetFPS";
+HostRaylibSetWindowTitle :: (title: *u8) #foreign raylib "SetWindowTitle";
+HostRaylibSetExitKey :: (key: s32) #foreign raylib "SetExitKey";
+HostRaylibIsWindowFocused :: () -> bool #foreign raylib "IsWindowFocused";
 HostRaylibGetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
 HostRaylibGetScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
 HostRaylibBeginDrawing :: () #foreign raylib "BeginDrawing";
@@ -71,6 +74,7 @@ HostRaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonR
 HostRaylibMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
 HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
+HostRaylibIsKeyPressedRepeat :: (key: s32) -> bool #foreign raylib "IsKeyPressedRepeat";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
@@ -104,6 +108,8 @@ raylib_assets_count: s32;
 raylib_assets_next: s32;
 raylib_pointer: PointerFrame;
 raylib_secondary: SecondaryPointerFrame;
+raylib_middle: SecondaryPointerFrame;
+raylib_repeat_next: s32;
 
 // The zoom factor the frame is drawn at. Everything drawn after the frame
 // begins is scaled by it, so a single number scales the whole application;
@@ -666,11 +672,17 @@ RaylibAssetIndex :: (path: string) -> s32 {
 }
 
 #program_export
-OpenRaylib :: () -> bool {
-    title: [32]u8
-    if !CopyCString("Kryon Ziran", title[:]) { return false }
-    HostRaylibSetConfigFlags(cast(u32)4)
-    HostRaylibInitWindow(960, 600, *title[0])
+OpenRaylib :: (width: s32 = 960, height: s32 = 600,
+    title: string = "Kryon Ziran", flags: u32 = cast(u32)4) -> bool {
+    label: [512]u8
+    if width <= 0 || height <= 0 || !CopyCString(title, label[:]) { return false }
+    raylib_quit = false
+    raylib_pointer = PointerFrame.{}
+    raylib_secondary = SecondaryPointerFrame.{}
+    raylib_middle = SecondaryPointerFrame.{}
+    raylib_repeat_next = 0
+    HostRaylibSetConfigFlags(flags)
+    HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
     HostRaylibSetTargetFPS(60)
     name: [32]u8
@@ -727,6 +739,10 @@ PollRaylib :: () -> bool {
     raylib_secondary.down = HostRaylibMouseDown(1)
     raylib_secondary.pressed = HostRaylibMousePressed(1)
     raylib_secondary.released = HostRaylibMouseReleased(1)
+    raylib_middle.down = HostRaylibMouseDown(2)
+    raylib_middle.pressed = HostRaylibMousePressed(2)
+    raylib_middle.released = HostRaylibMouseReleased(2)
+    raylib_repeat_next = 0
     raylib_wheel_move = HostRaylibMouseWheelMove()
     return true
 }
@@ -769,6 +785,47 @@ RaylibEnvironmentZoom :: () -> float32 {
 RaylibPressedKey :: () -> s32 {
     return HostRaylibGetKeyPressed()
 }
+
+// OS repeats are separate from fresh presses in raylib. Return each repeated
+// key once per poll; a held key without a repeat event produces no input.
+#program_export
+RaylibRepeatedKey :: () -> s32 {
+    while raylib_repeat_next < 512 {
+        key := raylib_repeat_next
+        raylib_repeat_next += 1
+        if HostRaylibIsKeyPressedRepeat(key) { return key }
+    }
+    return 0
+}
+
+#program_export
+RaylibKeyDown :: (key: s32) -> bool {
+    return key > 0 && key < 512 && HostRaylibIsKeyDown(key)
+}
+
+#program_export
+RaylibFocused :: () -> bool { return HostRaylibIsWindowFocused() }
+
+#program_export
+RaylibExitKey :: (key: s32) { HostRaylibSetExitKey(key) }
+
+#program_export
+RaylibFrameRate :: (fps: s32) -> bool {
+    if fps < 0 || fps > 1000 { return false }
+    HostRaylibSetTargetFPS(fps)
+    return true
+}
+
+#program_export
+RaylibSetTitle :: (title: string) -> bool {
+    bytes: [512]u8
+    if !CopyCString(title, bytes[:]) { return false }
+    HostRaylibSetWindowTitle(*bytes[0])
+    return true
+}
+
+#program_export
+PollMiddlePointer :: () -> SecondaryPointerFrame { return raylib_middle }
 
 // The held modifier keys as KeyModifier bits, from raylib's left and right
 // shift (340, 344), control (341, 345), and alt (342, 346) keys.

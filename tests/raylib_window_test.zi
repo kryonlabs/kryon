@@ -1,0 +1,47 @@
+Runtime :: #import "raylib_runtime";
+Probe :: #import "raylib_window_host";
+Text :: #import "byte_text_linux";
+
+#program_export
+main :: () -> s32 {
+    if Runtime.OpenRaylib(0, 200) || Runtime.OpenRaylib(320, -1) ||
+        Runtime.OpenRaylib(320, 200, "bad\x00title") || Probe.opens != 0 { return 1 }
+    if !Runtime.OpenRaylib(320, 200, "Document", cast(u32)12) ||
+        Probe.opens != 1 || Probe.window_width != 320 || Probe.window_height != 200 ||
+        Probe.window_flags != cast(u32)12 || Text.TextFromCString(*Probe.window_title[0]) != "Document" {
+        return 2
+    }
+    Runtime.RaylibExitKey(0)
+    if Probe.exit_key != 0 || !Runtime.RaylibFrameRate(30) || Probe.frame_rate != 30 ||
+        Runtime.RaylibFrameRate(-1) || Runtime.RaylibFrameRate(1001) || Probe.frame_rate != 30 { return 3 }
+    if !Runtime.RaylibSetTitle("One 一") ||
+        Text.TextFromCString(*Probe.window_title[0]) != "One 一" ||
+        Runtime.RaylibSetTitle("bad\x00title") ||
+        Text.TextFromCString(*Probe.window_title[0]) != "One 一" { return 4 }
+    Probe.middle_pressed = true; Probe.middle_released = true
+    Probe.fresh_key = 65; Probe.repeated_key = 263
+    if !Runtime.PollRaylib() { return 5 }
+    pointer := Runtime.PollPointer(); middle := Runtime.PollMiddlePointer()
+    if pointer.x != 17.0 || pointer.y != 29.0 ||
+        !middle.pressed || !middle.released || middle.down { return 6 }
+    if Runtime.RaylibPressedKey() != 65 || Runtime.RaylibPressedKey() != 0 ||
+        Runtime.RaylibRepeatedKey() != 263 || Runtime.RaylibRepeatedKey() != 0 ||
+        !Runtime.RaylibKeyDown(65) || Runtime.RaylibKeyDown(512) ||
+        Runtime.RaylibKeyDown(0) || !Runtime.RaylibFocused() { return 7 }
+    Probe.middle_pressed = false; Probe.middle_released = false
+    Probe.middle_down = true; Probe.repeated_key = 0; Probe.focused = false
+    if !Runtime.PollRaylib() || !Runtime.PollMiddlePointer().down ||
+        Runtime.PollMiddlePointer().pressed || Runtime.PollMiddlePointer().released ||
+        Runtime.RaylibRepeatedKey() != 0 || Runtime.RaylibFocused() { return 8 }
+    Runtime.WindowQuitHost()
+    if Runtime.PollRaylib() { return 9 }
+    Runtime.CloseRaylib()
+    if Probe.closes != 1 || Probe.window_ready { return 10 }
+    if !Runtime.OpenRaylib() || Probe.opens != 2 || Probe.window_width != 960 ||
+        Probe.window_height != 600 || Probe.window_flags != cast(u32)4 ||
+        Text.TextFromCString(*Probe.window_title[0]) != "Kryon Ziran" ||
+        Runtime.PollMiddlePointer().down || !Runtime.PollRaylib() { return 11 }
+    Runtime.CloseRaylib()
+    if Probe.closes != 2 { return 12 }
+    return 0
+}
