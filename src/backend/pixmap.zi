@@ -30,12 +30,19 @@ pixmap_image_paths: [256][256]u8;
 pixmap_image_lengths: [256]s32;
 pixmap_image_widths: [256]s32;
 pixmap_image_heights: [256]s32;
+// Hosts that retain rendered pixels can observe decoded asset replacements.
+// Registration publishes borrowed storage even when its path and size match;
+// a caller may have edited those pixels since its last registration.
+pixmap_image_revision: u64;
+#program_export
+PixmapImageRevision :: () -> u64 { return pixmap_image_revision }
 PixmapImagePixels :: struct { value: []u32 }
 pixmap_image_pixels: [256]PixmapImagePixels;
 
 #program_export
 PixmapClearImage :: (slot: s32) {
     if slot < 0 || slot >= PixmapImageLimit { return }
+    if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1 }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
 }
@@ -62,7 +69,7 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
     for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
-    pixmap_image_pixels[slot].value = pixels; return true
+    pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1; return true
 }
 // Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
 pixmap_clip_left: s32;
