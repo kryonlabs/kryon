@@ -306,10 +306,29 @@ pixmap_measure_count: s32 = -1;
 pixmap_measure_units: s64;
 pixmap_measure_restart: s32;
 pixmap_measure_before: s64;
+// Short labels recur across frames and are interleaved with other widgets.
+// Own their bytes in a bounded direct cache; collisions always compare the
+// complete content, and stored advances are independent of font size.
+pixmap_label_bytes: [64][256]u8;
+pixmap_label_lengths: [64]s32;
+pixmap_label_units: [64]s64;
+PixmapLabelSlot :: (value: string) -> s32 {
+    key: u64 = 5381
+    for i: 0..cast(s32)value.count - 1 { key = key * cast(u64)33 + cast(u64)value[i] }
+    return cast(s32)(key & cast(u64)63)
+}
 
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     unused typeface
+    label_slot: s32 = -1
+    if value.count <= 256 {
+        label_slot = PixmapLabelSlot(value)
+        if pixmap_label_lengths[label_slot] == value.count &&
+            TextView(pixmap_label_bytes[label_slot][:pixmap_label_lengths[label_slot]]) == value {
+            return PixmapTextWidth(pixmap_label_units[label_slot], font)
+        }
+    }
     bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
     at: s32 = 0
@@ -346,6 +365,11 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
         pixmap_measure_restart = starts[index]
         pixmap_measure_before = advances[index]
     } else { pixmap_measure_count = -1 }
+    if label_slot >= 0 {
+        for i: 0..cast(s32)value.count - 1 { pixmap_label_bytes[label_slot][i] = value[i] }
+        pixmap_label_lengths[label_slot] = cast(s32)value.count
+        pixmap_label_units[label_slot] = units
+    }
     return PixmapTextWidth(units, font)
 }
 
