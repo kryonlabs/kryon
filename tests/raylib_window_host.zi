@@ -1,0 +1,78 @@
+#import "raylib_runtime"
+#import "byte_text_linux"
+#import "paint_texture"
+#import "drawing_props"
+
+opens: s32;
+closes: s32;
+window_ready: bool;
+window_width: s32;
+window_height: s32;
+window_flags: u32;
+window_title: [512]u8;
+frame_rate: s32;
+exit_key: s32;
+focused: bool = true;
+middle_down: bool;
+middle_pressed: bool;
+middle_released: bool;
+fresh_key: s32;
+repeated_key: s32;
+
+CopyTitle :: (value: *u8) {
+    title := TextFromCString(value)
+    for index: cast(s64)0..title.count - 1 { window_title[index] = title[index] }
+    window_title[title.count] = 0
+}
+#program_export
+InitWindow :: (width: s32, height: s32, title: *u8) {
+    opens += 1; window_ready = true
+    window_width = width; window_height = height; CopyTitle(title)
+}
+#program_export
+SetConfigFlags :: (flags: u32) { window_flags = flags }
+#program_export
+IsWindowReady :: () -> bool { return window_ready }
+#program_export
+CloseWindow :: () { closes += 1; window_ready = false }
+#program_export
+UnloadFont :: (font: RaylibFont) { unused font }
+#program_export
+UnloadTexture :: (texture: Texture2D) { unused texture }
+#program_export
+UnloadRenderTexture :: (target: HostRaylibRenderTexture) { unused target }
+#program_export
+SetTargetFPS :: (fps: s32) { frame_rate = fps }
+#program_export
+SetWindowTitle :: (title: *u8) { CopyTitle(title) }
+#program_export
+SetExitKey :: (key: s32) { exit_key = key }
+#program_export
+IsWindowFocused :: () -> bool { return focused }
+#program_export
+FileExists :: (path: *u8) -> bool { unused path; return false }
+#program_export
+LoadFontEx :: (path: *u8, size: s32, codepoints: *s32, count: s32) -> RaylibFont {
+    unused path; unused size; unused codepoints; unused count
+    return RaylibFont.{}
+}
+#program_export
+WindowShouldClose :: () -> bool { return false }
+#program_export
+GetMouseX :: () -> s32 { return 17 }
+#program_export
+GetMouseY :: () -> s32 { return 29 }
+#program_export
+IsMouseButtonDown :: (button: s32) -> bool { return button == 2 && middle_down }
+#program_export
+IsMouseButtonPressed :: (button: s32) -> bool { return button == 2 && middle_pressed }
+#program_export
+IsMouseButtonReleased :: (button: s32) -> bool { return button == 2 && middle_released }
+#program_export
+GetMouseWheelMove :: () -> float32 { return 0.0 }
+#program_export
+GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
+#program_export
+IsKeyDown :: (key: s32) -> bool { return key == 65 }
+#program_export
+IsKeyPressedRepeat :: (key: s32) -> bool { return key == repeated_key && key != 0 }
