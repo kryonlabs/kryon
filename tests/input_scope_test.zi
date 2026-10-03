@@ -1,0 +1,62 @@
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "geometry"
+#import "widget_kind"
+using WidgetKind;
+
+Answer :: () -> s32 {
+    session := SessionOpen()
+    other := SessionOpen()
+    bounds := Rectangle.{0.0, 0.0, 100.0, 100.0}
+    TreeStart(session, cast(u64)1, bounds)
+    button := TreeSubmitCurrent(session, cast(u64)2, WidgetKindButton, bounds)
+    TreeSetInteractive(session, button, false, false, 0)
+    if !TreeFinish(session) { return -1 }
+    TreePointerUpdate(session, .{25.0, 30.0, true, true, false})
+    TreePointerUpdate(session, .{25.0, 30.0, false, false, true})
+    TreeSecondaryPointerUpdate(session, .{false, false, true})
+    KeyboardSend(session, KeyEscape)
+    KeyboardModifiersSend(session, KeyModifierControl)
+    TypedCodepointSend(session, 0x4e00)
+    TypedCodepointSend(session, #char "x")
+    PointerWheelSend(session, 25.0, 30.0, -2.0)
+    KeyboardSend(other, KeyEnter)
+    saved := TreeInputSuspend(session)
+    if KeyboardTake(session) != 0 || TypedCodepointTake(session) != 0 ||
+        KeyboardModifiers(session) != 0 || PointerSample(session).released ||
+        SecondaryPointerSample(session).released ||
+        PointerWheelTake(session, bounds) != 0.0 || TreeTakeActivationAt(session, button) {
+        return -2
+    }
+    // A passive view cannot consume the owner's activation, and a nested
+    // suspension restores the input of its immediate containing scope.
+    KeyboardSend(session, KeyRight)
+    nested := TreeInputSuspend(session)
+    if KeyboardTake(session) != 0 || !TreeInputResume(session, nested) ||
+        KeyboardTake(session) != KeyRight { return -3 }
+    if TreeInputResume(other, saved) || KeyboardTake(other) != KeyEnter { return -4 }
+    if !TreeInputResume(session, saved) || KeyboardTake(session) != KeyEscape ||
+        KeyboardModifiers(session) != KeyModifierControl ||
+        TypedCodepointTake(session) != 0x4e00 || TypedCodepointTake(session) != #char "x" ||
+        TypedCodepointTake(session) != 0 || PointerSample(session).x != 25.0 ||
+        !PointerSample(session).released || !SecondaryPointerSample(session).released ||
+        PointerWheelTake(session, bounds) != -2.0 ||
+        !TreeTakeActivationAt(session, button) || TreeTakeActivationAt(session, button) { return -5 }
+    TreeDispose(session)
+    SessionClose(session)
+    replacement := SessionOpen()
+    KeyboardSend(replacement, KeyHome)
+    if TreeInputResume(replacement, saved) || KeyboardTake(replacement) != KeyHome { return -6 }
+    SessionClose(replacement)
+    SessionClose(other)
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    result := Answer()
+    if result != 42 { print("input scope failed: %\n", result); return 1 }
+    print("input scope passed\n")
+    return 0
+}

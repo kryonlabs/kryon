@@ -91,6 +91,57 @@ PointerWheelState :: struct {
 
 active_wheel: [9]PointerWheelState;
 
+// A composed view can paint while lending no device input to its children.
+// Keep the containing frame's pending events and retained capture intact.
+InputSnapshot :: struct {
+    session: Session
+    pointer: PointerState
+    sample: PointerFrame
+    secondary: SecondaryPointerFrame
+    key: s32
+    modifiers: s32
+    codepoints: TypedInputQueue
+    wheel: PointerWheelState
+}
+
+#program_export
+TreeInputSuspend :: (session: Session) -> InputSnapshot {
+    snapshot: InputSnapshot
+    if !SessionValid(session) { return snapshot }
+    slot := SessionIndex(session)
+    snapshot.session = session
+    snapshot.pointer = active_pointer[slot]
+    snapshot.sample = active_sample[slot]
+    snapshot.secondary = active_secondary[slot]
+    snapshot.key = active_key[slot]
+    snapshot.modifiers = active_modifiers[slot]
+    snapshot.codepoints = active_codepoints[slot]
+    snapshot.wheel = active_wheel[slot]
+    active_pointer[slot] = PointerState.{}
+    active_sample[slot] = PointerFrame.{-1.0, -1.0, false, false, false}
+    active_secondary[slot] = SecondaryPointerFrame.{}
+    active_key[slot] = 0
+    active_modifiers[slot] = 0
+    active_codepoints[slot] = TypedInputQueue.{}
+    active_wheel[slot] = PointerWheelState.{}
+    return snapshot
+}
+
+#program_export
+TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
+    if !SessionValid(session) || session.slot != snapshot.session.slot ||
+        session.epoch != snapshot.session.epoch { return false }
+    slot := SessionIndex(session)
+    active_pointer[slot] = snapshot.pointer
+    active_sample[slot] = snapshot.sample
+    active_secondary[slot] = snapshot.secondary
+    active_key[slot] = snapshot.key
+    active_modifiers[slot] = snapshot.modifiers
+    active_codepoints[slot] = snapshot.codepoints
+    active_wheel[slot] = snapshot.wheel
+    return true
+}
+
 // Hosts submit one keyboard event before the next frame. The application
 // consumes it while composing widget props for that frame.
 #program_export
