@@ -1,5 +1,5 @@
 // Native Plan 9 uses libdraw directly; plan9port uses the same public lifecycle.
-#if #defined(PLAN9_BUILD) {
+#if #defined(PLAN9) {
     using Runtime :: #import "libdraw_native";
 } else {
     using Runtime :: #import "libdraw_runtime";
