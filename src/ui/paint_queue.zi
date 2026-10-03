@@ -739,23 +739,19 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
 }
 
 SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
-    if value.count != count { return false }
-    at: s64 = 0
-    while at < count {
-        if value[at] != paint_snapshot_values[slot][start + at] { return false }
-        at += 1
-    }
-    return true
+    if value.count != count || slot <= 0 || slot >= 9 || start < 0 ||
+        count < 0 || start > PAINT_TEXT_CAPACITY || count > PAINT_TEXT_CAPACITY - start { return false }
+    // Compare the owned span as text: native targets can compare a complete
+    // byte run without repeating the array and string bounds checks per byte.
+    return value == TextView(paint_snapshot_values[slot][start:start + count])
 }
 
 SnapshotAssetEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
-    if value.count != count { return false }
-    at: s64 = 0
-    while at < count {
-        if value[at] != paint_snapshot_assets[slot][start + at] { return false }
-        at += 1
-    }
-    return true
+    if value.count != count || slot <= 0 || slot >= 9 || start < 0 ||
+        count < 0 || start > PAINT_TEXT_CAPACITY || count > PAINT_TEXT_CAPACITY - start { return false }
+    // Compare the owned span as text: native targets can compare a complete
+    // byte run without repeating the array and string bounds checks per byte.
+    return value == TextView(paint_snapshot_assets[slot][start:start + count])
 }
 
 TextureEqual :: (left: Texture2D, right: Texture2D) -> bool {
