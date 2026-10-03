@@ -25,11 +25,11 @@ pixmap_width: s32 = PixmapWidth;
 pixmap_height: s32 = PixmapHeight;
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
 // clearing/replacing the slot. Image widgets still resolve an ordinary asset.
-PixmapImageLimit :: 256;
-pixmap_image_paths: [256][256]u8;
-pixmap_image_lengths: [256]s32;
-pixmap_image_widths: [256]s32;
-pixmap_image_heights: [256]s32;
+PixmapImageLimit :: 512;
+pixmap_image_paths: [512][256]u8;
+pixmap_image_lengths: [512]s32;
+pixmap_image_widths: [512]s32;
+pixmap_image_heights: [512]s32;
 // Hosts that retain rendered pixels can observe decoded asset replacements.
 // Registration publishes borrowed storage even when its path and size match;
 // a caller may have edited those pixels since its last registration.
@@ -37,7 +37,7 @@ pixmap_image_revision: u64;
 #program_export
 PixmapImageRevision :: () -> u64 { return pixmap_image_revision }
 PixmapImagePixels :: struct { value: []u32 }
-pixmap_image_pixels: [256]PixmapImagePixels;
+pixmap_image_pixels: [512]PixmapImagePixels;
 
 #program_export
 PixmapClearImage :: (slot: s32) {
