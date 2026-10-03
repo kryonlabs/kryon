@@ -25,6 +25,9 @@ ContextMenuItem :: struct {
     disabled: bool
     // A divider line; the other fields are ignored.
     separator: bool
+    // A compact cell sharing one row with the inline items next to it, such
+    // as a row of quick reactions above the commands.
+    inline: bool
 }
 
 ContextMenuProps :: struct {
@@ -50,6 +53,10 @@ CONTEXT_MENU_SEPARATOR :: 9;
 CONTEXT_MENU_PADDING :: 4;
 CONTEXT_MENU_TEXT_INSET :: 12;
 CONTEXT_MENU_MINIMUM_WIDTH :: 168;
+CONTEXT_MENU_INLINE_ROW :: 34;
+CONTEXT_MENU_INLINE_FONT :: 18;
+CONTEXT_MENU_INLINE_MINIMUM :: 32;
+CONTEXT_MENU_INLINE_GAP :: 2;
 
 #program_export
 ContextMenuOverlayKey :: (key: u64) -> u64 {
@@ -61,7 +68,16 @@ ContextMenuRowKey :: (key: u64, index: s32) -> u64 {
     return key * cast(u64)131071 + cast(u64)cast(u32)(index + 1) * cast(u64)19 + cast(u64)5
 }
 
-// The menu's panel: as wide as its longest label, kept inside the view.
+// The width of one inline cell: its label with an inset, never narrower
+// than a square touch target.
+ContextMenuInlineWidth :: (item: ContextMenuItem) -> s32 {
+    width: s32 = GlyphWidth(item.label, CONTEXT_MENU_INLINE_FONT, "") + 14
+    if width < CONTEXT_MENU_INLINE_MINIMUM { width = CONTEXT_MENU_INLINE_MINIMUM }
+    return width
+}
+
+// The menu's panel: as wide as its longest label or inline row, kept inside
+// the view.
 #program_export
 ContextMenuBounds :: (items: []ContextMenuItem, x: float32, y: float32,
     view: Rectangle) -> Rectangle {
@@ -71,6 +87,15 @@ ContextMenuBounds :: (items: []ContextMenuItem, x: float32, y: float32,
     while index < cast(s32)items.count {
         if items[index].separator {
             height += CONTEXT_MENU_SEPARATOR
+        } else if items[index].inline {
+            row: s32 = 6
+            while index < cast(s32)items.count && items[index].inline && !items[index].separator {
+                row += ContextMenuInlineWidth(items[index]) + CONTEXT_MENU_INLINE_GAP
+                index += 1
+            }
+            if row > width { width = row }
+            height += CONTEXT_MENU_INLINE_ROW
+            continue
         } else {
             height += CONTEXT_MENU_ROW
             label: s32 = GlyphWidth(items[index].label, CONTEXT_MENU_FONT, "") +
@@ -149,11 +174,44 @@ ContextMenu :: (session: Session, props: ContextMenuProps,
     PaintRoundedOutline(session, panel_node, panel, 6.0, 8, 1.0, border)
     if !TreePushScope(session, panel_node) { return result }
     line_height: s32 = GlyphLineHeight(CONTEXT_MENU_FONT, "")
+    inline_height: s32 = GlyphLineHeight(CONTEXT_MENU_INLINE_FONT, "")
     top: float32 = panel.y + cast(float32)CONTEXT_MENU_PADDING
+    left: float32 = panel.x + 3.0
     index: s32 = 0
     while index < cast(s32)items.count {
         item: ContextMenuItem = items[index]
-        if item.separator {
+        if item.inline && !item.separator {
+            // Lay out this cell, and end the row after the last inline item.
+            width: float32 = cast(float32)ContextMenuInlineWidth(item)
+            cell: Rectangle = Rectangle.{left, top + 1.0, width,
+                cast(float32)CONTEXT_MENU_INLINE_ROW - 2.0}
+            node: s32 = TreeSubmitCurrent(session, ContextMenuRowKey(key, index),
+                WidgetKindSelectable, cell)
+            if node >= 0 {
+                TreeSetInteractive(session, node, item.disabled, false, 0)
+                TreeSetSemantic(session, node, cast(SemanticKind)SemanticOption, 0)
+                TreeSetLabel(session, node, item.label)
+                hovered: bool = TreeHoveredAt(session, TreePrevious(session, panel_node,
+                    ContextMenuRowKey(key, index), WidgetKindSelectable))
+                if hovered && !item.disabled {
+                    PaintRoundedFill(session, node, cell, 6.0, 8, highlight)
+                }
+                color: Color = ink
+                if item.disabled { color = muted }
+                label_width: s32 = GlyphWidth(item.label, CONTEXT_MENU_INLINE_FONT, "")
+                PaintClippedLabel(session, node, item.label,
+                    cast(s32)(cell.x + (cell.width - cast(float32)label_width) * 0.5),
+                    cast(s32)(cell.y + (cell.height - cast(float32)inline_height) * 0.5),
+                    CONTEXT_MENU_INLINE_FONT, color, cell)
+            }
+            left += width + cast(float32)CONTEXT_MENU_INLINE_GAP
+            last: bool = index + 1 >= cast(s32)items.count || !items[index + 1].inline ||
+                items[index + 1].separator
+            if last {
+                top += cast(float32)CONTEXT_MENU_INLINE_ROW
+                left = panel.x + 3.0
+            }
+        } else if item.separator {
             PaintLine(session, panel_node,
                 Rectangle.{panel.x + 8.0, top + cast(float32)CONTEXT_MENU_SEPARATOR * 0.5,
                     panel.width - 16.0, 0.0}, border)

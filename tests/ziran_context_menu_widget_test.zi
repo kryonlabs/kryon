@@ -91,6 +91,58 @@ Frame :: () -> s32 {
     return old
 }
 
+inline_phase: s32;
+inline_open: bool;
+
+// A row of three inline cells above a Copy command, at (20, 20): the cells
+// are 32 wide at x 23, 57 and 91, y 25 to 57; Copy is the row at y 58.
+#program_export
+InlineFrame :: () -> s32 {
+    items: [4]ContextMenuItem
+    items[0].id = 11
+    items[0].label = "A"
+    items[0].inline = true
+    items[1].id = 12
+    items[1].label = "B"
+    items[1].inline = true
+    items[2].id = 14
+    items[2].label = "C"
+    items[2].inline = true
+    items[3].id = 13
+    items[3].label = "Copy"
+    props: ContextMenuProps
+    props.key = cast(u64)31
+    props.open = inline_open
+    props.x = 20.0
+    props.y = 20.0
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 160.0})
+    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:4])
+    if !TreeFinish(TestSession()) { return -1 }
+    if inline_phase == 0 {
+        bounds: Rectangle = ContextMenuBounds(items[0:4], 20.0, 20.0,
+            Rectangle.{0.0, 0.0, 240.0, 160.0})
+        if bounds.width != 168.0 || bounds.height != 68.0 { return -2 }
+        inline_open = true
+    } else if inline_phase == 1 {
+        if !result.open || TreeCount(TestSession()) != 8 { return -3 }
+        // The middle cell of the row.
+        Click(73.0, 40.0)
+    } else if inline_phase == 2 {
+        if result.activated_id != 12 || result.open { return -4 }
+        inline_open = true
+    } else if inline_phase == 3 {
+        if !result.open { return -5 }
+        // The command below the row.
+        Click(60.0, 70.0)
+    } else if inline_phase == 4 {
+        if result.activated_id != 13 || result.open { return -6 }
+    }
+    PaintFlush(TestSession())
+    old: s32 = inline_phase
+    inline_phase += 1
+    return old
+}
+
 #program_export
 main :: () -> s32 {
     expected: s32 = 0
@@ -100,5 +152,22 @@ main :: () -> s32 {
     }
     // Labels were drawn: three commands per frame the menu was open.
     if ContextMenuLabelCount() < 9 { return 100 }
+    expected = 0
+    while expected < 5 {
+        if InlineFrame() != expected { return 200 + expected }
+        expected += 1
+    }
+    // A wider row widens the panel past its minimum.
+    wide: [6]ContextMenuItem
+    index: s32 = 0
+    while index < 6 {
+        wide[index].id = index + 1
+        wide[index].label = "XXXX"
+        wide[index].inline = true
+        index += 1
+    }
+    bounds: Rectangle = ContextMenuBounds(wide[0:6], 0.0, 0.0,
+        Rectangle.{0.0, 0.0, 640.0, 480.0})
+    if bounds.width != 318.0 || bounds.height != 42.0 { return 300 }
     return 0
 }
