@@ -1,11 +1,11 @@
 #import "drawing_props"
 #import "geometry"
-#import "libdraw_native"
+#import "Libdraw"
 #import "tree_input"
 
 #program_export
 main :: () -> s32 {
-    if !OpenRaster(96, 64) { return 1 }
+    if !OpenLibdrawSized(96, 64) { return 1 }
     red: Color = Color.{255, 0, 0, 255}
     RasterRoundedRectangle(Rectangle.{0.0, 0.0, 96.0, 64.0},
         0.0, 0, red)

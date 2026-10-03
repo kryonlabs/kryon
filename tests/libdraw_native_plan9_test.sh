@@ -10,7 +10,7 @@ source=$repo/tests/libdraw_native_plan9_host.zi
 capture=$work/capture.rgba
 text=$work/text.log
 
-"$ziran" check --root "$repo/tests" --module-path "$repo/src/backend" \
+"$ziran" check --define PLAN9 --root "$repo/tests" --module-path "$repo/src/backend" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$source"
 "$ziran" build --target=plan9-c --root "$repo/tests" \
     --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
