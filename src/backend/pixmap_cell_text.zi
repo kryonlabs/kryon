@@ -12,7 +12,9 @@ TextCellWidth :: (font: s32) -> s32 { return Glyphs.PixmapCellWidth(font) }
 RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
     color: Color, clip: Rectangle) {
     if font <= 0 || bounds.width <= 1.0 || bounds.height <= 0.0 { return }
-    Pixels.PixmapClipTo(RectangleIntersection(bounds, clip))
+    bounds = Pixels.PixmapDeviceBounds(bounds); clip = Pixels.PixmapDeviceBounds(clip)
+    font = Pixels.PixmapDeviceFont(font)
+    Pixels.PixmapClipPixels(RectangleIntersection(bounds, clip))
     at: s32
     while at < cast(s32)value.count {
         unit := Glyphs.PixmapNextUnit(value, at)

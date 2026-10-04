@@ -23,6 +23,20 @@ pixmap_pixels: [576000]u32;
 pixmap_surface: []u32 = pixmap_pixels[:];
 pixmap_width: s32 = PixmapWidth;
 pixmap_height: s32 = PixmapHeight;
+// Widget geometry stays in logical units; raster endpoints use device pixels.
+// Measures deliberately remain logical, so density never changes wrapping.
+pixmap_scale_x: float32 = 1.0;
+pixmap_scale_y: float32 = 1.0;
+#program_export
+PixmapScale :: (x: float32, y: float32) -> bool {
+    if !Finite32(x) || !Finite32(y) || x < 0.1 || y < 0.1 || x > 8.0 || y > 8.0 { return false }
+    pixmap_scale_x = x; pixmap_scale_y = y; return true
+}
+PixmapDeviceBounds :: (bounds: Rectangle) -> Rectangle {
+    return .{bounds.x * pixmap_scale_x, bounds.y * pixmap_scale_y,
+        bounds.width * pixmap_scale_x, bounds.height * pixmap_scale_y}
+}
+PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * pixmap_scale_y) }
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
 // clearing/replacing the slot. Image widgets still resolve an ordinary asset.
 PixmapImageLimit :: 512;
@@ -114,6 +128,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32) -> bool {
 #program_export
 PixmapEndInto :: () {
     pixmap_surface = pixmap_pixels[:]; pixmap_width = PixmapWidth; pixmap_height = PixmapHeight
+    pixmap_scale_x = 1.0; pixmap_scale_y = 1.0
     PixmapClipAll()
 }
 
@@ -125,6 +140,9 @@ PixmapClipAll :: () {
 }
 
 PixmapClipTo :: (clip: Rectangle) {
+    PixmapClipPixels(PixmapDeviceBounds(clip))
+}
+PixmapClipPixels :: (clip: Rectangle) {
     pixmap_clip_left = PixmapRound(clip.x)
     pixmap_clip_top = PixmapRound(clip.y)
     pixmap_clip_right = PixmapRound(clip.x + clip.width)
@@ -455,14 +473,15 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
 
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
-    PixmapDrawText(value, x, y, font, color)
+    PixmapDrawText(value, PixmapRound(cast(float32)x * pixmap_scale_x),
+        PixmapRound(cast(float32)y * pixmap_scale_y), PixmapDeviceFont(font), color)
 }
 
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32, color: Color,
     clip: Rectangle) {
     PixmapClipTo(clip)
-    PixmapDrawText(value, x, y, font, color)
+    RasterText(value, x, y, font, color)
     PixmapClipAll()
 }
 
@@ -470,6 +489,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32, color: Color,
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32,
     color: Color) {
     unused segments
+    bounds = PixmapDeviceBounds(bounds); radius *= pixmap_scale_y
     PixmapFillRounded(PixmapRound(bounds.x), PixmapRound(bounds.y),
         PixmapRound(bounds.x + bounds.width), PixmapRound(bounds.y + bounds.height),
         PixmapRound(radius), color)
@@ -479,6 +499,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32,
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     unused segments
+    bounds = PixmapDeviceBounds(bounds); radius *= pixmap_scale_y; width *= pixmap_scale_y
     PixmapStrokeRounded(PixmapRound(bounds.x), PixmapRound(bounds.y),
         PixmapRound(bounds.x + bounds.width), PixmapRound(bounds.y + bounds.height),
         PixmapRound(radius), PixmapRound(width), color)
@@ -487,6 +508,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 // A one-pixel line from (x, y) to (x + width, y + height).
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
+    line = PixmapDeviceBounds(line)
     x0: s32 = PixmapRound(line.x)
     y0: s32 = PixmapRound(line.y)
     x1: s32 = PixmapRound(line.x + line.width)
@@ -523,6 +545,8 @@ RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
     destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
     radius: float32, tint: Color) {
     unused texture_id
+    destination = PixmapDeviceBounds(destination); clip = PixmapDeviceBounds(clip)
+    origin.x *= pixmap_scale_x; origin.y *= pixmap_scale_y; radius *= pixmap_scale_y
     slot := PixmapImageIndex(asset_path)
     if slot >= 0 {
         if !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
@@ -568,7 +592,7 @@ RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
         }
         return
     }
-    PixmapClipTo(clip)
+    PixmapClipPixels(clip)
     x0: s32 = PixmapRound(destination.x)
     y0: s32 = PixmapRound(destination.y)
     x1: s32 = PixmapRound(destination.x + destination.width)
