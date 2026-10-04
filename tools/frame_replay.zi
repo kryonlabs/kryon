@@ -163,12 +163,12 @@ JsonValue :: (state: *ReplayState, value: *HostValue, depth: s32) -> bool {
     if value.kind == HostReal { return WriteReal(state, value.real, false) }
     if value.kind == HostString {
         if value.length > 0 && value.data == null { return false }
-        return JsonString(state, value.data, value.length)
+        return JsonString(state, value.data, cast(u64)value.length)
     }
     if value.kind == HostRecord {
         if value.field_count > 0 && value.fields == null { return false }
         if !WriteByte(state, cast(u8)123) { return false }
-        index: u64 = 0
+        index: usize = 0
         while index < value.field_count {
             if index > 0 && !WriteByte(state, cast(u8)44) { return false }
             field: *HostField = *value.fields[index]
@@ -183,7 +183,7 @@ JsonValue :: (state: *ReplayState, value: *HostValue, depth: s32) -> bool {
     if value.kind == HostSlice || value.kind == HostArray {
         if value.length > 0 && value.elements == null { return false }
         if !WriteByte(state, cast(u8)91) { return false }
-        index: u64 = 0
+        index: usize = 0
         while index < value.length {
             if index > 0 && !WriteByte(state, cast(u8)44) { return false }
             if !JsonValue(state, *value.elements[index], depth + 1) {
@@ -290,7 +290,7 @@ ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostRecord
         result.type_name = *state.labels[7].bytes[0]
         result.fields = *state.pointer_fields[0]
-        result.field_count = cast(u64)5
+        result.field_count = cast(usize)5
         return 1
     }
     if module != "frame_capture" { return 0 }
