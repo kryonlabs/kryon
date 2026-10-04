@@ -76,27 +76,27 @@ Supported :: (module: string, function: string) -> bool {
 
 TextValue :: (value: HostValue) -> string {
     if value.length == 0 { return "" }
-    return TextFromBytes(BytesFromPointer(cast(*u8)value.data, value.length))
+    return TextFromBytes(BytesFromPointer(cast(*u8)value.data, cast(u64)value.length))
 }
 
 Field :: (value: HostValue, index: s32, name: string, kind: s32) -> bool {
     return value.kind == HostRecord && value.fields != null &&
-    cast(u64)index < value.field_count &&
+    cast(usize)index < value.field_count &&
     TextFromCString(value.fields[index].name) == name &&
     value.fields[index].value.kind == kind
 }
 RectangleValue :: (value: HostValue) -> bool {
-    return value.field_count == cast(u64)4 &&
+    return value.field_count == cast(usize)4 &&
     Field(value, 0, "x", HostReal) && Field(value, 1, "y", HostReal) &&
     Field(value, 2, "width", HostReal) && Field(value, 3, "height", HostReal)
 }
 ColorValue :: (value: HostValue) -> bool {
-    return value.field_count == cast(u64)4 &&
+    return value.field_count == cast(usize)4 &&
     Field(value, 0, "r", HostUnsigned) && Field(value, 1, "g", HostUnsigned) &&
     Field(value, 2, "b", HostUnsigned) && Field(value, 3, "a", HostUnsigned)
 }
 VectorValue :: (value: HostValue) -> bool {
-    return value.field_count == cast(u64)2 &&
+    return value.field_count == cast(usize)2 &&
     Field(value, 0, "x", HostReal) && Field(value, 1, "y", HostReal)
 }
 RectangleFrom :: (value: HostValue) -> Rectangle {
@@ -167,7 +167,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if count == 0 && (function == "MediaMessageHost" || function == "FetchTextResultHost") {
         value := ifx function == "MediaMessageHost" then Media.MediaMessageHost() else Media.FetchTextResultHost()
         result.kind = HostString
-        result.length = cast(u64)value.count
+        result.length = cast(usize)value.count
         descriptor := cast(*TextDescriptor)(*value)
         result.data = descriptor.data
         return 1
@@ -206,7 +206,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostRecord
         result.type_name = *player.names[26].bytes[0]
         result.fields = *player.fields[0]
-        result.field_count = cast(u64)13
+        result.field_count = cast(usize)13
         return 1
     }
     if function == "TakeBundleCodepoint" && count == 0 {
