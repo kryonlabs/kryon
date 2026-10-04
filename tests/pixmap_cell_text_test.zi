@@ -1,4 +1,5 @@
 Cells :: #import "pixmap_cell_text";
+Glyphs :: #import "pixmap_text";
 Pixels :: #import "pixmap";
 Paint :: #import "paint_queue";
 Sessions :: #import "session";
@@ -29,6 +30,22 @@ CheckGlyph :: (text: string, cell: Rectangle, clip: Rectangle) -> bool {
 
 #program_export
 main :: () -> s32 {
+    for font: 18..22 {
+        pitch := Cells.TextCellWidth(cast(s32)font)
+        if pitch < 9 || pitch > 12 { return 8 }
+        ordinary := Glyphs.PixmapGlyphFor(cast(u32)105)
+        mono := Glyphs.PixmapCellGlyph(ordinary)
+        if mono == ordinary { return 9 }
+        // The shared cache must keep the proportional chat i separate from
+        // its monospace terminal i, regardless of which is painted first.
+        normal_mask: Glyphs.PixmapGlyphMask; mono_mask: Glyphs.PixmapGlyphMask
+        unused Glyphs.PixmapCachedGlyph(ordinary, 0, Glyphs.PixmapTextBaseline(cast(s32)font), cast(s32)font, *normal_mask)
+        unused Glyphs.PixmapCachedGlyph(mono, 0, Glyphs.PixmapCellBaseline(mono, cast(s32)font), cast(s32)font, *mono_mask)
+        if mono_mask.width <= normal_mask.width { return 10 }
+        again: Glyphs.PixmapGlyphMask
+        unused Glyphs.PixmapCachedGlyph(ordinary, 0, Glyphs.PixmapTextBaseline(cast(s32)font), cast(s32)font, *again)
+        if again.width != normal_mask.width { return 11 }
+    }
     if !CheckGlyph("M", .{10.0, 0.0, 8.0, 24.0}, Bounds) { return 1 }
     if !CheckGlyph("i", .{20.0, 0.0, 8.0, 24.0}, Bounds) { return 2 }
     if !CheckGlyph("é", .{30.0, 0.0, 8.0, 24.0}, .{32.0, 0.0, 4.0, 24.0}) { return 3 }

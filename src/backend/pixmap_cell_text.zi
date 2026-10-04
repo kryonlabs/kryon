@@ -1,5 +1,5 @@
-// Fixed-pitch text for grids. Glyphs use the ordinary pixmap font, centered
-// in a cell; wide outlines are compressed to fit rather than clipped away.
+// Fixed-pitch text for grids, using Liberation Mono's natural outlines and
+// advance. Missing symbols retain the ordinary pixmap font's fallback.
 Pixels :: #import "pixmap";
 Glyphs :: #import "pixmap_text";
 Paint :: #import "paint_queue";
@@ -7,11 +7,12 @@ Sessions :: #import "session";
 using Geometry :: #import "geometry";
 using Drawing :: #import "drawing_props";
 
+TextCellWidth :: (font: s32) -> s32 { return Glyphs.PixmapCellWidth(font) }
+
 RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
     color: Color, clip: Rectangle) {
     if font <= 0 || bounds.width <= 1.0 || bounds.height <= 0.0 { return }
     Pixels.PixmapClipTo(RectangleIntersection(bounds, clip))
-    baseline := cast(s64)bounds.y * 256 + Glyphs.PixmapTextBaseline(font)
     at: s32
     while at < cast(s32)value.count {
         unit := Glyphs.PixmapNextUnit(value, at)
@@ -24,12 +25,16 @@ RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
             continue
         }
         if unit.glyph < 0 { continue }
+        glyph := Glyphs.PixmapCellGlyph(unit.glyph)
+        baseline := cast(s64)bounds.y * 256 + Glyphs.PixmapCellBaseline(glyph, font)
         mask: Glyphs.PixmapGlyphMask
-        coverage := Glyphs.PixmapCachedGlyph(unit.glyph, 0, baseline, font, *mask)
+        origin := cast(s32)bounds.x + (cast(s32)bounds.width - TextCellWidth(font)) / 2
+        coverage := Glyphs.PixmapCachedGlyph(glyph, cast(s64)origin * 256, baseline, font, *mask)
         if mask.width <= 0 || mask.height <= 0 || coverage.count == 0 { continue }
         width := mask.width
         if width > cast(s32)bounds.width - 1 { width = cast(s32)bounds.width - 1 }
-        left := cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2
+        left := mask.left
+        if width != mask.width { left = cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2 }
         for row: 0..mask.height - 1 {
             y := mask.top + row
             if y < Pixels.pixmap_clip_top || y >= Pixels.pixmap_clip_bottom { continue }
