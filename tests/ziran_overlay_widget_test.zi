@@ -13,6 +13,9 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "scroll_device"
+#import "scroll_props"
+#import "scroll"
 #import "widget_kind"
 #import "ziran_overlay_widget_host"
 
@@ -151,6 +154,52 @@ Frame :: () -> s32 {
     return old
 }
 
+// A modal must stop page scrolling even where it contains no scroll itself.
+CheckModalInput :: () -> s32 {
+    session := SessionOpen()
+    bounds := Rectangle.{0.0, 0.0, 240.0, 120.0}
+    TreeStart(session, cast(u64)1, bounds)
+    scroll := TreeSubmitCurrent(session, cast(u64)30, WidgetKindScroll, bounds)
+    button := TreeSubmitCurrent(session, cast(u64)31, WidgetKindButton, bounds)
+    TreeSetInteractive(session, button, false, false, 31)
+    TreeFinish(session)
+    TreePointerUpdate(session, PointerFrame.{20.0, 20.0, true, true, false})
+    // Capture starts before the modal appears.
+    BeginScrollFrame(session, Vector2.{20.0, 20.0}, true, true, false, 0.0, 1.0)
+    frame: ScrollFrame
+    frame.start_drag = true
+    CommitScroll(cast(u64)30, frame)
+    TreeStart(session, cast(u64)1, bounds)
+    scroll = TreeSubmitCurrent(session, cast(u64)30, WidgetKindScroll, bounds)
+    button = TreeSubmitCurrent(session, cast(u64)31, WidgetKindButton, bounds)
+    TreeSetInteractive(session, button, false, false, 31)
+    props: DismissibleOverlayProps
+    props.key = cast(u64)32
+    props.bounds = bounds
+    overlay := DismissibleOverlay(session, props)
+    TreeFinish(session)
+    BeginScrollFrame(session, Vector2.{20.0, 40.0}, false, true, false, 3.0, 2.0)
+    observation := ScrollObservationFor(cast(u64)30, bounds)
+    if TreeScrollAt(session, 20.0, 40.0) != cast(u64)0 ||
+    observation.pointer_allowed || observation.owns_drag ||
+    observation.wheel != 0.0 || TreeTakeDragAt(session, button).active {
+        return 20
+    }
+    // The modal's own scroll remains usable.
+    TreeStart(session, cast(u64)1, bounds)
+    scroll = TreeSubmitCurrent(session, cast(u64)30, WidgetKindScroll, bounds)
+    overlay = DismissibleOverlay(session, props)
+    modal_scroll := TreeSubmit(session, cast(u64)33, overlay.panel_node,
+        WidgetKindScroll, bounds)
+    TreeFinish(session)
+    BeginScrollFrame(session, Vector2.{20.0, 40.0}, true, true, false, 3.0, 3.0)
+    observation = ScrollObservationFor(cast(u64)33, bounds)
+    if TreeScrollAt(session, 20.0, 40.0) != cast(u64)33 ||
+    !observation.pointer_allowed || observation.wheel != 3.0 { return 21 }
+    CloseSession(session)
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     expected: s32 = 0
@@ -159,5 +208,7 @@ main :: () -> s32 {
             OverlayHostFailed() { return expected + 1 }
         expected += 1
     }
-    return CheckOverlayOrder()
+    ordered := CheckOverlayOrder()
+    if ordered != 0 { return ordered }
+    return CheckModalInput()
 }
