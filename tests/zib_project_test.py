@@ -140,6 +140,9 @@ backend = "desktop"
         if extra != downloaded and extra.is_file():
             extra.unlink()
     assert list(download.iterdir()) == [downloaded]
+    checked = run([ROOT / "build/bin/zib", "--check", downloaded], ROOT,
+                  {**env, "DISPLAY": "unreachable-display", "SDL_VIDEODRIVER": "invalid"})
+    assert checked.stdout == b"", "checking must not execute application code"
     shot = OUTPUT / "portable.png"
     capture_env = {**env, "KRYON_CAPTURE_PATH": str(shot)}
     run(["xvfb-run", "-a", ROOT / "build/bin/kryon", "run", downloaded],
@@ -174,6 +177,7 @@ backend = "desktop"
     broken = OUTPUT / "broken.zib"
     broken.write_bytes(downloaded.read_bytes()[:24])
     run([ROOT / "build/bin/zib", broken], ROOT, env, ok=False)
+    run([ROOT / "build/bin/zib", "--check", broken], ROOT, env, ok=False)
     unknown = OUTPUT / "unknown.zi"
     unknown.write_text('host_api :: #system_library "host_api";\n'
                        'DangerousHost :: () -> s32 #foreign host_api;\n'
@@ -183,6 +187,21 @@ backend = "desktop"
          "-o", bad_bundle, unknown], ROOT, env)
     rejected = run([ROOT / "build/bin/zib", bad_bundle], ROOT, env, ok=False)
     assert b"unsupported host capability unknown:DangerousHost" in rejected.stdout
+    rejected = run([ROOT / "build/bin/zib", "--check", bad_bundle], ROOT, env, ok=False)
+    assert b"unsupported host capability unknown:DangerousHost" in rejected.stdout
+
+    startup = OUTPUT / "startup.zi"
+    startup.write_text('Initialize :: () -> s32 { print("ran startup\\n"); return 7 }\n'
+                       'initialized: s32 = Initialize();\n'
+                       '#program_export\n'
+                       'main :: () -> s32 { print("ran entry\\n"); return initialized }\n')
+    startup_bundle = OUTPUT / "startup.zib"
+    run([ZIRAN, "bundle", "--root", OUTPUT, "--entry", "startup:main",
+         "-o", startup_bundle, startup], ROOT, env)
+    executed = run([ZIRAN, "run", startup_bundle], ROOT, env)
+    assert b"ran startup" in executed.stdout and b"ran entry" in executed.stdout
+    checked = run([ROOT / "build/bin/zib", "--check", startup_bundle], ROOT, env)
+    assert checked.stdout == b"", "checking executed application startup or entry"
 
     # Every maintained starter can be exported through its ordinary front door.
     templates = OUTPUT / "templates"
