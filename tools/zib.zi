@@ -363,8 +363,9 @@ RunFrame :: (instance: *void) -> bool {
 
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
-    if argc < 1 || argc > 2 {
-        print("usage: zib FILE.zib\n")
+    check := argc == 3 && TextFromCString(argv[1]) == "--check"
+    if argc < 1 || argc > 3 || (argc == 3 && !check) {
+        print("usage: zib [--check] FILE.zib\n")
         return 2
     }
     executable_bytes: [4096]u8
@@ -373,8 +374,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     installed_bytes: [4096]u8
     bundle_path: string = ""
     bundle_name: *u8 = null
-    if argc == 2 {
-        bundle_name = argv[1]
+    if argc == 2 || check {
+        bundle_name = argv[ifx check then 2 else 1]
         bundle_path = TextFromCString(bundle_name)
     } else {
         link: [32]u8
@@ -397,7 +398,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     // of where the owner launches it. Open the bundle before changing cwd.
     slash := bundle_path.count - 1
     while slash >= 0 && bundle_path[slash] != cast(u8)47 { slash -= 1 }
-    if slash >= 0 {
+    if !check && slash >= 0 {
         directory: [4096]u8
         parent := bundle_path[0:slash]
         if slash == 0 { parent = "/" }
@@ -430,6 +431,14 @@ main :: (argc: s32, argv: **u8) -> s32 {
         VecFree(player.bindings)
         CloseBundle(bundle)
         return 1
+    }
+    // Opening the bundle validates its VM entry without executing module
+    // initializers. Instantiation would run those initializers, so an update
+    // check must finish before creating an instance.
+    if check {
+        VecFree(player.bindings)
+        CloseBundle(bundle)
+        return 0
     }
     bindings: *HostBinding = null
     if player.bindings.count > 0 { bindings = *player.bindings[0] }
