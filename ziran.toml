@@ -37,6 +37,8 @@ Zoom = "src/ui/zoom.zi"
 SystemTheme = "src/ui/system_theme.zi"
 SystemThemeLinux = "src/backend/system_theme_linux.zi"
 SystemClipboardLinux = "src/backend/system_clipboard_linux.zi"
+Dialog = "src/ui/dialog.zi"
+FileDialogLinux = "src/backend/file_dialog_linux.zi"
 Tray = "src/backend/Tray/module.zi"
 PageRoute = "src/backend/page_route.zi"
 # Building blocks for widget packages such as Plot and DataViews,
