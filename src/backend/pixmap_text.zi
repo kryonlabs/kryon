@@ -1,4 +1,5 @@
 #import "pixmap_font"
+Mono :: #import "pixmap_mono_font";
 #import "pixmap_emoji"
 #import "utf8"
 
@@ -60,8 +61,40 @@ PixmapFloorDiv :: (value: s64, divisor: s64) -> s64 {
 }
 
 // Font units to 1/256 pixel at a font size.
-PixmapUnits :: (units: s64, font: s32) -> s64 {
-    return PixmapFloorDiv(units * cast(s64)font * 256, cast(s64)PixmapTextLine)
+PixmapUnits :: (units: s64, font: s32, line: s32 = PixmapTextLine) -> s64 {
+    return PixmapFloorDiv(units * cast(s64)font * 256, cast(s64)line)
+}
+
+// Monospace glyph IDs occupy a separate cache namespace. Ordinary chat text
+// keeps its proportional font, measurements and masks.
+PixmapCellGlyph :: (glyph: s32) -> s32 {
+    if glyph < 0 { return glyph }
+    Mono.PixmapFontReady(); PixmapFontReady()
+    code := pixmap_font_codes[glyph]
+    low: s32; high: s32 = Mono.PixmapFontGlyphs - 1
+    while low <= high {
+        middle := (low + high) / 2; found := Mono.pixmap_font_codes[middle]
+        if found == code { return PixmapFontGlyphs + middle }
+        if found < code { low = middle + 1 } else { high = middle - 1 }
+    }
+    return glyph
+}
+PixmapCellWidth :: (font: s32) -> s32 {
+    Mono.PixmapFontReady()
+    line: s32 = Mono.PixmapFontAscent + Mono.PixmapFontDescent
+    advance := Mono.pixmap_font_advances[0]
+    width := (advance * font + line / 2) / line
+    return ifx width > 0 then width else 1
+}
+PixmapCellBaseline :: (glyph: s32, font: s32) -> s64 {
+    if glyph >= PixmapFontGlyphs {
+        return PixmapUnits(cast(s64)Mono.PixmapFontAscent, font, Mono.PixmapFontAscent + Mono.PixmapFontDescent)
+    }
+    return PixmapTextBaseline(font)
+}
+PixmapOutlineValue :: (mono: bool, at: s32) -> s32 {
+    if mono { return Mono.PixmapFontValue(at) }
+    return PixmapFontValue(at)
 }
 
 // The font's glyph for a code point; -1 when it has none.
@@ -212,24 +245,29 @@ PixmapRasterGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
     mask: *PixmapGlyphMask) -> bool {
     PixmapFontReady()
     pixmap_edge_count = 0
-    at: s32 = pixmap_font_starts[glyph]
-    contours: s32 = PixmapFontValue(at)
+    mono := glyph >= PixmapFontGlyphs
+    at: s32; line: s32 = PixmapTextLine; bias: s32 = PixmapFontBias
+    if mono {
+        Mono.PixmapFontReady(); at = Mono.pixmap_font_starts[glyph - PixmapFontGlyphs]
+        line = Mono.PixmapFontAscent + Mono.PixmapFontDescent; bias = Mono.PixmapFontBias
+    } else { at = pixmap_font_starts[glyph] }
+    contours: s32 = PixmapOutlineValue(mono, at)
     points: s32 = at + 1 + contours
     steps: s64 = cast(s64)(font / 6)
     if steps < 2 { steps = 2 }
     if steps > 12 { steps = 12 }
     first: s32 = 0
     for contour: 0..contours - 1 {
-        last: s32 = PixmapFontValue(at + 1 + cast(s32)contour)
+        last: s32 = PixmapOutlineValue(mono, at + 1 + cast(s32)contour)
         count: s32 = last - first + 1
         if count > 0 && count <= 2048 {
             for index: 0..count - 1 {
-                value: s32 = PixmapFontValue(points + (first + cast(s32)index) * 2)
-                y: s32 = PixmapFontValue(points + (first + cast(s32)index) * 2 + 1)
+                value: s32 = PixmapOutlineValue(mono, points + (first + cast(s32)index) * 2)
+                y: s32 = PixmapOutlineValue(mono, points + (first + cast(s32)index) * 2 + 1)
                 pixmap_contour_x[index] = origin_x +
-                    PixmapUnits(cast(s64)(value / 2 - PixmapFontBias), font)
+                    PixmapUnits(cast(s64)(value / 2 - bias), font, line)
                 pixmap_contour_y[index] = baseline -
-                    PixmapUnits(cast(s64)(y - PixmapFontBias), font)
+                    PixmapUnits(cast(s64)(y - bias), font, line)
                 pixmap_contour_on[index] = value % 2 == 1
             }
             PixmapAddContour(count, steps)
