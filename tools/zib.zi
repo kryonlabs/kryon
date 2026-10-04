@@ -1,0 +1,468 @@
+// A reusable desktop host for checked Zib programs. No app source or
+// generated app code is linked into this player.
+#import "bundle_host"
+#import "byte_text_linux"
+#import "c_string"
+#import "cairo_raster"
+#import "desktop_runtime"
+#import "geometry"
+#import "drawing_props"
+#import "vec"
+#import "file_linux"
+
+using HostValueKind;
+libc :: #system_library "libc";
+ChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
+TemporaryDirectory :: (path: *u8) -> *u8 #foreign libc "mkdtemp";
+RemoveDirectory :: (path: *u8) -> s32 #foreign libc "rmdir";
+PlayerReadlink :: (path: *u8, output: *u8, count: u64) -> s64 #foreign libc "readlink";
+Name :: struct { bytes: [128]u8 }
+Player :: struct {
+    fields: [13]HostField
+    names: [27]Name
+    bindings: Vec(HostBinding)
+}
+
+ModuleName :: (value: string, name: string) -> bool {
+    if value == name { return true }
+    separator: s64 = 0
+    while separator < value.count && value[separator] != cast(u8)95 {
+        separator += 1
+    }
+    return separator + 1 < value.count &&
+    value[separator + 1:value.count] == name
+}
+
+Supported :: (module: string, function: string) -> bool {
+    if ModuleName(module, "zib_run") {
+        return function == "ReadBundleInput" || function == "TakeBundleCodepoint"
+    }
+    if ModuleName(module, "font_metrics") {
+        return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
+    }
+    if ModuleName(module, "raster_text") {
+        return function == "RasterText" || function == "RasterTextClipped"
+    }
+    if ModuleName(module, "raster_shape") {
+        return function == "RasterRoundedRectangle" ||
+        function == "RasterRoundedRectangleOutline"
+    }
+    if ModuleName(module, "raster") { return function == "RasterLine" }
+    if ModuleName(module, "paint_queue") { return function == "RasterImage" }
+    if ModuleName(module, "image_raster") {
+        return function == "ImageWidth" || function == "ImageHeight"
+    }
+    if ModuleName(module, "system_clipboard") {
+        return function == "SystemClipboardOpenHost" ||
+        function == "SystemClipboardByteHost" ||
+        function == "SystemClipboardWriteHost"
+    }
+    if ModuleName(module, "window") {
+        return function == "WindowSetVisibleHost" || function == "WindowVisibleHost" ||
+        function == "WindowInterceptCloseHost" ||
+        function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost"
+    }
+    return false
+}
+
+TextValue :: (value: HostValue) -> string {
+    if value.length == 0 { return "" }
+    return TextFromBytes(BytesFromPointer(cast(*u8)value.data, value.length))
+}
+
+Field :: (value: HostValue, index: s32, name: string, kind: s32) -> bool {
+    return value.kind == HostRecord && value.fields != null &&
+    cast(u64)index < value.field_count &&
+    TextFromCString(value.fields[index].name) == name &&
+    value.fields[index].value.kind == kind
+}
+RectangleValue :: (value: HostValue) -> bool {
+    return value.field_count == cast(u64)4 &&
+    Field(value, 0, "x", HostReal) && Field(value, 1, "y", HostReal) &&
+    Field(value, 2, "width", HostReal) && Field(value, 3, "height", HostReal)
+}
+ColorValue :: (value: HostValue) -> bool {
+    return value.field_count == cast(u64)4 &&
+    Field(value, 0, "r", HostUnsigned) && Field(value, 1, "g", HostUnsigned) &&
+    Field(value, 2, "b", HostUnsigned) && Field(value, 3, "a", HostUnsigned)
+}
+VectorValue :: (value: HostValue) -> bool {
+    return value.field_count == cast(u64)2 &&
+    Field(value, 0, "x", HostReal) && Field(value, 1, "y", HostReal)
+}
+RectangleFrom :: (value: HostValue) -> Rectangle {
+    return Rectangle.{cast(float32)value.fields[0].value.real,
+        cast(float32)value.fields[1].value.real,
+        cast(float32)value.fields[2].value.real,
+        cast(float32)value.fields[3].value.real}
+}
+ColorFrom :: (value: HostValue) -> Color {
+    return Color.{cast(u8)value.fields[0].value.bits,
+        cast(u8)value.fields[1].value.bits,
+        cast(u8)value.fields[2].value.bits,
+        cast(u8)value.fields[3].value.bits}
+}
+VectorFrom :: (value: HostValue) -> Vector2 {
+    return Vector2.{cast(float32)value.fields[0].value.real,
+        cast(float32)value.fields[1].value.real}
+}
+
+InputField :: (player: *Player, index: s32, name: string,
+    type_name: string, kind: s32) -> bool {
+    if !CopyCString(name, player.names[index * 2].bytes[:]) ||
+    !CopyCString(type_name, player.names[index * 2 + 1].bytes[:]) {
+        return false
+    }
+    player.fields[index].name = *player.names[index * 2].bytes[0]
+    player.fields[index].value.kind = kind
+    player.fields[index].value.type_name = *player.names[index * 2 + 1].bytes[0]
+    return true
+}
+PrepareInput :: (player: *Player) -> bool {
+    return CopyCString("BundleInput", player.names[26].bytes[:]) &&
+    InputField(player, 0, "width", "s32", HostInteger) &&
+    InputField(player, 1, "height", "s32", HostInteger) &&
+    InputField(player, 2, "x", "float32", HostReal) &&
+    InputField(player, 3, "y", "float32", HostReal) &&
+    InputField(player, 4, "down", "bool", HostInteger) &&
+    InputField(player, 5, "pressed", "bool", HostInteger) &&
+    InputField(player, 6, "released", "bool", HostInteger) &&
+    InputField(player, 7, "secondary_down", "bool", HostInteger) &&
+    InputField(player, 8, "secondary_pressed", "bool", HostInteger) &&
+    InputField(player, 9, "secondary_released", "bool", HostInteger) &&
+    InputField(player, 10, "modifiers", "s32", HostInteger) &&
+    InputField(player, 11, "key", "s32", HostInteger) &&
+    InputField(player, 12, "wheel", "float32", HostReal)
+}
+
+PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    player := cast(*Player)context
+    module := TextFromCString(module_name)
+    function := TextFromCString(function_name)
+    if !Supported(module, function) { return 0 }
+    result.kind = HostVoid
+    if function == "ReadBundleInput" && count == 0 {
+        viewport := DesktopViewport()
+        pointer := PollPointer()
+        secondary := PollSecondaryPointer()
+        player.fields[0].value.integer = cast(s64)viewport.width
+        player.fields[1].value.integer = cast(s64)viewport.height
+        player.fields[2].value.real = cast(float64)pointer.x
+        player.fields[3].value.real = cast(float64)pointer.y
+        player.fields[4].value.integer = cast(s64)pointer.down
+        player.fields[5].value.integer = cast(s64)pointer.pressed
+        player.fields[6].value.integer = cast(s64)pointer.released
+        player.fields[7].value.integer = cast(s64)secondary.down
+        player.fields[8].value.integer = cast(s64)secondary.pressed
+        player.fields[9].value.integer = cast(s64)secondary.released
+        player.fields[10].value.integer = cast(s64)DesktopModifiers()
+        player.fields[11].value.integer = cast(s64)DesktopPressedKey()
+        player.fields[12].value.real = cast(float64)DesktopWheelMove()
+        result.kind = HostRecord
+        result.type_name = *player.names[26].bytes[0]
+        result.fields = *player.fields[0]
+        result.field_count = cast(u64)13
+        return 1
+    }
+    if function == "TakeBundleCodepoint" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)DesktopTypedCodepoint()
+        return 1
+    }
+    if function == "MeasureGlyphWidth" && count == 3 &&
+    args[0].kind == HostString && args[1].kind == HostInteger &&
+    args[2].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)MeasureGlyphWidth(TextValue(args[0]),
+            cast(s32)args[1].integer, TextValue(args[2]))
+        return 1
+    }
+    if function == "MeasureGlyphLineHeight" && count == 2 &&
+    args[0].kind == HostInteger && args[1].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)MeasureGlyphLineHeight(
+            cast(s32)args[0].integer, TextValue(args[1]))
+        return 1
+    }
+    if (function == "ImageWidth" || function == "ImageHeight") && count == 1 &&
+    args[0].kind == HostString {
+        result.kind = HostInteger
+        if function == "ImageWidth" {
+            result.integer = cast(s64)ImageWidth(TextValue(args[0]))
+        } else {
+            result.integer = cast(s64)ImageHeight(TextValue(args[0]))
+        }
+        return 1
+    }
+    if function == "RasterLine" && count == 2 &&
+    RectangleValue(args[0]) && ColorValue(args[1]) {
+        RasterLine(RectangleFrom(args[0]), ColorFrom(args[1]))
+        return 1
+    }
+    if function == "RasterRoundedRectangle" && count == 4 &&
+    RectangleValue(args[0]) && args[1].kind == HostReal &&
+    args[2].kind == HostInteger && ColorValue(args[3]) {
+        RasterRoundedRectangle(RectangleFrom(args[0]), cast(float32)args[1].real,
+            cast(s32)args[2].integer, ColorFrom(args[3]))
+        return 1
+    }
+    if function == "RasterRoundedRectangleOutline" && count == 5 &&
+    RectangleValue(args[0]) && args[1].kind == HostReal &&
+    args[2].kind == HostInteger && args[3].kind == HostReal && ColorValue(args[4]) {
+        RasterRoundedRectangleOutline(RectangleFrom(args[0]), cast(float32)args[1].real,
+            cast(s32)args[2].integer, cast(float32)args[3].real, ColorFrom(args[4]))
+        return 1
+    }
+    if (function == "RasterText" && count == 5) ||
+    (function == "RasterTextClipped" && count == 6) {
+        if args[0].kind != HostString || args[1].kind != HostInteger ||
+        args[2].kind != HostInteger || args[3].kind != HostInteger ||
+        !ColorValue(args[4]) { return 0 }
+        if count == 6 {
+            if !RectangleValue(args[5]) { return 0 }
+            RasterTextClipped(TextValue(args[0]), cast(s32)args[1].integer,
+                cast(s32)args[2].integer, cast(s32)args[3].integer,
+                ColorFrom(args[4]), RectangleFrom(args[5]))
+        } else {
+            RasterText(TextValue(args[0]), cast(s32)args[1].integer,
+                cast(s32)args[2].integer, cast(s32)args[3].integer, ColorFrom(args[4]))
+        }
+        return 1
+    }
+    if function == "RasterImage" && count == 9 &&
+    args[0].kind == HostString && args[1].kind == HostUnsigned &&
+    RectangleValue(args[2]) && RectangleValue(args[3]) &&
+    RectangleValue(args[4]) && VectorValue(args[5]) &&
+    args[6].kind == HostReal && args[7].kind == HostReal && ColorValue(args[8]) {
+        RasterImage(TextValue(args[0]), cast(u32)args[1].bits,
+            RectangleFrom(args[2]), RectangleFrom(args[3]), RectangleFrom(args[4]),
+            VectorFrom(args[5]), cast(float32)args[6].real, cast(float32)args[7].real,
+            ColorFrom(args[8]))
+        return 1
+    }
+    if function == "SystemClipboardOpenHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardOpenHost()
+        return 1
+    }
+    if function == "SystemClipboardByteHost" && count == 1 && args[0].kind == HostInteger {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardByteHost(cast(s32)args[0].integer)
+        return 1
+    }
+    if function == "SystemClipboardWriteHost" && count == 1 && args[0].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)SystemClipboardWriteHost(TextValue(args[0]))
+        return 1
+    }
+    if function == "WindowVisibleHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)WindowVisibleHost()
+        return 1
+    }
+    if function == "WindowTakeCloseRequestHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)WindowTakeCloseRequestHost()
+        return 1
+    }
+    if function == "WindowQuitHost" && count == 0 {
+        WindowQuitHost()
+        return 1
+    }
+    if function == "WindowSetVisibleHost" && count == 1 && args[0].kind == HostInteger {
+        WindowSetVisibleHost(args[0].integer != 0)
+        return 1
+    }
+    if function == "WindowInterceptCloseHost" && count == 1 && args[0].kind == HostInteger {
+        result.kind = HostInteger
+        result.integer = cast(s64)WindowInterceptCloseHost(args[0].integer != 0)
+        return 1
+    }
+    return 0
+}
+
+
+// Extract only validated bundle resources into a directory this player owns.
+// Native image loaders then use their normal asset paths. Normal completion
+// removes the files and directories this instance created;
+// user data stays elsewhere.
+AssetPath :: (root: string, name: string, bytes: []u8) -> string {
+    count := root.count + name.count + 1
+    if count >= bytes.count { return "" }
+    index: s64 = 0
+    while index < root.count { bytes[index] = root[index]; index += 1 }
+    bytes[index] = cast(u8)47
+    index += 1
+    at: s64 = 0
+    while at < name.count { bytes[index + at] = name[at]; at += 1 }
+    bytes[count] = cast(u8)0
+    return TextView(bytes[0:count])
+}
+
+ExtractAssets :: (bundle: *void, root: string) -> bool {
+    index: u64 = 0
+    while index < BundleAssets(bundle) {
+        name := TextFromCString(BundleAssetPath(bundle, index))
+        path_bytes: [4096]u8
+        path_text := AssetPath(root, name, path_bytes[:])
+        if path_text == "" { return false }
+        at := root.count + 1
+        while at < path_text.count {
+            if path_text[at] == cast(u8)47 {
+                if !CreatePrivateDirectory(path_text[0:at]) { return false }
+            }
+            at += 1
+        }
+        file := OpenExclusivePrivate(path_text)
+        if !file.valid { return false }
+        length := BundleAssetLength(bundle, index)
+        data := BytesFromPointer(BundleAssetBytes(bundle, index), length)
+        written := WriteAt(file, data, 0)
+        closed := CloseFile(file)
+        if written != cast(s64)length || !closed { return false }
+        index += cast(u64)1
+    }
+    return true
+}
+
+RemoveAssetDirectory :: (path: string) -> bool {
+    cursor := OpenDirectory(path)
+    if !cursor.valid { return false }
+    ok := true
+    entry := NextDirectoryEntry(*cursor)
+    while entry.valid {
+        {
+            name := TextFromBytes(entry.name[0:entry.name_count])
+            if name != "." && name != ".." {
+                child_bytes: [4096]u8
+                child := AssetPath(path, name, child_bytes[:])
+                if child == "" { ok = false; break }
+                if DirectoryExists(child) {
+                    if !RemoveAssetDirectory(child) { ok = false }
+                } else {
+                    if !RemoveFile(child) { ok = false }
+                }
+            }
+        }
+        entry = NextDirectoryEntry(*cursor)
+    }
+    if !CloseDirectory(*cursor) { ok = false }
+    bytes: [4096]u8
+    return CopyCString(path, bytes[:]) && RemoveDirectory(*bytes[0]) == 0 && ok
+}
+
+RunFrame :: (instance: *void) -> bool {
+    BeginDesktopFrame()
+    result: s64
+    has_result: s32
+    if RunBundleInstance(instance, *result, *has_result) == 0 { return false }
+    if has_result != 0 && result != 0 { return false }
+    return EndDesktopFrame()
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc < 1 || argc > 2 {
+        print("usage: zib FILE.zib\n")
+        return 2
+    }
+    executable_bytes: [4096]u8
+    prefix_bytes: [4096]u8
+    app_bytes: [4096]u8
+    installed_bytes: [4096]u8
+    bundle_path: string = ""
+    bundle_name: *u8 = null
+    if argc == 2 {
+        bundle_name = argv[1]
+        bundle_path = TextFromCString(bundle_name)
+    } else {
+        link: [32]u8
+        if !CopyCString("/proc/self/exe", link[:]) { return 1 }
+        size := PlayerReadlink(*link[0], *executable_bytes[0], cast(u64)4096)
+        if size <= 0 || size >= 4096 { return 1 }
+        location := TextFromBytes(executable_bytes[0:size])
+        separator := location.count - 1
+        while separator >= 0 && location[separator] != cast(u8)47 { separator -= 1 }
+        if separator < 0 { return 1 }
+        prefix := AssetPath(location[0:separator], "../share/kryon", prefix_bytes[:])
+        app := AssetPath(prefix, location[separator + 1:location.count], app_bytes[:])
+        bundle_path = AssetPath(app, "app.zib", installed_bytes[:])
+        if bundle_path == "" { return 1 }
+        bundle_name = *installed_bytes[0]
+    }
+    bundle := OpenBundle(bundle_name)
+    if bundle == null { return 1 }
+    // A downloaded app's relative assets live beside its bundle, independent
+    // of where the owner launches it. Open the bundle before changing cwd.
+    slash := bundle_path.count - 1
+    while slash >= 0 && bundle_path[slash] != cast(u8)47 { slash -= 1 }
+    if slash >= 0 {
+        directory: [4096]u8
+        parent := bundle_path[0:slash]
+        if slash == 0 { parent = "/" }
+        if !CopyCString(parent, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+            CloseBundle(bundle)
+            return 1
+        }
+    }
+    player: Player
+    ok := PrepareInput(*player)
+    index: u64 = 0
+    while ok && index < BundleCapabilities(bundle) {
+        module := BundleCapabilityModuleName(bundle, index)
+        function := BundleCapabilityFunctionName(bundle, index)
+        if !Supported(TextFromCString(module), TextFromCString(function)) {
+            print("zib: unsupported host capability %:%\n",
+                TextFromCString(module), TextFromCString(function))
+            ok = false
+        } else {
+            binding: HostBinding
+            binding.module = module
+            binding.function = function
+            binding.call = PlayerCall
+            binding.context = cast(*void)(*player)
+            ok = VecPush(player.bindings, binding)
+        }
+        index += cast(u64)1
+    }
+    if !ok {
+        VecFree(player.bindings)
+        CloseBundle(bundle)
+        return 1
+    }
+    bindings: *HostBinding = null
+    if player.bindings.count > 0 { bindings = *player.bindings[0] }
+    instance := InstantiateBundle(bundle, bindings, cast(u64)player.bindings.count)
+    VecFree(player.bindings)
+    if instance == null { CloseBundle(bundle); return 1 }
+    temporary: [64]u8
+    assets_root: string = ""
+    if BundleAssets(bundle) > cast(u64)0 {
+        ok = CopyCString("/tmp/zib-XXXXXX", temporary[:]) &&
+        TemporaryDirectory(*temporary[0]) != null
+        if ok {
+            assets_root = TextFromCString(*temporary[0])
+            ok = ExtractAssets(bundle, assets_root) && ChangeDirectory(*temporary[0]) == 0
+        }
+    }
+    if ok { ok = OpenDesktop() }
+    if ok {
+        if CaptureRequested() {
+            ok = RunFrame(instance)
+            if ok { ok = RunFrame(instance) }
+            if ok { ok = CaptureConfigured() }
+        } else {
+            while ok && PollDesktop() {
+                ok = RunFrame(instance)
+                if ok { PauseDesktop() }
+            }
+        }
+    }
+    CloseDesktop()
+    CloseBundleInstance(instance)
+    CloseBundle(bundle)
+    if assets_root != "" && !RemoveAssetDirectory(assets_root) { ok = false }
+    if !ok { print("zib: app execution or rendering failed\n"); return 1 }
+    return 0
+}

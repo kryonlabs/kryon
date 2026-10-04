@@ -9,6 +9,7 @@ ProjectProfile :: struct {
     host: string
     library: string
     static_archive: string
+    assets: string
 }
 
 ProjectInstall :: struct {
@@ -222,6 +223,8 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 config.profiles[selected].library = value
             } else if field == "static_archive" {
                 config.profiles[selected].static_archive = value
+            } else if field == "assets" {
+                config.profiles[selected].assets = value
             }
         } else if key == "install.profile" {
             config.install.profile = value
@@ -270,6 +273,10 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         if profile.static_archive != "" &&
         !ProjectStaticArchiveValid(profile.static_archive) {
             config.error = "invalid profile static archive"
+            return config
+        }
+        if profile.assets != "" && !ProjectPathValid(profile.assets) {
+            config.error = "invalid profile assets path"
             return config
         }
         if profile.codegen == "" {

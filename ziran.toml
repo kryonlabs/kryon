@@ -82,6 +82,7 @@ codegen = "string=c99"
 host = "string"
 library = "string"
 static_archive = "string"
+assets = "string"
 
 # Used by `ziran install` to build one profile and add it to the desktop.
 [options.install]

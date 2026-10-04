@@ -24,6 +24,11 @@ entry = "src/app.zi"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
 
+# Downloadable app, rendered by the shared Zib player.
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zib"
+
 [tool.kryon.profiles.tui]
 backend = "terminal"
 

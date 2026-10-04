@@ -1,0 +1,39 @@
+using UI :: #import "kryon/Widgets";
+
+clicks: s32;
+frames: s32;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    frames += 1
+    button: ButtonProps
+    button.key = cast(u64)1
+    button.bounds = Rectangle.{40.0, 40.0, 240.0, 64.0}
+    button.label = "Click the portable app"
+    clicks += Button(session, button)
+    label: TextProps
+    label.key = cast(u64)2
+    label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
+    label.text = "Zib state persists"
+    if clicks > 0 { label.text = "Clicked!" }
+    label.font = 24
+    Text(session, label)
+    image: ImageProps
+    image.key = cast(u64)3
+    image.bounds = Rectangle.{500.0, 80.0, 200.0, 200.0}
+    image.asset_path = "assets/red.png"
+    image.alt_text = "Red square"
+    Image(session, image)
+    key := KeyboardTake(session)
+    typed := TypedCodepointTake(session)
+    if key == 65 || typed == 233 {
+        if clicks == 1 && frames > 2 {
+            print("zib interaction passed\n")
+        } else {
+            print("zib interaction failed: clicks=% frames=%\n", clicks, frames)
+        }
+        return 1
+    }
+    unused viewport
+    return 0
+}

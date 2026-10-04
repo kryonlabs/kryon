@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zib pixmap/zib),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -30,10 +30,19 @@ IR_STAMP := $(IR_DIR)/.complete
 C_DIR := $(GEN_DIR)/c
 C_STAMP := $(C_DIR)/.complete
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
+ifeq ($(PROJECT_CODEGEN),zib)
+PROGRAM := $(PROGRAM).zib
+ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)),)
+$(error a Zib profile cannot link a native library or static archive)
+endif
+endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
+ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zib)
+HOST_MODULE := zib_run
+endif
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
@@ -76,6 +85,14 @@ EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
 PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(UI_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
+ifneq ($(PROJECT_ASSETS),)
+ASSET_PATH := $(realpath $(PROJECT_ASSETS))
+ifeq ($(filter $(CURDIR)/%,$(ASSET_PATH)),)
+$(error assets must stay inside the project directory)
+endif
+.PHONY: asset-content
+ASSET_DEPENDENCY := asset-content
+endif
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2)
@@ -178,12 +195,27 @@ build: toolchain
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
 
+ifeq ($(PROJECT_CODEGEN),zib)
+include $(KRYON_DIR)/mk/zib-player.mk
+
+$(ZIRAN_DIR)/build/bin/zi2zib $(ZIRAN_DIR)/build/libziran.a:
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+
+$(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zib
+	$(ZIRAN) bundle --root $(IR_DIR) --entry $(HOST_ID):main \
+		$(if $(filter pixmap,$(PROJECT_BACKEND)),--bind-host $(ZIRAN_PACKAGE_ID)_pixmap) \
+		$(if $(PROJECT_ASSETS),--asset-dir $(PROJECT_ASSETS)=$(PROJECT_ASSETS)) \
+		-o $@ $(IR_DIR)/$(HOST_ID).zir
+endif
+
 $(IR_STAMP): $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(IR_COMMAND)
 	test -f $(IR_DIR)/$(HOST_ID).zir
 	touch $(IR_STAMP)
+
+ifeq ($(PROJECT_CODEGEN),c99)
 
 $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(C_DIR)
@@ -216,12 +248,22 @@ else
 		-Wl,--gc-sections $(HOST_LIBS) -lm -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 endif
+endif
 
 run: build
+ifeq ($(PROJECT_CODEGEN),zib)
+ifeq ($(PROJECT_BACKEND),desktop)
+run: zib-player
+	$(RUN_ENV) $(PLAYER) $(PROGRAM)
+else
+	$(ZIRAN) run $(PROGRAM)
+endif
+else
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 	@echo "Kryon browser app: ./$@"
 else
 	$(RUN_ENV) ./$(PROGRAM)
+endif
 endif
 
 # Browser hosts are checked as they are built, for the web platform.
@@ -238,6 +280,9 @@ TERMINAL_APP := true
 endif
 
 install: build
+ifeq ($(PROJECT_CODEGEN),zib)
+install: zib-player
+endif
 ifneq ($(BROWSER_BACKEND),)
 	@echo "kryon: browser profiles cannot be installed" >&2; exit 2
 else
@@ -247,7 +292,14 @@ else
 	prefix="$$ZIRAN_INSTALL_PREFIX"; bin="$$ZIRAN_INSTALL_BIN"; \
 	program="$$prefix/bin/$$bin"; \
 	mkdir -p "$$prefix/bin" "$$prefix/share/applications"; \
-	cp $(PROGRAM) "$$program.new"; chmod 755 "$$program.new"; \
+	if [ "$(PROJECT_CODEGEN)" = zib ]; then \
+		app="$$prefix/share/kryon/$$bin"; mkdir -p "$$app"; \
+		cp $(PROGRAM) "$$app/app.zib.new"; \
+		mv -f "$$app/app.zib.new" "$$app/app.zib"; \
+		cp $(PLAYER) "$$program.new"; \
+	else \
+		cp $(PROGRAM) "$$program.new"; \
+	fi; chmod 755 "$$program.new"; \
 	mv -f "$$program.new" "$$program"; echo "$$program"; \
 	icon=""; \
 	if [ -n "$$KRYON_INSTALL_ICON" ]; then \
@@ -272,12 +324,12 @@ else
 		echo "X-Kryon-Installed=true"; \
 	}; \
 	desktop="$$prefix/share/applications/$$bin.desktop"; \
-	entry "$$program" > "$$desktop.new"; mv -f "$$desktop.new" "$$desktop"; echo "$$desktop"; \
+	entry "\"$$program\"" > "$$desktop.new"; mv -f "$$desktop.new" "$$desktop"; echo "$$desktop"; \
 	autostart="$${XDG_CONFIG_HOME:-$$HOME/.config}/autostart/$$bin.desktop"; \
 	if [ "$$KRYON_INSTALL_AUTOSTART" = true ]; then \
 		mkdir -p "$${autostart%/*}"; \
-		launch="$$program"; \
-		[ -z "$$KRYON_INSTALL_AUTOSTART_ENV" ] || launch="env $$KRYON_INSTALL_AUTOSTART_ENV $$program"; \
+		launch="\"$$program\""; \
+		[ -z "$$KRYON_INSTALL_AUTOSTART_ENV" ] || launch="env $$KRYON_INSTALL_AUTOSTART_ENV \"$$program\""; \
 		{ entry "$$launch"; echo "X-GNOME-Autostart-enabled=true"; } > "$$autostart.new"; \
 		mv -f "$$autostart.new" "$$autostart"; echo "$$autostart"; \
 	elif [ -f "$$autostart" ] && grep -qx "X-Kryon-Installed=true" "$$autostart"; then \

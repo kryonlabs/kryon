@@ -10,4 +10,8 @@ kryon run canvas       # the same page on a Canvas2D element
 kryon run desktop      # the same page in a window
 ```
 
+`kryon build portable` exports `build/{{name}}-portable.zib`. Copy or download
+that file and open it with `kryon run {{name}}-portable.zib` using the shared
+Zib player; no app source is needed.
+
 Serve `build/` with any static file server to publish it.

@@ -153,6 +153,51 @@ should be avoided by reproducible applications.
 default_profile = "tui"
 ```
 
+## Zib applications
+
+A desktop profile can produce a portable program with its resources:
+
+```toml
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zib"
+assets = "assets"
+```
+
+`kryon build portable` writes `build/<package-name>-portable.zib`.
+All four project templates include this profile.
+`kryon run portable` builds it and launches the reusable desktop player.
+After downloading that file, `kryon run app.zib` works without the app's source,
+manifest, lock, or compiler-generated native code. Install the player with
+`make install-user` in Kryon. The player needs SDL2, Cairo and FreeType.
+
+`assets` is an optional project-relative directory or file, embedded under that
+same path. Images retain their ordinary `ImageProps.asset_path` values. The
+player extracts validated resources into a private temporary directory and
+removes it when the app exits. Exports rebuild resource content on every build,
+including file removals. A `pixmap` profile also accepts `codegen = "zib"` and
+runs through the display-free Ziran interpreter.
+
+The desktop player supplies shapes, text, path-backed PNG images, window
+visibility/close handling, clipboard, pointer buttons, wheel, modifiers,
+keyboard and Unicode input. App globals and retained sessions persist between
+frames. Unsupported capabilities fail before a window opens. Native library
+and static archive settings cannot be linked into a portable program.
+Applications with custom native storage, audio, pointer casts or C callbacks
+must first give those effects portable host interfaces. The desktop player
+does not yet replace these application-specific hosts.
+
+`make zib-test` exports a package-qualified app, copies only its Zib file to a
+download folder, and checks embedded images, installation, native pixel parity,
+persistent click state, keyboard/Unicode input, malformed files and missing
+capabilities on private displays. All four starter apps also have their Zib
+pixels compared with native output.
+
+`kryon install` also installs a Zib profile: its portable program goes to
+`share/kryon/<bin>/app.zib`, and a reusable native player at `bin/<bin>` launches
+it. The usual desktop menu and autostart settings apply. Embedded files need
+no source checkout after installation.
+
 ## Installing
 
 `kryon install` (or `ziran install`) builds one profile and installs it for
