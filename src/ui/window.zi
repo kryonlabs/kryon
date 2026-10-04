@@ -8,6 +8,21 @@ WindowVisibleHost :: () -> bool #foreign host_api;
 WindowInterceptCloseHost :: (enabled: bool) -> bool #foreign host_api;
 WindowTakeCloseRequestHost :: () -> bool #foreign host_api;
 WindowQuitHost :: () #foreign host_api;
+WindowBackgroundDragHost :: (active: bool) #foreign host_api;
+#program_export
+WindowBackgroundDrag :: (active: bool) { WindowBackgroundDragHost(active) }
+WindowCompactHost :: () -> bool #foreign host_api;
+WindowBackgroundHost :: (width: s32, height: s32, dx: s32, dy: s32) #foreign host_api;
+
+// A supporting app host keeps this app's own window visible in a smaller
+// background pane. Zero dimensions withdraw the request. Movement is relative
+// to the default bottom-right position; the host clamps it to its viewport.
+#program_export
+WindowBackground :: (width: s32, height: s32, dx: s32, dy: s32) {
+    WindowBackgroundHost(width, height, dx, dy)
+}
+#program_export
+WindowCompact :: () -> bool { return WindowCompactHost() }
 
 #program_export
 WindowShow :: () {

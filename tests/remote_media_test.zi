@@ -1,0 +1,18 @@
+Media :: #import "media_linux";
+#import "timer_linux"
+
+#program_export
+main :: () -> s32 {
+    defer { Media.CloseMedia() }
+    if !Media.MediaOpenHost("https://www.youtube.com/watch?v=dQw4w9WgXcQ") { return 1 }
+    deadline := MonotonicMilliseconds() + 60000;
+    while Media.MediaStateHost() == 1 && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(100) }
+    if Media.MediaStateHost() != 2 { return 2 }
+    // ffplay has to decode and stay running, not merely spawn successfully.
+    for i: 0..49 { unused SleepMilliseconds(100); if Media.MediaStateHost() != 2 { return 3 } }
+    Media.MediaPauseHost(); if Media.MediaStateHost() != 3 { return 4 }
+    Media.MediaPauseHost(); if Media.MediaStateHost() != 2 { return 5 }
+    Media.MediaStopHost();
+    print("YouTube streaming transport play/pause/resume checks passed (dummy output)\n");
+    return 0
+}

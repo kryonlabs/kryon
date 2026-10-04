@@ -9,6 +9,8 @@
 #import "drawing_props"
 #import "vec"
 #import "file_linux"
+Media :: #import "media_linux";
+Background :: #import "background_window_linux";
 
 using HostValueKind;
 libc :: #system_library "libc";
@@ -60,7 +62,14 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "window") {
         return function == "WindowSetVisibleHost" || function == "WindowVisibleHost" ||
         function == "WindowInterceptCloseHost" ||
-        function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost"
+        function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost" ||
+        function == "WindowCompactHost" || function == "WindowBackgroundHost" || function == "WindowBackgroundDragHost"
+    }
+    if ModuleName(module, "media") {
+        return function == "MediaOpenHost" || function == "MediaPauseHost" ||
+            function == "MediaStopHost" || function == "MediaStateHost" ||
+            function == "MediaMessageHost" || function == "FetchTextHost" ||
+            function == "FetchTextStateHost" || function == "FetchTextResultHost"
     }
     return false
 }
@@ -142,6 +151,41 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if (function == "MediaOpenHost" || function == "FetchTextHost") && count == 1 && args[0].kind == HostString {
+        result.kind = HostInteger
+        if function == "MediaOpenHost" { result.integer = cast(s64)Media.MediaOpenHost(TextValue(args[0])) }
+        else { result.integer = cast(s64)Media.FetchTextHost(TextValue(args[0])) }
+        return 1
+    }
+    if count == 0 && (function == "MediaStateHost" || function == "FetchTextStateHost" || function == "WindowCompactHost") {
+        result.kind = HostInteger
+        if function == "MediaStateHost" { result.integer = cast(s64)Media.MediaStateHost() }
+        if function == "FetchTextStateHost" { result.integer = cast(s64)Media.FetchTextStateHost() }
+        if function == "WindowCompactHost" { result.integer = cast(s64)Background.WindowCompactHost() }
+        return 1
+    }
+    if count == 0 && (function == "MediaMessageHost" || function == "FetchTextResultHost") {
+        value := ifx function == "MediaMessageHost" then Media.MediaMessageHost() else Media.FetchTextResultHost()
+        result.kind = HostString
+        result.length = cast(u64)value.count
+        descriptor := cast(*TextDescriptor)(*value)
+        result.data = descriptor.data
+        return 1
+    }
+    if count == 0 && (function == "MediaPauseHost" || function == "MediaStopHost") {
+        if function == "MediaPauseHost" { Media.MediaPauseHost() }
+        else { Media.MediaStopHost() }
+        return 1
+    }
+    if function == "WindowBackgroundDragHost" && count == 1 && args[0].kind == HostInteger {
+        Background.WindowBackgroundDragHost(args[0].integer != 0)
+        return 1
+    }
+    if function == "WindowBackgroundHost" && count == 4 && args[0].kind == HostInteger &&
+        args[1].kind == HostInteger && args[2].kind == HostInteger && args[3].kind == HostInteger {
+        Background.WindowBackgroundHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer)
+        return 1
+    }
     if function == "ReadBundleInput" && count == 0 {
         viewport := DesktopViewport()
         pointer := PollPointer()
@@ -353,6 +397,7 @@ RemoveAssetDirectory :: (path: string) -> bool {
 }
 
 RunFrame :: (instance: *void) -> bool {
+    Media.MediaTick()
     BeginDesktopFrame()
     result: s64
     has_result: s32
@@ -468,6 +513,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             }
         }
     }
+    Media.CloseMedia()
     CloseDesktop()
     CloseBundleInstance(instance)
     CloseBundle(bundle)

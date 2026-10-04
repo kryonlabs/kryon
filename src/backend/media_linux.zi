@@ -1,0 +1,228 @@
+#import "byte_text_linux"
+#import "c_string"
+#import "thread_linux"
+#import "process_capture_linux"
+#import "timer_linux"
+#import "text"
+
+c :: #system_library "libc";
+glib :: #system_library "glib-2.0";
+MediaSetup :: #type (data: *void) #c_call;
+MediaParentDeath :: (option: s32, signal: u64, b: u64, c: u64, d: u64) -> s32 #foreign c "prctl";
+MediaPid :: () -> s32 #foreign c "getpid";
+MediaParent :: () -> s32 #foreign c "getppid";
+MediaExit :: (code: s32) #foreign c "_exit";
+media_owner: s32;
+OwnedMediaChild :: (data: *void) {
+    unused data;
+    if MediaParentDeath(1, 9, 0, 0, 0) != 0 || MediaParent() != media_owner { MediaExit(126) }
+}
+MediaSpawn :: (cwd: *u8, args: *MediaArgument, env: *MediaArgument, flags: s32,
+    setup: MediaSetup, data: *void, pid: *s32, input: *s32, output: *s32,
+    error_fd: *s32, error: **void) -> s32 #foreign glib "g_spawn_async_with_pipes";
+MediaSpawnFds :: (cwd: *u8, args: *MediaArgument, env: *MediaArgument, flags: s32,
+    setup: MediaSetup, data: *void, input_fd: s32, output_fd: s32, error_fd: s32,
+    source_fds: *s32, target_fds: *s32, fd_count: usize, pid: *s32,
+    input: *s32, output: *s32, error_pipe: *s32, error: **void) -> s32 #foreign glib "g_spawn_async_with_pipes_and_fds";
+MediaWait :: (pid: s32, status: *s32, options: s32) -> s32 #foreign c "waitpid";
+MediaPidFd :: (pid: s32, flags: u32) -> s32 #foreign c "pidfd_open";
+MediaSignal :: (fd: s32, signal: s32, info: *void, flags: u32) -> s32 #foreign c "pidfd_send_signal";
+MediaKill :: (pid: s32, signal: s32) -> s32 #foreign c "kill";
+MediaCloseFd :: (fd: s32) #foreign c "close";
+MediaRead :: (fd: s32, bytes: *u8, count: usize) -> s64 #foreign c "read";
+MediaFlags :: (fd: s32, command: s32, value: s32) -> s32 #foreign c "fcntl";
+MediaArgument :: struct { value: *u8 }
+media_pid: s32;
+media_handle: s32 = -1;
+media_error_fd: s32 = -1;
+media_state: s32;
+media_message: string = "Open a local audio file or an HTTPS music link";
+media_stopping: bool;
+media_deadline: s64;
+download_pid: s32;
+download_handle: s32 = -1;
+download_error: s32 = -1;
+media_diagnostic: [4096]u8;
+media_failed: bool;
+media_diagnostic_size: s32;
+fetch_worker: Thread;
+fetch_url: [4096]u8;
+fetch_url_size: s32;
+fetch_output: [1048576]u8;
+fetch_output_size: s32;
+fetch_ok: bool;
+fetch_state: s32;
+
+Starts :: (value: string, prefix: string) -> bool {
+    return value.count >= prefix.count && value[:prefix.count] == prefix
+}
+WebSource :: (source: string) -> bool {
+    return Starts(source, "https://") || Starts(source, "http://")
+}
+SafeSource :: (source: string) -> bool {
+    if source.count == 0 || source.count >= 4096 { return false }
+    for byte: source { if byte < cast(u8)32 || byte == cast(u8)127 { return false } }
+    return source[0] == cast(u8)47 || WebSource(source)
+}
+YouTube :: (source: string) -> bool {
+    return Starts(source, "https://www.youtube.com/") ||
+        Starts(source, "https://youtube.com/") || Starts(source, "https://youtu.be/") ||
+        Starts(source, "https://music.youtube.com/") || Starts(source, "https://m.youtube.com/")
+}
+FetchWorker :: (unused_argument: *void) {
+    unused unused_argument;
+    args: [11]string = .{"curl", "--fail", "--silent", "--show-error", "--location", "--max-time", "20", "--proto", "=http,https", "--", TextFromBytes(fetch_url[:fetch_url_size])};
+    result := CaptureOutput(args[:], fetch_output[:]);
+    fetch_output_size = result.length;
+    fetch_ok = !result.error && !result.truncated && result.code == 0;
+}
+ReleaseAudio :: () {
+    if download_pid > 0 {
+        if download_handle >= 0 { unused MediaSignal(download_handle, 9, null, 0) }
+        else { unused MediaKill(download_pid, 9) }
+        status: s32; unused MediaWait(download_pid, *status, 0);
+    }
+    if download_handle >= 0 { MediaCloseFd(download_handle) }
+    if download_error >= 0 { MediaCloseFd(download_error) }
+    download_pid = 0; download_handle = -1; download_error = -1;
+    if media_handle >= 0 { MediaCloseFd(media_handle) }
+    if media_error_fd >= 0 { MediaCloseFd(media_error_fd) }
+    media_handle = -1; media_error_fd = -1; media_pid = 0; media_stopping = false;
+}
+DrainAudio :: () {
+    fds: [2]s32 = .{media_error_fd, download_error};
+    bytes: [512]u8;
+    for fd: fds {
+        if fd < 0 { continue }
+        while true {
+            size := MediaRead(fd, *bytes[0], 512);
+            if size <= 0 { break }
+            for i: 0..cast(s32)size - 1 {
+                if media_diagnostic_size == 4096 {
+                    for at: 0..2047 { media_diagnostic[at] = media_diagnostic[at + 2048] }
+                    media_diagnostic_size = 2048;
+                }
+                media_diagnostic[media_diagnostic_size] = bytes[i]; media_diagnostic_size += 1;
+            }
+            text := TextFromBytes(media_diagnostic[:media_diagnostic_size]);
+            if ContainsFoldASCII(text, "[error]") || ContainsFoldASCII(text, "ERROR:") { media_failed = true }
+            if media_state == 1 && ContainsFoldASCII(text, "Audio:") {
+                media_state = 2; media_message = "Playing";
+            }
+        }
+    }
+}
+StartDownloader :: (source: string) -> s32 {
+    values: [12][4096]u8;
+    text: [12]string = .{"yt-dlp", "--quiet", "--no-playlist", "--no-warnings", "--socket-timeout", "15", "--retries", "1", "-f", "bestaudio", "-o", "-"};
+    full: [15]MediaArgument; tail: [4096]u8; separator: [3]u8;
+    for i: 0..11 { unused CopyCString(text[i], values[i][:]); full[i].value = *values[i][0] }
+    if !CopyCString(source, tail[:]) || !CopyCString("--", separator[:]) { return -1 }
+    full[12].value = *separator[0]; full[13].value = *tail[0];
+    output: s32 = -1;
+    media_owner = MediaPid(); setup: MediaSetup = OwnedMediaChild;
+    if MediaSpawn(null, *full[0], null, 6, setup, null, *download_pid, null, *output, *download_error, null) == 0 {
+        media_state = -1; media_message = "Cannot open YouTube. Install yt-dlp on PATH, then retry"; return -1
+    }
+    download_handle = MediaPidFd(download_pid, 0);
+    if download_handle < 0 || MediaFlags(download_error, 4, 2048) < 0 { MediaCloseFd(output); ReleaseAudio(); return -1 }
+    return output
+}
+StartAudio :: (source: string) -> bool {
+    // A literal argv prevents filenames and URLs from becoming shell code or
+    // player options. Disable display creation, and restrict input protocols.
+    values: [9][4096]u8;
+    arguments: [10]MediaArgument;
+    input_fd: s32 = -1;
+    youtube := YouTube(source);
+    if youtube { input_fd = StartDownloader(source); if input_fd < 0 { return false } }
+    text: [9]string = .{"ffplay", "-nodisp", "-autoexit", "-loglevel", "level+info", "-protocol_whitelist", "file,http,https,tcp,tls,crypto,pipe", "-i", ifx youtube then "pipe:0" else source};
+    for i: 0..8 {
+        if !CopyCString(text[i], values[i][:]) { return false }
+        arguments[i].value = *values[i][0];
+    }
+    media_owner = MediaPid(); setup: MediaSetup = OwnedMediaChild;
+    spawned: s32;
+    if youtube {
+        spawned = MediaSpawnFds(null, *arguments[0], null, 6, setup, null, input_fd, -1, -1, null, null, 0, *media_pid, null, null, *media_error_fd, null);
+        MediaCloseFd(input_fd);
+    } else { spawned = MediaSpawn(null, *arguments[0], null, 6, setup, null, *media_pid, null, null, *media_error_fd, null) }
+    if spawned == 0 {
+        ReleaseAudio();
+        media_state = -1; media_message = "Cannot start audio. Install ffmpeg (ffplay), then retry"; return false
+    }
+    media_handle = MediaPidFd(media_pid, 0);
+    if media_handle < 0 || MediaFlags(media_error_fd, 4, 2048) < 0 {
+        if media_handle >= 0 { unused MediaSignal(media_handle, 9, null, 0) }
+        else { unused MediaKill(media_pid, 9) }
+        status: s32; unused MediaWait(media_pid, *status, 0); ReleaseAudio();
+        media_state = -1; media_message = "Cannot supervise audio playback"; return false
+    }
+    media_diagnostic_size = 0; media_failed = false; media_state = 1; media_message = "Opening audio…";
+    return true
+}
+#program_export
+MediaTick :: () {
+    if ThreadFinished(*fetch_worker) { fetch_state = ifx fetch_ok then 2 else -1 }
+    if media_pid <= 0 { return }
+    DrainAudio(); status: s32;
+    ended := MediaWait(media_pid, *status, 1);
+    if ended != 0 {
+        DrainAudio(); stopping := media_stopping; ReleaseAudio();
+        media_state = ifx !stopping && (ended < 0 || status != 0 || media_failed) then -1 else 0;
+        media_message = ifx media_state == -1 then "Audio playback failed. Check the file, link or audio output, then retry" else "Stopped";
+    } else if media_stopping && MonotonicMilliseconds() >= media_deadline {
+        unused MediaSignal(media_handle, 9, null, 0)
+    }
+}
+#program_export
+MediaOpenHost :: (source: string) -> bool {
+    MediaTick();
+    if !SafeSource(source) { media_message = "Enter an absolute file path or an HTTP/HTTPS link"; return false }
+    if media_pid > 0 { media_message = "Stop the current track before opening another"; return false }
+    return StartAudio(source)
+}
+#program_export
+MediaStopHost :: () {
+    if media_pid > 0 && !media_stopping {
+        unused MediaSignal(media_handle, 18, null, 0);
+        unused MediaSignal(media_handle, 15, null, 0);
+        if download_handle >= 0 { unused MediaSignal(download_handle, 15, null, 0) }
+        media_stopping = true; media_deadline = MonotonicMilliseconds() + 1500;
+    }
+    media_state = 0; media_message = "Stopped";
+}
+#program_export
+MediaPauseHost :: () {
+    if media_pid <= 0 || media_stopping || (media_state != 2 && media_state != 3) { return }
+    signal: s32 = ifx media_state == 3 then 18 else 19;
+    if MediaSignal(media_handle, signal, null, 0) != 0 { media_message = "Cannot pause audio; stop and retry"; return }
+    media_state = ifx media_state == 3 then 2 else 3;
+    media_message = ifx media_state == 3 then "Paused" else "Playing";
+}
+#program_export
+MediaStateHost :: () -> s32 { MediaTick(); return media_state }
+#program_export
+MediaMessageHost :: () -> string { return media_message }
+#program_export
+FetchTextHost :: (url: string) -> bool {
+    MediaTick();
+    if !SafeSource(url) || !WebSource(url) || ThreadRunning(*fetch_worker) { return false }
+    unused CopyCString(url, fetch_url[:]); fetch_url_size = cast(s32)url.count;
+    procedure: ThreadProcedure = FetchWorker;
+    if !ThreadStart(*fetch_worker, procedure, null) { return false }
+    fetch_state = 1; return true
+}
+#program_export
+FetchTextStateHost :: () -> s32 { MediaTick(); return fetch_state }
+#program_export
+FetchTextResultHost :: () -> string { return TextFromBytes(fetch_output[:fetch_output_size]) }
+#program_export
+CloseMedia :: () {
+    if media_pid > 0 {
+        unused MediaSignal(media_handle, 9, null, 0);
+        status: s32; unused MediaWait(media_pid, *status, 0)
+    }
+    ReleaseAudio();
+    ThreadWait(*fetch_worker)
+}
