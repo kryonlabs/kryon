@@ -1,0 +1,67 @@
+#import "desktop_runtime"
+#import "c_string"
+
+sdl :: #system_library "SDL2";
+x11 :: #system_library "X11";
+BackgroundInfo :: struct { version: [3]u8; padding: u8; subsystem: s32; display: *void; window: u64; rest: [48]u8 }
+BackgroundVersion :: (version: *u8) #foreign sdl "SDL_GetVersion";
+BackgroundWindowInfo :: (window: *void, info: *BackgroundInfo) -> s32 #foreign sdl "SDL_GetWindowWMInfo";
+BackgroundAtom :: (display: *void, name: *u8, existing: s32) -> u64 #foreign x11 "XInternAtom";
+BackgroundGet :: (display: *void, window: u64, property: u64, offset: s64, length: s64, remove: s32, wanted: u64, actual: *u64, format: *s32, count: *u64, after: *u64, data: **u8) -> s32 #foreign x11 "XGetWindowProperty";
+BackgroundSet :: (display: *void, window: u64, atom: u64, kind: u64, format: s32, mode: s32, data: *u8, count: s32) -> s32 #foreign x11 "XChangeProperty";
+BackgroundFree :: (data: *void) -> s32 #foreign x11 "XFree";
+BackgroundFlush :: (display: *void) -> s32 #foreign x11 "XFlush";
+background_width: s32;
+background_height: s32;
+background_offset_x: s32;
+background_offset_y: s32;
+BackgroundConnection :: (info: *BackgroundInfo) -> bool {
+    if DesktopWindow() == null { return false }
+    BackgroundVersion(*info.version[0]);
+    return BackgroundWindowInfo(DesktopWindow(), info) != 0 && info.subsystem == 2 && info.window != 0
+}
+#program_export
+WindowCompactHost :: () -> bool {
+    info: BackgroundInfo;
+    if !BackgroundConnection(*info) { return false }
+    name: [32]u8; unused CopyCString("_HARMONY_APP_COMPACT", name[:]);
+    atom := BackgroundAtom(info.display, *name[0], 0);
+    actual: u64; format: s32; count: u64; after: u64; data: *u8;
+    unused BackgroundGet(info.display, info.window, atom, 0, 1, 0, 6, *actual, *format, *count, *after, *data);
+    words := cast(*u64)data;
+    compact := actual == 6 && format == 32 && count == 1 && data != null && words[0] != cast(u64)0;
+    if data != null { unused BackgroundFree(cast(*void)data) }
+    return compact
+}
+#program_export
+WindowBackgroundHost :: (width: s32, height: s32, dx: s32, dy: s32) {
+    info: BackgroundInfo;
+    if !BackgroundConnection(*info) { return }
+    // This process writes only its own SDL window, never a foreign window.
+    background_width = width; background_height = height;
+    background_offset_x += dx; background_offset_y += dy;
+    values: [4]u64;
+    values[0] = cast(u64)width; values[1] = cast(u64)height;
+    values[2] = cast(u64)background_offset_x; values[3] = cast(u64)background_offset_y;
+    name: [32]u8; unused CopyCString("_KRYON_BACKGROUND", name[:]);
+    atom := BackgroundAtom(info.display, *name[0], 0);
+    unused BackgroundSet(info.display, info.window, atom, 6, 32, 0, cast(*u8)*values[0], 4);
+    unused BackgroundFlush(info.display)
+}
+
+BackgroundPointer :: (display: *void, window: u64, root: *u64, child: *u64, root_x: *s32, root_y: *s32, x: *s32, y: *s32, mask: *u32) -> s32 #foreign x11 "XQueryPointer";
+background_drag: bool;
+background_root_x: s32;
+background_root_y: s32;
+#program_export
+WindowBackgroundDragHost :: (active: bool) {
+    if !active { background_drag = false; return }
+    info: BackgroundInfo;
+    if !BackgroundConnection(*info) { return }
+    root: u64; child: u64; root_x: s32; root_y: s32; x: s32; y: s32; mask: u32;
+    if BackgroundPointer(info.display, info.window, *root, *child, *root_x, *root_y, *x, *y, *mask) == 0 { return }
+    if background_drag {
+        WindowBackgroundHost(background_width, background_height, root_x - background_root_x, root_y - background_root_y)
+    }
+    background_root_x = root_x; background_root_y = root_y; background_drag = true
+}

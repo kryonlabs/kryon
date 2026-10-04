@@ -1,0 +1,31 @@
+// Optional desktop media services. Audio decoding stays in the host; an app
+// decides which source to play and how to present its controls.
+host_api :: #system_library "host_api";
+MediaOpenHost :: (source: string) -> bool #foreign host_api;
+MediaPauseHost :: () #foreign host_api;
+MediaStopHost :: () #foreign host_api;
+MediaStateHost :: () -> s32 #foreign host_api;
+MediaMessageHost :: () -> string #foreign host_api;
+FetchTextHost :: (url: string) -> bool #foreign host_api;
+FetchTextStateHost :: () -> s32 #foreign host_api;
+FetchTextResultHost :: () -> string #foreign host_api;
+
+// State: 0 stopped/finished, 1 opening, 2 playing, 3 paused, -1 failed.
+#program_export
+MediaOpen :: (source: string) -> bool { return MediaOpenHost(source) }
+#program_export
+MediaPause :: () { MediaPauseHost() }
+#program_export
+MediaStop :: () { MediaStopHost() }
+#program_export
+MediaState :: () -> s32 { return MediaStateHost() }
+#program_export
+MediaMessage :: () -> string { return MediaMessageHost() }
+// Fetch state: 0 idle, 1 fetching, 2 ready, -1 failed. Results remain valid
+// until another request; no blocking network operation runs in Frame.
+#program_export
+FetchText :: (url: string) -> bool { return FetchTextHost(url) }
+#program_export
+FetchTextState :: () -> s32 { return FetchTextStateHost() }
+#program_export
+FetchTextResult :: () -> string { return FetchTextResultHost() }
