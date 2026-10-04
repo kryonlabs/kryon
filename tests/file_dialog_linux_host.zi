@@ -1,0 +1,16 @@
+File :: #import "kryon/FileDialogLinux";
+#import "std/byte_text_linux"
+#import "std/c_string"
+c :: #system_library "libc";
+Write :: (fd: s32, value: *u8, count: usize) -> s64 #foreign c "write";
+#program_export
+Main :: (argc: s32, argv: **u8) -> s32 {
+    props: File.FileDialogProps
+    props.title = "Private Kryon chooser fixture"
+    if argc > 1 { props.save = TextFromCString(argv[1]) == "save" }
+    props.filename = "saved fixture.txt"
+    props.filter_name = "Text files"; patterns: [1]string = .{"*.txt"}; props.patterns = patterns[:]
+    output: [4096]u8; result := File.FileDialog(props, output[:])
+    if !result.available { return 2 }; if !result.accepted { return 1 }
+    unused Write(1, *output[0], cast(usize)result.bytes); return 0
+}

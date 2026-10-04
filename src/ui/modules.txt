@@ -39,6 +39,7 @@ drawing_props.zi
 dropdown.zi
 dropdown_props.zi
 dropdown_widget.zi
+dialog.zi
 fieldset.zi
 fieldset_props.zi
 fieldset_widget.zi

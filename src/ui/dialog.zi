@@ -1,0 +1,107 @@
+// Prompt and selection composition over the same modal, list and text widgets.
+// Values and editing state belong to the caller; the host never chooses UI.
+#import "session"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "geometry"
+#import "list_box_props"
+#import "list_box_widget"
+#import "modal_props"
+#import "modal_frame_widget"
+#import "text_input_props"
+#import "text_field_widget"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+
+DialogProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    title: string
+    message: string
+    accept_label: string
+    cancel_label: string
+    width: s32
+    height: s32
+    accept_disabled: bool
+    accept: bool
+    escape: bool
+    has_field: bool
+    field: TextFieldProps
+    list: ListBoxProps
+}
+
+DialogResult :: struct {
+    node: s32
+    accepted: bool
+    cancelled: bool
+    field: TextFieldResult
+    list: ListBoxResult
+}
+
+#program_export
+Dialog :: (session: Session, props: DialogProps,
+    choices: []ListBoxItem) -> DialogResult {
+    result: DialogResult
+    result.node = -1
+    result.list.selected_index = props.list.selected_index
+    result.list.scroll_offset = props.list.scroll_offset
+    if props.escape { result.cancelled = true; return result }
+    frame: ModalFrameProps
+    frame.key = props.key; frame.id = props.id
+    frame.class_name = props.class_name; frame.title = props.title
+    frame.width = props.width; frame.height = props.height
+    if frame.width <= 0 { frame.width = 560 }
+    if frame.height <= 0 {
+        frame.height = 190
+        if props.has_field { frame.height += 72 }
+        if choices.count > 0 { frame.height += 180 }
+    }
+    modal := ModalFrame(session, frame)
+    result.node = modal.node; result.cancelled = modal.dismissed
+    if !modal.opened { return result }
+    bounds := modal.layout.content
+    message: TextProps
+    message.key = props.key * cast(u64)65599 + 10
+    message.text = props.message; message.class_name = props.class_name
+    message.bounds = .{bounds.x, bounds.y, bounds.width, 48.0}
+    message.wrap = TextWrap.TextWrapAuto
+    unused Text(session, message)
+    y := bounds.y + 56.0
+    if choices.count > 0 {
+        list := props.list
+        list.key = props.key * cast(u64)65599 + 11
+        list.bounds = .{bounds.x, y, bounds.width, bounds.height - 56.0 - 52.0 - (ifx props.has_field then 72.0 else 0.0)}
+        if list.bounds.height < 32.0 { list.bounds.height = 32.0 }
+        list.class_name = props.class_name
+        result.list = ListBox(session, list, choices)
+        y += list.bounds.height + 8.0
+    }
+    if props.has_field {
+        field := props.field
+        field.key = props.key * cast(u64)65599 + 12
+        field.class_name = props.class_name
+        field.bounds = .{bounds.x, y, bounds.width, 44.0}
+        result.field = TextField(session, field)
+    }
+    accept := props.accept_label; cancel := props.cancel_label
+    if accept == "" { accept = "OK" }; if cancel == "" { cancel = "Cancel" }
+    button: ButtonProps
+    button.key = props.key * cast(u64)65599 + 13
+    button.id = props.id + 1; button.class_name = props.class_name
+    button.label = cancel
+    button.bounds = .{bounds.x, bounds.y + bounds.height - 40.0, bounds.width / 2.0 - 6.0, 40.0}
+    if Button(session, button) != 0 { result.cancelled = true }
+    button.key += 1; button.id += 1; button.label = accept
+    button.bounds.x += bounds.width / 2.0 + 6.0
+    button.disabled = props.accept_disabled
+    button.emphasis = ButtonEmphasis.ButtonEmphasisFilled
+    button.tone = ButtonTone.ButtonToneAccent
+    result.accepted = !props.accept_disabled &&
+        (Button(session, button) != 0 || props.accept || (props.has_field && result.field.committed))
+    if result.cancelled { result.accepted = false }
+    unused End(session)
+    return result
+}

@@ -1,0 +1,45 @@
+#import "session"
+#import "dialog"
+#import "list_box_props"
+#import "tree"
+#import "tree_input"
+#import "ziran_widget_noop_host"
+#import "ziran_system_clipboard_host"
+
+test_session: Session;
+field_changed: bool;
+cancel: bool;
+disabled: bool;
+accept: bool;
+Frame :: () -> DialogResult {
+    props: DialogProps
+    props.key = cast(u64)42; props.title = "Choose and name"
+    props.message = "The application owns the returned editing state."
+    props.accept = accept; props.escape = cancel; props.accept_disabled = disabled
+    props.has_field = true; props.field.value = "secret"; props.field.secure = true
+    props.field.focused = true; props.field.cursor = 6; props.field.anchor = 6
+    props.field.max_bytes = 31; props.field.input.text = ifx field_changed then "!" else ""
+    props.list.selected_index = 1
+    items: [2]ListBoxItem
+    items[0].key = cast(u64)101; items[0].label = "First choice"
+    items[1].key = cast(u64)102; items[1].label = "Second choice"
+    TreeStart(test_session, cast(u64)1, .{0.0, 0.0, 640.0, 520.0})
+    result := Dialog(test_session, props, items[:])
+    if !TreeFinish(test_session) { result.node = -2 }
+    return result
+}
+#program_export
+main :: () -> s32 {
+    test_session = SessionOpen(); if !SessionValid(test_session) { return 1 }
+    first := Frame()
+    if first.node < 0 || first.accepted || first.cancelled || first.list.selected_index != 1 { return 2 }
+    field_changed = true; edited := Frame()
+    if !edited.field.edit.changed || edited.field.edit.replacement != "!" || edited.field.edit.start != 6 { return 3 }
+    field_changed = false; accept = true; disabled = true
+    if Frame().accepted { return 4 }
+    disabled = false; accepted := Frame()
+    if !accepted.accepted || accepted.cancelled { return 5 }
+    cancel = true; cancelled := Frame()
+    if cancelled.accepted || !cancelled.cancelled { return 6 }
+    return 0
+}
