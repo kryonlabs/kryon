@@ -54,7 +54,7 @@
     {
       "slug": "taiji",
       "name": "Taiji",
-      "summary": "Kryon-native Plan 9 desktop distribution integrating Rill, Shelf, t9, and Taiji system tools.",
+      "summary": "Kryon-native Plan 9 desktop distribution integrating Rill, Shelf, Terminal, and Taiji system tools.",
       "author": {
         "name": "kryonlabs",
         "url": "https://kryonlabs.com"
@@ -96,16 +96,16 @@
     },
     {
       "slug": "t9",
-      "name": "t9",
+      "name": "Terminal",
       "summary": "Terminal for Linux and Taiji with sessions, tabs, and focused developer workflows.",
       "author": {
         "name": "taijiosnet",
         "url": "https://github.com/taijiosnet"
       },
-      "repository": "https://github.com/taijiosnet/t9",
+      "repository": "https://github.com/kryonlabs/terminal",
       "homepage": "https://ktrem.kryonlabs.com",
       "banner": "showcase/t9-faac79134e7e.png",
-      "bannerAlt": "t9 terminal showcase banner",
+      "bannerAlt": "Terminal showcase banner",
       "tags": [
         "terminal",
         "developer-tools",
