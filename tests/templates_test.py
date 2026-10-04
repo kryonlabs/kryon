@@ -101,7 +101,7 @@ def main():
             assert screen(run(["ziran", "run", "tui"], project, env)) == output
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
-        assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  tui  terminal",
+        assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",
                                          "  web  Canvas2D browser page",
                                          "  shot  headless image, PPM on standard output"], profiles
         run([KRYON, "check", "desktop"], work / "demo-app", env)

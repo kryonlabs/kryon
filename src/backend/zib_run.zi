@@ -1,0 +1,67 @@
+// One retained frame of a portable application. The reusable native player
+// owns the window; widgets, layout and state execute in the bundle instance.
+#import "app"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+host_api :: #system_library "host_api";
+BundleInput :: struct {
+    width: s32
+    height: s32
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+    secondary_down: bool
+    secondary_pressed: bool
+    secondary_released: bool
+    modifiers: s32
+    key: s32
+    wheel: float32
+}
+ReadBundleInput :: () -> BundleInput #foreign host_api;
+TakeBundleCodepoint :: () -> s32 #foreign host_api;
+
+using FrameStatus;
+bundle_session: Session;
+bundle_started: bool;
+
+#program_export
+main :: () -> s32 {
+    if !bundle_started {
+        bundle_session = SessionOpen()
+        if !SessionValid(bundle_session) { return 1 }
+        bundle_started = true
+    }
+    input := ReadBundleInput()
+    viewport := Rectangle.{0.0, 0.0,
+        cast(float32)input.width, cast(float32)input.height}
+    pointer := PointerFrame.{input.x, input.y, input.down,
+        input.pressed, input.released}
+    secondary := SecondaryPointerFrame.{input.secondary_down,
+        input.secondary_pressed, input.secondary_released}
+    TreePointerUpdate(bundle_session, pointer)
+    TreeSecondaryPointerUpdate(bundle_session, secondary)
+    PointerWheelSend(bundle_session, input.x, input.y, input.wheel)
+    KeyboardModifiersSend(bundle_session, input.modifiers)
+    if input.key != 0 { KeyboardSend(bundle_session, input.key) }
+    codepoint := TakeBundleCodepoint()
+    while codepoint != 0 {
+        TypedCodepointSend(bundle_session, codepoint)
+        codepoint = TakeBundleCodepoint()
+    }
+    if BeginFrame(bundle_session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+        return 1
+    }
+    result := Frame(bundle_session, viewport)
+    if result != 0 {
+        TreeCancel(bundle_session)
+        return result
+    }
+    if EndFrame(bundle_session) != cast(FrameStatus)FrameOk { return 1 }
+    return 0
+}

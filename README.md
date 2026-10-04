@@ -71,6 +71,8 @@ The same directory also has a plain `Text(TextProps)` hello world desktop
 example; `make -C examples desktop-text-test` renders it on a private display.
 For Ziran app manifests, the terminal backend, and `kryon run`, see
 [Ziran projects](docs/PROJECTS.md).
+Portable desktop profiles build a `.zib` with embedded assets; a downloaded
+file launches with `kryon run app.zib`. See [Zib applications](docs/PROJECTS.md#zib-applications).
 
 ## Current status
 
