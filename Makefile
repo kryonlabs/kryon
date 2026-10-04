@@ -350,3 +350,8 @@ clean:
 pixmap-measure-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_measure_test.sh
 test: pixmap-measure-test
+
+.PHONY: pixmap-density-test
+pixmap-density-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_density_test.sh
+test: pixmap-density-test
