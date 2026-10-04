@@ -81,6 +81,13 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle) -> ScrollInput {
     input: ScrollInput
     input.enabled = true
     input.device = true
+    if !TreeScrollAllowed(scroll_device.session, key) {
+        if scroll_device.owner == key { ScrollDeviceRelease() }
+        if scroll_device.fling_owner == key { scroll_device.fling_owner = cast(u64)0 }
+        if scroll_device.glide_owner == key { scroll_device.glide_owner = cast(u64)0 }
+        input.disabled = true
+        return input
+    }
     input.mouse = scroll_device.mouse
     input.pressed = scroll_device.pressed
     input.down = scroll_device.down
