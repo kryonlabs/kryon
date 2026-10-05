@@ -14,6 +14,8 @@ Default :: (dialog: *void, response: s32) #foreign gtk "gtk_dialog_set_default_r
 Local :: (dialog: *void, local: s32) #foreign gtk "gtk_file_chooser_set_local_only";
 Overwrite :: (dialog: *void, confirm: s32) #foreign gtk "gtk_file_chooser_set_do_overwrite_confirmation";
 Name :: (dialog: *void, name: *u8) #foreign gtk "gtk_file_chooser_set_current_name";
+CurrentFolder :: (dialog: *void, folder: *u8) -> s32 #foreign gtk "gtk_file_chooser_set_current_folder";
+HomeFolder :: () -> *u8 #foreign glib "g_get_home_dir";
 FilterNew :: () -> *void #foreign gtk "gtk_file_filter_new";
 FilterName :: (filter: *void, name: *u8) #foreign gtk "gtk_file_filter_set_name";
 Pattern :: (filter: *void, pattern: *u8) #foreign gtk "gtk_file_filter_add_pattern";
@@ -37,6 +39,9 @@ FileDialogProps :: struct {
     save: bool
     filter_name: string
     patterns: []string
+    // The folder shown first. Empty opens the user's home folder: GTK's
+    // default Recent view lists nothing when no recent file matches.
+    folder: string
     // The application's own X11 window. Only the helper's dialog is changed.
     parent_x11_window: u64
 }
@@ -55,16 +60,19 @@ FileDialog :: (props: FileDialogProps, output: []u8) -> FileDialogResult {
     Local(dialog, 1); Overwrite(dialog, ifx props.save then 1 else 0)
     unused AddButton(dialog, *cancel[0], -6); unused AddButton(dialog, *accept[0], -3)
     Default(dialog, -3)
+    folder := props.folder; if folder == "" { home := HomeFolder(); if home != null { folder = TextFromCString(home) } }
+    if folder != "" && CopyCString(folder, name[:]) { unused CurrentFolder(dialog, *name[0]) }
     if props.save && props.filename != "" && CopyCString(props.filename, name[:]) { Name(dialog, *name[0]) }
     if props.patterns.count > 0 {
         filter := FilterNew()
         if filter == null { return result }
-        AddFilter(dialog, filter)
+        // The chooser copies a filter's name when it is added.
         if CopyCString(props.filter_name, name[:]) { FilterName(filter, *name[0]) }
         for i: 0..cast(s32)props.patterns.count - 1 {
             if !CopyCString(props.patterns[i], name[:]) { return result }
             Pattern(filter, *name[0])
         }
+        AddFilter(dialog, filter)
     }
     if props.parent_x11_window != 0 {
         Realize(dialog); window := Window(dialog)
