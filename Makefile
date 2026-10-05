@@ -126,12 +126,16 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
 
-.PHONY: zib-test
+.PHONY: zib-test zib-reload-test
+zib-reload-test: zib-player
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_reload_test.py
+
 zib-test: build/bin/kryon zib-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_project_test.py
 
-test: zib-test
+test: zib-test zib-reload-test
 
 # `kryon new` for every template, built and rendered on the terminal host.
 templates-test: build/bin/kryon
@@ -300,7 +304,7 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran \
+BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zib-reload-test \
 	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test
 .PHONY: clean-scratch
 clean-scratch:
