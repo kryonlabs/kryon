@@ -1,0 +1,72 @@
+// Watch the local pointer published by a verified package installer. Code
+// stays in immutable bundles; an incomplete pointer never replaces an app.
+#import "file_linux"
+#import "byte_text_linux"
+#import "c_string"
+#import "json_scan"
+
+Release :: struct {
+    sequence: s64
+    hash: [65]u8
+    path: [4096]u8
+    valid: bool
+}
+
+Sequence :: (text: string, at: s32) -> s64 {
+    cursor := at
+    result: s64
+    if cursor < 0 || cursor >= cast(s32)text.count { return 0 }
+    while cursor < cast(s32)text.count && Digit(text[cursor]) {
+        digit := cast(s64)text[cursor] - 48
+        if result > (9223372036854775807 - digit) / 10 { return 0 }
+        result = result * 10 + digit
+        cursor += 1
+    }
+    if cursor == at || cursor != ValueEnd(text, at, 0) { return 0 }
+    return result
+}
+
+Read :: (pointer: string) -> Release {
+    result: Release
+    file := OpenRead(pointer)
+    if !file.valid { return result }
+    defer { unused CloseFile(file) }
+    size := FileSize(file)
+    if size <= 0 || size > 65536 { return result }
+    bytes: [65536]u8
+    if ReadAt(file, bytes[:size], 0) != size { return result }
+    text := TextFromBytes(bytes[:size])
+    start := Space(text, 0)
+    end := ValueEnd(text, start, 0)
+    if start >= cast(s32)size || text[start] != cast(u8)123 ||
+        end <= start || Space(text, end) != cast(s32)size { return result }
+    result.sequence = Sequence(text, FieldAt(text, start, "sequence"))
+    if result.sequence <= 0 || ReadStringText(text, FieldAt(text, start, "sha256"), result.hash[:]) != 64 {
+        return result
+    }
+    for byte: result.hash[:64] {
+        if !((byte >= cast(u8)48 && byte <= cast(u8)57) ||
+            (byte >= cast(u8)97 && byte <= cast(u8)102)) { return result }
+    }
+    separator := pointer.count - 1
+    while separator >= 0 && pointer[separator] != cast(u8)47 { separator -= 1 }
+    if separator < 0 { return result }
+    name: [4096]u8
+    parent := pointer[:separator + 1]
+    count := parent.count + 68
+    if count >= result.path.count { return result }
+    for i: 0..parent.count - 1 { name[i] = parent[i] }
+    for i: 0..63 { name[parent.count + i] = result.hash[i] }
+    name[parent.count + 64] = cast(u8)46
+    name[parent.count + 65] = cast(u8)122
+    name[parent.count + 66] = cast(u8)105
+    name[parent.count + 67] = cast(u8)98
+    result.valid = CopyCString(TextFromBytes(name[:count]), result.path[:])
+    return result
+}
+
+Newer :: (current: Release, candidate: Release) -> bool {
+    if !candidate.valid || candidate.sequence <= current.sequence { return false }
+    for i: 0..63 { if current.hash[i] != candidate.hash[i] { return true } }
+    return false
+}

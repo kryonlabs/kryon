@@ -11,6 +11,8 @@
 #import "file_linux"
 Media :: #import "media_linux";
 Background :: #import "background_window_linux";
+Watch :: #import "bundle_watch";
+#import "timer_linux"
 
 using HostValueKind;
 libc :: #system_library "libc";
@@ -406,11 +408,104 @@ RunFrame :: (instance: *void) -> bool {
     return EndDesktopFrame()
 }
 
+OpenInstance :: (bundle: *void, player: *Player) -> *void {
+    ok := PrepareInput(player)
+    index: u64
+    while ok && index < BundleCapabilities(bundle) {
+        module := BundleCapabilityModuleName(bundle, index)
+        function := BundleCapabilityFunctionName(bundle, index)
+        if !Supported(TextFromCString(module), TextFromCString(function)) {
+            ok = false
+        } else {
+            binding: HostBinding
+            binding.module = module
+            binding.function = function
+            binding.call = PlayerCall
+            binding.context = cast(*void)player
+            ok = VecPush(player.bindings, binding)
+        }
+        index += cast(u64)1
+    }
+    instance: *void
+    if ok {
+        bindings: *HostBinding
+        if player.bindings.count > 0 { bindings = *player.bindings[0] }
+        instance = InstantiateBundle(bundle, bindings, cast(u64)player.bindings.count)
+    }
+    VecFree(player.bindings)
+    if instance != null { LimitBundleSteps(instance, 5000000) }
+    return instance
+}
+
+Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
+    instance: **void, player: *Player, assets_root: *string, asset_storage: []u8) {
+    candidate := Watch.Read(pointer)
+    if !Watch.Newer(current.*, candidate) {
+        if candidate.valid && candidate.sequence > current.sequence { current.* = candidate }
+        return
+    }
+    replacement := OpenBundle(*candidate.path[0])
+    if replacement == null { return }
+    temporary: [64]u8
+    replacement_assets: string
+    if BundleAssets(replacement) > cast(u64)0 {
+        if !CopyCString("/tmp/zib-XXXXXX", temporary[:]) || TemporaryDirectory(*temporary[0]) == null {
+            CloseBundle(replacement)
+            return
+        }
+        replacement_assets = TextFromCString(*temporary[0])
+        if !ExtractAssets(replacement, replacement_assets) {
+            unused RemoveAssetDirectory(replacement_assets)
+            CloseBundle(replacement)
+            return
+        }
+    }
+    prepared := OpenInstance(replacement, player)
+    if prepared == null {
+        if replacement_assets != "" { unused RemoveAssetDirectory(replacement_assets) }
+        CloseBundle(replacement)
+        return
+    }
+    directory: [4096]u8
+    if replacement_assets != "" {
+        if !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+            CloseBundleInstance(prepared)
+            CloseBundle(replacement)
+            unused RemoveAssetDirectory(replacement_assets)
+            return
+        }
+    } else {
+        name := TextFromCString(*candidate.path[0])
+        separator := name.count - 1
+        while separator >= 0 && name[separator] != cast(u8)47 { separator -= 1 }
+        if separator < 0 || !CopyCString(name[:separator + 1], directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+            CloseBundleInstance(prepared)
+            CloseBundle(replacement)
+            return
+        }
+    }
+    // Swap only at a frame boundary. The window and host stay alive; module
+    // memory is reinitialized, while application-owned durable data stays put.
+    CloseBundleInstance(instance.*)
+    CloseBundle(bundle.*)
+    if assets_root.* != "" { unused RemoveAssetDirectory(assets_root.*) }
+    assets_root.* = ""
+    if replacement_assets != "" {
+        unused CopyCString(replacement_assets, asset_storage)
+        assets_root.* = TextFromCString(*asset_storage[0])
+    }
+    bundle.* = replacement
+    instance.* = prepared
+    current.* = candidate
+    print("zib: reloaded release %\n", candidate.sequence)
+}
+
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     check := argc == 3 && TextFromCString(argv[1]) == "--check"
-    if argc < 1 || argc > 3 || (argc == 3 && !check) {
-        print("usage: zib [--check] FILE.zib\n")
+    watch := argc == 3 && TextFromCString(argv[1]) == "--watch-current"
+    if argc < 1 || argc > 3 || (argc == 3 && !check && !watch) {
+        print("usage: zib [--check] FILE.zib | zib --watch-current CURRENT.json\n")
         return 2
     }
     executable_bytes: [4096]u8
@@ -419,7 +514,16 @@ main :: (argc: s32, argv: **u8) -> s32 {
     installed_bytes: [4096]u8
     bundle_path: string = ""
     bundle_name: *u8 = null
-    if argc == 2 || check {
+    pointer_path: string
+    current: Watch.Release
+    if watch {
+        pointer_path = TextFromCString(argv[2])
+        if pointer_path == "" || pointer_path[0] != cast(u8)47 { return 2 }
+        current = Watch.Read(pointer_path)
+        if !current.valid { return 1 }
+        bundle_name = *current.path[0]
+        bundle_path = TextFromCString(bundle_name)
+    } else if argc == 2 || check {
         bundle_name = argv[ifx check then 2 else 1]
         bundle_path = TextFromCString(bundle_name)
     } else {
@@ -490,6 +594,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     instance := InstantiateBundle(bundle, bindings, cast(u64)player.bindings.count)
     VecFree(player.bindings)
     if instance == null { CloseBundle(bundle); return 1 }
+    LimitBundleSteps(instance, 5000000)
     temporary: [64]u8
     assets_root: string = ""
     if BundleAssets(bundle) > cast(u64)0 {
@@ -507,7 +612,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
             if ok { ok = RunFrame(instance) }
             if ok { ok = CaptureConfigured() }
         } else {
+            next_check: s64
             while ok && PollDesktop() {
+                now := MonotonicMilliseconds()
+                if watch && now >= next_check {
+                    next_check = now + 1000
+                    Reload(pointer_path, *current, *bundle, *instance, *player, *assets_root, temporary[:])
+                }
                 ok = RunFrame(instance)
                 if ok { PauseDesktop() }
             }
