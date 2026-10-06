@@ -55,8 +55,15 @@ CheckFill :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) -> 
 
 #program_export
 main :: () -> s32 {
+    // Growing text can also replace its old tail. A new selector changes
+    // the preceding emoji's advance, including before an ASCII tail.
+    unused MeasureGlyphWidth("☀A", 14, "")
+    if MeasureGlyphWidth("☀️extended", 14, "") != ReferenceWidth("☀️extended", 14) { return 15 }
+    unused MeasureGlyphWidth("❤️ABC", 14, "")
+    if MeasureGlyphWidth("❤︎ABCDE", 14, "") != ReferenceWidth("❤︎ABCDE", 14) { return 16 }
     if !CheckWidth("A measured conversation with ordinary prose and spaces.") { return 1 }
     if !CheckWidth("café 日本語 Á 🚀 ☀︎ ☀️ ❤️ 👍🏽") { return 2 }
+    if !CheckWidth("A️ #️ 1️ café Á \u200d🚀 \ufffd") { return 14 }
     if !CheckWidth("first\nsecond\r\nthird\tlast") { return 3 }
     // Prefixes include incomplete Unicode and selectors. Mutable and aliased
     // input must invalidate by content; font sizes share only raw advances.
