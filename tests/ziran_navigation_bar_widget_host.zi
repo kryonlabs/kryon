@@ -5,6 +5,7 @@ fills: s32;
 outlines: s32;
 labels: s32;
 images: s32;
+tinted_images: s32;
 bar_fills: s32;
 failed: bool;
 
@@ -46,6 +47,10 @@ RasterImage :: (path: string, texture_id: u32,
         failed = true
     }
     images += 1
+    if tint.r == cast(u8)80 && tint.g == cast(u8)96 &&
+        tint.b == cast(u8)112 {
+        tinted_images += 1
+    }
 }
 
 #program_export
@@ -122,6 +127,9 @@ NavigationLabels :: () -> s32 { return labels }
 
 #program_export
 NavigationImages :: () -> s32 { return images }
+
+#program_export
+NavigationTintedImages :: () -> s32 { return tinted_images }
 
 #program_export
 NavigationBarFills :: () -> s32 { return bar_fills }

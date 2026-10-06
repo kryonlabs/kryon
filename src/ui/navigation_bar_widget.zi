@@ -115,6 +115,9 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
     if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
     image.bounds = bounds
     texture: Texture2D = ImageTextureFor(image)
+    if image.tint != cast(u32)0 {
+        color = image.tint
+    }
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
         ColorFromPacked(Opacity(color, opacity)))
     if plan.draw {

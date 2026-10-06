@@ -43,6 +43,7 @@ Frame :: () -> s32 {
     items[0].route = 11
     items[0].label = "Home"
     items[0].image.asset_path = "icon.png"
+    items[0].image.tint = cast(u32)0x506070ff
     items[0].active = true
     items[1].key = cast(u64)42
     items[1].route = 22
@@ -116,6 +117,6 @@ main :: () -> s32 {
     }
     if NavigationFills() < 6 || NavigationOutlines() != 3 ||
         NavigationLabels() != 9 || NavigationImages() != 6 ||
-        NavigationBarFills() != 3 { return 2 }
+        NavigationBarFills() != 3 || NavigationTintedImages() != 3 { return 2 }
     return 0
 }
