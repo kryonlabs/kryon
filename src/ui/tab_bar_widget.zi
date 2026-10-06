@@ -1,626 +1,639 @@
-#import "session"
-#import "control_props"
-#import "drawing_props"
-#import "font_metrics"
-#import "geometry"
-#import "paint_queue"
-#import "semantic"
-#import "style"
-#import "style_sheet"
-#import "surface"
-#import "tab_bar"
-#import "tab_bar_props"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
+// Portable compositions use the same widgets as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "tab_bar_props"
+    host_api :: #system_library "host_api";
+    TabBarHostedHost :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult #foreign host_api;
+    #program_export
+    TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+        return TabBarHostedHost(session, props, tabs)
+    }
+} else {
+    #import "session"
+    #import "control_props"
+    #import "drawing_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "paint_queue"
+    #import "semantic"
+    #import "style"
+    #import "style_sheet"
+    #import "surface"
+    #import "tab_bar"
+    #import "tab_bar_props"
+    #import "tree"
+    #import "tree_input"
+    #import "widget_kind"
 
-using SemanticKind;
-using WidgetKind;
-using ButtonTone;
-using ButtonEmphasis;
-using ControlSize;
-using ButtonState;
-using StyleField;
-using TabBarPlacement;
+    using SemanticKind;
+    using WidgetKind;
+    using ButtonTone;
+    using ButtonEmphasis;
+    using ControlSize;
+    using ButtonState;
+    using StyleField;
+    using TabBarPlacement;
 
-#program_export
-TabBarDefaultFace :: (kind: s32, selected: bool,
-    disabled: bool) -> StyleData {
-    face: StyleData
-    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    #program_export
+    TabBarDefaultFace :: (kind: s32, selected: bool,
+        disabled: bool) -> StyleData {
+        face: StyleData
+        face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StylePaddingX | cast(u32)StylePaddingY |
         cast(u32)StyleFontSize | cast(u32)StyleIconSize |
         cast(u32)StyleGap | cast(u32)StyleContentOffset
-    face.background = cast(u32)0xe2e8f0ff
-    face.foreground = cast(u32)0x334155ff
-    face.border = cast(u32)0x94a3b8ff
-    face.border_width = 0.0
-    face.radius = 6.0
-    face.opacity = 1.0
-    face.padding_x = 120.0
-    face.padding_y = 6.0
-    face.font_size = 14.0
-    face.icon_size = 32.0
-    face.gap = 4.0
-    face.offset_x = 240.0
-    if kind == StyleKindTab() {
-        face.background = cast(u32)0x00000000
+        face.background = cast(u32)0xe2e8f0ff
+        face.foreground = cast(u32)0x334155ff
+        face.border = cast(u32)0x94a3b8ff
         face.border_width = 0.0
-        face.padding_x = 12.0
-        if selected {
-            face.background = cast(u32)0xffffffff
+        face.radius = 6.0
+        face.opacity = 1.0
+        face.padding_x = 120.0
+        face.padding_y = 6.0
+        face.font_size = 14.0
+        face.icon_size = 32.0
+        face.gap = 4.0
+        face.offset_x = 240.0
+        if kind == StyleKindTab() {
+            face.background = cast(u32)0x00000000
+            face.border_width = 0.0
+            face.padding_x = 12.0
+            if selected {
+                face.background = cast(u32)0xffffffff
+            }
+        } else if kind == StyleKindTabClose() {
+            face.background = cast(u32)0x00000000
+            face.border_width = 0.0
+            face.icon_size = 16.0
+            face.padding_x = 4.0
         }
-    } else if kind == StyleKindTabClose() {
-        face.background = cast(u32)0x00000000
-        face.border_width = 0.0
-        face.icon_size = 16.0
-        face.padding_x = 4.0
+        if disabled { face.opacity = 0.45 }
+        return face
     }
-    if disabled { face.opacity = 0.45 }
-    return face
-}
 
-#program_export
-TabBarFaceFor :: (props: TabBarProps, kind: s32,
-    selected: bool, disabled: bool,
-    hovered: bool) -> StyleFrame {
-    state: s32 = cast(s32)ButtonStateNormal
-    if selected { state = cast(s32)ButtonStateSelected }
-    if hovered { state = cast(s32)ButtonStateHover }
-    if disabled { state = cast(s32)ButtonStateDisabled }
-    tone: s32 = cast(s32)ButtonToneNeutral
-    if selected { tone = cast(s32)ButtonToneAccent }
-    frame: StyleFrame
-    frame.value = ResolveInstalledStyleRules(
-        TabBarDefaultFace(kind, selected, disabled),
-        StyleControlRoleFacts(kind, props.id,
+    #program_export
+    TabBarFaceFor :: (props: TabBarProps, kind: s32,
+        selected: bool, disabled: bool,
+        hovered: bool) -> StyleFrame {
+        state: s32 = cast(s32)ButtonStateNormal
+        if selected { state = cast(s32)ButtonStateSelected }
+        if hovered { state = cast(s32)ButtonStateHover }
+        if disabled { state = cast(s32)ButtonStateDisabled }
+        tone: s32 = cast(s32)ButtonToneNeutral
+        if selected { tone = cast(s32)ButtonToneAccent }
+        frame: StyleFrame
+        frame.value = ResolveInstalledStyleRules(
+            TabBarDefaultFace(kind, selected, disabled),
+            StyleControlRoleFacts(kind, props.id,
             props.class_name, StyleAny(), tone,
             cast(s32)ButtonEmphasisSoft,
             cast(s32)ControlSizeMedium, state), state)
-    return frame
-}
-
-#program_export
-TabBarKey :: (session: Session, props: TabBarProps) -> u64 {
-    if props.key != cast(u64)0 { return props.key }
-    if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey(session)
-}
-
-#program_export
-TabBarTabKey :: (bar_key: u64, tab: Tab,
-    index: s32) -> u64 {
-    if tab.key != cast(u64)0 { return tab.key }
-    return bar_key * cast(u64)131071 + cast(u64)cast(u32)(index + 1)
-}
-
-#program_export
-TabBarCloseKey :: (tab_key: u64) -> u64 {
-    return tab_key * cast(u64)131071 + cast(u64)1
-}
-
-#program_export
-TabBarHeight :: () -> s32 {
-    props: TabBarProps
-    bar: StyleFrame = TabBarFaceFor(props,
-        StyleKindTabBar(), false, false, false)
-    return TabBarPolicyHeight(1.0, bar)
-}
-
-#program_export
-GetTabBarHeight :: () -> s32 {
-    return TabBarHeight()
-}
-
-#program_export
-TabBarMetricsFor :: (props: TabBarProps) -> TabBarMetrics {
-    bar: StyleFrame = TabBarFaceFor(props,
-        StyleKindTabBar(), false, props.disabled, false)
-    tab: StyleFrame = TabBarFaceFor(props,
-        StyleKindTab(), false, props.disabled, false)
-    close: StyleFrame = TabBarFaceFor(props,
-        StyleKindTabClose(), false, props.disabled, false)
-    return TabBarDefaultMetrics(props.min_tab_width,
-        props.max_tab_width, props.scale, bar, tab, close)
-}
-
-#program_export
-TabBarFontFor :: (props: TabBarProps) -> s32 {
-    tab: StyleFrame = TabBarFaceFor(props,
-        StyleKindTab(), false, props.disabled, false)
-    return ResolveFont(0,
-        StyleFontValue(tab.value.fields, tab.value.font_size), 14)
-}
-
-#program_export
-TabBarTabWidthFor :: (tab: Tab, metrics: TabBarMetrics,
-    font: s32, typeface: string) -> s32 {
-    has_label: bool = tab.label != ""
-    width: s32 = 0
-    if has_label { width = GlyphWidth(tab.label, font, typeface) }
-    return TabBarTabWidth(width, has_label,
-        tab.closeable, metrics)
-}
-
-#program_export
-TabBarTotalWidthFor :: (tabs: []Tab, metrics: TabBarMetrics,
-    font: s32, typeface: string) -> s32 {
-    total: s32 = 0
-    index: s32 = 0
-    while index < (cast(s32)tabs.count) {
-        total += TabBarTabWidthFor(tabs[index], metrics,
-            font, typeface)
-        index += 1
+        return frame
     }
-    return TabBarTotalWidth(total, (cast(s32)tabs.count), metrics.gap)
-}
 
-#program_export
-TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
-    index: s32, metrics: TabBarMetrics,
-    font: s32, typeface: string,
-    scroll: TabBarScroll, vertical: bool,
-    tab_extent: s32) -> Rectangle {
-    rect: Rectangle
-    if index < 0 || index >= (cast(s32)tabs.count) { return rect }
-    if scroll.equal_tabs {
-        if vertical {
-            height: float32 = bounds.height / cast(float32)tabs.count
-            rect = Rectangle.{bounds.x,
-                bounds.y + height * cast(float32)index,
-                bounds.width, height}
-            if index == (cast(s32)tabs.count) - 1 {
-                rect.height = bounds.y + bounds.height - rect.y
-            }
-            return rect
+    #program_export
+    TabBarKey :: (session: Session, props: TabBarProps) -> u64 {
+        if props.key != cast(u64)0 { return props.key }
+        if props.id > 0 { return cast(u64)cast(u32)props.id }
+        return TreeNextKey(session)
+    }
+
+    #program_export
+    TabBarTabKey :: (bar_key: u64, tab: Tab,
+        index: s32) -> u64 {
+        if tab.key != cast(u64)0 { return tab.key }
+        return bar_key * cast(u64)131071 + cast(u64)cast(u32)(index + 1)
+    }
+
+    #program_export
+    TabBarCloseKey :: (tab_key: u64) -> u64 {
+        return tab_key * cast(u64)131071 + cast(u64)1
+    }
+
+    #program_export
+    TabBarHeight :: () -> s32 {
+        props: TabBarProps
+        bar: StyleFrame = TabBarFaceFor(props,
+            StyleKindTabBar(), false, false, false)
+        return TabBarPolicyHeight(1.0, bar)
+    }
+
+    #program_export
+    GetTabBarHeight :: () -> s32 {
+        return TabBarHeight()
+    }
+
+    #program_export
+    TabBarMetricsFor :: (props: TabBarProps) -> TabBarMetrics {
+        bar: StyleFrame = TabBarFaceFor(props,
+            StyleKindTabBar(), false, props.disabled, false)
+        tab: StyleFrame = TabBarFaceFor(props,
+            StyleKindTab(), false, props.disabled, false)
+        close: StyleFrame = TabBarFaceFor(props,
+            StyleKindTabClose(), false, props.disabled, false)
+        return TabBarDefaultMetrics(props.min_tab_width,
+            props.max_tab_width, props.scale, bar, tab, close)
+    }
+
+    #program_export
+    TabBarFontFor :: (props: TabBarProps) -> s32 {
+        tab: StyleFrame = TabBarFaceFor(props,
+            StyleKindTab(), false, props.disabled, false)
+        return ResolveFont(0,
+            StyleFontValue(tab.value.fields, tab.value.font_size), 14)
+    }
+
+    #program_export
+    TabBarTabWidthFor :: (tab: Tab, metrics: TabBarMetrics,
+        font: s32, typeface: string) -> s32 {
+        has_label: bool = tab.label != ""
+        width: s32 = 0
+        if has_label { width = GlyphWidth(tab.label, font, typeface) }
+        return TabBarTabWidth(width, has_label,
+            tab.closeable, metrics)
+    }
+
+    #program_export
+    TabBarTotalWidthFor :: (tabs: []Tab, metrics: TabBarMetrics,
+        font: s32, typeface: string) -> s32 {
+        total: s32 = 0
+        index: s32 = 0
+        while index < (cast(s32)tabs.count) {
+            total += TabBarTabWidthFor(tabs[index], metrics,
+                font, typeface)
+            index += 1
         }
-        return TabBarEqualTabBounds(bounds, (cast(s32)tabs.count), index)
+        return TabBarTotalWidth(total, (cast(s32)tabs.count), metrics.gap)
     }
-    if vertical {
-        return Rectangle.{bounds.x,
-            bounds.y - cast(float32)scroll.scroll +
+
+    #program_export
+    TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
+        index: s32, metrics: TabBarMetrics,
+        font: s32, typeface: string,
+        scroll: TabBarScroll, vertical: bool,
+        tab_extent: s32) -> Rectangle {
+        rect: Rectangle
+        if index < 0 || index >= (cast(s32)tabs.count) { return rect }
+        if scroll.equal_tabs {
+            if vertical {
+                height: float32 = bounds.height / cast(float32)tabs.count
+                rect = Rectangle.{bounds.x,
+                    bounds.y + height * cast(float32)index,
+                    bounds.width, height}
+                if index == (cast(s32)tabs.count) - 1 {
+                    rect.height = bounds.y + bounds.height - rect.y
+                }
+                return rect
+            }
+            return TabBarEqualTabBounds(bounds, (cast(s32)tabs.count), index)
+        }
+        if vertical {
+            return Rectangle.{bounds.x,
+                bounds.y - cast(float32)scroll.scroll +
                 cast(float32)index * cast(float32)(tab_extent + metrics.gap),
-            bounds.width, cast(float32)tab_extent}
-    }
-    x: float32 = bounds.x - cast(float32)scroll.scroll
-    cursor: s32 = 0
-    while cursor <= index {
-        width: s32 = TabBarTabWidthFor(tabs[cursor],
-            metrics, font, typeface)
-        if cursor == index {
-            return Rectangle.{x, bounds.y,
-                cast(float32)width, bounds.height}
+                bounds.width, cast(float32)tab_extent}
         }
-        x += cast(float32)(width + metrics.gap)
-        cursor += 1
-    }
-    return rect
-}
-
-#program_export
-TabBarNextEnabled :: (tabs: []Tab, from: s32,
-    direction: s32) -> s32 {
-    step: s32 = 1
-    while step <= (cast(s32)tabs.count) {
-        index: s32 = TabBarWrappedIndex(from, direction,
-            step, (cast(s32)tabs.count))
-        if index >= 0 && !tabs[index].disabled { return index }
-        step += 1
-    }
-    return from
-}
-
-#program_export
-TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
-    active_index: s32, pointer_axis: float32,
-    metrics: TabBarMetrics, font: s32,
-    typeface: string, scroll: TabBarScroll,
-    vertical: bool, tab_extent: s32) -> s32 {
-    if active_index < 0 || active_index >= (cast(s32)tabs.count) { return -1 }
-    target: s32 = 0
-    index: s32 = 0
-    while index < (cast(s32)tabs.count) {
-        if index != active_index {
-            rect: Rectangle = TabBarBoundsAt(bounds, tabs,
-                index, metrics, font, typeface, scroll,
-                vertical, tab_extent)
-            center: float32 = rect.x + rect.width * 0.5
-            if vertical { center = rect.y + rect.height * 0.5 }
-            if pointer_axis > center {
-                target += 1
+        x: float32 = bounds.x - cast(float32)scroll.scroll
+        cursor: s32 = 0
+        while cursor <= index {
+            width: s32 = TabBarTabWidthFor(tabs[cursor],
+                metrics, font, typeface)
+            if cursor == index {
+                return Rectangle.{x, bounds.y,
+                    cast(float32)width, bounds.height}
             }
+            x += cast(float32)(width + metrics.gap)
+            cursor += 1
         }
-        index += 1
+        return rect
     }
-    return TabBarClampedIndexFor(target, (cast(s32)tabs.count))
-}
 
-// Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
-// callers apply the returned selection, close, and reorder events.
-#program_export
-TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
-    result: TabBarResult
-    result.node = -1
-    result.activated_index = -1
-    result.closed_index = -1
-    result.double_clicked_index = -1
-    result.middle_clicked_index = -1
-    result.reordered_from = -1
-    result.reordered_to = -1
-    result.drag_from = -1
-    result.drag_to = -1
-    result.selected_index = TabBarSelectedIndexFor(
-        props.selected_index, (cast(s32)tabs.count))
-    result.last_clicked_index = props.last_clicked_index
-    result.last_clicked_at = props.last_clicked_at
-    result.last_click_valid = props.last_click_valid
-    bounds: Rectangle = props.bounds
-    vertical: bool = props.placement == cast(TabBarPlacement)TabBarLeft ||
+    #program_export
+    TabBarNextEnabled :: (tabs: []Tab, from: s32,
+        direction: s32) -> s32 {
+        step: s32 = 1
+        while step <= (cast(s32)tabs.count) {
+            index: s32 = TabBarWrappedIndex(from, direction,
+                step, (cast(s32)tabs.count))
+            if index >= 0 && !tabs[index].disabled { return index }
+            step += 1
+        }
+        return from
+    }
+
+    #program_export
+    TabBarReorderTargetFor :: (bounds: Rectangle, tabs: []Tab,
+        active_index: s32, pointer_axis: float32,
+        metrics: TabBarMetrics, font: s32,
+        typeface: string, scroll: TabBarScroll,
+        vertical: bool, tab_extent: s32) -> s32 {
+        if active_index < 0 || active_index >= (cast(s32)tabs.count) { return -1 }
+        target: s32 = 0
+        index: s32 = 0
+        while index < (cast(s32)tabs.count) {
+            if index != active_index {
+                rect: Rectangle = TabBarBoundsAt(bounds, tabs,
+                    index, metrics, font, typeface, scroll,
+                    vertical, tab_extent)
+                center: float32 = rect.x + rect.width * 0.5
+                if vertical { center = rect.y + rect.height * 0.5 }
+                if pointer_axis > center {
+                    target += 1
+                }
+            }
+            index += 1
+        }
+        return TabBarClampedIndexFor(target, (cast(s32)tabs.count))
+    }
+
+    // Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
+    // callers apply the returned selection, close, and reorder events.
+    #program_export
+    TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+        result: TabBarResult
+        result.node = -1
+        result.activated_index = -1
+        result.closed_index = -1
+        result.double_clicked_index = -1
+        result.middle_clicked_index = -1
+        result.reordered_from = -1
+        result.reordered_to = -1
+        result.drag_from = -1
+        result.drag_to = -1
+        result.selected_index = TabBarSelectedIndexFor(
+            props.selected_index, (cast(s32)tabs.count))
+        result.last_clicked_index = props.last_clicked_index
+        result.last_clicked_at = props.last_clicked_at
+        result.last_click_valid = props.last_click_valid
+        bounds: Rectangle = props.bounds
+        vertical: bool = props.placement == cast(TabBarPlacement)TabBarLeft ||
         props.placement == cast(TabBarPlacement)TabBarRight
-    parent: Rectangle = TreeCurrentParentBounds(session)
-    bar_face: StyleFrame = TabBarFaceFor(props,
-        StyleKindTabBar(), false, props.disabled, false)
-    tab_extent: s32 = TabBarPolicyHeight(props.scale, bar_face)
-    auto_bounds: bool = bounds.width <= 0.0 || bounds.height <= 0.0
-    if bounds.width <= 0.0 {
-        if vertical {
-            bounds.width = cast(float32)TabBarDefaultMetrics(
-                props.min_tab_width, props.max_tab_width,
-                props.scale, bar_face, bar_face, bar_face).min_width
-        } else {
-            bounds.width = parent.width
-        }
-    }
-    if bounds.height <= 0.0 {
-        if vertical {
-            bounds.height = parent.height
-        } else {
-            bounds.height = cast(float32)tab_extent
-        }
-    }
-    if auto_bounds {
-        bounds.x = parent.x
-        bounds.y = parent.y
-        if props.placement == cast(TabBarPlacement)TabBarBottom {
-            bounds.y = parent.y + parent.height - bounds.height
-        } else if props.placement == cast(TabBarPlacement)TabBarRight {
-            bounds.x = parent.x + parent.width - bounds.width
-        }
-    }
-    if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
-    key: u64 = TabBarKey(session, props)
-    scale: float32 = props.scale
-    if scale <= 0.0 { scale = 1.0 }
-    metrics: TabBarMetrics = TabBarMetricsFor(props)
-    font: s32 = TabBarFontFor(props)
-    tab_face: StyleFrame = TabBarFaceFor(props,
-        StyleKindTab(), false, props.disabled, false)
-    total_width: s32 = TabBarTotalWidthFor(tabs, metrics,
-        font, tab_face.value.typeface)
-    if vertical {
-        total_width = TabBarTotalWidth(tab_extent *
-            (cast(s32)tabs.count), (cast(s32)tabs.count), metrics.gap)
-    }
-    requested_scroll: s32 = props.scroll_offset
-    if !props.disabled { requested_scroll += props.input.scroll_delta }
-    extent: float32 = bounds.width
-    if vertical { extent = bounds.height }
-    scroll: TabBarScroll = TabBarScrollFor(extent,
-        total_width, requested_scroll)
-    if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
-        key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
-            result.selected_index, (cast(s32)tabs.count),
-            props.input.left && !vertical,
-            props.input.right && !vertical,
-            props.input.up && vertical,
-            props.input.down && vertical,
-            props.input.home, props.input.end,
-            props.input.close, false)
-        if key_input.direction != 0 {
-            next: s32 = TabBarNextEnabled(tabs,
-                key_input.from_index, key_input.direction)
-            if next >= 0 && next != result.selected_index {
-                result.selected_index = next
-                result.activated_index = next
+        parent: Rectangle = TreeCurrentParentBounds(session)
+        bar_face: StyleFrame = TabBarFaceFor(props,
+            StyleKindTabBar(), false, props.disabled, false)
+        tab_extent: s32 = TabBarPolicyHeight(props.scale, bar_face)
+        auto_bounds: bool = bounds.width <= 0.0 || bounds.height <= 0.0
+        if bounds.width <= 0.0 {
+            if vertical {
+                bounds.width = cast(float32)TabBarDefaultMetrics(
+                    props.min_tab_width, props.max_tab_width,
+                    props.scale, bar_face, bar_face, bar_face).min_width
+            } else {
+                bounds.width = parent.width
             }
         }
-        if key_input.close_requested &&
+        if bounds.height <= 0.0 {
+            if vertical {
+                bounds.height = parent.height
+            } else {
+                bounds.height = cast(float32)tab_extent
+            }
+        }
+        if auto_bounds {
+            bounds.x = parent.x
+            bounds.y = parent.y
+            if props.placement == cast(TabBarPlacement)TabBarBottom {
+                bounds.y = parent.y + parent.height - bounds.height
+            } else if props.placement == cast(TabBarPlacement)TabBarRight {
+                bounds.x = parent.x + parent.width - bounds.width
+            }
+        }
+        if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+        key: u64 = TabBarKey(session, props)
+        scale: float32 = props.scale
+        if scale <= 0.0 { scale = 1.0 }
+        metrics: TabBarMetrics = TabBarMetricsFor(props)
+        font: s32 = TabBarFontFor(props)
+        tab_face: StyleFrame = TabBarFaceFor(props,
+            StyleKindTab(), false, props.disabled, false)
+        total_width: s32 = TabBarTotalWidthFor(tabs, metrics,
+            font, tab_face.value.typeface)
+        if vertical {
+            total_width = TabBarTotalWidth(tab_extent *
+                (cast(s32)tabs.count), (cast(s32)tabs.count), metrics.gap)
+        }
+        requested_scroll: s32 = props.scroll_offset
+        if !props.disabled { requested_scroll += props.input.scroll_delta }
+        extent: float32 = bounds.width
+        if vertical { extent = bounds.height }
+        scroll: TabBarScroll = TabBarScrollFor(extent,
+            total_width, requested_scroll)
+        if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
+            key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
+                result.selected_index, (cast(s32)tabs.count),
+                props.input.left && !vertical,
+                props.input.right && !vertical,
+                props.input.up && vertical,
+                props.input.down && vertical,
+                props.input.home, props.input.end,
+                props.input.close, false)
+            if key_input.direction != 0 {
+                next: s32 = TabBarNextEnabled(tabs,
+                    key_input.from_index, key_input.direction)
+                if next >= 0 && next != result.selected_index {
+                    result.selected_index = next
+                    result.activated_index = next
+                }
+            }
+            if key_input.close_requested &&
             result.selected_index >= 0 &&
             tabs[result.selected_index].closeable &&
             !tabs[result.selected_index].disabled {
-            result.closed_index = result.selected_index
+                result.closed_index = result.selected_index
+            }
         }
-    }
-    if TreeIsBuilding(session) {
-        previous_bar: s32 = TreePrevious(session,
-            TreeCurrentParent(session), key, WidgetKindTabBar)
-        index: s32 = 0
-        while index < (cast(s32)tabs.count) {
-            tab: Tab = tabs[index]
-            tab_key: u64 = TabBarTabKey(key, tab, index)
-            previous: s32 = TreePreviousCommitted(session,
-                previous_bar, tab_key, WidgetKindButton)
-            close_previous: s32 = TreePreviousCommitted(session,
-                previous, TabBarCloseKey(tab_key), WidgetKindButton)
-            if !props.disabled && !tab.disabled &&
+        if TreeIsBuilding(session) {
+            previous_bar: s32 = TreePrevious(session,
+                TreeCurrentParent(session), key, WidgetKindTabBar)
+            index: s32 = 0
+            while index < (cast(s32)tabs.count) {
+                tab: Tab = tabs[index]
+                tab_key: u64 = TabBarTabKey(key, tab, index)
+                previous: s32 = TreePreviousCommitted(session,
+                    previous_bar, tab_key, WidgetKindButton)
+                close_previous: s32 = TreePreviousCommitted(session,
+                    previous, TabBarCloseKey(tab_key), WidgetKindButton)
+                if !props.disabled && !tab.disabled &&
                 tab.closeable &&
                 TreeTakeActivationAt(session, close_previous) {
-                result.closed_index = index
-            }
-            activated: bool = TreeTakeActivationAt(session, previous)
-            drag: PointerDrag = TreeTakeDragAt(session, previous)
-            reorder: bool = false
-            if !props.disabled && !tab.disabled &&
+                    result.closed_index = index
+                }
+                activated: bool = TreeTakeActivationAt(session, previous)
+                drag: PointerDrag = TreeTakeDragAt(session, previous)
+                reorder: bool = false
+                if !props.disabled && !tab.disabled &&
                 props.reorder_enabled &&
                 (drag.active || drag.ended) {
-                origin: float32 = TreeNodeAt(session, previous).bounds.x +
+                    origin: float32 = TreeNodeAt(session, previous).bounds.x +
                     drag.grab_x
-                position: float32 = drag.x
-                if vertical {
-                    origin = TreeNodeAt(session, previous).bounds.y +
+                    position: float32 = drag.x
+                    if vertical {
+                        origin = TreeNodeAt(session, previous).bounds.y +
                         drag.grab_y
-                    position = drag.y
-                }
-                dx: s32 = cast(s32)(position - origin)
-                was_dragging: bool = props.dragging &&
+                        position = drag.y
+                    }
+                    dx: s32 = cast(s32)(position - origin)
+                    was_dragging: bool = props.dragging &&
                     props.drag_from == index
-                decision: TabBarReorderDragDecision =
+                    decision: TabBarReorderDragDecision =
                     TabBarReorderDragDecisionFor(false, true,
                         true, index, (cast(s32)tabs.count), drag.active,
                         was_dragging, dx, 0,
                         TabBarMetric(tab_face.value.fields,
-                            cast(u32)StylePaddingY,
-                            tab_face.value.padding_y,
-                            6.0, scale, false))
-                reorder = was_dragging || decision.dragging
-                if !reorder && drag.ended {
-                    absolute: s32 = dx
-                    if absolute < 0 { absolute = -absolute }
-                    reorder = absolute >= 6
-                }
-                if reorder {
-                    target: s32 = TabBarReorderTargetFor(
-                        bounds, tabs, index, position,
-                        metrics, font,
-                        tab_face.value.typeface, scroll,
-                        vertical, tab_extent)
-                    if drag.active {
-                        result.dragging = true
-                        result.drag_from = index
-                        result.drag_to = target
+                        cast(u32)StylePaddingY,
+                        tab_face.value.padding_y,
+                        6.0, scale, false))
+                    reorder = was_dragging || decision.dragging
+                    if !reorder && drag.ended {
+                        absolute: s32 = dx
+                        if absolute < 0 { absolute = -absolute }
+                        reorder = absolute >= 6
                     }
-                    if drag.ended && target >= 0 && target != index {
-                        result.reordered_from = index
-                        result.reordered_to = target
+                    if reorder {
+                        target: s32 = TabBarReorderTargetFor(
+                            bounds, tabs, index, position,
+                            metrics, font,
+                            tab_face.value.typeface, scroll,
+                            vertical, tab_extent)
+                        if drag.active {
+                            result.dragging = true
+                            result.drag_from = index
+                            result.drag_to = target
+                        }
+                        if drag.ended && target >= 0 && target != index {
+                            result.reordered_from = index
+                            result.reordered_to = target
+                        }
                     }
                 }
-            }
-            if activated && !props.disabled && !tab.disabled &&
+                if activated && !props.disabled && !tab.disabled &&
                 !reorder {
-                result.selected_index = index
-                result.activated_index = index
-                if result.last_click_valid &&
+                    result.selected_index = index
+                    result.activated_index = index
+                    if result.last_click_valid &&
                     TabBarDoubleClickShouldRun(true,
                         result.last_clicked_index, index,
                         result.last_clicked_at,
                         props.input.now) {
-                    result.double_clicked_index = index
+                        result.double_clicked_index = index
+                    }
+                    result.last_clicked_index = index
+                    result.last_clicked_at = props.input.now
+                    result.last_click_valid = true
                 }
-                result.last_clicked_index = index
-                result.last_clicked_at = props.input.now
-                result.last_click_valid = true
+                index += 1
+            }
+        }
+        if result.selected_index >= 0 &&
+        (props.focus_selected ||
+            result.selected_index != props.selected_index) {
+            selected_bounds: Rectangle = TabBarBoundsAt(bounds, tabs,
+                result.selected_index, metrics, font,
+                tab_face.value.typeface, scroll, vertical, tab_extent)
+            axis_bounds: Rectangle = bounds
+            axis_position: float32 = selected_bounds.x
+            axis_extent: float32 = selected_bounds.width
+            if vertical {
+                axis_bounds.x = bounds.y
+                axis_bounds.width = bounds.height
+                axis_position = selected_bounds.y
+                axis_extent = selected_bounds.height
+            }
+            result.scroll_offset = TabBarRevealScroll(
+                axis_position, axis_extent,
+                axis_bounds, scroll.scroll, scroll.max_scroll)
+        } else {
+            result.scroll_offset = scroll.scroll
+        }
+        scroll.scroll = result.scroll_offset
+        if result.selected_index >= 0 {
+            result.selected_tab_bounds = TabBarBoundsAt(bounds, tabs,
+                result.selected_index, metrics, font,
+                tab_face.value.typeface, scroll, vertical, tab_extent)
+        }
+        if TreeIsBuilding(session) {
+            result.node = TreeSubmitCurrent(session, key,
+                WidgetKindTabBar, bounds)
+            if result.node < 0 { return result }
+            TreeSetSemantic(session, result.node,
+                cast(SemanticKind)SemanticTabList, 0)
+            bounds = TreeSubmittedNodeAt(session, result.node).bounds
+        }
+        bar_opacity: float32 = StyleOpacityValue(bar_face.value.fields,
+            bar_face.value.opacity)
+        PaintRoundedFill(session, result.node, bounds,
+            bar_face.value.radius, 12,
+            ColorFromPacked(Opacity(bar_face.value.background,
+            bar_opacity)))
+        if bar_face.value.border_width > 0.0 {
+            PaintRoundedOutline(session, result.node, bounds,
+                bar_face.value.radius, 12,
+                bar_face.value.border_width,
+                ColorFromPacked(Opacity(bar_face.value.border,
+                bar_opacity)))
+        }
+        index: s32 = 0
+        while index < (cast(s32)tabs.count) {
+            tab: Tab = tabs[index]
+            tab_key: u64 = TabBarTabKey(key, tab, index)
+            rect: Rectangle = TabBarBoundsAt(bounds, tabs,
+                index, metrics, font, tab_face.value.typeface,
+                scroll, vertical, tab_extent)
+            visible: Rectangle = RectangleIntersection(rect, bounds)
+            if visible.width > 0.0 && visible.height > 0.0 {
+                previous: s32 = -1
+                if TreeIsBuilding(session) {
+                    previous = TreePrevious(session, result.node, tab_key,
+                        WidgetKindButton)
+                }
+                selected: bool = index == result.selected_index
+                disabled: bool = props.disabled || tab.disabled
+                face: StyleFrame = TabBarFaceFor(props,
+                    StyleKindTab(), selected, disabled,
+                    TreeHoveredAt(session, previous))
+                opacity: float32 = StyleOpacityValue(face.value.fields,
+                    face.value.opacity)
+                node: s32 = -1
+                if TreeIsBuilding(session) {
+                    node = TreeSubmit(session, tab_key, result.node,
+                        WidgetKindButton, visible)
+                    if node < 0 { return result }
+                    TreeSetInteractive(session, node, disabled, false, props.id)
+                    TreeSetSemantic(session, node,
+                        cast(SemanticKind)SemanticTab, index)
+                    TreeSetLabel(session, node, tab.label)
+                    TreeSetSelected(session, node, selected)
+                }
+                radius: float32 = face.value.radius
+                if visible.width < rect.width { radius = 0.0 }
+                PaintRoundedFill(session, node, visible, radius, 12,
+                    ColorFromPacked(Opacity(face.value.background,
+                    opacity)))
+                if face.value.border_width > 0.0 {
+                    PaintRoundedOutline(session, node, visible, radius, 12,
+                        face.value.border_width,
+                        ColorFromPacked(Opacity(face.value.border,
+                        opacity)))
+                }
+                label_width: s32 = 0
+                if tab.label != "" {
+                    label_width = GlyphWidth(tab.label, font,
+                        face.value.typeface)
+                }
+                close_previous: s32 = -1
+                if TreeIsBuilding(session) {
+                    close_previous = TreePrevious(session, node,
+                        TabBarCloseKey(tab_key), WidgetKindButton)
+                }
+                close_face: StyleFrame = TabBarFaceFor(props,
+                    StyleKindTabClose(), false, disabled,
+                    TreeHoveredAt(session, close_previous))
+                paint: TabBarPaint = TabBarPaintFor(bar_face,
+                    face, close_face, scale)
+                content: TabBarContentLayout =
+                TabBarContentLayoutFor(rect, label_width,
+                    tab.label != "", tab.closeable, paint)
+                if tab.label != "" {
+                    text_clip: Rectangle = RectangleIntersection(
+                        content.text_bounds, visible)
+                    if text_clip.width > 0.0 &&
+                    text_clip.height > 0.0 {
+                        line_height: s32 = GlyphLineHeight(font,
+                            face.value.typeface)
+                        text_y: s32 = cast(s32)(rect.y +
+                            (rect.height - cast(float32)line_height) * 0.5)
+                        PaintClippedLabel(session, node, tab.label,
+                            cast(s32)content.text_bounds.x,
+                            text_y, font,
+                            ColorFromPacked(Opacity(
+                            face.value.foreground, opacity)),
+                            text_clip)
+                    }
+                }
+                if tab.closeable {
+                    close_bounds: Rectangle = RectangleIntersection(
+                        content.close_bounds, visible)
+                    if close_bounds.width > 0.0 &&
+                    close_bounds.height > 0.0 {
+                        close_key: u64 = TabBarCloseKey(tab_key)
+                        close_node: s32 = -1
+                        if TreeIsBuilding(session) {
+                            close_node = TreeSubmit(session, close_key, node,
+                                WidgetKindButton, close_bounds)
+                            if close_node < 0 { return result }
+                            TreeSetInteractive(session, close_node, disabled,
+                                false, 0)
+                            TreeSetSemantic(session, close_node,
+                                cast(SemanticKind)SemanticButton, 0)
+                            TreeSetLabel(session, close_node, "Close tab")
+                        }
+                        close_opacity: float32 = StyleOpacityValue(
+                            close_face.value.fields,
+                            close_face.value.opacity)
+                        close_color: Color = ColorFromPacked(Opacity(
+                            close_face.value.background,
+                            close_opacity))
+                        if close_color.a > cast(u8)0 {
+                            PaintRoundedFill(session, close_node, close_bounds,
+                                close_face.value.radius, 8,
+                                close_color)
+                        }
+                        center_x: float32 = close_bounds.x +
+                        close_bounds.width * 0.5
+                        center_y: float32 = close_bounds.y +
+                        close_bounds.height * 0.5
+                        half: float32 = close_bounds.width * 0.18
+                        if close_bounds.height < close_bounds.width {
+                            half = close_bounds.height * 0.18
+                        }
+                        color: Color = ColorFromPacked(Opacity(
+                            close_face.value.foreground,
+                            close_opacity))
+                        PaintLine(session, close_node,
+                            Rectangle.{center_x - half,
+                                center_y - half, half * 2.0,
+                                half * 2.0}, color)
+                        PaintLine(session, close_node,
+                            Rectangle.{center_x + half,
+                                center_y - half, -half * 2.0,
+                                half * 2.0}, color)
+                    }
+                }
+                if !disabled && props.input.middle_click &&
+                PointInBounds(props.input.middle_x,
+                    props.input.middle_y, visible) {
+                    result.middle_clicked_index = index
+                }
             }
             index += 1
         }
-    }
-    if result.selected_index >= 0 &&
-        (props.focus_selected ||
-            result.selected_index != props.selected_index) {
-        selected_bounds: Rectangle = TabBarBoundsAt(bounds, tabs,
-            result.selected_index, metrics, font,
-            tab_face.value.typeface, scroll, vertical, tab_extent)
-        axis_bounds: Rectangle = bounds
-        axis_position: float32 = selected_bounds.x
-        axis_extent: float32 = selected_bounds.width
-        if vertical {
-            axis_bounds.x = bounds.y
-            axis_bounds.width = bounds.height
-            axis_position = selected_bounds.y
-            axis_extent = selected_bounds.height
-        }
-        result.scroll_offset = TabBarRevealScroll(
-            axis_position, axis_extent,
-            axis_bounds, scroll.scroll, scroll.max_scroll)
-    } else {
-        result.scroll_offset = scroll.scroll
-    }
-    scroll.scroll = result.scroll_offset
-    if result.selected_index >= 0 {
-        result.selected_tab_bounds = TabBarBoundsAt(bounds, tabs,
-            result.selected_index, metrics, font,
-            tab_face.value.typeface, scroll, vertical, tab_extent)
-    }
-    if TreeIsBuilding(session) {
-        result.node = TreeSubmitCurrent(session, key,
-            WidgetKindTabBar, bounds)
-        if result.node < 0 { return result }
-        TreeSetSemantic(session, result.node,
-            cast(SemanticKind)SemanticTabList, 0)
-        bounds = TreeSubmittedNodeAt(session, result.node).bounds
-    }
-    bar_opacity: float32 = StyleOpacityValue(bar_face.value.fields,
-        bar_face.value.opacity)
-    PaintRoundedFill(session, result.node, bounds,
-        bar_face.value.radius, 12,
-        ColorFromPacked(Opacity(bar_face.value.background,
-            bar_opacity)))
-    if bar_face.value.border_width > 0.0 {
-        PaintRoundedOutline(session, result.node, bounds,
-            bar_face.value.radius, 12,
-            bar_face.value.border_width,
-            ColorFromPacked(Opacity(bar_face.value.border,
-                bar_opacity)))
-    }
-    index: s32 = 0
-    while index < (cast(s32)tabs.count) {
-        tab: Tab = tabs[index]
-        tab_key: u64 = TabBarTabKey(key, tab, index)
-        rect: Rectangle = TabBarBoundsAt(bounds, tabs,
-            index, metrics, font, tab_face.value.typeface,
-            scroll, vertical, tab_extent)
-        visible: Rectangle = RectangleIntersection(rect, bounds)
-        if visible.width > 0.0 && visible.height > 0.0 {
-            previous: s32 = -1
-            if TreeIsBuilding(session) {
-                previous = TreePrevious(session, result.node, tab_key,
-                    WidgetKindButton)
-            }
-            selected: bool = index == result.selected_index
-            disabled: bool = props.disabled || tab.disabled
-            face: StyleFrame = TabBarFaceFor(props,
-                StyleKindTab(), selected, disabled,
-                TreeHoveredAt(session, previous))
-            opacity: float32 = StyleOpacityValue(face.value.fields,
-                face.value.opacity)
-            node: s32 = -1
-            if TreeIsBuilding(session) {
-                node = TreeSubmit(session, tab_key, result.node,
-                    WidgetKindButton, visible)
-                if node < 0 { return result }
-                TreeSetInteractive(session, node, disabled, false, props.id)
-                TreeSetSemantic(session, node,
-                    cast(SemanticKind)SemanticTab, index)
-                TreeSetLabel(session, node, tab.label)
-                TreeSetSelected(session, node, selected)
-            }
-            radius: float32 = face.value.radius
-            if visible.width < rect.width { radius = 0.0 }
-            PaintRoundedFill(session, node, visible, radius, 12,
-                ColorFromPacked(Opacity(face.value.background,
-                    opacity)))
-            if face.value.border_width > 0.0 {
-                PaintRoundedOutline(session, node, visible, radius, 12,
-                    face.value.border_width,
-                    ColorFromPacked(Opacity(face.value.border,
-                        opacity)))
-            }
-            label_width: s32 = 0
-            if tab.label != "" {
-                label_width = GlyphWidth(tab.label, font,
-                    face.value.typeface)
-            }
-            close_previous: s32 = -1
-            if TreeIsBuilding(session) {
-                close_previous = TreePrevious(session, node,
-                    TabBarCloseKey(tab_key), WidgetKindButton)
-            }
-            close_face: StyleFrame = TabBarFaceFor(props,
-                StyleKindTabClose(), false, disabled,
-                TreeHoveredAt(session, close_previous))
-            paint: TabBarPaint = TabBarPaintFor(bar_face,
-                face, close_face, scale)
-            content: TabBarContentLayout =
-                TabBarContentLayoutFor(rect, label_width,
-                    tab.label != "", tab.closeable, paint)
-            if tab.label != "" {
-                text_clip: Rectangle = RectangleIntersection(
-                    content.text_bounds, visible)
-                if text_clip.width > 0.0 &&
-                    text_clip.height > 0.0 {
-                    line_height: s32 = GlyphLineHeight(font,
-                        face.value.typeface)
-                    text_y: s32 = cast(s32)(rect.y +
-                        (rect.height - cast(float32)line_height) * 0.5)
-                    PaintClippedLabel(session, node, tab.label,
-                        cast(s32)content.text_bounds.x,
-                        text_y, font,
-                        ColorFromPacked(Opacity(
-                            face.value.foreground, opacity)),
-                        text_clip)
+        if result.dragging && result.drag_to >= 0 {
+            marker_tab: Rectangle = TabBarBoundsAt(bounds, tabs,
+                result.drag_to, metrics, font,
+                tab_face.value.typeface, scroll, vertical, tab_extent)
+            marker: Rectangle = TabBarDragMarkerBounds(
+                cast(s32)marker_tab.x, cast(s32)marker_tab.width,
+                cast(s32)bounds.y, cast(s32)bounds.height,
+                result.drag_to > result.drag_from,
+                props.scale)
+            if vertical {
+                marker.y = marker_tab.y
+                if result.drag_to > result.drag_from {
+                    marker.y += marker_tab.height
                 }
+                marker.x = bounds.x + 4.0
+                marker.width = bounds.width - 8.0
+                marker.height = 2.0
             }
-            if tab.closeable {
-                close_bounds: Rectangle = RectangleIntersection(
-                    content.close_bounds, visible)
-                if close_bounds.width > 0.0 &&
-                    close_bounds.height > 0.0 {
-                    close_key: u64 = TabBarCloseKey(tab_key)
-                    close_node: s32 = -1
-                    if TreeIsBuilding(session) {
-                        close_node = TreeSubmit(session, close_key, node,
-                            WidgetKindButton, close_bounds)
-                        if close_node < 0 { return result }
-                        TreeSetInteractive(session, close_node, disabled,
-                            false, 0)
-                        TreeSetSemantic(session, close_node,
-                            cast(SemanticKind)SemanticButton, 0)
-                        TreeSetLabel(session, close_node, "Close tab")
-                    }
-                    close_opacity: float32 = StyleOpacityValue(
-                        close_face.value.fields,
-                        close_face.value.opacity)
-                    close_color: Color = ColorFromPacked(Opacity(
-                        close_face.value.background,
-                        close_opacity))
-                    if close_color.a > cast(u8)0 {
-                        PaintRoundedFill(session, close_node, close_bounds,
-                            close_face.value.radius, 8,
-                            close_color)
-                    }
-                    center_x: float32 = close_bounds.x +
-                        close_bounds.width * 0.5
-                    center_y: float32 = close_bounds.y +
-                        close_bounds.height * 0.5
-                    half: float32 = close_bounds.width * 0.18
-                    if close_bounds.height < close_bounds.width {
-                        half = close_bounds.height * 0.18
-                    }
-                    color: Color = ColorFromPacked(Opacity(
-                        close_face.value.foreground,
-                        close_opacity))
-                    PaintLine(session, close_node,
-                        Rectangle.{center_x - half,
-                            center_y - half, half * 2.0,
-                            half * 2.0}, color)
-                    PaintLine(session, close_node,
-                        Rectangle.{center_x + half,
-                            center_y - half, -half * 2.0,
-                            half * 2.0}, color)
-                }
-            }
-            if !disabled && props.input.middle_click &&
-                PointInBounds(props.input.middle_x,
-                    props.input.middle_y, visible) {
-                result.middle_clicked_index = index
+            marker = RectangleIntersection(marker, bounds)
+            if marker.width > 0.0 && marker.height > 0.0 {
+                PaintRoundedFill(session, result.node, marker, 0.0, 1,
+                    ColorFromPacked(cast(u32)0x2563ebff))
             }
         }
-        index += 1
+        return result
     }
-    if result.dragging && result.drag_to >= 0 {
-        marker_tab: Rectangle = TabBarBoundsAt(bounds, tabs,
-            result.drag_to, metrics, font,
-            tab_face.value.typeface, scroll, vertical, tab_extent)
-        marker: Rectangle = TabBarDragMarkerBounds(
-            cast(s32)marker_tab.x, cast(s32)marker_tab.width,
-            cast(s32)bounds.y, cast(s32)bounds.height,
-            result.drag_to > result.drag_from,
-            props.scale)
-        if vertical {
-            marker.y = marker_tab.y
-            if result.drag_to > result.drag_from {
-                marker.y += marker_tab.height
-            }
-            marker.x = bounds.x + 4.0
-            marker.width = bounds.width - 8.0
-            marker.height = 2.0
-        }
-        marker = RectangleIntersection(marker, bounds)
-        if marker.width > 0.0 && marker.height > 0.0 {
-            PaintRoundedFill(session, result.node, marker, 0.0, 1,
-                ColorFromPacked(cast(u32)0x2563ebff))
-        }
-    }
-    return result
+
 }

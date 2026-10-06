@@ -15,6 +15,11 @@
 #import "session"
 #import "tree"
 #import "geometry"
+#import "box_widget"
+#import "box_props"
+#import "text_field_widget"
+#import "tab_bar_widget"
+#import "tab_bar_props"
 #program_export
 main :: () -> s32 {
     session := Session.{.slot = 4, .epoch = cast(u64)12}
@@ -30,5 +35,11 @@ main :: () -> s32 {
     if !check.changed || !check.checked { return 5 }
     automatic := Toggle(session, ToggleProps.{.id = 53, .value = true})
     if !automatic.changed || automatic.value { return 6 }
+    if Box(session, BoxProps.{.radius = 12.0}) != 71 { return 7 }
+    field := TextField(session, TextFieldProps.{.value = "List title", .cursor = 3})
+    if field.cursor != 4 || field.edit.replacement != "✓" { return 8 }
+    tabs: [2]Tab = .[Tab.{.label = "One"}, Tab.{.label = "Two"}]
+    selected := TabBar(session, TabBarProps.{.selected_index = 0}, tabs[:])
+    if selected.selected_index != 1 { return 9 }
     return 42
 }
