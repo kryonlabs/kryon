@@ -155,7 +155,7 @@ PixmapClipAll :: () {
 // Bounds are logical; the outer clip covers whole device pixels. Clear the
 // damaged area before replay so removed and translucent paint cannot leave
 // pixels from an earlier frame behind.
-PixmapDamageBegin :: (bounds: Rectangle, background: u32) {
+PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     bounds = PixmapDeviceBounds(bounds)
     pixmap_damage_left = FloorInteger(bounds.x); pixmap_damage_top = FloorInteger(bounds.y)
     pixmap_damage_right = CeilInteger(bounds.x + bounds.width)
@@ -165,8 +165,12 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32) {
     if pixmap_damage_right > pixmap_width { pixmap_damage_right = pixmap_width }
     if pixmap_damage_bottom > pixmap_height { pixmap_damage_bottom = pixmap_height }
     pixmap_damage_active = true; PixmapClipAll()
-    for y: pixmap_clip_top..pixmap_clip_bottom - 1 {
-        for x: pixmap_clip_left..pixmap_clip_right - 1 { pixmap_surface[y * pixmap_width + x] = background }
+    if !clear { return }
+    surface := pixmap_surface; stride := pixmap_width
+    left := pixmap_clip_left; right := pixmap_clip_right
+    top := pixmap_clip_top; bottom := pixmap_clip_bottom
+    for y: top..bottom - 1 {
+        for at: y * stride + left..y * stride + right - 1 { surface[at] = background }
     }
 }
 

@@ -81,9 +81,12 @@ PixmapPaintBounds :: (command: PaintCommand, viewport: Rectangle) -> Rectangle {
 
 // Replays paint in its original order under one outer clip. Repainting all
 // intersecting layers preserves overlaps, transparency and overlay ordering.
+// opaque_background promises that the first ordered paint covers the whole
+// viewport with an opaque background, so clearing it again is unnecessary.
 #program_export
 EndPixmapFrame :: (session: Session, reuse: bool,
-    background: u32 = cast(u32)PixmapBackground) -> PixmapFrameResult {
+    background: u32 = cast(u32)PixmapBackground,
+    opaque_background: bool = false) -> PixmapFrameResult {
     result: PixmapFrameResult; result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk { PaintSnapshotInvalidate(session); return result }
     slot := SessionIndex(session)
@@ -113,6 +116,12 @@ EndPixmapFrame :: (session: Session, reuse: bool,
             unchanged = false
             if index < result.paint_count { damage = JoinDamage(damage, PixmapPaintBounds(current, viewport)) }
             if index < previous_count { damage = JoinDamage(damage, PixmapPaintBounds(paint_snapshots[slot][index].data, viewport)) }
+            // Once most of the surface needs repainting, inspecting the rest
+            // cannot save enough raster work to repay command filtering. Use
+            // the ordinary ordered flush for dense changes such as scrolling.
+            if damage.width * damage.height >= viewport.width * viewport.height * 0.6 {
+                damage = viewport; break
+            }
         }
     }
     result.paint_unchanged = unchanged
@@ -121,7 +130,11 @@ EndPixmapFrame :: (session: Session, reuse: bool,
     // Store only after examining the old coverage, including removed paint.
     if !unchanged && !PaintSnapshotStore(session) { result.paint_unchanged = false }
     if damage.width > 0.0 && damage.height > 0.0 {
-        PixmapDamageBegin(damage, background); result.damage = PixmapDamageBounds()
+        PixmapDamageBegin(damage, background, !opaque_background); result.damage = PixmapDamageBounds()
+        if damage.width >= viewport.width && damage.height >= viewport.height {
+            result.emitted_count = result.paint_count
+            PaintFlush(session); PixmapDamageEnd(); return result
+        }
         raster_damage: Rectangle = .{result.damage.x / pixmap_scale_x, result.damage.y / pixmap_scale_y,
             result.damage.width / pixmap_scale_x, result.damage.height / pixmap_scale_y}
         for index: 0..result.paint_count - 1 {
