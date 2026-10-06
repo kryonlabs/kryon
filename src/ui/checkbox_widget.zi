@@ -1,3 +1,14 @@
+// Submit the standard widget contract from a portable composition.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "checkbox_props"
+    host_api :: #system_library "host_api";
+    CheckboxHostedHost :: (session: Session, props: CheckboxProps) -> CheckboxValueResult #foreign host_api;
+    #program_export
+    Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
+        return CheckboxHostedHost(session, props)
+    }
+} else {
 #import "session"
 #import "checkbox"
 #import "checkbox_props"
@@ -185,4 +196,6 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
     PaintCheckboxForNode(session, node, props, paint, label, font,
         label_height)
     return result
+}
+
 }
