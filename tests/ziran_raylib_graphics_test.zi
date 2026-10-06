@@ -75,5 +75,19 @@ main :: () -> s32 {
     if texture_unloads != 34 || graphics_failed {
         return 11
     }
+    if !LoadTypefaceData("updated", ".ttf", "new font fixture", null, 0) ||
+    !SelectTypeface("updated") || !BeginRetainedFrame(100, 100) ||
+    !EndRetainedFrame() || ImageWidth("updated.png") != 200 { return 12 }
+    frame := RetainedPreviousFrameTexture().id
+    font_releases := font_unloads
+    target_releases := unloads
+    loads := texture_loads
+    InvalidateRaylibAssets()
+    if texture_unloads != 35 || font_unloads != font_releases ||
+    unloads != target_releases || RetainedPreviousFrameTexture().id != frame ||
+    !SelectTypeface("updated") || graphics_failed { return 13 }
+    if ImageWidth("updated.png") != 200 || texture_loads != loads + 1 {
+        return 14
+    }
     return 0
 }

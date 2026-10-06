@@ -1,3 +1,14 @@
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "text_input_props"
+    host_api :: #system_library "host_api";
+    TextAreaHostedHost :: (session: Session, props: TextAreaProps) -> TextAreaResult #foreign host_api;
+    #program_export
+    TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult { return TextAreaHostedHost(session, props) }
+} else {
 #import "system_clipboard"
 #import "text_context_menu"
 #import "session"
@@ -1172,4 +1183,6 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             props.input.escape)
     }
     return result
+}
+
 }

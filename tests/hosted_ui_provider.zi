@@ -1,0 +1,35 @@
+#import "session"
+#import "text_props"
+#import "image_props"
+#import "button_props"
+#import "text_input_props"
+#import "scroll_props"
+#import "geometry"
+count: s32;
+#program_export "TextHostedHost"
+Text :: (session: Session, props: TextProps) {
+    if session.slot == 4 && session.epoch == cast(u64)12 && props.text == "Portable composition" { count += 1 }
+}
+#program_export "ImageHostedHost"
+Image :: (session: Session, image: ImageProps) {
+    if session.slot == 4 && image.asset_path == "assets/photo.png" { count += 1 }
+}
+#program_export "ButtonHostedHost"
+Button :: (session: Session, props: ButtonProps) -> s32 {
+    if session.slot == 4 && props.label == "Save" && count == 2 { return props.id }
+    return 0
+}
+#program_export "TextAreaHostedHost"
+TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+    if session.slot != 4 || props.value != "Saved text" { return TextAreaResult.{} }
+    return TextAreaResult.{.cursor = props.cursor + 1,
+        .edit = TextAreaEdit.{.changed = true, .replacement = "🌿"}}
+}
+#program_export "ScrollHostedHost"
+Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
+    if session.slot != 4 { return ScrollResult.{} }
+    return ScrollResult.{.opened = true, .scroll_offset = props.scroll_offset + 5,
+        .content = Rectangle.{.width = 200.0}}
+}
+#program_export "EndHostedHost"
+End :: (session: Session) -> bool { return session.slot == 4 && count == 2 }
