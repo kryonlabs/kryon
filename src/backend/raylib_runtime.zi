@@ -391,6 +391,27 @@ RaylibFontHasCodepoint :: (font: RaylibFont, codepoint: s32) -> bool {
     return glyphs[index].value == codepoint
 }
 
+// Registered fonts are available on every host, including hosts without
+// Fontconfig. Check the decoded glyph rather than just its requested seed:
+// raylib can substitute '?' for a character absent from the source font.
+RaylibRegisteredFallback :: (codepoint: s32) -> s32 {
+    for index: 0..raylib_typeface_count - 1 {
+        if index == raylib_active_typeface_index {
+            continue
+        }
+        typeface := *raylib_typefaces[index]
+        if !RaylibHasGlyph(typeface, codepoint) {
+            if !RaylibAddGlyph(typeface, codepoint) || !RaylibRebakeTypeface(typeface) {
+                continue
+            }
+        }
+        if RaylibFontHasCodepoint(typeface.font, codepoint) {
+            return index
+        }
+    }
+    return -1
+}
+
 // Fallback sources and misses are bounded and shared by registered faces.
 // They do not consume the application's named typeface slots.
 raylib_fallback_faces: [16]RaylibTypeface;
@@ -1158,8 +1179,15 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
         } else {
             selected := primary
             if !RaylibFontHasCodepoint(primary, codepoint) {
-                face := RaylibFindFallback(codepoint)
-                if face >= 0 { selected = RaylibTypefaceFontForSize(*raylib_fallback_faces[face], size) }
+                registered := RaylibRegisteredFallback(codepoint)
+                if registered >= 0 {
+                    selected = RaylibTypefaceFontForSize(*raylib_typefaces[registered], size)
+                } else {
+                    face := RaylibFindFallback(codepoint)
+                    if face >= 0 {
+                        selected = RaylibTypefaceFontForSize(*raylib_fallback_faces[face], size)
+                    }
+                }
             }
             glyph: [5]u8
             for index: 0..length - 1 { glyph[index] = bytes[at + index] }
