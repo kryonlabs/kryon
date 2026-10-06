@@ -359,3 +359,10 @@ test: pixmap-measure-test
 pixmap-density-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_density_test.sh
 test: pixmap-density-test
+
+.PHONY: pixmap-frame-test event-wake-sdl-test
+pixmap-frame-test: project-toolchain
+	sh tests/pixmap_frame_test.sh
+event-wake-sdl-test: project-toolchain
+	sh tests/event_wake_sdl_test.sh
+test: pixmap-frame-test event-wake-sdl-test

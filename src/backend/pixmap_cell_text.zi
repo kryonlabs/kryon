@@ -35,6 +35,9 @@ RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
         if mask.width <= 0 || mask.height <= 0 || coverage.count == 0 { continue }
         width := mask.width
         if width > cast(s32)bounds.width - 1 { width = cast(s32)bounds.width - 1 }
+        // Natural-width glyphs need no horizontal resampling. Reuse the
+        // ordinary clipped mask path instead of dividing for every pixel.
+        if width == mask.width { Pixels.PixmapBlendMask(mask, coverage, color); continue }
         left := mask.left
         if width != mask.width { left = cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2 }
         for row: 0..mask.height - 1 {

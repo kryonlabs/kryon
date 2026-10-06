@@ -1,0 +1,137 @@
+// Retained painting for the portable pixel backend. Hosts retain the same
+// surface between frames and invalidate the snapshot when external assets
+// change. Custom paint emitters must use Pixmap raster effects (and honor
+// its clip), as on an ordinary Pixmap frame.
+#import "geometry"
+#import "math"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+
+using FrameStatus;
+using PaintKind;
+
+PixmapFrameResult :: struct {
+    status: FrameStatus
+    paint_unchanged: bool
+    paint_count: s32
+    emitted_count: s32
+    // Device pixels, relative to the borrowed surface, for host uploads.
+    damage: Rectangle
+}
+frame_widths: [9]s32;
+frame_heights: [9]s32;
+frame_scales_x: [9]float32;
+frame_scales_y: [9]float32;
+frame_backgrounds: [9]u32;
+
+JoinDamage :: (a: Rectangle, b: Rectangle) -> Rectangle {
+    if a.width <= 0.0 || a.height <= 0.0 { return b }
+    if b.width <= 0.0 || b.height <= 0.0 { return a }
+    left := a.x; top := a.y; right := a.x + a.width; bottom := a.y + a.height
+    if b.x < left { left = b.x }; if b.y < top { top = b.y }
+    if b.x + b.width > right { right = b.x + b.width }
+    if b.y + b.height > bottom { bottom = b.y + b.height }
+    return .{left, top, right - left, bottom - top}
+}
+
+// Conservative coverage. Clipped labels/images can affect their complete
+// clip; cell labels also supply a tight cell rectangle. An unbounded or
+// unrecognized command gets the complete viewport instead of guessed bounds.
+PixmapPaintBounds :: (command: PaintCommand, viewport: Rectangle) -> Rectangle {
+    bounds := viewport
+    if command.kind == PaintKindClippedText {
+        bounds = command.clip
+        if command.bounds.width > 0.0 && command.bounds.height > 0.0 {
+            bounds = RectangleIntersection(bounds, command.bounds)
+        }
+    } else if command.kind == PaintKindImage {
+        bounds = command.clip
+    } else if command.kind == PaintKindLine || command.kind == PaintKindRoundedFill ||
+        command.kind == PaintKindRoundedOutline || command.kind == PaintKindVerticalGradient {
+        bounds = command.bounds
+        if bounds.width < 0.0 { bounds.x += bounds.width; bounds.width = -bounds.width }
+        if bounds.height < 0.0 { bounds.y += bounds.height; bounds.height = -bounds.height }
+        // Include inclusive line endpoints and device rounding at low density.
+        pad_x := 2.0 / pixmap_scale_x; pad_y := 2.0 / pixmap_scale_y
+        bounds.x -= pad_x; bounds.y -= pad_y
+        bounds.width += pad_x * 2.0; bounds.height += pad_y * 2.0
+        if command.clip_set {
+            clip := command.clip
+            clip.x -= pad_x; clip.y -= pad_y; clip.width += pad_x * 2.0; clip.height += pad_y * 2.0
+            bounds = RectangleIntersection(bounds, clip)
+        }
+    }
+    if !Finite32(bounds.x) || !Finite32(bounds.y) || !Finite32(bounds.width) || !Finite32(bounds.height) ||
+        !Finite32(bounds.x + bounds.width) || !Finite32(bounds.y + bounds.height) { return viewport }
+    bounds = RectangleIntersection(bounds, viewport)
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return .{} }
+    // Coverage follows device pixel rounding, including fractional widget
+    // clips. Selection must also repaint a neighbor whose edge shares a
+    // pixel with the damaged logical rectangle.
+    device := PixmapDeviceBounds(bounds)
+    left := FloorInteger(device.x); top := FloorInteger(device.y)
+    right := CeilInteger(device.x + device.width); bottom := CeilInteger(device.y + device.height)
+    bounds = .{cast(float32)left / pixmap_scale_x, cast(float32)top / pixmap_scale_y,
+        cast(float32)(right - left) / pixmap_scale_x, cast(float32)(bottom - top) / pixmap_scale_y}
+    return RectangleIntersection(bounds, viewport)
+}
+
+// Replays paint in its original order under one outer clip. Repainting all
+// intersecting layers preserves overlaps, transparency and overlay ordering.
+#program_export
+EndPixmapFrame :: (session: Session, reuse: bool,
+    background: u32 = cast(u32)PixmapBackground) -> PixmapFrameResult {
+    result: PixmapFrameResult; result.status = CommitFrame(session)
+    if result.status != cast(FrameStatus)FrameOk { PaintSnapshotInvalidate(session); return result }
+    slot := SessionIndex(session)
+    viewport: Rectangle = .{0.0, 0.0, cast(float32)pixmap_width / pixmap_scale_x,
+        cast(float32)pixmap_height / pixmap_scale_y}
+    if frame_widths[slot] != pixmap_width || frame_heights[slot] != pixmap_height ||
+        frame_scales_x[slot] != pixmap_scale_x || frame_scales_y[slot] != pixmap_scale_y ||
+        frame_backgrounds[slot] != background { PaintSnapshotInvalidate(session) }
+    frame_widths[slot] = pixmap_width; frame_heights[slot] = pixmap_height
+    frame_scales_x[slot] = pixmap_scale_x; frame_scales_y[slot] = pixmap_scale_y
+    frame_backgrounds[slot] = background
+    result.paint_count = PendingPaintCount(session)
+    unchanged: bool
+    damage: Rectangle
+    if !reuse || !paint_snapshots_valid[slot] {
+        unchanged = PaintPlanUnchanged(session); damage = viewport
+    }
+    else {
+        previous_count := cast(s32)paint_snapshots[slot].count
+        unchanged = previous_count == result.paint_count
+        count := result.paint_count; if previous_count > count { count = previous_count }
+        for index: 0..count - 1 {
+            current: PaintCommand
+            if index < result.paint_count { current = PendingPaintAt(session, index) }
+            if index < result.paint_count && index < previous_count &&
+                PaintCommandEqual(slot, current, paint_snapshots[slot][index]) { continue }
+            unchanged = false
+            if index < result.paint_count { damage = JoinDamage(damage, PixmapPaintBounds(current, viewport)) }
+            if index < previous_count { damage = JoinDamage(damage, PixmapPaintBounds(paint_snapshots[slot][index].data, viewport)) }
+        }
+    }
+    result.paint_unchanged = unchanged
+    frame_paint_unchanged[slot] = unchanged && reuse
+    if unchanged && reuse { PaintClear(session); return result }
+    // Store only after examining the old coverage, including removed paint.
+    if !unchanged && !PaintSnapshotStore(session) { result.paint_unchanged = false }
+    if damage.width > 0.0 && damage.height > 0.0 {
+        PixmapDamageBegin(damage, background); result.damage = PixmapDamageBounds()
+        raster_damage: Rectangle = .{result.damage.x / pixmap_scale_x, result.damage.y / pixmap_scale_y,
+            result.damage.width / pixmap_scale_x, result.damage.height / pixmap_scale_y}
+        for index: 0..result.paint_count - 1 {
+            command := pending_paint[slot].items[index]
+            command.data = PendingPaintAt(session, index)
+            visible := RectangleIntersection(PixmapPaintBounds(command.data, viewport), raster_damage)
+            if visible.width <= 0.0 || visible.height <= 0.0 { continue }
+            EmitPaint(command); result.emitted_count += 1
+        }
+        PixmapDamageEnd()
+    }
+    PaintClear(session); return result
+}
