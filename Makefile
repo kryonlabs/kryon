@@ -367,6 +367,11 @@ event-wake-sdl-test: project-toolchain
 	sh tests/event_wake_sdl_test.sh
 test: pixmap-frame-test event-wake-sdl-test
 
+.PHONY: pixmap-parallel-test
+pixmap-parallel-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_parallel_test.sh
+test: pixmap-parallel-test
+
 # Requires a canonical Taiji checkout and a private headless QEMU guest.
 .PHONY: pixmap-surface-plan9-test
 pixmap-surface-plan9-test: project-toolchain

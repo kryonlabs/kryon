@@ -1,0 +1,43 @@
+#import "pixmap"
+
+pixels: [81924]u32;
+image: [4096]u32;
+
+#program_export
+main :: () -> s32 {
+    for i: 0..cast(s32)4095 { image[i] = cast(u32)0x80010203 + cast(u32)i * cast(u32)39113 }
+    // Guard the surface's trailing storage through clears, damage and paints.
+    for i: cast(s32)81920..81923 { pixels[i] = cast(u32)0xdeadbeef }
+    unused PixmapBeginInto(cast(u32)0x123456, 320, 256, pixels[:], true)
+    workers := PixmapWorkerCount()
+    unused PixmapSetImage(0, "fixture.png", 64, 64, image[:])
+    for pass: 0..cast(s32)15 {
+        PixmapClipTo(.{-3.0, 2.0, 322.0, 248.0})
+        PixmapFillRounded(-7, -3, 326, 253, 24 + pass, .{201, 37, 103, cast(u8)(67 + pass * 11)})
+        RasterImage("fixture.png", 0, .{0.0, 0.0, 64.0, 64.0}, .{2.3, -5.7, 314.0, 260.0},
+            .{0.0, 0.0, 320.0, 256.0}, .{0.0, 0.0}, 0.0, 15.0, .{211, 173, 241, 151})
+        RasterImage("fixture.png", 0, .{2.0, 4.0, 57.0, 52.0}, .{4.3, -3.7, 301.0, 258.0},
+            .{-2.0, 1.5, 325.0, 254.0}, .{3.0, 5.0}, cast(float32)pass, 21.0, .{127, 251, 113, 127})
+        PixmapDamageBegin(.{2.5, 0.5, 315.0, 252.0}, cast(u32)0x304050)
+        PixmapFillRounded(-7, -3, 326, 260, 42, .{127, 51, 211, 191})
+        PixmapDamageEnd()
+    }
+    // Both exact and offset views of the destination can be image storage.
+    // Such images retain ordered serial semantics, never racing other rows.
+    unused PixmapSetImage(1, "overlap.png", 320, 256, pixels[:81920])
+    RasterImage("overlap.png", 0, .{0.0, 0.0, 320.0, 255.0}, .{0.0, 1.0, 320.0, 255.0},
+        .{0.0, 0.0, 320.0, 256.0}, .{0.0, 0.0}, 0.0, 0.0, .{255, 255, 255, 255})
+    unused PixmapSetImage(2, "offset.png", 319, 256, pixels[1:81665])
+    RasterImage("offset.png", 0, .{0.0, 0.0, 319.0, 256.0}, .{0.0, 0.0, 320.0, 256.0},
+        .{0.0, 0.0, 320.0, 256.0}, .{0.0, 0.0}, 0.0, 0.0, .{255, 255, 255, 191})
+    checksum: u64 = cast(u64)1469598103934665603
+    for i: 0..cast(s32)81919 { checksum = (checksum ^ cast(u64)pixels[i]) * cast(u64)1099511628211 }
+    for i: cast(s32)81920..81923 { if pixels[i] != cast(u32)0xdeadbeef { return 1 } }
+    PixmapClearImage(0); PixmapClearImage(1); PixmapClearImage(2); PixmapEndInto(); PixmapCloseWorkers()
+    if PixmapWorkerCount() != 1 { return 2 }
+    // Closing and reopening releases and recreates all synchronization state.
+    unused PixmapBeginInto(cast(u32)0, 320, 256, pixels[:])
+    if PixmapWorkerCount() != workers { return 3 }
+    PixmapEndInto(); PixmapCloseWorkers()
+    print("workers %\nchecksum %\n", workers, checksum); return 0
+}

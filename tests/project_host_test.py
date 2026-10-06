@@ -10,10 +10,14 @@ from toolchain import ZIRAN, ZIRAN_ROOT
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(arguments, project, success=True):
+def run(arguments, project, success=True, makeflags=None, env_updates=None):
     environment = os.environ.copy()
-    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "ZIRAN_PAR_THREADS"):
         environment.pop(name, None)
+    if makeflags is not None:
+        environment['MAKEFLAGS'] = makeflags
+    if env_updates:
+        environment.update(env_updates)
     result = subprocess.run(arguments, cwd=project, env=environment,
                             capture_output=True, text=True)
     if success:
@@ -56,9 +60,36 @@ def main():
         )
         run([str(ZIRAN), "lock"], project)
         run([str(ZIRAN), "build"], project)
+        # Harmony and other hosts pass their driver through nested make.
+        # The profile must still use its resolved absolute toolchain path.
+        run([str(ZIRAN), "build"], project, makeflags=" -- ZIRAN=ziran")
         run([str(ZIRAN), "check"], project)
         result = run([str(project / "build/host_probe-tui"), "--probe"], project)
         assert result.stdout == "custom host\n", result.stdout
+
+        # The package tool first saves IR. Native capability selection must
+        # survive that route without making portable bundles require pthreads.
+        (project / "src/raster.zi").write_text(
+            '#import "kryon/pixmap"\n'
+            'pixels: [81920]u32;\n'
+            '#program_export\nmain :: () -> s32 {\n'
+            '    if !PixmapBeginInto(cast(u32)0, 320, 256, pixels[:]) { return 1 }\n'
+            '    print("workers %\\n", PixmapWorkerCount())\n'
+            '    PixmapEndInto(); PixmapCloseWorkers(); return 0\n}\n'
+        )
+        with (project / "ziran.toml").open('a') as manifest:
+            manifest.write(
+                '\n[tool.kryon.profiles.raster]\nbackend = "pixmap"\nhost = "src/raster.zi"\n'
+                '\n[tool.kryon.profiles.portable]\nbackend = "pixmap"\ncodegen = "zib"\nhost = "src/raster.zi"\n'
+            )
+        run([str(ZIRAN), "tool", "kryon", "build", "raster"], project)
+        for count in (1, None, 8):
+            result = run([str(project / "build/host_probe-raster")], project,
+                         env_updates={'ZIRAN_PAR_THREADS': str(count)} if count else None)
+            assert result.stdout == f"workers {count or 4}\n", result.stdout
+        run([str(ZIRAN), "tool", "kryon", "build", "portable"], project)
+        result = run([str(ZIRAN), "run", str(project / "build/host_probe-portable.zib")], project)
+        assert result.stdout.splitlines()[0] == "workers 1", result.stdout
 
         outside = Path(temporary) / "outside.zi"
         outside.write_text((project / "src/runner.zi").read_text())

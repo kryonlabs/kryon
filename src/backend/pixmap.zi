@@ -5,6 +5,57 @@
 ImageCanvas :: #import "image_canvas";
 #import "math"
 
+#if #defined(POSIX_THREADS) {
+    Workers :: #import "std/parallel_linux";
+    pixmap_workers: Workers.ParallelPool;
+    PixmapRowProcedure :: #type (start: s64, end: s64, argument: *void) #c_call;
+    PixmapRowWork :: struct { procedure: PixmapRowProcedure; argument: *void }
+    PixmapRunRows :: (start: s64, end: s64, argument: *void) {
+        work := cast(*PixmapRowWork)argument; work.procedure(start, end, work.argument)
+    }
+    // The frame owner fixes the surface, clip and assets for each operation.
+    // Workers write disjoint rows and join before the next ordered paint.
+    PixmapRows :: (start: s32, end: s32, width: s32,
+        procedure: PixmapRowProcedure, argument: *void, independent: bool = true) {
+        if end <= start || width <= 0 { return }
+        // Small retained damage costs less than waking the pool.
+        if independent && cast(s64)(end - start) * width >= 65536 {
+            work: PixmapRowWork = .{procedure, argument}
+            callback: Workers.RangeProcedure = PixmapRunRows
+            Workers.ParallelRun(*pixmap_workers, cast(s64)start, cast(s64)end, callback, cast(*void)*work); return
+        }
+        procedure(cast(s64)start, cast(s64)end, argument)
+    }
+    PixmapClearRows :: (start: s64, end: s64, argument: *void) {
+        data := cast(*PixmapClearRowsData)argument
+        PixmapClearRange(cast(s32)start, cast(s32)end, data.*)
+    }
+    PixmapFillRows :: (start: s64, end: s64, argument: *void) {
+        data := cast(*PixmapFillRowsData)argument
+        PixmapFillRange(cast(s32)start, cast(s32)end, data.*)
+    }
+    PixmapImageRows :: (start: s64, end: s64, argument: *void) {
+        data := cast(*PixmapImageRowsData)argument
+        PixmapImageRange(cast(s32)start, cast(s32)end, data.*)
+    }
+}
+
+// Call before unloading a native raster host. EndInto only drops the surface;
+// keeping the idle pool alive between frames avoids creating threads again.
+#program_export
+PixmapCloseWorkers :: () {
+    #if #defined(POSIX_THREADS) {
+        Workers.ParallelClose(*pixmap_workers)
+    }
+}
+#program_export
+PixmapWorkerCount :: () -> s32 {
+    #if #defined(POSIX_THREADS) {
+        return pixmap_workers.workers + 1
+    }
+    return 1
+}
+
 // A headless host: Kryon paints a frame into this pixel buffer, and
 // PixmapPresent prints it as a PPM image on standard output. The raster is
 // integer arithmetic over the paint queue's values and text is drawn from
@@ -115,10 +166,12 @@ PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32,
     opaque: bool = false) -> bool {
     if !PixmapResumeInto(width, height, pixels, opaque) { return false }
     background = background | pixmap_alpha
-    index: s32 = 0
-    while index < width * height {
-        pixmap_surface[index] = background
-        index += 1
+    clear: PixmapClearRowsData = .{background, 0, width}
+    #if #defined(POSIX_THREADS) {
+        procedure: PixmapRowProcedure = PixmapClearRows
+        PixmapRows(0, height, width, procedure, cast(*void)*clear)
+    } else {
+        PixmapClearRange(0, height, clear)
     }
     PixmapClipAll()
     return true
@@ -176,11 +229,20 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     pixmap_damage_active = true; PixmapClipAll()
     if !clear { return }
     background = background | pixmap_alpha
+    clear_rows: PixmapClearRowsData = .{background, pixmap_clip_left, pixmap_clip_right}
+    #if #defined(POSIX_THREADS) {
+        procedure: PixmapRowProcedure = PixmapClearRows
+        PixmapRows(pixmap_clip_top, pixmap_clip_bottom, pixmap_clip_right - pixmap_clip_left, procedure, cast(*void)*clear_rows)
+    } else {
+        PixmapClearRange(pixmap_clip_top, pixmap_clip_bottom, clear_rows)
+    }
+}
+
+PixmapClearRowsData :: struct { background: u32; left: s32; right: s32 }
+PixmapClearRange :: (start: s32, end: s32, data: PixmapClearRowsData) {
     surface := pixmap_surface; stride := pixmap_width
-    left := pixmap_clip_left; right := pixmap_clip_right
-    top := pixmap_clip_top; bottom := pixmap_clip_bottom
-    for y: top..bottom - 1 {
-        for at: y * stride + left..y * stride + right - 1 { surface[at] = background }
+    for y: cast(s32)start..cast(s32)end - 1 {
+        for at: y * stride + data.left..y * stride + data.right - 1 { surface[at] = data.background }
     }
 }
 
@@ -345,9 +407,21 @@ PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Co
     right: s32 = x1
     if right > pixmap_clip_right { right = pixmap_clip_right }
     if left >= right || top >= bottom { return }
+    rows: PixmapFillRowsData = .{x0, y0, x1, y1, r, left, right, color}
+    #if #defined(POSIX_THREADS) {
+        procedure: PixmapRowProcedure = PixmapFillRows
+        PixmapRows(top, bottom, right - left, procedure, cast(*void)*rows)
+    } else {
+        PixmapFillRange(top, bottom, rows)
+    }
+}
+PixmapFillRowsData :: struct { x0: s32; y0: s32; x1: s32; y1: s32; radius: s32; left: s32; right: s32; color: Color }
+PixmapFillRange :: (start: s32, end: s32, data: PixmapFillRowsData) {
+    x0 := data.x0; y0 := data.y0; x1 := data.x1; y1 := data.y1; r := data.radius
+    left := data.left; right := data.right; color := data.color
     surface := pixmap_surface; stride := pixmap_width
-    y: s32 = top
-    while y < bottom {
+    y: s32 = cast(s32)start
+    while y < cast(s32)end {
         corner_row: bool = y < y0 + r || y >= y1 - r
         row: s32 = y * stride
         x: s32 = left
@@ -703,26 +777,21 @@ RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
         if top < cast(float32)pixmap_clip_top { top = cast(float32)pixmap_clip_top }
         if right > cast(float32)pixmap_clip_right { right = cast(float32)pixmap_clip_right }
         if bottom > cast(float32)pixmap_clip_bottom { bottom = cast(float32)pixmap_clip_bottom }
-        for y: FloorInteger(top)..CeilInteger(bottom) - 1 {
-            for x: FloorInteger(left)..CeilInteger(right) - 1 {
-                px := cast(float32)x + 0.5; py := cast(float32)y + 0.5
-                if !ImageCanvas.InsideRoundedClip(px, py, clip, radius) { continue }
-                dx := px - destination.x; dy := py - destination.y
-                local_x := dx * cosine + dy * sine + origin.x
-                local_y := -dx * sine + dy * cosine + origin.y
-                if local_x < 0.0 || local_y < 0.0 || local_x >= destination.width || local_y >= destination.height { continue }
-                sx := source.x + local_x * source.width / destination.width
-                sy := source.y + local_y * source.height / destination.height
-                if !Finite32(sx) || !Finite32(sy) || sx < 0.0 || sy < 0.0 ||
-                    sx >= cast(float32)pixmap_image_widths[slot] || sy >= cast(float32)pixmap_image_heights[slot] { continue }
-                packed := pixmap_image_pixels[slot].value[FloorInteger(sy) * pixmap_image_widths[slot] + FloorInteger(sx)]
-                color: Color
-                color.r = cast(u8)(((packed >> cast(u32)16) & cast(u32)255) * cast(u32)tint.r / cast(u32)255)
-                color.g = cast(u8)(((packed >> cast(u32)8) & cast(u32)255) * cast(u32)tint.g / cast(u32)255)
-                color.b = cast(u8)((packed & cast(u32)255) * cast(u32)tint.b / cast(u32)255)
-                color.a = cast(u8)((packed >> cast(u32)24) * cast(u32)tint.a / cast(u32)255)
-                PixmapBlend(x, y, color, 255)
+        rows: PixmapImageRowsData = .{slot, FloorInteger(left), CeilInteger(right), source, destination, clip, origin, cosine, sine, radius, tint}
+        #if #defined(POSIX_THREADS) {
+            procedure: PixmapRowProcedure = PixmapImageRows
+            independent := true
+            // An image may borrow the destination surface. Preserve ordered
+            // serial behavior for every overlapping view of that storage.
+            image := pixmap_image_pixels[slot].value
+            if image.count > 0 {
+                source_start := cast(usize)*image[0]; source_end := source_start + cast(usize)image.count * 4
+                target_start := cast(usize)*pixmap_surface[0]; target_end := target_start + cast(usize)(pixmap_width * pixmap_height) * 4
+                independent = source_end <= target_start || target_end <= source_start
             }
+            PixmapRows(FloorInteger(top), CeilInteger(bottom), CeilInteger(right) - FloorInteger(left), procedure, cast(*void)*rows, independent)
+        } else {
+            PixmapImageRange(FloorInteger(top), CeilInteger(bottom), rows)
         }
         return
     }
@@ -747,6 +816,37 @@ RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
         y += 8
     }
     PixmapClipAll()
+}
+
+PixmapImageRowsData :: struct {
+    slot: s32; left: s32; right: s32
+    source: Rectangle; destination: Rectangle; clip: Rectangle; origin: Vector2
+    cosine: float32; sine: float32; radius: float32; tint: Color
+}
+PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
+    slot := data.slot; source := data.source; destination := data.destination
+    clip := data.clip; origin := data.origin; cosine := data.cosine; sine := data.sine; radius := data.radius; tint := data.tint
+    for y: cast(s32)start..cast(s32)end - 1 {
+        for x: data.left..data.right - 1 {
+            px := cast(float32)x + 0.5; py := cast(float32)y + 0.5
+            if !ImageCanvas.InsideRoundedClip(px, py, clip, radius) { continue }
+            dx := px - destination.x; dy := py - destination.y
+            local_x := dx * cosine + dy * sine + origin.x
+            local_y := -dx * sine + dy * cosine + origin.y
+            if local_x < 0.0 || local_y < 0.0 || local_x >= destination.width || local_y >= destination.height { continue }
+            sx := source.x + local_x * source.width / destination.width
+            sy := source.y + local_y * source.height / destination.height
+            if !Finite32(sx) || !Finite32(sy) || sx < 0.0 || sy < 0.0 ||
+                sx >= cast(float32)pixmap_image_widths[slot] || sy >= cast(float32)pixmap_image_heights[slot] { continue }
+            packed := pixmap_image_pixels[slot].value[FloorInteger(sy) * pixmap_image_widths[slot] + FloorInteger(sx)]
+            color: Color
+            color.r = cast(u8)(((packed >> cast(u32)16) & cast(u32)255) * cast(u32)tint.r / cast(u32)255)
+            color.g = cast(u8)(((packed >> cast(u32)8) & cast(u32)255) * cast(u32)tint.g / cast(u32)255)
+            color.b = cast(u8)((packed & cast(u32)255) * cast(u32)tint.b / cast(u32)255)
+            color.a = cast(u8)((packed >> cast(u32)24) * cast(u32)tint.a / cast(u32)255)
+            PixmapBlend(x, y, color, 255)
+        }
+    }
 }
 
 #program_export
