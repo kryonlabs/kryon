@@ -1,0 +1,86 @@
+#import "geometry"
+#import "drawing_props"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+Cells :: #import "pixmap_cell_text";
+using FrameStatus;
+
+actual: [12288]u32;
+expected: [12288]u32;
+image: [16]u32;
+
+Compose :: (session: Session, index: s32, viewport: Rectangle) {
+    unused BeginFrame(session, cast(u64)1, viewport)
+    white: Color = .{255, 255, 255, 255}
+    PaintRoundedFill(session, -1, .{2.0, 2.0, 32.0, 25.0}, 4.0, 8, .{40, 30, 100, 180})
+    PaintVerticalGradient(session, -1, .{20.3, 3.7, 42.0, 21.0}, .{10, 230, 20, 80}, .{20, 40, 230, 160})
+    PaintImage(session, -1, "test.png", 0, .{0.0, 0.0, 4.0, 4.0}, .{11.2, 12.8, 22.0, 20.0},
+        .{4.2, 5.8, 50.0, 35.0}, .{2.0, 1.0}, 27.0, 3.0, white)
+    PaintClippedLabel(session, -1, "café Ω Á", 3, 6, 12, white, .{2.4, 4.6, 54.2, 20.7})
+    for col: 0..5 {
+        Cells.PaintTextCell(session, -1, "M", .{cast(float32)col * 9.0 + 3.4, 26.6, 9.0, 16.0},
+            14, white, .{2.3, 26.1, 54.5, 16.3})
+    }
+    if index % 4 != 3 {
+        x := cast(float32)(index % 9) * 4.3 + 4.4
+        PaintRoundedFill(session, -1, .{x, 25.4, 7.3, 16.2}, 2.5, 8, .{240, 70, 10, 120})
+        PaintRoundedOutline(session, -1, .{x, 25.4, 7.3, 16.2}, 2.5, 8, 1.1, white)
+    }
+    PaintLine(session, -1, .{30.4, 36.2, -23.0, -21.0}, .{90, 180, 230, 160})
+    if index % 8 == 5 { PaintLabel(session, -1, "wide text", 8, 30, 12, white) }
+}
+
+Compare :: (fast: Session, full: Session, index: s32, density: float32,
+    width: s32, height: s32, background: u32, reuse: bool = true) -> bool {
+    viewport: Rectangle = .{0.0, 0.0, cast(float32)width / density, cast(float32)height / density}
+    unused PixmapResumeInto(width, height, actual[:]); unused PixmapScale(density, density)
+    Compose(fast, index, viewport); result := EndPixmapFrame(fast, reuse, background)
+    if result.status != cast(FrameStatus)FrameOk { return false }
+    PixmapEndInto()
+    unused PixmapBeginInto(background, width, height, expected[:]); unused PixmapScale(density, density)
+    Compose(full, index, viewport)
+    if EndFrame(full) != cast(FrameStatus)FrameOk { return false }
+    PixmapEndInto()
+    for at: 0..width * height - 1 {
+        if actual[at] != expected[at] { print("pixel mismatch frame % density % at % actual % expected %\n", index, density, at, actual[at], expected[at]); return false }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    fast := SessionOpen(); full := SessionOpen()
+    for at: 0..15 { image[at] = cast(u32)0x904040c0 + cast(u32)(at * 8192) }
+    unused PixmapSetImage(0, "test.png", 4, 4, image[:])
+    densities: [5]float32 = .[0.5, 1.0, 1.25, 1.5, 2.0]
+    for density: densities {
+        width := cast(s32)(64.0 * density); height := cast(s32)(48.0 * density)
+        for index: cast(s32)0..31 {
+            if !Compare(fast, full, index, density, width, height, 0x101828) { return 1 }
+            if !Compare(fast, full, index, density, width, height, 0x101828) { return 2 }
+        }
+        // Explicit full redraw, background/size changes and an external image
+        // publication must all discard retained pixels correctly.
+        if !Compare(fast, full, 0, density, width, height, 0x101828, false) { return 3 }
+        if !Compare(fast, full, 0, density, width, height, 0x201030) { return 4 }
+        if !Compare(fast, full, 0, density, width - 1, height - 1, 0x201030) { return 5 }
+        image[0] = cast(u32)0xffe01020; unused PixmapSetImage(0, "test.png", 4, 4, image[:])
+        PaintSnapshotInvalidate(fast)
+        if !Compare(fast, full, 0, density, width, height, 0x101828) { return 6 }
+    }
+    // Cursor-sized paint must not emit the unchanged remote cells.
+    viewport: Rectangle = .{0.0, 0.0, 64.0, 48.0}
+    unused PixmapResumeInto(64, 48, actual[:]); Compose(fast, 0, viewport)
+    unused EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
+    unused PixmapResumeInto(64, 48, actual[:]); Compose(fast, 1, viewport)
+    result := EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
+    if result.paint_unchanged || result.damage.width * result.damage.height >= 64.0 * 48.0 ||
+        result.emitted_count >= result.paint_count { return 7 }
+    unused CloseSession(fast); unused CloseSession(full); PixmapClearImage(0)
+    print("Damaged frames match full raster across clipping, density, removals and translucent overlaps\n")
+    return 0
+}

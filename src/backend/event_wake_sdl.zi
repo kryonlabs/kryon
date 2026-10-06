@@ -1,0 +1,31 @@
+// Wakes an SDL event waiter without polling or touching windows. The event
+// type is reserved once on the host thread after SDL initialization; keep
+// the record immutable and alive until all sending workers have joined.
+sdl :: #system_library "SDL2";
+RegisterEvents :: (count: s32) -> u32 #foreign sdl "SDL_RegisterEvents";
+PushEvent :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
+
+EventWake :: struct { kind: u32 }
+WakeEvent :: struct { kind: u32; timestamp: u32; payload: [6]u64 }
+
+OpenEventWake :: (wake: *EventWake) -> bool {
+    if wake == null { return false }
+    if wake.kind >= cast(u32)32768 && wake.kind < cast(u32)65535 { return true }
+    kind := RegisterEvents(1)
+    if kind < cast(u32)32768 || kind >= cast(u32)65535 { return false }
+    wake.kind = kind; return true
+}
+
+// Suitable for a std/thread_linux ThreadStart completion notification.
+// SDL copies the union before returning and SDL_PushEvent is thread-safe.
+// The event carries no result pointers: the host joins its worker to read
+// them. A full or filtered event queue leaves ordinary host timers in place.
+SendEventWake :: (argument: *void) {
+    if argument == null { return }
+    wake := cast(*EventWake)argument
+    if wake.kind < cast(u32)32768 || wake.kind >= cast(u32)65535 { return }
+    // SDL2's event union is 56 bytes on its supported 32/64-bit ABIs.
+    // Native pointer fields require pointer alignment even in an empty event.
+    event: WakeEvent; event.kind = wake.kind
+    unused PushEvent(cast(*void)*event)
+}

@@ -1,0 +1,70 @@
+Wake :: #import "event_wake_sdl";
+#import "std/thread_linux"
+#import "std/c_string"
+
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+Counter :: () -> u64 #foreign sdl "SDL_GetPerformanceCounter";
+Frequency :: () -> u64 #foreign sdl "SDL_GetPerformanceFrequency";
+Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
+Wait :: (event: *void, timeout: s32) -> s32 #foreign sdl "SDL_WaitEventTimeout";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+
+Work :: struct { delay: u32; ready: u64; result: s32 }
+Complete :: (argument: *void) {
+    work := cast(*Work)argument
+    Delay(work.delay); work.result = 42; work.ready = Counter()
+}
+
+main :: () -> s32 {
+    // The shell harness starts a private Xvfb before this video-only host.
+    if Init(cast(u32)32) != 0 { return 1 }
+    defer Quit()
+    title: [32]u8; unused CopyCString("Owned event wake test", title[:])
+    window := CreateWindow(*title[0], 0, 0, 160, 120, cast(u32)8)
+    if window == null { return 2 }
+    defer DestroyWindow(window)
+    first: Wake.EventWake; second: Wake.EventWake; invalid: Wake.EventWake
+    if Wake.OpenEventWake(null) || !Wake.OpenEventWake(*first) || !Wake.OpenEventWake(*second) || first.kind == second.kind { return 3 }
+    kind := first.kind
+    if !Wake.OpenEventWake(*first) || first.kind != kind { return 4 }
+    Wake.SendEventWake(null); Wake.SendEventWake(cast(*void)*invalid)
+    event: [7]u64; event_type := cast(*u32)(*event[0]); event_pointer := cast(*void)*event[0]
+    procedure: ThreadProcedure = Complete
+    notify: ThreadProcedure = Wake.SendEventWake
+    frequency := Frequency(); if frequency == cast(u64)0 { return 5 }
+    thread: Thread; work: Work
+    for mode: 0..1 {
+        for sample: 0..59 {
+            while Poll(event_pointer) != 0 { if event_type.* == first.kind || event_type.* == second.kind { return 6 } }
+            work = .{}; work.delay = cast(u32)(1 + (sample * 17) % 37)
+            notification: ThreadNotification
+            expected := ifx sample % 2 == 0 then first.kind else second.kind
+            if mode == 1 { notification.procedure = notify; notification.argument = ifx sample % 2 == 0 then cast(*void)*first else cast(*void)*second }
+            if !ThreadStart(*thread, procedure, cast(*void)*work, notification) { return 7 }
+            events: s32
+            while !ThreadFinished(*thread) {
+                if Wait(event_pointer, 40) != 0 && (event_type.* == first.kind || event_type.* == second.kind) {
+                    if mode == 0 || event_type.* != expected { ThreadWait(*thread); return 8 }
+                    events += 1
+                }
+            }
+            applied := Counter()
+            // Join is the publication boundary for results. A worker that
+            // finished before Wait started can leave its notice queued.
+            while Poll(event_pointer) != 0 {
+                if event_type.* == first.kind || event_type.* == second.kind {
+                    if mode == 0 || event_type.* != expected { return 9 }; events += 1
+                }
+            }
+            if work.result != 42 || work.ready == cast(u64)0 || events != mode { return 10 }
+            microseconds := cast(float64)(applied - work.ready) * 1000000.0 / cast(float64)frequency
+            print("sample % % % %\n", mode, sample, work.delay, microseconds)
+        }
+    }
+    print("Completion wake publication, distinct event types and thread reuse passed\n")
+    return 0
+}
