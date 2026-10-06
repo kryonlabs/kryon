@@ -1,0 +1,89 @@
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using WidgetKind;
+
+bounds :: Rectangle.{0.0, 0.0, 100.0, 100.0};
+
+LateModal :: (session: Session) {
+    modal := TreeSubmit(session, cast(u64)9001, 0, WidgetKindModal, bounds)
+    button := TreeSubmit(session, cast(u64)9002, modal, WidgetKindButton, bounds)
+    TreeSetInteractive(session, button, false, false, 1)
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    other := SessionOpen()
+    if TreeTopModalLayer(session) != 0 || TreeTopModalLayer(other) != 0 { return 1 }
+    TreeStart(session, cast(u64)1, bounds)
+    page := TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, bounds)
+    TreeSetInteractive(session, page, false, false, 1)
+    modal := TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
+    first := TreeSubmit(session, cast(u64)4, modal, WidgetKindButton, bounds)
+    TreeSetInteractive(session, first, false, false, 1)
+    scroll := TreeSubmit(session, cast(u64)5, modal, WidgetKindScroll, bounds)
+    // A replacement frame must not lend input to uncommitted modal nodes.
+    if TreeTopModalLayer(session) != 0 { return 2 }
+    if !TreeFinish(session) || TreeTopModalLayer(session) != modal + 1 ||
+        TreeInputAllowedAt(session, page) || !TreeInputAllowedAt(session, first) ||
+        !TreeScrollAllowed(session, cast(u64)5) ||
+        TreeScrollAllowed(session, cast(u64)99) ||
+        TreeHitAt(session, 10.0, 10.0) != first { return 3 }
+    if scroll != 4 || TreeTopModalLayer(other) != 0 { return 4 }
+    // A failed replacement retains both modal policy and committed geometry.
+    TreeStart(session, cast(u64)1, bounds)
+    TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, bounds)
+    TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
+    TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
+    if TreeFinish(session) || TreeTopModalLayer(session) != modal + 1 ||
+        TreeHitAt(session, 10.0, 10.0) != first { return 5 }
+    TreeStart(session, cast(u64)1, bounds)
+    page = TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, bounds)
+    TreeSetInteractive(session, page, false, false, 1)
+    if TreeTopModalLayer(session) != modal + 1 { return 6 }
+    if !TreeFinish(session) || TreeTopModalLayer(session) != 0 ||
+        TreeHitAt(session, 10.0, 10.0) != page ||
+        !TreeScrollAllowed(session, cast(u64)99) { return 7 }
+    // Modal descendants win over later page controls.
+    TreeStart(session, cast(u64)1, bounds)
+    modal = TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
+    first = TreeSubmit(session, cast(u64)4, modal, WidgetKindButton, bounds)
+    TreeSetInteractive(session, first, false, false, 1)
+    nested := TreeSubmit(session, cast(u64)6, modal, WidgetKindModal, bounds)
+    top := TreeSubmit(session, cast(u64)7, nested, WidgetKindButton, bounds)
+    TreeSetInteractive(session, top, false, false, 1)
+    page = TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, bounds)
+    TreeSetInteractive(session, page, false, false, 1)
+    index: s32 = 0
+    while index < 1000 {
+        TreeSubmit(session, cast(u64)(100 + index), 0, WidgetKindText, bounds)
+        index += 1
+    }
+    if !TreeFinish(session) || TreeTopModalLayer(session) != nested + 1 ||
+        TreeInputAllowedAt(session, first) || TreeInputAllowedAt(session, page) ||
+        !TreeInputAllowedAt(session, top) ||
+        TreeHitAt(session, 10.0, 10.0) != top { return 8 }
+    // Late widgets are included in the same accepted frame.
+    TreeStart(session, cast(u64)1, bounds)
+    if !TreeDefer(session, LateModal) || !TreeFinish(session) ||
+        TreeTopModalLayer(session) != 2 || TreeHitAt(session, 10.0, 10.0) != 2 { return 9 }
+    // Invalid scopes cannot publish a modal policy from a rejected frame.
+    TreeStart(session, cast(u64)1, bounds)
+    if !TreePushScope(session, 0) || TreeFinish(session) ||
+        TreeTopModalLayer(session) != 2 { return 10 }
+    TreeDispose(session)
+    if TreeTopModalLayer(session) != 0 || !SessionClose(session) ||
+        TreeTopModalLayer(session) != 0 { return 11 }
+    reopened := SessionOpen()
+    if reopened.slot != session.slot || TreeTopModalLayer(reopened) != 0 { return 12 }
+    TreeStart(reopened, cast(u64)1, bounds)
+    if !TreeFinish(reopened) || TreeTopModalLayer(reopened) != 0 { return 13 }
+    TreeDispose(reopened)
+    TreeDispose(other)
+    if !SessionClose(reopened) || !SessionClose(other) { return 14 }
+    return 0
+}

@@ -269,16 +269,7 @@ PointInCircleBounds :: (x: float32, y: float32,
 // from the page loses ownership when a modal is opened over it.
 #program_export
 TreeTopModalLayer :: (session: Session) -> s32 {
-    top: s32 = 0
-    candidate: s32 = TreeCount(session) - 1
-    while candidate > 0 {
-        if TreeInputAt(session, candidate).kind == WidgetKindModal {
-            top = candidate + 1
-            break
-        }
-        candidate -= 1
-    }
-    return top
+    return TreeModalLayer(session)
 }
 
 #program_export
