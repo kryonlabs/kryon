@@ -92,8 +92,7 @@ TextAreaFaceFor :: (props: TextAreaProps,
 
 // Rows preserve every byte, including spaces at wrap boundaries. The cursor
 // can therefore address the original value without a shadow text buffer.
-#program_export
-TextAreaNextRow :: (value: string, start: s32,
+TextAreaNextRowUncached :: (value: string, start: s32,
     wrap_width: s32, font: s32,
     typeface: string) -> TextAreaRow {
     row: TextAreaRow
@@ -128,6 +127,83 @@ TextAreaNextRow :: (value: string, start: s32,
         if value[cursor] == cast(u8)32 ||
             value[cursor] == cast(u8)9 { break_after = next }
         cursor = next
+    }
+    return row
+}
+
+// Retain only row boundaries, never borrowed values or glyph state. A bounded
+// content cache shares wrapping between height, caret, selection and painting,
+// and between unchanged frames. Changing any metric or byte invalidates it.
+// Hosts without a published metrics revision keep the original measurement
+// path, as do larger values/typeface names. Full slots leave new rows uncached.
+text_area_cache_bytes: [8][4096]u8;
+text_area_cache_faces: [8][128]u8;
+text_area_cache_lengths: [8]s32;
+text_area_cache_face_lengths: [8]s32;
+text_area_cache_fonts: [8]s32;
+text_area_cache_widths: [8]s32;
+text_area_cache_revisions: [8]u64;
+text_area_cache_rows: [8][256]TextAreaRow;
+text_area_cache_counts: [8]s32;
+text_area_cache_last: s32;
+text_area_cache_used: [8]u64;
+text_area_cache_clock: u64;
+
+TextAreaCacheMatches :: (slot: s32, value: string, wrap_width: s32,
+    font: s32, typeface: string, revision: u64) -> bool {
+    return text_area_cache_revisions[slot] == revision &&
+        text_area_cache_fonts[slot] == font && text_area_cache_widths[slot] == wrap_width &&
+        text_area_cache_lengths[slot] == value.count && text_area_cache_face_lengths[slot] == typeface.count &&
+        TextView(text_area_cache_bytes[slot][:text_area_cache_lengths[slot]]) == value &&
+        TextView(text_area_cache_faces[slot][:text_area_cache_face_lengths[slot]]) == typeface
+}
+
+#program_export
+TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
+    font: s32, typeface: string) -> TextAreaRow {
+    revision := GlyphMetricsRevision()
+    if revision == cast(u64)0 || value.count > 4096 || typeface.count > 128 ||
+        start < 0 || start > cast(s32)value.count {
+        return TextAreaNextRowUncached(value, start, wrap_width, font, typeface)
+    }
+    slot := text_area_cache_last
+    if !TextAreaCacheMatches(slot, value, wrap_width, font, typeface, revision) {
+        found: bool
+        for i: 0..cast(s32)7 {
+            if TextAreaCacheMatches(i, value, wrap_width, font, typeface, revision) { slot = i; found = true; break }
+        }
+        if !found {
+            slot = 0
+            for i: 1..cast(s32)7 { if text_area_cache_used[i] < text_area_cache_used[slot] { slot = i } }
+            for i: 0..cast(s32)value.count - 1 { text_area_cache_bytes[slot][i] = value[i] }
+            for i: 0..cast(s32)typeface.count - 1 { text_area_cache_faces[slot][i] = typeface[i] }
+            text_area_cache_lengths[slot] = cast(s32)value.count
+            text_area_cache_face_lengths[slot] = cast(s32)typeface.count
+            text_area_cache_fonts[slot] = font; text_area_cache_widths[slot] = wrap_width
+            text_area_cache_revisions[slot] = revision
+            text_area_cache_counts[slot] = 0
+        }
+        text_area_cache_last = slot
+    }
+    text_area_cache_clock += cast(u64)1
+    if text_area_cache_clock == cast(u64)0 {
+        for i: 0..cast(s32)7 { text_area_cache_used[i] = cast(u64)0 }
+    }
+    text_area_cache_used[slot] = text_area_cache_clock
+    low: s32; high := text_area_cache_counts[slot]
+    while low < high {
+        middle := (low + high) / 2
+        if text_area_cache_rows[slot][middle].start < start { low = middle + 1 }
+        else { high = middle }
+    }
+    if low < text_area_cache_counts[slot] && text_area_cache_rows[slot][low].start == start {
+        return text_area_cache_rows[slot][low]
+    }
+    row := TextAreaNextRowUncached(value, start, wrap_width, font, typeface)
+    count := text_area_cache_counts[slot]
+    if count < 256 {
+        while count > low { text_area_cache_rows[slot][count] = text_area_cache_rows[slot][count - 1]; count -= 1 }
+        text_area_cache_rows[slot][low] = row; text_area_cache_counts[slot] += 1
     }
     return row
 }
