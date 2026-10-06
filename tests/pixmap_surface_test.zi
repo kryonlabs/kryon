@@ -1,4 +1,5 @@
 #import "pixmap"
+#import "pixmap_text"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -10,7 +11,57 @@ rgb: [4320]u32;
 argb: [4320]u32;
 filled: [480]u32;
 reference: [480]u32;
+mask_pixels: [512]u32;
+mask_reference: [512]u32;
+mask_coverage: [256]u8;
 Shape :: struct { x0: s32; y0: s32; x1: s32; y1: s32; radius: s32 }
+
+// Compare clipped mask rows with the independent single-pixel primitive.
+// Every coverage value appears, with RGB extremes, partial source alpha,
+// negative origins, empty clips and guard pixels past the borrowed surface.
+CheckMask :: () -> bool {
+    masks: [4]PixmapGlyphMask = .[
+        .{4, 2, 16, 16}, .{-6, -9, 16, 16}, .{21, 18, 16, 16}, .{4, 2, 0, 0}]
+    clips: [4]Rectangle = .[.{0.0, 0.0, 24.0, 20.0}, .{5.0, 4.0, 13.0, 10.0},
+        .{10.0, 7.0, 1.0, 1.0}, .{30.0, 0.0, 2.0, 20.0}]
+    colors: [4]Color = .[.{0, 0, 0, 255}, .{255, 255, 255, 255},
+        .{207, 53, 129, 255}, .{0, 255, 1, 255}]
+    alphas: [6]u8 = .[0, 1, 63, 127, 254, 255]
+    for at: cast(s32)0..255 { mask_coverage[at] = cast(u8)at }
+    for mask: masks {
+        for clip: clips {
+            for color: colors {
+                for alpha: alphas {
+                    color.a = alpha
+                    for format: cast(s32)0..1 {
+                        for at: cast(s32)0..511 {
+                            value := cast(u32)at * cast(u32)39417 + cast(u32)0x90051a32
+                            mask_pixels[at] = value; mask_reference[at] = value
+                        }
+                        opaque := format == 1
+                        unused PixmapResumeInto(24, 20, mask_pixels[:], opaque); PixmapClipPixels(clip)
+                        PixmapBlendMask(mask, mask_coverage[:], color); PixmapEndInto()
+                        unused PixmapResumeInto(24, 20, mask_reference[:], opaque); PixmapClipPixels(clip)
+                        for y: cast(s32)0..mask.height - 1 {
+                            for x: cast(s32)0..mask.width - 1 {
+                                PixmapBlend(mask.left + x, mask.top + y, color,
+                                    cast(s32)mask_coverage[y * mask.width + x])
+                            }
+                        }
+                        PixmapEndInto()
+                        for at: cast(s32)0..511 {
+                            if mask_pixels[at] != mask_reference[at] {
+                                print("mask mismatch at % alpha % format %\n", at, cast(s32)alpha, format)
+                                return false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true
+}
 
 // The per-pixel raster is the oracle for contiguous interior spans. Rounded
 // coverage still comes from the existing 4x4 sampler; blending goes through
@@ -102,6 +153,7 @@ CheckOpaque :: () -> bool {
 
 #program_export
 main :: () -> s32 {
+    if !CheckMask() { return 25 }
     if !CheckFill() { return 24 }
     if !CheckOpaque() { return 23 }
     image[0] = cast(u32)0xffff0000; image[1] = cast(u32)0xff00ff00
