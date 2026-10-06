@@ -16,6 +16,59 @@ mask_reference: [512]u32;
 mask_coverage: [256]u8;
 Shape :: struct { x0: s32; y0: s32; x1: s32; y1: s32; radius: s32 }
 
+// Keep the original 4x4 geometric definition independent of the optimized
+// sampler. Wide squares cover every supported 16384-pixel surface.
+ReferenceSamples :: (x: s32, y: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> s32 {
+    count: s32
+    for row: cast(s32)0..3 {
+        for column: cast(s32)0..3 {
+            px := cast(s64)x * 8 + 1 + column * 2
+            py := cast(s64)y * 8 + 1 + row * 2
+            left := cast(s64)x0 * 8; right := cast(s64)x1 * 8
+            top := cast(s64)y0 * 8; bottom := cast(s64)y1 * 8
+            if px < left || px >= right || py < top || py >= bottom { continue }
+            reach := cast(s64)r * 8; dx: s64; dy: s64
+            if px < left + reach { dx = left + reach - px }
+            else if px > right - reach { dx = px - (right - reach) }
+            if py < top + reach { dy = top + reach - py }
+            else if py > bottom - reach { dy = py - (bottom - reach) }
+            if dx * dx + dy * dy <= reach * reach { count += 1 }
+        }
+    }
+    return count
+}
+
+CheckSamples :: () -> bool {
+    // Exhaust every pixel around odd/even, empty and thin small rectangles.
+    for width: cast(s32)0..8 {
+        for height: cast(s32)0..8 {
+            for radius: cast(s32)0..4 {
+                r := PixmapRadius(-3, -5, width - 3, height - 5, radius)
+                for y: cast(s32)-6..height - 4 {
+                    for x: cast(s32)-4..width - 2 {
+                        if PixmapSamples(x, y, -3, -5, width - 3, height - 5, r) !=
+                            ReferenceSamples(x, y, -3, -5, width - 3, height - 5, r) { return false }
+                    }
+                }
+            }
+        }
+    }
+    // Probe all four corners of large radii without allocating a surface.
+    radii: [7]s32 = .[8, 17, 63, 511, 4096, 5793, 8192]
+    for r: radii {
+        for i: cast(s32)0..63 {
+            x := (i * 163 + 7) % r; y := (i * 281 + 13) % r
+            for corner: cast(s32)0..3 {
+                px := ifx corner % 2 == 0 then x else 2 * r - 1 - x
+                py := ifx corner < 2 then y else 2 * r - 1 - y
+                if PixmapSamples(px, py, 0, 0, 2 * r, 2 * r, r) !=
+                    ReferenceSamples(px, py, 0, 0, 2 * r, 2 * r, r) { return false }
+            }
+        }
+    }
+    return true
+}
+
 // Compare clipped mask rows with the independent single-pixel primitive.
 // Every coverage value appears, with RGB extremes, partial source alpha,
 // negative origins, empty clips and guard pixels past the borrowed surface.
@@ -92,7 +145,7 @@ CheckFill :: () -> bool {
                     radius := PixmapRadius(shape.x0, shape.y0, shape.x1, shape.y1, shape.radius)
                     for y: cast(s32)0..19 {
                         for x: cast(s32)0..23 {
-                            samples := PixmapSamples(x, y, shape.x0, shape.y0, shape.x1, shape.y1, radius)
+                            samples := ReferenceSamples(x, y, shape.x0, shape.y0, shape.x1, shape.y1, radius)
                             if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
                         }
                     }
@@ -103,6 +156,49 @@ CheckFill :: () -> bool {
                             return false
                         }
                     }
+                }
+            }
+        }
+    }
+    return true
+}
+
+
+// Strokes subtract the inner shape's sampled coverage. Probe outside inner
+// bounds, over-wide strokes, degenerate geometry and each rounded corner.
+CheckStroke :: () -> bool {
+    shapes: [4]Shape = .[.{2, 3, 20, 18, 5}, .{-8, -7, 17, 15, 8},
+        .{7, 4, 8, 17, 8}, .{4, 5, 20, 6, 6}]
+    widths: [4]s32 = .[0, 1, 3, 20]
+    clips: [2]Rectangle = .[.{0.0, 0.0, 24.0, 20.0}, .{5.0, 4.0, 13.0, 10.0}]
+    for shape: shapes {
+        for width: widths {
+            for clip: clips {
+                for format: cast(s32)0..1 {
+                    for at: cast(s32)0..479 {
+                        value := cast(u32)at * cast(u32)39417 + cast(u32)0x90051a32
+                        filled[at] = value; reference[at] = value
+                    }
+                    color: Color = .{207, 53, 129, 127}
+                    unused PixmapResumeInto(24, 20, filled[:], format == 1); PixmapClipPixels(clip)
+                    PixmapStrokeRounded(shape.x0, shape.y0, shape.x1, shape.y1, shape.radius, width, color)
+                    PixmapEndInto()
+                    unused PixmapResumeInto(24, 20, reference[:], format == 1); PixmapClipPixels(clip)
+                    radius := PixmapRadius(shape.x0, shape.y0, shape.x1, shape.y1, shape.radius)
+                    w := ifx width < 1 then 1 else width
+                    ir := ifx radius < w then 0 else radius - w
+                    for y: cast(s32)0..19 {
+                        for x: cast(s32)0..23 {
+                            samples := ReferenceSamples(x, y, shape.x0, shape.y0, shape.x1, shape.y1, radius)
+                            if shape.x1 - w > shape.x0 + w && shape.y1 - w > shape.y0 + w {
+                                samples -= ReferenceSamples(x, y, shape.x0 + w, shape.y0 + w,
+                                    shape.x1 - w, shape.y1 - w, ir)
+                            }
+                            if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+                        }
+                    }
+                    PixmapEndInto()
+                    for at: cast(s32)0..479 { if filled[at] != reference[at] { return false } }
                 }
             }
         }
@@ -153,8 +249,10 @@ CheckOpaque :: () -> bool {
 
 #program_export
 main :: () -> s32 {
+    if !CheckSamples() { return 26 }
     if !CheckMask() { return 25 }
     if !CheckFill() { return 24 }
+    if !CheckStroke() { return 27 }
     if !CheckOpaque() { return 23 }
     image[0] = cast(u32)0xffff0000; image[1] = cast(u32)0xff00ff00
     image[2] = cast(u32)0x800000ff; image[3] = cast(u32)0x00ffffff

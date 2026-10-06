@@ -50,6 +50,10 @@ portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
 serially or `TEST_JOBS=8` on a larger machine. For a quick edit loop, use
 `make test-focus TEST=link_widget`; the filter matches test script names and
 skips the full library rebuild. Test subprocesses have no display access.
+`TAIJI_DIR=/path/to/taiji make pixmap-surface-plan9-test` also runs the pixel
+oracle through native Plan 9 `8c`/`8l`, from source and saved IR, in a private
+headless guest. Its build uses 512 MiB and allows 900 seconds; override those
+with `KRYON_PLAN9_MEMORY` and `KRYON_PLAN9_TIMEOUT` when needed.
 `make sanitize-test` runs the behavior tests with AddressSanitizer and
 UndefinedBehaviorSanitizer. Keep one-off experiments in `build/scratch/`;
 `make clean-scratch` removes that and any other `build/` entry that no target

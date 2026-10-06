@@ -366,3 +366,8 @@ pixmap-frame-test: project-toolchain
 event-wake-sdl-test: project-toolchain
 	sh tests/event_wake_sdl_test.sh
 test: pixmap-frame-test event-wake-sdl-test
+
+# Requires a canonical Taiji checkout and a private headless QEMU guest.
+.PHONY: pixmap-surface-plan9-test
+pixmap-surface-plan9-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_surface_plan9_test.sh
