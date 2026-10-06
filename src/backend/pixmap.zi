@@ -510,8 +510,12 @@ PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
     }
 }
 
-// Blends a glyph's coverage over the surface inside the clip.
+// Clip a glyph once, then blend its contiguous mask and destination rows.
+// Source channels and host alpha are constant; only coverage and the old
+// RGB channels vary per pixel. No glyph-sized color cache is needed.
 PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
+    source_alpha := cast(u32)color.a
+    if source_alpha == cast(u32)0 { return }
     top: s32 = mask.top
     if top < pixmap_clip_top { top = pixmap_clip_top }
     bottom: s32 = mask.top + mask.height
@@ -520,16 +524,28 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     if left < pixmap_clip_left { left = pixmap_clip_left }
     right: s32 = mask.left + mask.width
     if right > pixmap_clip_right { right = pixmap_clip_right }
-    y: s32 = top
-    while y < bottom {
-        row: s32 = (y - mask.top) * mask.width - mask.left
-        x: s32 = left
-        while x < right {
-            value: u8 = coverage[row + x]
-            if value != cast(u8)0 { PixmapBlend(x, y, color, cast(s32)value) }
-            x += 1
+    if right <= left || bottom <= top { return }
+    red_source := cast(u32)color.r
+    green_source := cast(u32)color.g
+    blue_source := cast(u32)color.b
+    output_alpha := pixmap_alpha
+    rgb := (red_source << cast(u32)16) | (green_source << cast(u32)8) | blue_source | output_alpha
+    surface := pixmap_surface; stride := pixmap_width
+    for y: top..bottom - 1 {
+        row := (y - mask.top) * mask.width + left - mask.left
+        at: s32 = 0
+        for *pixel: surface[y * stride + left:y * stride + right] {
+            alpha := cast(u32)coverage[row + at]; at += 1
+            if source_alpha != cast(u32)255 { alpha = source_alpha * alpha / cast(u32)255 }
+            if alpha == cast(u32)0 { continue }
+            if alpha == cast(u32)255 { <<pixel = rgb; continue }
+            inverse := cast(u32)255 - alpha
+            old := <<pixel
+            red := (red_source * alpha + ((old >> cast(u32)16) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+            green := (green_source * alpha + ((old >> cast(u32)8) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+            blue := (blue_source * alpha + (old & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+            <<pixel = (red << cast(u32)16) | (green << cast(u32)8) | blue | output_alpha
         }
-        y += 1
     }
 }
 
