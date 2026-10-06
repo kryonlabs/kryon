@@ -84,6 +84,19 @@ main :: () -> s32 {
     result := EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
     if result.paint_unchanged || result.damage.width * result.damage.height >= 64.0 * 48.0 ||
         result.emitted_count >= result.paint_count { return 7 }
+    // A retained RGB paint plan cannot reuse its old pixels after a host
+    // switches its output format, even though every widget is unchanged.
+    unused PixmapResumeInto(64, 48, actual[:]); Compose(fast, 1, viewport)
+    unused EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
+    for at: 0..cast(s32)3071 { expected[at] = actual[at] }
+    unused PixmapResumeInto(64, 48, actual[:], true); Compose(fast, 1, viewport)
+    result = EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
+    if result.paint_unchanged || result.damage.width != 64.0 || result.damage.height != 48.0 { return 9 }
+    for at: 0..cast(s32)3071 { if actual[at] != (expected[at] | cast(u32)0xff000000) { return 10 } }
+    unused PixmapResumeInto(64, 48, actual[:]); Compose(fast, 1, viewport)
+    result = EndPixmapFrame(fast, true, 0x101828); PixmapEndInto()
+    if result.paint_unchanged { return 11 }
+    for at: 0..cast(s32)3071 { if actual[at] != expected[at] { return 12 } }
     unused CloseSession(fast); unused CloseSession(full); PixmapClearImage(0)
     print("Damaged frames match full raster across clipping, density, removals and translucent overlaps\n")
     return 0

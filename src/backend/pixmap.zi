@@ -23,6 +23,10 @@ pixmap_pixels: [576000]u32;
 pixmap_surface: []u32 = pixmap_pixels[:];
 pixmap_width: s32 = PixmapWidth;
 pixmap_height: s32 = PixmapHeight;
+// Opaque ARGB hosts can write their alpha byte with the color itself, rather
+// than traversing every changed pixel again after painting. RGB surfaces use
+// zero here; transparency still blends over the surface's RGB background.
+pixmap_alpha: u32;
 // Widget geometry stays in logical units; raster endpoints use device pixels.
 // Measures deliberately remain logical, so density never changes wrapping.
 pixmap_scale_x: float32 = 1.0;
@@ -107,8 +111,10 @@ PixmapBegin :: (background: u32) {
 // PixmapEndInto drops the borrowed surface before its owner can release it.
 // Invalid dimensions/storage leave the current surface completely untouched.
 #program_export
-PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32) -> bool {
-    if !PixmapResumeInto(width, height, pixels) { return false }
+PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32,
+    opaque: bool = false) -> bool {
+    if !PixmapResumeInto(width, height, pixels, opaque) { return false }
+    background = background | pixmap_alpha
     index: s32 = 0
     while index < width * height {
         pixmap_surface[index] = background
@@ -123,11 +129,13 @@ PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32) -> 
 // then leave those pixels as they are when EndFrameRetained finds its paint
 // unchanged. Invalid dimensions/storage leave the current surface untouched.
 #program_export
-PixmapResumeInto :: (width: s32, height: s32, pixels: []u32) -> bool {
+PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
+    opaque: bool = false) -> bool {
     if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
     count := cast(s64)width * cast(s64)height
     if count > pixels.count { return false }
     pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
+    pixmap_alpha = ifx opaque then cast(u32)0xff000000 else cast(u32)0
     pixmap_damage_active = false
     PixmapClipAll()
     return true
@@ -137,6 +145,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32) -> bool {
 PixmapEndInto :: () {
     pixmap_surface = pixmap_pixels[:]; pixmap_width = PixmapWidth; pixmap_height = PixmapHeight
     pixmap_scale_x = 1.0; pixmap_scale_y = 1.0
+    pixmap_alpha = cast(u32)0
     pixmap_damage_active = false
     PixmapClipAll()
 }
@@ -166,6 +175,7 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     if pixmap_damage_bottom > pixmap_height { pixmap_damage_bottom = pixmap_height }
     pixmap_damage_active = true; PixmapClipAll()
     if !clear { return }
+    background = background | pixmap_alpha
     surface := pixmap_surface; stride := pixmap_width
     left := pixmap_clip_left; right := pixmap_clip_right
     top := pixmap_clip_top; bottom := pixmap_clip_bottom
@@ -221,7 +231,7 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
     // Full alpha mixes to the color itself.
     if alpha >= 255 {
         pixmap_surface[index] = (cast(u32)color.r << cast(u32)16) |
-            (cast(u32)color.g << cast(u32)8) | cast(u32)color.b
+            (cast(u32)color.g << cast(u32)8) | cast(u32)color.b | pixmap_alpha
         return
     }
     old: u32 = pixmap_surface[index]
@@ -229,7 +239,7 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
     green: s32 = PixmapMix(cast(s32)color.g, cast(s32)((old >> cast(u32)8) & cast(u32)255), alpha)
     blue: s32 = PixmapMix(cast(s32)color.b, cast(s32)(old & cast(u32)255), alpha)
     pixmap_surface[index] = (cast(u32)red << cast(u32)16) | (cast(u32)green << cast(u32)8) |
-        cast(u32)blue
+        cast(u32)blue | pixmap_alpha
 }
 
 // Whether a point in eighths of a pixel lies in the rounded rectangle
@@ -274,9 +284,35 @@ PixmapRadius :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32) -> s32 {
     return r
 }
 
+// The caller clips and checks a contiguous row once. Constant source alpha
+// and channels apply to every pixel, so only destination channels vary.
+// Pointer iteration remains bounded by the borrowed slice on every target.
+PixmapFillSpan :: (span: []u32, color: Color) {
+    alpha := cast(u32)color.a
+    if alpha == cast(u32)0 { return }
+    if alpha == cast(u32)255 {
+        rgb := (cast(u32)color.r << cast(u32)16) |
+            (cast(u32)color.g << cast(u32)8) | cast(u32)color.b | pixmap_alpha
+        for *pixel: span { <<pixel = rgb }
+        return
+    }
+    inverse := cast(u32)255 - alpha
+    red_source := cast(u32)color.r * alpha + cast(u32)127
+    green_source := cast(u32)color.g * alpha + cast(u32)127
+    blue_source := cast(u32)color.b * alpha + cast(u32)127
+    output_alpha := pixmap_alpha
+    for *pixel: span {
+        old := <<pixel
+        red := (red_source + ((old >> cast(u32)16) & cast(u32)255) * inverse) / cast(u32)255
+        green := (green_source + ((old >> cast(u32)8) & cast(u32)255) * inverse) / cast(u32)255
+        blue := (blue_source + (old & cast(u32)255) * inverse) / cast(u32)255
+        <<pixel = (red << cast(u32)16) | (green << cast(u32)8) | blue | output_alpha
+    }
+}
+
 // Fills a rounded rectangle; corner pixels are anti-aliased from samples.
 PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) {
-    if x1 <= x0 || y1 <= y0 { return }
+    if x1 <= x0 || y1 <= y0 || color.a == cast(u8)0 { return }
     r: s32 = PixmapRadius(x0, y0, x1, y1, radius)
     top: s32 = y0
     if top < pixmap_clip_top { top = pixmap_clip_top }
@@ -286,30 +322,28 @@ PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Co
     if left < pixmap_clip_left { left = pixmap_clip_left }
     right: s32 = x1
     if right > pixmap_clip_right { right = pixmap_clip_right }
-    opaque: bool = color.a == cast(u8)255
-    rgb: u32 = (cast(u32)color.r << cast(u32)16) | (cast(u32)color.g << cast(u32)8) |
-        cast(u32)color.b
+    if left >= right || top >= bottom { return }
+    surface := pixmap_surface; stride := pixmap_width
     y: s32 = top
     while y < bottom {
         corner_row: bool = y < y0 + r || y >= y1 - r
-        row: s32 = y * pixmap_width
+        row: s32 = y * stride
         x: s32 = left
         while x < right {
-            // Opaque interiors are contiguous stores. Keep sampling and
-            // blending only at corners, outside this vectorizable span.
-            if opaque && (!corner_row || (x >= x0 + r && x < x1 - r)) {
+            // Only rounded corners need per-pixel coverage. Blend flat
+            // interiors as spans even when their color is translucent.
+            if !corner_row || (x >= x0 + r && x < x1 - r) {
                 end: s32 = right
                 if corner_row && end > x1 - r { end = x1 - r }
-                while x < end { pixmap_surface[row + x] = rgb; x += 1 }
+                // Check one contiguous row span instead of recalculating and
+                // checking a global surface index for every opaque pixel.
+                PixmapFillSpan(surface[row + x:row + end], color)
+                x = end
                 continue
             }
             if corner_row && (x < x0 + r || x >= x1 - r) {
                 samples: s32 = PixmapSamples(x, y, x0, y0, x1, y1, r)
                 if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
-            } else if opaque {
-                pixmap_surface[row + x] = rgb
-            } else {
-                PixmapBlend(x, y, color, 255)
             }
             x += 1
         }
