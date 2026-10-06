@@ -1,3 +1,14 @@
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "text_props"
+    host_api :: #system_library "host_api";
+    TextHostedHost :: (session: Session, props: TextProps) #foreign host_api;
+    #program_export
+    Text :: (session: Session, props: TextProps) { TextHostedHost(session, props) }
+} else {
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -163,4 +174,6 @@ Text :: (session: Session, props: TextProps) {
         TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
     }
     PaintTextLines(session, node, props, prepared)
+}
+
 }

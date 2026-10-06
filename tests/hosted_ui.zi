@@ -1,0 +1,26 @@
+#import "text_widget"
+#import "text_props"
+#import "image_widget"
+#import "image_props"
+#import "button_widget"
+#import "button_props"
+#import "text_area_widget"
+#import "text_input_props"
+#import "scroll_widget"
+#import "scroll_props"
+#import "session"
+#import "tree"
+#import "geometry"
+#program_export
+main :: () -> s32 {
+    session := Session.{.slot = 4, .epoch = cast(u64)12}
+    Text(session, TextProps.{.text = "Portable composition"})
+    Image(session, ImageProps.{.asset_path = "assets/photo.png"})
+    if Button(session, ButtonProps.{.id = 47, .label = "Save"}) != 47 { return 1 }
+    area := TextArea(session, TextAreaProps.{.value = "Saved text", .cursor = 4})
+    if area.cursor != 5 || area.edit.replacement != "🌿" { return 2 }
+    scroll := Scroll(session, ScrollProps.{.content_height = 400, .scroll_offset = 20})
+    if !scroll.opened || scroll.scroll_offset != 25 || scroll.content.width != 200.0 { return 3 }
+    if !End(session) { return 4 }
+    return 42
+}

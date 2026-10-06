@@ -57,6 +57,23 @@ OpenCanvas :: () -> bool {
     return true
 }
 
+// The next frame reloads changed resources through the normal asset loader.
+// Existing fonts and the canvas remain usable during package activation.
+#program_export
+InvalidateCanvasAssets :: () {
+    index: s32 = 0
+    while index < canvas_assets_count {
+        if canvas_assets[index].texture.id != cast(u32)0 {
+            UnloadTexture(canvas_assets[index].texture)
+        }
+        canvas_assets[index] = CanvasAsset.{}
+        index += 1
+    }
+    canvas_assets_count = 0
+    canvas_assets_next = 0
+    canvas_image_error = false
+}
+
 #program_export
 CloseCanvas :: () {
     index: s32 = 0

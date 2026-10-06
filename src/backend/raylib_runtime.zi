@@ -828,6 +828,24 @@ RaylibAssetIndex :: (path: string) -> s32 {
     return index
 }
 
+// Resource updates keep the window, fonts and retained targets alive. Flush
+// queued draws before releasing image names that the batch may still use.
+#program_export
+InvalidateRaylibAssets :: () {
+    HostRaylibFlushBatch()
+    index: s32 = 0
+    while index < raylib_assets_count {
+        if raylib_assets[index].texture.id != 0 {
+            HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        raylib_assets[index] = RaylibAsset.{}
+        index += 1
+    }
+    raylib_assets_count = 0
+    raylib_assets_next = 0
+    raylib_image_error = false
+}
+
 // Call on the rendering thread after its context is current again. A lost
 // context's names may already identify unrelated textures in the new context;
 // forget them without sending deletion requests there.

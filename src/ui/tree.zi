@@ -1,3 +1,13 @@
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    host_api :: #system_library "host_api";
+    EndHostedHost :: (session: Session) -> bool #foreign host_api;
+    #program_export
+    End :: (session: Session) -> bool { return EndHostedHost(session) }
+} else {
 #import "geometry"
 #import "semantic"
 #import "session"
@@ -1217,4 +1227,6 @@ TreeDispose :: (session: Session) {
     trees[slot].next_identity_generation = 0
     trees[slot].staged_identity_generation = 0
     trees[slot].building = false
+}
+
 }

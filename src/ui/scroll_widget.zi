@@ -1,3 +1,14 @@
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "scroll_props"
+    host_api :: #system_library "host_api";
+    ScrollHostedHost :: (session: Session, props: ScrollProps) -> ScrollResult #foreign host_api;
+    #program_export
+    Scroll :: (session: Session, props: ScrollProps) -> ScrollResult { return ScrollHostedHost(session, props) }
+} else {
 #import "session"
 #import "control_props"
 #import "geometry"
@@ -122,4 +133,6 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         result.opened = TreePushScope(session, result.node)
     }
     return result
+}
+
 }
