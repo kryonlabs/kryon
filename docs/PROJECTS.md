@@ -131,6 +131,16 @@ terminal; otherwise it uses the default.
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 | `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
 
+The SDL desktop host presents its already rasterized pixels through the
+software renderer and an unaccelerated window surface by default. Custom
+SDL pixel hosts can import `kryon/pixmap_sdl` and call
+`CreatePixmapRenderer(window)` on the window's owner thread before creating
+their texture. The host retains ownership of its window, renderer, texture
+and input loop; its raster workers are independent of this presentation choice.
+Explicit `SDL_RENDER_DRIVER` and `SDL_FRAMEBUFFER_ACCELERATION` environment
+preferences, or normal/override priority SDL hints, take precedence. The
+helper leaves other hosts and their graphics APIs untouched.
+
 These settings live only in `ziran.toml`. Kryon declares them under
 `[options]` in its own `ziran.toml`. Ziran checks the application's
 `[tool.kryon]` tables against that declaration, merges `ziran.local.toml` over

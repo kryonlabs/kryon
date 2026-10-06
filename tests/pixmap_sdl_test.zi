@@ -1,0 +1,97 @@
+Presenter :: #import "pixmap_sdl";
+#import "std/c_string"
+
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+Resize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
+Pump :: () #foreign sdl "SDL_PumpEvents";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+RendererInfo :: struct {
+    name: *u8
+    flags: u32
+    format_count: u32
+    formats: [16]u32
+    max_width: s32
+    max_height: s32
+}
+Info :: (renderer: *void, info: *RendererInfo) -> s32 #foreign sdl "SDL_GetRendererInfo";
+GetHint :: (name: *u8) -> *u8 #foreign sdl "SDL_GetHint";
+SetHint :: (name: *u8, value: *u8, priority: s32) -> s32 #foreign sdl "SDL_SetHintWithPriority";
+GetEnv :: (name: *u8) -> *u8 #foreign sdl "SDL_getenv";
+CreateTexture :: (renderer: *void, format: u32, access: s32, width: s32, height: s32) -> *void #foreign sdl "SDL_CreateTexture";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+Update :: (texture: *void, rect: *void, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_UpdateTexture";
+LogicalSize :: (renderer: *void, width: s32, height: s32) -> s32 #foreign sdl "SDL_RenderSetLogicalSize";
+Copy :: (renderer: *void, texture: *void, source: *void, target: *void) -> s32 #foreign sdl "SDL_RenderCopy";
+Read :: (renderer: *void, rect: *void, format: u32, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+Present :: (renderer: *void) #foreign sdl "SDL_RenderPresent";
+
+Matches :: (pointer: *u8, value: string) -> bool {
+    if pointer == null { return false }
+    for index: 0..value.count - 1 { if pointer[index] != value[index] { return false } }
+    return pointer[value.count] == cast(u8)0
+}
+
+main :: () -> s32 {
+    if Presenter.CreatePixmapRenderer(null) != null { return 1 }
+    if Init(cast(u32)32) != 0 { return 2 }
+    defer Quit()
+    mode_name: [32]u8; unused CopyCString("PIXMAP_SDL_TEST", mode_name[:])
+    mode := GetEnv(*mode_name[0]); if mode == null { return 3 }
+    driver: [32]u8; surface: [32]u8; opengl: [8]u8; enabled: [2]u8
+    unused CopyCString("SDL_RENDER_DRIVER", driver[:])
+    unused CopyCString("SDL_FRAMEBUFFER_ACCELERATION", surface[:])
+    unused CopyCString("opengl", opengl[:]); unused CopyCString("1", enabled[:])
+    if Matches(mode, "hint-driver") {
+        if SetHint(*driver[0], *opengl[0], 1) == 0 { return 4 }
+    }
+    if Matches(mode, "hint-surface") {
+        if SetHint(*surface[0], *enabled[0], 1) == 0 { return 5 }
+    }
+    title: [32]u8; unused CopyCString("Owned pixel presenter test", title[:])
+    window := CreateWindow(*title[0], 0, 0, 32, 24, cast(u32)36)
+    if window == null { return 6 }
+    defer DestroyWindow(window)
+    renderer := Presenter.CreatePixmapRenderer(window)
+    if renderer == null { return 7 }
+    defer DestroyRenderer(renderer)
+    info: RendererInfo
+    if Info(renderer, *info) != 0 { return 8 }
+    accelerated := Matches(mode, "env-driver") || Matches(mode, "hint-driver")
+    if accelerated {
+        if !Matches(info.name, "opengl") || (info.flags & cast(u32)2) == cast(u32)0 { return 9 }
+    } else {
+        if !Matches(info.name, "software") || (info.flags & cast(u32)1) == cast(u32)0 { return 10 }
+    }
+    explicit_surface := Matches(mode, "env-surface") || Matches(mode, "hint-surface")
+    if !Matches(GetHint(*surface[0]), ifx explicit_surface then "1" else "0") { return 11 }
+    if Matches(mode, "default") && GetHint(*driver[0]) != null { return 12 }
+    if !accelerated && !explicit_surface && (WindowFlags(window) & cast(u32)2) != cast(u32)0 { return 13 }
+
+    // Verify actual texture upload, presentation and exact nearest scaling
+    // through both drivers, with the same four opaque pixel colors.
+    pixels: [768]u32; colors: [4]u32 = .{0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff}
+    for y: 0..23 { for x: 0..31 { pixels[y * 32 + x] = colors[(y / 12) * 2 + x / 16] } }
+    format: u32 = 0x16362004 // SDL_PIXELFORMAT_ARGB8888
+    texture := CreateTexture(renderer, format, 1, 32, 24)
+    if texture == null { return 14 }
+    defer DestroyTexture(texture)
+    if Update(texture, null, *pixels[0], 128) != 0 { return 15 }
+    output: [3072]u32
+    for scale: 1..2 {
+        if scale == 2 { Resize(window, 64, 48); Delay(cast(u32)50); Pump() }
+        if LogicalSize(renderer, 32, 24) != 0 || Copy(renderer, texture, null, null) != 0 { return 16 }
+        if Read(renderer, null, format, *output[0], cast(s32)(128 * scale)) != 0 { return 17 }
+        for y: 0..24 * scale - 1 { for x: 0..32 * scale - 1 {
+            if output[y * 32 * scale + x] != pixels[(y / scale) * 32 + x / scale] { return 18 }
+        } }
+        Present(renderer)
+    }
+    print("Pixel presenter: renderer preferences, surface preferences, pixels and resize passed\n")
+    return 0
+}
