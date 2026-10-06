@@ -10,7 +10,9 @@ set -- --bind text_widget:TextHostedHost=hosted_ui_provider:Text \
     --bind button_widget:ButtonHostedHost=hosted_ui_provider:Button \
     --bind text_area_widget:TextAreaHostedHost=hosted_ui_provider:TextArea \
     --bind scroll_widget:ScrollHostedHost=hosted_ui_provider:Scroll \
-    --bind tree:EndHostedHost=hosted_ui_provider:End
+    --bind tree:EndHostedHost=hosted_ui_provider:End \
+    --bind checkbox_widget:CheckboxHostedHost=hosted_ui_provider:Checkbox \
+    --bind toggle_widget:ToggleHostedHost=hosted_ui_provider:Toggle
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" --define KRYON_HOSTED_UI "$@" \
     --entry hosted_ui:main -o "$work/ui.zib" \

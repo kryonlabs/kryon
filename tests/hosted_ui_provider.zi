@@ -33,3 +33,14 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
 }
 #program_export "EndHostedHost"
 End :: (session: Session) -> bool { return session.slot == 4 && count == 2 }
+
+#import "checkbox_props"
+#import "toggle_props"
+#program_export "CheckboxHostedHost"
+Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
+    return CheckboxValueResult.{.changed = session.slot == 4 && props.id == 52, .checked = !props.checked}
+}
+#program_export "ToggleHostedHost"
+Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
+    return ToggleValueResult.{.changed = session.slot == 4 && props.id == 53, .value = !props.value}
+}

@@ -1,4 +1,8 @@
 #import "text_widget"
+#import "checkbox_widget"
+#import "checkbox_props"
+#import "toggle_widget"
+#import "toggle_props"
 #import "text_props"
 #import "image_widget"
 #import "image_props"
@@ -22,5 +26,9 @@ main :: () -> s32 {
     scroll := Scroll(session, ScrollProps.{.content_height = 400, .scroll_offset = 20})
     if !scroll.opened || scroll.scroll_offset != 25 || scroll.content.width != 200.0 { return 3 }
     if !End(session) { return 4 }
+    check := Checkbox(session, CheckboxProps.{.id = 52, .checked = false})
+    if !check.changed || !check.checked { return 5 }
+    automatic := Toggle(session, ToggleProps.{.id = 53, .value = true})
+    if !automatic.changed || automatic.value { return 6 }
     return 42
 }
