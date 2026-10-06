@@ -44,3 +44,27 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
 Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
     return ToggleValueResult.{.changed = session.slot == 4 && props.id == 53, .value = !props.value}
 }
+
+#import "box_props"
+#import "tab_bar_props"
+#program_export "BoxHostedHost"
+Box :: (session: Session, props: BoxProps) -> s32 {
+    return ifx session.slot == 4 && props.radius == 12.0 then 71 else 0
+}
+
+#program_export "TextFieldHostedHost"
+TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+    if session.slot != 4 || props.value != "List title" {
+        return TextFieldResult.{}
+    }
+    return TextFieldResult.{.cursor = props.cursor + 1,
+        .edit = TextFieldEdit.{.changed = true, .replacement = "✓"}}
+}
+
+#program_export "TabBarHostedHost"
+TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+    if session.slot != 4 || tabs.count != 2 || tabs[1].label != "Two" {
+        return TabBarResult.{}
+    }
+    return TabBarResult.{.selected_index = props.selected_index + 1}
+}

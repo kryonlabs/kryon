@@ -1,39 +1,52 @@
-#import "box_props"
-#import "drawing_props"
-#import "geometry"
-#import "paint_queue"
-#import "session"
-#import "tree"
-#import "widget_kind"
+// Portable compositions use the same widgets as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "box_props"
+    host_api :: #system_library "host_api";
+    BoxHostedHost :: (session: Session, props: BoxProps) -> s32 #foreign host_api;
+    #program_export
+    Box :: (session: Session, props: BoxProps) -> s32 {
+        return BoxHostedHost(session, props)
+    }
+} else {
+    #import "box_props"
+    #import "drawing_props"
+    #import "geometry"
+    #import "paint_queue"
+    #import "session"
+    #import "tree"
+    #import "widget_kind"
 
-using WidgetKind;
+    using WidgetKind;
 
-// A decorative surface that does not capture pointer or keyboard input.
-#program_export
-Box :: (session: Session, props: BoxProps) -> s32 {
-    node: s32 = -1
-    if TreeIsBuilding(session) {
-        key := props.key
-        if key == cast(u64)0 {
-            key = TreeNextKey(session)
+    // A decorative surface that does not capture pointer or keyboard input.
+    #program_export
+    Box :: (session: Session, props: BoxProps) -> s32 {
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            key := props.key
+            if key == cast(u64)0 {
+                key = TreeNextKey(session)
+            }
+            node = TreeSubmitCurrent(session, key, WidgetKindBox,
+                props.bounds)
+            if node < 0 {
+                return node
+            }
         }
-        node = TreeSubmitCurrent(session, key, WidgetKindBox,
-            props.bounds)
-        if node < 0 {
-            return node
+        radius := props.radius
+        if radius < 0.0 {
+            radius = 0.0
         }
+        if props.fill.a != cast(u8)0 {
+            PaintRoundedFill(session, node, props.bounds, radius, 8,
+                props.fill)
+        }
+        if props.border.a != cast(u8)0 {
+            PaintRoundedOutline(session, node, props.bounds, radius, 8,
+                1.0, props.border)
+        }
+        return node
     }
-    radius := props.radius
-    if radius < 0.0 {
-        radius = 0.0
-    }
-    if props.fill.a != cast(u8)0 {
-        PaintRoundedFill(session, node, props.bounds, radius, 8,
-            props.fill)
-    }
-    if props.border.a != cast(u8)0 {
-        PaintRoundedOutline(session, node, props.bounds, radius, 8,
-            1.0, props.border)
-    }
-    return node
+
 }
