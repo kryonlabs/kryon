@@ -34,6 +34,15 @@ example `--bind kryon/raster_text:RasterText=my_test_host:RasterText` with
 Source coloring is the separate [Syntax](https://github.com/ziranlang/syntax)
 package. Its `SyntaxColorSpan` has the same fields as `TextAreaColorSpan`.
 
+Hosts with stable font measurements call `font_metrics.GlyphMetricsChanged()`
+after initializing their font services and whenever fonts or their advances
+change. This lets `TextArea` retain wrapped rows in a bounded cache of owned
+content. Publish revisions on the UI's owning thread. The pixmap host enables
+reuse automatically for its bundled, fixed
+font outlines. Hosts that have not published a metrics revision keep measuring
+rows on each call; they do not acquire an invalidation requirement implicitly.
+Font size, typeface, wrap width and content changes always select a new layout.
+
 ## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns

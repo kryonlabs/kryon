@@ -1,4 +1,5 @@
 #import "session"
+#import "font_metrics"
 test_session: Session;
 TestSession :: () -> Session {
     if !SessionValid(test_session) { test_session = SessionOpen() }
@@ -502,6 +503,9 @@ Frame :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // The fixed test font follows the pixmap host's metrics lifetime. Exercise
+    // cursor, clipboard, syntax colors and IME with retained row layouts.
+    GlyphMetricsChanged()
     index: s32 = 0
     while index < 43 {
         SetCompositionPhase(index)

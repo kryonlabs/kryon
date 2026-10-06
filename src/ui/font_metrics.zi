@@ -5,6 +5,19 @@ MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 #foreign host_api;
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #foreign host_api;
 
+// Zero keeps layout uncached for hosts whose font services may change without
+// notification. A host opts in by publishing its initial metrics, then calls
+// GlyphMetricsChanged whenever it replaces fonts or changes their advances.
+glyph_metrics_revision: u64;
+
+#program_export
+GlyphMetricsRevision :: () -> u64 { return glyph_metrics_revision }
+
+#program_export
+GlyphMetricsChanged :: () {
+    glyph_metrics_revision += cast(u64)1
+}
+
 #program_export
 GlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {

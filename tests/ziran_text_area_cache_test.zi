@@ -1,0 +1,81 @@
+#import "text_area_widget"
+#import "font_metrics"
+Host :: #import "ziran_text_area_cache_host";
+
+CheckRow :: (value: string, start: s32, width: s32, font: s32,
+    face: string, end: s32, next: s32, soft: bool) -> bool {
+    row := TextAreaNextRow(value, start, width, font, face)
+    return row.start == start && row.end == end && row.next == next && row.soft_wrap == soft
+}
+
+#program_export
+main :: () -> s32 {
+    // Unannounced font services stay uncached, including between calls.
+    if GlyphMetricsRevision() != cast(u64)0 { return 1 }
+    if !CheckRow("ab cd ef", 0, 20, 10, "", 3, 3, true) { return 2 }
+    before := Host.MeasureCalls()
+    if !CheckRow("ab cd ef", 0, 20, 10, "", 3, 3, true) || Host.MeasureCalls() <= before { return 3 }
+    GlyphMetricsChanged()
+    if TextAreaRowCount("ab cd ef", 20, 10, "") != 3 { return 4 }
+    before = Host.MeasureCalls()
+    if TextAreaRowCount("ab cd ef", 20, 10, "") != 3 || Host.MeasureCalls() != before { return 5 }
+    // Original storage may change and disappear. Every hit compares owned
+    // bytes, and a different address with the same bytes still reuses rows.
+    bytes: [8]u8
+    for i: 0..cast(s32)7 { bytes[i] = "ab cd ef"[i] }
+    if !CheckRow(TextView(bytes[:]), 0, 20, 10, "", 3, 3, true) || Host.MeasureCalls() != before { return 6 }
+    bytes[2] = cast(u8)88
+    if !CheckRow(TextView(bytes[:]), 0, 20, 10, "", 4, 4, true) || Host.MeasureCalls() <= before { return 7 }
+    if !CheckRow("ab cd ef", 0, 20, 20, "", 2, 2, true) { return 8 }
+    if !CheckRow("ab cd ef", 0, 10, 10, "", 2, 2, true) { return 9 }
+    face: [4]u8
+    for i: 0..cast(s32)3 { face[i] = "wide"[i] }
+    if !CheckRow("ab cd ef", 0, 20, 10, TextView(face[:]), 2, 2, true) { return 10 }
+    for i: 0..cast(s32)3 { face[i] = "tiny"[i] }
+    if !CheckRow("ab cd ef", 0, 20, 10, TextView(face[:]), 3, 3, true) { return 11 }
+    // Equal lengths never substitute for comparing the actual content.
+    if !CheckRow("a\n", 0, 20, 10, "", 1, 2, false) { return 12 }
+    if !CheckRow("\na", 0, 20, 10, "", 0, 1, false) { return 13 }
+    if !CheckRow("a\n", 0, 20, 10, "", 1, 2, false) { return 14 }
+    // More distinct layouts than slots evict old entries safely.
+    for i: 1..cast(s32)12 {
+        unused TextAreaNextRow("ab cd ef", 0, 20, 10 + i, "")
+    }
+    if !CheckRow("a\n", 0, 20, 10, "", 1, 2, false) { return 30 }
+    unused TextAreaNextRow("ab cd ef", 0, 20, 10, "")
+    for i: 1..cast(s32)20 {
+        unused TextAreaNextRow("ab cd ef", 0, 20, 20 + i, "")
+        before = Host.MeasureCalls()
+        if !CheckRow("ab cd ef", 0, 20, 10, "", 3, 3, true) || Host.MeasureCalls() != before { return 29 }
+    }
+    large: [4097]u8
+    for i: 0..cast(s32)4096 { large[i] = cast(u8)97 }
+    // Arbitrary starts remain distinct even when their low byte is equal.
+    if !CheckRow(TextView(large[:300]), 0, 10, 10, "", 2, 2, true) { return 15 }
+    if !CheckRow(TextView(large[:300]), 256, 10, 10, "", 258, 258, true) { return 16 }
+    if !CheckRow(TextView(large[:300]), 0, 10, 10, "", 2, 2, true) { return 17 }
+    // A full row table never drops rows or changes wrapping at the limit.
+    if TextAreaRowCount(TextView(large[:300]), 5, 10, "") != 300 { return 32 }
+    if TextAreaRowCount(TextView(large[:300]), 5, 10, "") != 300 { return 33 }
+    unused TextAreaNextRow(TextView(large[:]), 0, 10, 10, "")
+    before = Host.MeasureCalls()
+    if !CheckRow(TextView(large[:]), 0, 10, 10, "", 2, 2, true) || Host.MeasureCalls() <= before { return 18 }
+    long_face: [129]u8
+    for i: 0..cast(s32)128 { long_face[i] = cast(u8)120 }
+    unused TextAreaNextRow("abcd", 0, 20, 10, TextView(long_face[:]))
+    before = Host.MeasureCalls()
+    if !CheckRow("abcd", 0, 20, 10, TextView(long_face[:]), 4, 5, false) || Host.MeasureCalls() <= before { return 31 }
+    if !CheckRow("Aé\r\nBC", 0, 10, 10, "", 1, 1, true) { return 19 }
+    if !CheckRow("Aé\r\nBC", 1, 10, 10, "", 3, 5, false) { return 20 }
+    if !CheckRow("Aé\r\nBC", 5, 10, 10, "", 7, 8, false) { return 21 }
+    if !CheckRow("AZB", 0, 10, 40, "", 1, 1, true) { return 22 }
+    if !CheckRow("", 0, 20, 10, "", 0, 1, false) { return 23 }
+    if !CheckRow("abc", -1, 20, 10, "", -1, 4, false) { return 24 }
+    if !CheckRow("abc", 4, 20, 10, "", 4, 4, false) { return 25 }
+    if !CheckRow("ab cd ef", 0, 20, 10, "", 3, 3, true) { return 26 }
+    Host.SetMeasureBias(10); GlyphMetricsChanged()
+    if !CheckRow("ab cd ef", 0, 20, 10, "", 2, 2, true) { return 27 }
+    before = Host.MeasureCalls()
+    if !CheckRow("ab cd ef", 0, 20, 10, "", 2, 2, true) || Host.MeasureCalls() != before { return 28 }
+    return 0
+}

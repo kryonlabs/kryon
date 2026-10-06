@@ -3,6 +3,7 @@
 #import "utf8"
 #import "pixmap_text"
 ImageCanvas :: #import "image_canvas";
+Metrics :: #import "font_metrics";
 #import "math"
 
 #if #defined(POSIX_THREADS) {
@@ -187,6 +188,9 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
     if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
     count := cast(s64)width * cast(s64)height
     if count > pixels.count { return false }
+    // The bundled outlines and logical advances are immutable. Declare their
+    // lifetime once so widgets can retain layout across unchanged frames.
+    if Metrics.GlyphMetricsRevision() == cast(u64)0 { Metrics.GlyphMetricsChanged() }
     pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     pixmap_alpha = ifx opaque then cast(u32)0xff000000 else cast(u32)0
     pixmap_damage_active = false
