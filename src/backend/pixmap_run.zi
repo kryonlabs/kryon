@@ -15,6 +15,7 @@ using FrameStatus;
 main :: () -> s32 {
     session: Session = SessionOpen()
     if !SessionValid(session) { return 1 }
+    defer { PixmapCloseWorkers(); CloseSession(session) }
     viewport: Rectangle = Rectangle.{0.0, 0.0, cast(float32)PixmapWidth,
         cast(float32)PixmapHeight}
     frame: s32 = 0
@@ -32,6 +33,5 @@ main :: () -> s32 {
         frame += 1
     }
     PixmapPresent()
-    CloseSession(session)
     return 0
 }

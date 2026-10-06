@@ -23,7 +23,10 @@ $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not availa
 endif
 
 CC ?= cc
-ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
+# The tool already resolved this profile's pinned or overridden toolchain.
+# A parent application's command-line ZIRAN must not replace that absolute
+# executable with a bare make prerequisite such as "ziran".
+override ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
 GEN_DIR := build/generated/$(PROJECT_PROFILE)
 IR_DIR := $(GEN_DIR)/ir
 IR_STAMP := $(IR_DIR)/.complete
@@ -72,7 +75,7 @@ IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --define PLATFORM_WEB \
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
 endif
@@ -162,6 +165,13 @@ $(error the profile static archive must be a regular file)
 endif
 HOST_DEPS += $(PROJECT_STATIC_ARCHIVE)
 HOST_LIBS += $(PROJECT_STATIC_ARCHIVE_PATH)
+endif
+
+ifeq ($(PROJECT_CODEGEN),c99)
+ifeq ($(BROWSER_BACKEND),)
+HOST_CFLAGS += -pthread
+HOST_LIBS += -pthread
+endif
 endif
 
 .PHONY: run build check install toolchain
