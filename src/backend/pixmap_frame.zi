@@ -26,6 +26,7 @@ frame_heights: [9]s32;
 frame_scales_x: [9]float32;
 frame_scales_y: [9]float32;
 frame_backgrounds: [9]u32;
+frame_opaque: [9]bool;
 
 JoinDamage :: (a: Rectangle, b: Rectangle) -> Rectangle {
     if a.width <= 0.0 || a.height <= 0.0 { return b }
@@ -94,10 +95,12 @@ EndPixmapFrame :: (session: Session, reuse: bool,
         cast(float32)pixmap_height / pixmap_scale_y}
     if frame_widths[slot] != pixmap_width || frame_heights[slot] != pixmap_height ||
         frame_scales_x[slot] != pixmap_scale_x || frame_scales_y[slot] != pixmap_scale_y ||
-        frame_backgrounds[slot] != background { PaintSnapshotInvalidate(session) }
+        frame_backgrounds[slot] != background ||
+        frame_opaque[slot] != (pixmap_alpha != cast(u32)0) { PaintSnapshotInvalidate(session) }
     frame_widths[slot] = pixmap_width; frame_heights[slot] = pixmap_height
     frame_scales_x[slot] = pixmap_scale_x; frame_scales_y[slot] = pixmap_scale_y
     frame_backgrounds[slot] = background
+    frame_opaque[slot] = pixmap_alpha != cast(u32)0
     result.paint_count = PendingPaintCount(session)
     unchanged: bool
     damage: Rectangle

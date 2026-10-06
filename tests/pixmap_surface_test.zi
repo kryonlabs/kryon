@@ -1,13 +1,109 @@
 #import "pixmap"
 #import "drawing_props"
 #import "geometry"
+#import "paint_queue"
 
 pixels: [35]u32;
 portrait: [48]u32;
 image: [4]u32;
+rgb: [4320]u32;
+argb: [4320]u32;
+filled: [480]u32;
+reference: [480]u32;
+Shape :: struct { x0: s32; y0: s32; x1: s32; y1: s32; radius: s32 }
+
+// The per-pixel raster is the oracle for contiguous interior spans. Rounded
+// coverage still comes from the existing 4x4 sampler; blending goes through
+// the ordinary single-pixel primitive rather than the span implementation.
+CheckFill :: () -> bool {
+    shapes: [8]Shape = .[
+        .{0, 0, 24, 20, 0}, .{2, 3, 20, 18, 5}, .{-8, -7, 17, 15, 8},
+        .{10, 8, 32, 26, 20}, .{7, 4, 8, 17, 8}, .{4, 5, 20, 6, 6},
+        .{5, 6, 16, 14, -2}, .{8, 5, 8, 14, 4}]
+    clips: [4]Rectangle = .[.{0.0, 0.0, 24.0, 20.0}, .{5.0, 4.0, 13.0, 10.0},
+        .{10.0, 7.0, 1.0, 1.0}, .{30.0, 0.0, 2.0, 20.0}]
+    alphas: [6]u8 = .[0, 1, 63, 127, 254, 255]
+    for shape: shapes {
+        for clip: clips {
+            for alpha: alphas {
+                for format: cast(s32)0..1 {
+                    opaque := format == 1
+                    for at: cast(s32)0..479 {
+                        // Vary all destination channels, including alpha.
+                        value := cast(u32)at * cast(u32)39417 + cast(u32)0x90051a32
+                        filled[at] = value; reference[at] = value
+                    }
+                    color: Color = .{207, 53, 129, alpha}
+                    unused PixmapResumeInto(24, 20, filled[:], opaque); PixmapClipPixels(clip)
+                    PixmapFillRounded(shape.x0, shape.y0, shape.x1, shape.y1, shape.radius, color)
+                    PixmapEndInto()
+                    unused PixmapResumeInto(24, 20, reference[:], opaque); PixmapClipPixels(clip)
+                    radius := PixmapRadius(shape.x0, shape.y0, shape.x1, shape.y1, shape.radius)
+                    for y: cast(s32)0..19 {
+                        for x: cast(s32)0..23 {
+                            samples := PixmapSamples(x, y, shape.x0, shape.y0, shape.x1, shape.y1, radius)
+                            if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+                        }
+                    }
+                    PixmapEndInto()
+                    for at: cast(s32)0..479 {
+                        if filled[at] != reference[at] {
+                            print("fill mismatch at % alpha % format %\n", at, cast(s32)alpha, format)
+                            return false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true
+}
+
+DrawOpaque :: (surface: []u32, opaque: bool) -> bool {
+    if !PixmapBeginInto(cast(u32)0x123456, 72, 56, surface, opaque) { return false }
+    unused PixmapScale(1.25, 1.25)
+    RasterRoundedRectangle(.{2.0, 2.0, 48.0, 32.0}, 6.0, 8, .{200, 90, 30, 255})
+    RasterRoundedRectangle(.{4.0, 8.0, 30.0, 24.0}, 3.0, 8, .{10, 70, 220, 127})
+    RasterRoundedRectangleOutline(.{1.0, 3.0, 48.0, 35.0}, 5.0, 8, 1.5, .{200, 200, 220, 180})
+    RasterLine(.{2.0, 1.0, 38.0, 28.0}, .{10, 40, 200, 127})
+    for row: cast(s32)0..4 {
+        RasterRoundedRectangle(.{10.0, 35.0 + cast(float32)row, 35.0, 1.0}, 0.0, 0,
+            GradientColorAt(.{80, 30, 150, 120}, .{30, 180, 80, 220}, (cast(float32)row + 0.5) / 5.0))
+    }
+    RasterTextClipped("café Ω 🚀", 5, 9, 12, .{240, 245, 255, 210}, .{2.0, 4.0, 48.0, 20.0})
+    RasterImage("opaque-fixture", cast(u32)0, .{0.0, 0.0, 2.0, 2.0},
+        .{34.0, 20.0, 18.0, 18.0}, .{34.0, 20.0, 18.0, 18.0}, .{}, 0.0, 3.0, .{255, 255, 255, 190})
+    if opaque {
+        // Rejected storage must preserve both the borrowed surface and its
+        // format. A subsequent pixel still needs its opaque host alpha.
+        if PixmapResumeInto(73, 60, surface, false) { return false }
+        RasterLine(.{0.0, 0.0, 0.0, 0.0}, .{1, 2, 3, 255})
+    } else { RasterLine(.{0.0, 0.0, 0.0, 0.0}, .{1, 2, 3, 255}) }
+    PixmapEndInto(); return true
+}
+
+CheckOpaque :: () -> bool {
+    image[0] = cast(u32)0xffff0000; image[1] = cast(u32)0xff00ff00
+    image[2] = cast(u32)0x800000ff; image[3] = cast(u32)0x00ffffff
+    if !PixmapSetImage(5, "opaque-fixture", 2, 2, image[:]) { return false }
+    for at: 0..cast(s32)4319 { rgb[at] = cast(u32)0xabcdef; argb[at] = cast(u32)0xabcdef }
+    if !DrawOpaque(rgb[:], false) || !DrawOpaque(argb[:], true) { return false }
+    for at: 0..cast(s32)4031 {
+        if argb[at] != (rgb[at] | cast(u32)0xff000000) { return false }
+    }
+    for at: 4032..cast(s32)4319 {
+        if rgb[at] != cast(u32)0xabcdef || argb[at] != cast(u32)0xabcdef { return false }
+    }
+    // EndInto returns to the default RGB backing surface.
+    RasterLine(.{959.0, 599.0, 0.0, 0.0}, .{1, 2, 3, 255})
+    if pixmap_pixels[575999] != cast(u32)0x010203 { return false }
+    PixmapClearImage(5); return true
+}
 
 #program_export
 main :: () -> s32 {
+    if !CheckFill() { return 24 }
+    if !CheckOpaque() { return 23 }
     image[0] = cast(u32)0xffff0000; image[1] = cast(u32)0xff00ff00
     image[2] = cast(u32)0x800000ff; image[3] = cast(u32)0x00ffffff
     for i: 0..cast(s32)34 { pixels[i] = cast(u32)0xabcdef }
