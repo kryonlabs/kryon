@@ -1,0 +1,118 @@
+#import "raylib_runtime"
+#import "ziran_raylib_retained_host"
+#import "drawing_props"
+#import "raylib_clip"
+
+texture_loads: s32;
+texture_unloads: s32;
+font_unloads: s32;
+flushes: s32;
+context_epoch: s32 = 1;
+lost_context: bool;
+graphics_failed: bool;
+
+#program_export
+LoadTexture :: (path: *u8) -> Texture2D {
+    unused path
+    texture_loads += 1
+    return Texture2D.{cast(u32)(context_epoch * 1000 + texture_loads),
+        200, 100, 1, 7}
+}
+
+#program_export
+UnloadTexture :: (texture: Texture2D) {
+    if lost_context || texture.id == 0 || flushes == 0 {
+        graphics_failed = true
+    }
+    texture_unloads += 1
+}
+
+#program_export
+rlDrawRenderBatchActive :: () {
+    if lost_context {
+        graphics_failed = true
+    }
+    flushes += 1
+}
+
+#program_export
+LoadFontFromMemory :: (extension: *u8, bytes: *u8, byte_count: s32,
+    size: s32, codepoints: *s32, count: s32) -> RaylibFont {
+    unused extension
+    unused bytes
+    unused byte_count
+    unused size
+    unused codepoints
+    unused count
+    font: RaylibFont
+    font.texture = Texture2D.{cast(u32)(context_epoch * 1000 + 900),
+        64, 64, 1, 7}
+    return font
+}
+
+#program_export
+UnloadFont :: (font: RaylibFont) {
+    if lost_context && font.texture.id != 0 {
+        graphics_failed = true
+    }
+    font_unloads += 1
+}
+
+#program_export
+LoadFontEx :: (path: *u8, size: s32, codepoints: *s32,
+    count: s32) -> RaylibFont {
+    unused path
+    unused size
+    unused codepoints
+    unused count
+    graphics_failed = true
+    return RaylibFont.{}
+}
+
+#program_export
+rlGetMatrixModelview :: () -> RaylibMatrix {
+    graphics_failed = true
+    return RaylibMatrix.{}
+}
+
+#program_export
+glIsEnabled :: (capability: u32) -> u8 {
+    unused capability
+    graphics_failed = true
+    return 0
+}
+
+#program_export
+glGetIntegerv :: (parameter: u32, values: *s32) {
+    unused parameter
+    unused values
+    graphics_failed = true
+}
+
+#program_export
+BeginScissorMode :: (x: s32, y: s32, width: s32, height: s32) {
+    unused x
+    unused y
+    unused width
+    unused height
+    graphics_failed = true
+}
+
+#program_export
+EndScissorMode :: () {
+    graphics_failed = true
+}
+
+#program_export
+rlEnableScissorTest :: () {
+    graphics_failed = true
+}
+
+#program_export
+rlScissor :: (x: s32, y: s32, width: s32, height: s32) {
+    unused x
+    unused y
+    unused width
+    unused height
+    graphics_failed = true
+}
