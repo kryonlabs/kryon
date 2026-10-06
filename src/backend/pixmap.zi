@@ -257,21 +257,43 @@ PixmapInside :: (px: s32, py: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -
     dy: s32 = 0
     if py < top + reach { dy = top + reach - py }
     else if py > bottom - reach { dy = py - (bottom - reach) }
-    return dx * dx + dy * dy <= reach * reach
+    // A supported 16384-pixel surface can have an 8192-pixel radius;
+    // its squared distance in eighths exceeds signed 32-bit storage.
+    return cast(s64)dx * dx + cast(s64)dy * dy <= cast(s64)reach * reach
 }
 
 // How many of a pixel's 16 sample points lie in the rounded rectangle.
 PixmapSamples :: (x: s32, y: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> s32 {
-    count: s32 = 0
-    row: s32 = 0
-    while row < 4 {
-        column: s32 = 0
-        while column < 4 {
-            if PixmapInside(x * 8 + 1 + column * 2, y * 8 + 1 + row * 2,
-                x0, y0, x1, y1, r) { count += 1 }
-            column += 1
+    // Bounds are whole pixels, so all sixteen samples are either inside
+    // the rectangular bounds or outside them. Flat strips need no sampling.
+    if x < x0 || x >= x1 || y < y0 || y >= y1 { return 0 }
+    dx: s64
+    if x < x0 + r { dx = (cast(s64)x0 + r - x) * 8 - 7 }
+    else if x >= x1 - r { dx = (cast(s64)x - (x1 - r)) * 8 + 1 }
+    else { return 16 }
+    dy: s64
+    if y < y0 + r { dy = (cast(s64)y0 + r - y) * 8 - 7 }
+    else if y >= y1 - r { dy = (cast(s64)y - (y1 - r)) * 8 + 1 }
+    else { return 16 }
+    // Reflect a corner's grid into increasing distances from its centre.
+    // Most corner pixels are wholly covered or empty. Only the narrow
+    // antialiased edge needs to count the original 4x4 grid individually.
+    reach := cast(s64)r * 8; square := reach * reach
+    near_x := dx * dx; far_x := (dx + 6) * (dx + 6)
+    if near_x + dy * dy > square { return 0 }
+    if far_x + (dy + 6) * (dy + 6) <= square { return 16 }
+    second_x := (dx + 2) * (dx + 2); third_x := (dx + 4) * (dx + 4)
+    count: s32
+    for row: cast(s32)0..3 {
+        room := square - dy * dy
+        if room < near_x { break }
+        if far_x <= room { count += 4 }
+        else {
+            count += 1
+            if second_x <= room { count += 1 }
+            if third_x <= room { count += 1 }
         }
-        row += 1
+        dy += 2
     }
     return count
 }
