@@ -809,6 +809,8 @@ RaylibAssetIndex :: (path: string) -> s32 {
         raylib_assets_count += 1
     } else {
         index = raylib_assets_next
+        // The draw batch can still refer to the texture being evicted.
+        HostRaylibFlushBatch()
         HostRaylibUnloadTexture(raylib_assets[index].texture)
         raylib_assets_next = (raylib_assets_next + 1) % 32
     }
@@ -824,6 +826,65 @@ RaylibAssetIndex :: (path: string) -> s32 {
         return -1
     }
     return index
+}
+
+// Call on the rendering thread after its context is current again. A lost
+// context's names may already identify unrelated textures in the new context;
+// forget them without sending deletion requests there.
+#program_export
+ResetRaylibGraphics :: (context_lost: bool = false) {
+    if !context_lost {
+        HostRaylibFlushBatch()
+    }
+    index: s32 = 0
+    while index < raylib_assets_count {
+        if !context_lost && raylib_assets[index].texture.id != 0 {
+            HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        raylib_assets[index] = RaylibAsset.{}
+        index += 1
+    }
+    raylib_assets_count = 0
+    raylib_assets_next = 0
+    index = 0
+    while index < 2 {
+        if !context_lost && retained_frame_ready[index] {
+            HostRaylibUnloadRenderTexture(retained_frame_targets[index])
+        }
+        retained_frame_targets[index] = HostRaylibRenderTexture.{}
+        retained_frame_ready[index] = false
+        index += 1
+    }
+    retained_frame_previous_index = -1
+    retained_frame_render_index = 0
+    retained_frame_width = 0
+    retained_frame_height = 0
+    retained_frame_active = false
+    raylib_image_error = false
+    if context_lost {
+        // UnloadFont still releases its CPU glyphs and rectangles with id 0.
+        raylib_font.texture.id = 0
+        index = 0
+        while index < raylib_typeface_count {
+            RaylibDiscardTypefaceTextures(*raylib_typefaces[index])
+            index += 1
+        }
+        index = 0
+        while index < raylib_fallback_face_count {
+            RaylibDiscardTypefaceTextures(*raylib_fallback_faces[index])
+            index += 1
+        }
+    }
+    ReleaseTypefaces()
+}
+
+RaylibDiscardTypefaceTextures :: (typeface: *RaylibTypeface) {
+    typeface.font.texture.id = 0
+    index: s32 = 0
+    while index < typeface.sized_count {
+        typeface.sized_fonts[index].texture.id = 0
+        index += 1
+    }
 }
 
 #program_export

@@ -1,0 +1,79 @@
+#import "raylib_runtime"
+#import "ziran_raylib_graphics_host"
+#import "ziran_raylib_retained_host"
+#import "byte_text_linux"
+#import "drawing_props"
+#import "geometry"
+
+DrawAsset :: (path: string) {
+    source := Rectangle.{0.0, 0.0, 200.0, 100.0}
+    RasterImage(path, 0, source, source, source,
+        Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+}
+
+#program_export
+main :: () -> s32 {
+    if !LoadTypefaceData("ui", ".ttf", "font fixture", null, 0) ||
+    !SelectTypeface("ui") {
+        return 1
+    }
+    if ImageWidth("banner.png") != 200 ||
+    ImageHeight("banner.png") != 100 || texture_loads != 1 {
+        return 2
+    }
+    DrawAsset("banner.png")
+    if presented != 1001 {
+        return 3
+    }
+    if !BeginRetainedFrame(100, 100) || !EndRetainedFrame() {
+        return 4
+    }
+    old_frame := RetainedPreviousFrameTexture().id
+
+    // Old names now refer to a new context's fonts or unrelated textures.
+    // Reset must neither flush its old batch nor delete those new objects.
+    context_epoch = 2
+    lost_context = true
+    ResetRaylibGraphics(true)
+    if texture_unloads != 0 || unloads != 0 || font_unloads != 1 ||
+    RetainedPreviousFrameTexture().id != 0 || graphics_failed {
+        return 5
+    }
+    lost_context = false
+    DrawAsset("banner.png")
+    if texture_loads != 2 || presented != 2002 ||
+    !BeginRetainedFrame(100, 100) || !EndRetainedFrame() ||
+    RetainedPreviousFrameTexture().id == old_frame {
+        return 6
+    }
+
+    // A preserved context releases live resources, then reloads on demand.
+    ResetRaylibGraphics()
+    if texture_unloads != 1 || unloads != 1 || graphics_failed ||
+    RetainedPreviousFrameTexture().id != 0 {
+        return 7
+    }
+    DrawAsset("banner.png")
+    if texture_loads != 3 || presented != 2003 {
+        return 8
+    }
+
+    // Cache eviction must submit earlier draws before deleting their texture.
+    before_flushes := flushes
+    paths: [32][1]u8
+    for index: 0..31 {
+        paths[index][0] = cast(u8)(index + 65)
+        if ImageWidth(TextFromBytes(paths[index][:])) != 200 {
+            return 9
+        }
+    }
+    if texture_unloads != 2 || flushes != before_flushes + 1 ||
+    graphics_failed {
+        return 10
+    }
+    ResetRaylibGraphics()
+    if texture_unloads != 34 || graphics_failed {
+        return 11
+    }
+    return 0
+}
