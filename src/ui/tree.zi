@@ -226,6 +226,8 @@ TreeStore :: struct {
     scope_depth: s32
     committed_count: s32
     submitted_count: s32
+    committed_modal_layer: s32
+    submitted_modal_layer: s32
     next_identity_generation: u64
     staged_identity_generation: u64
     building: bool
@@ -621,6 +623,7 @@ TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
     VecClear(trees[slot].submitted_interactions)
     VecClear(trees[slot].layouts)
     trees[slot].submitted_count = 0
+    trees[slot].submitted_modal_layer = 0
     trees[slot].scope_depth = 0
     trees[slot].building = true
     trees[slot].error = cast(FrameStatus)FrameOk
@@ -844,6 +847,9 @@ TreeSubmit :: (session: Session, key: u64, parent_index: s32, kind: s32,
         trees[slot].new_slots[position] = index
     }
     trees[slot].submitted_count += 1
+    if kind == WidgetKindModal && index > 0 {
+        trees[slot].submitted_modal_layer = index + 1
+    }
     return index
 }
 
@@ -964,6 +970,7 @@ TreeFinish :: (session: Session) -> bool {
     }
     VecSwap(trees[slot].committed_interactions, trees[slot].submitted_interactions)
     trees[slot].committed_count = trees[slot].submitted_count
+    trees[slot].committed_modal_layer = trees[slot].submitted_modal_layer
     trees[slot].next_identity_generation = trees[slot].staged_identity_generation
     return true
 }
@@ -971,6 +978,13 @@ TreeFinish :: (session: Session) -> bool {
 #program_export
 TreeCount :: (session: Session) -> s32 {
     return trees[SessionIndex(session)].committed_count
+}
+
+// Input sees only the last accepted frame, including while its replacement is
+// being composed. Submission order makes the last modal the uppermost layer.
+#program_export
+TreeModalLayer :: (session: Session) -> s32 {
+    return trees[SessionIndex(session)].committed_modal_layer
 }
 
 #program_export
@@ -1198,6 +1212,8 @@ TreeDispose :: (session: Session) {
     trees[slot].scope_depth = 0
     trees[slot].committed_count = 0
     trees[slot].submitted_count = 0
+    trees[slot].committed_modal_layer = 0
+    trees[slot].submitted_modal_layer = 0
     trees[slot].next_identity_generation = 0
     trees[slot].staged_identity_generation = 0
     trees[slot].building = false
