@@ -235,6 +235,7 @@ SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
             prepared.layout.bounds)
         if node < 0 { return }
         TreeSetInteractive(session, node, disabled, false, id)
+        TreeSetDragCapture(session, node, true)
         if semantic_label == "" { semantic_label = label_text }
         TreeSetLabel(session, node, semantic_label)
     }

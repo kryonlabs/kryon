@@ -136,6 +136,7 @@ Reorder :: (session: Session, list: ReorderList,
             if node >= 0 {
                 TreeSetInteractive(session, node, item.disabled != 0,
                     false, item.id)
+                TreeSetDragCapture(session, node, true)
                 TreeSetLabel(session, node, "Reorder")
                 ReorderPaintHandle(session, node,
                     handle_bounds, face)

@@ -117,7 +117,7 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle) -> ScrollInput {
         input.mouse.x, input.mouse.y)
     targeted: bool = target == cast(u64)0 || target == key
     input.pointer_allowed = ((inside && targeted) || input.owns_drag) &&
-        !input.owner_captured
+        !input.owner_captured && !TreePointerCapturesDrag(scroll_device.session)
     if inside && targeted && !scroll_device.wheel_consumed && !input.owner_captured {
         input.wheel = scroll_device.wheel
     }

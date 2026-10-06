@@ -35,6 +35,7 @@ PointerState :: struct {
     grab_y: float32
     released_x: float32
     released_y: float32
+    captures_drag: bool
 }
 
 PointerDrag :: struct {
@@ -361,6 +362,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             TreeInputAt(session, hit).identity_generation
     }
     if frame.pressed {
+        active_pointer[SessionIndex(session)].captures_drag = false
         active_pointer[SessionIndex(session)].held_generation = 0
         active_pointer[SessionIndex(session)].pressed_generation = 0
         active_pointer[SessionIndex(session)].released_generation = 0
@@ -373,6 +375,8 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
                 active_pointer[SessionIndex(session)].held_generation
             active_pointer[SessionIndex(session)].grab_x = frame.x - TreeInputAt(session, hit).bounds.x
             active_pointer[SessionIndex(session)].grab_y = frame.y - TreeInputAt(session, hit).bounds.y
+            active_pointer[SessionIndex(session)].captures_drag =
+                TreeInputAt(session, hit).captures_drag
         }
     }
     if frame.down && active_pointer[SessionIndex(session)].held_generation != 0 {
@@ -397,6 +401,15 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
         active_pointer[SessionIndex(session)].pressed_generation = 0
     }
     return hit
+}
+
+// A control that owns dragging keeps it when the pointer leaves its bounds.
+// Scroll containers must not turn that same press into a content scroll.
+#program_export
+TreePointerCapturesDrag :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    return active_pointer[SessionIndex(session)].held_generation != 0 &&
+        active_pointer[SessionIndex(session)].captures_drag
 }
 
 // A drag keeps its original node identity while held, including when the
