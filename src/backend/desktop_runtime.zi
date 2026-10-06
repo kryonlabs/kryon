@@ -5,6 +5,7 @@
 #import "geometry"
 #import "tree_input"
 #import "utf8"
+Presenter :: #import "pixmap_sdl";
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
@@ -34,7 +35,6 @@ SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_S
 GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
 GetWindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl_library "SDL_GetWindowSize";
 OpenURL :: (url: *u8) -> s32 #foreign sdl_library "SDL_OpenURL";
-CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
     width: s32, height: s32) -> *void #foreign sdl_library "SDL_CreateTexture";
@@ -109,7 +109,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, cast(u32)0x20)
     if window == null { return false }
-    renderer = CreateRenderer(window, -1, cast(u32)1)
+    renderer = Presenter.CreatePixmapRenderer(window)
     if renderer == null { return false }
     texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
         height)

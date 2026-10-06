@@ -1,0 +1,27 @@
+// SDL presentation for hosts that already rasterize their frame into pixels.
+// This chooses the transport of those pixels; it does not draw UI or own
+// the window, texture, event loop, or raster workers.
+#import "std/c_string"
+
+sdl :: #system_library "SDL2";
+GetHint :: (name: *u8) -> *u8 #foreign sdl "SDL_GetHint";
+SetHintPriority :: (name: *u8, value: *u8, priority: s32) -> s32 #foreign sdl "SDL_SetHintWithPriority";
+CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl "SDL_CreateRenderer";
+
+// Call on the window's owner thread, before creating its pixel texture.
+// Normal/override SDL hints and environment preferences take precedence.
+#program_export
+CreatePixmapRenderer :: (window: *void) -> *void {
+    if window == null { return null }
+    surface_hint: [32]u8; disabled: [2]u8; driver_hint: [32]u8
+    if !CopyCString("SDL_FRAMEBUFFER_ACCELERATION", surface_hint[:]) ||
+        !CopyCString("0", disabled[:]) ||
+        !CopyCString("SDL_RENDER_DRIVER", driver_hint[:]) { return null }
+    // SDL's software renderer can otherwise allocate an accelerated window
+    // surface, including a graphics context and driver worker threads.
+    unused SetHintPriority(*surface_hint[0], *disabled[0], 0)
+    flags: u32 = 1 // SDL_RENDERER_SOFTWARE
+    preferred := GetHint(*driver_hint[0])
+    if preferred != null && preferred[0] != cast(u8)0 { flags = 0 }
+    return CreateRenderer(window, -1, flags)
+}

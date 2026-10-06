@@ -23,6 +23,7 @@ AndroidSurface = "src/backend/android_surface.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
+pixmap_sdl = "src/backend/pixmap_sdl.zi"
 pixmap_cell_text = "src/backend/pixmap_cell_text.zi"
 EventWakeSDL = "src/backend/event_wake_sdl.zi"
 Theme = "src/ui/theme.zi"
