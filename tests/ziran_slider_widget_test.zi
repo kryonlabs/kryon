@@ -80,7 +80,9 @@ Frame :: () -> s32 {
         TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider ||
         TreeNodeAt(TestSession(), 1).bounds.height != 80.0 ||
         TreeNodeAt(TestSession(), 2).bounds.height != 100.0 ||
-        TreeNodeAt(TestSession(), 1).semantic_label != "Gain" { return -1 }
+        TreeNodeAt(TestSession(), 1).semantic_label != "Gain" ||
+        !TreeInputAt(TestSession(), 1).captures_drag ||
+        !TreeInputAt(TestSession(), 2).captures_drag { return -1 }
     if phase == 0 {
         if current.value != 25.0 || current.changed ||
             count.value != 5 || count.changed { return -2 }

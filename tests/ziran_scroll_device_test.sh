@@ -80,6 +80,26 @@ Answer :: () -> s32 {
     own = ScrollObservationFor(cast(u64)7, bounds)
     if own.owns_drag || own.content_drag { return -13 }
 
+    // Drag controls reserve their press; the surrounding scroll still gets
+    // wheel input, and cancellation makes ordinary content scrolling usable.
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    button = TreeSubmit(session, cast(u64)9, 0, WidgetKindButton, bounds)
+    TreeSetInteractive(session, button, false, false, 0)
+    TreeSetDragCapture(session, button, true)
+    if !TreeFinish(session) { return -14 }
+    unused TreePointerUpdate(session, PointerFrame.{50.0, 30.0, true, true, false})
+    BeginScrollFrame(session, Vector2.{50.0, 30.0}, true, true, false, -1.0, 0.0)
+    own = ScrollObservationFor(cast(u64)7, bounds)
+    if own.pointer_allowed || own.owns_drag || own.wheel != -1.0 ||
+        !TreePointerCapturesDrag(session) { return -15 }
+    unused TreePointerUpdate(session, PointerFrame.{150.0, 70.0, true, false, false})
+    BeginScrollFrame(session, Vector2.{150.0, 70.0}, false, true, false, 0.0, 0.0)
+    if !TreePointerCapturesDrag(session) { return -16 }
+    TreePointerCancel(session)
+    BeginScrollFrame(session, Vector2.{50.0, 30.0}, true, true, false, 0.0, 0.0)
+    own = ScrollObservationFor(cast(u64)7, bounds)
+    if !own.pointer_allowed || TreePointerCapturesDrag(session) { return -17 }
+
     TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
     outer: s32 = TreeSubmit(session, cast(u64)7, 0, WidgetKindScroll, bounds)
     inner_bounds: Rectangle = Rectangle.{30.0, 15.0, 30.0, 20.0}

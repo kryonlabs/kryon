@@ -165,6 +165,7 @@ InteractionData :: struct {
     disabled: bool
     loading: bool
     circle_hit: bool
+    captures_drag: bool
     focus_id: s32
 }
 
@@ -207,6 +208,7 @@ NodeInput :: struct {
     disabled: bool
     loading: bool
     circle_hit: bool
+    captures_drag: bool
     focus_id: s32
 }
 
@@ -535,6 +537,7 @@ TreeInputAt :: (session: Session, index: s32) -> NodeInput {
         input.disabled = interaction.disabled
         input.loading = interaction.loading
         input.circle_hit = interaction.circle_hit
+        input.captures_drag = interaction.captures_drag
         input.focus_id = interaction.focus_id
     }
     return input
@@ -1166,6 +1169,16 @@ TreeSetInteractive :: (session: Session, index: s32, disabled: bool, loading: bo
     trees[slot].submitted_interactions[interaction].disabled = disabled
     trees[slot].submitted_interactions[interaction].loading = loading
     trees[slot].submitted_interactions[interaction].focus_id = focus_id
+}
+
+#program_export
+TreeSetDragCapture :: (session: Session, index: s32, captures_drag: bool) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    interaction: s32 = trees[slot].submitted[index].interaction_index
+    if interaction < 0 { return }
+    trees[slot].submitted_interactions[interaction].captures_drag = captures_drag
 }
 
 #program_export

@@ -2,11 +2,15 @@
 #import "reorder_props";
 #import "reorder_widget";
 #import "reorder_widget_host";
+#import "scroll_device";
+#import "scroll_props";
+#import "scroll_widget";
 #import "session";
 #import "tree";
 #import "tree_input";
 
 test_session: Session;
+test_scroll: s32;
 
 ReorderFrame :: () -> ReorderListResult {
     items: [3]ReorderItem
@@ -22,9 +26,20 @@ ReorderFrame :: () -> ReorderListResult {
     list.handle_width = 40
     list.viewport_top = 10
     list.viewport_bottom = 180
+    pointer := PointerSample(test_session)
+    BeginScrollFrame(test_session, Vector2.{pointer.x, pointer.y},
+        pointer.pressed, pointer.down, pointer.released, 0.0, 0.0)
     TreeStart(test_session, cast(u64)1,
         Rectangle.{0.0, 0.0, 220.0, 200.0})
+    scroll: ScrollProps
+    scroll.key = cast(u64)77
+    scroll.bounds = Rectangle.{0.0, 0.0, 220.0, 200.0}
+    scroll.content_height = 600
+    scroll.scroll_offset = test_scroll
+    scrolled := Scroll(test_session, scroll)
+    test_scroll = scrolled.scroll_offset
     result := Reorder(test_session, list, items[:])
+    unused End(test_session)
     unused TreeFinish(test_session)
     return result
 }
@@ -50,7 +65,7 @@ Answer :: () -> s32 {
         20.0, 160.0, true, false, false})
     moved := ReorderFrame()
     if moved.dragging == 0 || moved.active_index != 0 ||
-        moved.target_index != 2 || moved.committed != 0 {
+        moved.target_index != 2 || moved.committed != 0 || test_scroll != 0 {
         return 4
     }
     TreePointerUpdate(test_session, PointerFrame.{
