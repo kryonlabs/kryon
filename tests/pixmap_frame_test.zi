@@ -13,8 +13,9 @@ actual: [12288]u32;
 expected: [12288]u32;
 image: [16]u32;
 
-Compose :: (session: Session, index: s32, viewport: Rectangle) {
+Compose :: (session: Session, index: s32, viewport: Rectangle, opaque: bool = false) {
     unused BeginFrame(session, cast(u64)1, viewport)
+    if opaque { PaintRoundedFill(session, -1, viewport, 0.0, 0, .{30, 70, 50, 255}) }
     white: Color = .{255, 255, 255, 255}
     PaintRoundedFill(session, -1, .{2.0, 2.0, 32.0, 25.0}, 4.0, 8, .{40, 30, 100, 180})
     PaintVerticalGradient(session, -1, .{20.3, 3.7, 42.0, 21.0}, .{10, 230, 20, 80}, .{20, 40, 230, 160})
@@ -35,14 +36,14 @@ Compose :: (session: Session, index: s32, viewport: Rectangle) {
 }
 
 Compare :: (fast: Session, full: Session, index: s32, density: float32,
-    width: s32, height: s32, background: u32, reuse: bool = true) -> bool {
+    width: s32, height: s32, background: u32, reuse: bool = true, opaque: bool = false) -> bool {
     viewport: Rectangle = .{0.0, 0.0, cast(float32)width / density, cast(float32)height / density}
     unused PixmapResumeInto(width, height, actual[:]); unused PixmapScale(density, density)
-    Compose(fast, index, viewport); result := EndPixmapFrame(fast, reuse, background)
+    Compose(fast, index, viewport, opaque); result := EndPixmapFrame(fast, reuse, background, opaque)
     if result.status != cast(FrameStatus)FrameOk { return false }
     PixmapEndInto()
     unused PixmapBeginInto(background, width, height, expected[:]); unused PixmapScale(density, density)
-    Compose(full, index, viewport)
+    Compose(full, index, viewport, opaque)
     if EndFrame(full) != cast(FrameStatus)FrameOk { return false }
     PixmapEndInto()
     for at: 0..width * height - 1 {
@@ -71,6 +72,9 @@ main :: () -> s32 {
         image[0] = cast(u32)0xffe01020; unused PixmapSetImage(0, "test.png", 4, 4, image[:])
         PaintSnapshotInvalidate(fast)
         if !Compare(fast, full, 0, density, width, height, 0x101828) { return 6 }
+        for index: cast(s32)0..7 {
+            if !Compare(fast, full, index, density, width, height, 0x101828, true, true) { return 8 }
+        }
     }
     // Cursor-sized paint must not emit the unchanged remote cells.
     viewport: Rectangle = .{0.0, 0.0, 64.0, 48.0}
