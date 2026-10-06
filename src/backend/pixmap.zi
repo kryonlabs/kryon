@@ -387,26 +387,31 @@ PixmapLabelSlot :: (value: string) -> s32 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     unused typeface
-    label_slot: s32 = -1
-    if value.count <= 256 {
-        label_slot = PixmapLabelSlot(value)
-        if pixmap_label_lengths[label_slot] == value.count &&
-            TextView(pixmap_label_bytes[label_slot][:pixmap_label_lengths[label_slot]]) == value {
-            return PixmapTextWidth(pixmap_label_units[label_slot], font)
-        }
-    }
     bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
     at: s32 = 0
+    extending: bool = false
     if bounded && pixmap_measure_count >= 0 {
         if value.count == pixmap_measure_count &&
             value == TextView(pixmap_measure_bytes[:pixmap_measure_count]) {
             return PixmapTextWidth(pixmap_measure_units, font)
         }
         if value.count > pixmap_measure_count &&
-            value[:pixmap_measure_restart] == TextView(pixmap_measure_bytes[:pixmap_measure_restart]) {
+            value[:pixmap_measure_count] == TextView(pixmap_measure_bytes[:pixmap_measure_count]) {
             at = pixmap_measure_restart
             units = pixmap_measure_before
+            extending = true
+        }
+    }
+    // Wrapping measures successively longer prefixes. Hashing and storing
+    // each prefix costs quadratic byte work and evicts the ordinary labels.
+    // The owned incremental prefix already proves which advances are reusable.
+    label_slot: s32 = -1
+    if !extending && value.count <= 256 {
+        label_slot = PixmapLabelSlot(value)
+        if pixmap_label_lengths[label_slot] == value.count &&
+            TextView(pixmap_label_bytes[label_slot][:pixmap_label_lengths[label_slot]]) == value {
+            return PixmapTextWidth(pixmap_label_units[label_slot], font)
         }
     }
     copied: s32 = at
@@ -428,6 +433,11 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
         pixmap_measure_units = units
         index: s32 = 0
         if count >= 4 { index = count % 4 }
+        // A final ASCII byte is a complete unit: an appended selector can
+        // affect that unit, but cannot complete an earlier UTF-8 sequence.
+        if count > 0 && value.count > 0 && value[value.count - 1] < cast(u8)128 {
+            index = (count - 1) % 4
+        }
         pixmap_measure_restart = starts[index]
         pixmap_measure_before = advances[index]
     } else { pixmap_measure_count = -1 }
