@@ -43,6 +43,11 @@ BlackAt :: (image: ClipTestImage, x: s32, y: s32) -> bool {
     return color.r == 0 && color.g == 0 && color.b == 0
 }
 
+BlueAt :: (image: ClipTestImage, x: s32, y: s32) -> bool {
+    color := TestImageColor(image, x, y)
+    return color.b > 200 && color.r < 50 && color.g < 50
+}
+
 #program_export
 main :: () -> s32 {
     title: [32]u8
@@ -96,18 +101,35 @@ main :: () -> s32 {
         Rectangle.{270.0, 10.0, 40.0, 40.0},
         Rectangle.{270.0, 10.0, 40.0, 40.0},
         Vector2.{0.0, 0.0}, 0.0, 20.0, Color.{255, 255, 255, 255})
+    RasterImage("split.png", 0, Rectangle.{0.0, 0.0, -16.0, 16.0},
+        Rectangle.{10.0, 120.0, 80.0, 40.0},
+        Rectangle.{10.0, 120.0, 80.0, 40.0},
+        Vector2.{0.0, 0.0}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    RasterImage("split.png", 0, Rectangle.{0.0, 0.0, -16.0, 16.0},
+        Rectangle.{110.0, 120.0, 80.0, 40.0},
+        Rectangle.{120.0, 120.0, 60.0, 40.0},
+        Vector2.{0.0, 0.0}, 0.0, 8.0, Color.{255, 255, 255, 255})
     // Text wider than its clip is still cut at the clip edge.
     RasterTextClipped("WWWWWWWWWW", 10, 215, 16, Color.{255, 255, 255, 255},
         Rectangle.{10.0, 215.0, 24.0, 20.0})
     TestHostEndDrawing()
     capture := TestCapture()
     result: s32 = 0
+    if !BlueAt(capture, 25, 140) || !RedAt(capture, 75, 140) ||
+    !BlueAt(capture, 125, 140) || !RedAt(capture, 175, 140) ||
+    !BlackAt(capture, 115, 140) || !BlackAt(capture, 185, 140) {
+        print("Mirrored image pixels: % % % % % %", TestImageColor(capture, 25, 140),
+            TestImageColor(capture, 75, 140), TestImageColor(capture, 125, 140),
+            TestImageColor(capture, 175, 140), TestImageColor(capture, 115, 140),
+            TestImageColor(capture, 185, 140))
+        result = 10
+    }
     if !RedAt(capture, 130, 90) || !BlackAt(capture, 105, 65) ||
-        !BlackAt(capture, 155, 90) {
+    !BlackAt(capture, 155, 90) {
         result = 5
     }
     if !RedAt(capture, 215, 55) || !BlackAt(capture, 205, 55) ||
-        !BlackAt(capture, 225, 55) {
+    !BlackAt(capture, 225, 55) {
         result = 6
     }
     text_pixels: s32 = 0
@@ -144,8 +166,8 @@ main :: () -> s32 {
         result = 8
     }
     if !RedAt(capture, 290, 30) || !RedAt(capture, 272, 30) ||
-        !RedAt(capture, 290, 48) || !BlackAt(capture, 272, 12) ||
-        !BlackAt(capture, 308, 48) {
+    !RedAt(capture, 290, 48) || !BlackAt(capture, 272, 12) ||
+    !BlackAt(capture, 308, 48) {
         result = 9
     }
     TestImageFree(capture)

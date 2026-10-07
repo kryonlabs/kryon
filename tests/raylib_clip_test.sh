@@ -18,7 +18,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     -Wl,--gc-sections -I"$ziran_dir/include" -iquote "$work/c" \
     "$work/c"/*.c "$raylib" $raylib_libs \
     -o "$work/test"
-python3 - "$work/red.png" <<'PY'
+python3 - "$work/red.png" "$work/split.png" <<'PY'
 import struct
 import sys
 import zlib
@@ -32,8 +32,14 @@ pixels = b''.join(b'\0' + bytes((230, 20, 20, 255)) * 16 for _ in range(16))
 Path(sys.argv[1]).write_bytes(b'\x89PNG\r\n\x1a\n' +
     chunk(b'IHDR', struct.pack('>IIBBBBB', 16, 16, 8, 6, 0, 0, 0)) +
     chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b''))
+pixels = b''.join(b'\0' + bytes((230, 20, 20, 255)) * 8 +
+                  bytes((20, 20, 230, 255)) * 8 for _ in range(16))
+Path(sys.argv[2]).write_bytes(b'\x89PNG\r\n\x1a\n' +
+    chunk(b'IHDR', struct.pack('>IIBBBBB', 16, 16, 8, 6, 0, 0, 0)) +
+    chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b''))
 PY
 cd "$work"
 env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY \
+    -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
     timeout 20s xvfb-run -a -n 300 -s '-screen 0 640x480x24' ./test
 echo 'Raylib translated/scaled text and image clips, including nesting: passed'
