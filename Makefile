@@ -22,7 +22,7 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
     $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/std/*.zi $(ZIRAN_DIR)/Makefile)
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
-MODULES := $(basename $(notdir $(SOURCE)))
+MODULES := $(basename $(notdir $(SOURCE))) utf8 grapheme grapheme_data
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 PLAN9_DIR := build/plan9
 PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
@@ -227,6 +227,15 @@ page-route-project-test:
 .PHONY: dom-project-test
 dom-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/dom_project_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
+
+.PHONY: native-text-test native-accessibility-test
+native-text-test:
+	@sh tests/native_text_test.sh
+native-accessibility-test:
+	@sh tests/native_accessibility_test.sh
+test: native-text-test native-accessibility-test
 
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
@@ -305,7 +314,8 @@ sanitize-test: project-toolchain
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
 BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zib-reload-test \
-	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test
+	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test \
+	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 .PHONY: clean-scratch
 clean-scratch:
 	@for entry in build/* build/.[!.]*; do \

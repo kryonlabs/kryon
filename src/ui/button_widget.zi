@@ -292,7 +292,7 @@ SubmitButton :: (session: Session, props: ButtonProps,
     if flags.disabled || flags.loading { clicked = false }
     state: s32 = ResolveState(cast(s32)props.state,
         flags.disabled, flags.loading, TreePressedAt(session, previous),
-        TreeHoveredAt(session, previous), false, flags.selected)
+        TreeHoveredAt(session, previous), TreeFocusedAt(session, previous), flags.selected)
     face: StyleData = ButtonInstalledFaceFor(props, state)
     font: s32 = ResolveFont(0,
         StyleFontValue(face.fields, face.font_size), 14)
@@ -318,6 +318,7 @@ SubmitButton :: (session: Session, props: ButtonProps,
         TreeSetCircleHit(session, node, props.circle)
         TreeSetSelected(session, node, flags.selected)
         TreeSetLabel(session, node, props.label)
+            TreeSetStyleClass(session, node, props.class_name)
     }
     PaintButtonForNode(session, node, props, bounds, face, font,
         label_width, label_height)

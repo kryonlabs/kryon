@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
-ziran=${ZIRAN_BIN:-$root/../ziran/build/bin/ziran}
+. "$root/tests/toolchain.sh"
 out=$(mktemp -d "$root/build/media-check-XXXXXX")
 trap 'rm -rf "$out"' EXIT HUP INT TERM
 mkdir "$out/bin"

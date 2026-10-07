@@ -2,6 +2,7 @@
 #import "byte_text_linux"
 #import "c_string"
 #import "file_linux"
+Utf8 :: #import "utf8";
 
 using HostValueKind;
 
@@ -19,10 +20,37 @@ PointerSample :: struct {
     released: bool
 }
 
+ReplaySample :: struct {
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+    secondary_down: bool
+    secondary_pressed: bool
+    secondary_released: bool
+    key: s32
+    modifiers: s32
+    wheel: float32
+    width: float32
+    height: float32
+    elapsed_ms: s64
+    text_bytes: [256]u8
+    text_count: s32
+    ime_phase: s32
+    ime_cursor: s32
+    ime_selection: s32
+    ime_text_bytes: [256]u8
+    ime_text_count: s32
+    clipboard_bytes: [256]u8
+    clipboard_count: s32
+    extended: bool
+}
+
 ReplayState :: struct {
     output: FileHandle
     offset: s64
-    input: PointerSample
+    input: ReplaySample
     pointer_calls: s32
     capture_calls: s32
     phase: s32
@@ -33,10 +61,19 @@ ReplayState :: struct {
     effects: s32
     failed: bool
     pointer_fields: [5]HostField
-    labels: [8]Name
-    bindings: [15]HostBinding
-    binding_names: [30]Name
-    samples: [1024]PointerSample
+    labels: [12]Name
+    bindings: [20]HostBinding
+    binding_names: [40]Name
+    samples: [1024]ReplaySample
+    current_sample: s32
+    input_names: [20]Name
+    input_fields: [20]HostField
+    trace_bytes: [1048576]u8
+    extended: bool
+    application_failed: bool
+    clipboard_written: bool
+    clipboard_bytes: [256]u8
+    clipboard_count: s32
     sample_count: s32
 }
 
@@ -239,6 +276,112 @@ PreparePointer :: (state: *ReplayState) -> bool {
     return true
 }
 
+InputName :: (index: s32) -> string {
+    if index == 0 { return "x" }
+    if index == 1 { return "y" }
+    if index == 2 { return "down" }
+    if index == 3 { return "pressed" }
+    if index == 4 { return "released" }
+    if index == 5 { return "secondary_down" }
+    if index == 6 { return "secondary_pressed" }
+    if index == 7 { return "secondary_released" }
+    if index == 8 { return "key" }
+    if index == 9 { return "modifiers" }
+    if index == 10 { return "wheel" }
+    if index == 11 { return "width" }
+    if index == 12 { return "height" }
+    if index == 13 { return "elapsed_ms" }
+    if index == 14 { return "text" }
+    if index == 15 { return "ime_phase" }
+    if index == 16 { return "ime_cursor" }
+    if index == 17 { return "ime_selection" }
+    if index == 18 { return "ime_text" }
+    if index == 19 { return "clipboard" }
+    return ""
+}
+
+PrepareInput :: (state: *ReplayState) -> bool {
+    if !CopyCString("FrameInput", state.labels[8].bytes[:]) { return false }
+    if !CopyCString("s32", state.labels[9].bytes[:]) { return false }
+    if !CopyCString("s64", state.labels[10].bytes[:]) { return false }
+    if !CopyCString("string", state.labels[11].bytes[:]) { return false }
+    for index: cast(s32)0..19 {
+        if !CopyCString(InputName(index), state.input_names[index].bytes[:]) { return false }
+        state.input_fields[index].name = *state.input_names[index].bytes[0]
+    }
+    state.input_fields[0].value.kind = HostReal
+    state.input_fields[0].value.type_name = *state.labels[5].bytes[0]
+    state.input_fields[1].value.kind = HostReal
+    state.input_fields[1].value.type_name = *state.labels[5].bytes[0]
+    state.input_fields[2].value.kind = HostInteger
+    state.input_fields[2].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[3].value.kind = HostInteger
+    state.input_fields[3].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[4].value.kind = HostInteger
+    state.input_fields[4].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[5].value.kind = HostInteger
+    state.input_fields[5].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[6].value.kind = HostInteger
+    state.input_fields[6].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[7].value.kind = HostInteger
+    state.input_fields[7].value.type_name = *state.labels[6].bytes[0]
+    state.input_fields[8].value.kind = HostInteger
+    state.input_fields[8].value.type_name = *state.labels[9].bytes[0]
+    state.input_fields[9].value.kind = HostInteger
+    state.input_fields[9].value.type_name = *state.labels[9].bytes[0]
+    state.input_fields[10].value.kind = HostReal
+    state.input_fields[10].value.type_name = *state.labels[5].bytes[0]
+    state.input_fields[11].value.kind = HostReal
+    state.input_fields[11].value.type_name = *state.labels[5].bytes[0]
+    state.input_fields[12].value.kind = HostReal
+    state.input_fields[12].value.type_name = *state.labels[5].bytes[0]
+    state.input_fields[13].value.kind = HostInteger
+    state.input_fields[13].value.type_name = *state.labels[10].bytes[0]
+    state.input_fields[14].value.kind = HostString
+    state.input_fields[14].value.type_name = *state.labels[11].bytes[0]
+    state.input_fields[15].value.kind = HostInteger
+    state.input_fields[15].value.type_name = *state.labels[9].bytes[0]
+    state.input_fields[16].value.kind = HostInteger
+    state.input_fields[16].value.type_name = *state.labels[9].bytes[0]
+    state.input_fields[17].value.kind = HostInteger
+    state.input_fields[17].value.type_name = *state.labels[9].bytes[0]
+    state.input_fields[18].value.kind = HostString
+    state.input_fields[18].value.type_name = *state.labels[11].bytes[0]
+    state.input_fields[19].value.kind = HostString
+    state.input_fields[19].value.type_name = *state.labels[11].bytes[0]
+    return true
+}
+
+InputResult :: (state: *ReplayState, result: *HostValue) {
+    state.input_fields[0].value.real = cast(float64)state.input.x
+    state.input_fields[1].value.real = cast(float64)state.input.y
+    state.input_fields[2].value.integer = cast(s64)state.input.down
+    state.input_fields[3].value.integer = cast(s64)state.input.pressed
+    state.input_fields[4].value.integer = cast(s64)state.input.released
+    state.input_fields[5].value.integer = cast(s64)state.input.secondary_down
+    state.input_fields[6].value.integer = cast(s64)state.input.secondary_pressed
+    state.input_fields[7].value.integer = cast(s64)state.input.secondary_released
+    state.input_fields[8].value.integer = cast(s64)state.input.key
+    state.input_fields[9].value.integer = cast(s64)state.input.modifiers
+    state.input_fields[10].value.real = cast(float64)state.input.wheel
+    state.input_fields[11].value.real = cast(float64)state.input.width
+    state.input_fields[12].value.real = cast(float64)state.input.height
+    state.input_fields[13].value.integer = cast(s64)state.input.elapsed_ms
+    state.input_fields[14].value.data = *state.samples[state.current_sample].text_bytes[0]
+    state.input_fields[14].value.length = cast(usize)state.input.text_count
+    state.input_fields[15].value.integer = cast(s64)state.input.ime_phase
+    state.input_fields[16].value.integer = cast(s64)state.input.ime_cursor
+    state.input_fields[17].value.integer = cast(s64)state.input.ime_selection
+    state.input_fields[18].value.data = *state.samples[state.current_sample].ime_text_bytes[0]
+    state.input_fields[18].value.length = cast(usize)state.input.ime_text_count
+    state.input_fields[19].value.data = *state.samples[state.current_sample].clipboard_bytes[0]
+    state.input_fields[19].value.length = cast(usize)state.input.clipboard_count
+    result.kind = HostRecord
+    result.type_name = *state.labels[8].bytes[0]
+    result.fields = *state.input_fields[0]
+    result.field_count = 20
+}
+
 ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
               arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     state: *ReplayState = cast(*ReplayState)context
@@ -293,7 +436,48 @@ ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.field_count = cast(usize)5
         return 1
     }
+    if function == "PollFrameInput" && count == 0 && state.pointer_calls == 0 &&
+        module == TextFromCString(state.bindings[15].module) {
+        state.pointer_calls += 1
+        InputResult(state, result)
+        return 1
+    }
+    if module == "system_clipboard" {
+        result.kind = HostInteger
+        if function == "SystemClipboardOpenHost" && count == 0 {
+            result.integer = state.input.clipboard_count
+            if state.clipboard_written { result.integer = state.clipboard_count }
+            return 1
+        }
+        if function == "SystemClipboardByteHost" && count == 1 && arguments[0].kind == HostInteger {
+            index: s64 = arguments[0].integer
+            result.integer = 0
+            if state.clipboard_written {
+                if index >= 0 && index < state.clipboard_count { result.integer = state.clipboard_bytes[index] }
+            } else if index >= 0 && index < state.input.clipboard_count { result.integer = state.input.clipboard_bytes[index] }
+            return 1
+        }
+        if function == "SystemClipboardWriteHost" && count == 1 && arguments[0].kind == HostString {
+            result.type_name = *state.labels[6].bytes[0]
+            result.integer = 0
+            if arguments[0].length > 256 { return 1 }
+            for index: 0..cast(s32)arguments[0].length - 1 { state.clipboard_bytes[index] = arguments[0].data[index] }
+            state.clipboard_count = cast(s32)arguments[0].length
+            state.clipboard_written = true
+            result.integer = 1
+            return 1
+        }
+        return 0
+    }
     if module != "frame_capture" { return 0 }
+    if function == "RecordFrameFailure" && count == 1 && arguments[0].kind == HostRecord &&
+        state.phase == 0 && state.capture_calls == 0 {
+        state.capture_calls += 1
+        state.phase = 4
+        state.application_failed = true
+        if WriteLiteral(state, "\"failure\":") && JsonValue(state, *arguments[0], 0) { return 1 }
+        return 0
+    }
     if function == "RecordFrameStart" && count == 2 &&
        state.phase == 0 && state.capture_calls == 0 &&
        arguments[0].kind == HostInteger &&
@@ -433,31 +617,104 @@ ParseFlag :: (line: string, at: *s32, result: *bool) -> bool {
     return true
 }
 
+ParseInteger :: (line: string, at: *s32, output: *s64) -> bool {
+    SkipSpace(line, at)
+    negative: bool = false
+    if at.* < line.count && line[at.*] == cast(u8)45 { negative = true; at.* += 1 }
+    digits: s32 = 0
+    value: s64 = 0
+    while at.* < line.count && line[at.*] >= cast(u8)48 && line[at.*] <= cast(u8)57 {
+        digit: s64 = cast(s64)(line[at.*] - cast(u8)48)
+        if value > (9223372036854775807 - digit) / 10 { return false }
+        value = value * 10 + digit; digits += 1; at.* += 1
+    }
+    if digits == 0 || (at.* < line.count && line[at.*] != cast(u8)32 && line[at.*] != cast(u8)9 && line[at.*] != cast(u8)13) { return false }
+    if negative { value = -value }
+    output.* = value
+    return true
+}
+
+ParseInt32 :: (line: string, at: *s32, output: *s32) -> bool {
+    value: s64 = 0
+    if !ParseInteger(line, at, *value) || value < -2147483648 || value > 2147483647 { return false }
+    output.* = cast(s32)value
+    return true
+}
+
+HexValue :: (byte: u8) -> s32 {
+    if byte >= cast(u8)48 && byte <= cast(u8)57 { return cast(s32)byte - 48 }
+    if byte >= cast(u8)97 && byte <= cast(u8)102 { return cast(s32)byte - 87 }
+    if byte >= cast(u8)65 && byte <= cast(u8)70 { return cast(s32)byte - 55 }
+    return -1
+}
+
+ParseText :: (line: string, at: *s32, output: []u8, length: *s32) -> bool {
+    SkipSpace(line, at)
+    length.* = 0
+    if at.* >= line.count { return false }
+    if line[at.*] == cast(u8)45 { at.* += 1 }
+    else {
+        while at.* < line.count && line[at.*] != cast(u8)32 && line[at.*] != cast(u8)9 && line[at.*] != cast(u8)13 {
+            if at.* + 1 >= line.count || length.* >= output.count { return false }
+            high: s32 = HexValue(line[at.*]); low: s32 = HexValue(line[at.* + 1])
+            if high < 0 || low < 0 { return false }
+            output[length.*] = cast(u8)(high * 16 + low)
+            length.* += 1; at.* += 2
+        }
+    }
+    if at.* < line.count && line[at.*] != cast(u8)32 && line[at.*] != cast(u8)9 && line[at.*] != cast(u8)13 { return false }
+    return Utf8.Valid(TextView(output[:length.*]))
+}
+
 ReadTrace :: (state: *ReplayState, path: string) -> bool {
     file: FileHandle = OpenRead(path)
     if !file.valid { return false }
     length: s64 = FileSize(file)
-    if length <= 0 || length > 65536 { CloseFile(file); return false }
-    bytes: [65536]u8
-    read: s64 = ReadAt(file, bytes[0:length], 0)
+    if length <= 0 || length > 1048576 { CloseFile(file); return false }
+    read: s64 = ReadAt(file, state.trace_bytes[0:length], 0)
     CloseFile(file)
     if read != length { return false }
     start: s64 = 0
     while start < length {
         stop: s64 = start
-        while stop < length && bytes[stop] != cast(u8)10 { stop += 1 }
-        line: string = TextFromBytes(bytes[start:stop])
+        while stop < length && state.trace_bytes[stop] != cast(u8)10 { stop += 1 }
+        line: string = TextFromBytes(state.trace_bytes[start:stop])
         at: s32 = 0
         SkipSpace(line, *at)
         if at < cast(s32)line.count && line[at] != cast(u8)35 {
             if state.sample_count >= 1024 { return false }
-            sample: PointerSample
+            sample: ReplaySample
+            sample.width = 320.0; sample.height = 160.0
+            sample.elapsed_ms = cast(s64)state.sample_count * 16
             if !ParseReal(line, *at, *sample.x) ||
                !ParseReal(line, *at, *sample.y) ||
                !ParseFlag(line, *at, *sample.down) ||
                !ParseFlag(line, *at, *sample.pressed) ||
                !ParseFlag(line, *at, *sample.released) { return false }
             SkipSpace(line, *at)
+            if at < line.count {
+                sample.extended = true; state.extended = true
+                if !ParseFlag(line, *at, *sample.secondary_down) { return false }
+                if !ParseFlag(line, *at, *sample.secondary_pressed) { return false }
+                if !ParseFlag(line, *at, *sample.secondary_released) { return false }
+                if !ParseInt32(line, *at, *sample.key) { return false }
+                if !ParseInt32(line, *at, *sample.modifiers) { return false }
+                if !ParseReal(line, *at, *sample.wheel) { return false }
+                if !ParseReal(line, *at, *sample.width) { return false }
+                if !ParseReal(line, *at, *sample.height) { return false }
+                if !ParseInteger(line, *at, *sample.elapsed_ms) { return false }
+                if !ParseText(line, *at, sample.text_bytes[:], *sample.text_count) { return false }
+                if !ParseInt32(line, *at, *sample.ime_phase) { return false }
+                if !ParseInt32(line, *at, *sample.ime_cursor) { return false }
+                if !ParseInt32(line, *at, *sample.ime_selection) { return false }
+                if !ParseText(line, *at, sample.ime_text_bytes[:], *sample.ime_text_count) { return false }
+                if !ParseText(line, *at, sample.clipboard_bytes[:], *sample.clipboard_count) { return false }
+                if sample.width <= 0.0 || sample.height <= 0.0 || sample.elapsed_ms < 0 ||
+                    sample.key < 0 || sample.modifiers < 0 || sample.modifiers > 7 ||
+                    sample.ime_phase < 0 || sample.ime_phase > 4 || sample.ime_cursor < 0 ||
+                    sample.ime_selection < 0 || sample.ime_cursor + cast(s64)sample.ime_selection > sample.ime_text_count { return false }
+                SkipSpace(line, *at)
+            }
             if at != cast(s32)line.count { return false }
             state.samples[state.sample_count] = sample
             state.sample_count += 1
@@ -469,7 +726,7 @@ ReadTrace :: (state: *ReplayState, path: string) -> bool {
 
 InitializeBindings :: (state: *ReplayState, pointer_module: string) -> bool {
     callback: HostCall = ReplayCall
-    if !PreparePointer(state) { return false }
+    if !PreparePointer(state) || !PrepareInput(state) { return false }
     return SetBinding(state, 0, "font_metrics", "MeasureGlyphWidth", callback) &&
         SetBinding(state, 1, "font_metrics", "MeasureGlyphLineHeight", callback) &&
         SetBinding(state, 2, "raster_shape", "RasterRoundedRectangle", callback) &&
@@ -484,7 +741,12 @@ InitializeBindings :: (state: *ReplayState, pointer_module: string) -> bool {
         SetBinding(state, 11, "frame_capture", "RecordFrameStart", callback) &&
         SetBinding(state, 12, "frame_capture", "RecordNode", callback) &&
         SetBinding(state, 13, "frame_capture", "RecordPaint", callback) &&
-        SetBinding(state, 14, "frame_capture", "RecordFrameEnd", callback)
+        SetBinding(state, 14, "frame_capture", "RecordFrameEnd", callback) &&
+        SetBinding(state, 15, pointer_module, "PollFrameInput", callback) &&
+        SetBinding(state, 16, "system_clipboard", "SystemClipboardOpenHost", callback) &&
+        SetBinding(state, 17, "system_clipboard", "SystemClipboardByteHost", callback) &&
+        SetBinding(state, 18, "system_clipboard", "SystemClipboardWriteHost", callback) &&
+        SetBinding(state, 19, "frame_capture", "RecordFrameFailure", callback)
 }
 
 Replay :: (state: *ReplayState, bundle_path: string,
@@ -494,7 +756,7 @@ Replay :: (state: *ReplayState, bundle_path: string,
     bundle: *void = OpenBundle(*bundle_name[0])
     if bundle == null { return false }
     instance: *void = InstantiateBundle(bundle, *state.bindings[0],
-                                        cast(u64)15)
+                                        cast(u64)20)
     if instance == null { CloseBundle(bundle); return false }
     state.output = OpenReplace(output_path)
     if !state.output.valid {
@@ -502,10 +764,14 @@ Replay :: (state: *ReplayState, bundle_path: string,
         CloseBundle(bundle)
         return false
     }
-    ok: bool = WriteLiteral(state, "{\"version\":1,\"frames\":[")
+    ok: bool = WriteLiteral(state, "{\"version\":")
+    if ok { ok = WriteUnsigned(state, ifx state.extended then cast(u64)2 else cast(u64)1) }
+    if ok { ok = WriteLiteral(state, ",\"frames\":[") }
     index: s32 = 0
     while ok && index < state.sample_count {
         state.input = state.samples[index]
+        state.current_sample = index
+        state.clipboard_written = false
         state.pointer_calls = 0
         state.capture_calls = 0
         state.phase = 0
@@ -513,7 +779,7 @@ Replay :: (state: *ReplayState, bundle_path: string,
         state.paints = 0
         state.effects = 0
         if index > 0 { ok = WriteByte(state, cast(u8)44) }
-        sample: PointerSample = state.input
+        sample: ReplaySample = state.input
         if ok { ok = WriteLiteral(state, "{\"input\":{\"x\":") }
         if ok { ok = WriteReal(state, cast(float64)sample.x, true) }
         if ok { ok = WriteLiteral(state, ",\"y\":") }
@@ -533,16 +799,30 @@ Replay :: (state: *ReplayState, bundle_path: string,
             if sample.released { ok = WriteLiteral(state, "true") }
             else { ok = WriteLiteral(state, "false") }
         }
+        if ok && sample.extended {
+            input_value: HostValue
+            InputResult(state, *input_value)
+            for field: cast(s32)5..19 {
+                if ok { ok = WriteByte(state, cast(u8)44) }
+                if ok { ok = JsonString(state, state.input_fields[field].name, cast(u64)InputName(field).count) }
+                if ok { ok = WriteByte(state, cast(u8)58) }
+                if ok { ok = JsonValue(state, *state.input_fields[field].value, 0) }
+            }
+        }
         if ok { ok = WriteLiteral(state, "},") }
         value: s64 = 0
         has_value: s32 = 0
         if ok { ok = RunBundleInstance(instance, *value, *has_value) != 0 }
         ok = ok && has_value != 0 && state.pointer_calls == 1 &&
-             state.capture_calls == 1 && state.phase == 3
+             state.capture_calls == 1 && (state.phase == 3 || state.phase == 4)
         if ok { ok = WriteLiteral(state, ",\"result\":") }
         if ok { ok = WriteSigned(state, value) }
         if ok { ok = WriteLiteral(state, ",\"effects\":") }
         if ok { ok = WriteSigned(state, cast(s64)state.effects) }
+        if ok && state.clipboard_written {
+            ok = WriteLiteral(state, ",\"clipboard_output\":") &&
+                JsonString(state, *state.clipboard_bytes[0], cast(u64)state.clipboard_count)
+        }
         if ok { ok = WriteByte(state, cast(u8)125) }
         index += 1
     }
@@ -550,7 +830,7 @@ Replay :: (state: *ReplayState, bundle_path: string,
     if !CloseFile(state.output) { ok = false }
     CloseBundleInstance(instance)
     CloseBundle(bundle)
-    return ok && !state.failed
+    return ok && !state.failed && !state.application_failed
 }
 
 #program_export

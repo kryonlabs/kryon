@@ -1,0 +1,75 @@
+using UI :: #import "kryon/Widgets";
+Dom :: #import "kryon/Dom";
+CSS :: #import "Kss/Kss";
+#import "std/web"
+host_api :: #system_library "host_api";
+RequestWindowClose :: () #foreign host_api;
+
+started: bool;
+clicked: bool;
+value: [128]u8;
+length: s32;
+cursor: s32;
+anchor: s32;
+
+Editor :: (session: Session) -> TextFieldResult {
+    field: TextFieldProps
+    field.key = 20; field.focus_id = 20; field.label = "Editor"
+    field.value = TextView(value[:length]); field.cursor = cursor; field.anchor = anchor
+    field.bounds = .{10.0, 110.0, 240.0, 32.0}
+    return TextField(session, field)
+}
+
+RunButton :: (session: Session) {
+    button: ButtonProps
+    button.key = 10; button.id = 10; button.label = "Run"
+    button.class_name = CSS.StyleClass("hero")
+    button.bounds = .{10.0, 50.0, 100.0, 32.0}
+    if Button(session, button) != 0 { clicked = true }
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    scope: s32 = WebScope()
+    defer WebEnd(scope)
+    if !started {
+        css: [8192]u8
+        sheet: CSS.CSSExport = CSS.ExportCSS(
+            "@pack probe; Button.hero { background: #112233; color: white; } TextField { width: 200; margin-y: 8; } @media (max-width: 600px) { TextField { width: 120; } }",
+            "probe.kss", CSS.KssDefaultEnvironment(), css[:])
+        if !sheet.ok || !Dom.UseDocumentLayout(TextView(css[:sheet.count])) { return 1 }
+        initial: string = "Aé"
+        for byte: 0..3 { value[byte] = initial[byte] }
+        length = 4; cursor = 4; anchor = 4; started = true
+    }
+    page: PageProps
+    page.key = 2; page.bounds = viewport; page.title = "DOM Interaction"
+    opened: PageResult = Page(session, page)
+    heading: TextProps
+    heading.key = 30; heading.bounds = .{10.0, 10.0, 240.0, 32.0}
+    heading.text = "Ready"
+    if clicked { heading.text = "Clicked" }
+    heading.semantic_kind = SemanticHeading(); heading.heading_level = 1
+    Text(session, heading)
+    reordered: bool = WebAsBool(WebGet(WebGlobal, WebName("__kryonTestReorder")))
+    if !reordered { RunButton(session) }
+    result: TextFieldResult = Editor(session)
+    cursor = result.cursor; anchor = result.anchor
+    if result.edit.changed {
+        if result.edit.start != 0 || result.edit.end != length || result.edit.replacement.count > 128 { return 2 }
+        length = cast(s32)result.edit.replacement.count
+        for byte: 0..length - 1 { value[byte] = result.edit.replacement[byte] }
+    }
+    if reordered { RunButton(session) }
+    field: TextFieldProps
+    field.key = 40; field.focus_id = 40; field.label = "Password"; field.secure = true
+    field.value = "test secret"; field.bounds = .{10.0, 150.0, 240.0, 32.0}
+    TextField(session, field)
+    field.key = 50; field.focus_id = 50; field.label = "Read only"; field.secure = false
+    field.value = "Fixed"; field.read_only = true; field.bounds.y = 190.0
+    TextField(session, field)
+    WebSet(WebGlobal, WebName("__kryonAccepted"), WebText(TextView(value[:length])))
+    if opened.opened { End(session) }
+    if WebAsBool(WebGet(WebGlobal, WebName("__kryonTestDone"))) { RequestWindowClose() }
+    return 0
+}

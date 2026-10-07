@@ -26,7 +26,7 @@ for a target; it does not prove that every native host runs on that target.
 | Libdraw | `src/backend/libdraw_run.zi` | Private Xvfb project test covers capture and input | ✅ supported on the tested Linux host |
 | Native Plan 9 libdraw | `src/backend/libdraw_native.zi` | Display-free ABI fixture plus Taiji's private native source/saved-IR checks cover Rill screens, PNG/reference pixels, alpha composition, cache eviction, native images, and captures | 🧪 experimental provider used by Rill; held modifiers and a selectable run profile remain pending |
 | Web Canvas | `src/backend/canvas_run.zi` | Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
-| Web DOM | `src/backend/dom_run.zi` | Headless Chromium checks semantic tags, attributes, state, stable identity, and the hybrid Canvas raster layer | 🧪 first semantic-DOM host; CSS-native layout and KSS export remain future work |
+| Web DOM | `src/backend/dom_run.zi` | Headless Chromium checks incremental updates, native Unicode editing, reorder focus, KSS, responsive sizing and browser accessibility | 🧪 hybrid host with opt-in native CSS layout for document widgets |
 
 The desktop, raylib, and libdraw project tests run separately with
 `make desktop-project-test`, `make raylib-project-test`, and

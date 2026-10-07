@@ -1,0 +1,55 @@
+#import "session"
+#import "tree_input"
+#import "key_input"
+#import "text_input"
+#import "text_input_props"
+
+using CompositionPhase;
+
+// Raw observations for deterministic hosts and replay. The host owns the
+// supplied UTF-8 strings until the frame ends. Time is explicit so an app's
+// animations need not consult a wall clock during replay.
+FrameInput :: struct {
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+    secondary_down: bool
+    secondary_pressed: bool
+    secondary_released: bool
+    key: s32
+    modifiers: s32
+    wheel: float32
+    width: float32
+    height: float32
+    elapsed_ms: s64
+    text: string
+    ime_phase: s32
+    ime_cursor: s32
+    ime_selection: s32
+    ime_text: string
+    clipboard: string
+}
+
+#program_export
+FrameInputApply :: (session: Session, input: FrameInput) -> bool {
+    if !SessionValid(session) { return false }
+    TreePointerUpdate(session, .{input.x, input.y, input.down, input.pressed, input.released})
+    TreeSecondaryPointerUpdate(session, .{input.secondary_down, input.secondary_pressed, input.secondary_released})
+    KeyboardSend(session, input.key)
+    KeyboardModifiersSend(session, input.modifiers)
+    PointerWheelSend(session, input.x, input.y, input.wheel)
+    return true
+}
+
+#program_export
+FrameInputField :: (input: FrameInput) -> TextFieldInput {
+    result: TextFieldInput = TextFieldInputFor(input.key, input.modifiers, input.text)
+    result.paste_text = input.clipboard
+    result.composition_event.phase = cast(CompositionPhase)input.ime_phase
+    result.composition_event.text = input.ime_text
+    result.composition_event.cursor = input.ime_cursor
+    result.composition_event.selection_length = input.ime_selection
+    return result
+}

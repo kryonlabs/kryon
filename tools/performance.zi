@@ -1,0 +1,102 @@
+// Headless workloads. Timings exclude process startup, compilation and warmup.
+#import "geometry"
+#import "drawing_props"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+#import "list_box_widget"
+#import "list_box_props"
+#import "text_area_widget"
+#import "text_input_props"
+#import "button_widget"
+#import "button_props"
+Clock :: #import "std/timer_linux";
+using FrameStatus;
+
+pixels: [576000]u32;
+image: [4096]u32;
+items: [10000]ListBoxItem;
+document: [8192]u8;
+
+Now :: () -> s64 {
+    return Clock.MonotonicNanoseconds()
+}
+
+Compose :: (session: Session, scenario: s32, frame: s32) {
+    if scenario == 0 {
+        props: ListBoxProps
+        props.key = 10
+        props.bounds = .{20.0, 20.0, 700.0, 540.0}
+        props.row_height = 24
+        props.scroll_offset = frame * 7 % 9900
+        props.selected_index = props.scroll_offset + 2
+        unused ListBox(session, props, items[:])
+    } else if scenario == 1 {
+        props: TextAreaProps
+        props.key = 20
+        props.bounds = .{20.0, 20.0, 700.0, 540.0}
+        props.value = TextView(document[:])
+        props.wrap = true
+        props.scroll_y = frame % 12 * 16
+        unused TextArea(session, props)
+    } else if scenario == 2 {
+        for index: 0..143 {
+            x := cast(float32)(index % 12) * 76.0
+            y := cast(float32)(index / 12) * 48.0
+            PaintImage(session, -1, "benchmark.png", 0, .{0.0, 0.0, 64.0, 64.0},
+                .{x, y + cast(float32)(frame % 3), 70.0, 42.0},
+                .{0.0, 0.0, 960.0, 600.0}, .{}, 0.0, 4.0, .{255, 255, 255, 255})
+        }
+    } else {
+        for index: 0..19 {
+            props: ButtonProps
+            props.key = cast(u64)(100 + index)
+            props.bounds = .{20.0 + cast(float32)(index % 4) * 180.0,
+                20.0 + cast(float32)(index / 4) * 60.0, 160.0, 40.0}
+            props.label = "Idle control"
+            unused Button(session, props)
+        }
+    }
+}
+
+#program_export
+Run :: () -> s32 {
+    for index: 0..9999 { items[index].key = cast(u64)(index + 1); items[index].label = "List row: café Ω" }
+    sentence := "A document with accents é and ordinary words wraps across rows. "
+    complete := 8192 / cast(s32)sentence.count * cast(s32)sentence.count
+    for index: 0..8191 {
+        document[index] = ifx index < complete then sentence[index % cast(s32)sentence.count] else cast(u8)32
+    }
+    for index: 0..4095 { image[index] = cast(u32)0xff205080 + cast(u32)(index % 64 * 256) }
+    if !PixmapSetImage(0, "benchmark.png", 64, 64, image[:]) { return 1 }
+    defer { PixmapCloseWorkers(); PixmapClearImage(0) }
+    print("scenario,frame,submission_ns,commit_raster_ns,total_ns,nodes,paint,emitted,damage_pixels,workers\n")
+    viewport: Rectangle = .{0.0, 0.0, 960.0, 600.0}
+    for scenario: cast(s32)0..3 {
+        session := SessionOpen()
+        if !SessionValid(session) { return 2 }
+        for frame: cast(s32)0..69 {
+            if !PixmapResumeInto(960, 600, pixels[:]) { return 3 }
+            started := Now()
+            if started < 0 || BeginFrame(session, 1, viewport) != cast(FrameStatus)FrameOk { return 4 }
+            Compose(session, scenario, frame)
+            submitted := Now()
+            result := EndPixmapFrame(session, true)
+            ended := Now()
+            PixmapEndInto()
+            if result.status != cast(FrameStatus)FrameOk || submitted < started || ended < submitted { return 5 }
+            if scenario == 3 && frame > 1 && (!result.paint_unchanged || result.emitted_count != 0) { return 6 }
+            if frame >= 10 {
+                print("%,%,%,%,%,%,%,%,%,%\n", scenario, frame - 10,
+                    submitted - started, ended - submitted, ended - started,
+                    TreeCount(session), result.paint_count, result.emitted_count,
+                    cast(s64)(result.damage.width * result.damage.height), PixmapWorkerCount())
+            }
+        }
+        if !CloseSession(session) { return 7 }
+    }
+    return 0
+}

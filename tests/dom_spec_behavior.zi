@@ -10,8 +10,8 @@ SpecIs :: (spec: DomSpec, tag: string, role: string, level: s32,
 }
 
 SemanticChecks :: () -> s32 {
-    if !SpecIs(DomSpecFor(1, 0, 0, ""), "main", "", 0, true, false, false, false) { return 1 }
-    if !SpecIs(DomSpecFor(2, 0, 0, ""), "section", "", 0, true, false, false, false) { return 2 }
+    if !SpecIs(DomSpecFor(1, 0, 0, ""), "main", "", 0, false, false, false, false) { return 1 }
+    if !SpecIs(DomSpecFor(2, 0, 0, ""), "section", "", 0, false, false, false, false) { return 2 }
     if !SpecIs(DomSpecFor(4, 0, 0, ""), "p", "", 0, true, false, false, false) { return 3 }
     if !SpecIs(DomSpecFor(9, 0, 0, ""), "li", "treeitem", 0, true, false, false, false) { return 4 }
     if !SpecIs(DomSpecFor(10, 0, 0, ""), "input", "combobox", 0, false, false, false, false) { return 5 }
@@ -50,8 +50,8 @@ ButtonAndKindChecks :: () -> s32 {
     if !SpecIs(DomSpecFor(0, 2, 0, ""), "p", "", 0, true, false, false, false) { return 3 }
     if !SpecIs(DomSpecFor(0, 15, 0, ""), "p", "", 0, true, false, false, false) { return 4 }
     if !SpecIs(DomSpecFor(0, 24, 0, ""), "img", "", 0, false, true, false, false) { return 5 }
-    if !SpecIs(DomSpecFor(0, 51, 0, ""), "main", "", 0, true, false, false, false) { return 6 }
-    if !SpecIs(DomSpecFor(0, 52, 0, ""), "section", "", 0, true, false, false, false) { return 7 }
+    if !SpecIs(DomSpecFor(0, 51, 0, ""), "main", "", 0, false, false, false, false) { return 6 }
+    if !SpecIs(DomSpecFor(0, 52, 0, ""), "section", "", 0, false, false, false, false) { return 7 }
     if !SpecIs(DomSpecFor(0, 53, 0, ""), "a", "link", 0, true, false, false, false) { return 8 }
     if !SpecIs(DomSpecFor(0, 99, 0, ""), "div", "", 0, false, false, false, false) { return 9 }
     // The semantic kind wins over the widget kind.

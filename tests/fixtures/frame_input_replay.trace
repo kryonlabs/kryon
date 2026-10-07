@@ -1,0 +1,11 @@
+# x y down pressed released secondary_down secondary_pressed secondary_released key modifiers wheel width height elapsed_ms text_hex ime_phase ime_cursor ime_selection ime_hex clipboard_hex
+20 25 0 0 0 0 0 0 0 0 0 320 160 0 - 0 0 0 - -
+20 25 0 0 0 0 0 0 0 0 0 320 160 16 65cc81 0 0 0 - -
+20 25 0 0 0 0 0 0 263 0 0 320 160 32 - 0 0 0 - -
+20 25 0 0 0 0 0 0 0 0 0 320 160 48 - 1 0 0 - -
+20 25 0 0 0 0 0 0 0 0 0 320 160 64 - 2 25 0 f09f91a8e2808df09f91a9e2808df09f91a7e2808df09f91a6 -
+20 25 0 0 0 0 0 0 0 0 0 320 160 80 - 3 3 0 e7958c -
+20 25 0 0 0 0 0 0 65 2 0 320 160 96 - 0 0 0 - -
+20 25 0 0 0 0 0 0 67 2 0 320 160 112 - 0 0 0 - -
+20 25 0 0 0 0 0 0 86 2 1 640 320 128 - 0 0 0 - 7061737465
+20 25 0 0 0 0 0 0 259 0 0 640 320 144 - 0 0 0 - -

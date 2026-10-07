@@ -1,3 +1,4 @@
+#import "text_host"
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -28,7 +29,10 @@
 #import "text_widget"
 #import "tree"
 #import "tree_input"
+#import "text_request"
 #import "widget_kind"
+Grapheme :: #import "std/grapheme";
+Utf8 :: #import "std/utf8";
 
 using SemanticKind;
 using WidgetKind;
@@ -251,9 +255,8 @@ TextAreaCaretFor :: (value: string, cursor: s32,
             within: s32 = cursor
             if within < row.start { within = row.start }
             if within > row.end { within = row.end }
-            caret.x = GlyphWidth(TextSpan(value,
-                row.start, within - row.start), font,
-                typeface)
+            caret.x = GlyphCaret(TextSpan(value, row.start, row.end - row.start),
+                within - row.start, font, typeface)
             caret.y = index * advance
             caret.row_start = row.start
             caret.row_end = row.end
@@ -342,11 +345,17 @@ TextAreaViewByteAt :: (view: TextAreaView,
 TextAreaViewNext :: (view: TextAreaView,
     cursor: s32) -> s32 {
     cursor = TextCursorForLength(cursor, view.length)
-    if cursor >= view.length { return view.length }
-    cursor += 1
-    while cursor < view.length &&
-        TextUtf8Continuation(TextAreaViewByteAt(view, cursor)) {
-        cursor += 1
+    state: Grapheme.State
+    bytes: [4]u8
+    while cursor < view.length {
+        count := view.length - cursor
+        if count > 4 { count = 4 }
+        for index: 0..count - 1 { bytes[index] = TextAreaViewByteAt(view, cursor + index) }
+        point := Utf8.Decode(TextView(bytes[:count]), 0)
+        step := Grapheme.Push(state, point.value, point.valid)
+        if step.boundary { return cursor }
+        state = step.state
+        cursor += point.after
     }
     return cursor
 }
@@ -648,10 +657,8 @@ TextAreaEditFor :: (props: TextAreaProps,
 TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult
     result.node = -1
-    result.cursor = TextCursorForLength(props.cursor,
-        (cast(s32)props.value.count))
-    result.anchor = TextCursorForLength(props.anchor,
-        (cast(s32)props.value.count))
+    result.cursor = Grapheme.Boundary(props.value, props.cursor)
+    result.anchor = Grapheme.Boundary(props.value, props.anchor)
     result.scroll_y = props.scroll_y
     result.focused = props.focused
     result.composition = props.composition
@@ -667,8 +674,10 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     }
     activated: bool = TreeTakeActivationAt(session, previous)
     drag: PointerDrag = TreeTakeDragAt(session, previous)
-    if props.disabled || props.input.blur { result.focused = false }
+    if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
+    if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
     if !props.disabled && props.input.focus { result.focused = true }
+    if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
     face: StyleFrame = TextAreaFaceFor(props, result.focused)
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
@@ -944,8 +953,26 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         !props.composition.active &&
         props.input.composition_event.phase ==
             cast(CompositionPhase)CompositionNone
-    if result.escaped { result.focused = false }
-    if props.disabled || props.input.blur { result.focused = false }
+    if result.escaped { result.focused = false; TreeBlurAt(session, previous) }
+    if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
+    request: TextRequest = TextRequestTake(session, previous)
+    if request.pending && !props.disabled {
+        if !request.replace {
+            result.cursor = Grapheme.Boundary(props.value, request.cursor)
+            result.anchor = Grapheme.Boundary(props.value, request.anchor)
+        } else if !props.read_only && (request.value.count == 0 || TextAreaInputTextAllowed(request.value)) &&
+            TextAreaReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
+            result.edit.start = 0
+            result.edit.end = cast(s32)props.value.count
+            result.edit.replacement = request.value
+            result.edit.changed = true
+            result.cursor = request.cursor
+            result.anchor = request.anchor
+        }
+        result.focused = true
+        result.composition = CompositionState.{}
+        result.composition_changed = result.composition_changed || props.composition.active
+    }
     view: TextAreaView = TextAreaViewFor(props.value,
         result.anchor, result.cursor, result.composition)
     display_cursor: s32 = result.cursor
@@ -989,7 +1016,13 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         TreeSetSemantic(session, result.node,
             cast(SemanticKind)SemanticTextArea, 0)
         TreeSetLabel(session, result.node, props.label)
+            TreeSetStyleClass(session, result.node, props.class_name)
         TreeSetSelected(session, result.node, result.focused)
+        TreeSetTextValue(session, result.node, props.value,
+            Grapheme.Boundary(props.value, result.cursor),
+            Grapheme.Boundary(props.value, result.anchor), props.read_only, false)
+        TextHostPresent(session, result.node, props.value, result.cursor,
+            result.anchor, false, props.read_only, result.edit.changed)
         bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     PaintRoundedFill(session, result.node, bounds,

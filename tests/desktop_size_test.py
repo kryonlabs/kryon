@@ -76,7 +76,7 @@ def main():
         generated = project / "generated"
         run([ZIRAN, "build", "--project", "--target=c", "--entry", "app:main",
              "-o", str(generated), "src/app.zi"], project, env)
-        libraries = subprocess.run(["pkg-config", "--libs", "sdl2", "cairo", "freetype2", "fontconfig"],
+        libraries = subprocess.run(["pkg-config", "--libs", "sdl2", "cairo", "freetype2", "fontconfig", "pangocairo"],
                                    check=True, capture_output=True,
                                    text=True).stdout.split()
         run([os.environ.get("CC", "cc"), "-std=c99",

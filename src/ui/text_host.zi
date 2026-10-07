@@ -1,0 +1,20 @@
+#import "session"
+
+// A platform may stage editor presentation while the widget builds a frame.
+// It must publish it only after that frame commits. Values (including secure
+// ones) are borrowed for this callback; they never enter semantic snapshots.
+TextPresentation :: #type (session: Session, node: s32, value: string,
+    cursor: s32, anchor: s32, secure: bool, read_only: bool, edited: bool) -> void;
+text_presentation: TextPresentation;
+text_presentation_ready: bool;
+
+TextHostInstall :: (presentation: TextPresentation) {
+    text_presentation = presentation; text_presentation_ready = true
+}
+TextHostClear :: () { text_presentation_ready = false }
+TextHostPresent :: (session: Session, node: s32, value: string,
+    cursor: s32, anchor: s32, secure: bool, read_only: bool, edited: bool) {
+    if text_presentation_ready {
+        text_presentation(session, node, value, cursor, anchor, secure, read_only, edited)
+    }
+}

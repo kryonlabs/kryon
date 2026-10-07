@@ -5,6 +5,7 @@
 #import "semantic"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
 
 using FrameStatus;
 host_api :: #system_library "host_api";
@@ -29,6 +30,14 @@ FrameNode :: struct {
     loading: bool
     selected: bool
     focus_id: s32
+    focused: bool
+    has_text: bool
+    read_only: bool
+    secure: bool
+    text_bytes: s32
+    text_cursor: s32
+    text_anchor: s32
+    text_value: string
 }
 
 FramePaint :: struct {
@@ -82,6 +91,14 @@ FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
     node.loading = entry.loading
     node.selected = entry.selected
     node.focus_id = entry.focus_id
+    node.has_text = entry.has_text
+    node.read_only = entry.read_only
+    node.secure = entry.secure
+    if !entry.secure {
+        node.text_bytes = entry.text_bytes
+        node.text_cursor = entry.text_cursor
+        node.text_anchor = entry.text_anchor
+    }
     return node
 }
 
@@ -126,18 +143,33 @@ RecordFrameStart :: (node_count: s32, paint_count: s32) #foreign host_api;
 RecordNode :: (index: s32, node: FrameNode) #foreign host_api;
 RecordPaint :: (index: s32, command: FramePaint) #foreign host_api;
 RecordFrameEnd :: () #foreign host_api;
+RecordFrameFailure :: (failure: FrameFailure) #foreign host_api;
 
 // Capture only a complete, committed frame. All values are sent before paint
 // is flushed, while the queue still contains the commands chosen by widgets.
 #program_export
 EndFrameCapture :: (session: Session) -> bool {
-    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    status: FrameStatus = CommitFrame(session)
+    if status != cast(FrameStatus)FrameOk {
+        failure: FrameFailure = FrameFailureAt(session)
+        failure.status = cast(s32)status
+        failure.message = FrameStatusMessage(failure.status)
+        RecordFrameFailure(failure)
+        return false
+    }
     node_count: s32 = TreeCount(session)
     paint_count: s32 = PendingPaintCount(session)
     RecordFrameStart(node_count, paint_count)
     index: s32 = 0
     while index < node_count {
-        RecordNode(index, FrameNodeFrom(TreeNodeAt(session, index)))
+        entry: TreeEntry = TreeNodeAt(session, index)
+        node: FrameNode = FrameNodeFrom(entry)
+        node.focused = TreeFocusedAt(session, index) || (entry.has_text && entry.selected)
+        bytes: [65536]u8
+        if entry.has_text && !entry.secure && entry.text_bytes <= 65536 {
+            node.text_value = TreeTextRange(session, index, 0, entry.text_bytes, bytes[:])
+        }
+        RecordNode(index, node)
         index += 1
     }
     index = 0

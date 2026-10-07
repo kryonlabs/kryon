@@ -1,4 +1,5 @@
 #import "secondary_pointer"
+A :: #import "accessibility_linux";
 #import "app"
 #import "cairo_raster"
 #import "desktop_runtime"
@@ -9,6 +10,9 @@
 #import "tree_input"
 
 using FrameStatus;
+
+accessibility_attempted: bool;
+accessibility_enabled: bool;
 
 libc :: #system_library "libc";
 DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
@@ -28,6 +32,9 @@ DesktopError :: (message: string) -> s32 {
 }
 
 DrawFrame :: (session: Session) -> bool {
+    origin: Vector2 = DesktopOrigin()
+    A.AccessibilityOrigin(cast(s32)origin.x, cast(s32)origin.y)
+    A.AccessibilityPoll()
     BeginDesktopFrame()
     viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
@@ -41,6 +48,19 @@ DrawFrame :: (session: Session) -> bool {
         return false
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk { return false }
+    if !accessibility_attempted && !CaptureRequested() {
+        accessibility_attempted = true
+        title: string = "Kryon Ziran"
+        for index: 0..TreeCount(session) - 1 {
+            node: TreeEntry = TreeNodeAt(session, index)
+            if cast(s32)node.semantic_kind == 1 && node.semantic_label.count > 0 { title = node.semantic_label; break }
+        }
+        accessibility_enabled = A.AccessibilityOpen(session, title)
+    } else if accessibility_enabled && !A.AccessibilitySync() {
+        A.AccessibilityClose()
+        accessibility_enabled = false
+        unused DesktopError("kryon: Linux accessibility synchronization failed")
+    }
     return EndDesktopFrame()
 }
 
@@ -73,6 +93,7 @@ main :: () -> s32 {
             if ok { PauseDesktop() }
         }
     }
+    A.AccessibilityClose()
     CloseSession(session)
     CloseDesktop()
     if ok { return 0 }

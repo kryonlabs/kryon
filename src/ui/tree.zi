@@ -69,6 +69,34 @@ FrameStatus :: enum {
     FrameIdentityOverflow :: 7
     FramePaintOverflow :: 8
 }
+FrameFailure :: struct { status: s32; key: u64; kind: s32; message: string; }
+
+#program_export
+FrameStatusMessage :: (status: s32) -> string {
+    if status == 0 { return "Frame accepted" }
+    if status == 1 { return "Invalid UI session" }
+    if status == 2 { return "No frame is being built" }
+    if status == 3 { return "Invalid widget parent" }
+    if status == 4 { return "Unbalanced widget scope" }
+    if status == 5 { return "Duplicate widget key" }
+    if status == 6 { return "Frame storage allocation failed" }
+    if status == 7 { return "Widget identity overflow" }
+    if status == 8 { return "Paint queue overflow" }
+    return "Unknown frame failure"
+}
+
+#program_export
+FrameFailureAt :: (session: Session) -> FrameFailure {
+    result: FrameFailure
+    result.status = cast(s32)TreeFrameStatus(session)
+    result.message = FrameStatusMessage(result.status)
+    if SessionValid(session) {
+        result.key = trees[session.slot].error_key
+        result.kind = trees[session.slot].error_kind
+    }
+    return result
+}
+
 using SemanticKind;
 using WidgetKind;
 using FrameStatus;
@@ -91,6 +119,7 @@ TreePlacement :: #type (session: Session, parent_index: s32,
     bounds: Rectangle) -> Rectangle;
 
 TreeEntry :: struct {
+    style_class: s32
     key: u64
     parent_key: u64
     auto_key: bool
@@ -114,6 +143,12 @@ TreeEntry :: struct {
     semantic_label: string
     semantic_detail: string
     semantic_kind: SemanticKind
+    text_bytes: s32
+    text_cursor: s32
+    text_anchor: s32
+    has_text: bool
+    read_only: bool
+    secure: bool
     heading_level: s32
     parent: s32
     first_child: s32
@@ -152,6 +187,7 @@ NodeCore :: struct {
 }
 
 SemanticData :: struct {
+    style_class: s32
     label_offset: s64
     label_length: s64
     detail_offset: s64
@@ -159,6 +195,14 @@ SemanticData :: struct {
     kind: SemanticKind
     heading_level: s32
     selected: bool
+    text_offset: s64
+    text_length: s64
+    text_bytes: s32
+    text_cursor: s32
+    text_anchor: s32
+    has_text: bool
+    read_only: bool
+    secure: bool
 }
 
 InteractionData :: struct {
@@ -226,6 +270,8 @@ TreeStore :: struct {
     submitted: Vec(NodeCore)
     committed_semantics: Vec(SemanticData)
     submitted_semantics: Vec(SemanticData)
+    committed_text: Vec(u8)
+    submitted_text: Vec(u8)
     committed_labels: [65536]u8
     submitted_labels: [65536]u8
     submitted_label_count: s64
@@ -465,6 +511,13 @@ TreeRead :: (session: Session, index: s32,
                         semantic.detail_offset + semantic.detail_length])
             }
         }
+        entry.style_class = semantic.style_class
+        entry.text_bytes = semantic.text_bytes
+        entry.text_cursor = semantic.text_cursor
+        entry.text_anchor = semantic.text_anchor
+        entry.has_text = semantic.has_text
+        entry.read_only = semantic.read_only
+        entry.secure = semantic.secure
         entry.semantic_kind = semantic.kind
         entry.heading_level = semantic.heading_level
         entry.selected = semantic.selected
@@ -632,6 +685,7 @@ TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
     slot: s32 = session.slot
     VecClear(trees[slot].submitted)
     VecClear(trees[slot].submitted_semantics)
+    VecClear(trees[slot].submitted_text)
     trees[slot].submitted_label_count = 0
     VecClear(trees[slot].submitted_interactions)
     VecClear(trees[slot].layouts)
@@ -976,6 +1030,7 @@ TreeFinish :: (session: Session) -> bool {
     trees[slot].scope_depth = 0
     VecSwap(trees[slot].committed, trees[slot].submitted)
     VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
+    VecSwap(trees[slot].committed_text, trees[slot].submitted_text)
     byte: s64 = 0
     while byte < trees[slot].submitted_label_count {
         trees[slot].committed_labels[byte] = trees[slot].submitted_labels[byte]
@@ -1060,6 +1115,7 @@ TreeCancel :: (session: Session) {
     trees[slot].building = false
     VecClear(trees[slot].submitted)
     VecClear(trees[slot].submitted_semantics)
+    VecClear(trees[slot].submitted_text)
     trees[slot].submitted_label_count = 0
     VecClear(trees[slot].submitted_interactions)
     VecClear(trees[slot].layouts)
@@ -1092,6 +1148,61 @@ TreeOverlayLayerAt :: (session: Session, index: s32, committed: bool) -> s32 {
         index = node.parent
     }
     return 0
+}
+
+// Read a bounded UTF-8 byte range without exposing the tree's owned buffer.
+// Long documents remain available in chunks; passwords yield no bytes.
+#program_export
+TreeTextRange :: (session: Session, index: s32, first: s32, last: s32,
+    output: []u8) -> string {
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return ""
+    }
+    slot: s32 = session.slot
+    semantic: s32 = trees[slot].committed[index].semantic_index
+    if semantic < 0 { return "" }
+    data: SemanticData = trees[slot].committed_semantics[semantic]
+    if data.secure || first < 0 || last < first || last > data.text_length ||
+        last - first > output.count { return "" }
+    byte: s32 = 0
+    while byte < last - first {
+        output[byte] = trees[slot].committed_text[data.text_offset + first + byte]
+        byte += 1
+    }
+    return TextView(output[:byte])
+}
+
+// Own the immutable frame value; caller storage may change after submission.
+// Password bytes never enter the semantic tree. Selection offsets are UTF-8
+// byte offsets; platform adapters translate their own character conventions.
+#program_export
+TreeSetTextValue :: (session: Session, index: s32, value: string,
+    cursor: s32, anchor: s32, read_only: bool, secure: bool) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic < 0 { return }
+    start: s64 = trees[slot].submitted_text.count
+    if !secure {
+        byte: s64 = 0
+        while byte < value.count {
+            if !VecPush(trees[slot].submitted_text, value[byte]) {
+                trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+                return
+            }
+            byte += 1
+        }
+    }
+    trees[slot].submitted_semantics[semantic].has_text = true
+    trees[slot].submitted_semantics[semantic].text_offset = start
+    trees[slot].submitted_semantics[semantic].text_length =
+        trees[slot].submitted_text.count - start
+    trees[slot].submitted_semantics[semantic].text_bytes = cast(s32)value.count
+    trees[slot].submitted_semantics[semantic].text_cursor = cursor
+    trees[slot].submitted_semantics[semantic].text_anchor = anchor
+    trees[slot].submitted_semantics[semantic].read_only = read_only
+    trees[slot].submitted_semantics[semantic].secure = secure
 }
 
 #program_export
@@ -1227,6 +1338,8 @@ TreeDispose :: (session: Session) {
     VecFree(trees[slot].submitted)
     VecFree(trees[slot].committed_semantics)
     VecFree(trees[slot].submitted_semantics)
+    VecFree(trees[slot].committed_text)
+    VecFree(trees[slot].submitted_text)
     VecFree(trees[slot].committed_interactions)
     VecFree(trees[slot].submitted_interactions)
     VecFree(trees[slot].layouts)
@@ -1240,6 +1353,14 @@ TreeDispose :: (session: Session) {
     trees[slot].next_identity_generation = 0
     trees[slot].staged_identity_generation = 0
     trees[slot].building = false
+}
+
+#program_export
+TreeSetStyleClass :: (session: Session, index: s32, style_class: s32) {
+    slot: s32 = SessionIndex(session)
+    if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return }
+    semantic: s32 = TreeEnsureSemantic(session, index)
+    if semantic >= 0 { trees[slot].submitted_semantics[semantic].style_class = style_class }
 }
 
 }

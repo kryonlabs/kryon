@@ -34,6 +34,7 @@ SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "
 SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_SetWindowPosition";
 GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
 GetWindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl_library "SDL_GetWindowSize";
+GetWindowPosition :: (window: *void, x: *s32, y: *s32) #foreign sdl_library "SDL_GetWindowPosition";
 OpenURL :: (url: *u8) -> s32 #foreign sdl_library "SDL_OpenURL";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
@@ -63,6 +64,13 @@ FreeSdlMemory :: (memory: *void) #foreign sdl_library "SDL_free";
 window: *void;
 #program_export
 DesktopWindow :: () -> *void { return window }
+
+#program_export
+DesktopOrigin :: () -> Vector2 {
+    x: s32; y: s32
+    if window != null { GetWindowPosition(window, *x, *y) }
+    return .{cast(float32)x, cast(float32)y}
+}
 renderer: *void;
 texture: *void;
 pointer: PointerFrame;

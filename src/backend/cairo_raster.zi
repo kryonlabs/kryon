@@ -1,6 +1,8 @@
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "font_metrics"
+Utf8 :: #import "std/utf8";
 
 libdl :: #system_library "dl";
 RasterLookup :: (handle: *void, symbol: *u8) -> *void #foreign libdl "dlsym";
@@ -104,6 +106,83 @@ Translate :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cair
 Rotate :: (paint: *void, radians: float64) #foreign cairo_library "cairo_rotate";
 Scale :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_scale";
 
+pango :: #system_library "pangocairo-1.0";
+objects :: #system_library "gobject-2.0";
+fontconfig :: #system_library "fontconfig";
+LayoutNew :: (paint: *void) -> *void #foreign pango "pango_cairo_create_layout";
+LayoutTextPointer :: (layout: *void) -> *u8 #foreign pango "pango_layout_get_text";
+LayoutText :: (layout: *void, text: *u8, count: s32) #foreign pango "pango_layout_set_text";
+LayoutFont :: (layout: *void, description: *void) #foreign pango "pango_layout_set_font_description";
+LayoutSingleParagraph :: (layout: *void, single: s32) #foreign pango "pango_layout_set_single_paragraph_mode";
+LayoutSize :: (layout: *void, width: *s32, height: *s32) #foreign pango "pango_layout_get_pixel_size";
+LayoutShow :: (paint: *void, layout: *void) #foreign pango "pango_cairo_show_layout";
+FontDescriptionNew :: () -> *void #foreign pango "pango_font_description_new";
+FontDescriptionFree :: (description: *void) #foreign pango "pango_font_description_free";
+FontFamily :: (description: *void, family: *u8) #foreign pango "pango_font_description_set_family";
+FontSize :: (description: *void, size: float64) #foreign pango "pango_font_description_set_absolute_size";
+LayoutUnref :: (layout: *void) #foreign objects "g_object_unref";
+LayoutRectangle :: struct { x: s32; y: s32; width: s32; height: s32; }
+LayoutCursor :: (layout: *void, index: s32, strong: *LayoutRectangle,
+    weak: *LayoutRectangle) #foreign pango "pango_layout_get_cursor_pos";
+FontConfigCurrent :: () -> *void #foreign fontconfig "FcConfigGetCurrent";
+FontConfigAdd :: (config: *void, path: *u8) -> s32 #foreign fontconfig "FcConfigAppFontAddFile";
+FontQuery :: (path: *u8, id: u32, blanks: *void, count: *s32) -> *void #foreign fontconfig "FcFreeTypeQuery";
+FontQueryString :: (pattern: *void, key: *u8, index: s32, value: **u8) -> s32 #foreign fontconfig "FcPatternGetString";
+FontQueryFree :: (pattern: *void) #foreign fontconfig "FcPatternDestroy";
+
+libc :: #system_library "libc";
+LayoutReallocate :: (buffer: *u8, size: usize) -> *u8 #foreign libc "realloc";
+LayoutFree :: (buffer: *u8) #foreign libc "free";
+layout_bytes: *u8;
+layout_capacity: s64;
+
+layout: *void;
+font_description: *void;
+font_family: [256]u8;
+text_error: bool;
+layout_font: s32;
+layout_length: s64;
+
+ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
+    if layout == null || font <= 0 || value.count > 2147483647 { return false }
+    if layout_font == font && layout_length == value.count {
+        stored: *u8 = LayoutTextPointer(layout)
+        same: bool = true
+        for byte: 0..cast(s32)value.count - 1 {
+            if stored[byte] != value[byte] { same = false; break }
+        }
+        if same { return true }
+    }
+    if !Utf8.Valid(value) { return false }
+    FontFamily(font_description, *font_family[0])
+    // Text paint effects carry the host font, so measurement uses it too.
+    SetFontSize(paint, cast(float64)font)
+    extents: FontExtents
+    FontExtentsOf(paint, *extents)
+    total: float64 = extents.ascent + extents.descent
+    size: float64 = cast(float64)font
+    if total > 0.0 { size = cast(float64)font * cast(float64)font / total }
+    FontSize(font_description, size * 1024.0)
+    LayoutFont(layout, font_description)
+    if value.count + 1 > layout_capacity {
+        bytes: *u8 = LayoutReallocate(layout_bytes, cast(usize)(value.count + 1))
+        if bytes == null { return false }
+        layout_bytes = bytes; layout_capacity = value.count + 1
+    }
+    for byte: 0..cast(s32)value.count - 1 { layout_bytes[byte] = value[byte] }
+    layout_bytes[value.count] = 0
+    LayoutText(layout, layout_bytes, cast(s32)value.count)
+    layout_font = font; layout_length = value.count
+    return true
+}
+
+ShapedCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
+    if !ShapedLayout(value, font, typeface) { return 0 }
+    strong: LayoutRectangle; weak: LayoutRectangle
+    LayoutCursor(layout, byte, *strong, *weak)
+    return strong.x / 1024
+}
+
 surface: *void;
 paint: *void;
 image_error: bool;
@@ -195,11 +274,41 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     paint = Create(surface)
     if paint == null || Status(paint) != 0 { return false }
     UseKryonFont()
+    CopyCString("Liberation Sans", font_family[:])
+    key: [32]u8
+    CopyCString("KRYON_FONT_PATH", key[:])
+    path: *u8 = RasterGetEnvironment(*key[0])
+    if path != null {
+        FontConfigAdd(FontConfigCurrent(), path)
+        count: s32 = 0
+        pattern: *void = FontQuery(path, 0, null, *count)
+        if pattern != null {
+            family_key: [16]u8; CopyCString("family", family_key[:])
+            family: *u8 = null
+            if FontQueryString(pattern, *family_key[0], 0, *family) == 0 && family != null {
+                at: s32 = 0
+                while at < 255 && family[at] != cast(u8)0 { font_family[at] = family[at]; at += 1 }
+                font_family[at] = 0
+            }
+            FontQueryFree(pattern)
+        }
+    }
+    layout_font = 0; layout_length = 0
+    layout = LayoutNew(paint)
+    font_description = FontDescriptionNew()
+    if layout == null || font_description == null { CloseRaster(); return false }
+    LayoutSingleParagraph(layout, 1)
+    measure: CaretMeasure = ShapedCaret
+    GlyphCaretInstall(measure)
     return Status(paint) == 0
 }
 
 #program_export
 CloseRaster :: () {
+    GlyphCaretClear()
+    if layout_bytes != null { LayoutFree(layout_bytes) }; layout_bytes = null; layout_capacity = 0
+    if layout != null { LayoutUnref(layout) }; layout = null
+    if font_description != null { FontDescriptionFree(font_description) }; font_description = null
     for i: 0..127 {
         if cached_images[i].image != null { SurfaceDestroy(cached_images[i].image) }
         cached_images[i] = .{}
@@ -219,11 +328,12 @@ BeginRasterFrame :: () {
     Paint(paint)
     Restore(paint)
     image_error = false
+    text_error = false
 }
 
 #program_export
 FinishRasterFrame :: () -> bool {
-    if image_error || Status(paint) != 0 { return false }
+    if image_error || text_error || Status(paint) != 0 { return false }
     SurfaceFlush(surface)
     return SurfaceStatus(surface) == 0
 }
@@ -268,19 +378,18 @@ SelectLineFont :: (font: s32) -> float64 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    bytes: [1024]u8
-    if paint == null || !CopyCString(value, bytes[:]) {
-        return (cast(s32)value.count * font * 3) / 5
-    }
-    unused SelectLineFont(font)
-    extents: TextExtents
-    TextExtentsOf(paint, *bytes[0], *extents)
-    return cast(s32)(extents.x_advance + 0.5)
+    if !ShapedLayout(value, font, typeface) { return 0 }
+    width: s32 = 0; height: s32 = 0
+    LayoutSize(layout, *width, *height)
+    return width
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    return font
+    if !ShapedLayout("Mg", font, typeface) { return font }
+    width: s32 = 0; height: s32 = 0
+    LayoutSize(layout, *width, *height)
+    return height
 }
 
 #program_export
@@ -313,12 +422,10 @@ RasterLine :: (line: Rectangle, color: Color) {
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
-    bytes: [1024]u8
-    if !CopyCString(value, bytes[:]) { return }
-    baseline: float64 = SelectLineFont(font)
-    MoveTo(paint, cast(float64)x, cast(float64)y + baseline)
+    if !ShapedLayout(value, font, "") { text_error = true; return }
+    MoveTo(paint, cast(float64)x, cast(float64)y)
     SetColor(color)
-    ShowText(paint, *bytes[0])
+    LayoutShow(paint, layout)
 }
 
 #program_export

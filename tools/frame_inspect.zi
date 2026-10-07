@@ -1,0 +1,213 @@
+#import "file_linux"
+#import "byte_text_linux"
+Json :: #import "json_scan";
+
+libc :: #system_library "libc";
+Allocate :: (size: usize) -> *u8 #foreign libc "malloc";
+Free :: (bytes: *u8) #foreign libc "free";
+Document :: struct { text: string; data: *u8; }
+path_bytes: [2048]u8;
+path_length: s32;
+
+ReadDocument :: (path: string) -> Document {
+    result: Document
+    file: FileHandle = OpenRead(path)
+    if !file.valid { return result }
+    length: s64 = FileSize(file)
+    if length <= 0 || length > 67108864 { CloseFile(file); return result }
+    bytes: *u8 = Allocate(cast(usize)length)
+    if bytes == null { CloseFile(file); return result }
+    buffer: []u8 = BytesFromPointer(bytes, cast(u64)length)
+    read: s64 = ReadAt(file, buffer, 0)
+    CloseFile(file)
+    if read != length { Free(bytes); return result }
+    text: string = TextView(buffer)
+    end: s32 = Json.ValueEnd(text, Json.Space(text, 0), 0)
+    if end < 0 || Json.Space(text, end) != text.count { Free(bytes); return result }
+    result.text = text; result.data = bytes
+    return result
+}
+
+CloseDocument :: (document: Document) { if document.data != null { Free(document.data) } }
+
+PushName :: (name: string) -> bool {
+    if path_length + name.count + 1 >= 2048 { return false }
+    path_bytes[path_length] = 46; path_length += 1
+    for index: 0..cast(s32)name.count - 1 { path_bytes[path_length] = name[index]; path_length += 1 }
+    return true
+}
+
+PushIndex :: (index: s32) -> bool {
+    if path_length + 14 >= 2048 { return false }
+    path_bytes[path_length] = 91; path_length += 1
+    digits: [10]u8
+    count: s32 = 0
+    value: s32 = index
+    while value > 0 { digits[count] = cast(u8)(48 + value % 10); count += 1; value /= 10 }
+    if count == 0 { digits[0] = 48; count = 1 }
+    while count > 0 { count -= 1; path_bytes[path_length] = digits[count]; path_length += 1 }
+    path_bytes[path_length] = 93; path_length += 1
+    return true
+}
+
+ShowValue :: (text: string, at: s32) {
+    if at < 0 { print("<missing>"); return }
+    end: s32 = Json.ValueEnd(text, at, 0)
+    if end < 0 { print("<invalid>"); return }
+    if end - at > 256 { print("%…", text[at:at + 256]); return }
+    print("%", text[at:end])
+}
+
+Difference :: (first: string, a: s32, second: string, b: s32) -> bool {
+    print("First difference: %\n  baseline: ", TextView(path_bytes[:path_length]))
+    ShowValue(first, a)
+    print("\n  candidate: ")
+    ShowValue(second, b)
+    print("\n")
+    return false
+}
+
+Compare :: (first: string, a: s32, second: string, b: s32, depth: s32) -> bool {
+    if depth > 32 || a < 0 || b < 0 { return Difference(first, a, second, b) }
+    a = Json.Space(first, a); b = Json.Space(second, b)
+    if first[a] != second[b] && (first[a] == cast(u8)123 || first[a] == cast(u8)91 || first[a] == cast(u8)34 ||
+        second[b] == cast(u8)123 || second[b] == cast(u8)91 || second[b] == cast(u8)34) { return Difference(first, a, second, b) }
+    if first[a] == cast(u8)123 {
+        cursor: s32 = Json.Space(first, a + 1)
+        while first[cursor] != cast(u8)125 {
+            span: Json.JsonSpan = Json.ReadString(first, cursor)
+            name_bytes: [256]u8
+            length: s32 = Json.ReadStringText(first, cursor, name_bytes[:])
+            if !span.valid || length < 0 { return Difference(first, a, second, b) }
+            name: string = TextView(name_bytes[:length])
+            value: s32 = Json.Space(first, Json.Space(first, span.after) + 1)
+            other: s32 = Json.FieldAt(second, b, name)
+            saved: s32 = path_length
+            if !PushName(name) || !Compare(first, value, second, other, depth + 1) { return false }
+            path_length = saved
+            cursor = Json.Space(first, Json.ValueEnd(first, value, 0))
+            if first[cursor] == cast(u8)44 { cursor = Json.Space(first, cursor + 1) }
+        }
+        cursor = Json.Space(second, b + 1)
+        while second[cursor] != cast(u8)125 {
+            span: Json.JsonSpan = Json.ReadString(second, cursor)
+            name_bytes: [256]u8
+            length: s32 = Json.ReadStringText(second, cursor, name_bytes[:])
+            name: string = TextView(name_bytes[:length])
+            value: s32 = Json.Space(second, Json.Space(second, span.after) + 1)
+            if Json.FieldAt(first, a, name) < 0 { PushName(name); return Difference(first, -1, second, value) }
+            cursor = Json.Space(second, Json.ValueEnd(second, value, 0))
+            if second[cursor] == cast(u8)44 { cursor = Json.Space(second, cursor + 1) }
+        }
+        return true
+    }
+    if first[a] == cast(u8)91 {
+        left: s32 = Json.Space(first, a + 1); right: s32 = Json.Space(second, b + 1)
+        index: s32 = 0
+        while first[left] != cast(u8)93 && second[right] != cast(u8)93 {
+            saved: s32 = path_length
+            if !PushIndex(index) || !Compare(first, left, second, right, depth + 1) { return false }
+            path_length = saved
+            left = Json.Space(first, Json.ValueEnd(first, left, 0)); right = Json.Space(second, Json.ValueEnd(second, right, 0))
+            if first[left] == cast(u8)44 { left = Json.Space(first, left + 1) }
+            if second[right] == cast(u8)44 { right = Json.Space(second, right + 1) }
+            index += 1
+        }
+        if first[left] != second[right] {
+            PushIndex(index)
+            if first[left] == cast(u8)93 { left = -1 }
+            if second[right] == cast(u8)93 { right = -1 }
+            return Difference(first, left, second, right)
+        }
+        return true
+    }
+    if first[a] == cast(u8)34 {
+        left: [65536]u8; right: [65536]u8
+        left_count: s32 = Json.ReadStringText(first, a, left[:]); right_count: s32 = Json.ReadStringText(second, b, right[:])
+        if left_count < 0 || right_count < 0 || TextView(left[:left_count]) != TextView(right[:right_count]) {
+            return Difference(first, a, second, b)
+        }
+        return true
+    }
+    end_a: s32 = Json.ValueEnd(first, a, 0); end_b: s32 = Json.ValueEnd(second, b, 0)
+    if first[a:end_a] == second[b:end_b] { return true }
+    // Decimal geometry may be spelled differently; preserve exact long
+    // integer identities instead of rounding them through floating point.
+    if end_a - a <= 15 && end_b - b <= 15 {
+        number_a: Json.JsonNumber = Json.ReadNumber(first, a); number_b: Json.JsonNumber = Json.ReadNumber(second, b)
+        if number_a.valid && number_b.valid && number_a.value == number_b.value { return true }
+    }
+    return Difference(first, a, second, b)
+}
+
+IndexArgument :: (text: string) -> s32 {
+    if text.count == 0 { return -1 }
+    value: s32 = 0
+    for index: 0..cast(s32)text.count - 1 {
+        if text[index] < cast(u8)48 || text[index] > cast(u8)57 || value > 1000000 { return -1 }
+        value = value * 10 + cast(s32)text[index] - 48
+    }
+    return value
+}
+
+#program_export
+main :: () -> s32 {
+    first_document: Document; second_document: Document; document: Document
+    defer { CloseDocument(first_document); CloseDocument(second_document); CloseDocument(document) }
+    command: [8192]u8
+    args: [5]string
+    file: FileHandle = OpenRead("/proc/self/cmdline")
+    if !file.valid { return 2 }
+    length: s64 = ReadAt(file, command[:], 0); CloseFile(file)
+    if length <= 0 || length >= 8192 { return 2 }
+    count: s32 = 0; start: s32 = 0
+    for index: cast(s32)0..cast(s32)length - 1 {
+        if command[index] == cast(u8)0 {
+            if count >= 5 { return 2 }
+            args[count] = TextView(command[start:index]); count += 1; start = index + 1
+        }
+    }
+    if count < 2 { print("usage: frame-inspect capture.json [frame [node]] | --diff baseline.json candidate.json\n"); return 2 }
+    if args[1] == "--diff" {
+        if count != 4 { return 2 }
+        first_document = ReadDocument(args[2]); second_document = ReadDocument(args[3])
+        first: string = first_document.text; second: string = second_document.text
+        if first.count == 0 || second.count == 0 { print("Could not read valid JSON (limit 64 MiB per file).\n"); return 2 }
+        path_bytes[0] = 36; path_length = 1
+        if !Compare(first, 0, second, 0, 0) { return 1 }
+        print("Frames match.\n"); return 0
+    }
+    if count > 4 { return 2 }
+    document = ReadDocument(args[1])
+    text: string = document.text
+    if text.count == 0 { return 2 }
+    index: s32 = 0; node_index: s32 = -1
+    if count >= 3 { index = IndexArgument(args[2]) }
+    if count >= 4 { node_index = IndexArgument(args[3]); if node_index < 0 { return 2 } }
+    frame: s32 = Json.ElementAt(text, Json.FieldAt(text, 0, "frames"), index)
+    if index < 0 || frame < 0 { print("Frame is out of range.\n"); return 2 }
+    print("Frame %\nInput: ", index); ShowValue(text, Json.FieldAt(text, frame, "input")); print("\nResult: ")
+    ShowValue(text, Json.FieldAt(text, frame, "result")); print("\n")
+    failure: s32 = Json.FieldAt(text, frame, "failure")
+    if failure >= 0 { print("Frame failure: "); ShowValue(text, failure); print("\n"); return 1 }
+    capture: s32 = Json.FieldAt(text, frame, "capture")
+    nodes: s32 = Json.FieldAt(text, capture, "nodes"); paints: s32 = Json.FieldAt(text, capture, "paint")
+    print("% nodes, % paint commands\n", Json.ArrayCount(text, nodes), Json.ArrayCount(text, paints))
+    if node_index < 0 {
+        for node: cast(s32)0..Json.ArrayCount(text, nodes) - 1 {
+            print("Node %: ", node); ShowValue(text, Json.ElementAt(text, nodes, node)); print("\n")
+        }
+    } else {
+        node: s32 = Json.ElementAt(text, nodes, node_index)
+        if node < 0 { print("Node is out of range.\n"); return 2 }
+        print("Node %: ", node_index); print("%\n", text[node:Json.ValueEnd(text, node, 0)])
+        for index: cast(s32)0..Json.ArrayCount(text, paints) - 1 {
+            paint: s32 = Json.ElementAt(text, paints, index)
+            owner: Json.JsonNumber = Json.ReadNumber(text, Json.FieldAt(text, paint, "node"))
+            if owner.valid && owner.value == cast(float64)node_index {
+                print("Paint %: %\n", index, text[paint:Json.ValueEnd(text, paint, 0)])
+            }
+        }
+    }
+    return 0
+}

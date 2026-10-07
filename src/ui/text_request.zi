@@ -1,0 +1,104 @@
+#import "session"
+#import "tree"
+#import "tree_input"
+Utf8 :: #import "std/utf8";
+Grapheme :: #import "std/grapheme";
+
+// A platform asks for an edit; the widget still validates its value limits
+// and returns the ordinary caller-owned replacement. One outstanding request
+// per session prevents a platform from overwriting an unconsumed request.
+TextRequest :: struct {
+    value: string
+    cursor: s32
+    anchor: s32
+    replace: bool
+    pending: bool
+}
+
+PendingTextRequest :: struct {
+    session: Session
+    generation: u64
+    bytes: [65536]u8
+    count: s32
+    cursor: s32
+    anchor: s32
+    replace: bool
+    pending: bool
+}
+
+text_requests: [9]PendingTextRequest;
+
+#program_export
+TextRequestSend :: (session: Session, index: s32, value: string,
+    replace: bool, cursor: s32, anchor: s32) -> bool {
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return false
+    }
+    node: TreeEntry = TreeNodeAt(session, index)
+    if !node.has_text || node.disabled || node.loading ||
+        (replace && node.read_only) || (!replace && node.secure) ||
+        !TreeInputAllowedAt(session, index) { return false }
+    slot: s32 = session.slot
+    if text_requests[slot].pending && text_requests[slot].session.epoch == session.epoch {
+        old: s32 = 0
+        while old < TreeCount(session) {
+            if TreeNodeAt(session, old).identity_generation == text_requests[slot].generation {
+                return false
+            }
+            old += 1
+        }
+    }
+    if replace && (value.count > 65536 || !Utf8.Valid(value)) { return false }
+    bytes: [65536]u8
+    if !replace && node.text_bytes > 65536 { return false }
+    selection_value: string = TreeTextRange(session, index, 0, node.text_bytes, bytes[:])
+    if replace { selection_value = value }
+    if cursor < 0 || anchor < 0 || cursor > selection_value.count ||
+        anchor > selection_value.count ||
+        Grapheme.Boundary(selection_value, cursor) != cursor ||
+        Grapheme.Boundary(selection_value, anchor) != anchor { return false }
+    if !TreeFocusAt(session, index) { return false }
+    text_requests[slot].session = session
+    text_requests[slot].generation = node.identity_generation
+    text_requests[slot].replace = replace
+    text_requests[slot].cursor = cursor
+    text_requests[slot].anchor = anchor
+    text_requests[slot].count = 0
+    if replace {
+        byte: s32 = 0
+        while byte < value.count {
+            text_requests[slot].bytes[byte] = value[byte]
+            byte += 1
+        }
+        text_requests[slot].count = byte
+    }
+    text_requests[slot].pending = true
+    return true
+}
+
+#program_export
+TextRequestTake :: (session: Session, index: s32) -> TextRequest {
+    result: TextRequest
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return result
+    }
+    slot: s32 = session.slot
+    if !text_requests[slot].pending ||
+        text_requests[slot].session.epoch != session.epoch ||
+        text_requests[slot].generation != TreeNodeAt(session, index).identity_generation {
+        return result
+    }
+    text_requests[slot].pending = false
+    if !TreeInputAllowedAt(session, index) { return result }
+    result.pending = true
+    result.replace = text_requests[slot].replace
+    result.cursor = text_requests[slot].cursor
+    result.anchor = text_requests[slot].anchor
+    result.value = TextView(text_requests[slot].bytes[:text_requests[slot].count])
+    return result
+}
+
+#program_export
+TextRequestClear :: (session: Session) {
+    if SessionValid(session) { text_requests[session.slot] = PendingTextRequest.{} }
+}
