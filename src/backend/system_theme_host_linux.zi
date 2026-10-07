@@ -1,0 +1,68 @@
+// Read the palette supplied by a supervising parent, or the desktop palette
+// for a standalone window. This reads properties and sends no window actions.
+Theme :: #import "system_theme_linux";
+using Palette :: #import "system_theme";
+#import "c_string"
+#import "byte_text_linux"
+#scope_file
+x11 :: #system_library "X11";
+c :: #system_library "c";
+Environment :: (name: *u8) -> *u8 #foreign c "getenv";
+ParentPid :: () -> s32 #foreign c "getppid";
+OpenDisplay :: (name: *u8) -> *void #foreign x11 "XOpenDisplay";
+CloseDisplay :: (display: *void) -> s32 #foreign x11 "XCloseDisplay";
+Atom :: (display: *void, name: *u8, existing: s32) -> u64 #foreign x11 "XInternAtom";
+Property :: (display: *void, window: u64, property: u64, offset: s64, length: s64, remove: s32, wanted: u64, actual: *u64, format: *s32, count: *u64, after: *u64, data: **u8) -> s32 #foreign x11 "XGetWindowProperty";
+Free :: (data: *void) -> s32 #foreign x11 "XFree";
+Tree :: (display: *void, window: u64, root: *u64, parent: *u64, children: **u64, count: *u32) -> s32 #foreign x11 "XQueryTree";
+palette: SystemPalette;
+ready: bool;
+connection: *void;
+container: u64;
+number :: (name: string) -> u64 {
+    bytes: [64]u8; if !CopyCString(name, bytes[:]) { return 0 }
+    value := TextFromCString(Environment(*bytes[0])); result: u64
+    for i: cast(s64)0..value.count-1 {
+        if value[i]<48 || value[i]>57 { return 0 }
+        digit:=cast(u64)(value[i]-48); if result>(cast(u64)0xffffffffffffffff-digit)/10 { return 0 }
+        result=result*10+digit
+    }; return result
+}
+Read :: (window: u64, name: string, output: []u64) -> bool {
+    bytes: [64]u8; if !CopyCString(name, bytes[:]) { return false }
+    actual: u64; format: s32; count: u64; after: u64; data: *u8
+    status:=Property(connection,window,Atom(connection,*bytes[0],0),0,output.count,0,6,*actual,*format,*count,*after,*data)
+    defer { if data!=null { unused Free(cast(*void)data) } }
+    if status!=0 || actual!=6 || format!=32 || count!=cast(u64)output.count || after!=0 || data==null { return false }
+    words:=cast(*u64)data; for i: 0..cast(s32)output.count-1 { output[i]=words[i] & cast(u64)0xffffffff }; return true
+}
+Refresh :: () {
+    if !ready {
+        palette=Theme.SystemPaletteRead(); ready=true
+        owner:=number("HARMONY_APP_HOST_PID"); target:=number("HARMONY_APP_CONTAINER")
+        if owner==0 || owner!=cast(u64)ParentPid() || target==0 { return }
+        connection=OpenDisplay(null); if connection==null { return }
+        root: u64; parent: u64; children: *u64; count: u32; pid: [1]u64
+        valid:=Tree(connection,target,*root,*parent,*children,*count)!=0
+        if children!=null { unused Free(cast(*void)children) }
+        if valid { valid=Read(parent,"_NET_WM_PID",pid[:]) && pid[0]==owner }
+        if !valid { unused CloseDisplay(connection); connection=null; return }
+        container=target
+    }
+    if connection==null || container==0 { return }
+    values: [8]u64
+    if !Read(container,"_HARMONY_APP_THEME",values[:]) || values[0]!=1 { return }
+    for i: 1..7 { if (values[i] & 255)!=255 { return } }
+    palette.background=cast(u32)values[1]; palette.base=cast(u32)values[2]; palette.text=cast(u32)values[3]
+    palette.selected=cast(u32)values[5]; palette.selected_text=palette.text; palette.border=cast(u32)values[6]
+    palette.dark=CssLuminance(palette.background)<128; palette.found=true
+}
+#scope_export
+#program_export
+SystemThemeColorHost :: (role: s32) -> u32 {
+    if role==0 || !ready { Refresh() }
+    if role==1 { return palette.background }; if role==2 { return palette.base }; if role==3 { return palette.text }
+    if role==4 { return palette.selected }; if role==5 { return palette.selected_text }; if role==6 { return palette.border }
+    if role==7 { return palette.danger }; if role==8 { return palette.warning }; if role==9 { return palette.success }; return 0
+}
+SystemPaletteRead :: () -> SystemPalette { Refresh(); return palette }
