@@ -50,6 +50,7 @@ ImageSurfaceData :: (surface: *void) -> *u8 #foreign cairo_library "cairo_image_
 ImageSurfaceStride :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_stride";
 SurfaceStatus :: (surface: *void) -> s32 #foreign cairo_library "cairo_surface_status";
 SurfaceFlush :: (surface: *void) #foreign cairo_library "cairo_surface_flush";
+SurfaceMarkDirty :: (surface: *void) #foreign cairo_library "cairo_surface_mark_dirty";
 SurfaceWritePNG :: (surface: *void, path: *u8) -> s32 #foreign cairo_library "cairo_surface_write_to_png";
 SurfaceDestroy :: (surface: *void) #foreign cairo_library "cairo_surface_destroy";
 Create :: (surface: *void) -> *void #foreign cairo_library "cairo_create";
@@ -106,9 +107,11 @@ Scale :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_sc
 surface: *void;
 paint: *void;
 image_error: bool;
-loaded_image: *void;
-loaded_path: [1024]u8;
-loaded_length: s32;
+Decode :: #import "image_decode_linux";
+CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; }
+cached_images: [128]CachedImage;
+image_clock: u64;
+image_bytes: s64;
 
 SetColor :: (color: Color) {
     SetSourceRGBA(paint, cast(float64)color.r / 255.0,
@@ -197,10 +200,13 @@ OpenRaster :: (width: s32, height: s32) -> bool {
 
 #program_export
 CloseRaster :: () {
-    if loaded_image != null { SurfaceDestroy(loaded_image) }
+    for i: 0..127 {
+        if cached_images[i].image != null { SurfaceDestroy(cached_images[i].image) }
+        cached_images[i] = .{}
+    }
+    image_bytes = 0
     if paint != null { Destroy(paint) }
     if surface != null { SurfaceDestroy(surface) }
-    loaded_image = null
     paint = null
     surface = null
 }
@@ -328,28 +334,52 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
 
 LoadPNG :: (asset_path: string) -> *void {
     length: s32 = cast(s32)asset_path.count
-    if length == 0 || length >= cast(s32)loaded_path.count { return null }
-    same: bool = loaded_image != null && loaded_length == length
-    index: s32 = 0
-    while same && index < length {
-        if loaded_path[index] != asset_path[index] { same = false }
-        index += 1
+    if length == 0 || length >= 4096 { return null }
+    image_clock += 1
+    for i: 0..127 {
+        same := cached_images[i].image != null && cached_images[i].length == length
+        for byte: 0..length - 1 { if cached_images[i].path[byte] != asset_path[byte] { same = false; break } }
+        if same { cached_images[i].used = image_clock; return cached_images[i].image }
     }
-    if same { return loaded_image }
-    if loaded_image != null {
-        SurfaceDestroy(loaded_image)
-        loaded_image = null
+    path: [4096]u8
+    if !CopyCString(asset_path, path[:]) { return null }
+    image: *void
+    decoded := Decode.OpenImage(*path[0])
+    if decoded != null {
+        image = ImageSurfaceCreate(0, Decode.Width(decoded), Decode.Height(decoded))
+        if image == null || SurfaceStatus(image) != 0 ||
+            !Decode.CopyPixels(decoded, ImageSurfaceData(image), ImageSurfaceStride(image)) {
+            if image != null { SurfaceDestroy(image) }
+            image = null
+        }
+        Decode.CloseImage(decoded)
+        if image != null { SurfaceMarkDirty(image) }
+    } else {
+        image = ImageSurfaceFromPNG(*path[0])
     }
-    if !CopyCString(asset_path, loaded_path[:]) { return null }
-    image: *void = ImageSurfaceFromPNG(*loaded_path[0])
     if image == null { return null }
     if SurfaceStatus(image) != 0 {
         SurfaceDestroy(image)
         return null
     }
-    loaded_image = image
-    loaded_length = length
-    return loaded_image
+    bytes := cast(s64)ImageSurfaceStride(image) * cast(s64)ImageSurfaceHeight(image)
+    slot: s32 = -1
+    while slot < 0 || image_bytes + bytes > 268435456 {
+        oldest: s32 = -1
+        for i: 0..127 {
+            if cached_images[i].image == null { if slot < 0 { slot = cast(s32)i }; continue }
+            if oldest < 0 || cached_images[i].used < cached_images[oldest].used { oldest = cast(s32)i }
+        }
+        if slot >= 0 && image_bytes + bytes <= 268435456 { break }
+        if oldest < 0 { SurfaceDestroy(image); return null }
+        image_bytes -= cached_images[oldest].bytes
+        SurfaceDestroy(cached_images[oldest].image); cached_images[oldest] = .{}
+        if slot < 0 { slot = oldest }
+    }
+    cached_images[slot].path = path; cached_images[slot].length = length
+    cached_images[slot].image = image; cached_images[slot].used = image_clock; cached_images[slot].bytes = bytes
+    image_bytes += bytes
+    return image
 }
 
 #program_export

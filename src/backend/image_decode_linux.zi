@@ -1,0 +1,93 @@
+// Optional system image codecs, loaded without adding a backend link dependency.
+// GdkPixbuf decodes and scales; the host converts its pixels to Cairo ARGB32.
+dl :: #system_library "dl";
+c :: #system_library "c";
+Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+Open :: (path: *u8, flags: s32) -> *void #foreign dl "dlopen";
+Symbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+NewImage :: #type (path: *u8, width: s32, height: s32, preserve: s32, error: *void) -> *void #c_call;
+Integer :: #type (image: *void) -> s32 #c_call;
+Pixels :: #type (image: *void) -> *u8 #c_call;
+Release :: #type (image: *void) -> void #c_call;
+Info :: #type (path: *u8, width: *s32, height: *s32) -> *void #c_call;
+Orient :: #type (image: *void) -> *void #c_call;
+new_image: NewImage;
+width_of: Integer;
+height_of: Integer;
+stride_of: Integer;
+channels_of: Integer;
+pixels_of: Pixels;
+release: Release;
+info: Info;
+orient: Orient;
+initialized: bool;
+available: bool;
+library: *void;
+
+#import "std/c_string"
+Resolve :: (slot: *void, name: string) -> bool {
+    bytes: [128]u8
+    if !CopyCString(name, bytes[:]) { return false }
+    symbol := Symbol(library, *bytes[0])
+    if symbol == null { return false }
+    unused Copy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+Init :: () -> bool {
+    if initialized { return available }
+    initialized = true
+    name: [64]u8
+    unused CopyCString("libgdk_pixbuf-2.0.so.0", name[:])
+    library = Open(*name[0], 1)
+    if library == null { return false }
+    available = Resolve(cast(*void)*new_image, "gdk_pixbuf_new_from_file_at_scale") &&
+        Resolve(cast(*void)*width_of, "gdk_pixbuf_get_width") &&
+        Resolve(cast(*void)*height_of, "gdk_pixbuf_get_height") &&
+        Resolve(cast(*void)*stride_of, "gdk_pixbuf_get_rowstride") &&
+        Resolve(cast(*void)*channels_of, "gdk_pixbuf_get_n_channels") &&
+        Resolve(cast(*void)*pixels_of, "gdk_pixbuf_get_pixels") &&
+        Resolve(cast(*void)*release, "g_object_unref") &&
+        Resolve(cast(*void)*info, "gdk_pixbuf_get_file_info") &&
+        Resolve(cast(*void)*orient, "gdk_pixbuf_apply_embedded_orientation")
+    return available
+}
+
+OpenImage :: (path: *u8) -> *void {
+    if !Init() { return null }
+    width: s32; height: s32
+    if info(path, *width, *height) == null || width <= 0 || height <= 0 { return null }
+    if width > 4096 { width = 4096 }
+    if height > 4096 { height = 4096 }
+    image := new_image(path, width, height, 1, null)
+    if image == null { return null }
+    oriented := orient(image)
+    release(image)
+    return oriented
+}
+
+Width :: (image: *void) -> s32 { return width_of(image) }
+Height :: (image: *void) -> s32 { return height_of(image) }
+CloseImage :: (image: *void) { release(image) }
+
+CopyPixels :: (image: *void, destination: *u8, stride: s32) -> bool {
+    width := width_of(image); height := height_of(image)
+    channels := channels_of(image); source_stride := stride_of(image)
+    if width <= 0 || height <= 0 || width > 4096 || height > 4096 ||
+        (channels != 3 && channels != 4) || source_stride < width * channels || stride < width * 4 { return false }
+    source := pixels_of(image)
+    if source == null || destination == null { return false }
+    for y: 0..height - 1 {
+        for x: 0..width - 1 {
+            input := y * source_stride + x * channels
+            output := y * stride + x * 4
+            alpha: u32 = ifx channels == 4 then cast(u32)source[input + 3] else 255
+            red := (cast(u32)source[input] * alpha + 127) / 255
+            green := (cast(u32)source[input + 1] * alpha + 127) / 255
+            blue := (cast(u32)source[input + 2] * alpha + 127) / 255
+            pixel := cast(*u32)(*destination[output])
+            pixel.* = (alpha << 24) | (red << 16) | (green << 8) | blue
+        }
+    }
+    return true
+}
