@@ -10,6 +10,7 @@
 #import "vec"
 #import "file_linux"
 Media :: #import "media_linux";
+Service :: #import "service_linux";
 Background :: #import "background_window_linux";
 Watch :: #import "bundle_watch";
 #import "timer_linux"
@@ -39,7 +40,7 @@ ModuleName :: (value: string, name: string) -> bool {
 
 Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "zib_run") {
-        return function == "ReadBundleInput" || function == "TakeBundleCodepoint"
+        return function == "ReadBundleInput" || function == "TakeBundleCodepoint" || function == "BundleTextInputHost"
     }
     if ModuleName(module, "font_metrics") {
         return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
@@ -72,6 +73,9 @@ Supported :: (module: string, function: string) -> bool {
             function == "MediaStopHost" || function == "MediaStateHost" ||
             function == "MediaMessageHost" || function == "FetchTextHost" ||
             function == "FetchTextStateHost" || function == "FetchTextResultHost"
+    }
+    if ModuleName(module, "service") {
+        return function == "ServiceRequestHost" || function == "ServiceStateHost" || function == "ServiceResultHost"
     }
     return false
 }
@@ -153,6 +157,25 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { return 1 }
+    if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)Service.ServiceRequestHost(TextValue(args[0]), TextValue(args[1]))
+        return 1
+    }
+    if function == "ServiceStateHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)Service.ServiceStateHost()
+        return 1
+    }
+    if function == "ServiceResultHost" && count == 0 {
+        value := Service.ServiceResultHost()
+        result.kind = HostString
+        descriptor := cast(*TextDescriptor)(*value)
+        result.data = descriptor.data
+        result.length = cast(usize)value.count
+        return 1
+    }
     if (function == "MediaOpenHost" || function == "FetchTextHost") && count == 1 && args[0].kind == HostString {
         result.kind = HostInteger
         if function == "MediaOpenHost" { result.integer = cast(s64)Media.MediaOpenHost(TextValue(args[0])) }
@@ -625,6 +648,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         }
     }
     Media.CloseMedia()
+    Service.CloseService()
     CloseDesktop()
     CloseBundleInstance(instance)
     CloseBundle(bundle)

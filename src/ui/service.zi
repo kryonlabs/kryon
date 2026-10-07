@@ -1,0 +1,15 @@
+// Asynchronous requests to an installed service owned by the current user.
+// The service chooses its protocol and data; this API has no network route.
+host_api :: #system_library "host_api";
+ServiceRequestHost :: (name: string, request: string) -> bool #foreign host_api;
+ServiceStateHost :: () -> s32 #foreign host_api;
+ServiceResultHost :: () -> string #foreign host_api;
+
+#program_export
+ServiceRequest :: (name: string, request: string) -> bool { return ServiceRequestHost(name, request) }
+// 0 idle, 1 pending, 2 ready, -1 unavailable. Results remain valid until the
+// next request, and polling never blocks the application's frame.
+#program_export
+ServiceState :: () -> s32 { return ServiceStateHost() }
+#program_export
+ServiceResult :: () -> string { return ServiceResultHost() }

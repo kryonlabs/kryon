@@ -1,0 +1,102 @@
+#import "byte_text_linux"
+#import "c_string"
+#import "socket_linux"
+#import "thread_linux"
+#import "timer_linux"
+
+c :: #system_library "libc";
+ServiceEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
+ServiceUid :: () -> u32 #foreign c "getuid";
+ServiceSocket :: (domain: s32, kind: s32, protocol: s32) -> s32 #foreign c "socket";
+ServiceConnect :: (fd: s32, address: *void, size: u32) -> s32 #foreign c "connect";
+ServicePeer :: (fd: s32, level: s32, option: s32, value: *void, size: *u32) -> s32 #foreign c "getsockopt";
+Endpoint :: struct { family: u16; path: [108]u8 }
+Credentials :: struct { pid: s32; uid: u32; gid: u32 }
+worker: Thread;
+endpoint: Endpoint;
+request_bytes: [1048576]u8;
+request_size: s32;
+response_bytes: [1048576]u8;
+response_size: s32;
+state: s32;
+complete: bool;
+
+Receive :: (socket: LinuxSocket, output: []u8, deadline: s64) -> bool {
+    received: s64;
+    while received < cast(s64)output.count {
+        remaining := deadline - MonotonicMilliseconds();
+        if remaining <= 0 { return false }
+        count := SocketReceive(socket, output[received:], cast(s32)remaining);
+        if count <= 0 { return false }
+        received += count;
+    }
+    return true
+}
+Run :: (argument: *void) {
+    unused argument;
+    complete = false;
+    response_size = 0;
+    socket: LinuxSocket;
+    socket.fd = ServiceSocket(1, 524289, 0);
+    if socket.fd < 0 { return }
+    socket.valid = true;
+    defer { unused SocketClose(*socket) }
+    if ServiceConnect(socket.fd, cast(*void)*endpoint, 110) != 0 { return }
+    peer: Credentials;
+    size: u32 = 12;
+    if ServicePeer(socket.fd, 1, 17, cast(*void)*peer, *size) != 0 || size != 12 || peer.uid != ServiceUid() { return }
+    header: [4]u8;
+    for i: 0..3 { header[i] = cast(u8)((cast(u32)request_size >> cast(u32)((3 - i) * 8)) & 255) }
+    deadline := MonotonicMilliseconds() + 60000;
+    if SocketSendAll(socket, header[:], 1000) != 4 || SocketSendAll(socket, request_bytes[:request_size], 1000) != cast(s64)request_size { return }
+    if !Receive(socket, header[:], deadline) { return }
+    length: u32;
+    for byte: header { length = (length << 8) | cast(u32)byte }
+    if length == 0 || length > 1048576 { return }
+    if !Receive(socket, response_bytes[:cast(s32)length], deadline) { return }
+    response_size = cast(s32)length;
+    complete = true;
+}
+#program_export
+ServiceStateHost :: () -> s32 {
+    if ThreadFinished(*worker) { state = ifx complete then 2 else -1 }
+    return state
+}
+#program_export
+ServiceResultHost :: () -> string { return TextFromBytes(response_bytes[:response_size]) }
+#program_export
+ServiceRequestHost :: (name: string, request: string) -> bool {
+    unused ServiceStateHost();
+    if ThreadRunning(*worker) || name.count == 0 || name.count > 64 || request.count == 0 || request.count > 1048576 { return false }
+    for byte: name {
+        if !((byte >= 97 && byte <= 122) || (byte >= 48 && byte <= 57) || byte == 45 || byte == 46 || byte == 95) { return false }
+    }
+    if name == "." || name == ".." { return false }
+    key: [32]u8;
+    unused CopyCString("KRYON_SERVICE_ROOT", key[:]);
+    root := ServiceEnvironment(*key[0]);
+    if root == null {
+        unused CopyCString("XDG_RUNTIME_DIR", key[:]);
+        root = ServiceEnvironment(*key[0]);
+    }
+    if root == null { return false }
+    base := TextFromCString(root);
+    if base.count == 0 || base[0] != 47 || base.count + name.count + 24 >= 108 { return false }
+    endpoint = .{};
+    endpoint.family = cast(u16)1;
+    index: s32;
+    for byte: base { endpoint.path[index] = byte; index += 1 }
+    suffix: string = "/kryon/services/";
+    for byte: suffix { endpoint.path[index] = byte; index += 1 }
+    for byte: name { endpoint.path[index] = byte; index += 1 }
+    suffix = ".sock";
+    for byte: suffix { endpoint.path[index] = byte; index += 1 }
+    request_size = cast(s32)request.count;
+    for i: 0..request_size - 1 { request_bytes[i] = request[i] }
+    procedure: ThreadProcedure = Run;
+    if !ThreadStart(*worker, procedure, null) { return false }
+    state = 1;
+    return true
+}
+#program_export
+CloseService :: () { ThreadWait(*worker) }
