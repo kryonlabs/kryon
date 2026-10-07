@@ -73,3 +73,67 @@ PaintTextCell :: (session: Sessions.Session, node: s32, value: string,
     command.has_emitter = true; command.clips = true
     Paint.SubmitPaint(session, command)
 }
+
+// One printable ASCII byte per fixed-pitch cell. The row origin and first
+// column retain the same coordinate calculation as separate cell commands,
+// including fractional density. Wider and combining glyphs use TextCell.
+CellRunValid :: (value: string, first: s32, cell_width: s32, font: s32) -> bool {
+    if value.count < 1 || value.count > 2147483647 || first < 0 || cell_width < 1 || font < 1 { return false }
+    // Validate the complete grid in wide arithmetic before indexing or
+    // multiplying in the renderer's signed pixel coordinate type.
+    if (cast(s64)first + value.count) * cast(s64)cell_width > 2147483647 { return false }
+    for at: 0..cast(s32)value.count - 1 {
+        if value[at] < cast(u8)32 || value[at] > cast(u8)126 { return false }
+    }
+    return true
+}
+
+RasterTextCells :: (value: string, row: Rectangle, first: s32,
+    cell_width: s32, font: s32, color: Color, clip: Rectangle) {
+    if !CellRunValid(value, first, cell_width, font) { return }
+    for at: 0..cast(s32)value.count - 1 {
+        if value[at] == cast(u8)32 { continue }
+        cell := row
+        cell.x = row.x + cast(float32)((first + at) * cell_width)
+        cell.width = cast(float32)cell_width
+        RasterTextCell(value[at:at + 1], cell, font, color, clip)
+    }
+}
+
+EmitTextCells :: (command: Paint.PaintCommand) {
+    RasterTextCells(command.value, command.bounds,
+        cast(s32)command.source.x, cast(s32)command.source.width,
+        command.font, command.color, command.clip)
+}
+
+PaintTextCells :: (session: Sessions.Session, node: s32, value: string,
+    row: Rectangle, first: s32, cell_width: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if !CellRunValid(value, first, cell_width, font) { return }
+    // The untranslated source rectangle carries the grid. If its float
+    // fields cannot represent an integer exactly, retain separate cells.
+    if cast(s64)cast(float32)first != cast(s64)first ||
+        cast(s64)cast(float32)cell_width != cast(s64)cell_width {
+        for at: 0..cast(s32)value.count - 1 {
+            cell := row; cell.x += cast(float32)((first + at) * cell_width)
+            cell.width = cast(float32)cell_width
+            PaintTextCell(session, node, value[at:at + 1], cell, font, color, clip)
+        }
+        return
+    }
+    command: Paint.QueuedPaint
+    command.data.kind = cast(s32)Paint.PaintKind.PaintKindClippedText
+    command.data.node = node; command.data.value = value
+    command.data.bounds = row
+    right := row.x + cast(float32)((first + cast(s32)value.count - 1) * cell_width) + cast(float32)cell_width
+    // Include the empty prefix in coverage so bounds retain the row origin
+    // through ordinary tree translation. Source describes the fixed grid;
+    // unlike world-space x/y fields it is never translated by the paint queue.
+    command.data.bounds.width = right - row.x
+    command.data.source.x = cast(float32)first
+    command.data.source.width = cast(float32)cell_width
+    command.data.font = font; command.data.color = color; command.data.clip = clip
+    command.emit = EmitTextCells; command.clip_for = Paint.ClipLabel
+    command.has_emitter = true; command.clips = true
+    Paint.SubmitPaint(session, command)
+}

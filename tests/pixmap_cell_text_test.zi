@@ -4,10 +4,14 @@ Pixels :: #import "pixmap";
 Paint :: #import "paint_queue";
 Sessions :: #import "session";
 Frame :: #import "tree_draw";
+Retained :: #import "pixmap_frame";
+Tree :: #import "tree";
+Kinds :: #import "widget_kind";
 using Geometry :: #import "geometry";
 using Drawing :: #import "drawing_props";
 
 pixels: [2048]u32;
+expected: [2048]u32;
 white :: Color.{255, 255, 255, 255};
 Bounds :: Rectangle.{0.0, 0.0, 64.0, 32.0};
 
@@ -26,6 +30,84 @@ CheckGlyph :: (text: string, cell: Rectangle, clip: Rectangle) -> bool {
     }
     Pixels.PixmapEndInto()
     return painted > 0
+}
+
+CheckCells :: (session: Sessions.Session, text: string, font: s32,
+    pitch: s32, density: float32, row: Rectangle, first: s32,
+    clip: Rectangle, color: Color, queued: bool) -> bool {
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, expected[:])
+    unused Pixels.PixmapScale(density, density)
+    for at: 0..cast(s32)text.count - 1 {
+        cell := row; cell.x = row.x + cast(float32)((first + at) * pitch)
+        cell.width = cast(float32)pitch
+        Cells.RasterTextCell(text[at:at + 1], cell, font, color, clip)
+    }
+    Pixels.PixmapEndInto()
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, pixels[:])
+    unused Pixels.PixmapScale(density, density)
+    if queued {
+        unused Frame.BeginFrame(session, cast(u64)1, Bounds)
+        Cells.PaintTextCells(session, -1, text, row, first, pitch, font, color, clip)
+        if Paint.PendingPaintCount(session) != 1 { return false }
+        if cast(s32)Frame.EndFrame(session) != 0 { return false }
+    } else { Cells.RasterTextCells(text, row, first, pitch, font, color, clip) }
+    Pixels.PixmapEndInto()
+    for at: 0..2047 {
+        if expected[at] != pixels[at] {
+            print("Cell run mismatch font % pitch % density % first % pixel % queued %\n",
+                font, pitch, density, first, at, queued)
+            return false
+        }
+    }
+    return true
+}
+
+PlaceGrid :: (session: Sessions.Session, parent: s32, bounds: Rectangle) -> Rectangle {
+    bounds.x = 3.125; bounds.y = -0.375; return bounds
+}
+ComposeScopedCells :: (session: Sessions.Session, index: s32, batch: bool) {
+    unused Frame.BeginFrame(session, cast(u64)1, Bounds)
+    parent := Tree.TreeSubmitCurrent(session, cast(u64)10,
+        cast(s32)Kinds.WidgetKind.WidgetKindCard, Bounds)
+    Tree.TreeSetPlacement(session, parent, PlaceGrid)
+    Tree.TreeSetChildClip(session, parent, .{3.125, 1.375, 33.25, 22.5})
+    unused Tree.TreePushScope(session, parent)
+    node := Tree.TreeSubmitCurrent(session, cast(u64)11,
+        cast(s32)Kinds.WidgetKind.WidgetKindText, .{0.0, 0.0, 64.0, 28.0})
+    row: Rectangle = .{0.625, 0.375, 64.0, 28.0}
+    text := " Mi."
+    if index == 2 { text = "MM" }; if index == 4 { text = "" }
+    first := index % 3
+    color: Color = .{237, 119, 49, 127}
+    if batch && index != 3 {
+        Cells.PaintTextCells(session, node, text, row, first, 8, 20, color, Bounds)
+    } else {
+        for at: 0..cast(s32)text.count - 1 {
+            cell := row; cell.x += cast(float32)((first + at) * 8); cell.width = 8.0
+            Cells.PaintTextCell(session, node, text[at:at + 1], cell, 20, color, Bounds)
+        }
+    }
+    unused Tree.TreePopScope(session)
+}
+CheckScopedCells :: (fast: Sessions.Session, full: Sessions.Session, index: s32,
+    density: float32, repeat: bool) -> bool {
+    unused Pixels.PixmapResumeInto(64, 32, pixels[:]); unused Pixels.PixmapScale(density, density)
+    ComposeScopedCells(fast, index, true)
+    result := Retained.EndPixmapFrame(fast, true, cast(u32)0x183421)
+    if cast(s32)result.status != 0 || (repeat && !result.paint_unchanged) { return false }
+    Pixels.PixmapEndInto()
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, expected[:])
+    unused Pixels.PixmapScale(density, density)
+    ComposeScopedCells(full, index, false)
+    if cast(s32)Frame.EndFrame(full) != 0 { return false }
+    Pixels.PixmapEndInto()
+    for at: 0..2047 {
+        if pixels[at] != expected[at] {
+            print("Translated retained cells differ frame % density % pixel %\n", index, density, at)
+            return false
+        }
+    }
+    return true
 }
 
 #program_export
@@ -52,6 +134,48 @@ main :: () -> s32 {
     if !CheckGlyph("Á", .{10.0, 0.0, 9.0, 24.0}, Bounds) { return 4 }
     if !CheckGlyph("⏺", .{20.0, 0.0, 16.0, 24.0}, Bounds) { return 5 }
     session := Sessions.SessionOpen()
+    fonts: [4]s32 = .[10, 14, 20, 24]
+    pitches: [3]s32 = .[5, 8, 12]
+    densities: [3]float32 = .[0.75, 1.25, 2.25]
+    starts: [2]s32 = .[0, 3]
+    for font: fonts {
+        for pitch: pitches {
+            for density: densities {
+                for first: starts {
+                    row: Rectangle = .{-2.375, 0.625, 64.0, 28.0}
+                    clip: Rectangle = .{3.125, 1.375, 33.25, 22.5}
+                    color: Color = .{237, 119, 49, 127}
+                    if !CheckCells(session, " Mi.!0[] ", cast(s32)font, cast(s32)pitch,
+                        density, row, cast(s32)first, clip, color, false) { return 12 }
+                    if !CheckCells(session, " Mi.!0[] ", cast(s32)font, cast(s32)pitch,
+                        density, row, cast(s32)first, clip, color, true) { return 13 }
+                }
+            }
+        }
+    }
+    full := Sessions.SessionOpen()
+    for density: densities {
+        for index: cast(s32)0..5 {
+            if !CheckScopedCells(session, full, index, density, false) { return 15 }
+            if !CheckScopedCells(session, full, index, density, true) { return 16 }
+        }
+    }
+    unused Frame.CloseSession(full)
+    unused Frame.BeginFrame(session, cast(u64)1, Bounds)
+    // Malformed grid coordinates must never wrap into visible pixel storage.
+    Cells.PaintTextCells(session, -1, "Mi", Bounds, 2147483647, 8, 20, white, Bounds)
+    Cells.PaintTextCells(session, -1, "Mi", Bounds, 0, 2147483647, 20, white, Bounds)
+    Cells.PaintTextCells(session, -1, "M界", Bounds, 0, 8, 20, white, Bounds)
+    if Paint.PendingPaintCount(session) != 0 { return 17 }
+    unused Frame.EndFrame(session)
+    unused Frame.BeginFrame(session, cast(u64)1, Bounds)
+    bytes_run: [2]u8; bytes_run[0] = cast(u8)77; bytes_run[1] = cast(u8)105
+    Cells.PaintTextCells(session, -1, TextView(bytes_run[:]), Bounds, 1, 8, 20, white, Bounds)
+    bytes_run[0] = cast(u8)90
+    if Paint.PendingPaintAt(session, 0).value != "Mi" { return 14 }
+    unused Pixels.PixmapBeginInto(cast(u32)0, 64, 32, pixels[:])
+    unused Frame.EndFrame(session)
+    Pixels.PixmapEndInto()
     unused Frame.BeginFrame(session, cast(u64)1, Bounds)
     // Queued glyphs must own their temporary UTF-8 text until the frame paints.
     bytes: [1]u8; bytes[0] = cast(u8)77
