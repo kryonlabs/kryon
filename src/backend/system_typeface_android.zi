@@ -1,0 +1,110 @@
+// Ask Android for installed fonts instead of guessing vendor-specific filenames.
+// Resolve API 29 entry points dynamically so older Android versions can use
+// the application's bundled fonts. Raylib checks actual glyph coverage.
+#scope_module
+CString :: #import "std/c_string";
+Text :: #import "std/byte_text_linux";
+dl :: #system_library "dl";
+c :: #system_library "c";
+Open :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
+Symbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+
+Create :: #type () -> *void #c_call;
+Destroy :: #type (*void) #c_call;
+Match :: #type (*void, *u8, *u16, u32, *u32) -> *void #c_call;
+FilePath :: #type (*void) -> *u8 #c_call;
+CollectionIndex :: #type (*void) -> usize #c_call;
+
+create_matcher: Create;
+destroy_matcher: Destroy;
+match_font: Match;
+close_font: Destroy;
+file_path: FilePath;
+collection_index: CollectionIndex;
+tried: bool;
+ready: bool;
+
+Resolve :: (library: *void, slot: *void, name: string) -> bool {
+    bytes: [64]u8
+    if !CString.CopyCString(name, bytes[:]) {
+        return false
+    }
+    symbol := Symbol(library, *bytes[0])
+    if symbol == null {
+        return false
+    }
+    unused Copy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+Load :: () -> bool {
+    if tried {
+        return ready
+    }
+    tried = true
+    name: [32]u8
+    unused CString.CopyCString("libandroid.so", name[:])
+    library := Open(*name[0], 1)
+    if library == null {
+        return false
+    }
+    ready = Resolve(library, cast(*void)*create_matcher, "AFontMatcher_create") &&
+    Resolve(library, cast(*void)*destroy_matcher, "AFontMatcher_destroy") &&
+    Resolve(library, cast(*void)*match_font, "AFontMatcher_match") &&
+    Resolve(library, cast(*void)*close_font, "AFont_close") &&
+    Resolve(library, cast(*void)*file_path, "AFont_getFontFilePath") &&
+    Resolve(library, cast(*void)*collection_index, "AFont_getCollectionIndex")
+    return ready
+}
+
+#scope_export
+FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string {
+    if output.count == 0 || codepoint < 0 || codepoint > 0x10FFFF ||
+    (codepoint >= 0xD800 && codepoint <= 0xDFFF) {
+        return ""
+    }
+    name: [64]u8
+    selected_family := family
+    if family == "" || family == "ui" {
+        selected_family = "sans-serif"
+    }
+    if !CString.CopyCString(selected_family, name[:]) || !Load() {
+        return ""
+    }
+    // Each lookup owns its matcher; Android matchers cannot cross threads.
+    matcher := create_matcher()
+    if matcher == null {
+        return ""
+    }
+    defer destroy_matcher(matcher)
+    text: [2]u16
+    length: u32 = 1
+    character := codepoint
+    if character == 0 {
+        character = 65
+    }
+    if character > 0xFFFF {
+        character -= 0x10000
+        text[0] = cast(u16)(0xD800 + (character >> 10))
+        text[1] = cast(u16)(0xDC00 + (character & 0x3FF))
+        length = 2
+    } else {
+        text[0] = cast(u16)character
+    }
+    font := match_font(matcher, *name[0], *text[0], length, null)
+    if font == null {
+        return ""
+    }
+    defer close_font(font)
+    path := file_path(font)
+    index := collection_index(font)
+    if path == null || index > cast(usize)65535 ||
+    !CString.CopyCString(Text.TextFromCString(path), output) {
+        return ""
+    }
+    if face != null {
+        face.* = cast(s32)index
+    }
+    return Text.TextFromCString(*output[0])
+}

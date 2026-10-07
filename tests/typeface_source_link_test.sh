@@ -44,3 +44,4 @@ for input in source saved; do
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done
 echo "Kryon typeface host contract test passed"
+sh "$repo/tests/system_typeface_android_test.sh"

@@ -1,0 +1,128 @@
+Android :: #import "system_typeface_android";
+CString :: #import "std/c_string";
+Text :: #import "std/byte_text_linux";
+c :: #system_library "c";
+Exit :: (value: s32) #foreign c "exit";
+Environment :: (name: *u8) -> *u8 #foreign c "getenv";
+CreateFn :: #type () -> *void #c_call;
+DestroyFn :: #type (*void) #c_call;
+MatchFn :: #type (*void, *u8, *u16, u32, *u32) -> *void #c_call;
+PathFn :: #type (*void) -> *u8 #c_call;
+IndexFn :: #type (*void) -> usize #c_call;
+create_fn: CreateFn;
+destroy_fn: DestroyFn;
+match_fn: MatchFn;
+close_fn: DestroyFn;
+path_fn: PathFn;
+index_fn: IndexFn;
+matcher: s32;
+font: s32;
+created: s32;
+destroyed: s32;
+closed: s32;
+opened: s32;
+no_matcher: bool;
+no_font: bool;
+face_index: usize = 3;
+path: [128]u8;
+seen_family: [64]u8;
+seen_text: [2]u16;
+seen_length: u32;
+
+Require :: (condition: bool, code: s32) {
+    if !condition { Exit(code) }
+}
+FakeCreate :: () -> *void {
+    if no_matcher { return null }
+    created += 1
+    return cast(*void)*matcher
+}
+FakeDestroy :: (value: *void) {
+    Require(value == cast(*void)*matcher, 10)
+    destroyed += 1
+}
+FakeMatch :: (value: *void, family: *u8, text: *u16, length: u32, run: *u32) -> *void {
+    Require(value == cast(*void)*matcher && run == null && length > 0 && length <= 2, 11)
+    unused CString.CopyCString(Text.TextFromCString(family), seen_family[:])
+    seen_length = length
+    seen_text[0] = text[0]
+    if length == 2 { seen_text[1] = text[1] }
+    if no_font { return null }
+    unused CString.CopyCString("/system/fonts/NotoSansCJK-Regular.ttc", path[:])
+    return cast(*void)*font
+}
+FakeClose :: (value: *void) {
+    Require(value == cast(*void)*font, 12)
+    path[0] = 0
+    closed += 1
+}
+FakePath :: (value: *void) -> *u8 {
+    Require(value == cast(*void)*font, 13)
+    return *path[0]
+}
+FakeIndex :: (value: *void) -> usize {
+    Require(value == cast(*void)*font, 14)
+    return face_index
+}
+#program_export
+__wrap_dlopen :: (name: *u8, flags: s32) -> *void {
+    Require(Text.TextFromCString(name) == "libandroid.so" && flags == 1, 15)
+    opened += 1
+    return cast(*void)*matcher
+}
+#program_export
+__wrap_dlsym :: (library: *void, name: *u8) -> *void {
+    unused library
+    env: [32]u8
+    unused CString.CopyCString("KRYON_TEST_OLD_ANDROID", env[:])
+    if Environment(*env[0]) != null { return null }
+    symbol := Text.TextFromCString(name)
+    if symbol == "AFontMatcher_create" { return cast(*void)create_fn }
+    if symbol == "AFontMatcher_destroy" { return cast(*void)destroy_fn }
+    if symbol == "AFontMatcher_match" { return cast(*void)match_fn }
+    if symbol == "AFont_close" { return cast(*void)close_fn }
+    if symbol == "AFont_getFontFilePath" { return cast(*void)path_fn }
+    if symbol == "AFont_getCollectionIndex" { return cast(*void)index_fn }
+    return null
+}
+#program_export
+main :: () -> s32 {
+    create_fn = FakeCreate
+    destroy_fn = FakeDestroy
+    match_fn = FakeMatch
+    close_fn = FakeClose
+    path_fn = FakePath
+    index_fn = FakeIndex
+    output: [128]u8
+    face: s32 = -1
+    env: [32]u8
+    unused CString.CopyCString("KRYON_TEST_OLD_ANDROID", env[:])
+    if Environment(*env[0]) != null {
+        Require(Android.FileFor("ui", 0, output[:], *face) == "", 1)
+        Require(Android.FileFor("ui", 65, output[:], *face) == "" && opened == 1, 2)
+        return 0
+    }
+    Require(Android.FileFor("ui", 0, output[:], *face) == "/system/fonts/NotoSansCJK-Regular.ttc", 3)
+    Require(face == 3 && seen_text[0] == 65 && seen_length == 1 &&
+        Text.TextFromCString(*seen_family[0]) == "sans-serif" && closed == 1 && destroyed == 1, 4)
+    Require(Android.FileFor("monospace", 0x1F642, output[:], null).count > 0 &&
+        seen_text[0] == 0xD83D && seen_text[1] == 0xDE42 && seen_length == 2 &&
+        Text.TextFromCString(*seen_family[0]) == "monospace", 5)
+    tiny: [2]u8
+    Require(Android.FileFor("ui", 65, tiny[:], null) == "" && closed == 3 && destroyed == 3, 6)
+    before := created
+    Require(Android.FileFor("ui", 0xD800, output[:], null) == "" &&
+        Android.FileFor("ui", -1, output[:], null) == "" &&
+        Android.FileFor("ui", 0x110000, output[:], null) == "" &&
+        Android.FileFor("ui", 65, output[0:0], null) == "" && created == before, 7)
+    no_font = true
+    Require(Android.FileFor("ui", 65, output[:], null) == "" && destroyed == 4 && closed == 3, 8)
+    no_font = false
+    no_matcher = true
+    Require(Android.FileFor("ui", 65, output[:], null) == "" && destroyed == 4, 9)
+    no_matcher = false
+    face_index = 65536
+    Require(Android.FileFor("ui", 65, output[:], null) == "" && closed == 4 && destroyed == 5, 16)
+    Require(created == destroyed && opened == 1, 17)
+    return 0
+}
