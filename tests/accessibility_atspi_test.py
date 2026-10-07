@@ -47,18 +47,59 @@ def main():
             assert Atspi.Selection.get_selected_child(multiple, 0).get_name() == "Alpha"
             assert Atspi.Selection.select_child(multiple, 2)
         else:
-            assert window.get_child_count() == 3
-            button, editor, password = [window.get_child_at_index(i) for i in range(3)]
-            assert button.get_name() == "Run"
+            def children(parent):
+                return [parent.get_child_at_index(i) for i in range(parent.get_child_count())]
+
+            def named(parent, name):
+                return next(child for child in children(parent) if child.get_name() == name)
+
+            def eventually(predicate):
+                for _ in range(200):
+                    if predicate():
+                        return
+                    time.sleep(0.01)
+                raise AssertionError("accessibility state did not update")
+
+            assert window.get_child_count() == 6
+            button = named(window, "Run")
+            editor = named(window, "Editor")
+            password = named(window, "Password")
+            readonly = named(window, "Read only")
+            assert Atspi.Component.get_accessible_at_point(window, 20, 60, Atspi.CoordType.WINDOW).get_name() == "Editor"
             assert Atspi.Text.get_text(editor, 0, -1) == "Ae\u0301Z"
             assert Atspi.Text.get_character_count(editor) == 4
             assert Atspi.Text.get_text(password, 0, -1) == ""
+            assert Atspi.Text.get_character_count(password) == 0
+            assert not Atspi.Action.do_action(named(window, "Disabled"), 0)
+            assert readonly.get_editable_text_iface() is None
+            assert Atspi.Text.get_text(readonly, 0, -1) == "Fixed"
+            assert Atspi.Component.grab_focus(editor)
+            eventually(lambda: editor.get_state_set().contains(Atspi.StateType.FOCUSED))
+            # Scalar offset 2 lies within e + combining acute: don't split it.
+            assert not Atspi.Text.set_caret_offset(editor, 2)
+            assert Atspi.Text.set_caret_offset(editor, 3)
+            eventually(lambda: Atspi.Text.get_caret_offset(editor) == 3)
+            assert Atspi.Text.add_selection(editor, 1, 3)
+            eventually(lambda: Atspi.Text.get_n_selections(editor) == 1)
+            selection = Atspi.Text.get_selection(editor, 0)
+            assert (selection.start_offset, selection.end_offset) == (1, 3)
+            identity = button.get_accessible_id()
+            assert Atspi.EditableText.set_text_contents(editor, "reorder")
+            eventually(lambda: Atspi.Text.get_text(editor, 0, -1) == "reorder")
+            assert named(window, "Run").get_accessible_id() == identity
+            assert Atspi.Action.do_action(named(window, "Open modal"), 0)
+            eventually(lambda: window.get_child_count() == 7)
+            assert not Atspi.Action.do_action(button, 0)
+            assert not Atspi.EditableText.set_text_contents(editor, "Blocked")
+            modal = named(window, "Modal")
+            assert Atspi.Action.do_action(named(modal, "Close modal"), 0)
+            eventually(lambda: window.get_child_count() == 6)
             assert Atspi.Action.do_action(button, 0)
             assert Atspi.EditableText.set_text_contents(editor, "\u754c")
         assert process.stdout.readline().strip() == "APPLIED"
         assert process.wait(timeout=5) == 0
         print("libatspi list selection: PASS" if list_mode else
-              "libatspi discovery, Unicode text, secure redaction and actions: PASS")
+              "libatspi identity, focus, selection, modal routing, Unicode edits and secure redaction: PASS")
     finally:
         if process.poll() is None:
             process.terminate()

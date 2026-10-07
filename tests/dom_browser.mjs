@@ -1,10 +1,16 @@
 // Drive only the private headless process created here; no desktop connection.
 import {spawn} from 'node:child_process';
-import {readFile} from 'node:fs/promises';
+import {readFile, unlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 
 const [html, profile] = process.argv.slice(2);
+// The profile belongs to this test; the prior process was awaited at close.
+// Chromium rewrites this endpoint file, but leaving it lets a reused profile
+// briefly point at the port of the already-closed previous process.
+await unlink(join(profile, 'DevToolsActivePort')).catch(error => {
+  if (error.code !== 'ENOENT') throw error;
+});
 const browser = spawn(process.env.CHROMIUM || 'chromium', [
   '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
   '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0',
@@ -57,6 +63,58 @@ try {
     return result;
   }
   await command('Runtime.enable');
+  if (process.env.KRYON_DOM_INTERACTION) {
+    async function evaluate(expression) {
+      const response = await command('Runtime.evaluate', {expression, returnByValue: true});
+      if (response.result?.exceptionDetails) throw new Error(JSON.stringify(response.result.exceptionDetails));
+      return response.result?.result?.value;
+    }
+    async function until(expression) {
+      const end = Date.now() + 8000;
+      while (Date.now() < end) {
+        if (await evaluate(expression)) return;
+        await delay(50);
+      }
+      throw new Error('DOM interaction timed out: ' + expression + ' ' + diagnostics);
+    }
+    await until(`globalThis.__kryonAccepted === 'Aé' && document.querySelector('[aria-label="Editor"]')?.value === 'Aé'`);
+    const initial = await evaluate(`(() => {
+      const editor = document.querySelector('[aria-label="Editor"]');
+      globalThis.__editor = editor;
+      editor.focus(); editor.setSelectionRange(3, 3);
+      globalThis.__changes = 0;
+      globalThis.__changeDetails = [];
+      new MutationObserver(changes => { globalThis.__changes += changes.length; globalThis.__changeDetails.push(...changes.map(change => [change.type, change.attributeName, change.target.getAttribute('aria-label')])); }).observe(document.getElementById('kryon-dom-root'), {subtree:true,childList:true,attributes:true});
+      return {width:editor.getBoundingClientRect().width, password:document.querySelector('[aria-label="Password"]').type, readonly:document.querySelector('[aria-label="Read only"]').readOnly, color:getComputedStyle(document.querySelector('[aria-label="Run"]')).backgroundColor};
+    })()`);
+    if (initial.width !== 200 || initial.password !== 'password' || !initial.readonly || initial.color !== 'rgb(17, 34, 51)') {
+      throw new Error('Native presentation or KSS mismatch: ' + JSON.stringify(initial));
+    }
+    await delay(150);
+    await evaluate('globalThis.__changes = 0; globalThis.__changeDetails = []');
+    await delay(150);
+    if (await evaluate('globalThis.__changes') !== 0) throw new Error('Unchanged frames mutated the DOM: ' + JSON.stringify(await evaluate('globalThis.__changeDetails')));
+    await command('Input.insertText', {text:'界'});
+    await until(`globalThis.__kryonAccepted === 'Aé界'`);
+    await evaluate('globalThis.__kryonTestReorder = true');
+    await delay(150);
+    if (!await evaluate(`globalThis.__editor === document.querySelector('[aria-label="Editor"]') && document.activeElement === globalThis.__editor && globalThis.__editor.selectionStart === 4`)) {
+      throw new Error('Reordering lost editor identity, focus or Unicode caret');
+    }
+    await evaluate(`document.querySelector('[aria-label="Run"]').click()`);
+    await until(`document.querySelector('h1')?.textContent === 'Clicked'`);
+    const accessibility = await command('Accessibility.getFullAXTree');
+    if (!(accessibility.result?.nodes || []).some(node => node.role?.value === 'textbox' && node.name?.value === 'Editor')) {
+      throw new Error('Native editor missing from browser accessibility tree');
+    }
+    await command('Emulation.setDeviceMetricsOverride', {width:400,height:600,deviceScaleFactor:1,mobile:false});
+    await until(`document.querySelector('[aria-label="Editor"]').getBoundingClientRect().width === 120`);
+    await evaluate('globalThis.__kryonTestDone = true');
+    await until(`document.getElementById('result')?.textContent === 'PASS'`);
+    if (!await evaluate(`!JSON.stringify(globalThis.__kryonDomSnapshot).includes('test secret')`)) throw new Error('Snapshot leaked secure editor text');
+    console.log('Native DOM: stable identity/focus, incremental updates, Unicode input, KSS, responsive layout and browser accessibility PASS');
+    process.exitCode = 0;
+  } else {
   let result = 'pending';
   while (Date.now() < deadline && result !== 'PASS') {
     const response = await command('Runtime.evaluate', {
@@ -107,6 +165,7 @@ try {
     throw new Error('DOM semantic failures: ' + JSON.stringify(failures) + ' ' + diagnostics);
   }
   console.log('Semantic DOM browser: PASS');
+  }
 } finally {
   if (socket) socket.close();
   try { process.kill(-browser.pid, 'SIGTERM'); } catch {}

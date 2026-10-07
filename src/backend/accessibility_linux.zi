@@ -1,0 +1,764 @@
+#import "c_string"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "text_request"
+#import "widget_kind"
+// Native GIO ABI used by the Linux accessibility adapter. GIO dispatches
+// callbacks on the owning thread's main context; no UI tree crosses threads.
+gio :: #system_library "gio-2.0";
+glib :: #system_library "glib-2.0";
+gobject :: #system_library "gobject-2.0";
+
+MethodCallback :: #type (*void, *u8, *u8, *u8, *u8, *void, *void, *void) -> void #c_call;
+GetCallback :: #type (*void, *u8, *u8, *u8, *u8, **void, *void) -> *void #c_call;
+SetCallback :: #type (*void, *u8, *u8, *u8, *u8, *void, **void, *void) -> s32 #c_call;
+InterfaceVTable :: struct {
+    method: MethodCallback
+    get: GetCallback
+    set: SetCallback
+    padding: [8]*void
+}
+
+BusGet :: (kind: s32, cancel: *void, error: **void) -> *void #foreign gio "g_bus_get_sync";
+ConnectBus :: (address: *u8, flags: s32, observer: *void, cancel: *void,
+    error: **void) -> *void #foreign gio "g_dbus_connection_new_for_address_sync";
+Call :: (connection: *void, bus: *u8, path: *u8, interface: *u8, method: *u8,
+    params: *void, reply_type: *void, flags: s32, timeout: s32,
+    cancel: *void, error: **void) -> *void #foreign gio "g_dbus_connection_call_sync";
+UniqueName :: (connection: *void) -> *u8 #foreign gio "g_dbus_connection_get_unique_name";
+NodeInfo :: (xml: *u8, error: **void) -> *void #foreign gio "g_dbus_node_info_new_for_xml";
+FindInterface :: (info: *void, name: *u8) -> *void #foreign gio "g_dbus_node_info_lookup_interface";
+FreeNodeInfo :: (info: *void) #foreign gio "g_dbus_node_info_unref";
+Register :: (connection: *void, path: *u8, info: *void, table: *InterfaceVTable,
+    context: *void, destroy: *void, error: **void) -> u32 #foreign gio "g_dbus_connection_register_object";
+Unregister :: (connection: *void, id: u32) -> s32 #foreign gio "g_dbus_connection_unregister_object";
+Reply :: (invocation: *void, value: *void) #foreign gio "g_dbus_method_invocation_return_value";
+ReplyError :: (invocation: *void, name: *u8, message: *u8) #foreign gio "g_dbus_method_invocation_return_dbus_error";
+NewBusError :: (name: *u8, message: *u8) -> *void #foreign gio "g_dbus_error_new_for_dbus_error";
+Emit :: (connection: *void, destination: *u8, path: *u8, interface: *u8,
+    signal: *u8, params: *void, error: **void) -> s32 #foreign gio "g_dbus_connection_emit_signal";
+Iterate :: (context: *void, block: s32) -> s32 #foreign glib "g_main_context_iteration";
+UnrefObject :: (object: *void) #foreign gobject "g_object_unref";
+FreeError :: (error: *void) #foreign glib "g_error_free";
+
+VString :: (value: *u8) -> *void #foreign glib "g_variant_new_string";
+VPath :: (value: *u8) -> *void #foreign glib "g_variant_new_object_path";
+VInt :: (value: s32) -> *void #foreign glib "g_variant_new_int32";
+VUInt :: (value: u32) -> *void #foreign glib "g_variant_new_uint32";
+VBool :: (value: s32) -> *void #foreign glib "g_variant_new_boolean";
+VDouble :: (value: float64) -> *void #foreign glib "g_variant_new_double";
+VTuple :: (children: **void, count: usize) -> *void #foreign glib "g_variant_new_tuple";
+VArray :: (type: *void, children: **void, count: usize) -> *void #foreign glib "g_variant_new_array";
+VType :: (value: *u8) -> *void #foreign glib "g_variant_type_new";
+VTypeFree :: (type: *void) #foreign glib "g_variant_type_free";
+VChild :: (value: *void, index: usize) -> *void #foreign glib "g_variant_get_child_value";
+VGetInt :: (value: *void) -> s32 #foreign glib "g_variant_get_int32";
+VGetString :: (value: *void, length: *usize) -> *u8 #foreign glib "g_variant_get_string";
+VVariant :: (value: *void) -> *void #foreign glib "g_variant_new_variant";
+VUnref :: (value: *void) #foreign glib "g_variant_unref";
+
+Protocol :: #import "atspi_protocol";
+Utf8 :: #import "std/utf8";
+
+using WidgetKind;
+
+// AT-SPI objects are registered by retained generation, never by submission
+// position. All callbacks run between frames on the UI thread. An absent
+// accessibility bus is an optional platform capability, not a frame failure.
+AccessibleObject :: struct {
+    generation: u64
+    index: s32
+    registrations: [6]u32
+    seen: bool
+    used: bool
+    focused: bool
+    name_hash: u64
+    text_hash: u64
+    character_count: s32
+    children: s32
+    state_hash: u64
+}
+
+objects: [8193]AccessibleObject;
+node_objects: [8192]s32;
+connection: *void;
+infos: [6]*void;
+interfaces: [6]*void;
+vtable: InterfaceVTable;
+ui: Session;
+app_name: [256]u8;
+bus_name: [256]u8;
+desktop_bus: [256]u8;
+desktop_path: [256]u8;
+application_id: s32;
+ready: bool;
+cache_info: *void;
+cache_registration: u32;
+screen_x: s32;
+screen_y: s32;
+
+// A custom host supplies its own client-area origin. SDL's desktop host
+// updates this between frames; headless hosts use the default origin (0, 0).
+#program_export
+AccessibilityOrigin :: (x: s32, y: s32) { screen_x = x; screen_y = y }
+
+CurrentObject :: (object: *AccessibleObject) -> bool {
+    return SessionValid(ui) && object.used && (object.index < 0 ||
+        (object.index < TreeCount(ui) &&
+        TreeNodeAt(ui, object.index).identity_generation == object.generation))
+}
+
+CurrentPath :: (object: *AccessibleObject, path: *u8) -> bool {
+    received: [96]u8; expected: [96]u8
+    value: string = NativeText(path, received[:])
+    if object.index < 0 && value == "/org/a11y/atspi/cache" { return true }
+    return value == ObjectPath(object.generation, expected[:])
+}
+
+AccessibleBounds :: (index: s32, coordinates: s32) -> Rectangle {
+    node: TreeEntry = TreeNodeAt(ui, index)
+    result: Rectangle = node.bounds
+    if coordinates == 0 { result.x += cast(float32)screen_x; result.y += cast(float32)screen_y }
+    else if coordinates == 2 && node.parent >= 0 {
+        parent: TreeEntry = TreeNodeAt(ui, node.parent)
+        result.x -= parent.bounds.x; result.y -= parent.bounds.y
+    }
+    return result
+}
+
+NativeText :: (pointer: *u8, output: []u8) -> string {
+    if pointer == null { return "" }
+    count: s32 = 0
+    while count < output.count && pointer[count] != cast(u8)0 {
+        output[count] = pointer[count]
+        count += 1
+    }
+    if count == output.count { return "" }
+    return TextView(output[:count])
+}
+
+TextVariant :: (value: string) -> *void {
+    bytes: [65537]u8
+    if !Utf8.Valid(value) || !CopyCString(value, bytes[:]) { bytes[0] = 0 }
+    return VString(*bytes[0])
+}
+
+TupleOne :: (value: *void) -> *void {
+    children: [1]*void
+    children[0] = value
+    return VTuple(*children[0], 1)
+}
+
+TypedArray :: (signature: string, children: **void, count: usize) -> *void {
+    bytes: [32]u8
+    if !CopyCString(signature, bytes[:]) { return null }
+    type: *void = VType(*bytes[0])
+    result: *void = VArray(type, children, count)
+    VTypeFree(type)
+    return result
+}
+
+ObjectPath :: (generation: u64, output: []u8) -> string {
+    if generation == 0 {
+        root: string = "/org/a11y/atspi/accessible/root"
+        CopyCString(root, output)
+        return root
+    }
+    prefix: string = "/org/a11y/atspi/accessible/n"
+    at: s32 = 0
+    while at < prefix.count { output[at] = prefix[at]; at += 1 }
+    digits: [20]u8
+    count: s32 = 0
+    value: u64 = generation
+    while value > 0 {
+        digits[count] = cast(u8)(48 + value % cast(u64)10)
+        count += 1
+        value /= cast(u64)10
+    }
+    while count > 0 { count -= 1; output[at] = digits[count]; at += 1 }
+    output[at] = 0
+    return TextView(output[:at])
+}
+
+Reference :: (index: s32) -> *void {
+    path: [96]u8
+    generation: u64 = 0
+    if index >= 0 { generation = TreeNodeAt(ui, index).identity_generation }
+    if index == -2 { CopyCString("/org/a11y/atspi/null", path[:]) }
+    else { unused ObjectPath(generation, path[:]) }
+    children: [2]*void
+    children[0] = VString(*bus_name[0])
+    if index == -2 { children[0] = TextVariant("") }
+    children[1] = VPath(*path[0])
+    return VTuple(*children[0], 2)
+}
+
+ArgumentInt :: (params: *void, at: usize) -> s32 {
+    child: *void = VChild(params, at)
+    result: s32 = VGetInt(child)
+    VUnref(child)
+    return result
+}
+
+ChildCount :: (index: s32) -> s32 {
+    if index < 0 { if TreeCount(ui) > 0 { return 1 }; return 0 }
+    child: s32 = TreeNodeAt(ui, index).first_child
+    count: s32 = 0
+    while child >= 0 { count += 1; child = TreeNodeAt(ui, child).next_sibling }
+    return count
+}
+
+ChildAt :: (index: s32, ordinal: s32) -> s32 {
+    if ordinal < 0 { return -2 }
+    if index < 0 { if ordinal == 0 && TreeCount(ui) > 0 { return 0 }; return -2 }
+    child: s32 = TreeNodeAt(ui, index).first_child
+    while child >= 0 && ordinal > 0 {
+        child = TreeNodeAt(ui, child).next_sibling
+        ordinal -= 1
+    }
+    if child < 0 { return -2 }
+    return child
+}
+
+HasAction :: (node: TreeEntry) -> bool {
+    return node.kind != WidgetKindTextField && node.kind != WidgetKindTextArea &&
+        TreePointerActivatable(node.kind, node.focus_id, false, false)
+}
+
+HasInterface :: (index: s32, interface: s32) -> bool {
+    if interface == 0 { return true }
+    if index < 0 { return interface == 1 }
+    if interface == 2 { return true }
+    node: TreeEntry = TreeNodeAt(ui, index)
+    if interface == 3 { return HasAction(node) }
+    if interface == 4 { return node.has_text }
+    return interface == 5 && node.has_text && !node.read_only
+}
+
+Role :: (index: s32) -> s32 {
+    if index < 0 { return 75 }
+    node: TreeEntry = TreeNodeAt(ui, index)
+    if node.has_text { if node.secure { return 40 }; if node.kind == WidgetKindTextField { return 79 }; return 61 }
+    if node.kind == WidgetKindScreen { return 23 }
+    if node.kind == WidgetKindCheckbox { return 7 }
+    if node.kind == WidgetKindLink { return 88 }
+    if HasAction(node) { return 43 }
+    if cast(s32)node.semantic_kind == 3 { return 83 }
+    if node.semantic_label.count > 0 { return 29 }
+    return 39
+}
+
+RoleName :: (role: s32) -> string {
+    if role == 75 { return "application" }
+    if role == 23 { return "frame" }
+    if role == 40 { return "password text" }
+    if role == 79 { return "entry" }
+    if role == 61 { return "text" }
+    if role == 7 { return "check box" }
+    if role == 88 { return "link" }
+    if role == 43 { return "push button" }
+    if role == 83 { return "heading" }
+    if role == 29 { return "label" }
+    return "panel"
+}
+
+// AT-SPI text offsets count Unicode scalars, whereas Kryon edits use bytes.
+NextByte :: (index: s32, at: s32) -> s32 {
+    length: s32 = TreeNodeAt(ui, index).text_bytes
+    last: s32 = at + 4
+    if last > length { last = length }
+    bytes: [4]u8
+    value: string = TreeTextRange(ui, index, at, last, bytes[:])
+    if value.count == 0 { return length }
+    return at + Utf8.Next(value, 0)
+}
+
+ByteOffset :: (index: s32, character: s32) -> s32 {
+    node: TreeEntry = TreeNodeAt(ui, index)
+    if node.secure { return 0 }
+    if character < 0 { return node.text_bytes }
+    at: s32 = 0
+    while character > 0 && at < node.text_bytes { at = NextByte(index, at); character -= 1 }
+    return at
+}
+
+CharacterOffset :: (index: s32, byte: s32) -> s32 {
+    node: TreeEntry = TreeNodeAt(ui, index)
+    if node.secure { return 0 }
+    count: s32 = 0
+    at: s32 = 0
+    while at < byte && at < node.text_bytes { at = NextByte(index, at); count += 1 }
+    return count
+}
+
+InterfacesVariant :: (index: s32) -> *void {
+    children: [6]*void
+    count: s32 = 0
+    i: s32 = 0
+    while i < 6 {
+        if HasInterface(index, i) { children[count] = TextVariant(Protocol.InterfaceName(i)); count += 1 }
+        i += 1
+    }
+    return TypedArray("s", *children[0], cast(usize)count)
+}
+
+StateVariant :: (index: s32) -> *void {
+    node: TreeEntry
+    if index >= 0 { node = TreeNodeAt(ui, index) }
+    state: u32 = (cast(u32)1 << cast(u32)30) | (cast(u32)1 << cast(u32)25)
+    if !node.disabled && !node.loading { state |= (cast(u32)1 << cast(u32)8) | (cast(u32)1 << cast(u32)24) }
+    if node.interactive { state |= cast(u32)1 << cast(u32)11 }
+    if TreeFocusedAt(ui, index) || (node.has_text && node.selected) { state |= cast(u32)1 << cast(u32)12 }
+    if node.has_text && !node.read_only && !node.disabled { state |= cast(u32)1 << cast(u32)7 }
+    if node.selected && !node.has_text { state |= cast(u32)1 << cast(u32)23 }
+    states: [2]*void
+    states[0] = VUInt(state); states[1] = VUInt(0)
+    return TypedArray("u", *states[0], 2)
+}
+
+CacheItem :: (index: s32) -> *void {
+    node: TreeEntry
+    if index >= 0 { node = TreeNodeAt(ui, index) }
+    fields: [10]*void
+    fields[0] = Reference(index); fields[1] = Reference(-1)
+    fields[2] = Reference(-2)
+    if index >= 0 { fields[2] = Reference(node.parent) }
+    ordinal: s32 = -1
+    if index >= 0 {
+        ordinal = 0
+        if node.parent >= 0 {
+            child: s32 = TreeNodeAt(ui, node.parent).first_child
+            while child >= 0 && child != index { ordinal += 1; child = TreeNodeAt(ui, child).next_sibling }
+        }
+    }
+    fields[3] = VInt(ordinal); fields[4] = VInt(ChildCount(index))
+    fields[5] = InterfacesVariant(index)
+    fields[6] = TextVariant(node.semantic_label)
+    if index < 0 { fields[6] = VString(*app_name[0]) }
+    fields[7] = VUInt(cast(u32)Role(index)); fields[8] = TextVariant("")
+    fields[9] = StateVariant(index)
+    return VTuple(*fields[0], 10)
+}
+
+EmitSignal :: (path_value: string, interface_value: string, signal_value: string, params: *void) {
+    path: [96]u8; interface: [96]u8; signal: [96]u8
+    CopyCString(path_value, path[:]); CopyCString(interface_value, interface[:]); CopyCString(signal_value, signal[:])
+    error: *void = null
+    Emit(connection, null, *path[0], *interface[0], *signal[0], params, *error)
+    if error != null { FreeError(error) }
+}
+
+ObjectEvent :: (generation: u64, signal: string, detail: string, first: s32, last: s32, value: *void) {
+    fields: [5]*void
+    fields[0] = TextVariant(detail); fields[1] = VInt(first); fields[2] = VInt(last)
+    fields[3] = VVariant(value); fields[4] = TypedArray("{sv}", null, 0)
+    path: [96]u8
+    EmitSignal(ObjectPath(generation, path[:]), "org.a11y.atspi.Event.Object", signal, VTuple(*fields[0], 5))
+}
+
+HashText :: (value: string) -> u64 {
+    hash: u64 = 2166136261
+    for byte: 0..cast(s32)value.count - 1 { hash = (hash ^ cast(u64)value[byte]) * cast(u64)16777619 }
+    return hash
+}
+
+PublishChanges :: (slot: s32, added: bool) {
+    index: s32 = objects[slot].index
+    node: TreeEntry = TreeNodeAt(ui, index)
+    focused: bool = TreeFocusedAt(ui, index) || (node.has_text && node.selected)
+    name_hash: u64 = HashText(node.semantic_label)
+    text_hash: u64 = 2166136261
+    characters: s32 = 0
+    if node.has_text && !node.secure {
+        output: [4096]u8
+        at: s32 = 0
+        while at < node.text_bytes {
+            last: s32 = at + 4096
+            if last > node.text_bytes { last = node.text_bytes }
+            value: string = TreeTextRange(ui, index, at, last, output[:])
+            text_hash = (text_hash ^ HashText(value)) * cast(u64)16777619
+            at = last
+        }
+        characters = CharacterOffset(index, node.text_bytes)
+    }
+    changed: bool = added || focused != objects[slot].focused ||
+        name_hash != objects[slot].name_hash || text_hash != objects[slot].text_hash ||
+        ChildCount(index) != objects[slot].children
+    state_hash: u64 = cast(u64)node.disabled | (cast(u64)node.loading << 1) |
+        (cast(u64)node.read_only << 2) | (cast(u64)node.selected << 3)
+    if state_hash != objects[slot].state_hash { changed = true }
+    if !added && focused != objects[slot].focused {
+        ObjectEvent(node.identity_generation, "StateChanged", "focused", cast(s32)focused, 0, VInt(0))
+    }
+    if !added && name_hash != objects[slot].name_hash {
+        ObjectEvent(node.identity_generation, "PropertyChange", "accessible-name", 0, 0, TextVariant(node.semantic_label))
+    }
+    if !added && text_hash != objects[slot].text_hash && !node.secure {
+        output: [65536]u8
+        ObjectEvent(node.identity_generation, "TextChanged", "delete", 0, objects[slot].character_count, TextVariant(""))
+        ObjectEvent(node.identity_generation, "TextChanged", "insert", 0, characters,
+            TextVariant(TreeTextRange(ui, index, 0, node.text_bytes, output[:])))
+    }
+    if changed {
+        EmitSignal("/org/a11y/atspi/cache", "org.a11y.atspi.Cache", "AddAccessible", TupleOne(CacheItem(index)))
+    }
+    objects[slot].focused = focused; objects[slot].name_hash = name_hash
+    objects[slot].text_hash = text_hash; objects[slot].character_count = characters
+    objects[slot].children = ChildCount(index)
+    objects[slot].state_hash = state_hash
+}
+
+GetProperty :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
+    property: *u8, error: **void, context: *void) -> *void {
+    object: *AccessibleObject = cast(*AccessibleObject)context
+    if !CurrentObject(object) || !CurrentPath(object, path) {
+        name: [96]u8; message: [96]u8
+        CopyCString("org.freedesktop.DBus.Error.UnknownObject", name[:])
+        CopyCString("The accessible object no longer exists", message[:])
+        if error != null { error[0] = NewBusError(*name[0], *message[0]) }
+        return null
+    }
+    index: s32 = object.index
+    key_bytes: [96]u8
+    key: string = NativeText(property, key_bytes[:])
+    node: TreeEntry
+    if index >= 0 { node = TreeNodeAt(ui, index) }
+    if key == "version" || key == "InterfaceVersion" { return VUInt(1) }
+    if key == "Id" { return VInt(application_id) }
+    if key == "Name" { if index < 0 { return VString(*app_name[0]) }; return TextVariant(node.semantic_label) }
+    if key == "Description" || key == "HelpText" { return TextVariant("") }
+    if key == "Locale" { return TextVariant("C.UTF-8") }
+    if key == "ChildCount" { return VInt(ChildCount(index)) }
+    if key == "Parent" {
+        if index < 0 {
+            children: [2]*void
+            children[0] = VString(*desktop_bus[0]); children[1] = VPath(*desktop_path[0])
+            return VTuple(*children[0], 2)
+        }
+        return Reference(node.parent)
+    }
+    if key == "AccessibleId" { bytes: [96]u8; return TextVariant(ObjectPath(object.generation, bytes[:])) }
+    if key == "ToolkitName" { return TextVariant("Kryon") }
+    if key == "Version" || key == "ToolkitVersion" || key == "AtspiVersion" { return TextVariant("2.1") }
+    if key == "NActions" { return VInt(1) }
+    if key == "CharacterCount" { return VInt(CharacterOffset(index, node.text_bytes)) }
+    if key == "CaretOffset" { return VInt(CharacterOffset(index, node.text_cursor)) }
+    return null
+}
+
+SetProperty :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
+    property: *u8, value: *void, error: **void, context: *void) -> s32 {
+    bytes: [96]u8
+    object: *AccessibleObject = cast(*AccessibleObject)context
+    if !CurrentObject(object) || !CurrentPath(object, path) { return 0 }
+    if object.index < 0 && NativeText(property, bytes[:]) == "Id" {
+        application_id = VGetInt(value)
+        return 1
+    }
+    return 0
+}
+
+Method :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
+    method: *u8, params: *void, invocation: *void, context: *void) {
+    object: *AccessibleObject = cast(*AccessibleObject)context
+    if !CurrentObject(object) || !CurrentPath(object, path) {
+        error_name: [96]u8; error_message: [96]u8
+        CopyCString("org.freedesktop.DBus.Error.UnknownObject", error_name[:])
+        CopyCString("The accessible object no longer exists", error_message[:])
+        ReplyError(invocation, *error_name[0], *error_message[0]); return
+    }
+    index: s32 = object.index
+    bytes: [96]u8
+    name: string = NativeText(method, bytes[:])
+    node: TreeEntry
+    if index >= 0 { node = TreeNodeAt(ui, index) }
+    result: *void = null
+    if name == "GetItems" {
+        children: [8193]*void
+        children[0] = CacheItem(-1)
+        i: s32 = 0
+        while i < TreeCount(ui) { children[i + 1] = CacheItem(i); i += 1 }
+        result = TupleOne(TypedArray("((so)(so)(so)iiassusau)", *children[0], cast(usize)(i + 1)))
+    } else if name == "GetChildAtIndex" { result = TupleOne(Reference(ChildAt(index, ArgumentInt(params, 0)))) }
+    else if name == "GetChildren" {
+        children: [8192]*void
+        count: s32 = ChildCount(index)
+        i: s32 = 0
+        while i < count { children[i] = Reference(ChildAt(index, i)); i += 1 }
+        result = TupleOne(TypedArray("(so)", *children[0], cast(usize)count))
+    } else if name == "GetIndexInParent" {
+        ordinal: s32 = 0
+        if index < 0 { ordinal = -1 }
+        else if node.parent >= 0 {
+            child: s32 = TreeNodeAt(ui, node.parent).first_child
+            while child >= 0 && child != index { ordinal += 1; child = TreeNodeAt(ui, child).next_sibling }
+        }
+        result = TupleOne(VInt(ordinal))
+    } else if name == "GetRole" { result = TupleOne(VUInt(cast(u32)Role(index))) }
+    else if name == "GetRoleName" || name == "GetLocalizedRoleName" { result = TupleOne(TextVariant(RoleName(Role(index)))) }
+    else if name == "GetApplication" { result = TupleOne(Reference(-1)) }
+    else if name == "GetAttributes" { result = TupleOne(TypedArray("{ss}", null, 0)) }
+    else if name == "GetRelationSet" { result = TupleOne(TypedArray("(ua(so))", null, 0)) }
+    else if name == "GetInterfaces" {
+        result = TupleOne(InterfacesVariant(index))
+    } else if name == "GetState" { result = TupleOne(StateVariant(index))
+    } else if name == "GetLocale" { result = TupleOne(TextVariant("C.UTF-8")) }
+    else if name == "GetApplicationBusAddress" { result = TupleOne(TextVariant("")) }
+    else if name == "GetName" || name == "GetLocalizedName" { result = TupleOne(TextVariant("activate")) }
+    else if name == "GetDescription" || name == "GetKeyBinding" { result = TupleOne(TextVariant("")) }
+    else if name == "GetActions" {
+        fields: [3]*void
+        fields[0] = TextVariant("activate"); fields[1] = TextVariant(""); fields[2] = TextVariant("")
+        actions: [1]*void
+        actions[0] = VTuple(*fields[0], 3)
+        result = TupleOne(TypedArray("(sss)", *actions[0], 1))
+    } else if name == "DoAction" {
+        ok: bool = ArgumentInt(params, 0) == 0 && HasAction(node) && TreeActivateAt(ui, index)
+        result = TupleOne(VBool(cast(s32)ok))
+    } else if name == "GrabFocus" { result = TupleOne(VBool(cast(s32)TreeFocusAt(ui, index))) }
+    else if name == "GetAlpha" { result = TupleOne(VDouble(1.0)) }
+    else if name == "GetLayer" { result = TupleOne(VUInt(3)) }
+    else if name == "GetSize" || name == "GetPosition" || name == "GetExtents" {
+        coordinates: s32 = 1
+        if name != "GetSize" { coordinates = ArgumentInt(params, 0) }
+        bounds: Rectangle = AccessibleBounds(index, coordinates)
+        fields: [4]*void
+        fields[0] = VInt(cast(s32)bounds.x); fields[1] = VInt(cast(s32)bounds.y)
+        fields[2] = VInt(cast(s32)bounds.width); fields[3] = VInt(cast(s32)bounds.height)
+        if name == "GetSize" { result = VTuple(*fields[2], 2) }
+        else if name == "GetPosition" { result = VTuple(*fields[0], 2) }
+        else { result = TupleOne(VTuple(*fields[0], 4)) }
+    } else if name == "Contains" {
+        x: s32 = ArgumentInt(params, 0); y: s32 = ArgumentInt(params, 1)
+        bounds: Rectangle = AccessibleBounds(index, ArgumentInt(params, 2))
+        result = TupleOne(VBool(cast(s32)(cast(float32)x >= bounds.x && cast(float32)y >= bounds.y &&
+            cast(float32)x < bounds.x + bounds.width && cast(float32)y < bounds.y + bounds.height)))
+    } else if name == "GetAccessibleAtPoint" {
+        bounds: Rectangle = AccessibleBounds(index, ArgumentInt(params, 2))
+        x: float32 = cast(float32)ArgumentInt(params, 0) + node.bounds.x - bounds.x
+        y: float32 = cast(float32)ArgumentInt(params, 1) + node.bounds.y - bounds.y
+        hit: s32 = TreeHitAt(ui, x, y)
+        ancestor: s32 = hit
+        while ancestor >= 0 && ancestor != index { ancestor = TreeNodeAt(ui, ancestor).parent }
+        if index >= 0 && ancestor != index { hit = -2 }
+        if hit < 0 { hit = -2 }
+        result = TupleOne(Reference(hit))
+    } else if name == "GetText" {
+        start: s32 = ArgumentInt(params, 0); end: s32 = ArgumentInt(params, 1)
+        first_byte: s32 = ByteOffset(index, start); last_byte: s32 = ByteOffset(index, end)
+        output: [65536]u8
+        if start >= 0 && end >= -1 && (end == -1 || end >= start) && last_byte - first_byte <= 65536 {
+            value: string = TreeTextRange(ui, index, first_byte, last_byte, output[:])
+            result = TupleOne(TextVariant(value))
+        }
+    } else if name == "SetTextContents" {
+        child: *void = VChild(params, 0)
+        output: [65537]u8
+        length: usize = 0
+        pointer: *u8 = VGetString(child, *length)
+        value: string = NativeText(pointer, output[:])
+        ok: bool = length <= cast(usize)65536 && TextRequestSend(ui, index, value, true, cast(s32)value.count, cast(s32)value.count)
+        VUnref(child)
+        result = TupleOne(VBool(cast(s32)ok))
+    } else if name == "GetNSelections" {
+        selected: s32 = 0
+        if !node.secure && node.text_cursor != node.text_anchor { selected = 1 }
+        result = TupleOne(VInt(selected))
+    } else if name == "GetSelection" {
+        fields: [2]*void
+        start: s32 = CharacterOffset(index, node.text_anchor); end: s32 = CharacterOffset(index, node.text_cursor)
+        if start > end { swap: s32 = start; start = end; end = swap }
+        fields[0] = VInt(start); fields[1] = VInt(end)
+        result = VTuple(*fields[0], 2)
+    } else if name == "SetCaretOffset" || name == "AddSelection" || name == "SetSelection" || name == "RemoveSelection" {
+        start: s32 = node.text_cursor; end: s32 = start
+        if name == "SetCaretOffset" { start = ByteOffset(index, ArgumentInt(params, 0)); end = start }
+        else if name == "AddSelection" { start = ByteOffset(index, ArgumentInt(params, 0)); end = ByteOffset(index, ArgumentInt(params, 1)) }
+        else if name == "SetSelection" { start = ByteOffset(index, ArgumentInt(params, 1)); end = ByteOffset(index, ArgumentInt(params, 2)) }
+        result = TupleOne(VBool(cast(s32)TextRequestSend(ui, index, "", false, end, start)))
+    }
+    if result != null { Reply(invocation, result); return }
+    error_name: [96]u8; error_message: [96]u8
+    CopyCString("org.freedesktop.DBus.Error.NotSupported", error_name[:])
+    CopyCString("This accessibility operation is not supported", error_message[:])
+    ReplyError(invocation, *error_name[0], *error_message[0])
+}
+
+RemoveObject :: (slot: s32) {
+    if ready && objects[slot].used && slot > 0 {
+        path: [96]u8; reference: [2]*void
+        reference[0] = VString(*bus_name[0])
+        unused ObjectPath(objects[slot].generation, path[:])
+        reference[1] = VPath(*path[0])
+        ObjectEvent(objects[slot].generation, "StateChanged", "defunct", 1, 0, VInt(0))
+        EmitSignal("/org/a11y/atspi/cache", "org.a11y.atspi.Cache", "RemoveAccessible",
+            TupleOne(VTuple(*reference[0], 2)))
+    }
+    i: s32 = 0
+    while i < 6 {
+        if objects[slot].registrations[i] != 0 { Unregister(connection, objects[slot].registrations[i]) }
+        i += 1
+    }
+    objects[slot] = AccessibleObject.{}
+}
+
+RegisterObject :: (slot: s32, index: s32, generation: u64) -> bool {
+    objects[slot].generation = generation
+    objects[slot].index = index
+    objects[slot].seen = true
+    objects[slot].used = true
+    path: [96]u8
+    unused ObjectPath(generation, path[:])
+    i: s32 = 0
+    while i < 6 {
+        if HasInterface(index, i) {
+            error: *void = null
+            objects[slot].registrations[i] = Register(connection, *path[0], interfaces[i],
+                *vtable, cast(*void)*objects[slot], null, *error)
+            if error != null { FreeError(error) }
+            if objects[slot].registrations[i] == 0 { RemoveObject(slot); return false }
+        }
+        i += 1
+    }
+    return true
+}
+
+#program_export
+AccessibilityClose :: () {
+    ready = false
+    if connection != null {
+        if cache_registration != 0 { Unregister(connection, cache_registration) }
+        cache_registration = 0
+        i: s32 = 0
+        while i < 8193 { if objects[i].used { RemoveObject(i) }; i += 1 }
+        UnrefObject(connection)
+    }
+    connection = null
+    if cache_info != null { FreeNodeInfo(cache_info) }; cache_info = null
+    i: s32 = 0
+    while i < 6 { if infos[i] != null { FreeNodeInfo(infos[i]) }; infos[i] = null; interfaces[i] = null; i += 1 }
+    ui = Session.{}
+}
+
+#program_export
+AccessibilitySync :: () -> bool {
+    if !ready || !SessionValid(ui) || TreeCount(ui) > 8192 { return false }
+    slot: s32 = 1
+    while slot < 8193 { objects[slot].seen = false; slot += 1 }
+    index: s32 = 0
+    while index < TreeCount(ui) {
+        generation: u64 = TreeNodeAt(ui, index).identity_generation
+        found: s32 = 0; unused_slot: s32 = 0
+        slot = 1
+        while slot < 8193 {
+            if objects[slot].used && objects[slot].generation == generation { found = slot; break }
+            if !objects[slot].used && unused_slot == 0 { unused_slot = slot }
+            slot += 1
+        }
+        added: bool = found == 0
+        if found == 0 {
+            if unused_slot == 0 || !RegisterObject(unused_slot, index, generation) { return false }
+            found = unused_slot
+        }
+        objects[found].index = index
+        objects[found].seen = true
+        node_objects[index] = found
+        path: [96]u8
+        unused ObjectPath(generation, path[:])
+        interface: s32 = 1
+        while interface < 6 {
+            needed: bool = HasInterface(index, interface)
+            if !needed && objects[found].registrations[interface] != 0 {
+                Unregister(connection, objects[found].registrations[interface])
+                objects[found].registrations[interface] = 0
+            } else if needed && objects[found].registrations[interface] == 0 {
+                error: *void = null
+                objects[found].registrations[interface] = Register(connection, *path[0], interfaces[interface],
+                    *vtable, cast(*void)*objects[found], null, *error)
+                if error != null { FreeError(error) }
+                if objects[found].registrations[interface] == 0 { return false }
+            }
+            interface += 1
+        }
+        PublishChanges(found, added)
+        index += 1
+    }
+    slot = 1
+    while slot < 8193 { if objects[slot].used && !objects[slot].seen { RemoveObject(slot) }; slot += 1 }
+    return true
+}
+
+#program_export
+AccessibilityPoll :: () {
+    if !ready || !SessionValid(ui) { return }
+    count: s32 = 0
+    while count < 64 && Iterate(null, 0) != 0 { count += 1 }
+}
+
+#program_export
+AccessibilityOpen :: (session: Session, title: string) -> bool {
+    if ready || !SessionValid(session) || !Utf8.Valid(title) || !CopyCString(title, app_name[:]) { return false }
+    ui = session
+    bus_name = .{}; desktop_bus = .{}; desktop_path = .{}
+    error: *void = null
+    bus: *void = BusGet(2, null, *error)
+    if error != null { FreeError(error); error = null }
+    if bus == null { AccessibilityClose(); return false }
+    bus_destination: [64]u8; bus_path: [64]u8; bus_interface: [64]u8; bus_method: [64]u8
+    CopyCString("org.a11y.Bus", bus_destination[:]); CopyCString("/org/a11y/bus", bus_path[:])
+    CopyCString("org.a11y.Bus", bus_interface[:]); CopyCString("GetAddress", bus_method[:])
+    reply: *void = Call(bus, *bus_destination[0], *bus_path[0], *bus_interface[0], *bus_method[0],
+        null, null, 0, 1000, null, *error)
+    UnrefObject(bus)
+    if error != null { FreeError(error); error = null }
+    if reply == null { AccessibilityClose(); return false }
+    address: *void = VChild(reply, 0)
+    connection = ConnectBus(VGetString(address, null), 9, null, null, *error)
+    VUnref(address); VUnref(reply)
+    if error != null { FreeError(error); error = null }
+    if connection == null { AccessibilityClose(); return false }
+    unused NativeText(UniqueName(connection), bus_name[:])
+    // NativeText does not append NUL; the global zeroed buffer retains one.
+    method: MethodCallback = Method; get: GetCallback = GetProperty; set: SetCallback = SetProperty
+    vtable.method = method; vtable.get = get; vtable.set = set
+    i: s32 = 0
+    while i < 6 {
+        xml: [4096]u8; name: [96]u8
+        if !CopyCString(Protocol.InterfaceXML(i), xml[:]) { AccessibilityClose(); return false }
+        infos[i] = NodeInfo(*xml[0], *error)
+        if error != null { FreeError(error); error = null }
+        if infos[i] == null { AccessibilityClose(); return false }
+        CopyCString(Protocol.InterfaceName(i), name[:])
+        interfaces[i] = FindInterface(infos[i], *name[0])
+        i += 1
+    }
+    CopyCString("", desktop_bus[:]); CopyCString("/org/a11y/atspi/null", desktop_path[:])
+    cache_xml: [512]u8; cache_name: [96]u8; cache_path: [96]u8
+    CopyCString("<node><interface name='org.a11y.atspi.Cache'><property name='version' type='u' access='read'/><method name='GetItems'><arg direction='out' type='a((so)(so)(so)iiassusau)'/></method></interface></node>", cache_xml[:])
+    cache_info = NodeInfo(*cache_xml[0], *error)
+    if error != null { FreeError(error); error = null }
+    if cache_info == null { AccessibilityClose(); return false }
+    CopyCString("org.a11y.atspi.Cache", cache_name[:]); CopyCString("/org/a11y/atspi/cache", cache_path[:])
+    cache_registration = Register(connection, *cache_path[0], FindInterface(cache_info, *cache_name[0]),
+        *vtable, cast(*void)*objects[0], null, *error)
+    if error != null { FreeError(error); error = null }
+    if cache_registration == 0 { AccessibilityClose(); return false }
+    if !RegisterObject(0, -1, 0) { AccessibilityClose(); return false }
+    CopyCString("org.a11y.atspi.Registry", bus_destination[:])
+    CopyCString("/org/a11y/atspi/accessible/root", bus_path[:])
+    CopyCString("org.a11y.atspi.Socket", bus_interface[:]); CopyCString("Embed", bus_method[:])
+    reply = Call(connection, *bus_destination[0], *bus_path[0], *bus_interface[0], *bus_method[0],
+        TupleOne(Reference(-1)), null, 0, 1000, null, *error)
+    if error != null { FreeError(error) }
+    if reply == null { AccessibilityClose(); return false }
+    parent: *void = VChild(reply, 0)
+    parent_bus: *void = VChild(parent, 0); parent_path: *void = VChild(parent, 1)
+    unused NativeText(VGetString(parent_bus, null), desktop_bus[:])
+    unused NativeText(VGetString(parent_path, null), desktop_path[:])
+    VUnref(parent_bus); VUnref(parent_path); VUnref(parent); VUnref(reply)
+    ready = true
+    if !AccessibilitySync() { AccessibilityClose(); return false }
+    return true
+}

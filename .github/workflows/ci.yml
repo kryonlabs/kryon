@@ -52,7 +52,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential python3 ripgrep xvfb \
             pkg-config libsdl2-dev libcairo2-dev libfreetype-dev libfontconfig1-dev \
-            xclip xdotool python3-gi gir1.2-gtk-3.0
+            xclip xdotool python3-gi gir1.2-gtk-3.0 gir1.2-atspi-2.0 \
+            libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -87,7 +88,10 @@ jobs:
       - name: Build and test
         env:
           CHROMIUM: google-chrome
-        run: env -u DISPLAY -u WAYLAND_DISPLAY make test
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test
+
+      - name: Check repeatable frame workloads
+        run: python3 tools/performance.py --budget-ms 64
 
       - name: Test SVG example
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
@@ -170,7 +174,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 pkg-config \
-            libsdl2-dev libcairo2-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
+            libsdl2-dev libcairo2-dev libglib2.0-dev libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
             libegl-mesa0 libgl1-mesa-dri \
             libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev \
             fonts-dejavu-core fonts-wqy-zenhei \

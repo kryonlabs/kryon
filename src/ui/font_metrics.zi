@@ -10,6 +10,33 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #foreign host_api
 // GlyphMetricsChanged whenever it replaces fonts or changes their advances.
 glyph_metrics_revision: u64;
 
+// A shaping host can measure a caret in the full run, preserving ligatures
+// and bidi context. Other hosts keep their existing prefix measurements.
+CaretMeasure :: #type (string, s32, s32, string) -> s32;
+caret_measure: CaretMeasure;
+has_caret_measure: bool;
+
+#program_export
+GlyphCaretInstall :: (measure: CaretMeasure) {
+    caret_measure = measure
+    has_caret_measure = true
+    GlyphMetricsChanged()
+}
+
+#program_export
+GlyphCaretClear :: () {
+    has_caret_measure = false
+    GlyphMetricsChanged()
+}
+
+#program_export
+GlyphCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
+    if byte < 0 { byte = 0 }
+    if byte > value.count { byte = cast(s32)value.count }
+    if has_caret_measure { measure: CaretMeasure = caret_measure; return measure(value, byte, font, typeface) }
+    return MeasureGlyphWidth(value[:byte], font, typeface)
+}
+
 #program_export
 GlyphMetricsRevision :: () -> u64 { return glyph_metrics_revision }
 

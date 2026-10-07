@@ -81,6 +81,9 @@ C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop libdraw),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
+ifeq ($(PROJECT_BACKEND),desktop)
+HOST_SOURCES += $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
+endif
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
@@ -98,7 +101,7 @@ ASSET_DEPENDENCY := asset-content
 endif
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2)
+HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),libdraw)
@@ -113,7 +116,7 @@ else
 PLAN9PORT_DIR ?= $(PLAN9)
 endif
 HOST_DEPS := $(PLAN9PORT_DIR)/lib/libdraw.a
-HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo freetype2)
+HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo freetype2 pangocairo fontconfig)
 RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw \
 	KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
@@ -247,7 +250,7 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 		EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
 		$(C_DIR)/*.c $(CANVAS_LIBS) \
 		--embed-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
-		-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web \
+		-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
 		--shell-file $(KRYON_DIR)/mk/canvas-shell.html \
 		-o "$$temporary" && chmod 644 "$$temporary" && mv "$$temporary" $@
 else

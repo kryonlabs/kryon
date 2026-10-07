@@ -1,0 +1,37 @@
+#import "cairo_raster"
+#import "font_metrics"
+#import "text_field_widget"
+
+long_text: [2048]u8;
+
+#program_export
+Run :: () -> s32 {
+    if !OpenRaster(800, 140) { return 1 }
+    defer CloseRaster()
+    BeginRasterFrame()
+    if GlyphWidth("é", 24, "") != GlyphWidth("e", 24, "") { return 2 }
+    if GlyphWidth("لا", 24, "") >= GlyphWidth("ل", 24, "") + GlyphWidth("ا", 24, "") { return 3 }
+    rtl: string = "שלום"
+    width: s32 = GlyphWidth(rtl, 24, "")
+    if width <= 0 || GlyphCaret(rtl, 0, 24, "") < width - 1 ||
+        GlyphCaret(rtl, cast(s32)rtl.count, 24, "") != 0 { return 4 }
+    if TextFieldCursorAtX(rtl, 0, 24, "") != rtl.count ||
+        TextFieldCursorAtX(rtl, width, 24, "") != 0 { return 5 }
+    for i: 0..2047 { long_text[i] = 65 }
+    value: string = TextView(long_text[:])
+    if GlyphWidth(value, 24, "") <= 10000 { return 6 }
+    RasterText("لا", 0, 0, 24, .{0, 0, 0, 255})
+    RasterText(rtl, 0, 40, 24, .{0, 0, 0, 255})
+    RasterText(value, 0, 80, 24, .{0, 0, 0, 255})
+    if !FinishRasterFrame() { return 7 }
+    pixels: *u8 = RasterSurfaceData()
+    stride: s32 = RasterSurfaceStride()
+    dark: s32 = 0
+    for y: 80..110 {
+        for x: 0..799 {
+            if pixels[y * stride + x * 4] < cast(u8)80 { dark += 1 }
+        }
+    }
+    if dark < 100 { return 8 }
+    return 0
+}

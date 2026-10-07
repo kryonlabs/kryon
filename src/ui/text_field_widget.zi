@@ -1,3 +1,4 @@
+#import "text_host"
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -26,7 +27,10 @@
     #import "text_widget"
     #import "tree"
     #import "tree_input"
+    #import "text_request"
     #import "widget_kind"
+    Grapheme :: #import "std/grapheme";
+    Utf8 :: #import "std/utf8";
 
     using SemanticKind;
     using WidgetKind;
@@ -83,23 +87,12 @@
 
     #program_export
     TextFieldPrevious :: (value: string, cursor: s32) -> s32 {
-        cursor = TextCursorForLength(cursor, (cast(s32)value.count))
-        if cursor == 0 { return 0 }
-        cursor -= 1
-        while cursor > 0 && TextUtf8Continuation(value[cursor]) {
-            cursor -= 1
-        }
-        return cursor
+        return Grapheme.Previous(value, cursor)
     }
 
     #program_export
     TextFieldNext :: (value: string, cursor: s32) -> s32 {
-        cursor = TextCursorForLength(cursor, (cast(s32)value.count))
-        if cursor >= (cast(s32)value.count) { return (cast(s32)value.count) }
-        cursor += 1
-        while cursor < (cast(s32)value.count) &&
-        TextUtf8Continuation(value[cursor]) { cursor += 1 }
-        return cursor
+        return Grapheme.Next(value, cursor)
     }
 
     #program_export
@@ -120,7 +113,7 @@
         index: s32 = 0
         seen: s32 = 0
         while index < (cast(s32)value.count) {
-            index = TextFieldNext(value, index)
+            index = Utf8.Next(value, index)
             seen += 1
             if seen >= codepoints { return index }
         }
@@ -165,20 +158,17 @@
     #program_export
     TextFieldCursorAtX :: (value: string, x: s32,
         font: s32, typeface: string) -> s32 {
-        if x <= 0 { return 0 }
         index: s32 = 0
-        previous_width: s32 = 0
-        while index < (cast(s32)value.count) {
-            next: s32 = TextFieldNext(value, index)
-            prefix: string = TextSpan(value, 0, next)
-            width: s32 = GlyphWidth(prefix, font, typeface)
-            if x < (previous_width + width) / 2 {
-                return index
-            }
-            index = next
-            previous_width = width
+        nearest: s32 = 0
+        distance: s32 = x - GlyphCaret(value, 0, font, typeface)
+        if distance < 0 { distance = -distance }
+        while index < cast(s32)value.count {
+            index = TextFieldNext(value, index)
+            candidate: s32 = x - GlyphCaret(value, index, font, typeface)
+            if candidate < 0 { candidate = -candidate }
+            if candidate <= distance { nearest = index; distance = candidate }
         }
-        return (cast(s32)value.count)
+        return nearest
     }
 
     #program_export
@@ -227,10 +217,8 @@
     TextFieldCore :: (session: Session, props: TextFieldProps) -> TextFieldResult {
         result: TextFieldResult
         result.node = -1
-        result.cursor = TextCursorForLength(props.cursor,
-            (cast(s32)props.value.count))
-        result.anchor = TextCursorForLength(props.anchor,
-            (cast(s32)props.value.count))
+        result.cursor = Grapheme.Boundary(props.value, props.cursor)
+        result.anchor = Grapheme.Boundary(props.value, props.anchor)
         result.scroll_x = props.scroll_x
         result.focused = props.focused
         result.composition = props.composition
@@ -243,8 +231,10 @@
         }
         activated: bool = TreeTakeActivationAt(session, previous)
         drag: PointerDrag = TreeTakeDragAt(session, previous)
-        if props.disabled || props.input.blur { result.focused = false }
+        if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
+        if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
         if !props.disabled && props.input.focus { result.focused = true }
+        if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
         face: StyleFrame = TextFieldFaceFor(props, result.focused)
         scale: float32 = props.scale
         if scale <= 0.0 { scale = 1.0 }
@@ -275,7 +265,7 @@
             if props.secure {
                 count: s32 = TextFieldCodepoints(TextSpan(display,
                     0, selected))
-                selected = TextFieldByteAfter(props.value, count)
+                selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
             }
             if drag.started || activated {
                 result.anchor = selected
@@ -349,7 +339,7 @@
                 props.input.composition_event.phase ==
                 cast(CompositionPhase)CompositionNone
             }
-            if result.escaped { result.focused = false }
+            if result.escaped { result.focused = false; TreeBlurAt(session, previous) }
             command: s32 = 0
             if props.input.copy {
                 command = TextContextCommandCopy()
@@ -430,6 +420,24 @@
                 }
             }
         }
+        request: TextRequest = TextRequestTake(session, previous)
+        if request.pending && !props.disabled {
+            if !request.replace {
+                result.cursor = Grapheme.Boundary(props.value, request.cursor)
+                result.anchor = Grapheme.Boundary(props.value, request.anchor)
+            } else if !props.read_only && (request.value.count == 0 || TextFieldInputTextAllowed(request.value)) &&
+                TextFieldReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
+                result.edit.start = 0
+                result.edit.end = cast(s32)props.value.count
+                result.edit.replacement = request.value
+                result.edit.changed = true
+                result.cursor = request.cursor
+                result.anchor = request.anchor
+            }
+            result.focused = true
+            result.composition = CompositionState.{}
+            result.composition_changed = result.composition_changed || props.composition.active
+        }
         composing: bool = result.composition.active &&
         result.focused && !props.secure
         composition_prefix: string
@@ -459,7 +467,7 @@
         display_cursor: s32 = TextFieldDisplayByteFor(props.value,
             display, result.cursor, props.secure)
         cursor_prefix: string = TextSpan(display, 0, display_cursor)
-        cursor_text_x: s32 = GlyphWidth(cursor_prefix, font,
+        cursor_text_x: s32 = GlyphCaret(display, display_cursor, font,
             face.value.typeface)
         if composing {
             cursor_text_x = prefix_width + GlyphWidth(TextSpan(
@@ -482,7 +490,13 @@
             TreeSetSemantic(session, result.node,
                 cast(SemanticKind)SemanticTextField, 0)
             TreeSetLabel(session, result.node, props.label)
+            TreeSetStyleClass(session, result.node, props.class_name)
             TreeSetSelected(session, result.node, result.focused)
+            TreeSetTextValue(session, result.node, props.value,
+                Grapheme.Boundary(props.value, result.cursor),
+                Grapheme.Boundary(props.value, result.anchor), props.read_only, props.secure)
+            TextHostPresent(session, result.node, props.value, result.cursor,
+                result.anchor, props.secure, props.read_only, result.edit.changed)
             bounds = TreeSubmittedNodeAt(session, result.node).bounds
         }
         PaintRoundedFill(session, result.node, bounds,
@@ -521,10 +535,8 @@
                 display, selection.start, props.secure)
             last: s32 = TextFieldDisplayByteFor(props.value,
                 display, selection.end, props.secure)
-            left: s32 = paint.text_x + GlyphWidth(TextSpan(
-                display, 0, first), font, face.value.typeface)
-            right: s32 = paint.text_x + GlyphWidth(TextSpan(
-                display, 0, last), font, face.value.typeface)
+            left: s32 = paint.text_x + GlyphCaret(display, first, font, face.value.typeface)
+            right: s32 = paint.text_x + GlyphCaret(display, last, font, face.value.typeface)
             if composing {
                 left = paint.text_x + prefix_width +
                 GlyphWidth(TextSpan(result.composition.text,
@@ -536,6 +548,7 @@
                     result.composition.selection_length),
                     font, face.value.typeface)
             }
+            if left > right { swap: s32 = left; left = right; right = swap }
             clip_left: s32 = cast(s32)paint.clip_bounds.x
             clip_right: s32 = cast(s32)(paint.clip_bounds.x +
                 paint.clip_bounds.width)

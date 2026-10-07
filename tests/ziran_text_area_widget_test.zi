@@ -503,6 +503,13 @@ Frame :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Combining sequences span borrowed text and preedit segments without
+    // wrapping or hit-testing inside a grapheme.
+    view := TextAreaViewFor("ex", 1, 1, CompositionState.{active=true, text="́"})
+    if TextAreaViewNext(view, 0) != 3 || TextAreaViewNext(view, 3) != 4 { return 3 }
+    view = TextAreaViewFor("👨👧", 4, 4,
+        CompositionState.{active=true, text="‍👩‍"})
+    if TextAreaViewNext(view, 0) != view.length { return 4 }
     // The fixed test font follows the pixmap host's metrics lifetime. Exercise
     // cursor, clipboard, syntax colors and IME with retained row layouts.
     GlyphMetricsChanged()

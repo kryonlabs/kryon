@@ -214,6 +214,7 @@
             node = TreeSubmitCurrent(session, props.key, WidgetKindText, prepared.bounds)
             if node < 0 { return }
             TreeSetLabel(session, node, props.text)
+            TreeSetStyleClass(session, node, props.class_name)
             TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
         }
         PaintTextLines(session, node, props, prepared)

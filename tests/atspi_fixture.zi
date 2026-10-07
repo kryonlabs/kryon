@@ -1,0 +1,106 @@
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "pixmap"
+#import "pixmap_frame"
+#import "button_widget"
+#import "button_props"
+#import "text_field_widget"
+#import "text_input_props"
+#import "text_input"
+#import "accessibility_linux"
+Clock :: #import "std/timer_linux";
+using FrameStatus;
+using WidgetKind;
+
+libc :: #system_library "libc";
+WriteLine :: (fd: s32, bytes: *u8, count: u64) -> s64 #foreign libc "write";
+
+pixels: [80000]u32;
+value: [64]u8;
+show_modal: bool;
+reordered: bool;
+
+RunButton :: (session: Session) -> s32 {
+    button: ButtonProps
+    button.key = 10; button.id = 10; button.label = "Run"; button.bounds = .{10.0, 10.0, 120.0, 30.0}
+    return Button(session, button)
+}
+
+Editor :: (session: Session, length: s32, cursor: s32, anchor: s32) -> TextFieldResult {
+    field: TextFieldProps
+    field.key = 20; field.focus_id = 20; field.label = "Editor"; field.bounds = .{10.0, 50.0, 180.0, 30.0}
+    field.value = TextView(value[:length]); field.cursor = cursor; field.anchor = anchor
+    return TextField(session, field)
+}
+
+#program_export
+Run :: () -> s32 {
+    session: Session = SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { AccessibilityClose(); CloseSession(session); PixmapCloseWorkers() }
+    initial: string = "AéZ"
+    for i: 0..4 { value[i] = initial[i] }
+    length: s32 = 5
+    cursor: s32 = 0; anchor: s32 = 0
+    activated: bool = false; edited: bool = false; opened: bool = false
+    for frame: cast(s32)0..4999 {
+        AccessibilityPoll()
+        if !PixmapResumeInto(400, 200, pixels[:]) { return 2 }
+        if BeginFrame(session, 1, .{0.0, 0.0, 400.0, 200.0}) != cast(FrameStatus)FrameOk { return 3 }
+        TreeSetLabel(session, 0, "Test window")
+        frame_reordered: bool = reordered
+        if !frame_reordered && RunButton(session) != 0 { activated = true }
+        result: TextFieldResult = Editor(session, length, cursor, anchor)
+        cursor = result.cursor; anchor = result.anchor
+        if result.edit.changed {
+            if result.edit.start != 0 || result.edit.end != length { return 4 }
+            length = cast(s32)result.edit.replacement.count
+            for i: 0..length - 1 { value[i] = result.edit.replacement[i] }
+            edited = TextView(value[:length]) == "界"
+            reordered = TextView(value[:length]) == "reorder"
+        }
+        if frame_reordered && RunButton(session) != 0 { activated = true }
+        field: TextFieldProps
+        field.bounds = .{10.0, 90.0, 180.0, 30.0}
+        field.key = 30; field.focus_id = 30; field.label = "Password"; field.bounds.y = 90.0
+        field.value = "secret"; field.display_value = "******"; field.secure = true
+        unused TextField(session, field)
+        field.key = 40; field.focus_id = 40; field.label = "Read only"; field.bounds.y = 130.0
+        field.value = "Fixed"; field.secure = false; field.read_only = true
+        unused TextField(session, field)
+        button: ButtonProps
+        button.key = 50; button.id = 50; button.label = "Disabled"; button.disabled = true
+        button.bounds = .{220.0, 10.0, 140.0, 30.0}
+        unused Button(session, button)
+        button.key = 60; button.id = 60; button.label = "Open modal"; button.disabled = false; button.bounds.y = 50.0
+        if Button(session, button) != 0 { show_modal = true }
+        if show_modal {
+            modal: s32 = TreeSubmitCurrent(session, 90, WidgetKindModal, .{0.0, 0.0, 400.0, 200.0})
+            TreeSetLabel(session, modal, "Modal")
+            TreePushScope(session, modal)
+            button.key = 91; button.id = 91; button.label = "Close modal"; button.bounds = .{20.0, 20.0, 160.0, 30.0}
+            if Button(session, button) != 0 { show_modal = false }
+            TreePopScope(session)
+        }
+        finished: PixmapFrameResult = EndPixmapFrame(session, true)
+        if finished.status != cast(FrameStatus)FrameOk { return 5 }
+        PixmapEndInto()
+        if !opened {
+            if !AccessibilityOpen(session, "Kryon Accessibility Test") { return 7 }
+            opened = true
+            line: [6]u8 = .{82, 69, 65, 68, 89, 10}
+            WriteLine(1, *line[0], 6)
+        } else if !AccessibilitySync() { return 8 }
+        if activated && edited {
+            line: [8]u8 = .{65, 80, 80, 76, 73, 69, 68, 10}
+            WriteLine(1, *line[0], 8)
+            return 0
+        }
+        Clock.SleepMilliseconds(2)
+    }
+    return 9
+}

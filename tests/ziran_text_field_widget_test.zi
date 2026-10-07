@@ -343,6 +343,23 @@ Frame :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Editing moves by user-perceived characters; byte ranges remain public.
+    complex := "é👨‍👩‍👧‍👦👍🏽🇵🇾"
+    if TextFieldNext(complex, 0) != 3 || TextFieldNext(complex, 3) != 28 ||
+       TextFieldPrevious(complex, 36) != 28 || TextFieldPrevious(complex, 44) != 36 {
+        return 3
+    }
+    // max_codepoints and secure-display mapping retain scalar semantics.
+    if TextFieldCodepoints("é") != 2 || TextFieldByteAfter("é", 1) != 1 { return 4 }
+    edit_props: TextFieldProps
+    edit_props.value = complex
+    edit_props.input.backspace = true
+    edit := TextFieldEditFor(edit_props, 28, 28)
+    if !edit.changed || edit.start != 3 || edit.end != 28 { return 5 }
+    edit_props.input.backspace = false
+    edit_props.input.delete_forward = true
+    edit = TextFieldEditFor(edit_props, 28, 28)
+    if !edit.changed || edit.start != 28 || edit.end != 36 { return 6 }
     index: s32 = 0
     while index < 27 {
         SetCompositionPhase(index)

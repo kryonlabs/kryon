@@ -1,6 +1,7 @@
 #import "app"
 #import "canvas_host"
 #import "dom_tree"
+#import "dom_host"
 #import "geometry"
 #import "session"
 #import "tree"
@@ -30,6 +31,7 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginCanvasFrame()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)
+    DomHostFrame(session)
     PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
@@ -47,7 +49,11 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
         DomError("kryon: browser document could not commit")
         return false
     }
-    DomReconcile(session, viewport)
+    if !DomReconcile(session, viewport) {
+        EndCanvasFrame()
+        DomError("kryon: document layout contains an unsupported widget")
+        return false
+    }
     if !EndCanvasFrame() {
         DomError("kryon: browser document raster failed")
         return false

@@ -32,10 +32,8 @@ DomSpecFor :: (semantic: s32, widget_kind: s32, heading_level: s32,
     has_uri: bool = detail.count > 0
     if semantic == 1 {
         spec.tag = "main"
-        spec.text = true
     } else if semantic == 2 {
         spec.tag = "section"
-        spec.text = true
     } else if semantic == 3 {
         level: s32 = heading_level
         if level < 1 { level = 1 }
@@ -89,10 +87,8 @@ DomSpecFor :: (semantic: s32, widget_kind: s32, heading_level: s32,
         spec.alt = true
     } else if widget_kind == 51 {
         spec.tag = "main"
-        spec.text = true
     } else if widget_kind == 52 {
         spec.tag = "section"
-        spec.text = true
     } else if widget_kind == 53 {
         spec.tag = "a"
         spec.role = "link"
@@ -121,16 +117,24 @@ DomNodeFlags :: (spec: DomSpec, interactive: bool, disabled: bool,
     if spec.link { flags |= DomFlagLink }
     if spec.source { flags |= DomFlagSource }
     // A native button also refuses activation while loading.
-    if spec.tag == "button" && (disabled || loading) {
+    if (spec.tag == "button" || spec.tag == "input" || spec.tag == "textarea") && (disabled || loading) {
         flags |= DomFlagNativeDisabled
     }
     return flags
 }
 
 #program_export
-DomReconcile :: (session: Session, viewport: Rectangle) {
-    if !SessionValid(session) { return }
+DomReconcile :: (session: Session, viewport: Rectangle) -> bool {
+    if !SessionValid(session) { return false }
     count: s32 = TreeCount(session)
+    if DomDocumentLayout() {
+        for index: 0..count - 1 {
+            kind: s32 = TreeNodeAt(session, index).kind
+            if kind != 0 && kind != 2 && kind != 8 && kind != 9 && kind != 10 && kind != 15 &&
+                kind != 19 && kind != 20 && kind != 21 && kind != 22 && kind != 23 && kind != 24 &&
+                kind != 51 && kind != 52 && kind != 53 { return false }
+        }
+    }
     DomHostBegin(count, viewport.width, viewport.height)
     index: s32 = 0
     title_found: bool = false
@@ -146,15 +150,21 @@ DomReconcile :: (session: Session, viewport: Rectangle) {
             title_found = true
             DomHostTitle(node.semantic_label)
         }
+        x: float32 = node.bounds.x; y: float32 = node.bounds.y
+        if node.parent >= 0 {
+            parent: TreeEntry = TreeNodeAt(session, node.parent)
+            x -= parent.bounds.x; y -= parent.bounds.y
+        }
         DomHostNode(index, node.parent,
-            cast(float64)node.identity_generation, node.kind,
+            node.identity_generation, node.kind,
             semantic, spec.level,
-            node.bounds.x, node.bounds.y,
+            x, y,
             node.bounds.width, node.bounds.height,
             spec.tag, spec.role, node.semantic_label, node.semantic_detail, flags)
         index += 1
     }
     DomHostFinish()
+    return true
 }
 
 #program_export

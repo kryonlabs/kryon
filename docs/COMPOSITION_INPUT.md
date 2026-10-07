@@ -26,3 +26,23 @@ text must stay alive while the caller uses it. A caller that retains
 `CompositionState.text` must copy the bytes into its own storage before the
 provider releases them. Kryon owns composition decisions, preedit paint, and
 commit ranges; platform adapters own event delivery.
+
+## Graphemes and native shaping
+
+TextField and TextArea cursor movement, deletion, selection boundaries and
+wrapping use the standard library's Unicode 17 grapheme segmentation. This
+keeps combining accents, family emoji, modifiers, regional-indicator flags
+and Indic joins intact, including joins across preedit segments. Existing
+`max_codepoints` limits continue to count Unicode scalars.
+
+The native Cairo host uses Pango for shaping, bidirectional placement and
+font fallback. Caret measurement uses the full shaped line rather than a
+separately shaped prefix. `tests/native_text_test.sh` checks combining marks,
+Arabic joining, Hebrew caret/hit positions and text longer than the former
+1,024-byte draw limit through source/saved IR and C/C++.
+
+Logical Left/Right movement is still by grapheme order. Mixed bidirectional
+selection uses a single highlight rectangle, and separately styled preedit
+runs are not shaped as one joined run. Pixmap, raylib and other hosts retain
+their own font/rendering capabilities; Cairo shaping does not imply all-host
+bidirectional support.

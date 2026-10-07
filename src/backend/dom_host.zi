@@ -5,6 +5,14 @@
 #import "number_text"
 #import "page_core"
 #import "text_buffer"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "text_request"
+#import "text_host"
+#import "widget_kind"
+Utf8 :: #import "std/utf8";
+Grapheme :: #import "std/grapheme";
 
 DOM_HOST_MAX :: 8192
 
@@ -69,11 +77,15 @@ DomHostNames :: struct {
 }
 
 DomHostRecord :: struct {
-    identity: float64
+    identity: u64
     element: s32
     parent_element: s32
     tag: s32
     frame: s32
+    previous: u64
+    index: s32
+    pending: bool
+    composing: bool
 }
 
 dom_names: DomHostNames;
@@ -83,6 +95,42 @@ dom_count: s32;
 dom_root: s32;
 dom_frame: s32;
 dom_text_bytes: [32]u8;
+dom_previous: [8193]u64;
+dom_session: Session;
+dom_click: u64;
+dom_document_layout: bool;
+dom_css: s32;
+EditorStage :: struct { value: s32; cursor: s32; anchor: s32; secure: bool; read_only: bool; edited: bool; }
+dom_editors: [8192]EditorStage;
+
+DomDocumentLayout :: () -> bool { return dom_document_layout }
+
+// Call before the first frame. The app owns CSS authoring (KSS can export it).
+// Unsupported canvas-only widgets fail the frame instead of disappearing.
+#program_export
+UseDocumentLayout :: (css: string) -> bool {
+    if dom_root != 0 || css.count > 65536 || !Utf8.Valid(css) { return false }
+    if dom_css != 0 { WebRelease(dom_css) }
+    scope: s32 = WebScope()
+    dom_css = DomKeepText(css)
+    WebEnd(scope)
+    dom_document_layout = true
+    return true
+}
+
+DomSame :: (first: WebValue, second: WebValue) -> bool {
+    object: s32 = WebGetObject(WebGlobal, WebName("Object"))
+    return WebAsBool(WebCall2(object, WebName("is"), first, second))
+}
+
+DomIdentity :: (identity: u64) -> string {
+    digits: [20]u8; count: s32 = 0
+    value: u64 = identity
+    while value > 0 { digits[count] = cast(u8)(48 + value % cast(u64)10); count += 1; value /= cast(u64)10 }
+    if count == 0 { digits[0] = 48; count = 1 }
+    for at: 0..count - 1 { dom_text_bytes[at] = digits[count - 1 - at] }
+    return TextView(dom_text_bytes[:count])
+}
 
 DomHostInitNames :: () {
     if dom_names.ready { return }
@@ -163,15 +211,19 @@ DomPixels :: (value: float64, output: []u8) -> string {
 }
 
 DomStyle :: (style: s32, name: s32, value: string) {
-    WebSet(style, name, WebText(value))
+    if !DomSame(WebGet(style, name), WebText(value)) { WebSet(style, name, WebText(value)) }
 }
 
 DomClearAttribute :: (element: s32, key: string) {
-    WebCall1(element, dom_names.remove_attribute, WebText(key))
+    if WebCall1(element, dom_names.get_attribute, WebText(key)).tag != WebNullTag {
+        unused WebCall1(element, dom_names.remove_attribute, WebText(key))
+    }
 }
 
 DomSetAttribute :: (element: s32, key: string, value: string) {
-    WebCall2(element, dom_names.set_attribute, WebText(key), WebText(value))
+    if !DomSame(WebCall1(element, dom_names.get_attribute, WebText(key)), WebText(value)) {
+        unused WebCall2(element, dom_names.set_attribute, WebText(key), WebText(value))
+    }
 }
 
 DomMakeElement :: (tag: string, identity: string) -> s32 {
@@ -180,6 +232,7 @@ DomMakeElement :: (tag: string, identity: string) -> s32 {
         WebText(tag)))
     DomSetAttribute(created, "data-kryon-id", identity)
     style: s32 = WebGetObject(created, dom_names.style)
+    if dom_document_layout { return created }
     DomStyle(style, dom_names.position, "absolute")
     DomStyle(style, dom_names.box_sizing, "border-box")
     DomStyle(style, dom_names.margin, "0")
@@ -190,7 +243,7 @@ DomMakeElement :: (tag: string, identity: string) -> s32 {
     return created
 }
 
-DomHostFind :: (identity: float64) -> s32 {
+DomHostFind :: (identity: u64) -> s32 {
     index: s32 = 0
     while index < dom_count {
         if dom_records[index].identity == identity { return index }
@@ -201,6 +254,8 @@ DomHostFind :: (identity: float64) -> s32 {
 
 DomHostBegin :: (count: s32, width: float64, height: float64) {
     DomHostInitNames()
+    for index: 0..8192 { dom_previous[index] = 0 }
+    for index: 0..8191 { dom_by_index[index] = -1 }
     scope: s32 = WebScope()
     document: s32 = WebGetObject(WebGlobal, dom_names.document)
     if PageIsOpen() && document != 0 && dom_root == 0 {
@@ -221,12 +276,26 @@ DomHostBegin :: (count: s32, width: float64, height: float64) {
         if box == 0 { box = WebGetObject(document, dom_names.body) }
         unused WebCall1(box, dom_names.append_child, WebObject(root))
         dom_root = WebKeep(root)
+        if dom_document_layout {
+            DomSetAttribute(root, "data-layout", "document")
+            DomStyle(style, dom_names.position, "relative")
+            DomStyle(style, dom_names.overflow, "visible")
+            DomStyle(style, dom_names.pointer_events, "auto")
+            DomStyle(WebGetObject(PageCanvas(), dom_names.style), WebName("display"), "none")
+            sheet: s32 = WebAsObject(WebCall1(document, dom_names.create_element, WebText("style")))
+            WebSet(sheet, dom_names.text_content, WebObject(dom_css))
+            unused WebCall1(root, dom_names.append_child, WebObject(sheet))
+        }
+        for event: cast(s32)0..12 {
+            name: string = DomEventName(event)
+            PageListen(root, name, DomEvent, event, true)
+        }
     }
     WebEnd(scope)
     dom_frame += 1
 }
 
-DomHostNode :: (index: s32, parent: s32, identity: float64,
+DomHostNode :: (index: s32, parent: s32, identity: u64,
     widget_kind: s32, semantic: s32, level: s32,
     x: float64, y: float64, width: float64, height: float64,
     tag: string, role: string, label: string, url: string, flags: s32) {
@@ -234,7 +303,7 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     scope: s32 = WebScope()
     key: s32 = DomHostFind(identity)
     tag_name: s32 = WebName(tag)
-    identity_text: string = DomWhole(cast(s64)identity)
+    identity_text: string = DomIdentity(identity)
     if key < 0 {
         if dom_count >= DOM_HOST_MAX {
             WebEnd(scope)
@@ -257,14 +326,19 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
         dom_records[key].parent_element = 0
         dom_records[key].tag = tag_name
     }
+    old_frame: s32 = dom_records[key].frame
     dom_records[key].frame = dom_frame
+    dom_records[key].index = index
     dom_by_index[index] = key
     element: s32 = dom_records[key].element
     DomSetAttribute(element, "data-kryon-index", DomWhole(index))
     DomSetAttribute(element, "data-kryon-kind", DomWhole(widget_kind))
+    DomSetAttribute(element, "data-kryon-widget", WidgetKindName(widget_kind))
+    DomSetAttribute(element, "data-kryon-class", DomWhole(TreeNodeAt(dom_session, index).style_class))
     DomSetAttribute(element, "data-kryon-semantic", DomWhole(semantic))
     style: s32 = WebGetObject(element, dom_names.style)
     pixels: [32]u8
+    if !dom_document_layout {
     DomStyle(style, dom_names.left, DomPixels(x, pixels[:]))
     DomStyle(style, dom_names.top, DomPixels(y, pixels[:]))
     box_width: float64 = width
@@ -273,9 +347,15 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     if box_height < 0.0 { box_height = 0.0 }
     DomStyle(style, dom_names.width, DomPixels(box_width, pixels[:]))
     DomStyle(style, dom_names.height, DomPixels(box_height, pixels[:]))
-    if (flags & 1) != 0 {
+    } else {
+        DomStyle(style, dom_names.box_sizing, "border-box")
+        if widget_kind == 21 { DomStyle(style, WebName("display"), "flex") }
+        if widget_kind == 23 { DomStyle(style, WebName("display"), "grid") }
+    }
+    if (flags & 1) != 0 || dom_document_layout {
         DomStyle(style, dom_names.pointer_events, "auto")
-        DomStyle(style, dom_names.cursor, "pointer")
+        if (flags & 1) != 0 { DomStyle(style, dom_names.cursor, "pointer") }
+        else { DomStyle(style, dom_names.cursor, "default") }
     } else {
         DomStyle(style, dom_names.pointer_events, "none")
         DomStyle(style, dom_names.cursor, "default")
@@ -285,17 +365,19 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     } else {
         DomStyle(style, dom_names.opacity, "1")
     }
-    if (flags & 16) != 0 { WebSet(element, dom_names.text_content, WebText(label)) }
-    if (flags & 64) != 0 { DomSetAttribute(element, "href", url) }
-    if (flags & 128) != 0 { DomSetAttribute(element, "src", url) }
+    if (flags & 16) != 0 && !DomSame(WebGet(element, dom_names.text_content), WebText(label)) {
+        WebSet(element, dom_names.text_content, WebText(label))
+    }
+    if (flags & 64) != 0 { DomSetAttribute(element, "href", url) } else { DomClearAttribute(element, "href") }
+    if (flags & 128) != 0 { DomSetAttribute(element, "src", url) } else { DomClearAttribute(element, "src") }
     if label.count > 0 {
         DomSetAttribute(element, "aria-label", label)
     } else {
         DomClearAttribute(element, "aria-label")
     }
-    if (flags & 32) != 0 { DomSetAttribute(element, "alt", label) }
-    if role.count > 0 { DomSetAttribute(element, "role", role) }
-    if level != 0 { DomSetAttribute(element, "aria-level", DomWhole(level)) }
+    if (flags & 32) != 0 { DomSetAttribute(element, "alt", label) } else { DomClearAttribute(element, "alt") }
+    if role.count > 0 { DomSetAttribute(element, "role", role) } else { DomClearAttribute(element, "role") }
+    if level != 0 { DomSetAttribute(element, "aria-level", DomWhole(level)) } else { DomClearAttribute(element, "aria-level") }
     if (flags & 2) != 0 {
         DomSetAttribute(element, "aria-disabled", "true")
     } else {
@@ -306,6 +388,8 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
     } else {
         DomClearAttribute(element, "aria-selected")
     }
+    if TreeNodeAt(dom_session, index).loading { DomSetAttribute(element, "aria-busy", "true") }
+    else { DomClearAttribute(element, "aria-busy") }
     if (flags & 256) != 0 {
         WebSet(element, dom_names.disabled, WebBool(true))
     } else if WebAsBool(WebGet(element, dom_names.disabled)) {
@@ -318,9 +402,34 @@ DomHostNode :: (index: s32, parent: s32, identity: float64,
             container = dom_records[found].element
         }
     }
+    previous: u64 = dom_previous[parent + 1]
+    if old_frame == 0 || dom_records[key].parent_element != container || dom_records[key].previous != previous {
+        before: s32 = WebGetObject(container, WebName("firstChild"))
+        if previous != 0 {
+            prior: s32 = DomHostFind(previous)
+            if prior >= 0 { before = WebGetObject(dom_records[prior].element, WebName("nextSibling")) }
+        }
+        document: s32 = WebGetObject(WebGlobal, dom_names.document)
+        active: s32 = WebGetObject(document, WebName("activeElement"))
+        selection_start: WebValue = WebGet(active, WebName("selectionStart"))
+        selection_end: WebValue = WebGet(active, WebName("selectionEnd"))
+        move: s32 = WebGetObject(container, WebName("moveBefore"))
+        if WebTypeOf(move) == WebTypeFunction && WebAsBool(WebGet(element, WebName("isConnected"))) {
+            unused WebCall2(container, WebName("moveBefore"), WebObject(element), WebObject(before))
+        } else {
+            unused WebCall2(container, WebName("insertBefore"), WebObject(element), WebObject(before))
+            if active != 0 && !DomSame(WebGet(document, WebName("activeElement")), WebObject(active)) {
+                unused WebCall0(active, WebName("focus"))
+                if selection_start.tag == WebNumberTag {
+                    unused WebCall2(active, WebName("setSelectionRange"), selection_start, selection_end)
+                }
+            }
+        }
+    }
     dom_records[key].parent_element = container
-    // Appending moves the element, so children keep document order.
-    unused WebCall1(container, dom_names.append_child, WebObject(element))
+    dom_records[key].previous = previous
+    dom_previous[parent + 1] = identity
+    DomPublishEditor(key)
     WebEnd(scope)
 }
 
@@ -365,7 +474,12 @@ DomHostAttribute :: (element: s32, key: string) -> WebValue {
 // Leaves a plain-data record of the page for the tests to read, then removes
 // the elements.
 DomHostClose :: () {
-    if dom_root == 0 { return }
+    if dom_root == 0 {
+        DomClearEditors(); TextHostClear()
+        if dom_css != 0 { WebRelease(dom_css) }; dom_css = 0
+        dom_document_layout = false; dom_session = Session.{}; dom_click = 0
+        return
+    }
     scope: s32 = WebScope()
     DomHostInitNames()
     snapshot: s32 = WebNewObject()
@@ -378,7 +492,7 @@ DomHostClose :: () {
         record: DomHostRecord = dom_records[index]
         element: s32 = record.element
         node: s32 = WebNewObject()
-        WebSet(node, dom_names.id, WebText(DomWhole(cast(s64)record.identity)))
+        WebSet(node, dom_names.id, WebText(DomIdentity(record.identity)))
         if record.parent_element != 0 && record.parent_element != dom_root {
             WebSet(node, dom_names.parent,
                 DomHostAttribute(record.parent_element, "data-kryon-id"))
@@ -412,5 +526,184 @@ DomHostClose :: () {
     WebRelease(dom_root)
     dom_root = 0
     dom_count = 0
+    DomClearEditors()
+    TextHostClear()
+    if dom_css != 0 { WebRelease(dom_css) }; dom_css = 0
+    dom_document_layout = false
+    dom_session = Session.{}
+    dom_click = 0
     WebEnd(scope)
+}
+
+DomKeepText :: (value: string) -> s32 {
+    return WebKeep(WebAsObject(WebCall1(WebGlobal, WebName("String"), WebText(value))))
+}
+
+DomClearEditors :: () {
+    for index: 0..8191 {
+        if dom_editors[index].value != 0 { WebRelease(dom_editors[index].value) }
+        dom_editors[index] = EditorStage.{}
+    }
+}
+
+DomStageEditor :: (session: Session, node: s32, value: string,
+    cursor: s32, anchor: s32, secure: bool, read_only: bool, edited: bool) {
+    if session.slot != dom_session.slot || session.epoch != dom_session.epoch ||
+        node < 0 || node >= 8192 || !Utf8.Valid(value) { return }
+    scope: s32 = WebScope()
+    if dom_editors[node].value != 0 { WebRelease(dom_editors[node].value) }
+    dom_editors[node] = EditorStage.{DomKeepText(value), cursor, anchor, secure, read_only, edited}
+    WebEnd(scope)
+}
+
+DomByteOffset :: (value: string, offset: s32) -> s32 {
+    byte: s32 = 0; units: s32 = 0
+    while byte < value.count && units < offset {
+        decoded: Utf8.Decoded = Utf8.Decode(value, byte)
+        units += 1
+        if decoded.value > cast(u32)65535 { units += 1 }
+        byte = decoded.after
+    }
+    return Grapheme.Boundary(value, byte)
+}
+
+DomUTF16Offset :: (value: string, offset: s32) -> s32 {
+    byte: s32 = 0; units: s32 = 0
+    while byte < value.count && byte < offset {
+        decoded: Utf8.Decoded = Utf8.Decode(value, byte)
+        units += 1
+        if decoded.value > cast(u32)65535 { units += 1 }
+        byte = decoded.after
+    }
+    return units
+}
+
+DomPublishEditor :: (key: s32) {
+    record: DomHostRecord = dom_records[key]
+    stage: EditorStage = dom_editors[record.index]
+    if stage.value == 0 { return }
+    element: s32 = record.element
+    if stage.secure { DomSetAttribute(element, "type", "password") }
+    else if TreeNodeAt(dom_session, record.index).kind == 9 { DomSetAttribute(element, "type", "text") }
+    if WebAsBool(WebGet(element, WebName("readOnly"))) != stage.read_only {
+        WebSet(element, WebName("readOnly"), WebBool(stage.read_only))
+    }
+    if stage.edited || record.pending || record.composing { return }
+    if !DomSame(WebGet(element, WebName("value")), WebObject(stage.value)) {
+        WebSet(element, WebName("value"), WebObject(stage.value))
+    }
+    bytes: [65537]u8
+    document: s32 = PageDocument()
+    if TreeFocusedAt(dom_session, record.index) &&
+        DomSame(WebGet(document, WebName("activeElement")), WebObject(element)) && WebStringLength(stage.value) <= 65536 {
+        length: s32 = WebCopyString(stage.value, bytes[:])
+        if length < 0 { return }
+        value: string = TextView(bytes[:length])
+        first: s32 = DomUTF16Offset(value, stage.anchor)
+        last: s32 = DomUTF16Offset(value, stage.cursor)
+        direction: string = "forward"
+        if first > last { swap: s32 = first; first = last; last = swap; direction = "backward" }
+        if WebGetNumber(element, WebName("selectionStart")) != cast(float64)first ||
+            WebGetNumber(element, WebName("selectionEnd")) != cast(float64)last {
+            unused WebCall3(element, WebName("setSelectionRange"), WebNumber(cast(float64)first), WebNumber(cast(float64)last), WebText(direction))
+        }
+    }
+}
+
+// Stage platform inputs before submission. Multiple browser input events for
+// one editor coalesce into the latest full value; another editor waits until
+// the session's previous request is consumed.
+DomHostFrame :: (session: Session) {
+    dom_session = session
+    DomClearEditors()
+    presentation: TextPresentation = DomStageEditor
+    TextHostInstall(presentation)
+    scope: s32 = WebScope()
+    for key: 0..dom_count - 1 {
+        record: DomHostRecord = dom_records[key]
+        if record.index >= TreeCount(session) || TreeNodeAt(session, record.index).identity_generation != record.identity { continue }
+        if dom_click == record.identity { unused TreeActivateAt(session, record.index); dom_click = 0 }
+        if !record.pending || record.composing { continue }
+        value_handle: s32 = WebGetObject(record.element, WebName("value"))
+        length: s32 = WebStringLength(value_handle)
+        if length < 0 || length > 65536 { dom_records[key].pending = false; continue }
+        bytes: [65537]u8
+        copied: s32 = WebCopyString(value_handle, bytes[:])
+        if copied != length { dom_records[key].pending = false; continue }
+        value: string = TextView(bytes[:length])
+        cursor: s32 = DomByteOffset(value, cast(s32)WebGetNumber(record.element, WebName("selectionEnd")))
+        anchor: s32 = DomByteOffset(value, cast(s32)WebGetNumber(record.element, WebName("selectionStart")))
+        direction_handle: s32 = WebGetObject(record.element, WebName("selectionDirection"))
+        if DomSame(WebObject(direction_handle), WebText("backward")) { swap: s32 = cursor; cursor = anchor; anchor = swap }
+        node: TreeEntry = TreeNodeAt(session, record.index)
+        if node.disabled || node.loading || !TreeInputAllowedAt(session, record.index) {
+            dom_records[key].pending = false; continue
+        }
+        replace: bool = !node.read_only
+        if TextRequestSend(session, record.index, value, replace, cursor, anchor) { dom_records[key].pending = false }
+    }
+    WebEnd(scope)
+}
+
+DomEventName :: (event: s32) -> string {
+    if event == 0 { return "focusin" }
+    if event == 1 { return "click" }
+    if event == 2 { return "input" }
+    if event == 3 { return "select" }
+    if event == 4 { return "compositionstart" }
+    if event == 5 { return "compositionend" }
+    if event == 6 { return "keydown" }
+    if event == 7 { return "keyup" }
+    if event == 8 { return "keypress" }
+    if event == 9 { return "mousedown" }
+    if event == 10 { return "mouseup" }
+    if event == 11 { return "copy" }
+    return "cut"
+}
+
+DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
+    if !SessionValid(dom_session) { return }
+    target: s32 = WebGetObject(event, WebName("target"))
+    element: s32 = WebAsObject(WebCall1(target, WebName("closest"), WebText("[data-kryon-index]")))
+    if element == 0 { return }
+    text: s32 = WebAsObject(WebCall1(element, WebName("getAttribute"), WebText("data-kryon-index")))
+    index_bytes: [16]u8
+    count: s32 = WebCopyString(text, index_bytes[:])
+    if count <= 0 || count > 4 { return }
+    index: s32 = 0
+    for byte: 0..count - 1 {
+        if index_bytes[byte] < cast(u8)48 || index_bytes[byte] > cast(u8)57 { return }
+        index = index * 10 + cast(s32)index_bytes[byte] - 48
+    }
+    if index >= TreeCount(dom_session) { return }
+    node: TreeEntry = TreeNodeAt(dom_session, index)
+    key: s32 = DomHostFind(node.identity_generation)
+    if key < 0 || !DomSame(WebObject(dom_records[key].element), WebObject(element)) { return }
+    if node.kind != 8 && !node.has_text { return }
+    unused WebCall0(event, WebName("stopPropagation"))
+    if context == 3 {
+        if !DomSame(WebGet(PageDocument(), WebName("activeElement")), WebObject(element)) { return }
+        handle: s32 = WebGetObject(element, WebName("value"))
+        if WebStringLength(handle) <= 65536 {
+            bytes: [65537]u8
+            count: s32 = WebCopyString(handle, bytes[:])
+            if count >= 0 {
+                value: string = TextView(bytes[:count])
+                first: s32 = DomByteOffset(value, cast(s32)WebGetNumber(element, WebName("selectionStart")))
+                last: s32 = DomByteOffset(value, cast(s32)WebGetNumber(element, WebName("selectionEnd")))
+                if first == node.text_anchor && last == node.text_cursor { return }
+            }
+        }
+    }
+    if context == 0 { unused TreeFocusAt(dom_session, index) }
+    if context == 1 && node.kind == 8 { dom_click = node.identity_generation }
+    if context == 2 || context == 3 || context == 5 { dom_records[key].pending = true }
+    if context == 4 { dom_records[key].composing = true }
+    if context == 5 { dom_records[key].composing = false }
+    if (context == 11 || context == 12) && node.secure { unused WebCall0(event, WebName("preventDefault")) }
+    if context == 6 && node.has_text {
+        key_code: s32 = cast(s32)WebGetNumber(event, WebName("keyCode"))
+        if key_code == 27 { KeyboardSend(dom_session, 256) }
+        if key_code == 13 && node.kind == 9 { KeyboardSend(dom_session, 257) }
+    }
 }

@@ -53,6 +53,7 @@ active_sample: [9]PointerFrame;
 active_secondary: [9]SecondaryPointerFrame;
 active_key: [9]s32;
 active_modifiers: [9]s32;
+active_focus: [9]u64;
 
 // Keyboard modifier bits reported by KeyboardModifiers.
 KeyModifierShift :: 1;
@@ -101,6 +102,7 @@ InputSnapshot :: struct {
     secondary: SecondaryPointerFrame
     key: s32
     modifiers: s32
+    focus: u64
     codepoints: TypedInputQueue
     wheel: PointerWheelState
 }
@@ -116,6 +118,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     snapshot.secondary = active_secondary[slot]
     snapshot.key = active_key[slot]
     snapshot.modifiers = active_modifiers[slot]
+    snapshot.focus = active_focus[slot]
     snapshot.codepoints = active_codepoints[slot]
     snapshot.wheel = active_wheel[slot]
     active_pointer[slot] = PointerState.{}
@@ -123,6 +126,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     active_secondary[slot] = SecondaryPointerFrame.{}
     active_key[slot] = 0
     active_modifiers[slot] = 0
+    active_focus[slot] = 0
     active_codepoints[slot] = TypedInputQueue.{}
     active_wheel[slot] = PointerWheelState.{}
     return snapshot
@@ -138,6 +142,7 @@ TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
     active_secondary[slot] = snapshot.secondary
     active_key[slot] = snapshot.key
     active_modifiers[slot] = snapshot.modifiers
+    active_focus[slot] = snapshot.focus
     active_codepoints[slot] = snapshot.codepoints
     active_wheel[slot] = snapshot.wheel
     return true
@@ -356,6 +361,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     if TreeIsBuilding(session) { return -1 }
     active_sample[SessionIndex(session)] = frame
     hit: s32 = TreeHitAt(session, frame.x, frame.y)
+    if frame.pressed { unused TreeFocusAt(session, hit) }
     active_pointer[SessionIndex(session)].hovered_generation = 0
     if hit >= 0 {
         active_pointer[SessionIndex(session)].hovered_generation =
@@ -490,6 +496,59 @@ TreePressedAt :: (session: Session, index: s32) -> bool {
         TreeInputAt(session, index).identity_generation
 }
 
+// Platform actions enter the same retained identity and modal routing as
+// pointer input. Removed, disabled and obscured nodes cannot receive them.
+#program_export
+TreeFocusAt :: (session: Session, index: s32) -> bool {
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return false
+    }
+    node: NodeInput = TreeInputAt(session, index)
+    if !node.interactive || node.disabled || node.loading ||
+        !TreeInputAllowedAt(session, index) { return false }
+    active_focus[session.slot] = node.identity_generation
+    return true
+}
+
+#program_export
+TreeHasFocus :: (session: Session) -> bool {
+    if !SessionValid(session) || active_focus[session.slot] == 0 { return false }
+    for index: 0..TreeCount(session) - 1 {
+        if TreeInputAt(session, index).identity_generation == active_focus[session.slot] &&
+            TreeInputAllowedAt(session, index) { return true }
+    }
+    active_focus[session.slot] = 0
+    return false
+}
+
+#program_export
+TreeBlurAt :: (session: Session, index: s32) {
+    if SessionValid(session) && index >= 0 && index < TreeCount(session) &&
+        active_focus[session.slot] == TreeInputAt(session, index).identity_generation {
+        active_focus[session.slot] = 0
+    }
+}
+
+#program_export
+TreeFocusedAt :: (session: Session, index: s32) -> bool {
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return false
+    }
+    return active_focus[session.slot] != 0 &&
+        active_focus[session.slot] == TreeInputAt(session, index).identity_generation &&
+        TreeInputAllowedAt(session, index)
+}
+
+#program_export
+TreeActivateAt :: (session: Session, index: s32) -> bool {
+    if !TreeFocusAt(session, index) { return false }
+    node: NodeInput = TreeInputAt(session, index)
+    if !TreePointerActivatable(node.kind, node.focus_id,
+        node.disabled, node.loading) { return false }
+    active_pointer[session.slot].activation_generation = node.identity_generation
+    return true
+}
+
 #program_export
 TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
     if index < 0 || index >= TreeCount(session) { return false }
@@ -505,6 +564,48 @@ TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
     return true
 }
 
+// Tab traverses eligible retained nodes in document order. Button-like
+// controls activate through their existing queue; editors keep Enter/Space.
+#program_export
+TreeKeyboardRoute :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot: s32 = session.slot
+    key: s32 = active_key[slot]
+    if key == KeyTab {
+        direction: s32 = 1
+        if (active_modifiers[slot] & KeyModifierShift) != 0 { direction = -1 }
+        current: s32 = -1
+        count: s32 = TreeCount(session)
+        for index: 0..count - 1 { if TreeFocusedAt(session, index) { current = index; break } }
+        if current < 0 && direction < 0 { current = 0 }
+        tries: s32 = 0
+        while tries < count {
+            current += direction
+            if current < 0 { current = count - 1 }
+            if current >= count { current = 0 }
+            node: NodeInput = TreeInputAt(session, current)
+            if TreePointerActivatable(node.kind, node.focus_id, node.disabled, node.loading) &&
+                TreeFocusAt(session, current) {
+                active_key[slot] = 0
+                return true
+            }
+            tries += 1
+        }
+    } else if key == KeyEnter || key == 32 {
+        for index: 0..TreeCount(session) - 1 {
+            node: NodeInput = TreeInputAt(session, index)
+            if TreeFocusedAt(session, index) && node.kind != WidgetKindTextField &&
+                node.kind != WidgetKindTextArea && node.kind != WidgetKindSlider &&
+                TreeActivateAt(session, index) {
+                active_key[slot] = 0
+                if key == 32 { active_codepoints[slot] = TypedInputQueue.{} }
+                return true
+            }
+        }
+    }
+    return false
+}
+
 #program_export
 TreeInputReset :: (session: Session) {
     if !SessionValid(session) { return }
@@ -518,6 +619,7 @@ TreeInputReset :: (session: Session) {
     active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
     active_modifiers[session.slot] = 0
+    active_focus[session.slot] = 0
     typed: TypedInputQueue
     active_codepoints[session.slot] = typed
 }

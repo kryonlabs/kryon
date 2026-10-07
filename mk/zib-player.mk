@@ -18,5 +18,5 @@ $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zib-player.mk $(ZIRAN_DIR)/build/li
 		$(CC) -std=c99 -pedantic-errors -Wno-main -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(PLAYER_DIR) $(PLAYER_DIR)/*.c \
 		$(ZIRAN_DIR)/build/libziran.a -Wl,--gc-sections \
-		$$(pkg-config --libs sdl2 cairo freetype2 glib-2.0 x11) -lm -lpthread -o "$$temporary" && \
+		$$(pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@

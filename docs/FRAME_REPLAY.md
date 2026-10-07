@@ -1,45 +1,66 @@
-# Headless frame capture and replay
+# Frame capture, replay and inspection
 
-`EndFrameCapture(session)` is an opt-in alternative to `EndFrame(session)`. It commits a valid
-tree, reports each committed node and queued paint command through explicit
-`FrameNode` and `FramePaint` values through declared host capabilities, then
-emits the paint effects. A rejected tree or
-paint overflow produces no capture or raster effects. Ordinary `EndFrame()`
-does not require capture bindings.
+`EndFrameCapture(session)` commits a frame and records its retained nodes and
+resolved paint commands before emitting raster effects. It replaces
+`EndFrame(session)` in a capture-enabled application. Bind the capture
+capabilities declared in `frame_capture.zi`, including `RecordFrameFailure`.
+A rejected frame reports its status, message, widget key and kind and emits no
+raster effects. Ordinary `EndFrame()` needs no capture bindings.
 
-`tools/frame-replay.sh` runs a portable `.zib` entry once per line of a pointer
-trace. The entry must take no arguments, return an integer, call a module-local
-`PollPointer() -> PointerFrame` exactly once, and call `EndFrameCapture(session)` once.
-The script builds `tools/frame_replay.zi` as a native Linux runner and binds
-fixed font measurements, a headless raster sink, and the four
-capture capabilities. It removes `DISPLAY` and `WAYLAND_DISPLAY` from the
-runner environment. It writes JSON with each frame's input, committed tree,
-paint commands, result, and raster effect count.
-
-To run the included button example after `make`:
+Run a portable bundle with:
 
 ```sh
-ziran=../ziran/build/bin/ziran
-mkdir -p build/ziran/frame-capture-test
-"$ziran" bundle --root tests/fixtures --module-path src/ui \
-    --entry frame_replay:Frame \
-    -o build/ziran/frame-capture-test/source.zib \
-    tests/fixtures/frame_replay.zi
-tools/frame-replay.sh build/ziran/frame-capture-test/source.zib \
-    frame_replay tests/fixtures/frame_replay.trace \
-    build/ziran/frame-capture-test/source.json
+tools/frame-replay.sh app.zib app trace.txt capture.json
+tools/frame-inspect.sh capture.json 3 1
+tools/frame-inspect.sh --diff baseline.json candidate.json
 ```
 
-Trace lines contain `x y down pressed released`, with finite decimal or
-scientific notation for coordinates and Boolean fields written as `0` or `1`.
-Blank lines and `#` comments are allowed. The included trace
-moves a button through idle, press, release, and clicked frames. Run
-`tests/ziran_frame_capture_test.sh` to compare source and saved-IR bundles and
-check the recorded behavior.
+The inspector prints a frame's inputs and nodes, or a selected node with its
+paint commands, colors, font sizes and clips. Comparison reports the first
+changed JSON field, ignores object key order and preserves exact integer
+identities. Exit codes are 0 for matching/valid frames, 1 for differences or
+rejected frames, and 2 for invalid arguments or files. Files are limited to
+64 MiB each.
 
-Run the same trace against a proposed bundle and compare the two JSON files
-to see changes in widget behavior, semantics, geometry, or paint decisions.
+The entry takes no arguments, returns an integer, and samples exactly one
+input record per frame. Existing entries may keep a module-local
+`PollPointer() -> PointerFrame`. Five-column traces remain supported:
 
-This records UI behavior under the supplied inputs and fixed host measurements.
-It does not persist application state across process restarts or decide whether
-a candidate UI should be adopted. Those decisions belong to the application.
+```
+x y down pressed released
+```
+
+For keyboard, text, composition, wheel, resize, clipboard and time, declare a
+module-local `PollFrameInput() -> FrameInput` and use the twenty-column format:
+
+```
+x y down pressed released secondary_down secondary_pressed secondary_released key modifiers wheel width height elapsed_ms text_hex ime_phase ime_cursor ime_selection ime_hex clipboard_hex
+```
+
+Boolean fields are 0 or 1. Modifiers use Shift=1, Control/Command=2, Alt=4.
+Key codes are the same codes accepted by `KeyboardSend`. Composition phases
+are none=0, start=1, update=2, commit=3, cancel=4. Composition cursor and
+selection lengths count UTF-8 bytes. Text, composition and clipboard payloads
+are hexadecimal UTF-8 bytes, with `-` for empty; each payload is bounded to
+256 bytes. Coordinates and wheel values must be finite; the viewport is
+positive and elapsed milliseconds nonnegative. Blank lines and `#` comments
+are accepted. A trace holds at most 1,024 samples within 1 MiB.
+
+`FrameInputApply` supplies session pointer, key, modifier and wheel inputs;
+`FrameInputField` converts text and composition into a `TextFieldInput`.
+Applications explicitly use the recorded viewport and elapsed time rather
+than reading wall time. Clipboard reads use the recorded input and clipboard
+writes appear in the JSON. Rich traces produce format version 2; legacy
+pointer traces keep version 1.
+
+Capture includes focus, read-only state, selection and committed editor text.
+Secure editor values, lengths and selections are redacted. A document larger
+than 64 KiB retains its length but omits its full value from the capture.
+The application still owns state and applies the edits returned by widgets.
+Replay uses fixed font measurements and a headless raster sink, so it checks
+UI decisions rather than platform-specific pixels or font fallback.
+
+`tests/ziran_frame_capture_test.sh` and `tests/ziran_frame_input_test.sh`
+compare source and saved-IR bundles and exercise edits, IME, clipboard,
+resizing, rejection diagnostics and inspection. The runners use locked,
+stable build directories and scrub the desktop environment.

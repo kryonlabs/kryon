@@ -1,40 +1,60 @@
-# Semantic DOM browser host
+# Browser document host
 
-Select `backend = "dom"` in a Kryon project profile. The host uses the same
-Ziran-to-C and Emscripten path as Canvas2D, then reconciles Kryon's committed
-retained tree into real browser elements. Application code keeps the ordinary
-`Frame(Session, Rectangle)` contract and does not import a DOM library.
+Select `backend = "dom"` in a Kryon profile. The host builds Ziran through
+Emscripten and reconciles successful committed trees into browser elements.
+Retained generation IDs preserve element identity. Unchanged text, attributes,
+styles and order stay untouched; reordering uses `moveBefore` where available
+and restores focus/selection when falling back to insertion. Nested absolute
+positions are relative to their parents. Container labels use ARIA instead
+of replacing their children with text.
 
-The DOM adapter maps stable Kryon identity generations—not frame-local array
-positions—to element identity. It emits semantic landmarks, headings, text,
-links, buttons, text fields, text areas, trees, tabs, and options where those
-widget facts are available. It also carries labels, heading levels, selected
-state, disabled state, and loading state. Links retain their URL and images
-retain their asset path and alt text in the semantic tree.
+Native button activation, editor focus, input, selection and browser IME
+return to Kryon's shared session/widget logic. Applications still own values,
+apply ordinary returned edits, and retain cursor/anchor state. Browser UTF-16
+selection offsets convert to grapheme-aligned UTF-8 byte offsets. Multiple
+inputs to one editor coalesce before a frame; another editor waits for the
+session's current request. Read-only and disabled controls use native
+properties. Password values travel through a private presentation callback,
+never the semantic tree or capture snapshots; password copy/cut is blocked.
+Native edit requests are bounded to 64 KiB.
 
-This first host is intentionally hybrid. Canvas2D remains responsible for the
-existing high-fidelity paint queue, while the semantic DOM layer is transparent
-and positioned above it. Native interactive elements receive pointer events;
-those events bubble to the existing browser input path. This preserves shared
-widget behavior while making the document inspectable. The next styling phase
-will move supported presentation from inline geometry to KSS-generated CSS and
-normal browser layout.
+The default remains an absolutely positioned, transparent semantic overlay
+on Canvas2D. For document widgets, call this before the first frame:
 
-The DOM root is removed when the session closes. Kryon keeps a test-only
-semantic snapshot after exit so private headless Chromium can assert exactly
-what was mounted without retaining a live second UI tree. Browser project
-generation keeps the full raster adapter set alongside this DOM host; it does
-not prune modules by the application entry.
+```ziran
+Dom :: #import "kryon/Dom";
+// css is an application-owned CSS string, optionally exported by KSS.
+Dom.UseDocumentLayout(css)
+```
 
-## Focused checks
+This hides the owned canvas and presents native elements in normal browser
+flow. CSS supplies responsive widths, layout and appearance. Supported kinds
+are Screen, Text, Paragraph, Page, Section, Link, Image, Button, TextField,
+TextArea, Group, Column, Row, Stack and Grid. Other kinds reject the frame so
+canvas-only content cannot disappear silently. Browser layout geometry is
+owned by CSS; the core retained geometry remains the application's submitted
+layout. Prefer native identity activation over canvas hit tests in this mode.
+
+DOM elements carry `data-kryon-widget` names and hashed `data-kryon-class`
+values for supported styled text and controls. The separate KSS package
+exports `ExportCSS(source, path, environment, output)` and `StyleClass(name)`.
+Its exporter shares the existing parser and token/environment rules, scopes
+selectors to `#kryon-dom-root`, maps widget/class/state selectors and expands
+portable declarations. Media conditions are preserved. Check its `ok` result
+before attaching output. Imports, layers, nested selector functions and
+unsupported native materials fail explicitly; consult the KSS package for
+its current export subset.
+
+The DOM root and private presentation handles are removed at close. A
+text/semantics-only test snapshot omits secure values. Verification runs a
+new headless Chromium process with desktop variables removed:
 
 ```sh
 python3 tests/dom_project_test.py
+KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
 ```
 
-The test creates a real `ziran.toml` project, saves `.zir`, generates C, links
-Emscripten, and loads the resulting page in a new headless Chromium process. It
-verifies the saved host module, generated C host module, page output, semantic
-tags, heading level, link URL, disabled button state, and stable parent
-identity. It scrubs all desktop display variables and never contacts the
-developer's desktop session.
+The second check uses KSS and verifies no DOM mutations during unchanged
+frames, Unicode editing, identity/focus/caret after reorder, button routing,
+responsive sizing, password redaction and a native editor in the browser's
+accessibility tree. Neither test uses the owner's desktop or browser profile.
