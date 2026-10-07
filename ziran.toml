@@ -20,6 +20,7 @@ Canvas = "src/backend/Canvas/module.zi"
 Raylib = "src/backend/raylib_runtime.zi"
 raylib_runtime = "src/backend/raylib_runtime.zi"
 AndroidSurface = "src/backend/android_surface.zi"
+bundle_player = "src/backend/bundle_player.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
