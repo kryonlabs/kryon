@@ -210,5 +210,36 @@ main :: () -> s32 {
     }
     ordered := CheckOverlayOrder()
     if ordered != 0 { return ordered }
+    floating := CheckFloatingOverlay()
+    if floating != 0 { return floating }
     return CheckModalInput()
+}
+
+// A floating panel owns its own backdrop, while a later rail remains usable.
+CheckFloatingOverlay :: () -> s32 {
+    session := SessionOpen(); defer { CloseSession(session) }
+    viewport := Rectangle.{0.0, 0.0, 240.0, 120.0}
+    TreeStart(session, cast(u64)1, viewport)
+    beneath := TreeSubmitCurrent(session, cast(u64)10, WidgetKindButton, viewport)
+    TreeSetInteractive(session, beneath, false, false, 10)
+    props: DismissibleOverlayProps
+    props.key = cast(u64)20; props.non_modal = true
+    props.bounds = Rectangle.{90.0, 20.0, 100.0, 80.0}
+    overlay := DismissibleOverlay(session, props)
+    child := TreeSubmit(session, cast(u64)21, overlay.panel_node,
+        WidgetKindButton, Rectangle.{100.0, 30.0, 60.0, 30.0})
+    TreeSetInteractive(session, child, false, false, 21)
+    rail := TreeSubmitCurrent(session, cast(u64)30, WidgetKindButton,
+        Rectangle.{200.0, 10.0, 30.0, 100.0})
+    TreeSetInteractive(session, rail, false, false, 30)
+    if !TreeFinish(session) { return 30 }
+    if TreeHitAt(session, 110.0, 40.0) != child ||
+        TreeHitAt(session, 210.0, 40.0) != rail ||
+        TreeHitAt(session, 10.0, 40.0) == beneath { return 31 }
+    TreePointerUpdate(session, PointerFrame.{10.0, 40.0, true, true, false})
+    TreePointerUpdate(session, PointerFrame.{10.0, 40.0, false, false, true})
+    TreeStart(session, cast(u64)1, viewport)
+    overlay = DismissibleOverlay(session, props)
+    if !overlay.closed || !overlay.release_consumed { return 32 }
+    return 0
 }

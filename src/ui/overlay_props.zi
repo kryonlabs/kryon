@@ -8,6 +8,9 @@ DismissibleOverlayProps :: struct {
     view_height: s32
     scrim: Color
     dismiss_disabled: bool
+    // A floating panel can share the viewport with controls submitted later
+    // (for example a persistent rail), without becoming a modal input layer.
+    non_modal: bool
 }
 
 DismissibleOverlayResult :: struct {

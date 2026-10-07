@@ -44,9 +44,10 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
     scrim_node: s32 = -1
+    kind: s32 = ifx props.non_modal then WidgetKindCustom else WidgetKindModal
     if TreeIsBuilding(session) {
         previous_overlay: s32 = TreePrevious(session,
-            TreeCurrentParent(session), key, WidgetKindModal)
+            TreeCurrentParent(session), key, kind)
         previous: s32 = TreePreviousCommitted(session, previous_overlay,
             OverlayScrimKey(), WidgetKindButton)
         release: PointerDrag = TreeTakeDragAt(session, previous)
@@ -59,7 +60,7 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
             result.outside_released = policy.outside_released
             result.release_consumed = policy.release_consumed
         }
-        result.node = TreeSubmitCurrent(session, key, WidgetKindModal, viewport)
+        result.node = TreeSubmitCurrent(session, key, kind, viewport)
         if result.node < 0 { return result }
         scrim_node = TreeSubmit(session, OverlayScrimKey(), result.node,
             WidgetKindButton, viewport)
