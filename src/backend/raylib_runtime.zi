@@ -220,7 +220,7 @@ RaylibHasGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
 
 RaylibAddGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
     if codepoint < 0 || codepoint > 0x10FFFF ||
-        (codepoint >= 0xD800 && codepoint <= 0xDFFF) { return false }
+    (codepoint >= 0xD800 && codepoint <= 0xDFFF) { return false }
     if RaylibHasGlyph(typeface, codepoint) { return true }
     if typeface.codepoint_count == typeface.codepoint_capacity {
         capacity: s32 = typeface.codepoint_capacity * 2
@@ -444,7 +444,7 @@ RaylibFileSource :: (typeface: *RaylibTypeface, path: string, face: s32) -> bool
     typeface.from_file = true
     typeface.file_face = face
     collection: bool = path.count >= 4 &&
-        (path[path.count - 4:path.count] == ".ttc" || path[path.count - 4:path.count] == ".TTC" ||
+    (path[path.count - 4:path.count] == ".ttc" || path[path.count - 4:path.count] == ".TTC" ||
         path[path.count - 4:path.count] == ".otc" || path[path.count - 4:path.count] == ".OTC")
     if !collection { return face == 0 }
     count: s32
@@ -472,7 +472,7 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
     if path != "" {
         for index: 0..raylib_fallback_face_count - 1 {
             if TypefaceText.TextFromCString(*raylib_fallback_faces[index].path[0]) == path &&
-                raylib_fallback_faces[index].file_face == source_face {
+            raylib_fallback_faces[index].file_face == source_face {
                 face = index
                 break
             }
@@ -483,7 +483,7 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
             if RaylibFileSource(*staged, path, source_face) && RaylibSeedGlyphs(*staged, *seed[0], 2) {
                 staged.font = RaylibBakeTypeface(*staged, 64)
                 if staged.font.texture.id != cast(u32)0 &&
-                    RaylibFontHasCodepoint(staged.font, codepoint) {
+                RaylibFontHasCodepoint(staged.font, codepoint) {
                     face = raylib_fallback_face_count
                     raylib_fallback_faces[face] = staged
                     raylib_fallback_face_count += 1
@@ -774,6 +774,14 @@ RaylibDrawImagePart :: (texture: Texture2D, source: Rectangle,
     sub.y = source.y + (part.y - destination.y) / destination.height * source.height
     sub.width = part.width / destination.width * source.width
     sub.height = part.height / destination.height * source.height
+    if source.width < 0.0 {
+        sub.x = source.x - source.width +
+        (part.x + part.width - destination.x) / destination.width * source.width
+    }
+    if source.height < 0.0 {
+        sub.y = source.y - source.height +
+        (part.y + part.height - destination.y) / destination.height * source.height
+    }
     HostRaylibDrawTexture(texture, sub, part, Vector2.{0.0, 0.0}, 0.0, tint)
 }
 
@@ -1628,9 +1636,8 @@ ImageHeight :: (asset_path: string) -> s32 {
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
-    // A negative source height is valid: raylib render targets are sampled
-    // upright with a flipped source rectangle.
-    if source.width <= 0.0 || source.height == 0.0 ||
+    // Negative source dimensions mirror images and orient render targets.
+    if source.width == 0.0 || source.height == 0.0 ||
     destination.width <= 0.0 || destination.height <= 0.0 ||
     clip.width <= 0.0 || clip.height <= 0.0 {
         return
