@@ -11,6 +11,7 @@
 #import "file_linux"
 Media :: #import "media_linux";
 Service :: #import "service_linux";
+Theme :: #import "system_theme_host_linux";
 Background :: #import "background_window_linux";
 Watch :: #import "bundle_watch";
 #import "timer_linux"
@@ -77,6 +78,7 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "service") {
         return function == "ServiceRequestHost" || function == "ServiceStateHost" || function == "ServiceResultHost"
     }
+    if ModuleName(module, "system_theme_host") { return function == "SystemThemeColorHost" }
     return false
 }
 
@@ -157,6 +159,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
+        result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
+    }
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { return 1 }
     if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
         result.kind = HostInteger

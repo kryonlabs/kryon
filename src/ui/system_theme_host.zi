@@ -1,0 +1,52 @@
+// Portable applications read their supervising host's palette through the
+// same capability as native applications. Reading role zero refreshes it.
+#import "system_theme"
+host_api :: #system_library "host_api";
+SystemThemeColorHost :: (role: s32) -> u32 #foreign host_api;
+SystemPaletteRead :: () -> SystemPalette {
+    unused SystemThemeColorHost(0)
+    palette: SystemPalette
+    palette.found = true
+    palette.background = SystemThemeColorHost(1); palette.base = SystemThemeColorHost(2)
+    palette.text = SystemThemeColorHost(3); palette.selected = SystemThemeColorHost(4)
+    palette.selected_text = SystemThemeColorHost(5); palette.border = SystemThemeColorHost(6)
+    palette.danger = SystemThemeColorHost(7); palette.warning = SystemThemeColorHost(8); palette.success = SystemThemeColorHost(9)
+    palette.dark = CssLuminance(palette.background) < 128
+    return palette
+}
+
+Sheet :: #import "style_sheet";
+Controls :: #import "control_props";
+Drawing :: #import "drawing_props";
+Rule :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32, state: s32 = 0) {
+    item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = kind; item.state = state
+    item.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
+    item.style.background = background; item.style.foreground = foreground; rules.count += 1
+}
+Token :: (name: string, value: u32) {
+    bytes: [32]u8; for i: 0..cast(s32)name.count-1 { bytes[i] = name[i] }
+    unused Drawing.SetStyleTokenColorBytes(bytes[:cast(s32)name.count], value)
+}
+// Installing plain palette roles avoids parsing an entire style sheet in the
+// portable frame. The same rules and tokens are used on native targets.
+SystemPaletteInstall :: (palette: SystemPalette) -> bool {
+    rules: Sheet.StyleRules; bg := palette.background; fg := palette.text
+    button := CssMix(bg, fg, 0.10); hover := CssMix(bg, fg, 0.16)
+    Rule(*rules, Sheet.StyleKindApp(), bg, fg); Rule(*rules, Sheet.StyleKindSurface(), palette.base, fg)
+    Rule(*rules, Sheet.StyleKindText(), bg, fg)
+    Rule(*rules, Sheet.StyleKindButton(), button, fg)
+    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 2)
+    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 4)
+    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 7)
+    Rule(*rules, Sheet.StyleKindTextField(), button, fg)
+    for i: 0..rules.count-1 {
+        if rules.items[i].selector.kind == Sheet.StyleKindButton() || rules.items[i].selector.kind == Sheet.StyleKindTextField() {
+            rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus
+            rules.items[i].style.font_size = 15.0; rules.items[i].style.radius = 6.0; rules.items[i].style.focus = palette.selected
+        }
+    }
+    if !Sheet.InstallStyleRules(rules) { return false }
+    Token("canvas", bg); Token("surface", palette.base); Token("card", palette.base); Token("text", fg)
+    Token("muted", CssMix(fg, bg, 0.4)); Token("button", button); Token("border", palette.border); Token("focus-ring", palette.selected)
+    return true
+}
