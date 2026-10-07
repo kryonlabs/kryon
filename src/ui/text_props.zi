@@ -20,6 +20,13 @@ TextWrap :: enum {
     TextWrapNone :: 1
 }
 
+// UTF-8 byte ranges in the visible text, with an exclusive end. Invalid or
+// overlapping ranges are ignored. Emphasis keeps the ordinary text layout.
+TextRange :: struct {
+    start: s32
+    end: s32
+}
+
 TextProps :: struct {
     key: u64
     bounds: Rectangle
@@ -36,4 +43,5 @@ TextProps :: struct {
     disabled: bool
     selectable: bool
     strikethrough: bool
+    strong: []TextRange
 }

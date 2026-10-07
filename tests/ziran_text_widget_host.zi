@@ -4,10 +4,18 @@
 texts: s32;
 fills: s32;
 failed: bool;
+emphasis: bool;
+
+#program_export
+TextHostEmphasis :: () {
+    emphasis = true
+    texts = 0
+    fills = 0
+}
 
 InkIsExpected :: (color: Color) -> bool {
     return color.r == cast(u8)0x11 && color.g == cast(u8)0x22 &&
-        color.b == cast(u8)0x33 && color.a == cast(u8)127
+    color.b == cast(u8)0x33 && color.a == cast(u8)127
 }
 
 #program_export
@@ -37,6 +45,22 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
+    if emphasis {
+        values: [5]string = .["ab cd", "b cd", "é水", "é", "水"]
+        positions: [5]s32 = .[0, 11, 0, 1, 21]
+        if texts >= 5 {
+            failed = true
+            return
+        }
+        expected_y := ifx texts < 2 then 0 else 16
+        if value != values[texts] || x != positions[texts] || y != expected_y ||
+        font != 14 || !InkIsExpected(color) || clip.x != 0.0 || clip.y != 0.0 ||
+        clip.width != 50.0 || clip.height != 28.0 {
+            failed = true
+        }
+        texts += 1
+        return
+    }
     expected: string
     expected_x: s32
     expected_y: s32
@@ -60,9 +84,9 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
         failed = true
     }
     if value != expected || x != expected_x || y != expected_y ||
-        font != 14 || !InkIsExpected(color) ||
-        clip.x != 10.0 || clip.y != 20.0 ||
-        clip.width != 50.0 || clip.height != expected_height { failed = true }
+    font != 14 || !InkIsExpected(color) ||
+    clip.x != 10.0 || clip.y != 20.0 ||
+    clip.width != 50.0 || clip.height != expected_height { failed = true }
     texts += 1
 }
 
@@ -79,9 +103,9 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
         expected_width = 40.0
     }
     if bounds.x != expected_x || bounds.y != expected_y ||
-        bounds.width != expected_width || bounds.height != 1.0 ||
-        radius != 0.0 || segments != 1 ||
-        !InkIsExpected(color) { failed = true }
+    bounds.width != expected_width || bounds.height != 1.0 ||
+    radius != 0.0 || segments != 1 ||
+    !InkIsExpected(color) { failed = true }
     fills += 1
 }
 
