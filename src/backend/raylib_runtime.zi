@@ -4,7 +4,11 @@
 #import "paint_texture"
 #import "tree_input"
 #import "raylib_clip"
-SystemTypeface :: #import "system_typeface_linux";
+#if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    SystemTypeface :: #import "system_typeface_android";
+} else {
+    SystemTypeface :: #import "system_typeface_linux";
+}
 TypefaceText :: #import "std/byte_text_linux";
 TypefaceCollection :: #import "typeface_collection";
 
