@@ -58,6 +58,7 @@ FnIndicatorNew :: #type (*u8, *u8, s32) -> *void #c_call;
 FnIndicatorIcon :: #type (*void, *u8, *u8) -> void #c_call;
 
 gtk_init_check: FnInitCheck;
+gtk_disable_setlocale: FnVoid;
 gtk_menu_new: FnNew;
 gtk_menu_item_new_with_label: FnNewWithText;
 gtk_menu_item_set_submenu: FnPair;
@@ -147,6 +148,8 @@ LoadLibraries :: () {
     handle: *void = OpenLibrary("libgtk-3.so.0")
     if handle == null { return }
     ok: bool = Resolve(handle, cast(*void)*gtk_init_check, "gtk_init_check")
+    ok = ok && Resolve(handle, cast(*void)*gtk_disable_setlocale,
+        "gtk_disable_setlocale")
     ok = ok && Resolve(handle, cast(*void)*gtk_menu_new, "gtk_menu_new")
     ok = ok && Resolve(handle, cast(*void)*gtk_menu_item_new_with_label,
         "gtk_menu_item_new_with_label")
@@ -195,6 +198,10 @@ LoadLibraries :: () {
         "g_get_monotonic_time")
     ok = ok && Resolve(handle, cast(*void)*g_object_unref, "g_object_unref")
     library_ready = ok
+    // GTK runs on a worker thread. Keep the host's process locale intact;
+    // changing its decimal separator can invalidate portable app programs.
+    // Disable GTK's locale changes once, before its first initialization.
+    if ok { gtk_disable_setlocale() }
     if ok && !ForcedStatusIcon() { LoadIndicator() }
 }
 
@@ -425,8 +432,8 @@ AppendText :: (output: []u8, text: string) -> bool {
 IconAt :: (directory: *u8) -> bool {
     icon_path[0] = 0
     if !Append(icon_path[:], directory) || !AppendText(icon_path[:], "/") ||
-        !Append(icon_path[:], *icon_name[0]) ||
-        !AppendText(icon_path[:], ".png") {
+    !Append(icon_path[:], *icon_name[0]) ||
+    !AppendText(icon_path[:], ".png") {
         return false
     }
     return g_file_test(*icon_path[0], 1) != 0
@@ -434,12 +441,12 @@ IconAt :: (directory: *u8) -> bool {
 
 ThemeIcon :: (directory: *u8, prefix: string) -> bool {
     sizes: [11]string = .["512x512", "256x256", "192x192", "128x128",
-        "96x96", "64x64", "48x48", "32x32", "24x24", "16x16", "scalable"]
+    "96x96", "64x64", "48x48", "32x32", "24x24", "16x16", "scalable"]
     index: s32 = 0
     while index < 11 {
         path: [512]u8
         if Append(path[:], directory) && AppendText(path[:], prefix) &&
-            AppendText(path[:], sizes[index]) && AppendText(path[:], "/apps") {
+        AppendText(path[:], sizes[index]) && AppendText(path[:], "/apps") {
             if IconAt(*path[0]) { return true }
         }
         index += 1
@@ -492,7 +499,7 @@ FindIcon :: () -> *u8 {
         index += 1
     }
     if has_executable &&
-        ThemeIcon(*executable[0], "/../share/icons/hicolor/") {
+    ThemeIcon(*executable[0], "/../share/icons/hicolor/") {
         return *icon_path[0]
     }
     name: [24]u8
@@ -518,7 +525,7 @@ FindIcon :: () -> *u8 {
         }
         directory[length] = 0
         if !overflow && length > 0 &&
-            ThemeIcon(*directory[0], "/icons/hicolor/") {
+        ThemeIcon(*directory[0], "/icons/hicolor/") {
             return *icon_path[0]
         }
         if directories[offset] == #char ":" { offset += 1 }
@@ -651,7 +658,7 @@ OpenStatusIcon :: (icon: *u8) -> bool {
 OpenIndicatorIfUnembedded :: (data: *void) -> s32 {
     unused data
     if status_icon == null || indicator != null ||
-        gtk_status_icon_is_embedded(status_icon) != 0 {
+    gtk_status_icon_is_embedded(status_icon) != 0 {
         return 0
     }
     gtk_status_icon_set_visible(status_icon, 0)
@@ -728,7 +735,7 @@ TrayGtkOpen :: (spec: TraySpec) -> bool {
     }
     icon_path_count = 0
     while icon_path_count < cast(s32)spec.icon_paths.count &&
-        icon_path_count < TRAY_ICON_PATH_CAPACITY {
+    icon_path_count < TRAY_ICON_PATH_CAPACITY {
         if !CopyCString(spec.icon_paths[icon_path_count],
             icon_paths[icon_path_count][:]) {
             return false

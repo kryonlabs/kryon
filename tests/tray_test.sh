@@ -17,7 +17,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     -iquote "$work/c" "$work/c"/*.c -ldl -o "$work/test"
 private() {
     env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY \
-        -u DBUS_SESSION_BUS_ADDRESS -u KRYON_TRAY_TEST_PRESENT "$@"
+        -u DBUS_SESSION_BUS_ADDRESS -u KRYON_TRAY_TEST_PRESENT \
+        -u LC_ALL LANG=C LC_NUMERIC=C.UTF-8 YUE_DESKTOP_RECOVERY=0 "$@"
 }
 private "$work/test"
 private KRYON_TRAY=status-icon KRYON_TRAY_TEST_PRESENT=1 \
