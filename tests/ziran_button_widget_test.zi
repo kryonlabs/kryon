@@ -17,6 +17,7 @@ TestSession :: () -> Session {
 #import "tree_draw"
 #import "tree_input"
 #import "ziran_button_widget_host"
+#import "widget_kind"
 
 using ImageFit;
 using ButtonTone;
@@ -24,6 +25,7 @@ using IconPlacement;
 using ContentAlignment;
 using StyleField;
 using FrameStatus;
+using WidgetKind;
 
 phase: s32;
 
@@ -148,5 +150,30 @@ main :: () -> s32 {
         true, false, true, 0.0, 0.0, false, 14.0,
         cast(ContentAlignment)ContentAlignmentEnd, 16.0)
     if end.text_x != 112.0 || end.icon_x != 160.0 { return 40 }
+    // A draggable button keeps its press outside the button, and an enclosing
+    // scroll cannot claim the same gesture.
+    measured.key = cast(u64)88
+    measured.id = 88
+    measured.image = ImageProps.{}
+    measured.bounds = Rectangle.{10.0, 20.0, 80.0, 30.0}
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    unused Button(TestSession(), measured)
+    submitted := TreeSubmitted(TestSession(), TreeCurrentParent(TestSession()),
+        measured.key, WidgetKindButton)
+    if submitted != 1 || TreeSubmitted(TestSession(), 0, cast(u64)999, WidgetKindButton) != -1 {
+        return 46
+    }
+    TreeSetDragCapture(TestSession(), submitted, true)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 41 }
+    unused TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
+    if !TreePointerCapturesDrag(TestSession()) { return 42 }
+    unused TreePointerUpdate(TestSession(), PointerFrame.{140.0, 90.0, true, false, false})
+    drag := TreeTakeDragAt(TestSession(), 1)
+    if !drag.active || drag.x != 140.0 || drag.y != 90.0 ||
+    drag.grab_x != 10.0 || drag.grab_y != 10.0 { return 43 }
+    unused TreePointerUpdate(TestSession(), PointerFrame.{140.0, 90.0, false, false, true})
+    drag = TreeTakeDragAt(TestSession(), 1)
+    if !drag.ended || drag.active { return 44 }
+    if TreeTakeActivationAt(TestSession(), 1) { return 45 }
     return 0
 }
