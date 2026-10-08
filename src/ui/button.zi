@@ -14,6 +14,7 @@
 using ArrowDirection;
 using DrawingKind;
 using IconPlacement;
+using ContentAlignment;
 using ButtonState;
 using StyleField;
 
@@ -479,7 +480,9 @@ ContentLayout :: (
     width: float32, height: float32, label_width: float32,
     requested_icon_size: float32, gap: float32, has_icon: bool, icon_only: bool,
     trailing: bool, offset_x: float32, offset_y: float32,
-    above: bool = false, label_height: float32 = 0.0
+    above: bool = false, label_height: float32 = 0.0,
+    alignment: ContentAlignment = cast(ContentAlignment)ContentAlignmentCenter,
+    padding_x: float32 = 0.0
     ) -> ButtonContent {
     result: ButtonContent
     measured: ContentSize = MeasureContent(height, label_width,
@@ -488,6 +491,11 @@ ContentLayout :: (
     label_width = measured.text_width
     gap = measured.gap
     x: float32 = (width - measured.width) * 0.5 + offset_x
+    if alignment == cast(ContentAlignment)ContentAlignmentStart {
+        x = padding_x + offset_x
+    } else if alignment == cast(ContentAlignment)ContentAlignmentEnd {
+        x = width - measured.width - padding_x + offset_x
+    }
     result.icon_x = x
     result.icon_y = (height - icon_size) * 0.5 + offset_y
     result.icon_size = icon_size
@@ -542,7 +550,7 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
         cast(s32)props.icon_placement == IconPlacementTrailing,
         paint.offset_x, paint.offset_y,
         props.icon_placement == cast(IconPlacement)IconPlacementAbove,
-        cast(float32)font / scale)
+        cast(float32)font / scale, props.content_alignment, paint.padding_x)
     result.mark.color = foreground
     if props.loading {
         result.mark.kind = DrawingRing

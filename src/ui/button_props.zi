@@ -34,6 +34,7 @@ ButtonProps :: struct {
     // A vector icon (a Shape from an icon package); drawn instead of icon_type.
     icon_shape: string
     icon_placement: IconPlacement
+    content_alignment: ContentAlignment
     icon_only: bool
     square: bool
     image: ImageProps

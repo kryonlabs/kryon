@@ -21,6 +21,7 @@ TestSession :: () -> Session {
 using ImageFit;
 using ButtonTone;
 using IconPlacement;
+using ContentAlignment;
 using StyleField;
 using FrameStatus;
 
@@ -139,5 +140,13 @@ main :: () -> s32 {
     measured.icon_placement = cast(IconPlacement)IconPlacementAbove
     fit = ButtonMeasure(measured)
     if fit.width != 45.0 || fit.height < 46.0 { return 38 }
+    start := ContentLayout(200.0, 56.0, 40.0, 24.0, 8.0,
+        true, false, false, 0.0, 0.0, false, 14.0,
+        cast(ContentAlignment)ContentAlignmentStart, 16.0)
+    if start.icon_x != 16.0 || start.text_x != 48.0 { return 39 }
+    end := ContentLayout(200.0, 56.0, 40.0, 24.0, 8.0,
+        true, false, true, 0.0, 0.0, false, 14.0,
+        cast(ContentAlignment)ContentAlignmentEnd, 16.0)
+    if end.text_x != 112.0 || end.icon_x != 160.0 { return 40 }
     return 0
 }

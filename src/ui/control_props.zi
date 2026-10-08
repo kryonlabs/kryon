@@ -27,6 +27,12 @@ IconPlacement :: enum {
     IconPlacementAbove :: 2
 }
 
+ContentAlignment :: enum {
+    ContentAlignmentCenter :: 0
+    ContentAlignmentStart :: 1
+    ContentAlignmentEnd :: 2
+}
+
 ButtonState :: enum {
     ButtonStateAuto :: 0
     ButtonStateNormal :: 1
