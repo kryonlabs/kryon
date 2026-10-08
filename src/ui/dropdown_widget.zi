@@ -34,11 +34,11 @@ DropdownDefaultFace :: (role: s32, state: s32,
     selected: bool) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
-        cast(u32)StyleRadius | cast(u32)StyleOpacity |
-        cast(u32)StylePaddingX | cast(u32)StylePaddingY |
-        cast(u32)StyleGap | cast(u32)StyleFontSize |
-        cast(u32)StyleIconSize | cast(u32)StyleContentOffset
+    cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+    cast(u32)StyleRadius | cast(u32)StyleOpacity |
+    cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+    cast(u32)StyleGap | cast(u32)StyleFontSize |
+    cast(u32)StyleIconSize | cast(u32)StyleContentOffset
     face.foreground = cast(u32)0x111827ff
     face.opacity = 1.0
     face.font_size = 14.0
@@ -75,7 +75,7 @@ DropdownDefaultFace :: (role: s32, state: s32,
         if state == ButtonStateHover {
             face.background = cast(u32)0xe5e7ebff
         } else if state == ButtonStatePressed ||
-            state == ButtonStateSelected {
+        state == ButtonStateSelected {
             face.background = cast(u32)0xdbeafeff
         }
         if state == ButtonStateDisabled { face.opacity = 0.45 }
@@ -178,7 +178,7 @@ DropdownPaintTrigger :: (session: Session, node: s32, bounds: Rectangle,
     if index >= 0 && index < (cast(s32)options.count) {
         label = options[index].label
         has_image = options[index].image.asset_path != "" ||
-            options[index].image.texture.id != cast(u32)0
+        options[index].image.texture.id != cast(u32)0
     }
     content: DropdownTriggerContent = DropdownTriggerContentFor(
         bounds, Content(face.value, scale), metrics, has_image)
@@ -191,7 +191,12 @@ DropdownPaintTrigger :: (session: Session, node: s32, bounds: Rectangle,
     if label != "" {
         font: s32 = ResolveFont(0,
             StyleFontValue(face.value.fields,
-                face.value.font_size), 14)
+            face.value.font_size), 14)
+        minimum := cast(s32)8
+        while font > minimum && GlyphWidth(label, font, face.value.typeface) >
+        cast(s32)content.text_bounds.width {
+            font -= 1
+        }
         height: s32 = GlyphLineHeight(font, face.value.typeface)
         y: s32 = cast(s32)(bounds.y +
             (bounds.height - cast(float32)height) * 0.5)
@@ -203,11 +208,11 @@ DropdownPaintTrigger :: (session: Session, node: s32, bounds: Rectangle,
         content.indicator_center_x, content.indicator_center_y,
         metrics.indicator_size, open)
     PaintLine(session, node, Rectangle.{cast(float32)indicator.x1,
-        cast(float32)indicator.y1, cast(float32)(indicator.x2 - indicator.x1),
-        cast(float32)(indicator.y2 - indicator.y1)}, color)
+            cast(float32)indicator.y1, cast(float32)(indicator.x2 - indicator.x1),
+            cast(float32)(indicator.y2 - indicator.y1)}, color)
     PaintLine(session, node, Rectangle.{cast(float32)indicator.x3,
-        cast(float32)indicator.y3, cast(float32)(indicator.x4 - indicator.x3),
-        cast(float32)(indicator.y4 - indicator.y3)}, color)
+            cast(float32)indicator.y3, cast(float32)(indicator.x4 - indicator.x3),
+            cast(float32)(indicator.y4 - indicator.y3)}, color)
 }
 
 #program_export
@@ -233,7 +238,7 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     }
     content: ContentMetrics = Content(face.value, props.scale)
     has_image: bool = option.image.asset_path != "" ||
-        option.image.texture.id != cast(u32)0
+    option.image.texture.id != cast(u32)0
     layout: DropdownOptionContent = DropdownOptionContentFor(
         row, visible, content, metrics, has_image)
     if option.separator_before {
@@ -248,7 +253,7 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     if option.label != "" {
         font: s32 = ResolveFont(0,
             StyleFontValue(face.value.fields,
-                face.value.font_size), 14)
+            face.value.font_size), 14)
         height: s32 = GlyphLineHeight(font, face.value.typeface)
         y: s32 = cast(s32)(row.y +
             (row.height - cast(float32)height) * 0.5)
@@ -259,11 +264,11 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     if selected {
         check: Rectangle = layout.check_bounds
         PaintLine(session, node, Rectangle.{check.x, check.y +
-            check.height * 0.55, check.width * 0.4,
-            check.height * 0.3}, color)
+                check.height * 0.55, check.width * 0.4,
+                check.height * 0.3}, color)
         PaintLine(session, node, Rectangle.{check.x + check.width * 0.4,
-            check.y + check.height * 0.85,
-            check.width * 0.6, -check.height * 0.7}, color)
+                check.y + check.height * 0.85,
+                check.width * 0.6, -check.height * 0.7}, color)
     }
 }
 
@@ -318,8 +323,8 @@ Dropdown :: (session: Session, props: DropdownProps,
             panel_bounds: Rectangle = PopupBounds(bounds,
                 TreeRootBounds(session), (cast(s32)options.count), scale, panel_face)
             dismissal: DismissibleOverlayPolicy =
-                DismissibleOverlayPolicyFor(true, false, false,
-                    PointInBounds(release.x, release.y, panel_bounds))
+            DismissibleOverlayPolicyFor(true, false, false,
+                PointInBounds(release.x, release.y, panel_bounds))
             if dismissal.closed {
                 result.open = false
                 result.closed = true
@@ -343,11 +348,11 @@ Dropdown :: (session: Session, props: DropdownProps,
                 result.highlight_index = nav.result
             }
             if !result.opened && props.menu_input.commit &&
-                result.highlight_index >= 0 &&
-                result.highlight_index < (cast(s32)options.count) &&
-                !options[result.highlight_index].disabled {
+            result.highlight_index >= 0 &&
+            result.highlight_index < (cast(s32)options.count) &&
+            !options[result.highlight_index].disabled {
                 result.changed = result.selected_index !=
-                    result.highlight_index
+                result.highlight_index
                 result.selected_index = result.highlight_index
                 result.open = false
                 result.closed = true
@@ -358,11 +363,11 @@ Dropdown :: (session: Session, props: DropdownProps,
                     if !options[option_index].disabled {
                         old: s32 = TreePreviousCommitted(session,
                             previous_panel, DropdownOptionKey(key,
-                                options[option_index], option_index),
+                            options[option_index], option_index),
                             WidgetKindSelectable)
                         if TreeTakeActivationAt(session, old) {
                             result.changed = result.selected_index !=
-                                option_index
+                            option_index
                             result.selected_index = option_index
                             result.highlight_index = option_index
                             result.open = false
@@ -394,7 +399,7 @@ Dropdown :: (session: Session, props: DropdownProps,
         TreeSetSelected(session, result.node, result.open)
         label: string = props.placeholder
         if result.selected_index >= 0 &&
-            result.selected_index < (cast(s32)options.count) {
+        result.selected_index < (cast(s32)options.count) {
             label = options[result.selected_index].label
         }
         TreeSetLabel(session, result.node, label)
@@ -457,7 +462,7 @@ Dropdown :: (session: Session, props: DropdownProps,
     overlay_props.key = DropdownOverlayKey(key)
     overlay_props.bounds = menu
     overlay: DismissibleOverlayResult =
-        DismissibleOverlay(session, overlay_props)
+    DismissibleOverlay(session, overlay_props)
     if overlay.closed {
         result.open = false
         result.closed = true
@@ -469,12 +474,12 @@ Dropdown :: (session: Session, props: DropdownProps,
         panel.value.opacity)
     PaintRoundedFill(session, panel_node, menu, panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background,
-            panel_opacity)))
+        panel_opacity)))
     if panel.value.border_width > 0.0 {
         PaintRoundedOutline(session, panel_node, menu, panel.value.radius, 12,
             panel.value.border_width,
             ColorFromPacked(Opacity(panel.value.border,
-                panel_opacity)))
+            panel_opacity)))
     }
     if !TreePushScope(session, panel_node) { return result }
     rows: VisibleRows = Rows((cast(s32)options.count), result.scroll_offset,
@@ -505,8 +510,8 @@ Dropdown :: (session: Session, props: DropdownProps,
                     result.selected_index == index)
                 hovered: bool = TreeHoveredAt(session,
                     TreePrevious(session, panel_node,
-                        DropdownOptionKey(key, item, index),
-                        WidgetKindSelectable))
+                    DropdownOptionKey(key, item, index),
+                    WidgetKindSelectable))
                 row_state: s32 = cast(s32)ButtonStateNormal
                 if item.disabled {
                     row_state = cast(s32)ButtonStateDisabled
@@ -532,13 +537,13 @@ Dropdown :: (session: Session, props: DropdownProps,
             PaintRoundedFill(session, scrollbar_node, track,
                 scrollbar_face.value.radius, 8,
                 ColorFromPacked(Opacity(cast(u32)0xe5e7ebff,
-                    panel_opacity)))
+                panel_opacity)))
             PaintRoundedFill(session, scrollbar_node, thumb,
                 scrollbar_face.value.radius, 8,
                 ColorFromPacked(Opacity(
-                    scrollbar_face.value.background,
-                    StyleOpacityValue(scrollbar_face.value.fields,
-                        scrollbar_face.value.opacity))))
+                scrollbar_face.value.background,
+                StyleOpacityValue(scrollbar_face.value.fields,
+                scrollbar_face.value.opacity))))
         }
     }
     End(session)
