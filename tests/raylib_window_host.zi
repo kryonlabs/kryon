@@ -41,6 +41,11 @@ UnloadFont :: (font: RaylibFont) { unused font }
 #program_export
 UnloadTexture :: (texture: Texture2D) { unused texture }
 #program_export
+SetTextureFilter :: (texture: Texture2D, filter: s32) {
+    unused texture
+    unused filter
+}
+#program_export
 UnloadRenderTexture :: (target: HostRaylibRenderTexture) { unused target }
 #program_export
 SetTargetFPS :: (fps: s32) { frame_rate = fps }
