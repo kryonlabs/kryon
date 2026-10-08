@@ -30,6 +30,7 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 | `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
 | `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
+| `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package, raylib OpenGL ES 2 |
 
 The desktop and libdraw hosts share `cairo_raster.zi`. The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
@@ -82,6 +83,46 @@ Browser projects save the selected `_run` host and `canvas_raster.zi` as
 generation roots without entry pruning. This keeps both the host `main` and
 the raster adapters available to the paint queue. Native projects continue
 through the ordinary package entry route.
+
+## Android host
+
+`backend = "android"` builds an installable APK instead of a native binary.
+Add the profile and the application id to `ziran.toml`:
+
+```toml
+[tool.kryon.profiles.android]
+backend = "android"
+
+[tool.kryon.android]
+package = "com.example.app"
+min_sdk = "21"        # optional, 21 by default
+abis = "arm64-v8a"    # optional, arm64-v8a by default
+```
+
+`kryon build --profile android` generates a `droid/` Gradle project beside
+the application sources on the first build (never overwriting existing
+files), then assembles a debug APK through the Android Gradle plugin, the
+NDK, and CMake. `kryon run --profile android` additionally installs and
+launches it on a connected device through adb, and `kryon check --profile
+android` checks the whole Zi graph with the Android defines. The build needs
+a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`
+(`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `raylib`
+source package.
+
+At runtime a `NativeActivity` subclass owns the Java side: it reports window
+insets, display cutouts, IME state, density, dark mode and orientation
+through JNI natives registered by the generated `src/android_glue.zi`, and
+forwards soft-keyboard text as codepoint, backspace and enter events. The
+generated `src/main.zi` delegates to `AndroidRunMain`, which drives the
+session with the shared raylib host, Kryon's Android viewport policies, and
+the session-owned text input queue. Applications with their own JNI surface
+keep their own `JNI_OnLoad` and call `AndroidJniOnLoad` with their activity
+class to add the canonical natives.
+
+The generation runs `ziran ir --project` for the whole graph, so application
+module names may repeat Kryon module names; every package is prefixed in the
+emitted C. `tests/ziran_android_device_test.sh` checks the device protocol
+headlessly with the Java side stubbed.
 
 ## Frame and input ownership
 

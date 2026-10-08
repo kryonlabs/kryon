@@ -1,0 +1,10 @@
+#import "android_run"
+
+// __NAME__: the Android entry. raylib's NativeActivity backend calls this C
+// main; the canonical host loop in android_run drives the app's Frame.
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    unused argc
+    unused argv
+    return AndroidRunMain()
+}

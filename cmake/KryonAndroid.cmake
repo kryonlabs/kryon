@@ -96,3 +96,33 @@ function(kryon_android_app target)
     target_link_libraries(${target}
         raylib android log OpenSLES EGL GLESv2 atomic dl m)
 endfunction()
+
+# Adopt Kryon's canonical Android host for a shared-library target whose
+# generated sources include the application's main and android_glue modules
+# (created by scripts/android_scaffold.py). KRYON_ANDROID_HOST selects
+# Kryon's own platform keyboard implementation; an application that supplies
+# its own JNI glue, like one with a custom SetPlatformTextKeyboardVisible,
+# must not call this. The library keeps only Android's entry points public.
+function(kryon_android_host target)
+    target_compile_definitions(${target} PRIVATE KRYON_ANDROID_HOST=1)
+    foreach(source IN LISTS ARGN)
+        get_filename_component(source_name "${source}" NAME)
+        if(source_name STREQUAL "main.c")
+            # raylib's android_main calls this shared-library entry itself;
+            # its Zi argv is byte pointers, so hosted C's spelling rule for
+            # main does not apply.
+            set_source_files_properties("${source}"
+                PROPERTIES COMPILE_OPTIONS "-ffreestanding")
+        elseif(source_name STREQUAL "android_glue.c")
+            # The VM locates this exported entry before native methods are
+            # registered through it.
+            set_source_files_properties("${source}"
+                PROPERTIES COMPILE_OPTIONS "-fvisibility=default")
+        endif()
+    endforeach()
+    target_link_options(${target} PRIVATE
+        "-Wl,--version-script,${CMAKE_CURRENT_FUNCTION_LIST_DIR}/libmain.map.txt"
+        "-Wl,--no-undefined-version")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/libmain.map.txt")
+endfunction()

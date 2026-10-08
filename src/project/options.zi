@@ -23,6 +23,13 @@ ProjectInstall :: struct {
     autostart_env: string
 }
 
+ProjectAndroid :: struct {
+    package: string
+    min_sdk: string
+    abis: string
+    activity: string
+}
+
 ProjectConfig :: struct {
     name: string
     entry: string
@@ -30,6 +37,7 @@ ProjectConfig :: struct {
     profiles: [8]ProjectProfile
     profile_count: s32
     install: ProjectInstall
+    android: ProjectAndroid
     ok: bool
     error: string
 }
@@ -154,6 +162,39 @@ ProjectFindProfile :: (config: ProjectConfig, name: string) -> s32 {
     return -1
 }
 
+// Java package name: dot-separated identifiers, none empty, none a Java
+// keyword spelling that starts with a digit-free lone underscore, so the
+// generated Java and Gradle files stay valid.
+#program_export
+ProjectAndroidPackageValid :: (value: string) -> bool {
+    if value == "" { return false }
+    start: s32 = 0
+    at: s32 = 0
+    length: s32 = cast(s32)value.count
+    while at <= length {
+        if at == length || value[at] == cast(u8)46 {
+            if at == start { return false }
+            first: u8 = value[start]
+            if !((first >= cast(u8)65 && first <= cast(u8)90) ||
+                (first >= cast(u8)97 && first <= cast(u8)122) ||
+                first == cast(u8)95) { return false }
+            if at - start == 1 && value[start] == cast(u8)95 {
+                return false
+            }
+            start = at + 1
+        } else {
+            ch: u8 = value[at]
+            if !((ch >= cast(u8)65 && ch <= cast(u8)90) ||
+                (ch >= cast(u8)97 && ch <= cast(u8)122) ||
+                (ch >= cast(u8)48 && ch <= cast(u8)57) || ch == cast(u8)95) {
+                return false
+            }
+        }
+        at += 1
+    }
+    return true
+}
+
 #program_export
 ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig {
     config: ProjectConfig
@@ -242,6 +283,14 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
             config.install.autostart = value == "true"
         } else if key == "install.autostart_env" {
             config.install.autostart_env = value
+        } else if key == "android.package" {
+            config.android.package = value
+        } else if key == "android.min_sdk" {
+            config.android.min_sdk = value
+        } else if key == "android.abis" {
+            config.android.abis = value
+        } else if key == "android.activity" {
+            config.android.activity = value
         }
     }
     if config.profile_count == 1 && config.default_profile == "" {
@@ -288,6 +337,23 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
     if !found {
         config.error = "default profile does not exist"
         return config
+    }
+    android_profile: bool = false
+    index = 0
+    while index < config.profile_count {
+        if config.profiles[index].backend == "android" {
+            android_profile = true
+        }
+        index += 1
+    }
+    if android_profile {
+        if !ProjectAndroidPackageValid(config.android.package) {
+            config.error = "an android profile needs [tool.kryon.android] package, a Java package such as com.example.app"
+            return config
+        }
+        if config.android.min_sdk == "" { config.android.min_sdk = "21" }
+        if config.android.abis == "" { config.android.abis = "arm64-v8a" }
+        if config.android.activity == "" { config.android.activity = "MainActivity" }
     }
     install: ProjectInstall = config.install
     if (install.profile != "" && ProjectFindProfile(config, install.profile) < 0) ||

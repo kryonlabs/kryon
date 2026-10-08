@@ -78,5 +78,34 @@ ProjectOptionsTest :: () -> s32 {
     if ProjectHostValid("../runner.zi") || ProjectHostValid("src/../runner.zi") ||
     ProjectHostValid("/tmp/runner.zi") || ProjectHostValid("src/runner.c") ||
     ProjectHostValid("src/$(touch).zi") { return 18 }
+    android: ProjectConfig = ParseProject(
+        "default_profile=droid\nprofiles=droid desktop\nprofiles.droid.backend=android\nprofiles.desktop.backend=desktop\nandroid.package=com.example.demo\nandroid.min_sdk=24\nandroid.abis=arm64-v8a,x86_64\n",
+        "demo", "src/app.zi")
+    if !android.ok || android.android.package != "com.example.demo" ||
+    android.android.min_sdk != "24" ||
+    android.android.abis != "arm64-v8a,x86_64" ||
+    android.android.activity != "MainActivity" { return 19 }
+    android_defaults: ProjectConfig = ParseProject(
+        "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\nandroid.package=zi.demo\n",
+        "demo", "src/app.zi")
+    if !android_defaults.ok || android_defaults.android.min_sdk != "21" ||
+    android_defaults.android.abis != "arm64-v8a" { return 20 }
+    android_missing_package: ProjectConfig = ParseProject(
+        "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\n",
+        "demo", "src/app.zi")
+    if android_missing_package.ok { return 21 }
+    android_bad_package: ProjectConfig = ParseProject(
+        "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\nandroid.package=com..demo\n",
+        "demo", "src/app.zi")
+    if android_bad_package.ok { return 22 }
+    // A project without an android profile keeps parsing without a package.
+    desktop_only: ProjectConfig = ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "")
+    if !desktop_only.ok || desktop_only.android.package != "" { return 23 }
+    if !ProjectAndroidPackageValid("com.example.demo") ||
+    ProjectAndroidPackageValid("com.9demo") ||
+    ProjectAndroidPackageValid("com..demo") ||
+    ProjectAndroidPackageValid("com.example.de;o") ||
+    ProjectAndroidPackageValid("") { return 24 }
     return 42
 }

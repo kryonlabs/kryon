@@ -116,7 +116,7 @@ for lock, cache, and override details.
 
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, `raylib`, `canvas`, `dom`, and `pixmap`. Set `default_profile` under `[tool.kryon]` when there
+`libdraw`, `raylib`, `canvas`, `dom`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -130,6 +130,7 @@ terminal; otherwise it uses the default.
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 | `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
+| `android` | installable APK through a generated `droid/` Gradle project | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked raylib source package, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the
 software renderer and an unaccelerated window surface by default. Custom

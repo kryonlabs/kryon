@@ -27,6 +27,7 @@ for a target; it does not prove that every native host runs on that target.
 | Native Plan 9 libdraw | `src/backend/libdraw_native.zi` | Display-free ABI fixture plus Taiji's private native source/saved-IR checks cover Rill screens, PNG/reference pixels, alpha composition, cache eviction, native images, and captures | 🧪 experimental provider used by Rill; held modifiers and a selectable run profile remain pending |
 | Web Canvas | `src/backend/canvas_run.zi` | Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
 | Web DOM | `src/backend/dom_run.zi` | Headless Chromium checks incremental updates, native Unicode editing, reorder focus, KSS, responsive sizing and browser accessibility | 🧪 hybrid host with opt-in native CSS layout for document widgets |
+| Android | app `src/main.zi` + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with raylib OpenGL ES 2 |
 
 The desktop, raylib, and libdraw project tests run separately with
 `make desktop-project-test`, `make raylib-project-test`, and

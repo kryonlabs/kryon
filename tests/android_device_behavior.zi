@@ -1,0 +1,108 @@
+// The Android device protocol: soft-keyboard text through the session-owned
+// queue, owner hand-off between sessions, lifecycle and graphics state, and
+// the Java-reported insets reaching Kryon's viewport state. Runs with
+// ANDROID_BUILD on the host; Java stays stubbed.
+#import, file "../src/backend/android_device.zi";
+#import, file "android_device_host.zi";
+#import "android_jni"
+#import "android_surface"
+#import "session"
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    Require(SessionValid(session), 1)
+
+    // Opening binds the queue and the keyboard without accepting edits yet.
+    AndroidTextInputOpen(session)
+    AndroidNativeTextCommit(null, null, 65)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputCharacter() == 0, 2)
+
+    // An active frame shows the keyboard and accepts commits in order.
+    AndroidTextInputFrame(session, true)
+    Require(keyboard_calls == 1 && keyboard_visible, 3)
+    AndroidNativeTextCommit(null, null, 65)
+    AndroidNativeTextCommit(null, null, 66)
+    AndroidNativeTextCommit(null, null, 67)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputCharacter() == 65 &&
+    AndroidTextInputCharacter() == 66 &&
+    AndroidTextInputCharacter() == 67 &&
+    AndroidTextInputCharacter() == 0, 4)
+
+    // Backspace and enter translate to the raylib key codes the widgets read.
+    AndroidNativeTextBackspace(null, null)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputKeyPressed(259) &&
+    !AndroidTextInputKeyPressed(257) &&
+    AndroidTextInputCharacter() == 0, 5)
+    AndroidNativeTextEnter(null, null)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputKeyPressed(257) &&
+    !AndroidTextInputKeyPressed(259), 6)
+
+    // An inactive frame hides the keyboard and drops queued edits.
+    AndroidNativeTextCommit(null, null, 68)
+    AndroidTextInputFrame(session, false)
+    Require(keyboard_calls == 2 && !keyboard_visible, 7)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputCharacter() == 0, 8)
+
+    // A new owner takes over; the previous session's queue releases, and
+    // edits sent before the new owner's first active frame are dropped.
+    AndroidTextInputFrame(session, true)
+    replacement := SessionOpen()
+    AndroidTextInputOpen(replacement)
+    AndroidNativeTextCommit(null, null, 69)
+    AndroidTextInputBeginFrame(session)
+    Require(AndroidTextInputCharacter() == 0, 9)
+    AndroidTextInputFrame(replacement, true)
+    AndroidNativeTextCommit(null, null, 70)
+    AndroidTextInputBeginFrame(replacement)
+    Require(AndroidTextInputCharacter() == 70, 10)
+
+    // Lifecycle, graphics invalidation and configuration state.
+    AndroidNativeLifecycle(null, null, cast(u8)1, cast(u8)1)
+    Require(AndroidLifecyclePaused() == 1 && AndroidLifecycleFocused() == 1, 11)
+    AndroidNativeLifecycle(null, null, cast(u8)0, cast(u8)0)
+    Require(AndroidLifecyclePaused() == 0 && AndroidLifecycleFocused() == 0, 12)
+    AndroidNativeInvalidateGraphics(null, null)
+    Require(AndroidTakeGraphicsInvalidate() == 1 &&
+    AndroidTakeGraphicsInvalidate() == 0, 13)
+    AndroidNativeSetSystemDark(null, null, 1)
+    AndroidNativeSetOrientation(null, null, 2)
+    AndroidNativeSetDensity(null, null, 2.75)
+    Require(AndroidSystemDark() == 1 && AndroidOrientation() == 2 &&
+    AndroidDensity() == 2.75, 14)
+
+    // Java-reported insets reach Kryon's viewport state.
+    AndroidNativeSetInsets(null, null, 1, 24, 2, 48, 300, 0, 0, 0, 0)
+    insets: AndroidWindowInsets
+    Require(GetAndroidWindowInsets(*insets) == 1 &&
+    insets.system_top == 24 && insets.system_bottom == 48 &&
+    insets.ime_bottom == 300 && insets.cutout_left == 0, 15)
+
+    // Closing hides the keyboard once more and releases the owner: the
+    // sequence showed and hid at each active/inactive frame, hid on the
+    // owner swap, showed for the replacement, and hides on close.
+    Require(keyboard_calls == 5 && keyboard_visible, 16)
+    AndroidTextInputClose(replacement)
+    Require(keyboard_calls == 6 && !keyboard_visible, 17)
+
+    // First-frame notification survives an absent Java VM.
+    AndroidNotifyFirstFrame()
+    // Finishing the activity without a native app is a no-op.
+    AndroidJniFinishActivity()
+    Require(activity_finish_calls == 0, 18)
+    return 0
+}

@@ -1,0 +1,122 @@
+// Host stubs for the Android device behavior test: the raylib JNI surface
+// stays absent and the platform keyboard effect records calls instead of
+// reaching Java.
+#import "android_jni"
+#import "android_surface"
+#import "session"
+
+keyboard_calls: s32;
+keyboard_visible: bool;
+
+#program_export
+SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
+    unused session
+    keyboard_calls += 1
+    keyboard_visible = visible
+}
+
+#program_export
+GetAndroidApp :: () -> *NativeAndroidApp {
+    return null
+}
+
+activity_finish_calls: s32;
+
+#program_export
+ANativeActivity_finish :: (activity: *void) {
+    unused activity
+    activity_finish_calls += 1
+}
+
+#program_export
+GetScreenWidth :: () -> s32 {
+    return 1080
+}
+
+#program_export
+GetScreenHeight :: () -> s32 {
+    return 1920
+}
+
+#program_export
+GetWindowHandle :: () -> *void {
+    return null
+}
+
+#program_export
+dlsym :: (library: *void, symbol: *u8) -> *void {
+    unused library
+    unused symbol
+    return null
+}
+
+#program_export
+ANativeWindow_getFormat :: (window: *void) -> s32 {
+    unused window
+    return 1
+}
+
+#program_export
+ANativeWindow_setBuffersGeometry :: (window: *void, width: s32,
+    height: s32, format: s32) -> s32 {
+    unused window
+    unused width
+    unused height
+    unused format
+    return 0
+}
+
+#program_export
+ANativeWindow_getWidth :: (window: *void) -> s32 {
+    unused window
+    return 1080
+}
+
+#program_export
+ANativeWindow_getHeight :: (window: *void) -> s32 {
+    unused window
+    return 1920
+}
+
+#program_export
+rlViewport :: (x: s32, y: s32, width: s32, height: s32) {
+    unused x
+    unused y
+    unused width
+    unused height
+}
+
+#program_export
+rlMatrixMode :: (mode: s32) {
+    unused mode
+}
+
+#program_export
+rlLoadIdentity :: () {
+}
+
+#program_export
+rlOrtho :: (left: float64, right: float64, bottom: float64,
+    top: float64, near: float64, far: float64) {
+    unused left
+    unused right
+    unused bottom
+    unused top
+    unused near
+    unused far
+}
+
+#program_export
+ClearBackground :: (color: SurfaceColor) {
+    unused color
+}
+
+#program_export
+DrawRectangle :: (x: s32, y: s32, width: s32, height: s32,
+    color: SurfaceColor) {
+    unused x
+    unused y
+    unused width
+    unused height
+    unused color
+}

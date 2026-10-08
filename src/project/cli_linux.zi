@@ -204,7 +204,40 @@ BackendDescription :: (backend: string) -> string {
     if backend == "dom" { return "semantic DOM browser page" }
     if backend == "terminal" { return "terminal" }
     if backend == "pixmap" { return "headless image, PPM on standard output" }
+    if backend == "android" { return "Android package (NativeActivity)" }
     return backend
+}
+
+// The android profile builds through its own Gradle project under droid/;
+// the shared make route cannot link a NativeActivity payload. Everything the
+// build script needs travels as environment variables, never as shell text.
+AndroidCommand :: (config: ProjectConfig, kryon_root: string,
+    ziran_root: string, verb: string) -> s32 {
+    project_root_bytes: [4096]u8
+    project_root: string = Environment("ZIRAN_PROJECT_ROOT",
+        project_root_bytes[:])
+    if project_root == "" { project_root = "." }
+    if !SetEnvironment("KRYON_DIR", kryon_root) ||
+    !SetEnvironment("ZIRAN_DIR", ziran_root) ||
+    !SetEnvironment("KRYON_PROJECT_ROOT", project_root) ||
+    !SetEnvironment("KRYON_PROJECT_NAME", config.name) ||
+    !SetEnvironment("KRYON_ANDROID_PACKAGE", config.android.package) ||
+    !SetEnvironment("KRYON_ANDROID_MIN_SDK", config.android.min_sdk) ||
+    !SetEnvironment("KRYON_ANDROID_ABIS", config.android.abis) ||
+    !SetEnvironment("KRYON_ANDROID_ACTIVITY", config.android.activity) {
+        return Error("cannot pass android options")
+    }
+    script_bytes: [4096]u8
+    script: string = Join(kryon_root, "/scripts/android-build.sh",
+        script_bytes[:])
+    if script == "" || !Exists(script) {
+        return Error("kryon android build script not found")
+    }
+    args: [3]string
+    args[0] = "sh"
+    args[1] = script
+    args[2] = verb
+    return Execute(args[:])
 }
 
 ChooseProfile :: (config: ProjectConfig) -> s32 {
@@ -265,6 +298,7 @@ Usage :: () -> s32 {
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
     PrintFd(1, "Kryon templates: app (window), tui (terminal), pages (navigation), web (browser page)\n")
+    PrintFd(1, "An android profile builds an installable APK; it needs [tool.kryon.android] package.\n")
     return 0
 }
 
@@ -475,6 +509,12 @@ main :: () -> s32 {
     }
     profile: ProjectProfile = ProjectProfileNamed(config, profile_name)
     if profile.name == "" { return Error("unknown profile") }
+    if profile.backend == "android" {
+        if verb == "install" {
+            return Error("android profiles ship as packages; use kryon build --profile android")
+        }
+        return AndroidCommand(config, installed_kryon, installed_ziran, verb)
+    }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
         profile.backend != "libdraw" && profile.backend != "raylib" &&
         profile.backend != "canvas" && profile.backend != "dom" &&

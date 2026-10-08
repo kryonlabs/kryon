@@ -1,0 +1,514 @@
+// Android device state shared between the Java activity and the Ziran host.
+// Java calls the AndroidNative* entry points through JNI; the render thread
+// reads the same values through the Android* queries under the device mutex.
+// Text input follows the session-owned queue contract of text_input_platform,
+// so OS keyboard callbacks on the UI thread cannot target a recycled session.
+#import "android_jni"
+#import "android_surface"
+#import "c_string"
+#import "session"
+#import "text_input_platform"
+
+#if #defined(ANDROID_BUILD) {
+    c :: #system_library "c";
+    DeviceMutexLock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
+    DeviceMutexUnlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
+}
+// PTHREAD_MUTEX_INITIALIZER is zero on bionic; the storage also fits glibc
+// for the display-free behavior tests.
+device_mutex: [8]u64;
+
+device_density: float32;
+device_dark: s32;
+device_orientation: s32;
+device_text_owner: Session;
+device_text_accepts_input: bool;
+device_text_frame_kind: s32;
+device_text_frame_key: s32;
+device_lifecycle_paused: s32;
+device_lifecycle_focused: s32;
+device_graphics_reload: s32;
+
+DeviceLock :: () {
+    #if #defined(ANDROID_BUILD) {
+        DeviceMutexLock(cast(*void)*device_mutex[0])
+    }
+}
+
+DeviceUnlock :: () {
+    #if #defined(ANDROID_BUILD) {
+        DeviceMutexUnlock(cast(*void)*device_mutex[0])
+    }
+}
+
+DeviceTextSend :: (event: TextInputEvent) {
+    DeviceLock()
+    if device_text_accepts_input {
+        TextInputQueueSend(device_text_owner, event)
+    }
+    DeviceUnlock()
+}
+
+DeviceSoftKeyboard :: (visible: bool) {
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return
+        }
+        value: s32 = 0
+        if visible {
+            value = 1
+        }
+        unused AndroidJniCallVoidInteger(*session, "setSoftKeyboardVisible",
+            "(Z)V", value)
+        AndroidJniDetachCurrent(*session)
+    }
+}
+
+#program_export
+AndroidNativeSetInsets :: (env: *JniEnv, activity: *void, left: s32, top: s32,
+    right: s32, bottom: s32, ime: s32, cutout_left: s32, cutout_top: s32,
+    cutout_right: s32, cutout_bottom: s32) {
+    unused env
+    unused activity
+    SetAndroidWindowInsets(left, top, right, bottom, ime, cutout_left,
+        cutout_top, cutout_right, cutout_bottom)
+}
+
+#program_export
+AndroidNativeSetDensity :: (env: *JniEnv, activity: *void,
+    density: float32) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_density = density
+        DeviceUnlock()
+    }
+    unused density
+}
+
+#program_export
+AndroidNativeSetSystemDark :: (env: *JniEnv, activity: *void, dark: s32) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_dark = 0
+        if dark != 0 {
+            device_dark = 1
+        }
+        DeviceUnlock()
+    }
+    unused dark
+}
+
+#program_export
+AndroidNativeSetOrientation :: (env: *JniEnv, activity: *void,
+    orientation: s32) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_orientation = orientation
+        DeviceUnlock()
+    }
+    unused orientation
+}
+
+#program_export
+AndroidNativeTextCommit :: (env: *JniEnv, activity: *void,
+    codepoint: s32) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        event: TextInputEvent
+        event.kind = TextInputCodepoint
+        event.codepoint = codepoint
+        DeviceTextSend(event)
+    }
+    unused codepoint
+}
+
+#program_export
+AndroidNativeTextBackspace :: (env: *JniEnv, activity: *void) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        event: TextInputEvent
+        event.kind = TextInputBackspace
+        DeviceTextSend(event)
+    }
+}
+
+#program_export
+AndroidNativeTextEnter :: (env: *JniEnv, activity: *void) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        event: TextInputEvent
+        event.kind = TextInputEnter
+        DeviceTextSend(event)
+    }
+}
+
+// The activity reports pause, resume and window focus; the host and the app
+// read the state. Return value reserved for application policy glue.
+#program_export
+AndroidNativeLifecycle :: (env: *JniEnv, activity: *void, paused: u8,
+    focused: u8) -> s32 {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_lifecycle_paused = 0
+        if paused != 0 {
+            device_lifecycle_paused = 1
+        }
+        device_lifecycle_focused = 0
+        if focused != 0 {
+            device_lifecycle_focused = 1
+        }
+        DeviceUnlock()
+    }
+    unused paused
+    unused focused
+    return 0
+}
+
+#program_export
+AndroidNativeInvalidateGraphics :: (env: *JniEnv, activity: *void) {
+    unused env
+    unused activity
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_graphics_reload = 1
+        DeviceUnlock()
+    }
+}
+
+#program_export
+AndroidDensity :: () -> float32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        density := device_density
+        DeviceUnlock()
+        return density
+    }
+    return 0.0
+}
+
+#program_export
+AndroidSystemDark :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        dark := device_dark
+        DeviceUnlock()
+        return dark
+    }
+    return 0
+}
+
+#program_export
+AndroidOrientation :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        orientation := device_orientation
+        DeviceUnlock()
+        return orientation
+    }
+    return 0
+}
+
+#program_export
+AndroidLifecyclePaused :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        paused := device_lifecycle_paused
+        DeviceUnlock()
+        return paused
+    }
+    return 0
+}
+
+#program_export
+AndroidLifecycleFocused :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        focused := device_lifecycle_focused
+        DeviceUnlock()
+        return focused
+    }
+    return 0
+}
+
+// One-shot: the host resets stale GL object names after a surface change.
+#program_export
+AndroidTakeGraphicsInvalidate :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        reload := device_graphics_reload
+        device_graphics_reload = 0
+        DeviceUnlock()
+        return reload
+    }
+    return 0
+}
+
+// Register the canonical natives on the activity's class. An application
+// with its own JNI_OnLoad calls this instead of defining these methods
+// again; the generated project glue calls AndroidJniOnLoad with its own
+// activity class name.
+AndroidNativeVoidFn :: #type (*JniEnv, *void) -> void #c_call;
+AndroidNativeIntegerFn :: #type (*JniEnv, *void, s32) -> void #c_call;
+AndroidNativeInsetsFn :: #type (*JniEnv, *void, s32, s32, s32, s32,
+    s32, s32, s32, s32, s32) -> void #c_call;
+AndroidNativeDensityFn :: #type (*JniEnv, *void, float32) -> void #c_call;
+AndroidNativeLifecycleFn :: #type (*JniEnv, *void, u8, u8) -> s32 #c_call;
+AndroidNativeProcedure :: union {
+    nothing: AndroidNativeVoidFn
+    integer: AndroidNativeIntegerFn
+    insets: AndroidNativeInsetsFn
+    density: AndroidNativeDensityFn
+    lifecycle: AndroidNativeLifecycleFn
+}
+AndroidNativeMethod :: struct {
+    name: *u8
+    signature: *u8
+    procedure: AndroidNativeProcedure
+}
+
+#program_export
+AndroidJniRegisterNatives :: (env: *JniEnv, klass: *void) -> s32 {
+    methods: [9]AndroidNativeMethod
+    names: [9][64]u8
+    signatures: [9][128]u8
+    CopyCString("nativeSetInsets", names[0][:])
+    CopyCString("(IIIIIIIII)V", signatures[0][:])
+    methods[0].name = *names[0][0]
+    methods[0].signature = *signatures[0][0]
+    methods[0].procedure.insets = AndroidNativeSetInsets
+    CopyCString("nativeSetDeviceDensity", names[1][:])
+    CopyCString("(F)V", signatures[1][:])
+    methods[1].name = *names[1][0]
+    methods[1].signature = *signatures[1][0]
+    methods[1].procedure.density = AndroidNativeSetDensity
+    CopyCString("nativeSetSystemDark", names[2][:])
+    CopyCString("(I)V", signatures[2][:])
+    methods[2].name = *names[2][0]
+    methods[2].signature = *signatures[2][0]
+    methods[2].procedure.integer = AndroidNativeSetSystemDark
+    CopyCString("nativeSetOrientation", names[3][:])
+    CopyCString("(I)V", signatures[3][:])
+    methods[3].name = *names[3][0]
+    methods[3].signature = *signatures[3][0]
+    methods[3].procedure.integer = AndroidNativeSetOrientation
+    CopyCString("nativeTextInputCommit", names[4][:])
+    CopyCString("(I)V", signatures[4][:])
+    methods[4].name = *names[4][0]
+    methods[4].signature = *signatures[4][0]
+    methods[4].procedure.integer = AndroidNativeTextCommit
+    CopyCString("nativeTextInputBackspace", names[5][:])
+    CopyCString("()V", signatures[5][:])
+    methods[5].name = *names[5][0]
+    methods[5].signature = *signatures[5][0]
+    methods[5].procedure.nothing = AndroidNativeTextBackspace
+    CopyCString("nativeTextInputEnter", names[6][:])
+    CopyCString("()V", signatures[6][:])
+    methods[6].name = *names[6][0]
+    methods[6].signature = *signatures[6][0]
+    methods[6].procedure.nothing = AndroidNativeTextEnter
+    CopyCString("nativeSyncLifecycleState", names[7][:])
+    CopyCString("(ZZ)I", signatures[7][:])
+    methods[7].name = *names[7][0]
+    methods[7].signature = *signatures[7][0]
+    methods[7].procedure.lifecycle = AndroidNativeLifecycle
+    CopyCString("nativeInvalidateGraphicsResources", names[8][:])
+    CopyCString("()V", signatures[8][:])
+    methods[8].name = *names[8][0]
+    methods[8].signature = *signatures[8][0]
+    methods[8].procedure.nothing = AndroidNativeInvalidateGraphics
+    return env.functions.RegisterNatives(env, klass,
+        cast(*void)*methods[0], 9)
+}
+
+#program_export
+AndroidJniOnLoad :: (vm: *JniVm, activity_class: string) -> s32 {
+    env: *JniEnv
+    result := vm.functions.GetEnv(vm, *env, JniVersion)
+    if result != 0 || env == null {
+        return -1
+    }
+    class_name: [96]u8
+    if !CopyCString(activity_class, class_name[:]) {
+        return -1
+    }
+    klass := env.functions.FindClass(env, *class_name[0])
+    if klass == null {
+        return -1
+    }
+    result = AndroidJniRegisterNatives(env, klass)
+    env.functions.DeleteLocalRef(env, klass)
+    if result != 0 {
+        return result
+    }
+    return JniVersion
+}
+
+// The canonical host effect for text_input_platform. KRYON_ANDROID_HOST is
+// set by kryon_android_host() in the CMake helpers; an application that
+// supplies its own keyboard implementation must not define it.
+#if #defined(KRYON_ANDROID_HOST) {
+    #program_export
+    SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
+        #if #defined(ANDROID_BUILD) {
+            DeviceLock()
+            owned := TextInputOwnerMatches(device_text_owner, session)
+            DeviceUnlock()
+            if owned {
+                DeviceSoftKeyboard(visible)
+            }
+        }
+        unused session
+        unused visible
+    }
+}
+
+// Text input protocol. Lifecycle and visibility run on the render thread;
+// the queue belongs to one live session generation and preserves edit order.
+#program_export
+AndroidTextInputOpen :: (session: Session) {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        previous := device_text_owner
+        DeviceUnlock()
+        if previous.slot != 0 {
+            AndroidTextInputClose(previous)
+        }
+        DeviceLock()
+        if TextInputQueueBind(session) {
+            device_text_owner = session
+            device_text_accepts_input = false
+            device_text_frame_kind = 0
+            device_text_frame_key = 0
+        }
+        DeviceUnlock()
+        TextKeyboardBind(session)
+    }
+    unused session
+}
+
+#program_export
+AndroidTextInputClose :: (session: Session) {
+    #if #defined(ANDROID_BUILD) {
+        // Hide while the callback can still validate its native owner.
+        TextKeyboardRelease(session)
+        DeviceLock()
+        if device_text_owner.slot == session.slot &&
+        device_text_owner.epoch == session.epoch {
+            TextInputQueueRelease(session)
+            device_text_owner = .{}
+            device_text_accepts_input = false
+            device_text_frame_kind = 0
+            device_text_frame_key = 0
+        }
+        DeviceUnlock()
+    }
+    unused session
+}
+
+// Translate the frame's leading backspace or enter into raylib key codes so
+// the same widgets accept soft-keyboard and hardware keys. 259 is raylib's
+// KEY_BACKSPACE and 257 its KEY_ENTER.
+#program_export
+AndroidTextInputBeginFrame :: (session: Session) {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        device_text_frame_kind = 0
+        device_text_frame_key = 0
+        if TextInputOwnerMatches(device_text_owner, session) && device_text_accepts_input {
+            event := TextInputQueuePeek(session)
+            device_text_frame_kind = event.kind
+            if event.kind == TextInputBackspace {
+                TextInputQueueTake(session)
+                device_text_frame_key = 259
+            }
+            if event.kind == TextInputEnter {
+                TextInputQueueTake(session)
+                device_text_frame_key = 257
+            }
+        }
+        DeviceUnlock()
+    }
+    unused session
+}
+
+// The app reports each frame whether a text field is focused; the keyboard
+// follows, and an inactive frame drops queued edits.
+#program_export
+AndroidTextInputFrame :: (session: Session, active: bool) {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        owned := TextInputOwnerMatches(device_text_owner, session)
+        if owned {
+            device_text_accepts_input = active
+            if !active {
+                TextInputQueueReset(session)
+                device_text_frame_kind = 0
+                device_text_frame_key = 0
+            }
+        }
+        DeviceUnlock()
+        if owned {
+            TextKeyboardSetVisible(session, active)
+        }
+    }
+    unused session
+    unused active
+}
+
+#program_export
+AndroidTextInputCharacter :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        codepoint: s32 = 0
+        DeviceLock()
+        if device_text_frame_kind == TextInputCodepoint && device_text_accepts_input {
+            event := TextInputQueuePeek(device_text_owner)
+            if event.kind == TextInputCodepoint {
+                event = TextInputQueueTake(device_text_owner)
+                codepoint = event.codepoint
+            }
+        }
+        DeviceUnlock()
+        return codepoint
+    }
+    return 0
+}
+
+#program_export
+AndroidTextInputKeyPressed :: (key: s32) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        DeviceLock()
+        pressed := device_text_accepts_input && device_text_frame_key == key
+        DeviceUnlock()
+        return pressed
+    }
+    unused key
+    return false
+}
+
+// Notify the activity after the renderer submits its first frame; the
+// generated MainActivity answers with reportFullyDrawn().
+#program_export
+AndroidNotifyFirstFrame :: () {
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return
+        }
+        defer {
+            AndroidJniDetachCurrent(*session)
+        }
+        unused AndroidJniCallVoid(*session, "onNativeFirstFrame", null)
+    }
+}
