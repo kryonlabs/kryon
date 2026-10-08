@@ -2,7 +2,7 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-work="$repo/build/scratch/raylib-text-pixels"
+work=${KRYON_TEXT_TEST_OUTPUT:-"$repo/build/scratch/raylib-text-pixels"}
 mkdir -p "$work"
 exec 9>"$work/lock"
 flock 9

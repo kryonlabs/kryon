@@ -55,6 +55,20 @@ main :: () -> s32 {
     if empty.primary_count != 0 || empty.footer_bounds.y != layout.footer_bounds.y {
         return 4
     }
+    for count: cast(s32)3..cast(s32)6 {
+        narrow := NavigationBarDockLayoutFor(Rectangle.{0.0, 0.0, 156.0, 84.0},
+            false, count, 1, 1.0)
+        if narrow.item_width < 76 || narrow.scroll_bounds.width <
+        cast(float32)narrow.item_width || narrow.footer_bounds.width < 52.0 {
+            return 12
+        }
+        offset := NavigationBarDockRevealOffset(narrow, count - 2, 0)
+        selected := NavigationBarDockItemBounds(narrow,
+            narrow.scroll_bounds, count - 2)
+        if selected.x - cast(float32)offset < narrow.scroll_bounds.x ||
+        selected.x + selected.width - cast(float32)offset >
+        narrow.scroll_bounds.x + narrow.scroll_bounds.width { return 13 }
+    }
     rules: StyleRules
     rules.count = 3
     rule: StyleRule
