@@ -36,6 +36,8 @@ ButtonProps :: struct {
     icon_placement: IconPlacement
     content_alignment: ContentAlignment
     icon_only: bool
+    // Reduce label and icon sizes when explicit bounds cannot hold the content.
+    fit_content: bool
     square: bool
     image: ImageProps
     swatch: bool

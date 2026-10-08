@@ -170,6 +170,7 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
         button.emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
     }
     button.icon_placement = cast(IconPlacement)IconPlacementAbove
+    button.fit_content = props.fit_items
     previous := TreePrevious(session, TreeCurrentParent(session),
         button.key, WidgetKindButton)
     drag: PointerDrag
@@ -201,6 +202,10 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
     key := NavigationBarKey(session, props)
     layout := NavigationBarDockLayoutFor(props.bounds, props.vertical,
         cast(s32)items.count, props.footer_count, props.scale)
+    if props.fit_items {
+        layout = NavigationBarDockFitLayoutFor(props.bounds, props.vertical,
+            cast(s32)items.count, props.footer_count, props.scale)
+    }
     result.y = cast(s32)props.bounds.y
     result.height = cast(s32)props.bounds.height
     previous := TreePrevious(session, TreeCurrentParent(session), key,
@@ -229,7 +234,14 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         ColorFromPacked(Opacity(bar.value.background,
         StyleOpacityValue(bar.value.fields, bar.value.opacity))))
     content := layout.scroll_bounds
-    if layout.primary_count > 0 && layout.scroll_bounds.width > 0.0 &&
+    if props.fit_items {
+        result.scroll_offset = 0
+        for index: cast(s32)0..layout.primary_count - 1 {
+            bounds := NavigationBarDockItemBounds(layout, content, index)
+            DrawNavigationDockItem(session, props, key, items[index],
+                index, bounds, props.draggable, *result)
+        }
+    } else if layout.primary_count > 0 && layout.scroll_bounds.width > 0.0 &&
     layout.scroll_bounds.height > 0.0 {
         scroll: ScrollProps
         scroll.key = key * cast(u64)65599 + cast(u64)1
@@ -253,7 +265,7 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
     }
     for index: cast(s32)0..layout.footer_count - 1 {
         bounds := NavigationBarDockItemBounds(layout, layout.footer_bounds, index)
-        if !layout.vertical {
+        if !layout.vertical && !props.fit_items {
             step := layout.footer_bounds.width / cast(float32)layout.footer_count
             bounds.x = layout.footer_bounds.x + cast(float32)index * step
             width := step - 8.0 * props.scale

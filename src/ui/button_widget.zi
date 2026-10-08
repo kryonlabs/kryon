@@ -141,6 +141,67 @@
         return 36.0
     }
 
+    // Fit the resolved face, preserving interaction styling and the hit target.
+    // Glyphs are measured again after scaling because font advances are discrete.
+    ButtonFitContentFace :: (props: ButtonProps, bounds: Rectangle,
+        face: StyleData, font: s32, label_width: s32,
+        label_height: s32) -> StyleData {
+        has_icon := props.icon_shape != "" || props.icon_type != 0 ||
+        props.image.asset_path != "" || props.image.texture.id != cast(u32)0
+        icon_size: float32 = 0.0
+        gap: float32 = 0.0
+        if has_icon {
+            icon_size = face.icon_size
+            if !props.icon_only && props.label != "" {
+                gap = face.gap
+            }
+        }
+        width := cast(float32)label_width
+        height := cast(float32)label_height
+        if props.icon_placement == cast(IconPlacement)IconPlacementAbove {
+            if icon_size > width {
+                width = icon_size
+            }
+            height += icon_size + gap
+        } else {
+            width += icon_size + gap
+            if icon_size > height {
+                height = icon_size
+            }
+        }
+        width += face.padding_x * 2.0
+        height += face.padding_y * 2.0
+        factor: float32 = 1.0
+        if width > bounds.width && width > 0.0 {
+            factor = bounds.width / width
+        }
+        if height > bounds.height && height > 0.0 &&
+        bounds.height / height < factor {
+            factor = bounds.height / height
+        }
+        if factor >= 1.0 {
+            return face
+        }
+        face.icon_size *= factor
+        face.gap *= factor
+        face.padding_x *= factor
+        face.padding_y *= factor
+        face.offset_x *= factor
+        face.offset_y *= factor
+        fitted_font := cast(s32)(cast(float32)font * factor)
+        if fitted_font < 1 {
+            fitted_font = 1
+        }
+        while fitted_font > 1 && !props.icon_only &&
+        cast(float32)GlyphWidth(props.label, fitted_font, face.typeface) +
+        face.padding_x * 2.0 > bounds.width {
+            fitted_font -= 1
+        }
+        face.fields |= cast(u32)StyleFontSize
+        face.font_size = cast(float32)fitted_font
+        return face
+    }
+
     #program_export
     PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: Rectangle,
         face: StyleData, font: s32, label_width: s32,
@@ -316,6 +377,15 @@
         bounds: Rectangle = MeasureBounds(props, face,
             ButtonMinimumHeight(props.size), font, cast(float32)label_width,
             available_width, 1.0, false)
+        if props.fit_content {
+            face = ButtonFitContentFace(props, bounds, face, font,
+                label_width, label_height)
+            font = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
+            if props.label != "" && !props.icon_only {
+                label_width = GlyphWidth(props.label, font, face.typeface)
+                label_height = GlyphLineHeight(font, face.typeface)
+            }
+        }
         node: s32 = -1
         if TreeIsBuilding(session) {
             node = TreeSubmit(session, key, parent_index, WidgetKindButton, bounds)
