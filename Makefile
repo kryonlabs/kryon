@@ -386,3 +386,12 @@ test: pixmap-parallel-test
 .PHONY: pixmap-surface-plan9-test
 pixmap-surface-plan9-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_surface_plan9_test.sh
+
+.PHONY: style-cache-test
+style-cache-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh
+test: style-cache-test
+
+.PHONY: style-cache-benchmark
+style-cache-benchmark: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/style_cache_cost.sh

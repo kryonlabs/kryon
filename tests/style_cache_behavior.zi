@@ -1,0 +1,110 @@
+#import "style_sheet"
+#import "style"
+#import "control_props"
+using StyleField;
+using ButtonState;
+
+Equal :: (a: StyleData, b: StyleData) -> bool {
+    return a.fields == b.fields && a.background == b.background &&
+        a.foreground == b.foreground && a.border == b.border && a.focus == b.focus &&
+        a.radius == b.radius && a.border_width == b.border_width && a.opacity == b.opacity &&
+        a.padding_x == b.padding_x && a.padding_y == b.padding_y && a.gap == b.gap &&
+        a.font_size == b.font_size && a.icon_size == b.icon_size &&
+        a.offset_x == b.offset_x && a.offset_y == b.offset_y &&
+        a.background_end == b.background_end && a.material == b.material &&
+        a.typeface == b.typeface && a.letter_spacing == b.letter_spacing
+}
+
+Base :: (index: s32) -> StyleData {
+    value: StyleData
+    value.fields = cast(u32)0x80000000 | cast(u32)StyleForeground
+    value.background = cast(u32)index
+    value.foreground = cast(u32)(index + 100)
+    value.border = cast(u32)123
+    value.focus = cast(u32)456
+    value.radius = cast(float32)index
+    value.border_width = 3.0; value.opacity = 0.7
+    value.padding_x = 11.0; value.padding_y = 13.0; value.gap = 17.0
+    value.font_size = 19.0; value.icon_size = 23.0
+    value.offset_x = 29.0; value.offset_y = 31.0
+    value.background_end = cast(u32)789
+    value.typeface = ifx index % 2 == 0 then "base-a" else "base-b"
+    value.letter_spacing = 0.5
+    return value
+}
+
+Same :: (rules: StyleRules, base: StyleData, facts: StyleFacts, active: s32) -> bool {
+    expected := ResolveStyleRules(rules, base, facts, active)
+    actual := ResolveInstalledStyleRules(base, facts, active)
+    return Equal(expected, actual)
+}
+
+#program_export
+Answer :: () -> s32 {
+    rules: StyleRules; rules.count = 36
+    for i: 0..rules.count - 1 {
+        selector := StyleDefaultSelector()
+        if i % 2 == 0 { selector.kind = StyleKindButton() }
+        if i % 7 == 0 { selector.name = 9 }
+        if i % 3 == 0 { selector.class_name = 2 }
+        if i == 1 { selector.role = 1 }
+        if i == 2 { selector.tone = 2 }
+        if i == 3 { selector.emphasis = 3 }
+        if i == 4 { selector.size = 4 }
+        if i == 5 { selector.state = cast(s32)ButtonStateHover }
+        if i == 6 { selector.validation = 6 }
+        if i == 8 { selector.orientation = 8 }
+        if i == 10 { selector.placement = 10 }
+        rules.items[i].selector = selector
+        rules.items[i].state = ifx i % 4 == 0 then cast(s32)ButtonStateHover else StyleStateAny()
+        rules.items[i].layer = i % 3; rules.items[i].order = i / 2
+        value := Base(i + 200)
+        value.fields = cast(u32)1 << cast(u32)(i % 17)
+        value.typeface = ifx i % 2 == 0 then "rule-a" else "rule-b"
+        rules.items[i].style = value
+    }
+    if !InstallStyleRules(rules) { return 1 }
+    for i: 0..cast(s32)1199 {
+        facts := StyleDefaultFacts(ifx i % 2 == 0 then StyleKindButton() else StyleKindText())
+        facts.name = i % 17; facts.class_name = i % 5
+        facts.role = i % 2; facts.tone = i % 3; facts.emphasis = i % 4
+        facts.size = i % 5; facts.state = i % 7; facts.validation = i % 7
+        facts.orientation = i % 9; facts.placement = i % 11
+        active := ifx i % 2 == 0 then cast(s32)ButtonStateNormal else cast(s32)ButtonStateHover
+        if !Same(rules, Base(i), facts, active) { return 2 }
+        // Repeated selectors must still respect new caller defaults.
+        if !Same(rules, Base(i + 1), facts, active) { return 3 }
+    }
+    // Two equal priorities choose the later typeface, including on a hit.
+    rules.count = 2
+    for i: 0..cast(s32)1 {
+        rules.items[i].selector = StyleDefaultSelector(); rules.items[i].state = StyleStateAny()
+        rules.items[i].layer = 0; rules.items[i].order = 0
+        rules.items[i].style.fields = cast(u32)StyleTypeface
+        rules.items[i].style.typeface = ifx i == 0 then "first" else "second"
+    }
+    if !InstallStyleRules(rules) { return 4 }
+    facts := StyleDefaultFacts(StyleKindText())
+    for i: 0..cast(s32)3 {
+        facts.name = i * 1000
+        actual := ResolveInstalledStyleRules(Base(i), facts, cast(s32)ButtonStateNormal)
+        if actual.typeface != "second" || actual.background != cast(u32)i { return 5 }
+    }
+    // Invalid replacement preserves the last installed style.
+    invalid: StyleRules; invalid.count = 321
+    if InstallStyleRules(invalid) { return 6 }
+    if !Same(rules, Base(42), facts, cast(s32)ButtonStateNormal) { return 7 }
+    // Replacement with an empty sheet drops every former override.
+    empty: StyleRules
+    if !InstallStyleRules(empty) { return 8 }
+    if !Equal(ResolveInstalledStyleRules(Base(43), facts, cast(s32)ButtonStateNormal), Base(43)) { return 9 }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    result := Answer()
+    if result != 42 { print("Style cache regression %\n", result); return 1 }
+    print("Installed styles match fresh cascades\n")
+    return 0
+}

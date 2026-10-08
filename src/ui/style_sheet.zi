@@ -382,6 +382,34 @@ StyleRules :: struct {
 
 installed_rules: StyleRules;
 
+// Cache only numeric overrides and the winning typeface rule's index, never
+// a caller's base values or borrowed text. Match keys
+// include only facts used by a selector, so unnamed controls share a style
+// even when each has its own input ID. Collisions simply resolve again.
+StyleCacheEntry :: struct {
+    key: [12]s32
+    value: StyleData
+    typeface_rule: s32
+    valid: bool
+}
+installed_style_cache: [320]StyleCacheEntry;
+installed_facts_used: [11]bool;
+
+StyleCacheInstall :: () {
+    for i: 0..cast(s32)319 { installed_style_cache[i].valid = false }
+    for i: 0..cast(s32)10 { installed_facts_used[i] = false }
+    for i: 0..installed_rules.count - 1 {
+        selector := installed_rules.items[i].selector
+        values: [11]s32 = .{selector.kind, selector.name, selector.class_name,
+            selector.role, selector.tone, selector.emphasis, selector.size,
+            selector.state, selector.validation, selector.orientation, selector.placement}
+        for field: 0..cast(s32)10 {
+            wildcard := ifx field < 3 then 0 else StyleAny()
+            if values[field] != wildcard { installed_facts_used[field] = true }
+        }
+    }
+}
+
 StyleWithoutTypeface :: (source: StyleData) -> StyleData {
     result: StyleData
     result.fields = source.fields
@@ -437,6 +465,7 @@ InstallStyleRules :: (rules: StyleRules) -> bool {
         index += 1
     }
     installed_rules = snapshot
+    StyleCacheInstall()
     resolver: TextStyleResolver = ResolveInstalledTextStyle
     SetTextStyleResolver(resolver)
     return true
@@ -917,8 +946,44 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     limit: s32 = installed_rules.count
     if limit < 0 { limit = 0 }
     if limit > 320 { limit = 320 }
-    cascade: StyleCascade = ApplyStyleRules(BeginStyleCascade(base),
+    if limit == 0 { return base }
+    key: [12]s32 = .{facts.kind, facts.name, facts.class_name, facts.role,
+        facts.tone, facts.emphasis, facts.size, facts.state, facts.validation,
+        facts.orientation, facts.placement, active_state}
+    hash: u32 = cast(u32)2166136261
+    for i: 0..cast(s32)11 {
+        if i < 11 && !installed_facts_used[i] { key[i] = 0 }
+        hash = (hash ^ cast(u32)key[i]) * cast(u32)16777619
+    }
+    slot := cast(s32)(hash % cast(u32)installed_style_cache.count)
+    matched := installed_style_cache[slot].valid
+    for i: 0..cast(s32)11 {
+        if key[i] != installed_style_cache[slot].key[i] { matched = false; break }
+    }
+    if matched {
+        value := installed_style_cache[slot].value
+        typeface := installed_style_cache[slot].typeface_rule
+        if typeface >= 0 { value.typeface = installed_rules.items[typeface].style.typeface }
+        return MergeValues(base, value)
+    }
+    empty: StyleData
+    cascade: StyleCascade = ApplyStyleRules(BeginStyleCascade(empty),
         installed_rules.items[0:limit], facts, active_state)
     result: StyleData = cascade.result
-    return result
+    installed_style_cache[slot].key = key
+    installed_style_cache[slot].value = StyleWithoutTypeface(result)
+    typeface_rule: s32 = -1
+    priority := cascade.typeface_priority
+    if priority.present {
+        for i: 0..limit - 1 {
+            rule := installed_rules.items[i]
+            if StyleHasField(rule.style, cast(u32)StyleTypeface) &&
+                rule.layer == priority.layer && rule.order == priority.order &&
+                StyleSelectorSpecificity(rule.selector) == priority.specificity &&
+                StyleRuleMatches(rule, facts, active_state) { typeface_rule = i }
+        }
+    }
+    installed_style_cache[slot].typeface_rule = typeface_rule
+    installed_style_cache[slot].valid = true
+    return MergeValues(base, result)
 }
