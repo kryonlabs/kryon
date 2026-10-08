@@ -4,10 +4,12 @@
 #import "paint_texture"
 #import "tree_input"
 #import "raylib_clip"
-#if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
-    SystemTypeface :: #import "system_typeface_android";
-} else {
-    SystemTypeface :: #import "system_typeface_linux";
+#if !#defined(_WIN32) {
+    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+        SystemTypeface :: #import "system_typeface_android";
+    } else {
+        SystemTypeface :: #import "system_typeface_linux";
+    }
 }
 TypefaceText :: #import "std/byte_text_linux";
 TypefaceCollection :: #import "typeface_collection";
@@ -466,12 +468,15 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
         }
     }
     path_bytes: [1024]u8
-    family: string = "sans-serif"
-    if raylib_active_typeface_index >= 0 {
-        family = TypefaceText.TextFromCString(*raylib_typefaces[raylib_active_typeface_index].name[0])
-    }
     source_face: s32
-    path := SystemTypeface.FileFor(family, codepoint, path_bytes[:], *source_face)
+    path: string = ""
+    #if !#defined(_WIN32) {
+        family: string = "sans-serif"
+        if raylib_active_typeface_index >= 0 {
+            family = TypefaceText.TextFromCString(*raylib_typefaces[raylib_active_typeface_index].name[0])
+        }
+        path = SystemTypeface.FileFor(family, codepoint, path_bytes[:], *source_face)
+    }
     face: s32 = -1
     if path != "" {
         for index: 0..raylib_fallback_face_count - 1 {
@@ -623,11 +628,16 @@ RaylibLoadTypefaceFile :: (name: string, path: string,
 
 #program_export
 LoadSystemTypeface :: (name: string) -> bool {
-    path_bytes: [1024]u8
-    if name.count == 0 || name.count >= 64 { return false }
-    face: s32
-    path := SystemTypeface.FileFor(name, 0, path_bytes[:], *face)
-    return path != "" && RaylibLoadTypefaceFile(name, path, null, 0, face)
+    #if #defined(_WIN32) {
+        // Windows uses registered file/data fonts until it has an OS resolver.
+        return false
+    } else {
+        path_bytes: [1024]u8
+        if name.count == 0 || name.count >= 64 { return false }
+        face: s32
+        path := SystemTypeface.FileFor(name, 0, path_bytes[:], *face)
+        return path != "" && RaylibLoadTypefaceFile(name, path, null, 0, face)
+    }
 }
 
 #program_export
