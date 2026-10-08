@@ -151,6 +151,78 @@ NavigationBarDockLayoutFor :: (bounds: Rectangle, vertical: bool,
     return layout
 }
 
+// A fitted dock shares its space between all items, including footer actions.
+// Rails keep their ordinary size until the available height requires shrinking.
+#program_export
+NavigationBarDockFitLayoutFor :: (bounds: Rectangle, vertical: bool,
+    count: s32, footer_count: s32, scale: float32) -> NavigationBarDockLayout {
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+    layout := NavigationBarDockLayoutFor(bounds, vertical, count, footer_count, scale)
+    count = layout.primary_count + layout.footer_count
+    if count <= 0 {
+        return layout
+    }
+    margin := cast(s32)(12.0 * scale)
+    gap := cast(s32)(8.0 * scale)
+    if vertical {
+        available := cast(s32)(bounds.height - 24.0 * scale) - margin
+        step := available / count
+        if step < layout.item_step {
+            layout.item_step = step
+            if layout.item_step < 1 {
+                layout.item_step = 1
+            }
+            layout.item_height = layout.item_step * 72 / 84
+            if layout.item_height < 1 {
+                layout.item_height = 1
+            }
+        }
+        gap = layout.item_step - layout.item_height
+        layout.footer_bounds.y = bounds.y + bounds.height -
+        cast(float32)(margin + layout.footer_count * layout.item_step)
+        layout.footer_bounds.height = cast(float32)(layout.footer_count * layout.item_step)
+        layout.scroll_bounds.height = layout.footer_bounds.y -
+        layout.scroll_bounds.y - cast(float32)gap
+    } else {
+        // Leave room for items even when zoom makes ordinary spacing too large.
+        if margin > cast(s32)bounds.width / 16 {
+            margin = cast(s32)bounds.width / 16
+        }
+        if gap > (cast(s32)bounds.width - margin * 2) / (count * 4) {
+            gap = (cast(s32)bounds.width - margin * 2) / (count * 4)
+        }
+        width := (cast(s32)bounds.width - margin * 2 - gap * (count - 1)) / count
+        maximum := cast(s32)(144.0 * scale)
+        if width > maximum {
+            width = maximum
+        }
+        if width < 1 {
+            width = 1
+        }
+        layout.item_width = width
+        layout.item_height = cast(s32)(68.0 * scale)
+        if cast(float32)layout.item_height > bounds.height {
+            layout.item_height = cast(s32)bounds.height
+        }
+        layout.item_step = width + gap
+        group_width := count * layout.item_step - gap
+        layout.scroll_bounds.x = bounds.x + (bounds.width - cast(float32)group_width) / 2.0
+        layout.scroll_bounds.width = cast(float32)(layout.primary_count * layout.item_step)
+        layout.footer_bounds.x = layout.scroll_bounds.x + layout.scroll_bounds.width
+        layout.footer_bounds.width = cast(float32)(layout.footer_count * layout.item_step)
+    }
+    layout.content_extent = layout.primary_count * layout.item_step
+    if layout.primary_count > 0 {
+        layout.content_extent -= gap
+    }
+    if layout.scroll_bounds.height < 0.0 {
+        layout.scroll_bounds.height = 0.0
+    }
+    return layout
+}
+
 #program_export
 NavigationBarDockItemBounds :: (layout: NavigationBarDockLayout,
     content: Rectangle, index: s32) -> Rectangle {

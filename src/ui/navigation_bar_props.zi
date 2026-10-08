@@ -23,6 +23,8 @@ NavigationBarProps :: struct {
     // Compact navigation composes ordinary Buttons in a scrolling dock or
     // rail. Footer items remain reachable while the other shortcuts scroll.
     compact: bool
+    // Shrink compact items to keep every shortcut and footer visible.
+    fit_items: bool
     bounds: Rectangle
     vertical: bool
     footer_count: s32
