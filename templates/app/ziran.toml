@@ -39,6 +39,15 @@ backend = "canvas"
 [tool.kryon.profiles.shot]
 backend = "pixmap"
 
+# Android package: `kryon build --profile android` generates the droid/
+# project on the first build and assembles a debug APK. The application id
+# is required; min_sdk and abis are optional.
+# [tool.kryon.profiles.android]
+# backend = "android"
+#
+# [tool.kryon.android]
+# package = "com.example.{{name}}"
+
 [tool.kryon.install]
 profile = "desktop"
 name = "{{name}}"

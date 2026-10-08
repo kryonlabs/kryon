@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+// kryon build --profile android passes the checkouts through the environment;
+// a plain gradle invocation can pass the same values as properties.
+def envOrProp = { String envName, String propName ->
+    System.getenv(envName) ?: project.findProperty(propName)
+}
+def kryonDir = envOrProp('KRYON_DIR', 'kryon.dir')
+def ziranDir = envOrProp('ZIRAN_DIR', 'ziran.dir')
+def raylibDir = envOrProp('RAYLIB_DIR', 'raylib.dir')
+if (kryonDir == null || ziranDir == null || raylibDir == null) {
+    throw new GradleException(
+        'Pass -Pkryon.dir=... -Pziran.dir=... -Praylib.dir=... ' +
+        'or build through kryon build --profile android')
+}
+def androidAbis = (project.findProperty('app.abis') ?:
+    System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
+
+android {
+    namespace '__PACKAGE__'
+    compileSdk 36
+    ndkVersion '28.2.13676358'
+
+    defaultConfig {
+        applicationId '__PACKAGE__'
+        minSdk Integer.parseInt((project.findProperty('app.minSdk') ?: '21').toString())
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+        ndk {
+            abiFilters += androidAbis
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DKRYON_DIR=' + kryonDir,
+                    '-DZIRAN_DIR=' + ziranDir,
+                    '-DRAYLIB_DIR=' + raylibDir
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}

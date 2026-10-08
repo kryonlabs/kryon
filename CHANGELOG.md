@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add a first-class Android target: an `android` profile builds an
+  installable APK from the same application sources as the desktop. The
+  first `kryon build --profile android` generates the Android project beside
+  the application (never overwriting customized files) and assembles it with
+  Gradle; `kryon run --profile android` installs and launches it on a
+  connected device. The app runs as a native Android activity with
+  edge-to-edge rendering under the system bars and cutouts, touch input,
+  soft-keyboard text editing, display-density scaling, system dark mode and
+  orientation reporting, and a back key that closes the application when
+  nothing else handles it.
+
 ## v0.2.0 - 2026-09-20
 
 ### Added

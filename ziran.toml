@@ -23,6 +23,11 @@ Canvas = "src/backend/Canvas/module.zi"
 Raylib = "src/backend/raylib_runtime.zi"
 raylib_runtime = "src/backend/raylib_runtime.zi"
 AndroidSurface = "src/backend/android_surface.zi"
+android_jni = "src/backend/android_jni.zi"
+AndroidJni = "src/backend/android_jni.zi"
+android_device = "src/backend/android_device.zi"
+AndroidDevice = "src/backend/android_device.zi"
+android_run = "src/backend/android_run.zi"
 bundle_player = "src/backend/bundle_player.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
@@ -100,6 +105,15 @@ host = "string"
 library = "string"
 static_archive = "string"
 assets = "string"
+
+# Android profile settings: the application id of the generated droid
+# project, the minimum system version, the built ABIs, and the activity
+# class name inside the package.
+[options.android]
+package = "string"
+min_sdk = "string=21"
+abis = "string=arm64-v8a"
+activity = "string=MainActivity"
 
 # Used by `ziran install` to build one profile and add it to the desktop.
 [options.install]

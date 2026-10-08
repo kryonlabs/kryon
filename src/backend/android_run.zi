@@ -1,0 +1,137 @@
+// Canonical Android host. raylib's NativeActivity backend owns the window
+// and calls the application's C main; the application's generated main
+// delegates to AndroidRunMain. Java reports insets, density, dark mode and
+// soft-keyboard text through android_device's natives, and this loop keeps
+// the session, viewport policy and frame protocol running.
+#import "android_device"
+#import "android_jni"
+#import "android_surface"
+#import "app"
+#import "drawing_props"
+#import "geometry"
+#import "raylib_runtime"
+#import "secondary_pointer"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+using FrameStatus;
+
+libc :: #system_library "libc";
+AndroidWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+
+AndroidError :: (message: string) -> s32 {
+    output: [256]u8
+    length: s32 = cast(s32)message.count
+    if length > 254 { length = 254 }
+    index: s32 = 0
+    while index < length {
+        output[index] = message[index]
+        index += 1
+    }
+    output[index] = cast(u8)10
+    AndroidWrite(2, *output[0], cast(u64)(length + 1))
+    return 1
+}
+
+AndroidCanvas :: () -> u32 {
+    // Match the raylib desktop host's clear when the app installs no canvas
+    // token, so an unstyled application stays readable on both.
+    canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
+    return (cast(u32)canvas.r << 24) | (cast(u32)canvas.g << 16) |
+        (cast(u32)canvas.b << 8) | cast(u32)canvas.a
+}
+
+DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
+    bounds: Rectangle) -> bool {
+    BeginRaylibFrame()
+    ClearAndroidFrame(viewport, AndroidCanvas())
+    pointer: PointerFrame = PollPointer()
+    TreePointerUpdate(session, pointer)
+    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    if AndroidTextInputKeyPressed(259) {
+        KeyboardSend(session, 259)
+    }
+    if AndroidTextInputKeyPressed(257) {
+        KeyboardSend(session, 257)
+    }
+    codepoint := AndroidTextInputCharacter()
+    while codepoint != 0 {
+        TypedCodepointSend(session, codepoint)
+        codepoint = AndroidTextInputCharacter()
+    }
+    if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
+        EndRaylibFrame()
+        return false
+    }
+    if Frame(session, bounds) != 0 {
+        TreeCancel(session)
+        EndRaylibFrame()
+        return false
+    }
+    if EndFrame(session) != cast(FrameStatus)FrameOk {
+        EndRaylibFrame()
+        return false
+    }
+    return EndRaylibFrame()
+}
+
+#program_export
+AndroidRunMain :: () -> s32 {
+    if !OpenRaylib() {
+        CloseRaylib()
+        return AndroidError("kryon: could not open the android window")
+    }
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        CloseRaylib()
+        return AndroidError("kryon: could not open a UI session")
+    }
+    ok: bool = true
+    first_frame: bool = true
+    while ok && PollRaylib() {
+        if AndroidTakeGraphicsInvalidate() != 0 {
+            // The surface was recreated; stale texture names may belong to
+            // the new context, so forget them without deleting.
+            ResetRaylibGraphics(true)
+        }
+        key := RaylibPressedKey()
+        if key != 0 {
+            // The hardware back key arrives as raylib's KEY_BACK (4).
+            KeyboardSend(session, key)
+        }
+        viewport: AndroidViewport
+        SyncAndroidViewport(*viewport)
+        bounds: Rectangle = Rectangle.{cast(float32)viewport.x,
+            cast(float32)viewport.y, cast(float32)viewport.width,
+            cast(float32)viewport.height}
+        if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
+            // Insets have not been reported yet; draw over the full surface.
+            width: s32
+            height: s32
+            GetAndroidSurfaceSize(*width, *height)
+            bounds = Rectangle.{0.0, 0.0, cast(float32)width,
+                cast(float32)height}
+            viewport.x = 0
+            viewport.y = 0
+            viewport.width = width
+            viewport.height = height
+        }
+        AndroidTextInputBeginFrame(session)
+        ok = DrawAndroidFrame(session, viewport, bounds)
+        if ok && first_frame {
+            first_frame = false
+            AndroidNotifyFirstFrame()
+        }
+        // The application consumes keys while composing its frame. A back
+        // key nothing took closes the activity, as Android users expect.
+        if ok && KeyboardTake(session) == 4 {
+            AndroidJniFinishActivity()
+        }
+    }
+    CloseSession(session)
+    CloseRaylib()
+    if ok { return 0 }
+    return AndroidError("kryon: android frame rendering failed")
+}
