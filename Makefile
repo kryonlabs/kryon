@@ -255,6 +255,11 @@ raylib-typeface-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_typeface_test.sh
 
+.PHONY: raylib-text-pixels-test
+raylib-text-pixels-test: $(ZI2C_BIN)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
+		sh tests/raylib_text_pixels_test.sh
+
 .PHONY: raylib-clip-test
 raylib-clip-test: $(ZI2C_BIN)
 	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" \

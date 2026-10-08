@@ -163,6 +163,9 @@ RaylibTypeface :: struct {
     // atlas to another size blurs glyphs and bleeds their neighbours.
     sized_fonts: [RAYLIB_SIZED_FONT_MAX]RaylibFont
     sized_sizes: [RAYLIB_SIZED_FONT_MAX]s32
+    sized_smooth: [RAYLIB_SIZED_FONT_MAX]bool
+    sized_uses: [RAYLIB_SIZED_FONT_MAX]u64
+    sized_clock: u64
     sized_count: s32
     data: *u8
     data_count: s32
@@ -177,7 +180,6 @@ RaylibTypeface :: struct {
 }
 
 RAYLIB_SIZED_FONT_MAX :: 16
-RAYLIB_SIZED_FONT_LARGEST :: 96
 
 raylib_typefaces: [16]RaylibTypeface;
 raylib_typeface_count: s32;
@@ -291,18 +293,6 @@ RaylibBakeTypeface :: (typeface: *RaylibTypeface,
     return font
 }
 
-// Unload the fonts baked for particular sizes and keep the base font. Their
-// baked size depends on the zoom, so a new zoom starts a fresh set instead of
-// filling the fixed number of slots with sizes nothing draws at any more.
-RaylibDropSizedFonts :: (typeface: *RaylibTypeface) {
-    slot: s32 = 0
-    while slot < typeface.sized_count {
-        HostRaylibUnloadFont(typeface.sized_fonts[slot])
-        slot += 1
-    }
-    typeface.sized_count = 0
-}
-
 RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
     HostRaylibUnloadFont(typeface.font)
     slot: s32 = 0
@@ -313,41 +303,47 @@ RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
     typeface.sized_count = 0
 }
 
-RaylibFontForSize :: (size: s32) -> RaylibFont {
-    index: s32 = raylib_active_typeface_index
-    if index < 0 || index >= raylib_typeface_count {
-        return raylib_font
-    }
-    return RaylibTypefaceFontForSize(*raylib_typefaces[index], size)
-}
-
-RaylibTypefaceFontForSize :: (typeface: *RaylibTypeface, size: s32) -> RaylibFont {
-    // The frame scales what is drawn by the zoom, so the glyphs are baked
-    // at the size they end up on screen.
-    if raylib_zoom != 1.0 {
-        size = cast(s32)(cast(float32)size * raylib_zoom + 0.5)
-        if size < 1 { size = 1 }
-    }
-    if size <= 0 || size > RAYLIB_SIZED_FONT_LARGEST {
+RaylibTypefaceFontForPixels :: (typeface: *RaylibTypeface,
+    pixels: s32, smooth: bool) -> RaylibFont {
+    if pixels <= 0 || (pixels == typeface.font.base_size && smooth) {
         return typeface.font
     }
+    typeface.sized_clock += cast(u64)1
     slot: s32 = 0
+    oldest: s32 = 0
     while slot < typeface.sized_count {
-        if typeface.sized_sizes[slot] == size {
+        if typeface.sized_sizes[slot] == pixels &&
+        typeface.sized_smooth[slot] == smooth {
+            typeface.sized_uses[slot] = typeface.sized_clock
             return typeface.sized_fonts[slot]
+        }
+        if typeface.sized_uses[slot] < typeface.sized_uses[oldest] {
+            oldest = slot
         }
         slot += 1
     }
-    if typeface.sized_count >= RAYLIB_SIZED_FONT_MAX {
-        return typeface.font
-    }
-    font: RaylibFont = RaylibBakeTypeface(typeface, size)
+    font := RaylibBakeTypeface(typeface, pixels)
     if font.texture.id == cast(u32)0 {
         return typeface.font
     }
-    typeface.sized_fonts[typeface.sized_count] = font
-    typeface.sized_sizes[typeface.sized_count] = size
-    typeface.sized_count += 1
+    if !smooth {
+        // The glyph bitmap already contains antialiasing coverage. Sampling
+        // it directly preserves that coverage despite GPU transform rounding.
+        HostRaylibTextureFilter(font.texture, 0)
+    }
+    if typeface.sized_count == RAYLIB_SIZED_FONT_MAX {
+        slot = oldest
+        // Queued text can still refer to the atlas being replaced.
+        HostRaylibFlushBatch()
+        HostRaylibUnloadFont(typeface.sized_fonts[slot])
+    } else {
+        slot = typeface.sized_count
+        typeface.sized_count += 1
+    }
+    typeface.sized_fonts[slot] = font
+    typeface.sized_sizes[slot] = pixels
+    typeface.sized_smooth[slot] = smooth
+    typeface.sized_uses[slot] = typeface.sized_clock
     return font
 }
 
@@ -392,6 +388,9 @@ RaylibRebakeTypeface :: (typeface: *RaylibTypeface) -> bool {
     while slot < typeface.sized_count {
         font = RaylibBakeTypeface(typeface, typeface.sized_sizes[slot])
         if font.texture.id != cast(u32)0 {
+            if !typeface.sized_smooth[slot] {
+                HostRaylibTextureFilter(font.texture, 0)
+            }
             HostRaylibUnloadFont(typeface.sized_fonts[slot])
             typeface.sized_fonts[slot] = font
         }
@@ -1047,11 +1046,6 @@ RaylibViewport :: () -> Rectangle {
 RaylibSetZoom :: (factor: float32) {
     if !(factor > 0.0) || factor == raylib_zoom { return }
     raylib_zoom = factor
-    index: s32 = 0
-    while index < raylib_typeface_count {
-        RaylibDropSizedFonts(*raylib_typefaces[index])
-        index += 1
-    }
 }
 
 #program_export
@@ -1174,21 +1168,26 @@ CaptureConfigured :: () -> bool {
     return HostRaylibFileExists(path)
 }
 
-RaylibTextSize :: (size: s32) -> float32 {
-    pixels := HostRaylibFloor(cast(float32)size * raylib_zoom + 0.5)
-    if pixels < 1.0 {
-        pixels = 1.0
+// The largest stretch of the actual drawing transform determines the atlas
+// resolution. Camera, host density, rotation and shear all count; the frame's
+// input/layout zoom alone does not describe where glyphs end up.
+RaylibTextScale :: (matrix: RaylibMatrix) -> float32 {
+    horizontal := matrix.m0 * matrix.m0 + matrix.m1 * matrix.m1
+    vertical := matrix.m4 * matrix.m4 + matrix.m5 * matrix.m5
+    cross := matrix.m0 * matrix.m4 + matrix.m1 * matrix.m5
+    difference := horizontal - vertical
+    scale := HostRaylibSqrt((horizontal + vertical +
+        HostRaylibSqrt(difference * difference + 4.0 * cross * cross)) * 0.5)
+    if !(scale > 0.0) {
+        return 1.0
     }
-    // Draw at the atlas's integer pixel size instead of shrinking the rounded
-    // atlas back to a fractional pixel height under the camera transform.
-    return pixels / raylib_zoom
+    return scale
 }
 
 RaylibTextPosition :: (position: Vector2, matrix: RaylibMatrix) -> Vector2 {
     // Pixel alignment is valid for an upright, uniformly scaled camera.
     // Rotated and skewed text keeps its original geometry.
-    if matrix.m0 > 0.0 && matrix.m0 == matrix.m5 &&
-    matrix.m1 == 0.0 && matrix.m4 == 0.0 {
+    if RaylibTextAligned(matrix) {
         screen := ClipPoint(matrix, position.x, position.y)
         return .{(HostRaylibFloor(screen.x + 0.5) - matrix.m12) / matrix.m0,
             (HostRaylibFloor(screen.y + 0.5) - matrix.m13) / matrix.m5}
@@ -1196,74 +1195,89 @@ RaylibTextPosition :: (position: Vector2, matrix: RaylibMatrix) -> Vector2 {
     return position
 }
 
-// The drawn size of text, including every line of multi-line text.
-// Measurement and rasterisation walk the same fonts and advances when a
-// face needs fallback. Labels fully covered by one face keep raylib's fast path.
+RaylibTextAligned :: (matrix: RaylibMatrix) -> bool {
+    return matrix.m0 > 0.0 && matrix.m0 == matrix.m5 &&
+    matrix.m1 == 0.0 && matrix.m4 == 0.0
+}
+
+// Layout always uses the base font's advances in logical units. Drawing uses
+// those same advances and chooses a separate atlas at the screen pixel size.
+// Zoom changes raster resolution, never logical advances or caret measurements.
 RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
     color: Color, draw: bool) -> Vector2 {
+    if size <= 0 {
+        return .{0.0, 0.0}
+    }
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return .{0.0, 0.0} }
     RaylibEnsureGlyphs(value)
-    primary := RaylibFontForSize(size)
-    text_size := RaylibTextSize(size)
+    primary := raylib_font
+    logical_size := cast(float32)size
+    text_size := logical_size
     position := Vector2.{cast(float32)x, cast(float32)y}
     matrix: RaylibMatrix
+    pixels: s32
     if draw {
         matrix = HostRaylibModelview()
-        position = RaylibTextPosition(position, matrix)
+        scale := RaylibTextScale(matrix)
+        pixels = cast(s32)HostRaylibFloor(logical_size * scale + 0.5)
+        if pixels < 1 {
+            pixels = 1
+        }
+        text_size = cast(float32)pixels / scale
     }
-    missing: bool
+    newline: [2]u8 = .[10, 0]
+    line_step := HostRaylibMeasureFontText(primary, *newline[0],
+        logical_size, 0.0).y - logical_size
+    result: Vector2 = .{0.0, logical_size}
+    dx: float32
+    dy: float32
     at: s32 = 0
     while at < cast(s32)value.count {
         length: s32
         codepoint := HostRaylibCodepoint(*bytes[at], *length)
-        if codepoint != 10 && !RaylibFontHasCodepoint(primary, codepoint) { missing = true; break }
-        at += length
-    }
-    if !missing {
-        if draw {
-            HostRaylibDrawFontText(primary, *bytes[0], position,
-                text_size, 0.0, color)
-        }
-        return HostRaylibMeasureFontText(primary, *bytes[0], text_size, 0.0)
-    }
-    newline: [2]u8 = .[10, 0]
-    line_step := HostRaylibMeasureFontText(primary, *newline[0], text_size, 0.0).y - text_size
-    result: Vector2 = .{0.0, text_size}
-    dx: float32
-    dy: float32
-    at = 0
-    while at < cast(s32)value.count {
-        length: s32
-        codepoint := HostRaylibCodepoint(*bytes[at], *length)
         if codepoint == 10 {
-            dx = 0.0; dy += line_step
+            dx = 0.0
+            dy += line_step
         } else {
-            selected := primary
+            typeface: *RaylibTypeface
+            if raylib_active_typeface_index >= 0 {
+                typeface = *raylib_typefaces[raylib_active_typeface_index]
+            }
             if !RaylibFontHasCodepoint(primary, codepoint) {
                 registered := RaylibRegisteredFallback(codepoint)
                 if registered >= 0 {
-                    selected = RaylibTypefaceFontForSize(*raylib_typefaces[registered], size)
+                    typeface = *raylib_typefaces[registered]
                 } else {
                     face := RaylibFindFallback(codepoint)
                     if face >= 0 {
-                        selected = RaylibTypefaceFontForSize(*raylib_fallback_faces[face], size)
+                        typeface = *raylib_fallback_faces[face]
                     }
                 }
+            }
+            selected := primary
+            if typeface != null {
+                selected = typeface.font
             }
             glyph: [5]u8
             for index: 0..length - 1 { glyph[index] = bytes[at + index] }
             glyph[length] = 0
+            advance := HostRaylibMeasureFontText(selected, *glyph[0],
+                logical_size, 0.0).x
             if draw {
+                if typeface != null {
+                    selected = RaylibTypefaceFontForPixels(typeface, pixels,
+                        !RaylibTextAligned(matrix))
+                }
                 glyph_position := RaylibTextPosition(
                     .{position.x + dx, position.y + dy}, matrix)
                 HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
                     text_size, 0.0, color)
             }
-            dx += HostRaylibMeasureFontText(selected, *glyph[0], text_size, 0.0).x
+            dx += advance
         }
         if dx > result.x { result.x = dx }
-        result.y = dy + text_size
+        result.y = dy + logical_size
         at += length
     }
     return result
