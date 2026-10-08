@@ -211,9 +211,11 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         reveal = old.width != props.bounds.width || old.height != props.bounds.height
     }
     offset := props.scroll_offset
+    old_scroll := TreePreviousCommitted(session, previous,
+        key * cast(u64)65599 + cast(u64)1, WidgetKindScroll)
     for index: cast(s32)0..layout.primary_count - 1 {
         if items[index].active {
-            old_item := TreePreviousCommitted(session, previous,
+            old_item := TreePreviousCommitted(session, old_scroll,
                 NavigationBarItemKey(key, items[index], index), WidgetKindButton)
             if reveal || old_item < 0 || !TreeNodeAt(session, old_item).selected {
                 offset = NavigationBarDockRevealOffset(layout, index, offset)
