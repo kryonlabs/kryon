@@ -28,6 +28,13 @@ UnloadTexture :: (texture: Texture2D) {
 }
 
 #program_export
+SetTextureFilter :: (texture: Texture2D, filter: s32) {
+    if lost_context || texture.id == 0 || filter != 1 {
+        graphics_failed = true
+    }
+}
+
+#program_export
 rlDrawRenderBatchActive :: () {
     if lost_context {
         graphics_failed = true
