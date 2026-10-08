@@ -1,0 +1,21 @@
+Runtime :: #import "raylib_runtime";
+
+#program_export
+main :: () -> s32 {
+    if Runtime.LoadSystemTypeface("sans-serif") {
+        return 1
+    }
+    if Runtime.LoadSystemTypeface("") {
+        return 2
+    }
+    if Runtime.RaylibFindFallback(65) != -1 {
+        return 3
+    }
+    if Runtime.RaylibFindFallback(0x4E2D) != -1 {
+        return 4
+    }
+    if Runtime.RaylibFindFallback(65) != -1 {
+        return 5
+    }
+    return 0
+}
