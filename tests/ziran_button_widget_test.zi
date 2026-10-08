@@ -6,6 +6,7 @@ TestSession :: () -> Session {
 }
 
 #import "button_props"
+#import "button"
 #import "button_widget"
 #import "control_props"
 #import "geometry"
@@ -42,8 +43,8 @@ Frame :: () -> s32 {
         rule.selector.kind = StyleKindButton()
         rule.selector.class_name = 9
         rule.style.fields = cast(u32)StyleBackground |
-            cast(u32)StyleForeground | cast(u32)StyleRadius |
-            cast(u32)StyleOpacity | cast(u32)StyleFontSize
+        cast(u32)StyleForeground | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleFontSize
         rule.style.background = cast(u32)0x123456ff
         rule.style.foreground = cast(u32)0xaabbccff
         rule.style.radius = 4.0
@@ -53,7 +54,7 @@ Frame :: () -> s32 {
         InstallStyleRules(rules)
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -1 }
+        TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -1 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
         phase = 1
         return 0
@@ -72,7 +73,7 @@ Frame :: () -> s32 {
         props.icon_placement = cast(IconPlacement)IconPlacementTrailing
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -4 }
+        TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -4 }
         phase = 4
         return 44
     }
@@ -83,7 +84,7 @@ Frame :: () -> s32 {
         ExpectIcon()
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -5 }
+        TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -5 }
         phase = 5
         return 45
     }
@@ -103,8 +104,8 @@ main :: () -> s32 {
     index: s32 = 0
     while index < 4 {
         if Frame() != expected[index] || ButtonHostFailed() ||
-            ButtonFills() != index + 1 ||
-            ButtonLabels() != index + 1 { return 1 }
+        ButtonFills() != index + 1 ||
+        ButtonLabels() != index + 1 { return 1 }
         index += 1
     }
     if ButtonImages() != 1 { return 2 }
@@ -125,5 +126,18 @@ main :: () -> s32 {
     measured.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
     fit = ButtonMeasure(measured)
     if fit.width != 200.0 || fit.height != 40.0 { return 35 }
+    stacked := ContentLayout(100.0, 80.0, 40.0, 24.0, 8.0,
+        true, false, false, 0.0, 0.0, true, 14.0)
+    if stacked.icon_x != 38.0 || stacked.icon_y != 17.0 ||
+    stacked.text_x != 30.0 || stacked.text_y != 49.0 ||
+    stacked.text_height != 14.0 { return 36 }
+    compact := ContentLayout(100.0, 40.0, 40.0, 24.0, 8.0,
+        true, false, false, 0.0, 0.0, true, 14.0)
+    if compact.icon_size != 6.0 || compact.text_y != 20.0 { return 37 }
+    measured.bounds = Rectangle.{}
+    measured.image.asset_path = "badge.png"
+    measured.icon_placement = cast(IconPlacement)IconPlacementAbove
+    fit = ButtonMeasure(measured)
+    if fit.width != 45.0 || fit.height < 46.0 { return 38 }
     return 0
 }

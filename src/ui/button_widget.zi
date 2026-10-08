@@ -9,326 +9,331 @@
     #program_export
     Button :: (session: Session, props: ButtonProps) -> s32 { return ButtonHostedHost(session, props) }
 } else {
-#import "session"
-#import "button"
-#import "button_props"
-#import "control_props"
-#import "drawing_props"
-#import "font_metrics"
-#import "geometry"
-#import "icon"
-#import "image"
-#import "image_props"
-#import "image_widget"
-#import "paint_queue"
-#import "style"
-#import "style_sheet"
-#import "svg_icon"
-#import "surface"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
+    #import "session"
+    #import "button"
+    #import "button_props"
+    #import "control_props"
+    #import "drawing_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "icon"
+    #import "image"
+    #import "image_props"
+    #import "image_widget"
+    #import "paint_queue"
+    #import "style"
+    #import "style_sheet"
+    #import "svg_icon"
+    #import "surface"
+    #import "tree"
+    #import "tree_input"
+    #import "widget_kind"
 
-using ArrowDirection;
-using WidgetKind;
-using ButtonTone;
-using ButtonEmphasis;
-using ControlSize;
-using IconPlacement;
-using ButtonState;
-using StyleField;
+    using ArrowDirection;
+    using WidgetKind;
+    using ButtonTone;
+    using ButtonEmphasis;
+    using ControlSize;
+    using IconPlacement;
+    using ButtonState;
+    using StyleField;
 
-#program_export
-ButtonDefaultFace :: (props: ButtonProps, state: s32) -> StyleData {
-    face: StyleData
-    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    #program_export
+    ButtonDefaultFace :: (props: ButtonProps, state: s32) -> StyleData {
+        face: StyleData
+        face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleRadius |
         cast(u32)StyleBorderWidth | cast(u32)StyleOpacity |
         cast(u32)StylePaddingX | cast(u32)StylePaddingY |
         cast(u32)StyleFontSize | cast(u32)StyleIconSize | cast(u32)StyleGap
-    face.background = cast(u32)0xe5e7ebff
-    face.foreground = cast(u32)0x111827ff
-    face.border = cast(u32)0x00000000
-    if props.tone == cast(ButtonTone)ButtonToneAccent {
-        face.background = cast(u32)0x2563ebff
-        face.foreground = cast(u32)0xffffffff
-    } else if props.tone == cast(ButtonTone)ButtonToneDanger {
-        face.background = cast(u32)0xdc2626ff
-        face.foreground = cast(u32)0xffffffff
-    } else if props.tone == cast(ButtonTone)ButtonToneSuccess {
-        face.background = cast(u32)0x15803dff
-        face.foreground = cast(u32)0xffffffff
-    } else if props.tone == cast(ButtonTone)ButtonToneWarning {
-        face.background = cast(u32)0xf59e0bff
-    }
-    if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisSoft {
-        face.foreground = face.background
-        face.background = Opacity(face.background, 0.16)
-    } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisOutline {
-        face.foreground = face.background
-        face.border = face.background
-        face.background = cast(u32)0x00000000
-        face.border_width = 1.0
-    } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisGhost ||
+        face.background = cast(u32)0xe5e7ebff
+        face.foreground = cast(u32)0x111827ff
+        face.border = cast(u32)0x00000000
+        if props.tone == cast(ButtonTone)ButtonToneAccent {
+            face.background = cast(u32)0x2563ebff
+            face.foreground = cast(u32)0xffffffff
+        } else if props.tone == cast(ButtonTone)ButtonToneDanger {
+            face.background = cast(u32)0xdc2626ff
+            face.foreground = cast(u32)0xffffffff
+        } else if props.tone == cast(ButtonTone)ButtonToneSuccess {
+            face.background = cast(u32)0x15803dff
+            face.foreground = cast(u32)0xffffffff
+        } else if props.tone == cast(ButtonTone)ButtonToneWarning {
+            face.background = cast(u32)0xf59e0bff
+        }
+        if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisSoft {
+            face.foreground = face.background
+            face.background = Opacity(face.background, 0.16)
+        } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisOutline {
+            face.foreground = face.background
+            face.border = face.background
+            face.background = cast(u32)0x00000000
+            face.border_width = 1.0
+        } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisGhost ||
         props.emphasis == cast(ButtonEmphasis)ButtonEmphasisLink {
-        face.foreground = face.background
-        face.background = cast(u32)0x00000000
-    }
-    if state == ButtonStateHover {
-        face.background = GradientColor(face.background,
-            cast(u32)0xffffffff, 0.08)
-    } else if state == ButtonStatePressed ||
+            face.foreground = face.background
+            face.background = cast(u32)0x00000000
+        }
+        if state == ButtonStateHover {
+            face.background = GradientColor(face.background,
+                cast(u32)0xffffffff, 0.08)
+        } else if state == ButtonStatePressed ||
         state == ButtonStateSelected {
-        face.background = GradientColor(face.background,
-            cast(u32)0x000000ff, 0.12)
-    } else if state == ButtonStateDisabled || state == ButtonStateLoading {
-        face.background = Opacity(face.background, 0.45)
-        face.foreground = Opacity(face.foreground, 0.45)
-        face.border = Opacity(face.border, 0.45)
-    }
-    face.radius = 6.0
-    face.opacity = 1.0
-    face.padding_x = 12.0
-    face.padding_y = 6.0
-    face.font_size = 14.0
-    face.icon_size = 18.0
-    face.gap = 8.0
-    return face
-}
-
-#program_export
-ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
-    state: s32) -> StyleData {
-    return ButtonFaceFinish(props, ResolveStyleRules(rules,
-        ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
-}
-
-// The face under the installed style, without copying its rule table.
-#program_export
-ButtonInstalledFaceFor :: (props: ButtonProps, state: s32) -> StyleData {
-    return ButtonFaceFinish(props, ResolveInstalledStyleRules(
-        ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
-}
-
-ButtonFaceFacts :: (props: ButtonProps, state: s32) -> StyleFacts {
-    kind: s32 = props.style_kind
-    if kind <= 0 { kind = StyleKindButton() }
-    role: s32 = StyleAny()
-    if props.style_role > 0 { role = props.style_role }
-    return ButtonRoleFactsFor(kind, props.id,
-        props.class_name, role, cast(s32)props.tone,
-        cast(s32)props.emphasis, cast(s32)props.size, state)
-}
-
-ButtonFaceFinish :: (props: ButtonProps, face: StyleData) -> StyleData {
-    kind: s32 = props.style_kind
-    if kind <= 0 { kind = StyleKindButton() }
-    // Modal action and close faces use offset-x/offset-y as dialog layout
-    // sizes (see ModalMetricsFor), and a segment's offset-x is its label
-    // padding (see SegmentedDefaultMetrics); neither is a content offset
-    // inside a button.
-    if kind == StyleKindModal() || kind == StyleKindSegment() {
-        face.offset_x = 0.0
-        face.offset_y = 0.0
-    }
-    return face
-}
-
-#program_export
-ButtonMinimumHeight :: (size: ControlSize) -> float32 {
-    if size == cast(ControlSize)ControlSizeSmall { return 28.0 }
-    if size == cast(ControlSize)ControlSizeLarge { return 44.0 }
-    return 36.0
-}
-
-#program_export
-PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: Rectangle,
-    face: StyleData, font: s32, label_width: s32,
-    label_height: s32) {
-    if props.invisible { return }
-    opacity: float32 = StyleOpacityValue(face.fields, face.opacity)
-    radius: float32 = face.radius
-    if props.pill || props.circle { radius = bounds.height * 0.5 }
-    background: Color = ColorFromPacked(Opacity(face.background, opacity))
-    if background.a > cast(u8)0 {
-        PaintRoundedFill(session, node, bounds, radius, 12, background)
-    }
-    if face.border_width > 0.0 {
-        border: Color = ColorFromPacked(Opacity(face.border, opacity))
-        if border.a > cast(u8)0 {
-            PaintRoundedOutline(session, node, bounds, radius, 12,
-                face.border_width, border)
+            face.background = GradientColor(face.background,
+                cast(u32)0x000000ff, 0.12)
+        } else if state == ButtonStateDisabled || state == ButtonStateLoading {
+            face.background = Opacity(face.background, 0.45)
+            face.foreground = Opacity(face.foreground, 0.45)
+            face.border = Opacity(face.border, 0.45)
         }
+        face.radius = 6.0
+        face.opacity = 1.0
+        face.padding_x = 12.0
+        face.padding_y = 6.0
+        face.font_size = 14.0
+        face.icon_size = 18.0
+        face.gap = 8.0
+        return face
     }
-    // A built-in icon_type is drawn from the icon atlas unless the caller
-    // supplied its own image.
-    icon_image: ImageProps = props.image
-    if icon_image.asset_path == "" && icon_image.texture.id == cast(u32)0 &&
+
+    #program_export
+    ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
+        state: s32) -> StyleData {
+        return ButtonFaceFinish(props, ResolveStyleRules(rules,
+            ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
+    }
+
+    // The face under the installed style, without copying its rule table.
+    #program_export
+    ButtonInstalledFaceFor :: (props: ButtonProps, state: s32) -> StyleData {
+        return ButtonFaceFinish(props, ResolveInstalledStyleRules(
+            ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
+    }
+
+    ButtonFaceFacts :: (props: ButtonProps, state: s32) -> StyleFacts {
+        kind: s32 = props.style_kind
+        if kind <= 0 { kind = StyleKindButton() }
+        role: s32 = StyleAny()
+        if props.style_role > 0 { role = props.style_role }
+        return ButtonRoleFactsFor(kind, props.id,
+            props.class_name, role, cast(s32)props.tone,
+            cast(s32)props.emphasis, cast(s32)props.size, state)
+    }
+
+    ButtonFaceFinish :: (props: ButtonProps, face: StyleData) -> StyleData {
+        kind: s32 = props.style_kind
+        if kind <= 0 { kind = StyleKindButton() }
+        // Modal action and close faces use offset-x/offset-y as dialog layout
+        // sizes (see ModalMetricsFor), and a segment's offset-x is its label
+        // padding (see SegmentedDefaultMetrics); neither is a content offset
+        // inside a button.
+        if kind == StyleKindModal() || kind == StyleKindSegment() {
+            face.offset_x = 0.0
+            face.offset_y = 0.0
+        }
+        return face
+    }
+
+    #program_export
+    ButtonMinimumHeight :: (size: ControlSize) -> float32 {
+        if size == cast(ControlSize)ControlSizeSmall { return 28.0 }
+        if size == cast(ControlSize)ControlSizeLarge { return 44.0 }
+        return 36.0
+    }
+
+    #program_export
+    PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: Rectangle,
+        face: StyleData, font: s32, label_width: s32,
+        label_height: s32) {
+        if props.invisible { return }
+        opacity: float32 = StyleOpacityValue(face.fields, face.opacity)
+        radius: float32 = face.radius
+        if props.pill || props.circle { radius = bounds.height * 0.5 }
+        background: Color = ColorFromPacked(Opacity(face.background, opacity))
+        if background.a > cast(u8)0 {
+            PaintRoundedFill(session, node, bounds, radius, 12, background)
+        }
+        if face.border_width > 0.0 {
+            border: Color = ColorFromPacked(Opacity(face.border, opacity))
+            if border.a > cast(u8)0 {
+                PaintRoundedOutline(session, node, bounds, radius, 12,
+                    face.border_width, border)
+            }
+        }
+        // A built-in icon_type is drawn from the icon atlas unless the caller
+        // supplied its own image.
+        icon_image: ImageProps = props.image
+        if icon_image.asset_path == "" && icon_image.texture.id == cast(u32)0 &&
         props.icon_type != 0 {
-        icon_image = ImageForIcon(props.icon_type, bounds, props.label)
-    }
-    has_shape: bool = props.icon_shape != ""
-    has_image: bool = icon_image.asset_path != "" ||
+            icon_image = ImageForIcon(props.icon_type, bounds, props.label)
+        }
+        has_shape: bool = props.icon_shape != ""
+        has_image: bool = icon_image.asset_path != "" ||
         icon_image.texture.id != cast(u32)0 || has_shape
-    content: ButtonContent = ContentLayout(bounds.width, bounds.height,
-        cast(float32)label_width, face.icon_size, face.gap, has_image,
-        props.icon_only,
-        cast(s32)props.icon_placement == IconPlacementTrailing,
-        face.offset_x, face.offset_y)
-    if has_shape && content.icon_size > 0.0 {
-        PaintSvgIcon(session, node, props.icon_shape,
-            Rectangle.{bounds.x + content.icon_x, bounds.y + content.icon_y,
-                content.icon_size, content.icon_size},
-            ColorFromPacked(Opacity(face.foreground, opacity)))
-    } else if has_image && content.icon_size > 0.0 {
-        image: ImageProps = icon_image
-        image.bounds = Rectangle.{bounds.x + content.icon_x,
-            bounds.y + content.icon_y, content.icon_size,
-            content.icon_size}
-        texture: Texture2D = ImageTextureFor(image)
-        tint_color: u32 = cast(u32)0xffffffff
-        if image.tint != cast(u32)0 {
-            tint_color = image.tint
-        } else if image.asset_path == "icons/ui.png" {
-            tint_color = face.foreground
+        content: ButtonContent = ContentLayout(bounds.width, bounds.height,
+            cast(float32)label_width, face.icon_size, face.gap, has_image,
+            props.icon_only,
+            cast(s32)props.icon_placement == IconPlacementTrailing,
+            face.offset_x, face.offset_y,
+            props.icon_placement == cast(IconPlacement)IconPlacementAbove,
+            cast(float32)label_height)
+        if has_shape && content.icon_size > 0.0 {
+            PaintSvgIcon(session, node, props.icon_shape,
+                Rectangle.{bounds.x + content.icon_x, bounds.y + content.icon_y,
+                    content.icon_size, content.icon_size},
+                ColorFromPacked(Opacity(face.foreground, opacity)))
+        } else if has_image && content.icon_size > 0.0 {
+            image: ImageProps = icon_image
+            image.bounds = Rectangle.{bounds.x + content.icon_x,
+                bounds.y + content.icon_y, content.icon_size,
+                content.icon_size}
+            texture: Texture2D = ImageTextureFor(image)
+            tint_color: u32 = cast(u32)0xffffffff
+            if image.tint != cast(u32)0 {
+                tint_color = image.tint
+            } else if image.asset_path == "icons/ui.png" {
+                tint_color = face.foreground
+            }
+            tint: Color = ColorFromPacked(Opacity(tint_color, opacity))
+            plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
+            if plan.draw && tint.a > cast(u8)0 {
+                PaintImage(session, node, image.asset_path, image.texture.id,
+                    plan.source, plan.destination, bounds, image.origin,
+                    image.rotation, radius, plan.tint, image.texture)
+            }
         }
-        tint: Color = ColorFromPacked(Opacity(tint_color, opacity))
-        plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
-        if plan.draw && tint.a > cast(u8)0 {
-            PaintImage(session, node, image.asset_path, image.texture.id,
-                plan.source, plan.destination, bounds, image.origin,
-                image.rotation, radius, plan.tint, image.texture)
+        if props.arrow && !has_image {
+            cx: float32 = bounds.x + bounds.width * 0.5
+            cy: float32 = bounds.y + bounds.height * 0.5
+            span: float32 = bounds.height * 0.18
+            if bounds.width < bounds.height {
+                span = bounds.width * 0.18
+            }
+            if span < 3.0 { span = 3.0 }
+            if span > 9.0 { span = 9.0 }
+            tip_x: float32 = cx
+            tip_y: float32 = cy
+            end1_x: float32 = cx
+            end1_y: float32 = cy
+            end2_x: float32 = cx
+            end2_y: float32 = cy
+            if props.direction == cast(ArrowDirection)ArrowLeft {
+                tip_x -= span * 0.5
+                end1_x += span * 0.5
+                end2_x += span * 0.5
+                end1_y -= span
+                end2_y += span
+            } else if props.direction == cast(ArrowDirection)ArrowRight {
+                tip_x += span * 0.5
+                end1_x -= span * 0.5
+                end2_x -= span * 0.5
+                end1_y -= span
+                end2_y += span
+            } else if props.direction == cast(ArrowDirection)ArrowUp {
+                tip_y -= span * 0.5
+                end1_y += span * 0.5
+                end2_y += span * 0.5
+                end1_x -= span
+                end2_x += span
+            } else {
+                tip_y += span * 0.5
+                end1_y -= span * 0.5
+                end2_y -= span * 0.5
+                end1_x -= span
+                end2_x += span
+            }
+            arrow_color: Color = ColorFromPacked(Opacity(
+                face.foreground, opacity))
+            PaintLine(session, node, Rectangle.{tip_x, tip_y,
+                    end1_x - tip_x, end1_y - tip_y}, arrow_color)
+            PaintLine(session, node, Rectangle.{tip_x, tip_y,
+                    end2_x - tip_x, end2_y - tip_y}, arrow_color)
+        }
+        if !props.icon_only && props.label != "" {
+            x: s32 = cast(s32)(bounds.x + content.text_x)
+            y: s32 = cast(s32)(bounds.y +
+                (bounds.height - cast(float32)label_height) * 0.5 +
+                face.offset_y)
+            if props.icon_placement == cast(IconPlacement)IconPlacementAbove && has_image {
+                y = cast(s32)(bounds.y + content.text_y)
+            }
+            PaintClippedLabel(session, node, props.label, x, y, font,
+                ColorFromPacked(Opacity(face.foreground, opacity)), bounds)
         }
     }
-    if props.arrow && !has_image {
-        cx: float32 = bounds.x + bounds.width * 0.5
-        cy: float32 = bounds.y + bounds.height * 0.5
-        span: float32 = bounds.height * 0.18
-        if bounds.width < bounds.height {
-            span = bounds.width * 0.18
-        }
-        if span < 3.0 { span = 3.0 }
-        if span > 9.0 { span = 9.0 }
-        tip_x: float32 = cx
-        tip_y: float32 = cy
-        end1_x: float32 = cx
-        end1_y: float32 = cy
-        end2_x: float32 = cx
-        end2_y: float32 = cy
-        if props.direction == cast(ArrowDirection)ArrowLeft {
-            tip_x -= span * 0.5
-            end1_x += span * 0.5
-            end2_x += span * 0.5
-            end1_y -= span
-            end2_y += span
-        } else if props.direction == cast(ArrowDirection)ArrowRight {
-            tip_x += span * 0.5
-            end1_x -= span * 0.5
-            end2_x -= span * 0.5
-            end1_y -= span
-            end2_y += span
-        } else if props.direction == cast(ArrowDirection)ArrowUp {
-            tip_y -= span * 0.5
-            end1_y += span * 0.5
-            end2_y += span * 0.5
-            end1_x -= span
-            end2_x += span
-        } else {
-            tip_y += span * 0.5
-            end1_y -= span * 0.5
-            end2_y -= span * 0.5
-            end1_x -= span
-            end2_x += span
-        }
-        arrow_color: Color = ColorFromPacked(Opacity(
-            face.foreground, opacity))
-        PaintLine(session, node, Rectangle.{tip_x, tip_y,
-            end1_x - tip_x, end1_y - tip_y}, arrow_color)
-        PaintLine(session, node, Rectangle.{tip_x, tip_y,
-            end2_x - tip_x, end2_y - tip_y}, arrow_color)
-    }
-    if !props.icon_only && props.label != "" {
-        x: s32 = cast(s32)(bounds.x + content.text_x)
-        y: s32 = cast(s32)(bounds.y +
-            (bounds.height - cast(float32)label_height) * 0.5 +
-            face.offset_y)
-        PaintClippedLabel(session, node, props.label, x, y, font,
-            ColorFromPacked(Opacity(face.foreground, opacity)), bounds)
-    }
-}
 
-// The bounds a button takes for these props: an explicit width or height is
-// kept, and a zero one is measured from the label, icon, and style. An
-// application reserves room with this before placing a button, because a
-// label's width changes with the language.
-#program_export
-ButtonMeasure :: (props: ButtonProps) -> Rectangle {
-    face: StyleData = ButtonInstalledFaceFor(props, 0)
-    font: s32 = ResolveFont(0,
-        StyleFontValue(face.fields, face.font_size), 14)
-    label_width: s32 = 0
-    if props.label != "" && !props.icon_only {
-        label_width = GlyphWidth(props.label, font, face.typeface)
+    // The bounds a button takes for these props: an explicit width or height is
+    // kept, and a zero one is measured from the label, icon, and style. An
+    // application reserves room with this before placing a button, because a
+    // label's width changes with the language.
+    #program_export
+    ButtonMeasure :: (props: ButtonProps) -> Rectangle {
+        face: StyleData = ButtonInstalledFaceFor(props, 0)
+        font: s32 = ResolveFont(0,
+            StyleFontValue(face.fields, face.font_size), 14)
+        label_width: s32 = 0
+        if props.label != "" && !props.icon_only {
+            label_width = GlyphWidth(props.label, font, face.typeface)
+        }
+        return MeasureBounds(props, face, ButtonMinimumHeight(props.size), font,
+            cast(float32)label_width, 0.0, 1.0, false)
     }
-    return MeasureBounds(props, face, ButtonMinimumHeight(props.size), font,
-        cast(float32)label_width, 0.0, 1.0, false)
-}
 
-// A retained press is routed after the previous tree commits. The next
-// submission consumes its activation and paints from the latest input state.
-#program_export
-SubmitButton :: (session: Session, props: ButtonProps,
-    parent_index: s32) -> s32 {
-    key: u64 = props.key
-    if key == cast(u64)0 && props.id > 0 { key = cast(u32)props.id }
-    previous: s32 = -1
-    if TreeIsBuilding(session) {
-        previous = TreePrevious(session, parent_index,
-            key, WidgetKindButton)
-    }
-    flags: StateFlags = ResolveFlags(cast(s32)props.state,
-        props.disabled, props.loading, props.selected)
-    clicked: bool = TreeTakeActivationAt(session, previous)
-    if flags.disabled || flags.loading { clicked = false }
-    state: s32 = ResolveState(cast(s32)props.state,
-        flags.disabled, flags.loading, TreePressedAt(session, previous),
-        TreeHoveredAt(session, previous), TreeFocusedAt(session, previous), flags.selected)
-    face: StyleData = ButtonInstalledFaceFor(props, state)
-    font: s32 = ResolveFont(0,
-        StyleFontValue(face.fields, face.font_size), 14)
-    label_width: s32 = 0
-    label_height: s32 = 0
-    if props.label != "" && !props.icon_only {
-        label_width = GlyphWidth(props.label, font, face.typeface)
-        label_height = GlyphLineHeight(font, face.typeface)
-    }
-    available_width: float32 = 0.0
-    if TreeIsBuilding(session) {
-        root: Rectangle = TreeRootBounds(session)
-        available_width = root.x + root.width - props.bounds.x
-    }
-    bounds: Rectangle = MeasureBounds(props, face,
-        ButtonMinimumHeight(props.size), font, cast(float32)label_width,
-        available_width, 1.0, false)
-    node: s32 = -1
-    if TreeIsBuilding(session) {
-        node = TreeSubmit(session, key, parent_index, WidgetKindButton, bounds)
-        if node < 0 { return 0 }
-        TreeSetInteractive(session, node, flags.disabled, flags.loading, props.id)
-        TreeSetCircleHit(session, node, props.circle)
-        TreeSetSelected(session, node, flags.selected)
-        TreeSetLabel(session, node, props.label)
+    // A retained press is routed after the previous tree commits. The next
+    // submission consumes its activation and paints from the latest input state.
+    #program_export
+    SubmitButton :: (session: Session, props: ButtonProps,
+        parent_index: s32) -> s32 {
+        key: u64 = props.key
+        if key == cast(u64)0 && props.id > 0 { key = cast(u32)props.id }
+        previous: s32 = -1
+        if TreeIsBuilding(session) {
+            previous = TreePrevious(session, parent_index,
+                key, WidgetKindButton)
+        }
+        flags: StateFlags = ResolveFlags(cast(s32)props.state,
+            props.disabled, props.loading, props.selected)
+        clicked: bool = TreeTakeActivationAt(session, previous)
+        if flags.disabled || flags.loading { clicked = false }
+        state: s32 = ResolveState(cast(s32)props.state,
+            flags.disabled, flags.loading, TreePressedAt(session, previous),
+            TreeHoveredAt(session, previous), TreeFocusedAt(session, previous), flags.selected)
+        face: StyleData = ButtonInstalledFaceFor(props, state)
+        font: s32 = ResolveFont(0,
+            StyleFontValue(face.fields, face.font_size), 14)
+        label_width: s32 = 0
+        label_height: s32 = 0
+        if props.label != "" && !props.icon_only {
+            label_width = GlyphWidth(props.label, font, face.typeface)
+            label_height = GlyphLineHeight(font, face.typeface)
+        }
+        available_width: float32 = 0.0
+        if TreeIsBuilding(session) {
+            root: Rectangle = TreeRootBounds(session)
+            available_width = root.x + root.width - props.bounds.x
+        }
+        bounds: Rectangle = MeasureBounds(props, face,
+            ButtonMinimumHeight(props.size), font, cast(float32)label_width,
+            available_width, 1.0, false)
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            node = TreeSubmit(session, key, parent_index, WidgetKindButton, bounds)
+            if node < 0 { return 0 }
+            TreeSetInteractive(session, node, flags.disabled, flags.loading, props.id)
+            TreeSetCircleHit(session, node, props.circle)
+            TreeSetSelected(session, node, flags.selected)
+            TreeSetLabel(session, node, props.label)
             TreeSetStyleClass(session, node, props.class_name)
+        }
+        PaintButtonForNode(session, node, props, bounds, face, font,
+            label_width, label_height)
+        if clicked { return 1 }
+        return 0
     }
-    PaintButtonForNode(session, node, props, bounds, face, font,
-        label_width, label_height)
-    if clicked { return 1 }
-    return 0
-}
 
-#program_export
-Button :: (session: Session, props: ButtonProps) -> s32 {
-    return SubmitButton(session, props, TreeCurrentParent(session))
-}
+    #program_export
+    Button :: (session: Session, props: ButtonProps) -> s32 {
+        return SubmitButton(session, props, TreeCurrentParent(session))
+    }
 
 }

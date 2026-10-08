@@ -183,7 +183,7 @@ ButtonMetric :: (fields: u32, field: u32, value: float32,
     fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     if (fields & field) == cast(u32)0 || value < 0.0 ||
-       (!allow_zero && value <= 0.0) {
+    (!allow_zero && value <= 0.0) {
         value = fallback
     }
     return cast(s32)(value * scale)
@@ -341,7 +341,7 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint {
     half_h: float32 = inner.height * 0.5
     inset: float32 = spec.face.value.padding_x
     if (spec.face.value.fields & cast(u32)StylePaddingX) == cast(u32)0 ||
-       inset < 0.0 {
+    inset < 0.0 {
         inset = 6.0
     }
     inset *= scale
@@ -412,10 +412,15 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)
     has_icon: bool = disclosure || props.icon.id != cast(u32)0 ||
-        props.icon_type != 0 || props.icon_shape != "" || props.image.asset_path != "" ||
-        props.image.texture.id != cast(u32)0
+    props.icon_type != 0 || props.icon_shape != "" || props.image.asset_path != "" ||
+    props.image.texture.id != cast(u32)0
+    above := props.icon_placement == cast(IconPlacement)IconPlacementAbove && has_icon && !props.icon_only
+    if above && bounds.height <= 0.0 {
+        stacked_height := text_height + paint.icon_size + paint.gap + 2.0 * paint.padding_y
+        if height < stacked_height { height = stacked_height }
+    }
     content: ContentSize = MeasureContent(height, label_width / scale,
-        paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only)
+        paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only, above)
     width: float32 = ShapeWidth(bounds.width / scale, height, content.width,
         available_width / scale, props.full_width,
         props.square || props.icon_only, props.circle)
@@ -436,7 +441,7 @@ MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
 #program_export
 MeasureContent :: (height: float32, label_width: float32,
     requested_icon_size: float32, gap: float32, padding_x: float32,
-    has_icon: bool, icon_only: bool) -> ContentSize {
+    has_icon: bool, icon_only: bool, above: bool = false) -> ContentSize {
     result: ContentSize
     // Match Style.ContentBounds: negative padding never shrinks the area
     // required by content, while explicit zero remains a valid override.
@@ -451,6 +456,11 @@ MeasureContent :: (height: float32, label_width: float32,
     result.gap = gap
     result.width = label_width + gap + 2.0 * padding_x
     if has_icon { result.width += icon_size }
+    if above && has_icon {
+        result.width = label_width
+        if result.width < icon_size { result.width = icon_size }
+        result.width += 2.0 * padding_x
+    }
     return result
 }
 
@@ -468,11 +478,12 @@ ButtonContent :: struct {
 ContentLayout :: (
     width: float32, height: float32, label_width: float32,
     requested_icon_size: float32, gap: float32, has_icon: bool, icon_only: bool,
-    trailing: bool, offset_x: float32, offset_y: float32
-) -> ButtonContent {
+    trailing: bool, offset_x: float32, offset_y: float32,
+    above: bool = false, label_height: float32 = 0.0
+    ) -> ButtonContent {
     result: ButtonContent
     measured: ContentSize = MeasureContent(height, label_width,
-        requested_icon_size, gap, 0.0, has_icon, icon_only)
+        requested_icon_size, gap, 0.0, has_icon, icon_only, above)
     icon_size: float32 = measured.icon_size
     label_width = measured.text_width
     gap = measured.gap
@@ -484,6 +495,20 @@ ContentLayout :: (
     result.text_y = offset_y
     result.text_width = label_width
     result.text_height = height
+    if above && has_icon && !icon_only {
+        available_icon := height - label_height - gap - 12.0
+        if icon_size > available_icon { icon_size = available_icon }
+        if icon_size < 0.0 { icon_size = 0.0 }
+        if icon_size == 0.0 { gap = 0.0 }
+        stack_height := icon_size + gap + label_height
+        result.icon_x = (width - icon_size) * 0.5 + offset_x
+        result.icon_y = (height - stack_height) * 0.5 + offset_y
+        result.icon_size = icon_size
+        result.text_x = (width - label_width) * 0.5 + offset_x
+        result.text_y = result.icon_y + icon_size + gap
+        result.text_height = label_height
+        return result
+    }
     if has_icon {
         if trailing {
             result.icon_x += label_width + gap
@@ -511,11 +536,13 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
     result: ContentDrawing
     if scale <= 0.0 { scale = 1.0 }
     has_icon: bool = disclosure || props.icon.id != cast(u32)0 || props.icon_type != 0 ||
-        props.icon_shape != ""
+    props.icon_shape != ""
     content: ButtonContent = ContentLayout(bounds.width / scale, bounds.height / scale,
         label_width / scale, paint.icon_size, paint.gap, has_icon, props.icon_only,
         cast(s32)props.icon_placement == IconPlacementTrailing,
-        paint.offset_x, paint.offset_y)
+        paint.offset_x, paint.offset_y,
+        props.icon_placement == cast(IconPlacement)IconPlacementAbove,
+        cast(float32)font / scale)
     result.mark.color = foreground
     if props.loading {
         result.mark.kind = DrawingRing
@@ -644,7 +671,7 @@ ShapeWidth :: (
     full_width: bool,
     square: bool,
     circle: bool
-) -> float32 {
+    ) -> float32 {
     if square || circle { return height }
     if full_width && width <= 0.0 {
         if available_width < height { return height }
@@ -660,7 +687,7 @@ ShapeRadius :: (
     pill_radius: float32,
     pill: bool,
     circle: bool
-) -> float32 {
+    ) -> float32 {
     if pill || circle { return pill_radius }
     return normal_radius
 }
