@@ -16,6 +16,10 @@
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
+#import "button_props"
+#import "button_widget"
+#import "scroll_props"
+#import "scroll_widget"
 
 using SemanticKind;
 using WidgetKind;
@@ -24,16 +28,17 @@ using ButtonEmphasis;
 using ControlSize;
 using ButtonState;
 using StyleField;
+using IconPlacement;
 
 #program_export
 NavigationBarDefaultFace :: (item: bool, active: bool,
     hovered: bool, disabled: bool) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
-        cast(u32)StyleRadius | cast(u32)StyleOpacity |
-        cast(u32)StyleIconSize | cast(u32)StyleFontSize |
-        cast(u32)StyleGap
+    cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+    cast(u32)StyleRadius | cast(u32)StyleOpacity |
+    cast(u32)StyleIconSize | cast(u32)StyleFontSize |
+    cast(u32)StyleGap
     face.background = cast(u32)0xf1f5f9ff
     face.foreground = cast(u32)0x334155ff
     face.border = cast(u32)0xcbd5e1ff
@@ -64,11 +69,11 @@ NavigationBarFaceFor :: (props: NavigationBarProps) -> StyleFrame {
     frame.value = ResolveInstalledStyleRules(
         NavigationBarDefaultFace(false, false, false, false),
         StyleControlRoleFacts(StyleKindNavigationBar(),
-            props.id, props.class_name, StyleAny(),
-            cast(s32)ButtonToneNeutral,
-            cast(s32)ButtonEmphasisSoft,
-            cast(s32)ControlSizeMedium,
-            cast(s32)ButtonStateNormal),
+        props.id, props.class_name, StyleAny(),
+        cast(s32)ButtonToneNeutral,
+        cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium,
+        cast(s32)ButtonStateNormal),
         cast(s32)ButtonStateNormal)
     return frame
 }
@@ -91,7 +96,7 @@ NavigationBarItemFaceFor :: (props: NavigationBarProps,
     frame: StyleFrame
     frame.value = ResolveInstalledStyleRules(
         NavigationBarDefaultFace(true, item.active, hovered,
-            item.disabled), facts, state)
+        item.disabled), facts, state)
     return frame
 }
 
@@ -131,6 +136,7 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
 // reserve the space before the bar is drawn.
 #program_export
 NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
+    if props.compact { return cast(s32)props.bounds.height }
     if props.height > 0 { return props.height }
     spec: NavigationBarSpec
     spec.view_width = props.view_width
@@ -144,6 +150,104 @@ NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
     return NavigationBarPaintFor(spec).height
 }
 
+DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
+    bar_key: u64, item: NavigationBarItem, index: s32, bounds: Rectangle,
+    draggable: bool, result: *NavigationBarResult) {
+    button: ButtonProps
+    button.key = NavigationBarItemKey(bar_key, item, index)
+    button.id = props.id
+    button.bounds = bounds
+    button.label = item.label
+    button.image = item.image
+    button.icon_shape = item.icon_shape
+    button.selected = item.active
+    button.disabled = item.disabled
+    button.class_name = props.item_class_name
+    button.style_kind = StyleKindNavigationBarItem()
+    button.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
+    button.icon_placement = cast(IconPlacement)IconPlacementAbove
+    previous := TreePrevious(session, TreeCurrentParent(session),
+        button.key, WidgetKindButton)
+    drag: PointerDrag
+    if draggable && !item.disabled {
+        drag = TreeTakeDragAt(session, previous)
+        if drag.started || drag.active || drag.ended {
+            result.drag = drag
+            result.drag_route = item.route
+            result.drag_bounds = bounds
+        }
+    }
+    clicked := Button(session, button) != 0
+    if draggable {
+        node := TreeSubmitted(session, TreeCurrentParent(session),
+            button.key, WidgetKindButton)
+        TreeSetDragCapture(session, node, true)
+        // Captured release outside the original item is a drop, not a click.
+        clicked = clicked || (drag.ended && TreeHoveredAt(session, previous))
+    }
+    if clicked && !props.dragging && !item.disabled {
+        result.clicked_index = index
+        result.clicked_route = item.route
+    }
+}
+
+DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
+    items: []NavigationBarItem, result: NavigationBarResult) -> NavigationBarResult {
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    key := NavigationBarKey(session, props)
+    layout := NavigationBarDockLayoutFor(props.bounds, props.vertical,
+        cast(s32)items.count, props.footer_count, props.scale)
+    result.y = cast(s32)props.bounds.y
+    result.height = cast(s32)props.bounds.height
+    result.node = TreeSubmitCurrent(session, key, WidgetKindNavigationBar, props.bounds)
+    if result.node < 0 || !TreePushScope(session, result.node) { return result }
+    bar := NavigationBarFaceFor(props)
+    PaintRoundedFill(session, result.node, props.bounds, 0.0, 4,
+        ColorFromPacked(Opacity(bar.value.background,
+        StyleOpacityValue(bar.value.fields, bar.value.opacity))))
+    content := layout.scroll_bounds
+    if layout.primary_count > 0 && layout.scroll_bounds.width > 0.0 &&
+    layout.scroll_bounds.height > 0.0 {
+        scroll: ScrollProps
+        scroll.key = key * cast(u64)65599 + cast(u64)1
+        scroll.bounds = layout.scroll_bounds
+        scroll.scale = props.scale
+        scroll.horizontal = !props.vertical
+        scroll.scroll_offset = props.scroll_offset
+        if props.vertical { scroll.content_height = layout.content_extent }
+        else { scroll.content_width = layout.content_extent }
+        scrolled := Scroll(session, scroll)
+        result.scroll_offset = scrolled.scroll_offset
+        content = scrolled.content
+        if scrolled.opened {
+            for index: cast(s32)0..layout.primary_count - 1 {
+                bounds := NavigationBarDockItemBounds(layout, content, index)
+                DrawNavigationDockItem(session, props, key, items[index],
+                    index, bounds, props.draggable, *result)
+            }
+            unused TreePopScope(session)
+        }
+    }
+    for index: cast(s32)0..layout.footer_count - 1 {
+        bounds := NavigationBarDockItemBounds(layout, layout.footer_bounds, index)
+        DrawNavigationDockItem(session, props, key, items[layout.primary_count + index],
+            layout.primary_count + index, bounds, false, *result)
+    }
+    if props.dragging {
+        result.drop_index = NavigationBarDockDropIndex(layout, content, props.drag_position)
+        if result.drop_index >= 0 {
+            bounds := NavigationBarDockItemBounds(layout, content, result.drop_index)
+            bounds = RectangleIntersection(bounds, layout.scroll_bounds)
+            if bounds.width > 0.0 && bounds.height > 0.0 {
+                PaintRoundedOutline(session, result.node, bounds, 12.0, 12, 2.0,
+                    ColorFromPacked(bar.value.foreground))
+            }
+        }
+    }
+    unused TreePopScope(session)
+    return result
+}
+
 // Items are borrowed values. Each item owns a stable key when routes can
 // move. The result reports the activated route; the caller applies routing.
 #program_export
@@ -153,8 +257,11 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
     result.node = -1
     result.clicked_index = -1
     result.clicked_route = -1
+    result.drop_index = -1
+    result.drag_route = -1
+    if props.compact { return DrawCompactNavigation(session, props, items, result) }
     if (cast(s32)items.count) <= 0 || props.view_width <= 0 ||
-        props.view_height <= 0 { return result }
+    props.view_height <= 0 { return result }
     key: u64 = NavigationBarKey(session, props)
     bar: StyleFrame = NavigationBarFaceFor(props)
     base_item: NavigationBarItem
@@ -218,7 +325,7 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             base_item, false)
         font: s32 = ResolveFont(0,
             StyleFontValue(face.value.fields,
-                face.value.font_size), 12)
+            face.value.font_size), 12)
         line_height: s32 = GlyphLineHeight(font,
             face.value.typeface)
         item_spec: NavigationBarItemSpec
@@ -231,7 +338,7 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
         item_spec.base = base
         item_spec.face = face
         layout: NavigationBarItemPaint =
-            NavigationBarItemPaintFor(item_spec)
+        NavigationBarItemPaintFor(item_spec)
         node: s32 = -1
         if TreeIsBuilding(session) {
             node = TreeSubmit(session, item_key, result.node,
@@ -250,7 +357,7 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             PaintRoundedFill(session, node, layout.state_bounds,
                 layout.face.value.radius, 12,
                 ColorFromPacked(Opacity(
-                    layout.face.value.background, face_opacity)))
+                layout.face.value.background, face_opacity)))
         }
         image_opacity: float32 = cast(float32)layout.icon_alpha / 255.0
         NavigationBarPaintImage(session, node, item.image,
@@ -260,14 +367,14 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             label_width: s32 = GlyphWidth(item.label, font,
                 face.value.typeface)
             label_x: s32 = cast(s32)layout.label_bounds.x +
-                (cast(s32)layout.label_bounds.width - label_width) / 2
+            (cast(s32)layout.label_bounds.width - label_width) / 2
             text_opacity: float32 = StyleOpacityValue(
                 base.value.fields, base.value.opacity)
             PaintClippedLabel(session, node, item.label,
                 label_x,
                 cast(s32)layout.label_bounds.y, font,
                 ColorFromPacked(Opacity(
-                    layout.text_color, text_opacity)),
+                layout.text_color, text_opacity)),
                 layout.label_bounds)
         }
         index += 1
