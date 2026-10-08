@@ -165,6 +165,10 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
     button.class_name = props.item_class_name
     button.style_kind = StyleKindNavigationBarItem()
     button.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
+    if item.active {
+        button.tone = cast(ButtonTone)ButtonToneAccent
+        button.emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
+    }
     button.icon_placement = cast(IconPlacement)IconPlacementAbove
     previous := TreePrevious(session, TreeCurrentParent(session),
         button.key, WidgetKindButton)

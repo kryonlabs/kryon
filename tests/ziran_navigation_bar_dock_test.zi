@@ -13,6 +13,9 @@
 
 using StyleField;
 using ButtonState;
+using ButtonTone;
+using ButtonEmphasis;
+using PaintKind;
 
 #program_export
 DockImageWidth :: (path: string) -> s32 { unused path; return 24 }
@@ -53,7 +56,7 @@ main :: () -> s32 {
         return 4
     }
     rules: StyleRules
-    rules.count = 2
+    rules.count = 3
     rule: StyleRule
     rule.selector = StyleDefaultSelector()
     rule.selector.kind = StyleKindNavigationBar()
@@ -65,6 +68,11 @@ main :: () -> s32 {
     rule.style.foreground = cast(u32)0xe6eff3ff
     rule.style.font_size = 12.0
     rules.items[1] = rule
+    // Selection remains a styling fact while a pointer hovers over the item.
+    rule.selector.tone = cast(s32)ButtonToneAccent
+    rule.selector.emphasis = cast(s32)ButtonEmphasisFilled
+    rule.style.foreground = cast(u32)0x102030ff
+    rules.items[2] = rule
     InstallStyleRules(rules)
     session := SessionOpen()
     props: NavigationBarProps
@@ -81,6 +89,7 @@ main :: () -> s32 {
         items[index].label = "App"
     }
     items[5].label = "Apps"
+    items[5].active = true
     items[6].label = "Profile"
     for phase: cast(s32)0..cast(s32)2 {
         if phase == 1 { props.scroll_offset = 999 }
@@ -98,6 +107,18 @@ main :: () -> s32 {
         if apps < 0 || profile < 0 ||
         TreeNodeAt(session, apps).bounds.y != 296.0 ||
         TreeNodeAt(session, profile).bounds.y != 380.0 { return 6 }
+        if phase < 2 {
+            selected_label := false
+            for index: cast(s32)0..PendingPaintCount(session) - 1 {
+                paint := PendingPaintAt(session, index)
+                if paint.node == apps && paint.kind == PaintKindClippedText {
+                    if paint.color.r != 0x10 || paint.color.g != 0x20 ||
+                    paint.color.b != 0x30 { return 10 }
+                    selected_label = true
+                }
+            }
+            if !selected_label { return 11 }
+        }
         if phase == 0 {
             if result.clicked_route != -1 { return 7 }
             TreePointerUpdate(session, PointerFrame.{44.0, 330.0, true, true, false})
