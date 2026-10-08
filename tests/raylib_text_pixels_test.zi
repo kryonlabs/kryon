@@ -1,0 +1,124 @@
+#import "raylib_runtime"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+test_raylib :: #system_library "raylib";
+test_math :: #system_library "m";
+TestFloor :: (value: float32) -> float32 #foreign test_math "floorf";
+TestInitWindow :: (width: s32, height: s32, title: *u8) #foreign test_raylib "InitWindow";
+TestIsWindowReady :: () -> bool #foreign test_raylib "IsWindowReady";
+TestBeginDrawing :: () #foreign test_raylib "BeginDrawing";
+TestEndDrawing :: () #foreign test_raylib "EndDrawing";
+TestClearBackground :: (color: Color) #foreign test_raylib "ClearBackground";
+TestLoadFont :: (path: *u8, pixels: s32, codepoints: *s32,
+    count: s32) -> RaylibFont #foreign test_raylib "LoadFontEx";
+TestUnloadFont :: (font: RaylibFont) #foreign test_raylib "UnloadFont";
+TestFilter :: (texture: Texture2D, filter: s32) #foreign test_raylib "SetTextureFilter";
+TestDrawText :: (font: RaylibFont, text: *u8, position: Vector2,
+    pixels: float32, spacing: float32, color: Color) #foreign test_raylib "DrawTextEx";
+TestCameraBegin :: (camera: Camera) #foreign test_raylib "BeginMode2D";
+TestCameraEnd :: () #foreign test_raylib "EndMode2D";
+TestCapture :: () -> RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen";
+TestImageFree :: (image: RaylibGlyphImage) #foreign test_raylib "UnloadImage";
+TestImageSave :: (image: RaylibGlyphImage, path: *u8) -> bool #foreign test_raylib "ExportImage";
+
+// Compare a transformed Kryon glyph against the font independently rasterized
+// and drawn at its final pixel size. Both frames must have the same coverage,
+// including small text, fractional zoom and sizes that force atlas eviction.
+CheckPixels :: (size: s32, scale: float32) -> bool {
+    path: [128]u8
+    CopyCString("assets/fonts/LiberationSans-Regular.ttf", path[:])
+    codepoints: [2]s32 = .[63, 87]
+    pixels := cast(s32)TestFloor(cast(float32)size * scale + 0.5)
+    reference := TestLoadFont(*path[0], pixels, *codepoints[0], 2)
+    if reference.texture.id == 0 {
+        return false
+    }
+    defer TestUnloadFont(reference)
+    TestFilter(reference.texture, 0)
+    white := Color.{255, 255, 255, 255}
+    TestBeginDrawing()
+    TestClearBackground(Color.{0, 0, 0, 255})
+    camera: Camera
+    camera.zoom = scale
+    camera.offset = .{0.3, 0.4}
+    TestCameraBegin(camera)
+    RasterText("W", 7, 9, size, white)
+    TestCameraEnd()
+    TestEndDrawing()
+    image := TestCapture()
+    defer TestImageFree(image)
+    TestBeginDrawing()
+    TestClearBackground(Color.{0, 0, 0, 255})
+    glyph: [2]u8 = .[87, 0]
+    position := Vector2.{TestFloor(7.0 * scale + 0.3 + 0.5),
+        TestFloor(9.0 * scale + 0.4 + 0.5)}
+    TestDrawText(reference, *glyph[0], position,
+        cast(float32)pixels, 0.0, white)
+    TestEndDrawing()
+    expected := TestCapture()
+    defer TestImageFree(expected)
+    if image.data == null || image.width != 1024 || image.height != 512 ||
+    image.format != 7 || expected.data == null || expected.format != 7 {
+        return false
+    }
+    bytes := cast(*u8)image.data
+    expected_bytes := cast(*u8)expected.data
+    covered: s32 = 0
+    for y: 0..511 {
+        for x: 0..511 {
+            left := bytes[(y * 1024 + x) * 4]
+            right := expected_bytes[(y * 1024 + x) * 4]
+            difference := cast(s32)left - cast(s32)right
+            if difference > 1 || difference < -1 {
+                output: [128]u8
+                CopyCString("build/scratch/raylib-text-pixels/failed.png", output[:])
+                unused TestImageSave(image, *output[0])
+                CopyCString("build/scratch/raylib-text-pixels/expected.png", output[:])
+                unused TestImageSave(expected, *output[0])
+                return false
+            }
+            if left > cast(u8)16 {
+                covered += 1
+            }
+        }
+    }
+    return covered > 0
+}
+
+#program_export
+main :: () -> s32 {
+    title: [64]u8
+    CopyCString("Kryon text pixels test", title[:])
+    TestInitWindow(1024, 512, *title[0])
+    if !TestIsWindowReady() {
+        return 1
+    }
+    defer CloseRaylib()
+    seed: [2]s32 = .[63, 87]
+    if !LoadTypefaceFile("sample", "assets/fonts/LiberationSans-Regular.ttf",
+        *seed[0], 2) || !SelectTypeface("sample") {
+        return 2
+    }
+    // Deliberately leave the frame/input zoom at 100%; the camera is the
+    // authority for raster resolution.
+    sizes: [4]s32 = .[12, 16, 32, 120]
+    scales: [8]float32 = .[0.5, 0.63, 0.7, 1.07, 1.3, 1.75, 2.5, 4.0]
+    for index: 0..7 {
+        for font: 0..3 {
+            if !CheckPixels(sizes[font], scales[index]) {
+                return 3
+            }
+        }
+    }
+    for size: 97..120 {
+        if !CheckPixels(cast(s32)size, 1.75) {
+            return 4
+        }
+    }
+    if !CheckPixels(12, 1.3) {
+        return 5
+    }
+    return 0
+}
