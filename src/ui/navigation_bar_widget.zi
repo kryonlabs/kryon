@@ -203,6 +203,23 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         cast(s32)items.count, props.footer_count, props.scale)
     result.y = cast(s32)props.bounds.y
     result.height = cast(s32)props.bounds.height
+    previous := TreePrevious(session, TreeCurrentParent(session), key,
+        WidgetKindNavigationBar)
+    reveal := previous < 0
+    if previous >= 0 {
+        old := TreeNodeAt(session, previous).bounds
+        reveal = old.width != props.bounds.width || old.height != props.bounds.height
+    }
+    offset := props.scroll_offset
+    for index: cast(s32)0..layout.primary_count - 1 {
+        if items[index].active {
+            old_item := TreePreviousCommitted(session, previous,
+                NavigationBarItemKey(key, items[index], index), WidgetKindButton)
+            if reveal || old_item < 0 || !TreeNodeAt(session, old_item).selected {
+                offset = NavigationBarDockRevealOffset(layout, index, offset)
+            }
+        }
+    }
     result.node = TreeSubmitCurrent(session, key, WidgetKindNavigationBar, props.bounds)
     if result.node < 0 || !TreePushScope(session, result.node) { return result }
     bar := NavigationBarFaceFor(props)
@@ -217,7 +234,7 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         scroll.bounds = layout.scroll_bounds
         scroll.scale = props.scale
         scroll.horizontal = !props.vertical
-        scroll.scroll_offset = props.scroll_offset
+        scroll.scroll_offset = offset
         if props.vertical { scroll.content_height = layout.content_extent }
         else { scroll.content_width = layout.content_extent }
         scrolled := Scroll(session, scroll)
@@ -234,6 +251,13 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
     }
     for index: cast(s32)0..layout.footer_count - 1 {
         bounds := NavigationBarDockItemBounds(layout, layout.footer_bounds, index)
+        if !layout.vertical {
+            step := layout.footer_bounds.width / cast(float32)layout.footer_count
+            bounds.x = layout.footer_bounds.x + cast(float32)index * step
+            width := step - 8.0 * props.scale
+            if props.scale <= 0.0 { width = step - 8.0 }
+            if width < bounds.width { bounds.width = width }
+        }
         DrawNavigationDockItem(session, props, key, items[layout.primary_count + index],
             layout.primary_count + index, bounds, false, *result)
     }

@@ -114,8 +114,20 @@ NavigationBarDockLayoutFor :: (bounds: Rectangle, vertical: bool,
         layout.footer_bounds.height = cast(float32)(footer_count * layout.item_step)
         layout.scroll_bounds.height = layout.footer_bounds.y -
         layout.scroll_bounds.y - cast(float32)gap
-    } else if count > 3 {
+    } else if count > 3 || (count > 0 &&
+        (cast(s32)bounds.width - margin * 2 - gap * (count - 1)) / count < layout.item_width) {
         reserved := footer_count * cast(s32)(100.0 * scale)
+        if cast(s32)layout.scroll_bounds.width - reserved < layout.item_width {
+            // Keep a complete shortcut beside a compact, reachable footer
+            // when zoom leaves less than two ordinary tile widths.
+            reserved = footer_count * cast(s32)(52.0 * scale)
+            available := cast(s32)layout.scroll_bounds.width - reserved
+            if available < layout.item_width {
+                layout.item_width = available
+                if layout.item_width < 1 { layout.item_width = 1 }
+                layout.item_step = layout.item_width + gap
+            }
+        }
         layout.scroll_bounds.width -= cast(float32)reserved
         layout.footer_bounds.x = bounds.x + bounds.width -
         cast(float32)(margin + reserved)
@@ -152,6 +164,26 @@ NavigationBarDockItemBounds :: (layout: NavigationBarDockLayout,
         bounds.y += (content.height - bounds.height) / 2.0
     }
     return bounds
+}
+
+// Reveal the selected shortcut after selection or viewport changes. Callers
+// retain ordinary scrolling while the selection and viewport stay the same.
+#program_export
+NavigationBarDockRevealOffset :: (layout: NavigationBarDockLayout,
+    index: s32, offset: s32) -> s32 {
+    if index < 0 || index >= layout.primary_count { return offset }
+    extent := cast(s32)layout.scroll_bounds.width
+    item_extent := layout.item_width
+    if layout.vertical {
+        extent = cast(s32)layout.scroll_bounds.height
+        item_extent = layout.item_height
+    }
+    start := index * layout.item_step
+    if start < offset { return start }
+    if start + item_extent > offset + extent {
+        return start + item_extent - extent
+    }
+    return offset
 }
 
 #program_export
