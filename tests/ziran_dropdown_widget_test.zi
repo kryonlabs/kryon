@@ -24,6 +24,7 @@ TestSession :: () -> Session {
 using SemanticKind;
 using WidgetKind;
 using StyleField;
+using PaintKind;
 
 phase: s32;
 open_state: bool;
@@ -59,7 +60,7 @@ Frame :: () -> s32 {
     option_index: s32 = 0
     while option_index < 8 {
         long_options[option_index].key =
-            cast(u64)cast(u32)(100 + option_index)
+        cast(u64)cast(u32)(100 + option_index)
         long_options[option_index].label = "Item"
         option_index += 1
     }
@@ -98,78 +99,78 @@ Frame :: () -> s32 {
         result = Dropdown(TestSession(), props, options[0:3])
     }
     if !TreeFinish(TestSession()) || result.node != 1 ||
-        TreeNodeAt(TestSession(), 1).kind != WidgetKindDropdown ||
-        TreeNodeAt(TestSession(), 1).semantic_kind !=
-            cast(SemanticKind)SemanticComboBox { return -20 }
+    TreeNodeAt(TestSession(), 1).kind != WidgetKindDropdown ||
+    TreeNodeAt(TestSession(), 1).semantic_kind !=
+    cast(SemanticKind)SemanticComboBox { return -20 }
     if phase == 0 {
         if result.open || result.changed || TreeCount(TestSession()) != 2 ||
-            TreeHitAt(TestSession(), 20.0, 20.0) != 1 { return -1 }
+        TreeHitAt(TestSession(), 20.0, 20.0) != 1 { return -1 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 1 {
         if !result.open { return -21 }
         if !result.opened { return -22 }
         if result.highlight_index != 0 { return -23 }
         if TreeCount(TestSession()) != 8 { return -24 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 2 {
         if !result.open || result.changed ||
-            TreeCount(TestSession()) != 8 { return -3 }
+        TreeCount(TestSession()) != 8 { return -3 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 3 {
         if result.open || !result.changed || !result.closed ||
-            result.selected_index != 2 || TreeCount(TestSession()) != 2 ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "Third" { return -4 }
+        result.selected_index != 2 || TreeCount(TestSession()) != 2 ||
+        TreeNodeAt(TestSession(), 1).semantic_label != "Third" { return -4 }
     } else if phase == 4 {
         if !result.open || !result.opened ||
-            result.highlight_index != 2 { return -5 }
+        result.highlight_index != 2 { return -5 }
     } else if phase == 5 {
         if !result.open || result.highlight_index != 0 ||
-            result.changed { return -6 }
+        result.changed { return -6 }
     } else if phase == 6 {
         if result.open || !result.closed || !result.changed ||
-            result.selected_index != 0 { return -7 }
+        result.selected_index != 0 { return -7 }
     } else if phase == 7 {
         if !result.open || TreeCount(TestSession()) != 8 { return -8 }
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 8 {
         if result.open || !result.closed || result.changed ||
-            TreeCount(TestSession()) != 2 { return -9 }
+        TreeCount(TestSession()) != 2 { return -9 }
     } else if phase == 9 {
         if result.open || !result.closed ||
-            TreeCount(TestSession()) != 2 ||
-            TreeHitAt(TestSession(), 20.0, 20.0) != -1 { return -10 }
+        TreeCount(TestSession()) != 2 ||
+        TreeHitAt(TestSession(), 20.0, 20.0) != -1 { return -10 }
     } else if phase == 10 {
         if !result.open || result.scroll_offset != 28 ||
-            TreeCount(TestSession()) != 11 ||
-            TreeNodeAt(TestSession(), 10).kind != WidgetKindSlider ||
-            TreeHitAt(TestSession(), 126.0, 80.0) != 10 { return -11 }
+        TreeCount(TestSession()) != 11 ||
+        TreeNodeAt(TestSession(), 10).kind != WidgetKindSlider ||
+        TreeHitAt(TestSession(), 126.0, 80.0) != 10 { return -11 }
         TreePointerUpdate(TestSession(), PointerFrame.{126.0, 80.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
-            true, false, false})
+                true, false, false})
     } else if phase == 11 {
         if !result.open || result.scroll_offset != 84 ||
-            TreeCount(TestSession()) != 11 { return -12 }
+        TreeCount(TestSession()) != 11 { return -12 }
         TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 12 {
         if !result.open || result.scroll_offset != 84 ||
-            TreeCount(TestSession()) != 11 { return -13 }
+        TreeCount(TestSession()) != 11 { return -13 }
     } else if phase == 13 {
         if result.open || TreeCount(TestSession()) != 2 ||
-            TreeNodeAt(TestSession(), 1).semantic_label != "First" { return -14 }
+        TreeNodeAt(TestSession(), 1).semantic_label != "First" { return -14 }
     }
     PaintFlush(TestSession())
     open_state = result.open
@@ -201,12 +202,34 @@ main :: () -> s32 {
         expected_images: s32 = 0
         if index == 13 { expected_images = 1 }
         if DropdownHostFailed() ||
-            DropdownFills() != expected_fills ||
-            DropdownOutlines() != expected_outlines ||
-            DropdownStrokes() != expected_strokes ||
-            DropdownLabels() != expected_labels ||
-            DropdownImages() != expected_images { return 2 }
+        DropdownFills() != expected_fills ||
+        DropdownOutlines() != expected_outlines ||
+        DropdownStrokes() != expected_strokes ||
+        DropdownLabels() != expected_labels ||
+        DropdownImages() != expected_images { return 2 }
         index += 1
     }
+    // A narrow trigger must show its complete selected value without changing
+    // the control's hit target or clipping the final letters.
+    props: DropdownProps
+    props.key = cast(u64)29
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
+    options: [1]DropdownOption
+    options[0].label = "Monochrome"
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    unused Dropdown(TestSession(), props, options[:])
+    if !TreeFinish(TestSession()) { return 3 }
+    found := false
+    for paint_index: cast(s32)0..PendingPaintCount(TestSession()) - 1 {
+        paint := PendingPaintAt(TestSession(), paint_index)
+        if paint.kind == PaintKindClippedText && paint.value == "Monochrome" {
+            if paint.font < 8 || paint.font >= 14 ||
+            cast(float32)MeasureGlyphWidth(paint.value, paint.font, "") >
+            paint.clip.width { return 4 }
+            found = true
+        }
+    }
+    if !found { return 5 }
+    PaintClear(TestSession())
     return 0
 }
