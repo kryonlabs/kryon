@@ -1,10 +1,13 @@
 #import "c_string"
+#import "byte_text_linux"
 #import "tray"
 #import "tray_props"
 
 c :: #system_library "c";
 TestGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
 TestSleep :: (microseconds: u32) -> s32 #foreign c "usleep";
+TestLocale :: (category: s32, locale: *u8) -> *u8 #foreign c "setlocale";
+TestDecimal :: (text: *u8, end: **u8) -> float64 #foreign c "strtod";
 
 Present :: () -> bool {
     name: [32]u8
@@ -47,6 +50,15 @@ main :: () -> s32 {
     spec.activate_action = 11
     spec.menu = menu[:]
     ready: bool = TrayOpen(spec)
+    // The environment may request comma decimals, but opening a tray must
+    // preserve the C locale the host started with, including on GTK failure.
+    numeric: [8]u8
+    CopyCString("1.25", numeric[:])
+    if TextFromCString(TestLocale(1, null)) != "C" ||
+    TestDecimal(*numeric[0], null) != 1.25 {
+        TrayClose()
+        return 14
+    }
     if !Present() {
         // Without a display GTK cannot start, and nothing may claim to show.
         visible: bool = TrayVisible()
