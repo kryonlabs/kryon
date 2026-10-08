@@ -24,6 +24,7 @@ ControlSize :: enum {
 IconPlacement :: enum {
     IconPlacementLeading :: 0
     IconPlacementTrailing :: 1
+    IconPlacementAbove :: 2
 }
 
 ButtonState :: enum {
