@@ -18,6 +18,8 @@ raylib :: #system_library "raylib";
 c :: #system_library "c";
 libm :: #system_library "m";
 HostRaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
+HostRaylibFloor :: (value: float32) -> float32 #foreign libm "floorf";
+HostRaylibModelview :: () -> RaylibMatrix #foreign raylib "rlGetMatrixModelview";
 
 HostRaylibInitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "InitWindow";
 HostRaylibCloseWindow :: () #foreign raylib "CloseWindow";
@@ -84,6 +86,7 @@ HostRaylibLoadFontFromMemory :: (extension: *u8, bytes: *u8,
 HostTypefaceFileData :: (path: *u8, count: *s32) -> *u8 #foreign raylib "LoadFileData";
 HostTypefaceFileDataFree :: (bytes: *u8) #foreign raylib "UnloadFileData";
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
+HostRaylibTextureFilter :: (texture: Texture2D, filter: s32) #foreign raylib "SetTextureFilter";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
 HostTypefaceReallocate :: (bytes: *u8, size: usize) -> *u8 #foreign c "realloc";
@@ -271,13 +274,21 @@ RaylibSeedGlyphs :: (typeface: *RaylibTypeface, seed: *s32,
 RaylibBakeTypeface :: (typeface: *RaylibTypeface,
     size: s32) -> RaylibFont {
     codepoints: *s32 = cast(*s32)(typeface.codepoints)
+    font: RaylibFont
     if typeface.from_file {
-        return HostRaylibLoadFont(*typeface.path[0], size, codepoints,
+        font = HostRaylibLoadFont(*typeface.path[0], size, codepoints,
+            typeface.codepoint_count)
+    } else {
+        font = HostRaylibLoadFontFromMemory(*typeface.extension[0],
+            typeface.data, typeface.data_count, size, codepoints,
             typeface.codepoint_count)
     }
-    return HostRaylibLoadFontFromMemory(*typeface.extension[0],
-        typeface.data, typeface.data_count, size, codepoints,
-        typeface.codepoint_count)
+    if font.texture.id != cast(u32)0 {
+        // Native-size glyphs stay sharp; interpolation also keeps oversized
+        // text and moving labels smooth when an atlas must be scaled.
+        HostRaylibTextureFilter(font.texture, 1)
+    }
+    return font
 }
 
 // Unload the fonts baked for particular sizes and keep the base font. Their
@@ -1163,6 +1174,28 @@ CaptureConfigured :: () -> bool {
     return HostRaylibFileExists(path)
 }
 
+RaylibTextSize :: (size: s32) -> float32 {
+    pixels := HostRaylibFloor(cast(float32)size * raylib_zoom + 0.5)
+    if pixels < 1.0 {
+        pixels = 1.0
+    }
+    // Draw at the atlas's integer pixel size instead of shrinking the rounded
+    // atlas back to a fractional pixel height under the camera transform.
+    return pixels / raylib_zoom
+}
+
+RaylibTextPosition :: (position: Vector2, matrix: RaylibMatrix) -> Vector2 {
+    // Pixel alignment is valid for an upright, uniformly scaled camera.
+    // Rotated and skewed text keeps its original geometry.
+    if matrix.m0 > 0.0 && matrix.m0 == matrix.m5 &&
+    matrix.m1 == 0.0 && matrix.m4 == 0.0 {
+        screen := ClipPoint(matrix, position.x, position.y)
+        return .{(HostRaylibFloor(screen.x + 0.5) - matrix.m12) / matrix.m0,
+            (HostRaylibFloor(screen.y + 0.5) - matrix.m13) / matrix.m5}
+    }
+    return position
+}
+
 // The drawn size of text, including every line of multi-line text.
 // Measurement and rasterisation walk the same fonts and advances when a
 // face needs fallback. Labels fully covered by one face keep raylib's fast path.
@@ -1172,6 +1205,13 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
     if !CopyCString(value, bytes[:]) { return .{0.0, 0.0} }
     RaylibEnsureGlyphs(value)
     primary := RaylibFontForSize(size)
+    text_size := RaylibTextSize(size)
+    position := Vector2.{cast(float32)x, cast(float32)y}
+    matrix: RaylibMatrix
+    if draw {
+        matrix = HostRaylibModelview()
+        position = RaylibTextPosition(position, matrix)
+    }
     missing: bool
     at: s32 = 0
     while at < cast(s32)value.count {
@@ -1182,14 +1222,14 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
     }
     if !missing {
         if draw {
-            HostRaylibDrawFontText(primary, *bytes[0], .{cast(float32)x, cast(float32)y},
-                cast(float32)size, 0.0, color)
+            HostRaylibDrawFontText(primary, *bytes[0], position,
+                text_size, 0.0, color)
         }
-        return HostRaylibMeasureFontText(primary, *bytes[0], cast(float32)size, 0.0)
+        return HostRaylibMeasureFontText(primary, *bytes[0], text_size, 0.0)
     }
     newline: [2]u8 = .[10, 0]
-    line_step := HostRaylibMeasureFontText(primary, *newline[0], cast(float32)size, 0.0).y - cast(float32)size
-    result: Vector2 = .{0.0, cast(float32)size}
+    line_step := HostRaylibMeasureFontText(primary, *newline[0], text_size, 0.0).y - text_size
+    result: Vector2 = .{0.0, text_size}
     dx: float32
     dy: float32
     at = 0
@@ -1215,13 +1255,15 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
             for index: 0..length - 1 { glyph[index] = bytes[at + index] }
             glyph[length] = 0
             if draw {
-                HostRaylibDrawFontText(selected, *glyph[0], .{cast(float32)x + dx, cast(float32)y + dy},
-                    cast(float32)size, 0.0, color)
+                glyph_position := RaylibTextPosition(
+                    .{position.x + dx, position.y + dy}, matrix)
+                HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
+                    text_size, 0.0, color)
             }
-            dx += HostRaylibMeasureFontText(selected, *glyph[0], cast(float32)size, 0.0).x
+            dx += HostRaylibMeasureFontText(selected, *glyph[0], text_size, 0.0).x
         }
         if dx > result.x { result.x = dx }
-        result.y = dy + cast(float32)size
+        result.y = dy + text_size
         at += length
     }
     return result

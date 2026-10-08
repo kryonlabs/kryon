@@ -6,8 +6,11 @@ Collection :: #import "typeface_collection";
 Text :: #import "std/byte_text_linux";
 Geometry :: #import "geometry";
 Drawing :: #import "drawing_props";
+Clip :: #import "raylib_clip";
 raylib :: #system_library "raylib";
 c :: #system_library "c";
+libm :: #system_library "m";
+Floor :: (value: float32) -> float32 #foreign libm "floorf";
 ReadFile :: (path: *u8, size: *s32) -> *u8 #foreign raylib "LoadFileData";
 FreeFile :: (bytes: *u8) #foreign raylib "UnloadFileData";
 DecodeFont :: (bytes: *u8, size: s32, pixels: s32, codepoints: *s32,
@@ -22,6 +25,9 @@ Free :: (bytes: *void) #foreign c "free";
 loaded: s32;
 released: s32;
 flushes: s32;
+filtered: s32;
+text_matrix: Clip.RaylibMatrix;
+bad_size: bool;
 Drawn :: struct { codepoint: s32; x: float32; y: float32; width: float32 }
 drawn: [32]Drawn;
 draw_count: s32;
@@ -36,20 +42,20 @@ CollectionChecks :: () -> bool {
     bytes[39] = 44; bytes[43] = 13; bytes[44] = 1; bytes[56] = 17
     output: [44]u8
     if Collection.FaceSize(bytes[:], 0) != 44 ||
-        Collection.FaceSize(bytes[:], 1) != 0 || Collection.FaceSize(bytes[:], -1) != 0 ||
-        Collection.FaceSize(bytes[0:0], 0) != 0 || Collection.FaceSize(bytes[0:56], 0) != 0 ||
-        Collection.Face(bytes[:], 0, output[0:43]).count != 0 { return false }
+    Collection.FaceSize(bytes[:], 1) != 0 || Collection.FaceSize(bytes[:], -1) != 0 ||
+    Collection.FaceSize(bytes[0:0], 0) != 0 || Collection.FaceSize(bytes[0:56], 0) != 0 ||
+    Collection.Face(bytes[:], 0, output[0:43]).count != 0 { return false }
     result := Collection.Face(bytes[:], 0, output[:])
     if result.count != 44 || result[1] != 1 || result[4] != 0 || result[5] != 1 ||
-        result[23] != 28 || result[27] != 13 || result[28] != 1 || result[40] != 17 ||
-        result[41] != 0 || result[42] != 0 || result[43] != 0 || bytes[52] != 0 { return false }
+    result[23] != 28 || result[27] != 13 || result[28] != 1 || result[40] != 17 ||
+    result[41] != 0 || result[42] != 0 || result[43] != 0 || bytes[52] != 0 { return false }
     // OpenType requires the whole reconstructed font to have this checksum.
     sum: u32
     for word: 0..10 {
         at := word * 4
         sum += (cast(u32)result[at] << cast(u32)24) |
-            (cast(u32)result[at + 1] << cast(u32)16) |
-            (cast(u32)result[at + 2] << cast(u32)8) | cast(u32)result[at + 3]
+        (cast(u32)result[at + 1] << cast(u32)16) |
+        (cast(u32)result[at + 2] << cast(u32)8) | cast(u32)result[at + 3]
     }
     if sum != cast(u32)0xB1B0AFBA { return false }
     bytes[36] = 255
@@ -100,9 +106,22 @@ __wrap_UnloadFont :: (font: Runtime.RaylibFont) {
 #program_export
 __wrap_rlDrawRenderBatchActive :: () { flushes += 1 }
 #program_export
+__wrap_SetTextureFilter :: (texture: Drawing.Texture2D, filter: s32) {
+    if texture.id == 0 || filter != 1 { bad_size = true }
+    filtered += 1
+}
+#program_export
+__wrap_rlGetMatrixModelview :: () -> Clip.RaylibMatrix {
+    return text_matrix
+}
+#program_export
 __wrap_DrawTextEx :: (font: Runtime.RaylibFont, text: *u8,
     position: Geometry.Vector2, size: float32, spacing: float32, color: Drawing.Color) {
     unused spacing; unused color
+    if Runtime.RaylibZoom() != 1.0 &&
+    size * Runtime.RaylibZoom() != cast(float32)font.base_size {
+        bad_size = true
+    }
     at: s32 = 0
     while text[at] != 0 {
         length: s32
@@ -125,19 +144,19 @@ main :: () -> s32 {
     // Requested supplementary characters must be added and deduplicated.
     staged: Runtime.RaylibTypeface
     if !Runtime.RaylibAddGlyph(*staged, 0x1F642) ||
-        !Runtime.RaylibAddGlyph(*staged, 0x1F642) || staged.codepoint_count != 1 ||
-        !Runtime.RaylibHasGlyph(*staged, 0x1F642) ||
-        Runtime.RaylibAddGlyph(*staged, 0xD800) || Runtime.RaylibAddGlyph(*staged, 0x110000) { return 1 }
+    !Runtime.RaylibAddGlyph(*staged, 0x1F642) || staged.codepoint_count != 1 ||
+    !Runtime.RaylibHasGlyph(*staged, 0x1F642) ||
+    Runtime.RaylibAddGlyph(*staged, 0xD800) || Runtime.RaylibAddGlyph(*staged, 0x110000) { return 1 }
     Runtime.RaylibFreeTypefaceSource(*staged)
 
     path: [1024]u8
     if SystemTypeface.FileFor("sans-serif", 0x4E2D, path[:], null) == "" { return 2 }
     tiny: [1]u8
     if SystemTypeface.FileFor("sans-serif", 0x4E2D, tiny[:], null) != "" ||
-        SystemTypeface.FileFor("sans-serif", 0x10FFFF, path[:], null) != "" ||
-        SystemTypeface.FileFor("sans-serif", 0xD800, path[:], null) != "" { return 3 }
+    SystemTypeface.FileFor("sans-serif", 0x10FFFF, path[:], null) != "" ||
+    SystemTypeface.FileFor("sans-serif", 0xD800, path[:], null) != "" { return 3 }
     if !Runtime.LoadTypefaceFile("Latin", "assets/fonts/LiberationSans-Regular.ttf", null, 0) ||
-        !Runtime.SelectTypeface("Latin") { return 4 }
+    !Runtime.SelectTypeface("Latin") { return 4 }
     defer Runtime.ReleaseTypefaces()
     Runtime.RaylibEnsureGlyphs("中")
     if Runtime.RaylibFontHasCodepoint(Runtime.RaylibFontForSize(20), 0x4E2D) { return 5 }
@@ -145,10 +164,10 @@ main :: () -> s32 {
     width := Runtime.MeasureGlyphWidth("A中B", 20, "Latin")
     Runtime.RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 3 || drawn[0].codepoint != 65 ||
-        drawn[1].codepoint != 0x4E2D || drawn[2].codepoint != 66 { return 6 }
+    drawn[1].codepoint != 0x4E2D || drawn[2].codepoint != 66 { return 6 }
     total := drawn[0].width + drawn[1].width + drawn[2].width
     if width != cast(s32)(total + 0.5) || drawn[1].x != 7.0 + drawn[0].width ||
-        drawn[2].x != 7.0 + drawn[0].width + drawn[1].width { return 7 }
+    drawn[2].x != 7.0 + drawn[0].width + drawn[1].width { return 7 }
     before := loaded
     draw_count = 0
     Runtime.RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
@@ -156,14 +175,14 @@ main :: () -> s32 {
     draw_count = 0
     Runtime.RasterText("中\n文", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 2 || drawn[1].codepoint != 0x6587 ||
-        drawn[1].x != 7.0 || drawn[1].y <= drawn[0].y || flushes == 0 { return 9 }
+    drawn[1].x != 7.0 || drawn[1].y <= drawn[0].y || flushes == 0 { return 9 }
     if !Runtime.LoadSystemTypeface("monospace") || !Runtime.SelectTypeface("monospace") { return 10 }
     draw_count = 0
     Runtime.RasterText("中", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x4E2D { return 11 }
     // Replacing a registered face clears misses and keeps glyphs measurable.
     if !Runtime.LoadTypefaceFile("monospace", "assets/fonts/DejaVuSans.ttf", null, 0) ||
-        Runtime.raylib_fallback_entry_count != 0 { return 12 }
+    Runtime.raylib_fallback_entry_count != 0 { return 12 }
     draw_count = 0
     Runtime.RasterText("😀", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x1F600 { return 15 }
@@ -187,20 +206,20 @@ main :: () -> s32 {
     Runtime.ReleaseTypefaces()
     seed: [2]s32 = .[63, 65]
     if !Runtime.LoadTypefaceFile("Offline Latin", "assets/fonts/LiberationSans-Regular.ttf", *seed[0], 2) ||
-        !Runtime.LoadTypefaceFile("Bundled Chinese", "fonts/noto/NotoSansSC-Regular.otf", *seed[0], 2) ||
-        !Runtime.SelectTypeface("Offline Latin") {
+    !Runtime.LoadTypefaceFile("Bundled Chinese", "fonts/noto/NotoSansSC-Regular.otf", *seed[0], 2) ||
+    !Runtime.SelectTypeface("Offline Latin") {
         return 19
     }
     draw_count = 0
     width = Runtime.MeasureGlyphWidth("A中文B", 20, "Offline Latin")
     Runtime.RasterText("A中文B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 4 || drawn[1].codepoint != 0x4E2D ||
-        drawn[2].codepoint != 0x6587 || Runtime.raylib_fallback_face_count != 0 {
+    drawn[2].codepoint != 0x6587 || Runtime.raylib_fallback_face_count != 0 {
         return 20
     }
     total = drawn[0].width + drawn[1].width + drawn[2].width + drawn[3].width
     if width != cast(s32)(total + 0.5) || drawn[1].x != 7.0 + drawn[0].width ||
-        drawn[3].x != 7.0 + total - drawn[3].width {
+    drawn[3].x != 7.0 + total - drawn[3].width {
         return 21
     }
     before = loaded
@@ -209,6 +228,33 @@ main :: () -> s32 {
     if bad_glyph || draw_count != 4 || loaded != before {
         return 22
     }
+    // A fractional desktop zoom must draw the rounded atlas at exactly its
+    // baked pixel height, with matching measurement and pixel-aligned origins.
+    Runtime.RaylibSetZoom(1.3)
+    text_matrix.m0 = 1.3
+    text_matrix.m5 = 1.3
+    text_matrix.m12 = 114.0
+    text_matrix.m13 = 0.4
+    draw_count = 0
+    width = Runtime.MeasureGlyphWidth("A中文B", 12, "Offline Latin")
+    Runtime.RasterText("A中文B", 7, 11, 12, Drawing.Color.{255, 255, 255, 255})
+    if bad_size || bad_glyph || draw_count != 4 ||
+    Runtime.RaylibFontForSize(12).base_size != 16 ||
+    filtered != loaded { return 23 }
+    total = drawn[0].width + drawn[1].width + drawn[2].width + drawn[3].width
+    if width != cast(s32)(total + 0.5) { return 24 }
+    for index: 0..3 {
+        screen := Clip.ClipPoint(text_matrix, drawn[index].x, drawn[index].y)
+        if screen.x - Floor(screen.x + 0.5) > 0.0001 ||
+        screen.x - Floor(screen.x + 0.5) < -0.0001 ||
+        screen.y - Floor(screen.y + 0.5) > 0.0001 ||
+        screen.y - Floor(screen.y + 0.5) < -0.0001 { return 25 }
+    }
+    rotated := text_matrix
+    rotated.m1 = 0.5
+    original := Geometry.Vector2.{7.0, 11.0}
+    preserved := Runtime.RaylibTextPosition(original, rotated)
+    if preserved.x != original.x || preserved.y != original.y { return 26 }
     Runtime.ReleaseTypefaces()
     if loaded != released || Runtime.raylib_fallback_face_count != 0 { return 13 }
     return 0

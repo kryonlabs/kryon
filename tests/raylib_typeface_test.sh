@@ -32,6 +32,7 @@ for form in source saved; do
         "$compiler" -std="$standard" -O1 -ffunction-sections -fdata-sections \
             -Wl,--gc-sections -Wl,--wrap=LoadFontEx -Wl,--wrap=LoadFontFromMemory \
             -Wl,--wrap=UnloadFont -Wl,--wrap=DrawTextEx -Wl,--wrap=rlDrawRenderBatchActive \
+            -Wl,--wrap=SetTextureFilter -Wl,--wrap=rlGetMatrixModelview \
             -I"$output" "$output"/*."$extension" "$archive" \
             $raylib_libs -o "$output/test"
         timeout --kill-after=2s 20s "$output/test"
