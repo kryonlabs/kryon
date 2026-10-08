@@ -176,7 +176,8 @@
             cast(s32)props.icon_placement == IconPlacementTrailing,
             face.offset_x, face.offset_y,
             props.icon_placement == cast(IconPlacement)IconPlacementAbove,
-            cast(float32)label_height)
+            cast(float32)label_height, props.content_alignment,
+            face.padding_x)
         if has_shape && content.icon_size > 0.0 {
             PaintSvgIcon(session, node, props.icon_shape,
                 Rectangle.{bounds.x + content.icon_x, bounds.y + content.icon_y,
