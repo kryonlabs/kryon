@@ -1,0 +1,115 @@
+#import "session"
+#import "geometry"
+#import "navigation_bar"
+#import "navigation_bar_props"
+#import "navigation_bar_widget"
+#import "control_props"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_input"
+#import "paint_queue"
+#import "ziran_navigation_bar_widget_host"
+
+using StyleField;
+using ButtonState;
+
+#program_export
+DockImageWidth :: (path: string) -> s32 { unused path; return 24 }
+
+#program_export
+DockImageHeight :: (path: string) -> s32 { unused path; return 24 }
+
+#program_export
+DockMeasureWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused typeface
+    return cast(s32)value.count * font / 2
+}
+
+#program_export
+DockMeasureHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+#program_export
+main :: () -> s32 {
+    bounds := Rectangle.{0.0, 0.0, 88.0, 476.0}
+    layout := NavigationBarDockLayoutFor(bounds, true, 7, 2, 1.0)
+    if layout.primary_count != 5 || layout.footer_bounds.y != 296.0 ||
+    layout.scroll_bounds.y != 24.0 || layout.scroll_bounds.height != 264.0 {
+        return 1
+    }
+    if NavigationBarDockDropIndex(layout, layout.scroll_bounds,
+        Vector2.{44.0, 130.0}) != 1 ||
+    NavigationBarDockDropIndex(layout, layout.scroll_bounds,
+        Vector2.{44.0, 330.0}) != -1 { return 2 }
+    dock := NavigationBarDockLayoutFor(Rectangle.{0.0, 700.0, 390.0, 84.0},
+        false, 6, 1, 1.0)
+    if dock.footer_bounds.x != 278.0 || dock.scroll_bounds.width != 266.0 ||
+    dock.content_extent != 452 { return 3 }
+    empty := NavigationBarDockLayoutFor(bounds, true, 2, 2, 1.0)
+    if empty.primary_count != 0 || empty.footer_bounds.y != layout.footer_bounds.y {
+        return 4
+    }
+    rules: StyleRules
+    rules.count = 2
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindNavigationBar()
+    rule.style.fields = cast(u32)StyleBackground
+    rule.style.background = cast(u32)0x14202bff
+    rules.items[0] = rule
+    rule.selector.kind = StyleKindNavigationBarItem()
+    rule.style.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
+    rule.style.foreground = cast(u32)0xe6eff3ff
+    rule.style.font_size = 12.0
+    rules.items[1] = rule
+    InstallStyleRules(rules)
+    session := SessionOpen()
+    props: NavigationBarProps
+    props.key = cast(u64)10
+    props.compact = true
+    props.vertical = true
+    props.bounds = bounds
+    props.footer_count = 2
+    props.draggable = true
+    items: [7]NavigationBarItem
+    for index: cast(s32)0..cast(s32)6 {
+        items[index].key = cast(u64)(100 + index)
+        items[index].route = index
+        items[index].label = "App"
+    }
+    items[5].label = "Apps"
+    items[6].label = "Profile"
+    for phase: cast(s32)0..cast(s32)2 {
+        if phase == 1 { props.scroll_offset = 999 }
+        if phase == 2 { items[5].disabled = true }
+        TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 476.0})
+        result := NavigationBar(session, props, items[:])
+        if !TreeFinish(session) || result.node != 1 { return 5 }
+        apps: s32 = -1
+        profile: s32 = -1
+        for index: cast(s32)0..TreeCount(session) - 1 {
+            node := TreeNodeAt(session, index)
+            if node.semantic_label == "Apps" { apps = index }
+            if node.semantic_label == "Profile" { profile = index }
+        }
+        if apps < 0 || profile < 0 ||
+        TreeNodeAt(session, apps).bounds.y != 296.0 ||
+        TreeNodeAt(session, profile).bounds.y != 380.0 { return 6 }
+        if phase == 0 {
+            if result.clicked_route != -1 { return 7 }
+            TreePointerUpdate(session, PointerFrame.{44.0, 330.0, true, true, false})
+            TreePointerUpdate(session, PointerFrame.{44.0, 330.0, false, false, true})
+        } else if phase == 1 {
+            if result.clicked_route != 5 || result.scroll_offset != 148 { return 8 }
+        } else {
+            if result.clicked_route != -1 || TreeHitAt(session, 44.0, 330.0) != -1 {
+                return 9
+            }
+        }
+        PaintClear(session)
+    }
+    return 0
+}

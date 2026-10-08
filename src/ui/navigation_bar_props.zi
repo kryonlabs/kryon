@@ -1,10 +1,13 @@
 #import "image_props"
+#import "geometry"
+#import "tree_input"
 
 NavigationBarItem :: struct {
     key: u64
     route: s32
     label: string
     image: ImageProps
+    icon_shape: string
     active: bool
     disabled: bool
 }
@@ -17,6 +20,17 @@ NavigationBarProps :: struct {
     class_name: s32
     height: s32
     scale: float32
+    // Compact navigation composes ordinary Buttons in a scrolling dock or
+    // rail. Footer items remain reachable while the other shortcuts scroll.
+    compact: bool
+    bounds: Rectangle
+    vertical: bool
+    footer_count: s32
+    item_class_name: s32
+    scroll_offset: s32
+    draggable: bool
+    dragging: bool
+    drag_position: Vector2
 }
 
 NavigationBarResult :: struct {
@@ -25,4 +39,9 @@ NavigationBarResult :: struct {
     clicked_route: s32
     y: s32
     height: s32
+    scroll_offset: s32
+    drop_index: s32
+    drag: PointerDrag
+    drag_route: s32
+    drag_bounds: Rectangle
 }

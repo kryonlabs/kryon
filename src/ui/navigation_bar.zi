@@ -4,6 +4,7 @@
 #import "geometry"
 #import "style"
 #import "style_sheet"
+#import "tree_input"
 
 using ButtonTone;
 using ButtonEmphasis;
@@ -67,6 +68,102 @@ NavigationBarItemInteraction :: struct {
     activated: bool
     consume_release: bool
     state: ButtonState
+}
+
+NavigationBarDockLayout :: struct {
+    scroll_bounds: Rectangle
+    footer_bounds: Rectangle
+    primary_count: s32
+    footer_count: s32
+    item_width: s32
+    item_height: s32
+    item_step: s32
+    content_extent: s32
+    vertical: bool
+}
+
+// Compact rails anchor their footer at the bottom; compact docks anchor it
+// at the trailing edge. The scrolling shortcuts never cover those actions.
+#program_export
+NavigationBarDockLayoutFor :: (bounds: Rectangle, vertical: bool,
+    count: s32, footer_count: s32, scale: float32) -> NavigationBarDockLayout {
+    layout: NavigationBarDockLayout
+    if scale <= 0.0 { scale = 1.0 }
+    if count < 0 { count = 0 }
+    if footer_count < 0 { footer_count = 0 }
+    if footer_count > count { footer_count = count }
+    layout.primary_count = count - footer_count
+    layout.footer_count = footer_count
+    layout.vertical = vertical
+    margin := cast(s32)(12.0 * scale)
+    gap := cast(s32)(8.0 * scale)
+    layout.item_height = cast(s32)(68.0 * scale)
+    layout.item_step = cast(s32)(92.0 * scale)
+    layout.item_width = cast(s32)(84.0 * scale)
+    layout.scroll_bounds = bounds
+    layout.scroll_bounds.x += cast(float32)margin
+    layout.scroll_bounds.width -= cast(float32)(margin * 2)
+    layout.footer_bounds = layout.scroll_bounds
+    if vertical {
+        layout.item_height = cast(s32)(72.0 * scale)
+        layout.item_step = cast(s32)(84.0 * scale)
+        layout.item_width = cast(s32)layout.scroll_bounds.width
+        layout.scroll_bounds.y += cast(float32)(24.0 * scale)
+        layout.footer_bounds.y = bounds.y + bounds.height -
+        cast(float32)(margin + footer_count * layout.item_step)
+        layout.footer_bounds.height = cast(float32)(footer_count * layout.item_step)
+        layout.scroll_bounds.height = layout.footer_bounds.y -
+        layout.scroll_bounds.y - cast(float32)gap
+    } else if count > 3 {
+        reserved := footer_count * cast(s32)(100.0 * scale)
+        layout.scroll_bounds.width -= cast(float32)reserved
+        layout.footer_bounds.x = bounds.x + bounds.width -
+        cast(float32)(margin + reserved)
+        layout.footer_bounds.width = cast(float32)reserved
+    } else if count > 0 {
+        width := (cast(s32)bounds.width - margin * 2 - gap * (count - 1)) / count
+        maximum := cast(s32)(144.0 * scale)
+        if width > maximum { width = maximum }
+        layout.item_width = width
+        layout.item_step = width + gap
+        group_width := count * layout.item_step - gap
+        layout.scroll_bounds.x = bounds.x + (bounds.width - cast(float32)group_width) / 2.0
+        layout.scroll_bounds.width = cast(float32)(layout.primary_count * layout.item_step)
+        layout.footer_bounds.x = layout.scroll_bounds.x + layout.scroll_bounds.width
+        layout.footer_bounds.width = cast(float32)(footer_count * layout.item_step)
+    }
+    layout.content_extent = layout.primary_count * layout.item_step
+    if layout.primary_count > 0 { layout.content_extent -= gap }
+    if layout.scroll_bounds.width < 0.0 { layout.scroll_bounds.width = 0.0 }
+    if layout.scroll_bounds.height < 0.0 { layout.scroll_bounds.height = 0.0 }
+    return layout
+}
+
+#program_export
+NavigationBarDockItemBounds :: (layout: NavigationBarDockLayout,
+    content: Rectangle, index: s32) -> Rectangle {
+    bounds := content
+    bounds.width = cast(float32)layout.item_width
+    bounds.height = cast(float32)layout.item_height
+    if layout.vertical {
+        bounds.y += cast(float32)(index * layout.item_step)
+    } else {
+        bounds.x += cast(float32)(index * layout.item_step)
+        bounds.y += (content.height - bounds.height) / 2.0
+    }
+    return bounds
+}
+
+#program_export
+NavigationBarDockDropIndex :: (layout: NavigationBarDockLayout,
+    content: Rectangle, point: Vector2) -> s32 {
+    if !PointInBounds(point.x, point.y, layout.scroll_bounds) ||
+    layout.item_step <= 0 { return -1 }
+    position := ifx layout.vertical then point.y - content.y else point.x - content.x
+    index := cast(s32)(position / cast(float32)layout.item_step)
+    if index < 0 { index = 0 }
+    if index > layout.primary_count { index = layout.primary_count }
+    return index
 }
 
 NavigationBarConfigMetrics :: struct {
@@ -197,7 +294,7 @@ NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
     interaction.hovered = interaction.active && hover_effects
     interaction.disabled_marker = pointer_inside && disabled && !captured
     interaction.activated = interaction.active && released &&
-        !release_consumed && press_started_inside
+    !release_consumed && press_started_inside
     interaction.consume_release = interaction.activated
     interaction.state = NavigationBarItemStateFor(selected, disabled,
         interaction.hovered)
@@ -239,7 +336,7 @@ NavigationBarConfigDefaultRoute :: (option_count: s32, first_route: s32) -> s32 
 NavigationBarMetric :: (fields: u32, field: u32, value: float32,
     fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if (fields & field) == cast(u32)0 || value < 0.0 ||
-       (!allow_zero && value <= 0.0) {
+    (!allow_zero && value <= 0.0) {
         value = fallback
     }
     return cast(s32)(value * scale)
@@ -292,7 +389,7 @@ NavigationBarConfigFrameHeight :: (route_count: s32,
     metrics: NavigationBarConfigMetrics) -> s32 {
     if route_count < 0 { route_count = 0 }
     return metrics.frame_base_height + metrics.row_height * route_count +
-        metrics.add_height + metrics.frame_bottom_extra
+    metrics.add_height + metrics.frame_bottom_extra
 }
 
 #program_export
@@ -305,7 +402,7 @@ NavigationBarConfigLayoutFor :: (frame: Rectangle, content: Rectangle,
     if button_w < 1 { button_w = 1 }
     total_button_w: s32 = button_w * 3 + metrics.button_gap * 2
     button_y: s32 = cast(s32)frame.y + cast(s32)frame.height - metrics.button_height -
-        metrics.button_bottom_gap
+    metrics.button_bottom_gap
     button_x: s32 = cast(s32)frame.x + (cast(s32)frame.width - total_button_w) / 2
     add_y: s32 = button_y - metrics.button_gap - metrics.add_height
 
