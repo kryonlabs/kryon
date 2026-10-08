@@ -1,0 +1,40 @@
+// Compare installed resolution with the original fresh installed cascade.
+// The reference uses a borrowed rule slice, not ResolveStyleRules' table copy.
+#import "style_sheet"
+#import "style"
+#import "control_props"
+using StyleField;
+using ButtonState;
+
+#program_export
+Cost :: (cached: bool, calls: s32, count: s32) -> u64 {
+    if calls < 1 || count < 1 || count > 320 { return 0 }
+    rules: StyleRules; rules.count = count
+    for i: 0..count - 1 {
+        rules.items[i].selector = StyleDefaultSelector()
+        if i % 3 == 0 { rules.items[i].selector.kind = StyleKindButton() }
+        if i % 5 == 0 { rules.items[i].selector.class_name = 2 }
+        rules.items[i].state = ifx i % 4 == 0 then cast(s32)ButtonStateHover else StyleStateAny()
+        rules.items[i].layer = i % 3; rules.items[i].order = i
+        rules.items[i].style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground | cast(u32)StyleFontSize
+        rules.items[i].style.background = cast(u32)(i + 100)
+        rules.items[i].style.foreground = cast(u32)(i + 200)
+        rules.items[i].style.font_size = cast(float32)(12 + i % 9)
+    }
+    if !InstallStyleRules(rules) { return 0 }
+    digest: u64 = 1
+    for i: 0..calls - 1 {
+        facts := StyleDefaultFacts(ifx i % 2 == 0 then StyleKindButton() else StyleKindText())
+        // Unnamed controls still have distinct input IDs. Only selectors
+        // which actually use a fact may make it part of a cache identity.
+        facts.name = i; facts.class_name = i % 3
+        active := ifx i % 4 < 2 then cast(s32)ButtonStateNormal else cast(s32)ButtonStateHover
+        base: StyleData; base.fields = cast(u32)StyleForeground
+        base.foreground = cast(u32)i; base.padding_x = cast(float32)(i % 11)
+        result: StyleData
+        if cached { result = ResolveInstalledStyleRules(base, facts, active) }
+        else { result = ApplyStyleRules(BeginStyleCascade(base), rules.items[:count], facts, active).result }
+        digest = (digest ^ (cast(u64)result.background + cast(u64)result.foreground + cast(u64)result.font_size + cast(u64)result.padding_x)) * cast(u64)1099511628211
+    }
+    return digest
+}
