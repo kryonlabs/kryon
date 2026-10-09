@@ -66,11 +66,6 @@ main :: () -> s32 {
         return result
     }
     if EndFrame(bundle_session) != cast(FrameStatus)FrameOk { return 1 }
-    editing:=false
-    for i: 0..TreeCount(bundle_session)-1 {
-        node:=TreeNodeAt(bundle_session,cast(s32)i)
-        if node.selected && !node.disabled && (node.kind==WidgetKindTextField || node.kind==WidgetKindTextArea) { editing=true }
-    }
-    BundleTextInputHost(editing)
+    BundleTextInputHost(TreeTextInputActive(bundle_session))
     return 0
 }

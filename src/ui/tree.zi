@@ -1007,6 +1007,25 @@
         return TreeRead(session, index, false)
     }
 
+    // Hosts need only the committed editing state, rather than a copy of
+    // every node's geometry, text, semantics and widget state each frame.
+    #program_export
+    TreeTextInputActive :: (session: Session) -> bool {
+        if !SessionValid(session) { return false }
+        slot := session.slot
+        for index: 0..trees[slot].committed_count - 1 {
+            kind := trees[slot].committed[index].kind
+            if kind != WidgetKindTextField && kind != WidgetKindTextArea { continue }
+            semantic := trees[slot].committed[index].semantic_index
+            if semantic < 0 || !trees[slot].committed_semantics[semantic].selected { continue }
+            interaction := trees[slot].committed[index].interaction_index
+            if interaction < 0 || !trees[slot].committed_interactions[interaction].disabled {
+                return true
+            }
+        }
+        return false
+    }
+
     // A widget that must sit above everything else the frame draws, such as a
     // context menu, registers a late callback while it runs. TreeFinish calls each
     // one after the page has been submitted, at the root, so its nodes and paint
