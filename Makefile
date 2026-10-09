@@ -404,3 +404,8 @@ style-cache-benchmark: project-toolchain
 .PHONY: video-test
 video-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_video_linux_test.sh
+
+.PHONY: image-decode-test
+image-decode-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_image_decode_linux_test.sh
+test: image-decode-test
