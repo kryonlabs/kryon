@@ -28,7 +28,7 @@ Answer :: () -> s32 {
     if earlier.items[0].style.typeface != "first" { return 5 }
 
     invalid: StyleRules
-    invalid.count = 321
+    invalid.count = StyleRuleCapacity + 1
     if InstallStyleRules(invalid) { return 6 }
     current = ActiveStyleRules()
     if current.items[0].style.typeface != "second 🙂" { return 7 }
