@@ -102,7 +102,8 @@ endfunction()
 # (created by scripts/android_scaffold.py). KRYON_ANDROID_HOST selects
 # Kryon's own platform keyboard implementation; an application that supplies
 # its own JNI glue, like one with a custom SetPlatformTextKeyboardVisible,
-# must not call this. The library keeps only Android's entry points public.
+# must not call this. The library exposes Android's entry points and the
+# raylib CORE data symbol required by AndroidSurface synchronization.
 function(kryon_android_host target)
     target_compile_definitions(${target} PRIVATE KRYON_ANDROID_HOST=1)
     foreach(source IN LISTS ARGN)

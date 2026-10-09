@@ -33,6 +33,18 @@ AndroidViewportPolicy :: struct {
     min_width: s32
     min_height: s32
 }
+AndroidSurfaceTransform :: struct {
+    screen_width: s32
+    screen_height: s32
+    render_width: s32
+    render_height: s32
+    offset_x: s32
+    offset_y: s32
+    scale_x: float32
+    scale_y: float32
+    projection_x: float32
+    projection_y: float32
+}
 
 ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 raylib :: #system_library "raylib";
@@ -74,9 +86,13 @@ viewport_policy_set: bool;
     SurfaceIdentity :: () #foreign raylib "rlLoadIdentity";
     SurfaceOrtho :: (left: float64, right: float64, bottom: float64,
         top: float64, near: float64, far: float64) #foreign raylib "rlOrtho";
+    SurfaceMatrix :: struct {
+        values: [16]float32
+    }
+    SurfaceProjection :: () -> SurfaceMatrix #foreign raylib "rlGetMatrixProjection";
 
     // raylib exposes CORE as a global. This prefix matches its Window record
-    // through screenMax; later raylib fields are never read or written here.
+    // through screenScale; later raylib fields are never read or written here.
     RaylibWindowSize :: struct {
         width: u32
         height: u32
@@ -103,10 +119,11 @@ viewport_policy_set: bool;
         current_fbo: RaylibWindowSize
         screen_min: RaylibWindowSize
         screen_max: RaylibWindowSize
+        screen_scale: [16]float32
     }
     // This record overlays raylib's native CORE.Window. Its unused fields
     // are ABI padding and must survive executable field pruning.
-    #assert size_of(RaylibWindowState) >= 96
+    #assert size_of(RaylibWindowState) >= 160
     // PTHREAD_MUTEX_INITIALIZER is zero on bionic. Storage also fits glibc
     // for the display-free native behavior test.
     insets_mutex: [8]u64;
@@ -318,12 +335,28 @@ SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
                     changed := surface_width != w || surface_height != h ||
                     state.screen.width != cast(u32)w || state.screen.height != cast(u32)h ||
                     state.render.width != cast(u32)w || state.render.height != cast(u32)h
+                    changed = changed || state.render_offset.x != 0 ||
+                        state.render_offset.y != 0
+                    for index: 0..15 {
+                        expected: float32 = 0.0
+                        if index == 0 || index == 5 || index == 10 || index == 15 {
+                            expected = 1.0
+                        }
+                        if state.screen_scale[index] != expected {
+                            changed = true
+                        }
+                        state.screen_scale[index] = expected
+                    }
                     surface_width = w
                     surface_height = h
                     state.display.width = cast(u32)w
                     state.display.height = cast(u32)h
                     state.screen = state.display
                     state.render = state.display
+                    // Native buffers now use actual window pixels. Discard the
+                    // scale and letterbox offsets from raylib's initial size;
+                    // BeginDrawing and touch mapping apply them again otherwise.
+                    state.render_offset = RaylibWindowPoint.{0, 0}
                     if !state.using_fbo {
                         state.current_fbo = state.display
                     }
@@ -354,6 +387,33 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     height: s32
     SyncAndroidSurfaceSize(*width, *height)
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
+}
+
+// Read on the render thread after synchronization. Hosts can report the
+// actual native-pixel transform without capturing private application pixels.
+#program_export
+ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
+    #if ANDROID_SURFACE {
+        if output == null || raylib_window_state == null {
+            return false
+        }
+        state := raylib_window_state
+        projection := SurfaceProjection()
+        output.screen_width = cast(s32)state.screen.width
+        output.screen_height = cast(s32)state.screen.height
+        output.render_width = cast(s32)state.render.width
+        output.render_height = cast(s32)state.render.height
+        output.offset_x = state.render_offset.x
+        output.offset_y = state.render_offset.y
+        output.scale_x = state.screen_scale[0]
+        output.scale_y = state.screen_scale[5]
+        output.projection_x = projection.values[0]
+        output.projection_y = projection.values[5]
+        return true
+    } else {
+        unused output
+        return false
+    }
 }
 
 // Android draws the status and navigation bars light over whatever the app

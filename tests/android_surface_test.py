@@ -63,6 +63,7 @@ fields = {
     "display": "display", "screen": "screen", "position": "position", "previous_screen": "previousScreen",
     "previous_position": "previousPosition", "render": "render", "render_offset": "renderOffset",
     "current_fbo": "currentFbo", "screen_min": "screenMin", "screen_max": "screenMax",
+    "screen_scale": "screenScale",
 }
 assertions = ['#include <stddef.h>', '#include "raylib.h"', '#include "android_surface.h"', point, size,
               "typedef struct {" + window + "} NativeRaylibCore;"]
