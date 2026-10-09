@@ -31,6 +31,46 @@ QueueAsset :: (session: Session) {
     for index: 0..8 { path[index] = 88 }
 }
 
+// One command can retain both fields. Appending its full-block image path
+// grows the pool after its label was retained and must preserve both ranges.
+SubmitMixedBuffers :: (session: Session, label: string, path: string) -> bool {
+    command: QueuedPaint
+    command.data.node = -1
+    command.data.value = label
+    command.data.asset_path = path
+    command.data.bounds = Rectangle.{1.0, 2.0, 3.0, 4.0}
+    command.data.color = Color.{1, 2, 3, 4}
+    SubmitPaint(session, command)
+    return !command.data.owns_text && !command.data.owns_asset
+}
+
+CheckMixedOwnership :: (session: Session) -> bool {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    label: [8]u8 = .[49, 50, 51, 52, 53, 54, 55, 56]
+    path: [PAINT_TEXT_CAPACITY]u8
+    path[0] = 65
+    path[PAINT_TEXT_CAPACITY - 1] = 90
+    if !SubmitMixedBuffers(session, TextView(label[:]), TextView(path[:])) { return false }
+    for index: 0..7 { label[index] = 88 }
+    path[0] = 88
+    path[PAINT_TEXT_CAPACITY - 1] = 88
+    retained := PendingPaintAt(session, 0)
+    if retained.value != "12345678" || retained.asset_path.count != PAINT_TEXT_CAPACITY ||
+        retained.asset_path[0] != 65 || retained.asset_path[PAINT_TEXT_CAPACITY - 1] != 90 ||
+        !retained.owns_text || !retained.owns_asset ||
+        retained.text_block == retained.asset_block ||
+        retained.bounds.width != 3.0 || retained.color.a != 4 { return false }
+    blocks := pending_text[session.slot].count
+    empty: QueuedPaint
+    empty.data.node = -1
+    SubmitPaint(session, empty)
+    if pending_text[session.slot].count != blocks ||
+        PendingPaintAt(session, 1).owns_text || PendingPaintAt(session, 1).owns_asset { return false }
+    PaintFlush(session)
+    TreeCancel(session)
+    return !PaintOverflow(session) && PendingPaintCount(session) == 0
+}
+
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
     unused x; unused y; unused font; unused color
@@ -110,6 +150,7 @@ main :: () -> s32 {
         if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 15 }
     }
     if images != 5001 || bad { return 16 }
+    if !CheckMixedOwnership(session) { return 18 }
     // Overflow never emits partially borrowed or stale text, including a
     // caller that flushes directly instead of committing through EndFrame.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
