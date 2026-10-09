@@ -1,0 +1,16 @@
+Decode :: #import "image_decode_linux";
+c :: #system_library "libc";
+Allocate :: (size: usize) -> *void #foreign c "malloc";
+Free :: (memory: *void) #foreign c "free";
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    image := Decode.OpenImage(argv[1])
+    if image == null { return 3 }; defer { Decode.CloseImage(image) }
+    if Decode.Width(image) != 5000 || Decode.Height(image) != 1000 { print("Large original was reduced\n"); return 4 }
+    data := Allocate(20000000); if data == null { return 5 }; defer { Free(data) }
+    if !Decode.CopyPixels(image, cast(*u8)data, 20000) { return 6 }
+    pixels := cast(*u32)data
+    if pixels[0] != cast(u32)0xff00c800 || pixels[300 * 5000 + 4500] != cast(u32)0x80640000 { print("Original pixels or alpha changed\n"); return 7 }
+    print("Full-resolution 5000-pixel original and premultiplied alpha passed without a display\n")
+    return 0
+}

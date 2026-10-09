@@ -1,5 +1,7 @@
 // Optional system image codecs, loaded without adding a backend link dependency.
 // GdkPixbuf decodes and scales; the host converts its pixels to Cairo ARGB32.
+// Preserve original pixels within the raster host's 256 MiB image budget.
+ImagePixelLimit :: 67108864;
 dl :: #system_library "dl";
 c :: #system_library "c";
 Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
@@ -57,8 +59,10 @@ OpenImage :: (path: *u8) -> *void {
     if !Init() { return null }
     width: s32; height: s32
     if info(path, *width, *height) == null || width <= 0 || height <= 0 { return null }
-    if width > 4096 { width = 4096 }
-    if height > 4096 { height = 4096 }
+    if width > 32768 || height > 32768 || cast(s64)width * cast(s64)height > ImagePixelLimit {
+        if width > 4096 { width = 4096 }
+        if height > 4096 { height = 4096 }
+    }
     image := new_image(path, width, height, 1, null)
     if image == null { return null }
     oriented := orient(image)
@@ -73,7 +77,8 @@ CloseImage :: (image: *void) { release(image) }
 CopyPixels :: (image: *void, destination: *u8, stride: s32) -> bool {
     width := width_of(image); height := height_of(image)
     channels := channels_of(image); source_stride := stride_of(image)
-    if width <= 0 || height <= 0 || width > 4096 || height > 4096 ||
+    if width <= 0 || height <= 0 || width > 32768 || height > 32768 ||
+        cast(s64)width * cast(s64)height > ImagePixelLimit ||
         (channels != 3 && channels != 4) || source_stride < width * channels || stride < width * 4 { return false }
     source := pixels_of(image)
     if source == null || destination == null { return false }
