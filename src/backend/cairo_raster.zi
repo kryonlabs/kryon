@@ -3,6 +3,11 @@
 #import "geometry"
 #import "font_metrics"
 Utf8 :: #import "std/utf8";
+Video :: #import "video_linux";
+video_surface: *void;
+video_revision: u64;
+video_width: s32;
+video_height: s32;
 
 libdl :: #system_library "dl";
 RasterLookup :: (handle: *void, symbol: *u8) -> *void #foreign libdl "dlsym";
@@ -45,6 +50,7 @@ FontOptionsSetHintMetrics :: (options: *void, metrics: s32) #foreign cairo_libra
 SetFontOptions :: (paint: *void, options: *void) #foreign cairo_library "cairo_set_font_options";
 
 ImageSurfaceCreate :: (format: s32, width: s32, height: s32) -> *void #foreign cairo_library "cairo_image_surface_create";
+ImageSurfaceBorrow :: (bytes: *u8, format: s32, width: s32, height: s32, stride: s32) -> *void #foreign cairo_library "cairo_image_surface_create_for_data";
 ImageSurfaceFromPNG :: (path: *u8) -> *void #foreign cairo_library "cairo_image_surface_create_from_png";
 ImageSurfaceWidth :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_width";
 ImageSurfaceHeight :: (surface: *void) -> s32 #foreign cairo_library "cairo_image_surface_get_height";
@@ -305,6 +311,8 @@ OpenRaster :: (width: s32, height: s32) -> bool {
 
 #program_export
 CloseRaster :: () {
+    if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }
+    video_revision = 0; video_width = 0; video_height = 0
     GlyphCaretClear()
     if layout_bytes != null { LayoutFree(layout_bytes) }; layout_bytes = null; layout_capacity = 0
     if layout != null { LayoutUnref(layout) }; layout = null
@@ -440,6 +448,19 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
 }
 
 LoadPNG :: (asset_path: string) -> *void {
+    if asset_path == Video.VideoAsset {
+        if Video.width <= 0 || Video.height <= 0 { if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }; return null }
+        if video_surface == null || video_width != Video.width || video_height != Video.height {
+            if video_surface != null { SurfaceDestroy(video_surface) }
+            video_surface = ImageSurfaceBorrow(cast(*u8)*Video.pixels[0], 0, Video.width, Video.height, Video.width * 4)
+            if video_surface == null || SurfaceStatus(video_surface) != 0 { if video_surface != null { SurfaceDestroy(video_surface) }; video_surface = null; return null }
+            video_width = Video.width; video_height = Video.height; video_revision = 0
+        }
+        if video_revision != Video.revision {
+            video_revision = Video.revision; SurfaceMarkDirty(video_surface)
+        }
+        return video_surface
+    }
     length: s32 = cast(s32)asset_path.count
     if length == 0 || length >= 4096 { return null }
     image_clock += 1

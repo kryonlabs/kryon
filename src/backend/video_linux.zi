@@ -1,0 +1,218 @@
+// Local video decoding with synchronized audio. GStreamer is optional and
+// loaded at runtime; decoding never creates a window. Frames are ordinary
+// ImageProps assets supplied by the raster host, with bounded memory.
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+dl :: #system_library "dl";
+c :: #system_library "libc";
+CopyFunction :: (destination: *void, source: *void, count: usize) -> *void #foreign c "memcpy";
+Environment :: (name: *u8) -> *u8 #foreign c "getenv";
+OpenLibrary :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
+Symbol :: (handle: *void, name: *u8) -> *void #foreign dl "dlsym";
+InitFn :: #type (argc: *s32, argv: ***u8) #c_call;
+MakeFn :: #type (factory: *u8, name: *u8) -> *void #c_call;
+RefFn :: #type (value: *void) -> *void #c_call;
+UnrefFn :: #type (value: *void) #c_call;
+SetArgFn :: #type (value: *void, name: *u8, text: *u8) #c_call;
+StateFn :: #type (value: *void, state: s32) -> s32 #c_call;
+PointerFn :: #type (value: *void) -> *void #c_call;
+BoolFn :: #type (value: *void) -> s32 #c_call;
+PullFn :: #type (value: *void, timeout: u64) -> *void #c_call;
+PopFn :: #type (value: *void, types: s32) -> *void #c_call;
+IntFn :: #type (value: *void, name: *u8, result: *s32) -> s32 #c_call;
+QueryFn :: #type (value: *void, format: s32, result: *s64) -> s32 #c_call;
+SeekFn :: #type (value: *void, rate: float64, format: s32, flags: s32, start_type: s32, start: s64, end_type: s32, end: s64) -> s32 #c_call;
+UriFn :: #type (filename: *u8, error: **void) -> *u8 #c_call;
+MapInfo :: struct { memory: *void; flags: s32; data: *u8; size: usize; max_size: usize; user_data: [4]*void; reserved: [4]*void }
+// Public GStreamer 1.x buffer header, including the presentation timestamp.
+MiniObject :: struct { kind: usize; refs: s32; locks: s32; flags: u32; copy: *void; dispose: *void; release: *void; private_number: u32; private_pointer: *void }
+BufferHead :: struct { mini: MiniObject; pool: *void; pts: u64 }
+MapFn :: #type (buffer: *void, info: *MapInfo, flags: s32) -> s32 #c_call;
+UnmapFn :: #type (buffer: *void, info: *MapInfo) #c_call;
+StructureFn :: #type (caps: *void, index: u32) -> *void #c_call;
+Value :: struct { kind: u64; data: [2]u64 }
+ValueInitFn :: #type (value: *Value, kind: u64) -> *Value #c_call;
+ValueObjectFn :: #type (value: *Value, object: *void) #c_call;
+ValueUnsetFn :: #type (value: *Value) #c_call;
+PropertyFn :: #type (object: *void, name: *u8, value: *Value) #c_call;
+CapsFn :: #type (text: *u8) -> *void #c_call;
+SinkCapsFn :: #type (sink: *void, caps: *void) #c_call;
+
+gst: *void; app: *void; object: *void; glib: *void;
+init: InitFn; make: MakeFn; ref_sink: RefFn; unref: UnrefFn;
+set_arg: SetArgFn; set_state: StateFn; bus_for: PointerFn; pop: PopFn;
+pull: PullFn; preroll: PullFn; buffer_for: PointerFn; caps_for: PointerFn;
+is_eos: BoolFn;
+sample_unref: UnrefFn; mini_unref: UnrefFn; caps_unref: UnrefFn;
+structure_for: StructureFn; structure_int: IntFn; map: MapFn; unmap: UnmapFn;
+position_for: QueryFn; duration_for: QueryFn; seek: SeekFn;
+uri_for: UriFn; free_memory: UnrefFn; value_init: ValueInitFn;
+value_object: ValueObjectFn; value_unset: ValueUnsetFn; set_property: PropertyFn;
+caps_from: CapsFn; sink_caps: SinkCapsFn;
+initialized: bool; available: bool;
+pipeline: *void; sink: *void; bus: *void; audio_sink: *void;
+state: s32; position: s64; duration: s64; speed: s32 = 100; volume: s32 = 100;
+width: s32; height: s32; revision: u64;
+pixels: [921600]u32;
+message: string;
+lease: s64; opening_deadline: s64;
+waiting_preroll: bool;
+seek_target: s64;
+frame_time: s64 = -1;
+VideoAsset :: "kryon:video";
+
+Lookup :: (library: *void, name: string) -> *void {
+    bytes: [128]u8; if library == null || !CopyCString(name, bytes[:]) { return null }
+    return Symbol(library, *bytes[0])
+}
+Library :: (name: string) -> *void { bytes: [128]u8; if !CopyCString(name, bytes[:]) { return null }; return OpenLibrary(*bytes[0], 1) }
+Initialize :: () -> bool {
+    if initialized { return available }; initialized = true
+    address: *void
+    gst = Library("libgstreamer-1.0.so.0"); app = Library("libgstapp-1.0.so.0")
+    object = Library("libgobject-2.0.so.0"); glib = Library("libglib-2.0.so.0")
+    address = Lookup(gst, "gst_init"); unused CopyFunction(cast(*void)*init, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_element_factory_make"); unused CopyFunction(cast(*void)*make, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_object_ref_sink"); unused CopyFunction(cast(*void)*ref_sink, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_object_unref"); unused CopyFunction(cast(*void)*unref, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_util_set_object_arg"); unused CopyFunction(cast(*void)*set_arg, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_element_set_state"); unused CopyFunction(cast(*void)*set_state, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_element_get_bus"); unused CopyFunction(cast(*void)*bus_for, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_bus_pop_filtered"); unused CopyFunction(cast(*void)*pop, cast(*void)*address, size_of(*void))
+    address = Lookup(app, "gst_app_sink_try_pull_sample"); unused CopyFunction(cast(*void)*pull, cast(*void)*address, size_of(*void)); address = Lookup(app, "gst_app_sink_try_pull_preroll"); unused CopyFunction(cast(*void)*preroll, cast(*void)*address, size_of(*void))
+    address = Lookup(app, "gst_app_sink_is_eos"); unused CopyFunction(cast(*void)*is_eos, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_sample_get_buffer"); unused CopyFunction(cast(*void)*buffer_for, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_sample_get_caps"); unused CopyFunction(cast(*void)*caps_for, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_sample_unref"); unused CopyFunction(cast(*void)*sample_unref, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_mini_object_unref"); unused CopyFunction(cast(*void)*mini_unref, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_caps_unref"); unused CopyFunction(cast(*void)*caps_unref, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_caps_get_structure"); unused CopyFunction(cast(*void)*structure_for, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_structure_get_int"); unused CopyFunction(cast(*void)*structure_int, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_buffer_map"); unused CopyFunction(cast(*void)*map, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_buffer_unmap"); unused CopyFunction(cast(*void)*unmap, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_element_query_position"); unused CopyFunction(cast(*void)*position_for, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_element_query_duration"); unused CopyFunction(cast(*void)*duration_for, cast(*void)*address, size_of(*void)); address = Lookup(gst, "gst_element_seek"); unused CopyFunction(cast(*void)*seek, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_filename_to_uri"); unused CopyFunction(cast(*void)*uri_for, cast(*void)*address, size_of(*void)); address = Lookup(glib, "g_free"); loaded_free := cast(*UnrefFn)(*address); free_memory = loaded_free.*
+    address = Lookup(object, "g_value_init"); unused CopyFunction(cast(*void)*value_init, cast(*void)*address, size_of(*void)); address = Lookup(object, "g_value_set_object"); unused CopyFunction(cast(*void)*value_object, cast(*void)*address, size_of(*void))
+    address = Lookup(object, "g_value_unset"); unused CopyFunction(cast(*void)*value_unset, cast(*void)*address, size_of(*void)); address = Lookup(object, "g_object_set_property"); unused CopyFunction(cast(*void)*set_property, cast(*void)*address, size_of(*void))
+    address = Lookup(gst, "gst_caps_from_string"); unused CopyFunction(cast(*void)*caps_from, cast(*void)*address, size_of(*void)); address = Lookup(app, "gst_app_sink_set_caps"); unused CopyFunction(cast(*void)*sink_caps, cast(*void)*address, size_of(*void))
+    available = init != null && make != null && ref_sink != null && unref != null && set_arg != null && set_state != null &&
+        bus_for != null && pop != null && pull != null && preroll != null && is_eos != null && buffer_for != null && caps_for != null &&
+        sample_unref != null && mini_unref != null && caps_unref != null && structure_for != null && structure_int != null &&
+        map != null && unmap != null && position_for != null && duration_for != null && seek != null && uri_for != null &&
+        free_memory != null && value_init != null && value_object != null && value_unset != null && set_property != null && caps_from != null && sink_caps != null
+    if available { init(null, null) }; return available
+}
+Make :: (name: string) -> *void { bytes: [64]u8; if !CopyCString(name, bytes[:]) { return null }; result := make(*bytes[0], null); if result != null { unused ref_sink(result) }; return result }
+SetArg :: (value: *void, name: string, text: string) {
+    bytes: [64]u8; argument: [8192]u8
+    if CopyCString(name, bytes[:]) && CopyCString(text, argument[:]) { set_arg(value, *bytes[0], *argument[0]) }
+}
+SetObject :: (owner: *void, name: string, child: *void) {
+    bytes: [64]u8; value: Value
+    if !CopyCString(name, bytes[:]) { return }
+    unused value_init(*value, 80); value_object(*value, child); set_property(owner, *bytes[0], *value); value_unset(*value)
+}
+#program_export
+VideoStopHost :: () {
+    if pipeline != null { unused set_state(pipeline, 1) }
+    if bus != null { unref(bus) }; if pipeline != null { unref(pipeline) }
+    if sink != null { unref(sink) }; if audio_sink != null { unref(audio_sink) }
+    bus = null; pipeline = null; sink = null; audio_sink = null
+    state = 0; lease = 0; opening_deadline = 0; position = 0; duration = 0; width = 0; height = 0; revision += 1; waiting_preroll = false; frame_time = -1
+    // Revoke the last decoded frame as well as the audio pipeline.
+    for i: 0..921599 { pixels[i] = 0 }
+}
+#program_export
+VideoOpenHost :: (path: string) -> bool {
+    VideoStopHost(); message = ""
+    if path.count < 2 || path.count >= 4096 || path[0] != 47 { message = "Choose a local video original"; state = -1; return false }
+    for byte: path { if byte == 0 { message = "Invalid video path"; state = -1; return false } }
+    if !Initialize() { message = "Install GStreamer and its playback codecs to watch videos"; state = -1; return false }
+    bytes: [4096]u8; unused CopyCString(path, bytes[:]); error: *void
+    uri := uri_for(*bytes[0], *error)
+    if uri == null { message = "Cannot open this local video"; state = -1; return false }
+    pipeline = Make("playbin"); sink = Make("appsink")
+    if pipeline == null || sink == null { free_memory(cast(*void)uri); VideoStopHost(); message = "Install GStreamer playback plugins"; state = -1; return false }
+    SetArg(pipeline, "uri", TextFromCString(uri)); free_memory(cast(*void)uri)
+    SetArg(pipeline, "flags", "3") // Video and audio only; no external subtitles.
+    SetArg(sink, "max-buffers", "2"); SetArg(sink, "drop", "true"); SetArg(sink, "sync", "true"); SetArg(sink, "enable-last-sample", "false")
+    caps_text: [128]u8; unused CopyCString("video/x-raw,format=BGRA,width=[1,1280],height=[1,720],pixel-aspect-ratio=1/1", caps_text[:])
+    caps := caps_from(*caps_text[0]); if caps == null { VideoStopHost(); message = "Cannot configure video decoding"; state = -1; return false }
+    sink_caps(sink, caps); caps_unref(caps); SetObject(pipeline, "video-sink", sink)
+    // Tests explicitly opt into a silent owned sink and cannot reach audio devices.
+    environment: [32]u8; unused CopyCString("KRYON_VIDEO_TEST_SILENT", environment[:])
+    if TextFromCString(Environment(*environment[0])) == "1" { audio_sink = Make("fakesink"); if audio_sink != null { SetArg(audio_sink, "sync", "true"); SetObject(pipeline, "audio-sink", audio_sink) } }
+    speed = 100; volume = 100; bus = bus_for(pipeline)
+    if bus == null || set_state(pipeline, 4) == 0 { VideoStopHost(); message = "This video cannot be played with the installed codecs"; state = -1; return false }
+    state = 1; opening_deadline = MonotonicMilliseconds() + 15000; return true
+}
+Frame :: (sample: *void) -> bool {
+    caps := caps_for(sample); if caps == null { return false }; structure := structure_for(caps, 0); if structure == null { return false }
+    w: s32; h: s32; name: [16]u8
+    unused CopyCString("width", name[:]); if structure_int(structure, *name[0], *w) == 0 { return false }
+    unused CopyCString("height", name[:]); if structure_int(structure, *name[0], *h) == 0 { return false }
+    if w < 1 || h < 1 || w > 1280 || h > 720 { return false }
+    buffer := buffer_for(sample); info: MapInfo
+    if buffer == null { return false }
+    header := cast(*BufferHead)buffer; time := ifx header.pts < cast(u64)9223372036854775807 then cast(s64)(header.pts / 1000000) else -1
+    if waiting_preroll && time >= 0 && (time < seek_target - 100 || time > seek_target + 1000) { return false }
+    if map(buffer, *info, 1) == 0 { return false }
+    accepted: bool
+    if info.data != null && info.size >= cast(usize)(w * h * 4) {
+        source := cast(*u32)info.data
+        for i: 0..w * h - 1 { pixels[i] = source[i] | cast(u32)0xff000000 }
+        width = w; height = h; revision += 1; frame_time = time; accepted = true
+    }
+    unmap(buffer, *info)
+    return accepted
+}
+#program_export
+VideoTick :: () {
+    if pipeline == null { return }
+    now := MonotonicMilliseconds()
+    if lease > 0 && (now < 0 || now >= lease) { VideoStopHost(); message = "Video access expired"; return }
+    error := pop(bus, 2)
+    if error != null { mini_unref(error); VideoStopHost(); state = -1; message = "Cannot decode this video with the installed codecs"; return }
+    sample: *void
+    if state == 1 || state == 2 { sample = pull(sink, 0) }
+    if sample == null && state == 3 && waiting_preroll { sample = preroll(sink, 0) }
+    if sample != null { accepted := Frame(sample); sample_unref(sample); if accepted { waiting_preroll = false }; if state == 1 && width > 0 { state = 2 } }
+    value: s64; if position_for(pipeline, 3, *value) != 0 && value >= 0 { position = value / 1000000 }
+    if duration_for(pipeline, 3, *value) != 0 && value >= 0 { duration = value / 1000000 }
+    if state == 2 && is_eos(sink) != 0 { state = 4; position = duration; unused set_state(pipeline, 3) }
+    if state == 1 && now >= opening_deadline { VideoStopHost(); state = -1; message = "Video opening timed out" }
+}
+#program_export
+VideoLeaseHost :: (milliseconds: s32) { if pipeline != null && milliseconds >= 1 && milliseconds <= 10000 { now := MonotonicMilliseconds(); if now < 0 { VideoStopHost() } else { lease = now + milliseconds } } }
+#program_export
+VideoPauseHost :: () {
+    VideoTick(); if pipeline == null { return }
+    if state == 4 { unused VideoSeekHost(0) }
+    target: s32 = ifx state == 3 then 4 else 3
+    if set_state(pipeline, target) != 0 { state = ifx target == 4 then 2 else 3 }
+}
+#program_export
+VideoSeekHost :: (milliseconds: s64) -> bool {
+    VideoTick(); if pipeline == null || duration <= 0 || milliseconds < 0 || milliseconds >= duration { return false }
+    // Pulling a sample while PLAYING can leave the old preroll reference.
+    // Drain it before the flush seek so a paused preview waits for the new frame.
+    old_preroll := preroll(sink, 0); if old_preroll != null { sample_unref(old_preroll) }
+    if seek(pipeline, cast(float64)speed / 100.0, 3, 3, 1, milliseconds * 1000000, 0, -1) == 0 { return false }
+    position = milliseconds; seek_target = milliseconds; waiting_preroll = true; if state == 4 { state = 3 }; return true
+}
+#program_export
+VideoSpeedHost :: (percent: s32) -> bool {
+    if percent != 25 && percent != 50 && percent != 100 && percent != 150 && percent != 200 { return false }
+    previous := speed; speed = percent
+    if !VideoSeekHost(position) { speed = previous; return false }; return true
+}
+#program_export
+VideoVolumeHost :: (percent: s32) {
+    if pipeline == null || percent < 0 || percent > 100 { return }
+    // gst_util_set_object_arg parses the property's double without varargs.
+    values: [11]string = .{"0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1"}
+    volume = percent / 10 * 10; SetArg(pipeline, "volume", values[volume / 10])
+}
+#program_export
+VideoStateHost :: () -> s32 { VideoTick(); return state }
+#program_export
+VideoPositionHost :: () -> s64 { return position }
+#program_export
+VideoDurationHost :: () -> s64 { return duration }
+#program_export
+VideoFrameHost :: () -> string { VideoTick(); return ifx width > 0 then VideoAsset else "" }
+#program_export
+VideoMessageHost :: () -> string { return message }
