@@ -913,6 +913,11 @@ WindowVisibleHost :: () -> bool {
     return true
 }
 
+// A caller-owned pixel surface has no OS focus; an embedding player's
+// platform callback must supply the focus of its own application child.
+#program_export
+WindowFocusedHost :: () -> bool { return false }
+
 #program_export
 WindowSetVisibleHost :: (visible: bool) {
     unused visible

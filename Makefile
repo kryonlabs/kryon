@@ -418,3 +418,8 @@ android-rotation-pixels-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/android_rotation_pixels_test.sh
 
 test: android-surface-test android-rotation-pixels-test
+
+.PHONY: window-focus-test
+window-focus-test:
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/window_focus_test.py
+test: window-focus-test

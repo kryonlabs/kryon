@@ -1770,6 +1770,9 @@ WindowVisibleHost :: () -> bool {
 }
 
 #program_export
+WindowFocusedHost :: () -> bool { return !HostRaylibIsWindowHidden() && HostRaylibIsWindowFocused() }
+
+#program_export
 WindowSetVisibleHost :: (visible: bool) {
     if visible {
         HostRaylibClearWindowState(cast(u32)128)

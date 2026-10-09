@@ -31,7 +31,7 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module,"paint_queue") { return function=="RasterImage" }
     if ModuleName(module,"image_raster") { return function=="ImageWidth" || function=="ImageHeight" }
     if ModuleName(module,"system_clipboard") { return function=="SystemClipboardOpenHost" || function=="SystemClipboardByteHost" || function=="SystemClipboardWriteHost" }
-    if ModuleName(module,"window") { return function=="WindowSetVisibleHost" || function=="WindowVisibleHost" || function=="WindowInterceptCloseHost" || function=="WindowTakeCloseRequestHost" || function=="WindowQuitHost" || function=="WindowCompactHost" || function=="WindowBackgroundHost" || function=="WindowBackgroundDragHost" }
+    if ModuleName(module,"window") { return function=="WindowSetVisibleHost" || function=="WindowVisibleHost" || function=="WindowFocusedHost" || function=="WindowInterceptCloseHost" || function=="WindowTakeCloseRequestHost" || function=="WindowQuitHost" || function=="WindowCompactHost" || function=="WindowBackgroundHost" || function=="WindowBackgroundDragHost" }
     if ModuleName(module,"media") { return function=="MediaOpenHost" || function=="MediaPauseHost" || function=="MediaStopHost" || function=="MediaStateHost" || function=="MediaMessageHost" || function=="FetchTextHost" || function=="FetchTextStateHost" || function=="FetchTextResultHost" }
     return false
 }
@@ -135,6 +135,14 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         else { result.integer=0 }; return 1
     }
     if ModuleName(module,"window") {
+        if function=="WindowFocusedHost" {
+            if count!=0 { return 0 }
+            if player.platform!=null {
+                status:=player.platform(player.context,module_name,function_name,args,count,result)
+                if status==1 && result.kind==HostInteger { return 1 }
+            }
+            result.kind=HostInteger; result.integer=0; return 1
+        }
         if function=="WindowQuitHost" { player.closed=true; return 1 }
         if function=="WindowBackgroundHost" || function=="WindowBackgroundDragHost" || function=="WindowSetVisibleHost" { return 1 }
         result.kind=HostInteger

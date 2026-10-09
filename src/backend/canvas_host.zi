@@ -23,6 +23,9 @@ WindowVisibleHost :: () -> bool {
 }
 
 #program_export
+WindowFocusedHost :: () -> bool { return IsWindowFocused() }
+
+#program_export
 WindowSetVisibleHost :: (visible: bool) {}
 
 #program_export
