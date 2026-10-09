@@ -392,6 +392,14 @@ WindowVisibleHost :: () -> bool {
     return (GetWindowFlags(window) & cast(u32)0x8) == cast(u32)0
 }
 
+// SDL_WINDOW_INPUT_FOCUS, excluding hidden and minimized windows. Inspect only
+// the SDL window owned by this host; no desktop-wide window query is needed.
+#program_export
+WindowFocusedHost :: () -> bool {
+    if window == null { return false }
+    return (GetWindowFlags(window) & cast(u32)0x248) == cast(u32)0x200
+}
+
 #program_export
 WindowSetVisibleHost :: (visible: bool) {
     if window == null { return }

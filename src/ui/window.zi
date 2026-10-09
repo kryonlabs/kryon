@@ -5,6 +5,7 @@ host_api :: #system_library "host_api";
 // quitting, and the host keeps calling its Frame without presenting it.
 WindowSetVisibleHost :: (visible: bool) #foreign host_api;
 WindowVisibleHost :: () -> bool #foreign host_api;
+WindowFocusedHost :: () -> bool #foreign host_api;
 WindowInterceptCloseHost :: (enabled: bool) -> bool #foreign host_api;
 WindowTakeCloseRequestHost :: () -> bool #foreign host_api;
 WindowQuitHost :: () #foreign host_api;
@@ -38,6 +39,12 @@ WindowHide :: () {
 WindowVisible :: () -> bool {
     return WindowVisibleHost()
 }
+
+// Reports keyboard focus for this application's own visible window. Hosts
+// without a focus signal return false; an embedding host supplies its child's
+// focus rather than treating the supervising window as the active child.
+#program_export
+WindowFocused :: () -> bool { return WindowFocusedHost() }
 
 // With interception on, closing the window no longer quits: it is reported
 // once through WindowTakeCloseRequest and the app decides. Returns false when

@@ -72,7 +72,7 @@ Supported :: (module: string, function: string) -> bool {
         function == "SystemClipboardWriteHost"
     }
     if ModuleName(module, "window") {
-        return function == "WindowSetVisibleHost" || function == "WindowVisibleHost" ||
+        return function == "WindowSetVisibleHost" || function == "WindowVisibleHost" || function == "WindowFocusedHost" ||
         function == "WindowInterceptCloseHost" ||
         function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost" ||
         function == "WindowCompactHost" || function == "WindowBackgroundHost" || function == "WindowBackgroundDragHost"
@@ -369,6 +369,11 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function == "WindowVisibleHost" && count == 0 {
         result.kind = HostInteger
         result.integer = cast(s64)WindowVisibleHost()
+        return 1
+    }
+    if function == "WindowFocusedHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)WindowFocusedHost()
         return 1
     }
     if function == "WindowTakeCloseRequestHost" && count == 0 {
