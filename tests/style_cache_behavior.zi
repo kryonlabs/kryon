@@ -6,13 +6,13 @@ using ButtonState;
 
 Equal :: (a: StyleData, b: StyleData) -> bool {
     return a.fields == b.fields && a.background == b.background &&
-        a.foreground == b.foreground && a.border == b.border && a.focus == b.focus &&
-        a.radius == b.radius && a.border_width == b.border_width && a.opacity == b.opacity &&
-        a.padding_x == b.padding_x && a.padding_y == b.padding_y && a.gap == b.gap &&
-        a.font_size == b.font_size && a.icon_size == b.icon_size &&
-        a.offset_x == b.offset_x && a.offset_y == b.offset_y &&
-        a.background_end == b.background_end && a.material == b.material &&
-        a.typeface == b.typeface && a.letter_spacing == b.letter_spacing
+    a.foreground == b.foreground && a.border == b.border && a.focus == b.focus &&
+    a.radius == b.radius && a.border_width == b.border_width && a.opacity == b.opacity &&
+    a.padding_x == b.padding_x && a.padding_y == b.padding_y && a.gap == b.gap &&
+    a.font_size == b.font_size && a.icon_size == b.icon_size &&
+    a.offset_x == b.offset_x && a.offset_y == b.offset_y &&
+    a.background_end == b.background_end && a.material == b.material &&
+    a.typeface == b.typeface && a.letter_spacing == b.letter_spacing
 }
 
 Base :: (index: s32) -> StyleData {
@@ -91,13 +91,25 @@ Answer :: () -> s32 {
         if actual.typeface != "second" || actual.background != cast(u32)i { return 5 }
     }
     // Invalid replacement preserves the last installed style.
-    invalid: StyleRules; invalid.count = 321
+    invalid: StyleRules; invalid.count = StyleRuleCapacity + 1
     if InstallStyleRules(invalid) { return 6 }
     if !Same(rules, Base(42), facts, cast(s32)ButtonStateNormal) { return 7 }
     // Replacement with an empty sheet drops every former override.
     empty: StyleRules
     if !InstallStyleRules(empty) { return 8 }
     if !Equal(ResolveInstalledStyleRules(Base(43), facts, cast(s32)ButtonStateNormal), Base(43)) { return 9 }
+    // Rules beyond the old shared-pack limit participate in the cascade.
+    rules = StyleRules.{}
+    rules.count = StyleRuleCapacity
+    for i: 0..cast(s32)StyleRuleCapacity - 1 {
+        rules.items[i].selector = StyleDefaultSelector()
+        rules.items[i].state = StyleStateAny()
+        rules.items[i].order = i
+    }
+    rules.items[StyleRuleCapacity - 1].style.fields = cast(u32)StyleFontSize
+    rules.items[StyleRuleCapacity - 1].style.font_size = 21.0
+    if !InstallStyleRules(rules) { return 10 }
+    if ResolveInstalledStyleRules(Base(43), facts, cast(s32)ButtonStateNormal).font_size != 21.0 { return 11 }
     return 42
 }
 

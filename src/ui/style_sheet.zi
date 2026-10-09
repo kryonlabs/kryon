@@ -375,8 +375,11 @@ StyleRule :: struct {
     style: StyleData
 }
 
+// Leave room for app and user rules after a complete shared style pack.
+StyleRuleCapacity :: 512
+
 StyleRules :: struct {
-    items: [320]StyleRule
+    items: [StyleRuleCapacity]StyleRule
     count: s32
 }
 
@@ -436,7 +439,7 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
 #program_export
 InstallStyleRules :: (rules: StyleRules) -> bool {
     limit: s32 = rules.count
-    if limit < 0 || limit > 320 { return false }
+    if limit < 0 || limit > StyleRuleCapacity { return false }
     total: s64 = 0
     index: s32 = 0
     while index < limit {
@@ -460,7 +463,7 @@ InstallStyleRules :: (rules: StyleRules) -> bool {
         snapshot.items[index].layer = rules.items[index].layer
         snapshot.items[index].order = rules.items[index].order
         snapshot.items[index].style =
-            StyleWithoutTypeface(rules.items[index].style)
+        StyleWithoutTypeface(rules.items[index].style)
         snapshot.items[index].style.typeface = BuilderFinish(builder)
         index += 1
     }
@@ -802,111 +805,111 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     index: s64 = 0
     while index < rules.count {
         if StyleRuleMatchesState(rules[index].state, active_state) &&
-            StyleSelectorMatches(rules[index].selector, facts) {
+        StyleSelectorMatches(rules[index].selector, facts) {
             priority: StylePriority
             priority.present = true
             priority.layer = rules[index].layer
             priority.specificity = StyleSelectorSpecificity(rules[index].selector)
             priority.order = rules[index].order
             if (rules[index].style.fields & cast(u32)StyleBackground) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.background_priority) {
+            StylePriorityWins(priority, cascade.background_priority) {
                 cascade.result.background = rules[index].style.background
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleBackground
                 cascade.background_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleForeground) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.foreground_priority) {
+            StylePriorityWins(priority, cascade.foreground_priority) {
                 cascade.result.foreground = rules[index].style.foreground
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleForeground
                 cascade.foreground_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleBorder) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.border_priority) {
+            StylePriorityWins(priority, cascade.border_priority) {
                 cascade.result.border = rules[index].style.border
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleBorder
                 cascade.border_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleFocus) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.focus_priority) {
+            StylePriorityWins(priority, cascade.focus_priority) {
                 cascade.result.focus = rules[index].style.focus
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleFocus
                 cascade.focus_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleRadius) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.radius_priority) {
+            StylePriorityWins(priority, cascade.radius_priority) {
                 cascade.result.radius = rules[index].style.radius
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleRadius
                 cascade.radius_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.border_width_priority) {
+            StylePriorityWins(priority, cascade.border_width_priority) {
                 cascade.result.border_width = rules[index].style.border_width
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleBorderWidth
                 cascade.border_width_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleOpacity) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.opacity_priority) {
+            StylePriorityWins(priority, cascade.opacity_priority) {
                 cascade.result.opacity = rules[index].style.opacity
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleOpacity
                 cascade.opacity_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.padding_x_priority) {
+            StylePriorityWins(priority, cascade.padding_x_priority) {
                 cascade.result.padding_x = rules[index].style.padding_x
                 cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingX
                 cascade.padding_x_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StylePaddingY) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.padding_y_priority) {
+            StylePriorityWins(priority, cascade.padding_y_priority) {
                 cascade.result.padding_y = rules[index].style.padding_y
                 cascade.result.fields = cascade.result.fields | cast(u32)StylePaddingY
                 cascade.padding_y_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleGap) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.gap_priority) {
+            StylePriorityWins(priority, cascade.gap_priority) {
                 cascade.result.gap = rules[index].style.gap
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleGap
                 cascade.gap_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleFontSize) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.font_size_priority) {
+            StylePriorityWins(priority, cascade.font_size_priority) {
                 cascade.result.font_size = rules[index].style.font_size
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleFontSize
                 cascade.font_size_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.letter_spacing_priority) {
+            StylePriorityWins(priority, cascade.letter_spacing_priority) {
                 cascade.result.letter_spacing = rules[index].style.letter_spacing
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleLetterSpacing
                 cascade.letter_spacing_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.icon_size_priority) {
+            StylePriorityWins(priority, cascade.icon_size_priority) {
                 cascade.result.icon_size = rules[index].style.icon_size
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleIconSize
                 cascade.icon_size_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.content_offset_priority) {
+            StylePriorityWins(priority, cascade.content_offset_priority) {
                 cascade.result.offset_x = rules[index].style.offset_x
                 cascade.result.offset_y = rules[index].style.offset_y
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleContentOffset
                 cascade.content_offset_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleBackgroundEnd) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.background_end_priority) {
+            StylePriorityWins(priority, cascade.background_end_priority) {
                 cascade.result.background_end = rules[index].style.background_end
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleBackgroundEnd
                 cascade.background_end_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleMaterial) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.material_priority) {
+            StylePriorityWins(priority, cascade.material_priority) {
                 cascade.result.material = rules[index].style.material
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleMaterial
                 cascade.material_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleTypeface) != cast(u32)0 &&
-               StylePriorityWins(priority, cascade.typeface_priority) {
+            StylePriorityWins(priority, cascade.typeface_priority) {
                 cascade.result.typeface = rules[index].style.typeface
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleTypeface
                 cascade.typeface_priority = priority
@@ -932,7 +935,7 @@ ResolveStyleRules :: (rules: StyleRules, base: StyleData,
     resolve_rules = rules
     limit: s32 = resolve_rules.count
     if limit < 0 { limit = 0 }
-    if limit > 320 { limit = 320 }
+    if limit > StyleRuleCapacity { limit = StyleRuleCapacity }
     cascade: StyleCascade = ApplyStyleRules(BeginStyleCascade(base),
         resolve_rules.items[0:limit], facts, active_state)
     result: StyleData = cascade.result
@@ -945,7 +948,7 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     active_state: s32) -> StyleData {
     limit: s32 = installed_rules.count
     if limit < 0 { limit = 0 }
-    if limit > 320 { limit = 320 }
+    if limit > StyleRuleCapacity { limit = StyleRuleCapacity }
     if limit == 0 { return base }
     key: [12]s32 = .{facts.kind, facts.name, facts.class_name, facts.role,
         facts.tone, facts.emphasis, facts.size, facts.state, facts.validation,
@@ -978,9 +981,9 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
         for i: 0..limit - 1 {
             rule := installed_rules.items[i]
             if StyleHasField(rule.style, cast(u32)StyleTypeface) &&
-                rule.layer == priority.layer && rule.order == priority.order &&
-                StyleSelectorSpecificity(rule.selector) == priority.specificity &&
-                StyleRuleMatches(rule, facts, active_state) { typeface_rule = i }
+            rule.layer == priority.layer && rule.order == priority.order &&
+            StyleSelectorSpecificity(rule.selector) == priority.specificity &&
+            StyleRuleMatches(rule, facts, active_state) { typeface_rule = i }
         }
     }
     installed_style_cache[slot].typeface_rule = typeface_rule
