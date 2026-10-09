@@ -10,6 +10,7 @@
 #import "vec"
 #import "file_linux"
 Media :: #import "media_linux";
+Video :: #import "video_linux";
 Service :: #import "service_linux";
 Theme :: #import "system_theme_host_linux";
 Background :: #import "background_window_linux";
@@ -40,6 +41,12 @@ ModuleName :: (value: string, name: string) -> bool {
 }
 
 Supported :: (module: string, function: string) -> bool {
+    if ModuleName(module, "video") {
+        return function == "VideoOpenHost" || function == "VideoPauseHost" || function == "VideoStopHost" ||
+            function == "VideoStateHost" || function == "VideoPositionHost" || function == "VideoDurationHost" ||
+            function == "VideoSeekHost" || function == "VideoSpeedHost" || function == "VideoVolumeHost" ||
+            function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
+    }
     if ModuleName(module, "zib_run") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" || function == "BundleTextInputHost"
     }
@@ -159,6 +166,31 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if ModuleName(module, "video") {
+        if function == "VideoOpenHost" && count == 1 && args[0].kind == HostString { result.kind = HostInteger; result.integer = cast(s64)Video.VideoOpenHost(TextValue(args[0])); return 1 }
+        if count == 0 {
+            if function == "VideoPauseHost" { Video.VideoPauseHost(); return 1 }
+            if function == "VideoStopHost" { Video.VideoStopHost(); return 1 }
+            if function == "VideoFrameHost" || function == "VideoMessageHost" {
+                value := ifx function == "VideoFrameHost" then Video.VideoFrameHost() else Video.VideoMessageHost()
+                descriptor := cast(*TextDescriptor)(*value)
+                result.kind = HostString; result.data = descriptor.data; result.length = cast(usize)value.count; return 1
+            }
+            result.kind = HostInteger
+            if function == "VideoStateHost" { result.integer = cast(s64)Video.VideoStateHost(); return 1 }
+            if function == "VideoPositionHost" { result.integer = Video.VideoPositionHost(); return 1 }
+            if function == "VideoDurationHost" { result.integer = Video.VideoDurationHost(); return 1 }
+        }
+        if count == 1 && args[0].kind == HostInteger {
+            if function == "VideoSeekHost" { result.kind = HostInteger; result.integer = cast(s64)Video.VideoSeekHost(args[0].integer); return 1 }
+            if args[0].integer >= 0 && args[0].integer <= 10000 {
+                if function == "VideoSpeedHost" { result.kind = HostInteger; result.integer = cast(s64)Video.VideoSpeedHost(cast(s32)args[0].integer); return 1 }
+                if function == "VideoVolumeHost" { Video.VideoVolumeHost(cast(s32)args[0].integer); return 1 }
+                if function == "VideoLeaseHost" { Video.VideoLeaseHost(cast(s32)args[0].integer); return 1 }
+            }
+        }
+        return 0
+    }
     if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
         result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
     }
@@ -653,6 +685,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         }
     }
     Media.CloseMedia()
+    Video.VideoStopHost()
     Service.CloseService()
     CloseDesktop()
     CloseBundleInstance(instance)

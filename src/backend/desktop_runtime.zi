@@ -6,6 +6,7 @@
 #import "tree_input"
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
+Video :: #import "video_linux";
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
@@ -199,6 +200,7 @@ DesktopApplyResize :: () -> bool {
 
 #program_export
 CloseDesktop :: () {
+    Video.VideoStopHost()
     StopTextInput()
     CloseRaster()
     if texture != null { DestroyTexture(texture) }

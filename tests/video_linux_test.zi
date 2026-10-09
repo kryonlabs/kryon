@@ -1,0 +1,34 @@
+Video :: #import "video_linux";
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+WaitState :: (target: s32) -> bool {
+    until := MonotonicMilliseconds() + 5000
+    while MonotonicMilliseconds() < until { if Video.VideoStateHost() == target { return true }; if Video.state < 0 { print("%\n", Video.message); return false }; unused SleepMilliseconds(10) }
+    return false
+}
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    if Video.VideoOpenHost("https://example.invalid/video.mp4") { return 3 }
+    if !Video.VideoOpenHost(TextFromCString(argv[1])) || !WaitState(2) { return 4 }
+    if Video.VideoFrameHost() != Video.VideoAsset || Video.width != 160 || Video.height != 90 || Video.VideoDurationHost() < 3900 { return 5 }
+    if Video.pixels[1000] == 0 { return 6 }
+    Video.VideoPauseHost(); if Video.state != 3 { return 7 }
+    before := Video.VideoPositionHost(); unused SleepMilliseconds(150); Video.VideoTick()
+    if Video.VideoPositionHost() - before > 40 { return 8 }
+    before_frame := Video.revision
+    if !Video.VideoSeekHost(2000) { return 9 }
+    until := MonotonicMilliseconds() + 1000
+    while Video.revision == before_frame && MonotonicMilliseconds() < until { Video.VideoTick(); unused SleepMilliseconds(10) }
+    if Video.revision == before_frame { print("Paused seek did not decode a new frame\n"); return 17 }
+    if Video.frame_time < 1990 || Video.frame_time > 2150 { print("Paused frame is at %ms instead of 2000ms\n", Video.frame_time); return 18 }
+    if !Video.VideoSpeedHost(200) || Video.VideoSpeedHost(0) || Video.VideoSeekHost(-1) || Video.VideoSeekHost(9999999999) { return 9 }
+    Video.VideoVolumeHost(0); if Video.volume != 0 { return 10 }; Video.VideoVolumeHost(60); if Video.volume != 60 { return 11 }
+    Video.VideoPauseHost(); if !WaitState(4) { return 12 }
+    Video.VideoPauseHost(); if Video.state != 2 { return 13 }
+    Video.VideoLeaseHost(30); unused SleepMilliseconds(50); Video.VideoTick()
+    if Video.state != 0 || Video.pipeline != null || Video.VideoFrameHost() != "" || Video.pixels[1000] != 0 { return 14 }
+    if !Video.VideoOpenHost(TextFromCString(argv[1])) || !WaitState(2) { return 15 }
+    Video.VideoStopHost(); if Video.state != 0 || Video.sink != null { return 16 }
+    print("Native local video: decoded moving frames, duration, pause, seeking, speed, volume, EOS/replay, expiring lease and frame revocation passed\n")
+    return 0
+}

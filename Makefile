@@ -400,3 +400,7 @@ test: style-cache-test
 .PHONY: style-cache-benchmark
 style-cache-benchmark: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/style_cache_cost.sh
+
+.PHONY: video-test
+video-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_video_linux_test.sh

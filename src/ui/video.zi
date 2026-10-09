@@ -1,0 +1,40 @@
+// Desktop local video service. An ordinary Image(ImageProps) displays VideoFrame.
+host_api :: #system_library "host_api";
+VideoOpenHost :: (source: string) -> bool #foreign host_api;
+VideoPauseHost :: () #foreign host_api;
+VideoStopHost :: () #foreign host_api;
+VideoStateHost :: () -> s32 #foreign host_api;
+VideoPositionHost :: () -> s64 #foreign host_api;
+VideoDurationHost :: () -> s64 #foreign host_api;
+VideoSeekHost :: (milliseconds: s64) -> bool #foreign host_api;
+VideoSpeedHost :: (percent: s32) -> bool #foreign host_api;
+VideoVolumeHost :: (percent: s32) #foreign host_api;
+VideoLeaseHost :: (milliseconds: s32) #foreign host_api;
+VideoFrameHost :: () -> string #foreign host_api;
+VideoMessageHost :: () -> string #foreign host_api;
+// State: 0 stopped, 1 opening, 2 playing, 3 paused, 4 ended, -1 failed.
+#program_export
+VideoOpen :: (source: string) -> bool { return VideoOpenHost(source) }
+#program_export
+VideoPause :: () { VideoPauseHost() }
+#program_export
+VideoStop :: () { VideoStopHost() }
+#program_export
+VideoState :: () -> s32 { return VideoStateHost() }
+#program_export
+VideoPosition :: () -> s64 { return VideoPositionHost() }
+#program_export
+VideoDuration :: () -> s64 { return VideoDurationHost() }
+#program_export
+VideoSeek :: (milliseconds: s64) -> bool { return VideoSeekHost(milliseconds) }
+#program_export
+VideoSpeed :: (percent: s32) -> bool { return VideoSpeedHost(percent) }
+#program_export
+VideoVolume :: (percent: s32) { VideoVolumeHost(percent) }
+// Optional expiring authorization. Renew only after the app's access check.
+#program_export
+VideoLease :: (milliseconds: s32) { VideoLeaseHost(milliseconds) }
+#program_export
+VideoFrame :: () -> string { return VideoFrameHost() }
+#program_export
+VideoMessage :: () -> string { return VideoMessageHost() }

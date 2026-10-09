@@ -1,5 +1,14 @@
 # Kryon
 
+Linux desktop and portable hosts can decode local videos with synchronized audio
+using the optional GStreamer service exported as `kryon/Video` and
+`kryon/VideoLinux`. Display the returned frame with `Image(ImageProps)`.
+Applications own playback controls and access checks; an optional expiring lease
+revokes both audio and decoded frames when authorization is no longer renewed.
+`make video-test` checks synthetic moving frames, paused seeking, speed, volume,
+replay and lease revocation with a silent audio sink and no display access.
+
+
 Kryon is a UI library written in Ziran. Its source lives under `src/ui/` and
 imports Ziran modules normally. The Ziran compiler, `.zir` representation, and
 `.zib` bundle format belong to the separate
