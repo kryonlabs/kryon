@@ -1,0 +1,41 @@
+#import "session"
+#import "geometry"
+#import "tree"
+#import "widget_kind"
+using WidgetKind;
+
+Build :: (session: Session, kind: s32, selected: bool, disabled: bool) -> bool {
+    bounds: Rectangle = .{0.0, 0.0, 100.0, 20.0}
+    TreeStart(session, cast(u64)1, bounds)
+    if !TreeIsBuilding(session) { return false }
+    for i: 1..40 {
+        unused TreeSubmit(session, cast(u64)i, 0, WidgetKindImage, bounds)
+    }
+    node := TreeSubmit(session, cast(u64)50, 0, kind, bounds)
+    TreeSetSelected(session, node, selected)
+    TreeSetInteractive(session, node, disabled, false, 50)
+    if !TreeFinish(session) { return false }
+    expected := selected && !disabled &&
+        (kind == WidgetKindTextField || kind == WidgetKindTextArea)
+    return TreeTextInputActive(session) == expected
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if TreeTextInputActive(session) { return 1 }
+    if !Build(session, WidgetKindTextField, true, false) { return 2 }
+    if !Build(session, WidgetKindTextArea, true, false) { return 3 }
+    if !Build(session, WidgetKindTextField, true, true) { return 4 }
+    if !Build(session, WidgetKindTextField, false, false) { return 5 }
+    if !Build(session, WidgetKindButton, true, false) { return 6 }
+    // A cancelled submission keeps the previous committed editing state.
+    if !Build(session, WidgetKindTextArea, true, false) { return 7 }
+    TreeStart(session, cast(u64)1, .{0.0, 0.0, 100.0, 20.0})
+    if !TreeIsBuilding(session) { return 8 }
+    TreeCancel(session)
+    if !TreeTextInputActive(session) { return 9 }
+    unused SessionClose(session)
+    if TreeTextInputActive(session) { return 10 }
+    return 0
+}
