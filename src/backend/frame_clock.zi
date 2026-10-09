@@ -1,0 +1,30 @@
+// Desktop frame deadlines include event handling, drawing and presentation.
+#scope_export
+FrameClock :: struct {
+    deadline: u64
+}
+
+Begin :: (clock: *FrameClock, now: u64, frequency: u64) {
+    if clock.deadline == cast(u64)0 && frequency >= cast(u64)60 {
+        clock.deadline = now + frequency / cast(u64)60
+    }
+}
+
+Wait :: (clock: *FrameClock, now: u64, frequency: u64,
+    visible: bool) -> u32 {
+    if !visible {
+        clock.deadline = cast(u64)0
+        return cast(u32)100
+    }
+    if frequency < cast(u64)60 { return cast(u32)0 }
+    period := frequency / cast(u64)60
+    // A late frame already used its budget. Resume from the current clock
+    // rather than sleeping again or trying to catch up with missed frames.
+    if clock.deadline <= now {
+        clock.deadline = now + period
+        return cast(u32)0
+    }
+    remaining := clock.deadline - now
+    clock.deadline += period
+    return cast(u32)((remaining * cast(u64)1000 + frequency - cast(u64)1) / frequency)
+}

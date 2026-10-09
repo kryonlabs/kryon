@@ -7,6 +7,7 @@
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
 Video :: #import "video_linux";
+Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
@@ -53,6 +54,8 @@ StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
 GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
 GetModState :: () -> u32 #foreign sdl_library "SDL_GetModState";
 Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
+PerformanceCounter :: () -> u64 #foreign sdl_library "SDL_GetPerformanceCounter";
+PerformanceFrequency :: () -> u64 #foreign sdl_library "SDL_GetPerformanceFrequency";
 ShowWindow :: (window: *void) #foreign sdl_library "SDL_ShowWindow";
 HideWindow :: (window: *void) #foreign sdl_library "SDL_HideWindow";
 RaiseWindow :: (window: *void) #foreign sdl_library "SDL_RaiseWindow";
@@ -88,6 +91,8 @@ desktop_close_requested: bool;
 desktop_quit: bool;
 desktop_width: s32;
 desktop_height: s32;
+frame_clock: Clock.FrameClock;
+frame_frequency: u64;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -106,6 +111,8 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x20) != 0 { return false }
+    frame_frequency = PerformanceFrequency()
+    frame_clock.deadline = cast(u64)0
     // The click that focuses this window must still reach its widgets.
     // SDL's default swallows it, including the first right-click menu request.
     hint: [32]u8
@@ -221,6 +228,7 @@ SetPointerFrame :: (x: float32, y: float32, down: bool,
 
 #program_export
 PollDesktop :: () -> bool {
+    Clock.Begin(*frame_clock, PerformanceCounter(), frame_frequency)
     event: Event
     pressed: bool = false
     released: bool = false
@@ -378,11 +386,9 @@ EndDesktopFrame :: () -> bool {
 
 #program_export
 PauseDesktop :: () {
-    if WindowVisibleHost() {
-        Delay(cast(u32)16)
-    } else {
-        Delay(cast(u32)100)
-    }
+    milliseconds := Clock.Wait(*frame_clock, PerformanceCounter(),
+        frame_frequency, WindowVisibleHost())
+    if milliseconds > cast(u32)0 { Delay(milliseconds) }
 }
 
 // SDL_WINDOW_HIDDEN
