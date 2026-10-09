@@ -108,48 +108,64 @@ frame_paint_unchanged: [9]bool;
 // Every queued label owns its text, including large grids of short-lived
 // glyph buffers. Blocks grow with the frame's actual text. A label larger
 // than one block or an allocation failure cancels the frame before drawing.
-KeepPaintText :: (slot: s32, data: PaintCommand) -> PaintCommand {
-    if data.value.count == 0 { return data }
-    if data.value.count > cast(s64)PAINT_TEXT_CAPACITY {
+PaintTextRange :: struct {
+    start: s32
+    block: s32
+    valid: bool
+}
+
+KeepPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+    result: PaintTextRange
+    if value.count > cast(s64)PAINT_TEXT_CAPACITY {
         pending_paint[slot].overflow = true
-        return data
+        return result
     }
     block_index: s32 = cast(s32)pending_text[slot].count - 1
-    if block_index < 0 || data.value.count >
+    if block_index < 0 || value.count >
         cast(s64)(PAINT_TEXT_CAPACITY - pending_text[slot][block_index].length) {
         block: PaintTextBlock
         if !VecPush(pending_text[slot], block) {
             pending_paint[slot].overflow = true
-            return data
+            return result
         }
         block_index += 1
     }
-    start: s32 = pending_text[slot][block_index].length
+    block := *pending_text[slot][block_index]
+    start: s32 = block.length
     at: s32 = 0
-    while at < cast(s32)data.value.count {
-        pending_text[slot][block_index].bytes[start + at] = data.value[at]
+    while at < cast(s32)value.count {
+        block.bytes[start + at] = value[at]
         at += 1
     }
-    pending_text[slot][block_index].length = start + at
-    data.text_start = cast(s64)start
+    block.length = start + at
+    result.start = start
+    result.block = block_index
+    result.valid = true
+    return result
+}
+
+// Only the ownership fields change; avoid copying the drawing record and
+// its nested geometry just to retain a label or image path.
+KeepPaintText :: (slot: s32, data: *PaintCommand) {
+    if data.value.count == 0 { return }
+    retained := KeepPaintBytes(slot, data.value)
+    if !retained.valid { return }
+    data.text_start = cast(s64)retained.start
     data.text_count = data.value.count
-    data.text_block = block_index
+    data.text_block = retained.block
     data.owns_text = true
-    return data
 }
 
 // Asset paths have the same frame lifetime as labels. In particular, an
 // image may be composed from a caller's temporary or editable path buffer.
-KeepPaintAsset :: (slot: s32, data: PaintCommand) -> PaintCommand {
-    if data.asset_path.count == 0 { return data }
-    stored: PaintCommand
-    stored.value = data.asset_path
-    stored = KeepPaintText(slot, stored)
-    data.asset_start = stored.text_start
-    data.asset_count = stored.text_count
-    data.asset_block = stored.text_block
-    data.owns_asset = stored.owns_text
-    return data
+KeepPaintAsset :: (slot: s32, data: *PaintCommand) {
+    if data.asset_path.count == 0 { return }
+    retained := KeepPaintBytes(slot, data.asset_path)
+    if !retained.valid { return }
+    data.asset_start = cast(s64)retained.start
+    data.asset_count = data.asset_path.count
+    data.asset_block = retained.block
+    data.owns_asset = true
 }
 
 // Raw rasterization; the queued source, clip, radius, and tint are chosen in
@@ -487,8 +503,8 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
         }
     }
     destination := SessionIndex(session)
-    command.data = KeepPaintText(destination, command.data)
-    command.data = KeepPaintAsset(destination, command.data)
+    KeepPaintText(destination, *command.data)
+    KeepPaintAsset(destination, *command.data)
     if !VecPush(pending_paint[destination].items, command) {
         pending_paint[destination].overflow = true
     }
