@@ -8,12 +8,14 @@
 draws: s32;
 images: s32;
 bad: bool;
+changed_last: bool;
 
 // Queue many glyph-sized buffers, reusing each immediately. The total text
 // exceeds the old frame limit, including thousands of temporary buffers.
 QueueLabels :: (session: Session) {
     for index: 0..4999 {
         bytes: [8]u8 = .[49, 50, 51, 52, 53, 54, 55, 56]
+        if changed_last && index == 4999 { bytes[7] = 88 }
         PaintClippedLabel(session, -1, TextView(bytes[:]), 0, 0, 14,
             Color.{1, 2, 3, 255}, Rectangle.{0.0, 0.0, 100.0, 100.0})
         for at: 0..7 { bytes[at] = 88 }
@@ -32,7 +34,9 @@ QueueAsset :: (session: Session) {
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
     unused x; unused y; unused font; unused color
-    if value != "12345678" { bad = true }
+    expected := "12345678"
+    if changed_last && draws % 5000 == 4999 { expected = "1234567X" }
+    if value != expected { bad = true }
     draws += 1
 }
 
@@ -73,10 +77,20 @@ main :: () -> s32 {
         if PendingPaintAt(session, 0).value != "12345678" ||
             PendingPaintAt(session, 4999).value != "12345678" { return 2 }
         result := EndFrameRetained(session, true)
-        if cast(s32)result.status != 0 || result.paint_unchanged ||
+        if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) ||
             result.paint_count != 5000 { return 3 }
     }
-    if draws != 10000 || bad { return 4 }
+    if draws != 5000 || bad { return 4 }
+    // A changed byte beyond the former total limit invalidates the plan;
+    // the following identical frame retains that new byte too.
+    changed_last = true
+    for frame: 0..1 {
+        BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        QueueLabels(session)
+        result := EndFrameRetained(session, true)
+        if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 13 }
+    }
+    if draws != 10000 || bad { return 14 }
     for frame: 0..1 {
         BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         QueueAsset(session)
@@ -85,6 +99,15 @@ main :: () -> s32 {
         if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 10 }
     }
     if images != 1 || bad { return 11 }
+    // Image paths own a separate byte pool and may exceed the same old
+    // total limit while each caller's temporary path remains short.
+    for frame: 0..1 {
+        BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        for index: 0..4999 { QueueAsset(session) }
+        result := EndFrameRetained(session, true)
+        if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 15 }
+    }
+    if images != 5001 || bad { return 16 }
     // Overflow never emits partially borrowed or stale text, including a
     // caller that flushes directly instead of committing through EndFrame.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
@@ -101,8 +124,10 @@ main :: () -> s32 {
     bounds := Rectangle.{0.0, 0.0, 100.0, 100.0}
     PaintImage(session, -1, TextView(oversized[:]), cast(u32)0,
         bounds, bounds, bounds, Vector2.{}, 0.0, 0.0, Color.{})
-    if cast(s32)EndFrame(session) != 8 || images != 1 { return 12 }
+    if cast(s32)EndFrame(session) != 8 || images != 5001 { return 12 }
     PaintDispose(session)
+    if paint_snapshot_values[session.slot].count != 0 ||
+        paint_snapshot_assets[session.slot].count != 0 { return 17 }
     if !SessionClose(session) { return 5 }
     return 0
 }
