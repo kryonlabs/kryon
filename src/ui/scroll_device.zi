@@ -147,6 +147,10 @@ CommitScroll :: (key: u64, frame: ScrollFrame) {
         scroll_device.owner = key
     }
     if scroll_device.owner != key { return }
+    // A drag that starts moving on its release frame must not also tap.
+    if frame.cancel_press {
+        TreePointerCancel(scroll_device.session)
+    }
     if frame.clear_drag {
         ScrollDeviceRelease()
         return
@@ -158,7 +162,4 @@ CommitScroll :: (key: u64, frame: ScrollFrame) {
     scroll_device.drag_moving = frame.drag_moving
     scroll_device.sample_seconds = frame.sample_seconds
     scroll_device.velocity = frame.velocity
-    if frame.cancel_press {
-        TreePointerCancel(scroll_device.session)
-    }
 }

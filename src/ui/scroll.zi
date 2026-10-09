@@ -705,11 +705,22 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
             frame.drag_origin_y = input.mouse.y
             frame.drag_origin_offset = frame.offset
             frame.drag_moving = false
+            // The press time is the first sample, so the first movement
+            // already has a speed.
+            frame.sample_seconds = input.now_seconds
+            frame.velocity = 0.0
             content_active = true
+        } else if content_active {
+            frame.sample_seconds = input.sample_seconds
+            frame.velocity = input.velocity
         }
         if content_active {
             delta: s32 = cast(s32)(input.mouse.y - frame.drag_origin_y)
-            if input.down || input.pressed {
+            holding: bool = input.down || input.pressed
+            // A phone applies every queued touch event once per frame, so on
+            // a slow frame a quick swipe arrives together with its release.
+            // That last movement still scrolls the content.
+            if holding || input.released {
                 if !frame.drag_moving && (delta > metrics.drag_threshold ||
                     delta < -metrics.drag_threshold) {
                     frame.drag_moving = true
@@ -717,27 +728,29 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                 }
                 if frame.drag_moving {
                     previous: s32 = frame.offset
-                    frame.offset = ScrollDragDeltaOffsetFor(
+                    target: s32 = ScrollDragDeltaOffsetFor(
                         frame.drag_origin_offset, delta, maximum)
-                    // Smooth the content's velocity over recent frames.
-                    elapsed: float32 = ScrollElapsed(input)
-                    frame.velocity = input.velocity
-                    if elapsed > 0.0 {
-                        now: float32 = cast(float32)(frame.offset - previous) / elapsed
-                        frame.velocity = now * 0.7 + input.velocity * 0.3
+                    // Lifting the finger where it rests keeps its last speed.
+                    if holding || target != previous {
+                        frame.offset = target
+                        // Smooth the content's velocity over recent frames.
+                        elapsed: float32 = ScrollElapsed(input)
+                        if elapsed > 0.0 {
+                            now: float32 = cast(float32)(frame.offset - previous) / elapsed
+                            frame.velocity = now * 0.7 + input.velocity * 0.3
+                        }
+                        frame.sample_seconds = input.now_seconds
                     }
-                    frame.sample_seconds = input.now_seconds
                 }
             }
-            if input.released || !(input.down || input.pressed) {
+            if input.released || !holding {
                 frame.consume_release = frame.drag_moving && input.released
                 // A flick keeps the content moving. A drag that has come to
                 // rest before release has had no sample for a while.
                 if frame.drag_moving && input.released &&
-                    ScrollSpeed(input.velocity) >= cast(float32)SCROLL_FLING_START &&
-                    input.now_seconds - input.sample_seconds < SCROLL_FRAME_MAX_SECONDS {
+                    ScrollSpeed(frame.velocity) >= cast(float32)SCROLL_FLING_START &&
+                    input.now_seconds - frame.sample_seconds < SCROLL_FRAME_MAX_SECONDS {
                     frame.flinging = true
-                    frame.velocity = input.velocity
                     frame.sample_seconds = input.now_seconds
                 }
                 frame.clear_drag = true

@@ -165,6 +165,29 @@ Answer :: () -> s32 {
         return -18
     }
 
+    // A phone applies every queued touch event once per frame, so on a slow
+    // frame a quick swipe can arrive together with its release. The final
+    // movement still scrolls the content and the swipe still coasts.
+    test_offset = 0
+    unused TestFrame(90.0, true, true, false, 40.0, 2000)
+    lifted: ScrollResult = TestFrame(20.0, false, false, true, 40.09, 2000)
+    if lifted.scroll_offset < 70 || !lifted.frame.flinging { return -19 }
+
+    // A swipe over three slow frames moves with the finger on every frame,
+    // including the first one, and coasts after the release.
+    test_offset = 0
+    unused TestFrame(90.0, true, true, false, 50.0, 2000)
+    first_move: ScrollResult = TestFrame(60.0, false, true, false, 50.08, 2000)
+    if first_move.scroll_offset < 30 || first_move.frame.velocity <= 0.0 { return -20 }
+    slow_release: ScrollResult = TestFrame(20.0, false, false, true, 50.16, 2000)
+    if slow_release.scroll_offset < 70 || !slow_release.frame.flinging { return -21 }
+
+    // A short press that lifts in place stays a tap and does not scroll.
+    test_offset = 0
+    unused TestFrame(60.0, true, true, false, 60.0, 2000)
+    tapped: ScrollResult = TestFrame(61.0, false, false, true, 60.09, 2000)
+    if tapped.scroll_offset != 0 || tapped.frame.flinging { return -22 }
+
     if !SessionClose(test_session) { return -12 }
     return 42
 }
