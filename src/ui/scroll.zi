@@ -738,6 +738,12 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                         if elapsed > 0.0 {
                             now: float32 = cast(float32)(frame.offset - previous) / elapsed
                             frame.velocity = now * 0.7 + input.velocity * 0.3
+                            // The finger lifted somewhere within this frame,
+                            // so its last movement was at least this fast.
+                            if !holding && now * input.velocity > 0.0 &&
+                                ScrollSpeed(input.velocity) > ScrollSpeed(frame.velocity) {
+                                frame.velocity = input.velocity
+                            }
                         }
                         frame.sample_seconds = input.now_seconds
                     }

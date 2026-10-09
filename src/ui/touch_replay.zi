@@ -1,0 +1,84 @@
+// Touches that begin and end between two host frames.
+//
+// A platform that applies every queued touch event once per frame, such as
+// raylib's Android backend, reports neither a press nor a release for a tap
+// or quick swipe that starts and ends while a frame is being drawn, and
+// reports a release where the touch last moved rather than where it lifted.
+// The host counts the touches it sees start and end, and TouchReplayStep
+// replays such a touch over two frames: the press where it began, then the
+// release where it ended.
+#import "geometry"
+
+// Touch starts and ends the platform delivered since the last frame.
+TouchSpan :: struct {
+    began: s32
+    ended: s32
+    // Where the first touch began and where the last one ended.
+    start: Vector2
+    finish: Vector2
+}
+
+// One frame of the primary pointer, as the platform reports it.
+TouchSample :: struct {
+    position: Vector2
+    pressed: bool
+    down: bool
+    released: bool
+}
+
+// What a replay still has to deliver on later frames.
+TouchReplay :: struct {
+    release_pending: bool
+    release_at: Vector2
+    press_pending: bool
+}
+
+TouchSpanBegin :: (span: *TouchSpan, position: Vector2) {
+    if span.began == 0 {
+        span.start = position
+    }
+    span.began += 1
+}
+
+TouchSpanEnd :: (span: *TouchSpan, position: Vector2) {
+    span.ended += 1
+    span.finish = position
+}
+
+#program_export
+TouchReplayStep :: (replay: *TouchReplay, span: TouchSpan,
+    sample: TouchSample) -> TouchSample {
+    if replay.release_pending {
+        replay.release_pending = false
+        // A touch that is already under way gets its press next frame.
+        replay.press_pending = sample.pressed || sample.down
+        released: TouchSample
+        released.position = replay.release_at
+        released.released = true
+        return released
+    }
+    if replay.press_pending {
+        replay.press_pending = false
+        if sample.down {
+            sample.pressed = true
+        }
+        return sample
+    }
+    // The platform saw nothing, yet a whole touch began and ended.
+    if span.began > 0 && span.ended >= span.began &&
+        !sample.pressed && !sample.down && !sample.released {
+        replay.release_pending = true
+        replay.release_at = span.finish
+        pressed: TouchSample
+        pressed.position = span.start
+        pressed.pressed = true
+        pressed.down = true
+        return pressed
+    }
+    // A platform can report a release where the touch last moved; a quick
+    // swipe that lifts before its next movement arrives ends further on.
+    if sample.released && span.ended > 0 {
+        sample.position = span.finish
+    }
+    return sample
+}
