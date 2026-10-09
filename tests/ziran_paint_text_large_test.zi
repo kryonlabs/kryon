@@ -76,6 +76,8 @@ main :: () -> s32 {
         if PendingPaintCount(session) != 5000 || PaintOverflow(session) { return 1 }
         if PendingPaintAt(session, 0).value != "12345678" ||
             PendingPaintAt(session, 4999).value != "12345678" { return 2 }
+        if PendingPaintAt(session, -1).value.count != 0 ||
+            PendingPaintAt(session, 5000).value.count != 0 { return 11 }
         result := EndFrameRetained(session, true)
         if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) ||
             result.paint_count != 5000 { return 3 }

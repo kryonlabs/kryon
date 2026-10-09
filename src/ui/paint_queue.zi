@@ -702,16 +702,17 @@ PendingPaintCount :: (session: Session) -> s32 {
 
 #program_export
 PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
-    empty: PaintCommand
-    if index < 0 || cast(s64)index >= pending_paint[SessionIndex(session)].items.count { return empty }
-    data: PaintCommand = pending_paint[SessionIndex(session)].items[index].data
+    slot: s32 = SessionIndex(session)
+    if index < 0 || cast(s64)index >= pending_paint[slot].items.count {
+        empty: PaintCommand
+        return empty
+    }
+    data: PaintCommand = pending_paint[slot].items[index].data
     if data.owns_text {
-        slot: s32 = SessionIndex(session)
         data.value = TextView(pending_text[slot][data.text_block].bytes[data.text_start:
             data.text_start + data.text_count])
     }
     if data.owns_asset {
-        slot: s32 = SessionIndex(session)
         data.asset_path = TextView(pending_text[slot][data.asset_block].bytes[data.asset_start:
             data.asset_start + data.asset_count])
     }
