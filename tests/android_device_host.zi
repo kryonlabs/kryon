@@ -96,6 +96,12 @@ rlLoadIdentity :: () {
 }
 
 #program_export
+rlGetMatrixProjection :: () -> SurfaceMatrix {
+    matrix: SurfaceMatrix
+    return matrix
+}
+
+#program_export
 rlOrtho :: (left: float64, right: float64, bottom: float64,
     top: float64, near: float64, far: float64) {
     unused left

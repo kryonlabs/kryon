@@ -80,6 +80,13 @@ rlOrtho :: (left: float64, right: float64, bottom: float64,
     projection_width = right
     projection_height = bottom
 }
+#program_export
+rlGetMatrixProjection :: () -> SurfaceMatrix {
+    matrix: SurfaceMatrix
+    matrix.values[0] = cast(float32)(2.0 / projection_width)
+    matrix.values[5] = cast(float32)(-2.0 / projection_height)
+    return matrix
+}
 
 clear_color: u32;
 fill_count: s32;
@@ -110,6 +117,12 @@ main :: () -> s32 {
     Require(PolicyCheck() == 42, 20)
     core.screen.width = 320
     core.screen.height = 560
+    core.render_offset.x = 120
+    core.render_offset.y = 240
+    core.screen_scale[0] = 0.5
+    core.screen_scale[5] = 0.5
+    core.screen_scale[10] = 1.0
+    core.screen_scale[15] = 1.0
     width: s32
     height: s32
     Require(GetAndroidSurfaceSize(*width, *height) == 0 &&
@@ -128,6 +141,19 @@ main :: () -> s32 {
     Require(viewport_width == 1080 && viewport_height == 1920 &&
         projection_width == 1080.0 && projection_height == 1920.0, 27)
     Require(GetAndroidSurfaceSize(*width, *height) == 1 && width == 1080 && height == 1920, 28)
+    Require(core.render_offset.x == 0 && core.render_offset.y == 0 &&
+        core.screen_scale[0] == 1.0 && core.screen_scale[5] == 1.0 &&
+        core.screen_scale[10] == 1.0 && core.screen_scale[15] == 1.0, 35)
+    transform: AndroidSurfaceTransform
+    Require(ReadAndroidSurfaceTransform(*transform) &&
+        transform.screen_width == 1080 && transform.screen_height == 1920 &&
+        transform.render_width == 1080 && transform.render_height == 1920 &&
+        transform.offset_x == 0 && transform.offset_y == 0 &&
+        transform.scale_x == 1.0 && transform.scale_y == 1.0 &&
+        transform.projection_x * 1080.0 > 1.99 &&
+        transform.projection_x * 1080.0 < 2.01 &&
+        transform.projection_y * 1920.0 > -2.01 &&
+        transform.projection_y * 1920.0 < -1.99, 36)
     // The bar strips are black and the viewport takes the canvas color.
     ClearAndroidFrame(viewport, cast(u32)0xE2EEFCFF)
     Require(clear_color == cast(u32)0x000000FF && fill_count == 1 &&
