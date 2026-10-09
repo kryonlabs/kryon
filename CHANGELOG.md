@@ -14,6 +14,15 @@
   soft-keyboard text editing, display-density scaling, system dark mode and
   orientation reporting, and a back key that closes the application when
   nothing else handles it.
+- Widgets can keep their own state between frames on their retained node with
+  `TreeSetWidgetState` and `TreePreviousWidgetState`.
+
+### Fixed
+
+- A dropdown keeps its menu open, its highlighted row and its scroll position
+  by itself, so an application passes only the selected value. Menus no longer
+  close again right after opening when the application does not hold that
+  state. `close` closes a menu from code.
 
 ## v0.2.0 - 2026-09-20
 

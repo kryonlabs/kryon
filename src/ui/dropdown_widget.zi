@@ -272,12 +272,37 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     }
 }
 
-// The caller retains the returned open, selection, highlight, and scroll
-// values. Keyboard and wheel samples are ordinary props; pointer ownership
-// comes from the retained tree. Call Dropdown after earlier page controls so
-// the menu is submitted above them in hit and paint order.
+// The dropdown keeps whether its menu is open, the highlighted row and the
+// scroll offset on its own retained node, so a caller passes only the
+// selected value and reads changed and selected_index. Keyboard and wheel
+// samples are ordinary props; pointer ownership comes from the retained tree.
+// Call Dropdown after earlier page controls so the menu is submitted above
+// them in hit and paint order.
 #program_export
 Dropdown :: (session: Session, props: DropdownProps,
+    options: []DropdownOption) -> DropdownResult {
+    if TreeIsBuilding(session) && !props.open {
+        previous: s32 = TreePrevious(session, TreeCurrentParent(session),
+            DropdownKey(session, props), WidgetKindDropdown)
+        saved: WidgetState = TreePreviousWidgetState(session, previous)
+        if saved.open {
+            props.open = true
+            props.highlight_index = saved.index
+            props.scroll_offset = saved.offset
+        }
+    }
+    if props.close {
+        props.open = false
+    }
+    result: DropdownResult = DropdownFrame(session, props, options)
+    if result.node >= 0 {
+        TreeSetWidgetState(session, result.node, WidgetState.{result.open,
+            result.highlight_index, result.scroll_offset})
+    }
+    return result
+}
+
+DropdownFrame :: (session: Session, props: DropdownProps,
     options: []DropdownOption) -> DropdownResult {
     result: DropdownResult
     result.node = -1
