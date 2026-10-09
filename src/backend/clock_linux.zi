@@ -1,0 +1,2 @@
+Clock :: #import "std/timer_linux";
+Milliseconds :: () -> s64 { return Clock.MonotonicMilliseconds() }

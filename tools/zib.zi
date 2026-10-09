@@ -41,6 +41,7 @@ ModuleName :: (value: string, name: string) -> bool {
 }
 
 Supported :: (module: string, function: string) -> bool {
+    if ModuleName(module, "clock") { return function == "ClockMillisecondsHost" }
     if ModuleName(module, "video") {
         return function == "VideoOpenHost" || function == "VideoPauseHost" || function == "VideoStopHost" ||
             function == "VideoStateHost" || function == "VideoPositionHost" || function == "VideoDurationHost" ||
@@ -166,6 +167,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if ModuleName(module, "clock") && function == "ClockMillisecondsHost" && count == 0 {
+        result.kind = HostInteger; result.integer = MonotonicMilliseconds(); return 1
+    }
     if ModuleName(module, "video") {
         if function == "VideoOpenHost" && count == 1 && args[0].kind == HostString { result.kind = HostInteger; result.integer = cast(s64)Video.VideoOpenHost(TextValue(args[0])); return 1 }
         if count == 0 {

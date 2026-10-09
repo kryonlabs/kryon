@@ -1,0 +1,6 @@
+// Monotonic host time for animations, intervals and expiring access leases.
+// A failed clock returns -1. Wall time and sleeps are intentionally absent.
+host_api :: #system_library "host_api";
+ClockMillisecondsHost :: () -> s64 #foreign host_api;
+#program_export
+Milliseconds :: () -> s64 { return ClockMillisecondsHost() }
