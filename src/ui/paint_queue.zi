@@ -481,10 +481,11 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
             command.data = clip_for(command.data, geometry)
         }
     }
-    command.data = KeepPaintText(SessionIndex(session), command.data)
-    command.data = KeepPaintAsset(SessionIndex(session), command.data)
-    if !VecPush(pending_paint[SessionIndex(session)].items, command) {
-        pending_paint[SessionIndex(session)].overflow = true
+    destination := SessionIndex(session)
+    command.data = KeepPaintText(destination, command.data)
+    command.data = KeepPaintAsset(destination, command.data)
+    if !VecPush(pending_paint[destination].items, command) {
+        pending_paint[destination].overflow = true
     }
 }
 

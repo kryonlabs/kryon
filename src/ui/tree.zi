@@ -613,7 +613,7 @@
         input: NodeInput
         slot: s32 = SessionIndex(session)
         if index < 0 || index >= trees[slot].committed_count { return input }
-        node: NodeCore = trees[slot].committed[index]
+        node: *NodeCore = *trees[slot].committed[index]
         input.key = node.key
         input.identity_generation = node.identity_generation
         input.kind = node.kind
@@ -621,8 +621,8 @@
         input.clip = node.clip
         input.clipped = node.clipped
         if node.interaction_index >= 0 {
-            interaction: InteractionData =
-            trees[slot].committed_interactions[node.interaction_index]
+            interaction: *InteractionData =
+            *trees[slot].committed_interactions[node.interaction_index]
             input.interactive = true
             input.disabled = interaction.disabled
             input.loading = interaction.loading
@@ -754,10 +754,11 @@
     // index for controls such as Spinbox that create their own child nodes.
     #program_export
     TreeCurrentParent :: (session: Session) -> s32 {
-        if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].scope_depth <= 0 {
+        slot := SessionIndex(session)
+        if !trees[slot].building || trees[slot].scope_depth <= 0 {
             return -1
         }
-        return trees[SessionIndex(session)].scope[trees[SessionIndex(session)].scope_depth - 1]
+        return trees[slot].scope[trees[slot].scope_depth - 1]
     }
 
     #program_export
