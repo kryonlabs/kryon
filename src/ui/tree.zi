@@ -272,8 +272,10 @@
         submitted_semantics: Vec(SemanticData)
         committed_text: Vec(u8)
         submitted_text: Vec(u8)
-        committed_labels: [65536]u8
-        submitted_labels: [65536]u8
+        // Input keeps reading the committed buffer while its replacement is
+        // composed. Commit exchanges their roles without moving label bytes.
+        labels: [2][65536]u8
+        committed_label_buffer: s32
         submitted_label_count: s64
         committed_interactions: Vec(InteractionData)
         submitted_interactions: Vec(InteractionData)
@@ -512,12 +514,12 @@
             if semantic.label_length > 0 {
                 if committed {
                     entry.semantic_label = TextView(
-                        trees[slot].committed_labels[
+                        trees[slot].labels[trees[slot].committed_label_buffer][
                         semantic.label_offset:
                         semantic.label_offset + semantic.label_length])
                 } else {
                     entry.semantic_label = TextView(
-                        trees[slot].submitted_labels[
+                        trees[slot].labels[1 - trees[slot].committed_label_buffer][
                         semantic.label_offset:
                         semantic.label_offset + semantic.label_length])
                 }
@@ -525,12 +527,12 @@
             if semantic.detail_length > 0 {
                 if committed {
                     entry.semantic_detail = TextView(
-                        trees[slot].committed_labels[
+                        trees[slot].labels[trees[slot].committed_label_buffer][
                         semantic.detail_offset:
                         semantic.detail_offset + semantic.detail_length])
                 } else {
                     entry.semantic_detail = TextView(
-                        trees[slot].submitted_labels[
+                        trees[slot].labels[1 - trees[slot].committed_label_buffer][
                         semantic.detail_offset:
                         semantic.detail_offset + semantic.detail_length])
                 }
@@ -1055,11 +1057,7 @@
         VecSwap(trees[slot].committed, trees[slot].submitted)
         VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
         VecSwap(trees[slot].committed_text, trees[slot].submitted_text)
-        byte: s64 = 0
-        while byte < trees[slot].submitted_label_count {
-            trees[slot].committed_labels[byte] = trees[slot].submitted_labels[byte]
-            byte += 1
-        }
+        trees[slot].committed_label_buffer = 1 - trees[slot].committed_label_buffer
         VecSwap(trees[slot].committed_interactions, trees[slot].submitted_interactions)
         trees[slot].committed_count = trees[slot].submitted_count
         trees[slot].committed_modal_layer = trees[slot].submitted_modal_layer
@@ -1242,8 +1240,9 @@
             return
         }
         byte: s64 = 0
+        buffer: s32 = 1 - trees[slot].committed_label_buffer
         while byte < label.count {
-            trees[slot].submitted_labels[start + byte] = label[byte]
+            trees[slot].labels[buffer][start + byte] = label[byte]
             byte += 1
         }
         trees[slot].submitted_label_count = start + byte
@@ -1265,8 +1264,9 @@
             return
         }
         byte: s64 = 0
+        buffer: s32 = 1 - trees[slot].committed_label_buffer
         while byte < detail.count {
-            trees[slot].submitted_labels[start + byte] = detail[byte]
+            trees[slot].labels[buffer][start + byte] = detail[byte]
             byte += 1
         }
         trees[slot].submitted_label_count = start + byte
