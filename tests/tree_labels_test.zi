@@ -1,0 +1,92 @@
+#import "std/text"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "widget_kind"
+using WidgetKind;
+using FrameStatus;
+
+bytes: [65537]u8;
+
+Start :: (session: Session) {
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+}
+Add :: (session: Session, key: u64, label: string, detail: string) -> s32 {
+    node := TreeSubmit(session, key, 0, WidgetKindText, Rectangle.{0.0, 0.0, 50.0, 20.0})
+    TreeSetLabel(session, node, label)
+    TreeSetSemanticDetail(session, node, detail)
+    return node
+}
+Same :: (session: Session, label: string, detail: string) -> bool {
+    node := TreeNodeAt(session, 1)
+    return node.semantic_label == label && node.semantic_detail == detail
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    other := SessionOpen()
+    Start(session); unused Add(session, cast(u64)7, "first café 水", "first detail")
+    if !TreeFinish(session) || !Same(session, "first café 水", "first detail") { return 1 }
+    identity := TreeNodeAt(session, 1).identity_generation
+    // The submitted frame never overwrites the currently committed labels.
+    Start(session); unused Add(session, cast(u64)7, "replacement", "new detail")
+    if !Same(session, "first café 水", "first detail") ||
+        TreeSubmittedNodeAt(session, 1).semantic_label != "replacement" { return 2 }
+    TreeCancel(session)
+    if !Same(session, "first café 水", "first detail") { return 3 }
+    Start(session); unused Add(session, cast(u64)7, "replacement", "new detail")
+    if !TreeFinish(session) || !Same(session, "replacement", "new detail") ||
+        TreeNodeAt(session, 1).identity_generation != identity { return 4 }
+    // A label borrowed from the committed frame can seed its replacement.
+    Start(session)
+    unused Add(session, cast(u64)7, TreeNodeAt(session, 1).semantic_label,
+        TreeNodeAt(session, 1).semantic_detail)
+    if !TreeFinish(session) || !Same(session, "replacement", "new detail") { return 5 }
+    // Submitted views remain stable while more labels are appended.
+    Start(session); first := Add(session, cast(u64)7, "shared", "shared detail")
+    unused Add(session, cast(u64)8, TreeSubmittedNodeAt(session, first).semantic_label,
+        TreeSubmittedNodeAt(session, first).semantic_detail)
+    if TreeSubmittedNodeAt(session, first).semantic_label != "shared" ||
+        !TreeFinish(session) || TreeNodeAt(session, 2).semantic_label != "shared" ||
+        TreeNodeAt(session, 2).semantic_detail != "shared detail" { return 6 }
+    // Alternate another session's commits between this session's frames.
+    Start(other); unused Add(other, cast(u64)7, "other", "other detail")
+    if !TreeFinish(other) || !Same(session, "shared", "shared detail") { return 7 }
+    for i: 0..7 {
+        Start(session)
+        label := ifx i % 2 == 0 then "tiny" else "a longer replacement label"
+        detail := ifx i % 3 == 0 then "" else "detail"
+        unused Add(session, cast(u64)7, label, detail)
+        if !TreeFinish(session) || !Same(session, label, detail) ||
+            !Same(other, "other", "other detail") { return 8 }
+    }
+    // Duplicate keys reject the replacement without changing the old frame.
+    Start(session); unused Add(session, cast(u64)7, "failed", "failed detail")
+    unused Add(session, cast(u64)7, "duplicate", "")
+    if TreeFinish(session) || !Same(session, "a longer replacement label", "detail") { return 9 }
+    for i: 0..65536 { bytes[i] = cast(u8)(65 + i % 26) }
+    // The existing combined 64 KiB label/detail limit remains exact.
+    Start(session)
+    unused Add(session, cast(u64)7, TextView(bytes[:32768]), TextView(bytes[32768:65536]))
+    if !TreeFinish(session) || TreeNodeAt(session, 1).semantic_label.count != 32768 ||
+        TreeNodeAt(session, 1).semantic_detail.count != 32768 ||
+        TreeNodeAt(session, 1).semantic_label[0] != cast(u8)65 ||
+        TreeNodeAt(session, 1).semantic_detail[32767] != bytes[65535] { return 10 }
+    Start(session); unused Add(session, cast(u64)7, TextView(bytes[:65536]), "x")
+    if TreeFinish(session) || TreeFrameStatus(session) != cast(FrameStatus)FrameAllocationFailed ||
+        TreeNodeAt(session, 1).semantic_detail.count != 32768 { return 11 }
+    Start(session); unused Add(session, cast(u64)7, TextView(bytes[:65537]), "")
+    if TreeFinish(session) || TreeNodeAt(session, 1).semantic_label.count != 32768 { return 12 }
+    Start(session); unused Add(session, cast(u64)7, "", "")
+    if !TreeFinish(session) || !Same(session, "", "") { return 13 }
+    TreeDispose(session); unused SessionClose(session)
+    reopened := SessionOpen()
+    if reopened.slot != session.slot || reopened.epoch == session.epoch { return 14 }
+    Start(reopened); unused Add(reopened, cast(u64)7, "reopened", "clean")
+    if !TreeFinish(reopened) || !Same(reopened, "reopened", "clean") ||
+        !Same(other, "other", "other detail") { return 15 }
+    TreeDispose(reopened); unused SessionClose(reopened)
+    TreeDispose(other); unused SessionClose(other)
+    return 0
+}

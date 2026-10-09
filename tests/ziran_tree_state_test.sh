@@ -85,3 +85,5 @@ ZI
 cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 42
 test "$("$ziran" run "$work/saved.zib")" = 42
+
+sh "$repo/tests/ziran_tree_labels_test.sh"
