@@ -83,7 +83,8 @@ pending_text: [9]Vec(PaintTextBlock);
 
 // The previous committed paint plan is retained by value. Strings and asset
 // paths are copied byte-for-byte so equality does not depend on borrowed
-// pointers or addresses.
+// pointers or addresses. Byte storage grows with the accepted plan, so many
+// individually bounded labels can still reuse their complete frame.
 PaintSnapshot :: struct {
     data: PaintCommand
     value_start: s64
@@ -93,8 +94,12 @@ PaintSnapshot :: struct {
 }
 
 paint_snapshots: [9]Vec(PaintSnapshot);
-paint_snapshot_values: [9][PAINT_TEXT_CAPACITY]u8;
-paint_snapshot_assets: [9][PAINT_TEXT_CAPACITY]u8;
+// Eight initial Vec slots cover the former 32 KiB pool without reserving
+// eight full label-sized blocks. A label may span several snapshot blocks.
+PAINT_SNAPSHOT_BLOCK_CAPACITY :: 4096
+PaintSnapshotBlock :: struct { bytes: [PAINT_SNAPSHOT_BLOCK_CAPACITY]u8; }
+paint_snapshot_values: [9]Vec(PaintSnapshotBlock);
+paint_snapshot_assets: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_value_counts: [9]s64;
 paint_snapshot_asset_counts: [9]s64;
 paint_snapshots_valid: [9]bool;
@@ -719,40 +724,60 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
     start: s64
     if values {
         start = paint_snapshot_value_counts[slot]
-        if start + value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
-        at: s64 = 0
-        while at < value.count {
-            paint_snapshot_values[slot][start + at] = value[at]
-            at += 1
+        while paint_snapshot_values[slot].count * PAINT_SNAPSHOT_BLOCK_CAPACITY < start + value.count {
+            block: PaintSnapshotBlock
+            if !VecPush(paint_snapshot_values[slot], block) { return -1 }
         }
-        paint_snapshot_value_counts[slot] = start + at
-        return start
+        for at: cast(s64)0..value.count - 1 {
+            index := start + at
+            paint_snapshot_values[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY].bytes[index % PAINT_SNAPSHOT_BLOCK_CAPACITY] = value[at]
+        }
+        paint_snapshot_value_counts[slot] = start + value.count
+    } else {
+        start = paint_snapshot_asset_counts[slot]
+        while paint_snapshot_assets[slot].count * PAINT_SNAPSHOT_BLOCK_CAPACITY < start + value.count {
+            block: PaintSnapshotBlock
+            if !VecPush(paint_snapshot_assets[slot], block) { return -1 }
+        }
+        for at: cast(s64)0..value.count - 1 {
+            index := start + at
+            paint_snapshot_assets[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY].bytes[index % PAINT_SNAPSHOT_BLOCK_CAPACITY] = value[at]
+        }
+        paint_snapshot_asset_counts[slot] = start + value.count
     }
-    start = paint_snapshot_asset_counts[slot]
-    if start + value.count > cast(s64)PAINT_TEXT_CAPACITY { return -1 }
-    at: s64 = 0
-    while at < value.count {
-        paint_snapshot_assets[slot][start + at] = value[at]
-        at += 1
-    }
-    paint_snapshot_asset_counts[slot] = start + at
     return start
 }
 
-SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
+SnapshotSpanEqual :: (slot: s32, values: bool, value: string, start: s64, count: s64) -> bool {
     if value.count != count || slot <= 0 || slot >= 9 || start < 0 ||
-        count < 0 || start > PAINT_TEXT_CAPACITY || count > PAINT_TEXT_CAPACITY - start { return false }
-    // Compare the owned span as text: native targets can compare a complete
-    // byte run without repeating the array and string bounds checks per byte.
-    return value == TextView(paint_snapshot_values[slot][start:start + count])
+        count < 0 { return false }
+    length := ifx values then paint_snapshot_value_counts[slot] else paint_snapshot_asset_counts[slot]
+    if start > length || count > length - start { return false }
+    compared: s64
+    while compared < count {
+        index := start + compared
+        block := index / PAINT_SNAPSHOT_BLOCK_CAPACITY
+        offset := index % PAINT_SNAPSHOT_BLOCK_CAPACITY
+        part := cast(s64)PAINT_SNAPSHOT_BLOCK_CAPACITY - offset
+        if part > count - compared { part = count - compared }
+        // Native targets compare each owned byte run at once. No Vec alias
+        // or borrowed view survives a mutation of the retained storage.
+        if values {
+            if value[compared:compared + part] != TextView(paint_snapshot_values[slot][block].bytes[offset:offset + part]) { return false }
+        } else {
+            if value[compared:compared + part] != TextView(paint_snapshot_assets[slot][block].bytes[offset:offset + part]) { return false }
+        }
+        compared += part
+    }
+    return true
+}
+
+SnapshotValueEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
+    return SnapshotSpanEqual(slot, true, value, start, count)
 }
 
 SnapshotAssetEqual :: (slot: s32, value: string, start: s64, count: s64) -> bool {
-    if value.count != count || slot <= 0 || slot >= 9 || start < 0 ||
-        count < 0 || start > PAINT_TEXT_CAPACITY || count > PAINT_TEXT_CAPACITY - start { return false }
-    // Compare the owned span as text: native targets can compare a complete
-    // byte run without repeating the array and string bounds checks per byte.
-    return value == TextView(paint_snapshot_assets[slot][start:start + count])
+    return SnapshotSpanEqual(slot, false, value, start, count)
 }
 
 TextureEqual :: (left: Texture2D, right: Texture2D) -> bool {
@@ -808,6 +833,8 @@ PaintSnapshotInvalidate :: (session: Session) {
     if !SessionValid(session) { return }
     slot: s32 = SessionIndex(session)
     VecClear(paint_snapshots[slot])
+    VecClear(paint_snapshot_values[slot])
+    VecClear(paint_snapshot_assets[slot])
     paint_snapshot_value_counts[slot] = 0
     paint_snapshot_asset_counts[slot] = 0
     paint_snapshots_valid[slot] = false
@@ -817,6 +844,8 @@ PaintSnapshotInvalidate :: (session: Session) {
 PaintSnapshotStore :: (session: Session) -> bool {
     slot: s32 = SessionIndex(session)
     VecClear(paint_snapshots[slot])
+    VecClear(paint_snapshot_values[slot])
+    VecClear(paint_snapshot_assets[slot])
     paint_snapshot_value_counts[slot] = 0
     paint_snapshot_asset_counts[slot] = 0
     index: s32 = 0
@@ -886,6 +915,8 @@ PaintDispose :: (session: Session) {
     VecFree(pending_paint[session.slot].items)
     VecFree(ordered_paint[session.slot])
     VecFree(paint_snapshots[session.slot])
+    VecFree(paint_snapshot_values[session.slot])
+    VecFree(paint_snapshot_assets[session.slot])
     VecFree(pending_text[session.slot])
     pending_paint[session.slot].overflow = false
     paint_snapshot_value_counts[session.slot] = 0
