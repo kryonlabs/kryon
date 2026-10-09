@@ -95,11 +95,11 @@ PixmapDeviceBounds :: (bounds: Rectangle) -> Rectangle {
 PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * pixmap_scale_y) }
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
 // clearing/replacing the slot. Image widgets still resolve an ordinary asset.
-PixmapImageLimit :: 512;
-pixmap_image_paths: [512][256]u8;
-pixmap_image_lengths: [512]s32;
-pixmap_image_widths: [512]s32;
-pixmap_image_heights: [512]s32;
+PixmapImageLimit :: 1024;
+pixmap_image_paths: [PixmapImageLimit][256]u8;
+pixmap_image_lengths: [PixmapImageLimit]s32;
+pixmap_image_widths: [PixmapImageLimit]s32;
+pixmap_image_heights: [PixmapImageLimit]s32;
 // Hosts that retain rendered pixels can observe decoded asset replacements.
 // Registration publishes borrowed storage even when its path and size match;
 // a caller may have edited those pixels since its last registration.
@@ -107,7 +107,7 @@ pixmap_image_revision: u64;
 #program_export
 PixmapImageRevision :: () -> u64 { return pixmap_image_revision }
 PixmapImagePixels :: struct { value: []u32 }
-pixmap_image_pixels: [512]PixmapImagePixels;
+pixmap_image_pixels: [PixmapImageLimit]PixmapImagePixels;
 
 #program_export
 PixmapClearImage :: (slot: s32) {
