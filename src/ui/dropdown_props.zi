@@ -19,7 +19,10 @@ DropdownProps :: struct {
     selected_index: s32
     highlight_index: s32
     scroll_offset: s32
+    // The dropdown keeps its menu open by itself. open asks it to open and
+    // close asks it to close; neither is needed to keep a menu open.
     open: bool
+    close: bool
     focused: bool
     scale: float32
     wheel: float32

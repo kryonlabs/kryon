@@ -89,7 +89,7 @@ Frame :: () -> s32 {
     } else if phase >= 10 {
         props.open = true
         if phase == 10 { props.wheel = -1.0 }
-        if phase == 13 { props.open = false }
+        if phase == 13 { props.close = true }
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult
@@ -182,6 +182,72 @@ Frame :: () -> s32 {
     return old
 }
 
+// A caller that passes only the selected value: the dropdown keeps its menu
+// open, its highlight and its scroll offset by itself between frames.
+uncontrolled_selected: s32;
+
+UncontrolledFrame :: (wheel: float32) -> DropdownResult {
+    options: [8]DropdownOption
+    index: s32 = 0
+    while index < 8 {
+        options[index].key = cast(u64)cast(u32)(200 + index)
+        options[index].label = "Row"
+        index += 1
+    }
+    props: DropdownProps
+    props.key = cast(u64)31
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
+    props.selected_index = uncontrolled_selected
+    props.wheel = wheel
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    unused TreeFinish(TestSession())
+    PaintClear(TestSession())
+    if result.changed {
+        uncontrolled_selected = result.selected_index
+    }
+    return result
+}
+
+Tap :: (x: float32, y: float32) {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+}
+
+UncontrolledMenu :: () -> s32 {
+    uncontrolled_selected = 0
+    result: DropdownResult = UncontrolledFrame(0.0)
+    if result.open { return 1 }
+    Tap(20.0, 20.0)
+    result = UncontrolledFrame(0.0)
+    if !result.open || !result.opened { return 2 }
+    // The menu stays open in later frames without any caller state.
+    result = UncontrolledFrame(0.0)
+    if !result.open || result.opened { return 3 }
+    result = UncontrolledFrame(-1.0)
+    scrolled: s32 = result.scroll_offset
+    if !result.open || scrolled <= 0 { return 4 }
+    result = UncontrolledFrame(0.0)
+    if !result.open || result.scroll_offset != scrolled { return 5 }
+    // Choosing a visible row selects it and closes the menu.
+    row: s32 = -1
+    node: s32 = 0
+    while node < TreeCount(TestSession()) && row < 0 {
+        if TreeNodeAt(TestSession(), node).kind == WidgetKindSelectable {
+            row = node
+        }
+        node += 1
+    }
+    if row < 0 { return 6 }
+    bounds: Rectangle = TreeNodeAt(TestSession(), row).bounds
+    Tap(bounds.x + bounds.width / 2.0, bounds.y + bounds.height / 2.0)
+    result = UncontrolledFrame(0.0)
+    if result.open || !result.changed || result.selected_index <= 0 { return 7 }
+    result = UncontrolledFrame(0.0)
+    if result.open || uncontrolled_selected != result.selected_index { return 8 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 4, 4, 4, 1]
@@ -231,5 +297,7 @@ main :: () -> s32 {
     }
     if !found { return 5 }
     PaintClear(TestSession())
+    uncontrolled: s32 = UncontrolledMenu()
+    if uncontrolled != 0 { return 10 + uncontrolled }
     return 0
 }

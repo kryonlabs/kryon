@@ -179,6 +179,7 @@
         next_auto_ordinal: s32
         semantic_index: s32
         interaction_index: s32
+        state_index: s32
         layout_index: s32
         auto_key: bool
         clipped: bool
@@ -211,6 +212,14 @@
         circle_hit: bool
         captures_drag: bool
         focus_id: s32
+    }
+
+    // State a widget keeps on its own node from one frame to the next, such
+    // as whether its menu is open, the highlighted row and the scroll offset.
+    WidgetState :: struct {
+        open: bool
+        index: s32
+        offset: s32
     }
 
     LayoutProgress :: struct {
@@ -279,6 +288,8 @@
         submitted_label_count: s64
         committed_interactions: Vec(InteractionData)
         submitted_interactions: Vec(InteractionData)
+        committed_states: Vec(WidgetState)
+        submitted_states: Vec(WidgetState)
         layouts: Vec(LayoutData)
         slots: Vec(s32)
         new_slots: Vec(s32)
@@ -714,6 +725,7 @@
         VecClear(trees[slot].submitted_text)
         trees[slot].submitted_label_count = 0
         VecClear(trees[slot].submitted_interactions)
+        VecClear(trees[slot].submitted_states)
         VecClear(trees[slot].layouts)
         trees[slot].submitted_count = 0
         trees[slot].submitted_modal_layer = 0
@@ -852,6 +864,7 @@
         node.auto_key = key == cast(u64)0
         node.semantic_index = -1
         node.interaction_index = -1
+        node.state_index = -1
         node.layout_index = -1
         parent_generation: u64 = cast(u64)0
         if parent_index >= 0 {
@@ -1059,6 +1072,7 @@
         VecSwap(trees[slot].committed_text, trees[slot].submitted_text)
         trees[slot].committed_label_buffer = 1 - trees[slot].committed_label_buffer
         VecSwap(trees[slot].committed_interactions, trees[slot].submitted_interactions)
+        VecSwap(trees[slot].committed_states, trees[slot].submitted_states)
         trees[slot].committed_count = trees[slot].submitted_count
         trees[slot].committed_modal_layer = trees[slot].submitted_modal_layer
         trees[slot].next_identity_generation = trees[slot].staged_identity_generation
@@ -1140,6 +1154,7 @@
         VecClear(trees[slot].submitted_text)
         trees[slot].submitted_label_count = 0
         VecClear(trees[slot].submitted_interactions)
+        VecClear(trees[slot].submitted_states)
         VecClear(trees[slot].layouts)
         trees[slot].submitted_count = 0
         trees[slot].scope_depth = 0
@@ -1306,6 +1321,37 @@
         trees[slot].submitted_interactions[interaction].focus_id = focus_id
     }
 
+    // A widget saves its state on the node it submitted in this frame.
+    #program_export
+    TreeSetWidgetState :: (session: Session, index: s32, state: WidgetState) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        existing: s32 = trees[slot].submitted[index].state_index
+        if existing >= 0 {
+            trees[slot].submitted_states[existing] = state
+            return
+        }
+        next: s32 = cast(s32)trees[slot].submitted_states.count
+        if !VecPush(trees[slot].submitted_states, state) {
+            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+            return
+        }
+        trees[slot].submitted[index].state_index = next
+    }
+
+    // The state a widget saved on its node in the last committed frame. The
+    // index comes from TreePrevious; a widget without one starts empty.
+    #program_export
+    TreePreviousWidgetState :: (session: Session, index: s32) -> WidgetState {
+        state: WidgetState
+        slot: s32 = SessionIndex(session)
+        if index < 0 || index >= trees[slot].committed_count { return state }
+        stored: s32 = trees[slot].committed[index].state_index
+        if stored < 0 || stored >= cast(s32)trees[slot].committed_states.count { return state }
+        return trees[slot].committed_states[stored]
+    }
+
     #program_export
     TreeSetDragCapture :: (session: Session, index: s32, captures_drag: bool) {
         slot: s32 = SessionIndex(session)
@@ -1366,6 +1412,8 @@
         VecFree(trees[slot].submitted_text)
         VecFree(trees[slot].committed_interactions)
         VecFree(trees[slot].submitted_interactions)
+        VecFree(trees[slot].committed_states)
+        VecFree(trees[slot].submitted_states)
         VecFree(trees[slot].layouts)
         VecFree(trees[slot].slots)
         VecFree(trees[slot].new_slots)
