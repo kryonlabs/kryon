@@ -1,0 +1,22 @@
+Clock :: #import "frame_clock";
+
+main :: () -> s32 {
+    clock: Clock.FrameClock
+    frequency := cast(u64)60000
+    Clock.Begin(*clock, cast(u64)0, frequency)
+    // A 5 ms frame waits for only the remaining 12 ms of the 60 Hz budget.
+    if Clock.Wait(*clock, cast(u64)300, frequency, true) != cast(u32)12 { return 1 }
+    // Rounding SDL's delay to whole milliseconds must not accumulate drift.
+    Clock.Begin(*clock, cast(u64)1020, frequency)
+    if Clock.Wait(*clock, cast(u64)1320, frequency, true) != cast(u32)12 { return 2 }
+    // Over-budget drawing adds no delay, and the next frame has a fresh budget.
+    if Clock.Wait(*clock, cast(u64)5100, frequency, true) != cast(u32)0 { return 3 }
+    if Clock.Wait(*clock, cast(u64)5400, frequency, true) != cast(u32)12 { return 4 }
+    // Hidden throttling resets the old deadline before showing the window.
+    if Clock.Wait(*clock, cast(u64)7000, frequency, false) != cast(u32)100 { return 5 }
+    Clock.Begin(*clock, cast(u64)13000, frequency)
+    if Clock.Wait(*clock, cast(u64)13300, frequency, true) != cast(u32)12 { return 6 }
+    Clock.Begin(*clock, cast(u64)0, cast(u64)0)
+    if Clock.Wait(*clock, cast(u64)14000, cast(u64)0, true) != cast(u32)0 { return 7 }
+    return 0
+}
