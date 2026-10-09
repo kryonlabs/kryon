@@ -192,6 +192,7 @@ toggle_widget.zi
 toolbar.zi
 toolbar_props.zi
 toolbar_widget.zi
+touch_replay.zi
 transition.zi
 transition_widget.zi
 tree.zi

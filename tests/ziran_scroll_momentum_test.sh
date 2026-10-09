@@ -182,6 +182,14 @@ Answer :: () -> s32 {
     slow_release: ScrollResult = TestFrame(20.0, false, false, true, 50.16, 2000)
     if slow_release.scroll_offset < 70 || !slow_release.frame.flinging { return -21 }
 
+    // A swipe whose last short movement arrives with its release keeps the
+    // speed it had: the finger lifted somewhere within that frame.
+    test_offset = 0
+    unused TestFrame(90.0, true, true, false, 70.0, 2000)
+    fast: ScrollResult = TestFrame(30.0, false, true, false, 70.06, 2000)
+    tail: ScrollResult = TestFrame(25.0, false, false, true, 70.12, 2000)
+    if !tail.frame.flinging || tail.frame.velocity < fast.frame.velocity { return -23 }
+
     // A short press that lifts in place stays a tap and does not scroll.
     test_offset = 0
     unused TestFrame(60.0, true, true, false, 60.0, 2000)

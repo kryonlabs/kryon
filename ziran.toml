@@ -28,6 +28,7 @@ AndroidJni = "src/backend/android_jni.zi"
 android_device = "src/backend/android_device.zi"
 AndroidDevice = "src/backend/android_device.zi"
 android_run = "src/backend/android_run.zi"
+android_touch = "src/backend/android_touch.zi"
 bundle_player = "src/backend/bundle_player.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"

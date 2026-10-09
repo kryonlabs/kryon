@@ -1,0 +1,116 @@
+// Android touches that begin and end between two frames.
+//
+// raylib's NativeActivity backend applies every queued input event once per
+// frame, so a tap or quick swipe that starts and ends while a frame is drawn
+// reports neither a press nor a release. raylib also ignores where a touch
+// lifts, so a quick swipe without movement events looks like a tap. This
+// module wraps raylib's input handler, records where each touch began and
+// lifted, and corrects or replays the pointer through TouchReplayStep.
+#import "android_jni"
+#import "geometry"
+#import "touch_replay"
+
+android_touch_span: TouchSpan;
+android_touch_replay: TouchReplay;
+android_touch_last: Vector2;
+// The current touch's press in raylib and in Android screen coordinates,
+// and raylib's scale from Android to its own coordinates on each axis.
+android_touch_down: Vector2;
+android_touch_down_raw: Vector2;
+android_touch_scale: Vector2 = Vector2.{1.0, 1.0};
+android_touch_platform: AndroidInputHandler;
+android_touch_wrapped: bool;
+
+#if #defined(ANDROID_BUILD) {
+    touch_android :: #system_library "android";
+    TouchEventType :: (event: *void) -> s32 #foreign touch_android "AInputEvent_getType";
+    TouchMotionAction :: (event: *void) -> s32 #foreign touch_android "AMotionEvent_getAction";
+    TouchMotionX :: (event: *void, pointer: usize) -> float32 #foreign touch_android "AMotionEvent_getX";
+    TouchMotionY :: (event: *void, pointer: usize) -> float32 #foreign touch_android "AMotionEvent_getY";
+    touch_raylib :: #system_library "raylib";
+    TouchPointerPosition :: () -> Vector2 #foreign touch_raylib "GetMousePosition";
+    TouchAndroidApp :: () -> *NativeAndroidApp #foreign touch_raylib "GetAndroidApp";
+}
+
+AndroidTouchEventMotion :: 2
+AndroidTouchActionMask :: 255
+AndroidTouchActionDown :: 0
+AndroidTouchActionUp :: 1
+AndroidTouchActionMove :: 2
+AndroidTouchActionCancel :: 3
+
+// raylib's handler runs first, so the pointer position already includes
+// this event.
+AndroidTouchInput :: (app: *void, event: *void) -> s32 {
+    handled: s32 = 0
+    if android_touch_wrapped {
+        handled = android_touch_platform(app, event)
+    }
+    #if #defined(ANDROID_BUILD) {
+        if TouchEventType(event) != AndroidTouchEventMotion {
+            return handled
+        }
+        action := TouchMotionAction(event) & AndroidTouchActionMask
+        raw := Vector2.{TouchMotionX(event, 0), TouchMotionY(event, 0)}
+        if action == AndroidTouchActionDown {
+            android_touch_last = TouchPointerPosition()
+            android_touch_down = android_touch_last
+            android_touch_down_raw = raw
+            TouchSpanBegin(*android_touch_span, android_touch_last)
+        } else if action == AndroidTouchActionMove {
+            android_touch_last = TouchPointerPosition()
+            android_touch_scale = AndroidTouchScale(android_touch_scale,
+                android_touch_down, android_touch_down_raw, android_touch_last, raw)
+        } else if action == AndroidTouchActionUp {
+            TouchSpanEnd(*android_touch_span, Vector2.{
+                android_touch_down.x + (raw.x - android_touch_down_raw.x) * android_touch_scale.x,
+                android_touch_down.y + (raw.y - android_touch_down_raw.y) * android_touch_scale.y})
+        } else if action == AndroidTouchActionCancel {
+            TouchSpanEnd(*android_touch_span, android_touch_last)
+        }
+    }
+    return handled
+}
+
+// raylib maps Android coordinates to its own linearly. A movement far enough
+// from the press measures that scale; it is 1 when the window fills the
+// display.
+AndroidTouchScale :: (scale: Vector2, down: Vector2, down_raw: Vector2,
+    position: Vector2, raw: Vector2) -> Vector2 {
+    measured := scale
+    if raw.x - down_raw.x >= 32.0 || down_raw.x - raw.x >= 32.0 {
+        measured.x = (position.x - down.x) / (raw.x - down_raw.x)
+    }
+    if raw.y - down_raw.y >= 32.0 || down_raw.y - raw.y >= 32.0 {
+        measured.y = (position.y - down.y) / (raw.y - down_raw.y)
+    }
+    return measured
+}
+
+// Wraps raylib's input handler once raylib has created its window; raylib
+// installs its handler during InitWindow and keeps it. Later calls do nothing.
+#program_export
+AndroidTouchInstall :: () {
+    #if #defined(ANDROID_BUILD) {
+        if android_touch_wrapped {
+            return
+        }
+        app := TouchAndroidApp()
+        if app == null {
+            return
+        }
+        android_touch_platform = app.input_callback
+        android_touch_wrapped = true
+        hook: AndroidInputHandler = AndroidTouchInput
+        app.input_callback = hook
+    }
+}
+
+// This frame's pointer, with a touch that began and ended since the last
+// frame replayed over this frame and the next.
+#program_export
+AndroidTouchSample :: (sample: TouchSample) -> TouchSample {
+    span := android_touch_span
+    android_touch_span = TouchSpan.{}
+    return TouchReplayStep(*android_touch_replay, span, sample)
+}

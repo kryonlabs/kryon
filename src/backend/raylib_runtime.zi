@@ -11,6 +11,10 @@
         SystemTypeface :: #import "system_typeface_linux";
     }
 }
+#import "touch_replay"
+#if #defined(ANDROID_BUILD) {
+    AndroidTouch :: #import "android_touch";
+}
 TypefaceText :: #import "std/byte_text_linux";
 TypefaceCollection :: #import "typeface_collection";
 
@@ -1023,6 +1027,19 @@ PollRaylib :: () -> bool {
     // A press and release inside one frame still counts as held for it.
     raylib_pointer.down = HostRaylibMouseDown(0) || raylib_pointer.pressed
     raylib_pointer.released = HostRaylibMouseReleased(0)
+    #if #defined(ANDROID_BUILD) {
+        // A touch that began and ended within one frame reports nothing.
+        AndroidTouch.AndroidTouchInstall()
+        touch := AndroidTouch.AndroidTouchSample(TouchSample.{
+            .position = Vector2.{raylib_pointer.x, raylib_pointer.y},
+            .pressed = raylib_pointer.pressed, .down = raylib_pointer.down,
+            .released = raylib_pointer.released})
+        raylib_pointer.x = touch.position.x
+        raylib_pointer.y = touch.position.y
+        raylib_pointer.pressed = touch.pressed
+        raylib_pointer.down = touch.down
+        raylib_pointer.released = touch.released
+    }
     raylib_secondary.down = HostRaylibMouseDown(1)
     raylib_secondary.pressed = HostRaylibMousePressed(1)
     raylib_secondary.released = HostRaylibMouseReleased(1)

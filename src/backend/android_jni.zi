@@ -133,10 +133,13 @@ NativeActivity :: struct {
     instance: *void
     asset_manager: *void
 }
+// android_native_app_glue's input handler: the app and one AInputEvent.
+AndroidInputHandler :: #type (*void, *void) -> s32 #c_call;
+
 NativeAndroidApp :: struct {
     userdata: *void
     command_callback: *void
-    input_callback: *void
+    input_callback: AndroidInputHandler
     activity: *NativeActivity
 }
 
