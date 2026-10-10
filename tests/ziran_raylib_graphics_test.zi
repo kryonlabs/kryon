@@ -25,6 +25,16 @@ main :: () -> s32 {
     if presented != 1001 {
         return 3
     }
+    // A cover-fit image is wider than its tile: only the visible part is
+    // drawn, from the matching source, and no scissor flushes the batch.
+    RasterImage("banner.png", 0, Rectangle.{0.0, 0.0, 200.0, 100.0},
+        Rectangle.{-50.0, 0.0, 200.0, 100.0}, Rectangle.{0.0, 0.0, 100.0, 100.0},
+        Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    if graphics_failed || last_destination.x != 0.0 ||
+    last_destination.width != 100.0 || last_source.x != 50.0 ||
+    last_source.width != 100.0 || last_source.height != 100.0 {
+        return 15
+    }
     if !BeginRetainedFrame(100, 100) || !EndRetainedFrame() {
         return 4
     }

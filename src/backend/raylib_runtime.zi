@@ -757,6 +757,15 @@ RaylibDrawImageClipped :: (texture: Texture2D, source: Rectangle,
     height: s32 = cast(s32)clip.height
     if width <= 0 || height <= 0 { return }
     if radius <= 0.0 {
+        // An unrotated image draws only its part inside the clip, with the
+        // matching source: a scissor would flush the draw batch for every
+        // clipped image, such as each cover-fit tile of a photo grid.
+        if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 {
+            RaylibDrawImagePart(texture, source, destination,
+                Rectangle.{cast(float32)x, cast(float32)y,
+                    cast(float32)width, cast(float32)height}, tint)
+            return
+        }
         RaylibDrawImageStrip(texture, source, destination, origin,
             rotation, tint, x, y, width, height)
         return
