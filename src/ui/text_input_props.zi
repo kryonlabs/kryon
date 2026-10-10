@@ -1,5 +1,6 @@
 #import "geometry"
 #import "text_input"
+#import "text_props"
 
 TextFieldInput :: struct {
     text: string
@@ -131,6 +132,12 @@ TextAreaProps :: struct {
     scale: float32
     disabled: bool
     input: TextAreaInput
+    // Bytes kept in the value but not shown: no width, paint or caret stop,
+    // such as Markdown markers away from the line being edited. Sorted and
+    // disjoint on character boundaries; any other list is ignored.
+    hidden: []TextRange
+    // Bytes drawn with emphasis, as Text's strong ranges.
+    strong: []TextRange
 }
 
 TextAreaEdit :: struct {
