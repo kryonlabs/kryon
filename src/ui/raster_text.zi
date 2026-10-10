@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "text_emphasis"
 host_api :: #system_library "host_api";
 
 // Text bytes are borrowed for the call; the platform owns glyph rasterization.
@@ -19,4 +20,18 @@ PaintTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
     if clip.width <= 0.0 || clip.height <= 0.0 { return }
     RasterTextClipped(value, x, y, font, color, clip)
+}
+
+// Paints the extra stroke of emphasized text over its painted label. Hosts
+// may ship only a regular face; the stroke keeps glyph advances unchanged.
+#program_export
+PaintTextEmphasisClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    if RunTextEmphasisRaster(value, x, y, font, color, clip) { return }
+    stroke := font / 24
+    if stroke < 1 {
+        stroke = 1
+    }
+    RasterTextClipped(value, x + stroke, y, font, color, clip)
 }

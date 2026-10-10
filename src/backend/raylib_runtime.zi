@@ -4,6 +4,7 @@
 #import "paint_texture"
 #import "tree_input"
 #import "raylib_clip"
+#import "text_emphasis"
 #if !#defined(_WIN32) {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
         SystemTypeface :: #import "system_typeface_android";
@@ -172,6 +173,9 @@ raylib_zoom: float32 = 1.0;
 raylib_wheel_move: float32;
 raylib_image_error: bool;
 raylib_font: RaylibFont;
+// Set while drawing the extra stroke of emphasized text.
+raylib_text_emphasis: bool;
+raylib_text_emphasis_registered: bool;
 raylib_font_loaded: bool;
 raylib_font_registered: bool;
 raylib_active_typeface_index: s32 = -1;
@@ -1341,8 +1345,13 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
                 }
                 glyph_position := RaylibTextPosition(
                     .{position.x + dx, position.y + dy}, matrix)
-                HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
-                    text_size, 0.0, color)
+                if raylib_text_emphasis {
+                    RaylibDrawEmphasis(selected, *glyph[0], glyph_position,
+                        text_size, color, pixels, matrix)
+                } else {
+                    HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
+                        text_size, 0.0, color)
+                }
             }
             dx += advance
         }
@@ -1351,6 +1360,41 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
         at += length
     }
     return result
+}
+
+// Thickens a pixel-aligned glyph by whole screen pixels to its right. Copies
+// a logical unit apart would leave light gaps inside the strokes whenever a
+// unit is not exactly one pixel, which makes bold text look blurry.
+RaylibDrawEmphasis :: (font: RaylibFont, glyph: *u8, position: Vector2,
+    size: float32, color: Color, pixels: s32, matrix: RaylibMatrix) {
+    strokes := cast(s32)HostRaylibFloor(cast(float32)pixels / 24.0 + 0.5)
+    if strokes < 1 {
+        strokes = 1
+    }
+    step: float32 = 1.0
+    if RaylibTextAligned(matrix) {
+        step = 1.0 / matrix.m0
+    }
+    for stroke: 1..strokes {
+        HostRaylibDrawFontText(font, glyph,
+            .{position.x + step * cast(float32)stroke, position.y}, size, 0.0, color)
+    }
+}
+
+// The extra stroke of emphasized text, drawn by RaylibDrawEmphasis.
+RaylibTextEmphasisClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if !raylib_font_loaded {
+        stroke := font / 24
+        if stroke < 1 {
+            stroke = 1
+        }
+        RasterTextClipped(value, x + stroke, y, font, color, clip)
+        return
+    }
+    raylib_text_emphasis = true
+    RasterTextClipped(value, x, y, font, color, clip)
+    raylib_text_emphasis = false
 }
 
 RaylibTextExtent :: (value: string, font: s32) -> Vector2 {
@@ -1641,6 +1685,13 @@ RasterLine :: (line: Rectangle, color: Color) {
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
+    // An emphasis stroke always follows its label, so the first label
+    // registers this backend's emphasis before any stroke is painted.
+    if !raylib_text_emphasis_registered {
+        raster: TextEmphasisRaster = RaylibTextEmphasisClipped
+        SetTextEmphasisRaster(raster)
+        raylib_text_emphasis_registered = true
+    }
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return }
     if raylib_font_loaded {

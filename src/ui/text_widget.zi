@@ -84,10 +84,6 @@
     PaintTextEmphasis :: (session: Session, node: s32, props: TextProps,
         prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
         previous_end: s32 = 0
-        stroke := prepared.font / 24
-        if stroke < 1 {
-            stroke = 1
-        }
         for range: props.strong {
             if !TextRangeValid(props.text, range, previous_end) {
                 continue
@@ -105,9 +101,7 @@
                 continue
             }
             left := x + GlyphWidth(props.text[line.start:start], prepared.font, prepared.typeface)
-            // Hosts may ship only a regular face. A small extra stroke gives all
-            // backends consistent emphasis without changing glyph advances.
-            PaintClippedLabel(session, node, props.text[start:end], left + stroke, y,
+            PaintClippedEmphasis(session, node, props.text[start:end], left, y,
                 prepared.font, prepared.color, clip)
         }
     }
