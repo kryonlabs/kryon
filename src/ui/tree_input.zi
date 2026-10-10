@@ -286,9 +286,10 @@ TreeInputAllowedAt :: (session: Session, index: s32) -> bool {
 
 #program_export
 TreeScrollAllowed :: (session: Session, key: u64) -> bool {
-    index: s32 = TreeCount(session) - 1
+    slot := SessionIndex(session)
+    index: s32 = trees[slot].committed_count - 1
     while index > 0 {
-        entry := TreeInputAt(session, index)
+        entry: *NodeCore = *trees[slot].committed[index]
         if entry.kind == WidgetKindScroll && entry.key == key {
             return TreeInputAllowedAt(session, index)
         }
@@ -300,36 +301,40 @@ TreeScrollAllowed :: (session: Session, key: u64) -> bool {
 
 #program_export
 TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
-    if TreeCount(session) == 0 ||
-        !PointInBounds(x, y, TreeInputAt(session, 0).bounds) { return -1 }
-    index: s32 = TreeCount(session) - 1
+    slot := SessionIndex(session)
+    if trees[slot].committed_count == 0 ||
+        !PointInBounds(x, y, trees[slot].committed[0].bounds) { return -1 }
+    index: s32 = trees[slot].committed_count - 1
     hit: s32 = -1
     layer: s32 = -1
     top := TreeTopModalLayer(session)
     while index > 0 {
-        entry: NodeInput = TreeInputAt(session, index)
-        if entry.interactive &&
-        (top == 0 || TreeOverlayLayerAt(session, index, true) == top) &&
-        (TreeButtonLike(entry.kind) ||
-            entry.kind == WidgetKindCheckbox ||
-            entry.kind == WidgetKindToggle ||
-            entry.kind == WidgetKindRadio ||
-            entry.kind == WidgetKindSlider ||
-            entry.kind == WidgetKindSelectable ||
-            entry.kind == WidgetKindLink ||
-            entry.kind == WidgetKindCollapsible ||
-            entry.kind == WidgetKindDropdown ||
-            entry.kind == WidgetKindTextField ||
-            entry.kind == WidgetKindTextArea) &&
-        PointInBounds(x, y, entry.bounds) &&
-        (!entry.circle_hit || PointInCircleBounds(x, y, entry.bounds)) &&
-        (!entry.clipped || PointInBounds(x, y, entry.clip)) {
-            candidate_layer := TreeOverlayLayerAt(session, index, true)
-            if candidate_layer > layer {
-                layer = candidate_layer
-                hit = -1
-                if TreePointerActivatable(entry.kind, entry.focus_id,
-                    entry.disabled, entry.loading) { hit = index }
+        entry: *NodeCore = *trees[slot].committed[index]
+        if entry.interaction_index >= 0 {
+            interaction: *InteractionData =
+                *trees[slot].committed_interactions[entry.interaction_index]
+            if (top == 0 || TreeOverlayLayerAt(session, index, true) == top) &&
+            (TreeButtonLike(entry.kind) ||
+                entry.kind == WidgetKindCheckbox ||
+                entry.kind == WidgetKindToggle ||
+                entry.kind == WidgetKindRadio ||
+                entry.kind == WidgetKindSlider ||
+                entry.kind == WidgetKindSelectable ||
+                entry.kind == WidgetKindLink ||
+                entry.kind == WidgetKindCollapsible ||
+                entry.kind == WidgetKindDropdown ||
+                entry.kind == WidgetKindTextField ||
+                entry.kind == WidgetKindTextArea) &&
+            PointInBounds(x, y, entry.bounds) &&
+            (!interaction.circle_hit || PointInCircleBounds(x, y, entry.bounds)) &&
+            (!entry.clipped || PointInBounds(x, y, entry.clip)) {
+                candidate_layer := TreeOverlayLayerAt(session, index, true)
+                if candidate_layer > layer {
+                    layer = candidate_layer
+                    hit = -1
+                    if TreePointerActivatable(entry.kind, interaction.focus_id,
+                        interaction.disabled, interaction.loading) { hit = index }
+                }
             }
         }
         index -= 1
@@ -341,10 +346,11 @@ TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
 // child scroll clips to its parent, so an outer page cannot consume its wheel.
 #program_export
 TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
+    slot := SessionIndex(session)
     top := TreeTopModalLayer(session)
-    index: s32 = TreeCount(session) - 1
+    index: s32 = trees[slot].committed_count - 1
     while index > 0 {
-        entry: NodeInput = TreeInputAt(session, index)
+        entry: *NodeCore = *trees[slot].committed[index]
         if entry.kind == WidgetKindScroll &&
         (top == 0 || TreeOverlayLayerAt(session, index, true) == top) &&
         PointInBounds(x, y, entry.bounds) &&
@@ -366,7 +372,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     active_pointer[input_slot].hovered_generation = 0
     if hit >= 0 {
         active_pointer[input_slot].hovered_generation =
-            TreeInputAt(session, hit).identity_generation
+            trees[input_slot].committed[hit].identity_generation
     }
     if frame.pressed {
         active_pointer[input_slot].captures_drag = false
@@ -376,14 +382,15 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
         // A press released within the same frame, a quick tap during a
         // slow frame, still presses the node so its release activates it.
         if (frame.down || frame.released) && hit >= 0 {
+            entry := TreeInputAt(session, hit)
             active_pointer[input_slot].held_generation =
-                TreeInputAt(session, hit).identity_generation
+                entry.identity_generation
             active_pointer[input_slot].pressed_generation =
                 active_pointer[input_slot].held_generation
-            active_pointer[input_slot].grab_x = frame.x - TreeInputAt(session, hit).bounds.x
-            active_pointer[input_slot].grab_y = frame.y - TreeInputAt(session, hit).bounds.y
+            active_pointer[input_slot].grab_x = frame.x - entry.bounds.x
+            active_pointer[input_slot].grab_y = frame.y - entry.bounds.y
             active_pointer[input_slot].captures_drag =
-                TreeInputAt(session, hit).captures_drag
+                entry.captures_drag
         }
     }
     if frame.down && active_pointer[input_slot].held_generation != 0 {
@@ -397,7 +404,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             active_pointer[input_slot].released_x = frame.x
             active_pointer[input_slot].released_y = frame.y
             if hit >= 0 && active_pointer[input_slot].held_generation ==
-                TreeInputAt(session, hit).identity_generation {
+                trees[input_slot].committed[hit].identity_generation {
                 active_pointer[input_slot].activation_generation =
                     active_pointer[input_slot].held_generation
             }
@@ -487,18 +494,20 @@ TreePointerCancel :: (session: Session) {
 #program_export
 TreeHoveredAt :: (session: Session, index: s32) -> bool {
     input_slot := SessionIndex(session)
-    if index < 0 || index >= TreeCount(session) { return false }
+    if input_slot == 0 || index < 0 ||
+        index >= trees[input_slot].committed_count { return false }
     return TreeInputAllowedAt(session, index) &&
     active_pointer[input_slot].hovered_generation != 0 &&
-    TreeInputAt(session, index).identity_generation ==
+    trees[input_slot].committed[index].identity_generation ==
     active_pointer[input_slot].hovered_generation
 }
 
 #program_export
 TreePressedAt :: (session: Session, index: s32) -> bool {
     if !TreeHoveredAt(session, index) { return false }
-    return active_pointer[SessionIndex(session)].held_generation ==
-        TreeInputAt(session, index).identity_generation
+    input_slot := SessionIndex(session)
+    return active_pointer[input_slot].held_generation ==
+        trees[input_slot].committed[index].identity_generation
 }
 
 // Platform actions enter the same retained identity and modal routing as
@@ -517,30 +526,33 @@ TreeFocusAt :: (session: Session, index: s32) -> bool {
 
 #program_export
 TreeHasFocus :: (session: Session) -> bool {
-    if !SessionValid(session) || active_focus[session.slot] == 0 { return false }
-    for index: 0..TreeCount(session) - 1 {
-        if TreeInputAt(session, index).identity_generation == active_focus[session.slot] &&
+    input_slot := SessionIndex(session)
+    if input_slot == 0 || active_focus[input_slot] == 0 { return false }
+    for index: 0..trees[input_slot].committed_count - 1 {
+        if trees[input_slot].committed[index].identity_generation == active_focus[input_slot] &&
             TreeInputAllowedAt(session, index) { return true }
     }
-    active_focus[session.slot] = 0
+    active_focus[input_slot] = 0
     return false
 }
 
 #program_export
 TreeBlurAt :: (session: Session, index: s32) {
-    if SessionValid(session) && index >= 0 && index < TreeCount(session) &&
-        active_focus[session.slot] == TreeInputAt(session, index).identity_generation {
-        active_focus[session.slot] = 0
+    input_slot := SessionIndex(session)
+    if input_slot != 0 && index >= 0 && index < trees[input_slot].committed_count &&
+        active_focus[input_slot] == trees[input_slot].committed[index].identity_generation {
+        active_focus[input_slot] = 0
     }
 }
 
 #program_export
 TreeFocusedAt :: (session: Session, index: s32) -> bool {
-    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+    input_slot := SessionIndex(session)
+    if input_slot == 0 || index < 0 || index >= trees[input_slot].committed_count {
         return false
     }
-    return active_focus[session.slot] != 0 &&
-        active_focus[session.slot] == TreeInputAt(session, index).identity_generation &&
+    return active_focus[input_slot] != 0 &&
+        active_focus[input_slot] == trees[input_slot].committed[index].identity_generation &&
         TreeInputAllowedAt(session, index)
 }
 
