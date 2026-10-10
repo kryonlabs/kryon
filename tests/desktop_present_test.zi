@@ -1,0 +1,83 @@
+Desktop :: #import "desktop_runtime";
+Probe :: #import "desktop_present_host";
+Raster :: #import "cairo_raster";
+
+sdl :: #system_library "SDL2";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+Push :: (event: *Desktop.Event) -> s32 #foreign sdl "SDL_PushEvent";
+Poll :: (event: *Desktop.Event) -> s32 #foreign sdl "SDL_PollEvent";
+WindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+Show :: (window: *void) #foreign sdl "SDL_ShowWindow";
+Hide :: (window: *void) #foreign sdl "SDL_HideWindow";
+
+Frame :: (unchanged: bool) -> bool {
+    Desktop.BeginDesktopFrame()
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 100.0, 100.0}, 0.0, 0, .{220, 40, 60, 255})
+    Desktop.DesktopFrameUnchanged(unchanged)
+    return Desktop.EndDesktopFrame()
+}
+Event :: (kind: u32, window: u32, detail: u32) -> bool {
+    event: Desktop.Event
+    event.kind = kind; event.window_id = window; event.which = detail
+    return Push(*event) == 1 && Desktop.PollDesktop()
+}
+Quiet :: () {
+    Delay(cast(u32)30)
+    event: Desktop.Event
+    while Poll(*event) != 0 {}
+}
+Counts :: (uploads: s32, draws: s32) -> bool {
+    return Probe.Counts(uploads, draws, draws)
+}
+
+main :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 1 }
+    defer Desktop.CloseDesktop()
+    Quiet()
+    // The first frame must initialize the texture even if marked unchanged.
+    if !Frame(true) || !Counts(1, 1) { return 2 }
+    Probe.Reset()
+    for i: 0..29 { if !Frame(true) { return 3 } }
+    if !Counts(0, 0) { return 4 }
+    if !Frame(false) || !Counts(1, 1) { return 5 }
+    Quiet(); Probe.Reset()
+    id := WindowID(Desktop.DesktopWindow())
+    // A foreign window event cannot cause an upload or a present.
+    if !Event(cast(u32)0x200, id+1, cast(u32)3) || !Frame(true) || !Counts(0, 0) { return 6 }
+    // Expose, show and restore reuse the uploaded texture exactly once.
+    details: [3]u32 = .{1, 3, 9}
+    for i: 0..2 {
+        Probe.Reset()
+        if !Event(cast(u32)0x200, id, details[i]) || !Frame(true) || !Counts(0, 1) { return 7 }
+        if !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 17 }
+        if !Frame(true) || !Counts(0, 1) { return 8 }
+    }
+    // Resize creates a texture that must receive pixels before reuse.
+    Probe.Reset()
+    if !Desktop.ResizeDesktop(180, 140) || !Frame(true) || !Counts(1, 1) { return 9 }
+    Quiet(); Probe.Reset()
+    if !Frame(true) || !Counts(0, 0) { return 10 }
+    // SDL reset events invalidate texture contents even without new app paint.
+    for kind: 0x2000..0x2001 {
+        Probe.Reset()
+        if !Event(cast(u32)kind, 0, 0) || !Frame(true) || !Counts(1, 1) { return 11 }
+        if !Frame(true) || !Counts(1, 1) { return 12 }
+    }
+    // Failed upload/copy leaves the pending presentation available to retry.
+    Probe.Reset(); Probe.RejectUpdate(true)
+    if !Event(cast(u32)0x2000, 0, 0) || Frame(true) || !Counts(1, 0) { return 13 }
+    Probe.RejectUpdate(false)
+    if !Frame(true) || !Counts(2, 1) { return 14 }
+    Probe.Reset(); Probe.RejectCopy(true)
+    if !Event(cast(u32)0x200, id, cast(u32)3) || Frame(true) { return 15 }
+    Probe.RejectCopy(false)
+    if !Frame(true) || !Probe.Counts(0, 2, 1) { return 16 }
+    Quiet(); Probe.Reset()
+    Hide(Desktop.DesktopWindow()); Quiet()
+    if Desktop.WindowVisibleHost() || !Frame(false) || !Counts(0, 0) { return 18 }
+    Show(Desktop.DesktopWindow()); Delay(cast(u32)30)
+    if !Desktop.PollDesktop() || !Desktop.WindowVisibleHost() || !Frame(true) || !Counts(1, 1) { return 19 }
+    if !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 20 }
+    print("Unchanged desktop frames skip presentation; owned exposure, resize, resets and failures redraw safely\n")
+    return 0
+}

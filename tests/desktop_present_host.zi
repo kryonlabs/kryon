@@ -1,0 +1,12 @@
+// The linked test-only SDL interposer counts calls to the real renderer.
+c :: #system_library "c";
+ResetRaw :: () #foreign c "desktop_test_reset";
+CountsRaw :: (uploads: s32, copies: s32, presents: s32) -> bool #foreign c "desktop_test_counts";
+RejectUpdateRaw :: (reject: bool) #foreign c "desktop_test_reject_update";
+RejectCopyRaw :: (reject: bool) #foreign c "desktop_test_reject_copy";
+PixelRaw :: (window: *void, expected: u32) -> bool #foreign c "desktop_test_pixel";
+Reset :: () { ResetRaw() }
+Counts :: (uploads: s32, copies: s32, presents: s32) -> bool { return CountsRaw(uploads, copies, presents) }
+RejectUpdate :: (reject: bool) { RejectUpdateRaw(reject) }
+RejectCopy :: (reject: bool) { RejectCopyRaw(reject) }
+Pixel :: (window: *void, expected: u32) -> bool { return PixelRaw(window, expected) }
