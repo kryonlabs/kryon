@@ -2,22 +2,53 @@
 #scope_export
 FrameClock :: struct {
     deadline: u64
+    started: u64
+    rate: u64
+    quiet_frames: s32
+}
+
+FrameActivity :: struct { quiet_frames: s32 }
+
+Observe :: (activity: *FrameActivity, active: bool) -> bool {
+    if active {
+        activity.quiet_frames = 0
+        return false
+    }
+    if activity.quiet_frames < 2 { activity.quiet_frames += 1 }
+    return activity.quiet_frames >= 2
 }
 
 Begin :: (clock: *FrameClock, now: u64, frequency: u64) {
+    clock.started = now
     if clock.deadline == cast(u64)0 && frequency >= cast(u64)60 {
         clock.deadline = now + frequency / cast(u64)60
+        clock.rate = cast(u64)60
     }
 }
 
+Wake :: (clock: *FrameClock) {
+    clock.deadline = cast(u64)0
+    clock.quiet_frames = 0
+}
+
 Wait :: (clock: *FrameClock, now: u64, frequency: u64,
-    visible: bool) -> u32 {
+    visible: bool, unchanged: bool) -> u32 {
     if !visible {
-        clock.deadline = cast(u64)0
+        Wake(clock)
         return cast(u32)100
     }
     if frequency < cast(u64)60 { return cast(u32)0 }
-    period := frequency / cast(u64)60
+    if unchanged {
+        if clock.quiet_frames < 2 { clock.quiet_frames += 1 }
+    } else {
+        clock.quiet_frames = 0
+    }
+    rate := ifx clock.quiet_frames >= 2 then cast(u64)15 else cast(u64)60
+    period := frequency / rate
+    if rate != clock.rate {
+        clock.deadline = clock.started + period
+        clock.rate = rate
+    }
     // A late frame already used its budget. Resume from the current clock
     // rather than sleeping again or trying to catch up with missed frames.
     if clock.deadline <= now {

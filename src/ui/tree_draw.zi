@@ -5,14 +5,43 @@
 #import "tree_input"
 #import "text_request"
 #import "text_input_platform"
+Scroll :: #import "scroll_device";
 
 using FrameStatus;
+
+frame_retained: [9]bool;
+frame_input_changed: [9]bool;
+frame_owners: [9]Session;
+frame_pointer: [9]PointerFrame;
+frame_modifiers: [9]s32;
+frame_current_pointer: [9]PointerFrame;
+frame_current_modifiers: [9]s32;
+
+FrameInputCommit :: (session: Session) {
+    slot := SessionIndex(session)
+    frame_owners[slot] = session
+    frame_pointer[slot] = frame_current_pointer[slot]
+    frame_modifiers[slot] = frame_current_modifiers[slot]
+}
 
 // A frame commits its tree before any queued raster effects are emitted.
 #program_export
 BeginFrame :: (session: Session, screen_key: u64,
     bounds: Rectangle) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    slot := SessionIndex(session)
+    pointer := PointerSample(session)
+    secondary := SecondaryPointerSample(session)
+    same_owner := frame_owners[slot].slot == session.slot && frame_owners[slot].epoch == session.epoch
+    frame_input_changed[slot] = !same_owner || pointer.down || pointer.pressed || pointer.released ||
+        secondary.down || secondary.pressed || secondary.released ||
+        pointer.x != frame_pointer[slot].x || pointer.y != frame_pointer[slot].y ||
+        active_key[slot] != 0 || active_codepoints[slot].count > 0 || active_wheel[slot].delta != 0.0 ||
+        active_modifiers[slot] != frame_modifiers[slot]
+    if !same_owner { PaintSnapshotInvalidate(session) }
+    frame_current_pointer[slot] = pointer
+    frame_current_modifiers[slot] = active_modifiers[slot]
+    frame_retained[slot] = false
     unused TreeKeyboardRoute(session)
     TextInputFocusFrameBegin(session)
     PaintClear(session)
@@ -21,9 +50,36 @@ BeginFrame :: (session: Session, screen_key: u64,
     return TreeFrameStatus(session)
 }
 
+// The app has polled its state and knows no visual update is due. Keep the
+// accepted tree and paint only before submitting this frame's first widget.
+// Input, viewport/screen changes and focused editors still require composition.
+#program_export
+RetainFrame :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot := SessionIndex(session)
+    if frame_input_changed[slot] || !paint_snapshots_valid[slot] || TextInputFocused(session) || Scroll.ScrollDeviceMoving(session) ||
+        !trees[slot].building || trees[slot].error != cast(FrameStatus)FrameOk ||
+        trees[slot].submitted_count != 1 || trees[slot].committed_count < 1 ||
+        trees[slot].scope_depth != 1 || PendingPaintCount(session) != 0 { return false }
+    current := trees[slot].submitted[0]
+    previous := trees[slot].committed[0]
+    if current.key != previous.key || current.bounds.x != previous.bounds.x ||
+        current.bounds.y != previous.bounds.y || current.bounds.width != previous.bounds.width ||
+        current.bounds.height != previous.bounds.height { return false }
+    for index: 0..3 { if tree_late[slot][index].used { return false } }
+    TreeCancel(session)
+    frame_retained[slot] = true
+    return true
+}
+
 #program_export
 CommitFrame :: (session: Session) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    if frame_retained[SessionIndex(session)] {
+        frame_retained[SessionIndex(session)] = false
+        FrameInputCommit(session)
+        return cast(FrameStatus)FrameOk
+    }
     if PaintOverflow(session) {
         TreeCancel(session)
         PaintClear(session)
@@ -38,6 +94,7 @@ CommitFrame :: (session: Session) -> FrameStatus {
         PaintClear(session)
         return cast(FrameStatus)FramePaintOverflow
     }
+    FrameInputCommit(session)
     return cast(FrameStatus)FrameOk
 }
 
@@ -49,8 +106,13 @@ FrameEndResult :: struct {
 
 #program_export
 EndFrame :: (session: Session) -> FrameStatus {
+    retained := SessionValid(session) && frame_retained[SessionIndex(session)]
     status: FrameStatus = CommitFrame(session)
     if status != cast(FrameStatus)FrameOk { return status }
+    if retained {
+        if !PaintSnapshotEmit(session) { return cast(FrameStatus)FramePaintOverflow }
+        return cast(FrameStatus)FrameOk
+    }
     PaintFlush(session)
     return cast(FrameStatus)FrameOk
 }
@@ -60,22 +122,43 @@ EndFrame :: (session: Session) -> FrameStatus {
 // one; the matching paint is then not emitted again. A host that repaints
 // anyway, because something it drew itself changed, passes false and gets
 // the paint emitted. paint_unchanged reports the comparison either way.
+// An active host can disable comparison while input is arriving; invalidate
+// the old snapshot so the next observed frame establishes a fresh baseline.
 #program_export
-EndFrameRetained :: (session: Session, reuse: bool) -> FrameEndResult {
+EndFrameRetained :: (session: Session, reuse: bool,
+    compare: bool = true) -> FrameEndResult {
     result: FrameEndResult
+    retained := SessionValid(session) && frame_retained[SessionIndex(session)]
     result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk {
         PaintSnapshotInvalidate(session)
         return result
     }
+    slot: s32 = SessionIndex(session)
+    if retained {
+        result.paint_count = cast(s32)paint_snapshots[slot].count
+        result.paint_unchanged = true
+        frame_paint_unchanged[slot] = reuse
+        if !reuse && !PaintSnapshotEmit(session) {
+            PaintSnapshotInvalidate(session)
+            result.status = cast(FrameStatus)FramePaintOverflow
+            result.paint_unchanged = false
+        }
+        return result
+    }
     result.paint_count = PendingPaintCount(session)
+    if !compare {
+        if paint_snapshots_valid[slot] { PaintSnapshotInvalidate(session) }
+        frame_paint_unchanged[slot] = false
+        PaintFlush(session)
+        return result
+    }
     unchanged: bool = PaintPlanUnchanged(session)
     // A matching plan already owns an identical snapshot. Rebuilding it
     // copies every text/image path again without changing the next comparison.
     stored: bool = unchanged
     if !unchanged { stored = PaintSnapshotStore(session) }
     result.paint_unchanged = unchanged && stored
-    slot: s32 = SessionIndex(session)
     frame_paint_unchanged[slot] = result.paint_unchanged && reuse
     if result.paint_unchanged && reuse {
         PaintClear(session)
@@ -89,6 +172,7 @@ EndFrameRetained :: (session: Session, reuse: bool) -> FrameEndResult {
 #program_export
 CloseSession :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
+    frame_retained[SessionIndex(session)] = false
     TreeDispose(session)
     PaintDispose(session)
     TreeInputReset(session)

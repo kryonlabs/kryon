@@ -65,6 +65,9 @@ QueuedPaint :: struct {
     emit: PaintEmitter
     clip_for: PaintClipper
     has_emitter: bool
+    // Only the builtin constructors set this: their command kind fixes the
+    // callback and every raster input is stored in the command.
+    builtin_emitter: bool
     clips: bool
 }
 
@@ -87,6 +90,9 @@ pending_text: [9]Vec(PaintTextBlock);
 // individually bounded labels can still reuse their complete frame.
 PaintSnapshot :: struct {
     data: PaintCommand
+    emit: PaintEmitter
+    has_emitter: bool
+    builtin_emitter: bool
     value_start: s64
     value_count: s64
     asset_start: s64
@@ -521,6 +527,7 @@ PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     emit: PaintEmitter = EmitLine
     command.emit = emit
     command.has_emitter = true
+    command.builtin_emitter = true
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
@@ -550,6 +557,7 @@ PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: flo
     emit: PaintEmitter = EmitRoundedFill
     command.emit = emit
     command.has_emitter = true
+    command.builtin_emitter = true
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
@@ -570,6 +578,7 @@ PaintVerticalGradient :: (session: Session, node: s32, bounds: Rectangle,
     emit: PaintEmitter = EmitVerticalGradient
     command.emit = emit
     command.has_emitter = true
+    command.builtin_emitter = true
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
@@ -590,6 +599,7 @@ PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: 
     emit: PaintEmitter = EmitRoundedOutline
     command.emit = emit
     command.has_emitter = true
+    command.builtin_emitter = true
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
@@ -612,6 +622,7 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     command.emit = emit
     command.clip_for = clip_for
     command.has_emitter = true
+    command.builtin_emitter = true
     command.clips = true
     SubmitPaint(session, command)
 }
@@ -633,6 +644,7 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     command.emit = emit
     command.clip_for = clip_for
     command.has_emitter = true
+    command.builtin_emitter = true
     command.clips = true
     SubmitPaint(session, command)
 }
@@ -660,6 +672,7 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     command.emit = emit
     command.clip_for = clip_for
     command.has_emitter = true
+    command.builtin_emitter = true
     command.clips = true
     SubmitPaint(session, command)
 }
@@ -870,6 +883,9 @@ PaintSnapshotStore :: (session: Session) -> bool {
         current: PaintCommand = PendingPaintAt(session, index)
         previous: PaintSnapshot
         previous.data = current
+        previous.emit = pending_paint[slot].items[index].emit
+        previous.has_emitter = pending_paint[slot].items[index].has_emitter
+        previous.builtin_emitter = pending_paint[slot].items[index].builtin_emitter
         previous.value_start = SnapshotTextAppend(slot, true, current.value)
         if previous.value_start < 0 {
             PaintSnapshotInvalidate(session)
@@ -892,6 +908,71 @@ PaintSnapshotStore :: (session: Session) -> bool {
     return true
 }
 
+// Short strings borrow the immutable snapshot block. A string spanning
+// blocks is joined only when a host needs the paint emitted again.
+SnapshotTextRead :: (slot: s32, values: bool, start: s64, count: s64) -> string {
+    if count == 0 { return "" }
+    length := ifx values then paint_snapshot_value_counts[slot] else paint_snapshot_asset_counts[slot]
+    if start < 0 || count < 0 || start > length || count > length - start { return "" }
+    block := start / PAINT_SNAPSHOT_BLOCK_CAPACITY
+    offset := start % PAINT_SNAPSHOT_BLOCK_CAPACITY
+    if count <= cast(s64)PAINT_SNAPSHOT_BLOCK_CAPACITY - offset {
+        if values { return TextView(paint_snapshot_values[slot][block].bytes[offset:offset + count]) }
+        return TextView(paint_snapshot_assets[slot][block].bytes[offset:offset + count])
+    }
+    return ""
+}
+
+SnapshotTextJoin :: (slot: s32, values: bool, start: s64, count: s64,
+    joined: *Vec(u8)) -> bool {
+    length := ifx values then paint_snapshot_value_counts[slot] else paint_snapshot_asset_counts[slot]
+    if start < 0 || count < 0 || start > length || count > length - start { return false }
+    VecClear(joined.*)
+    copied: s64
+    while copied < count {
+        index := start + copied
+        block := index / PAINT_SNAPSHOT_BLOCK_CAPACITY
+        offset := index % PAINT_SNAPSHOT_BLOCK_CAPACITY
+        part := cast(s64)PAINT_SNAPSHOT_BLOCK_CAPACITY - offset
+        if part > count - copied { part = count - copied }
+        if values {
+            if !BuilderAppend(joined.*, TextView(paint_snapshot_values[slot][block].bytes[offset:offset + part])) { return false }
+        } else {
+            if !BuilderAppend(joined.*, TextView(paint_snapshot_assets[slot][block].bytes[offset:offset + part])) { return false }
+        }
+        copied += part
+    }
+    return true
+}
+
+PaintSnapshotEmit :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot := SessionIndex(session)
+    if !paint_snapshots_valid[slot] { return false }
+    value_text: Vec(u8)
+    asset_text: Vec(u8)
+    defer { VecFree(value_text); VecFree(asset_text) }
+    for index: cast(s64)0..paint_snapshots[slot].count - 1 {
+        previous := paint_snapshots[slot][index]
+        command: QueuedPaint
+        command.data = previous.data
+        command.data.value = SnapshotTextRead(slot, true, previous.value_start, previous.value_count)
+        if command.data.value.count != previous.value_count {
+            if !SnapshotTextJoin(slot, true, previous.value_start, previous.value_count, *value_text) { return false }
+            command.data.value = TextView(VecSlice(value_text, 0, value_text.count))
+        }
+        command.data.asset_path = SnapshotTextRead(slot, false, previous.asset_start, previous.asset_count)
+        if command.data.asset_path.count != previous.asset_count {
+            if !SnapshotTextJoin(slot, false, previous.asset_start, previous.asset_count, *asset_text) { return false }
+            command.data.asset_path = TextView(VecSlice(asset_text, 0, asset_text.count))
+        }
+        command.emit = previous.emit
+        command.has_emitter = previous.has_emitter
+        EmitPaint(command)
+    }
+    return true
+}
+
 #program_export
 PaintPlanUnchanged :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
@@ -900,6 +981,8 @@ PaintPlanUnchanged :: (session: Session) -> bool {
     if pending_paint[slot].items.count != paint_snapshots[slot].count { return false }
     index: s32 = 0
     while cast(s64)index < pending_paint[slot].items.count {
+        if !pending_paint[slot].items[index].builtin_emitter || !paint_snapshots[slot][index].builtin_emitter ||
+            pending_paint[slot].items[index].has_emitter != paint_snapshots[slot][index].has_emitter { return false }
         if !PaintCommandEqual(slot, PendingPaintAt(session, index),
             paint_snapshots[slot][index]) { return false }
         index += 1

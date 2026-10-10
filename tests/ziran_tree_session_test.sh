@@ -22,6 +22,12 @@ using WidgetKind;
 using FrameStatus;
 
 #program_export
+SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
+    unused session
+    unused visible
+}
+
+#program_export
 RasterLine :: (line: Rectangle, color: Color) {}
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,

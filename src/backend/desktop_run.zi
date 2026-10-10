@@ -8,11 +8,14 @@ A :: #import "accessibility_linux";
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+Clock :: #import "frame_clock";
 
 using FrameStatus;
 
 accessibility_attempted: bool;
 accessibility_enabled: bool;
+frame_activity: Clock.FrameActivity;
+last_pointer: Vector2; last_width: float32; last_height: float32;
 
 libc :: #system_library "libc";
 DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
@@ -31,23 +34,33 @@ DesktopError :: (message: string) -> s32 {
     return 1
 }
 
-DrawFrame :: (session: Session) -> bool {
+DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     origin: Vector2 = DesktopOrigin()
     A.AccessibilityOrigin(cast(s32)origin.x, cast(s32)origin.y)
     A.AccessibilityPoll()
     BeginDesktopFrame()
     viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
+    secondary := PollSecondaryPointer()
+    wheel := DesktopWheelMove()
+    active := keyboard_activity || pointer.down || pointer.pressed || pointer.released ||
+        secondary.down || secondary.pressed || secondary.released || wheel != 0.0 ||
+        pointer.x != last_pointer.x || pointer.y != last_pointer.y ||
+        viewport.width != last_width || viewport.height != last_height
+    last_pointer = .{pointer.x, pointer.y}
+    last_width = viewport.width; last_height = viewport.height
     TreePointerUpdate(session, pointer)
-    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-    PointerWheelSend(session, pointer.x, pointer.y, DesktopWheelMove())
+    TreeSecondaryPointerUpdate(session, secondary)
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {
         TreeCancel(session)
         return false
     }
-    if EndFrame(session) != cast(FrameStatus)FrameOk { return false }
+    finished := EndFrameRetained(session, false, Clock.Observe(*frame_activity, active))
+    if finished.status != cast(FrameStatus)FrameOk { return false }
+    DesktopFrameUnchanged(finished.paint_unchanged)
     if !accessibility_attempted && !CaptureRequested() {
         accessibility_attempted = true
         title: string = "Kryon Ziran"
@@ -85,11 +98,12 @@ main :: () -> s32 {
             key: s32 = DesktopPressedKey()
             if key != 0 { KeyboardSend(session, key) }
             codepoint: s32 = DesktopTypedCodepoint()
+            keyboard_activity := key != 0 || codepoint != 0
             while codepoint != 0 {
                 TypedCodepointSend(session, codepoint)
                 codepoint = DesktopTypedCodepoint()
             }
-            ok = DrawFrame(session)
+            ok = DrawFrame(session, keyboard_activity)
             if ok { PauseDesktop() }
         }
     }

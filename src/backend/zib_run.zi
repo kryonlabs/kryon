@@ -7,6 +7,7 @@
 #import "tree_draw"
 #import "tree_input"
 #import "widget_kind"
+Clock :: #import "frame_clock";
 
 host_api :: #system_library "host_api";
 BundleInput :: struct {
@@ -27,11 +28,15 @@ BundleInput :: struct {
 ReadBundleInput :: () -> BundleInput #foreign host_api;
 TakeBundleCodepoint :: () -> s32 #foreign host_api;
 BundleTextInputHost :: (focused: bool) #foreign host_api;
+BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
 
 using FrameStatus;
 using WidgetKind;
 bundle_session: Session;
 bundle_started: bool;
+bundle_activity: Clock.FrameActivity;
+bundle_last_x: float32; bundle_last_y: float32;
+bundle_last_width: s32; bundle_last_height: s32; bundle_last_modifiers: s32;
 
 #program_export
 main :: () -> s32 {
@@ -41,6 +46,15 @@ main :: () -> s32 {
         bundle_started = true
     }
     input := ReadBundleInput()
+    active := input.down || input.pressed || input.released ||
+        input.secondary_down || input.secondary_pressed || input.secondary_released ||
+        input.key != 0 || input.wheel != 0.0 ||
+        input.x != bundle_last_x || input.y != bundle_last_y ||
+        input.width != bundle_last_width || input.height != bundle_last_height ||
+        input.modifiers != bundle_last_modifiers
+    bundle_last_x = input.x; bundle_last_y = input.y
+    bundle_last_width = input.width; bundle_last_height = input.height
+    bundle_last_modifiers = input.modifiers
     viewport := Rectangle.{0.0, 0.0,
         cast(float32)input.width, cast(float32)input.height}
     pointer := PointerFrame.{input.x, input.y, input.down,
@@ -54,6 +68,7 @@ main :: () -> s32 {
     if input.key != 0 { KeyboardSend(bundle_session, input.key) }
     codepoint := TakeBundleCodepoint()
     while codepoint != 0 {
+        active = true
         TypedCodepointSend(bundle_session, codepoint)
         codepoint = TakeBundleCodepoint()
     }
@@ -65,7 +80,9 @@ main :: () -> s32 {
         TreeCancel(bundle_session)
         return result
     }
-    if EndFrame(bundle_session) != cast(FrameStatus)FrameOk { return 1 }
+    finished := EndFrameRetained(bundle_session, false, Clock.Observe(*bundle_activity, active))
+    if finished.status != cast(FrameStatus)FrameOk { return 1 }
+    BundleFrameFinishedHost(finished.paint_unchanged)
     BundleTextInputHost(TreeTextInputActive(bundle_session))
     return 0
 }

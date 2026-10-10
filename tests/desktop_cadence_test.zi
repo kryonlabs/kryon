@@ -1,22 +1,45 @@
 Clock :: #import "frame_clock";
 
 main :: () -> s32 {
+    activity: Clock.FrameActivity
+    if Clock.Observe(*activity, true) || Clock.Observe(*activity, false) ||
+        !Clock.Observe(*activity, false) || !Clock.Observe(*activity, false) ||
+        Clock.Observe(*activity, true) || Clock.Observe(*activity, false) {
+        return 12
+    }
     clock: Clock.FrameClock
     frequency := cast(u64)60000
     Clock.Begin(*clock, cast(u64)0, frequency)
     // A 5 ms frame waits for only the remaining 12 ms of the 60 Hz budget.
-    if Clock.Wait(*clock, cast(u64)300, frequency, true) != cast(u32)12 { return 1 }
+    if Clock.Wait(*clock, cast(u64)300, frequency, true, false) != cast(u32)12 { return 1 }
     // Rounding SDL's delay to whole milliseconds must not accumulate drift.
     Clock.Begin(*clock, cast(u64)1020, frequency)
-    if Clock.Wait(*clock, cast(u64)1320, frequency, true) != cast(u32)12 { return 2 }
+    if Clock.Wait(*clock, cast(u64)1320, frequency, true, false) != cast(u32)12 { return 2 }
     // Over-budget drawing adds no delay, and the next frame has a fresh budget.
-    if Clock.Wait(*clock, cast(u64)5100, frequency, true) != cast(u32)0 { return 3 }
-    if Clock.Wait(*clock, cast(u64)5400, frequency, true) != cast(u32)12 { return 4 }
+    if Clock.Wait(*clock, cast(u64)5100, frequency, true, false) != cast(u32)0 { return 3 }
+    if Clock.Wait(*clock, cast(u64)5400, frequency, true, false) != cast(u32)12 { return 4 }
     // Hidden throttling resets the old deadline before showing the window.
-    if Clock.Wait(*clock, cast(u64)7000, frequency, false) != cast(u32)100 { return 5 }
+    if Clock.Wait(*clock, cast(u64)7000, frequency, false, false) != cast(u32)100 { return 5 }
     Clock.Begin(*clock, cast(u64)13000, frequency)
-    if Clock.Wait(*clock, cast(u64)13300, frequency, true) != cast(u32)12 { return 6 }
+    if Clock.Wait(*clock, cast(u64)13300, frequency, true, false) != cast(u32)12 { return 6 }
     Clock.Begin(*clock, cast(u64)0, cast(u64)0)
-    if Clock.Wait(*clock, cast(u64)14000, cast(u64)0, true) != cast(u32)0 { return 7 }
+    if Clock.Wait(*clock, cast(u64)14000, cast(u64)0, true, false) != cast(u32)0 { return 7 }
+    quiet: Clock.FrameClock
+    Clock.Begin(*quiet, cast(u64)6000, frequency)
+    if Clock.Wait(*quiet, cast(u64)6300, frequency, true, true) != cast(u32)12 { return 8 }
+    Clock.Begin(*quiet, cast(u64)7020, frequency)
+    // Two stable frames select idle cadence and include their drawing cost.
+    if Clock.Wait(*quiet, cast(u64)7320, frequency, true, true) != cast(u32)62 { return 9 }
+    Clock.Begin(*quiet, cast(u64)12000, frequency)
+    // Changed paint must abandon the longer idle deadline immediately.
+    if Clock.Wait(*quiet, cast(u64)12300, frequency, true, false) != cast(u32)12 { return 10 }
+    Clock.Begin(*quiet, cast(u64)13020, frequency)
+    unused Clock.Wait(*quiet, cast(u64)13320, frequency, true, true)
+    Clock.Begin(*quiet, cast(u64)14040, frequency)
+    unused Clock.Wait(*quiet, cast(u64)14340, frequency, true, true)
+    Clock.Wake(*quiet)
+    Clock.Begin(*quiet, cast(u64)15000, frequency)
+    if quiet.quiet_frames != 0 ||
+        Clock.Wait(*quiet, cast(u64)15300, frequency, true, true) != cast(u32)12 { return 11 }
     return 0
 }

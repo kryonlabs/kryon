@@ -1,0 +1,169 @@
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "key_input"
+#import "text_input_platform"
+Motion :: #import "scroll_device";
+#import "text_input_platform_host"
+using FrameStatus;
+
+draws: s32;
+failed: bool;
+late_calls: s32;
+emitter_calls: s32;
+
+EmitFirst :: (command: PaintCommand) {
+    unused command
+    emitter_calls += 1
+}
+
+EmitSecond :: (command: PaintCommand) {
+    unused command
+    emitter_calls += 10
+}
+
+EmitterFrame :: (session: Session, emitter: PaintEmitter) -> FrameEndResult {
+    Start(session)
+    command: QueuedPaint
+    command.emit = emitter
+    command.has_emitter = true
+    SubmitPaint(session, command)
+    return EndFrameRetained(session, true)
+}
+
+Draw :: (command: PaintCommand) {
+    draws += 1
+    if command.value.count != 5000 || command.value[0] != 65 ||
+        command.value[4095] != 0 || command.value[4999] != 90 ||
+        command.asset_path.count != 4500 || command.asset_path[0] != 112 ||
+        command.asset_path[4096] != 0 || command.asset_path[4499] != 103 {
+        failed = true
+    }
+}
+Late :: (session: Session) { unused session; late_calls += 1 }
+Start :: (session: Session, key: u64 = 17, width: float32 = 100.0) {
+    unused BeginFrame(session, key, Rectangle.{0.0, 0.0, width, 80.0})
+}
+
+Build :: (session: Session) -> FrameEndResult {
+    unused TreeSubmit(session, cast(u64)99, 0, 2, Rectangle.{1.0, 2.0, 30.0, 40.0})
+    label: [5000]u8; path: [4500]u8
+    for index: 0..4999 { label[index] = 65 }
+    for index: 0..4499 { path[index] = 112 }
+    label[4095] = 0; label[4999] = 90
+    path[4096] = 0; path[4499] = 103
+    command: QueuedPaint
+    command.data.node = 1
+    command.data.value = TextView(label[:])
+    command.data.asset_path = TextView(path[:])
+    command.emit = Draw; command.has_emitter = true
+    SubmitPaint(session, command)
+    return EndFrameRetained(session, false)
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    Start(session)
+    if RetainFrame(session) { return 2 }
+    result := Build(session)
+    if result.status != cast(FrameStatus)FrameOk || draws != 1 || failed || TreeCount(session) != 2 { return 3 }
+    Start(session)
+    if !RetainFrame(session) || TreeIsBuilding(session) { return 4 }
+    result = EndFrameRetained(session, true)
+    if result.status != cast(FrameStatus)FrameOk || !result.paint_unchanged ||
+        result.paint_count != 1 || draws != 1 || TreeCount(session) != 2 || TreeNodeAt(session, 1).key != cast(u64)99 { return 5 }
+    Start(session)
+    if !RetainFrame(session) { return 6 }
+    result = EndFrameRetained(session, false, false)
+    if result.status != cast(FrameStatus)FrameOk || !result.paint_unchanged ||
+        FramePaintUnchanged(session) || draws != 2 || failed { return 7 }
+    Start(session)
+    if !RetainFrame(session) || EndFrame(session) != cast(FrameStatus)FrameOk || draws != 3 || failed { return 8 }
+    // The same frame input is inspected before keyboard routing consumes Tab.
+    unused KeyboardSend(session, KeyTab)
+    Start(session)
+    if RetainFrame(session) { return 9 }
+    TreeCancel(session)
+    unused KeyboardSend(session, 0)
+    PointerWheelSend(session, 10.0, 10.0, 1.0)
+    Start(session)
+    if RetainFrame(session) { return 10 }
+    TreeCancel(session)
+    PointerWheelSend(session, 10.0, 10.0, 0.0)
+    unused TypedCodepointSend(session, 97)
+    Start(session)
+    if RetainFrame(session) { return 11 }
+    input: [8]u8; unused TypedTextTake(session, input[:])
+    TreeCancel(session)
+    Start(session, cast(u64)18)
+    if RetainFrame(session) { return 12 }
+    TreeCancel(session)
+    Start(session, cast(u64)17, 101.0)
+    if RetainFrame(session) { return 13 }
+    TreeCancel(session)
+    TreePointerUpdate(session, PointerFrame.{5.0, 5.0, false, false, false})
+    Start(session)
+    if RetainFrame(session) { return 14 }
+    TreeCancel(session)
+    Start(session)
+    if RetainFrame(session) { return 15 }
+    result = Build(session)
+    Start(session)
+    if !RetainFrame(session) { return 23 }
+    result = EndFrameRetained(session, true)
+    if result.status != cast(FrameStatus)FrameOk || draws != 4 { return 16 }
+    if EndFrameRetained(session, true).status != cast(FrameStatus)FrameNotBuilding { return 24 }
+    // Scroll motion and editable focus continue without a fresh OS event.
+    Motion.BeginScrollFrame(session, Vector2.{5.0, 5.0}, false, false, false, 0.0, 1.0)
+    Motion.scroll_device.glide_owner = cast(u64)99
+    Start(session)
+    if RetainFrame(session) || !Motion.ScrollDeviceMoving(session) { return 25 }
+    TreeCancel(session)
+    Motion.scroll_device.glide_owner = cast(u64)0
+    Start(session)
+    TextInputNoteFocused(session)
+    if RetainFrame(session) { return 26 }
+    TreeCancel(session)
+    TextInputFocusFrameBegin(session)
+    TextInputFocusFrameBegin(session)
+    Start(session)
+    unused TreeSubmit(session, cast(u64)100, 0, 2, Rectangle.{1.0, 2.0, 30.0, 40.0})
+    if RetainFrame(session) { return 17 }
+    TreeCancel(session)
+    Start(session)
+    unused TreeDefer(session, Late)
+    if RetainFrame(session) { return 18 }
+    result = EndFrameRetained(session, false)
+    if result.status != cast(FrameStatus)FrameOk || late_calls != 1 { return 19 }
+    PaintSnapshotInvalidate(session)
+    Start(session)
+    if RetainFrame(session) { return 20 }
+    TreeCancel(session)
+    if !CloseSession(session) || RetainFrame(session) { return 21 }
+    fresh := SessionOpen()
+    Start(fresh)
+    if RetainFrame(fresh) { return 22 }
+    TreeCancel(fresh)
+    unused CloseSession(fresh)
+    // Custom callbacks can read mutable state or draw different pixels for
+    // identical command data. Composition must emit them every time.
+    custom := SessionOpen()
+    first: PaintEmitter = EmitFirst
+    second: PaintEmitter = EmitSecond
+    result = EmitterFrame(custom, first)
+    if result.paint_unchanged || emitter_calls != 1 { return 27 }
+    result = EmitterFrame(custom, first)
+    if result.paint_unchanged || emitter_calls != 2 { return 28 }
+    result = EmitterFrame(custom, second)
+    if result.paint_unchanged || emitter_calls != 12 { return 29 }
+    result = EmitterFrame(custom, second)
+    if result.paint_unchanged || emitter_calls != 22 { return 30 }
+    unused CloseSession(custom)
+    return 0
+}

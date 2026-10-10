@@ -40,6 +40,14 @@ ScrollDevice :: struct {
 
 scroll_device: ScrollDevice;
 
+// Retained views must continue composing while a drag, glide or fling owns
+// this session. Motion can continue without another OS input event.
+#program_export
+ScrollDeviceMoving :: (session: Session) -> bool {
+    return ScrollDeviceSampled(session) && (scroll_device.owner != cast(u64)0 ||
+        scroll_device.fling_owner != cast(u64)0 || scroll_device.glide_owner != cast(u64)0)
+}
+
 ScrollDeviceRelease :: () {
     scroll_device.owner = cast(u64)0
     scroll_device.grab = 0.0

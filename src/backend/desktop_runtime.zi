@@ -48,6 +48,7 @@ RenderCopy :: (renderer: *void, texture: *void, source: *void,
     destination: *void) -> s32 #foreign sdl_library "SDL_RenderCopy";
 RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
 PollEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PollEvent";
+WaitEventTimeout :: (event: *Event, milliseconds: s32) -> s32 #foreign sdl_library "SDL_WaitEventTimeout";
 PushEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PushEvent";
 StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
 StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
@@ -93,6 +94,7 @@ desktop_width: s32;
 desktop_height: s32;
 frame_clock: Clock.FrameClock;
 frame_frequency: u64;
+desktop_frame_unchanged: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -368,6 +370,7 @@ CheckPointerEvents :: () -> bool {
 
 #program_export
 BeginDesktopFrame :: () {
+    desktop_frame_unchanged = false
     unused DesktopApplyResize()
     BeginRasterFrame()
 }
@@ -385,10 +388,22 @@ EndDesktopFrame :: () -> bool {
 }
 
 #program_export
+DesktopFrameUnchanged :: (unchanged: bool) {
+    desktop_frame_unchanged = unchanged
+}
+
+#program_export
 PauseDesktop :: () {
     milliseconds := Clock.Wait(*frame_clock, PerformanceCounter(),
-        frame_frequency, WindowVisibleHost())
-    if milliseconds > cast(u32)0 { Delay(milliseconds) }
+        frame_frequency, WindowVisibleHost(), desktop_frame_unchanged)
+    if milliseconds > cast(u32)0 {
+        // A null event pointer leaves the first event queued for PollDesktop.
+        // Input wakes a stable screen immediately rather than waiting for its
+        // next idle deadline; the next frame receives a fresh active budget.
+        if WaitEventTimeout(null, cast(s32)milliseconds) != 0 {
+            Clock.Wake(*frame_clock)
+        }
+    }
 }
 
 // SDL_WINDOW_HIDDEN
