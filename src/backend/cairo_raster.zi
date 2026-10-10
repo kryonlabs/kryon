@@ -482,9 +482,12 @@ LoadPNG :: (asset_path: string) -> *void {
     if length == 0 || length >= 4096 { return null }
     image_clock += 1
     for i: 0..127 {
-        same := cached_images[i].image != null && cached_images[i].length == length
-        for byte: 0..length - 1 { if cached_images[i].path[byte] != asset_path[byte] { same = false; break } }
-        if same { cached_images[i].used = image_clock; return cached_images[i].image }
+        cached := *cached_images[i]
+        if cached.image == null || cached.length != length { continue }
+        if TextView(cached.path[:length]) == asset_path {
+            cached.used = image_clock
+            return cached.image
+        }
     }
     path: [4096]u8
     if !CopyCString(asset_path, path[:]) { return null }
